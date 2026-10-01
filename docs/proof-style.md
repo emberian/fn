@@ -303,6 +303,19 @@ The measured reason: `fn-statep` is Θ(n²) in Message-ID comparisons and
 per replayed record (`planning/lanes/HANDOFF-w3-scale-profile.md`). After
 this change the per-operation cost is the operation's own work.
 
+The carrying argument itself -- where the invariant is established, which
+host-called transitions preserve it, what it concludes -- is one
+`def-carried` form (`books/def-carried.lisp`), not a comment table: the form
+names the invariant, its establishing points, its transitions and their
+preservation theorems, and is refused in the world unless every named
+theorem has the carrying shape, every transition has a theorem, and every
+declared host entry (`fn-interfaces`) whose definition reaches a writer of
+the carried state is listed. It emits the trace theorem `NAME-run-carries`
+by functional instantiation of a generic theory, and the row a
+`definterface` `:raw-with (:carried NAME)` resolves to, so D40's raw
+dispatch is derived from a checked table. The pilot is
+`books/owner-retain-carried.lisp`.
+
 ## 5. Teeth are concrete witnesses
 
 A keystone ships with a reachable non-degenerate witness and one concrete

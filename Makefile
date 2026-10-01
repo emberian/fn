@@ -307,6 +307,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/definterface \
 	books/defevent \
 	books/deftransition \
+	books/def-carried \
 	books/rev-onto \
 	books/acceptance-alloc \
 	tests/acl2/defrecord-tests \
@@ -314,6 +315,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/definterface-tests \
 	tests/acl2/definterface-recognizer-tests \
 	tests/acl2/defevent-tests \
+	tests/acl2/def-carried-tests \
 	books/acceptance \
 	books/acceptance-invariants \
 	tests/acl2/acceptance-tests \

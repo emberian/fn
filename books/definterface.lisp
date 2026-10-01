@@ -68,7 +68,13 @@
 ;     host/native/io.lisp fnn-install-raw-dispatch reads the table at image
 ;     build and dispatches those entries raw; the developer selector
 ;     FN_NATIVE_DISPATCH_COUNTERPART keeps the counterpart path for a native
-;     that compares both.
+;     that compares both.  `:raw-with (:carried NAME)' names the theorems
+;     through the carried invariant NAME's row (books/def-carried.lisp,
+;     table fn-carried): its bridges, its establishing theorems and this
+;     entry's own preservation theorem, refused unless the entry is one of
+;     NAME's transitions; the checks above then run over the resolved list
+;     (fn-di-raw-with-theorems), so the annotation is derived from a table
+;     the world checked complete, never copied by hand.
 ;
 ; and then records the declaration in the table `fn-interfaces'.  A failed
 ; check is a soft error naming the entry and the check.  The registry half
@@ -140,8 +146,11 @@
 
 (defun fn-di-raw-with-formp (x)
   (declare (xargs :mode :program))
-  ; (THM ...): a non-empty list of theorem names
-  (and (consp x) (symbol-listp x) (not (member-eq nil x))))
+  ; (THM ...): a non-empty list of theorem names; or (:carried NAME), the
+  ; carried invariant whose row names them (books/def-carried.lisp)
+  (or (and (consp x) (eq (car x) :carried) (consp (cdr x)) (null (cddr x))
+           (symbolp (cadr x)) (cadr x) t)
+      (and (consp x) (symbol-listp x) (not (member-eq nil x)))))
 
 (defun fn-di-raw-guarded-formp (x)
   (declare (xargs :mode :program))
@@ -469,12 +478,35 @@
          (car thms))
         (t (fn-di-unrelated-theorem (cdr thms) related w))))
 
+(defun fn-di-raw-with-theorems (name kvs w)
+  (declare (xargs :mode :program))
+  ; the theorems a :raw-with names: the literal list, or for (:carried N)
+  ; the row of the carried invariant N (books/def-carried.lisp, table
+  ; fn-carried): its bridges, its establishing theorems and NAME's own
+  ; preservation theorem; nil when N is no carried invariant of this world
+  ; or NAME no transition of it
+  (let ((form (fn-di-get :raw-with kvs)))
+    (if (and (consp form) (eq (car form) :carried))
+        (let* ((row (cdr (assoc-eq (cadr form) (table-alist 'fn-carried w))))
+               (transition (assoc-eq name (cadr (assoc-keyword :transitions row)))))
+          (and row transition
+               (append (strip-cadrs (cadr (assoc-keyword :concludes row)))
+                       (strip-cadrs (cadr (assoc-keyword :established row)))
+                       (list (cadr transition)))))
+      form)))
+
 (defun fn-di-raw-with-problem (name kvs w)
   (declare (xargs :mode :program))
   ; nil, or a msg naming the first check the world refutes
-  (let ((thms (fn-di-get :raw-with kvs)))
-    (if (null thms)
-        nil
+  (let ((form (fn-di-get :raw-with kvs))
+        (thms (fn-di-raw-with-theorems name kvs w)))
+    (cond
+     ((null form) nil)
+     ((null thms)
+      (msg ":raw-with ~x0 on ~x1: no carried invariant ~x2 of this world ~
+            (books/def-carried.lisp) names ~x1 among its transitions"
+           form name (cadr form)))
+     (t
       (let* ((formals (getpropc name 'formals nil w))
              (stobjs (getpropc name 'stobjs-in nil w))
              (conjuncts (fn-di-invariant-conjuncts
@@ -515,7 +547,7 @@
           (msg ":raw-with names ~x0, which mentions no function of ~x1's ~
                 guard argument (~&2)" unrelated name
                (fn-di-related-fnnames heads thms w)))
-         (t nil))))))
+         (t nil)))))))
 
 (defun fn-di-raw-guarded-conjunctsp (conjuncts formals slots w)
   (declare (xargs :mode :program))
