@@ -19141,6 +19141,31 @@
         "planning/evidence/ninep-session-lifetime-2026-10-01/README.md"
       ],
       "progress_note": "Concrete session component normal-certified; actual mount internal guards/source fixtures passed. Complete host-called provider/returned-physical-borrow refinement and native source/allowance integration remain planned. Synthetic internal fixtures do not activate a listener or issue a genuine runtime family."
+    },
+    {
+      "id": "PRF-1202",
+      "title": "Actual owned 9P connection transport retains custody through bounded input and reply return",
+      "statement": "The actual fn-ninep-transport-step reads its concrete owned cursor, decodes only observed header/body bytes, bounds each receive by its internally provisioned input quantum, and preserves mounted source custody. Version reset drains actual retained requests/fids and refuses a held mount before the definite generation return. The actual reply-return subject clears the concrete buffer only in current reply phase; duplicate return is complete unchanged refusal. The complete host correspondence includes all stobjs and unchanged STATE. This is a codec/control component, not mounted article authority, native funding or a listener claim.",
+      "milestone": "M6",
+      "requirements": [
+        "HST-043"
+      ],
+      "depends_on": [
+        "PRF-1177",
+        "PRF-1196"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/ninep-transport.lisp",
+        "host/ninep-transport-host.lisp",
+        "host/native/ninep.lisp",
+        "tests/acl2/ninep-transport-tests.lisp",
+        "planning/evidence/manifests/certify-20261001T035212Z-1623183.json",
+        "planning/evidence/manifests/certify-20261001T040010Z-1712242.json",
+        "planning/evidence/ninep-transport-2026-10-01/README.md"
+      ],
+      "progress_note": "Book and actual host guards/source boundary normal035212 PASS; six complete internal literal wire/custody tests normal040010 PASS. Three inherited cached dependency pairs have uncited manifests. Full boundary target remains planned pending issued provider, complete runtime family, native caller/constructor closure and external client acceptance. Failed hints, overstrong corrupt-state frame conjecture and initial duplicated LET binding remain archived; no source result authorizes socket/session construction."
     }
   ]
 }

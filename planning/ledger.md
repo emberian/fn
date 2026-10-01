@@ -10,15 +10,15 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1924 |
-| Certification roots in the Makefile | 1823 |
-| Books inside the root closure | 1895 |
-| `defthm` and `defthmd` events | 29962 |
-| `defun` events | 19233 |
-| Functions with verified guards | 3545 |
+| Books read | 1926 |
+| Certification roots in the Makefile | 1826 |
+| Books inside the root closure | 1897 |
+| `defthm` and `defthmd` events | 29976 |
+| `defun` events | 19244 |
+| Functions with verified guards | 3546 |
 | Functions declared `:verify-guards nil` and never verified | 2289 |
-| Functions left at the default with an explicit guard | 10514 |
-| Functions left at the default with no guard | 2885 |
+| Functions left at the default with an explicit guard | 10522 |
+| Functions left at the default with no guard | 2887 |
 | `assert-event` checks | 24066 |
 | `must-fail` checks | 2519 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
@@ -27,8 +27,8 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 350 |
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2590 |
-| Host-names warnings | 2202 |
+| Include-hygiene warnings | 2591 |
+| Host-names warnings | 2208 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -625,6 +625,7 @@ that `make certify` requests.
 | `books/ninep-qids.lisp` | root | 2 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/ninep-refusal.lisp` | closure | 1 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/ninep-session.lisp` | root | 7 | 17 | 0/0/17/0 | 0 | 0 | 2 |
+| `books/ninep-transport.lisp` | root | 8 | 9 | 1/0/8/0 | 0 | 0 | 0 |
 | `books/ninep-version.lisp` | closure | 3 | 7 | 0/1/6/0 | 0 | 0 | 0 |
 | `books/nntp-article-block.lisp` | root | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/nntp-article-pass.lisp` | root | 19 | 12 | 0/0/10/2 | 0 | 0 | 2 |
@@ -1600,6 +1601,7 @@ that `make certify` requests.
 | `tests/acl2/ninep-refusal-tests.lisp` | - | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/ninep-session-host-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/ninep-session-tests.lisp` | root | 9 | 2 | 0/0/0/2 | 0 | 0 | 0 |
+| `tests/acl2/ninep-transport-tests.lisp` | root | 6 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `tests/acl2/ninep-version-tests.lisp` | - | 7 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `tests/acl2/nntp-article-block-tests.lisp` | root | 1 | 1 | 0/0/0/1 | 17 | 0 | 0 |
 | `tests/acl2/nntp-auth-fold-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 2 | 0 |

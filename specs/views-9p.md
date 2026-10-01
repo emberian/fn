@@ -122,3 +122,17 @@ partial walks and Flush/disconnect cleanup. Source, committed proof manifests,
 qualified image and deployment remain separate coordinates.
 
 The actual `fn-ninep-refusal-reply` delegates to guarded `fn-9p-refusal-reply`: core emits fixed Rerror octets for read-only, no-authentication and mount-unavailable outcomes. Tag must be below NOTAG and the complete reply must fit the negotiated msize; otherwise the core directs close. Reply metadata/text is at most26 octets, independent of stored article size. This emitter does not decide mount authorization or install a listener. Native caller allocation and runtime funding remain open.
+
+The concrete `fn-ninep-transport` owns its framing/parser/reply cursor and
+internally provisioned input quantum. `fn-ninep-transport-step` returns a
+receive count bounded by that quantum, and does not call body parsing before
+all declared bytes are observed. Its ordinary host correspondence includes
+all concrete outputs and unchanged STATE. Version reset invokes actual bounded
+draining and waits for the real mount return. Current reply return clears the
+input once; a duplicate return in another phase refuses unchanged. Normal
+035212 certifies this source and host boundary; normal040010 certifies six
+complete internal wire/custody witnesses (PRF-1202). The 13.315-second transport
+proof is a separate D26 cost defect. The internal native I/O adapter is
+source-only and still lacks the genuine per-action admission composition;
+public start refuses before constructors. These results do not fulfill the
+external-client SCN-1064 or activate a listener.

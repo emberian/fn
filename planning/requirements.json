@@ -5817,13 +5817,20 @@
       "status": "specified",
       "proof_targets": [
         "PRF-1177",
-        "PRF-1196"
+        "PRF-1196",
+        "PRF-1202"
       ],
       "verification": [
         "proof",
         "scenario"
       ],
-      "evidence": [],
+      "evidence": [
+        "books/ninep-transport.lisp",
+        "host/ninep-transport-host.lisp",
+        "host/native/ninep.lisp",
+        "tests/acl2/ninep-transport-tests.lisp",
+        "planning/evidence/ninep-transport-2026-10-01/README.md"
+      ],
       "note": "ACL2 owns wire decisions, names, local numbering and exactsource selection. Mount retains one genuinely issued immutable committed publication until all fids and issued reads settle. No whole-store materialization; real provider/issuer/source correspondence remains open."
     }
   ]
