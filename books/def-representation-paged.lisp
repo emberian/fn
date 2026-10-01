@@ -1643,6 +1643,22 @@
   :hints (("Goal" :induct (adt-pg-poolroom q d need c)
            :in-theory (enable adt-pg-corr))))
 
+; The pool pages one room-making adds: no more than the octets it was asked
+; for, rounded up to a page (the bound of one call's allocation, section 9).
+(defthm adt-pg-poolroom-pages-bound
+  (implies (and (posp q) (natp (nth 5 c)) (natp need))
+           (<= (* q (nth 5 (adt-pg-poolroom q d need c)))
+               (max (* q (nth 5 c)) (+ need (- q 1)))))
+  :rule-classes :linear
+  :hints (("Goal" :induct (adt-pg-poolroom q d need c)
+           :in-theory (enable adt-pg-poolroom))))
+
+(defthm adt-pg-np-of-rowroom
+  (implies (natp (nth 4 c))
+           (<= (nth 4 (adt-pg-rowroom m r d c)) (+ 1 (nth 4 c))))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (enable adt-pg-rowroom))))
+
 (in-theory (disable adt-pg-rowroom adt-pg-poolroom))
 
 ; -----------------------------------------------------------------------------
@@ -1965,6 +1981,61 @@
            :use (adt-pg-append-room-meaning adt-pg-corr-count adt-pg-corr-fill-natp
                  (:instance adt-pg-append-at-meaning (c (adt-pg-append-room s rec r q d dp c)))
                  (:instance adt-corr-append (c (adt-pg-flat s (adt-pg-append-room s rec r q d dp c))))))))
+
+;
+; THE WORK OF ONE CALL (Codex r37 F1).  Pages are fixed, so what one append
+; allocates is bounded by the record, not by the count: one row page at
+; most (adt-pg-append-pages-bound: NP grows by at most one), with at most
+; one table page of *adt-pg-tpages* page headers, and pool pages for its
+; octets only (Q*NQ grows by at most the record's load plus Q-1), with one
+; pool table page per *adt-pg-tpages* pool pages; the directory doubles
+; only past *adt-pg-dir-reserve* table pages.  The work is the record's:
+; an append writes its `adt-rec-load' octets, a set an octets value's
+; length, a get conses one.  So the per-call bound is PROPORTIONAL TO THE
+; VALUE'S SIZE, not to the store's; no generated call is resumable.  The
+; caller's admission profile bounds the value: for the catalog row
+; (books/catalog-paged.lisp fn-crow) the message-id is a header field, under
+; the profile's max header octets (*fn-bs-pf-max-header-octets*,
+; books/byte-store-frame.lisp), and every field under its max article
+; octets (*fn-bs-pf-max-article-octets*).  A value larger than one
+; scheduling step may write is the caller's to split; this library does not.
+
+(defthm adt-pg-corr-okp-fc
+  (implies (adt-pg-corr s r q c a)
+           (and (adt-pg-rokp (adt-ncols s) r c) (adt-pg-pokp q c)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable adt-pg-corr adt-pg-okp))))
+
+(defthm adt-pg-corr-fill-bound
+  (implies (adt-pg-corr s r q c a)
+           (<= (nth 3 c) (* q (nth 5 c))))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (e/d (adt-pg-corr adt-pg-okp adt-corr adt-fill-okp) (adt-pg-len-nth-flat))
+           :use ((:instance adt-pg-len-nth-flat (r r))))))
+
+(defthm adt-pg-append-pages-bound
+  (implies (and (adt-pg-corr s r q c a) (consp s))
+           (let ((c2 (adt-pg-append-c s rec r q d dp c)))
+             (and (<= (nth 4 c2) (+ 1 (nth 4 c)))
+                  (<= (* q (nth 5 c2)) (+ (* q (nth 5 c)) (adt-rec-load s rec) (- q 1))))))
+  :hints (("Goal" :in-theory (e/d (adt-pg-append-c adt-pg-append-at adt-pg-append-room)
+                                  (adt-pg-corr adt-pg-okp
+                                   adt-pg-append-fields-meaning adt-pg-rowroom-meaning adt-pg-poolroom-meaning
+                                   adt-pg-poolroom-pages-bound adt-pg-append-room-meaning
+                                   adt-pg-corr-fill-bound adt-pg-np-of-rowroom))
+           :do-not-induct t
+           :use (adt-pg-corr-fill-bound
+                 adt-pg-append-room-meaning
+                 (:instance adt-pg-np-of-rowroom (m (adt-ncols s)))
+                 (:instance adt-pg-rowroom-meaning (m (adt-ncols s)))
+                 (:instance adt-pg-poolroom-meaning (c (adt-pg-rowroom (adt-ncols s) r d c)) (d dp)
+                            (need (+ (nth 3 c) (adt-rec-load s rec))))
+                 (:instance adt-pg-poolroom-pages-bound (c (adt-pg-rowroom (adt-ncols s) r d c)) (d dp)
+                            (need (+ (nth 3 c) (adt-rec-load s rec))))
+                 (:instance adt-pg-corr-count (c (adt-pg-append-room s rec r q d dp c)))
+                 (:instance adt-pg-append-fields-meaning (s0 s) (ci 0)
+                            (n (nth 2 (adt-pg-append-room s rec r q d dp c)))
+                            (c (adt-pg-append-room s rec r q d dp c)))))))
 
 (defun adt-pg-set-room (s j v q dp c)
   (declare (xargs :verify-guards nil))
