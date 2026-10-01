@@ -1,6 +1,7 @@
 """Literal pooled native lifecycle transport; synthetic core is NOT a grant."""
 from pathlib import Path
 import subprocess
+import hashlib
 from tools.proof_repl import spans
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -41,7 +42,7 @@ def test_actual_native_five_mv_lifecycle_transport(tmp_path):
 (defun fnn-live-page-read-pool () *pool*)
 (defun fnn-fault (format &rest args) (error (apply #'format nil format args)))
 (defun fnn-indeterminate (text) (error text))
-(defun fnn-owner-consumer-entropy-observation () :observed-entropy)
+(defun fnn-owner-consumer-entropy-observation () (error "unexpected pre-issuer entropy"))
 (defun fnn-owner-serialized-with-control-turn (service cid thunk &optional (class :control) epilogue)
   (declare (ignore service cid class))
   (when (eq *mode* :no-ticket)
@@ -65,7 +66,7 @@ def test_actual_native_five_mv_lifecycle_transport(tmp_path):
   (push (cons name args) *calls*)
   (case name
     (fn-owner-account-adoption-begin
-      (assert (and (= (fourth args) 2) (= (fifth args) 17)
+      (assert (and (null (third args)) (= (fourth args) 2) (= (fifth args) 17)
                    (eq (sixth args) *slots*) (eq (seventh args) *pool*)
                    (eq (eighth args) *the-live-state*)))
       (list (case *mode* (:fault :recovery-required) (:refused :refused) (t :yield))
@@ -266,3 +267,51 @@ def test_actual_publication_missing_producer_retains_turn(tmp_path):
                          capture_output=True, text=True, timeout=30)
     assert out.returncode == 0, out.stdout + out.stderr
     assert 'ACCOUNT_PUBLICATION_MISSING_PRODUCER_PASS' in out.stdout
+
+
+def test_real_owner_nil_binding_refuses_before_account_creator(tmp_path):
+    """Real frozen owner wrapper + actual auth; missing binding invokes no body."""
+    owner_path = ROOT / 'tests/fixtures/account-control-turn-2a5b8df51.lisp'
+    assert hashlib.sha256(owner_path.read_bytes()).hexdigest() == '2f6527cf15f9afdf5cbb5bcffa585227433bdd8db2bece4b6caeefd5a8238dd6'
+    actual_owner = owner_path.read_text()
+    program = '''
+(defpackage "ACL2" (:use "COMMON-LISP"))
+(in-package "ACL2")
+(defstruct fnn-owner-service control-binding)
+(defvar *calls* 0)
+(defvar *the-live-state* nil)
+(defmacro fnn-with-owner-control-issued-turn ((binding slot nonce slots pool) &body body)
+ (declare (ignore binding))
+ `(let ((,slot nil) (,nonce nil) (,slots nil) (,pool nil))
+    (error "missing binding incorrectly entered issuer") ,@body))
+(defmacro fnn-owner-gated ((service class) &body body)
+ (declare (ignore service class)) `(progn ,@body))
+(defun fnn-owner-service-stopping (service) (declare (ignore service)) nil)
+(defun fnn-refuse (&rest x) (declare (ignore x)) (error "unexpected scheduler"))
+(defun fnn-owner-shared-action-locked (&rest x) (declare (ignore x)) (error "unexpected scheduler"))
+(defun fnn-fixed-callback-fail (&rest x) (declare (ignore x)) (error "unexpected callback"))
+(defun fnn-owner-consumer-entropy-observation () (error "unexpected entropy allocation or file I/O"))
+(defun fnn-account-adoption-begin (&rest x) (declare (ignore x)) (incf *calls*) (error "unexpected creator"))
+(defun fnn-account-adoption-epilogue (&rest x) (declare (ignore x)) (incf *calls*) (error "unexpected epilogue"))
+(defun fnn-account-adoption-tick (&rest x) (declare (ignore x)) (incf *calls*) (error "unexpected tick"))
+(defun fnn-core (&rest x) (declare (ignore x)) (incf *calls*) (error "unexpected core"))
+(defun fnn-account-retain-control-effects (&rest x) (declare (ignore x)) (error "unexpected effects"))
+(defun fnn-fault (&rest x) (declare (ignore x)) (error "unexpected fault"))
+(defun fnn-indeterminate (&rest x) (declare (ignore x)) (error "unexpected uncertainty"))
+'''
+    program += actual_owner
+    program += named('host/native/auth.lisp', '(defun fnn-native-auth-adopt-config ')
+    program += '''
+(let ((service (make-fnn-owner-service :control-binding nil))
+      (config (list :original-parsed-config)) (bindings (list :original-bindings)))
+ (assert (null (fnn-owner-service-control-binding service)))
+ (assert (eq (fnn-native-auth-adopt-config service config bindings) :refused))
+ (assert (zerop *calls*)))
+(format t "REAL_OWNER_NIL_BINDING_BEFORE_CREATOR_PASS~%")
+'''
+    path = tmp_path / 'account-real-owner-refusal.lisp'
+    path.write_text(program)
+    out = subprocess.run(['sbcl', '--noinform', '--script', str(path)],
+                         capture_output=True, text=True, timeout=30)
+    assert out.returncode == 0, out.stdout + out.stderr
+    assert 'REAL_OWNER_NIL_BINDING_BEFORE_CREATOR_PASS' in out.stdout

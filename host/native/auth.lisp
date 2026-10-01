@@ -44,7 +44,10 @@
 ;;; finish must be installed together with the operation census and restart
 ;;; producer. This caller deliberately has no direct-set-config fallback.
 (defun fnn-native-auth-adopt-config (service config bindings)
-  (let ((entropy (fnn-owner-consumer-entropy-observation)))
+  ;; The core uses actual CP incarnation/transaction coordinate for this
+  ;; nonauthorizing candidate. No entropy observation is requested before the
+  ;; genuine issuer; NIL records absence and confers no uniqueness authority.
+  (let ((entropy nil))
     (multiple-value-bind (word answer)
         (fnn-owner-serialized-with-control-turn
           service nil
