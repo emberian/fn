@@ -21,8 +21,11 @@
 (acl2::xl-make-live-stobjs)
 ;; ACL2's global compilation policy: the image compiles host/native under it
 (proclaim '(optimize (compilation-speed 0) (speed 3) (space 1) (safety 0)))
-(load (cl-user::xl-path "host-block.lisp"))
 (when (sb-ext:posix-getenv "XL_PROF") (require :sb-sprof))
+;; Inventory build-selected profiling hooks before participant registration.
+;; The actual image-hook checker refuses other restore callbacks; loading a
+;; module after that check would evade the saved-image exclusion contract.
+(load (cl-user::xl-path "host-block.lisp"))
 (defun cl-user::xl-toplevel ()
   ;; The saved native baseline authorizes launch before profiling, ordinary
   ;; argument handling or facility startup. Refusal/uncertainty exits here;

@@ -12,7 +12,7 @@ stale. Counts describe artifacts, not coverage; see
 | --- | --- |
 | Books read | 2330 |
 | Certification roots in the Makefile | 2128 |
-| Books inside the root closure | 2271 |
+| Books inside the root closure | 2294 |
 | `defthm` and `defthmd` events | 33155 |
 | `defun` events | 21205 |
 | Functions with verified guards | 3746 |
@@ -27,8 +27,8 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 383 |
 | Enabled-projection warnings | 79 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2981 |
-| Host-names warnings | 2630 |
+| Include-hygiene warnings | 3015 |
+| Host-names warnings | 2629 |
 | Hand-written-record warnings | 19 |
 
 ## Lints
@@ -88,7 +88,7 @@ that `make certify` requests.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `books/acceptance-alloc.lisp` | root | 16 | 34 | 18/2/14/0 | 0 | 0 | 1 |
 | `books/acceptance-binding-held-gate.lisp` | root | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
-| `books/acceptance-binding-injection.lisp` | - | 5 | 4 | 0/0/4/0 | 0 | 0 | 0 |
+| `books/acceptance-binding-injection.lisp` | closure | 5 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/acceptance-binding.lisp` | closure | 12 | 12 | 0/0/12/0 | 0 | 0 | 0 |
 | `books/acceptance-invariants.lisp` | root | 36 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/acceptance-payload-ref.lisp` | root | 35 | 11 | 0/1/9/1 | 0 | 0 | 1 |
@@ -442,7 +442,7 @@ that `make certify` requests.
 | `books/consumer-account-candidate-model.lisp` | root | 2 | 3 | 0/3/0/0 | 0 | 0 | 0 |
 | `books/consumer-account-candidate.lisp` | root | 0 | 10 | 0/0/10/0 | 0 | 0 | 0 |
 | `books/consumer-account-carried.lisp` | closure | 14 | 15 | 1/0/14/0 | 0 | 0 | 0 |
-| `books/consumer-account-carries-state.lisp` | - | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/consumer-account-carries-state.lisp` | closure | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/consumer-account-config-commit.lisp` | root | 1 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/consumer-account-config-marker-invariants.lisp` | root | 24 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/consumer-account-config-marker.lisp` | root | 0 | 12 | 0/0/12/0 | 0 | 0 | 0 |
@@ -459,8 +459,8 @@ that `make certify` requests.
 | `books/consumer-authority-revision.lisp` | closure | 2 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/consumer-bound.lisp` | root | 26 | 15 | 7/1/7/0 | 0 | 0 | 5 |
 | `books/consumer-config-authority.lisp` | closure | 2 | 5 | 0/0/5/0 | 0 | 0 | 0 |
-| `books/consumer-config-publication.lisp` | - | 2 | 3 | 0/0/3/0 | 0 | 0 | 1 |
-| `books/consumer-event-charge.lisp` | - | 3 | 3 | 0/0/3/0 | 0 | 0 | 0 |
+| `books/consumer-config-publication.lisp` | closure | 2 | 3 | 0/0/3/0 | 0 | 0 | 1 |
+| `books/consumer-event-charge.lisp` | closure | 3 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/consumer-event-index-read.lisp` | closure | 0 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/consumer-event-index.lisp` | root | 29 | 15 | 4/1/10/0 | 0 | 0 | 0 |
 | `books/consumer-local-control.lisp` | root | 5 | 24 | 23/0/1/0 | 0 | 0 | 0 |
@@ -472,8 +472,8 @@ that `make certify` requests.
 | `books/consumer-position-fields.lisp` | closure | 0 | 2 | 1/0/1/0 | 0 | 0 | 0 |
 | `books/consumer-position.lisp` | root | 61 | 47 | 44/0/3/0 | 0 | 0 | 1 |
 | `books/consumer-progress-carried.lisp` | root | 0 | 6 | 0/0/6/0 | 0 | 0 | 0 |
-| `books/consumer-publication-budget.lisp` | - | 5 | 3 | 0/0/3/0 | 0 | 0 | 0 |
-| `books/consumer-publication-charge.lisp` | - | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/consumer-publication-budget.lisp` | closure | 5 | 3 | 0/0/3/0 | 0 | 0 | 0 |
+| `books/consumer-publication-charge.lisp` | closure | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/consumer-reason.lisp` | root | 21 | 28 | 5/0/23/0 | 0 | 0 | 2 |
 | `books/consumer-remote-buffer.lisp` | root | 1 | 15 | 0/0/15/0 | 0 | 0 | 0 |
 | `books/consumer-remote-completion-model.lisp` | root | 2 | 3 | 0/0/3/0 | 0 | 0 | 0 |
@@ -538,7 +538,7 @@ that `make certify` requests.
 | `books/feed-filename.lisp` | root | 2 | 21 | 0/0/21/0 | 0 | 0 | 0 |
 | `books/feed-journal.lisp` | root | 3 | 6 | 2/0/4/0 | 0 | 0 | 0 |
 | `books/feed-link-backoff.lisp` | root | 7 | 7 | 0/0/7/0 | 0 | 0 | 0 |
-| `books/feed-live-carried.lisp` | - | 22 | 21 | 21/0/0/0 | 0 | 0 | 0 |
+| `books/feed-live-carried.lisp` | closure | 22 | 21 | 21/0/0/0 | 0 | 0 | 0 |
 | `books/feed-pause.lisp` | root | 29 | 11 | 2/0/9/0 | 0 | 0 | 1 |
 | `books/feed-port-replay.lisp` | root | 11 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/feed-restart-domain.lisp` | root | 1 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -665,7 +665,7 @@ that `make certify` requests.
 | `books/image-world.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/incoming-authority-freshness.lisp` | root | 4 | 4 | 0/0/4/0 | 0 | 0 | 2 |
 | `books/incoming-buffer-carrier-shape.lisp` | closure | 1 | 6 | 0/0/6/0 | 0 | 0 | 0 |
-| `books/incoming-buffer-carrier.lisp` | - | 4 | 3 | 0/0/3/0 | 0 | 0 | 0 |
+| `books/incoming-buffer-carrier.lisp` | closure | 4 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/incoming-copy-association.lisp` | root | 0 | 3 | 0/0/0/3 | 0 | 0 | 0 |
 | `books/incoming-copy-stobj.lisp` | closure | 14 | 16 | 0/0/10/6 | 0 | 0 | 0 |
 | `books/incoming-octet-holder.lisp` | closure | 3 | 8 | 0/0/8/0 | 0 | 0 | 0 |
@@ -864,12 +864,12 @@ that `make certify` requests.
 | `books/owner-agent.lisp` | root | 45 | 19 | 5/0/14/0 | 0 | 0 | 4 |
 | `books/owner-article-held.lisp` | root | 60 | 8 | 0/0/6/2 | 0 | 0 | 9 |
 | `books/owner-article-slots.lisp` | root | 26 | 18 | 0/0/17/1 | 0 | 0 | 6 |
-| `books/owner-authority-proposal-state.lisp` | - | 1 | 4 | 0/0/4/0 | 0 | 0 | 0 |
+| `books/owner-authority-proposal-state.lisp` | closure | 1 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/owner-batch.lisp` | root | 61 | 31 | 0/14/17/0 | 0 | 0 | 4 |
 | `books/owner-bound-commit.lisp` | root | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/owner-canonical-epoch.lisp` | closure | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/owner-canonical-read-state.lisp` | root | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
-| `books/owner-canonical-state.lisp` | - | 6 | 3 | 0/0/3/0 | 0 | 0 | 0 |
+| `books/owner-canonical-state.lisp` | closure | 6 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/owner-checkpoint-open.lisp` | root | 20 | 7 | 4/0/3/0 | 0 | 0 | 0 |
 | `books/owner-checkpoint-pipeline.lisp` | root | 73 | 4 | 0/3/0/1 | 0 | 0 | 3 |
 | `books/owner-checkpoint-writer.lisp` | root | 53 | 34 | 2/5/27/0 | 0 | 0 | 0 |
@@ -891,23 +891,23 @@ that `make certify` requests.
 | `books/owner-control-post-reason.lisp` | closure | 2 | 2 | 0/0/2/0 | 0 | 0 | 1 |
 | `books/owner-control-read.lisp` | root | 63 | 2 | 0/2/0/0 | 0 | 0 | 2 |
 | `books/owner-credits.lisp` | root | 29 | 21 | 0/0/21/0 | 0 | 0 | 2 |
-| `books/owner-cursor-domain.lisp` | - | 23 | 2 | 0/0/2/0 | 0 | 0 | 4 |
+| `books/owner-cursor-domain.lisp` | closure | 23 | 2 | 0/0/2/0 | 0 | 0 | 4 |
 | `books/owner-descriptions-read.lisp` | root | 17 | 0 | 0/0/0/0 | 0 | 0 | 2 |
 | `books/owner-enrollment-read.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/owner-export-request.lisp` | closure | 4 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/owner-fault.lisp` | root | 11 | 2 | 2/0/0/0 | 0 | 0 | 1 |
 | `books/owner-feed-article.lisp` | root | 12 | 5 | 0/0/4/1 | 0 | 0 | 0 |
-| `books/owner-feed-counts.lisp` | - | 13 | 1 | 0/0/1/0 | 0 | 0 | 0 |
-| `books/owner-feed-live-carried.lisp` | - | 9 | 4 | 3/0/1/0 | 0 | 0 | 2 |
+| `books/owner-feed-counts.lisp` | closure | 13 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/owner-feed-live-carried.lisp` | closure | 9 | 4 | 3/0/1/0 | 0 | 0 | 2 |
 | `books/owner-feed-port.lisp` | root | 14 | 2 | 1/0/1/0 | 0 | 0 | 5 |
-| `books/owner-feed-reconfigure-counted.lisp` | - | 19 | 3 | 0/0/3/0 | 0 | 0 | 0 |
+| `books/owner-feed-reconfigure-counted.lisp` | closure | 19 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/owner-feed-subject.lisp` | root | 21 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/owner-feed-txid-reuse.lisp` | root | 4 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/owner-feed.lisp` | root | 115 | 112 | 17/0/95/0 | 0 | 0 | 1 |
 | `books/owner-host-relation-span.lisp` | root | 4 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/owner-host-relation.lisp` | root | 141 | 2 | 0/0/2/0 | 0 | 0 | 9 |
 | `books/owner-identity-intern.lisp` | root | 5 | 5 | 1/1/3/0 | 0 | 0 | 0 |
-| `books/owner-identity-prepare.lisp` | - | 1 | 1 | 1/0/0/0 | 0 | 0 | 0 |
+| `books/owner-identity-prepare.lisp` | closure | 1 | 1 | 1/0/0/0 | 0 | 0 | 0 |
 | `books/owner-identity-served.lisp` | root | 2 | 1 | 1/0/0/0 | 0 | 0 | 0 |
 | `books/owner-incoming-context.lisp` | closure | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/owner-incoming-freshness.lisp` | root | 4 | 4 | 1/0/3/0 | 0 | 0 | 0 |
@@ -932,7 +932,7 @@ that `make certify` requests.
 | `books/owner-obligation-state.lisp` | closure | 21 | 8 | 0/1/7/0 | 0 | 0 | 0 |
 | `books/owner-offer-indexed.lisp` | root | 55 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/owner-open-carried.lisp` | root | 14 | 7 | 0/0/7/0 | 0 | 0 | 0 |
-| `books/owner-outcome-counted.lisp` | - | 19 | 7 | 5/0/2/0 | 0 | 0 | 1 |
+| `books/owner-outcome-counted.lisp` | closure | 19 | 7 | 5/0/2/0 | 0 | 0 | 1 |
 | `books/owner-outcome-pinned.lisp` | root | 5 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/owner-parse-carried.lisp` | root | 48 | 41 | 1/0/40/0 | 0 | 0 | 1 |
 | `books/owner-prepare-carried.lisp` | root | 18 | 8 | 5/0/3/0 | 0 | 0 | 0 |
@@ -953,17 +953,17 @@ that `make certify` requests.
 | `books/owner-reclaim-ready.lisp` | closure | 10 | 4 | 0/2/2/0 | 0 | 0 | 2 |
 | `books/owner-reclaim.lisp` | root | 15 | 9 | 1/2/6/0 | 0 | 0 | 1 |
 | `books/owner-recover-ocl.lisp` | root | 13 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/owner-recovery-retain.lisp` | - | 13 | 2 | 0/0/2/0 | 0 | 0 | 1 |
+| `books/owner-recovery-retain.lisp` | closure | 13 | 2 | 0/0/2/0 | 0 | 0 | 1 |
 | `books/owner-refresh-indexed.lisp` | root | 9 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/owner-report-owner-accessors.lisp` | root | 0 | 9 | 3/0/6/0 | 0 | 0 | 0 |
 | `books/owner-resource-line.lisp` | root | 3 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/owner-results.lisp` | root | 23 | 69 | 8/5/55/1 | 0 | 0 | 1 |
 | `books/owner-retain-state.lisp` | closure | 5 | 2 | 0/0/2/0 | 0 | 0 | 0 |
-| `books/owner-retain-transitions.lisp` | - | 11 | 3 | 0/1/2/0 | 0 | 0 | 0 |
+| `books/owner-retain-transitions.lisp` | closure | 11 | 3 | 0/1/2/0 | 0 | 0 | 0 |
 | `books/owner-retention-preparation.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/owner-retire-counted.lisp` | - | 5 | 4 | 0/0/4/0 | 0 | 0 | 0 |
-| `books/owner-retire-cursor.lisp` | - | 5 | 7 | 7/0/0/0 | 0 | 0 | 1 |
-| `books/owner-retire-settlement.lisp` | - | 8 | 9 | 0/0/9/0 | 0 | 0 | 2 |
+| `books/owner-retire-counted.lisp` | closure | 5 | 4 | 0/0/4/0 | 0 | 0 | 0 |
+| `books/owner-retire-cursor.lisp` | closure | 5 | 7 | 7/0/0/0 | 0 | 0 | 1 |
+| `books/owner-retire-settlement.lisp` | closure | 8 | 9 | 0/0/9/0 | 0 | 0 | 2 |
 | `books/owner-retire.lisp` | root | 4 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/owner-scheduler.lisp` | root | 27 | 34 | 0/0/34/0 | 0 | 0 | 1 |
 | `books/owner-served-bound.lisp` | root | 6 | 2 | 0/0/2/0 | 0 | 0 | 2 |
@@ -1048,7 +1048,7 @@ that `make certify` requests.
 | `books/peer-catchup-serve.lisp` | root | 19 | 29 | 2/0/27/0 | 0 | 0 | 0 |
 | `books/peer-catchup.lisp` | root | 41 | 97 | 14/0/83/0 | 0 | 0 | 0 |
 | `books/peer-config.lisp` | root | 38 | 38 | 1/0/32/5 | 0 | 0 | 0 |
-| `books/peer-feed-counts.lisp` | - | 33 | 0 | 0/0/0/0 | 0 | 0 | 1 |
+| `books/peer-feed-counts.lisp` | closure | 33 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/peer-feed-invariants.lisp` | root | 158 | 10 | 0/0/9/1 | 0 | 0 | 0 |
 | `books/peer-feed.lisp` | root | 60 | 122 | 17/0/104/1 | 0 | 0 | 0 |
 | `books/peer-guard-carried.lisp` | root | 22 | 10 | 3/0/7/0 | 0 | 0 | 1 |
@@ -1328,7 +1328,7 @@ that `make certify` requests.
 | `books/store-finalize-published.lisp` | root | 12 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/store-genesis.lisp` | root | 14 | 28 | 11/0/17/0 | 0 | 0 | 0 |
 | `books/store-host-boundary.lisp` | closure | 9 | 3 | 0/0/3/0 | 0 | 0 | 0 |
-| `books/store-identity-reserve.lisp` | - | 6 | 7 | 2/0/5/0 | 0 | 0 | 1 |
+| `books/store-identity-reserve.lisp` | closure | 6 | 7 | 2/0/5/0 | 0 | 0 | 1 |
 | `books/store-identity-sequence-invariants.lisp` | root | 28 | 1 | 1/0/0/0 | 0 | 0 | 1 |
 | `books/store-import-publication.lisp` | root | 123 | 56 | 0/52/4/0 | 0 | 0 | 0 |
 | `books/store-import-stream.lisp` | root | 30 | 18 | 3/4/11/0 | 0 | 0 | 2 |

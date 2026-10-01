@@ -461,7 +461,7 @@
         (defun fn-native-entry (st)
           (declare (ignore st))
           ; Bootstrap precedes facility constructors and ordinary cleanup.
-          (fnn-runtime-bootstrap-startup)
+          (fnn-runtime-bootstrap-production-entry)
           ; A refused start exits 5 with its reason (io.lisp).
           (fnn-native-startup (lambda ()
                                 (fnn-crypto-startup)
@@ -557,6 +557,7 @@
         ; and `--noinform' below keeps SBCL's own banner off it too.  The
         ; `model' verb writes reply octets to stdout and nothing else may.
         (load "host/native/runtime-collector.lisp")
+        (load "host/native/runtime-participants.lisp")
         (load "host/native/runtime-bootstrap.lisp")
         (fnn-runtime-bootstrap-image-prepare)
         (setq *print-startup-banner* nil))
