@@ -29,6 +29,7 @@
 ; so a hit costs a few pointer comparisons.
 
 (in-package "ACL2")
+(include-book "def-loop")
 (include-book "group-access")
 (include-book "owner")
 
@@ -200,30 +201,13 @@
 ; The cache with TEXT's entry replaced by (or, absent one, extended with) E.
 ; Executes by a loop (one frame per step would be one per rule, operator
 ; data: D27); the :logic is the recursion.
-(defun fn-gacc-put-loop (text e cache acc)
-  (declare (xargs :guard (true-listp acc)))
-  (if (consp cache)
-      (if (and (consp (car cache)) (equal (fn-gacc-text (car cache)) text))
-          (revappend acc (cons e (cdr cache)))
-        (fn-gacc-put-loop text e (cdr cache) (cons (car cache) acc)))
-    (revappend acc (list e))))
-
-(defun fn-gacc-put (text e cache)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp cache)
-           (if (and (consp (car cache)) (equal (fn-gacc-text (car cache)) text))
-               (cons e (cdr cache))
-             (cons (car cache) (fn-gacc-put text e (cdr cache))))
-         (list e))
-       :exec (fn-gacc-put-loop text e cache nil)))
-
-(local
- (defthm fn-gacc-put-loop-is-revappend
-   (equal (fn-gacc-put-loop text e cache acc)
-          (revappend acc (fn-gacc-put text e cache)))))
-
-(verify-guards fn-gacc-put)
+(def-loop fn-gacc-put (text e cache)
+  :shape :map
+  :over cache
+  :stop (and (consp (car cache)) (equal (fn-gacc-text (car cache)) text))
+  :stop-value (cons e (cdr cache))
+  :body (car cache)
+  :tail (list e))
 
 ; Prepare the entry a restricted connection's commands will read.
 (defun fn-gacc-prepare (text archive control cache)

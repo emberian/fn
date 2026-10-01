@@ -2353,23 +2353,23 @@
     "books": 2705,
     "books_in_root_closure": 2618,
     "roots": 2346,
-    "theorems": 35360,
-    "functions": 22662,
-    "assert_events": 25277,
-    "must_fails": 2557,
+    "theorems": 35368,
+    "functions": 22668,
+    "assert_events": 25292,
+    "must_fails": 2558,
     "prover_refusals": 0,
     "encapsulates": 193,
     "guards": {
-      "verified": 3840,
+      "verified": 3844,
       "declared-off": 2863,
-      "default-guarded": 12693,
-      "default-unguarded": 3266
+      "default-guarded": 12691,
+      "default-unguarded": 3270
     },
     "suspect_theorems": 1334,
     "export_hygiene_warnings": 392,
-    "enabled_projection_warnings": 79,
+    "enabled_projection_warnings": 80,
     "teeth_form_warnings": 279,
-    "include_hygiene_warnings": 3369,
+    "include_hygiene_warnings": 3364,
     "host_names_warnings": 3114,
     "hand_written_record_warnings": 19
   },
@@ -17742,12 +17742,12 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 11,
+      "functions": 14,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 11
+        "default-unguarded": 14
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -18142,12 +18142,12 @@
       "theorems": 22,
       "functions": 33,
       "guards": {
-        "verified": 1,
+        "verified": 2,
         "declared-off": 5,
-        "default-guarded": 27,
+        "default-guarded": 26,
         "default-unguarded": 0
       },
-      "verify_guards_events": 1,
+      "verify_guards_events": 2,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -18155,6 +18155,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "def-loop",
         "expiry-policy",
         "relay-checks",
         "store-reclaim-pack"
@@ -19186,12 +19187,12 @@
       "theorems": 19,
       "functions": 19,
       "guards": {
-        "verified": 1,
+        "verified": 2,
         "declared-off": 0,
-        "default-guarded": 17,
+        "default-guarded": 16,
         "default-unguarded": 1
       },
-      "verify_guards_events": 1,
+      "verify_guards_events": 2,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -19199,6 +19200,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "def-loop",
         "group-access",
         "owner"
       ],
@@ -28644,6 +28646,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "def-loop",
         "nntp-article-block",
         "nntp-xref",
         "protocol-table"
@@ -28854,6 +28857,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "def-loop",
         "nntp-responses",
         "protocol-table",
         "stx-reader"
@@ -31651,7 +31655,7 @@
       "book": "books/owner-invariants-step.lisp",
       "in_root_closure": true,
       "is_root": false,
-      "theorems": 42,
+      "theorems": 43,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -37811,6 +37815,7 @@
       "encapsulates": 0,
       "includes": [
         "cancel-lock-lines",
+        "def-loop",
         "injection"
       ],
       "system_includes": [],
@@ -45154,7 +45159,7 @@
       "book": "books/store-finalize-incremental.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 42,
+      "theorems": 48,
       "functions": 12,
       "guards": {
         "verified": 5,
@@ -48830,6 +48835,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "def-loop",
         "topic-history-authorship"
       ],
       "system_includes": [],
@@ -60406,17 +60412,17 @@
       "book": "tests/acl2/def-loop-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 9,
-      "functions": 20,
+      "theorems": 10,
+      "functions": 22,
       "guards": {
-        "verified": 14,
+        "verified": 16,
         "declared-off": 0,
         "default-guarded": 6,
         "default-unguarded": 0
       },
-      "verify_guards_events": 14,
-      "assert_events": 37,
-      "must_fails": 10,
+      "verify_guards_events": 16,
+      "assert_events": 40,
+      "must_fails": 11,
       "prover_refusals": 0,
       "defconsts": 0,
       "defmacros": 0,
@@ -60435,18 +60441,18 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 6,
-      "functions": 5,
+      "functions": 6,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 5,
-        "default-unguarded": 0
+        "default-unguarded": 1
       },
       "verify_guards_events": 0,
-      "assert_events": 4,
+      "assert_events": 11,
       "must_fails": 5,
       "prover_refusals": 0,
-      "defconsts": 0,
+      "defconsts": 2,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -61667,7 +61673,7 @@
         "default-unguarded": 8
       },
       "verify_guards_events": 0,
-      "assert_events": 64,
+      "assert_events": 65,
       "must_fails": 4,
       "prover_refusals": 0,
       "defconsts": 36,
@@ -73895,7 +73901,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 103,
+      "assert_events": 105,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 45,
@@ -74583,7 +74589,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 39,
+      "assert_events": 41,
       "must_fails": 8,
       "prover_refusals": 0,
       "defconsts": 16,
@@ -81806,7 +81812,7 @@
     {
       "theorem": "fn-gacc-restrict-articles-of-consp",
       "book": "books/group-access-cache.lisp",
-      "line": 236,
+      "line": 220,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-gac-restrict-articles and the conclusion is that branch's value"
       ]
@@ -85950,7 +85956,7 @@
     {
       "theorem": "fn-rcompat-held-env-facts",
       "book": "books/nntp-reader-compat.lisp",
-      "line": 169,
+      "line": 136,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -85958,7 +85964,7 @@
     {
       "theorem": "fn-rcompat-held-env-observation",
       "book": "books/nntp-reader-compat.lisp",
-      "line": 188,
+      "line": 155,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -85966,7 +85972,7 @@
     {
       "theorem": "fn-rcompat-multi-preserves-session",
       "book": "books/nntp-reader-compat.lisp",
-      "line": 546,
+      "line": 449,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -85974,7 +85980,7 @@
     {
       "theorem": "fn-rcompat-newgroups-unfolds",
       "book": "books/nntp-reader-compat.lisp",
-      "line": 182,
+      "line": 149,
       "reasons": [
         "definition-restated: the conclusion is the body of fn-rcompat-newgroups"
       ]
@@ -85982,7 +85988,7 @@
     {
       "theorem": "fn-rcompat-single-preserves-session",
       "book": "books/nntp-reader-compat.lisp",
-      "line": 541,
+      "line": 444,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -85990,7 +85996,7 @@
     {
       "theorem": "fn-rcompat-subscription-names-keep-the-configured-order",
       "book": "books/nntp-reader-compat.lisp",
-      "line": 267,
+      "line": 203,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-rcompat-subscription-names and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-rcompat-subscription-names and the conclusion is that branch's value"
@@ -86340,7 +86346,7 @@
     {
       "theorem": "fn-rr-recovered-kernel-holds-the-scan",
       "book": "books/recovery-refinement.lisp",
-      "line": 138,
+      "line": 139,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -86364,7 +86370,7 @@
     {
       "theorem": "fn-rrs-reserve-is-two-capture-budgets",
       "book": "books/recovery-refinement-store.lisp",
-      "line": 140,
+      "line": 141,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -87645,7 +87651,7 @@
     {
       "theorem": "fn-sfi-fault-keeps-snapshots",
       "book": "books/store-finalize-incremental.lisp",
-      "line": 133,
+      "line": 136,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -87653,7 +87659,7 @@
     {
       "theorem": "fn-sfi-snapshots-of-context",
       "book": "books/store-finalize-incremental.lisp",
-      "line": 127,
+      "line": 130,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -92205,7 +92211,7 @@
       {
         "theorem": "fn-sfi-sn-statep-carried-is-rii-sn-statep-carried",
         "book": "books/store-finalize-incremental.lisp",
-        "line": 221,
+        "line": 227,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -92661,13 +92667,13 @@
       {
         "theorem": "drt-pay-recognizer-is-arena-recognizer",
         "book": "tests/acl2/def-representation-tests.lisp",
-        "line": 77,
+        "line": 128,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "drt-pay-count-is-arena-count",
         "book": "tests/acl2/def-representation-tests.lisp",
-        "line": 82,
+        "line": 133,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -93823,6 +93829,25 @@
         "reason": "enabled-projection: the definition rune ships enabled and 37 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
+        "function": "fn-pb-line",
+        "book": "books/poster-bytes-source.lisp",
+        "line": 20,
+        "stated_in": [
+          "books/injection-info-params-invariants.lisp",
+          "books/post-identity-source-cursor-agent.lisp",
+          "books/post-identity-source-cursor-block.lisp",
+          "books/post-identity-source-cursor-info.lisp",
+          "books/post-identity-source-cursor-refinement.lisp",
+          "books/post-identity-source-cursor-skip.lisp",
+          "books/poster-bytes-invariants.lisp",
+          "books/poster-bytes-source-buffer.lisp",
+          "tests/acl2/post-identity-source-cursor-block-tests.lisp",
+          "tests/acl2/post-identity-source-cursor-info-tests.lisp",
+          "tests/acl2/post-identity-source-cursor-tests.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 11 books state theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
         "function": "fn-splan-step-effects",
         "book": "books/served-plan.lisp",
         "line": 415,
@@ -94229,10 +94254,9 @@
           "books/owner-snapshot-recovery.lisp",
           "books/replay.lisp",
           "books/served-catalog-join-frame.lisp",
-          "books/served-catalog-join-host-identity-finish.lisp",
-          "books/store-finalize-incremental.lisp"
+          "books/served-catalog-join-host-identity-finish.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 7 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 6 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-stxk-context-current-generation",
@@ -94545,7 +94569,7 @@
       {
         "check": "dlt-pairs-bad-loop-is-revappend",
         "book": "tests/acl2/def-loop-tests.lisp",
-        "line": 163,
+        "line": 184,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -94557,25 +94581,25 @@
       {
         "check": "gat-projection-without-projection",
         "book": "tests/acl2/group-access-tests.lisp",
-        "line": 232,
+        "line": 233,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "gat-into-view-without-readable",
         "book": "tests/acl2/group-access-tests.lisp",
-        "line": 242,
+        "line": 243,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "gat-into-view-without-projected",
         "book": "tests/acl2/group-access-tests.lisp",
-        "line": 253,
+        "line": 254,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "gat-absent-without-covers",
         "book": "tests/acl2/group-access-tests.lisp",
-        "line": 273,
+        "line": 274,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -98809,13 +98833,6 @@
         "line": 14,
         "include": "acceptance-alloc",
         "included": "books/acceptance-alloc.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/expiry-instant.lisp",
-        "line": 16,
-        "include": "expiry",
-        "included": "books/expiry.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -103797,7 +103814,7 @@
       },
       {
         "book": "books/nntp-reader-compat.lisp",
-        "line": 59,
+        "line": 60,
         "include": "protocol-table",
         "included": "books/protocol-table.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -103838,22 +103855,15 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "books/nntp-verdict-effects.lisp",
-        "line": 5,
-        "include": "nntp-verdict",
-        "included": "books/nntp-verdict.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
         "book": "books/nntp-verdict.lisp",
-        "line": 5,
+        "line": 6,
         "include": "protocol-table",
         "included": "books/protocol-table.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/nntp-verdict.lisp",
-        "line": 6,
+        "line": 7,
         "include": "stx-reader",
         "included": "books/stx-reader.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -103884,13 +103894,6 @@
         "line": 23,
         "include": "protocol-table",
         "included": "books/protocol-table.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/nntp.lisp",
-        "line": 204,
-        "include": "nntp-verdict",
-        "included": "books/nntp-verdict.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -105596,28 +105599,28 @@
       },
       {
         "book": "books/recovery-refinement-store.lisp",
-        "line": 42,
+        "line": 43,
         "include": "store-checkpoint-open",
         "included": "books/store-checkpoint-open.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/recovery-refinement-store.lisp",
-        "line": 43,
+        "line": 44,
         "include": "store-recover-stream",
         "included": "books/store-recover-stream.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/recovery-refinement-store.lisp",
-        "line": 45,
+        "line": 46,
         "include": "store-node-files-selector",
         "included": "books/store-node-files-selector.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/recovery-refinement.lisp",
-        "line": 85,
+        "line": 86,
         "include": "store-log-programs",
         "included": "books/store-log-programs.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -107031,16 +107034,9 @@
       },
       {
         "book": "books/topic-history-admission.lisp",
-        "line": 5,
+        "line": 6,
         "include": "topic-history-authorship",
         "included": "books/topic-history-authorship.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/topic-history-local-admin.lisp",
-        "line": 6,
-        "include": "topic-history-admission",
-        "included": "books/topic-history-admission.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -119060,13 +119056,6 @@
         "line": 14,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "tests/acl2/topic-history-admission-tests.lisp",
-        "line": 2,
-        "include": "../../books/topic-history-admission",
-        "included": "books/topic-history-admission.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
