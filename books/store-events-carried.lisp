@@ -15,7 +15,7 @@
 ;   head :retention         a retention event, fields at 2 3 4
 ;   head :consumer          a consumer event,  fields at 1 2 3
 ;   head another symbol     a topic event,     fields at 1 2 3
-;   head a number           a held article row (16 wide), a statement verdict
+;   head a number           a held article row (15 wide), a statement verdict
 ;                           (8), a keyring snapshot (6) or an accepted-article
 ;                           composite (10); fields at 0 1 2
 ;
@@ -81,7 +81,7 @@
 (local
  (defthm fn-evc-held-shape
    (implies (fn-held-p x)
-            (and (consp x) (natp (car x)) (equal (len x) 16)
+            (and (consp x) (natp (car x)) (equal (len x) 15)
                  (equal (fn-record-sequence x) (fn-store-event-nth 0 x))
                  (equal (fn-record-txid x) (fn-store-event-nth 1 x))
                  (equal (fn-record-generation x) (fn-store-event-nth 2 x))))
