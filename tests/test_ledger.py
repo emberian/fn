@@ -96,6 +96,57 @@ class DefLoopBridgeTests(unittest.TestCase):
         self.assertEqual(events[1][3], ledger.read_forms(
             "(declare (xargs :guard t :verify-guards nil))")[0])
 
+    def test_single_binding(self):
+        self.check_bridge(
+            "(def-loop named (xs table) :shape :map "
+            ":let ((v (lookup (car xs) table))) :keep v :body v)",
+            "(equal (named-loop xs table acc) (revappend acc (named xs table)))")
+
+    def test_loop_guard(self):
+        declaration = "(def-loop guarded (xs k) :shape :map :body k " \
+                      ":guard (and (natp k) (true-listp xs)) " \
+                      ":loop-guard (and (natp k) (true-listp xs) (true-listp acc)))"
+        self.check_bridge(declaration,
+                          "(equal (guarded-loop xs k acc) (revappend acc (guarded xs k)))")
+        events = ledger.def_loop_expansion(ledger.read_forms(declaration)[0])
+        self.assertEqual(events[0][3], ledger.read_forms(
+            "(declare (xargs :guard (and (natp k) (true-listp xs) (true-listp acc)) "
+            ":verify-guards nil))")[0])
+        self.assertEqual(events[1][3], ledger.read_forms(
+            "(declare (xargs :guard (and (natp k) (true-listp xs)) "
+            ":verify-guards nil))")[0])
+
+    def test_concat(self):
+        self.check_bridge(
+            "(def-loop lines (xs) :shape :concat :body (line (car xs)))",
+            "(equal (lines-loop xs acc) (revappend acc (lines xs)))")
+        events = ledger.def_loop_expansion(ledger.read_forms(
+            "(def-loop lines (xs) :shape :concat :body (line (car xs)))")[0])
+        self.assertEqual(events[0][3], ledger.read_forms(
+            "(declare (xargs :guard (true-listp acc) :verify-guards nil))")[0])
+
+    def test_fixed_accumulator(self):
+        declaration = "(def-loop fixed (xs) :shape :map :body (car xs) :acc-fix t)"
+        self.check_bridge(declaration,
+                          "(equal (fixed-loop xs acc) "
+                          "(revappend (true-list-fix acc) (fixed xs)))")
+        events = ledger.def_loop_expansion(ledger.read_forms(declaration)[0])
+        self.assertEqual(events[0][3], ledger.read_forms(
+            "(declare (xargs :guard t :verify-guards nil))")[0])
+
+    def test_readonly_stobjs(self):
+        declaration = "(def-loop reads (xs buffer) :shape :map :stobjs buffer " \
+                      ":body (read-value (car xs) buffer))"
+        self.check_bridge(declaration,
+                          "(equal (reads-loop xs buffer acc) "
+                          "(revappend acc (reads xs buffer)))")
+        events = ledger.def_loop_expansion(ledger.read_forms(declaration)[0])
+        self.assertEqual(events[0][3], ledger.read_forms(
+            "(declare (xargs :guard (true-listp acc) :verify-guards nil "
+            ":stobjs (buffer)))")[0])
+        self.assertEqual(events[1][3], ledger.read_forms(
+            "(declare (xargs :guard t :verify-guards nil :stobjs (buffer)))")[0])
+
     def test_sum(self):
         self.check_bridge(
             "(def-loop count-ints (xs) :shape :sum :elt e "

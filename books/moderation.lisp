@@ -52,6 +52,7 @@
 ; read-only gate.
 
 (in-package "ACL2")
+(include-book "def-loop")
 (include-book "injection")
 (include-book "control-classify")
 (include-book "nntp-responses")
@@ -92,45 +93,9 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-mod-named-entries-loop (groups closed acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp groups)
-      (let ((e (fn-mod-entry-of (car groups) closed)))
-        (if e
-            (fn-mod-named-entries-loop (cdr groups) closed (cons e acc))
-          (fn-mod-named-entries-loop (cdr groups) closed acc)))
-    (revappend acc nil)))
-
-(defun fn-mod-named-entries (groups closed)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp groups)
-           (let ((e (fn-mod-entry-of (car groups) closed)))
-             (if e
-                 (cons e (fn-mod-named-entries (cdr groups) closed))
-               (fn-mod-named-entries (cdr groups) closed)))
-         nil)
-       :exec (fn-mod-named-entries-loop groups closed nil)))
-
-(local
- (defthm fn-mod-named-entries-loop-is-revappend
-   (equal (fn-mod-named-entries-loop groups closed acc)
-          (revappend acc (fn-mod-named-entries groups closed)))
-   :hints (("Goal" :induct (fn-mod-named-entries-loop groups closed acc)
-                   :in-theory (union-theories '(fn-mod-named-entries-loop fn-mod-named-entries revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-mod-named-entries-loop)
-
-(verify-guards fn-mod-named-entries
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-mod-named-entries)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-mod-named-entries-loop-is-revappend (acc nil))))))
-
+(def-loop fn-mod-named-entries (groups closed)
+  :shape :map :let ((e (fn-mod-entry-of (car groups) closed)))
+  :keep e :body e)
 
 (defthm fn-mod-named-entries-of-no-groups
   (implies (not (consp groups))

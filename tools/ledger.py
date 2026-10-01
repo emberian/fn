@@ -847,6 +847,8 @@ def def_loop_expansion(form: list) -> list:
                   [Sym("equal"), [Sym(name)] + list(formals),
                    [Sym("append"), stobj, [options.get(":map", Sym("nil"))] + map_formals]]]],
                 [Sym("in-theory"), [Sym("disable"), Sym(name)]]]
+    acc_fix = str(options.get(":acc-fix", Sym("nil"))) == "t"
+    # :concat shares the map bridge signature and list accumulator guard.
     # :base selects the base-first :take shape and its library proof.
     # :keep-order only selects branch order and its library proof; emitted
     # names, guards and bridge statements are identical for both orders.
@@ -854,14 +856,24 @@ def def_loop_expansion(form: list) -> list:
     acc_guard: object = [acc_pred, acc]
     if not (isinstance(guard, Sym) and str(guard) == "t"):
         acc_guard = [Sym("and"), guard, acc_guard]
+    if acc_fix:
+        acc_guard = guard
+    if str(options.get(":loop-guard", Sym(":default"))) != ":default":
+        acc_guard = options[":loop-guard"]
     loop_decl = [Sym("declare"), [Sym("xargs"), Sym(":guard"), acc_guard,
                                   Sym(":verify-guards"), Sym("nil")]]
     name_decl = [Sym("declare"), [Sym("xargs"), Sym(":guard"), guard,
                                   Sym(":verify-guards"), Sym("nil")]]
+    stobjs = options.get(":stobjs")
+    if stobjs and str(stobjs) != "nil":
+        stobjs = [stobjs] if isinstance(stobjs, Sym) else stobjs
+        loop_decl[1] += [Sym(":stobjs"), stobjs]
+        name_decl[1] += [Sym(":stobjs"), stobjs]
     bridge = f"{loop}-is-plus" if shape == ":sum" else f"{loop}-is-revappend"
     statement = [Sym("equal"), [Sym(loop)] + list(formals) + [acc],
                  [Sym("+" if shape == ":sum" else "revappend"),
-                  acc, [Sym(name)] + list(formals)]]
+                  [Sym("true-list-fix"), acc] if acc_fix else acc,
+                  [Sym(name)] + list(formals)]]
     if shape == ":sum":
         statement = [Sym("implies"), [Sym("acl2-numberp"), acc], statement]
     unit = 0 if shape == ":sum" else Sym("nil")
