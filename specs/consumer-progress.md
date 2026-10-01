@@ -1314,8 +1314,9 @@ authority E node is staged, the same reserved BEGIN captures the old Store,
 canonical context, account metadata and committed root alias. Its subsequent
 account step consumes the actual retained node result and calls the guarded
 private authority stage once. A readout returns the complete full7 and captured
-root under the current typed operation/writer lease. The typed C sequence is
-not inferred from configuration generation. These new host callers are source
+root under the current typed operation/writer lease. The actual C record
+producer persists the prior configuration generation as sequence and the
+next generation separately, following `fn-ocfg-reconfig-record`. These new host callers are source
 assembly only; their modern includes, funding census, current-source invariant
 and actual durable activation remain unqualified. Preparation of a selected configuration row uses a fixed four-scalar size
 constructor: native string lengths and the row number feed the existing
@@ -1347,6 +1348,28 @@ interrupted or mismatched account collection requires recovery. The new host
 collector and hook are source assembly only, pending the exact typed-turn host
 include and composed source/BODY qualification. Typed C needs its distinct real
 C completion producer and cannot use this E receipt.
+
+Typed C preparation now starts from the sole acquired configuration writer
+lease and its original Store/configuration/view/posting aliases. The typed
+record stays in that lease; it does not widen the ordinary `OC.staged`
+grammar. The internal preparation caller saves an intent before calling
+`fn-acj-commit` once and retains its complete full8 result through all yields.
+A process escape during that decision requires recovery rather than another
+call. It prepares chronological C history by copying and restoring one cell
+per tick. Its actual append-denotation and progress boundaries have protected
+source evidence and literal tests. A separate one-group step compares
+liveness at the old/new generation; a differing group requires the general
+bounded posting/view rebuild rather than reuse of the old tables.
+
+Account preparation replaces only signing-binding rows (mark 2). Exact
+preservation of all other account rows, the original posting/view source
+relation, and generation-specific projection remain obligations before reuse
+of posting or visible roots. The internal MV7 journal readout currently keeps
+the actual record/full8 but returns `:configuration-semantic-pending` with no
+plan, canonical tuple, obligation result or successor source. This is concrete
+source assembly, not publication readiness. Actual typed C journal completion,
+complete semantic/canonical/source production, BODY/funding, cold restart and
+remote activation remain open; PRF-1140 stays planned.
 
 The account epilogue retains its four old semantic aliases in the actual pool
 settlement continuation before clearing account capture, ready result, selected
