@@ -99,7 +99,8 @@
   (fn-cat$p-lnext :type (hash-table equal))
   (fn-cat$p-lprev :type (hash-table equal))
   ;; The withdrawals by version: version -> the rows withdrawn at it, NEWEST
-  ;; FIRST (one cons a withdrawal); the reader sorts (fn-cp-sort-asc).  The
+  ;; FIRST (one cons a withdrawal); the reader (fn-cp-sort-asc) answers a
+  ;; monotone list without sorting (a pointer, or its reverse).  The
   ;; nested foundation's own table (its position 8) is not written.
   (fn-cat$p-wbv :type (hash-table equal))
   :inline t)
@@ -467,12 +468,105 @@
  (defthm fn-cp-msort-x-is-msort
    (equal (fn-cp-msort-x l) (fn-cp-msort l))))
 
+; The writer pushes, so a version whose withdrawals arrived in ascending
+; order (an expiry sweep, a cancel storm by number) holds a strictly
+; descending list, and one that arrived descending a strictly ascending one.
+; The reader recognises both in one pass that allocates nothing: the
+; ascending list IS the answer (a pointer), the descending one is its
+; reverse (one cons a row, the answer itself); only a list out of order
+; in both directions is sorted.
+(defun fn-cp-asc-natsp (l)
+  (declare (xargs :guard t))
+  (if (consp l)
+      (and (natp (car l))
+           (if (consp (cdr l))
+               (and (natp (cadr l)) (< (car l) (cadr l)) (fn-cp-asc-natsp (cdr l)))
+             (null (cdr l))))
+    (null l)))
+
+(defun fn-cp-desc-natsp (l)
+  (declare (xargs :guard t))
+  (if (consp l)
+      (and (natp (car l))
+           (if (consp (cdr l))
+               (and (natp (cadr l)) (< (cadr l) (car l)) (fn-cp-desc-natsp (cdr l)))
+             (null (cdr l))))
+    (null l)))
+
+(local
+ (defun fn-cp-all-above (l s)
+   (if (consp l) (and (< (nfix s) (nfix (car l))) (fn-cp-all-above (cdr l) s)) t)))
+
+(local
+ (defun fn-cp-all-below (l s)
+   (if (consp l) (and (< (nfix (car l)) (nfix s)) (fn-cp-all-below (cdr l) s)) t)))
+
+(local
+ (defthm fn-cp-asc-natsp-all-above
+   (implies (and (fn-cp-asc-natsp l) (consp l) (natp s) (< s (car l)))
+            (fn-cp-all-above l s))))
+
+(local
+ (defthm fn-cp-desc-natsp-all-below
+   (implies (and (fn-cp-desc-natsp l) (consp l) (natp s) (< (car l) s))
+            (fn-cp-all-below l s))))
+
+(local
+ (defthm fn-cp-insert-asc-below-all
+   (implies (fn-cp-all-above l s)
+            (equal (fn-cat-insert-asc s l) (cons s l)))
+   :hints (("Goal" :expand ((fn-cat-insert-asc s l))))))
+
+(local
+ (defthm fn-cp-insert-asc-above-all
+   (implies (and (fn-cp-all-below l s) (true-listp l))
+            (equal (fn-cat-insert-asc s l) (append l (list s))))
+   :hints (("Goal" :induct (fn-cp-all-below l s) :expand ((fn-cat-insert-asc s l))))))
+
+(local
+ (defthm fn-cp-all-below-of-append
+   (equal (fn-cp-all-below (append a b) s)
+          (and (fn-cp-all-below a s) (fn-cp-all-below b s)))))
+
+(local
+ (defthm fn-cp-all-below-of-rev
+   (equal (fn-cp-all-below (rev l) s) (fn-cp-all-below l s))))
+
+; KEYSTONE: an ascending list is its own sort.
+(defthm fn-cp-isort-of-asc
+  (implies (fn-cp-asc-natsp l)
+           (equal (fn-cp-isort l) l)))
+
+(local
+ (defthm fn-cp-isort-desc-step
+   (implies (and (consp l) (natp (car l)) (consp (cdr l)) (natp (cadr l))
+                 (< (cadr l) (car l)) (fn-cp-desc-natsp (cdr l)))
+            (equal (fn-cat-insert-asc (car l) (rev (cdr l))) (rev l)))))
+
+; KEYSTONE: a descending list's sort is its reverse.
+(defthm fn-cp-isort-of-desc
+  (implies (fn-cp-desc-natsp l)
+           (equal (fn-cp-isort l) (rev l)))
+  :hints (("Goal" :induct (fn-cp-desc-natsp l) :in-theory (disable rev))
+          ("Subgoal *1/1''" :use fn-cp-isort-desc-step
+           :in-theory (disable fn-cp-isort-desc-step fn-cat-insert-asc rev))))
+
+(local
+ (defthm fn-cp-revappend-nil-is-rev
+   (equal (revappend l nil) (rev l))
+   :hints (("Goal" :use ((:instance revappend-removal (x l) (y nil)))))))
+
 ; KEYSTONE (the withdrawals-by-version reader): the rows of a version,
-; ascending, O(m log m) for m rows: the merge sort IS the insertion sort
-; the view's table holds (fn-cp-msort-is-isort above).
+; ascending -- a pointer for a list pushed in descending order, O(m) and
+; the answer's own m conses for one pushed in ascending order, and only
+; otherwise the merge sort, O(m log m), which IS the insertion sort the
+; view's table holds (fn-cp-msort-is-isort above).
 (defun fn-cp-sort-asc (l)
   (declare (xargs :guard t :guard-hints (("Goal" :in-theory (disable fn-cp-msort fn-cp-isort)))))
-  (mbe :logic (fn-cp-isort l) :exec (fn-cp-msort-x l)))
+  (mbe :logic (fn-cp-isort l)
+       :exec (cond ((fn-cp-asc-natsp l) l)
+                   ((fn-cp-desc-natsp l) (revappend l nil))
+                   (t (fn-cp-msort-x l)))))
 
 ; The view's withdrawals-by-version table: each pushed entry sorted.
 (defun fn-cp-wbv-view (al)
