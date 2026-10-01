@@ -1440,7 +1440,7 @@ node.
   first transfer that is not accepted), and it leaves the queue by a
   durable `:finished` or by expiry (`fn-bpn-clock-step`). Work per contact
   is bounded; the number of contacts is the operator's.
-- **The host.** `fnn-bps-send-effect` records the transfer reading in the
+- **The host.** `fnn-bps-send-effect-next` records the transfer reading in the
   service; under `bp-node serve` and `dispatch` (transfer scope
   `:connection`, set by `fnn-bpnode-send-receipts`) it does not become the
   process outcome, and the pass prints `BP node receipt transfer uncertain`
@@ -4994,7 +4994,7 @@ matching image evidence; a guard proof is not a timing or deployment claim.
 
 ### Ordered fragment transfer observations (PRF-1135)
 
-`fnn-bps-send-effect` sends fragments in order and stops observing transfers
+`fnn-bps-send-effect-next` sends fragments in order and stops observing transfers
 at the first nonaccepted outcome. `fn-bpfs-send-observations` models that
 finite observation trace. Under `fn-bpfs-accepted-prefixp` of the preceding
 outcomes, the host-called `fn-bpfs-fragment-outcome` equals the trace's answer
