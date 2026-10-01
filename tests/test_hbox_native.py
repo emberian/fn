@@ -120,6 +120,26 @@ class HboxNativeDryRunTests(unittest.TestCase):
                 self.assertNotIn("rsync", log.read_text())
                 self.assertNotIn("mkdir -p", log.read_text())
 
+    def test_no_build_catalog_selects_the_same_names_as_the_build(self):
+        # Execute only the preflight's local list construction, never ssh.
+        text = SCRIPT.read_text()
+        start = text.index("    NEEDED=\n")
+        plan = text[start:text.index('    if [ -n "$NEEDED" ]', start)]
+        variants = ("production", "developer", "reference", "developer-stripped",
+                    "dtn", "dtn-developer")
+        names = ("fn-host", "fn-host-developer", "fn-host-reference",
+                 "fn-host-developer-stripped", "fn-host-dtn", "fn-host-dtn-developer")
+        for catalog in ("old", "paged"):
+            with self.subTest(catalog=catalog):
+                answer = subprocess.run(
+                    ["sh", "-c", 'CATALOG=$1; IMAGES=$2\n' + plan + '\nprintf "%s\\n" "$NEEDED"',
+                     "preflight", catalog, ",".join(variants)],
+                    capture_output=True, text=True, timeout=30)
+                self.assertEqual(answer.returncode, 0, answer.stderr)
+                expected = ["build/" + name + ("-paged" if catalog == "paged" and i < 4 else "")
+                            for i, name in enumerate(names)]
+                self.assertEqual(answer.stdout.split(), expected)
+
     def test_default_builds_the_developer_image_only(self):
         answer = dry("HEAD", "tests.test_native_owner")
         self.assertEqual(answer.returncode, 0, answer.stderr)

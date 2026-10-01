@@ -664,14 +664,19 @@ FN_BOX_AS=${FN_BOX_AS:-$(basename "$HERE")} sh "$FN_HBOX_NATIVE_COPY/boxes.sh" w
 if [ $BUILD -eq 0 ] && [ -z "$IMAGE_SET" ] && [ -z "$REUSE" ]; then
     NEEDED=
     for image in $(echo "$IMAGES" | tr ',' ' '); do
+        needed=
         case $image in
-            production) NEEDED="$NEEDED build/fn-host" ;;
-            developer) NEEDED="$NEEDED build/fn-host-developer" ;;
-            reference) NEEDED="$NEEDED build/fn-host-reference" ;;
-            developer-stripped) NEEDED="$NEEDED build/fn-host-developer-stripped" ;;
-            dtn) NEEDED="$NEEDED build/fn-host-dtn" ;;
-            dtn-developer) NEEDED="$NEEDED build/fn-host-dtn-developer" ;;
+            production) needed=build/fn-host ;;
+            developer) needed=build/fn-host-developer ;;
+            reference) needed=build/fn-host-reference ;;
+            developer-stripped) needed=build/fn-host-developer-stripped ;;
+            dtn) needed=build/fn-host-dtn ;;
+            dtn-developer) needed=build/fn-host-dtn-developer ;;
         esac
+        if [ "$CATALOG" = paged ]; then
+            case $image in developer|production|reference|developer-stripped) needed=$needed-paged ;; esac
+        fi
+        [ -z "$needed" ] || NEEDED="$NEEDED $needed"
     done
     if [ -n "$NEEDED" ]; then
         MISSING=$(ssh -n "$HOST" ": fn-no-build-images; if cd $S/tree 2>/dev/null; then for f in $NEEDED; do [ -x \$f ] || echo \$f; done; else echo $NEEDED; fi" | tr '\n' ' ' | sed 's/ *$//')

@@ -14,13 +14,13 @@ stale. Counts describe artifacts, not coverage; see
 | Certification roots in the Makefile | 2359 |
 | Books inside the root closure | 2638 |
 | `defthm` and `defthmd` events | 36047 |
-| `defun` events | 23006 |
+| `defun` events | 23009 |
 | Functions with verified guards | 3846 |
 | Functions declared `:verify-guards nil` and never verified | 2934 |
-| Functions left at the default with an explicit guard | 12834 |
-| Functions left at the default with no guard | 3392 |
-| `assert-event` checks | 25477 |
-| `must-fail` checks | 2610 |
+| Functions left at the default with an explicit guard | 12835 |
+| Functions left at the default with no guard | 3394 |
+| `assert-event` checks | 25490 |
+| `must-fail` checks | 2611 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 209 |
 | Theorems flagged SUSPECT by shape | 1345 |
@@ -659,7 +659,7 @@ that `make certify` requests.
 | `books/expiry-instant.lisp` | root | 4 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/expiry-policy.lisp` | root | 11 | 23 | 0/0/23/0 | 0 | 0 | 0 |
 | `books/expiry-verdict.lisp` | root | 6 | 3 | 0/0/3/0 | 0 | 0 | 1 |
-| `books/expiry.lisp` | root | 22 | 33 | 2/5/26/0 | 0 | 0 | 0 |
+| `books/expiry.lisp` | root | 22 | 34 | 2/5/27/0 | 0 | 0 | 0 |
 | `books/extent-retire.lisp` | root | 16 | 10 | 4/1/4/1 | 0 | 0 | 0 |
 | `books/extent-window-buffer.lisp` | closure | 3 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/extent-window-capture.lisp` | closure | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
@@ -1960,7 +1960,7 @@ that `make certify` requests.
 | `tests/acl2/byte-store-retention-publication-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 6 | 5 | 0 |
 | `tests/acl2/byte-store-scan-tests.lisp` | root | 3 | 24 | 0/0/0/24 | 38 | 5 | 0 |
 | `tests/acl2/byte-store-stable-prefix-tests.lisp` | root | 1 | 11 | 0/0/0/11 | 5 | 2 | 0 |
-| `tests/acl2/byte-store-state-checkpoint-program-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 17 | 2 | 0 |
+| `tests/acl2/byte-store-state-checkpoint-program-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 30 | 3 | 0 |
 | `tests/acl2/byte-store-sweep-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 8 | 0 | 0 |
 | `tests/acl2/byte-store-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 68 | 0 | 0 |
 | `tests/acl2/byte-store-txn-name-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 3 | 0 |

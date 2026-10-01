@@ -58,7 +58,14 @@ fi
 CATALOG="${FN_NATIVE_CATALOG:-old}"
 RUN_BUILD="$BUILD"
 case "$CATALOG" in
-  old) ;;
+  old)
+    case "$BUILD" in
+      */native-build-paged.lisp|native-build-paged.lisp)
+        echo "build_native_host: $BUILD is a paged build script; FN_NATIVE_CATALOG=old refuses it; use FN_NATIVE_CATALOG=paged with host/native/build.lisp" >&2; exit 2 ;;
+    esac
+    if grep -Fq '(include-book "books/image-world-paged")' "$BUILD"; then
+        echo "build_native_host: $BUILD includes books/image-world-paged; FN_NATIVE_CATALOG=old refuses it; use FN_NATIVE_CATALOG=paged with host/native/build.lisp" >&2; exit 2
+    fi ;;
   paged)
     if [ "$BUILD" != host/native/build.lisp ]; then
         echo "build_native_host: FN_NATIVE_CATALOG=paged is the default build script's variant only" >&2; exit 2
