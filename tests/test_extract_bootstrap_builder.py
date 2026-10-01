@@ -12,11 +12,13 @@ SPEC.loader.exec_module(BUILDER)
 
 LOADS = '''(load "host/native/runtime-participants.lisp")
 (load "host/native/runtime-image-policy.lisp")
+(load "host/native/runtime-profile-envelope.lisp")
 (load "host/native/runtime-bootstrap.lisp")
 '''
 INSTALL = ("(let* ((pool (fnn-live-page-read-pool))\n"
-           "       (gate (cl-user::fnn-runtime-participants-install-for-image pool)))\n"
-           "  (cl-user::fnn-runtime-image-policy-prepare pool gate))\n")
+           "       (gate (cl-user::fnn-runtime-participants-install-for-image pool))\n"
+           "       (policy (cl-user::fnn-runtime-image-policy-prepare pool gate)))\n"
+           "  (fnn-runtime-profile-envelope-image-prepare pool policy))\n")
 REGISTER = ("(cl-user::fnn-runtime-image-policy-register-image-hook)\n"
             "(cl-user::fnn-runtime-participants-register-image-hooks)\n")
 PREPARE = "(fnn-runtime-bootstrap-image-prepare)\n"
@@ -67,6 +69,14 @@ class BootstrapBuilderTest(unittest.TestCase):
         for altered in (body.replace("fnn-runtime-image-policy-prepare pool gate", "fnn-runtime-image-policy-prepare pool nil"),
                         body.replace("(cl-user::fnn-runtime-image-policy-register-image-hook)\n", ""),
                         body.replace(REGISTER, REGISTER + REGISTER)):
+            with self.subTest(body=altered), self.assertRaises(ValueError):
+                self.generate(altered)
+
+    def test_envelope_setup_missing_or_substituted_refuses(self):
+        body = LOADS + INSTALL + REGISTER + PREPARE
+        for altered in (body.replace('(load "host/native/runtime-profile-envelope.lisp")\n', ""),
+                        body.replace("fnn-runtime-profile-envelope-image-prepare pool policy", "fnn-runtime-profile-envelope-image-prepare pool nil"),
+                        body.replace("fnn-runtime-profile-envelope-image-prepare pool policy", "fnn-runtime-profile-envelope-image-prepare nil policy")):
             with self.subTest(body=altered), self.assertRaises(ValueError):
                 self.generate(altered)
 
