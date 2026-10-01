@@ -87,6 +87,36 @@
          (error "runtime-participant-unavailable"))
        (let ((*fnn-runtime-participant-barrier* ,g)) ,@body)))))
 
+(defmacro fnn-with-runtime-participants-bootstrap ((gate pool) &body body)
+  ;; The earliest escrow suffix never waits or retries for an acknowledgment.
+  ;; A successful body returns its exact multiple values while SAME lock holds.
+  (let ((g (gensym "BOOT-GATE")) (p (gensym "BOOT-POOL"))
+        (attempt (gensym "BOOT-ATTEMPT")))
+    `(let ((,g ,gate) (,p ,pool))
+       (block ,attempt
+         (unless (typep ,g 'fnn-runtime-participants)
+           (return-from ,attempt (values :participant-unavailable :fenced)))
+         (when (or (eq *fnn-runtime-participant-barrier* ,g)
+                   (eq sb-thread:*current-thread* sb-impl::*finalizer-thread*)
+                   (eq sb-thread:*current-thread*
+                       (fnn-runtime-participants-active-owner ,g)))
+           (return-from ,attempt (values :participant-reentrant :fenced)))
+         (sb-thread:with-mutex ((fnn-runtime-participants-lock ,g) :wait-p nil)
+           (unless (and (eq (symbol-function 'sb-impl::run-pending-finalizers)
+                            #'fnn-runtime-finalizer-entry)
+                        (eq (symbol-function 'sb-impl::finalizer-thread-stop)
+                            #'fnn-runtime-finalizer-stop-entry)
+                        (eq ,p (fnn-runtime-participants-pool ,g))
+                        (not (fnn-runtime-participants-shutdown ,g))
+                        (not (fnn-runtime-participants-fault ,g)))
+             (return-from ,attempt (values :participant-unavailable :fenced)))
+           (unless (and (fnn-runtime-participants-parked ,g)
+                        (not (fnn-runtime-participants-active ,g)))
+             (return-from ,attempt (values :participant-not-ready :refused)))
+           (let ((*fnn-runtime-participant-barrier* ,g))
+             (return-from ,attempt (progn ,@body))))
+         (values :participant-not-ready :refused)))))
+
 (defun fnn-runtime-participants-stop-and-join (gate)
   ;; Wake the Lisp barrier before requesting the C worker's stop and real join.
   (sb-thread:with-mutex ((fnn-runtime-participants-lock gate))

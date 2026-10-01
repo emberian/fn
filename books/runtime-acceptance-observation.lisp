@@ -6,7 +6,7 @@
  (declare (xargs :stobjs (fn-page-read-pool state) :guard t))
  (mv-let (word family)
   (fn-owner-runtime-operation-source kind fn-page-read-pool state)
-  (mv word family
+  (mv word (fn-prl-nth 6 family)
       (fn-prp-alloc-mode fn-page-read-pool)
       (fn-prp-alloc-epoch fn-page-read-pool)
       (fn-prp-alloc-occupied fn-page-read-pool)

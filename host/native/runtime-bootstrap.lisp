@@ -2,7 +2,7 @@
 (in-package "ACL2")
 (defstruct (fnn-runtime-bootstrap
             (:constructor %make-fnn-runtime-bootstrap) (:copier nil))
-  pool observation admit phase)
+  pool observation admit phase participants)
 (defvar *fnn-runtime-bootstrap* nil)
 (defun fnn-runtime-bootstrap-image-prepare ()
   "Run only while constructing the image, before SAVE-LISP-AND-DIE."
@@ -13,7 +13,8 @@
          :pool (fnn-live-page-read-pool)
          :observation (make-fnn-runtime-collection)
          :admit (fnn-fixed-raw-callback 'fn-owner-runtime-bootstrap-admit)
-         :phase :saved)))
+         :phase :saved
+         :participants cl-user::*fnn-runtime-participants*)))
 (defun fnn-runtime-bootstrap-entry ()
   "Single-thread entry before crypto, normalization, TLS and logger workers."
   (let ((binding *fnn-runtime-bootstrap*))
@@ -38,12 +39,16 @@
     ; No qualified launch capsule/participant acknowledgement is installed yet.
     ; Call the actual negative core boundary before any geometry observation.
     (multiple-value-bind (word outcome pool)
-        (fnn-core-mv 'fn-owner-runtime-bootstrap-admit
-          (funcall (fnn-runtime-bootstrap-admit binding)
-                   :qualification-request nil nil nil
-                   (fnn-runtime-bootstrap-pool binding)))
-      (setf (fnn-runtime-bootstrap-pool binding) pool
-            (fnn-runtime-bootstrap-phase binding) word)
+        (cl-user::fnn-with-runtime-participants-bootstrap
+          ((fnn-runtime-bootstrap-participants binding)
+           (fnn-runtime-bootstrap-pool binding))
+          (fnn-core-mv 'fn-owner-runtime-bootstrap-admit
+            (funcall (fnn-runtime-bootstrap-admit binding)
+                     :qualification-request nil nil nil
+                     (fnn-runtime-bootstrap-pool binding))))
+      ; A participant refusal returns no pool MV: retain the SAME original.
+      (when pool (setf (fnn-runtime-bootstrap-pool binding) pool))
+      (setf (fnn-runtime-bootstrap-phase binding) word)
       (values word outcome))))
 (defun fnn-runtime-bootstrap-startup ()
   "Earliest saved-image entry; only accepted may return to facility startup."
