@@ -75,7 +75,7 @@
         (s (fn-capr-state nil nil nil nil nil nil nil nil (list w) nil nil 0 0 nil nil nil))
         (job (list :configured-control-event s :saved-physical :saved-produced
                     (list a) nil nil nil nil :append :article nil nil nil nil
-                    :preserved *ctcdt-chain* :captured-source 2 5 nil))
+                    :preserved *ctcdt-chain* :captured-source 2 5 nil 1))
         (start (fn-cape-article-result job (list :plan nil nil '(76))))
         (resolve (fn-cape-step (fn-cp-nth 1 start)))
         (endws (fn-cape-step (fn-cp-nth 1 resolve)))

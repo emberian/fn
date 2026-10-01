@@ -18,6 +18,20 @@ Its `change` is the fixed eight-field marker:
  base-authority-revision begin-e-count current-e-count content-count digest)
 ```
 
+`begin-e-count` is the actual dense committed event count immediately before
+publishing the begin E row. `current-e-count` is the actual dense committed
+event count at the final C decision. These are independent of identity E
+sequence and C sequence/generation. The live collector obtains the predecessor
+count from the retained selected holder and its original admission receipt;
+recovery obtains it from the same prefix source before appending that begin row.
+The begin source stays pinned through private preparation until durable discard
+or final C publication. A number alone does not establish that custody.
+
+This corrects the intended source-only, unactivated producer semantics without
+changing the wire fields. Earlier source evidence that used the E sequence for
+this field is superseded; it supplies no changed-source qualification or legacy
+migration claim.
+
 The candidate is the existing nonempty account candidate identifier of at most
 64 octets. The digest is exactly 32 octets. Scalars have unsigned 64-bit wire
 representations. Actual allocation, sequence, generation and authority admission

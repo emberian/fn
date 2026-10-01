@@ -14,7 +14,7 @@
                  :withdrawals :visible :verdicts 7 0 nil
                  (list *caeft-event*) :config-source))
 (defconst *caeft-one*
- (fn-cape-authority-finish *caeft-before* *caeft-produced* :retained-next-node *bcpt-base* nil))
+ (fn-cape-authority-finish *caeft-before* *caeft-produced* :retained-next-node *bcpt-base* nil 0))
 
 ;@positive-witness fn-cape-authority-finish-preserves-exposed-view-and-root
 (assert-event
@@ -42,13 +42,13 @@
 ;@corrupted-state authority-rejects-effects-before-account-mutation
 (assert-event
  (and (equal (fn-cape-authority-finish *caeft-before* (update-nth 3 :verdict *caeft-produced*)
-                 :retained-next-node *bcpt-base* nil)
+                 :retained-next-node *bcpt-base* nil 0)
              (list :unavailable *caeft-before* :authority-identity-effect))
       (equal (fn-cape-authority-finish *caeft-before* (update-nth 2 :unavailable *caeft-produced*)
-                 :retained-next-node *bcpt-base* nil)
+                 :retained-next-node *bcpt-base* nil 0)
              (list :unavailable *caeft-before* :identity-carries))
       (equal (fn-cape-authority-finish (update-nth 13 7 *caeft-before*) *caeft-produced*
-                 :retained-next-node *bcpt-base* nil)
+                 :retained-next-node *bcpt-base* nil 0)
              (fn-capr-fault (update-nth 13 7 *caeft-before*) :event-sequence))))
 ;@mutation-witness actual-preparation-never-publishes-before-typed-C
 (assert-event
@@ -62,3 +62,19 @@
  (let* ((full (fn-cp-nth 2 *caeft-one*)) (cp (fn-cp-nth 1 full))
         (metadata (fn-cp-nth 4 full)))
   (equal (fn-cp-nth 1 metadata) (fn-acjt-fields cp))))
+
+;@corrupted-state dense-coordinate-is-not-an-identity-sequence
+; This inner scalar-provenance witness deliberately varies the supplied count;
+; it is not a reachable whole-Store claim about a mismatched count/sequence.
+(assert-event
+ (let* ((one (fn-cape-authority-finish *caeft-before* *caeft-produced*
+                    :retained-next-node *bcpt-base* nil 23))
+        (after (fn-cp-nth 1 one)))
+  (and (equal (fn-cp-nth 0 one) :advanced)
+       (equal (fn-cp-nth 1 *caeft-event*) 0)
+       (equal (fn-cp-nth 8 after) 23))))
+;@corrupted-state malformed-dense-coordinate-never-mutates
+(assert-event
+ (equal (fn-cape-authority-finish *caeft-before* *caeft-produced*
+               :retained-next-node *bcpt-base* nil -1)
+        (fn-capr-fault *caeft-before* :event-count)))

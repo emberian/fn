@@ -121,9 +121,11 @@
 ; transport answer. Installation of the saved decision and advancement of its
 ; candidate cursor are one atomic owner publication. This pure helper itself
 ; cannot establish the DURABLE observation/selected-operation correspondence.
-(defun fn-cadd-published (job selection root)
+(defun fn-cadd-published (job selection root predecessor-count)
  (declare (xargs :guard t))
- (if (eq (fn-cp-nth 0 selection) :configure)
+ (if (not (fn-cp-uintp predecessor-count))
+     '(:recovery-required :account-event-count)
+  (if (eq (fn-cp-nth 0 selection) :configure)
      (if root
          (list :accepted
           (fn-cadd-with job :done nil nil (fn-cp-nth 7 job)
@@ -134,14 +136,14 @@
              (event (fn-cp-nth 1 selection))
              (begin-count
               (if (eq (fn-cp-nth 0 (fn-cp-nth 4 event)) :authority-begin)
-                  (fn-cp-nth 1 event) (fn-cp-nth 11 job))))
+                  predecessor-count (fn-cp-nth 11 job))))
        (list :yield
         (fn-cadd-job :ready (fn-cp-nth 2 job) (fn-cp-nth 3 job) (fn-cp-nth 4 job)
                      nil nil (fn-cp-nth 7 job)
                      (if consume (if (consp ordered) (cdr ordered) nil) ordered)
                      (if consume (fn-cp-nth 2 (fn-cp-nth 9 job)) (fn-cp-nth 9 job))
                      nil begin-count)))
-    '(:recovery-required :account-publication-selection))))
+    '(:recovery-required :account-publication-selection)))))
 
 (in-theory (disable fn-cadd-job fn-cadd-policy fn-cadd-begin fn-cadd-work
                     fn-cadd-with fn-cadd-tick fn-cadd-next fn-cadd-published))

@@ -39,6 +39,7 @@
           (eq (fn-prl-nth 0 receipt) :history-completion)
           (fn-apr-tokenp token)
           (equal (fn-prl-nth 2 receipt) (fn-prl-nth 5 token))
+          (equal (fn-prl-nth 7 holder) (fn-prl-nth 3 token))
           (equal (fn-prl-nth 8 holder) (fn-prl-nth 4 token))
           (equal (fn-prl-nth 9 holder) (fn-prl-nth 5 token))
           (equal (fn-cp-nth 1 event) (fn-prl-nth 4 token))
@@ -71,7 +72,8 @@
            (state (f-put-global 'fn-owner-account-durable-outcome
                     (list :account-durable-intent turn-token receipt holder saved request)
                     state))
-           (one (fn-catd-published (fn-prl-nth 4 holder) selection full)))
+           (one (fn-catd-published (fn-prl-nth 4 holder) selection full
+                                  (fn-prl-nth 7 holder))))
      (if (not (and (eq (fn-cp-nth 0 one) :yield)
                     (eq (fn-cp-nth 1 (fn-cp-nth 1 one)) :ready)))
          (mv :recovery-required state)

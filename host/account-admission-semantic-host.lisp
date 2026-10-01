@@ -50,6 +50,7 @@
                (equal (fn-cp-nth 2 row) (fn-prl-nth 5 token))
                (equal (fn-prl-nth 5 selection) (fn-prl-nth 2 intent))
                (equal (fn-prl-nth 7 selection) (fn-prl-nth 3 intent))
+               (equal (fn-prl-nth 3 intent) (fn-prl-nth 3 token))
                (equal (fn-prl-nth 6 selection)
                       (fn-cfg-generation (fn-prl-nth 3 source)))
                (or (null (fn-prl-nth 10 selection))
@@ -130,7 +131,8 @@
                (state (f-put-global 'fn-owner-history-account-state
                        (list :history-account-intent token) state))
                (result (fn-cape-authority-finish seed produced next-cn
-                         (fn-cnode-config (fn-cp-nth 1 seed)) rowcarry)))
+                         (fn-cnode-config (fn-cp-nth 1 seed)) rowcarry
+                         (fn-prl-nth 3 token))))
          (if (eq (fn-cp-nth 0 result) :advanced)
              (let ((state (f-put-global 'fn-owner-history-account-state
                             (list :history-account-ready token

@@ -1291,7 +1291,7 @@ and retains withdrawals, visible articles and accepted verdicts literally.
 This path does not compare article lists or enter the historical control
 continuation. The account stage remains private; only the typed C commit can
 publish its account/config root. Its existing full7 result, original persisted
-begin E sequence, metadata5 and publication4 retention are preserved.
+begin dense predecessor event count, metadata5 and publication4 retention are preserved.
 
 Configuration preparation does not convert an arbitrary stored account-name
 string into an octet list. Only names within the established authority login

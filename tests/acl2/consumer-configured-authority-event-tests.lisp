@@ -18,7 +18,7 @@
                  :borrowed-withdrawals :borrowed-visible :borrowed-verdicts
                  7 0 '(:remaining-config) (list *caet-event*) :same-config-source))
 (defconst *caet-one*
- (fn-cape-authority-after-node *caet-before* *caet-produced* *caet-next* nil))
+ (fn-cape-authority-after-node *caet-before* *caet-produced* *caet-next* nil 0))
 
 ;@mutation-witness actual-authority-node-account-decision-retained-once
 (assert-event
@@ -49,20 +49,20 @@
  (equal *caet-one*
   (fn-cape-step (fn-cp-nth 1
     (fn-cape-after-node *caet-before* *caet-produced* *caet-next* nil nil
-                       nil :same-source 1 1)))))
+                       nil :same-source 1 1 0)))))
 
 ;@corrupted-state authority-rejects-identity-effects-before-account-mutation
 (assert-event
  (and (equal (fn-cape-authority-after-node *caet-before*
-                 (update-nth 3 :verdict *caet-produced*) *caet-next* nil)
+                 (update-nth 3 :verdict *caet-produced*) *caet-next* nil 0)
               (list :unavailable *caet-before* :authority-identity-effect))
       (equal (fn-cape-authority-after-node *caet-before*
-                 (update-nth 2 :unavailable *caet-produced*) *caet-next* nil)
+                 (update-nth 2 :unavailable *caet-produced*) *caet-next* nil 0)
               (list :unavailable *caet-before* :identity-carries))))
 
 ; The source sequence is a captured actual E coordinate, never C generation.
 ;@corrupted-state authority-sequence-mismatch-preserves-original-state
 (assert-event
  (equal (fn-cape-authority-after-node (update-nth 13 7 *caet-before*)
-           *caet-produced* *caet-next* nil)
+           *caet-produced* *caet-next* nil 0)
         (fn-capr-fault (update-nth 13 7 *caet-before*) :event-sequence)))

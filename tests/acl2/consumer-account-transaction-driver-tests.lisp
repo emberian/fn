@@ -19,7 +19,7 @@
   (fn-catd-published (fn-catdt-job (fn-cp-nth 2 *acjt-begin*))
     *catdt-row-selection*
     (list :ok (fn-cp-nth 0 *acjt-row*) nil nil (fn-cp-nth 1 *acjt-row*) nil
-              (fn-cp-nth 2 *acjt-row*)))))
+              (fn-cp-nth 2 *acjt-row*)) 1)))
 (defconst *catdt-binding-selection*
  (fn-catd-next *catdt-after-row* (fn-cp-nth 0 *acjt-row*) 2 3 0 7 2))
 ;@mutation-witness actual-row-waits-for-paired-binding
@@ -34,7 +34,7 @@
 (assert-event
  (let* ((one (fn-catd-published *catdt-after-row* *catdt-binding-selection*
                   (list :ok (fn-cp-nth 0 *acjt-bound*) nil nil
-                            (fn-cp-nth 1 *acjt-bound*) nil (fn-cp-nth 2 *acjt-bound*))))
+                            (fn-cp-nth 1 *acjt-bound*) nil (fn-cp-nth 2 *acjt-bound*)) 2))
         (job (fn-cp-nth 1 one)))
   (and (eq (fn-cp-nth 0 one) :yield) (null (fn-cp-nth 8 job))
        (equal (fn-catd-preparation job) (fn-cp-nth 2 *acjt-bound*)))))
@@ -43,7 +43,7 @@
  (let* ((cp (fn-cp-nth 0 *acjt-prepared*))
         (job (fn-catdt-job (fn-cp-nth 2 *acjt-prepared*)))
         (selection (fn-catd-next job cp 99 99 0 7 (fn-cp-nth 3 cp)))
-        (one (fn-catd-published job selection *acjt-final*)))
+        (one (fn-catd-published job selection *acjt-final* 5)))
   (and (equal selection (list :configure *acjt-marker*))
        (equal (fn-cp-nth 0 one) :accepted)
        (equal (fn-cp-nth 1 (fn-cp-nth 1 one)) :done))))
@@ -59,3 +59,34 @@
  (let* ((job (update-nth 7 (fn-aic-initial 7 nil) *catdt-after-row*))
         (one (fn-catd-next job (fn-cp-nth 0 *acjt-row*) 2 3 0 7 2)))
   (equal one '(:refused :candidate-binding-intent))))
+
+;@corrupted-state begin-records-dense-predecessor-not-event-sequence
+; Scalar producer witness only: actual custody of this coordinate is supplied
+; by the registered holder/receipt in the owner collector, not this fixture.
+(assert-event
+ (let* ((job (fn-catdt-job nil))
+        (selection '(:publish (:consumer-authority 0 1 0
+                                (:authority-begin (65) 0 1 7)) nil))
+        (one (fn-catd-published job selection
+                (list :ok nil nil nil nil nil nil) 23)))
+  (and (equal (fn-cp-nth 0 one) :yield)
+       (equal (fn-cp-nth 1 (fn-cp-nth 1 selection)) 0)
+       (equal (fn-cp-nth 11 (fn-cp-nth 1 one)) 23))))
+;@corrupted-state invalid-dense-predecessor-refuses-published-update
+(assert-event
+ (equal (fn-catd-published *catdt-after-row* *catdt-binding-selection*
+                (list :ok nil nil nil nil nil nil) -1)
+        '(:recovery-required :account-decision)))
+
+;@corrupted-state older-unpaired-source-helper-also-keeps-dense-coordinate
+(assert-event
+ (let* ((job (fn-catdt-job nil))
+        (selection '(:publish (:consumer-authority 0 1 0
+                                (:authority-begin (65) 0 1 7)) nil))
+        (one (fn-cadd-published job selection nil 23)))
+  (and (equal (fn-cp-nth 0 one) :yield)
+       (equal (fn-cp-nth 11 (fn-cp-nth 1 one)) 23))))
+;@corrupted-state older-unpaired-helper-refuses-malformed-coordinate
+(assert-event
+ (equal (fn-cadd-published *catdt-after-row* *catdt-binding-selection* nil -1)
+        '(:recovery-required :account-event-count)))

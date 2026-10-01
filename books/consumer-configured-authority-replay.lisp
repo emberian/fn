@@ -46,7 +46,7 @@
                     '(:refused :config-refusal))
                    (t (list :ok (fn-cnode-apply-config at record (fn-cnode-line-ceiling))))))))))
 
-(defun fn-capr-config-step (s)
+(defun fn-capr-config-step (s current-event-count)
  (declare (xargs :guard (fn-cnode-statep (fn-cp-nth 1 s)) :verify-guards nil))
  (let* ((cn (fn-cp-nth 1 s)) (configs (fn-cp-nth 14 s)) (record (fn-cp-nth 0 configs))
         (cs (fn-cp-nth 12 s)) (es (fn-cp-nth 13 s))
@@ -59,7 +59,7 @@
                        (fn-cfg-generation (fn-cp-nth 2 prep))))
            (fn-capr-fault s :account-config-base))
           ((not (fn-replay-advance-okp node txid)) (fn-capr-fault s :config-txid))
-          (t (let ((full (fn-acj-commit cp metadata prep record (fn-cp-nth 8 s) es)))
+          (t (let ((full (fn-acj-commit cp metadata prep record (fn-cp-nth 8 s) current-event-count)))
                (if (not (eq (fn-cp-nth 0 full) :ok)) (fn-capr-fault s full)
                 (fn-capr-install
                  (ec-call (update-nth 16 (fn-capr-config-source-required s (fn-cp-nth 6 full) record) s))
@@ -84,14 +84,15 @@
 ; Its effect selects one new verdict pair; old verdict lists remain borrowed.
 ; PREFIX-FILES/FN-HIST must include exactly this event and preceding rows.
 ; Prefix storage/lookup establishment is owned by the actual SCO caller.
-(defun fn-capr-event-step (s produced prefix-files fn-hist base-row-carry cep-cursor)
+(defun fn-capr-event-step (s produced prefix-files fn-hist base-row-carry cep-cursor predecessor-count)
  (declare (xargs :stobjs fn-hist
                   :guard (fn-cnode-statep (fn-cp-nth 1 s)) :verify-guards nil))
  (let* ((cn (fn-cp-nth 1 s)) (events (fn-cp-nth 15 s)) (event (fn-cp-nth 0 events))
         (es (fn-cp-nth 13 s)) (cp (fn-cp-nth 4 s)) (metadata (fn-cp-nth 5 s))
         (checked (fn-cp-nth 0 produced)) (fields (fn-cp-nth 1 produced))
         (effect (fn-cp-nth 3 produced)) (child (fn-cp-nth 4 produced)))
-  (cond ((eq (fn-cp-nth 0 (fn-cp-nth 16 s)) :typed-config-source-required)
+  (cond ((not (fn-cp-uintp predecessor-count)) (fn-capr-fault s :event-count))
+        ((eq (fn-cp-nth 0 (fn-cp-nth 16 s)) :typed-config-source-required)
          ; Ordinary FnCTLConfigAt cannot replay a typed marker. The actual
          ; caller must establish its pinned historical config projection,
          ; never pass this marker to a generic fold or silently omit it.
@@ -125,9 +126,9 @@
                (fn-capr-install s next checked fields full
                  (if authorityp (fn-cp-nth 6 full)
                    (if (fn-cp-nth 5 (fn-cp-nth 6 (fn-cp-nth 1 full))) (fn-cp-nth 6 s) nil))
-                 ; Match FnCATDPublished: persisted begin row's E sequence,
-                 ; not the count after that row or an expected reservation.
-                 (if beginp (nfix es)
+                 ; Actual dense predecessor count captured before this row append,
+                 ; never its independent identity sequence or a reservation.
+                 (if beginp predecessor-count
                    (if (fn-cp-nth 5 (fn-cp-nth 6 (fn-cp-nth 1 full))) (fn-cp-nth 8 s) nil))
                  ws visible verdicts (fn-cp-nth 12 s) (1+ (nfix es))
                  (fn-cp-nth 14 s) (ec-call (cdr events))))))))))))))
@@ -136,10 +137,10 @@
 ; execute the event: the actual caller must establish its prefix index and
 ; retain its once-produced identity packet before FnCAPREventStep. There is
 ; no ready flag or supplied effect list making this unavailable seam usable.
-(defun fn-capr-tick (s)
+(defun fn-capr-tick (s current-event-count)
  (declare (xargs :guard (fn-cnode-statep (fn-cp-nth 1 s)) :verify-guards nil))
  (let ((configs (fn-cp-nth 14 s)) (events (fn-cp-nth 15 s)))
-  (cond ((fn-cpr-config-firstp configs events) (fn-capr-config-step s))
+  (cond ((fn-cpr-config-firstp configs events) (fn-capr-config-step s current-event-count))
         ((consp events) (list :event s (car events)))
         ((and (null configs) (null events))
          (list :done (fn-replay-ok (fn-cp-nth 1 s)

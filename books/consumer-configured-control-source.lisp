@@ -9,10 +9,10 @@
 ; not a generic synthesized delta or a replay under final configuration.
 ; Source token/root originate in the retained INITIAL/checkpoint operation;
 ; this function neither issues them nor establishes their custody.
-(defun fn-capr-config-step-with-projection (s predecessor recorded-source)
+(defun fn-capr-config-step-with-projection (s predecessor recorded-source current-event-count)
  (declare (xargs :guard (fn-cnode-statep (fn-cp-nth 1 s)) :verify-guards nil))
  (let* ((record (fn-cp-nth 0 (fn-cp-nth 14 s)))
-        (one (fn-capr-config-step s)))
+        (one (fn-capr-config-step s current-event-count)))
   (if (not (eq (fn-cp-nth 0 one) :advanced)) one
    (let* ((next (fn-cp-nth 1 one))
           (config (fn-cnode-config (fn-cp-nth 1 next)))

@@ -5,9 +5,9 @@
 (include-book "consumer-configured-authority-replay")
 (include-book "consumer-control-row-cursor")
 
-; Fixed21 borrowed job: tag,S,nextCN,produced6,new,old,verdicts,rowcarry,CEP,
+; Fixed22 borrowed job: tag,S,nextCN,produced6,new,old,verdicts,rowcarry,CEP,
 ; mode,phase,remaining,reverse,forward,controlCursor,effect,chain,source,F,
-; E-upper,arrivingLocks. No externally supplied effect authorizes mutation.
+; E-upper,arrivingLocks,densePredecessorCount. No externally supplied effect authorizes mutation.
 (defun fn-cape-replace (n value job)
  (declare (xargs :guard t :verify-guards nil))
  (ec-call (update-nth n value job)))
@@ -17,10 +17,11 @@
 ; public/native API accepting a supplied CN or semantic-authority flag.
 ; Typed obligation/source correspondence remains part of actual core producer
 ; establishment, and unsupported preparation is explicitly unavailable.
-(defun fn-cape-after-node (s produced next base-row-carry cep-cursor chain captured-source f upper)
+(defun fn-cape-after-node (s produced next base-row-carry cep-cursor chain captured-source f upper predecessor-count)
  (declare (xargs :guard (and (fn-cnode-statep (fn-cp-nth 1 s))
                              (fn-cnode-statep next)) :verify-guards nil))
- (if (mbe :logic (not (fn-cnode-statep next)) :exec (not (consp next)))
+ (if (or (not (fn-cp-uintp predecessor-count))
+         (mbe :logic (not (fn-cnode-statep next)) :exec (not (consp next))))
      (list :unavailable s :semantic-preparation-unavailable)
   (let* ((cn (fn-cp-nth 1 s))
          (old (fn-state-articles (fn-node-acceptance (fn-cnode-node cn))))
@@ -37,13 +38,14 @@
           (if (eq mode :unchanged) :finish :article-begin)
           new nil (if (eq mode :unchanged) (fn-cp-nth 9 s) nil)
           nil (if (eq mode :rebuild) :changed :preserved)
-          chain captured-source f upper nil)))))
+          chain captured-source f upper nil predecessor-count)))))
 
-(defun fn-cape-begin (s produced base-row-carry cep-cursor chain captured-source f upper)
+(defun fn-cape-begin (s produced base-row-carry cep-cursor chain captured-source f upper predecessor-count)
  (declare (xargs :guard (fn-cnode-statep (fn-cp-nth 1 s)) :verify-guards nil))
  (let* ((cn (fn-cp-nth 1 s)) (event (fn-cp-nth 0 (fn-cp-nth 15 s)))
         (es (fn-cp-nth 13 s)) (checked (fn-cp-nth 0 produced)))
-  (cond ((not (and (natp f) (natp es) (equal f (1+ es)) (natp upper)))
+  (cond ((not (and (natp f) (fn-cp-uintp predecessor-count)
+                    (equal f (1+ predecessor-count)) (natp es) (natp upper)))
          (list :unavailable s :control-prefix-coordinate))
         ((not (fn-store-event-p event)) (fn-capr-fault s :invalid-event))
         ((not (equal (fn-store-event-sequence event) es)) (fn-capr-fault s :event-sequence))
@@ -54,7 +56,7 @@
           (if (mbe :logic (not (fn-cnode-statep next)) :exec (not (consp next)))
               (fn-capr-fault s :event-refusal)
            (fn-cape-after-node s produced next base-row-carry cep-cursor
-                               chain captured-source f upper)))))))
+                               chain captured-source f upper predecessor-count)))))))
 
 ; Complete the SAME original event once, after its actual control inputs are
 ; retained. This does not recompute physical or identity replay after a yield.
@@ -79,7 +81,7 @@
     (if (not (eq (fn-cp-nth 0 full) :ok)) (fn-capr-fault s full)
      (fn-capr-install s next (fn-cp-nth 0 produced) (fn-cp-nth 1 produced) full
        (if authorityp (fn-cp-nth 6 full) (if pending (fn-cp-nth 6 s) nil))
-       (if beginp (nfix es) (if pending (fn-cp-nth 8 s) nil))
+       (if beginp (fn-cp-nth 21 job) (if pending (fn-cp-nth 8 s) nil))
        ws visible verdicts (fn-cp-nth 12 s) (1+ (nfix es))
        (fn-cp-nth 14 s) (ec-call (cdr (fn-cp-nth 15 s)))))))))
 
@@ -115,7 +117,7 @@
 ; their actual profile quantum/funding relation, not an invented constant.
 (defun fn-cape-step (job)
  (declare (xargs :guard t :verify-guards nil))
- (if (not (and (fn-cbor-at-mostp job 21) (true-listp job) (equal (len job) 21)
+ (if (not (and (fn-cbor-at-mostp job 22) (true-listp job) (equal (len job) 22)
                (eq (fn-cp-nth 0 job) :configured-control-event)))
      '(:refused :configured-control-event-cursor)
   (case (fn-cp-nth 10 job)
