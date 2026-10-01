@@ -84,6 +84,23 @@ class DefLoopBridgeTests(unittest.TestCase):
             ":body (car xs) :acc seed :loop first-walk)",
             "(equal (first-walk n xs seed) (revappend seed (first n xs)))")
 
+    def test_map_base(self):
+        declaration = "(def-loop prefix (xs tail) :shape :map :body (car xs) " \
+                      ":tail tail :base (or (atom xs) (equal (car xs) :end)))"
+        self.check_bridge(declaration,
+                          "(equal (prefix-loop xs tail acc) "
+                          "(revappend acc (prefix xs tail)))")
+        events = ledger.def_loop_expansion(ledger.read_forms(declaration)[0])
+        self.assertEqual(events[0][3], ledger.read_forms(
+            "(declare (xargs :guard (true-listp acc) :verify-guards nil))")[0])
+        self.assertEqual(events[1][3], ledger.read_forms(
+            "(declare (xargs :guard t :verify-guards nil))")[0])
+        # Base composes with the existing fixed-accumulator signature too.
+        self.check_bridge(
+            "(def-loop fixed-prefix (xs) :body (car xs) :base (atom xs) :acc-fix t)",
+            "(equal (fixed-prefix-loop xs acc) "
+            "(revappend (true-list-fix acc) (fixed-prefix xs)))")
+
     def test_take_base(self):
         declaration = "(def-loop take-base (n xs) :shape :take :count n :over xs " \
                       ":base (or (not (posp n)) (atom xs)) :body (car xs))"

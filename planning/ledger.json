@@ -2353,23 +2353,23 @@
     "books": 2707,
     "books_in_root_closure": 2618,
     "roots": 2346,
-    "theorems": 35389,
-    "functions": 22721,
-    "assert_events": 25349,
-    "must_fails": 2577,
+    "theorems": 35397,
+    "functions": 22740,
+    "assert_events": 25359,
+    "must_fails": 2583,
     "prover_refusals": 0,
-    "encapsulates": 195,
+    "encapsulates": 196,
     "guards": {
-      "verified": 3871,
+      "verified": 3887,
       "declared-off": 2866,
-      "default-guarded": 12689,
-      "default-unguarded": 3295
+      "default-guarded": 12687,
+      "default-unguarded": 3300
     },
     "suspect_theorems": 1334,
     "export_hygiene_warnings": 392,
-    "enabled_projection_warnings": 79,
-    "teeth_form_warnings": 279,
-    "include_hygiene_warnings": 3352,
+    "enabled_projection_warnings": 81,
+    "teeth_form_warnings": 280,
+    "include_hygiene_warnings": 3345,
     "host_names_warnings": 3114,
     "hand_written_record_warnings": 19
   },
@@ -6420,6 +6420,7 @@
       "encapsulates": 0,
       "includes": [
         "bp-fragment",
+        "def-loop",
         "rev-onto"
       ],
       "system_includes": [
@@ -17691,13 +17692,13 @@
       "book": "books/def-loop.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 11,
-      "functions": 45,
+      "theorems": 13,
+      "functions": 50,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 45
+        "default-unguarded": 50
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -17705,7 +17706,7 @@
       "prover_refusals": 0,
       "defconsts": 0,
       "defmacros": 1,
-      "encapsulates": 6,
+      "encapsulates": 7,
       "includes": [],
       "system_includes": [],
       "suspects": [],
@@ -25365,7 +25366,8 @@
       "encapsulates": 1,
       "includes": [
         "acceptance",
-        "acceptance-invariants"
+        "acceptance-invariants",
+        "def-loop"
       ],
       "system_includes": [],
       "suspects": [
@@ -25514,7 +25516,9 @@
         "def-loop"
       ],
       "system_includes": [],
-      "suspects": [],
+      "suspects": [
+        "fn-inj-path-openp-of-cons-append-take"
+      ],
       "read_error": null
     },
     {
@@ -26344,8 +26348,7 @@
         "ihs/quotient-remainder-lemmas"
       ],
       "suspects": [
-        "fn-mod-inj-append-of-a-cons",
-        "fn-mod-named-entries-of-no-groups"
+        "fn-mod-inj-append-of-a-cons"
       ],
       "read_error": null
     },
@@ -26699,12 +26702,12 @@
       "theorems": 42,
       "functions": 57,
       "guards": {
-        "verified": 9,
+        "verified": 13,
         "declared-off": 0,
-        "default-guarded": 48,
+        "default-guarded": 44,
         "default-unguarded": 0
       },
-      "verify_guards_events": 9,
+      "verify_guards_events": 13,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -26714,6 +26717,7 @@
       "includes": [
         "bp-eid-shape",
         "consumer-position",
+        "def-loop",
         "feed-pause",
         "identity",
         "native-admin-shape",
@@ -34946,7 +34950,8 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "article-fields"
+        "article-fields",
+        "def-loop"
       ],
       "system_includes": [],
       "suspects": [],
@@ -35931,6 +35936,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "def-loop",
         "frame",
         "frame-invariants",
         "scheduler"
@@ -38314,7 +38320,7 @@
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 0,
-      "defmacros": 2,
+      "defmacros": 1,
       "encapsulates": 0,
       "includes": [],
       "system_includes": [],
@@ -47503,6 +47509,7 @@
       "encapsulates": 0,
       "includes": [
         "article",
+        "def-loop",
         "rev-onto",
         "statement-invariants"
       ],
@@ -48238,6 +48245,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "def-loop",
         "tcpcl-session"
       ],
       "system_includes": [],
@@ -48616,7 +48624,9 @@
       "defconsts": 1,
       "defmacros": 0,
       "encapsulates": 0,
-      "includes": [],
+      "includes": [
+        "def-loop"
+      ],
       "system_includes": [],
       "suspects": [],
       "read_error": null
@@ -60443,17 +60453,17 @@
       "book": "tests/acl2/def-loop-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 22,
-      "functions": 49,
+      "theorems": 28,
+      "functions": 63,
       "guards": {
-        "verified": 40,
+        "verified": 52,
         "declared-off": 2,
-        "default-guarded": 7,
+        "default-guarded": 9,
         "default-unguarded": 0
       },
-      "verify_guards_events": 40,
-      "assert_events": 71,
-      "must_fails": 29,
+      "verify_guards_events": 52,
+      "assert_events": 81,
+      "must_fails": 35,
       "prover_refusals": 0,
       "defconsts": 0,
       "defmacros": 1,
@@ -82278,7 +82288,7 @@
     {
       "theorem": "fn-index-entry-group-of-fn-index-entry",
       "book": "books/index.lisp",
-      "line": 33,
+      "line": 34,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -82294,7 +82304,7 @@
     {
       "theorem": "fn-index-entry-msgid-of-fn-index-entry",
       "book": "books/index.lisp",
-      "line": 37,
+      "line": 38,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -82310,7 +82320,7 @@
     {
       "theorem": "fn-index-entry-number-of-fn-index-entry",
       "book": "books/index.lisp",
-      "line": 35,
+      "line": 36,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -82338,6 +82348,14 @@
       "line": 313,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-inj-instantp"
+      ]
+    },
+    {
+      "theorem": "fn-inj-path-openp-of-cons-append-take",
+      "book": "books/injection-path.lisp",
+      "line": 509,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
     },
     {
@@ -82875,15 +82893,6 @@
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-inj-append and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-inj-append and the conclusion is that branch's value"
-      ]
-    },
-    {
-      "theorem": "fn-mod-named-entries-of-no-groups",
-      "book": "books/moderation.lisp",
-      "line": 100,
-      "reasons": [
-        "arm-of-definition: the hypotheses select one IF/COND arm of fn-mod-named-entries and the conclusion is that arm's value",
-        "branch-of-definition: the hypothesis negates a branch test of fn-mod-named-entries and the conclusion is that branch's value"
       ]
     },
     {
@@ -90208,7 +90217,7 @@
     {
       "theorem": "kind-of-result",
       "book": "books/native-admin-peer.lisp",
-      "line": 692,
+      "line": 625,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -90242,7 +90251,7 @@
     {
       "theorem": "name-of-result",
       "book": "books/native-admin-peer.lisp",
-      "line": 692,
+      "line": 625,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -90364,7 +90373,7 @@
     {
       "theorem": "status-of-result",
       "book": "books/native-admin-peer.lisp",
-      "line": 692,
+      "line": 625,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -92411,19 +92420,19 @@
       {
         "theorem": "fn-stx-b64-decode-exact-ok-shape",
         "book": "books/stx-carrier.lisp",
-        "line": 428,
+        "line": 429,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-stx-b64-round-trip",
         "book": "books/stx-carrier.lisp",
-        "line": 475,
+        "line": 476,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-stx-strip-wsp-of-b64-encode",
         "book": "books/stx-carrier.lisp",
-        "line": 617,
+        "line": 585,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -93861,6 +93870,25 @@
         "reason": "enabled-projection: the definition rune ships enabled and 37 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
+        "function": "fn-pb-line",
+        "book": "books/poster-bytes-source.lisp",
+        "line": 20,
+        "stated_in": [
+          "books/injection-info-params-invariants.lisp",
+          "books/post-identity-source-cursor-agent.lisp",
+          "books/post-identity-source-cursor-block.lisp",
+          "books/post-identity-source-cursor-info.lisp",
+          "books/post-identity-source-cursor-refinement.lisp",
+          "books/post-identity-source-cursor-skip.lisp",
+          "books/poster-bytes-invariants.lisp",
+          "books/poster-bytes-source-buffer.lisp",
+          "tests/acl2/post-identity-source-cursor-block-tests.lisp",
+          "tests/acl2/post-identity-source-cursor-info-tests.lisp",
+          "tests/acl2/post-identity-source-cursor-tests.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 11 books state theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
         "function": "fn-splan-step-effects",
         "book": "books/served-plan.lisp",
         "line": 415,
@@ -94283,6 +94311,15 @@
         "reason": "enabled-projection: the definition rune ships enabled and 3 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
+        "function": "fn-tcl-held-prior-messages",
+        "book": "books/tcpcl-delivery.lisp",
+        "line": 32,
+        "stated_in": [
+          "books/tcpcl-delivery-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
         "function": "fn-transfer-work-value",
         "book": "books/transfer-work.lisp",
         "line": 13,
@@ -94583,6 +94620,12 @@
         "check": "dlt-pairs-bad-loop-is-revappend",
         "book": "tests/acl2/def-loop-tests.lisp",
         "line": 184,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "dlt-map-base-drop-tail-bridge",
+        "book": "tests/acl2/def-loop-tests.lisp",
+        "line": 495,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -96778,7 +96821,7 @@
       },
       {
         "book": "books/bp-fragment-sweep.lisp",
-        "line": 49,
+        "line": 50,
         "include": "rev-onto",
         "included": "books/rev-onto.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -99564,13 +99607,6 @@
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 41,
-        "include": "tcpcl-spool",
-        "included": "books/tcpcl-spool.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/image-world-dtn.lisp",
         "line": 46,
         "include": "bp-contact-service",
         "included": "books/bp-contact-service.lisp",
@@ -100509,13 +100545,6 @@
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 364,
-        "include": "tcpcl-delivery",
-        "included": "books/tcpcl-delivery.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/image-world-dtn.lisp",
         "line": 365,
         "include": "bp-run-class",
         "included": "books/bp-run-class.lisp",
@@ -100610,13 +100639,6 @@
         "line": 32,
         "include": "app-journal",
         "included": "books/app-journal.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/image-world-store-test.lisp",
-        "line": 34,
-        "include": "tcpcl-spool",
-        "included": "books/tcpcl-spool.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -101475,13 +101497,6 @@
       },
       {
         "book": "books/image-world.lisp",
-        "line": 118,
-        "include": "tcpcl-spool",
-        "included": "books/tcpcl-spool.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/image-world.lisp",
         "line": 123,
         "include": "bp-contact-service",
         "included": "books/bp-contact-service.lisp",
@@ -102332,13 +102347,6 @@
         "line": 392,
         "include": "tcpcl-host-drive",
         "included": "books/tcpcl-host-drive.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/image-world.lisp",
-        "line": 393,
-        "include": "tcpcl-delivery",
-        "included": "books/tcpcl-delivery.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -103260,7 +103268,7 @@
       },
       {
         "book": "books/native-admin-peer.lisp",
-        "line": 28,
+        "line": 29,
         "include": "peer-set",
         "included": "books/peer-set.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -106802,7 +106810,7 @@
       },
       {
         "book": "books/stx-carrier.lisp",
-        "line": 47,
+        "line": 48,
         "include": "rev-onto",
         "included": "books/rev-onto.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -106889,13 +106897,6 @@
         "line": 3,
         "include": "substrate-profile-entry",
         "included": "books/substrate-profile-entry.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/tcpcl-delivery-invariants.lisp",
-        "line": 4,
-        "include": "tcpcl-delivery",
-        "included": "books/tcpcl-delivery.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -118936,13 +118937,6 @@
         "line": 4,
         "include": "../../books/tcpcl-received-source",
         "included": "books/tcpcl-received-source.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "tests/acl2/tcpcl-spool-tests.lisp",
-        "line": 2,
-        "include": "../../books/tcpcl-spool",
-        "included": "books/tcpcl-spool.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -141394,7 +141388,7 @@
       },
       {
         "book": "books/peer-feed.lisp",
-        "line": 156,
+        "line": 157,
         "shape": "fn-feed-entry-shapep",
         "shapes": 3,
         "accessors": 17,
