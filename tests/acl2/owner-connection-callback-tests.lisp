@@ -33,6 +33,9 @@
   (let* ((state (f-put-global 'fn-owner-reader-views nil state))
          (state (f-put-global 'fn-owner-auth nil state))
          (state (f-put-global 'fn-owner-credits (fn-mca-default 4096) state))
+         ; A sentinel in the parked obligation view: the callbacks keep it
+         ; (books/owner-obligation-state.lisp; no install writes it).
+         (state (f-put-global 'fn-owner-obligation-view :ocbt-parked-view state))
          (state (fn-owner-install-ocfg *ocbt-owner* state)))
     state))
 
@@ -42,9 +45,7 @@
          (selected (fn-owner-ocfg state))
          (reference (fn-ocfg-open selected (fn-owner-auth state)))
          (entry-credits (f-get-global 'fn-owner-credits state))
-         (opened-view (fn-rov-update (fn-rov-owner-ledger state)
-                         (fn-rov-oc-ledger (cdr reference))
-                         (fn-owner-obligation-view state)))
+         (opened-view (fn-owner-obligation-view state))
          (antecedent (fn-ocl-relation selected)))
     (mv-let (erp id state) (fn-owner-callback-open state)
       (let* ((opened-ok
@@ -63,6 +64,7 @@
                            (fn-olog-connection-line
                              (fn-ocfg-owner (cdr reference)) id nil))
                     (equal (fn-owner-reader-views state) nil)
+                    (equal opened-view :ocbt-parked-view)
                     (equal (fn-owner-obligation-view state) opened-view)
                     (equal (f-get-global 'fn-owner-credits state) entry-credits)
                     (consp (fn-own-find-conn id
@@ -70,7 +72,6 @@
              (before (fn-owner-ocfg state))
              (credits (fn-owner-credits state))
              (view (fn-owner-obligation-view state))
-             (ledger (fn-rov-owner-ledger state))
              (result (fn-ocfg-fault before id)))
         (mv-let (fault-erp word state) (fn-owner-callback-fault id state)
           (let ((checked
@@ -87,9 +88,8 @@
                              (if (fn-served-submission (car result)) t nil))
                       (equal (f-get-global 'fn-owner-credits state)
                              (fn-mca-close credits id))
-                      (equal (fn-owner-obligation-view state)
-                             (fn-rov-update ledger
-                               (fn-rov-oc-ledger (cdr result)) view)))))
+                      (equal view :ocbt-parked-view)
+                      (equal (fn-owner-obligation-view state) view))))
             (value checked)))))))
 
 (assert-event (mv-let (erp checked state) (ocbt-open-fault state)
@@ -105,7 +105,6 @@
           (let* ((before (fn-owner-ocfg state))
                  (next (fn-ocfg-close before id))
                  (credits (fn-owner-credits state))
-                 (ledger (fn-rov-owner-ledger state))
                  (view (fn-owner-obligation-view state))
                  (state (f-put-global 'ocbt-unaffected :sentinel state)))
             (mv-let (erp word state) (fn-owner-callback-close id fn-arena state)
@@ -113,8 +112,8 @@
                        (equal (fn-owner-ocfg state) next)
                        (equal (f-get-global 'fn-owner-credits state)
                               (fn-mca-close credits id))
-                       (equal (fn-owner-obligation-view state)
-                              (fn-rov-update ledger (fn-rov-oc-ledger next) view))
+                       (equal view :ocbt-parked-view)
+                       (equal (fn-owner-obligation-view state) view)
                        (equal (f-get-global 'ocbt-unaffected state) :sentinel)
                        (not (fn-own-find-conn id (fn-own-conns (fn-owner-core state)))))
                   fn-arena state)))))
