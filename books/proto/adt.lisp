@@ -220,7 +220,7 @@
 (defun adt-clear-body (cols st)
   (if (endp cols)
       nil
-    (cons `(,st (,(adt-sym "RESIZE-" (symbol-name (car (car cols)))) 0 ,st))
+    (cons `(,st (,(adt-sym-pre "RESIZE-" (car (car cols))) 0 ,st))
           (adt-clear-body (cdr cols) st))))
 
 (defun adt-append-body (name fields recv st)
@@ -376,9 +376,9 @@
       (defun ,(adt-sym name "$C-CLEAR") (,st)
         (declare (xargs :stobjs ,st))
         (let* (,@(adt-clear-body cols st)
-               (,st (,(adt-sym "RESIZE-" (symbol-name pool)) 0 ,st))
-               (,st (,(adt-sym "UPDATE-" (symbol-name (adt-sym name "$C-COUNT"))) 0 ,st)))
-          (,(adt-sym "UPDATE-" (symbol-name (adt-sym name "$C-FILL"))) 0 ,st)))
+               (,st (,(adt-sym-pre "RESIZE-" pool) 0 ,st))
+               (,st (,(adt-sym-pre "UPDATE-" (adt-sym name "$C-COUNT")) 0 ,st)))
+          (,(adt-sym-pre "UPDATE-" (adt-sym name "$C-FILL")) 0 ,st)))
       (defthm ,(adt-sym name "$C-CLEAR-BRIDGE")
         (equal (,(adt-sym name "$C-CLEAR") c) (adt-clear-c ,schema-const c))
         :hints (("Goal" :in-theory (enable ,(adt-sym name "$C-CLEAR") adt-clear-c adt-clear-down
