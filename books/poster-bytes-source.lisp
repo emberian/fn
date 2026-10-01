@@ -1,6 +1,7 @@
 ; Exact pure D25 source reference factored from poster-bytes.
 ; No Store dependency; event bodies, guards and rule classes unchanged.
 (in-package "ACL2")
+(include-book "def-loop")
 ; The injection inverse (fn-inj-source-of) and the injected-block octets.
 ; Reached through books/hybrid-store.lisp until that book included only
 ; books/injection-shape.lisp (audit 2026-09-25, packet 1).
@@ -16,42 +17,12 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-pb-line-loop (x acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp x)
-      (if (equal (car x) 10)
-          (revappend acc (list 10))
-        (fn-pb-line-loop (cdr x) (cons (car x) acc)))
-    (revappend acc nil)))
-
-(defun fn-pb-line (x)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp x)
-           (if (equal (car x) 10)
-               (list 10)
-             (cons (car x) (fn-pb-line (cdr x))))
-         nil)
-       :exec (fn-pb-line-loop x nil)))
-
-(local
- (defthm fn-pb-line-loop-is-revappend
-   (equal (fn-pb-line-loop x acc)
-          (revappend acc (fn-pb-line x)))
-   :hints (("Goal" :induct (fn-pb-line-loop x acc)
-                   :in-theory (union-theories '(fn-pb-line-loop fn-pb-line revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-pb-line-loop)
-
-(verify-guards fn-pb-line
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-pb-line)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-pb-line-loop-is-revappend (acc nil))))))
+(def-loop fn-pb-line (x)
+  :shape :map
+  :over x
+  :stop (equal (car x) 10)
+  :stop-value (list 10)
+  :body (car x))
 
 
 (defun fn-pb-path-line-agent (x)
