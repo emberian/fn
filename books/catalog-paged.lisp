@@ -1954,8 +1954,10 @@
             (equal (fn-cat$p-view (fn-cat$p-commit-w h fn-cat$p))
                    (fn-cat$c-commit-w h (fn-cat$p-view fn-cat$p))))
    :hints (("Goal" :do-not-induct t
+            ;; D26: max and the Message-ID test stay closed (they split
+            ;; the goal 60 ways; 896k -> 173k steps).
             :in-theory (e/d (fn-cat$p-commit-w fn-cat$c-commit-w fn-cat$c-commit fn-cat$c-commit-base)
-                            (fn-cat$p-append-row fn-cat$p-tab-index-add fn-cat$p-tab-commit
+                            (max fn-scat-msgid-idp fn-cat$p-append-row fn-cat$p-tab-index-add fn-cat$p-tab-commit
                              fn-cat$c-live-plan fn-cat$c-plan fn-cat$c-apply-plan fn-cat$c-live-apply
                              fn-cat$c-index-add fn-cat$c-wbv-put fn-cat$c-wbv-get fn-held-with-numbers
                              fn-cat-plan-numbers fn-cat-insert-asc fn-cpt-list fn-cp-wbv-view))))))
@@ -2028,18 +2030,32 @@
    :hints (("Goal" :in-theory (enable fn-cat$p-clear-w fn-cat$c-clear-w fn-cat$c-clear
                                       fn-cat$c-clear-base fn-cp-merge)))))
 
+; D26: the keyed clear IS the clear with the ring's key installed into the
+; emptied table, and installing a key moves no field the view replaces, so
+; the keyed clear's simulation is the clear's (4.9 s at 4,308 steps of
+; clausification before; one unfolding now).
+(local
+ (defthm fn-cp-clear-keyed-unfolds
+   (equal (fn-cat$p-clear-keyed key fn-cat$p)
+          (update-nth 1 (fn-cat$c-index-set-key key (nth 1 (fn-cat$p-clear-w fn-cat$p)))
+                      (fn-cat$p-clear-w fn-cat$p)))
+   :hints (("Goal" :in-theory (enable fn-cat$p-clear-keyed fn-cat$p-clear-w fn-cat$c-clear-keyed)))))
+
+(local
+ (defthm fn-cp-view-of-set-key
+   (equal (fn-cat$p-view (update-nth 1 (fn-cat$c-index-set-key key (nth 1 fn-cat$p)) fn-cat$p))
+          (fn-cat$c-index-set-key key (fn-cat$p-view fn-cat$p)))
+   :hints (("Goal" :in-theory (enable fn-cat$p-view fn-cp-frame fn-cat$c-index-set-key)))))
+
 (local
  (defthm fn-cat$p-clear-keyed-sim
    (equal (fn-cat$p-view (fn-cat$p-clear-keyed key fn-cat$p))
           (fn-cat$c-clear-keyed key (fn-cat$p-view fn-cat$p)))
-   :hints (("Goal" :in-theory (e/d (fn-cat$p-clear-keyed fn-cat$c-clear-keyed fn-cat$c-clear-w
-                                      fn-cat$c-clear fn-cat$c-clear-base fn-cp-merge)
-                                   (fn-cpt-list fn-cp-wbv-view)))
-           (and stable-under-simplificationp
-                '(:in-theory (e/d (fn-cat$p-clear-keyed fn-cat$c-clear-keyed fn-cat$c-clear-w
-                                     fn-cat$c-clear fn-cat$c-clear-base fn-cp-merge fn-cp-frame
-                                     fn-cp-update-nth-8-commute)
-                                  (fn-cpt-list fn-cp-wbv-view)))))))
+   :hints (("Goal" :in-theory (union-theories '(fn-cp-clear-keyed-unfolds fn-cp-view-of-set-key
+                                                fn-cat$p-clear-w-sim fn-cat$c-clear-keyed nth-update-nth)
+                                              (theory 'minimal-theory))))))
+
+(local (in-theory (disable fn-cp-clear-keyed-unfolds)))
 
 ; -----------------------------------------------------------------------------
 ; 7. The obligations: each the old catalog's (books/catalog-logic.lisp), at the view.
@@ -2254,14 +2270,19 @@
    :hints (("Goal" :in-theory (e/d (fn-cat$p-redecide) (fn-cat$p-set-cell))))))
 
 (local
+ (defthm fn-cp-clear-w-shape
+   (and (equal (nth 0 (fn-cat$p-clear-w fn-cat$p)) nil)
+        (equal (nth 1 (nth 1 (fn-cat$p-clear-w fn-cat$p))) 0))
+   :hints (("Goal" :in-theory (enable fn-cat$p-clear-w fn-cat$c-clear-w fn-cat$c-clear
+                                      fn-cat$c-clear-base fn-cat$c-index-clear)))))
+
+(local
  (defthm fn-cp-clear-shape
    (and (equal (nth 0 (fn-cat$p-clear-w fn-cat$p)) nil)
         (equal (nth 1 (nth 1 (fn-cat$p-clear-w fn-cat$p))) 0)
         (equal (nth 0 (fn-cat$p-clear-keyed key fn-cat$p)) nil)
         (equal (nth 1 (nth 1 (fn-cat$p-clear-keyed key fn-cat$p))) 0))
-   :hints (("Goal" :in-theory (enable fn-cat$p-clear-w fn-cat$p-clear-keyed fn-cat$c-clear-w fn-cat$c-clear
-                                      fn-cat$c-clear-base fn-cat$c-clear-keyed fn-cat$c-index-set-key
-                                      fn-cat$c-index-clear)))))
+   :hints (("Goal" :in-theory (enable fn-cp-clear-keyed-unfolds fn-cat$c-index-set-key)))))
 
 ; The obligations, as `defabsstobj-missing-events' states them: each the old
 ; catalog's at the view, with the simulation of section 6.
@@ -2717,7 +2738,10 @@
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-cat-msgid-saturatedp{correspondence} (fn-cat$c (fn-cat$p-view fn-cat$p)) (fn-cat fn-cat-paged))
                  (:instance fn-cp-corr-facts (fn-cat$a fn-cat-paged)))
-           :in-theory (disable fn-cp-corr-facts))))
+           ;; D26: the three saturation tests stay closed (the sim and the
+           ;; instance meet; opened, the goal split 56 ways).
+           :in-theory (disable fn-cp-corr-facts fn-cat$c-msgid-saturatedp fn-cat$a-msgid-saturatedp
+                               fn-cat$p-msgid-saturatedp))))
 
 (defthm fn-cat-paged-msgid-saturatedp{guard-thm}
   (implies (if (fn-cat$pcorr fn-cat$p fn-cat-paged)
