@@ -326,6 +326,7 @@
 (include-book "../../books/owner-outcome-pinned")
 (include-book "../../books/owner-retire-counted")
 (include-book "../../books/owner-connection-callbacks")
+(include-book "../../host/owner-exposure-host")
 (include-book "../../host/index-reader-request-host")
 (include-book "../../books/native-control")
 (include-book "../../books/native-control-launch")
