@@ -1436,10 +1436,17 @@ malformed page."
 ; fn-nh-answer-report under the column relation; the offline command calls
 ; fn-nls-offline-report).  The reclaim line's figures depend on the clock
 ; observation (a release-after rule is measured at NOW), so they are not a
-; carried quantity: each report computes them, and its work is ONE walk of
-; the Store's articles (fn-nsc-tally-loop on the served path, O(1) per
-; article from the catalog column, no payload read), bounded by the article
-; count the profile admits; nothing on it revalidates a carried invariant.
+; carried quantity: each report computes them, in ONE walk of the Store's
+; articles (fn-nsc-tally-loop on the served path, from the catalog column,
+; no payload read).  The walk is NOT O(1) per article: each article asks
+; fn-rcl-verdict-heldp (books/store-reclaim.lisp), a walk of the verdict
+; list, so a report costs O(articles x verdicts), quadratic when every
+; article carries a verdict.  Nor is it a D27 work quantum: the walk runs to
+; the end, unyielding, under fnn-owner-serialized (the yielding inspector
+; path, host/native/control.lisp, is unreached: inspector-binding defaults
+; to NIL at host/native/owner.lisp and nothing sets it).  Both are open
+; (Codex r46 F5/F6; the coordinator queued the fix: a keyed verdict set, or
+; a yielding walk).  Nothing on the walk revalidates a carried invariant.
 (verify-guards fn-nls-reclaim-words)
 (verify-guards fn-nls-report)
 (verify-guards fn-nls-offline-report)

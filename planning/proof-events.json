@@ -18795,6 +18795,18 @@
         {
           "kind": "theorem",
           "name": "fn-brlc-rows-of-prefix-is-a-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-brlc-host-open-is-the-observed-open"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-brlc-chunks-are-one-step"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-brlc-open-ok-implies-decoded"
         }
       ]
     }

@@ -1228,7 +1228,7 @@
       "assumptions": [
         "A-CRYPTO"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
       ],
@@ -3825,7 +3825,7 @@
       "assumptions": [
         "A-CRYPTO"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/native-live-status.lisp",
         "tests/acl2/native-live-status-tests.lisp",
@@ -5135,7 +5135,7 @@
         "PRF-089"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/native-health.lisp",
         "tests/acl2/native-health-tests.lisp",
@@ -6649,7 +6649,7 @@
         "PRF-177"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/byte-store-frame.lisp",
         "tests/acl2/byte-store-frame-tests.lisp",
@@ -6735,7 +6735,7 @@
         "PRF-172"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "statement": "books/control-evidence.lisp fn-cev-evidence-decision-is-in-the-log: for every RAW, VERDICTS, RECORDS, CONFIGS and MSGID, with WS equal to (fn-ctl-articles-withdrawals RAW VERDICTS RECORDS CONFIGS) (the owner's maintained relation: the carried records are the journal of the carried archive, established by fn-own-start's refresh and preserved by fn-own-refresh through fn-ctl-refresh-withdrawals-is-the-journal and fn-ctl-articles-withdrawals-is-the-journal; the offline report establishes it by construction), the decision fn-cev-plan of the article fn-cev-find-article names is a member of WS iff it is a withdrawal record (fn-ctl-withdrawalp). fn-cev-decision-line-is-a-log-line: then the decision's words (fn-cev-decision-line) are \"decision=\" followed by the log's line for that record (fn-cev-log-line), a member of fn-cev-log-lines WS. Host: fn-cev-report is rendered by fn-cev-live-report from host/native-live-status-host.lisp fn-native-live-status-host-answer (host/native/control.lisp fnn-control-live-status-answer, under the owner mutex) and by fn-cev-offline-report from fn-native-live-status-host-offline (host/native/io.lisp fnn-command-live-report); the operator's words come from books/control-evidence-grammar.lisp fn-cevg-parse through books/native-operator.lisp's parse (fn-cevg-parse-kind-is-a-kind), dispatched as a status report. PKT-220: books/native-health.lisp fn-nls-obligations-figures-are-the-retention-figures: for every PROFILE, OC, CACHE and OBS, the report the running owner renders for :obligations (fn-nls-live-report, from fn-native-live-status-host-answer through fn-nh-answer-report) is \"obligations=\" (fn-rtf-pin-count S) \" reserved=\" (fn-rtf-reserved S) and the obligation lines, with S the owner's Store node; books/retention-figures.lisp fn-rtf-pin-count and fn-rtf-reserved are what the offline `store ROOT retention` prints (host/store-node-host.lisp fn-store-sn-pin-count, fn-store-sn-reserved, from host/native/io.lisp fnn-command-retention). EXTENSION (lane friend-blockers, 2026-09-27, the stranger rehearsal's stops): PKT-707: status prints `capacity articles-left=N` (fn-nls-capacity-words in the live report, fn-nls-capacity-line from host/native/io.lisp fnn-out-headroom); KEYSTONE fn-nls-articles-left-is-zero-when-full: at the transaction budget, or with the history bound spent, the line says 0. The decision `control evidence` prints is the refresh's own, fn-ctl-article-plan over the article's row (flip-L8-2).",
       "evidence": [
         "books/control-evidence.lisp",
@@ -6920,7 +6920,7 @@
         "PRF-185"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "statement": "books/log-sink.lisp (PKT-508): fn-log-sink-offer-preserves-okp and fn-log-sink-take-preserves-okp: for every sink S, BOUND, LEN and OUTCOME, if (fn-log-sink-okp S BOUND) then the sink after fn-log-sink-offer (host/native/io.lisp fnn-log-offer, from fnn-log-line and fnn-err while fnn-owner-run runs the writer) and after fn-log-sink-take (fnn-log-writer-loop) satisfies it; fn-log-sink-okp says every offered line is written, pending or dropped (offered = written + pending + dropped), nothing pending means no pending octets, and the pending octets are within BOUND unless one line is pending; fn-log-sink-init-okp establishes it (fnn-log-writer-start). fn-log-sink-offer-drops-only-past-the-bound: the offer's decision is :queue or :drop and is :drop iff a line is pending and the pending octets with this line exceed BOUND (a line offered to an empty queue is always queued). fn-log-sink-drop-counts: a drop adds one to the dropped count and leaves the pending lines and octets. books/native-health.lisp fn-nh-report-exit-of-render-and-more: for a verdict V of at most eight outcomes and any true list MORE, (fn-nh-report-exit (append (fn-nh-render V) MORE)) = (fn-nh-exit-code V): the exposure and log-sink lines host/native-live-status-host.lisp fn-native-live-status-host-answer appends after the eight states never change the exit fnn-operator-execute-health returns. PKT-269: fn-store-event-encode's path (verified in books/store-budget.lisp), fn-sbud-record-octets, -bytes-used, -verdict, -headroom-at, -headroom, -bytes-extend (an mbe over fn-sbud-drop, fn-sbud-record-octets-of-drop), the retention lines, fn-nh-verdict and fn-nh-offline-report, fn-nh-fenced-report and fn-nh-live-report are guard-verified. PKT-518: books/control-evidence.lisp fn-cev-any-request-decode-of-encode: for every KIND that is a status kind (*fn-nls-kinds*) or a control report kind (fn-cevg-kindp) and every uint32 OFFSET, (fn-cev-any-request-decode (fn-cev-any-request-encode KIND OFFSET)) = (:live-status KIND OFFSET); the client encodes through fn-native-live-status-host-request-encode (host/native/control.lisp fnn-control-live-status-page), the owner decodes in fn-native-live-status-host-answer (fnn-control-live-status-answer).",
       "evidence": [
         "books/log-sink.lisp",
@@ -12089,7 +12089,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/peer-feed.lisp",
         "books/peer-feed-invariants.lisp",
@@ -12134,7 +12134,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/native-live-status.lisp",
         "tests/acl2/native-live-status-tests.lisp",
@@ -12872,7 +12872,7 @@
         "PRF-089"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-reclaim-holders.lisp",
         "books/native-health.lisp",
@@ -13210,7 +13210,7 @@
         "PRF-332"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/native-status-columns.lisp",
         "tests/acl2/native-status-columns-tests.lisp",
@@ -13359,7 +13359,7 @@
         "PRF-368"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/native-live-pages.lisp",
         "tests/acl2/native-live-pages-tests.lisp",
@@ -14237,7 +14237,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-maintenance-request.lisp",
         "tests/acl2/owner-maintenance-request-tests.lisp"
@@ -14258,7 +14258,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-maintenance-request.lisp",
         "tests/acl2/owner-maintenance-request-tests.lisp"
@@ -15298,7 +15298,7 @@
         "PRF-358"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/native-health.lisp",
         "books/native-status-columns.lisp",
@@ -15447,7 +15447,7 @@
         "PRF-368"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/native-status-columns.lisp",
         "books/native-live-status.lisp",
@@ -18272,7 +18272,7 @@
         "PRF-119"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/reclaim-tombstone.lisp",
         "books/store-reclaim.lisp",
@@ -20812,7 +20812,7 @@
         "A-DURABILITY",
         "A-WRITE-ISOLATION"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/recovery-refinement.lisp",
         "tests/acl2/recovery-refinement-tests.lisp",
@@ -20939,7 +20939,7 @@
         "A-DURABILITY",
         "A-WRITE-ISOLATION"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/recovery-refinement.lisp",
         "tests/acl2/recovery-refinement-tests.lisp"
@@ -21143,7 +21143,7 @@
     {
       "id": "PRF-1228",
       "title": "A BP receipt regenerates byte-identically after a crash of the record log, when the receiver acted only on acknowledged Store records (PKT-217 restated over format 10's crash model)",
-      "statement": "books/bp-receipt-log-crash.lisp KEYSTONE fn-brlc-receipt-regenerated-after-log-crash: from a receiver whose state is the replay of its journal (fn-bprr-replay, host fn-bprj-install), run any live trace (fn-bpr-live-run); let the record log be at any crash point of its served programs (fn-lgk-relp BS KS), take any admissible crash image (fn-bs-crash-imagep) under A-CRYPTO-TRAILER's premise on the tear (fn-lg-platform-tears-p); the open decodes and interns what the log's recovery holds (fn-brlc-rows: fn-srs-step from ARENA0, the host's fnn-bridge-recover calls fn-store-decode-records = fn-srs-decode then fn-srs-intern-step) and opens over those rows through fn-cpo-open-observed (host/store-node-host.lisp fn-store-sn-recover); run the recovery barriers to :ready; then the journal's replay is the live receiver state and fn-bpr-receipt-adu is byte-identical. Premises that replace the per-file image predicate fn-sf-crash-imagep: the live Store's history is a prefix of the rows of the log's ACKNOWLEDGED records (the first fn-lgk-acked of fn-lgk-committed), and the recovered records decode (fn-brlc-decodedp). Steps: fn-brlc-recovered-is-the-acknowledged-prefix-and-more (from fn-rr-log-crash-image-recovers-a-tree-sequence-member, over fn-lgk-crash-of-related-state-is-a-prefix), fn-brlc-rows-of-prefix-is-a-prefix (fn-srs-decode-of-append, fn-srs-intern-events-of-append), fn-brlc-acknowledged-rows-are-a-prefix-of-the-recovered-rows, then fn-sonb-live-receipt-regenerated-from-related-open. Hypotheses NOT discharged here, named: the open's success (fn-sn-open-okp of the host open over the recovered rows; under the per-file model it followed from the image predicate; under the log it is the store instance's obligation, books/recovery-refinement-store.lisp, PRF-1212/PRF-1213, written, not admitted; a refused open serves nothing); fn-sonb-configured-before-eventsp (a store reconfigured after an event needs the receipt over fn-cst-relation, PKT-217's first follow-up); the single FN-ARENA through which the replay reads payloads, as in PRF-007's per-file theorem. MODEL-LEVEL as PRF-1212: the host's open after a crash is fnn-recover-log (fn-lg-open-kernel, then the chunked decode and intern, then fn-rii-sco-extend-open / fn-sfi-extend-open or the full replay); this statement names the full open fn-cpo-open-observed. Teeth: tests/acl2/bp-receipt-log-crash-tests.lisp on the live trace of bp-receiver-evolving-tests, its two rows held by the log as their host encodings (the rows the open makes of them ARE the live rows): POSITIVE reachable, every hypothesis and both conclusions at the recovered quiet log (the image by fn-bs-crash-imagep-suff); REMOVAL of the acknowledged-prefix hypothesis (a log that acknowledged a different first article, every other hypothesis kept, the receipt gone), REMOVAL of fn-brlc-decodedp (an undecodable record in flight lands whole, the receipt gone); MUTATION (labelled): a recovery that drops the receipted record r1 is no tree-sequence member and the host open refuses it. A non-exact tear's premise is the constrained fn-assume-crash-tearp and is not evaluated (recovery-refinement-tests' note).",
+      "statement": "books/bp-receipt-log-crash.lisp KEYSTONE fn-brlc-receipt-regenerated-after-log-crash: from a receiver whose state is the replay of its journal (fn-bprr-replay, host fn-bprj-install), run any live trace (fn-bpr-live-run); let the record log be at any crash point of its served programs (fn-lgk-relp BS KS), take any admissible crash image (fn-bs-crash-imagep) under A-CRYPTO-TRAILER's premise on the tear (fn-lg-platform-tears-p); the open interns what the log's recovery holds as the HOST'S FULL-REPLAY OPEN does (host/native/io.lisp fnn-recover-log, full replay: fnn-recover-log-stream-take/-flush; fnn-bridge-recover-begin seeds fn-ssr-seed (fn-stxk-initial-context 0); each chunk decoded by fn-lgb-decode-next, whose :logic first value is fn-srs-decode, and interned by fnn-bridge-recover-step = fn-ssr-intern-step :resident, the statement keyring, generation and identity cursor carried between records; -extents/-lz equal :resident under fn-arena-p and a faithful placement, fn-ssr-extent-step-refines-resident, fn-ssr-lz-step-refines-resident): fn-brlc-rows, with fn-brlc-chunks-are-one-step (any chunking gives the same rows); then opens as fnn-bridge-recover-end does (fn-store-sn-recover-rows: fn-rii-sco-extend-open on the empty capture, installing the classified answer's second element; fn-brlc-host-classified), which fn-brlc-host-open-is-the-observed-open equates with fn-cpo-open-observed whenever it is a Store (fn-rii-sco-extend-open-is-extend-then-open, fn-rii-classified-open-is-classified-open, fn-rii-sco-extend-is-sco-extend, fn-sco-store-open-of-extended-capture with PREFIX = NIL); run the recovery barriers to :ready; then the journal's replay is the live receiver state and fn-bpr-receipt-adu is byte-identical. The premise that replaces the per-file image predicate fn-sf-crash-imagep: the live Store's history is a prefix of the rows of the log's ACKNOWLEDGED records (the first fn-lgk-acked of fn-lgk-committed). The decode of the recovered records is no longer a hypothesis: fn-brlc-open-ok-implies-decoded proves an :ok open implies it (removed after that proof). Steps: fn-brlc-recovered-is-the-acknowledged-prefix-and-more (from fn-rr-log-crash-image-recovers-a-tree-sequence-member, over fn-lgk-crash-of-related-state-is-a-prefix), fn-brlc-rows-of-prefix-is-a-prefix (fn-srs-decode-of-append, fn-ssr-resident-step-of-append, fn-brlc-ssr-rows-grow), fn-brlc-acknowledged-rows-are-a-prefix-of-the-recovered-rows, then fn-sonb-live-receipt-regenerated-from-related-open. Hypotheses NOT discharged here, named (OPEN): (1) THE PREMISE'S PRODUCER: nothing yet proves, for a log the host wrote, that the live Store history is a prefix of the rows of the acknowledged records (that every row the Store holds came from a record the log fenced and the owner acknowledged through fn-lgk-finish-one, in order): the join between the owner's commit path and the log kernel; (2) the open's success (fn-sn-open-okp of the host open; under the log it is the store instance's obligation, books/recovery-refinement-store.lisp, PRF-1212/PRF-1213, written, not admitted; a refused open serves nothing); (3) fn-sonb-configured-before-eventsp (a store reconfigured after an event needs the receipt over fn-cst-relation, PKT-217's first follow-up); (4) the single FN-ARENA through which the replay reads payloads, as in PRF-007. Scope: the full-replay open; the checkpoint opens (fnn-recover-log-from-state-checkpoint, fnn-recover-log-from-log-checkpoint) are not covered. MODEL-LEVEL as PRF-1212. Teeth: tests/acl2/bp-receipt-log-crash-tests.lisp on the live trace of bp-receiver-evolving-tests, its two rows held by the log as their host encodings (the rows the host's replay makes of them ARE the live rows), each witness asserting the keystone's hypothesis vector (all but the image predicate, which is asserted by fn-bs-crash-imagep-suff or refuted by a theorem). POSITIVE reachable and WRITER-BUILT: r1 r2 prepared, written (P-LOG-APPEND), fenced (P-LOG-FENCE) and acknowledged (fn-lgk-finish-one) on a fresh store's log; every hypothesis and both conclusions. REMOVALS (every other hypothesis holds, the omitted one fails, the conclusion fails): the replay agreement (CORRUPTED receiver state ahead of its journal), fn-lgk-relp (CORRUPTED kernel over a fresh log's bytes), fn-bs-crash-imagep (the fresh log's bytes, refuted by brlct-fresh-bytes-are-no-crash-image-of-the-written-state), the phase :ready (no barriers), the acknowledged-prefix hypothesis (a writer-built log that acknowledged a different first article). NOT WITNESSED, with reasons: fn-csi-full-relationp (its fn-snt-relation conjunct is refuted where it works, bpre-teeth-live-extension-without-relation; the receipt reads no consumer or identity conjunct), fn-lg-platform-tears-p (T when nothing is in flight; its failure with a batch in flight lies outside A-CRYPTO-TRAILER's constrained premise and is not evaluable), fn-sn-open-okp (no refused open reaches :ready), fn-sonb-configured-before-eventsp (not shown necessary: a log reconfigured after an event, fn.letters removed at txid 2, opens and regenerates the receipt). MUTATION (labelled): a recovery that drops the receipted record r1 is no tree-sequence member, the host's replay refuses it (identity cursor) and no open over it is a Store.",
       "milestone": "M5",
       "requirements": [
         "STO-003",
@@ -21166,11 +21166,14 @@
         "books/bp-receipt-log-crash.lisp",
         "tests/acl2/bp-receipt-log-crash-tests.lisp"
       ],
-      "progress_note": "PKT-217 (coordinator decision 2026-10-01: restate, not retire): the per-file receipt theorem fn-bpr-live-receipt-regenerated-after-restart (PRF-007) stays as it is; this row carries the guarantee onto the record log's crash model. Open: the store instance (PRF-1212/1213) that would discharge the open's success; the reconfigured-after-an-event case (fn-cst-relation).",
+      "progress_note": "PKT-217 (coordinator decision 2026-10-01: restate, not retire): the per-file receipt theorem fn-bpr-live-receipt-regenerated-after-restart (PRF-007) stays as it is; this row carries the guarantee onto the record log's crash model, over the host's true full-replay chain (Codex r46 F1). Open: the acknowledged-prefix premise's producer for host-written logs (r46 F2); the store instance (PRF-1212/1213) that would discharge the open's success; the reconfigured-after-an-event case (fn-cst-relation); removal witnesses for fn-csi-full-relationp, fn-lg-platform-tears-p, fn-sn-open-okp, fn-sonb-configured-before-eventsp (reasons in the statement).",
       "events": [
         "fn-brlc-receipt-regenerated-after-log-crash",
         "fn-brlc-acknowledged-rows-are-a-prefix-of-the-recovered-rows",
-        "fn-brlc-rows-of-prefix-is-a-prefix"
+        "fn-brlc-rows-of-prefix-is-a-prefix",
+        "fn-brlc-host-open-is-the-observed-open",
+        "fn-brlc-chunks-are-one-step",
+        "fn-brlc-open-ok-implies-decoded"
       ]
     }
   ]
