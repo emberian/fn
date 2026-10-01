@@ -2059,27 +2059,27 @@
     "tests/acl2/substrate-commit-codec-gap-tests"
   ],
   "totals": {
-    "books": 2246,
+    "books": 2253,
     "books_in_root_closure": 2196,
     "roots": 2055,
-    "theorems": 32600,
-    "functions": 20880,
-    "assert_events": 24523,
+    "theorems": 32616,
+    "functions": 20913,
+    "assert_events": 24526,
     "must_fails": 2519,
     "prover_refusals": 0,
     "encapsulates": 166,
     "guards": {
       "verified": 3738,
       "declared-off": 2536,
-      "default-guarded": 11596,
+      "default-guarded": 11629,
       "default-unguarded": 3010
     },
     "suspect_theorems": 1295,
     "export_hygiene_warnings": 382,
     "enabled_projection_warnings": 79,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2890,
-    "host_names_warnings": 2419,
+    "include_hygiene_warnings": 2891,
+    "host_names_warnings": 2484,
     "hand_written_record_warnings": 19
   },
   "books": [
@@ -27934,6 +27934,32 @@
       "read_error": null
     },
     {
+      "book": "books/page-maintenance-lease.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 4,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 4,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "page-read-ledger"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/page-read-executor.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -33189,6 +33215,59 @@
       "read_error": null
     },
     {
+      "book": "books/recovery-initial-operation-lineage.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 1,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "recovery-source-authority",
+        "snapshot-source-token"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/recovery-open-origin.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "recovery-source-authority"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/recovery-payload-view.lisp",
       "in_root_closure": false,
       "is_root": false,
@@ -35571,6 +35650,59 @@
       "read_error": null
     },
     {
+      "book": "books/snapshot-initial-custody.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 2,
+      "functions": 12,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 12,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "snapshot-initial-request",
+        "snapshot-source-cursor"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/snapshot-initial-request.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 2,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 5,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "page-maintenance-lease"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/snapshot-segments.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -35596,6 +35728,32 @@
       "system_includes": [
         "arithmetic/top"
       ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/snapshot-source-cursor.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 7,
+      "functions": 8,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 8,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "snoc-list"
+      ],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
@@ -61140,6 +61298,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/recovery-initial-operation-lineage-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 3,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/recovery-initial-operation-lineage",
+        "../../books/recovery-source-authority"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/refusal-effect-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -67846,7 +68031,7 @@
     {
       "theorem": "fn-bs-frontier-encode-impl-unfolds",
       "book": "books/byte-store-frame.lisp",
-      "line": 1190,
+      "line": 1198,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-bs-frontier-encode-impl and the conclusion is that arm's value"
       ]
@@ -67854,7 +68039,7 @@
     {
       "theorem": "fn-bs-frontier-next-is-successor",
       "book": "books/byte-store-frame.lisp",
-      "line": 1197,
+      "line": 1205,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-bs-frontier-next and the conclusion is that arm's value"
       ]
@@ -77494,13 +77679,13 @@
       {
         "theorem": "fn-bs-frontier-decode-extends-format-2",
         "book": "books/byte-store-frame.lisp",
-        "line": 908,
+        "line": 916,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-bs-frontier-next-is-successor",
         "book": "books/byte-store-frame.lisp",
-        "line": 1197,
+        "line": 1205,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -100445,6 +100630,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/recovery-initial-operation-lineage-tests.lisp",
+        "line": 2,
+        "include": "../../books/recovery-initial-operation-lineage",
+        "included": "books/recovery-initial-operation-lineage.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/refusal-effect-tests.lisp",
         "line": 10,
         "include": "../../books/refusal-effect",
@@ -115539,6 +115731,230 @@
         "reason": "defined in host/native/crypto.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
+        "host": "host/native/snapshot-initial-reader.lisp",
+        "line": 11,
+        "name": "fnn-call",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/snapshot-initial-reader.lisp",
+        "line": 11,
+        "name": "fnn-live-page-read-pool",
+        "source": "host/native/extent.lisp",
+        "reason": "defined in host/native/extent.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/snapshot-initial-reader.lisp",
+        "line": 11,
+        "name": "fnn-fault",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/snapshot-initial-reader.lisp",
+        "line": 11,
+        "name": "fnn-core",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/snapshot-initial-reader.lisp",
+        "line": 11,
+        "name": "%make-fnn-hsr-source",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/native/snapshot-initial-reader.lisp",
+        "line": 11,
+        "name": "fifth",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/native/snapshot-producer.lisp",
+        "line": 13,
+        "name": "fnn-snapshot-source-begin",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/native/snapshot-producer.lisp",
+        "line": 22,
+        "name": "fnn-refuse-io",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/snapshot-producer.lisp",
+        "line": 22,
+        "name": "fnn-core",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/snapshot-producer.lisp",
+        "line": 93,
+        "name": "fifth",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/native/snapshot-producer.lisp",
+        "line": 93,
+        "name": "fnn-hsr-source-begin",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/native/snapshot-producer.lisp",
+        "line": 93,
+        "name": "fnn-hsr-source-step",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/native/snapshot-producer.lisp",
+        "line": 180,
+        "name": "fnn-call",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/snapshot-producer.lisp",
+        "line": 186,
+        "name": "fnn-hsr-cold-begin",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/native/snapshot-producer.lisp",
+        "line": 186,
+        "name": "fnn-hsr-cold-step",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/native/snapshot-producer.lisp",
+        "line": 272,
+        "name": "fnn-fault",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/snapshot-producer.lisp",
+        "line": 272,
+        "name": "fnn-hpi-action",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/native/snapshot-producer.lisp",
+        "line": 444,
+        "name": "fnn-hsr-source-cancel-returned",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/native/snapshot-producer.lisp",
+        "line": 444,
+        "name": "fnn-snapshot-source-root-release",
+        "source": "host/native/owner.lisp",
+        "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/snapshot-producer.lisp",
+        "line": 524,
+        "name": "fnn-owner-service-store",
+        "source": "host/native/owner.lisp",
+        "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/snapshot-producer.lisp",
+        "line": 524,
+        "name": "fnn-store-log",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/snapshot-producer.lisp",
+        "line": 524,
+        "name": "fnn-log-with-kernel",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/snapshot-producer.lisp",
+        "line": 573,
+        "name": "fnn-owner-gated",
+        "source": "host/native/owner.lisp",
+        "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/snapshot-startup.lisp",
+        "line": 17,
+        "name": "create-fn-hpq0",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/native/snapshot-startup.lisp",
+        "line": 17,
+        "name": "create-fn-hpq1",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/native/snapshot-startup.lisp",
+        "line": 17,
+        "name": "create-fn-hpq2",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/native/snapshot-startup.lisp",
+        "line": 17,
+        "name": "create-fn-hpq3",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/native/snapshot-startup.lisp",
+        "line": 17,
+        "name": "create-fn-hpb",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/native/snapshot-startup.lisp",
+        "line": 17,
+        "name": "create-pgs-digest-state",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/native/snapshot-startup.lisp",
+        "line": 17,
+        "name": "fnn-hpi-retain",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/native/snapshot-startup.lisp",
+        "line": 47,
+        "name": "fnn-owner-service-store",
+        "source": "host/native/owner.lisp",
+        "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/snapshot-startup.lisp",
+        "line": 47,
+        "name": "fnn-store-recovery-source",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
         "host": "host/native/strip-world.lisp",
         "line": 58,
         "name": "*current-acl2-world-key*",
@@ -117464,6 +117880,139 @@
         "reason": "defined in books/receiver-turn-controller.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
+        "host": "host/recovery-initial-operation-host.lisp",
+        "line": 7,
+        "name": "fn-owner-recovery-global",
+        "source": "host/recovery-initial-source-host.lisp",
+        "reason": "defined in host/recovery-initial-source-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/recovery-initial-operation-host.lisp",
+        "line": 7,
+        "name": "fn-owner-recovery-source-generation-value",
+        "source": "host/recovery-initial-source-host.lisp",
+        "reason": "defined in host/recovery-initial-source-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/recovery-initial-operation-host.lisp",
+        "line": 7,
+        "name": "fn-sn-files",
+        "source": "books/owner-report-owner-accessors.lisp",
+        "reason": "defined in books/owner-report-owner-accessors.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/recovery-initial-operation-host.lisp",
+        "line": 7,
+        "name": "fn-rsoa-originp",
+        "source": "books/recovery-open-origin.lisp",
+        "reason": "defined in books/recovery-open-origin.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/recovery-initial-operation-host.lisp",
+        "line": 7,
+        "name": "fn-store-sco-recovery-source-value",
+        "source": "host/store-checkpoint-context-host.lisp",
+        "reason": "defined in host/store-checkpoint-context-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/recovery-initial-operation-host.lisp",
+        "line": 7,
+        "name": "fn-sf-phase",
+        "source": "books/store-files.lisp",
+        "reason": "defined in books/store-files.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/recovery-initial-operation-host.lisp",
+        "line": 7,
+        "name": "fn-owner-recovery-records-formp",
+        "source": "host/recovery-initial-source-host.lisp",
+        "reason": "defined in host/recovery-initial-source-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/recovery-initial-operation-host.lisp",
+        "line": 7,
+        "name": "fn-sf-records-field",
+        "source": "books/store-files.lisp",
+        "reason": "defined in books/store-files.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/recovery-initial-operation-host.lisp",
+        "line": 7,
+        "name": "fn-sf-records-count",
+        "source": "books/store-files.lisp",
+        "reason": "defined in books/store-files.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/recovery-initial-operation-host.lisp",
+        "line": 7,
+        "name": "fn-sf-frontier",
+        "source": "books/owner-report-owner-accessors.lisp",
+        "reason": "defined in books/owner-report-owner-accessors.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/recovery-initial-source-host.lisp",
+        "line": 20,
+        "name": "fn-store-sco-recovery-source-generation-value",
+        "source": "host/store-checkpoint-context-host.lisp",
+        "reason": "defined in host/store-checkpoint-context-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/recovery-initial-source-host.lisp",
+        "line": 26,
+        "name": "fn-store-sco-recovery-source-value",
+        "source": "host/store-checkpoint-context-host.lisp",
+        "reason": "defined in host/store-checkpoint-context-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/recovery-payload-view-host.lisp",
+        "line": 10,
+        "name": "fn-owner-recovery-startup-source",
+        "source": "host/recovery-initial-source-host.lisp",
+        "reason": "defined in host/recovery-initial-source-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/recovery-payload-view-host.lisp",
+        "line": 10,
+        "name": "fn-owner-page-read-ledger",
+        "source": "books/page-read-pool-state.lisp",
+        "reason": "defined in books/page-read-pool-state.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/recovery-payload-view-host.lisp",
+        "line": 10,
+        "name": "fn-owner-recovery-initial-livep",
+        "source": "host/snapshot-initial-host.lisp",
+        "reason": "defined in host/snapshot-initial-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/recovery-payload-view-host.lisp",
+        "line": 10,
+        "name": "mv",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/recovery-payload-view-host.lisp",
+        "line": 10,
+        "name": "fn-owner-recovery-payload-view-ledger",
+        "source": "host/recovery-payload-view-state.lisp",
+        "reason": "defined in host/recovery-payload-view-state.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/recovery-payload-view-host.lisp",
+        "line": 10,
+        "name": "fn-arena-count",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/recovery-payload-view-host.lisp",
+        "line": 10,
+        "name": "fn-owner-page-read-keep-ledger",
+        "source": "books/page-read-pool-state.lisp",
+        "reason": "defined in books/page-read-pool-state.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
         "host": "host/recovery-payload-view-state.lisp",
         "line": 4,
         "name": "f-boundp-global",
@@ -117490,6 +118039,104 @@
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/snapshot-initial-constructor-host.lisp",
+        "line": 5,
+        "name": "fn-owner-recovery-initial-livep",
+        "source": "host/snapshot-initial-host.lisp",
+        "reason": "defined in host/snapshot-initial-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/snapshot-initial-constructor-host.lisp",
+        "line": 5,
+        "name": "mv",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/snapshot-initial-constructor-host.lisp",
+        "line": 5,
+        "name": "fn-sni-role-claim",
+        "source": "books/snapshot-initial-custody.lisp",
+        "reason": "defined in books/snapshot-initial-custody.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/snapshot-initial-constructor-host.lisp",
+        "line": 5,
+        "name": "fn-owner-page-read-ledger",
+        "source": "books/page-read-pool-state.lisp",
+        "reason": "defined in books/page-read-pool-state.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/snapshot-initial-constructor-host.lisp",
+        "line": 5,
+        "name": "fn-owner-page-read-keep-ledger",
+        "source": "books/page-read-pool-state.lisp",
+        "reason": "defined in books/page-read-pool-state.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/snapshot-initial-host.lisp",
+        "line": 9,
+        "name": "fn-owner-recovery-source-token",
+        "source": "host/recovery-initial-source-host.lisp",
+        "reason": "defined in host/recovery-initial-source-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/snapshot-initial-host.lisp",
+        "line": 9,
+        "name": "mv",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/snapshot-initial-host.lisp",
+        "line": 9,
+        "name": "fn-owner-recovery-startup-source",
+        "source": "host/recovery-initial-source-host.lisp",
+        "reason": "defined in host/recovery-initial-source-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/snapshot-initial-host.lisp",
+        "line": 40,
+        "name": "fn-owner-recovery-initial-operation-currentp",
+        "source": "host/recovery-initial-operation-host.lisp",
+        "reason": "defined in host/recovery-initial-operation-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/snapshot-initial-root-host.lisp",
+        "line": 18,
+        "name": "fn-owner-page-read-ledger",
+        "source": "books/page-read-pool-state.lisp",
+        "reason": "defined in books/page-read-pool-state.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/snapshot-initial-root-host.lisp",
+        "line": 18,
+        "name": "mv",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/snapshot-initial-root-host.lisp",
+        "line": 18,
+        "name": "fn-owner-page-file-pin",
+        "source": "host/page-file-lease-host.lisp",
+        "reason": "defined in host/page-file-lease-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/snapshot-initial-root-host.lisp",
+        "line": 18,
+        "name": "fn-owner-page-read-keep-ledger",
+        "source": "books/page-read-pool-state.lisp",
+        "reason": "defined in books/page-read-pool-state.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/snapshot-initial-root-host.lisp",
+        "line": 36,
+        "name": "fn-owner-page-file-unpin",
+        "source": "host/page-file-lease-host.lisp",
+        "reason": "defined in host/page-file-lease-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-host.lisp",

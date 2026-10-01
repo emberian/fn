@@ -746,12 +746,12 @@
                  (not (fn-store-retention-event-p event))
                  (not (fn-stxe-p event))
                  (not (fn-stxk-p event)))
-            (or (fn-hstxa-p event) (fn-cpe-eventp event)
-                (fn-cac-eventp event) (fn-th-topic-eventp event)))
+            (or (fn-hstxa-p event) (fn-cne-eventp event)
+                (fn-cae-eventp event) (fn-th-topic-eventp event)))
    :hints (("Goal" :in-theory (e/d (fn-store-event-p)
                                    (fn-record-p fn-held-p fn-hstxa-p fn-store-retention-event-p
                                     fn-stxe-p fn-stxk-p fn-stxa-p fn-hstxa-p
-                                    fn-cpe-eventp fn-cac-eventp fn-th-topic-eventp
+                                    fn-cne-eventp fn-cae-eventp fn-th-topic-eventp
                                     fn-record-shape-vocabulary
                                     fn-record-record-vocabulary))))))
 

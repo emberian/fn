@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2246 |
+| Books read | 2253 |
 | Certification roots in the Makefile | 2055 |
 | Books inside the root closure | 2196 |
-| `defthm` and `defthmd` events | 32600 |
-| `defun` events | 20880 |
+| `defthm` and `defthmd` events | 32616 |
+| `defun` events | 20913 |
 | Functions with verified guards | 3738 |
 | Functions declared `:verify-guards nil` and never verified | 2536 |
-| Functions left at the default with an explicit guard | 11596 |
+| Functions left at the default with an explicit guard | 11629 |
 | Functions left at the default with no guard | 3010 |
-| `assert-event` checks | 24523 |
+| `assert-event` checks | 24526 |
 | `must-fail` checks | 2519 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 166 |
@@ -27,8 +27,8 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 382 |
 | Enabled-projection warnings | 79 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2890 |
-| Host-names warnings | 2419 |
+| Include-hygiene warnings | 2891 |
+| Host-names warnings | 2484 |
 | Hand-written-record warnings | 19 |
 
 ## Lints
@@ -959,6 +959,7 @@ that `make certify` requests.
 | `books/packed-submission.lisp` | closure | 37 | 27 | 1/0/24/2 | 0 | 0 | 0 |
 | `books/page-discovery-ledger.lisp` | root | 2 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/page-file-lease.lisp` | root | 4 | 4 | 0/0/4/0 | 0 | 0 | 0 |
+| `books/page-maintenance-lease.lisp` | - | 4 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/page-read-executor.lisp` | root | 11 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/page-read-ledger.lisp` | root | 9 | 16 | 0/0/16/0 | 0 | 0 | 0 |
 | `books/page-read-ownership.lisp` | root | 12 | 11 | 0/0/11/0 | 0 | 0 | 0 |
@@ -1144,6 +1145,8 @@ that `make certify` requests.
 | `books/records-shape.lisp` | root | 72 | 58 | 42/0/16/0 | 0 | 0 | 3 |
 | `books/records-stamp.lisp` | root | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/records.lisp` | root | 21 | 12 | 8/0/4/0 | 0 | 0 | 0 |
+| `books/recovery-initial-operation-lineage.lisp` | - | 1 | 2 | 0/0/2/0 | 0 | 0 | 0 |
+| `books/recovery-open-origin.lisp` | - | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/recovery-payload-view.lisp` | - | 0 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/recovery-source-authority.lisp` | - | 0 | 8 | 0/0/8/0 | 0 | 0 | 0 |
 | `books/refusal-effect.lisp` | root | 11 | 0 | 0/0/0/0 | 0 | 0 | 3 |
@@ -1224,7 +1227,10 @@ that `make certify` requests.
 | `books/served.lisp` | root | 171 | 89 | 7/5/77/0 | 0 | 0 | 54 |
 | `books/sha256.lisp` | root | 30 | 31 | 2/0/29/0 | 0 | 0 | 0 |
 | `books/snapshot-capture-lease.lisp` | - | 4 | 4 | 0/0/4/0 | 0 | 0 | 0 |
+| `books/snapshot-initial-custody.lisp` | - | 2 | 12 | 0/0/12/0 | 0 | 0 | 0 |
+| `books/snapshot-initial-request.lisp` | - | 2 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/snapshot-segments.lisp` | root | 52 | 32 | 0/9/18/5 | 0 | 0 | 0 |
+| `books/snapshot-source-cursor.lisp` | - | 7 | 8 | 0/0/8/0 | 0 | 0 | 0 |
 | `books/snapshot-source-token.lisp` | closure | 0 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/snoc-list.lisp` | root | 30 | 14 | 2/0/12/0 | 0 | 0 | 2 |
 | `books/source-projection-bridge.lisp` | root | 23 | 3 | 0/1/1/1 | 0 | 0 | 1 |
@@ -2135,6 +2141,7 @@ that `make certify` requests.
 | `tests/acl2/records-shape-tests.lisp` | root | 1 | 4 | 0/0/0/4 | 45 | 7 | 0 |
 | `tests/acl2/records-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 38 | 11 | 0 |
 | `tests/acl2/records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
+| `tests/acl2/recovery-initial-operation-lineage-tests.lisp` | - | 0 | 0 | 0/0/0/0 | 3 | 0 | 0 |
 | `tests/acl2/refusal-effect-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 33 | 0 | 0 |
 | `tests/acl2/refusal-headroom-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 5 | 0 | 0 |
 | `tests/acl2/relay-source-routes-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 15 | 5 | 0 |
@@ -2493,8 +2500,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-bs-durable-entry-of-the-durable-state` | `books/byte-store-scan.lisp` | 1742 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-bs-durable-is-quiet` | `books/byte-store-scan.lisp` | 862 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-bs-durable-names-of-the-durable-state` | `books/byte-store-scan.lisp` | 1752 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-bs-frontier-encode-impl-unfolds` | `books/byte-store-frame.lisp` | 1190 | arm-of-definition: the hypotheses select one IF/COND arm of fn-bs-frontier-encode-impl and the conclusion is that arm's value |
-| `fn-bs-frontier-next-is-successor` | `books/byte-store-frame.lisp` | 1197 | arm-of-definition: the hypotheses select one IF/COND arm of fn-bs-frontier-next and the conclusion is that arm's value |
+| `fn-bs-frontier-encode-impl-unfolds` | `books/byte-store-frame.lisp` | 1198 | arm-of-definition: the hypotheses select one IF/COND arm of fn-bs-frontier-encode-impl and the conclusion is that arm's value |
+| `fn-bs-frontier-next-is-successor` | `books/byte-store-frame.lisp` | 1205 | arm-of-definition: the hypotheses select one IF/COND arm of fn-bs-frontier-next and the conclusion is that arm's value |
 | `fn-bs-held-wire-sequence` | `books/byte-store-scan.lisp` | 476 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-bs-inodes-of-fn-bs-make` | `books/byte-store.lisp` | 85 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-bs-k0-durable-projections-ignore-pending` | `books/byte-store-k0-staging.lisp` | 325 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
