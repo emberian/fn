@@ -2355,8 +2355,10 @@
           ; longer shows, withdrawn at the count with this row as the cause,
           ; THEN the row completed by the completing record's token -- hidden
           ; when the view no longer shows its Message-ID (R1).
-          (let ((state (fn-orc-writer-enter state))
-                (view (fn-own-view (cdr result))))
+          ; The view of the state before the writer enters (a single
+          ; stobj binding per LET: the ld world refuses a parallel one).
+          (let* ((view (fn-own-view (cdr result)))
+                 (state (fn-orc-writer-enter state)))
             (mv-let (word pending2 fn-cat)
               (fn-sca-finish (cons (nfix (cdr completion)) (fn-pc-expected pending))
                              pending (fn-own-view-index view)
@@ -2403,8 +2405,10 @@
       (let ((pending (f-get-global 'fn-owner-cat-pending state)))
         (if (not (and (equal word :durable) pending (consp completion)))
             (mv nil word fn-cat fn-hist state)
-          (let ((state (fn-orc-writer-enter state))
-                (view (fn-own-view (fn-owner-core state))))
+          ; The view of the state before the writer enters (a single
+          ; stobj binding per LET: the ld world refuses a parallel one).
+          (let* ((view (fn-own-view (fn-owner-core state)))
+                 (state (fn-orc-writer-enter state)))
             (mv-let (cword pending2 fn-cat)
               (fn-sca-finish (cons (nfix (cdr completion)) (fn-pc-expected pending))
                              pending (fn-own-view-index view)

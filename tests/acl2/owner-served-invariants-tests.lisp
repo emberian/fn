@@ -218,7 +218,8 @@
     (fn-own-sub-make 4 (fn-own-sub-version sub) (fn-own-sub-mark sub)
                      (fn-peer-make-submission
                       "p" :ihave *own-transit-msgid*
-                      (own-transit-octets "peer.example!x")))))
+                      (own-transit-octets "peer.example!x"))
+                     (fn-own-sub-source-context sub))))
 (defconst *osi-transit-stored*
   (fn-own-sub-stored-octets *osi-cfg* *osi-transit-sub* nil))
 (defconst *osi-transit-received* (fn-own-sub-octets *osi-transit-sub*))
