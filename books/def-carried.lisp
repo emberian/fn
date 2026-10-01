@@ -11,7 +11,8 @@
 ;
 ;   (def-carried NAME
 ;     :invariant R                    ; a function of one formal, the state
-;     :established ((FN THM [:hyps (H ...)] [:state I] [:result P]) ...)
+;     :established ((FN THM [:hyps (H ...)] [:state I] [:result P]
+;                       [:ok OK :witness (T ...)]) ...)
 ;     :transitions ((FN THM [:hyps (H ...)] [:state I] [:result P]) | FN ...)
 ;     [:concludes ((PRED THM) ...)]   ; bridges to the entry guards
 ;     [:complete-by (:enumeration "why")]   ; a value state only
@@ -30,20 +31,27 @@
 ;                        refuses establishes nothing on its refusal arm; the
 ;                        word is the open's own answer, which the host
 ;                        branches on, never a premise about its input, so
-;                        such a row still backs raw dispatch.  A provably
-;                        never-true OK is refused (the vacuity probe, with
-;                        FN open); :ok on a transition is refused (one that
-;                        refuses and leaves the state preserves R already).
-;                        NOT LANDED (deputy2/def-carried-ok, H1 OPEN): the
-;                        probe is an event, not a world fact, so a
-;                        hand-written `table fn-carried' row with a
-;                        never-true OK regenerates a trivially provable
-;                        establishment and fn-cd-raw-problem would accept
-;                        it.  Close it before landing: a declared ground
-;                        :witness per :ok open, from which def-carried
-;                        generates and proves NAME-FN-reaches, the witness
-;                        instance of (and G OK), and fn-cd-raw-problem
-;                        demands that theorem by the same exact-formula rule.
+;                        such a row still backs raw dispatch.  :ok on a
+;                        transition is refused (one that refuses and leaves
+;                        the state preserves R already).
+;   NAME-FN-reaches      (and G H... OK) at a declared :witness    per :ok open
+;                        :witness (T1 ... Tn), one term per formal of FN
+;                        (stobj formals included, as terms over their
+;                        logical values), and the statement is G, the Hs
+;                        and OK with each formal replaced by its Ti.  A
+;                        theorem, so some instance of FN's arguments meets
+;                        the guard and the open answers success there: OK
+;                        is not never-true, and the conditional
+;                        establishment is not vacuous.  (A Ti may mention
+;                        variables; the theorem then holds at every
+;                        instance, in particular a ground one.)  The
+;                        reachability is a WORLD FACT, not a probe: the row
+;                        records :witness and :reaches, and fn-cd-problem
+;                        regenerates the statement and demands the theorem
+;                        by the exact-formula rule, so a hand-written
+;                        `table fn-carried' row with a never-true OK has no
+;                        provable reaches theorem and backs no raw dispatch
+;                        (hole H1, deputy2/def-carried-ok).
 ;   NAME-PRED-bridge     (implies (R x) (and C...))             per bridge
 ;
 ; where the Cs are every conjunct of a listed transition's guard that
@@ -75,7 +83,7 @@
 ;
 ; Emits the row (table fn-carried NAME '(:invariant R :state ST|nil
 ; :established ((FN THM :name NAME-FN-establishes :hyps (H...)
-; [:state I :result P]) ...) :transitions (... :name NAME-FN-carries ...)
+; [:ok OK :witness (T...) :reaches NAME-FN-reaches] [:state I :result P]) ...) :transitions (... :name NAME-FN-carries ...)
 ; :concludes ((PRED THM :name NAME-PRED-bridge) ...) :complete-by ...
 ; :trace t|nil)), the generated theorems, and unless :trace nil the trace:
 ; NAME-step/-okp/-run/-run-okp (defun-nx; okp is G and the Hs at the event)
@@ -141,7 +149,7 @@
 (defconst *fn-cd-keys*
   '(:invariant :established :transitions :concludes :complete-by :trace))
 
-(defconst *fn-cd-entry-keys* '(:hyps :state :result :ok))
+(defconst *fn-cd-entry-keys* '(:hyps :state :result :ok :witness))
 
 (defconst *fn-cd-vacuity-steps* 50000)
 
@@ -163,7 +171,8 @@
        (symbolp (car x)) (car x) (symbolp (cadr x)) (cadr x)
        (keyword-value-listp (cddr x))
        (null (fn-cd-unknown-keys (cddr x) *fn-cd-entry-keys*))
-       (true-listp (fn-cd-get :hyps (cddr x)))))
+       (true-listp (fn-cd-get :hyps (cddr x)))
+       (true-listp (fn-cd-get :witness (cddr x)))))
 
 (defun fn-cd-entriesp (x bare-ok)
   (declare (xargs :mode :program))
@@ -315,27 +324,50 @@
                 refuses and leaves the state as it was preserves the ~
                 invariant already, so drop :ok" fn)
           nil))
+     ((and (assoc-keyword :ok opts) (not (assoc-keyword :witness opts)))
+      (mv (msg "~x0 declares :ok but no :witness: name arguments (one term ~
+                per formal ~x1) at which the guard holds and the open ~
+                answers success, so that its establishment is not vacuous"
+               fn (getpropc fn 'formals nil w))
+          nil))
+     ((and (assoc-keyword :witness opts) (not (assoc-keyword :ok opts)))
+      (mv (msg "~x0 declares :witness but no :ok: a witness is the reachable ~
+                success of an open that can refuse" fn)
+          nil))
+     ((and (assoc-keyword :witness opts)
+           (not (equal (len (fn-cd-get :witness opts))
+                       (len (getpropc fn 'formals nil w)))))
+      (mv (msg "~x0's :witness ~x1 is not one term per formal ~x2"
+               fn (fn-cd-get :witness opts) (getpropc fn 'formals nil w))
+          nil))
      (t (mv-let (bad terms)
           (fn-cd-translate-list (list* result
                                        (if (assoc-keyword :ok opts) (fn-cd-get :ok opts) t)
                                        (fn-cd-get :hyps opts))
                                 w)
-          (cond
-           (bad
-            (mv (msg "~x0: ~x1 does not translate in this world" fn (car bad))
-                nil))
-           ((and (assoc-keyword :ok opts) (not (equal (all-vars (cadr terms)) '(_))))
-            (mv (msg "~x0's :ok ~x1 is not a term over `_' (the call) alone"
-                     fn (fn-cd-get :ok opts))
-                nil))
-           (t
-            (mv nil (list* fn (cadr entry)
-                           :name (packn-pos (list name '- fn suffix) name)
-                           :hyps (cddr terms)
-                           (append (and (assoc-keyword :ok opts) (list :ok (cadr terms)))
-                                   (if st nil
-                             (list :state (fn-cd-get :state opts)
-                                   :result (car terms)))))))))))))
+          (mv-let (badw witness)
+            (fn-cd-translate-list (fn-cd-get :witness opts) w)
+            (cond
+             ((or bad badw)
+              (mv (msg "~x0: ~x1 does not translate in this world" fn
+                       (car (or bad badw)))
+                  nil))
+             ((and (assoc-keyword :ok opts) (not (equal (all-vars (cadr terms)) '(_))))
+              (mv (msg "~x0's :ok ~x1 is not a term over `_' (the call) alone"
+                       fn (fn-cd-get :ok opts))
+                  nil))
+             (t
+              (mv nil (list* fn (cadr entry)
+                             :name (packn-pos (list name '- fn suffix) name)
+                             :hyps (cddr terms)
+                             (append (and (assoc-keyword :ok opts)
+                                          (list :ok (cadr terms)
+                                                :witness witness
+                                                :reaches (packn-pos (list name '- fn '-reaches)
+                                                                    name)))
+                                     (if st nil
+                                       (list :state (fn-cd-get :state opts)
+                                             :result (car terms))))))))))))))
 
 (defun fn-cd-parts (st entry w)
   (declare (xargs :mode :program))
@@ -416,6 +448,30 @@
                              (list 'implies (fn-cd-conj hyps) conclusion)
                            conclusion))))))))
 
+(defun fn-cd-reaches-statement (st entry w)
+  (declare (xargs :mode :program))
+  ; (mv MSG STATEMENT) for a normalized establishing ENTRY declaring :ok: FN's
+  ; guard, its :hyps and its :ok, each formal replaced by its :witness term;
+  ; (mv nil nil) when ENTRY declares no :ok
+  (let* ((fn (car entry))
+         (opts (cddr entry))
+         (ok (fn-cd-ok-term entry w))
+         (formals (getpropc fn 'formals nil w))
+         (witness (fn-cd-get :witness opts)))
+    (cond
+     ((null ok) (mv nil nil))
+     ((not (and (true-listp witness) (equal (len witness) (len formals))))
+      (mv (msg "~x0 declares :ok but its :witness ~x1 is not one term per ~
+                formal ~x2: its success is not shown reachable" fn witness formals)
+          nil))
+     (t (mv-let (msg s ret hyps)
+          (fn-cd-parts st entry w)
+          (declare (ignore s ret))
+          (if msg
+              (mv msg nil)
+            (mv nil (fn-cd-subst (fn-cd-conj (append hyps (list ok)))
+                                 (pairlis$ formals witness)))))))))
+
 (defun fn-cd-pred-conjuncts (pred terms s)
   (declare (xargs :mode :program))
   ; the TERMS applying PRED with S their only variable
@@ -466,10 +522,17 @@
       nil
     (mv-let (msg statement)
       (fn-cd-statement kind r st (car entries) w)
-      (or msg
-          (and generatedp
-               (fn-cd-generated-problem (fn-cd-get :name (cddar entries)) statement w))
-          (fn-cd-entries-problem kind r st (cdr entries) generatedp w)))))
+      (mv-let (rmsg reaches)
+        (if (eq kind :establishes)
+            (fn-cd-reaches-statement st (car entries) w)
+          (mv nil nil))
+        (or msg
+            rmsg
+            (and generatedp
+                 (fn-cd-generated-problem (fn-cd-get :name (cddar entries)) statement w))
+            (and generatedp reaches
+                 (fn-cd-generated-problem (fn-cd-get :reaches (cddar entries)) reaches w))
+            (fn-cd-entries-problem kind r st (cdr entries) generatedp w))))))
 
 (defun fn-cd-bridges-problem (r st bridges transitions generatedp w)
   (declare (xargs :mode :program))
@@ -619,11 +682,22 @@
     (mv-let (msg statement)
       (fn-cd-statement kind r st (car entries) w)
       (declare (ignore msg))
-      (cons `(defthm ,(fn-cd-get :name (cddar entries)) ,statement
-               :hints (("Goal" :use ,(cadar entries)
-                        :in-theory (theory 'minimal-theory)))
-               :rule-classes ,rule)
-            (fn-cd-defthms kind r st (cdr entries) rule w)))))
+      (mv-let (rmsg reaches)
+        (if (eq kind :establishes)
+            (fn-cd-reaches-statement st (car entries) w)
+          (mv nil nil))
+        (declare (ignore rmsg))
+        (append
+         ; the open's success, reached at its witness: proved in the
+         ; current theory (a ground witness evaluates)
+         (and reaches
+              `((defthm ,(fn-cd-get :reaches (cddar entries)) ,reaches
+                  :rule-classes nil)))
+         (cons `(defthm ,(fn-cd-get :name (cddar entries)) ,statement
+                  :hints (("Goal" :use ,(cadar entries)
+                           :in-theory (theory 'minimal-theory)))
+                  :rule-classes ,rule)
+               (fn-cd-defthms kind r st (cdr entries) rule w)))))))
 
 (defun fn-cd-bridge-defthms (r st bridges transitions w)
   (declare (xargs :mode :program))
@@ -658,8 +732,9 @@
     (mv-let (msg s ret hyps)
       (fn-cd-parts st (car entries) w)
       (declare (ignore msg ret))
-      (let ((hyps (if (eq kind :carries) (cons (list r s) hyps) hyps))
-            (ok (and (eq kind :establishes) (fn-cd-ok-term (car entries) w))))
+      (let ((hyps (if (eq kind :carries) (cons (list r s) hyps) hyps)))
+        ; an :ok open's success is shown reachable by its generated
+        ; NAME-FN-reaches theorem (fn-cd-defthms), a world fact
         (append
          (and hyps
               `((local (fn-cd-nonvacuous
@@ -668,15 +743,6 @@
                            "establishing hypotheses are provably contradictory")
                         (not ,(fn-cd-conj hyps))
                         (("Goal" :in-theory (theory 'minimal-theory)))))))
-         ; the success word must be reachable: with the open's definition
-         ; alone, its :ok is not provably never true under the hypotheses
-         (and ok
-              `((local (fn-cd-nonvacuous
-                        "the establishing point's :ok is provably never true"
-                        (not ,(fn-cd-conj (append hyps (list ok))))
-                        (("Goal" :in-theory (union-theories
-                                             '(,(caar entries) mv-nth car-cons cdr-cons)
-                                             (theory 'minimal-theory))))))))
          (fn-cd-vacuity-events kind r st (cdr entries) w))))))
 
 (defun fn-cd-arg-alist (formals s i)
