@@ -19,7 +19,7 @@ stale. Counts describe artifacts, not coverage; see
 | Functions declared `:verify-guards nil` and never verified | 2865 |
 | Functions left at the default with an explicit guard | 12687 |
 | Functions left at the default with no guard | 3311 |
-| `assert-event` checks | 25431 |
+| `assert-event` checks | 25435 |
 | `must-fail` checks | 2564 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 193 |
@@ -1738,7 +1738,7 @@ that `make certify` requests.
 | `tests/acl2/account-adoption-turn-return-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `tests/acl2/account-adoption-turn-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 7 | 0 | 0 |
 | `tests/acl2/account-list-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 20 | 0 | 0 |
-| `tests/acl2/account-redeem-count-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 1 | 0 |
+| `tests/acl2/account-redeem-count-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 21 | 1 | 0 |
 | `tests/acl2/accounts-snapshot-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 26 | 7 | 0 |
 | `tests/acl2/accounts-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 116 | 17 | 0 |
 | `tests/acl2/accounts-wire-tests.lisp` | root | 11 | 5 | 0/1/0/4 | 31 | 0 | 0 |

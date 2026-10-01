@@ -57,9 +57,32 @@
        (fn-acct-redeem-plan (arct-v4) *arct-stamp* *arct-code-2* *arct-login-2*
                             *arct-password* *arct-salt* takenp))))
 
-;; fn-arc-redeem-refuses-exactly-past-the-operator-bound, REACHABLE positive:
-;; the live value holds three account rows, and only the redeemed one is a
+;; fn-arc-redeem-refuses-exactly-past-the-operator-bound, ADMITTED positive
+;; (each delta below is one fn-cfg-delta-reason admits at its generation;
+;; applied by fn-cfg-apply-delta, the replay's step, not published and
+;; replayed; the first redemption comes from the unbounded plan): the live
+;; value holds three account rows, and only the redeemed one is a
 ;; credential: the pending invitation and the binding are not counted.
+;; Every delta the value is built from is admitted where it is applied.
+(assert-event (null (fn-cfg-delta-reason (fn-cfg-empty-value) 1 *arct-stamp* 0 0
+                                         (fn-cfg-account-invite
+                                          (fn-acct-code-digest-text *arct-code*)
+                                          "operator" "2000000000"))))
+(assert-event (null (fn-cfg-delta-reason (arct-v1) 2 *arct-stamp* 0 0
+                                         (fn-acct-plan-delta
+                                          (fn-acct-redeem-plan (arct-v1) *arct-stamp*
+                                                               *arct-code* *arct-login*
+                                                               *arct-password* *arct-salt*
+                                                               nil)))))
+(assert-event (null (fn-cfg-delta-reason (arct-v2) 3 *arct-stamp* 0 0
+                                         (fn-cfg-account-invite
+                                          (fn-acct-code-digest-text *arct-code-2*)
+                                          "operator" "2000000000"))))
+(assert-event (null (fn-cfg-delta-reason
+                     (arct-v3) 4 *arct-stamp* 0 0
+                     (fn-cfg-login-binding
+                      "robin"
+                      "0000000000000000000000000000000000000000000000000000000000000000"))))
 (assert-event (fn-auth-configp *arct-auth*))
 (assert-event (equal (len (fn-cfg-accounts (arct-v4))) 3))
 (assert-event (equal (len (fn-arc-creds *arct-auth* (arct-v4))) 1))

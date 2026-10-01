@@ -2,7 +2,7 @@
 ; build/coordinator/COMPLETE-BEFORE-6.6.0.md).
 ;
 ; The served registration is fn-cp-register-within under MAX, the opened
-; Store profile's field 9 (fn-bs-profile-max-consumers; host/owner-host.lisp
+; Store profile's field 8 (fn-bs-profile-max-consumers; host/owner-host.lisp
 ; fn-owner-consumer-local-register reads it through host/store-host.lisp
 ; fn-store-profile-max-consumers).  The committed consumer events are
 ; interpreted by one fold, fn-cpe-projection-replay
@@ -15,8 +15,8 @@
 ;
 ; KEYSTONE fn-crb-replay-keeps-the-consumer-bound: when every :register the
 ; replay applies is one the served admission would write under the opened
-; profile's field 9 in the state the replay has reached, the replayed table
-; (fn-cp-nth 5) holds at most field 9 entries.  Every other operation (ack,
+; profile's field 8 in the state the replay has reached, the replayed table
+; (fn-cp-nth 5) holds at most field 8 entries.  Every other operation (ack,
 ; rebase, unregister, rollover, bootstrap, a non-consumer record) leaves the
 ; table no larger (fn-cp-apply-preserves-consumer-capacity, PRF-167).
 ;

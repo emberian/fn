@@ -17,7 +17,7 @@
 ; KEYSTONE fn-arc-redeem-refuses-exactly-past-the-operator-bound: where the
 ; unbounded plan redeems, fn-arc-redeem-plan redeems exactly when auth.toml's
 ; credentials plus the redeemed accounts number fewer than BOUND (the store
-; profile's max-credentials, field 12), and otherwise refuses with
+; profile's max-credentials, field 11), and otherwise refuses with
 ; :account-credential-bound.  A plan that does not redeem is unchanged.
 (in-package "ACL2")
 (include-book "accounts")
