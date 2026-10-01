@@ -1013,6 +1013,240 @@
                 "is for an establishing point")
 
 ;
+; 3c. A premise discharged by a NAMED PRODUCER under NAMED ASSUMPTIONS.
+; fn-cdt-open-from establishes R only for a positive X, which its guard does
+; not say.  The host never hands it an arbitrary X: every caller passes
+; (fn-cdt-make-from K), and the producer's output is positive whenever K
+; satisfies the named assumption fn-assume-cdt-good (an encapsulate, local
+; witness).  The entry declares :hyps ((< 0 x)) and :produced
+; ((fn-cdt-make-from THM :assuming ((fn-assume-cdt-good k)))); def-carried
+; generates NAME-fn-cdt-open-from-fn-cdt-make-from-produced,
+; (implies (fn-assume-cdt-good k) (< 0 (fn-cdt-make-from k))), and D40
+; accepts the row when FN is no host entry and every caller in the world
+; passes a producer's call at x.
+(encapsulate
+  (((fn-assume-cdt-good *) => *))
+  (local (defun fn-assume-cdt-good (k) (natp k)))
+  (defthm fn-assume-cdt-good-is-natural
+    (implies (fn-assume-cdt-good k) (natp k))
+    :rule-classes nil))
+(defun fn-cdt-make-from (k)
+  (declare (xargs :guard t))
+  (if (natp k) (+ 1 k) 0))
+(defun fn-cdt-open-from (x fn-cdt-st)
+  (declare (xargs :stobjs fn-cdt-st :guard (integerp x)))
+  (update-fn-cdt-n x fn-cdt-st))
+(defthm fn-cdt-open-from-establishes
+  (implies (< 0 x) (fn-cdt-relp (fn-cdt-open-from x fn-cdt-st))))
+(defthm fn-cdt-make-from-positive
+  (implies (fn-assume-cdt-good k) (< 0 (fn-cdt-make-from k)))
+  :hints (("Goal" :use fn-assume-cdt-good-is-natural)))
+; the host's caller: the producer's call, literally, at x
+(defun fn-cdt-host-open-from (k fn-cdt-st)
+  (declare (xargs :stobjs fn-cdt-st :mode :program))
+  (fn-cdt-open-from (fn-cdt-make-from k) fn-cdt-st))
+(def-carried fn-cdt-produced-carried
+  :invariant fn-cdt-relp
+  :established ((fn-cdt-open fn-cdt-open-establishes)
+                (fn-cdt-open-from fn-cdt-open-from-establishes
+                                      :hyps ((< 0 x))
+                                      :produced ((fn-cdt-make-from fn-cdt-make-from-positive
+                                                  :assuming ((fn-assume-cdt-good k))))))
+  :transitions ((fn-cdt-bump fn-cdt-bump-carries)
+                (fn-cdt-note fn-cdt-note-carries)
+                (fn-cdt-reset fn-cdt-reset-carries))
+  :concludes ((fn-cdt-nonzerop fn-cdt-relp-nonzero))
+  :trace nil)
+(assert-event
+ (equal (getpropc 'fn-cdt-produced-carried-fn-cdt-open-from-fn-cdt-make-from-produced
+                  'theorem nil (w state))
+        '(implies (fn-assume-cdt-good k) (< '0 (fn-cdt-make-from k)))))
+(assert-event
+ (equal (getpropc 'fn-cdt-produced-carried-fn-cdt-open-from-establishes 'theorem nil (w state))
+        '(implies (if (if (fn-cdt-stp fn-cdt-st) (integerp x) 'nil) (< '0 x) 'nil)
+                  (fn-cdt-relp (fn-cdt-open-from x fn-cdt-st)))))
+; the produced premise backs raw dispatch: no other caller in this world
+(assert-event (null (fn-cd-raw-problem 'fn-cdt-produced-carried 'fn-cdt-bump (w state))))
+; reachable, complete antecedent and conclusion: a K the assumption's
+; witness admits (3), the producer's output (4) positive, the open's guard,
+; and R after the open on the live stobj; and removal: an unproduced 0
+; leaves R false
+(defun fn-cdt-witness-open-from ()
+  (declare (xargs :guard t))
+  (with-local-stobj fn-cdt-st
+    (mv-let (ok fn-cdt-st)
+      (let* ((x (fn-cdt-make-from 3))
+             (fn-cdt-st (fn-cdt-open-from 0 fn-cdt-st))
+             (bad (not (fn-cdt-relp fn-cdt-st)))
+             (fn-cdt-st (fn-cdt-open-from x fn-cdt-st)))
+        (mv (and bad (natp 3) (equal x 4) (< 0 x) (integerp x) (fn-cdt-relp fn-cdt-st))
+            fn-cdt-st))
+      ok)))
+(assert-event (fn-cdt-witness-open-from)
+              :msg "fn-cdt-produced-carried: produced witness")
+
+(mutual-recursion
+ (defun fn-cdt-msg-has (m phrase)
+   (declare (xargs :mode :program))
+   ; PHRASE in the msg M or any msg among its arguments
+   (and (consp m)
+        (or (and (stringp (car m)) (search phrase (car m)) t)
+            (and (alistp (cdr m))
+                 (fn-cdt-msg-has-lst (strip-cdrs (cdr m)) phrase)))))
+ (defun fn-cdt-msg-has-lst (ms phrase)
+   (declare (xargs :mode :program))
+   (and (consp ms)
+        (or (fn-cdt-msg-has (car ms) phrase) (fn-cdt-msg-has-lst (cdr ms) phrase)))))
+
+; r17 (b): each refused by name.
+; :produced on a transition
+(fn-cdt-refused fn-cdt-p-x (:invariant fn-cdt-relp
+                       :established ((fn-cdt-open fn-cdt-open-establishes)
+                                     (fn-cdt-open-from fn-cdt-open-from-establishes
+                                      :hyps ((< 0 x))
+                                      :produced ((fn-cdt-make-from fn-cdt-make-from-positive
+                                                  :assuming ((fn-assume-cdt-good k))))))
+                       :transitions ((fn-cdt-bump fn-cdt-bump-carries :hyps ((natp n)) :produced ((fn-cdt-make-from fn-cdt-make-from-positive)))
+                                     (fn-cdt-note fn-cdt-note-carries)
+                                     (fn-cdt-reset fn-cdt-reset-carries))
+                       :trace nil)
+                ":produced is for an establishing point")
+; :produced with nothing to discharge
+(fn-cdt-refused fn-cdt-p-x (:invariant fn-cdt-relp
+                       :established ((fn-cdt-open fn-cdt-open-establishes)
+                                     (fn-cdt-open-from fn-cdt-open-from-establishes
+                                      :produced ((fn-cdt-make-from fn-cdt-make-from-positive))))
+                       :transitions ((fn-cdt-bump fn-cdt-bump-carries)
+                                     (fn-cdt-note fn-cdt-note-carries)
+                                     (fn-cdt-reset fn-cdt-reset-carries))
+                       :trace nil)
+                "declares :produced but no :hyps")
+; premises over two formals: a producer produces one argument
+(fn-cdt-refused fn-cdt-p-x (:invariant fn-cdt-relp
+                       :established ((fn-cdt-open fn-cdt-open-establishes)
+                                     (fn-cdt-open-from fn-cdt-open-from-establishes
+                                      :hyps ((< 0 x) (fn-cdt-relp fn-cdt-st))
+                                      :produced ((fn-cdt-make-from fn-cdt-make-from-positive))))
+                       :transitions ((fn-cdt-bump fn-cdt-bump-carries)
+                                     (fn-cdt-note fn-cdt-note-carries)
+                                     (fn-cdt-reset fn-cdt-reset-carries))
+                       :trace nil)
+                "do not mention exactly one formal")
+; an :assuming that is an ordinary predicate, and a DEFUN named fn-assume-
+(fn-cdt-refused fn-cdt-p-x (:invariant fn-cdt-relp
+                       :established ((fn-cdt-open fn-cdt-open-establishes)
+                                     (fn-cdt-open-from fn-cdt-open-from-establishes
+                                      :hyps ((< 0 x))
+                                      :produced ((fn-cdt-make-from fn-cdt-make-from-positive
+                                                  :assuming ((natp k))))))
+                       :transitions ((fn-cdt-bump fn-cdt-bump-carries)
+                                     (fn-cdt-note fn-cdt-note-carries)
+                                     (fn-cdt-reset fn-cdt-reset-carries))
+                       :trace nil)
+                "is not a named assumption")
+(defun fn-assume-cdt-fake (k) (declare (xargs :guard t)) (natp k))
+(fn-cdt-refused fn-cdt-p-x (:invariant fn-cdt-relp
+                       :established ((fn-cdt-open fn-cdt-open-establishes)
+                                     (fn-cdt-open-from fn-cdt-open-from-establishes
+                                      :hyps ((< 0 x))
+                                      :produced ((fn-cdt-make-from fn-cdt-make-from-positive
+                                                  :assuming ((fn-assume-cdt-fake k))))))
+                       :transitions ((fn-cdt-bump fn-cdt-bump-carries)
+                                     (fn-cdt-note fn-cdt-note-carries)
+                                     (fn-cdt-reset fn-cdt-reset-carries))
+                       :trace nil)
+                "is not a named assumption")
+; no assumption: the generated produced statement is false (k = -1), and
+; THM proves only the assumed form
+(fn-cdt-refused fn-cdt-p-x (:invariant fn-cdt-relp
+                       :established ((fn-cdt-open fn-cdt-open-establishes)
+                                     (fn-cdt-open-from fn-cdt-open-from-establishes
+                                      :hyps ((< 0 x))
+                                      :produced ((fn-cdt-make-from fn-cdt-make-from-positive))))
+                       :transitions ((fn-cdt-bump fn-cdt-bump-carries)
+                                     (fn-cdt-note fn-cdt-note-carries)
+                                     (fn-cdt-reset fn-cdt-reset-carries))
+                       :trace nil)
+                fn-cdt-p-x-fn-cdt-open-from-fn-cdt-make-from-produced)
+; a producer that does not produce the premise (identity): its statement is
+; false, whatever THM says
+(defun fn-cdt-make-any (k) (declare (xargs :guard t)) k)
+(fn-cdt-refused fn-cdt-p-x (:invariant fn-cdt-relp
+                       :established ((fn-cdt-open fn-cdt-open-establishes)
+                                     (fn-cdt-open-from fn-cdt-open-from-establishes
+                                      :hyps ((< 0 x))
+                                      :produced ((fn-cdt-make-any fn-cdt-make-from-positive
+                                                  :assuming ((fn-assume-cdt-good k))))))
+                       :transitions ((fn-cdt-bump fn-cdt-bump-carries)
+                                     (fn-cdt-note fn-cdt-note-carries)
+                                     (fn-cdt-reset fn-cdt-reset-carries))
+                       :trace nil)
+                fn-cdt-p-x-fn-cdt-open-from-fn-cdt-make-any-produced)
+; A PRODUCER THAT IS NOT THE HOST'S: a caller in the world hands the open
+; its own k.  The row stays admitted (its theorems are true) but backs no raw
+; dispatch while that caller exists.
+(encapsulate ()
+ (local
+  (defun fn-cdt-host-open-raw (k fn-cdt-st)
+    (declare (xargs :stobjs fn-cdt-st :mode :program))
+    (fn-cdt-open-from k fn-cdt-st)))
+ (local
+  (assert-event
+   (fn-cdt-msg-has (fn-cd-raw-problem 'fn-cdt-produced-carried 'fn-cdt-bump (w state))
+                   "which is not a call of a declared")))
+ (local
+  (must-fail-checked
+   (definterface fn-cdt-bump :class :common-lisp-compliant :kinds ((n natp))
+     :raw-with (:carried fn-cdt-produced-carried))
+   :unchecked "fn-cdt-host-open-raw passes an unproduced argument")))
+; ... nor through a let-binding (the check is syntactic)
+(encapsulate ()
+ (local
+  (defun fn-cdt-host-open-let (k fn-cdt-st)
+    (declare (xargs :stobjs fn-cdt-st :mode :program))
+    (let ((x (fn-cdt-make-from k))) (fn-cdt-open-from x fn-cdt-st))))
+ (local
+  (assert-event
+   (fn-cdt-msg-has (fn-cd-raw-problem 'fn-cdt-produced-carried 'fn-cdt-bump (w state))
+                   "which is not a call of a declared"))))
+; the open itself a host entry: the host may hand it any x
+(encapsulate ()
+ (local (definterface fn-cdt-open-from :class :common-lisp-compliant :kinds ((x integerp))))
+ (local
+  (assert-event
+   (fn-cdt-msg-has (fn-cd-raw-problem 'fn-cdt-produced-carried 'fn-cdt-bump (w state))
+                   "is a host-called entry"))))
+; a forged row naming a true theorem about another producer as the
+; generated produced name
+(encapsulate ()
+ (local
+  (defthm fn-cdt-forged-produced
+    (implies (fn-assume-cdt-good k) (< '0 (+ 1 k)))
+    :hints (("Goal" :use fn-assume-cdt-good-is-natural))
+    :rule-classes nil))
+ (local
+  (table fn-carried 'fn-cdt-p-forged
+         '(:invariant fn-cdt-relp :state fn-cdt-st
+           :established ((fn-cdt-open fn-cdt-open-establishes
+                                      :name fn-cdt-carried-fn-cdt-open-establishes :hyps nil)
+                         (fn-cdt-open-from fn-cdt-open-from-establishes
+                                           :name fn-cdt-produced-carried-fn-cdt-open-from-establishes
+                                           :hyps ((< '0 x))
+                                           :produced ((fn-cdt-make-any fn-cdt-make-from-positive
+                                                       :assuming ((fn-assume-cdt-good k))
+                                                       :name fn-cdt-forged-produced))))
+           :transitions ((fn-cdt-bump fn-cdt-bump-carries
+                                      :name fn-cdt-carried-fn-cdt-bump-carries :hyps nil)
+                         (fn-cdt-note fn-cdt-note-carries
+                                      :name fn-cdt-carried-fn-cdt-note-carries :hyps nil)
+                         (fn-cdt-reset fn-cdt-reset-carries
+                                       :name fn-cdt-carried-fn-cdt-reset-carries :hyps nil))
+           :concludes nil :complete-by nil :trace nil)))
+ (local
+  (assert-event
+   (fn-cdt-msg-has (fn-cd-raw-problem 'fn-cdt-p-forged 'fn-cdt-bump (w state))
+                   "is not the generated statement in this world"))))
+;
 ; H1 (deputy-2): a HAND-WRITTEN row with a never-true :ok.  Its conditional
 ; establishment is trivially true, so a forger proves it under the generated
 ; name; before NAME-FN-reaches the row passed fn-cd-raw-problem.  Now the
