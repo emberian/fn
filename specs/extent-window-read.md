@@ -390,3 +390,26 @@ states. No executable whole-source revalidation was added. Native source/view/
 private-buffer custody, general canonical scheduling and total runtime funding
 remain open; native compressed execution remains refused.
 See `planning/evidence/decoded-window-digest-trajectory-source-2026-09-30.md`.
+
+### Registered decoded source and terminal charge carry
+
+The source-only `FN-DWC-ONE` boundary carries the actual returned controller,
+input, digest, codec registers, ring, table, scratch and selected output window.
+Its digest carry remains about the exact captured source; READ completion needs
+the actual source-slice equality, not a supplied semantic decoder result. The
+selected-cell theorem carries the full produced position and prior output cell.
+No root-list shape alone proves captured-view/authorized-handle authority.
+
+The actual stored loop can complete with `(:refused :stream-ended)`. This is
+the existing stored decision's decoded terminal result. The terminal budget
+composition includes that status: incoming charged carry bounds total consumed
+STEP budget by `9*TIN + 2*TOUT + 257` after the actual stored chunk. With the
+actual controller's input/output carry, decoded completion therefore retains at
+least `3839 + 7*C` STEP budget units, where C is compressed length. This is
+logical scheduling fuel, not native work or allocation funding. The same bound
+passes through the current token/owned/no-pending codec branch of `FN-DWC-ONE`.
+
+The native decoded path remains dormant. Installed captured-source authority,
+exact private-child custody/lifetime, complete runtime allowance and arbitrary
+canonical controller iteration remain required. See the controller/terminal
+source evidence packet; no component admission closes PRF-1131.

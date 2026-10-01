@@ -1160,6 +1160,8 @@
     "tests/acl2/decoded-window-input-trajectory-tests",
     "tests/acl2/decoded-window-selected-trajectory-tests",
     "tests/acl2/decoded-window-digest-trajectory-tests",
+    "tests/acl2/decoded-worker-controller-trajectory-tests",
+    "tests/acl2/decoded-window-terminal-budget-tests",
     "tests/acl2/records-freeze-tests",
     "tests/acl2/catalog-record-tests",
     "tests/acl2/catalog-tests",
@@ -1830,26 +1832,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1916,
-    "books_in_root_closure": 1908,
-    "roots": 1826,
-    "theorems": 30293,
-    "functions": 19107,
+    "books": 1922,
+    "books_in_root_closure": 1912,
+    "roots": 1828,
+    "theorems": 30322,
+    "functions": 19129,
     "assert_events": 23990,
     "must_fails": 2516,
     "prover_refusals": 0,
     "encapsulates": 169,
     "guards": {
-      "verified": 3513,
+      "verified": 3519,
       "declared-off": 2282,
-      "default-guarded": 10410,
-      "default-unguarded": 2902
+      "default-guarded": 10414,
+      "default-unguarded": 2914
     },
     "suspect_theorems": 1252,
     "export_hygiene_warnings": 340,
     "enabled_projection_warnings": 53,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2587,
+    "include_hygiene_warnings": 2595,
     "host_names_warnings": 2199,
     "hand_written_record_warnings": 18
   },
@@ -11595,6 +11597,89 @@
       "system_includes": [
         "arithmetic-5/top"
       ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/decoded-window-terminal-budget.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 10,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "decoded-worker-controller-trajectory"
+      ],
+      "system_includes": [
+        "arithmetic-5/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/decoded-worker-controller-trajectory.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 6,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "decoded-window-budget-trajectory",
+        "decoded-window-digest-trajectory",
+        "decoded-worker-controller"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/decoded-worker-controller.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 7,
+      "guards": {
+        "verified": 6,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 6,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "decoded-window-begin",
+        "page-window-worker-storage"
+      ],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
@@ -23237,6 +23322,33 @@
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 5,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "extent-window-stream",
+        "page-window-executor"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/page-window-worker-storage.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 3,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -41886,6 +41998,59 @@
       "encapsulates": 0,
       "includes": [
         "../../books/decoded-window-stored-trajectory"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/decoded-window-terminal-budget-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 5,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/decoded-window-terminal-budget",
+        "decoded-worker-controller-trajectory-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/decoded-worker-controller-trajectory-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 8,
+      "functions": 10,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 10
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/decoded-worker-controller-trajectory"
       ],
       "system_includes": [],
       "suspects": [],
@@ -73640,6 +73805,41 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/decoded-window-terminal-budget.lisp",
+        "line": 4,
+        "include": "decoded-worker-controller-trajectory",
+        "included": "books/decoded-worker-controller-trajectory.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/decoded-worker-controller-trajectory.lisp",
+        "line": 4,
+        "include": "decoded-worker-controller",
+        "included": "books/decoded-worker-controller.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/decoded-worker-controller-trajectory.lisp",
+        "line": 5,
+        "include": "decoded-window-digest-trajectory",
+        "included": "books/decoded-window-digest-trajectory.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/decoded-worker-controller-trajectory.lisp",
+        "line": 6,
+        "include": "decoded-window-budget-trajectory",
+        "included": "books/decoded-window-budget-trajectory.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/decoded-worker-controller.lisp",
+        "line": 3,
+        "include": "page-window-worker-storage",
+        "included": "books/page-window-worker-storage.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/deflate-pool-check.lisp",
         "line": 18,
         "include": "deflate-pool",
@@ -83318,6 +83518,27 @@
         "line": 2,
         "include": "../../books/decoded-window-stored-trajectory",
         "included": "books/decoded-window-stored-trajectory.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/decoded-window-terminal-budget-tests.lisp",
+        "line": 3,
+        "include": "decoded-worker-controller-trajectory-tests",
+        "included": "tests/acl2/decoded-worker-controller-trajectory-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/decoded-window-terminal-budget-tests.lisp",
+        "line": 4,
+        "include": "../../books/decoded-window-terminal-budget",
+        "included": "books/decoded-window-terminal-budget.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/decoded-worker-controller-trajectory-tests.lisp",
+        "line": 3,
+        "include": "../../books/decoded-worker-controller-trajectory",
+        "included": "books/decoded-worker-controller-trajectory.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

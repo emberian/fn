@@ -17890,6 +17890,41 @@
           "kind": "theorem",
           "name": "fn-pwdg-actual-compressed-publication-authenticates-captured-source",
           "note": "New publication from actual FN-EWZ-READ plus carried faithful-source digest proves actual trailer and expected commitment equal BLAKE3(captured source). Actual BEGIN/read/codec/hash/trailer publication positive yields selected (66 67); complete prior-private, success/bad-trailer and corrupted semantic-carry removals. General canonical schedules, actual captured view/private worker custody and native funding remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-dwct-actual-one-preserves-captured-source-digest",
+          "note": "Actual registered ONE preserves captured-source digest across every current action; exact physical source authority remains open.",
+          "pending_subject": "Registered physical source candidate FN-DWC-ONE/FN-DWC-READ-OBSERVATION; native issuer/installer remains unavailable, so this source boundary is not an installed host-called claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-dwct-actual-codec-one-carries-selected-prefix",
+          "note": "Current owned codec ONE carries selected output cell and full produced position against actual returned scratch; prior cell/position explicit.",
+          "pending_subject": "Registered physical source candidate FN-DWC-ONE/FN-DWC-READ-OBSERVATION; native issuer/installer remains unavailable, so this source boundary is not an installed host-called claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-dwct-actual-one-preserves-charged-budget-carry",
+          "note": "Actual ONE preserves strict logical charge carry under incoming carry and non-CONSP returned stored status; excludes genuine terminal list status.",
+          "pending_subject": "Registered physical source candidate FN-DWC-ONE/FN-DWC-READ-OBSERVATION; native issuer/installer remains unavailable, so this source boundary is not an installed host-called claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-dwct-actual-read-observation-preserves-captured-source-digest",
+          "note": "Actual CURRENT revision/effect READ observation preserves source digest under incoming carry and exact source-slice equality; no supplied semantic decoder assumption.",
+          "pending_subject": "Registered physical source candidate FN-DWC-ONE/FN-DWC-READ-OBSERVATION; native issuer/installer remains unavailable, so this source boundary is not an installed host-called claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwzt-actual-stored-final-global-charge-envelope",
+          "note": "Actual stored chunk every status including genuine stream-ended consumes globally at most9*TINfinal+2*TOUTfinal+257 under incoming strict scheduling carry."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwzt-actual-issued-codec-one-retains-terminal-budget",
+          "note": "Actual current token/owned/no-pending codec ONE decoded completion retains >=3839+7*C STEPfuel under actual span/shape and incoming joint carry. Full terminal positive and corrupted-budget retained-premise removal; no native tariff.",
+          "pending_subject": "Registered physical source candidate FN-DWC-ONE/FN-DWC-READ-OBSERVATION; native issuer/installer remains unavailable, so this source boundary is not an installed host-called claim."
         }
       ],
       "pending_subject": "Native compressed driver remains dormant and unreachable-in-composition. Actual selected-prefix cell accumulation and faithful-source compressed digest BEGIN/READ/HASH/new-publication are source-proved, with source-slice binding explicit. Arbitrary canonical decoder/controller iteration, selected dictionary/captured-view authority, full compiled workspace funding and retained native buffer/view/consumer joins remain open; PRF-1131 remains incomplete."
