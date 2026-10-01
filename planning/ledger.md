@@ -10,21 +10,21 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2731 |
+| Books read | 2733 |
 | Certification roots in the Makefile | 2365 |
-| Books inside the root closure | 2643 |
-| `defthm` and `defthmd` events | 36266 |
-| `defun` events | 23104 |
+| Books inside the root closure | 2644 |
+| `defthm` and `defthmd` events | 36345 |
+| `defun` events | 23146 |
 | Functions with verified guards | 3847 |
-| Functions declared `:verify-guards nil` and never verified | 2980 |
-| Functions left at the default with an explicit guard | 12841 |
-| Functions left at the default with no guard | 3436 |
-| `assert-event` checks | 25500 |
+| Functions declared `:verify-guards nil` and never verified | 2981 |
+| Functions left at the default with an explicit guard | 12853 |
+| Functions left at the default with no guard | 3465 |
+| `assert-event` checks | 25506 |
 | `must-fail` checks | 2611 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 210 |
-| Theorems flagged SUSPECT by shape | 1347 |
-| Export-hygiene warnings | 400 |
+| Theorems flagged SUSPECT by shape | 1350 |
+| Export-hygiene warnings | 401 |
 | Enabled-projection warnings | 80 |
 | Teeth-form warnings | 279 |
 | Include-hygiene warnings | 3548 |
@@ -427,6 +427,7 @@ that `make certify` requests.
 | `books/catalog-commit.lisp` | root | 53 | 23 | 10/0/13/0 | 0 | 0 | 7 |
 | `books/catalog-context-recovery.lisp` | root | 4 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/catalog-delta.lisp` | root | 14 | 10 | 1/1/7/1 | 0 | 0 | 1 |
+| `books/catalog-dense-map.lisp` | closure | 68 | 22 | 0/0/17/5 | 0 | 0 | 2 |
 | `books/catalog-entries.lisp` | root | 35 | 4 | 0/1/2/1 | 0 | 0 | 3 |
 | `books/catalog-live-links.lisp` | root | 128 | 21 | 0/19/2/0 | 0 | 0 | 4 |
 | `books/catalog-load-index.lisp` | root | 4 | 4 | 0/4/0/0 | 0 | 0 | 1 |
@@ -435,7 +436,7 @@ that `make certify` requests.
 | `books/catalog-number-index.lisp` | root | 46 | 10 | 3/0/6/1 | 0 | 0 | 1 |
 | `books/catalog-number-window.lisp` | root | 3 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/catalog-paged-attach.lisp` | root | 0 | 1 | 0/0/0/1 | 2 | 0 | 0 |
-| `books/catalog-paged.lisp` | root | 205 | 62 | 0/4/39/19 | 3 | 0 | 1 |
+| `books/catalog-paged.lisp` | root | 214 | 75 | 0/5/34/36 | 4 | 0 | 2 |
 | `books/catalog-prepare-sealed.lisp` | root | 0 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/catalog-prepare.lisp` | root | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/catalog-prepared-record.lisp` | closure | 12 | 11 | 5/0/6/0 | 0 | 0 | 0 |
@@ -1972,11 +1973,12 @@ that `make certify` requests.
 | `tests/acl2/catalog-commit-tests.lisp` | root | 10 | 8 | 0/0/0/8 | 11 | 2 | 0 |
 | `tests/acl2/catalog-context-recovery-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 0 | 0 |
 | `tests/acl2/catalog-delta-tests.lisp` | root | 7 | 5 | 0/0/0/5 | 4 | 2 | 0 |
+| `tests/acl2/catalog-dense-map-tests.lisp` | - | 2 | 4 | 0/0/0/4 | 1 | 0 | 0 |
 | `tests/acl2/catalog-entries-tests.lisp` | root | 4 | 20 | 0/3/0/17 | 59 | 0 | 0 |
 | `tests/acl2/catalog-live-links-tests.lisp` | root | 12 | 1 | 0/1/0/0 | 7 | 0 | 0 |
 | `tests/acl2/catalog-load-index-tests.lisp` | root | 6 | 0 | 0/0/0/0 | 0 | 1 | 0 |
 | `tests/acl2/catalog-number-index-tests.lisp` | root | 8 | 4 | 0/0/0/4 | 2 | 3 | 0 |
-| `tests/acl2/catalog-paged-tests.lisp` | root | 0 | 14 | 0/0/0/14 | 10 | 0 | 0 |
+| `tests/acl2/catalog-paged-tests.lisp` | root | 0 | 17 | 0/0/0/17 | 14 | 0 | 0 |
 | `tests/acl2/catalog-record-tests.lisp` | root | 12 | 3 | 0/0/1/2 | 5 | 6 | 0 |
 | `tests/acl2/catalog-refresh-tests.lisp` | root | 0 | 10 | 0/0/0/10 | 24 | 0 | 0 |
 | `tests/acl2/catalog-relation-tests.lisp` | root | 7 | 3 | 0/0/0/3 | 3 | 2 | 0 |
@@ -3058,7 +3060,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-col-bind-refusal-refuses-exactly-an-unregistered-bind` | `books/consumer-owner-local.lisp` | 120 | iff-of-definition-test: fn-col-bind-refusal is (if TEST non-nil nil) and the statement is its truth iff TEST |
 | `fn-col-poll-index-get-non-uint-is-nil-by-definition` | `books/consumer-poll-index.lisp` | 145 | arm-of-definition: the hypotheses select one IF/COND arm of fn-cei-get and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-cei-get and the conclusion is that branch's value |
 | `fn-cp-cursor-decode-overlong-by-definition` | `books/consumer-position.lisp` | 871 | arm-of-definition: the hypotheses select one IF/COND arm of fn-cp-cursor-decode and the conclusion is that arm's value |
-| `fn-cp-withdrawn-of-held` | `books/catalog-paged.lisp` | 1351 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-cp-numbers-of-held` | `books/catalog-paged.lisp` | 1568 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-cp-withdrawn-of-held` | `books/catalog-paged.lisp` | 1560 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-cpc-assemble-accessors` | `books/checkpoint-codec.lisp` | 1242 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-cpc-uint32p-bridge` | `books/checkpoint-codec.lisp` | 1270 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-record-uint32p |
 | `fn-cpl-assign-fields` | `books/catalog-live-links.lisp` | 167 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
@@ -3105,6 +3108,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-cwd-page-of-a-refusal` | `books/consumer-withdrawal.lisp` | 478 | arm-of-definition: the hypotheses select one IF/COND arm of fn-cwd-page and the conclusion is that arm's value |
 | `fn-cwd-page-of-a-withdrawal` | `books/consumer-withdrawal.lisp` | 469 | arm-of-definition: the hypotheses select one IF/COND arm of fn-cwd-page and the conclusion is that arm's value |
 | `fn-dit-f-keeps-n` | `tests/acl2/definterface-tests.lisp` | 26 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-dm-keyp-fc` | `books/catalog-dense-map.lisp` | 178 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-dm-keyp |
+| `fn-dm-lanep-fc` | `books/catalog-dense-map.lisp` | 174 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-dm-lanep |
 | `fn-drt-mark-unfolds-to-a-tagged-list` | `tests/acl2/defrecord-tests.lisp` | 169 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-drt-mark; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-drt-point-unfolds-to-a-list` | `tests/acl2/defrecord-tests.lisp` | 174 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-drt-point; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-enr-item-of-an-enrolled-principal` | `books/nntp-enrollment.lisp` | 213 | arm-of-definition: the hypotheses select one IF/COND arm of fn-enr-item and the conclusion is that arm's value |

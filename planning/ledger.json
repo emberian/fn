@@ -2369,23 +2369,23 @@
     "books/owner-retain-carried"
   ],
   "totals": {
-    "books": 2731,
-    "books_in_root_closure": 2643,
+    "books": 2733,
+    "books_in_root_closure": 2644,
     "roots": 2365,
-    "theorems": 36266,
-    "functions": 23104,
-    "assert_events": 25500,
+    "theorems": 36345,
+    "functions": 23146,
+    "assert_events": 25506,
     "must_fails": 2611,
     "prover_refusals": 0,
     "encapsulates": 210,
     "guards": {
       "verified": 3847,
-      "declared-off": 2980,
-      "default-guarded": 12841,
-      "default-unguarded": 3436
+      "declared-off": 2981,
+      "default-guarded": 12853,
+      "default-unguarded": 3465
     },
-    "suspect_theorems": 1347,
-    "export_hygiene_warnings": 400,
+    "suspect_theorems": 1350,
+    "export_hygiene_warnings": 401,
     "enabled_projection_warnings": 80,
     "teeth_form_warnings": 279,
     "include_hygiene_warnings": 3548,
@@ -11924,6 +11924,35 @@
       "read_error": null
     },
     {
+      "book": "books/catalog-dense-map.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 68,
+      "functions": 22,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 17,
+        "default-unguarded": 5
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 3,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [],
+      "system_includes": [
+        "arithmetic-5/top"
+      ],
+      "suspects": [
+        "fn-dm-keyp-fc",
+        "fn-dm-lanep-fc"
+      ],
+      "read_error": null
+    },
+    {
       "book": "books/catalog-entries.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -12163,22 +12192,23 @@
       "book": "books/catalog-paged.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 205,
-      "functions": 62,
+      "theorems": 214,
+      "functions": 75,
       "guards": {
         "verified": 0,
-        "declared-off": 4,
-        "default-guarded": 39,
-        "default-unguarded": 19
+        "declared-off": 5,
+        "default-guarded": 34,
+        "default-unguarded": 36
       },
       "verify_guards_events": 0,
-      "assert_events": 3,
+      "assert_events": 4,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 5,
+      "defconsts": 6,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "catalog-dense-map",
         "catalog-live-links",
         "catalog-logic",
         "catalog-wbv-trie",
@@ -12189,6 +12219,7 @@
       ],
       "system_includes": [],
       "suspects": [
+        "fn-cp-numbers-of-held",
         "fn-cp-withdrawn-of-held"
       ],
       "read_error": null
@@ -57418,6 +57449,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/catalog-dense-map-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 2,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 4
+      },
+      "verify_guards_events": 0,
+      "assert_events": 1,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/catalog-dense-map"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/catalog-entries-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -57537,15 +57594,15 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 14,
+      "functions": 17,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 14
+        "default-unguarded": 17
       },
       "verify_guards_events": 0,
-      "assert_events": 10,
+      "assert_events": 14,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 0,
@@ -82482,9 +82539,17 @@
       ]
     },
     {
+      "theorem": "fn-cp-numbers-of-held",
+      "book": "books/catalog-paged.lisp",
+      "line": 1568,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
       "theorem": "fn-cp-withdrawn-of-held",
       "book": "books/catalog-paged.lisp",
-      "line": 1351,
+      "line": 1560,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -82862,6 +82927,22 @@
       "line": 26,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-dm-keyp-fc",
+      "book": "books/catalog-dense-map.lisp",
+      "line": 178,
+      "reasons": [
+        "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-dm-keyp"
+      ]
+    },
+    {
+      "theorem": "fn-dm-lanep-fc",
+      "book": "books/catalog-dense-map.lisp",
+      "line": 174,
+      "reasons": [
+        "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-dm-lanep"
       ]
     },
     {
@@ -91956,6 +92037,12 @@
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
+        "theorem": "fn-dm-len-update-nth",
+        "book": "books/catalog-dense-map.lisp",
+        "line": 320,
+        "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
+      },
+      {
         "theorem": "fn-cpl-covered-after-withdraw",
         "book": "books/catalog-live-links.lisp",
         "line": 1346,
@@ -91964,31 +92051,31 @@
       {
         "theorem": "fn-scc-octet-listp-is-adt-octetsp",
         "book": "books/catalog-paged.lisp",
-        "line": 148,
+        "line": 223,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-cbor-octet-listp-is-adt-octetsp",
         "book": "books/catalog-paged.lisp",
-        "line": 152,
+        "line": 227,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-cp-len-of-set-column",
         "book": "books/catalog-paged.lisp",
-        "line": 447,
+        "line": 549,
         "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
       },
       {
         "theorem": "fn-cp-len-of-adt-set-a",
         "book": "books/catalog-paged.lisp",
-        "line": 452,
+        "line": 554,
         "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
       },
       {
         "theorem": "fn-cp-tree-enc-of-row-t-of",
         "book": "books/catalog-paged.lisp",
-        "line": 593,
+        "line": 719,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -99464,7 +99551,7 @@
       },
       {
         "book": "books/catalog-paged.lisp",
-        "line": 54,
+        "line": 56,
         "include": "def-representation",
         "included": "books/def-representation.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
