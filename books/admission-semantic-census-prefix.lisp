@@ -179,6 +179,25 @@
                    fn-hsrcc-begin fn-rcct-current-row-invariantp fn-hct-shapep
                    fn-hp-pes-len fn-scc-encode)))))
 
+(defthm fn-rccap-actual-remapped-prefix-keeps-row-count
+ (equal (len (mv-nth 0 (fn-rccap-remapped-prefix rows handle))) (len rows))
+ :hints (("Goal" :induct (fn-rccap-remapped-prefix rows handle)
+  :in-theory (e/d (fn-rccap-remapped-prefix) (fn-osm-row-source fn-omk-at)))))
+
+(defthm fn-rccap-actual-completed-prefix-has-original-count-and-mapped-pool
+ (implies (fn-rccap-idle-original-prefixp remapper census originals)
+  (and (equal (fn-omk-at 2 census) (len originals))
+       (equal (fn-omk-at 3 (fn-omk-at 1 remapper)) (len originals))
+       (equal (fn-omk-at 3 census)
+              (fn-hp-pes-len (mv-nth 0 (fn-rccap-remapped-prefix originals 0))))))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :use ((:instance fn-rccap-actual-remapped-prefix-keeps-row-count (rows originals) (handle 0)))
+  :in-theory (e/d (fn-rccap-idle-original-prefixp fn-rcca-idle-prefixp)
+                  (mv-nth fn-rccap-actual-remapped-prefix-keeps-row-count
+                   fn-rccap-remapped-prefix fn-osm-row-source fn-omk-at fn-omk-widthp
+                   fn-hct-shapep fn-hp-pes-len)))))
+
 (defun-nx fn-rccap-idle-target-prefixp (cursor remapper census mapped-prefix)
  (let* ((ordinal (fn-osrc-at 2 cursor))
         (target (fn-sfr-list (fn-osrc-at 1 cursor))))
