@@ -26,7 +26,7 @@
     (fn-rv-make (list (fn-heap-machine-octets observations) 0 0 (fn-heap-reserve-threads r)
                       0 0 0 0 0)
                 (list octets 0 0 (fn-heap-reserve-threads r) 0 0 0 0 0)
-                (list (cons 1 (list octets 0 0 (fn-heap-reserve-threads r) 0 0 0 0 0))))))
+                (list (list* 1 0 (list octets 0 0 (fn-heap-reserve-threads r) 0 0 0 0 0))))))
 
 (defthm fn-rv-heap-reservation-funds-the-root
   (let ((r (fn-heap-reserve-decide profile core nursery observations connections)))
@@ -54,7 +54,7 @@
                                          capacity)))
     (fn-rv-make (list (nfix machine) 0 0 0 0 0 0 0 0)
                 (list octets 0 0 0 0 0 0 0 0)
-                (list (cons 1 (list octets 0 0 0 0 0 0 0 0))))))
+                (list (list* 1 0 (list octets 0 0 0 0 0 0 0 0))))))
 
 (defthm fn-rv-connection-budget-funds-the-root
   (let ((d (fn-cbud-run-decide capacity machine dynamic hneed core threads stack hs

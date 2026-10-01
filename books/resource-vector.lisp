@@ -523,11 +523,18 @@
                     fn-rv-zeros fn-rv-nats-p fn-rv-vectorp))
 
 ; -----------------------------------------------------------------------------
-; The rows.
+; The rows: (PHASE GEN . DEMAND).  GEN is the slot's generation, raised by
+; every charge of the slot and kept when it idles; a charge answers it as
+; the draw's completion token, and every later step on the charged slot
+; names it, so a completion replayed after the slot was settled and drawn
+; again is :stale (Codex review r06 F2: the slot alone let an old
+; completion settle a new draw).
 
 (defun fn-rv-rowp (row)
   (declare (xargs :guard t))
-  (and (consp row) (natp (car row)) (<= (car row) 2) (fn-rv-vectorp (cdr row))))
+  (and (consp row) (natp (car row)) (<= (car row) 2)
+       (consp (cdr row)) (natp (cadr row))
+       (fn-rv-vectorp (cddr row))))
 
 (defun fn-rv-rowsp (rows)
   (declare (xargs :guard t))
@@ -535,7 +542,11 @@
       (and (fn-rv-rowp (car rows)) (fn-rv-rowsp (cdr rows)))
     (null rows)))
 
-(defconst *fn-rv-idle* (cons 0 *fn-rv-zero*))
+(defun fn-rv-idle-row (gen)
+  (declare (xargs :guard (natp gen)))
+  (list* 0 gen *fn-rv-zero*))
+
+(defconst *fn-rv-idle* (fn-rv-idle-row 0))
 
 (defun fn-rv-idle-rows (n)
   (declare (xargs :guard (natp n)))
@@ -544,7 +555,7 @@
 ; What a row holds against the bank: its demand unless idle.
 (defun fn-rv-row-demand (row)
   (declare (xargs :guard (fn-rv-rowp row)))
-  (if (eql (car row) 0) *fn-rv-zero* (cdr row)))
+  (if (eql (car row) 0) *fn-rv-zero* (cddr row)))
 
 (defun fn-rv-outstanding (rows)
   (declare (xargs :guard (fn-rv-rowsp rows)))
@@ -579,6 +590,11 @@
 (defthm fn-rv-vectorp-of-outstanding
   (implies (fn-rv-rowsp rows) (fn-rv-vectorp (fn-rv-outstanding rows))))
 
+(defthm fn-rv-nats-p-of-outstanding
+  (implies (fn-rv-rowsp rows) (fn-rv-nats-p (fn-rv-outstanding rows)))
+  :hints (("Goal" :use fn-rv-vectorp-of-outstanding
+           :in-theory (disable fn-rv-vectorp-of-outstanding))))
+
 ; Replacing one row: what the new rows hold plus the old row's demand is
 ; what the old rows held plus the new row's demand.
 (defthm fn-rv-outstanding-of-update-nth
@@ -600,7 +616,7 @@
   (equal (fn-rv-outstanding (fn-rv-idle-rows n)) *fn-rv-zero*))
 
 (in-theory (disable fn-rv-outstanding fn-rv-row-demand fn-rv-rowp fn-rv-rowsp
-                    fn-rv-idle-rows))
+                    fn-rv-idle-rows fn-rv-idle-row))
 
 ; -----------------------------------------------------------------------------
 ; The bank.
@@ -638,9 +654,15 @@
   (declare (xargs :guard (and (fn-rv-bankp bank) (natp slot))))
   (nfix (car (fn-rv-row slot bank))))
 
+(defun fn-rv-gen (slot bank)
+  (declare (xargs :guard (and (fn-rv-bankp bank) (natp slot))))
+  (let ((r (fn-rv-row slot bank)))
+    (if (consp (cdr r)) (nfix (cadr r)) 0)))
+
 (defun fn-rv-demand (slot bank)
   (declare (xargs :guard (and (fn-rv-bankp bank) (natp slot))))
-  (true-list-fix (cdr (fn-rv-row slot bank))))
+  (let ((r (fn-rv-row slot bank)))
+    (if (consp (cdr r)) (true-list-fix (cddr r)) nil)))
 
 (defun fn-rv-fundedp (bank)
   (declare (xargs :guard (fn-rv-bankp bank)))
@@ -660,7 +682,8 @@
                     (fn-rv-spent (fn-rv-drawn bank)))))
 
 ; -----------------------------------------------------------------------------
-; The transitions.
+; The transitions.  A charge answers (WORD BANK' GEN): GEN is the token of
+; the draw; every later step on the slot names it.
 
 (defun fn-rv-charge (bank slot demand phase)
   (declare (xargs :guard (and (fn-rv-bankp bank) (natp slot) (true-listp demand)
@@ -671,10 +694,12 @@
          (list :slot-busy bank))
         ((not (fn-rv-below (fn-rv-plus (fn-rv-drawn bank) demand) (fn-rv-budget bank)))
          (list :resources-unavailable bank))
-        (t (list (if (eql phase 2) :opened :drawn)
-               (fn-rv-make (fn-rv-budget bank)
-                           (fn-rv-plus (fn-rv-drawn bank) demand)
-                           (update-nth slot (cons phase demand) (fn-rv-slots bank)))))))
+        (t (let ((gen (+ 1 (fn-rv-gen slot bank))))
+             (list (if (eql phase 2) :opened :drawn)
+                   (fn-rv-make (fn-rv-budget bank)
+                               (fn-rv-plus (fn-rv-drawn bank) demand)
+                               (update-nth slot (list* phase gen demand) (fn-rv-slots bank)))
+                   gen)))))
 
 (defun fn-rv-draw (bank slot demand)
   (declare (xargs :guard (and (fn-rv-bankp bank) (natp slot) (true-listp demand))))
@@ -684,66 +709,80 @@
   (declare (xargs :guard (and (fn-rv-bankp bank) (natp slot) (true-listp budget))))
   (fn-rv-charge bank slot budget 2))
 
-(defun fn-rv-settle (bank slot)
+; The token names the slot's current draw: phase 1 and the generation.
+(defun fn-rv-drawnp (slot gen bank)
+  (declare (xargs :guard (and (fn-rv-bankp bank) (natp slot))))
+  (and (eql (fn-rv-phase slot bank) 1) (equal (fn-rv-gen slot bank) gen)))
+
+(defun fn-rv-sub-bankp (slot gen bank)
+  (declare (xargs :guard (and (fn-rv-bankp bank) (natp slot))))
+  (and (eql (fn-rv-phase slot bank) 2) (equal (fn-rv-gen slot bank) gen)))
+
+(defun fn-rv-settle (bank slot gen)
   (declare (xargs :guard (and (fn-rv-bankp bank) (natp slot))))
   (cond ((not (fn-rv-slotp slot bank)) (list :invalid-slot bank))
-        ((not (eql (fn-rv-phase slot bank) 1)) (list :stale bank))
+        ((not (fn-rv-drawnp slot gen bank)) (list :stale bank))
         (t (list :settled
                (fn-rv-make (fn-rv-budget bank)
                            (fn-rv-monus (fn-rv-drawn bank)
                                         (fn-rv-reusable (fn-rv-demand slot bank)))
-                           (update-nth slot *fn-rv-idle* (fn-rv-slots bank)))))))
+                           (update-nth slot (fn-rv-idle-row (fn-rv-gen slot bank))
+                                       (fn-rv-slots bank)))))))
 
-(defun fn-rv-refund (bank slot x)
+(defun fn-rv-refund (bank slot gen x)
   (declare (xargs :guard (and (fn-rv-bankp bank) (natp slot) (true-listp x))))
   (cond ((not (and (fn-rv-slotp slot bank) (fn-rv-vectorp x))) (list :invalid-refund bank))
-        ((not (eql (fn-rv-phase slot bank) 1)) (list :stale bank))
+        ((not (fn-rv-drawnp slot gen bank)) (list :stale bank))
         ((not (fn-rv-below x (fn-rv-reusable (fn-rv-demand slot bank))))
          (list :past-what-it-holds bank))
         (t (list :refunded
                (fn-rv-make (fn-rv-budget bank)
                            (fn-rv-monus (fn-rv-drawn bank) x)
-                           (update-nth slot (cons 1 (fn-rv-monus (fn-rv-demand slot bank) x))
+                           (update-nth slot (list* 1 (fn-rv-gen slot bank)
+                                                   (fn-rv-monus (fn-rv-demand slot bank) x))
                                        (fn-rv-slots bank)))))))
 
-(defun fn-rv-grow (bank slot x)
+(defun fn-rv-grow (bank slot gen x)
   (declare (xargs :guard (and (fn-rv-bankp bank) (natp slot) (true-listp x))))
   (cond ((not (and (fn-rv-slotp slot bank) (fn-rv-vectorp x))) (list :invalid-grow bank))
-        ((not (eql (fn-rv-phase slot bank) 2)) (list :stale bank))
+        ((not (fn-rv-sub-bankp slot gen bank)) (list :stale bank))
         ((not (fn-rv-below (fn-rv-plus (fn-rv-drawn bank) x) (fn-rv-budget bank)))
          (list :resources-unavailable bank))
         (t (list :grown
                (fn-rv-make (fn-rv-budget bank)
                            (fn-rv-plus (fn-rv-drawn bank) x)
-                           (update-nth slot (cons 2 (fn-rv-plus (fn-rv-demand slot bank) x))
+                           (update-nth slot (list* 2 (fn-rv-gen slot bank)
+                                                   (fn-rv-plus (fn-rv-demand slot bank) x))
                                        (fn-rv-slots bank)))))))
 
-(defun fn-rv-destroy (bank slot spent)
+(defun fn-rv-destroy (bank slot gen spent)
   (declare (xargs :guard (and (fn-rv-bankp bank) (natp slot) (true-listp spent))))
   (cond ((not (and (fn-rv-slotp slot bank) (fn-rv-vectorp spent))) (list :invalid-destroy bank))
-        ((not (eql (fn-rv-phase slot bank) 2)) (list :stale bank))
+        ((not (fn-rv-sub-bankp slot gen bank)) (list :stale bank))
         ((not (fn-rv-below spent (fn-rv-spent (fn-rv-demand slot bank))))
          (list :sub-bank-overspent bank))
         (t (list :destroyed
                (fn-rv-make (fn-rv-budget bank)
                            (fn-rv-plus (fn-rv-monus (fn-rv-drawn bank) (fn-rv-demand slot bank))
                                        spent)
-                           (update-nth slot *fn-rv-idle* (fn-rv-slots bank)))))))
+                           (update-nth slot (fn-rv-idle-row (fn-rv-gen slot bank))
+                                       (fn-rv-slots bank)))))))
 
 ; Every transition as one step: OP is (:draw SLOT DEMAND), (:open SLOT
-; BUDGET), (:settle SLOT), (:refund SLOT X), (:grow SLOT X) or (:destroy
-; SLOT SPENT).
+; BUDGET), (:settle SLOT GEN), (:refund SLOT GEN X), (:grow SLOT GEN X) or
+; (:destroy SLOT GEN SPENT).
 (defun fn-rv-step (bank op)
   (declare (xargs :guard (and (fn-rv-bankp bank) (true-listp op))))
   (let ((slot (nfix (nth 1 op)))
-        (arg (true-list-fix (nth 2 op))))
+        (gen (nth 2 op))
+        (arg (true-list-fix (nth 3 op))))
     (case (car op)
-      (:draw (fn-rv-draw bank slot arg))
-      (:open (fn-rv-open bank slot arg))
-      (:settle (fn-rv-settle bank slot))
-      (:refund (fn-rv-refund bank slot arg))
-      (:grow (fn-rv-grow bank slot arg))
-      (:destroy (fn-rv-destroy bank slot arg))
+      (:draw (fn-rv-draw bank slot (true-list-fix (nth 2 op))))
+      (:open (fn-rv-open bank slot (true-list-fix (nth 2 op))))
+      (:settle (fn-rv-settle bank slot gen))
+      (:refund (fn-rv-refund bank slot gen arg))
+      (:grow (fn-rv-grow bank slot gen arg))
+      (:destroy (fn-rv-destroy bank slot gen arg))
       (otherwise (list :unknown-step bank)))))
 
 (defun fn-rv-admittedp (word)
@@ -820,29 +859,47 @@
                 (< slot (len (fn-rv-slots bank))))
            (and (equal (fn-rv-row slot bank) (nth slot (fn-rv-slots bank)))
                 (equal (fn-rv-phase slot bank) (car (nth slot (fn-rv-slots bank))))
-                (equal (fn-rv-demand slot bank) (cdr (nth slot (fn-rv-slots bank))))
-                (fn-rv-vectorp (cdr (nth slot (fn-rv-slots bank))))
-                (natp (car (nth slot (fn-rv-slots bank))))))
+                (equal (fn-rv-gen slot bank) (cadr (nth slot (fn-rv-slots bank))))
+                (equal (fn-rv-demand slot bank) (cddr (nth slot (fn-rv-slots bank))))
+                (fn-rv-vectorp (cddr (nth slot (fn-rv-slots bank))))
+                (natp (car (nth slot (fn-rv-slots bank))))
+                (natp (cadr (nth slot (fn-rv-slots bank))))))
   :hints (("Goal" :use (:instance fn-rv-rowp-of-nth (rows (fn-rv-slots bank)) (i slot))
            :in-theory (e/d (fn-rv-rowp) (fn-rv-rowp-of-nth)))))
 
-(defthm fn-rv-rowp-of-cons
-  (implies (and (natp p) (<= p 2) (fn-rv-vectorp d))
-           (fn-rv-rowp (cons p d)))
+(defthm fn-rv-rowp-of-list*
+  (implies (and (natp p) (<= p 2) (natp g) (fn-rv-vectorp d))
+           (fn-rv-rowp (list* p g d)))
   :hints (("Goal" :in-theory (enable fn-rv-rowp))))
+
+(defthm fn-rv-rowp-of-idle-row
+  (implies (natp g) (fn-rv-rowp (fn-rv-idle-row g)))
+  :hints (("Goal" :in-theory (enable fn-rv-rowp fn-rv-idle-row))))
 
 (defthm fn-rv-rowp-of-idle
   (fn-rv-rowp *fn-rv-idle*)
   :hints (("Goal" :in-theory (enable fn-rv-rowp))))
 
-(defthm fn-rv-row-demand-of-cons
-  (equal (fn-rv-row-demand (cons p d)) (if (eql p 0) *fn-rv-zero* d))
+(defthm fn-rv-idle-row-fields
+  (and (consp (fn-rv-idle-row g))
+       (consp (cdr (fn-rv-idle-row g)))
+       (equal (car (fn-rv-idle-row g)) 0)
+       (equal (cadr (fn-rv-idle-row g)) g)
+       (equal (cddr (fn-rv-idle-row g)) *fn-rv-zero*))
+  :hints (("Goal" :in-theory (enable fn-rv-idle-row))))
+
+(defthm fn-rv-row-demand-of-list*
+  (equal (fn-rv-row-demand (list* p g d)) (if (eql p 0) *fn-rv-zero* d))
   :hints (("Goal" :in-theory (enable fn-rv-row-demand))))
+
+(defthm fn-rv-row-demand-of-idle-row
+  (equal (fn-rv-row-demand (fn-rv-idle-row g)) *fn-rv-zero*)
+  :hints (("Goal" :in-theory (enable fn-rv-row-demand fn-rv-idle-row))))
 
 (defthm fn-rv-row-demand-of-nth
   (implies (and (fn-rv-rowsp rows) (natp i) (< i (len rows)))
            (equal (fn-rv-row-demand (nth i rows))
-                  (if (eql (car (nth i rows)) 0) *fn-rv-zero* (cdr (nth i rows)))))
+                  (if (eql (car (nth i rows)) 0) *fn-rv-zero* (cddr (nth i rows)))))
   :hints (("Goal" :in-theory (enable fn-rv-row-demand))))
 
 (defthm fn-rv-len-of-vector
@@ -850,15 +907,30 @@
 
 (defthm fn-rv-row-fields-of-nth
   (implies (and (fn-rv-rowsp rows) (natp i) (< i (len rows)))
-           (and (fn-rv-vectorp (cdr (nth i rows)))
+           (and (fn-rv-vectorp (cddr (nth i rows)))
                 (natp (car (nth i rows)))
-                (<= (car (nth i rows)) 2)))
+                (<= (car (nth i rows)) 2)
+                (natp (cadr (nth i rows)))))
+  :hints (("Goal" :use fn-rv-rowp-of-nth
+           :in-theory (e/d (fn-rv-rowp) (fn-rv-rowp-of-nth)))))
+
+(defthm fn-rv-nth-row-shape
+  (implies (and (fn-rv-rowsp rows) (natp i) (< i (len rows)))
+           (and (consp (nth i rows))
+                (consp (cdr (nth i rows)))))
   :hints (("Goal" :use fn-rv-rowp-of-nth
            :in-theory (e/d (fn-rv-rowp) (fn-rv-rowp-of-nth)))))
 
 (defthm fn-rv-car-of-nth-row-natp
   (implies (and (fn-rv-rowsp rows) (natp i) (< i (len rows)))
            (and (integerp (car (nth i rows))) (<= 0 (car (nth i rows)))))
+  :rule-classes :type-prescription
+  :hints (("Goal" :use fn-rv-row-fields-of-nth
+           :in-theory (disable fn-rv-row-fields-of-nth))))
+
+(defthm fn-rv-cadr-of-nth-row-natp
+  (implies (and (fn-rv-rowsp rows) (natp i) (< i (len rows)))
+           (and (integerp (cadr (nth i rows))) (<= 0 (cadr (nth i rows)))))
   :rule-classes :type-prescription
   :hints (("Goal" :use fn-rv-row-fields-of-nth
            :in-theory (disable fn-rv-row-fields-of-nth))))
@@ -870,38 +942,40 @@
            :in-theory (enable fn-rv-idle-rows))))
 
 ; Replacing row I, each as a direct rewrite of the new outstanding vector:
-; an idle row charged with D; a charged row settled; a charged row's demand
+; an idle row charged with D; a charged row idled; a charged row's demand
 ; replaced by D2.
 (defthm fn-rv-outstanding-after-charging-an-idle-row
   (implies (and (fn-rv-rowsp rows) (natp i) (< i (len rows))
-                (equal (car (nth i rows)) 0) (fn-rv-vectorp d)
+                (equal (car (nth i rows)) 0) (fn-rv-vectorp d) (natp g)
                 (natp p) (<= p 2) (not (equal p 0)))
-           (equal (fn-rv-outstanding (update-nth i (cons p d) rows))
+           (equal (fn-rv-outstanding (update-nth i (list* p g d) rows))
                   (fn-rv-plus (fn-rv-outstanding rows) d)))
-  :hints (("Goal" :use (:instance fn-rv-outstanding-of-update-nth (row (cons p d)))
+  :hints (("Goal" :use (:instance fn-rv-outstanding-of-update-nth (row (list* p g d)))
            :in-theory (disable fn-rv-outstanding-of-update-nth))))
 
 (defthm fn-rv-outstanding-after-idling-a-charged-row
   (implies (and (fn-rv-rowsp rows) (natp i) (< i (len rows))
-                (not (equal (car (nth i rows)) 0)))
-           (equal (fn-rv-outstanding (update-nth i *fn-rv-idle* rows))
-                  (fn-rv-monus (fn-rv-outstanding rows) (cdr (nth i rows)))))
-  :hints (("Goal" :use ((:instance fn-rv-outstanding-of-update-nth (row *fn-rv-idle*))
+                (not (equal (car (nth i rows)) 0)) (natp g))
+           (equal (fn-rv-outstanding (update-nth i (fn-rv-idle-row g) rows))
+                  (fn-rv-monus (fn-rv-outstanding rows) (cddr (nth i rows)))))
+  :hints (("Goal" :use ((:instance fn-rv-outstanding-of-update-nth (row (fn-rv-idle-row g)))
                         (:instance fn-rv-monus-of-plus-same
-                                   (a (fn-rv-outstanding (update-nth i *fn-rv-idle* rows)))
-                                   (b (cdr (nth i rows)))))
+                                   (a (fn-rv-outstanding (update-nth i (fn-rv-idle-row g) rows)))
+                                   (b (cddr (nth i rows)))))
            :in-theory (disable fn-rv-outstanding-of-update-nth fn-rv-monus-of-plus-same))))
 
 (defthm fn-rv-outstanding-after-replacing-a-charged-row
   (implies (and (fn-rv-rowsp rows) (natp i) (< i (len rows))
-                (not (equal (car (nth i rows)) 0)) (fn-rv-vectorp d2)
+                (not (equal (car (nth i rows)) 0)) (fn-rv-vectorp d2) (natp g)
                 (natp p) (<= p 2) (not (equal p 0)))
-           (equal (fn-rv-outstanding (update-nth i (cons p d2) rows))
-                  (fn-rv-monus (fn-rv-plus (fn-rv-outstanding rows) d2) (cdr (nth i rows)))))
-  :hints (("Goal" :use ((:instance fn-rv-outstanding-of-update-nth (row (cons p d2)))
+           (equal (fn-rv-outstanding (update-nth i (list* p g d2) rows))
+                  (fn-rv-monus (fn-rv-plus (fn-rv-outstanding rows) d2) (cddr (nth i rows)))))
+  :hints (("Goal" :use ((:instance fn-rv-outstanding-of-update-nth (row (list* p g d2)))
+                        (:instance fn-rv-vectorp-of-outstanding
+                                   (rows (update-nth i (list* p g d2) rows)))
                         (:instance fn-rv-monus-of-plus-same
-                                   (a (fn-rv-outstanding (update-nth i (cons p d2) rows)))
-                                   (b (cdr (nth i rows)))))
+                                   (a (fn-rv-outstanding (update-nth i (list* p g d2) rows)))
+                                   (b (cddr (nth i rows)))))
            :in-theory (disable fn-rv-outstanding-of-update-nth fn-rv-monus-of-plus-same))))
 
 ; The algebra of each transition over vectors alone: DR the drawn vector
@@ -1032,7 +1106,7 @@
   :hints (("Goal" :in-theory (enable fn-rv-okp fn-rv-bankp)
            :use ((:instance fn-rv-row-below-drawn-algebra
                             (dr (fn-rv-drawn bank)) (o (fn-rv-outstanding (fn-rv-slots bank)))
-                            (d (cdr (nth slot (fn-rv-slots bank)))) (m *fn-rv-reusable-mask*))
+                            (d (cddr (nth slot (fn-rv-slots bank)))) (m *fn-rv-reusable-mask*))
                  (:instance fn-rv-row-demand-below-outstanding (rows (fn-rv-slots bank)) (i slot))))))
 
 ; -----------------------------------------------------------------------------
@@ -1048,42 +1122,42 @@
 
 (defthm fn-rv-settle-keeps-okp
   (implies (fn-rv-okp bank)
-           (fn-rv-okp (cadr (fn-rv-settle bank slot))))
+           (fn-rv-okp (cadr (fn-rv-settle bank slot gen))))
   :hints (("Goal" :in-theory (enable fn-rv-okp fn-rv-bankp)
            :use ((:instance fn-rv-settle-algebra
                             (dr (fn-rv-drawn bank)) (o (fn-rv-outstanding (fn-rv-slots bank)))
-                            (d (cdr (nth slot (fn-rv-slots bank)))) (m *fn-rv-reusable-mask*))
+                            (d (cddr (nth slot (fn-rv-slots bank)))) (m *fn-rv-reusable-mask*))
                  (:instance fn-rv-below-transitive
                             (a (fn-rv-monus (fn-rv-drawn bank)
-                                            (fn-rv-keep (cdr (nth slot (fn-rv-slots bank))) *fn-rv-reusable-mask*)))
+                                            (fn-rv-keep (cddr (nth slot (fn-rv-slots bank))) *fn-rv-reusable-mask*)))
                             (b (fn-rv-drawn bank)) (c (fn-rv-budget bank)))))))
 
 (defthm fn-rv-refund-keeps-okp
   (implies (fn-rv-okp bank)
-           (fn-rv-okp (cadr (fn-rv-refund bank slot x))))
+           (fn-rv-okp (cadr (fn-rv-refund bank slot gen x))))
   :hints (("Goal" :in-theory (enable fn-rv-okp fn-rv-bankp)
            :use ((:instance fn-rv-refund-algebra
                             (dr (fn-rv-drawn bank)) (o (fn-rv-outstanding (fn-rv-slots bank)))
-                            (d (cdr (nth slot (fn-rv-slots bank)))) (m *fn-rv-reusable-mask*))
+                            (d (cddr (nth slot (fn-rv-slots bank)))) (m *fn-rv-reusable-mask*))
                  (:instance fn-rv-below-transitive
                             (a (fn-rv-monus (fn-rv-drawn bank) x))
                             (b (fn-rv-drawn bank)) (c (fn-rv-budget bank)))))))
 
 (defthm fn-rv-grow-keeps-okp
   (implies (fn-rv-okp bank)
-           (fn-rv-okp (cadr (fn-rv-grow bank slot x))))
+           (fn-rv-okp (cadr (fn-rv-grow bank slot gen x))))
   :hints (("Goal" :in-theory (enable fn-rv-okp fn-rv-bankp)
            :use ((:instance fn-rv-grow-algebra
                             (dr (fn-rv-drawn bank)) (o (fn-rv-outstanding (fn-rv-slots bank)))
-                            (d (cdr (nth slot (fn-rv-slots bank)))) (m *fn-rv-reusable-mask*))))))
+                            (d (cddr (nth slot (fn-rv-slots bank)))) (m *fn-rv-reusable-mask*))))))
 
 (defthm fn-rv-destroy-keeps-okp
   (implies (fn-rv-okp bank)
-           (fn-rv-okp (cadr (fn-rv-destroy bank slot spent))))
+           (fn-rv-okp (cadr (fn-rv-destroy bank slot gen spent))))
   :hints (("Goal" :in-theory (enable fn-rv-okp fn-rv-bankp)
            :use ((:instance fn-rv-destroy-algebra
                             (dr (fn-rv-drawn bank)) (o (fn-rv-outstanding (fn-rv-slots bank)))
-                            (d (cdr (nth slot (fn-rv-slots bank)))) (s spent) (b (fn-rv-budget bank))
+                            (d (cddr (nth slot (fn-rv-slots bank)))) (s spent) (b (fn-rv-budget bank))
                             (m *fn-rv-reusable-mask*))
                  (:instance fn-rv-row-demand-below-outstanding (rows (fn-rv-slots bank)) (i slot))))))
 
@@ -1131,14 +1205,16 @@
                 (equal (fn-rv-budget (cadr (fn-rv-draw bank slot demand)))
                        (fn-rv-budget bank))
                 (equal (fn-rv-row slot (cadr (fn-rv-draw bank slot demand)))
-                       (cons 1 demand)))))
+                       (list* 1 (+ 1 (fn-rv-gen slot bank)) demand))
+                (equal (caddr (fn-rv-draw bank slot demand))
+                       (+ 1 (fn-rv-gen slot bank))))))
 
 ; KEYSTONE.  A slot settles once: after a settle, a second settle of the
-; same slot is never admitted and leaves the bank.
+; same token is never admitted and leaves the bank.
 (defthm fn-rv-settle-once
-  (and (not (equal (car (fn-rv-settle (cadr (fn-rv-settle bank slot)) slot)) :settled))
-       (equal (cadr (fn-rv-settle (cadr (fn-rv-settle bank slot)) slot))
-              (cadr (fn-rv-settle bank slot)))))
+  (and (not (equal (car (fn-rv-settle (cadr (fn-rv-settle bank slot gen)) slot gen)) :settled))
+       (equal (cadr (fn-rv-settle (cadr (fn-rv-settle bank slot gen)) slot gen))
+              (cadr (fn-rv-settle bank slot gen)))))
 
 ; KEYSTONE.  A step on one slot leaves every other row as it was.
 (defthm fn-rv-step-keeps-the-other-slots
@@ -1147,6 +1223,80 @@
                   (fn-rv-row j bank)))
   :hints (("Goal" :in-theory (disable nth update-nth fn-rv-make fn-rv-slots
                                       fn-rv-budget fn-rv-drawn))))
+
+; The generation of a slot never falls under a step, and a charge raises
+; it by one: so a token names one draw of the slot, ever.
+(defthm fn-rv-step-never-lowers-a-gen
+  (implies (natp j)
+           (<= (fn-rv-gen j bank) (fn-rv-gen j (cadr (fn-rv-step bank op)))))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (disable nth update-nth fn-rv-make fn-rv-slots
+                                      fn-rv-budget fn-rv-drawn))))
+
+(defthm fn-rv-run-never-lowers-a-gen
+  (implies (natp j)
+           (<= (fn-rv-gen j bank) (fn-rv-gen j (cadr (fn-rv-run bank ops)))))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (disable fn-rv-step fn-rv-gen))))
+
+(defthm fn-rv-charge-raises-the-gen
+  (implies (fn-rv-admittedp (car (fn-rv-charge bank slot demand phase)))
+           (equal (fn-rv-gen slot (cadr (fn-rv-charge bank slot demand phase)))
+                  (+ 1 (fn-rv-gen slot bank))))
+  :hints (("Goal" :in-theory (disable nth update-nth fn-rv-make fn-rv-slots
+                                      fn-rv-budget fn-rv-drawn))))
+
+(defthm fn-rv-settle-needs-the-token
+  (implies (equal (car (fn-rv-settle bank slot gen)) :settled)
+           (equal (fn-rv-gen slot bank) gen))
+  :rule-classes nil)
+
+(defthm fn-rv-slotp-forward
+  (implies (fn-rv-slotp slot bank) (natp slot))
+  :rule-classes :forward-chaining)
+
+(defthm fn-rv-slotp-of-draw
+  (equal (fn-rv-slotp s (cadr (fn-rv-draw bank slot d))) (fn-rv-slotp s bank))
+  :hints (("Goal" :in-theory (disable nth update-nth fn-rv-make fn-rv-slots
+                                      fn-rv-budget fn-rv-drawn))))
+
+(defthm fn-rv-phase-and-gen-of-draw
+  (implies (equal (car (fn-rv-draw bank slot demand)) :drawn)
+           (and (equal (fn-rv-phase slot (cadr (fn-rv-draw bank slot demand))) 1)
+                (equal (fn-rv-gen slot (cadr (fn-rv-draw bank slot demand)))
+                       (+ 1 (fn-rv-gen slot bank)))))
+  :hints (("Goal" :in-theory (e/d (fn-rv-phase fn-rv-gen) (fn-rv-row fn-rv-draw))
+           :use fn-rv-draw-charges-exactly-the-demand)))
+
+; KEYSTONE (Codex review r06 F2, the slot-reuse ABA).  A completion
+; replayed after its slot was drawn again is :stale and leaves the bank:
+; the first draw's token G, any run, a second admitted draw of the slot,
+; then the settle of G.
+(defthm fn-rv-replayed-completion-is-stale
+  (implies (and (equal (car (fn-rv-draw bank slot d1)) :drawn)
+                (equal (car (fn-rv-draw (cadr (fn-rv-run (cadr (fn-rv-draw bank slot d1)) ops))
+                                        slot d2))
+                       :drawn))
+           (let ((again (cadr (fn-rv-draw (cadr (fn-rv-run (cadr (fn-rv-draw bank slot d1)) ops))
+                                          slot d2)))
+                 (token (caddr (fn-rv-draw bank slot d1))))
+             (and (equal (car (fn-rv-settle again slot token)) :stale)
+                  (equal (cadr (fn-rv-settle again slot token)) again))))
+  :hints (("Goal"
+           :in-theory (e/d (fn-rv-settle fn-rv-drawnp)
+                           (fn-rv-draw fn-rv-run fn-rv-slotp fn-rv-phase fn-rv-gen fn-rv-row
+                            fn-rv-draw-admits-exactly-within-the-budget
+                            fn-rv-draw-charges-exactly-the-demand fn-rv-phase-and-gen-of-draw))
+           :use ((:instance fn-rv-draw-charges-exactly-the-demand (demand d1))
+                 (:instance fn-rv-phase-and-gen-of-draw (demand d1))
+                 (:instance fn-rv-phase-and-gen-of-draw
+                            (bank (cadr (fn-rv-run (cadr (fn-rv-draw bank slot d1)) ops)))
+                            (demand d2))
+                 (:instance fn-rv-run-never-lowers-a-gen
+                            (j slot) (bank (cadr (fn-rv-draw bank slot d1))))
+                 (:instance fn-rv-draw-admits-exactly-within-the-budget
+                            (bank (cadr (fn-rv-run (cadr (fn-rv-draw bank slot d1)) ops)))
+                            (demand d2))))))
 
 ; KEYSTONE.  The root: the baseline at slot 0 and the reserve at slot 1 are
 ; drawn before any user's slot exists, and nothing else is.
@@ -1158,9 +1308,9 @@
                 (equal (fn-rv-drawn (cadr (fn-rv-install budget baseline reserve nslots)))
                        (fn-rv-plus baseline reserve))
                 (equal (fn-rv-row 0 (cadr (fn-rv-install budget baseline reserve nslots)))
-                       (cons 1 baseline))
+                       (list* 1 1 baseline))
                 (equal (fn-rv-row 1 (cadr (fn-rv-install budget baseline reserve nslots)))
-                       (cons 2 reserve))
+                       (list* 2 1 reserve))
                 (equal (fn-rv-slot-count (cadr (fn-rv-install budget baseline reserve nslots)))
                        nslots)
                 (fn-rv-below (fn-rv-plus baseline reserve) budget)))
@@ -1178,15 +1328,16 @@
 ; An admitted destroy's effect, exactly.
 (defthm fn-rv-destroy-effects
   (implies (and (fn-rv-bankp bank) (fn-rv-slotp slot bank) (fn-rv-vectorp spent)
-                (equal (fn-rv-phase slot bank) 2)
+                (fn-rv-sub-bankp slot gen bank)
                 (fn-rv-below spent (fn-rv-spent (fn-rv-demand slot bank))))
-           (and (equal (car (fn-rv-destroy bank slot spent)) :destroyed)
-                (equal (cadr (fn-rv-destroy bank slot spent))
+           (and (equal (car (fn-rv-destroy bank slot gen spent)) :destroyed)
+                (equal (cadr (fn-rv-destroy bank slot gen spent))
                        (fn-rv-make (fn-rv-budget bank)
                                    (fn-rv-plus (fn-rv-monus (fn-rv-drawn bank)
                                                             (fn-rv-demand slot bank))
                                                spent)
-                                   (update-nth slot *fn-rv-idle* (fn-rv-slots bank))))))
+                                   (update-nth slot (fn-rv-idle-row (fn-rv-gen slot bank))
+                                               (fn-rv-slots bank))))))
   :hints (("Goal" :in-theory (disable nth update-nth fn-rv-make))))
 
 ; A sub-bank's spent part is within its budget, and what its budget returns
@@ -1219,23 +1370,23 @@
 (defthm fn-rv-destroy-returns-exactly-the-unsettled-draws
   (implies (and (fn-rv-okp bank) (fn-rv-okp sub)
                 (fn-rv-slotp slot bank)
-                (equal (fn-rv-phase slot bank) 2)
+                (fn-rv-sub-bankp slot gen bank)
                 (equal (fn-rv-budget sub) (fn-rv-demand slot bank)))
-           (and (equal (car (fn-rv-destroy bank slot (fn-rv-spent (fn-rv-drawn sub))))
+           (and (equal (car (fn-rv-destroy bank slot gen (fn-rv-spent (fn-rv-drawn sub))))
                        :destroyed)
-                (equal (fn-rv-slack (cadr (fn-rv-destroy bank slot (fn-rv-spent (fn-rv-drawn sub)))))
+                (equal (fn-rv-slack (cadr (fn-rv-destroy bank slot gen (fn-rv-spent (fn-rv-drawn sub)))))
                        (fn-rv-plus (fn-rv-slack bank)
                                    (fn-rv-monus (fn-rv-demand slot bank)
                                                 (fn-rv-spent (fn-rv-drawn sub)))))
                 (fn-rv-below (fn-rv-reusable (fn-rv-outstanding (fn-rv-slots sub)))
                              (fn-rv-monus (fn-rv-demand slot bank) (fn-rv-spent (fn-rv-drawn sub))))
-                (equal (fn-rv-row slot (cadr (fn-rv-destroy bank slot (fn-rv-spent (fn-rv-drawn sub)))))
-                       *fn-rv-idle*)))
+                (equal (fn-rv-phase slot (cadr (fn-rv-destroy bank slot gen (fn-rv-spent (fn-rv-drawn sub)))))
+                       0)))
   :hints (("Goal" :in-theory (e/d (fn-rv-slack)
                                   (nth update-nth fn-rv-make fn-rv-destroy fn-rv-okp fn-rv-bankp
                                    fn-rv-budget fn-rv-drawn fn-rv-slots fn-rv-row-is-the-nth-row
-                                   fn-rv-slotp fn-rv-phase fn-rv-demand fn-rv-row
-                                   fn-rv-spent fn-rv-reusable))
+                                   fn-rv-slotp fn-rv-phase fn-rv-gen fn-rv-demand fn-rv-row
+                                   fn-rv-sub-bankp fn-rv-spent fn-rv-reusable))
            :use ((:instance fn-rv-destroy-effects (spent (fn-rv-spent (fn-rv-drawn sub))))
                  (:instance fn-rv-charged-row-within-drawn)
                  (:instance fn-rv-sub-bank-within-its-budget)
@@ -1243,7 +1394,8 @@
                             (d (fn-rv-demand slot bank)) (big (fn-rv-drawn bank))
                             (s (fn-rv-spent (fn-rv-drawn sub)))
                             (b (fn-rv-budget bank)))))
-          ("Goal'" :in-theory (e/d (fn-rv-slack fn-rv-row fn-rv-phase fn-rv-demand fn-rv-slotp)
+          ("Goal'" :in-theory (e/d (fn-rv-slack fn-rv-row fn-rv-phase fn-rv-gen fn-rv-demand
+                                    fn-rv-slotp fn-rv-sub-bankp fn-rv-idle-row)
                                    (nth update-nth fn-rv-make fn-rv-destroy fn-rv-okp fn-rv-bankp
                                     fn-rv-budget fn-rv-drawn fn-rv-slots
                                     fn-rv-spent fn-rv-reusable)))))
@@ -1254,11 +1406,145 @@
                 (fn-rv-bankp (cadr (fn-rv-open bank slot demand)))))
   :hints (("Goal" :in-theory (enable fn-rv-bankp))))
 
+; No step changes the budget or the slot count (the composition in
+; books/resource-vector-tree.lisp rests on this).
+(defthm fn-rv-step-keeps-the-budget-and-the-slot-count
+  (and (equal (fn-rv-budget (cadr (fn-rv-step bank op))) (fn-rv-budget bank))
+       (equal (fn-rv-slot-count (cadr (fn-rv-step bank op))) (fn-rv-slot-count bank)))
+  :hints (("Goal" :in-theory (disable nth update-nth fn-rv-make fn-rv-slots
+                                      fn-rv-budget fn-rv-drawn))))
+
+; An admitted step names a slot of the bank, and what it leaves at that
+; slot, per transition (the composition rests on these).
+(defthm fn-rv-admitted-step-names-a-slot
+  (implies (fn-rv-admittedp (car (fn-rv-step bank op)))
+           (fn-rv-slotp (nfix (nth 1 op)) bank))
+  :hints (("Goal" :in-theory (disable nth update-nth fn-rv-make fn-rv-slots
+                                      fn-rv-budget fn-rv-drawn))))
+
+(defthm fn-rv-open-effects
+  (implies (equal (car (fn-rv-open bank slot budget)) :opened)
+           (and (equal (fn-rv-phase slot (cadr (fn-rv-open bank slot budget))) 2)
+                (equal (fn-rv-gen slot (cadr (fn-rv-open bank slot budget)))
+                       (+ 1 (fn-rv-gen slot bank)))
+                (equal (fn-rv-demand slot (cadr (fn-rv-open bank slot budget))) budget)
+                (fn-rv-vectorp budget)))
+  :hints (("Goal" :in-theory (e/d (fn-rv-phase fn-rv-gen fn-rv-demand fn-rv-row)
+                                  (nth update-nth fn-rv-make fn-rv-slots fn-rv-budget fn-rv-drawn)))))
+
+(defthm fn-rv-settle-effects
+  (implies (equal (car (fn-rv-settle bank slot gen)) :settled)
+           (equal (fn-rv-phase slot (cadr (fn-rv-settle bank slot gen))) 0))
+  :hints (("Goal" :in-theory (e/d (fn-rv-phase fn-rv-row)
+                                  (nth update-nth fn-rv-make fn-rv-slots fn-rv-budget fn-rv-drawn)))))
+
+(defthm fn-rv-refund-effects
+  (implies (equal (car (fn-rv-refund bank slot gen x)) :refunded)
+           (equal (fn-rv-phase slot (cadr (fn-rv-refund bank slot gen x))) 1))
+  :hints (("Goal" :in-theory (e/d (fn-rv-phase fn-rv-row)
+                                  (nth update-nth fn-rv-make fn-rv-slots fn-rv-budget fn-rv-drawn)))))
+
+(defthm fn-rv-grow-effects
+  (implies (equal (car (fn-rv-grow bank slot gen x)) :grown)
+           (and (equal (fn-rv-phase slot (cadr (fn-rv-grow bank slot gen x))) 2)
+                (equal (fn-rv-gen slot (cadr (fn-rv-grow bank slot gen x))) (fn-rv-gen slot bank))
+                (equal (fn-rv-demand slot (cadr (fn-rv-grow bank slot gen x)))
+                       (fn-rv-plus (fn-rv-demand slot bank) x))
+                (fn-rv-vectorp x)))
+  :hints (("Goal" :in-theory (e/d (fn-rv-phase fn-rv-gen fn-rv-demand fn-rv-row)
+                                  (nth update-nth fn-rv-make fn-rv-slots fn-rv-budget fn-rv-drawn)))))
+
+(defthm fn-rv-destroy-idles-the-slot
+  (implies (equal (car (fn-rv-destroy bank slot gen spent)) :destroyed)
+           (and (equal (fn-rv-phase slot (cadr (fn-rv-destroy bank slot gen spent))) 0)
+                (equal (fn-rv-gen slot (cadr (fn-rv-destroy bank slot gen spent))) gen)))
+  :hints (("Goal" :in-theory (e/d (fn-rv-phase fn-rv-gen fn-rv-row fn-rv-sub-bankp)
+                                  (nth update-nth fn-rv-make fn-rv-slots fn-rv-budget fn-rv-drawn)))))
+
+; A token G that names no live sub-bank at slot J (the row is not phase 2
+; with generation G, and the generation is at least G) never names one
+; again: a charge raises the generation past G, and no other step gives
+; the row phase 2 with a lower generation.  Inductive over steps and runs.
+(defun fn-rv-token-retiredp (j g bank)
+  (declare (xargs :guard (and (fn-rv-bankp bank) (natp j) (natp g))))
+  (and (<= g (fn-rv-gen j bank))
+       (implies (equal (fn-rv-phase j bank) 2) (< g (fn-rv-gen j bank)))))
+
+(local
+ (defthm fn-rv-charge-keeps-a-retired-token
+   (implies (and (natp j) (fn-rv-token-retiredp j g bank))
+            (fn-rv-token-retiredp j g (cadr (fn-rv-charge bank slot d phase))))
+   :hints (("Goal" :in-theory (e/d (fn-rv-charge fn-rv-settle fn-rv-refund fn-rv-grow fn-rv-destroy
+                                    fn-rv-phase fn-rv-gen fn-rv-row fn-rv-drawnp fn-rv-sub-bankp
+                                    fn-rv-token-retiredp fn-rv-slotp fn-rv-slot-count)
+                                   (nth update-nth fn-rv-make fn-rv-slots fn-rv-budget fn-rv-drawn))))))
+
+(local
+ (defthm fn-rv-settle-keeps-a-retired-token
+   (implies (and (natp j) (fn-rv-token-retiredp j g bank))
+            (fn-rv-token-retiredp j g (cadr (fn-rv-settle bank slot gen))))
+   :hints (("Goal" :in-theory (e/d (fn-rv-charge fn-rv-settle fn-rv-refund fn-rv-grow fn-rv-destroy
+                                    fn-rv-phase fn-rv-gen fn-rv-row fn-rv-drawnp fn-rv-sub-bankp
+                                    fn-rv-token-retiredp fn-rv-slotp fn-rv-slot-count)
+                                   (nth update-nth fn-rv-make fn-rv-slots fn-rv-budget fn-rv-drawn))))))
+
+(local
+ (defthm fn-rv-refund-keeps-a-retired-token
+   (implies (and (natp j) (fn-rv-token-retiredp j g bank))
+            (fn-rv-token-retiredp j g (cadr (fn-rv-refund bank slot gen x))))
+   :hints (("Goal" :in-theory (e/d (fn-rv-charge fn-rv-settle fn-rv-refund fn-rv-grow fn-rv-destroy
+                                    fn-rv-phase fn-rv-gen fn-rv-row fn-rv-drawnp fn-rv-sub-bankp
+                                    fn-rv-token-retiredp fn-rv-slotp fn-rv-slot-count)
+                                   (nth update-nth fn-rv-make fn-rv-slots fn-rv-budget fn-rv-drawn))))))
+
+(local
+ (defthm fn-rv-grow-keeps-a-retired-token
+   (implies (and (natp j) (fn-rv-token-retiredp j g bank))
+            (fn-rv-token-retiredp j g (cadr (fn-rv-grow bank slot gen x))))
+   :hints (("Goal" :in-theory (e/d (fn-rv-charge fn-rv-settle fn-rv-refund fn-rv-grow fn-rv-destroy
+                                    fn-rv-phase fn-rv-gen fn-rv-row fn-rv-drawnp fn-rv-sub-bankp
+                                    fn-rv-token-retiredp fn-rv-slotp fn-rv-slot-count)
+                                   (nth update-nth fn-rv-make fn-rv-slots fn-rv-budget fn-rv-drawn))))))
+
+(local
+ (defthm fn-rv-destroy-keeps-a-retired-token
+   (implies (and (natp j) (fn-rv-token-retiredp j g bank))
+            (fn-rv-token-retiredp j g (cadr (fn-rv-destroy bank slot gen x))))
+   :hints (("Goal" :in-theory (e/d (fn-rv-charge fn-rv-settle fn-rv-refund fn-rv-grow fn-rv-destroy
+                                    fn-rv-phase fn-rv-gen fn-rv-row fn-rv-drawnp fn-rv-sub-bankp
+                                    fn-rv-token-retiredp fn-rv-slotp fn-rv-slot-count)
+                                   (nth update-nth fn-rv-make fn-rv-slots fn-rv-budget fn-rv-drawn))))))
+
+(defthm fn-rv-step-keeps-a-retired-token
+  (implies (and (natp j) (fn-rv-token-retiredp j g bank))
+           (fn-rv-token-retiredp j g (cadr (fn-rv-step bank op))))
+  :hints (("Goal" :in-theory (e/d (fn-rv-step fn-rv-draw fn-rv-open)
+                                  (fn-rv-charge fn-rv-settle fn-rv-refund fn-rv-grow fn-rv-destroy
+                                   fn-rv-token-retiredp nth update-nth fn-rv-make)))))
+
+(defthm fn-rv-run-keeps-a-retired-token
+  (implies (and (natp j) (fn-rv-token-retiredp j g bank))
+           (fn-rv-token-retiredp j g (cadr (fn-rv-run bank ops))))
+  :hints (("Goal" :in-theory (e/d (fn-rv-run) (fn-rv-step fn-rv-token-retiredp)))))
+
+(defthm fn-rv-retired-token-names-no-sub-bank
+  (implies (fn-rv-token-retiredp j g bank)
+           (not (fn-rv-sub-bankp j g bank)))
+  :hints (("Goal" :in-theory (enable fn-rv-sub-bankp))))
+
+(defthm fn-rv-destroy-retires-the-token
+  (implies (and (natp slot) (equal (car (fn-rv-destroy bank slot gen spent)) :destroyed))
+           (fn-rv-token-retiredp slot gen (cadr (fn-rv-destroy bank slot gen spent))))
+  :hints (("Goal" :in-theory (e/d (fn-rv-destroy fn-rv-phase fn-rv-gen fn-rv-row fn-rv-sub-bankp
+                                   fn-rv-token-retiredp fn-rv-slotp fn-rv-slot-count)
+                                  (nth update-nth fn-rv-make fn-rv-slots fn-rv-budget fn-rv-drawn)))))
+
 (verify-guards fn-rv-install
   :hints (("Goal" :in-theory (disable nth update-nth fn-rv-make))))
 
 (in-theory (disable fn-rv-make fn-rv-budget fn-rv-drawn fn-rv-slots fn-rv-bankp fn-rv-okp
-                    fn-rv-slot-count fn-rv-slotp fn-rv-row fn-rv-phase fn-rv-demand
+                    fn-rv-slot-count fn-rv-slotp fn-rv-row fn-rv-phase fn-rv-gen fn-rv-demand
+                    fn-rv-drawnp fn-rv-sub-bankp fn-rv-token-retiredp
                     fn-rv-fundedp fn-rv-slack fn-rv-charge fn-rv-draw fn-rv-open
                     fn-rv-settle fn-rv-refund fn-rv-grow fn-rv-destroy fn-rv-step
                     fn-rv-run fn-rv-install))

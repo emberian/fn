@@ -619,6 +619,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/resource-vector-relations-tests \
 	books/resource-vector-exec \
 	tests/acl2/resource-vector-exec-tests \
+	books/resource-vector-tree \
+	tests/acl2/resource-vector-tree-tests \
 	tests/acl2/heap-figure-tests \
 	tests/acl2/open-frontier-tests \
 	books/open-frontier-wire \

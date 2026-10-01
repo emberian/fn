@@ -1,52 +1,51 @@
 ; fn: the resource ledger as a typed stobj (lane resource-ledger,
-; 2026-10-01; planning/design-store-representation-2026-10-01.md section 2:
-; "one ledger in one stobj, typed").  The served path holds no list
-; (D27): the budget and the drawn vector are (unsigned-byte 64) arrays of
-; *fn-rv-k* words, the slots are direct-index typed columns -- a phase
-; column and one u64 column a coordinate for the demands -- and the
-; ownership row Codex's pool kept per read (the token (id cid file eoff
-; elen trailer), books/page-read-ledger.lisp fn-prl-token) is six more u64
-; columns indexed by the same slot.  Codex's five-element pool list
-; (ledger bookkeeping native-octets fd-bookkeeping file-limit;
-; books/page-read-pool-state.lisp fn-prp-data) becomes the typed scalars
-; below: the ledger IS this stobj, the other four are u64 fields.
+; 2026-10-01; deputy-1 after Codex review r06; planning/design-store-
+; representation-2026-10-01.md section 2: "one ledger in one stobj,
+; typed").  The served path holds no list (D27): the budget and the drawn
+; vector are (unsigned-byte 64) arrays of *fn-rv-k* words, the slots are
+; direct-index typed columns -- a phase column, a generation column (the
+; completion token, books/resource-vector.lisp) and one u64 column a
+; coordinate for the demands -- and the ownership row Codex's pool kept
+; per read (the token (id cid file eoff elen trailer),
+; books/page-read-ledger.lisp fn-prl-token) is six more u64 columns indexed
+; by the same slot.  Codex's five-element pool list (ledger bookkeeping
+; native-octets fd-bookkeeping file-limit; books/page-read-pool-state.lisp
+; fn-prp-data) becomes the typed scalars below.
 ;
 ; GEN: def-representation.  This is the hand-written smallest version of
 ; what `def-representation' generates once it lands (MODE 2026-10-01
 ; section 4): the concrete stobj, its abstraction FN-RL-BANK to the logical
-; bank of books/resource-vector.lisp, the representation invariant
-; FN-RL-WFP (every column at least COUNT long) and, per export, the
-; correspondence theorem "the abstraction of the export's result is the
-; logical transition of the abstraction":
+; bank, the representation invariant FN-RL-WFP and, per export, a
+; correspondence theorem.  STATUS, honestly (r06 F3): the exports' guards
+; are declared and NOT verified, and NO correspondence theorem is proved in
+; this book; PRF-1211 stays planned until they are, and the ledger is wired
+; into nothing.  The next version is the TREE of books/resource-vector-tree
+; (one table, a row's owner a slot, per-row drawn columns for the sub-bank
+; rows), which is the layout the host needs; this flat twin is kept as the
+; measured shape of the columns, not as a claim.
 ;
-;   fn-rl-draw{correspondence}     fn-rl-draw   is fn-rv-draw   under fn-rl-bank
-;   fn-rl-settle{correspondence}   fn-rl-settle is fn-rv-settle under fn-rl-bank
-;
-; and fn-rl-install{correspondence} for the installed root.  With
-; fn-rv-step-keeps-okp (the logical keystone) these give the typed ledger
-; the same invariant: nothing is proved twice.  The remaining exports
-; (refund, grow, destroy, the pool's admit-read with its token row) are
-; NEXT in the lane's dump: the same proof shape, column by column.
-;
-; GUARDS: the exports' guards are declared, not yet verified (NEXT in the
-; lane's dump, with the correspondence theorems); every store is still
-; type-checked by the stobj's own guards at execution.
-; No arithmetic here can exceed a word: a draw is admitted only when
-; drawn + demand <= budget coordinate-wise and the budget is a u64 array,
-; so every stored sum is below 2^64 (the guard proofs say so); a demand
-; coordinate past 2^64 fails the fit, never the store.  No host calls this
-; book yet (MODE section 3).
+; THE REPRESENTATION DOMAIN (r06 F4, D27): a budget word is a u64.  A
+; profile whose budget does not fit is REFUSED by fn-rl-install
+; (:unrepresentable-profile), never saturated; a slot whose generation has
+; reached the last u64 refuses its next charge (:slot-exhausted), never
+; wraps.  No arithmetic here can exceed a word: a charge is admitted only
+; when drawn + demand <= budget coordinate-wise and the budget is a u64
+; array, so every stored sum is below 2^64; a demand coordinate past 2^64
+; fails the fit, never the store.
 
 (in-package "ACL2")
 (include-book "resource-vector")
 
 (assert-event (equal *fn-rv-k* 9))
 
+(defconst *fn-rl-word-max* (1- (expt 2 64)))
+
 (defstobj fn-resource-ledger
   (fn-rl-budget :type (array (unsigned-byte 64) (9)) :initially 0)
   (fn-rl-drawn :type (array (unsigned-byte 64) (9)) :initially 0)
   (fn-rl-count :type (unsigned-byte 32) :initially 0)
   (fn-rl-phases :type (array (unsigned-byte 8) (0)) :initially 0 :resizable t)
+  (fn-rl-gens :type (array (unsigned-byte 64) (0)) :initially 0 :resizable t)
   ;; the demand columns, one a coordinate
   (fn-rl-c0 :type (array (unsigned-byte 64) (0)) :initially 0 :resizable t)
   (fn-rl-c1 :type (array (unsigned-byte 64) (0)) :initially 0 :resizable t)
@@ -80,6 +79,7 @@
   (declare (xargs :stobjs fn-resource-ledger))
   (let ((n (fn-rl-count fn-resource-ledger)))
     (and (<= n (fn-rl-phases-length fn-resource-ledger))
+         (<= n (fn-rl-gens-length fn-resource-ledger))
          (<= n (fn-rl-c0-length fn-resource-ledger))
          (<= n (fn-rl-c1-length fn-resource-ledger))
          (<= n (fn-rl-c2-length fn-resource-ledger))
@@ -162,13 +162,15 @@
         (fn-rl-c6i slot fn-resource-ledger) (fn-rl-c7i slot fn-resource-ledger)
         (fn-rl-c8i slot fn-resource-ledger)))
 
+; A row of the logical bank: (PHASE GEN . DEMAND).
 (defun fn-rl-rows-from (i fn-resource-ledger)
   (declare (xargs :stobjs fn-resource-ledger
                   :guard (and (natp i) (fn-rl-wfp fn-resource-ledger))
                   :measure (nfix (- (nfix (fn-rl-count fn-resource-ledger)) (nfix i)))))
   (if (or (not (natp i)) (>= i (nfix (fn-rl-count fn-resource-ledger))))
       nil
-    (cons (cons (fn-rl-phasesi i fn-resource-ledger) (fn-rl-demand-list i fn-resource-ledger))
+    (cons (list* (fn-rl-phasesi i fn-resource-ledger) (fn-rl-gensi i fn-resource-ledger)
+                 (fn-rl-demand-list i fn-resource-ledger))
           (fn-rl-rows-from (+ 1 i) fn-resource-ledger))))
 
 (defun fn-rl-bank (fn-resource-ledger)
@@ -207,20 +209,37 @@
            (fn-resource-ledger (fn-rl-update-ci i slot d fn-resource-ledger)))
       (fn-rl-charge-from (+ 1 i) slot (cdr demand) fn-resource-ledger))))
 
+; A charge (fn-rv-charge): the slot's new generation is the token.
+(defun fn-rl-charge (slot demand phase fn-resource-ledger)
+  (declare (xargs :stobjs fn-resource-ledger :verify-guards nil
+                  :guard (and (fn-rl-wfp fn-resource-ledger) (true-listp demand)
+                              (or (eql phase 1) (eql phase 2)))))
+  (cond ((not (and (fn-rl-slotp slot fn-resource-ledger) (fn-rv-vectorp demand)))
+         (mv :invalid-draw 0 fn-resource-ledger))
+        ((not (eql (fn-rl-phasesi slot fn-resource-ledger) 0))
+         (mv :slot-busy 0 fn-resource-ledger))
+        ((not (fn-rl-fits-from 0 demand fn-resource-ledger))
+         (mv :resources-unavailable 0 fn-resource-ledger))
+        ((>= (fn-rl-gensi slot fn-resource-ledger) *fn-rl-word-max*)
+         (mv :slot-exhausted 0 fn-resource-ledger))
+        (t (let* ((gen (+ 1 (fn-rl-gensi slot fn-resource-ledger)))
+                  (fn-resource-ledger (fn-rl-charge-from 0 slot demand fn-resource-ledger))
+                  (fn-resource-ledger (update-fn-rl-phasesi slot phase fn-resource-ledger))
+                  (fn-resource-ledger (update-fn-rl-gensi slot gen fn-resource-ledger)))
+             (mv (if (eql phase 2) :opened :drawn) gen fn-resource-ledger)))))
+
 (defun fn-rl-draw (slot demand fn-resource-ledger)
   (declare (xargs :stobjs fn-resource-ledger :verify-guards nil
                   :guard (and (fn-rl-wfp fn-resource-ledger) (true-listp demand))))
-  (cond ((not (and (fn-rl-slotp slot fn-resource-ledger) (fn-rv-vectorp demand)))
-         (mv :invalid-draw fn-resource-ledger))
-        ((not (eql (fn-rl-phasesi slot fn-resource-ledger) 0))
-         (mv :slot-busy fn-resource-ledger))
-        ((not (fn-rl-fits-from 0 demand fn-resource-ledger))
-         (mv :resources-unavailable fn-resource-ledger))
-        (t (let* ((fn-resource-ledger (fn-rl-charge-from 0 slot demand fn-resource-ledger))
-                  (fn-resource-ledger (update-fn-rl-phasesi slot 1 fn-resource-ledger)))
-             (mv :drawn fn-resource-ledger)))))
+  (fn-rl-charge slot demand 1 fn-resource-ledger))
 
-; Settle: the reusable coordinates (the mask's) return; the slot idles.
+(defun fn-rl-open (slot budget fn-resource-ledger)
+  (declare (xargs :stobjs fn-resource-ledger :verify-guards nil
+                  :guard (and (fn-rl-wfp fn-resource-ledger) (true-listp budget))))
+  (fn-rl-charge slot budget 2 fn-resource-ledger))
+
+; Settle: the reusable coordinates (the mask's) return; the slot idles and
+; keeps its generation; the token must name the slot's current draw.
 (defun fn-rl-release-from (i slot mask fn-resource-ledger)
   (declare (xargs :stobjs fn-resource-ledger :verify-guards nil
                   :guard (and (natp i) (true-listp mask) (<= (+ i (len mask)) 9)
@@ -235,31 +254,44 @@
            (fn-resource-ledger (fn-rl-update-ci i slot 0 fn-resource-ledger)))
       (fn-rl-release-from (+ 1 i) slot (cdr mask) fn-resource-ledger))))
 
-(defun fn-rl-settle (slot fn-resource-ledger)
+(defun fn-rl-settle (slot gen fn-resource-ledger)
   (declare (xargs :stobjs fn-resource-ledger :verify-guards nil :guard (fn-rl-wfp fn-resource-ledger)))
   (cond ((not (fn-rl-slotp slot fn-resource-ledger)) (mv :invalid-slot fn-resource-ledger))
-        ((not (eql (fn-rl-phasesi slot fn-resource-ledger) 1)) (mv :stale fn-resource-ledger))
+        ((not (and (eql (fn-rl-phasesi slot fn-resource-ledger) 1)
+                   (equal (fn-rl-gensi slot fn-resource-ledger) gen)))
+         (mv :stale fn-resource-ledger))
         (t (let* ((fn-resource-ledger
                    (fn-rl-release-from 0 slot *fn-rv-reusable-mask* fn-resource-ledger))
                   (fn-resource-ledger (update-fn-rl-phasesi slot 0 fn-resource-ledger)))
              (mv :settled fn-resource-ledger)))))
 
-; Install: the budget words, NSLOTS idle slots, then the baseline at slot 0
-; and the reserve opened at slot 1 (books/resource-vector.lisp fn-rv-install).
+; -----------------------------------------------------------------------------
+; Install: the profile's budget words must be representable (every word a
+; u64) or the install is refused before any store (D27: refuse, never
+; saturate); then NSLOTS idle slots, the baseline drawn at slot 0 and the
+; reserve opened at slot 1 (books/resource-vector.lisp fn-rv-install).
+
+(defun fn-rl-words-representable-p (words)
+  (declare (xargs :guard t))
+  (if (consp words)
+      (and (natp (car words)) (<= (car words) *fn-rl-word-max*)
+           (fn-rl-words-representable-p (cdr words)))
+    (null words)))
+
 (defun fn-rl-store-words-from (i words fn-resource-ledger)
   (declare (xargs :stobjs fn-resource-ledger
-                  :guard (and (natp i) (true-listp words) (<= (+ i (len words)) 9)
-                              (fn-rv-nats-p words))
+                  :guard (and (natp i) (<= (+ i (len words)) 9)
+                              (fn-rl-words-representable-p words))
                   :verify-guards nil))
   (if (endp words)
       fn-resource-ledger
-    (let ((fn-resource-ledger
-           (update-fn-rl-budgeti i (min (nfix (car words)) (1- (expt 2 64))) fn-resource-ledger)))
+    (let ((fn-resource-ledger (update-fn-rl-budgeti i (car words) fn-resource-ledger)))
       (fn-rl-store-words-from (+ 1 i) (cdr words) fn-resource-ledger))))
 
 (defun fn-rl-resize-all (n fn-resource-ledger)
   (declare (xargs :stobjs fn-resource-ledger :guard (natp n)))
   (let* ((fn-resource-ledger (resize-fn-rl-phases n fn-resource-ledger))
+         (fn-resource-ledger (resize-fn-rl-gens n fn-resource-ledger))
          (fn-resource-ledger (resize-fn-rl-c0 n fn-resource-ledger))
          (fn-resource-ledger (resize-fn-rl-c1 n fn-resource-ledger))
          (fn-resource-ledger (resize-fn-rl-c2 n fn-resource-ledger))
@@ -274,5 +306,28 @@
          (fn-resource-ledger (resize-fn-rl-files n fn-resource-ledger))
          (fn-resource-ledger (resize-fn-rl-eoffs n fn-resource-ledger))
          (fn-resource-ledger (resize-fn-rl-elens n fn-resource-ledger))
-         (fn-resource-ledger (resize-fn-rl-trailers n fn-resource-ledger)))
+         (fn-resource-ledger (resize-fn-rl-trailers n fn-resource-ledger))
+         (fn-resource-ledger (update-fn-rl-count n fn-resource-ledger)))
     fn-resource-ledger))
+
+(defun fn-rl-install (budget baseline reserve nslots fn-resource-ledger)
+  (declare (xargs :stobjs fn-resource-ledger :verify-guards nil
+                  :guard (and (true-listp budget) (true-listp baseline) (true-listp reserve)
+                              (natp nslots))))
+  (cond ((not (and (fn-rv-vectorp budget) (<= 2 nslots) (unsigned-byte-p 32 nslots)))
+         (mv :invalid-install fn-resource-ledger))
+        ((not (fn-rl-words-representable-p budget))
+         (mv :unrepresentable-profile fn-resource-ledger))
+        (t (let* ((fn-resource-ledger (fn-rl-resize-all nslots fn-resource-ledger))
+                  (fn-resource-ledger (fn-rl-store-words-from 0 budget fn-resource-ledger)))
+             (mv-let (w1 g1 fn-resource-ledger)
+               (fn-rl-draw 0 baseline fn-resource-ledger)
+               (declare (ignore g1))
+               (if (not (eq w1 :drawn))
+                   (mv w1 fn-resource-ledger)
+                 (mv-let (w2 g2 fn-resource-ledger)
+                   (fn-rl-open 1 reserve fn-resource-ledger)
+                   (declare (ignore g2))
+                   (if (not (eq w2 :opened))
+                       (mv w2 fn-resource-ledger)
+                     (mv :installed fn-resource-ledger)))))))))

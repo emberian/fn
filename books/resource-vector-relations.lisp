@@ -37,7 +37,7 @@
 ;                                       whose rows are its terms and whose
 ;                                       every coordinate but :resident is 0;
 ;                                       funded iff the resident coordinate
-;                                       is (fn-rv-credit-ledger-funded-iff)
+;                                       is (fn-rv-credit-ledger-funded-by-definition)
 ;   fn-rv-heap-reservation-funds-the-root
 ;                                       an accepted reservation is a funded
 ;                                       root whose :resident coordinate is
@@ -127,9 +127,9 @@
                               (true-listp rescue) (true-listp charged))))
   (fn-rv-make (fn-rv-of-prs budget)
               (fn-rv-of-prs (fn-prs-plus used (fn-prs-plus rescue charged)))
-              (list (cons 1 (fn-rv-of-prs used))
-                    (cons 2 (fn-rv-of-prs rescue))
-                    (cons 1 (fn-rv-of-prs charged)))))
+              (list (list* 1 0 (fn-rv-of-prs used))
+                    (list* 2 0 (fn-rv-of-prs rescue))
+                    (list* 1 0 (fn-rv-of-prs charged)))))
 
 (defthm fn-rv-prs-gate-is-a-funded-root
   (implies (and (fn-prs-vectorp budget) (fn-prs-vectorp used)
@@ -150,7 +150,7 @@
 (defun fn-rv-credit-rows (ops)
   (declare (xargs :guard t))
   (if (consp ops)
-      (cons (cons 1 (fn-rv-resident (if (consp (car ops))
+      (cons (list* 1 0 (fn-rv-resident (if (consp (car ops))
                                         (+ (fn-mcr-op-owned (cdar ops))
                                            (fn-mcr-op-reserved (cdar ops)))
                                       0)))
@@ -164,10 +164,10 @@
   (declare (xargs :guard t))
   (fn-rv-make (fn-rv-resident (fn-mcr-budget l))
               (fn-rv-resident (fn-mcr-total l))
-              (list* (cons 1 (fn-rv-resident (fn-mcr-base l)))
-                     (cons 2 (fn-rv-resident (fn-mcr-completion l)))
-                     (cons 2 (fn-rv-resident (fn-mcr-runtime l)))
-                     (cons 1 (fn-rv-resident (fn-mcr-cache l)))
+              (list* (list* 1 0 (fn-rv-resident (fn-mcr-base l)))
+                     (list* 2 0 (fn-rv-resident (fn-mcr-completion l)))
+                     (list* 2 0 (fn-rv-resident (fn-mcr-runtime l)))
+                     (list* 1 0 (fn-rv-resident (fn-mcr-cache l)))
                      (fn-rv-credit-rows (fn-mcr-ops l)))))
 
 (local
@@ -204,7 +204,11 @@
    :hints (("Goal" :in-theory (e/d (fn-rv-outstanding fn-mcr-ops-credit)
                                    (fn-rv-resident fn-rv-unit))))))
 
-(defthm fn-rv-credit-ledger-funded-iff
+; By definition: the constructed bank's budget and drawn ARE the ledger's
+; budget and total at the :resident coordinate, so this is a projection
+; identity, not the row-consistency keystone (that one, "a funded ledger is
+; an okp bank", is NEXT below; Codex review r06 F5/F6).
+(defthm fn-rv-credit-ledger-funded-by-definition
   (equal (fn-rv-fundedp (fn-rv-bank-of-credits l))
          (<= (fn-mcr-total l) (fn-mcr-budget l)))
   :hints (("Goal" :in-theory (e/d (fn-rv-fundedp fn-rv-bankp) (fn-rv-resident fn-rv-unit fn-mcr-total)))))
