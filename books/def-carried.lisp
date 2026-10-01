@@ -586,27 +586,42 @@
         ((and (eq (caar wrld) fn) (eq (cadar wrld) 'formals)) wrld)
         (t (fn-cd-introduction fn (cdr wrld)))))
 
-(defun fn-cd-assumptions-bookp (book)
+(defun fn-cd-dir-of (book)
   (declare (xargs :mode :program))
-  ; BOOK (a full book name: a string, or (:SYSTEM . path) for a system book)
-  ; is books/assumptions.lisp or books/assumptions-*.lisp
+  ; the directory part of a full book name, with its final slash, or nil
   (and (stringp book)
-       (let* ((n (length book))
-              (slash (search "/books/" book :from-end t))
-              (file (and slash (subseq book (+ slash 7) n))))
-         (and file
-              (not (search "/" file))
-              (or (equal file "assumptions.lisp")
-                  (and (< 17 (length file))
-                       (equal (subseq file 0 12) "assumptions-")
-                       (equal (subseq file (- (length file) 5) (length file)) ".lisp")))))))
+       (let ((slash (search "/" book :from-end t)))
+         (and slash (subseq book 0 (1+ slash))))))
+
+(defun fn-cd-assumptions-bookp (book w)
+  (declare (xargs :mode :program))
+  ; BOOK (a full book name) is assumptions.lisp or assumptions-*.lisp in the
+  ; directory of THIS book (books/def-carried.lisp, whose own include path
+  ; the world records): a file of that name anywhere else is not one.  When
+  ; this book was not included (a REPL loading it from source) the world
+  ; has no path for it, and the directory is any one ending /books/ -- a
+  ; certified world always has the path.
+  (let ((dir (or (fn-cd-dir-of (fn-cd-book-at (fn-cd-introduction 'fn-cd-get w)))
+                 (and (stringp book)
+                      (let ((slash (search "/books/" book :from-end t)))
+                        (and slash (subseq book 0 (+ slash 7))))))))
+    (and dir (stringp book)
+         (< (length dir) (length book))
+         (equal (subseq book 0 (length dir)) dir)
+         (let ((file (subseq book (length dir) (length book))))
+           (and (not (search "/" file))
+                (or (equal file "assumptions.lisp")
+                    (and (< 17 (length file))
+                         (equal (subseq file 0 12) "assumptions-")
+                         (equal (subseq file (- (length file) 5) (length file))
+                                ".lisp"))))))))
 
 (defun fn-cd-named-assumptionp (a w)
   (declare (xargs :mode :program))
   (and (consp a) (symbolp (car a)) (not (eq (car a) 'quote))
        (getpropc (car a) 'constrainedp nil w)
        (fn-cd-assumptions-bookp
-        (fn-cd-book-at (fn-cd-introduction (car a) w)))))
+        (fn-cd-book-at (fn-cd-introduction (car a) w)) w)))
 
 (defun fn-cd-first-unnamed-assumption (as w)
   (declare (xargs :mode :program))
