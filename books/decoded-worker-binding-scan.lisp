@@ -69,3 +69,5 @@
        (equal (fn-prl-nth 3 next) (fn-prl-nth 3 scan))
        (equal (fn-prl-nth 7 next) (fn-prl-nth 7 scan))))
  :hints (("Goal" :in-theory (enable fn-dwb-one fn-dwb-scan fn-prl-nth))))
+
+(verify-guards fn-dwb-node-one)
