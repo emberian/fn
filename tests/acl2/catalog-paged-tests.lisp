@@ -59,17 +59,38 @@
   (cpt-a-withdraw l (cpt-a-commit 0 n nil)))
 
 ; The observable content of fn-cat$pcorr on a built pair, numbers 1..n of
-; "fn.test" (every number the group has).
+; "fn.test" (every number the group has): a live number's entries are its
+; neighbours, and a dead number is bound in NEITHER table (Codex r35 F1: a
+; dead key bound in NEXT is a counterexample to fn-cpl-okp that the
+; per-live-number check alone cannot see).  The tables are the dense map's
+; lanes 1 and 2 (books/catalog-dense-map.lisp), which have no entry count;
+; the group's numbers 1..n are every key the composed machine binds, so the
+; per-number check over them is the exact observation the count was.
 (defun cpt-links-ok (k n c fn-cat$p)
   (declare (xargs :mode :program :stobjs fn-cat$p))
   (or (> k n)
-      (and (or (not (fn-cat-live-numberp "fn.test" k c))
-               (let ((nx (fn-cat$p-lnext-get (cons "fn.test" k) fn-cat$p))
-                     (pv (fn-cat$p-lprev-get (cons "fn.test" k) fn-cat$p)))
+      (and (let ((nx (fn-cat$p-lnext-get (cons "fn.test" k) fn-cat$p))
+                 (pv (fn-cat$p-lprev-get (cons "fn.test" k) fn-cat$p)))
+             (if (fn-cat-live-numberp "fn.test" k c)
                  (and (natp nx) (natp pv)
                       (equal nx (fn-cpl-next-of "fn.test" k c))
-                      (equal pv (fn-cpl-prev-of "fn.test" k c)))))
+                      (equal pv (fn-cpl-prev-of "fn.test" k c)))
+               (and (null nx) (null pv))))
            (cpt-links-ok (1+ k) n c fn-cat$p))))
+
+; CORRUPTION helpers: unbind numbers k..n of "fn.test" in NEXT / PREV (the
+; tables erased over the group's range).
+(defun cpt-erase-next (k n fn-cat$p)
+  (declare (xargs :mode :program :stobjs fn-cat$p))
+  (if (> k n) fn-cat$p
+    (let ((fn-cat$p (fn-cat$p-lnext-rem (cons "fn.test" k) fn-cat$p)))
+      (cpt-erase-next (1+ k) n fn-cat$p))))
+
+(defun cpt-erase-prev (k n fn-cat$p)
+  (declare (xargs :mode :program :stobjs fn-cat$p))
+  (if (> k n) fn-cat$p
+    (let ((fn-cat$p (fn-cat$p-lprev-rem (cons "fn.test" k) fn-cat$p)))
+      (cpt-erase-prev (1+ k) n fn-cat$p))))
 
 (defun cpt-rows-ok (s c fn-cat$p)
   (declare (xargs :mode :program :stobjs fn-cat$p))
@@ -77,27 +98,16 @@
       (and (equal (fn-cat$p-at s fn-cat$p) (fn-cat$a-at s c))
            (cpt-rows-ok (1+ s) c fn-cat$p))))
 
-; The live numbers 1..n of "fn.test" in c: the two link tables hold exactly
-; this many entries when they bind the live numbers and nothing else
-; (Codex r35 F1: a dead key bound in NEXT is a counterexample to
-; fn-cpl-okp that the per-number check alone cannot see; the count sees it).
-(defun cpt-live-count (k n c)
-  (declare (xargs :mode :program))
-  (if (> k n) 0
-    (+ (if (fn-cat-live-numberp "fn.test" k c) 1 0) (cpt-live-count (1+ k) n c))))
-
 ; The observable content of fn-cat$pcorr on a built pair whose only group
 ; is "fn.test" with numbers 1..n: the count, every row, the live summary,
-; the version's withdrawals, and the two link tables EXACTLY (the live
-; numbers' entries are their neighbours and the tables have no other
-; entry).  fn-cat$pcorr itself is a defun-sk over the tables and is not
+; the version's withdrawals, and the two link tables EXACTLY over the
+; group's numbers (the live numbers' entries are their neighbours, the dead
+; numbers are unbound).  fn-cat$pcorr itself is a defun-sk over the tables and is not
 ; executable; on such a pair this observation is its content for the link
 ; conjuncts, and the exports' equalities for the view's.
 (defun cpt-corr-evidence (n c fn-cat$p)
   (declare (xargs :mode :program :stobjs fn-cat$p))
   (and (equal (fn-cat$p-count fn-cat$p) (fn-cat$a-count c))
-       (equal (fn-cat$p-lnext-count fn-cat$p) (cpt-live-count 1 n c))
-       (equal (fn-cat$p-lprev-count fn-cat$p) (cpt-live-count 1 n c))
        (cpt-rows-ok 0 c fn-cat$p)
        (equal (fn-cat$p-group-live-low "fn.test" fn-cat$p) (fn-cat$a-group-live-low "fn.test" c))
        (equal (fn-cat$p-group-live-high "fn.test" fn-cat$p) (fn-cat$a-group-live-high "fn.test" c))
@@ -197,8 +207,8 @@
              (c (cpt-logical n l))
              (fn-cat$p (cpt-commit 0 n fn-cat$p))
              (fn-cat$p (cpt-withdraw l fn-cat$p))
-             (fn-cat$p (if corrupt (fn-cat$p-lprev-clear fn-cat$p) fn-cat$p))
-             (fn-cat$p (if corrupt (fn-cat$p-lnext-clear fn-cat$p) fn-cat$p)))
+             (fn-cat$p (if corrupt (cpt-erase-prev 1 n fn-cat$p) fn-cat$p))
+             (fn-cat$p (if corrupt (cpt-erase-next 1 n fn-cat$p) fn-cat$p)))
         (mv (list (fn-cat-live-numberp "fn.test" k c)
                   (fn-cat$p-lnext-get (cons "fn.test" k) fn-cat$p)
                   (fn-cat$p-next "fn.test" k fn-cat$p)
@@ -211,7 +221,7 @@
 ; KEYSTONE fn-cat$p-livep-is-live, executed (Codex r39): on the probe state
 ; (livep 1, live 1, livep n, live n, livep 2, live 2, evidence), the NEXT
 ; table optionally erased (CORRUPTED: coverage refuted) or given an entry
-; for the dead 2 (CORRUPTED: goodness refuted; the entry count sees it).
+; for the dead 2 (CORRUPTED: goodness refuted; the dead-number check sees it).
 (defun cpt-livep (n mode)
   (declare (xargs :mode :program))
   (with-local-stobj fn-cat$p
@@ -220,7 +230,7 @@
              (c (cpt-logical n l))
              (fn-cat$p (cpt-commit 0 n fn-cat$p))
              (fn-cat$p (cpt-withdraw l fn-cat$p))
-             (fn-cat$p (if (eq mode :erase) (fn-cat$p-lnext-clear fn-cat$p) fn-cat$p))
+             (fn-cat$p (if (eq mode :erase) (cpt-erase-next 1 n fn-cat$p) fn-cat$p))
              (fn-cat$p (if (eq mode :bind-dead)
                            (fn-cat$p-lnext-put (cons "fn.test" 2) n fn-cat$p)
                          fn-cat$p)))
