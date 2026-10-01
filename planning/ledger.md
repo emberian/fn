@@ -13,7 +13,7 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 1999 |
 | Certification roots in the Makefile | 1866 |
 | Books inside the root closure | 1938 |
-| `defthm` and `defthmd` events | 30321 |
+| `defthm` and `defthmd` events | 30323 |
 | `defun` events | 19348 |
 | Functions with verified guards | 3553 |
 | Functions declared `:verify-guards nil` and never verified | 2350 |
@@ -566,7 +566,7 @@ that `make certify` requests.
 | `books/index-range-render-custody.lisp` | - | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/index-range-render-demand.lisp` | - | 1 | 5 | 2/0/3/0 | 0 | 0 | 0 |
 | `books/index-range-render-output.lisp` | - | 10 | 1 | 1/0/0/0 | 0 | 0 | 0 |
-| `books/index-range-render-registry.lisp` | - | 0 | 5 | 2/0/3/0 | 0 | 0 | 0 |
+| `books/index-range-render-registry.lisp` | - | 2 | 5 | 2/0/3/0 | 0 | 0 | 0 |
 | `books/index-range-render-trajectory.lisp` | - | 5 | 5 | 1/0/4/0 | 0 | 0 | 0 |
 | `books/index-range-row-decision.lisp` | - | 7 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/index-reader-render-ready.lisp` | - | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |

@@ -109,3 +109,30 @@
  :hints (("Goal" :in-theory
   (e/d (fn-ibr-render-registry-ready-p fn-ibp-query-tokenp)
        (fn-ibr-node-render-ready-p fn-ibr-node-render-one)))))
+
+(local
+ (defthm fn-ibr-child-owner-frame-by-definition
+  (let ((rh (mv-nth 1 (fn-ibr-joint-segment-render-one capacity fn-render-holder
+           fn-ibp-query-segment fn-query-payload-grants fn-arena fn-octets))))
+   (and (equal (fn-rh-live rh) (fn-rh-live fn-render-holder))
+        (equal (fn-rh-pin rh) (fn-rh-pin fn-render-holder))
+        (equal (fn-rh-query rh) (fn-rh-query fn-render-holder))
+        (equal (fn-rh-resource rh) (fn-rh-resource fn-render-holder))
+        (equal (fn-rh-origin rh) (fn-rh-origin fn-render-holder))))
+  :hints (("Goal" :use fn-ibr-render-one-retains-custody-and-owner-identities
+                   :in-theory nil))))
+(defthm fn-ibr-node-render-one-retains-owner-identities
+ (let ((rh (mv-nth 2 (fn-ibr-node-render-one token fuel capacity address depth
+                      fn-render-holder fn-ibp-node fn-arena fn-octets))))
+  (and (equal (fn-rh-live rh) (fn-rh-live fn-render-holder))
+       (equal (fn-rh-pin rh) (fn-rh-pin fn-render-holder))
+       (equal (fn-rh-query rh) (fn-rh-query fn-render-holder))
+       (equal (fn-rh-resource rh) (fn-rh-resource fn-render-holder))
+       (equal (fn-rh-origin rh) (fn-rh-origin fn-render-holder))))
+ :rule-classes nil
+ :hints (("Goal"
+  :induct (fn-ibr-node-render-one token fuel capacity address depth
+             fn-render-holder fn-ibp-node fn-arena fn-octets)
+  :in-theory (e/d (fn-ibr-node-render-one)
+                  (fn-ibr-joint-segment-render-one fn-rh-live fn-rh-pin
+                   fn-rh-query fn-rh-resource fn-rh-origin)))))
