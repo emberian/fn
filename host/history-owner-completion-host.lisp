@@ -4,6 +4,7 @@
 (in-package "ACL2")
 (include-book "owner-host")
 (include-book "../books/history-event-backing")
+(include-book "../books/history-semantic-writer-state")
 
 (defun fn-odhc-publication-matches (publication source epoch)
  (declare (xargs :guard t))
@@ -86,6 +87,9 @@
                   (eq (fn-hed-at 0 store-fields) :history-store-fields)
                   (fn-hed-fixedp prepared-view 10)))
        (fn-owner-history-completion-fence token :owner-result-lineage fn-history-backing state))
+      ((and (boundp-global 'fn-owner-history-completion-fault state)
+             (f-get-global 'fn-owner-history-completion-fault state))
+       (fn-owner-history-completion-fence token :retained-owner-fault fn-history-backing state))
       ((eq phase :published)
        ; Publication identity is installed with the owner in this same call.
        ; A repeated callback never registers or appends a second event.
@@ -100,8 +104,7 @@
                   (eq (fn-prl-nth 0 semantic-source) :history-semantic-source)
                   (fn-apr-tokenp (fn-prl-nth 1 semantic-source))
                   (equal token (fn-prl-nth 1 semantic-source))
-                  (eq (fn-hsw-gate token (fn-apr-owner-current state)
-                        (fn-prl-nth 2 semantic-source) publication epoch) :writer-current)
+                  (eq (fn-owner-history-writer-gate token state) :writer-current)
                   (fn-apr-livep token (fn-apr-owner-current state))
                   (member-eq (fn-prl-nth 2 (fn-apr-owner-current state)) '(:produced :promoted))
                   (eq (fn-sf-phase files) :completing)
