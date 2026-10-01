@@ -6,6 +6,7 @@ import io
 import json
 from pathlib import Path
 import sys
+import subprocess
 import tempfile
 import unittest
 
@@ -145,6 +146,130 @@ class ImageSetTests(unittest.TestCase):
         self.assertIn("developer (paged)", err)
         self.assertEqual(self.quiet(image_set.link, SHA, self.root / "t", ["production"],
                                     self.base)[0], 0)
+
+
+class BackfillCatalogTests(unittest.TestCase):
+    quiet = ImageSetTests.quiet
+
+    def setUp(self):
+        ImageSetTests.setUp(self)
+        self.repo = self.root / "repo"
+        self.repo.mkdir()
+        self.git("init", "-q")
+        self.git("config", "user.name", "Image fixture")
+        self.git("config", "user.email", "fixture@example.invalid")
+        self.git("-c", "commit.gpgsign=false", "commit", "-qm", "A", "--allow-empty")
+        self.old = self.git("rev-parse", "HEAD")
+        (self.repo / "books").mkdir()
+        (self.repo / "books/catalog-paged.lisp").write_text("; fixture\n")
+        self.git("add", "books/catalog-paged.lisp")
+        self.git("-c", "commit.gpgsign=false", "commit", "-qm", "B")
+        self.paged = self.git("rev-parse", "HEAD")
+
+    def git(self, *args):
+        return subprocess.run(["git", "-C", str(self.repo), *args], check=True,
+                              capture_output=True, text=True).stdout.strip()
+
+    def legacy_set(self, sha):
+        self.assertEqual(self.quiet(image_set.publish, self.tree, sha, self.base)[0], 0)
+        directory = self.base / sha
+        path = directory / "MANIFEST.json"
+        manifest = json.loads(path.read_text())
+        for entry in manifest["images"].values():
+            del entry["catalog"]
+        path.write_text(json.dumps(manifest))
+        image_set.write_sums(directory)
+        return directory
+
+    def snapshot(self, directory):
+        return {str(p.relative_to(directory)): p.read_bytes()
+                for p in directory.rglob("*") if p.is_file()}
+
+    def backfill(self, sha, *extra):
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            code = image_set.main(["backfill-catalog", sha, "--repo",
+                                   str(self.repo / ".git"), "--base", str(self.base), *extra])
+        self.assertEqual(len(out.getvalue().splitlines()), 1)
+        self.assertTrue(out.getvalue().startswith(sha + " "))
+        return code, out.getvalue()
+
+    def assert_refused_untouched(self, sha, directory, reason):
+        before = self.snapshot(directory)
+        code, output = self.backfill(sha)
+        self.assertEqual(code, 1)
+        self.assertIn("refused: " + reason, output)
+        self.assertEqual(self.snapshot(directory), before)
+
+    def test_old_source_backfills_verifies_and_links(self):
+        directory = self.legacy_set(self.old)
+        self.assertEqual(self.quiet(image_set.link, self.old, self.root / "linked",
+                                    ["production"], self.base)[0], 1)
+        code, output = self.backfill(self.old)
+        self.assertEqual(code, 0)
+        self.assertIn("backfilled 2 images", output)
+        manifest = json.loads((directory / "MANIFEST.json").read_text())
+        for entry in manifest["images"].values():
+            self.assertEqual(entry["catalog"], "old")
+            self.assertRegex(entry["catalog_provenance"],
+                             rf"^backfilled: source {self.old} predates books/catalog-paged\.lisp "
+                             r"\(git cat-file, \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\)$")
+        self.assertEqual(image_set.verify(directory), [])
+        self.assertEqual(self.quiet(image_set.link, self.old, self.root / "linked",
+                                    ["production", "developer"], self.base)[0], 0)
+        before = self.snapshot(directory)
+        self.assertIn("nothing to do", self.backfill(self.old)[1])
+        self.assertEqual(self.snapshot(directory), before)
+
+    def test_paged_source_refuses_untouched(self):
+        directory = self.legacy_set(self.paged)
+        self.assert_refused_untouched(self.paged, directory,
+                                     "source contains books/catalog-paged.lisp")
+        self.assertEqual(self.quiet(image_set.link, self.paged, self.root / "linked",
+                                    ["production"], self.base)[0], 1)
+
+    def test_unknown_source_refuses_untouched(self):
+        directory = self.legacy_set("0" * 40)
+        self.assert_refused_untouched("0" * 40, directory, "source is not a known git commit")
+
+    def test_non_commit_source_refuses_untouched(self):
+        sha = self.git("rev-parse", self.paged + "^{tree}")
+        directory = self.legacy_set(sha)
+        self.assert_refused_untouched(sha, directory, "source is not a known git commit")
+
+    def test_sums_mismatch_refuses_untouched(self):
+        directory = self.legacy_set(self.old)
+        (directory / "fn-host.core").write_bytes(b"damaged")
+        self.assert_refused_untouched(self.old, directory, "SHA256SUMS mismatch")
+
+    def test_existing_catalog_entry_is_unchanged(self):
+        directory = self.legacy_set(self.old)
+        path = directory / "MANIFEST.json"
+        manifest = json.loads(path.read_text())
+        entry = manifest["images"]["developer"]
+        entry.update(catalog="paged", catalog_provenance="original evidence")
+        path.write_text(json.dumps(manifest))
+        image_set.write_sums(directory)
+        code, output = self.backfill(self.old)
+        self.assertEqual(code, 0)
+        self.assertIn("backfilled 1 images", output)
+        after = json.loads(path.read_text())
+        self.assertEqual(after["images"]["developer"], entry)
+        self.assertEqual(after["images"]["production"]["catalog"], "old")
+        self.assertEqual(image_set.verify(directory), [])
+
+    def test_dry_run_writes_nothing(self):
+        directory = self.legacy_set(self.old)
+        before = self.snapshot(directory)
+        code, output = self.backfill(self.old, "--dry-run")
+        self.assertEqual(code, 0)
+        self.assertIn("would backfill 2 images", output)
+        self.assertEqual(self.snapshot(directory), before)
+
+    def test_tree_sha_mismatch_refuses_untouched(self):
+        directory = self.legacy_set(self.old)
+        (directory / "TREE_SHA").write_text(self.paged + "\n")
+        image_set.write_sums(directory)
+        self.assert_refused_untouched(self.old, directory, "TREE_SHA does not match SHA")
 
 
 class LinkRunTests(unittest.TestCase):

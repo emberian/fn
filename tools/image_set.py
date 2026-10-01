@@ -4,6 +4,7 @@
     python3 tools/image_set.py publish TREE SHA [--base DIR]
     python3 tools/image_set.py link SHA TREE IMAGE... [--base DIR]
     python3 tools/image_set.py check SHA [--base DIR]
+    python3 tools/image_set.py backfill-catalog SHA --repo GIT_DIR [--base DIR] [--dry-run]
     python3 tools/image_set.py link-run RUN TREE IMAGE...
 
 An image build is the long pole of a native run (~25 min; python-diet-2 and
@@ -53,7 +54,9 @@ import os
 from pathlib import Path
 import re
 import shutil
+import subprocess
 import sys
+import tempfile
 
 BASE = Path("/tank/fn/images")
 IMAGES = {
@@ -81,7 +84,22 @@ def files_of(directory: Path) -> list[Path]:
 
 def write_sums(directory: Path) -> None:
     lines = [f"{sha256(p)}  {p.relative_to(directory)}\n" for p in files_of(directory)]
-    (directory / "SHA256SUMS").write_text("".join(lines))
+    atomic_write(directory / "SHA256SUMS", "".join(lines))
+
+
+def atomic_write(path: Path, text: str) -> None:
+    temporary = None
+    mode = path.stat().st_mode & 0o777 if path.exists() else 0o644
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", dir=path.parent,
+                                         prefix=f".{path.name}.", delete=False) as handle:
+            temporary = Path(handle.name)
+            handle.write(text)
+        temporary.chmod(mode)
+        temporary.replace(path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
 
 
 def verify(directory: Path) -> list[str]:
@@ -103,6 +121,59 @@ def catalog_of(build: Path, file: str) -> str:
     if not record.is_file():
         return "unknown"
     return record.read_text(encoding="utf-8").strip()
+
+
+def backfill_catalog(sha: str, repo: Path, base: Path = BASE,
+                     dry_run: bool = False) -> int:
+    """Explicitly recover missing catalog records from the source commit."""
+    def refuse(reason: str) -> int:
+        print(f"{sha} refused: {reason}")
+        return 1
+
+    if not SHA.fullmatch(sha):
+        return refuse("not a full commit sha")
+    directory = base / sha
+    try:
+        bad = verify(directory)
+        if bad:
+            return refuse("SHA256SUMS mismatch: " + ", ".join(bad))
+        if (directory / "TREE_SHA").read_text().strip() != sha:
+            return refuse("TREE_SHA does not match SHA")
+        git = ["git", "--git-dir", str(repo), "cat-file"]
+        commit = subprocess.run(git + ["-t", sha], capture_output=True, text=True)
+        if commit.returncode or commit.stdout.strip() != "commit":
+            return refuse("source is not a known git commit")
+        paged = subprocess.run(git + ["-e", f"{sha}:books/catalog-paged.lisp"],
+                               capture_output=True)
+        if paged.returncode == 0:
+            return refuse("source contains books/catalog-paged.lisp")
+        path = directory / "MANIFEST.json"
+        manifest = json.loads(path.read_text())
+        entries = manifest["images"]
+        if not isinstance(entries, dict) or any(not isinstance(entry, dict)
+                                                for entry in entries.values()):
+            return refuse("invalid manifest images")
+        missing = [entry for entry in entries.values() if "catalog" not in entry]
+        if not missing:
+            print(f"{sha} nothing to do")
+            return 0
+        if dry_run:
+            print(f"{sha} would backfill {len(missing)} images with catalog old (dry-run)")
+            return 0
+        now = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        for entry in missing:
+            entry["catalog"] = "old"
+            entry["catalog_provenance"] = (
+                f"backfilled: source {sha} predates books/catalog-paged.lisp "
+                f"(git cat-file, {now})")
+        # Each replacement is atomic; an interruption between the two leaves
+        # mismatched sums, so link continues to fail closed.
+        atomic_write(path, json.dumps(manifest, indent=1) + "\n")
+        write_sums(directory)
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        return refuse(str(error).replace("\n", " "))
+    print(f"{sha} backfilled {len(missing)} images")
+    return 0
 
 
 def wrong_catalog(found: dict[str, str]) -> list[str]:
@@ -276,7 +347,11 @@ def main(argv: list[str] | None = None) -> int:
     two.add_argument("images", nargs="+", choices=sorted(IMAGES))
     three = sub.add_parser("check")
     three.add_argument("sha")
-    for each in (one, two, three):
+    backfill = sub.add_parser("backfill-catalog")
+    backfill.add_argument("sha")
+    backfill.add_argument("--repo", required=True)
+    backfill.add_argument("--dry-run", action="store_true")
+    for each in (one, two, three, backfill):
         each.add_argument("--base", default=str(BASE))
     four = sub.add_parser("link-run")
     four.add_argument("run")
@@ -286,6 +361,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.action == "link-run":
         return link_run(Path(args.run), Path(args.tree).resolve(), args.images)
     base = Path(args.base)
+    if args.action == "backfill-catalog":
+        return backfill_catalog(args.sha, Path(args.repo), base, args.dry_run)
     if args.action == "publish":
         return publish(Path(args.tree).resolve(), args.sha, base)
     if args.action == "link":
