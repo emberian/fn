@@ -461,55 +461,11 @@
 ; A-DURABLE-EXTENT and A-DURABLE-LZ are in books/assumptions-durable.lisp,
 ; included above: the payload arena takes them without the rest of this book.
 
-; A-PGS-HOST-IO (lane arena-store, 2026-09-27; the page store,
-; books/pagestore*.lisp; the host I/O half of what the prototype called
-; A-PGS-OBSERVE).
-;
-; "The page file holds, at page ADDR, the 2048 little-endian u64 words the
-; host last durably wrote there; and the host's fill answers them."
-;
-; What is PROVED at this boundary, and so not assumed: the word digest the
-; host calls is BLAKE3 of the words' little-endian octets, copied into the
-; page store's octet buffer fn-octets-pg and hashed in place
-; (pgs-x-words-digest-is-blake3, books/pagestore-words-blake3.lisp; `fn-blake3'
-; is the value of `fn-digest''s attachment, `fn-blake3-stobj'; SHA-256 until
-; 2026-09-28); a table page's and the directory
-; run's words are the encodings of the model's table pages and directory,
-; and decoding them gives those back (pgs-x-table-page-words,
-; pgs-x-dir-run-words, pgs-decode-encode-table); the open's verdicts over the
-; decoded words are the model's (pgs-x-dir-verdict-is-model,
-; pgs-x-table-verdict-is-model); the commit the host runs refines the model's
-; (pgs-x-commit-refines) -- all in books/pagestore-exec.lisp.
-;
-; What is ASSUMED: `(fn-pgs-page-words file addr)' is the list of 2048 u64
-; words the page file FILE holds at page ADDR, and
-; `(fn-pgs-fill-realize file addr)', the host's fill
-; (host/native/proto-pagestore-io.lisp `fnps-fill-from-file': pread on the
-; stobj array's storage, short counts looped, EINTR retried, end of file and
-; every other error a named condition, never a silent zero fill; the
-; little-endian check at load, A-PGS-LE), answers exactly those words.
-; Durability of what was written is A-DURABILITY's (a completed fdatasync);
-; the page store's crash model is books/pagestore.lisp `pgs-crash'
-; (any subset of the commit's writes), which the power-loss rig checks
-; against dm-log-writes replays.
-;
-; Theorems that should take it (a page read by the host is the page the
-; model's `pgs-lookup' answers): the composition of pgs-x-table-verdict-is-model
-; and pgs-x-dir-verdict-is-model with the fill, not yet stated.
-(encapsulate
-  (((fn-pgs-page-words * *) => *)
-   ((fn-pgs-fill-realize * *) => *))
-
-  (local (defun fn-pgs-page-words (file addr)
-           (declare (ignore file addr))
-           (make-list 2048 :initial-element 0)))
-
-  (local (defun fn-pgs-fill-realize (file addr)
-           (fn-pgs-page-words file addr)))
-
-  (defthm fn-pgs-page-words-shape
-    (and (true-listp (fn-pgs-page-words file addr))
-         (equal (len (fn-pgs-page-words file addr)) 2048)))
-
-  (defthm fn-pgs-fill-realize-is-page-words
-    (equal (fn-pgs-fill-realize file addr) (fn-pgs-page-words file addr))))
+; A-PGS-HOST-IO is in books/assumptions-pgs-host-io.lisp, included here:
+; the page store's host I/O, in its list form (`fn-pgs-page-words',
+; `fn-pgs-fill-realize') and, since lane page-word-boundary (2026-10-01),
+; its in-place form over the page store's stobj (`fn-pgs-fill-frame',
+; constrained to be the put of the same words).  Its own book because that
+; form is stated over `pgs-mem' (books/pagestore-words.lisp), which this
+; book did not include; nothing under pagestore-words includes this book.
+(include-book "assumptions-pgs-host-io")

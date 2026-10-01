@@ -30,12 +30,15 @@
 (defun hict-page (file addr)
   (declare (xargs :guard t))
   (let ((w (cdr (hons-assoc-equal addr file))))
-    (if (and (true-listp w) (equal (len w) 2048)) w (make-list 2048 :initial-element 0))))
+    (if (and (true-listp w) (equal (len w) 2048) (fn-pgs-u64-listp w)) w (make-list 2048 :initial-element 0))))
 
 (defthm hict-page-shape
-  (and (true-listp (hict-page file addr)) (equal (len (hict-page file addr)) 2048)))
+  (and (true-listp (hict-page file addr)) (equal (len (hict-page file addr)) 2048)
+       (fn-pgs-u64-listp (hict-page file addr))))
 
 (defattach (fn-pgs-page-words hict-page) (fn-pgs-fill-realize hict-page))
+; the frame fill (A-PGS-HOST-IO's in-place form): the put of the same page
+(defattach fn-pgs-fill-frame fn-pgs-fill-frame-via-words)
 
 (defmacro hict-defconst (name form)
   `(make-event (let ((v ,form)) (value (list 'defconst ',name (list 'quote v))))))
