@@ -1562,3 +1562,148 @@
                                                   fn-mlh-empty-from fn-mlh-count-movers))
            :do-not-induct t
            :cases ((< (+ 1 (fn-mlh-s fn-mlh)) (fn-mlh-pages fn-mlh))))))
+
+(defthm fn-mlh-split-shape
+  (implies (and (fn-mlhp fn-mlh) (fn-mlh-wfp fn-mlh))
+           (let ((after (mv-nth 1 (fn-mlh-split fn-mlh))))
+             (and (fn-mlhp after)
+                  (fn-mlh-pgsp after)
+                  (fn-mlh-wfp after)
+                  (equal (fn-mlh-pages after)
+                         (if (mv-nth 0 (fn-mlh-split fn-mlh)) (+ 1 (fn-mlh-pages fn-mlh)) (fn-mlh-pages fn-mlh)))
+                  (equal (fn-mlh-n after)
+                         (if (and (mv-nth 0 (fn-mlh-split fn-mlh)) (equal (+ 1 (fn-mlh-s fn-mlh)) (fn-mlh-n fn-mlh)))
+                             (* 2 (fn-mlh-n fn-mlh))
+                           (fn-mlh-n fn-mlh)))
+                  (equal (fn-mlh-s after)
+                         (if (mv-nth 0 (fn-mlh-split fn-mlh))
+                             (if (equal (+ 1 (fn-mlh-s fn-mlh)) (fn-mlh-n fn-mlh)) 0 (+ 1 (fn-mlh-s fn-mlh)))
+                           (fn-mlh-s fn-mlh)))
+                  (equal (fn-mlh-count after) (fn-mlh-count fn-mlh))
+                  (equal (fn-mlh-stuck after) (fn-mlh-stuck fn-mlh))
+                  (equal (fn-mlh-key-octets after) (fn-mlh-key-octets fn-mlh)))))
+  :hints (("Goal" :in-theory (e/d (fn-mlh-split) (fn-mlh-move fn-mlh-count-movers fn-mlh-count-movers-is-len))
+           :do-not-induct t)))
+
+(defthm fn-mlh-split-refused-unchanged
+  (implies (not (mv-nth 0 (fn-mlh-split fn-mlh)))
+           (equal (mv-nth 1 (fn-mlh-split fn-mlh)) fn-mlh))
+  :hints (("Goal" :in-theory (e/d (fn-mlh-split) (fn-mlh-move fn-mlh-count-movers fn-mlh-count-movers-is-len)))))
+
+; --- the split IS the logical split of the abstraction ---
+
+; Two lists of the same length that agree at their first difference are
+; equal (the first difference of equal lists is past both).
+(local (defun fn-mlh-first-diff (a b)
+  (if (and (consp a) (consp b) (equal (car a) (car b)))
+      (+ 1 (fn-mlh-first-diff (cdr a) (cdr b)))
+    0)))
+
+(local (defthm fn-mlh-equal-by-first-diff
+  (implies (and (true-listp a) (true-listp b) (equal (len a) (len b))
+                (equal (nth (fn-mlh-first-diff a b) a) (nth (fn-mlh-first-diff a b) b)))
+           (equal a b))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-mlh-first-diff a b) :in-theory (enable nth)))))
+
+(local (defthm fn-mlh-first-diff-natp
+  (natp (fn-mlh-first-diff a b))
+  :rule-classes :type-prescription))
+
+(local (defthm fn-mlh-abs-pages-true-listp
+  (true-listp (fn-mlh-abs-pages p fn-mlh))))
+
+(local (defthm fn-mlh-split-pages-true-listp
+  (implies (fn-mpxl-pagesp pgs)
+           (true-listp (fn-mpxl-split-pages pgs n s)))
+  :hints (("Goal" :use fn-mpxl-split-pages-pagesp :in-theory (disable fn-mpxl-split-pages-pagesp)))))
+
+(local (defthm fn-mlh-nth-is-page
+  (implies (and (natp i) (< i (len pgs)))
+           (equal (nth i pgs) (fn-mpxl-page i pgs)))
+  :hints (("Goal" :in-theory (enable fn-mpxl-page)))))
+
+(local (defthm fn-mlh-nth-beyond-len
+  (implies (and (true-listp l) (natp i) (<= (len l) i))
+           (equal (nth i l) nil))
+  :hints (("Goal" :in-theory (enable nth)))))
+
+(defthm fn-mlh-split-pages-is-split
+  (implies (and (fn-mlhp fn-mlh) (fn-mlh-wfp fn-mlh) (posp (fn-mlh-pages fn-mlh))
+                (mv-nth 0 (fn-mlh-split fn-mlh)))
+           (equal (fn-mlh-abs-pages 0 (mv-nth 1 (fn-mlh-split fn-mlh)))
+                  (fn-mpxl-split-pages (fn-mlh-abs-pages 0 fn-mlh) (fn-mlh-n fn-mlh) (fn-mlh-s fn-mlh))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-mlh-equal-by-first-diff
+                            (a (fn-mlh-abs-pages 0 (mv-nth 1 (fn-mlh-split fn-mlh))))
+                            (b (fn-mpxl-split-pages (fn-mlh-abs-pages 0 fn-mlh) (fn-mlh-n fn-mlh) (fn-mlh-s fn-mlh))))
+                 (:instance fn-mlh-split-page
+                            (i (fn-mlh-first-diff (fn-mlh-abs-pages 0 (mv-nth 1 (fn-mlh-split fn-mlh)))
+                                                  (fn-mpxl-split-pages (fn-mlh-abs-pages 0 fn-mlh) (fn-mlh-n fn-mlh) (fn-mlh-s fn-mlh))))))
+           :in-theory (disable fn-mlh-split-page fn-mlh-split fn-mlh-abs-pages fn-mpxl-split-pages fn-mlh-pe
+                               fn-mlh-ovf-is-seqw))))
+
+; The split is taken exactly when the logical split is.
+(defthm fn-mlh-split-taken-iff
+  (implies (and (fn-mlhp fn-mlh) (fn-mlh-wfp fn-mlh) (posp (fn-mlh-pages fn-mlh)))
+           (iff (mv-nth 0 (fn-mlh-split fn-mlh))
+                (mv-nth 0 (fn-mpxl-split (fn-mlh-abs fn-mlh)))))
+  :hints (("Goal" :in-theory (e/d (fn-mlh-split fn-mpxl-split fn-mpxl-split-movers fn-mlh-abs)
+                                  (fn-mlh-move fn-mlh-pe fn-mlh-abs-pages fn-mlh-grow))
+           :do-not-induct t)))
+
+; THE SPLIT REFINES THE LOGICAL SPLIT: the abstraction of the table after
+; the split is the logical split of its abstraction, taken or refused.
+(defthm fn-mlh-abs-of-split
+  (implies (and (fn-mlhp fn-mlh) (fn-mlh-wfp fn-mlh) (posp (fn-mlh-pages fn-mlh)))
+           (equal (fn-mlh-abs (mv-nth 1 (fn-mlh-split fn-mlh)))
+                  (mv-nth 1 (fn-mpxl-split (fn-mlh-abs fn-mlh)))))
+  :hints (("Goal" :cases ((mv-nth 0 (fn-mlh-split fn-mlh)))
+           :in-theory (disable fn-mlh-split fn-mlh-abs-pages fn-mpxl-split-pages fn-mlh-split-taken-iff)
+           :use fn-mlh-split-taken-iff)
+          ("Subgoal 2" :in-theory (e/d (fn-mpxl-split-refused-unchanged)
+                                       (fn-mlh-split fn-mlh-abs-pages fn-mpxl-split-pages fn-mlh-abs)))
+          ("Subgoal 1" :in-theory (e/d (fn-mlh-abs fn-mpxl-split)
+                                       (fn-mlh-split fn-mlh-abs-pages fn-mpxl-split-pages
+                                        fn-mlh-split-taken-iff fn-mpxl-split-movers)))))
+
+(defthm fn-mlh-split-no-pages
+  (implies (zp (fn-mlh-pages fn-mlh))
+           (not (mv-nth 0 (fn-mlh-split fn-mlh))))
+  :hints (("Goal" :in-theory (enable fn-mlh-split))))
+
+(in-theory (disable fn-mlh-split))
+
+; Every candidate of every tag survives the split.
+(defthm fn-mlh-split-keeps-candidate
+  (implies (and (fn-mlhp fn-mlh) (fn-mlh-wfp fn-mlh) (posp tag)
+                (member-equal q (fn-mlh-candidates tag fn-mlh)))
+           (member-equal q (fn-mlh-candidates tag (mv-nth 1 (fn-mlh-split fn-mlh)))))
+  :hints (("Goal" :cases ((posp (fn-mlh-pages fn-mlh)))
+           :in-theory (disable fn-mpxl-split-keeps-candidate-always fn-mpxl-cands)
+           :use ((:instance fn-mpxl-split-keeps-candidate-always (tab (fn-mlh-abs fn-mlh)))))))
+
+(defthm fn-mlh-split-okp
+  (implies (and (fn-mlhp fn-mlh) (fn-mlh-wfp fn-mlh) (fn-mlh-okp n fn-mlh))
+           (fn-mlh-okp n (mv-nth 1 (fn-mlh-split fn-mlh))))
+  :hints (("Goal" :cases ((posp (fn-mlh-pages fn-mlh)))
+           :in-theory (e/d (fn-mlh-okp) (fn-mpxl-okp fn-mpxl-split-okp))
+           :use ((:instance fn-mpxl-split-okp (tab (fn-mlh-abs fn-mlh)))))
+          ("Subgoal 1" :cases ((mv-nth 0 (fn-mlh-split fn-mlh))))))
+
+(defthm fn-mlh-faithful-from-of-split
+  (implies (and (fn-mlhp fn-mlh) (fn-mlh-wfp fn-mlh)
+                (fn-mlh-faithful-from i rows fn-mlh))
+           (fn-mlh-faithful-from i rows (mv-nth 1 (fn-mlh-split fn-mlh))))
+  :hints (("Goal" :induct (fn-mlh-faithful-from i rows fn-mlh)
+           :in-theory (disable fn-mlh-candidates fn-mlh-candidates-is-cands fn-mpxl-cands
+                               fn-mlh-abs-of-split))))
+
+; KEYSTONE (the split): the table stays faithful to the rows, taken or
+; refused -- by the refinement `fn-mlh-abs-of-split' and the logical
+; book's `fn-mpxl-split-keeps-candidate-always' / `fn-mpxl-split-okp'.
+(defthm fn-mlh-split-preserves-faithful
+  (implies (and (fn-mlhp fn-mlh) (fn-mlh-wfp fn-mlh)
+                (fn-mlh-faithful rows fn-mlh))
+           (fn-mlh-faithful rows (mv-nth 1 (fn-mlh-split fn-mlh))))
+  :hints (("Goal" :in-theory (disable fn-mlh-faithful-from fn-mlh-okp))))
