@@ -9258,7 +9258,7 @@
       "assumptions": [
         "A-CRYPTO-TRAILER"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-log-crash.lisp",
         "planning/evidence/w6-log-core-2026-09-27.md",
@@ -9293,7 +9293,7 @@
       "assumptions": [
         "A-CRYPTO-TRAILER"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-log-kernel.lisp",
         "planning/evidence/w6-log-core-2026-09-27.md",
@@ -20791,7 +20791,8 @@
         "fn-rr-log-crash-image-recovers-a-tree-sequence-member",
         "fn-rr-acknowledged-record-is-in-every-tree-sequence-member",
         "fn-rr-medium-open-of-capture-is-the-full-open",
-        "fn-rr-medium-select-bounds-the-sequence"
+        "fn-rr-medium-select-bounds-the-sequence",
+        "fn-rr-medium-full-open-holds-its-records"
       ]
     },
     {
@@ -20822,42 +20823,65 @@
     },
     {
       "id": "PRF-1214",
-      "title": "OPEN: the log relation R lifted to per-inode pending, so a crash point with a concurrent publication write composes",
-      "statement": "OBLIGATION (lane recovery-refinement, 2026-10-01; specs/recovery-refinement.md section 5). fn-lgk-relp's pending conjunct (books/store-log-kernel.lisp) names the segment's one write as the ONLY pending operation of the byte store; the owner's publication thread writes the staged checkpoint off the mutex (STO-024) while a batch may be in flight, so that crash point has two pending sets and is outside R. To state: R with fn-bs-ops-for-ino in place of the whole pending list, the tear lemma fn-lg-batch-crash-is-a-prefix and the shift lemma fn-bs-crash-of-aligned-append under that hypothesis (the byte model orders nothing across inodes, fn-bs-crash-select), and the keystone of PRF-1212 at a cut state of fn-bs-scp-program run from a related state with INFLIGHT non-empty. With it the finish and stage-cleanup cuts (fn-bs-finish-program, fn-bs-recover-stage-cleanup-program) cite R directly instead of K0's segment-untouched argument.",
+      "title": "The log relation R lifted to the segment's own pending operations: the composed recovery at every crash point of the checkpoint publication with a batch in flight",
+      "statement": "books/recovery-refinement-concurrent.lisp (lane recovery-refinement-2, 2026-10-01; specs/recovery-refinement.md sections 3 and 5). fn-rrc-relp is fn-lgk-relp with (fn-bs-ops-for-ino (fn-bs-pending bs) ino) in place of the whole pending list; fn-lgk-relp-implies-fn-rrc-relp. THE PROJECTION fn-rrc-crash-content-is-the-projected-crash-content: a crash image's content at an inode is the content of the image of the projected store (fn-rrc-project: the store whose pending list is the inode's own operations) under the projected choices (fn-rrc-choices-for-ino), because fn-bs-crash-select tears each write by its own selectors and entry operations touch no inode; so the projected image of an admissible image is admissible with the same segment content (fn-rrc-projected-image-is-admissible-with-the-same-segment) and the projected store of a lifted-related store is related (fn-rrc-projection-is-related). KEYSTONE fn-rrc-recovery-refines-a-prefix-with-every-acknowledged-record: PRF-1212's statement, conjuncts (1) to (3) including holding, with fn-rrc-relp for fn-lgk-relp (by the transfer through the projection: fn-rrc-log-crash-image-recovers-a-tree-sequence-member). THE CONCURRENT CUTS fn-rrc-checkpoint-crash-point-refines-with-a-batch-in-flight: from a related state (fn-lgk-relp, a batch in flight or not) and the publication's input without its quiet conjunct (fn-rrc-scp-inputp), at every state of fn-bs-run over fn-bs-scp-program and for every admissible crash image of it, the keystone's three conclusions: the program keeps the segment's presence, content, unit and own pending operations (fn-rrc-scp-run-keeps-the-segment, local), which keeps the lifted relation (fn-rrc-keeping-the-segment-keeps-the-lifted-relation). The old-or-new of the image under concurrency is not restated (PRF-1216's fn-bs-scp-program-crash-is-old-or-new asks for the quiet store); the finish and stage-cleanup rows of the cut table cite the step lemma with their keep-the-segment proofs owed under PRF-1221. Host subject as PRF-1212 (MODEL-LEVEL): host/native/io.lisp fnn-state-checkpoint-write off the owner mutex while fnn-log-append holds a batch at log-written; the open after the crash is fnn-recover-log. Teeth: tests/acl2/recovery-refinement-concurrent-tests.lisp (the publication run from the ground log at log-written: at every state after the first step fn-lgk-relp FAILS and fn-rrc-relp holds; the conclusions under three choices at all ten states; rrct-concurrent-keystone, the literal theorem over the ground medium, with a reachable positive witness of its complete antecedent and conclusion at the staged-durable and durable cuts under the exact tear; MUTATION: the recovery that drops the acknowledged r1 is no tree-sequence member and loses r1; hypothesis removal, exactly the lifted relation: a second segment write pending inside the publication recovers r1 r2 r3 r4, no member, every other hypothesis kept).",
       "milestone": "M5",
       "requirements": [
         "STO-005",
         "STO-024"
       ],
       "depends_on": [
-        "PRF-1212"
+        "PRF-1212",
+        "PRF-1216"
       ],
-      "assumptions": [],
-      "status": "planned",
+      "assumptions": [
+        "A-CRYPTO-TRAILER",
+        "A-DURABILITY",
+        "A-WRITE-ISOLATION"
+      ],
+      "status": "uncertified-at-current-digest",
       "evidence": [
+        "books/recovery-refinement-concurrent.lisp",
+        "tests/acl2/recovery-refinement-concurrent-tests.lisp",
         "specs/recovery-refinement.md"
+      ],
+      "events": [
+        "fn-rrc-recovery-refines-a-prefix-with-every-acknowledged-record",
+        "fn-rrc-checkpoint-crash-point-refines-with-a-batch-in-flight",
+        "fn-lgk-relp-implies-fn-rrc-relp",
+        "fn-rrc-crash-content-is-the-projected-crash-content",
+        "fn-rrc-projection-is-related",
+        "fn-rrc-projected-image-is-admissible-with-the-same-segment",
+        "fn-rrc-log-crash-image-recovers-a-tree-sequence-member",
+        "fn-rrc-keeping-the-segment-keeps-the-lifted-relation"
       ]
     },
     {
       "id": "PRF-1215",
-      "title": "OPEN: the page store as the image medium, and the dirty set of K commits as the generation the reserve is sized by",
-      "statement": "OBLIGATION (lane recovery-refinement, 2026-10-01; specs/recovery-refinement.md section 5; design 2026-10-01 stages 5 and 7). pgs-open-after-crash (PRF-344) is the old-or-new premise over the model disk; to state: a root's image bound to the capture of a committed prefix (the binding of PRF-1212's keystone for the page store's root record: the log position S carried on the record), the open from a root as the medium's fn-rr-medium-open (the host's open loop, PRF-344's open square), its functional instantiation of fn-rr-medium-*, and the generation bound: the dirty pages of at most K commits since the last root (the due rule fn-ock-publication-duep at K/2 forces the checkpoint by that bound; EROS's snapshot-at-an-instant lets the next suffix accumulate beside it), so fn-ckr-reserve-octets is two such generations.",
+      "title": "The page store's generation: a root commit writes at most 2|DIRTY|+1 pages, and two generations of K records fit the format-time reserve",
+      "statement": "books/recovery-refinement-pages.lisp (lane recovery-refinement-2, 2026-10-01; specs/recovery-refinement.md section 4; design 2026-10-01 stages 5 and 7). On the page store a checkpoint is a root commit (pgs-plan-commit, books/pagestore.lisp): the dirty pages copy-on-write to fresh addresses, the table pages they touch, the directory run, the record to the other slot. KEYSTONE fn-rrp-commit-writes-within-the-generation: a planned commit's write list has at most fn-rrp-generation-pages (len dirty) = 2 * |DIRTY| + 1 entries (fn-rrp-page-writes-count one per dirty page, fn-rrp-touched-count at most one table page per dirty page since pgs-touched emits each touched table once, fn-rrp-table-dirty-count, the directory). fn-rrp-two-generations-fit-the-reserve: two planned commits over dirty sets of at most K * D pages each write at most fn-rrp-reserve-pages K D = 2 * (2KD + 1) in all: KeyKOS's two-generation reserve in pages, K the suffix bound the due rule forces the checkpoint by (fn-ock-publication-duep at K/2, PRF-083), D the pages one record dirties. NOT in this row (PRF-1220): the page store as an instance of books/recovery-refinement.lisp's medium (no host path opens the owner's state from a root yet, design stage 5), the binding of |DIRTY| to K * D on the host (the due rule and a per-record dirty bound from the profile), and the root record's log position. The page store's own crash keystone pgs-open-after-crash (PRF-344) is the medium's-own-ordering row of the spec; the snapshot program's cuts (*pgs-snapshot-cuts*, pgs-cut-crash-point: KEEP a prefix of the writes, the slot old, torn or new) map onto it in the spec's section 4 table. MODEL-LEVEL as PRF-1212: the host's commit is pgs-x-commit (books/pagestore-refine.lisp, pgs-x-commit-refines-plan equates its plan to pgs-plan-commit), so the bound is about what fnps-commit writes through that square. Teeth: tests/acl2/recovery-refinement-pages-tests.lisp (the ground store of tests/acl2/pagestore-tests.lisp under the toy digest: one dirty page plans exactly its generation of 3, two dirty pages plan 4 within 5, two such commits fit the reserve for K = 1, D = 2; hypothesis removal: a dirty set past K * D exceeds the reserve; MUTATION: a commit writing its pages twice is past its generation).",
       "milestone": "M5",
       "requirements": [
         "STO-035",
-        "STO-011"
+        "STO-011",
+        "STO-019"
       ],
       "depends_on": [
-        "PRF-1212",
         "PRF-1213",
         "PRF-344"
       ],
-      "assumptions": [
-        "A-PGS-HOST-IO"
-      ],
-      "status": "planned",
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
       "evidence": [
+        "books/recovery-refinement-pages.lisp",
+        "tests/acl2/recovery-refinement-pages-tests.lisp",
         "specs/recovery-refinement.md"
+      ],
+      "events": [
+        "fn-rrp-commit-writes-within-the-generation",
+        "fn-rrp-two-generations-fit-the-reserve",
+        "fn-rrp-touched-count",
+        "fn-rrp-page-writes-count"
       ]
     },
     {
@@ -20885,12 +20909,12 @@
       "events": [
         "fn-rr-checkpoint-crash-point-recovers-committed-under-old-or-new"
       ],
-      "progress_note": "The five cuts are the program's outer operations; the host's write loops have process-death points inside the single :write-all (fnn-checkpoint-write-steps' per-step fault kill, fnn-history-image-write's page writes; the Codex review of 2d1b10ed7, F6): their mapping to model crash points is PRF-1223."
+      "progress_note": "The five cuts are the program's outer operations; the host's write loops have process-death points inside the single :write-all (fnn-checkpoint-write-steps' per-step fault kill, fnn-history-image-write's page writes; the Codex review of 2d1b10ed7, F6): their mapping to model crash points is PRF-1223. The concurrent half (a batch in flight during the publication) is PRF-1214's fn-rrc-checkpoint-crash-point-refines-with-a-batch-in-flight."
     },
     {
       "id": "PRF-1222",
-      "title": "OPEN: the host's state-checkpoint write refined to fn-bs-scp-program's OCTETS (the join of the reserve theorem to the served write)",
-      "statement": "OBLIGATION (lane recovery-refinement-2, 2026-10-01; the Codex review of 2d1b10ed7, F5). PRF-1213 bounds the OCTETS of fn-bs-scp-program's :write-all; the host writes the staged file through host/native/io.lisp fnn-state-checkpoint-write, whose callback runs fnn-history-image-write (the history image region: header, zero pad, one 16 KiB page per address) and fnn-checkpoint-write-steps (fnn-plan-write-all per ACL2 step). To state: the octets those two loops write, concatenated, are fn-sct-encode of the capture the owner was handed (fn-ock-finish-binds-the-captured-prefix, PRF-199's fn-sct-decode-file-of-file-is-the-capture), with length the estimate fn-ockp-decide planned (fn-ockp-estimate-is-len-file-octets); with it the reserve bound is about what the host writes, and the funded-space premise of fn-rrs-funded-reserve-never-defers-for-space is discharged rather than assumed.",
+      "title": "OPEN: the host's state-checkpoint write joined to the reserve (fn-his-file-octets within the capture budget, and a reservation invariant in place of the free-space observation)",
+      "statement": "OBLIGATION (lane recovery-refinement-2, 2026-10-01; the Codex review of 2d1b10ed7 F5, restated after r10). PRF-1213 bounds the OCTETS of fn-bs-scp-program's one :write-all. The staged file the host writes is fn-his-file-octets (host/store-node-host.lisp: fn-his-region-octets of the history image's page count plus the stream the checkpoint steps write), produced by host/native/io.lisp fnn-history-image-write then fnn-checkpoint-write-steps; it is not the table estimate fn-ockp-decide plans against, and no fn-sct-encode exists. Two obligations, neither a byte equality: (a) the length of what the two loops write is fn-his-file-octets of the image's page count and the steps' stream, within fn-ock-capture-budget (the reader's bound the old image is held to, fn-sccr-file-read-bound), so the two generations are what fn-ckr-two-generations-fit-the-reserve-at-every-cut bounds; (b) a RESERVATION invariant: the reserve's octets are set aside at format time and each publication draws on them, so fn-ockp-decide's statvfs observation can be retired (a served host change, MODE 2026-10-01 section 2). Until both land, the funded-space premise of fn-rrs-funded-reserve-never-defers-for-space is an assumption of the join.",
       "milestone": "M5",
       "requirements": [
         "STO-011",
@@ -20909,8 +20933,8 @@
     },
     {
       "id": "PRF-1223",
-      "title": "OPEN: the checkpoint write loops' inner process-death cuts as model crash points of the publish program",
-      "statement": "OBLIGATION (lane recovery-refinement-2, 2026-10-01; the Codex review of 2d1b10ed7, F6; AGENTS: every process-death cut is a model crash point). fn-bs-scp-program writes the staged file in one :write-all; the host writes it in a loop and may die between any two write(2) calls: fnn-checkpoint-write-steps kills itself after step N under fnn-checkpoint-batch-fault (host/native/io.lisp), and fnn-history-image-write's header, pad and page writes are each a death point. In the byte model a death after the k-th write is the state whose pending set holds the k writes to the staged inode (k fn-bs-write steps in place of one), and its crash images tear each; the root entry is still the old one there, so the recovery is COMMITTED and the image is OLD. To state: a chunked publish program (the :write-all split into the host's writes) whose every state's crash images satisfy fn-rr-checkpoint-crash-point-recovers-committed-under-old-or-new's conclusion (PRF-1216), and tests/campaign/native_cuts.py rows naming each inner cut; until then PRF-1216 covers the five outer cuts only.",
+      "title": "OPEN (registered, not resolved): the checkpoint write loops' intra-batch process-death cuts have no model crash point",
+      "statement": "OBLIGATION (lane recovery-refinement-2, 2026-10-01; the Codex review of 2d1b10ed7 F6, confirmed open by r10; AGENTS: every process-death cut is a model crash point). STATUS: registered only. books/byte-store-state-checkpoint-program.lisp fn-bs-scp-program is still one :write-all, tests/campaign/native_cuts.py is unchanged, and the intra-batch SIGKILL points of host/native/io.lisp (fnn-checkpoint-write-steps' per-step kill under fnn-checkpoint-batch-fault; fnn-history-image-write's header, pad and page writes) have no model crash point. To do: split the :write-all into the batch's writes, each a cut (k fn-bs-write steps to the staged inode; fn-bs-step has no :write-at kind, so either add one or run the writes through fn-bs-write), prove every state's crash images recover COMMITTED under the OLD image (the root entry is untouched until the rename; PRF-1216's conclusion), and add the cut rows so native_program_check ties them to io.lisp. PRF-1216 covers the five outer cuts only.",
       "milestone": "M5",
       "requirements": [
         "STO-011",
@@ -20947,6 +20971,46 @@
         "planning/design-store-representation-2026-10-01.md"
       ],
       "progress_note": "2026-10-01 lane msgid-linear-hash: sections 0-6 REPL-admitted on persvati (proof_repl mlx, every form; books/msgid-linear loaded from source); the allocation measurement run in the same session (build/coordinator/lanedumps/msgid-linear-hash.md records the driver). The split, the add and the fold are the next READY."
+    },
+    {
+      "id": "PRF-1220",
+      "title": "OPEN: the page store as the image medium (the root's pages decode to the capture of the first S records; the open from a root as fn-rr-medium-open; |DIRTY| bound by K records)",
+      "statement": "OBLIGATION (lane recovery-refinement-2, 2026-10-01; specs/recovery-refinement.md sections 1, 4 and 5; design 2026-10-01 stage 5). books/recovery-refinement.lisp's medium is six constrained functions; the page store discharges them only once fn-hist lives on pages (stage 5): (a) the capture of a committed prefix is the dirty page set of its full open and the root record carries S (the log position), so that a root's pages decode to the capture of the first S records (the analog of fn-sct-decode-file-of-file-is-the-capture, PRF-199); (b) the open from a root over the log's suffix is fn-rr-medium-open and equals the full open of prefix ++ suffix (PRF-083's shape), with fn-rr-medium-open-okp and fn-rr-medium-holds over the opened pages; (c) the old-or-new of the root under a crash (pgs-open-after-crash, PRF-344) binds the image the open reads to the capture of S_old or S_new committed records; (d) the host's open from a root (PRF-344's open square: no ACL2 function composes fnps-open) named as the subject; (e) |DIRTY| <= K * D on the host: the due rule fn-ock-publication-duep forces the checkpoint by K/2 records and a per-record dirty-page bound D comes from the profile, discharging fn-rrp-two-generations-fit-the-reserve's hypotheses (PRF-1215). Until then PRF-1215 is the model's generation bound alone and the page store is not an instance of the recovery-refinement keystone.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-035",
+        "STO-011"
+      ],
+      "depends_on": [
+        "PRF-1215",
+        "PRF-1212",
+        "PRF-344"
+      ],
+      "assumptions": [
+        "A-PGS-HOST-IO"
+      ],
+      "status": "planned",
+      "evidence": [
+        "specs/recovery-refinement.md"
+      ]
+    },
+    {
+      "id": "PRF-1221",
+      "title": "OPEN: the native cut table's remaining cuts under the lifted relation (finish, stage cleanup, segment rotation and drop, import, export, init)",
+      "statement": "OBLIGATION (lane recovery-refinement-2, 2026-10-01; specs/recovery-refinement.md section 3, the cut table). PRF-1214's fn-rrc-keeping-the-segment-keeps-the-lifted-relation turns 'this program's run keeps the segment's presence, content, unit and own pending operations' into fn-rrc-relp at every state, and the keystone covers every crash image there. The keep-the-segment proof exists for fn-bs-scp-program only (fn-rrc-scp-run-keeps-the-segment, local). Owed, one per program, over the programs tests/campaign/native_cuts.py names: fn-bs-finish-program and fn-bs-recover-stage-cleanup-program (entry operations only; K0's fn-bs-k0-finish-program-preserves-relation is the octet half), the segment programs fn-lgs-spare/-rotate/-rotate-durable/-drop (books/store-log-segments.lisp: cuts rotate-created, rotate-fenced, rotate-renamed, rotate-headed, rotate-durable, drop-unlinked, drop-durable; these change which inode is the active segment, so the relation's INO moves with the rotation: their own theorems in books/store-log-segments.lisp and books/store-log-lineage.lisp are the citation to make), the import, export and init publication programs (import-*, export-*, init-* cuts: other inodes and directories), and the statement cut (fn-ks-cut). Each is a crash point of the composed store; none is covered by PRF-1212/1214/1216 until its keep-the-segment theorem is cited by name in the spec's table.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-005",
+        "STO-011"
+      ],
+      "depends_on": [
+        "PRF-1214"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "specs/recovery-refinement.md"
+      ]
     }
   ]
 }

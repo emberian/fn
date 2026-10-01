@@ -798,6 +798,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-durable-tests \
 	books/recovery-refinement \
 	tests/acl2/recovery-refinement-tests \
+	books/recovery-refinement-concurrent \
+	tests/acl2/recovery-refinement-concurrent-tests \
+	books/recovery-refinement-pages \
+	tests/acl2/recovery-refinement-pages-tests \
 	books/checkpoint-reserve \
 	tests/acl2/checkpoint-reserve-tests \
 	books/store-init-log-publication \

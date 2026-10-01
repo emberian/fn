@@ -276,13 +276,36 @@
 ; -----------------------------------------------------------------------------
 ; Hypothesis removal.
 
-; The binding: an image bound to the capture of a NON-prefix (r2 r1) at
-; S = 2 opens to the full open of r2 r1 r3, not of the recovered r1 r2 r3.
+; The binding alone: at log-written with the batch landed whole (the
+; related state, admissible choices, the trailer premise evaluating true,
+; S = 2 within the committed count: every retained hypothesis of
+; rrt-keystone asserted), an image bound to the capture of a NON-prefix
+; (r2 r1) fails the binding, and the composed open is the full open of
+; r2 r1 r3, not of the recovered r1 r2 r3.
+(defun rrt-wrong-ckpt () (declare (xargs :guard t)) (rrt-capture nil (list (rrt-r 2) (rrt-r 1))))
+(defun rrt-landed-recovered ()
+  (declare (xargs :guard t :verify-guards nil))
+  (rrt-recovered (rrt-appended) (list (rrt-sels (rrt-batch-units) :new))))
+(assert-event
+ (let* ((bs (car (rrt-appended))) (ks (cdr (rrt-appended)))
+        (choices (list (rrt-sels (rrt-batch-units) :new)))
+        (image (fn-bs-crash bs choices)))
+   (and ; every retained hypothesis holds
+        (fn-lgk-relp bs ks 0 (rrt-genesis) (rrt-max))
+        (fn-bs-crash-choicesp choices (fn-bs-pending bs) (fn-bs-unit bs))
+        (fn-lg-platform-tears-p (nthcdr (fn-lgk-frontier ks) (fn-bs-durable-content image 0))
+                                (fn-lgk-inflight ks) (fn-lgk-last ks) (fn-bs-unit bs))
+        (natp 2) (<= 2 (len (fn-lgk-committed ks)))
+        ; the omitted hypothesis fails
+        (not (equal (rrt-wrong-ckpt) (rrt-capture nil (take 2 (fn-lgk-committed ks)))))
+        ; the conclusion fails
+        (equal (rrt-landed-recovered) (list (rrt-r 1) (rrt-r 2) (rrt-r 3)))
+        (not (equal (rrt-composed-open :ok 2 (rrt-wrong-ckpt) nil 9 (rrt-landed-recovered) 4)
+                    (rrt-full-open nil 9 (rrt-landed-recovered)))))))
 (must-fail-checked
  (defthm rrt-without-the-binding
-   (let* ((rec (list (rrt-r 1) (rrt-r 2) (rrt-r 3))))
-     (equal (rrt-composed-open :ok 2 (rrt-capture nil (list (rrt-r 2) (rrt-r 1))) nil 9 rec 4)
-            (rrt-full-open nil 9 rec)))))
+   (equal (rrt-composed-open :ok 2 (rrt-wrong-ckpt) nil 9 (rrt-landed-recovered) 4)
+          (rrt-full-open nil 9 (rrt-landed-recovered)))))
 
 ; The relation R alone: the store at log-written with a SECOND pending
 ; write to the segment, the log of r4 chained after r3's entry and placed
@@ -326,7 +349,10 @@
         (fn-bs-crash-choicesp (rrt-wrong-choices) (fn-bs-pending (rrt-wrong-batch)) (rrt-unit))
         (fn-lg-platform-tears-p (nthcdr (fn-lgk-frontier ks) (fn-bs-durable-content (rrt-wrong-image) 0))
                                 (fn-lgk-inflight ks) (fn-lgk-last ks) (rrt-unit))
-        (<= 2 (len (fn-lgk-committed ks)))
+        (natp 2) (<= 2 (len (fn-lgk-committed ks)))
+        ; the binding, at S = 2: the image bound to the capture of r1 r2
+        (equal (rrt-capture nil (take 2 (fn-lgk-committed ks)))
+               (rrt-capture nil (list (rrt-r 1) (rrt-r 2))))
         ; the conclusion fails
         (equal (rrt-wrong-recovered) (list (rrt-r 1) (rrt-r 2) (rrt-r 3) (rrt-r 4)))
         (not (fn-rr-tree-sequence-memberp (rrt-wrong-recovered)

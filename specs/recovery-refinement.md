@@ -47,9 +47,11 @@ The composed store is two layers over one byte model
   SUCCEEDED holds every record it was opened from; without it the opened
   state was unconstrained beyond its equation to the full open, the Codex
   review's F2; the store's: `fn-sn-open-okp`, membership in
-  `fn-sf-records` of the opened Store's files); the store's functions discharge it by functional
-  instantiation in `books/recovery-refinement-store.lisp`, the log's
-  records decoded by `fn-srs-decode` (the host's `fn-store-decode-records`).
+  `fn-sf-records` of the opened Store's files); the store's functions are
+  to discharge it by functional instantiation in
+  `books/recovery-refinement-store.lisp` (WRITTEN, NOT ADMITTED: nothing
+  there is a claim yet), the log's records decoded by `fn-srs-decode` (the
+  host's `fn-store-decode-records`).
 
 **The tree sequence** (DFSCQ's metadata-prefix form, Chen et al. SOSP 2017)
 at a crash point is the list of abstract states the recovery may land on:
@@ -75,10 +77,13 @@ log's served programs, which is a state satisfying the log relation R
    record is lost.
 2. **The composed open is the full open of that prefix.** Whatever image
    the medium holds, bound to the capture of its first S records (S at most
-   the committed count), the open the host composes (`fn-rr-open`: the
-   selection under K, then `fn-sco-open` of the image over the suffix it
-   leaves, or the full open) equals `fn-cpo-open-observed` of the recovered
-   records (`fn-sn-recover-from-checkpoint-equals-full-recover`, PRF-083).
+   the committed count), the open the composition MODELS (`fn-rr-open`:
+   the selection under K, then the medium's open of the image over the
+   suffix it leaves, or the full open; the store instance's `fn-rrs-open`
+   over `fn-sco-open` is not what the host calls, §1's MODEL-LEVEL note)
+   equals the medium's full open of the recovered records (the store's
+   `fn-cpo-open-observed`; `fn-sn-recover-from-checkpoint-equals-full-recover`,
+   PRF-083).
    An image the selection refuses (absent, corrupt, past the reader's bound,
    ahead of the history, past K) is the full replay by definition.
 3. **Acknowledged implies present, in the opened state.** Every record
@@ -89,7 +94,11 @@ log's served programs, which is a state satisfying the log relation R
    (`fn-owb-alignedp`, `fn-lgu-acknowledged-record-is-committed`,
    `books/store-log-durable.lisp`), the owner-layer corollary. A refused
    open stays refused: conjunct 2 carries the full open's refusal through
-   the composed open unchanged.
+   the composed open unchanged, and the holding constraint is conditional
+   on the open's success, so an always-refusing open satisfies the
+   interface. LIVENESS OF THE OPEN IS NOT CLAIMED here: that the full open
+   of a well-formed history succeeds is the open's own theorem
+   (`fn-cpo-open-observed` over `fn-sn-observed-historyp`), not this one's.
 
 Stated as one event, `:rule-classes nil`:
 
@@ -146,10 +155,13 @@ the equation of `fn-rrs-open` to the host-called opens land.
 | A-DURABLE-EXTENT, A-DURABLE-LZ | a recovered record's payload read from its segment extent is the durable octets | named assumptions, `books/assumptions-durable.lisp` | the arena's consumers after the open; the records themselves are what the scan reads |
 | the platform rows | not in the theorem | MEASURED, per deployment | Linux ext4/xfs: fdatasync drains the inode's writes, fsync(dir) the entries, a failed fsync has marked the pages clean (fsyncgate; crash model v2 §1.6); Darwin: `fsync` does not reach the drive, `F_FULLFSYNC` does, so laptop runs are not durability evidence for the node; OpenBSD (the friend node): its own row. Each is a measured premise of the qualified image, never a theorem |
 
-What the theorem does not say: nothing about a crash INSIDE a publication
-while a batch is in flight (§5, PRF-1214); nothing about freshness (a valid
-older image with a truncated log needs an external anchor, C2-12); nothing
-about the host's open loop being the model's (the open square).
+What the theorem does not say: nothing about freshness (a valid older
+image with a truncated log needs an external anchor, C2-12); nothing about
+the host's open loop being the model's (the open square). A crash INSIDE a
+publication while a batch is in flight is the lifted statement of
+`books/recovery-refinement-concurrent.lisp` (PRF-1214, §5): the same three
+conclusions over `fn-rrc-relp`, R with the segment's own pending
+operations in place of the store's whole pending list.
 
 ## 3. What composes today, and the crash points covered
 
@@ -185,8 +197,9 @@ related state by the theorem named in §2's first row:
 | log-written, log-fenced | `fn-lg-append-program`, `fn-lg-fence-program` | `fn-lg-append-program-keeps-the-relation`, `fn-lg-fence-program-keeps-the-relation` |
 | log-extended, log-extent-fenced | `fn-lg-extend-program` | `fn-lg-extend-program-keeps-the-relation` |
 | log-truncated, log-recovered, recover-replayed, recover-barrier-1..3 | `fn-lg-recover-program`, `fn-lg-open-program` | `fn-lg-recover-program-establishes-the-relation`, `fn-lg-open-suffix-keeps-the-relation` |
-| finish-consumed, finish-durable, recovery-stage-unlinked | `fn-bs-finish-program`, `fn-bs-recover-stage-cleanup-program` | K0: these programs touch no segment octet (`fn-bs-k0-finish-program-preserves-relation`); R's segment conjuncts are untouched and the pending set is the finish's own entry operations, outside the segment inode. The lift of R's fourth conjunct to per-inode pending that makes this a citation rather than an argument is PRF-1214 |
-| state-checkpoint-created, -written, -staged-durable, -replaced, -durable | `fn-bs-scp-program` | PROVED, PRF-1216: `fn-rr-checkpoint-crash-point-recovers-committed-under-old-or-new`: from the quiet store (`fn-bs-scp-inputp`, nothing pending, so nothing in flight) the program never writes the segment (`fn-rr-all-keep-segment` over the run), every crash image of every state recovers exactly COMMITTED and holds the old or the new image (`fn-bs-scp-program-crash-is-old-or-new`). The concurrent case (a batch in flight meanwhile) is PRF-1214 |
+| finish-consumed, finish-durable, recovery-stage-unlinked | `fn-bs-finish-program`, `fn-bs-recover-stage-cleanup-program` | OWED (PRF-1221): the route is PRF-1214's `fn-rrc-keeping-the-segment-keeps-the-lifted-relation` (a state that keeps the segment's presence, content, unit and own pending operations of a lifted-related state is lifted-related, and the keystone covers its images); what is owed per program is the keep-the-segment theorem over its run. K0's `fn-bs-k0-finish-program-preserves-relation` is the octet half for the finish program; the pending half (entry operations only) is not yet a theorem |
+| state-checkpoint-created, -written, -staged-durable, -replaced, -durable | `fn-bs-scp-program` | PROVED, PRF-1216 (quiet) and PRF-1214 (concurrent). Quiet: `fn-rr-checkpoint-crash-point-recovers-committed-under-old-or-new`: from the quiet store (`fn-bs-scp-inputp`) the program never writes the segment, every crash image of every state recovers exactly COMMITTED and holds the old or the new image (`fn-bs-scp-program-crash-is-old-or-new`). Concurrent (a batch in flight at log-written): `fn-rrc-checkpoint-crash-point-refines-with-a-batch-in-flight` (`books/recovery-refinement-concurrent.lisp`): the run keeps the segment's presence, content, unit and own pending operations (`fn-rrc-scp-run-keeps-the-segment`), so every state is lifted-related and the keystone's three conclusions hold on every image of every cut. The inner cuts of the host's write loops are PRF-1223 |
+| rotate-created, rotate-fenced, rotate-renamed, rotate-headed, rotate-durable, drop-unlinked, drop-durable; import-*, export-*, init-*; statement-committed | `fn-lgs-spare/-rotate/-rotate-durable/-drop-program`, the import, export and init publication programs, `fn-ks-cut` | NOT COVERED by this theorem family; OWED (PRF-1221). The rotation changes which inode is the active segment, so the relation's INO moves with it (`books/store-log-segments.lisp`, `books/store-log-lineage.lisp` hold the rotation's own theorems); the publications and the statement touch other inodes and directories and need only a keep-the-segment proof each |
 
 ## 4. The checkpoint reserve (KeyKOS's rule over the existing policy)
 
@@ -225,11 +238,39 @@ literature-2026-10-01.md` A2, E.1.1).
   (`fn-ock-publication-duep`); `fn-ock-not-due-keeps-the-checkpoint-open`
   is the theorem that until then a restart is served from the checkpoint.
   K is the fast path's threshold, not a maximum suffix (ember, 2026-09-26).
-- **Sized by K, in the target medium.** On the page store a generation is
-  the dirty pages of at most K commits since the last root (the due rule
-  forces the checkpoint by that bound, EROS's snapshot-at-an-instant lets
-  the next suffix accumulate beside it); that bound and the page-store
-  instance of §1 are PRF-1215.
+- **Sized by K, in the target medium: PROVED for the model's commit**
+  (`books/recovery-refinement-pages.lisp`, PRF-1215). On the page store a
+  checkpoint is a root commit (`pgs-plan-commit`): the dirty pages
+  copy-on-write to fresh addresses, the table pages they touch, the
+  directory run, the record to the other slot. A generation is what one
+  commit writes, and `fn-rrp-commit-writes-within-the-generation` bounds it
+  by `fn-rrp-generation-pages` = 2|DIRTY| + 1 (one page per dirty page, at
+  most one table page per dirty page since `pgs-touched` emits each touched
+  table once, the directory). `fn-rrp-two-generations-fit-the-reserve`: two
+  planned commits over dirty sets of at most K * D pages (K records, D pages
+  a record) write at most `fn-rrp-reserve-pages` K D = 2(2KD + 1) in all:
+  KeyKOS's reserve in pages (EROS's snapshot-at-an-instant lets the next
+  suffix accumulate beside the staged generation). What binds |DIRTY| to
+  K * D on the host (the due rule at K/2, a per-record dirty bound from the
+  profile), the root record's log position S, and the page store as an
+  instance of §1's medium are PRF-1220 (§5): no host path opens the owner's
+  state from a root yet (design stage 5), so the page store's crash story
+  today is its own keystone, `pgs-open-after-crash` (PRF-344), the
+  "medium's own ordering" row of §2, with the snapshot program's cuts
+  mapped onto it:
+
+  | cut (`*pgs-snapshot-cuts*`, `pgs-cut-crash-point`) | KEEP | slot | `pgs-open-after-crash` says |
+  | --- | --- | --- | --- |
+  | :begin | none of the writes | old | the OLD view |
+  | :page-written k, :table-written k | the first k data (table) writes | old | the OLD view |
+  | :dir-written | every write | old | the OLD view |
+  | :record-torn | every write | a record that does not validate | the OLD view (the slot's `pgs-rec-valid` fails) |
+  | :record-written, :record-synced | every write | new | the NEW view (`pgs-open-after-commit`) |
+
+  The host's commit is `pgs-x-commit` (`books/pagestore-refine.lisp`,
+  `pgs-x-commit-refines-plan` equates its plan to `pgs-plan-commit`), so the
+  bound is about what `fnps-commit` writes through that square; MODEL-LEVEL
+  as §1.
 
 ## 5. Open obligations (registry rows, not premises)
 
@@ -242,35 +283,67 @@ literature-2026-10-01.md` A2, E.1.1).
   tower is green and the book certifies; the rows PRF-1212 and PRF-1213
   say so.
 
-- **PRF-1214, R lifted to per-inode pending.** R's fourth conjunct names
-  the segment's write as the ONLY pending operation of the store. A crash
-  point inside the owner's publication thread while a batch is in flight
-  has two pending sets (the segment's write, the staged file's), outside R.
-  The byte model already orders nothing across files, so the lift is to
-  `fn-bs-ops-for-ino` in R and in the tear lemma's hypotheses
-  (`fn-lg-batch-crash-is-a-prefix`); with it the finish and stage-cleanup
-  rows of §3 and the checkpoint-program row cite R directly.
-- **PRF-1215, the page store as the medium.** `pgs-open-after-crash` is the
-  old-or-new premise over the model disk; the binding of a root's image to
-  a captured prefix, the open from a root (the host's open loop; PRF-344's
-  open square) and the dirty set of K commits as the generation bound are
-  the stage-5 and stage-7 work.
-- **PRF-1222, the host's checkpoint write refined to OCTETS** (the Codex
-  review of 2d1b10ed7, F5). PRF-1213 bounds the model's OCTETS; the host
-  writes the staged file through `fnn-state-checkpoint-write` ->
-  `fnn-history-image-write` and `fnn-checkpoint-write-steps` with no
-  theorem that their concatenated writes are `fn-sct-encode` of the
-  captured prefix with the planned estimate's length; until it lands,
-  funded space is an assumption of the join, not a consequence of the
-  reserve.
-- **PRF-1223, the write loops' inner cuts** (F6). The model's `:write-all`
-  is one operation; the host dies between write(2) calls
+- **PRF-1214, R lifted to per-inode pending: PROVED**
+  (`books/recovery-refinement-concurrent.lisp`). `fn-rrc-relp` is R with
+  `fn-bs-ops-for-ino` of the pending list in place of the whole list; the
+  kernel's R implies it. The byte model orders nothing across inodes, and
+  that is a theorem: THE PROJECTION
+  `fn-rrc-crash-content-is-the-projected-crash-content` (a crash image's
+  content at an inode is the content of the projected store's image under
+  the projected choices), so every theorem of the generic book transfers
+  through the projection and the keystone is restated over `fn-rrc-relp`
+  (`fn-rrc-recovery-refines-a-prefix-with-every-acknowledged-record`). The
+  concurrent checkpoint cuts are
+  `fn-rrc-checkpoint-crash-point-refines-with-a-batch-in-flight` (§3). The
+  kernel's own R and the programs' keeps-the-relation theorems are
+  unchanged: the lift is a weakening the composition is stated over, not a
+  change to the served invariant.
+- **PRF-1221, the cut table's remaining rows.** Each remaining program
+  owes one keep-the-segment theorem over its run (§3); with it the lifted
+  keystone covers its cuts by `fn-rrc-keeping-the-segment-keeps-the-lifted-
+  relation`. The rotation programs move the relation's INO and need their
+  own theorems cited instead.
+- **PRF-1215, the page store's generation: PROVED** (§4,
+  `books/recovery-refinement-pages.lisp`): the commit's write bound and the
+  two-generation reserve in pages.
+- **PRF-1220, the page store as the medium.** Open until design stage 5
+  (fn-hist on pages): (a) a root's pages decode to the capture of the first
+  S committed records, S carried on the root record (PRF-199's shape);
+  (b) the open from a root over the log's suffix as `fn-rr-medium-open`,
+  equal to the full open of prefix ++ suffix, with `-open-okp` and `-holds`
+  over the opened pages; (c) `pgs-open-after-crash` as the binding of the
+  image read to S_old or S_new; (d) the host's open from a root named as
+  the subject (PRF-344's open square); (e) |DIRTY| <= K * D on the host
+  (the due rule at K/2 and a per-record dirty bound from the profile),
+  discharging `fn-rrp-two-generations-fit-the-reserve`'s hypotheses.
+- **PRF-1222, the host's checkpoint write joined to the reserve** (the
+  Codex review of 2d1b10ed7, F5; restated after r10). PRF-1213 bounds the
+  model's OCTETS, one `:write-all`. The staged file the host writes is
+  `fn-his-file-octets` (`host/store-node-host.lisp`: the history image
+  region, `fn-his-region-octets` of the image's page count, plus the
+  stream the checkpoint steps write), produced by `fnn-history-image-write`
+  then `fnn-checkpoint-write-steps`, and it is not the table estimate
+  `fn-ockp-decide` plans against. Two obligations, neither a byte
+  equality: (a) the octets the two loops write have length
+  `fn-his-file-octets` of the image's page count and the steps' stream,
+  and that length is within `fn-ock-capture-budget` (the reader's bound the
+  old image is held to), so the two generations are what PRF-1213 bounds;
+  (b) a RESERVATION invariant: the reserve's space is set aside at format
+  time and the publication draws on it, so that `fn-ockp-decide`'s free-
+  space observation (statvfs) can be retired (MODE §2: a served host
+  change). Byte equality alone discharges neither; until both land the
+  funded-space premise is an assumption of the join.
+- **PRF-1223, the write loops' inner cuts: REGISTERED, NOT RESOLVED**
+  (F6). `fn-bs-scp-program` (`books/byte-store-state-checkpoint-program.lisp`)
+  is still one `:write-all`, `tests/campaign/native_cuts.py` is unchanged,
+  and the intra-batch SIGKILL points of `host/native/io.lisp`
   (`fnn-checkpoint-write-steps`' per-step kill under
-  `fnn-checkpoint-batch-fault`, `fnn-history-image-write`'s header, pad
-  and page writes). Each is the model state with k pending writes to the
-  staged inode and the root entry old, so its images recover COMMITTED
-  and hold the OLD image; the chunked program and the cut rows that make
-  that a theorem are the row's work. PRF-1216 covers the five outer cuts.
+  `fnn-checkpoint-batch-fault`; `fnn-history-image-write`'s header, pad and
+  page writes) have NO model crash point today. Expected shape: the
+  `:write-all` split into the batch's writes, each a cut, every state's
+  images recovering COMMITTED under the OLD image (the root entry is
+  untouched until the rename); the cut rows added to the table. PRF-1216
+  covers the five outer cuts only.
 - **A-CRYPTO-TRAILER's witness** (F4, against `books/assumptions.lisp`, not
   this lane's books). The keystone's premise `fn-lg-platform-tears-p` is a
   constrained consequent; its local witness admits only the exact tear, so

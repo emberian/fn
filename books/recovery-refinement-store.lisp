@@ -47,7 +47,9 @@
 ; -----------------------------------------------------------------------------
 ; 1. The medium's interface, discharged by the store's open.
 
-; The composed open the host runs, over the store's functions.
+; The composed open this instance MODELS over the store's functions (not
+; what the host calls: fnn-recover-log reaches fn-rii-sco-extend-open /
+; fn-sfi-extend-open; the equation to them is the pending subject).
 (defun fn-rrs-open (status s ckpt configs frontier records k)
   (declare (xargs :guard t :verify-guards nil))
   (if (equal (car (fn-sco-select status s (len records) k)) :checkpoint)
