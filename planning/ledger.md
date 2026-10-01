@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2705 |
+| Books read | 2707 |
 | Certification roots in the Makefile | 2346 |
-| Books inside the root closure | 2618 |
-| `defthm` and `defthmd` events | 35368 |
-| `defun` events | 22668 |
+| Books inside the root closure | 2620 |
+| `defthm` and `defthmd` events | 35372 |
+| `defun` events | 22680 |
 | Functions with verified guards | 3844 |
-| Functions declared `:verify-guards nil` and never verified | 2863 |
+| Functions declared `:verify-guards nil` and never verified | 2864 |
 | Functions left at the default with an explicit guard | 12691 |
-| Functions left at the default with no guard | 3270 |
-| `assert-event` checks | 25292 |
-| `must-fail` checks | 2558 |
+| Functions left at the default with no guard | 3281 |
+| `assert-event` checks | 25318 |
+| `must-fail` checks | 2559 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 193 |
 | Theorems flagged SUSPECT by shape | 1334 |
 | Export-hygiene warnings | 392 |
 | Enabled-projection warnings | 80 |
 | Teeth-form warnings | 279 |
-| Include-hygiene warnings | 3364 |
+| Include-hygiene warnings | 3367 |
 | Host-names warnings | 3114 |
 | Hand-written-record warnings | 19 |
 
@@ -637,7 +637,7 @@ that `make certify` requests.
 | `books/decoded-worker-controller-trajectory.lisp` | closure | 6 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/decoded-worker-controller.lisp` | closure | 0 | 7 | 6/0/1/0 | 0 | 0 | 0 |
 | `books/def-loop.lisp` | root | 5 | 31 | 0/0/0/31 | 0 | 0 | 0 |
-| `books/def-representation-lib.lisp` | root | 14 | 5 | 0/0/5/0 | 0 | 0 | 0 |
+| `books/def-representation-lib.lisp` | root | 15 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/def-representation.lisp` | root | 0 | 14 | 0/0/0/14 | 0 | 0 | 0 |
 | `books/defevent.lisp` | root | 0 | 14 | 0/0/0/14 | 0 | 0 | 0 |
 | `books/definterface.lisp` | root | 0 | 46 | 0/0/0/46 | 0 | 0 | 0 |
@@ -2001,6 +2001,8 @@ that `make certify` requests.
 | `tests/acl2/connection-receiver-repin-state-tests.lisp` | root | 0 | 5 | 0/0/3/2 | 0 | 0 | 0 |
 | `tests/acl2/connection-receiver-repin-tests.lisp` | root | 0 | 3 | 0/2/1/0 | 1 | 0 | 0 |
 | `tests/acl2/connection-receiver-source-tests.lisp` | root | 0 | 4 | 0/0/4/0 | 7 | 0 | 0 |
+| `tests/acl2/consumer-account-adoption-tests.lisp` | closure | 0 | 5 | 0/0/0/5 | 13 | 0 | 0 |
+| `tests/acl2/consumer-account-auth-tests.lisp` | closure | 0 | 6 | 0/0/0/6 | 9 | 0 | 0 |
 | `tests/acl2/consumer-account-binding-codec-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 22 | 0 | 0 |
 | `tests/acl2/consumer-account-binding-lookup-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `tests/acl2/consumer-account-candidate-tests.lisp` | root | 0 | 2 | 0/2/0/0 | 8 | 0 | 0 |
@@ -2099,7 +2101,7 @@ that `make certify` requests.
 | `tests/acl2/decoded-window-yield-trajectory-tests.lisp` | root | 7 | 3 | 0/0/0/3 | 0 | 0 | 0 |
 | `tests/acl2/decoded-worker-controller-trajectory-tests.lisp` | root | 8 | 10 | 0/0/0/10 | 0 | 0 | 0 |
 | `tests/acl2/def-loop-tests.lisp` | root | 10 | 22 | 16/0/6/0 | 40 | 11 | 0 |
-| `tests/acl2/def-representation-tests.lisp` | root | 6 | 6 | 0/0/5/1 | 11 | 5 | 0 |
+| `tests/acl2/def-representation-tests.lisp` | root | 7 | 6 | 0/0/5/1 | 11 | 5 | 0 |
 | `tests/acl2/defevent-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 19 | 1 | 0 |
 | `tests/acl2/definterface-recognizer-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 3 | 0 | 0 |
 | `tests/acl2/definterface-tests.lisp` | root | 8 | 9 | 0/0/6/3 | 39 | 23 | 1 |
@@ -2251,8 +2253,8 @@ that `make certify` requests.
 | `tests/acl2/moderation-verbs-tests.lisp` | root | 0 | 7 | 0/1/1/5 | 70 | 7 | 0 |
 | `tests/acl2/msgid-index-concrete-tests.lisp` | root | 4 | 2 | 0/1/0/1 | 18 | 1 | 0 |
 | `tests/acl2/msgid-index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 13 | 5 | 0 |
-| `tests/acl2/msgid-linear-exec-tests.lisp` | root | 0 | 6 | 0/5/1/0 | 5 | 0 | 0 |
-| `tests/acl2/msgid-linear-tests.lisp` | root | 1 | 9 | 0/4/5/0 | 46 | 0 | 0 |
+| `tests/acl2/msgid-linear-exec-tests.lisp` | root | 2 | 7 | 0/6/1/0 | 6 | 1 | 0 |
+| `tests/acl2/msgid-linear-tests.lisp` | root | 1 | 9 | 0/4/5/0 | 49 | 0 | 0 |
 | `tests/acl2/msgid-pages-exec-tests.lisp` | root | 5 | 14 | 0/3/11/0 | 10 | 0 | 0 |
 | `tests/acl2/msgid-pages-tests.lisp` | root | 1 | 4 | 0/3/1/0 | 23 | 0 | 0 |
 | `tests/acl2/must-fail-checked.lisp` | closure | 1 | 7 | 0/0/2/5 | 0 | 2 | 0 |
