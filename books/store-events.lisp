@@ -392,12 +392,13 @@
            (and (not (fn-record-p x)) (not (fn-store-retention-event-p x))
                 (not (fn-stxe-p x)) (not (fn-stxk-p x)) (not (fn-stxa-p x))
                 (not (fn-cne-eventp x)) (not (fn-cae-eventp x)) (not (fn-th-topic-eventp x))))
-  :hints (("Goal" :use ((:instance fn-hstxa-p-forward-shape))
+  :hints (("Goal" :use ((:instance fn-hstxa-p-forward-shape)
+                        (:instance fn-cne-event-shape (event x)))
            :in-theory (e/d (fn-record-p fn-record-shapep fn-store-retention-event-p
                             fn-stxe-p fn-stxe-shapep fn-stxk-p fn-stxk-shapep
-                            fn-stxa-p fn-stxa-shapep fn-cne-eventp fn-cae-eventp fn-cac-eventp fn-cab-eventp
+                            fn-stxa-p fn-stxa-shapep fn-cae-eventp fn-cac-eventp fn-cab-eventp
                             fn-th-topic-eventp fn-th-local-admin-eventp)
-                           (fn-hstxa-p)))))
+                           (fn-hstxa-p fn-cne-eventp fn-cpe-eventp fn-crev-eventp)))))
 
 (defthm fn-held-is-no-wire-event
   (implies (fn-held-p x)
@@ -405,12 +406,13 @@
                 (not (fn-stxe-p x)) (not (fn-stxk-p x)) (not (fn-stxa-p x))
                 (not (fn-cne-eventp x)) (not (fn-cae-eventp x)) (not (fn-th-topic-eventp x))))
   :hints (("Goal" :use ((:instance fn-held-p-forward-shape)
-                        (:instance fn-held-p-forward-natural-head))
+                        (:instance fn-held-p-forward-natural-head)
+                        (:instance fn-cne-event-shape (event x)))
            :in-theory (e/d (fn-record-p fn-record-shapep fn-store-retention-event-p
                             fn-stxe-p fn-stxe-shapep fn-stxk-p fn-stxk-shapep
-                            fn-stxa-p fn-stxa-shapep fn-cne-eventp fn-cae-eventp fn-cac-eventp fn-cab-eventp fn-held-shapep
+                            fn-stxa-p fn-stxa-shapep fn-cae-eventp fn-cac-eventp fn-cab-eventp fn-held-shapep
                             fn-th-topic-eventp fn-th-local-admin-eventp)
-                           (fn-held-p)))))
+                           (fn-held-p fn-cne-eventp fn-cpe-eventp fn-crev-eventp)))))
 
 (defthm fn-hstxa-is-not-held
   (implies (fn-hstxa-p x) (not (fn-held-p x)))
@@ -423,20 +425,24 @@
            (and (not (fn-record-p x)) (not (fn-store-retention-event-p x))
                 (not (fn-stxe-p x)) (not (fn-stxk-p x))
                 (not (fn-cne-eventp x)) (not (fn-cae-eventp x)) (not (fn-th-topic-eventp x))))
-  :hints (("Goal" :in-theory (enable fn-record-p fn-record-shapep fn-store-retention-event-p
+  :hints (("Goal" :use ((:instance fn-cne-event-shape (event x)))
+           :in-theory (e/d fn-record-p fn-record-shapep fn-store-retention-event-p
                                      fn-stxe-p fn-stxe-shapep fn-stxk-p fn-stxk-shapep
-                                     fn-stxa-p fn-stxa-shapep fn-cne-eventp fn-cae-eventp fn-cac-eventp fn-cab-eventp
-                                     fn-th-topic-eventp fn-th-local-admin-eventp))))
+                                     fn-stxa-p fn-stxa-shapep fn-cae-eventp fn-cac-eventp fn-cab-eventp
+                                     fn-th-topic-eventp fn-th-local-admin-eventp)
+                                     (fn-cne-eventp fn-cpe-eventp fn-crev-eventp)))))
 
 (defthm fn-record-is-no-other-wire-event
   (implies (fn-record-p x)
            (and (not (fn-store-retention-event-p x))
                 (not (fn-stxe-p x)) (not (fn-stxk-p x))
                 (not (fn-cne-eventp x)) (not (fn-cae-eventp x)) (not (fn-th-topic-eventp x))))
-  :hints (("Goal" :in-theory (enable fn-record-p fn-record-shapep fn-store-retention-event-p
+  :hints (("Goal" :use ((:instance fn-cne-event-shape (event x)))
+           :in-theory (e/d fn-record-p fn-record-shapep fn-store-retention-event-p
                                      fn-stxe-p fn-stxe-shapep fn-stxk-p fn-stxk-shapep
-                                     fn-cne-eventp fn-cae-eventp fn-cac-eventp fn-cab-eventp
-                                     fn-th-topic-eventp fn-th-local-admin-eventp))))
+                                     fn-cae-eventp fn-cac-eventp fn-cab-eventp
+                                     fn-th-topic-eventp fn-th-local-admin-eventp)
+                                     (fn-cne-eventp fn-cpe-eventp fn-crev-eventp)))))
 
 (in-theory (disable fn-hstxa-is-no-wire-event fn-held-is-no-wire-event
                     fn-hstxa-is-not-held fn-stxa-is-no-other-wire-event
