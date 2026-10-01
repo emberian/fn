@@ -64,7 +64,14 @@
 (program)
 (defun drt-find-foundation (events)
   (cond ((atom events) nil)
-        ((eq (car events) 'defstobj) (cadr events))
+        ; the foundation NAME$C (a paged instance also declares its page
+        ; stobjs NAME$PG and NAME$PP before it)
+        ((and (eq (car events) 'defstobj)
+              (symbolp (cadr events))
+              (let ((n (symbol-name (cadr events))))
+                (and (<= 2 (length n))
+                     (equal (subseq n (- (length n) 2) (length n)) "$C"))))
+         (cadr events))
         (t (or (drt-find-foundation (car events))
                (drt-find-foundation (cdr events))))))
 
@@ -107,42 +114,42 @@
 
 (assert-event
  (equal (symbol-package-name
-         (drt-find-foundation (rep-instance-events :drt-package '((id :u64)) nil nil nil nil nil)))
+         (drt-find-foundation (rep-instance-events :drt-package '((id :u64)) nil nil nil nil nil t)))
         (symbol-package-name :drt-package)))
 (assert-event
  (equal (symbol-package-name
-         (drt-find-foundation (rep-instance-events :drt-package '((id :u64)) t nil nil nil nil)))
+         (drt-find-foundation (rep-instance-events :drt-package '((id :u64)) t nil nil nil nil t)))
         (symbol-package-name :drt-package)))
 (assert-event
  (equal (symbol-package-name
-         (drt-find-foundation (rep-instance-events :drt-package '((id :u64)) t t nil nil nil)))
+         (drt-find-foundation (rep-instance-events :drt-package '((id :u64)) t t nil nil nil t)))
         (symbol-package-name :drt-package)))
 
 ; Every clear resize/update stays in the instance's package, with both
 ; kinds of call present (record, scalar and generic).
 (assert-event
  (drt-clear-calls-in-package-p
-  (rep-instance-events :drt-package '((id :u64)) nil nil nil nil nil)
+  (rep-instance-events :drt-package '((id :u64)) nil nil nil nil nil t)
   (symbol-package-name :drt-package)))
 (assert-event
  (drt-clear-calls-in-package-p
-  (rep-instance-events :drt-package '((id :u64)) t nil nil nil nil)
+  (rep-instance-events :drt-package '((id :u64)) t nil nil nil nil t)
   (symbol-package-name :drt-package)))
 (assert-event
  (drt-clear-calls-in-package-p
-  (rep-instance-events :drt-package '((id :u64)) t t nil nil nil)
+  (rep-instance-events :drt-package '((id :u64)) t t nil nil nil t)
   (symbol-package-name :drt-package)))
 (assert-event
  (drt-clear-calls-in-package-p
-  (rep-instance-events 'drt-two '((id :u64)) nil nil nil nil nil) "ACL2"))
+  (rep-instance-events 'drt-two '((id :u64)) nil nil nil nil nil t) "ACL2"))
 
 ; One spelling in two packages: two instances, two foundations.
 (assert-event
- (not (equal (drt-find-foundation (rep-instance-events :drt-two '((id :u64)) nil nil nil nil nil))
-             (drt-find-foundation (rep-instance-events 'drt-two '((id :u64)) nil nil nil nil nil)))))
+ (not (equal (drt-find-foundation (rep-instance-events :drt-two '((id :u64)) nil nil nil nil nil t))
+             (drt-find-foundation (rep-instance-events 'drt-two '((id :u64)) nil nil nil nil nil t)))))
 (assert-event
  (equal (symbol-package-name
-         (drt-find-foundation (rep-instance-events 'drt-two '((id :u64)) nil nil nil nil nil)))
+         (drt-find-foundation (rep-instance-events 'drt-two '((id :u64)) nil nil nil nil nil t)))
         "ACL2"))
 ; An admitted two-package instance needs a defpkg portcullis, which
 ; tools/certify_books.py does not carry for a test book yet (NEXT).
@@ -307,9 +314,9 @@
 ; 5. The world rows.
 
 (assert-event (equal (cdr (assoc-eq 'drt-pay (table-alist 'fn-generated (w state))))
-                     '(:def-representation :scalar t :generic nil :implementation drt-pay :invariant nil :trees nil :write-once nil)))
+                     '(:def-representation :scalar t :generic nil :implementation drt-pay :invariant nil :trees nil :write-once nil :paged nil)))
 (assert-event (equal (cdr (assoc-eq 'drt-gen (table-alist 'fn-generated (w state))))
-                     '(:def-representation :scalar t :generic t :implementation drt-gen-cols :invariant nil :trees nil :write-once nil)))
+                     '(:def-representation :scalar t :generic t :implementation drt-gen-cols :invariant nil :trees nil :write-once nil :paged nil)))
 
 ; -----------------------------------------------------------------------------
 ; 6. A TREE field (books/def-representation-tree.lisp, lane paged-catalog-3):
@@ -448,7 +455,7 @@
 
 (assert-event (equal (cdr (assoc-eq 'drt-t1 (table-alist 'fn-generated (w state))))
                      '(:def-representation :scalar nil :generic nil :implementation drt-t1 :invariant nil
-                       :trees (tr) :write-once nil)))
+                       :trees (tr) :write-once nil :paged nil)))
 
 ; -----------------------------------------------------------------------------
 ; 7. WRITE-ONCE (:write-once t, lane paged-catalog-4, Codex r21 F1): no
@@ -594,4 +601,4 @@
 
 (assert-event (equal (cdr (assoc-eq 'drt-w1 (table-alist 'fn-generated (w state))))
                      '(:def-representation :scalar nil :generic nil :implementation drt-w1 :invariant nil
-                       :trees (tr) :write-once t)))
+                       :trees (tr) :write-once t :paged nil)))
