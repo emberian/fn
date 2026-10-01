@@ -18,6 +18,17 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-transaction-dispatch-tests \
 	tests/acl2/consumer-remote-store-category-tests \
 	tests/acl2/receiver-response-transfer-tests \
+	books/history-event-page \
+	books/history-event-directory \
+	books/history-event-directory-refinement \
+	books/history-event-provider \
+	books/history-event-backing \
+	tests/acl2/history-event-directory-tests \
+	tests/acl2/history-event-backing-tests \
+	books/history-capture-custody \
+	books/history-capture-state \
+	tests/acl2/history-capture-custody-tests \
+	books/history-source-capture \
 	tests/acl2/receiver-output-custody-tests \
 	host/receiver-resource-host \
 	host/receiver-turn-resource-host \

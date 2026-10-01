@@ -7547,6 +7547,29 @@
         "planning/evidence/bpsec-operation-source-2026-09-30.json"
       ],
       "execution_scope": "Literal ACL2 component/source fixtures; actual immutable registry, provider, current lease, cryptographic realizer and native gate remain open."
+    },
+    {
+      "id": "SCN-1071",
+      "title": "Persistent forest carry and exact NIL candidate publication replay",
+      "milestone": "M2",
+      "status": "implemented",
+      "requirements": [
+        "STO-10003"
+      ],
+      "steps": [
+        "Grow three-page forest to four by two one-head carry merges and one finish cons; read middle page via one forest/branch action each call.",
+        "Initialize actual concrete page in an explicitly synthetic registration fixture, retain NIL row plus exact produced6, reject wrong completion txid, publish once and replay completion/publication.",
+        "Reject corrupted odd-width metadata and out-of-prefix ordinal; default backing refuses before publication."
+      ],
+      "expected": [
+        "Chronological old forest prefix remains unchanged and exact selected leaf is returned.",
+        "NIL is an actual :row result; registered txid mismatch refuses; repeated completion/publication retains full logical backing and does not append again.",
+        "No native activation, shaped allocator grant or final physical lifetime return is inferred."
+      ],
+      "evidence": [
+        "tests/acl2/history-event-directory-tests.lisp",
+        "tests/acl2/history-event-backing-tests.lisp"
+      ]
     }
   ]
 }

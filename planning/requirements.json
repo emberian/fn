@@ -6131,6 +6131,29 @@
         "tests/acl2/substrate-commit-codec-gap-tests.lisp"
       ],
       "implementation_note": "Resumable evidence leaf and actual-row/config adapter supplied. Actual definite-persistence completion and cold replay caller installation remain open; no founding roster or adoption policy is invented. Concrete open codec disagreement: fn-stx-commit-encodablep accepts ID=513 octets, base=0, actor/subject=32 octets and remove, and encode produces exactly 586 octets, while decode-exact returns :limit at its fixed 512 cap. Existing certified retention/authority packet is distinct from this counterexample. Repair requires profile-aligned bounded/resumable codec work and agreed uint32 format evolution; no full supported-profile source capability claim."
+    },
+    {
+      "id": "STO-10003",
+      "title": "Persistent binary all-event directory with registered candidate and epoch custody",
+      "specification": "specs/history-event-directory.md",
+      "milestone": "M2",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-1190",
+        "PRF-1191"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/history-event-directory.lisp",
+        "books/history-event-directory-refinement.lisp",
+        "books/history-event-backing.lisp",
+        "tests/acl2/history-event-directory-tests.lisp",
+        "tests/acl2/history-event-backing-tests.lisp"
+      ],
+      "implementation_note": "Guarded conditional source component. Genuine producer/family issuance, raw construction invariant, atomic owner join and physical epoch/debt relinquishment remain separate open producers."
     }
   ]
 }
