@@ -38,3 +38,38 @@
  ; Native borrow clearing after definite refused callback is not core release.
  (assert (eq (fn-tsc-at 8 (fn-bps-field 5 job)) root)))
 (format t "PASS actual native ticks -> retained segment/primary/canonical framing; no early ACK flush or acceptance.~%")
+; Cut after actual primary-span emission: both caller-visible I/O custody and
+; actual core continuation retain the original chain; fenced retry never calls
+; the parser again. This is a recording condition cut, not disk recovery.
+(let* ((conn (make-fnn-tcl-conn)) (*flushes* 0)
+       (root (list (nthcdr 7 *bundle*) (subseq *bundle* 0 7)))
+       (token (list :recording-source-cut)) (job nil) (calls 0)
+       (*fnn-tcl-source-start*
+        (lambda (actual id chain count)
+         (declare (ignore actual id))
+         (setf job (fn-bpsw-begin :held-transfer chain count))
+         (list :source-yield token)))
+       (*fnn-tcl-source-turn*
+        (lambda (actual actual-token)
+         (declare (ignore actual)) (assert (eq actual-token token)) (incf calls)
+         (multiple-value-bind (word next used event) (fn-bpsw-turn job 1 0)
+          (declare (ignore used)) (setf job next)
+          (when (and (eq word :block-source) (eq (car event) :bp-primary-source))
+           (error "recording cut after actual primary block span"))
+          (list :source-yield token)))) (failure nil))
+ (fnn-tcl-act conn (list (list :send (list :xfer-ack 3 7 (length *bundle*)))
+                        (list :bundle-segments-received 7 root (length *bundle*))))
+ (loop repeat 1000 until failure do
+  (setf failure (handler-case (progn (fnn-tcl-source-tick conn) nil)
+                 (fnn-tcl-source-indeterminate (condition) condition))))
+ (assert failure) (assert (eq (fnn-tcl-source-failure-connection failure) conn))
+ (assert (fnn-tclc-fenced conn)) (assert (fnn-tclc-source-pending conn))
+ (assert (eq (fnn-tclc-source-root conn) root))
+ (assert (eq (fnn-tclc-source-token conn) token))
+ (assert (eq (fn-tsc-at 8 (fn-bps-field 5 job)) root))
+ (assert (zerop *flushes*))
+ (let ((before calls))
+  (assert (handler-case (progn (fnn-tcl-source-tick conn) nil)
+            (fnn-tcl-source-indeterminate () t)))
+  (assert (= before calls))))
+(format t "PASS actual primary-span cut retains source/END ACK/token and fences callback retry.~%")
