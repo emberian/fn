@@ -122,3 +122,12 @@ before ATS finish; permanent request/job/selection roots remain charged. A
 source key, ready job, native durable word or ATS:left is never alias return.
 Complete installed allowance, durable C destination, funded rebind/restart,
 all-writer source/raw-cut/alias-return proofs and native qualification remain open.
+
+The actual C publication caller acquires its distinct source only when absent,
+then performs one retained preparation quantum using all returned effects.
+The pending full8 result is not journal readiness. Its source/base/preparation
+roots stay charged until a distinct C durable collector and registered alias
+return exist; E alias cleanup cannot substitute. Yield continuation needs the
+SAME account claim and a fresh paid enclosing ATS nonce without reissuing PRS.
+The complete enclosing BODY must price acquisition, preparation and cleanup;
+a readonly publish-c family does not fund these allocations.

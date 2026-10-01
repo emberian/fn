@@ -232,6 +232,9 @@ def test_actual_publication_missing_producer_retains_turn(tmp_path):
  (declare (ignore kind pool state))
  (values (if (eq *stage* :complete) :runtime-operation-available :runtime-operation-unavailable)
          :synthetic-original-resource-result))
+(defun fn-owner-account-adoption-configuration-step (slot nonce slots pool state)
+ (declare (ignore slot nonce))
+ (values :unavailable :configuration-semantic-pending slots pool state))
 '''
     for file, prefix in (
         ('books/consumer-position-fields.lisp', '(defun fn-cp-nth '),
@@ -245,7 +248,7 @@ def test_actual_publication_missing_producer_retains_turn(tmp_path):
                (:family :publish :account-publication-role-unavailable)
                (:resources :publish :account-publication-resources-unavailable)
                (:complete :publish :account-publication-executor-missing)
-               (:complete :configure :account-configuration-destination-missing)))
+               (:complete :configure :configuration-semantic-pending)))
  (setf *stage* (first case) *kind* (second case))
  (let ((slots (list :actual-slots)) (pool (list :retained-pool)) (state (list :retained-state)))
   (multiple-value-bind (word answer ns np nstate)
@@ -365,3 +368,68 @@ def test_actual_semantic_lease_refuses_before_account_reservation(tmp_path):
                          capture_output=True, text=True, timeout=30)
     assert out.returncode == 0, out.stdout + out.stderr
     assert 'ACCOUNT_SEMANTIC_BUSY_BEFORE_RESERVATION_PASS' in out.stdout
+
+
+def test_actual_configuration_caller_retains_each_returned_effect(tmp_path):
+    """Actual caller transport; scripted C producers are UNFUNDED, not receipts."""
+    program = '''
+(defpackage "ACL2" (:use "COMMON-LISP"))
+(in-package "ACL2")
+(defmacro mv (&rest x) `(values ,@x))
+(defmacro mv-let (names form &body body) `(multiple-value-bind ,names ,form ,@body))
+(defvar *acquires* 0)
+(defvar *prepares* 0)
+(defvar *acquire-word* :account-config-source-retained)
+(defvar *prepare-word* :yield)
+(defvar *acquired-slots* (list :returned-slots))
+(defvar *acquired-pool* (list :returned-pool))
+(defvar *acquired-state* (list :actual-c-source))
+(defvar *prepared-state* (list :retained-full8-c-cursors))
+(defun fn-owner-account-config-source (state) (and (eq state *acquired-state*) :retained))
+(defun fn-owner-history-config-begin (slot nonce slots pool state)
+ (declare (ignore slot nonce slots pool state))
+ (incf *acquires*)
+ (values *acquire-word* :core-derived-id *acquired-slots* *acquired-pool* *acquired-state*))
+(defun fn-owner-account-config-preparation-step (state)
+ (assert (eq state *acquired-state*))
+ (incf *prepares*)
+ (values *prepare-word* *prepared-state*))
+'''
+    program += cl_form(named('host/account-adoption-publication-host.lisp',
+                             '(defun fn-owner-account-adoption-configuration-step\n'))
+    program += '''
+;; First acquire: every literal returned effect is retained before preparation.
+(multiple-value-bind (word answer slots pool state)
+ (fn-owner-account-adoption-configuration-step 2 17 :old-slots :old-pool :old-state)
+ (assert (and (eq word :yield) (eq answer :yield)
+              (eq slots *acquired-slots*) (eq pool *acquired-pool*)
+              (eq state *prepared-state*) (= *acquires* 1) (= *prepares* 1))))
+;; SAME retained source resumes without acquiring or reserving another identity.
+(setf *prepare-word* :configuration-semantic-pending)
+(multiple-value-bind (word answer slots pool state)
+ (fn-owner-account-adoption-configuration-step 2 17 *acquired-slots* *acquired-pool* *acquired-state*)
+ (assert (and (eq word :unavailable) (eq answer :configuration-semantic-pending)
+              (eq slots *acquired-slots*) (eq pool *acquired-pool*)
+              (eq state *prepared-state*) (= *acquires* 1) (= *prepares* 2))))
+;; Unknown acquisition/refusal retains actual effects and invokes no prep.
+(setf *acquire-word* :account-config-source-unavailable)
+(multiple-value-bind (word answer slots pool state)
+ (fn-owner-account-adoption-configuration-step 2 17 :old-slots :old-pool :old-state)
+ (assert (and (eq word :unavailable) (eq answer :account-config-source-unavailable)
+              (eq slots *acquired-slots*) (eq pool *acquired-pool*)
+              (eq state *acquired-state*) (= *acquires* 2) (= *prepares* 2))))
+;; An acquiring/ambiguous preparation result cannot become durable or accepted.
+(setf *prepare-word* :recovery-required)
+(multiple-value-bind (word answer slots pool state)
+ (fn-owner-account-adoption-configuration-step 2 17 *acquired-slots* *acquired-pool* *acquired-state*)
+ (assert (and (eq word :recovery-required) (eq answer :recovery-required)
+              (eq slots *acquired-slots*) (eq pool *acquired-pool*)
+              (eq state *prepared-state*) (= *acquires* 2) (= *prepares* 3))))
+(format t "ACCOUNT_C_CALLER_RETAINED_EFFECTS_PASS~%")
+'''
+    path = tmp_path / 'account-c-caller-effects.lisp'
+    path.write_text(program)
+    out = subprocess.run(['sbcl', '--noinform', '--script', str(path)],
+                         capture_output=True, text=True, timeout=30)
+    assert out.returncode == 0, out.stdout + out.stderr
+    assert 'ACCOUNT_C_CALLER_RETAINED_EFFECTS_PASS' in out.stdout
