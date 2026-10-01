@@ -98,14 +98,10 @@ def verify(directory: Path) -> list[str]:
 
 
 def catalog_of(build: Path, file: str) -> str:
-    """The catalog an image was built with (tools/build_native_host.sh writes
-    FILE.catalog beside it: "old" or "paged"); "old" for an image built before
-    the record existed, when only the old catalog could be built under these
-    names.  Codex r21 F2: an inherited FN_NATIVE_CATALOG=paged once built a
-    paged core under the old catalog's name."""
+    """Read the builder's catalog evidence; absent evidence is unknown."""
     record = build / f"{file}.catalog"
     if not record.is_file():
-        return "old"
+        return "unknown"
     return record.read_text(encoding="utf-8").strip()
 
 
@@ -129,10 +125,12 @@ def publish(tree: Path, sha: str, base: Path = BASE) -> int:
     if not found:
         print(f"image_set: no image in {build}", file=sys.stderr)
         return 1
-    bad = wrong_catalog({name: catalog_of(build, file) for name, file in found.items()})
+    catalogs = {name: catalog_of(build, file) for name, file in found.items()}
+    bad = wrong_catalog(catalogs)
     if bad:
-        print(f"image_set: {build} holds images built with another catalog: {', '.join(bad)}; "
-              "not published", file=sys.stderr)
+        print(f"image_set: {build} has images without an affirmative old catalog: {', '.join(bad)}; "
+              "not published; rebuild with tools/build_native_host.sh, which writes FILE.catalog",
+              file=sys.stderr)
         return 1
     partial = base / f"{sha}.partial"
     shutil.rmtree(partial, ignore_errors=True)
@@ -152,7 +150,7 @@ def publish(tree: Path, sha: str, base: Path = BASE) -> int:
         deps = build / f"{file}.world-deps"
         if deps.is_file():
             shutil.copy2(deps, partial / deps.name)
-        images[name] = {"launcher": file, "core": core.name, "catalog": catalog_of(build, file)}
+        images[name] = {"launcher": file, "core": core.name, "catalog": catalogs[name]}
     if (build / "lib").is_dir():
         shutil.copytree(build / "lib", partial / "lib")
     (partial / "TREE_SHA").write_text(sha + "\n")
@@ -184,9 +182,11 @@ def link(sha: str, tree: Path, wanted: list[str], base: Path = BASE) -> int:
         print(f"image_set: {directory} fails its SHA256SUMS: {', '.join(bad[:5])}",
               file=sys.stderr)
         return 1
-    bad = wrong_catalog({name: manifest["images"][name].get("catalog", "old") for name in wanted})
+    bad = wrong_catalog({name: manifest["images"][name].get("catalog", "unknown") for name in wanted})
     if bad:
-        print(f"image_set: {directory} records another catalog for {', '.join(bad)}; not linked",
+        print(f"image_set: {directory} does not record an old catalog for {', '.join(bad)}; "
+              "not linked; rebuild with tools/build_native_host.sh, which writes FILE.catalog, "
+              "and publish a new image set",
               file=sys.stderr)
         return 1
     build = tree / "build"
@@ -198,6 +198,10 @@ def link(sha: str, tree: Path, wanted: list[str], base: Path = BASE) -> int:
         if (directory / f"{file}.world-deps").is_file():
             names.append(f"{file}.world-deps")
     place_links(directory, build, names)
+    for name in wanted:
+        record = build / f"{manifest['images'][name]['launcher']}.catalog"
+        record.unlink(missing_ok=True)
+        record.write_text(manifest["images"][name]["catalog"] + "\n")
     print(f"image_set: linked {', '.join(wanted)} from {directory} into {build}")
     return 0
 
@@ -234,10 +238,12 @@ def link_run(run: Path, tree: Path, wanted: list[str]) -> int:
         print(f"image_set: {directory} has no {', '.join(missing)} image (launcher and "
               "core); that run did not build it", file=sys.stderr)
         return 1
-    bad = wrong_catalog({name: catalog_of(directory, IMAGES[name]) for name in wanted})
+    catalogs = {name: catalog_of(directory, IMAGES[name]) for name in wanted}
+    bad = wrong_catalog(catalogs)
     if bad:
-        print(f"image_set: {directory} holds images built with another catalog: {', '.join(bad)}; "
-              "not reused", file=sys.stderr)
+        print(f"image_set: {directory} has images without an affirmative old catalog: {', '.join(bad)}; "
+              "not reused; rebuild with tools/build_native_host.sh, which writes FILE.catalog",
+              file=sys.stderr)
         return 1
     build = tree / "build"
     build.mkdir(parents=True, exist_ok=True)
@@ -248,6 +254,10 @@ def link_run(run: Path, tree: Path, wanted: list[str]) -> int:
         if (directory / f"{file}.world-deps").is_file():
             names.append(f"{file}.world-deps")
     place_links(directory, build, names)
+    for name in wanted:
+        record = build / f"{IMAGES[name]}.catalog"
+        record.unlink(missing_ok=True)
+        record.write_text(catalogs[name] + "\n")
     (build / "REUSED_SOURCE").write_text(found.group(1) + "\n")
     print(f"image_set: linked {', '.join(wanted)} from the run {run} "
           f"(source {found.group(1)}) into {build}")

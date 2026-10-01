@@ -36,7 +36,7 @@ MARKERS = ("ACL2 Error [Failure] in ( DEFUN FNN-X ...)",
 
 
 class BuildNativeHostRefusalTests(unittest.TestCase):
-    def build(self, line, **extra):
+    def build(self, line, build_text="(value :q)\n", **extra):
         with tempfile.TemporaryDirectory() as temporary:
             base = pathlib.Path(temporary)
             fake = base / "acl2"
@@ -51,7 +51,7 @@ class BuildNativeHostRefusalTests(unittest.TestCase):
             env.update({k: (v.replace("$BASE", str(base))) for k, v in extra.items()})
             env.pop("FN_OPENSSL_PREFIX", None)
             env.pop("FN_TLS_LIMIT", None)
-            (base / "build.lisp").write_text("(value :q)\n")
+            (base / "build.lisp").write_text(build_text)
             answer = subprocess.run(["sh", str(SCRIPT)], env=env, cwd=ROOT,
                                     capture_output=True, text=True, timeout=60)
             library = [p for p in (base / "lib").glob("libfn-mldsa65.*")]
@@ -100,6 +100,24 @@ class BuildNativeHostRefusalTests(unittest.TestCase):
         self.assertEqual(openssl, "unset")
         # The catalog is recorded beside the image (tools/image_set.py reads it).
         self.assertEqual(self.catalog_text, "old\n")
+
+    def test_old_catalog_refuses_paged_build_by_name_before_running_acl2(self):
+        answer, log, _, _ = self.build(
+            "ACL2 !>", FN_NATIVE_CATALOG="old",
+            FN_NATIVE_BUILD="build/native-build-paged.lisp", FN_NATIVE_IMAGE="build/fn-host")
+        self.assertEqual(answer.returncode, 2, answer.stdout + answer.stderr)
+        self.assertIn("build/native-build-paged.lisp is a paged build script", answer.stderr)
+        self.assertEqual(log, "")
+        self.assertIsNone(self.catalog_text)
+
+    def test_old_catalog_refuses_paged_build_by_content_before_running_acl2(self):
+        answer, log, _, _ = self.build(
+            "ACL2 !>", build_text='(include-book "books/image-world-paged")\n(value :q)\n',
+            FN_NATIVE_CATALOG="old")
+        self.assertEqual(answer.returncode, 2, answer.stdout + answer.stderr)
+        self.assertIn("build.lisp includes books/image-world-paged", answer.stderr)
+        self.assertEqual(log, "")
+        self.assertIsNone(self.catalog_text)
 
     def test_the_image_name_says_its_catalog(self):
         # Codex r21 F2: a paged core is never built under the old name, and
