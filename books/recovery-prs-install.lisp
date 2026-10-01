@@ -28,6 +28,7 @@
  (declare (xargs :stobjs (fn-page-read-pool state) :guard t :verify-guards nil))
  (if (not (and (null (fn-prp-data fn-page-read-pool))
                (eq (fn-prp-mode fn-page-read-pool) :uninitialized)
+               (member-eq (fn-prp-alloc-mode fn-page-read-pool) '(:active :draining))
                (equal (fn-prp-alloc-active-turns fn-page-read-pool) 0)))
   (mv :recovery-prs-install-unavailable fn-page-read-pool)
   (mv-let (word resources)
