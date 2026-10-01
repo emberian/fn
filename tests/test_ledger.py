@@ -7,7 +7,6 @@ named.  A detector that flagged everything would be as useless as one that
 flagged nothing.
 """
 
-import importlib.util
 import contextlib
 import io
 import json
@@ -19,14 +18,10 @@ import unittest
 import weakref
 from unittest import mock
 
-SPEC = importlib.util.spec_from_file_location(
-    "ledger", Path(__file__).resolve().parents[1] / "tools" / "ledger.py"
-)
-ledger = importlib.util.module_from_spec(SPEC)
-# Register before executing: the module defines dataclasses, and `dataclass`
-# resolves annotations through sys.modules.
-sys.modules["ledger"] = ledger
-SPEC.loader.exec_module(ledger)
+# Reuse the scanners' ledger module: replacing sys.modules["ledger"] leaves
+# earlier imports holding a different Sym class, so their readers disagree.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
+import ledger
 
 
 def tree_from(sources: dict[str, str], roots: list[str] | None = None) -> ledger.Tree:
@@ -716,7 +711,6 @@ class GeneratedStatusTests(unittest.TestCase):
             return ledger.derived_status(entry, names, books, {}, root)
 
     def passed(self, root, digest=None):
-        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
         import certs
         return {"status": "passed", "requested_books": ["books/a"],
                 "certificate_digests_sha256": {"books/a": "c" * 64},
