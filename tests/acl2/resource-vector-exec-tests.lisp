@@ -29,6 +29,14 @@
        (mv nil '(value-triple :unrepresentable-refused) state fn-resource-ledger)
      (mv t nil state fn-resource-ledger))))
 
+;; A profile the baseline and reserve do not fit is refused before any store.
+(make-event
+ (mv-let (w fn-resource-ledger)
+   (fn-rl-install *rxt-baseline* *rxt-baseline* *rxt-reserve* 8 fn-resource-ledger)
+   (if (and (eq w :resources-unavailable) (equal (fn-rl-count fn-resource-ledger) 0))
+       (mv nil '(value-triple :unfunded-refused-before-any-store) state fn-resource-ledger)
+     (mv t nil state fn-resource-ledger))))
+
 ;; The small profile installs; its abstraction is the logical root.
 (make-event
  (mv-let (w fn-resource-ledger)
@@ -40,6 +48,16 @@
             (fn-rv-okp (fn-rl-bank fn-resource-ledger)))
        (mv nil '(value-triple :installed-as-the-logical-root) state fn-resource-ledger)
      (mv t nil state fn-resource-ledger))))
+
+;; A second install is refused (:already-installed): the generations are
+;; never reset, so no old token can name a new draw (Codex r18 F2).
+(make-event
+ (let ((before (fn-rl-bank fn-resource-ledger)))
+   (mv-let (w fn-resource-ledger)
+     (fn-rl-install *rxt-budget* *rxt-baseline* *rxt-reserve* 2 fn-resource-ledger)
+     (if (and (eq w :already-installed) (equal (fn-rl-bank fn-resource-ledger) before))
+         (mv nil '(value-triple :installs-once) state fn-resource-ledger)
+       (mv t nil state fn-resource-ledger)))))
 
 ;; A draw at slot 2 answers token 1; the abstraction is the logical draw.
 (make-event

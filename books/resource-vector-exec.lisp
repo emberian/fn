@@ -310,24 +310,36 @@
          (fn-resource-ledger (update-fn-rl-count n fn-resource-ledger)))
     fn-resource-ledger))
 
+; A ledger installs ONCE (Codex r18 F2: a reinstall that shrank and regrew
+; the columns would zero the generations, and an old completion token would
+; settle a new draw -- the ABA back through the representation); and every
+; check precedes every store (r18 F1): the budget's representability, the
+; shapes, and that the baseline and the reserve fit the budget together,
+; which is exactly what fn-rv-install's two charges decide, so neither can
+; refuse after the columns exist.
 (defun fn-rl-install (budget baseline reserve nslots fn-resource-ledger)
   (declare (xargs :stobjs fn-resource-ledger :verify-guards nil
                   :guard (and (true-listp budget) (true-listp baseline) (true-listp reserve)
                               (natp nslots))))
-  (cond ((not (and (fn-rv-vectorp budget) (<= 2 nslots) (unsigned-byte-p 32 nslots)))
+  (cond ((not (eql (fn-rl-count fn-resource-ledger) 0))
+         (mv :already-installed fn-resource-ledger))
+        ((not (and (fn-rv-vectorp budget) (fn-rv-vectorp baseline) (fn-rv-vectorp reserve)
+                   (<= 2 nslots) (unsigned-byte-p 32 nslots)))
          (mv :invalid-install fn-resource-ledger))
         ((not (fn-rl-words-representable-p budget))
          (mv :unrepresentable-profile fn-resource-ledger))
+        ((not (fn-rv-below (fn-rv-plus baseline reserve) budget))
+         (mv :resources-unavailable fn-resource-ledger))
         (t (let* ((fn-resource-ledger (fn-rl-resize-all nslots fn-resource-ledger))
                   (fn-resource-ledger (fn-rl-store-words-from 0 budget fn-resource-ledger)))
              (mv-let (w1 g1 fn-resource-ledger)
                (fn-rl-draw 0 baseline fn-resource-ledger)
                (declare (ignore g1))
                (if (not (eq w1 :drawn))
-                   (mv w1 fn-resource-ledger)
+                   (mv w1 fn-resource-ledger)   ; unreachable: checked above
                  (mv-let (w2 g2 fn-resource-ledger)
                    (fn-rl-open 1 reserve fn-resource-ledger)
                    (declare (ignore g2))
                    (if (not (eq w2 :opened))
-                       (mv w2 fn-resource-ledger)
+                       (mv w2 fn-resource-ledger)   ; unreachable: checked above
                      (mv :installed fn-resource-ledger)))))))))
