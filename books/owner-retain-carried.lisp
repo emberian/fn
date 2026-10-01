@@ -22,27 +22,28 @@
 ;   (fn-owner-retain-statep-implies-entry-guard).
 ;
 ; The form emits the row `fn-owner-retain-carried' in the table
-; `fn-carried', and -- the transition theorem has the trace shape -- the
-; trace theorem `fn-owner-retain-carried-run-carries': along every sequence
-; of the listed transitions from a state satisfying the relation, the
-; relation holds, by functional instantiation of fn-cd-run-carries.
+; `fn-carried', the generated statements -- the prepare's preservation
+; under its own guard, the install's establishment, the two bridges from
+; the relation to the prepare's guard conjuncts -- each proved from the
+; named theorem as a hint, and the trace theorem
+; `fn-owner-retain-carried-run-carries'.
 ;
-; What this book does NOT claim.  The carried state is the ACL2 state, so
-; every host-called entry that RETURNS state can produce a new value of it
-; and owes a preservation theorem; the completeness check that demands it
-; reads the `fn-interfaces' table, which is complete only in the image
-; world (host/interfaces.lisp).
+; What this book does NOT claim.  The install establishes the relation
+; only for a configured owner that opens and satisfies fn-lgoc-invariantp,
+; which its guard does not say: the row declares those as :hyps, so it
+; backs NO raw dispatch (fn-cd-raw-problem) until they are the install's
+; guard or the host's checked premise.  The carried state is the ACL2
+; state, so every host-called entry that RETURNS state owes a preservation
+; theorem; the completeness check that demands it reads the `fn-interfaces'
+; table, which is complete only in the image world (host/interfaces.lisp).
 ; In this book's world that table holds no owner entry, so the check is
 ; vacuous here; `(def-carried-check fn-owner-retain-carried)' in the image
-; world names the first owed entry (fn-owner-finish-synced, whose carry
-; half fn-owner-finish-synced-preserves-retain-carry exists while its
-; fn-lgoc-invariantp half does not; then fn-owner-io, -begin, -step, ...:
-; the COVERAGE rows of books/owner-host-relation.lisp restated over the
-; host subject).  That list is the stage-5 work of
-; planning/design-store-representation-2026-10-01.md; this row is where
-; each theorem is named as it lands, and `:raw-with (:carried
-; fn-owner-retain-carried)' on an entry is refused until its row exists.
-;
+; world names the first owed entry (fn-owner-finish-synced, then
+; fn-owner-io, -begin, -step, ...: the COVERAGE rows of
+; books/owner-host-relation.lisp restated over the host subject).  That
+; list is the stage-5 work of
+; planning/design-store-representation-2026-10-01.md.
+
 ; Nothing changes for dependents: this book adds a row and the trace
 ; theorem over functions owner-recovery-retain already defines; it redefines
 ; nothing and leaves every included theorem's statement as it was.
@@ -55,20 +56,25 @@
   :invariant fn-owner-retain-statep
   :established ((fn-owner-install-extended
                  fn-owner-install-extended-establishes-retain-state
-                 (mv-nth 5 _)))
+                 :hyps ((fn-onb-open-okp (fn-ocfg-owner oc))
+                        (fn-lgoc-invariantp oc))))
   :transitions ((fn-owner-prepare-identity
-                 fn-owner-prepare-identity-preserves-retain-state
-                 (mv-nth 2 _)))
+                 fn-owner-prepare-identity-preserves-retain-state))
   :concludes ((fn-sn-statep fn-owner-retain-statep-implies-entry-guard)
               (fn-prc-carryp fn-owner-retain-statep-implies-entry-guard)))
 
-; The row's D40 data for the one transition: the bridges, the open, its own.
+; The row's D40 data for the one transition: only generated names.
 (assert-event
  (equal (fn-cd-raw-with 'fn-owner-retain-carried 'fn-owner-prepare-identity (w state))
-        '(fn-owner-retain-statep-implies-entry-guard
-          fn-owner-retain-statep-implies-entry-guard
-          fn-owner-install-extended-establishes-retain-state
-          fn-owner-prepare-identity-preserves-retain-state)))
+        '(fn-owner-retain-carried-fn-owner-prepare-identity-carries
+          fn-owner-retain-carried-fn-sn-statep-bridge
+          fn-owner-retain-carried-fn-prc-carryp-bridge)))
+
+; The open's establishment assumes what the host does not check (the
+; configured owner opens and satisfies fn-lgoc-invariantp), so the row backs
+; no raw dispatch until that premise is the open's guard.
+(assert-event
+ (fn-cd-raw-problem 'fn-owner-retain-carried 'fn-owner-prepare-identity (w state)))
 
 (in-theory (disable fn-owner-retain-carried-step fn-owner-retain-carried-okp
                     fn-owner-retain-carried-run fn-owner-retain-carried-run-okp))

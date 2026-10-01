@@ -150,7 +150,7 @@ class HostBindingTests(unittest.TestCase):
         book = ("(def-carried fn-r-carried :invariant fn-r-relation\n"
                 "  :established ((fn-r-open fn-r-open-establishes))\n"
                 "  :transitions ((fn-r fn-r-carries) (fn-s fn-s-carries))\n"
-                "  :concludes ((fn-r-okp fn-r-statep)) :writers (fn-r-put))\n"
+                "  :concludes ((fn-r-okp fn-r-statep)))\n"
                 "(defthm fn-r-open-establishes (fn-r-relation (fn-r-open)))\n"
                 "(defthm fn-r-carries (implies (fn-r-relation s) (fn-r-relation (fn-r s))))\n")
         self.assertEqual(self.raw_with_problems(
@@ -162,7 +162,9 @@ class HostBindingTests(unittest.TestCase):
         (root / "books" / "x.lisp").write_text("(in-package \"ACL2\")\n" + book)
         decl = interface_emit.declarations(root)[-1]
         self.assertEqual(decl["raw_with_carried"], "fn-r-carried")
-        self.assertEqual(decl["raw_with"], ["fn-r-statep", "fn-r-open-establishes", "fn-r-carries"])
+        # only generated names: the declared theorems are hints, never resolved
+        self.assertEqual(decl["raw_with"], ["fn-r-carried-fn-r-carries",
+                                            "fn-r-carried-fn-r-okp-bridge"])
         rendered = interface_emit.render_raw_declarations([decl])
         self.assertIn(":raw-with (:carried fn-r-carried)", rendered)
 
@@ -183,7 +185,7 @@ class HostBindingTests(unittest.TestCase):
                 "(definterface fn-r :class :common-lisp-compliant :raw-with %s)\n" % form,
                 "(def-carried fn-r-carried :invariant fn-r-relation "
                 ":established ((fn-r-open fn-r-open-establishes)) "
-                ":transitions ((fn-r fn-r-carries (mv-nth 1 _))))\n")
+                ":transitions ((fn-r fn-r-carries)))\n")
             self.assertTrue(any("resolves to no theorems" in p for p in found), (form, found))
 
     def test_raw_with_refuses_a_program_entry(self):

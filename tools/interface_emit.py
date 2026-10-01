@@ -187,12 +187,12 @@ def declarations(root: Path = ROOT) -> list[dict]:
             })
     rows = None
     for d in found:
-        # `:raw-with (:carried NAME)' (books/def-carried.lisp): the theorems
-        # are NAME's row -- its bridges, its establishing theorems and this
-        # entry's own preservation theorem.  Resolved here from the
-        # def-carried forms of the tree; ACL2 resolves the same from the
-        # world's fn-carried table (books/definterface.lisp
-        # fn-di-raw-with-theorems).
+        # `:raw-with (:carried NAME)' (books/def-carried.lisp): only the
+        # statements def-carried GENERATES -- NAME-ENTRY-carries and every
+        # NAME-PRED-bridge -- resolved here from the def-carried forms of
+        # the tree; ACL2 resolves the same from the world's fn-carried table
+        # and compares each generated formula with the statement regenerated
+        # from the world (books/def-carried.lisp fn-cd-raw-problem).
         raw = d["raw_with"]
         if raw and raw[0] == ":carried":
             if rows is None:
@@ -210,8 +210,8 @@ CARRIED_SOURCES = "books"
 
 
 def carried_rows(root: Path = ROOT) -> dict[str, dict]:
-    """NAME -> {established, transitions, concludes} of every def-carried form
-    in the tree's books, each a list of [function, theorem]."""
+    """NAME -> {established, transitions, concludes} of every top-level
+    def-carried form in the tree's books, each a list of [function, theorem]."""
     rows: dict[str, dict] = {}
     for path in sorted((root / CARRIED_SOURCES).glob("*.lisp")):
         text = path.read_text(encoding="utf-8")
@@ -229,16 +229,24 @@ def carried_rows(root: Path = ROOT) -> dict[str, dict]:
     return rows
 
 
+def carried_generated(rows: dict[str, dict]) -> set[str]:
+    """Every theorem name the def-carried forms generate."""
+    return {"{}-{}-{}".format(name, f, suffix)
+            for name, row in rows.items()
+            for key, suffix in (("established", "establishes"),
+                                ("transitions", "carries"), ("concludes", "bridge"))
+            for f, _t in row[key]}
+
+
 def carried_theorems(rows: dict[str, dict], carried: str | None, entry: str) -> list[str]:
-    """The :raw-with theorems of ENTRY through the carried invariant CARRIED;
+    """The :raw-with theorems of ENTRY through the carried invariant CARRIED,
+    all generated: CARRIED-ENTRY-carries and every CARRIED-PRED-bridge;
     [] when there is no such row or ENTRY is not one of its transitions."""
     row = rows.get(carried or "")
-    if row is None:
+    if row is None or not any(f == entry for f, _t in row["transitions"]):
         return []
-    own = [t for f, t in row["transitions"] if f == entry]
-    if not own:
-        return []
-    return ([t for _f, t in row["concludes"]] + [t for _f, t in row["established"]] + own)
+    return (["{}-{}-carries".format(carried, entry)]
+            + ["{}-{}-bridge".format(carried, p) for p, _t in row["concludes"]])
 
 
 def _lisp_data(value) -> str:
@@ -400,7 +408,7 @@ def tree_theorems(root: Path = ROOT) -> set[str]:
     for path in sorted((root / "books").glob("*.lisp")):
         found.update(m.group(1).lower()
                      for m in THEOREM_FORM.finditer(path.read_text(encoding="utf-8")))
-    return found
+    return found | carried_generated(carried_rows(root))
 
 
 def findings(decls: list[dict], reading: dict, root: Path = ROOT) -> list[str]:
