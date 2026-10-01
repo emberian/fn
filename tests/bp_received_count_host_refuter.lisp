@@ -42,3 +42,43 @@
   (assert (equal (fnn-tcl-deliver-transfer conn 7 bytes) '(:refused :old-recording)))
   (assert (null *calls*))))
 (format t "PASS actual counted callback/no source scan/refusal/legacy selector recording~%")
+
+; Actual outer completion caller: no flush before callback/plan, and an
+; uncertain disposition never flushes the held final ACK. All I/O recorded.
+(defvar *outer-order* nil)
+(defun fnn-out (&rest ignored) (declare (ignore ignored)) nil)
+(defun fnn-indeterminate (&rest ignored)
+ (declare (ignore ignored)) (error "recorded uncertainty"))
+(defun fnn-tcl-flush (conn) (declare (ignore conn)) (push :flush *outer-order*))
+(defun fnn-core (subject &rest args)
+ (case subject
+  (fn-tcl-final-held-count
+   (assert (equal (first (first args)) '(:xfer-ack 3 7 3))) '(:counted 7 3))
+  (fn-tcl-final-count-ready-p (eq (car (first args)) :counted))
+  (fn-tcl-final-count-value (third (first args)))
+  (fn-tcl-delivery-plan (push :plan *outer-order*) (third args))
+  (fn-tcl-delivery-plan-status (first (first args)))
+  (fn-tcl-delivery-plan-messages nil)
+  (fn-tcl-delivery-plan-progress-p nil)
+  (fn-tcl-delivery-plan-detail :recording)
+  (otherwise (error "unexpected outer recording subject ~s" subject))))
+(dolist (disposition '(:accepted :refused :uncertain))
+ (let* ((conn (make-fnn-tcl-conn)) (*outer-order* nil)
+        (*fnn-tcl-deliver-counted*
+         (lambda (actual id input count)
+          (assert (eq actual conn)) (assert (= id 7))
+          (assert (equal input '(65 66 67))) (assert (= count 3))
+          (assert (equal (fnn-tclc-held actual) '((:xfer-ack 3 7 3))))
+          (assert (null *outer-order*))
+          (push :callback *outer-order*) (list disposition :recording))))
+  (let ((failed (handler-case
+    (progn (fnn-tcl-act conn '((:send (:xfer-ack 3 7 3))
+                               (:bundle-received 7 (65 66 67)))) nil)
+    (error () t))))
+   (assert (eq failed (eq disposition :uncertain))))
+  (if (eq disposition :uncertain)
+   (progn (assert (equal (reverse *outer-order*) '(:callback :plan)))
+          (assert (fnn-tclc-fenced conn))
+          (assert (eq (fnn-tclc-outcome conn) :uncertain)))
+   (assert (equal (reverse *outer-order*) '(:callback :plan :flush :flush))))))
+(format t "PASS actual outer held ACK count/callback/plan/uncertain no-flush recording~%")
