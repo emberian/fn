@@ -3353,7 +3353,8 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-evc-class-by-shape-is-fn-cpe-eventp"
+          "name": "fn-evc-class-by-shape-is-fn-cne-eventp",
+          "pending_subject": "Current CNE union selector source; modern owner composition and affected source qualification remain open. No predecessor CPE-only green transfers to this subject."
         },
         {
           "kind": "theorem",
