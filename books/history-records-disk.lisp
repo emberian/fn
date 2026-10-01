@@ -59,18 +59,53 @@
 ; B. The page store's open from the file: the directory run and every
 ; table page, each filled through `fn-pgs-fill-realize' and checked.
 
+; The page store's list put for SEL 1 and 2 is the frame's put
+; (books/assumptions-pgs-host-io.lisp), and its length the frame's: what
+; the in-place fill below is bridged by.
+; (used by name in the guard proof below, never as rewrite rules: the proofs
+; over fn-hrs-fill-run reason about pgs-x-fill as it is)
+(defthm pgs-x-u64-listp-is-fn-pgs-u64-listp
+  (equal (pgs-x-u64-listp ws) (fn-pgs-u64-listp ws))
+  :rule-classes nil)
+
+(defthm pgs-x-len-is-frame-len
+  (implies (pgs-x-sel-p sel)
+           (equal (pgs-x-len sel pgs-mem) (fn-pgs-frame-len sel pgs-mem)))
+  :hints (("Goal" :in-theory (enable pgs-x-len fn-pgs-frame-len)))
+  :rule-classes nil)
+
+(defthm pgs-x-fill-is-frame-put
+  (implies (pgs-x-sel-p sel)
+           (equal (pgs-x-fill sel a ws pgs-mem) (fn-pgs-frame-put sel a ws pgs-mem)))
+  :hints (("Goal" :induct (pgs-x-fill sel a ws pgs-mem)
+           :in-theory (enable pgs-x-fill pgs-x-put fn-pgs-frame-put)))
+  :rule-classes nil)
+
 (defun fn-hrs-fill-run (file addr k sel a pgs-mem)
   ; K pages from page ADDR of FILE into SEL's words from A.  A page whose
   ; words are not 2048 u64 words, or do not fit, is left as it was: the
-  ; page store's digest check then refuses it.
+  ; page store's digest check then refuses it.  In the logic the list form;
+  ; what runs is the in-place fill (lane page-word-boundary: the host puts
+  ; the page's words into SEL's array itself, `fn-pgs-fill-frame'), the same
+  ; state by A-PGS-HOST-IO's frame constraint; the words-shape refusal is
+  ; unreachable there (the page's words are 2048 u64 words).
   (declare (xargs :stobjs pgs-mem :guard (and (pgs-x-sel-p sel) (natp addr) (natp k) (natp a))
-                  :measure (nfix k)))
+                  :measure (nfix k)
+                  :guard-hints (("Goal" :in-theory (disable pgs-x-fill fn-pgs-frame-put fn-pgs-frame-len pgs-x-len)
+                                 :use ((:instance fn-pgs-page-words-shape)
+                                       (:instance fn-pgs-page-words-u64)
+                                       (:instance pgs-x-u64-listp-is-fn-pgs-u64-listp (ws (fn-pgs-page-words file addr)))
+                                       (:instance pgs-x-len-is-frame-len)
+                                       (:instance pgs-x-fill-is-frame-put (ws (fn-pgs-page-words file addr))))))))
   (if (zp k)
       pgs-mem
-    (let* ((ws (fn-pgs-fill-realize file addr))
-           (pgs-mem (if (and (pgs-x-u64-listp ws) (<= (+ a (len ws)) (pgs-x-len sel pgs-mem)))
-                        (pgs-x-fill sel a ws pgs-mem)
-                      pgs-mem)))
+    (let* ((pgs-mem (mbe :logic (let ((ws (fn-pgs-fill-realize file addr)))
+                                  (if (and (pgs-x-u64-listp ws) (<= (+ a (len ws)) (pgs-x-len sel pgs-mem)))
+                                      (pgs-x-fill sel a ws pgs-mem)
+                                    pgs-mem))
+                         :exec (if (<= (+ a 2048) (pgs-x-len sel pgs-mem))
+                                   (fn-pgs-fill-frame file addr sel a pgs-mem)
+                                 pgs-mem))))
       (fn-hrs-fill-run file (+ 1 addr) (- k 1) sel (+ a 2048) pgs-mem))))
 
 (defun fn-hrs-load-dir (file rec pgs-mem fn-octets-pg)
@@ -208,7 +243,10 @@
           ((not (and (consp v) (eq (car v) :need-page) (consp (cdr v)) (natp (cadr v)))) (mv v nil fn-hrecs$c))
           ((zp fuel) (mv (list :refused :fuel) nil fn-hrecs$c))
           (t (mv-let (fv fn-hrecs$c)
-               (fn-hrc-fill (cadr v) (fn-pgs-fill-realize file (fn-hrc-phys (cadr v) fn-hrecs$c)) fn-hrecs$c)
+               ; the list form in the logic; the frame fill runs (the same
+               ; term by fn-hrc-frame-fill's definition)
+               (mbe :logic (fn-hrc-fill (cadr v) (fn-pgs-fill-realize file (fn-hrc-phys (cadr v) fn-hrecs$c)) fn-hrecs$c)
+                    :exec (fn-hrc-frame-fill file (fn-hrc-phys (cadr v) fn-hrecs$c) (cadr v) fn-hrecs$c))
                (if (eq fv :ok)
                    (fn-hrc-get seq file (1- fuel) fn-hrecs$c)
                  (mv fv nil fn-hrecs$c)))))))

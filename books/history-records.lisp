@@ -404,6 +404,61 @@
                (fn-hrs-fill-pgs p words txid pgs-mem fn-octets-pg)
                (mv v fn-hrecs$c))))
 
+; -----------------------------------------------------------------------------
+; The frame fill (lane page-word-boundary, 2026-10-01; design stage 2): the
+; same fill with the page's words put IN PLACE by the host (A-PGS-HOST-IO's
+; frame form `fn-pgs-fill-frame', books/assumptions-pgs-host-io.lisp)
+; instead of crossing the boundary as a list of 2048 words.  Each is `mbe':
+; its :logic is the list form at the realizer's words, so it IS that term
+; in the logic and every theorem over the list form is a theorem over it;
+; its :exec is the in-place path; the guard proof is the bridge (the
+; :fill-words refusal is unreachable there: the page's words are u64 words,
+; fn-pgs-page-words-u64).  The list form stays for the theorems and the
+; tests that take words as data.
+
+; (the two bridges are used by name, never as rewrite rules: the proofs
+; above and below reason about fn-hrs-put and fn-hp-u64-listp as they are)
+(defthm fn-hp-u64-listp-is-fn-pgs-u64-listp
+  (equal (fn-hp-u64-listp ws) (fn-pgs-u64-listp ws))
+  :rule-classes nil)
+
+(defthm fn-hrs-put-is-frame-put
+  (equal (fn-hrs-put j ws pgs-mem) (fn-pgs-frame-put 0 j ws pgs-mem))
+  :hints (("Goal" :induct (fn-hrs-put j ws pgs-mem) :in-theory (enable fn-pgs-frame-put)))
+  :rule-classes nil)
+
+(defun fn-hrs-frame-fill-pgs (file addr p txid pgs-mem fn-octets-pg)
+  ; `fn-hrs-fill-pgs' at the realizer's words, the words put in place.
+  (declare (xargs :stobjs (pgs-mem fn-octets-pg) :guard (and (natp p) (natp txid))
+                  :guard-hints (("Goal" :in-theory (e/d (fn-pgs-frame-len)
+                                                        (pgs-x-open-page fn-hrs-put fn-pgs-frame-put
+                                                         pgs-vi pgs-v-length pgs-w-length))
+                                 :use ((:instance fn-pgs-page-words-shape)
+                                       (:instance fn-pgs-page-words-u64)
+                                       (:instance fn-hp-u64-listp-is-fn-pgs-u64-listp (ws (fn-pgs-page-words file addr)))
+                                       (:instance fn-hrs-put-is-frame-put (j (* 2048 p)) (ws (fn-pgs-page-words file addr))))))))
+  (mbe :logic (fn-hrs-fill-pgs p (fn-pgs-fill-realize file addr) txid pgs-mem fn-octets-pg)
+       :exec (cond ((not (and (< p (pgs-v-length pgs-mem)) (<= (* 2048 (+ 1 p)) (pgs-w-length pgs-mem))))
+                    (mv (list :refused :fill-range) pgs-mem fn-octets-pg))
+                   ((equal (pgs-vi p pgs-mem) 2) (mv :ok pgs-mem fn-octets-pg))
+                   (t (let ((pgs-mem (fn-pgs-fill-frame file addr 0 (* 2048 p) pgs-mem)))
+                        (mv-let (v pgs-mem fn-octets-pg)
+                          (pgs-x-open-page p txid :eager pgs-mem fn-octets-pg)
+                          (mv (if v v :ok) pgs-mem fn-octets-pg)))))))
+
+(defun fn-hrc-frame-fill (file addr p fn-hrecs$c)
+  ; `fn-hrc-fill' at the realizer's words, the words put in place.
+  (declare (xargs :stobjs fn-hrecs$c :guard (and (natp p) (fn-hrc-wfp fn-hrecs$c))
+                  :guard-hints (("Goal" :in-theory (e/d (fn-hrc-fill fn-hrs-frame-fill-pgs)
+                                                        (fn-hrs-fill-pgs))))))
+  (mbe :logic (fn-hrc-fill p (fn-pgs-fill-realize file addr) fn-hrecs$c)
+       :exec (let ((txid (fn-hrc-txid fn-hrecs$c)))
+               (stobj-let ((pgs-mem (fn-hrc-pgs fn-hrecs$c))
+                           (fn-octets-pg (fn-hrc-oct fn-hrecs$c)))
+                          (v pgs-mem fn-octets-pg)
+                          (fn-hrs-frame-fill-pgs file addr p txid pgs-mem fn-octets-pg)
+                          (mv v fn-hrecs$c)))))
+
 (defun fn-hrs-pgs-empty (pgs-mem)
   (declare (xargs :stobjs pgs-mem))
   (let* ((pgs-mem (resize-pgs-w 0 pgs-mem)) (pgs-mem (resize-pgs-m 0 pgs-mem))
@@ -1254,6 +1309,14 @@
   :hints (("Goal" :in-theory (disable fn-hrc-fill fn-hrc-wfp fn-hrc-fill-shape)))
   :rule-classes nil)
 
+; No frame export of the abstract stobj: an export whose :logic reaches
+; fn-pgs-fill-realize makes fn-pgs-page-words an ancestor of an export, and
+; ACL2 then forbids attaching to it (stobj-attachment-restrictions; the page
+; file tests attach it).  The frame fill lives on the concrete fn-hrecs$c
+; (fn-hrc-frame-fill), where the open, the retry loop and the completion run;
+; fn-hrc-get-is-hrecs-get (books/history-records-disk.lisp) bridges the
+; concrete loop to fn-hrecs-get.
+
 (defthm fn-hrecs-load{correspondence}
   (implies (and (fn-hrs$corr fn-hrecs$c fn-hrecs) (true-listp events) (natp salt) (fn-hrs$ap fn-hrecs))
            (fn-hrs$corr (fn-hrc-load events salt fn-hrecs$c) (fn-hrs$a-load events salt fn-hrecs)))
@@ -1508,6 +1571,9 @@
 (defun fn-hrecs-serve (p file fn-hrecs)
   ; One fill: page P from the page FILE at the address its table entry
   ; names, then the page store's check.  (mv VERDICT fn-hrecs).
+  ; The list form, kept: the abstract stobj cannot export the frame fill
+  ; (see the note before the defabsstobj), and nothing host-called reaches
+  ; this composition; the concrete loop fn-hrc-get is the frame path.
   (declare (xargs :stobjs fn-hrecs :guard (natp p)))
   (let ((words (fn-pgs-fill-realize file (fn-hrecs-phys p fn-hrecs))))
     (fn-hrecs-fill p words fn-hrecs)))

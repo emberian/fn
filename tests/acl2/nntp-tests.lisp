@@ -760,6 +760,8 @@
 (assert-event (equal (fn-nntp-parse-range '(57 45 49)) '(:ok 9 1)))
 (assert-event (not (fn-nntp-range-okp (fn-nntp-parse-range '(45 49)))))
 (assert-event (not (fn-nntp-range-okp (fn-nntp-parse-range '(49 45 50 45 51)))))
+;; Anchor: the single-number form parses to an accepted range.
+(assert-event (fn-nntp-range-okp (fn-nntp-parse-range '(49 50))))
 (assert-event
  (equal (fn-nntp-result-effects
          (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (76 73 83 84 71 82 79 85 80 32 102 110 46 108 101 116 116 101 114 115 32 45 49))))
@@ -786,3 +788,11 @@
                '(65 13 66)
                (fn-nntp-hdr-octets
                 (in-arena-fn-nntp-hdr-content *sr-arena* '(58 98 121 116 101 115) nil))))))))
+;; Anchor: the same line with a clean label is block text.
+(assert-event
+ (with-guard-checking :none
+  (fn-nntp-block-textp
+   (list (fn-nntp-hdr-line
+          '(65 66)
+          (fn-nntp-hdr-octets
+           (in-arena-fn-nntp-hdr-content *sr-arena* '(58 98 121 116 101 115) nil)))))))
