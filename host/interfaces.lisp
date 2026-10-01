@@ -1066,6 +1066,9 @@
 (definterface fn-store-reclaim-instant-record
   :class ::program)
 
+(definterface fn-store-reclaim-note-check
+  :class ::program)
+
 (definterface fn-store-reclaim-step
   :class ::program
   :kinds ((octets fn-cbor-octet-listp)))

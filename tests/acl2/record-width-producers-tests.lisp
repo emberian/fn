@@ -297,3 +297,35 @@
         (<= (len (fn-record-encode r))
             (fn-record-encoded-octets-ceiling (len (fn-record-payload r))
                                               (len (fn-record-groups r)))))))
+
+; fn-sbud-post-boundary-never-refuses-an-admitted-payloads-charge (PRF-990).
+; Reachable: the scale profile's largest admitted article, a well-formed
+; Message-ID and one group -- the antecedent holds, its charge is within u32
+; and the boundary admits it.
+(assert-event
+ (let ((a (fn-sbud-payload-bound *rwpt-scale*)))
+   (and (natp a)
+        (<= a (fn-sbud-payload-bound *rwpt-scale*))
+        (<= (fn-charge-for-payload a) *fn-cbor-max-uint*)
+        (equal (fn-sbud-post-boundary *rwpt-scale* *rwpt-msgid-octets* a 1
+                                      (fn-charge-for-payload a))
+               :ok))))
+; The codec's payload ceiling, the largest bound any profile may carry, is
+; charged far inside u32.
+(assert-event (<= (fn-charge-for-payload *fn-record-max-payload*)
+                  *fn-cbor-max-uint*))
+; Hypothesis removed (the payload within the profile's bound): a length whose
+; charge is past u32 fails the omitted hypothesis and the first conclusion,
+; and the boundary refuses it by its payload bound, before the charge.
+(assert-event
+ (let ((n (expt 2 45)))
+   (and (natp n)
+        (not (<= n (fn-sbud-payload-bound *rwpt-scale*)))
+        (not (<= (fn-charge-for-payload n) *fn-cbor-max-uint*))
+        (equal (fn-sbud-post-boundary *rwpt-scale* *rwpt-msgid-octets* n 1
+                                      (fn-charge-for-payload n))
+               :payload-bound))))
+; The named refusal itself: a charge above u32 at an admitted length.
+(assert-event
+ (equal (fn-sbud-post-boundary *rwpt-scale* *rwpt-msgid-octets* 1 1 (expt 2 40))
+        :charge-bound))

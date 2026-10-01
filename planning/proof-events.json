@@ -18559,6 +18559,45 @@
         }
       ],
       "pending_subject": "Native compressed driver remains dormant and unreachable-in-composition. Actual selected-prefix cell accumulation and faithful-source compressed digest BEGIN/READ/HASH/new-publication are source-proved, with source-slice binding explicit. Arbitrary canonical decoder/controller iteration, selected dictionary/captured-view authority, full compiled workspace funding and retained native buffer/view/consumer joins remain open; PRF-1131 remains incomplete. Three nonexistent proposed DWCC citations are withheld in protocol-source-closeout-2026-10-01/withheld-events.json; no theorem admission is inferred."
+    },
+    {
+      "id": "PRF-990",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-post-boundary-never-refuses-an-admitted-payloads-charge"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1025",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rcn-recorded-note-reads-back"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcn-recorded-note-checks"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcn-recorded-decision-is-the-decision"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1049",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rcn-live-note-checks"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcn-live-limits-are-the-recorded-limits"
+        }
+      ]
     }
   ]
 }

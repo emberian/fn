@@ -591,6 +591,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-checkpoint-open \
 	books/store-checkpoint-codec \
 	tests/acl2/store-checkpoint-open-tests \
+	books/store-checkpoint-digest \
+	tests/acl2/store-checkpoint-digest-tests \
 	books/owner-checkpoint-open \
 	tests/acl2/owner-checkpoint-open-tests \
 	tests/acl2/owner-reader-establishment-tests \
@@ -775,6 +777,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-reclaim-tests \
 	books/reclaim-instant \
 	tests/acl2/reclaim-instant-tests \
+	books/reclaim-note \
+	tests/acl2/reclaim-note-tests \
 	books/expiry-policy \
 	books/expiry-verdict \
 	books/expiry \

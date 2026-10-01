@@ -122,11 +122,7 @@
         "fn-own-served-local-number-is-never-reassigned",
         "fn-own-raw-local-number-is-never-reassigned",
         "fn-ocfg-read-step-without-selection-depends-only-on-its-connection-and-clock",
-        "fn-own-other-post-keeps-a-non-selecting-read-step",
-        "fn-scl-step-counted-fast-of-with-live-selecting-nothing",
-        "fn-scl-own-read-tls-prefix-selecting-nothing-ignores-the-view",
-        "fn-scl-other-post-keeps-a-chunk-selecting-nothing",
-        "fn-scl-host-chunk-selecting-nothing-survives-other-post"
+        "fn-own-other-post-keeps-a-non-selecting-read-step"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -2378,7 +2374,7 @@
         "tests/test_native_hybrid_author.py",
         "tests/acl2/store-identity-traces-tests.lisp",
         "tests/acl2/store-identity-sequence-invariants-tests.lisp",
-        "tests/native_owner_publication.lisp",
+        "tests/native_owner_publication_raw.lisp",
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
       ],
       "pending_subject": "The carried journal sequence is preserved by initial, prepare, I/O, refusal, abort, finish and recovery transitions, but its invariant has not been joined to every actual owner publication path or the physical publication/recovery cuts. Prove the kind-4 snapshot/article/verdict binding over the host-called completion and recovery paths. The raw witness establishes condition routing and reservation cleanup only; it does not prove filesystem durability or cryptographic primitive correctness.",
@@ -3648,7 +3644,6 @@
         "fn-sco-capture-of-later-configs",
         "fn-cpr-loop-append",
         "fn-replay-identity-append",
-        "fn-replay-identity-append-of-true-lists",
         "fn-cpe-projection-replay-append",
         "fn-th-prefix-project-append",
         "fn-cei-build-append",
@@ -3761,8 +3756,7 @@
         "fn-nntp-hdr-fn-control-status-is-the-model-status",
         "fn-own-read-archive-command-is-the-pinned-dispatcher",
         "fn-own-related-conn-control",
-        "fn-ctl-served-status-is-control-status",
-        "fn-own-read-of-a-withdrawn-article-answers-430-withdrawn"
+        "fn-ctl-served-status-is-control-status"
       ]
     },
     {
@@ -4054,7 +4048,7 @@
       "progress_note": "Open: the durable `store reclaim` byte program and its `--dry-run` verb in books/native-operator (design B, reclaim through the compaction pack: planning/evidence/reclaim-host-2026-09-25.md); the reclaimed record's own replay step; holders: the consumer reading is conservative (a lagging consumer holds every article), feed state and FNBS rows are not read, reader pins have no durable form (offline reclaim needs none); the retention charge released with the payload; articles with a verdict other than :absent are held; the buffer's source digest slices the two ranges of the D32 description into one list on the resend-of-a-reclaimed-article path (a two-range buffer digest reader would remove it); native N=5,000 run and cut campaign (SCN-048). audit-fixes rcl (2026-09-27): since the acceptance flip the reclaim counts (status's reclaim line, the reclaim verbs' reports) read each article's HANDLE as its octets, so reclaimable-octets and freed-octets were 0 and a tombstoned article counted reclaimable again. fn-rcl-store-counts now takes the arena (host: fn-native-live-status-host-offline/-answer, fn-store-reclaim-decide(-stream), fn-store-log-reclaim-decide-stream pass the live fn-arena) and reads lengths and the tombstone head through it; KEYSTONE fn-rcl-store-counts-is-the-model-over-alpha: the counts are fn-rcl-summary / fn-rcl-held-count over ALPHA of the Store's articles (tests/acl2/store-reclaim-holders-tests.lisp).",
       "events": [
         "fn-rcl-reclaimable-is-no-obligation-names-it",
-        "fn-rclp-event-never-touches-a-held-article",
+        "fn-rcl-reclaim-never-touches-a-held-article",
         "fn-rcl-reclaim-keeps-the-duplicate-history",
         "fn-rcl-reclaim-keeps-every-binding",
         "fn-rcl-reclaim-keeps-the-numbering",
@@ -4359,6 +4353,8 @@
       ],
       "progress_note": "Certified with teeth; the theorem is over the implementation the seam attaches, not over the constrained seam function; the open corollary over fn-store-sn-recover is by congruence of the program-mode host map and is not an ACL2 event. Format 10 (lane format-bump-10, 2026-09-28): books/byte-store-profile-v1.lisp and its tests were deleted with format 9 (D34: every format-10 profile is written by a format-10 init or import under the current relation; the frozen pre-P6 relation and the PKT-467 window describe profiles no format-10 store holds); the events and paths that named them are removed from this row.",
       "events": [
+        "fn-record-v1-bytes-decode-identically",
+        "fn-record-v1-bytes-are-their-translation",
         "fn-cbor-decode-prechecked-wide-extends-narrow",
         "fn-cbor-encode-uint-wide-is-narrow",
         "fn-cbor-decode-prechecked-wide-of-uint",
@@ -4743,8 +4739,7 @@
         "fn-ks-reopen-is-blind-to-later-configuration",
         "fn-ks-a-decline-replays-as-a-decline",
         "fn-ks-recorded-recovery-completes-the-cut",
-        "fn-pcb-admission-verdict-names-its-class",
-        "fn-pcb-admission-verdict-names-a-revocation"
+        "fn-pcb-admission-verdict-names-its-class"
       ]
     },
     {
@@ -4818,9 +4813,7 @@
         "fn-sbud-article-verdict-keeps-history",
         "fn-sbud-prepare-under-article-budget-keeps-history",
         "fn-post-admitted-article-keeps-history",
-        "fn-sbud-article-figure-bounds-the-record",
-        "fn-sbud-article-gate-figure-bounds-every-record",
-        "fn-sbud-article-verdict-keeps-history-for-every-record"
+        "fn-sbud-article-figure-bounds-the-record"
       ]
     },
     {
@@ -5107,7 +5100,7 @@
         "fn-rclp-events-keep-the-summary-shape",
         "fn-rclp-a-reclaimed-event-stays-reclaimed",
         "fn-rclp-events-idempotent",
-        "fn-rclp-event-never-touches-a-held-article",
+        "fn-rclp-events-never-touch-a-held-article",
         "fn-rclp-events-keep-every-other-kind",
         "fn-rclp-freed-octets-account",
         "fn-rclp-freed-is-the-admission-count",
@@ -5283,6 +5276,7 @@
         "fn-smr-reserve-admits-the-release",
         "fn-smr-admission-is-within-the-profile",
         "fn-smr-roomp-antitone-in-octets",
+        "fn-smr-roomp-is-within-the-bound",
         "fn-smr-admitted-profile-starts-reserved",
         "fn-scka-publication-setup-plans-within-the-disk"
       ]
@@ -6293,8 +6287,6 @@
         "fn-auth-step-pinned-xredeem-before-tls-is-483",
         "fn-auth-step-pinned-xredeem-pass-holds-for-the-owner",
         "fn-auth-step-pinned-redeem-outcome-answers-the-word",
-        "fn-auth-step-pinned-host-event-answers-nothing",
-        "fn-auth-step-pinned-stray-event-changes-nothing",
         "fn-auth-step-redeem-hold-keeps-the-role",
         "fn-acct-redeem-bounded-plan-refuses-exactly-past-the-operator-bound",
         "fn-acct-redeem-word-is-bound-only-after-a-durable-redeem",
@@ -6376,8 +6368,7 @@
         "fn-nh-starting-clears-on-listening",
         "fn-native-control-printed-reason-is-the-decisions",
         "fn-nctrl-reasoned-read-of-encode",
-        "fn-nctrl-reason-word-of-a-reason-is-not-none",
-        "fn-native-control-host-refusal-names-its-class"
+        "fn-nctrl-reason-word-of-a-reason-is-not-none"
       ]
     },
     {
@@ -7584,8 +7575,7 @@
         "fn-heap-store-history-holds-payload-and-memberships",
         "fn-heap-arena-octets-slope",
         "fn-heap-records-retained-within-the-terms",
-        "fn-heap-small-profile-run-fits-a-two-gib-machine",
-        "fn-heap-record-charge-is-the-budgets-charge"
+        "fn-heap-small-profile-run-fits-a-two-gib-machine"
       ],
       "evidence": [
         "books/heap-figure.lisp",
@@ -8183,8 +8173,7 @@
         "fn-cnx-freshp-of-withdraw",
         "fn-cnx-freshp-of-redecide",
         "fn-cnx-freshp-of-create-and-clear",
-        "fn-cnx-freshp-of-cat-writers",
-        "fn-cnxw-windows-is-range"
+        "fn-cnx-freshp-of-cat-writers"
       ]
     },
     {
@@ -8283,7 +8272,8 @@
       "progress_note": "Lane served-line-iterative (2026-09-26; image-floor packet 2, PKT-481's class, D27). Cause by persvati REPL backtrace (FN-POST-BODY-OCTETS frames to exhaustion on 3,000,000 lines) and by the native witness (one 4 MiB line: Control stack exhausted in fn-owner-chunk-span until fn-wire-list-length was a loop). Teeth: tests/acl2/served-line-iterative-tests.lisp (reachable witnesses, the composed BODY reply, served-size witnesses of 2,100,000 lines and of one 20,000,000-octet line through the compiled executables, labelled MUTATION witnesses refuted on ground instances). Lane line-stack (Opus 5.5, 2026-09-27): the fourth keystone; cause read from the frames of FN_NATIVE_FAULT_BACKTRACE's stack-exhaustion report (FN-HF-CRLF-COUNT x60795 on the committer); teeth in tests/acl2/catalog-record-tests.lisp (reachable witnesses by loop and definition; 5,000,000 lines through fn-hf-body-lines-of). Lane chunked-body (B6, 2026-09-29): fn-wire-list-length-onto-is-list-length is no longer cited: the served article line is no longer a list the wire measures -- it is in the article's packed store and fn-wire-after-line reads its length in constant work (fn-wire-partial-len; PRF-922).",
       "events": [
         "fn-nntp-stuff-lines-iter-is-stuff-lines",
-        "fn-post-body-octets-iter-is-body-octets"
+        "fn-post-body-octets-iter-is-body-octets",
+        "fn-wire-list-length-onto-is-list-length"
       ]
     },
     {
@@ -8539,7 +8529,9 @@
         "fn-auth-view-consistent",
         "fn-auth-view-consistent-back",
         "fn-auth-view-trie-corresponds",
-        "fn-auth-delegate-pinned-preserves-consistentp"
+        "fn-auth-delegate-pinned-preserves-consistentp",
+        "fn-gac-views-find-is-restriction",
+        "fn-gac-access-views-covers-pattern"
       ]
     },
     {
@@ -9582,11 +9574,14 @@
       "progress_note": "Lane compress-2 (Opus 5.5, 2026-09-29): theorem set changed with the codec. Retired with books/payload-lz.lisp: fn-lz-seal-form-denotes, fn-lz-seal-form-of-literal-block, fn-lz-decode-of-literal-block, fn-lz-run-out-len-bound, fn-lz-decode-buf-out-len-bound, fn-lz-run-extends-out, fn-lz-lits-words-is-append, fn-lz-match-bulk-is-copy-match (the seal-form's denotation is the frame keystone fn-lzr-expand-of-seal, PRF-326). New: the events above.",
       "pending_subject": "No host line calls fn-lz-* yet: lane C2 (arena-compressed) makes the compressed arena attachment whose seal is fn-lz-seal-form and whose reader is fn-lz-decode-buf, after the records flip lands.",
       "events": [
-        "fn-pzd-decode-bufs-is-decode",
-        "fn-zin-payload-bufs-is-payload-with",
-        "fn-pzd-decode-ok",
-        "fn-pzd-decode-of-empty",
-        "fn-zin-payload-bufs-ignores-buffers"
+        "fn-lz-seal-form-denotes",
+        "fn-lz-seal-form-of-literal-block",
+        "fn-lz-decode-of-literal-block",
+        "fn-lz-run-out-len-bound",
+        "fn-lz-decode-buf-out-len-bound",
+        "fn-lz-run-extends-out",
+        "fn-lz-lits-words-is-append",
+        "fn-lz-match-bulk-is-copy-match"
       ]
     },
     {
@@ -10924,40 +10919,7 @@
         "fn-sjh-okp-at-owner-prepare-identity-sealed",
         "fn-sjh-okp-at-owner-prepare-identity-unsealed",
         "fn-sjh-okp-at-owner-finish-no-row",
-        "fn-sjh-okp-of-other-prepare",
-        "fn-sjh-okp-at-owner-finish-identity",
-        "fn-sjh-idf-finish-equations",
-        "fn-sjh-okp-of-ocfg-step-owner-event",
-        "fn-sjh-okp-at-owner-begin",
-        "fn-sjh-okp-at-owner-declare-group",
-        "fn-sjh-okp-at-owner-observe",
-        "fn-sjh-okp-at-owner-unstage",
-        "fn-sjh-okp-at-owner-node-secret",
-        "fn-sjh-okp-at-owner-install-profile",
-        "fn-sjh-okp-at-owner-open-peer",
-        "fn-sjh-okp-at-owner-chunk-span",
-        "fn-sjh-files-okp-exec-is-files-okp",
-        "fn-sjh-okp-at-owner-log-reserve",
-        "fn-sjh-okp-at-owner-log-order",
-        "fn-sjh-okp-at-owner-reconfigure-complete",
-        "fn-sjh-okp-at-owner-open",
-        "fn-sjh-okp-at-owner-open-captured",
-        "fn-sjh-okp-at-owner-exposure-open",
-        "fn-sjh-okp-at-owner-read-step",
-        "fn-sjh-colsp-at-full-open",
-        "fn-sjh-colsp-at-recover",
-        "fn-sjh-colsp-at-owner-prepare-buffer",
-        "fn-sjh-colsp-at-owner-prepare-identity-sealed",
-        "fn-sjh-colsp-at-finish",
-        "fn-sjh-colsp-at-commit-reseat",
-        "fn-sjh-okp-at-owner-chunk-span-carried",
-        "fn-sjh-viewsp-at-capture",
-        "fn-sjh-viewsp-at-owner-finish-identity",
-        "fn-sjh-viewsp-at-host-article-finish",
-        "fn-sjh-viewsp-of-ocfg-store-step",
-        "fn-sjh-viewsp-at-owner-chunk-span",
-        "fn-sjh-okp-at-owner-chunk-span-fully-carried",
-        "fn-sjh-okp-at-owner-open-captured-carried"
+        "fn-sjh-okp-of-other-prepare"
       ]
     },
     {
@@ -11045,9 +11007,7 @@
       ],
       "progress_note": "Lane host-decisions-2 (Opus 5.5, 2026-09-27; packet C). Teeth: tests/acl2/clock-reading-tests.lisp: one DTN epoch in the tree (equal to the NNTP book's); a 2026 reading with 500 ms bound (wall, error and monotonic asserted); the epoch itself usable, one millisecond before it not; each usability conjunct removed takes the wall away (no claim, negative reading, negative and non-numeric error); a malformed monotonic counter is still an observation. assurance-hygiene-4 (2026-09-29): the subject fn-clkr-observation-of-ns is not on the served path (its one caller, host/bp-ingress-host.lisp, is DEAD); the served wall decision is fn-otm-wall-reading (host/native/io.lisp fnn-owner-wall-milliseconds), and the cited KEYSTONE is now fn-clkr-wall-reading-is-the-ns-decision: for integer seconds and natural microseconds at the DTN epoch's offset, the served reading has a wall exactly when fn-clkr-observation-of-ns's ns reading is at or after the epoch, and the wall is the same milliseconds past it. fn-clkr-observation-of-ns-decides-the-wall stays in the book, uncited. assurance-hygiene-5 (2026-09-29): the open half closed. fn-otm-wall-reading lost its offset argument (the epoch is ACL2's constant; the offset hypothesis of the keystone is gone); fn-otm-monotonic-ms and fn-otm-boottime-ms convert the raw monotonic readings, the host's arithmetic deleted at every site; books/clock-reading is in both image worlds so host/interfaces.lisp names the keystones. Teeth: clock-reading-tests clkt-monotonic-* (two positives, removal witnesses for the rate, natp ticks, posp units, natp seconds and natp nanoseconds hypotheses).",
       "events": [
-        "fn-clkr-wall-reading-is-the-ns-decision",
-        "fn-clkr-monotonic-readings-are-the-ns-decision",
-        "fn-clkr-wall-seconds-is-the-ns-decision"
+        "fn-clkr-observation-of-ns-decides-the-wall"
       ]
     },
     {
@@ -11437,8 +11397,7 @@
         "fn-cvec-statement-admission-keeps-the-vector",
         "fn-cvec-statement-row-within-its-figure",
         "fn-pvc-statement-verdict-carried-is-cvec-statement-verdict-at",
-        "fn-oii-publication-group-count-is-the-rows",
-        "fn-cvec-held-row-within-its-figure"
+        "fn-oii-publication-group-count-is-the-rows"
       ]
     },
     {
@@ -12021,8 +11980,7 @@
         "fn-lzr-intern-step-refines",
         "fn-lzr-commit-reseats-keep-the-arena",
         "fn-lzr-lz-read-is-the-lz-value",
-        "fn-lzr-dicts-add-keeps-bindings",
-        "fn-lzr-decode-bufs-is-the-lz-value"
+        "fn-lzr-dicts-add-keeps-bindings"
       ]
     },
     {
@@ -12535,7 +12493,7 @@
       "events": [
         "fn-web-session-route-needs-its-session",
         "fn-web-session-sends-only-to-its-connection",
-        "fn-web-step-admits-no-session-but-by-281",
+        "fn-web-sessions-bound-by-281",
         "fn-wss-body-cannot-end-the-article",
         "fn-wss-emit-body-is-stuff"
       ]
@@ -13883,11 +13841,7 @@
         "fn-ndur-host-open-node-is-the-replay",
         "fn-ndur-decode-of-a-scanned-prefix",
         "fn-ndur-cpr-loop-prefix-grows",
-        "fn-ndur-recovery-never-reissues-a-logged-txid",
-        "fn-ndh-replay-extension-keeps-every-number",
-        "fn-ndh-recovery-keeps-every-visible-number",
-        "fn-ndh-cpr-loop",
-        "fn-ndh-cst-replay-node"
+        "fn-ndur-recovery-never-reissues-a-logged-txid"
       ]
     },
     {
@@ -14045,8 +13999,7 @@
         "tests/test_native_header_lines.py"
       ],
       "events": [
-        "fn-inj-decide-line-length-is-a-long-header-line",
-        "fn-peer-decide-transfer-line-length-is-a-long-header-line"
+        "fn-inj-decide-line-length-is-a-long-header-line"
       ]
     },
     {
@@ -14844,33 +14797,7 @@
         "fn-onb-store-boundp-of-finish",
         "fn-onb-boundp-of-refresh",
         "fn-onb-boundp-of-psrv-prepare",
-        "fn-onb-boundp-at-owner-prepare-buffer",
-        "fn-onb-boundp-at-owner-prepare-identity",
-        "fn-onb-boundp-when-open-okp",
-        "fn-onbj-boundp-of-ocfg-step-owner-event",
-        "fn-onbj-boundp-at-owner-begin",
-        "fn-onbj-boundp-at-owner-declare-group",
-        "fn-onbj-boundp-at-owner-observe",
-        "fn-onbj-boundp-at-owner-node-secret",
-        "fn-onbj-boundp-at-owner-install-profile",
-        "fn-onbj-arm-acar-outcome",
-        "fn-onbj-boundp-at-owner-open-peer",
-        "fn-onbj-boundp-at-owner-log-reserve",
-        "fn-onbj-boundp-at-owner-log-order",
-        "fn-onbj-boundp-at-owner-open",
-        "fn-onbj-boundp-at-owner-open-captured",
-        "fn-onbj-boundp-at-owner-exposure-open",
-        "fn-onbj-boundp-at-owner-read-step",
-        "fn-onbj-boundp-at-owner-chunk-span",
-        "fn-onbj-boundp-at-owner-chunk-span-carried",
-        "fn-onbj-boundp-at-owner-chunk-span-fully-carried",
-        "fn-onbj-boundp-at-owner-known-abort",
-        "fn-onbj-boundp-at-owner-refuse-reservation",
-        "fn-onbj-boundp-of-ccar-ocfg-complete",
-        "fn-onbj-boundp-at-host-article-finish",
-        "fn-onbj-boundp-at-owner-prepare-buffer",
-        "fn-onbj-boundp-at-owner-reconfigure-complete",
-        "fn-onbj-open-okp-is-boundp-when-idle"
+        "fn-onb-boundp-at-owner-prepare-buffer"
       ]
     },
     {
@@ -15663,8 +15590,7 @@
       "events": [
         "fn-zdn-choose-stored-only-shared",
         "fn-zdn-choose-complete",
-        "fn-zdn-request-shape",
-        "fn-zdn-body-round-trip"
+        "fn-zdn-request-shape"
       ]
     },
     {
@@ -20730,6 +20656,74 @@
         "planning/evidence/ninep-mounted-directory-2026-10-01/README.md"
       ],
       "progress_note": "Normal045613 certifies actual guarded stat emitter, ordinary complete host/STATE boundary, four full-wire/refusal/corrupt fixtures and two host fixtures. Three inherited cache citation gaps remain. Source/QID authority, full mounted provider/request composition and per-action constructor/caller/fault/runtime units remain open. Complete external-client SCN1064 remains NOT RUN."
+    },
+    {
+      "id": "PRF-990",
+      "title": "An article within the persisted profile's payload bound is charged within u32, so the POST boundary never refuses it :charge-bound: the u32 charge is a representable-profile fact, not a data cap (SCN-047, STO-013)",
+      "statement": "Subject: fn-sbud-post-boundary (books/store-budget-naming.lisp), which the host calls as fn-owner-post-boundary (host/owner-host.lisp; equal to it by fn-pvc-post-boundary-carried-is-sbud-post-boundary, PRF-284) from host/native/owner.lisp fnn-owner-attempt-transit and the POST path, with the charge host/native/io.lisp fnn-charge takes from fn-store-charge (host/store-host.lisp), fn-charge-for-payload of the payload's length. KEYSTONE fn-sbud-post-boundary-never-refuses-an-admitted-payloads-charge (books/record-width-producers.lisp): for a natural PAYLOAD-LENGTH at most fn-sbud-payload-bound PROFILE, fn-charge-for-payload PAYLOAD-LENGTH is at most 2^32 - 1 and fn-sbud-post-boundary PROFILE MSGID LENGTH COUNT (fn-charge-for-payload LENGTH) is not :charge-bound, for every PROFILE (a profile's bound is at most the record codec's payload ceiling, fn-sbud-payload-bound-within-record-codec, and the charge is monotone, fn-charge-for-payload-monotone). The :charge-bound refusal stays by name for a charge no admitted article produces; widening the charge to u64 would change no admitted article's record.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-013"
+      ],
+      "depends_on": [
+        "PRF-123",
+        "PRF-284"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/record-width-producers.lisp",
+        "tests/acl2/record-width-producers-tests.lisp"
+      ],
+      "progress_note": "Lane correctness-remainder-7 (Opus 5.5, 2026-09-29; SCN-047, coordinator decision (a)). REPL-admitted on hbox over the book (dependencies from source at the lane's served.lisp bytes). Teeth (tests/acl2/record-width-producers-tests.lisp): the scale profile's largest admitted article is charged within u32 and admitted :ok; the codec's payload ceiling is charged within u32; hypothesis removed: a 2^45-octet length fails the bound and the first conclusion and is refused :payload-bound; the named :charge-bound refusal of a 2^40 charge at an admitted length.",
+      "events": [
+        "fn-sbud-post-boundary-never-refuses-an-admitted-payloads-charge"
+      ]
+    },
+    {
+      "id": "PRF-1025",
+      "title": "A reclaim's record carries the note of its decision, and `store reclaim --recorded` checks the note before it rewrites",
+      "statement": "books/reclaim-note.lisp fn-rcn-recorded-note-reads-back: the configuration the reclaim's record yields (fn-rcn-recorded-config: the instant delta fn-rci-delta NOW then the note delta fn-cfg-reclaim-note TEXT, one record) carries the recorded instant NOW, the retention rule unchanged, and the note TEXT (fn-rcn-config-note). fn-rcn-recorded-note-checks: for D the stream decision at the clock (fn-lgr-decide-stream at the configuration's rule and NOW) and TEXT = fn-rcn-of-decision NOW COUNT D, the --recorded rerun's check fn-rcn-check of that configuration, COUNT and the rerun's decision fn-rci-decide-stream answers :checked when D reclaims (:unchecked otherwise). fn-rcn-check answers :reclaim-note-mismatch for a note at the recorded instant that is not the rerun decision's (fn-rcn-check-refuses-a-foreign-note-by-definition). The note text is `at=CODE history=N reclaimed=K freed=F msgids=HEX' (HEX the SHA-256 of the reclaimed Message-IDs, each u32-length-prefixed). host: fnn-log-reclaim-steps (host/native/checkpoint.lisp) calls fn-store-reclaim-instant-record (host/checkpoint-host.lisp; fn-rcn-deltas over fn-rcn-of-decision) through fnn-reclaim-record-instant, and on --recorded calls fn-store-reclaim-note-check (fn-rcn-check) and refuses reclaim-note-mismatch before the rewrite. Scope: the offline `store reclaim`; the live owner pass records its instant without a note (books/owner-reclaim-instant.lisp) and its rerun is :unchecked. SHA-256 is fn-sha256 (the attachable seam): equal notes imply nothing about preimages in this logic.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-017"
+      ],
+      "depends_on": [
+        "PRF-327",
+        "PRF-271"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": "tests/acl2/reclaim-note-tests.lisp (the fixture's reclaiming decision: note publishable, reads back, rerun :checked; teeth: a note over another history length or another decision :reclaim-note-mismatch, an earlier instant's note :unchecked, the empty note refused by the configuration); tests/test_native_replay_determinism.py test_f (the copy given the record reruns note=checked; a copy with one more article given the same record is refused reclaim-note-mismatch and unchanged).",
+      "progress_note": "correctness-remainder-9, 2026-09-29: PKT-855 (proto-determinism N2). REPL-admitted whole book and tests on persvati (from-source deps: books/config.lisp gained the delta kind :reclaim-note, code 28). Design: planning/design-reclaim-note-2026-09-29.md.",
+      "events": [
+        "fn-rcn-recorded-note-reads-back",
+        "fn-rcn-recorded-note-checks",
+        "fn-rcn-recorded-decision-is-the-decision"
+      ]
+    },
+    {
+      "id": "PRF-1049",
+      "title": "The live reclaim pass's note is the offline note: over the owner's two records (the instant, then the note of its decision) the --recorded rerun checks the note exactly as over `store reclaim`'s one record",
+      "statement": "books/reclaim-note.lisp KEYSTONE fn-rcn-live-note-checks: for NOW an instant and D the stream decision at the configuration's rule and NOW, over V the value of fn-rcn-live-config (the instant record fn-rci-recorded-config at Q TX G STAMP, then a record of the one delta fn-rcn-note-deltas TEXT at any coordinates Q2 TX2 G2 STAMP2, TEXT = fn-rcn-of-decision NOW COUNT D): the note of V is TEXT, V's instant is NOW, and fn-rcn-check of V, COUNT and the rerun's decision fn-rci-decide-stream answers :checked when D reclaims (:unchecked otherwise). fn-rcn-live-limits-are-the-recorded-limits: the two live records leave exactly the limits of the offline one-record form fn-rcn-recorded-config, so every theorem of PRF-1025 transfers. Host: host/owner-host.lisp fn-owner-orc-note-stage (fn-rcn-of-decision, fn-rcn-note-deltas through fn-owner-reconfigure-deltas); its call from host/native/owner.lisp fnn-owner-reclaim-pass after the :reclaim decision and before the install is online-reclaim's to wire (until then the live rerun is :unchecked). Scope: the check; the log fold does not apply the note.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-017"
+      ],
+      "depends_on": [
+        "PRF-1025",
+        "PRF-987"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/reclaim-note.lisp",
+        "tests/acl2/reclaim-note-tests.lisp (the fixture's decision: the live two-record form reads back the note and the instant and rechecks :checked, with the same limits as the offline form; teeth: a foreign note in the live form :reclaim-note-mismatch, the instant alone :unchecked, the instant at a non-instant never :checked)"
+      ],
+      "events": [
+        "fn-rcn-live-note-checks",
+        "fn-rcn-live-limits-are-the-recorded-limits"
+      ]
     }
   ]
 }

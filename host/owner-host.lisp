@@ -77,6 +77,7 @@
 (include-book "../books/owner-reclaim-carry")
 (include-book "../books/owner-recovery-retain")
 (include-book "../books/owner-cursor-domain")
+(include-book "../books/reclaim-note")
 ; Q16 (b): online disk release of dropped files (fn-xrt-).
 (include-book "../books/extent-retire")
 (include-book "../books/owner-retire") ; row S9: retire (fn-owner-retire-step, -report)
@@ -5101,6 +5102,25 @@ existing port only after fn-fc has made this connection ready."
     (if (fn-rci-representablep now)
         (fn-owner-reconfigure-deltas cid (list (fn-rci-delta now)) fn-arena state)
       (value (fn-ores-config-refused :reclaim-instant)))))
+
+; PKT-855's live half (books/reclaim-note.lisp KEYSTONE fn-rcn-live-note-checks,
+; PRF-1049): after the live pass decides D over COUNT records at the recorded
+; instant NOW (the capture's), and before the install, the owner records the
+; note of D as a second live reconfiguration record of the one delta
+; fn-rcn-note-deltas; the --recorded rerun over the two records then checks
+; the note exactly as over the offline one-record form.  A decision that
+; reclaims nothing has no note (:none, nothing staged); an unpublishable
+; note is refused by name before anything is written.  The host call
+; (fnn-owner-live-reconfigure-locked over this, from fnn-owner-reclaim-pass
+; after its :reclaim decision) is online-reclaim's to wire.
+(defun fn-owner-orc-note-stage (cid now count decision fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
+  (let ((text (fn-rcn-of-decision now count decision)))
+    (cond ((not (and (consp decision) (equal (car decision) :reclaim)))
+           (value (fn-ores-config-refused :reclaim-note-none)))
+          ((fn-rcn-representablep text)
+           (fn-owner-reconfigure-deltas cid (fn-rcn-note-deltas text) fn-arena state))
+          (t (value (fn-ores-config-refused :reclaim-note))))))
 
 (defun fn-owner-orcp-intern-chunk (rows keyring generation fn-arena)
   (declare (xargs :stobjs fn-arena :mode :program))

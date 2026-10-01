@@ -261,6 +261,7 @@
 (include-book "../../books/store-reclaim-stream")
 (include-book "../../books/store-log-reclaim")
 (include-book "../../books/reclaim-instant")
+(include-book "../../books/reclaim-note")
 (include-book "../../books/expiry-instant")
 (include-book "../../books/anchor-invariants")
 (include-book "../../books/state-globals")

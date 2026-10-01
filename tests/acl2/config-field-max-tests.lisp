@@ -10,7 +10,7 @@
 ;   stamp monotonic/wall/error   fn-clock-timep           2^64 - 1 (ms)
 ;   stamp has-wall               booleanp                 t (item 1)
 ;   delta count                  *fn-cfg-max-deltas*      64
-;   delta kind                   *fn-cfg-delta-kinds*     code 27
+;   delta kind                   *fn-cfg-delta-kinds*     code 30
 ;   delta a, b; row a, b, c      fn-cfg-labelp            256 octets
 ;   delta n, row n               fn-record-uint32p        2^32 - 1
 ;   rows per delta               *fn-cfg-max-rows*        1024
@@ -38,7 +38,7 @@
 (defconst *cfm-stamp* (fn-clock-observation *cfm-u64* *cfm-u64* *cfm-u64* t))
 (defconst *cfm-row* (fn-cfg-row-make *cfm-label* *cfm-label* *cfm-label* *cfm-u32*))
 (defconst *cfm-delta*
-  (fn-cfg-delta-make :account-delete *cfm-label* *cfm-label* *cfm-u32*
+  (fn-cfg-delta-make :accept-peer *cfm-label* *cfm-label* *cfm-u32*
                      (list *cfm-row*)))
 
 (defmacro cfm-round-trips (r)
@@ -50,6 +50,8 @@
 (defconst *cfm-max*
   (fn-cfg-record-make *cfm-u32* *cfm-u32* *cfm-u32* (list *cfm-delta*) *cfm-stamp*))
 (assert-event (equal (fn-cfg-kind-code :account-delete) 27))
+(assert-event (equal (fn-cfg-kind-code :reclaim-note) 28))
+(assert-event (equal (fn-cfg-kind-code :accept-peer) 30))
 (assert-event (cfm-round-trips *cfm-max*))
 
 ; The stamp at its maximum without a wall claim.

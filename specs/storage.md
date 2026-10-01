@@ -1445,10 +1445,21 @@ pre-reclaim store given that record reproduces the reclaim with
 nothing, and is refused by name (`no-recorded-instant`) where no reclaim was
 ever recorded. A process death after the record and before the checkpoint's
 install leaves the instant recorded and the history unrewritten: `--recorded`
-completes it; a plain rerun records a later instant. This is not a store
-format change: a `:set-limit` row of a slot no reader names is admitted by
-every image and read by none (a new record-log event kind would be one: the
-open refuses any record it cannot decode). Each reclaim takes one
+completes it; a plain rerun records a later instant. The same record carries
+the reclaim's NOTE (PKT-855, `books/reclaim-note.lisp`, configuration delta
+`:reclaim-note`, code 28): `at=CODE history=N reclaimed=K freed=F msgids=HEX`,
+the instant's code, the pre-reclaim history's record count, the reclaimed
+count, the freed octets and the SHA-256 of the reclaimed Message-IDs (each
+u32-length-prefixed), so a holder of the pre-reclaim history can place the
+reclaim and check it (KEYSTONE `fn-rcn-recorded-note-reads-back`). Before it
+rewrites, `--recorded` checks its own decision against the note at the
+recorded instant: `note=checked`, or refused by name
+(`reclaim-note-mismatch`) over any other history (KEYSTONE
+`fn-rcn-recorded-note-checks`); a note of an earlier instant (the live pass
+records its instant alone) is `note=unchecked`. The instant is a
+`:set-limit` row of a slot no reader names; the note is a new delta kind,
+which an image before code 28 refuses (no migrations: every node starts at
+6.6.0). Each reclaim takes one
 configuration generation of the profile's `max-config-generations`; a
 refused publication refuses the reclaim before any rewrite.
 

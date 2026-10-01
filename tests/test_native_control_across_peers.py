@@ -43,7 +43,8 @@ from pathlib import Path
 import subprocess
 import unittest
 
-from tests.native_harness import EXIT_OK, ROOT, Client, Node, free_port, native_image, run, scratch
+from tests.native_harness import (EXIT_OK, ROOT, Client, Node, free_port, native_image,
+                                  openssl_with_ml_dsa, run, scratch)
 
 IMAGE_TEXT = os.environ.get("FN_NATIVE_HOST")
 # tools/hbox_native.sh sets no FN_NATIVE_HOST: take the developer image it
@@ -52,26 +53,6 @@ IMAGE = (native_image("FN_NATIVE_HOST") if IMAGE_TEXT else
          next((p for p in (ROOT / "build" / "fn-host-developer", ROOT / "build" / "fn-host")
                if p.is_file()), None))
 READY = bool(IMAGE is not None and IMAGE.is_file() and os.access(IMAGE, os.X_OK))
-
-
-def openssl_with_ml_dsa():
-    candidates = [os.environ.get("FN_TEST_OPENSSL")]
-    prefix = os.environ.get("FN_OPENSSL_PREFIX")
-    if prefix:
-        candidates.append(str(Path(prefix) / "bin" / "openssl"))
-    candidates.append("openssl")
-    for candidate in candidates:
-        if not candidate:
-            continue
-        try:
-            probe = subprocess.run([candidate, "list", "-signature-algorithms"],
-                                   stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-                                   timeout=30, check=False)
-        except (OSError, subprocess.TimeoutExpired):
-            continue
-        if probe.returncode == 0 and b"ML-DSA-65" in probe.stdout:
-            return candidate
-    return None
 
 
 OPENSSL = openssl_with_ml_dsa() if READY else None

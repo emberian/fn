@@ -8,6 +8,7 @@
 (include-book "../books/store-reclaim-stream")
 (include-book "../books/store-log-reclaim")
 (include-book "../books/reclaim-instant")
+(include-book "../books/reclaim-note")
 (include-book "../books/expiry-instant")
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
@@ -220,14 +221,33 @@
 ;; :reclaim-instant).  KEYSTONE fn-rci-recorded-context-is-the-decided-context:
 ;; the configuration this record yields names the rule and instant the
 ;; decision used.
-(defun fn-store-reclaim-instant-record (clock stamp state)
+;; PKT-855 (books/reclaim-note.lisp): the same record carries the note of
+;; DECISION (the stream decision at CLOCK) over the history's COUNT records,
+;; `fn-rcn-deltas': the instant then the note, one publication.  An
+;; unrepresentable note is :reclaim-note.  KEYSTONE fn-rcn-recorded-note-
+;; reads-back: the configuration it yields carries the instant, the rule and
+;; the note.
+(defun fn-store-reclaim-instant-record (clock stamp count decision state)
   (declare (xargs :stobjs state :mode :program))
   (mv-let (rule now) (fn-store-reclaim-rule-and-stamp clock state)
     (declare (ignore rule))
-    (if (fn-rci-representablep now)
-        (fn-store-cfg-peer-delta-record (list (fn-rci-delta now)) stamp state)
-      (let ((state (f-put-global 'fn-store-cfg-last-reason :reclaim-instant state)))
-        (value :refused)))))
+    (let ((text (fn-rcn-of-decision now count decision)))
+      (cond ((not (fn-rci-representablep now))
+             (let ((state (f-put-global 'fn-store-cfg-last-reason :reclaim-instant state)))
+               (value :refused)))
+            ((not (fn-rcn-representablep text))
+             (let ((state (f-put-global 'fn-store-cfg-last-reason :reclaim-note state)))
+               (value :refused)))
+            (t (fn-store-cfg-peer-delta-record (fn-rcn-deltas now text) stamp state))))))
+
+;; `store reclaim --recorded''s check of its DECISION over COUNT records
+;; against the note the configuration carries (fn-rcn-check: :checked,
+;; :unchecked or :reclaim-note-mismatch).  KEYSTONE fn-rcn-recorded-note-
+;; checks: over the record `store reclaim' published and the same history
+;; the answer is :checked.
+(defun fn-store-reclaim-note-check (count decision state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-rcn-check (fn-cfg-value (f-get-global 'fn-store-cfg state)) count decision)))
 
 ;; `store reclaim --recorded': the context and the decision from the
 ;; configuration the store opened with -- its rule and its recorded instant

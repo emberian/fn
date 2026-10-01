@@ -128,3 +128,10 @@
 (defthm fn-outcome-host-condition-fences-iff-indeterminate
   (equal (equal (fn-outcome-host-condition-exit-code kind) 3)
          (equal kind :indeterminate)))
+
+; Include hygiene (PKT-329 (4)): the definitions close here; an includer
+; reasons through the theorems above or opens a definition in a hint.
+; Ground calls still evaluate (the executable counterparts stay enabled).
+(in-theory (disable fn-outcome-classp fn-outcome-code fn-outcome-codep
+                    fn-outcome-of-status fn-outcome-of-host-condition
+                    fn-outcome-host-condition-exit-code))

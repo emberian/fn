@@ -11,7 +11,8 @@ the cancel the node injects for it, group create/describe, motd, retention and
 capacity configuration, an account invitation, consumer bootstrap/register/
 ack, and -- when FN_TEST_OPENSSL makes ML-DSA-65 keys -- a hybrid key
 enrollment and a signed post), and over the registered fixture n1k-2k
-(test f: a reclaim is reproduced from its recorded instant, PKT-857):
+(test f: a reclaim is reproduced from its recorded instant, PKT-857, and
+checked against the note its record carries, PKT-855):
 
 (a) `store ROOT digest' (ACL2's digest of the folded state's LOGICAL value,
     books/state-digest.lisp; host/store-node-host.lisp
@@ -531,7 +532,7 @@ class NativeReplayDeterminismTests(unittest.TestCase):
                                        if w.split("=")[0] in ("reclaimed", "freed-octets"))
                               for ln in text.splitlines()]
         self.assertEqual(strip(done), strip(again), (done, again))
-        self.assertIn("instant=recorded", again)
+        self.assertIn("instant=recorded note=checked", again)
         da, opens_a = self.digest(a)
         db, opens_b = self.digest(b)
         self.assertTrue(opens_a and opens_a[0].startswith("open=checkpoint"), opens_a)
@@ -543,6 +544,33 @@ class NativeReplayDeterminismTests(unittest.TestCase):
         dbase, _ = self.digest(base)
         self.assert_same(dc, dbase, "the refused copy against the pre-reclaim store")
         self.assertNotEqual(dc, da)
+        # PKT-855 (books/reclaim-note.lisp): the record carries the note of
+        # the decision (the history's record count, the reclaimed count, the
+        # freed octets, the SHA-256 of the reclaimed Message-IDs), and
+        # `--recorded' above checked it (note=checked).  Teeth: a copy whose
+        # history is NOT the one the note was decided over (one more
+        # reclaimable article) given the same record is refused by name and
+        # rewrites nothing.
+        d = self.copy(base, "rc-d")
+        dnode = node_at(self, d, self.base / "rc-d-node")
+        dnode.start(timeout=TIMEOUT)
+        try:
+            client = Client(dnode.port, timeout=120, greeting=None)
+            try:
+                reply = post(client, article("<det-rc-4@example.invalid>", "fn.test",
+                                             "rc 4", b"reclaimable\r\n" * 8))
+                self.assertTrue(reply.startswith(b"240"), reply)
+            finally:
+                client.close()
+        finally:
+            dnode.stop(grace=120)
+        dd_before, _ = self.digest(d)
+        shutil.copyfile(a / "config" / new[0], d / "config" / new[0])
+        mismatch = self.operator(d, "rc-d", "store", "reclaim", "--recorded", expected=None)
+        self.assertNotEqual(mismatch.returncode, 0)
+        self.assertIn(b"reclaim-note-mismatch", mismatch.stdout + mismatch.stderr)
+        dd_after, _ = self.digest(d)
+        self.assert_same(dd_after, dd_before, "the mismatched copy against itself before the rerun")
 
     @unittest.skipUnless((FIXTURES / FIXTURE / "store").is_dir(),
                          "the registered fixture is not on this box")
