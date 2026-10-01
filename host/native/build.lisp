@@ -353,6 +353,7 @@
 (ld "host/reader-host.lisp" :ld-error-action :error)
 (ld "host/owner-host.lisp" :ld-error-action :error)
 (ld "host/account-adoption-host.lisp" :ld-error-action :error)
+(ld "host/account-adoption-publication-host.lisp" :ld-error-action :error)
 (ld "host/account-adoption-collection-host.lisp" :ld-error-action :error)
 (ld "host/account-adoption-return-host.lisp" :ld-error-action :error)
 (ld "host/page-read-host.lisp" :ld-error-action :error)

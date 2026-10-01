@@ -51,6 +51,7 @@
           (lambda (slot nonce slots pool)
             (let ((result (fnn-account-adoption-begin
                             config bindings entropy slot nonce slots pool)))
+              (fnn-account-retain-control-effects service result)
               (setf config nil bindings nil entropy nil)
               (multiple-value-prog1 (values-list result) (setf result nil))))
           :control #'fnn-account-adoption-epilogue)
@@ -70,17 +71,28 @@
             service nil
             (lambda (slot nonce slots pool)
               (let* ((result (fnn-account-adoption-tick slot nonce slots pool))
-                     (step (fnn-core 'fn-cado-result-action result))
+                     (retained (fnn-account-retain-control-effects service result))
+                     (slots (third retained)) (pool (fourth retained))
+                     (step (fnn-core 'fn-cado-result-action retained))
                      (kind (fnn-core 'fn-cad-action-kind step)))
                 (when (member kind '(:publish :configure))
-                  (let ((durable
+                  (let* ((publication
                          (if (eq kind :configure)
-                             (fnn-owner-account-configuration-publication-locked service)
-                           (fnn-owner-account-publication-locked service))))
-                    (unless (eq durable :durable)
-                      (fnn-fault "account publication returned ~a" durable))
-                    (setf result (fnn-account-adoption-collect slot nonce slots pool))))
-                (setf step nil)
+                             (fnn-owner-account-configuration-publication-locked
+                               service slot nonce slots pool)
+                           (fnn-owner-account-publication-locked service slot nonce slots pool)))
+                         (retained-publication (fnn-account-retain-control-effects service publication))
+                         (next-slots (third retained-publication))
+                         (next-pool (fourth retained-publication))
+                         (published (fnn-core 'fn-cado-result-action retained-publication)))
+                    (setf result publication)
+                    (when (eq (fnn-core 'fn-cad-action-kind published) :durable)
+                      ; The pooled collector still reads the registered
+                      ; genuine outcome internally, never this transport word.
+                      (setf result (fnn-account-adoption-collect slot nonce next-slots next-pool))
+                      (fnn-account-retain-control-effects service result))
+                    (setf publication nil retained-publication nil published nil)))
+                (setf step nil retained nil)
                 (multiple-value-prog1 (values-list result) (setf result nil))))
             :control #'fnn-account-adoption-epilogue)
         (declare (ignore answer))

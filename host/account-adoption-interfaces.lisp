@@ -13,6 +13,9 @@
 (definterface fn-owner-account-adoption-collect
  :class :program
  :direct "Explicit five-MV PROGRAM collector derives actual durable output internally")
+(definterface fn-owner-account-adoption-publication-step
+ :class :program
+ :direct "Same-ticket PROGRAM publication source; missing executor/wire/destination refuses before I/O")
 (definterface fn-owner-account-turn-return-current
  :class :program
  :direct "Actual owner epilogue PROGRAM subject; no supplied receipt, vector, or joined Boolean")

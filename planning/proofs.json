@@ -20001,9 +20001,14 @@
         "planning/evidence/account-adoption-lifecycle-2026-10-01/successor-state.json",
         "planning/evidence/account-adoption-lifecycle-2026-10-01/successor-source.log",
         "host/account-adoption-begin-source-host.lisp",
-        "host/account-durable-alias-clear-host.lisp"
+        "host/account-durable-alias-clear-host.lisp",
+        "host/account-adoption-publication-host.lisp",
+        "planning/evidence/account-adoption-lifecycle-2026-10-01/PUBLICATION.md",
+        "planning/evidence/account-adoption-lifecycle-2026-10-01/publication-source.json",
+        "planning/evidence/account-adoption-lifecycle-2026-10-01/native-recording.json",
+        "planning/evidence/account-adoption-lifecycle-2026-10-01/native-recording.log"
       ],
-      "progress_note": "Low guarded internal source/custody/turn/return algebra and synthetic UNFUNDED literals pass in preserved protected accountturn, including fixed settlement alias carrier. Native actual recording checks five effects, no callback without issuer, pooled collector dispatch and NIL-CURRENT recovery refusal. Joined high PROGRAM caller/crosswrite/alias-clear source is strictly parsed, not admitted; initial lexical six-formal source is explicitly unavailable. Complete installed domain/cost/funding, actual durable C destination, funded input restart, all-writer/raw alias-return and native qualification remain open. No normal certificate or image transfer."
+      "progress_note": "Low guarded internal source/custody/turn/return algebra and synthetic UNFUNDED literals pass in preserved protected accountturn, including fixed settlement alias carrier. Native actual recording checks five effects, no callback without issuer, pooled collector dispatch and NIL-CURRENT recovery refusal. Joined high PROGRAM caller/crosswrite/alias-clear source is strictly parsed, not admitted; initial lexical six-formal source is explicitly unavailable. Complete installed domain/cost/funding, actual durable C destination, funded input restart, all-writer/raw alias-return and native qualification remain open. No normal certificate or image transfer. Additive actual publication source now refuses executor/wire/C-destination absence before I/O, and native helper retains each intermediate five-MV effect before next dispatch; three synthetic UNFUNDED actual-source recording refuters pass, not a producer/qualification claim."
     }
   ]
 }
