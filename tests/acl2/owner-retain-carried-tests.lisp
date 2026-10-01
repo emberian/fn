@@ -19,12 +19,20 @@
 (defconst *ort-e* (fn-sco-extend (fn-sco-capture *ort-configs* nil) *ort-configs* nil))
 (defconst *ort-pair* (fn-sco-store-open *ort-e* *ort-configs* 0))
 (defconst *ort-pair-oc* (fn-ock-install (car *ort-pair*) (cadr *ort-pair*) 4))
+; The open's folds, evaluated in a hint: the constants are their values.
+(deftheory ort-eval
+  (union-theories '((:executable-counterpart fn-sco-store-open)
+                    (:executable-counterpart fn-sco-extend)
+                    (:executable-counterpart fn-sco-capture)
+                    (:executable-counterpart car) (:executable-counterpart cdr)
+                    (:executable-counterpart cons))
+                  (theory 'minimal-theory)))
 ; Positive: the assumption holds at the empty open's pair (exported) ...
 (defthm ort-store-open-pair-assumed
   (fn-assume-store-open-pairp (car *ort-pair*) (cadr *ort-pair*))
   :rule-classes nil
   :hints (("Goal" :use fn-assume-store-open-pair-of-the-empty-history
-           :in-theory (theory 'minimal-theory))))
+           :in-theory (theory 'ort-eval))))
 ; ... the theorem's full conclusion there ...
 (defthm ort-store-open-pair-conclusion
   (or (equal (fn-ock-install (car *ort-pair*) (cadr *ort-pair*) 4) :fault)
@@ -72,7 +80,7 @@
   :rule-classes nil
   :hints (("Goal" :use ((:instance fn-assume-capture-extension-of-the-empty-history
                                    (configs *ort-configs*)))
-           :in-theory (theory 'minimal-theory))))
+           :in-theory (theory 'ort-eval))))
 (defthm ort-extension-conclusion
   (or (equal (fn-ock-recover-extended *ort-e* *ort-configs* 0 4) :fault)
       (fn-lgoc-invariantp (fn-ock-recover-extended *ort-e* *ort-configs* 0 4)))
