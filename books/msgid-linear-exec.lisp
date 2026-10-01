@@ -837,7 +837,7 @@
 ; THE PUT; (mv placed fn-mlh).  Nil -- the table unchanged -- when saturated.
 (defun fn-mlh-put (tag seq fn-mlh)
   (declare (xargs :stobjs fn-mlh
-                  :guard (and (natp tag) (< tag *fn-mlh-tag-limit*)
+                  :guard (and (posp tag) (< tag *fn-mlh-tag-limit*)
                               (natp seq) (< (+ 1 seq) *fn-mlh-tag-limit*)
                               (fn-mlh-wfp fn-mlh))
                   :guard-hints (("Goal" :use ((:instance fn-mpxl-addr-below (n (fn-mlh-n fn-mlh)) (s (fn-mlh-s fn-mlh))))

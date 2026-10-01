@@ -18,6 +18,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/msgid-linear-exec")
+(include-book "must-fail-checked")
 
 (make-event
  (if (equal (len (formals 'fn-held-make (w state))) 16)
@@ -58,6 +59,20 @@
          (fn-mlh (update-fn-mlh-n np fn-mlh))
          (fn-mlh (update-fn-mlh-s 0 fn-mlh)))
     fn-mlh))
+
+; The reserved empty tag is rejected by the public guard.  Initialize a
+; valid page so the rejection cannot be attributed to another argument.
+(defun mlhx-try-put (tag)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-mlh
+    (mv-let (placed fn-mlh)
+      (let ((fn-mlh (mlhx-pages 1 fn-mlh)))
+        (fn-mlh-put tag 0 fn-mlh))
+      placed)))
+
+(assert-event (with-guard-checking :all (mlhx-try-put 1)))
+(must-fail-checked
+ (assert-event (with-guard-checking :all (mlhx-try-put 0))))
 
 ; The writer the host runs at load: rows I.. under their own keyed tags.
 (defun mlhx-build (i rows fn-mlh)
