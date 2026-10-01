@@ -606,6 +606,17 @@ ACL2_BOOKS ?= books/defrecord \
 	books/render-window-terminal-slot \
 	tests/acl2/render-window-terminal-slot-tests \
 	books/render-window-terminal-provider \
+	books/page-window-worker-storage \
+	books/decoded-worker-controller \
+	books/decoded-worker-factory \
+	tests/acl2/decoded-worker-factory-tests \
+	books/decoded-worker-lifecycle \
+	books/decoded-worker-binding-scan \
+	tests/acl2/decoded-worker-binding-scan-tests \
+	books/decoded-worker-resolved-admission \
+	tests/acl2/decoded-worker-resolved-admission-tests \
+	books/decoded-worker-return-provider \
+	tests/acl2/decoded-worker-return-provider-tests \
 	books/query-payload-grants \
 	tests/acl2/query-payload-grants-tests \
 	books/query-payload-state \
@@ -1500,6 +1511,17 @@ ACL2_BOOKS ?= books/defrecord \
 	books/render-window-terminal-slot \
 	tests/acl2/render-window-terminal-slot-tests \
 	books/render-window-terminal-provider \
+	books/page-window-worker-storage \
+	books/decoded-worker-controller \
+	books/decoded-worker-factory \
+	tests/acl2/decoded-worker-factory-tests \
+	books/decoded-worker-lifecycle \
+	books/decoded-worker-binding-scan \
+	tests/acl2/decoded-worker-binding-scan-tests \
+	books/decoded-worker-resolved-admission \
+	tests/acl2/decoded-worker-resolved-admission-tests \
+	books/decoded-worker-return-provider \
+	tests/acl2/decoded-worker-return-provider-tests \
 	books/query-payload-grants \
 	tests/acl2/query-payload-grants-tests \
 	books/query-payload-state \
