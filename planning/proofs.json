@@ -19857,7 +19857,7 @@
     {
       "id": "PRF-1189",
       "title": "Explicit resumable commit codec profile v2 work budget",
-      "statement": "Encoder and decoder drivers use at most supplied tick fuel and preserve terminal cursors. For a borrowed string source, the actual decoder driver returns the same abstract logical cursor and exact tick count as the logical octet-list cursor; decode-resume bridge also preserves the result. The cursor-width premise was removed after proving the weaker transition theorem. Profile validation names unsupported format ranges before encode item/output allocation. General encode/decode roundtrip and supported runtime/caller custody remain open. Further encoder/decoder driver preservation targets carry fixed numeric/control bounds from shallow cursor invariants, without scanning accumulated data; those later roots are certified at matching private source.",
+      "statement": "Encoder and decoder drivers use at most supplied tick fuel and preserve terminal cursors. For a borrowed string source, the actual decoder driver returns the same abstract logical cursor and exact tick count as the logical octet-list cursor; decode-resume bridge also preserves the result. The cursor-width premise was removed after proving the weaker transition theorem. Profile validation names unsupported format ranges before encode item/output allocation. General encode/decode roundtrip and supported runtime/caller custody remain open. Further encoder/decoder driver preservation targets carry fixed numeric/control bounds from shallow cursor invariants, without scanning accumulated data; those later roots are certified at matching private source. Additive accumulator drivers equate the complete returned cursor to the frozen drivers unconditionally and their count to the initial numerical accumulator plus frozen count; resume wrappers seed zero and equate cursor/count with the original resume API. Those later execution roots are certified at matching private source; no native stack/performance claim.",
       "milestone": "M4",
       "requirements": [
         "SUB-008"
@@ -19874,15 +19874,20 @@
         "tests/acl2/substrate-commit-profile-refinement-tests.lisp",
         "planning/evidence/substrate-commit-profile-v2-2026-09-30.md",
         "books/substrate-commit-profile-bounds.lisp",
-        "tests/acl2/substrate-commit-profile-bounds-tests.lisp"
+        "tests/acl2/substrate-commit-profile-bounds-tests.lisp",
+        "books/substrate-commit-profile-resume.lisp",
+        "tests/acl2/substrate-commit-profile-resume-tests.lisp",
+        "planning/evidence/manifests/certify-20261001T005007Z-1265445.json"
       ],
-      "progress_note": "Core passed certify-20260930T233727Z-993518 (its unchanged root scope; initial test later superseded). Refinement plus latest codec/refinement literal teeth passed certify-20260930T235132Z-1019470; all 20 source closure hashes match this private source. Guard-verified codec, tick-fuel induction, borrowed-source decoder cursor/work/result refinement and literal wide/513-byte/budget/refusal witnesses. General roundtrip, actual profile-aware transcript/owner caller, pinned custody and supported runtime/funding remain open. No public digest, image or deployment transfer. Shallow numeric/control start and actual-driver preservation plus positive/corrupted-state premise-removal teeth passed certify-20261001T001744Z-1065124; all 18 source closure hashes match. Independent root cbor2 6.1.4 evidence decb2b44d passes 392 checks at unchanged a632/ee403 codec source, explicitly source execution, not native qualification/general roundtrip proof. Public source imported additively; current closure not certified. Frozen private manifests and independent source harness do not imply caller/activation/runtime authority.",
+      "progress_note": "Core passed certify-20260930T233727Z-993518 (its unchanged root scope; initial test later superseded). Refinement plus latest codec/refinement literal teeth passed certify-20260930T235132Z-1019470; all 20 source closure hashes match this private source. Guard-verified codec, tick-fuel induction, borrowed-source decoder cursor/work/result refinement and literal wide/513-byte/budget/refusal witnesses. General roundtrip, actual profile-aware transcript/owner caller, pinned custody and supported runtime/funding remain open. No public digest, image or deployment transfer. Shallow numeric/control start and actual-driver preservation plus positive/corrupted-state premise-removal teeth passed certify-20261001T001744Z-1065124; all 18 source closure hashes match. Independent root cbor2 6.1.4 evidence decb2b44d passes 392 checks at unchanged a632/ee403 codec source, explicitly source execution, not native qualification/general roundtrip proof. Public source imported additively; current closure not certified. Frozen private manifests and independent source harness do not imply caller/activation/runtime authority. Additive9232 accumulator source cursor/count equivalence and005007 two-root private receipt retained; current combined closure is independently compared, no native stack/cost/caller activation transfer.",
       "events": [
         "fn-stcp-enc-drive-work-bound",
         "fn-stcp-dec-drive-work-bound",
         "fn-stcp-dec-drive-borrowed-refinement",
         "fn-stcp-enc-drive-preserves-bounds",
-        "fn-stcp-dec-drive-preserves-bounds"
+        "fn-stcp-dec-drive-preserves-bounds",
+        "fn-stcp-enc-drive-acc-is-drive",
+        "fn-stcp-dec-drive-acc-is-drive"
       ]
     },
     {

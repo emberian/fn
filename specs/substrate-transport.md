@@ -1318,3 +1318,11 @@ counts are fixed; no accumulated octets are scanned by this predicate.
 Start establishes it and the actual drivers preserve it. These later bounds
 roots are certified at matching private source. They supply numeric-width discipline, not a
 complete measured native allocation/funding or runtime-support claim.
+
+An additive accumulator execution leaf provides tail-recursive drive functions
+and resume variants equated to the frozen codec drivers. Cursor equality is
+unconditional; the helper count equals initial accumulator plus frozen count
+under `acl2-numberp` of that accumulator. The actual resume variants initialize
+it to zero and return identical cursor/count. The execution roots are certified at matching private source. Tail recursion is a source property; native stack use and cost
+improvements require matched runtime evidence. The original codec and external
+oracle source scope remain unchanged.

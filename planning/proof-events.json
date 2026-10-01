@@ -18233,6 +18233,16 @@
           "name": "fn-stcp-dec-drive-preserves-bounds",
           "pending_subject": true,
           "note": "Shallow numeric/control preservation component certified at matching private closure; actual host caller remains open."
+        },
+        {
+          "name": "fn-stcp-enc-drive-acc-is-drive",
+          "pending_subject": true,
+          "note": "Additive accumulator execution equivalence component; later execution roots pending certification and actual host caller remains open. Counter equivalence requires acl2-numberp initial accumulator; cursor equivalence is unconditional."
+        },
+        {
+          "name": "fn-stcp-dec-drive-acc-is-drive",
+          "pending_subject": true,
+          "note": "Additive accumulator execution equivalence component; later execution roots pending certification and actual host caller remains open. Counter equivalence requires acl2-numberp initial accumulator; cursor equivalence is unconditional."
         }
       ]
     }

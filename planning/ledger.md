@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2304 |
-| Certification roots in the Makefile | 2106 |
-| Books inside the root closure | 2248 |
-| `defthm` and `defthmd` events | 33080 |
-| `defun` events | 21134 |
+| Books read | 2306 |
+| Certification roots in the Makefile | 2108 |
+| Books inside the root closure | 2250 |
+| `defthm` and `defthmd` events | 33088 |
+| `defun` events | 21138 |
 | Functions with verified guards | 3742 |
 | Functions declared `:verify-guards nil` and never verified | 2592 |
-| Functions left at the default with an explicit guard | 11779 |
+| Functions left at the default with an explicit guard | 11783 |
 | Functions left at the default with no guard | 3021 |
-| `assert-event` checks | 24653 |
+| `assert-event` checks | 24657 |
 | `must-fail` checks | 2519 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 168 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 382 |
 | Enabled-projection warnings | 79 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2950 |
+| Include-hygiene warnings | 2952 |
 | Host-names warnings | 2569 |
 | Hand-written-record warnings | 19 |
 
@@ -1407,6 +1407,7 @@ that `make certify` requests.
 | `books/substrate-commit-profile-bounds.lisp` | root | 8 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/substrate-commit-profile-codec.lisp` | root | 4 | 26 | 0/0/26/0 | 0 | 0 | 0 |
 | `books/substrate-commit-profile-refinement.lisp` | root | 27 | 2 | 0/0/0/2 | 0 | 0 | 1 |
+| `books/substrate-commit-profile-resume.lisp` | root | 6 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/substrate-committed-row.lisp` | root | 7 | 8 | 0/0/8/0 | 0 | 0 | 0 |
 | `books/substrate-committed-transcript.lisp` | root | 20 | 16 | 0/0/16/0 | 0 | 0 | 1 |
 | `books/tcpcl-delivery-invariants.lisp` | root | 20 | 4 | 0/4/0/0 | 0 | 0 | 0 |
@@ -2348,6 +2349,7 @@ that `make certify` requests.
 | `tests/acl2/substrate-commit-profile-bounds-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |
 | `tests/acl2/substrate-commit-profile-codec-tests.lisp` | root | 0 | 3 | 0/0/3/0 | 10 | 0 | 0 |
 | `tests/acl2/substrate-commit-profile-refinement-tests.lisp` | root | 2 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `tests/acl2/substrate-commit-profile-resume-tests.lisp` | root | 2 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `tests/acl2/substrate-committed-row-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 15 | 0 | 0 |
 | `tests/acl2/substrate-committed-transcript-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 23 | 0 | 0 |
 | `tests/acl2/tcpcl-delivery-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 32 | 5 | 0 |

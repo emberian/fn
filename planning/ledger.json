@@ -30,6 +30,8 @@
     "tests/acl2/substrate-commit-profile-refinement-tests",
     "books/substrate-commit-profile-bounds",
     "tests/acl2/substrate-commit-profile-bounds-tests",
+    "books/substrate-commit-profile-resume",
+    "tests/acl2/substrate-commit-profile-resume-tests",
     "host/history-owner-completion-host",
     "books/history-semantic-writer",
     "tests/acl2/history-semantic-writer-tests",
@@ -2110,26 +2112,26 @@
     "tests/acl2/substrate-commit-codec-gap-tests"
   ],
   "totals": {
-    "books": 2304,
-    "books_in_root_closure": 2248,
-    "roots": 2106,
-    "theorems": 33080,
-    "functions": 21134,
-    "assert_events": 24653,
+    "books": 2306,
+    "books_in_root_closure": 2250,
+    "roots": 2108,
+    "theorems": 33088,
+    "functions": 21138,
+    "assert_events": 24657,
     "must_fails": 2519,
     "prover_refusals": 0,
     "encapsulates": 168,
     "guards": {
       "verified": 3742,
       "declared-off": 2592,
-      "default-guarded": 11779,
+      "default-guarded": 11783,
       "default-unguarded": 3021
     },
     "suspect_theorems": 1306,
     "export_hygiene_warnings": 382,
     "enabled_projection_warnings": 79,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2950,
+    "include_hygiene_warnings": 2952,
     "host_names_warnings": 2569,
     "hand_written_record_warnings": 19
   },
@@ -40970,6 +40972,34 @@
       "read_error": null
     },
     {
+      "book": "books/substrate-commit-profile-resume.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 6,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 4,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "substrate-commit-profile-codec"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/substrate-committed-row.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -67067,6 +67097,32 @@
       "encapsulates": 0,
       "includes": [
         "../../books/substrate-commit-profile-refinement"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/substrate-commit-profile-resume-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 4,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 3,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/substrate-commit-profile-resume"
       ],
       "system_includes": [],
       "suspects": [],
@@ -93496,6 +93552,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/substrate-commit-profile-resume.lisp",
+        "line": 4,
+        "include": "substrate-commit-profile-codec",
+        "included": "books/substrate-commit-profile-codec.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/tcpcl-delivery-invariants.lisp",
         "line": 4,
         "include": "tcpcl-delivery",
@@ -104511,6 +104574,13 @@
         "line": 2,
         "include": "../../books/substrate-commit-profile-refinement",
         "included": "books/substrate-commit-profile-refinement.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/substrate-commit-profile-resume-tests.lisp",
+        "line": 2,
+        "include": "../../books/substrate-commit-profile-resume",
+        "included": "books/substrate-commit-profile-resume.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
