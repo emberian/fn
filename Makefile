@@ -132,6 +132,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/consumer-account-input \
 	books/consumer-account-adoption-driver \
 	books/consumer-account-adoption-state \
+	books/consumer-account-durable-outcome-state \
 	books/consumer-account-binding-codec \
 	books/consumer-account-binding-codec-invariants \
 	books/consumer-account-config-marker \

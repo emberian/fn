@@ -1334,3 +1334,16 @@ preserves committed authority revision, watermark, namespace and adopted rows,
 so the captured account publication sidecar is kept literally; seven CP child
 size carries advance separately. Only the actual typed C commit changes
 committed account/config authority.
+
+The private E account durable collector is an internal successor at the actual
+`fn-owner-history-complete-current` boundary: after file completion, backing
+publication and installed Store, before the durable return. It consumes the
+retained selected holder and full7 once, records an intent before advancing the
+job, and retains the completed request/job/action output for the same typed
+turn promoter. The selected holder and old/new aliases remain until genuine
+pool promotion and last-alias cleanup. A native durable word or status readout
+cannot produce this outcome. Repeated E completion skips the collector;
+interrupted or mismatched account collection requires recovery. The new host
+collector and hook are source assembly only, pending the exact typed-turn host
+include and composed source/BODY qualification. Typed C needs its distinct real
+C completion producer and cannot use this E receipt.
