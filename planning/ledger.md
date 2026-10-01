@@ -10,14 +10,14 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2685 |
+| Books read | 2686 |
 | Certification roots in the Makefile | 2338 |
-| Books inside the root closure | 2593 |
+| Books inside the root closure | 2594 |
 | `defthm` and `defthmd` events | 35064 |
-| `defun` events | 22402 |
+| `defun` events | 22407 |
 | Functions with verified guards | 3826 |
 | Functions declared `:verify-guards nil` and never verified | 2777 |
-| Functions left at the default with an explicit guard | 12595 |
+| Functions left at the default with an explicit guard | 12600 |
 | Functions left at the default with no guard | 3204 |
 | `assert-event` checks | 25149 |
 | `must-fail` checks | 2531 |
@@ -28,7 +28,7 @@ stale. Counts describe artifacts, not coverage; see
 | Enabled-projection warnings | 79 |
 | Teeth-form warnings | 275 |
 | Include-hygiene warnings | 3362 |
-| Host-names warnings | 3118 |
+| Host-names warnings | 3114 |
 | Hand-written-record warnings | 19 |
 
 ## Lints
@@ -536,6 +536,7 @@ that `make certify` requests.
 | `books/consumer-configured-control-source.lisp` | - | 0 | 3 | 0/3/0/0 | 0 | 0 | 0 |
 | `books/consumer-control-row-cursor.lisp` | closure | 0 | 6 | 0/5/1/0 | 0 | 0 | 0 |
 | `books/consumer-entry-completion.lisp` | closure | 1 | 12 | 0/0/12/0 | 0 | 0 | 0 |
+| `books/consumer-entry-preparation.lisp` | closure | 0 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/consumer-event-charge.lisp` | closure | 3 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/consumer-event-index-read.lisp` | closure | 0 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/consumer-event-index.lisp` | root | 29 | 15 | 4/1/10/0 | 0 | 0 | 0 |
