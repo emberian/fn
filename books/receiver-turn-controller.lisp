@@ -536,6 +536,11 @@
        (equal (mv-nth 2 (fn-rxt-consumed-range start end consumed)) end)))
  :hints (("Goal" :in-theory (enable fn-rxt-consumed-range)))
  :rule-classes nil)
+(encapsulate ()
+ (local (defthm fn-rxt-begin-nth-update-local
+  (implies (and (natp i) (natp j))
+   (equal (nth i (update-nth j v x)) (if (equal i j) v (nth i x))))
+  :hints (("Goal" :in-theory (enable nth update-nth)))))
 (defthm fn-owner-rx-turn-begin-uses-actual-pool-nonce
  (implies
   (equal (mv-nth 0 (fn-owner-rx-turn-begin receiver-token demand fn-rx-provider
@@ -551,39 +556,73 @@
           (fn-rxt-source-make
            (fn-rxt-ticket-make (fn-prl-nth 2 (fn-owner-page-read-ledger fn-page-read-pool)))
            receiver-token (fn-rxp-instance fn-rx-provider)))))
- :hints (("Goal" :in-theory (enable fn-owner-rx-turn-begin
-                   fn-owner-rx-turn-source fn-rxt-ticket-make
-                   fn-prs-issue fn-prl-nth)))
- :rule-classes nil)
-(defthm fn-owner-rx-turn-busy-preserves-pool-and-controller
- (implies
-  (equal (mv-nth 0 (fn-owner-rx-turn-begin receiver-token demand fn-rx-provider
-                                        fn-receiver-turn fn-page-read-pool)) :receiver-turn-busy)
-  (and (equal (mv-nth 1 (fn-owner-rx-turn-begin receiver-token demand fn-rx-provider
-                                        fn-receiver-turn fn-page-read-pool)) fn-receiver-turn)
-       (equal (mv-nth 2 (fn-owner-rx-turn-begin receiver-token demand fn-rx-provider
-                                        fn-receiver-turn fn-page-read-pool)) fn-page-read-pool)))
- :hints (("Goal" :in-theory (enable fn-owner-rx-turn-begin fn-prs-issue)))
- :rule-classes nil)
-(defthm fn-owner-rx-turn-begin-spends-pool-identity-once
- (implies
-  (equal (mv-nth 0 (fn-owner-rx-turn-begin receiver-token demand fn-rx-provider
-                                        fn-receiver-turn fn-page-read-pool)) :admitted)
-  (equal (fn-prl-nth 2
-          (fn-owner-page-read-ledger
-           (mv-nth 2 (fn-owner-rx-turn-begin receiver-token demand fn-rx-provider
-                                           fn-receiver-turn fn-page-read-pool))))
-         (+ 1 (fn-prl-nth 2 (fn-owner-page-read-ledger fn-page-read-pool)))))
- :hints (("Goal" :in-theory (enable fn-owner-rx-turn-begin fn-prs-issue
-                  fn-owner-page-read-ledger fn-owner-page-read-keep-ledger
-                  fn-prl-build fn-prl-nth)))
- :rule-classes nil)
-(defthm fn-owner-rx-turn-begin-preserves-installation-receipt
- (equal (fn-rxt-receipt
-         (mv-nth 1 (fn-owner-rx-turn-begin receiver-token demand fn-rx-provider
-                                         fn-receiver-turn fn-page-read-pool)))
-        (fn-rxt-receipt fn-receiver-turn))
- :hints (("Goal" :in-theory (enable fn-owner-rx-turn-begin fn-prs-issue))))
+ :hints (("Goal" :in-theory (e/d
+ (fn-owner-rx-turn-begin fn-owner-rx-turn-source fn-rxt-ticket-make fn-rxt-source-make fn-prl-nth)
+ (fn-prs-issue fn-owner-page-read-counter-begin fn-owner-page-read-counter-finish
+  fn-rxp-currentp fn-rxt-installed-anchor-p fn-rxt-issued-demandp
+  fn-owner-page-read-ledger))))
+ :rule-classes nil))
+
+(encapsulate ()
+ (local (defthm fn-rxt-begin-proof-nth-update-local
+  (implies (and (natp i) (natp j))
+   (equal (nth i (update-nth j v x)) (if (equal i j) v (nth i x))))
+  :hints (("Goal" :in-theory (enable nth update-nth)))))
+ (local (defthm fn-rxt-prs-issue-word-local
+  (not (equal (car (fn-prs-issue B U R C next limit demand)) :receiver-turn-busy))
+  :hints (("Goal" :in-theory (e/d (fn-prs-issue) (fn-prs-fundedp fn-prs-plus fn-prs-vectorp))))))
+ (defthm fn-owner-rx-turn-busy-preserves-pool-and-controller
+  (implies (equal (mv-nth 0 (fn-owner-rx-turn-begin receiver-token demand fn-rx-provider fn-receiver-turn fn-page-read-pool)) :receiver-turn-busy)
+   (and (equal (mv-nth 1 (fn-owner-rx-turn-begin receiver-token demand fn-rx-provider fn-receiver-turn fn-page-read-pool)) fn-receiver-turn)
+        (equal (mv-nth 2 (fn-owner-rx-turn-begin receiver-token demand fn-rx-provider fn-receiver-turn fn-page-read-pool)) fn-page-read-pool)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-owner-rx-turn-begin)
+   (fn-prs-issue fn-rxp-currentp fn-rxt-installed-anchor-p fn-rxt-issued-demandp
+    fn-owner-page-read-counter-begin fn-owner-page-read-counter-finish fn-owner-page-read-ledger fn-prl-nth update-nth nth)))))
+ (defthm fn-owner-rx-turn-begin-preserves-installation-receipt
+  (equal (fn-rxt-receipt (mv-nth 1 (fn-owner-rx-turn-begin receiver-token demand fn-rx-provider fn-receiver-turn fn-page-read-pool)))
+         (fn-rxt-receipt fn-receiver-turn))
+  :hints (("Goal" :in-theory (e/d (fn-owner-rx-turn-begin)
+   (fn-prs-issue fn-rxp-currentp fn-rxt-installed-anchor-p fn-rxt-issued-demandp
+    fn-owner-page-read-counter-begin fn-owner-page-read-counter-finish fn-owner-page-read-ledger fn-prl-nth update-nth nth))))))
+
+
+(encapsulate ()
+ (local (defthm fn-rxt-identity-nth-update-local
+  (implies (and (natp i) (natp j))
+   (equal (nth i (update-nth j v x)) (if (equal i j) v (nth i x))))
+  :hints (("Goal" :in-theory (enable nth update-nth)))))
+ (local (defthm fn-rxt-identity-prs-next-local
+  (implies (eq (car (fn-prs-issue B U R C next limit demand)) :admitted)
+   (equal (mv-nth 1 (fn-prs-issue B U R C next limit demand)) (+ 1 next)))
+  :hints (("Goal" :in-theory (e/d (fn-prs-issue) (fn-prs-fundedp fn-prs-plus fn-prs-vectorp))))))
+ (local (defthm fn-rxt-identity-finish-ledger-local
+  (equal (fn-owner-page-read-ledger (mv-nth 1 (fn-owner-page-read-counter-finish receipt fn-page-read-pool)))
+         (fn-owner-page-read-ledger fn-page-read-pool))
+  :hints (("Goal" :in-theory (e/d
+   (fn-owner-page-read-counter-finish fn-owner-page-read-ledger)
+   (fn-prb-fixed-widthp fn-prb-counter-receipt-matchesp fn-prb-data-revision nth update-nth))))))
+ (local (defthm fn-rxt-identity-begin-next-local
+  (implies (eq (car (fn-owner-page-read-counter-begin next nonce kind continuation fn-page-read-pool)) :counter-publishing)
+   (equal (fn-prl-nth 2 (fn-owner-page-read-ledger (mv-nth 2 (fn-owner-page-read-counter-begin next nonce kind continuation fn-page-read-pool))))
+          (fn-prl-nth 2 next)))
+  :hints (("Goal" :in-theory (e/d
+   (fn-owner-page-read-counter-begin fn-owner-page-read-ledger fn-prb-data6 fn-prb-keep-current-bindings fn-prl-build fn-prl-nth)
+   (fn-prb-data-revision nth update-nth))))))
+ (defthm fn-owner-rx-turn-begin-spends-pool-identity-once
+  (implies (equal (mv-nth 0 (fn-owner-rx-turn-begin receiver-token demand fn-rx-provider fn-receiver-turn fn-page-read-pool)) :admitted)
+   (equal (fn-prl-nth 2 (fn-owner-page-read-ledger (mv-nth 2 (fn-owner-rx-turn-begin receiver-token demand fn-rx-provider fn-receiver-turn fn-page-read-pool))))
+          (+ 1 (fn-prl-nth 2 (fn-owner-page-read-ledger fn-page-read-pool)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d
+   (fn-owner-rx-turn-begin fn-prl-build fn-prl-nth)
+   (fn-prs-issue fn-rxp-currentp fn-rxt-installed-anchor-p fn-rxt-issued-demandp
+    fn-owner-page-read-counter-begin fn-owner-page-read-counter-finish
+    fn-owner-page-read-ledger fn-prb-keep-current-bindings nth update-nth))))))
+
+
+
+
 (defthm fn-owner-rx-turn-fill-range-refines-provider-range-by-definition
  (implies
   (fn-rxt-live-claim-p ticket fn-rx-provider fn-receiver-turn fn-page-read-pool)
