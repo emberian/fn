@@ -2370,19 +2370,19 @@
   ],
   "totals": {
     "books": 2731,
-    "books_in_root_closure": 2642,
+    "books_in_root_closure": 2643,
     "roots": 2365,
-    "theorems": 36259,
-    "functions": 23097,
+    "theorems": 36267,
+    "functions": 23108,
     "assert_events": 25506,
     "must_fails": 2611,
     "prover_refusals": 0,
     "encapsulates": 210,
     "guards": {
       "verified": 3847,
-      "declared-off": 2977,
-      "default-guarded": 12835,
-      "default-unguarded": 3438
+      "declared-off": 2982,
+      "default-guarded": 12836,
+      "default-unguarded": 3443
     },
     "suspect_theorems": 1348,
     "export_hygiene_warnings": 400,
@@ -17905,7 +17905,7 @@
       "book": "books/def-representation-lib.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 15,
+      "theorems": 16,
       "functions": 5,
       "guards": {
         "verified": 0,
@@ -17921,41 +17921,11 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "def-representation-paged",
         "proto/adt-lib"
       ],
       "system_includes": [],
       "suspects": [],
-      "read_error": null
-    },
-    {
-      "book": "books/def-representation-paged-tree.lisp",
-      "in_root_closure": false,
-      "is_root": false,
-      "theorems": 18,
-      "functions": 10,
-      "guards": {
-        "verified": 0,
-        "declared-off": 9,
-        "default-guarded": 0,
-        "default-unguarded": 1
-      },
-      "verify_guards_events": 0,
-      "assert_events": 0,
-      "must_fails": 0,
-      "prover_refusals": 0,
-      "defconsts": 0,
-      "defmacros": 0,
-      "encapsulates": 1,
-      "includes": [
-        "def-representation-paged",
-        "def-representation-tree"
-      ],
-      "system_includes": [
-        "arithmetic/top"
-      ],
-      "suspects": [
-        "adt-h-puts-of-atom"
-      ],
       "read_error": null
     },
     {
@@ -17991,16 +17961,16 @@
       "read_error": null
     },
     {
-      "book": "books/def-representation-tree.lisp",
+      "book": "books/def-representation-tree-walk.lisp",
       "in_root_closure": true,
       "is_root": false,
-      "theorems": 57,
-      "functions": 18,
+      "theorems": 67,
+      "functions": 26,
       "guards": {
         "verified": 1,
-        "declared-off": 10,
+        "declared-off": 17,
         "default-guarded": 4,
-        "default-unguarded": 3
+        "default-unguarded": 4
       },
       "verify_guards_events": 1,
       "assert_events": 0,
@@ -18008,7 +17978,7 @@
       "prover_refusals": 0,
       "defconsts": 0,
       "defmacros": 0,
-      "encapsulates": 2,
+      "encapsulates": 3,
       "includes": [
         "def-representation-lib",
         "store-checkpoint-buffer"
@@ -18017,9 +17987,39 @@
         "arithmetic/top"
       ],
       "suspects": [
+        "adt-h-puts-of-atom",
         "adt-pool-cputs-of-atom",
         "adt-pool-puts-of-atom"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/def-representation-tree.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 12,
+      "functions": 8,
+      "guards": {
+        "verified": 0,
+        "declared-off": 7,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "def-representation-paged",
+        "def-representation-tree-walk"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -18027,12 +18027,12 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 28,
+      "functions": 33,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 28
+        "default-unguarded": 33
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -61505,7 +61505,7 @@
       "book": "tests/acl2/def-representation-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 9,
+      "theorems": 12,
       "functions": 25,
       "guards": {
         "verified": 0,
@@ -80608,8 +80608,8 @@
   "suspects": [
     {
       "theorem": "adt-h-puts-of-atom",
-      "book": "books/def-representation-paged-tree.lisp",
-      "line": 64,
+      "book": "books/def-representation-tree-walk.lisp",
+      "line": 330,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of adt-h-puts and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of adt-h-puts and the conclusion is that branch's value"
@@ -80626,8 +80626,8 @@
     },
     {
       "theorem": "adt-pool-cputs-of-atom",
-      "book": "books/def-representation-tree.lisp",
-      "line": 264,
+      "book": "books/def-representation-tree-walk.lisp",
+      "line": 268,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of adt-pool-cputs and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of adt-pool-cputs and the conclusion is that branch's value"
@@ -80635,8 +80635,8 @@
     },
     {
       "theorem": "adt-pool-puts-of-atom",
-      "book": "books/def-representation-tree.lisp",
-      "line": 155,
+      "book": "books/def-representation-tree-walk.lisp",
+      "line": 159,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of adt-pool-puts and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of adt-pool-puts and the conclusion is that branch's value"
@@ -94016,13 +94016,13 @@
       {
         "theorem": "drt-pay-recognizer-is-arena-recognizer",
         "book": "tests/acl2/def-representation-tests.lisp",
-        "line": 231,
+        "line": 235,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "drt-pay-count-is-arena-count",
         "book": "tests/acl2/def-representation-tests.lisp",
-        "line": 236,
+        "line": 240,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
