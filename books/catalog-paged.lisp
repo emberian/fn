@@ -127,11 +127,11 @@
 
 (defthm fn-scc-octet-listp-is-adt-octetsp
   (equal (fn-scc-octet-listp x) (adt-octetsp x))
-  :hints (("Goal" :in-theory (enable adt-octetsp fn-scc-octet-listp fn-scc-octetp))))
+  :hints (("Goal" :in-theory (enable adt-octetsp fn-scc-octet-listp fn-scc-octetp unsigned-byte-p))))
 
 (defthm fn-cbor-octet-listp-is-adt-octetsp
   (equal (fn-cbor-octet-listp x) (adt-octetsp x))
-  :hints (("Goal" :in-theory (enable adt-octetsp fn-cbor-octet-listp fn-cbor-octetp))))
+  :hints (("Goal" :in-theory (enable adt-octetsp fn-cbor-octet-listp fn-cbor-octetp unsigned-byte-p))))
 
 ; The Message-ID's octets (fn-record-string-octets of a Message-ID string
 ; is one; clamped so that any row's column is typed).
@@ -201,7 +201,7 @@
 (local
  (defthm fn-cp-smallp-is-u64
    (implies (fn-cp-smallp v) (unsigned-byte-p 64 v))
-   :hints (("Goal" :in-theory (enable fn-cp-smallp)))))
+   :hints (("Goal" :in-theory (enable fn-cp-smallp unsigned-byte-p)))))
 
 (local
  (defthm fn-cp-msgid-octets-are-octets
@@ -248,8 +248,9 @@
             (equal (fn-record-octets-string (fn-cp-msgid-octets h)) (fn-held-msgid h)))
    :hints (("Goal" :in-theory (e/d (fn-cp-msgid-octets fn-record-octet-stringp)
                                    (fn-record-string-octets fn-record-octets-string
-                                    fn-record-string-round-trip))
-            :use ((:instance fn-record-string-round-trip (text (fn-held-msgid h))))))))
+                                    fn-record-string-round-trip fn-cp-msgidp-octet-string))
+            :use ((:instance fn-record-string-round-trip (text (fn-held-msgid h)))
+                  (:instance fn-cp-msgidp-octet-string (x (fn-held-msgid h))))))))
 
 (defthm fn-cp-row-held-of-row-of
   (implies (and (fn-cat-rowp h) (fn-sccb-treep (fn-cp-tree-of h)))
@@ -294,7 +295,12 @@
   :hints (("Goal" :in-theory (enable fn-cat$pp))))
 
 ; The old foundation's cells, as its recognizer has them (the catalog's
-; fn-ctg-cells-are-naturals, local there).
+; fn-ctg-cells-are-naturals and fn-ctg-rowsp-true-listp, local there).
+(local
+ (defthm fn-cp-rowsp-true-listp
+   (implies (fn-cat$c-rowsp x) (true-listp x))
+   :hints (("Goal" :in-theory (enable fn-cat$c-rowsp)))))
+
 (defthm fn-cp-cp-fields
   (implies (fn-cat$cp c)
            (and (true-listp c) (equal (len c) 11)
@@ -314,7 +320,7 @@
   (implies (and (fn-crowp a) (natp i) (< i (len a)))
            (adt-octetsp (nth 11 (nth i a))))
   :hints (("Goal" :use fn-cp-crow-row-rec-p
-           :in-theory (e/d (adt-rec-p adt-val-okp) (fn-cp-crow-row-rec-p)))))
+           :in-theory (e/d (adt-rec-p adt-val-okp nth) (fn-cp-crow-row-rec-p fn-crowp)))))
 
 (defthm fn-cp-crowp-of-set-column
   (implies (and (fn-crowp a) (natp i) (< i (len a)) (natp j) (< j 12)
