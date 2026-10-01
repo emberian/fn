@@ -4480,10 +4480,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-prwo-owner-post-record-is-within-r"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-bpi-staged-record-is-narrow"
         },
         {
@@ -18742,6 +18738,26 @@
         {
           "kind": "theorem",
           "name": "fn-saw-held-read-prefix-stops-the-pipeline"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1224",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-tsd-bp-gate-is-the-drain-decision",
+          "note": "KEYSTONE. Host: host/owner-host.lisp fn-owner-bp-transit-submit calls fn-own-bp-transit-submit-result; host/native/owner.lisp fnn-owner-complete-bp-transit-submission then decides through fn-owner-transit-decide (fn-pta-decide). Teeth: tests/acl2/transit-same-decision-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tsd-nntp-and-bp-transit-decide-alike",
+          "note": "KEYSTONE. Host: fnn-owner-drain-one (NNTP) and fnn-owner-complete-bp-transit-submission (BP) both call fn-owner-transit-decide. Teeth: tests/acl2/transit-same-decision-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tsd-bp-transit-authority-is-ungoverned",
+          "note": "Where the carriers differ: the BP submission's authority verdict is over no configuration. Teeth: tests/acl2/transit-same-decision-tests.lisp (positive under a governing live configuration; corrupted control pin)."
         }
       ]
     }

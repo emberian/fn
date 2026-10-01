@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2711 |
-| Certification roots in the Makefile | 2307 |
-| Books inside the root closure | 2576 |
-| `defthm` and `defthmd` events | 35465 |
-| `defun` events | 22678 |
+| Books read | 2713 |
+| Certification roots in the Makefile | 2309 |
+| Books inside the root closure | 2578 |
+| `defthm` and `defthmd` events | 35487 |
+| `defun` events | 22683 |
 | Functions with verified guards | 3843 |
-| Functions declared `:verify-guards nil` and never verified | 2864 |
+| Functions declared `:verify-guards nil` and never verified | 2865 |
 | Functions left at the default with an explicit guard | 12682 |
-| Functions left at the default with no guard | 3289 |
-| `assert-event` checks | 25325 |
-| `must-fail` checks | 2559 |
+| Functions left at the default with no guard | 3293 |
+| `assert-event` checks | 25363 |
+| `must-fail` checks | 2561 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 193 |
 | Theorems flagged SUSPECT by shape | 1345 |
 | Export-hygiene warnings | 392 |
 | Enabled-projection warnings | 80 |
-| Teeth-form warnings | 279 |
-| Include-hygiene warnings | 3375 |
+| Teeth-form warnings | 280 |
+| Include-hygiene warnings | 3379 |
 | Host-names warnings | 3139 |
 | Hand-written-record warnings | 19 |
 
@@ -1704,6 +1704,7 @@ that `make certify` requests.
 | `books/transfer.lisp` | root | 14 | 67 | 58/0/9/0 | 0 | 0 | 0 |
 | `books/transit-bound.lisp` | root | 26 | 1 | 0/0/1/0 | 0 | 0 | 2 |
 | `books/transit-header-limits.lisp` | root | 8 | 1 | 0/0/1/0 | 0 | 0 | 1 |
+| `books/transit-same-decision.lisp` | root | 22 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/utf8.lisp` | root | 5 | 21 | 21/0/0/0 | 0 | 0 | 0 |
 | `books/view-delta-concrete.lisp` | closure | 18 | 7 | 2/0/5/0 | 0 | 0 | 1 |
 | `books/view-delta-cursor-refinement.lisp` | root | 18 | 7 | 0/0/7/0 | 0 | 0 | 1 |
@@ -2783,6 +2784,7 @@ that `make certify` requests.
 | `tests/acl2/transfer-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 60 | 0 | 0 |
 | `tests/acl2/transit-header-limits-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 37 | 8 | 0 |
 | `tests/acl2/transit-hygiene-tests.lisp` | root | 0 | 8 | 0/0/0/8 | 87 | 3 | 0 |
+| `tests/acl2/transit-same-decision-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 38 | 2 | 0 |
 | `tests/acl2/view-delta-cursor-tests.lisp` | root | 0 | 3 | 0/0/1/2 | 9 | 0 | 0 |
 | `tests/acl2/visibility-join-tests.lisp` | root | 0 | 6 | 0/3/0/3 | 23 | 5 | 0 |
 | `tests/acl2/web-config-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 8 | 1 | 0 |

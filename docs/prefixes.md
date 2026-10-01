@@ -435,6 +435,7 @@ anything a book does not already decide.
 | `fn-stps-` | substrate-completed-source | Readonly actual completed-row and original prepare-source projection; no allocator grant. |
 | `fn-pcr-` | `productive-read`, `productive-read-chain`, `productive-read-message-id`, `tests/acl2/productive-read-*-tests` | Discovery composition of the host-called funded READ with actual pinned ARTICLE dispatch and wire effects; numbered reads update the cursor, Message-ID reads preserve it. Source admission and partial teeth only; qualification and remaining variants stay open (W6b). |
 | `fn-prwo-`, `prwot-` | `post-record-width-owner`, `tests/acl2/post-record-width-owner-tests` | PRF-123's record-width composition over the owner's two host calls (PKT-250): boundary `fn-pak-post-admission`, then the catalog prepare of the interned article record |
+| `fn-tsd-`, `tsdt-` | `transit-same-decision`, `tests/acl2/transit-same-decision-tests` | K6 (PKT-202): one transit decision for the NNTP and BP carriers, the owner's drain decision `fn-tsd-drain-decision` and where the carriers differ |
 | `fn-shd-` | `served-head-bridge`, `tests/acl2/served-head-bridge-tests` | HEAD retrieval composition through the actual served byte fold (PKT-772) |
 
 | `fn-saw-` | `served-auth-wire-bridge`, `tests/acl2/served-auth-wire-bridge-tests` | Served command framing and authentication hold composition (PKT-390) |

@@ -837,6 +837,8 @@
     "tests/acl2/record-width-producers-tests",
     "books/post-record-width-owner",
     "tests/acl2/post-record-width-owner-tests",
+    "books/transit-same-decision",
+    "tests/acl2/transit-same-decision-tests",
     "tests/acl2/profile-monotonicity-tests",
     "books/store-budget-article",
     "tests/acl2/store-budget-article-tests",
@@ -2311,26 +2313,26 @@
     "tests/acl2/substrate-commit-codec-gap-tests"
   ],
   "totals": {
-    "books": 2711,
-    "books_in_root_closure": 2576,
-    "roots": 2307,
-    "theorems": 35465,
-    "functions": 22678,
-    "assert_events": 25325,
-    "must_fails": 2559,
+    "books": 2713,
+    "books_in_root_closure": 2578,
+    "roots": 2309,
+    "theorems": 35487,
+    "functions": 22683,
+    "assert_events": 25363,
+    "must_fails": 2561,
     "prover_refusals": 0,
     "encapsulates": 193,
     "guards": {
       "verified": 3843,
-      "declared-off": 2864,
+      "declared-off": 2865,
       "default-guarded": 12682,
-      "default-unguarded": 3289
+      "default-unguarded": 3293
     },
     "suspect_theorems": 1345,
     "export_hygiene_warnings": 392,
     "enabled_projection_warnings": 80,
-    "teeth_form_warnings": 279,
-    "include_hygiene_warnings": 3375,
+    "teeth_form_warnings": 280,
+    "include_hygiene_warnings": 3379,
     "host_names_warnings": 3139,
     "hand_written_record_warnings": 19
   },
@@ -49484,6 +49486,34 @@
       "read_error": null
     },
     {
+      "book": "books/transit-same-decision.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 22,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "owner-config",
+        "peer-transit-authority",
+        "transit-header-limits"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/utf8.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -79162,6 +79192,35 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/transit-same-decision-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 4
+      },
+      "verify_guards_events": 0,
+      "assert_events": 38,
+      "must_fails": 2,
+      "prover_refusals": 0,
+      "defconsts": 10,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/config-records",
+        "../../books/transit-same-decision",
+        "must-fail-checked",
+        "transit-header-limits-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/view-delta-cursor-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -93518,12 +93577,13 @@
           "books/served-span.lisp",
           "books/store-budget-stored-post.lisp",
           "books/transit-header-limits.lisp",
+          "books/transit-same-decision.lisp",
           "tests/acl2/catalog-entries-tests.lisp",
           "tests/acl2/history-columns-store-tests.lisp",
           "tests/acl2/owner-prepare-served-events-tests.lisp",
           "tests/acl2/owner-reclaim-ready-tests.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 104 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 105 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-own-feeds",
@@ -93737,9 +93797,10 @@
           "books/store-prepare-correspondence.lisp",
           "books/store-reclaim-holders.lisp",
           "books/transit-header-limits.lisp",
+          "books/transit-same-decision.lisp",
           "tests/acl2/catalog-commit-tests.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 66 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 67 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-own-view",
@@ -96121,6 +96182,12 @@
         "check": "thlt-ctl-refuse-without-past-the-limits",
         "book": "tests/acl2/transit-header-limits-tests.lisp",
         "line": 209,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "tsdt-gate-without-submitted",
+        "book": "tests/acl2/transit-same-decision-tests.lisp",
+        "line": 54,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -107342,6 +107409,13 @@
         "line": 32,
         "include": "article-header-limits",
         "included": "books/article-header-limits.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/transit-same-decision.lisp",
+        "line": 45,
+        "include": "transit-header-limits",
+        "included": "books/transit-header-limits.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -119681,6 +119755,27 @@
       {
         "book": "tests/acl2/transit-hygiene-tests.lisp",
         "line": 10,
+        "include": "must-fail-checked",
+        "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/transit-same-decision-tests.lisp",
+        "line": 8,
+        "include": "../../books/transit-same-decision",
+        "included": "books/transit-same-decision.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/transit-same-decision-tests.lisp",
+        "line": 10,
+        "include": "transit-header-limits-tests",
+        "included": "tests/acl2/transit-header-limits-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/transit-same-decision-tests.lisp",
+        "line": 11,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
