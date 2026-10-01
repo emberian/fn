@@ -19,6 +19,37 @@
  (fn-pfo-eof :initially nil)
  (fn-pfo-result :initially nil)
  :inline t)
+(defconst *fn-pfo-workspace-size* (nth 7 (fn-recovery-profile-envelope)))
+; Entry uses the actual saved image target and retained ATS receipt. Native
+; passes only the original borrowed open path; source is selected core-side.
+; SAME image buffer identity is the registered caller boundary, not capacity.
+(defun fn-owner-page-file-open-begin
+ (path slot turn fn-page-file-open fn-recovery-profile-buffer
+       fn-page-read-pool fn-allocation-turn-slots state)
+ (declare (xargs :stobjs (fn-page-file-open fn-recovery-profile-buffer
+                         fn-page-read-pool fn-allocation-turn-slots state)
+                  :guard t :verify-guards nil))
+ (if (not (and (eq (fn-pfo-phase fn-page-file-open) :uninstalled)
+                (eq (fn-prp-mode fn-page-read-pool) :served)
+                (stringp path) (natp slot) (natp turn)
+                (equal (fn-rpf-bytes-length fn-recovery-profile-buffer)
+                       *fn-pfo-workspace-size*)
+                (fn-ats-role-bodyp slot turn :recovery-file-issue
+                                  fn-allocation-turn-slots fn-page-read-pool)))
+  (mv :recovery-file-binding-unavailable fn-page-file-open fn-allocation-turn-slots)
+  (mv-let (word source)
+   (fn-owner-runtime-operation-source :recovery-file-issue fn-page-read-pool state)
+   (if (not (eq word :runtime-operation-available))
+    (mv word fn-page-file-open fn-allocation-turn-slots)
+    (let* ((intent (list :file-initializing path source slot turn))
+           (fn-page-file-open (update-fn-pfo-pending intent fn-page-file-open))
+           (fn-page-file-open (update-fn-pfo-phase :initializing fn-page-file-open))
+           (fn-page-file-open (update-fn-pfo-path path fn-page-file-open))
+           (fn-page-file-open (update-fn-pfo-source source fn-page-file-open))
+           (fn-page-file-open (update-fn-pfo-slot slot fn-page-file-open))
+           (fn-page-file-open (update-fn-pfo-turn turn fn-page-file-open))
+           (fn-page-file-open (update-fn-pfo-phase :ready fn-page-file-open)))
+     (mv :recovery-file-ready fn-page-file-open fn-allocation-turn-slots))))))
 ; No scan: fresh newNEXT identifies an incarnation in the genuine freshpool
 ; shared-issuance invariant. This subject consumes original PRS result/effects.
 (defun fn-pfo-issue (ledger demand)
@@ -51,6 +82,14 @@
   ((zp fuel) (mv :yield nil fuel fn-page-file-open fn-page-read-pool fn-allocation-turn-slots))
   ((not (eq (fn-prp-mode fn-page-read-pool) :served))
    (mv :file-recovery-required nil fuel fn-page-file-open fn-page-read-pool fn-allocation-turn-slots))
+  ((not (and (natp (fn-pfo-slot fn-page-file-open))
+              (natp (fn-pfo-turn fn-page-file-open))
+              (fn-ats-role-bodyp (fn-pfo-slot fn-page-file-open)
+                                (fn-pfo-turn fn-page-file-open)
+                                :recovery-file-issue fn-allocation-turn-slots
+                                fn-page-read-pool)))
+   (mv :recovery-file-source-unavailable nil fuel fn-page-file-open
+       fn-page-read-pool fn-allocation-turn-slots))
   ((eq (fn-pfo-phase fn-page-file-open) :ready)
    (let ((slot (fn-pfo-slot fn-page-file-open)) (turn (fn-pfo-turn fn-page-file-open)))
     (if (not (and (natp slot) (natp turn) (stringp (fn-pfo-path fn-page-file-open))
