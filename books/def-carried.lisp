@@ -82,8 +82,9 @@
 ;   (table fn-carried NAME '(:invariant R :state ST|nil :established ...
 ;                            :transitions ... :concludes ... :complete-by ...
 ;                            :trace t|nil))
-;   (local (must-fail (with-prover-step-limit N (thm (R x)))))
-;   (local (must-fail (with-prover-step-limit N (thm (not (and H...)))))) ...
+;   (local (fn-cd-nonvacuous MESSAGE (R x) HINTS))
+;   (local (fn-cd-nonvacuous MESSAGE (not (and H...)) HINTS)) ...
+;     Each wraps the same step-limited must-fail probe with a named refusal.
 ;
 ; and, unless :trace nil, the trace theorem by functional instantiation of
 ; the generic theory below:
@@ -632,6 +633,18 @@
     (cons (list (car (car alist)) (cdr (car alist)))
           (fn-cd-instance-bindings (cdr alist)))))
 
+; Preserve the same bounded refutation probe, but give its refusal a
+; stable diagnostic that distinguishes the two vacuity checks.
+(defmacro fn-cd-nonvacuous (message statement hints)
+  `(make-event
+    (mv-let (erp val state)
+      (must-fail (with-prover-step-limit ,*fn-cd-vacuity-steps*
+                   (thm ,statement :hints ,hints)))
+      (declare (ignore val))
+      (if erp
+          (er soft 'def-carried ,message)
+        (value '(value-triple :nonvacuous))))))
+
 (defun fn-cd-vacuity-events (r shapes)
   (declare (xargs :mode :program))
   ; per transition: its hypotheses are not provably contradictory
@@ -639,11 +652,10 @@
       nil
     (let* ((shape (car shapes))
            (svar (car (cddddr shape))) (others (cadr (cddddr shape))))
-      (cons `(local (must-fail
-                     (with-prover-step-limit
-                      ,*fn-cd-vacuity-steps*
-                      (thm (not (and (,r ,svar) ,@others))
-                           :hints (("Goal" :in-theory (theory 'minimal-theory)))))))
+      (cons `(local (fn-cd-nonvacuous
+                     "transition hypotheses are provably contradictory"
+                     (not (and (,r ,svar) ,@others))
+                     (("Goal" :in-theory (theory 'minimal-theory)))))
             (fn-cd-vacuity-events r (cdr shapes))))))
 
 (defun fn-cd-unruled-instances (shapes w)
@@ -725,14 +737,20 @@
                 :concludes ,(fn-cd-get :concludes kvs)
                 :complete-by ,(fn-cd-get :complete-by kvs)
                 :trace ,(if traced t nil)))
-       (local (must-fail (with-prover-step-limit
-                          ,*fn-cd-vacuity-steps*
-                          (thm (,r ,x)
-                               :hints (("Goal" :in-theory (union-theories
-                                                           '(,r)
-                                                           (theory 'minimal-theory))))))))
+       (local (fn-cd-nonvacuous
+               "the carried invariant is provably always true"
+               (,r ,x)
+               (("Goal" :in-theory (union-theories '(,r)
+                                                  (theory 'minimal-theory))))))
        ,@(fn-cd-vacuity-events r shapes)
        ,@(if traced (fn-cd-trace-events name r shapes w) nil))))
+
+(defun fn-cd-declaration-problem (name kvs w)
+  (declare (xargs :mode :program))
+  (if (assoc-eq name (table-alist 'fn-carried w))
+      (msg "~x0 is already a carried invariant of this world; ~
+            a row is declared once" name)
+    (fn-cd-problem name kvs w)))
 
 (defmacro def-carried (name &rest kvs)
   (let ((reason (fn-cd-refusal name kvs)))
@@ -740,10 +758,7 @@
         `(make-event (er soft 'def-carried "~x0: ~@1" ',name
                          ',(fn-cd-refusal-text reason)))
       `(make-event
-        (let ((problem (if (assoc-eq ',name (table-alist 'fn-carried (w state)))
-                           (msg "~x0 is already a carried invariant of this world; ~
-                                 a row is declared once" ',name)
-                         (fn-cd-problem ',name ',kvs (w state)))))
+        (let ((problem (fn-cd-declaration-problem ',name ',kvs (w state))))
           (if problem
               (er soft 'def-carried "~x0: ~@1" ',name problem)
             (value (fn-cd-events ',name ',kvs (w state)))))))))

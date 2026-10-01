@@ -118,6 +118,19 @@
 (defthm fn-cdt-open-establishes-truep
   (fn-cdt-truep (fn-cdt-open fn-cdt-st)))
 
+(defthm fn-cdt-bump-carries-truep
+  (implies (fn-cdt-truep fn-cdt-st)
+           (fn-cdt-truep (fn-cdt-bump n fn-cdt-st)))
+  :rule-classes nil)
+(defthm fn-cdt-note-carries-truep
+  (implies (fn-cdt-truep fn-cdt-st)
+           (fn-cdt-truep (mv-nth 1 (fn-cdt-note x fn-cdt-st))))
+  :rule-classes nil)
+(defthm fn-cdt-reset-carries-truep
+  (implies (fn-cdt-truep fn-cdt-st)
+           (fn-cdt-truep (fn-cdt-reset fn-cdt-st)))
+  :rule-classes nil)
+
 ; The host-called entries, declared (completeness reads this table).
 (definterface fn-cdt-open :class :common-lisp-compliant)
 (definterface fn-cdt-bump :class :common-lisp-compliant :kinds ((n natp)))
@@ -341,20 +354,67 @@
    :complete-by (:enumeration "no"))
  :unchecked ":complete-by on a stobj-typed state")
 
-; Vacuity: a constantly-true invariant is refused by the refutation attempt.
-(must-fail-checked
- (def-carried fn-cdt-x :invariant fn-cdt-truep
-   :established ((fn-cdt-open fn-cdt-open-establishes-truep)))
- :unchecked "a provably-true invariant carries nothing")
+; The general must-fail-checked helper cannot translate declarations.
+; This adapter runs the very event list def-carried emits, and exposes the
+; first refusal as a translatable assertion.  Before running a vacuity
+; event it checks the probe's theorem/hint translation with fn-mfc-check.
+; A different refusal or successful admission makes the outer must-fail
+; FAIL.  make-event rolls back these trial table/event updates.
+(defun fn-cdt-first-event-refusal (events state)
+  (declare (xargs :mode :program :stobjs state))
+  (if (atom events)
+      (value nil)
+    (let* ((event (car events))
+           (event (if (eq (car event) 'local) (cadr event) event))
+           (probe (eq (car event) 'fn-cd-nonvacuous)))
+      (er-progn
+       (if probe
+           (fn-mfc-check `(thm ,(caddr event) :hints ,(cadddr event))
+                         20 'fn-cdt-first-event-refusal state)
+         (value :ok))
+       (mv-let (erp pair state)
+         (with-output! :off :all
+           (trans-eval event 'fn-cdt-first-event-refusal state t))
+         (cond (erp (value :unexpected-evaluation-error))
+               ((not (equal (car pair) '(nil nil state)))
+                (value :unexpected-result-signature))
+               ((car (cdr pair))
+                (value (if probe (cadr event) :unexpected-event-refusal)))
+               (t (fn-cdt-first-event-refusal (cdr events) state))))))))
 
-; Vacuity: contradictory transition hypotheses are refused.
+(defmacro fn-cdt-vacuity-acceptance (name kvs expected)
+  `(make-event
+    (if (fn-cd-declaration-problem ',name ',kvs (w state))
+        (er soft 'fn-cdt-vacuity-acceptance
+            "the complete declaration must pass all ordinary world checks")
+      (er-let* ((reason
+                 (fn-cdt-first-event-refusal
+                  (cdr (fn-cd-events ',name ',kvs (w state))) state)))
+        (value `(assert-event ,(not (equal reason ,expected))
+                             :msg ,,expected))))))
+
+; Complete constant-T declaration: no omission can mask the intended guard.
 (must-fail-checked
- (def-carried fn-cdt-x :invariant fn-cdt-relp
+ (fn-cdt-vacuity-acceptance fn-cdt-true-carried
+  (:invariant fn-cdt-truep
+   :established ((fn-cdt-open fn-cdt-open-establishes-truep))
+   :transitions ((fn-cdt-bump fn-cdt-bump-carries-truep)
+                 (fn-cdt-note fn-cdt-note-carries-truep (mv-nth 1 _))
+                 (fn-cdt-reset fn-cdt-reset-carries-truep))
+   :trace nil)
+  "the carried invariant is provably always true"))
+
+; Complete contradictory-hypothesis declaration; trace generation is off
+; so deleting the contradiction guard would admit the whole declaration.
+(must-fail-checked
+ (fn-cdt-vacuity-acceptance fn-cdt-contradictory-carried
+  (:invariant fn-cdt-relp
    :established ((fn-cdt-open fn-cdt-open-establishes))
    :transitions ((fn-cdt-bump fn-cdt-bump-contradictory)
                  (fn-cdt-note fn-cdt-note-carries (mv-nth 1 _))
-                 (fn-cdt-reset fn-cdt-reset-carries)))
- :unchecked "contradictory hypotheses prove their own negation")
+                 (fn-cdt-reset fn-cdt-reset-carries))
+   :trace nil)
+  "transition hypotheses are provably contradictory"))
 
 ; r08-F1: complete declarations, checked at the same world-check boundary
 ; def-carried uses.  These assert the diagnostic independently of failure.
@@ -431,15 +491,33 @@
           :complete-by nil
           :trace t)))
 
-; A redeclaration is refused.
+; A complete redeclaration with :trace nil has no generated-name collision
+; to mask deletion of the freshness guard.  Check its specific diagnostic
+; at the exact declaration checker used by def-carried.
+(assert-event
+ (let ((problem
+        (fn-cd-declaration-problem
+         'fn-cdt-carried
+         '(:invariant fn-cdt-relp
+           :established ((fn-cdt-open fn-cdt-open-establishes))
+           :transitions ((fn-cdt-bump fn-cdt-bump-carries)
+                         (fn-cdt-note fn-cdt-note-carries (mv-nth 1 _))
+                         (fn-cdt-reset fn-cdt-reset-carries))
+           :trace nil)
+         (w state))))
+   (and problem (search "a row is declared once" (car problem)) t)))
 (must-fail-checked
- (def-carried fn-cdt-carried
-   :invariant fn-cdt-relp
-   :established ((fn-cdt-open fn-cdt-open-establishes))
-   :transitions ((fn-cdt-bump fn-cdt-bump-carries)
-                 (fn-cdt-note fn-cdt-note-carries (mv-nth 1 _))
-                 (fn-cdt-reset fn-cdt-reset-carries)))
- :unchecked "a row is declared once")
+ (assert-event
+  (null (fn-cd-declaration-problem
+         'fn-cdt-carried
+         '(:invariant fn-cdt-relp
+           :established ((fn-cdt-open fn-cdt-open-establishes))
+           :transitions ((fn-cdt-bump fn-cdt-bump-carries)
+                         (fn-cdt-note fn-cdt-note-carries (mv-nth 1 _))
+                         (fn-cdt-reset fn-cdt-reset-carries))
+           :trace nil)
+         (w state)))
+  :msg "a row is declared once"))
 
 ; The trace theorem, its statement pinned.
 (assert-event
