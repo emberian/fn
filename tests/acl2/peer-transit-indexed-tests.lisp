@@ -19,8 +19,11 @@
          (fn-cat (fn-sca-load-held-rows (fn-sf-records (fn-sn-files (fn-own-store o)))
                                         index fn-arena fn-cat)))
     (mv (list (fn-node-statep node)
-              (fn-ocl-view-visiblep (fn-own-view o))
-              (fn-scj-joinp (fn-own-view o) fn-arena fn-cat)
+              ;; the executable facts post-prepare-catalog-tests reads for the
+              ;; view hypothesis and the join (fn-scj-joinp is a defun-sk)
+              (fn-pidx-view-okp (fn-own-view o))
+              (equal (fn-cat-view-articles (fn-cat-count fn-cat) fn-arena fn-cat)
+                     (fn-state-articles (fn-own-view-archive (fn-own-view o))))
               (fn-peer-history-hasp-cat msgid node (fn-own-view o) fn-arena fn-cat)
               (fn-peer-history-hasp msgid node))
         fn-arena fn-cat)))
@@ -35,7 +38,7 @@
           (mv result fn-arena)))
       result)))
 
-; Each result: (node invariant, view visible, join, the catalog's history
+; Each result: (node invariant, view facts, join at the count, the catalog's history
 ; answer, the reference's answer).
 
 ;; 1. REACHABLE POSITIVE WITNESSES of fn-peer-history-hasp-cat-is-history-hasp:
