@@ -1,6 +1,6 @@
 # Registered decoded worker controller
 
-Source candidate only. The host prototype remains dormant and the raw worker rejects decoded jobs. The six actual controller subjects are guard-verified in the exact archived protected source world. Normal include certification, genuine family installation, complete operation allowance, native buffer association and terminal receipt are not claimed. Factory and lifecycle remain unadmitted candidates.
+Source component only. The host prototype remains dormant and the raw worker rejects decoded jobs. The six actual controller subjects and three factory subjects are guard-verified in their exact protected source worlds. Normal include certification, genuine family installation, complete operation allowance, native buffer association and terminal receipt are not claimed. Lifecycle remains an unadmitted candidate.
 
 The worker carry successor preserves its original seven fields and appends the complete controller Z9, captured source incarnation, latest actual observation, pending actual read action, and nonwrapping action revision. This is a new twelve-field constructor coordinate. Z9 retains the actual raw EWS subplan. The same registry leaf retains input, digest, decoder scalar state, history ring, tables, scratch output and requested private window; reads check presence before GET. Default-creator lowering at existing-child GET remains a runtime obligation.
 

@@ -91,4 +91,8 @@
          ((fn-pww-carry (fn-pww-children-get 'fn-pww-carry fn-pww-node (create-fn-pww-carry))))
          (fn-pww-carry)
          (update-fn-pww-observation (list :constructor-returned token kind) fn-pww-carry)
-         (mv :decoded-child-created fn-pww-node))))))))
+        (mv :decoded-child-created fn-pww-node))))))))
+
+(verify-guards fn-dwf-next-child)
+(verify-guards fn-dwf-prepare)
+(verify-guards fn-dwf-node-one)
