@@ -1290,6 +1290,29 @@ reference. Bad tag, unsupported suite and unavailable/fault observations remain
 separate. Actual primitive provenance, canonical input/expected-span binding,
 immutable replay/current-key grant and installed acceptance caller remain open.
 
+`fn-bps-input-plan` consumes fixed primary/canonical source-event metadata and
+emits `(:planned (:bps-input-plan descriptor transcript-commands ciphertext-span
+tag-span))`. Literals contain only deterministic CBOR headers; source bytes stay
+exact `(:bps-span source-ref offset length)` commands. RFC9173 §3.7 supplies the
+BIB field order: scope, optional primary, optional target header, optional BIB
+header, and canonical target. A primary target appears once directly, without a
+byte-string wrapper. Extension flags retain assigned bits1/2/4/16; all others
+are cleared per RFC9172 §4. BCB AAD uses the actual BCB header (the §4.7.2 “BIB”
+wording conflicts with AppendixA.4); ciphertext omits its byte-string head.
+Ciphertext-tail tags split the last16 data octets only after exact metadata
+binding; separate tags preserve the descriptor's expected span.
+
+Total cryptographic domains are preflighted from metadata, without reading body
+bytes: SP800-38D §§5.2.1.1/5.2.2 permits at most2^36−32 ciphertext octets and
+floor((2^64−1)/8) AAD octets. HMAC-SHA256's inner hash additionally consumes a
+64-octet ipad block before the transcript (RFC2104 §2; FIPS180-4), so its canonical
+transcript limit is2^61−65 octets. These algorithm limits do not impose a new
+stored-object ceiling. Primary deterministic encoding/validity, exact issued
+source/block spans, canonical input registry and retained pin/current key lease
+remain mandatory caller relations. `:planned` is never verification or
+application acceptance.
+
+
 
 Full cursor invariant preservation, equality for every chunk/quantum
 schedule, operational span refinement, served target graph (PRF-1179), canonical

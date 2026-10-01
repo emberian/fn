@@ -5886,7 +5886,10 @@
         "planning/evidence/bpsec-asb-window-differential-source-2026-09-30.json",
         "books/bpsec-received-window.lisp",
         "tests/acl2/bpsec-received-window-tests.lisp",
-        "planning/evidence/bpsec-received-window-source-2026-09-30.json"
+        "planning/evidence/bpsec-received-window-source-2026-09-30.json",
+        "books/bpsec-input-plan.lisp",
+        "tests/acl2/bpsec-input-plan-tests.lisp",
+        "planning/evidence/bpsec-input-plan-source-2026-09-30/manifest.json"
       ],
       "implementation_note": "Additive source cursor and logical span abstraction. Guards and consumed-prefix component theorems admitted in exact persvati w28 source sessions; not normal certification. Every-schedule refinement, cursor invariant preservation, actual immutable provider/lifetime, target graph, crypto/key/nonce policy and served admission remain open. Structural parsing never implies verification."
     },
@@ -5912,7 +5915,10 @@
         "tests/acl2/bpsec-primitive-plan-tests.lisp",
         "planning/evidence/bpsec-primitive-plan-source-2026-09-30/manifest.json",
         "tests/native_bpsec_core_observation.lisp",
-        "planning/evidence/bpsec-core-observation-2026-09-30/manifest.json"
+        "planning/evidence/bpsec-core-observation-2026-09-30/manifest.json",
+        "books/bpsec-input-plan.lisp",
+        "tests/acl2/bpsec-input-plan-tests.lisp",
+        "planning/evidence/bpsec-input-plan-source-2026-09-30/manifest.json"
       ],
       "implementation_note": "Receiver-only fixed metadata matching and logical retirement. Actual immutable registry/interning, canonical input construction, completion provenance, nonreused token allocator and serialized current-policy lease remain open. No crypto or application admission capability follows from shaped references. Core suite/key-width selection and fixed-width primitive observation matching have proper-local guard/source evidence; authentic input/expected span/provider/current authority and native caller remain open."
     }
