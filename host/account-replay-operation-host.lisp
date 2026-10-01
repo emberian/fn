@@ -27,3 +27,4 @@
      (mv :unavailable :account-replay-source-missing
          fn-allocation-turn-slots fn-history-backing fn-page-read-pool state))
     (t (mv word result fn-allocation-turn-slots fn-history-backing fn-page-read-pool state))))))
+(definterface fn-owner-account-adoption-tick-with-replay :class :program)
