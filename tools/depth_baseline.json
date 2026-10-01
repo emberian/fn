@@ -193,7 +193,9 @@
   "fn-xref-locations": "walks Xref pairs (memberships); bounded by *fn-record-max-groups*",
   "fn-xref-pairs-of": "walks an article's memberships; bounded by *fn-record-max-groups*",
   "fn-zc-drop-withdrawn": "walks the server's own capability block (fn-zc-capability-lines' LINES: the capability lines fn emits, a fixed set), never client or store data",
-  "fn-zin-go-bindings": ":program macro-expansion helper of fn-zin-go: walks the literal field writes written in one fn-zin-go form (a fixed shape, expanded at compile time)"
+  "fn-zin-go-bindings": ":program macro-expansion helper of fn-zin-go: walks the literal field writes written in one fn-zin-go form (a fixed shape, expanded at compile time)",
+  "fn-cpt-ins": "walks the withdrawals-by-version trie root to leaf: depth = the trie height, log n of the largest row number filed at the version (n the catalog count), never n itself",
+  "fn-cpt-walk": "non-tail only into the LOW subtree: recursion depth = the trie height, log n of the largest row number (n the catalog count); the high subtree is the accumulator argument"
  },
  "debt": {
   "fn-psub-pack-dc": "a non-tail recursion that arrived with dev 33bb1ada7 (lane online-reclaim, books/packed-submission.lisp) after C4 reached 0 debt: the owning lane bounds it by name or executes it by a loop (PRF-919 pattern); listed at the seam by depth-debt-4",
