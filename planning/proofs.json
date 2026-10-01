@@ -4812,6 +4812,8 @@
       "events": [
         "fn-sn-prepare-stages-a-narrow-article-record",
         "fn-post-admitted-article-record-is-within-r",
+        "fn-prwo-owner-post-record-is-narrow-within-the-profile",
+        "fn-prwo-owner-post-record-is-within-r",
         "fn-bpi-staged-record-is-narrow",
         "fn-sn-prepare-stages-u32-coordinates",
         "fn-sf-prepare-record-stages-u32-coordinates",

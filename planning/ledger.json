@@ -2315,7 +2315,7 @@
     "books_in_root_closure": 2576,
     "roots": 2307,
     "theorems": 35465,
-    "functions": 22677,
+    "functions": 22678,
     "assert_events": 25325,
     "must_fails": 2559,
     "prover_refusals": 0,
@@ -2324,7 +2324,7 @@
       "verified": 3843,
       "declared-off": 2864,
       "default-guarded": 12682,
-      "default-unguarded": 3288
+      "default-unguarded": 3289
     },
     "suspect_theorems": 1345,
     "export_hygiene_warnings": 392,
@@ -52062,12 +52062,12 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 3,
+      "functions": 4,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 3
+        "default-unguarded": 4
       },
       "verify_guards_events": 0,
       "assert_events": 20,
@@ -52077,7 +52077,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/bp-fnbs-delivery-replay",
+        "../../books/bp-fnbs-family-replay",
         "../../books/bp-node-receive-boundary",
         "bp-app-handoff-tests",
         "must-fail-checked"
@@ -108075,8 +108075,8 @@
       {
         "book": "tests/acl2/bp-fnbs-delivery-replay-tests.lisp",
         "line": 2,
-        "include": "../../books/bp-fnbs-delivery-replay",
-        "included": "books/bp-fnbs-delivery-replay.lisp",
+        "include": "../../books/bp-fnbs-family-replay",
+        "included": "books/bp-fnbs-family-replay.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

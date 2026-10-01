@@ -770,24 +770,32 @@ The kind-5 payload has exact length `76 + peer-CBOR + principal-blob + wire`;
 typed bounds give `76 + 2048 + 512 + 131072 = 133708`, below the
 134144-octet frame limit. The present non-`:bad` theorem also assumes the
 record's field-value predicate; removing that remaining hypothesis is open.
-`books/bp-fnbs-replay.lisp` is the bounded kind-5 byte-row scanner over
-canonical final names: it decodes exact frames, rejects damaged/duplicate or
-out-of-order rows and capacity overflow, and reconstructs the held list and
-last `(epoch . operation-id)` pair. `fn-bpnf-recover-event` constructs the
-recovery-only `fn-bpnf-step` event from those exact row bytes. The step
-atomically requires successful inherited base restart and ready FNBS replay,
-installs both projections, clears volatile issued work, and advances to a
-fresh epoch with operation ID zero. A fault leaves the uncertain state
-fenced. This does not yet establish the byte-store publisher's whole-history
-crash relation or a native caller. `fn-bpnf-recover-auto-event` selects the
-fresh epoch as one above both the current state epoch and the replayed last
-epoch; at the 64-bit terminal epoch, the step faults rather than wrapping.
+`books/bp-fnbs-family-replay.lisp` is the one bounded byte-row replay over
+canonical final names: `fn-bpnf-family-replay-rows` folds kind 5
+(reception), 7 (application result), 18 (fragment-family replacement), 10
+(deletion), 6/8/9 (dispatch, attempt, forward result), 20 (deferral) and 14
+(conflict) rows in arrival order; it decodes exact frames, rejects
+damaged/duplicate or out-of-order rows and capacity overflow, and
+reconstructs the held list, the handoffs and the last `(epoch . operation-id)`
+pair. The earlier kind-5-only and kind-5/7 folds and their recovery events
+are deleted (Q3a, PKT-298); `books/bp-fnbs-replay.lisp` keeps the row shape
+and arrival order the family fold uses. `fn-bpnf-family-recover-auto-event`
+constructs the recovery-only `fn-bpnf-step` event from those exact row bytes,
+with the fresh epoch one above both the current state epoch and the replayed
+last epoch; the native service calls it through
+`books/bp-held-projection.lisp` `fn-bphp-recover-auto-event` (keystone
+`fn-bphp-recover-auto-event-is-bpnr`). The step atomically requires
+successful inherited base restart and ready FNBS replay, installs both
+projections, clears volatile issued work, and advances to the fresh epoch
+with operation ID zero; at the 64-bit terminal epoch it faults rather than
+wrapping. A fault leaves the uncertain state fenced. This does not yet
+establish the byte-store publisher's whole-history crash relation.
 Process-death callbacks cannot survive to the new process remains a host
 assumption.
 `books/bp-fnbs-namespace.lisp` partitions one bounded physical FNBS
 directory into legacy lifecycle finals, kind-5 received finals, and hidden
 stages. The old contiguous namespace planner validates the legacy subset;
-the kind-5 byte replay validates the received subset. An unknown public name
+the family byte replay validates the received subset. An unknown public name
 faults before either replay. `fn-bpnf-mixed-recovery-plan` composes the split
 with the legacy contiguous planner and returns both final-name partitions,
 hidden stages, and the old token frontier. Its mixed, kind-5-only, and
@@ -4804,7 +4812,8 @@ and FNBS lifecycle locks. The handle owns `fn-bpnf-step`; outbound events
 enter it as `(:base event)`. On startup, ACL2's mixed namespace plan separates
 legacy contiguous final names and kind-5 epoch/operation names in the same
 directory. The host reads bounded exact bytes once, and
-`fn-bpnf-recover-auto-event` supplies the recovery event to the actual step.
+`fn-bphp-recover-auto-event` (over `fn-bpnf-family-recover-auto-event`)
+supplies the recovery event to the actual step.
 A fault in either replay leg stops the service before listening.
 
 For one complete inbound TCPCL transfer, the host observes session and

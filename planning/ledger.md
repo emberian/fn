@@ -14,11 +14,11 @@ stale. Counts describe artifacts, not coverage; see
 | Certification roots in the Makefile | 2307 |
 | Books inside the root closure | 2576 |
 | `defthm` and `defthmd` events | 35465 |
-| `defun` events | 22677 |
+| `defun` events | 22678 |
 | Functions with verified guards | 3843 |
 | Functions declared `:verify-guards nil` and never verified | 2864 |
 | Functions left at the default with an explicit guard | 12682 |
-| Functions left at the default with no guard | 3288 |
+| Functions left at the default with no guard | 3289 |
 | `assert-event` checks | 25325 |
 | `must-fail` checks | 2559 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
@@ -1797,7 +1797,7 @@ that `make certify` requests.
 | `tests/acl2/bp-fnbs-deletion-publication-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 8 | 1 | 0 |
 | `tests/acl2/bp-fnbs-delivery-codec-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 1 | 0 |
 | `tests/acl2/bp-fnbs-delivery-publication-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 1 | 0 |
-| `tests/acl2/bp-fnbs-delivery-replay-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 20 | 2 | 0 |
+| `tests/acl2/bp-fnbs-delivery-replay-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 20 | 2 | 0 |
 | `tests/acl2/bp-fnbs-dispatch-codec-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 1 | 0 |
 | `tests/acl2/bp-fnbs-dispatch-publication-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 1 | 0 |
 | `tests/acl2/bp-fnbs-family-codec-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 2 | 0 |

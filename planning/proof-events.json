@@ -4475,6 +4475,15 @@
         },
         {
           "kind": "theorem",
+          "name": "fn-prwo-owner-post-record-is-narrow-within-the-profile",
+          "note": "KEYSTONE (PKT-250): the record width over the owner's two host calls. Host: host/owner-host.lisp fn-owner-post-boundary calls fn-pak-post-admission, then fn-owner-prepare-buffer the catalog prepare of the interned article record. Teeth: tests/acl2/post-record-width-owner-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prwo-owner-post-record-is-within-r"
+        },
+        {
+          "kind": "theorem",
           "name": "fn-bpi-staged-record-is-narrow"
         },
         {
