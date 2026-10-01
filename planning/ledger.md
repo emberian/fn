@@ -12,22 +12,22 @@ stale. Counts describe artifacts, not coverage; see
 | --- | --- |
 | Books read | 2719 |
 | Certification roots in the Makefile | 2354 |
-| Books inside the root closure | 2629 |
-| `defthm` and `defthmd` events | 35756 |
-| `defun` events | 22828 |
+| Books inside the root closure | 2627 |
+| `defthm` and `defthmd` events | 35787 |
+| `defun` events | 22830 |
 | Functions with verified guards | 3845 |
 | Functions declared `:verify-guards nil` and never verified | 2881 |
-| Functions left at the default with an explicit guard | 12795 |
-| Functions left at the default with no guard | 3307 |
-| `assert-event` checks | 25391 |
-| `must-fail` checks | 2584 |
+| Functions left at the default with an explicit guard | 12796 |
+| Functions left at the default with no guard | 3308 |
+| `assert-event` checks | 25407 |
+| `must-fail` checks | 2591 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
-| `encapsulate` events | 193 |
+| `encapsulate` events | 194 |
 | Theorems flagged SUSPECT by shape | 1339 |
 | Export-hygiene warnings | 396 |
 | Enabled-projection warnings | 80 |
 | Teeth-form warnings | 279 |
-| Include-hygiene warnings | 3373 |
+| Include-hygiene warnings | 3359 |
 | Host-names warnings | 3114 |
 | Hand-written-record warnings | 19 |
 
@@ -96,7 +96,7 @@ that `make certify` requests.
 | `books/acceptance.lisp` | root | 69 | 53 | 40/1/12/0 | 0 | 0 | 1 |
 | `books/account-adoption-input-source.lisp` | root | 0 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/account-adoption-operation-source.lisp` | - | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
-| `books/account-adoption-result.lisp` | closure | 0 | 3 | 0/0/3/0 | 0 | 0 | 0 |
+| `books/account-adoption-result.lisp` | - | 0 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/account-adoption-turn-continuation.lisp` | root | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/account-adoption-turn-return.lisp` | root | 0 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/account-adoption-turn-state.lisp` | root | 0 | 4 | 0/0/4/0 | 0 | 0 | 0 |
@@ -1408,7 +1408,7 @@ that `make certify` requests.
 | `books/replay-revoked-enrollment.lisp` | closure | 1 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/replay-snapshot-cursor.lisp` | - | 9 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/replay.lisp` | root | 44 | 33 | 19/0/14/0 | 0 | 0 | 9 |
-| `books/resource-vector-exec.lisp` | root | 0 | 20 | 0/9/8/3 | 1 | 0 | 0 |
+| `books/resource-vector-exec.lisp` | root | 22 | 22 | 0/9/9/4 | 1 | 0 | 0 |
 | `books/resource-vector-relations-heap.lisp` | - | 2 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/resource-vector-relations.lisp` | root | 15 | 6 | 0/0/5/1 | 0 | 0 | 0 |
 | `books/resource-vector-tree.lisp` | root | 47 | 14 | 0/5/9/0 | 0 | 0 | 1 |
@@ -1678,7 +1678,7 @@ that `make certify` requests.
 | `books/tcpcl-records.lisp` | root | 133 | 99 | 62/0/37/0 | 0 | 0 | 77 |
 | `books/tcpcl-segment-source-cursor.lisp` | closure | 0 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/tcpcl-session.lisp` | root | 107 | 59 | 12/0/47/0 | 0 | 0 | 1 |
-| `books/tcpcl-source-continuation.lisp` | closure | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
+| `books/tcpcl-source-continuation.lisp` | - | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/tcpcl-spool.lisp` | root | 3 | 19 | 2/0/17/0 | 0 | 0 | 0 |
 | `books/tls-handshake-budget.lisp` | closure | 37 | 12 | 0/1/10/1 | 0 | 0 | 0 |
 | `books/tls-handshake-decision.lisp` | closure | 37 | 44 | 0/0/44/0 | 0 | 0 | 0 |
@@ -2593,8 +2593,8 @@ that `make certify` requests.
 | `tests/acl2/replay-identity-index-tests.lisp` | root | 7 | 4 | 0/0/0/4 | 24 | 6 | 0 |
 | `tests/acl2/replay-revoked-enrollment-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 11 | 0 | 0 |
 | `tests/acl2/replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 69 | 0 | 0 |
-| `tests/acl2/resource-vector-exec-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `tests/acl2/resource-vector-relations-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `tests/acl2/resource-vector-exec-tests.lisp` | root | 6 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `tests/acl2/resource-vector-relations-tests.lisp` | root | 3 | 0 | 0/0/0/0 | 16 | 7 | 0 |
 | `tests/acl2/resource-vector-tests.lisp` | root | 13 | 1 | 0/0/0/1 | 46 | 20 | 0 |
 | `tests/acl2/resource-vector-tree-tests.lisp` | root | 5 | 0 | 0/0/0/0 | 15 | 5 | 0 |
 | `tests/acl2/response-plan-pins-tests.lisp` | root | 7 | 0 | 0/0/0/0 | 3 | 0 | 0 |
