@@ -2273,24 +2273,51 @@
                                    (fn-cat fn-cat$a) (group (car groups)))
                         fn-cp-corr-facts))))))
 
+; Field frames of the commit's steps (D26: the commit lemmas below use
+; these instead of opening the steps).
+(local
+ (defthm fn-cp-append-row-shape
+   (and (equal (len (nth 0 (fn-cat$p-append-row h fn-cat$p))) (+ 1 (len (nth 0 fn-cat$p))))
+        (equal (nth 1 (nth 1 (fn-cat$p-append-row h fn-cat$p))) (nth 1 (nth 1 fn-cat$p))))
+   :hints (("Goal" :in-theory (e/d (fn-cat$p-append-row) (fn-cp-row-of fn-cp-overflow-of))))))
+
+(local
+ (defthm fn-cp-tab-commit-shape
+   (and (equal (nth 0 (fn-cat$p-tab-commit plan lplan hz seq h fn-cat$p)) (nth 0 fn-cat$p))
+        (equal (nth 1 (nth 1 (fn-cat$p-tab-commit plan lplan hz seq h fn-cat$p))) (+ 1 seq)))
+   :hints (("Goal" :in-theory (e/d (fn-cat$p-tab-commit) (fn-cat$c-apply-plan fn-cat$c-live-apply))))))
+
+(local
+ (defthm fn-cp-step-link-fields
+   (and (equal (nth 2 (fn-cat$p-append-row h fn-cat$p)) (nth 2 fn-cat$p))
+        (equal (nth 3 (fn-cat$p-append-row h fn-cat$p)) (nth 3 fn-cat$p))
+        (equal (nth 2 (fn-cat$p-tab-commit plan lplan hz seq h fn-cat$p)) (nth 2 fn-cat$p))
+        (equal (nth 3 (fn-cat$p-tab-commit plan lplan hz seq h fn-cat$p)) (nth 3 fn-cat$p))
+        (equal (nth 2 (fn-cat$p-tab-index-add m s fn-cat$p)) (nth 2 fn-cat$p))
+        (equal (nth 3 (fn-cat$p-tab-index-add m s fn-cat$p)) (nth 3 fn-cat$p)))
+   :hints (("Goal" :in-theory (e/d (fn-cat$p-append-row fn-cat$p-tab-commit fn-cat$p-tab-index-add)
+                                   (fn-cp-row-of fn-cp-overflow-of fn-cat$c-apply-plan fn-cat$c-live-apply
+                                    fn-cat$c-index-add))))))
+
 (local
  (defthm fn-cp-links-of-commit-w
-   (and (equal (nth 2 (fn-cat$p-commit-w h fn-cat$p))
-               (fn-cpl-link t (fn-cat$p-cplan (fn-record-groups h)
-                                              (and (null (fn-held-withdrawn h))
-                                                   (fn-scat-msgid-idp (fn-record-msgid h)))
-                                              fn-cat$p)
-                            (nth 2 fn-cat$p)))
-        (equal (nth 3 (fn-cat$p-commit-w h fn-cat$p))
-               (fn-cpl-link nil (fn-cat$p-cplan (fn-record-groups h)
-                                                (and (null (fn-held-withdrawn h))
-                                                     (fn-scat-msgid-idp (fn-record-msgid h)))
-                                                fn-cat$p)
-                            (nth 3 fn-cat$p))))
-   :hints (("Goal" :in-theory (e/d (fn-cat$p-commit-w fn-cat$p-tab-commit fn-cat$p-append-row
-                                    fn-cat$p-tab-index-add)
-                                   (fn-cat$p-cplan fn-cat$c-live-plan fn-cat$c-plan fn-cat$c-apply-plan
-                                    fn-cat$c-live-apply fn-cat$c-index-add fn-cp-row-of fn-cp-overflow-of))))))
+    (and (equal (nth 2 (fn-cat$p-commit-w h fn-cat$p))
+                (fn-cpl-link t (fn-cat$p-cplan (fn-record-groups h)
+                                               (and (null (fn-held-withdrawn h))
+                                                    (fn-scat-msgid-idp (fn-record-msgid h)))
+                                               fn-cat$p)
+                             (nth 2 fn-cat$p)))
+         (equal (nth 3 (fn-cat$p-commit-w h fn-cat$p))
+                (fn-cpl-link nil (fn-cat$p-cplan (fn-record-groups h)
+                                                 (and (null (fn-held-withdrawn h))
+                                                      (fn-scat-msgid-idp (fn-record-msgid h)))
+                                                 fn-cat$p)
+                             (nth 3 fn-cat$p))))
+    :hints (("Goal" :in-theory (e/d (fn-cat$p-commit-w)
+                                    (fn-cat$p-tab-commit fn-cat$p-append-row fn-cat$p-tab-index-add
+                                     fn-cat$p-link fn-cat$p-wbv-put fn-cat$p-wbv-get fn-cat$p-cplan fn-cpl-link
+                                     fn-cat$c-live-plan fn-cat$c-plan fn-cat$c-apply-plan
+                                     fn-cat$c-live-apply fn-cat$c-index-add fn-cp-row-of fn-cp-overflow-of))))))
 
 (local
  (defthm fn-cp-links-of-withdraw-w
@@ -2400,13 +2427,14 @@
 
 (local
  (defthm fn-cp-commit-w-shape
-   (and (equal (len (nth 0 (fn-cat$p-commit-w h fn-cat$p))) (+ 1 (len (nth 0 fn-cat$p))))
-        (equal (nth 1 (nth 1 (fn-cat$p-commit-w h fn-cat$p))) (+ 1 (nth 1 (nth 1 fn-cat$p)))))
-   :hints (("Goal" :in-theory (e/d (fn-cat$p-commit-w fn-cat$p-tab-commit fn-cat$p-append-row
-                                    fn-cat$p-count)
-                                   (fn-cat$c-live-plan fn-cat$c-plan fn-cat$c-apply-plan
-                                    fn-cat$c-live-apply fn-cat$c-index-add fn-cat$c-wbv-put
-                                    fn-cat$c-wbv-get fn-cp-row-of fn-cp-overflow-of))))))
+    (and (equal (len (nth 0 (fn-cat$p-commit-w h fn-cat$p))) (+ 1 (len (nth 0 fn-cat$p))))
+         (equal (nth 1 (nth 1 (fn-cat$p-commit-w h fn-cat$p))) (+ 1 (nth 1 (nth 1 fn-cat$p)))))
+    :hints (("Goal" :in-theory (e/d (fn-cat$p-commit-w fn-cat$p-count)
+                                    (fn-cat$p-tab-commit fn-cat$p-append-row fn-cat$p-tab-index-add
+                                     fn-cat$p-link fn-cat$p-wbv-put fn-cat$p-wbv-get fn-cat$p-cplan
+                                     fn-cat$c-live-plan fn-cat$c-plan fn-cat$c-apply-plan
+                                     fn-cat$c-live-apply fn-cat$c-index-add fn-cat$c-wbv-put
+                                     fn-cat$c-wbv-get fn-cp-row-of fn-cp-overflow-of))))))
 
 (local
  (defthm fn-cp-tab-withdraw-shape
@@ -2689,6 +2717,39 @@
   :rule-classes nil
   :hints (("Goal" :by fn-cat-commit{preserved})))
 
+; The withdrawal in two minimal-theory steps (D26: 21.8 s -> 0.01 s):
+; the link tables (okp + coverage), then the view and the row count.
+(local
+ (defthm fn-cp-withdraw-links
+   (implies (and (fn-cat$pcorr fn-cat$p a) (natp target) (< target (len a)))
+            (and (fn-cpl-okp t (nth 2 (fn-cat$p-withdraw-w target by fn-cat$p)) (fn-cat$a-withdraw target by a))
+                 (fn-cpl-okp nil (nth 3 (fn-cat$p-withdraw-w target by fn-cat$p)) (fn-cat$a-withdraw target by a))
+                 (fn-cpl-coverp (nth 2 (fn-cat$p-withdraw-w target by fn-cat$p)) (fn-cat$a-withdraw target by a))
+                 (fn-cpl-coverp (nth 3 (fn-cat$p-withdraw-w target by fn-cat$p)) (fn-cat$a-withdraw target by a))))
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-cp-corr-facts (fn-cat$a a))
+                  (:instance fn-cp-corr-okp (fn-cat$a a))
+                  (:instance fn-cat$p-at-is-row (fn-cat$a a) (seq target))
+                  (:instance fn-cat$p-wplan-sim (fn-cat$a a) (r target) (pairs (fn-held-numbers (nth target a))))
+                  (:instance fn-cp-okp-of-a-withdraw (dir t) (tab (nth 2 fn-cat$p)) (c a) (r target))
+                  (:instance fn-cp-okp-of-a-withdraw (dir nil) (tab (nth 3 fn-cat$p)) (c a) (r target))
+                  (:instance fn-cp-cover-of-a-withdraw (dir t) (tab (nth 2 fn-cat$p)) (c a) (r target))
+                  (:instance fn-cp-cover-of-a-withdraw (dir nil) (tab (nth 3 fn-cat$p)) (c a) (r target)))
+            :in-theory (union-theories '(fn-cp-links-of-withdraw-w) (theory 'minimal-theory))))))
+
+(local
+ (defthm fn-cp-withdraw-view
+   (implies (and (fn-cat$pcorr fn-cat$p a) (natp target) (< target (len a)) (natp by) (fn-cat$ap a))
+            (and (fn-cat$corr-w (fn-cat$p-view (fn-cat$p-withdraw-w target by fn-cat$p)) (fn-cat$a-withdraw target by a))
+                 (equal (len (nth 0 (fn-cat$p-withdraw-w target by fn-cat$p)))
+                        (nth 1 (nth 1 (fn-cat$p-withdraw-w target by fn-cat$p))))))
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-cat-withdraw{correspondence} (fn-cat$c (fn-cat$p-view fn-cat$p)) (fn-cat a))
+                  (:instance fn-cp-corr-facts (fn-cat$a a))
+                  (:instance fn-cat$p-withdraw-w-sim (fn-cat$a a))
+                  fn-cp-withdraw-w-shape)
+            :in-theory (union-theories '(fn-cat$a-count) (theory 'minimal-theory))))))
+
 (defthm fn-cat-paged-withdraw{correspondence}
   (implies (if (fn-cat$pcorr fn-cat$p fn-cat-paged)
                     (if (natp target)
@@ -2703,16 +2764,9 @@
                               (fn-cat$a-withdraw target by fn-cat-paged)))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-cat-withdraw{correspondence} (fn-cat$c (fn-cat$p-view fn-cat$p)) (fn-cat fn-cat-paged))
-                 (:instance fn-cp-corr-facts (fn-cat$a fn-cat-paged))
-                 (:instance fn-cp-corr-okp (fn-cat$a fn-cat-paged))
-                 (:instance fn-cat$p-at-is-row (fn-cat$a fn-cat-paged) (seq target))
-                 (:instance fn-cat$p-withdraw-w-sim (fn-cat$a fn-cat-paged))
-                 (:instance fn-cp-okp-of-a-withdraw (dir t) (tab (nth 2 fn-cat$p)) (c fn-cat-paged) (r target))
-                 (:instance fn-cp-okp-of-a-withdraw (dir nil) (tab (nth 3 fn-cat$p)) (c fn-cat-paged) (r target))
-                 (:instance fn-cp-cover-of-a-withdraw (dir t) (tab (nth 2 fn-cat$p)) (c fn-cat-paged) (r target))
-                 (:instance fn-cp-cover-of-a-withdraw (dir nil) (tab (nth 3 fn-cat$p)) (c fn-cat-paged) (r target)))
-           :in-theory (e/d (fn-cat$pcorr) (fn-cp-corr-facts fn-cat$p-view fn-cat$p-withdraw-w-sim)))))
+           :use ((:instance fn-cp-withdraw-view (a fn-cat-paged))
+                 (:instance fn-cp-withdraw-links (a fn-cat-paged)))
+           :in-theory (union-theories '(fn-cat$a-count fn-cat$pcorr) (theory 'minimal-theory)))))
 
 (defthm fn-cat-paged-withdraw{guard-thm}
   (implies (if (fn-cat$pcorr fn-cat$p fn-cat-paged)
