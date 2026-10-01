@@ -147,9 +147,15 @@
                                   fn-page-read-pool))
               (fn-page-read-pool (if (eq omitted :positive-count)
                                     (update-fn-prp-alloc-active-turns 0 fn-page-read-pool) fn-page-read-pool))
+              (fn-page-read-pool (if (eq omitted :served)
+                                    (update-fn-prp-mode '(:counter-publishing :served :active) fn-page-read-pool)
+                                  fn-page-read-pool))
               (old-count (fn-prp-alloc-active-turns fn-page-read-pool))
               (old-a (fn-prp-alloc-allocated fn-page-read-pool))
               (antecedent (and (eq entry :gate-owned)
+                 (if (eq omitted :served)
+                     (not (eq (fn-prp-mode fn-page-read-pool) :served))
+                   (eq (fn-prp-mode fn-page-read-pool) :served))
                  (if (eq omitted :matching)
                      (not (fn-ats-matchingp 0 supplied fn-allocation-turn-slots fn-page-read-pool))
                    (fn-ats-matchingp 0 supplied fn-allocation-turn-slots fn-page-read-pool))
@@ -169,6 +175,8 @@
 ; Matching and mode removals are reachable stale/fenced states.
 (assert-event (atst-finish-witness :matching))
 (assert-event (atst-finish-witness :mode))
+; RAW-CUT hypothesis removal: intent installed before epoch mode changes.
+(assert-event (atst-finish-witness :served))
 ; CORRUPTED-STATE removal: an issued owned slot with no carried active count.
 (assert-event (atst-finish-witness :positive-count))
 

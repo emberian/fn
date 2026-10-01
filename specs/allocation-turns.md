@@ -66,9 +66,9 @@ PRF-1164 supplies the proof-only executable source observers `fn-atsc-enter`
 (word, nonce, slots, pool, cells, ordered operands, source sites) and
 `fn-atsc-finish` (word, slots, pool, cells, ordered operands, source sites). Named
 complete-result correspondence connects each to the actual internal callback.
-Every entry branch, including failed issuer disposition, is bounded by 40 explicit
+Every entry branch, including failed issuer disposition, is bounded by 64 explicit
 source CONS cells and 51 material arithmetic operations; successful current and
-legacy reconstruction has 40 and 39 cells respectively and exactly 51 operations.
+legacy reconstruction has 64 and 62 cells respectively and exactly 51 operations.
 Finish has zero explicit source CONS and records the actual count subtraction
 only when consumed. All five PRS coordinates and actual arithmetic operands are
 retained. These counts are not installed tariffs: fixed reader/recognizer and
@@ -167,3 +167,24 @@ nine material operations, excluding the named actual registry read/release and
 generation/child units. No runtime price or allowance is inferred. The exact
 component proof world is historical; modern RX/kernel include certification is
 pending, and an interrupted broader cache-miss replay supplies no normal claim.
+
+
+The DATA6 successor joins the actual counter transaction: retained pool intent
+and recovery mode precede DATA publication; actual slot nonce and phase2 are
+written while fenced; counter finish restores modes last. An unavailable begin
+retains the proposed issued ledger/nonce in intent and marks phase6 without
+exposing a receipt, decrementing active count or refunding debt. Entry, BODY,
+readonly role authority and finish also require pool MODE :served, covering
+an escape after the intent write before allocation mode changes. The matching
+finish theorem explicitly requires :served; its omission witness retains the
+matching receipt, active mode and positive count while asserting refusal.
+The entry installed-root frame preserves installation/epoch/occupancy/incoming;
+mutable MODE is the retained fence and is not asserted unchanged on failure.
+
+For this exact split source, PRS reconstruction plus ledger4/5, continuation4,
+receipt6, intent8 and DATA6 constructs62/64 explicit CONS cells on success.
+The recorded material arithmetic sequence remains51 operations. An issued but
+unpublished baseline branch retains45 cells and51 operations; these are source
+observations, not native requests or installed Qgate tariffs. Prior39/40 and
+monolithic50/52 source coordinates remain historical. Complete native fault
+cuts, all-writer DATA6 integration and runtime qualification remain separate.

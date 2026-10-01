@@ -1656,26 +1656,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1759,
-    "books_in_root_closure": 1753,
+    "books": 1761,
+    "books_in_root_closure": 1755,
     "roots": 1652,
-    "theorems": 28125,
-    "functions": 18536,
-    "assert_events": 23115,
+    "theorems": 28153,
+    "functions": 18547,
+    "assert_events": 23118,
     "must_fails": 2496,
     "prover_refusals": 0,
     "encapsulates": 158,
     "guards": {
       "verified": 3562,
       "declared-off": 2109,
-      "default-guarded": 10130,
-      "default-unguarded": 2735
+      "default-guarded": 10139,
+      "default-unguarded": 2737
     },
-    "suspect_theorems": 1233,
+    "suspect_theorems": 1234,
     "export_hygiene_warnings": 322,
     "enabled_projection_warnings": 55,
     "teeth_form_warnings": 272,
-    "include_hygiene_warnings": 2478,
+    "include_hygiene_warnings": 2481,
     "host_names_warnings": 2129,
     "hand_written_record_warnings": 18
   },
@@ -2028,7 +2028,7 @@
       "book": "books/allocation-turn-body-authority.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 3,
+      "theorems": 4,
       "functions": 1,
       "guards": {
         "verified": 0,
@@ -2054,7 +2054,7 @@
       "book": "books/allocation-turn-raw-bridge.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 8,
+      "theorems": 14,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -2080,7 +2080,7 @@
       "book": "books/allocation-turn-slots.lisp",
       "in_root_closure": true,
       "is_root": false,
-      "theorems": 17,
+      "theorems": 25,
       "functions": 13,
       "guards": {
         "verified": 0,
@@ -2096,7 +2096,8 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "allocation-epoch-collection-request"
+        "allocation-epoch-collection-request",
+        "page-read-counter-transaction"
       ],
       "system_includes": [],
       "suspects": [
@@ -2109,12 +2110,12 @@
       "book": "books/allocation-turn-source-cost.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 45,
-      "functions": 16,
+      "theorems": 54,
+      "functions": 17,
       "guards": {
         "verified": 3,
         "declared-off": 0,
-        "default-guarded": 13,
+        "default-guarded": 14,
         "default-unguarded": 0
       },
       "verify_guards_events": 3,
@@ -2131,7 +2132,9 @@
       "system_includes": [
         "arithmetic-5/top"
       ],
-      "suspects": [],
+      "suspects": [
+        "fn-atsc-issuer-preserves-baseline-coordinate"
+      ],
       "read_error": null
     },
     {
@@ -21665,6 +21668,58 @@
       "read_error": null
     },
     {
+      "book": "books/page-read-binding-revision.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 4,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 3,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "page-read-pool-state"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/page-read-counter-transaction.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 5,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "page-read-binding-revision"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/page-read-issue-source-cost.lisp",
       "in_root_closure": true,
       "is_root": false,
@@ -32556,7 +32611,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 22,
+      "assert_events": 23,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 3,
@@ -32582,7 +32637,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 28,
+      "assert_events": 30,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 0,
@@ -53071,7 +53126,7 @@
     {
       "theorem": "fn-ats-body-prepaid-continuation-retains-accounting-by-definition",
       "book": "books/allocation-turn-slots.lisp",
-      "line": 282,
+      "line": 382,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-ats-prepay-body-internal and the conclusion is that arm's value"
       ]
@@ -53079,9 +53134,17 @@
     {
       "theorem": "fn-ats-finish-stale-keeps-other-turns-by-definition",
       "book": "books/allocation-turn-slots.lisp",
-      "line": 248,
+      "line": 347,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-ats-finish-owned and the conclusion is that arm's value"
+      ]
+    },
+    {
+      "theorem": "fn-atsc-issuer-preserves-baseline-coordinate",
+      "book": "books/allocation-turn-source-cost.lisp",
+      "line": 644,
+      "reasons": [
+        "preserves-no-subject-call: the statement never calls fn-atsc-issuer or a fn-atsc-issuer- transition"
       ]
     },
     {
@@ -67474,6 +67537,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/allocation-turn-slots.lisp",
+        "line": 7,
+        "include": "page-read-counter-transaction",
+        "included": "books/page-read-counter-transaction.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/allocation-turn-source-cost.lisp",
         "line": 5,
         "include": "allocation-turn-slots",
@@ -73099,6 +73169,20 @@
         "line": 22,
         "include": "nntp-xref-invariants",
         "included": "books/nntp-xref-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/page-read-binding-revision.lisp",
+        "line": 3,
+        "include": "page-read-pool-state",
+        "included": "books/page-read-pool-state.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/page-read-counter-transaction.lisp",
+        "line": 5,
+        "include": "page-read-binding-revision",
+        "included": "books/page-read-binding-revision.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

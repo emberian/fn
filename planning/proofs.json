@@ -18028,7 +18028,7 @@
     {
       "id": "PRF-1156",
       "title": "Matching concrete allocating-turn finish decrements once and invalidates its receipt",
-      "statement": "The actual fn-ats-finish-owned subject checks exact SAMEpool association, direct slot, stored sharedPRS nonce and owned phase. With matching receipt, active/draining mode and positive carried active count, finish returns :left, decrements active turns once, preserves A and nonce, restores idle and invalidates matching. Literal positive and each hypothesis-removal witness cover the theorem; stale/reused-slot and duplicate completions preserve another active turn. Host raw declaration cites actual carried-state and installed-root preservation. This is an internal component, not activation.",
+      "statement": "The actual fn-ats-finish-owned subject checks exact SAMEpool association, direct slot, stored sharedPRS nonce and owned phase. With matching receipt, pool MODE :served, active/draining allocation mode and positive carried active count, finish returns :left, decrements active turns once, preserves A and nonce, restores idle and invalidates matching. Literal positive and each hypothesis-removal witness cover the theorem; stale/reused-slot and duplicate completions preserve another active turn. Host raw declaration cites actual carried-state and installed-root preservation. This is an internal component, not activation.",
       "milestone": "M5",
       "requirements": [
         "HST-042"
@@ -18044,9 +18044,10 @@
         "books/allocation-turn-raw-bridge.lisp",
         "host/allocation-turn-host.lisp",
         "tests/acl2/allocation-turn-slots-tests.lisp",
-        "planning/evidence/manifests/certify-20260930T154935Z-91174.json"
+        "planning/evidence/manifests/certify-20260930T154935Z-91174.json",
+        "planning/evidence/allocation-turn-data6-2026-10-01/README.md"
       ],
-      "progress_note": "Ordinary narrow component/bridge certification; selected raw declaration admission and reachable concrete tests. Runtime/source installation, native outer closure join and immutable image qualification remain open; no green transfer.",
+      "progress_note": "DATA6 split successor: actual source/guard and complete-result/census source proofs passed in stopped ats-split. Fresh normal qualification remains scoped by the new manifests; predecessor39/40 kernel13 and monolithic50/52 evidence is historical. No native lowering/tariff, all-writer activation or image claim.",
       "events": [
         "fn-ats-finish-matching-consumes-once"
       ]
@@ -18054,7 +18055,7 @@
     {
       "id": "PRF-1157",
       "title": "Concrete allocating-turn entry owns actual sharedPRS nonce and preserves local slot cardinality",
-      "statement": "Successful fn-ats-enter-internal prepays installed Qgate, increments active turns, issues actual old NEXT through the sharedPRS issuer, retains bindings, advances NEXT once, and publishes exact slot+nonce gate ownership. The proof-only count correspondence is established by internal representation construction and preserved by the actual concrete entry, body and finish subjects without a served scan. Operator capacity, actual constructor baseline and actual operation evaluator are not established by these internal seams.",
+      "statement": "Successful fn-ats-enter-internal prepays installed Qgate, increments active turns, issues actual old NEXT through the sharedPRS issuer, retains bindings, advances NEXT once, and publishes exact slot+nonce gate ownership. The proof-only count correspondence is established by internal representation construction and preserved by the actual concrete entry, body and finish subjects without a served scan. Operator capacity, actual constructor baseline and actual operation evaluator are not established by these internal seams. The DATA6 split holds intent/recovery through actual slot stores and restores modes last; issued publication failure retains debt and fences phase6.",
       "milestone": "M5",
       "requirements": [
         "HST-042"
@@ -18070,9 +18071,10 @@
         "books/allocation-turn-raw-bridge.lisp",
         "host/allocation-turn-host.lisp",
         "tests/acl2/allocation-turn-slots-tests.lisp",
-        "planning/evidence/manifests/certify-20260930T154935Z-91174.json"
+        "planning/evidence/manifests/certify-20260930T154935Z-91174.json",
+        "planning/evidence/allocation-turn-data6-2026-10-01/README.md"
       ],
-      "progress_note": "Ordinary narrow component/bridge certification; selected raw declaration admission and reachable concrete tests. Runtime/source installation, native outer closure join and immutable image qualification remain open; no green transfer.",
+      "progress_note": "DATA6 split successor: actual source/guard and complete-result/census source proofs passed in stopped ats-split. Fresh normal qualification remains scoped by the new manifests; predecessor39/40 kernel13 and monolithic50/52 evidence is historical. No native lowering/tariff, all-writer activation or image claim.",
       "events": [
         "fn-ats-enter-owns-actual-shared-nonce",
         "fn-ats-entry-preserves-slot-count-correspondence",
@@ -18083,7 +18085,7 @@
     {
       "id": "PRF-1164",
       "title": "Actual allocating-turn entry and finish source census preserves complete results",
-      "statement": "The executable proof-only fn-atsc-enter and fn-atsc-finish observers equal the complete four- and three-value results of the actual fn-ats-enter-internal and fn-ats-finish-owned subjects. Every entry branch has at most 40 explicit source CONS cells and 51 recorded material arithmetic operations, including definite failed-entry disposition. Successful entry has 39/40 cells according to the actual legacy/baseline ledger constructor and exactly 51 material operations, with ordered operands retained. Fixed reader/recognizer arithmetic, comparisons, concrete stores, compiler frames and result-MV lowering remain explicit separate native closure obligations; source counts alone establish no physical Qgate allowance.",
+      "statement": "The executable proof-only fn-atsc-enter and fn-atsc-finish observers equal the complete four- and three-value results of the actual fn-ats-enter-internal and fn-ats-finish-owned subjects. Every entry branch has at most 64 explicit source CONS cells and 51 recorded material arithmetic operations, including definite failed-entry disposition. Successful entry has 62/64 cells according to the actual legacy/baseline ledger constructor and exactly 51 material operations, with ordered operands retained. Fixed reader/recognizer arithmetic, comparisons, concrete stores, compiler frames and result-MV lowering remain explicit separate native closure obligations; source counts alone establish no physical Qgate allowance.",
       "milestone": "M5",
       "requirements": [
         "HST-042"
@@ -18105,9 +18107,10 @@
         "planning/evidence/allocation-turn-source-cost-2026-09-30/README.md",
         "planning/evidence/manifests/certify-20260930T222650Z-3894000.json",
         "planning/evidence/allocation-turn-dual-ceiling-2026-09-30/README.md",
-        "planning/evidence/manifests/certify-20260930T224655Z-326155.json"
+        "planning/evidence/manifests/certify-20260930T224655Z-326155.json",
+        "planning/evidence/allocation-turn-data6-2026-10-01/README.md"
       ],
-      "progress_note": "Normal exact source/test roots passed at kernel13. Actual entry39/40 explicit sourceCONS and51 materialOPS, ceiling5 and gate13. MIN/comparison, implicit constructors, frames, full runtime Qgate and genuine installation remain separate. Previous kernel12/50 evidence historical.",
+      "progress_note": "DATA6 split successor: actual source/guard and complete-result/census source proofs passed in stopped ats-split. Fresh normal qualification remains scoped by the new manifests; predecessor39/40 kernel13 and monolithic50/52 evidence is historical. No native lowering/tariff, all-writer activation or image claim.",
       "events": [
         "fn-atsc-enter-observes-complete-actual-result",
         "fn-atsc-finish-observes-complete-actual-result",

@@ -7,6 +7,7 @@
       (fn-ats-matchingp slot nonce fn-allocation-turn-slots fn-page-read-pool)
       (equal (fn-ats-kindsi slot fn-allocation-turn-slots) role)
       (eql (fn-ats-phasesi slot fn-allocation-turn-slots) 3)
+      (eq (fn-prp-mode fn-page-read-pool) :served)
       (member-eq (fn-prp-alloc-mode fn-page-read-pool) '(:active :draining))
       (posp (fn-prp-alloc-active-turns fn-page-read-pool))))
 (defthm fn-ats-role-bodyp-is-exact-current-body-receipt
@@ -15,6 +16,7 @@
              (natp nonce) (equal nonce (fn-ats-noncesi slot slots))
              (equal (fn-ats-kindsi slot slots) role)
              (eql (fn-ats-phasesi slot slots) 3)
+             (eq (fn-prp-mode pool) :served)
              (member-eq (fn-prp-alloc-mode pool) '(:active :draining))
              (posp (fn-prp-alloc-active-turns pool))))
  :hints (("Goal" :in-theory (enable fn-ats-role-bodyp fn-ats-matchingp fn-ats-owned-phasep)))
@@ -29,4 +31,10 @@
   (let ((left (fn-ats-finish-owned slot nonce slots pool)))
    (not (fn-ats-role-bodyp slot nonce role (mv-nth 1 left) (mv-nth 2 left)))))
  :hints (("Goal" :in-theory (enable fn-ats-role-bodyp fn-ats-finish-owned)))
+ :rule-classes nil)
+
+(defthm fn-ats-role-bodyp-counter-intent-closes-authority
+ (implies (not (eq (fn-prp-mode pool) :served))
+          (not (fn-ats-role-bodyp slot nonce role slots pool)))
+ :hints (("Goal" :in-theory (enable fn-ats-role-bodyp)))
  :rule-classes nil)
