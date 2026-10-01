@@ -5818,7 +5818,9 @@
       "proof_targets": [
         "PRF-1177",
         "PRF-1196",
-        "PRF-1202"
+        "PRF-1202",
+        "PRF-1206",
+        "PRF-1207"
       ],
       "verification": [
         "proof",
@@ -5829,9 +5831,12 @@
         "host/ninep-transport-host.lisp",
         "host/native/ninep.lisp",
         "tests/acl2/ninep-transport-tests.lisp",
-        "planning/evidence/ninep-transport-2026-10-01/README.md"
+        "planning/evidence/ninep-transport-2026-10-01/README.md",
+        "books/ninep-mounted-directory.lisp",
+        "host/ninep-mounted-directory-host.lisp",
+        "books/ninep-stat-stream.lisp"
       ],
-      "note": "ACL2 owns wire decisions, names, local numbering and exactsource selection. Mount retains one genuinely issued immutable committed publication until all fids and issued reads settle. No whole-store materialization; real provider/issuer/source correspondence remains open."
+      "note": "ACL2 owns wire decisions, names, local numbering and exactsource selection. Mount retains one genuinely issued immutable committed publication until all fids and issued reads settle. No whole-store materialization; real provider/issuer/source correspondence remains open. Actual pin/source and DATA6 caller source components plus bounded group bytes are implemented; selected-query adoption, complete provider/listener/funding and external-client acceptance remain unfulfilled."
     }
   ]
 }

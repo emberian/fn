@@ -136,3 +136,32 @@ proof is a separate D26 cost defect. The internal native I/O adapter is
 source-only and still lacks the genuine per-action admission composition;
 public start refuses before constructors. These results do not fulfill the
 external-client SCN-1064 or activate a listener.
+
+
+The registered mount getter `fn-ninep-mounted-source` reads the actual held
+MIO generation row and requires its pin, token and retained live/retiring
+phase. It returns that row's Pub19, including the immutable visibility
+bucket root. A newer CURRENT pointer and an independently retained session
+copy cannot substitute for it. Group enumeration advances one bucket per
+action; group lookup compares one source name byte per action. The actual
+owner visibility publication carries visible buckets; completeness for
+configured empty groups remains a separate source requirement (PRF-1206).
+
+Mount issue, unpinned abort and definitive return use the split SAMEpool
+DATA6 counter transaction. MODE intent/recovery encloses actual session
+stores and, on return, the real generation drop. Modes restore last.
+Unfinished intent refuses new mount entry; unknown pin/drop cuts retain
+source and debit. Complete internal fixtures are source-qualified, without
+normal certification of the modern mount include closure.
+
+The stat stream follows [stat(5)](https://9p.io/magic/man2html/5/stat)'s inner
+size and outer Rstat size, and [read(5)](https://9p.io/magic/man2html/5/read)'s
+integral directory entries. One action appends one actual output octet.
+Zero timestamps and empty uid/gid/muid are immutable presentation policy;
+readonly permissions are 0555 on directories and 0444 on files. An entry
+that cannot fit the negotiated message or Tread count refuses without
+partial entry or name truncation; the small-count refusal is fn policy.
+A completion-position mutation cannot mark an un-emitted stat body ready.
+This codec is PRF-1207, separate from real mounted source/QID derivation and
+operation funding. Full provider, native listener and external-client
+SCN-1064 remain open.

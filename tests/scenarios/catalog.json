@@ -7343,7 +7343,8 @@
         "Commit a new article while old fids hold the original capture; old mount stays fixed until remount. Refuse unsupported writes/auth/extensions appropriately and degrade only unservable article framing.",
         "Flush an outstanding cold read and disconnect/clunk; suppress cancelled reply but retain issued worker/query/source aliases until actual completion and final join.",
         "Within one captured-view connection, attach twice and confirm shared qid namespace; Flush a cold read, reuse its wire tag while the old physical slot remains cancelled, then return old work and confirm it cannot publish or decrement a newer receipt.",
-        "Component fixture: fragment Tversion header/body, negotiate exact base reply, return twice, repeat Version through actual draining and confirm a retained mount blocks reset."
+        "Component fixture: fragment Tversion header/body, negotiate exact base reply, return twice, repeat Version through actual draining and confirm a retained mount blocks reset.",
+        "Component fixtures: retain an older registered publication despite newer CURRENT; refuse missing pin or unfinished DATA6 intent; emit exact Rstat/Rread one octet per action and reject incomplete-entry count or forged completion."
       ],
       "expected": [
         "Names/numbers/qids/lengths/wirebytes originate in actual core and registered provider; ordinal0 is valid. Exact stored binary/dotted source is neither NNTPstuffed nor whole-store materialized.",
@@ -7362,9 +7363,14 @@
         "tests/acl2/ninep-qids-tests.lisp",
         "tests/acl2/ninep-mount-tests.lisp",
         "tests/acl2/ninep-transport-tests.lisp",
-        "planning/evidence/ninep-transport-2026-10-01/README.md"
+        "planning/evidence/ninep-transport-2026-10-01/README.md",
+        "tests/acl2/ninep-mounted-directory-tests.lisp",
+        "tests/acl2/ninep-group-buckets-tests.lisp",
+        "tests/acl2/ninep-stat-stream-tests.lisp",
+        "tests/acl2/ninep-stat-stream-host-tests.lisp",
+        "planning/evidence/ninep-mounted-directory-2026-10-01/README.md"
       ],
-      "scope_note": "Specified native acceptance scenario, not executed. Normal source header/field/version and borrowed group-trie/host witnesses are separate from native mounted source/lifetime qualification. Core fixed Rerror and actual host refusal fixture pass source certification; native client refusal remains unexecuted. Session/qid components are normal-certified at014307/021401; actual mount lifecycle fixture source-pass only. External client/listener scenario still NOT RUN."
+      "scope_note": "Specified native acceptance scenario, not executed. Normal source header/field/version and borrowed group-trie/host witnesses are separate from native mounted source/lifetime qualification. Core fixed Rerror and actual host refusal fixture pass source certification; native client refusal remains unexecuted. Session/qid components are normal-certified at014307/021401; actual mount lifecycle fixture source-pass only. External client/listener scenario still NOT RUN. Normal045613 certifies the stat/host/internal wire fixtures only; actual registered source+DATA6 mount fixtures remain proper-local source evidence. Request custody successor guard timeout preserved separately. Full native external-client scenario NOT RUN."
     }
   ]
 }

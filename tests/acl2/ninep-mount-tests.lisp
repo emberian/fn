@@ -19,7 +19,8 @@
 (defun-nx n9m-pool ()
  (fn-owner-page-read-keep-ledger
   (fn-prl-build '(100 100 100 100 10) '(0 0 0 0 0) 0 nil '(0 0 0 0 0))
-  (create-fn-page-read-pool)))
+  (update-fn-prp-alloc-mode :active
+   (update-fn-prp-mode :served (create-fn-page-read-pool)))))
 (defun-nx n9m-session ()
  (update-fn-9ps-phase :base (update-fn-9ps-msize 64 (create-fn-ninep-session))))
 
@@ -37,8 +38,10 @@
            (list :ninep-mount-intent '(:ninep-mount 0) '(:index-generation 1 1 0)
                  '(2 1 0 0 1) :reserved (n9m-publication)) session))))
        (equal next-pool
-        (fn-owner-page-read-keep-ledger
-          (fn-prl-build '(100 100 100 100 10) '(2 1 0 0 1) 1 nil '(0 0 0 0 0)) pool))))
+        (update-fn-prp-data
+          (fn-prb-data6
+           (fn-prl-build '(100 100 100 100 10) '(2 1 0 0 1) 1 nil '(0 0 0 0 0))
+           (fn-prp-data pool) 0) pool))))
  :rule-classes nil)
 
 (defun-nx n9m-held-result ()
@@ -77,4 +80,50 @@
        (equal (fn-omk-at 4 row) 0)
        (equal (fn-9p-mount-return-current 100 session mio pool)
               (list :already-returned 100 session mio pool))))
+ :rule-classes nil)
+
+; Served MODE is a cross-write exclusion, not a grant. All other entry
+; gates are retained; an unfinished counter intent must refuse unchanged.
+(defthm n9m-reserve-pool-mode-hypothesis-removal
+ (let* ((session (n9m-session)) (mio (n9m-mio))
+        (pool (update-fn-prp-mode '(:counter-preparing :served :active) (n9m-pool))))
+  (and (fn-mio$cp mio) (fn-ninep-sessionp session) (fn-page-read-poolp pool)
+       (equal (fn-9ps-phase session) :base)
+       (equal (fn-9ps-mount-phase session) :empty)
+       (not (fn-9ps-mount-token session)) (not (fn-9ps-mount-source session))
+       (equal (fn-prp-alloc-mode pool) :active)
+       (fn-prs-vectorp '(2 1 0 0 1)) (equal (fn-prl-nth 4 '(2 1 0 0 1)) 1)
+       (fn-9p-mount-current-generation mio)
+       (not (equal (fn-prp-mode pool) :served))
+       (equal (fn-9p-mount-reserve-internal '(2 1 0 0 1) 100 session mio pool)
+              (list :unavailable nil 100 session mio pool))))
+ :rule-classes nil)
+
+(defthm n9m-uncertain-pin-keeps-complete-debit-positive
+ (let* ((r (fn-9p-mount-reserve-internal '(2 1 0 0 1) 100 (n9m-session) (n9m-mio) (n9m-pool)))
+        (session (update-fn-9ps-mount-phase :pin-intent (nth 3 r)))
+        (pool (nth 5 r)))
+  (and (fn-ninep-sessionp session) (fn-page-read-poolp pool)
+       (equal (fn-9ps-mount-phase session) :pin-intent)
+       (equal (fn-prl-nth 1 (fn-owner-page-read-ledger pool)) '(2 1 0 0 1))
+       (equal (fn-prl-nth 2 (fn-owner-page-read-ledger pool)) 1)
+       (equal (fn-9p-mount-abort-unpinned session pool)
+              (list :unavailable session pool))))
+ :rule-classes nil)
+
+(defthm n9m-definite-unpinned-abort-full-result-positive
+ (let* ((r (fn-9p-mount-reserve-internal '(2 1 0 0 1) 100 (n9m-session) (n9m-mio) (n9m-pool)))
+        (session (nth 3 r)) (pool (nth 5 r))
+        (expected-session (update-fn-9ps-mount-phase :returned
+                           (update-fn-9ps-mount-token nil session)))
+        (expected-pool (update-fn-prp-data
+                        (fn-prb-data6 (fn-prl-build '(100 100 100 100 10) '(0 0 0 0 1) 1 nil '(0 0 0 0 0))
+                                      (fn-prp-data pool) 0) pool)))
+  (and (fn-ninep-sessionp session) (fn-page-read-poolp pool)
+       (equal (fn-9ps-mount-phase session) :reserved)
+       (not (fn-9ps-mount-source session))
+       (equal (fn-9p-mount-abort-unpinned session pool)
+              (list :aborted expected-session expected-pool))
+       (equal (fn-9p-mount-abort-unpinned expected-session expected-pool)
+              (list :unavailable expected-session expected-pool))))
  :rule-classes nil)

@@ -13,7 +13,18 @@ FN_CERTIFY_JOBS ?= 1
 # The wall clock an interactive `ld` gets before tools/acl2 kills it and frees
 # its slot: the brief's three-minute rule, with a minute of slack.
 FN_LD_TIMEOUT_SECONDS ?= 240
-ACL2_BOOKS ?= books/ninep-transport \
+ACL2_BOOKS ?= books/ninep-group-buckets \
+	tests/acl2/ninep-group-buckets-tests \
+	books/ninep-mounted-directory \
+	host/ninep-mounted-directory-host \
+	tests/acl2/ninep-mounted-directory-tests \
+	books/ninep-mount \
+	tests/acl2/ninep-mount-tests \
+	books/ninep-stat-stream \
+	host/ninep-stat-stream-host \
+	tests/acl2/ninep-stat-stream-tests \
+	tests/acl2/ninep-stat-stream-host-tests \
+	books/ninep-transport \
 	host/ninep-transport-host \
 	tests/acl2/ninep-transport-tests \
 	books/ninep-session \
