@@ -60,6 +60,7 @@
 ; interleave at most one between two of them.
 (in-package "ACL2")
 (include-book "owner-commit-class")
+(include-book "def-loop")
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
 ;; Its work is proof time no prover step counts (docs/proof-style.md
@@ -357,45 +358,9 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-ocs-member-releases-loop (action outcomes acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp outcomes)
-      (fn-ocs-member-releases-loop action
-                                   (cdr outcomes)
-                                   (cons (fn-ocs-member-release action
-                                                                (fn-ocs-outcome-word (car outcomes))
-                                                                (fn-ocs-outcome-renderable (car outcomes)))
-                                         acc))
-    (revappend acc nil)))
-
-(defun fn-ocs-member-releases (action outcomes)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp outcomes)
-           (cons (fn-ocs-member-release action (fn-ocs-outcome-word (car outcomes))
-                                        (fn-ocs-outcome-renderable (car outcomes)))
-                 (fn-ocs-member-releases action (cdr outcomes)))
-         nil)
-       :exec (fn-ocs-member-releases-loop action outcomes nil)))
-
-(local
- (defthm fn-ocs-member-releases-loop-is-revappend
-   (equal (fn-ocs-member-releases-loop action outcomes acc)
-          (revappend acc (fn-ocs-member-releases action outcomes)))
-   :hints (("Goal" :induct (fn-ocs-member-releases-loop action outcomes acc)
-                   :in-theory (union-theories '(fn-ocs-member-releases-loop fn-ocs-member-releases revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-ocs-member-releases-loop)
-
-(verify-guards fn-ocs-member-releases
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-ocs-member-releases)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-ocs-member-releases-loop-is-revappend (acc nil))))))
+(def-loop fn-ocs-member-releases (action outcomes)
+  :shape :map :over outcomes
+  :body (fn-ocs-member-release action (fn-ocs-outcome-word (car outcomes)) (fn-ocs-outcome-renderable (car outcomes))))
 
 
 (defthm fn-ocs-member-releases-length

@@ -312,6 +312,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/rev-onto \
 	books/acceptance-alloc \
 	tests/acl2/defrecord-tests \
+	books/def-loop \
+	tests/acl2/def-loop-tests \
+	books/def-representation-lib \
+	books/def-representation \
+	tests/acl2/def-representation-tests \
 	tests/acl2/defkeystone-tests \
 	tests/acl2/definterface-tests \
 	tests/acl2/definterface-recognizer-tests \
@@ -1563,6 +1568,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/msgid-pages-tests \
 	books/msgid-pages-exec \
 	tests/acl2/msgid-pages-exec-tests \
+	books/msgid-linear \
+	tests/acl2/msgid-linear-tests \
 	books/owner-number-bound-join \
 	tests/acl2/owner-number-bound-join-tests \
 	tests/acl2/owner-identity-served-tests \
@@ -2731,6 +2738,11 @@ check:
 # synthetic by the rule in the tool's header.  Static, about ten seconds.
 	@$(CHECK_STEP) $(PYTHON) tools/secrets_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_secrets_check
+# Evidence stays small (MODE §5): raw planning logs over 1,000 lines need
+# a summary, the tail and the full log location. Existing oversized logs
+# are grandfathered in a baseline that only shrinks. Static, no ACL2.
+	@$(CHECK_STEP) $(PYTHON) tools/evidence_size_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_evidence_size_check
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_build_lists_check
 # Every ACL2 a tool or test starts takes the machine's pool and heap cap
 # (tools/acl2_slots.py run/popen/tree_slot; PKT-162, harness-repair).

@@ -234,7 +234,8 @@
                         (:instance fn-bprf-head-fields-metadata)
                         (:instance fn-bprf-request-article-octets)
                         (:instance fn-bprf-request-article-bound))
-           :in-theory (e/d (fn-bpaj-request-ref fn-bpaj-headp fn-bpaj-head-octets)
+           :in-theory (e/d (fn-bpaj-request-ref fn-bpaj-headp fn-bpaj-head-octets
+                            fn-frame-digestp)
                            (fn-bprf-request-article-bound fn-bpa-request-article fn-bprf-head-read-of-head-octets
                             fn-bprf-head-fields-metadata
                             fn-bprf-request-article-octets

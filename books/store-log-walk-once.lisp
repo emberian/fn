@@ -212,7 +212,11 @@
  (defthm fn-lgb-event-decode-of-legacy
    (implies (fn-record-result-okp (fn-record-decode-exact r))
             (equal (fn-store-event-decode-exact r) (fn-record-decode-exact r)))
-   :hints (("Goal" :expand ((fn-store-event-decode-exact r))
+   :hints (("Goal" :use ((:instance fn-record-accepted-input-magic (octets r)))
+            :expand ((fn-store-event-decode-exact r)
+                     (take 5 r) (take 4 r) (take 4 (cdr r)) (take 3 (cdr r))
+                     (take 3 (cddr r)) (take 2 (cddr r)) (take 2 (cdddr r))
+                     (take 1 (cdddr r)) (take 1 (cddddr r)))
             :in-theory (disable fn-record-result-okp)))))
 
 (local
