@@ -1022,12 +1022,19 @@
                                       (theory 'minimal-theory)))))
         (defthm ,(packn-pos (list name '-run-carries) name)
           (implies (and (,r s) (,run-okp s es)) (,r (,run s es)))
+          ; the instance's obligations are the step theorem above and the
+          ; run definitions: proved in exactly that theory, so a transition's
+          ; body is never opened (measured: the owner row's three state
+          ; transitions, 5.9M steps and out of time in the default theory)
           :hints (("Goal" :by (:functional-instance fn-cd-run-carries
                                                     (fn-cd-inv ,r)
                                                     (fn-cd-okp ,okp)
                                                     (fn-cd-step ,step)
                                                     (fn-cd-run ,run)
-                                                    (fn-cd-run-okp ,run-okp)))))
+                                                    (fn-cd-run-okp ,run-okp))
+                   :in-theory (union-theories
+                               '(,run ,run-okp ,(packn-pos (list name '-step-carries) name))
+                               (theory 'minimal-theory)))))
         (in-theory (disable ,@(fn-cd-names transitions)))))))
 
 (defun fn-cd-events (name row w)
@@ -1143,16 +1150,26 @@
       (or (fn-cd-occurs x (car tree)) (fn-cd-occurs x (cdr tree)))
     (eq x tree)))
 
-(defun fn-cd-attached-to (fn wrld)
+(defun fn-cd-alias-of (fn prop wrld w)
   (declare (xargs :mode :program))
-  ; a function whose 'attachment property mentions FN (an attachment of FN
-  ; to it), else nil
+  ; a symbol whose CURRENT PROP (in W) mentions FN, found among the symbols
+  ; that ever carried PROP in WRLD, else nil: 'attachment (a defattach of FN
+  ; to it, in either direction) or 'absstobj-info (FN an abstract stobj's
+  ; :exec, run by its export with no caller in the world).  Current, so a
+  ; removed attachment stops refusing (r28-F3).
   (cond ((atom wrld) nil)
-        ((and (eq (cadar wrld) 'attachment)
-              (not (eq (cddar wrld) *acl2-property-unbound*))
-              (fn-cd-occurs fn (cddar wrld)))
+        ((and (eq (cadar wrld) prop)
+              (fn-cd-occurs fn (getpropc (caar wrld) prop nil w)))
          (caar wrld))
-        (t (fn-cd-attached-to fn (cdr wrld)))))
+        (t (fn-cd-alias-of fn prop (cdr wrld) w))))
+
+(defun fn-cd-attached-to (fn w)
+  (declare (xargs :mode :program))
+  ; a name through which FN runs with no caller the scan sees, else nil
+  (or (and (getpropc fn 'attachment nil w) fn)
+      (fn-cd-alias-of fn 'attachment w w)
+      (fn-cd-alias-of fn 'absstobj-info w w)
+      (and (fn-cd-occurs fn (table-alist 'attach-stobj w)) 'attach-stobj)))
 
 (defun fn-cd-produced-host-problem (entries w)
   (declare (xargs :mode :program))
@@ -1173,9 +1190,10 @@
         (msg "~x0 is a host-called entry (fn-interfaces): the host may hand it ~
               any ~x1, so its produced premises back no raw dispatch" fn f))
        ((fn-cd-attached-to fn w)
-        (msg "~x0 is attached to ~x1 (defattach): a call of ~x1 runs ~x0 with ~
-              an argument the caller scan does not see, so its produced ~
-              premises back no raw dispatch" fn (fn-cd-attached-to fn w)))
+        (msg "~x0 is attached to ~x1 (defattach, an abstract stobj's :exec, or ~
+              attach-stobj): a call through ~x1 runs ~x0 with an argument the ~
+              caller scan does not see, so its produced premises back no raw ~
+              dispatch" fn (fn-cd-attached-to fn w)))
        ((null pos) (msg "~x0 has no formal ~x1" fn f))
        (bad
         (msg "~x0 calls ~x1 with ~x2 as ~x3, which is not a call of a declared ~

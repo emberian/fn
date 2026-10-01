@@ -1027,11 +1027,10 @@
 ; 3c. A premise discharged by a NAMED PRODUCER under NAMED ASSUMPTIONS.
 ; fn-cdt-open-from establishes R only for a positive X, which its guard does
 ; not say.  The host never hands it an arbitrary X: every caller passes a
-; producer's call, (fn-cdt-make-pos K) -- positive outright -- or
-; (fn-cdt-make-octet A B) -- positive under the named assumption
-; fn-durable-octet (A-DURABLE-EXTENT, books/assumptions-durable.lisp: an
+; producer's call, (fn-cdt-make-pos K) or (fn-cdt-make-octet A B) over
+; A-DURABLE-EXTENT's fn-durable-octet (books/assumptions-durable.lisp: an
 ; encapsulate there, which is what makes it a NAMED assumption; its spelling
-; is not).  The entry declares :hyps ((< 0 x)) and :produced; def-carried
+; is not) -- both positive outright.  The entry declares :hyps ((< 0 x)) and :produced; def-carried
 ; generates NAME-fn-cdt-open-from-P-produced per producer, and D40 accepts
 ; the row when FN is no host entry, nothing is attached to it, and every
 ; caller in the world passes a producer's call at x.
@@ -1049,8 +1048,13 @@
 (defthm fn-cdt-open-from-establishes
   (implies (< 0 x) (fn-cdt-relp (fn-cdt-open-from x fn-cdt-st))))
 (defthm fn-cdt-make-pos-positive (< 0 (fn-cdt-make-pos k)))
+; its premise would be redundant (an octet plus one is positive whatever
+; the octet), so the theorem is the weakened one, proved (r28-F5); the
+; NAMED-assumption positive case is asserted on fn-durable-octet directly
+; below, and the owner row (books/owner-retain-carried.lisp) carries a
+; necessary one, A-RECOVERED-OPEN
 (defthm fn-cdt-make-octet-positive
-  (implies (fn-durable-octet a b) (< 0 (fn-cdt-make-octet a b)))
+  (< 0 (fn-cdt-make-octet a b))
   :hints (("Goal" :use ((:instance fn-durable-octet-is-octet (file a) (pos b)))
            :in-theory (e/d (fn-cbor-octetp) (fn-durable-octet-is-octet)))))
 (defthm fn-cdt-make-from-positive
@@ -1068,8 +1072,7 @@
                 (fn-cdt-open-from fn-cdt-open-from-establishes
                                   :hyps ((< 0 x))
                                   :produced ((fn-cdt-make-pos fn-cdt-make-pos-positive)
-                                             (fn-cdt-make-octet fn-cdt-make-octet-positive
-                                              :assuming ((fn-durable-octet a b))))
+                                             (fn-cdt-make-octet fn-cdt-make-octet-positive))
                                   :witness (1 '(0 nil))))
   :transitions ((fn-cdt-bump fn-cdt-bump-carries)
                 (fn-cdt-note fn-cdt-note-carries)
@@ -1083,7 +1086,11 @@
 (assert-event
  (equal (getpropc 'fn-cdt-produced-carried-fn-cdt-open-from-fn-cdt-make-octet-produced
                   'theorem nil (w state))
-        '(implies (fn-durable-octet a b) (< '0 (fn-cdt-make-octet a b)))))
+        '(< '0 (fn-cdt-make-octet a b))))
+; a positive witness for the producer theorem: the durable octet is an
+; octet (its constraint), so the producer's output is positive
+(thm (implies (fn-cbor-octetp (fn-durable-octet 'f 0)) (< 0 (fn-cdt-make-octet 'f 0)))
+     :hints (("Goal" :in-theory (e/d (fn-cbor-octetp) (fn-durable-octet-is-octet)))))
 (assert-event
  (equal (getpropc 'fn-cdt-produced-carried-fn-cdt-open-from-establishes 'theorem nil (w state))
         '(implies (if (if (fn-cdt-stp fn-cdt-st) (integerp x) 'nil) (< '0 x) 'nil)
@@ -1276,7 +1283,8 @@
   (assert-event
    (let ((m (fn-cd-raw-problem 'fn-cdt-produced-carried 'fn-cdt-bump (w state))))
      (and (search "which is not a call of a declared" (car m))
-          (eq (cdr (assoc #\0 (cdr m))) 'fn-cdt-host-open-let))))))
+          (eq (cdr (assoc #\0 (cdr m))) 'fn-cdt-host-open-let)
+          (eq (cdr (assoc #\2 (cdr m))) 'x))))))
 ; the open itself a host entry: the host may hand it any x
 (encapsulate ()
  (local (definterface fn-cdt-open-from :class :common-lisp-compliant :kinds ((x integerp))))
@@ -1297,7 +1305,12 @@
  (local
   (assert-event
    (fn-cdt-msg-has (fn-cd-raw-problem 'fn-cdt-produced-carried 'fn-cdt-bump (w state))
-                   "is attached to"))))
+                   "is attached to")))
+ ; the CURRENT attachment counts: removed, it no longer refuses (r28-F3)
+ (local (defattach fn-cdt-alias nil))
+ (local
+  (assert-event
+   (null (fn-cd-raw-problem 'fn-cdt-produced-carried 'fn-cdt-bump (w state))))))
 ; a forged row naming a true theorem about another producer as the
 ; generated produced name
 (encapsulate ()
@@ -1378,40 +1391,70 @@
      (fn-cdt-put (car case)
                  (fn-cdt-drop-in-entries (cadr case) (caddr case) (fn-cd-get (car case) row))
                  row))))
-(defun fn-cdt-forgeries-refused (row cases fn w)
+(mutual-recursion
+ (defun fn-cdt-msg-find (m phrase)
+   (declare (xargs :mode :program))
+   ; the msg (in M or among its arguments) whose format string has PHRASE
+   (and (consp m)
+        (or (and (stringp (car m)) (search phrase (car m)) m)
+            (and (alistp (cdr m)) (fn-cdt-msg-find-lst (strip-cdrs (cdr m)) phrase)))))
+ (defun fn-cdt-msg-find-lst (ms phrase)
+   (declare (xargs :mode :program))
+   (and (consp ms)
+        (or (fn-cdt-msg-find (car ms) phrase) (fn-cdt-msg-find-lst (cdr ms) phrase)))))
+(defun fn-cdt-forgeries-wrong (row cases fn w)
   (declare (xargs :mode :program))
-  ; the first CASE whose forgery of ROW backs raw dispatch of FN, else nil
+  ; CASES: ((FORGE PHRASE ARG0) ...).  The first case whose forgery of ROW is
+  ; NOT refused by the message carrying PHRASE with ~x0 = ARG0 (r28-F4: the
+  ; specific refusal, never any refusal), else nil
   (cond ((atom cases) nil)
-        ((null (fn-cd-raw-problem-row 'fn-cdt-forged-field (fn-cdt-forge row (car cases)) fn w))
-         (car cases))
-        (t (fn-cdt-forgeries-refused row (cdr cases) fn w))))
+        ((let ((found (fn-cdt-msg-find
+                       (fn-cd-raw-problem-row 'fn-cdt-forged-field
+                                              (fn-cdt-forge row (car (car cases))) fn w)
+                       (cadr (car cases)))))
+           (and found (equal (cdr (assoc #\0 (cdr found))) (caddr (car cases)))))
+         (fn-cdt-forgeries-wrong row (cdr cases) fn w))
+        (t (car cases))))
 (assert-event
  (let ((row (cdr (assoc-eq 'fn-cdt-ok-carried (table-alist 'fn-carried (w state))))))
    (and (null (fn-cd-raw-problem-row 'fn-cdt-ok-carried row 'fn-cdt-bump (w state)))
-        (null (fn-cdt-forgeries-refused
+        (null (fn-cdt-forgeries-wrong
                row
-               '((:top :invariant) (:top :established) (:top :transitions)
-                 (:established fn-cdt-open :name) (:established fn-cdt-open :witness)
-                 (:established fn-cdt-open :reaches)
-                 (:established fn-cdt-open-maybe :name) (:established fn-cdt-open-maybe :ok)
-                 (:established fn-cdt-open-maybe :witness) (:established fn-cdt-open-maybe :reaches)
-                 (:transitions fn-cdt-bump :name) (:transitions fn-cdt-note :name)
-                 (:transitions fn-cdt-reset :name) (:concludes fn-cdt-nonzerop :name))
+               '(((:top :invariant) "value-state carried rows" nil)
+                 ((:top :established) "has no establishing point" fn-cdt-forged-field)
+                 ((:top :transitions) "is not a transition of" fn-cdt-bump)
+                 ((:established fn-cdt-open :name) "is not the generated statement" nil)
+                 ((:established fn-cdt-open :witness) "is not one term per formal" fn-cdt-open)
+                 ((:established fn-cdt-open :reaches) "is not the generated statement" nil)
+                 ((:established fn-cdt-open-maybe :name) "is not the generated statement" nil)
+                 ((:established fn-cdt-open-maybe :ok) "is not the generated statement"
+                  fn-cdt-ok-carried-fn-cdt-open-maybe-establishes)
+                 ((:established fn-cdt-open-maybe :witness) "is not one term per formal"
+                  fn-cdt-open-maybe)
+                 ((:established fn-cdt-open-maybe :reaches) "is not the generated statement" nil)
+                 ((:transitions fn-cdt-bump :name) "is not the generated statement" nil)
+                 ((:transitions fn-cdt-note :name) "is not the generated statement" nil)
+                 ((:transitions fn-cdt-reset :name) "is not the generated statement" nil)
+                 ((:concludes fn-cdt-nonzerop :name) "is not the generated statement" nil))
                'fn-cdt-bump (w state)))))
- :msg "r25-F1: a forgery of fn-cdt-ok-carried omitting one field backs raw dispatch")
+ :msg "r25-F1/r28-F4: a forgery of fn-cdt-ok-carried omitting one field is not refused by its own message")
 (assert-event
  (let ((row (cdr (assoc-eq 'fn-cdt-produced-carried (table-alist 'fn-carried (w state))))))
    (and (null (fn-cd-raw-problem-row 'fn-cdt-produced-carried row 'fn-cdt-bump (w state)))
-        (null (fn-cdt-forgeries-refused
+        (null (fn-cdt-forgeries-wrong
                row
-               '((:established fn-cdt-open-from :name) (:established fn-cdt-open-from :hyps)
-                 (:established fn-cdt-open-from :produced)
-                 (:established fn-cdt-open-from :witness) (:established fn-cdt-open-from :reaches)
-                 (:producer fn-cdt-open-from fn-cdt-make-pos :name)
-                 (:producer fn-cdt-open-from fn-cdt-make-octet :name)
-                 (:producer fn-cdt-open-from fn-cdt-make-octet :assuming))
+               '(((:established fn-cdt-open-from :name) "is not the generated statement" nil)
+                 ((:established fn-cdt-open-from :hyps) "is not the generated statement"
+                  fn-cdt-produced-carried-fn-cdt-open-from-establishes)
+                 ((:established fn-cdt-open-from :produced) "beyond its guard and no producer"
+                  fn-cdt-forged-field)
+                 ((:established fn-cdt-open-from :witness) "is not one term per formal"
+                  fn-cdt-open-from)
+                 ((:established fn-cdt-open-from :reaches) "is not the generated statement" nil)
+                 ((:producer fn-cdt-open-from fn-cdt-make-pos :name) "is not the generated statement" nil)
+                 ((:producer fn-cdt-open-from fn-cdt-make-octet :name) "is not the generated statement" nil))
                'fn-cdt-bump (w state)))))
- :msg "r25-F1: a forgery of fn-cdt-produced-carried omitting one field backs raw dispatch")
+ :msg "r25-F1/r28-F4: a forgery of fn-cdt-produced-carried omitting one field is not refused by its own message")
 ;
 ; r24-F1 (Codex, liaison-4): raw dispatch rests on R holding of SOME state.
 ; A hand-written row with no establishing point, or a declared row whose
