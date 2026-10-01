@@ -198,6 +198,8 @@
                (fn-frame-item 2 (car *ff-restart-fx*)) *ff-b*))
 (assert-event (not (fn-feed-takethis-linep
                     (fn-frame-item 2 (car *ff-restart-fx*)) *ff-b*)))
+;; Anchor: the TAKETHIS line for the same Message-ID is one.
+(assert-event (fn-feed-takethis-linep (fn-feed-takethis-line *ff-b*) *ff-b*))
 
 ; And the peer's own history answers: a 438 finishes the entry with no second
 ; copy transferred.

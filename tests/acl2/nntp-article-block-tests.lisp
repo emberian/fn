@@ -53,6 +53,7 @@
 (assert-event
  (equal (fn-nntp-crlf-validp *nabt-payload* t)
         (equal (car (fn-nntp-crlf-lines *nabt-payload*)) :ok)))
+(assert-event (fn-nntp-crlf-validp *nabt-payload* t))
 
 ; fn-nntp-blank-linep-is-split-okp both ways.
 (assert-event

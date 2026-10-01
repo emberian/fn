@@ -118,6 +118,7 @@
 (assert-event (equal (fn-auth-access-read *gat-as-bob* *gat-config*) "fn.*,!fn.private.*"))
 (assert-event (equal (fn-auth-access-post *gat-as-bob* *gat-config*) "fn.private.*"))
 (assert-event (not (fn-auth-access-restrictedp *gat-as-alice* *gat-config*)))
+(assert-event (fn-auth-access-restrictedp *gat-as-bob* *gat-config*))
 (assert-event (not (fn-auth-access-restrictedp *gat-as-anon* *gat-config*)))
 (assert-event (not (fn-auth-access-restrictedp *gat-as-bob* *gat-config-none*)))
 
