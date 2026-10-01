@@ -1259,3 +1259,27 @@ Actual operator query limit, Store R, frame/runtime representation and pooled
 quantum/lifetime admission must agree on the same retained operation. Selected
 modern category source hunks and authored regressions are an integration packet,
 not current full Store or endpoint qualification.
+
+
+### Retained same-pass historical control continuation (source draft)
+
+The recovery event companion retains the one physical configured-node result
+and the one SSR identity packet while a control decision yields. It searches
+the captured dense event prefix oldest first, consumes one original verdict
+pair per tick, searches the target row, and then advances the historical
+configuration cursor. Every read uses the registered candidate source; NIL or
+unavailable is never interpreted as historical absence. End-of-prefix is the
+only absent-row observation. The query txid must fit the captured E-prefix
+upper bound, independently of the last C record. Original verdict, control
+and target-lock data survive configuration yields literally.
+
+Single append resolves old withdrawal targets one cell at a time using the
+arriving row's captured locks, then reverses the rebuilt spine one cell at a
+time. Target resolution fences withdrawal reports even when old visible
+content did not change. Generic rebuild uses the same captured source and
+per-article continuation. The final callback calls the actual visibility
+effect and common CP/account operation once; it never reinterns, appends or
+replays the physical event on resume. These new high functions are unadmitted
+source drafts. Their actual reader/custody/metadata/cost invariant, complete
+refinement and durable owner/checkpoint installation remain open, and existing
+visibility finalization is not claimed bounded by this continuation.

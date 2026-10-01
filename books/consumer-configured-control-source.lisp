@@ -22,7 +22,9 @@
                     recorded-source predecessor)))
     (list :advanced next (fn-cp-nth 2 one) entry)))))
 
-; Begin from the SAME prefix history lookup used by the existing control
+; Legacy high reference only; the served successor is FnCTCD/FnCAPE.
+; This draft still reads whole historical inputs before yielding and is
+; NOT a bounded served entry. Begin from the SAME prefix lookup used by control
 ; producer. Before every yielded step, the actual caller rechecks current
 ; custody of captured chain root separately from account authority.
 ; EVENT-UPPER-TXID is actual included E-prefix bound, not last Ctxid. The
