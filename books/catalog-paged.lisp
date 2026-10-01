@@ -63,6 +63,8 @@
 (include-book "records-invariants")
 
 (local (in-theory (disable (tau-system))))
+; D26: two included event-shape rules fire on every term and never help here.
+(local (in-theory (disable fn-cne-event-shape fn-cae-event-shape)))
 
 ; The stobjs' logical lists stay as `nth' and `update-nth' terms in every
 ; proof: the old foundation's accessors open to them, and the facts below
@@ -567,6 +569,8 @@
        :exec (cond ((fn-cp-asc-natsp l) l)
                    ((fn-cp-desc-natsp l) (revappend l nil))
                    (t (fn-cp-msort-x l)))))
+
+(local (in-theory (disable fn-cp-asc-natsp fn-cp-desc-natsp)))
 
 ; The view's withdrawals-by-version table: each pushed entry sorted.
 (defun fn-cp-wbv-view (al)
@@ -2166,7 +2170,7 @@
                             (fn-cat$p-append-row fn-cat$p-tab-index-add fn-cat$p-tab-commit
                              fn-cat$c-live-plan fn-cat$c-plan fn-cat$c-apply-plan fn-cat$c-live-apply
                              fn-cat$c-index-add fn-cat$c-wbv-put fn-cat$c-wbv-get fn-held-with-numbers
-                             fn-cat-plan-numbers fn-cat-insert-asc))))))
+                             fn-cat-plan-numbers fn-cat-insert-asc fn-cp-isort fn-cp-wbv-view))))))
 
 (local
  (defthm fn-cp-with-withdrawn-nonnil
@@ -2240,12 +2244,14 @@
  (defthm fn-cat$p-clear-keyed-sim
    (equal (fn-cat$p-view (fn-cat$p-clear-keyed key fn-cat$p))
           (fn-cat$c-clear-keyed key (fn-cat$p-view fn-cat$p)))
-   :hints (("Goal" :in-theory (enable fn-cat$p-clear-keyed fn-cat$c-clear-keyed fn-cat$c-clear-w
-                                      fn-cat$c-clear fn-cat$c-clear-base fn-cp-merge))
+   :hints (("Goal" :in-theory (e/d (fn-cat$p-clear-keyed fn-cat$c-clear-keyed fn-cat$c-clear-w
+                                      fn-cat$c-clear fn-cat$c-clear-base fn-cp-merge)
+                                   (fn-cp-isort fn-cp-wbv-view)))
            (and stable-under-simplificationp
-                '(:in-theory (enable fn-cat$p-clear-keyed fn-cat$c-clear-keyed fn-cat$c-clear-w
+                '(:in-theory (e/d (fn-cat$p-clear-keyed fn-cat$c-clear-keyed fn-cat$c-clear-w
                                      fn-cat$c-clear fn-cat$c-clear-base fn-cp-merge fn-cp-frame
-                                     fn-cp-update-nth-8-commute))))))
+                                     fn-cp-update-nth-8-commute)
+                                  (fn-cp-isort fn-cp-wbv-view)))))))
 
 ; -----------------------------------------------------------------------------
 ; 7. The obligations: each the old catalog's (books/catalog-logic.lisp), at the view.
