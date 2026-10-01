@@ -138,8 +138,8 @@
                   (fn-rr-medium-full-open rrt-full-open)
                   (fn-rr-medium-select rrt-select)
                   (fn-rr-open rrt-composed-open)))
-           :in-theory (union-theories '(rrt-composed-open)
-                                      (theory 'minimal-theory)))))
+           :in-theory (enable rrt-composed-open rrt-select rrt-open rrt-capture
+                              rrt-full-open))))
 
 ; Evaluated on the ground: an image bound at S = 0, 1, 2 (within K = 4),
 ; past K (K = 0: the full replay), and an absent image, each the full open
