@@ -39,6 +39,15 @@
 (in-package "ACL2")
 (include-book "proto/adt-lib")
 (include-book "proto/adt-load")
+
+; The page sizes every generated paged foundation uses: R rows a row page,
+; Q octets a pool page.  An append allocates at most one row page (R
+; entries of each column), the pool pages its own octets need (a record
+; larger than Q octets takes several), and, when the page table is full,
+; a doubled table of page POINTERS (O(N/R) words; each new slot an empty
+; page header).
+(defconst *adt-pg-rows* 256)
+(defconst *adt-pg-octets* 16384)
 (local (include-book "arithmetic/top" :dir :system))
 (local (include-book "ihs/quotient-remainder-lemmas" :dir :system))
 
@@ -765,6 +774,16 @@
       (adt-pg-poolroom q d need (adt-pg-addpool q d c))
     c))
 
+(defthm adt-pg-nth-of-rowroom
+  (implies (and (natp k) (not (equal k 0)) (not (equal k 4)))
+           (equal (nth k (adt-pg-rowroom m r d c)) (nth k c)))
+  :hints (("Goal" :in-theory (enable adt-pg-addrow))))
+
+(defthm adt-pg-nth-of-poolroom
+  (implies (and (natp k) (not (equal k 1)) (not (equal k 5)))
+           (equal (nth k (adt-pg-poolroom q d need c)) (nth k c)))
+  :hints (("Goal" :induct (adt-pg-poolroom q d need c) :in-theory (enable adt-pg-addpool))))
+
 (local
  (defthm adt-pg-resize-list-0
    (equal (resize-list x 0 d) nil)
@@ -943,7 +962,7 @@
 
 (defun adt-pg-poolr (off n acc q c)
   (declare (xargs :verify-guards nil))
-  (if (zp n)
+  (if (or (zp n) (not (natp off)))
       acc
     (adt-pg-poolr off (1- n) (cons (adt-pg-pget (+ off (1- n)) q c) acc) q c)))
 
@@ -1358,5 +1377,5 @@
            (adt-fill-is-load s (adt-pg-flat s c) nil)))
 
 (in-theory (disable adt-pg-append-c adt-pg-set-c adt-pg-get-c adt-pg-clear-c adt-pg-append-room adt-pg-append-at
-                    adt-pg-set-room
+                    adt-pg-set-room adt-pg-set-c-is-room-then-set
                     adt-pg-corr))
