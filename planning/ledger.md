@@ -10,15 +10,15 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1990 |
+| Books read | 1994 |
 | Certification roots in the Makefile | 1866 |
 | Books inside the root closure | 1938 |
-| `defthm` and `defthmd` events | 30295 |
-| `defun` events | 19333 |
-| Functions with verified guards | 3550 |
+| `defthm` and `defthmd` events | 30308 |
+| `defun` events | 19342 |
+| Functions with verified guards | 3551 |
 | Functions declared `:verify-guards nil` and never verified | 2350 |
-| Functions left at the default with an explicit guard | 10563 |
-| Functions left at the default with no guard | 2870 |
+| Functions left at the default with an explicit guard | 10569 |
+| Functions left at the default with no guard | 2872 |
 | `assert-event` checks | 24064 |
 | `must-fail` checks | 2519 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 348 |
 | Enabled-projection warnings | 55 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2722 |
+| Include-hygiene warnings | 2727 |
 | Host-names warnings | 2193 |
 | Hand-written-record warnings | 18 |
 
@@ -564,7 +564,9 @@ that `make certify` requests.
 | `books/index-range-render-custody.lisp` | - | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/index-range-render-demand.lisp` | - | 1 | 5 | 2/0/3/0 | 0 | 0 | 0 |
 | `books/index-range-render-output.lisp` | - | 10 | 1 | 1/0/0/0 | 0 | 0 | 0 |
+| `books/index-range-render-trajectory.lisp` | - | 5 | 5 | 1/0/4/0 | 0 | 0 | 0 |
 | `books/index-range-row-decision.lisp` | - | 7 | 4 | 0/0/4/0 | 0 | 0 | 0 |
+| `books/index-reader-render-ready.lisp` | - | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/index.lisp` | root | 35 | 26 | 24/0/2/0 | 0 | 0 | 3 |
 | `books/injection-info-params-invariants.lisp` | root | 82 | 4 | 0/0/4/0 | 0 | 0 | 2 |
 | `books/injection-info-params.lisp` | root | 1 | 11 | 0/0/11/0 | 0 | 0 | 0 |
@@ -1585,6 +1587,8 @@ that `make certify` requests.
 | `tests/acl2/index-range-controller-tests.lisp` | root | 10 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `tests/acl2/index-range-held-row-controller-tests.lisp` | - | 11 | 7 | 0/4/0/3 | 0 | 0 | 0 |
 | `tests/acl2/index-range-number-controller-tests.lisp` | - | 4 | 6 | 0/4/2/0 | 0 | 0 | 0 |
+| `tests/acl2/index-range-render-output-tests.lisp` | - | 4 | 1 | 0/0/0/1 | 0 | 0 | 0 |
+| `tests/acl2/index-range-render-trajectory-tests.lisp` | - | 4 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `tests/acl2/index-range-row-decision-tests.lisp` | - | 5 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `tests/acl2/index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 31 | 0 | 0 |
 | `tests/acl2/injection-info-params-tests.lisp` | root | 0 | 5 | 0/0/3/2 | 48 | 14 | 0 |
