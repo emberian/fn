@@ -34,9 +34,9 @@ seeded from every function a LOADED host file defines (one the image
 builds, host/native/build.lisp and build-dtn.lisp, or the extraction world
 tools/extract/world-host.lisp `ld' or `load'; a host file no build loads
 seeds nothing, PKT-412, and tools/host_loaded_check.py refuses it), every book
-symbol a loaded host file names, and every book symbol a `tools/*.py' bridge names in a string --- the
-bridges really do call ACL2 by building forms as text, so those are host
-lines too.  A `defabsstobj' export is a function whose body is its :logic and
+symbol a loaded host file names.  Python development and checking tools
+seed nothing: their book-symbol mentions are not served host lines.
+A `defabsstobj' export is a function whose body is its :logic and
 :exec functions, and `(attach-stobj GENERIC IMPL)' makes each GENERIC export
 reach IMPL's export with the same :logic (the node's `fn-arena' runs
 `fn-arena-paged''s pages); a live stobj's creator and recognizer run
@@ -427,11 +427,6 @@ class Graph:
         self.books = sorted(ROOT.glob("books/*.lisp"))
         self.hosts = (sorted(ROOT.glob("host/*.lisp"))
                       + sorted(ROOT.glob("host/native/*.lisp")))
-        # Not this file: its prose names book functions as examples, and a
-        # checker's own docstring is not a host line.
-        self.bridges = [p for p in sorted(ROOT.glob("tools/*.py"))
-                        if p.name != pathlib.Path(__file__).name]
-
         # Definitions and their bodies come from tools/callgraph.py (the
         # ledger's reader: nested definitions and macro bodies included);
         # the generated record recognizers, stobj exports and attachments
@@ -482,29 +477,27 @@ class Graph:
             self.edges.setdefault(constrained, set()).update(bound)
 
         # Seeds: everything a LOADED host file defines, plus every book
-        # symbol a loaded host file or a Python bridge names.  A bridge
-        # naming `fn-own-read` in a form it builds as text IS a host line;
-        # that is how the owner is driven.  A host file no image build loads
-        # is not (PKT-412): it is named in `unloaded_hosts'.
+        # symbol a loaded host file names.  Python tools seed nothing.
+        # A host file no image build loads is not a host line (PKT-412):
+        # it is named in `unloaded_hosts'.
         self.loaded_hosts = loaded_host_files()
         self.unloaded_hosts = sorted(str(p.relative_to(ROOT)) for p in self.hosts
                                      if str(p.relative_to(ROOT)) not in self.loaded_hosts)
         host_defs = {n: d for n, d in host_defs.items() if d[0] in self.loaded_hosts}
         seen = set(host_defs)
         # name -> what reached it: the calling definition, or the host file
-        # or bridge that names it (`--explain' prints the chain).
+        # that names it (`--explain' prints the chain).
         self.via = {name: host_defs[name][0] for name in host_defs}
         self.seeds = collections.Counter()
-        for path in self.hosts + self.bridges:
-            if path.suffix == ".lisp" and str(path.relative_to(ROOT)) in self.unloaded_hosts:
+        for path in self.hosts:
+            if str(path.relative_to(ROOT)) not in self.loaded_hosts:
                 continue
-            label = "host" if path.suffix == ".lisp" else "bridge"
             text = path.read_text(encoding="utf-8", errors="replace")
             for symbol in self.symbols(text) & set(self.book_defs):
                 if symbol not in seen:
                     seen.add(symbol)
                     self.via[symbol] = str(path.relative_to(ROOT))
-                    self.seeds[label] += 1
+                    self.seeds["host"] += 1
         work = list(seen)
         while work:
             name = work.pop()
@@ -585,7 +578,7 @@ class Graph:
         return _substitute(body, env)
 
     def host_chain(self, name: str) -> list[str]:
-        """How a host line reaches NAME: the host file (or bridge, or stobj)
+        """How a host line reaches NAME: the host file (or stobj)
         first, then each definition down to NAME.  Empty when unreached."""
         if name not in self.via:
             return []

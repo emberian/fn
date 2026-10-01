@@ -12,7 +12,7 @@ stale. Counts describe artifacts, not coverage; see
 | --- | --- |
 | Books read | 2719 |
 | Certification roots in the Makefile | 2354 |
-| Books inside the root closure | 2629 |
+| Books inside the root closure | 2627 |
 | `defthm` and `defthmd` events | 35756 |
 | `defun` events | 22828 |
 | Functions with verified guards | 3845 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 396 |
 | Enabled-projection warnings | 80 |
 | Teeth-form warnings | 279 |
-| Include-hygiene warnings | 3373 |
+| Include-hygiene warnings | 3358 |
 | Host-names warnings | 3114 |
 | Hand-written-record warnings | 19 |
 
@@ -96,7 +96,7 @@ that `make certify` requests.
 | `books/acceptance.lisp` | root | 69 | 53 | 40/1/12/0 | 0 | 0 | 1 |
 | `books/account-adoption-input-source.lisp` | root | 0 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/account-adoption-operation-source.lisp` | - | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
-| `books/account-adoption-result.lisp` | closure | 0 | 3 | 0/0/3/0 | 0 | 0 | 0 |
+| `books/account-adoption-result.lisp` | - | 0 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/account-adoption-turn-continuation.lisp` | root | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/account-adoption-turn-return.lisp` | root | 0 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/account-adoption-turn-state.lisp` | root | 0 | 4 | 0/0/4/0 | 0 | 0 | 0 |
@@ -1678,7 +1678,7 @@ that `make certify` requests.
 | `books/tcpcl-records.lisp` | root | 133 | 99 | 62/0/37/0 | 0 | 0 | 77 |
 | `books/tcpcl-segment-source-cursor.lisp` | closure | 0 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/tcpcl-session.lisp` | root | 107 | 59 | 12/0/47/0 | 0 | 0 | 1 |
-| `books/tcpcl-source-continuation.lisp` | closure | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
+| `books/tcpcl-source-continuation.lisp` | - | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/tcpcl-spool.lisp` | root | 3 | 19 | 2/0/17/0 | 0 | 0 | 0 |
 | `books/tls-handshake-budget.lisp` | closure | 37 | 12 | 0/1/10/1 | 0 | 0 | 0 |
 | `books/tls-handshake-decision.lisp` | closure | 37 | 44 | 0/0/44/0 | 0 | 0 | 0 |
