@@ -164,6 +164,7 @@ IMAGES_GIVEN=0
 POSITIONAL=
 IMAGE_SET=
 REUSE=
+CATALOG=old
 usage() { sed -n '2,/^set -eu/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//' >&2; exit 2; }
 # status / attach LABEL: read the record this worktree's start wrote.
 attach_run() {
@@ -206,6 +207,15 @@ while [ $# -gt 0 ]; do
         --label) LABEL=$2; shift 2 ;;
         --images) IMAGES=$2; IMAGES_GIVEN=1; shift 2 ;;
         --mem) MEM=$2; shift 2 ;;
+        # --catalog paged (lane paged-catalog-4): the developer and production
+        # images built with FN_NATIVE_CATALOG=paged (tools/build_native_host.sh:
+        # books/image-world-paged, the catalog on typed columns and a byte
+        # pool), and that umbrella added to the certified roots.  An --env
+        # FN_NATIVE_CATALOG=... never reached the image step, which runs
+        # under its own env list.  Default: old.
+        --catalog)
+            case $2 in old|paged) CATALOG=$2 ;; *) echo "hbox_native: --catalog takes old or paged" >&2; exit 2 ;; esac
+            shift 2 ;;
         --jobs)
             case $2 in ''|*[!0-9]*|0) echo "hbox_native: --jobs takes a positive integer" >&2; exit 2 ;; esac
             MODULE_JOBS=$2; shift 2 ;;
@@ -436,6 +446,11 @@ BOX
         cat <<BOX
 python3 tools/proof_artifacts.py roots --profile default > \$L/roots.txt || finish 13
 BOX
+        if [ "$CATALOG" = paged ]; then
+            cat <<BOX
+echo books/image-world-paged >> \$L/roots.txt
+BOX
+        fi
         if [ $DTN -eq 1 ]; then
             # The dtn profile's roots are not a subset of default's
             # (books/records-concrete at 804896a1): certify their union.
@@ -492,8 +507,10 @@ BOX
                 dtn) profile=production build=host/native/build-dtn.lisp out=build/fn-host-dtn world=stripped ;;
                 dtn-developer) profile=developer build=host/native/build-dtn.lisp out=build/fn-host-dtn-developer world=full ;;
             esac
+            catalog_env=
+            if [ "$CATALOG" = paged ]; then case $image in developer|production|reference|developer-stripped) catalog_env=FN_NATIVE_CATALOG=paged ;; esac; fi
             cat <<BOX
-step image-$image env FN_ACL2=${IMAGE_ACL2:-\$ACL2} FN_NATIVE_PROFILE=$profile FN_NATIVE_WORLD=$world FN_NATIVE_BUILD=$build FN_NATIVE_IMAGE=$out FN_NATIVE_LOG=\$L/native-build-$image.log $WRAP sh tools/build_native_host.sh
+step image-$image env FN_ACL2=${IMAGE_ACL2:-\$ACL2} $catalog_env FN_NATIVE_PROFILE=$profile FN_NATIVE_WORLD=$world FN_NATIVE_BUILD=$build FN_NATIVE_IMAGE=$out FN_NATIVE_LOG=\$L/native-build-$image.log $WRAP sh tools/build_native_host.sh
 BOX
         done
     fi
