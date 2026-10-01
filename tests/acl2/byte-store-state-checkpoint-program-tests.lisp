@@ -97,25 +97,59 @@
   (fn-bs-run *scp-t-bs* nil (fn-bs-scp-batched-program ".stage-state-checkpoint-1" *scp-t-chunks*)
              nil nil 0))
 (assert-event (equal (len *scp-t-batched-run*) 15))
-(defun scp-t-all-old-or-new (pairs bs old-ino octets choices)
+; Choices follow each state's pending operations, including every touched
+; write unit.  LANDP selects land-everything; nil selects lose-everything.
+(defun scp-t-crash-choices (ops unit landp)
+  (if (consp ops)
+      (cons (if (equal (car (car ops)) :write)
+                (if landp
+                    (make-list-ac (fn-bs-unit-count (nth 2 (car ops))
+                                              (len (nth 3 (car ops))) unit)
+                                  :new nil)
+                  nil)
+              (if landp :apply :drop))
+            (scp-t-crash-choices (cdr ops) unit landp))
+    nil))
+(defun scp-t-all-choices-admissible (pairs landp)
   (if (consp pairs)
-      (and (fn-bs-scp-old-or-newp (fn-bs-crash (car (car pairs)) choices) bs old-ino octets)
-           (scp-t-all-old-or-new (cdr pairs) bs old-ino octets choices))
+      (let* ((bs (car (car pairs)))
+             (ops (fn-bs-pending bs)) (unit (fn-bs-unit bs)))
+        (and (fn-bs-crash-choicesp (scp-t-crash-choices ops unit landp) ops unit)
+             (scp-t-all-choices-admissible (cdr pairs) landp)))
     t))
-(defun scp-t-all-entry (pairs choices entry)
+(defun scp-t-all-old-or-new (pairs bs old-ino octets landp)
   (if (consp pairs)
-      (and (equal (fn-bs-durable-entry (fn-bs-crash (car (car pairs)) choices)
-                                       :root "store-checkpoint.fnsc")
-                  entry)
-           (scp-t-all-entry (cdr pairs) choices entry))
+      (let* ((s (car (car pairs)))
+             (choices (scp-t-crash-choices (fn-bs-pending s) (fn-bs-unit s) landp)))
+        (and (fn-bs-scp-old-or-newp (fn-bs-crash s choices) bs old-ino octets)
+             (scp-t-all-old-or-new (cdr pairs) bs old-ino octets landp)))
     t))
-(defconst *scp-t-drop-all* '(:drop :drop :drop :drop :drop :drop))
-(defconst *scp-t-apply-all* '(:apply :apply :apply :apply :apply :apply))
-(assert-event (scp-t-all-old-or-new *scp-t-batched-run* *scp-t-bs* 3 '(1 2 3 4 5 6) *scp-t-drop-all*))
-(assert-event (scp-t-all-old-or-new *scp-t-batched-run* *scp-t-bs* 3 '(1 2 3 4 5 6) *scp-t-apply-all*))
-; the eleven states before the rename: the old entry under every choice
-(assert-event (and (scp-t-all-entry (take 11 *scp-t-batched-run*) *scp-t-drop-all* 3)
-                   (scp-t-all-entry (take 11 *scp-t-batched-run*) *scp-t-apply-all* 3)))
+(defun scp-t-all-entry (pairs landp entry)
+  (if (consp pairs)
+      (let* ((s (car (car pairs)))
+             (choices (scp-t-crash-choices (fn-bs-pending s) (fn-bs-unit s) landp)))
+        (and (equal (fn-bs-durable-entry (fn-bs-crash s choices)
+                                         :root "store-checkpoint.fnsc")
+                    entry)
+             (scp-t-all-entry (cdr pairs) landp entry)))
+    t))
+(assert-event (and (scp-t-all-choices-admissible *scp-t-batched-run* nil)
+                   (scp-t-all-choices-admissible *scp-t-batched-run* t)))
+(assert-event (scp-t-all-old-or-new *scp-t-batched-run* *scp-t-bs* 3 '(1 2 3 4 5 6) nil))
+(assert-event (scp-t-all-old-or-new *scp-t-batched-run* *scp-t-bs* 3 '(1 2 3 4 5 6) t))
+; the eleven states before the rename: the old entry under both vectors
+(assert-event (and (scp-t-all-entry (take 11 *scp-t-batched-run*) nil 3)
+                   (scp-t-all-entry (take 11 *scp-t-batched-run*) t 3)))
+; After the last batch, before file fsync: landing really writes the bytes.
+(defconst *scp-t-unfenced* (car (nth 8 *scp-t-batched-run*)))
+(assert-event (equal (fn-bs-durable-content *scp-t-unfenced* 5) nil))
+(assert-event
+ (equal (fn-bs-durable-content
+         (fn-bs-crash *scp-t-unfenced*
+                      (scp-t-crash-choices (fn-bs-pending *scp-t-unfenced*)
+                                           (fn-bs-unit *scp-t-unfenced*) t))
+         5)
+        '(1 2 3 4 5 6)))
 ; the durable state: the new inode holds exactly the batches
 (assert-event (equal (fn-bs-durable-content (car (nth 14 *scp-t-batched-run*)) 5) '(1 2 3 4 5 6)))
 ; MUTANT: every batch at offset 0
@@ -138,4 +172,48 @@
                            (list :fsync-dir :root)
                            (list :cut "state-checkpoint-durable")))
              nil nil 0))
-(assert-event (not (scp-t-all-old-or-new *scp-t-mutant-run* *scp-t-bs* 3 '(1 2 3 4 5 6) *scp-t-apply-all*)))
+(assert-event (and (scp-t-all-choices-admissible *scp-t-mutant-run* nil)
+                   (scp-t-all-choices-admissible *scp-t-mutant-run* t)))
+(assert-event (not (scp-t-all-old-or-new *scp-t-mutant-run* *scp-t-bs* 3 '(1 2 3 4 5 6) nil)))
+(assert-event (not (scp-t-all-old-or-new *scp-t-mutant-run* *scp-t-bs* 3 '(1 2 3 4 5 6) t)))
+
+; MUTANT (r22 Q4), mutation witness: zeroing a positive :write-at offset
+; only on a non-:ok outcome must fail the content check.  The real step
+; accepts (3) at offset 2, reports :eio, and stops before any later batch
+; or fsync.  The offset-zero mutant instead leaves the view (3 2).
+(defconst *scp-t-error-step*
+  '(:write-at :staging ".stage-state-checkpoint-1" 2 (3)))
+(defconst *scp-t-before-error* (car (nth 3 *scp-t-batched-run*)))
+(assert-event (equal (fn-bs-content *scp-t-before-error* 5) '(1 2)))
+(assert-event
+ (mv-let (r bs ks)
+   (fn-bs-step *scp-t-before-error* nil *scp-t-error-step* '(:eio . 1) nil 0)
+   (declare (ignore bs ks))
+   (equal r :eio)))
+(defconst *scp-t-error-run*
+  (fn-bs-run *scp-t-bs* nil
+             (fn-bs-scp-batched-program ".stage-state-checkpoint-1" *scp-t-chunks*)
+             '(:ok :ok :ok :ok (:eio . 1)) nil 0))
+(assert-event (equal (len *scp-t-error-run*) 5))
+(defconst *scp-t-after-error* (car (nth 4 *scp-t-error-run*)))
+(assert-event
+ (mv-let (r bs ks)
+   (fn-bs-step *scp-t-before-error* nil *scp-t-error-step* '(:eio . 1) nil 0)
+   (declare (ignore r ks))
+   (equal *scp-t-after-error* bs)))
+(assert-event (equal (car (last (fn-bs-pending *scp-t-after-error*)))
+                     '(:write 5 2 (3))))
+(assert-event (equal (fn-bs-content *scp-t-after-error* 5) '(1 2 3)))
+; No fence or publication happened after the error.
+(assert-event (and (equal (fn-bs-durable-content *scp-t-after-error* 5) nil)
+                   (equal (fn-bs-lookup *scp-t-after-error* :root "store-checkpoint.fnsc") 3)))
+(defconst *scp-t-error-mutant*
+  (mv-let (r bs ks)
+    (fn-bs-step *scp-t-before-error* nil
+                '(:write-at :staging ".stage-state-checkpoint-1" 0 (3))
+                '(:eio . 1) nil 0)
+    (declare (ignore r ks))
+    bs))
+(assert-event (equal (fn-bs-content *scp-t-error-mutant* 5) '(3 2)))
+(must-fail-checked
+ (assert-event (equal (fn-bs-content *scp-t-error-mutant* 5) '(1 2 3))))

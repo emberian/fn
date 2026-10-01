@@ -37,7 +37,7 @@
         (list :fsync-dir :root)
         (list :cut "state-checkpoint-durable")))
 ; On an error before the rename the host reports a known failure (exit 1)
-; and config.json is untouched; at or after the rename it reports an
+; and store-checkpoint.fnsc is untouched; at or after the rename it reports an
 ; uncertain outcome (exit 3), and the next open reads whichever frame the
 ; directory holds.  Both are covered by the crash keystone below only
 ; through their crash images; the error arms themselves are not modelled
@@ -52,7 +52,7 @@
 (assert-event (fn-bs-fences-authority-dirsp *fn-bs-p-state-checkpoint*))
 
 ; The precondition: a store in which no operation is pending (the verb runs
-; in a fresh process, after open's own barriers), config.json durably names
+; in a fresh process, after open's own barriers), store-checkpoint.fnsc durably names
 ; OLD-INO, an inode below the allocation mark, and the stage name is free.
 (defun fn-bs-scp-inputp (bs stage old-ino)
   (declare (xargs :guard t :verify-guards nil))
@@ -64,7 +64,7 @@
        (equal (fn-bs-durable-entry bs :root *fn-bs-state-checkpoint-name*) old-ino)
        (not (fn-bs-lookup bs :staging stage))))
 
-; What config.json holds in a byte image: its entry and that inode's content.
+; What store-checkpoint.fnsc holds in a byte image: its entry and that inode's content.
 (defun fn-bs-scp-old-or-newp (img bs old-ino octets)
   (declare (xargs :guard t :verify-guards nil))
   (let ((ino (fn-bs-durable-entry img :root *fn-bs-state-checkpoint-name*)))
@@ -144,10 +144,12 @@
 ; by the cut "state-checkpoint-batch"; the five outer cuts are the same, and
 ; a :write-at at offset 0 is the :write-all step
 ; (fn-bs-scp-write-at-zero-is-write-all-by-definition), so fn-bs-scp-program
-; is the one-batch shape.  The crash keystone below is
-; fn-bs-scp-program-crash-is-old-or-new at EVERY state, the batch states
-; included: until the rename config.json names the old checkpoint (or none),
-; whatever the staged inode holds.
+; is the one-batch shape via that -by-definition equation.  The existing
+; crash keystone fn-bs-scp-program-crash-is-old-or-new is over
+; fn-bs-scp-program only: until its rename, store-checkpoint.fnsc names the
+; old checkpoint (or none), whatever the staged inode holds.  The
+; every-batched-state keystone fn-bs-scp-batched-program-crash-is-old-or-new
+; is STILL OWED (PRF-1223).
 
 (defun fn-bs-scp-chunksp (chunks)
   ; the batches: each a non-empty octet list
