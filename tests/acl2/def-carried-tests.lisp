@@ -370,6 +370,54 @@
                          (fn-cdt-reset fn-cdt-reset-carries)))
                   "returns the carried state")))
 
+; r15-F1: two congruent stobjs, the output order crossed.  The carried
+; formal's output is the SAME stobj's slot, never merely a congruent one,
+; and an entry taking two congruent slots is refused.
+(encapsulate ()
+ (local
+  (encapsulate ()
+   (defstobj r15-a (r15-an :type integer :initially 0))
+   (defstobj r15-b (r15-bn :type integer :initially 0) :congruent-to r15-a)
+   (defun r15-r (r15-a) (declare (xargs :stobjs r15-a)) (< 0 (r15-an r15-a)))
+   (defun r15-open (r15-a) (declare (xargs :stobjs r15-a)) (update-r15-an 1 r15-a))
+   (defun r15-cross (r15-a r15-b)
+     (declare (xargs :stobjs (r15-a r15-b) :guard (r15-r r15-a)))
+     (let* ((r15-a (update-r15-an 0 r15-a))
+            (r15-b (update-r15-bn 1 r15-b)))
+       (mv r15-b r15-a)))
+   (defthm r15-open-r (r15-r (r15-open r15-a)))
+   (defthm r15-cross-other-output
+     (r15-r (mv-nth 0 (r15-cross r15-a r15-b)))
+     :rule-classes nil)
+   (definterface r15-open :class :common-lisp-compliant)
+   (definterface r15-cross :class :common-lisp-compliant)
+   (fn-cdt-refused r15-carried
+                   (:invariant r15-r
+                    :established ((r15-open r15-open-r))
+                    :transitions ((r15-cross r15-cross-other-output))
+                    :trace nil)
+                   "takes more than one argument")
+   (must-fail-checked
+    (def-carried r15-carried
+      :invariant r15-r
+      :established ((r15-open r15-open-r))
+      :transitions ((r15-cross r15-cross-other-output))
+      :trace nil)
+    :unchecked "r15-F1: two congruent slots")
+   ; one congruent slot, returned with a value first: RET is its own slot
+   (defun r15-tick (r15-b)
+     (declare (xargs :stobjs r15-b))
+     (let ((r15-b (update-r15-bn 1 r15-b))) (mv 7 r15-b)))
+   (defthm r15-tick-r (r15-r (mv-nth 1 (r15-tick r15-a)))
+     :hints (("Goal" :in-theory (enable r15-r))))
+   (definterface r15-tick :class :common-lisp-compliant)
+   (assert-event
+    (mv-let (msg s ret hyps)
+      (fn-cd-parts 'r15-a '(r15-tick r15-tick-r :name x :hyps nil) (w state))
+      (declare (ignore hyps))
+      (and (null msg) (eq s 'r15-b)
+           (equal ret '(mv-nth '1 (r15-tick r15-b)))))))))
+
 ; ---------------------------------------------------------------------------
 ; 4. The review findings: each exploit a must-fail with its refusal.
 
@@ -726,10 +774,13 @@
       ok)))
 (assert-event (fn-cdt-witness-bridge) :msg "fn-cdt-carried-fn-cdt-nonzerop-bridge: witness")
 
-; Hypothesis removal, CORRUPTED INPUT STATE (n = -5 is no reachable state):
-; omit (fn-cdt-relp st) from bump's generated statement; the retained
-; (fn-cdt-stp st) and (natp 0) hold, the omitted one fails, and so does the
-; conclusion.  The same state fails the bridge's hypothesis and conclusion.
+; Hypothesis removal, CORRUPTED INPUT STATE (n = -5 is no reachable state),
+; TWO OCCURRENCES: (fn-cdt-relp st) appears in bump's generated statement
+; both as the carried hypothesis and as a conjunct of bump's guard; this
+; witness drops both (the guard copy is the same literal, so dropping one
+; alone removes nothing).  The retained (fn-cdt-stp st) and (natp 0) hold,
+; the dropped literal fails, and so does the conclusion.  The same state
+; fails the bridge's single hypothesis and its conclusion.
 (thm
  (let ((st '(-5 nil)))
    (and (fn-cdt-stp st) (natp 0) (not (fn-cdt-relp st))

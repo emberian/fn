@@ -321,10 +321,20 @@
                fn hyps formals)
           nil nil nil))
      (st
-      (let ((i (fn-cd-stobj-position st (stobjs-in fn w) w))
-            (k (fn-cd-stobj-position st (stobjs-out fn w) w)))
+      ; ONE input slot may hold the carried stobj (or one congruent to it),
+      ; and RET is the output slot of that SAME stobj: with two congruent
+      ; slots a call may pass the live state in either, and an output
+      ; congruent to it may be the other one (r15-F1)
+      (let* ((ins (stobjs-in fn w))
+             (i (fn-cd-stobj-position st ins w))
+             (k (and i (position-eq (nth i ins) (stobjs-out fn w)))))
         (cond ((null i)
                (mv (msg "~x0 takes no ~x1 argument, so it carries no ~x1" fn st)
+                   nil nil nil))
+              ((fn-cd-stobj-position st (nthcdr (1+ i) ins) w)
+               (mv (msg "~x0 takes more than one argument that is ~x1 or ~
+                         congruent to it (stobjs-in ~x2), so which one carries ~
+                         ~x1 is not determined" fn st ins)
                    nil nil nil))
               ((null k)
                (mv (msg "~x0 does not return the carried stobj ~x1 (its ~
