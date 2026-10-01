@@ -4,6 +4,30 @@
 (in-package "ACL2")
 (include-book "snapshot-row-source-tagged-refinement")
 
+(defthm fn-rccap-actual-resident-offer-retains-original-codec-length
+ (implies (and (fn-hrcur-tree-domainp row)
+               (< (len (fn-scc-encode row)) *fn-hrcur-u64-bound*)
+               (fn-hct-shapep c) (eq (fn-hrcur-field 0 c) :need-row)
+               (equal ordinal (fn-hrcur-field 2 c)))
+  (let* ((next (mv-nth 1 (fn-hct-offer c ordinal (list :resident row))))
+         (child (fn-hrcur-field 4 next)))
+   (and (eq (mv-nth 0 (fn-hct-offer c ordinal (list :resident row))) :started)
+        (fn-hrcur-census-invariantp child)
+        (equal (fn-hrcur-census-total child) (len (fn-scc-encode row)))
+        (equal (fn-hrcur-field 2 next) (fn-hrcur-field 2 c))
+        (equal (fn-hrcur-field 3 next) (fn-hrcur-field 3 c))
+        (equal (fn-hrcur-field 5 next) (fn-hrcur-field 5 c))
+        (equal (fn-hrcur-field 6 next) (fn-hrcur-field 6 c)))))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :use ((:instance fn-hrcur-census-begin-refines-length
+         (capture (list (fn-hrcur-field 5 c) ordinal))
+         (lease (fn-hrcur-field 6 c))))
+  :in-theory (union-theories (theory 'minimal-theory)
+   '(fn-hct-offer fn-hsrcc-begin fn-hsrcb-begin fn-hrcur-census-begin
+     fn-hrcur-field fn-hrcur-widthp car-cons cdr-cons
+     (:executable-counterpart equal) (:executable-counterpart zp))))))
+
 (local (defthm fn-rccap-resident-census-is-not-cold
  (implies (fn-hrcur-census-invariantp c)
           (not (fn-hsrcb-coldp (fn-hrcur-field 1 c))))
