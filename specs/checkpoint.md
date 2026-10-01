@@ -442,7 +442,7 @@ state. It preserves concrete scratch representation and epoch/lease identity.
 Complete spool admission, authenticated reads, final root binding and served
 composition remain open; no host caller or certification claim is added.
 
-The scalar layout component also exposes `fn-hpi-region/page` in
+The scalar layout component also exposes `fn-hpi-region`/`fn-hpi-page` in
 `books/history-page-io.lisp`: positional whole-file requests use the unchanged
 FNSI base plus the physical page offset. Accepted ranges fit the image region
 and admitted runtime/profile extent, and different pages do not overlap. The

@@ -49,6 +49,7 @@
 (include-book "store-profile-facts")
 (include-book "crypto-seam")
 (include-book "identity")
+(include-book "def-loop")
 
 ; -----------------------------------------------------------------------------
 ; Names and entries
@@ -112,93 +113,17 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-sxp-config-entries-loop (configs acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp configs)
-      (fn-sxp-config-entries-loop (cdr configs)
-                                  (cons (cons (fn-sxp-config-name (if (consp (car configs))
-                                                                      (caar configs)
-                                                                    nil))
-                                              (if (consp (car configs))
-                                                  (cdar configs)
-                                                nil))
-                                        acc))
-    (revappend acc nil)))
-
-(defun fn-sxp-config-entries (configs)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp configs)
-           (cons (cons (fn-sxp-config-name (if (consp (car configs)) (caar configs) nil))
-                       (if (consp (car configs)) (cdar configs) nil))
-                 (fn-sxp-config-entries (cdr configs)))
-         nil)
-       :exec (fn-sxp-config-entries-loop configs nil)))
-
-(local
- (defthm fn-sxp-config-entries-loop-is-revappend
-   (equal (fn-sxp-config-entries-loop configs acc)
-          (revappend acc (fn-sxp-config-entries configs)))
-   :hints (("Goal" :induct (fn-sxp-config-entries-loop configs acc)
-                   :in-theory (union-theories '(fn-sxp-config-entries-loop fn-sxp-config-entries revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-sxp-config-entries-loop)
-
-(verify-guards fn-sxp-config-entries
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-sxp-config-entries)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-sxp-config-entries-loop-is-revappend (acc nil))))))
+(def-loop fn-sxp-config-entries (configs)
+  :shape :map
+  :body (cons (fn-sxp-config-name (if (consp (car configs)) (caar configs) nil)) (if (consp (car configs)) (cdar configs) nil)))
 
 
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-sxp-record-entries-loop (records acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp records)
-      (fn-sxp-record-entries-loop (cdr records)
-                                  (cons (cons (fn-sxp-record-name (if (consp (car records))
-                                                                      (caar records)
-                                                                    0))
-                                              (if (consp (car records))
-                                                  (cdar records)
-                                                nil))
-                                        acc))
-    (revappend acc nil)))
-
-(defun fn-sxp-record-entries (records)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp records)
-           (cons (cons (fn-sxp-record-name (if (consp (car records)) (caar records) 0))
-                       (if (consp (car records)) (cdar records) nil))
-                 (fn-sxp-record-entries (cdr records)))
-         nil)
-       :exec (fn-sxp-record-entries-loop records nil)))
-
-(local
- (defthm fn-sxp-record-entries-loop-is-revappend
-   (equal (fn-sxp-record-entries-loop records acc)
-          (revappend acc (fn-sxp-record-entries records)))
-   :hints (("Goal" :induct (fn-sxp-record-entries-loop records acc)
-                   :in-theory (union-theories '(fn-sxp-record-entries-loop fn-sxp-record-entries revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-sxp-record-entries-loop)
-
-(verify-guards fn-sxp-record-entries
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-sxp-record-entries)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-sxp-record-entries-loop-is-revappend (acc nil))))))
+(def-loop fn-sxp-record-entries (records)
+  :shape :map
+  :body (cons (fn-sxp-record-name (if (consp (car records)) (caar records) 0)) (if (consp (car records)) (cdar records) nil)))
 
 
 (defun fn-sxp-entries (profile frontier configs records)
