@@ -2310,7 +2310,7 @@ No numeric BODY or supplied receipt is accepted."
           (funcall epilogue slot nonce slots pool)
        (when next-pool (setf pool next-pool))
        (when next-state (setf *the-live-state* next-state))
-       (unless (and next-pool next-state (member word '(:account-turn-returned :account-turn-not-owned)))
+       (unless (and next-pool next-state (member word '(:account-turn-returned :account-turn-not-owned :account-turn-retained)))
         (fnn-fixed-callback-fail 'fn-owner-account-turn-return
                                  :control-epilogue-incomplete word)))))))))
 
