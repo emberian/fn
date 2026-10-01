@@ -85156,7 +85156,7 @@
     {
       "theorem": "fn-omr-stopped-line-is-header-and-octets-by-definition",
       "book": "books/owner-maintenance-request.lisp",
-      "line": 262,
+      "line": 264,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)",
         "definition-restated: the conclusion is the body of fn-omr-stopped-line"

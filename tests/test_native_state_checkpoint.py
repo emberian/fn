@@ -109,14 +109,20 @@ class StateCheckpointSourceTests(unittest.TestCase):
         self.assertIn("'fn-store-sn-recover-from-checkpoint", suffix_rows)
         self.assertNotIn("fn-arena-clear", suffix_rows)
         # heap-bounds (B3): the suffix is decoded and interned a chunk at a
-        # time on top of the loaded arena (fn-srs-intern-step is the
-        # fn-intern-events of fn-scka-recover-rows over any chunking:
-        # fn-srs-steps-are-one-step-of-the-concatenation), never whole.
+        # time on top of the loaded arena, never whole.  Since the statement
+        # replay the step is fn-ssr-intern-step :resident
+        # (books/statement-recover-stream.lisp), seeded from the selected
+        # checkpoint's identity epoch (fn-store-statement-replay-seed); its
+        # chunk composition is fn-ssr-resident-step-of-append.
         suffix_intern = native_cuts.host_function(io, "fnn-recover-suffix-intern")
         self.assertIn("'fn-store-sn-recover-records nil configs", suffix_intern)
         self.assertIn("(fnn-recover-record-chunks suffix)", suffix_intern)
-        self.assertIn("(fnn-call 'fn-srs-intern-step rows decoded (fnn-live-arena))", suffix_intern)
-        self.assertIn("(fnn-core 'fn-srs-rows rows)", suffix_intern)
+        self.assertIn("(fnn-core-state 'fn-store-statement-replay-seed)", suffix_intern)
+        self.assertIn("(fnn-call 'fn-ssr-intern-step rows decoded nil nil :resident nil (fnn-live-arena))",
+                      suffix_intern)
+        self.assertIn("(fnn-core 'fn-ssr-rows rows)", suffix_intern)
+        ssr = (ROOT / "books" / "statement-recover-stream.lisp").read_text(encoding="ascii")
+        self.assertIn("(defthm fn-ssr-resident-step-of-append", ssr)
         self.assertNotIn("fn-arena-clear", suffix_intern)
         self.assertNotIn("(mapcar #'fnn-octet-list suffix)", suffix_intern)
         # rep-wave-d-3: the file is read into the octet buffer as the
@@ -145,7 +151,12 @@ class StateCheckpointSourceTests(unittest.TestCase):
         self.assertIn("(fn-scka-finish (car load) (cadr load) i end fn-octets)", node_finish)
         self.assertIn("(fn-sct-capture-of-tables (cadr loaded))", node_finish)
         load_arena = native_cuts.host_function(io, "fnn-state-checkpoint-load-arena")
-        self.assertIn("(fnn-call 'fn-arena-clear arena)", load_arena)
+        # The arena is emptied through the payload lifecycle's reset (the
+        # owner's payload view and the arena together,
+        # fn-owner-payload-view-reset), refused while anything owns them.
+        self.assertIn("(eq (first (fnn-payload-startup-reset)) :reset)", load_arena)
+        reset = native_cuts.host_function(io, "fnn-payload-startup-reset")
+        self.assertIn("(fnn-call 'fn-owner-payload-view-reset arena *the-live-state*)", reset)
         self.assertIn("(fnn-call 'fn-scka-seal-n i end k octets arena)", load_arena)
         self.assertIn("'fn-store-sco-decode-finish", load_arena)
         node_admit = native_cuts.host_function(node_host, "fn-store-sco-segment-admit")
