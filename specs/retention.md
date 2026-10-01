@@ -188,3 +188,5 @@ may remain physically stored. Keeping extra bytes does not license accepting
 unaccounted new obligations.
 
 Receiver transfer accepts the registered response observer’s `:committed-response` word. It retains the same source, parser root and IRQ actor while readiness remains revoked; successful handoff is not an all-alias return or refill receipt. Stale episodes and foreign or repeated recipients refuse before custody mutation.
+
+The receiver source successor retains an ordinary response output bundle in its seventh field. A non-NIL bundle prevents input transfer and fresh capacity installation. Source fixtures are supplied for these boundaries; current combined guards, constructor funding, registered output return and last-borrow settlement remain open. Six-field evidence does not qualify the successor.

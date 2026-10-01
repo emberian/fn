@@ -10,25 +10,25 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2254 |
-| Certification roots in the Makefile | 2056 |
-| Books inside the root closure | 2197 |
-| `defthm` and `defthmd` events | 32616 |
-| `defun` events | 20918 |
+| Books read | 2256 |
+| Certification roots in the Makefile | 2060 |
+| Books inside the root closure | 2199 |
+| `defthm` and `defthmd` events | 32623 |
+| `defun` events | 20925 |
 | Functions with verified guards | 3738 |
 | Functions declared `:verify-guards nil` and never verified | 2538 |
-| Functions left at the default with an explicit guard | 11632 |
-| Functions left at the default with no guard | 3010 |
-| `assert-event` checks | 24527 |
+| Functions left at the default with an explicit guard | 11634 |
+| Functions left at the default with no guard | 3015 |
+| `assert-event` checks | 24528 |
 | `must-fail` checks | 2519 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
-| `encapsulate` events | 166 |
+| `encapsulate` events | 168 |
 | Theorems flagged SUSPECT by shape | 1295 |
 | Export-hygiene warnings | 382 |
 | Enabled-projection warnings | 79 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2894 |
-| Host-names warnings | 2484 |
+| Include-hygiene warnings | 2896 |
+| Host-names warnings | 2506 |
 | Hand-written-record warnings | 19 |
 
 ## Lints
@@ -1126,7 +1126,7 @@ that `make certify` requests.
 | `books/receiver-query-binding.lisp` | root | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/receiver-query-custody-producer.lisp` | root | 2 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `books/receiver-query-freshness.lisp` | root | 1 | 4 | 3/0/1/0 | 0 | 0 | 0 |
-| `books/receiver-turn-controller.lisp` | closure | 13 | 32 | 0/0/8/24 | 0 | 0 | 1 |
+| `books/receiver-turn-controller.lisp` | closure | 18 | 37 | 0/0/8/29 | 0 | 0 | 1 |
 | `books/reclaim-admission.lisp` | root | 13 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/reclaim-instant.lisp` | root | 10 | 9 | 0/3/6/0 | 0 | 0 | 1 |
 | `books/reclaim-rule.lisp` | root | 7 | 7 | 0/0/7/0 | 0 | 0 | 1 |
@@ -2129,8 +2129,10 @@ that `make certify` requests.
 | `tests/acl2/public-exposure-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 121 | 15 | 0 |
 | `tests/acl2/reader-open-carried-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 29 | 0 | 0 |
 | `tests/acl2/reader-response-disposition-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |
+| `tests/acl2/receiver-output-custody-tests.lisp` | root | 2 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/receiver-parser-stage-tests.lisp` | root | 2 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/receiver-response-transfer-tests.lisp` | root | 0 | 5 | 0/2/3/0 | 1 | 0 | 0 |
+| `tests/acl2/receiver-turn-modern-fresh-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 1 | 0 | 0 |
 | `tests/acl2/reclaim-admission-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 4 | 0 |
 | `tests/acl2/reclaim-article-subject-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `tests/acl2/reclaim-instant-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 3 | 0 |
@@ -3019,7 +3021,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-owner-orcp-swap-preserves-retain-carry-by-definition` | `books/owner-recovery-retain.lisp` | 89 | closed-theory-corollary: proved only by fn-owner-orcp-swap-installs-retain-carry |
 | `fn-owner-recovered-install-establishes-cursor` | `books/owner-cursor-domain.lisp` | 257 | closed-theory-corollary: proved only by fn-owner-cursor-retained-implies-sequence, fn-owner-install-extended-store-effect-by-definition, fn-owner-recovery-establishes-retained-store |
 | `fn-owner-recovery-establishes-retained-store` | `books/owner-cursor-domain.lisp` | 227 | closed-theory-corollary: proved only by fn-owner-cursor-recovered-full-has-retained-fields, fn-owner-recover-from-checkpoint-equals-full-recover |
-| `fn-owner-rx-turn-fill-range-refuses-without-current-claim-by-definition` | `books/receiver-turn-controller.lisp` | 492 | arm-of-definition: the hypotheses select one IF/COND arm of fn-owner-rx-turn-fill-range and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-owner-rx-turn-fill-range and the conclusion is that branch's value |
+| `fn-owner-rx-turn-fill-range-refuses-without-current-claim-by-definition` | `books/receiver-turn-controller.lisp` | 584 | arm-of-definition: the hypotheses select one IF/COND arm of fn-owner-rx-turn-fill-range and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-owner-rx-turn-fill-range and the conclusion is that branch's value |
 | `fn-owner-store-is-configured-store-by-definition` | `books/owner-state-accessors.lisp` | 26 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-oxr-xref-server-of-reader-env` | `books/owner-xref-read.lisp` | 24 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-pa-served-post-word-is-the-served-word-otherwise` | `books/peer-authored-accept.lisp` | 655 | arm-of-definition: the hypotheses select one IF/COND arm of fn-pa-served-post-word and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-pa-served-post-word and the conclusion is that branch's value |

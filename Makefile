@@ -18,6 +18,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-transaction-dispatch-tests \
 	tests/acl2/consumer-remote-store-category-tests \
 	tests/acl2/receiver-response-transfer-tests \
+	tests/acl2/receiver-output-custody-tests \
+	host/receiver-resource-host \
+	host/receiver-turn-resource-host \
+	tests/acl2/receiver-turn-modern-fresh-tests \
 	tests/acl2/store-binding-stage-routing-tests \
 	books/consumer-account-input \
 	books/consumer-account-adoption-driver \

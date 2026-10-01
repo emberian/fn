@@ -7,6 +7,10 @@
     "tests/acl2/consumer-transaction-dispatch-tests",
     "tests/acl2/consumer-remote-store-category-tests",
     "tests/acl2/receiver-response-transfer-tests",
+    "tests/acl2/receiver-output-custody-tests",
+    "host/receiver-resource-host",
+    "host/receiver-turn-resource-host",
+    "tests/acl2/receiver-turn-modern-fresh-tests",
     "tests/acl2/store-binding-stage-routing-tests",
     "books/consumer-account-input",
     "books/consumer-account-adoption-driver",
@@ -2060,27 +2064,27 @@
     "tests/acl2/substrate-commit-codec-gap-tests"
   ],
   "totals": {
-    "books": 2254,
-    "books_in_root_closure": 2197,
-    "roots": 2056,
-    "theorems": 32616,
-    "functions": 20918,
-    "assert_events": 24527,
+    "books": 2256,
+    "books_in_root_closure": 2199,
+    "roots": 2060,
+    "theorems": 32623,
+    "functions": 20925,
+    "assert_events": 24528,
     "must_fails": 2519,
     "prover_refusals": 0,
-    "encapsulates": 166,
+    "encapsulates": 168,
     "guards": {
       "verified": 3738,
       "declared-off": 2538,
-      "default-guarded": 11632,
-      "default-unguarded": 3010
+      "default-guarded": 11634,
+      "default-unguarded": 3015
     },
     "suspect_theorems": 1295,
     "export_hygiene_warnings": 382,
     "enabled_projection_warnings": 79,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2894,
-    "host_names_warnings": 2484,
+    "include_hygiene_warnings": 2896,
+    "host_names_warnings": 2506,
     "hand_written_record_warnings": 19
   },
   "books": [
@@ -32666,13 +32670,13 @@
       "book": "books/receiver-turn-controller.lisp",
       "in_root_closure": true,
       "is_root": false,
-      "theorems": 13,
-      "functions": 32,
+      "theorems": 18,
+      "functions": 37,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 8,
-        "default-unguarded": 24
+        "default-unguarded": 29
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -32680,7 +32684,7 @@
       "prover_refusals": 0,
       "defconsts": 0,
       "defmacros": 0,
-      "encapsulates": 0,
+      "encapsulates": 2,
       "includes": [
         "page-read-pool-state",
         "reader-response-disposition",
@@ -60962,6 +60966,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/receiver-output-custody-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 3,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/receiver-turn-controller"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/receiver-parser-stage-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -61010,7 +61040,34 @@
         "../../books/index-connection-issuer",
         "../../books/index-reader-response-issuer",
         "../../books/receiver-index-custody",
+        "../../books/receiver-query-custody-producer",
         "../../books/served-step"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/receiver-turn-modern-fresh-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 1,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../host/receiver-turn-resource-host"
       ],
       "system_includes": [],
       "suspects": [],
@@ -72311,7 +72368,7 @@
     {
       "theorem": "fn-owner-rx-turn-fill-range-refuses-without-current-claim-by-definition",
       "book": "books/receiver-turn-controller.lisp",
-      "line": 492,
+      "line": 584,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-owner-rx-turn-fill-range and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-owner-rx-turn-fill-range and the conclusion is that branch's value"
@@ -100485,6 +100542,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/receiver-output-custody-tests.lisp",
+        "line": 3,
+        "include": "../../books/receiver-turn-controller",
+        "included": "books/receiver-turn-controller.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/receiver-parser-stage-tests.lisp",
         "line": 3,
         "include": "../../books/receiver-turn-controller",
@@ -100508,6 +100572,13 @@
       {
         "book": "tests/acl2/receiver-response-transfer-tests.lisp",
         "line": 9,
+        "include": "../../books/receiver-query-custody-producer",
+        "included": "books/receiver-query-custody-producer.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/receiver-response-transfer-tests.lisp",
+        "line": 10,
         "include": "../../books/served-step",
         "included": "books/served-step.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -117910,6 +117981,83 @@
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
+        "host": "host/receiver-resource-host.lisp",
+        "line": 7,
+        "name": "fn-prp-mode",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/receiver-resource-host.lisp",
+        "line": 7,
+        "name": "mv",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/receiver-resource-host.lisp",
+        "line": 21,
+        "name": "fn-octets-rx-reserve",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/receiver-resource-host.lisp",
+        "line": 21,
+        "name": "update-fn-rxc-token",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/receiver-resource-host.lisp",
+        "line": 21,
+        "name": "update-fn-rxc-instance",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/receiver-resource-host.lisp",
+        "line": 21,
+        "name": "update-fn-rxc-capacity",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/receiver-resource-host.lisp",
+        "line": 40,
+        "name": "stobj-let",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/receiver-resource-host.lisp",
+        "line": 40,
+        "name": "fn-rxp-octets",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/receiver-resource-host.lisp",
+        "line": 40,
+        "name": "fn-rxp-carry",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/receiver-resource-host.lisp",
+        "line": 40,
+        "name": "word",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/receiver-resource-host.lisp",
+        "line": 49,
+        "name": "verify-guards",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
         "host": "host/receiver-source-gate-host.lisp",
         "line": 8,
         "name": "f-boundp-global",
@@ -117929,6 +118077,83 @@
         "name": "fn-owner-rx-turn-parser-acquirablep",
         "source": "books/receiver-turn-controller.lisp",
         "reason": "defined in books/receiver-turn-controller.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/receiver-turn-resource-host.lisp",
+        "line": 8,
+        "name": "fn-rxt-phase",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/receiver-turn-resource-host.lisp",
+        "line": 8,
+        "name": "fn-rxt-ticket",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/receiver-turn-resource-host.lisp",
+        "line": 8,
+        "name": "fn-rxt-source",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/receiver-turn-resource-host.lisp",
+        "line": 8,
+        "name": "fn-rxt-demand",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/receiver-turn-resource-host.lisp",
+        "line": 8,
+        "name": "fn-rxt-job",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/receiver-turn-resource-host.lisp",
+        "line": 8,
+        "name": "fn-rxt-receipt",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/receiver-turn-resource-host.lisp",
+        "line": 8,
+        "name": "fn-rxt-output-bundle",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/receiver-turn-resource-host.lisp",
+        "line": 19,
+        "name": "mv",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/receiver-turn-resource-host.lisp",
+        "line": 19,
+        "name": "fn-owner-rx-capacity-install",
+        "source": "host/receiver-resource-host.lisp",
+        "reason": "defined in host/receiver-resource-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/receiver-turn-resource-host.lisp",
+        "line": 19,
+        "name": "update-fn-rxt-receipt",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/receiver-turn-resource-host.lisp",
+        "line": 36,
+        "name": "verify-guards",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/recovery-initial-operation-host.lisp",

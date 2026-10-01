@@ -13,6 +13,8 @@
  (fn-rxt-demand :initially nil)
  (fn-rxt-job :initially nil)
  (fn-rxt-receipt :initially nil)
+ ; Retained ordinary output custody; the original six fields stay unchanged.
+ (fn-rxt-output-bundle :initially nil)
  :inline t)
 (defun fn-rxt-ticket-make (nonce)
  (declare (xargs :guard t))
@@ -47,7 +49,8 @@
              (null (fn-rxt-ticket fn-receiver-turn))
              (null (fn-rxt-source fn-receiver-turn))
              (null (fn-rxt-demand fn-receiver-turn))
-             (null (fn-rxt-job fn-receiver-turn))))
+             (null (fn-rxt-job fn-receiver-turn))
+             (null (fn-rxt-output-bundle fn-receiver-turn))))
    (mv :receiver-turn-busy fn-receiver-turn fn-page-read-pool))
   ((not (fn-rxt-issued-demandp demand))
    (mv :invalid-receiver-turn-demand fn-receiver-turn fn-page-read-pool))
@@ -110,6 +113,7 @@
  (declare (xargs :stobjs (fn-rx-provider fn-receiver-turn fn-page-read-pool)))
  (and (eq (fn-rxt-phase fn-receiver-turn) :live)
       (null (fn-rxt-job fn-receiver-turn))
+      (null (fn-rxt-output-bundle fn-receiver-turn))
       (fn-rxp-currentp (fn-rxp-token fn-rx-provider) fn-rx-provider)
       (fn-rxt-owned-claim-p ticket fn-rx-provider fn-receiver-turn fn-page-read-pool)))
 (defun fn-owner-rx-turn-fill-range
@@ -142,7 +146,8 @@
  (ticket n limits fuel fn-rx-provider fn-receiver-turn fn-page-read-pool)
  (declare (xargs :stobjs (fn-rx-provider fn-receiver-turn fn-page-read-pool)))
  (let ((pending (fn-rxt-job fn-receiver-turn)))
-  (if (and (eq (fn-rxt-phase fn-receiver-turn) :copy-issued)
+  (if (and (null (fn-rxt-output-bundle fn-receiver-turn))
+           (eq (fn-rxt-phase fn-receiver-turn) :copy-issued)
            (fn-rxt-owned-claim-p ticket fn-rx-provider fn-receiver-turn fn-page-read-pool)
            (null (fn-rxp-capacity fn-rx-provider))
            (fn-rxt-pending-rangep pending)
@@ -178,7 +183,8 @@
  (ticket start end outcome fn-rx-provider fn-receiver-turn fn-page-read-pool)
  (declare (xargs :stobjs (fn-rx-provider fn-receiver-turn fn-page-read-pool)))
  (let ((pending (fn-rxt-job fn-receiver-turn)))
-  (if (not (and (eq (fn-rxt-phase fn-receiver-turn) :copy-issued)
+  (if (not (and (null (fn-rxt-output-bundle fn-receiver-turn))
+                (eq (fn-rxt-phase fn-receiver-turn) :copy-issued)
                 (fn-rxt-owned-claim-p ticket fn-rx-provider fn-receiver-turn fn-page-read-pool)
                 (null (fn-rxp-capacity fn-rx-provider))
                 (fn-rxt-pending-rangep pending)
@@ -221,7 +227,8 @@
        (equal (fn-prl-nth 1 job) ticket)
        (equal (fn-prl-nth 2 job) (fn-rxt-source fn-receiver-turn))
        (if (eq (fn-rxt-phase fn-receiver-turn) :parser-owned)
-           (fn-rxp-currentp (fn-rxp-token fn-rx-provider) fn-rx-provider)
+           (and (null (fn-rxt-output-bundle fn-receiver-turn))
+                (fn-rxp-currentp (fn-rxp-token fn-rx-provider) fn-rx-provider))
          (null (fn-rxp-capacity fn-rx-provider)))
        (fn-rxt-owned-claim-p ticket fn-rx-provider fn-receiver-turn fn-page-read-pool))))
 (defun fn-owner-rx-turn-parser-acquirablep
@@ -230,6 +237,7 @@
  (or (and (eq (fn-rxt-phase fn-receiver-turn) :parser-owned)
           (fn-rxt-parser-currentp ticket fn-rx-provider fn-receiver-turn fn-page-read-pool))
      (and (eq (fn-rxt-phase fn-receiver-turn) :filled)
+          (null (fn-rxt-output-bundle fn-receiver-turn))
           (fn-rxt-pending-rangep (fn-rxt-job fn-receiver-turn))
           (fn-rxp-currentp (fn-rxp-token fn-rx-provider) fn-rx-provider)
           (fn-rxt-owned-claim-p ticket fn-rx-provider fn-receiver-turn fn-page-read-pool))))
@@ -381,6 +389,35 @@
         (mv-let (fenced fn-rx-provider fn-receiver-turn fn-page-read-pool)
          (fn-owner-rx-turn-parser-fence ticket RC wire step fn-rx-provider fn-receiver-turn fn-page-read-pool)
          (mv fenced nil fn-rx-provider fn-receiver-turn fn-page-read-pool))))))))
+(encapsulate ()
+(local (defun fn-rxst-nth-update-induct (i j l)
+ (if (or (zp i) (zp j)) (list i j l)
+  (fn-rxst-nth-update-induct (1- i) (1- j) (cdr l)))))
+(local (defthm fn-rxst-nth-update
+ (implies (and (natp i) (natp j))
+  (equal (nth i (update-nth j v l))
+         (if (equal i j) v (nth i l))))
+ :hints (("Goal" :induct (fn-rxst-nth-update-induct i j l)))))
+(local (defthm fn-rxst-cadr-nth
+ (equal (cadr x) (nth 1 x))
+ :hints (("Goal" :use fn-rxc-second-field-by-definition
+          :in-theory (disable fn-rxc-second-field-by-definition)))))
+(defthm fn-rxt-staged-success-retains-result-and-pool
+ (let* ((out (fn-owner-rx-turn-parser-stage ticket RC fn-rx-provider fn-receiver-turn fn-page-read-pool))
+        (provider (mv-nth 1 out)) (turn (mv-nth 2 out)))
+  (implies (equal (mv-nth 0 out) :parser-staged)
+   (and (equal (fn-prl-nth 7 (fn-rxt-job turn)) RC)
+        (equal (fn-rxt-phase turn) :parser-installing)
+        (null (fn-rxp-capacity provider))
+        (equal (fn-rxt-source turn) (fn-rxt-source fn-receiver-turn))
+        (equal (fn-rxt-demand turn) (fn-rxt-demand fn-receiver-turn))
+        (equal (mv-nth 3 out) fn-page-read-pool))))
+ :hints (("Goal" :in-theory (e/d (fn-owner-rx-turn-parser-stage fn-rxp-fence fn-rxc-fence fn-rxp-capacity fn-prl-nth)
+                                 (fn-rxt-parser-currentp fn-rxt-owned-claim-p fn-rxc-currentp fn-bca-tokenp nth update-nth fn-rxc-second-field-by-definition))))
+ :rule-classes nil)
+
+)
+
 (defun fn-owner-rx-turn-response-currentp
  (response fn-rx-provider fn-receiver-turn fn-page-read-pool)
  (declare (xargs :stobjs (fn-rx-provider fn-receiver-turn fn-page-read-pool)))
@@ -393,6 +430,61 @@
        (equal (fn-prl-nth 2 response) (fn-prl-nth 10 job))
        (fn-rxt-parser-currentp (fn-prl-nth 1 response) fn-rx-provider
                                fn-receiver-turn fn-page-read-pool))))
+; Response factory source only: this never authorizes parsing or readiness.
+; The episode is the actual core-issued identity, not a lifetime ticket alone.
+(defun fn-owner-rx-turn-response-source
+ (response fn-rx-provider fn-receiver-turn fn-page-read-pool)
+ (declare (xargs :stobjs (fn-rx-provider fn-receiver-turn fn-page-read-pool)))
+ (if (fn-owner-rx-turn-response-currentp response fn-rx-provider fn-receiver-turn fn-page-read-pool)
+     (fn-rxt-source fn-receiver-turn) nil))
+; Factory-only borrowed references from the SAME recorded response episode.
+; These references cannot authorize another STATE installation or parsing.
+(defun fn-owner-rx-turn-response-result
+ (response fn-rx-provider fn-receiver-turn fn-page-read-pool)
+ (declare (xargs :stobjs (fn-rx-provider fn-receiver-turn fn-page-read-pool)))
+ (if (not (fn-owner-rx-turn-response-currentp response fn-rx-provider fn-receiver-turn fn-page-read-pool))
+     (mv :receiver-unavailable nil nil nil nil)
+   (let ((job (fn-rxt-job fn-receiver-turn)))
+    (mv :response-result (fn-rxt-source fn-receiver-turn)
+        (fn-prl-nth 6 job) (fn-prl-nth 7 job) (fn-prl-nth 9 job)))))
+; Readonly ordinary output custody. The actual issuer must construct this
+; bundle from the SAME current parser root, admitted storage and issued job.
+; This projection proves neither storage admission nor terminal alias return.
+(defun fn-owner-rx-turn-output-current
+ (response fn-rx-provider fn-receiver-turn fn-page-read-pool)
+ (declare (xargs :stobjs (fn-rx-provider fn-receiver-turn fn-page-read-pool)))
+ (let* ((bundle (fn-rxt-output-bundle fn-receiver-turn))
+        (parser (fn-prl-nth 1 bundle)))
+  (if (and (fn-owner-rx-turn-response-currentp response fn-rx-provider
+                                             fn-receiver-turn fn-page-read-pool)
+           (fn-rxt-fixed-widthp bundle 4)
+           (eq (car bundle) :reader-response-roots)
+           (null (fn-prl-nth 2 bundle))
+           (consp (fn-prl-nth 3 bundle))
+           (fn-rxt-parser-jobp parser)
+           (equal (fn-prl-nth 1 parser) (fn-rxt-ticket fn-receiver-turn))
+           (equal (fn-prl-nth 2 parser) (fn-rxt-source fn-receiver-turn))
+           (equal (fn-prl-nth 10 parser) (fn-prl-nth 2 response)))
+      (mv :output-retained bundle)
+    (mv :receiver-unavailable nil))))
+(encapsulate ()
+(local (defun fn-rxst-nth-update-induct (i j l)
+ (if (or (zp i) (zp j)) (list i j l)
+  (fn-rxst-nth-update-induct (1- i) (1- j) (cdr l)))))
+(local (defthm fn-rxst-nth-update
+ (implies (and (natp i) (natp j))
+  (equal (nth i (update-nth j v l))
+         (if (equal i j) v (nth i l))))
+ :hints (("Goal" :induct (fn-rxst-nth-update-induct i j l)))))
+(defthm fn-rxt-parser-stage-preserves-output-custody
+ (equal (fn-rxt-output-bundle
+          (mv-nth 2 (fn-owner-rx-turn-parser-stage ticket RC fn-rx-provider
+                      fn-receiver-turn fn-page-read-pool)))
+        (fn-rxt-output-bundle fn-receiver-turn))
+ :hints (("Goal" :in-theory (e/d (fn-owner-rx-turn-parser-stage)
+         (fn-rxt-parser-currentp fn-rxp-fence nth update-nth))))
+ :rule-classes nil)
+)
 (defun fn-owner-rx-turn-consumablep
  (ticket fn-rx-provider fn-receiver-turn fn-page-read-pool)
  (declare (xargs :stobjs (fn-rx-provider fn-receiver-turn fn-page-read-pool)))
