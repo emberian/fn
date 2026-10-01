@@ -61,7 +61,7 @@
         "tests/acl2/catalog-dense-map-tests.lisp",
         "tests/acl2/catalog-paged-tests.lisp"
       ],
-      "progress_note": "Lane stage-4: certified hbox run-20261001T192035Z-510a (catalog-dense-map, catalog-paged, catalog-paged-tests, catalog-paged-attach 4/0) and run-20261001T192544Z-7fe5 (catalog-dense-map-tests 1/0)."
+      "progress_note": "Lane stage-4: certified at the merged head (origin/dev efaf27dd2) hbox run-20261001T193159Z-46e7 (certify-20261001T193215Z-3429821: catalog-paged, catalog-paged-tests, catalog-paged-attach; the dense-map books cached at these bytes); before the merge hbox run-20261001T192035Z-510a (catalog-dense-map, catalog-paged, catalog-paged-tests, catalog-paged-attach 4/0) and run-20261001T192544Z-7fe5 (catalog-dense-map-tests 1/0)."
     },
     {
       "id": "PRF-001",
