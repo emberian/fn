@@ -1670,3 +1670,23 @@ guarantees still apply. No live-node deployment is authorized here.
 Authority: ember's direct answer in the active fn coordination conversation,
 2026-09-29 local time (recorded 2026-09-30 UTC). Consumer remainder owner:
 `consumer_remainder`; affected specification: `specs/consumer-progress.md`.
+
+### 2026-10-01: D41 — Pages are the state: the store representation (agreed direction; ember)
+goal: The store's live state becomes typed u64 column pages plus a byte pool, sequence-indexed, with dense per-group number runs, per-group overview pools and a fixed frame arena filled by `pread`, so the on-disk and in-memory images are the same bytes; `fn-sn` becomes a root record; the accounting is one prepaid, typed resource vector; the work is built through generators (`def-loop`, `def-representation`, `def-carried`, `definterface :operation`, `defkeystone` v2), in the order of planning/design-store-representation-2026-10-01.md section 4, with a serving node after every stage (stage 0: restore a serving node on dev).
+Status: AGREED DIRECTION. The design is planning/design-store-representation-2026-10-01.md (coordinator synthesis after the Codex era, 2026-10-01). ember 2026-10-01 late evening: "inclined to take your recommendations". D42 to D45 are its four ratified decisions.
+
+### 2026-10-01: D42 — History: P3 rows over the dense history epoch (RATIFIED; ember)
+goal: History lives on the same rows as the catalog (P3: `fn-hist` attached over `fn-hrecs`, then the paged rows of D41 stage 5), not as Codex's dense history epoch, a third representation beside `fn-hrecs`. History gates land with their producer or go (MODE 2026-10-01 rule 3).
+Status: DECIDED (ember, ratifying the design's section 5; both route architects preferred P3: build/coordinator/design-route-A-codex-skeleton-2026-10-01.md, design-route-B-evolve-existing-2026-10-01.md).
+
+### 2026-10-01: D43 — The acceptance-binding record field is reverted in stage 0 (RATIFIED; ember)
+goal: The acceptance-binding field added to the article record (and the 341 old-arity record calls it broke) is REVERTED in stage 0, back to the 11-argument record. It is re-done once, later, as the relay-v1 subject binding, carried as typed words, not as a 48-octet list.
+Status: DECIDED (ember, ratifying the design's section 5).
+
+### 2026-10-01: D44 — CRC-0 BP primary blocks are accepted again (RATIFIED; ember)
+goal: The Codex-era refusal of a primary block with CRC type 0 as `:block-unintelligible` is REVERTED: RFC 9171 §4.3.1 permits CRC type 0 on a primary block when the bundle carries a BIB covering it, and dtn7-rs sends such primaries; refusing them broke interop with foreign senders while fn-to-fn traffic was unaffected. Whether a CRC-0 primary without integrity protection is admitted is a local policy, stated as such, never presented as the RFC's requirement.
+Status: DECIDED (ember, ratifying the design's section 5; finding: build/coordinator/codex-era-architecture-review-2026-10-01.md, BP row and F08).
+
+### 2026-10-01: D45 — The FN-RCL2 reclaim tombstone is kept as deliberate (RATIFIED; ember)
+goal: The reclaim tombstone format with magic NUL "FN-RCL2" (books/reclaim-tombstone.lisp, `*fn-rcl-magic*`) is the single current tombstone semantics and is KEPT deliberately; under D38's withdrawal there is one format and no reader of a previous tombstone.
+Status: DECIDED (ember, ratifying the design's section 5).
