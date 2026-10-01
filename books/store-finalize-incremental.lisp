@@ -961,6 +961,23 @@
                             fn-sco-finalize-from-unfolds fn-sco-cpr
                             fn-sco-records fn-sf-next-lower fn-sn-open-kind)))))
 
+; The extension's pause and the tries are the carried resume's: a projection
+; that opens only the entry's list and the checkpoint record, never the
+; verdict arm.
+(local
+ (defthm fn-sfi-extend-open-carried-cpr-and-tries
+   (and (equal (fn-sco-cpr (car (fn-sfi-extend-open-carried c ix configs suffix
+                                                            frontier count next)))
+               (car (fn-sfi-cpr-resume-carried (fn-sco-cpr c) configs suffix ix)))
+        (equal (cadr (fn-sfi-extend-open-carried c ix configs suffix frontier
+                                                 count next))
+               (cdr (fn-sfi-cpr-resume-carried (fn-sco-cpr c) configs suffix ix))))
+   :hints (("Goal" :in-theory (union-theories '(fn-sfi-extend-open-carried
+                                                fn-sco-make fn-sco-cpr fn-sco-at
+                                                nth car-cons cdr-cons
+                                                (:e zp) (:e binary-+))
+                                              (theory 'minimal-theory))))))
+
 ; What the next round carries, each in O(|Q|): the invariant over the
 ; extension's pause and tries, the count, and the bound.  The verdict is the
 ; result itself (fn-sfi-extend-open-carried-finalizes-the-extension at :ok).
@@ -973,16 +990,7 @@
             (fn-sco-cpr (car (fn-sfi-extend-open-carried c ix configs suffix
                                                          frontier count next)))
             (cadr (fn-sfi-extend-open-carried c ix configs suffix frontier count next))))
-  :hints (("Goal" :in-theory (e/d (fn-sfi-extend-open-carried fn-sco-make fn-sco-cpr
-                                   fn-sco-at)
-                                  (fn-sfi-cpr-resume-carried fn-sfi-cpr-carriedp
-                                   fn-sco-pausedp fn-sopc-open-refusal
-                                   fn-rii-sco-store-open fn-sfi-finalize-carried
-                                   fn-rii-sco-cpr-finish-configured
-                                   fn-replay-identity-loop fn-sco-consumer-resume
-                                   fn-th-prefix-loop fn-cei-build-aux fn-sco-records
-                                   fn-sco-identity fn-sco-consumer fn-sco-topic
-                                   fn-sco-event-index))
+  :hints (("Goal" :in-theory '(fn-sfi-extend-open-carried-cpr-and-tries)
            :use ((:instance fn-sfi-cpr-resume-carried-keeps-carried
                             (r (fn-sco-cpr c)) (events suffix))))))
 

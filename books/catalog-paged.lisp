@@ -50,6 +50,7 @@
 (in-package "ACL2")
 (include-book "catalog-logic")
 (include-book "def-representation")
+(include-book "def-representation-tree")
 ;; The tree codec's executables with their guards verified, and the tree
 ;; recognizer whose program is octets (fn-sccb-treep); its closure carries
 ;; the frame trailer and the digest attachments, which no recognizer or
@@ -79,7 +80,8 @@
   (msgid :octets)
   (wpres :bool) (wat :u64) (wby :u64)
   (esc :bool)
-  (aux :octets))
+  (aux :tree)
+  :write-once t)
 
 ; -----------------------------------------------------------------------------
 ; 2. The foundation: the row store beside the old foundation (its tables,
@@ -475,45 +477,102 @@
                      (t nil)))
              w))
 
-; A row written at SEQ (below the count): every column, and its overflow cell.
-(defun fn-cat$p-put-row (seq h fn-cat$p)
+; A withdrawal written at SEQ (Codex r21 F1, D27): ROW is the row at SEQ
+; and W its new withdrawal.  A row on the columns that is not escaped and a
+; withdrawal the columns carry: the three withdrawal columns, nothing else
+; (the Message-ID and the remainder stay where they are in the pool).
+; Otherwise -- an overflowed or escaped row, or a version past the
+; sentinel -- the new row in its overflow cell.  The pool is never
+; written: fn-crow is write-once (no set of an octets field exists), so its
+; fill is its rows' octets (fn-crow$c-fill-is-load-of-*).
+(defun fn-cat$p-set-withdrawn (seq row w fn-cat$p)
   (declare (xargs :stobjs fn-cat$p
                   :guard (and (fn-cat$p-wfp fn-cat$p) (natp seq) (< seq (fn-cat$p-count fn-cat$p)))
                   :guard-hints (("Goal" :do-not-induct t
                                  :in-theory (enable adt-val-okp)))))
-  (let ((r (fn-cp-row-of h)))
-    (stobj-let ((fn-crow (fn-cat$p-rows fn-cat$p)) (fn-cat$c (fn-cat$p-tab fn-cat$p)))
-               (fn-crow fn-cat$c)
-               (let* ((fn-crow (fn-crow-set-seq seq (nth 0 r) fn-crow))
-                      (fn-crow (fn-crow-set-txid seq (nth 1 r) fn-crow))
-                      (fn-crow (fn-crow-set-gen seq (nth 2 r) fn-crow))
-                      (fn-crow (fn-crow-set-payload seq (nth 3 r) fn-crow))
-                      (fn-crow (fn-crow-set-charge seq (nth 4 r) fn-crow))
-                      (fn-crow (fn-crow-set-stamp seq (nth 5 r) fn-crow))
-                      (fn-crow (fn-crow-set-msgid seq (nth 6 r) fn-crow))
-                      (fn-crow (fn-crow-set-wpres seq (nth 7 r) fn-crow))
-                      (fn-crow (fn-crow-set-wat seq (nth 8 r) fn-crow))
-                      (fn-crow (fn-crow-set-wby seq (nth 9 r) fn-crow))
-                      (fn-crow (fn-crow-set-esc seq (nth 10 r) fn-crow))
-                      (fn-crow (fn-crow-set-aux seq (nth 11 r) fn-crow))
-                      (fn-cat$c (update-fn-cat$c-rowsi seq (fn-cp-overflow-of h) fn-cat$c)))
-                 (mv fn-crow fn-cat$c))
-               fn-cat$p)))
+  (stobj-let ((fn-crow (fn-cat$p-rows fn-cat$p)) (fn-cat$c (fn-cat$p-tab fn-cat$p)))
+             (fn-crow fn-cat$c)
+             (if (and (null (fn-cat$c-rowsi seq fn-cat$c))
+                      (not (fn-crow-get-esc seq fn-crow))
+                      (consp w) (fn-cp-smallp (car w)) (fn-cp-smallp (cdr w)))
+                 (let* ((fn-crow (fn-crow-set-wpres seq t fn-crow))
+                        (fn-crow (fn-crow-set-wat seq (car w) fn-crow))
+                        (fn-crow (fn-crow-set-wby seq (cdr w) fn-crow)))
+                   (mv fn-crow fn-cat$c))
+               (let ((fn-cat$c (update-fn-cat$c-rowsi seq (fn-held-with-withdrawn row w) fn-cat$c)))
+                 (mv fn-crow fn-cat$c)))
+             fn-cat$p))
+
+; A redecided row (operator-rate: `keys redecide', one row a command) in its
+; overflow cell: its remainder changed, and the pool is write-once.  The cell
+; is replaced on each redecision, never accumulated.  GEN: an in-place
+; rewrite of the remainder's extent when the new program fits (needs the
+; extents' disjointness in the generator's correspondence).
+(defun fn-cat$p-set-cell (seq h fn-cat$p)
+  (declare (xargs :stobjs fn-cat$p
+                  :guard (and (fn-cat$p-wfp fn-cat$p) (natp seq) (< seq (fn-cat$p-count fn-cat$p)))))
+  (stobj-let ((fn-cat$c (fn-cat$p-tab fn-cat$p)))
+             (fn-cat$c)
+             (update-fn-cat$c-rowsi seq h fn-cat$c)
+             fn-cat$p))
+
+;; The row with its remainder as the TREE (the record NAME-APPEND-T takes:
+;; its executable walks the tree into the pool, books/def-representation-tree.lisp).
+(defun fn-cp-row-t-of (h tree)
+  (declare (xargs :guard t))
+  (let ((w (fn-held-withdrawn h)))
+    (list (fn-cp-u64 (fn-held-sequence h)) (fn-cp-u64 (fn-held-txid h))
+          (fn-cp-u64 (fn-held-generation h))
+          (if (fn-cp-smallp (fn-held-payload h)) (fn-held-payload h) 0)
+          (fn-cp-u64 (fn-held-charge h)) (fn-cp-u64 (fn-held-stamp h))
+          (fn-cp-msgid-octets h)
+          (consp w)
+          (if (and (consp w) (fn-cp-smallp (car w))) (car w) 0)
+          (if (and (consp w) (fn-cp-smallp (cdr w))) (cdr w) 0)
+          (fn-cp-escapedp h)
+          tree)))
+
+(defthm fn-cp-tree-enc-of-row-t-of
+  (implies (fn-sccb-treep (fn-cp-tree-of h))
+           (equal (fn-crow-tree-enc (fn-cp-row-t-of h (fn-cp-tree-of h)))
+                  (fn-cp-row-of h)))
+  :hints (("Goal" :in-theory (e/d (fn-cp-row-of) (fn-cp-tree-of fn-sccb-treep fn-scc-program)))))
+
+(local
+ (defthm fn-cp-row-t-of-shape
+   (and (true-listp (fn-cp-row-t-of h tree))
+        (equal (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (fn-cp-row-t-of h tree)))))))))))))
+               tree))
+   :hints (("Goal" :in-theory (enable fn-cp-row-t-of)))))
 
 ; A row appended at the count: the columns appended, the overflow cells
-; grown as the old rows array was and the cell written.
+; grown as the old rows array was and the cell written.  Executed, the
+; remainder is walked into the pool (NAME-APPEND-T) and its encodability
+; checked without an octet list (adt-tree-okp): before it the commit
+; consed the program by nested `append' and checked it twice, 38 KB a
+; commit (lane paged-catalog-3's measurement in its LANEDUMP).
 (defun fn-cat$p-append-row (h fn-cat$p)
   (declare (xargs :stobjs fn-cat$p :guard (fn-cat$p-wfp fn-cat$p)
-                  :guard-hints (("Goal" :do-not-induct t))))
-  (let ((r (fn-cp-row-of h)))
+                  :guard-hints (("Goal" :do-not-induct t
+                                 :in-theory (e/d (fn-cp-overflow-of adt-tree-okp-is-sccb-treep)
+                                                 (fn-cp-row-of fn-cp-row-t-of fn-cp-tree-of
+                                                  fn-sccb-treep fn-cat-rowp))))))
+  (let* ((tree (fn-cp-tree-of h))
+         (ok (adt-tree-okp tree)))
     (stobj-let ((fn-crow (fn-cat$p-rows fn-cat$p)) (fn-cat$c (fn-cat$p-tab fn-cat$p)))
                (fn-crow fn-cat$c)
                (let* ((seq (fn-cat$c-count fn-cat$c))
-                      (fn-crow (fn-crow-append r fn-crow))
+                      (fn-crow (mbe :logic (fn-crow-append (fn-cp-row-of h) fn-crow)
+                                    :exec (if ok
+                                              (fn-crow-append-t (fn-cp-row-t-of h tree) fn-crow)
+                                            (fn-crow-append (fn-cp-row-of h) fn-crow))))
                       (fn-cat$c (if (< seq (fn-cat$c-rows-length fn-cat$c))
                                     fn-cat$c
                                   (resize-fn-cat$c-rows (+ 1 (* 2 seq)) fn-cat$c)))
-                      (fn-cat$c (update-fn-cat$c-rowsi seq (fn-cp-overflow-of h) fn-cat$c)))
+                      (fn-cat$c (update-fn-cat$c-rowsi
+                                 seq (mbe :logic (fn-cp-overflow-of h)
+                                          :exec (if (and ok (fn-cat-rowp h)) nil h))
+                                 fn-cat$c)))
                  (mv fn-crow fn-cat$c))
                fn-cat$p)))
 
@@ -828,14 +887,14 @@
                               (hz)
                               (max (fn-cat$c-hz fn-cat$c) (+ 1 (fn-cat$c-count fn-cat$c)))
                               hz))
-               (fn-cat$p (fn-cat$p-put-row target (fn-held-with-withdrawn row (cons v by)) fn-cat$p)))
+               (fn-cat$p (fn-cat$p-set-withdrawn target row (cons v by) fn-cat$p)))
           (fn-cat$p-tab-withdraw dplan hz v target fn-cat$p))
       fn-cat$p)))
 
 (defun fn-cat$p-redecide (seq context fn-cat$p)
   (declare (xargs :stobjs fn-cat$p
                   :guard (and (fn-cat$p-wfp fn-cat$p) (natp seq) (< seq (fn-cat$p-count fn-cat$p)))))
-  (fn-cat$p-put-row seq (fn-held-with-context (fn-cat$p-at seq fn-cat$p) context) fn-cat$p))
+  (fn-cat$p-set-cell seq (fn-held-with-context (fn-cat$p-at seq fn-cat$p) context) fn-cat$p))
 
 (defun fn-cat$p-clear-w (fn-cat$p)
   (declare (xargs :stobjs fn-cat$p))
@@ -1339,16 +1398,54 @@
    (implies (fn-cp-overflow-of h) (equal (fn-cp-overflow-of h) h))
    :hints (("Goal" :in-theory (enable fn-cp-overflow-of)))))
 
+; The withdrawal's three columns, written over a row that is not escaped:
+; the decoded row with its withdrawal replaced.
 (local
- (defthm fn-cat$p-put-row-view
+ (defthm fn-cp-row-held-of-withdrawal-columns
+   (implies (not (nth 10 r))
+            (equal (fn-cp-row-held (update-nth 9 b (update-nth 8 a (update-nth 7 t r))))
+                   (fn-held-with-withdrawn (fn-cp-row-held r) (cons a b))))
+   :hints (("Goal" :in-theory (e/d (fn-cp-row-held fn-cp-held adt-l-nth-is-nth fn-held-with-withdrawn)
+                                   (fn-scc-decode-tree))))))
+
+(local
+ (defun fn-cp-cell-ind (i crow ovf)
+   (if (zp i) (list crow ovf) (fn-cp-cell-ind (1- i) (cdr crow) (cdr ovf)))))
+
+(local
+ (defthm fn-cp-merge-set-cell
+   (implies (and (natp i) (< i (len ovf)) o)
+            (equal (fn-cp-merge crow (update-nth i o ovf))
+                   (update-nth i o (fn-cp-merge crow ovf))))
+   :hints (("Goal" :in-theory (enable fn-cp-merge update-nth)
+            :induct (fn-cp-cell-ind i crow ovf)))))
+
+(local
+ (defthm fn-cp-merge-put-at-nil-cell
+   (implies (and (natp i) (< i (len crow)) (<= (len crow) (len ovf)) (not (nth i ovf)))
+            (equal (fn-cp-merge (update-nth i r crow) ovf)
+                   (update-nth i (fn-cp-row-held r) (fn-cp-merge crow ovf))))
+   :hints (("Goal" :in-theory (enable fn-cp-merge update-nth nth)
+            :induct (fn-cp-cell-ind i crow ovf)))))
+
+(local
+ (defthm fn-cat$p-set-withdrawn-view
    (implies (and (equal (len (nth 0 fn-cat$p)) (nth 1 (nth 1 fn-cat$p)))
                  (<= (nth 1 (nth 1 fn-cat$p)) (len (nth 0 (nth 1 fn-cat$p))))
+                 (natp seq) (< seq (nth 1 (nth 1 fn-cat$p)))
+                 (equal row (nth seq (fn-cp-merge (nth 0 fn-cat$p) (nth 0 (nth 1 fn-cat$p))))))
+            (equal (fn-cat$p-view (fn-cat$p-set-withdrawn seq row w fn-cat$p))
+                   (update-fn-cat$c-rowsi seq (fn-held-with-withdrawn row w) (fn-cat$p-view fn-cat$p))))
+   :hints (("Goal" :in-theory (e/d (fn-cat$p-set-withdrawn adt-set-a)
+                                   (fn-cp-row-held fn-cp-held fn-held-with-withdrawn))))))
+
+(local
+ (defthm fn-cat$p-set-cell-view
+   (implies (and (<= (nth 1 (nth 1 fn-cat$p)) (len (nth 0 (nth 1 fn-cat$p))))
                  (natp seq) (< seq (nth 1 (nth 1 fn-cat$p))) h)
-            (equal (fn-cat$p-view (fn-cat$p-put-row seq h fn-cat$p))
+            (equal (fn-cat$p-view (fn-cat$p-set-cell seq h fn-cat$p))
                    (update-fn-cat$c-rowsi seq h (fn-cat$p-view fn-cat$p))))
-   :hints (("Goal" :in-theory (e/d (fn-cat$p-put-row adt-set-a fn-cp-row-held adt-l-nth-is-nth)
-                                   (fn-cp-row-of fn-cp-overflow-of fn-cp-held))
-            :cases ((fn-cp-overflow-of h))))))
+   :hints (("Goal" :in-theory (enable fn-cat$p-set-cell)))))
 
 (local
  (defthm fn-cp-merge-of-resize-any
@@ -1508,7 +1605,7 @@
                    (fn-cat$c-redecide seq context (fn-cat$p-view fn-cat$p))))
    :hints (("Goal" :do-not-induct t
             :in-theory (e/d (fn-cat$p-redecide fn-cat$c-redecide)
-                            (fn-cat$p-put-row fn-held-with-context))))))
+                            (fn-cat$p-set-cell fn-held-with-context))))))
 
 (local
  (defthm fn-cp-view-of-tab-withdraw
@@ -1520,14 +1617,23 @@
    :hints (("Goal" :in-theory (enable fn-cat$p-tab-withdraw)))))
 
 (local
- (defthm fn-cp-put-row-shape
+ (defthm fn-cp-set-withdrawn-shape
    (implies (and (natp seq) (< seq (len (nth 0 fn-cat$p)))
                  (<= (len (nth 0 fn-cat$p)) (len (nth 0 (nth 1 fn-cat$p)))))
-            (and (equal (len (nth 0 (fn-cat$p-put-row seq h fn-cat$p))) (len (nth 0 fn-cat$p)))
-                 (equal (nth 1 (nth 1 (fn-cat$p-put-row seq h fn-cat$p))) (nth 1 (nth 1 fn-cat$p)))
-                 (equal (len (nth 0 (nth 1 (fn-cat$p-put-row seq h fn-cat$p))))
+            (and (equal (len (nth 0 (fn-cat$p-set-withdrawn seq row w fn-cat$p))) (len (nth 0 fn-cat$p)))
+                 (equal (nth 1 (nth 1 (fn-cat$p-set-withdrawn seq row w fn-cat$p))) (nth 1 (nth 1 fn-cat$p)))
+                 (equal (len (nth 0 (nth 1 (fn-cat$p-set-withdrawn seq row w fn-cat$p))))
                         (len (nth 0 (nth 1 fn-cat$p))))))
-   :hints (("Goal" :in-theory (enable fn-cat$p-put-row adt-set-a)))))
+   :hints (("Goal" :in-theory (enable fn-cat$p-set-withdrawn adt-set-a)))))
+
+(local
+ (defthm fn-cp-set-cell-shape
+   (implies (and (natp seq) (< seq (len (nth 0 (nth 1 fn-cat$p)))))
+            (and (equal (nth 0 (fn-cat$p-set-cell seq h fn-cat$p)) (nth 0 fn-cat$p))
+                 (equal (nth 1 (nth 1 (fn-cat$p-set-cell seq h fn-cat$p))) (nth 1 (nth 1 fn-cat$p)))
+                 (equal (len (nth 0 (nth 1 (fn-cat$p-set-cell seq h fn-cat$p))))
+                        (len (nth 0 (nth 1 fn-cat$p))))))
+   :hints (("Goal" :in-theory (enable fn-cat$p-set-cell)))))
 
 (local
  (defthm fn-cat$p-withdraw-w-sim
@@ -1539,7 +1645,7 @@
    :hints (("Goal" :do-not-induct t
             :in-theory (e/d (fn-cat$p-withdraw-w fn-cat$c-withdraw-w fn-cat$c-withdraw
                              fn-cat$c-withdraw-base)
-                            (fn-cat$p-put-row fn-cat$p-tab-withdraw fn-cat$p-drop-plan fn-cat$c-drop-plan
+                            (fn-cat$p-set-withdrawn fn-cat$p-tab-withdraw fn-cat$p-drop-plan fn-cat$c-drop-plan
                              fn-cat$c-live-apply fn-cat$c-wbv-put fn-cat$c-wbv-get
                              fn-held-with-withdrawn fn-cat-insert-asc))))))
 
@@ -1605,7 +1711,7 @@
             (and (equal (len (nth 0 (fn-cat$p-withdraw-w target by fn-cat$p))) (len (nth 0 fn-cat$p)))
                  (equal (nth 1 (nth 1 (fn-cat$p-withdraw-w target by fn-cat$p))) (nth 1 (nth 1 fn-cat$p)))))
    :hints (("Goal" :in-theory (e/d (fn-cat$p-withdraw-w)
-                                   (fn-cat$p-put-row fn-cat$p-tab-withdraw fn-cat$p-drop-plan))))))
+                                   (fn-cat$p-set-withdrawn fn-cat$p-tab-withdraw fn-cat$p-drop-plan))))))
 
 (local
  (defthm fn-cp-redecide-shape
@@ -1613,7 +1719,7 @@
                  (<= (len (nth 0 fn-cat$p)) (len (nth 0 (nth 1 fn-cat$p)))))
             (and (equal (len (nth 0 (fn-cat$p-redecide seq context fn-cat$p))) (len (nth 0 fn-cat$p)))
                  (equal (nth 1 (nth 1 (fn-cat$p-redecide seq context fn-cat$p))) (nth 1 (nth 1 fn-cat$p)))))
-   :hints (("Goal" :in-theory (e/d (fn-cat$p-redecide) (fn-cat$p-put-row))))))
+   :hints (("Goal" :in-theory (e/d (fn-cat$p-redecide) (fn-cat$p-set-cell))))))
 
 (local
  (defthm fn-cp-clear-shape

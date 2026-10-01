@@ -431,8 +431,11 @@ class SharedGraphTests(unittest.TestCase):
         self.assertNotIn("fn-feed-drivenp", self.graph.edges["fn-feed-apply-record"])
 
     def test_a_macro_body_is_followed(self):
-        """fn-nntp-command's arms are named only by the dispatcher macro."""
+        """The generated dispatcher macro reaches the session arm via its term builder."""
         self.assertIn("fn-nntp-command-dispatch", self.graph.edges["fn-nntp-command"])
+        # 6aa65979f moved the handwritten macro body into the table's
+        # generator.  Both edges matter: merely finding the session arm
+        # reachable would also pass if some unrelated host path reached it.
         self.assertIn("fn-proto-command-dispatch-term",
                       self.graph.edges["fn-nntp-command-dispatch"])
         self.assertIn("fn-nntp-session-command",

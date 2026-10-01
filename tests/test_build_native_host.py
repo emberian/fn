@@ -36,7 +36,7 @@ MARKERS = ("ACL2 Error [Failure] in ( DEFUN FNN-X ...)",
 
 
 class BuildNativeHostRefusalTests(unittest.TestCase):
-    def build(self, line):
+    def build(self, line, **extra):
         with tempfile.TemporaryDirectory() as temporary:
             base = pathlib.Path(temporary)
             fake = base / "acl2"
@@ -47,6 +47,8 @@ class BuildNativeHostRefusalTests(unittest.TestCase):
                    "FN_NATIVE_BUILD": str(base / "build.lisp"),
                    "FN_NATIVE_IMAGE": str(base / "fn-host-test"),
                    "FN_NATIVE_LOG": str(base / "build.log")}
+            env.pop("FN_NATIVE_CATALOG", None)
+            env.update({k: (v.replace("$BASE", str(base))) for k, v in extra.items()})
             env.pop("FN_OPENSSL_PREFIX", None)
             env.pop("FN_TLS_LIMIT", None)
             (base / "build.lisp").write_text("(value :q)\n")
@@ -55,7 +57,10 @@ class BuildNativeHostRefusalTests(unittest.TestCase):
             library = [p for p in (base / "lib").glob("libfn-mldsa65.*")]
             launcher = base / "fn-host-test"
             self.launcher_text = launcher.read_text() if launcher.exists() else ""
-            return answer, (base / "build.log").read_text(), library, base
+            record = base / "fn-host-test.catalog"
+            self.catalog_text = record.read_text() if record.exists() else None
+            log = base / "build.log"
+            return answer, (log.read_text() if log.exists() else ""), library, base
 
     def test_each_marker_refuses_the_build_and_prints_the_line(self):
         for line in MARKERS:
@@ -93,6 +98,20 @@ class BuildNativeHostRefusalTests(unittest.TestCase):
         named, openssl = line[len("mldsa="):].split(" openssl=")
         self.assertEqual(os.path.realpath(named), os.path.realpath(library[0]))
         self.assertEqual(openssl, "unset")
+        # The catalog is recorded beside the image (tools/image_set.py reads it).
+        self.assertEqual(self.catalog_text, "old\n")
+
+    def test_the_image_name_says_its_catalog(self):
+        # Codex r21 F2: a paged core is never built under the old name, and
+        # an old one never under a -paged name.
+        answer, _log, _, _ = self.build("ACL2 !>", FN_NATIVE_CATALOG="paged",
+                                        FN_NATIVE_BUILD="host/native/build.lisp")
+        self.assertEqual(answer.returncode, 2, answer.stdout + answer.stderr)
+        self.assertIn("builds an image named *-paged", answer.stderr)
+        self.assertNotIn("built ", answer.stdout)
+        answer, _log, _, _ = self.build("ACL2 !>", FN_NATIVE_IMAGE="$BASE/fn-host-x-paged")
+        self.assertEqual(answer.returncode, 2, answer.stdout + answer.stderr)
+        self.assertIn("a paged image's name", answer.stderr)
 
 
 if __name__ == "__main__":

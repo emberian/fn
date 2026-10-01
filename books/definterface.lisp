@@ -68,7 +68,17 @@
 ;     host/native/io.lisp fnn-install-raw-dispatch reads the table at image
 ;     build and dispatches those entries raw; the developer selector
 ;     FN_NATIVE_DISPATCH_COUNTERPART keeps the counterpart path for a native
-;     that compares both.
+;     that compares both.  `:raw-with (:carried NAME)' consults nothing a
+;     user wrote: it resolves only to the statements def-carried GENERATED
+;     for the carried invariant NAME (books/def-carried.lisp, table
+;     fn-carried) -- NAME-ENTRY-carries and every NAME-PRED-bridge -- and is
+;     refused unless the row backs the entry in this world
+;     (fn-cd-raw-problem: a stobj row, the entry a transition, the row
+;     complete, every generated formula equal to the statement regenerated
+;     from the world, no declared :hyps) and every skipped guard conjunct
+;     is the invariant of the entry's state or a conjunct of a generated
+;     bridge (fn-cd-uncovered-conjunct); the occurrence lint above is for
+;     literal lists only.
 ;
 ; and then records the declaration in the table `fn-interfaces'.  A failed
 ; check is a soft error naming the entry and the check.  The registry half
@@ -77,12 +87,14 @@
 ; host-binding check reads the raw host itself (a declared entry the host
 ; never dispatches is stale; see that tool).
 ;
-; This book has no include-book and leaves no rule: its helpers are
+; This book includes only books/def-carried (whose row a `:raw-with
+; (:carried NAME)' re-checks) and leaves no rule: its helpers are
 ; :program mode.  *fn-entry-guard-kinds* is read from the world
 ; (books/payload-kinds.lisp), not included, so the file that holds the
 ; declarations decides what is loaded.
 
 (in-package "ACL2")
+(include-book "def-carried") ; fn-cd-problem: a (:carried NAME) row re-checked
 
 (defconst *fn-di-keys* '(:class :kinds :exempt :keystones :root :direct :delegates
                          :raw-with :raw-guarded))
@@ -138,10 +150,20 @@
     (and (fn-di-keystone-entryp (car x))
          (fn-di-keystones-formp (cdr x)))))
 
+(defun fn-di-any-keyword (xs)
+  (declare (xargs :mode :program))
+  (and (consp xs) (or (keywordp (car xs)) (fn-di-any-keyword (cdr xs)))))
+
 (defun fn-di-raw-with-formp (x)
   (declare (xargs :mode :program))
-  ; (THM ...): a non-empty list of theorem names
-  (and (consp x) (symbol-listp x) (not (member-eq nil x))))
+  ; (THM ...): a non-empty list of theorem names, none a keyword; or exactly
+  ; (:carried NAME), the carried invariant whose row names them
+  ; (books/def-carried.lisp)
+  (and (consp x)
+       (if (eq (car x) :carried)
+           (and (consp (cdr x)) (null (cddr x)) (symbolp (cadr x)) (cadr x) t)
+         (and (symbol-listp x) (not (member-eq nil x))
+              (not (fn-di-any-keyword x))))))
 
 (defun fn-di-raw-guarded-formp (x)
   (declare (xargs :mode :program))
@@ -469,26 +491,74 @@
          (car thms))
         (t (fn-di-unrelated-theorem (cdr thms) related w))))
 
+(defun fn-di-raw-with-theorems (name kvs w)
+  (declare (xargs :mode :program))
+  ; the theorems a :raw-with names: the literal list, or for (:carried N)
+  ; only the statements def-carried GENERATED for NAME (books/def-carried.lisp
+  ; fn-cd-raw-with: N-NAME-carries and every N-PRED-bridge); nil when N is no
+  ; carried invariant of this world or NAME no transition of it
+  (let ((form (fn-di-get :raw-with kvs)))
+    (if (and (consp form) (eq (car form) :carried))
+        (fn-cd-raw-with (cadr form) name w)
+      form)))
+
+(defun fn-di-defined-conjuncts (conjuncts w)
+  (declare (xargs :mode :program))
+  ; CONJUNCTS less those a boot-strap primitive heads (fn-di-invariant-heads)
+  (cond ((atom conjuncts) nil)
+        ((let ((head (fn-di-conjunct-head (car conjuncts))))
+           (or (null head) (getpropc head 'predefined nil w)))
+         (fn-di-defined-conjuncts (cdr conjuncts) w))
+        (t (cons (car conjuncts) (fn-di-defined-conjuncts (cdr conjuncts) w)))))
+
+(defun fn-di-raw-with-list-problem (name thms heads w)
+  (declare (xargs :mode :program))
+  ; a literal :raw-with list: the declaration lint (occurrence, not proof)
+  (let ((missing (fn-di-missing-theorem thms w))
+        (unconcluded (fn-di-unconcluded-head heads thms w))
+        (unpreserved (fn-di-unpreserved-head
+                      name heads thms (getpropc name 'guard *t* w) w))
+        (unrelated (fn-di-unrelated-theorem
+                    thms (fn-di-related-fnnames heads thms w) w)))
+    (cond
+     (missing
+      (msg ":raw-with names ~x0, which is not a theorem in this world" missing))
+     (unconcluded
+      (msg ":raw-with on ~x0: no named theorem concludes ~x1, a guard ~
+            conjunct raw dispatch leaves unevaluated (the named theorems ~
+            are ~&2)" name unconcluded thms))
+     (unpreserved
+      (msg ":raw-with on ~x0: no named positive preservation theorem for ~x1 ~
+            mentions this entry under no hypotheses stronger than its guard"
+           name unpreserved))
+     (unrelated
+      (msg ":raw-with names ~x0, which mentions no function of ~x1's ~
+            guard argument (~&2)" unrelated name
+           (fn-di-related-fnnames heads thms w)))
+     (t nil))))
+
 (defun fn-di-raw-with-problem (name kvs w)
   (declare (xargs :mode :program))
-  ; nil, or a msg naming the first check the world refutes
-  (let ((thms (fn-di-get :raw-with kvs)))
-    (if (null thms)
+  ; nil, or a msg naming the first check the world refutes.  For (:carried
+  ; N) nothing a user wrote is consulted: def-carried's row, re-checked here
+  ; with every generated statement regenerated and compared, must back NAME
+  ; (fn-cd-raw-problem), and every skipped guard conjunct must be N's
+  ; invariant of NAME's state or a conjunct of a generated bridge
+  ; (fn-cd-uncovered-conjunct).
+  (let ((form (fn-di-get :raw-with kvs)))
+    (if (null form)
         nil
-      (let* ((formals (getpropc name 'formals nil w))
+      (let* ((carried (and (eq (car form) :carried) (cadr form)))
+             (formals (getpropc name 'formals nil w))
              (stobjs (getpropc name 'stobjs-in nil w))
              (conjuncts (fn-di-invariant-conjuncts
                          (fn-di-conjuncts (getpropc name 'guard *t* w))
                          formals stobjs (fn-di-guard-kinds w) w))
              (over-argument (fn-di-conjunct-over-argument conjuncts formals stobjs))
-             (heads (fn-di-invariant-heads conjuncts w))
-             (missing (fn-di-missing-theorem thms w))
-             (unconcluded (fn-di-unconcluded-head heads thms w))
-             (unpreserved (fn-di-unpreserved-head
-                           name heads thms (getpropc name 'guard *t* w) w))
-             (unrelated (fn-di-unrelated-theorem
-                         thms (fn-di-related-fnnames heads thms w) w)))
+             (heads (fn-di-invariant-heads conjuncts w)))
         (cond
+         ((and carried (fn-cd-raw-problem carried name w))
+          (msg ":raw-with ~x0 on ~x1: ~@2" form name (fn-cd-raw-problem carried name w)))
          ((not (eq (fn-di-get :class kvs) :common-lisp-compliant))
           (msg ":raw-with on ~x0, which is not :common-lisp-compliant: only a ~
                 guard-verified definition executes faithfully raw" name))
@@ -501,21 +571,14 @@
           (msg ":raw-with on ~x0, whose guard has no conjunct beyond its kind ~
                 checks and boot-strap primitives: raw dispatch would skip ~
                 nothing" name))
-         (missing
-          (msg ":raw-with names ~x0, which is not a theorem in this world" missing))
-         (unconcluded
-          (msg ":raw-with on ~x0: no named theorem concludes ~x1, a guard ~
-                conjunct raw dispatch leaves unevaluated (the named theorems ~
-                are ~&2)" name unconcluded thms))
-         (unpreserved
-          (msg ":raw-with on ~x0: no named positive preservation theorem for ~x1 ~
-                mentions this entry under no hypotheses stronger than its guard"
-               name unpreserved))
-         (unrelated
-          (msg ":raw-with names ~x0, which mentions no function of ~x1's ~
-                guard argument (~&2)" unrelated name
-               (fn-di-related-fnnames heads thms w)))
-         (t nil))))))
+         (carried
+          (let ((c (fn-cd-uncovered-conjunct
+                    carried name (fn-di-defined-conjuncts conjuncts w) w)))
+            (and c
+                 (msg ":raw-with ~x0 on ~x1: guard conjunct ~x2 is neither the ~
+                       carried invariant of ~x1's state nor a conjunct of a ~
+                       generated bridge" form name c))))
+         (t (fn-di-raw-with-list-problem name form heads w)))))))
 
 (defun fn-di-raw-guarded-conjunctsp (conjuncts formals slots w)
   (declare (xargs :mode :program))
