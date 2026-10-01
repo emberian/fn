@@ -16,8 +16,11 @@
 ; (fn-cpl-okp-of-withdraw), a redecision changes no number's liveness
 ; (fn-cpl-okp-of-redecide).  A clear or a keyed clear empties the rows, so
 ; every number dies: the tables are cleared with them (fn-cpl-okp-nil).
-; books/catalog-paged.lisp will carry `fn-cpl-okp' in its correspondence
-; and answer a scan from the table (stage 3, gate C2).  An executable
+; Section 6 adds coverage (`fn-cpl-coverp': every live number is bound),
+; kept by the same writes; with okp, a live number's probe is bound and
+; is its neighbour (fn-cpl-probe-of-live), so the scan fallback is
+; unreachable on any state the writes built.  books/catalog-paged.lisp
+; carries both in its correspondence.  An executable
 ; reading of `fn-cpl-okp' for the witnesses (tests/acl2/catalog-live-links-
 ; tests.lisp): fn-cpl-okp-is-all-goodp.
 
@@ -1228,3 +1231,135 @@
 
 (in-theory (disable fn-cpl-okp-is-all-goodp))
 
+
+; -----------------------------------------------------------------------------
+; 6. Coverage (Codex r30 F1): every live number is BOUND in a table.  With
+; `fn-cpl-okp' (a bound entry is good) it makes the scan a withdrawal's
+; neighbour read falls back to unreachable on a state the writes built:
+; the commit binds each new live number (fn-cpl-coverp-of-commit), the
+; withdrawal removes only its own numbers, which die (-of-withdraw), a
+; redecision moves no liveness (-of-redecide), and empty rows have no
+; live number (-of-no-rows).
+
+(defun-sk fn-cpl-coverp (tab c)
+  (forall x (implies (and (consp x) (fn-cat-live-numberp (car x) (cdr x) c))
+                     (consp (hons-assoc-equal x tab)))))
+
+(in-theory (disable fn-cpl-coverp fn-cpl-coverp-necc))
+
+(defthm fn-cpl-coverp-of-no-rows
+  (fn-cpl-coverp tab nil)
+  :hints (("Goal" :in-theory (enable fn-cpl-coverp fn-cat-live-numberp))))
+
+; The keys a plan's entries name, (g . k) for each (g k ...).
+(defun fn-cpl-plan-keyp (x plan)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp plan)
+      (or (equal x (cons (car (car plan)) (cadr (car plan))))
+          (fn-cpl-plan-keyp x (cdr plan)))
+    nil))
+
+(defthm fn-cpl-bound-of-link
+  (implies (or (consp (hons-assoc-equal x tab)) (fn-cpl-plan-keyp x plan))
+           (consp (hons-assoc-equal x (fn-cpl-link dir plan tab))))
+  :hints (("Goal" :induct (fn-cpl-link dir plan tab) :in-theory (disable fn-cpl-link-is-lsteps))))
+
+(defthm fn-cpl-plan-keyp-of-cplan
+  (implies (and (member-equal g groups) livep
+                (<= (+ 1 (fn-cat-group-high g c)) *fn-nntp-max-article-number*))
+           (fn-cpl-plan-keyp (cons g (+ 1 (fn-cat-group-high g c))) (fn-cpl-cplan groups livep c)))
+  :hints (("Goal" :induct (fn-cpl-cplan groups livep c)
+           :in-theory (disable fn-cat-live-last fn-cat-group-high))))
+
+(defthm fn-cpl-covered-after-commit
+  (implies (and (fn-cat-rowsp c) (fn-cpl-coverp tab c) (consp x)
+                (fn-cat-live-numberp (car x) (cdr x) (append c (list (fn-cat-assign h c)))))
+           (consp (hons-assoc-equal x (fn-cpl-link dir (fn-cpl-cplan (fn-record-groups h)
+                                                                     (and (null (fn-held-withdrawn h))
+                                                                          (fn-scat-msgid-idp (fn-record-msgid h)))
+                                                                     c)
+                                                   tab))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-cpl-link fn-cpl-cplan fn-cat-live-numberp fn-cat-assign fn-cat-rowsp
+                               fn-cat-group-high fn-scat-msgid-idp)
+           :cases ((and (member-equal (car x) (fn-record-groups h))
+                        (equal (cdr x) (+ 1 (fn-cat-group-high (car x) c)))))
+           :use ((:instance fn-cpl-coverp-necc)
+                 (:instance fn-cpl-live-append-other (g (car x)) (k (cdr x)))
+                 (:instance fn-cpl-live-append-new (g (car x)) (n (cdr x)))))))
+
+; Coverage through a commit.
+(defthm fn-cpl-coverp-of-commit
+  (implies (and (fn-cat-rowsp c) (fn-cpl-coverp tab c))
+           (fn-cpl-coverp (fn-cpl-link dir (fn-cpl-cplan (fn-record-groups h)
+                                                         (and (null (fn-held-withdrawn h))
+                                                              (fn-scat-msgid-idp (fn-record-msgid h)))
+                                                         c)
+                                       tab)
+                          (append c (list (fn-cat-assign h c)))))
+  :hints (("Goal" :in-theory (union-theories '() (theory 'minimal-theory))
+           :expand ((:free (tab2 c2) (fn-cpl-coverp tab2 c2)))
+           :use ((:instance fn-cpl-covered-after-commit
+                            (x (fn-cpl-coverp-witness
+                                (fn-cpl-link dir (fn-cpl-cplan (fn-record-groups h)
+                                                               (and (null (fn-held-withdrawn h))
+                                                                    (fn-scat-msgid-idp (fn-record-msgid h)))
+                                                               c)
+                                             tab)
+                                (append c (list (fn-cat-assign h c))))))))))
+
+(defthm fn-cpl-bound-of-unlink
+  (implies (and (consp (hons-assoc-equal x tab)) (not (fn-cpl-plan-keyp x plan)))
+           (consp (hons-assoc-equal x (fn-cpl-unlink dir plan tab))))
+  :hints (("Goal" :induct (fn-cpl-unlink dir plan tab) :in-theory (disable fn-cpl-unlink-is-wsteps))))
+
+(defthm fn-cpl-kstar-of-plan-key
+  (implies (and (fn-cpl-wplan-okp plan r c) (fn-cpl-plan-keyp x plan))
+           (equal (fn-ctg-kstar (car x) c r) (cdr x)))
+  :hints (("Goal" :induct (fn-cpl-plan-keyp x plan)
+           :in-theory (disable fn-ctg-kstar fn-cat-live-numberp fn-cpl-prev-of fn-cpl-next-of))))
+
+(defthm fn-cpl-covered-after-withdraw
+  (implies (and (fn-cat-rowsp c) (natp r) (< r (len c)) (null (fn-held-withdrawn (nth r c)))
+                (fn-cpl-coverp tab c) (consp x)
+                (fn-cat-live-numberp (car x) (cdr x) (fn-cat-mark-withdrawn r w by c)))
+           (consp (hons-assoc-equal x (fn-cpl-unlink dir (fn-cpl-wplan (fn-held-numbers (nth r c)) r c) tab))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-cpl-unlink fn-cpl-wplan fn-cat-live-numberp fn-cat-rowsp fn-ctg-kstar
+                               fn-cat-mark-withdrawn fn-cpl-wplan-okp fn-cpl-kstar-of-plan-key)
+           :use ((:instance fn-cpl-coverp-necc)
+                 (:instance fn-cpl-live-withdrawn (g (car x)) (j (cdr x)) (v w))
+                 (:instance fn-cpl-wplan-okp-of-wplan (pairs (fn-held-numbers (nth r c))))
+                 (:instance fn-cpl-kstar-of-plan-key (plan (fn-cpl-wplan (fn-held-numbers (nth r c)) r c)))))))
+
+; Coverage through a withdrawal.
+(defthm fn-cpl-coverp-of-withdraw
+  (implies (and (fn-cat-rowsp c) (natp r) (< r (len c)) (null (fn-held-withdrawn (nth r c)))
+                (fn-cpl-coverp tab c))
+           (fn-cpl-coverp (fn-cpl-unlink dir (fn-cpl-wplan (fn-held-numbers (nth r c)) r c) tab)
+                          (fn-cat-mark-withdrawn r w by c)))
+  :hints (("Goal" :in-theory (union-theories '() (theory 'minimal-theory))
+           :expand ((:free (tab2 c2) (fn-cpl-coverp tab2 c2)))
+           :use ((:instance fn-cpl-covered-after-withdraw
+                            (x (fn-cpl-coverp-witness
+                                (fn-cpl-unlink dir (fn-cpl-wplan (fn-held-numbers (nth r c)) r c) tab)
+                                (fn-cat-mark-withdrawn r w by c))))))))
+
+; Coverage through a redecision.
+(defthm fn-cpl-coverp-of-redecide
+  (implies (and (natp r) (< r (len c)) (fn-cpl-coverp tab c))
+           (fn-cpl-coverp tab (update-nth r (fn-held-with-context (nth r c) ctx) c)))
+  :hints (("Goal" :in-theory (e/d (fn-cpl-coverp) (fn-cat-live-numberp fn-held-with-context))
+           :use ((:instance fn-cpl-coverp-necc
+                            (x (fn-cpl-coverp-witness tab (update-nth r (fn-held-with-context (nth r c) ctx) c))))))))
+
+; The probe hits: over covered, good tables a live number's entry is bound
+; and is its neighbour.
+(defthm fn-cpl-probe-of-live
+  (implies (and (fn-cpl-coverp tab c) (fn-cpl-okp dir tab c) (fn-cat-live-numberp g k c))
+           (and (consp (hons-assoc-equal (cons g k) tab))
+                (equal (cdr (hons-assoc-equal (cons g k) tab))
+                       (if dir (fn-cpl-next-of g k c) (fn-cpl-prev-of g k c)))))
+  :hints (("Goal" :in-theory (disable fn-cpl-next-of fn-cpl-prev-of fn-cat-live-numberp)
+           :use ((:instance fn-cpl-coverp-necc (x (cons g k)))
+                 (:instance fn-cpl-okp-necc (x (cons g k)))))))

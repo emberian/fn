@@ -594,12 +594,15 @@
                (nth 1 fn-cat$p)))
 
 ; The correspondence: the old one on the view, and both link tables good
-; over the logical rows.
+; over the logical rows and binding every live number (so a withdrawal's
+; neighbour read never scans: fn-cat$p-next-is-probe, -prev-is-probe).
 (defun-nx fn-cat$pcorr (fn-cat$p fn-cat$a)
   (and (equal (len (nth 0 fn-cat$p)) (nth 1 (nth 1 fn-cat$p)))
        (fn-cat$corr-w (fn-cat$p-view fn-cat$p) fn-cat$a)
        (fn-cpl-okp t (nth 2 fn-cat$p) fn-cat$a)
-       (fn-cpl-okp nil (nth 3 fn-cat$p) fn-cat$a)))
+       (fn-cpl-okp nil (nth 3 fn-cat$p) fn-cat$a)
+       (fn-cpl-coverp (nth 2 fn-cat$p) fn-cat$a)
+       (fn-cpl-coverp (nth 3 fn-cat$p) fn-cat$a)))
 
 ; -----------------------------------------------------------------------------
 ; 5. The executables.  What their guards need of the nested stores, stated
@@ -1131,10 +1134,10 @@
     0))
 
 ; The neighbours of live number K of GROUP: from the link tables (one
-; probe), the scan only for a key the tables do not bind -- never on a
-; state the commits and withdrawals built (they bind every live number);
-; correct either way (fn-cp-next-sim, fn-cp-prev-sim need only that bound
-; entries are good, not that every number is bound).
+; probe), the scan only for a key the tables do not bind -- unreachable on
+; a corresponding state (fn-cat$p-next-is-probe, -prev-is-probe: coverage
+; is carried); correct either way (fn-cp-next-sim, fn-cp-prev-sim need
+; only that bound entries are good).
 (defun fn-cat$p-top (group fn-cat$p)
   (declare (xargs :stobjs fn-cat$p))
   (let ((ge (stobj-let ((fn-cat$c (fn-cat$p-tab fn-cat$p))) (ge) (fn-cat$c-groups-get group fn-cat$c) ge)))
@@ -1757,6 +1760,8 @@
    (implies (fn-cat$pcorr fn-cat$p fn-cat$a)
             (and (fn-cpl-okp t (nth 2 fn-cat$p) fn-cat$a)
                  (fn-cpl-okp nil (nth 3 fn-cat$p) fn-cat$a)
+                 (fn-cpl-coverp (nth 2 fn-cat$p) fn-cat$a)
+                 (fn-cpl-coverp (nth 3 fn-cat$p) fn-cat$a)
                  (fn-cat$corr-base (fn-cat$p-view fn-cat$p) fn-cat$a)))
    :rule-classes :forward-chaining
    :hints (("Goal" :in-theory (enable fn-cat$pcorr fn-cat$corr-w fn-cat$corr)))))
@@ -1798,6 +1803,33 @@
             :in-theory (e/d (fn-cat$p-prev fn-cpl-goodp fn-cpl-prev-of)
                             (fn-cat$p-view fn-cpl-okp-necc fn-cpl-scan-down-is-last fn-cat$p-scan-down-sim fn-cat$p-scan-down
                              fn-cat$c-scan-down fn-cat-live-last fn-cat-live-numberp))))))
+
+; KEYSTONES (Codex r30 F1): on a corresponding state a live number's
+; neighbour read is the table probe -- bound, a natural, the scan never
+; taken (coverage + okp carried in fn-cat$pcorr, books/catalog-live-links
+; sec. 6).  Every probe the withdrawal makes is of a live number of the
+; row it withdraws (fn-cat$p-wplan, fn-cat$p-drop-entry).
+(defthm fn-cat$p-next-is-probe
+  (implies (and (fn-cat$pcorr fn-cat$p fn-cat$a) (fn-cat-live-numberp g k fn-cat$a))
+           (and (natp (fn-cat$p-lnext-get (cons g k) fn-cat$p))
+                (equal (fn-cat$p-next g k fn-cat$p) (fn-cat$p-lnext-get (cons g k) fn-cat$p))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-cp-corr-okp)
+                 (:instance fn-cpl-probe-of-live (dir t) (tab (nth 2 fn-cat$p)) (c fn-cat$a)))
+           :in-theory (e/d (fn-cat$p-next fn-cpl-next-of)
+                           (fn-cp-corr-okp fn-cpl-probe-of-live fn-cat-live-numberp fn-cat-live-first
+                            fn-cat$p-scan-up fn-cat$p-view fn-cat$pcorr)))))
+
+(defthm fn-cat$p-prev-is-probe
+  (implies (and (fn-cat$pcorr fn-cat$p fn-cat$a) (fn-cat-live-numberp g k fn-cat$a))
+           (and (natp (fn-cat$p-lprev-get (cons g k) fn-cat$p))
+                (equal (fn-cat$p-prev g k fn-cat$p) (fn-cat$p-lprev-get (cons g k) fn-cat$p))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-cp-corr-okp)
+                 (:instance fn-cpl-probe-of-live (dir nil) (tab (nth 3 fn-cat$p)) (c fn-cat$a)))
+           :in-theory (e/d (fn-cat$p-prev fn-cpl-prev-of)
+                           (fn-cp-corr-okp fn-cpl-probe-of-live fn-cat-live-numberp fn-cat-live-last
+                            fn-cat$p-scan-down fn-cat$p-view fn-cat$pcorr)))))
 
 (local
  (defthm fn-cat$p-drop-entry-sim
@@ -2313,6 +2345,37 @@
             :in-theory (e/d (fn-cat$a-withdraw fn-cat-mark-withdrawn)
                             (fn-cpl-okp-of-withdraw fn-cpl-unlink fn-cpl-wplan))))))
 
+;  Coverage at the logical writes (books/catalog-live-links.lisp sec. 6).
+(local
+ (defthm fn-cp-cover-of-a-commit
+   (implies (and (fn-cat-rowsp c) (fn-cpl-coverp tab c))
+            (fn-cpl-coverp (fn-cpl-link dir (fn-cpl-cplan (fn-record-groups h)
+                                                          (and (null (fn-held-withdrawn h))
+                                                               (fn-scat-msgid-idp (fn-record-msgid h)))
+                                                          c)
+                                        tab)
+                           (fn-cat$a-commit h c)))
+   :hints (("Goal" :use fn-cpl-coverp-of-commit
+            :in-theory (e/d (fn-cat$a-commit) (fn-cpl-coverp-of-commit fn-cpl-link fn-cpl-cplan))))))
+
+(local
+ (defthm fn-cp-cover-of-a-withdraw
+   (implies (and (fn-cat-rowsp c) (natp r) (< r (len c)) (fn-cpl-coverp tab c))
+            (fn-cpl-coverp (if (null (fn-held-withdrawn (nth r c)))
+                               (fn-cpl-unlink dir (fn-cpl-wplan (fn-held-numbers (nth r c)) r c) tab)
+                             tab)
+                           (fn-cat$a-withdraw r by c)))
+   :hints (("Goal" :use ((:instance fn-cpl-coverp-of-withdraw (w (len c))))
+            :in-theory (e/d (fn-cat$a-withdraw fn-cat-mark-withdrawn)
+                            (fn-cpl-coverp-of-withdraw fn-cpl-unlink fn-cpl-wplan))))))
+
+(local
+ (defthm fn-cp-cover-of-a-redecide
+   (implies (and (natp r) (< r (len c)) (fn-cpl-coverp tab c))
+            (fn-cpl-coverp tab (fn-cat$a-redecide r ctx c)))
+   :hints (("Goal" :use ((:instance fn-cpl-coverp-of-redecide (ctx ctx)))
+            :in-theory (e/d (fn-cat$a-redecide) (fn-cpl-coverp-of-redecide fn-held-with-context))))))
+
 (local
  (defthm fn-cp-okp-of-a-redecide
    (implies (and (natp r) (< r (len c)) (fn-cpl-okp dir tab c))
@@ -2599,7 +2662,9 @@
                  (:instance fn-cp-cplan-sim (fn-cat$a fn-cat-paged) (groups (fn-record-groups h))
                             (livep (and (null (fn-held-withdrawn h)) (fn-scat-msgid-idp (fn-record-msgid h)))))
                  (:instance fn-cp-okp-of-a-commit (dir t) (tab (nth 2 fn-cat$p)) (c fn-cat-paged))
-                 (:instance fn-cp-okp-of-a-commit (dir nil) (tab (nth 3 fn-cat$p)) (c fn-cat-paged)))
+                 (:instance fn-cp-okp-of-a-commit (dir nil) (tab (nth 3 fn-cat$p)) (c fn-cat-paged))
+                 (:instance fn-cp-cover-of-a-commit (dir t) (tab (nth 2 fn-cat$p)) (c fn-cat-paged))
+                 (:instance fn-cp-cover-of-a-commit (dir nil) (tab (nth 3 fn-cat$p)) (c fn-cat-paged)))
            :in-theory (e/d (fn-cat$pcorr) (fn-cp-corr-facts fn-cat$c-commit-w fn-cat$a-commit fn-held-p
                                                 fn-cat$ap fn-cat$corr-w)))))
 
@@ -2644,7 +2709,9 @@
                  (:instance fn-cat$p-at-is-row (fn-cat$a fn-cat-paged) (seq target))
                  (:instance fn-cat$p-withdraw-w-sim (fn-cat$a fn-cat-paged))
                  (:instance fn-cp-okp-of-a-withdraw (dir t) (tab (nth 2 fn-cat$p)) (c fn-cat-paged) (r target))
-                 (:instance fn-cp-okp-of-a-withdraw (dir nil) (tab (nth 3 fn-cat$p)) (c fn-cat-paged) (r target)))
+                 (:instance fn-cp-okp-of-a-withdraw (dir nil) (tab (nth 3 fn-cat$p)) (c fn-cat-paged) (r target))
+                 (:instance fn-cp-cover-of-a-withdraw (dir t) (tab (nth 2 fn-cat$p)) (c fn-cat-paged) (r target))
+                 (:instance fn-cp-cover-of-a-withdraw (dir nil) (tab (nth 3 fn-cat$p)) (c fn-cat-paged) (r target)))
            :in-theory (e/d (fn-cat$pcorr) (fn-cp-corr-facts fn-cat$p-view fn-cat$p-withdraw-w-sim)))))
 
 (defthm fn-cat-paged-withdraw{guard-thm}
@@ -2700,7 +2767,9 @@
                  (:instance fn-cp-corr-facts (fn-cat$a fn-cat-paged))
                  (:instance fn-cp-corr-okp (fn-cat$a fn-cat-paged))
                  (:instance fn-cp-okp-of-a-redecide (dir t) (tab (nth 2 fn-cat$p)) (c fn-cat-paged) (r seq) (ctx context))
-                 (:instance fn-cp-okp-of-a-redecide (dir nil) (tab (nth 3 fn-cat$p)) (c fn-cat-paged) (r seq) (ctx context)))
+                 (:instance fn-cp-okp-of-a-redecide (dir nil) (tab (nth 3 fn-cat$p)) (c fn-cat-paged) (r seq) (ctx context))
+                 (:instance fn-cp-cover-of-a-redecide (tab (nth 2 fn-cat$p)) (c fn-cat-paged) (r seq) (ctx context))
+                 (:instance fn-cp-cover-of-a-redecide (tab (nth 3 fn-cat$p)) (c fn-cat-paged) (r seq) (ctx context)))
            :in-theory (e/d (fn-cat$pcorr) (fn-cp-corr-facts)))))
 
 (defthm fn-cat-paged-redecide{guard-thm}
