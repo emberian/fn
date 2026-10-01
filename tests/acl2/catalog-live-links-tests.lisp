@@ -8,7 +8,10 @@
 ; are the ones the commits generate (Codex r30 F2).  Coverage (sec. 6,
 ; fn-cpl-coverp-of-commit/-of-withdraw): positive and coverage-removal
 ; witnesses, proved over the constants (a defun-sk).  Codex r30 F4: the
-; natp-r removal witness; the r < len c weakening is proved.
+; natp-r removal witness; the r < len c weakening is proved.  Codex r33 F2:
+; fn-cpl-probe-of-live positive + coverage/okp/liveness removals,
+; coverage-of-redecide positive + removal, the clear asserts coverage; the
+; hypotheses with no removal witness are listed at the end with the reason.
 ;
 ; Open: the withdrawal keystone's hypothesis (null (fn-held-withdrawn (nth
 ; r c))) has no counterexample -- a withdrawn row has no live number, so the
@@ -206,3 +209,94 @@
                         (:instance fn-cpl-coverp-necc (x '("fn.test" . 3)) (c *cllt-w-rows*)
                                    (tab (fn-cpl-unlink t (fn-cpl-wplan (fn-held-numbers (nth 1 *cllt-c3*)) 1 *cllt-c3*)
                                                        *cllt-hole-next3*)))))))
+
+; --- Codex r33 F2.  fn-cpl-probe-of-live: positive (every hypothesis and
+; the conclusion), then each hypothesis removed alone with the other two
+; affirmed and the conclusion failing.
+(defthm cllt-probe-positive
+  (and (fn-cpl-coverp *cllt-next3* *cllt-c3*)
+       (fn-cpl-okp t *cllt-next3* *cllt-c3*)
+       (fn-cat-live-numberp "fn.test" 2 *cllt-c3*)
+       (consp (hons-assoc-equal '("fn.test" . 2) *cllt-next3*))
+       (equal (cdr (hons-assoc-equal '("fn.test" . 2) *cllt-next3*)) (fn-cpl-next-of "fn.test" 2 *cllt-c3*))
+       (equal (fn-cpl-next-of "fn.test" 2 *cllt-c3*) 3))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance cllt-okp-is-okp (dir t) (tab *cllt-next3*) (c *cllt-c3*)))
+           :in-theory (enable fn-cpl-coverp fn-cat-live-numberp))))
+
+; coverage removed: "fn.test" 3 live and unbound (the other entries good).
+(defthm cllt-probe-coverage-removal
+  (and (not (fn-cpl-coverp *cllt-hole-next3* *cllt-c3*))
+       (fn-cpl-okp t *cllt-hole-next3* *cllt-c3*)
+       (fn-cat-live-numberp "fn.test" 3 *cllt-c3*)
+       (not (consp (hons-assoc-equal '("fn.test" . 3) *cllt-hole-next3*))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-cpl-coverp-necc (x '("fn.test" . 3)) (tab *cllt-hole-next3*) (c *cllt-c3*))
+                        (:instance cllt-okp-is-okp (dir t) (tab *cllt-hole-next3*) (c *cllt-c3*))))))
+
+; goodness removed: every live number bound, but 3's NEXT says 1 (it is 0).
+(defconst *cllt-wrong-next3* (cons '(("fn.test" . 3) . 1) *cllt-next3*))
+
+(defthm cllt-probe-okp-removal
+  (and (fn-cpl-coverp *cllt-wrong-next3* *cllt-c3*)
+       (not (fn-cpl-okp t *cllt-wrong-next3* *cllt-c3*))
+       (fn-cat-live-numberp "fn.test" 3 *cllt-c3*)
+       (not (equal (cdr (hons-assoc-equal '("fn.test" . 3) *cllt-wrong-next3*))
+                   (fn-cpl-next-of "fn.test" 3 *cllt-c3*))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance cllt-okp-is-okp (dir t) (tab *cllt-wrong-next3*) (c *cllt-c3*)))
+           :in-theory (enable fn-cpl-coverp fn-cat-live-numberp))))
+
+; liveness removed: after the withdrawal of 2 both tables are good and
+; cover, 2 is not live, and its entry is gone.
+(defthm cllt-probe-liveness-removal
+  (and (fn-cpl-coverp *cllt-w-next* *cllt-w-rows*)
+       (fn-cpl-okp t *cllt-w-next* *cllt-w-rows*)
+       (not (fn-cat-live-numberp "fn.test" 2 *cllt-w-rows*))
+       (not (consp (hons-assoc-equal '("fn.test" . 2) *cllt-w-next*))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance cllt-okp-is-okp (dir t) (tab *cllt-w-next*) (c *cllt-w-rows*)))
+           :in-theory (enable fn-cpl-coverp fn-cat-live-numberp))))
+
+; --- fn-cpl-coverp-of-redecide: positive (redecide row 1 under the
+; generated table) and coverage removed (the hole at 3 stays a hole).
+(defconst *cllt-rd-rows* (update-nth 1 (fn-held-with-context (nth 1 *cllt-c3*) 9) *cllt-c3*))
+
+(defthm cllt-cover-redecide-positive
+  (and (natp 1) (< 1 (len *cllt-c3*))
+       (fn-cpl-coverp *cllt-next3* *cllt-c3*)
+       (fn-cpl-coverp *cllt-next3* *cllt-rd-rows*))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-cpl-coverp fn-cat-live-numberp))))
+
+(defthm cllt-cover-redecide-removal
+  (and (natp 1) (< 1 (len *cllt-c3*))
+       (not (fn-cpl-coverp *cllt-hole-next3* *cllt-c3*))
+       (not (fn-cpl-coverp *cllt-hole-next3* *cllt-rd-rows*)))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-cpl-coverp-necc (x '("fn.test" . 3)) (tab *cllt-hole-next3*) (c *cllt-c3*))
+                        (:instance fn-cpl-coverp-necc (x '("fn.test" . 3)) (tab *cllt-hole-next3*) (c *cllt-rd-rows*))))))
+
+; --- the keyed clear: the cleared rows have no live number, so the emptied
+; tables cover them (fn-cpl-coverp-of-no-rows) -- and so does the stale one,
+; which is not good (above): coverage alone does not make a table sound.
+(defthm cllt-cover-clear
+  (let ((rows (fn-cat$a-clear-keyed '(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32) *cllt-c3*)))
+    (and (equal rows nil)
+         (fn-cpl-coverp nil rows)
+         (fn-cpl-coverp *cllt-next3* rows)))
+  :rule-classes nil)
+
+; --- The hypotheses with no removal witness, and why (a failed search is
+; not a counterexample; none is claimed redundant until its weakening is
+; proved):
+;  fn-cpl-coverp-of-withdraw (natp r), (< r (len c)), (null (fn-held-withdrawn
+;   (nth r c))): each removal leaves the conclusion TRUE on every case we
+;   know -- coverage needs only that the unlink drops no key that stays
+;   live, and the plan names only numbers of row r, which a mark of a valid
+;   r kills and an invalid or already-withdrawn r leaves dead or absent.
+;  fn-cpl-coverp-of-redecide (natp r), (< r (len c)): a non-natural r
+;   redecides row 0, an r past the end appends rows with no numbers; the
+;   liveness of every number is unchanged.
+;  fn-cpl-coverp-of-commit / -of-withdraw (fn-cat-rowsp c): open, as for
+;   fn-cpl-okp-of-withdraw (the proofs use it; no counterexample is known).
