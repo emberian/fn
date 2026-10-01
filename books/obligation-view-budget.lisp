@@ -1,3 +1,6 @@
+; PARKED with the view it budgets (books/retention-obligation-view.lisp; lane
+; figure-and-contract, 2026-10-01): the heap figure no longer charges it,
+; because nothing maintains the view; a Makefile root keeps it certified.
 ; W9's explicit reservation coordinate: current 64-bit SBCL cons layout,
 ; byte-character radix and record metadata codec. This arithmetic budget
 ; does not itself prove that actual owner writers carry its support bound.

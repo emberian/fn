@@ -14,13 +14,7 @@
          (opened (fn-ocfg-open selected (fn-owner-auth state)))
          (id (fn-own-next-id (fn-ocfg-owner selected)))
          (next (fn-ocfg-with-view (cdr opened) working))
-         (selected-ledger (fn-rov-oc-ledger selected))
-         (selected-view (fn-rov-update (fn-rov-owner-ledger state)
-                          selected-ledger (fn-owner-obligation-view state)))
-         (opened-ledger (fn-rov-oc-ledger (cdr opened)))
-         (opened-view (fn-rov-update selected-ledger opened-ledger selected-view))
-         (restored-view (fn-rov-update opened-ledger
-                          (fn-rov-oc-ledger next) opened-view))
+         (entry-view (fn-owner-obligation-view state))
          (credits (f-get-global 'fn-owner-credits state)))
     (mv-let (erp actual-id state) (fn-owner-callback-open state)
       (value
@@ -42,7 +36,8 @@
             (equal (f-get-global 'fn-owner-log-line state)
                    (fn-olog-connection-line (fn-ocfg-owner (cdr opened)) id nil))
             (equal (fn-owner-reader-views state) views)
-            (equal (fn-owner-obligation-view state) restored-view)
+            (equal entry-view :ocbt-parked-view)
+            (equal (fn-owner-obligation-view state) entry-view)
             (equal (f-get-global 'fn-owner-credits state) credits))))))
 
 (assert-event

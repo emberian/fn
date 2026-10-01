@@ -811,13 +811,31 @@
   :hints (("Goal" :induct (fn-mpxl-faithful-from i tab rows)
            :in-theory (disable fn-mpxl-cands fn-cei-event-article fn-held-p fn-record-msgid))))
 
-; KEYSTONE: a split preserves the faithful relation -- the reader after the
-; split is still the specification (with `fn-mpxl-records-is-the-records-for').
-(defthm fn-mpxl-split-preserves-faithful
+(defthm fn-mpxl-split-preserves-faithful-when-taken
   (implies (and (fn-mpxl-tabp tab) (mv-nth 0 (fn-mpxl-split tab))
                 (fn-mpxl-faithful tab rows))
            (fn-mpxl-faithful (mv-nth 1 (fn-mpxl-split tab)) rows))
   :hints (("Goal" :in-theory (e/d (fn-mpxl-faithful) (fn-mpxl-okp fn-mpxl-faithful-from)))))
+
+; KEYSTONE: a split preserves the faithful relation, taken or refused (a
+; refused split returns the table unchanged) -- the reader after the split
+; is still the specification (with `fn-mpxl-records-is-the-records-for').
+; The success hypothesis is REMOVED by proof (the 2026-10-01 review), not
+; witnessed.
+(defthm fn-mpxl-split-preserves-faithful
+  (implies (and (fn-mpxl-tabp tab)
+                (fn-mpxl-faithful tab rows))
+           (fn-mpxl-faithful (mv-nth 1 (fn-mpxl-split tab)) rows))
+  :hints (("Goal" :cases ((mv-nth 0 (fn-mpxl-split tab)))
+           :in-theory (disable fn-mpxl-faithful))))
+
+; The same for every candidate of every tag.
+(defthm fn-mpxl-split-keeps-candidate-always
+  (implies (and (fn-mpxl-tabp tab) (natp tag)
+                (member-equal q (fn-mpxl-cands tag tab)))
+           (member-equal q (fn-mpxl-cands tag (mv-nth 1 (fn-mpxl-split tab)))))
+  :hints (("Goal" :cases ((mv-nth 0 (fn-mpxl-split tab)))
+           :in-theory (disable fn-mpxl-cands))))
 
 (defthm fn-mpxl-faithful-from-of-put
   (implies (and (fn-mpxl-tabp tab) (natp wtag) (natp seq)

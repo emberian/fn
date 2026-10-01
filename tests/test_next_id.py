@@ -17,6 +17,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
 from unittest import mock
 
@@ -53,6 +54,7 @@ class Repo:
         run(self.main, "git", "config", "user.name", "t")
         run(self.main, "git", "config", "commit.gpgsign", "false")
         write_registries(self.main, ["PRF-001", "PRF-002"], ["SCN-001"], ["STO-001"])
+        (self.main / ".gitignore").write_text("build/\n")
         (self.main / "notes.md").write_text("PKT-010 is old.\n")
         run(self.main, "git", "add", "-A")
         run(self.main, "git", "commit", "-q", "-m", "base")
@@ -71,11 +73,17 @@ class Repo:
 
 class ScanTests(unittest.TestCase):
     def setUp(self):
+        scratch = ROOT / "build/codex/t07-next-id"
+        scratch.mkdir(parents=True, exist_ok=True)
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.repo = Repo(Path(self.tmp.name).resolve())
+        ledger_tmp = tempfile.TemporaryDirectory(dir=scratch)
+        self.addCleanup(ledger_tmp.cleanup)
+        self.repo.ledger = Path(ledger_tmp.name) / "claims.jsonl"
         env = {k: v for k, v in os.environ.items()
                if k not in ("FN_ID_CLAIMS", "FN_ID_CLAIMS_SSH", "FN_LANE")}
+        env["FN_ID_CLAIMS"] = str(self.repo.ledger)
         patcher = mock.patch.dict(os.environ, env, clear=True)
         patcher.start()
         self.addCleanup(patcher.stop)
@@ -110,7 +118,11 @@ class ScanTests(unittest.TestCase):
                                     "PRF", "--lane", f"lane{index}", "--note", f"t {index}"],
                                    cwd=mine, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                    text=True) for index in range(4)]
-        answers = [(one.wait(timeout=120), one.stdout.read().split()) for one in claims]
+        answers = []
+        for one in claims:
+            stdout, stderr = one.communicate(timeout=120)
+            answers.append((one.returncode, stdout.split()))
+            self.assertEqual(one.returncode, 0, stderr)
         self.assertTrue(all(code == 0 for code, _ in answers), answers)
         ids = sorted(ident for _, got in answers for ident in got)
         self.assertEqual(ids, ["PRF-003", "PRF-004", "PRF-005", "PRF-006"])
@@ -124,6 +136,91 @@ class ScanTests(unittest.TestCase):
             self.assertEqual({row["source"] for row in rows}, {"claim"})
             taken, _ = next_id.scan_all(days=1, root=mine)
             self.assertEqual(taken.largest("PRF")[0], 6)
+
+    def test_eight_simultaneous_claims_reread_the_ledger_inside_the_lock(self):
+        ready = threading.Barrier(8)
+
+        def fast_scan(*args, **kwargs):
+            taken = next_id.Taken()
+            taken.add("PRF", 20, "scan")
+            # All callers have the same stale snapshot before any can claim.
+            next_id.scan_ledger(taken, next_id.read_ledger(self.repo.ledger))
+            ready.wait(timeout=20)
+            return taken, {"PRF"}
+
+        def claim(index):
+            return next_id.main(["claim", "PRF", "--lane", f"parallel{index}",
+                                 "--note", f"fresh note {index}"])
+
+        with mock.patch.object(next_id, "scan_all", side_effect=fast_scan), \
+                contextlib.redirect_stdout(io.StringIO()), \
+                contextlib.redirect_stderr(io.StringIO()), \
+                concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
+            self.assertEqual(list(pool.map(claim, range(8))), [0] * 8)
+        rows = next_id.read_ledger(self.repo.ledger)
+        self.assertEqual(len(rows), 8)
+        self.assertEqual(sorted(row["id"] for row in rows),
+                         [next_id.format_id("PRF", n) for n in range(21, 29)])
+        self.assertEqual({(row["lane"], row["note"]) for row in rows},
+                         {(f"parallel{i}", f"fresh note {i}") for i in range(8)})
+
+    def test_tree_cache_invalidates_edits_index_and_attributes(self):
+        tree = self.repo.main
+
+        def scan():
+            taken = next_id.Taken()
+            next_id.scan_tree(taken, tree, {"PKT"}, "this tree")
+            return taken.largest("PKT")[0]
+
+        self.assertEqual(scan(), 10)
+        with mock.patch.object(next_id, "git", wraps=next_id.git) as git:
+            self.assertEqual(scan(), 10)
+            self.assertFalse(any(call.args[0] == "grep" for call in git.call_args_list))
+        note = tree / "notes.md"
+        before = note.stat()
+        note.write_text("PKT-020 is new.\n")  # same length and restored mtime
+        os.utime(note, ns=(before.st_atime_ns, before.st_mtime_ns))
+        self.assertEqual(scan(), 20)
+        (tree / "new.md").write_text("PKT-030\n")
+        run(tree, "git", "add", "new.md")
+        self.assertEqual(scan(), 30)
+        (tree / ".gitattributes").write_text("new.md binary\n")
+        self.assertEqual(scan(), 20)
+
+    def test_ref_cache_invalidates_tip_and_head_and_recovers_from_corruption(self):
+        other = self.repo.lane("other")
+        (other / "notes.md").write_text("PKT-020\n")
+        self.repo.commit(other, "new packet")
+
+        def scan():
+            taken = next_id.Taken()
+            next_id.scan_refs(taken, ["lane/other"], {"PKT"}, self.repo.main)
+            return taken.largest("PKT")
+
+        self.assertEqual(scan(), (20, "branch lane/other"))
+        with mock.patch.object(next_id, "git", wraps=next_id.git) as git:
+            self.assertEqual(scan(), (20, "branch lane/other"))
+            self.assertFalse(any(call.args[0] == "diff" for call in git.call_args_list))
+        for cache in (self.repo.main / "build/next-id-cache").glob("*.json"):
+            entry = json.loads(cache.read_text())
+            entry["result"] = "[]"  # valid JSON, wrong checksum
+            cache.write_text(json.dumps(entry))
+        self.assertEqual(scan(), (20, "branch lane/other"))
+        (other / "notes.md").write_text("PKT-030\n")
+        self.repo.commit(other, "another packet")
+        self.assertEqual(scan(), (30, "branch lane/other"))
+        run(self.repo.main, "git", "merge", "--ff-only", "lane/other")
+        self.assertIsNone(scan())
+
+    def test_changed_inputs_during_scan_are_not_published(self):
+        compute = mock.Mock(side_effect=["old", "new", "unexpected"])
+        root = self.repo.main
+        self.assertEqual(next_id.cached_scan(root, "test-key", compute, lambda: False), "old")
+        self.assertEqual(next_id.cached_scan(root, "test-key", compute, lambda: True), "new")
+        self.assertEqual(next_id.cached_scan(root, "test-key", compute, lambda: True), "new")
+        self.assertEqual(compute.call_count, 2)
+        run(root, "git", "config", "diff.test.textconv", "cat")
+        self.assertIsNone(next_id.scan_inputs(root))
 
     def test_a_claim_needs_a_lane_and_a_note_and_a_known_kind(self):
         mine = self.repo.lane("mine")
@@ -149,7 +246,8 @@ class ScanTests(unittest.TestCase):
         self.assertIn("may predate", err.getvalue())
 
     def test_with_no_ledger_a_box_is_told_the_laptop_command(self):
-        with tempfile.TemporaryDirectory() as bare:
+        with tempfile.TemporaryDirectory() as bare, \
+                mock.patch.object(next_id, "ledger_path", return_value=None):
             with mock.patch.object(next_id, "ROOT", Path(bare)), \
                     contextlib.redirect_stderr(io.StringIO()) as err:
                 code = next_id.main(["claim", "PRF", "--lane", "boxlane", "--note", "x"])

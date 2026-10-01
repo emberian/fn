@@ -1,6 +1,6 @@
 ; Actual host-called retention carry transitions.
-; The owner installer is W9's logical state boundary; its own derived view
-; relation remains W9's obligation. Raw owner dispatch stays disabled.
+; The owner installer is one global put (W9's obligation view is parked:
+; books/owner-obligation-state.lisp). Raw owner dispatch stays disabled.
 (in-package "ACL2")
 (include-book "owner-state-accessors")
 (include-book "owner-retain-state")
@@ -10,8 +10,7 @@
 (defthm fn-owner-retain-carry-of-install-ocfg
   (equal (fn-owner-retain-carry (fn-owner-install-ocfg oc state))
          (fn-owner-retain-carry state))
-  :hints (("Goal" :in-theory (e/d (fn-owner-install-ocfg
-                                   fn-owner-obligation-view-put)
+  :hints (("Goal" :in-theory (e/d (fn-owner-install-ocfg)
                                   (put-global)))))
 
 ; Entry guards read the owner after the carry global changes.  These
@@ -29,8 +28,7 @@
 
 (defthm fn-owner-bound-of-install-ocfg
   (boundp-global 'fn-owner (fn-owner-install-ocfg oc state))
-  :hints (("Goal" :in-theory (enable fn-owner-install-ocfg
-                                   fn-owner-obligation-view-put))))
+  :hints (("Goal" :in-theory (enable fn-owner-install-ocfg))))
 
 (defthm fn-owner-ocfg-of-install-ocfg
   (equal (fn-owner-ocfg (fn-owner-install-ocfg oc state)) oc)
