@@ -444,3 +444,24 @@ component keeps one input buffer/frontier; actual scratch clearing, refill,
 registered controller iteration, source custody and full native funding remain.
 The generated action observer is a logical semantic reference, not a primitive
 allocation or runtime work tariff.
+
+### Actual scratch-clear composition
+
+Clearing the actual basic loop's scratch output preserves its entire returned
+status, remaining scheduling fuel, cursor, registers, ring and table when the
+old proper prefix is retained separately. The actual stored wrapper has the
+same complete prefix boundary against actual `FN-ZIN-FEED`, including its
+existing TIN recredit. Both theorems require only a proper logical prefix;
+corrupted-prefix removals refute that premise separately.
+
+The reachable fixed-1024 quantum witnesses fill a 64-byte scratch window and
+then another, preserving the complete 128-byte retained-prefix effects. A
+registered four-codec fixture decodes 251 bytes from the actual six-byte fixed
+Huffman wire, selects offset 128 with 123 wanted bytes, and compares that whole
+selected window with the old actual decoder's suffix. Actual hash turns and
+trailer receipt then authenticate the wire and reach compressed publication
+without changing that selected buffer. This is unfunded source execution, not
+installed captured-source or native worker/query custody. General input refill,
+selected dictionary/controller iteration and whole runtime funding remain open.
+The generic five-step partial-output yield witness is a logical kernel API
+case; it establishes no fixed-1024 composed reachability.

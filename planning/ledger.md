@@ -10,15 +10,15 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1926 |
-| Certification roots in the Makefile | 1830 |
-| Books inside the root closure | 1916 |
-| `defthm` and `defthmd` events | 30347 |
-| `defun` events | 19136 |
+| Books read | 1928 |
+| Certification roots in the Makefile | 1831 |
+| Books inside the root closure | 1919 |
+| `defthm` and `defthmd` events | 30359 |
+| `defun` events | 19150 |
 | Functions with verified guards | 3519 |
 | Functions declared `:verify-guards nil` and never verified | 2283 |
 | Functions left at the default with an explicit guard | 10414 |
-| Functions left at the default with no guard | 2920 |
+| Functions left at the default with no guard | 2934 |
 | `assert-event` checks | 23990 |
 | `must-fail` checks | 2516 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 340 |
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2601 |
+| Include-hygiene warnings | 2605 |
 | Host-names warnings | 2199 |
 | Hand-written-record warnings | 18 |
 
@@ -419,6 +419,7 @@ that `make certify` requests.
 | `books/decoded-window-budget-completion.lisp` | closure | 26 | 2 | 0/0/2/0 | 0 | 0 | 1 |
 | `books/decoded-window-budget-trajectory.lisp` | closure | 56 | 4 | 0/0/4/0 | 0 | 0 | 1 |
 | `books/decoded-window-canonical-trajectory.lisp` | closure | 76 | 1 | 0/0/0/1 | 0 | 0 | 0 |
+| `books/decoded-window-clear-trajectory.lisp` | closure | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/decoded-window-copy-trajectory.lisp` | closure | 9 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/decoded-window-descriptor.lisp` | closure | 0 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/decoded-window-digest-trajectory.lisp` | closure | 6 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -434,7 +435,7 @@ that `make certify` requests.
 | `books/decoded-window-yield-trajectory.lisp` | closure | 8 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/decoded-worker-controller-canonical.lisp` | closure | 4 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/decoded-worker-controller-trajectory.lisp` | closure | 6 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/decoded-worker-controller.lisp` | - | 0 | 7 | 6/0/1/0 | 0 | 0 | 0 |
+| `books/decoded-worker-controller.lisp` | closure | 0 | 7 | 6/0/1/0 | 0 | 0 | 0 |
 | `books/defevent.lisp` | root | 0 | 14 | 0/0/0/14 | 0 | 0 | 0 |
 | `books/definterface.lisp` | root | 0 | 42 | 0/0/0/42 | 0 | 0 | 0 |
 | `books/defkeystone.lisp` | root | 0 | 28 | 0/0/0/28 | 0 | 0 | 0 |
@@ -1435,6 +1436,7 @@ that `make certify` requests.
 | `tests/acl2/decoded-window-budget-completion-tests.lisp` | root | 11 | 9 | 0/0/0/9 | 0 | 0 | 0 |
 | `tests/acl2/decoded-window-budget-trajectory-tests.lisp` | root | 21 | 6 | 0/0/0/6 | 0 | 0 | 0 |
 | `tests/acl2/decoded-window-canonical-trajectory-tests.lisp` | root | 7 | 1 | 0/0/0/1 | 0 | 0 | 0 |
+| `tests/acl2/decoded-window-clear-trajectory-tests.lisp` | root | 7 | 14 | 0/0/0/14 | 0 | 0 | 0 |
 | `tests/acl2/decoded-window-copy-trajectory-tests.lisp` | root | 18 | 1 | 0/1/0/0 | 1 | 0 | 0 |
 | `tests/acl2/decoded-window-descriptor-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 0 | 0 |
 | `tests/acl2/decoded-window-digest-trajectory-tests.lisp` | root | 15 | 7 | 0/0/0/7 | 0 | 0 | 0 |

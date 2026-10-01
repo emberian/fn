@@ -17961,6 +17961,18 @@
           "name": "fn-pwy-actual-completed-finite-yields-match-basic-loop",
           "note": "Completed finite actual yield trajectory and completed ordinary actual basic loop have identical status/cursor/register/ring/table/output. Full positive and both complete completion-hypothesis removals. Does not equate unused scheduling fuel.",
           "pending_subject": "Proof-only finite transcript of actual FN-ZIN-LOOP calls; current registered ONE has a named complete-effects refinement, but whole controller/refill/cleared-window composition and installed native consumer remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwy-actual-cleared-loop-preserves-complete-prefix-effects",
+          "note": "Actual basic LOOP cleared scratch complete tuple with retained prefix under sole proper-prefix premise; fixed1024/64 full-window positive and corrupted logical-prefix removal.",
+          "pending_subject": "Actual source kernel/wrapper connected to registered ONE by existing named complete-effects theorem; general refill/dictionary/controller confluence and installed private worker/query custody/full runtime funding remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwy-actual-stored-cleared-chunk-complete-prefix-effects",
+          "note": "Actual STORED CHUNK full status/LEFT/IP/recredited registers/ring/table/append output equals actual FEED retaining prefix. Fixed1024 two64 windows positive and sole proper-prefix removal; registered four-codec251bytes through authenticated publication fixture.",
+          "pending_subject": "Actual source kernel/wrapper connected to registered ONE by existing named complete-effects theorem; general refill/dictionary/controller confluence and installed private worker/query custody/full runtime funding remain open."
         }
       ],
       "pending_subject": "Native compressed driver remains dormant and unreachable-in-composition. Actual selected-prefix cell accumulation and faithful-source compressed digest BEGIN/READ/HASH/new-publication are source-proved, with source-slice binding explicit. Arbitrary canonical decoder/controller iteration, selected dictionary/captured-view authority, full compiled workspace funding and retained native buffer/view/consumer joins remain open; PRF-1131 remains incomplete."
