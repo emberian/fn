@@ -342,6 +342,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/receiver-turn-controller \
 	tests/acl2/receiver-turn-controller-tests \
 	tests/acl2/receiver-response-transfer-tests \
+	tests/acl2/connection-receiver-repin-tests \
+	tests/acl2/connection-receiver-repin-state-tests \
 	tests/acl2/receiver-array-copy-join-tests \
 	tests/acl2/receiver-provider-refinement-tests \
 	tests/acl2/receiver-provider-capacity-tests \

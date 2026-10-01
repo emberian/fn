@@ -527,3 +527,19 @@ real typed custody transfer preserves it. No clear/reset/return setter exists.
 The former six-field constructor measurement is historical. New default/factory
 objects, bundle allocation, storage overlap and epoch-A charges need matching
 selected-runtime qualification before activation.
+
+An accepted view change retains the old request holder and input source while
+binding the newly issued holder to the same CID and RX capacity/instance before
+closing the old holder. The named RX repin successor performs two additional
+bounded directory traversals. The accepted completion then records the new
+holder from its actual current receipt before the first credits/owner/exposure
+STATE write; a committed-only replacement getter cannot serve that precommit
+boundary. Refused selection leaves the old association unchanged. Observed
+response replay performs no association recording or STATE installation.
+
+The source model executes actual issuer, receiver ticket/copy, request11,
+offered-holder and STATE-association transitions with explicit synthetic
+capacity/publication and constructed RC seeds. This does not establish a live
+runtime source, scanner/output detachment, response return or refill permission.
+New origin/issued descriptors and retained old/new overlap require the actual
+constructor/epoch-A envelope; no old allowance or alias-clearing refund applies.
