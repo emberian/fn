@@ -21011,6 +21011,40 @@
       "evidence": [
         "specs/recovery-refinement.md"
       ]
+    },
+    {
+      "id": "PRF-1217",
+      "title": "The page fill crosses the trust boundary in place: fn-pgs-fill-frame (A-PGS-HOST-IO's frame form) is the put of the page's words, and every fill the history image performs is its list form at the realizer's words",
+      "statement": "books/assumptions-pgs-host-io.lisp (A-PGS-HOST-IO, now a part of books/assumptions.lisp by inclusion), books/history-records.lisp, books/history-records-disk.lisp, books/history-image-binding.lisp. The host's page fill `fn-pgs-fill-realize' answered a true list of 2048 words per 16 KiB page (fn-pgs-page-words-shape), so every fill consed the list, boxed every word at or above 2^62 and put the list into the stobj word by word (measured on hbox, SBCL 2.2.9, 10,000 fills: 155,622 bytes consed and 120.7 us per fill). The frame form `(fn-pgs-fill-frame FILE ADDR SEL BASE pgs-mem)' is a constrained function with the stobj in its signature, specified by one equation, fn-pgs-fill-frame-is-frame-put: the state it leaves is (fn-pgs-frame-put SEL BASE (fn-pgs-page-words FILE ADDR) pgs-mem), the put loop in the logic over the image (SEL 0), metadata (1) and table (2) arrays; the host's raw definition preads the page into that array's storage (16.4 bytes consed, 1.5 us per fill, measured as above; the words equal the list form's). A-PGS-HOST-IO gains the constraint fn-pgs-page-words-u64: a strict strengthening not derivable from the old shape and equality constraints (both admit 2048 negative words). The current host/native/extent.lisp fn-pgs-fill-realize assembles each word from eight pread u8 octets; u64 is assumed formally so the put keeps the stobj's type. BRIDGES, by name: fn-hrs-put-is-frame-put (the image fill's put is fn-pgs-frame-put 0), pgs-x-fill-is-frame-put and pgs-x-len-is-frame-len (the page store's puts for SEL 1 and 2). Every consumer is an mbe whose :logic is the list form at the realizer's words and whose :exec is the frame path, so each is literally the old term in the logic and the guard proof is the bridge: fn-hrs-frame-fill-pgs = fn-hrs-fill-pgs P (fn-pgs-fill-realize FILE ADDR) (its :fill-words refusal unreachable: the words are u64 words), fn-hrc-frame-fill = fn-hrc-fill at those words (on the concrete fn-hrecs$c: an abstract-stobj export whose :logic reaches fn-pgs-fill-realize would make fn-pgs-page-words an ancestor of an export and ACL2 forbids attaching to it, stobj-attachment-restrictions; the concrete retry loop is fn-hrecs-get by fn-hrc-get-is-hrecs-get), fn-hrc-get, fn-hrs-fill-run, fn-hib-adopt and fn-hib-frame-complete (= fn-hib-complete Q (fn-pgs-fill-realize FILE (fn-hib-q-phys Q))). No theorem over the list form changed. Scope: the digest check still copies the words into fn-octets-pg (pgs-x-page-digest); hashing the frame in place is the next step. Host-called: none yet (fn-hrs-h-file is the family's only interface at dev); the raw realizer lands in host/native/extent.lisp after stage 0. books/assumptions.lisp restores, around the include, the enabled status of every pre-existing rule (pagestore-words disables fn-cbor-octet-listp at its top level; store-log proves with it open).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-035"
+      ],
+      "depends_on": [
+        "PRF-372",
+        "PRF-373"
+      ],
+      "assumptions": [
+        "A-PGS-HOST-IO"
+      ],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/assumptions-pgs-host-io.lisp",
+        "books/history-records.lisp",
+        "books/history-records-disk.lisp",
+        "books/history-image-binding.lisp",
+        "tests/acl2/history-records-disk-tests.lisp",
+        "tests/acl2/history-image-binding-tests.lisp",
+        "tests/acl2/history-image-campaign-tests.lisp"
+      ],
+      "progress_note": "Lane page-word-boundary (2026-10-01, design-store-representation stage 2). REPL-admitted on hbox from source: assumptions-pgs-host-io whole (16 forms), history-records whole (0 refused through #207), history-records-disk whole (0 refused). Certified on hbox: see the lanedump's evidence section (the first run certified the sub-book, assumptions, history-records and history-records-disk; store-log and the tests failed on the global codec disable and the export-ancestor attachment rule, both fixed). Teeth added by t11-pagefix: history-records-disk-tests asserts the complete fill/put poststate equality with the guard true and a labelled offset-by-one mutant on a 2049-word sentinel frame. These witnesses pass in an isolated REPL over assumptions-pgs-host-io; full test-book admission is blocked before its forms by the unchanged octets-stobj dependency exceeding the 60-second prover limit. No new certification claim. Teeth: the three test books' LIVE-RUN witnesses (fn-hrs-disk-history, the retry loop, the binding's open) now run through the frame path (defattach fn-pgs-fill-frame fn-pgs-fill-frame-via-words over the page file attached to fn-pgs-page-words); the old list witnesses (hrst-fill-words-removal) stay over fn-hrs-fill-pgs. Consing measured with sb-ext:get-bytes-consed on hbox's SBCL over 10,000 fills (build/pwb-measure-sbcl.lisp in the lane): list realizer 155,622 B/fill, frame pread 16.4 B/fill; 120.7 us vs 1.5 us.",
+      "events": [
+        "fn-pgs-fill-frame-is-frame-put",
+        "fn-pgs-page-words-u64",
+        "fn-hrs-put-is-frame-put",
+        "pgs-x-fill-is-frame-put",
+        "fn-hrc-get-is-hrecs-get"
+      ]
     }
   ]
 }

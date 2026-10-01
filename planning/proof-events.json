@@ -18676,6 +18676,36 @@
           "name": "fn-rr-checkpoint-crash-point-recovers-committed-under-old-or-new"
         }
       ]
+    },
+    {
+      "id": "PRF-1217",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pgs-fill-frame-is-frame-put",
+          "note": "KEYSTONE. A-PGS-HOST-IO's frame form: the in-place fill is the put of the page's words (books/assumptions-pgs-host-io.lisp)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pgs-page-words-u64",
+          "note": "A-PGS-HOST-IO's added u64 constraint, a strict strengthening of the old shape/equality constraints; needed to preserve the frame's type."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrs-put-is-frame-put",
+          "note": "BRIDGE: the image fill's put is fn-pgs-frame-put 0 (used by name in fn-hrs-frame-fill-pgs's guard proof, the mbe bridge)."
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-x-fill-is-frame-put",
+          "note": "BRIDGE: the page store's put for the metadata and table arrays is fn-pgs-frame-put (fn-hrs-fill-run's guard proof)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrc-get-is-hrecs-get",
+          "note": "BRIDGE (existing, books/history-records-disk.lisp): the concrete retry loop, where the frame fill runs, is fn-hrecs-get over the abstract stobj; the frame fill cannot be an export (stobj-attachment-restrictions)."
+        }
+      ]
     }
   ]
 }
