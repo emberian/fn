@@ -133,5 +133,76 @@
                            (fn-bs-crash-with-choices-entry-is-old-or-a-pending-target
                             fn-bs-crash)))))
 
+; -----------------------------------------------------------------------------
+; The write loop's batches (PRF-1223).  The host writes the staged file as a
+; sequence of write(2) calls, one per pipeline step (host/native/io.lisp
+; fnn-checkpoint-write-steps: one fnn-plan-write-all per fn-ockp-step; the
+; developer fault FN_NATIVE_CHECKPOINT_BATCH_FAULT=K:kill kills the process
+; after step K), so a death between two batches is a crash point of its own.
+; fn-bs-scp-batched-program is that program: fn-bs-scp-program's one
+; :write-all as one :write-at per batch at the running offset, each followed
+; by the cut "state-checkpoint-batch"; the five outer cuts are the same, and
+; a :write-at at offset 0 is the :write-all step
+; (fn-bs-scp-write-at-zero-is-write-all-by-definition), so fn-bs-scp-program
+; is the one-batch shape.  The crash keystone below is
+; fn-bs-scp-program-crash-is-old-or-new at EVERY state, the batch states
+; included: until the rename config.json names the old checkpoint (or none),
+; whatever the staged inode holds.
+
+(defun fn-bs-scp-chunksp (chunks)
+  ; the batches: each a non-empty octet list
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp chunks)
+      (and (consp (car chunks)) (fn-cbor-octet-listp (car chunks))
+           (fn-bs-scp-chunksp (cdr chunks)))
+    (null chunks)))
+
+(defun fn-bs-scp-octets (chunks)
+  ; the file: the batches in order
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp chunks) (append (car chunks) (fn-bs-scp-octets (cdr chunks))) nil))
+
+(defun fn-bs-scp-write-steps (stage chunks offset)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp chunks)
+      (list* (list :write-at :staging stage offset (car chunks))
+             (list :cut "state-checkpoint-batch")
+             (fn-bs-scp-write-steps stage (cdr chunks)
+                                    (+ (nfix offset) (len (car chunks)))))
+    nil))
+
+(defun fn-bs-scp-batched-program (stage chunks)
+  (declare (xargs :guard t :verify-guards nil))
+  (append (list (list :create :staging stage)
+                (list :cut "state-checkpoint-created"))
+          (fn-bs-scp-write-steps stage chunks 0)
+          (list (list :cut "state-checkpoint-written")
+                (list :fsync-file :staging stage)
+                (list :cut "state-checkpoint-staged-durable")
+                (list :rename :staging stage :root *fn-bs-state-checkpoint-name*)
+                (list :cut "state-checkpoint-replaced")
+                (list :fsync-dir :root)
+                (list :cut "state-checkpoint-durable"))))
+
+(defthm fn-bs-scp-write-at-zero-is-write-all-by-definition
+  (equal (fn-bs-step bs ks (list :write-at dir name 0 octets) outcome groups capacity)
+         (fn-bs-step bs ks (list :write-all dir name octets) outcome groups capacity))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn-bs-step car-cons cdr-cons nth
+                               (:executable-counterpart zp)
+                               (:executable-counterpart binary-+)
+                               (:executable-counterpart unary--)))))
+
+; Program discipline D1 to D3 on a three-batch ground instance; the batches
+; are the file.
+(defconst *fn-bs-p-state-checkpoint-batched*
+  (fn-bs-scp-batched-program ".stage-state-checkpoint-1" '((1 2) (3) (4 5 6))))
+(assert-event (fn-bs-step-listp *fn-bs-p-state-checkpoint-batched*))
+(assert-event (fn-bs-links-only-fencedp *fn-bs-p-state-checkpoint-batched*))
+(assert-event (fn-bs-never-overwrites-authorityp *fn-bs-p-state-checkpoint-batched*))
+(assert-event (fn-bs-fences-authority-dirsp *fn-bs-p-state-checkpoint-batched*))
+(assert-event (and (fn-bs-scp-chunksp '((1 2) (3) (4 5 6)))
+                   (equal (fn-bs-scp-octets '((1 2) (3) (4 5 6))) '(1 2 3 4 5 6))))
+
 (in-theory (disable fn-bs-scp-program fn-bs-scp-inputp
                     fn-bs-scp-old-or-newp))
