@@ -14,3 +14,4 @@
 (include-book "bpsec-head-invariant")
 (include-book "bpsec-asb-head-invariant")
 (include-book "bpsec-asb-metadata")
+(include-book "bpsec-asb-body")

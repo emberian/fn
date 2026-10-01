@@ -1097,6 +1097,19 @@ operator cap is preserved, without a private replacement ceiling. The ghost
 predicate is never served. This is a tracked-charge invariant, separate from
 physical allocation, live work accounting and complete grammar/span proof.
 
+`books/bpsec-asb-body.lisp` composes representable source extent, scalar
+source range, nested typed head and the current retained body descriptor.
+The descriptor is nil or a typed byte/text span with the same backing ID,
+within the declared source interval. Actual start/drive/step establish or
+preserve this entire context; typed-ready head facts justify new descriptor
+lengths. Literal BIB and BCB witnesses check every one-byte/quantum-one
+transition, nonzero offsets, text source and IV, plus each omitted start
+profile hypothesis and an out-of-source body mutation. Ghost predicates
+never enter the served body. This covers the current body field; accumulated
+parameter/result-list spans, complete grammar and every-window reference
+refinement remain open. Same ID/geometry does not establish physical bytes
+or pinned lifetime.
+
 The logical target-graph reference in `books/bpsec-target.lisp` binds each
 ASB as `(block-number . ASB)`, checks actual block existence/type, unique
 service/target pairs, forbidden security targets and payload BCB flags. Every
