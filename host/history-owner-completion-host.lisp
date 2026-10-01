@@ -5,6 +5,7 @@
 (include-book "owner-host")
 (include-book "../books/history-event-backing")
 (include-book "../books/history-semantic-writer-state")
+(include-book "account-durable-completion-host")
 
 (defun fn-odhc-publication-matches (publication source epoch)
  (declare (xargs :guard t))
@@ -157,4 +158,9 @@
                    (state (f-put-global 'fn-owner-account-root-state (fn-hed-at 6 ready) state))
                    (state (f-put-global 'fn-owner-canonical-state next-canonical state))
                    (state (f-put-global 'fn-owner-history-publication next-publication state)))
-             (mv :durable fn-history-backing state)))))))))))))))
+             (mv-let (account-word state)
+              (fn-owner-account-durable-complete-internal receipt state)
+              (if (member-eq account-word '(:account-unrelated :account-durable-produced))
+                  (mv :durable fn-history-backing state)
+                (fn-owner-history-completion-fence token :account-durable-output
+                                                   fn-history-backing state)))))))))))))))))
