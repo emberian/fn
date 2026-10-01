@@ -208,6 +208,38 @@
             fn-cat$p))
       r)))
 
+; KEYSTONE fn-cat$p-livep-is-live, executed (Codex r39): on the probe state
+; (livep 1, live 1, livep n, live n, livep 2, live 2, evidence), the NEXT
+; table optionally erased (CORRUPTED: coverage refuted) or given an entry
+; for the dead 2 (CORRUPTED: goodness refuted; the entry count sees it).
+(defun cpt-livep (n mode)
+  (declare (xargs :mode :program))
+  (with-local-stobj fn-cat$p
+    (mv-let (r fn-cat$p)
+      (let* ((l (cpt-middle 1 (- n 1)))
+             (c (cpt-logical n l))
+             (fn-cat$p (cpt-commit 0 n fn-cat$p))
+             (fn-cat$p (cpt-withdraw l fn-cat$p))
+             (fn-cat$p (if (eq mode :erase) (fn-cat$p-lnext-clear fn-cat$p) fn-cat$p))
+             (fn-cat$p (if (eq mode :bind-dead)
+                           (fn-cat$p-lnext-put (cons "fn.test" 2) n fn-cat$p)
+                         fn-cat$p)))
+        (mv (list (fn-cat$p-livep "fn.test" 1 fn-cat$p) (fn-cat-live-numberp "fn.test" 1 c)
+                  (fn-cat$p-livep "fn.test" n fn-cat$p) (fn-cat-live-numberp "fn.test" n c)
+                  (fn-cat$p-livep "fn.test" 2 fn-cat$p) (fn-cat-live-numberp "fn.test" 2 c)
+                  (cpt-corr-evidence n c fn-cat$p))
+            fn-cat$p))
+      r)))
+
+; Positive: the probe is liveness at the live low, the live high and the
+; dead middle; the correspondence's content holds.
+(assert-event (equal (cpt-livep 8 nil) '(t t t t nil nil t)))
+; CORRESPONDENCE removed, two ways: NEXT erased (1 and 8 live, their probes
+; false: coverage refuted); the dead 2 bound in NEXT (its probe true, 2 not
+; live: okp refuted).  The conclusion fails and so does the evidence.
+(assert-event (equal (cpt-livep 8 :erase) '(nil t nil t nil nil nil)))
+(assert-event (equal (cpt-livep 8 :bind-dead) '(t t t t t nil nil)))
+
 ; Positive: the correspondence's content holds, k live; each probe bound,
 ; a natural, and the read (1's NEXT is 8, 8's PREV is 1).
 (assert-event (equal (cpt-probe 8 1 nil) '(t 8 8 0 0 t)))
