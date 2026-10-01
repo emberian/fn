@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2686 |
-| Certification roots in the Makefile | 2338 |
-| Books inside the root closure | 2594 |
-| `defthm` and `defthmd` events | 35064 |
-| `defun` events | 22407 |
+| Books read | 2691 |
+| Certification roots in the Makefile | 2342 |
+| Books inside the root closure | 2598 |
+| `defthm` and `defthmd` events | 35100 |
+| `defun` events | 22448 |
 | Functions with verified guards | 3826 |
-| Functions declared `:verify-guards nil` and never verified | 2777 |
-| Functions left at the default with an explicit guard | 12600 |
-| Functions left at the default with no guard | 3204 |
-| `assert-event` checks | 25149 |
-| `must-fail` checks | 2531 |
+| Functions declared `:verify-guards nil` and never verified | 2805 |
+| Functions left at the default with an explicit guard | 12609 |
+| Functions left at the default with no guard | 3208 |
+| `assert-event` checks | 25157 |
+| `must-fail` checks | 2537 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
-| `encapsulate` events | 187 |
-| Theorems flagged SUSPECT by shape | 1328 |
+| `encapsulate` events | 188 |
+| Theorems flagged SUSPECT by shape | 1330 |
 | Export-hygiene warnings | 390 |
 | Enabled-projection warnings | 79 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 3362 |
+| Include-hygiene warnings | 3367 |
 | Host-names warnings | 3114 |
 | Hand-written-record warnings | 19 |
 
@@ -448,6 +448,7 @@ that `make certify` requests.
 | `books/checkpoint-codec.lisp` | root | 110 | 32 | 13/0/18/1 | 0 | 0 | 2 |
 | `books/checkpoint-compaction.lisp` | root | 12 | 19 | 0/15/4/0 | 0 | 0 | 1 |
 | `books/checkpoint-publish.lisp` | root | 67 | 65 | 13/1/51/0 | 0 | 0 | 0 |
+| `books/checkpoint-reserve.lisp` | root | 7 | 3 | 0/2/1/0 | 0 | 0 | 0 |
 | `books/checkpoint.lisp` | root | 18 | 14 | 12/0/2/0 | 0 | 0 | 5 |
 | `books/clock-invariants.lisp` | root | 10 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/clock-reading.lisp` | root | 7 | 3 | 0/0/3/0 | 0 | 0 | 0 |
@@ -1369,6 +1370,8 @@ that `make certify` requests.
 | `books/recovery-profile-buffer.lisp` | root | 4 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/recovery-profile-envelope.lisp` | root | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/recovery-prs-install.lisp` | root | 0 | 3 | 0/0/3/0 | 0 | 0 | 0 |
+| `books/recovery-refinement-store.lisp` | - | 4 | 1 | 0/1/0/0 | 0 | 0 | 1 |
+| `books/recovery-refinement.lisp` | root | 24 | 8 | 0/4/0/4 | 0 | 0 | 1 |
 | `books/recovery-source-authority.lisp` | closure | 0 | 8 | 0/0/8/0 | 0 | 0 | 0 |
 | `books/refusal-effect.lisp` | root | 11 | 0 | 0/0/0/0 | 0 | 0 | 3 |
 | `books/refusal-headroom.lisp` | root | 15 | 3 | 0/2/1/0 | 0 | 0 | 0 |
@@ -1960,6 +1963,7 @@ that `make certify` requests.
 | `tests/acl2/checkpoint-codec-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 82 | 0 | 0 |
 | `tests/acl2/checkpoint-compaction-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 15 | 4 | 0 |
 | `tests/acl2/checkpoint-publish-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 93 | 2 | 0 |
+| `tests/acl2/checkpoint-reserve-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 2 | 2 | 0 |
 | `tests/acl2/checkpoint-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 28 | 0 | 0 |
 | `tests/acl2/clock-reading-tests.lisp` | root | 12 | 0 | 0/0/0/0 | 16 | 9 | 0 |
 | `tests/acl2/clock-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 33 | 0 | 0 |
@@ -2551,6 +2555,7 @@ that `make certify` requests.
 | `tests/acl2/recovery-initial-operation-lineage-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 3 | 0 | 0 |
 | `tests/acl2/recovery-profile-buffer-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 1 | 0 | 0 |
 | `tests/acl2/recovery-profile-envelope-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 3 | 0 | 0 |
+| `tests/acl2/recovery-refinement-tests.lisp` | root | 1 | 29 | 0/21/8/0 | 6 | 4 | 0 |
 | `tests/acl2/refusal-effect-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 33 | 0 | 0 |
 | `tests/acl2/refusal-headroom-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 5 | 0 | 0 |
 | `tests/acl2/relay-source-routes-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 15 | 5 | 0 |
@@ -3622,6 +3627,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-rpx-done-outcome-is-readout` | `books/replay-identity-continuation.lisp` | 403 | arm-of-definition: the hypotheses select one IF/COND arm of fn-rpx-outcome and the conclusion is that arm's value |
 | `fn-rpx-selected-snapshot-has-complete-public-result` | `books/replay-identity-continuation.lisp` | 58 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-rpx-selected-verdict-has-complete-public-result` | `books/replay-identity-continuation.lisp` | 67 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
+| `fn-rr-recovered-kernel-holds-the-scan` | `books/recovery-refinement.lisp` | 131 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-rrs-reserve-is-two-capture-budgets` | `books/recovery-refinement-store.lisp` | 105 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-rse-enrolled-model-head-unfolds` | `books/replay-enrollment-lookup.lisp` | 118 | definition-restated: the conclusion is the body of fn-rse-enrolled-model |
 | `fn-sbsp-files-of-advance-identity-next` | `books/store-budget-stored-post.lisp` | 109 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-sbsp-files-of-finish-identity` | `books/store-budget-stored-post.lisp` | 118 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |

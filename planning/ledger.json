@@ -780,6 +780,10 @@
     "tests/acl2/store-log-extend-tests",
     "books/store-log-durable",
     "tests/acl2/store-log-durable-tests",
+    "books/recovery-refinement",
+    "tests/acl2/recovery-refinement-tests",
+    "books/checkpoint-reserve",
+    "tests/acl2/checkpoint-reserve-tests",
     "books/store-init-log-publication",
     "tests/acl2/store-init-log-publication-tests",
     "books/owner-feed-txid-reuse",
@@ -2342,26 +2346,26 @@
     "tests/acl2/substrate-commit-codec-gap-tests"
   ],
   "totals": {
-    "books": 2686,
-    "books_in_root_closure": 2594,
-    "roots": 2338,
-    "theorems": 35064,
-    "functions": 22407,
-    "assert_events": 25149,
-    "must_fails": 2531,
+    "books": 2691,
+    "books_in_root_closure": 2598,
+    "roots": 2342,
+    "theorems": 35100,
+    "functions": 22448,
+    "assert_events": 25157,
+    "must_fails": 2537,
     "prover_refusals": 0,
-    "encapsulates": 187,
+    "encapsulates": 188,
     "guards": {
       "verified": 3826,
-      "declared-off": 2777,
-      "default-guarded": 12600,
-      "default-unguarded": 3204
+      "declared-off": 2805,
+      "default-guarded": 12609,
+      "default-unguarded": 3208
     },
-    "suspect_theorems": 1328,
+    "suspect_theorems": 1330,
     "export_hygiene_warnings": 390,
     "enabled_projection_warnings": 79,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 3362,
+    "include_hygiene_warnings": 3367,
     "host_names_warnings": 3114,
     "hand_written_record_warnings": 19
   },
@@ -12498,6 +12502,34 @@
         "checkpoint-codec",
         "defrecord",
         "journal-publish"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/checkpoint-reserve.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 7,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "byte-store-invariants",
+        "byte-store-state-checkpoint-program",
+        "store-checkpoint-reader"
       ],
       "system_includes": [],
       "suspects": [],
@@ -39692,6 +39724,68 @@
       "read_error": null
     },
     {
+      "book": "books/recovery-refinement-store.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 4,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "checkpoint-reserve",
+        "owner-checkpoint-writer",
+        "recovery-refinement",
+        "store-checkpoint-open",
+        "store-recover-stream"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-rrs-reserve-is-two-capture-budgets"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/recovery-refinement.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 24,
+      "functions": 8,
+      "guards": {
+        "verified": 0,
+        "declared-off": 4,
+        "default-guarded": 0,
+        "default-unguarded": 4
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 1,
+      "includes": [
+        "byte-store-invariants",
+        "byte-store-state-checkpoint-program",
+        "store-log-programs"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-rr-recovered-kernel-holds-the-scan"
+      ],
+      "read_error": null
+    },
+    {
       "book": "books/recovery-source-authority.lisp",
       "in_root_closure": true,
       "is_root": false,
@@ -56600,6 +56694,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/checkpoint-reserve-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 2,
+      "must_fails": 2,
+      "prover_refusals": 0,
+      "defconsts": 5,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/checkpoint-reserve",
+        "must-fail-checked"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/checkpoint-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -72740,6 +72861,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/recovery-refinement-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 29,
+      "guards": {
+        "verified": 0,
+        "declared-off": 21,
+        "default-guarded": 8,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 6,
+      "must_fails": 4,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/frame-trailer",
+        "../../books/recovery-refinement",
+        "must-fail-checked"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/refusal-effect-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -85740,6 +85889,22 @@
       ]
     },
     {
+      "theorem": "fn-rr-recovered-kernel-holds-the-scan",
+      "book": "books/recovery-refinement.lisp",
+      "line": 131,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-rrs-reserve-is-two-capture-budgets",
+      "book": "books/recovery-refinement-store.lisp",
+      "line": 105,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
       "theorem": "fn-rse-enrolled-model-head-unfolds",
       "book": "books/replay-enrollment-lookup.lisp",
       "line": 118,
@@ -93317,6 +93482,8 @@
         "line": 47,
         "stated_in": [
           "books/owner-batch.lisp",
+          "books/recovery-refinement-store.lisp",
+          "books/recovery-refinement.lisp",
           "books/store-init-log-publication.lisp",
           "books/store-log-durable.lisp",
           "books/store-log-extend.lisp",
@@ -93327,7 +93494,7 @@
           "books/store-log-stream.lisp",
           "books/store-log-txid.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 10 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 12 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-lgk-last",
@@ -93335,6 +93502,8 @@
         "line": 48,
         "stated_in": [
           "books/owner-batch.lisp",
+          "books/recovery-refinement-store.lisp",
+          "books/recovery-refinement.lisp",
           "books/store-init-log-publication.lisp",
           "books/store-log-durable.lisp",
           "books/store-log-extend.lisp",
@@ -93344,7 +93513,7 @@
           "books/store-log-segments.lisp",
           "books/store-log-txid.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 9 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 11 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-lgk-batch",
@@ -93366,6 +93535,8 @@
         "stated_in": [
           "books/owner-batch.lisp",
           "books/owner-reader-view.lisp",
+          "books/recovery-refinement-store.lisp",
+          "books/recovery-refinement.lisp",
           "books/store-log-durable.lisp",
           "books/store-log-extend.lisp",
           "books/store-log-kernel-concrete.lisp",
@@ -93375,7 +93546,7 @@
           "books/store-log-route.lisp",
           "books/store-log-txid.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 10 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 12 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-lgk-phase",
@@ -104910,6 +105081,27 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/recovery-refinement-store.lisp",
+        "line": 34,
+        "include": "store-checkpoint-open",
+        "included": "books/store-checkpoint-open.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/recovery-refinement-store.lisp",
+        "line": 35,
+        "include": "store-recover-stream",
+        "included": "books/store-recover-stream.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/recovery-refinement.lisp",
+        "line": 78,
+        "include": "store-log-programs",
+        "included": "books/store-log-programs.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/refusal-effect.lisp",
         "line": 51,
         "include": "store-log-route-phases",
@@ -110143,6 +110335,13 @@
         "line": 11,
         "include": "held-rows-tests",
         "included": "tests/acl2/held-rows-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/checkpoint-reserve-tests.lisp",
+        "line": 8,
+        "include": "must-fail-checked",
+        "included": "tests/acl2/must-fail-checked.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -116100,6 +116299,13 @@
         "line": 2,
         "include": "../../books/recovery-profile-buffer",
         "included": "books/recovery-profile-buffer.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/recovery-refinement-tests.lisp",
+        "line": 17,
+        "include": "must-fail-checked",
+        "included": "tests/acl2/must-fail-checked.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
