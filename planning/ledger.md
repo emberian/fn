@@ -13,21 +13,21 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 2731 |
 | Certification roots in the Makefile | 2365 |
 | Books inside the root closure | 2643 |
-| `defthm` and `defthmd` events | 36267 |
-| `defun` events | 23108 |
-| Functions with verified guards | 3847 |
-| Functions declared `:verify-guards nil` and never verified | 2982 |
-| Functions left at the default with an explicit guard | 12836 |
-| Functions left at the default with no guard | 3443 |
-| `assert-event` checks | 25506 |
+| `defthm` and `defthmd` events | 36427 |
+| `defun` events | 23139 |
+| Functions with verified guards | 3848 |
+| Functions declared `:verify-guards nil` and never verified | 2988 |
+| Functions left at the default with an explicit guard | 12850 |
+| Functions left at the default with no guard | 3453 |
+| `assert-event` checks | 25509 |
 | `must-fail` checks | 2611 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 210 |
-| Theorems flagged SUSPECT by shape | 1348 |
+| Theorems flagged SUSPECT by shape | 1349 |
 | Export-hygiene warnings | 400 |
 | Enabled-projection warnings | 80 |
 | Teeth-form warnings | 279 |
-| Include-hygiene warnings | 3563 |
+| Include-hygiene warnings | 3548 |
 | Host-names warnings | 3114 |
 | Hand-written-record warnings | 19 |
 
@@ -920,7 +920,7 @@ that `make certify` requests.
 | `books/moderation.lisp` | closure | 40 | 25 | 4/0/21/0 | 0 | 0 | 2 |
 | `books/msgid-index-concrete.lisp` | root | 14 | 7 | 1/0/6/0 | 0 | 0 | 0 |
 | `books/msgid-index.lisp` | root | 23 | 15 | 1/0/14/0 | 0 | 0 | 0 |
-| `books/msgid-linear-exec.lisp` | root | 83 | 24 | 0/2/18/4 | 0 | 0 | 2 |
+| `books/msgid-linear-exec.lisp` | root | 244 | 50 | 1/3/32/14 | 0 | 0 | 3 |
 | `books/msgid-linear.lisp` | root | 92 | 28 | 0/0/28/0 | 0 | 0 | 1 |
 | `books/msgid-pages-exec.lisp` | root | 285 | 74 | 2/7/51/14 | 0 | 0 | 2 |
 | `books/msgid-pages.lisp` | root | 44 | 22 | 0/0/20/2 | 0 | 0 | 0 |
@@ -2273,7 +2273,7 @@ that `make certify` requests.
 | `tests/acl2/moderation-verbs-tests.lisp` | root | 0 | 7 | 0/1/1/5 | 70 | 7 | 0 |
 | `tests/acl2/msgid-index-concrete-tests.lisp` | root | 4 | 2 | 0/1/0/1 | 18 | 1 | 0 |
 | `tests/acl2/msgid-index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 13 | 5 | 0 |
-| `tests/acl2/msgid-linear-exec-tests.lisp` | root | 2 | 7 | 0/6/1/0 | 6 | 1 | 0 |
+| `tests/acl2/msgid-linear-exec-tests.lisp` | root | 1 | 12 | 0/11/1/0 | 9 | 1 | 0 |
 | `tests/acl2/msgid-linear-tests.lisp` | root | 1 | 9 | 0/4/5/0 | 49 | 0 | 0 |
 | `tests/acl2/msgid-pages-exec-tests.lisp` | root | 5 | 14 | 0/3/11/0 | 10 | 0 | 0 |
 | `tests/acl2/msgid-pages-tests.lisp` | root | 1 | 4 | 0/3/1/0 | 23 | 0 | 0 |
@@ -3250,8 +3250,9 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-me-site-merge-preserves-chain` | `books/membership-epochs-invariants.lisp` | 297 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-me-window-of-fn-me-site` | `books/membership-epochs.lisp` | 587 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-miq-progress-keeps-capture` | `books/msgid-query-state.lisp` | 33 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-mlh-candidates-no-pages` | `books/msgid-linear-exec.lisp` | 649 | arm-of-definition: the hypotheses select one IF/COND arm of fn-mlh-candidates and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-mlh-candidates and the conclusion is that branch's value |
-| `fn-mlh-flag-part-of-seqw` | `books/msgid-linear-exec.lisp` | 792 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-mlh-flag-part; reflexive-conclusion: a conjunct is (equal X X) |
+| `fn-mlh-candidates-no-pages` | `books/msgid-linear-exec.lisp` | 786 | arm-of-definition: the hypotheses select one IF/COND arm of fn-mlh-candidates and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-mlh-candidates and the conclusion is that branch's value |
+| `fn-mlh-flag-part-of-seqw` | `books/msgid-linear-exec.lisp` | 969 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-mlh-flag-part; reflexive-conclusion: a conjunct is (equal X X) |
+| `fn-mlh-nth-is-page` | `books/msgid-linear-exec.lisp` | 1629 | arm-of-definition: the hypotheses select one IF/COND arm of fn-mpxl-page and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-mpxl-page and the conclusion is that branch's value |
 | `fn-mod-inj-append-of-a-cons` | `books/moderation.lisp` | 422 | arm-of-definition: the hypotheses select one IF/COND arm of fn-inj-append and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-inj-append and the conclusion is that branch's value |
 | `fn-mod-named-entries-of-no-groups` | `books/moderation.lisp` | 135 | arm-of-definition: the hypotheses select one IF/COND arm of fn-mod-named-entries and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-mod-named-entries and the conclusion is that branch's value |
 | `fn-mpxl-accessors-of-make` | `books/msgid-linear.lisp` | 299 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
