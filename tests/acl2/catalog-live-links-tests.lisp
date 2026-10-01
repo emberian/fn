@@ -4,7 +4,11 @@
 ; and an okp-removal witness (Codex review r27 F3): every retained
 ; hypothesis holds, `fn-cpl-okp' of the input fails, and the conclusion
 ; fails.  `fn-cpl-okp' is a defun-sk; the witnesses evaluate it through
-; fn-cpl-okp-is-all-goodp (an equality, proved in the book).
+; fn-cpl-okp-is-all-goodp (an equality, proved in the book).  The tables
+; are the ones the commits generate (Codex r30 F2).  Coverage (sec. 6,
+; fn-cpl-coverp-of-commit/-of-withdraw): positive and coverage-removal
+; witnesses, proved over the constants (a defun-sk).  Codex r30 F4: the
+; natp-r removal witness; the r < len c weakening is proved.
 ;
 ; Open: the withdrawal keystone's hypothesis (null (fn-held-withdrawn (nth
 ; r c))) has no counterexample -- a withdrawn row has no live number, so the
@@ -37,11 +41,28 @@
   :hints (("Goal" :by fn-cpl-okp-is-all-goodp)))
 
 ; The rows: three commits, "fn.test" numbers 1 2 3 (h2 also "fn.other" 1).
-(defconst *cllt-c2* (fn-cat$a-commit *cat-h1* (fn-cat$a-commit *cat-h0* nil)))
+(defconst *cllt-c1* (fn-cat$a-commit *cat-h0* nil))
+(defconst *cllt-c2* (fn-cat$a-commit *cat-h1* *cllt-c1*))
 (defconst *cllt-c3* (fn-cat$a-commit *cat-h2* *cllt-c2*))
 
-(defconst *cllt-next3* '((("fn.test" . 1) . 2) (("fn.test" . 2) . 3) (("fn.test" . 3) . 0)))
-(defconst *cllt-prev3* '((("fn.test" . 1) . 0) (("fn.test" . 2) . 1) (("fn.test" . 3) . 2)))
+; The tables the three commits GENERATE from empty ones (Codex r30 F2): the
+; links each commit's plan installs, "fn.other" 1 included (the shadowed
+; entries stay in the alist, as the hash table's puts replace them).
+(defmacro cllt-livep (h) `(and (null (fn-held-withdrawn ,h)) (fn-scat-msgid-idp (fn-record-msgid ,h))))
+(defmacro cllt-gen (dir)
+  `(fn-cpl-link ,dir (fn-cpl-cplan (fn-record-groups *cat-h2*) (cllt-livep *cat-h2*) *cllt-c2*)
+     (fn-cpl-link ,dir (fn-cpl-cplan (fn-record-groups *cat-h1*) (cllt-livep *cat-h1*) *cllt-c1*)
+       (fn-cpl-link ,dir (fn-cpl-cplan (fn-record-groups *cat-h0*) (cllt-livep *cat-h0*) nil) nil))))
+(defconst *cllt-next3* (cllt-gen t))
+(defconst *cllt-prev3* (cllt-gen nil))
+
+(assert-event
+ (and (equal (cdr (hons-assoc-equal '("fn.test" . 1) *cllt-next3*)) 2)
+      (equal (cdr (hons-assoc-equal '("fn.test" . 2) *cllt-next3*)) 3)
+      (equal (cdr (hons-assoc-equal '("fn.test" . 3) *cllt-next3*)) 0)
+      (equal (cdr (hons-assoc-equal '("fn.other" . 1) *cllt-next3*)) 0)
+      (equal (cdr (hons-assoc-equal '("fn.test" . 3) *cllt-prev3*)) 2)
+      (equal (cdr (hons-assoc-equal '("fn.other" . 1) *cllt-prev3*)) 0)))
 
 ; --- fn-cpl-okp-of-withdraw, positive: withdraw row 1 (number 2) at 3 by 7.
 (defconst *cllt-w-next*
@@ -63,6 +84,25 @@
       (equal (hons-assoc-equal '("fn.test" . 2) *cllt-w-prev*) nil)
       (equal (cdr (hons-assoc-equal '("fn.test" . 1) *cllt-w-prev*)) 0)
       (equal (cdr (hons-assoc-equal '("fn.test" . 3) *cllt-w-prev*)) 1)))
+
+; --- fn-cpl-okp-of-withdraw without (natp r) (Codex r30 F4): r = -1 reads
+; and marks row 0 (nth/update-nth of a non-natural), the plan is empty
+; (no number's row is -1), so the table keeps "fn.test" 1, which died.
+; Run on the definitions (guard checking :none): -1 is outside nth's guard.
+(with-guard-checking-event
+ :none
+ (assert-event
+  (and (fn-cat-rowsp *cllt-c3*) (not (natp -1)) (< -1 (len *cllt-c3*))
+       (null (fn-held-withdrawn (nth -1 *cllt-c3*)))
+       (cllt-okp t *cllt-next3* *cllt-c3*)
+       (not (cllt-okp t (fn-cpl-unlink t (fn-cpl-wplan (fn-held-numbers (nth -1 *cllt-c3*)) -1 *cllt-c3*)
+                                       *cllt-next3*)
+                      (fn-cat-mark-withdrawn -1 3 7 *cllt-c3*))))))
+
+; --- without (< r (len c)): no counterexample -- the weakened theorem is
+; proved (fn-cpl-okp-of-withdraw-any-r).  Without (fn-cat-rowsp c): open
+; (the proof uses it, fn-cpl-live-below-high; no counterexample is known,
+; and a failed search is not one).
 
 ; --- fn-cpl-okp-of-withdraw without (fn-cpl-okp dir tab c): 3's NEXT is 1.
 (defconst *cllt-bad-next3* '((("fn.test" . 1) . 2) (("fn.test" . 2) . 3) (("fn.test" . 3) . 1)))
@@ -111,3 +151,58 @@
  (and (cllt-okp t *cllt-next3* *cllt-c3*)
       (not (cllt-okp t *cllt-next3* (fn-cat$a-clear-keyed '(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32) *cllt-c3*)))
       (cllt-okp t nil (fn-cat$a-clear-keyed '(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32) *cllt-c3*))))
+
+; --- fn-cpl-coverp-of-commit / -of-withdraw (sec. 6), positive: the
+; generated tables cover every live number before and after.
+(defthm cllt-cover-commit-positive
+  (and (fn-cat-rowsp *cllt-c2*)
+       (fn-cpl-coverp (fn-cpl-link t (fn-cpl-cplan (fn-record-groups *cat-h1*) (cllt-livep *cat-h1*) *cllt-c1*)
+                                   (fn-cpl-link t (fn-cpl-cplan (fn-record-groups *cat-h0*) (cllt-livep *cat-h0*) nil) nil))
+                      *cllt-c2*)
+       (fn-cpl-coverp *cllt-next3* *cllt-c3*)
+       (fn-cpl-coverp *cllt-prev3* *cllt-c3*))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-cpl-coverp fn-cat-live-numberp))))
+
+(defthm cllt-cover-withdraw-positive
+  (and (fn-cat-rowsp *cllt-c3*) (natp 1) (< 1 (len *cllt-c3*))
+       (null (fn-held-withdrawn (nth 1 *cllt-c3*)))
+       (fn-cpl-coverp *cllt-next3* *cllt-c3*)
+       (fn-cpl-coverp *cllt-w-next* *cllt-w-rows*)
+       (fn-cpl-coverp *cllt-w-prev* *cllt-w-rows*))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-cpl-coverp fn-cat-live-numberp))))
+
+; --- coverage removed: a NEXT table missing "fn.test" 1 before the third
+; commit misses it after (it is live in both).
+(defconst *cllt-hole-next2* '((("fn.test" . 2) . 0)))
+
+(defthm cllt-cover-commit-removal
+  (and (fn-cat-rowsp *cllt-c2*)
+       (not (fn-cpl-coverp *cllt-hole-next2* *cllt-c2*))
+       (not (fn-cpl-coverp (fn-cpl-link t (fn-cpl-cplan (fn-record-groups *cat-h2*) (cllt-livep *cat-h2*) *cllt-c2*)
+                                        *cllt-hole-next2*)
+                           *cllt-c3*)))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-cpl-coverp-necc (x '("fn.test" . 1)) (tab *cllt-hole-next2*) (c *cllt-c2*))
+                        (:instance fn-cpl-coverp-necc (x '("fn.test" . 1)) (c *cllt-c3*)
+                                   (tab (fn-cpl-link t (fn-cpl-cplan (fn-record-groups *cat-h2*) (cllt-livep *cat-h2*) *cllt-c2*)
+                                                     *cllt-hole-next2*)))))))
+
+; --- the withdrawal with coverage removed: a NEXT table missing "fn.test" 3
+; (live, and not the withdrawn number 2) misses it after.  (A hole at 1
+; would be filled: the unlink puts 1's NEXT.)
+(defconst *cllt-hole-next3* '((("fn.test" . 1) . 2) (("fn.test" . 2) . 3)))
+
+(defthm cllt-cover-withdraw-removal
+  (and (fn-cat-rowsp *cllt-c3*) (natp 1) (< 1 (len *cllt-c3*))
+       (null (fn-held-withdrawn (nth 1 *cllt-c3*)))
+       (not (fn-cpl-coverp *cllt-hole-next3* *cllt-c3*))
+       (not (fn-cpl-coverp (fn-cpl-unlink t (fn-cpl-wplan (fn-held-numbers (nth 1 *cllt-c3*)) 1 *cllt-c3*)
+                                          *cllt-hole-next3*)
+                           *cllt-w-rows*)))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-cpl-coverp-necc (x '("fn.test" . 3)) (tab *cllt-hole-next3*) (c *cllt-c3*))
+                        (:instance fn-cpl-coverp-necc (x '("fn.test" . 3)) (c *cllt-w-rows*)
+                                   (tab (fn-cpl-unlink t (fn-cpl-wplan (fn-held-numbers (nth 1 *cllt-c3*)) 1 *cllt-c3*)
+                                                       *cllt-hole-next3*)))))))

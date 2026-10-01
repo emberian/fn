@@ -886,6 +886,30 @@
                  (:instance fn-cpl-winv-init)
                  (:instance fn-cpl-wplan-okp-of-wplan (pairs (fn-held-numbers (nth r c))))))))
 
+; (< r (len c)) is redundant (Codex r30 F4): past the end nothing moves.
+(local
+ (defthm fn-cpl-nth-past-end
+   (implies (and (natp r) (<= (len c) r)) (equal (nth r c) nil))
+   :hints (("Goal" :in-theory (enable nth)))))
+
+(local
+ (defthm fn-cpl-withdraw-past-end
+   (implies (and (natp r) (<= (len c) r))
+            (and (equal (fn-cpl-unlink dir (fn-cpl-wplan (fn-held-numbers (nth r c)) r c) tab) tab)
+                 (equal (fn-cat-mark-withdrawn r w by c) c)))
+   :hints (("Goal" :in-theory (union-theories '(fn-cpl-nth-past-end fn-cat-mark-withdrawn fn-cpl-wplan fn-cpl-unlink
+                                                (:executable-counterpart fn-held-numbers))
+                                              (theory 'minimal-theory))))))
+
+(defthm fn-cpl-okp-of-withdraw-any-r
+  (implies (and (fn-cat-rowsp c) (natp r) (null (fn-held-withdrawn (nth r c)))
+                (fn-cpl-okp dir tab c))
+           (fn-cpl-okp dir (fn-cpl-unlink dir (fn-cpl-wplan (fn-held-numbers (nth r c)) r c) tab)
+                       (fn-cat-mark-withdrawn r w by c)))
+  :hints (("Goal" :cases ((< r (len c)))
+           :in-theory (union-theories '(fn-cpl-withdraw-past-end) (theory 'minimal-theory))
+           :use fn-cpl-okp-of-withdraw)))
+
 ; KEYSTONE (withdrawal): unlinking the withdrawn row's live numbers --
 ; removing (g . k), pointing its PREV's NEXT past it and its NEXT's PREV
 ; below it -- keeps every entry good over the withdrawn rows.
