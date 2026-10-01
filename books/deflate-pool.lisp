@@ -385,6 +385,9 @@
                             fn-zpl-payload-bufs-is-payload-bufs fn-zin-payload-bufs-is-payload-with
                             fn-zin-payload-with-octets fn-zpl-pool-okp)))))
 
+; Only the pool and window projections matter here: with the loop, the
+; payload bridges and the answer helpers closed this costs 8,298 steps
+; (it took 5.1M with them open, ~45 s).
 (local (defthm fn-zpl-decode-bufs-pool-okp
   (implies (and (fn-zpl-pool-okp pool fn-zin-win) (fn-cbor-octet-listp dict))
            (let ((r (fn-zpl-decode-bufs pool dict end n fn-octets fn-zin-win fn-zin-tab fn-zin-out)))
@@ -393,7 +396,10 @@
            :use ((:instance fn-zpl-payload-bufs-pool-okp (b (fn-pzd-budget end n)) (start 0)
                             (lim (+ 1 (nfix n)))))
            :in-theory (e/d (fn-zpl-decode-bufs)
-                           (fn-zpl-payload-bufs-pool-okp fn-zpl-payload-bufs fn-zpl-pool-okp))))))
+                           (fn-zpl-payload-bufs-pool-okp fn-zpl-payload-bufs fn-zpl-pool-okp
+                            fn-pzd-endedp fn-zin-out-clear fn-zin-out-len fn-pzd-budget
+                            fn-zin-loop fn-zin-payload-bufs fn-zpl-payload-bufs-is-payload-bufs
+                            fn-zin-payload-bufs-ignores-buffers fn-zin-stored-status))))))
 (defthm fn-zpl-decode-bufs-is-decode
   (implies (and (fn-cbor-octet-listp c) (natp n) (fn-cbor-octet-listp dict)
                 (fn-zpl-pool-okp pool fn-zin-win))
