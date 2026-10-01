@@ -19651,7 +19651,11 @@
       "evidence": [
         "books/bpsec-operation.lisp",
         "tests/acl2/bpsec-operation-tests.lisp",
-        "planning/evidence/bpsec-operation-source-2026-09-30.json"
+        "planning/evidence/bpsec-operation-source-2026-09-30.json",
+        "books/bpsec-input-fragment.lisp",
+        "tests/acl2/bpsec-input-fragment-tests.lisp",
+        "planning/evidence/bpsec-input-fragment-source-2026-10-01/manifest.json",
+        "planning/evidence/bpsec-input-fragment-observation-2026-10-01/manifest.json"
       ],
       "progress_note": "Source-only exact protected persvati w28 admission; fresh31fixtureforms1.09s211704steps, model/operation proper-local and4matchingcached deps/0missing. All guards and four evidence/preservation/retirement events admitted. First reservedSTATE formal refusal repaired without weakening guard; evidence rewrite orientation repaired by rule-classes nil. Full actual provider/provenance/current lease/native gate and normal certification remain open."
     },
@@ -20251,9 +20255,35 @@
         "planning/evidence/account-adoption-lifecycle-2026-10-01/configuration-caller-source.json",
         "books/account-adoption-turn-continuation.lisp",
         "host/account-config-continuation-host.lisp",
-        "planning/evidence/account-adoption-lifecycle-2026-10-01/configuration-continuation-source.json"
+        "planning/evidence/account-adoption-lifecycle-2026-10-01/configuration-continuation-source.json",
+        "planning/evidence/account-adoption-lifecycle-2026-10-01/configuration-fields-successor.json",
+        "planning/evidence/account-adoption-lifecycle-2026-10-01/CLOSEOUT.md",
+        "planning/evidence/account-adoption-lifecycle-2026-10-01/closeout-recording.json"
       ],
       "progress_note": "Low guarded internal source/custody/turn/return algebra and synthetic UNFUNDED literals pass in preserved protected accountturn, including fixed settlement alias carrier. Native actual recording checks five effects, no callback without issuer, pooled collector dispatch and NIL-CURRENT recovery refusal. Joined high PROGRAM caller/crosswrite/alias-clear source is strictly parsed, not admitted; initial lexical six-formal source is explicitly unavailable. Complete installed domain/cost/funding, actual durable C destination, funded input restart, all-writer/raw alias-return and native qualification remain open. No normal certificate or image transfer. Additive actual publication source now refuses executor/wire/C-destination absence before I/O, and native helper retains each intermediate five-MV effect before next dispatch; three synthetic UNFUNDED actual-source recording refuters pass, not a producer/qualification claim. Follow-up actual auth passes NIL unused entropy; frozen real owner NIL-binding recording refuses before creator. Actual account reservation now checks bounded CURRENT configuration acquiring/source lease before PRS issue; exact helper has its own index normal evidence, changed PROGRAM caller only negative recording, no verdict transfer. Actual C publication branch now derives/config-acquires only absent CURRENT source and invokes ONE retained preparation quantum with every returned effect; pending is not publication. High PROGRAM unadmitted, suspended claim/nonce rebind and distinct C durable/alias collector remain open; original enclosing BODY must cover whole C closure, readonly publish-c metadata not funds. C continuation now source-parks SAME original claim/root aliases across fresh ATS turns, rebinds only original slot/nonce after source-specific prepay, and dispatches saved configure ID without reserve/reselection. Journal intent excludes park; unavailable/budgetyield retain, unknown source fences. Seven synthetic UNFUNDED actual-source recording tests pass; changed low live predicate/new transforms and high caller not ACL2-admitted/certified, previous source guard evidence stays at its original coordinate."
+    },
+    {
+      "id": "PRF-1208",
+      "title": "Captured ready Store control entries precede a later configuration transaction",
+      "statement": "Actual fn-sf-record-listp with a natural frontier bounds fn-ctl-archive-entries strictly below it. Actual fn-snt-relation and ready FILES connect that bound to NodeAcceptanceNextTxid; appending a configuration at that txid preserves fn-ctl-journal-withdrawals. Establishment/preservation by modern typed C and E writers remains open.",
+      "milestone": "M4",
+      "requirements": [
+        "CNS-011"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-ctl-archive-entries-below-record-frontier",
+        "fn-ctl-ready-store-control-entries-are-strictly-past",
+        "fn-ctl-ready-store-later-config-preserves-withdrawals"
+      ],
+      "evidence": [
+        "books/control-visible-prefix-bound.lisp",
+        "planning/evidence/control-visible-prefix-bound-2026-10-01/coordinate.json",
+        "planning/evidence/control-visible-prefix-bound-2026-10-01/README.md"
+      ],
+      "progress_note": "Original-source proper encapsulate passed20587steps/.37s. No normal manifest or literal teeth yet. No runtime, maintained modern Store relation, native or deployment claim."
     }
   ]
 }

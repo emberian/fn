@@ -140,3 +140,14 @@ excludes parking after publication begins. Seven actual-source recording cases
 pass with synthetic unfunded callbacks; PRF-1198 remains planned. High PROGRAM
 admission, genuine family demand, journal/alias-return and runtime activation
 remain open. These recording cases grant no allocation or durable acceptance.
+
+## Conditional strict-past control history
+
+`control-visible-prefix-bound` gives a proof-only bridge from the actual ready
+Store replay relation to the existing later-configuration withdrawal law
+(PRF-1208 / SCN-1081). Its source events are admitted; normal certification and
+literal witnesses remain open. The modern typed C successor must establish or
+carry the needed strict-past invariant. Actual C acquisition uses the existing node next transaction ID and consumes
+no E allocator reservation. Its unchanged physical FILES/frontier still needs
+the acquisition scalar correspondence and configured-history relation; the
+E-only Store replay relation cannot simply be assumed after configuration. No runtime scan or blanket view-reuse claim follows.

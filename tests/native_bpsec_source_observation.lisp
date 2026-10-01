@@ -22,7 +22,7 @@
    ("books/bpsec-model.lisp" fn-bps-field fn-bps-uintp fn-bps-limits-make fn-bps-limitsp
      fn-bps-window-make fn-bps-span-make)
    ("books/bpsec-operation.lisp") ("books/bpsec-primitive-plan.lisp")
-   ("books/bpsec-input-plan.lisp") ("books/bpsec-head.lisp") ("books/bpsec-asb.lisp")
+   ("books/bpsec-input-plan.lisp") ("books/bpsec-input-fragment.lisp") ("books/bpsec-head.lisp") ("books/bpsec-asb.lisp")
    ("build/bpsec-source-observation/tcpcl-segment-source-cursor.lisp")
    ("build/bpsec-source-observation/bp-wire-primary-cursor.lisp")
    ("build/bpsec-source-observation/bp-wire-canonical-cursor.lisp")
@@ -103,6 +103,19 @@
    (source-check (equal (second command) *unissued-source*))
    (subseq wire (third command) (+ (third command) (fourth command))))
   (otherwise (error "unexpected command"))))
+(defun source-feed-command (function handle descriptor role command wire q)
+ ; Core selects exact span/literal/count and next offset. Only commit that
+ ; offset after the actual primitive update returns; no pending token issued.
+ (let ((offset 0))
+  (loop
+   (let ((fragment (fn-bps-input-fragment descriptor role command offset q)))
+    (when (eq (first fragment) :input-complete) (return))
+    (source-check (eq (first fragment) :bps-input-fragment))
+    (source-check (and (< 0 (fifth fragment)) (<= (fifth fragment) q)))
+    (let ((bytes (source-diagnostic-command (fourth fragment) wire)))
+     (source-check (= (length bytes) (fifth fragment)))
+     (source-check (null (funcall function handle bytes 0 (fifth fragment)))))
+    (setf offset (sixth fragment))))))
 (defparameter *a1-descriptor*
  (fn-bps-op-make :verify-bib '(:bps-ref 1 1) '(:bps-ref 2 1) '(:bps-ref 3 1)
   '(:bps-ref 4 1) 2 1 1 '(:bps-bib-params 7 0 nil) '(:bps-ref 5 1)
@@ -143,9 +156,7 @@
       (unwind-protect
        (progn
         (dolist (command commands)
-         (let ((bytes (source-diagnostic-command command *a1-wire*)))
-          (loop for at from 0 below (length bytes) by q do
-           (source-check (null (fnn-bpsec-hmac-update handle bytes at (min q (- (length bytes) at))))))))
+         (source-feed-command #'fnn-bpsec-hmac-update handle *a1-descriptor* :hmac command *a1-wire* q))
         (let ((raw (fnn-bpsec-hmac-final handle)))
          (source-check (eq (first raw) *a1-descriptor*))
          (source-check (eq (second raw) :hmac-bytes)) (source-check (= (fourth raw) 64))
@@ -172,9 +183,10 @@
   '(:bps-ref 4 1) 2 1 2
   '(:bps-bcb-params 1 0 (:bytes-span 9 0 12) nil :separate-tag)
   '(:bps-ref 15 1) '(:bytes-span 9 0 16)))
-(defun source-primitive-feed (function handle bytes q)
- (loop for at from 0 below (length bytes) by q do
-  (source-check (null (funcall function handle bytes at (min q (- (length bytes) at)))))))
+(defun source-primitive-feed (function handle bytes q role)
+ ; Deliberate negative mutation bytes are a separate unissued test backing.
+ (source-feed-command function handle *a2-descriptor* role
+   (list :bps-span *unissued-source* 0 (length bytes)) bytes q))
 (dolist (cuts '(nil (0 1 28 31 64 100 128) (1 2 3 4 5 6 7 8 9)))
  (dolist (q '(1 7 64))
   (multiple-value-bind (word events job) (source-parse *a2-wire* cuts q)
@@ -209,8 +221,13 @@
        (let ((handle (fnn-bpsec-gcm-start *a2-descriptor* (third primitive) *a2-key* *a2-iv* 64)))
         (unwind-protect
          (progn
-          (source-primitive-feed #'fnn-bpsec-gcm-aad handle ad q)
-          (source-primitive-feed #'fnn-bpsec-gcm-update handle ct q)
+          (if (eq corruption :none)
+           (dolist (command (third plan))
+            (source-feed-command #'fnn-bpsec-gcm-aad handle *a2-descriptor* :aad command *a2-wire* q))
+           (source-primitive-feed #'fnn-bpsec-gcm-aad handle ad q :aad))
+          (if (eq corruption :none)
+           (source-feed-command #'fnn-bpsec-gcm-update handle *a2-descriptor* :ciphertext (fourth plan) *a2-wire* q)
+           (source-primitive-feed #'fnn-bpsec-gcm-update handle ct q :ciphertext))
           (let* ((raw (fnn-bpsec-gcm-final handle tag))
                  (answer (fn-bps-primitive-answer *a2-descriptor*
                    (list :bps-primitive-observation (first raw) (second raw) (third raw)) nil)))

@@ -92,6 +92,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/identity-hex \
 	books/consumer-account-config-preparation \
 	books/consumer-account-config-posting-relation \
+	books/control-visible-prefix-bound \
 	books/account-adoption-input-source \
 	books/account-adoption-turn-state \
 	books/page-read-binding-revision \
@@ -2045,6 +2046,7 @@ ACL2_BOOKS ?= books/defrecord \
     tests/acl2/bpsec-operation-tests \
     tests/acl2/bpsec-primitive-plan-tests \
     tests/acl2/bpsec-input-plan-tests \
+    tests/acl2/bpsec-input-fragment-tests \
     tests/acl2/bpsec-asb-quanta-tests \
     tests/acl2/bpsec-asb-spine-tests \
     tests/acl2/bpsec-target-spine-tests \

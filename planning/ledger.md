@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2417 |
-| Certification roots in the Makefile | 2193 |
-| Books inside the root closure | 2363 |
-| `defthm` and `defthmd` events | 33468 |
-| `defun` events | 21521 |
+| Books read | 2420 |
+| Certification roots in the Makefile | 2195 |
+| Books inside the root closure | 2366 |
+| `defthm` and `defthmd` events | 33476 |
+| `defun` events | 21525 |
 | Functions with verified guards | 3751 |
 | Functions declared `:verify-guards nil` and never verified | 2639 |
-| Functions left at the default with an explicit guard | 12088 |
+| Functions left at the default with an explicit guard | 12092 |
 | Functions left at the default with no guard | 3043 |
-| `assert-event` checks | 24898 |
+| `assert-event` checks | 24907 |
 | `must-fail` checks | 2531 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 169 |
@@ -27,8 +27,8 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 387 |
 | Enabled-projection warnings | 79 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 3075 |
-| Host-names warnings | 2946 |
+| Include-hygiene warnings | 3078 |
+| Host-names warnings | 2956 |
 | Hand-written-record warnings | 19 |
 
 ## Lints
@@ -343,6 +343,7 @@ that `make certify` requests.
 | `books/bpsec-asb.lisp` | closure | 3 | 21 | 0/0/21/0 | 0 | 0 | 0 |
 | `books/bpsec-head-invariant.lisp` | closure | 6 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/bpsec-head.lisp` | closure | 3 | 6 | 0/0/6/0 | 3 | 0 | 0 |
+| `books/bpsec-input-fragment.lisp` | closure | 3 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/bpsec-input-plan.lisp` | closure | 3 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/bpsec-model.lisp` | closure | 0 | 26 | 0/0/26/0 | 0 | 0 | 0 |
 | `books/bpsec-operation.lisp` | root | 5 | 14 | 0/0/14/0 | 0 | 0 | 1 |
@@ -546,6 +547,7 @@ that `make certify` requests.
 | `books/control-served.lisp` | root | 39 | 16 | 1/0/14/1 | 0 | 0 | 2 |
 | `books/control-visible-effect.lisp` | closure | 7 | 10 | 0/0/10/0 | 0 | 0 | 0 |
 | `books/control-visible-indexed.lisp` | root | 31 | 8 | 0/2/6/0 | 0 | 0 | 1 |
+| `books/control-visible-prefix-bound.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/control-visible.lisp` | root | 74 | 37 | 7/0/30/0 | 0 | 0 | 2 |
 | `books/crypto-attach.lisp` | root | 9 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/crypto-seam.lisp` | root | 19 | 14 | 0/0/10/4 | 0 | 0 | 0 |
@@ -1725,6 +1727,7 @@ that `make certify` requests.
 | `tests/acl2/bpsec-asb-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 14 | 0 | 0 |
 | `tests/acl2/bpsec-asb-window-differential-tests.lisp` | root | 0 | 3 | 0/0/3/0 | 12 | 0 | 0 |
 | `tests/acl2/bpsec-head-invariant-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 17 | 0 | 0 |
+| `tests/acl2/bpsec-input-fragment-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 0 | 0 |
 | `tests/acl2/bpsec-input-plan-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 10 | 0 | 0 |
 | `tests/acl2/bpsec-operation-tests.lisp` | root | 0 | 7 | 0/0/7/0 | 21 | 0 | 0 |
 | `tests/acl2/bpsec-primitive-plan-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 0 | 0 |

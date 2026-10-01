@@ -7428,7 +7428,14 @@
         "planning/evidence/bpsec-input-plan-source-2026-09-30/manifest.json",
         "tests/native_bpsec_source_observation.lisp",
         "tools/bpsec_source_observation.py",
-        "planning/evidence/bpsec-source-observation-2026-10-01/manifest.json"
+        "planning/evidence/bpsec-source-observation-2026-10-01/manifest.json",
+        "books/bpsec-input-fragment.lisp",
+        "tests/acl2/bpsec-input-fragment-tests.lisp",
+        "planning/evidence/bpsec-input-fragment-source-2026-10-01/manifest.json",
+        "planning/evidence/bpsec-input-fragment-observation-2026-10-01/manifest.json",
+        "tests/native_bpsec_registered_source_observation.lisp",
+        "tools/bpsec_registered_source_observation.py",
+        "planning/evidence/bpsec-registered-source-observation-2026-10-01/manifest.json"
       ],
       "execution_scope": "ACL2 literal source fixture only; full every-schedule theorem and operational provider/native execution remain open."
     },
@@ -7607,7 +7614,14 @@
         "planning/evidence/bpsec-input-plan-source-2026-09-30/manifest.json",
         "tests/native_bpsec_source_observation.lisp",
         "tools/bpsec_source_observation.py",
-        "planning/evidence/bpsec-source-observation-2026-10-01/manifest.json"
+        "planning/evidence/bpsec-source-observation-2026-10-01/manifest.json",
+        "books/bpsec-input-fragment.lisp",
+        "tests/acl2/bpsec-input-fragment-tests.lisp",
+        "planning/evidence/bpsec-input-fragment-source-2026-10-01/manifest.json",
+        "planning/evidence/bpsec-input-fragment-observation-2026-10-01/manifest.json",
+        "tests/native_bpsec_registered_source_observation.lisp",
+        "tools/bpsec_registered_source_observation.py",
+        "planning/evidence/bpsec-registered-source-observation-2026-10-01/manifest.json"
       ],
       "execution_scope": "Literal ACL2 component/source fixtures; actual immutable registry, provider, current lease, cryptographic realizer and native gate remain open."
     },
@@ -7810,7 +7824,14 @@
         "planning/evidence/bpsec-input-plan-source-2026-09-30/manifest.json",
         "tests/native_bpsec_source_observation.lisp",
         "tools/bpsec_source_observation.py",
-        "planning/evidence/bpsec-source-observation-2026-10-01/manifest.json"
+        "planning/evidence/bpsec-source-observation-2026-10-01/manifest.json",
+        "books/bpsec-input-fragment.lisp",
+        "tests/acl2/bpsec-input-fragment-tests.lisp",
+        "planning/evidence/bpsec-input-fragment-source-2026-10-01/manifest.json",
+        "planning/evidence/bpsec-input-fragment-observation-2026-10-01/manifest.json",
+        "tests/native_bpsec_registered_source_observation.lisp",
+        "tools/bpsec_registered_source_observation.py",
+        "planning/evidence/bpsec-registered-source-observation-2026-10-01/manifest.json"
       ],
       "execution_scope": "Actual SBCL/OpenSSL primitive component only at the recorded source/library hashes. Test descriptors are explicitly unissued; no native image, installer, source/key/policy grant, replay authorization, persistence or application acceptance. RFC9173 short keys/A.3 IPPT and A.4 reused nonce are frozen diagnostics, not normative profile admission."
     },
@@ -7896,6 +7917,29 @@
         "planning/evidence/account-config-posting-relation-2026-10-01/coordinate.json"
       ],
       "execution_scope": "Original ACL2 transition source fixture; no image or deployment claim."
+    },
+    {
+      "id": "SCN-1081",
+      "title": "Captured ready Store strict-past control history and later configuration preservation",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "CNS-011"
+      ],
+      "steps": [
+        "Construct a nonempty actual committed Store with control records and assert the full fn-snt-relation and ready phase premises.",
+        "Append a configuration whose txid equals actual NodeAcceptanceNextTxid and compare complete journal withdrawals.",
+        "Provide affirmative retained-premise and omitted-premise-failure witnesses for each theorem hypothesis; distinguish corrupted states."
+      ],
+      "expected": [
+        "Actual historical withdrawals remain unchanged at a strictly later configuration.",
+        "The conditional initial Store law grants no successive typed C or native publication authority."
+      ],
+      "evidence": [
+        "books/control-visible-prefix-bound.lisp",
+        "planning/evidence/control-visible-prefix-bound-2026-10-01/README.md"
+      ],
+      "execution_scope": "Not implemented at closeout; original theorem source admission exists, no literal test result."
     }
   ]
 }

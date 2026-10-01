@@ -22,11 +22,11 @@
       ; there is no yield or caller-supplied installation association.
       (mv-let (word family)
         (fn-owner-runtime-operation-source :initial fn-page-read-pool state)
-        (if (not (eq word :available))
+        (if (not (eq word :runtime-operation-available))
             (mv nil '(:unavailable :initial-runtime-family) fn-page-read-pool state)
           (mv-let (word table)
             (fn-owner-runtime-operation-role-table :initial fn-page-read-pool state)
-            (if (not (eq word :available))
+            (if (not (eq word :runtime-operation-available))
                 (mv nil '(:unavailable :initial-runtime-roles) fn-page-read-pool state)
               (mv-let (answer ledger)
                 (fn-sni-issue (fn-owner-page-read-ledger fn-page-read-pool)

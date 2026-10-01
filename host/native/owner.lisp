@@ -2291,8 +2291,10 @@ No numeric BODY or supplied receipt is accepted."
        (lambda ()
         (multiple-value-bind (word answer next-slots next-pool next-state)
             (funcall callback slot nonce slots pool)
-         (when next-slots (setf slots next-slots))
-         (when next-pool (setf pool next-pool))
+         (when next-slots
+          (setf slots next-slots (fnn-owner-control-binding-slots binding) next-slots))
+         (when next-pool
+          (setf pool next-pool (fnn-owner-control-binding-pool binding) next-pool))
          (when next-state (setf *the-live-state* next-state))
          (unless (and next-slots next-pool next-state)
           (fnn-fixed-callback-fail 'fn-ats-prepay-body-internal
@@ -2308,7 +2310,8 @@ No numeric BODY or supplied receipt is accepted."
      (when epilogue
       (multiple-value-bind (word next-pool next-state)
           (funcall epilogue slot nonce slots pool)
-       (when next-pool (setf pool next-pool))
+       (when next-pool
+        (setf pool next-pool (fnn-owner-control-binding-pool binding) next-pool))
        (when next-state (setf *the-live-state* next-state))
        (unless (and next-pool next-state (member word '(:account-turn-returned :account-turn-not-owned :account-turn-retained)))
         (fnn-fixed-callback-fail 'fn-owner-account-turn-return

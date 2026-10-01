@@ -103,9 +103,10 @@ The outer scheduler cleanup returns before FINISH; no core BODY finishes it."
               (,slots (fnn-owner-control-binding-slots ,b))
               (,pool (fnn-owner-control-binding-pool ,b)))
          (multiple-value-prog1
-          (unwind-protect (progn ,@body)
-           (setf (fnn-owner-control-binding-slots ,b) ,slots
-                 (fnn-owner-control-binding-pool ,b) ,pool))
+          ; The sole caller retains every returned effect in BINDING before
+          ; interpretation. An escape must fault that newest binding; lexical
+          ; entry values cannot overwrite a partial callback result.
+          (progn ,@body)
           (fnn-owner-control-finish ,b ,nonce)))
         (values ,word ,nonce)))
       (setf ,returned t))
