@@ -1,499 +1,187 @@
-; fn: the TREE field of `def-representation' (lane paged-catalog-3,
-; 2026-10-01; stage 3 of planning/design-store-representation-2026-10-01.md).
+; fn: the TREE field of `def-representation' (lane gate-b-2, 2026-10-01;
+; D27; stage 3 of planning/design-store-representation-2026-10-01.md).
 ;
-; An :octets field whose value is the postfix program of a tree
-; (books/store-tree-codec.lisp, `fn-scc-program'; KEYSTONE
-; fn-scc-decode-tree-of-encode) can be appended without the program ever
-; existing as a list: the writer walks the tree and puts each octet into
-; the pool at the fill.  Before it the catalog's commit built the program
-; with the specification's nested `append' (26.5 KB consed for a 181-octet
-; row remainder) and checked encodability with `fn-sccb-treep' (3.8 KB, the
-; atoms' octet lists), 38 KB a commit in all (lane paged-catalog-2's
-; measurement).
-;
-; This book is the instance-independent half:
-;   * `adt-tree-okp', `fn-sccb-treep' without building an octet list
-;     (`adt-tree-okp-is-sccb-treep');
-;   * `adt-tree-plen', the program's length without the program
-;     (`adt-tree-plen-is-len');
-;   * the logical put (`adt-pool-put': one octet at the fill of the pool
-;     at P, the fill advanced) and its fold (`adt-pool-puts'), which is the
-;     library's push when the room is made first (`adt-pool-push-is-puts');
-;   * the WRITER over a constrained put (`adt-g-put', constrained to be
-;     `adt-pool-put' at `(adt-g-pp)'), whose meaning is the puts of the
-;     program followed by N CONS operations (`adt-g-tw-tree-is-puts').
-; `def-representation' emits each instance's writer with the instance's
-; own put and obtains its meaning by functional instance of these
-; theorems; nothing about the codec is proved per instance.
+; A `(F :tree)' field is an :octets field whose value is the postfix
+; program of a tree (books/store-tree-codec.lisp, `fn-scc-program'); its
+; append walks the tree into the pool, so the program never exists as a
+; list.  books/def-representation-tree-walk.lisp holds the walk (the
+; counts without lists, the writer over any put and its meaning, the
+; columnar instance's checked put).  This book is what an instance with a
+; tree field includes; it adds the PAGED instance's half:
+;   * the paged checked put `adt-pg-cput' and its fold, which with the room
+;     made is the pool write at the fill and the fill moved
+;     (`adt-pg-cputs-is-poolw');
+;   * the put of a tree into one row (`adt-pg-put-tree'), which is the
+;     octets put of its program (`adt-pg-put-tree-is-put-field');
+;   * the record append with a MASK of tree fields (`adt-pg-append-t-c'),
+;     which is the paged append of the encoded record
+;     (`adt-pg-append-t-c-is-append-c'), so an instance's NAME-APPEND-T
+;     inherits NAME-APPEND's correspondence.
+; Each paged instance's executables are bridged to these by definition
+; (books/def-representation.lisp, `adt-pg-tree-exec-events').
 
 (in-package "ACL2")
-(include-book "def-representation-lib")
-(include-book "store-checkpoint-buffer")
+(include-book "def-representation-tree-walk")
+(include-book "def-representation-paged")
 (local (include-book "arithmetic/top" :dir :system))
 
-(local (in-theory (enable fn-scc-program fn-scc-atom-octets fn-scc-atomp fn-scc-nat-octets
-                          fn-scc-nat-encodablep fn-scc-string-octets fn-scc-octets-valuep
-                          fn-scc-octet-listp fn-scc-octetp fn-sccb-treep fn-scc-le-digits)))
+; The paged checked put: an octet at the fill when a pool page has room for
+; it, else nothing; its fold, with the room made, is the pool write at the
+; fill and the fill moved past it.
+(defun adt-pg-cput (b q c)
+  (declare (xargs :verify-guards nil))
+  (let ((fl (nth 3 c)))
+    (if (and (unsigned-byte-p 8 b) (natp fl) (< fl (* q (nth 5 c))))
+        (update-nth 3 (+ 1 fl) (adt-pg-pput fl b q c))
+      c)))
+
+(defun adt-pg-cputs (bytes q c)
+  (declare (xargs :verify-guards nil))
+  (if (atom bytes) c (adt-pg-cputs (cdr bytes) q (adt-pg-cput (car bytes) q c))))
+
+(local
+ (defthm adt-tree-update-nth-nth-natp
+   (implies (and (natp k) (natp (nth k c)))
+            (equal (update-nth k (nth k c) c) c))
+   :hints (("Goal" :in-theory (enable nth update-nth)))))
+
+(local
+ (defthm adt-tree-pput-of-update-fill
+   (equal (adt-pg-pput i b q (update-nth 3 x c))
+          (update-nth 3 x (adt-pg-pput i b q c)))
+   :hints (("Goal" :in-theory (enable adt-pg-pput)))))
+
+(local
+ (defthm adt-tree-poolw-of-update-fill
+   (equal (adt-pg-poolw i bytes q (update-nth 3 x c))
+          (update-nth 3 x (adt-pg-poolw i bytes q c)))
+   :hints (("Goal" :in-theory (enable adt-pg-poolw)))))
+
+(defthm adt-pg-cputs-is-poolw
+  (implies (and (adt-pg-pokp q c) (natp (nth 3 c)) (adt-octetsp bytes)
+                (<= (+ (nth 3 c) (len bytes)) (* q (nth 5 c))))
+           (equal (adt-pg-cputs bytes q c)
+                  (update-nth 3 (+ (nth 3 c) (len bytes)) (adt-pg-poolw (nth 3 c) bytes q c))))
+  :hints (("Goal" :induct (adt-pg-cputs bytes q c)
+           :in-theory (enable adt-pg-poolw adt-pg-cput))))
+
+(in-theory (disable adt-pg-cput adt-pg-cputs))
 
 ; -----------------------------------------------------------------------------
-; Counts without lists.
+; The put of a tree into row N at columns CI (offset) and CI+1 (length).
 
-; What an instance's digit writer needs for its measure and guards, in a
-; book without arithmetic (exported: the instance is admitted there).
-(defthm adt-tree-floor-256-decreases
-  (implies (and (natp n) (not (zp n)))
-           (< (floor n 256) n))
-  :rule-classes (:rewrite :linear))
-
-(defthm adt-tree-floor-256-natp
-  (implies (natp n) (natp (floor n 256)))
-  :rule-classes (:rewrite :type-prescription))
-
-(defun adt-tree-ndig (n)
-  ; (len (fn-scc-le-digits n)) without the digits.
-  (declare (xargs :guard (natp n)))
-  (if (zp n) 0 (+ 1 (adt-tree-ndig (floor n 256)))))
-
-(defthm adt-tree-ndig-is-len-digits
-  (equal (adt-tree-ndig n) (len (fn-scc-le-digits n))))
-
-(local
- (defthm adt-tree-len-chars-octets
-   (equal (len (fn-scc-chars-octets chars)) (len chars))
-   :hints (("Goal" :in-theory (enable fn-scc-chars-octets)))))
-
-(local
- (defthm adt-tree-chars-octets-octets
-   (fn-scc-octet-listp (fn-scc-chars-octets chars))
-   :hints (("Goal" :in-theory (enable fn-scc-chars-octets)))))
-
-; An atom's encodability without its octets.
-(defun adt-tree-atom-okp (x)
-  (declare (xargs :guard t))
-  (cond ((null x) t)
-        ((natp x) (< (adt-tree-ndig x) 256))
-        ((integerp x) (< (adt-tree-ndig (- -1 x)) 256))
-        ((characterp x) t)
-        ((stringp x) (< (adt-tree-ndig (length x)) 256))
-        ((symbolp x) (and (fn-scc-package-index (symbol-package-name x))
-                          (< (adt-tree-ndig (length (symbol-name x))) 256)))
-        (t nil)))
-
-(defun adt-tree-okp (x)
-  (declare (xargs :guard t))
-  (cond ((fn-scc-octets-valuep x) (< (adt-tree-ndig (len x)) 256))
-        ((consp x) (and (adt-tree-okp (car x)) (adt-tree-okp (cdr x))))
-        (t (adt-tree-atom-okp x))))
-
-(local
- (defthm adt-tree-octet-listp-of-cons
-   (equal (fn-scc-octet-listp (cons a b))
-          (and (fn-scc-octetp a) (fn-scc-octet-listp b)))))
-
-(local
- (defthm adt-tree-octet-listp-of-append
-   (implies (true-listp a)
-            (equal (fn-scc-octet-listp (append a b))
-                   (and (fn-scc-octet-listp a) (fn-scc-octet-listp b))))))
-
-(defthm adt-tree-okp-is-sccb-treep
-  (equal (adt-tree-okp x) (fn-sccb-treep x))
-  :hints (("Goal" :induct (adt-tree-okp x))))
-
-; The program's length, along the cdr spine onto an accumulator.
-(defun adt-tree-atom-plen (x)
-  (declare (xargs :guard t))
-  (cond ((null x) 1)
-        ((natp x) (+ 2 (adt-tree-ndig x)))
-        ((integerp x) (+ 2 (adt-tree-ndig (- -1 x))))
-        ((characterp x) 2)
-        ((stringp x) (+ 2 (adt-tree-ndig (length x)) (length x)))
-        (t (let ((s (if (symbolp x) (symbol-name x) "")))
-             (+ 3 (adt-tree-ndig (length s)) (length s))))))
-
-(defun adt-tree-plen (x acc)
-  (declare (xargs :guard (natp acc) :measure (acl2-count x) :verify-guards nil))
-  (cond ((fn-scc-octets-valuep x) (+ acc 2 (adt-tree-ndig (len x)) (len x)))
-        ((consp x) (adt-tree-plen (cdr x) (adt-tree-plen (car x) (+ 1 acc))))
-        (t (+ acc (adt-tree-atom-plen x)))))
-
-(local
- (defthm adt-tree-len-append
-   (equal (len (append a b)) (+ (len a) (len b)))))
-
-(defthm adt-tree-plen-is-len
-  (implies (acl2-numberp acc)
-           (equal (adt-tree-plen x acc) (+ acc (len (fn-scc-program x)))))
-  :hints (("Goal" :induct (adt-tree-plen x acc))))
-
-(defthm adt-tree-plen-natp
-  (implies (natp acc) (natp (adt-tree-plen x acc)))
-  :rule-classes :type-prescription)
-
-(verify-guards adt-tree-plen)
-
-; -----------------------------------------------------------------------------
-; The logical put and its fold.
-
-(defun adt-pool-put (p b c)
+(defun adt-pg-put-tree (ci n x r q c)
   (declare (xargs :verify-guards nil))
-  (let ((fl (nth (+ 2 p) c)))
-    (update-nth (+ 2 p) (+ 1 fl) (update-nth-array p fl b c))))
+  (let* ((o (nth 3 c))
+         (c (adt-pg-cputs (fn-scc-program x) q c))
+         (c (adt-pg-rput ci n o r c)))
+    (adt-pg-rput (+ 1 ci) n (len (fn-scc-program x)) r c)))
 
-(defun adt-pool-puts (p bytes c)
-  (declare (xargs :verify-guards nil))
-  (if (atom bytes) c (adt-pool-puts p (cdr bytes) (adt-pool-put p (car bytes) c))))
+; What an instance's walk and length are, in the library's terms.
+(defthm adt-tree-program-of-repeat-0
+  (equal (append (fn-scc-program x) (fn-scc-repeat 0 v)) (fn-scc-program x))
+  :hints (("Goal" :in-theory (enable fn-scc-repeat))))
 
-(defthm adt-pool-puts-of-append
-  (equal (adt-pool-puts p (append a b) c)
-         (adt-pool-puts p b (adt-pool-puts p a c))))
-
-(defthm adt-pool-puts-of-cons
-  (equal (adt-pool-puts p (cons b bytes) c)
-         (adt-pool-puts p bytes (adt-pool-put p b c))))
-
-(defthm adt-pool-puts-of-atom
-  (implies (atom bytes) (equal (adt-pool-puts p bytes c) c)))
-
-(in-theory (disable adt-pool-puts))
-
-; The puts are the library's write loop at the fill, then the fill moved
-; once: so the push (the room, then that) is the room then the puts.
-(local
- (defthm adt-tree-update-nth-swap
-   (implies (and (natp i) (natp j) (not (equal i j)))
-            (equal (update-nth i x (update-nth j y l))
-                   (update-nth j y (update-nth i x l))))
-   :hints (("Goal" :in-theory (enable update-nth)))))
+(defthm adt-tree-plen-0
+  (equal (adt-tree-plen x 0) (len (fn-scc-program x))))
 
 (local
- (defthm adt-tree-poolw-other
-   (implies (and (natp p) (natp k) (not (equal k p)))
-            (equal (nth k (adt-poolw p i bytes c)) (nth k c)))
-   :hints (("Goal" :in-theory (enable adt-poolw update-nth-array)))))
-
-(local
- (defthm adt-tree-poolw-of-update-other
-   (implies (and (natp p) (natp k) (not (equal k p)))
-            (equal (adt-poolw p i bytes (update-nth k v c))
-                   (update-nth k v (adt-poolw p i bytes c))))
-   :hints (("Goal" :in-theory (e/d (adt-poolw update-nth-array) (adt-poolw-is-pool-writes))))))
-
-(local
- (defthm adt-tree-len-poolw
-   (implies (and (natp p) (< p (len c)))
-            (equal (len (adt-poolw p i bytes c)) (len c)))
-   :hints (("Goal" :in-theory (e/d (adt-poolw update-nth-array) (adt-poolw-is-pool-writes))))))
-
-(local
- (defthm adt-tree-update-nth-of-nth
-   (implies (and (natp i) (< i (len l)))
-            (equal (update-nth i (nth i l) l) l))
-   :hints (("Goal" :in-theory (enable update-nth nth)))))
-
-(local
- (defthm adt-tree-puts-is-poolw-len
-   (implies (and (natp p) (natp (nth (+ 2 p) c)) (< (+ 2 p) (len c)))
-            (equal (adt-pool-puts p bytes c)
-                   (update-nth (+ 2 p) (+ (nth (+ 2 p) c) (len bytes))
-                               (adt-poolw p (nth (+ 2 p) c) bytes c))))
-   :hints (("Goal" :induct (adt-pool-puts p bytes c)
-            :expand ((adt-poolw p (nth (+ 2 p) c) bytes c))
-            :in-theory (e/d (adt-pool-puts adt-pool-put update-nth-array)
-                            (adt-poolw-is-pool-writes))))))
-
-(local
- (defthm adt-tree-nth-in-range
-   (implies (natp (nth i c)) (< (nfix i) (len c)))
-   :rule-classes nil
-   :hints (("Goal" :in-theory (enable nth)))))
-
-(local
- (defthm adt-tree-puts-is-poolw
-   (implies (and (natp p) (natp (nth (+ 2 p) c)) (consp bytes))
-            (equal (adt-pool-puts p bytes c)
-                   (update-nth (+ 2 p) (+ (nth (+ 2 p) c) (len bytes))
-                               (adt-poolw p (nth (+ 2 p) c) bytes c))))
-   :hints (("Goal" :use ((:instance adt-tree-nth-in-range (i (+ 2 p))))))))
-
-(local
- (defthm adt-tree-nth-of-room-other
-   (implies (and (natp p) (natp k) (not (equal k p)))
-            (equal (nth k (adt-pool-room p need c)) (nth k c)))
-   :hints (("Goal" :in-theory (enable adt-pool-room)))))
-
-(defthm adt-pool-push-is-puts
-  (implies (and (natp p) (natp (nth (+ 2 p) c)) (consp bytes))
-           (equal (adt-pool-push p bytes c)
-                  (adt-pool-puts p bytes (adt-pool-room p (+ (nth (+ 2 p) c) (len bytes)) c))))
-  :hints (("Goal" :in-theory (e/d (adt-pool-push) (adt-poolw-is-pool-writes adt-tree-puts-is-poolw))
-           :use ((:instance adt-tree-puts-is-poolw
-                            (c (adt-pool-room p (+ (nth (+ 2 p) c) (len bytes)) c)))))))
-
-(defthm adt-pool-put-shape
-  (implies (natp p)
-           (and (equal (nth (+ 2 p) (adt-pool-put p b c)) (+ 1 (nth (+ 2 p) c)))
-                (equal (len (nth p (adt-pool-put p b c)))
-                       (max (len (nth p c)) (+ 1 (nfix (nth (+ 2 p) c)))))))
-  :hints (("Goal" :in-theory (enable update-nth-array))))
-
-(in-theory (disable adt-pool-put))
-
-; The CHECKED put the executables run: an octet that is not one, or a fill
-; at the end of the pool, writes nothing (two fixnum comparisons an octet;
-; the writers' guards are then about their arguments only).  With the room
-; made first and octets to write, the checked puts are the puts.
-(defun adt-pool-cput (p b c)
-  (declare (xargs :verify-guards nil))
-  (if (and (unsigned-byte-p 8 b) (natp (nth (+ 2 p) c)) (< (nth (+ 2 p) c) (len (nth p c))))
-      (adt-pool-put p b c)
-    c))
-
-(defun adt-pool-cputs (p bytes c)
-  (declare (xargs :verify-guards nil))
-  (if (atom bytes) c (adt-pool-cputs p (cdr bytes) (adt-pool-cput p (car bytes) c))))
-
-(defthm adt-pool-cputs-of-append
-  (equal (adt-pool-cputs p (append a b) c)
-         (adt-pool-cputs p b (adt-pool-cputs p a c))))
-
-(defthm adt-pool-cputs-of-cons
-  (equal (adt-pool-cputs p (cons b bytes) c)
-         (adt-pool-cputs p bytes (adt-pool-cput p b c))))
-
-(defthm adt-pool-cputs-of-atom
-  (implies (atom bytes) (equal (adt-pool-cputs p bytes c) c)))
-
-(local
- (defthm adt-tree-adt-octetsp-facts
-   (implies (adt-octetsp x)
-            (and (true-listp x)
-                 (adt-octetsp (cdr x))
-                 (implies (consp x) (unsigned-byte-p 8 (car x)))))
-   :hints (("Goal" :in-theory (enable adt-octetsp)))))
-
-(defthm adt-pool-cputs-is-puts
-  (implies (and (natp p) (adt-octetsp bytes) (natp (nth (+ 2 p) c))
-                (<= (+ (nth (+ 2 p) c) (len bytes)) (len (nth p c))))
-           (equal (adt-pool-cputs p bytes c) (adt-pool-puts p bytes c)))
-  :hints (("Goal" :induct (adt-pool-cputs p bytes c)
-           :in-theory (e/d (adt-pool-puts adt-pool-cput)
-                           (adt-tree-puts-is-poolw adt-tree-puts-is-poolw-len))
-           :expand ((adt-pool-puts p bytes c)))))
-
-(in-theory (disable adt-pool-cputs adt-pool-cput))
-
-; -----------------------------------------------------------------------------
-; The writer over a constrained put.
-
-(encapsulate
-  (((adt-g-pp) => *) ((adt-g-put * *) => *))
-  (local (defun adt-g-pp () 0))
-  (local (defun adt-g-put (b c) (adt-pool-cput 0 b c)))
-  (defthm adt-g-put-def
-    (equal (adt-g-put b c) (adt-pool-cput (adt-g-pp) b c))
-    :rule-classes nil))
-
-(defun adt-g-tw-digits (n c)
-  (declare (xargs :verify-guards nil))
-  (if (zp n) c (adt-g-tw-digits (floor n 256) (adt-g-put (mod n 256) c))))
-
-(defun adt-g-tw-chars (s k c)
-  (declare (xargs :verify-guards nil :measure (nfix (- (length s) (nfix k)))))
-  (if (and (stringp s) (natp k) (< k (length s)))
-      (adt-g-tw-chars s (+ 1 k) (adt-g-put (char-code (char s k)) c))
-    c))
-
-(defun adt-g-tw-bytes (xs c)
-  (declare (xargs :verify-guards nil))
-  (if (atom xs) c (adt-g-tw-bytes (cdr xs) (adt-g-put (car xs) c))))
-
-(defun adt-g-tw-ops (n c)
-  (declare (xargs :verify-guards nil))
-  (if (zp n) c (adt-g-tw-ops (1- n) (adt-g-put *fn-scc-op-cons* c))))
-
-(defun adt-g-tw-atom (x c)
-  (declare (xargs :verify-guards nil))
-  (cond ((null x) (adt-g-put *fn-scc-op-nil* c))
-        ((natp x) (adt-g-tw-digits x (adt-g-put (adt-tree-ndig x) (adt-g-put *fn-scc-op-nat* c))))
-        ((integerp x) (adt-g-tw-digits (- -1 x) (adt-g-put (adt-tree-ndig (- -1 x))
-                                                           (adt-g-put *fn-scc-op-neg* c))))
-        ((characterp x) (adt-g-put (char-code x) (adt-g-put *fn-scc-op-char* c)))
-        ((stringp x) (adt-g-tw-chars x 0 (adt-g-tw-digits (length x)
-                                                          (adt-g-put (adt-tree-ndig (length x))
-                                                                     (adt-g-put *fn-scc-op-string* c)))))
-        (t (let ((s (symbol-name x)))
-             (adt-g-tw-chars s 0 (adt-g-tw-digits (length s)
-                                                  (adt-g-put (adt-tree-ndig (length s))
-                                                             (adt-g-put (fn-scc-package-index (symbol-package-name x))
-                                                                        (adt-g-put *fn-scc-op-symbol* c)))))))))
-
-(defun adt-g-tw-tree (x n c)
-  (declare (xargs :verify-guards nil :measure (acl2-count x)))
-  (cond ((fn-scc-octets-valuep x)
-         (adt-g-tw-ops n (adt-g-tw-bytes x (adt-g-tw-digits (len x)
-                                                            (adt-g-put (adt-tree-ndig (len x))
-                                                                       (adt-g-put *fn-scc-op-octets* c))))))
-        ((consp x) (adt-g-tw-tree (cdr x) (+ 1 (nfix n)) (adt-g-tw-tree (car x) 0 c)))
-        (t (adt-g-tw-ops n (adt-g-tw-atom x c)))))
-
-(local (in-theory (enable adt-pool-cputs)))
-
-(local
- (defthm adt-g-put-is-puts
-   (equal (adt-g-put b c) (adt-pool-cputs (adt-g-pp) (list b) c))
-   :hints (("Goal" :use adt-g-put-def))))
-
-(local (in-theory (disable adt-pool-cputs)))
-
-(defthm adt-g-tw-digits-is-puts
-  (equal (adt-g-tw-digits n c) (adt-pool-cputs (adt-g-pp) (fn-scc-le-digits n) c))
-  :hints (("Goal" :induct (adt-g-tw-digits n c))))
-
-(local
- (defthm adt-tree-nthcdr-open
-   (implies (and (natp k) (< k (len l)))
-            (equal (nthcdr k l) (cons (nth k l) (nthcdr (+ 1 k) l))))
-   :hints (("Goal" :in-theory (enable nth nthcdr)))))
-
-(local
- (defthm adt-tree-chars-octets-of-nthcdr
-   (implies (and (stringp s) (natp k) (< k (length s)))
-            (equal (fn-scc-chars-octets (nthcdr k (coerce s 'list)))
-                   (cons (char-code (char s k))
-                         (fn-scc-chars-octets (nthcdr (+ 1 k) (coerce s 'list))))))
-   :hints (("Goal" :in-theory (e/d (char) (nthcdr))
-            :use ((:instance adt-tree-nthcdr-open (l (coerce s 'list))))
-            :expand ((fn-scc-chars-octets (cons (nth k (coerce s 'list))
-                                                (nthcdr (+ 1 k) (coerce s 'list)))))))))
-
-(local
- (defthm adt-tree-nthcdr-past
-   (implies (and (natp k) (<= (len l) k))
-            (not (consp (nthcdr k l))))))
-
-(defthm adt-g-tw-chars-is-puts
-  (implies (and (stringp s) (natp k))
-           (equal (adt-g-tw-chars s k c)
-                  (adt-pool-cputs (adt-g-pp) (fn-scc-chars-octets (nthcdr k (coerce s 'list))) c)))
-  :hints (("Goal" :induct (adt-g-tw-chars s k c))
-          ("Subgoal *1/1" :expand ((fn-scc-chars-octets (nthcdr k (coerce s 'list)))))))
-
-(defthm adt-g-tw-bytes-is-puts
-  (equal (adt-g-tw-bytes xs c) (adt-pool-cputs (adt-g-pp) xs c))
-  :hints (("Goal" :induct (adt-g-tw-bytes xs c))))
-
-(defthm adt-g-tw-ops-is-puts
-  (equal (adt-g-tw-ops n c) (adt-pool-cputs (adt-g-pp) (fn-scc-repeat (nfix n) *fn-scc-op-cons*) c))
-  :hints (("Goal" :induct (adt-g-tw-ops n c) :in-theory (enable fn-scc-repeat))))
-
-(defthm adt-g-tw-atom-is-puts
-  (implies (not (fn-scc-octets-valuep x))
-           (implies (atom x)
-                    (equal (adt-g-tw-atom x c) (adt-pool-cputs (adt-g-pp) (fn-scc-atom-octets x) c))))
-  :hints (("Goal" :in-theory (enable fn-scc-chars-octets))))
-
-(local
- (defthm adt-tree-append-repeat-cons
-   (equal (append (fn-scc-repeat n v) (cons v y))
-          (cons v (append (fn-scc-repeat n v) y)))
-   :hints (("Goal" :in-theory (enable fn-scc-repeat)))))
-
-(defthm adt-g-tw-tree-is-puts
-  (equal (adt-g-tw-tree x n c)
-         (adt-pool-cputs (adt-g-pp)
-                        (append (fn-scc-program x) (fn-scc-repeat (nfix n) *fn-scc-op-cons*))
-                        c))
-  :hints (("Goal" :induct (adt-g-tw-tree x n c)
-           :in-theory (enable fn-scc-repeat))))
-
-; -----------------------------------------------------------------------------
-; The push of a tree's program: the room made for its length, then the
-; checked puts of it.  What each instance's NAME$C-TW-PUSH is.
-
-(local
- (defthm adt-tree-program-consp
-   (consp (fn-scc-program x))
-   :hints (("Goal" :in-theory (enable fn-scc-program fn-scc-atom-octets)))))
-
-(local
- (defthm adt-tree-octet-listp-is-adt-octetsp
+ (defthm adt-pt-octet-listp-is-adt-octetsp
    (equal (fn-scc-octet-listp x) (adt-octetsp x))
    :hints (("Goal" :in-theory (enable adt-octetsp fn-scc-octet-listp fn-scc-octetp unsigned-byte-p)))))
-
 (local
- (defthm adt-tree-room-shape
-   (implies (and (natp p) (natp need))
-            (and (<= need (len (nth p (adt-pool-room p need c))))
-                 (equal (nth (+ 2 p) (adt-pool-room p need c)) (nth (+ 2 p) c))))
-   :hints (("Goal" :in-theory (enable adt-pool-room)))))
+ (defthm adt-pt-program-octets
+   (implies (fn-sccb-treep x) (adt-octetsp (fn-scc-program x)))
+   :hints (("Goal" :use fn-sccb-treep-encodes-octets
+            :in-theory (disable fn-sccb-treep fn-scc-program)))))
 
+(defthm adt-pg-put-tree-is-put-field
+  (implies (and (adt-pg-pokp q c) (natp (nth 3 c)) (fn-sccb-treep x)
+                (<= (+ (nth 3 c) (len (fn-scc-program x))) (* q (nth 5 c))))
+           (equal (adt-pg-put-tree ci n x r q c)
+                  (adt-pg-put-field '(:octets) ci n (fn-scc-program x) r q c)))
+  :hints (("Goal" :in-theory (enable adt-pg-put-field))))
+
+; An octets put reads its kind only as an octets kind.
 (local
- (defthm adt-tree-append-nil
-   (implies (true-listp x) (equal (append x nil) x))))
+ (defthm adt-pt-put-field-octets-kind
+   (implies (and (adt-octets-kind-p k) (syntaxp (not (equal k ''(:octets)))))
+            (equal (adt-pg-put-field k ci n v r q c)
+                   (adt-pg-put-field '(:octets) ci n v r q c)))
+   :hints (("Goal" :in-theory (enable adt-pg-put-field)))))
 
-(defthm adt-tree-push-is-push
-  (implies (and (natp p) (fn-sccb-treep x) (natp (nth (+ 2 p) c)))
-           (equal (adt-pool-cputs p (append (fn-scc-program x) (fn-scc-repeat 0 *fn-scc-op-cons*))
-                                  (adt-pool-room p (+ (nth (+ 2 p) c) (adt-tree-plen x 0)) c))
-                  (adt-pool-push p (fn-scc-program x) c)))
-  :hints (("Goal" :in-theory (e/d (fn-scc-repeat) (fn-sccb-treep fn-scc-program))
-           :use ((:instance fn-sccb-treep-encodes-octets)))))
+(in-theory (disable adt-pg-put-tree))
 
 ; -----------------------------------------------------------------------------
-; The foundation's shape is kept by the checked put (what an instance's
-; writers need for their guards: each returns a well-formed foundation).
+; A record with a MASK: a true entry marks a tree field (its value a tree,
+; its put the walk), a nil entry any other field.
 
-(local
- (defthm adt-tree-all-ub8-of-update-nth
-   (implies (and (adt-all-elt-p '(:ub 8) l) (natp i) (< i (len l)) (unsigned-byte-p 8 b))
-            (adt-all-elt-p '(:ub 8) (update-nth i b l)))
-   :hints (("Goal" :in-theory (enable update-nth adt-elt-p)))))
+(defun adt-pg-tmask-enc (mask rec)
+  (declare (xargs :verify-guards nil))
+  (if (atom mask)
+      nil
+    (cons (if (car mask) (fn-scc-program (car rec)) (car rec))
+          (adt-pg-tmask-enc (cdr mask) (cdr rec)))))
 
-(local
- (defthm adt-tree-cols-shape-of-update-nth-above
-   (implies (and (natp ci) (natp k) (<= (+ ci (adt-ncols s)) k))
-            (equal (adt-cols-shape s ci (update-nth k v c))
-                   (adt-cols-shape s ci c)))
-   :hints (("Goal" :induct (adt-cols-shape s ci c)
-            :in-theory (enable adt-cols-shape adt-ncols)))))
+(defun adt-pg-tmask-okp (mask rec)
+  (declare (xargs :verify-guards nil))
+  (if (atom mask)
+      t
+    (and (or (not (car mask)) (fn-sccb-treep (car rec)))
+         (adt-pg-tmask-okp (cdr mask) (cdr rec)))))
 
-(defthm adt-tree-shape-of-cput
-  (implies (and (adt-shape-p s c) (equal p (adt-ncols s)))
-           (and (adt-shape-p s (adt-pool-cput p b c))
-                (equal (len (adt-pool-cput p b c)) (len c))))
-  :hints (("Goal" :in-theory (enable adt-shape-p adt-pool-cput adt-pool-put update-nth-array))))
+(defun adt-pg-tmask-kinds-okp (s mask)
+  (declare (xargs :guard t))
+  (if (atom s)
+      (atom mask)
+    (and (consp mask)
+         (or (not (car mask)) (adt-octets-kind-p (car s)))
+         (adt-pg-tmask-kinds-okp (cdr s) (cdr mask)))))
 
-(encapsulate
-  (((adt-g-okc *) => *))
-  (local (defun adt-g-okc (c) (declare (ignore c)) t))
-  (defthm adt-g-okc-of-put
-    (implies (adt-g-okc c) (adt-g-okc (adt-g-put b c)))))
+(defun adt-pg-append-fields-t (s mask ci n rec r q c)
+  (declare (xargs :verify-guards nil))
+  (if (atom s)
+      c
+    (adt-pg-append-fields-t (cdr s) (cdr mask) (+ (adt-kind-width (car s)) ci) n (cdr rec) r q
+                            (if (car mask)
+                                (adt-pg-put-tree ci n (car rec) r q c)
+                              (adt-pg-put-field (car s) ci n (car rec) r q c)))))
 
-(defthm adt-g-tw-digits-okc
-  (implies (adt-g-okc c) (adt-g-okc (adt-g-tw-digits n c)))
-  :hints (("Goal" :induct (adt-g-tw-digits n c) :in-theory (disable adt-g-put-is-puts floor adt-g-tw-tree-is-puts adt-g-tw-atom-is-puts adt-g-tw-digits-is-puts adt-g-tw-chars-is-puts adt-g-tw-bytes-is-puts adt-g-tw-ops-is-puts))))
+(defthm adt-pg-append-fields-t-is-append-fields
+  (implies (and (adt-pg-rokp (adt-ncols s0) r c) (adt-pg-pokp q c)
+                (natp ci) (<= (+ ci (adt-ncols s)) (adt-ncols s0))
+                (natp n) (< n (* r (nth 4 c))) (natp (nth 3 c))
+                (adt-pg-tmask-kinds-okp s mask) (adt-pg-tmask-okp mask rec)
+                (<= (+ (nth 3 c) (adt-rec-load s (adt-pg-tmask-enc mask rec))) (* q (nth 5 c))))
+           (equal (adt-pg-append-fields-t s mask ci n rec r q c)
+                  (adt-pg-append-fields s ci n (adt-pg-tmask-enc mask rec) r q c)))
+  :hints (("Goal" :induct (adt-pg-append-fields-t s mask ci n rec r q c)
+           :in-theory (e/d (adt-pg-append-fields adt-ncols adt-rec-load)
+                           (adt-put-field adt-pg-append-fields-meaning)))))
 
-(defthm adt-g-tw-chars-okc
-  (implies (adt-g-okc c) (adt-g-okc (adt-g-tw-chars s k c)))
-  :hints (("Goal" :induct (adt-g-tw-chars s k c) :in-theory (disable adt-g-put-is-puts floor adt-g-tw-tree-is-puts adt-g-tw-atom-is-puts adt-g-tw-digits-is-puts adt-g-tw-chars-is-puts adt-g-tw-bytes-is-puts adt-g-tw-ops-is-puts))))
+(defun adt-pg-append-t-c (s mask rec r q d dp c)
+  (declare (xargs :verify-guards nil))
+  (let* ((c (adt-pg-append-room s (adt-pg-tmask-enc mask rec) r q d dp c))
+         (n (nth 2 c)))
+    (update-nth 2 (+ 1 n) (adt-pg-append-fields-t s mask 0 n rec r q c))))
 
-(defthm adt-g-tw-bytes-okc
-  (implies (adt-g-okc c) (adt-g-okc (adt-g-tw-bytes xs c)))
-  :hints (("Goal" :induct (adt-g-tw-bytes xs c) :in-theory (disable adt-g-put-is-puts floor adt-g-tw-tree-is-puts adt-g-tw-atom-is-puts adt-g-tw-digits-is-puts adt-g-tw-chars-is-puts adt-g-tw-bytes-is-puts adt-g-tw-ops-is-puts))))
+(defthm adt-pg-append-t-c-is-append-c
+  (implies (and (adt-pg-corr s r q c a) (consp s)
+                (adt-pg-tmask-kinds-okp s mask) (adt-pg-tmask-okp mask rec))
+           (equal (adt-pg-append-t-c s mask rec r q d dp c)
+                  (adt-pg-append-c s (adt-pg-tmask-enc mask rec) r q d dp c)))
+  :hints (("Goal" :in-theory (e/d (adt-pg-append-c adt-pg-append-at adt-pg-corr adt-pg-okp)
+                                  (adt-pg-append-room-meaning adt-pg-append-room adt-pg-corr-count
+                                   adt-pg-append-fields-t-is-append-fields))
+           :do-not-induct t
+           :use ((:instance adt-pg-append-room-meaning (rec (adt-pg-tmask-enc mask rec)))
+                 (:instance adt-pg-corr-count
+                            (c (adt-pg-append-room s (adt-pg-tmask-enc mask rec) r q d dp c)))
+                 (:instance adt-pg-corr-fill-natp
+                            (c (adt-pg-append-room s (adt-pg-tmask-enc mask rec) r q d dp c)))
+                 (:instance adt-pg-append-fields-t-is-append-fields
+                            (s0 s) (ci 0)
+                            (c (adt-pg-append-room s (adt-pg-tmask-enc mask rec) r q d dp c))
+                            (n (nth 2 (adt-pg-append-room s (adt-pg-tmask-enc mask rec) r q d dp c))))))))
 
-(defthm adt-g-tw-ops-okc
-  (implies (adt-g-okc c) (adt-g-okc (adt-g-tw-ops n c)))
-  :hints (("Goal" :induct (adt-g-tw-ops n c) :in-theory (disable adt-g-put-is-puts floor adt-g-tw-tree-is-puts adt-g-tw-atom-is-puts adt-g-tw-digits-is-puts adt-g-tw-chars-is-puts adt-g-tw-bytes-is-puts adt-g-tw-ops-is-puts))))
-
-(defthm adt-g-tw-atom-okc
-  (implies (adt-g-okc c) (adt-g-okc (adt-g-tw-atom x c)))
-  :hints (("Goal" :in-theory (disable adt-g-put-is-puts floor adt-g-tw-tree-is-puts adt-g-tw-atom-is-puts adt-g-tw-digits-is-puts adt-g-tw-chars-is-puts adt-g-tw-bytes-is-puts adt-g-tw-ops-is-puts))))
-
-(defthm adt-g-tw-tree-okc
-  (implies (adt-g-okc c) (adt-g-okc (adt-g-tw-tree x n c)))
-  :hints (("Goal" :induct (adt-g-tw-tree x n c) :in-theory (disable adt-g-put-is-puts floor adt-g-tw-tree-is-puts adt-g-tw-atom-is-puts adt-g-tw-digits-is-puts adt-g-tw-chars-is-puts adt-g-tw-bytes-is-puts adt-g-tw-ops-is-puts))))
-
-; An instance's guards read `adt-tree-okp' by its definition (the walk's
-; cases); the equality with `fn-sccb-treep' is cited where it is wanted.
-(in-theory (disable adt-tree-okp-is-sccb-treep))
+(in-theory (disable adt-pg-append-fields-t adt-pg-append-t-c))
