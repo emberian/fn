@@ -48,7 +48,7 @@
  (defthm fn-pdc-retention-event-is-a-store-event
    (implies (fn-store-retention-event-p event)
             (and (fn-store-event-p event) (true-listp event)))
-   :hints (("Goal" :in-theory '(fn-store-event-p fn-store-retention-event-p-forward-shape)))))
+   :hints (("Goal" :in-theory (enable fn-store-event-p fn-store-retention-event-p)))))
 
 ; -----------------------------------------------------------------------------
 ; The Store-level prepares.
@@ -96,3 +96,508 @@
             (fn-sn-update s files (fn-sn-node s))
           s))
     s))
+
+; -----------------------------------------------------------------------------
+; KEYSTONES (Store).  Equal to the reference on every store the live-history
+; relation admits: the gates are the same terms (the carried projection step
+; is the reference's), the file stages agree off the replay
+; (fn-pcar-stage-record-is-stage-record), and where the gate holds and the
+; candidate is well placed the reference's replay succeeds
+; (fn-spc-related-identity-candidate-is-recoverable, whose antecedent names
+; the gate's own applied-node test).
+
+(defthm fn-pdc-sn-prepare-retention-is-sn-prepare-retention-under-relation
+  (implies (fn-snt-relation s)
+           (equal (fn-pdc-sn-prepare-retention s event)
+                  (fn-sn-prepare-retention s event)))
+  :hints (("Goal"
+           :use (fn-snt-relation-implies-structural-state
+                 (:instance fn-snt-typed-store-components)
+                 (:instance fn-spc-related-identity-candidate-is-recoverable))
+           :in-theory (union-theories
+                       '(fn-pdc-sn-prepare-retention fn-sn-prepare-retention
+                         fn-sf-prepare-record fn-spc-stage-record
+                         fn-pcar-stage-record-is-stage-record
+                         fn-replay-apply-record
+                         fn-ccar-cpe-projection-step-is-cpe-projection-step
+                         fn-pdc-retention-event-is-a-store-event)
+                       (theory 'minimal-theory)))))
+
+(defthm fn-pdc-sn-prepare-consumer-is-sn-prepare-consumer-under-relation
+  (implies (fn-snt-relation s)
+           (equal (fn-pdc-sn-prepare-consumer s event)
+                  (fn-sn-prepare-consumer s event)))
+  :hints (("Goal"
+           :use (fn-snt-relation-implies-structural-state
+                 (:instance fn-snt-typed-store-components)
+                 (:instance fn-spc-related-identity-candidate-is-recoverable))
+           :in-theory (union-theories
+                       '(fn-pdc-sn-prepare-consumer fn-sn-prepare-consumer
+                         fn-sf-prepare-record fn-spc-stage-record
+                         fn-pcar-stage-record-is-stage-record
+                         fn-ccar-cpe-projection-step-is-cpe-projection-step)
+                       (theory 'minimal-theory)))))
+
+(defthm fn-pdc-sn-prepare-topic-is-sn-prepare-topic-under-relation
+  (implies (fn-snt-relation s)
+           (equal (fn-pdc-sn-prepare-topic s event)
+                  (fn-sn-prepare-topic s event)))
+  :hints (("Goal"
+           :use (fn-snt-relation-implies-structural-state
+                 (:instance fn-snt-typed-store-components)
+                 (:instance fn-spc-related-identity-candidate-is-recoverable))
+           :in-theory (union-theories
+                       '(fn-pdc-sn-prepare-topic fn-sn-prepare-topic
+                         fn-sf-prepare-record fn-spc-stage-record
+                         fn-pcar-stage-record-is-stage-record)
+                       (theory 'minimal-theory)))))
+
+; KEYSTONES (no hypothesis).  Wherever the reference stages, the carried
+; prepare is the reference: the two differ only where the reference's
+; appended-history replay refuses.
+(defthm fn-pdc-sn-prepare-retention-is-sn-prepare-retention-when-staged
+  (implies (not (equal (fn-sn-prepare-retention s event) s))
+           (equal (fn-pdc-sn-prepare-retention s event)
+                  (fn-sn-prepare-retention s event)))
+  :hints (("Goal" :use ((:instance fn-cstp-sn-statep-files (st s)))
+           :in-theory (union-theories
+                              '(fn-pdc-sn-prepare-retention fn-sn-prepare-retention
+                                fn-sf-prepare-record fn-spc-stage-record
+                                fn-pcar-stage-record-is-stage-record
+                                fn-ccar-cpe-projection-step-is-cpe-projection-step
+                                fn-pdc-retention-event-is-a-store-event)
+                              (theory 'minimal-theory)))))
+
+(defthm fn-pdc-sn-prepare-consumer-is-sn-prepare-consumer-when-staged
+  (implies (not (equal (fn-sn-prepare-consumer s event) s))
+           (equal (fn-pdc-sn-prepare-consumer s event)
+                  (fn-sn-prepare-consumer s event)))
+  :hints (("Goal" :use ((:instance fn-cstp-sn-statep-files (st s)))
+           :in-theory (union-theories
+                              '(fn-pdc-sn-prepare-consumer fn-sn-prepare-consumer
+                                fn-sf-prepare-record fn-spc-stage-record
+                                fn-pcar-stage-record-is-stage-record
+                                fn-ccar-cpe-projection-step-is-cpe-projection-step)
+                              (theory 'minimal-theory)))))
+
+(defthm fn-pdc-sn-prepare-topic-is-sn-prepare-topic-when-staged
+  (implies (not (equal (fn-sn-prepare-topic s event) s))
+           (equal (fn-pdc-sn-prepare-topic s event)
+                  (fn-sn-prepare-topic s event)))
+  :hints (("Goal" :use ((:instance fn-cstp-sn-statep-files (st s)))
+           :in-theory (union-theories
+                              '(fn-pdc-sn-prepare-topic fn-sn-prepare-topic
+                                fn-sf-prepare-record fn-spc-stage-record
+                                fn-pcar-stage-record-is-stage-record)
+                              (theory 'minimal-theory)))))
+
+; -----------------------------------------------------------------------------
+; Guards: the reference guard (fn-sn-statep), as the references'.
+
+(local
+ (defthm fn-pdc-consumer-event-is-a-store-event
+   (implies (fn-cpe-eventp event)
+            (and (fn-store-event-p event) (true-listp event)))
+   :hints (("Goal" :in-theory (enable fn-store-event-p fn-cpe-eventp)))))
+
+(local
+ (defthm fn-pdc-topic-event-is-a-store-event
+   (implies (fn-th-topic-eventp event)
+            (and (fn-store-event-p event) (true-listp event)))
+   :hints (("Goal" :in-theory (enable fn-store-event-p)))))
+
+(verify-guards fn-pdc-sn-prepare-retention
+  :hints (("Goal" :in-theory (e/d (fn-sn-statep)
+                                  (fn-sf-statep fn-node-statep fn-store-event-p
+                                   fn-store-retention-event-p
+                                   fn-replay-apply-retention-event
+                                   fn-ccar-cpe-projection-step
+                                   fn-spc-stage-record fn-pcar-stage-record)))))
+(verify-guards fn-pdc-sn-prepare-consumer
+  :hints (("Goal" :in-theory (e/d (fn-sn-statep)
+                                  (fn-sf-statep fn-node-statep fn-store-event-p
+                                   fn-cpe-eventp fn-replay-apply-record
+                                   fn-ccar-cpe-projection-step
+                                   fn-spc-stage-record fn-pcar-stage-record)))))
+(verify-guards fn-pdc-sn-prepare-topic
+  :hints (("Goal" :in-theory (e/d (fn-sn-statep)
+                                  (fn-sf-statep fn-node-statep fn-store-event-p
+                                   fn-th-topic-eventp fn-replay-apply-record
+                                   fn-th-prefix-step
+                                   fn-spc-stage-record fn-pcar-stage-record)))))
+
+; -----------------------------------------------------------------------------
+; What the carried prepares leave: the store, or the reservation with EVENT
+; staged over the same history, configuration history and node.
+
+(defthm fn-pdc-sn-prepares-stage-or-keep
+  (and (or (equal (fn-pdc-sn-prepare-retention s e) s)
+           (fn-pout-stagedp s (fn-pdc-sn-prepare-retention s e)))
+       (or (equal (fn-pdc-sn-prepare-consumer s e) s)
+           (fn-pout-stagedp s (fn-pdc-sn-prepare-consumer s e)))
+       (or (equal (fn-pdc-sn-prepare-topic s e) s)
+           (fn-pout-stagedp s (fn-pdc-sn-prepare-topic s e))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-pdc-sn-prepare-retention fn-pdc-sn-prepare-consumer
+                                   fn-pdc-sn-prepare-topic fn-pout-stagedp)
+                                  (fn-pcar-stage-record fn-sn-statep
+                                   fn-store-retention-event-p fn-cpe-eventp
+                                   fn-th-topic-eventp fn-replay-apply-record
+                                   fn-replay-apply-retention-event
+                                   fn-ccar-cpe-projection-step fn-th-prefix-step)))))
+
+(defthm fn-pdc-sn-prepares-keep-histories
+  (and (equal (fn-sn-config-history (fn-pdc-sn-prepare-retention s e)) (fn-sn-config-history s))
+       (equal (fn-sf-records (fn-sn-files (fn-pdc-sn-prepare-retention s e)))
+              (fn-sf-records (fn-sn-files s)))
+       (equal (fn-sn-config-history (fn-pdc-sn-prepare-consumer s e)) (fn-sn-config-history s))
+       (equal (fn-sf-records (fn-sn-files (fn-pdc-sn-prepare-consumer s e)))
+              (fn-sf-records (fn-sn-files s)))
+       (equal (fn-sn-config-history (fn-pdc-sn-prepare-topic s e)) (fn-sn-config-history s))
+       (equal (fn-sf-records (fn-sn-files (fn-pdc-sn-prepare-topic s e)))
+              (fn-sf-records (fn-sn-files s))))
+  :hints (("Goal"
+           :use ((:instance fn-psrv-pcar-stage-record-staged (files (fn-sn-files s))))
+           :in-theory (e/d (fn-pdc-sn-prepare-retention fn-pdc-sn-prepare-consumer
+                            fn-pdc-sn-prepare-topic)
+                           (fn-pcar-stage-record fn-sn-statep
+                            fn-store-retention-event-p fn-cpe-eventp
+                            fn-th-topic-eventp fn-replay-apply-record
+                            fn-replay-apply-retention-event
+                            fn-ccar-cpe-projection-step fn-th-prefix-step)))))
+
+; -----------------------------------------------------------------------------
+; The configured relation and its carried companion (the store half of the
+; host-carried fn-lgoc-invariantp) across each carried prepare: the staged
+; record's configured replay is the applied node
+; (fn-psrv-deferred-stage-preserves over the carried stage).
+
+(defthm fn-pdc-sn-prepare-retention-preserves
+  (implies (and (fn-cst-relation s) (fn-cstp-carriedp s))
+           (and (fn-cst-relation (fn-pdc-sn-prepare-retention s e))
+                (fn-cstp-carriedp (fn-pdc-sn-prepare-retention s e))))
+  :hints (("Goal"
+           :cases ((not (equal (fn-pdc-sn-prepare-retention s e) s)))
+           :in-theory nil)
+          ("Subgoal 1"
+           :use ((:instance fn-psrv-deferred-stage-preserves
+                            (f (fn-pcar-stage-record (fn-sn-files s) e)))
+                 (:instance fn-psrv-pcar-stage-record-staged (files (fn-sn-files s)))
+                 (:instance fn-cstp-sn-update-preserves-state
+                            (files (fn-pcar-stage-record (fn-sn-files s) e))
+                            (node (fn-sn-node s)))
+                 (:instance fn-cstp-stage-record-preserves-state
+                            (files (fn-sn-files s)) (record e))
+                 (:instance fn-pcar-stage-record-is-stage-record
+                            (files (fn-sn-files s)) (record e))
+                 (:instance fn-psrv-sn-statep-node-statep)
+                 (:instance fn-psrv-retention-event-kinds))
+           :in-theory '(fn-pdc-sn-prepare-retention fn-replay-apply-record
+                        fn-cstp-relation-is-statep fn-cstp-sn-statep-files
+                        fn-cpr-event-servedp
+                        fn-ccar-cpe-projection-step-is-cpe-projection-step))))
+
+(defthm fn-pdc-sn-prepare-consumer-preserves
+  (implies (and (fn-cst-relation s) (fn-cstp-carriedp s))
+           (and (fn-cst-relation (fn-pdc-sn-prepare-consumer s e))
+                (fn-cstp-carriedp (fn-pdc-sn-prepare-consumer s e))))
+  :hints (("Goal"
+           :cases ((not (equal (fn-pdc-sn-prepare-consumer s e) s)))
+           :in-theory nil)
+          ("Subgoal 1"
+           :use ((:instance fn-psrv-deferred-stage-preserves
+                            (f (fn-pcar-stage-record (fn-sn-files s) e)))
+                 (:instance fn-psrv-pcar-stage-record-staged (files (fn-sn-files s)))
+                 (:instance fn-cstp-sn-update-preserves-state
+                            (files (fn-pcar-stage-record (fn-sn-files s) e))
+                            (node (fn-sn-node s)))
+                 (:instance fn-cstp-stage-record-preserves-state
+                            (files (fn-sn-files s)) (record e))
+                 (:instance fn-pcar-stage-record-is-stage-record
+                            (files (fn-sn-files s)) (record e))
+                 (:instance fn-psrv-sn-statep-node-statep)
+                 (:instance fn-psrv-consumer-event-kinds)
+                 (:instance fn-psrv-consumer-event-is-no-identity-event)
+                 (:instance fn-psrv-projection-ok-sequence
+                            (c (fn-sn-consumer s)) (expected (fn-sn-identity-next s)))
+                 (:instance fn-psrv-identity-step-of-plain-event))
+           :in-theory '(fn-pdc-sn-prepare-consumer
+                        fn-cstp-relation-is-statep fn-cstp-sn-statep-files
+                        fn-cpr-event-servedp
+                        fn-ccar-cpe-projection-step-is-cpe-projection-step))))
+
+; The topic prepare's completion also needs the consumer projection to admit
+; EVENT, which fn-sn-prepare-topic does not test; the host's entry tests it
+; (fn-pdc-psrv-prepare-topic, below), as the reference's does.
+(defthm fn-pdc-sn-prepare-topic-preserves
+  (implies (and (fn-cst-relation s) (fn-cstp-carriedp s)
+                (eq (car (fn-cpe-projection-step (fn-sn-consumer s) e
+                                                 (fn-sn-identity-next s)))
+                    :ok))
+           (and (fn-cst-relation (fn-pdc-sn-prepare-topic s e))
+                (fn-cstp-carriedp (fn-pdc-sn-prepare-topic s e))))
+  :hints (("Goal"
+           :cases ((not (equal (fn-pdc-sn-prepare-topic s e) s)))
+           :in-theory nil)
+          ("Subgoal 1"
+           :use ((:instance fn-psrv-deferred-stage-preserves
+                            (f (fn-pcar-stage-record (fn-sn-files s) e)))
+                 (:instance fn-psrv-pcar-stage-record-staged (files (fn-sn-files s)))
+                 (:instance fn-cstp-sn-update-preserves-state
+                            (files (fn-pcar-stage-record (fn-sn-files s) e))
+                            (node (fn-sn-node s)))
+                 (:instance fn-cstp-stage-record-preserves-state
+                            (files (fn-sn-files s)) (record e))
+                 (:instance fn-pcar-stage-record-is-stage-record
+                            (files (fn-sn-files s)) (record e))
+                 (:instance fn-psrv-sn-statep-node-statep)
+                 (:instance fn-psrv-topic-event-kinds)
+                 (:instance fn-psrv-topic-event-is-no-identity-event)
+                 (:instance fn-psrv-projection-ok-sequence
+                            (c (fn-sn-consumer s)) (expected (fn-sn-identity-next s)))
+                 (:instance fn-psrv-identity-step-of-plain-event))
+           :in-theory '(fn-pdc-sn-prepare-topic
+                        fn-cstp-relation-is-statep fn-cstp-sn-statep-files
+                        fn-cpr-event-servedp))))
+
+; -----------------------------------------------------------------------------
+; The configured owner's prepares: the reference's (:store (:prepare-X E))
+; through fn-ocfg-step is fn-ocl-owner-with-store over the Store's step
+; (fn-psrv-store-step-is-owner-with-store); these are that with the carried
+; Store prepare.
+
+(defun fn-pdc-ocfg-prepare-retention (oc event)
+  (declare (xargs :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))))
+  (fn-ocfg-with-owner
+   oc (fn-ocl-owner-with-store
+       (fn-ocfg-owner oc)
+       (fn-pdc-sn-prepare-retention (fn-own-store (fn-ocfg-owner oc)) event))))
+
+(defun fn-pdc-ocfg-prepare-consumer (oc event)
+  (declare (xargs :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))))
+  (fn-ocfg-with-owner
+   oc (fn-ocl-owner-with-store
+       (fn-ocfg-owner oc)
+       (fn-pdc-sn-prepare-consumer (fn-own-store (fn-ocfg-owner oc)) event))))
+
+; fn-psrv-prepare-topic (books/owner-prepare-served.lisp) with the carried
+; Store prepare: the consumer projection's admission first, as there.
+(defun fn-pdc-psrv-prepare-topic (oc event)
+  (declare (xargs :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))))
+  (let* ((o (fn-ocfg-owner oc))
+         (s (fn-own-store o)))
+    (if (and (fn-store-event-p event)
+             (eq (car (fn-ccar-cpe-projection-step
+                       (fn-sn-consumer s) event (fn-sn-identity-next s)))
+                 :ok))
+        (fn-ocfg-with-owner oc (fn-ocl-owner-with-store
+                                o (fn-pdc-sn-prepare-topic s event)))
+      oc)))
+
+; KEYSTONES (owner).  On every owner whose Store the live-history relation
+; admits, each is the reference the host called before.
+(defthm fn-pdc-ocfg-prepare-retention-is-ocfg-step-under-relation
+  (implies (fn-snt-relation (fn-own-store (fn-ocfg-owner oc)))
+           (equal (fn-pdc-ocfg-prepare-retention oc event)
+                  (fn-ocfg-step oc (list :store (list :prepare-retention event)) fn-arena)))
+  :hints (("Goal"
+           :use ((:instance fn-pdc-sn-prepare-retention-is-sn-prepare-retention-under-relation
+                            (s (fn-own-store (fn-ocfg-owner oc)))))
+           :in-theory '(fn-pdc-ocfg-prepare-retention fn-psrv-store-step-is-owner-with-store
+                        fn-snrt-step car-cons cdr-cons (:executable-counterpart equal)))))
+
+(defthm fn-pdc-ocfg-prepare-consumer-is-ocfg-step-under-relation
+  (implies (fn-snt-relation (fn-own-store (fn-ocfg-owner oc)))
+           (equal (fn-pdc-ocfg-prepare-consumer oc event)
+                  (fn-ocfg-step oc (list :store (list :prepare-consumer event)) fn-arena)))
+  :hints (("Goal"
+           :use ((:instance fn-pdc-sn-prepare-consumer-is-sn-prepare-consumer-under-relation
+                            (s (fn-own-store (fn-ocfg-owner oc)))))
+           :in-theory '(fn-pdc-ocfg-prepare-consumer fn-psrv-store-step-is-owner-with-store
+                        fn-snrt-step car-cons cdr-cons (:executable-counterpart equal)))))
+
+(defthm fn-pdc-psrv-prepare-topic-is-psrv-prepare-topic-under-relation
+  (implies (fn-snt-relation (fn-own-store (fn-ocfg-owner oc)))
+           (equal (fn-pdc-psrv-prepare-topic oc event)
+                  (fn-psrv-prepare-topic oc event)))
+  :hints (("Goal"
+           :use ((:instance fn-pdc-sn-prepare-topic-is-sn-prepare-topic-under-relation
+                            (s (fn-own-store (fn-ocfg-owner oc)))))
+           :in-theory '(fn-pdc-psrv-prepare-topic fn-psrv-prepare-topic-cases
+                        fn-ccar-cpe-projection-step-is-cpe-projection-step))))
+
+; With no hypothesis: where the reference stages, the owner is the reference's.
+(defthm fn-pdc-ocfg-prepare-retention-is-ocfg-step-when-staged
+  (implies (not (equal (fn-sn-prepare-retention (fn-own-store (fn-ocfg-owner oc)) event)
+                       (fn-own-store (fn-ocfg-owner oc))))
+           (equal (fn-pdc-ocfg-prepare-retention oc event)
+                  (fn-ocfg-step oc (list :store (list :prepare-retention event)) fn-arena)))
+  :hints (("Goal"
+           :use ((:instance fn-pdc-sn-prepare-retention-is-sn-prepare-retention-when-staged
+                            (s (fn-own-store (fn-ocfg-owner oc)))))
+           :in-theory '(fn-pdc-ocfg-prepare-retention fn-psrv-store-step-is-owner-with-store
+                        fn-snrt-step car-cons cdr-cons (:executable-counterpart equal)))))
+
+(defthm fn-pdc-ocfg-prepare-consumer-is-ocfg-step-when-staged
+  (implies (not (equal (fn-sn-prepare-consumer (fn-own-store (fn-ocfg-owner oc)) event)
+                       (fn-own-store (fn-ocfg-owner oc))))
+           (equal (fn-pdc-ocfg-prepare-consumer oc event)
+                  (fn-ocfg-step oc (list :store (list :prepare-consumer event)) fn-arena)))
+  :hints (("Goal"
+           :use ((:instance fn-pdc-sn-prepare-consumer-is-sn-prepare-consumer-when-staged
+                            (s (fn-own-store (fn-ocfg-owner oc)))))
+           :in-theory '(fn-pdc-ocfg-prepare-consumer fn-psrv-store-step-is-owner-with-store
+                        fn-snrt-step car-cons cdr-cons (:executable-counterpart equal)))))
+
+(defthm fn-pdc-psrv-prepare-topic-is-psrv-prepare-topic-when-staged
+  (implies (not (equal (fn-sn-prepare-topic (fn-own-store (fn-ocfg-owner oc)) event)
+                       (fn-own-store (fn-ocfg-owner oc))))
+           (equal (fn-pdc-psrv-prepare-topic oc event)
+                  (fn-psrv-prepare-topic oc event)))
+  :hints (("Goal"
+           :use ((:instance fn-pdc-sn-prepare-topic-is-sn-prepare-topic-when-staged
+                            (s (fn-own-store (fn-ocfg-owner oc)))))
+           :in-theory '(fn-pdc-psrv-prepare-topic fn-psrv-prepare-topic-cases
+                        fn-ccar-cpe-projection-step-is-cpe-projection-step))))
+
+; KEYSTONES (owner).  Each keeps the invariant the host carries.
+(defthm fn-pdc-ocfg-prepare-retention-preserves-invariant
+  (implies (fn-lgoc-invariantp oc)
+           (fn-lgoc-invariantp (fn-pdc-ocfg-prepare-retention oc e)))
+  :hints (("Goal"
+           :use ((:instance fn-pdc-sn-prepare-retention-preserves
+                            (s (fn-own-store (fn-ocfg-owner oc))))
+                 (:instance fn-psrv-owner-with-store-preserves-invariant
+                            (st (fn-pdc-sn-prepare-retention
+                                 (fn-own-store (fn-ocfg-owner oc)) e)))
+                 fn-lgoc-ocl-relation-cst)
+           :in-theory '(fn-pdc-ocfg-prepare-retention fn-pdc-sn-prepares-keep-histories
+                        fn-lgoc-invariantp))))
+
+(defthm fn-pdc-ocfg-prepare-consumer-preserves-invariant
+  (implies (fn-lgoc-invariantp oc)
+           (fn-lgoc-invariantp (fn-pdc-ocfg-prepare-consumer oc e)))
+  :hints (("Goal"
+           :use ((:instance fn-pdc-sn-prepare-consumer-preserves
+                            (s (fn-own-store (fn-ocfg-owner oc))))
+                 (:instance fn-psrv-owner-with-store-preserves-invariant
+                            (st (fn-pdc-sn-prepare-consumer
+                                 (fn-own-store (fn-ocfg-owner oc)) e)))
+                 fn-lgoc-ocl-relation-cst)
+           :in-theory '(fn-pdc-ocfg-prepare-consumer fn-pdc-sn-prepares-keep-histories
+                        fn-lgoc-invariantp))))
+
+(defthm fn-pdc-psrv-prepare-topic-preserves-invariant
+  (implies (fn-lgoc-invariantp oc)
+           (fn-lgoc-invariantp (fn-pdc-psrv-prepare-topic oc e)))
+  :hints (("Goal"
+           :use ((:instance fn-pdc-sn-prepare-topic-preserves
+                            (s (fn-own-store (fn-ocfg-owner oc))))
+                 (:instance fn-psrv-owner-with-store-preserves-invariant
+                            (st (fn-pdc-sn-prepare-topic
+                                 (fn-own-store (fn-ocfg-owner oc)) e)))
+                 fn-lgoc-ocl-relation-cst)
+           :in-theory '(fn-pdc-psrv-prepare-topic fn-pdc-sn-prepares-keep-histories
+                        fn-ccar-cpe-projection-step-is-cpe-projection-step
+                        fn-lgoc-invariantp))))
+
+; -----------------------------------------------------------------------------
+; The entries' words: :prepared exactly when the Store staged a record.
+
+(defthm fn-pdc-store-of-owner-prepares
+  (and (equal (fn-sbud-oc-store (fn-pdc-ocfg-prepare-retention oc e))
+              (fn-pdc-sn-prepare-retention (fn-sbud-oc-store oc) e))
+       (equal (fn-sbud-oc-store (fn-pdc-ocfg-prepare-consumer oc e))
+              (fn-pdc-sn-prepare-consumer (fn-sbud-oc-store oc) e))
+       (or (equal (fn-sbud-oc-store (fn-pdc-psrv-prepare-topic oc e)) (fn-sbud-oc-store oc))
+           (equal (fn-sbud-oc-store (fn-pdc-psrv-prepare-topic oc e))
+                  (fn-pdc-sn-prepare-topic (fn-sbud-oc-store oc) e))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn-pdc-ocfg-prepare-retention fn-pdc-ocfg-prepare-consumer
+                               fn-pdc-psrv-prepare-topic fn-lgoc-store-of-owner-with-store
+                               fn-sbud-oc-store))))
+
+(defun fn-pdc-pout-prepare-retention (oc e)
+  (declare (xargs :guard (fn-sn-statep (fn-sbud-oc-store oc))
+                  :guard-hints (("Goal" :in-theory (enable fn-sbud-oc-store)))))
+  (let ((next (fn-pdc-ocfg-prepare-retention oc e)))
+    (mv (if (fn-pout-stagedp (fn-sbud-oc-store oc) (fn-sbud-oc-store next))
+            :prepared
+          :refused)
+        next)))
+
+(defun fn-pdc-pout-prepare-consumer (oc e)
+  (declare (xargs :guard (fn-sn-statep (fn-sbud-oc-store oc))
+                  :guard-hints (("Goal" :in-theory (enable fn-sbud-oc-store)))))
+  (let ((next (fn-pdc-ocfg-prepare-consumer oc e)))
+    (mv (if (fn-pout-stagedp (fn-sbud-oc-store oc) (fn-sbud-oc-store next))
+            :prepared
+          :refused)
+        next)))
+
+(defun fn-pdc-pout-prepare-topic (oc e)
+  (declare (xargs :guard (fn-sn-statep (fn-sbud-oc-store oc))
+                  :guard-hints (("Goal" :in-theory (enable fn-sbud-oc-store)))))
+  (let ((next (fn-pdc-psrv-prepare-topic oc e)))
+    (mv (if (fn-pout-stagedp (fn-sbud-oc-store oc) (fn-sbud-oc-store next))
+            :prepared
+          :refused)
+        next)))
+
+(defthm fn-pdc-pout-prepares-answer-the-store-change
+  (and (let ((r (fn-pdc-pout-prepare-retention oc e)))
+         (and (equal (mv-nth 1 r) (fn-pdc-ocfg-prepare-retention oc e))
+              (equal (mv-nth 0 r)
+                     (if (equal (fn-sbud-oc-store (mv-nth 1 r)) (fn-sbud-oc-store oc))
+                         :refused :prepared))))
+       (let ((r (fn-pdc-pout-prepare-consumer oc e)))
+         (and (equal (mv-nth 1 r) (fn-pdc-ocfg-prepare-consumer oc e))
+              (equal (mv-nth 0 r)
+                     (if (equal (fn-sbud-oc-store (mv-nth 1 r)) (fn-sbud-oc-store oc))
+                         :refused :prepared))))
+       (let ((r (fn-pdc-pout-prepare-topic oc e)))
+         (and (equal (mv-nth 1 r) (fn-pdc-psrv-prepare-topic oc e))
+              (equal (mv-nth 0 r)
+                     (if (equal (fn-sbud-oc-store (mv-nth 1 r)) (fn-sbud-oc-store oc))
+                         :refused :prepared)))))
+  :hints (("Goal"
+           :use (fn-pdc-store-of-owner-prepares
+                 (:instance fn-pdc-sn-prepares-stage-or-keep (s (fn-sbud-oc-store oc)))
+                 (:instance fn-pout-stagedp-is-a-change
+                            (before (fn-sbud-oc-store oc))
+                            (after (fn-sbud-oc-store (fn-pdc-ocfg-prepare-retention oc e))))
+                 (:instance fn-pout-stagedp-is-a-change
+                            (before (fn-sbud-oc-store oc))
+                            (after (fn-sbud-oc-store (fn-pdc-ocfg-prepare-consumer oc e))))
+                 (:instance fn-pout-stagedp-is-a-change
+                            (before (fn-sbud-oc-store oc))
+                            (after (fn-sbud-oc-store (fn-pdc-psrv-prepare-topic oc e)))))
+           :in-theory '(fn-pdc-pout-prepare-retention fn-pdc-pout-prepare-consumer
+                        fn-pdc-pout-prepare-topic
+                        mv-nth car-cons cdr-cons (:executable-counterpart zp)
+                        (:executable-counterpart binary-+) (:executable-counterpart unary--)
+                        (:executable-counterpart equal)))))
+
+; And the words are the reference entries' where the store relation holds.
+(defthm fn-pdc-pout-prepares-are-pout-prepares-under-relation
+  (implies (fn-snt-relation (fn-sbud-oc-store oc))
+           (and (equal (fn-pdc-pout-prepare-retention oc e)
+                       (mv-list 2 (fn-pout-prepare-retention oc e fn-arena)))
+                (equal (fn-pdc-pout-prepare-consumer oc e)
+                       (mv-list 2 (fn-pout-prepare-consumer oc e fn-arena)))
+                (equal (fn-pdc-pout-prepare-topic oc e)
+                       (fn-pout-prepare-topic oc e))))
+  :hints (("Goal"
+           :use ((:instance fn-pdc-ocfg-prepare-retention-is-ocfg-step-under-relation (event e))
+                 (:instance fn-pdc-ocfg-prepare-consumer-is-ocfg-step-under-relation (event e))
+                 (:instance fn-pdc-psrv-prepare-topic-is-psrv-prepare-topic-under-relation (event e)))
+           :in-theory '(fn-pdc-pout-prepare-retention fn-pdc-pout-prepare-consumer
+                        fn-pdc-pout-prepare-topic fn-pout-prepare-retention
+                        fn-pout-prepare-consumer fn-pout-prepare-topic fn-sbud-oc-store
+                        mv-list))))
+
+(in-theory (disable fn-pdc-sn-prepare-retention fn-pdc-sn-prepare-consumer
+                    fn-pdc-sn-prepare-topic fn-pdc-ocfg-prepare-retention
+                    fn-pdc-ocfg-prepare-consumer fn-pdc-psrv-prepare-topic
+                    fn-pdc-pout-prepare-retention fn-pdc-pout-prepare-consumer
+                    fn-pdc-pout-prepare-topic))
