@@ -818,3 +818,31 @@ Actual operator query limit, Store R, frame/runtime representation and pooled
 quantum/lifetime admission must agree on the same retained operation. Selected
 modern category source hunks and authored regressions are an integration packet,
 not current full Store or endpoint qualification.
+
+The internal account scheduler retains one selected E/C operation with its
+original input-source key and job. Native code receives only its opaque ID;
+the durable adapter obtains the selected record internally. Before a private
+authority E node is staged, the same reserved BEGIN captures the old Store,
+canonical context, account metadata and committed root alias. Its subsequent
+account step consumes the actual retained node result and calls the guarded
+private authority stage once. A readout returns the complete full7 and captured
+root under the current typed operation/writer lease. The typed C sequence is
+not inferred from configuration generation. These new host callers are source
+assembly only; their modern includes, funding census, current-source invariant
+and actual durable activation remain unqualified. Preparation of a selected configuration row uses a fixed four-scalar size
+constructor: native string lengths and the row number feed the existing
+canonical size constructors without encoding or traversing strings. Its
+canonical-size theorem and complete tick-result witness establish this leaf
+boundary; actual source custody and operation funding remain separate.
+
+The selected operation retains its own typed account preparation receipt.
+Begin, Tick and selection thread the same enclosing `:owner-control` allocation
+ticket (slot, nonce and concrete slots), the shared read pool and STATE.
+Selection checks the registered operation-select receipt and current BODY
+association before constructing a decision; it neither mints nor completes
+the enclosing ticket. The actual outer prepay/cleanup producer still owes its
+installation and lifetime obligations. A successful private E account stage
+preserves committed authority revision, watermark, namespace and adopted rows,
+so the captured account publication sidecar is kept literally; seven CP child
+size carries advance separately. Only the actual typed C commit changes
+committed account/config authority.

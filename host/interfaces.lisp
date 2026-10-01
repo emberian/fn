@@ -4807,6 +4807,9 @@
               fn-ssr-lz-step-refines-resident))
 (definterface fn-ssr-rows
   :class :common-lisp-compliant)
+(definterface fn-ssr-at
+  :class :common-lisp-compliant
+  :kinds ((n natp)))
 (definterface fn-ssr-seed
   :class :common-lisp-compliant)
 ; Source: host/store-node-host.lisp, program mode over STATE.

@@ -5,6 +5,7 @@
 (in-package "ACL2")
 (include-book "admission-preparation-host")
 (include-book "../books/history-event-backing")
+(include-book "../books/history-semantic-writer-state")
 
 (defun fn-owner-history-seal-produced (fn-history-backing state)
  (declare (xargs :stobjs (fn-history-backing state) :mode :program
@@ -20,7 +21,12 @@
         (seal (and (boundp-global 'fn-owner-history-seal-intent state)
                    (f-get-global 'fn-owner-history-seal-intent state))))
   (cond
-   ((not (and (fn-apr-tokenp token) (fn-apr-livep token current)))
+   ((not (and (fn-apr-tokenp token) (fn-apr-livep token current)
+              (eq (fn-owner-history-writer-gate token state) :writer-current)
+              (fn-apr-tokenp (fn-hep-producer-token fn-history-backing))
+              (equal token (fn-hep-producer-token fn-history-backing))
+              (fn-apr-tokenp (fn-hed-at 6 (fn-hep-builder fn-history-backing)))
+              (equal token (fn-hed-at 6 (fn-hep-builder fn-history-backing)))))
     (mv :stale fn-history-backing state))
    ((member-eq (fn-prl-nth 2 current) '(:produced :promoted))
     ; Exact current registration is already complete. Retain all producer

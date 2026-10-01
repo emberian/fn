@@ -91,6 +91,31 @@ ACL2_BOOKS ?= books/defrecord \
 	books/consumer-account-config-marker-invariants \
 	books/identity-hex \
 	books/consumer-account-config-preparation \
+	books/account-adoption-input-source \
+	books/account-adoption-turn-state \
+	books/page-read-binding-revision \
+	books/account-adoption-turn-return \
+	books/account-adoption-turn \
+	books/consumer-account-operation-state \
+	books/consumer-configured-authority-state \
+	books/consumer-configured-authority-finish \
+	books/consumer-account-auth \
+	books/consumer-account-relation \
+	books/consumer-remote-codec \
+	books/consumer-account-config-row-carry \
+	books/consumer-account-private-frame \
+	tests/acl2/consumer-account-config-row-carry-tests \
+	tests/acl2/consumer-account-private-frame-tests \
+	books/admission-authority-install-plan \
+	books/history-preparation-page-ready \
+	books/snapshot-row-source-remap \
+	books/history-census-controller \
+	books/snapshot-held-remap \
+	books/snapshot-decode-remap \
+	books/history-source-byte-cursor \
+	books/history-normalized-span \
+	books/history-decoded-octet-scan \
+	books/history-cold-record-runtime \
 	books/consumer-account-config-commit \
 	books/consumer-account-transaction-driver \
 	tests/acl2/consumer-account-input-tests \
