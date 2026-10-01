@@ -60,7 +60,7 @@
      (mv :receiver-unavailable fn-rx-provider fn-receiver-turn fn-page-read-pool)
   (mv-let (word source consumed actor)
     (fn-ric-pending-response-observation recipient fn-index-backing)
-   (if (not (and (eq word :committed-input)
+   (if (not (and (eq word :committed-response)
                  (equal source (fn-rxt-source fn-receiver-turn))
                  (equal consumed (fn-prl-nth 5
                                    (fn-prl-nth 9 (fn-rxt-job fn-receiver-turn))))))
