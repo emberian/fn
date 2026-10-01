@@ -27,6 +27,7 @@
 
 (in-package "ACL2")
 (include-book "adt-lib")
+(include-book "adt-load")
 
 (program)
 
@@ -434,31 +435,18 @@
                         (pairlis$ (strip-cars (adt-tree-fn-alist name))
                                   (pairlis$ (strip-cdrs (adt-tree-fn-alist name)) nil))))
 
-(defun adt-tree-writer-events (name p)
-  (let* ((st (adt-sym name "$C"))
-         (put (adt-sym name "$C-POOL-PUT"))
-         (fillf (adt-sym name "$C-FILL"))
-         (plen (adt-sym name "$C-POOL-LENGTH"))
-         (dig (adt-sym name "$C-TW-DIGITS"))
-         (chars (adt-sym name "$C-TW-CHARS"))
-         (bytes (adt-sym name "$C-TW-BYTES"))
-         (ops (adt-sym name "$C-TW-OPS"))
-         (atomf (adt-sym name "$C-TW-ATOM"))
-         (tree (adt-sym name "$C-TW-TREE"))
-         (push (adt-sym name "$C-TW-PUSH"))
-         (cp (adt-sym name "$CP"))
-         (ghints `(("Goal" :in-theory (e/d (,cp adt-elt-p) (,(adt-sym cp "-IS-SHAPE")))))))
-    `((defun ,put (b ,st)
-        (declare (xargs :stobjs ,st :guard-hints ,ghints))
-        (let ((fl (,fillf ,st)))
-          (if (and (unsigned-byte-p 8 b) (natp fl) (< fl (,plen ,st)))
-              (let ((,st (,(adt-sym-pre "UPDATE-" (adt-sym name "$C-POOLI")) fl b ,st)))
-                (,(adt-sym-pre "UPDATE-" fillf) (+ 1 fl) ,st))
-            ,st)))
-      (defthm ,(adt-sym put "-BRIDGE")
-        (equal (,put b c) (adt-pool-cput ,p b c))
-        :hints (("Goal" :in-theory (enable ,put adt-pool-cput adt-pool-put update-nth-array))))
-      (defun ,dig (n ,st)
+; The walk's six writers over PUT, a put of one octet into stobj ST (the
+; columnar foundation's here, a paged one in books/def-representation.lisp):
+; each the generic writer of books/def-representation-tree-walk.lisp with
+; this put, so its meaning is obtained by functional instance.
+(defun adt-tree-walk-defuns (name put st)
+  (let ((dig (adt-sym name "$C-TW-DIGITS"))
+        (chars (adt-sym name "$C-TW-CHARS"))
+        (bytes (adt-sym name "$C-TW-BYTES"))
+        (ops (adt-sym name "$C-TW-OPS"))
+        (atomf (adt-sym name "$C-TW-ATOM"))
+        (tree (adt-sym name "$C-TW-TREE")))
+    `((defun ,dig (n ,st)
         (declare (xargs :stobjs ,st :guard (natp n) :measure (nfix n) :verify-guards nil
                         :hints (("Goal" :in-theory (disable floor)))
                         :guard-hints (("Goal" :in-theory (disable floor)))))
@@ -505,7 +493,33 @@
                       (,st (,bytes x ,st)))
                  (,ops n ,st)))
               ((consp x) (let ((,st (,tree (car x) 0 ,st))) (,tree (cdr x) (+ 1 (nfix n)) ,st)))
-              (t (let ((,st (,atomf x ,st))) (,ops n ,st)))))
+              (t (let ((,st (,atomf x ,st))) (,ops n ,st))))))))
+
+(defun adt-tree-writer-events (name p)
+  (let* ((st (adt-sym name "$C"))
+         (put (adt-sym name "$C-POOL-PUT"))
+         (fillf (adt-sym name "$C-FILL"))
+         (plen (adt-sym name "$C-POOL-LENGTH"))
+         (dig (adt-sym name "$C-TW-DIGITS"))
+         (chars (adt-sym name "$C-TW-CHARS"))
+         (bytes (adt-sym name "$C-TW-BYTES"))
+         (ops (adt-sym name "$C-TW-OPS"))
+         (atomf (adt-sym name "$C-TW-ATOM"))
+         (tree (adt-sym name "$C-TW-TREE"))
+         (push (adt-sym name "$C-TW-PUSH"))
+         (cp (adt-sym name "$CP"))
+         (ghints `(("Goal" :in-theory (e/d (,cp adt-elt-p) (,(adt-sym cp "-IS-SHAPE")))))))
+    `((defun ,put (b ,st)
+        (declare (xargs :stobjs ,st :guard-hints ,ghints))
+        (let ((fl (,fillf ,st)))
+          (if (and (unsigned-byte-p 8 b) (natp fl) (< fl (,plen ,st)))
+              (let ((,st (,(adt-sym-pre "UPDATE-" (adt-sym name "$C-POOLI")) fl b ,st)))
+                (,(adt-sym-pre "UPDATE-" fillf) (+ 1 fl) ,st))
+            ,st)))
+      (defthm ,(adt-sym put "-BRIDGE")
+        (equal (,put b c) (adt-pool-cput ,p b c))
+        :hints (("Goal" :in-theory (enable ,put adt-pool-cput adt-pool-put update-nth-array))))
+      ,@(adt-tree-walk-defuns name put st)
       ; Each writer returns a well-formed foundation (its guards need it).
       (defthm ,(adt-sym put "-CP")
         (implies (,cp c) (,cp (,put b c)))
@@ -680,7 +694,69 @@
                                     (adt-rec-p ,schema-const (,enc rec)))))
         (append ,a (list (,enc rec)))))))
 
-(defun defadt-fn-trees (name fields0 trees)
+; A WRITE-ONCE instance (def-representation :write-once t, lane
+; paged-catalog-4): no octets field has a set export, so the pool is written
+; only by an append and its fill is the live records' octets
+; (books/proto/adt-lib.lisp, adt-fill-is-load).
+(defun adt-exports-once (name fields once)
+  (cond ((endp fields) nil)
+        ((and once (eq (car (cadr (car fields))) :octets))
+         (cons `(,(adt-sym3 name "-GET-" (car (car fields))) :logic ,(adt-sym3 name "$A-GET-" (car (car fields)))
+                 :exec ,(adt-sym3 name "$C-GET-" (car (car fields))))
+               (adt-exports-once name (cdr fields) once)))
+        (t (append (adt-exports name (list (car fields)))
+                   (adt-exports-once name (cdr fields) once)))))
+
+(defun adt-is-thms-once (name fields j once)
+  (cond ((endp fields) nil)
+        ((and once (eq (car (cadr (car fields))) :octets))
+         (cons (car (adt-is-thms name (list (car fields)) j))
+               (adt-is-thms-once name (cdr fields) (+ 1 j) once)))
+        (t (append (adt-is-thms name (list (car fields)) j)
+                   (adt-is-thms-once name (cdr fields) (+ 1 j) once)))))
+
+; The fill-is-load theorems of a write-once instance: one per export that
+; writes (creator, append, append-t, each scalar set, clear).  Each is the
+; library's lemma at this instance's bridges; together they say every
+; reachable foundation's fill is adt-load of its logical sequence.
+(defun adt-once-set-thms (name fields schema-const)
+  (cond ((endp fields) nil)
+        ((eq (car (cadr (car fields))) :octets)
+         (adt-once-set-thms name (cdr fields) schema-const))
+        (t (cons `(defthm ,(adt-sym3 name "$C-FILL-IS-LOAD-OF-SET-" (car (car fields)))
+                    (implies (and (adt-fill-is-load ,schema-const c a) (natp i) (< i (len a)))
+                             (adt-fill-is-load ,schema-const
+                                               (,(adt-sym3 name "$C-SET-" (car (car fields))) i v c)
+                                               (,(adt-sym3 name "$A-SET-" (car (car fields))) i v a)))
+                    :hints (("Goal" :in-theory (enable ,(adt-sym3 name "$A-SET-" (car (car fields)))))))
+                 (adt-once-set-thms name (cdr fields) schema-const)))))
+
+(defun adt-once-events (name fields trees schema-const)
+  (let ((st (adt-sym name "$C")) (a (adt-sym name "$A")))
+    `((defthm ,(adt-sym name "$C-FILL-IS-LOAD-OF-CREATE")
+        (adt-fill-is-load ,schema-const (,(adt-sym-pre "CREATE-" st)) (,(adt-sym-pre "CREATE-" a)))
+        :hints (("Goal" :in-theory (enable ,(adt-sym-pre "CREATE-" a)))))
+      (defthm ,(adt-sym name "$C-FILL-IS-LOAD-OF-APPEND")
+        (implies (adt-fill-is-load ,schema-const c a)
+                 (adt-fill-is-load ,schema-const (,(adt-sym name "$C-APPEND") rec c)
+                                   (,(adt-sym name "$A-APPEND") rec a)))
+        :hints (("Goal" :in-theory (enable ,(adt-sym name "$A-APPEND")))))
+      ,@(and trees
+             `((defthm ,(adt-sym name "$C-FILL-IS-LOAD-OF-APPEND-T")
+                 (implies (and (adt-fill-is-load ,schema-const c a)
+                               ,@(adt-tree-okp-terms fields trees 0))
+                          (adt-fill-is-load ,schema-const (,(adt-sym name "$C-APPEND-T") rec c)
+                                            (,(adt-sym name "$A-APPEND-T") rec a)))
+                 :hints (("Goal" :in-theory (e/d (,(adt-sym name "$A-APPEND-T") adt-fill-is-load)
+                                                 (,(adt-sym name "$C-APPEND")))
+                          :use ((:instance ,(adt-sym name "$C-FILL-IS-LOAD-OF-APPEND")
+                                           (rec (,(adt-sym name "-TREE-ENC") rec)))))))))
+      ,@(adt-once-set-thms name fields schema-const)
+      (defthm ,(adt-sym name "$C-FILL-IS-LOAD-OF-CLEAR")
+        (adt-fill-is-load ,schema-const (,(adt-sym name "$C-CLEAR") c) (,(adt-sym name "$A-CLEAR") a))
+        :hints (("Goal" :in-theory (enable ,(adt-sym name "$A-CLEAR"))))))))
+
+(defun defadt-fn-trees-once (name fields0 trees once)
   (let* ((fields (adt-norm-fields fields0))
          (schema-const (adt-sym-const name "-SCHEMA*"))
          (cols (adt-columns name fields))
@@ -710,7 +786,7 @@
                         ,@(and trees
                                `((,(adt-sym name "-APPEND-T") :logic ,(adt-sym name "$A-APPEND-T")
                                   :exec ,(adt-sym name "$C-APPEND-T") :protect t)))
-                        ,@(adt-exports name fields)
+                        ,@(adt-exports-once name fields once)
                         (,(adt-sym name "-CLEAR") :logic ,clear-a :exec ,clear-c :protect t))))
          (ob-hints `(("Goal" :in-theory (enable ,corr ,ap ,create-a ,count-a ,append-a ,clear-a
                                                  ,@(and trees (list (adt-sym name "$A-APPEND-T")))
@@ -747,6 +823,7 @@
        (defun ,corr (c a)
          (declare (xargs :guard t :verify-guards nil))
          (adt-corr ,schema-const c a))
+       ,@(and once (adt-once-events name fields trees schema-const))
        ; The defabsstobj obligations, as ACL2 states them, each by one hint.
        (make-event
         (er-let* ((missing (defabsstobj-missing-events ,@(cdr defabs))))
@@ -773,7 +850,10 @@
        (defthm ,(adt-sym name "-CLEAR-IS-NIL")
          (equal (,(adt-sym name "-CLEAR") ,name) nil)
          :hints (("Goal" :in-theory (enable ,clear-a))))
-       ,@(adt-is-thms name fields 0))))
+       ,@(adt-is-thms-once name fields 0 once))))
+
+(defun defadt-fn-trees (name fields0 trees)
+  (defadt-fn-trees-once name fields0 trees nil))
 
 (defun defadt-fn (name fields0)
   (defadt-fn-trees name fields0 nil))

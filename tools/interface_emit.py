@@ -185,7 +185,68 @@ def declarations(root: Path = ROOT) -> list[dict]:
                 "raw_with": [_sym(t) for t in (kv.get(":raw-with") or [])],
                 "raw_guarded": kv.get(":raw-guarded"),
             })
+    rows = None
+    for d in found:
+        # `:raw-with (:carried NAME)' (books/def-carried.lisp): only the
+        # statements def-carried GENERATES -- NAME-ENTRY-carries and every
+        # NAME-PRED-bridge -- resolved here from the def-carried forms of
+        # the tree; ACL2 resolves the same from the world's fn-carried table
+        # and compares each generated formula with the statement regenerated
+        # from the world (books/def-carried.lisp fn-cd-raw-problem).
+        raw = d["raw_with"]
+        if raw and raw[0] == ":carried":
+            if rows is None:
+                rows = carried_rows(root)
+            # exactly (:carried NAME): anything else resolves to nothing and
+            # is a finding (books/definterface.lisp fn-di-raw-with-formp
+            # refuses the same forms)
+            d["raw_with_carried"] = raw[1] if len(raw) == 2 else "(malformed)"
+            d["raw_with"] = (carried_theorems(rows, raw[1], d["name"])
+                             if len(raw) == 2 else [])
     return found
+
+
+CARRIED_SOURCES = "books"
+
+
+def carried_rows(root: Path = ROOT) -> dict[str, dict]:
+    """NAME -> {established, transitions, concludes} of every top-level
+    def-carried form in the tree's books, each a list of [function, theorem]."""
+    rows: dict[str, dict] = {}
+    for path in sorted((root / CARRIED_SOURCES).glob("*.lisp")):
+        text = path.read_text(encoding="utf-8")
+        if "(def-carried " not in text:
+            continue
+        for form, _line in ledger.Reader(text).top_level():
+            if ledger.head(form) != "def-carried" or len(form) < 2:
+                continue
+            kv = ledger.keyword_plist(form[2:])
+            rows[_sym(form[1])] = {
+                key: [[_sym(e[0]), _sym(e[1])] for e in (kv.get(":" + key) or [])
+                      if isinstance(e, list) and len(e) >= 2
+                      and isinstance(e[0], (str, ledger.Sym)) and isinstance(e[1], (str, ledger.Sym))]
+                for key in ("established", "transitions", "concludes")}
+    return rows
+
+
+def carried_generated(rows: dict[str, dict]) -> set[str]:
+    """Every theorem name the def-carried forms generate."""
+    return {"{}-{}-{}".format(name, f, suffix)
+            for name, row in rows.items()
+            for key, suffix in (("established", "establishes"),
+                                ("transitions", "carries"), ("concludes", "bridge"))
+            for f, _t in row[key]}
+
+
+def carried_theorems(rows: dict[str, dict], carried: str | None, entry: str) -> list[str]:
+    """The :raw-with theorems of ENTRY through the carried invariant CARRIED,
+    all generated: CARRIED-ENTRY-carries and every CARRIED-PRED-bridge;
+    [] when there is no such row or ENTRY is not one of its transitions."""
+    row = rows.get(carried or "")
+    if row is None or not any(f == entry for f, _t in row["transitions"]):
+        return []
+    return (["{}-{}-carries".format(carried, entry)]
+            + ["{}-{}-bridge".format(carried, p) for p, _t in row["concludes"]])
 
 
 def _lisp_data(value) -> str:
@@ -213,7 +274,9 @@ def render_raw_declarations(decls: list[dict]) -> str:
             continue
         kinds = " ".join("({} {})".format(*pair) for pair in d["kinds"])
         route = ""
-        if d.get("raw_with"):
+        if d.get("raw_with_carried"):
+            route += " :raw-with (:carried " + d["raw_with_carried"] + ")"
+        elif d.get("raw_with"):
             route += " :raw-with (" + " ".join(d["raw_with"]) + ")"
         if guarded is not None:
             route += " :raw-guarded " + _lisp_data(guarded)
@@ -301,6 +364,7 @@ def render_registry(decls: list[dict], reading: dict) -> str:
             "direct": d["direct"],
             "delegates": d.get("delegates"),
             "raw_with": d.get("raw_with") or [],
+            "raw_with_carried": d.get("raw_with_carried"),
             "raw_guarded": d.get("raw_guarded"),
             "dispatched_from": sorted(reading["dispatched"].get(d["name"], ())),
             "applied_directly_in": sorted(reading["direct"].get(d["name"], ())),
@@ -324,7 +388,8 @@ def render_registry(decls: list[dict], reading: dict) -> str:
         # definition, with the theorems its declaration names; ACL2 checks
         # each against the loaded world at image build
         # (books/definterface.lisp fn-di-raw-with-problem).
-        "raw_dispatched": [{"name": d["name"], "raw_with": d["raw_with"]}
+        "raw_dispatched": [{"name": d["name"], "raw_with": d["raw_with"],
+                            "raw_with_carried": d.get("raw_with_carried")}
                            for d in decls if d.get("raw_with")],
         "raw_guarded": [{"name": d["name"], "abi": d["raw_guarded"]}
                         for d in decls if d.get("raw_guarded") is not None],
@@ -343,7 +408,7 @@ def tree_theorems(root: Path = ROOT) -> set[str]:
     for path in sorted((root / "books").glob("*.lisp")):
         found.update(m.group(1).lower()
                      for m in THEOREM_FORM.finditer(path.read_text(encoding="utf-8")))
-    return found
+    return found | carried_generated(carried_rows(root))
 
 
 def findings(decls: list[dict], reading: dict, root: Path = ROOT) -> list[str]:
@@ -365,6 +430,10 @@ def findings(decls: list[dict], reading: dict, root: Path = ROOT) -> list[str]:
         elif d["root"] is None and name not in reading["dispatched"]:
             out.append("{}: {} is declared but the raw host never dispatches it (stale); "
                        "remove the declaration or name its role".format(where, name))
+        if d.get("raw_with_carried") is not None and not d.get("raw_with"):
+            out.append("{}: {} :raw-with (:carried {}) resolves to no theorems: no def-carried "
+                       "row of that name in {}/ names {} among its transitions".format(
+                           where, name, d["raw_with_carried"], CARRIED_SOURCES, name))
         if d.get("raw_with"):
             # D40: the source can say this much; the world check (the guard's
             # carried conjuncts concluded by the named theorems) is ACL2's at

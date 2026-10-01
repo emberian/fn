@@ -4313,6 +4313,17 @@
   :class :common-lisp-compliant
   :direct "the raw body of A-ARENA-STORED's realizer (host/native/extent.lisp fn-arena-stored) recognizes the compressed extent itself; guard t")
 
+;; books/assumptions-pgs-host-io.lisp
+
+; host/native/extent.lisp applies them in A-PGS-HOST-IO's frame fill
+; (fn-pgs-fill-frame, lane stage-0-4).
+(definterface fn-pgs-frame-len
+  :class :common-lisp-compliant
+  :direct "the raw body of A-PGS-HOST-IO's frame fill (host/native/extent.lisp fn-pgs-fill-frame) reads the selected array's length to refuse a range outside it; SEL checked against 0, 1, 2 first")
+(definterface fn-pgs-frame-put
+  :class :common-lisp-compliant
+  :direct "the raw body of A-PGS-HOST-IO's frame fill (host/native/extent.lisp fn-pgs-fill-frame) is the constraint's right-hand side, the put of fn-pgs-fill-realize's 2048 u64 words at BASE; the selector and range are checked first, the words are the realizer's")
+
 ;; books/payload-extent-read.lisp
 
 (definterface fn-owner-chunk-span :class :program)

@@ -67,11 +67,9 @@ class GraphTests(unittest.TestCase):
         self.assertIn("create-fn-arena$p", self.graph.reachable)
         self.assertIn("create-fn-arena-paged", self.graph.host_chain("create-fn-arena$p"))
 
-    def test_the_bridges_count_as_host_lines(self):
-        """tools/run_owner.py drives the owner by building ACL2 forms as
-        text. A symbol named only there is still called by the host."""
-        self.assertGreater(self.graph.seeds["bridge"], 0)
-
+    def test_only_loaded_hosts_seed_book_symbols(self):
+        self.assertGreater(self.graph.seeds["host"], 0)
+        self.assertEqual(set(self.graph.seeds), {"host"})
 
     def test_a_record_recognizer_reaches_its_field_conjuncts(self):
         """PKT-394: fn-sco-finalize-from checks fn-node-statep, whose
@@ -116,10 +114,6 @@ class GraphTests(unittest.TestCase):
         # accessors and the constructor are plumbing, not definitions here
         self.assertNotIn("fn-q-a", defs)
         self.assertNotIn("fn-q-make", defs)
-
-    def test_this_checker_is_not_a_bridge(self):
-        self.assertNotIn(Path(reach_check.__file__).resolve(),
-                         [p.resolve() for p in self.graph.bridges])
 
 
 class SubjectRuleTests(unittest.TestCase):
@@ -444,7 +438,7 @@ class SharedGraphTests(unittest.TestCase):
     def test_the_host_chain_starts_at_a_host_line(self):
         chain = self.graph.host_chain("fn-nntp-session-command")
         self.assertTrue(chain)
-        self.assertTrue(chain[0].startswith(("host/", "tools/", "stobj ")), chain)
+        self.assertTrue(chain[0].startswith(("host/", "stobj ")), chain)
         self.assertEqual(chain[-1], "fn-nntp-session-command")
         self.assertEqual(self.graph.host_chain("fn-nntp-run-session"), [])
 
@@ -663,6 +657,36 @@ class LoadedHostTests(unittest.TestCase):
             self.assertEqual(
                 reach_check.loaded_host_files(("tools/extract/world-host.lisp",), root),
                 {"tools/extract/world-host.lisp"})
+
+    def test_a_book_symbol_mentioned_only_by_python_is_an_orphan(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "books").mkdir()
+            (root / "tools").mkdir()
+            (root / "host/native").mkdir(parents=True)
+            (root / "host/native/build.lisp").write_text(
+                '(ld "host/live.lisp")\n')
+            (root / "host/live.lisp").write_text(
+                '(defun host-live (x) (fn-live x))\n')
+            (root / "books/x.lisp").write_text(
+                '(defun fn-live (x) x)\n'
+                '(defun fn-python-only (x) (cons x x))\n'
+                '(defthm python-only-property (consp (fn-python-only x)))\n')
+            (root / "tools/x.py").write_text('SYMBOL = "fn-python-only"\n')
+            rows = [{"id": "PRF-T1", "events": ["python-only-property"]}]
+            loaded = reach_check.loaded_host_files(root=root)
+            with patch.object(reach_check, "ROOT", root), \
+                    patch.object(reach_check, "loaded_host_files", return_value=loaded), \
+                    patch.object(reach_check, "load_rows", return_value=rows):
+                graph = reach_check.Graph()
+                self.assertIn("fn-live", graph.reachable)
+                self.assertIn("fn-python-only", graph.book_defs)
+                self.assertNotIn("fn-python-only", graph.reachable)
+                findings, hosted, unresolved = reach_check.audit(graph)
+            self.assertEqual((hosted, unresolved), (0, []))
+            self.assertEqual([f.key() for f in findings],
+                             ["PRF-T1:python-only-property"])
+            self.assertEqual(findings[0].subjects, ["fn-python-only"])
 
     def test_the_extraction_worlds_ports_are_host_lines(self):
         graph = reach_check.Graph()

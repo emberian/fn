@@ -9,6 +9,7 @@
 
 (in-package "ACL2")
 (include-book "proto/adt-lib")
+(include-book "def-representation-paged")
 
 ; -----------------------------------------------------------------------------
 ; Total list operations for a list foundation.
@@ -131,5 +132,14 @@
            (adt-corr s (adt-set-c s 0 i v c) (update-nth i (list v) (adt-wrap1 a))))
   :hints (("Goal" :use ((:instance adt-corr-set (j 0) (a (adt-wrap1 a))))
            :in-theory (e/d (adt-set-a) (adt-corr-set)))))
+
+; The same over the paged foundation (lane gate-b-2): `adt-pg-corr-set' at
+; column 0, for a paged :scalar instance's set obligation.
+(defthm adt-pg-corr-set-scalar
+  (implies (and (adt-pg-corr s r q c (adt-wrap1 a)) (equal (len s) 1)
+                (natp i) (< i (len a)) (adt-val-okp (car s) v))
+           (adt-pg-corr s r q (adt-pg-set-c s 0 i v r q dp c) (update-nth i (list v) (adt-wrap1 a))))
+  :hints (("Goal" :use ((:instance adt-pg-corr-set (j 0) (a (adt-wrap1 a))))
+           :in-theory (e/d (adt-set-a) (adt-pg-corr-set)))))
 
 (in-theory (disable adt-wrap1 adt-scalar-seq-p))

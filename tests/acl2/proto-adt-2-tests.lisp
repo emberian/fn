@@ -193,6 +193,8 @@
 ; -----------------------------------------------------------------------------
 ; 5. The group table on the columns (nested stamp, option): create, create
 ;    again (revive in place, keep the watermark), retire -- each the model's.
+;    Since fa3fc3375 an entry carries its group authority and its generation;
+;    a create (or revive) leaves the group ungoverned ("" at 0).
 
 (defconst *st0* '(:fn-clock-observation 10 20 1 t))
 
@@ -219,4 +221,4 @@
 
 (assert-event (and (equal (cfgroup-run) (cfgroup-model))
                    (equal (car (cfgroup-run))
-                          (list "alt.test" 3 *st0* nil "fn-policy-read-only-1" 0))))
+                          (list "alt.test" 3 *st0* nil "fn-policy-read-only-1" 0 "" 0))))
