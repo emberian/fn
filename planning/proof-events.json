@@ -5827,6 +5827,11 @@
         {
           "kind": "theorem",
           "name": "fn-saw-held-read-prefix-stops-the-pipeline"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arc-redeem-refuses-exactly-past-the-operator-bound",
+          "note": "KEYSTONE (PKT-399). MODEL-LEVEL: host/native-admin-host.lisp fn-acct-host-owner-redeem-stage is rewired to call fn-arc-redeem-plan after stage 0 (it computes the same table today). Teeth: tests/acl2/account-redeem-count-tests.lisp (a live value with a redeemed row, a pending invitation and a binding; auth.toml counted; corrupted AUTHINFO configuration; mutation counting every row)."
         }
       ]
     },

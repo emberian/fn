@@ -843,6 +843,8 @@
     "tests/acl2/held-message-id-answer-tests",
     "books/consumer-replay-bound",
     "tests/acl2/consumer-replay-bound-tests",
+    "books/account-redeem-count",
+    "tests/acl2/account-redeem-count-tests",
     "tests/acl2/profile-monotonicity-tests",
     "books/store-budget-article",
     "tests/acl2/store-budget-article-tests",
@@ -2317,26 +2319,26 @@
     "tests/acl2/substrate-commit-codec-gap-tests"
   ],
   "totals": {
-    "books": 2717,
-    "books_in_root_closure": 2582,
-    "roots": 2313,
-    "theorems": 35514,
-    "functions": 22699,
-    "assert_events": 25411,
-    "must_fails": 2563,
+    "books": 2719,
+    "books_in_root_closure": 2584,
+    "roots": 2315,
+    "theorems": 35516,
+    "functions": 22706,
+    "assert_events": 25431,
+    "must_fails": 2564,
     "prover_refusals": 0,
     "encapsulates": 193,
     "guards": {
       "verified": 3843,
       "declared-off": 2865,
-      "default-guarded": 12685,
-      "default-unguarded": 3306
+      "default-guarded": 12687,
+      "default-unguarded": 3311
     },
     "suspect_theorems": 1345,
     "export_hygiene_warnings": 392,
     "enabled_projection_warnings": 80,
     "teeth_form_warnings": 281,
-    "include_hygiene_warnings": 3388,
+    "include_hygiene_warnings": 3392,
     "host_names_warnings": 3139,
     "hand_written_record_warnings": 19
   },
@@ -2821,6 +2823,33 @@
         "accounts",
         "consumer-position",
         "nntp-responses"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/account-redeem-count.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "accounts",
+        "nntp-auth"
       ],
       "system_includes": [],
       "suspects": [],
@@ -50443,6 +50472,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/account-redeem-count-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 17,
+      "must_fails": 1,
+      "prover_refusals": 0,
+      "defconsts": 9,
+      "defmacros": 7,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/account-redeem-count",
+        "../../books/crypto-attach",
+        "must-fail-checked"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/accounts-snapshot-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -59408,21 +59465,22 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 4,
+      "functions": 9,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 4
+        "default-unguarded": 9
       },
       "verify_guards_events": 0,
-      "assert_events": 12,
+      "assert_events": 15,
       "must_fails": 1,
       "prover_refusals": 0,
-      "defconsts": 4,
+      "defconsts": 7,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/consumer-owner-local",
         "../../books/consumer-replay-bound",
         "must-fail-checked"
       ],
@@ -96468,6 +96526,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/account-redeem-count.lisp",
+        "line": 23,
+        "include": "accounts",
+        "included": "books/accounts.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/account-replay-source.lisp",
         "line": 4,
         "include": "history-source-capture",
@@ -107550,7 +107615,7 @@
       },
       {
         "book": "books/transit-same-decision.lisp",
-        "line": 57,
+        "line": 59,
         "include": "transit-header-limits",
         "included": "books/transit-header-limits.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -107665,6 +107730,20 @@
         "line": 6,
         "include": "../../books/account-list",
         "included": "books/account-list.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/account-redeem-count-tests.lisp",
+        "line": 8,
+        "include": "../../books/account-redeem-count",
+        "included": "books/account-redeem-count.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/account-redeem-count-tests.lisp",
+        "line": 10,
+        "include": "must-fail-checked",
+        "included": "tests/acl2/must-fail-checked.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -111967,14 +112046,21 @@
       },
       {
         "book": "tests/acl2/consumer-replay-bound-tests.lisp",
-        "line": 6,
+        "line": 9,
         "include": "../../books/consumer-replay-bound",
         "included": "books/consumer-replay-bound.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/consumer-replay-bound-tests.lisp",
-        "line": 7,
+        "line": 10,
+        "include": "../../books/consumer-owner-local",
+        "included": "books/consumer-owner-local.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/consumer-replay-bound-tests.lisp",
+        "line": 11,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"

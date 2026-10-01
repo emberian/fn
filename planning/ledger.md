@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2717 |
-| Certification roots in the Makefile | 2313 |
-| Books inside the root closure | 2582 |
-| `defthm` and `defthmd` events | 35514 |
-| `defun` events | 22699 |
+| Books read | 2719 |
+| Certification roots in the Makefile | 2315 |
+| Books inside the root closure | 2584 |
+| `defthm` and `defthmd` events | 35516 |
+| `defun` events | 22706 |
 | Functions with verified guards | 3843 |
 | Functions declared `:verify-guards nil` and never verified | 2865 |
-| Functions left at the default with an explicit guard | 12685 |
-| Functions left at the default with no guard | 3306 |
-| `assert-event` checks | 25411 |
-| `must-fail` checks | 2563 |
+| Functions left at the default with an explicit guard | 12687 |
+| Functions left at the default with no guard | 3311 |
+| `assert-event` checks | 25431 |
+| `must-fail` checks | 2564 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 193 |
 | Theorems flagged SUSPECT by shape | 1345 |
 | Export-hygiene warnings | 392 |
 | Enabled-projection warnings | 80 |
 | Teeth-form warnings | 281 |
-| Include-hygiene warnings | 3388 |
+| Include-hygiene warnings | 3392 |
 | Host-names warnings | 3139 |
 | Hand-written-record warnings | 19 |
 
@@ -104,6 +104,7 @@ that `make certify` requests.
 | `books/account-config-generation-cursor.lisp` | - | 4 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/account-config-history-cursor.lisp` | - | 5 | 6 | 0/1/5/0 | 0 | 0 | 0 |
 | `books/account-list.lisp` | closure | 9 | 15 | 2/0/13/0 | 0 | 0 | 0 |
+| `books/account-redeem-count.lisp` | root | 2 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/account-replay-source.lisp` | - | 0 | 4 | 0/3/1/0 | 0 | 0 | 0 |
 | `books/accounts.lisp` | closure | 63 | 23 | 0/0/22/1 | 0 | 0 | 2 |
 | `books/admission-authority-install-plan.lisp` | root | 0 | 3 | 0/0/3/0 | 0 | 0 | 0 |
@@ -1737,6 +1738,7 @@ that `make certify` requests.
 | `tests/acl2/account-adoption-turn-return-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `tests/acl2/account-adoption-turn-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 7 | 0 | 0 |
 | `tests/acl2/account-list-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 20 | 0 | 0 |
+| `tests/acl2/account-redeem-count-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 1 | 0 |
 | `tests/acl2/accounts-snapshot-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 26 | 7 | 0 |
 | `tests/acl2/accounts-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 116 | 17 | 0 |
 | `tests/acl2/accounts-wire-tests.lisp` | root | 11 | 5 | 0/1/0/4 | 31 | 0 | 0 |
@@ -2062,7 +2064,7 @@ that `make certify` requests.
 | `tests/acl2/consumer-remote-visible-buffer-tests.lisp` | root | 0 | 6 | 0/0/6/0 | 5 | 0 | 0 |
 | `tests/acl2/consumer-remote-wire-charge-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 4 | 0 | 0 |
 | `tests/acl2/consumer-remote-withdrawal-buffer-tests.lisp` | root | 0 | 4 | 0/0/4/0 | 5 | 0 | 0 |
-| `tests/acl2/consumer-replay-bound-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 12 | 1 | 0 |
+| `tests/acl2/consumer-replay-bound-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 15 | 1 | 0 |
 | `tests/acl2/consumer-store-events-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 6 | 1 | 0 |
 | `tests/acl2/consumer-store-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 34 | 4 | 0 |
 | `tests/acl2/consumer-store-node-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 32 | 0 | 0 |

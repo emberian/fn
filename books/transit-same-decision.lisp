@@ -29,11 +29,13 @@
 ;     gets the same byte decision.
 ;   fn-tsd-open-connection-pin-is-not-the-control-pin: in a configured owner
 ;     state, an open connection's pinned configuration is never the control
-;     id's.  An NNTP transit is in flight only while its connection is open
-;     (fn-ocfg-close drops the connection's in-flight submission; witnessed in
-;     the tests), so the two carriers' authority configurations differ on
-;     every reachable drain, and the authority verdicts are compared by
-;     fn-tsd-bp-transit-authority-is-ungoverned, not equated.
+;     id's: while an NNTP transit's connection is open, the two carriers'
+;     authority configurations differ, and the verdicts are compared by
+;     fn-tsd-bp-transit-authority-is-ungoverned, not equated.  OPEN: no
+;     carried invariant ties an in-flight or queued submission's id to an
+;     open connection (fn-own-relation, fn-ocfg-statep do not); the tests
+;     witness that fn-ocfg-close drops the connection's in-flight
+;     submission, which is not a preservation proof.
 ;   Neither keystone needs (stringp peer): a submitted BP delivery names a
 ;   configured peer, whose name is a string (fn-tsd-submitted-names-a-string-peer).
 ;

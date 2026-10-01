@@ -1,56 +1,85 @@
-; Teeth for books/consumer-replay-bound (PKT-370): the keystone's whole
-; antecedent and conclusion on a log the served admission writes, its one
-; hypothesis removed (a register past field 9 that the replay, which runs no
-; admission bound, still applies), and a labelled mutation.
+; Teeth for books/consumer-replay-bound (PKT-370).  The consumer log is
+; written by the served producer (books/consumer-owner-local.lisp:
+; fn-col-bootstrap, fn-col-register under MAX, fn-col-unregister) and
+; committed through the Store (fn-sn-prepare-consumer, fn-sn-finish); the
+; open replays the committed records (fn-cpe-projection-replay nil RECORDS
+; 0).  Per the keystone: the whole antecedent and conclusion, its one
+; hypothesis removed, and a labelled mutation.
 (in-package "ACL2")
 (include-book "../../books/consumer-replay-bound")
+(include-book "../../books/consumer-owner-local")
 (include-book "must-fail-checked")
 
-; An opened profile whose field 9 admits two consumers.
+; An opened profile whose max-consumers admits two consumers.
 (defconst *crbt-profile* (fn-bs-profile-put *fn-bs-pf-max-consumers* 2
                                             *fn-bs-profile-defaults*))
 (assert-event (fn-bs-profile-validp *crbt-profile*))
 (assert-event (equal (fn-bs-profile-max-consumers *crbt-profile*) 2))
 
-(defconst *crbt-boot* (fn-cpe-make 0 0 0 '(:bootstrap (1) (2))))
-(defun crbt-reg (seq consumer epoch)
-  (fn-cpe-make seq seq seq (list :register consumer '(4) '(5) 1 1 epoch)))
-(defun crbt-replay (records) (fn-cpe-projection-replay nil records 0))
-(defun crbt-table-len (records) (len (fn-cp-nth 5 (fn-cp-nth 1 (crbt-replay records)))))
-(defun crbt-within (records)
-  (fn-crb-registers-within nil records 0 (fn-bs-profile-max-consumers *crbt-profile*)))
+; The Store commit of one proposed consumer event (the reserve, prepare,
+; record I/O and finish the owner drives).
+(defun crbt-commit (s event)
+  (fn-sn-finish
+   (fn-sn-io
+    (fn-sn-io
+     (fn-sn-io (fn-sn-prepare-consumer
+                (fn-sn-io (fn-sn-io (fn-sn-io (fn-sn-io s :start-frontier nil)
+                                              :frontier-file :ok)
+                                    :frontier-replace :ok)
+                          :frontier-directory :ok)
+                event)
+               :record-file :ok)
+     :record-link :ok)
+    :record-directory :ok)))
+; The served proposal over the store, committed when it is a write.
+(defun crbt-propose (s result)
+  (if (eq (car result) :write) (crbt-commit s (cadr result)) s))
+(defun crbt-owner (s) (fn-own-start s 2))
+(defun crbt-id (k) (make-list 32 :initial-element k))
+(defconst *crbt-group* '(102 110 46 116 101 115 116)) ; fn.test
+(defun crbt-register (s max k)
+  (crbt-propose s (fn-col-register (crbt-owner s) max (crbt-id k) *crbt-group*)))
+(defun crbt-records (s) (fn-sf-records (fn-sn-files s)))
+(defun crbt-replay (s) (fn-cpe-projection-replay nil (crbt-records s) 0))
+(defun crbt-table-len (s) (len (fn-cp-nth 5 (fn-cp-nth 1 (crbt-replay s)))))
+(defun crbt-within (s max) (fn-crb-registers-within nil (crbt-records s) 0 max))
 
-; fn-crb-replay-keeps-the-consumer-bound, REACHABLE positive: bootstrap,
-; register A and B, unregister A, register C.
-; Every register is the served admission's write under field 9 in the state
-; replay reaches (C is admitted once A is gone), so the antecedent holds;
-; the replayed table holds two entries, within the bound.
-(defconst *crbt-log*
-  (list *crbt-boot* (crbt-reg 1 '(3) 1) (crbt-reg 2 '(6) 2)
-        (fn-cpe-make 3 3 3 '(:unregister (3) 1))
-        (crbt-reg 4 '(7) 3)))
-(assert-event (equal (car (crbt-replay *crbt-log*)) :ok))
-(assert-event (crbt-within *crbt-log*))
-(assert-event (equal (crbt-table-len *crbt-log*) 2))
-(assert-event (<= (crbt-table-len *crbt-log*)
-                  (nfix (fn-bs-profile-max-consumers *crbt-profile*))))
-; The third register was admitted only because the unregister made room:
-; against the table before the unregister, the served admission refuses it.
-(assert-event (equal (fn-cp-register-within
-                      (fn-cp-nth 1 (crbt-replay (take 3 *crbt-log*))) 2
-                      '(4) '(7) '(5) 1 1)
+; Bootstrap, then two registrations under the bound 2.
+(defconst *crbt-s0*
+  (crbt-propose (fn-sn-initial '("fn.test") 16)
+                (fn-col-bootstrap (crbt-owner (fn-sn-initial '("fn.test") 16))
+                                  (crbt-id 11) (crbt-id 12))))
+(defconst *crbt-s2* (crbt-register (crbt-register *crbt-s0* 2 1) 2 2))
+; A third registration under the bound 2 is refused by the producer and
+; nothing is committed.
+(assert-event (equal (fn-col-register (crbt-owner *crbt-s2*) 2 (crbt-id 3) *crbt-group*)
                      '(:refused :max-consumers)))
+; Unregister the first, then the third is admitted.
+(defconst *crbt-s3*
+  (crbt-propose *crbt-s2* (fn-col-unregister (crbt-owner *crbt-s2*) (crbt-id 1))))
+(defconst *crbt-s4* (crbt-register *crbt-s3* 2 3))
+(assert-event (equal (len (crbt-records *crbt-s4*)) 5))
 
-; Hypothesis removal (REACHABLE log, no unregister): a third register while
-; two are held.  The served admission would refuse it (:max-consumers), so
-; the antecedent fails; the replay, which re-runs fn-cp-register without the
-; bound, applies it, and the replayed table holds three, past field 9.
-(defconst *crbt-past*
-  (list *crbt-boot* (crbt-reg 1 '(3) 1) (crbt-reg 2 '(6) 2) (crbt-reg 3 '(7) 3)))
-(assert-event (equal (car (crbt-replay *crbt-past*)) :ok))
-(assert-event (not (crbt-within *crbt-past*)))
-(assert-event (equal (crbt-table-len *crbt-past*) 3))
-(assert-event (not (<= (crbt-table-len *crbt-past*)
+; fn-crb-replay-keeps-the-consumer-bound, REACHABLE positive: the log the
+; producer wrote under max-consumers 2 satisfies the antecedent, the open's
+; replay succeeds, and the replayed table holds two, at the bound.
+(assert-event (crbt-within *crbt-s4* (fn-bs-profile-max-consumers *crbt-profile*)))
+(assert-event (equal (car (crbt-replay *crbt-s4*)) :ok))
+(assert-event (equal (crbt-table-len *crbt-s4*) 2))
+(assert-event (<= (crbt-table-len *crbt-s4*)
+                  (nfix (fn-bs-profile-max-consumers *crbt-profile*))))
+
+; Hypothesis removal (REPLAY-REACHABLE: a log the producer wrote under the
+; bound 3, replayed under max-consumers 2).  Three registrations commit; at
+; the third, the admission under 2 would refuse, so the antecedent fails;
+; the replay re-runs fn-cp-register without the bound and holds three.
+(defconst *crbt-s-past* (crbt-register *crbt-s2* 3 3))
+(assert-event (equal (len (crbt-records *crbt-s-past*)) 4))
+(assert-event (not (crbt-within *crbt-s-past* (fn-bs-profile-max-consumers *crbt-profile*))))
+(assert-event (crbt-within *crbt-s-past* 3))
+(assert-event (equal (car (crbt-replay *crbt-s-past*)) :ok))
+(assert-event (equal (crbt-table-len *crbt-s-past*) 3))
+(assert-event (not (<= (crbt-table-len *crbt-s-past*)
                        (nfix (fn-bs-profile-max-consumers *crbt-profile*)))))
 (must-fail-checked
  (defthm crbt-without-registers-within
@@ -59,7 +88,7 @@
    :hints (("Goal" :in-theory (disable fn-cpe-projection-replay
                                        fn-bs-profile-max-consumers)))))
 
-; MUTATION: the conclusion strengthened to strictly below field 9 fails at
-; the positive, whose table is exactly at the bound.
-(assert-event (not (< (crbt-table-len *crbt-log*)
+; MUTATION: the conclusion strengthened to strictly below max-consumers
+; fails at the positive, whose table is exactly at the bound.
+(assert-event (not (< (crbt-table-len *crbt-s4*)
                       (nfix (fn-bs-profile-max-consumers *crbt-profile*)))))
