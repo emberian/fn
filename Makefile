@@ -140,6 +140,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/identity-hex \
 	books/consumer-account-config-preparation \
 	books/consumer-account-config-posting-relation \
+	books/control-visible-prefix-bound \
 	books/consumer-account-config-row-carry \
 	books/consumer-account-config-commit \
 	books/consumer-account-private-frame \

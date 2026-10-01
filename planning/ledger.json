@@ -129,6 +129,7 @@
     "books/identity-hex",
     "books/consumer-account-config-preparation",
     "books/consumer-account-config-posting-relation",
+    "books/control-visible-prefix-bound",
     "books/consumer-account-config-row-carry",
     "books/consumer-account-config-commit",
     "books/consumer-account-private-frame",
@@ -1848,10 +1849,10 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1929,
-    "books_in_root_closure": 1922,
-    "roots": 1844,
-    "theorems": 29137,
+    "books": 1930,
+    "books_in_root_closure": 1923,
+    "roots": 1845,
+    "theorems": 29142,
     "functions": 19185,
     "assert_events": 24140,
     "must_fails": 2506,
@@ -13072,6 +13073,33 @@
       "suspects": [
         "fn-ctl-cei-get-of-non-uint"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/control-visible-prefix-bound.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 5,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "control-visible",
+        "store-node-traces-prepare"
+      ],
+      "system_includes": [],
+      "suspects": [],
       "read_error": null
     },
     {

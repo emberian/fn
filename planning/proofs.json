@@ -18982,6 +18982,29 @@
         "planning/evidence/account-config-posting-relation-2026-10-01/observer-coordinate.json"
       ],
       "progress_note": "Final normal certification passed both changed books with 60 matching cached dependencies; all 62 source hashes match. Fourteen literal assertions cover reachable complete premises/conclusions, every retained hypothesis removal, nonempty actual access/moderation observers and the original signing-change→Prepared path. Corrupted states are separately labeled. No host activation, group-liveness or whole posting/view-reuse claim."
+    },
+    {
+      "id": "PRF-1208",
+      "title": "Captured ready Store control entries precede a later configuration transaction",
+      "statement": "Actual fn-sf-record-listp with a natural frontier bounds fn-ctl-archive-entries strictly below it. Actual fn-snt-relation and ready FILES connect that bound to NodeAcceptanceNextTxid; appending a configuration at that txid preserves fn-ctl-journal-withdrawals. Establishment/preservation by modern typed C and E writers remains open.",
+      "milestone": "M4",
+      "requirements": [
+        "CNS-011"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-ctl-archive-entries-below-record-frontier",
+        "fn-ctl-ready-store-control-entries-are-strictly-past",
+        "fn-ctl-ready-store-later-config-preserves-withdrawals"
+      ],
+      "evidence": [
+        "books/control-visible-prefix-bound.lisp",
+        "planning/evidence/control-visible-prefix-bound-2026-10-01/coordinate.json",
+        "planning/evidence/control-visible-prefix-bound-2026-10-01/README.md"
+      ],
+      "progress_note": "Original-source proper encapsulate passed20587steps/.37s. No normal manifest or literal teeth yet. No runtime, maintained modern Store relation, native or deployment claim."
     }
   ]
 }

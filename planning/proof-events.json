@@ -17703,6 +17703,24 @@
         }
       ],
       "pending_subject": "Original preparation functions called by fn-acj-stage/fn-acj-commit. Proof-only projection; actual funded host continuation and whole posting/view reuse remain open, with no runtime activation claim."
+    },
+    {
+      "id": "PRF-1208",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-archive-entries-below-record-frontier"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-ready-store-control-entries-are-strictly-past"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-ready-store-later-config-preserves-withdrawals"
+        }
+      ],
+      "pending_subject": "Conditional original Store/control law; modern maintained typed C allocator relation, literal teeth and normal certification are open."
     }
   ]
 }

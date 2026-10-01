@@ -6947,6 +6947,29 @@
         "planning/evidence/account-config-posting-relation-2026-10-01/coordinate.json"
       ],
       "execution_scope": "Original ACL2 transition source fixture; no image or deployment claim."
+    },
+    {
+      "id": "SCN-1081",
+      "title": "Captured ready Store strict-past control history and later configuration preservation",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "CNS-011"
+      ],
+      "steps": [
+        "Construct a nonempty actual committed Store with control records and assert the full fn-snt-relation and ready phase premises.",
+        "Append a configuration whose txid equals actual NodeAcceptanceNextTxid and compare complete journal withdrawals.",
+        "Provide affirmative retained-premise and omitted-premise-failure witnesses for each theorem hypothesis; distinguish corrupted states."
+      ],
+      "expected": [
+        "Actual historical withdrawals remain unchanged at a strictly later configuration.",
+        "The conditional initial Store law grants no successive typed C or native publication authority."
+      ],
+      "evidence": [
+        "books/control-visible-prefix-bound.lisp",
+        "planning/evidence/control-visible-prefix-bound-2026-10-01/README.md"
+      ],
+      "execution_scope": "Not implemented at closeout; original theorem source admission exists, no literal test result."
     }
   ]
 }

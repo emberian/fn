@@ -10,10 +10,10 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1929 |
-| Certification roots in the Makefile | 1844 |
-| Books inside the root closure | 1922 |
-| `defthm` and `defthmd` events | 29137 |
+| Books read | 1930 |
+| Certification roots in the Makefile | 1845 |
+| Books inside the root closure | 1923 |
+| `defthm` and `defthmd` events | 29142 |
 | `defun` events | 19185 |
 | Functions with verified guards | 3500 |
 | Functions declared `:verify-guards nil` and never verified | 2295 |
@@ -485,6 +485,7 @@ that `make certify` requests.
 | `books/control-served.lisp` | root | 39 | 16 | 1/0/14/1 | 0 | 0 | 2 |
 | `books/control-visible-effect.lisp` | root | 7 | 10 | 0/0/10/0 | 0 | 0 | 0 |
 | `books/control-visible-indexed.lisp` | root | 31 | 8 | 0/2/6/0 | 0 | 0 | 1 |
+| `books/control-visible-prefix-bound.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/control-visible.lisp` | root | 74 | 37 | 7/0/30/0 | 0 | 0 | 2 |
 | `books/crypto-attach.lisp` | root | 9 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/crypto-seam.lisp` | root | 19 | 14 | 0/0/10/4 | 0 | 0 | 0 |

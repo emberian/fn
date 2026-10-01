@@ -175,3 +175,14 @@ or verdict read. Begin refuses an event query above the actual captured
 E-prefix upper txid; this bound is independent of last Ctxid. The actual caller
 must establish the bound's same-source association and recheck custody of all
 retained inputs. These changes remain high-source drafts, not a custody proof.
+
+## Conditional strict-past control history
+
+`control-visible-prefix-bound` gives a proof-only bridge from the actual ready
+Store replay relation to the existing later-configuration withdrawal law
+(PRF-1208 / SCN-1081). Its source events are admitted; normal certification and
+literal witnesses remain open. The modern typed C successor must establish or
+carry the needed strict-past invariant. Actual C acquisition uses the existing node next transaction ID and consumes
+no E allocator reservation. Its unchanged physical FILES/frontier still needs
+the acquisition scalar correspondence and configured-history relation; the
+E-only Store replay relation cannot simply be assumed after configuration. No runtime scan or blanket view-reuse claim follows.
