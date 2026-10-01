@@ -3,7 +3,6 @@
 (in-package "ACL2")
 (include-book "consumer-remote-codec")
 (include-book "consumer-remote-event-codec")
-(include-book "consumer-remote-reply")
 (include-book "config")
 
 (defconst *fn-crp-limit-slot* "max-consumer-query-groups")
@@ -21,7 +20,6 @@
         '(:refused :consumer-query-fncr-width))
        ((or (not (natp record-ceiling)) (< record-ceiling (fn-crp-event-ceiling groups)))
         '(:refused :consumer-query-record-width))
-       ((not (fn-crr-profilep record-ceiling)) '(:refused :consumer-query-reply-width))
        (t (list :query-policy groups (fn-cr-read-bound groups)
                  (fn-crp-event-ceiling groups) record-ceiling))))
 

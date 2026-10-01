@@ -60,7 +60,7 @@
 
 ; Positive branch is deliberately unreachable with the current genuine source.
 ; It clears every alias in the actual holder before the caller may splice
-; history-quiesce-terminal/release-issued under the same owner span. A return
+; history-quiesce-terminal/history-release under the same owner span. A return
 ; of :remote-quiesced alone is not a physical completion or custody theorem.
 (defun fn-owner-remote-scan-terminal (token state)
  (declare (xargs :stobjs state :guard t))

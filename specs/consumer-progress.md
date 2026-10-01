@@ -1286,20 +1286,43 @@ and the remote scan/reply still remain open.
 
 The additive remote scanner source carries exact uninspected query and article
 group suffixes, compares one bounded name pair per tick, and emits each selected
-event once. Its no-skipped-match source theorems and concrete single-FnHISTAt
-result refinement pass with literal positive/removal witnesses. A missing dense
-event remains an unavailable gap. Catalog ordinals are distinct from Store event
-positions. The FNCR kind-2 logical reply grammar preserves accepted/refused/
-uncertain/unavailable and explicit nullable cursor/report tags; its 13 source
-fixtures pass. Retained all-event backing/custody, final current account/READ
-validation, bounded report/digest writer, callback quiescence, TLS activation
-and the original complete scenarios remain open. This is source evidence only.
+event once. Its original no-skipped-match source theorems and concrete
+single-FnHISTAt refinement retain their own evidence coordinate. The actual
+retained backing adapter uses the dense all-event source, validates token and
+ordinal custody, and offers EVERY non-NIL event to current visibility before
+query selection. A NIL dense row remains unavailable at its exact position.
+Catalog ordinals cannot stand in for Store event positions.
 
-Current-C query policy also validates the complete FNCR reply payload width,
-including explicit nullable cursor/report tags. A representable request and
-FNCE4 event do not admit an overflowing reply. The serialized remote holder
-retains scanner/reader/reply/callback aliases on cancellation and refuses busy
-or stale tokens. Its native completion getter is explicitly unavailable, so
-empty pure continuations cannot release physical custody. Aggregate backing
-epoch-pin return and shared-pool refund require the actual terminal completion
-issuer and remain open. These guarded source checks grant no runtime authority.
+The bounded current-view producer examines one maintained article or withdrawal
+cell per tick. It distinguishes visible articles, withdrawn articles, withdrawal
+causes and retired/invisible articles. A cause filed outside a query can offer
+its withdrawn TARGET inside that query; the cause's payload and groups are not
+the withdrawal report. Each target then passes bounded query selection and the
+same current READ/shared-queue moderation producer. Report inputs retain only
+readable, visible groups and their local-number memberships. These internal
+producers require actual owner-view/config/source custody across every yield;
+their guarded definitions and literal fixtures do not install that custody or
+prove the complete joined pipeline.
+
+Remote replies share the existing FNCT typed consumer response contract:
+kind 5 progress/position, kind 6 poll/WAIT, kind 9 status and kind 18 reasons.
+The logical remote client refuses the legacy local-request resend path. An
+unavailable source uses the existing busy status and fixed
+remote-source-unavailable reason; only that exact pair is interpreted as
+unavailable. Refusal and ambiguous durable outcomes remain distinct. The draft
+FNCR kind-2 response grammar is historical source only and is not the selected
+remote response contract. Store R bounds durable records independently of the
+actual report producer's ceiling; a large query event cannot invent report
+allocation or codec authority. Current-C query validation therefore covers
+FNCR request and FNCE4 Store-record widths, while the separate report-profile
+compatibility function validates the existing FNCT codec. Its genuine installed
+report-profile source remains unavailable.
+
+The serialized remote holder retains scanner/reader/reply/callback aliases on
+cancellation. The aggregate return invokes genuine callback completion before
+clearing aliases, quiescing the history reader and returning the registered
+backing epoch pin BEFORE refunding the SAME shared pool. The native completion
+getter remains explicitly unavailable; empty pure continuations cannot release
+physical custody. Source admission/guards and literal fixtures are separate
+from normal certificates, installed runtime authority, qualified images,
+deployment and the complete original remote scenarios. Those remain open.
