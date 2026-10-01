@@ -42,7 +42,7 @@ still waits for actual durable completion. Existing occupied pages cannot be
 reinitialized. The complete old captured read result (status, value and fuel)
 is preserved by the guarded constructor. This component has matching normal
 source evidence in `planning/evidence/history-prefix-page-growth-2026-10-01`;
-the high owner PROGRAM composition remains separately qualified.
+the high owner PROGRAM composition remains unqualified.
 
 The current internal physical slot is the same APR-issued nonce. Its actual
 issuer refuses when NEXT reaches the existing PRL budget identity limit. A
