@@ -282,6 +282,62 @@
 ; not `adt-tree-okp', exactly as it is not `fn-sccb-treep'.
 (assert-event (and (not (adt-tree-okp (list (expt 2 2040)))) (not (fn-sccb-treep (list (expt 2 2040))))))
 
+; TEETH of the library keystone adt-tree-push-is-push (Codex r21 F1),
+; evaluated at its literal statement (drt-tpp: each hypothesis, then the
+; conclusion).  Positive, reachable: the witness's tree into a two-octet pool
+; at fill 1, every hypothesis and the conclusion true.  Hypothesis removal,
+; each keeping the other two: a tree the codec cannot carry (fn-sccb-treep
+; false) and a fill that is not a natural; the conclusion fails for both.
+; (natp p) is the generator's constant column count, never a variable.
+(defun drt-tpp (p x c)
+  (declare (xargs :verify-guards nil))
+  (list (natp p) (fn-sccb-treep x) (natp (nth (+ 2 p) c))
+        (equal (adt-pool-cputs p (append (fn-scc-program x) (fn-scc-repeat 0 *fn-scc-op-cons*))
+                               (adt-pool-room p (+ (nth (+ 2 p) c) (adt-tree-plen x 0)) c))
+               (adt-pool-push p (fn-scc-program x) c))))
+(assert-event (equal (with-guard-checking :none (drt-tpp 0 *drt-tree* (list '(5 6) 0 1)))
+                     '(t t t t)))
+(assert-event (equal (with-guard-checking :none (drt-tpp 0 (list (expt 2 2040)) (list '(5 6) 0 1)))
+                     '(t nil t nil)))
+(assert-event (equal (with-guard-checking :none (drt-tpp 0 *drt-tree* (list '(5 6) 0 -1)))
+                     '(t t nil nil)))
+
+; TEETH of the instance's DRT-T1$C-APPEND-T-IS-APPEND, executed on the
+; foundation: its antecedents (the tree field adt-tree-okp; the fill a
+; natural, which the stobj's type gives) and its conclusion, observed as
+; every field of the row, the count and the pool's fill after append-t and
+; after the plain append of the encoded record from the same cleared image.
+; Labelled MUTATION: the plain append of a record differing in one octet of
+; the program observes differently.
+(defun drt-t1-obs (drt-t1$c)
+  (declare (xargs :stobjs drt-t1$c :verify-guards nil))
+  (list (drt-t1$c-count drt-t1$c) (drt-t1$c-fill drt-t1$c) (drt-t1$c-get-a 0 drt-t1$c)
+        (drt-t1$c-get-m 0 drt-t1$c) (drt-t1$c-get-tr 0 drt-t1$c) (drt-t1$c-get-b 0 drt-t1$c)))
+
+(defun drt-t1-is-append-run (drt-t1$c)
+  (declare (xargs :stobjs drt-t1$c :verify-guards nil))
+  (let* ((rec (list 7 '(1 2) *drt-tree* t))
+         (drt-t1$c (drt-t1$c-clear drt-t1$c))
+         (drt-t1$c (drt-t1$c-append-t rec drt-t1$c))
+         (o1 (drt-t1-obs drt-t1$c))
+         (drt-t1$c (drt-t1$c-clear drt-t1$c))
+         (drt-t1$c (drt-t1$c-append (drt-t1-tree-enc rec) drt-t1$c))
+         (o2 (drt-t1-obs drt-t1$c))
+         (prog (fn-scc-program *drt-tree*))
+         (drt-t1$c (drt-t1$c-clear drt-t1$c))
+         (drt-t1$c (drt-t1$c-append (list 7 '(1 2) (cons (logxor 1 (car prog)) (cdr prog)) t)
+                                    drt-t1$c))
+         (o3 (drt-t1-obs drt-t1$c)))
+    (mv (list (adt-tree-okp (caddr rec)) (natp (nth 2 o1)) (equal o1 o2) (equal o1 o3)) drt-t1$c)))
+
+(defun drt-t1-is-append-ok ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj drt-t1$c
+    (mv-let (got drt-t1$c) (drt-t1-is-append-run drt-t1$c)
+      (equal got '(t t t nil)))))
+
+(assert-event (drt-t1-is-append-ok))
+
 (defthm drt-t1-append-t-meaning
   (equal (drt-t1-append-t rec drt-t1)
          (append drt-t1 (list (list (car rec) (cadr rec) (fn-scc-program (caddr rec)) (cadddr rec)))))
