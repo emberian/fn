@@ -18558,6 +18558,153 @@
         }
       ],
       "pending_subject": "Native compressed driver remains dormant and unreachable-in-composition. Actual selected-prefix cell accumulation and faithful-source compressed digest BEGIN/READ/HASH/new-publication are source-proved, with source-slice binding explicit. Arbitrary canonical decoder/controller iteration, selected dictionary/captured-view authority, full compiled workspace funding and retained native buffer/view/consumer joins remain open; PRF-1131 remains incomplete. Three nonexistent proposed DWCC citations are withheld in protocol-source-closeout-2026-10-01/withheld-events.json; no theorem admission is inferred."
+    },
+    {
+      "id": "PRF-1212",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rr-recovery-refines-a-prefix-with-every-acknowledged-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rr-open-is-the-full-open-of-the-recovered-records"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rr-log-crash-image-in-flight-recovers-a-tree-sequence-member"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rr-log-crash-image-quiet-recovers-committed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rr-log-crash-image-recovers-a-tree-sequence-member"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rr-acknowledged-record-is-in-every-tree-sequence-member"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rr-medium-open-of-capture-is-the-full-open"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rr-medium-select-bounds-the-sequence"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rr-medium-full-open-holds-its-records"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1213",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ckr-two-generations-fit-the-reserve-at-every-cut"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1214",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rrc-recovery-refines-a-prefix-with-every-acknowledged-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rrc-checkpoint-crash-point-refines-with-a-batch-in-flight"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgk-relp-implies-fn-rrc-relp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rrc-crash-content-is-the-projected-crash-content"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rrc-projection-is-related"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rrc-projected-image-is-admissible-with-the-same-segment"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rrc-log-crash-image-recovers-a-tree-sequence-member"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rrc-keeping-the-segment-keeps-the-lifted-relation"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1215",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rrp-commit-writes-within-the-generation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rrp-two-generations-fit-the-reserve"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rrp-touched-count"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rrp-page-writes-count"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1216",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rr-checkpoint-crash-point-recovers-committed-under-old-or-new"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1217",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pgs-fill-frame-is-frame-put",
+          "note": "KEYSTONE. A-PGS-HOST-IO's frame form: the in-place fill is the put of the page's words (books/assumptions-pgs-host-io.lisp)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pgs-page-words-u64",
+          "note": "A-PGS-HOST-IO's added u64 constraint, a strict strengthening of the old shape/equality constraints; needed to preserve the frame's type."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrs-put-is-frame-put",
+          "note": "BRIDGE: the image fill's put is fn-pgs-frame-put 0 (used by name in fn-hrs-frame-fill-pgs's guard proof, the mbe bridge)."
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-x-fill-is-frame-put",
+          "note": "BRIDGE: the page store's put for the metadata and table arrays is fn-pgs-frame-put (fn-hrs-fill-run's guard proof)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrc-get-is-hrecs-get",
+          "note": "BRIDGE (existing, books/history-records-disk.lisp): the concrete retry loop, where the frame fill runs, is fn-hrecs-get over the abstract stobj; the frame fill cannot be an export (stobj-attachment-restrictions)."
+        }
+      ]
     }
   ]
 }

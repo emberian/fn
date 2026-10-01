@@ -14,12 +14,15 @@
     "tests/acl2/connection-receiver-repin-state-tests",
     "books/obligation-view-cursor-refinement",
     "books/obligation-view-cursor",
+    "books/retention-obligation-view",
+    "books/obligation-view-budget",
     "books/view-delta-cursor-refinement",
     "books/view-delta-cursor",
     "tests/acl2/obligation-view-cursor-tests",
     "tests/acl2/view-delta-cursor-tests",
     "books/index-reader-actor",
     "books/index-reader-receiver-issuer",
+    "tests/acl2/index-reader-render-establishment-tests",
     "books/cbor-record-scalar",
     "books/cbor-record-stream",
     "books/statement-items-shape",
@@ -190,6 +193,7 @@
     "books/history-semantic-writer-state",
     "tests/acl2/history-semantic-writer-state-tests",
     "books/index-reader-response-issuer",
+    "tests/acl2/reader-output-storage-tests",
     "books/history-event-page",
     "books/history-event-directory",
     "books/history-event-directory-refinement",
@@ -782,6 +786,14 @@
     "tests/acl2/store-log-extend-tests",
     "books/store-log-durable",
     "tests/acl2/store-log-durable-tests",
+    "books/recovery-refinement",
+    "tests/acl2/recovery-refinement-tests",
+    "books/recovery-refinement-concurrent",
+    "tests/acl2/recovery-refinement-concurrent-tests",
+    "books/recovery-refinement-pages",
+    "tests/acl2/recovery-refinement-pages-tests",
+    "books/checkpoint-reserve",
+    "tests/acl2/checkpoint-reserve-tests",
     "books/store-init-log-publication",
     "tests/acl2/store-init-log-publication-tests",
     "books/owner-feed-txid-reuse",
@@ -1554,6 +1566,8 @@
     "tests/acl2/msgid-pages-exec-tests",
     "books/msgid-linear",
     "tests/acl2/msgid-linear-tests",
+    "books/msgid-linear-exec",
+    "tests/acl2/msgid-linear-exec-tests",
     "books/owner-number-bound-join",
     "tests/acl2/owner-number-bound-join-tests",
     "tests/acl2/owner-identity-served-tests",
@@ -1860,19 +1874,6 @@
     "tests/acl2/arena-reader-pins-tests",
     "books/response-plan-pins",
     "tests/acl2/response-plan-pins-tests",
-    "books/page-read-ownership",
-    "tests/acl2/page-read-ownership-tests",
-    "books/page-file-lease",
-    "books/page-window-lease",
-    "books/page-window-executor",
-    "books/page-window-read",
-    "tests/acl2/page-window-executor-tests",
-    "tests/acl2/page-window-read-tests",
-    "tests/acl2/page-window-admission-tests",
-    "tests/acl2/page-window-lease-tests",
-    "tests/acl2/page-file-lease-tests",
-    "books/page-read-executor",
-    "tests/acl2/page-read-executor-tests",
     "books/feed-restart-domain",
     "tests/acl2/feed-restart-domain-tests",
     "books/web-request",
@@ -2305,26 +2306,26 @@
     "tests/acl2/substrate-commit-codec-gap-tests"
   ],
   "totals": {
-    "books": 2692,
-    "books_in_root_closure": 2554,
-    "roots": 2301,
-    "theorems": 35191,
-    "functions": 22510,
-    "assert_events": 25244,
-    "must_fails": 2546,
+    "books": 2704,
+    "books_in_root_closure": 2569,
+    "roots": 2302,
+    "theorems": 35354,
+    "functions": 22658,
+    "assert_events": 25282,
+    "must_fails": 2557,
     "prover_refusals": 0,
-    "encapsulates": 191,
+    "encapsulates": 193,
     "guards": {
       "verified": 3837,
-      "declared-off": 2778,
-      "default-guarded": 12649,
-      "default-unguarded": 3246
+      "declared-off": 2863,
+      "default-guarded": 12692,
+      "default-unguarded": 3266
     },
-    "suspect_theorems": 1339,
-    "export_hygiene_warnings": 394,
+    "suspect_theorems": 1344,
+    "export_hygiene_warnings": 392,
     "enabled_projection_warnings": 79,
-    "teeth_form_warnings": 276,
-    "include_hygiene_warnings": 3360,
+    "teeth_form_warnings": 279,
+    "include_hygiene_warnings": 3368,
     "host_names_warnings": 3144,
     "hand_written_record_warnings": 19
   },
@@ -4238,6 +4239,32 @@
       "read_error": null
     },
     {
+      "book": "books/assumptions-pgs-host-io.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 10,
+      "functions": 8,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 6,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 2,
+      "includes": [
+        "pagestore-words"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/assumptions-publication.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -4294,13 +4321,13 @@
       "book": "books/assumptions.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 20,
-      "functions": 16,
+      "theorems": 18,
+      "functions": 14,
       "guards": {
         "verified": 0,
         "declared-off": 1,
         "default-guarded": 0,
-        "default-unguarded": 15
+        "default-unguarded": 13
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -4308,9 +4335,10 @@
       "prover_refusals": 0,
       "defconsts": 0,
       "defmacros": 0,
-      "encapsulates": 13,
+      "encapsulates": 12,
       "includes": [
         "assumptions-durable",
+        "assumptions-pgs-host-io",
         "byte-store-invariants"
       ],
       "system_includes": [],
@@ -12480,6 +12508,34 @@
       "read_error": null
     },
     {
+      "book": "books/checkpoint-reserve.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 7,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "byte-store-invariants",
+        "byte-store-state-checkpoint-program",
+        "store-checkpoint-reader"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/checkpoint.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -19649,7 +19705,6 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "obligation-view-budget",
         "owner-checkpoint-pipeline"
       ],
       "system_includes": [
@@ -20435,11 +20490,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 99,
-      "functions": 39,
+      "functions": 40,
       "guards": {
         "verified": 0,
         "declared-off": 3,
-        "default-guarded": 25,
+        "default-guarded": 26,
         "default-unguarded": 11
       },
       "verify_guards_events": 0,
@@ -21708,7 +21763,7 @@
       "book": "books/history-records-disk.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 31,
+      "theorems": 34,
       "functions": 20,
       "guards": {
         "verified": 0,
@@ -21736,12 +21791,12 @@
       "book": "books/history-records.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 141,
-      "functions": 46,
+      "theorems": 143,
+      "functions": 48,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 28,
+        "default-guarded": 30,
         "default-unguarded": 18
       },
       "verify_guards_events": 0,
@@ -24899,34 +24954,8 @@
       "read_error": null
     },
     {
-      "book": "books/index-reader-render-establishment-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
-      "theorems": 3,
-      "functions": 1,
-      "guards": {
-        "verified": 0,
-        "declared-off": 0,
-        "default-guarded": 0,
-        "default-unguarded": 1
-      },
-      "verify_guards_events": 0,
-      "assert_events": 0,
-      "must_fails": 0,
-      "prover_refusals": 0,
-      "defconsts": 0,
-      "defmacros": 0,
-      "encapsulates": 0,
-      "includes": [
-        "index-reader-render-establishment"
-      ],
-      "system_includes": [],
-      "suspects": [],
-      "read_error": null
-    },
-    {
       "book": "books/index-reader-render-establishment.lisp",
-      "in_root_closure": false,
+      "in_root_closure": true,
       "is_root": false,
       "theorems": 1,
       "functions": 0,
@@ -26316,10 +26345,42 @@
       "read_error": null
     },
     {
+      "book": "books/msgid-linear-exec.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 83,
+      "functions": 24,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 18,
+        "default-unguarded": 4
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 5,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "msgid-linear",
+        "msgid-pages-exec"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [
+        "fn-mlh-candidates-no-pages",
+        "fn-mlh-flag-part-of-seqw"
+      ],
+      "read_error": null
+    },
+    {
       "book": "books/msgid-linear.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 90,
+      "theorems": 92,
       "functions": 28,
       "guards": {
         "verified": 0,
@@ -29353,7 +29414,7 @@
     {
       "book": "books/obligation-view-budget.lisp",
       "in_root_closure": true,
-      "is_root": false,
+      "is_root": true,
       "theorems": 3,
       "functions": 4,
       "guards": {
@@ -30531,7 +30592,7 @@
       "book": "books/owner-connection-callback-refinement.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 17,
+      "theorems": 15,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -30550,9 +30611,7 @@
         "owner-connection-callbacks"
       ],
       "system_includes": [],
-      "suspects": [
-        "fn-ocb-close-keeps-ledger"
-      ],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -30713,7 +30772,7 @@
       "book": "books/owner-cursor-domain.lisp",
       "in_root_closure": true,
       "is_root": false,
-      "theorems": 23,
+      "theorems": 28,
       "functions": 2,
       "guards": {
         "verified": 0,
@@ -31863,12 +31922,12 @@
       "book": "books/owner-obligation-state.lisp",
       "in_root_closure": true,
       "is_root": false,
-      "theorems": 21,
-      "functions": 8,
+      "theorems": 11,
+      "functions": 3,
       "guards": {
         "verified": 0,
-        "declared-off": 1,
-        "default-guarded": 7,
+        "declared-off": 0,
+        "default-guarded": 3,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -31880,7 +31939,6 @@
       "encapsulates": 0,
       "includes": [
         "owner-config",
-        "retention-obligation-view",
         "state-globals"
       ],
       "system_includes": [],
@@ -32352,7 +32410,7 @@
       "book": "books/owner-reclaim-carry.lisp",
       "in_root_closure": true,
       "is_root": false,
-      "theorems": 2,
+      "theorems": 1,
       "functions": 1,
       "guards": {
         "verified": 0,
@@ -32371,7 +32429,6 @@
         "owner-reclaim-pass",
         "peer-carriage",
         "post-retain-carried",
-        "retention-obligation-view",
         "store-budget",
         "store-capacity-vector"
       ],
@@ -32557,7 +32614,7 @@
       "book": "books/owner-recovery-retain.lisp",
       "in_root_closure": true,
       "is_root": false,
-      "theorems": 13,
+      "theorems": 15,
       "functions": 2,
       "guards": {
         "verified": 0,
@@ -38592,34 +38649,8 @@
       "read_error": null
     },
     {
-      "book": "books/reader-output-storage-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
-      "theorems": 2,
-      "functions": 2,
-      "guards": {
-        "verified": 0,
-        "declared-off": 0,
-        "default-guarded": 1,
-        "default-unguarded": 1
-      },
-      "verify_guards_events": 0,
-      "assert_events": 0,
-      "must_fails": 0,
-      "prover_refusals": 0,
-      "defconsts": 0,
-      "defmacros": 0,
-      "encapsulates": 0,
-      "includes": [
-        "reader-output-storage"
-      ],
-      "system_includes": [],
-      "suspects": [],
-      "read_error": null
-    },
-    {
       "book": "books/reader-output-storage.lisp",
-      "in_root_closure": false,
+      "in_root_closure": true,
       "is_root": false,
       "theorems": 4,
       "functions": 9,
@@ -39762,6 +39793,125 @@
       "read_error": null
     },
     {
+      "book": "books/recovery-refinement-concurrent.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 23,
+      "functions": 8,
+      "guards": {
+        "verified": 0,
+        "declared-off": 7,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "byte-store-invariants",
+        "recovery-refinement"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-rrc-crash-select-of-no-choices",
+        "fn-rrc-tear-write-of-no-selectors"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/recovery-refinement-pages.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 7,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "pagestore"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/recovery-refinement-store.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 4,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 3,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "checkpoint-reserve",
+        "owner-checkpoint-writer",
+        "recovery-refinement",
+        "store-checkpoint-open",
+        "store-node-files-selector",
+        "store-recover-stream"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-rrs-reserve-is-two-capture-budgets"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/recovery-refinement.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 26,
+      "functions": 10,
+      "guards": {
+        "verified": 0,
+        "declared-off": 4,
+        "default-guarded": 0,
+        "default-unguarded": 6
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 1,
+      "includes": [
+        "byte-store-invariants",
+        "byte-store-state-checkpoint-program",
+        "store-log-programs"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-rr-recovered-kernel-holds-the-scan"
+      ],
+      "read_error": null
+    },
+    {
       "book": "books/recovery-source-authority.lisp",
       "in_root_closure": true,
       "is_root": false,
@@ -40595,7 +40745,7 @@
     {
       "book": "books/retention-obligation-view.lisp",
       "in_root_closure": true,
-      "is_root": false,
+      "is_root": true,
       "theorems": 22,
       "functions": 11,
       "guards": {
@@ -44919,7 +45069,7 @@
       "book": "books/store-finalize-incremental.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 47,
+      "theorems": 48,
       "functions": 12,
       "guards": {
         "verified": 5,
@@ -56672,6 +56822,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/checkpoint-reserve-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 4,
+      "must_fails": 2,
+      "prover_refusals": 0,
+      "defconsts": 6,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/checkpoint-reserve",
+        "must-fail-checked"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/checkpoint-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -62899,15 +63076,15 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 2,
-      "functions": 14,
+      "functions": 19,
       "guards": {
         "verified": 0,
-        "declared-off": 11,
+        "declared-off": 15,
         "default-guarded": 2,
-        "default-unguarded": 1
+        "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 21,
+      "assert_events": 23,
       "must_fails": 1,
       "prover_refusals": 0,
       "defconsts": 13,
@@ -63434,6 +63611,32 @@
       "includes": [
         "../../books/index-backing-served-producer-carry",
         "index-backing-publication-row-carry-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/index-reader-render-establishment-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 3,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/index-reader-render-establishment"
       ],
       "system_includes": [],
       "suspects": [],
@@ -64284,22 +64487,48 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/msgid-linear-exec-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 6,
+      "guards": {
+        "verified": 0,
+        "declared-off": 5,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 5,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 3,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/msgid-linear-exec"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/msgid-linear-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
       "theorems": 1,
-      "functions": 6,
+      "functions": 9,
       "guards": {
         "verified": 0,
-        "declared-off": 1,
+        "declared-off": 4,
         "default-guarded": 5,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 37,
+      "assert_events": 46,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 13,
+      "defconsts": 19,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -72320,6 +72549,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/reader-output-storage-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/reader-output-storage"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/reader-response-disposition-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -72891,6 +73146,89 @@
       "encapsulates": 0,
       "includes": [
         "../../books/recovery-profile-envelope"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/recovery-refinement-concurrent-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 34,
+      "guards": {
+        "verified": 0,
+        "declared-off": 27,
+        "default-guarded": 7,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 6,
+      "must_fails": 3,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/frame-trailer",
+        "../../books/recovery-refinement-concurrent",
+        "must-fail-checked"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/recovery-refinement-pages-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 9,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 8
+      },
+      "verify_guards_events": 0,
+      "assert_events": 4,
+      "must_fails": 2,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/recovery-refinement-pages",
+        "must-fail-checked"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/recovery-refinement-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 37,
+      "guards": {
+        "verified": 0,
+        "declared-off": 29,
+        "default-guarded": 8,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 8,
+      "must_fails": 4,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/frame-trailer",
+        "../../books/recovery-refinement",
+        "must-fail-checked"
       ],
       "system_includes": [],
       "suspects": [],
@@ -82463,6 +82801,25 @@
       ]
     },
     {
+      "theorem": "fn-mlh-candidates-no-pages",
+      "book": "books/msgid-linear-exec.lisp",
+      "line": 649,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-mlh-candidates and the conclusion is that arm's value",
+        "branch-of-definition: the hypothesis is a branch test of fn-mlh-candidates and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-mlh-flag-part-of-seqw",
+      "book": "books/msgid-linear-exec.lisp",
+      "line": 792,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)",
+        "definition-restated: the conclusion is the body of fn-mlh-flag-part",
+        "reflexive-conclusion: a conjunct is (equal X X)"
+      ]
+    },
+    {
       "theorem": "fn-mod-inj-append-of-a-cons",
       "book": "books/moderation.lisp",
       "line": 422,
@@ -83120,14 +83477,6 @@
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)",
         "definition-restated: the conclusion is the body of fn-obi-seal-range",
         "reflexive-conclusion: a conjunct is (equal X X)"
-      ]
-    },
-    {
-      "theorem": "fn-ocb-close-keeps-ledger",
-      "book": "books/owner-connection-callback-refinement.lisp",
-      "line": 37,
-      "reasons": [
-        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
     },
     {
@@ -84669,7 +85018,7 @@
     {
       "theorem": "fn-owner-cursor-swapped-store",
       "book": "books/owner-cursor-domain.lisp",
-      "line": 270,
+      "line": 304,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -84693,7 +85042,7 @@
     {
       "theorem": "fn-owner-recovered-install-establishes-cursor",
       "book": "books/owner-cursor-domain.lisp",
-      "line": 257,
+      "line": 286,
       "reasons": [
         "closed-theory-corollary: proved only by fn-owner-cursor-retained-implies-sequence, fn-owner-install-extended-store-effect-by-definition, fn-owner-recovery-establishes-retained-store"
       ]
@@ -85975,6 +86324,38 @@
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)",
         "reflexive-conclusion: a conjunct is (equal X X)"
+      ]
+    },
+    {
+      "theorem": "fn-rr-recovered-kernel-holds-the-scan",
+      "book": "books/recovery-refinement.lisp",
+      "line": 138,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-rrc-crash-select-of-no-choices",
+      "book": "books/recovery-refinement-concurrent.lisp",
+      "line": 95,
+      "reasons": [
+        "branch-of-definition: the hypothesis negates a branch test of fn-bs-crash-select and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-rrc-tear-write-of-no-selectors",
+      "book": "books/recovery-refinement-concurrent.lisp",
+      "line": 110,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-bs-tear-write and the conclusion is that arm's value"
+      ]
+    },
+    {
+      "theorem": "fn-rrs-reserve-is-two-capture-budgets",
+      "book": "books/recovery-refinement-store.lisp",
+      "line": 140,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
     },
     {
@@ -87262,7 +87643,7 @@
     {
       "theorem": "fn-sfi-fault-keeps-snapshots",
       "book": "books/store-finalize-incremental.lisp",
-      "line": 137,
+      "line": 136,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -87270,7 +87651,7 @@
     {
       "theorem": "fn-sfi-snapshots-of-context",
       "book": "books/store-finalize-incremental.lisp",
-      "line": 131,
+      "line": 130,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -90509,7 +90890,7 @@
       {
         "theorem": "fn-heap-nfix-of-membership-bound",
         "book": "books/heap-store-figure.lisp",
-        "line": 471,
+        "line": 469,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -90545,7 +90926,7 @@
       {
         "theorem": "fn-hib-tw-page",
         "book": "books/history-image-binding.lisp",
-        "line": 531,
+        "line": 534,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -91145,13 +91526,13 @@
       {
         "theorem": "fn-owner-install-extended-store-effect-by-definition",
         "book": "books/owner-cursor-domain.lisp",
-        "line": 244,
+        "line": 273,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-owner-orcp-swap-store-effect-by-definition",
         "book": "books/owner-cursor-domain.lisp",
-        "line": 279,
+        "line": 313,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -91218,18 +91599,6 @@
         "theorem": "fn-onb-open-okp-is-boundp-outside-a-transaction",
         "book": "books/owner-number-bound.lisp",
         "line": 443,
-        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
-      },
-      {
-        "theorem": "fn-rov-owner-installed-ledger",
-        "book": "books/owner-obligation-state.lisp",
-        "line": 76,
-        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
-      },
-      {
-        "theorem": "fn-rov-owner-rebuilt-ledger",
-        "book": "books/owner-obligation-state.lisp",
-        "line": 125,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -91835,7 +92204,7 @@
       {
         "theorem": "fn-sfi-sn-statep-carried-is-rii-sn-statep-carried",
         "book": "books/store-finalize-incremental.lisp",
-        "line": 268,
+        "line": 227,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -92881,7 +93250,6 @@
           "books/owner-reader-establishment.lisp",
           "books/owner-reader-read.lisp",
           "books/owner-reader-view.lisp",
-          "books/owner-reclaim-carry.lisp",
           "books/owner-reclaim-conns.lisp",
           "books/owner-reclaim-instant.lisp",
           "books/owner-reclaim-pass.lisp",
@@ -92936,7 +93304,7 @@
           "tests/acl2/owner-prepare-served-events-tests.lisp",
           "tests/acl2/owner-reclaim-ready-tests.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 105 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 104 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-own-feeds",
@@ -93017,7 +93385,6 @@
           "books/owner-reader-establishment.lisp",
           "books/owner-reader-read.lisp",
           "books/owner-reader-view.lisp",
-          "books/owner-reclaim-carry.lisp",
           "books/owner-reclaim-conns.lisp",
           "books/owner-reclaim-instant.lisp",
           "books/owner-reclaim-pass.lisp",
@@ -93079,7 +93446,7 @@
           "tests/acl2/productive-read-message-id-tests.lisp",
           "tests/acl2/served-catalog-chain-tests.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 115 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 114 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-sn-node",
@@ -93112,7 +93479,6 @@
           "books/owner-numbering.lisp",
           "books/owner-open-carried.lisp",
           "books/owner-prepare-served-ocl.lisp",
-          "books/owner-reclaim-carry.lisp",
           "books/owner-reclaim-instant.lisp",
           "books/owner-retention-preparation.lisp",
           "books/owner-served-carried.lisp",
@@ -93154,7 +93520,7 @@
           "books/transit-header-limits.lisp",
           "tests/acl2/catalog-commit-tests.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 67 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 66 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-own-view",
@@ -93589,6 +93955,9 @@
         "line": 47,
         "stated_in": [
           "books/owner-batch.lisp",
+          "books/recovery-refinement-concurrent.lisp",
+          "books/recovery-refinement-store.lisp",
+          "books/recovery-refinement.lisp",
           "books/store-init-log-publication.lisp",
           "books/store-log-durable.lisp",
           "books/store-log-extend.lisp",
@@ -93597,9 +93966,11 @@
           "books/store-log-route.lisp",
           "books/store-log-segments.lisp",
           "books/store-log-stream.lisp",
-          "books/store-log-txid.lisp"
+          "books/store-log-txid.lisp",
+          "tests/acl2/recovery-refinement-concurrent-tests.lisp",
+          "tests/acl2/recovery-refinement-tests.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 10 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 15 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-lgk-last",
@@ -93607,6 +93978,9 @@
         "line": 48,
         "stated_in": [
           "books/owner-batch.lisp",
+          "books/recovery-refinement-concurrent.lisp",
+          "books/recovery-refinement-store.lisp",
+          "books/recovery-refinement.lisp",
           "books/store-init-log-publication.lisp",
           "books/store-log-durable.lisp",
           "books/store-log-extend.lisp",
@@ -93614,9 +93988,11 @@
           "books/store-log-recover.lisp",
           "books/store-log-route.lisp",
           "books/store-log-segments.lisp",
-          "books/store-log-txid.lisp"
+          "books/store-log-txid.lisp",
+          "tests/acl2/recovery-refinement-concurrent-tests.lisp",
+          "tests/acl2/recovery-refinement-tests.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 9 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 14 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-lgk-batch",
@@ -93638,6 +94014,9 @@
         "stated_in": [
           "books/owner-batch.lisp",
           "books/owner-reader-view.lisp",
+          "books/recovery-refinement-concurrent.lisp",
+          "books/recovery-refinement-store.lisp",
+          "books/recovery-refinement.lisp",
           "books/store-log-durable.lisp",
           "books/store-log-extend.lisp",
           "books/store-log-kernel-concrete.lisp",
@@ -93645,9 +94024,11 @@
           "books/store-log-programs.lisp",
           "books/store-log-recover.lisp",
           "books/store-log-route.lisp",
-          "books/store-log-txid.lisp"
+          "books/store-log-txid.lisp",
+          "tests/acl2/recovery-refinement-concurrent-tests.lisp",
+          "tests/acl2/recovery-refinement-tests.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 10 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 15 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-lgk-phase",
@@ -95136,6 +95517,24 @@
         "check": "rec-teeth-record-p-without-payload-without-payloadp",
         "book": "tests/acl2/records-teeth-tests.lisp",
         "line": 243,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "rrct-dropping-an-acknowledged-record",
+        "book": "tests/acl2/recovery-refinement-concurrent-tests.lisp",
+        "line": 246,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "rrct-without-the-lifted-relation",
+        "book": "tests/acl2/recovery-refinement-concurrent-tests.lisp",
+        "line": 297,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "rrt-without-the-relation",
+        "book": "tests/acl2/recovery-refinement-tests.lisp",
+        "line": 360,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -102571,13 +102970,6 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "books/index-reader-render-establishment-tests.lisp",
-        "line": 2,
-        "include": "index-reader-render-establishment",
-        "included": "books/index-reader-render-establishment.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
         "book": "books/index-reader-render-establishment.lisp",
         "line": 2,
         "include": "index-reader-render-slot",
@@ -104056,7 +104448,7 @@
       },
       {
         "book": "books/owner-obligation-state.lisp",
-        "line": 5,
+        "line": 14,
         "include": "state-globals",
         "included": "books/state-globals.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -104147,7 +104539,7 @@
       },
       {
         "book": "books/owner-reclaim-carry.lisp",
-        "line": 9,
+        "line": 8,
         "include": "owner-reclaim-pass",
         "included": "books/owner-reclaim-pass.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -104937,13 +105329,6 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "books/reader-output-storage-tests.lisp",
-        "line": 2,
-        "include": "reader-output-storage",
-        "included": "books/reader-output-storage.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
         "book": "books/reader-output-storage.lisp",
         "line": 6,
         "include": "reader-output-job",
@@ -105193,6 +105578,34 @@
         "line": 4,
         "include": "runtime-operation-source",
         "included": "books/runtime-operation-source.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/recovery-refinement-store.lisp",
+        "line": 42,
+        "include": "store-checkpoint-open",
+        "included": "books/store-checkpoint-open.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/recovery-refinement-store.lisp",
+        "line": 43,
+        "include": "store-recover-stream",
+        "included": "books/store-recover-stream.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/recovery-refinement-store.lisp",
+        "line": 45,
+        "include": "store-node-files-selector",
+        "included": "books/store-node-files-selector.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/recovery-refinement.lisp",
+        "line": 85,
+        "include": "store-log-programs",
+        "included": "books/store-log-programs.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -110404,6 +110817,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/checkpoint-reserve-tests.lisp",
+        "line": 8,
+        "include": "must-fail-checked",
+        "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/checkpoint-tests.lisp",
         "line": 4,
         "include": "../../books/codec-attach",
@@ -112543,6 +112963,13 @@
         "line": 4,
         "include": "../../books/index-backing-served-producer-carry",
         "included": "books/index-backing-served-producer-carry.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/index-reader-render-establishment-tests.lisp",
+        "line": 2,
+        "include": "../../books/index-reader-render-establishment",
+        "included": "books/index-reader-render-establishment.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -116123,6 +116550,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/reader-output-storage-tests.lisp",
+        "line": 2,
+        "include": "../../books/reader-output-storage",
+        "included": "books/reader-output-storage.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/reader-response-disposition-tests.lisp",
         "line": 3,
         "include": "../../books/reader-response-disposition",
@@ -116372,6 +116806,27 @@
         "line": 2,
         "include": "../../books/recovery-profile-buffer",
         "included": "books/recovery-profile-buffer.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/recovery-refinement-concurrent-tests.lisp",
+        "line": 22,
+        "include": "must-fail-checked",
+        "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/recovery-refinement-pages-tests.lisp",
+        "line": 11,
+        "include": "must-fail-checked",
+        "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/recovery-refinement-tests.lisp",
+        "line": 17,
+        "include": "must-fail-checked",
+        "included": "tests/acl2/must-fail-checked.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
