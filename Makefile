@@ -1395,6 +1395,12 @@ ACL2_BOOKS ?= books/defrecord \
 	books/catalog-entries \
 	books/catalog-refresh \
 	books/catalog-number-index \
+	books/catalog-live-links \
+	tests/acl2/catalog-live-links-tests \
+	books/catalog-wbv-trie \
+	books/catalog-paged \
+	tests/acl2/catalog-paged-tests \
+	books/catalog-paged-attach \
 	books/served-catalog-view \
 	books/served-columns \
 	tests/acl2/served-columns-tests \

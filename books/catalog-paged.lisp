@@ -53,6 +53,8 @@
 (include-book "catalog-live-links")
 (include-book "def-representation")
 (include-book "def-representation-tree")
+;; The withdrawals-by-version trie (its keystone fn-cpt-list-of-add).
+(include-book "catalog-wbv-trie")
 ;; The tree codec's executables with their guards verified, and the tree
 ;; recognizer whose program is octets (fn-sccb-treep); its closure carries
 ;; the frame trailer and the digest attachments, which no recognizer or
@@ -100,10 +102,11 @@
   ;; (one probe) instead of scanning the numbers.
   (fn-cat$p-lnext :type (hash-table equal))
   (fn-cat$p-lprev :type (hash-table equal))
-  ;; The withdrawals by version: version -> the rows withdrawn at it, NEWEST
-  ;; FIRST (one cons a withdrawal); the reader (fn-cp-sort-asc) answers a
-  ;; monotone list without sorting (a pointer, or its reverse).  The
-  ;; nested foundation's own table (its position 8) is not written.
+  ;; The withdrawals by version: version -> the rows withdrawn at it as a
+  ;; binary trie (books/catalog-wbv-trie.lisp): O(log N) a withdrawal, an
+  ;; in-order walk allocating only the answer to read, in any arrival
+  ;; order.  The nested foundation's own table (its position 8) is not
+  ;; written.
   (fn-cat$p-wbv :type (hash-table equal))
   :inline t)
 
@@ -345,232 +348,16 @@
     (cons (if (and (consp crow) (null (car ovf))) (fn-cp-row-held (car crow)) (car ovf))
           (fn-cp-merge (cdr crow) (cdr ovf)))))
 
-; The withdrawals by version, sorted: the old foundation keeps each
-; version's rows ascending (fn-cat-insert-asc, one copy of the list a
-; withdrawal: Theta(m) per step under a cancel storm of m); the paged one
-; pushes, and the reader sorts.  Logically the insertion sort -- so the
-; view's table is the old one exactly -- executed as a merge sort.
-(defun fn-cp-isort (l)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp l) (fn-cat-insert-asc (car l) (fn-cp-isort (cdr l))) nil))
+; The withdrawals by version: the old foundation keeps each version's rows
+; ascending (fn-cat-insert-asc, one copy of the list a withdrawal: Theta(m)
+; per step under a cancel storm of m).  The paged one keeps a binary trie
+; per version (books/catalog-wbv-trie.lisp): the writer copies one path,
+; O(log N); the reader walks it in order, allocating only the answer, for
+; EVERY arrival order.  Its ascending list after an add is the old insert
+; (fn-cpt-list-of-add), so the view's table is the old one exactly.
+(defthm fn-cpt-insert-is-insert-asc
+  (equal (fn-cpt-insert s l) (fn-cat-insert-asc s l)))
 
-(defun fn-cp-merge-asc (x y)
-  (declare (xargs :guard t :verify-guards nil :measure (+ (acl2-count x) (acl2-count y))))
-  (cond ((atom x) y)
-        ((atom y) x)
-        ((<= (nfix (car x)) (nfix (car y))) (cons (car x) (fn-cp-merge-asc (cdr x) y)))
-        (t (cons (car y) (fn-cp-merge-asc x (cdr y))))))
-
-(local
- (defthm fn-cp-true-listp-of-insert-asc
-   (implies (true-listp l) (true-listp (fn-cat-insert-asc u l)))))
-
-(local
- (defthm fn-cp-true-listp-of-isort
-   (true-listp (fn-cp-isort l))))
-
-; The merge is stable (the left list first on a tie), as the insertion is.
-(local
- (defthm fn-cp-insert-of-merge
-   (implies (and (true-listp s) (true-listp tl))
-            (equal (fn-cat-insert-asc u (fn-cp-merge-asc s tl))
-                   (fn-cp-merge-asc (fn-cat-insert-asc u s) tl)))
-   :hints (("Goal" :induct (fn-cp-merge-asc s tl)
-            :expand ((fn-cat-insert-asc u s) (fn-cat-insert-asc u tl)
-                     (:free (a b) (fn-cp-merge-asc (cons a b) tl))
-                     (:free (a b) (fn-cat-insert-asc u (cons a b))))))))
-
-(local
- (defthm fn-cp-merge-of-isorts
-   (equal (fn-cp-merge-asc (fn-cp-isort a) (fn-cp-isort b))
-          (fn-cp-isort (append a b)))))
-
-(defun fn-cp-half (l)
-  (declare (xargs :guard t))
-  (if (and (consp l) (consp (cdr l))) (+ 1 (fn-cp-half (cddr l))) 0))
-
-(local
- (defthm fn-cp-half-bounds
-   (implies (and (consp l) (consp (cdr l)))
-            (and (< 0 (fn-cp-half l)) (< (fn-cp-half l) (len l))))
-   :rule-classes :linear))
-
-(local
- (defthm fn-cp-half-le-len
-   (<= (* 2 (fn-cp-half l)) (len l))
-   :rule-classes :linear
-   :hints (("Goal" :induct (fn-cp-half l) :in-theory (disable fn-cp-half-bounds)))))
-
-(local
- (defthm fn-cp-len-take
-   (implies (natp n) (equal (len (take n l)) n))))
-
-(local
- (defthm fn-cp-len-nthcdr
-   (implies (and (natp n) (<= n (len l))) (equal (len (nthcdr n l)) (- (len l) n)))))
-
-(defun fn-cp-msort (l)
-  (declare (xargs :guard t :verify-guards nil :measure (len l)))
-  (if (and (consp l) (consp (cdr l)))
-      (let ((n (fn-cp-half l)))
-        (fn-cp-merge-asc (fn-cp-msort (take n l)) (fn-cp-msort (nthcdr n l))))
-    (if (consp l) (list (car l)) nil)))
-
-(local
- (defthm fn-cp-append-take-nthcdr
-   (implies (and (natp n) (<= n (len l)))
-            (equal (append (take n l) (nthcdr n l)) l))))
-
-(defthm fn-cp-msort-is-isort
-  (equal (fn-cp-msort l) (fn-cp-isort l))
-  :hints (("Goal" :induct (fn-cp-msort l))
-          ("Subgoal *1/1" :use ((:instance fn-cp-merge-of-isorts (a (take (fn-cp-half l) l))
-                                           (b (nthcdr (fn-cp-half l) l))))
-           :in-theory (disable fn-cp-merge-of-isorts))))
-
-; The executable pieces: loops (tools/depth_check.py), guards t.
-(defun fn-cp-merge-loop (x y acc)
-  (declare (xargs :guard (true-listp acc) :measure (+ (acl2-count x) (acl2-count y))))
-  (cond ((atom x) (revappend acc y))
-        ((atom y) (revappend acc x))
-        ((<= (nfix (car x)) (nfix (car y))) (fn-cp-merge-loop (cdr x) y (cons (car x) acc)))
-        (t (fn-cp-merge-loop x (cdr y) (cons (car y) acc)))))
-
-(local
- (defthm fn-cp-merge-loop-is-merge
-   (equal (fn-cp-merge-loop x y acc) (revappend acc (fn-cp-merge-asc x y)))))
-
-(defun fn-cp-firstn (n l acc)
-  (declare (xargs :guard (and (natp n) (true-listp acc))))
-  (if (or (zp n) (atom l)) (revappend acc nil) (fn-cp-firstn (1- n) (cdr l) (cons (car l) acc))))
-
-(defun fn-cp-dropn (n l)
-  (declare (xargs :guard (natp n)))
-  (if (or (zp n) (atom l)) l (fn-cp-dropn (1- n) (cdr l))))
-
-(local
- (defthm fn-cp-firstn-is-take
-   (implies (and (natp n) (<= n (len l)))
-            (equal (fn-cp-firstn n l acc) (revappend acc (take n l))))))
-
-(local
- (defthm fn-cp-dropn-is-nthcdr
-   (implies (and (natp n) (<= n (len l)))
-            (equal (fn-cp-dropn n l) (nthcdr n l)))))
-
-(defun fn-cp-msort-x (l)
-  (declare (xargs :guard t :measure (len l)
-                  :hints (("Goal" :in-theory (disable fn-cp-merge-loop-is-merge)))))
-  (if (and (consp l) (consp (cdr l)))
-      (let ((n (fn-cp-half l)))
-        (fn-cp-merge-loop (fn-cp-msort-x (fn-cp-firstn n l nil)) (fn-cp-msort-x (fn-cp-dropn n l)) nil))
-    (if (consp l) (list (car l)) nil)))
-
-(local
- (defthm fn-cp-msort-x-is-msort
-   (equal (fn-cp-msort-x l) (fn-cp-msort l))))
-
-; The writer pushes, so a version whose withdrawals arrived in ascending
-; order (an expiry sweep, a cancel storm by number) holds a strictly
-; descending list, and one that arrived descending a strictly ascending one.
-; The reader recognises both in one pass that allocates nothing: the
-; ascending list IS the answer (a pointer), the descending one is its
-; reverse (one cons a row, the answer itself); only a list out of order
-; in both directions is sorted.
-(defun fn-cp-asc-natsp (l)
-  (declare (xargs :guard t))
-  (if (consp l)
-      (and (natp (car l))
-           (if (consp (cdr l))
-               (and (natp (cadr l)) (< (car l) (cadr l)) (fn-cp-asc-natsp (cdr l)))
-             (null (cdr l))))
-    (null l)))
-
-(defun fn-cp-desc-natsp (l)
-  (declare (xargs :guard t))
-  (if (consp l)
-      (and (natp (car l))
-           (if (consp (cdr l))
-               (and (natp (cadr l)) (< (cadr l) (car l)) (fn-cp-desc-natsp (cdr l)))
-             (null (cdr l))))
-    (null l)))
-
-(local
- (defun fn-cp-all-above (l s)
-   (if (consp l) (and (< (nfix s) (nfix (car l))) (fn-cp-all-above (cdr l) s)) t)))
-
-(local
- (defun fn-cp-all-below (l s)
-   (if (consp l) (and (< (nfix (car l)) (nfix s)) (fn-cp-all-below (cdr l) s)) t)))
-
-(local
- (defthm fn-cp-asc-natsp-all-above
-   (implies (and (fn-cp-asc-natsp l) (consp l) (natp s) (< s (car l)))
-            (fn-cp-all-above l s))))
-
-(local
- (defthm fn-cp-desc-natsp-all-below
-   (implies (and (fn-cp-desc-natsp l) (consp l) (natp s) (< (car l) s))
-            (fn-cp-all-below l s))))
-
-(local
- (defthm fn-cp-insert-asc-below-all
-   (implies (fn-cp-all-above l s)
-            (equal (fn-cat-insert-asc s l) (cons s l)))
-   :hints (("Goal" :expand ((fn-cat-insert-asc s l))))))
-
-(local
- (defthm fn-cp-insert-asc-above-all
-   (implies (and (fn-cp-all-below l s) (true-listp l))
-            (equal (fn-cat-insert-asc s l) (append l (list s))))
-   :hints (("Goal" :induct (fn-cp-all-below l s) :expand ((fn-cat-insert-asc s l))))))
-
-(local
- (defthm fn-cp-all-below-of-append
-   (equal (fn-cp-all-below (append a b) s)
-          (and (fn-cp-all-below a s) (fn-cp-all-below b s)))))
-
-(local
- (defthm fn-cp-all-below-of-rev
-   (equal (fn-cp-all-below (rev l) s) (fn-cp-all-below l s))))
-
-; KEYSTONE: an ascending list is its own sort.
-(defthm fn-cp-isort-of-asc
-  (implies (fn-cp-asc-natsp l)
-           (equal (fn-cp-isort l) l)))
-
-(local
- (defthm fn-cp-isort-desc-step
-   (implies (and (consp l) (natp (car l)) (consp (cdr l)) (natp (cadr l))
-                 (< (cadr l) (car l)) (fn-cp-desc-natsp (cdr l)))
-            (equal (fn-cat-insert-asc (car l) (rev (cdr l))) (rev l)))))
-
-; KEYSTONE: a descending list's sort is its reverse.
-(defthm fn-cp-isort-of-desc
-  (implies (fn-cp-desc-natsp l)
-           (equal (fn-cp-isort l) (rev l)))
-  :hints (("Goal" :induct (fn-cp-desc-natsp l) :in-theory (disable rev))
-          ("Subgoal *1/1''" :use fn-cp-isort-desc-step
-           :in-theory (disable fn-cp-isort-desc-step fn-cat-insert-asc rev))))
-
-(local
- (defthm fn-cp-revappend-nil-is-rev
-   (equal (revappend l nil) (rev l))
-   :hints (("Goal" :use ((:instance revappend-removal (x l) (y nil)))))))
-
-; KEYSTONE (the withdrawals-by-version reader): the rows of a version,
-; ascending -- a pointer for a list pushed in descending order, O(m) and
-; the answer's own m conses for one pushed in ascending order, and only
-; otherwise the merge sort, O(m log m), which IS the insertion sort the
-; view's table holds (fn-cp-msort-is-isort above).
-(defun fn-cp-sort-asc (l)
-  (declare (xargs :guard t :guard-hints (("Goal" :in-theory (disable fn-cp-msort fn-cp-isort)))))
-  (mbe :logic (fn-cp-isort l)
-       :exec (cond ((fn-cp-asc-natsp l) l)
-                   ((fn-cp-desc-natsp l) (revappend l nil))
-                   (t (fn-cp-msort-x l)))))
-
-(local (in-theory (disable fn-cp-asc-natsp fn-cp-desc-natsp)))
 
 ; The view's withdrawals-by-version table: each pushed entry sorted.
 (defun fn-cp-wbv-view (al)
@@ -578,13 +365,13 @@
   (if (atom al)
       nil
     (if (consp (car al))
-        (cons (cons (car (car al)) (fn-cp-isort (cdr (car al)))) (fn-cp-wbv-view (cdr al)))
+        (cons (cons (car (car al)) (fn-cpt-list (cdr (car al)))) (fn-cp-wbv-view (cdr al)))
       (fn-cp-wbv-view (cdr al)))))
 
 (defthm fn-cp-lookup-of-wbv-view
   (equal (hons-assoc-equal k (fn-cp-wbv-view al))
          (if (hons-assoc-equal k al)
-             (cons k (fn-cp-isort (cdr (hons-assoc-equal k al))))
+             (cons k (fn-cpt-list (cdr (hons-assoc-equal k al))))
            nil)))
 
 ; The old foundation with its rows array and its withdrawals table replaced.
@@ -944,7 +731,7 @@
 
 (defun fn-cat$p-withdrawn-at (w fn-cat$p)
   (declare (xargs :stobjs fn-cat$p))
-  (fn-cp-sort-asc (fn-cat$p-wbv-get w fn-cat$p)))
+  (fn-cpt-list (fn-cat$p-wbv-get w fn-cat$p)))
 
 ; The rows below the count as a list (the logic function's argument when the
 ; executable must not trust its own table: the old fn-cat$c-rows-below-count).
@@ -1109,7 +896,7 @@
          (fn-cat$p (fn-cat$p-tab-commit plan lplan hz seq h fn-cat$p))
          (fn-cat$p (fn-cat$p-link cplan fn-cat$p)))
     (if (consp x)
-        (fn-cat$p-wbv-put (car x) (cons seq (fn-cat$p-wbv-get (car x) fn-cat$p)) fn-cat$p)
+        (fn-cat$p-wbv-put (car x) (fn-cpt-add seq (fn-cat$p-wbv-get (car x) fn-cat$p)) fn-cat$p)
       fn-cat$p)))
 
 ; The live summary's scans, over the paged rows (the old fn-cat$c-live-at-p,
@@ -1235,7 +1022,7 @@
                (fn-cat$p (fn-cat$p-set-withdrawn target row (cons v by) fn-cat$p))
                (fn-cat$p (fn-cat$p-tab-withdraw dplan hz fn-cat$p))
                (fn-cat$p (fn-cat$p-unlink wplan fn-cat$p)))
-          (fn-cat$p-wbv-put v (cons target (fn-cat$p-wbv-get v fn-cat$p)) fn-cat$p))
+          (fn-cat$p-wbv-put v (fn-cpt-add target (fn-cat$p-wbv-get v fn-cat$p)) fn-cat$p))
       fn-cat$p)))
 
 (defun fn-cat$p-redecide (seq context fn-cat$p)
@@ -2111,7 +1898,7 @@
 
 ; The link tables and the withdrawals' pushes: the view reads positions 0,
 ; 1 and 4 only; the links write 2 and 3; a push is the old sorted insert at
-; the view (fn-cp-isort of the pushed list).
+; the view (the trie's ascending list after the add).
 (local
  (defthm fn-cp-link-fields
    (and (equal (nth 0 (fn-cat$p-link plan fn-cat$p)) (nth 0 fn-cat$p))
@@ -2140,9 +1927,10 @@
 
 (local
  (defthm fn-cp-view-of-wbv-push
-   (equal (fn-cat$p-view (fn-cat$p-wbv-put k (cons s (fn-cat$p-wbv-get k fn-cat$p)) fn-cat$p))
-          (fn-cat$c-wbv-put k (fn-cat-insert-asc s (fn-cat$c-wbv-get k (fn-cat$p-view fn-cat$p)))
-                            (fn-cat$p-view fn-cat$p)))
+   (implies (natp s)
+            (equal (fn-cat$p-view (fn-cat$p-wbv-put k (fn-cpt-add s (fn-cat$p-wbv-get k fn-cat$p)) fn-cat$p))
+                   (fn-cat$c-wbv-put k (fn-cat-insert-asc s (fn-cat$c-wbv-get k (fn-cat$p-view fn-cat$p)))
+                                     (fn-cat$p-view fn-cat$p))))
    :hints (("Goal" :in-theory (e/d (fn-cat$p-view) (fn-cat-insert-asc))))))
 
 (local
@@ -2170,7 +1958,7 @@
                             (fn-cat$p-append-row fn-cat$p-tab-index-add fn-cat$p-tab-commit
                              fn-cat$c-live-plan fn-cat$c-plan fn-cat$c-apply-plan fn-cat$c-live-apply
                              fn-cat$c-index-add fn-cat$c-wbv-put fn-cat$c-wbv-get fn-held-with-numbers
-                             fn-cat-plan-numbers fn-cat-insert-asc fn-cp-isort fn-cp-wbv-view))))))
+                             fn-cat-plan-numbers fn-cat-insert-asc fn-cpt-list fn-cp-wbv-view))))))
 
 (local
  (defthm fn-cp-with-withdrawn-nonnil
@@ -2246,12 +2034,12 @@
           (fn-cat$c-clear-keyed key (fn-cat$p-view fn-cat$p)))
    :hints (("Goal" :in-theory (e/d (fn-cat$p-clear-keyed fn-cat$c-clear-keyed fn-cat$c-clear-w
                                       fn-cat$c-clear fn-cat$c-clear-base fn-cp-merge)
-                                   (fn-cp-isort fn-cp-wbv-view)))
+                                   (fn-cpt-list fn-cp-wbv-view)))
            (and stable-under-simplificationp
                 '(:in-theory (e/d (fn-cat$p-clear-keyed fn-cat$c-clear-keyed fn-cat$c-clear-w
                                      fn-cat$c-clear fn-cat$c-clear-base fn-cp-merge fn-cp-frame
                                      fn-cp-update-nth-8-commute)
-                                  (fn-cp-isort fn-cp-wbv-view)))))))
+                                  (fn-cpt-list fn-cp-wbv-view)))))))
 
 ; -----------------------------------------------------------------------------
 ; 7. The obligations: each the old catalog's (books/catalog-logic.lisp), at the view.
