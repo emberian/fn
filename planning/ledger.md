@@ -10,20 +10,20 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2721 |
+| Books read | 2722 |
 | Certification roots in the Makefile | 2355 |
 | Books inside the root closure | 2633 |
-| `defthm` and `defthmd` events | 35822 |
-| `defun` events | 22861 |
+| `defthm` and `defthmd` events | 35909 |
+| `defun` events | 22887 |
 | Functions with verified guards | 3846 |
-| Functions declared `:verify-guards nil` and never verified | 2901 |
-| Functions left at the default with an explicit guard | 12801 |
-| Functions left at the default with no guard | 3313 |
-| `assert-event` checks | 25403 |
+| Functions declared `:verify-guards nil` and never verified | 2922 |
+| Functions left at the default with an explicit guard | 12803 |
+| Functions left at the default with no guard | 3316 |
+| `assert-event` checks | 25415 |
 | `must-fail` checks | 2587 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 195 |
-| Theorems flagged SUSPECT by shape | 1341 |
+| Theorems flagged SUSPECT by shape | 1344 |
 | Export-hygiene warnings | 397 |
 | Enabled-projection warnings | 80 |
 | Teeth-form warnings | 279 |
@@ -417,7 +417,7 @@ that `make certify` requests.
 | `books/byte-store-retention-publication.lisp` | root | 16 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/byte-store-scan.lisp` | root | 153 | 38 | 0/34/0/4 | 0 | 0 | 7 |
 | `books/byte-store-stable-prefix.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/byte-store-state-checkpoint-program.lisp` | root | 7 | 3 | 0/3/0/0 | 4 | 0 | 0 |
+| `books/byte-store-state-checkpoint-program.lisp` | root | 8 | 7 | 0/7/0/0 | 9 | 0 | 0 |
 | `books/byte-store-txn-name.lisp` | root | 30 | 13 | 3/0/10/0 | 0 | 0 | 0 |
 | `books/byte-store-txn-seam.lisp` | closure | 7 | 3 | 1/1/0/1 | 0 | 0 | 0 |
 | `books/byte-store.lisp` | root | 12 | 60 | 7/38/15/0 | 0 | 0 | 5 |
@@ -428,6 +428,7 @@ that `make certify` requests.
 | `books/catalog-context-recovery.lisp` | root | 4 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/catalog-delta.lisp` | root | 14 | 10 | 1/1/7/1 | 0 | 0 | 1 |
 | `books/catalog-entries.lisp` | root | 35 | 4 | 0/1/2/1 | 0 | 0 | 3 |
+| `books/catalog-live-links.lisp` | - | 86 | 14 | 0/12/2/0 | 0 | 0 | 3 |
 | `books/catalog-load-index.lisp` | root | 4 | 4 | 0/4/0/0 | 0 | 0 | 1 |
 | `books/catalog-logic.lisp` | closure | 355 | 125 | 14/20/64/27 | 0 | 0 | 7 |
 | `books/catalog-number-assignment.lisp` | closure | 0 | 6 | 0/0/6/0 | 0 | 0 | 0 |
@@ -1956,7 +1957,7 @@ that `make certify` requests.
 | `tests/acl2/byte-store-retention-publication-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 6 | 5 | 0 |
 | `tests/acl2/byte-store-scan-tests.lisp` | root | 3 | 24 | 0/0/0/24 | 38 | 5 | 0 |
 | `tests/acl2/byte-store-stable-prefix-tests.lisp` | root | 1 | 11 | 0/0/0/11 | 5 | 2 | 0 |
-| `tests/acl2/byte-store-state-checkpoint-program-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 2 | 0 |
+| `tests/acl2/byte-store-state-checkpoint-program-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 17 | 2 | 0 |
 | `tests/acl2/byte-store-sweep-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 8 | 0 | 0 |
 | `tests/acl2/byte-store-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 68 | 0 | 0 |
 | `tests/acl2/byte-store-txn-name-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 3 | 0 |
@@ -2111,7 +2112,7 @@ that `make certify` requests.
 | `tests/acl2/decoded-window-yield-trajectory-tests.lisp` | root | 7 | 3 | 0/0/0/3 | 0 | 0 | 0 |
 | `tests/acl2/decoded-worker-controller-trajectory-tests.lisp` | root | 8 | 10 | 0/0/0/10 | 0 | 0 | 0 |
 | `tests/acl2/def-loop-tests.lisp` | root | 10 | 22 | 16/0/6/0 | 40 | 11 | 0 |
-| `tests/acl2/def-representation-tests.lisp` | root | 9 | 20 | 0/10/5/5 | 29 | 8 | 0 |
+| `tests/acl2/def-representation-tests.lisp` | root | 9 | 25 | 0/15/5/5 | 30 | 8 | 0 |
 | `tests/acl2/defevent-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 19 | 1 | 0 |
 | `tests/acl2/definterface-recognizer-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 3 | 0 | 0 |
 | `tests/acl2/definterface-tests.lisp` | root | 8 | 9 | 0/0/6/3 | 39 | 23 | 1 |
@@ -3049,6 +3050,9 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-cp-withdrawn-of-held` | `books/catalog-paged.lisp` | 1142 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-cpc-assemble-accessors` | `books/checkpoint-codec.lisp` | 1242 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-cpc-uint32p-bridge` | `books/checkpoint-codec.lisp` | 1270 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-record-uint32p |
+| `fn-cpl-assign-fields` | `books/catalog-live-links.lisp` | 159 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-cpl-mark-withdrawn-is-update` | `books/catalog-live-links.lisp` | 354 | arm-of-definition: the hypotheses select one IF/COND arm of fn-cat-mark-withdrawn and the conclusion is that arm's value |
+| `fn-cpl-withdrawn-of-assign` | `books/catalog-live-links.lisp` | 184 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-cr-unprotected-request-refuses-by-definition` | `books/consumer-remote-codec.lisp` | 140 | arm-of-definition: the hypotheses select one IF/COND arm of fn-cr-request-decode and the conclusion is that arm's value |
 | `fn-crf-row-fields-of-with-withdrawn` | `books/catalog-refresh.lisp` | 140 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-crf-withdrawn-of-assign` | `books/catalog-refresh.lisp` | 83 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |

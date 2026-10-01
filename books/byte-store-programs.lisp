@@ -39,6 +39,8 @@
 ; Step language.
 ;   (:create dir name)                    os.open(O_WRONLY|O_CREAT|O_EXCL)
 ;   (:write-all dir name octets)          write_all: one or more write(2)
+;   (:write-at dir name offset octets)    write(2) at OFFSET: one batch of a
+;                                         write loop (PRF-1223)
 ;   (:fsync-file dir name)                fsync_file / durable_barrier(fd)
 ;   (:fsync-dir dir)                      fsync_dir
 ;   (:link sdir sname ddir dname)         os.link
@@ -58,6 +60,9 @@
          (:write-all (and (equal (len x) 4) (fn-bs-dir-idp (nth 1 x))
                           (fn-bs-namep (nth 2 x))
                           (fn-cbor-octet-listp (nth 3 x))))
+         (:write-at (and (equal (len x) 5) (fn-bs-dir-idp (nth 1 x))
+                         (fn-bs-namep (nth 2 x)) (natp (nth 3 x))
+                         (fn-cbor-octet-listp (nth 4 x))))
          (:fsync-file (and (equal (len x) 3) (fn-bs-dir-idp (nth 1 x))
                            (fn-bs-namep (nth 2 x))))
          (:fsync-dir (and (equal (len x) 2) (fn-bs-dir-idp (nth 1 x))))
@@ -89,6 +94,9 @@
     (:write-all (let ((ino (fn-bs-lookup bs (nth 1 step) (nth 2 step))))
                   (mv-let (r bs1) (fn-bs-write bs ino 0 (nth 3 step) outcome)
                     (mv r bs1 ks))))
+    (:write-at (let ((ino (fn-bs-lookup bs (nth 1 step) (nth 2 step))))
+                 (mv-let (r bs1) (fn-bs-write bs ino (nth 3 step) (nth 4 step) outcome)
+                   (mv r bs1 ks))))
     (:fsync-file (let ((ino (fn-bs-lookup bs (nth 1 step) (nth 2 step))))
                    (mv-let (r bs1) (fn-bs-fsync-file bs ino outcome)
                      (mv r bs1 ks))))
@@ -367,14 +375,14 @@
 ; -----------------------------------------------------------------------------
 ; Program discipline (section 2.4) as executable checks over the constants.
 
-; D1: every :link and :rename names a source whose last :write-all was
-; followed by a :fsync-file before the link ("safe link").
+; D1: every :link and :rename names a source whose last :write-all or
+; :write-at was followed by a :fsync-file before the link ("safe link").
 (defun fn-bs-links-only-fenced-aux (steps fenced)
   (declare (xargs :guard t :verify-guards nil))
   (if (atom steps) t
     (let ((step (car steps)))
       (case (car step)
-        (:write-all
+        ((:write-all :write-at)
          (fn-bs-links-only-fenced-aux
           (cdr steps) (remove-equal (cons (nth 1 step) (nth 2 step)) fenced)))
         (:fsync-file
@@ -388,12 +396,12 @@
   (declare (xargs :guard t :verify-guards nil))
   (fn-bs-links-only-fenced-aux steps nil))
 
-; D2: no :write-all names a path under an authority directory: no in-place
-; overwrite, ever.
+; D2: no :write-all or :write-at names a path under an authority directory:
+; no in-place overwrite, ever.
 (defun fn-bs-never-overwrites-authorityp (steps)
   (declare (xargs :guard t :verify-guards nil))
   (if (atom steps) t
-    (and (or (not (equal (car (car steps)) :write-all))
+    (and (or (not (member-eq (car (car steps)) '(:write-all :write-at)))
              (not (member-equal (nth 1 (car steps)) *fn-bs-authority-dirs*)))
          (fn-bs-never-overwrites-authorityp (cdr steps)))))
 
