@@ -916,6 +916,10 @@
 (definterface fn-store-frame-constants
   :class ::ideal)
 
+; Image-time fixed FNSM workspace dimensions; no Store policy or I/O grant.
+(definterface fn-recovery-profile-envelope
+  :class :common-lisp-compliant)
+
 (definterface fn-store-genesis-chain
   :class ::ideal)
 
