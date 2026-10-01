@@ -3,6 +3,44 @@
   "description": "Broad proof targets with incremental certified component evidence. An in-progress target is not fully certified. Paths are repository-relative.",
   "proofs": [
     {
+      "id": "PRF-1225",
+      "title": "The paged catalog's live links: every bound (group . number) entry is live with its true neighbour and every live number is bound, through commit, withdrawal, redecision and clear; a live number's neighbour read is the table probe",
+      "statement": "books/catalog-live-links.lisp + books/catalog-paged.lisp; the subject is the paged catalog's withdrawal and commit executables (fn-cat$p-withdraw-w, fn-cat$p-commit-w), the attached executables of the generic exports fn-cat-withdraw / fn-cat-commit (books/catalog-paged-attach.lisp) called by the served write path (books/owner-batch.lisp, books/index-backing-served-producer-carry.lisp). fn-cpl-okp (every bound key is a live number and its value its NEXT/PREV live neighbour) is kept by the commit's link plan (KEYSTONE fn-cpl-okp-of-commit), the withdrawal's unlink (KEYSTONE fn-cpl-okp-of-withdraw; the r < len c hypothesis proved redundant: fn-cpl-okp-of-withdraw-any-r) and a redecision (fn-cpl-okp-of-redecide). fn-cpl-coverp (every live number is bound) is kept by the same writes (fn-cpl-coverp-of-commit, -of-withdraw, -of-redecide, -of-no-rows). fn-cat$pcorr carries both for both tables; under it a live number's neighbour read is the probe -- bound, a natural, the scan fallback never taken (KEYSTONES fn-cat$p-next-is-probe, fn-cat$p-prev-is-probe). Scope: the logical tables (alists) the stobj's hash tables model; the cost claims are measurements, not theorems. Open: fn-cat-rowsp in fn-cpl-okp-of-withdraw (no counterexample known, weakening not proved). Teeth: tests/acl2/catalog-live-links-tests.lisp (commit-generated tables, positive + okp-removal + natp-r removal + coverage witnesses), tests/acl2/catalog-paged-tests.lisp (probe positive on an executable-built state; Codex r30 F1 corrupted-state: tables erased, the scans answer).",
+      "milestone": "M5",
+      "requirements": [
+        "REP-010",
+        "REP-014"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/catalog-live-links.lisp",
+        "books/catalog-paged.lisp",
+        "tests/acl2/catalog-live-links-tests.lisp",
+        "tests/acl2/catalog-paged-tests.lisp"
+      ],
+      "progress_note": "Lanes paged-catalog-5..7 (Gate C of stage 3, planning/design-store-representation-2026-10-01.md); Codex r27 F1-F3 and r30 F1-F4 folded in. hbox REPL-admitted; certification of the lane head pending."
+    },
+    {
+      "id": "PRF-1226",
+      "title": "The paged catalog's withdrawals-by-version reader answers the old foundation's ascending list: a pointer for a version pushed descending, its reverse for one pushed ascending, otherwise a merge sort equal to the insertion sort",
+      "statement": "books/catalog-paged.lisp fn-cp-sort-asc, the executable of fn-cat$p-withdrawn-at, attached to the generic export fn-cat-withdrawn-at (books/catalog-paged-attach.lisp) read by books/served-catalog-view.lisp fn-scv-withdrawn-numbers (a reader's view below the count). The writer pushes newest first (O(1)); the reader's logic is the insertion sort fn-cp-isort (the old table exactly). Its exec recognises in one non-allocating pass a strictly ascending natural list (KEYSTONE fn-cp-isort-of-asc: its sort is itself) and a strictly descending one (KEYSTONE fn-cp-isort-of-desc: its sort is its reverse); otherwise it merge-sorts (KEYSTONE fn-cp-msort-is-isort). Measured (hbox REPL, 9,998 withdrawals at one version, guards on, loop average of 100 reads): ascending arrival 4,557,040 -> 161,186 B/read (the answer's own conses), descending arrival 1,029 B/read, scrambled 6,084,346 B/read (fallback sort; residual). Teeth: tests/acl2/catalog-paged-tests.lisp (positive + hypothesis removal per keystone; a 9-row scrambled bucket; a labelled tie-order MUTATION).",
+      "milestone": "M5",
+      "requirements": [
+        "REP-010",
+        "REP-014"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/catalog-paged.lisp",
+        "tests/acl2/catalog-paged-tests.lisp"
+      ],
+      "progress_note": "Lanes paged-catalog-6..7; hbox REPL-admitted; certification of the lane head pending."
+    },
+    {
       "id": "PRF-001",
       "title": "Reachable-state invariant preservation",
       "statement": "Every permitted transition preserves a meaningful invariant from valid initial/reachable states.",
@@ -15114,7 +15152,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/msgid-pages.lisp",
         "tests/acl2/msgid-pages-tests.lisp",
@@ -15175,7 +15213,7 @@
         "PRF-957"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/msgid-pages-exec.lisp",
         "tests/acl2/msgid-pages-exec-tests.lisp",
@@ -15207,7 +15245,7 @@
         "PRF-969"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/catalog.lisp",
         "tests/acl2/msgid-pages-exec-tests.lisp",
@@ -15860,7 +15898,7 @@
         "PRF-969"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/msgid-pages-exec.lisp",
         "tests/acl2/msgid-pages-exec-tests.lisp",
@@ -16212,7 +16250,7 @@
         "PRF-991"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/msgid-pages-exec.lisp",
         "tests/acl2/msgid-pages-exec-tests.lisp",
@@ -17422,7 +17460,7 @@
         "PRF-1018"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/catalog.lisp",
         "books/msgid-pages-exec.lisp",
