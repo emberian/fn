@@ -7682,6 +7682,28 @@
         "planning/evidence/obligation-cursor-2026-10-01/README.md"
       ],
       "execution_scope": "Pure ACL2 source component fixtures passed, including literal complete hypotheses/removal witnesses. No owner/physical custody/native execution."
+    },
+    {
+      "id": "SCN-1074",
+      "title": "Request-budget prepayment preserves reserved headroom without physical-fit authority",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-10001"
+      ],
+      "steps": [
+        "Prepay an actual gate using a request tuple with unknown physical fields and positive reserve.",
+        "Retain the original physical tuple behavior and reject zero/exhausted reserves or fabricated physical slots."
+      ],
+      "expected": [
+        "Request gate is prepaid, allocation debt and turn count increase, and configured reserve remains outside admission.",
+        "Request installation is not a physical installation; only physical recognition authorizes the affine bound."
+      ],
+      "evidence": [
+        "tests/acl2/allocation-dual-ceiling-tests.lisp",
+        "planning/evidence/allocation-request-split.json"
+      ],
+      "execution_scope": "Guarded pure scalar component and three-book normal source certification; synthetic fixtures are not genuine runtime authority, physical fit or native qualification."
     }
   ]
 }

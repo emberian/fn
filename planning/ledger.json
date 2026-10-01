@@ -7,6 +7,11 @@
     "tests/acl2/consumer-transaction-dispatch-tests",
     "tests/acl2/consumer-remote-store-category-tests",
     "tests/acl2/receiver-response-transfer-tests",
+    "books/connection-receiver-repin",
+    "books/index-connection-rx-repin",
+    "books/index-reader-rx-source-completion",
+    "tests/acl2/connection-receiver-repin-tests",
+    "tests/acl2/connection-receiver-repin-state-tests",
     "books/obligation-view-cursor-refinement",
     "books/obligation-view-cursor",
     "books/view-delta-cursor-refinement",
@@ -2122,27 +2127,27 @@
     "tests/acl2/substrate-commit-codec-gap-tests"
   ],
   "totals": {
-    "books": 2316,
-    "books_in_root_closure": 2260,
-    "roots": 2118,
-    "theorems": 33129,
-    "functions": 21166,
-    "assert_events": 24670,
+    "books": 2323,
+    "books_in_root_closure": 2265,
+    "roots": 2123,
+    "theorems": 33131,
+    "functions": 21182,
+    "assert_events": 24674,
     "must_fails": 2519,
     "prover_refusals": 0,
     "encapsulates": 168,
     "guards": {
-      "verified": 3744,
-      "declared-off": 2592,
-      "default-guarded": 11807,
-      "default-unguarded": 3023
+      "verified": 3746,
+      "declared-off": 2594,
+      "default-guarded": 11817,
+      "default-unguarded": 3025
     },
-    "suspect_theorems": 1309,
-    "export_hygiene_warnings": 382,
+    "suspect_theorems": 1310,
+    "export_hygiene_warnings": 383,
     "enabled_projection_warnings": 79,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2962,
-    "host_names_warnings": 2592,
+    "include_hygiene_warnings": 2972,
+    "host_names_warnings": 2628,
     "hand_written_record_warnings": 19
   },
   "books": [
@@ -2627,11 +2632,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 11,
-      "functions": 15,
+      "functions": 17,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 15,
+        "default-guarded": 17,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -11794,6 +11799,32 @@
       "read_error": null
     },
     {
+      "book": "books/connection-receiver-repin.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "connection-receiver-source"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/connection-receiver-source-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -20103,6 +20134,32 @@
       "read_error": null
     },
     {
+      "book": "books/index-connection-repin-prepare.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "index-connection-issuer"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/index-connection-repin.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -20123,6 +20180,33 @@
       "encapsulates": 0,
       "includes": [
         "index-connection-issuer"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/index-connection-rx-repin.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 1,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "connection-receiver-repin",
+        "index-connection-repin"
       ],
       "system_includes": [],
       "suspects": [],
@@ -20492,6 +20576,62 @@
       ],
       "system_includes": [],
       "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/index-reader-rx-source-completion.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 1,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "index-connection-rx-repin",
+        "index-reader-request"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/index-reader-step.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 2,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "owner-read-result",
+        "served-step"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-irr-read-result-step-consumed-unfolds"
+      ],
       "read_error": null
     },
     {
@@ -43300,10 +43440,10 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 4,
+      "assert_events": 7,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 2,
+      "defconsts": 3,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -49758,6 +49898,59 @@
       "includes": [
         "../../books/connection-budget",
         "must-fail-checked"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/connection-receiver-repin-state-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 3,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/index-reader-rx-source-completion",
+        "../../host/receiver-repin-source-host"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/connection-receiver-repin-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 1,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/index-connection-rx-repin"
       ],
       "system_includes": [],
       "suspects": [],
@@ -68617,7 +68810,7 @@
     {
       "theorem": "fn-aec-collection-issue-preserves-state",
       "book": "books/allocation-epoch.lisp",
-      "line": 271,
+      "line": 296,
       "reasons": [
         "preserves-no-subject-call: the statement never calls fn-aec-collection-issue or a fn-aec-collection-issue- transition"
       ]
@@ -71401,6 +71594,14 @@
       "line": 423,
       "reasons": [
         "closed-theory-corollary: proved only by fn-ccar-ocfg-complete-is-ocfg-step-complete, fn-irc-rix-ocfg-complete-is-rix, fn-prc-carryp-of-refresh, fn-rix-ocfg-complete-is-ccar-ocfg-complete"
+      ]
+    },
+    {
+      "theorem": "fn-irr-read-result-step-consumed-unfolds",
+      "book": "books/index-reader-step.lisp",
+      "line": 29,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
     },
     {
@@ -80000,6 +80201,12 @@
         "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
       },
       {
+        "theorem": "fn-irr-read-result-step-consumed-unfolds",
+        "book": "books/index-reader-step.lisp",
+        "line": 29,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
         "theorem": "fn-inj-config-max-octets-of-fn-inj-make-config-full",
         "book": "books/injection.lisp",
         "line": 479,
@@ -82744,9 +82951,10 @@
         "book": "books/served-plan.lisp",
         "line": 419,
         "stated_in": [
+          "books/index-reader-step.lisp",
           "books/served-step.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 2 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-splan-step-refusal-lines",
@@ -82807,9 +83015,10 @@
         "book": "books/served-step.lisp",
         "line": 23,
         "stated_in": [
+          "books/index-reader-step.lisp",
           "books/served-plan.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 2 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-splan-step-refusal-lines",
@@ -86649,6 +86858,13 @@
         "line": 3,
         "include": "public-exposure-selectors",
         "included": "books/public-exposure-selectors.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/connection-receiver-repin.lisp",
+        "line": 2,
+        "include": "connection-receiver-source",
+        "included": "books/connection-receiver-source.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -90530,10 +90746,31 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/index-connection-repin-prepare.lisp",
+        "line": 5,
+        "include": "index-connection-issuer",
+        "included": "books/index-connection-issuer.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/index-connection-repin.lisp",
         "line": 5,
         "include": "index-connection-issuer",
         "included": "books/index-connection-issuer.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/index-connection-rx-repin.lisp",
+        "line": 2,
+        "include": "index-connection-repin",
+        "included": "books/index-connection-repin.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/index-connection-rx-repin.lisp",
+        "line": 3,
+        "include": "connection-receiver-repin",
+        "included": "books/connection-receiver-repin.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -90709,6 +90946,34 @@
         "line": 5,
         "include": "index-reader-receiver-issuer",
         "included": "books/index-reader-receiver-issuer.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/index-reader-rx-source-completion.lisp",
+        "line": 3,
+        "include": "index-reader-request",
+        "included": "books/index-reader-request.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/index-reader-rx-source-completion.lisp",
+        "line": 4,
+        "include": "index-connection-rx-repin",
+        "included": "books/index-connection-rx-repin.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/index-reader-step.lisp",
+        "line": 5,
+        "include": "served-step",
+        "included": "books/served-step.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/index-reader-step.lisp",
+        "line": 6,
+        "include": "owner-read-result",
+        "included": "books/owner-read-result.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -97919,6 +98184,20 @@
         "line": 13,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/connection-receiver-repin-state-tests.lisp",
+        "line": 6,
+        "include": "../../books/index-reader-rx-source-completion",
+        "included": "books/index-reader-rx-source-completion.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/connection-receiver-repin-tests.lisp",
+        "line": 2,
+        "include": "../../books/index-connection-rx-repin",
+        "included": "books/index-connection-rx-repin.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -106968,6 +107247,41 @@
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
+        "host": "host/index-connection-repin-prepare-host.lisp",
+        "line": 6,
+        "name": "f-boundp-global",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-connection-repin-prepare-host.lisp",
+        "line": 6,
+        "name": "stobj-let",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-connection-repin-prepare-host.lisp",
+        "line": 6,
+        "name": "fn-mio$c-provider",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-connection-repin-prepare-host.lisp",
+        "line": 6,
+        "name": "word",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-connection-repin-prepare-host.lisp",
+        "line": 6,
+        "name": "mv",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
         "host": "host/index-incoming-request-host.lisp",
         "line": 37,
         "name": "mv",
@@ -107132,6 +107446,174 @@
         "host": "host/index-publication-host.lisp",
         "line": 81,
         "name": "disable",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-reader-request-host.lisp",
+        "line": 15,
+        "name": "mv",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-reader-request-host.lisp",
+        "line": 36,
+        "name": "stobj-let",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-reader-request-host.lisp",
+        "line": 36,
+        "name": "fn-mio$c-provider",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-reader-request-host.lisp",
+        "line": 36,
+        "name": "identity",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-reader-request-host.lisp",
+        "line": 36,
+        "name": "fn-ibp-request-pending",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-reader-request-host.lisp",
+        "line": 36,
+        "name": "fn-ibp-connection-pending",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-reader-request-host.lisp",
+        "line": 36,
+        "name": "fn-ibp-slot-depth",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-reader-request-host.lisp",
+        "line": 36,
+        "name": "fn-owner-index-connection-repin-prepare",
+        "source": "host/index-connection-repin-prepare-host.lisp",
+        "reason": "defined in host/index-connection-repin-prepare-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/index-reader-request-host.lisp",
+        "line": 36,
+        "name": "owned",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-reader-request-host.lisp",
+        "line": 70,
+        "name": "word",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-reader-request-host.lisp",
+        "line": 90,
+        "name": "fn-owner-ocfg",
+        "source": "books/owner-state-accessors.lisp",
+        "reason": "defined in books/owner-state-accessors.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/index-reader-request-host.lisp",
+        "line": 90,
+        "name": "fn-owner-rx-connection-record-repin",
+        "source": "host/receiver-repin-source-host.lisp",
+        "reason": "defined in host/receiver-repin-source-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/index-reader-request-host.lisp",
+        "line": 90,
+        "name": "persisted",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-reader-request-host.lisp",
+        "line": 90,
+        "name": "id",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-reader-request-host.lisp",
+        "line": 90,
+        "name": "fn-owner-put-credits",
+        "source": "books/owner-connection-state.lisp",
+        "reason": "defined in books/owner-connection-state.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/index-reader-request-host.lisp",
+        "line": 90,
+        "name": "fn-owner-install-ocfg",
+        "source": "books/owner-obligation-state.lisp",
+        "reason": "defined in books/owner-obligation-state.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/index-reader-request-host.lisp",
+        "line": 90,
+        "name": "fn-owner-exposure-observe",
+        "source": "host/owner-host.lisp",
+        "reason": "defined in host/owner-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/index-reader-request-host.lisp",
+        "line": 90,
+        "name": "fn-served-closingp",
+        "source": "books/served.lisp",
+        "reason": "defined in books/served.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/index-reader-request-host.lisp",
+        "line": 90,
+        "name": "fn-served-starttlsp",
+        "source": "books/served.lisp",
+        "reason": "defined in books/served.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/index-reader-request-host.lisp",
+        "line": 90,
+        "name": "fn-served-submission",
+        "source": "books/served.lisp",
+        "reason": "defined in books/served.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/index-reader-request-host.lisp",
+        "line": 90,
+        "name": "fn-olog-served-refusal-lines",
+        "source": "books/owner-log.lisp",
+        "reason": "defined in books/owner-log.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/index-reader-request-host.lisp",
+        "line": 90,
+        "name": "fn-owner-core",
+        "source": "books/owner-state-accessors.lisp",
+        "reason": "defined in books/owner-state-accessors.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/index-reader-request-host.lisp",
+        "line": 90,
+        "name": "committed",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-reader-request-host.lisp",
+        "line": 90,
+        "name": "member-eq",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
@@ -120852,6 +121334,55 @@
         "host": "host/reader-host.lisp",
         "line": 99,
         "name": "mv",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/receiver-repin-source-host.lisp",
+        "line": 6,
+        "name": "fn-ibp-request-pending",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/receiver-repin-source-host.lisp",
+        "line": 6,
+        "name": "fn-owner-rx-connection-issued",
+        "source": "host/receiver-source-gate-host.lisp",
+        "reason": "defined in host/receiver-source-gate-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/receiver-repin-source-host.lisp",
+        "line": 6,
+        "name": "member-eq",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/receiver-repin-source-host.lisp",
+        "line": 6,
+        "name": "mv",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/receiver-repin-source-host.lisp",
+        "line": 35,
+        "name": "stobj-let",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/receiver-repin-source-host.lisp",
+        "line": 35,
+        "name": "fn-mio$c-provider",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/receiver-repin-source-host.lisp",
+        "line": 35,
+        "name": "word",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },

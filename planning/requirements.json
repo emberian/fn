@@ -6095,9 +6095,11 @@
         "books/connection-receiver-source-invariants.lisp",
         "tests/acl2/connection-receiver-source-tests.lisp",
         "specs/connection-receiver-source.md",
-        "planning/evidence/connection-receiver-source-2026-09-30.md"
+        "planning/evidence/connection-receiver-source-2026-09-30.md",
+        "tests/acl2/allocation-dual-ceiling-tests.lisp",
+        "planning/evidence/allocation-request-split.json"
       ],
-      "implementation_note": "Internal guarded scalar, same-pool, installed-geometry observation and actual sharedPRS nonce source. Genuine runtime/source tariff installation, process-wide barrier, identity rescue and once-only allocating-turn producer joins remain open; no activation/funding claim. Guarded STATE-ticket completion and idempotent fault are exercised through actual native transport; fixture installation and operation setup do not establish complete allowance or activation."
+      "implementation_note": "Internal guarded scalar, same-pool, installed-geometry observation and actual sharedPRS nonce source. Genuine runtime/source tariff installation, process-wide barrier, identity rescue and once-only allocating-turn producer joins remain open; no activation/funding claim. Guarded STATE-ticket completion and idempotent fault are exercised through actual native transport; fixture installation and operation setup do not establish complete allowance or activation. Request-budget and physical-fit recognizers are distinct; request admission retains positive pinned reserve policy with no physical-fit or GC-success authority. SCN-1074 covers scalar separation; genuine issuance/caller and physical qualification remain open."
     },
     {
       "id": "REP-018",

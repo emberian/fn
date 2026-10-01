@@ -34,7 +34,7 @@
       (<= (fn-aec-at 4 x) domain)
       (natp (fn-aec-at 5 x)) (<= (fn-aec-at 5 x) domain) t))
 
-(defun fn-aec-installationp (x)
+(defun fn-aec-physical-installationp (x)
  (declare (xargs :guard t))
  (and (true-listp x) (equal (len x) 13)
       (eq (fn-aec-at 0 x) :allocation-epoch-installation)
@@ -58,8 +58,31 @@
       (<= (fn-aec-at 7 x)
           (- (- (fn-aec-at 3 x) (fn-aec-at 5 x)) (fn-aec-at 6 x)))))
 
+; Request admission carries actual dynamic capacity and source charges only.
+; Unknown affine physical terms remain NIL; this predicate grants no fit claim.
+; Positive dynamic reserve is installed policy, not guaranteed collector-copy room.
+(defun fn-aec-request-budget-installationp (x)
+ (declare (xargs :guard t))
+ (and (true-listp x) (equal (len x) 13)
+      (eq (fn-aec-at 0 x) :allocation-epoch-request-budget)
+      (fn-aec-runtime-associationp (fn-aec-at 1 x) (fn-aec-at 2 x))
+      (posp (fn-aec-at 2 x))
+      (equal (fn-aec-at 3 x) nil) (equal (fn-aec-at 4 x) nil)
+      (equal (fn-aec-at 5 x) nil) (equal (fn-aec-at 6 x) nil)
+      (equal (fn-aec-at 7 x) nil)
+      (fn-aec-nats-below (list (fn-aec-at 8 x) (fn-aec-at 9 x)
+                             (fn-aec-at 10 x) (fn-aec-at 11 x)
+                             (fn-aec-at 12 x)) (fn-aec-at 2 x))
+      (posp (fn-aec-at 12 x))
+      (< (fn-aec-at 12 x) (fn-aec-at 5 (fn-aec-at 1 x)))))
+
+(defun fn-aec-installationp (x)
+ (declare (xargs :guard t))
+ (or (fn-aec-physical-installationp x)
+     (fn-aec-request-budget-installationp x)))
+
 (defun fn-aec-physical-ceiling (installation)
- (declare (xargs :guard (fn-aec-installationp installation)))
+ (declare (xargs :guard (fn-aec-physical-installationp installation)))
  (floor (- (- (- (fn-aec-at 3 installation) (fn-aec-at 5 installation))
                  (fn-aec-at 6 installation)) (fn-aec-at 7 installation))
         (fn-aec-at 4 installation)))
@@ -69,9 +92,11 @@
 ; collector resident reserve does not establish dynamic collector headroom.
 (defun fn-aec-ceiling (installation)
  (declare (xargs :guard (fn-aec-installationp installation)))
- (min (fn-aec-physical-ceiling installation)
-      (- (fn-aec-at 5 (fn-aec-at 1 installation))
-         (fn-aec-at 12 installation))))
+ (let ((dynamic (- (fn-aec-at 5 (fn-aec-at 1 installation))
+                   (fn-aec-at 12 installation))))
+   (if (fn-aec-physical-installationp installation)
+       (min (fn-aec-physical-ceiling installation) dynamic)
+     dynamic)))
 
 ; The logical budget/grants invariant remains a distinct same-pool invariant.
 ; This predicate covers physical allocation only. A release of logical C is
@@ -293,7 +318,8 @@
             (<= (* f x) b))
    :hints (("Goal" :nonlinearp t)) :rule-classes nil))
  (defthm fn-aec-state-footprint-bound
-  (implies (fn-aec-statep i m e l a n g)
+  (implies (and (fn-aec-physical-installationp i)
+                (fn-aec-statep i m e l a n g))
    (<= (+ (* (fn-aec-at 4 i) (+ l a))
           (fn-aec-at 5 i) (fn-aec-at 6 i) (fn-aec-at 7 i))
        (fn-aec-at 3 i)))

@@ -5170,3 +5170,6 @@ existing port only after fn-fc has made this connection ready."
   (declare (xargs :stobjs state :mode :program))
   (let ((state (fn-owner-put-credits (fn-orcp-release (fn-owner-credits state)) state)))
     (fn-owner-orc-finish state)))
+
+; Serialized indexed reader completion follows its actual owner STATE subjects.
+(include-book "index-reader-request-host")

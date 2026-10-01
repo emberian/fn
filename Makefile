@@ -18,6 +18,11 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-transaction-dispatch-tests \
 	tests/acl2/consumer-remote-store-category-tests \
 	tests/acl2/receiver-response-transfer-tests \
+	books/connection-receiver-repin \
+	books/index-connection-rx-repin \
+	books/index-reader-rx-source-completion \
+	tests/acl2/connection-receiver-repin-tests \
+	tests/acl2/connection-receiver-repin-state-tests \
 	books/obligation-view-cursor-refinement \
 	books/obligation-view-cursor \
 	books/view-delta-cursor-refinement \
