@@ -26003,12 +26003,12 @@
       "exempt": {},
       "keystones": [
         {
-          "theorem": "fn-oret-drain-step-ends-by-the-window",
-          "via": "fn-oret-drain-step"
+          "theorem": "fn-ort-deadline-is-independent-of-the-fences",
+          "via": "fn-ort-drain-step-counted"
         },
         {
-          "theorem": "fn-oret-drain-step-waits-while-feeds-drain",
-          "via": "fn-oret-drain-step"
+          "theorem": "fn-ort-counted-drain-waits-before-window-without-fenced-zero",
+          "via": "fn-ort-drain-step-counted"
         }
       ],
       "extraction": null,

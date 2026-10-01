@@ -4756,8 +4756,13 @@
 
 (definterface fn-owner-retire-step
   :class ::program
-  :keystones ((fn-oret-drain-step-ends-by-the-window :via fn-oret-drain-step)
-              (fn-oret-drain-step-waits-while-feeds-drain :via fn-oret-drain-step)))
+  ;; The host step is fn-ort-drain-step-counted since 1bf2ddcaf (carried
+  ;; counts and both producer fences), so its keystones are the counted
+  ;; drain's: the window ends it, and before the window it waits unless the
+  ;; fenced count is zero.
+  :keystones ((fn-ort-deadline-is-independent-of-the-fences :via fn-ort-drain-step-counted)
+              (fn-ort-counted-drain-waits-before-window-without-fenced-zero
+               :via fn-ort-drain-step-counted)))
 
 (definterface fn-tls-self-signed-host-certificate-pem
   :class :program
