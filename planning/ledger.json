@@ -300,6 +300,7 @@
     "books/definterface",
     "books/defevent",
     "books/deftransition",
+    "books/def-carried",
     "books/rev-onto",
     "books/acceptance-alloc",
     "tests/acl2/defrecord-tests",
@@ -312,6 +313,7 @@
     "tests/acl2/definterface-tests",
     "tests/acl2/definterface-recognizer-tests",
     "tests/acl2/defevent-tests",
+    "tests/acl2/def-carried-tests",
     "books/acceptance",
     "books/acceptance-invariants",
     "tests/acl2/acceptance-tests",
@@ -2356,29 +2358,31 @@
     "books/substrate-committed-row",
     "tests/acl2/substrate-committed-transcript-tests",
     "tests/acl2/substrate-committed-row-tests",
-    "tests/acl2/substrate-commit-codec-gap-tests"
+    "tests/acl2/substrate-commit-codec-gap-tests",
+    "books/tcpcl-session-carried",
+    "books/owner-retain-carried"
   ],
   "totals": {
-    "books": 2723,
-    "books_in_root_closure": 2634,
-    "roots": 2355,
-    "theorems": 35985,
-    "functions": 22913,
-    "assert_events": 25421,
-    "must_fails": 2587,
+    "books": 2727,
+    "books_in_root_closure": 2638,
+    "roots": 2359,
+    "theorems": 36047,
+    "functions": 23006,
+    "assert_events": 25477,
+    "must_fails": 2610,
     "prover_refusals": 0,
-    "encapsulates": 195,
+    "encapsulates": 209,
     "guards": {
       "verified": 3846,
       "declared-off": 2934,
-      "default-guarded": 12814,
-      "default-unguarded": 3319
+      "default-guarded": 12834,
+      "default-unguarded": 3392
     },
     "suspect_theorems": 1345,
     "export_hygiene_warnings": 398,
     "enabled_projection_warnings": 80,
     "teeth_form_warnings": 279,
-    "include_hygiene_warnings": 3538,
+    "include_hygiene_warnings": 3547,
     "host_names_warnings": 3114,
     "hand_written_record_warnings": 19
   },
@@ -17814,6 +17818,32 @@
       "read_error": null
     },
     {
+      "book": "books/def-carried.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 47,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 47
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 3,
+      "defmacros": 3,
+      "encapsulates": 1,
+      "includes": [],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/def-loop.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -17951,12 +17981,12 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 46,
+      "functions": 50,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 46
+        "default-unguarded": 50
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -17965,7 +17995,9 @@
       "defconsts": 2,
       "defmacros": 1,
       "encapsulates": 0,
-      "includes": [],
+      "includes": [
+        "def-carried"
+      ],
       "system_includes": [],
       "suspects": [],
       "read_error": null
@@ -33561,6 +33593,33 @@
       "read_error": null
     },
     {
+      "book": "books/owner-retain-carried.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 2,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "def-carried",
+        "owner-recovery-retain"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/owner-retain-state.lisp",
       "in_root_closure": true,
       "is_root": false,
@@ -41329,13 +41388,13 @@
       "book": "books/resource-vector-exec.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 0,
-      "functions": 20,
+      "theorems": 22,
+      "functions": 22,
       "guards": {
         "verified": 0,
         "declared-off": 9,
-        "default-guarded": 8,
-        "default-unguarded": 3
+        "default-guarded": 9,
+        "default-unguarded": 4
       },
       "verify_guards_events": 0,
       "assert_events": 1,
@@ -41343,11 +41402,13 @@
       "prover_refusals": 0,
       "defconsts": 1,
       "defmacros": 0,
-      "encapsulates": 0,
+      "encapsulates": 1,
       "includes": [
         "resource-vector"
       ],
-      "system_includes": [],
+      "system_includes": [
+        "arithmetic-5/top"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -45877,7 +45938,7 @@
       "book": "books/store-finalize-incremental.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 48,
+      "theorems": 49,
       "functions": 12,
       "guards": {
         "verified": 5,
@@ -49277,6 +49338,33 @@
       "encapsulates": 0,
       "includes": [
         "cbor"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/tcpcl-session-carried.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 4,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "def-carried",
+        "tcpcl-session"
       ],
       "system_includes": [],
       "suspects": [],
@@ -61201,6 +61289,35 @@
       "encapsulates": 0,
       "includes": [
         "../../books/decoded-worker-controller-trajectory"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/def-carried-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 28,
+      "functions": 40,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 19,
+        "default-unguarded": 21
+      },
+      "verify_guards_events": 0,
+      "assert_events": 34,
+      "must_fails": 16,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 1,
+      "encapsulates": 12,
+      "includes": [
+        "../../books/def-carried",
+        "../../books/definterface",
+        "../../books/payload-kinds",
+        "must-fail-checked"
       ],
       "system_includes": [],
       "suspects": [],
@@ -74481,7 +74598,7 @@
       "book": "tests/acl2/resource-vector-exec-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 0,
+      "theorems": 6,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -74509,7 +74626,7 @@
       "book": "tests/acl2/resource-vector-relations-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 0,
+      "theorems": 3,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -74518,14 +74635,16 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 0,
-      "must_fails": 0,
+      "assert_events": 16,
+      "must_fails": 7,
       "prover_refusals": 0,
       "defconsts": 8,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/resource-vector-relations"
+        "../../books/defkeystone",
+        "../../books/resource-vector-relations",
+        "must-fail-checked"
       ],
       "system_includes": [
         "std/testing/assert-bang"
@@ -101607,6 +101726,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/image-world-dtn.lisp",
+        "line": 372,
+        "include": "definterface",
+        "included": "books/definterface.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/image-world-paged.lisp",
         "line": 9,
         "include": "outcome-class",
@@ -102850,6 +102976,13 @@
         "line": 419,
         "include": "bp-evidence-host-names",
         "included": "books/bp-evidence-host-names.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/image-world-paged.lisp",
+        "line": 420,
+        "include": "definterface",
+        "included": "books/definterface.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -104691,6 +104824,13 @@
         "line": 400,
         "include": "bp-evidence-host-names",
         "included": "books/bp-evidence-host-names.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/image-world.lisp",
+        "line": 401,
+        "include": "definterface",
+        "included": "books/definterface.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -114095,6 +114235,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/def-carried-tests.lisp",
+        "line": 30,
+        "include": "../../books/definterface",
+        "included": "books/definterface.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/def-carried-tests.lisp",
+        "line": 32,
+        "include": "must-fail-checked",
+        "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/def-loop-tests.lisp",
         "line": 25,
         "include": "must-fail-checked",
@@ -114120,6 +114274,20 @@
         "line": 15,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/definterface-recognizer-tests.lisp",
+        "line": 3,
+        "include": "../../books/definterface",
+        "included": "books/definterface.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/definterface-tests.lisp",
+        "line": 17,
+        "include": "../../books/definterface",
+        "included": "books/definterface.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -118772,6 +118940,13 @@
       },
       {
         "book": "tests/acl2/raw-guarded-interface-tests.lisp",
+        "line": 2,
+        "include": "../../books/definterface",
+        "included": "books/definterface.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/raw-guarded-interface-tests.lisp",
         "line": 3,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
@@ -119227,7 +119402,7 @@
       },
       {
         "book": "tests/acl2/resource-vector-exec-tests.lisp",
-        "line": 9,
+        "line": 10,
         "include": "../../books/resource-vector-exec",
         "included": "books/resource-vector-exec.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -119237,6 +119412,13 @@
         "line": 8,
         "include": "../../books/resource-vector-relations",
         "included": "books/resource-vector-relations.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/resource-vector-relations-tests.lisp",
+        "line": 10,
+        "include": "must-fail-checked",
+        "included": "tests/acl2/must-fail-checked.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
