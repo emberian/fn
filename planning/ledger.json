@@ -1210,6 +1210,13 @@
     "books/owner-bound-commit",
     "books/consumer-event-index",
     "tests/acl2/consumer-event-index-tests",
+    "books/history-event-directory",
+    "books/history-event-directory-refinement",
+    "books/history-event-page",
+    "books/history-event-provider",
+    "books/history-event-backing",
+    "tests/acl2/history-event-directory-tests",
+    "tests/acl2/history-event-backing-tests",
     "books/history-columns",
     "books/history-columns-relation",
     "tests/acl2/history-columns-relation-tests",
@@ -1601,26 +1608,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1659,
-    "books_in_root_closure": 1658,
-    "roots": 1597,
-    "theorems": 27336,
-    "functions": 17867,
-    "assert_events": 22732,
+    "books": 1666,
+    "books_in_root_closure": 1665,
+    "roots": 1604,
+    "theorems": 27381,
+    "functions": 17925,
+    "assert_events": 22740,
     "must_fails": 2461,
     "prover_refusals": 0,
     "encapsulates": 156,
     "guards": {
-      "verified": 3338,
-      "declared-off": 2070,
-      "default-guarded": 9789,
+      "verified": 3340,
+      "declared-off": 2080,
+      "default-guarded": 9835,
       "default-unguarded": 2670
     },
-    "suspect_theorems": 1206,
+    "suspect_theorems": 1209,
     "export_hygiene_warnings": 317,
     "enabled_projection_warnings": 52,
     "teeth_form_warnings": 271,
-    "include_hygiene_warnings": 2369,
+    "include_hygiene_warnings": 2376,
     "host_names_warnings": 1964,
     "hand_written_record_warnings": 18
   },
@@ -12120,6 +12127,143 @@
         "fn-hist-empty-fields",
         "fn-hist-records-for-of-atom"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/history-event-backing.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 10,
+      "functions": 21,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 21,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "history-event-directory",
+        "history-event-provider",
+        "state-globals"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-hep-completion-replay-by-definition",
+        "fn-hep-published-replay-by-definition"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/history-event-directory-refinement.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 13,
+      "functions": 6,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 6,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "history-event-directory"
+      ],
+      "system_includes": [
+        "arithmetic-5/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/history-event-directory.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 12,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 12,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [],
+      "system_includes": [
+        "arithmetic-5/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/history-event-page.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 19,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 5,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [],
+      "system_includes": [],
+      "suspects": [
+        "fn-hec-initialize-never-rebinds-issued-page-by-definition"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/history-event-provider.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 3,
+      "guards": {
+        "verified": 2,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 2,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "history-event-page"
+      ],
+      "system_includes": [],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -38331,6 +38475,58 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/history-event-backing-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 10,
+      "guards": {
+        "verified": 0,
+        "declared-off": 10,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 4,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 6,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/history-event-backing"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/history-event-directory-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 4,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 4,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/history-event-directory-refinement"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/history-fold-refinement-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -52283,6 +52479,14 @@
       ]
     },
     {
+      "theorem": "fn-hec-initialize-never-rebinds-issued-page-by-definition",
+      "book": "books/history-event-page.lisp",
+      "line": 187,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-hec-initialize and the conclusion is that arm's value"
+      ]
+    },
+    {
       "theorem": "fn-held-accessors-are-the-wire-accessors",
       "book": "books/held-record.lisp",
       "line": 165,
@@ -52321,6 +52525,22 @@
       "line": 332,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-hep-completion-replay-by-definition",
+      "book": "books/history-event-backing.lisp",
+      "line": 267,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-hep-register-completion-internal and the conclusion is that arm's value"
+      ]
+    },
+    {
+      "theorem": "fn-hep-published-replay-by-definition",
+      "book": "books/history-event-backing.lisp",
+      "line": 274,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-hep-publish-current and the conclusion is that arm's value"
       ]
     },
     {
@@ -65709,6 +65929,41 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/history-event-backing.lisp",
+        "line": 4,
+        "include": "history-event-directory",
+        "included": "books/history-event-directory.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/history-event-backing.lisp",
+        "line": 5,
+        "include": "history-event-provider",
+        "included": "books/history-event-provider.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/history-event-backing.lisp",
+        "line": 6,
+        "include": "state-globals",
+        "included": "books/state-globals.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/history-event-directory-refinement.lisp",
+        "line": 4,
+        "include": "history-event-directory",
+        "included": "books/history-event-directory.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/history-event-provider.lisp",
+        "line": 4,
+        "include": "history-event-page",
+        "included": "books/history-event-page.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/history-fold-refinement.lisp",
         "line": 41,
         "include": "consumer-owner-local-progress",
@@ -74967,6 +75222,20 @@
         "line": 20,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/history-event-backing-tests.lisp",
+        "line": 2,
+        "include": "../../books/history-event-backing",
+        "included": "books/history-event-backing.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/history-event-directory-tests.lisp",
+        "line": 2,
+        "include": "../../books/history-event-directory-refinement",
+        "included": "books/history-event-directory-refinement.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

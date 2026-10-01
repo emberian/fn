@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1659 |
-| Certification roots in the Makefile | 1597 |
-| Books inside the root closure | 1658 |
-| `defthm` and `defthmd` events | 27336 |
-| `defun` events | 17867 |
-| Functions with verified guards | 3338 |
-| Functions declared `:verify-guards nil` and never verified | 2070 |
-| Functions left at the default with an explicit guard | 9789 |
+| Books read | 1666 |
+| Certification roots in the Makefile | 1604 |
+| Books inside the root closure | 1665 |
+| `defthm` and `defthmd` events | 27381 |
+| `defun` events | 17925 |
+| Functions with verified guards | 3340 |
+| Functions declared `:verify-guards nil` and never verified | 2080 |
+| Functions left at the default with an explicit guard | 9835 |
 | Functions left at the default with no guard | 2670 |
-| `assert-event` checks | 22732 |
+| `assert-event` checks | 22740 |
 | `must-fail` checks | 2461 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 156 |
-| Theorems flagged SUSPECT by shape | 1206 |
+| Theorems flagged SUSPECT by shape | 1209 |
 | Export-hygiene warnings | 317 |
 | Enabled-projection warnings | 52 |
 | Teeth-form warnings | 271 |
-| Include-hygiene warnings | 2369 |
+| Include-hygiene warnings | 2376 |
 | Host-names warnings | 1964 |
 | Hand-written-record warnings | 18 |
 
@@ -456,6 +456,11 @@ that `make certify` requests.
 | `books/history-columns-relation.lisp` | root | 12 | 5 | 0/0/1/4 | 0 | 0 | 0 |
 | `books/history-columns-store.lisp` | root | 18 | 6 | 6/0/0/0 | 0 | 0 | 1 |
 | `books/history-columns.lisp` | root | 78 | 26 | 2/1/17/6 | 0 | 0 | 2 |
+| `books/history-event-backing.lisp` | root | 10 | 21 | 0/0/21/0 | 0 | 0 | 2 |
+| `books/history-event-directory-refinement.lisp` | root | 13 | 6 | 0/0/6/0 | 0 | 0 | 0 |
+| `books/history-event-directory.lisp` | root | 2 | 12 | 0/0/12/0 | 0 | 0 | 0 |
+| `books/history-event-page.lisp` | root | 19 | 5 | 0/0/5/0 | 0 | 0 | 1 |
+| `books/history-event-provider.lisp` | root | 1 | 3 | 2/0/1/0 | 0 | 0 | 0 |
 | `books/history-fold-refinement.lisp` | closure | 29 | 4 | 1/0/3/0 | 0 | 0 | 3 |
 | `books/history-image-binding.lisp` | root | 99 | 39 | 0/3/25/11 | 0 | 0 | 0 |
 | `books/history-image-fold.lisp` | root | 17 | 6 | 0/1/2/3 | 0 | 0 | 0 |
@@ -1325,6 +1330,8 @@ that `make certify` requests.
 | `tests/acl2/history-columns-relation-tests.lisp` | root | 5 | 0 | 0/0/0/0 | 2 | 1 | 0 |
 | `tests/acl2/history-columns-store-tests.lisp` | root | 2 | 3 | 0/2/1/0 | 16 | 2 | 0 |
 | `tests/acl2/history-columns-tests.lisp` | root | 10 | 9 | 0/0/7/2 | 14 | 4 | 0 |
+| `tests/acl2/history-event-backing-tests.lisp` | root | 0 | 10 | 0/10/0/0 | 4 | 0 | 0 |
+| `tests/acl2/history-event-directory-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 4 | 0 | 0 |
 | `tests/acl2/history-fold-refinement-tests.lisp` | root | 0 | 4 | 0/4/0/0 | 30 | 1 | 0 |
 | `tests/acl2/history-image-binding-tests.lisp` | root | 1 | 31 | 0/24/1/6 | 37 | 0 | 0 |
 | `tests/acl2/history-image-campaign-tests.lisp` | root | 1 | 13 | 0/5/1/7 | 16 | 0 | 0 |
@@ -2027,11 +2034,14 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-gacc-restrict-articles-of-consp` | `books/group-access-cache.lisp` | 236 | branch-of-definition: the hypothesis is a branch test of fn-gac-restrict-articles and the conclusion is that branch's value |
 | `fn-hc-error-preserves-original` | `books/hybrid-carrier.lisp` | 461 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-heap-reserve-decide-keeps-heap-figures-refusals` | `books/heap-reservation.lisp` | 219 | arm-of-definition: the hypotheses select one IF/COND arm of fn-heap-reserve-decide and the conclusion is that arm's value |
+| `fn-hec-initialize-never-rebinds-issued-page-by-definition` | `books/history-event-page.lisp` | 187 | arm-of-definition: the hypotheses select one IF/COND arm of fn-hec-initialize and the conclusion is that arm's value |
 | `fn-held-accessors-are-the-wire-accessors` | `books/held-record.lisp` | 165 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-held-wire-of-with-context` | `books/catalog-relation.lisp` | 142 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-held-wire-of-with-numbers` | `books/catalog-relation.lisp` | 132 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-held-wire-of-with-withdrawn` | `books/catalog-relation.lisp` | 137 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-held-with-context-fields` | `books/held-record.lisp` | 332 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-hep-completion-replay-by-definition` | `books/history-event-backing.lisp` | 267 | arm-of-definition: the hypotheses select one IF/COND arm of fn-hep-register-completion-internal and the conclusion is that arm's value |
+| `fn-hep-published-replay-by-definition` | `books/history-event-backing.lisp` | 274 | arm-of-definition: the hypotheses select one IF/COND arm of fn-hep-publish-current and the conclusion is that arm's value |
 | `fn-hfr-held-wire-msgid` | `books/history-fold-refinement.lisp` | 263 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-hfr-wire-of-a-held-row` | `books/history-fold-refinement.lisp` | 57 | arm-of-definition: the hypotheses select one IF/COND arm of fn-row-wire-of and the conclusion is that arm's value |
 | `fn-hfr-wire-of-another-event` | `books/history-fold-refinement.lisp` | 63 | arm-of-definition: the hypotheses select one IF/COND arm of fn-row-wire-of and the conclusion is that arm's value |
