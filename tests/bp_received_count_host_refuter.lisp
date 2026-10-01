@@ -14,6 +14,7 @@
   (otherwise (error "unexpected recording core subject ~s" subject))))
 (defun fnn-fault (&rest args) (error "fault ~s" args))
 (defun fnn-register-verb (&rest ignored) (declare (ignore ignored)) nil)
+(define-condition fnn-store-indeterminate (error) ((message :initarg :message)))
 (load "host/native/tcpcl.lisp")
 (let* ((conn (make-fnn-tcl-conn :held '((:xfer-ack 3 7 3))))
        (bytes (list 65)) (seen nil)

@@ -130,6 +130,18 @@ Only the qualified BP received-source installer may bind it. Callback presence
 is not a resource grant. ACL2 selects count from the held final END ACK; no
 host byte count or complete-source scan occurs. Old callback remains separate.")
 
+(define-condition fnn-tcl-source-indeterminate (fnn-store-indeterminate)
+  ((connection :initarg :connection :reader fnn-tcl-source-failure-connection)
+   (cause :initarg :cause :reader fnn-tcl-source-failure-cause)))
+(defun fnn-tcl-source-escape (conn condition)
+  ;; The condition retains this same mutable I/O record across outer session
+  ;; unwind. It conveys uncertainty, not a new authoritative source snapshot.
+  (setf (fnn-tclc-fenced conn) t (fnn-tclc-outcome conn) :uncertain)
+  (if (typep condition 'fnn-tcl-source-indeterminate) (error condition)
+    (error 'fnn-tcl-source-indeterminate
+           :message "TCPCL received source continuation is indeterminate"
+           :connection conn :cause condition)))
+
 (defvar *fnn-tcl-source-start* nil
   "Qualified registered source entry (conn id reversed-segments count).
 Returns (:source-yield token) or a durable delivery disposition. Initially
@@ -321,17 +333,16 @@ and faults without following or deleting anything."
     (fnn-tcl-apply conn result "source-event")))
 
 (defun fnn-tcl-source-tick (conn)
-  (unless (and (fnn-tclc-source-pending conn)
-               (fnn-tclc-source-token conn) *fnn-tcl-source-turn*)
-    (fnn-fault "TCPCL source continuation cannot resume"))
-  (when (fnn-tclc-fenced conn)
-    (fnn-fault "TCPCL source continuation is fenced"))
   (handler-case
-      (fnn-tcl-source-disposition
-       conn (funcall *fnn-tcl-source-turn* conn (fnn-tclc-source-token conn)))
-    (error (condition)
-      (setf (fnn-tclc-fenced conn) t (fnn-tclc-outcome conn) :uncertain)
-      (error condition))))
+      (progn
+        (unless (and (fnn-tclc-source-pending conn)
+                     (fnn-tclc-source-token conn) *fnn-tcl-source-turn*)
+          (fnn-fault "TCPCL source continuation cannot resume"))
+        (when (fnn-tclc-fenced conn)
+          (fnn-fault "TCPCL source continuation is fenced"))
+        (fnn-tcl-source-disposition
+         conn (funcall *fnn-tcl-source-turn* conn (fnn-tclc-source-token conn))))
+    (error (condition) (fnn-tcl-source-escape conn condition))))
 
 (defun fnn-tcl-settle-delivery (conn xfer-id result)
   (let* ((plan (fnn-core 'fn-tcl-delivery-plan
@@ -408,8 +419,7 @@ and faults without following or deleting anything."
               conn (funcall *fnn-tcl-source-start* conn (second event)
                             (third event) (fourth event)))
            (error (condition)
-             (setf (fnn-tclc-fenced conn) t (fnn-tclc-outcome conn) :uncertain)
-             (error condition))))
+             (fnn-tcl-source-escape conn condition))))
         (:inbound-refused
          (incf (fnn-tclc-refused conn))
          (fnn-tcl-log conn "refused" "inbound xfer=~d reason=~a" (second event) (third event)))
