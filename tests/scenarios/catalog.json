@@ -7395,7 +7395,10 @@
         "planning/evidence/bpsec-asb-metadata-source-2026-09-30.json",
         "books/bpsec-asb-body.lisp",
         "tests/acl2/bpsec-asb-body-tests.lisp",
-        "planning/evidence/bpsec-asb-body-source-2026-09-30.json"
+        "planning/evidence/bpsec-asb-body-source-2026-09-30.json",
+        "books/bpsec-asb-aggregate.lisp",
+        "tests/acl2/bpsec-asb-aggregate-tests.lisp",
+        "planning/evidence/bpsec-asb-aggregate-source-2026-09-30.json"
       ],
       "execution_scope": "ACL2 literal source fixture only; full every-schedule theorem and operational provider/native execution remain open."
     },

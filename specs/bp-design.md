@@ -1110,6 +1110,19 @@ parameter/result-list spans, complete grammar and every-window reference
 refinement remain open. Same ID/geometry does not establish physical bytes
 or pinned lifetime.
 
+`books/bpsec-asb-aggregate.lisp` carries the saved metadata span boundary:
+source, pending value, pair ID, target/parameter/pair/result lists and the
+scheduled scan/reversal lists retain only spans inside the same declared
+source coordinate. It composes with the current body, typed head and scalar
+range through the actual start, drive and step. Literal BIB/BCB witnesses
+check this entire antecedent/conclusion at each exercised transition,
+including wrapped-key parameters and ordered multi-target results; each
+saved-field mutation retains the body context and breaks the composite
+invariant and zero-quantum output conclusion. These ghost tree/list predicates
+never run on the served path. This is an extent invariant, not full metadata
+grammar, actual provider byte equality/pinned lifetime, every-window alpha
+refinement or cryptographic verification.
+
 The logical target-graph reference in `books/bpsec-target.lisp` binds each
 ASB as `(block-number . ASB)`, checks actual block existence/type, unique
 service/target pairs, forbidden security targets and payload BCB flags. Every

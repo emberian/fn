@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2302 |
-| Certification roots in the Makefile | 2105 |
-| Books inside the root closure | 2246 |
-| `defthm` and `defthmd` events | 32994 |
-| `defun` events | 21129 |
+| Books read | 2304 |
+| Certification roots in the Makefile | 2106 |
+| Books inside the root closure | 2248 |
+| `defthm` and `defthmd` events | 33080 |
+| `defun` events | 21134 |
 | Functions with verified guards | 3742 |
 | Functions declared `:verify-guards nil` and never verified | 2592 |
-| Functions left at the default with an explicit guard | 11774 |
+| Functions left at the default with an explicit guard | 11779 |
 | Functions left at the default with no guard | 3021 |
-| `assert-event` checks | 24628 |
+| `assert-event` checks | 24653 |
 | `must-fail` checks | 2519 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 168 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 382 |
 | Enabled-projection warnings | 79 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2947 |
+| Include-hygiene warnings | 2950 |
 | Host-names warnings | 2569 |
 | Hand-written-record warnings | 19 |
 
@@ -316,6 +316,7 @@ that `make certify` requests.
 | `books/bp-workflow-replay-status.lisp` | root | 30 | 2 | 0/1/1/0 | 0 | 0 | 0 |
 | `books/bp-workflow-transport-invariants.lisp` | root | 32 | 2 | 0/0/2/0 | 0 | 0 | 3 |
 | `books/bp-workflow.lisp` | root | 2 | 113 | 4/0/109/0 | 0 | 0 | 0 |
+| `books/bpsec-asb-aggregate.lisp` | closure | 86 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/bpsec-asb-body.lisp` | closure | 43 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/bpsec-asb-control.lisp` | closure | 22 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/bpsec-asb-head-invariant.lisp` | closure | 23 | 1 | 0/0/1/0 | 0 | 0 | 1 |
@@ -1628,6 +1629,7 @@ that `make certify` requests.
 | `tests/acl2/bp-workflow-records-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 101 | 6 | 0 |
 | `tests/acl2/bp-workflow-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 1 | 0 |
 | `tests/acl2/bp-workflow-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 50 | 7 | 0 |
+| `tests/acl2/bpsec-asb-aggregate-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 25 | 0 | 0 |
 | `tests/acl2/bpsec-asb-body-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 13 | 0 | 0 |
 | `tests/acl2/bpsec-asb-control-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 7 | 0 | 0 |
 | `tests/acl2/bpsec-asb-metadata-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 10 | 0 | 0 |

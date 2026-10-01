@@ -1996,6 +1996,7 @@
     "tests/acl2/bpsec-head-invariant-tests",
     "tests/acl2/bpsec-asb-metadata-tests",
     "tests/acl2/bpsec-asb-body-tests",
+    "tests/acl2/bpsec-asb-aggregate-tests",
     "tests/acl2/bpsec-target-cursor-tests",
     "tests/acl2/bpsec-target-tests",
     "tests/acl2/post-identity-source-cursor-source-complete-tests",
@@ -2109,26 +2110,26 @@
     "tests/acl2/substrate-commit-codec-gap-tests"
   ],
   "totals": {
-    "books": 2302,
-    "books_in_root_closure": 2246,
-    "roots": 2105,
-    "theorems": 32994,
-    "functions": 21129,
-    "assert_events": 24628,
+    "books": 2304,
+    "books_in_root_closure": 2248,
+    "roots": 2106,
+    "theorems": 33080,
+    "functions": 21134,
+    "assert_events": 24653,
     "must_fails": 2519,
     "prover_refusals": 0,
     "encapsulates": 168,
     "guards": {
       "verified": 3742,
       "declared-off": 2592,
-      "default-guarded": 11774,
+      "default-guarded": 11779,
       "default-unguarded": 3021
     },
     "suspect_theorems": 1306,
     "export_hygiene_warnings": 382,
     "enabled_projection_warnings": 79,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2947,
+    "include_hygiene_warnings": 2950,
     "host_names_warnings": 2569,
     "hand_written_record_warnings": 19
   },
@@ -8596,6 +8597,32 @@
       "read_error": null
     },
     {
+      "book": "books/bpsec-asb-aggregate.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 86,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 4,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bpsec-asb-body"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/bpsec-asb-body.lisp",
       "in_root_closure": true,
       "is_root": false,
@@ -9040,6 +9067,7 @@
       "encapsulates": 0,
       "includes": [
         "bpsec-asb",
+        "bpsec-asb-aggregate",
         "bpsec-asb-body",
         "bpsec-asb-control",
         "bpsec-asb-head-invariant",
@@ -47228,6 +47256,32 @@
       "includes": [
         "../../books/bp-workflow-transport-invariants",
         "must-fail-checked"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/bpsec-asb-aggregate-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 25,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 12,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bpsec-asb-aggregate"
       ],
       "system_includes": [],
       "suspects": [],
@@ -85637,6 +85691,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/bpsec-asb-aggregate.lisp",
+        "line": 4,
+        "include": "bpsec-asb-body",
+        "included": "books/bpsec-asb-body.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/bpsec-asb-body.lisp",
         "line": 3,
         "include": "bpsec-asb-position",
@@ -85858,6 +85919,13 @@
         "line": 17,
         "include": "bpsec-asb-body",
         "included": "books/bpsec-asb-body.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bpsec.lisp",
+        "line": 18,
+        "include": "bpsec-asb-aggregate",
+        "included": "books/bpsec-asb-aggregate.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -96155,6 +96223,13 @@
         "line": 4,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bpsec-asb-aggregate-tests.lisp",
+        "line": 2,
+        "include": "../../books/bpsec-asb-aggregate",
+        "included": "books/bpsec-asb-aggregate.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
