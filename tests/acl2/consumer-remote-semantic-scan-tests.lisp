@@ -1,0 +1,76 @@
+(in-package "ACL2")
+(include-book "../../books/consumer-remote-semantic-scan")
+
+(defconst *crm-ingress* '(:authenticated (:remote-consumer :poll (97)) (112) (65) (78) 3 7))
+(defun fn-crm-test-scanner (query)
+ (declare (xargs :guard t))
+ (fn-crps-state '(source) nil nil query 1 3 3 :read nil nil nil))
+(defun fn-crm-test-config (table)
+ (declare (xargs :guard t))
+ (fn-inj-make-config-full t nil '((97) (98)) 4096 (list nil nil nil table) nil))
+(defun fn-crm-test-view (visible withdrawn records)
+ (declare (xargs :guard t))
+ (list 3 3 (fn-make-state '("a" "b") nil visible 3 nil nil) nil nil nil records nil withdrawn nil))
+(defun fn-crm-test-run (fuel answer key scope-key)
+ (declare (xargs :guard (natp fuel) :measure (nfix fuel)))
+ (if (or (zp fuel) (not (eq (fn-cp-nth 0 answer) :yield))) answer
+  (fn-crm-test-run (- fuel 1) (fn-crm-tick (fn-cp-nth 1 answer) key scope-key 1) key scope-key)))
+
+; A cause filed in b returns its target in a, after query AND current READ.
+; The returned continuation still has dense position1, not position2.
+(assert-event
+ (let* ((target (fn-make-article "<a>" 1 '("a" "b") '(("a" . 1) ("b" . 2)) t nil))
+        (cause (fn-make-article "<c>" 2 '("b") '(("b" . 3)) t nil))
+        (cfg (fn-crm-test-config '(("a" "a" "*" 3))))
+        (start (fn-crm-begin (fn-crm-test-scanner '((97))) '(1 1 0 "<c>" 2 ("b"))
+                 *crm-ingress* 9 cfg (fn-crm-test-view (list cause) (list target)
+                   '((:withdrawal "<a>" "<c>" nil nil 0 nil)))))
+        (answer (fn-crm-test-run 180 start '(source) (fn-crs-key *crm-ingress* 9)))
+        (next (fn-cp-nth 3 answer)))
+  (and (eq (car answer) :report-input) (eq (cadr answer) :withdrawal-target)
+       (equal (caddr answer) (list :report-input (list :current-article target) '("a") '(("a" . 1))))
+       (equal (fn-cp-nth 5 (fn-cp-nth 3 (cadr next))) 1)
+       (equal (fn-cp-nth 5 (cadr (fn-crm-test-run 180 next '(source) (fn-crs-key *crm-ingress* 9)))) 2))))
+
+; Two matching targets from one dense cause must both precede event completion.
+(assert-event
+ (let* ((a (fn-make-article "<a>" 1 '("a") '(("a" . 1)) t nil))
+        (b (fn-make-article "<b>" 2 '("a") '(("a" . 2)) t nil))
+        (start (fn-crm-begin (fn-crm-test-scanner '((97))) '(1 1 0 "<c>" 3 ("b"))
+                 *crm-ingress* 9 (fn-crm-test-config nil)
+                 (fn-crm-test-view nil (list a b)
+                   '((:withdrawal "<a>" "<c>" nil nil 0 nil)
+                     (:withdrawal "<b>" "<c>" nil nil 0 nil)))))
+        (key (fn-crs-key *crm-ingress* 9))
+        (first (fn-crm-test-run 180 start '(source) key))
+        (second (fn-crm-test-run 180 (fn-cp-nth 3 first) '(source) key))
+        (end (fn-crm-test-run 180 (fn-cp-nth 3 second) '(source) key)))
+  (and (eq (car first) :report-input) (eq (cadr first) :withdrawal-target)
+       (equal (fn-cp-nth 1 (fn-cp-nth 1 (caddr first))) a)
+       (eq (car second) :report-input) (eq (cadr second) :withdrawal-target)
+       (equal (fn-cp-nth 1 (fn-cp-nth 1 (caddr second))) b)
+       (eq (car end) :event-complete) (equal (fn-cp-nth 5 (cadr end)) 2))))
+
+; READ exclusion does not suppress another eligible selection from the cause.
+(assert-event
+ (let* ((a (fn-make-article "<a>" 1 '("a") '(("a" . 1)) t nil))
+        (cause (fn-make-article "<c>" 2 '("b") '(("b" . 2)) t nil))
+        (start (fn-crm-begin (fn-crm-test-scanner '((97) (98))) '(1 1 0 "<c>" 2 ("b"))
+                 *crm-ingress* 9 (fn-crm-test-config '(("a" "b" "*" 3)))
+                 (fn-crm-test-view (list cause) (list a)
+                   '((:withdrawal "<a>" "<c>" nil nil 0 nil)))))
+        (answer (fn-crm-test-run 250 start '(source) (fn-crs-key *crm-ingress* 9))))
+  (and (eq (car answer) :report-input) (eq (cadr answer) :visible)
+       (equal (caddr answer) (list :report-input (list :current-article cause) '("b") '(("b" . 2)))))))
+
+(assert-event
+ (let* ((key (fn-crs-key *crm-ingress* 9))
+        (start (fn-crm-begin (fn-crm-test-scanner '((97))) '(:consumer event)
+                  *crm-ingress* 9 (fn-crm-test-config nil) (fn-crm-test-view nil nil nil))))
+  (and (equal (fn-crm-test-run 1 start '(source) key)
+              (list :event-complete (fn-crps-state '(source) nil nil '((97)) 2 3 3 :read nil nil nil)))
+       (equal (fn-crm-tick (cadr start) '(changed) key 1) '(:refused :remote-semantic-source-changed))
+       (equal (fn-crm-tick (cadr start) '(source) (fn-crs-key *crm-ingress* 10) 1)
+              '(:refused :remote-semantic-source-changed))
+       (equal (fn-crm-begin (fn-crm-test-scanner '((97))) nil *crm-ingress* 9 nil nil)
+              '(:unavailable :history 1)))))

@@ -1304,6 +1304,20 @@ producers require actual owner-view/config/source custody across every yield;
 their guarded definitions and literal fixtures do not install that custody or
 prove the complete joined pipeline.
 
+The saved semantic continuation now composes those bounded visibility, query
+and READ producers for one dense event. Each tick invokes at most one existing
+producer tick. A withdrawal cause can select several targets: a filtered report
+input retains the original event position and its remaining visibility
+continuation, and only exhaustion of that event advances one dense position.
+READ exclusion resumes the remaining targets or the cause's eligible content.
+Source and READ-generation changes refuse before touching saved children.
+The actual owner STATE join retains each semantic/report continuation and
+callback alias; cancellation does not consume them. It refuses unregistered
+history custody, and a pending report stays unavailable until its genuine
+bounded writer can consume it. The guarded internal entries and fixtures are
+source evidence, while the high same-current CEP/CP validator, actual report
+writer, funding, physical completion and complete host refinement remain open.
+
 Remote replies share the existing FNCT typed consumer response contract:
 kind 5 progress/position, kind 6 poll/WAIT, kind 9 status and kind 18 reasons.
 The logical remote client refuses the legacy local-request resend path. An
