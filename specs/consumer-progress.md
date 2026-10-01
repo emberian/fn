@@ -1370,3 +1370,40 @@ one bounded codec name or emits one octet per tick. The complete concrete
 buffer-effect source boundary and actual RECORD/FNCT parser fixtures pass;
 physical payload reader funding, native report extent custody, complete CWAIT
 statement attachment composition and multi-target reply aggregation remain open.
+
+Remote scoped poll and WAIT use the existing typed FNCT poll/reason/uncertain
+contract. A report for no selected item stays empty; exactly one item keeps its
+existing FNWD1 or RECORD bytes. Two or more items use the additive **FNRB1** inner
+collection: four magic octets `FNRB`, version octet `1`, unsigned big-endian
+32-bit count (at least two), followed in maintained selection order by exactly
+that many unsigned big-endian 32-bit nonzero lengths and item byte strings.
+Each generated item is a target-only FNWD1 or ordinary authorized RECORD.
+Original payload and Message-ID stay exact; projected routing metadata is node
+supplied, not an author's signed statement. Existing signed singleton client
+paths stay unchanged; no modified composite signature or verification is claimed.
+
+The required operator current-C rows `:limit max-remote-report-items` and
+`:limit max-remote-report-octets` are read from one captured configured value and
+generation, one row per scheduling step. Missing/unsupported policy refuses;
+there is no default or inference from query-group count or Store record size.
+Both values must fit the collection/FNCT codec widths. They are policy bounds,
+not physical allocation authority or a changed persisted profile format; the
+selected immutable runtime representation/extent source must also admit them.
+
+Preparation exhausts every eligible target from one dense event before making
+its next cursor proposal. Every preparation/write tick rechecks current source
+and READ keys. Item/byte oversize refuses the complete event without durable
+cursor advancement, truncation or first-target success. Collection framing
+writes one octet per tick and invokes at most one existing item writer tick.
+Current READ/account/source revalidation remains required at final publication
+and after WAIT; an encoded buffer is not publication or callback completion.
+
+A version-aware remote client validates the complete collection before returning
+any next cursor proposal for ACK. Missing/unknown collection capability or
+version explicitly refuses, as do length/count/tail mismatches; a collection is
+never interpreted as one article. Located framing reads only its fixed nine
+header octets or one four-octet item length per step. Those concrete boundaries
+and encoder-to-client fixtures have source evidence; the logical per-item semantic
+decoder is not a qualified bounded physical decoder. Actual high reader inputs,
+current CP/carries association, genuine report BODY/representation/extent and
+native completion/publication remain open, with original endpoint scenarios intact.
