@@ -105,6 +105,11 @@
           (fn-page-file-open (update-fn-pfo-result result fn-page-file-open))
           (fn-page-file-open (update-fn-pfo-phase :decoded fn-page-file-open)))
     (mv :profile-result result (- fuel 1) fn-page-file-open fn-page-read-pool fn-allocation-turn-slots)))
+  ((eq (fn-pfo-phase fn-page-file-open) :decoded)
+   (let* ((effect (list :file-close (fn-pfo-file fn-page-file-open)))
+          (fn-page-file-open (update-fn-pfo-pending effect fn-page-file-open))
+          (fn-page-file-open (update-fn-pfo-phase :close-pending fn-page-file-open)))
+    (mv :file-close effect (- fuel 1) fn-page-file-open fn-page-read-pool fn-allocation-turn-slots)))
   (t (mv :file-pending nil fuel fn-page-file-open fn-page-read-pool fn-allocation-turn-slots))))
 
 ; Called only with the actual primitive observation in the serialized owner
@@ -121,6 +126,13 @@
                (natp (fn-prl-nth 1 token))
                (equal (fn-prl-nth 1 token) (fn-prl-nth 1 (fn-pfo-file fn-page-file-open)))))
     (mv :stale-file-observation fn-page-file-open))
+   ((and (eq (fn-pfo-phase fn-page-file-open) :close-pending)
+         (eq io-word :closed))
+    ; Physical close is recorded, but the incarnation binding/claim remains
+    ; until its actual last registered source/descriptor alias has returned.
+    (let* ((fn-page-file-open (update-fn-pfo-pending nil fn-page-file-open))
+           (fn-page-file-open (update-fn-pfo-phase :closed fn-page-file-open)))
+     (mv :file-closed-retained fn-page-file-open)))
    ((and (eq (fn-pfo-phase fn-page-file-open) :open-pending)
          (eq io-word :opened))
     (let* ((fn-page-file-open (update-fn-pfo-pending nil fn-page-file-open))
@@ -145,6 +157,9 @@
    ((and (eq (fn-pfo-phase fn-page-file-open) :read-pending)
          (or (not (equal expected-start (fn-prl-nth 2 pending)))
              (not (equal expected-end (fn-prl-nth 3 pending)))))
+    (mv :stale-file-observation fn-page-file-open))
+   ((not (member-eq (fn-pfo-phase fn-page-file-open)
+                    '(:open-pending :read-pending :close-pending)))
     (mv :stale-file-observation fn-page-file-open))
    (t
     ; Unknown/failing primitive outcome retains pending plan, source and claim.
