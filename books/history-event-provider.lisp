@@ -1,0 +1,81 @@
+; Separate event-page provider. No default construction on a read/append.
+; A physical traversal is depth+1, preflighted in full; no retained child alias.
+(in-package "ACL2")
+(include-book "history-event-page")
+(defstobj fn-hep-node
+ (fn-hep-node-children :type (stobj-table 16)) :inline t)
+(defstobj fn-hep-left
+ (fn-hep-left-children :type (stobj-table 16))
+ :congruent-to fn-hep-node :inline t)
+(defstobj fn-hep-right
+ (fn-hep-right-children :type (stobj-table 16))
+ :congruent-to fn-hep-node :inline t)
+(defun fn-hep-node-presentp (key fn-hep-node)
+ (declare (xargs :stobjs fn-hep-node :guard (symbolp key)))
+ (fn-hep-node-children-boundp key fn-hep-node))
+(defun fn-hep-node-read (slot depth epoch id incarnation ordinal base captured fuel fn-hep-node)
+ (declare (xargs :stobjs fn-hep-node :measure (nfix depth)
+                 :guard (and (natp slot) (natp depth) (natp ordinal) (natp base)
+                             (natp fuel)) :verify-guards nil))
+ (cond ((<= fuel depth) (mv :yield nil fuel))
+       ((and (zp depth) (not (equal slot 0))) (mv :unavailable nil fuel))
+       ((zp depth)
+        (if (not (fn-hep-node-presentp 'fn-history-event-page fn-hep-node))
+         (mv :unavailable nil fuel)
+         (stobj-let ((fn-history-event-page
+           (fn-hep-node-children-get 'fn-history-event-page fn-hep-node
+                                    (create-fn-history-event-page))))
+          (word row)
+          (if (or (< ordinal base) (not (equal base (fn-hec-base fn-history-event-page))))
+           (mv :recovery-required nil)
+           (fn-hec-read epoch id incarnation (- ordinal base) captured fn-history-event-page))
+          (mv word row (- fuel 1)))))
+       ((equal (mod slot 2) 0)
+        (if (not (fn-hep-node-presentp 'fn-hep-left fn-hep-node))
+         (mv :unavailable nil fuel)
+         (stobj-let ((fn-hep-left (fn-hep-node-children-get 'fn-hep-left fn-hep-node
+                                                          (create-fn-hep-left))))
+          (word row left)
+          (fn-hep-node-read (floor slot 2) (- depth 1) epoch id incarnation ordinal base
+                            captured (- fuel 1) fn-hep-left)
+          (mv word row left))))
+       (t (if (not (fn-hep-node-presentp 'fn-hep-right fn-hep-node))
+         (mv :unavailable nil fuel)
+         (stobj-let ((fn-hep-right (fn-hep-node-children-get 'fn-hep-right fn-hep-node
+                                                            (create-fn-hep-right))))
+          (word row left)
+          (fn-hep-node-read (floor slot 2) (- depth 1) epoch id incarnation ordinal base
+                            captured (- fuel 1) fn-hep-right)
+          (mv word row left))))))
+(verify-guards fn-hep-node-read)
+(defun fn-hep-node-append (slot depth epoch id incarnation base expected row fn-hep-node)
+ (declare (xargs :stobjs fn-hep-node :measure (nfix depth)
+                 :guard (and (natp slot) (natp depth)) :verify-guards nil))
+ (cond ((and (zp depth) (not (equal slot 0))) (mv :unavailable fn-hep-node))
+       ((zp depth)
+        (if (not (fn-hep-node-presentp 'fn-history-event-page fn-hep-node))
+         (mv :unavailable fn-hep-node)
+         (stobj-let ((fn-history-event-page
+           (fn-hep-node-children-get 'fn-history-event-page fn-hep-node
+                                    (create-fn-history-event-page))))
+          (word fn-history-event-page)
+          (if (equal base (fn-hec-base fn-history-event-page))
+           (fn-hec-append epoch id incarnation expected row fn-history-event-page)
+           (mv :stale fn-history-event-page))
+          (mv word fn-hep-node))))
+       ((equal (mod slot 2) 0)
+        (if (not (fn-hep-node-presentp 'fn-hep-left fn-hep-node))
+         (mv :unavailable fn-hep-node)
+         (stobj-let ((fn-hep-left (fn-hep-node-children-get 'fn-hep-left fn-hep-node
+                                                          (create-fn-hep-left))))
+          (word fn-hep-left)
+          (fn-hep-node-append (floor slot 2) (- depth 1) epoch id incarnation base expected row fn-hep-left)
+          (mv word fn-hep-node))))
+       (t (if (not (fn-hep-node-presentp 'fn-hep-right fn-hep-node))
+         (mv :unavailable fn-hep-node)
+         (stobj-let ((fn-hep-right (fn-hep-node-children-get 'fn-hep-right fn-hep-node
+                                                            (create-fn-hep-right))))
+          (word fn-hep-right)
+          (fn-hep-node-append (floor slot 2) (- depth 1) epoch id incarnation base expected row fn-hep-right)
+          (mv word fn-hep-node))))))
+(verify-guards fn-hep-node-append)
