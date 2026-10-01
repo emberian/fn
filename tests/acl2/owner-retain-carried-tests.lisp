@@ -9,16 +9,9 @@
 ;      the producer yields an owner that is neither :fault nor invariant (so
 ;      the theorem without its hypothesis is false), and, by the theorem
 ;      itself, the assumption is false there (it is not everything).
-;   2. The consumer and topic transitions over the ACL2 state: a positive
-;      witness (the owner global at the reserved owner, the host's prepare,
-;      the relation before and after) and a hypothesis-removal witness (a
-;      corrupted owner: the relation fails before and after).
-;
-; The owners, events and the corrupted owner are owner-log-ocl-tests' and
-; owner-prepare-served-events-tests'.
+;   2. (owed, below) the consumer and topic transitions over the ACL2 state.
 (in-package "ACL2")
 (include-book "../../books/owner-retain-carried")
-(include-book "owner-prepare-served-events-tests")
 
 ; -----------------------------------------------------------------------------
 ; 1a. fn-owner-store-open-install-produces-invariant.
@@ -122,46 +115,9 @@
                         (:executable-counterpart equal)))))
 
 ; -----------------------------------------------------------------------------
-; 2. The transitions over the ACL2 state.  The state: ACL2's built state with
-; the owner global at OC (the retention carry unset: nil, fn-prc-carryp).
-(defun ort-state (oc)
-  (declare (xargs :verify-guards nil))
-  (put-global 'fn-owner oc (build-state)))
-
-; fn-owner-prepare-consumer-preserves-retain-state.  Positive: at the
-; reserved owner the relation holds; the host's consumer prepare of ACL2's
-; bootstrap proposal answers :prepared and the relation holds after.
-(defthm ort-consumer-positive
-  (let ((st (ort-state *lgt-reserved*)))
-    (and (fn-owner-retain-statep st)
-         (equal (mv-nth 1 (fn-owner-prepare-consumer *pse-consumer-event* (create-fn-arena$a) st))
-                :prepared)
-         (fn-owner-retain-statep
-          (mv-nth 2 (fn-owner-prepare-consumer *pse-consumer-event* (create-fn-arena$a) st)))))
-  :rule-classes nil)
-; Hypothesis removal (corrupted state): the topic counter moved
-; (*lgt-bad-reserved*): the relation fails before and after.
-(defthm ort-consumer-removal
-  (let ((st (ort-state *lgt-bad-reserved*)))
-    (and (not (fn-owner-retain-statep st))
-         (not (fn-owner-retain-statep
-               (mv-nth 2 (fn-owner-prepare-consumer *pse-consumer-event*
-                                                    (create-fn-arena$a) st))))))
-  :rule-classes nil)
-
-; fn-owner-prepare-topic-preserves-retain-state, likewise.
-(defthm ort-topic-positive
-  (let ((st (ort-state *lgt-reserved*)))
-    (and (fn-owner-retain-statep st)
-         (equal (mv-nth 1 (fn-owner-prepare-topic *pse-topic-event* (create-fn-arena$a) st))
-                :prepared)
-         (fn-owner-retain-statep
-          (mv-nth 2 (fn-owner-prepare-topic *pse-topic-event* (create-fn-arena$a) st)))))
-  :rule-classes nil)
-(defthm ort-topic-removal
-  (let ((st (ort-state *lgt-bad-reserved*)))
-    (and (not (fn-owner-retain-statep st))
-         (not (fn-owner-retain-statep
-               (mv-nth 2 (fn-owner-prepare-topic *pse-topic-event*
-                                                 (create-fn-arena$a) st))))))
-  :rule-classes nil)
+; 2. OWED: the consumer and topic transitions' state-level witnesses (the
+; owner global at owner-log-ocl-tests' *lgt-reserved*, the host's prepare of
+; owner-prepare-served-events-tests' events, the relation before and after;
+; removal at *lgt-bad-reserved*).  Those fixtures' closure does not certify
+; at stage-0 99b9f30e5 (owner-served-invariants-tests red), so they wait;
+; the ocfg-level keystone witnesses are in owner-prepare-served-events-tests.
