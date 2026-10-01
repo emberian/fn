@@ -18351,6 +18351,214 @@
         }
       ],
       "pending_subject": "Conditional original Store/control law; modern maintained typed C allocator relation, literal teeth and normal certification are open."
+    },
+    {
+      "id": "PRF-1131",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pwz-actual-copy-split-effects",
+          "note": "Exact actual copied-byte/ring/output split; full positive and all three natural-counter removals. Not scheduling-action equivalence."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwz-actual-codec-copy-effects",
+          "note": "Actual mode12 fn-ewz-codec-tick complete decoder/ring/table/scratch/private-window effects; reachable source initialize/hash-prime/read/first-tick positive and all13 condition removals."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwz-actual-codec-copy-action-effects",
+          "note": "Actual mode12 controller state/history/table/scratch/private-window effects equal 64 existing fn-zin-act calls; reachable actual initializer/read/tick positive and all13 hypothesis removals. No general literal trajectory or scheduling budget claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwz-actual-ready-literal-step-is-action-trajectory",
+          "note": "Actual ready mode8 fn-zin-step full state/history/table/output equals emitted-count existing fn-zin-act calls under positive room, fresh fields and complete readiness including strict bomb bound. Actual initializer/basic scheduling positive plus four exact condition removals; general output-window trajectory and scheduling budget remain open; legacy fast/ahead is unreachable in this composition."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwz-actual-step-is-action-trajectory",
+          "note": "Actual positive-room STEP full tuple equals existing ACT sequence for all modes/refusals. Reachable actual initializer/basic chunk positive and exact room-removal witness; semantic ACT count is distinct from charged STEP/native cost."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwz-actual-codec-is-action-trajectory",
+          "note": "Actual fn-ewz-codec-tick complete seven-value tuple equals ACT/PULL replay with identical charged schedule, stored credit, selected private writes and next mode under fixed history/table readiness. Actual initializer/basic chunk positive and both full buffer-removal witnesses. Output-window confluence, total budget and native binding/funding remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwz-actual-loop-charge-bound",
+          "note": "Actual basic loop all outcomes, including terminal refusal: charged budget is bounded by 9 times real input advance plus 2 times output advance plus incoming bit/phase potential and259. Actual pending-copy and terminal positives, corrupted grammar-state and nonnatural-budget removals. No compiled tariff or complete cross-window adequacy claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwz-actual-codec-carries-budget",
+          "note": "Actual fn-ewz-codec-tick preserves carried charged-budget invariant from incoming carry and nonrefusal returned decoder status, with no extra state/pool hypotheses. Actual source initializer/first-chunk positive and corrupted incoming-budget/terminal-refusal removals. Its nonrefusal scope is preserved; the separate final-envelope component covers all outcomes."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwz-active-controller-budget-remains-positive",
+          "note": "Existing actual real-input/output carries plus decoder-budget carry imply active remaining budget at least3840+7C. Actual bounded-copy and C=0 source positives and both complete carry/active-mode removals. Successful codec/read/hash carry is joined to actual controller source; general arbitrary-window trajectory and native demand remain open; the separate final-envelope component covers terminal charge."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwz-actual-codec-preserves-final-budget-envelope",
+          "note": "Actual fn-ewz-codec-tick preserves the complete real-input/output/final-budget envelope on all outcomes with no pool or status premises. Actual repeated codec windows reach terminal decoded TIN6/TOUT251; complete envelope removal and separately labeled corrupted-pool empty-stream special branch."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwz-final-envelope-active-budget-positive",
+          "note": "Actual controller final envelope plus active mode imply remaining charged budget at least3839+7C, including terminal drain/decoded states. Actual terminal source positive and complete envelope/active-mode removals. Source action charge only; no compiled tariff/native demand or full bytes/digest convergence."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwz-actual-basic-loop-is-atomic-unconditionally",
+          "note": "Actual fn-zin-loop complete seven-value/effects result equals existing ACT/PULL atomic schedule at explicitly observed semantic fuel, unconditionally. Runtime unchanged; real initialized fixed-Huffman full128-byte literal checks the entire tuple."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwz-actual-basic-loop-general-output-windows",
+          "note": "Actual basic-loop two output-window calls agree with actual whole call in status/IP/state/history/table/output under normalized frontier order, actual first :full and resumed/whole no-yield. Independent adequately completed charges, no remaining-fuel equality; complete positive and all four removals."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwz-actual-basic-loop-general-cleared-windows",
+          "note": "Actual basic-loop cleared scratch output resumption agrees in status/IP/state/history/table and concatenated bytes under proper initial output, first :full and resumed/whole no-yield. Complete positive/removals include actual pulled malformed-header and separately corrupted improper-output witnesses. No native activation or full controller/dictionary/digest claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwzc-actual-stored-chunk-recredited-full-tuple",
+          "note": "Actual fn-pzw-stored-chunk complete seven-value tuple recredited equals its actual fn-zin-feed call unconditionally, including remaining charged fuel, IP and complete decoder/history/table/output effects. Real initialized 64-byte positive and actual buffer refusal; no native activation."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwzc-actual-two-stored-chunks-full-tuple",
+          "note": "Two actual stored chunks correspond to two actual feed calls after exact whole-state recredit, unconditionally; real initialized two64-byte complete-tuple positive, omitted-recredit mutation. No supplied-demand or native holder claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwzc-actual-stored-two-windows-without-buffer-premises",
+          "note": "Two actual cleared stored windows agree with completed whole actual feed in status/IP/full recredited state/history/table and appended output, under only first actual :full and second/whole non-yield. Buffer type/shape hypotheses removed after actual source length-preservation proofs. Complete positive and all three genuine status removals. Charged remaining fuel intentionally excluded only from whole-window semantic confluence."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwzd-actual-two-stored-windows-canonical-answer",
+          "note": "Actual initialized FN-PZW-STORED-CHUNK twice with actual global FN-PZW-BUDGET-LEFT carry has the exact existing FN-PZD-DECODE answer and appended output under first actual :yield/:full, second neither :yield nor :full, and final output below actual canonical sentinel. No dictionary/input type, redundant prefix bound or assumed whole completion; seven complete literal positives/removals. Logical trajectory only, no native fixed1024 yield/reachable64-byte input fixture or activation inference."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwzi-actual-refilled-stored-windows-canonical-answer",
+          "note": "Two actual initialized stored calls over separate prefix/tail buffers at position zero now equal the complete existing FN-PZD-DECODE answer using exact global budget-left. Only first :more and second neither :yield nor :full remain; logical input/dictionary types, buffer shape, final output frontier and whole completion are derived or removed after weakened proofs. Actual fixed1024/input64+6, header-cut and empty logical wrapper positives plus all three complete status removals accompany this source component. Arbitrary controller iteration, accumulated digest, selected dictionary/captured source authority and complete native funding/holder remain open. Empty C=N0 is the logical wrapper special case; controller BEGIN uses drain. The zero-request removal belongs to the general wrapper API, not fixed1024 source reachability."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pws-actual-codec-tick-carries-selected-prefix",
+          "note": "Actual FN-EWZ-CODEC-TICK carries the selected private-window cell against APPEND(previous semantic output prefix, actual returned stored scratch), and returned TOUT equals appended length. The prior cell carry and TOUT/prefix position are explicit; actual INIT/read/hash/codec positives check newly written and retained cells across two input buffers, with separate corrupted-buffer and corrupted-prefix removals. This is source output accumulation, not arbitrary canonical iteration/digest, captured source custody, runtime adequacy or native activation."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwdg-actual-compressed-begin-establishes-digest-trajectory",
+          "note": "Actual FN-EWZ-BEGIN establishes the existing captured-source BLAKE3 trajectory under supported natural depth<=63, octet source/exact ELEN and selected tree stack support; complete actual BEGIN positive and all five domain removals. These are digest representation/profile premises, not new stored-data policy."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwdg-actual-compressed-read-preserves-digest-trajectory",
+          "note": "Actual FN-EWZ-READ preserves the existing captured-source digest invariant at retained actual plan ELEN under incoming carry and faithful source slice when scanning. Full actual scan/read positive, omitted source-slice witness and separately corrupted incoming-CV carry removal. The native source/view binding remains open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwdg-actual-compressed-hash-preserves-digest-trajectory",
+          "note": "Actual FN-EWZ-HASH-TICK preserves the captured-source digest invariant at retained plan ELEN under incoming carry. Actual decoded/return-to-root positive and corrupted output carry removal; source-only, no whole runtime grant."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwdg-actual-compressed-publication-authenticates-captured-source",
+          "note": "New publication from actual FN-EWZ-READ plus carried faithful-source digest proves actual trailer and expected commitment equal BLAKE3(captured source). Actual BEGIN/read/codec/hash/trailer publication positive yields selected (66 67); complete prior-private, success/bad-trailer and corrupted semantic-carry removals. General canonical schedules, actual captured view/private worker custody and native funding remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-dwct-actual-one-preserves-captured-source-digest",
+          "note": "Actual registered ONE preserves captured-source digest across every current action; exact physical source authority remains open.",
+          "pending_subject": "Registered physical source candidate FN-DWC-ONE/FN-DWC-READ-OBSERVATION; native issuer/installer remains unavailable, so this source boundary is not an installed host-called claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-dwct-actual-codec-one-carries-selected-prefix",
+          "note": "Current owned codec ONE carries selected output cell and full produced position against actual returned scratch; prior cell/position explicit.",
+          "pending_subject": "Registered physical source candidate FN-DWC-ONE/FN-DWC-READ-OBSERVATION; native issuer/installer remains unavailable, so this source boundary is not an installed host-called claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-dwct-actual-one-preserves-charged-budget-carry",
+          "note": "Actual ONE preserves strict logical charge carry under incoming carry and non-CONSP returned stored status; excludes genuine terminal list status.",
+          "pending_subject": "Registered physical source candidate FN-DWC-ONE/FN-DWC-READ-OBSERVATION; native issuer/installer remains unavailable, so this source boundary is not an installed host-called claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-dwct-actual-read-observation-preserves-captured-source-digest",
+          "note": "Actual CURRENT revision/effect READ observation preserves source digest under incoming carry and exact source-slice equality; no supplied semantic decoder assumption.",
+          "pending_subject": "Registered physical source candidate FN-DWC-ONE/FN-DWC-READ-OBSERVATION; native issuer/installer remains unavailable, so this source boundary is not an installed host-called claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwzt-actual-stored-final-global-charge-envelope",
+          "note": "Actual stored chunk every status including genuine stream-ended consumes globally at most9*TINfinal+2*TOUTfinal+257 under incoming strict scheduling carry."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwzt-actual-issued-codec-one-retains-terminal-budget",
+          "note": "Actual current token/owned/no-pending codec ONE decoded completion retains >=3839+7*C STEPfuel under actual span/shape and incoming joint carry. Full terminal positive and corrupted-budget retained-premise removal; no native tariff.",
+          "pending_subject": "Registered physical source candidate FN-DWC-ONE/FN-DWC-READ-OBSERVATION; native issuer/installer remains unavailable, so this source boundary is not an installed host-called claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwy-actual-two-yielded-loops-complete-effects",
+          "note": "Two actual same-input basic-loop calls with first yield preserve the entire tuple at the summed generated action observer fuel. Full positive and first-yield removal; source scheduling observer is not native demand.",
+          "pending_subject": "Proof-only finite transcript of actual FN-ZIN-LOOP calls; current registered ONE has a named complete-effects refinement, but whole controller/refill/cleared-window composition and installed native consumer remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwy-actual-finite-yield-turns-complete-effects",
+          "note": "Finite actual loop-call transcript stops on actual first nonyield and equates complete tuple with atomic reference. Unconditional theorem; real multiple-yield/output128 and empty-quanta positives. Same buffer/frontier only.",
+          "pending_subject": "Proof-only finite transcript of actual FN-ZIN-LOOP calls; current registered ONE has a named complete-effects refinement, but whole controller/refill/cleared-window composition and installed native consumer remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwy-actual-completed-finite-yields-match-basic-loop",
+          "note": "Completed finite actual yield trajectory and completed ordinary actual basic loop have identical status/cursor/register/ring/table/output. Full positive and both complete completion-hypothesis removals. Does not equate unused scheduling fuel.",
+          "pending_subject": "Proof-only finite transcript of actual FN-ZIN-LOOP calls; current registered ONE has a named complete-effects refinement, but whole controller/refill/cleared-window composition and installed native consumer remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwy-actual-cleared-loop-preserves-complete-prefix-effects",
+          "note": "Actual basic LOOP cleared scratch complete tuple with retained prefix under sole proper-prefix premise; fixed1024/64 full-window positive and corrupted logical-prefix removal.",
+          "pending_subject": "Actual source kernel/wrapper connected to registered ONE by existing named complete-effects theorem; general refill/dictionary/controller confluence and installed private worker/query custody/full runtime funding remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwy-actual-stored-cleared-chunk-complete-prefix-effects",
+          "note": "Actual STORED CHUNK full status/LEFT/IP/recredited registers/ring/table/append output equals actual FEED retaining prefix. Fixed1024 two64 windows positive and sole proper-prefix removal; registered four-codec251bytes through authenticated publication fixture.",
+          "pending_subject": "Actual source kernel/wrapper connected to registered ONE by existing named complete-effects theorem; general refill/dictionary/controller confluence and installed private worker/query custody/full runtime funding remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwf-actual-finite-output-yields-complete-effects",
+          "note": "Finite transcript of actual yield quanta across output frontiers preserves complete7tuple at generated consumed semantic actions when all consumed frontiers fit the final frontier. Complete fixed64/128 positive and frontier-removal; no runtime tariff.",
+          "pending_subject": "Proof-only observer invokes actual FN-ZIN-LOOP through actual finite quanta. Existing registered ONE and scratch-clear complete-effects boundaries are named; general input refill/dictionary/controller lift and native worker/query custody/full funding remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwf-actual-completed-finite-output-yields-match-basic-loop",
+          "note": "Valid completed finite actual yield/output transcript equals completed ordinary actual basic-loop status/cursor/register/ring/table/output. Three complete hypothesis removals; unused scheduling fuel remains distinct.",
+          "pending_subject": "Proof-only observer invokes actual FN-ZIN-LOOP through actual finite quanta. Existing registered ONE and scratch-clear complete-effects boundaries are named; general input refill/dictionary/controller lift and native worker/query custody/full funding remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwfc-actual-finite-initialized-output-windows-canonical-answer",
+          "note": "Actual initialized basic-loop finite output-window/yield trajectory has the complete existing FN-PZD-DECODE answer under final non-FULL, non-YIELD and declared-length output margin. Terminal frontier validity is derived, with no dictionary/input type or buffer-shape premise. Five complete literal positives/removals; declared-length mutation is logical observer API only. No arbitrary input-refill/controller, native custody, runtime allocation tariff or activation inference."
+        }
+      ],
+      "pending_subject": "Native compressed driver remains dormant and unreachable-in-composition. Actual selected-prefix cell accumulation and faithful-source compressed digest BEGIN/READ/HASH/new-publication are source-proved, with source-slice binding explicit. Arbitrary canonical decoder/controller iteration, selected dictionary/captured-view authority, full compiled workspace funding and retained native buffer/view/consumer joins remain open; PRF-1131 remains incomplete. Three nonexistent proposed DWCC citations are withheld in protocol-source-closeout-2026-10-01/withheld-events.json; no theorem admission is inferred."
     }
   ]
 }

@@ -7605,21 +7605,35 @@
       "steps": [
         "Negotiate base9P2000 on scratchloopback with tinymsize; attach a genuinely issued committed capture, walk groups/localnumber and by-id paths, page directory stat entries and read exact source ranges.",
         "Commit a new article while old fids hold the original capture; old mount stays fixed until remount. Refuse unsupported writes/auth/extensions appropriately and degrade only unservable article framing.",
-        "Flush an outstanding cold read and disconnect/clunk; suppress cancelled reply but retain issued worker/query/source aliases until actual completion and final join."
+        "Flush an outstanding cold read and disconnect/clunk; suppress cancelled reply but retain issued worker/query/source aliases until actual completion and final join.",
+        "Within one captured-view connection, attach twice and confirm shared qid namespace; Flush a cold read, reuse its wire tag while the old physical slot remains cancelled, then return old work and confirm it cannot publish or decrement a newer receipt.",
+        "Component fixture: fragment Tversion header/body, negotiate exact base reply, return twice, repeat Version through actual draining and confirm a retained mount blocks reset.",
+        "Component fixtures: retain an older registered publication despite newer CURRENT; refuse missing pin or unfinished DATA6 intent; emit exact Rstat/Rread one octet per action and reject incomplete-entry count or forged completion."
       ],
       "expected": [
         "Names/numbers/qids/lengths/wirebytes originate in actual core and registered provider; ordinal0 is valid. Exact stored binary/dotted source is neither NNTPstuffed nor whole-store materialized.",
         "Directory reads honor stable offsets and integral stat entries; message/body size is checked against the supported representable profile before allocation.",
-        "No newercommit appears in retained old capture; no grant/root release from shape, copied payload or Flush alone. Missing genuine issuer remains unavailable."
+        "No newercommit appears in retained old capture; no grant/root release from shape, copied payload or Flush alone. Missing genuine issuer remains unavailable.",
+        "Same exported node has the same mount-scoped qid.path; distinct group-specific virtual files have distinct paths. A new independent mount is a new filesystem instance; no cross-remount identity guarantee is asserted."
       ],
       "evidence": [
         "tests/acl2/ninep-header-tests.lisp",
         "tests/acl2/ninep-fields-tests.lisp",
         "tests/acl2/ninep-version-tests.lisp",
         "tests/acl2/ninep-group-directory-source-tests.lisp",
-        "tests/acl2/ninep-protocol-host-tests.lisp"
+        "tests/acl2/ninep-protocol-host-tests.lisp",
+        "tests/acl2/ninep-session-tests.lisp",
+        "tests/acl2/ninep-qids-tests.lisp",
+        "tests/acl2/ninep-mount-tests.lisp",
+        "tests/acl2/ninep-transport-tests.lisp",
+        "planning/evidence/ninep-transport-2026-10-01/README.md",
+        "tests/acl2/ninep-mounted-directory-tests.lisp",
+        "tests/acl2/ninep-group-buckets-tests.lisp",
+        "tests/acl2/ninep-stat-stream-tests.lisp",
+        "tests/acl2/ninep-stat-stream-host-tests.lisp",
+        "planning/evidence/ninep-mounted-directory-2026-10-01/README.md"
       ],
-      "scope_note": "Specified native acceptance scenario, not executed. Normal source header/field/version and borrowed group-trie/host witnesses are separate from native mounted source/lifetime qualification."
+      "scope_note": "Specified native acceptance scenario, not executed. Normal source header/field/version and borrowed group-trie/host witnesses are separate from native mounted source/lifetime qualification. Specified native acceptance scenario, not executed. Normal source header/field/version and borrowed group-trie/host witnesses are separate from native mounted source/lifetime qualification. Core fixed Rerror and actual host refusal fixture pass source certification; native client refusal remains unexecuted. Session/qid components are normal-certified at014307/021401; actual mount lifecycle fixture source-pass only. External client/listener scenario still NOT RUN. Normal045613 certifies the stat/host/internal wire fixtures only; actual registered source+DATA6 mount fixtures remain proper-local source evidence. Request custody successor guard timeout preserved separately. Full native external-client scenario NOT RUN. Specified native acceptance scenario, not executed. Normal source header/field/version and borrowed group-trie/host witnesses are separate from native mounted source/lifetime qualification. Core fixed Rerror and actual host refusal fixture pass source certification; native client refusal remains unexecuted. Session/qid components are normal-certified at014307/021401; actual mount lifecycle fixture source-pass only. External client/listener scenario still NOT RUN. Normal045613 certifies the stat/host/internal wire fixtures only; actual registered source+DATA6 mount fixtures remain proper-local source evidence. Request custody successor guard timeout preserved separately. Full native external-client scenario NOT RUN."
     },
     {
       "id": "SCN-1068",
@@ -8007,6 +8021,198 @@
         "planning/evidence/operation-diagnostics-2026-10-01/renderer.json"
       ],
       "execution_scope": "Renderer source certification and actual-body SBCL recording only; third composed-route step remains unexecuted."
+    },
+    {
+      "id": "SCN-1018",
+      "title": "Protected extent windows verify all protected bytes with bounded private storage",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-020"
+      ],
+      "steps": [
+        "Read a requested window crossing two bounded blocks inside a protected extent containing many records.",
+        "Keep the requested bytes private while the rest of the prefix and trailer are still being verified; exercise short reads, wrong descriptor commitment, changed prefix digest and stale physical incarnation.",
+        "Read a requested decoded window from a compressed stored payload with fixed scratch, then validate complete stream acceptance and exact decoded length.",
+        "Cancel while a worker or output borrower remains live; retain the actual file and scratch leases until relinquishment.",
+        "Affirm actual fn-ews begin/read/tick semantic carry from exact captured source slices and newly published trailer equality to fn-blake3(source); remove each retained initializer/read/tick/publication/canonical hypothesis with full literal checks, labelling corrupted states separately."
+      ],
+      "expected": [
+        "Read effects are ACL2-selected exact offsets/counts; per-step input is at most64 bytes and output storage at most16KiB, independent of ELEN.",
+        "No partial or unauthenticated window is public; exact output/refinement includes unchanged cells.",
+        "Supported profile lengths are resumed, never truncated or silently capped. Whole-extent and whole-decoded-list allocation is absent on the final served path."
+      ],
+      "evidence": [
+        "books/extent-window-plan.lisp",
+        "books/extent-window-buffer.lisp",
+        "books/extent-window-capture.lisp",
+        "tests/acl2/extent-window-capture-tests.lisp",
+        "specs/extent-window-read.md",
+        "books/extent-window-stream.lisp",
+        "tests/acl2/extent-window-stream-tests.lisp",
+        "books/extent-window-stream-refinement.lisp",
+        "tests/acl2/extent-window-stream-refinement-tests.lisp",
+        "tests/acl2/extent-window-stream-union-tests.lisp",
+        "books/extent-window-stream-semantics.lisp",
+        "tests/acl2/extent-window-stream-semantics-tests.lisp"
+      ],
+      "execution_scope": "Actual concrete core read/tick/window execution and source safety/output proofs. General digest trajectory and supported-domain proof, changed stored codec acceptance/composition, native lifetime/funding and matching full-path execution remain open."
+    },
+    {
+      "id": "SCN-1037",
+      "title": "Actual compressed extent window composition and publication",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-037"
+      ],
+      "steps": [
+        "Run actual core dispatcher against a literal archive with local concrete input/hash/window/inflater pools.",
+        "Exercise overlapping requested windows, empty C/N after a protected prefix, split compressed input, final-block trailing bytes, sync flush,16KiB windows and93100-byte expansion over more than1000 quanta.",
+        "Refuse truncated/malformed streams, wrongN, short read, protected-prefix corruption and wrong trailer commitment.",
+        "Assert every literal scratch-copy/decoded/new-integrity antecedent and conclusion; remove only natural output index, decoded result or no-prior-publication as labelled.",
+        "Affirm actual real-input carry in nonempty scan/codec and empty final-drain transitions; corrupted-state removal keeps every remaining hypothesis true and fails the conclusion.",
+        "Affirm active TOUT<=min(N,storedAllowance(C)) after actual begin/codec/read/hash; codec establishes the carry without pre-call hypotheses. Separately labelled corrupted-state read and scan-hash removals falsify only carried-output evidence and the conclusion.",
+        "Check exact scalar NTH boundary and distinct decoded token11, unknown dictionary refusal, immutable shipped lookup, supplied-demand funding/file hold positives and hypothesis removals; retain native/runtime adequacy as open.",
+        "Compare the actual whole decoder and authenticated bounded controller on a251-octet repeated match; reach pending mode12 through actual initialize/hash-prime/read/codec transitions, affirm the full copy-effect antecedent/conclusion, and remove each of13 conditions as separately labelled logical corrupted-state/request witnesses. Affirm complete actual copy-split effects and all three counter hypothesis removals.",
+        "Execute actual supplied-demand typed admission, shared acquire, typed initializer and authenticated bounded decoder, then actual return and scalar read on the carried source buffer; compare octet250 with the existing whole decoder and distinguish stale, unavailable, cancelled and released observations.",
+        "Normalize actual mode12 fn-ewz-codec-tick full state/history/table/scratch/private-window effects to64 calls of the existing actual fn-zin-act; affirm its full13-condition antecedent and conclusion through actual initialize/hash-prime/read/tick, and separately falsify each condition with the conclusion. Keep general trajectory and total scheduling-budget completeness open.",
+        "Normalize the actual ready mode8 literal STEP full tuple to emitted-count calls of the existing actual ACT. Reach the branch through actual initializer/basic scalar scheduling and observe actual ahead scheduling readiness; affirm every full condition and conclusion. Separately remove positive room, mode8, fresh fields and complete bomb readiness while checking all retained conditions and failure of the conclusion.",
+        "Normalize every actual positive-room STEP branch/refusal to existing ACTs, and actual basic loop/stored credit/codec seven-value tuple to ACT/PULL replay with the same charged schedule. Affirm full source-reached positives, exact room and both buffer removals, and clipped-match premise removals. Do not infer output-limit confluence or sufficient initial budget from this matched schedule.",
+        "Run the actual basic-loop charged-budget and successful compressed-controller carry source witnesses, including complete hypothesis removals and real LEN65535 header carry; keep accepted terminal final-charge and native adequacy open.",
+        "Actual initialized/hash-primed/issued-read controller retains final budget through repeated codec windows to terminal decoded TIN6/TOUT251. Actual all-outcome envelope and active3839+7C bound have complete positives/removals; the corrupt-pool empty-stream special decision is labeled separately. Full arbitrary-window bytes/status/digest and native funding/holder remain open.",
+        "Compare actual initialized basic-loop full128-byte result to unconditional atomic ACT/PULL normalization; compare independent completed whole/two-window calls, then cleared scratch output with concatenated bytes, status, cursor and complete state/history/table effects. Affirm every condition and conclusion and remove each retained condition; actual external reserved-header pull and separately corrupted improper-output witnesses remain distinct. Do not equate charged remaining fuel or infer full controller/dictionary/digest/native completion.",
+        "Compare two actual initialized stored windows with existing FN-PZD-DECODE complete answer using actual global budget-left carry; affirm full-window, general requested5 quantum and empty positives and separately remove each of four remaining status/sentinel conditions. No fixed1024 composed-yield or native64-byte input-window fixture is inferred; general iteration/input-cut/digest and retained source/holder/funding stay open.",
+        "Two actual initialized stored calls over separate prefix/tail buffers at position zero now equal the complete existing FN-PZD-DECODE answer using exact global budget-left. Only first :more and second neither :yield nor :full remain; logical input/dictionary types, buffer shape, final output frontier and whole completion are derived or removed after weakened proofs. Actual fixed1024/input64+6, header-cut and empty logical wrapper positives plus all three complete status removals accompany this source component. Arbitrary controller iteration, accumulated digest, selected dictionary/captured source authority and complete native funding/holder remain open. Fresh source replay passed all six literals with34 proper-local dependencies and11 unchanged cache books;46 closure hashes match. No native activation is inferred."
+      ],
+      "expected": [
+        "The exact requested bytes remain private until accepted codec terminal/exactN and full raw extent integrity.",
+        "Total archive reads equal full protected prefix plus32 trailer bytes; codec resumes retain input without repeated hashing.",
+        "Raw verified alone does not grant compressed publication; refusals return no output.",
+        "General trajectory/progress, native funding/lifetime/consumer and matching image evidence remain open."
+      ],
+      "evidence": [
+        "tests/acl2/extent-window-compressed-tests.lisp",
+        "tests/acl2/extent-window-compressed-refinement-tests.lisp",
+        "specs/extent-window-read.md",
+        "planning/evidence/extent-window-compressed-source-2026-09-30.md",
+        "tests/acl2/extent-window-compressed-input-tests.lisp",
+        "planning/evidence/extent-window-input-source-2026-09-30.md",
+        "books/durable-lz-octet.lisp",
+        "books/payload-arena-extent.lisp",
+        "books/decoded-window-descriptor.lisp",
+        "books/decoded-window-begin.lisp",
+        "books/decoded-window-lease.lisp",
+        "tests/acl2/durable-lz-octet-tests.lisp",
+        "tests/acl2/decoded-window-descriptor-tests.lisp",
+        "tests/acl2/decoded-window-lease-tests.lisp",
+        "planning/evidence/decoded-window-source-2026-09-30.md",
+        "tests/acl2/decoded-window-begin-tests.lisp",
+        "books/decoded-window-read.lisp",
+        "tests/acl2/decoded-window-read-tests.lisp",
+        "planning/evidence/decoded-window-read-source-2026-09-30.md",
+        "books/decoded-window-copy-trajectory.lisp",
+        "tests/acl2/decoded-window-copy-trajectory-tests.lisp",
+        "planning/evidence/decoded-window-copy-source-2026-09-30.md",
+        "tests/acl2/decoded-window-executor-tests.lisp",
+        "planning/evidence/decoded-window-shared-join-source-2026-09-30.md",
+        "tests/acl2/decoded-window-publication-tests.lisp",
+        "planning/evidence/decoded-window-publication-source-2026-09-30.md",
+        "books/decoded-window-action-trajectory.lisp",
+        "tests/acl2/decoded-window-action-trajectory-tests.lisp",
+        "planning/evidence/decoded-window-action-source-2026-09-30.md",
+        "books/decoded-window-literal-trajectory.lisp",
+        "tests/acl2/decoded-window-literal-trajectory-tests.lisp",
+        "planning/evidence/decoded-window-literal-source-2026-09-30.md",
+        "books/decoded-window-step-trajectory.lisp",
+        "tests/acl2/decoded-window-step-trajectory-tests.lisp",
+        "planning/evidence/decoded-window-step-source-2026-09-30.md",
+        "planning/evidence/decoded-window-current-loop-audit-2026-09-30.md",
+        "books/decoded-window-budget-trajectory.lisp",
+        "tests/acl2/decoded-window-budget-trajectory-tests.lisp",
+        "planning/evidence/decoded-window-budget-source-2026-09-30.md",
+        "books/decoded-window-budget-completion.lisp",
+        "tests/acl2/decoded-window-budget-completion-tests.lisp",
+        "planning/evidence/decoded-window-budget-completion-source-2026-09-30.md",
+        "books/decoded-window-output-trajectory.lisp",
+        "tests/acl2/decoded-window-output-trajectory-tests.lisp",
+        "planning/evidence/decoded-window-output-trajectory-source-2026-09-30.md",
+        "books/decoded-window-stored-trajectory.lisp",
+        "tests/acl2/decoded-window-stored-trajectory-tests.lisp",
+        "planning/evidence/decoded-window-stored-trajectory-source-2026-09-30.md",
+        "books/decoded-window-input-trajectory.lisp",
+        "tests/acl2/decoded-window-input-trajectory-tests.lisp",
+        "planning/evidence/decoded-window-input-trajectory-source-2026-09-30.md",
+        "books/decoded-window-selected-trajectory.lisp",
+        "tests/acl2/decoded-window-selected-trajectory-tests.lisp",
+        "planning/evidence/decoded-window-selected-trajectory-source-2026-09-30.md",
+        "books/decoded-window-digest-trajectory.lisp",
+        "tests/acl2/decoded-window-digest-trajectory-tests.lisp",
+        "planning/evidence/decoded-window-digest-trajectory-source-2026-09-30.md"
+      ],
+      "execution_scope": "Protected source composition and literal local-buffer witnesses only; no native served enablement or qualification.  Actual FN-EWZ-CODEC-TICK carries the selected private-window cell against APPEND(previous semantic output prefix, actual returned stored scratch), and returned TOUT equals appended length. The prior cell carry and TOUT/prefix position are explicit; actual INIT/read/hash/codec positives check newly written and retained cells across two input buffers, with separate corrupted-buffer and corrupted-prefix removals. This is source output accumulation, not arbitrary canonical iteration/digest, captured source custody, runtime adequacy or native activation. Actual compressed BEGIN/READ/HASH now establish and preserve the existing captured-source BLAKE3 trajectory at the retained plan ELEN, with faithful read slices explicit. New compressed READ publication authenticates both trailer and expected commitment against that source. Fifteen complete positives/removals include actual selected (66 67) publication and separately corrupted digest states. This is source authentication composition; arbitrary canonical decoder/controller iteration, physical captured-source/private-holder association and complete selected runtime funding remain open."
+    },
+    {
+      "id": "SCN-1020",
+      "title": "Stored compressed requested-window policy and terminal boundaries",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-037"
+      ],
+      "steps": [
+        "Decode the literal108-byte highratio stream at q7, retaining a late17-byte window; compare whole stored success and unchanged network bomb refusal.",
+        "Decode dictionary and total-input-domain vectors across q3/q7 splits; check exactN and scratch<=64.",
+        "Reject incomplete LEN/NLEN and a nonempty block that only resembles a flush suffix; retain valid syncflush, final block and permitted trailing bytes.",
+        "Check actual terminal-establishment theorem positive and literal hypothesis-removal witnesses."
+      ],
+      "expected": [
+        "Exact requested bytes remain private until complete extent authentication and physical settlement.",
+        "No whole allocation occurs in the component; host integration and physical runtime funding remain open.",
+        "Malformed terminal states refuse; no unconditional old/new refusal-domain equality is claimed."
+      ],
+      "evidence": [
+        "tests/acl2/payload-window-tests.lisp",
+        "specs/payload-window.md",
+        "planning/evidence/payload-window-2026-09-30.md"
+      ],
+      "execution_scope": "Protected source REPL component evidence only; composed served path and matching natives pending."
+    },
+    {
+      "id": "SCN-1039",
+      "title": "Actual stored DEFLATE carried widths and input span",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-037"
+      ],
+      "steps": [
+        "Run actual initializer on corrupted previous bit registers and actual one-byte stored chunk; affirm complete width hypotheses and conclusions.",
+        "Remove each retained stored-bit carry hypothesis, distinguishing logical invalid-octet representation from native corrupted state; assert literal conclusion failures.",
+        "Check actual suspended and malformed/refused Huffman walks, remove carried registers and non-error premises, and distinguish a bit-count mutation.",
+        "Check an actual consuming input span and both natural-start/order hypothesis removals.",
+        "Run actual stored chunk for whole-quantum Huffman/header carry; affirm strong non-bad-code and all-exit scalar conclusions, each retained hypothesis removal and labelled register mutants.",
+        "Run actual initializer on corrupt prior Huffman/header/preset fields; affirm unconditional postconditions and exact three-byte preset.",
+        "Affirm actual stored-chunk internal profile carry with a consuming byte, remove each captured containment/profile hypothesis literally, and test a labelled TIN-update mutant.",
+        "Check literal boundary73/64/68-bit arithmetic witnesses, each retained-hypothesis removal and separate coefficient mutations; confirm72bits fails at the supported maximum C."
+      ],
+      "expected": [
+        "Bit buffer remains at most39bits and exact length-relative Huffman carry is preserved only on non-error exits; every walker exit remains within the stated fixed scalar bounds.",
+        "Returned input IP is natural and in the requested span; a reversed or negative logical span is an explicit counterexample outside host guards.",
+        "No selected-runtime allocation bound, native activation, new data ceiling or full old-success guarantee is inferred.",
+        "Whole stored quantum preserves header fields under captured table representation; malformed-code exits retain fixed scalar bounds even when the stronger length-relative carry fails.",
+        "Internal credited-input plus unread span is<=2C and produced plus remaining scratch room is<=N+1; actual bomb/output-plus-preset/budget are below2^73/2^64/2^68 under explicit supported profiles."
+      ],
+      "evidence": [
+        "tests/acl2/payload-window-width-tests.lisp",
+        "specs/payload-window.md",
+        "planning/evidence/payload-window-width-2026-09-30.md",
+        "tests/acl2/payload-window-register-width-tests.lisp",
+        "planning/evidence/payload-window-register-width-2026-09-30.md",
+        "tests/acl2/payload-window-profile-width-tests.lisp",
+        "planning/evidence/payload-window-profile-width-2026-09-30.md"
+      ],
+      "execution_scope": "Protected source replay only; the codec/runtime/controller/host composition remains open."
     }
   ]
 }

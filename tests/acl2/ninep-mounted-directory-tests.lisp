@@ -1,0 +1,61 @@
+(in-package "ACL2")
+(include-book "../../books/ninep-mounted-directory")
+
+; INTERNAL registry/pin metadata fixtures. No durable publication or grant.
+(defun-nx n9md-publication ()
+ (fn-ipub-make 1 nil nil 2 17 3 nil 0 1 nil 0 1 nil 1 nil
+  '(3 17 nil nil nil (("fn.news" (article0) number0) ("fn.docs" nil number1)) nil nil nil nil)
+  1 0))
+(defun-nx n9md-mio (pins)
+ (let* ((token '(:index-generation 1 1 0))
+        (segment (update-fn-ibp-gs-id 1 (create-fn-ibp-generation-segment)))
+        (segment (update-fn-ibp-gs-active 1 segment))
+        (segment (update-fn-ibp-gs-rowsi 0
+                  (list :generation token (n9md-publication) 0 pins 0 0 :live :internal-grant 1 0) segment))
+        (node (fn-ibp-node-children-put 'fn-ibp-generation-segment segment (create-fn-ibp-node)))
+        (backing (update-fn-ibp-registry node (create-fn-index-backing)))
+        (backing (update-fn-ibp-pool-capacity 1 backing))
+        ; A newer current pointer must not replace an older held generation.
+        (backing (update-fn-ibp-current '(:installed-publication (:index-generation 2 1 1) :new-current) backing)))
+  (update-fn-mio$c-provider backing (create-fn-mio$c))))
+(defun-nx n9md-session ()
+ (let* ((session (create-fn-ninep-session))
+        (session (update-fn-9ps-phase :base session))
+        (session (update-fn-9ps-mount-phase :held session))
+        (session (update-fn-9ps-mount-token '(:ninep-mount 0) session))
+        ; This independently supplied object MUST NOT become the source.
+        (session (update-fn-9ps-mount-source :copied-shape session)))
+  (update-fn-9ps-mount-intent
+    '(:ninep-mount-intent (:ninep-mount 0) (:index-generation 1 1 0) (2 1 0 0 1) :reserved :copied-shape)
+    session)))
+(defthm n9md-source-actual-old-pin-full-result-positive
+ (let ((mio (n9md-mio 1)) (session (n9md-session)))
+  (and (fn-mio$cp mio) (fn-ninep-sessionp session)
+       (equal (fn-9pm-source-read 100 session mio)
+              (list :source (n9md-publication) 99))
+       (equal (fn-9pm-groups-begin (mv-nth 1 (fn-9pm-source-read 100 session mio)))
+              '(:ninep-groups :enumerate (("fn.news" (article0) number0) ("fn.docs" nil number1)) nil nil 0 0 0))
+       (not (equal (mv-nth 1 (fn-9pm-source-read 100 session mio))
+                   (fn-9ps-mount-source session)))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (enable fn-ipub-internals))))
+(defthm n9md-source-missing-pin-hypothesis-removal
+ (let* ((mio (n9md-mio 0)) (session (n9md-session))
+        (row (mv-nth 1 (fn-mio-generation-read '(:index-generation 1 1 0) 100 mio))))
+  (and (fn-mio$cp mio) (fn-ninep-sessionp session)
+       (equal (fn-9ps-phase session) :base) (equal (fn-9ps-mount-phase session) :held)
+       (equal (fn-omk-at 1 (fn-9ps-mount-intent session)) (fn-9ps-mount-token session))
+       (fn-ibp-generation-tokenp (fn-omk-at 2 (fn-9ps-mount-intent session)))
+       (equal (fn-omk-at 1 row) '(:index-generation 1 1 0))
+       (equal (fn-omk-at 7 row) :live)
+       (fn-omk-widthp (fn-omk-at 2 row) 19)
+       (equal (fn-omk-at 0 (fn-omk-at 2 row)) :index-publication)
+       (not (posp (fn-omk-at 4 row)))
+       (equal (fn-9pm-source-read 100 session mio) '(:recovery-required nil 99))
+       (not (equal (mv-nth 0 (fn-9pm-source-read 100 session mio)) :source))))
+ :rule-classes nil)
+(defthm n9md-source-full-traversal-envelope-yields-positive
+ (let ((mio (n9md-mio 1)) (session (n9md-session)))
+  (and (fn-mio$cp mio) (fn-ninep-sessionp session)
+       (equal (fn-9pm-source-read 0 session mio) '(:yield nil 0))))
+ :rule-classes nil)

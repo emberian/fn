@@ -4943,3 +4943,6 @@
  :class :common-lisp-compliant :root :extract
  :raw-guarded (4 (nil nil fn-allocation-turn-slots fn-page-read-pool)
                  (nil fn-allocation-turn-slots fn-page-read-pool)))
+
+(definterface fn-pwz-tokenp :class :common-lisp-compliant
+  :direct "Guard-t full decoded token discrimination precedes raw token destructuring; decoded execution remains refused")

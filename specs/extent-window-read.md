@@ -1,0 +1,494 @@
+# Protected extent windows
+
+Status: PRF-1109 / SCN-1018, component source proofs in progress. The served
+path still uses the whole-extent realizer. This document does not claim that
+P12, default funding, streaming digest or compressed realization is complete.
+
+A descriptor `(FILE EOFF ELEN POFF PLEN TRAILER)` binds the protected prefix
+`[EOFF, EOFF+ELEN)`, its following 32 trailer bytes, and a payload within it.
+ELEN can include many packed records; a per-record ceiling cannot bound it.
+
+`fn-ewp-begin` chooses the next requested payload window at OFFSET, with
+length `min(16384, PLEN-OFFSET)`. This is a scheduling quantum. It neither
+truncates the payload nor allocates ELEN or PLEN cells. The exact capture,
+physical incarnation and resource lease accompany the ticket for the entire
+scan, trailer check, private result and borrower lifetime.
+
+The controller state is
+`(phase file eoff elen woff wn expected pos ticket incarnation lease poff plen offset)`.
+WOFF is relative to the protected prefix. The original payload offset,
+length and requested offset also remain captured; phase changes preserve them. `fn-ewp-effect` is either NIL or
+`(ticket incarnation lease file absolute-offset count phase)`. It authorizes
+at most 64 prefix bytes or the 32 trailer bytes. `fn-ewp-complete-read` accepts
+only that exact effect and exact byte count. Stale effects preserve state;
+short/error reads settle as `:read`; no read completion publishes a window.
+Every successful scan completion advances by the exact demanded count.
+
+`fn-ewp-window-span` selects `(input-offset count output-offset)` within the
+bounded block. `fn-ewb-capture` copies this overlap into a fixed 16 KiB octet
+array. Its refinement describes every output byte, including unchanged
+cells outside the overlap. No logical list of the extent or requested data
+is constructed on this executable path. `fn-ewp-payload-span` similarly
+selects the bounded compressed-payload input for the existing inflater.
+
+`fn-ews-begin` captures the original request and initializes the actual byte
+BLAKE3 cursor. `fn-ews-effect` authorizes an input block only when the cursor
+requests precisely that position and count. `fn-ews-tick` performs one internal
+hash action when no input is needed. `fn-ews-read` accepts only the exact effect,
+uses the actual input buffer length, assembles at most sixteen padded words,
+steps the cursor and copies the selected private overlap. Stale completions
+preserve all three states; its output theorem describes every window cell.
+
+The trailer effect becomes available only when the full scan has completed
+and the actual cursor is done. The completion obtains its digest directly
+from `pgs-dcb-result-octets`; no host-supplied digest argument reaches the
+composed entry. New publication requires exact trailer commitment and equality
+to that cursor result. Rejected commitments use `:commitment`, distinct from
+the pending `:trailer` phase, so a rejection cannot restart trailer reads.
+The general captured-source digest trajectory, fixed-stack supported domain
+and progress remain separate proof obligations; actual-cursor integrity alone
+does not close them. The frame function has a concrete closed BLAKE3 definition
+with an explicit bridge. A-CRYPTO's pessimistic collision work is 2^128 for
+BLAKE3; digest equality does not prove source byte equality.
+
+Compressed reads reuse the existing DEFLATE inflater with bounded input,
+fixed history/table buffers, bounded scratch output, and a private requested
+decoded window. The coordinator authorized a stored total-compressed-length
+allowance policy and stricter real terminal detection after finding a
+lookahead/prefix bomb-admission mismatch and false truncated success in the
+legacy stored decoder. The codec owner proves and documents that changed
+acceptance domain separately; no equality to the old defective acceptance
+policy is asserted. Publication requires complete accepted decode, exact
+decoded length and the same full protected-prefix integrity. A window filled
+early cannot authorize publication.
+
+The native ownership adapter must fund fixed scratch, digest state, output
+window, decoder pools when used, and actual worker lifetime before issuing
+I/O. A cache key includes the requested window and full physical identity;
+an extent-only hit cannot authorize missing bytes. Cancellation does not
+refund a still-running worker or invalidate another borrow. The physical
+owner maintains descriptor/file pins through actual relinquishment.
+
+Remaining integration: full digest trajectory and supported-domain proof,
+compressed composition, native window-specific admission/cache/borrow wiring, literal
+full-path witnesses, matched certification and native behavior evidence.
+No new frame ceiling or fallback to whole-extent allocation is authorized.
+
+## Stored composition (PRF-1131 / SCN-1037)
+
+`fn-ewz-begin` retains `(mode raw-plan N decoded-offset wanted budget ip end
+codec-status)`. It calls the unchanged actual raw controller with requested
+raw offset C, so WN=0; original POFF/PLEN=C, protected extent and typed
+ownership remain captured. The decoder uses the same private16KiB window,
+fixed64-byte scratch and existing fixed history/table slots. Its returned
+scratch is copied by the actual `fn-ewb-copy` through the congruent output
+buffer. No second decoder, wholeC/N list or extra16KiB output is introduced.
+
+`fn-ewz-read` first accepts and hashes the exact core-issued read, then
+selects its compressed overlap. `:codec` suppresses read effects while
+`fn-ewz-codec-tick` retains that input across at most1024 actions and64 output
+bytes per tick. The total budget is `fn-pzd-budget(C,N)` and is carried using
+`fn-pzw-budget-left`; quantum exhaustion resumes. Only `:input` with IP=END
+releases that input for scanning. A valid final block enters `:drain`, which
+hashes all remaining compressed/protected bytes without calling the decoder
+again. At positional completion the stored decision must accept exactN and
+a final/sync-flush terminal before the wrapper becomes `:decoded`. C=0
+starts in `:drain`, so an empty payload after a protected prefix cannot be
+prematurely treated as a truncated nonempty decoder request.
+
+The host must dispatch `fn-ewz-next-action`: `:codec`, `:read`, `:tick`,
+`:refused`, or `:ready`. `:ready` alone returns the publication tuple
+`(ticket incarnation lease :decoded decoded-offset wanted)` and requires
+both `:decoded` and raw publication. A raw subplan's `:verified` status
+cannot expose a compressed window. Source proofs describe every copy cell,
+accepted actual decoder completion, carried codec evidence under all three
+transitions and newly published actual trailer integrity. The logical
+invariant is carried proof evidence; the served entry does not revalidate
+whole state. Literal local-stobj witnesses affirm the complete boundary
+checks and distinguish removal from malformed/short/corruption regressions.
+
+This is source component evidence. Full captured-source digest/decoded
+trajectory, actual TIN<=C sequence invariant, total scheduling/action-budget
+completeness, allocator/profile funding, native lifetime/dispatch/borrow
+integration and matching images/natives remain open.
+
+### Real compressed-input carry
+
+`fn-ewz-scanned-input` derives `min(C, nfix(EOFF+POS-POFF))` from the
+original captured compressed payload coordinates. The proof-only carried
+`fn-ewz-input-invariantp` states real TIN=scanned during scan, and
+TIN+(END-IP)=scanned while a codec quantum retains input. Drain/decoded
+states preserve TIN<=scanned; trailing compressed bytes may be hashed after
+a final block without being decoded. All states retain natural IP/END with
+0<=IP<=END<=64. A drain also carries the actual ended codec status, so a
+hash tick cannot resume a fabricated decoder continuation.
+
+Actual BEGIN, READ, CODEC-TICK and HASH-TICK establish/preserve the carry;
+its consequence is TIN<=C. No served entry traverses or validates this
+logical invariant. The codec proof also covers malformed pool refusal:
+those refusals consume zero input and restore the credited input counter.
+The actual codec's exported input-span bound and bit-width evidence are
+included from `payload-window-width`. This does not establish a numerical
+SBCL allocator allowance or the whole decoded trajectory.
+
+Literal witnesses follow the actual dispatcher before read completion,
+show nonempty codec and empty-payload drain transitions, and affirm each
+full antecedent and conclusion. Malformed-coordinate and corrupted-state
+hypothesis-removal witnesses are labelled separately. Native integration,
+full trajectory, total progress and allocation/profile funding remain open.
+
+### Active decoded-output carry
+
+`fn-ewz-output-invariantp` carries original C/N admission and actual
+TOUT<=min(N,storedAllowance(C)) in scan, codec, drain and decoded modes.
+Inactive refusal modes may retain a private overflow sentinel. Actual
+BEGIN establishes the carry without hypotheses. Actual CODEC-TICK also
+establishes it without a pre-call carry or pool-shape hypothesis: its
+stored-decision gate excludes output overshoot before any active mode is
+returned. READ and HASH-TICK preserve the carried evidence without further
+coordinate hypotheses. No served entry evaluates this proof recognizer.
+
+Literal witnesses execute nonempty scan/read/codec and final empty drain
+transitions. Corrupted-state READ and scan-HASH removals check failure of
+the sole carry hypothesis and of the conclusion. The codec theorem has no
+hypotheses to remove. This is numerical output carry, not whole-decoder
+fidelity, total scheduling completeness or a runtime allocation claim.
+
+### Actual captured-source authentication trajectory
+
+The proof-only `extent-window-stream-semantics` boundary connects the
+concrete word assembly in actual `fn-ews-read` to the canonical block
+required by the digest trajectory. The captured immutable source is an
+octet-list proof parameter, not an allocated execution buffer. An honest
+read completion supplies exactly `fn-shr-win(POS,demand,source)`; fixed
+concrete `fn-b3x-words` then equals the first sixteen words of the digest's
+truncating logical span. This handles short final blocks and distinguishes
+TAKE padding from source truncation. No host-provided digest or word-list
+assumption replaces that byte boundary.
+
+Actual BEGIN establishes the imported semantic/domain/counter invariant
+under natural depth<=63, source octets of length ELEN and
+ceil(ELEN/8)<=128*2^depth. READ preserves it with carried evidence and the
+exact source slice when in scan; refused and stale reads do not require an
+honest slice. TICK preserves it with only carried evidence. A newly
+published READ proves that its actual trailer equals fn-blake3(source)
+and its retained descriptor commitment is that digest's packed value.
+No whole-source or whole-state recognizer is run on the served path.
+
+Literal witnesses assert complete antecedents and conclusions, including
+each necessary initializer/read/tick/publication/canonical removal;
+corrupted private states are labelled separately. The canonical theorem's
+redundant scan-mode hypothesis was removed after proving the weaker result.
+This authentication safety trajectory leaves positional tree-frontier
+scheduling completeness, physical honest-source realization, full decoded
+trajectory and runtime allocation/funding open. It adds no native or
+image qualification claim.
+
+## Decoded scalar cold boundary (source stage)
+
+The actual arena scalar compressed branch uses fn-durable-realize-lz-octet,
+whose logical value is exactly NTH I of the existing durable decoded value.
+A singleton replacement of the whole-list boundary is invalid at nonzero I.
+The separate :decoded-window token binds ticket and the complete nine-field
+stored descriptor: file, extent offset/length, compressed payload offset/C,
+decoded offset, trailer, N, shipped dictionary ID. The immutable shipped
+lookup is canonical; unknown dictionaries refuse. Physical C63 alone does
+not impose N63. Operator profile validation and runtime representation must
+cover the full accepted storedAllowance(C) range.
+
+The new lease admission accounts a supplied vector and holds the file.
+Selected-runtime compressed demand adequacy, complete decoder trajectory,
+shared lifecycle/publication and native activation remain open. This source
+stage adds no served compressed or matching image claim.
+
+The actual typed initializer establishes the complete captured token/plan
+join. The staged scalar callback checks the full descriptor and original
+index in ACL2 before private buffer supply. Its decoded-ready branch is
+unreachable-in-composition under the current raw-only physical predicate;
+the shared OR-kind lifecycle and full decoded/dictionary trajectory must
+land before activation. The initializer join is not that semantic proof.
+
+### Actual bounded copy trajectory component
+
+The actual `fn-zin-copy` splits K1+K2 copied bytes into two calls with
+identical final ring position, ring bytes and output. The actual mode12
+`fn-ewz-codec-tick` binds complete decoder/ring/table/scratch/private-window
+effects to its actual64-byte copy and ACL2-selected overlap. Its source
+conditions include positive quantum, pending copy count, funded output room,
+retained input span, and actual fixed history/table readiness. The stored
+wrapper consumes one action for that copy fragment. Literal witnesses reach
+the controller through actual initialize/hash-prime/read/codec transitions,
+affirm every condition and effect, and falsify each condition separately.
+The63-byte allowance witness distinguishes sentinel room from funded copy.
+
+A251-octet repeated-match archive produces identical octets in the existing
+whole stored decoder and the authenticated bounded controller. General
+faithfulness still requires state/output stuttering: room-dependent copy
+and literal batching changes scheduling action consumption, so equal
+action-budget output splitting is not assumed. Complete decoder/dictionary
+trajectory, total budget adequacy, compiler/runtime demand and native
+lifecycle/consumer activation remain open. This is source component
+evidence, not certification or a qualified served path.
+
+The shared source executor accepts the distinct decoded token and retains its
+full identity through actual acquire, cancellation, return and settlement.
+Raw plan publication requires the raw kind and descriptor. This source join
+does not install a decoded native worker/buffer holder: the native dispatcher
+explicitly refuses decoded execution until exact object/view binding and
+matched compressed runtime funding are supplied. See the source coordinate
+in planning/evidence/decoded-window-shared-join-source-2026-09-30.md.
+
+The typed publication source fixture now executes the actual issuer, shared
+worker acquisition, typed initializer, authenticated bounded decoder, return
+and scalar read on the carried buffer. Its final251-A octet agrees with the
+existing whole decoder; stale ownership, mismatched request, cancellation
+and release remain distinct. This fixture does not replace the general
+decoder trajectory or native object/view binding obligations. See
+planning/evidence/decoded-window-publication-source-2026-09-30.md.
+
+The actual copy-mode controller effects also normalize to64 calls of the
+existing actual fn-zin-act: decoder state, history, table, scratch and
+selected private-window writes agree. This proof uses the existing actual
+action implementation and introduces no host byte semantics assumption.
+Complete reachable and13-condition removal witnesses check the new
+conclusion. Copy octets, semantic action calls and stored scheduling charges
+remain distinct; literal batching, general input/dictionary stuttering and
+total budget adequacy remain open. See
+planning/evidence/decoded-window-action-source-2026-09-30.md.
+
+The actual ready mode8 literal STEP branch now normalizes its full
+state/history/table/output tuple to the existing actual ACT sequence of
+emitted count. Its hypotheses are positive room, mode8, fresh decode
+fields and the complete actual literal readiness predicate, including
+TOUT strictly below the bomb bound. First ACT establishes the local
+terminal-register identity; no served state revalidation is introduced.
+Actual initializer/basic scheduling reachability and all four exact
+hypothesis removals accompany this component. The existing runtime is
+unchanged; the withdrawn zero-K proposal is refuted because actual
+readiness excludes that frontier. General input/dictionary/output-window
+trajectory, scheduling budget and native funding remain
+open. See planning/evidence/decoded-window-literal-source-2026-09-30.md.
+
+
+The actual basic-loop STEP now has one full-tuple ACT normalization at
+positive room, including clipped copies, complete ready literals, bomb
+refusals and every fallback mode. Semantic ACT count is positive and at
+most room; it is not the charged scheduling count or a native tariff.
+The actual basic loop, stored credit/cleared-output wrapper and complete
+fn-ewz-codec-tick tuple agree with the same ACT/PULL replay while retaining
+the original charged schedule, statuses, input cursor, all decoder/pool
+state, selected private writes and next-mode decision. Fixed history/table
+readiness is explicit at the caller boundary. This removes the prior
+branch-specific decoder relation; arbitrary output-limit confluence and
+adequate initial budget still require proof. Legacy fast/ahead has no
+caller in this current composed stored cold path. Native decoded dispatch
+remains refused until exact retained buffer/view binding and full matched
+runtime demand exist. See planning/evidence/decoded-window-step-source-2026-09-30.md.
+
+The actual basic loop also carries source charge evidence. A successful
+actual STEP pays one scheduling action, including a copied/literal batch;
+its bit/output/grammar phase potential bounds that charge. Actual loop
+outcomes, including terminal refusal, have a proved source trajectory
+bound. Actual compressed begin, read, hash tick and nonrefusal codec calls
+preserve a decoder budget carry; joining the existing actual real-input and
+active-output carries gives remaining budget at least3840+7C on active
+states retaining that joint carry. This is a logical source invariant, not
+an added host validation or compiled operation tariff. A separate final envelope now retains strict carry in scan/codec and pays
+the final action in drain/decoded. Actual begin/read/hash/codec preserve it
+on all outcomes, and active remaining budget is at least3839+7C. The real
+empty-stream decision is covered without inventing a status premise. Complete
+arbitrary-window bytes/status/digest trajectory and native adequacy remain open. No N63 restriction or pending-length limit
+is imposed on stored descriptors; the grammar-produced match length bound
+does not restrict stored LEN16. See the budget source evidence for its
+literal positives, complete removals and exact source gate.
+
+The final-budget component evidence is
+`planning/evidence/decoded-window-budget-completion-source-2026-09-30.md`;
+its source gate and literal tests do not enable the dormant native driver.
+
+The actual basic loop also has an unconditional full seven-value/effects
+normalization to existing ACT/PULL transitions at explicitly source-observed
+semantic fuel. Its completed two-output-window calls agree with the completed
+whole call in status, input cursor, decoder/history/table and bytes. The
+cleared-scratch form concatenates the two byte results. The retained form
+requires normalized frontier order, first actual `:full`, and both resumed
+and whole calls not yielding; the cleared form requires proper initial output
+and those actual completion premises. Charged remaining fuel is deliberately
+excluded from this semantic observation, since output-dependent batching can
+change the charge. This source boundary does not yet compose cold-controller
+input credit/cuts, selected dictionary and accumulated digest, and does not
+authorize native decoded execution or provide total runtime funding.
+See `planning/evidence/decoded-window-output-trajectory-source-2026-09-30.md`.
+
+The actual stored wrapper credit seam now has an exact full seven-value
+boundary to its existing decoder feed call. Recrediting the returned real-TIN
+state recovers the entire credited state, so two actual stored calls equal two
+actual feed calls, including their remaining charged fuel. Two completed
+cleared stored windows also agree with the whole actual feed at the sum of
+first produced bytes and the actual second room: status, input cursor, full
+recredited decoder/history/table and concatenated bytes. Only first actual
+`:full` and second/whole non-yield are premises; buffer shape/type premises
+were removed after proving actual length preservation. Whole-window semantic
+confluence still excludes remaining fuel because batching changes its charge.
+This component does not close controller input cuts, quantum yields, canonical
+initialization/selected dictionary/digest or native holder/runtime funding.
+See `planning/evidence/decoded-window-stored-trajectory-source-2026-09-30.md`.
+
+The actual initializer/feed and stored-wrapper trajectory now reaches the
+existing canonical `fn-pzd-decode` complete answer after two cleared windows.
+The second call uses actual `fn-pzw-budget-left` global carry, rather than the
+first quantum's local remainder. First status is `:yield` or `:full`, second
+status is neither, and appended output stays below the actual canonical stored
+sentinel. Canonical source budget completion follows the actual charged-loop
+bound; dictionary/input type and a redundant prefix bound were removed after
+weakened proofs. All four conditions have complete removal witnesses. This
+logical source component does not establish general controller iteration,
+input cuts/digest, dictionary authority or native holder/runtime funding. Its
+requested5 yield witness is for the general actual stored wrapper; no reachable
+fixed1024 codec yield or native64-byte input-window fixture is inferred.
+See `planning/evidence/decoded-window-canonical-trajectory-source-2026-09-30.md`.
+
+The actual input-exhausted refill also reaches the complete canonical answer
+after two separate stored calls, each beginning at position zero in its own
+input buffer. First status is `:more`; second status is neither `:yield` nor
+`:full`. Final output stays below the canonical sentinel by proof of the actual
+refusal/output and stop discipline; whole completion follows the actual charged
+budget margin. No logical input/dictionary type or supplied-buffer shape
+premise remains. A fixed1024, input64+6 positive checks actual wrapper guards and
+canonical65-byte answer. Header-cut and empty logical wrapper positives and all
+three complete status removals accompany the boundary. Empty input is the
+wrapper special case, while actual controller BEGIN uses drain; zero requested
+quantum is a general wrapper removal, not a fixed1024 tick witness. This
+component does not establish arbitrary controller schedules, accumulated digest,
+selected dictionary/captured source authority, private native holder or full
+selected runtime demand. Native compressed execution remains refused.
+See `planning/evidence/decoded-window-input-trajectory-source-2026-09-30.md`.
+
+The actual codec tick also carries each selected private-window cell against
+`APPEND(previous decoded prefix, actual returned stored scratch)`, and returned
+TOUT equals the appended length. Earlier selected cells retain their bytes;
+current overlap copies the corresponding scratch bytes. The prefix position
+and prior cell carry are explicit proof invariants, with no new runtime scan.
+Actual BEGIN/read/hash/codec witnesses exercise input64+6 and a selected8-byte
+window crossing the tick boundary; corrupted carried cell and incorrect prefix
+position separately fail the conclusion while preserving other hypotheses.
+This source boundary still needs arbitrary controller/canonical iteration and
+accumulated digest composition, exact captured-source/private-holder authority
+and full selected runtime funding. Native compressed execution remains refused.
+See `planning/evidence/decoded-window-selected-trajectory-source-2026-09-30.md`.
+
+Actual compressed BEGIN/READ/HASH establish and preserve the existing faithful
+captured-source BLAKE3 trajectory at retained raw-plan ELEN. BEGIN names natural
+supported depth<=63, octet source/exact ELEN and selected tree stack support;
+these are digest profile/representation premises, not a stored-data policy.
+READ requires the exact captured source slice when the raw subplan scans.
+HASH requires incoming carry. A newly published window from actual compressed
+READ therefore has trailer and expected commitment equal to BLAKE3 of that
+source. Fifteen complete actual positives/removals include a selected (66 67)
+publication, omitted source slice, bad trailer and separately corrupted digest
+states. No executable whole-source revalidation was added. Native source/view/
+private-buffer custody, general canonical scheduling and total runtime funding
+remain open; native compressed execution remains refused.
+See `planning/evidence/decoded-window-digest-trajectory-source-2026-09-30.md`.
+
+### Registered decoded source and terminal charge carry
+
+The source-only `FN-DWC-ONE` boundary carries the actual returned controller,
+input, digest, codec registers, ring, table, scratch and selected output window.
+Its digest carry remains about the exact captured source; READ completion needs
+the actual source-slice equality, not a supplied semantic decoder result. The
+selected-cell theorem carries the full produced position and prior output cell.
+No root-list shape alone proves captured-view/authorized-handle authority.
+
+The actual stored loop can complete with `(:refused :stream-ended)`. This is
+the existing stored decision's decoded terminal result. The terminal budget
+composition includes that status: incoming charged carry bounds total consumed
+STEP budget by `9*TIN + 2*TOUT + 257` after the actual stored chunk. With the
+actual controller's input/output carry, decoded completion therefore retains at
+least `3839 + 7*C` STEP budget units, where C is compressed length. This is
+logical scheduling fuel, not native work or allocation funding. The same bound
+passes through the current token/owned/no-pending codec branch of `FN-DWC-ONE`.
+
+The native decoded path remains dormant. Installed captured-source authority,
+exact private-child custody/lifetime, complete runtime allowance and arbitrary
+canonical controller iteration remain required. See the controller/terminal
+source evidence packet; no component admission closes PRF-1131.
+
+### Registered basic-loop effects and retained output
+
+The current owned codec branch of `FN-DWC-ONE` is connected to the actual
+`FN-ZIN-FEED` basic loop by the complete status, cursor, recredited registers,
+ring, table and scratch tuple. Recredit is the existing logical reference
+observation, not a native budget substitution. The bounded actual input span
+and current token remain explicit premises. Arbitrary canonical iteration
+from BEGIN across all yields and selected dictionaries remains open.
+
+Subsequent noncodec ONE turns preserve the entire selected private window.
+CURRENT READ also preserves it when the compressed raw plan requests no raw
+window. The actual codec, two hash turns and trailer publication witness keeps
+selected bytes `(66 67)`; a separately corrupted overlapping raw plan and
+matched capture refutes removal of the zero-request premise. None establishes
+installed private-buffer/view custody, whole runtime funding or activation.
+
+### Actual finite scheduling yields
+
+A finite transcript of actual `FN-ZIN-LOOP` calls, stopping at its first
+non-yield status, equals the atomic reference at its generated semantic action
+count. This includes the complete returned tuple. At completion it has the
+same status, cursor, registers, ring, table and output as a completed ordinary
+basic loop. The unused scheduling-fuel field is not equated across schedules.
+
+The witnesses use the real fixed-Huffman input, multiple yielded calls and
+128 emitted octets. Both completion conditions have complete removals. This
+component keeps one input buffer/frontier; actual scratch clearing, refill,
+registered controller iteration, source custody and full native funding remain.
+The generated action observer is a logical semantic reference, not a primitive
+allocation or runtime work tariff.
+
+### Actual scratch-clear composition
+
+Clearing the actual basic loop's scratch output preserves its entire returned
+status, remaining scheduling fuel, cursor, registers, ring and table when the
+old proper prefix is retained separately. The actual stored wrapper has the
+same complete prefix boundary against actual `FN-ZIN-FEED`, including its
+existing TIN recredit. Both theorems require only a proper logical prefix;
+corrupted-prefix removals refute that premise separately.
+
+The reachable fixed-1024 quantum witnesses fill a 64-byte scratch window and
+then another, preserving the complete 128-byte retained-prefix effects. A
+registered four-codec fixture decodes 251 bytes from the actual six-byte fixed
+Huffman wire, selects offset 128 with 123 wanted bytes, and compares that whole
+selected window with the old actual decoder's suffix. Actual hash turns and
+trailer receipt then authenticate the wire and reach compressed publication
+without changing that selected buffer. This is unfunded source execution, not
+installed captured-source or native worker/query custody. General input refill,
+selected dictionary/controller iteration and whole runtime funding remain open.
+The generic five-step partial-output yield witness is a logical kernel API
+case; it establishes no fixed-1024 composed reachability.
+
+### Finite output frontiers and scheduling yields
+
+A proof-only transcript composes the actual basic loop's finite scheduling
+quanta at each output frontier. It stops on the actual first non-FULL status
+or the last row. Its generated condition checks that consumed frontiers fit
+the final frontier; under that condition the complete tuple agrees with the
+atomic reference. The generated semantic action sum subtracts unused fuel at
+intermediate full windows. It is not a native work or allocation tariff.
+
+At completion, valid transcripts and completed ordinary actual basic loops
+have identical status, cursor, registers, ring, table and output. Their unused
+scheduling fuel remains distinct. Literal witnesses cover actual yields,
+64/128 frontiers, and all three completion-premise removals. These are logical
+kernel API continuations, not a new128-byte admission limit. General refill,
+dictionary/controller composition and installed consumer custody remain open.
+
+Actual initialized finite output frontiers and scheduling yields now compose to
+the complete existing `fn-pzd-decode` answer. The final result must be neither
+`:full` nor `:yield`, and its output must remain below the actual declared-length
+stored sentinel. Terminal frontier validity follows from actual output
+monotonicity and stopping discipline; no supplied validity, dictionary/input
+type or buffer-shape premise remains. This source boundary uses the actual
+basic loop and its charged semantic budget, not a native allocation tariff.
+General interleaved input refill, registered controller composition, captured
+dictionary/source custody and total selected runtime funding remain open.
+See `planning/evidence/decoded-window-finite-canonical-source-2026-10-01.md`.

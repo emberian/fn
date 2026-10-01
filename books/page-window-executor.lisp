@@ -4,6 +4,7 @@
 (in-package "ACL2")
 (include-book "page-window-lease")
 (include-book "page-read-executor")
+(include-book "decoded-window-descriptor")
 
 (local
  (defthm fn-pwx-ledger-nth-unfolds
@@ -12,9 +13,10 @@
 
 (defun fn-pwx-tokenp (token)
   (declare (xargs :guard t))
-  (and (true-listp token) (equal (len token) 9)
-       (equal (nth 0 token) :window) (natp (nth 1 token))
-       (fn-prw-descriptorp (cddr token))))
+  (and (true-listp token) (natp (nth 1 token))
+       (or (and (equal (len token) 9) (equal (nth 0 token) :window)
+                (fn-prw-descriptorp (cddr token)))
+           (fn-pwz-tokenp token))))
 
 (defun fn-pwx-rowp (w)
   (declare (xargs :guard t))

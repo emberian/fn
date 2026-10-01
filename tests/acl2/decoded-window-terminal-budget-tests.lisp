@@ -1,0 +1,91 @@
+; Seeded logical storage fixture: no native issuer or allocation allowance.
+(in-package "ACL2")
+(include-book "decoded-worker-controller-trajectory-tests")
+(include-book "../../books/decoded-window-terminal-budget")
+
+(defun-nx fn-pwztt-codec-hypotheses (s)
+ (let ((z (fn-pww-controller (nth 2 s))))
+  (and (equal (nth 0 z) :codec)
+       (natp (nth 12 (nth 1 z))) (natp (nth 2 z))
+       (natp (nth 6 z)) (natp (nth 7 z)) (<= (nth 6 z) (nth 7 z))
+       (<= (- (nth 7 z) (nth 6 z)) 64)
+       (<= (nth 7 z) (fn-octets-len (nth 3 s)))
+       (fn-zin-window-ready-p (nth 6 s)) (fn-zin-tab-okp (nth 7 s))
+       (fn-pwz-controller-budget-carryp z (nth 5 s)))))
+(defun-nx fn-pwztt-issued-hypotheses (s)
+ (let ((c (nth 2 s)))
+  (and (fn-pwztt-codec-hypotheses s)
+       (fn-pwz-tokenp (fn-dwctt-token)) (equal (fn-dwctt-token) (fn-pww-token c))
+       (eq (fn-pww-phase c) :running) (eq (fn-pww-borrow-phase c) :owned)
+       (null (fn-pww-pending-action c))
+       (true-listp (fn-pww-controller c)) (true-listp (nth 1 (fn-pww-controller c)))
+       (equal (car (fn-ewz-next-action (fn-pww-controller c) (nth 4 s))) :codec))))
+
+(local
+ (defthm fn-pwztt-stored-terminal-envelope-positive
+  (let* ((s (fn-dwctt-codec-current)) (z (fn-pww-controller (nth 2 s)))
+         (c (nth 12 (nth 1 z))) (n (nth 2 z))
+         (r (fn-pzw-stored-chunk 1024 (nth 5 z) (nth 6 z) (nth 7 z) c n
+               (nth 5 s) (nth 3 s) (nth 6 s) (nth 7 s) (nth 8 s)))
+         (left (fn-pzw-budget-left 1024 (nth 5 z) (nth 1 r))))
+   (and (natp (nth 6 z)) (fn-zin-window-ready-p (nth 6 s)) (fn-zin-tab-okp (nth 7 s))
+        (fn-pwz-budget-carryp c n (nth 5 z) (nth 5 s))
+        (equal (nth 0 r) '(:refused :stream-ended))
+        (natp left) (fn-pwz-progress-statep (nth 3 r))
+        (<= (- (fn-pzd-budget c n) left)
+            (+ (* 9 (fn-zin-tin (nth 3 r))) (* 2 (fn-zin-tout (nth 3 r))) 257))))
+  :rule-classes nil))
+(local
+ (defthm fn-pwztt-codec-terminal-envelope-positive
+  (let* ((s (fn-dwctt-codec-current)) (z (fn-pww-controller (nth 2 s)))
+         (r (fn-ewz-codec-tick z (nth 3 s) (nth 5 s) (nth 6 s) (nth 7 s) (nth 8 s) (nth 9 s)))
+         (next (nth 1 r)))
+   (and (fn-pwztt-codec-hypotheses s)
+        (fn-pwz-budget-carryp (nth 12 (nth 1 z)) (nth 2 z) (nth 5 z) (nth 5 s))
+        (equal (nth 8 next) '(:refused :stream-ended))
+        (natp (nth 5 next)) (fn-pwz-progress-statep (nth 2 r))
+        (<= (- (fn-pzd-budget (nth 12 (nth 1 z)) (nth 2 z)) (nth 5 next))
+            (+ (* 9 (fn-zin-tin (nth 2 r))) (* 2 (fn-zin-tout (nth 2 r))) 257))))
+  :rule-classes nil))
+(local
+ (defthm fn-pwztt-decoded-codec-budget-positive
+  (let* ((s (fn-dwctt-codec-current)) (z (fn-pww-controller (nth 2 s)))
+         (r (fn-ewz-codec-tick z (nth 3 s) (nth 5 s) (nth 6 s) (nth 7 s) (nth 8 s) (nth 9 s))))
+   (and (fn-pwztt-codec-hypotheses s)
+        (equal (nth 0 (nth 1 r)) :decoded)
+        (equal (nth 8 (nth 1 r)) '(:refused :stream-ended))
+        (<= (+ 3839 (* 7 (nth 12 (nth 1 z)))) (nth 5 (nth 1 r)))))
+  :rule-classes nil))
+(local
+ (defthm fn-pwztt-issued-terminal-budget-positive
+  (let* ((s (fn-dwctt-codec-current)) (z (fn-pww-controller (nth 2 s)))
+         (r (fn-dwctt-codec-one)) (next (fn-pww-controller (nth 2 r))))
+   (and (fn-pwztt-issued-hypotheses s) (equal (nth 0 next) :decoded)
+        (equal (nth 8 next) '(:refused :stream-ended))
+        (<= (+ 3839 (* 7 (nth 12 (nth 1 z)))) (nth 5 next))
+        (equal (nth 5 next) 4214) (equal (nth 12 (nth 1 z)) 8)))
+  :rule-classes nil))
+
+; Corrupted-state hypothesis removal: all current source/shape/action/input
+; and output premises remain true, but a forged smaller budget breaks carry.
+(local
+ (defthm fn-pwztt-issued-budget-carry-removal
+  (let* ((s (fn-dwctt-codec-current)) (c (nth 2 s))
+         (z (update-nth 5 100 (fn-pww-controller c)))
+         (c (update-fn-pww-controller z c))
+         (r (fn-dwc-one (fn-dwctt-token) c (nth 3 s) (nth 4 s)
+                        (nth 5 s) (nth 6 s) (nth 7 s) (nth 8 s) (nth 9 s)))
+         (next (fn-pww-controller (nth 2 r))))
+   (and (fn-pwz-tokenp (fn-dwctt-token)) (equal (fn-dwctt-token) (fn-pww-token c))
+        (eq (fn-pww-phase c) :running) (eq (fn-pww-borrow-phase c) :owned)
+        (null (fn-pww-pending-action c)) (true-listp z) (true-listp (nth 1 z))
+        (equal (car (fn-ewz-next-action z (nth 4 s))) :codec)
+        (natp (nth 12 (nth 1 z))) (natp (nth 2 z))
+        (natp (nth 6 z)) (natp (nth 7 z)) (<= (nth 6 z) (nth 7 z))
+        (<= (- (nth 7 z) (nth 6 z)) 64) (<= (nth 7 z) (fn-octets-len (nth 3 s)))
+        (fn-zin-window-ready-p (nth 6 s)) (fn-zin-tab-okp (nth 7 s))
+        (fn-ewz-input-invariantp z (nth 5 s)) (fn-ewz-output-invariantp z (nth 5 s))
+        (not (fn-pwz-controller-budget-carryp z (nth 5 s)))
+        (equal (nth 0 next) :decoded)
+        (not (<= (+ 3839 (* 7 (nth 12 (nth 1 z)))) (nth 5 next)))))
+  :rule-classes nil))

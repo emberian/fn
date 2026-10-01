@@ -49,6 +49,9 @@
 (defstruct (fnn-tcl-conn (:conc-name fnn-tclc-))
   fd tag spool session (carry nil) (held nil) (closing nil) (broken nil)
   (pending nil) (trace nil) (inbound 0)
+  ;; Exact received transfer remains borrowed until actual joined disposition.
+  (source-pending nil) (source-token nil) (source-id nil)
+  (source-root nil) (source-count nil) (source-held nil) (source-more nil)
   ;; PKT-873: T when an accepted transfer's custody awaits the session's
   ;; progress hook (ACL2's fn-tcl-delivery-plan-progress-p named it).
   (progress nil)
@@ -120,6 +123,43 @@ host/native/bp.lisp installs `fn-bpn-receive' here, which is what makes the
 `bp' verb a BPv7 node rather than a spool: the octets become a decoded
 bundle, its lifetime and hop count are decided, and its ADU is what lands in
 the journal.  Nothing else binds this.")
+
+(defvar *fnn-tcl-deliver-counted* nil
+  "Dormant received-source callback (conn xfer-id octets cumulative-count).
+Only the qualified BP received-source installer may bind it. Callback presence
+is not a resource grant. ACL2 selects count from the held final END ACK; no
+host byte count or complete-source scan occurs. Old callback remains separate.")
+
+(define-condition fnn-tcl-source-indeterminate (fnn-store-indeterminate)
+  ((connection :initarg :connection :reader fnn-tcl-source-failure-connection)
+   (cause :initarg :cause :reader fnn-tcl-source-failure-cause)))
+(defun fnn-tcl-source-escape (conn condition)
+  ;; The condition retains this same mutable I/O record across outer session
+  ;; unwind. It conveys uncertainty, not a new authoritative source snapshot.
+  (setf (fnn-tclc-fenced conn) t (fnn-tclc-outcome conn) :uncertain)
+  (if (typep condition 'fnn-tcl-source-indeterminate) (error condition)
+    (error 'fnn-tcl-source-indeterminate
+           :message "TCPCL received source continuation is indeterminate"
+           :connection conn :cause condition)))
+
+(defvar *fnn-tcl-source-start* nil
+  "Qualified registered source entry (conn id reversed-segments count).
+Returns (:source-yield token) or a durable delivery disposition. Initially
+NIL: no constructor, source issuer, policy or operation authority installed.")
+(defvar *fnn-tcl-source-turn* nil
+  "Qualified token-only continuation (conn token). One bounded action per
+call; retains source and END ACK on yield. Never receives an authority row.")
+
+(defun fnn-tcl-deliver-transfer (conn xfer-id octets)
+  (cond
+    (*fnn-tcl-deliver-counted*
+     (let ((counted (fnn-core 'fn-tcl-final-held-count (fnn-tclc-held conn) xfer-id)))
+       (unless (eq (fnn-core 'fn-tcl-final-count-ready-p counted) t)
+         (fnn-fault "TCPCL received-source count lacks its held final ACK"))
+       (funcall *fnn-tcl-deliver-counted* conn xfer-id octets
+                (fnn-core 'fn-tcl-final-count-value counted))))
+    (*fnn-tcl-deliver* (funcall *fnn-tcl-deliver* conn xfer-id octets))
+    (t (fnn-tcl-stage conn xfer-id octets))))
 
 (defconstant +fnn-tcl-spool-lock+ ".spool.lock")
 
@@ -268,6 +308,79 @@ and faults without following or deleting anything."
       (finish-output stream))))
 
 ;;; ---------------------------------------------------------------------------
+(defun fnn-tcl-source-disposition (conn result)
+  (case (fnn-core 'fn-tcl-source-result-action result)
+    (:retain
+     (setf (fnn-tclc-source-token conn)
+           (fnn-core 'fn-tcl-source-result-token result)))
+    (:settle
+     (fnn-tcl-settle-delivery conn (fnn-tclc-source-id conn) result)
+     ;; A throwing/uncertain settlement retains all source and token debt.
+     (setf (fnn-tclc-source-pending conn) nil
+           (fnn-tclc-source-token conn) nil (fnn-tclc-source-root conn) nil
+           (fnn-tclc-source-id conn) nil (fnn-tclc-source-count conn) nil
+           (fnn-tclc-source-held conn) nil))
+    (otherwise (fnn-fault "TCPCL source continuation result unavailable"))))
+(defun fnn-tcl-source-input-turn (conn chunk now)
+  (unless (and *fnn-tcl-source-start* *fnn-tcl-source-turn*)
+    (fnn-fault "TCPCL registered source driver unavailable"))
+  (when (fnn-tclc-source-pending conn)
+    (fnn-fault "TCPCL source owns input turn until settlement"))
+  (let ((result (fnn-core 'fn-tcl-host-source-drive (fnn-tclc-session conn)
+                           (append (fnn-tclc-carry conn) chunk) now)))
+    (setf (fnn-tclc-carry conn) (third result)
+          (fnn-tclc-source-more conn) (fnn-core 'fn-tcl-host-source-more-p result))
+    (fnn-tcl-apply conn result "source-event")))
+
+(defun fnn-tcl-source-tick (conn)
+  (handler-case
+      (progn
+        (unless (and (fnn-tclc-source-pending conn)
+                     (fnn-tclc-source-token conn) *fnn-tcl-source-turn*)
+          (fnn-fault "TCPCL source continuation cannot resume"))
+        (when (fnn-tclc-fenced conn)
+          (fnn-fault "TCPCL source continuation is fenced"))
+        (fnn-tcl-source-disposition
+         conn (funcall *fnn-tcl-source-turn* conn (fnn-tclc-source-token conn))))
+    (error (condition) (fnn-tcl-source-escape conn condition))))
+
+(defun fnn-tcl-settle-delivery (conn xfer-id result)
+  (let* ((plan (fnn-core 'fn-tcl-delivery-plan
+                                (reverse (fnn-tclc-held conn))
+                                xfer-id result))
+                (status (fnn-core 'fn-tcl-delivery-plan-status plan)))
+           (setf (fnn-tclc-held conn)
+                 (reverse (fnn-core 'fn-tcl-delivery-plan-messages plan)))
+           (case status
+             (:accepted
+              (incf (fnn-tclc-accepted conn))
+              (incf (fnn-tclc-inbound conn))
+              (when (fnn-core 'fn-tcl-delivery-plan-progress-p plan)
+                (setf (fnn-tclc-progress conn) t))
+              (fnn-tcl-log conn "accepted" "xfer=~d path=~a"
+                           xfer-id
+                           (fnn-core 'fn-tcl-delivery-plan-detail plan))
+              (fnn-tcl-flush conn))
+             (:refused
+              (incf (fnn-tclc-refused conn))
+              (setf (fnn-tclc-outcome conn) :refused)
+              (fnn-tcl-log conn "refused" "inbound xfer=~d reason=~a"
+                           xfer-id
+                           (fnn-core 'fn-tcl-delivery-plan-detail plan))
+              (fnn-tcl-flush conn))
+             (:uncertain
+              (incf (fnn-tclc-uncertain conn))
+              (setf (fnn-tclc-outcome conn) :uncertain
+                    (fnn-tclc-fenced conn) t)
+              (fnn-tcl-log conn "uncertain" "inbound xfer=~d reason=~a"
+                           xfer-id
+                           (fnn-core 'fn-tcl-delivery-plan-detail plan))
+              (fnn-indeterminate "inbound transfer ~d: durable disposition uncertain"
+                                 xfer-id))
+             (otherwise
+              (fnn-tcl-drop conn)
+              (fnn-fault "TCPCL delivery result did not match held final ACK")))))
+
 ;;; Acting on an event list, in order.
 
 (defun fnn-tcl-act (conn events)
@@ -280,53 +393,33 @@ and faults without following or deleting anything."
          ;; The held list ends with fn-tcl-complete's final END ACK and may
          ;; contain earlier machine output from the same drive batch. ACL2
          ;; selects the entire outbound message list after the callback.
-         (let* ((result (handler-case
-                            (if *fnn-tcl-deliver*
-                                (funcall *fnn-tcl-deliver*
-                                         conn (second event) (third event))
-                              (fnn-tcl-stage conn (second event) (third event)))
+         (let ((result (handler-case
+                            (fnn-tcl-deliver-transfer conn (second event) (third event))
                           (fnn-store-indeterminate (e)
                             (fnn-tcl-drop conn)
                             (incf (fnn-tclc-uncertain conn))
                             (setf (fnn-tclc-outcome conn) :uncertain
                                   (fnn-tclc-fenced conn) t)
                             (fnn-tcl-log conn "uncertain" "~a" e)
-                            (error e))))
-                (plan (fnn-core 'fn-tcl-delivery-plan
-                                (reverse (fnn-tclc-held conn))
-                                (second event) result))
-                (status (fnn-core 'fn-tcl-delivery-plan-status plan)))
-           (setf (fnn-tclc-held conn)
-                 (reverse (fnn-core 'fn-tcl-delivery-plan-messages plan)))
-           (case status
-             (:accepted
-              (incf (fnn-tclc-accepted conn))
-              (incf (fnn-tclc-inbound conn))
-              (when (fnn-core 'fn-tcl-delivery-plan-progress-p plan)
-                (setf (fnn-tclc-progress conn) t))
-              (fnn-tcl-log conn "accepted" "xfer=~d path=~a"
-                           (second event)
-                           (fnn-core 'fn-tcl-delivery-plan-detail plan))
-              (fnn-tcl-flush conn))
-             (:refused
-              (incf (fnn-tclc-refused conn))
-              (setf (fnn-tclc-outcome conn) :refused)
-              (fnn-tcl-log conn "refused" "inbound xfer=~d reason=~a"
-                           (second event)
-                           (fnn-core 'fn-tcl-delivery-plan-detail plan))
-              (fnn-tcl-flush conn))
-             (:uncertain
-              (incf (fnn-tclc-uncertain conn))
-              (setf (fnn-tclc-outcome conn) :uncertain
-                    (fnn-tclc-fenced conn) t)
-              (fnn-tcl-log conn "uncertain" "inbound xfer=~d reason=~a"
-                           (second event)
-                           (fnn-core 'fn-tcl-delivery-plan-detail plan))
-              (fnn-indeterminate "inbound transfer ~d: durable disposition uncertain"
-                                 (second event)))
-             (otherwise
-              (fnn-tcl-drop conn)
-              (fnn-fault "TCPCL delivery result did not match held final ACK")))))
+                            (error e)))))
+           (fnn-tcl-settle-delivery conn (second event) result)))
+        (:bundle-segments-received
+         (unless (and *fnn-tcl-source-start* *fnn-tcl-source-turn*)
+           (fnn-fault "TCPCL registered source runtime unavailable"))
+         (when (fnn-tclc-source-pending conn)
+           (fnn-fault "TCPCL source continuation already owns END ACK"))
+         ;; Persist native borrow before callback escape; registry owns authority.
+         (setf (fnn-tclc-source-pending conn) t
+               (fnn-tclc-source-id conn) (second event)
+               (fnn-tclc-source-root conn) (third event)
+               (fnn-tclc-source-count conn) (fourth event)
+               (fnn-tclc-source-held conn) (fnn-tclc-held conn))
+         (handler-case
+             (fnn-tcl-source-disposition
+              conn (funcall *fnn-tcl-source-start* conn (second event)
+                            (third event) (fourth event)))
+           (error (condition)
+             (fnn-tcl-source-escape conn condition))))
         (:inbound-refused
          (incf (fnn-tclc-refused conn))
          (fnn-tcl-log conn "refused" "inbound xfer=~d reason=~a" (second event) (third event)))
@@ -353,7 +446,7 @@ and faults without following or deleting anything."
            (fnn-tcl-log conn "refused" "outbound reason=~(~a~)" (third event))))
         (:close (setf (fnn-tclc-closing conn) t))
         (t nil))))
-  (fnn-tcl-flush conn))
+  (unless (fnn-tclc-source-pending conn) (fnn-tcl-flush conn)))
 
 ;;; One ACL2 result: adopt the session, log the digests, act on the events.
 (defun fnn-tcl-apply (conn triple &optional (source "aux"))
@@ -406,6 +499,14 @@ failure rather than a refusal."
     (loop
       (when (fnn-tclc-closing conn) (return))
       (when (eq (fnn-core 'fn-tcl-host-phase (fnn-tclc-session conn)) :closed) (return))
+      (cond
+        ((fnn-tclc-source-pending conn)
+         (fnn-tcl-source-tick conn)
+         (sb-thread:thread-yield))
+        ((fnn-tclc-source-more conn)
+         (fnn-tcl-source-input-turn conn nil (fnn-tcl-now))
+         (sb-thread:thread-yield))
+        (t
       (let* ((timeout (fnn-tcl-read-timeout conn))
              (incoming (fnn-recv fd timeout))
              (wake (fnn-tcl-now)))
@@ -427,18 +528,21 @@ failure rather than a refusal."
           (t
            (let ((chunk (fnn-octet-list incoming)))
              (fnn-tcl-record-trace conn wake chunk)
-             (let ((triple (fnn-core 'fn-tcl-host-drive (fnn-tclc-session conn)
-                                     (append (fnn-tclc-carry conn) chunk) wake)))
-               (setf (fnn-tclc-carry conn) (third triple))
-               (fnn-tcl-apply conn triple "event")))
-           (fnn-tcl-apply conn (fnn-core 'fn-tcl-host-tick (fnn-tclc-session conn) wake))))
+             (if *fnn-tcl-source-start*
+                 (fnn-tcl-source-input-turn conn chunk wake)
+               (let ((triple (fnn-core 'fn-tcl-host-drive (fnn-tclc-session conn)
+                                       (append (fnn-tclc-carry conn) chunk) wake)))
+                 (setf (fnn-tclc-carry conn) (third triple))
+                 (fnn-tcl-apply conn triple "event"))))
+           (unless (fnn-tclc-source-pending conn)
+             (fnn-tcl-apply conn (fnn-core 'fn-tcl-host-tick (fnn-tclc-session conn) wake)))))
         (when (and on-ready (not ready-called)
                    (eq (fnn-core 'fn-tcl-host-phase
                                  (fnn-tclc-session conn)) :established))
           (setq ready-called t)
           (funcall on-ready conn))
-        (fnn-tcl-offer conn wake)
-        (when (and (eq role :active)
+        (unless (fnn-tclc-source-pending conn) (fnn-tcl-offer conn wake))
+        (when (and (not (fnn-tclc-source-pending conn)) (eq role :active)
                    (not (fnn-tclc-closing conn))
                    (eq (fnn-core 'fn-tcl-host-active-closep
                                  (fnn-tclc-session conn) (and bundle t)
@@ -446,7 +550,7 @@ failure rather than a refusal."
                                  (fnn-tclc-outcome conn)
                                  (fnn-tclc-inbound conn) expect)
                        t))
-          (fnn-tcl-apply conn (fnn-core 'fn-tcl-host-terminate (fnn-tclc-session conn) wake)))))
+          (fnn-tcl-apply conn (fnn-core 'fn-tcl-host-terminate (fnn-tclc-session conn) wake)))))))
     (when (fnn-tclc-broken conn)
       (fnn-tcl-apply conn (fnn-core 'fn-tcl-host-tcp-closed (fnn-tclc-session conn))))
     (when (fnn-tclc-closing conn) (ignore-errors (fnn-graceful-close fd)))

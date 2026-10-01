@@ -1,0 +1,157 @@
+# Bounded stored DEFLATE windows (PRF-1112, SCN-1020)
+
+The stored decoder and COMPRESS use the same resumable inflater, with
+separate expansion policies. Network `fn-zin-feed` retains its existing
+256 times consumed-input plus 65,536 prefix bound. Stored decoding uses
+`256*C + 65,536`, where C is the declared compressed length, and requires
+exactly the declared N decoded octets. C and N are untrusted descriptors:
+core positional containment, supported-profile bounds and resource admission
+must precede use, independently of later extent authentication.
+
+This is an intentional change of stored acceptance policy, not an equality
+between the old lookahead decoder and the network loop. The old decoder
+accepted a 108-byte valid raw stream for 93,100 `A` octets that the network
+loop refused at 92,672. The new policy preserves that valid success. It can
+also accept valid high-ratio prefixes followed by ordinary data, and trailing
+bytes contribute to declared C even if the final block ends earlier. This
+broader stored domain remains subject to total output, work and integrity
+bounds. No network expansion allowance changes.
+
+A nonempty stored stream succeeds only at a final block or a complete sync
+flush: `:stream-ended` in mode 13, or `:more` in mode 0 with no buffered bits
+and a recorded empty non-final stored block. The marker is reset at each
+new block and decoder reset; only a valid zero LEN/complement pair sets it.
+A one-byte final stored header `01`, previously accepted at N=0, now refuses
+as truncated. A nonempty stored block ending in bytes `00 00 ff ff` does not
+impersonate a sync flush. Trailing bytes after a final block remain allowed.
+The explicit empty representation C=0,N=0 remains valid.
+
+`fn-pzw-initialize` receives a pinned shipped dictionary (the dictionary
+registry permits at most 64 KiB), initializes the 65,536-byte ring/preset and
+3,494-byte table, and reserves a 64-byte scratch output. Admission precedes
+these fixed reserves. These are dedicated slots: reserve never shrinks a
+legacy oversized vector. Scalar state is twenty boxed naturals; runtime
+charges must include representations of profile-sized counters and temporary
+stored credit, not assume a 20-byte state. Dictionary tails are shared until
+copied into the fixed preset half. The initializer has fixed bounded buffer
+work separate from a decode scheduling quantum.
+
+`fn-pzw-stored-chunk` consumes a span of at most 64 input octets, runs at most
+1,024 decoder actions and at most the caller's remaining action budget, and
+returns at most 64 scratch output octets. The total is bounded by
+`min(N, 256*C+65,536)+1` when starting at or below the bound. The extra octet is
+a private overflow sentinel. A caller must run `fn-pzw-stored-decision` after
+each call and stop on refusal rather than resume an overshot state. Quantum
+exhaustion resumes; the existing total `fn-pzd-budget` remains separate.
+No arbitrary payload-size ceiling or full payload allocation is introduced.
+
+The stored allowance temporarily credits C inside the existing inflater;
+`fn-pzw-stored-chunk-counts-real-input` proves that returned state restores
+actual input consumption, and that output length equals the counter delta.
+`fn-pzw-stored-chunk-is-resumable-run` relates every returned value and buffer
+effect to the logical resumable run over precisely the given input span.
+`fn-pzw-select` derives scratch source/count/private-window destination for
+the requested decoded interval, bounded by 64 and 16,384 respectively.
+
+`:decoded` is private codec completion. It grants no publication permission.
+The extent controller must still scan and authenticate the complete protected
+prefix, including compressed trailing bytes, compare its trailer, and match
+the issued token, incarnation and lease. Physical ownership retains all
+buffers until actual worker settlement and output transfer/release.
+
+Current source includes the canonical whole decoder and pooled decoder
+conversion plus the bounded component. The existing whole-payload host
+realizer still allocates whole input/output and is not the completed streaming
+path. Full window-selection/copy composition, authenticated publication,
+physical funding, matching images/natives and performance measurements remain
+open. The old lookahead fast-path timing is historical and does not qualify
+this source. Literal regressions and narrow source proofs support only their
+stated boundaries.
+
+Runtime operation inventory (numeric allocator bound still open): each
+`fn-zin-loop` action pulls one input octet or invokes `fn-zin-step`.
+Copy/literal bulk helpers emit at most the remaining 64-byte output room
+across a chunk. A table-building action has fixed work: fills touch at most
+320 lengths; `fn-zin-construct` clears a 512-entry lookup, counts/places at
+most 288 symbols, and walks fifteen code lengths. Its lookup fill nests at
+most 288 symbols with at most 256 replicated entries each (a conservative
+syntactic bound, not a claim that valid tables reach that product). Two
+constructs build literal and distance tables. Tables mutate the reserved
+3,494-byte slot. These helpers allocate no new vector or octet list in the
+concrete path once dedicated slots are initialized.
+
+Arithmetic includes shifts and bit operations, bounded table indices, and
+profile-sized input/output/budget counters. Live magnitudes include C,
+actual input at most C, temporary credited input at most 2*C, allowance
+256*C+65,536, and budget 4,096+16*C+2*N. The wrapper temporarily biases the
+input counter; it never represents the declared C as a C-sized allocation.
+Admission must charge boxed integer temporaries, twenty natural registers,
+bounded status/error conses, runtime multiple-value/control overhead and
+fresh-vector replacement coexistence. Source loop/action bounds are not a
+measurement or proof of those SBCL allocator costs. A positive scheduling
+quantum is necessary for progress; a zero quantum merely yields.
+
+## Carried scalar width (PRF-1132, SCN-1039)
+
+`books/payload-window-width.lisp` proves that the actual initializer establishes
+`nbits <= 39` and `bits < 2^nbits`, and that actual stored chunks preserve this
+carry when the input is an octet representation. The proof follows every
+actual loop, bulk literal/match and single-action branch, including malformed
+input and refusal. It introduces no served revalidation and no payload ceiling.
+The actual stored chunk also returns a natural input position in `[START, END]`
+under natural START and START <= END. END being natural was proved redundant
+for that theorem; the executable entry's existing guards still require it.
+
+The actual Huffman walker has a separate length-relative code/first/index
+carry. Non-error exits preserve it; every exit, including a bad-code refusal,
+has code <= 32,767, first <= 2,147,319,810, index <= 917,490 and length in1..15.
+Octet-table and natural-bit-count premises were proved redundant for these
+walker facts. `books/payload-window-register-width.lisp` now establishes the
+Huffman carry in the actual initializer and preserves it through the actual
+stored quantum on all exits except `(:refused :bad-code)`. The weaker fixed
+scalar envelope holds on every exit, including that refusal.
+
+The same book establishes actual initializer header carry unconditionally and
+preserves it through stored chunks under the carried fixed table representation:
+mode <=13, remaining stored length <=65,535, distance/preset <=32,768,
+history position <32,768, final/sync marker <=1, symbol <=65,535,
+HLIT <=286, HDIST <=30, HCLEN <=19 and index <=316. Window and output-buffer
+hypotheses were proved redundant for this header carry and removed. The
+fixed table representation is a proof-only boundary predicate; the served
+path does not scan it on every quantum. Guard verification alone does not
+exclude an unbounded corrupted register.
+
+The reviewed profile-arithmetic candidate per chunk plus one budget update,
+window selection and stored decision is `17 + 6*Q + 2*O + I`: at most
+`3 + 2*Q` multiplications and `14 + 4*Q + 2*O + I` additions/subtractions,
+where Q <=1,024 and I/O <=64. Initial budget construction adds two
+multiplications and two additions. This is a source inventory candidate,
+not yet a trace-count or allocator theorem. The runtime must account for
+primitive workspaces, extra limbs, signs, status conses and control overhead.
+
+With the controller's source-position carry keeping actual TIN <= C, stored
+credit can make temporary TIN reach2*C, so the bomb-limit intermediate is
+`512*C + 65,536`. With only TIN <= C at chunk entry and a64-byte span, it may
+instead reach `512*C + 81,920`; the stronger bound needs the complete source
+sequence premise. At signed63-bit C, even `512*C + 65,536` needs up to73
+magnitude bits. None of these source facts supplies a selected-runtime
+allocation bound or authorizes native admission. The evidence file records
+the exact component and the remaining width, count and runtime obligations.
+
+
+`books/payload-window-profile-width.lisp` connects the captured source
+sequence and output carry to the actual internal loop. Its cheap scalar
+invariant keeps credited TIN plus unread input <=2*C and TOUT plus remaining
+scratch room <=N+1. Actual stored-credit establishment and stored-chunk
+preservation are proved; no previous scratch-list validity is required at
+the entry because that scratch is cleared. The inner proof covers pulls,
+bulk/single output actions, yielded and refused exits.
+
+Under explicit supported signed63-bit C/N, actual `fn-zin-bomb-limit` is
+below2^73, actual TOUT+PRESET below2^64, and actual `fn-pzd-budget` below2^68.
+Natural-C/N hypotheses on the standalone budget-width theorem were proved
+redundant and removed in favor of bounds on their normalized inputs. These
+are operand/result magnitude bounds, not primitive allocation counts. Their
+supporting upper-bound lemmas are explicit-use facts without generic global
+rewrite/linear rules. Literal teeth include an actual maximum-profile bomb
+above2^72, retained-hypothesis removals and labelled coefficient mutations.

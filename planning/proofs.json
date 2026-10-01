@@ -8932,7 +8932,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/store-log.lisp",
         "tests/acl2/store-log-tests.lisp",
@@ -9258,7 +9258,7 @@
       "assumptions": [
         "A-CRYPTO-TRAILER"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/store-log-crash.lisp",
         "planning/evidence/w6-log-core-2026-09-27.md",
@@ -9571,7 +9571,7 @@
         "PRF-909"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/payload-deflate.lisp",
         "books/deflate-inflate.lisp",
@@ -14680,7 +14680,7 @@
         "PRF-038"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-node-host-transfer.lisp",
         "host/bp-node-host.lisp",
@@ -15493,7 +15493,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/deflate-inflate.lisp",
         "tests/acl2/deflate-inflate-tests.lisp",
@@ -15524,7 +15524,7 @@
         "PRF-909"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/deflate-inflate.lisp",
         "tests/acl2/deflate-inflate-tests.lisp"
@@ -15576,7 +15576,7 @@
         "PRF-909"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/deflate-frame.lisp"
       ],
@@ -19462,9 +19462,24 @@
         "books/ninep-group-directory-source.lisp",
         "tests/acl2/ninep-group-directory-source-tests.lisp",
         "planning/evidence/manifests/certify-20260930T215516Z-3461367.json",
-        "planning/evidence/manifests/certify-20260930T215611Z-3476093.json"
+        "planning/evidence/manifests/certify-20260930T215611Z-3476093.json",
+        "books/ninep-session.lisp",
+        "books/ninep-qids.lisp",
+        "books/ninep-dispatch.lisp",
+        "books/ninep-mount.lisp",
+        "host/ninep-mount-host.lisp",
+        "tests/acl2/ninep-session-tests.lisp",
+        "tests/acl2/ninep-qids-tests.lisp",
+        "tests/acl2/ninep-mount-tests.lisp",
+        "planning/evidence/ninep-session-lifetime-2026-10-01/README.md",
+        "planning/evidence/manifests/certify-20261001T014307Z-94237.json",
+        "planning/evidence/manifests/certify-20261001T021401Z-510698.json",
+        "host/ninep-session-host.lisp",
+        "tests/acl2/ninep-session-host-tests.lisp",
+        "planning/evidence/manifests/certify-20261001T022549Z-665008.json",
+        "planning/evidence/manifests/certify-20261001T022835Z-698698.json"
       ],
-      "progress_note": "Normal 213247 certifies the actual guarded bounded field step, carried-ready preservation and six literal wire fixtures; normal 213317 certifies the actual host dispatch and unchanged STATE bridge. Matching dependencies install from cache; their uncited status is explicit in the manifests. Full literal parser refinement, fids, genuine committed mount issuer, native/runtime funding and source lifetime remain open. No activation, image or deployment claim. Normal 214200 certifies core-owned version negotiation, literal octet selector refinement, reply-size/msize bounds, actual version host bridge and complete literal reply/refusal/hypothesis-removal fixtures. Mounted-holder/pin issuer and group enumeration are absent, not inferred from current publication readout. Normal 215611 certifies the exact borrowed-trie directory step/conservation and complete literal/quantum/refusal fixtures; normal 215516 certifies its actual host bridge and STATE frame. Results borrow persistent bit paths and actual group values, not rendered names or supplied catalogs. Entry formatting/profile scalar widths/constructor and graph lifetime remain open."
+      "progress_note": "Normal 213247 certifies the actual guarded bounded field step, carried-ready preservation and six literal wire fixtures; normal 213317 certifies the actual host dispatch and unchanged STATE bridge. Matching dependencies install from cache; their uncited status is explicit in the manifests. Full literal parser refinement, fids, genuine committed mount issuer, native/runtime funding and source lifetime remain open. No activation, image or deployment claim. Normal 214200 certifies core-owned version negotiation, literal octet selector refinement, reply-size/msize bounds, actual version host bridge and complete literal reply/refusal/hypothesis-removal fixtures. Mounted-holder/pin issuer and group enumeration are absent, not inferred from current publication readout. Normal 215611 certifies the exact borrowed-trie directory step/conservation and complete literal/quantum/refusal fixtures; normal 215516 certifies its actual host bridge and STATE frame. Results borrow persistent bit paths and actual group values, not rendered names or supplied catalogs. Entry formatting/profile scalar widths/constructor and graph lifetime remain open. Normal 213247 certifies the actual guarded bounded field step, carried-ready preservation and six literal wire fixtures; normal 213317 certifies the actual host dispatch and unchanged STATE bridge. Matching dependencies install from cache; their uncited status is explicit in the manifests. Full literal parser refinement, fids, genuine committed mount issuer, native/runtime funding and source lifetime remain open. No activation, image or deployment claim. Normal 214200 certifies core-owned version negotiation, literal octet selector refinement, reply-size/msize bounds, actual version host bridge and complete literal reply/refusal/hypothesis-removal fixtures. Mounted-holder/pin issuer and group enumeration are absent, not inferred from current publication readout. Normal 215611 certifies the exact borrowed-trie directory step/conservation and complete literal/quantum/refusal fixtures; normal 215516 certifies its actual host bridge and STATE frame. Results borrow persistent bit paths and actual group values, not rendered names or supplied catalogs. Entry formatting/profile scalar widths/constructor and graph lifetime remain open. Refusal successor supplies guarded core Rerror byte emission and actual host equality/STATE frame, fixed reply at most26 bytes, literal replies/refusals and verdict-removal tooth. Normal224511 certifies codec/host components but overall fixture root initially failed rewrite-rule installation; repaired host fixture224555 and current refusal fixture224638 pass. Runtime allocation and installed mount issuer remain open. Normal014307 certifies concrete session/fid/request and once-only return plus complete Flush/tag-reuse/stale-slot/refusal witnesses. Normal021401 certifies mount-scoped bounded bit-path qid registry and seven complete literal witnesses. Three inherited dependencies remain matching but uncited. Actual SAMEPRS mount reserve/pin/quiesce/drop/refund guards and complete internal fixtures pass in narrow real modern helper world; this is source-only, not a normal mount-root certificate. Full mounted group/query source producers, stat/reply streaming, native listener and whole-operation runtime family remain open. Normal022549 passed exact dispatcher but rejected initial host raw-with declarations (guard-T skips no carry). Repaired ordinary host boundary/complete disconnect fixture normal022835 passed; no cosmetic carry or hot export was invented. Normal 213247 certifies the actual guarded bounded field step, carried-ready preservation and six literal wire fixtures; normal 213317 certifies the actual host dispatch and unchanged STATE bridge. Matching dependencies install from cache; their uncited status is explicit in the manifests. Full literal parser refinement, fids, genuine committed mount issuer, native/runtime funding and source lifetime remain open. No activation, image or deployment claim. Normal 214200 certifies core-owned version negotiation, literal octet selector refinement, reply-size/msize bounds, actual version host bridge and complete literal reply/refusal/hypothesis-removal fixtures. Mounted-holder/pin issuer and group enumeration are absent, not inferred from current publication readout. Normal 215611 certifies the exact borrowed-trie directory step/conservation and complete literal/quantum/refusal fixtures; normal 215516 certifies its actual host bridge and STATE frame. Results borrow persistent bit paths and actual group values, not rendered names or supplied catalogs. Entry formatting/profile scalar widths/constructor and graph lifetime remain open. Refusal successor supplies guarded core Rerror byte emission and actual host equality/STATE frame, fixed reply at most26 bytes, literal replies/refusals and verdict-removal tooth. Normal224511 certifies codec/host components but overall fixture root initially failed rewrite-rule installation; repaired host fixture224555 and current refusal fixture224638 pass. Runtime allocation and installed mount issuer remain open. Normal014307 certifies concrete session/fid/request and once-only return plus complete Flush/tag-reuse/stale-slot/refusal witnesses. Normal021401 certifies mount-scoped bounded bit-path qid registry and seven complete literal witnesses. Three inherited dependencies remain matching but uncited. Actual SAMEPRS mount reserve/pin/quiesce/drop/refund guards and complete internal fixtures pass in narrow real modern helper world; this is source-only, not a normal mount-root certificate. Full mounted group/query source producers, stat/reply streaming, native listener and whole-operation runtime family remain open. Normal022549 passed exact dispatcher but rejected initial host raw-with declarations (guard-T skips no carry). Repaired ordinary host boundary/complete disconnect fixture normal022835 passed; no cosmetic carry or hot export was invented. Normal 213247 certifies the actual guarded bounded field step, carried-ready preservation and six literal wire fixtures; normal 213317 certifies the actual host dispatch and unchanged STATE bridge. Matching dependencies install from cache; their uncited status is explicit in the manifests. Full literal parser refinement, fids, genuine committed mount issuer, native/runtime funding and source lifetime remain open. No activation, image or deployment claim. Normal 214200 certifies core-owned version negotiation, literal octet selector refinement, reply-size/msize bounds, actual version host bridge and complete literal reply/refusal/hypothesis-removal fixtures. Mounted-holder/pin issuer and group enumeration are absent, not inferred from current publication readout. Normal 215611 certifies the exact borrowed-trie directory step/conservation and complete literal/quantum/refusal fixtures; normal 215516 certifies its actual host bridge and STATE frame. Results borrow persistent bit paths and actual group values, not rendered names or supplied catalogs. Entry formatting/profile scalar widths/constructor and graph lifetime remain open. Refusal successor supplies guarded core Rerror byte emission and actual host equality/STATE frame, fixed reply at most26 bytes, literal replies/refusals and verdict-removal tooth. Normal224511 certifies codec/host components but overall fixture root initially failed rewrite-rule installation; repaired host fixture224555 and current refusal fixture224638 pass. Runtime allocation and installed mount issuer remain open. Normal014307 certifies concrete session/fid/request and once-only return plus complete Flush/tag-reuse/stale-slot/refusal witnesses. Normal021401 certifies mount-scoped bounded bit-path qid registry and seven complete literal witnesses. Three inherited dependencies remain matching but uncited. Actual SAMEPRS mount reserve/pin/quiesce/drop/refund guards and complete internal fixtures pass in narrow real modern helper world; this is source-only, not a normal mount-root certificate. Full mounted group/query source producers, stat/reply streaming, native listener and whole-operation runtime family remain open. Normal022549 passed exact dispatcher but rejected initial host raw-with declarations (guard-T skips no carry). Repaired ordinary host boundary/complete disconnect fixture normal022835 passed; no cosmetic carry or hot export was invented."
     },
     {
       "id": "PRF-1182",
@@ -20396,6 +20411,325 @@
       ],
       "pending_subject": "Actual durable E completion has no pool/ATS custody or positive substrate BODY producer. No host-called profile entry/row wrapper is installed yet.",
       "progress_note": "Matching private normal 044144 (46 inputs; 21 fresh and 25 exact cached) passes guard-verified carrier/selection execution and complete output refinement. Matching normal 044303 (47 inputs) passes literal pinned-source selection/terminal tests. Actual signed carrier payload586/ID513, q17 yield, exact decoded commit and refusal/terminal stability tested. Carried-row source projection proposed but not admitted at this cohort: heavyweight239 include closure lacked200 matching certificates; broad rebuild stopped. No actual owner pool/ATS/body/source producer, host-called entry, profile-aware authority/conflict consumer or native activation. Frozen previous legacy/v2 scopes remain distinct. Final matching current successor044633 freshly certifies all four entry/selection/test roots (47 inputs;43 exact cached), with explicit not-policy and invalid-quantum zero-work/provenance refusal teeth. Original044144/044303 scope preserved separately; row remains unadmitted. Closeout: guarded completed/published readonly source getter and actual original prepare-capture composition passed normal050656 eight-input private scope; simple alias projection marked by-definition, composition literal teeth still pending. Copied original index capture leaf c56984/e513c5e4 unchanged. Paid wrapper not installed: genuine source/resources/BODYcost and pinned codec-profile producer absent; common family[4] is binding metadata, not a codec profile. No STATE association or completion edit. Final normal050749 freshly certifies all three uncited/caller dependency roots with five exact cached inputs; eight source hashes remain matched."
+    },
+    {
+      "id": "PRF-1109",
+      "title": "Protected extent authentication realizes bounded requested windows with exact effects",
+      "statement": "The actual served requested-window reader must stream every protected ELEN byte and compare the exact descriptor trailer before publishing only the requested payload window. Concrete fixed window copy has an all-output/all-effects refinement; schedule proofs alone do not establish streaming hash, compressed decode, physical lifetime or full served refinement. Complete fn-frame-digest and fn-lzr-lz-value bridges remain required. Actual fn-ews begin/read/tick now source-prove digest trajectory from carried supported domain and exact captured-source slices; the actual concrete fn-b3x-words block is canonical, and a newly published trailer equals fn-blake3 of that source with the matching descriptor commitment. Positional/tree-frontier progress, physical source realization, compressed whole-decoding fidelity and runtime funding remain open.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-020"
+      ],
+      "depends_on": [
+        "PRF-994"
+      ],
+      "assumptions": [
+        "A-DURABLE-EXTENT",
+        "A-DURABLE-LZ",
+        "A-CRYPTO"
+      ],
+      "status": "planned",
+      "evidence": [
+        "books/extent-window-plan.lisp",
+        "books/extent-window-buffer.lisp",
+        "books/extent-window-capture.lisp",
+        "specs/extent-window-read.md",
+        "tests/acl2/extent-window-plan-tests.lisp",
+        "tests/acl2/extent-window-buffer-tests.lisp",
+        "tests/acl2/extent-window-capture-tests.lisp",
+        "books/extent-window-refinement.lisp",
+        "tests/acl2/extent-window-refinement-tests.lisp",
+        "books/extent-window-stream.lisp",
+        "tests/acl2/extent-window-stream-tests.lisp",
+        "books/extent-window-stream-refinement.lisp",
+        "tests/acl2/extent-window-stream-refinement-tests.lisp",
+        "tests/acl2/extent-window-stream-union-tests.lisp",
+        "books/extent-window-source-words.lisp",
+        "books/extent-window-stream-semantics.lisp",
+        "tests/acl2/extent-window-stream-semantics-tests.lisp",
+        "planning/evidence/extent-window-raw-semantics-source-2026-09-30.md"
+      ],
+      "progress_note": "Actual core read/tick composition source-admitted with guarded fixed-buffer execution, exact output/effects and core-cursor publication theorem. Clean actual tests cover empty/partial/tree/window boundaries and corruption, commitment, short/stale reads. General digest trajectory/domain, compressed composition, native admission/lifetime and served caller remain open; no certificate/image/native/P12 completion claim. Raw source join: proper sol-ewsst1 replay16core+2testbooks45.32ACL2s/13,997,587steps,zero refusals and18literal positives/removals. Actual begin/read/tick maintain source denotation; new publication authenticates fn-blake3(source), canonical concrete words proved from byte slices. Source only; raw positional frontier/progress and actual funding/native joins remain open."
+    },
+    {
+      "id": "PRF-1131",
+      "title": "Stored DEFLATE protected extent requested-window composition (native funding and progress open)",
+      "statement": "The dormant actual fn-ewz controller composes protected-prefix BLAKE3 reads with the resumable stored inflater, retains64-byte input across1024-action codec quanta and requires decoded completion plus raw verified integrity before ready. Actual copy/literal/STEP effects normalize to existing ACT actions; the basic loop, stored credit wrapper and seven-value codec tuple retain the same charged schedule, decoder/pool effects and ACL2-selected private writes under ACT/PULL replay. Actual begin/read/hash/codec carry real input against the scanned captured prefix and bound active output by admitted C/N. A source final-budget envelope now preserves these carries on every codec outcome, including the final stream-ended charge and the actual empty-stream special decision, with no extra pool/status hypotheses. Initialization at natural payload offset establishes it; read/hash/codec preserve it, and active states have remaining charged budget at least3839+7C. This is logical scheduling charge, not primitive allocation or compiled runtime adequacy. Full arbitrary-input/dictionary/output-window bytes/status/digest confluence, captured source authority, actual native funding/lifetime/buffer/view consumer joins and matching qualification remain open. Legacy fast/ahead and the native compressed driver remain unreachable in the current served composition; no native enablement or end-to-end completion is claimed. Two actual initialized stored calls over separate prefix/tail buffers at position zero now equal the complete existing FN-PZD-DECODE answer using exact global budget-left. Only first :more and second neither :yield nor :full remain; logical input/dictionary types, buffer shape, final output frontier and whole completion are derived or removed after weakened proofs. Actual fixed1024/input64+6, header-cut and empty logical wrapper positives plus all three complete status removals accompany this source component. Arbitrary controller iteration, accumulated digest, selected dictionary/captured source authority and complete native funding/holder remain open. Actual FN-EWZ-CODEC-TICK carries the selected private-window cell against APPEND(previous semantic output prefix, actual returned stored scratch), and returned TOUT equals appended length. The prior cell carry and TOUT/prefix position are explicit; actual INIT/read/hash/codec positives check newly written and retained cells across two input buffers, with separate corrupted-buffer and corrupted-prefix removals. This is source output accumulation, not arbitrary canonical iteration/digest, captured source custody, runtime adequacy or native activation. Actual compressed BEGIN/READ/HASH now establish and preserve the existing captured-source BLAKE3 trajectory at the retained plan ELEN, with faithful read slices explicit. New compressed READ publication authenticates both trailer and expected commitment against that source. Fifteen complete positives/removals include actual selected (66 67) publication and separately corrupted digest states. This is source authentication composition; arbitrary canonical decoder/controller iteration, physical captured-source/private-holder association and complete selected runtime funding remain open.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-037"
+      ],
+      "depends_on": [
+        "PRF-1109",
+        "PRF-1112"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/extent-window-compressed.lisp",
+        "books/extent-window-compressed-refinement.lisp",
+        "books/extent-window-stream-refinement.lisp",
+        "tests/acl2/extent-window-compressed-tests.lisp",
+        "tests/acl2/extent-window-compressed-refinement-tests.lisp",
+        "specs/extent-window-read.md",
+        "planning/evidence/extent-window-compressed-source-2026-09-30.md",
+        "books/extent-window-compressed-input.lisp",
+        "tests/acl2/extent-window-compressed-input-tests.lisp",
+        "planning/evidence/extent-window-input-source-2026-09-30.md",
+        "books/extent-window-compressed-output.lisp",
+        "tests/acl2/extent-window-compressed-output-tests.lisp",
+        "planning/evidence/extent-window-output-source-2026-09-30.md",
+        "books/durable-lz-octet.lisp",
+        "books/payload-arena-extent.lisp",
+        "books/decoded-window-descriptor.lisp",
+        "books/decoded-window-begin.lisp",
+        "books/decoded-window-lease.lisp",
+        "tests/acl2/durable-lz-octet-tests.lisp",
+        "tests/acl2/decoded-window-descriptor-tests.lisp",
+        "tests/acl2/decoded-window-lease-tests.lisp",
+        "planning/evidence/decoded-window-source-2026-09-30.md",
+        "tests/acl2/decoded-window-begin-tests.lisp",
+        "books/decoded-window-read.lisp",
+        "tests/acl2/decoded-window-read-tests.lisp",
+        "planning/evidence/decoded-window-read-source-2026-09-30.md",
+        "books/decoded-window-copy-trajectory.lisp",
+        "tests/acl2/decoded-window-copy-trajectory-tests.lisp",
+        "planning/evidence/decoded-window-copy-source-2026-09-30.md",
+        "tests/acl2/decoded-window-executor-tests.lisp",
+        "planning/evidence/decoded-window-shared-join-source-2026-09-30.md",
+        "tests/acl2/decoded-window-publication-tests.lisp",
+        "planning/evidence/decoded-window-publication-source-2026-09-30.md",
+        "books/decoded-window-action-trajectory.lisp",
+        "tests/acl2/decoded-window-action-trajectory-tests.lisp",
+        "planning/evidence/decoded-window-action-source-2026-09-30.md",
+        "books/decoded-window-literal-trajectory.lisp",
+        "tests/acl2/decoded-window-literal-trajectory-tests.lisp",
+        "planning/evidence/decoded-window-literal-source-2026-09-30.md",
+        "books/decoded-window-step-trajectory.lisp",
+        "tests/acl2/decoded-window-step-trajectory-tests.lisp",
+        "planning/evidence/decoded-window-step-source-2026-09-30.md",
+        "planning/evidence/decoded-window-current-loop-audit-2026-09-30.md",
+        "books/decoded-window-budget-trajectory.lisp",
+        "tests/acl2/decoded-window-budget-trajectory-tests.lisp",
+        "planning/evidence/decoded-window-budget-source-2026-09-30.md",
+        "books/decoded-window-budget-completion.lisp",
+        "tests/acl2/decoded-window-budget-completion-tests.lisp",
+        "planning/evidence/decoded-window-budget-completion-source-2026-09-30.md",
+        "books/decoded-window-output-trajectory.lisp",
+        "tests/acl2/decoded-window-output-trajectory-tests.lisp",
+        "planning/evidence/decoded-window-output-trajectory-source-2026-09-30.md",
+        "books/decoded-window-stored-trajectory.lisp",
+        "tests/acl2/decoded-window-stored-trajectory-tests.lisp",
+        "planning/evidence/decoded-window-stored-trajectory-source-2026-09-30.md",
+        "books/decoded-window-canonical-trajectory.lisp",
+        "tests/acl2/decoded-window-canonical-trajectory-tests.lisp",
+        "planning/evidence/decoded-window-canonical-trajectory-source-2026-09-30.md",
+        "books/decoded-window-input-trajectory.lisp",
+        "tests/acl2/decoded-window-input-trajectory-tests.lisp",
+        "planning/evidence/decoded-window-input-trajectory-source-2026-09-30.md",
+        "books/decoded-window-selected-trajectory.lisp",
+        "tests/acl2/decoded-window-selected-trajectory-tests.lisp",
+        "planning/evidence/decoded-window-selected-trajectory-source-2026-09-30.md",
+        "books/decoded-window-digest-trajectory.lisp",
+        "tests/acl2/decoded-window-digest-trajectory-tests.lisp",
+        "planning/evidence/decoded-window-digest-trajectory-source-2026-09-30.md",
+        "books/page-window-worker-storage.lisp",
+        "books/decoded-worker-controller.lisp",
+        "books/decoded-worker-controller-trajectory.lisp",
+        "tests/acl2/decoded-worker-controller-trajectory-tests.lisp",
+        "books/decoded-window-terminal-budget.lisp",
+        "tests/acl2/decoded-window-terminal-budget-tests.lisp",
+        "planning/evidence/decoded-worker-controller-terminal-source-2026-09-30.md"
+      ],
+      "progress_note": "Source composition only. Literal local-stobj witnesses affirm the complete antecedents/conclusions without materializing large logical pool terms; removal and actual regressions have separate checks. C0 with a nonzero protected-prefix offset waits in drain until positional completion. Clean protected sol-ewzu1 source union admitted13core+3testbooks with zero refusals,40.15ACL2s/19,615,494steps; no manifest/image/native campaign by this lane. Successor input carry: fresh sol-ewzi4 proper encapsulated source union15core+4test books passed47.26ACL2s/23,095,331steps, including8literal positive/removal defthms. Codec/read preservation require only carried evidence; redundant mode/input-length/pool-shape/coordinate hypotheses were removed after proving weakened statements. Native/progress/trajectory/funding remain open. Output carry fresh sol-ewzot1 proper encapsulated source replay16core+5testbooks passed50.92ACL2s/24,386,057steps and6literal positive/removal witnesses. This remains source-only; no native enablement. Typed decoded descriptor/immutable dictionary and supplied-demand lease kernel source admitted; actual arena getter now uses exact NTH-of-existing-realizer scalar boundary. Source admission is not certification. Native dispatcher, dictionary trajectory, runtime adequacy and complete scheduling remain open. Actual copy-fragment source join supplies exact fn-zin-copy split effects and actual stored-wrapper/controller effects, with a reachable initializer/hash-prime/read/first-codec positive and all13 condition removals. A251-octet repeated-match fixture compares actual whole decoder and authenticated bounded controller outputs. Full decoded trajectory, primitive/compiler demand and native activation remain open. Distinct decoded token now reaches actual shared acquire/cancel/return/settlement under supplied kernel demand; matching fresh decoded callback/copy and raw fencing source roots replayed. Native decoded dispatch still explicitly refuses; actual buffer/root association and allocation adequacy remain open. Actual typed issuer/acquire/init/authenticated bounded decoder/return/scalar-read fixture passes and agrees at octet250 with the existing whole decoder. Source fixture reachability does not prove native buffer/view association or general trajectory/runtime adequacy. Actual copy-mode action normalization and controller composition now have source proofs and new complete reachable/removal teeth; the scheduling quantum remains a different charge from copied octets or semantic action calls. Actual ready literal STEP source effects now normalize to the existing actual ACT sequence of emitted count, with complete readiness and no runtime modification. Scalar scheduling reachability and four exact condition-removal teeth accompany the source component; general output-window trajectory and total budget remain open; legacy fast/ahead is unreachable in this current composition. Actual charged STEP/basic-loop trajectory and successful controller budget carry now have source proofs; active joint carry excludes exhausted remaining budget. The separate final-envelope component covers accepted terminal charge and all codec outcomes; full output-window/digest trajectory and native funding/holder joins remain open. Actual basic-loop output scheduling now has unconditional full-tuple atomic normalization and two-window/cleared-scratch confluence under actual completed-call premises; semantic fuel is explicitly translated and charged budget remains separate. Controller credit/input/dictionary/digest and native holder/runtime joins remain open. Actual stored wrapper now restores complete credited state between two calls, with exact seven-value including charged-fuel equality to actual feed calls; completed two cleared stored windows equal whole actual feed semantic effects/accumulated bytes under only first :full and second/whole no-yield. Input-cut/yield/canonical dictionary/digest and full runtime/native holder remain open. Two actual initialized stored windows now compose the existing FN-PZD-DECODE complete answer using actual global budget-left carry, under first yield/full, terminal second result and final output below the actual stored sentinel. Canonical source budget completion is proved, not assumed; redundant dictionary/input type and prefix-bound hypotheses were removed after weakened proofs. General iteration/input-cut/digest, selected dictionary authority and native runtime/holder remain open. Fresh protected input-trajectory source replay admitted 34 proper-local dependencies, 11 unchanged cache books and all 6 literal teeth without refusals: 444.44 ACL2 seconds and 114,194,003 prover steps; 46 closure hashes matched. This is source admission only, not certification, native activation or full runtime/private-holder closure. Actual FN-EWZ-CODEC-TICK carries the selected private-window cell against APPEND(previous semantic output prefix, actual returned stored scratch), and returned TOUT equals appended length. The prior cell carry and TOUT/prefix position are explicit; actual INIT/read/hash/codec positives check newly written and retained cells across two input buffers, with separate corrupted-buffer and corrupted-prefix removals. This is source output accumulation, not arbitrary canonical iteration/digest, captured source custody, runtime adequacy or native activation. Actual compressed BEGIN/READ/HASH now establish and preserve the existing captured-source BLAKE3 trajectory at the retained plan ELEN, with faithful read slices explicit. New compressed READ publication authenticates both trailer and expected commitment against that source. Fifteen complete positives/removals include actual selected (66 67) publication and separately corrupted digest states. This is source authentication composition; arbitrary canonical decoder/controller iteration, physical captured-source/private-holder association and complete selected runtime funding remain open. Fresh proper-local compressed digest source root admitted32 dependencies/11 matching cache and all15 complete literal teeth without refusals:783.97 ACL2 seconds/29,175,779 steps;44 closure hashes matched. Runtime/native/custody/full-demand and complete canonical scheduling remain open. Actual guarded physical controller source imported from da2fb8492 with carry12. Registered ONE/READ source trajectory composes actual selected output, faithful captured-source digest and scoped nonterminal charge carry. New all-status stored/codec/ONE terminal budget composition includes genuine (:refused :stream-ended), retaining >=3839+7*C STEP budget under current owned codec/spans and incoming joint carry. Fresh protected sol-dwctready admitted45 properLOCAL source dependencies/11 unchanged matching cache and all13 complete controller/terminal literal teeth without refusals:417.93 ACL2 seconds/85,615,014 steps;57closure hashes match. no installed issuer/source authority/native child custody, full runtime allowance or arbitrary canonical iteration claim.",
+      "events": [
+        "fn-pwz-actual-copy-split-effects",
+        "fn-pwz-actual-codec-copy-effects",
+        "fn-pwz-actual-codec-copy-action-effects",
+        "fn-pwz-actual-ready-literal-step-is-action-trajectory",
+        "fn-pwz-actual-step-is-action-trajectory",
+        "fn-pwz-actual-codec-is-action-trajectory",
+        "fn-pwz-actual-loop-charge-bound",
+        "fn-pwz-actual-codec-carries-budget",
+        "fn-pwz-active-controller-budget-remains-positive",
+        "fn-pwz-actual-codec-preserves-final-budget-envelope",
+        "fn-pwz-final-envelope-active-budget-positive",
+        "fn-pwz-actual-basic-loop-is-atomic-unconditionally",
+        "fn-pwz-actual-basic-loop-general-output-windows",
+        "fn-pwz-actual-basic-loop-general-cleared-windows",
+        "fn-pwzc-actual-stored-chunk-recredited-full-tuple",
+        "fn-pwzc-actual-two-stored-chunks-full-tuple",
+        "fn-pwzc-actual-stored-two-windows-without-buffer-premises",
+        "fn-pwzd-actual-two-stored-windows-canonical-answer",
+        "fn-pwzi-actual-refilled-stored-windows-canonical-answer",
+        "fn-pws-actual-codec-tick-carries-selected-prefix",
+        "fn-pwdg-actual-compressed-begin-establishes-digest-trajectory",
+        "fn-pwdg-actual-compressed-read-preserves-digest-trajectory",
+        "fn-pwdg-actual-compressed-hash-preserves-digest-trajectory",
+        "fn-pwdg-actual-compressed-publication-authenticates-captured-source",
+        "fn-dwct-actual-one-preserves-captured-source-digest",
+        "fn-dwct-actual-codec-one-carries-selected-prefix",
+        "fn-dwct-actual-one-preserves-charged-budget-carry",
+        "fn-dwct-actual-read-observation-preserves-captured-source-digest",
+        "fn-pwzt-actual-stored-final-global-charge-envelope",
+        "fn-pwzt-actual-issued-codec-one-retains-terminal-budget",
+        "fn-pwy-actual-two-yielded-loops-complete-effects",
+        "fn-pwy-actual-finite-yield-turns-complete-effects",
+        "fn-pwy-actual-completed-finite-yields-match-basic-loop",
+        "fn-pwy-actual-cleared-loop-preserves-complete-prefix-effects",
+        "fn-pwy-actual-stored-cleared-chunk-complete-prefix-effects",
+        "fn-pwf-actual-finite-output-yields-complete-effects",
+        "fn-pwf-actual-completed-finite-output-yields-match-basic-loop",
+        "fn-pwfc-actual-finite-initialized-output-windows-canonical-answer"
+      ]
+    },
+    {
+      "id": "PRF-1112",
+      "title": "Bounded stored DEFLATE requested-window component (served composition open)",
+      "statement": "books/payload-window.lisp reuses the resumable inflater with explicit stored total-input policy 256*C+65536, at most64 input/output bytes and1024 actions per call. All seven outputs/effects refine the logical credited resumable run; returned input counter counts actual bytes, total output has one overflow sentinel, and private decoded implies exactN, complete input and final/sync terminal. Canonical whole and pooled stored entries use the same policy, fixing incomplete LEN/NLEN acceptance. New terminal marker establishment has literal retained-hypothesis/removal teeth. Full requested-window copy/extent authentication/physical funding/host integration, boundary teeth, action-budget completeness and runtime allocation/cost remain open. No stored/network refusal equality or served completion is claimed.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-037"
+      ],
+      "depends_on": [
+        "PRF-909",
+        "PRF-949"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/payload-window.lisp",
+        "tests/acl2/payload-window-tests.lisp",
+        "specs/payload-window.md",
+        "planning/evidence/payload-window-2026-09-30.md"
+      ],
+      "progress_note": "Protected persvati pzwfinal source admission and literal regressions only; component keystones not cited as served events until composed host boundary and complete teeth exist. Qualified images, deployment and matched measurements absent."
+    },
+    {
+      "id": "PRF-1132",
+      "title": "Carried scalar widths and input span for bounded stored DEFLATE (funding open)",
+      "statement": "Actual fn-pzw-initialize establishes bit-buffer, Huffman-register and header-width carry without prior-state hypotheses. Actual fn-pzw-stored-chunk preserves bit carry under octet input, strong Huffman carry on every exit except bad-code, fixed Huffman scalar bounds on every exit, and header bounds under the carried fixed table representation. Returned IP is natural and in [START,END] under natural START and START<=END. These component facts do not establish primitive operation counts, selected-runtime allocation adequacy, old-success/action-budget completeness or served admission. Actual stored-input credit establishes and the actual inner loop preserves credited TIN plus unread span<=2*C and produced plus remaining output room<=N+1 from captured source containment and produced-length carry. Under supported signed63-bit C/N, actual bomb, output-plus-preset and budget expressions have73/64/68-bit magnitude bounds.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-037"
+      ],
+      "depends_on": [
+        "PRF-1112"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/payload-window-width.lisp",
+        "tests/acl2/payload-window-width-tests.lisp",
+        "specs/payload-window.md",
+        "planning/evidence/payload-window-width-2026-09-30.md",
+        "books/payload-window-register-width.lisp",
+        "tests/acl2/payload-window-register-width-tests.lisp",
+        "planning/evidence/payload-window-register-width-2026-09-30.md",
+        "books/payload-window-profile-width.lisp",
+        "tests/acl2/payload-window-profile-width-tests.lisp",
+        "planning/evidence/payload-window-profile-width-2026-09-30.md"
+      ],
+      "progress_note": "Protected source-only component proof and literal teeth checkpoint. No new served keystone/certificate/image/native claim; source proof coordinates and remaining funding obligations are recorded in the evidence file."
+    },
+    {
+      "id": "PRF-1196",
+      "title": "Concrete 9P cancellation and once-only retained request return",
+      "statement": "The actual concrete session transition suppresses cancelled reply publication, preserves source and borrowing authority through Flush, and consumes an exact retained request receipt once. Reused tags and reused physical slots remain distinct. The mounted source is released only after bounded quiescence and actual generation return.",
+      "milestone": "M6",
+      "requirements": [
+        "HST-043"
+      ],
+      "depends_on": [
+        "PRF-1177"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/ninep-session.lisp",
+        "books/ninep-mount.lisp",
+        "tests/acl2/ninep-session-tests.lisp",
+        "tests/acl2/ninep-mount-tests.lisp",
+        "planning/evidence/manifests/certify-20261001T014307Z-94237.json",
+        "planning/evidence/ninep-session-lifetime-2026-10-01/README.md"
+      ],
+      "progress_note": "Concrete session component normal-certified; actual mount internal guards/source fixtures passed. Complete host-called provider/returned-physical-borrow refinement and native source/allowance integration remain planned. Synthetic internal fixtures do not activate a listener or issue a genuine runtime family."
+    },
+    {
+      "id": "PRF-1202",
+      "title": "Actual owned 9P connection transport retains custody through bounded input and reply return",
+      "statement": "The actual fn-ninep-transport-step reads its concrete owned cursor, decodes only observed header/body bytes, bounds each receive by its internally provisioned input quantum, and preserves mounted source custody. Version reset drains actual retained requests/fids and refuses a held mount before the definite generation return. The actual reply-return subject clears the concrete buffer only in current reply phase; duplicate return is complete unchanged refusal. The complete host correspondence includes all stobjs and unchanged STATE. This is a codec/control component, not mounted article authority, native funding or a listener claim.",
+      "milestone": "M6",
+      "requirements": [
+        "HST-043"
+      ],
+      "depends_on": [
+        "PRF-1177",
+        "PRF-1196"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/ninep-transport.lisp",
+        "host/ninep-transport-host.lisp",
+        "host/native/ninep.lisp",
+        "tests/acl2/ninep-transport-tests.lisp",
+        "planning/evidence/manifests/certify-20261001T035212Z-1623183.json",
+        "planning/evidence/manifests/certify-20261001T040010Z-1712242.json",
+        "planning/evidence/ninep-transport-2026-10-01/README.md"
+      ],
+      "progress_note": "Book and actual host guards/source boundary normal035212 PASS; six complete internal literal wire/custody tests normal040010 PASS. Three inherited cached dependency pairs have uncited manifests. Full boundary target remains planned pending issued provider, complete runtime family, native caller/constructor closure and external client acceptance. Failed hints, overstrong corrupt-state frame conjecture and initial duplicated LET binding remain archived; no source result authorizes socket/session construction."
+    },
+    {
+      "id": "PRF-1206",
+      "title": "Actual registered mount source and bounded immutable group directory",
+      "statement": "The actual mounted source reader returns the held registered generation publication only with its real pin and token association. New CURRENT publications do not replace the captured source. Directory enumeration borrows actual visibility buckets and advances one bucket or compares one name byte per action. SAMEPRS mount reservation and definitive return retain counter intent across actual session writes; unfinished MODE refuses admission and uncertain pin/return cannot refund. Complete host outputs include unchanged STATE. This is source/custody composition, not a qualified served mount.",
+      "milestone": "M6",
+      "requirements": [
+        "HST-043"
+      ],
+      "depends_on": [
+        "PRF-1196",
+        "PRF-1202"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/ninep-group-buckets.lisp",
+        "books/ninep-mounted-directory.lisp",
+        "books/ninep-mount.lisp",
+        "host/ninep-mounted-directory-host.lisp",
+        "tests/acl2/ninep-group-buckets-tests.lisp",
+        "tests/acl2/ninep-mounted-directory-tests.lisp",
+        "tests/acl2/ninep-mount-tests.lisp",
+        "planning/evidence/manifests/certify-20261001T040750Z-1796641.json",
+        "planning/evidence/manifests/certify-20261001T041127Z-1836181.json",
+        "planning/evidence/ninep-mounted-directory-2026-10-01/README.md"
+      ],
+      "progress_note": "Normal040750 group component and normal041127 complete tests PASS. Actual mount/source/host definitions and guarded DATA6 split callers plus literal source/pin/counter fixtures pass only the protected exact proper-local source world n9mdir; no normal mount-root or modern closure certificate. Current Pub19 visibility carries actual visible buckets; configured empty-group completeness is not established. Full selected MIQ/QPG adoption, directory/stat production, common runtime phase units and native acceptance remain open."
+    },
+    {
+      "id": "PRF-1207",
+      "title": "Bounded concrete stat and integral directory reply emission",
+      "statement": "The actual stat reply emitter appends at most one concrete octet per scheduling action, keeps nested stat sizes and complete-entry directory counts, and refuses unrepresentable codec/msize/count input without truncating names. Reply-ready requires the whole retained stat body and exact concrete output length, with a complete host/STATE boundary. Source/QID authority, per-action funding and actual mounted provider composition remain separate.",
+      "milestone": "M6",
+      "requirements": [
+        "HST-043"
+      ],
+      "depends_on": [
+        "PRF-1206"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/ninep-stat-stream.lisp",
+        "host/ninep-stat-stream-host.lisp",
+        "tests/acl2/ninep-stat-stream-tests.lisp",
+        "tests/acl2/ninep-stat-stream-host-tests.lisp",
+        "planning/evidence/manifests/certify-20261001T045613Z-3059059.json",
+        "planning/evidence/ninep-mounted-directory-2026-10-01/README.md"
+      ],
+      "progress_note": "Normal045613 certifies actual guarded stat emitter, ordinary complete host/STATE boundary, four full-wire/refusal/corrupt fixtures and two host fixtures. Three inherited cache citation gaps remain. Source/QID authority, full mounted provider/request composition and per-action constructor/caller/fault/runtime units remain open. Complete external-client SCN1064 remains NOT RUN."
     }
   ]
 }
