@@ -6,6 +6,10 @@
  (slot nonce fn-allocation-turn-slots fn-history-backing fn-page-read-pool state)
  (declare (xargs :stobjs (fn-allocation-turn-slots fn-history-backing fn-page-read-pool state)
                  :mode :program :guard (boundp-global 'fn-owner state)))
+ (if (and (fn-owner-account-replay-source state)
+          (not (fn-owner-account-replay-currentp fn-history-backing state)))
+     (mv :unavailable :account-replay-source-stale
+         fn-allocation-turn-slots fn-history-backing fn-page-read-pool state)
  (mv-let (word result fn-allocation-turn-slots fn-page-read-pool state)
   (fn-owner-account-adoption-tick slot nonce fn-allocation-turn-slots fn-page-read-pool state)
   (let* ((holder (fn-owner-account-adoption-operation state))
@@ -27,4 +31,5 @@
      (mv :unavailable :account-replay-source-missing
          fn-allocation-turn-slots fn-history-backing fn-page-read-pool state))
     (t (mv word result fn-allocation-turn-slots fn-history-backing fn-page-read-pool state))))))
+)
 (definterface fn-owner-account-adoption-tick-with-replay :class :program)
