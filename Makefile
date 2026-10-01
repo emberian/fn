@@ -1175,6 +1175,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/decoded-worker-controller-canonical-tests \
 	tests/acl2/decoded-window-yield-trajectory-tests \
 	tests/acl2/decoded-window-clear-trajectory-tests \
+	tests/acl2/decoded-window-finite-output-trajectory-tests \
 	tests/acl2/decoded-window-terminal-budget-tests \
 	tests/acl2/records-freeze-tests \
 	tests/acl2/catalog-record-tests \

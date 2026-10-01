@@ -465,3 +465,19 @@ installed captured-source or native worker/query custody. General input refill,
 selected dictionary/controller iteration and whole runtime funding remain open.
 The generic five-step partial-output yield witness is a logical kernel API
 case; it establishes no fixed-1024 composed reachability.
+
+### Finite output frontiers and scheduling yields
+
+A proof-only transcript composes the actual basic loop's finite scheduling
+quanta at each output frontier. It stops on the actual first non-FULL status
+or the last row. Its generated condition checks that consumed frontiers fit
+the final frontier; under that condition the complete tuple agrees with the
+atomic reference. The generated semantic action sum subtracts unused fuel at
+intermediate full windows. It is not a native work or allocation tariff.
+
+At completion, valid transcripts and completed ordinary actual basic loops
+have identical status, cursor, registers, ring, table and output. Their unused
+scheduling fuel remains distinct. Literal witnesses cover actual yields,
+64/128 frontiers, and all three completion-premise removals. These are logical
+kernel API continuations, not a new128-byte admission limit. General refill,
+dictionary/controller composition and installed consumer custody remain open.

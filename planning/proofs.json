@@ -18748,7 +18748,9 @@
         "fn-pwy-actual-finite-yield-turns-complete-effects",
         "fn-pwy-actual-completed-finite-yields-match-basic-loop",
         "fn-pwy-actual-cleared-loop-preserves-complete-prefix-effects",
-        "fn-pwy-actual-stored-cleared-chunk-complete-prefix-effects"
+        "fn-pwy-actual-stored-cleared-chunk-complete-prefix-effects",
+        "fn-pwf-actual-finite-output-yields-complete-effects",
+        "fn-pwf-actual-completed-finite-output-yields-match-basic-loop"
       ]
     },
     {
