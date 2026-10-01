@@ -331,6 +331,20 @@
             (and (natp (floor n r)) (natp (mod n r)) (< (mod n r) r)
                  (equal (+ (mod n r) (* r (floor n r))) n)))))
 
+; Exported: what an instance's executables need for their guards (the page
+; index and the index in the page are naturals, the latter below the page).
+(defthm adt-pg-floor-mod-guard-facts
+  (implies (and (natp n) (posp r))
+           (and (integerp (floor n r)) (<= 0 (floor n r))
+                (integerp (mod n r)) (<= 0 (mod n r))))
+  :hints (("Goal" :use adt-pg-floor-mod)))
+
+(defthm adt-pg-mod-below
+  (implies (and (natp n) (posp r))
+           (< (mod n r) r))
+  :rule-classes :linear
+  :hints (("Goal" :use adt-pg-floor-mod)))
+
 (local
  (defthm adt-pg-floor-below
    (implies (and (natp n) (posp r) (natp np) (< n (* r np)))
