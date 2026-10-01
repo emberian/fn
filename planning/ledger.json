@@ -606,6 +606,14 @@
     "tests/acl2/heap-breakdown-tests",
     "books/memory-credits",
     "tests/acl2/memory-credits-tests",
+    "books/resource-vector",
+    "tests/acl2/resource-vector-tests",
+    "books/resource-vector-relations",
+    "tests/acl2/resource-vector-relations-tests",
+    "books/resource-vector-exec",
+    "tests/acl2/resource-vector-exec-tests",
+    "books/resource-vector-tree",
+    "tests/acl2/resource-vector-tree-tests",
     "tests/acl2/heap-figure-tests",
     "tests/acl2/open-frontier-tests",
     "books/open-frontier-wire",
@@ -2351,26 +2359,26 @@
     "tests/acl2/substrate-commit-codec-gap-tests"
   ],
   "totals": {
-    "books": 2712,
-    "books_in_root_closure": 2625,
-    "roots": 2347,
-    "theorems": 35589,
-    "functions": 22761,
-    "assert_events": 25336,
-    "must_fails": 2562,
+    "books": 2721,
+    "books_in_root_closure": 2633,
+    "roots": 2355,
+    "theorems": 35822,
+    "functions": 22861,
+    "assert_events": 25403,
+    "must_fails": 2587,
     "prover_refusals": 0,
     "encapsulates": 195,
     "guards": {
-      "verified": 3845,
-      "declared-off": 2886,
-      "default-guarded": 12729,
-      "default-unguarded": 3301
+      "verified": 3846,
+      "declared-off": 2901,
+      "default-guarded": 12801,
+      "default-unguarded": 3313
     },
-    "suspect_theorems": 1337,
+    "suspect_theorems": 1341,
     "export_hygiene_warnings": 397,
     "enabled_projection_warnings": 80,
     "teeth_form_warnings": 279,
-    "include_hygiene_warnings": 3534,
+    "include_hygiene_warnings": 3538,
     "host_names_warnings": 3114,
     "hand_written_record_warnings": 19
   },
@@ -41286,6 +41294,152 @@
       "read_error": null
     },
     {
+      "book": "books/resource-vector-exec.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 20,
+      "guards": {
+        "verified": 0,
+        "declared-off": 9,
+        "default-guarded": 8,
+        "default-unguarded": 3
+      },
+      "verify_guards_events": 0,
+      "assert_events": 1,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "resource-vector"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/resource-vector-relations-heap.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 2,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "connection-budget",
+        "heap-reservation",
+        "resource-vector"
+      ],
+      "system_includes": [
+        "arithmetic-5/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/resource-vector-relations.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 15,
+      "functions": 6,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 5,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "memory-credits",
+        "page-read-resources",
+        "resource-vector"
+      ],
+      "system_includes": [
+        "arithmetic-5/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/resource-vector-tree.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 47,
+      "functions": 14,
+      "guards": {
+        "verified": 0,
+        "declared-off": 5,
+        "default-guarded": 9,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "resource-vector"
+      ],
+      "system_includes": [
+        "arithmetic-5/top"
+      ],
+      "suspects": [
+        "fn-rt-okp-forward"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/resource-vector.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 151,
+      "functions": 53,
+      "guards": {
+        "verified": 1,
+        "declared-off": 1,
+        "default-guarded": 48,
+        "default-unguarded": 3
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 5,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [],
+      "system_includes": [
+        "arithmetic-5/top"
+      ],
+      "suspects": [
+        "fn-rv-bankp-forward",
+        "fn-rv-okp-forward",
+        "fn-rv-row-demand-of-nth"
+      ],
+      "read_error": null
+    },
+    {
       "book": "books/response-plan-pins.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -61027,15 +61181,15 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 9,
-      "functions": 16,
+      "functions": 20,
       "guards": {
         "verified": 0,
         "declared-off": 10,
         "default-guarded": 5,
-        "default-unguarded": 1
+        "default-unguarded": 5
       },
       "verify_guards_events": 0,
-      "assert_events": 24,
+      "assert_events": 29,
       "must_fails": 8,
       "prover_refusals": 0,
       "defconsts": 5,
@@ -74266,6 +74420,122 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/resource-vector-exec-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 6,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/resource-vector-exec"
+      ],
+      "system_includes": [
+        "std/testing/assert-bang"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/resource-vector-relations-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 8,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/resource-vector-relations"
+      ],
+      "system_includes": [
+        "std/testing/assert-bang"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/resource-vector-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 13,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 46,
+      "must_fails": 20,
+      "prover_refusals": 0,
+      "defconsts": 28,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/defkeystone",
+        "../../books/resource-vector",
+        "must-fail-checked"
+      ],
+      "system_includes": [
+        "std/testing/assert-bang"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/resource-vector-tree-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 5,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 15,
+      "must_fails": 5,
+      "prover_refusals": 0,
+      "defconsts": 22,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/defkeystone",
+        "../../books/resource-vector-tree",
+        "must-fail-checked"
+      ],
+      "system_includes": [
+        "std/testing/assert-bang"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/response-plan-pins-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -86998,6 +87268,38 @@
       ]
     },
     {
+      "theorem": "fn-rt-okp-forward",
+      "book": "books/resource-vector-tree.lisp",
+      "line": 182,
+      "reasons": [
+        "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-rt-okp"
+      ]
+    },
+    {
+      "theorem": "fn-rv-bankp-forward",
+      "book": "books/resource-vector.lisp",
+      "line": 840,
+      "reasons": [
+        "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-rv-bankp"
+      ]
+    },
+    {
+      "theorem": "fn-rv-okp-forward",
+      "book": "books/resource-vector.lisp",
+      "line": 847,
+      "reasons": [
+        "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-rv-okp"
+      ]
+    },
+    {
+      "theorem": "fn-rv-row-demand-of-nth",
+      "book": "books/resource-vector.lisp",
+      "line": 899,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
       "theorem": "fn-sbsp-files-of-advance-identity-next",
       "book": "books/store-budget-stored-post.lisp",
       "line": 109,
@@ -93311,13 +93613,13 @@
       {
         "theorem": "drt-pay-recognizer-is-arena-recognizer",
         "book": "tests/acl2/def-representation-tests.lisp",
-        "line": 154,
+        "line": 224,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "drt-pay-count-is-arena-count",
         "book": "tests/acl2/def-representation-tests.lisp",
-        "line": 159,
+        "line": 229,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -118825,6 +119127,34 @@
         "line": 9,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/resource-vector-exec-tests.lisp",
+        "line": 9,
+        "include": "../../books/resource-vector-exec",
+        "included": "books/resource-vector-exec.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/resource-vector-relations-tests.lisp",
+        "line": 8,
+        "include": "../../books/resource-vector-relations",
+        "included": "books/resource-vector-relations.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/resource-vector-tests.lisp",
+        "line": 14,
+        "include": "must-fail-checked",
+        "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/resource-vector-tree-tests.lisp",
+        "line": 11,
+        "include": "must-fail-checked",
+        "included": "tests/acl2/must-fail-checked.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

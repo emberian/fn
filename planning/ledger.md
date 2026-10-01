@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2712 |
-| Certification roots in the Makefile | 2347 |
-| Books inside the root closure | 2625 |
-| `defthm` and `defthmd` events | 35589 |
-| `defun` events | 22761 |
-| Functions with verified guards | 3845 |
-| Functions declared `:verify-guards nil` and never verified | 2886 |
-| Functions left at the default with an explicit guard | 12729 |
-| Functions left at the default with no guard | 3301 |
-| `assert-event` checks | 25336 |
-| `must-fail` checks | 2562 |
+| Books read | 2721 |
+| Certification roots in the Makefile | 2355 |
+| Books inside the root closure | 2633 |
+| `defthm` and `defthmd` events | 35822 |
+| `defun` events | 22861 |
+| Functions with verified guards | 3846 |
+| Functions declared `:verify-guards nil` and never verified | 2901 |
+| Functions left at the default with an explicit guard | 12801 |
+| Functions left at the default with no guard | 3313 |
+| `assert-event` checks | 25403 |
+| `must-fail` checks | 2587 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 195 |
-| Theorems flagged SUSPECT by shape | 1337 |
+| Theorems flagged SUSPECT by shape | 1341 |
 | Export-hygiene warnings | 397 |
 | Enabled-projection warnings | 80 |
 | Teeth-form warnings | 279 |
-| Include-hygiene warnings | 3534 |
+| Include-hygiene warnings | 3538 |
 | Host-names warnings | 3114 |
 | Hand-written-record warnings | 19 |
 
@@ -1410,6 +1410,11 @@ that `make certify` requests.
 | `books/replay-revoked-enrollment.lisp` | closure | 1 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/replay-snapshot-cursor.lisp` | - | 9 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/replay.lisp` | root | 44 | 33 | 19/0/14/0 | 0 | 0 | 9 |
+| `books/resource-vector-exec.lisp` | root | 0 | 20 | 0/9/8/3 | 1 | 0 | 0 |
+| `books/resource-vector-relations-heap.lisp` | - | 2 | 2 | 0/0/2/0 | 0 | 0 | 0 |
+| `books/resource-vector-relations.lisp` | root | 15 | 6 | 0/0/5/1 | 0 | 0 | 0 |
+| `books/resource-vector-tree.lisp` | root | 47 | 14 | 0/5/9/0 | 0 | 0 | 1 |
+| `books/resource-vector.lisp` | root | 151 | 53 | 1/1/48/3 | 0 | 0 | 3 |
 | `books/response-plan-pins.lisp` | root | 13 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/retention-figures.lisp` | root | 0 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `books/retention-invariants.lisp` | root | 17 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -2106,7 +2111,7 @@ that `make certify` requests.
 | `tests/acl2/decoded-window-yield-trajectory-tests.lisp` | root | 7 | 3 | 0/0/0/3 | 0 | 0 | 0 |
 | `tests/acl2/decoded-worker-controller-trajectory-tests.lisp` | root | 8 | 10 | 0/0/0/10 | 0 | 0 | 0 |
 | `tests/acl2/def-loop-tests.lisp` | root | 10 | 22 | 16/0/6/0 | 40 | 11 | 0 |
-| `tests/acl2/def-representation-tests.lisp` | root | 9 | 16 | 0/10/5/1 | 24 | 8 | 0 |
+| `tests/acl2/def-representation-tests.lisp` | root | 9 | 20 | 0/10/5/5 | 29 | 8 | 0 |
 | `tests/acl2/defevent-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 19 | 1 | 0 |
 | `tests/acl2/definterface-recognizer-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 3 | 0 | 0 |
 | `tests/acl2/definterface-tests.lisp` | root | 8 | 9 | 0/0/6/3 | 39 | 23 | 1 |
@@ -2590,6 +2595,10 @@ that `make certify` requests.
 | `tests/acl2/replay-identity-index-tests.lisp` | root | 7 | 4 | 0/0/0/4 | 24 | 6 | 0 |
 | `tests/acl2/replay-revoked-enrollment-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 11 | 0 | 0 |
 | `tests/acl2/replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 69 | 0 | 0 |
+| `tests/acl2/resource-vector-exec-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `tests/acl2/resource-vector-relations-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `tests/acl2/resource-vector-tests.lisp` | root | 13 | 1 | 0/0/0/1 | 46 | 20 | 0 |
+| `tests/acl2/resource-vector-tree-tests.lisp` | root | 5 | 0 | 0/0/0/0 | 15 | 5 | 0 |
 | `tests/acl2/response-plan-pins-tests.lisp` | root | 7 | 0 | 0/0/0/0 | 3 | 0 | 0 |
 | `tests/acl2/retention-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 66 | 1 | 0 |
 | `tests/acl2/runtime-bootstrap-completion-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 2 | 0 | 0 |
@@ -3658,6 +3667,10 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-rrc-tear-write-of-no-selectors` | `books/recovery-refinement-concurrent.lisp` | 110 | arm-of-definition: the hypotheses select one IF/COND arm of fn-bs-tear-write and the conclusion is that arm's value |
 | `fn-rrs-reserve-is-two-capture-budgets` | `books/recovery-refinement-store.lisp` | 141 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-rse-enrolled-model-head-unfolds` | `books/replay-enrollment-lookup.lisp` | 118 | definition-restated: the conclusion is the body of fn-rse-enrolled-model |
+| `fn-rt-okp-forward` | `books/resource-vector-tree.lisp` | 182 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-rt-okp |
+| `fn-rv-bankp-forward` | `books/resource-vector.lisp` | 840 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-rv-bankp |
+| `fn-rv-okp-forward` | `books/resource-vector.lisp` | 847 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-rv-okp |
+| `fn-rv-row-demand-of-nth` | `books/resource-vector.lisp` | 899 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-sbsp-files-of-advance-identity-next` | `books/store-budget-stored-post.lisp` | 109 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-sbsp-files-of-finish-identity` | `books/store-budget-stored-post.lisp` | 118 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-sbsp-files-of-update-accepted` | `books/store-budget-stored-post.lisp` | 115 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |

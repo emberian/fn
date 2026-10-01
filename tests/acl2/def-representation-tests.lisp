@@ -67,6 +67,42 @@
         ((eq (car events) 'defstobj) (cadr events))
         (t (or (drt-find-foundation (car events))
                (drt-find-foundation (cdr events))))))
+
+; Find the concrete clear, including NAME-COLS$C-CLEAR in generic expansions.
+(defun drt-find-clear (events name)
+  (cond ((atom events) nil)
+        ((and (eq (car events) 'defun) (eq (cadr events) name)) events)
+        (t (or (drt-find-clear (car events) name)
+               (drt-find-clear (cdr events) name)))))
+
+; Collect call heads, not variable occurrences, with the requested prefix.
+(defun drt-prefixed-calls (tree prefix)
+  (if (atom tree)
+      nil
+    (append
+     (if (and (symbolp (car tree))
+              (<= (length prefix) (length (symbol-name (car tree))))
+              (equal prefix (subseq (symbol-name (car tree)) 0 (length prefix))))
+         (list (car tree))
+       nil)
+     (drt-prefixed-calls (car tree) prefix)
+     (drt-prefixed-calls (cdr tree) prefix))))
+
+(defun drt-calls-in-package-p (calls package)
+  (if (endp calls)
+      t
+    (and (equal (symbol-package-name (car calls)) package)
+         (drt-calls-in-package-p (cdr calls) package))))
+
+(defun drt-clear-calls-in-package-p (events package)
+  (let* ((clear (drt-find-clear events
+                               (adt-sym (drt-find-foundation events) "-CLEAR")))
+         (resizes (drt-prefixed-calls (car (last clear)) "RESIZE-"))
+         (updates (drt-prefixed-calls (car (last clear)) "UPDATE-")))
+    (and clear (consp resizes) (consp updates)
+         (drt-calls-in-package-p resizes package)
+         (drt-calls-in-package-p updates package))))
+
 (logic)
 
 (assert-event
@@ -81,6 +117,24 @@
  (equal (symbol-package-name
          (drt-find-foundation (rep-instance-events :drt-package '((id :u64)) t t nil nil nil)))
         (symbol-package-name :drt-package)))
+
+; Every clear resize/update stays in the instance's package, with both
+; kinds of call present (record, scalar and generic).
+(assert-event
+ (drt-clear-calls-in-package-p
+  (rep-instance-events :drt-package '((id :u64)) nil nil nil nil)
+  (symbol-package-name :drt-package)))
+(assert-event
+ (drt-clear-calls-in-package-p
+  (rep-instance-events :drt-package '((id :u64)) t nil nil nil)
+  (symbol-package-name :drt-package)))
+(assert-event
+ (drt-clear-calls-in-package-p
+  (rep-instance-events :drt-package '((id :u64)) t t nil nil)
+  (symbol-package-name :drt-package)))
+(assert-event
+ (drt-clear-calls-in-package-p
+  (rep-instance-events 'drt-two '((id :u64)) nil nil nil nil) "ACL2"))
 
 ; One spelling in two packages: two instances, two foundations.
 (assert-event
@@ -106,6 +160,22 @@
 (assert! (not (adt-corr *drt-clear-s* '(nil nil 1 0) nil)))          ; MUTANT forget-count
 (assert! (adt-corr *drt-clear-s* '((7 0) nil 0 0) nil))               ; MUTANT forget-column: corr-blind
 (assert! (not (equal (adt-clear-c *drt-clear-s* *drt-clear-c*) '((7 0) nil 0 0))))
+
+;; Hypothesis-removal witness: omit adt-schemap, retain true-listp.
+(assert! (let ((s '((:bogus))) (c nil))
+           (and (true-listp c)
+                (not (adt-schemap s))
+                (not (adt-corr s (adt-clear-c s c) nil)))))
+
+;; corrupted-state hypothesis-removal witness: omit true-listp, retain adt-schemap.
+; THM checks the logical value: executable UPDATE-NTH guards reject this
+; deliberately improper input before its logical clear can be observed.
+(assert-event
+ (thm (let ((s '((:u64))) (c '(nil nil 0 0 . bad-tail)))
+        (and (adt-schemap s)
+             (not (true-listp c))
+             (not (adt-corr s (adt-clear-c s c) nil)))))
+ :stobjs-out :auto)
 
 ; -----------------------------------------------------------------------------
 ; 2. The scalar pilot: the arena's logical view.
