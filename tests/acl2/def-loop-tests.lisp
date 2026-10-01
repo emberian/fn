@@ -37,6 +37,12 @@
 (assert-event (equal (dlt-pairs-loop '(1 2) 9 '(z)) '(z (1 . 9) (2 . 9))))
 (assert-event (equal (dlt-pairs-loop nil 9 '(b a)) '(a b)))
 
+; Element substitution preserves quoted data.
+(def-loop dlt-quoted-elements (xs)
+  :shape :map :elt e :body (list e 'e))
+
+(assert-event (equal (dlt-quoted-elements '(7)) '((7 e))))
+
 ; 2. :map with :while (the `fn-path-butlast' shape) and :keep (a filter-map).
 
 (def-loop dlt-butlast-ints (xs)
