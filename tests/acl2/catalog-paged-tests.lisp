@@ -77,9 +77,27 @@
       (and (equal (fn-cat$p-at s fn-cat$p) (fn-cat$a-at s c))
            (cpt-rows-ok (1+ s) c fn-cat$p))))
 
+; The live numbers 1..n of "fn.test" in c: the two link tables hold exactly
+; this many entries when they bind the live numbers and nothing else
+; (Codex r35 F1: a dead key bound in NEXT is a counterexample to
+; fn-cpl-okp that the per-number check alone cannot see; the count sees it).
+(defun cpt-live-count (k n c)
+  (declare (xargs :mode :program))
+  (if (> k n) 0
+    (+ (if (fn-cat-live-numberp "fn.test" k c) 1 0) (cpt-live-count (1+ k) n c))))
+
+; The observable content of fn-cat$pcorr on a built pair whose only group
+; is "fn.test" with numbers 1..n: the count, every row, the live summary,
+; the version's withdrawals, and the two link tables EXACTLY (the live
+; numbers' entries are their neighbours and the tables have no other
+; entry).  fn-cat$pcorr itself is a defun-sk over the tables and is not
+; executable; on such a pair this observation is its content for the link
+; conjuncts, and the exports' equalities for the view's.
 (defun cpt-corr-evidence (n c fn-cat$p)
   (declare (xargs :mode :program :stobjs fn-cat$p))
   (and (equal (fn-cat$p-count fn-cat$p) (fn-cat$a-count c))
+       (equal (fn-cat$p-lnext-count fn-cat$p) (cpt-live-count 1 n c))
+       (equal (fn-cat$p-lprev-count fn-cat$p) (cpt-live-count 1 n c))
        (cpt-rows-ok 0 c fn-cat$p)
        (equal (fn-cat$p-group-live-low "fn.test" fn-cat$p) (fn-cat$a-group-live-low "fn.test" c))
        (equal (fn-cat$p-group-live-high "fn.test" fn-cat$p) (fn-cat$a-group-live-high "fn.test" c))
@@ -125,6 +143,16 @@
 (assert-event (cpt-reader-witness 10 '(5 9 1 7 3 8 2) '(1 2 3 5 7 8 9)))  ; scrambled arrival
 (assert-event (cpt-reader-witness 40 '(33 0 17 39 2 31 8)                 ; scrambled, a deeper trie
                                   '(0 2 8 17 31 33 39)))
+
+; A DUPLICATE withdrawal (Codex r35 F2): the second withdrawal of row 1
+; finds it withdrawn and changes nothing -- the bucket, the paged answer
+; and the logical answer are those of the single withdrawal, and the
+; correspondence's content holds after both.
+(assert-event (let ((once (cpt-read 10 '(1))) (twice (cpt-read 10 '(1 1))))
+                (and (equal (first once) '(1)) (equal (second once) '(1))
+                     (equal (first twice) '(1)) (equal (second twice) '(1))
+                     (equal (third twice) (third once))
+                     (fourth once) (fourth twice))))
 
 ; fn-cpt-list-of-add without (natp s): a non-natural is filed as 0, so the
 ; trie answers 0 where the insertion answers the symbol.  (Run on the
@@ -180,6 +208,38 @@
             fn-cat$p))
       r)))
 
+; KEYSTONE fn-cat$p-livep-is-live, executed (Codex r39): on the probe state
+; (livep 1, live 1, livep n, live n, livep 2, live 2, evidence), the NEXT
+; table optionally erased (CORRUPTED: coverage refuted) or given an entry
+; for the dead 2 (CORRUPTED: goodness refuted; the entry count sees it).
+(defun cpt-livep (n mode)
+  (declare (xargs :mode :program))
+  (with-local-stobj fn-cat$p
+    (mv-let (r fn-cat$p)
+      (let* ((l (cpt-middle 1 (- n 1)))
+             (c (cpt-logical n l))
+             (fn-cat$p (cpt-commit 0 n fn-cat$p))
+             (fn-cat$p (cpt-withdraw l fn-cat$p))
+             (fn-cat$p (if (eq mode :erase) (fn-cat$p-lnext-clear fn-cat$p) fn-cat$p))
+             (fn-cat$p (if (eq mode :bind-dead)
+                           (fn-cat$p-lnext-put (cons "fn.test" 2) n fn-cat$p)
+                         fn-cat$p)))
+        (mv (list (fn-cat$p-livep "fn.test" 1 fn-cat$p) (fn-cat-live-numberp "fn.test" 1 c)
+                  (fn-cat$p-livep "fn.test" n fn-cat$p) (fn-cat-live-numberp "fn.test" n c)
+                  (fn-cat$p-livep "fn.test" 2 fn-cat$p) (fn-cat-live-numberp "fn.test" 2 c)
+                  (cpt-corr-evidence n c fn-cat$p))
+            fn-cat$p))
+      r)))
+
+; Positive: the probe is liveness at the live low, the live high and the
+; dead middle; the correspondence's content holds.
+(assert-event (equal (cpt-livep 8 nil) '(t t t t nil nil t)))
+; CORRESPONDENCE removed, two ways: NEXT erased (1 and 8 live, their probes
+; false: coverage refuted); the dead 2 bound in NEXT (its probe true, 2 not
+; live: okp refuted).  The conclusion fails and so does the evidence.
+(assert-event (equal (cpt-livep 8 :erase) '(nil t nil t nil nil nil)))
+(assert-event (equal (cpt-livep 8 :bind-dead) '(t t t t t nil nil)))
+
 ; Positive: the correspondence's content holds, k live; each probe bound,
 ; a natural, and the read (1's NEXT is 8, 8's PREV is 1).
 (assert-event (equal (cpt-probe 8 1 nil) '(t 8 8 0 0 t)))
@@ -187,13 +247,16 @@
 
 ; LIVENESS removed (Codex r33 F1): 2 is withdrawn; the correspondence's
 ; content still holds; both probes are unbound (not naturals: the
-; conclusion fails) and the scans answer 8 and 1.
-(assert-event (equal (cpt-probe 8 2 nil) '(nil nil 8 nil 1 t)))
+; conclusion fails), and the reads answer 0 -- there is no scan to fall
+; back on: the executables never read a row to answer a neighbour.
+(assert-event (equal (cpt-probe 8 2 nil) '(nil nil 0 nil 0 t)))
 
 ; CORRESPONDENCE removed (CORRUPTED-STATE, Codex r30 F1): the tables erased
 ; and the logical catalog unchanged.  8 is live in it and unbound in both
 ; tables -- the counterexample to fn-cpl-coverp, so fn-cat$pcorr fails --
-; and the conclusion fails (the probes are not naturals); the reads fall
-; back to the scans (the same answers, by the scans' soundness).
-(assert-event (equal (cpt-probe 8 8 t) '(t nil 0 nil 1 nil)))
-(assert-event (equal (cpt-probe 8 1 t) '(t nil 8 nil 0 nil)))
+; and the conclusion fails (the probes are not naturals; the reads answer
+; 0 where the true neighbours are 1 and 8: on a state that does not
+; correspond the probe is wrong, which is why the correspondence carries
+; coverage).
+(assert-event (equal (cpt-probe 8 8 t) '(t nil 0 nil 0 nil)))
+(assert-event (equal (cpt-probe 8 1 t) '(t nil 0 nil 0 nil)))
