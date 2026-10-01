@@ -846,6 +846,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/snoc-list-tests \
 	books/record-width-producers \
 	tests/acl2/record-width-producers-tests \
+	books/post-record-width-owner \
+	tests/acl2/post-record-width-owner-tests \
 	tests/acl2/profile-monotonicity-tests \
 	books/store-budget-article \
 	tests/acl2/store-budget-article-tests \
@@ -1115,7 +1117,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-fnbs-byte-publisher \
 	books/bp-fnbs-byte-invariants \
 	books/bp-fnbs-replay \
-	books/bp-fnbs-replay-invariants \
 	tests/acl2/bp-fnbs-replay-tests \
 	books/bp-fnbs-namespace \
 	tests/acl2/bp-fnbs-namespace-tests \

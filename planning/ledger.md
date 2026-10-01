@@ -11,15 +11,15 @@ stale. Counts describe artifacts, not coverage; see
 | Quantity | Count |
 | --- | --- |
 | Books read | 2711 |
-| Certification roots in the Makefile | 2306 |
-| Books inside the root closure | 2575 |
-| `defthm` and `defthmd` events | 35464 |
-| `defun` events | 22678 |
+| Certification roots in the Makefile | 2307 |
+| Books inside the root closure | 2576 |
+| `defthm` and `defthmd` events | 35465 |
+| `defun` events | 22677 |
 | Functions with verified guards | 3843 |
 | Functions declared `:verify-guards nil` and never verified | 2864 |
-| Functions left at the default with an explicit guard | 12690 |
-| Functions left at the default with no guard | 3281 |
-| `assert-event` checks | 25320 |
+| Functions left at the default with an explicit guard | 12682 |
+| Functions left at the default with no guard | 3288 |
+| `assert-event` checks | 25325 |
 | `must-fail` checks | 2559 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 193 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 392 |
 | Enabled-projection warnings | 80 |
 | Teeth-form warnings | 279 |
-| Include-hygiene warnings | 3373 |
+| Include-hygiene warnings | 3375 |
 | Host-names warnings | 3144 |
 | Hand-written-record warnings | 19 |
 
@@ -209,7 +209,7 @@ that `make certify` requests.
 | `books/bp-fnbs-deletion-publication.lisp` | root | 4 | 5 | 5/0/0/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-delivery-codec.lisp` | root | 1 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-delivery-publication.lisp` | root | 3 | 5 | 5/0/0/0 | 0 | 0 | 0 |
-| `books/bp-fnbs-delivery-replay.lisp` | root | 1 | 4 | 0/0/4/0 | 0 | 0 | 0 |
+| `books/bp-fnbs-delivery-replay.lisp` | root | 1 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-dispatch-codec.lisp` | root | 0 | 6 | 6/0/0/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-dispatch-invariants.lisp` | root | 14 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-dispatch-publication.lisp` | root | 2 | 5 | 5/0/0/0 | 0 | 0 | 0 |
@@ -222,8 +222,7 @@ that `make certify` requests.
 | `books/bp-fnbs-namespace.lisp` | root | 0 | 15 | 5/0/10/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-publication.lisp` | root | 1 | 5 | 5/0/0/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-replay-append.lisp` | root | 3 | 1 | 0/0/0/1 | 0 | 0 | 0 |
-| `books/bp-fnbs-replay-invariants.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/bp-fnbs-replay.lisp` | root | 1 | 6 | 2/0/4/0 | 0 | 0 | 0 |
+| `books/bp-fnbs-replay.lisp` | root | 0 | 2 | 2/0/0/0 | 0 | 0 | 0 |
 | `books/bp-forward-attempt.lisp` | root | 4 | 42 | 9/3/30/0 | 0 | 0 | 0 |
 | `books/bp-forward-image.lisp` | root | 0 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/bp-fragment-fast.lisp` | root | 15 | 8 | 6/0/0/2 | 0 | 0 | 0 |
@@ -1294,7 +1293,7 @@ that `make certify` requests.
 | `books/post-identity-source-cursor-source-stamp.lisp` | root | 22 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/post-identity-source-cursor.lisp` | root | 0 | 14 | 0/0/14/0 | 0 | 0 | 0 |
 | `books/post-prepare-catalog.lisp` | root | 16 | 10 | 4/1/5/0 | 0 | 0 | 0 |
-| `books/post-record-width-owner.lisp` | - | 4 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/post-record-width-owner.lisp` | root | 9 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/post-retain-carried.lisp` | root | 63 | 29 | 3/0/26/0 | 0 | 0 | 1 |
 | `books/poster-bytes-buffer.lisp` | root | 1 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/poster-bytes-invariants.lisp` | root | 54 | 2 | 0/0/2/0 | 0 | 0 | 1 |
@@ -1810,7 +1809,7 @@ that `make certify` requests.
 | `tests/acl2/bp-fnbs-inspect-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 3 | 1 | 0 |
 | `tests/acl2/bp-fnbs-namespace-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 12 | 1 | 0 |
 | `tests/acl2/bp-fnbs-publication-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 10 | 1 | 0 |
-| `tests/acl2/bp-fnbs-replay-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 24 | 1 | 0 |
+| `tests/acl2/bp-fnbs-replay-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 24 | 1 | 0 |
 | `tests/acl2/bp-forward-attempt-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 1 | 0 |
 | `tests/acl2/bp-forward-image-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 0 | 0 |
 | `tests/acl2/bp-forward-live-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 13 | 0 | 0 |
@@ -2525,6 +2524,7 @@ that `make certify` requests.
 | `tests/acl2/post-identity-source-cursor-source-stamp-tests.lisp` | root | 7 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/post-identity-source-cursor-tests.lisp` | root | 8 | 9 | 0/9/0/0 | 39 | 0 | 0 |
 | `tests/acl2/post-prepare-catalog-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 3 | 0 | 0 |
+| `tests/acl2/post-record-width-owner-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 5 | 0 | 0 |
 | `tests/acl2/post-retain-carried-tests.lisp` | root | 0 | 6 | 0/0/2/4 | 17 | 2 | 0 |
 | `tests/acl2/poster-bytes-tests.lisp` | root | 0 | 8 | 0/1/0/7 | 65 | 12 | 0 |
 | `tests/acl2/posting-account-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 5 | 2 | 0 |
