@@ -27,11 +27,11 @@
 ; of the listed transitions from a state satisfying the relation, the
 ; relation holds, by functional instantiation of fn-cd-run-carries.
 ;
-; What this book does NOT claim.  The writers of the carried state are
-; `fn-owner-install-ocfg' and `fn-owner-retain-carry-put'; every host-called
-; entry whose definition reaches one of them owes a preservation theorem,
-; and the completeness check that demands it reads the `fn-interfaces'
-; table, which is complete only in the image world (host/interfaces.lisp).
+; What this book does NOT claim.  The carried state is the ACL2 state, so
+; every host-called entry that RETURNS state can produce a new value of it
+; and owes a preservation theorem; the completeness check that demands it
+; reads the `fn-interfaces' table, which is complete only in the image
+; world (host/interfaces.lisp).
 ; In this book's world that table holds no owner entry, so the check is
 ; vacuous here; `(def-carried-check fn-owner-retain-carried)' in the image
 ; world names the first owed entry (fn-owner-finish-synced, whose carry
@@ -54,13 +54,13 @@
 (def-carried fn-owner-retain-carried
   :invariant fn-owner-retain-statep
   :established ((fn-owner-install-extended
-                 fn-owner-install-extended-establishes-retain-state))
+                 fn-owner-install-extended-establishes-retain-state
+                 (mv-nth 5 _)))
   :transitions ((fn-owner-prepare-identity
-                 fn-owner-prepare-identity-preserves-retain-state))
+                 fn-owner-prepare-identity-preserves-retain-state
+                 (mv-nth 2 _)))
   :concludes ((fn-sn-statep fn-owner-retain-statep-implies-entry-guard)
-              (fn-prc-carryp fn-owner-retain-statep-implies-entry-guard))
-  :writers (fn-owner-install-ocfg fn-owner-retain-carry-put)
-  :trace t)
+              (fn-prc-carryp fn-owner-retain-statep-implies-entry-guard)))
 
 ; The row's D40 data for the one transition: the bridges, the open, its own.
 (assert-event

@@ -2353,6 +2353,7 @@ ACL2_BOOKS ?= books/defrecord \
     tests/acl2/substrate-committed-transcript-tests \
     tests/acl2/substrate-committed-row-tests \
     tests/acl2/substrate-commit-codec-gap-tests \
+    books/tcpcl-session-carried \
     books/owner-retain-carried
 
 .PHONY: host-convert-check extract-check site check check-lane check-fast check-fast-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick

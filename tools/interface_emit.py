@@ -197,8 +197,12 @@ def declarations(root: Path = ROOT) -> list[dict]:
         if raw and raw[0] == ":carried":
             if rows is None:
                 rows = carried_rows(root)
-            d["raw_with_carried"] = raw[1] if len(raw) > 1 else None
-            d["raw_with"] = carried_theorems(rows, d["raw_with_carried"], d["name"])
+            # exactly (:carried NAME): anything else resolves to nothing and
+            # is a finding (books/definterface.lisp fn-di-raw-with-formp
+            # refuses the same forms)
+            d["raw_with_carried"] = raw[1] if len(raw) == 2 else "(malformed)"
+            d["raw_with"] = (carried_theorems(rows, raw[1], d["name"])
+                             if len(raw) == 2 else [])
     return found
 
 
@@ -218,8 +222,9 @@ def carried_rows(root: Path = ROOT) -> dict[str, dict]:
                 continue
             kv = ledger.keyword_plist(form[2:])
             rows[_sym(form[1])] = {
-                key: [[_sym(f), _sym(t)] for f, t in (kv.get(":" + key) or [])
-                      if isinstance(f, (str, ledger.Sym)) and isinstance(t, (str, ledger.Sym))]
+                key: [[_sym(e[0]), _sym(e[1])] for e in (kv.get(":" + key) or [])
+                      if isinstance(e, list) and len(e) >= 2
+                      and isinstance(e[0], (str, ledger.Sym)) and isinstance(e[1], (str, ledger.Sym))]
                 for key in ("established", "transitions", "concludes")}
     return rows
 

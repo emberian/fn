@@ -177,6 +177,15 @@ class HostBindingTests(unittest.TestCase):
             ":established ((fn-r-open fn-r-open-establishes)) :transitions ((fn-s fn-s-carries)))\n")
         self.assertTrue(any("resolves to no theorems" in p for p in found), found)
 
+    def test_raw_with_carried_refuses_malformed_forms(self):
+        for form in ("(:carried)", "(:carried fn-r-carried extra)"):
+            found = self.raw_with_problems(
+                "(definterface fn-r :class :common-lisp-compliant :raw-with %s)\n" % form,
+                "(def-carried fn-r-carried :invariant fn-r-relation "
+                ":established ((fn-r-open fn-r-open-establishes)) "
+                ":transitions ((fn-r fn-r-carries (mv-nth 1 _))))\n")
+            self.assertTrue(any("resolves to no theorems" in p for p in found), (form, found))
+
     def test_raw_with_refuses_a_program_entry(self):
         found = self.raw_with_problems(
             "(definterface fn-r :class :program :raw-with (fn-r-statep))\n")

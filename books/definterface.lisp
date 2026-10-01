@@ -83,12 +83,14 @@
 ; host-binding check reads the raw host itself (a declared entry the host
 ; never dispatches is stale; see that tool).
 ;
-; This book has no include-book and leaves no rule: its helpers are
+; This book includes only books/def-carried (whose row a `:raw-with
+; (:carried NAME)' re-checks) and leaves no rule: its helpers are
 ; :program mode.  *fn-entry-guard-kinds* is read from the world
 ; (books/payload-kinds.lisp), not included, so the file that holds the
 ; declarations decides what is loaded.
 
 (in-package "ACL2")
+(include-book "def-carried") ; fn-cd-problem: a (:carried NAME) row re-checked
 
 (defconst *fn-di-keys* '(:class :kinds :exempt :keystones :root :direct :delegates
                          :raw-with :raw-guarded))
@@ -144,13 +146,20 @@
     (and (fn-di-keystone-entryp (car x))
          (fn-di-keystones-formp (cdr x)))))
 
+(defun fn-di-any-keyword (xs)
+  (declare (xargs :mode :program))
+  (and (consp xs) (or (keywordp (car xs)) (fn-di-any-keyword (cdr xs)))))
+
 (defun fn-di-raw-with-formp (x)
   (declare (xargs :mode :program))
-  ; (THM ...): a non-empty list of theorem names; or (:carried NAME), the
-  ; carried invariant whose row names them (books/def-carried.lisp)
-  (or (and (consp x) (eq (car x) :carried) (consp (cdr x)) (null (cddr x))
-           (symbolp (cadr x)) (cadr x) t)
-      (and (consp x) (symbol-listp x) (not (member-eq nil x)))))
+  ; (THM ...): a non-empty list of theorem names, none a keyword; or exactly
+  ; (:carried NAME), the carried invariant whose row names them
+  ; (books/def-carried.lisp)
+  (and (consp x)
+       (if (eq (car x) :carried)
+           (and (consp (cdr x)) (null (cddr x)) (symbolp (cadr x)) (cadr x) t)
+         (and (symbol-listp x) (not (member-eq nil x))
+              (not (fn-di-any-keyword x))))))
 
 (defun fn-di-raw-guarded-formp (x)
   (declare (xargs :mode :program))
@@ -506,6 +515,18 @@
       (msg ":raw-with ~x0 on ~x1: no carried invariant ~x2 of this world ~
             (books/def-carried.lisp) names ~x1 among its transitions"
            form name (cadr form)))
+     ((and (eq (car form) :carried)
+           (fn-cd-problem (cadr form)
+                          (cdr (assoc-eq (cadr form) (table-alist 'fn-carried w)))
+                          w))
+      ; the row's own checks, re-run in THIS world: completeness over the
+      ; declarations loaded so far (at image build, all of them)
+      (msg ":raw-with ~x0 on ~x1: the carried invariant's row no longer ~
+            checks in this world: ~@2"
+           form name
+           (fn-cd-problem (cadr form)
+                          (cdr (assoc-eq (cadr form) (table-alist 'fn-carried w)))
+                          w)))
      (t
       (let* ((formals (getpropc name 'formals nil w))
              (stobjs (getpropc name 'stobjs-in nil w))
