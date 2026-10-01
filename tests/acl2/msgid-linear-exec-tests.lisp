@@ -51,10 +51,17 @@
                    (not (equal (fn-mlh-tag "<a@x>" *mlhx-key-a*) (fn-mlh-tag "<a@x>" *mlhx-key-b*)))
                    (not (equal (fn-mlh-tag "<a@x>" *mlhx-key-a*) (fn-mlh-tag "<b@x>" *mlhx-key-a*)))))
 
-; A table of NP pages, N = NP, S = 0 (the zero key).
+; A table of NP pages, N = NP, S = 0 (the zero key): each page taken fresh.
+(defun mlhx-fresh (k fn-mlh)
+  (declare (xargs :stobjs fn-mlh :guard (natp k)))
+  (if (zp k)
+      fn-mlh
+    (let ((fn-mlh (fn-mlh-fresh-page (1- k) fn-mlh)))
+      (mlhx-fresh (1- k) fn-mlh))))
+
 (defun mlhx-pages (np fn-mlh)
   (declare (xargs :stobjs fn-mlh :guard (posp np)))
-  (let* ((fn-mlh (resize-fn-mlh-pg np fn-mlh))
+  (let* ((fn-mlh (mlhx-fresh np fn-mlh))
          (fn-mlh (update-fn-mlh-pages np fn-mlh))
          (fn-mlh (update-fn-mlh-n np fn-mlh))
          (fn-mlh (update-fn-mlh-s 0 fn-mlh)))
@@ -189,7 +196,7 @@
 ; and the page array's two pages disagree with pages = 1.  The stale entry
 ; supplies the false answer.
 (defthm mlhx-wfp-removal-witness
-  (let ((fn-mlh (list (list *mlhx-page-empty* *mlhx-page-stale*) 1 2 0 0
+  (let ((fn-mlh (list (list (list (list *mlhx-page-empty* *mlhx-page-stale*))) 1 2 0 0
                       (make-list 32 :initial-element 0) 0)))
     (and (fn-mlhp fn-mlh)
          (not (fn-mlh-wfp fn-mlh))
@@ -199,7 +206,8 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-mlh-tag fn-mlh-candidates
                                     fn-mlh-okp fn-record-msgid
-                                    fn-mlhp fn-mlgp fn-mlh-pgi fn-mlg-wi fn-mlh-pg-length fn-mlh-pgsp
+                                    fn-mlhp fn-mltp fn-mlgp fn-mlh-diri fn-mlt-pgi fn-mlg-wi fn-mlh-dir-length
+                                    fn-mlt-pg-length fn-mlh-word fn-mlh-pgsp
                                     fn-mlh-pages fn-mlh-n fn-mlh-s
                                     fn-mlh-key-octets fn-mlh-keyi
                                     fn-mlh-tag-at fn-mlh-seqw
@@ -324,3 +332,27 @@
         (nth 2 r) (nth 3 r)
         (equal (nth 4 r) 2) (equal (nth 5 r) 2) (equal (nth 6 r) 0)
         (equal (nth 7 r) '(0)))))
+
+; -----------------------------------------------------------------------------
+; THE PAGED DIRECTORY (catalog-commit-flat-3, Codex r42 F1 / r48 F3): page 64
+; opens the second table page; the write reads back there and nowhere else
+; (fn-mlh-word-of-put-word, all hypotheses: natp p q i j, j < 2,048), the
+; fresh page reads 0 (fn-mlh-word-of-fresh-page), the directory took its
+; first width, and a reservation widens it without changing a word
+; (fn-mlh-word-of-reserve).
+(defun mlhx-dir-witness ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-mlh
+    (mv-let (r fn-mlh)
+      (let* ((fn-mlh (fn-mlh-fresh-page 63 fn-mlh))
+             (fn-mlh (fn-mlh-fresh-page 64 fn-mlh))
+             (fn-mlh (fn-mlh-put-word 64 5 77 fn-mlh))
+             (a (list (fn-mlh-word 64 5 fn-mlh) (fn-mlh-word 64 6 fn-mlh) (fn-mlh-word 63 5 fn-mlh)
+                      (fn-mlh-dir-length fn-mlh)))
+             (fn-mlh (fn-mlh-reserve 100000 fn-mlh))
+             (b (list (fn-mlh-word 64 5 fn-mlh) (fn-mlh-dir-length fn-mlh)))
+             (fn-mlh (fn-mlh-fresh-page 64 fn-mlh)))
+        (mv (list a b (fn-mlh-word 64 5 fn-mlh)) fn-mlh))
+      r)))
+
+(assert-event (equal (mlhx-dir-witness) '((77 0 0 256) (77 1563) 0)))

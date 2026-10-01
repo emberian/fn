@@ -916,6 +916,8 @@
     "tests/acl2/post-identity-catalog-tests",
     "books/post-prepare-catalog",
     "tests/acl2/post-prepare-catalog-tests",
+    "books/peer-transit-indexed",
+    "tests/acl2/peer-transit-indexed-tests",
     "books/post-retain-carried",
     "tests/acl2/post-retain-carried-tests",
     "books/identity-retain-carried",
@@ -1404,6 +1406,7 @@
     "tests/acl2/nov-column-window-tests",
     "books/served-catalog",
     "books/served-catalog-chain",
+    "books/served-catalog-dispatch",
     "books/served-catalog-owner",
     "books/served-catalog-owner-keyed",
     "books/served-catalog-join-refresh",
@@ -1473,6 +1476,7 @@
     "tests/acl2/catalog-entries-tests",
     "tests/acl2/catalog-refresh-tests",
     "tests/acl2/served-catalog-tests",
+    "tests/acl2/served-incremental-tests",
     "tests/acl2/over-window-tests",
     "tests/acl2/served-catalog-view-tests",
     "tests/acl2/served-catalog-chain-tests",
@@ -2325,26 +2329,26 @@
     "books/owner-retain-carried"
   ],
   "totals": {
-    "books": 2732,
-    "books_in_root_closure": 2595,
-    "roots": 2321,
-    "theorems": 36503,
-    "functions": 23176,
-    "assert_events": 25515,
-    "must_fails": 2611,
+    "books": 2738,
+    "books_in_root_closure": 2599,
+    "roots": 2325,
+    "theorems": 36699,
+    "functions": 23237,
+    "assert_events": 25520,
+    "must_fails": 2618,
     "prover_refusals": 0,
     "encapsulates": 210,
     "guards": {
-      "verified": 3845,
-      "declared-off": 2990,
-      "default-guarded": 12866,
-      "default-unguarded": 3475
+      "verified": 3849,
+      "declared-off": 3016,
+      "default-guarded": 12887,
+      "default-unguarded": 3485
     },
-    "suspect_theorems": 1361,
-    "export_hygiene_warnings": 401,
+    "suspect_theorems": 1362,
+    "export_hygiene_warnings": 402,
     "enabled_projection_warnings": 80,
     "teeth_form_warnings": 279,
-    "include_hygiene_warnings": 3565,
+    "include_hygiene_warnings": 3569,
     "host_names_warnings": 3154,
     "hand_written_record_warnings": 19
   },
@@ -12025,7 +12029,7 @@
         "catalog-number-assignment",
         "catalog-record",
         "def-loop",
-        "msgid-pages-exec"
+        "msgid-linear-exec"
       ],
       "system_includes": [],
       "suspects": [
@@ -12150,13 +12154,13 @@
       "book": "books/catalog-paged.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 214,
-      "functions": 75,
+      "theorems": 243,
+      "functions": 81,
       "guards": {
         "verified": 0,
-        "declared-off": 5,
-        "default-guarded": 34,
-        "default-unguarded": 36
+        "declared-off": 7,
+        "default-guarded": 35,
+        "default-unguarded": 39
       },
       "verify_guards_events": 0,
       "assert_events": 4,
@@ -17926,19 +17930,19 @@
       "book": "books/def-representation-paged.lisp",
       "in_root_closure": true,
       "is_root": false,
-      "theorems": 145,
-      "functions": 41,
+      "theorems": 218,
+      "functions": 63,
       "guards": {
         "verified": 0,
-        "declared-off": 36,
-        "default-guarded": 1,
-        "default-unguarded": 4
+        "declared-off": 54,
+        "default-guarded": 2,
+        "default-unguarded": 7
       },
       "verify_guards_events": 0,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 2,
+      "defconsts": 4,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -17950,6 +17954,7 @@
         "ihs/quotient-remainder-lemmas"
       ],
       "suspects": [
+        "adt-pg-dflat-is-rtab",
         "adt-pg-set-c-is-room-then-set"
       ],
       "read_error": null
@@ -17958,7 +17963,7 @@
       "book": "books/def-representation-tree-walk.lisp",
       "in_root_closure": true,
       "is_root": false,
-      "theorems": 67,
+      "theorems": 70,
       "functions": 26,
       "guards": {
         "verified": 1,
@@ -18021,12 +18026,12 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 33,
+      "functions": 34,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 33
+        "default-unguarded": 34
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -27102,19 +27107,19 @@
       "book": "books/msgid-linear-exec.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 244,
-      "functions": 50,
+      "theorems": 265,
+      "functions": 59,
       "guards": {
         "verified": 1,
         "declared-off": 3,
-        "default-guarded": 32,
+        "default-guarded": 41,
         "default-unguarded": 14
       },
       "verify_guards_events": 1,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 5,
+      "defconsts": 7,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -37119,6 +37124,34 @@
       "read_error": null
     },
     {
+      "book": "books/peer-transit-indexed.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 5,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "peer-offer-indexed",
+        "post-identity-catalog",
+        "post-retain-carried"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/policy-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -42268,7 +42301,7 @@
       "includes": [
         "group-access-cache",
         "protocol-table",
-        "served-catalog",
+        "served-catalog-dispatch",
         "served-span"
       ],
       "system_includes": [],
@@ -42284,6 +42317,35 @@
         "fn-scrs-dispatch-no-events",
         "fn-scrs-handshaking-of-with-wire",
         "fn-scrs-result-of-counted-make"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/served-catalog-dispatch.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 14,
+      "functions": 2,
+      "guards": {
+        "verified": 1,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "served-catalog"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-scat-built-trie-corresponds",
+        "fn-scat-pin-trie-is-built"
       ],
       "read_error": null
     },
@@ -43227,15 +43289,15 @@
       "book": "books/served-catalog.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 173,
-      "functions": 76,
+      "theorems": 177,
+      "functions": 86,
       "guards": {
-        "verified": 27,
-        "declared-off": 6,
-        "default-guarded": 42,
+        "verified": 30,
+        "declared-off": 5,
+        "default-guarded": 50,
         "default-unguarded": 1
       },
-      "verify_guards_events": 27,
+      "verify_guards_events": 30,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -43258,9 +43320,7 @@
         "fn-ovw-session-of-multi-octets",
         "fn-ovw-session-of-single",
         "fn-ovw-status-is-crlf",
-        "fn-scat-article-idp-is-msgid-idp",
-        "fn-scat-built-trie-corresponds",
-        "fn-scat-pin-trie-is-built"
+        "fn-scat-article-idp-is-msgid-idp"
       ],
       "read_error": null
     },
@@ -61468,10 +61528,63 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/def-representation-late-world-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 1,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/catalog-paged"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/def-representation-paged-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 33,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 3,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 1,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 7,
+      "defmacros": 1,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/def-representation",
+        "../../books/def-representation-tree"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/def-representation-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 12,
+      "theorems": 13,
       "functions": 25,
       "guards": {
         "verified": 0,
@@ -65614,15 +65727,15 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 1,
-      "functions": 12,
+      "functions": 14,
       "guards": {
         "verified": 0,
-        "declared-off": 11,
-        "default-guarded": 1,
+        "declared-off": 12,
+        "default-guarded": 2,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 9,
+      "assert_events": 10,
       "must_fails": 1,
       "prover_refusals": 0,
       "defconsts": 8,
@@ -72026,6 +72139,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/peer-transit-indexed-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 3,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/peer-transit-indexed",
+        "post-identity-index-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/policy-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -75639,6 +75779,33 @@
         "../../books/codec-attach",
         "../../books/served-implicit-tls",
         "arena-lift",
+        "must-fail-checked"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/served-incremental-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 12,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 7,
+      "prover_refusals": 0,
+      "defconsts": 18,
+      "defmacros": 2,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/served-catalog",
         "must-fail-checked"
       ],
       "system_includes": [],
@@ -80577,16 +80744,25 @@
     {
       "theorem": "adt-h-puts-of-atom",
       "book": "books/def-representation-tree-walk.lisp",
-      "line": 330,
+      "line": 352,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of adt-h-puts and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of adt-h-puts and the conclusion is that branch's value"
       ]
     },
     {
+      "theorem": "adt-pg-dflat-is-rtab",
+      "book": "books/def-representation-paged.lisp",
+      "line": 1541,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)",
+        "reflexive-conclusion: a conjunct is (equal X X)"
+      ]
+    },
+    {
       "theorem": "adt-pg-set-c-is-room-then-set",
       "book": "books/def-representation-paged.lisp",
-      "line": 1296,
+      "line": 2209,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)",
         "reflexive-conclusion: a conjunct is (equal X X)"
@@ -80595,7 +80771,7 @@
     {
       "theorem": "adt-pool-cputs-of-atom",
       "book": "books/def-representation-tree-walk.lisp",
-      "line": 268,
+      "line": 290,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of adt-pool-cputs and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of adt-pool-cputs and the conclusion is that branch's value"
@@ -80604,7 +80780,7 @@
     {
       "theorem": "adt-pool-puts-of-atom",
       "book": "books/def-representation-tree-walk.lisp",
-      "line": 159,
+      "line": 181,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of adt-pool-puts and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of adt-pool-puts and the conclusion is that branch's value"
@@ -82504,7 +82680,7 @@
     {
       "theorem": "fn-cp-numbers-of-held",
       "book": "books/catalog-paged.lisp",
-      "line": 1569,
+      "line": 1860,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -82512,7 +82688,7 @@
     {
       "theorem": "fn-cp-withdrawn-of-held",
       "book": "books/catalog-paged.lisp",
-      "line": 1561,
+      "line": 1852,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -82728,7 +82904,7 @@
     {
       "theorem": "fn-ctg-assign-fields",
       "book": "books/catalog-logic.lisp",
-      "line": 1419,
+      "line": 1403,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -82736,7 +82912,7 @@
     {
       "theorem": "fn-ctg-corr-live-facts",
       "book": "books/catalog-logic.lisp",
-      "line": 3346,
+      "line": 3296,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-cat$corr-live"
       ]
@@ -82744,7 +82920,7 @@
     {
       "theorem": "fn-ctg-mark-withdrawn-is-update",
       "book": "books/catalog-logic.lisp",
-      "line": 1617,
+      "line": 1601,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-cat-mark-withdrawn and the conclusion is that arm's value"
       ]
@@ -82752,7 +82928,7 @@
     {
       "theorem": "fn-ctg-withdrawn-of-assign",
       "book": "books/catalog-logic.lisp",
-      "line": 1444,
+      "line": 1428,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -82760,7 +82936,7 @@
     {
       "theorem": "fn-ctg-withdrawn-of-with-context",
       "book": "books/catalog-logic.lisp",
-      "line": 3652,
+      "line": 3602,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -82768,7 +82944,7 @@
     {
       "theorem": "fn-ctg-withdrawn-of-with-withdrawn",
       "book": "books/catalog-logic.lisp",
-      "line": 3583,
+      "line": 3533,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -82834,7 +83010,7 @@
     {
       "theorem": "fn-ctw-corr-wbv-parts",
       "book": "books/catalog-logic.lisp",
-      "line": 4228,
+      "line": 4177,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-cat$corr-wbv"
       ]
@@ -82911,7 +83087,7 @@
     {
       "theorem": "fn-dm-keyp-fc",
       "book": "books/catalog-dense-map.lisp",
-      "line": 178,
+      "line": 182,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-dm-keyp"
       ]
@@ -82919,7 +83095,7 @@
     {
       "theorem": "fn-dm-lanep-fc",
       "book": "books/catalog-dense-map.lisp",
-      "line": 174,
+      "line": 178,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-dm-lanep"
       ]
@@ -84146,7 +84322,7 @@
     {
       "theorem": "fn-mlh-candidates-no-pages",
       "book": "books/msgid-linear-exec.lisp",
-      "line": 786,
+      "line": 1079,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-mlh-candidates and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-mlh-candidates and the conclusion is that branch's value"
@@ -84155,7 +84331,7 @@
     {
       "theorem": "fn-mlh-flag-part-of-seqw",
       "book": "books/msgid-linear-exec.lisp",
-      "line": 969,
+      "line": 1307,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)",
         "definition-restated: the conclusion is the body of fn-mlh-flag-part",
@@ -84165,7 +84341,7 @@
     {
       "theorem": "fn-mlh-nth-is-page",
       "book": "books/msgid-linear-exec.lisp",
-      "line": 1629,
+      "line": 1968,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-mpxl-page and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-mpxl-page and the conclusion is that branch's value"
@@ -87872,16 +88048,16 @@
     },
     {
       "theorem": "fn-scat-built-trie-corresponds",
-      "book": "books/served-catalog.lisp",
-      "line": 3194,
+      "book": "books/served-catalog-dispatch.lisp",
+      "line": 209,
       "reasons": [
         "reflexive-conclusion: a conjunct is (equal X X)"
       ]
     },
     {
       "theorem": "fn-scat-pin-trie-is-built",
-      "book": "books/served-catalog.lisp",
-      "line": 3187,
+      "book": "books/served-catalog-dispatch.lisp",
+      "line": 202,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-midx-correspondencep"
       ]
@@ -92070,7 +92246,7 @@
       {
         "theorem": "fn-dm-len-update-nth",
         "book": "books/catalog-dense-map.lisp",
-        "line": 320,
+        "line": 324,
         "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
       },
       {
@@ -92082,31 +92258,31 @@
       {
         "theorem": "fn-scc-octet-listp-is-adt-octetsp",
         "book": "books/catalog-paged.lisp",
-        "line": 225,
+        "line": 234,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-cbor-octet-listp-is-adt-octetsp",
         "book": "books/catalog-paged.lisp",
-        "line": 229,
+        "line": 238,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-cp-len-of-set-column",
         "book": "books/catalog-paged.lisp",
-        "line": 550,
+        "line": 574,
         "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
       },
       {
         "theorem": "fn-cp-len-of-adt-set-a",
         "book": "books/catalog-paged.lisp",
-        "line": 555,
+        "line": 579,
         "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
       },
       {
         "theorem": "fn-cp-tree-enc-of-row-t-of",
         "book": "books/catalog-paged.lisp",
-        "line": 720,
+        "line": 745,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -92298,13 +92474,19 @@
       {
         "theorem": "adt-len-of-grow-pool",
         "book": "books/def-representation-paged.lisp",
-        "line": 597,
+        "line": 1055,
         "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
       },
       {
         "theorem": "adt-len-of-grow",
         "book": "books/def-representation-paged.lisp",
-        "line": 639,
+        "line": 1097,
+        "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
+      },
+      {
+        "theorem": "adt-pg-len-dadd",
+        "book": "books/def-representation-paged.lisp",
+        "line": 2083,
         "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
       },
       {
@@ -114647,6 +114829,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/def-representation-late-world-tests.lisp",
+        "line": 9,
+        "include": "../../books/catalog-paged",
+        "included": "books/catalog-paged.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/def-representation-paged-tests.lisp",
+        "line": 15,
+        "include": "../../books/def-representation",
+        "included": "books/def-representation.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/def-representation-tests.lisp",
         "line": 25,
         "include": "../../books/def-representation",
@@ -118777,6 +118973,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/peer-transit-indexed-tests.lisp",
+        "line": 12,
+        "include": "post-identity-index-tests",
+        "included": "tests/acl2/post-identity-index-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/policy-tests.lisp",
         "line": 5,
         "include": "crypto-seam-tests",
@@ -120125,6 +120328,13 @@
         "line": 45,
         "include": "arena-lift",
         "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/served-incremental-tests.lisp",
+        "line": 20,
+        "include": "must-fail-checked",
+        "included": "tests/acl2/must-fail-checked.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
