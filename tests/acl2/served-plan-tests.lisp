@@ -182,6 +182,8 @@
 (defconst *spt-382* (list (list :reply '(51 56 50 13 10)) (fn-auth-starttls-effect)))
 (defconst *spt-400* '(52 48 48 13 10))
 (defconst *spt-tls* (fn-splan-step-make *spt-382* nil t nil 10 nil nil))
+;; Anchor: the same step made with its own :close closes.
+(assert-event (fn-splan-step-closep (fn-splan-step-make *spt-382* t t nil 10 nil nil)))
 (assert-event (fn-splan-step-p *spt-tls*))
 (assert-event (fn-splan-step-handshake-owed *spt-tls*))
 (assert-event (and (fn-splan-step-starttlsp *spt-tls*)
@@ -213,6 +215,7 @@
                      (equal (fn-splan-window-size (fourth r)) 0)
                      (not (fn-splan-donep (fourth r))))))
 (defconst *spt-at-cursor* (fourth (spt-window *spt-stale* *spt-cursor* 5)))
+(assert-event (fn-splan-at-cursorp *spt-at-cursor*))
 (assert-event (let ((r (spt-window *spt-stale* *spt-at-cursor* 5)))
                 (and (equal (first r) :cursor) (equal (third r) 0)
                      (equal (fourth r) *spt-at-cursor*))))

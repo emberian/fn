@@ -197,6 +197,9 @@
 ; one `fn-bp-complete' emitted for the durable attempt intent, octet for octet.
 
 (defconst *sched-tick-1* (fn-sched-tick-step *sched-ss* *sched-wf* "attempt:0"))
+;; Anchors: the unfenced drive is ok and its tick submits the selected work.
+(assert-event (fn-sched-drive-okp *sched-ss* *sched-wf* "attempt:0"))
+(assert-event (fn-sched-submit-for-idp "work-small" (fn-sched-result-effects *sched-tick-1*)))
 (assert-event
  (equal (fn-sched-result-effects *sched-tick-1*)
         '((:submit "work-small" "attempt:0" 0 "dtn://home/fn" "dtn://peer/fn"

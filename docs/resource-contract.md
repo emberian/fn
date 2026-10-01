@@ -94,7 +94,7 @@ reply; never a degraded mode. *Not bounded*: what this row leaves out.
 
 ## Memory
 
-**M1** — the process heap.
+**M1** -- the process heap.
 - Bounded: the SBCL dynamic space, `--dynamic-space-size`, is the profile's
   figure `fn-heap-figure-octets` (a function of T, H, R, A, the header
   limits, the observed core and the nursery), and the node refuses to start
@@ -108,11 +108,16 @@ reply; never a degraded mode. *Not bounded*: what this row leaves out.
   exceeds the machine; a refusal exits 1; the reservation holds every
   thread. MEASURED: `heap=1012 MB profile=small machine=2048 MB` accepted
   and the development preset refused at 2,681 MB under a 2 GB cap
-  (heap-from-profile, hbox, 2026-09-26). The small preset's first-run
-  reservation is 1,872 MB on the release image (1,906 MB on the image-floor
-  core; lane heap-bounds-2, merged 2026-09-29), which a 1,500 MB budget
-  refuses by name: planning/release-v6.6.0.md records the bar "the small
-  profile fits 1.5 GB" UNMET until **M2b**.
+  (heap-from-profile, hbox, 2026-09-26). THE FIGURE today (ACL2's
+  evaluation, lane figure-and-contract, 2026-10-01; a 200 MB core with
+  109 MiB of dynamic content, the 64 MiB nursery cap, 30 threads of
+  1,024 KiB stack and 4 MiB runtime): the small preset's run of an empty
+  store reserves 436 MB of heap and 786 MB in all; at the profile's bounds
+  (a store on disk of H and T) 577 MB and 927 MB. With W9's obligation-view
+  reserve (2026-09-30 to 2026-10-01, removed with the view: **M11**) they
+  were 1,030 / 1,380 MB and 1,154 / 1,504 MB. The bar "the small profile
+  fits 1.5 GB" (planning/release-v6.6.0.md) is met by these figures; it is
+  re-measured at convergence (F8), and a figure is not a measured peak.
 - Exceeded: at start, `:machine-cannot-hold-profile` or
   `:machine-cannot-hold-threads`, exit 1 (`:refused`). At run time the cap is
   SBCL's: a `storage-condition` is re-signalled globally
@@ -127,7 +132,7 @@ reply; never a degraded mode. *Not bounded*: what this row leaves out.
   library's allocations (**T1**); a live raise of the connection capacity
   past the start reservation (PKT-605).
 
-**M2** — the state term: every store the profile admits fits the figure.
+**M2** -- the state term: every store the profile admits fits the figure.
 - Bounded: the heap the accepted history occupies, from T records of at most
   R octets, H history octets (payload and memberships share H), and the
   open's transient (chunk lists, suffix vectors, the per-record build).
@@ -160,20 +165,37 @@ reply; never a degraded mode. *Not bounded*: what this row leaves out.
 - Not bounded: the posted state exceeds the reopened state (F3, a measured
   gap); the checkpoint's own transient (**D3**).
 
-**M2b** — the reservation as it will be (B9, landing).
-- Bounded: the same quantities, restructured as a base, plus charges for
-  the persisted records, plus a credited pool sized from the operator's
-  budget, instead of the worst-case sum that puts the small preset at
-  1,872 MB. Lane heap-pool's working pins (not a claim) put the small preset
-  at 924 MB on a 2,048 MB machine.
-- Mechanism: fn-heap-record-charge (pending) as the per-record charge; the pool of
-  **M5** and **M6** funded from the budget.
-- Evidence: PENDING, lane heap-pool (heap-bounds-2 resumed): the theorems
-  are named in the generated block and are checked once they land.
+**M2b** -- the header charged to the history budget (B9's first half).
+- Bounded: a record's header state is paid from H: a held row is charged
+  `*fn-sbud-header-weight*` (8) history octets a header octet and
+  `*fn-sbud-msgid-weight*` (12) more a Message-ID octet, so the figure's
+  header term is `*fn-heap-charge-heap-octets*` (8) x H instead of a
+  per-record worst case at the 250-octet Message-ID. The small preset's
+  base for the run of an empty store is 284,861,450 octets beside the
+  image's dynamic content, term by term: the history (empty arena page, 2 H
+  and a pointer) 17,039,424; the handles (48 T) 786,432; the records'
+  fixed part with the keyed Message-ID index (2 x T x 4,160) 136,314,880;
+  the header charge (8 H) 67,108,864; the open's transient 0 (an empty
+  store; 130,023,424 for a full replay of H and T); the request in flight
+  and both buffers 60,170,186; the articles in flight (32 slots)
+  3,441,664. What B9 also asked, the base plus a credited pool sized from
+  the operator's budget, is NOT built: it is the resource vector's (stage
+  6 of planning/design-store-representation-2026-10-01.md, lane
+  resource-ledger), which relates this figure and the credit ledger of
+  **M6** by theorem and retires both.
+- Mechanism: `fn-sbud-held-heap-charge` (`books/store-budget.lisp`) at
+  admission, the same charge the figure counts
+  (`fn-heap-record-charge-is-the-budgets-charge`). Host subject: the start
+  decision of **M1**.
+- Evidence: THEOREM (PRF-198): the record terms bound every record's state
+  (`fn-heap-records-retained-within-the-terms`), and the small base is the
+  evaluated constant (`fn-heap-small-run-base-of-an-empty-store`).
 - Exceeded: as **M1**.
-- Not bounded: as **M1**.
+- Not bounded: as **M1**; the per-record fixed part (4,096) is a
+  measurement's constant (heap-bounds record), not a theorem about the
+  representation.
 
-**M3** — the itemised reservation.
+**M3** -- the itemised reservation.
 - Bounded: nothing new; the row exists so the figure is never hand
   arithmetic. Every term of the model is named and the terms sum to exactly
   the number `init` prints.
@@ -184,7 +206,7 @@ reply; never a degraded mode. *Not bounded*: what this row leaves out.
 - Exceeded: not applicable.
 - Not bounded: not applicable.
 
-**M4** — the collector's trigger while a store opens.
+**M4** -- the collector's trigger while a store opens.
 - Bounded: the nursery trigger during an open is at least 8 MiB and at most
   the larger of 8 MiB and four times the history on disk, and the figure
   still holds every store at that trigger.
@@ -194,7 +216,7 @@ reply; never a degraded mode. *Not bounded*: what this row leaves out.
   exceeding case is **M1**'s fault.
 - Not bounded: the collector's pause (see "Not bounded").
 
-**M5** — articles in flight: the credited article pool.
+**M5** -- articles in flight: the credited article pool.
 - Bounded: the number of connections in article mode at once. One article
   credit is 2 x 16 x (512 + A + HDR) octets (the octet-list factor and the
   collector's copy), and the pool is `*fn-heap-article-slot-budget*`
@@ -223,7 +245,7 @@ reply; never a degraded mode. *Not bounded*: what this row leaves out.
 - Not bounded: queue growth from the control channel and BP deliveries is
   outside the slots (the book's header says so).
 
-**M5b** — a disk stall is classified before slot or credit admission (B8).
+**M5b** -- a disk stall is classified before slot or credit admission (B8).
 - Bounded: nothing new; the ordering of two refusals. Under a stalled disk a
   POST is refused with the disk's reason (`440 ... the disk is stalled|slow
   (a write has waited N ms, deadline D ms)`), never with the memory reason.
@@ -237,7 +259,7 @@ reply; never a degraded mode. *Not bounded*: what this row leaves out.
 - Exceeded: as **C1**.
 - Not bounded: as **C1**.
 
-**M6** — memory admission by credits.
+**M6** -- memory admission by credits.
 - Bounded: the ledger M_base + M_cache + sum(U_i + R_i) + E_completion +
   E_runtime <= B. An operation acquires its whole credit (owned and
   reserved) before it allocates; growth within the reserve is never refused;
@@ -262,7 +284,7 @@ reply; never a degraded mode. *Not bounded*: what this row leaves out.
   the wire, **M5**'s reply.
 - Not bounded: every allocation site that does not acquire a credit.
 
-**M7** — a served connection's memory, named.
+**M7** -- a served connection's memory, named.
 - Bounded: per-connection native octets (buffers, the TLS context) times the
   configured capacity against the machine; a capacity the machine cannot
   hold is refused by name at start, and a read step's octets are bounded.
@@ -278,7 +300,7 @@ reply; never a degraded mode. *Not bounded*: what this row leaves out.
   presents as **M1**'s fault.
 - Not bounded: the library's allocations past the constant (**T1**).
 
-**M8** — the F8 split.
+**M8** -- the F8 split.
 - Bounded: three measures, adopted 2026-09-28 (f8-reservation record):
   *virtual address space* (reported, never a bar; **M1**'s figure plus the
   ~104 MiB unmodelled); *accountable physical memory*, target 256 MiB;
@@ -296,6 +318,64 @@ reply; never a degraded mode. *Not bounded*: what this row leaves out.
 - Exceeded: nothing refuses on these measures.
 - Not bounded: all three, until measured; then bounded only as measured.
 
+**M9** -- the page pool (P12).
+- Bounded: under an explicit cold-resource policy the launch decision adds
+  the pool's heap and its executor threads' stacks and runtime to the
+  reservation of **M1**, and refuses by name when the machine cannot hold
+  them.
+- Mechanism: `fn-crv-extend-reservation` (`books/cold-read-reservation.lisp`),
+  called by `fnn-heap-reservation` (`host/native/heap.lisp`).
+- Evidence: THEOREM (`fn-crv-accepted-launch-fits-observed-machine`; no
+  proof id registered). At dev the funded pool is never installed
+  (`fnn-extent-pool-storage-start` has no caller): a policy that names a
+  pool reserves memory for a structure that does not run. Stage 0 opens
+  every store in the pool's `:offline` context and serves a cold miss by a
+  direct per-miss read thread, neither of which this figure charges; the
+  funded install (`fn-crv-pool-budget` to `fnn-extent-executor-start`,
+  PRF-1057) is the resource vector's (stage 6), and it charges the pool
+  as it installs it.
+- Exceeded: at start, `:machine-cannot-hold-threads`, exit 1.
+- Not bounded: the unfunded direct reads (their threads and extent
+  buffers) until stage 6.
+
+**M10** -- the allocation epoch.
+- Bounded: nothing, and nothing is charged: the allocation-epoch books
+  (`books/allocation-epoch*.lisp`, Makefile roots) and
+  `host/allocation-epoch-host.lisp` are outside the image (the native build
+  loads neither), so the figure has no term for them. The parked-families
+  row (COMPLETE-BEFORE-6.6.0.md, L3) keeps `allocation-epoch` and its turn
+  slots parked and deletes the rest.
+- Mechanism: none on a served path.
+- Evidence: OPEN; the absence is the native build's load list.
+- Exceeded: not applicable.
+- Not bounded: not applicable.
+
+**M11** -- W9's obligation view, parked.
+- Bounded: nothing, and nothing is charged. The view (a count and a
+  subject trie over the retention pins, `books/retention-obligation-view.lisp`)
+  was rebuilt at every open and reclaim and updated at every install, and
+  no served code read it; the figure reserved 546,341,504 octets for it at
+  the small profile (4 x (80 + 32 x 256 x T + 112 x T) and the delta's
+  room: the old and new view beside each other, each with the collector's
+  copy). Since lane figure-and-contract (2026-10-01, the coordinator's
+  decision) the owner's installer leaves the view alone, the reclaim
+  rebuild no longer builds it, and the figure's term is gone. W9's bounded
+  pilot (ratified 2026-09-30) re-adds an obligation view WITH its reader
+  and its figure term together.
+- Mechanism: `fn-owner-install-ocfg` (`books/owner-obligation-state.lisp`),
+  the host-called installer: one put of the owner.
+- Evidence: THEOREM: `fn-owner-install-keeps-the-obligation-view`,
+  `fn-owner-open-keeps-the-obligation-view` (no install writes the view),
+  and the small base without the term
+  (`fn-heap-small-run-base-of-an-empty-store`, PRF-198). The host still
+  captures and puts the (now empty) global in three places
+  (`host/admission-preparation-host.lisp`,
+  `host/history-owner-completion-host.lisp`,
+  `host/account-config-source-host.lisp`); they carry NIL, allocate
+  nothing, and go after stage 0.
+- Exceeded: not applicable.
+- Not bounded: not applicable.
+
 ## Work per step
 
 The rule (AGENTS.md, D27): bound the work and allocation one request may
@@ -304,7 +384,7 @@ never truncates. The rows below are the places a theorem says so. The
 admitted exceptions, where a served step is linear in the store, are listed
 under "Not bounded".
 
-**W1** — a wire line and the retained body, per byte.
+**W1** -- a wire line and the retained body, per byte.
 - Bounded: after any byte the line under construction is at most the line
   limit and the retained body at most the body limit; a command line is
   `*fn-nntp-max-initial-line-octets*` (510) octets.
@@ -319,7 +399,7 @@ under "Not bounded".
 - Not bounded: the per-octet representation cost of what is retained (a
   cons per octet) is **M5**'s credit, not this row's.
 
-**W2** — a transit article is bounded before its verdict.
+**W2** -- a transit article is bounded before its verdict.
 - Bounded: the body an IHAVE/TAKETHIS retains is at most the profile's body
   limit; the connection is refused 437/439 and closed past it (fuzz F2,
   PKT-846).
@@ -330,7 +410,7 @@ under "Not bounded".
 - Exceeded: 437/439 and close.
 - Not bounded: as **W1**.
 
-**W3** — a POST past the article bound is refused exactly there.
+**W3** -- a POST past the article bound is refused exactly there.
 - Bounded: a POST whose payload exceeds A is refused with `:payload-bound`
   and nothing else in the boundary refusal set; the served bound is the
   installed profile's.
@@ -340,7 +420,7 @@ under "Not bounded".
   allocator number (specs/host.md, code 1).
 - Not bounded: nothing further.
 
-**W4** — a served read step.
+**W4** -- a served read step.
 - Bounded: a counted step consumes at most the octets it was given and
   carries at most one submission to the owner; a drain's result does not
   depend on where the octets were cut.
@@ -349,7 +429,7 @@ under "Not bounded".
 - Exceeded: not applicable (a structural bound).
 - Not bounded: the length of the step's own work inside the owner (**W7**).
 
-**W5** — the stored-payload decoder (DEFLATE, the 2026-09-28 Q15
+**W5** -- the stored-payload decoder (DEFLATE, the 2026-09-28 Q15
 decision; the LZ4 block codec of `payload-lz` is retired).
 - Bounded: `fn-pzd-decode` answers `(:ok OCTETS)` of exactly the recorded
   length N or `(:error STATUS)` (`fn-pzd-decode-ok`); its output limit is
@@ -364,20 +444,20 @@ decision; the LZ4 block codec of `payload-lz` is retired).
 - Not bounded: the compressed size of a record is R, the profile's; the
   decoder has no input-size bound of its own.
 
-**W6** — the DEFLATE inflater (COMPRESS, landing).
+**W6** -- the DEFLATE inflater (COMPRESS).
 - Bounded: per call, output at most the limit; a spent quantum answers
   `:yield` with a state that, resumed, equals the unsplit call; total output
   is at most 256 times the input plus 64 KiB, past which the stream is
-  refused `(:refused :bomb)` and the connection closes (RFC 8054 §2.2.2).
-- Mechanism: fn-zin-feed (pending).
-- Evidence: PENDING, lane compress `d90102b90` (PRF-909, PRF-910). The
+  refused `(:refused :bomb)` and the connection closes (RFC 8054 section 2.2.2).
+- Mechanism: `fn-zin-feed` (lane compress `d90102b90`, merged).
+- Evidence: THEOREM (PRF-909, PRF-910). The
   per-iteration bound is the definition's measure; a Huffman table build is
   one action whose cost no theorem states (it is bounded by the 320 code
   lengths by construction).
 - Exceeded: `:yield` (never truncates) or `(:refused :bomb)`.
 - Not bounded: the table build's constant.
 
-**W7** — the owner's quantum order.
+**W7** -- the owner's quantum order.
 - Bounded: a waiting control request is served after at most
   `*fn-osch-bound*` (3) quanta of other classes.
 - Mechanism: `fn-osch` gate. Host subject: `fnn-owner-gate-pick`.
@@ -388,7 +468,7 @@ decision; the LZ4 block codec of `payload-lz` is retired).
 - Exceeded: not applicable.
 - Not bounded: the wall time of a quantum.
 
-**W8** — fairness under sustained POST load.
+**W8** -- fairness under sustained POST load.
 - Bounded: a waiting control request is admitted within 22 counted quanta
   and 6 sealed batches (`*fn-ocp-pass-bound*` 4 passes), from any scheduler
   value satisfying the invariant.
@@ -400,7 +480,7 @@ decision; the LZ4 block codec of `payload-lz` is retired).
 - Exceeded: not applicable.
 - Not bounded: time (**C1**).
 
-**W9** — a commit batch.
+**W9** -- a commit batch.
 - Bounded: an open batch holds at most `log-batch-records` members
   (`*fn-owb-default-batch-records*`, 64) and `log-batch-octets`
   (`*fn-olr-batch-octets-default*`, 16 MiB), both live config rows; a take
@@ -414,7 +494,7 @@ decision; the LZ4 block codec of `payload-lz` is retired).
 - Exceeded: not applicable.
 - Not bounded: the queue's length between STARTs.
 
-**W10** — public exposure, a rate.
+**W10** -- public exposure, a rate.
 - Bounded: steps per address per quantum, from the profile row
   `exposure-steps-per-second`; exhaustion waits and never closes.
 - Mechanism: `fn-exp-charge`.
@@ -422,7 +502,7 @@ decision; the LZ4 block codec of `payload-lz` is retired).
 - Exceeded: the address waits.
 - Not bounded: aggregate work across addresses.
 
-**W11** — control waiters.
+**W11** -- control waiters.
 - Bounded: `fn-cwait-capacity` = control clients minus reserved workers
   (16 - 4 = 12), fixed, not a profile field (PKT-700 is open: the capacity
   from the operator profile); past it a wait is refused by name.
@@ -435,7 +515,7 @@ decision; the LZ4 block codec of `payload-lz` is retired).
 
 ## Stack
 
-**S1** — the depth lint.
+**S1** -- the depth lint.
 - Bounded: no ACL2 function on the host-called closure recurses outside tail
   position without a named bound. The lint (`tools/depth_check.py`, a
   failing `make check` step) reads every raw host file for the ACL2 names it
@@ -460,23 +540,25 @@ decision; the LZ4 block codec of `payload-lz` is retired).
   raw host Lisp (unlinted on this tree; **S1b**), foreign code and the
   reader.
 
-**S1b** — the debt driven to zero (landing).
-- Bounded: lane depth-debt `fdb14fb80` takes the baseline to 9 debt
+**S1b** -- the debt driven to zero.
+- Bounded: lane depth-debt `fdb14fb80` (merged) took the baseline to 9 debt
   entries (the D27 walks 116 to 0; the nine left are functions whose guards
   are not verified: `fn-bs-take`, `fn-bs-zeros`, `fn-lg-log`, `fn-lg-pack`,
   `fn-lg-unpack`, `fn-srs-decode`, `fn-ores-sealed-plan`,
   `fn-bpnr-retired-names`, `fn-bpnrb-dec`), and adds
   `tools/raw_depth_check.py` over the 1,506 raw host functions (11 bounded,
-  0 debt).
+  0 debt). Codex's join of 2026-09-30 added non-tail recursions since
+  (COMPLETE-BEFORE-6.6.0.md, L12); the current baseline is the generated
+  count below, not these figures.
 - Mechanism: the same lint, plus the raw one.
-- Evidence: PENDING. Even at zero the row stays MEASURED: a lint that finds
+- Evidence: MEASURED. Even at zero the row stays MEASURED: a lint that finds
   nothing is not a theorem that the stack suffices, and no document says the
   lint becomes a different gate at zero.
 - Exceeded: **S2**.
 - Not bounded: raw recursion through `funcall`, `apply` or a function
   value; everything in **S1**'s list.
 
-**S2** — the control stack.
+**S2** -- the control stack.
 - Bounded: every thread's control stack is `:stack-kib` (1,024 KiB,
   `books/profile-limits.lisp`), the same for every profile
   (`fn-heap-stack-kib` ignores its profile argument), and the reservation
@@ -496,7 +578,7 @@ decision; the LZ4 block codec of `payload-lz` is retired).
 
 ## TLS
 
-**T1** — TLS has no bound of its own.
+**T1** -- TLS has no bound of its own.
 - Bounded: only the plaintext prefix a read consumes before STARTTLS
   (consumed <= the octets given; PRF-213) and the memory constant per
   connection (**M7**). The brief's `tools/tls_check.py` does not exist; the
@@ -533,11 +615,11 @@ every POST is told exactly one of *accepted* (`240`), *refused* (`440`/`441`
 with its reason) or *uncertain* (`441 posting failed; the outcome is
 uncertain, do not repost`, then close), and a deadline is a notification,
 never a cancellation. The barrier keeps running past D and past H. The F4
-bars (planning/release-v6.6.0.md §2b) are numbers measured once, at
+bars (planning/release-v6.6.0.md section 2b) are numbers measured once, at
 convergence; this document states what is guaranteed about each outcome
 class and quotes what has been measured with its scope.
 
-**C1** — the disk's mode and what a member is told.
+**C1** -- the disk's mode and what a member is told.
 - Bounded: with D = `*fn-otm-deadline-default-ms*` (5,000 ms, `slow`) and
   H = `*fn-otm-stall-default-ms*` (30,000 ms, `stalled`; both live config
   rows, H never below D): a barrier pending at least D sheds new POSTs by
@@ -569,7 +651,7 @@ class and quotes what has been measured with its scope.
   the `pread` takes, until A4 (**C3**); mutating control's tail; the
   told-uncertain article may still be stored (the documented ambiguity).
 
-**C2** — the health verdict.
+**C2** -- the health verdict.
 - Bounded: `health` holds the disk state exactly when the disk is stalled or
   full, and its exit code (0 all clear, 19 unobserved, 20 to 27 the first
   held state) is 0 or past every outcome code, so the two tables cannot
@@ -582,7 +664,7 @@ class and quotes what has been measured with its scope.
 - Not bounded: the latency of the verdict itself (the F4 bar: cached health
   p99 <= 250 ms, <= 1 s under the injected stall; at convergence).
 
-**C3** — the time bars (landing).
+**C3** -- the time bars.
 - Bounded: a member is answered once; a late completion is consumed once;
   a deadline keeps the I/O owned (the credit is not freed because a client
   timed out); a page that is late past `read-dependency-ms` (5,000 ms) is
@@ -596,7 +678,7 @@ class and quotes what has been measured with its scope.
 - Exceeded: as **C1**.
 - Not bounded: as **C1**.
 
-**C4** — the outcome classes.
+**C4** -- the outcome classes.
 - Bounded: every native command exits with the code of its outcome class
   from one table (generated below); the codes are disjoint; a fence is
   never masked and a refusal is never reported as one.
@@ -609,7 +691,7 @@ class and quotes what has been measured with its scope.
 
 ## Disk
 
-**D1** — no data cap.
+**D1** -- no data cap.
 - Bounded: nothing by the code. The size of an article, the groups it
   names, the transactions a store holds and the bytes it may reach are the
   operator's (T, H, A, G); admission refuses at the operator's own bound by
@@ -623,7 +705,7 @@ class and quotes what has been measured with its scope.
 - Not bounded: growth under no release: "every class grows monotonically
   until admission refuses" (specs/storage.md).
 
-**D2** — a full disk.
+**D2** -- a full disk.
 - Bounded: before an append the owner checks `statvfs` against
   `fn-otm-space-need` (the maintenance reserve, plus twice
   `log-batch-octets`, plus `disk-reserve-octets`, default 64 MiB); below it
@@ -642,7 +724,7 @@ class and quotes what has been measured with its scope.
 - Not bounded: the filesystem's accounting of free space; a second writer
   (A-HOST-EXCLUSIVE-READ assumes none).
 
-**D3** — the checkpoint and the maintenance reserve.
+**D3** -- the checkpoint and the maintenance reserve.
 - Bounded: a checkpoint is deferred when its estimate exceeds the budget or
   the free space; an admitted profile starts reserved and room is within
   the bound.
@@ -656,7 +738,7 @@ class and quotes what has been measured with its scope.
   estimate-checked only; a compaction's memory is not yet bounded by the
   step (PKT-842).
 
-**D4** — on-disk growth per accepted article.
+**D4** -- on-disk growth per accepted article.
 - Per rotation, one rotation entry heads the new segment: 78 octets padded
   to the write unit (`fn-lg-rotation-entry-len`), and the open reads one
   head of `fn-lgl-head-len` octets per checkpoint before any record
@@ -690,8 +772,7 @@ class and quotes what has been measured with its scope.
   overhead plus the record's octets plus the index rows), with the
   checkpoint's estimate proved an upper bound of its written size.
 
-**D5** — expiry releases only what no holder keeps; online compaction
-(landing in part).
+**D5** -- expiry releases only what no holder keeps; online compaction.
 - Bounded: a per-group expiry policy releases through the one reclaim path,
   and an article a holder keeps is never expired (RET-008, PRF-918; lane
   expiry, merged 2026-09-29); `store compact` on a live owner served as
@@ -703,8 +784,9 @@ class and quotes what has been measured with its scope.
 - Evidence: THEOREM for the policy (PRF-918: what the operator sets reads
   back, the age instant stays within the keep and purge bounds, a held
   article is not expired; none of its events is a work or space bound, so
-  this row cites it for the release path, not for a bound); PENDING for
-  online compaction.
+  this row cites it for the release path, not for a bound); online
+  compaction's code is merged (`baec98157`) and has no bound of its own
+  here.
 - Exceeded: as **D2**.
 - Not bounded: the transient of **D3**; expiry's own pass is offline on this
   tree, so its work per step is the offline reclaim's, and at the merged
@@ -734,12 +816,15 @@ nothing unnamed except the two gaps this document names. The resource rows
 use: A-DURABILITY and A-WRITE-ISOLATION (**D2**, the barrier), A-HOST and
 A-HOST-EXCLUSIVE-READ (every host subject), A-DURABLE-EXTENT and
 A-DURABLE-LZ (**W5**), A-PGS-HOST-IO (the page store's reads), and A-EXTRACT
-(the extracted image, a deployment coordinate). Two things the rows depend
-on have no `A-*` row: the TLS library (**T1**) and the SBCL runtime itself
-(its collector, its dynamic-space cap, its control-stack guard page), which
-every memory and stack row's "exceeded" field runs into. Naming them would
-take one row each with the qualification evidence that stands in for a
-proof, as A-CRYPTO-NATIVE does for BLAKE3.
+(the extracted image, a deployment coordinate). The two things every
+memory and stack row's "exceeded" field runs into are named too: the TLS
+library (**T1**) by A-TLS-NATIVE, and the SBCL runtime (its collector, its
+dynamic-space cap, its control-stack guard page) by A-SBCL-RUNTIME, each
+with the qualification evidence that stands in for a proof, as
+A-CRYPTO-NATIVE does for BLAKE3. A-SBCL-INTERNALS names the unexported
+runtime internals `host/native/runtime-collector.lisp` reads (the
+collector's page-table lock, `next_free_page`, `sub-gc`); that file is not
+on a served path and goes with the runtime bootstrap family (L3).
 
 ## Not bounded
 
@@ -852,27 +937,30 @@ not on this tree yet; its citations are checked once they land.
 | --- | --- | --- | --- | --- |
 | M1 | `books/heap-figure`: `fn-heap-decide-refuses-exactly-past-the-machine`, `fn-heap-decision-exit-code-of-a-refusal`, `fn-heap-operation-decide-holds-the-store`; `books/heap-reservation`: `fn-heap-init-decide-fits-the-budget-and-the-machine`, `fn-heap-init-decide-refuses-the-operators-request-past-the-budget`, `fn-heap-reserve-decide-holds-every-thread-the-node-runs`, `fn-heap-reserve-thread-refusal-exits-1` | PRF-198 | `planning/evidence/heap-from-profile-2026-09-26.md`, `planning/evidence/heap-bounds-2026-09-28.md` |  |
 | M2 | `books/heap-store-figure`: `fn-heap-store-figure-holds-every-store`, `fn-heap-store-history-holds-payload-and-memberships`, `fn-heap-records-retained-within-the-terms` | PRF-198, PRF-314 | `planning/evidence/heap-bounds-2026-09-28.md` |  |
-| M2b | `books/heap-store-figure`: `fn-heap-record-charge-is-the-budgets-charge`, `fn-heap-record-charge-covers-the-state` | none | none | lane/heap-pool (heap-bounds-2 resumed; uncommitted WIP on 2026-09-28, sha at merge) |
+| M2b | `books/heap-store-figure`: `fn-heap-record-charge-is-the-budgets-charge`, `fn-heap-record-charge-covers-the-state`, `fn-heap-records-retained-within-the-terms`; `books/heap-figure`: `fn-heap-small-run-base-of-an-empty-store` | PRF-198 | `planning/evidence/heap-bounds-2026-09-28.md` |  |
 | M3 | `books/heap-breakdown`: `fn-heap-breakdown-sums-to-the-reservation`, `fn-heap-breakdown-is-inits-reservation` | PRF-375 | `planning/evidence/f8-reservation-2026-09-28.md` |  |
 | M4 | `books/heap-open-nursery`: `fn-heap-open-nursery-trigger-bounds`, `fn-heap-store-figure-holds-every-store-at-the-open-trigger` | PRF-364 | none |  |
 | M5 | `books/owner-article-slots`: `fn-oas-read-span-admits-within-the-slots`; `books/owner-article-held`: `fn-oah-read-span-leaves-the-others-article-mode`; `books/heap-store-figure`: `fn-heap-article-slots-are-held`, `fn-heap-article-slots-bounds` | PRF-377 | `planning/evidence/zero-copy-commit-2026-09-28.md` |  |
 | M5b | `books/owner-article-slots`: `fn-oas-refusal-line-follows-the-disk-unfolds` | PRF-377 | `planning/evidence/credits-stall-2026-09-28.md` |  |
 | M6 | `books/memory-credits`: `fn-mcr-transitions-keep-funded`, `fn-mcr-acquire-refuses-exactly-past-the-budget`, `fn-mcr-grow-within-the-reserve-is-admitted`, `fn-mcr-overdraw-is-within-the-completion-reserve`; `books/owner-credits`: `fn-mca-read-span-keeps-funded`, `fn-mca-commit-steps-keep-funded`, `fn-mca-initial-funds-exactly-the-articles` | PRF-380 | `planning/evidence/f8-reservation-2026-09-28.md`, `planning/evidence/credits-2026-09-28.md` |  |
-| M7 | `books/connection-budget`: `fn-cbud-run-decide-refuses-exactly-past-the-limit`, `fn-cbud-step-read-octets-is-bounded`, fn-cbud-deltas-refusal-keeps-the-capacity-held (pending) | PRF-223 | `planning/evidence/connection-multiplexing-2026-09-26.md` |  |
+| M7 | `books/connection-budget`: `fn-cbud-run-decide-refuses-exactly-past-the-limit`, `fn-cbud-deltas-refusal-keeps-the-machine-held`; `books/connection-read-quantum`: `fn-cbud-step-read-octets-is-bounded` | PRF-223 | `planning/evidence/connection-multiplexing-2026-09-26.md` |  |
 | M8 | none (measured or open) | none | `planning/evidence/f8-reservation-2026-09-28.md` |  |
+| M9 | `books/cold-read-reservation`: `fn-crv-accepted-launch-fits-observed-machine` | none | none |  |
+| M10 | none (measured or open) | none | none |  |
+| M11 | `books/owner-obligation-state`: `fn-owner-install-keeps-the-obligation-view`, `fn-owner-open-keeps-the-obligation-view`; `books/heap-figure`: `fn-heap-small-run-base-of-an-empty-store` | PRF-198 | none |  |
 | W1 | `books/wire`: `fn-wire-feed-byte-retained-input-is-bounded` | PRF-218 | none |  |
 | W2 | `books/transit-bound`: `fn-tb-served-run-retains-at-most-the-body-limit` | PRF-313 | none |  |
 | W3 | `books/store-budget-naming`: `fn-sbud-post-boundary-refuses-exactly-past-the-profile-bound`; `books/owner-served-bound`: `fn-osb-install-serves-the-profile-bound` | PRF-110, PRF-095 | none |  |
 | W4 | `books/served-tls-prefix`: `fn-served-step-counted-consumed-is-bounded`, `fn-served-step-counted-carries-at-most-one-submission`, `fn-served-drain-run-is-boundary-independent` | PRF-213 | none |  |
 | W5 | `books/payload-deflate`: `fn-pzd-decode-ok`, `fn-pzd-decode-bufs-is-decode` | PRF-257 | none |  |
-| W6 | `books/deflate-inflate`: `fn-zin-feed-out-bound`, `fn-zin-loop-stops`, `fn-zin-loop-split-budget`, `fn-zin-feed-bomb-bound` | PRF-909, PRF-910 | none | lane/compress d90102b90 |
+| W6 | `books/deflate-inflate`: `fn-zin-feed-out-bound`, `fn-zin-loop-stops`, `fn-zin-loop-split-budget`, `fn-zin-feed-bomb-bound` | PRF-909, PRF-910 | none |  |
 | W7 | `books/owner-scheduler`: `fn-osch-control-waits-at-most-the-bound` | PRF-248 | none |  |
 | W8 | `books/owner-commit-fairness`: `fn-ocf-control-waits-at-most-the-bound`, `fn-ocf-potential-at-most-twenty-two`, `fn-ocf-seal-potential-at-most-six` | PRF-901 | none |  |
 | W9 | `books/owner-batch`: `fn-owb-batch-within-bounds`; `books/store-log-route`: `fn-olr-take-keeps-the-bounds` | PRF-254 | none |  |
 | W10 | `books/public-exposure`: `fn-exp-charge-bounds-steps-per-quantum`, `fn-exp-charge-waits-and-never-closes` | PRF-161 | none |  |
 | W11 | `books/consumer-wait`: `fn-cwait-capacity-is-positive` | none | none |  |
 | S1 | none (measured or open) | none | `tools/depth_check.py`, `tools/depth_baseline.json`, `planning/evidence/open-depth-2026-09-28.md`, `planning/evidence/serve-depth-2026-09-28.md`, `planning/evidence/peer-list-depth-2026-09-28.md` |  |
-| S1b | none (measured or open) | none | `tools/raw_depth_check.py`, `tools/raw_depth_baseline.json` | lane/depth-debt fdb14fb80 |
+| S1b | none (measured or open) | none | `tools/raw_depth_check.py`, `tools/raw_depth_baseline.json` |  |
 | S2 | `books/heap-reservation`: `fn-heap-reserve-decide-holds-every-thread-the-node-runs` | PRF-198 | none |  |
 | T1 | `books/owner-tls-prefix`: `fn-own-read-tls-prefix-consumed-is-bounded`; `books/served-tls-prefix`: `fn-served-step-counted-consumed-is-bounded` | PRF-213, PRF-223 | `planning/evidence/connection-multiplexing-2026-09-26.md`, `planning/evidence/tls-reload-2026-09-26.md` |  |
 | C1 | `books/owner-time-model`: `fn-otm-stall-tells-no-member-its-outcome`, `fn-otm-shed-iff-slow`, `fn-otm-wait-stays-within-the-stall`, `fn-otm-f4w-stall-within-h`, `fn-otm-barrier-reader-bound`; `books/owner-batch`: `fn-owb-fence-failed-answers-uncertain` | PRF-311, PRF-255 | `planning/evidence/time-model-2026-09-27.md`, `planning/evidence/time-model-2-2026-09-27.md` |  |
@@ -883,7 +971,7 @@ not on this tree yet; its citations are checked once they land.
 | D2 | `books/owner-time-model`: `fn-otm-admit-keeps-the-space-need`; `books/owner-time-journal-writer`: `fn-otm-jw-file-reads-agrees-or-gap` | PRF-359, PRF-360 | none |  |
 | D3 | `books/owner-checkpoint-writer`: `fn-ockp-decide-defers-by-the-estimate`; `books/store-maintenance-reserve`: `fn-smr-roomp-is-within-the-bound` | PRF-200, PRF-129 | none |  |
 | D4 | `books/store-log-durable`: `fn-lgu-acknowledged-article-is-recoverable-at-every-crash-point`, `fn-lgu-acknowledged-article-is-recoverable-at-every-cut-of-recovery`; `books/store-log-crash`: `fn-lg-entry-len-is-units`; `books/store-log-extend`: `fn-olr-extension-target-is-an-extent`; `books/store-log`: `fn-lg-rotation-entry-len`; `books/store-log-lineage`: `fn-lgl-open-of-rotated-segment` | PRF-936, PRF-244, PRF-268, PRF-979 | `planning/evidence/byte-model-2026-09-29.md` |  |
-| D5 | `books/expiry-verdict`: `fn-xpy-releasablep-is-rule-or-expired-and-unheld`, `fn-xpy-held-article-is-not-expired` | PRF-918 | `planning/evidence/expiry-q11-2026-09-28.md` | lane/operations baec98157 (PKT-868, PRF-908: online compaction) |
+| D5 | `books/expiry-verdict`: `fn-xpy-releasablep-is-rule-or-expired-and-unheld`, `fn-xpy-held-article-is-not-expired` | PRF-918 | `planning/evidence/expiry-q11-2026-09-28.md` |  |
 | X1 | `books/refusal-effect`: `fn-rfx-unserved-prepare-is-unchanged-by-definition`, `fn-rfx-unaffordable-prepare-is-unchanged-by-definition`, `fn-rfx-refused-reconfigure-is-unchanged-by-definition`, `fn-rfx-refused-post-keeps-records`, `fn-rfx-refused-post-keeps-configuration`, `fn-rfx-refused-post-consumes-one-txid`, `fn-rfx-config-record-txid-is-the-node-next-by-definition` | none | `planning/evidence/closure-theorems-2026-09-29.md` |  |
 | X2 | none (measured or open) | none | `planning/evidence/closure-theorems-2026-09-29.md` |  |
 
@@ -936,7 +1024,7 @@ The outcome classes and their codes (`*fn-outcome-codes*`, books/outcome-class.l
 Counts.
 
 - Depth lint baseline (tools/depth_baseline.json): 2 debt entries (data-sized recursion on a host-called path with no bound), 193 bounded.
-- Named assumptions: 23 `A-*` rows in specs/failures.md, 13 encapsulates in books/assumptions.lisp.
+- Named assumptions: 24 `A-*` rows in specs/failures.md, 12 encapsulates in books/assumptions.lisp.
 - The throughput gate's tolerance (tools/throughput_gate.py, planning/throughput-baseline.json): 25% over the baseline per operation, plaintext.
 
 <!-- END resource-contract -->
