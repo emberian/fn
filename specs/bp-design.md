@@ -1123,6 +1123,16 @@ never run on the served path. This is an extent invariant, not full metadata
 grammar, actual provider byte equality/pinned lifetime, every-window alpha
 refinement or cryptographic verification.
 
+`books/bpsec-asb-terminal.lisp` establishes and preserves the terminal
+boundary: a carried `:parsed` cursor has stage `:done` and its offset equals
+the declared source end exactly. The actual start, drive and step preserve
+this implication, with reachable parsed witnesses for a literal unwrapped
+ASB sequence, short-window resume, declared truncation and trailing-data
+refusal. Mutating only a parsed stage or offset retains the other terminal
+conjunct and breaks the invariant and both zero-quantum output conclusions.
+It is structural completion; metadata grammar, every-window alpha, provider
+lifetime and cryptographic verification still require their own boundaries.
+
 The logical target-graph reference in `books/bpsec-target.lisp` binds each
 ASB as `(block-number . ASB)`, checks actual block existence/type, unique
 service/target pairs, forbidden security targets and payload BCB flags. Every

@@ -17972,6 +17972,21 @@
           "kind": "theorem",
           "name": "fn-bps-asb-step-preserves-aggregate-context",
           "pending_subject": "Actual ASB accumulated metadata span extent composed with current body/head/source range. Ghost predicates never served; complete grammar/every-window alpha, physical immutable backing/pinned lifetime and installed BP caller/crypto gate remain open. Proper-local source admission only."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-asb-start-establishes-terminal-boundary",
+          "pending_subject": "Actual ASB terminal PARSED implies DONE at exactly the declared source end. Ghost predicate never served; complete grammar/every-window alpha, physical immutable backing/pinned lifetime and installed BP caller/crypto gate remain open. Proper-local source admission only."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-asb-drive-preserves-terminal-boundary",
+          "pending_subject": "Actual ASB terminal PARSED implies DONE at exactly the declared source end. Ghost predicate never served; complete grammar/every-window alpha, physical immutable backing/pinned lifetime and installed BP caller/crypto gate remain open. Proper-local source admission only."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-asb-step-preserves-terminal-boundary",
+          "pending_subject": "Actual ASB terminal PARSED implies DONE at exactly the declared source end. Ghost predicate never served; complete grammar/every-window alpha, physical immutable backing/pinned lifetime and installed BP caller/crypto gate remain open. Proper-local source admission only."
         }
       ]
     },
