@@ -2363,3 +2363,26 @@ not a host-supplied allowance or permission to reuse the incoming RX buffer.
 in ACL2. Its partial-write boundary names the same token-selected bounded
 window. These conditional historical-source properties do not supply the
 missing storage factory, registered parent or terminal alias receipt.
+
+The internal paired render step advances the current RH plan and the registered
+range controller's current plan in the same child action. Positioning skips one
+effect; a literal reply step emits one scalar octet; group and number lookup
+advance one maintained cursor bit; terminal preparation retains the actual owed
+state and later effects. The immutable original plan remains in unchanged
+registered custody inputs. The current-plan coupling and identity/input frame
+are conditional source properties; they do not establish the complete original
+byte/effect trajectory. The held-row constructor and continuation must carry
+executing parser phases, with invalid and exhausted rows progressing to the next
+number. Actual captured held16 source establishment, the public MIO borrowing
+entry, whole runtime/factory allowance and terminal return remain open.
+
+The named literal-step boundary equates its scalar octet and returned plan to
+the actual one-byte paid head renderer, including that renderer's complete
+output buffer. Reply status and a valid octet head are the two premises; a
+redundant nonempty-head premise was removed only after proving the stronger
+statement. The actual selected-held installer establishes executing phases,
+and current-ready ONE returning `:held` retains Message-ID validation or an
+active parse/emission phase. These are caller proof carries, never validators
+run by the scalar callback. Historical MODEL and separately labelled malformed
+state teeth accompany the source boundary; captured-source establishment and
+the complete selected-range trajectory remain separate obligations.

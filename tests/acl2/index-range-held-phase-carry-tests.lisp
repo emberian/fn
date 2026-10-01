@@ -1,0 +1,41 @@
+; Historical MODEL setup and explicitly invalid-guard MUTATION.
+(in-package "ACL2")
+(include-book "../../books/index-range-held-phase-carry")
+(include-book "index-range-render-output-tests")
+(defthm ibrphase-actual-held-one-model-positive
+ (let* ((s (ibrjout2-setup)) (qs (nth 1 s)) (arena (nth 3 s))
+        (control (fn-ibp-qs-controlsi 0 qs))
+        (r (fn-ibr-held-one control arena)))
+  (and (fn-ibr-held-current-ready-p control arena)
+       (fn-ibr-held-executing-phase-p control)
+       (eq (mv-nth 1 r) :held)
+       (fn-ibr-held-executing-phase-p (mv-nth 2 r))))
+ :rule-classes nil :hints (("Goal" :in-theory (enable ibrjout2-setup))))
+; MUTATION: corrupt active phase is not a registered constructor result.
+(defthm ibrphase-current-ready-removal-mutation
+ (let* ((s (ibrjout2-setup)) (qs (nth 1 s)) (arena (nth 3 s))
+        (c (fn-ibp-qs-controlsi 0 qs)) (w (fn-spp-at 8 c))
+        (cell (fn-spp-at 4 w))
+        (badcell (fn-osh-make (fn-hmid-at 1 cell) (fn-hmid-at 2 cell)
+                              (fn-hmid-at 3 cell) :corrupt nil))
+        (bad (fn-ibr-restate c :held (fn-spp-at 6 c) (fn-spp-at 7 c)
+                (fn-ibr-work (fn-spp-at 1 w) (fn-spp-at 2 w)
+                             (fn-spp-at 3 w) badcell)))
+        (r (fn-ibr-held-one bad arena)))
+  (and (not (fn-ibr-held-current-ready-p bad arena))
+       (eq (mv-nth 1 r) :held)
+       (not (fn-ibr-held-executing-phase-p (mv-nth 2 r)))))
+ :rule-classes nil :hints (("Goal" :in-theory (enable ibrjout2-setup))))
+
+
+(defthm ibrphase-selected-held-constructor-model-positive
+ (let* ((s (ibrjout2-setup)) (qs (nth 1 s)) (arena (nth 3 s))
+        (c (fn-ibp-qs-controlsi 0 qs)) (w (fn-spp-at 8 c))
+        (row (fn-hmid-at 3 (fn-spp-at 4 w)))
+        (before (fn-ibr-restate c :row (fn-spp-at 6 c) (fn-spp-at 7 c)
+                  (fn-ibr-work (fn-spp-at 1 w) (fn-spp-at 2 w) nil nil)))
+        (r (fn-ibr-selected-held-row-install before row arena)))
+  (and (fn-ibr-held-install-ready-p before row arena)
+       (eq (mv-nth 0 r) :held)
+       (fn-ibr-held-executing-phase-p (mv-nth 1 r))))
+ :rule-classes nil :hints (("Goal" :in-theory (enable ibrjout2-setup))))

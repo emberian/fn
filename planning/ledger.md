@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1994 |
+| Books read | 1998 |
 | Certification roots in the Makefile | 1866 |
 | Books inside the root closure | 1938 |
-| `defthm` and `defthmd` events | 30308 |
-| `defun` events | 19342 |
+| `defthm` and `defthmd` events | 30321 |
+| `defun` events | 19343 |
 | Functions with verified guards | 3551 |
 | Functions declared `:verify-guards nil` and never verified | 2350 |
-| Functions left at the default with an explicit guard | 10569 |
+| Functions left at the default with an explicit guard | 10570 |
 | Functions left at the default with no guard | 2872 |
 | `assert-event` checks | 24064 |
 | `must-fail` checks | 2519 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
-| `encapsulate` events | 158 |
+| `encapsulate` events | 160 |
 | Theorems flagged SUSPECT by shape | 1266 |
 | Export-hygiene warnings | 348 |
 | Enabled-projection warnings | 55 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2727 |
+| Include-hygiene warnings | 2732 |
 | Host-names warnings | 2193 |
 | Hand-written-record warnings | 18 |
 
@@ -558,7 +558,9 @@ that `make certify` requests.
 | `books/image-world.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/index-publication-shape.lisp` | - | 23 | 20 | 18/0/2/0 | 0 | 0 | 0 |
 | `books/index-range-controller.lisp` | root | 4 | 6 | 0/0/6/0 | 0 | 0 | 0 |
+| `books/index-range-held-phase-carry.lisp` | - | 4 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/index-range-held-row-controller.lisp` | - | 5 | 7 | 2/0/5/0 | 0 | 0 | 0 |
+| `books/index-range-literal-reply-refinement.lisp` | - | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/index-range-number-controller.lisp` | - | 3 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/index-range-render-active.lisp` | - | 3 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/index-range-render-custody.lisp` | - | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
@@ -1585,7 +1587,9 @@ that `make certify` requests.
 | `tests/acl2/identity-retain-carried-tests.lisp` | root | 0 | 5 | 0/3/0/2 | 39 | 0 | 0 |
 | `tests/acl2/identity-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 40 | 0 | 0 |
 | `tests/acl2/index-range-controller-tests.lisp` | root | 10 | 2 | 0/2/0/0 | 0 | 0 | 0 |
+| `tests/acl2/index-range-held-phase-carry-tests.lisp` | - | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/index-range-held-row-controller-tests.lisp` | - | 11 | 7 | 0/4/0/3 | 0 | 0 | 0 |
+| `tests/acl2/index-range-literal-reply-refinement-tests.lisp` | - | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/index-range-number-controller-tests.lisp` | - | 4 | 6 | 0/4/2/0 | 0 | 0 | 0 |
 | `tests/acl2/index-range-render-output-tests.lisp` | - | 4 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `tests/acl2/index-range-render-trajectory-tests.lisp` | - | 4 | 1 | 0/0/0/1 | 0 | 0 | 0 |
