@@ -377,34 +377,67 @@
 ; natural, which the stobj's type gives) and its conclusion, observed as
 ; every field of the row, the count and the pool's fill after append-t and
 ; after the plain append of the encoded record from the same cleared image.
-; Labelled MUTATION: the plain append of a record differing in one octet of
-; the program observes differently.
-(defun drt-t1-obs (drt-t1$c)
-  (declare (xargs :stobjs drt-t1$c :verify-guards nil))
-  (list (drt-t1$c-count drt-t1$c) (drt-t1$c-fill drt-t1$c) (drt-t1$c-get-a 0 drt-t1$c)
-        (drt-t1$c-get-m 0 drt-t1$c) (drt-t1$c-get-tr 0 drt-t1$c) (drt-t1$c-get-b 0 drt-t1$c)))
+; The WHOLE foundation, every field: each array's length and every element,
+; the count and the fill.  Equal snapshots are equal stobjs (a stobj is the
+; list of its fields), so comparing them asserts the theorem's conclusion,
+; an equality of whole states (Codex r23 F4).
+(defun drt-t1-arr-loop (i n f drt-t1$c)
+  (declare (xargs :stobjs drt-t1$c :verify-guards nil
+                  :measure (nfix (- (nfix n) (nfix i)))))
+  (if (< (nfix i) (nfix n))
+      (cons (case f
+              (:a (drt-t1$c-ai i drt-t1$c))
+              (:moff (drt-t1$c-m-offi i drt-t1$c))
+              (:mlen (drt-t1$c-m-leni i drt-t1$c))
+              (:troff (drt-t1$c-tr-offi i drt-t1$c))
+              (:trlen (drt-t1$c-tr-leni i drt-t1$c))
+              (:b (drt-t1$c-bi i drt-t1$c))
+              (otherwise (drt-t1$c-pooli i drt-t1$c)))
+            (drt-t1-arr-loop (+ 1 (nfix i)) n f drt-t1$c))
+    nil))
 
+(defun drt-t1-snap (drt-t1$c)
+  (declare (xargs :stobjs drt-t1$c :verify-guards nil))
+  (list (drt-t1-arr-loop 0 (drt-t1$c-a-length drt-t1$c) :a drt-t1$c)
+        (drt-t1-arr-loop 0 (drt-t1$c-m-off-length drt-t1$c) :moff drt-t1$c)
+        (drt-t1-arr-loop 0 (drt-t1$c-m-len-length drt-t1$c) :mlen drt-t1$c)
+        (drt-t1-arr-loop 0 (drt-t1$c-tr-off-length drt-t1$c) :troff drt-t1$c)
+        (drt-t1-arr-loop 0 (drt-t1$c-tr-len-length drt-t1$c) :trlen drt-t1$c)
+        (drt-t1-arr-loop 0 (drt-t1$c-b-length drt-t1$c) :b drt-t1$c)
+        (drt-t1-arr-loop 0 (drt-t1$c-pool-length drt-t1$c) :pool drt-t1$c)
+        (drt-t1$c-count drt-t1$c) (drt-t1$c-fill drt-t1$c)))
+
+; drt-t1$c-append-t-is-append at its literal statement: antecedents (the
+; tree field's okp, the INPUT state's fill a natural) asserted on the run's
+; input; conclusion the equality of the whole states.  Labelled MUTATION:
+; the plain append of a record differing in one octet of the program gives
+; an unequal whole state.
 (defun drt-t1-is-append-run (drt-t1$c)
   (declare (xargs :stobjs drt-t1$c :verify-guards nil))
   (let* ((rec (list 7 '(1 2) *drt-tree* t))
          (drt-t1$c (drt-t1$c-clear drt-t1$c))
+         (drt-t1$c (drt-t1$c-append (list 1 '(9 9 9) '(4) nil) drt-t1$c))
+         (in-fill (drt-t1$c-fill drt-t1$c))
          (drt-t1$c (drt-t1$c-append-t rec drt-t1$c))
-         (o1 (drt-t1-obs drt-t1$c))
+         (s1 (drt-t1-snap drt-t1$c))
          (drt-t1$c (drt-t1$c-clear drt-t1$c))
+         (drt-t1$c (drt-t1$c-append (list 1 '(9 9 9) '(4) nil) drt-t1$c))
          (drt-t1$c (drt-t1$c-append (drt-t1-tree-enc rec) drt-t1$c))
-         (o2 (drt-t1-obs drt-t1$c))
+         (s2 (drt-t1-snap drt-t1$c))
          (prog (fn-scc-program *drt-tree*))
          (drt-t1$c (drt-t1$c-clear drt-t1$c))
+         (drt-t1$c (drt-t1$c-append (list 1 '(9 9 9) '(4) nil) drt-t1$c))
          (drt-t1$c (drt-t1$c-append (list 7 '(1 2) (cons (logxor 1 (car prog)) (cdr prog)) t)
                                     drt-t1$c))
-         (o3 (drt-t1-obs drt-t1$c)))
-    (mv (list (adt-tree-okp (caddr rec)) (natp (nth 2 o1)) (equal o1 o2) (equal o1 o3)) drt-t1$c)))
+         (s3 (drt-t1-snap drt-t1$c)))
+    (mv (list (adt-tree-okp (caddr rec)) (natp in-fill) (< 0 in-fill) (equal s1 s2) (equal s1 s3))
+        drt-t1$c)))
 
 (defun drt-t1-is-append-ok ()
   (declare (xargs :verify-guards nil))
   (with-local-stobj drt-t1$c
     (mv-let (got drt-t1$c) (drt-t1-is-append-run drt-t1$c)
-      (equal got '(t t t nil)))))
+      (equal got '(t t t t nil)))))
 
 (assert-event (drt-t1-is-append-ok))
 
@@ -460,9 +493,10 @@
   (let* ((a0 nil)
          (ok0 (equal (drt-w1$c-fill drt-w1$c) (adt-load *drt-w1-schema* a0)))
          (r1 (list 7 '(1 2 3) *drt-tree*))
+         (okp1 (adt-tree-okp (caddr r1)))
          (drt-w1$c (drt-w1$c-append-t r1 drt-w1$c))
          (a1 (drt-w1$a-append-t r1 a0))
-         (ok1 (equal (drt-w1$c-fill drt-w1$c) (adt-load *drt-w1-schema* a1)))
+         (ok1 (and okp1 (equal (drt-w1$c-fill drt-w1$c) (adt-load *drt-w1-schema* a1))))
          (r2 (list 8 '(9) (fn-scc-program '(1 2))))
          (drt-w1$c (drt-w1$c-append r2 drt-w1$c))
          (a2 (drt-w1$a-append r2 a1))
@@ -482,7 +516,8 @@
 
 (assert-event (drt-w1-run-ok))
 
-; Hypothesis removal: drt-t1 (section 6) is not write-once.  The same
+; Labelled MUTATION (a schema mutation, not a hypothesis removal; Codex r23
+; F5): drt-t1 (section 6) is not write-once.  The same
 ; append-t, then its octets field set to the value it already holds: the
 ; logical sequence is unchanged, the fill grew by the value's length, and
 ; the conclusion fill = load fails.
@@ -505,6 +540,57 @@
       (equal got (list t t nil 3)))))
 
 (assert-event (drt-t1-rewrite-ok))
+
+; HYPOTHESIS REMOVAL, one hypothesis at a time, of
+; drt-w1$c-fill-is-load-of-append-t at its literal statement.
+; (1) Without (adt-fill-is-load schema c a): c holds one record, a is the
+;     empty sequence; the retained hypothesis (the tree's okp) holds, the
+;     omitted one fails, and so does the conclusion.
+(defun drt-w1-load-removal (drt-w1$c)
+  (declare (xargs :stobjs drt-w1$c :verify-guards nil))
+  (let* ((r1 (list 7 '(1 2 3) *drt-tree*))
+         (drt-w1$c (drt-w1$c-clear drt-w1$c))
+         (drt-w1$c (drt-w1$c-append (list 1 '(5 5) (fn-scc-program '(1))) drt-w1$c))
+         (a0 nil)
+         (hyp-load (equal (drt-w1$c-fill drt-w1$c) (adt-load *drt-w1-schema* a0)))
+         (hyp-okp (adt-tree-okp (caddr r1)))
+         (drt-w1$c (drt-w1$c-append-t r1 drt-w1$c))
+         (a1 (drt-w1$a-append-t r1 a0)))
+    (mv (list hyp-okp hyp-load (equal (drt-w1$c-fill drt-w1$c) (adt-load *drt-w1-schema* a1)))
+        drt-w1$c)))
+
+(defun drt-w1-load-removal-ok ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj drt-w1$c
+    (mv-let (got drt-w1$c) (drt-w1-load-removal drt-w1$c)
+      (equal got '(t nil nil)))))
+
+(assert-event (drt-w1-load-removal-ok))
+
+; (2) Without (adt-tree-okp TREE): a tree outside the codec's domain (a
+;     natural of 2041 bits).  The retained hypothesis (fill = load, from the
+;     empty image) holds, the omitted one fails, and the conclusion fails
+;     (fill 260, load 261).  Outside its guard the executable cannot be
+;     called, so this runs the definitions -- the theorem's subject -- with
+;     guard checking off.
+(defun drt-w1-okp-removal (tree drt-w1$c)
+  (declare (xargs :stobjs drt-w1$c :verify-guards nil))
+  (let* ((r1 (list 7 '(1 2 3) tree))
+         (drt-w1$c (drt-w1$c-clear drt-w1$c))
+         (hyp-load (equal (drt-w1$c-fill drt-w1$c) (adt-load *drt-w1-schema* nil)))
+         (hyp-okp (adt-tree-okp tree))
+         (drt-w1$c (drt-w1$c-append-t r1 drt-w1$c))
+         (a1 (drt-w1$a-append-t r1 nil)))
+    (mv (list hyp-load hyp-okp (equal (drt-w1$c-fill drt-w1$c) (adt-load *drt-w1-schema* a1)))
+        drt-w1$c)))
+
+(defun drt-w1-okp-removal-ok (tree)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj drt-w1$c
+    (mv-let (got drt-w1$c) (drt-w1-okp-removal tree drt-w1$c)
+      (equal got '(t nil nil)))))
+
+(with-guard-checking-event :none (assert-event (drt-w1-okp-removal-ok (expt 2 2040))))
 
 (assert-event (equal (cdr (assoc-eq 'drt-w1 (table-alist 'fn-generated (w state))))
                      '(:def-representation :scalar nil :generic nil :implementation drt-w1 :invariant nil
