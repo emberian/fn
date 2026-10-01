@@ -63,7 +63,7 @@ file pin, baseline funding, fixed page-buffer leases and positional I/O. The
 producer joins captured Store/root/source tokens. Astra owns the private output
 image. This reader owns only the bounded input mapping/authentication chain.
 
-The first admitted component is `fn-hsr-scan-begin/word/entry`. Its fixed nine-cell
+The first admitted component is `fn-hsr-scan-begin`/`fn-hsr-scan-word`/`fn-hsr-scan-entry`. Its fixed nine-cell
 state contains five scalar coordinates, at most six selected u64 words, a
 malformed flag and two opaque identities. A word tick preserves the logical
 invariant, advances by one, and conserves both the exact selected stream and
