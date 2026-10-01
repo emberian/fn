@@ -9,9 +9,14 @@
 (include-book "index-connection-repin-prepare-host")
 (include-book "receiver-repin-source-host")
 (include-book "../books/index-reader-rx-source-completion")
-; fn-owner-ocfg (the request-complete arm reads the installed owner); a
+; fn-owner-ocfg, fn-owner-put-credits, fn-owner-install-ocfg,
+; fn-olog-served-refusal-lines and fn-owner-exposure-observe; a
 ; certified book names what it calls, the raw host order is not its world.
 (include-book "../books/owner-state-accessors")
+(include-book "../books/owner-log")
+(include-book "../books/owner-obligation-state")
+(include-book "../books/owner-connection-state")
+(include-book "owner-exposure-host")
 
 ; Token-only consumer of the actual registered range control. The callee
 ; validates the exact active query/payload claim before borrowing its plan.

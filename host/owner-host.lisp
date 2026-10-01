@@ -3888,9 +3888,10 @@
 
 
 
-(defun fn-owner-exposure-limits (state)
-  (declare (xargs :stobjs state :mode :program))
-  (fn-owner-callback-exposure-limits state))
+;; fn-owner-exposure-limits and fn-owner-exposure-observe (after a served
+;; step, below) are host/owner-exposure-host.lisp: a certified host book, so
+;; that host books calling them (index-reader-request-host) certify too.
+(include-book "owner-exposure-host")
 
 ;; PRF-986 (PKT-639, W2a): the TLS handshake as an admission decision
 ;; (books/tls-handshake-budget.lisp).  The limits are the operator's live
@@ -4094,26 +4095,6 @@
                            (fn-owner-exposure-now state)))
          (state (f-put-global 'fn-owner-exposure (cdr r) state)))
     (value (if (equal (car r) :proceed) :proceed (cadr (car r))))))
-
-;; After a served step (fn-owner-chunk-span-at below): `fn-owner-exposure-close'
-;; holds the 400 the host appends before it closes, or NIL.  The step's
-;; EFFECTS go in, not its reply octets: fn-exp-observe-effects is
-;; fn-exp-observe of (fn-served-reply-octets effects)
-;; (fn-exp-observe-effects-unfolds) and scans the effects in constant stack
-;; without building that list (books/public-exposure-reply.lisp; PKT-481).
-(defun fn-owner-exposure-observe (id effects consumed state)
-  (declare (xargs :stobjs state :mode :program))
-  (let* ((conn (fn-own-find-conn id (fn-own-conns (fn-owner-core state))))
-         (subject (and conn (fn-auth-session-subject (fn-own-conn-session conn))))
-         (r (fn-exp-observe-effects (fn-owner-exposure-state state)
-                                    (fn-owner-exposure-limits state) id
-                                    (fn-owner-exposure-now state)
-                                    effects consumed subject
-                                    (and (fn-served-submission effects) t)))
-         (state (f-put-global 'fn-owner-exposure (cdr r) state))
-         (state (f-put-global 'fn-owner-exposure-close
-                              (if (consp (car r)) (cadr (car r)) nil) state)))
-    state))
 
 ;; On a receive timeout: :keep or :close (RFC 3977 3.1: close, send nothing).
 (defun fn-owner-exposure-idle (id state)
