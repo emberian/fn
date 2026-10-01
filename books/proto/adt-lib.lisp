@@ -1337,6 +1337,92 @@
                  (:instance adt-nth-of-make-list-suffix (k 1) (n (adt-ncols s)) (tail (list nil 0 0)))
                  (:instance adt-nth-of-make-list-suffix (k 2) (n (adt-ncols s)) (tail (list nil 0 0)))))))
 
+; -----------------------------------------------------------------------------
+; The cleared image (lane paged-catalog, 2026-10-01): every column, the
+; pool, the count and the fill reset IN PLACE -- what an instance's
+; NAME$c-clear executes as a resize of each column and of the pool to 0 and
+; the two counters to 0 -- whatever the foundation holds beyond its fields.
+; It corresponds to the empty sequence: the creator's correspondence with a
+; tail.
+
+(defun adt-clear-down (p c)
+  (if (zp p) c (update-nth (- p 1) nil (adt-clear-down (- p 1) c))))
+
+(defun adt-clear-c (s c)
+  (let ((p (adt-ncols s)))
+    (update-nth (+ 2 p) 0 (update-nth (+ 1 p) 0 (update-nth p nil (adt-clear-down p c))))))
+
+(local
+ (defthm adt-update-nth-past-len-of-append
+   (implies (and (natp i) (<= (len a) i))
+            (equal (update-nth i v (append a b))
+                   (append a (update-nth (- i (len a)) v b))))
+   :hints (("Goal" :in-theory (enable update-nth) :induct (update-nth i v a)))))
+
+(local
+ (defthm adt-update-nth-0
+   (equal (update-nth 0 v x) (cons v (cdr x)))
+   :hints (("Goal" :in-theory (enable update-nth)))))
+
+(local
+ (defthm adt-update-nth-of-cons
+   (implies (not (zp i))
+            (equal (update-nth i v (cons a x)) (cons a (update-nth (- i 1) v x))))
+   :hints (("Goal" :in-theory (enable update-nth)))))
+
+(local
+ (defthm adt-nils-cons-nil
+   (equal (append (adt-nils k) (cons nil x))
+          (cons nil (append (adt-nils k) x)))))
+
+(local
+ (defthm adt-cdr-of-nthcdr
+   (equal (cdr (nthcdr k c)) (nthcdr (+ 1 (nfix k)) c))))
+
+(local
+ (defthm adt-nthcdr-of-nil
+   (equal (nthcdr k nil) nil)))
+
+(local
+ (defthm adt-nthcdr-3
+   (implies (natp n) (equal (nthcdr (+ 3 n) c) (nthcdr n (cdddr c))))
+   :hints (("Goal" :expand ((nthcdr (+ 3 n) c) (nthcdr (+ 2 n) (cdr c)) (nthcdr (+ 1 n) (cddr c)))))))
+
+(local
+ (defthm adt-clear-down-is-nils
+   (implies (natp p)
+            (equal (adt-clear-down p c) (append (adt-nils p) (nthcdr p c))))
+   :hints (("Goal" :induct (adt-clear-down p c)))))
+
+(local
+ (defthm adt-true-listp-of-nthcdr
+   (implies (true-listp c) (true-listp (nthcdr k c)))))
+
+(local
+ (defthm adt-corr-empty-with-tail
+   (implies (and (adt-schemap s) (true-listp tail))
+            (adt-corr s (append (adt-nils (adt-ncols s)) (list* nil 0 0 tail)) nil))
+   :hints (("Goal" :in-theory (e/d (adt-corr adt-shape-p adt-fill-okp)
+                                   (adt-nils-cons-nil adt-nth-of-make-list-suffix))
+            :use ((:instance adt-nth-of-make-list-suffix (k 0) (n (adt-ncols s)) (tail (list* nil 0 0 tail)))
+                  (:instance adt-nth-of-make-list-suffix (k 1) (n (adt-ncols s)) (tail (list* nil 0 0 tail)))
+                  (:instance adt-nth-of-make-list-suffix (k 2) (n (adt-ncols s)) (tail (list* nil 0 0 tail))))))))
+
+(defthm adt-corr-of-clear-c
+  (implies (and (adt-schemap s) (true-listp c))
+           (adt-corr s (adt-clear-c s c) nil))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (adt-clear-c) (adt-corr-empty-with-tail adt-nils-cons-nil))
+           :use ((:instance adt-corr-empty-with-tail (tail (nthcdr (+ 3 (adt-ncols s)) c)))))))
+
+; What an instance's clear obligation needs of its correspondence hypothesis.
+(defthm adt-corr-true-listp-c
+  (implies (adt-corr s c a) (true-listp c))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable adt-corr adt-shape-p))))
+
+(in-theory (disable adt-clear-c))
+
 (local
  (defthm adt-append-snoc-assoc
    (equal (append (append b (list x)) rest) (append b (cons x rest)))))

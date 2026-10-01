@@ -46,6 +46,20 @@
 
 (in-theory (disable adt-l-nth adt-l-update-nth adt-l-snoc))
 
+; An element of a typed column is a natural, as a TYPE-PRESCRIPTION: what
+; the guard of an :octets field's `-okp' (the offset plus the length
+; against the pool's length, a `rationalp' of a sum) needs once
+; `adt-elt-p' is open, where the library's rewrite
+; `adt-elt-p-of-nth-when-all-elt-p' no longer matches and no rewrite rule
+; reaches the type of a sum (lane paged-catalog, 2026-10-01: the
+; eleven-field `fn-crow' instance was refused at fn-crow$c-get-msgid-okp;
+; the three-field pilot found it by induction).
+(defthm adt-nth-of-all-elt-p-natp
+  (implies (and (adt-all-elt-p ct x) (natp i) (< i (len x)))
+           (natp (nth i x)))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable adt-elt-p nth))))
+
 ; -----------------------------------------------------------------------------
 ; The scalar view: a sequence of one-field records, seen as the list of
 ; the field's values.  `adt-wrap1' is the bridge from the scalar list to
