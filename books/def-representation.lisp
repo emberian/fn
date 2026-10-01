@@ -674,7 +674,8 @@
         (implies (and (,corr c a) (adt-fill-is-load ,schema-const (adt-pg-flat ,schema-const c) a))
                  (adt-fill-is-load ,schema-const (adt-pg-flat ,schema-const (,(adt-sym name "$C-APPEND") rec c))
                                    (,(adt-sym name "$A-APPEND") rec a)))
-        :hints (("Goal" :in-theory (enable ,corr ,(adt-sym name "$A-APPEND")))))
+        :hints (("Goal" :in-theory (e/d (,corr ,(adt-sym name "$A-APPEND"))
+                                        (adt-pg-append-c-is-room-then-append)))))
       ,@(and trees
              `((defthm ,(adt-sym name "$C-FILL-IS-LOAD-OF-APPEND-T")
                  (implies (and (,corr c a)
@@ -682,7 +683,12 @@
                                ,@(adt-tree-okp-terms fields trees 0))
                           (adt-fill-is-load ,schema-const (adt-pg-flat ,schema-const (,(adt-sym name "$C-APPEND-T") rec c))
                                             (,(adt-sym name "$A-APPEND-T") rec a)))
-                 :hints (("Goal" :in-theory (enable ,(adt-sym name "$A-APPEND-T") ,(adt-sym name "$A-APPEND")))))))
+                 :hints (("Goal" :in-theory (e/d (,corr ,(adt-sym name "$A-APPEND-T") ,(adt-sym name "$A-APPEND"))
+                                                 (,(adt-sym name "$C-APPEND") ,(adt-sym name "$C-APPEND-T")
+                                                  ,(adt-sym name "$C-FILL-IS-LOAD-OF-APPEND")))
+                          :use ((:instance ,(adt-sym name "$C-APPEND-T-IS-APPEND"))
+                                (:instance ,(adt-sym name "$C-FILL-IS-LOAD-OF-APPEND")
+                                           (rec (,(adt-sym name "-TREE-ENC") rec)))))))))
       ,@(adt-pg-once-set-thms name fields schema-const)
       (defthm ,(adt-sym name "$C-FILL-IS-LOAD-OF-CLEAR")
         (adt-fill-is-load ,schema-const (adt-pg-flat ,schema-const (,(adt-sym name "$C-CLEAR") c))
@@ -693,13 +699,154 @@
 ; paged foundation.  Its logical side, exports and -IS- theorems are the
 ; columnar instance's (the same generator functions).
 
-; A paged instance with a :tree field is generated in
-; books/def-representation-paged-tree.lisp (its writer); until that book
-; is included the tree path refuses (def-representation-fn).
+; A paged instance with :tree fields (books/def-representation-tree.lisp):
+; the checked put of one octet at the fill (NAME$C-POOL-PUT, bridged to
+; `adt-pg-cput'), the walk over it (the columnar instance's six writers,
+; `adt-tree-walk-defuns', whose meaning is the generic writer's by
+; functional instance), each tree field's put (offset at the fill, the walk,
+; the length; bridged to `adt-pg-put-tree'), and NAME$C-APPEND-T (bridged
+; to `adt-pg-append-t-c'), which is NAME$C-APPEND of the encoded record by
+; the library's `adt-pg-append-t-c-is-append-c'.
+
+(defun adt-pg-tree-mask (fields trees)
+  (if (endp fields)
+      nil
+    (cons (if (member-eq (car (car fields)) trees) t nil)
+          (adt-pg-tree-mask (cdr fields) trees))))
+
+(defun adt-pg-tree-fn-alist (name)
+  ; the generic writer of books/def-representation-tree-walk.lisp -> this instance's
+  (list (cons 'adt-h-put (adt-sym name "$C-POOL-PUT"))
+        (cons 'adt-h-puts '(lambda (bytes c) (adt-pg-cputs bytes *adt-pg-octets* c)))
+        (cons 'adt-h-tw-digits (adt-sym name "$C-TW-DIGITS"))
+        (cons 'adt-h-tw-chars (adt-sym name "$C-TW-CHARS"))
+        (cons 'adt-h-tw-bytes (adt-sym name "$C-TW-BYTES"))
+        (cons 'adt-h-tw-ops (adt-sym name "$C-TW-OPS"))
+        (cons 'adt-h-tw-atom (adt-sym name "$C-TW-ATOM"))
+        (cons 'adt-h-tw-tree (adt-sym name "$C-TW-TREE"))))
+
+(defun adt-pg-tree-load-terms (fields trees recv)
+  (cond ((endp fields) nil)
+        ((member-eq (car (car fields)) trees)
+         (cons `(adt-tree-plen (car ,recv) 0) (adt-pg-tree-load-terms (cdr fields) trees `(cdr ,recv))))
+        ((eq (car (cadr (car fields))) :octets)
+         (cons `(len (car ,recv)) (adt-pg-tree-load-terms (cdr fields) trees `(cdr ,recv))))
+        (t (adt-pg-tree-load-terms (cdr fields) trees `(cdr ,recv)))))
+
+(defun adt-pg-tree-field-events (name fields trees ci)
+  ; each tree field's put, bridged to `adt-pg-put-tree' at its columns
+  (if (endp fields)
+      nil
+    (let* ((f (car (car fields)))
+           (octp (eq (car (cadr (car fields))) :octets))
+           (rest (adt-pg-tree-field-events name (cdr fields) trees (+ (if octp 2 1) ci))))
+      (if (member-eq f trees)
+          (let* ((st (adt-sym name "$C"))
+                 (putt (adt-sym (adt-sym3 name "$C-PUT-FIELD-" f) "-TREE"))
+                 (rput0 (adt-sym name (concatenate 'string "$C-RPUT" (adt-pg-num ci))))
+                 (rput1 (adt-sym name (concatenate 'string "$C-RPUT" (adt-pg-num (+ 1 ci))))))
+            (list* `(defun ,putt (n x ,st)
+                      (declare (xargs :stobjs ,st :guard (and (natp n) (adt-tree-okp x))
+                                      :guard-hints (("Goal" :in-theory (enable adt-elt-p)))))
+                      (let* ((o (,(adt-sym name "$C-FILL") ,st))
+                             (,st (,(adt-sym name "$C-TW-TREE") x 0 ,st))
+                             (,st (,rput0 n o ,st)))
+                        (,rput1 n (adt-tree-plen x 0) ,st)))
+                   `(defthm ,(adt-sym putt "-BRIDGE")
+                      (equal (,putt n x c) (adt-pg-put-tree ,ci n x *adt-pg-rows* *adt-pg-octets* c))
+                      :hints (("Goal" :in-theory (enable ,putt adt-pg-put-tree
+                                                         ,(adt-sym name "$C-TW-TREE-IS-CPUTS")))))
+                   `(in-theory (disable ,putt))
+                   rest))
+        rest))))
+
+(defun adt-pg-tree-putt-bridges (name fields trees)
+  (cond ((endp fields) nil)
+        ((member-eq (car (car fields)) trees)
+         (cons (adt-sym (adt-sym (adt-sym3 name "$C-PUT-FIELD-" (car (car fields))) "-TREE") "-BRIDGE")
+               (adt-pg-tree-putt-bridges name (cdr fields) trees)))
+        (t (adt-pg-tree-putt-bridges name (cdr fields) trees))))
+
 (defun adt-pg-tree-exec-events (name fields trees schema-const)
-  (declare (ignore name fields trees schema-const)) nil)
+  (let* ((st (adt-sym name "$C"))
+         (put (adt-sym name "$C-POOL-PUT"))
+         (fillf (adt-sym name "$C-FILL"))
+         (tree (adt-sym name "$C-TW-TREE"))
+         (enc (adt-sym name "-TREE-ENC"))
+         (append-t (adt-sym name "$C-APPEND-T"))
+         (append-c (adt-sym name "$C-APPEND"))
+         (mask (adt-pg-tree-mask fields trees))
+         (dpg `(,(adt-sym-pre "CREATE-" (adt-sym name "$PG"))))
+         (dpp `(,(adt-sym-pre "CREATE-" (adt-sym name "$PP"))))
+         (walk (strip-cdrs (cddr (adt-pg-tree-fn-alist name))))
+         (okps (adt-tree-okp-terms fields trees 0)))
+    (append
+     `((defun ,put (b ,st)
+         (declare (xargs :stobjs ,st))
+         (let ((fl (,fillf ,st)))
+           (if (and (unsigned-byte-p 8 b) (natp fl) (< fl (* *adt-pg-octets* (,(adt-sym name "$C-NQ") ,st))))
+               (let ((,st (,(adt-sym name "$C-PPUT") fl b ,st)))
+                 (,(adt-sym-pre "UPDATE-" fillf) (+ 1 fl) ,st))
+             ,st)))
+       (defthm ,(adt-sym put "-BRIDGE")
+         (equal (,put b c) (adt-pg-cput b *adt-pg-octets* c))
+         :hints (("Goal" :in-theory (enable ,put adt-pg-cput))))
+       (in-theory (disable ,put))
+       ,@(adt-tree-walk-defuns name put st)
+       ,@(pairlis$ (make-list (len walk) :initial-element 'verify-guards)
+                   (pairlis$ walk (make-list (len walk) :initial-element
+                                             '(:hints (("Goal" :in-theory (disable floor)))))))
+       (defthm ,(adt-sym tree "-IS-CPUTS")
+         (equal (,tree x n c)
+                (adt-pg-cputs (append (fn-scc-program x) (fn-scc-repeat (nfix n) *fn-scc-op-cons*))
+                              *adt-pg-octets* c))
+         :hints (("Goal" :in-theory (enable ,@walk ,(adt-sym put "-BRIDGE") adt-pg-cputs)
+                  :use ((:functional-instance adt-h-tw-tree-is-puts
+                                              ,@(pairlis$ (strip-cars (adt-pg-tree-fn-alist name))
+                                                          (pairlis$ (strip-cdrs (adt-pg-tree-fn-alist name)) nil)))))))
+       (in-theory (disable ,@walk)))
+     (adt-pg-tree-field-events name fields trees 0)
+     `((defun ,enc (rec)
+         (declare (xargs :guard (and (true-listp rec) ,@okps)
+                         :guard-hints (("Goal" :in-theory (enable adt-tree-okp-is-sccb-treep)))))
+         (list ,@(adt-tree-enc-terms fields trees 0)))
+       (defthm ,(adt-sym enc "-IS-TMASK-ENC")
+         (equal (,enc rec) (adt-pg-tmask-enc ',mask rec))
+         :hints (("Goal" :in-theory (enable ,enc adt-pg-tmask-enc))))
+       (defun ,append-t (rec ,st)
+         (declare (xargs :stobjs ,st
+                         :guard (and (true-listp rec) ,@okps (adt-rec-p ,schema-const (,enc rec)))
+                         :guard-hints (("Goal" :in-theory (enable ,enc adt-rec-p-open adt-schema-fns-of-atom)))))
+         (let* ((,st (,(adt-sym name "$C-ROWROOM") ,st))
+                (,st (,(adt-sym name "$C-POOLROOM") (+ (,fillf ,st) ,@(adt-pg-tree-load-terms fields trees 'rec)) ,st))
+                (n (,(adt-sym name "$C-COUNT") ,st))
+                ,@(adt-append-t-body name fields trees 'rec st))
+           (,(adt-sym-pre "UPDATE-" (adt-sym name "$C-COUNT")) (+ 1 n) ,st)))
+       (defthm ,(adt-sym append-t "-BRIDGE")
+         (equal (,append-t rec c)
+                (adt-pg-append-t-c ,schema-const ',mask rec *adt-pg-rows* *adt-pg-octets* ,dpg ,dpp c))
+         :hints (("Goal" :in-theory (enable ,append-t adt-pg-append-t-c adt-pg-append-room
+                                            adt-pg-append-fields-t adt-pg-tmask-enc adt-rec-load
+                                            ,@(adt-pg-putf-bridges name fields)
+                                            ,@(adt-pg-tree-putt-bridges name fields trees)))))
+       (defthm ,(adt-sym append-t "-IS-APPEND")
+         (implies (and (adt-pg-corr ,schema-const *adt-pg-rows* *adt-pg-octets* c a) ,@okps)
+                  (equal (,append-t rec c) (,append-c (,enc rec) c)))
+         :hints (("Goal" :in-theory (e/d (,(adt-sym append-t "-BRIDGE") ,(adt-sym append-c "-BRIDGE")
+                                          ,(adt-sym enc "-IS-TMASK-ENC") adt-tree-okp-is-sccb-treep
+                                          adt-pg-tmask-okp adt-pg-tmask-kinds-okp)
+                                         (,append-t ,append-c ,enc adt-pg-tmask-enc))
+                  :use ((:instance adt-pg-append-t-c-is-append-c
+                                   (s ,schema-const) (mask ',mask) (r *adt-pg-rows*) (q *adt-pg-octets*)
+                                   (d ,dpg) (dp ,dpp))))))
+       (in-theory (disable ,append-t ,enc ,(adt-sym append-t "-BRIDGE") ,(adt-sym enc "-IS-TMASK-ENC")))))))
+
 (defun adt-pg-tree-logic-events (name trees fields schema-const)
-  (declare (ignore name fields trees schema-const)) nil)
+  (let ((a (adt-sym name "$A")) (okps (adt-tree-okp-terms fields trees 0)))
+    `((defun ,(adt-sym name "$A-APPEND-T") (rec ,a)
+        (declare (xargs :guard (and (,(adt-sym name "$AP") ,a) (true-listp rec) ,@okps
+                                    (adt-rec-p ,schema-const (,(adt-sym name "-TREE-ENC") rec)))))
+        (append ,a (list (,(adt-sym name "-TREE-ENC") rec)))))))
 
 (defun rep-pg-seq-events (name fields0 trees once)
   (let* ((fields (adt-norm-fields fields0))
@@ -829,7 +976,7 @@
          (fields0 (rep-untree fields1))
          (fields (adt-norm-fields fields0))
          (impl (if generic (adt-sym name "-COLS") name))
-         (paged (and paged (not scalar) (not generic) (not trees)))
+         (paged (and paged (not scalar) (not generic)))
          (instance (cond (scalar (rep-scalar-events impl fields invariant invariant-lemmas))
                          (paged (rep-pg-seq-events impl fields0 trees once))
                          (t (defadt-fn-trees-once impl fields0 trees once)))))
@@ -857,7 +1004,7 @@
       (er soft ctx "~x0: the fields must be a non-empty list of (FIELD KIND) with KIND one of :u8 :u32 :u64 :bool :octets (:nat B) (:enum ...); ~x1 is not." name fields0))
      ((and trees (or scalar generic))
       (er soft ctx "~x0: a :tree field is supported without :scalar and :generic in this stage." name))
-     ((and trees (not (function-symbolp 'adt-g-tw-tree wrld)))
+     ((and trees (not (function-symbolp 'adt-pg-append-t-c wrld)))
       (er soft ctx "~x0: a :tree field needs books/def-representation-tree.lisp included first (the writer and its theorems)." name))
      ((and scalar (not (equal (len fields) 1)))
       (er soft ctx "~x0: :scalar t needs exactly one field; ~x1 were given." name (len fields)))
