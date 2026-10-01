@@ -1307,6 +1307,9 @@
       "exempt": {},
       "keystones": [
         {
+          "theorem": "fn-bs-init-log-crash-retry-is-old-or-new"
+        },
+        {
           "theorem": "fn-bs-init-pub-admission-proceeds-only-on-nothing"
         },
         {

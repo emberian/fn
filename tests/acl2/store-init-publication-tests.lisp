@@ -34,26 +34,32 @@
                      (init-t-non-cuts *init-t-import*)))
 
 ; The admission: every arm reachable, and it proceeds only on nothing.
-(assert-event (equal (fn-bs-init-pub-admission nil nil) :proceed))
-(assert-event (equal (fn-bs-init-pub-admission (fn-bs-imp-classify t nil) nil)
-                     '(:refused :interrupted-init)))
-(assert-event (equal (fn-bs-init-pub-admission (fn-bs-imp-classify t t) t)
+(assert-event (equal (fn-bs-init-pub-admission nil nil nil) :proceed))
+(assert-event (equal (fn-bs-init-pub-admission (fn-bs-imp-classify t nil) nil nil)
+                     :discard-stage))
+(assert-event (equal (fn-bs-init-pub-admission (fn-bs-imp-classify t nil) nil t)
+                     '(:refused :init-in-progress)))
+(assert-event (equal (fn-bs-init-pub-admission (fn-bs-imp-classify t t) t nil)
                      '(:refused :publication-uncertain)))
-(assert-event (equal (fn-bs-init-pub-admission nil t) '(:refused :store-path-exists)))
+(assert-event (equal (fn-bs-init-pub-admission nil t nil) '(:refused :store-path-exists)))
 
 ; Teeth for fn-bs-init-pub-admission-decides-by-what-is-present (PRF-942),
 ; over the antecedent as the host composes it (the classification of a
-; leftover stage, nil without one).  Reachable positive witness: nothing
-; present, :proceed.  Hypothesis removal: each name present alone, and both,
-; is the refusal by that name and never :proceed.
-(defun init-t-admission (stage-present root-present)
+; leftover stage, nil without one, and whether a live init holds it).
+; Reachable positive witnesses: nothing present, :proceed; an unheld stage
+; alone, :discard-stage (PKT-894).  Hypothesis removal: the stage held, ROOT
+; present alone, and both, each the refusal by that name and neither
+; :proceed nor :discard-stage.
+(defun init-t-admission (stage-present root-present stage-held)
   (fn-bs-init-pub-admission
    (and stage-present (fn-bs-imp-classify stage-present root-present))
-   root-present))
-(assert-event (equal (init-t-admission nil nil) :proceed))
-(assert-event (equal (init-t-admission t nil) '(:refused :interrupted-init)))
-(assert-event (equal (init-t-admission nil t) '(:refused :store-path-exists)))
-(assert-event (equal (init-t-admission t t) '(:refused :publication-uncertain)))
-(assert-event (and (not (equal (init-t-admission t nil) :proceed))
-                   (not (equal (init-t-admission nil t) :proceed))
-                   (not (equal (init-t-admission t t) :proceed))))
+   root-present stage-held))
+(assert-event (equal (init-t-admission nil nil nil) :proceed))
+(assert-event (equal (init-t-admission t nil nil) :discard-stage))
+(assert-event (equal (init-t-admission t nil t) '(:refused :init-in-progress)))
+(assert-event (equal (init-t-admission nil t nil) '(:refused :store-path-exists)))
+(assert-event (equal (init-t-admission t t nil) '(:refused :publication-uncertain)))
+(assert-event (equal (init-t-admission t t t) '(:refused :publication-uncertain)))
+(assert-event (and (not (member-equal (init-t-admission t nil t) '(:proceed :discard-stage)))
+                   (not (member-equal (init-t-admission nil t nil) '(:proceed :discard-stage)))
+                   (not (member-equal (init-t-admission t t nil) '(:proceed :discard-stage)))))

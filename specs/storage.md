@@ -1924,15 +1924,23 @@ export, not a node backup (docs/operator.md).
 
 `operator init` publishes the empty store by the same program (P-INIT-PUB,
 books/store-init-log-publication.lisp `fn-bs-init-log-program`: init's plan --
-the three subdirectories `staging/`, `config/` and `journal/`, `config.json`,
-the generation-1 configuration record and the empty log segment
-`journal/000001.log` -- staged in `ROOT.init-XXXX`, init's cut names from
+the four subdirectories `staging/`, `config/`, `journal/` and `keys/`,
+`config.json`, the generation-1 configuration record, the empty log segment
+`journal/000001.log` and the node secret `keys/node-secret.key` (epoch 1,
+PKT-894) -- staged in `ROOT.init-XXXX`, init's cut names from
 books/store-init-publication.lisp). A crash leaves no store at ROOT or the
 complete empty store, whose segment is the empty log (PRF-268,
 `fn-bs-init-log-program-crash-is-no-store-or-the-complete-empty-log`).
-Before writing, ACL2's admission (`fn-bs-init-pub-admission`) refuses a
-leftover staged directory by name (`interrupted-init`: remove it and init
-again; `publication-uncertain`) and an existing ROOT without the store's
+Init is old-or-new at every cut (PRF-1040,
+`fn-bs-init-log-crash-retry-is-old-or-new`): after a crash, init's retry
+runs while ROOT is absent, and a present ROOT is the complete store, secret
+included, which `recover` opens; no repair verb is involved. Every init
+holds an exclusive flock on its own stage from its mkdir to its end.
+Before writing, ACL2's admission (`fn-bs-init-pub-admission`) discards a
+leftover staged directory no live init holds beside an absent ROOT (the
+host removes it and asks again), refuses one a live init holds
+(`init-in-progress`), refuses a stage beside ROOT (`publication-uncertain`)
+and an existing ROOT without the store's
 entries (`store-path-exists`). On OpenBSD, which has no renameat2, import
 and init hold an exclusive flock on `ROOT.lock` for the whole program and
 re-check ROOT's absence under it immediately before rename(2); the residual

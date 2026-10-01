@@ -18559,6 +18559,19 @@
         }
       ],
       "pending_subject": "Native compressed driver remains dormant and unreachable-in-composition. Actual selected-prefix cell accumulation and faithful-source compressed digest BEGIN/READ/HASH/new-publication are source-proved, with source-slice binding explicit. Arbitrary canonical decoder/controller iteration, selected dictionary/captured-view authority, full compiled workspace funding and retained native buffer/view/consumer joins remain open; PRF-1131 remains incomplete. Three nonexistent proposed DWCC citations are withheld in protocol-source-closeout-2026-10-01/withheld-events.json; no theorem admission is inferred."
+    },
+    {
+      "id": "PRF-1040",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bs-init-log-crash-retry-is-old-or-new"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-init-log-complete-store-carries-the-node-secret"
+        }
+      ]
     }
   ]
 }

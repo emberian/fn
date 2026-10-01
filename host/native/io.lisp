@@ -3944,37 +3944,100 @@ current one)."
       (fnn-store-close store))
     +fnn-exit-ok+))
 
+(defun fnn-init-stage-lock (stage-root)
+  "Open STAGE-ROOT and take an exclusive non-blocking flock on it: the fd, or
+:HELD when another process holds it.  Every init holds its own stage's lock
+from its mkdir to its end (fnn-staged-publication's HOLD-STAGE), so a
+leftover whose lock is free belongs to an init that died."
+  (let ((fd (fnn-open stage-root (logior sb-posix:o-rdonly +fnn-o-directory+
+                                         +fnn-o-nofollow+))))
+    (handler-case (progn (fnn-flock fd (logior +fnn-lock-ex+ +fnn-lock-nb+)) fd)
+      (fnn-os-error (e)
+        (fnn-close fd)
+        (if (fnn-would-block-p (fnn-os-errno e)) :held (error e)))
+      (error (e) (fnn-close fd) (error e)))))
+
+(defconstant +fnn-init-discard-window+ 64
+  "Names one round of fnn-init-discard-tree retains (a work quantum, not a
+bound on the stage).")
+
+(defun fnn-init-discard-tree (dir depth)
+  "Remove DIR and what is under it, DEPTH directory levels at most, a window
+of names at a time.  A deeper directory or anything but a regular file or a
+directory is refused by name: an init stage is its plan's subdirectories and
+files (books/store-init-log-publication.lisp) and nothing else."
+  (loop
+    (let ((names (fnn-list-directory-window dir +fnn-init-discard-window+)))
+      (when (null names) (return))
+      (dolist (name names)
+        (let* ((path (fnn-join dir name)) (st (fnn-lstat path)))
+          (cond ((null st))
+                ((and (fnn-directory-p st) (not (fnn-symlink-p st)) (> depth 0))
+                 (fnn-init-discard-tree path (1- depth)))
+                ((and (fnn-regular-p st) (not (fnn-symlink-p st)))
+                 (fnn-unlink path))
+                (t (fnn-refuse "init refused reason=not-an-init-stage: ~a holds ~a, which no init writes; nothing was removed from it"
+                               dir path)))))))
+  (fnn-posix (dir) (sb-posix:rmdir dir)))
+
+(defun fnn-init-admit (root-path)
+  "Observe a leftover ROOT.init-*, whether a live init holds it, and ROOT;
+ask ACL2 (fn-bs-init-pub-admission over fn-bs-imp-classify) and carry out
+its answer: return on :proceed, remove an unheld stage on :discard-stage and
+ask again (PKT-894: an init that died before its publication left nothing
+any command acknowledged, and init's retry runs), refuse by name otherwise.
+Each round removes one stage, so the loop ends."
+  (loop
+    (let* ((leftover (fnn-import-leftover-stage root-path "init"))
+           (verdict (and leftover (fnn-import-classify leftover root-path)))
+           (lock (and leftover (eq verdict :not-published) (fnn-init-stage-lock leftover)))
+           (admission (fnn-core 'fn-bs-init-pub-admission verdict
+                                (and (fnn-lstat root-path) t)
+                                (eq lock :held))))
+      (unwind-protect
+           (cond ((eq admission :proceed) (return))
+                 ((eq admission :discard-stage)
+                  (fnn-init-discard-tree leftover 1)
+                  (fnn-fsync-dir (fnn-parent root-path))
+                  (fnn-err "fn: init removed ~a, an earlier init's unpublished stage" leftover))
+                 ((equal admission '(:refused :init-in-progress))
+                  (fnn-refuse "init refused reason=init-in-progress stage=~a: another init is building ~a"
+                              leftover root-path))
+                 ((equal admission '(:refused :publication-uncertain))
+                  (fnn-refuse "init refused reason=publication-uncertain stage=~a: an earlier init may have published ~a; run recover, then remove ~a"
+                              leftover root-path leftover))
+                 ((equal admission '(:refused :store-path-exists))
+                  (fnn-refuse "init refused reason=store-path-exists: ~a exists; init creates the store directory and never fills an existing one"
+                              root-path))
+                 (t (fnn-fault "ACL2 returned a malformed init admission")))
+        (when (integerp lock)
+          (ignore-errors (fnn-flock lock +fnn-lock-un+))
+          (fnn-close lock))))))
+
 (defun fnn-command-init-published (root groups profile &optional policy)
   "`operator CONFIG init' (PKT-647): build the empty store beside ROOT, in
 ROOT.init-XXXX, and publish it without replacing anything
 (books/store-init-log-publication.lisp fn-bs-init-log-program: the import's
 steps with init's cut names, through fnn-staged-publication).  Its plan is
-ACL2's: the profile, the generation-1 configuration record and the log's
-first segment (fn-bs-init-log-files).  Before
-writing anything the host observes a leftover ROOT.init-* and ROOT, and
-ACL2's admission (fn-bs-init-pub-admission over fn-bs-imp-classify) proceeds
-or refuses by name, saying what to run."
-  (let* ((root-path (string-right-trim "/" root))
-         (leftover (fnn-import-leftover-stage root-path "init"))
-         (verdict (and leftover (fnn-import-classify leftover root-path)))
-         (admission (fnn-core 'fn-bs-init-pub-admission verdict
-                              (and (fnn-lstat root-path) t))))
-    (cond ((eq admission :proceed))
-          ((equal admission '(:refused :interrupted-init))
-           (fnn-refuse "init refused reason=interrupted-init stage=~a: no store was published at ~a; remove ~a and run init again"
-                       leftover root-path leftover))
-          ((equal admission '(:refused :publication-uncertain))
-           (fnn-refuse "init refused reason=publication-uncertain stage=~a: an earlier init may have published ~a; run recover, then remove ~a"
-                       leftover root-path leftover))
-          ((equal admission '(:refused :store-path-exists))
-           (fnn-refuse "init refused reason=store-path-exists: ~a exists; init creates the store directory and never fills an existing one"
-                       root-path))
-          (t (fnn-fault "ACL2 returned a malformed init admission")))
+ACL2's: the profile, the generation-1 configuration record, the log's first
+segment and the node secret (fn-bs-init-log-files; PKT-894: the published
+store is complete, keys included).  Before writing anything the host
+observes a leftover ROOT.init-* and ROOT, and ACL2's admission
+(fnn-init-admit) proceeds, discards an earlier init's unpublished stage, or
+refuses by name, saying what to run.  KEYSTONE
+fn-bs-init-log-crash-retry-is-old-or-new (PRF-1040)."
+  (let ((root-path (string-right-trim "/" root)))
+    (fnn-init-admit root-path)
     (let* ((stage-root (format nil "~a.init-~a" root-path (fnn-random-hex 6)))
            (stage (make-fnn-store stage-root :writable t :fault (fnn-init-test-fault)))
            (logp (fnn-core 'fn-store-profile-logp
                            (fnn-metadata-config-decode (fnn-metadata-config-frame profile))))
-           (record (fnn-bridge-config-initial (or groups +fnn-default-groups+))))
+           (record (fnn-bridge-config-initial (or groups +fnn-default-groups+)))
+           ;; SEC-006: the node's secret, epoch 1, as fnn-node-secret-create
+           ;; renders it; the plan's last file.
+           (secret (fnn-node-secret-render
+                    (fnn-core 'fn-ns-create-entry (fnn-node-secret-identity nil)
+                              (fnn-node-secret-fresh-root)))))
       (unless logp
         (fnn-fault "the init profile is not a record-log profile"))
       (fnn-staged-publication
@@ -3982,27 +4045,20 @@ or refuses by name, saying what to run."
        ;; books/store-init-log-publication.lisp fn-bs-init-log-files, in
        ;; its order: the profile, the generation-1 configuration record,
        ;; the genesis (format 10, books/store-genesis.lisp), the segment's
-       ;; ACL2 extent of zeros.  No allocator file and no transactions/.
+       ;; ACL2 extent of zeros, the node secret.  No allocator file and no
+       ;; transactions/.
        (list (cons (fnn-config-path stage) (fnn-metadata-config-frame profile))
              (cons (fnn-config-record-path stage 1) record)
              (cons (fnn-genesis-path stage)
                    (fnn-genesis-octets
                     (fnn-metadata-config-decode (fnn-metadata-config-frame profile))))
              (cons (fnn-segment-path stage)
-                   (fnn-make-octets (fnn-nat (fnn-core 'fn-store-log-initial-extent)))))
+                   (fnn-make-octets (fnn-nat (fnn-core 'fn-store-log-initial-extent))))
+             (cons (fnn-node-secret-path stage) secret))
        0
        (lambda (stage) (fnn-record-filesystem-at-init stage profile policy))
-       (fnn-core 'fn-bs-init-log-subdir-names))
-      ;; SEC-006: the node's key files, as `fnn-command-init' writes them,
-      ;; once the store is published (outside fn-bs-init-log-program: a
-      ;; death between the two leaves the complete store without
-      ;; keys/node-secret.key, which `run' refuses by name until
-      ;; `store ROOT node-secret create'; PKT-694).
-      (let ((published (make-fnn-store root-path :writable t)))
-        (unwind-protect
-             (progn (fnn-acquire published)
-                    (fnn-node-secret-create published nil :keep))
-          (fnn-store-close published)))
+       (fnn-core 'fn-bs-init-log-subdir-names)
+       t)
       (fnn-out "initialized ~a" root-path)
       +fnn-exit-ok+)))
 
@@ -4713,7 +4769,7 @@ its name (fnn-archive-entry), never a host fault."
         (fnn-close fd)))))
 
 (defun fnn-staged-publication (kind stage root-path files record-count
-                               record-filesystem subdirs)
+                               record-filesystem subdirs &optional hold-stage)
   "Build the store STAGE (at ROOT-PATH.KIND-XXXX) from FILES, a list of
 (PATH . OCTETS) in plan order, admit it through the ordinary open (it must
 replay RECORD-COUNT records), and publish it at ROOT-PATH by a no-replace
@@ -4725,10 +4781,13 @@ failure (exit 1, the staged directory named); at or after it the outcome is
 uncertain (exit 3) and the observed presence of the two names is classified
 by fn-bs-imp-classify.  SUBDIRS are the staged tree's subdirectories in
 the plan's order (init's are ACL2's fn-bs-init-log-subdir-names:
-books/store-init-log-publication.lisp)."
+books/store-init-log-publication.lisp).  With HOLD-STAGE the stage's own
+flock is held from its mkdir to the end (fnn-init-stage-lock: init's retry
+discards only a stage no live init holds)."
   (let* ((stage-root (fnn-store-root stage))
          (parent (fnn-parent root-path))
          (lock nil)
+         (stage-lock nil)
          (created nil)
          (attempted nil))
     (handler-case
@@ -4741,6 +4800,11 @@ books/store-init-log-publication.lisp)."
                ;; fn-bs-imp-stage-steps
                (fnn-mkdir stage-root #o700)
                (setq created t)
+               (when hold-stage
+                 (let ((held (fnn-init-stage-lock stage-root)))
+                   (unless (integerp held)
+                     (fnn-fault "the stage ~a this process created is locked by another" stage-root))
+                   (setq stage-lock held)))
                (fnn-pub-at stage kind "stage-created")
                ;; fn-bs-imp-subdir-steps
                (dolist (sub subdirs)
@@ -4782,6 +4846,7 @@ books/store-init-log-publication.lisp)."
                (fnn-pub-at stage kind "published")
                (fnn-fsync-dir parent)
                (fnn-pub-at stage kind "durable"))
+          (fnn-publication-unlock stage-lock)
           (fnn-publication-unlock lock))
       (fnn-os-error (e)
         (cond ((not attempted)
