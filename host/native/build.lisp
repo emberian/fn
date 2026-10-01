@@ -467,8 +467,14 @@
         (fnn-deflate-initialize)
         (defun fn-native-entry (st)
           (declare (ignore st))
-          ; Bootstrap precedes facility constructors and ordinary cleanup.
-          (fnn-runtime-bootstrap-production-entry)
+          ; Stage 0 (planning/design-store-representation-2026-10-01.md
+          ; section 4; MODE 2026-10-01 section 3): no runtime bootstrap gate
+          ; here.  fnn-runtime-bootstrap-production-entry admitted the start
+          ; through *fn-runtime-operation-compiled-table*, which no build
+          ; step produces (books/runtime-operation-compiled-table.lisp is
+          ; nil), so every verb exited at bootstrap.  The runtime-* host
+          ; files stay loaded below for their tests; the gate returns with
+          ; its producer.
           ; A refused start exits 5 with its reason (io.lisp).
           (fnn-native-startup (lambda ()
                                 (fnn-crypto-startup)
@@ -565,12 +571,16 @@
         ; The saved image is a host, not a session: no ACL2 banner on stdout,
         ; and `--noinform' below keeps SBCL's own banner off it too.  The
         ; `model' verb writes reply octets to stdout and nothing else may.
-        (load "host/native/runtime-collector.lisp")
-        (load "host/native/runtime-participants.lisp")
-        (load "host/native/runtime-image-policy.lisp")
-        (load "host/native/runtime-profile-envelope.lisp")
-        (load "host/native/runtime-bootstrap.lisp")
-        (fnn-runtime-bootstrap-image-prepare)
+        ; Stage 0 (planning/design-store-representation-2026-10-01.md
+        ; section 4): the runtime bootstrap helpers (host/native/runtime-
+        ; collector, -participants, -image-policy, -profile-envelope,
+        ; -bootstrap) and (fnn-runtime-bootstrap-image-prepare) are not
+        ; loaded: no loaded line calls them once the gate is off
+        ; fn-native-entry, and runtime-profile-envelope reads a stobj
+        ; (fn-recovery-profile-buffer) outside this world.  They return with
+        ; the bootstrap producer (section 4, stage 6); tools/extract/
+        ; core_build.py splices their participant setup only when the
+        ; prepare form is present.
         (setq *print-startup-banner* nil))
 (defttag nil)
 (value-triple (prog2$ (cw "FN_NATIVE_BUILD_LOADED~%") :loaded))

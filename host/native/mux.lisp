@@ -366,24 +366,18 @@ ending the connection with fnn-mux-finish."
 (defun fnn-mux-arm-idle (conn)
   (setf (fnn-mux-conn-idle-at conn) (fnn-mux-ticks +fnn-mux-idle-seconds+)))
 
-(defun fnn-mux-wire-source (conn)
-  (declare (ignore conn))
-  (sb-thread:with-mutex (*fnn-extent-lock*)
-    (multiple-value-bind (word ignored)
-        (fnn-core-mv 'fn-owner-runtime-operation-source
-          (fn-owner-runtime-operation-source :outgoing-window
-            (fnn-live-page-read-pool) *the-live-state*))
-      (declare (ignore ignored))
-      word)))
+;;; Stage 0 (planning/design-store-representation-2026-10-01.md section 4;
+;;; MODE 2026-10-01 section 3): the outgoing-window source gate that
+;;; f32c7d4db put in front of fnn-mux-queue, fnn-mux-queue-plan and
+;;; fnn-mux-flush (fn-owner-runtime-operation-source :outgoing-window,
+;;; answered :ready by nothing) returned before any octet was written, the
+;;; greeting included.  A reply is written as before; the issuer gate
+;;; returns with its producer, as a rowed operation (section 4, M4).
 
 (defun fnn-mux-queue (loop conn octets op after)
   "Queue the one reply OCTETS (a greeting, a rendered window); AFTER (nil,
 :close or :starttls) runs when the socket has taken it and no window of the
 plan remains."
-  (let ((word (fnn-mux-wire-source conn)))
-    (unless (eq word :ready) (return-from fnn-mux-queue word))
-    ;; A family readout does not issue a response/window storage claim.
-    (return-from fnn-mux-queue :output-issuer-unavailable))
   (let ((service (fnn-mux-service loop)))
     ;; The named non-semantic scope (and its private test injection) of the
     ;; worker's send, fnn-owner-connection-call's.
@@ -429,9 +423,6 @@ positive ACL2 scheduling delay expires.  AFTER belongs to the whole reply."
 window now, each next one when the socket took the last (fnn-mux-flush).
 The connection holds one window and the plan's continuation, never the
 whole reply; a plan with nothing to write runs AFTER at once."
-  (let ((word (fnn-mux-wire-source conn)))
-    (unless (eq word :ready) (return-from fnn-mux-queue-plan word))
-    (return-from fnn-mux-queue-plan :output-issuer-unavailable))
   (multiple-value-bind (octets rest donep yieldedp)
       (fnn-mux-render-next loop conn plan)
     (setf (fnn-mux-conn-plan conn) (if donep nil rest))
@@ -442,9 +433,6 @@ whole reply; a plan with nothing to write runs AFTER at once."
 (defun fnn-mux-flush (loop conn)
   "Write the queued window; when the socket took it, render the plan's next
 window (off the owner mutex) and go on; with nothing left, run AFTER."
-  (let ((word (fnn-mux-wire-source conn)))
-    (unless (eq word :ready) (return-from fnn-mux-flush word))
-    (return-from fnn-mux-flush :output-issuer-unavailable))
   (let ((service (fnn-mux-service loop)))
     (loop
       (loop while (and (fnn-mux-conn-out conn)
