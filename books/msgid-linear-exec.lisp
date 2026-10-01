@@ -1284,10 +1284,14 @@
   (implies (and (fn-mlhp fn-mlh) (fn-mlh-pgsp fn-mlh)
                 (natp q) (< q (fn-mlh-pages fn-mlh)) (natp p) (< p (fn-mlh-pages fn-mlh)))
            (and (fn-mlhp (fn-mlh-move q j c p n fn-mlh))
-                (fn-mlh-pgsp (fn-mlh-move q j c p n fn-mlh))
-                (equal (fn-mlh-wfp (fn-mlh-move q j c p n fn-mlh)) (fn-mlh-wfp fn-mlh))))
+                (fn-mlh-pgsp (fn-mlh-move q j c p n fn-mlh))))
   :hints (("Goal" :induct (fn-mlh-move q j c p n fn-mlh)
            :in-theory (e/d (unsigned-byte-p) (fn-mlh-wfp fn-mlh-pgsp fn-mlh-mover-at)))))
+
+(defthm fn-mlh-wfp-of-move
+  (equal (fn-mlh-wfp (fn-mlh-move q j c p n fn-mlh))
+         (and (fn-mlh-pgsp (fn-mlh-move q j c p n fn-mlh)) (fn-mlh-rootp fn-mlh)))
+  :hints (("Goal" :in-theory (disable fn-mlh-move))))
 
 ; THE MOVE'S FRAME: a slot of another page, of Q below J, or of P below C is
 ; as it was.
