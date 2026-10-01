@@ -7710,6 +7710,32 @@
         "planning/evidence/allocation-request-split.json"
       ],
       "execution_scope": "Guarded pure scalar component and three-book normal source certification; synthetic fixtures are not genuine runtime authority, physical fit or native qualification."
+    },
+    {
+      "id": "SCN-1078",
+      "title": "Fixed early profile workspace keeps the overflow probe outside the decoder prefix",
+      "milestone": "M1",
+      "status": "specified",
+      "requirements": [
+        "HST-002"
+      ],
+      "steps": [
+        "Evaluate the actual core envelope derived from the current FNSM/frame constants.",
+        "Create the actual fixed recovery-profile stobj and write first byte70, last permitted profile byte32 and separate overflow probe255.",
+        "Read empty, single-byte and complete642-byte prefixes through the guarded fn-rpf-prefix."
+      ],
+      "expected": [
+        "The envelope yields header10/payload600/trailer32/max-file642/probe1/workspace643 at this grammar coordinate.",
+        "The complete642-byte prefix equals70 followed by640 zero bytes and32; the separate probe stays255.",
+        "No readiness, EOF, integrity, resource admission or Store policy is inferred from these bytes."
+      ],
+      "evidence": [
+        "tests/acl2/recovery-profile-envelope-tests.lisp",
+        "tests/acl2/recovery-profile-buffer-tests.lisp",
+        "planning/evidence/recovery-profile-envelope-2026-10-01/coordinate.json",
+        "planning/evidence/recovery-profile-buffer-2026-10-01/coordinate.json"
+      ],
+      "execution_scope": "Exact original-constant cohort and actual concrete-stobj source fixture passed; matching full-book certificate, saved image and issued I/O/EOF/controller composition remain open."
     }
   ]
 }

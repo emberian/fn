@@ -1657,7 +1657,8 @@ completed EOF at at most 642 bytes permits `fn-rpf-prefix` and the existing
 `fn-spo-config-open`; an observed 643rd byte rejects before decoding. No caller
 supplied readiness Boolean or decoded profile establishes this transition.
 
-PRF-1201 names the complete logical-prefix representation boundary. Its
+PRF-1201 names the complete logical-prefix representation boundary; SCN-1078
+exercises the fixed target and its separate overflow cell. Its
 source guards and full fixed-buffer fixture have passed; matching full-book
 certification, actual read/decode composition, target representability,
 operation admission and native image activation remain open. The decoded
