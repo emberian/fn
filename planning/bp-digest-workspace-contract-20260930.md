@@ -93,7 +93,7 @@ and same-job claim before activation; raw recording fixtures are unfunded.
 
 ## Actual received ciphertext provider connection
 
-At source86d0dbdf0 the actual TCPCL callback delivers an ACL2 `:inbound`
+At source86d0dbdf0 the actual TCPCL callback delivers an ACL2 `:bundle-received`
 complete octet list to `fnn-bp-deliver-node`, then `fnn-bps-receive`. The
 foundation held row retains the decoded bundle and exact wire, but has no
 immutable concrete backing registry. The POST/RX input holder is not a BP
