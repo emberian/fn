@@ -2,7 +2,7 @@
 (in-package "ACL2")
 (defstruct (fnn-runtime-bootstrap
             (:constructor %make-fnn-runtime-bootstrap) (:copier nil))
-  pool observation admit phase participants image-policy slots construct source-install fault prs-install profile-envelope)
+  pool observation admit phase participants image-policy slots construct source-install fault prs-install profile-envelope recovery-turn-begin recovery-turn-finish)
 (defvar *fnn-runtime-bootstrap* nil)
 (defun fnn-runtime-bootstrap-live-slots ()
  (or (cdr (assoc 'fn-allocation-turn-slots (user-stobj-alist *the-live-state*)))
@@ -26,7 +26,9 @@
                            'fn-owner-runtime-operation-binding-install-internal)
          :fault (fnn-fixed-raw-callback 'fn-owner-runtime-bootstrap-fence-internal)
          :prs-install (fnn-fixed-raw-callback 'fn-owner-recovery-prs-install)
-         :profile-envelope *fnn-runtime-profile-envelope-binding*)))
+         :profile-envelope *fnn-runtime-profile-envelope-binding*
+         :recovery-turn-begin (fnn-fixed-raw-callback 'fn-owner-recovery-file-turn-begin)
+         :recovery-turn-finish (fnn-fixed-raw-callback 'fn-ats-finish-owned))))
 (defun fnn-runtime-bootstrap-installation-failure (binding reason)
  (multiple-value-bind (word pool)
      (fnn-core-mv 'fn-owner-runtime-bootstrap-fence-internal

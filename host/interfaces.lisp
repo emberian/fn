@@ -4913,3 +4913,13 @@
 (definterface fn-owner-recovery-prs-install
  :class :common-lisp-compliant :root :extract
  :raw-guarded (2 (fn-page-read-pool state) (nil fn-page-read-pool)))
+
+; Early pre-service source-owned ticket. Readonly STATE is not returned.
+(definterface fn-owner-recovery-file-turn-begin
+ :class :common-lisp-compliant :root :extract
+ :raw-guarded (4 (nil fn-allocation-turn-slots fn-page-read-pool state)
+                 (nil nil nil fn-allocation-turn-slots fn-page-read-pool)))
+(definterface fn-ats-finish-owned
+ :class :common-lisp-compliant :root :extract
+ :raw-guarded (4 (nil nil fn-allocation-turn-slots fn-page-read-pool)
+                 (nil fn-allocation-turn-slots fn-page-read-pool)))
