@@ -25,7 +25,15 @@
    (equal (mv-list 3 (fn-owner-page-window-executor-acquire worker token fn-page-read-pool))
     (let ((r (mv-list 3 (fn-pwx-acquire (fn-owner-page-read-ledger fn-page-read-pool) worker token))))
       (list (nth 0 r) (nth 1 r) (fn-owner-page-read-keep-ledger (nth 2 r) fn-page-read-pool)))))
-  :hints (("Goal" :in-theory (enable fn-pwx-acquire))))
+  ;; Its own theory (as the funded acquire below): the wrapper opened, the
+  ;; subject fn-pwx-acquire kept closed; in the image's ld world opening it cost
+  ;; up to 274 s.
+  :hints (("Goal" :in-theory '(fn-owner-page-window-executor-acquire mv-list mv-nth nth
+                               (:executable-counterpart binary-+)
+                               (:executable-counterpart zp)
+                               (:type-prescription fn-owner-page-window-legacy-writablep))
+           :expand ((:free (x) (mv-nth 1 x)) (:free (x) (mv-nth 2 x))
+                    (:free (x) (nth 1 x)) (:free (x) (nth 2 x))))))
 
 (defun fn-owner-page-window-executor-return (worker token fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool))
@@ -41,7 +49,15 @@
    (equal (mv-list 3 (fn-owner-page-window-executor-return worker token fn-page-read-pool))
     (let ((r (mv-list 3 (fn-pwx-return (fn-owner-page-read-ledger fn-page-read-pool) worker token))))
       (list (nth 0 r) (nth 1 r) (fn-owner-page-read-keep-ledger (nth 2 r) fn-page-read-pool)))))
-  :hints (("Goal" :in-theory (enable fn-pwx-return))))
+  ;; Its own theory (as the funded acquire below): the wrapper opened, the
+  ;; subject fn-pwx-return kept closed; in the image's ld world opening it cost
+  ;; up to 274 s.
+  :hints (("Goal" :in-theory '(fn-owner-page-window-executor-return mv-list mv-nth nth
+                               (:executable-counterpart binary-+)
+                               (:executable-counterpart zp)
+                               (:type-prescription fn-owner-page-window-legacy-writablep))
+           :expand ((:free (x) (mv-nth 1 x)) (:free (x) (mv-nth 2 x))
+                    (:free (x) (nth 1 x)) (:free (x) (nth 2 x))))))
 
 (defun fn-owner-page-window-executor-release (worker token fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool))
@@ -57,7 +73,15 @@
    (equal (mv-list 3 (fn-owner-page-window-executor-release worker token fn-page-read-pool))
     (let ((r (mv-list 3 (fn-pwx-release (fn-owner-page-read-ledger fn-page-read-pool) worker token))))
       (list (nth 0 r) (nth 1 r) (fn-owner-page-read-keep-ledger (nth 2 r) fn-page-read-pool)))))
-  :hints (("Goal" :in-theory (enable fn-pwx-release))))
+  ;; Its own theory (as the funded acquire below): the wrapper opened, the
+  ;; subject fn-pwx-release kept closed; in the image's ld world opening it cost
+  ;; up to 274 s.
+  :hints (("Goal" :in-theory '(fn-owner-page-window-executor-release mv-list mv-nth nth
+                               (:executable-counterpart binary-+)
+                               (:executable-counterpart zp)
+                               (:type-prescription fn-owner-page-window-legacy-writablep))
+           :expand ((:free (x) (mv-nth 1 x)) (:free (x) (mv-nth 2 x))
+                    (:free (x) (nth 1 x)) (:free (x) (nth 2 x))))))
 
 (include-book "../books/page-window-read")
 
@@ -158,7 +182,15 @@
    (equal (mv-list 3 (fn-owner-page-window-executor-cancel worker token fn-page-read-pool))
     (let ((r (mv-list 3 (fn-pwx-cancel (fn-owner-page-read-ledger fn-page-read-pool) worker token))))
       (list (nth 0 r) (nth 1 r) (fn-owner-page-read-keep-ledger (nth 2 r) fn-page-read-pool)))))
-  :hints (("Goal" :in-theory (enable fn-pwx-cancel))))
+  ;; Its own theory (as the funded acquire below): the wrapper opened, the
+  ;; subject fn-pwx-cancel kept closed; in the image's ld world opening it cost
+  ;; up to 274 s.
+  :hints (("Goal" :in-theory '(fn-owner-page-window-executor-cancel mv-list mv-nth nth
+                               (:executable-counterpart binary-+)
+                               (:executable-counterpart zp)
+                               (:type-prescription fn-owner-page-window-legacy-writablep))
+           :expand ((:free (x) (mv-nth 1 x)) (:free (x) (mv-nth 2 x))
+                    (:free (x) (nth 1 x)) (:free (x) (nth 2 x))))))
 
 (defun fn-owner-page-window-executor-settle-cancelled (worker token fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool))
@@ -174,7 +206,15 @@
    (equal (mv-list 3 (fn-owner-page-window-executor-settle-cancelled worker token fn-page-read-pool))
     (let ((r (mv-list 3 (fn-pwx-settle-cancelled (fn-owner-page-read-ledger fn-page-read-pool) worker token))))
       (list (nth 0 r) (nth 1 r) (fn-owner-page-read-keep-ledger (nth 2 r) fn-page-read-pool)))))
-  :hints (("Goal" :in-theory (enable fn-pwx-settle-cancelled))))
+  ;; Its own theory (as the funded acquire below): the wrapper opened, the
+  ;; subject fn-pwx-settle-cancelled kept closed; in the image's ld world opening it cost
+  ;; up to 274 s.
+  :hints (("Goal" :in-theory '(fn-owner-page-window-executor-settle-cancelled mv-list mv-nth nth
+                               (:executable-counterpart binary-+)
+                               (:executable-counterpart zp)
+                               (:type-prescription fn-owner-page-window-legacy-writablep))
+           :expand ((:free (x) (mv-nth 1 x)) (:free (x) (mv-nth 2 x))
+                    (:free (x) (nth 1 x)) (:free (x) (nth 2 x))))))
 
 (defun fn-owner-page-window-work-permittedp (worker token fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool))
