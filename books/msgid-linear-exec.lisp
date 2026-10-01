@@ -42,9 +42,9 @@
 ; THE WRITER `fn-mlh-put' places at the first empty slot of the home page,
 ; else of the next page with the home page's flag set, else NOT AT ALL
 ; (`:mpx-saturated'; `fn-mlh-saturatedp'); `fn-mlh-put-keeps-candidate'
-; and `fn-mlh-put-finds' are its membership facts, `fn-mlh-put-preserves-
-; faithful' the commit path's obligation.  THE SPLIT, THE ADD and THE FOLD
-; (the catalog's correspondence) follow in the next sections.
+; and `fn-mlh-put-finds' are its membership facts.
+; NEXT (not yet built): `fn-mlh-put-preserves-faithful', THE SPLIT, THE ADD
+; and THE FOLD (the catalog's correspondence), for the successor lane.
 ;
 ; GEN: def-representation (the stobj's facts, section 1) and def-loop (the
 ; scan, the page entries, the move loops) once the generators land.
