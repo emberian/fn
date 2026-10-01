@@ -18594,6 +18594,10 @@
         {
           "kind": "theorem",
           "name": "fn-rr-medium-select-bounds-the-sequence"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rr-medium-full-open-holds-its-records"
         }
       ]
     },
@@ -18603,6 +18607,64 @@
         {
           "kind": "theorem",
           "name": "fn-ckr-two-generations-fit-the-reserve-at-every-cut"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1214",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rrc-recovery-refines-a-prefix-with-every-acknowledged-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rrc-checkpoint-crash-point-refines-with-a-batch-in-flight"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgk-relp-implies-fn-rrc-relp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rrc-crash-content-is-the-projected-crash-content"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rrc-projection-is-related"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rrc-projected-image-is-admissible-with-the-same-segment"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rrc-log-crash-image-recovers-a-tree-sequence-member"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rrc-keeping-the-segment-keeps-the-lifted-relation"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1215",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rrp-commit-writes-within-the-generation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rrp-two-generations-fit-the-reserve"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rrp-touched-count"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rrp-page-writes-count"
         }
       ]
     },

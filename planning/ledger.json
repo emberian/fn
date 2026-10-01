@@ -784,6 +784,8 @@
     "tests/acl2/recovery-refinement-tests",
     "books/recovery-refinement-concurrent",
     "tests/acl2/recovery-refinement-concurrent-tests",
+    "books/recovery-refinement-pages",
+    "tests/acl2/recovery-refinement-pages-tests",
     "books/checkpoint-reserve",
     "tests/acl2/checkpoint-reserve-tests",
     "books/store-init-log-publication",
@@ -2348,26 +2350,26 @@
     "tests/acl2/substrate-commit-codec-gap-tests"
   ],
   "totals": {
-    "books": 2693,
-    "books_in_root_closure": 2600,
-    "roots": 2344,
-    "theorems": 35127,
-    "functions": 22500,
-    "assert_events": 25166,
-    "must_fails": 2540,
+    "books": 2695,
+    "books_in_root_closure": 2602,
+    "roots": 2346,
+    "theorems": 35134,
+    "functions": 22511,
+    "assert_events": 25170,
+    "must_fails": 2542,
     "prover_refusals": 0,
     "encapsulates": 188,
     "guards": {
       "verified": 3826,
       "declared-off": 2848,
-      "default-guarded": 12615,
-      "default-unguarded": 3211
+      "default-guarded": 12618,
+      "default-unguarded": 3219
     },
     "suspect_theorems": 1332,
     "export_hygiene_warnings": 390,
     "enabled_projection_warnings": 79,
     "teeth_form_warnings": 278,
-    "include_hygiene_warnings": 3369,
+    "include_hygiene_warnings": 3370,
     "host_names_warnings": 3114,
     "hand_written_record_warnings": 19
   },
@@ -39756,6 +39758,32 @@
       "read_error": null
     },
     {
+      "book": "books/recovery-refinement-pages.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 7,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "pagestore"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/recovery-refinement-store.lisp",
       "in_root_closure": false,
       "is_root": false,
@@ -72922,6 +72950,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/recovery-refinement-pages-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 9,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 8
+      },
+      "verify_guards_events": 0,
+      "assert_events": 4,
+      "must_fails": 2,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/recovery-refinement-pages",
+        "must-fail-checked"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/recovery-refinement-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -85960,7 +86015,7 @@
     {
       "theorem": "fn-rrc-crash-select-of-no-choices",
       "book": "books/recovery-refinement-concurrent.lisp",
-      "line": 93,
+      "line": 95,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-bs-crash-select and the conclusion is that branch's value"
       ]
@@ -85968,7 +86023,7 @@
     {
       "theorem": "fn-rrc-tear-write-of-no-selectors",
       "book": "books/recovery-refinement-concurrent.lisp",
-      "line": 108,
+      "line": 110,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-bs-tear-write and the conclusion is that arm's value"
       ]
@@ -116415,6 +116470,13 @@
       {
         "book": "tests/acl2/recovery-refinement-concurrent-tests.lisp",
         "line": 22,
+        "include": "must-fail-checked",
+        "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/recovery-refinement-pages-tests.lisp",
+        "line": 11,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"

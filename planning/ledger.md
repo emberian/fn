@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2693 |
-| Certification roots in the Makefile | 2344 |
-| Books inside the root closure | 2600 |
-| `defthm` and `defthmd` events | 35127 |
-| `defun` events | 22500 |
+| Books read | 2695 |
+| Certification roots in the Makefile | 2346 |
+| Books inside the root closure | 2602 |
+| `defthm` and `defthmd` events | 35134 |
+| `defun` events | 22511 |
 | Functions with verified guards | 3826 |
 | Functions declared `:verify-guards nil` and never verified | 2848 |
-| Functions left at the default with an explicit guard | 12615 |
-| Functions left at the default with no guard | 3211 |
-| `assert-event` checks | 25166 |
-| `must-fail` checks | 2540 |
+| Functions left at the default with an explicit guard | 12618 |
+| Functions left at the default with no guard | 3219 |
+| `assert-event` checks | 25170 |
+| `must-fail` checks | 2542 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 188 |
 | Theorems flagged SUSPECT by shape | 1332 |
 | Export-hygiene warnings | 390 |
 | Enabled-projection warnings | 79 |
 | Teeth-form warnings | 278 |
-| Include-hygiene warnings | 3369 |
+| Include-hygiene warnings | 3370 |
 | Host-names warnings | 3114 |
 | Hand-written-record warnings | 19 |
 
@@ -1371,6 +1371,7 @@ that `make certify` requests.
 | `books/recovery-profile-envelope.lisp` | root | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/recovery-prs-install.lisp` | root | 0 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/recovery-refinement-concurrent.lisp` | root | 23 | 8 | 0/7/0/1 | 0 | 0 | 2 |
+| `books/recovery-refinement-pages.lisp` | root | 7 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/recovery-refinement-store.lisp` | - | 4 | 3 | 0/3/0/0 | 0 | 0 | 1 |
 | `books/recovery-refinement.lisp` | root | 26 | 10 | 0/4/0/6 | 0 | 0 | 1 |
 | `books/recovery-source-authority.lisp` | closure | 0 | 8 | 0/0/8/0 | 0 | 0 | 0 |
@@ -2557,6 +2558,7 @@ that `make certify` requests.
 | `tests/acl2/recovery-profile-buffer-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 1 | 0 | 0 |
 | `tests/acl2/recovery-profile-envelope-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 3 | 0 | 0 |
 | `tests/acl2/recovery-refinement-concurrent-tests.lisp` | root | 1 | 34 | 0/27/7/0 | 6 | 3 | 0 |
+| `tests/acl2/recovery-refinement-pages-tests.lisp` | root | 0 | 9 | 0/0/1/8 | 4 | 2 | 0 |
 | `tests/acl2/recovery-refinement-tests.lisp` | root | 2 | 35 | 0/28/7/0 | 7 | 4 | 0 |
 | `tests/acl2/refusal-effect-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 33 | 0 | 0 |
 | `tests/acl2/refusal-headroom-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 5 | 0 | 0 |
@@ -3630,8 +3632,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-rpx-selected-snapshot-has-complete-public-result` | `books/replay-identity-continuation.lisp` | 58 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-rpx-selected-verdict-has-complete-public-result` | `books/replay-identity-continuation.lisp` | 67 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-rr-recovered-kernel-holds-the-scan` | `books/recovery-refinement.lisp` | 138 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-rrc-crash-select-of-no-choices` | `books/recovery-refinement-concurrent.lisp` | 93 | branch-of-definition: the hypothesis negates a branch test of fn-bs-crash-select and the conclusion is that branch's value |
-| `fn-rrc-tear-write-of-no-selectors` | `books/recovery-refinement-concurrent.lisp` | 108 | arm-of-definition: the hypotheses select one IF/COND arm of fn-bs-tear-write and the conclusion is that arm's value |
+| `fn-rrc-crash-select-of-no-choices` | `books/recovery-refinement-concurrent.lisp` | 95 | branch-of-definition: the hypothesis negates a branch test of fn-bs-crash-select and the conclusion is that branch's value |
+| `fn-rrc-tear-write-of-no-selectors` | `books/recovery-refinement-concurrent.lisp` | 110 | arm-of-definition: the hypotheses select one IF/COND arm of fn-bs-tear-write and the conclusion is that arm's value |
 | `fn-rrs-reserve-is-two-capture-budgets` | `books/recovery-refinement-store.lisp` | 138 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-rse-enrolled-model-head-unfolds` | `books/replay-enrollment-lookup.lisp` | 118 | definition-restated: the conclusion is the body of fn-rse-enrolled-model |
 | `fn-sbsp-files-of-advance-identity-next` | `books/store-budget-stored-post.lisp` | 109 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
