@@ -21,7 +21,8 @@
   (mv :source-busy fn-bprx-segment)
   (let* ((fn-bprx-segment (update-fn-bprx-nonce nonce fn-bprx-segment))
          (fn-bprx-segment (update-fn-bprx-ordinal ordinal fn-bprx-segment)))
-   (mv :source-filling (update-fn-bprx-phase :filling fn-bprx-segment)))))
+   (let ((fn-bprx-segment (update-fn-bprx-phase :filling fn-bprx-segment)))
+    (mv :source-filling fn-bprx-segment)))))
 
 (defun fn-bprx-segment-put (nonce ordinal expected-used octet fn-bprx-segment)
  (declare (xargs :stobjs fn-bprx-segment
@@ -39,7 +40,8 @@
   (t
    (let* ((at (fn-bprx-used fn-bprx-segment))
           (fn-bprx-segment (update-fn-bprx-bytesi at octet fn-bprx-segment)))
-    (mv :source-byte (update-fn-bprx-used (1+ at) fn-bprx-segment))))))
+    (let ((fn-bprx-segment (update-fn-bprx-used (1+ at) fn-bprx-segment)))
+     (mv :source-byte fn-bprx-segment))))))
 
 (defun fn-bprx-segment-freeze (nonce ordinal expected-used fn-bprx-segment)
  (declare (xargs :stobjs fn-bprx-segment
@@ -54,7 +56,8 @@
    (mv :source-already-frozen fn-bprx-segment))
   ((not (eq (fn-bprx-phase fn-bprx-segment) :filling))
    (mv :source-fenced fn-bprx-segment))
-  (t (mv :source-frozen (update-fn-bprx-phase :frozen fn-bprx-segment)))))
+  (t (let ((fn-bprx-segment (update-fn-bprx-phase :frozen fn-bprx-segment)))
+      (mv :source-frozen fn-bprx-segment)))))
 
 ; Result list is the bounded logical observation at the concrete array
 ; boundary. Source storage is never reconstructed as a whole octet list.
