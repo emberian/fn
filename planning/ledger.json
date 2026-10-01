@@ -1552,6 +1552,8 @@
     "tests/acl2/msgid-pages-exec-tests",
     "books/msgid-linear",
     "tests/acl2/msgid-linear-tests",
+    "books/msgid-linear-exec",
+    "tests/acl2/msgid-linear-exec-tests",
     "books/owner-number-bound-join",
     "tests/acl2/owner-number-bound-join-tests",
     "tests/acl2/owner-identity-served-tests",
@@ -2344,22 +2346,22 @@
     "tests/acl2/substrate-commit-codec-gap-tests"
   ],
   "totals": {
-    "books": 2688,
-    "books_in_root_closure": 2596,
-    "roots": 2340,
-    "theorems": 35155,
-    "functions": 22441,
-    "assert_events": 25186,
+    "books": 2690,
+    "books_in_root_closure": 2598,
+    "roots": 2342,
+    "theorems": 35240,
+    "functions": 22474,
+    "assert_events": 25200,
     "must_fails": 2531,
     "prover_refusals": 0,
     "encapsulates": 187,
     "guards": {
       "verified": 3826,
-      "declared-off": 2778,
-      "default-guarded": 12633,
-      "default-unguarded": 3204
+      "declared-off": 2788,
+      "default-guarded": 12652,
+      "default-unguarded": 3208
     },
-    "suspect_theorems": 1329,
+    "suspect_theorems": 1331,
     "export_hygiene_warnings": 392,
     "enabled_projection_warnings": 79,
     "teeth_form_warnings": 275,
@@ -26280,10 +26282,42 @@
       "read_error": null
     },
     {
+      "book": "books/msgid-linear-exec.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 83,
+      "functions": 24,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 18,
+        "default-unguarded": 4
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 5,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "msgid-linear",
+        "msgid-pages-exec"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [
+        "fn-mlh-candidates-no-pages",
+        "fn-mlh-flag-part-of-seqw"
+      ],
+      "read_error": null
+    },
+    {
       "book": "books/msgid-linear.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 90,
+      "theorems": 92,
       "functions": 28,
       "guards": {
         "verified": 0,
@@ -64186,22 +64220,48 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/msgid-linear-exec-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 6,
+      "guards": {
+        "verified": 0,
+        "declared-off": 5,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 5,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 3,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/msgid-linear-exec"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/msgid-linear-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
       "theorems": 1,
-      "functions": 6,
+      "functions": 9,
       "guards": {
         "verified": 0,
-        "declared-off": 1,
+        "declared-off": 4,
         "default-guarded": 5,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 37,
+      "assert_events": 46,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 13,
+      "defconsts": 19,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -82289,6 +82349,25 @@
       "line": 33,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-mlh-candidates-no-pages",
+      "book": "books/msgid-linear-exec.lisp",
+      "line": 649,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-mlh-candidates and the conclusion is that arm's value",
+        "branch-of-definition: the hypothesis is a branch test of fn-mlh-candidates and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-mlh-flag-part-of-seqw",
+      "book": "books/msgid-linear-exec.lisp",
+      "line": 792,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)",
+        "definition-restated: the conclusion is the body of fn-mlh-flag-part",
+        "reflexive-conclusion: a conjunct is (equal X X)"
       ]
     },
     {

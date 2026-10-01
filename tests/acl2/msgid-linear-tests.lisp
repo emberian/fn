@@ -210,6 +210,64 @@
 (assert-event (not (member-equal 1500 (fn-mpxl-cands 0 (fn-mpxl-make (list (cons nil (mpxl-same 0 1024 0)) (cons nil (mpxl-same 0 1024 1024))) 2 0)))))
 
 ; ---------------------------------------------------------------------------
+; A MUTATED SPLIT (the 2026-10-01 review's witness for the split keystone):
+; the reachable table N = 2, S = 0 with 1,024 entries of tag 2 on page 0
+; (home 0 under mod 2) and then tag 0 at seq 1024, which overflows to page
+; 1 and flags page 0.  The split of page 0 moves the 1,024 tag-2 movers to
+; page 2 (address 2 under mod 4) and KEEPS page 0's flag, so seq 1024 is
+; still found; a split that drops the flag (the one line books/msgid-linear
+; must keep) loses it: fn-mpxl-faithful fails and the reader misses the row.
+(defconst *mpxl-reach*
+  (mv-let (placed tab) (fn-mpxl-put 0 1024 (fn-mpxl-make (list (cons nil (mpxl-same 2 1024 0)) (cons nil nil)) 2 0))
+    (and placed tab)))
+(assert-event (and (fn-mpxl-tabp *mpxl-reach*)
+                   (fn-mpxl-flag (fn-mpxl-page 0 (fn-mpxl-pages *mpxl-reach*)))
+                   (member-equal 1024 (fn-mpxl-cands 0 *mpxl-reach*))))
+; rows: 1,024 rows under one Message-ID carrying tag 2, then one under tag 0
+(defun mpxl-rows-under (k from msgid)
+  (declare (xargs :verify-guards nil))
+  (if (zp k) nil (cons (mpxl-held from msgid 100) (mpxl-rows-under (- k 1) (+ 1 from) msgid))))
+; a Message-ID of each tag under the attached hash (found by search)
+(defun mpxl-find-msgid (want i)
+  (declare (xargs :verify-guards nil :measure (nfix (- 1000 (nfix i)))))
+  (if (>= (nfix i) 1000) nil
+    (let ((m (concatenate 'string "<" (coerce (explode-nonnegative-integer (nfix i) 10 nil) 'string) "@x>")))
+      (if (equal (mpxl-tag m) want) m (mpxl-find-msgid want (1+ (nfix i)))))))
+(defconst *mpxl-m2* (mpxl-find-msgid 2 0))
+(defconst *mpxl-m0* (mpxl-find-msgid 0 0))
+(assert-event (and (equal (mpxl-tag *mpxl-m2*) 2) (equal (mpxl-tag *mpxl-m0*) 0)))
+(defconst *mpxl-reach-rows*
+  (append (mpxl-rows-under 1024 0 *mpxl-m2*) (list (mpxl-held 1024 *mpxl-m0* 100))))
+(assert-event (fn-mpxl-faithful *mpxl-reach* *mpxl-reach-rows*))
+(assert-event (equal (fn-mpxl-records *mpxl-m0* *mpxl-reach* *mpxl-reach-rows*)
+                     (fn-cei-article-records-for *mpxl-m0* *mpxl-reach-rows*)))
+; the split, as the book defines it: faithful, and the row still found
+(defconst *mpxl-reach-split*
+  (mv-let (ok tab) (fn-mpxl-split *mpxl-reach*) (and ok tab)))
+(assert-event (and (fn-mpxl-tabp *mpxl-reach-split*)
+                   (equal (len (fn-mpxl-ents (fn-mpxl-page 2 (fn-mpxl-pages *mpxl-reach-split*)))) 1024)
+                   (fn-mpxl-flag (fn-mpxl-page 0 (fn-mpxl-pages *mpxl-reach-split*)))
+                   (fn-mpxl-faithful *mpxl-reach-split* *mpxl-reach-rows*)
+                   (equal (fn-mpxl-records *mpxl-m0* *mpxl-reach-split* *mpxl-reach-rows*)
+                          (fn-cei-article-records-for *mpxl-m0* *mpxl-reach-rows*))))
+; THE MUTATION: the split with page S's flag dropped
+(defun mpxl-split-noflag (tab)
+  (declare (xargs :verify-guards nil))
+  (mv-let (ok tab2) (fn-mpxl-split tab)
+    (if ok
+        (let* ((pgs (fn-mpxl-pages tab2))
+               (s (fn-mpxl-s tab))
+               (pg (fn-mpxl-page s pgs)))
+          (fn-mpxl-make (update-nth s (cons nil (fn-mpxl-ents pg)) pgs) (fn-mpxl-n tab2) (fn-mpxl-s tab2)))
+      tab)))
+(defconst *mpxl-reach-mutated* (mpxl-split-noflag *mpxl-reach*))
+(assert-event (fn-mpxl-tabp *mpxl-reach-mutated*))
+(assert-event (not (fn-mpxl-faithful *mpxl-reach-mutated* *mpxl-reach-rows*)))
+(assert-event (not (member-equal 1024 (fn-mpxl-cands 0 *mpxl-reach-mutated*))))
+(assert-event (not (equal (fn-mpxl-records *mpxl-m0* *mpxl-reach-mutated* *mpxl-reach-rows*)
+                          (fn-cei-article-records-for *mpxl-m0* *mpxl-reach-rows*))))
+
+; ---------------------------------------------------------------------------
 ; HYPOTHESIS-REMOVAL.
 
 ; fn-mpxl-faithful-from REMOVED: row 3's entry missing (the writer skipped

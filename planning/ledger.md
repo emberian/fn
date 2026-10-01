@@ -10,20 +10,20 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2688 |
-| Certification roots in the Makefile | 2340 |
-| Books inside the root closure | 2596 |
-| `defthm` and `defthmd` events | 35155 |
-| `defun` events | 22441 |
+| Books read | 2690 |
+| Certification roots in the Makefile | 2342 |
+| Books inside the root closure | 2598 |
+| `defthm` and `defthmd` events | 35240 |
+| `defun` events | 22474 |
 | Functions with verified guards | 3826 |
-| Functions declared `:verify-guards nil` and never verified | 2778 |
-| Functions left at the default with an explicit guard | 12633 |
-| Functions left at the default with no guard | 3204 |
-| `assert-event` checks | 25186 |
+| Functions declared `:verify-guards nil` and never verified | 2788 |
+| Functions left at the default with an explicit guard | 12652 |
+| Functions left at the default with no guard | 3208 |
+| `assert-event` checks | 25200 |
 | `must-fail` checks | 2531 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 187 |
-| Theorems flagged SUSPECT by shape | 1329 |
+| Theorems flagged SUSPECT by shape | 1331 |
 | Export-hygiene warnings | 392 |
 | Enabled-projection warnings | 79 |
 | Teeth-form warnings | 275 |
@@ -906,7 +906,8 @@ that `make certify` requests.
 | `books/moderation.lisp` | closure | 40 | 25 | 4/0/21/0 | 0 | 0 | 2 |
 | `books/msgid-index-concrete.lisp` | root | 14 | 7 | 1/0/6/0 | 0 | 0 | 0 |
 | `books/msgid-index.lisp` | root | 23 | 15 | 1/0/14/0 | 0 | 0 | 0 |
-| `books/msgid-linear.lisp` | root | 90 | 28 | 0/0/28/0 | 0 | 0 | 1 |
+| `books/msgid-linear-exec.lisp` | root | 83 | 24 | 0/2/18/4 | 0 | 0 | 2 |
+| `books/msgid-linear.lisp` | root | 92 | 28 | 0/0/28/0 | 0 | 0 | 1 |
 | `books/msgid-pages-exec.lisp` | root | 285 | 74 | 2/7/51/14 | 0 | 0 | 2 |
 | `books/msgid-pages.lisp` | root | 44 | 22 | 0/0/20/2 | 0 | 0 | 0 |
 | `books/msgid-probe-cursor.lisp` | closure | 1 | 5 | 2/0/3/0 | 0 | 0 | 0 |
@@ -2239,7 +2240,8 @@ that `make certify` requests.
 | `tests/acl2/moderation-verbs-tests.lisp` | root | 0 | 7 | 0/1/1/5 | 70 | 7 | 0 |
 | `tests/acl2/msgid-index-concrete-tests.lisp` | root | 4 | 2 | 0/1/0/1 | 18 | 1 | 0 |
 | `tests/acl2/msgid-index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 13 | 5 | 0 |
-| `tests/acl2/msgid-linear-tests.lisp` | root | 1 | 6 | 0/1/5/0 | 37 | 0 | 0 |
+| `tests/acl2/msgid-linear-exec-tests.lisp` | root | 0 | 6 | 0/5/1/0 | 5 | 0 | 0 |
+| `tests/acl2/msgid-linear-tests.lisp` | root | 1 | 9 | 0/4/5/0 | 46 | 0 | 0 |
 | `tests/acl2/msgid-pages-exec-tests.lisp` | root | 5 | 14 | 0/3/11/0 | 10 | 0 | 0 |
 | `tests/acl2/msgid-pages-tests.lisp` | root | 1 | 4 | 0/3/1/0 | 23 | 0 | 0 |
 | `tests/acl2/must-fail-checked.lisp` | closure | 1 | 7 | 0/0/2/5 | 0 | 2 | 0 |
@@ -3197,6 +3199,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-me-site-merge-preserves-chain` | `books/membership-epochs-invariants.lisp` | 297 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-me-window-of-fn-me-site` | `books/membership-epochs.lisp` | 587 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-miq-progress-keeps-capture` | `books/msgid-query-state.lisp` | 33 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-mlh-candidates-no-pages` | `books/msgid-linear-exec.lisp` | 649 | arm-of-definition: the hypotheses select one IF/COND arm of fn-mlh-candidates and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-mlh-candidates and the conclusion is that branch's value |
+| `fn-mlh-flag-part-of-seqw` | `books/msgid-linear-exec.lisp` | 792 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-mlh-flag-part; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-mod-inj-append-of-a-cons` | `books/moderation.lisp` | 422 | arm-of-definition: the hypotheses select one IF/COND arm of fn-inj-append and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-inj-append and the conclusion is that branch's value |
 | `fn-mod-named-entries-of-no-groups` | `books/moderation.lisp` | 135 | arm-of-definition: the hypotheses select one IF/COND arm of fn-mod-named-entries and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-mod-named-entries and the conclusion is that branch's value |
 | `fn-mpxl-accessors-of-make` | `books/msgid-linear.lisp` | 299 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
