@@ -1550,6 +1550,8 @@
     "tests/acl2/msgid-pages-tests",
     "books/msgid-pages-exec",
     "tests/acl2/msgid-pages-exec-tests",
+    "books/msgid-linear",
+    "tests/acl2/msgid-linear-tests",
     "books/owner-number-bound-join",
     "tests/acl2/owner-number-bound-join-tests",
     "tests/acl2/owner-identity-served-tests",
@@ -2342,26 +2344,26 @@
     "tests/acl2/substrate-commit-codec-gap-tests"
   ],
   "totals": {
-    "books": 2686,
-    "books_in_root_closure": 2594,
-    "roots": 2338,
-    "theorems": 35064,
-    "functions": 22407,
-    "assert_events": 25149,
+    "books": 2688,
+    "books_in_root_closure": 2596,
+    "roots": 2340,
+    "theorems": 35155,
+    "functions": 22441,
+    "assert_events": 25186,
     "must_fails": 2531,
     "prover_refusals": 0,
     "encapsulates": 187,
     "guards": {
       "verified": 3826,
-      "declared-off": 2777,
-      "default-guarded": 12600,
+      "declared-off": 2778,
+      "default-guarded": 12633,
       "default-unguarded": 3204
     },
-    "suspect_theorems": 1328,
-    "export_hygiene_warnings": 390,
+    "suspect_theorems": 1329,
+    "export_hygiene_warnings": 392,
     "enabled_projection_warnings": 79,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 3362,
+    "include_hygiene_warnings": 3363,
     "host_names_warnings": 3114,
     "hand_written_record_warnings": 19
   },
@@ -26275,6 +26277,37 @@
       ],
       "system_includes": [],
       "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/msgid-linear.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 90,
+      "functions": 28,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 28,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "msgid-pages"
+      ],
+      "system_includes": [
+        "arithmetic/top",
+        "ihs/quotient-remainder-lemmas"
+      ],
+      "suspects": [
+        "fn-mpxl-accessors-of-make"
+      ],
       "read_error": null
     },
     {
@@ -64153,6 +64186,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/msgid-linear-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 6,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 5,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 37,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 13,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/msgid-linear"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/msgid-pages-exec-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -82251,6 +82310,14 @@
       ]
     },
     {
+      "theorem": "fn-mpxl-accessors-of-make",
+      "book": "books/msgid-linear.lisp",
+      "line": 299,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
       "theorem": "fn-mpxt-okp-pages-okp",
       "book": "books/msgid-pages-exec.lisp",
       "line": 2319,
@@ -90575,6 +90642,18 @@
         "book": "books/msgid-index-concrete.lisp",
         "line": 177,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-mpxl-len-update-nth",
+        "book": "books/msgid-linear.lisp",
+        "line": 238,
+        "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
+      },
+      {
+        "theorem": "fn-mpxl-split-pages-len",
+        "book": "books/msgid-linear.lisp",
+        "line": 699,
+        "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
       },
       {
         "theorem": "fn-mpxt-prefix-len",
@@ -102604,6 +102683,13 @@
         "line": 32,
         "include": "byte-store-frame",
         "included": "books/byte-store-frame.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/msgid-linear.lisp",
+        "line": 67,
+        "include": "msgid-pages",
+        "included": "books/msgid-pages.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

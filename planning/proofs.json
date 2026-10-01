@@ -1228,7 +1228,7 @@
       "assumptions": [
         "A-CRYPTO"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
       ],
@@ -4344,7 +4344,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/cbor-invariants.lisp",
         "books/records-canonicality.lisp",
@@ -20743,26 +20743,13 @@
         "PRF-957"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "planned",
       "evidence": [
         "books/msgid-linear.lisp",
         "tests/acl2/msgid-linear-tests.lisp",
         "planning/design-store-representation-2026-10-01.md"
       ],
-      "progress_note": "2026-10-01 lane msgid-linear-hash: the whole book REPL-admitted on persvati (proof_repl mlh, every form); the teeth in a second session over the book loaded from source. Landed under LAND-AND-FIX-FORWARD (the runner's background cite certifies). The executable twin is PRF-1219.",
-      "events": [
-        "fn-mpxl-records-is-the-records-for",
-        "fn-mpxl-split-preserves-faithful",
-        "fn-mpxl-split-keeps-candidate",
-        "fn-mpxl-put-preserves-faithful",
-        "fn-mpxl-put-finds",
-        "fn-mpxl-put-keeps-candidate",
-        "fn-mpxl-put-places-iff-not-saturated",
-        "fn-mpxl-addr-after-split-same-round",
-        "fn-mpxl-addr-after-split-next-round",
-        "fn-mpxl-page-of-split-pages",
-        "fn-mpxl-split-refused-unchanged"
-      ]
+      "progress_note": "2026-10-01 lane msgid-linear-hash: the whole book REPL-admitted on persvati (proof_repl mlh, every form); the teeth in a second session over the book loaded from source. Landed under LAND-AND-FIX-FORWARD (the runner's background cite certifies). The executable twin is PRF-1219."
     }
   ]
 }
