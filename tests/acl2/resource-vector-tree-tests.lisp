@@ -97,8 +97,12 @@
 (assert! (equal (identity (fn-rt-step *rtt-t7* (list (cons 2 1) :draw 0 *rtt-read*)))
                 (list :stale *rtt-t7*)))
 (assert! (equal (car (fn-rt-step *rtt-t7* (list (cons 2 2) :draw 0 *rtt-read*))) :drawn))
-;; A destroy replayed, or with the wrong token: :stale.
-(assert! (equal (identity (fn-rt-step *rtt-t6* (list :root :destroy 2 1))) (list :stale *rtt-t6*)))
+;; A destroy replayed (no sub-bank behind the idle slot: the spent of none
+;; is no vector, so the bank's destroy refuses it :invalid-destroy -- one
+;; word for every dead token is NEXT), or with the wrong token: refused,
+;; the tree itself.
+(assert! (equal (identity (fn-rt-step *rtt-t6* (list :root :destroy 2 1)))
+                (list :invalid-destroy *rtt-t6*)))
 (assert! (equal (identity (fn-rt-step *rtt-t7* (list :root :destroy 2 1))) (list :stale *rtt-t7*)))
 ;; A run: refusals leave the tree; an admitted run keeps the invariant.
 (defconst *rtt-refused-run*
