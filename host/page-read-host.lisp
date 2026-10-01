@@ -15,7 +15,9 @@
 ; offline Store supplies a separate context; absence alone grants no I/O.
 (defun fn-owner-page-read-enter-mode (mode fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool))
-  (if (and (not (and (eq mode :served)
+  (if (and (not (and (eq mode :offline)
+                     (fn-prp-alloc-installation fn-page-read-pool)))
+           (not (and (eq mode :served)
                      (fn-prp-alloc-installation fn-page-read-pool)
                      (not (fn-prp-data fn-page-read-pool))))
            (member-eq mode '(:offline :served))
@@ -33,7 +35,8 @@
 
 (defun fn-owner-page-read-direct-mode (fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool))
-  (cond ((equal (fn-prp-mode fn-page-read-pool) :offline) :offline)
+  (cond ((and (equal (fn-prp-mode fn-page-read-pool) :offline)
+              (null (fn-prp-alloc-installation fn-page-read-pool))) :offline)
         ((and (equal (fn-prp-mode fn-page-read-pool) :served)
               (fn-prp-data fn-page-read-pool)) :funded-pool)
         (t :read-resources-unavailable)))
