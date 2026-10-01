@@ -81,15 +81,15 @@
          (set-a (adt-sym name "$A-SET"))
          (get-c (adt-sym3 name "$C-GET-" (car (car fields))))
          (set-c (adt-sym3 name "$C-SET-" (car (car fields))))
-         (create-a (adt-sym "CREATE-" (symbol-name a)))
-         (create-c (adt-sym "CREATE-" (symbol-name st)))
+         (create-a (adt-sym-pre "CREATE-" a))
+         (create-c (adt-sym-pre "CREATE-" st))
          (recog (adt-sym name "P"))
          (append-c1 (adt-sym name "$C-APPEND1"))
          (defabs
            `(defabsstobj ,name
               :foundation ,st
               :recognizer (,recog :logic ,ap :exec ,(adt-sym name "$CP"))
-              :creator (,(adt-sym "CREATE-" (symbol-name name)) :logic ,create-a :exec ,create-c)
+              :creator (,(adt-sym-pre "CREATE-" name) :logic ,create-a :exec ,create-c)
               :corr-fn ,corr
               :corr-fn-exists t
               :exports ((,(adt-sym name "-COUNT") :logic ,count-a :exec ,count-of)
@@ -180,7 +180,7 @@
   ; The :exec functions of the list foundation, each :guard t.
   (let* ((l (adt-sym name "$L"))
          (items (adt-sym l "-ITEMS"))
-         (upd (adt-sym "UPDATE-" (symbol-name items))))
+         (upd (adt-sym-pre "UPDATE-" items)))
     (append
      `((defun ,(adt-sym l "-COUNT") (,l)
          (declare (xargs :stobjs ,l))
@@ -236,8 +236,8 @@
          (lp (adt-sym l "P"))
          (lcorr (adt-sym name "$LCORR"))
          (ap (adt-sym impl "$AP"))
-         (create-a (adt-sym "CREATE-" (symbol-name (adt-sym impl "$A"))))
-         (create-l (adt-sym "CREATE-" (symbol-name l)))
+         (create-a (adt-sym-pre "CREATE-" (adt-sym impl "$A")))
+         (create-l (adt-sym-pre "CREATE-" l))
          (recog (adt-sym name "P"))
          (execs (rep-l-exec-events name fields scalar))
          (exec-names (strip-cadrs execs))
@@ -245,7 +245,7 @@
            `(defabsstobj ,name
               :foundation ,l
               :recognizer (,recog :logic ,ap :exec ,lp)
-              :creator (,(adt-sym "CREATE-" (symbol-name name)) :logic ,create-a :exec ,create-l)
+              :creator (,(adt-sym-pre "CREATE-" name) :logic ,create-a :exec ,create-l)
               :corr-fn ,lcorr
               :exports ,(rep-generic-exports name impl fields scalar)
               :attachable t))
@@ -283,20 +283,13 @@
          (rep-theorem-names-p (cdr names) wrld))
         (t nil)))
 
-; The prototype's naming helpers have other callers and intentionally use
-; ACL2.  Relocate only NAME-derived symbols in this generator's output.
-; Expand the same schema with a second name to identify those occurrences:
-; library symbols, field names, enum values and supplied invariant lemmas
-; are identical in both expansions, even when their spelling resembles NAME.
-; This also covers the prototype-generated foundation without copying it.
-(defun rep-package-events (events probe name)
-  (cond ((and (consp events) (consp probe))
-         (cons (rep-package-events (car events) (car probe) name)
-               (rep-package-events (cdr events) (cdr probe) name)))
-        ((and (symbolp events) (symbolp probe) (not (eq events probe)))
-         (intern-in-package-of-symbol (symbol-name events) name))
-        (t events)))
-
+; Every generated name is interned in NAME's package by construction:
+; adt-sym and adt-sym3 follow their base symbol's package and adt-sym-pre
+; the symbol it prefixes (books/proto/adt.lisp), so an instance in another
+; package gets its foundation, exports and lemmas there, and the same
+; spelling in two packages never collides.  (Codex t10 found the names
+; interned in ACL2 and relocated them by a double expansion and a diff;
+; deputy-1 2026-10-01 put the rule where the names are made.)
 (defun rep-instance-events (name fields0 scalar generic invariant invariant-lemmas)
   (let* ((fields (adt-norm-fields fields0))
          (impl (if generic (adt-sym name "-COLS") name))
@@ -309,15 +302,6 @@
        (table fn-generated ',name
               '(:def-representation :scalar ,scalar :generic ,generic
                 :implementation ,impl :invariant ,invariant)))))
-
-(defun rep-named-events (name fields0 scalar generic invariant invariant-lemmas)
-  (rep-package-events
-   (rep-instance-events name fields0 scalar generic invariant invariant-lemmas)
-   (rep-instance-events
-    (intern-in-package-of-symbol
-     (concatenate 'string (symbol-name name) "-REP-PACKAGE-PROBE") name)
-    fields0 scalar generic invariant invariant-lemmas)
-   name))
 
 (defun def-representation-fn (name fields0 scalar generic invariant invariant-lemmas state)
   (declare (xargs :stobjs state))
@@ -344,7 +328,7 @@
      ((and invariant (not scalar))
       (er soft ctx "~x0: :invariant is supported with :scalar t in this stage." name))
      (t
-      (value (rep-named-events name fields0 scalar generic invariant invariant-lemmas))))))
+      (value (rep-instance-events name fields0 scalar generic invariant invariant-lemmas))))))
 
 (defun rep-fields-of (args)
   (if (or (endp args) (keywordp (car args)))

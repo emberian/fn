@@ -53,8 +53,8 @@
 (assert-event (equal (symbol-package-name 'drt-held$c)
                      (symbol-package-name 'drt-held)))
 
-; A non-ACL2 witness detects fixed-ACL2 interning without a new defpkg
-; portcullis. Check actual expansion trees for record, scalar and generic.
+; A non-ACL2 witness: the expansion trees for record, scalar and generic
+; put the foundation in the instance's package.
 (program)
 (defun drt-find-foundation (events)
   (cond ((atom events) nil)
@@ -65,22 +65,27 @@
 
 (assert-event
  (equal (symbol-package-name
-         (drt-find-foundation (rep-named-events :drt-package '((id :u64)) nil nil nil nil)))
+         (drt-find-foundation (rep-instance-events :drt-package '((id :u64)) nil nil nil nil)))
         (symbol-package-name :drt-package)))
 (assert-event
  (equal (symbol-package-name
-         (drt-find-foundation (rep-named-events :drt-package '((id :u64)) t nil nil nil)))
+         (drt-find-foundation (rep-instance-events :drt-package '((id :u64)) t nil nil nil)))
         (symbol-package-name :drt-package)))
 (assert-event
  (equal (symbol-package-name
-         (drt-find-foundation (rep-named-events :drt-package '((id :u64)) t t nil nil)))
+         (drt-find-foundation (rep-instance-events :drt-package '((id :u64)) t t nil nil)))
         (symbol-package-name :drt-package)))
 
-; Relocation distinguishes generated references from unchanged user data.
+; One spelling in two packages: two instances, two foundations.
 (assert-event
- (equal (rep-package-events '(drt-package$c (quote drt-package$c))
-                            '(probe$c (quote drt-package$c)) :drt-package)
-        '(:drt-package$c (quote drt-package$c))))
+ (not (equal (drt-find-foundation (rep-instance-events :drt-two '((id :u64)) nil nil nil nil))
+             (drt-find-foundation (rep-instance-events 'drt-two '((id :u64)) nil nil nil nil)))))
+(assert-event
+ (equal (symbol-package-name
+         (drt-find-foundation (rep-instance-events 'drt-two '((id :u64)) nil nil nil nil)))
+        "ACL2"))
+; An admitted two-package instance needs a defpkg portcullis, which
+; tools/certify_books.py does not carry for a test book yet (NEXT).
 
 ; -----------------------------------------------------------------------------
 ; 2. The scalar pilot: the arena's logical view.

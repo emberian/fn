@@ -165,8 +165,8 @@
          (insert-a (adt-sym name "$A-INSERT"))
          (remove-a (adt-sym name "$A-REMOVE"))
          (replace-a (adt-sym name "$A-REPLACE"))
-         (create-a (adt-sym "CREATE-" (symbol-name a)))
-         (create-c (adt-sym "CREATE-" (symbol-name st)))
+         (create-a (adt-sym-pre "CREATE-" a))
+         (create-c (adt-sym-pre "CREATE-" st))
          (recog (adt-sym name "P"))
          (keyf (adt-sym3 name "$C-GET-" key))
          (bhints '(("Goal" :in-theory (enable adt-kinstance-unfold))))
@@ -174,7 +174,7 @@
            `(defabsstobj ,name
               :foundation ,st
               :recognizer (,recog :logic ,ap :exec ,(adt-sym name "$CP"))
-              :creator (,(adt-sym "CREATE-" (symbol-name name)) :logic ,create-a :exec ,create-c)
+              :creator (,(adt-sym-pre "CREATE-" name) :logic ,create-a :exec ,create-c)
               :corr-fn ,corr
               :corr-fn-exists t
               :exports ((,(adt-sym name "-FIND") :logic ,find-a :exec ,find-c)
@@ -311,8 +311,8 @@
          (insert-a (adt-sym name "$A-INSERT"))
          (remove-a (adt-sym name "$A-REMOVE"))
          (replace-a (adt-sym name "$A-REPLACE"))
-         (create-a (adt-sym "CREATE-" (symbol-name a)))
-         (create-c (adt-sym "CREATE-" (symbol-name st)))
+         (create-a (adt-sym-pre "CREATE-" a))
+         (create-c (adt-sym-pre "CREATE-" st))
          (recog (adt-sym name "P"))
          (keyf (adt-sym3 name "$C-GET-" key))
          (bhints '(("Goal" :in-theory (enable adt-kinstance-unfold))))
@@ -320,7 +320,7 @@
            `(defabsstobj ,name
               :foundation ,st
               :recognizer (,recog :logic ,ap :exec ,(adt-sym name "$CP"))
-              :creator (,(adt-sym "CREATE-" (symbol-name name)) :logic ,create-a :exec ,create-c)
+              :creator (,(adt-sym-pre "CREATE-" name) :logic ,create-a :exec ,create-c)
               :corr-fn ,corr
               :corr-fn-exists t
               :exports ((,(adt-sym name "-FIND") :logic ,find-a :exec ,find-c)
@@ -450,8 +450,8 @@
          (a (adt-sym name "$A"))
          (ap (adt-sym name "$AP"))
          (corr (adt-sym name "$CORR"))
-         (create-a (adt-sym "CREATE-" (symbol-name a)))
-         (create-c (adt-sym "CREATE-" (symbol-name st)))
+         (create-a (adt-sym-pre "CREATE-" a))
+         (create-c (adt-sym-pre "CREATE-" st))
          (recog (adt-sym name "P"))
          (nhas (adt-sym name "$C-NHAS")) (nfind (adt-sym name "$C-NFIND"))
          (nins (adt-sym name "$C-NINSERT")) (nrem (adt-sym name "$C-NREMOVE"))
@@ -466,7 +466,7 @@
            `(defabsstobj ,name
               :foundation ,st
               :recognizer (,recog :logic ,ap :exec ,(adt-sym name "$CP"))
-              :creator (,(adt-sym "CREATE-" (symbol-name name)) :logic ,create-a :exec ,create-c)
+              :creator (,(adt-sym-pre "CREATE-" name) :logic ,create-a :exec ,create-c)
               :corr-fn ,corr
               :corr-fn-exists t
               :exports ((,(adt-sym name "-FIND") :logic ,find-a :exec ,nfind)
