@@ -1927,7 +1927,7 @@
       "assumptions": [
         "A-CRYPTO"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "planning/evidence/manifests/certify-20260924T144913Z-1419146.json",
         "planning/evidence/manifests/certify-20260924T145118Z-1441609.json",
@@ -16167,7 +16167,7 @@
         "PRF-023"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/stx-node-lace.lisp",
         "books/stx-lace-rows.lisp",
@@ -17221,7 +17221,7 @@
         "PRF-022"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/peer-transit-authority.lisp",
         "tests/acl2/stx-transit-tests.lisp",
@@ -17247,7 +17247,7 @@
         "PRF-042"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/peer-transit-authority.lisp",
         "host/owner-host.lisp",
@@ -21110,7 +21110,7 @@
     {
       "id": "PRF-1224",
       "title": "K6: one transit decision for the NNTP and BP carriers",
-      "statement": "A BP transit delivery that fn-own-bp-transit-submit-result submits is, after the enqueue and the owner's take, the in-flight TAKETHIS record of the same peer, Message-ID and octets under the control id, and the decision host/owner-host.lisp fn-owner-transit-decide makes for it (fn-tsd-drain-decision, its fn-pta-decide call) has the gate's byte decision, :want. An NNTP IHAVE/TAKETHIS in flight with the same peer, Message-ID and octets over the same store, clock and header limits gets the same byte decision, and the same whole decision when the two submissions' pinned configurations agree. Where they differ is named: the principal (NNTP's session peer vs fn-bpaj-ingress-peer) is an input, and under fn-ocfg-statep the BP submission's authority verdict is :ungoverned or :none, since the control id has no pin.",
+      "statement": "MODEL-LEVEL. A BP transit delivery that fn-own-bp-transit-submit-result submits is, after the enqueue and the owner's take, the in-flight TAKETHIS record of the same peer, Message-ID and octets under the control id, and fn-tsd-drain-decision (a model of the fn-pta-decide call host/owner-host.lisp fn-owner-transit-decide makes) gives it has the gate's byte decision, :want. An NNTP IHAVE/TAKETHIS in flight with the same peer, Message-ID and octets over the same store, clock and header limits gets the same byte decision, and the same whole decision when the two submissions' pinned configurations agree. Where they differ is named: the principal (NNTP's session peer vs fn-bpaj-ingress-peer) is an input, and under fn-ocfg-statep the BP submission's authority verdict is :ungoverned or :none, since the control id has no pin.",
       "milestone": "M6",
       "requirements": [
         "NNT-045"
@@ -21131,7 +21131,7 @@
         "tests/acl2/transit-same-decision-tests.lisp",
         "specs/bp-node-machine.md"
       ],
-      "progress_note": "PKT-202 (row Q3e). Host callers: host/native/owner.lisp fnn-owner-drain-one and fnn-owner-complete-bp-transit-submission both call host/owner-host.lisp fn-owner-transit-decide, which calls fn-pta-decide as fn-tsd-drain-decision does; the host does not yet call fn-tsd-drain-decision itself (host rewire queued after stage 0, with the BP authority read under the live configuration). Teeth: reachable full positives, single-hypothesis removals (gate refusal past the header limits; a different principal; a corrupted control pin) and an octet mutation; Message-ID printability proved, not assumed."
+      "progress_note": "PKT-202 (row Q3e). Host callers: host/native/owner.lisp fnn-owner-drain-one and fnn-owner-complete-bp-transit-submission both call host/owner-host.lisp fn-owner-transit-decide, which calls fn-pta-decide as fn-tsd-drain-decision does; OPEN JOIN (Codex r32 F1): no host code calls fn-tsd-drain-decision and no theorem equates it with fn-owner-transit-decide or the submit/take composition with fn-owner-step/fn-ocfg-step; the AUTHORITY-FIELD lane rewires the host to call it. Open teeth (r32 F2/F3): the NNTP positive through open+IHAVE+read+take; per-keystone removals of inflight, store/clock/limits and the pin premise. Teeth: reachable full positives, single-hypothesis removals (gate refusal past the header limits; a different principal; a corrupted control pin) and an octet mutation; Message-ID printability proved, not assumed."
     }
   ]
 }

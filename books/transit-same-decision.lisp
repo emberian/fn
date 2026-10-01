@@ -11,8 +11,12 @@
 ; decisions are host/owner-host.lisp fn-owner-transit-decide, which calls
 ; fn-pta-decide over the owner's in-flight submission; `fn-tsd-drain-decision'
 ; below is that call, argument for argument (the host's octet-to-string
-; conversion of the obligation id and subject aside).  Once stage 0 lands,
-; fn-owner-transit-decide calls it (NEXT in the lane dump).
+; conversion of the obligation id and subject aside).  The keystones are
+; MODEL-LEVEL: no host code calls fn-tsd-drain-decision yet, and no theorem
+; equates it with fn-owner-transit-decide (its octet conversion, :bad arm and
+; decision globals) or the direct submit/take composition with the host's
+; fn-owner-step / fn-ocfg-step path.  That join is OPEN: the AUTHORITY-FIELD
+; lane rewires fn-owner-transit-decide to call fn-tsd-drain-decision.
 ;
 ; KEYSTONES
 ;   fn-tsd-bp-gate-is-the-drain-decision: a BP delivery the gate submits is,
@@ -181,8 +185,7 @@
                                    fn-own-take-submission fn-own-bp-transit-submit
                                    fn-own-bp-transit-submit-result fn-tsd-drain-decision))))))
 
-; KEYSTONE (PKT-202).
-(local (defthm fn-tsd-car-of-pta-decide
+(local (defthm fn-tsd-car-of-pta-decide-by-definition
   (equal (car (fn-pta-decide index keyring v gen node cfg peer msgid octets clock id
                              subject limits))
          (fn-peer-decide-transfer-under node cfg peer msgid octets clock id subject limits))
@@ -190,6 +193,7 @@
                   :in-theory (disable fn-pta-decide-keeps-the-byte-decision-by-definition
                                       fn-peer-decide-transfer-under)))))
 
+; KEYSTONE (PKT-202).
 (defthm fn-tsd-nntp-and-bp-transit-decide-alike
   (implies (and (equal (fn-own-bp-transit-submit-result o cfg peer msgid octets id subject)
                        :submitted)

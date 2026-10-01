@@ -107484,7 +107484,7 @@
       },
       {
         "book": "books/transit-same-decision.lisp",
-        "line": 45,
+        "line": 49,
         "include": "transit-header-limits",
         "included": "books/transit-header-limits.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
