@@ -4908,3 +4908,19 @@
  :class :common-lisp-compliant :root :extract
  :raw-guarded (5 (nil nil nil nil fn-page-read-pool)
                  (nil nil fn-page-read-pool)))
+
+; Actual fixed callbacks captured by the image-owned bootstrap carrier.
+; Source declarations do not qualify the changed composition.
+(definterface fn-owner-runtime-ats-construct-internal
+ :class :common-lisp-compliant :root :extract
+ :raw-guarded (2 (fn-allocation-turn-slots fn-page-read-pool)
+                 (nil fn-allocation-turn-slots)))
+(definterface fn-owner-runtime-operation-binding-install-internal
+ :class :common-lisp-compliant :root :extract
+ :raw-guarded (2 (fn-page-read-pool state) (nil state)))
+(definterface fn-owner-runtime-bootstrap-fence-internal
+ :class :common-lisp-compliant :root :extract
+ :raw-guarded (1 (fn-page-read-pool) (nil fn-page-read-pool)))
+(definterface fn-owner-recovery-prs-install
+ :class :common-lisp-compliant :root :extract
+ :raw-guarded (2 (fn-page-read-pool state) (nil fn-page-read-pool)))

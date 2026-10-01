@@ -2070,6 +2070,16 @@ ACL2_BOOKS ?= books/defrecord \
     books/ninep-group-directory-source \
     tests/acl2/allocation-dual-ceiling-tests \
     books/runtime-bootstrap-completion \
+    tests/acl2/runtime-bootstrap-export-tests \
+    tests/acl2/allocation-turn-source-cost-tests \
+    tests/acl2/allocation-turn-body-authority-tests \
+    tests/acl2/allocation-turn-slots-tests \
+    books/allocation-turn-source-cost \
+    books/page-read-counter-transaction \
+    books/page-read-issue-source-cost \
+    books/recovery-prs-install \
+    books/runtime-bootstrap-turn-installation \
+    books/runtime-bootstrap-compiled-request \
     tests/acl2/runtime-operation-compiled-source-tests \
     books/runtime-operation-compiled-source \
     books/recovery-profile-envelope \

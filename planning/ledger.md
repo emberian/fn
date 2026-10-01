@@ -10,25 +10,25 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2371 |
-| Certification roots in the Makefile | 2168 |
-| Books inside the root closure | 2335 |
-| `defthm` and `defthmd` events | 33324 |
-| `defun` events | 21366 |
-| Functions with verified guards | 3748 |
-| Functions declared `:verify-guards nil` and never verified | 2602 |
-| Functions left at the default with an explicit guard | 11976 |
+| Books read | 2381 |
+| Certification roots in the Makefile | 2178 |
+| Books inside the root closure | 2345 |
+| `defthm` and `defthmd` events | 33419 |
+| `defun` events | 21421 |
+| Functions with verified guards | 3751 |
+| Functions declared `:verify-guards nil` and never verified | 2617 |
+| Functions left at the default with an explicit guard | 12013 |
 | Functions left at the default with no guard | 3040 |
-| `assert-event` checks | 24747 |
+| `assert-event` checks | 24801 |
 | `must-fail` checks | 2531 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 169 |
-| Theorems flagged SUSPECT by shape | 1313 |
-| Export-hygiene warnings | 386 |
+| Theorems flagged SUSPECT by shape | 1314 |
+| Export-hygiene warnings | 387 |
 | Enabled-projection warnings | 79 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 3039 |
-| Host-names warnings | 2767 |
+| Include-hygiene warnings | 3059 |
+| Host-names warnings | 2772 |
 | Hand-written-record warnings | 19 |
 
 ## Lints
@@ -109,9 +109,10 @@ that `make certify` requests.
 | `books/allocation-epoch-observation.lisp` | root | 3 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/allocation-epoch-pool.lisp` | root | 6 | 9 | 0/0/7/2 | 0 | 0 | 0 |
 | `books/allocation-epoch.lisp` | root | 11 | 17 | 0/0/17/0 | 0 | 0 | 1 |
-| `books/allocation-turn-body-authority.lisp` | root | 3 | 1 | 0/0/1/0 | 0 | 0 | 0 |
-| `books/allocation-turn-raw-bridge.lisp` | root | 8 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/allocation-turn-slots.lisp` | root | 17 | 13 | 0/0/12/1 | 0 | 0 | 2 |
+| `books/allocation-turn-body-authority.lisp` | root | 4 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/allocation-turn-raw-bridge.lisp` | root | 14 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/allocation-turn-slots.lisp` | root | 25 | 13 | 0/0/12/1 | 0 | 0 | 2 |
+| `books/allocation-turn-source-cost.lisp` | root | 54 | 17 | 3/0/14/0 | 0 | 0 | 1 |
 | `books/anchor-invariants.lisp` | root | 31 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/anchor-record.lisp` | root | 5 | 4 | 4/0/0/0 | 0 | 0 | 0 |
 | `books/anchor-replace.lisp` | root | 7 | 10 | 0/0/10/0 | 0 | 0 | 0 |
@@ -1014,7 +1015,9 @@ that `make certify` requests.
 | `books/page-file-lease.lisp` | root | 4 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/page-maintenance-lease.lisp` | - | 4 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/page-read-binding-revision.lisp` | root | 4 | 5 | 0/0/3/2 | 0 | 0 | 0 |
+| `books/page-read-counter-transaction.lisp` | root | 0 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/page-read-executor.lisp` | root | 11 | 7 | 0/0/7/0 | 0 | 0 | 0 |
+| `books/page-read-issue-source-cost.lisp` | root | 13 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/page-read-ledger.lisp` | root | 9 | 16 | 0/0/16/0 | 0 | 0 | 0 |
 | `books/page-read-ownership.lisp` | root | 12 | 11 | 0/0/11/0 | 0 | 0 | 0 |
 | `books/page-read-pool-state.lisp` | closure | 0 | 2 | 0/0/0/2 | 0 | 0 | 0 |
@@ -1204,6 +1207,7 @@ that `make certify` requests.
 | `books/recovery-payload-view.lisp` | - | 0 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/recovery-profile-buffer.lisp` | root | 4 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/recovery-profile-envelope.lisp` | root | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/recovery-prs-install.lisp` | root | 0 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/recovery-source-authority.lisp` | - | 0 | 8 | 0/0/8/0 | 0 | 0 | 0 |
 | `books/refusal-effect.lisp` | root | 11 | 0 | 0/0/0/0 | 0 | 0 | 3 |
 | `books/refusal-headroom.lisp` | root | 15 | 3 | 0/2/1/0 | 0 | 0 | 0 |
@@ -1225,11 +1229,13 @@ that `make certify` requests.
 | `books/retention.lisp` | root | 55 | 45 | 41/0/4/0 | 0 | 0 | 2 |
 | `books/rev-onto.lisp` | root | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/runtime-bootstrap-admission.lisp` | closure | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/runtime-bootstrap-compiled-request.lisp` | root | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/runtime-bootstrap-completion.lisp` | root | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/runtime-bootstrap-source.lisp` | root | 0 | 7 | 0/0/7/0 | 0 | 0 | 0 |
+| `books/runtime-bootstrap-turn-installation.lisp` | root | 1 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/runtime-operation-compiled-source.lisp` | root | 1 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/runtime-operation-compiled-table.lisp` | root | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
-| `books/runtime-operation-installed-source.lisp` | root | 0 | 3 | 0/0/3/0 | 0 | 0 | 0 |
+| `books/runtime-operation-installed-source.lisp` | root | 1 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/runtime-operation-source-assembly.lisp` | root | 0 | 12 | 0/0/12/0 | 0 | 0 | 0 |
 | `books/runtime-operation-source.lisp` | closure | 0 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/sasl.lisp` | root | 23 | 25 | 0/0/25/0 | 0 | 0 | 0 |
@@ -1527,6 +1533,9 @@ that `make certify` requests.
 | `tests/acl2/admission-preparation-intent-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 3 | 0 | 0 |
 | `tests/acl2/admission-semantic-node-tests.lisp` | root | 4 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/allocation-dual-ceiling-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 7 | 0 | 0 |
+| `tests/acl2/allocation-turn-body-authority-tests.lisp` | root | 0 | 2 | 0/2/0/0 | 1 | 0 | 0 |
+| `tests/acl2/allocation-turn-slots-tests.lisp` | root | 1 | 10 | 0/10/0/0 | 23 | 0 | 0 |
+| `tests/acl2/allocation-turn-source-cost-tests.lisp` | root | 6 | 5 | 0/3/2/0 | 30 | 0 | 0 |
 | `tests/acl2/anchor-replace-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/anchor-server-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/anchor-teeth-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 57 | 0 | 0 |
@@ -2258,6 +2267,7 @@ that `make certify` requests.
 | `tests/acl2/response-plan-pins-tests.lisp` | root | 7 | 0 | 0/0/0/0 | 3 | 0 | 0 |
 | `tests/acl2/retention-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 66 | 1 | 0 |
 | `tests/acl2/runtime-bootstrap-completion-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 2 | 0 | 0 |
+| `tests/acl2/runtime-bootstrap-export-tests.lisp` | root | 4 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/runtime-bootstrap-source-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 0 | 0 |
 | `tests/acl2/runtime-operation-compiled-source-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 0 | 0 |
 | `tests/acl2/scheduler-peers-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 31 | 0 | 0 |
@@ -2493,8 +2503,9 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-arx-entry-of-extent` | `books/payload-arena-extent.lisp` | 191 | arm-of-definition: the hypotheses select one IF/COND arm of fn-arx-entry and the conclusion is that arm's value |
 | `fn-arx-entry-of-resident` | `books/payload-arena-extent.lisp` | 205 | arm-of-definition: the hypotheses select one IF/COND arm of fn-arx-entry and the conclusion is that arm's value |
 | `fn-arx-view-empty` | `books/payload-arena-extent.lisp` | 250 | arm-of-definition: the hypotheses select one IF/COND arm of fn-arx-view and the conclusion is that arm's value |
-| `fn-ats-body-prepaid-continuation-retains-accounting-by-definition` | `books/allocation-turn-slots.lisp` | 282 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ats-prepay-body-internal and the conclusion is that arm's value |
-| `fn-ats-finish-stale-keeps-other-turns-by-definition` | `books/allocation-turn-slots.lisp` | 248 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ats-finish-owned and the conclusion is that arm's value |
+| `fn-ats-body-prepaid-continuation-retains-accounting-by-definition` | `books/allocation-turn-slots.lisp` | 382 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ats-prepay-body-internal and the conclusion is that arm's value |
+| `fn-ats-finish-stale-keeps-other-turns-by-definition` | `books/allocation-turn-slots.lisp` | 347 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ats-finish-owned and the conclusion is that arm's value |
+| `fn-atsc-issuer-preserves-baseline-coordinate` | `books/allocation-turn-source-cost.lisp` | 644 | preserves-no-subject-call: the statement never calls fn-atsc-issuer or a fn-atsc-issuer- transition |
 | `fn-auth-consistent-forward` | `books/nntp-auth.lisp` | 558 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-auth-session-consistentp |
 | `fn-auth-moderation-config-without-a-login` | `books/nntp-auth.lisp` | 1728 | arm-of-definition: the hypotheses select one IF/COND arm of fn-auth-moderation-config and the conclusion is that arm's value |
 | `fn-auth-redeem-outcome-is-inert-unless-it-answers` | `books/nntp-auth.lisp` | 2217 | arm-of-definition: the hypotheses select one IF/COND arm of fn-auth-redeem-outcome and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-auth-redeem-outcome and the conclusion is that branch's value |

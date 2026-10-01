@@ -4,6 +4,7 @@
 ; it does not call finish in an unconditional unwind-protect.
 (in-package "ACL2")
 (include-book "allocation-epoch-collection-request")
+(include-book "page-read-counter-transaction")
 
 ; Five fields, frozen independently of the ten-field shared pool. Only the
 ; installation constructor resizes; served operations directly index SLOT.
@@ -87,6 +88,81 @@
     (mv :constructed fn-allocation-turn-slots)))))
 
 (local
+ (defthm fn-ats-mode-store-preserves-pool-state
+  (equal (fn-aec-pool-statep (update-fn-prp-mode mode pool)) (fn-aec-pool-statep pool))
+  :hints (("Goal" :in-theory (e/d (fn-aec-pool-statep) (fn-aec-statep))))))
+
+(local
+ (defthm fn-ats-mode-store-preserves-allocation-mode
+  (equal (fn-prp-alloc-mode (update-fn-prp-mode mode pool))
+         (fn-prp-alloc-mode pool))))
+
+(local
+ (defthm fn-ats-counter-begin-refusal-keeps-pool
+  (implies (not (eq (mv-nth 0 (fn-owner-page-read-counter-begin ledger nonce kind continuation pool))
+                    :counter-publishing))
+           (equal (mv-nth 2 (fn-owner-page-read-counter-begin ledger nonce kind continuation pool)) pool))
+  :hints (("Goal" :in-theory (enable fn-owner-page-read-counter-begin)))))
+
+(local
+ (defthm fn-ats-counter-transaction-preserves-installation-and-turns
+  (let* ((begun (mv-nth 2 (fn-owner-page-read-counter-begin ledger nonce kind continuation pool)))
+         (finished (mv-nth 1 (fn-owner-page-read-counter-finish receipt pool))))
+   (and (equal (fn-prp-alloc-installation begun) (fn-prp-alloc-installation pool))
+        (equal (fn-prp-alloc-active-turns begun) (fn-prp-alloc-active-turns pool))
+        (equal (fn-prp-alloc-installation finished) (fn-prp-alloc-installation pool))
+        (equal (fn-prp-alloc-active-turns finished) (fn-prp-alloc-active-turns pool))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-owner-page-read-counter-begin fn-owner-page-read-counter-finish)
+                (fn-prb-keep-current-bindings fn-prb-data6))))))
+
+(local
+ (defthm fn-ats-counter-transaction-ledger-frame
+  (let* ((begin (fn-owner-page-read-counter-begin ledger nonce kind continuation pool))
+         (begun (mv-nth 2 begin))
+         (finished (mv-nth 1 (fn-owner-page-read-counter-finish receipt pool))))
+   (and (equal (fn-owner-page-read-ledger begun)
+               (if (eq (mv-nth 0 begin) :counter-publishing)
+                   (fn-prb-keep-current-bindings ledger (fn-owner-page-read-ledger pool))
+                 (fn-owner-page-read-ledger pool)))
+        (equal (fn-owner-page-read-ledger finished) (fn-owner-page-read-ledger pool))
+        (equal (fn-prp-alloc-allocated begun) (fn-prp-alloc-allocated pool))
+        (equal (fn-prp-alloc-allocated finished) (fn-prp-alloc-allocated pool))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-owner-page-read-counter-begin fn-owner-page-read-counter-finish
+                 fn-owner-page-read-ledger fn-prb-data6 fn-prl-nth)
+                (fn-prb-keep-current-bindings))))))
+
+(local
+ (defthm fn-ats-counter-transaction-scalar-frame
+  (implies (and (natp index) (not (member-equal index '(0 1 4))))
+   (and (equal (nth index (mv-nth 2 (fn-owner-page-read-counter-begin ledger nonce kind continuation pool)))
+               (nth index pool))
+        (equal (nth index (mv-nth 1 (fn-owner-page-read-counter-finish receipt pool)))
+               (nth index pool))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-owner-page-read-counter-begin fn-owner-page-read-counter-finish)
+                (fn-prb-keep-current-bindings fn-prb-data6 nth update-nth
+                 fn-prb-fixed-widthp fn-prb-counter-receipt-matchesp fn-prb-data-revision))))))
+
+(local
+ (defthm fn-ats-entry-gate-retains-ledger
+  (equal (fn-owner-page-read-ledger (mv-nth 1 (fn-aec-pool-enter-internal nil pool)))
+         (fn-owner-page-read-ledger pool))
+  :hints (("Goal" :in-theory
+           (e/d (fn-aec-pool-enter-internal fn-owner-page-read-ledger)
+                (fn-aec-enter))))))
+
+(local
+ (defthm fn-ats-scalar-store-retains-ledger
+  (implies (and (natp index) (not (equal index 0)))
+           (equal (fn-owner-page-read-ledger (update-nth index value pool))
+                  (fn-owner-page-read-ledger pool)))
+  :hints (("Goal" :in-theory
+           (e/d (fn-owner-page-read-ledger fn-prp-data fn-prl-nth)
+                (nth update-nth))))))
+
+(local
  (defthm fn-ats-enter-funded-pool
   (implies (and (fn-aec-pool-statep pool)
                 (eq (mv-nth 0 (fn-aec-pool-enter-internal nil pool)) :prepaid))
@@ -115,7 +191,7 @@
   :guard-hints (("Goal" :in-theory
     (disable fn-aec-pool-statep fn-aec-statep fn-aec-pool-enter-internal
              fn-aec-pool-consumed-turn-internal fn-aec-collection-issue
-             fn-owner-page-read-keep-ledger fn-aec-at)
+             fn-owner-page-read-counter-begin fn-owner-page-read-counter-finish fn-owner-page-read-ledger update-fn-prp-mode fn-prp-alloc-mode fn-aec-at)
    :use ((:instance fn-ats-enter-funded-pool (pool fn-page-read-pool))
          (:instance fn-ats-issued-natp
           (ledger (fn-owner-page-read-ledger
@@ -123,6 +199,8 @@
           (domain (fn-aec-at 2 (fn-prp-alloc-installation
                     (mv-nth 1 (fn-aec-pool-enter-internal nil fn-page-read-pool)))))))))))
  (cond
+  ((not (eq (fn-prp-mode fn-page-read-pool) :served))
+   (mv :counter-publication-unavailable 0 fn-allocation-turn-slots fn-page-read-pool))
   ((not (and (fn-ats-slotp slot fn-allocation-turn-slots)
              (fn-ats-associatedp fn-allocation-turn-slots fn-page-read-pool)
              role (symbolp role) (symbolp (fn-ats-kindsi slot fn-allocation-turn-slots))
@@ -148,10 +226,28 @@
             (declare (ignore left))
             (let ((fn-allocation-turn-slots (update-fn-ats-phasesi slot 0 fn-allocation-turn-slots)))
              (mv word 0 fn-allocation-turn-slots fn-page-read-pool)))
-         (let* ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool))
-                (fn-allocation-turn-slots (update-fn-ats-noncesi slot issued fn-allocation-turn-slots))
-                (fn-allocation-turn-slots (update-fn-ats-phasesi slot 2 fn-allocation-turn-slots)))
-          (mv :gate-owned issued fn-allocation-turn-slots fn-page-read-pool))))))))))
+         (mv-let (publication receipt fn-page-read-pool)
+          (fn-owner-page-read-counter-begin ledger issued :allocation-gate
+             (list :ats-entry slot issued role) fn-page-read-pool)
+          (if (eq publication :counter-publishing)
+           ; Keep the kernel intent/recovery fence through both receipt stores.
+           ; Pool modes are restored LAST, after actual slot publication.
+           (let* ((fn-allocation-turn-slots (update-fn-ats-noncesi slot issued fn-allocation-turn-slots))
+                  (fn-allocation-turn-slots (update-fn-ats-phasesi slot 2 fn-allocation-turn-slots)))
+            (mv-let (finished fn-page-read-pool)
+             (fn-owner-page-read-counter-finish receipt fn-page-read-pool)
+             (if (eq finished :published)
+                 (mv :gate-owned issued fn-allocation-turn-slots fn-page-read-pool)
+               (let ((fn-allocation-turn-slots (update-fn-ats-phasesi slot 6 fn-allocation-turn-slots)))
+                (mv :recovery-required 0 fn-allocation-turn-slots fn-page-read-pool)))))
+           ; The proposed shared nonce/ledger is retained but never exposed.
+           ; No decrease/refund/retry follows an unavailable publication.
+           (let* ((intent (list :ats-counter-unpublished slot issued ledger role
+                                (fn-prp-mode fn-page-read-pool)))
+                  (fn-page-read-pool (update-fn-prp-mode intent fn-page-read-pool))
+                  (fn-page-read-pool (fn-aec-pool-uncertain-internal fn-page-read-pool))
+                  (fn-allocation-turn-slots (update-fn-ats-phasesi slot 6 fn-allocation-turn-slots)))
+            (mv :recovery-required 0 fn-allocation-turn-slots fn-page-read-pool))))))))))))
 
 ; INTERNAL source seam; callers must join their ACTUAL evaluator before this
 ; can be exposed. BODY is not a public request input. No cleanup bypass exists.
@@ -162,7 +258,8 @@
   :guard (and (fn-aec-pool-statep fn-page-read-pool) (natp body))))
  (cond ((not (fn-ats-matchingp slot nonce fn-allocation-turn-slots fn-page-read-pool))
         (mv :stale fn-allocation-turn-slots fn-page-read-pool))
-       ((not (member-eq (fn-prp-alloc-mode fn-page-read-pool) '(:active :draining)))
+       ((not (and (eq (fn-prp-mode fn-page-read-pool) :served)
+                  (member-eq (fn-prp-alloc-mode fn-page-read-pool) '(:active :draining))))
         (mv :recovery-required fn-allocation-turn-slots fn-page-read-pool))
        ((eql (fn-ats-phasesi slot fn-allocation-turn-slots) 3)
         (mv :prepaid fn-allocation-turn-slots fn-page-read-pool))
@@ -183,7 +280,8 @@
                  :guard (fn-aec-pool-statep fn-page-read-pool)))
  (cond ((not (fn-ats-matchingp slot nonce fn-allocation-turn-slots fn-page-read-pool))
         (mv :stale fn-allocation-turn-slots fn-page-read-pool))
-       ((not (and (member-eq (fn-prp-alloc-mode fn-page-read-pool) '(:active :draining))
+       ((not (and (eq (fn-prp-mode fn-page-read-pool) :served)
+                  (member-eq (fn-prp-alloc-mode fn-page-read-pool) '(:active :draining))
                   (posp (fn-prp-alloc-active-turns fn-page-read-pool))))
         (mv :recovery-required fn-allocation-turn-slots fn-page-read-pool))
        (t
@@ -231,6 +329,7 @@
 (defthm fn-ats-finish-matching-consumes-once
  (implies
   (and (fn-ats-matchingp slot nonce slots pool)
+       (eq (fn-prp-mode pool) :served)
        (member-eq (fn-prp-alloc-mode pool) '(:active :draining))
        (posp (fn-prp-alloc-active-turns pool)))
   (mv-let (word next-slots next-pool) (fn-ats-finish-owned slot nonce slots pool)
@@ -266,7 +365,8 @@
    (fn-ats-correspondencep next-slots next-pool)))
  :hints (("Goal" :in-theory
    (disable fn-ats-owned-count fn-aec-statep fn-aec-installationp fn-aec-at
-            fn-aec-ceiling fn-aec-collection-issue)))
+            fn-aec-ceiling fn-aec-collection-issue fn-owner-page-read-counter-begin fn-owner-page-read-counter-finish
+            )))
  :rule-classes nil)
 
 (defthm fn-ats-body-preserves-slot-count-correspondence
@@ -282,6 +382,7 @@
 (defthm fn-ats-body-prepaid-continuation-retains-accounting-by-definition
  (implies
   (and (fn-ats-matchingp slot nonce slots pool)
+       (eq (fn-prp-mode pool) :served)
        (member-eq (fn-prp-alloc-mode pool) '(:active :draining))
        (equal (fn-ats-phasesi slot slots) 3))
   (equal (fn-ats-prepay-body-internal slot nonce body slots pool) (mv :prepaid slots pool)))
@@ -318,7 +419,7 @@
    (e/d (fn-prs-issue fn-prs-plus fn-prl-nth fn-prl-build)
         (fn-aec-statep fn-aec-installationp fn-aec-at fn-aec-ceiling
          fn-prs-fundedp fn-prs-vectorp fn-aec-nats-below fn-aed-add-roomp
-         fn-aed-ordinary-roomp fn-ats-owned-count))))
+         fn-aed-ordinary-roomp fn-ats-owned-count fn-owner-page-read-ledger fn-owner-page-read-counter-begin fn-owner-page-read-counter-finish))))
  :rule-classes nil)
 
 (local

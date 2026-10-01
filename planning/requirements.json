@@ -6127,7 +6127,8 @@
         "tests/acl2/runtime-bootstrap-source-tests.lisp",
         "planning/evidence/bootstrap-budget-current-source-2026-10-01/scope.json",
         "specs/runtime-operation-compiled-source.md",
-        "planning/evidence/manifests/certify-20261001T025802Z-1029297.json"
+        "planning/evidence/manifests/certify-20261001T025802Z-1029297.json",
+        "planning/evidence/bootstrap-data6-current-source-2026-10-01/scope.json"
       ],
       "implementation_note": "Internal guarded scalar, same-pool, installed-geometry observation and actual sharedPRS nonce source. Genuine runtime/source tariff installation, process-wide barrier, identity rescue and once-only allocating-turn producer joins remain open; no activation/funding claim. Guarded STATE-ticket completion and idempotent fault are exercised through actual native transport; fixture installation and operation setup do not establish complete allowance or activation. Request-budget and physical-fit recognizers are distinct; request admission retains positive pinned reserve policy with no physical-fit or GC-success authority. SCN-1074 covers scalar separation; genuine issuance/caller and physical qualification remain open."
     },
@@ -6232,6 +6233,31 @@
         "planning/evidence/history-source-custody-refinement-2026-09-30/manifest.json"
       ],
       "implementation_note": "Actual Source9/parent6 readout, shared PRL-issued slot, backing epoch pin, bounded directory continuation and selected owner swap/recovery gates are additive source preparation. NIL is a successful :row value, never a skipped gap. Long-poll waiting must return before sleep. Actual Store/CP/source atomic publication, selected capture tariff, constructor provenance, physical callback receipt, raw provider boundary and full caller lifetime composition remain open; metadata shape gives no installation authority."
+    },
+    {
+      "id": "HST-042",
+      "title": "Once-only allocating scheduling turns use direct installed worker slots distinct from lifetime holders",
+      "specification": "specs/allocation-turns.md",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-1156",
+        "PRF-1157",
+        "PRF-1164"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/allocation-turn-slots.lisp",
+        "books/allocation-turn-raw-bridge.lisp",
+        "tests/acl2/allocation-turn-slots-tests.lisp",
+        "books/allocation-turn-source-cost.lisp",
+        "tests/acl2/allocation-turn-source-cost-tests.lisp",
+        "planning/evidence/bootstrap-data6-current-source-2026-10-01/scope.json"
+      ],
+      "implementation_note": "Certified internal concrete registry and exact SAMEpool receipt joins; raw dispatch declarations admitted. Actual operation allowance composition, constructor baseline installation, process-wide executor join, immutable image qualification and activation remain separate."
     }
   ]
 }

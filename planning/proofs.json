@@ -20034,6 +20034,114 @@
         "planning/evidence/recovery-profile-buffer-2026-10-01/coordinate.json"
       ],
       "progress_note": "Exact original constant cohort, buffer guards and unconditional complete-prefix boundary admitted in fresh protected source world with proper-local lemmas; complete actual-buffer fixture passed. Matching full include certification and native controller/image integration remain open. No allocation authority or runtime activation inferred."
+    },
+    {
+      "id": "PRF-1154",
+      "title": "Internal allocation epoch preserves prepaid state and matched nonzero collection suffix",
+      "statement": "Guarded internal allocation epoch entry/body preserve scalar state and monotonic A; consumed-turn settlement preserves A; successful matched collector reset preserves state with epoch+1 and installed Qresume; state implies the qualified affine footprint bound. Same-pool wrappers update actual fn-page-read-pool fields. These are internal integration subjects with no served host caller yet, not installed-runtime authority. Hypothesis-removal and positive teeth cover the named scalar events.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-10001"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/allocation-epoch.lisp",
+        "books/allocation-epoch-pool.lisp",
+        "planning/evidence/bootstrap-data6-current-source-2026-10-01/scope.json"
+      ],
+      "progress_note": "Protected source admission and guard verification with exact teeth; source manifest records scope. Runner certification/native coordinate pending; real installation and composition joins remain open. Selected source/component receipts are retained separately; this public target remains planned with no completion events until current host/build/source/funding composition qualifies. Physical-fit authority is distinct from request-budget authority."
+    },
+    {
+      "id": "PRF-1156",
+      "title": "Matching concrete allocating-turn finish decrements once and invalidates its receipt",
+      "statement": "The actual fn-ats-finish-owned subject checks exact SAMEpool association, direct slot, stored sharedPRS nonce and owned phase. With matching receipt, pool MODE :served, active/draining allocation mode and positive carried active count, finish returns :left, decrements active turns once, preserves A and nonce, restores idle and invalidates matching. Literal positive and each hypothesis-removal witness cover the theorem; stale/reused-slot and duplicate completions preserve another active turn. Host raw declaration cites actual carried-state and installed-root preservation. This is an internal component, not activation.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-042"
+      ],
+      "depends_on": [
+        "PRF-1154",
+        "PRF-1159"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/allocation-turn-slots.lisp",
+        "books/allocation-turn-raw-bridge.lisp",
+        "tests/acl2/allocation-turn-slots-tests.lisp",
+        "planning/evidence/allocation-turn-data6-2026-10-01/README.md",
+        "planning/evidence/bootstrap-data6-current-source-2026-10-01/scope.json"
+      ],
+      "progress_note": "DATA6 split successor: actual source/guard and complete-result/census source proofs passed in stopped ats-split. Fresh normal qualification remains scoped by the new manifests; predecessor39/40 kernel13 and monolithic50/52 evidence is historical. No native lowering/tariff, all-writer activation or image claim. Selected source/component receipts are retained separately; this public target remains planned with no completion events until current host/build/source/funding composition qualifies. Physical-fit authority is distinct from request-budget authority."
+    },
+    {
+      "id": "PRF-1157",
+      "title": "Concrete allocating-turn entry owns actual sharedPRS nonce and preserves local slot cardinality",
+      "statement": "Successful fn-ats-enter-internal prepays installed Qgate, increments active turns, issues actual old NEXT through the sharedPRS issuer, retains bindings, advances NEXT once, and publishes exact slot+nonce gate ownership. The proof-only count correspondence is established by internal representation construction and preserved by the actual concrete entry, body and finish subjects without a served scan. Operator capacity, actual constructor baseline and actual operation evaluator are not established by these internal seams. The DATA6 split holds intent/recovery through actual slot stores and restores modes last; issued publication failure retains debt and fences phase6.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-042"
+      ],
+      "depends_on": [
+        "PRF-1154",
+        "PRF-1159"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/allocation-turn-slots.lisp",
+        "books/allocation-turn-raw-bridge.lisp",
+        "tests/acl2/allocation-turn-slots-tests.lisp",
+        "planning/evidence/allocation-turn-data6-2026-10-01/README.md",
+        "planning/evidence/bootstrap-data6-current-source-2026-10-01/scope.json"
+      ],
+      "progress_note": "DATA6 split successor: actual source/guard and complete-result/census source proofs passed in stopped ats-split. Fresh normal qualification remains scoped by the new manifests; predecessor39/40 kernel13 and monolithic50/52 evidence is historical. No native lowering/tariff, all-writer activation or image claim. Selected source/component receipts are retained separately; this public target remains planned with no completion events until current host/build/source/funding composition qualifies. Physical-fit authority is distinct from request-budget authority."
+    },
+    {
+      "id": "PRF-1159",
+      "title": "Collection request spends actual sharedPRS identity and retains exact old NEXT",
+      "statement": "fn-aec-collection-issue is called by actual fn-aec-pool-collection-request-internal after retained Qcollect prepayment. Issued implies returned nonce equals actual old ledger NEXT, committed NEXT increments once, fixed identity demand is charged, and budget/bindings/baseline remain unchanged. Refused issue fences without refunding Qcollect. Public native process barrier and genuine installed source allowance remain separate.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-10001"
+      ],
+      "depends_on": [
+        "PRF-1154"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/allocation-epoch-collection-request.lisp",
+        "specs/allocation-epoch.md",
+        "planning/evidence/bootstrap-data6-current-source-2026-10-01/scope.json"
+      ],
+      "progress_note": "Protected exact source admission and guards plus literal positive/removal and actual SAMEpool fixtures. No installed runtime, native barrier or qualification transfer. Selected source/component receipts are retained separately; this public target remains planned with no completion events until current host/build/source/funding composition qualifies. Physical-fit authority is distinct from request-budget authority."
+    },
+    {
+      "id": "PRF-1164",
+      "title": "Actual allocating-turn entry and finish source census preserves complete results",
+      "statement": "The executable proof-only fn-atsc-enter and fn-atsc-finish observers equal the complete four- and three-value results of the actual fn-ats-enter-internal and fn-ats-finish-owned subjects. Every entry branch has at most 64 explicit source CONS cells and 51 recorded material arithmetic operations, including definite failed-entry disposition. Successful entry has 62/64 cells according to the actual legacy/baseline ledger constructor and exactly 51 material operations, with ordered operands retained. Fixed reader/recognizer arithmetic, comparisons, concrete stores, compiler frames and result-MV lowering remain explicit separate native closure obligations; source counts alone establish no physical Qgate allowance.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-042"
+      ],
+      "depends_on": [
+        "PRF-1156",
+        "PRF-1157",
+        "PRF-1159"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/allocation-turn-source-cost.lisp",
+        "books/page-read-issue-source-cost.lisp",
+        "tests/acl2/allocation-turn-source-cost-tests.lisp",
+        "planning/evidence/allocation-turn-data6-2026-10-01/README.md",
+        "planning/evidence/bootstrap-data6-current-source-2026-10-01/scope.json"
+      ],
+      "progress_note": "DATA6 split successor: actual source/guard and complete-result/census source proofs passed in stopped ats-split. Fresh normal qualification remains scoped by the new manifests; predecessor39/40 kernel13 and monolithic50/52 evidence is historical. No native lowering/tariff, all-writer activation or image claim. Selected source/component receipts are retained separately; this public target remains planned with no completion events until current host/build/source/funding composition qualifies. Physical-fit authority is distinct from request-budget authority."
     }
   ]
 }

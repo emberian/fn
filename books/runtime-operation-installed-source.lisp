@@ -2,6 +2,7 @@
 ; No caller coordinates, table, price or Boolean setter is accepted.
 (in-package "ACL2")
 (include-book "runtime-operation-compiled-source")
+(include-book "runtime-bootstrap-compiled-request")
 (include-book "allocation-epoch")
 (include-book "page-read-pool-state")
 (include-book "state-globals")
@@ -22,22 +23,38 @@
         association (equal (fn-aec-at 4 installed) association)
         (member-eq (fn-prp-alloc-mode fn-page-read-pool) '(:active :draining))))))
 
+(defun fn-owner-runtime-bootstrap-capsule-save-internal (capsule state)
+ (declare (xargs :stobjs state :guard t))
+ (f-put-global 'fn-owner-runtime-bootstrap-capsule capsule state))
+(defthm fn-runtime-capsule-save-preserves-state-p1-by-definition
+ (implies (state-p1 state)
+          (state-p1 (fn-owner-runtime-bootstrap-capsule-save-internal capsule state)))
+ :hints (("Goal" :in-theory (enable fn-owner-runtime-bootstrap-capsule-save-internal))))
+
 (defun fn-owner-runtime-operation-binding-install-internal (fn-page-read-pool state)
  (declare (xargs :stobjs (fn-page-read-pool state) :guard t))
  (mv-let (word compiled) (fn-runtime-operation-compiled-coordinate)
-  (let* ((prior (fn-owner-runtime-operation-binding state))
-         (installation (fn-prp-alloc-installation fn-page-read-pool))
-         (association (fn-aec-at 1 installation)))
-   (cond
-    (prior (mv :runtime-operation-binding-already-attempted state))
-    ((not (and (eq word :compiled-operation-source) compiled
-                (fn-aec-installationp installation)
-                (eq (fn-prp-alloc-mode fn-page-read-pool) :active)
-                (equal (fn-prp-alloc-active-turns fn-page-read-pool) 0)
-                (equal (fn-aec-at 4 compiled) association)
-                (equal (fn-aec-at 1 compiled) (fn-aec-at 1 association))
-                (equal (fn-aec-at 2 compiled) (fn-aec-at 2 association))
-                (equal (fn-aec-at 3 compiled) (fn-aec-at 3 association))))
-     (mv :runtime-operation-binding-unavailable state))
-    (t (let ((state (f-put-global 'fn-owner-runtime-operation-binding compiled state)))
-         (mv :runtime-operation-binding-installed state)))))))
+  (mv-let (request-word capsule expected-installation suffix) (fn-rbcp-request)
+   (declare (ignore suffix))
+   (let* ((prior (fn-owner-runtime-operation-binding state))
+          (installation (fn-prp-alloc-installation fn-page-read-pool))
+          (association (fn-aec-at 1 installation)))
+    (cond
+     (prior (mv :runtime-operation-binding-already-attempted state))
+     ((not (and (eq word :compiled-operation-source) compiled
+                 (eq request-word :runtime-bootstrap-source-available)
+                 (equal expected-installation installation)
+                 (fn-aec-installationp installation)
+                 (eq (fn-prp-alloc-mode fn-page-read-pool) :active)
+                 (equal (fn-prp-alloc-active-turns fn-page-read-pool) 0)
+                 (equal (fn-aec-at 4 compiled) association)
+                 (equal (fn-aec-at 1 compiled) (fn-aec-at 1 association))
+                 (equal (fn-aec-at 2 compiled) (fn-aec-at 2 association))
+                 (equal (fn-aec-at 3 compiled) (fn-aec-at 3 association))))
+      (mv :runtime-operation-binding-unavailable state))
+     (t
+      ; Publish the immutable capsule before the fixed binding visibility word.
+      ; An ambiguous native suffix fences the pool before any further entry.
+      (let* ((state (fn-owner-runtime-bootstrap-capsule-save-internal capsule state))
+             (state (f-put-global 'fn-owner-runtime-operation-binding compiled state)))
+       (mv :runtime-operation-binding-installed state))))))))

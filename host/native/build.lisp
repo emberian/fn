@@ -184,6 +184,8 @@
 (include-book "books/native-operator")
 (include-book "books/runtime-bootstrap-admission")
 (include-book "books/runtime-operation-source")
+(include-book "books/runtime-bootstrap-turn-installation")
+(include-book "books/recovery-prs-install")
 (include-book "books/recovery-profile-buffer")
 ; The process heap from the store profile (PKT-016): host/native/heap.lisp.
 (include-book "books/heap-figure")
