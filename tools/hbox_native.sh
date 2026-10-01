@@ -311,6 +311,9 @@ if [ -n "$IMAGE_SET" ] || [ -n "$REUSE" ]; then
         esac
     done
 fi
+if [ "$CATALOG" = paged ] && { [ -n "$IMAGE_SET" ] || [ -n "$REUSE" ]; }; then
+    echo "hbox_native: --catalog paged builds its images; a published set or an earlier run's images are the old catalog's" >&2; exit 2
+fi
 if [ -n "$IMAGE_SET" ]; then
     IMAGE_SET=$(git -C "$HERE" rev-parse --verify --quiet "$IMAGE_SET^{commit}" || echo "$IMAGE_SET")
     case $IMAGE_SET in *[!0-9a-f]*) exit 2 ;; esac
@@ -321,6 +324,23 @@ if [ $DTN_DEVELOPER -eq 1 ] && [ $DTN_PRODUCTION -eq 0 ]; then
 fi
 # What each module reads, against what this run builds (PKT-437 (2)).
 ENVARGS=
+# --catalog paged: the modules' image variables name the -paged images
+# (an --env given for the same variable wins).
+if [ "$CATALOG" = paged ]; then
+    # only for the images this run builds (an unset variable keeps its module's fallback)
+    for image in $(echo "$IMAGES" | tr ',' ' '); do
+        case $image in
+            production) pairs=FN_NATIVE_HOST=fn-host-paged ;;
+            developer) pairs="FN_NATIVE_DEVELOPER_HOST=fn-host-developer-paged FN_NATIVE_CRASH_HOST=fn-host-developer-paged" ;;
+            reference) pairs=FN_NATIVE_REFERENCE_HOST=fn-host-reference-paged ;;
+            developer-stripped) pairs=FN_NATIVE_DEVELOPER_STRIPPED_HOST=fn-host-developer-stripped-paged ;;
+            *) pairs= ;;
+        esac
+        for pair in $pairs; do
+            case " $ENVS" in *" ${pair%%=*}="*) ;; *) ENVS="$ENVS ${pair%%=*}=\$T/build/${pair#*=}" ;; esac
+        done
+    done
+fi
 for assignment in $ENVS; do ENVARGS="$ENVARGS --env $assignment"; done
 PLAN=$(python3 "$HERE/tools/native_env.py" plan --images "$IMAGES" $ENVARGS $ALLOW_SKIPS "$@") || exit 2
 if [ "$REV" = . ]; then
@@ -507,8 +527,11 @@ BOX
                 dtn) profile=production build=host/native/build-dtn.lisp out=build/fn-host-dtn world=stripped ;;
                 dtn-developer) profile=developer build=host/native/build-dtn.lisp out=build/fn-host-dtn-developer world=full ;;
             esac
-            catalog_env=
-            if [ "$CATALOG" = paged ]; then case $image in developer|production|reference|developer-stripped) catalog_env=FN_NATIVE_CATALOG=paged ;; esac; fi
+            # The catalog is always explicit, never inherited from the box's
+            # environment, and a paged image is built under its own -paged
+            # name (tools/build_native_host.sh refuses any other; Codex r21 F2).
+            catalog_env=FN_NATIVE_CATALOG=old
+            if [ "$CATALOG" = paged ]; then case $image in developer|production|reference|developer-stripped) catalog_env=FN_NATIVE_CATALOG=paged out=$out-paged ;; esac; fi
             cat <<BOX
 step image-$image env FN_ACL2=${IMAGE_ACL2:-\$ACL2} $catalog_env FN_NATIVE_PROFILE=$profile FN_NATIVE_WORLD=$world FN_NATIVE_BUILD=$build FN_NATIVE_IMAGE=$out FN_NATIVE_LOG=\$L/native-build-$image.log $WRAP sh tools/build_native_host.sh
 BOX
@@ -532,6 +555,8 @@ BOX
     # --env, else build/fn-host, when the tree holds it; an --env below
     # still wins.
     identity_image=build/fn-host
+    developer_suffix=
+    [ "$CATALOG" = old ] || developer_suffix=-paged
     for assignment in $ENVS; do
         case $assignment in FN_NATIVE_HOST=*) identity_image=${assignment#FN_NATIVE_HOST=} ;; esac
     done
@@ -539,8 +564,8 @@ BOX
 if [ -x "$identity_image" ]; then
     eval "\$(python3 tools/native_env.py identity --image "$identity_image" --source $SOURCE_ID --export)"
 fi
-if [ -x build/fn-host-developer ]; then
-    eval "\$(python3 tools/native_env.py identity --image build/fn-host-developer --prefix FN_NATIVE_DEVELOPER_ --export)"
+if [ -x build/fn-host-developer$developer_suffix ]; then
+    eval "\$(python3 tools/native_env.py identity --image build/fn-host-developer$developer_suffix --prefix FN_NATIVE_DEVELOPER_ --export)"
 fi
 BOX
     for assignment in $ENVS; do
