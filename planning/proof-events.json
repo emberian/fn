@@ -4459,6 +4459,11 @@
         {
           "kind": "theorem",
           "name": "fn-vj-a-held-message-id-is-answered-441"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hma-a-completion-keeps-the-held-answer",
+          "note": "KEYSTONE (Q3d (i), PKT-239): a held Message-ID's answer is unchanged by fn-sn-finish (a :duplicate stays :duplicate), from the carried fn-statep uniqueness. Host: host/native/owner.lisp fnn-owner-attempt reaches fn-store-existing-action through host/owner-host.lisp fn-owner-existing-action-buffer. Teeth: tests/acl2/held-message-id-answer-tests.lisp."
         }
       ]
     },

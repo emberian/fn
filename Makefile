@@ -850,6 +850,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/post-record-width-owner-tests \
 	books/transit-same-decision \
 	tests/acl2/transit-same-decision-tests \
+	books/held-message-id-answer \
+	tests/acl2/held-message-id-answer-tests \
 	tests/acl2/profile-monotonicity-tests \
 	books/store-budget-article \
 	tests/acl2/store-budget-article-tests \

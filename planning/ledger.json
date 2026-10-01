@@ -839,6 +839,8 @@
     "tests/acl2/post-record-width-owner-tests",
     "books/transit-same-decision",
     "tests/acl2/transit-same-decision-tests",
+    "books/held-message-id-answer",
+    "tests/acl2/held-message-id-answer-tests",
     "tests/acl2/profile-monotonicity-tests",
     "books/store-budget-article",
     "tests/acl2/store-budget-article-tests",
@@ -2313,26 +2315,26 @@
     "tests/acl2/substrate-commit-codec-gap-tests"
   ],
   "totals": {
-    "books": 2713,
-    "books_in_root_closure": 2578,
-    "roots": 2309,
-    "theorems": 35487,
-    "functions": 22683,
-    "assert_events": 25363,
-    "must_fails": 2561,
+    "books": 2715,
+    "books_in_root_closure": 2580,
+    "roots": 2311,
+    "theorems": 35496,
+    "functions": 22684,
+    "assert_events": 25377,
+    "must_fails": 2562,
     "prover_refusals": 0,
     "encapsulates": 193,
     "guards": {
       "verified": 3843,
       "declared-off": 2865,
-      "default-guarded": 12682,
+      "default-guarded": 12683,
       "default-unguarded": 3293
     },
     "suspect_theorems": 1345,
     "export_hygiene_warnings": 392,
     "enabled_projection_warnings": 80,
-    "teeth_form_warnings": 280,
-    "include_hygiene_warnings": 3379,
+    "teeth_form_warnings": 281,
+    "include_hygiene_warnings": 3383,
     "host_names_warnings": 3139,
     "hand_written_record_warnings": 19
   },
@@ -19716,6 +19718,33 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/held-message-id-answer.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 9,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "store-node-invariants-base",
+        "visibility-join"
+      ],
       "system_includes": [],
       "suspects": [],
       "read_error": null
@@ -62023,6 +62052,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/held-message-id-answer-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 14,
+      "must_fails": 1,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/held-message-id-answer",
+        "must-fail-checked",
+        "visibility-join-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/held-rows-intern-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -93748,6 +93805,7 @@
           "books/config-store-steps.lisp",
           "books/consumer-artifact-retry.lisp",
           "books/control-visible-prefix-bound.lisp",
+          "books/held-message-id-answer.lisp",
           "books/moderation-verbs.lisp",
           "books/native-health.lisp",
           "books/number-durability-handles.lisp",
@@ -93800,7 +93858,7 @@
           "books/transit-same-decision.lisp",
           "tests/acl2/catalog-commit-tests.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 67 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 68 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-own-view",
@@ -94916,6 +94974,12 @@
         "check": "hft-membership-bound-without-the-charge",
         "book": "tests/acl2/heap-figure-tests.lisp",
         "line": 963,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "hmat-without-held",
+        "book": "tests/acl2/held-message-id-answer-tests.lisp",
+        "line": 32,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -99282,6 +99346,13 @@
         "line": 55,
         "include": "profile-limits",
         "included": "books/profile-limits.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/held-message-id-answer.lisp",
+        "line": 32,
+        "include": "visibility-join",
+        "included": "books/visibility-join.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -112762,6 +112833,27 @@
       {
         "book": "tests/acl2/heap-reservation-tests.lisp",
         "line": 13,
+        "include": "must-fail-checked",
+        "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/held-message-id-answer-tests.lisp",
+        "line": 7,
+        "include": "../../books/held-message-id-answer",
+        "included": "books/held-message-id-answer.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/held-message-id-answer-tests.lisp",
+        "line": 8,
+        "include": "visibility-join-tests",
+        "included": "tests/acl2/visibility-join-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/held-message-id-answer-tests.lisp",
+        "line": 9,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"

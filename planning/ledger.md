@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2713 |
-| Certification roots in the Makefile | 2309 |
-| Books inside the root closure | 2578 |
-| `defthm` and `defthmd` events | 35487 |
-| `defun` events | 22683 |
+| Books read | 2715 |
+| Certification roots in the Makefile | 2311 |
+| Books inside the root closure | 2580 |
+| `defthm` and `defthmd` events | 35496 |
+| `defun` events | 22684 |
 | Functions with verified guards | 3843 |
 | Functions declared `:verify-guards nil` and never verified | 2865 |
-| Functions left at the default with an explicit guard | 12682 |
+| Functions left at the default with an explicit guard | 12683 |
 | Functions left at the default with no guard | 3293 |
-| `assert-event` checks | 25363 |
-| `must-fail` checks | 2561 |
+| `assert-event` checks | 25377 |
+| `must-fail` checks | 2562 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 193 |
 | Theorems flagged SUSPECT by shape | 1345 |
 | Export-hygiene warnings | 392 |
 | Enabled-projection warnings | 80 |
-| Teeth-form warnings | 280 |
-| Include-hygiene warnings | 3379 |
+| Teeth-form warnings | 281 |
+| Include-hygiene warnings | 3383 |
 | Host-names warnings | 3139 |
 | Hand-written-record warnings | 19 |
 
@@ -710,6 +710,7 @@ that `make certify` requests.
 | `books/heap-reservation.lisp` | root | 82 | 52 | 0/0/52/0 | 0 | 0 | 1 |
 | `books/heap-store-figure.lisp` | root | 54 | 30 | 0/0/30/0 | 0 | 0 | 0 |
 | `books/held-composite-fields.lisp` | - | 0 | 3 | 0/0/3/0 | 0 | 0 | 0 |
+| `books/held-message-id-answer.lisp` | root | 9 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/held-record.lisp` | closure | 70 | 58 | 30/0/28/0 | 0 | 0 | 3 |
 | `books/history-capture-custody.lisp` | root | 12 | 13 | 0/0/13/0 | 0 | 0 | 0 |
 | `books/history-capture-state.lisp` | root | 0 | 9 | 0/0/9/0 | 0 | 0 | 0 |
@@ -2158,6 +2159,7 @@ that `make certify` requests.
 | `tests/acl2/heap-figure-tests.lisp` | root | 6 | 11 | 0/0/0/11 | 0 | 5 | 0 |
 | `tests/acl2/heap-open-nursery-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 0 | 1 | 0 |
 | `tests/acl2/heap-reservation-tests.lisp` | root | 0 | 18 | 0/0/0/18 | 0 | 15 | 0 |
+| `tests/acl2/held-message-id-answer-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 14 | 1 | 0 |
 | `tests/acl2/held-rows-intern-tests.lisp` | root | 6 | 0 | 0/0/0/0 | 0 | 0 | 2 |
 | `tests/acl2/held-rows-tests.lisp` | root | 0 | 17 | 0/17/0/0 | 9 | 0 | 0 |
 | `tests/acl2/history-capture-custody-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 0 | 0 |

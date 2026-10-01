@@ -4774,7 +4774,8 @@
       "events": [
         "fn-vj-a-completion-keeps-a-held-message-id-answered",
         "fn-vj-reclamation-keeps-a-held-message-id-answered",
-        "fn-vj-a-held-message-id-is-answered-441"
+        "fn-vj-a-held-message-id-is-answered-441",
+        "fn-hma-a-completion-keeps-the-held-answer"
       ]
     },
     {
