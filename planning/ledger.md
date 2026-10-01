@@ -13,13 +13,13 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 2731 |
 | Certification roots in the Makefile | 2365 |
 | Books inside the root closure | 2643 |
-| `defthm` and `defthmd` events | 36266 |
-| `defun` events | 23104 |
+| `defthm` and `defthmd` events | 36268 |
+| `defun` events | 23106 |
 | Functions with verified guards | 3847 |
-| Functions declared `:verify-guards nil` and never verified | 2980 |
+| Functions declared `:verify-guards nil` and never verified | 2982 |
 | Functions left at the default with an explicit guard | 12841 |
 | Functions left at the default with no guard | 3436 |
-| `assert-event` checks | 25500 |
+| `assert-event` checks | 25501 |
 | `must-fail` checks | 2611 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 210 |
@@ -643,7 +643,7 @@ that `make certify` requests.
 | `books/decoded-worker-controller.lisp` | closure | 0 | 7 | 6/0/1/0 | 0 | 0 | 0 |
 | `books/def-carried.lisp` | root | 2 | 47 | 0/0/0/47 | 0 | 0 | 0 |
 | `books/def-loop.lisp` | root | 5 | 31 | 0/0/0/31 | 0 | 0 | 0 |
-| `books/def-representation-lib.lisp` | root | 15 | 5 | 0/0/5/0 | 0 | 0 | 0 |
+| `books/def-representation-lib.lisp` | root | 16 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/def-representation-paged.lisp` | closure | 145 | 41 | 0/36/1/4 | 0 | 0 | 1 |
 | `books/def-representation-tree-walk.lisp` | closure | 67 | 26 | 1/17/4/4 | 0 | 0 | 3 |
 | `books/def-representation-tree.lisp` | closure | 12 | 8 | 0/7/1/0 | 0 | 0 | 0 |
@@ -2121,7 +2121,7 @@ that `make certify` requests.
 | `tests/acl2/decoded-worker-controller-trajectory-tests.lisp` | root | 8 | 10 | 0/0/0/10 | 0 | 0 | 0 |
 | `tests/acl2/def-carried-tests.lisp` | root | 28 | 40 | 0/0/19/21 | 34 | 16 | 0 |
 | `tests/acl2/def-loop-tests.lisp` | root | 10 | 22 | 16/0/6/0 | 40 | 11 | 0 |
-| `tests/acl2/def-representation-tests.lisp` | root | 11 | 23 | 0/13/5/5 | 29 | 8 | 0 |
+| `tests/acl2/def-representation-tests.lisp` | root | 12 | 25 | 0/15/5/5 | 30 | 8 | 0 |
 | `tests/acl2/defevent-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 19 | 1 | 0 |
 | `tests/acl2/definterface-recognizer-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 3 | 0 | 0 |
 | `tests/acl2/definterface-tests.lisp` | root | 8 | 9 | 0/0/6/3 | 39 | 23 | 1 |
