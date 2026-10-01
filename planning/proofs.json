@@ -18750,7 +18750,8 @@
         "fn-pwy-actual-cleared-loop-preserves-complete-prefix-effects",
         "fn-pwy-actual-stored-cleared-chunk-complete-prefix-effects",
         "fn-pwf-actual-finite-output-yields-complete-effects",
-        "fn-pwf-actual-completed-finite-output-yields-match-basic-loop"
+        "fn-pwf-actual-completed-finite-output-yields-match-basic-loop",
+        "fn-pwfc-actual-finite-initialized-output-windows-canonical-answer"
       ]
     },
     {

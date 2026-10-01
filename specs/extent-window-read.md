@@ -481,3 +481,14 @@ scheduling fuel remains distinct. Literal witnesses cover actual yields,
 64/128 frontiers, and all three completion-premise removals. These are logical
 kernel API continuations, not a new128-byte admission limit. General refill,
 dictionary/controller composition and installed consumer custody remain open.
+
+Actual initialized finite output frontiers and scheduling yields now compose to
+the complete existing `fn-pzd-decode` answer. The final result must be neither
+`:full` nor `:yield`, and its output must remain below the actual declared-length
+stored sentinel. Terminal frontier validity follows from actual output
+monotonicity and stopping discipline; no supplied validity, dictionary/input
+type or buffer-shape premise remains. This source boundary uses the actual
+basic loop and its charged semantic budget, not a native allocation tariff.
+General interleaved input refill, registered controller composition, captured
+dictionary/source custody and total selected runtime funding remain open.
+See `planning/evidence/decoded-window-finite-canonical-source-2026-10-01.md`.

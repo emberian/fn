@@ -1157,6 +1157,7 @@
     "tests/acl2/decoded-window-output-trajectory-tests",
     "tests/acl2/decoded-window-stored-trajectory-tests",
     "tests/acl2/decoded-window-canonical-trajectory-tests",
+    "tests/acl2/decoded-window-finite-canonical-tests",
     "tests/acl2/decoded-window-input-trajectory-tests",
     "tests/acl2/decoded-window-selected-trajectory-tests",
     "tests/acl2/decoded-window-digest-trajectory-tests",
@@ -1836,11 +1837,11 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1930,
-    "books_in_root_closure": 1921,
-    "roots": 1832,
-    "theorems": 30378,
-    "functions": 19152,
+    "books": 1931,
+    "books_in_root_closure": 1922,
+    "roots": 1833,
+    "theorems": 30395,
+    "functions": 19153,
     "assert_events": 23990,
     "must_fails": 2516,
     "prover_refusals": 0,
@@ -1849,13 +1850,13 @@
       "verified": 3519,
       "declared-off": 2284,
       "default-guarded": 10414,
-      "default-unguarded": 2935
+      "default-unguarded": 2936
     },
     "suspect_theorems": 1252,
     "export_hygiene_warnings": 340,
     "enabled_projection_warnings": 53,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2607,
+    "include_hygiene_warnings": 2609,
     "host_names_warnings": 2199,
     "hand_written_record_warnings": 18
   },
@@ -11274,7 +11275,7 @@
       "book": "books/decoded-window-canonical-trajectory.lisp",
       "in_root_closure": true,
       "is_root": false,
-      "theorems": 76,
+      "theorems": 88,
       "functions": 1,
       "guards": {
         "verified": 0,
@@ -11290,6 +11291,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "decoded-window-finite-output-trajectory",
         "decoded-window-stored-trajectory"
       ],
       "system_includes": [
@@ -41898,6 +41900,32 @@
       "includes": [
         "../../books/page-window-executor",
         "decoded-window-lease-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/decoded-window-finite-canonical-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 5,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/decoded-window-canonical-trajectory"
       ],
       "system_includes": [],
       "suspects": [],
@@ -73965,6 +73993,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/decoded-window-canonical-trajectory.lisp",
+        "line": 8,
+        "include": "decoded-window-finite-output-trajectory",
+        "included": "books/decoded-window-finite-output-trajectory.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/decoded-window-clear-trajectory.lisp",
         "line": 5,
         "include": "decoded-window-yield-trajectory",
@@ -83734,6 +83769,13 @@
         "line": 2,
         "include": "decoded-window-lease-tests",
         "included": "tests/acl2/decoded-window-lease-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/decoded-window-finite-canonical-tests.lisp",
+        "line": 2,
+        "include": "../../books/decoded-window-canonical-trajectory",
+        "included": "books/decoded-window-canonical-trajectory.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

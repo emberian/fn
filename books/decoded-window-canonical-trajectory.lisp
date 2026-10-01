@@ -5,6 +5,7 @@
 (in-package "ACL2")
 
 (include-book "decoded-window-stored-trajectory")
+(include-book "decoded-window-finite-output-trajectory")
 
 (local (include-book "arithmetic-5/top" :dir :system))
 
@@ -824,3 +825,141 @@
                   fn-zin-feed-unfolds fn-zin-loop-stops fn-pwzc-actual-loop-keeps-buffer-lengths
                   fn-pwzd-stored-global-frontier-bound fn-pwzc-canonical-output-frontier-bounds
                   fn-pwzd-actual-initialized-stored-output-count-unconditional nfix min)))))
+
+(local
+ (defthm fn-pwfc-cancel-prefix-fuel
+  (equal (+ x (- x) y) (fix y))
+  :hints (("Goal" :use (:instance associativity-of-+ (x x) (y (- x)) (z y))
+   :in-theory (disable associativity-of-+)))))
+
+(local
+ (defthm fn-pwfc-actual-loop-semantic-fuel-funds-step-budget
+  (<= (nfix b) (fn-pwz-actual-loop-semantic-fuel b ip end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab fn-zin-out))
+  :rule-classes :linear
+  :hints (("Goal" :induct (fn-pwz-actual-loop-semantic-fuel b ip end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab fn-zin-out)
+   :in-theory (e/d (fn-pwz-actual-loop-semantic-fuel)
+    (fn-zin-act fn-zin-step fn-zin-pull fn-pwz-step-action-count))))))
+
+(local
+ (defthm fn-pwfc-loop-semantic-fuel-natural
+  (natp (fn-pwz-actual-loop-semantic-fuel b ip end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab fn-zin-out))
+  :rule-classes :type-prescription
+  :hints (("Goal" :induct (fn-pwz-actual-loop-semantic-fuel b ip end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab fn-zin-out)
+   :in-theory (e/d (fn-pwz-actual-loop-semantic-fuel) (fn-zin-act fn-zin-step fn-zin-pull fn-pwz-step-action-count))))))
+
+
+(local
+ (defthm fn-pwfc-atomic-completed-budget-padding
+ (let ((r (fn-pwz-atomic-output-loop b ip end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab fn-zin-out)))
+  (implies (and (natp b) (natp extra) (not (equal (car r) :yield)))
+   (equal (fn-pwz-atomic-output-loop (+ b extra) ip end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab fn-zin-out)
+          (mv (car r) (+ extra (mv-nth 1 r)) (mv-nth 2 r) (mv-nth 3 r)
+              (mv-nth 4 r) (mv-nth 5 r) (mv-nth 6 r)))))
+ :rule-classes nil
+ :hints (("Goal" :induct (fn-pwz-atomic-output-loop b ip end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab fn-zin-out)
+          :in-theory (e/d (fn-pwz-atomic-output-loop)
+                          (fn-zin-act fn-zin-pull fn-zin-need fn-zin-act-counts
+                           fn-pwfc-actual-loop-semantic-fuel-funds-step-budget))))))
+
+
+(local
+ (defthm fn-pwfc-completed-atomic-budget-positive
+  (implies (not (equal (car (fn-pwz-atomic-output-loop b ip end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab fn-zin-out)) :yield))
+           (posp b))
+  :hints (("Goal" :expand ((fn-pwz-atomic-output-loop b ip end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab fn-zin-out))
+   :in-theory (disable fn-pwz-atomic-output-loop fn-zin-act fn-zin-pull fn-zin-need)))))
+
+(local
+ (defthm fn-pwfc-completed-atomic-funds-actual-loop-effects
+  (let ((r (fn-pwz-atomic-output-loop b ip end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab fn-zin-out))
+        (actual (fn-zin-loop b ip end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab fn-zin-out)))
+   (implies (and (natp b) (not (equal (car r) :yield)))
+    (and (not (equal (car actual) :yield))
+         (equal (fn-pwz-semantic-observation actual) (fn-pwz-semantic-observation r)))))
+  :rule-classes nil
+  :hints (("Goal"
+   :use ((:instance fn-pwz-actual-basic-loop-is-atomic-unconditionally)
+         (:instance fn-pwfc-atomic-completed-budget-padding
+          (extra (- (fn-pwz-actual-loop-semantic-fuel b ip end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab fn-zin-out) b))))
+   :in-theory (e/d (fn-pwz-semantic-observation)
+    (fn-zin-loop fn-pwz-actual-loop-semantic-fuel fn-pwz-atomic-output-loop))))))
+
+(local
+ (defthm fn-pwfc-atomic-output-prefix-and-length
+  (implies (true-listp fn-zin-out)
+   (let ((out (mv-nth 6 (fn-pwz-atomic-output-loop b ip end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab fn-zin-out))))
+    (and (true-listp out) (<= (len fn-zin-out) (len out)))))
+  :rule-classes ((:rewrite :corollary
+    (implies (true-listp fn-zin-out)
+     (true-listp (mv-nth 6 (fn-pwz-atomic-output-loop b ip end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab fn-zin-out)))))
+   (:linear :corollary
+    (implies (true-listp fn-zin-out)
+     (<= (len fn-zin-out) (len (mv-nth 6 (fn-pwz-atomic-output-loop b ip end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab fn-zin-out)))))))
+  :hints (("Goal" :induct (fn-pwz-atomic-output-loop b ip end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab fn-zin-out)
+   :in-theory (e/d (fn-pwz-atomic-output-loop) (fn-zin-act fn-zin-pull fn-zin-need))))))
+
+(local
+ (defthm fn-pwfc-atomic-full-has-reached-frontier
+  (let ((r (fn-pwz-atomic-output-loop b ip end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab fn-zin-out)))
+   (implies (equal (car r) :full) (<= (nfix lim) (len (mv-nth 6 r)))))
+  :rule-classes :linear
+  :hints (("Goal" :induct (fn-pwz-atomic-output-loop b ip end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab fn-zin-out)
+   :in-theory (e/d (fn-pwz-atomic-output-loop) (fn-zin-act fn-zin-pull fn-zin-need))))))
+
+(local
+ (defthm fn-pwfc-atomic-terminal-starts-below-frontier
+  (let ((r (fn-pwz-atomic-output-loop b ip end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab fn-zin-out)))
+   (implies (and (not (equal (car r) :full)) (not (equal (car r) :yield)))
+    (< (len fn-zin-out) (nfix lim))))
+  :rule-classes :linear
+  :hints (("Goal" :expand ((fn-pwz-atomic-output-loop b ip end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab fn-zin-out))
+   :in-theory (disable fn-pwz-atomic-output-loop fn-zin-act fn-zin-pull fn-zin-need)))))
+
+(local
+ (defthm fn-pwfc-yield-turns-atomic-rewrite
+  (equal (mv-nth 0 (fn-pwy-actual-loop-turns quanta ip end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab fn-zin-out))
+   (fn-pwz-atomic-output-loop
+    (mv-nth 1 (fn-pwy-actual-loop-turns quanta ip end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab fn-zin-out))
+    ip end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab fn-zin-out))
+  :hints (("Goal" :use fn-pwy-actual-finite-yield-turns-complete-effects
+   :in-theory (disable fn-pwy-actual-loop-turns fn-pwz-atomic-output-loop)))))
+
+(local
+ (defthm fn-pwfc-terminal-finite-output-establishes-frontier-condition
+  (let* ((s (fn-pwf-actual-output-turns turns ip end fn-zin-st fn-octets fn-zin-win fn-zin-tab fn-zin-out))
+         (r (mv-nth 0 s)))
+   (implies (and (true-listp fn-zin-out) (not (equal (car r) :full)) (not (equal (car r) :yield)))
+    (and (mv-nth 3 s) (< (len fn-zin-out) (mv-nth 2 s)))))
+  :hints (("Goal" :induct (fn-pwf-actual-output-turns turns ip end fn-zin-st fn-octets fn-zin-win fn-zin-tab fn-zin-out)
+   :in-theory (e/d (fn-pwf-actual-output-turns)
+    (fn-pwy-actual-loop-turns fn-pwz-atomic-output-loop))))))
+
+; Actual initialization/dictionary and arbitrary finite output/yield turns.
+; No native tariff; the original canonical answer remains the reference.
+(defthm fn-pwfc-actual-finite-initialized-output-windows-canonical-answer
+ (let* ((init (fn-pzw-initialize dict (create-fn-zin-st) fn-zin-win fn-zin-tab fn-zin-out)) (c (len fn-octets))
+        (s (fn-pwf-actual-output-turns turns 0 c (fn-zin-set 7 c (car init))
+                  fn-octets (mv-nth 1 init) (mv-nth 2 init) nil))
+        (r (mv-nth 0 s)))
+  (implies (and (not (equal (car r) :full)) (not (equal (car r) :yield))
+                (< (len (mv-nth 6 r)) (fn-zin-stored-limit c (+ 1 (nfix n)))))
+   (equal (fn-pzd-decode dict fn-octets n)
+    (if (and (zp n) (atom fn-octets)) (list :ok nil)
+     (fn-pzd-answer (fn-zin-stored-status (car r) c (mv-nth 3 r)) (mv-nth 6 r) n)))))
+ :rule-classes nil
+ :hints (("Goal"
+  :use ((:instance fn-pwfc-terminal-finite-output-establishes-frontier-condition
+          (ip 0) (end (len fn-octets)) (fn-zin-st (fn-zin-set 7 (len fn-octets) (car (fn-pzw-initialize dict (create-fn-zin-st) fn-zin-win fn-zin-tab fn-zin-out)))) (fn-zin-win (mv-nth 1 (fn-pzw-initialize dict (create-fn-zin-st) fn-zin-win fn-zin-tab fn-zin-out))) (fn-zin-tab (mv-nth 2 (fn-pzw-initialize dict (create-fn-zin-st) fn-zin-win fn-zin-tab fn-zin-out))) (fn-zin-out nil))
+        (:instance fn-pwf-actual-finite-output-yields-complete-effects
+          (ip 0) (end (len fn-octets)) (fn-zin-st (fn-zin-set 7 (len fn-octets) (car (fn-pzw-initialize dict (create-fn-zin-st) fn-zin-win fn-zin-tab fn-zin-out)))) (fn-zin-win (mv-nth 1 (fn-pzw-initialize dict (create-fn-zin-st) fn-zin-win fn-zin-tab fn-zin-out))) (fn-zin-tab (mv-nth 2 (fn-pzw-initialize dict (create-fn-zin-st) fn-zin-win fn-zin-tab fn-zin-out))) (fn-zin-out nil))
+        (:instance fn-pwfc-completed-atomic-budget-positive
+          (b (mv-nth 1 (fn-pwf-actual-output-turns turns 0 (len fn-octets) (fn-zin-set 7 (len fn-octets) (car (fn-pzw-initialize dict (create-fn-zin-st) fn-zin-win fn-zin-tab fn-zin-out))) fn-octets (mv-nth 1 (fn-pzw-initialize dict (create-fn-zin-st) fn-zin-win fn-zin-tab fn-zin-out)) (mv-nth 2 (fn-pzw-initialize dict (create-fn-zin-st) fn-zin-win fn-zin-tab fn-zin-out)) nil))) (ip 0) (end (len fn-octets)) (lim (mv-nth 2 (fn-pwf-actual-output-turns turns 0 (len fn-octets) (fn-zin-set 7 (len fn-octets) (car (fn-pzw-initialize dict (create-fn-zin-st) fn-zin-win fn-zin-tab fn-zin-out))) fn-octets (mv-nth 1 (fn-pzw-initialize dict (create-fn-zin-st) fn-zin-win fn-zin-tab fn-zin-out)) (mv-nth 2 (fn-pzw-initialize dict (create-fn-zin-st) fn-zin-win fn-zin-tab fn-zin-out)) nil))) (fn-zin-st (fn-zin-set 7 (len fn-octets) (car (fn-pzw-initialize dict (create-fn-zin-st) fn-zin-win fn-zin-tab fn-zin-out)))) (fn-zin-win (mv-nth 1 (fn-pzw-initialize dict (create-fn-zin-st) fn-zin-win fn-zin-tab fn-zin-out))) (fn-zin-tab (mv-nth 2 (fn-pzw-initialize dict (create-fn-zin-st) fn-zin-win fn-zin-tab fn-zin-out))) (fn-zin-out nil))
+        (:instance fn-pwfc-completed-atomic-funds-actual-loop-effects
+          (b (mv-nth 1 (fn-pwf-actual-output-turns turns 0 (len fn-octets) (fn-zin-set 7 (len fn-octets) (car (fn-pzw-initialize dict (create-fn-zin-st) fn-zin-win fn-zin-tab fn-zin-out))) fn-octets (mv-nth 1 (fn-pzw-initialize dict (create-fn-zin-st) fn-zin-win fn-zin-tab fn-zin-out)) (mv-nth 2 (fn-pzw-initialize dict (create-fn-zin-st) fn-zin-win fn-zin-tab fn-zin-out)) nil))) (ip 0) (end (len fn-octets)) (lim (mv-nth 2 (fn-pwf-actual-output-turns turns 0 (len fn-octets) (fn-zin-set 7 (len fn-octets) (car (fn-pzw-initialize dict (create-fn-zin-st) fn-zin-win fn-zin-tab fn-zin-out))) fn-octets (mv-nth 1 (fn-pzw-initialize dict (create-fn-zin-st) fn-zin-win fn-zin-tab fn-zin-out)) (mv-nth 2 (fn-pzw-initialize dict (create-fn-zin-st) fn-zin-win fn-zin-tab fn-zin-out)) nil))) (fn-zin-st (fn-zin-set 7 (len fn-octets) (car (fn-pzw-initialize dict (create-fn-zin-st) fn-zin-win fn-zin-tab fn-zin-out)))) (fn-zin-win (mv-nth 1 (fn-pzw-initialize dict (create-fn-zin-st) fn-zin-win fn-zin-tab fn-zin-out))) (fn-zin-tab (mv-nth 2 (fn-pzw-initialize dict (create-fn-zin-st) fn-zin-win fn-zin-tab fn-zin-out))) (fn-zin-out nil))
+        (:instance fn-pwzd-actual-canonical-decode-terminal-unrestricted-input
+          (b (mv-nth 1 (fn-pwf-actual-output-turns turns 0 (len fn-octets) (fn-zin-set 7 (len fn-octets) (car (fn-pzw-initialize dict (create-fn-zin-st) fn-zin-win fn-zin-tab fn-zin-out))) fn-octets (mv-nth 1 (fn-pzw-initialize dict (create-fn-zin-st) fn-zin-win fn-zin-tab fn-zin-out)) (mv-nth 2 (fn-pzw-initialize dict (create-fn-zin-st) fn-zin-win fn-zin-tab fn-zin-out)) nil))) (m (mv-nth 2 (fn-pwf-actual-output-turns turns 0 (len fn-octets) (fn-zin-set 7 (len fn-octets) (car (fn-pzw-initialize dict (create-fn-zin-st) fn-zin-win fn-zin-tab fn-zin-out))) fn-octets (mv-nth 1 (fn-pzw-initialize dict (create-fn-zin-st) fn-zin-win fn-zin-tab fn-zin-out)) (mv-nth 2 (fn-pzw-initialize dict (create-fn-zin-st) fn-zin-win fn-zin-tab fn-zin-out)) nil)))))
+  :in-theory (e/d (fn-pwz-semantic-observation fn-zin-feed fn-zin-window-ready-p fn-zin-tab-okp)
+   (fn-pwf-actual-output-turns fn-pwy-actual-loop-turns fn-pwz-atomic-output-loop
+    fn-zin-loop fn-zin-feed-unfolds fn-pwz-actual-loop-semantic-fuel
+    fn-pzd-decode fn-pzd-answer fn-zin-stored-status fn-zin-stored-limit
+    fn-pzw-initialize create-fn-zin-st nfix min)))))
