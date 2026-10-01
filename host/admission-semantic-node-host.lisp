@@ -40,7 +40,9 @@
               (equal token (fn-prl-nth 1 source))
               (eq (fn-owner-history-writer-gate token state) :writer-current)
               (fn-apr-tokenp (fn-hep-producer-token fn-history-backing))
-              (equal token (fn-hep-producer-token fn-history-backing))))
+              (equal token (fn-hep-producer-token fn-history-backing))
+              (fn-apr-tokenp (fn-hed-at 6 (fn-hep-builder fn-history-backing)))
+              (equal token (fn-hed-at 6 (fn-hep-builder fn-history-backing)))))
     (mv :writer-source-changed fn-history-backing state))
    (job
     (mv (if (and (fn-apr-widthp 7 job)

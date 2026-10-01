@@ -22,7 +22,9 @@
               (fn-apr-tokenp (fn-prl-nth 1 intent))
               (equal token (fn-prl-nth 1 intent))
               (fn-apr-tokenp (fn-hep-producer-token fn-history-backing))
-              (equal token (fn-hep-producer-token fn-history-backing))))
+              (equal token (fn-hep-producer-token fn-history-backing))
+              (fn-apr-tokenp (fn-hed-at 6 (fn-hep-builder fn-history-backing)))
+              (equal token (fn-hed-at 6 (fn-hep-builder fn-history-backing)))))
     (mv :writer-stale fn-history-backing state))
    (job (mv (if (and (fn-apr-widthp 5 job)
                         (eq (fn-prl-nth 0 job) :history-census)
@@ -42,14 +44,74 @@
              (count (fn-sf-records-count files))
              (frontier (fn-sf-frontier files)))
        (if (not (and (natp count) (equal count (fn-prl-nth 3 token))
-                     (natp frontier) (unsigned-byte-p 61 (1+ count))))
+                     (natp frontier)))
            (mv :census-domain-unavailable fn-history-backing state)
         (let* ((target (fn-sfr-snoc (fn-sf-records-field files) row))
                (pair (list (fn-prl-nth 1 token) (1+ count)))
                (source (list frontier pair 0 0))
+               (census (fn-hct-begin (1+ count) pair token))
                (state (f-put-global 'fn-owner-history-semantic-census
                         (list :history-census token
                               (fn-osrc-begin target (1+ count) frontier pair)
                               (fn-osm-begin source)
-                              (fn-hct-begin (1+ count) pair token)) state)))
-         (mv :census-started fn-history-backing state))))))))))
+                              census) state)))
+         (mv (if (eq (fn-omk-at 0 census) :refused)
+                 :census-codec-unavailable :census-started)
+             fn-history-backing state))))))))))
+
+; One actual source/remap/codec step. Decoded input remains parked until its
+; owning provider delivers an authenticated completion; no supplied byte API.
+(defun fn-owner-admission-census-step (state)
+ (declare (xargs :stobjs state :mode :program :guard t))
+ (let* ((current (fn-apr-owner-current state))
+        (token (fn-prl-nth 0 current))
+        (job (and (boundp-global 'fn-owner-history-semantic-census state)
+                  (f-get-global 'fn-owner-history-semantic-census state)))
+        (source (fn-prl-nth 2 job))
+        (remap (fn-prl-nth 3 job))
+        (census (fn-prl-nth 4 job)))
+  (cond
+   ((not (and (fn-apr-tokenp token) (fn-apr-livep token current)
+              (eq (fn-owner-history-writer-gate token state) :writer-current)
+              (fn-apr-widthp 5 job) (eq (fn-prl-nth 0 job) :history-census)
+              (fn-apr-tokenp (fn-prl-nth 1 job))
+              (equal token (fn-prl-nth 1 job))))
+    (mv :writer-stale state))
+   ((eq (fn-omk-at 0 census) :prepared) (mv :census-prepared state))
+   ((eq (fn-omk-at 0 census) :codec)
+    (mv-let (word payload next) (fn-hct-tick census)
+     (declare (ignore payload))
+     (cond
+      ((fn-hsrcb-demandp word) (mv :source-byte-required state))
+      ((eq word :row-done)
+       (mv-let (ack next-remap) (fn-osm-census-ack remap next)
+        (let ((state (f-put-global 'fn-owner-history-semantic-census
+                      (list :history-census token source next-remap next) state)))
+         (mv (if (eq ack :acknowledged) :continue :recovery-required) state))))
+      (t
+       (let ((state (f-put-global 'fn-owner-history-semantic-census
+                     (list :history-census token source remap next) state)))
+        (mv (if (eq word :continue) :continue :recovery-required) state))))))
+   ((not (eq (fn-omk-at 0 census) :need-row)) (mv :recovery-required state))
+   ((eq (fn-osrc-at 0 source) :waiting) (mv :source-row-required state))
+   (t
+    (let* ((step (fn-osrc-tick source nil)) (word (fn-osrc-at 0 step)))
+     (cond
+      ((eq word :yield)
+       (let ((state (f-put-global 'fn-owner-history-semantic-census
+                     (list :history-census token (fn-osrc-at 1 step) remap census) state)))
+        (mv :continue state)))
+      ((eq word :need-row)
+       (let ((state (f-put-global 'fn-owner-history-semantic-census
+                     (list :history-census token (fn-osrc-at 4 step) remap census) state)))
+        (mv :source-row-required state)))
+      ((eq word :row)
+       (mv-let (mapped row next-remap) (fn-osm-prepare-row remap step)
+        (if (not (eq mapped :mapped)) (mv :recovery-required state)
+         (mv-let (offered next-census)
+           (fn-hct-offer census (fn-omk-at 1 row) (fn-omk-at 2 row))
+          (let ((state (f-put-global 'fn-owner-history-semantic-census
+                        (list :history-census token (fn-omk-at 4 row)
+                              next-remap next-census) state)))
+           (mv (if (eq offered :started) :continue :recovery-required) state))))))
+      (t (mv :recovery-required state))))))))
