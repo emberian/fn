@@ -910,7 +910,9 @@
            :in-theory (disable fn-cnode-statep))))
 (verify-guards fn-sco-cpr-finish
   :hints (("Goal" :expand ((:free (cf cs es)
-                            (fn-cpr-loop (nth 1 r) cf nil cs es)))
+                            (fn-cpr-loop (nth 1 r) cf nil cs es))
+                           (:free (cf cs es)
+                            (fn-cpr-loop (cadr r) cf nil cs es)))
            :in-theory (disable fn-cnode-statep))))
 (verify-guards fn-sco-consumer-resume)
 (verify-guards fn-sco-capture)
