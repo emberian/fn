@@ -502,6 +502,8 @@ fields, :done, STOPPING and caller joined words cannot create it. Ordinary
 receiver roots and completed incoming POST roots have distinct source/range
 kinds; receiver-only shape checks never impose 4096 on the stored input.
 
+Receiver transfer accepts the registered response observer’s `:committed-response` word. It retains the same source, parser root and IRQ actor while readiness remains revoked; successful handoff is not an all-alias return or refill receipt. Stale episodes and foreign or repeated recipients refuse before custody mutation.
+
 The actual parser evaluator leaves STATE unchanged. Before any install write,
 its SAME RC is recorded in the existing parser root and the phase becomes
 `:parser-installing`; provider capacity is then revoked. The installer reads
