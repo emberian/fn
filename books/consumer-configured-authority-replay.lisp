@@ -4,6 +4,7 @@
 ; a final history index must never be substituted for PREFIX-FILES/FN-HIST.
 (in-package "ACL2")
 (include-book "config-physical-replay")
+(include-book "consumer-configured-authority-state")
 (include-book "consumer-authority-carried-fold")
 (include-book "consumer-account-config-commit")
 
@@ -11,34 +12,9 @@
 ; prefix history belong to the actual recovery source, not native arguments
 ; authorizing an account. The initial/cold producer must establish all of
 ; their correspondence, including nonempty account and entry metadata.
-(defun fn-capr-state (cn original fields cp metadata preparation publication
-                        begin-count withdrawals visible verdicts cs es
-                        configs events config-history)
- (declare (xargs :guard t))
- (list :configured-authority-replay cn original fields cp metadata preparation
-       publication begin-count withdrawals visible verdicts cs es
-       configs events config-history))
-
-(defun fn-capr-fault (s reason)
- (declare (xargs :guard t))
- (list :fault s reason))
 
 ; Full7 E and full8 C both contain the exact original full6 prefix. Never run
 ; an account decision again to obtain its publication or canonical carries.
-(defun fn-capr-publication (old full)
- (declare (xargs :guard t))
- (list :ok (fn-cp-nth 1 full)
-       (if (fn-cp-nth 2 full) (fn-cp-nth 2 full) (fn-cp-nth 2 old))
-       (if (fn-cp-nth 2 full) (fn-cp-nth 3 full) (fn-cp-nth 3 old))))
-
-(defun fn-capr-install (s cn original fields full preparation begin-count
-                          withdrawals visible verdicts cs es configs events)
- (declare (xargs :guard t))
- (list :advanced
-   (fn-capr-state cn original fields (fn-cp-nth 1 full) (fn-cp-nth 4 full)
-     preparation (fn-capr-publication (fn-cp-nth 7 s) full) begin-count
-     withdrawals visible verdicts cs es configs events (fn-cp-nth 16 s))
-   full))
 
 ; Literal C evidence remains borrowed. The actual joint decision captures its
 ; effective config; this descriptor requests the missing maintained pinned

@@ -1283,3 +1283,26 @@ replays the physical event on resume. These new high functions are unadmitted
 source drafts. Their actual reader/custody/metadata/cost invariant, complete
 refinement and durable owner/checkpoint installation remain open, and existing
 visibility finalization is not claimed bounded by this continuation.
+
+The first account-event family has a direct after-node companion. It consumes
+the registered producer's actual authority-neutral configured-node result and
+the same carried identity packet, calls the account/config stage decision once,
+and retains withdrawals, visible articles and accepted verdicts literally.
+This path does not compare article lists or enter the historical control
+continuation. The account stage remains private; only the typed C commit can
+publish its account/config root. Its existing full7 result, original persisted
+begin E sequence, metadata5 and publication4 retention are preserved.
+
+Configuration preparation does not convert an arbitrary stored account-name
+string into an octet list. Only names within the established authority login
+domain of 64 octets enter the binding-intent trie. Longer stored CFG names are
+kept literally; they are neither truncated nor rejected. Exact agreement with
+the previous logical lookup requires the maintained fact that genuine intent
+keys come only from the bounded binding-stage grammar. The actual empty, stage, tick, expect and seal producers establish and
+preserve the intent-depth relation. The guarded inner finish has an
+unconditional exposed-view/root frame theorem; its fixtures exercise the
+same seven-field account result and seven exact CP child carries. These
+are source-level results. Outer configured-node/identity correspondence,
+source/funding gates, whole carried-state association and owner/restart
+installation remain open. Authored outer composition tests do not qualify
+those joins or activate account authority.

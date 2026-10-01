@@ -7,6 +7,7 @@
 (include-book "consumer-account-input")
 (include-book "config")
 (include-book "identity-hex")
+(include-book "consumer-account-binding-lookup")
 
 ; Fixed16, immutable base config and borrowed preparation cursors. Size
 ; annotations follow each changed path/list cell; no final shared-tree scan.
@@ -106,9 +107,15 @@
    (:scan
     (if (consp cursor)
         (let* ((row (car cursor))
+               ; Durable CFG names remain arbitrary stored strings. A name
+               ; outside the established <=64-octet authority login domain
+               ; cannot match a binding intent produced by fn-cab-eventp.
+               ; Keep its row literally; do not coerce/traverse its contents.
+               ; Exact reference agreement additionally needs the maintained
+               ; intent-key domain, not merely the trie fanout invariant.
+               (name (fn-cfg-row-a row))
                (intent (and (equal (fn-cfg-row-n row) 2)
-                            (fn-cai-get-octets (fn-record-string-octets (fn-cfg-row-a row))
-                                              (fn-cp-nth 7 s))))
+                            (fn-bcp-intent-lookup name (fn-cp-nth 7 s))))
                (dropp (member-equal (fn-cp-nth 2 intent) '(1 2))))
          (list :yield (fn-bcp-with s phase nil nil (fn-cp-nth 7 s) (fn-cp-nth 8 s)
                                    nil nil (cdr cursor)

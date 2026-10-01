@@ -185,11 +185,16 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-account-binding-codec-tests \
 	tests/acl2/consumer-account-config-marker-tests \
 	tests/acl2/consumer-account-config-preparation-tests \
+	tests/acl2/consumer-account-index-depth-tests \
+	tests/acl2/consumer-account-binding-lookup-tests \
+	tests/acl2/consumer-account-config-domain-tests \
+	tests/acl2/consumer-configured-authority-finish-tests \
 	tests/acl2/consumer-account-config-commit-tests \
 	tests/acl2/consumer-account-config-owner-lineage-tests \
 	tests/acl2/consumer-account-transaction-driver-tests \
 	tests/acl2/consumer-transaction-dispatch-tests \
 	tests/acl2/consumer-configured-authority-replay-tests \
+	tests/acl2/consumer-configured-authority-event-tests \
 	tests/acl2/control-config-projection-tests \
 	tests/acl2/consumer-control-row-cursor-tests \
 	tests/acl2/store-binding-stage-routing-tests \
