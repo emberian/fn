@@ -17,6 +17,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/consumer-transaction-dispatch \
 	tests/acl2/consumer-transaction-dispatch-tests \
 	tests/acl2/consumer-remote-store-category-tests \
+	tests/acl2/receiver-response-transfer-tests \
 	tests/acl2/store-binding-stage-routing-tests \
 	books/consumer-account-input \
 	books/consumer-account-adoption-driver \

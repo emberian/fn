@@ -186,3 +186,5 @@ Initially retain duplicate-history entries as well; D13 must settle their later
 pruning policy. Until reclamation is implemented and justified, released objects
 may remain physically stored. Keeping extra bytes does not license accepting
 unaccounted new obligations.
+
+Receiver transfer accepts the registered response observer’s `:committed-response` word. It retains the same source, parser root and IRQ actor while readiness remains revoked; successful handoff is not an all-alias return or refill receipt. Stale episodes and foreign or repeated recipients refuse before custody mutation.

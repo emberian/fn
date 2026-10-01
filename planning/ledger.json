@@ -6,6 +6,7 @@
     "books/consumer-transaction-dispatch",
     "tests/acl2/consumer-transaction-dispatch-tests",
     "tests/acl2/consumer-remote-store-category-tests",
+    "tests/acl2/receiver-response-transfer-tests",
     "tests/acl2/store-binding-stage-routing-tests",
     "books/consumer-account-input",
     "books/consumer-account-adoption-driver",
@@ -2059,26 +2060,26 @@
     "tests/acl2/substrate-commit-codec-gap-tests"
   ],
   "totals": {
-    "books": 2253,
-    "books_in_root_closure": 2196,
-    "roots": 2055,
+    "books": 2254,
+    "books_in_root_closure": 2197,
+    "roots": 2056,
     "theorems": 32616,
-    "functions": 20913,
-    "assert_events": 24526,
+    "functions": 20918,
+    "assert_events": 24527,
     "must_fails": 2519,
     "prover_refusals": 0,
     "encapsulates": 166,
     "guards": {
       "verified": 3738,
-      "declared-off": 2536,
-      "default-guarded": 11629,
+      "declared-off": 2538,
+      "default-guarded": 11632,
       "default-unguarded": 3010
     },
     "suspect_theorems": 1295,
     "export_hygiene_warnings": 382,
     "enabled_projection_warnings": 79,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2891,
+    "include_hygiene_warnings": 2894,
     "host_names_warnings": 2484,
     "hand_written_record_warnings": 19
   },
@@ -60987,6 +60988,35 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/receiver-response-transfer-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 3,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 1,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/index-connection-issuer",
+        "../../books/index-reader-response-issuer",
+        "../../books/receiver-index-custody",
+        "../../books/served-step"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/reclaim-admission-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -100459,6 +100489,27 @@
         "line": 3,
         "include": "../../books/receiver-turn-controller",
         "included": "books/receiver-turn-controller.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/receiver-response-transfer-tests.lisp",
+        "line": 6,
+        "include": "../../books/index-connection-issuer",
+        "included": "books/index-connection-issuer.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/receiver-response-transfer-tests.lisp",
+        "line": 8,
+        "include": "../../books/receiver-index-custody",
+        "included": "books/receiver-index-custody.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/receiver-response-transfer-tests.lisp",
+        "line": 9,
+        "include": "../../books/served-step",
+        "included": "books/served-step.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
