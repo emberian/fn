@@ -1254,6 +1254,18 @@
            (fn-cat$p (update-fn-cat$p-olen 0 fn-cat$p)))
       (fn-cat$p-wbv-clear fn-cat$p))))
 
+; THE RESERVATION (books/def-representation-paged `adt-pg-reserve-c'): the
+; row store's directories made wide enough for ROWS rows and OCTETS pool
+; octets once, so no commit below the operator profile's bounds grows a
+; directory.  Abstractly the identity; a clear drops it, so the caller
+; reserves at open and after every clear.
+(defun fn-cat$p-reserve (rows octets fn-cat$p)
+  (declare (xargs :stobjs fn-cat$p :guard (and (natp rows) (natp octets))))
+  (stobj-let ((fn-crow (fn-cat$p-rows fn-cat$p)))
+             (fn-crow)
+             (fn-crow-reserve rows octets fn-crow)
+             fn-cat$p))
+
 (defun fn-cat$p-clear-keyed (key fn-cat$p)
   (declare (xargs :stobjs fn-cat$p
                   :guard (and (fn-mpxt-keyp key) (equal (len key) *fn-mpxt-key-octets*))))
