@@ -59,6 +59,11 @@ is the function the host calls"):
   subject: the event is hosted exactly when a host line reaches that
   function, and the conclusion is not read;
 * `NAME{correspondence}' and `NAME{preserved}' are about the export NAME;
+  a correspondence also counts when a reached export of the SAME stobj has
+  a correspondence theorem explicitly using it, with matching logic/exec
+  conclusions, and its exec directly calls NAME's exec.  This is named
+  proof-dependency attribution, not equality of the exports or their effects;
+  both the listing and `--explain' name the linking correspondence;
 * failing that, a NAMED equality in books/ ties an unhosted subject U to a
   hosted H: a conclusion `(equal (U ..) (H x ..))' whose H side applies H to
   variables and constants only (not a commutation, not an unfolding into a
@@ -868,7 +873,9 @@ class Subject:
 
     A `NAME{correspondence}' (or `{preserved}') event of a `defabsstobj' is
     about the export NAME: it is hosted when a host line calls that export
-    (directly, or as the generic export an `attach-stobj' runs it for)."""
+    (directly, or as the generic export an `attach-stobj' runs it for).
+    The audit may separately attribute a correspondence through the named,
+    executable component link checked by `correspondence_bridges'."""
 
     def __init__(self, graph: "Graph", name: str, form: str | None) -> None:
         self.via = None
@@ -1072,6 +1079,76 @@ def equality_bridges(graph: "Graph", theorems: dict) -> dict[str, list]:
     return bridges
 
 
+def correspondence_bridges(graph: "Graph", theorems: dict) -> dict[str, list]:
+    """Event -> [(reached export, linking event)] for a narrow :use join.
+
+    Both events must be real correspondence statements for exports of the
+    same abstract stobj: (R (exec ...) (logic ...)), with the same R.  The
+    reached export's exec must directly call the subject export's exec,
+    and its theorem must :use the subject theorem by name, without a
+    substitution.  This attributes the component proof to the served
+    operation; it does NOT equate exports, propagate call reachability, or
+    transfer unrelated properties (including {preserved}).
+    """
+    suffix = "{correspondence}"
+    entries = {}
+    for name, (_, form) in theorems.items():
+        if not name.endswith(suffix):
+            continue
+        export = name[:-len(suffix)]
+        owner = graph.export_of.get(export)
+        if owner is None:
+            continue
+        logic, execf = graph.stobjs[owner]["exports"][export]
+        _, conclusion = split_statement(form)
+        if (not logic or not execf or not isinstance(conclusion, list)
+                or len(conclusion) != 3 or not isinstance(conclusion[0], str)
+                or not all(isinstance(t, list) and t for t in conclusion[1:])
+                or conclusion[1][0] != execf or conclusion[2][0] != logic):
+            continue
+        entries[name] = (export, owner, execf, conclusion[0], form)
+
+    def used_names(form):
+        tree = read_sexp(form)
+        # Only literal :hints / :use; a name in prose, :in-theory, or a
+        # computed hint is not an explicit lemma instance.
+        options = dict(zip(tree[3::2], tree[4::2]))
+        found = set()
+        for hint in options.get(":hints", []):
+            if not isinstance(hint, list):
+                continue
+            for i, item in enumerate(hint[:-1]):
+                if item != ":use":
+                    continue
+                value = hint[i + 1]
+                uses = ([value] if isinstance(value, str)
+                        or (isinstance(value, list) and value
+                            and isinstance(value[0], str) and value[0].startswith(":"))
+                        else value)
+                if not isinstance(uses, list):
+                    continue
+                for use in uses:
+                    if isinstance(use, str):
+                        found.add(use)
+                    elif (isinstance(use, list) and len(use) == 2
+                          and use[0] == ":instance" and isinstance(use[1], str)):
+                        found.add(use[1])
+        return found
+
+    bridges = collections.defaultdict(list)
+    for linking, (export, owner, execf, relation, form) in sorted(entries.items()):
+        if export not in graph.reachable:
+            continue
+        for target in sorted(used_names(form)):
+            if target not in entries or target == linking:
+                continue
+            _, old_owner, old_exec, old_relation, _ = entries[target]
+            if (owner == old_owner and relation == old_relation
+                    and old_exec != execf and old_exec in graph.edges.get(execf, ())):
+                bridges[target].append((export, linking))
+    return bridges
+
+
 def load_rows() -> list:
     registry = json.loads((ROOT / "planning" / "proofs.json").read_text())
     return registry["proofs"] if isinstance(registry, dict) else registry
@@ -1084,10 +1161,12 @@ def audit(graph: Graph, books: "set[str] | None" = None):
     if books is not None:
         theorems = {name: entry for name, entry in theorems.items() if entry[0] in books}
     bridges = equality_bridges(graph, theorems)
+    correspondences = correspondence_bridges(graph, theorems)
     rows = load_rows()
 
     findings, hosted, unresolved = [], 0, []
     graph.bridged = []
+    graph.correspondence_bridged = []
     graph.declared = []
     for row in rows:
         declared = {str(k).lower(): str(v).lower()
@@ -1132,6 +1211,11 @@ def audit(graph: Graph, books: "set[str] | None" = None):
             if tie:
                 hosted += 1
                 graph.bridged.append((row["id"], name) + tie)
+                continue
+            if subject.via == "export" and correspondences.get(name):
+                other, linking = correspondences[name][0]
+                hosted += 1
+                graph.correspondence_bridged.append((row["id"], name, other, linking))
                 continue
             findings.append(Finding(row["id"], name, book, subjects))
     return findings, hosted, unresolved
@@ -1231,6 +1315,12 @@ def main(argv=None) -> int:
                 if other in graph.reachable:
                     print(f"hosted through the named equality {tname}: {s} = {other} (reached)")
                     return 0
+        if subject.via == "export":
+            for other, linking in correspondence_bridges(graph, theorems).get(name, ()):
+                print(f"hosted through the named correspondence {linking}: "
+                      f"{other} (reached) uses {name}")
+                print("  " + " -> ".join(graph.host_chain(other)))
+                return 0
         if set(subject.functions) & graph.reachable:
             print("NOT hosted: its reached subject is applied only to a model's state "
                   "(a let-bound call of an unreached function), and no named equality ties "
@@ -1294,6 +1384,10 @@ def main(argv=None) -> int:
         print(f"{hosted} registry events hosted, {len(findings)} orphaned, "
               f"{len(fresh)} of those unbaselined, {len(unresolved)} "
               f"unresolvable here")
+
+    for proof_id, event, export, linking in graph.correspondence_bridged:
+        print(f"reach_check: {proof_id}:{event} hosted through the named "
+              f"correspondence {linking}: {export} (reached) uses {event}")
 
     untriaged = unexplained({key: accepted[key] for key in accepted
                              if key not in stale})
