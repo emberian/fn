@@ -428,6 +428,10 @@
 
 (in-theory (disable fn-mlh-pgsp))
 
+(defthm fn-mlh-wfp-pgsp
+  (implies (fn-mlh-wfp fn-mlh) (fn-mlh-pgsp fn-mlh))
+  :rule-classes :forward-chaining)
+
 ; The tag word of slot J on page P, a fixnum.
 (defun-inline fn-mlh-tag-at (p j fn-mlh)
   (declare (xargs :stobjs fn-mlh :guard (fn-mlh-slot-guardp p j fn-mlh)))
@@ -1835,3 +1839,180 @@
                 (mv-nth 0 (fn-mlh-put tag (len rows) fn-mlh)))
            (fn-mlh-faithful (append rows (list h)) (mv-nth 1 (fn-mlh-put tag (len rows) fn-mlh))))
   :hints (("Goal" :in-theory (disable fn-mlh-faithful-from fn-mlh-okp fn-mlh-candidates))))
+
+; --- the first page ---
+
+(defun fn-mlh-first-page (fn-mlh)
+  (declare (xargs :stobjs fn-mlh :guard (fn-mlh-pgsp fn-mlh)))
+  (let* ((fn-mlh (fn-mlh-grow fn-mlh))
+         (fn-mlh (update-fn-mlh-n 1 fn-mlh)))
+    (update-fn-mlh-s 0 fn-mlh)))
+
+(defthm fn-mlh-first-page-shape
+  (implies (and (fn-mlhp fn-mlh) (fn-mlh-pgsp fn-mlh) (zp (fn-mlh-pages fn-mlh)))
+           (and (fn-mlhp (fn-mlh-first-page fn-mlh))
+                (fn-mlh-wfp (fn-mlh-first-page fn-mlh))
+                (equal (fn-mlh-pages (fn-mlh-first-page fn-mlh)) 1)
+                (equal (fn-mlh-n (fn-mlh-first-page fn-mlh)) 1)
+                (equal (fn-mlh-s (fn-mlh-first-page fn-mlh)) 0)
+                (equal (fn-mlh-count (fn-mlh-first-page fn-mlh)) (fn-mlh-count fn-mlh))
+                (equal (fn-mlh-stuck (fn-mlh-first-page fn-mlh)) (fn-mlh-stuck fn-mlh))
+                (equal (fn-mlh-key-octets (fn-mlh-first-page fn-mlh)) (fn-mlh-key-octets fn-mlh)))))
+
+; The first page is empty: no candidates, every row faithful only to none.
+(defthm fn-mlh-first-page-empty
+  (implies (and (fn-mlhp fn-mlh) (fn-mlh-pgsp fn-mlh) (zp (fn-mlh-pages fn-mlh)))
+           (fn-mlh-empty-from 0 c (fn-mlh-first-page fn-mlh)))
+  :hints (("Goal" :induct (fn-mlh-empty-from 0 c (fn-mlh-first-page fn-mlh)))))
+
+(defthm fn-mlh-first-page-pe
+  (implies (and (fn-mlhp fn-mlh) (fn-mlh-pgsp fn-mlh) (zp (fn-mlh-pages fn-mlh)))
+           (equal (fn-mlh-pe 0 0 (fn-mlh-first-page fn-mlh)) nil)))
+
+(defthm fn-mlh-first-page-okp
+  (implies (and (fn-mlhp fn-mlh) (fn-mlh-pgsp fn-mlh) (zp (fn-mlh-pages fn-mlh)))
+           (fn-mlh-okp n (fn-mlh-first-page fn-mlh)))
+  :hints (("Goal" :in-theory (e/d (fn-mlh-okp fn-mlh-abs) (fn-mlh-first-page fn-mlh-pe))
+           :expand ((fn-mlh-abs-pages 0 (fn-mlh-first-page fn-mlh))
+                    (fn-mlh-abs-pages 1 (fn-mlh-first-page fn-mlh))))))
+
+(defthm fn-mlh-addr-one-page
+  (implies (integerp tag)
+           (equal (fn-mpxl-addr tag 1 0) 0))
+  :hints (("Goal" :in-theory (enable fn-mpxl-addr mod))))
+
+(defthm fn-mlh-first-page-not-saturated
+  (implies (and (fn-mlhp fn-mlh) (fn-mlh-pgsp fn-mlh) (zp (fn-mlh-pages fn-mlh)) (integerp tag))
+           (not (fn-mlh-saturatedp tag (fn-mlh-first-page fn-mlh))))
+  :hints (("Goal" :in-theory (e/d (fn-mlh-saturatedp) (fn-mlh-first-page))
+           :expand ((fn-mlh-find-empty 0 0 (fn-mlh-first-page fn-mlh)))
+           :use ((:instance fn-mlh-empty-from-tag-at (p 0) (c 0) (i 0) (fn-mlh (fn-mlh-first-page fn-mlh)))))))
+
+(in-theory (disable fn-mlh-first-page))
+
+; With no pages the table is faithful to no rows but the empty history, and
+; never saturated.
+(defthm fn-mlh-faithful-no-pages
+  (implies (and (zp (fn-mlh-pages fn-mlh)) (fn-mlh-faithful rows fn-mlh))
+           (equal (len rows) 0))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-mlh-faithful)
+           :expand ((fn-mlh-faithful-from 0 rows fn-mlh)))))
+
+(defthm fn-mlh-saturatedp-no-pages
+  (implies (zp (fn-mlh-pages fn-mlh))
+           (not (fn-mlh-saturatedp tag fn-mlh)))
+  :hints (("Goal" :in-theory (enable fn-mlh-saturatedp))))
+
+(defthm fn-mlh-wfp-of-count-stuck
+  (and (equal (fn-mlh-wfp (update-fn-mlh-count m fn-mlh)) (fn-mlh-wfp fn-mlh))
+       (equal (fn-mlh-wfp (update-fn-mlh-stuck m fn-mlh)) (fn-mlh-wfp fn-mlh))))
+
+; --- THE ADD ---
+
+(defthm fn-mlh-first-page-faithful
+  (implies (and (fn-mlhp fn-mlh) (fn-mlh-pgsp fn-mlh) (zp (fn-mlh-pages fn-mlh))
+                (equal (len rows) 0))
+           (fn-mlh-faithful rows (fn-mlh-first-page fn-mlh)))
+  :hints (("Goal" :in-theory (e/d (fn-mlh-faithful) (fn-mlh-okp)))))
+
+(defthm fn-mlh-put-car-iff-not-saturated
+  (implies (posp (fn-mlh-pages fn-mlh))
+           (iff (car (fn-mlh-put tag seq fn-mlh))
+                (not (fn-mlh-saturatedp tag fn-mlh))))
+  :hints (("Goal" :use fn-mlh-put-places-iff-not-saturated
+           :in-theory (disable fn-mlh-put-places-iff-not-saturated))))
+
+;; THE SETTLE: one more entry counted, then -- at the round's half, never
+;; after a refused split -- one split; a refused split sets STUCK.
+(defun fn-mlh-settle (fn-mlh)
+  (declare (xargs :stobjs fn-mlh :guard (fn-mlh-wfp fn-mlh)))
+  (let ((fn-mlh (update-fn-mlh-count (+ 1 (fn-mlh-count fn-mlh)) fn-mlh)))
+    (if (and (eql (fn-mlh-stuck fn-mlh) 0)
+             (<= (* *fn-mlh-page-slots* (fn-mlh-n fn-mlh)) (* 2 (fn-mlh-count fn-mlh))))
+        (mv-let (ok fn-mlh)
+          (fn-mlh-split fn-mlh)
+          (if ok fn-mlh (update-fn-mlh-stuck 1 fn-mlh)))
+      fn-mlh)))
+
+(defthm fn-mlh-settle-shape
+  (implies (and (fn-mlhp fn-mlh) (fn-mlh-wfp fn-mlh))
+           (and (fn-mlhp (fn-mlh-settle fn-mlh))
+                (fn-mlh-wfp (fn-mlh-settle fn-mlh))
+                (fn-mlh-pgsp (fn-mlh-settle fn-mlh))
+                (equal (fn-mlh-key-octets (fn-mlh-settle fn-mlh)) (fn-mlh-key-octets fn-mlh))))
+  :hints (("Goal" :in-theory (disable fn-mlh-wfp))))
+
+(defthm fn-mlh-settle-preserves-faithful
+  (implies (and (fn-mlhp fn-mlh) (fn-mlh-wfp fn-mlh) (fn-mlh-faithful rows fn-mlh))
+           (fn-mlh-faithful rows (fn-mlh-settle fn-mlh)))
+  :hints (("Goal" :in-theory (disable fn-mlh-wfp fn-mlh-faithful-from fn-mlh-okp))))
+
+(in-theory (disable fn-mlh-settle))
+
+; THE ADD; (mv :placed fn-mlh) or (mv :mpx-saturated fn-mlh), the table
+; unchanged on a refusal.  One put, then the settle: at most one split.
+(defun fn-mlh-add (tag seq fn-mlh)
+  (declare (xargs :stobjs fn-mlh
+                  :guard (and (posp tag) (< tag *fn-mlh-tag-limit*)
+                              (natp seq) (< (+ 1 seq) *fn-mlh-tag-limit*)
+                              (fn-mlh-wfp fn-mlh))))
+  (let ((fn-mlh (if (zp (fn-mlh-pages fn-mlh)) (fn-mlh-first-page fn-mlh) fn-mlh)))
+    (mv-let (placed fn-mlh)
+      (fn-mlh-put tag seq fn-mlh)
+      (if (not placed)
+          (mv :mpx-saturated fn-mlh)
+        (let ((fn-mlh (fn-mlh-settle fn-mlh)))
+          (mv :placed fn-mlh))))))
+
+(defthm fn-mlh-add-shape
+  (implies (and (fn-mlhp fn-mlh) (fn-mlh-wfp fn-mlh)
+                (natp tag) (< tag *fn-mlh-tag-limit*)
+                (natp seq) (< (+ 1 seq) *fn-mlh-tag-limit*))
+           (and (fn-mlhp (mv-nth 1 (fn-mlh-add tag seq fn-mlh)))
+                (fn-mlh-wfp (mv-nth 1 (fn-mlh-add tag seq fn-mlh)))
+                (fn-mlh-pgsp (mv-nth 1 (fn-mlh-add tag seq fn-mlh)))
+                (equal (fn-mlh-key-octets (mv-nth 1 (fn-mlh-add tag seq fn-mlh))) (fn-mlh-key-octets fn-mlh))))
+  :hints (("Goal" :in-theory (disable fn-mlh-put fn-mlh-wfp))))
+
+; The add's outcome is the named refusal of the table as it is.
+(defthm fn-mlh-add-places-iff-not-saturated
+  (implies (and (fn-mlhp fn-mlh) (fn-mlh-pgsp fn-mlh) (natp tag))
+           (iff (equal (mv-nth 0 (fn-mlh-add tag seq fn-mlh)) :placed)
+                (not (fn-mlh-saturatedp tag fn-mlh))))
+  :hints (("Goal" :in-theory (disable fn-mlh-put fn-mlh-split fn-mlh-put-places-iff-not-saturated)
+           :cases ((zp (fn-mlh-pages fn-mlh)))
+           :use (fn-mlh-put-places-iff-not-saturated
+                 (:instance fn-mlh-put-places-iff-not-saturated (fn-mlh (fn-mlh-first-page fn-mlh)))))))
+
+(defthm fn-mlh-add-saturated-keeps-the-table
+  (implies (and (fn-mlhp fn-mlh) (fn-mlh-pgsp fn-mlh) (natp tag) (fn-mlh-saturatedp tag fn-mlh))
+           (equal (mv-nth 1 (fn-mlh-add tag seq fn-mlh)) fn-mlh))
+  :hints (("Goal" :in-theory (disable fn-mlh-put fn-mlh-split fn-mlh-put-places-iff-not-saturated)
+           :cases ((zp (fn-mlh-pages fn-mlh)))
+           :use (fn-mlh-put-places-iff-not-saturated))))
+
+; KEYSTONE (the add): a placed row is a candidate of its tag and every
+; other row stays one -- the table stays faithful to the rows with the row
+; appended, through the put, the count and the split.
+(defthm fn-mlh-add-preserves-faithful
+  (implies (and (fn-mlhp fn-mlh) (fn-mlh-wfp fn-mlh)
+                (true-listp rows)
+                (fn-mlh-faithful rows fn-mlh)
+                (equal tag (fn-mlh-tag (fn-record-msgid h) (fn-mlh-key-octets fn-mlh)))
+                (< (+ 1 (len rows)) *fn-mlh-tag-limit*)
+                (equal (mv-nth 0 (fn-mlh-add tag (len rows) fn-mlh)) :placed))
+           (fn-mlh-faithful (append rows (list h)) (mv-nth 1 (fn-mlh-add tag (len rows) fn-mlh))))
+  :hints (("Goal" :in-theory (disable fn-mlh-put fn-mlh-faithful fn-mlh-wfp fn-mlh-put-preserves-faithful
+                                      fn-mlh-settle-preserves-faithful)
+           :do-not-induct t
+           :cases ((zp (fn-mlh-pages fn-mlh)))
+           :use ((:instance fn-mlh-faithful-no-pages)
+                 (:instance fn-mlh-put-preserves-faithful)
+                 (:instance fn-mlh-put-preserves-faithful (fn-mlh (fn-mlh-first-page fn-mlh)))
+                 (:instance fn-mlh-settle-preserves-faithful
+                            (rows (append rows (list h)))
+                            (fn-mlh (mv-nth 1 (fn-mlh-put tag (len rows) fn-mlh))))
+                 (:instance fn-mlh-settle-preserves-faithful
+                            (rows (append rows (list h)))
+                            (fn-mlh (mv-nth 1 (fn-mlh-put tag (len rows) (fn-mlh-first-page fn-mlh)))))))))
