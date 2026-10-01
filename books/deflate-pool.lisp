@@ -13,7 +13,7 @@
 ; zeroes those DIRTY cells and remakes the small table; any other call
 ; makes the buffers as `fn-zin-payload-ready' does.  The decoder writes
 ; only ring cells below min(TOUT, 32 KiB) and never the preset half
-; (books/deflate-frame.lisp, KEYSTONE `fn-zfr-loop-ahead-frame'), so the
+; (the window frame of fn-zin-loop, `fn-zpl-loop-frame' below), so the
 ; answer carries a pool whose invariant (`fn-zpl-pool-okp') holds again.
 ;
 ; KEYSTONES: `fn-zpl-decode-bufs-is-decode' (the host entry answers
@@ -212,13 +212,18 @@
       (let* ((fn-zin-out (fn-zin-out-clear fn-zin-out))
              (fn-zin-st (fn-zin-reset fn-zin-st)))
         (mv-let (h fn-zin-win fn-zin-tab) (fn-zpl-prepare pool dict fn-zin-win fn-zin-tab)
-          (let ((fn-zin-st (fn-zin-set 18 h fn-zin-st)))
+          ; The same stored-input policy as fn-zin-payload-bufs: the
+          ; compressed size bounds the output (fn-zin-stored-limit) and an
+          ; unterminated stream is truncated (fn-zin-stored-status).
+          (let* ((fn-zin-st (fn-zin-set 18 h fn-zin-st))
+                 (fn-zin-st (fn-zin-set 7 (nfix (- end start)) fn-zin-st)))
             (if (and (fn-zin-window-ready-p fn-zin-win) (fn-zin-tab-okp fn-zin-tab))
                 (mv-let (st b2 ip fn-zin-st fn-zin-win fn-zin-tab fn-zin-out)
-                  (fn-zin-loop-ahead b start end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab
-                                     fn-zin-out)
+                  (fn-zin-loop b start end (fn-zin-stored-limit (nfix (- end start)) lim)
+                               fn-zin-st fn-octets fn-zin-win fn-zin-tab fn-zin-out)
                   (declare (ignore b2 ip))
-                  (mv st (list dict h (fn-zfr-dirty (fn-zin-tout fn-zin-st)))
+                  (mv (fn-zin-stored-status st (nfix (- end start)) fn-zin-st)
+                      (list dict h (fn-zfr-dirty (fn-zin-tout fn-zin-st)))
                       fn-zin-st fn-zin-win fn-zin-tab fn-zin-out))
               (mv (list :refused :buffers) nil fn-zin-st fn-zin-win fn-zin-tab fn-zin-out)))))
       (mv st pool fn-zin-win fn-zin-tab fn-zin-out))))
@@ -253,7 +258,7 @@
                   (equal (mv-nth 4 p) (mv-nth 3 q)))))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-zin-payload-bufs)
-                           (fn-zin-loop-ahead fn-zin-payload-ready fn-zpl-prepare
+                           (fn-zin-loop fn-zin-stored-status fn-zin-payload-ready fn-zpl-prepare
                             fn-zin-payload-bufs-ignores-buffers fn-zpl-pool-okp)))))
 
 (local (defthm fn-zpl-reset-loop-below
@@ -264,38 +269,88 @@
   (implies (and (natp i) (natp j) (<= i j) (< j 18))
            (equal (fn-zin-fld j (fn-zin-reset-loop i fn-zin-st)) 0))
   :hints (("Goal" :induct (fn-zin-reset-loop i fn-zin-st)))))
+(local (defthm fn-zpl-start-posp-stored
+  (fn-zfr-posp (fn-zin-fld 5 (fn-zin-set 7 c (fn-zin-set 18 h (fn-zin-reset fn-zin-st))))
+               (fn-zin-fld 6 (fn-zin-set 7 c (fn-zin-set 18 h (fn-zin-reset fn-zin-st)))))
+  :hints (("Goal" :in-theory (enable fn-zin-reset)))))
 (local (defthm fn-zpl-start-posp
   (fn-zfr-posp (fn-zin-fld 5 (fn-zin-set 18 h (fn-zin-reset fn-zin-st)))
                (fn-zin-fld 6 (fn-zin-set 18 h (fn-zin-reset fn-zin-st))))
   :hints (("Goal" :in-theory (enable fn-zin-reset)))))
-(local (defthm fn-zpl-loop-ahead-pool-okp
+;; The window frame of fn-zin-loop (deflate-frame proves it of
+;; fn-zin-loop-ahead; the stored payload entry now runs fn-zin-loop).
+(local (defthm fn-zpl-pull-keeps
+  (and (equal (fn-zin-fld 5 (fn-zin-pull ip fn-zin-st fn-octets)) (fn-zin-fld 5 fn-zin-st))
+       (equal (fn-zin-fld 6 (fn-zin-pull ip fn-zin-st fn-octets)) (fn-zin-fld 6 fn-zin-st)))
+  :hints (("Goal" :in-theory (enable fn-zin-pull)))))
+(local (defthm fn-zpl-dirty-below
+  (implies (and (<= (fn-zfr-dirty b) k) (natp a) (natp b) (<= a b))
+           (<= (fn-zfr-dirty a) k))
+  :hints (("Goal" :in-theory (enable fn-zfr-dirty)))))
+(local (defthm fn-zpl-loop-pos
+  (implies (fn-zfr-posp (fn-zin-fld 5 fn-zin-st) (fn-zin-fld 6 fn-zin-st))
+           (let ((r (fn-zin-loop b ip end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab
+                                 fn-zin-out)))
+             (and (fn-zfr-posp (fn-zin-fld 5 (mv-nth 3 r)) (fn-zin-fld 6 (mv-nth 3 r)))
+                  (<= (fn-zin-fld 6 fn-zin-st) (fn-zin-fld 6 (mv-nth 3 r))))))
+  :hints (("Goal" :induct (fn-zin-loop b ip end lim fn-zin-st fn-octets fn-zin-win
+                                       fn-zin-tab fn-zin-out)
+           :in-theory (e/d (fn-zin-loop) (fn-zin-pull fn-zin-step-counts fn-zin-loop-counts fn-zin-loop-out-free fn-zfr-posp fn-zfr-dirty))))))
+(local (defthm fn-zpl-loop-tout
+  (implies (fn-zfr-posp (fn-zin-fld 5 fn-zin-st) (fn-zin-fld 6 fn-zin-st))
+           (<= (fn-zin-fld 6 fn-zin-st)
+               (fn-zin-fld 6 (mv-nth 3 (fn-zin-loop b ip end lim fn-zin-st fn-octets
+                                                    fn-zin-win fn-zin-tab fn-zin-out)))))
+  :hints (("Goal" :use fn-zpl-loop-pos :in-theory (theory 'minimal-theory)))
+  :rule-classes :linear))
+(local (defthm fn-zpl-loop-frame-kk
+  (implies (and (fn-zfr-posp (fn-zin-fld 5 fn-zin-st) (fn-zin-fld 6 fn-zin-st)) (natp kk)
+                (<= (fn-zfr-dirty (fn-zin-fld 6 (mv-nth 3 (fn-zin-loop b ip end lim fn-zin-st
+                                                                       fn-octets fn-zin-win
+                                                                       fn-zin-tab fn-zin-out))))
+                    kk))
+           (equal (nthcdr kk (mv-nth 4 (fn-zin-loop b ip end lim fn-zin-st fn-octets fn-zin-win
+                                                    fn-zin-tab fn-zin-out)))
+                  (nthcdr kk fn-zin-win)))
+  :hints (("Goal" :induct (fn-zin-loop b ip end lim fn-zin-st fn-octets fn-zin-win
+                                       fn-zin-tab fn-zin-out)
+           :in-theory (e/d (fn-zin-loop) (fn-zin-pull fn-zin-step-counts fn-zin-loop-counts fn-zin-loop-out-free fn-zfr-posp fn-zfr-dirty))))))
+(local (defthm fn-zpl-loop-frame
+  (implies (fn-zfr-posp (fn-zin-wpos fn-zin-st) (fn-zin-tout fn-zin-st))
+    (let ((r (fn-zin-loop b ip end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab fn-zin-out)))
+      (and (fn-zfr-posp (fn-zin-wpos (mv-nth 3 r)) (fn-zin-tout (mv-nth 3 r)))
+           (<= (fn-zin-tout fn-zin-st) (fn-zin-tout (mv-nth 3 r)))
+           (equal (nthcdr (fn-zfr-dirty (fn-zin-tout (mv-nth 3 r))) (mv-nth 4 r))
+                  (nthcdr (fn-zfr-dirty (fn-zin-tout (mv-nth 3 r))) fn-zin-win)))))
+  :hints (("Goal" :in-theory (disable fn-zin-loop fn-zin-loop-counts fn-zfr-posp fn-zfr-dirty)))))
+(local (defthm fn-zpl-loop-pool-okp
   (implies (and (fn-zfr-posp (fn-zin-fld 5 fn-zin-st) (fn-zin-fld 6 fn-zin-st))
                 (fn-cbor-octet-listp dict)
                 (fn-cbor-octet-listp fn-zin-tab) (equal (len fn-zin-tab) *fn-zin-tab-octets*)
                 (fn-cbor-octet-listp fn-zin-out))
-           (let ((r (fn-zin-loop-ahead b ip end lim fn-zin-st fn-octets (fn-zpl-ready-window dict)
+           (let ((r (fn-zin-loop b ip end lim fn-zin-st fn-octets (fn-zpl-ready-window dict)
                                        fn-zin-tab fn-zin-out)))
              (fn-zpl-pool-okp (list dict (fn-zpl-ready-h dict) (fn-zfr-dirty (fn-zin-fld 6 (mv-nth 3 r))))
                               (mv-nth 4 r))))
   :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-zfr-loop-ahead-frame (fn-zin-win (fn-zpl-ready-window dict))))
-           :in-theory (disable fn-zin-loop-ahead fn-zfr-loop-ahead-frame fn-zpl-ready-window
+           :use ((:instance fn-zpl-loop-frame (fn-zin-win (fn-zpl-ready-window dict))))
+           :in-theory (disable fn-zin-loop fn-zin-loop-counts fn-zpl-loop-frame fn-zpl-ready-window
                                fn-zpl-ready-h)))))
-(local (defthm fn-zpl-loop-ahead-pool-okp-2
+(local (defthm fn-zpl-loop-pool-okp-2
   (implies (and (fn-zfr-posp (fn-zin-fld 5 fn-zin-st) (fn-zin-fld 6 fn-zin-st))
                 (fn-cbor-octet-listp dict)
                 (fn-cbor-octet-listp fn-zin-tab) (equal (len fn-zin-tab) *fn-zin-tab-octets*)
                 (fn-cbor-octet-listp fn-zin-out))
-           (let ((r (fn-zin-loop-ahead b ip end lim fn-zin-st fn-octets
+           (let ((r (fn-zin-loop b ip end lim fn-zin-st fn-octets
                                        (mv-nth 1 (fn-zin-payload-ready dict nil nil))
                                        fn-zin-tab fn-zin-out)))
              (fn-zpl-pool-okp (list dict (car (fn-zin-payload-ready dict nil nil))
                                     (fn-zfr-dirty (fn-zin-fld 6 (mv-nth 3 r))))
                               (mv-nth 4 r))))
   :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-zpl-loop-ahead-pool-okp))
+           :use ((:instance fn-zpl-loop-pool-okp))
            :in-theory (e/d (fn-zpl-ready-window fn-zpl-ready-h)
-                           (fn-zin-loop-ahead fn-zpl-loop-ahead-pool-okp fn-zpl-pool-okp
+                           (fn-zin-loop fn-zin-loop-counts fn-zpl-loop-pool-okp fn-zpl-pool-okp
                             fn-zin-payload-ready fn-zfr-dirty))))))
 (defthm fn-zpl-payload-bufs-pool-okp
   (implies (and (fn-zpl-pool-okp pool fn-zin-win) (fn-cbor-octet-listp dict))
@@ -305,11 +360,13 @@
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-zin-payload-ready-shape (fn-zin-win nil) (fn-zin-tab nil)))
            :in-theory (e/d ()
-                           (fn-zin-loop-ahead fn-zin-payload-ready fn-zpl-prepare
+                           (fn-zin-loop fn-zin-loop-counts fn-zin-stored-status fn-zin-payload-ready fn-zpl-prepare
                             fn-zin-payload-ready-shape fn-zpl-ready-tab-logic fn-zfr-dirty
                             fn-zpl-pool-okp fn-zin-reset)))))
 
-(local (defthm fn-zpl-decode-bufs-is-pzd
+; The pooled host entry answers exactly what the unpooled one does --
+; refusal reason included -- and leaves the same output buffer.
+(defthm fn-zpl-decode-bufs-is-pzd
   (implies (and (fn-zpl-pool-okp pool fn-zin-win) (fn-cbor-octet-listp dict)
                 (fn-cbor-octet-listp c))
            (let ((r (fn-zpl-decode-bufs pool dict (len c) n c fn-zin-win fn-zin-tab fn-zin-out))
@@ -326,8 +383,11 @@
            :in-theory (e/d (fn-pzd-answer)
                            (fn-zpl-payload-bufs fn-zin-payload-bufs fn-zin-payload-with
                             fn-zpl-payload-bufs-is-payload-bufs fn-zin-payload-bufs-is-payload-with
-                            fn-zin-payload-with-octets fn-zpl-pool-okp))))))
+                            fn-zin-payload-with-octets fn-zpl-pool-okp)))))
 
+; Only the pool and window projections matter here: with the loop, the
+; payload bridges and the answer helpers closed this costs 8,298 steps
+; (it took 5.1M with them open, ~45 s).
 (local (defthm fn-zpl-decode-bufs-pool-okp
   (implies (and (fn-zpl-pool-okp pool fn-zin-win) (fn-cbor-octet-listp dict))
            (let ((r (fn-zpl-decode-bufs pool dict end n fn-octets fn-zin-win fn-zin-tab fn-zin-out)))
@@ -336,13 +396,19 @@
            :use ((:instance fn-zpl-payload-bufs-pool-okp (b (fn-pzd-budget end n)) (start 0)
                             (lim (+ 1 (nfix n)))))
            :in-theory (e/d (fn-zpl-decode-bufs)
-                           (fn-zpl-payload-bufs-pool-okp fn-zpl-payload-bufs fn-zpl-pool-okp))))))
+                           (fn-zpl-payload-bufs-pool-okp fn-zpl-payload-bufs fn-zpl-pool-okp
+                            fn-pzd-endedp fn-zin-out-clear fn-zin-out-len fn-pzd-budget
+                            fn-zin-loop fn-zin-payload-bufs fn-zpl-payload-bufs-is-payload-bufs
+                            fn-zin-payload-bufs-ignores-buffers fn-zin-stored-status))))))
 (defthm fn-zpl-decode-bufs-is-decode
   (implies (and (fn-cbor-octet-listp c) (natp n) (fn-cbor-octet-listp dict)
                 (fn-zpl-pool-okp pool fn-zin-win))
            (let ((r (fn-zpl-decode-bufs pool dict (len c) n c fn-zin-win fn-zin-tab fn-zin-out))
                  (d (fn-pzd-decode dict c n)))
-             (and (equal (car (car r)) (car d))
+             (and (equal (car r)
+                         (car (fn-pzd-decode-bufs dict (len c) n c fn-zin-win fn-zin-tab
+                                                  fn-zin-out)))
+                  (equal (car (car r)) (car d))
                   (implies (equal (car d) :ok)
                            (equal (mv-nth 4 r) (cadr d)))
                   (fn-zpl-pool-okp (mv-nth 1 r) (mv-nth 2 r)))))

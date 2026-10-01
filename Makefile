@@ -25,12 +25,15 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/connection-receiver-repin-state-tests \
 	books/obligation-view-cursor-refinement \
 	books/obligation-view-cursor \
+	books/retention-obligation-view \
+	books/obligation-view-budget \
 	books/view-delta-cursor-refinement \
 	books/view-delta-cursor \
 	tests/acl2/obligation-view-cursor-tests \
 	tests/acl2/view-delta-cursor-tests \
 	books/index-reader-actor \
 	books/index-reader-receiver-issuer \
+	tests/acl2/index-reader-render-establishment-tests \
 	books/cbor-record-scalar \
 	books/cbor-record-stream \
 	books/statement-items-shape \
@@ -203,6 +206,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/history-semantic-writer-state \
 	tests/acl2/history-semantic-writer-state-tests \
 	books/index-reader-response-issuer \
+	tests/acl2/reader-output-storage-tests \
 	books/history-event-page \
 	books/history-event-directory \
 	books/history-event-directory-refinement \
@@ -796,6 +800,14 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-extend-tests \
 	books/store-log-durable \
 	tests/acl2/store-log-durable-tests \
+	books/recovery-refinement \
+	tests/acl2/recovery-refinement-tests \
+	books/recovery-refinement-concurrent \
+	tests/acl2/recovery-refinement-concurrent-tests \
+	books/recovery-refinement-pages \
+	tests/acl2/recovery-refinement-pages-tests \
+	books/checkpoint-reserve \
+	tests/acl2/checkpoint-reserve-tests \
 	books/store-init-log-publication \
 	tests/acl2/store-init-log-publication-tests \
 	books/owner-feed-txid-reuse \
@@ -1566,6 +1578,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/msgid-pages-tests \
 	books/msgid-pages-exec \
 	tests/acl2/msgid-pages-exec-tests \
+	books/msgid-linear \
+	tests/acl2/msgid-linear-tests \
+	books/msgid-linear-exec \
+	tests/acl2/msgid-linear-exec-tests \
 	books/owner-number-bound-join \
 	tests/acl2/owner-number-bound-join-tests \
 	tests/acl2/owner-identity-served-tests \
@@ -1872,19 +1888,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/arena-reader-pins-tests \
 	books/response-plan-pins \
 	tests/acl2/response-plan-pins-tests \
-	books/page-read-ownership \
-	tests/acl2/page-read-ownership-tests \
-	books/page-file-lease \
-	books/page-window-lease \
-	books/page-window-executor \
-	books/page-window-read \
-	tests/acl2/page-window-executor-tests \
-	tests/acl2/page-window-read-tests \
-	tests/acl2/page-window-admission-tests \
-	tests/acl2/page-window-lease-tests \
-	tests/acl2/page-file-lease-tests \
-	books/page-read-executor \
-	tests/acl2/page-read-executor-tests \
 	books/feed-restart-domain \
 	tests/acl2/feed-restart-domain-tests \
 	books/web-request \
@@ -2734,6 +2737,11 @@ check:
 # synthetic by the rule in the tool's header.  Static, about ten seconds.
 	@$(CHECK_STEP) $(PYTHON) tools/secrets_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_secrets_check
+# Evidence stays small (MODE §5): raw planning logs over 1,000 lines need
+# a summary, the tail and the full log location. Existing oversized logs
+# are grandfathered in a baseline that only shrinks. Static, no ACL2.
+	@$(CHECK_STEP) $(PYTHON) tools/evidence_size_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_evidence_size_check
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_build_lists_check
 # Every ACL2 a tool or test starts takes the machine's pool and heap cap
 # (tools/acl2_slots.py run/popen/tree_slot; PKT-162, harness-repair).

@@ -46,12 +46,15 @@
 (defun hibt-page (file addr)
   (declare (xargs :guard t))
   (let ((w (cdr (hons-assoc-equal addr file))))
-    (if (and (true-listp w) (equal (len w) 2048)) w (make-list 2048 :initial-element 0))))
+    (if (and (true-listp w) (equal (len w) 2048) (fn-pgs-u64-listp w)) w (make-list 2048 :initial-element 0))))
 
 (defthm hibt-page-shape
-  (and (true-listp (hibt-page file addr)) (equal (len (hibt-page file addr)) 2048)))
+  (and (true-listp (hibt-page file addr)) (equal (len (hibt-page file addr)) 2048)
+       (fn-pgs-u64-listp (hibt-page file addr))))
 
 (defattach (fn-pgs-page-words hibt-page) (fn-pgs-fill-realize hibt-page))
+; the frame fill (A-PGS-HOST-IO's in-place form): the put of the same page
+(defattach fn-pgs-fill-frame fn-pgs-fill-frame-via-words)
 
 ; A root slot as the page store reads it (pgs-x-read-rec): the record and
 ; the check observed over its words, which for a slot the commit wrote is

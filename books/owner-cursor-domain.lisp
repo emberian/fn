@@ -240,6 +240,35 @@
    :hints (("Goal" :in-theory '(fn-osr-retainedp fn-osr-livep
                                 fn-sti-livep fn-csi-livep)))))
 
+; The owner binding through the cold entry and the reclaim swap: the
+; report writer's bracket (fn-orc-writer-enter/-leave) and every other put
+; leave it; the install sets it.
+(local
+ (defthm fn-ocd-writer-owner-frame
+   (and (equal (get-global 'fn-owner (fn-orc-writer-enter state))
+               (get-global 'fn-owner state))
+        (equal (get-global 'fn-owner (fn-orc-writer-leave state))
+               (get-global 'fn-owner state)))
+   :hints (("Goal" :in-theory (enable fn-orc-writer-enter fn-orc-writer-leave)))))
+
+(local
+ (defthm fn-ocd-get-owner-of-other-put
+   (implies (not (equal key 'fn-owner))
+            (equal (get-global 'fn-owner (put-global key value state))
+                   (get-global 'fn-owner state)))
+   :hints (("Goal" :in-theory (enable get-global put-global)))))
+
+(local
+ (defthm fn-ocd-get-owner-of-retain-carry-put
+   (equal (get-global 'fn-owner (fn-owner-retain-carry-put carry state))
+          (get-global 'fn-owner state))
+   :hints (("Goal" :in-theory (enable fn-owner-retain-carry-put)))))
+
+(local
+ (defthm fn-ocd-get-owner-of-open-install
+   (equal (get-global 'fn-owner (fn-owner-install-open-ocfg oc state)) oc)
+   :hints (("Goal" :in-theory (enable fn-owner-install-open-ocfg fn-owner-install-ocfg)))))
+
 ; This is the unchanged Store pointer installed by the actual cold entry.
 (defthm fn-owner-install-extended-store-effect-by-definition
   (implies (and (not (equal oc :fault)) (fn-onb-open-okp (fn-ocfg-owner oc)))
@@ -250,8 +279,8 @@
   :hints (("Goal" :in-theory
            (union-theories (theory 'minimal-theory)
             '(fn-owner-install-extended fn-owner-cursor-store-by-definition
-              fn-owner-ocfg-of-retain-carry-put fn-owner-ocfg-of-other-global-put
-              fn-owner-ocfg fn-owner-install-open-ocfg fn-owner-rebuilt-ocfg-effect
+              fn-owner-ocfg fn-ocd-writer-owner-frame fn-ocd-get-owner-of-other-put
+              fn-ocd-get-owner-of-retain-carry-put fn-ocd-get-owner-of-open-install
               mv-nth nth zp car-cons cdr-cons)))))
 
 (defthm fn-owner-recovered-install-establishes-cursor
@@ -268,6 +297,11 @@
                                fn-owner-cursor-retained-implies-sequence))))
 
 (local
+ (defthm fn-ocd-get-owner-of-install
+   (equal (get-global 'fn-owner (fn-owner-install-ocfg oc state)) oc)
+   :hints (("Goal" :in-theory (enable fn-owner-install-ocfg)))))
+
+(local
  (defthm fn-owner-cursor-swapped-store
    (equal (fn-sbud-oc-store (fn-orcp-swapped-ocfg live-oc rebuilt-oc))
           (fn-sbud-oc-store rebuilt-oc))
@@ -282,9 +316,9 @@
   :hints (("Goal" :in-theory
            (union-theories (theory 'minimal-theory)
             '(fn-owner-orcp-swap fn-owner-cursor-store-by-definition
-              fn-owner-put-credits fn-owner-ocfg-of-other-global-put
-              fn-owner-ocfg-of-retain-carry-put fn-owner-ocfg
-              fn-owner-rebuilt-ocfg-effect fn-owner-cursor-swapped-store
+              fn-owner-put-credits fn-owner-ocfg fn-ocd-get-owner-of-other-put
+              fn-ocd-get-owner-of-retain-carry-put fn-ocd-get-owner-of-install
+              fn-owner-cursor-swapped-store
               mv-nth nth zp car-cons cdr-cons)))))
 
 (defthm fn-owner-rebuilt-swap-establishes-cursor

@@ -37,7 +37,7 @@
                   (fn-own-feed-entry-feed (fn-own-feed-entry-of peer tbl))
                   event)))
            (equal (fn-own-feed-port-peer peer tbl event)
-                  (fn-own-feed-port-result
+                  (fn-own-feed-port-result-counted
                    :accepted
                    (fn-own-feed-put
                     peer (fn-own-feed-entry-record (fn-own-feed-entry-of peer tbl))
@@ -50,7 +50,12 @@
                    (let ((effects (fn-feed-live-effects
                                    (fn-own-feed-entry-feed
                                     (fn-own-feed-entry-of peer tbl)) event)))
-                     (if (null effects) nil (list (cons peer effects)))))))
+                     (if (null effects) nil (list (cons peer effects))))
+                   (fn-own-feed-pending-delta
+                    (fn-own-feed-entry-feed (fn-own-feed-entry-of peer tbl))
+                    (fn-feed-live-next
+                     (fn-own-feed-entry-feed (fn-own-feed-entry-of peer tbl))
+                     event)))))
   :hints (("Goal"
            :use ((:instance fn-feed-live-port-step-accepted-unfolds
                             (f (fn-own-feed-entry-feed
@@ -62,7 +67,8 @@
                              fn-frame-item fn-own-feed-entry-of
                              fn-feed-live-records fn-feed-live-next
                              fn-feed-live-effects fn-feed-records-portp
-                             fn-feedp)))))
+                             fn-feedp fn-own-feed-pending-delta
+                             fn-own-feed-port-result-counted)))))
 
 ; Named event projections identify the functions the owner adapters use for
 ; tick, reply, loss and restart; the event and returned records are not host
@@ -113,7 +119,7 @@
   (true-listp (fn-own-feed-port-records
                (fn-own-feed-port-peer peer tbl event)))
   :hints (("Goal" :in-theory (e/d (fn-own-feed-port-peer
-                                   fn-own-feed-port-result
+                                   fn-own-feed-port-result fn-own-feed-port-result-counted
                                    fn-own-feed-port-records)
                                   (fn-feed-live-port-step
                                    fn-feed-port-step-records)))))
@@ -178,7 +184,7 @@
             (fn-own-feed-port-result :refused original nil nil)))
    :rule-classes nil
    :hints (("Goal" :induct (fn-own-feed-port-restart-fold names current original)
-                   :in-theory (e/d (fn-own-feed-port-result fn-own-feed-port-status
+                   :in-theory (e/d (fn-own-feed-port-result fn-own-feed-port-result-counted fn-own-feed-port-status
                                     fn-own-feed-port-table fn-own-feed-port-records
                                     fn-frame-item)
                                    (fn-own-feed-port-restart-peer))))))
@@ -192,14 +198,14 @@
                 (fn-ag-rev-onto racc (fn-own-feed-port-records r)) nil)
              (fn-own-feed-port-result :refused original nil nil))))
   :hints (("Goal" :induct (fn-own-feed-port-restart-fold-loop names current original racc)
-                  :in-theory (e/d (fn-own-feed-port-result fn-own-feed-port-status
+                  :in-theory (e/d (fn-own-feed-port-result fn-own-feed-port-result-counted fn-own-feed-port-status
                                    fn-own-feed-port-table fn-own-feed-port-records
                                    fn-frame-item)
                                   (fn-own-feed-port-restart-peer)))))
 
 (verify-guards fn-own-feed-port-restart-fold
   :hints (("Goal" :use ((:instance fn-own-feed-port-restart-fold-shape))
-                  :in-theory (e/d (fn-own-feed-port-result fn-own-feed-port-status
+                  :in-theory (e/d (fn-own-feed-port-result fn-own-feed-port-result-counted fn-own-feed-port-status
                                    fn-own-feed-port-table fn-own-feed-port-records
                                    fn-frame-item)
                                   (fn-own-feed-port-restart-peer
@@ -214,7 +220,7 @@
   :hints (("Goal" :induct (fn-own-feed-port-restart-fold
                             names current original)
            :in-theory (enable fn-own-feed-port-restart-fold
-                              fn-own-feed-port-result
+                              fn-own-feed-port-result fn-own-feed-port-result-counted
                               fn-own-feed-port-status))))
 
 (defthm fn-own-feed-port-restart-fold-accepted-cons-unfolds

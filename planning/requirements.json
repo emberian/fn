@@ -207,7 +207,7 @@
         "tests/evidence/2026-09-18-assurance.json",
         "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Primitive/record full round trips and accepted-input canonicality certified; 38 independent cbor2 cases pass. Explicit-budget deterministic byte strings admit bounded keyring and accepted-statement Store events above the legacy generic ceiling while old entry points retain their exact contracts. Native signature preimages remain open. Since T1 (plan 2026-09-22 \u00a74.1) the record codec is behind a seam: fn-record-round-trip and fn-record-accepted-input-is-canonical are constraints of books/records-seam.lisp over the constrained fn-record-encode and fn-record-decode-exact that the host and every book above the codec call, and fn-record-impl-round-trip and fn-record-impl-accepted-input-is-canonical are the same properties of the implementation books/records-attach.lisp attaches. The header is two constraints, fn-record-accepted-input-magic and fn-record-accepted-schema-is-the-stamp-kind, so the acceptance stamp's schema 1 widens the grammar behind the seam; the exact octets are the concrete fact fn-record-schema1-golden-octets-are-the-encoding of books/records.lisp, since a round trip and canonicality do not identify the wire language.",
+      "implementation_note": "Primitive/record full round trips and accepted-input canonicality certified; 38 independent cbor2 cases pass. Explicit-budget deterministic byte strings admit bounded keyring and accepted-statement Store events above the legacy generic ceiling while old entry points retain their exact contracts. Native signature preimages remain open. Since T1 (plan 2026-09-22 §4.1) the record codec is behind a seam: fn-record-round-trip and fn-record-accepted-input-is-canonical are constraints of books/records-seam.lisp over the constrained fn-record-encode and fn-record-decode-exact that the host and every book above the codec call, and fn-record-impl-round-trip and fn-record-impl-accepted-input-is-canonical are the same properties of the implementation books/records-attach.lisp attaches. The header is two constraints, fn-record-accepted-input-magic and fn-record-accepted-schema-is-the-stamp-kind, so the acceptance stamp's schema 1 widens the grammar behind the seam; the exact octets are the concrete fact fn-record-schema1-golden-octets-are-the-encoding of books/records.lisp, since a round trip and canonicality do not identify the wire language.",
       "keystones": [
         "fn-cbor-value-round-trip",
         "fn-cbor-accepted-input-is-canonical",
@@ -229,7 +229,8 @@
       "proof_targets": [
         "PRF-016",
         "PRF-062",
-        "PRF-091"
+        "PRF-091",
+        "PRF-1186"
       ],
       "verification": [
         "proof",
@@ -318,7 +319,8 @@
         "PRF-089",
         "PRF-189",
         "PRF-301",
-        "PRF-980"
+        "PRF-980",
+        "PRF-1181"
       ],
       "verification": [
         "proof",
@@ -350,7 +352,8 @@
         "PRF-001",
         "PRF-002",
         "PRF-003",
-        "PRF-050"
+        "PRF-050",
+        "PRF-1195"
       ],
       "verification": [
         "proof",
@@ -396,7 +399,8 @@
         "PRF-328",
         "PRF-331",
         "PRF-333",
-        "PRF-936"
+        "PRF-936",
+        "PRF-1212"
       ],
       "verification": [
         "proof",
@@ -444,7 +448,8 @@
         "PRF-007",
         "PRF-027",
         "PRF-043",
-        "PRF-255"
+        "PRF-255",
+        "PRF-1212"
       ],
       "verification": [
         "proof",
@@ -503,7 +508,12 @@
         "PRF-280",
         "PRF-316",
         "PRF-903",
-        "PRF-953"
+        "PRF-953",
+        "PRF-1212",
+        "PRF-1214",
+        "PRF-1216",
+        "PRF-1223",
+        "PRF-1221"
       ],
       "verification": [
         "proof",
@@ -832,7 +842,8 @@
         "PRF-004",
         "PRF-046",
         "PRF-081",
-        "PRF-1046"
+        "PRF-1046",
+        "PRF-1192"
       ],
       "verification": [
         "proof",
@@ -863,7 +874,8 @@
         "PRF-004",
         "PRF-016",
         "PRF-072",
-        "PRF-080"
+        "PRF-080",
+        "PRF-1192"
       ],
       "verification": [
         "proof",
@@ -899,7 +911,8 @@
       "proof_targets": [
         "PRF-012",
         "PRF-082",
-        "PRF-103"
+        "PRF-103",
+        "PRF-1091"
       ],
       "verification": [
         "proof",
@@ -927,7 +940,9 @@
       "proof_targets": [
         "PRF-004",
         "PRF-012",
-        "PRF-013"
+        "PRF-013",
+        "PRF-1091",
+        "PRF-1192"
       ],
       "verification": [
         "proof",
@@ -1193,7 +1208,8 @@
         "PRF-1047",
         "PRF-1048",
         "PRF-1051",
-        "PRF-1135"
+        "PRF-1135",
+        "PRF-1091"
       ],
       "verification": [
         "proof",
@@ -1463,7 +1479,7 @@
     },
     {
       "id": "NNT-008",
-      "title": "NEWNEWS answers from this node\u2019s durable acceptance stamp",
+      "title": "NEWNEWS answers from this node’s durable acceptance stamp",
       "specification": "specs/nntp.md#polling-newnews",
       "milestone": "M3",
       "status": "implemented",
@@ -1481,7 +1497,7 @@
         "specs/nntp.md",
         "specs/nntp-audit.md"
       ],
-      "implementation_note": "RFC 3977 section 7.4 uses the existing section 7.3.2 date/time and wildmat parsers. For schema-1 articles it compares the owner\u2019s durable whole-second acceptance stamp; an article without a natural stamp uses the nearest later stamped acceptance, else the pinned reader wall second, else remains visible; no record carries such a stamp since schema 0 was deleted (no migrations: fresh deploys at 6.6.0), and deleting this horizon is open. One command scans the committed list once, reads no article payload octets, emits at most one line per matching candidate and has no parse-budget refusal.",
+      "implementation_note": "RFC 3977 section 7.4 uses the existing section 7.3.2 date/time and wildmat parsers. For schema-1 articles it compares the owner’s durable whole-second acceptance stamp; an article without a natural stamp uses the nearest later stamped acceptance, else the pinned reader wall second, else remains visible; no record carries such a stamp since schema 0 was deleted (no migrations: fresh deploys at 6.6.0), and deleting this horizon is open. One command scans the committed list once, reads no article payload octets, emits at most one line per matching candidate and has no parse-budget refusal.",
       "note": "The DATE-to-NEWNEWS no-miss guarantee across a reader pin and in-flight prepare remains T6 under A-CLOCK."
     },
     {
@@ -1592,7 +1608,10 @@
         "PRF-1063",
         "PRF-1064",
         "PRF-1075",
-        "PRF-1076"
+        "PRF-1076",
+        "PRF-1186",
+        "PRF-1201",
+        "PRF-1203"
       ],
       "verification": [
         "proof",
@@ -2179,7 +2198,15 @@
         "PRF-199",
         "PRF-959",
         "PRF-937",
-        "PRF-945"
+        "PRF-945",
+        "PRF-1212",
+        "PRF-1213",
+        "PRF-1215",
+        "PRF-1216",
+        "PRF-1222",
+        "PRF-1223",
+        "PRF-1220",
+        "PRF-1221"
       ],
       "verification": [
         "proof",
@@ -2301,7 +2328,9 @@
         "PRF-361",
         "PRF-997",
         "PRF-998",
-        "PRF-1089"
+        "PRF-1089",
+        "PRF-1101",
+        "PRF-1148"
       ],
       "verification": [
         "proof",
@@ -2519,7 +2548,8 @@
       "milestone": "M3",
       "status": "specified",
       "proof_targets": [
-        "PRF-097"
+        "PRF-097",
+        "PRF-1151"
       ],
       "verification": [
         "proof",
@@ -2595,7 +2625,9 @@
         "PRF-225",
         "PRF-250",
         "PRF-989",
-        "PRF-1090"
+        "PRF-1090",
+        "PRF-1008",
+        "PRF-1009"
       ],
       "verification": [
         "proof",
@@ -2702,7 +2734,8 @@
       "proof_targets": [
         "PRF-117",
         "PRF-127",
-        "PRF-260"
+        "PRF-260",
+        "PRF-1148"
       ],
       "verification": [
         "proof",
@@ -2827,7 +2860,9 @@
         "PRF-938",
         "PRF-987",
         "PRF-1059",
-        "PRF-1057"
+        "PRF-1057",
+        "PRF-1101",
+        "PRF-1110"
       ],
       "verification": [
         "proof",
@@ -2909,7 +2944,10 @@
       "milestone": "M5",
       "status": "specified",
       "proof_targets": [
-        "PRF-129"
+        "PRF-129",
+        "PRF-1213",
+        "PRF-1215",
+        "PRF-1222"
       ],
       "verification": [
         "proof",
@@ -3015,7 +3053,10 @@
         "PRF-1080",
         "PRF-1106",
         "PRF-1119",
-        "PRF-1128"
+        "PRF-1128",
+        "PRF-1097",
+        "PRF-1143",
+        "PRF-1109"
       ],
       "verification": [
         "proof",
@@ -3259,7 +3300,8 @@
         "PRF-167",
         "PRF-178",
         "PRF-300",
-        "PRF-386"
+        "PRF-386",
+        "PRF-1181"
       ],
       "verification": [
         "proof",
@@ -3377,7 +3419,8 @@
         "PRF-374",
         "PRF-378",
         "PRF-379",
-        "PRF-388"
+        "PRF-388",
+        "PRF-1019"
       ],
       "verification": [
         "proof",
@@ -3531,7 +3574,8 @@
       "proof_targets": [
         "PRF-171",
         "PRF-257",
-        "PRF-280"
+        "PRF-280",
+        "PRF-1097"
       ],
       "verification": [
         "proof",
@@ -3579,7 +3623,9 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-183",
-        "PRF-200"
+        "PRF-200",
+        "PRF-1213",
+        "PRF-1214"
       ],
       "verification": [
         "proof",
@@ -3778,7 +3824,8 @@
         "PRF-221",
         "PRF-229",
         "PRF-241",
-        "PRF-302"
+        "PRF-302",
+        "PRF-1168"
       ],
       "verification": [
         "proof",
@@ -3817,7 +3864,10 @@
         "PRF-991",
         "PRF-1018",
         "PRF-1037",
-        "PRF-1044"
+        "PRF-1044",
+        "PRF-1168",
+        "PRF-1218",
+        "PRF-1219"
       ],
       "verification": [
         "proof",
@@ -4356,7 +4406,8 @@
       "status": "specified",
       "proof_targets": [
         "PRF-223",
-        "PRF-377"
+        "PRF-377",
+        "PRF-1181"
       ],
       "verification": [
         "proof",
@@ -5141,7 +5192,10 @@
         "PRF-920",
         "PRF-923",
         "PRF-979",
-        "PRF-1087"
+        "PRF-1087",
+        "PRF-1215",
+        "PRF-1220",
+        "PRF-1217"
       ],
       "verification": [
         "proof",
@@ -5503,7 +5557,8 @@
         "PRF-940",
         "PRF-975",
         "PRF-996",
-        "PRF-976"
+        "PRF-976",
+        "PRF-1026"
       ],
       "verification": [
         "proof",
@@ -5685,7 +5740,10 @@
       "proof_targets": [
         "PRF-1001",
         "PRF-1002",
-        "PRF-1003"
+        "PRF-1003",
+        "PRF-1055",
+        "PRF-1056",
+        "PRF-1062"
       ],
       "verification": [
         "proof",
@@ -5814,7 +5872,9 @@
         "PRF-1092",
         "PRF-1093",
         "PRF-1096",
-        "PRF-1104"
+        "PRF-1104",
+        "PRF-1087",
+        "PRF-1148"
       ],
       "verification": [
         "proof",
@@ -5929,7 +5989,10 @@
       "status": "specified",
       "proof_targets": [
         "PRF-1125",
-        "PRF-1140"
+        "PRF-1140",
+        "PRF-1204",
+        "PRF-1198",
+        "PRF-1208"
       ],
       "verification": [
         "proof",
@@ -6308,7 +6371,7 @@
         "tests/acl2/substrate-profile-selection-tests.lisp",
         "books/substrate-completed-source.lisp"
       ],
-      "implementation_note": "Resumable evidence leaf and actual-row/config adapter supplied. Actual definite-persistence completion and cold replay caller installation remain open; no founding roster or adoption policy is invented. Concrete open codec disagreement: fn-stx-commit-encodablep accepts ID=513 octets, base=0, actor/subject=32 octets and remove, and encode produces exactly 586 octets, while decode-exact returns :limit at its fixed 512 cap. Existing certified retention/authority packet is distinct from this counterexample. Repair requires profile-aligned bounded/resumable codec work and agreed uint32 format evolution; no full supported-profile source capability claim. Explicit v2 component certified at private closure only; actual profile-aware transcript/owner caller, general roundtrip and runtime custody/funding remain open. Legacy586\u2192512 negative evidence unchanged."
+      "implementation_note": "Resumable evidence leaf and actual-row/config adapter supplied. Actual definite-persistence completion and cold replay caller installation remain open; no founding roster or adoption policy is invented. Concrete open codec disagreement: fn-stx-commit-encodablep accepts ID=513 octets, base=0, actor/subject=32 octets and remove, and encode produces exactly 586 octets, while decode-exact returns :limit at its fixed 512 cap. Existing certified retention/authority packet is distinct from this counterexample. Repair requires profile-aligned bounded/resumable codec work and agreed uint32 format evolution; no full supported-profile source capability claim. Explicit v2 component certified at private closure only; actual profile-aware transcript/owner caller, general roundtrip and runtime custody/funding remain open. Legacy586→512 negative evidence unchanged."
     },
     {
       "id": "STO-10003",

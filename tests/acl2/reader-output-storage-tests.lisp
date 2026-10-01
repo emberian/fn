@@ -1,5 +1,5 @@
 (in-package "ACL2")
-(include-book "reader-output-storage")
+(include-book "../../books/reader-output-storage")
 
 ; MODEL source/budget seed. Every reservation, nested buffer mutation,
 ; installation, partial write and detach below calls the actual new actor.

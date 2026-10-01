@@ -36,12 +36,98 @@
 (defun hrdt-page (file addr)
   (declare (xargs :guard t))
   (let ((w (cdr (hons-assoc-equal addr file))))
-    (if (and (true-listp w) (equal (len w) 2048)) w (make-list 2048 :initial-element 0))))
+    (if (and (true-listp w) (equal (len w) 2048) (fn-pgs-u64-listp w)) w (make-list 2048 :initial-element 0))))
 
 (defthm hrdt-page-shape
-  (and (true-listp (hrdt-page file addr)) (equal (len (hrdt-page file addr)) 2048)))
+  (and (true-listp (hrdt-page file addr)) (equal (len (hrdt-page file addr)) 2048)
+       (fn-pgs-u64-listp (hrdt-page file addr))))
 
 (defattach (fn-pgs-page-words hrdt-page) (fn-pgs-fill-realize hrdt-page))
+; the frame fill (A-PGS-HOST-IO's in-place form): the put of the same page
+(defattach fn-pgs-fill-frame fn-pgs-fill-frame-via-words)
+
+; -----------------------------------------------------------------------------
+; Teeth for fn-pgs-fill-frame-is-frame-put, A-PGS-HOST-IO.
+; Snapshot ALL six arrays: equality below compares the complete logical
+; poststates of fill and (fn-pgs-frame-put sel base
+;                       (fn-pgs-page-words file addr) pgs-mem).
+; Each run starts from the same reachable constructor/resize/put state.
+(local (defun hrdt-ramp-page (n)
+         (declare (xargs :measure (nfix n)))
+         (if (zp n) nil
+           (append (hrdt-ramp-page (1- n)) (list n)))))
+
+(local (defun hrdt-frame-array (sel i n pgs-mem)
+         (declare (xargs :stobjs pgs-mem :verify-guards nil
+                         :measure (nfix (- (nfix n) (nfix i)))))
+         (if (zp (- (nfix n) (nfix i))) nil
+           (cons (case sel
+                   (0 (pgs-wi i pgs-mem)) (1 (pgs-mi i pgs-mem))
+                   (2 (pgs-ti i pgs-mem)) (3 (pgs-di i pgs-mem))
+                   (4 (pgs-vi i pgs-mem)) (otherwise (pgs-tvi i pgs-mem)))
+                 (hrdt-frame-array sel (+ 1 (nfix i)) n pgs-mem)))))
+
+(local (defun hrdt-frame-value (pgs-mem)
+         (declare (xargs :stobjs pgs-mem :verify-guards nil))
+         (list (hrdt-frame-array 0 0 (pgs-w-length pgs-mem) pgs-mem)
+               (hrdt-frame-array 1 0 (pgs-m-length pgs-mem) pgs-mem)
+               (hrdt-frame-array 2 0 (pgs-t-length pgs-mem) pgs-mem)
+               (hrdt-frame-array 3 0 (pgs-d-length pgs-mem) pgs-mem)
+               (hrdt-frame-array 4 0 (pgs-v-length pgs-mem) pgs-mem)
+               (hrdt-frame-array 5 0 (pgs-tv-length pgs-mem) pgs-mem))))
+
+; MUTANT, test-local: write at BASE+K+1 instead of BASE+K.
+(local (defun hrdt-frame-offset-mutant (base ws pgs-mem)
+         (declare (xargs :stobjs pgs-mem :verify-guards nil))
+         (if (atom ws) pgs-mem
+           (let ((pgs-mem (update-pgs-wi (+ 1 (nfix base)) (car ws) pgs-mem)))
+             (hrdt-frame-offset-mutant (+ 1 (nfix base)) (cdr ws) pgs-mem)))))
+
+(local (defun hrdt-frame-run (mode)
+         (declare (xargs :verify-guards nil))
+         (with-local-stobj pgs-mem
+           (mv-let (out pgs-mem)
+             (let* ((sel 0) (base 0) (addr 3)
+                    (page (hrdt-ramp-page 2048))
+                    (file (list (cons addr page)))
+                    (pgs-mem (resize-pgs-w 2049 pgs-mem))
+                    (pgs-mem (fn-pgs-frame-put
+                              sel base (make-list 2049 :initial-element 7) pgs-mem))
+                    (antecedent
+                     (and (pgs-memp pgs-mem) (fn-pgs-frame-sel-p sel) (natp base)
+                          (<= (+ base 2048) (fn-pgs-frame-len sel pgs-mem))
+                          (fn-pgs-u64-listp page) (equal (len page) 2048)
+                          (equal (fn-pgs-page-words file addr) page)
+                          (<= (+ base 1 (len page)) (fn-pgs-frame-len sel pgs-mem))))
+                    (pgs-mem
+                     (case mode
+                       (:fill (fn-pgs-fill-frame file addr sel base pgs-mem))
+                       (:put (fn-pgs-frame-put sel base (fn-pgs-page-words file addr) pgs-mem))
+                       (:mutant (hrdt-frame-offset-mutant base page pgs-mem))
+                       (otherwise pgs-mem))))
+               (mv (list antecedent (hrdt-frame-value pgs-mem)) pgs-mem))
+             out))))
+
+; REACHABLE POSITIVE: complete guard and whole-state equation, evaluated
+; through fn-pgs-fill-frame's model attachment (not a theorem rewrite).
+(assert-event
+ (let ((filled (hrdt-frame-run :fill)) (put (hrdt-frame-run :put)))
+   (and (car filled) (car put) (equal (cadr filled) (cadr put)))))
+
+; LABELLED MUTATION witness (not hypothesis removal or corrupted state).
+; Both ranges fit.  The intended fill preserves the extra sentinel; the
+; shifted fill preserves the first sentinel and overwrites the extra one.
+(assert-event
+ (let* ((initial (hrdt-frame-run :initial))
+        (filled (hrdt-frame-run :fill)) (put (hrdt-frame-run :put))
+        (mutant (hrdt-frame-run :mutant))
+        (correct-words (car (cadr filled))) (mutant-words (car (cadr mutant))))
+   (and (car initial) (car filled) (car put) (car mutant)
+        (equal (car (cadr initial)) (make-list 2049 :initial-element 7))
+        (equal (cadr filled) (cadr put))
+        (equal (nth 0 correct-words) 1) (equal (nth 2048 correct-words) 7)
+        (equal (nth 0 mutant-words) 7) (equal (nth 2048 mutant-words) 2048)
+        (not (equal (cadr mutant) (cadr put))))))
 
 (defun hrdt-events (i n)
   (declare (xargs :measure (nfix (- (nfix n) (nfix i)))))

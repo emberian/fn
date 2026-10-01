@@ -303,6 +303,8 @@
 (assert-event (not (fn-cfg-entry-livep (fn-cfg-group-find *cfg-t-late-entry*
                                                           "fn.late")
                                        0)))
+;; Anchor: the same entry is live at its creation generation.
+(assert-event (fn-cfg-entry-livep (fn-cfg-group-find *cfg-t-late-entry* "fn.late") 1))
 (assert-event
  (not (fn-cfg-group-listp (fn-cfg-groups-retire *cfg-t-late-entry* 0
                                                 "fn.late"))))

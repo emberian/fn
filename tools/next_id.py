@@ -45,6 +45,12 @@ caught it at merge, never at allocation).  Now:
   --since and taken anywhere now, attributed to the lane its source names
   (source "backfill"); ids already in the ledger are skipped.
 
+Tree grep and committed-ref matches are cached under build/next-id-cache.
+Each use validates the index, file metadata, Git configuration/attributes and
+commit inputs; damaged entries or uninspectable inputs cause a fresh scan.
+Worktree edits, LANEDUMPs and the ledger are always read afresh. No allocation
+or ledger note is cached.
+
 A decision's sub-ids (D14-a, D14-b) do not consume a number; the base does.
 """
 from __future__ import annotations
@@ -55,6 +61,7 @@ import concurrent.futures
 import contextlib
 import datetime as dt
 import fcntl
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -63,6 +70,7 @@ import shlex
 import socket
 import subprocess
 import sys
+import tempfile
 import time
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -90,7 +98,7 @@ class Refused(Exception):
 def git(*args: str, cwd: Path | None = None, check: bool = False) -> str:
     done = subprocess.run(["git", *args], cwd=cwd or ROOT, capture_output=True, text=True,
                           errors="replace")
-    if check and done.returncode != 0:
+    if check and done.returncode != 0 and not (args[0] == "grep" and done.returncode == 1):
         raise Refused(f"git {' '.join(args)}: {done.stderr.strip()}")
     return done.stdout if done.returncode == 0 else ""
 
@@ -208,11 +216,124 @@ def all_kinds(root: Path | None = None) -> set[str]:
     return set(FIXED_KINDS) | requirement_kinds(root)
 
 
+def file_stamp(path: Path) -> tuple:
+    """Include ctime/inode as well as mtime: restored timestamps are edits too."""
+    try:
+        st = path.stat()
+        link = path.lstat()
+        return (st.st_dev, st.st_ino, st.st_mode, st.st_size, st.st_mtime_ns,
+                st.st_ctime_ns, link.st_ino, link.st_mtime_ns, link.st_ctime_ns)
+    except FileNotFoundError:
+        return ()
+
+
+def scan_inputs(root: Path, whole_tree: bool = False) -> str | None:
+    """Fingerprint Git's index, configuration and working-tree inputs.
+
+    No cache when textconv can execute an arbitrary program. Attribute files
+    (including ignored ones and info/attributes) participate even for committed
+    diffs. Failure to inspect an input disables caching, never scanning.
+    """
+    try:
+        config = git("config", "--null", "--list", cwd=root, check=True)
+        if (os.environ.get("GIT_ATTR_SOURCE")
+                or "grep.recursesubmodules\n" in config
+                or re.search(r"(?:^|\0)diff\.[^\n]*\.textconv\n", config)):
+            return None
+        entries = git("ls-files", "-v", "--stage", "-z", cwd=root, check=True)
+        paths = [entry.split("\t", 1)[1] for entry in entries.split("\0") if entry]
+        attributes = {root / ".gitattributes"}
+        directories = set()
+        for path in paths:
+            parent = (root / path).parent
+            while parent != root and parent not in directories:
+                directories.add(parent)
+                parent = parent.parent
+        attributes.update(parent / ".gitattributes" for parent in directories)
+        if not whole_tree:
+            # A ref can add paths absent from this index. Ignored attribute
+            # files in those directories still affect its diff.
+            def fail(error):
+                raise error
+            for parent, dirs, files in os.walk(root, onerror=fail):
+                dirs[:] = [name for name in dirs if name != ".git"]
+                if ".gitattributes" in files:
+                    attributes.add(Path(parent) / ".gitattributes")
+        info = git("rev-parse", "--git-path", "info/attributes", cwd=root, check=True).strip()
+        attributes.add(root / info)
+        external = git("config", "--path", "--get", "core.attributesFile", cwd=root).strip()
+        if external:
+            attributes.add(Path(external) if Path(external).is_absolute() else root / external)
+        else:
+            attributes.add(Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config")))
+                           / "git/attributes")
+        # System attributes are installation-specific; Git reports its prefix.
+        prefix = git("--exec-path", cwd=root, check=True).strip()
+        attributes.add(Path(prefix).parent.parent / "etc/gitattributes")
+        files = set(root / path for path in paths) if whole_tree else set()
+        files.update(attributes)
+        common = git("rev-parse", "--path-format=absolute", "--git-common-dir",
+                     cwd=root, check=True).strip()
+        files.update(Path(common) / name for name in ("shallow", "info/grafts"))
+        replacements = git("for-each-ref", "--format=%(refname) %(objectname)",
+                           "refs/replace", cwd=root, check=True)
+        stamps = [(str(path), file_stamp(path)) for path in sorted(files)]
+        inputs = json.dumps([config, entries, stamps, replacements,
+                             sorted((k, v) for k, v in os.environ.items() if k.startswith("GIT_"))],
+                            separators=(",", ":"))
+        return hashlib.sha256(inputs.encode()).hexdigest()
+    except (OSError, Refused, ValueError):
+        return None
+
+
+def cached_scan(root: Path, key: str | None, compute, validate) -> str:
+    """An optional, checksummed scan cache; no allocation decision is cached.
+
+    Publication is atomic. Recheck mutable inputs after a miss before saving;
+    an edit during the scan cannot poison a later hit with an older result.
+    """
+    if key is None:
+        return compute()
+    digest = hashlib.sha256(key.encode()).hexdigest()
+    path = root / "build/next-id-cache" / (digest + ".json")
+    try:
+        entry = json.loads(path.read_text())
+        result = entry["result"]
+        if (entry["key"] == key and isinstance(result, str)
+                and entry["sha256"] == hashlib.sha256(result.encode()).hexdigest()):
+            return result
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
+    result = compute()
+    if validate():
+        temporary = None
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with tempfile.NamedTemporaryFile(mode="w", dir=path.parent, delete=False) as handle:
+                temporary = Path(handle.name)
+                json.dump({"key": key, "result": result,
+                           "sha256": hashlib.sha256(result.encode()).hexdigest()}, handle)
+            os.replace(temporary, path)
+        except OSError:
+            pass  # A read-only/full cache directory only costs the next scan.
+        finally:
+            if temporary is not None:
+                with contextlib.suppress(OSError):
+                    temporary.unlink()
+    return result
+
+
 def scan_tree(taken: Taken, root: Path, kinds: set[str], label: str) -> None:
     """Every tracked file's working-tree text, and the decisions headings."""
     # One generic pattern, filtered here: an alternation of the kinds made
     # git grep five times slower (11 s against 2 s on this tree).
-    out = git("grep", "-ohIE", "[A-Z]{3}-[0-9]{3,}", "--", ".", EVIDENCE_DATA, cwd=root)
+    inputs = scan_inputs(root, whole_tree=True)
+    key = "tree-v1\n" + inputs if inputs is not None else None
+    out = cached_scan(
+        root, key,
+        lambda: git("grep", "-ohIE", "[A-Z]{3}-[0-9]{3,}", "--", ".", EVIDENCE_DATA,
+                    cwd=root, check=True),
+        lambda: scan_inputs(root, whole_tree=True) == inputs)
     taken.add_text(out, label, kinds)
     with contextlib.suppress(OSError):
         taken.add_decisions((root / DECISIONS).read_text(errors="replace"), label)
@@ -258,11 +379,27 @@ def scan_refs(taken: Taken, refs: list[str], kinds: set[str],
               root: Path | None = None) -> None:
     """What each ref added since it and this tree's HEAD diverged."""
     root = root or ROOT
-    diffs = parallel(lambda ref: git("diff", "--no-color", "--no-ext-diff", "-U0",
-                                     f"HEAD...{ref}", "--", ".", EVIDENCE_DATA, cwd=root),
-                     refs)
-    for ref, diff in zip(refs, diffs):
+    # Resolve once, then diff immutable commits rather than a moving ref name.
+    commits = git("rev-parse", "HEAD", *refs, cwd=root).splitlines() if refs else []
+    inputs = scan_inputs(root) if refs else None
+    pinned = len(commits) == len(refs) + 1 and all(
+        re.fullmatch(r"[0-9a-f]{40,64}", commit) for commit in commits)
+
+    def scan(item):
+        index, ref = item
+        revision = f"{commits[0]}...{commits[index + 1]}" if pinned else f"HEAD...{ref}"
+        diff = git("diff", "--no-color", "--no-ext-diff", "-U0", revision,
+                   "--", ".", EVIDENCE_DATA, cwd=root, check=True)
         text, decisions = added_lines(diff)
+        # Cache only matched tokens, retaining all kinds and decision numbers.
+        return ("\n".join(match.group() for match in TEXT_ID.finditer(text)),
+                "\n".join("D" + digits for digits in DECISION_HEAD.findall(decisions)))
+
+    key = json.dumps(["refs-v1", commits, inputs]) if pinned and inputs is not None else None
+    results = json.loads(cached_scan(
+        root, key, lambda: json.dumps(parallel(scan, list(enumerate(refs)))),
+        lambda: scan_inputs(root) == inputs))
+    for ref, (text, decisions) in zip(refs, results):
         taken.add_text(text, f"branch {ref}", kinds)
         taken.add_decisions(decisions, f"branch {ref}")
 

@@ -28,6 +28,13 @@
   (fn-feed-live-records *fn-feed-ft-offered* *fn-feed-ft-overflow-event*))
 (assert-event (fn-feedp *fn-feed-ft-offered*))
 (assert-event (not (fn-feed-records-portp *fn-feed-ft-overflow-records*)))
+;; Anchor: the same offered feed and reply at a representable clock emit
+;; port-ready records.
+(assert-event
+ (fn-feed-records-portp
+  (fn-feed-live-records *fn-feed-ft-offered*
+                        (list :reply (fn-feed-response 239 *fn-feed-ft-msgid*) nil
+                              (fn-clock-observation 1 0 0 nil)))))
 (assert-event (equal (fn-feed-port-step-status
                       (fn-feed-live-port-step *fn-feed-ft-offered*
                                               *fn-feed-ft-overflow-event*))
