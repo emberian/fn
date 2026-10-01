@@ -17987,6 +17987,21 @@
           "kind": "theorem",
           "name": "fn-bps-asb-step-preserves-terminal-boundary",
           "pending_subject": "Actual ASB terminal PARSED implies DONE at exactly the declared source end. Ghost predicate never served; complete grammar/every-window alpha, physical immutable backing/pinned lifetime and installed BP caller/crypto gate remain open. Proper-local source admission only."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-asb-start-establishes-target-types",
+          "pending_subject": "Actual ASB uint64 target/pending and active duplicate/reversal scratch typing with typed head/fixed34 spine. Ghost predicates never served; complete grammar/count/uniqueness/every-window alpha, physical immutable backing/pinned lifetime and installed BP caller/crypto gate remain open. Proper-local source admission only."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-asb-drive-preserves-target-types",
+          "pending_subject": "Actual ASB uint64 target/pending and active duplicate/reversal scratch typing with typed head/fixed34 spine. Ghost predicates never served; complete grammar/count/uniqueness/every-window alpha, physical immutable backing/pinned lifetime and installed BP caller/crypto gate remain open. Proper-local source admission only."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-asb-step-preserves-target-types",
+          "pending_subject": "Actual ASB uint64 target/pending and active duplicate/reversal scratch typing with typed head/fixed34 spine. Ghost predicates never served; complete grammar/count/uniqueness/every-window alpha, physical immutable backing/pinned lifetime and installed BP caller/crypto gate remain open. Proper-local source admission only."
         }
       ]
     },

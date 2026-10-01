@@ -1133,6 +1133,19 @@ conjunct and breaks the invariant and both zero-quantum output conclusions.
 It is structural completion; metadata grammar, every-window alpha, provider
 lifetime and cryptographic verification still require their own boundaries.
 
+`books/bpsec-asb-target-types.lisp` carries uint64 target numbers and pending
+candidate typing through actual start, drive and step. During target duplicate
+scanning and target reversal the scratch lists are typed too. The compound
+premise includes the nested typed CBOR head and exact fixed34 cursor spine:
+a missing pending slot cannot be inserted by the update-only cursor setter.
+The explicit corrupted-state omission retains the weaker target/head predicates
+but one real target octet breaks target typing. Reachable literal one-byte
+windows preserve the full compound, including ordered targets0 and uint64
+maximum; duplicate and nonuint targets refuse with preserved context. These
+are ghost typing predicates, never served whole-state validation. Remaining
+metadata grammar/count/uniqueness and every-window alpha, actual immutable
+provider lifetime and security verification remain open.
+
 The logical target-graph reference in `books/bpsec-target.lisp` binds each
 ASB as `(block-number . ASB)`, checks actual block existence/type, unique
 service/target pairs, forbidden security targets and payload BCB flags. Every

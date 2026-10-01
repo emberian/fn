@@ -576,6 +576,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bpsec-asb-body-tests \
 	tests/acl2/bpsec-asb-aggregate-tests \
 	tests/acl2/bpsec-asb-terminal-tests \
+	tests/acl2/bpsec-asb-target-types-tests \
 	books/bp-status-report \
 	books/bp-status-report-invariants \
 	tests/acl2/bp-status-report-tests \

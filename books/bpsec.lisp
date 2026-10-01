@@ -17,3 +17,4 @@
 (include-book "bpsec-asb-body")
 (include-book "bpsec-asb-aggregate")
 (include-book "bpsec-asb-terminal")
+(include-book "bpsec-asb-target-types")
