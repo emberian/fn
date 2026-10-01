@@ -46,3 +46,23 @@
               (fn-hp-pes-len (mv-nth 0 (fn-rccap-remapped-prefix target 0))))))
  :hints (("Goal" :in-theory (enable fn-rccap-idle-original-prefixp
   fn-rccap-remapped-prefix fn-rcca-idle-prefixp fn-hct-shapep))))
+; Hypothesis-removal witness: selected original row equality is necessary.
+; Every other selected-target ACK antecedent is affirmed; this different
+; captured target has a different actual canonical pool, not just a new tag.
+(thm
+ (let* ((ordinal 0) (target '((0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16)))
+        (original nil) (row nil) (pool nil)
+        (c *rccap-test-before*) (r *rccap-test-waiting*)
+        (completed (mv-nth 2 (fn-hct-tick c)))
+        (next (mv-nth 1 (fn-osm-census-ack r completed))))
+  (and (natp ordinal) (< ordinal (len target))
+       (not (equal original (nth ordinal target)))
+       (fn-rccap-waiting-original-prefixp r c (take ordinal target) original row pool)
+       (eq (mv-nth 0 (fn-hct-tick c)) :row-done)
+       (not (fn-rccap-idle-original-prefixp next completed (take (+ 1 ordinal) target)))))
+ :hints (("Goal" :in-theory (enable fn-rccap-waiting-original-prefixp
+  fn-rccap-idle-original-prefixp fn-rccap-remapped-prefix fn-rcca-waiting-rowp
+  fn-rcca-idle-prefixp fn-rcct-current-row-invariantp fn-hsrcc-invariantp
+  fn-hsrcc-total fn-hsrcb-invariantp fn-hsrcb-rest fn-hsrcb-coldp
+  fn-hrcur-census-invariantp fn-hrcur-census-total fn-hrcur-byte-invariantp
+  fn-hrcur-byte-rest fn-hct-shapep))))
