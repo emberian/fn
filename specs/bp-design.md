@@ -1299,6 +1299,16 @@ backing references, descriptors and keys are unissued test fixtures; this is
 neither an installed provider nor a current-policy grant or acceptance route.
 BP framing guards/refinement and the immutable issuer/pin join remain open.
 
+`fn-bps-input-fragment` selects one bounded piece of a retained command,
+including exact literal/source coordinates, count and proposed next offset.
+Zero quantum yields; no cursor advance, ticket, current grant or completion is
+issued. A fixed27-octet literal grammar check never scans source data. Count is
+at most the supplied quantum64; actual scheduler charging must cover selection
+and I/O overhead. The source diagnostic now uses these ACL2-selected counts at
+real primitive calls and advances its local offset only after update returns.
+Actual pending action identity, immutable source lookup, current authority and
+physical custody/cleanup remain caller obligations (REP-018).
+
 `fn-bps-input-plan` consumes fixed primary/canonical source-event metadata and
 emits `(:planned (:bps-input-plan descriptor transcript-commands ciphertext-span
 tag-span))`. Literals contain only deterministic CBOR headers; source bytes stay

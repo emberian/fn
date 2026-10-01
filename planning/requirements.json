@@ -1704,7 +1704,11 @@
         "planning/evidence/bpsec-core-observation-2026-09-30/manifest.json",
         "tests/native_bpsec_source_observation.lisp",
         "tools/bpsec_source_observation.py",
-        "planning/evidence/bpsec-source-observation-2026-10-01/manifest.json"
+        "planning/evidence/bpsec-source-observation-2026-10-01/manifest.json",
+        "books/bpsec-input-fragment.lisp",
+        "tests/acl2/bpsec-input-fragment-tests.lisp",
+        "planning/evidence/bpsec-input-fragment-source-2026-10-01/manifest.json",
+        "planning/evidence/bpsec-input-fragment-observation-2026-10-01/manifest.json"
       ],
       "implementation_note": "Logical certification excludes program-mode host helpers and retains ACL2/runtime/adapter assumptions. The host-called standalone store and shared-owner prepare projections are equated to the replaying specification and former owner event under relations established by observed open and preserved through the owner transition family; their executable bodies retain candidate and pending binding checks and omit the per-prepare appended-history replay. BP composition evidence records 11 scoped roots, unchanged source digests and 133 Python tests without an all-roots or power-loss claim. A separate seven-book inventory records the complete 41-function ADU guard graph and 97 remaining unverified BP functions. W14 adds a native libsodium primitive seam for the existing anchor Ed25519/SHA-512 profile with vector/negative and saved-image restart tests on the recorded hosts. Outbound implicit TLS and STARTTLS now have ACL2 phase policy plus native chain/hostname validation source and focused runtime evidence; raw OpenSSL/ABI behavior remains trusted and batch certification is pending. Complete physical correspondence and the saved-image owner gate for this revision remain open. Receiver-only BPSec primitive source now uses the already pinned OpenSSL pair: streaming HMAC-SHA256/384/512 returns bytes for later core comparison; GCM128/256 first-pass authentication cleanses each bounded temporary plaintext window and publishes none. Published RFC/NIST component vectors and negative/cancel/escape paths run on the recorded laptop library. Actual ACL2 suite/key plan, canonical input/provenance, registered immutable replay/current authority, runtime custody/installer, second-pass plaintext release and qualified-image admission remain open.",
       "note": "The trust boundary and the certification procedure are documented and the tooling now enforces part of it (tools/certs.py will not cache a pair except against a passed manifest, keyed on the whole include closure). What is missing for a status change is a theorem-level statement of the boundary, not a document. PRF-049 (plan T9, lane t9b-role, 2026-09-22): the principal-bound inbound peer role has keystones over fn-auth-step and fn-ocfg-open with teeth; the native reconnect on an image is still open."
@@ -5895,7 +5899,11 @@
         "planning/evidence/bpsec-input-plan-source-2026-09-30/manifest.json",
         "tests/native_bpsec_source_observation.lisp",
         "tools/bpsec_source_observation.py",
-        "planning/evidence/bpsec-source-observation-2026-10-01/manifest.json"
+        "planning/evidence/bpsec-source-observation-2026-10-01/manifest.json",
+        "books/bpsec-input-fragment.lisp",
+        "tests/acl2/bpsec-input-fragment-tests.lisp",
+        "planning/evidence/bpsec-input-fragment-source-2026-10-01/manifest.json",
+        "planning/evidence/bpsec-input-fragment-observation-2026-10-01/manifest.json"
       ],
       "implementation_note": "Additive source cursor and logical span abstraction. Guards and consumed-prefix component theorems admitted in exact persvati w28 source sessions; not normal certification. Every-schedule refinement, cursor invariant preservation, actual immutable provider/lifetime, target graph, crypto/key/nonce policy and served admission remain open. Structural parsing never implies verification."
     },
@@ -5927,7 +5935,11 @@
         "planning/evidence/bpsec-input-plan-source-2026-09-30/manifest.json",
         "tests/native_bpsec_source_observation.lisp",
         "tools/bpsec_source_observation.py",
-        "planning/evidence/bpsec-source-observation-2026-10-01/manifest.json"
+        "planning/evidence/bpsec-source-observation-2026-10-01/manifest.json",
+        "books/bpsec-input-fragment.lisp",
+        "tests/acl2/bpsec-input-fragment-tests.lisp",
+        "planning/evidence/bpsec-input-fragment-source-2026-10-01/manifest.json",
+        "planning/evidence/bpsec-input-fragment-observation-2026-10-01/manifest.json"
       ],
       "implementation_note": "Receiver-only fixed metadata matching and logical retirement. Actual immutable registry/interning, canonical input construction, completion provenance, nonreused token allocator and serialized current-policy lease remain open. No crypto or application admission capability follows from shaped references. Core suite/key-width selection and fixed-width primitive observation matching have proper-local guard/source evidence; authentic input/expected span/provider/current authority and native caller remain open."
     }

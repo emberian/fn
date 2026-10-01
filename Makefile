@@ -568,6 +568,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bpsec-operation-tests \
 	tests/acl2/bpsec-primitive-plan-tests \
 	tests/acl2/bpsec-input-plan-tests \
+	tests/acl2/bpsec-input-fragment-tests \
 	tests/acl2/bpsec-asb-quanta-tests \
 	tests/acl2/bpsec-asb-spine-tests \
 	tests/acl2/bpsec-target-spine-tests \
