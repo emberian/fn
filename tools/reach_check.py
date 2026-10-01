@@ -643,6 +643,7 @@ def theorem_forms(paths) -> dict:
     """name -> (file, form) for every `defthm'/`defthmd', including those
     inside an `encapsulate', `local', `defsection' or `progn' (a top-level
     only scan left such events unresolved, which passed them silently)."""
+    import ledger
     found = {}
     for path in paths:
         try:
@@ -650,6 +651,9 @@ def theorem_forms(paths) -> dict:
         except OSError:
             continue
         rel = str(path.relative_to(ROOT))
+        # Preserve literal theorem spelling for this checker's lexical term
+        # reader (including rationals and escaped symbols). Only generated
+        # events need the shared mirror's printable form.
         for form in forms(text):
             for match in NESTED_DEFTHM.finditer(form):
                 name = match.group(1).lower()
@@ -658,6 +662,13 @@ def theorem_forms(paths) -> dict:
                 inner = forms(form[match.start():])
                 if inner:
                     found[name] = (rel, inner[0])
+        try:
+            parsed = ledger.Reader(text).top_level()
+        except ledger.ReadError:
+            continue
+        for form, _ in ledger.source_events(parsed):
+            if ledger.head(form) in ("defthm", "defthmd") and len(form) >= 3:
+                found.setdefault(str(form[1]), (rel, ledger.source_text(form)))
     return found
 
 

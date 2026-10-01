@@ -39,6 +39,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "tools"))
 TABLE_BOOK = "books/nntp-help.lisp"
 TABLE_NAME = "*fn-nntp-served-command-table*"
 OCTETS_LINE = re.compile(r'\(fn-nntp-string-octets\s+"([^"\\]*)"\)')
@@ -81,12 +82,11 @@ def capability_lines(texts: dict[str, str]) -> list[tuple[str, str]]:
     says capabilit, in each book's order."""
     found: list[tuple[str, str]] = []
     for relative, text in texts.items():
-        starts = [(m.start(), m.group(1)) for m in DEFUN.finditer(text)]
-        for index, (position, name) in enumerate(starts):
-            if "capabilit" not in name.lower():
+        import callgraph
+        for definition in callgraph.collect(callgraph.ledger.Reader(text).top_level(), relative):
+            if "capabilit" not in definition.name.lower():
                 continue
-            end = starts[index + 1][0] if index + 1 < len(starts) else len(text)
-            for line in OCTETS_LINE.findall(text[position:end]):
+            for line in OCTETS_LINE.findall(callgraph.ledger.source_text(definition.form)):
                 if (relative, line) not in found:
                     found.append((relative, line))
     return found

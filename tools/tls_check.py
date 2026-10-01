@@ -104,6 +104,10 @@ def stubs_in(forms) -> int:
         head = sym(form[0])
         if head in ("local", "quote", "defmacro", "defthm", "defthmd"):
             continue
+        expansion = ledger.generated_expansion(form)
+        if expansion is not None:
+            count += stubs_in(expansion)
+            continue
         if head in CONSTRAINED and len(form) >= 2:
             count += 2 * len(signature_names(form[1]))
             count += stubs_in(form[2:])

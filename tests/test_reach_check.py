@@ -333,7 +333,10 @@ class SharedGraphTests(unittest.TestCase):
     def test_a_macro_body_is_followed(self):
         """fn-nntp-command's arms are named only by the dispatcher macro."""
         self.assertIn("fn-nntp-command-dispatch", self.graph.edges["fn-nntp-command"])
-        self.assertIn("fn-nntp-session-command", self.graph.edges["fn-nntp-command-dispatch"])
+        self.assertIn("fn-proto-command-dispatch-term",
+                      self.graph.edges["fn-nntp-command-dispatch"])
+        self.assertIn("fn-nntp-session-command",
+                      self.graph.edges["fn-proto-command-dispatch-term"])
 
     def test_the_host_chain_starts_at_a_host_line(self):
         chain = self.graph.host_chain("fn-nntp-session-command")

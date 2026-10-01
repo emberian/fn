@@ -935,7 +935,8 @@ def mv_functions() -> set[str]:
         names: set[str] = set()
         for directory in ("books", "tests/acl2"):
             for path in sorted((ROOT / directory).glob("*.lisp")):
-                for form in ledger.read_forms(path.read_text(encoding="utf-8")):
+                for form, _ in ledger.source_events(
+                        ledger.Reader(path.read_text(encoding="utf-8")).top_level()):
                     if head(form) not in ("defun", "defund", "defun-nx"):
                         continue
                     if len(form) > 3 and isinstance(form[1], Sym) \
