@@ -412,8 +412,3 @@
   (declare (xargs :stobjs (pgs-mem fn-octets-pg)
                   :guard (and (natp i) (<= (* (+ 1 i) *pgs-page-words*) (pgs-w-length pgs-mem)))))
   (pgs-x-words-digest 0 (* i *pgs-page-words*) (floor *pgs-page-words* 8) pgs-mem fn-octets-pg))
-
-; The octet lists' recognizer from books/cbor.lisp (through the buffer's
-; include) backchains on every `true-listp' the page store's books ask; the
-; page store never reasons about octet lists past this point.
-(in-theory (disable fn-cbor-octet-listp-implies-true-listp fn-cbor-octet-listp))
