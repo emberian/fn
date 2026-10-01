@@ -522,7 +522,7 @@ def test_actual_configuration_claim_parks_and_rebinds_without_issue(tmp_path):
        (base (list :history-config-base id :original-store :original-config
                    :canonical :view :posting :obligation))
        (prep (list :account-config-preparation id token :full8 :record base :metadata
-                   :groups :history-cursor :generation-cursor 4 5 :next-node))
+                   :groups :history-cursor :generation-cursor 4 5 :next-node :actual-fields14))
        (lease (list :history-config-source id token :parent 3 8 4 :coordinate :record :acquired))
        (state (list (cons 'current row) (cons 'holder holder) (cons 'lease lease)
                     (cons 'prep prep) (cons 'fn-owner-history-config-base base)))

@@ -32,7 +32,7 @@
        (fn-cado-widthp 8 base)
        (eq (fn-cp-nth 0 base) :history-config-base)
        (equal (fn-cp-nth 1 base) (fn-cp-nth 1 holder))
-       (fn-cado-widthp 13 prep)
+       (fn-cado-widthp 14 prep)
        (eq (fn-cp-nth 0 prep) :account-config-preparation)
        (equal (fn-cp-nth 1 prep) (fn-cp-nth 1 holder))
        (equal (fn-cp-nth 2 prep) token)
