@@ -63,6 +63,21 @@
        (equal (car result) :ok) (equal (cadr result) items)))
  :rule-classes nil
  :hints (("Goal" :in-theory (enable fn-stmt-ok)))))
+; Projection support avoids reopening the decoder or recursively rewriting
+; its compound result while folding the literal selected public branch.
+(local (defthm fn-rse-ok-five-items-projections
+ (implies (equal result
+                 (fn-stmt-ok (list a b c d e)))
+  (and (consp result) (consp (cdr result))
+       (equal (car result) :ok)
+       (equal (len (cadr result)) 5)
+       (equal (nth 0 (cadr result)) a)
+       (equal (nth 1 (cadr result)) b)
+       (equal (nth 2 (cadr result)) c)
+       (equal (nth 3 (cadr result)) d)
+       (equal (nth 4 (cadr result)) e)))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (enable fn-stmt-ok nth len)))))
 (local (defthm fn-rse-public-selected-five-items-fold-to-subject
  (let* ((keys (list (cons :ed25519 ed) (cons :ml-dsa-65 ml)))
         (items (list (cons :bytes principal) (cons :uint 1)
@@ -77,24 +92,25 @@
    (equal (fn-hsig-keyring-snapshot-value snapshot) (list principal keys))))
  :rule-classes nil
  :hints (("Goal" :do-not-induct t
-  :use ((:instance fn-rse-ok-list-projection
+  :use ((:instance fn-rse-ok-five-items-projections
+   (result (fn-stmt-decode-items 5 (fn-stxk-snapshot snapshot)))
+   (a (cons :bytes principal)) (b (cons :uint 1))
+   (c (cons :bytes ed)) (d (cons :uint 2)) (e (cons :bytes ml)))
+   (:instance fn-rse-ok-list-projection
    (result (fn-stmt-decode-items 5 (fn-stxk-snapshot snapshot)))
    (items (list (cons :bytes principal) (cons :uint 1)
                 (cons :bytes ed) (cons :uint 2) (cons :bytes ml)))))
-  :in-theory (e/d
-   (fn-hsig-keyring-snapshot-value fn-stmt-okp fn-stmt-value fn-stmt-ok
-    fn-stmt-bytes-item-p fn-stmt-uint-item-p fn-record-uint32p
-    fn-hsig-subject-p fn-hsig-keyset-p fn-hsig-exact-octets-p
-    fn-cbor-ag-car fn-cbor-ag-cdr)
-   (fn-stxk-p fn-stxk-snapshot fn-stxk-profile fn-stxe-encode-items
-    fn-stmt-decode-items fn-cbor-octet-listp
-    fn-cbor-octet-listp-implies-true-listp
-    fn-stmt-item-listp-implies-true-listp
-    fn-rse-stxe-encoder-is-public-statement-encoder
-    fn-rse-paid-success-projects-the-same-public-items
-    fn-sic-paid-legacy-is-public-result fn-sic-paid-legacy-success-is-canonical
-    fn-stmt-encode-items-of-cons
-    fn-stmt-encode-items-when-consp))))))
+  :in-theory
+  (union-theories (theory 'minimal-theory)
+   '((:definition fn-hsig-keyring-snapshot-value)
+     (:definition fn-stmt-okp) (:definition fn-stmt-value)
+     (:definition fn-stmt-bytes-item-p) (:definition fn-stmt-uint-item-p)
+     (:definition fn-record-uint32p)
+     (:definition fn-hsig-subject-p) (:definition fn-hsig-keyset-p)
+     (:definition fn-hsig-exact-octets-p)
+     (:rewrite car-cons) (:rewrite cdr-cons) (:rewrite cons-equal)
+     (:executable-counterpart len)
+     (:executable-counterpart fn-record-uint32p))))))
 (defthm fn-rse-paid-selected-enrollment-is-actual-public-value
  (let* ((snapshot-bytes (fn-stxk-snapshot snapshot))
         (begin (fn-sic-begin-legacy 5 snapshot-bytes))
