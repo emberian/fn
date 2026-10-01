@@ -2787,7 +2787,12 @@ one falls back to full replay."
 (defun fnn-state-checkpoint-stage (store octets)
   "fnn-state-checkpoint-write's first half: the staged file written and fenced
 (cuts created, written, staged-durable).  A failure is known: the old
-checkpoint stays.  Answers the staged path, for fnn-state-checkpoint-install
+checkpoint stays, and the stage is removed (or, when its unlink fails, left
+to the staging sweep under its .stage- prefix), as
+fnn-publish-filesystem-record does; that includes a publication the
+stopping owner refuses at a batch boundary (fnn-checkpoint-yield), which
+left its stage behind as a staging orphan.  A process death leaves it to
+the sweep.  Answers the staged path, for fnn-state-checkpoint-install
 (Q16's reclaim pass stages off the owner mutex and installs under it)."
   (let ((stage (fnn-join (fnn-staging store)
                          (format nil ".stage-checkpoint-~d-~a" (sb-posix:getpid) (fnn-random-hex 12)))))
@@ -2798,7 +2803,11 @@ checkpoint stays.  Answers the staged path, for fnn-state-checkpoint-install
           (fnn-at store :state-checkpoint-staged-durable)
           stage)
       (fnn-os-error (e)
-        (fnn-refuse-io "known failure before the state checkpoint replacement: ~a" e)))))
+        (ignore-errors (fnn-unlink stage))
+        (fnn-refuse-io "known failure before the state checkpoint replacement: ~a" e))
+      (fnn-store-io-refusal (e)
+        (ignore-errors (fnn-unlink stage))
+        (error e)))))
 
 (defun fnn-state-checkpoint-install (store stage)
   "fnn-state-checkpoint-write's second half: the staged file STAGE renamed
