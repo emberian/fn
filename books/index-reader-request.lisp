@@ -20,6 +20,13 @@
 (defun fn-irr-receipt-step (receipt)
  (declare (xargs :guard t))
  (if (fn-irr-receipt-committedp receipt) (fn-omk-at 8 receipt) nil))
+(defun fn-irr-receipt-response-ownedp (receipt)
+ (declare (xargs :guard t))
+ (let ((root (fn-omk-at 10 receipt)))
+  (and (fn-irr-receipt-committedp receipt)
+       (fn-omk-widthp root 6) (eq (fn-omk-at 0 root) :reader-actor)
+       (eq (fn-omk-at 3 root) :response-owned))))
+
 ; Receipt10 field9 is a fixed3 retained repin intent until source/lifetime
 ; join; terminal field9 is the exact disposition holderToken, or NIL ordinarily.
 (defun fn-irr-repin-intentp (x)
@@ -174,14 +181,14 @@
        (fn-omk-at 2 receipt) (fn-omk-at 3 receipt)
        (fn-omk-at 4 receipt) (fn-omk-at 5 receipt)
        (fn-omk-at 6 receipt) phase (fn-omk-at 8 receipt)
-       (fn-omk-at 9 receipt)))
+       (fn-omk-at 9 receipt) (fn-omk-at 10 receipt)))
 
 (defun fn-irr-receipt-keep (receipt request phase repin)
  (declare (xargs :guard t))
  (list (fn-omk-at 0 receipt) (fn-omk-at 1 receipt)
        (fn-omk-at 2 receipt) (fn-omk-at 3 receipt)
        (fn-omk-at 4 receipt) (fn-omk-at 5 receipt)
-       request phase (fn-omk-at 8 receipt) repin))
+       request phase (fn-omk-at 8 receipt) repin (fn-omk-at 10 receipt)))
 
 (defun fn-irr-request-acquire-alias (nonce fuel fn-index-backing)
  (declare (xargs :stobjs fn-index-backing :guard (natp fuel)
@@ -298,7 +305,7 @@
                                 (fn-omk-at 2 receipt) (fn-omk-at 3 receipt)
                                 (fn-omk-at 4 receipt) (fn-omk-at 5 receipt)
                                 request :query-owned (fn-omk-at 8 receipt)
-                                (fn-omk-at 9 receipt))
+                                (fn-omk-at 9 receipt) (fn-omk-at 10 receipt))
                           fn-index-backing)))
                     (mv :owned remaining fn-index-backing)))))))))))
 
@@ -367,6 +374,51 @@
                          fn-index-backing)))
                  (mv (if ok :owned :recovery-required) remaining fn-index-backing))))))))))
 
+; A definite prepare refusal may precede offered-query capture. Persist the
+; exact admitted NEW identity before abort; stale is never release evidence.
+(defun fn-irr-request-abort-prepared (nonce fuel fn-index-backing fn-page-read-pool)
+ (declare (xargs :stobjs (fn-index-backing fn-page-read-pool) :guard (natp fuel)
+                 :verify-guards nil))
+ (let* ((receipt (fn-ibp-request-pending fn-index-backing))
+        (request (fn-irr-receipt-request receipt))
+        (prepared (fn-ibp-connection-pending fn-index-backing))
+        (new (fn-omk-at 1 prepared)))
+  (cond
+   ((not (and (posp nonce) (equal nonce (fn-omk-at 2 receipt))
+               (eq (fn-omk-at 0 receipt) :index-request-receipt)))
+    (mv :stale nil fuel fn-index-backing fn-page-read-pool))
+   ((eq (fn-omk-at 7 receipt) :source-aborted)
+    (mv :aborted (fn-omk-at 9 receipt) fuel fn-index-backing fn-page-read-pool))
+   ((not (and (eq (fn-omk-at 7 receipt) :source-owned)
+               (null (fn-omk-at 9 receipt)) (null (fn-irr-request-rc request))
+               (fn-omk-widthp prepared 8)
+               (eq (fn-omk-at 0 prepared) :connection-reservation)
+               (equal (fn-omk-at 2 prepared) (fn-omk-at 1 request))
+               (fn-ich-tokenp new)
+               (not (equal new (fn-irr-request-holder request)))
+               (member-eq (fn-omk-at 6 prepared) '(:charged :registered :source-owned))))
+    (mv :recovery-required nil fuel fn-index-backing fn-page-read-pool))
+   ((< fuel (* 5 (+ 1 (fn-ibp-slot-depth fn-index-backing))))
+    (mv :yield nil fuel fn-index-backing fn-page-read-pool))
+   (t
+    (let ((fn-index-backing
+           (update-fn-ibp-request-pending
+            (fn-irr-receipt-keep receipt request :prepare-abort-intent
+                                (list :reader-prepare-abort new nil))
+            fn-index-backing)))
+     (mv-let (word left fn-index-backing fn-page-read-pool)
+      (fn-icr-abort new fuel fn-index-backing fn-page-read-pool)
+      (if (not (eq word :released))
+          (mv :recovery-required new left fn-index-backing fn-page-read-pool)
+        (let ((fn-index-backing
+               (update-fn-ibp-request-pending
+                (fn-irr-receipt-keep receipt request :source-aborted new)
+                fn-index-backing)))
+         (mv :aborted new left fn-index-backing fn-page-read-pool)))))))))
+
+(verify-guards fn-irr-request-abort-prepared
+ :hints (("Goal" :in-theory (disable fn-icr-abort fn-irr-receipt-keep))))
+
 ; The serialized producer calls this immediately after its actual pure RC.
 ; No source lookup/capture yield occurs between this transition and STATE
 ; owner/credits/exposure installation plus commit-current. Earlier yielding
@@ -382,10 +434,13 @@
         ((or (fn-irq-ready-phasep phase) (eq phase :read-offer-ready)
              (fn-irq-committed-phasep phase))
          (mv :observed fn-index-backing))
-        ((not (and (member-eq phase '(:source-owned :offer-owned))
+        ((not (and (member-eq phase '(:source-owned :source-aborted :offer-owned))
                    (null (fn-irr-request-rc request))
                    (consp rc) (eq (fn-omk-at 0 (car rc)) :fn-own-tls-result)
                    (or (and (eq phase :source-owned) (null (fn-omk-at 9 receipt))
+                            (not (fn-own-tls-result-repinned (car rc))))
+                       (and (eq phase :source-aborted)
+                            (fn-ich-tokenp (fn-omk-at 9 receipt))
                             (not (fn-own-tls-result-repinned (car rc))))
                        (and (eq phase :offer-owned)
                             (fn-irr-repin-intentp (fn-omk-at 9 receipt))))))
@@ -402,10 +457,14 @@
                      (list (fn-omk-at 0 receipt) (fn-omk-at 1 receipt)
                            (fn-omk-at 2 receipt) (fn-omk-at 3 receipt)
                            (fn-omk-at 4 receipt) (fn-omk-at 5 receipt)
-                           next-request (if (eq phase :offer-owned) :read-offer-ready :read-ready)
-                           (fn-omk-at 8 receipt) (fn-omk-at 9 receipt))
+                           next-request (cond ((eq phase :offer-owned) :read-offer-ready)
+                                 ((eq phase :source-aborted) :read-ready-repin-aborted)
+                                 (t :read-ready))
+                           (fn-omk-at 8 receipt) (fn-omk-at 9 receipt) (fn-omk-at 10 receipt))
                      fn-index-backing)))
-             (mv (if (eq phase :offer-owned) :read-offer-ready :read-ready)
+             (mv (cond ((eq phase :offer-owned) :read-offer-ready)
+                                 ((eq phase :source-aborted) :read-ready-repin-aborted)
+                                 (t :read-ready))
                  fn-index-backing))))))
 
 ; The actual RC selects this transition. Both query references are held at
@@ -618,17 +677,19 @@
  (mv-let (word control receipt left)
    (fn-irr-registered-read token fuel fn-mio$c)
    (declare (ignore control))
-   (mv (if (eq word :authorized) (fn-omk-at 7 receipt) word)
-       (if (eq word :authorized) (fn-irr-receipt-step receipt) nil)
-       (if (eq word :authorized) (fn-irr-receipt-replacement receipt) nil) left)))
+   (let ((owned (and (eq word :authorized) (fn-irr-receipt-response-ownedp receipt))))
+    (mv (if owned (fn-omk-at 7 receipt)
+          (if (eq word :authorized) :unavailable-actor word))
+        (if owned (fn-irr-receipt-step receipt) nil)
+        (if owned (fn-irr-receipt-replacement receipt) nil) left))))
 
 (defun fn-irr-render-install (token fuel fn-mio$c fn-render-holder)
  (declare (xargs :stobjs (fn-mio$c fn-render-holder) :guard (natp fuel)))
  (if (fn-rh-live fn-render-holder) (mv :busy fuel fn-mio$c fn-render-holder)
   (mv-let (word control receipt left)
     (fn-irr-registered-read token fuel fn-mio$c)
-    (declare (ignore receipt))
-    (if (not (eq word :authorized)) (mv word left fn-mio$c fn-render-holder)
+    (if (not (and (eq word :authorized) (fn-irr-receipt-response-ownedp receipt)))
+        (mv (if (eq word :authorized) :unavailable-actor word) left fn-mio$c fn-render-holder)
       (mv-let (installed fn-render-holder)
         (fn-ibr-registered-render-install control token fn-render-holder)
         (mv installed left fn-mio$c fn-render-holder))))))

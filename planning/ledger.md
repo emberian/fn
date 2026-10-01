@@ -10,14 +10,14 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2300 |
-| Certification roots in the Makefile | 2103 |
-| Books inside the root closure | 2244 |
+| Books read | 2302 |
+| Certification roots in the Makefile | 2105 |
+| Books inside the root closure | 2246 |
 | `defthm` and `defthmd` events | 32994 |
-| `defun` events | 21123 |
-| Functions with verified guards | 3740 |
+| `defun` events | 21129 |
+| Functions with verified guards | 3742 |
 | Functions declared `:verify-guards nil` and never verified | 2592 |
-| Functions left at the default with an explicit guard | 11770 |
+| Functions left at the default with an explicit guard | 11774 |
 | Functions left at the default with no guard | 3021 |
 | `assert-event` checks | 24628 |
 | `must-fail` checks | 2519 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 382 |
 | Enabled-projection warnings | 79 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2942 |
+| Include-hygiene warnings | 2947 |
 | Host-names warnings | 2569 |
 | Hand-written-record warnings | 19 |
 
@@ -700,7 +700,9 @@ that `make certify` requests.
 | `books/index-query-resources.lisp` | closure | 11 | 11 | 0/0/11/0 | 0 | 0 | 0 |
 | `books/index-query-slot-issuer.lisp` | root | 0 | 12 | 0/0/12/0 | 0 | 0 | 0 |
 | `books/index-range-controller.lisp` | root | 4 | 6 | 0/0/6/0 | 0 | 0 | 0 |
-| `books/index-reader-request.lisp` | root | 0 | 33 | 3/0/30/0 | 0 | 0 | 0 |
+| `books/index-reader-actor.lisp` | root | 0 | 3 | 0/0/3/0 | 0 | 0 | 0 |
+| `books/index-reader-receiver-issuer.lisp` | root | 0 | 1 | 1/0/0/0 | 0 | 0 | 0 |
+| `books/index-reader-request.lisp` | root | 0 | 35 | 4/0/31/0 | 0 | 0 | 0 |
 | `books/index-reader-response-issuer.lisp` | root | 0 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `books/index-writer-operation-demand.lisp` | root | 16 | 20 | 9/0/11/0 | 0 | 0 | 1 |
 | `books/index-writer-source-fence.lisp` | root | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |

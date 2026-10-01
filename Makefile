@@ -18,6 +18,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-transaction-dispatch-tests \
 	tests/acl2/consumer-remote-store-category-tests \
 	tests/acl2/receiver-response-transfer-tests \
+	books/index-reader-actor \
+	books/index-reader-receiver-issuer \
 	books/cbor-record-scalar \
 	books/cbor-record-stream \
 	books/statement-items-shape \

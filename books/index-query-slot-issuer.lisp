@@ -77,7 +77,7 @@
                                    (fn-prl-baseline ledger)) fn-page-read-pool))
                    (origin (list :index-read issued))
                    (request (list :reader-request id pin publication pre-oc rc effects origin holder-token))
-                   (receipt (list :index-request-receipt next issued ordinal (list candidate-kind (fn-ipub-generation publication)) demand request :reserved nil nil))
+                   (receipt (list :index-request-receipt next issued ordinal (list candidate-kind (fn-ipub-generation publication)) demand request :reserved nil nil nil))
                    (fn-index-backing (update-fn-ibp-request-pending receipt fn-index-backing)))
               (mv :reserved issued fn-index-backing fn-page-read-pool))))))))))
 
@@ -95,6 +95,8 @@
  (let ((x (fn-omk-at 4 receipt)))
   (if (fn-irq-request-identityp x) (fn-omk-at 1 x) nil)))
 
+; Internal adoption rebuild: DEMAND is derived by the same registered pool
+; transition. Preserve immutable identity and all retained lifetime roots.
 (defun fn-irq-receipt-keep-demand (receipt demand)
  (declare (xargs :guard t))
  (list (fn-omk-at 0 receipt) (fn-omk-at 1 receipt)
@@ -102,7 +104,6 @@
        (fn-omk-at 4 receipt) demand (fn-omk-at 6 receipt)
        (fn-omk-at 7 receipt) (fn-omk-at 8 receipt)
        (fn-omk-at 9 receipt) (fn-omk-at 10 receipt)))
-
 
 (defun fn-irq-committed-phasep (phase)
  (declare (xargs :guard t))
@@ -141,5 +142,5 @@
                          (fn-omk-at 2 receipt) (fn-omk-at 3 receipt)
                          (fn-omk-at 4 receipt) (fn-omk-at 5 receipt)
                          (fn-omk-at 6 receipt) (fn-irq-commit-phase (fn-omk-at 7 receipt)) step
-                         (fn-omk-at 9 receipt)) fn-index-backing)))
+                         (fn-omk-at 9 receipt) (fn-omk-at 10 receipt)) fn-index-backing)))
              (mv (fn-irq-commit-phase (fn-omk-at 7 receipt)) fn-index-backing))))))
