@@ -40,6 +40,7 @@
                                  (cons binding (fn-prl-nth 3 ledger))
                                  (fn-prl-nth 4 ledger))))
      (mv :admitted token ledger))))))
+(verify-guards fn-pfo-issue)
 ; Actual caller-derived source registration belongs to the genuine installer.
 ; A nonnil path/slot alone is NEVER allocation authority.
 (defun fn-owner-page-file-open-step
