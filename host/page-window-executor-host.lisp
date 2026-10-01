@@ -3,6 +3,7 @@
 (include-book "page-read-host")
 (include-book "../books/page-window-executor")
 (include-book "../books/cold-read-window")
+(include-book "../books/page-read-counter-transaction") ; fn-prb-fixed-widthp
 
 (defun fn-owner-page-window-legacy-writablep (fn-page-read-pool)
  (declare (xargs :stobjs fn-page-read-pool :guard t))
@@ -104,7 +105,25 @@
                  (fn-owner-page-read-keep-ledger (nth 2 admit) fn-page-read-pool))
          (list (nth 0 acquire) (nth 1 acquire) (nth 1 admit)
                (fn-owner-page-read-keep-ledger (nth 2 acquire) fn-page-read-pool)))))))
-  :hints (("Goal" :in-theory (enable fn-prw-admit fn-pwx-acquire))))
+  ;; Its own theory: the runes the proof uses, so the image's ld world (whose
+  ;; global theory made this a failing 15.7M-step search) proves it as the book does.
+  :hints (("Goal" :in-theory (union-theories
+                              (theory 'minimal-theory)
+                              '(fn-owner-page-read-direct-mode fn-owner-page-read-keep-ledger
+                                fn-owner-page-read-ledger fn-owner-page-window-executor-acquire-funded
+                                fn-owner-page-window-legacy-writablep fn-prp-alloc-installation
+                                fn-prp-data fn-prp-mode fn-prw-admit fn-pwx-acquire
+                                mv-list mv-nth not nth update-fn-prp-data update-nth
+                                (:executable-counterpart cdr) (:executable-counterpart cons)
+                                (:executable-counterpart equal)
+                                (:executable-counterpart fn-prb-fixed-widthp)
+                                (:executable-counterpart fn-prl-baseline)
+                                (:executable-counterpart fn-prl-binding)
+                                (:executable-counterpart fn-prl-nth)
+                                (:executable-counterpart fn-pwx-tokenp)
+                                (:executable-counterpart not) (:executable-counterpart nth)
+                                (:executable-counterpart zp)
+                                nth-0-cons nth-add1 (:type-prescription fn-prs-issue))))))
 
 (defun fn-owner-page-window-byte-at (worker token plan file eoff elen poff plen trailer i fn-ew-buffer fn-page-read-pool)
   (declare (xargs :stobjs (fn-ew-buffer fn-page-read-pool) :guard (true-listp plan)))
