@@ -10,25 +10,25 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2360 |
-| Certification roots in the Makefile | 2158 |
-| Books inside the root closure | 2324 |
-| `defthm` and `defthmd` events | 33257 |
-| `defun` events | 21344 |
+| Books read | 2371 |
+| Certification roots in the Makefile | 2168 |
+| Books inside the root closure | 2335 |
+| `defthm` and `defthmd` events | 33324 |
+| `defun` events | 21366 |
 | Functions with verified guards | 3748 |
 | Functions declared `:verify-guards nil` and never verified | 2602 |
-| Functions left at the default with an explicit guard | 11956 |
-| Functions left at the default with no guard | 3038 |
-| `assert-event` checks | 24711 |
+| Functions left at the default with an explicit guard | 11976 |
+| Functions left at the default with no guard | 3040 |
+| `assert-event` checks | 24747 |
 | `must-fail` checks | 2531 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
-| `encapsulate` events | 168 |
+| `encapsulate` events | 169 |
 | Theorems flagged SUSPECT by shape | 1313 |
 | Export-hygiene warnings | 386 |
 | Enabled-projection warnings | 79 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 3026 |
-| Host-names warnings | 2752 |
+| Include-hygiene warnings | 3039 |
+| Host-names warnings | 2767 |
 | Hand-written-record warnings | 19 |
 
 ## Lints
@@ -276,6 +276,7 @@ that `make certify` requests.
 | `books/bp-receipt-records.lisp` | root | 0 | 10 | 0/9/1/0 | 0 | 0 | 0 |
 | `books/bp-receipt.lisp` | root | 47 | 57 | 3/5/7/42 | 0 | 0 | 3 |
 | `books/bp-receive-evidence.lisp` | root | 8 | 25 | 11/2/0/12 | 0 | 0 | 0 |
+| `books/bp-received-byte-storage.lisp` | root | 0 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/bp-receiver-context-invariants.lisp` | root | 20 | 4 | 0/1/0/3 | 0 | 0 | 0 |
 | `books/bp-receiver-evolving-history-invariants.lisp` | root | 35 | 8 | 0/5/0/3 | 0 | 0 | 0 |
 | `books/bp-receiver-evolving-node-invariants.lisp` | root | 44 | 1 | 0/0/0/1 | 0 | 0 | 4 |
@@ -330,6 +331,7 @@ that `make certify` requests.
 | `books/bpsec-asb-position.lisp` | closure | 37 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/bpsec-asb-quanta.lisp` | closure | 8 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bpsec-asb-spine.lisp` | closure | 18 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/bpsec-asb-target-types.lisp` | closure | 45 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/bpsec-asb-terminal.lisp` | closure | 24 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/bpsec-asb.lisp` | closure | 3 | 21 | 0/0/21/0 | 0 | 0 | 0 |
 | `books/bpsec-head-invariant.lisp` | closure | 6 | 2 | 0/0/2/0 | 0 | 0 | 0 |
@@ -337,6 +339,7 @@ that `make certify` requests.
 | `books/bpsec-model.lisp` | closure | 0 | 26 | 0/0/26/0 | 0 | 0 | 0 |
 | `books/bpsec-operation.lisp` | root | 5 | 14 | 0/0/14/0 | 0 | 0 | 1 |
 | `books/bpsec-provider-model.lisp` | root | 0 | 2 | 0/0/2/0 | 2 | 0 | 0 |
+| `books/bpsec-received-window.lisp` | root | 10 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/bpsec-target-cursor.lisp` | root | 5 | 11 | 0/0/11/0 | 0 | 0 | 0 |
 | `books/bpsec-target-spine.lisp` | closure | 11 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bpsec-target.lisp` | root | 0 | 21 | 0/0/21/0 | 0 | 0 | 0 |
@@ -1199,6 +1202,8 @@ that `make certify` requests.
 | `books/recovery-initial-operation-lineage.lisp` | - | 1 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/recovery-open-origin.lisp` | - | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/recovery-payload-view.lisp` | - | 0 | 9 | 0/0/9/0 | 0 | 0 | 0 |
+| `books/recovery-profile-buffer.lisp` | root | 4 | 2 | 0/0/2/0 | 0 | 0 | 0 |
+| `books/recovery-profile-envelope.lisp` | root | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/recovery-source-authority.lisp` | - | 0 | 8 | 0/0/8/0 | 0 | 0 | 0 |
 | `books/refusal-effect.lisp` | root | 11 | 0 | 0/0/0/0 | 0 | 0 | 3 |
 | `books/refusal-headroom.lisp` | root | 15 | 3 | 0/2/1/0 | 0 | 0 | 0 |
@@ -1645,6 +1650,7 @@ that `make certify` requests.
 | `tests/acl2/bp-receipt-records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 0 | 0 |
 | `tests/acl2/bp-receipt-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 36 | 0 | 0 |
 | `tests/acl2/bp-receive-evidence-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 3 | 0 |
+| `tests/acl2/bp-received-byte-storage-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 1 | 0 | 0 |
 | `tests/acl2/bp-receiver-evolving-tests.lisp` | root | 0 | 6 | 0/4/0/2 | 97 | 13 | 0 |
 | `tests/acl2/bp-receiver-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
 | `tests/acl2/bp-receiver-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 19 | 2 | 0 |
@@ -1679,10 +1685,13 @@ that `make certify` requests.
 | `tests/acl2/bpsec-asb-position-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 13 | 0 | 0 |
 | `tests/acl2/bpsec-asb-quanta-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 8 | 0 | 0 |
 | `tests/acl2/bpsec-asb-spine-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 6 | 0 | 0 |
+| `tests/acl2/bpsec-asb-target-types-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 17 | 0 | 0 |
 | `tests/acl2/bpsec-asb-terminal-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 14 | 0 | 0 |
 | `tests/acl2/bpsec-asb-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 14 | 0 | 0 |
+| `tests/acl2/bpsec-asb-window-differential-tests.lisp` | root | 0 | 3 | 0/0/3/0 | 12 | 0 | 0 |
 | `tests/acl2/bpsec-head-invariant-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 17 | 0 | 0 |
 | `tests/acl2/bpsec-operation-tests.lisp` | root | 0 | 7 | 0/0/7/0 | 21 | 0 | 0 |
+| `tests/acl2/bpsec-received-window-tests.lisp` | root | 8 | 3 | 0/0/2/1 | 2 | 0 | 0 |
 | `tests/acl2/bpsec-target-cursor-tests.lisp` | root | 0 | 3 | 0/0/3/0 | 12 | 0 | 0 |
 | `tests/acl2/bpsec-target-spine-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 6 | 0 | 0 |
 | `tests/acl2/bpsec-target-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 15 | 0 | 0 |
@@ -2237,6 +2246,8 @@ that `make certify` requests.
 | `tests/acl2/records-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 38 | 11 | 0 |
 | `tests/acl2/records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
 | `tests/acl2/recovery-initial-operation-lineage-tests.lisp` | - | 0 | 0 | 0/0/0/0 | 3 | 0 | 0 |
+| `tests/acl2/recovery-profile-buffer-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 1 | 0 | 0 |
+| `tests/acl2/recovery-profile-envelope-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 3 | 0 | 0 |
 | `tests/acl2/refusal-effect-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 33 | 0 | 0 |
 | `tests/acl2/refusal-headroom-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 5 | 0 | 0 |
 | `tests/acl2/relay-source-routes-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 15 | 5 | 0 |

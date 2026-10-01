@@ -7401,7 +7401,15 @@
         "planning/evidence/bpsec-asb-aggregate-source-2026-09-30.json",
         "books/bpsec-asb-terminal.lisp",
         "tests/acl2/bpsec-asb-terminal-tests.lisp",
-        "planning/evidence/bpsec-asb-terminal-source-2026-09-30.json"
+        "planning/evidence/bpsec-asb-terminal-source-2026-09-30.json",
+        "books/bpsec-asb-target-types.lisp",
+        "tests/acl2/bpsec-asb-target-types-tests.lisp",
+        "planning/evidence/bpsec-asb-target-types-source-2026-09-30.json",
+        "tests/acl2/bpsec-asb-window-differential-tests.lisp",
+        "planning/evidence/bpsec-asb-window-differential-source-2026-09-30.json",
+        "books/bpsec-received-window.lisp",
+        "tests/acl2/bpsec-received-window-tests.lisp",
+        "planning/evidence/bpsec-received-window-source-2026-09-30.json"
       ],
       "execution_scope": "ACL2 literal source fixture only; full every-schedule theorem and operational provider/native execution remain open."
     },
@@ -7733,6 +7741,62 @@
         "planning/evidence/manifests/certify-20261001T025802Z-1029297.json"
       ],
       "execution_scope": "Four-book narrow normal certification and generator fixtures; no genuine positive operation/caller or native installation yet."
+    },
+    {
+      "id": "SCN-1077",
+      "title": "Real receiver BPSec primitive vectors retain exact descriptor and bounded temporary output",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "HST-004",
+        "REP-018"
+      ],
+      "steps": [
+        "Load the actual pinned OpenSSL provider and run published RFC4231 Cases1/6, RFC9173 AppendixA diagnostics and sixteen literal NIST CAVP decrypt rows at chunk sizes1/7/64.",
+        "Record actual library-generated HMAC bytes and actual temporary GCM plaintext under a test-only FFI observer; compare exact independent literal bytes and authentication results.",
+        "Mutate tag/AAD and truncate ciphertext; separately invoke bad physical widths, unavailable symbol, unsupported algorithm, invalid buffers, primitive fault and post-write nonlocal escape.",
+        "Check every first-pass GCM update returns no plaintext, immediately cleanses the temporary bounded window, and frees context on final/cancel/fault/escape."
+      ],
+      "expected": [
+        "Known literal primitive outputs/authentication results agree across selected streaming schedules.",
+        "The descriptor returned is exactly the one retained by the primitive handle; this does not prove descriptor issuance or current authority.",
+        "Bad authentication, unsupported algorithm and unavailable/fault conditions remain distinct; no host HMAC comparison or completion is created.",
+        "First-pass GCM stores no whole plaintext and exposes no plaintext. Production second-pass release stays unavailable until the same immutable ciphertext pin/current key/source grant exists."
+      ],
+      "evidence": [
+        "host/native/bpsec-crypto.lisp",
+        "tests/native_bpsec_crypto.lisp",
+        "tests/fixtures/bpsec/nist-gcm-decrypt.json",
+        "planning/evidence/bpsec-crypto-2026-09-30/manifest.json",
+        "tests/fixtures/bpsec/nist-gcm-decrypt.lisp"
+      ],
+      "execution_scope": "Actual SBCL/OpenSSL primitive component only at the recorded source/library hashes. Test descriptors are explicitly unissued; no native image, installer, source/key/policy grant, replay authorization, persistence or application acceptance. RFC9173 short keys/A.3 IPPT and A.4 reused nonce are frozen diagnostics, not normative profile admission."
+    },
+    {
+      "id": "SCN-1078",
+      "title": "Fixed early profile workspace keeps the overflow probe outside the decoder prefix",
+      "milestone": "M1",
+      "status": "specified",
+      "requirements": [
+        "HST-002"
+      ],
+      "steps": [
+        "Evaluate the actual core envelope derived from the current FNSM/frame constants.",
+        "Create the actual fixed recovery-profile stobj and write first byte70, last permitted profile byte32 and separate overflow probe255.",
+        "Read empty, single-byte and complete642-byte prefixes through the guarded fn-rpf-prefix."
+      ],
+      "expected": [
+        "The envelope yields header10/payload600/trailer32/max-file642/probe1/workspace643 at this grammar coordinate.",
+        "The complete642-byte prefix equals70 followed by640 zero bytes and32; the separate probe stays255.",
+        "No readiness, EOF, integrity, resource admission or Store policy is inferred from these bytes."
+      ],
+      "evidence": [
+        "tests/acl2/recovery-profile-envelope-tests.lisp",
+        "tests/acl2/recovery-profile-buffer-tests.lisp",
+        "planning/evidence/recovery-profile-envelope-2026-10-01/coordinate.json",
+        "planning/evidence/recovery-profile-buffer-2026-10-01/coordinate.json"
+      ],
+      "execution_scope": "Exact original-constant cohort and actual concrete-stobj source fixture passed; matching full-book certificate, saved image and issued I/O/EOF/controller composition remain open."
     }
   ]
 }

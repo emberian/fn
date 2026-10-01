@@ -2051,6 +2051,12 @@ ACL2_BOOKS ?= books/defrecord \
     tests/acl2/bpsec-asb-body-tests \
     tests/acl2/bpsec-asb-aggregate-tests \
     tests/acl2/bpsec-asb-terminal-tests \
+    tests/acl2/bpsec-asb-target-types-tests \
+    tests/acl2/bpsec-asb-window-differential-tests \
+    tests/acl2/bpsec-received-window-tests \
+    tests/acl2/bp-received-byte-storage-tests \
+    books/bp-received-byte-storage \
+    books/bpsec-received-window \
     tests/acl2/bpsec-target-cursor-tests \
     tests/acl2/bpsec-target-tests \
     tests/acl2/post-identity-source-cursor-source-complete-tests \
@@ -2066,6 +2072,10 @@ ACL2_BOOKS ?= books/defrecord \
     books/runtime-bootstrap-completion \
     tests/acl2/runtime-operation-compiled-source-tests \
     books/runtime-operation-compiled-source \
+    books/recovery-profile-envelope \
+    books/recovery-profile-buffer \
+    tests/acl2/recovery-profile-envelope-tests \
+    tests/acl2/recovery-profile-buffer-tests \
     books/runtime-operation-installed-source \
     books/runtime-operation-compiled-table \
     books/runtime-operation-source-assembly \

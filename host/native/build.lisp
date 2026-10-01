@@ -184,6 +184,7 @@
 (include-book "books/native-operator")
 (include-book "books/runtime-bootstrap-admission")
 (include-book "books/runtime-operation-source")
+(include-book "books/recovery-profile-buffer")
 ; The process heap from the store profile (PKT-016): host/native/heap.lisp.
 (include-book "books/heap-figure")
 ;; Lane f1-bisect: host/native/io.lisp fnn-open-nursery calls
@@ -559,6 +560,7 @@
         (load "host/native/runtime-collector.lisp")
         (load "host/native/runtime-participants.lisp")
         (load "host/native/runtime-image-policy.lisp")
+        (load "host/native/runtime-profile-envelope.lisp")
         (load "host/native/runtime-bootstrap.lisp")
         (fnn-runtime-bootstrap-image-prepare)
         (setq *print-startup-banner* nil))

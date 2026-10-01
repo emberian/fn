@@ -991,6 +991,37 @@ now has additive ASB source in `books/bpsec-model.lisp`,
 `books/bpsec-head.lisp` and `books/bpsec-asb.lisp` (REP-017, PRF-1178).
 This does not add a security gate to the served BP admission path.
 
+SCN-1077 now records an actual receiver primitive component in
+`host/native/bpsec-crypto.lisp`, using the same pinned OpenSSL pair as TLS
+inside HST-004. Streaming HMAC-SHA256/384/512 returns actual bytes and width;
+ACL2 must perform the expected-result comparison. AES-GCM128/256 first-pass
+updates immediately cleanse each temporary plaintext window; final tag
+verification reports authentication or bad tag and exposes no plaintext.
+There is no whole-object plaintext RAM accumulation. Cancel, fault and
+nonlocal escape cleanse the bounded current window and free its context;
+this is no physical charge refund or persistence observation.
+
+The component tests compare literal RFC 4231 sections4.2/4.7, RFC9173
+AppendixA and selected NIST CAVP decrypt inputs, outputs and negative results
+at chunks1/7/64. A test-only FFI observer captures the library's temporary
+plaintext before the production path cleanses it; there is no production
+observer or eager plaintext callback. RFC9173's short HMAC keys and A.3
+primary-IPPT representation remain diagnostic fixtures, separate from the
+normative sections3.5/3.7 profile; A.4 repeated key/IV is receiver diagnostics
+only, never a production encryption example (reported erratum7002).
+Unsupported primitives and unavailable/fault conditions are separate from
+authentication failure. The exact source/library hashes live in
+`planning/evidence/bpsec-crypto-2026-09-30/manifest.json`.
+
+This source is not loaded by an installed image. ACL2 suite/key planning,
+canonical input and primitive-result provenance through an actual issuer,
+registered immutable ciphertext retention/pin, current policy/key lease and
+charged runtime custody remain open. A later bounded decryption pass must
+read the SAME source token and original block-number/data extent as the
+authentication pass; an equal native-supplied tuple or guessed byte array
+cannot grant replay. No BCB verified completion or application admission is
+produced by first-pass authentication.
+
 REP-017: BPSec ASB parsing preserves the exact received sequence through
 bounded immutable windows under the operator's supported profile. Structural
 validity, unsupported interpretation, cryptographic results and host
@@ -1132,6 +1163,48 @@ refusal. Mutating only a parsed stage or offset retains the other terminal
 conjunct and breaks the invariant and both zero-quantum output conclusions.
 It is structural completion; metadata grammar, every-window alpha, provider
 lifetime and cryptographic verification still require their own boundaries.
+
+`books/bpsec-asb-target-types.lisp` carries uint64 target numbers and pending
+candidate typing through actual start, drive and step. During target duplicate
+scanning and target reversal the scratch lists are typed too. The compound
+premise includes the nested typed CBOR head and exact fixed34 cursor spine:
+a missing pending slot cannot be inserted by the update-only cursor setter.
+The explicit corrupted-state omission retains the weaker target/head predicates
+but one real target octet breaks target typing. Reachable literal one-byte
+windows preserve the full compound, including ordered targets0 and uint64
+maximum; duplicate and nonuint targets refuse with preserved context. These
+are ghost typing predicates, never served whole-state validation. Remaining
+metadata grammar/count/uniqueness and every-window alpha, actual immutable
+provider lifetime and security verification remain open.
+
+`tests/acl2/bpsec-asb-window-differential-tests.lisp` exercises every two-window
+cut of frozen literal BIB/BCB success, refusal and unsupported inputs at work
+quanta1,7,64 with physical test windows bounded by64. Each invocation checks
+consumed-prefix, exact unconsumed window suffix and offset advance; terminal
+results include full decoded values, refusal offsets and complete unsupported
+raw retention, compared with independent literal expectations and the logical
+reference. A changed body octet under the same ID/offset parses structurally:
+alpha against the claimed old backing masks it, while alpha against actual
+input exposes it. This explicitly retains the missing genuine provider-slice
+relation; it is neither primitive verification nor a quantified every-window
+refinement theorem. The actual registered held/block source and pinned lifetime
+must establish that relation before the served parser supplies authority.
+
+`books/bpsec-received-window.lisp` names the actual internal concrete reader
+`fn-bprx-segment-window`: under the exact array representation, frozen matching
+nonce/ordinal and valid offset/count range, its successful bytes equal the
+corresponding slice of the concrete segment, have exactly count<=64 octets and
+form a valid parser window. The whole segment abstraction is ghost only; the
+served reader reads bounded array cells. Its fixed256 allocation unit is not
+a bundle/profile ceiling. An explicitly unfunded local-stobj fixture writes a
+literal BCB, freezes, reads actual array windows and feeds only source-window
+bytes to the actual ASB stepper, obtaining the complete literal ASB. Every
+named hypothesis has an affirmative omission witness; malformed representation
+and guard-input cases are ground logical proofs, separate from permitted
+concrete executions. Stale/unpublished/range remain pre-I/O refusals, never
+manufactured successful empty windows. The real registered original-held/block
+source issuer, multi-segment backing directory, pinned lifetime and installed
+native/crypto admission remain open; a local alias supplies no such authority.
 
 The logical target-graph reference in `books/bpsec-target.lisp` binds each
 ASB as `(block-number . ASB)`, checks actual block existence/type, unique

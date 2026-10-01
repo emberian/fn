@@ -1,0 +1,282 @@
+{
+  "schema_version": 1,
+  "description": "Maintained navigation responsibilities and explicit root/role exceptions; never a deletion allowlist. Filename patterns organize responsibility, not runtime authority.",
+  "subsystems": [
+    {
+      "name": "Transport: LTP",
+      "patterns": [
+        "ltp-*",
+        "ltp*",
+        "bp-ltp*"
+      ],
+      "responsibility": "Long-delay convergence and resumable session transfer"
+    },
+    {
+      "name": "Transport: BP and BPSec",
+      "patterns": [
+        "bp-*",
+        "bpsec-*",
+        "bcb-*",
+        "bib-*",
+        "bundle-*",
+        "dtn-*",
+        "bpsec*",
+        "bib*",
+        "bcb*",
+        "bundle*",
+        "dtn*"
+      ],
+      "responsibility": "Bundle carriage, integrity/confidentiality evidence and transfer obligations"
+    },
+    {
+      "name": "Transport: TCPCL and peering",
+      "patterns": [
+        "tcpcl-*",
+        "peer-*",
+        "feed-*",
+        "streaming-*",
+        "replication-*",
+        "batch-*",
+        "tcpcl*",
+        "peer*",
+        "feed*",
+        "exchange*",
+        "relay*",
+        "anchor*",
+        "transfer*",
+        "transit*"
+      ],
+      "responsibility": "Connected peer/session transport and replicated evidence"
+    },
+    {
+      "name": "9P and external interfaces",
+      "patterns": [
+        "ninep-*",
+        "9p-*",
+        "p9-*",
+        "ninep*",
+        "9p*",
+        "p9*"
+      ],
+      "responsibility": "External file/control protocol boundary"
+    },
+    {
+      "name": "Substrate and membership",
+      "patterns": [
+        "substrate-*",
+        "stx-*",
+        "membership-*",
+        "policy-*",
+        "lace-*",
+        "membership*",
+        "policy*",
+        "lace*"
+      ],
+      "responsibility": "Membership epochs, retained equivocation and selected authority"
+    },
+    {
+      "name": "Identity and article semantics",
+      "patterns": [
+        "identity*",
+        "principal*",
+        "statement*",
+        "article-*",
+        "authored-*",
+        "provenance-*",
+        "signature*",
+        "source-*",
+        "article*",
+        "auth*",
+        "crypto*",
+        "sha256*",
+        "hmac*",
+        "post*",
+        "poster*",
+        "path*",
+        "cancel*"
+      ],
+      "responsibility": "Source identities, signed statements and article meaning"
+    },
+    {
+      "name": "Owner and durable publication",
+      "patterns": [
+        "owner*",
+        "acceptance-*",
+        "submission-*",
+        "transaction-*",
+        "replay*",
+        "recovery-*",
+        "checkpoint*",
+        "acceptance*",
+        "admission*",
+        "app-journal*",
+        "control*",
+        "topic-history*",
+        "open-frontier*",
+        "closure-open*"
+      ],
+      "responsibility": "Serialized owner transitions, definite persistence and recovery"
+    },
+    {
+      "name": "Store and representation",
+      "patterns": [
+        "store-*",
+        "record*",
+        "held-*",
+        "held*",
+        "page-*",
+        "dense-*",
+        "paged-*",
+        "payload-*",
+        "hybrid-*",
+        "history-*",
+        "snapshot-*",
+        "extent-*",
+        "store*",
+        "byte-store*",
+        "record*",
+        "page*",
+        "pagestore*",
+        "arena*",
+        "index*",
+        "number*",
+        "catalog*",
+        "cold*",
+        "container*",
+        "view*",
+        "visibility*",
+        "packed*",
+        "state*"
+      ],
+      "responsibility": "Concrete bytes/pages, maintained representations and captured history"
+    },
+    {
+      "name": "Funding, retention and lifetime",
+      "patterns": [
+        "allocation-*",
+        "runtime-*",
+        "connection-*",
+        "retention-*",
+        "reclaim-*",
+        "budget*",
+        "reserve*",
+        "grant*",
+        "lease*",
+        "retire*",
+        "window-*",
+        "resource-*",
+        "heap*",
+        "productive*",
+        "receiver*",
+        "receive*",
+        "incoming*",
+        "obligation*",
+        "expiry*",
+        "refusal*",
+        "refused*",
+        "retention*",
+        "scheduler*"
+      ],
+      "responsibility": "Same-pool charges, obligations, custody and once-only release"
+    },
+    {
+      "name": "NNTP and readers",
+      "patterns": [
+        "nntp*",
+        "served-*",
+        "reader-*",
+        "over*",
+        "msgid-*",
+        "response-*",
+        "reply-*",
+        "command-*",
+        "served*",
+        "body-chunks*",
+        "query*",
+        "subject-id*"
+      ],
+      "responsibility": "News command semantics and bounded served replies"
+    },
+    {
+      "name": "Consumer and account progress",
+      "patterns": [
+        "consumer-*",
+        "account*",
+        "login-*",
+        "credential-*",
+        "config*",
+        "config*",
+        "consumer*"
+      ],
+      "responsibility": "Consumer frontiers, account authority and coherent configuration"
+    },
+    {
+      "name": "Codecs and common machinery",
+      "patterns": [
+        "cbor*",
+        "codec*",
+        "octet*",
+        "utf*",
+        "def*",
+        "assumptions*",
+        "outcome*",
+        "blake3*",
+        "crc*",
+        "digest*",
+        "decimal*",
+        "image-world*",
+        "clock*",
+        "frame*",
+        "wire*",
+        "protocol*",
+        "rev-onto*",
+        "snoc-list*",
+        "wildmat*",
+        "fixed-buffer*",
+        "ideal*",
+        "profile-limits*"
+      ],
+      "responsibility": "Reusable codec, declaration, proof and toolchain boundaries"
+    },
+    {
+      "name": "Operator and observability",
+      "patterns": [
+        "native-*",
+        "operator-*",
+        "health*",
+        "status*",
+        "log-*",
+        "decision-*",
+        "trace-*",
+        "exposure-*",
+        "public-exposure*",
+        "tls*",
+        "sasl*",
+        "scram*"
+      ],
+      "responsibility": "Operator policy, health and observable operation state"
+    },
+    {
+      "name": "Datatype prototypes",
+      "patterns": [
+        "adt*"
+      ],
+      "responsibility": "Datatype/record experiments and generation support; runtime role remains separately evidenced."
+    },
+    {
+      "name": "Presentation clients",
+      "patterns": [
+        "web*"
+      ],
+      "responsibility": "Human rendering and web client boundary"
+    }
+  ],
+  "extra_roots": [],
+  "book_notes": {},
+  "conventions": {
+    "new_book": "Choose the logical subsystem, explain purpose and actual caller/reference model, reuse an existing leaf where coherent, and register a public namespace in docs/prefixes.md. Add an explicit catalog note only when filename/prefix ownership or root discovery is ambiguous.",
+    "explicit_root": "extra_roots entries require path, category, source and reason for a computed/dynamic loader that static source reading cannot resolve.",
+    "superseded": "book_notes may name superseded only with replacement and evidence; keep historical/proof/test/generation uses visible. It never authorizes deletion.",
+    "later_cleanup": "Inspect actual callers, semantic/guard differences, registry/scenario and image/extraction uses; coordinate leases and certify affected roots in a quiet batch before consolidation. Unreachability alone is insufficient."
+  }
+}
