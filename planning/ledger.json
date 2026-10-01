@@ -1870,26 +1870,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 2005,
+    "books": 2007,
     "books_in_root_closure": 1938,
     "roots": 1866,
-    "theorems": 30328,
-    "functions": 19361,
+    "theorems": 30334,
+    "functions": 19372,
     "assert_events": 24064,
     "must_fails": 2519,
     "prover_refusals": 0,
     "encapsulates": 160,
     "guards": {
       "verified": 3553,
-      "declared-off": 2350,
-      "default-guarded": 10585,
-      "default-unguarded": 2873
+      "declared-off": 2351,
+      "default-guarded": 10594,
+      "default-unguarded": 2874
     },
     "suspect_theorems": 1266,
     "export_hygiene_warnings": 348,
     "enabled_projection_warnings": 55,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2740,
+    "include_hygiene_warnings": 2742,
     "host_names_warnings": 2193,
     "hand_written_record_warnings": 18
   },
@@ -27586,6 +27586,59 @@
       "encapsulates": 0,
       "includes": [
         "page-read-ledger"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/reader-output-storage-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 2,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "reader-output-storage"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/reader-output-storage.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 4,
+      "functions": 9,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 8,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "octets-stobj",
+        "reader-output-job"
       ],
       "system_includes": [],
       "suspects": [],
@@ -81489,6 +81542,20 @@
         "line": 79,
         "include": "protocol-table",
         "included": "books/protocol-table.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/reader-output-storage-tests.lisp",
+        "line": 2,
+        "include": "reader-output-storage",
+        "included": "books/reader-output-storage.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/reader-output-storage.lisp",
+        "line": 6,
+        "include": "reader-output-job",
+        "included": "books/reader-output-job.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

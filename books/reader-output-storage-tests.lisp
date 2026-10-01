@@ -1,0 +1,90 @@
+(in-package "ACL2")
+(include-book "reader-output-storage")
+
+; MODEL source/budget seed. Every reservation, nested buffer mutation,
+; installation, partial write and detach below calls the actual new actor.
+; No native alias disappearance or registered factory authority is asserted.
+(defun rosmt-fill (fn-output-storage)
+ (declare (xargs :stobjs fn-output-storage :guard t))
+ (stobj-let ((fn-octets (fn-ros-octets fn-output-storage)))
+  (fn-octets) (fn-octets-append-list '(65 66) fn-octets)
+  fn-output-storage))
+(defun-nx rosmt-actual-local-chain ()
+ (let* ((reserve (mv-list 3 (fn-ros-reserve-internal
+          '(:receiver-response (:receiver-turn 7) 1) 0
+          '(:receiver-source (:receiver-turn 7) :rx-token :provider)
+          '(200 0 1 0 1) (fn-prl-make '(1000 1000 10 10 100))
+          (create-fn-output-storage))))
+        (actor (nth 2 reserve)) (token (fn-ros-current-token actor))
+        (prepare (mv-list 2 (fn-ros-prepare-current token actor)))
+        (actor (rosmt-fill (nth 1 prepare)))
+        (install (mv-list 2 (fn-ros-install-current token :window-plan actor)))
+        (acquire (mv-list 2 (fn-ros-native-acquire token (nth 1 install))))
+        (part (mv-list 3 (fn-ros-observe-current token :written 1 (nth 1 acquire))))
+        (done (mv-list 3 (fn-ros-observe-current token :written 1 (nth 2 part))))
+        (observed (mv-list 2 (fn-ros-native-return-observed token (nth 2 done))))
+        (detach (mv-list 3 (fn-ros-storage-detach token (nth 1 observed)))))
+  (list reserve prepare install acquire part done observed detach token)))
+(defthm rosmt-actual-shared-issue-buffer-write-detach-model-positive
+ (let* ((s (rosmt-actual-local-chain)) (reserve (nth 0 s))
+        (before (nth 1 (nth 6 s))) (answer (nth 7 s))
+        (next (nth 2 answer)) (token (nth 8 s)))
+  (and (eq (nth 0 reserve) :reserved)
+       (equal (fn-prl-nth 2 (nth 1 reserve)) 1)
+       (eq (nth 0 (nth 1 s)) :constructing)
+       (eq (nth 0 (nth 2 s)) :installed)
+       (eq (nth 0 (nth 3 s)) :native-borrowed)
+       (eq (nth 0 (nth 4 s)) :writing) (equal (nth 1 (nth 4 s)) 1)
+       (eq (nth 0 (nth 5 s)) :drained) (equal (nth 1 (nth 5 s)) 2)
+       (eq (nth 0 (nth 6 s)) :native-return-observed)
+       (eq (nth 0 answer) :storage-local-returned)
+       (equal (fn-ros-storage-trace next) nil)
+       (equal (fn-prl-nth 5 (fn-ros-job next)) (fn-prl-nth 5 (fn-ros-job before)))
+       (equal (fn-ros-source next) (fn-ros-source before))
+       (equal (fn-prl-nth 4 (fn-ros-job next)) token)
+       (equal (fn-prl-nth 6 (fn-ros-job next)) :fn-output-storage)
+       (null (fn-prl-nth 9 (fn-ros-job next)))
+       (null (fn-prl-nth 10 (fn-ros-job next)))
+       (equal (nth 1 answer) (fn-ros-local-receipt next))
+       (equal (nth 1 answer)
+        (list :outgoing-storage-local-return
+              '(:receiver-response (:receiver-turn 7) 1) 0 0 token
+              :fn-output-storage (fn-ros-source before) :detached))
+       (not (fn-rog-successor-ready-p (fn-ros-job next)))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (enable rosmt-actual-local-chain))))
+
+; MUTATION: stale full-window token event on an otherwise actual valid chain.
+; No claim of a native callback reaching this branch in composition.
+(defthm rosmt-stale-window-status-removal-mutation
+ (let* ((s (rosmt-actual-local-chain))
+        (before (nth 1 (nth 6 s)))
+        (token '(:reader-output-window (:receiver-response (:receiver-turn 7) 1)
+                 0 99 :fn-output-storage))
+        (answer (fn-ros-storage-detach token before))
+        (next (mv-nth 2 answer))
+        (before-job (fn-ros-job before)) (after-job (fn-ros-job next)))
+  (and (fn-rog-jobp before-job)
+       (eq (fn-ros-phase before) :native-return-observed)
+       (null (fn-ros-native-borrow before))
+       (equal (fn-ros-storage-trace before) '(65 66))
+       (not (equal token (fn-ros-current-token before)))
+       (not (eq (mv-nth 0 answer) :storage-local-returned))
+       (eq (mv-nth 0 answer) :retained)
+       (equal next before)
+       (not
+        (and (equal (fn-ros-storage-trace next) nil)
+             (equal (fn-prl-nth 5 after-job) (fn-prl-nth 5 before-job))
+             (equal (fn-prl-nth 4 after-job) (fn-prl-nth 4 before-job))
+             (equal (fn-prl-nth 6 after-job) (fn-prl-nth 6 before-job))
+             (equal (fn-ros-source next) (fn-ros-source before))
+             (equal (fn-prl-nth 9 after-job) nil)
+             (equal (fn-prl-nth 10 after-job) nil)
+             (equal (mv-nth 1 answer) (fn-ros-local-receipt next))
+             (equal (mv-nth 1 answer)
+               (list :outgoing-storage-local-return
+                 (fn-prl-nth 1 before-job) (fn-prl-nth 2 before-job)
+                 (fn-prl-nth 3 token) token (fn-prl-nth 6 before-job)
+                 (fn-ros-source before) :detached))))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (enable rosmt-actual-local-chain))))

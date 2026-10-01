@@ -10,15 +10,15 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2005 |
+| Books read | 2007 |
 | Certification roots in the Makefile | 1866 |
 | Books inside the root closure | 1938 |
-| `defthm` and `defthmd` events | 30328 |
-| `defun` events | 19361 |
+| `defthm` and `defthmd` events | 30334 |
+| `defun` events | 19372 |
 | Functions with verified guards | 3553 |
-| Functions declared `:verify-guards nil` and never verified | 2350 |
-| Functions left at the default with an explicit guard | 10585 |
-| Functions left at the default with no guard | 2873 |
+| Functions declared `:verify-guards nil` and never verified | 2351 |
+| Functions left at the default with an explicit guard | 10594 |
+| Functions left at the default with no guard | 2874 |
 | `assert-event` checks | 24064 |
 | `must-fail` checks | 2519 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 348 |
 | Enabled-projection warnings | 55 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2740 |
+| Include-hygiene warnings | 2742 |
 | Host-names warnings | 2193 |
 | Hand-written-record warnings | 18 |
 
@@ -948,6 +948,8 @@ that `make certify` requests.
 | `books/public-exposure.lisp` | root | 36 | 82 | 10/0/72/0 | 0 | 0 | 0 |
 | `books/reader-open-carried.lisp` | root | 6 | 8 | 1/0/7/0 | 0 | 0 | 1 |
 | `books/reader-output-job.lisp` | - | 3 | 12 | 0/0/12/0 | 0 | 0 | 0 |
+| `books/reader-output-storage-tests.lisp` | - | 2 | 2 | 0/0/1/1 | 0 | 0 | 0 |
+| `books/reader-output-storage.lisp` | - | 4 | 9 | 0/1/8/0 | 0 | 0 | 0 |
 | `books/receiver-render-custody.lisp` | - | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/reclaim-admission.lisp` | root | 13 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/reclaim-instant.lisp` | root | 10 | 9 | 0/3/6/0 | 0 | 0 | 1 |
