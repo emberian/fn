@@ -38,7 +38,8 @@ Shared functions, symbols, literal names and runtime thread storage belong to
                        participants
                        (cl-user::fnn-runtime-participants-lock participants)
                        (cl-user::fnn-runtime-participants-changed participants)
-                       policy profile slots
+                       policy profile
+                       (fnn-runtime-profile-envelope-binding-controller profile) slots
                        (svref slots *fn-ats-kindsi*)
                        (svref slots *fn-ats-noncesi*)
                        (svref slots *fn-ats-phasesi*)
