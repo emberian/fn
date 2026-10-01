@@ -1299,6 +1299,15 @@ backing references, descriptors and keys are unissued test fixtures; this is
 neither an installed provider nor a current-policy grant or acceptance route.
 BP framing guards/refinement and the immutable issuer/pin join remain open.
 
+The frozen registered-source diagnostic now uses actual internal controller,
+SAMEPRS, raw storage, pin and token-only readcopy bodies for ASB/crypto bytes,
+including a64-byte tag across frozen leaf255/256. Source refs/pins are produced
+by the actual internal algebra; resource demands and stobj/table factories are
+recording shims. Private stored root/count observations supply framing only in
+this diagnostic. Genuine family/pool commit, token-selected extent/framing begin,
+guards/refinement, native installer and current key/plan authority remain open.
+GCM success still yields no plaintext or verified completion (SCN-1077).
+
 `fn-bps-input-fragment` selects one bounded piece of a retained command,
 including exact literal/source coordinates, count and proposed next offset.
 Zero quantum yields; no cursor advance, ticket, current grant or completion is
