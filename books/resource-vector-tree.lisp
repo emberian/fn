@@ -623,19 +623,33 @@
   :rule-classes :linear
   :hints (("Goal" :in-theory (disable fn-rt-step fn-rv-gen fn-rt-root))))
 
+; A root destroy, spelled as the bank's destroy.
+(defthm fn-rt-root-of-root-destroy
+  (implies (eq (car step) :destroy)
+           (equal (fn-rt-root (cadr (fn-rt-root-step tree step)))
+                  (let ((r (fn-rv-destroy (fn-rt-root tree) (nfix (nth 1 step)) (nth 2 step)
+                                          (fn-rv-spent (fn-rv-drawn (fn-rt-sub (nfix (nth 1 step)) tree))))))
+                    (if (fn-rv-admittedp (car r)) (cadr r) (fn-rt-root tree)))))
+  :hints (("Goal" :in-theory (e/d (fn-rt-root-step fn-rv-step)
+                                  (fn-rv-destroy fn-rv-admittedp fn-rt-sub-after fn-rt-sub
+                                   fn-rt-root fn-rt-subs fn-rt-make)))))
+
 ; A retired token of the root stays retired under tree steps and runs.
 (defthm fn-rt-root-step-keeps-a-retired-token
   (implies (and (natp j) (fn-rv-token-retiredp j g (fn-rt-root tree)))
            (fn-rv-token-retiredp j g (fn-rt-root (cadr (fn-rt-root-step tree step)))))
-  :hints (("Goal" :in-theory (disable fn-rv-step fn-rv-admittedp fn-rt-sub-after fn-rv-gen
-                                      fn-rv-token-retiredp fn-rv-slotp fn-rv-sub-bankp
-                                      fn-rt-root-step fn-rt-root fn-rt-subs fn-rt-make fn-rt-sub)
-           :use ((:instance fn-rv-step-keeps-a-retired-token (bank (fn-rt-root tree))
-                            (op (if (eq (car step) :destroy)
-                                    (list :destroy (nfix (nth 1 step)) (nth 2 step)
-                                          (fn-rv-spent (fn-rv-drawn (fn-rt-sub (nfix (nth 1 step)) tree))))
-                                  step)))
-                 (:instance fn-rt-root-of-root-step)))))
+  :hints (("Goal" :in-theory (disable fn-rv-step fn-rv-destroy fn-rv-admittedp fn-rt-sub-after fn-rv-gen
+                                      fn-rv-token-retiredp fn-rv-slotp fn-rv-sub-bankp fn-rv-spent
+                                      fn-rt-root-step fn-rt-root fn-rt-subs fn-rt-make fn-rt-sub
+                                      fn-rt-root-of-root-step fn-rt-root-of-root-destroy
+                                      fn-rv-step-keeps-a-retired-token fn-rv-destroy-keeps-a-retired-token)
+           :cases ((eq (car step) :destroy))
+           :use ((:instance fn-rv-step-keeps-a-retired-token (bank (fn-rt-root tree)) (op step))
+                 (:instance fn-rv-destroy-keeps-a-retired-token (bank (fn-rt-root tree))
+                            (slot (nfix (nth 1 step))) (gen (nth 2 step))
+                            (x (fn-rv-spent (fn-rv-drawn (fn-rt-sub (nfix (nth 1 step)) tree)))))
+                 (:instance fn-rt-root-of-root-step)
+                 (:instance fn-rt-root-of-root-destroy)))))
 
 (defthm fn-rt-sub-step-keeps-the-root
   (equal (fn-rt-root (cadr (fn-rt-sub-step tree slot gen step))) (fn-rt-root tree))

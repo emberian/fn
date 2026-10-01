@@ -1518,14 +1518,13 @@
                                     fn-rv-token-retiredp fn-rv-slotp fn-rv-slot-count)
                                    (nth update-nth fn-rv-make fn-rv-slots fn-rv-budget fn-rv-drawn))))))
 
-(local
- (defthm fn-rv-destroy-keeps-a-retired-token
+(defthm fn-rv-destroy-keeps-a-retired-token
    (implies (and (natp j) (fn-rv-token-retiredp j g bank))
             (fn-rv-token-retiredp j g (cadr (fn-rv-destroy bank slot gen x))))
    :hints (("Goal" :in-theory (e/d (fn-rv-charge fn-rv-settle fn-rv-refund fn-rv-grow fn-rv-destroy
                                     fn-rv-phase fn-rv-gen fn-rv-row fn-rv-drawnp fn-rv-sub-bankp
                                     fn-rv-token-retiredp fn-rv-slotp fn-rv-slot-count)
-                                   (nth update-nth fn-rv-make fn-rv-slots fn-rv-budget fn-rv-drawn))))))
+                                   (nth update-nth fn-rv-make fn-rv-slots fn-rv-budget fn-rv-drawn)))))
 
 (defthm fn-rv-step-keeps-a-retired-token
   (implies (and (natp j) (fn-rv-token-retiredp j g bank))
