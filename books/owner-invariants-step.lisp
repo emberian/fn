@@ -538,6 +538,18 @@
                                    fn-own-view-okp fn-midx-correspondencep
                                    fn-gidx-build)))))
 
+; The legacy BP/control verb (:legacy-control-submit) enqueues the same
+; control submission with the :relay-v1 source.
+(defthm fn-own-legacy-control-submit-preserves-relation
+  (implies (fn-own-relation o)
+           (fn-own-relation (fn-own-legacy-control-submit o msgid groups octets)))
+  :hints (("Goal" :in-theory (e/d (fn-own-control-submit-result
+                                   fn-own-legacy-control-submit
+                                   fn-own-enqueue fn-own-relation)
+                                  (fn-own-control-decision fn-own-conns-okp
+                                   fn-own-view-okp fn-midx-correspondencep
+                                   fn-gidx-build)))))
+
 (defthm fn-own-operator-submit-preserves-relation
   (implies (fn-own-relation o)
            (fn-own-relation (fn-own-operator-submit o msgid groups octets stored)))
@@ -812,6 +824,7 @@
                                       fn-own-declare-group fn-own-configure
                                       fn-own-take-submission fn-own-outcome
                                       fn-own-control-submit
+                                      fn-own-legacy-control-submit
                                       fn-own-bp-transit-submit
                                       fn-own-bp-transit-outcome
                                       fn-own-operator-submit
