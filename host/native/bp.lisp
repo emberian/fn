@@ -454,14 +454,39 @@ may or may not be durable."
 (defvar *fnn-bp-profile-points* :unset)
 (defvar *fnn-bp-profile-arrival-ms* nil)
 
+(defun fnn-bp-profile-parse (text)
+  "Parse decimal held-row counts separated by spaces or commas."
+  (let ((points nil) (number 0) (digits 0))
+    (loop for character across text
+          do (cond
+               ((or (char= character #\Space) (char= character #\,))
+                (when (plusp digits)
+                  (push number points)
+                  (setq number 0 digits 0)))
+               (t
+                (let ((digit (digit-char-p character 10)))
+                  (unless digit
+                    (return-from fnn-bp-profile-parse
+                      (values nil "expected decimal digits, spaces or commas")))
+                  (when (= digits 20)
+                    (return-from fnn-bp-profile-parse
+                      (values nil "number exceeds 20 digits")))
+                  (setq number (+ (* number 10) digit))
+                  (incf digits)))))
+    (when (plusp digits) (push number points))
+    (if points
+        (values (nreverse points) nil)
+      (values nil "no numbers"))))
+
 (defun fnn-bp-profile-points ()
   "The held-row counts FN_BP_TEST_PROFILE names, profiling on first use."
   (when (eq *fnn-bp-profile-points* :unset)
     (let ((text (fnn-developer-selector "FN_BP_TEST_PROFILE")))
       (setq *fnn-bp-profile-points*
             (and text
-                 (with-input-from-string (in (substitute #\Space #\, text))
-                   (loop for n = (read in nil nil) while (integerp n) collect n))))
+                 (multiple-value-bind (points reason) (fnn-bp-profile-parse text)
+                   (when reason (fnn-err "FN_BP_TEST_PROFILE refused: ~a" reason))
+                   points)))
       (when *fnn-bp-profile-points*
         (let ((symbols nil))
           (dolist (name +fnn-bp-profile-names+)
