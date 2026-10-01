@@ -17,8 +17,11 @@
 ; above it -- is then included unchanged: its certificate is the generic's,
 ; and its functions run over the columns.  An image that includes THIS
 ; book before any book that names `fn-cat' holds its rows on the columns;
-; one that does not keeps the old implementation (the SELECTABLE
-; alternative: host/native/build.lisp chooses).
+; one that does not keeps the old implementation.  NO image includes it
+; yet: the selection in the image's include order (a paged variant of
+; books/image-world.lisp chosen by tools/build_native_host.sh) is lane
+; paged-catalog's open item, and the old implementation stays the default
+; until the reader natives pass on the paged image.
 ;
 ; What runs at certification time (skipped by include-book): a clear, two
 ; commits of ground held rows, a withdrawal, a redecision and the reads,

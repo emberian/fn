@@ -50,6 +50,7 @@
 (in-package "ACL2")
 (include-book "catalog-logic")
 (include-book "def-representation")
+(include-book "def-representation-tree")
 ;; The tree codec's executables with their guards verified, and the tree
 ;; recognizer whose program is octets (fn-sccb-treep); its closure carries
 ;; the frame trailer and the digest attachments, which no recognizer or
@@ -79,7 +80,7 @@
   (msgid :octets)
   (wpres :bool) (wat :u64) (wby :u64)
   (esc :bool)
-  (aux :octets))
+  (aux :tree))
 
 ; -----------------------------------------------------------------------------
 ; 2. The foundation: the row store beside the old foundation (its tables,
@@ -500,20 +501,63 @@
                  (mv fn-crow fn-cat$c))
                fn-cat$p)))
 
+;; The row with its remainder as the TREE (the record NAME-APPEND-T takes:
+;; its executable walks the tree into the pool, books/def-representation-tree.lisp).
+(defun fn-cp-row-t-of (h tree)
+  (declare (xargs :guard t))
+  (let ((w (fn-held-withdrawn h)))
+    (list (fn-cp-u64 (fn-held-sequence h)) (fn-cp-u64 (fn-held-txid h))
+          (fn-cp-u64 (fn-held-generation h))
+          (if (fn-cp-smallp (fn-held-payload h)) (fn-held-payload h) 0)
+          (fn-cp-u64 (fn-held-charge h)) (fn-cp-u64 (fn-held-stamp h))
+          (fn-cp-msgid-octets h)
+          (consp w)
+          (if (and (consp w) (fn-cp-smallp (car w))) (car w) 0)
+          (if (and (consp w) (fn-cp-smallp (cdr w))) (cdr w) 0)
+          (fn-cp-escapedp h)
+          tree)))
+
+(defthm fn-cp-tree-enc-of-row-t-of
+  (implies (fn-sccb-treep (fn-cp-tree-of h))
+           (equal (fn-crow-tree-enc (fn-cp-row-t-of h (fn-cp-tree-of h)))
+                  (fn-cp-row-of h)))
+  :hints (("Goal" :in-theory (e/d (fn-cp-row-of) (fn-cp-tree-of fn-sccb-treep fn-scc-program)))))
+
+(local
+ (defthm fn-cp-row-t-of-shape
+   (and (true-listp (fn-cp-row-t-of h tree))
+        (equal (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (fn-cp-row-t-of h tree)))))))))))))
+               tree))
+   :hints (("Goal" :in-theory (enable fn-cp-row-t-of)))))
+
 ; A row appended at the count: the columns appended, the overflow cells
-; grown as the old rows array was and the cell written.
+; grown as the old rows array was and the cell written.  Executed, the
+; remainder is walked into the pool (NAME-APPEND-T) and its encodability
+; checked without an octet list (adt-tree-okp): before it the commit
+; consed the program by nested `append' and checked it twice, 38 KB a
+; commit (lane paged-catalog-3's measurement in its LANEDUMP).
 (defun fn-cat$p-append-row (h fn-cat$p)
   (declare (xargs :stobjs fn-cat$p :guard (fn-cat$p-wfp fn-cat$p)
-                  :guard-hints (("Goal" :do-not-induct t))))
-  (let ((r (fn-cp-row-of h)))
+                  :guard-hints (("Goal" :do-not-induct t
+                                 :in-theory (e/d (fn-cp-overflow-of adt-tree-okp-is-sccb-treep)
+                                                 (fn-cp-row-of fn-cp-row-t-of fn-cp-tree-of
+                                                  fn-sccb-treep fn-cat-rowp))))))
+  (let* ((tree (fn-cp-tree-of h))
+         (ok (adt-tree-okp tree)))
     (stobj-let ((fn-crow (fn-cat$p-rows fn-cat$p)) (fn-cat$c (fn-cat$p-tab fn-cat$p)))
                (fn-crow fn-cat$c)
                (let* ((seq (fn-cat$c-count fn-cat$c))
-                      (fn-crow (fn-crow-append r fn-crow))
+                      (fn-crow (mbe :logic (fn-crow-append (fn-cp-row-of h) fn-crow)
+                                    :exec (if ok
+                                              (fn-crow-append-t (fn-cp-row-t-of h tree) fn-crow)
+                                            (fn-crow-append (fn-cp-row-of h) fn-crow))))
                       (fn-cat$c (if (< seq (fn-cat$c-rows-length fn-cat$c))
                                     fn-cat$c
                                   (resize-fn-cat$c-rows (+ 1 (* 2 seq)) fn-cat$c)))
-                      (fn-cat$c (update-fn-cat$c-rowsi seq (fn-cp-overflow-of h) fn-cat$c)))
+                      (fn-cat$c (update-fn-cat$c-rowsi
+                                 seq (mbe :logic (fn-cp-overflow-of h)
+                                          :exec (if (and ok (fn-cat-rowp h)) nil h))
+                                 fn-cat$c)))
                  (mv fn-crow fn-cat$c))
                fn-cat$p)))
 

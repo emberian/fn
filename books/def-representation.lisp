@@ -307,24 +307,42 @@
 ; spelling in two packages never collides.  (Codex t10 found the names
 ; interned in ACL2 and relocated them by a double expansion and a diff;
 ; deputy-1 2026-10-01 put the rule where the names are made.)
-(defun rep-instance-events (name fields0 scalar generic invariant invariant-lemmas)
-  (let* ((fields (adt-norm-fields fields0))
+; A `(F :tree)' field is an :octets field (the schema and the logical value
+; are unchanged) with the extra export NAME-APPEND-T (books/proto/adt.lisp,
+; `adt-tree-exec-events'; books/def-representation-tree.lisp).
+(defun rep-tree-names (fields0)
+  (cond ((atom fields0) nil)
+        ((eq (cadr (car fields0)) :tree)
+         (cons (car (car fields0)) (rep-tree-names (cdr fields0))))
+        (t (rep-tree-names (cdr fields0)))))
+
+(defun rep-untree (fields0)
+  (cond ((atom fields0) nil)
+        ((eq (cadr (car fields0)) :tree)
+         (cons (list (car (car fields0)) :octets) (rep-untree (cdr fields0))))
+        (t (cons (car fields0) (rep-untree (cdr fields0))))))
+
+(defun rep-instance-events (name fields1 scalar generic invariant invariant-lemmas)
+  (let* ((trees (rep-tree-names fields1))
+         (fields0 (rep-untree fields1))
+         (fields (adt-norm-fields fields0))
          (impl (if generic (adt-sym name "-COLS") name))
          (instance (if scalar
                        (rep-scalar-events impl fields invariant invariant-lemmas)
-                     (defadt-fn impl fields0))))
+                     (defadt-fn-trees impl fields0 trees))))
     `(progn
        ,instance
        ,@(if generic (rep-generic-events name impl fields scalar) nil)
        (table fn-generated ',name
               '(:def-representation :scalar ,scalar :generic ,generic
-                :implementation ,impl :invariant ,invariant)))))
+                :implementation ,impl :invariant ,invariant :trees ,trees)))))
 
 (defun def-representation-fn (name fields0 scalar generic invariant invariant-lemmas state)
   (declare (xargs :stobjs state))
   (let* ((wrld (w state))
          (ctx 'def-representation)
-         (fields (adt-norm-fields fields0))
+         (trees (rep-tree-names fields0))
+         (fields (adt-norm-fields (rep-untree fields0)))
          (roots (append '(adt-corr adt-seq-p adt-scalar-seq-p)
                         (if invariant (list invariant) nil)))
          (attached (and (symbol-listp roots) (rep-attached-ancestors roots wrld))))
@@ -333,6 +351,10 @@
       (er soft ctx "the name must be a non-nil symbol; ~x0 is not." name))
      ((or (atom fields) (not (adt-schemap (adt-schema-of fields))))
       (er soft ctx "~x0: the fields must be a non-empty list of (FIELD KIND) with KIND one of :u8 :u32 :u64 :bool :octets (:nat B) (:enum ...); ~x1 is not." name fields0))
+     ((and trees (or scalar generic))
+      (er soft ctx "~x0: a :tree field is supported without :scalar and :generic in this stage." name))
+     ((and trees (not (function-symbolp 'adt-g-tw-tree wrld)))
+      (er soft ctx "~x0: a :tree field needs books/def-representation-tree.lisp included first (the writer and its theorems)." name))
      ((and scalar (not (equal (len fields) 1)))
       (er soft ctx "~x0: :scalar t needs exactly one field; ~x1 were given." name (len fields)))
      ((and invariant (not (and (symbolp invariant) (function-symbolp invariant wrld)
