@@ -213,6 +213,9 @@ class Report:
     cache: str
     books: int = 0
     published: int = 0
+    # Exact successfully verified cache coordinates, including already present
+    # entries. Consumers can mirror this publication without crawling a cache.
+    cache_entries: list[str] = field(default_factory=list)
     already: int = 0
     installed: int = 0
     kept: int = 0
@@ -1708,6 +1711,8 @@ def publish(root: Path, cache: Path, manifests: list[dict] | None = None,
                 and content_hash(fasl) == record.fasl else None)
         outcome = write_entry(directory, name, key, listing, cert, port, record,
                               where, origin_host, kind, fasl)
+        if outcome != "uncompiled":
+            report.cache_entries.append(directory.relative_to(cache).as_posix())
         if outcome == "uncompiled":
             report.uncompiled.append(name)
         elif outcome == "already":

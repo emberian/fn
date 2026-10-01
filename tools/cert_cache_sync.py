@@ -45,9 +45,10 @@ import certs  # noqa: E402
 # Runs on a box: `scan CACHE SINCE` prints each entry directory changed since
 # SINCE (epoch seconds) with its toolchain identity; `have CACHE` reads entry
 # paths on stdin and prints those the cache holds; `toolchains CACHE` counts
-# the identities of the cache's newest entries.
+# the identities of the cache's newest entries. `selected CACHE` reads exact
+# key/origin coordinates on stdin and returns only those entries' metadata.
 REMOTE = r'''
-import json, os, sys
+import json, os, re, sys
 mode, cache = sys.argv[1], os.path.expanduser(sys.argv[2])
 def meta(path):
     try:
@@ -68,6 +69,14 @@ if mode == "scan":
             found = meta(path)
             if found is not None:
                 print(json.dumps([path, found.get("toolchain_identity")]))
+elif mode == "selected":
+    for line in sys.stdin:
+        path = line.strip()
+        if not re.fullmatch(r"[A-Za-z0-9_-]+/[A-Za-z0-9_-]+", path):
+            raise SystemExit("invalid cache entry coordinate")
+        found = meta(path)
+        if found is not None:
+            print(json.dumps([path, found.get("toolchain_identity")]))
 elif mode == "have":
     for line in sys.stdin:
         path = line.strip()
@@ -131,10 +140,12 @@ def configured_identities(host: str, run=subprocess.run) -> set[str]:
                  and getattr(node.targets[0], "id", None) == "HOSTS")
     source = (ROOT / "tools" / "acl2_toolchain.py").read_text(encoding="utf-8")
     found: set[str] = set()
+    seen: set[str] = set()
     for role in ("acl2", "image_acl2"):
         launcher = hosts.get(host, {}).get(role)
-        if not launcher:
+        if not launcher or launcher in seen:
             continue
+        seen.add(launcher)
         answer = run(["ssh", host, "python3 - identity " + shlex.quote(launcher)],
                      input=source, capture_output=True, text=True)
         identity = (answer.stdout or "").strip()
@@ -148,24 +159,42 @@ def configured_identities(host: str, run=subprocess.run) -> set[str]:
 
 def sync(source: str, target: str, hours: float, dry_run: bool = False,
          all_toolchains: bool = False, run=subprocess.run,
-         since: float | None = None) -> int:
+         since: float | None = None,
+         entries: list[str] | None = None) -> int:
     """Copy SOURCE's cache entries changed since SINCE (epoch seconds; default
-    HOURS ago) that TARGET lacks and can use into TARGET's cache."""
+    HOURS ago) that TARGET lacks and can use into TARGET's cache. ENTRIES,
+    when supplied, selects exact publication coordinates instead of a scan."""
     if since is None:
         since = time.time() - hours * 3600
     else:
         hours = max(0.0, (time.time() - since) / 3600)
     source_cache, target_cache = cache_of(source), cache_of(target)
-    scanned = [tuple(json.loads(line)) for line in
-               remote(source, ["scan", source_cache, str(since)], run=run).splitlines()
+    # Farm publication already knows the exact closure-key/origin coordinates.
+    # Read their current metadata; never treat the caller's list as proof.
+    selected = (remote(source, ["selected", source_cache],
+                       "\n".join(dict.fromkeys(entries)), run=run)
+                if entries is not None else
+                remote(source, ["scan", source_cache, str(since)], run=run))
+    scanned = [tuple(json.loads(line)) for line in selected.splitlines()
                if line.strip()]
+    if not scanned:
+        print(f"{source} -> {target}: no matching cache entries to mirror")
+        return 0
     present = set(remote(target, ["have", target_cache],
                          "\n".join(path for path, _ in scanned), run=run).split())
-    usable = set(json.loads(remote(target, ["toolchains", target_cache], run=run) or "{}"))
-    usable |= configured_identities(target, run=run)
+    usable = configured_identities(target, run=run)
+    # Common farm case: every missing entry uses the configured launcher.
+    # The historical-cache fallback changes nothing about which entries may
+    # be copied, but is unnecessary when those identities already suffice.
+    unknown = {identity for path, identity in scanned if path not in present} - usable
+    if unknown and not all_toolchains:
+        usable |= set(json.loads(remote(target, ["toolchains", target_cache],
+                                        run=run) or "{}"))
     decided = plan(scanned, present, usable, all_toolchains)
-    print(f"{source} -> {target}: {decided['scanned']} entries changed in the last "
-          f"{hours:.3g} h; {decided['present']} already there; "
+    scope = (f"entries selected from this publication" if entries is not None
+             else f"entries changed in the last {hours:.3g} h")
+    print(f"{source} -> {target}: {decided['scanned']} {scope}; "
+          f"{decided['present']} already there; "
           f"{len(decided['copy'])} to copy; {decided['other_toolchain']} left: their ACL2 "
           f"toolchain is not one {target}'s cache uses")
     if decided["other_toolchain"]:

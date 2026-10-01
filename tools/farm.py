@@ -154,8 +154,8 @@ RUN = subprocess.run
 SLEEP = time.sleep
 
 
-def mirror_cache(host: str, since: float) -> int:
-    """Copy the entries HOST's cache gained since SINCE into the other box's
+def mirror_cache(host: str, since: float, entries: list[str] | None = None) -> int:
+    """Copy ENTRIES (or, without them, entries gained since SINCE) into the other box's
     cache (tools/cert_cache_sync.py), so a certificate made on either box
     installs on the other with no recertification.  Both boxes run one ACL2
     toolchain (HOSTS); the sync still skips an entry the target cannot use."""
@@ -163,7 +163,7 @@ def mirror_cache(host: str, since: float) -> int:
     others = [box for box in HOSTS if box != host]
     code = 0
     for other in others:
-        code = max(code, cert_cache_sync.sync(host, other, 0.0, since=since))
+        code = max(code, cert_cache_sync.sync(host, other, 0.0, since=since, entries=entries))
     return code
 
 
@@ -1259,10 +1259,12 @@ def fetch(host: str, identifier: str, root: Path,
     (root / "build" / "farm").mkdir(parents=True, exist_ok=True)
     (root / "build" / "farm" / f"{identifier}.log").write_text(log, encoding="utf-8")
     archived: dict[str, int] = {}
+    fetched_manifests: list[dict] = []
     for directory in sorted(set(EVIDENCE.findall(log))):
         local = root / directory
         local.mkdir(parents=True, exist_ok=True)
         run(["rsync", "-a", f"{host}:{remote}/{directory}/", f"{local}/"], check=False)
+        fetched_manifests.extend(certs.load_manifests(root, local / "manifest.json"))
         # The fetched copy lands under `build/`, which is ignored and which a
         # worktree removal takes with it, so the manifest is also filed under
         # `planning/evidence/manifests/`.  Its `archived_from` names the box
@@ -1278,7 +1280,7 @@ def fetch(host: str, identifier: str, root: Path,
             ", ".join(f"{key} {value}" for key, value in sorted(archived.items()))))
     for directory in certs.BOOK_DIRECTORIES:
         run(["rsync", "-a", "--update", "--include=*/", "--include=*.cert",
-             "--include=*.port", "--exclude=*",
+             "--include=*.port", "--include=*.fasl", "--exclude=*",
              f"{host}:{remote}/{directory}/", f"{root}/{directory}/"], check=False)
     if run_record(root, identifier).get("no_publish"):
         # A measurement run (`submit --no-publish`): its pairs stay in its
@@ -1293,6 +1295,17 @@ def fetch(host: str, identifier: str, root: Path,
                  check=False)
     for line in report_lines(shared.stdout.strip().splitlines(), verbose):
         print(f"{host}: {line}")
+    # Publish only this run's fetched, matching evidence locally first. The
+    # verified report supplies exact remote cache coordinates, including pairs
+    # already published by the per-book runner, without a time-window crawl.
+    if not fetched_manifests:
+        print(f"{identifier}: no certification manifest came back for this run; "
+              "nothing to publish into the local cache", file=sys.stderr)
+    names = [name for name in certs.certified_books(fetched_manifests, str(remote))
+             if isinstance(name, str) and BOOK_NAME.fullmatch(name)]
+    report = certs.publish(root, certs.cache_directory(), fetched_manifests,
+                           names=names, origin=str(remote), origin_host=host,
+                           origin_kind="run")
     if shared.returncode != 0 or not shared.stdout.strip():
         # A `cd` that misses (exit 9) or an ssh that dies prints nothing, and
         # a silent sweep reads exactly like a sweep that found nothing to do.
@@ -1302,8 +1315,8 @@ def fetch(host: str, identifier: str, root: Path,
     elif (cache or HOSTS.get(host, {}).get("cache")) == HOSTS.get(host, {}).get("cache"):
         # One toolchain on both boxes: the other box's cache gets this run's
         # pairs too, so neither box certifies what the other already did.
-        # The window starts at submit (minus slack for clock skew); an entry
-        # the other box already holds is not copied again.  A run with its
+        # Exact verified run coordinates avoid sweeping either global cache;
+        # an entry the other box already holds is not copied again.  A run with its
         # own cache (a measurement's isolation, host_settings) is not mirrored.
         submitted = run_record(root, identifier).get("submitted_at")
         try:
@@ -1311,23 +1324,13 @@ def fetch(host: str, identifier: str, root: Path,
         except (TypeError, ValueError):
             since = time.time() - 24 * 3600
         try:
-            if MIRROR(host, since) != 0:
+            if MIRROR(host, since, report.cache_entries) != 0:
                 print(f"{host}: mirroring the run's pairs to the other box "
                       f"failed; `tools/cert_cache_sync.py {host} OTHER` again",
                       file=sys.stderr)
         except SystemExit as error:
             print(f"{host}: mirroring the run's pairs to the other box "
                   f"failed: {error}", file=sys.stderr)
-    # The pairs were produced under the *remote* path, which is what their
-    # sub-book entries name; record that as their origin.
-    manifests = certs.load_manifests(root)
-    if not manifests:
-        print(f"{identifier}: no certification manifest came back under "
-              f"{root}/build/acl2; nothing to publish into the local cache",
-              file=sys.stderr)
-    report = certs.publish(root, certs.cache_directory(), manifests,
-                           origin=str(remote), origin_host=host,
-                           origin_kind="run")
     for line in report_lines(report.lines(), verbose):
         print(line)
 

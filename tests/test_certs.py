@@ -377,7 +377,10 @@ class PublishTests(unittest.TestCase):
             self.assertEqual(meta["origin_root"], str(root))
             self.assertEqual(meta["closure"], listing)
             self.assertEqual(len(meta["closure"]), 2)
-            self.assertEqual(certs.publish(root, cache).already, 1)
+            self.assertEqual(report.cache_entries, [where.relative_to(cache).as_posix()])
+            repeated = certs.publish(root, cache)
+            self.assertEqual(repeated.already, 1)
+            self.assertEqual(repeated.cache_entries, report.cache_entries)
 
     def test_a_run_keeps_vouching_for_a_book_after_a_comment_edit(self):
         # The manifest records forms beside bytes; read against today's tree
@@ -432,6 +435,7 @@ class PublishTests(unittest.TestCase):
             refused = certs.publish(root, root / "cache2", [manifest], ["books/mid"],
                                     origin="/tank/fn/no-such-tree")
             self.assertEqual(refused.published, 0)
+            self.assertEqual(refused.cache_entries, [])
             self.assertIn("image rule", refused.unverified[0])
 
     def test_a_certificate_with_no_manifest_is_never_published(self):

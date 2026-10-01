@@ -51,7 +51,7 @@ class PlanTests(unittest.TestCase):
                       "2 left", printed.getvalue())
         self.assertIn("one toolchain on both boxes", printed.getvalue())
         self.assertEqual([command[1] for command in calls],
-                         ["hbox", "persvati", "persvati", "persvati", "persvati"])
+                         ["hbox", "persvati", "persvati", "persvati"])
         self.assertIn("tc-y", printed.getvalue())
         self.assertFalse(any(command[0] == "rsync" for command in calls))
 
@@ -81,10 +81,64 @@ class PlanTests(unittest.TestCase):
                          if command[-1].startswith("python3 - identity ")]
         self.assertEqual([command[-1] for command, _ in fingerprinted],
                          ["python3 - identity /tank/fn/toolchains/w28/acl2-literal-4g-tls64k",
-                          "python3 - identity /tank/fn/toolchains/w28/acl2-literal-4g-tls64k"])
+                          ])
         self.assertTrue(all("def fingerprint" in source for _, source in fingerprinted))
         self.assertEqual(cert_cache_sync.plan(self.SCANNED, set(), {"tc-old", "tc-a"},
                                               False)["copy"], ["k1/o1", "k3/o2"])
+
+    def test_selected_run_entries_use_metadata_without_either_global_scan(self):
+        calls = []
+
+        def run(command, input="", **_):
+            calls.append((command, input))
+            script = command[-1]
+            if " selected " in script:
+                self.assertEqual(input, "k1/o1\nk3/o2")
+                out = '\n'.join(json.dumps(item) for item in self.SCANNED
+                                if item[0] in input.splitlines())
+            elif " have " in script:
+                out = "k3/o2\n"
+            elif script.startswith("python3 - identity "):
+                out = "tc-a\n"
+            else:
+                self.fail(f"unexpected command (a global crawl): {script}")
+            return SimpleNamespace(returncode=0, stdout=out, stderr="")
+
+        printed = io.StringIO()
+        with redirect_stdout(printed):
+            self.assertEqual(cert_cache_sync.sync(
+                "hbox", "persvati", 0, dry_run=True, run=run,
+                entries=["k1/o1", "k3/o2", "k1/o1"]), 0)
+        self.assertIn("1 already there; 1 to copy", printed.getvalue())
+        self.assertEqual(len(calls), 3)
+
+    def test_empty_exact_run_does_not_probe_any_remote_cache(self):
+        def run(command, **_):
+            self.assertIn(" selected ", command[-1])
+            return SimpleNamespace(returncode=0, stdout="", stderr="")
+        with redirect_stdout(io.StringIO()):
+            self.assertEqual(cert_cache_sync.sync("hbox", "persvati", 0,
+                             entries=[], run=run), 0)
+
+    def test_selected_remote_lookup_never_enumerates_the_cache(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as temporary:
+            cache = pathlib.Path(temporary)
+            (cache / "k1" / "o1").mkdir(parents=True)
+            (cache / "k1" / "o1" / "meta.json").write_text(
+                json.dumps({"toolchain_identity": "actual-tc"}))
+            script = ("import os\n"
+                      "def forbidden(*args): raise AssertionError('cache crawl')\n"
+                      "os.scandir = forbidden\n" + cert_cache_sync.REMOTE)
+            found = subprocess.run([sys.executable, "-c", script, "selected",
+                                    str(cache)], input="k1/o1\nmissing/origin\n",
+                                   capture_output=True, text=True)
+            self.assertEqual(found.returncode, 0, found.stderr)
+            self.assertEqual(found.stdout.splitlines(), ['["k1/o1", "actual-tc"]'])
+            invalid = subprocess.run([sys.executable, "-c", script, "selected",
+                                      str(cache)], input="../../elsewhere\n",
+                                     capture_output=True, text=True)
+            self.assertNotEqual(invalid.returncode, 0)
 
     def test_a_home_relative_cache_reaches_rsync_without_the_tilde(self):
         self.assertEqual(cert_cache_sync.rsync_path("~/fn-certcache"), "fn-certcache")

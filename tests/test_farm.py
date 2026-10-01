@@ -34,7 +34,7 @@ BOX_WAITS = []
 farm.BOXES = lambda words, **_: BOX_WAITS.append(words) or SimpleNamespace(returncode=0)
 # No test mirrors into a real box's cache (tools/cert_cache_sync.py).
 MIRRORS = []
-farm.MIRROR = lambda host, since: MIRRORS.append((host, since)) or 0
+farm.MIRROR = lambda host, since, entries=None: MIRRORS.append((host, since)) or 0
 
 
 COHERENT = ("install-set: 3 books, cache /home/ember/fn-certcache\n"
@@ -708,6 +708,32 @@ class WaitTests(unittest.TestCase):
                     self.assertEqual(MIRRORS, [("hbox", submitted - 600)])
                 else:
                     self.assertEqual(MIRRORS, [])
+
+    def test_fetch_mirrors_only_coordinates_verified_by_its_fetched_manifest(self):
+        fake = Fake(["0"], log=self.LOG)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            with driving(fake, root / "cache"):
+                identifier = farm.submit("hbox", root, [], jobs=2,
+                                         timeout_seconds=60, affected_by=[],
+                                         remote=Path("/tank/fn/tree"))
+                selected = {"run": "this-run"}
+                report = farm.certs.Report(action="publish", cache="/cache",
+                                           cache_entries=["key/origin"])
+                with mock.patch.object(farm.certs, "load_manifests",
+                                       return_value=[selected]), \
+                     mock.patch.object(farm.certs, "certified_books",
+                                       return_value={"books/alpha": []}), \
+                     mock.patch.object(farm.certs, "publish", return_value=report) as publish, \
+                     mock.patch.object(farm, "MIRROR", return_value=0) as mirror:
+                    farm.fetch("hbox", identifier, root, Path("/tank/fn/tree"))
+                self.assertEqual(publish.call_args.args[2], [selected])
+                self.assertEqual(publish.call_args.kwargs["names"], ["books/alpha"])
+                self.assertEqual(mirror.call_args.args[2], ["key/origin"])
+                cert_copies = [command for command in fake.rsyncs()
+                               if "--include=*.cert" in command]
+                self.assertTrue(cert_copies)
+                self.assertTrue(all("--include=*.fasl" in command for command in cert_copies))
 
     def test_a_no_publish_run_publishes_nowhere(self):
         # tooling-obstructions: a measurement run seeded both caches.
