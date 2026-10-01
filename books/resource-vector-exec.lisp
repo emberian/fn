@@ -289,7 +289,7 @@
       (fn-rl-store-words-from (+ 1 i) (cdr words) fn-resource-ledger))))
 
 (defun fn-rl-resize-all (n fn-resource-ledger)
-  (declare (xargs :stobjs fn-resource-ledger :guard (natp n)))
+  (declare (xargs :stobjs fn-resource-ledger :guard (unsigned-byte-p 32 n)))
   (let* ((fn-resource-ledger (resize-fn-rl-phases n fn-resource-ledger))
          (fn-resource-ledger (resize-fn-rl-gens n fn-resource-ledger))
          (fn-resource-ledger (resize-fn-rl-c0 n fn-resource-ledger))

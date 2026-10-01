@@ -33,7 +33,7 @@
 (assert! (not (fn-prs-fundedp *rvrt-b* *rvrt-u* *rvrt-r* *rvrt-c-big*)))
 (assert! (not (fn-rv-okp (fn-rv-prs-root *rvrt-b* *rvrt-u* *rvrt-r* *rvrt-c-big*))))
 (assert! (equal (fn-rv-row 1 (fn-rv-prs-root *rvrt-b* *rvrt-u* *rvrt-r* *rvrt-c*))
-                (cons 2 (fn-rv-of-prs *rvrt-r*))))
+                (list* 2 0 (fn-rv-of-prs *rvrt-r*))))
 (assert! (equal (fn-rv-slack (fn-rv-prs-root *rvrt-b* *rvrt-u* *rvrt-r* *rvrt-c*))
                 (list (* 8 *rvrt-mib*) 0 10 0 93 0 0 0 0)))
 

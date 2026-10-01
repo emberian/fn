@@ -624,18 +624,28 @@
   :hints (("Goal" :in-theory (disable fn-rt-step fn-rv-gen fn-rt-root))))
 
 ; A retired token of the root stays retired under tree steps and runs.
+(defthm fn-rt-root-step-keeps-a-retired-token
+  (implies (and (natp j) (fn-rv-token-retiredp j g (fn-rt-root tree)))
+           (fn-rv-token-retiredp j g (fn-rt-root (cadr (fn-rt-root-step tree step)))))
+  :hints (("Goal" :in-theory (disable fn-rv-step fn-rv-admittedp fn-rt-sub-after fn-rv-gen
+                                      fn-rv-token-retiredp fn-rv-slotp fn-rv-sub-bankp
+                                      fn-rt-root-step fn-rt-root fn-rt-subs fn-rt-make fn-rt-sub)
+           :use ((:instance fn-rv-step-keeps-a-retired-token (bank (fn-rt-root tree))
+                            (op (if (eq (car step) :destroy)
+                                    (list :destroy (nfix (nth 1 step)) (nth 2 step)
+                                          (fn-rv-spent (fn-rv-drawn (fn-rt-sub (nfix (nth 1 step)) tree))))
+                                  step)))
+                 (:instance fn-rt-root-of-root-step)))))
+
+(defthm fn-rt-sub-step-keeps-the-root
+  (equal (fn-rt-root (cadr (fn-rt-sub-step tree slot gen step))) (fn-rt-root tree))
+  :hints (("Goal" :in-theory (disable fn-rv-step fn-rv-admittedp fn-rv-slotp fn-rv-sub-bankp))))
+
 (defthm fn-rt-step-keeps-a-retired-token
   (implies (and (natp j) (fn-rv-token-retiredp j g (fn-rt-root tree)))
            (fn-rv-token-retiredp j g (fn-rt-root (cadr (fn-rt-step tree op)))))
-  :hints (("Goal" :in-theory (disable fn-rv-step fn-rv-admittedp fn-rt-sub-after fn-rv-gen
-                                      fn-rv-token-retiredp fn-rv-slotp fn-rv-sub-bankp
-                                      fn-rt-root-step fn-rt-root fn-rt-subs fn-rt-make)
-           :use ((:instance fn-rv-step-keeps-a-retired-token (bank (fn-rt-root tree))
-                            (op (if (eq (car (cdr op)) :destroy)
-                                    (list :destroy (nfix (nth 1 (cdr op))) (nth 2 (cdr op))
-                                          (fn-rv-spent (fn-rv-drawn (fn-rt-sub (nfix (nth 1 (cdr op))) tree))))
-                                  (cdr op))))
-                 (:instance fn-rt-root-of-root-step (step (cdr op)))))))
+  :hints (("Goal" :in-theory (e/d (fn-rt-step)
+                                  (fn-rt-root-step fn-rt-sub-step fn-rv-token-retiredp fn-rt-root)))))
 
 (defthm fn-rt-run-keeps-a-retired-token
   (implies (and (natp j) (fn-rv-token-retiredp j g (fn-rt-root tree)))

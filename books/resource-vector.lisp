@@ -1268,15 +1268,24 @@
   :hints (("Goal" :in-theory (e/d (fn-rv-phase fn-rv-gen) (fn-rv-row fn-rv-draw))
            :use fn-rv-draw-charges-exactly-the-demand)))
 
+(defthm fn-rv-refused-draw-answers-the-bank
+  (implies (not (equal (car (fn-rv-draw bank slot d)) :drawn))
+           (and (equal (cadr (fn-rv-draw bank slot d)) bank)
+                (equal (caddr (fn-rv-draw bank slot d)) nil)))
+  :hints (("Goal" :in-theory (e/d (fn-rv-draw fn-rv-charge)
+                                  (nth update-nth fn-rv-make fn-rv-slots fn-rv-budget fn-rv-drawn)))))
+
 ; KEYSTONE (Codex review r06 F2, the slot-reuse ABA).  A completion
 ; replayed after its slot was drawn again is :stale and leaves the bank:
-; the first draw's token G, any run, a second admitted draw of the slot,
-; then the settle of G.
+; the first draw's token, any run, a second admitted draw of the slot,
+; then the settle of the token.  (The first draw's admission is not
+; assumed: a hypothesis (equal (car (fn-rv-draw bank slot d1)) :drawn) was
+; removed after proving this weakened theorem -- a refused draw answers no
+; token, and settling no token is :stale as well.)
 (defthm fn-rv-replayed-completion-is-stale
-  (implies (and (equal (car (fn-rv-draw bank slot d1)) :drawn)
-                (equal (car (fn-rv-draw (cadr (fn-rv-run (cadr (fn-rv-draw bank slot d1)) ops))
-                                        slot d2))
-                       :drawn))
+  (implies (equal (car (fn-rv-draw (cadr (fn-rv-run (cadr (fn-rv-draw bank slot d1)) ops))
+                                   slot d2))
+                  :drawn)
            (let ((again (cadr (fn-rv-draw (cadr (fn-rv-run (cadr (fn-rv-draw bank slot d1)) ops))
                                           slot d2)))
                  (token (caddr (fn-rv-draw bank slot d1))))
@@ -1284,10 +1293,13 @@
                   (equal (cadr (fn-rv-settle again slot token)) again))))
   :hints (("Goal"
            :in-theory (e/d (fn-rv-settle fn-rv-drawnp)
-                           (fn-rv-draw fn-rv-run fn-rv-slotp fn-rv-phase fn-rv-gen fn-rv-row
+                           ((:definition fn-rv-draw) (:definition fn-rv-run) (:definition fn-rv-slotp)
+                            (:definition fn-rv-phase) (:definition fn-rv-gen) (:definition fn-rv-row)
                             fn-rv-draw-admits-exactly-within-the-budget
                             fn-rv-draw-charges-exactly-the-demand fn-rv-phase-and-gen-of-draw))
-           :use ((:instance fn-rv-draw-charges-exactly-the-demand (demand d1))
+           :cases ((equal (car (fn-rv-draw bank slot d1)) :drawn))
+           :use ((:instance fn-rv-refused-draw-answers-the-bank (d d1))
+                 (:instance fn-rv-draw-charges-exactly-the-demand (demand d1))
                  (:instance fn-rv-phase-and-gen-of-draw (demand d1))
                  (:instance fn-rv-phase-and-gen-of-draw
                             (bank (cadr (fn-rv-run (cadr (fn-rv-draw bank slot d1)) ops)))

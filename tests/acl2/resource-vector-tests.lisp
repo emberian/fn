@@ -322,14 +322,12 @@
 
 ;; The ABA keystone: the first draw's token, a run (its settle), a second
 ;; admitted draw of the slot; the replayed token is :stale.  The removal
-;; witness for the second draw: a run that does not settle the slot, so the
-;; second draw is :slot-busy and the replayed token (still the live one)
-;; settles.
+;; witness: a run that does not settle the slot, so the second draw is
+;; :slot-busy and the token (still the live one) settles.
 (defkeystone rvt-replayed-completion-is-stale
-  (implies (and (equal (car (fn-rv-draw bank slot d1)) :drawn)
-                (equal (car (fn-rv-draw (cadr (fn-rv-run (cadr (fn-rv-draw bank slot d1)) ops))
-                                        slot d2))
-                       :drawn))
+  (implies (equal (car (fn-rv-draw (cadr (fn-rv-run (cadr (fn-rv-draw bank slot d1)) ops))
+                                   slot d2))
+                  :drawn)
            (let ((again (cadr (fn-rv-draw (cadr (fn-rv-run (cadr (fn-rv-draw bank slot d1)) ops))
                                           slot d2)))
                  (token (caddr (fn-rv-draw bank slot d1))))
@@ -338,13 +336,10 @@
   :id "PRF-1209"
   :subject fn-rv-settle
   :restates fn-rv-replayed-completion-is-stale
-  :hyps (first-drawn second-drawn)
+  :hyps (second-drawn)
   :witness ((bank *rvt-conn*) (slot 0) (d1 *rvt-read*) (ops (list (list :settle 0 1)))
             (d2 *rvt-read*))
-  :breaks ((first-drawn ((bank *rvt-conn1*) (slot 0) (d1 *rvt-read*)
-                         (ops (list (list :settle 0 1))) (d2 *rvt-read*))
-                        :corrupt "the token of a refused draw is no token (NIL), and a settle of it is :stale anyway: the hypothesis fixes the reading, not the truth")
-           (second-drawn ((bank *rvt-conn*) (slot 0) (d1 *rvt-read*) (ops nil) (d2 *rvt-read*))))
+  :breaks ((second-drawn ((bank *rvt-conn*) (slot 0) (d1 *rvt-read*) (ops nil) (d2 *rvt-read*))))
   :hints (("Goal" :by fn-rv-replayed-completion-is-stale)))
 
 (defkeystone rvt-step-keeps-the-other-slots
