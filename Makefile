@@ -311,6 +311,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/definterface \
 	books/defevent \
 	books/deftransition \
+	books/def-carried \
 	books/rev-onto \
 	books/acceptance-alloc \
 	tests/acl2/defrecord-tests \
@@ -323,6 +324,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/definterface-tests \
 	tests/acl2/definterface-recognizer-tests \
 	tests/acl2/defevent-tests \
+	tests/acl2/def-carried-tests \
 	books/acceptance \
 	books/acceptance-invariants \
 	tests/acl2/acceptance-tests \
@@ -2143,6 +2145,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/image-world \
 	books/image-world-dtn \
 	books/image-world-store-test \
+	books/image-world-paged \
     books/acceptance-binding-held-gate \
     books/connection-receiver-source-invariants \
     books/owner-reader-response-domain \
@@ -2366,7 +2369,9 @@ ACL2_BOOKS ?= books/defrecord \
     books/substrate-committed-row \
     tests/acl2/substrate-committed-transcript-tests \
     tests/acl2/substrate-committed-row-tests \
-    tests/acl2/substrate-commit-codec-gap-tests
+    tests/acl2/substrate-commit-codec-gap-tests \
+    books/tcpcl-session-carried \
+    books/owner-retain-carried
 
 .PHONY: host-convert-check extract-check site check check-lane check-fast check-fast-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none
