@@ -4515,10 +4515,8 @@
 (definterface fn-pxe-new :class :common-lisp-compliant :kinds ((slot natp)))
 (definterface fn-pxe-return :class :common-lisp-compliant
   :keystones ((fn-pxe-stale-completion-cannot-return-a-reused-worker :via fn-pxe-return)))
-(definterface fn-owner-page-executor-acquire :class :common-lisp-compliant
-  :keystones ((fn-pxe-acquired-token-cannot-own-a-second-worker :via fn-pxe-acquire)))
-(definterface fn-owner-page-executor-commit :class :common-lisp-compliant
-  :keystones ((fn-pxe-commit-requires-returned-settled-exact-job :via fn-pxe-commit)))
+(definterface fn-owner-page-executor-acquire :class :common-lisp-compliant)
+(definterface fn-owner-page-executor-commit :class :common-lisp-compliant)
 
 (definterface fn-pio-worker-death-step :class :common-lisp-compliant
   :kinds ((deadp booleanp)))

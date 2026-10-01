@@ -211,6 +211,11 @@ FN_NATIVE_EXTENT_CACHE_TEST_OFF=1 (the matched measurement's cache-off arm)."
   "The extent mutex serializes the pool; never acquire owner from here."
   (apply #'fnn-call name (append arguments (list (fnn-live-page-read-pool)))))
 
+(defun fnn-core-page-read-pool-state (name &rest arguments)
+  "Writing owner subjects consume the SAME pool and actual STATE."
+  (apply #'fnn-call name
+         (append arguments (list (fnn-live-page-read-pool) *the-live-state*))))
+
  ; These macros add no per-job host list construction beyond the dedicated
 ; call itself. Quoted subjects remain visible to the host source inventory.
 (defmacro fnn-core-cold-values (name &rest arguments)
@@ -618,7 +623,7 @@ The served caller must await complete demand/allocator and descriptor joins."
         (if (fnn-extent-window-p token)
             (fnn-core-cold-pool 'fn-owner-page-window-executor-acquire
                                     (fnn-cold-worker-row worker) token)
-          (fnn-core-page-read-pool 'fn-owner-page-executor-acquire
+          (fnn-core-page-read-pool-state 'fn-owner-page-executor-acquire
                                   (fnn-cold-worker-row worker) token))
       (declare (ignore ignored))
       (unless (eq word :assigned) (fnn-fault "cold executor refused admitted job ~a" word))
@@ -658,7 +663,7 @@ settlement; the dead executor is never reused for another admitted job."
 (defun fnn-extent-executor-commit (worker io token cachedp)
   "Extent lock held, worker relinquished and cache transfer already done."
   (destructuring-bind (word row &rest ignored)
-      (fnn-core-page-read-pool 'fn-owner-page-executor-commit
+      (fnn-core-page-read-pool-state 'fn-owner-page-executor-commit
                                (fnn-cold-worker-row worker) io token cachedp)
     (declare (ignore ignored))
     (unless (eq word :committed) (fnn-fault "cold executor settlement refused ~a" word))
