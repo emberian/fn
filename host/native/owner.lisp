@@ -4806,10 +4806,14 @@ renamed into place, the directory fenced."
   "Observe the physical join and let ACL2 decide descriptor settlement."
   (let ((observation (fnn-log-writer-stop)))
     (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
-      (fnn-core 'fn-ort-log-close-action observation
-                (fnn-core 'fn-log-sink-pending-lines *fnn-log-sink*)
-                (fnn-core 'fn-log-sink-pending-octets *fnn-log-sink*)
-                (and *fnn-log-queue-head* t)))))
+      (let* ((lines (fnn-core 'fn-log-sink-pending-lines *fnn-log-sink*))
+             (octets (fnn-core 'fn-log-sink-pending-octets *fnn-log-sink*))
+             (queued (and *fnn-log-queue-head* t))
+             (action (fnn-core 'fn-ort-log-close-action observation lines octets queued)))
+        (unless (eq action :joined)
+          (fnn-err "stopping: the log writer is held: join ~(~a~), ~a line(s) and ~a octet(s) pending~:[~;, a queue~]"
+                   observation lines octets queued))
+        action))))
 
 (defun fnn-owner-wait-workers (service)
   "Join client workers before closing any shared journal or Store object."
@@ -6241,6 +6245,27 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                       (dolist (hook (fnn-owner-service-close-hooks service))
                         (handler-case (funcall hook service)
                           (serious-condition () (setq modules-joined nil))))
+                      ;; What keeps the close from joining, named on stderr:
+                      ;; an uncertain exit says why (the s0j natives exited 3
+                      ;; with nothing printed).
+                      (let ((open (append
+                                   (unless modules-joined '("a close hook failed"))
+                                   (when (fnn-with-roster (service)
+                                           (fnn-owner-service-workers service))
+                                     '("workers remain"))
+                                   (when (fnn-owner-service-cold-head service)
+                                     '("a cold read is outstanding"))
+                                   (unless (every (lambda (slot)
+                                                    (let ((worker (fnn-cold-worker-thread slot)))
+                                                      (or (null worker)
+                                                          (not (sb-thread:thread-alive-p worker)))))
+                                                  *fnn-cold-workers*)
+                                     '("a cold worker is alive"))
+                                   (let ((worker (fnn-owner-service-committer service)))
+                                     (when (and worker (sb-thread:thread-alive-p worker))
+                                       '("the committer is alive"))))))
+                        (when open
+                          (fnn-err "stopping: the close is not joined: ~{~a~^; ~}" open)))
                       (when (and modules-joined
                                  (null (fnn-with-roster (service)
                                          (fnn-owner-service-workers service)))
@@ -6269,9 +6294,13 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                           (sb-thread:with-mutex ((fnn-owner-service-lock service))
                             (fnn-payload-lifecycle-joined service))
                         (return-from fnn-owner-run
+                          (progn
+                           (unless (eql (fnn-owner-service-exit-code service) +fnn-exit-uncertain+)
+                             (fnn-err "stopping: the close settled ~(~a~), not joined: uncertain"
+                                      log-close-action))
                           (fnn-core 'fn-ort-log-close-exit
                                     (fnn-owner-service-exit-code service)
-                                    +fnn-exit-uncertain+ log-close-action)))))
+                                    +fnn-exit-uncertain+ log-close-action))))))
                (setq *fnn-sigterm-wakeup-fd* nil)
                (dolist (extra more-listeners) (fnn-socket-shut extra))
                (when tls-listener (fnn-socket-shut tls-listener))
