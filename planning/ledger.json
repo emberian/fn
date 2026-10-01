@@ -7,6 +7,14 @@
     "tests/acl2/consumer-transaction-dispatch-tests",
     "tests/acl2/consumer-remote-store-category-tests",
     "tests/acl2/receiver-response-transfer-tests",
+    "books/history-source-capture-refinement",
+    "tests/acl2/history-source-capture-refinement-tests",
+    "books/substrate-commit-profile-codec",
+    "books/substrate-commit-profile-refinement",
+    "tests/acl2/substrate-commit-profile-codec-tests",
+    "tests/acl2/substrate-commit-profile-refinement-tests",
+    "books/substrate-commit-profile-bounds",
+    "tests/acl2/substrate-commit-profile-bounds-tests",
     "host/history-owner-completion-host",
     "books/history-semantic-writer",
     "tests/acl2/history-semantic-writer-tests",
@@ -1971,6 +1979,8 @@
     "tests/acl2/bpsec-asb-control-tests",
     "tests/acl2/bpsec-asb-position-tests",
     "tests/acl2/bpsec-head-invariant-tests",
+    "tests/acl2/bpsec-asb-metadata-tests",
+    "tests/acl2/bpsec-asb-body-tests",
     "tests/acl2/bpsec-target-cursor-tests",
     "tests/acl2/bpsec-target-tests",
     "tests/acl2/post-identity-source-cursor-source-complete-tests",
@@ -2084,26 +2094,26 @@
     "tests/acl2/substrate-commit-codec-gap-tests"
   ],
   "totals": {
-    "books": 2275,
-    "books_in_root_closure": 2219,
-    "roots": 2080,
-    "theorems": 32709,
-    "functions": 21025,
-    "assert_events": 24568,
+    "books": 2287,
+    "books_in_root_closure": 2231,
+    "roots": 2090,
+    "theorems": 32815,
+    "functions": 21070,
+    "assert_events": 24614,
     "must_fails": 2519,
     "prover_refusals": 0,
     "encapsulates": 168,
     "guards": {
       "verified": 3740,
       "declared-off": 2550,
-      "default-guarded": 11720,
-      "default-unguarded": 3015
+      "default-guarded": 11759,
+      "default-unguarded": 3021
     },
-    "suspect_theorems": 1299,
+    "suspect_theorems": 1301,
     "export_hygiene_warnings": 382,
     "enabled_projection_warnings": 79,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2917,
+    "include_hygiene_warnings": 2932,
     "host_names_warnings": 2569,
     "hand_written_record_warnings": 19
   },
@@ -8571,6 +8581,33 @@
       "read_error": null
     },
     {
+      "book": "books/bpsec-asb-body.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 43,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 5,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bpsec-asb-head-invariant",
+        "bpsec-asb-position"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/bpsec-asb-control.lisp",
       "in_root_closure": true,
       "is_root": false,
@@ -8623,6 +8660,32 @@
       "suspects": [
         "fn-bps-headslot-current-profile-by-definition"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/bpsec-asb-metadata.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 19,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bpsec-asb"
+      ],
+      "system_includes": [],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -8962,8 +9025,10 @@
       "encapsulates": 0,
       "includes": [
         "bpsec-asb",
+        "bpsec-asb-body",
         "bpsec-asb-control",
         "bpsec-asb-head-invariant",
+        "bpsec-asb-metadata",
         "bpsec-asb-position",
         "bpsec-asb-quanta",
         "bpsec-asb-spine",
@@ -17457,6 +17522,34 @@
       ],
       "system_includes": [],
       "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/history-source-capture-refinement.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 3,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "history-source-capture"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-owner-history-source-refuses-old-parent-epoch-by-definition"
+      ],
       "read_error": null
     },
     {
@@ -40434,6 +40527,90 @@
       "read_error": null
     },
     {
+      "book": "books/substrate-commit-profile-bounds.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 8,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "substrate-commit-profile-codec"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/substrate-commit-profile-codec.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 4,
+      "functions": 26,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 26,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "stx-commit-codec"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/substrate-commit-profile-refinement.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 27,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "substrate-commit-profile-codec"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [
+        "fn-stcp-source-next-string"
+      ],
+      "read_error": null
+    },
+    {
       "book": "books/substrate-committed-row.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -46726,6 +46903,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/bpsec-asb-body-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 13,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 8,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bpsec-asb-body"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/bpsec-asb-control-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -46746,6 +46949,32 @@
       "encapsulates": 0,
       "includes": [
         "../../books/bpsec-asb-control"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/bpsec-asb-metadata-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 10,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 4,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bpsec-asb-metadata"
       ],
       "system_includes": [],
       "suspects": [],
@@ -52721,6 +52950,32 @@
       "encapsulates": 0,
       "includes": [
         "../../books/history-semantic-writer"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/history-source-capture-refinement-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 4
+      },
+      "verify_guards_events": 0,
+      "assert_events": 8,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 6,
+      "defmacros": 1,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/history-source-capture-refinement"
       ],
       "system_includes": [],
       "suspects": [],
@@ -66248,6 +66503,85 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/substrate-commit-profile-bounds-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 5,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 5,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/substrate-commit-profile-bounds"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/substrate-commit-profile-codec-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 3,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 10,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/statement-attach",
+        "../../books/substrate-commit-profile-codec"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/substrate-commit-profile-refinement-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 3,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/substrate-commit-profile-refinement"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/substrate-committed-row-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -72908,6 +73242,14 @@
       ]
     },
     {
+      "theorem": "fn-owner-history-source-refuses-old-parent-epoch-by-definition",
+      "book": "books/history-source-capture-refinement.lisp",
+      "line": 28,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-owner-history-source and the conclusion is that arm's value"
+      ]
+    },
+    {
       "theorem": "fn-owner-orcp-swap-preserves-retain-carry-by-definition",
       "book": "books/owner-recovery-retain.lisp",
       "line": 89,
@@ -76430,6 +76772,15 @@
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-stce-retain and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-stce-retain and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-stcp-source-next-string",
+      "book": "books/substrate-commit-profile-refinement.lisp",
+      "line": 83,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-stcp-source-next and the conclusion is that arm's value",
+        "branch-of-definition: the hypothesis is a branch test of fn-stcp-source-next and the conclusion is that branch's value"
       ]
     },
     {
@@ -84805,6 +85156,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/bpsec-asb-body.lisp",
+        "line": 3,
+        "include": "bpsec-asb-position",
+        "included": "books/bpsec-asb-position.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bpsec-asb-body.lisp",
+        "line": 4,
+        "include": "bpsec-asb-head-invariant",
+        "included": "books/bpsec-asb-head-invariant.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/bpsec-asb-control.lisp",
         "line": 4,
         "include": "bpsec-asb",
@@ -84823,6 +85188,13 @@
         "line": 5,
         "include": "bpsec-head-invariant",
         "included": "books/bpsec-head-invariant.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bpsec-asb-metadata.lisp",
+        "line": 4,
+        "include": "bpsec-asb",
+        "included": "books/bpsec-asb.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -84991,6 +85363,20 @@
         "line": 15,
         "include": "bpsec-asb-head-invariant",
         "included": "books/bpsec-asb-head-invariant.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bpsec.lisp",
+        "line": 16,
+        "include": "bpsec-asb-metadata",
+        "included": "books/bpsec-asb-metadata.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bpsec.lisp",
+        "line": 17,
+        "include": "bpsec-asb-body",
+        "included": "books/bpsec-asb-body.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -86034,6 +86420,13 @@
         "line": 3,
         "include": "store-tree-codec",
         "included": "books/store-tree-codec.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/history-source-capture-refinement.lisp",
+        "line": 4,
+        "include": "history-source-capture",
+        "included": "books/history-source-capture.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -92456,6 +92849,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/substrate-commit-profile-bounds.lisp",
+        "line": 3,
+        "include": "substrate-commit-profile-codec",
+        "included": "books/substrate-commit-profile-codec.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/substrate-commit-profile-refinement.lisp",
+        "line": 3,
+        "include": "substrate-commit-profile-codec",
+        "included": "books/substrate-commit-profile-codec.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/tcpcl-delivery-invariants.lisp",
         "line": 4,
         "include": "tcpcl-delivery",
@@ -95186,10 +95593,24 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/bpsec-asb-body-tests.lisp",
+        "line": 2,
+        "include": "../../books/bpsec-asb-body",
+        "included": "books/bpsec-asb-body.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/bpsec-asb-control-tests.lisp",
         "line": 2,
         "include": "../../books/bpsec-asb-control",
         "included": "books/bpsec-asb-control.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bpsec-asb-metadata-tests.lisp",
+        "line": 2,
+        "include": "../../books/bpsec-asb-metadata",
+        "included": "books/bpsec-asb-metadata.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -97619,6 +98040,13 @@
         "line": 2,
         "include": "../../books/history-semantic-writer",
         "included": "books/history-semantic-writer.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/history-source-capture-refinement-tests.lisp",
+        "line": 6,
+        "include": "../../books/history-source-capture-refinement",
+        "included": "books/history-source-capture-refinement.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -103394,6 +103822,34 @@
         "line": 5,
         "include": "../../books/statement-attach",
         "included": "books/statement-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/substrate-commit-profile-bounds-tests.lisp",
+        "line": 2,
+        "include": "../../books/substrate-commit-profile-bounds",
+        "included": "books/substrate-commit-profile-bounds.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/substrate-commit-profile-codec-tests.lisp",
+        "line": 2,
+        "include": "../../books/substrate-commit-profile-codec",
+        "included": "books/substrate-commit-profile-codec.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/substrate-commit-profile-codec-tests.lisp",
+        "line": 3,
+        "include": "../../books/statement-attach",
+        "included": "books/statement-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/substrate-commit-profile-refinement-tests.lisp",
+        "line": 2,
+        "include": "../../books/substrate-commit-profile-refinement",
+        "included": "books/substrate-commit-profile-refinement.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

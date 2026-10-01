@@ -1279,3 +1279,42 @@ separately in `tests/acl2/substrate-commit-codec-gap-tests.lisp`
 (SUB-008, PRF-1176). Closing this gap requires profile-aligned bounded or
 resumable codec work and agreed uint32 format evolution; an arbitrary new
 stored-data ceiling or an unbounded decoder does not discharge it.
+
+### Explicit resumable commit codec profile v2
+
+The selected component profile `(:fn-stcp-v2 wire-limit field-limit quantum)`
+uses canonical RFC 8949 sections 3 and 4.2.1 unsigned integers through uint64
+for the commit base, and the existing uint32 byte-string length format.
+`fn-stcp-profile-check` refuses unsupported ranges as `:unsupported-format`
+before encoding item/output allocation. These are the selected codec's
+representable ranges, not global epoch or stored-data limits. A profile that
+requires larger fields needs a successor format and matching runtime support.
+
+Counting, parsing, copying and reversal use resumable cursors. One tick consumes
+at most one input/output octet or a fixed metadata transition; a resume performs
+at most the selected quantum of ticks. Exhausting the quantum yields the cursor;
+it does not truncate a field. The selected wire/field admission budgets refuse
+as `:profile-limit`. Completion at the exact wire budget still finishes reversal
+and checks the terminal state. Refused, yielded and completed remain distinct.
+
+V2 is explicit selection, not an implicit reinterpretation of legacy traffic.
+The legacy uint32-base/512-byte decoder and its 586-byte negative fixture remain
+unchanged. Canonical wire bytes coincide for legacy representable values; the
+profile does not rewrite commit identities, signature domains or statement
+versions. Authenticated selection and persisted profile custody belong to the
+actual caller integration; no negotiation, authority grant, host activation or
+full runtime representability follows from this component. The additive source
+has a guard-verified core and initial literal certificate; later refinement/teeth
+are pending certification. The decoder correspondence carries the logical
+cursor, exact work count and result under a borrowed-string premise; no full
+source conversion occurs on the served component. General encode/decode
+roundtrip and actual caller/runtime custody remain open.
+
+A separate shallow cursor invariant carries control and numeric ranges:
+encoder field counts use uint32, both wire offsets use uint64, and decoder
+arguments use uint64 while active (a refused overflow cursor may retain a
+72-bit diagnostic intermediate). Argument width and remaining header-byte
+counts are fixed; no accumulated octets are scanned by this predicate.
+Start establishes it and the actual drivers preserve it. These later bounds
+roots are certified at matching private source. They supply numeric-width discipline, not a
+complete measured native allocation/funding or runtime-support claim.

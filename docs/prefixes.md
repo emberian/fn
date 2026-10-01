@@ -413,3 +413,11 @@ anything a book does not already decide.
 
 | `fn-stce-` | `substrate-committed-transcript`, `substrate-committed-row` | Resumable signed membership evidence, retaining same commit-ID conflicts before authority merge; actual committed-row/configuration adapter. |
 | `fn-stcet-` | `tests/acl2/substrate-committed-transcript-tests` | Literal committed transcript witnesses under the explicitly toy crypto realization. |
+
+| `fn-stcp-` | substrate-commit-profile-codec,substrate-commit-profile-refinement | Explicit profile v2 source component; actual caller/runtime authority remains open. |
+
+| `stcpt-` | tests/acl2/substrate-commit-profile-codec-tests | Explicit profile v2 source component; actual caller/runtime authority remains open. |
+
+| `stcprt-` | tests/acl2/substrate-commit-profile-refinement-tests | Explicit profile v2 source component; actual caller/runtime authority remains open. |
+
+| `stcpbt-` | tests/acl2/substrate-commit-profile-bounds-tests | Explicit profile v2 source component; actual caller/runtime authority remains open. |

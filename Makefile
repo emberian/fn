@@ -18,6 +18,14 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-transaction-dispatch-tests \
 	tests/acl2/consumer-remote-store-category-tests \
 	tests/acl2/receiver-response-transfer-tests \
+	books/history-source-capture-refinement \
+	tests/acl2/history-source-capture-refinement-tests \
+	books/substrate-commit-profile-codec \
+	books/substrate-commit-profile-refinement \
+	tests/acl2/substrate-commit-profile-codec-tests \
+	tests/acl2/substrate-commit-profile-refinement-tests \
+	books/substrate-commit-profile-bounds \
+	tests/acl2/substrate-commit-profile-bounds-tests \
 	host/history-owner-completion-host \
 	books/history-semantic-writer \
 	tests/acl2/history-semantic-writer-tests \
@@ -1982,6 +1990,8 @@ ACL2_BOOKS ?= books/defrecord \
     tests/acl2/bpsec-asb-control-tests \
     tests/acl2/bpsec-asb-position-tests \
     tests/acl2/bpsec-head-invariant-tests \
+    tests/acl2/bpsec-asb-metadata-tests \
+    tests/acl2/bpsec-asb-body-tests \
     tests/acl2/bpsec-target-cursor-tests \
     tests/acl2/bpsec-target-tests \
     tests/acl2/post-identity-source-cursor-source-complete-tests \

@@ -19126,9 +19126,15 @@
         "books/bpsec-head-invariant.lisp",
         "books/bpsec-asb-head-invariant.lisp",
         "tests/acl2/bpsec-head-invariant-tests.lisp",
-        "planning/evidence/bpsec-head-invariant-source-2026-09-30.json"
+        "planning/evidence/bpsec-head-invariant-source-2026-09-30.json",
+        "books/bpsec-asb-metadata.lisp",
+        "tests/acl2/bpsec-asb-metadata-tests.lisp",
+        "planning/evidence/bpsec-asb-metadata-source-2026-09-30.json",
+        "books/bpsec-asb-body.lisp",
+        "tests/acl2/bpsec-asb-body-tests.lisp",
+        "planning/evidence/bpsec-asb-body-source-2026-09-30.json"
       ],
-      "progress_note": "Source-only proper-local admission at exact w28 fced dependency coordinate; six component bounds/suffix events admitted after a repaired corrupted-cursor guard failure and proof hints. No normal manifest, immutable runtime provider, full refinement or native security gate. Added actual ASB complete cursor/consumed-prefix/suffix quantum-composition source; fresh proper-local14fixtureforms23.40s7930504steps (includes four new source dependencies), all literal outcomes and guard-world audit pass. Full window/provider/grammar refinement remains open. Fixed exact34-field cursor spine established/preserved by actual start/drive/step; final fresh12fixtureforms23.33s6971684steps includes4proper-local dependencies, guard-world+five literal scenarios pass. Ghost predicate never served; mutable grammar/span/provider invariants remain open. First mutable grammar-control field invariant established/preserved by actual start/drive/step, final fresh13forms24.40s7372339steps includes4proper-local dependencies; guard-world+six literal scenarios pass. Complete remaining mutable grammar/span/provider invariants remain open. Actual ASB drive/step preserve readonly source fields and advance offset by exactly consumed prefix under the numeric offset premise. Fresh 14 forms, 19.37 s, 7,414,473 steps including four proper-local source dependencies; guard-world and seven literal scenarios pass. Provider byte equality, pinned lifetime and remaining full grammar/span/window refinement remain open. Natural source-range invariant established by start and preserved by actual drive/step; fresh 19 forms, 15.66 s, 7,450,078 steps including four proper-local dependencies. Complete range witnesses and each omitted start coordinate pass; full grammar/span/provider refinement remains open. Actual CBOR-head active profile and supported-major/uint64 READY result established/preserved; nested head field invariant composes through actual ASB start/drive/step. Fresh 26 forms, 21.96 s, 11,268,241 steps including five proper-local source dependencies; literal uint64/partial/refused/unsupported/parser witnesses and guard audit pass. Remaining grammar/span/window/provider/native gate remains open.",
+      "progress_note": "Source-only proper-local admission at exact w28 fced dependency coordinate; six component bounds/suffix events admitted after a repaired corrupted-cursor guard failure and proof hints. No normal manifest, immutable runtime provider, full refinement or native security gate. Added actual ASB complete cursor/consumed-prefix/suffix quantum-composition source; fresh proper-local14fixtureforms23.40s7930504steps (includes four new source dependencies), all literal outcomes and guard-world audit pass. Full window/provider/grammar refinement remains open. Fixed exact34-field cursor spine established/preserved by actual start/drive/step; final fresh12fixtureforms23.33s6971684steps includes4proper-local dependencies, guard-world+five literal scenarios pass. Ghost predicate never served; mutable grammar/span/provider invariants remain open. First mutable grammar-control field invariant established/preserved by actual start/drive/step, final fresh13forms24.40s7372339steps includes4proper-local dependencies; guard-world+six literal scenarios pass. Complete remaining mutable grammar/span/provider invariants remain open. Actual ASB drive/step preserve readonly source fields and advance offset by exactly consumed prefix under the numeric offset premise. Fresh 14 forms, 19.37 s, 7,414,473 steps including four proper-local source dependencies; guard-world and seven literal scenarios pass. Provider byte equality, pinned lifetime and remaining full grammar/span/window refinement remain open. Natural source-range invariant established by start and preserved by actual drive/step; fresh 19 forms, 15.66 s, 7,450,078 steps including four proper-local dependencies. Complete range witnesses and each omitted start coordinate pass; full grammar/span/provider refinement remains open. Actual CBOR-head active profile and supported-major/uint64 READY result established/preserved; nested head field invariant composes through actual ASB start/drive/step. Fresh 26 forms, 21.96 s, 11,268,241 steps including five proper-local source dependencies; literal uint64/partial/refused/unsupported/parser witnesses and guard audit pass. Remaining grammar/span/window/provider/native gate remains open. Tracked operator metadata charge established/preserved by actual ASB start/drive/step; fresh 16 forms, 10.44 s, 6,934,622 steps including four proper-local source dependencies. Literal cap 8 parses, cap 7 refuses with charge 6, cap 0 refuses with charge 0, and a 2^40 cap is preserved. This is tracked-charge preservation, not physical allocation/cost or provider/grammar refinement. Actual ASB composite body context (representable source extent, scalar source range, nested typed head, retained body descriptor in the same source) established/preserved by start/drive/step. Fresh 23 forms, 12.84 s, 8,506,204 steps including seven proper-local source dependencies; complete BIB/BCB byte-window witnesses, each omitted start hypothesis and corrupted body descriptor pass. Covers current retained body, not all accumulated value lists, full grammar/every-window refinement or physical provider bytes/lifetime.",
       "events": [
         "fn-bps-head-drive-consumes-at-most-quantum",
         "fn-bps-head-drive-consumes-at-most-window",
@@ -19157,7 +19163,13 @@
         "fn-bps-head-drive-ready-is-typed-uint64",
         "fn-bps-asb-start-establishes-head-profile",
         "fn-bps-asb-drive-preserves-head-profile",
-        "fn-bps-asb-step-preserves-head-profile"
+        "fn-bps-asb-step-preserves-head-profile",
+        "fn-bps-asb-start-establishes-metadata-budget",
+        "fn-bps-asb-drive-preserves-metadata-budget",
+        "fn-bps-asb-step-preserves-metadata-budget",
+        "fn-bps-asb-start-establishes-body-context",
+        "fn-bps-asb-drive-preserves-body-context",
+        "fn-bps-asb-step-preserves-body-context"
       ]
     },
     {
@@ -19835,6 +19847,60 @@
         "planning/evidence/manifests/certify-20261001T003750Z-537.json"
       ],
       "progress_note": "Conditional guarded source component with matching normal manifests 002318 (directory/refinement/provider/test closure) and 002534 (backing/test successor). No native caller, raw atomicity, genuine constructor family or complete physical epoch/debt settlement claim. Current public include coordinate not certified; frozen manifests do not qualify changed prerequisites or host joins. Proof-only successor06d984 adds actual composed two-call once-only registration/publication keystones and renames replay-arm restatements by-definition. Matching frozen normal receipts retained; current combined source/caller qualification remains open."
+    },
+    {
+      "id": "PRF-1189",
+      "title": "Explicit resumable commit codec profile v2 work budget",
+      "statement": "Encoder and decoder drivers use at most supplied tick fuel and preserve terminal cursors. For a borrowed string source, the actual decoder driver returns the same abstract logical cursor and exact tick count as the logical octet-list cursor; decode-resume bridge also preserves the result. The cursor-width premise was removed after proving the weaker transition theorem. Profile validation names unsupported format ranges before encode item/output allocation. General encode/decode roundtrip and supported runtime/caller custody remain open. Further encoder/decoder driver preservation targets carry fixed numeric/control bounds from shallow cursor invariants, without scanning accumulated data; those later roots are certified at matching private source.",
+      "milestone": "M4",
+      "requirements": [
+        "SUB-008"
+      ],
+      "depends_on": [
+        "PRF-1176"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/substrate-commit-profile-codec.lisp",
+        "tests/acl2/substrate-commit-profile-codec-tests.lisp",
+        "books/substrate-commit-profile-refinement.lisp",
+        "tests/acl2/substrate-commit-profile-refinement-tests.lisp",
+        "planning/evidence/substrate-commit-profile-v2-2026-09-30.md",
+        "books/substrate-commit-profile-bounds.lisp",
+        "tests/acl2/substrate-commit-profile-bounds-tests.lisp"
+      ],
+      "progress_note": "Core passed certify-20260930T233727Z-993518 (its unchanged root scope; initial test later superseded). Refinement plus latest codec/refinement literal teeth passed certify-20260930T235132Z-1019470; all 20 source closure hashes match this private source. Guard-verified codec, tick-fuel induction, borrowed-source decoder cursor/work/result refinement and literal wide/513-byte/budget/refusal witnesses. General roundtrip, actual profile-aware transcript/owner caller, pinned custody and supported runtime/funding remain open. No public digest, image or deployment transfer. Shallow numeric/control start and actual-driver preservation plus positive/corrupted-state premise-removal teeth passed certify-20261001T001744Z-1065124; all 18 source closure hashes match. Independent root cbor2 6.1.4 evidence decb2b44d passes 392 checks at unchanged a632/ee403 codec source, explicitly source execution, not native qualification/general roundtrip proof. Public source imported additively; current closure not certified. Frozen private manifests and independent source harness do not imply caller/activation/runtime authority.",
+      "events": [
+        "fn-stcp-enc-drive-work-bound",
+        "fn-stcp-dec-drive-work-bound",
+        "fn-stcp-dec-drive-borrowed-refinement",
+        "fn-stcp-enc-drive-preserves-bounds",
+        "fn-stcp-dec-drive-preserves-bounds"
+      ]
+    },
+    {
+      "id": "PRF-1193",
+      "title": "Actual captured history source custody, current epoch and terminal return composition",
+      "statement": "The host-called retained history path must obtain exact committed Source9 under actual owner publication/canonical epoch, issue and debit the same shared ledger identity, register a physical epoch pin, read only below captured dense F, retain all aliases/charges on cancellation, block reset before durable replacement, and return the pin before once-only reusable charge refund while preserving spent identity. Every event kind and successful NIL row is retained; same-epoch appends preserve old captured prefixes. Full caller/source/funding/native lifetime joins are required, not a supplied readiness Boolean.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-10004"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/history-capture-custody.lisp",
+        "books/history-capture-state.lisp",
+        "books/history-source-capture.lisp",
+        "books/history-source-capture-refinement.lisp",
+        "tests/acl2/history-capture-custody-tests.lisp",
+        "tests/acl2/history-source-capture-refinement-tests.lisp",
+        "planning/evidence/history-prefix-custody-2026-09-30/manifest.json",
+        "planning/evidence/history-source-custody-refinement-2026-09-30/manifest.json"
+      ],
+      "progress_note": "Custody core and actual STATE wrappers source-admitted in narrow protected worlds; actual nine source/getter/capture/pin/read/release guards replayed against17d1 backing .06s/4577steps. Conditional attribution/old-parent/nonretained-read laws admitted .02s/997steps; eight internal-metadata executable fixtures pass. These small output/body equations are bridge evidence, not a complete caller keystone. Full logical STATE literal tooth is prepared but unreplayed after donor closure. No certification/image/native claim or changed-dependency green transfer. Source tariff and native completion getter honestly unavailable; actual atomic publication and installed-source lineage remain producer obligations."
     }
   ]
 }

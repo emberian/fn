@@ -5849,7 +5849,13 @@
         "books/bpsec-head-invariant.lisp",
         "books/bpsec-asb-head-invariant.lisp",
         "tests/acl2/bpsec-head-invariant-tests.lisp",
-        "planning/evidence/bpsec-head-invariant-source-2026-09-30.json"
+        "planning/evidence/bpsec-head-invariant-source-2026-09-30.json",
+        "books/bpsec-asb-metadata.lisp",
+        "tests/acl2/bpsec-asb-metadata-tests.lisp",
+        "planning/evidence/bpsec-asb-metadata-source-2026-09-30.json",
+        "books/bpsec-asb-body.lisp",
+        "tests/acl2/bpsec-asb-body-tests.lisp",
+        "planning/evidence/bpsec-asb-body-source-2026-09-30.json"
       ],
       "implementation_note": "Additive source cursor and logical span abstraction. Guards and consumed-prefix component theorems admitted in exact persvati w28 source sessions; not normal certification. Every-schedule refinement, cursor invariant preservation, actual immutable provider/lifetime, target graph, crypto/key/nonce policy and served admission remain open. Structural parsing never implies verification."
     },
@@ -6118,7 +6124,8 @@
       "milestone": "M4",
       "status": "planned",
       "proof_targets": [
-        "PRF-1176"
+        "PRF-1176",
+        "PRF-1189"
       ],
       "verification": [
         "proof",
@@ -6132,9 +6139,15 @@
         "tests/acl2/substrate-committed-transcript-tests.lisp",
         "tests/acl2/substrate-committed-row-tests.lisp",
         "planning/evidence/substrate-committed-transcript-2026-09-30.md",
-        "tests/acl2/substrate-commit-codec-gap-tests.lisp"
+        "tests/acl2/substrate-commit-codec-gap-tests.lisp",
+        "books/substrate-commit-profile-codec.lisp",
+        "books/substrate-commit-profile-refinement.lisp",
+        "tests/acl2/substrate-commit-profile-codec-tests.lisp",
+        "tests/acl2/substrate-commit-profile-refinement-tests.lisp",
+        "books/substrate-commit-profile-bounds.lisp",
+        "tests/acl2/substrate-commit-profile-bounds-tests.lisp"
       ],
-      "implementation_note": "Resumable evidence leaf and actual-row/config adapter supplied. Actual definite-persistence completion and cold replay caller installation remain open; no founding roster or adoption policy is invented. Concrete open codec disagreement: fn-stx-commit-encodablep accepts ID=513 octets, base=0, actor/subject=32 octets and remove, and encode produces exactly 586 octets, while decode-exact returns :limit at its fixed 512 cap. Existing certified retention/authority packet is distinct from this counterexample. Repair requires profile-aligned bounded/resumable codec work and agreed uint32 format evolution; no full supported-profile source capability claim."
+      "implementation_note": "Resumable evidence leaf and actual-row/config adapter supplied. Actual definite-persistence completion and cold replay caller installation remain open; no founding roster or adoption policy is invented. Concrete open codec disagreement: fn-stx-commit-encodablep accepts ID=513 octets, base=0, actor/subject=32 octets and remove, and encode produces exactly 586 octets, while decode-exact returns :limit at its fixed 512 cap. Existing certified retention/authority packet is distinct from this counterexample. Repair requires profile-aligned bounded/resumable codec work and agreed uint32 format evolution; no full supported-profile source capability claim. Explicit v2 component certified at private closure only; actual profile-aware transcript/owner caller, general roundtrip and runtime custody/funding remain open. Legacy586\u2192512 negative evidence unchanged."
     },
     {
       "id": "STO-10003",
@@ -6158,6 +6171,32 @@
         "tests/acl2/history-event-backing-tests.lisp"
       ],
       "implementation_note": "Guarded conditional source component. Genuine producer/family issuance, raw construction invariant, atomic owner join and physical epoch/debt relinquishment remain separate open producers."
+    },
+    {
+      "id": "STO-10004",
+      "title": "Remote history captures retain an exact committed all-event prefix through reset fencing and once-only shared-pool return",
+      "specification": "specs/history-source-custody.md",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-1193"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/history-capture-custody.lisp",
+        "books/history-capture-state.lisp",
+        "books/history-source-capture.lisp",
+        "books/history-source-capture-refinement.lisp",
+        "tests/acl2/history-capture-custody-tests.lisp",
+        "tests/acl2/history-source-capture-refinement-tests.lisp",
+        "planning/evidence/history-prefix-custody-2026-09-30/manifest.json",
+        "planning/evidence/history-source-custody-refinement-2026-09-30/manifest.json"
+      ],
+      "implementation_note": "Actual Source9/parent6 readout, shared PRL-issued slot, backing epoch pin, bounded directory continuation and selected owner swap/recovery gates are additive source preparation. NIL is a successful :row value, never a skipped gap. Long-poll waiting must return before sleep. Actual Store/CP/source atomic publication, selected capture tariff, constructor provenance, physical callback receipt, raw provider boundary and full caller lifetime composition remain open; metadata shape gives no installation authority."
     }
   ]
 }

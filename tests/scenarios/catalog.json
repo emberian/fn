@@ -7353,7 +7353,9 @@
         "Carry the finite grammar-stage control invariant through every exercised one-byte/quantum-one transition; mutate only the real stage field to unknown and affirmatively check missing-premise/output failures.",
         "Start at absolute offset 100 and check readonly source coordinate plus exact offset increment through each one-byte/quantum-one transition; exercise temporary missing input, zero quantum and wrong backing ID. Separately omit readonly-key and numeric-offset premises with literal counterexamples.",
         "Carry natural start/length/offset and start <= offset <= declared end through every exercised transition; omit each natural start coordinate separately and mutate offset below start with quantum zero.",
-        "Carry the stronger active CBOR-head profile through uint64 maximum and interrupted heads, invalid octets, nonminimal and unsupported heads; carry the same nested field through every actual ASB byte/metadata transition."
+        "Carry the stronger active CBOR-head profile through uint64 maximum and interrupted heads, invalid octets, nonminimal and unsupported heads; carry the same nested field through every actual ASB byte/metadata transition.",
+        "Carry tracked metadata charge through each byte/metadata transition with exact cap 8, insufficient cap 7, zero cap and a representable 2^40 operator cap; mutate only charge above cap and use quantum zero.",
+        "Carry the complete body context through nonzero-offset two-target BIB and BCB with text source plus IV at every one-byte/quantum-one transition; retain literal final span offset/length and exact backing-slice bytes. Omit each representable start hypothesis separately and mutate only body below declared source start."
       ],
       "expected": [
         "Complete targets/results and exact source/result octets survive every exercised resume.",
@@ -7364,7 +7366,9 @@
         "Actual ASB start/drive/step keep control within the declared20 stages. No served invariant revalidation is added; full remaining mutable-field and provider/window refinement remain open.",
         "Actual drive/step retain the readonly source subject and offset equals old offset plus consumed bytes. Non-readonly offset changes; absent offset corruption defeats both numeric-premise equations. Equal backing ID/offset does not establish provider bytes or lifetime.",
         "Start establishes and drive/step preserve the entire source range. Each omitted start hypothesis and the separately corrupted carried range have explicit failing conclusions; source range is not grammar validity or provider provenance.",
-        "Actual head feed/drive preserve the carried profile and READY implies a supported major/uint64 pair. Actual ASB start/drive/step preserve the nested profile. Omit READY while retaining profile, or corrupt argument major while retaining READY, and explicitly defeat the typed-result conclusion; this does not establish complete grammar/span/provider refinement."
+        "Actual head feed/drive preserve the carried profile and READY implies a supported major/uint64 pair. Actual ASB start/drive/step preserve the nested profile. Omit READY while retaining profile, or corrupt argument major while retaining READY, and explicitly defeat the typed-result conclusion; this does not establish complete grammar/span/provider refinement.",
+        "Actual start establishes and drive/step preserve natural tracked charge within the carried cap. Literal two-target BIB charges 8; cap 7 refuses before an over-cap charge is stored, retaining 6. This is not a physical allocation/cost theorem. Charge-only corruption defeats omitted invariant and both output conclusions.",
+        "Actual start/drive/step preserve source extent/range, nested head and current retained body descriptor bound to the same source. Literal BIB final span is offset 169, length 48, with exact result bytes; BCB source/IV spans also resume. This is current-body metadata geometry, not all accumulated lists, physical backing provenance or crypto verification."
       ],
       "evidence": [
         "tests/acl2/bpsec-asb-tests.lisp",
@@ -7385,7 +7389,13 @@
         "books/bpsec-head-invariant.lisp",
         "books/bpsec-asb-head-invariant.lisp",
         "tests/acl2/bpsec-head-invariant-tests.lisp",
-        "planning/evidence/bpsec-head-invariant-source-2026-09-30.json"
+        "planning/evidence/bpsec-head-invariant-source-2026-09-30.json",
+        "books/bpsec-asb-metadata.lisp",
+        "tests/acl2/bpsec-asb-metadata-tests.lisp",
+        "planning/evidence/bpsec-asb-metadata-source-2026-09-30.json",
+        "books/bpsec-asb-body.lisp",
+        "tests/acl2/bpsec-asb-body-tests.lisp",
+        "planning/evidence/bpsec-asb-body-source-2026-09-30.json"
       ],
       "execution_scope": "ACL2 literal source fixture only; full every-schedule theorem and operational provider/native execution remain open."
     },
@@ -7576,6 +7586,41 @@
         "tests/acl2/history-event-directory-tests.lisp",
         "tests/acl2/history-event-backing-tests.lisp"
       ]
+    },
+    {
+      "id": "SCN-1073",
+      "title": "All-event history prefix custody rejects stale epochs and retains cancellation until real terminal return",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-10004"
+      ],
+      "steps": [
+        "Issue an INTERNAL captured Source9 through actual shared PRL admission and retain its exact dense F; read the last in-prefix ordinal and refuse the frontier itself.",
+        "Publish a matching parent6 and observe exact source attribution; change actual canonical epoch while leaving parent/source metadata unchanged and refuse recovery-required.",
+        "Cancel an actual issued slot after read-begin; preserve slot/read aliases and registered pin, refuse read-step with exact status/row/fuel, and block reset.",
+        "Compare retained zero-fuel read yielding unchanged with the cancelled refusal; check each retained hypothesis for missing-parent, missing-source and matching-epoch removals.",
+        "After a genuine alias/native callback terminal producer, return the registered epoch pin before refunding reusable SAME-pool charge; repeat return cannot refund spent identity.",
+        "Attempt owner checkpoint swap and recovery while held, before durable replacement/reset; long-poll waiting completes return before sleep."
+      ],
+      "expected": [
+        "Dense F counts every committed Store event; no article catalog ordinal substitution or NIL skip.",
+        "Exact current metadata returns :source; old parent epoch and invalid ownership refuse distinctly.",
+        "Cancellation never clears custody, pin or charge. Only actual terminal return can unblock reset.",
+        "No synthetic source/token, caller completion Boolean or shaped metadata grants installation.",
+        "Public capture stays unavailable without genuine selected funding and physical constructor; native completion remains unavailable until its real issuer exists."
+      ],
+      "evidence": [
+        "books/history-capture-custody.lisp",
+        "books/history-capture-state.lisp",
+        "books/history-source-capture.lisp",
+        "books/history-source-capture-refinement.lisp",
+        "tests/acl2/history-capture-custody-tests.lisp",
+        "tests/acl2/history-source-capture-refinement-tests.lisp",
+        "planning/evidence/history-prefix-custody-2026-09-30/manifest.json",
+        "planning/evidence/history-source-custody-refinement-2026-09-30/manifest.json"
+      ],
+      "execution_scope": "Literal ACL2 component/source fixtures and selected source gates only. Whole logical STATE tooth, complete owner publication/lifetime composition, physical constructor, funding, callback issuer and native quantum qualification remain open."
     }
   ]
 }

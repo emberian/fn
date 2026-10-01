@@ -17932,6 +17932,36 @@
           "kind": "theorem",
           "name": "fn-bps-asb-step-preserves-head-profile",
           "pending_subject": "Actual ASB nested CBOR-head profile and primitive typed-ready component. Ghost predicates never served revalidation; remaining ASB grammar/span/window refinement, immutable provider and actual BP caller/crypto gate remain open. Proper-local source admission is not normal certification."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-asb-start-establishes-metadata-budget",
+          "pending_subject": "Actual ASB tracked operator metadata charge component; not a physical allocation/cost theorem. Ghost predicate never served; remaining grammar/span/window refinement, immutable provider and installed BP caller remain open. Source admission only."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-asb-drive-preserves-metadata-budget",
+          "pending_subject": "Actual ASB tracked operator metadata charge component; not a physical allocation/cost theorem. Ghost predicate never served; remaining grammar/span/window refinement, immutable provider and installed BP caller remain open. Source admission only."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-asb-step-preserves-metadata-budget",
+          "pending_subject": "Actual ASB tracked operator metadata charge component; not a physical allocation/cost theorem. Ghost predicate never served; remaining grammar/span/window refinement, immutable provider and installed BP caller remain open. Source admission only."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-asb-start-establishes-body-context",
+          "pending_subject": "Actual ASB composite current-body span/source/head/range invariant. Ghost predicates never served; all accumulated-value spans, complete grammar/every-window refinement, physical immutable backing/pinned lifetime and installed BP caller/crypto gate remain open. Proper-local source admission only."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-asb-drive-preserves-body-context",
+          "pending_subject": "Actual ASB composite current-body span/source/head/range invariant. Ghost predicates never served; all accumulated-value spans, complete grammar/every-window refinement, physical immutable backing/pinned lifetime and installed BP caller/crypto gate remain open. Proper-local source admission only."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-asb-step-preserves-body-context",
+          "pending_subject": "Actual ASB composite current-body span/source/head/range invariant. Ghost predicates never served; all accumulated-value spans, complete grammar/every-window refinement, physical immutable backing/pinned lifetime and installed BP caller/crypto gate remain open. Proper-local source admission only."
         }
       ]
     },
@@ -18158,6 +18188,36 @@
           "kind": "theorem",
           "name": "fn-hep-retirement-keeps-epoch-and-retained-debt",
           "pending_subject": "Actual internal history directory/backing subject; native owner/custody caller and genuine allocating-family installation are not installed in this source packet. No whole served completion or raw alias/retirement claim."
+        }
+      ]
+    },
+    {
+      "id": "PRF-1189",
+      "events": [
+        {
+          "name": "fn-stcp-enc-drive-work-bound",
+          "pending_subject": true,
+          "note": "Explicit profile component only; actual host caller and boundary refinement remain open."
+        },
+        {
+          "name": "fn-stcp-dec-drive-work-bound",
+          "pending_subject": true,
+          "note": "Explicit profile component only; actual host caller and boundary refinement remain open."
+        },
+        {
+          "name": "fn-stcp-dec-drive-borrowed-refinement",
+          "pending_subject": true,
+          "note": "Actual host caller remains open; decoder component induction carries cursor and exact work under borrowed string source."
+        },
+        {
+          "name": "fn-stcp-enc-drive-preserves-bounds",
+          "pending_subject": true,
+          "note": "Shallow numeric/control preservation component certified at matching private closure; actual host caller remains open."
+        },
+        {
+          "name": "fn-stcp-dec-drive-preserves-bounds",
+          "pending_subject": true,
+          "note": "Shallow numeric/control preservation component certified at matching private closure; actual host caller remains open."
         }
       ]
     }
