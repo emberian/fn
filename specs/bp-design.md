@@ -985,8 +985,14 @@ verification function as a **constrained** function under an `encapsulate`,
 `(fn-bps-verify context params key-ref target-octets result) -> :verified |
 :failed | :unsupported`, whose real implementation is the host's trusted
 cryptographic primitive (HST-004, A-CRYPTO). Nothing in the certified books
-computes an HMAC. Packet 8 has not been started: no `fn-bps-*` definition
-exists, and `books/bp-primary.lisp` keeps RFC 9172 and RFC 9173 out of scope.
+computes an HMAC. Current source work includes the bounded ASB/target parser, exact metadata
+completion matching and a receiver-only real crypto primitive. These do not
+install a backing issuer, current policy/key lease or verified admission
+capability. The legacy `fn-bpn-receive-decision` now refuses primary CRC0 as
+`:block-unintelligible` before it can produce a Store receive event, including
+when a structurally present BIB has not been verified. This is the current
+`:none` route, not a prohibition on the RFC's verified BIB-protected CRC0
+case. Changed-source admission and native qualification are still pending.
 
 What the receiver would verify, under a per-peer security policy:
 

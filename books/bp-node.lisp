@@ -421,7 +421,13 @@
         (fn-bpn-refused (fn-cbor-result-value d))
       (let* ((bundle (fn-cbor-result-value d))
              (primary (fn-bpb-bundle-primary bundle)))
-        (cond ((not (fn-bpp-flags-conformantp primary))
+        ; RFC9171 section4.3.1 permits primary CRC0 only with BIB protection.
+        ; This legacy wire entry has no registered verified BIB completion or
+        ; current-policy capability input. Structural BIB bytes cannot supply
+        ; either. A future verified route must carry that actual evidence.
+        (cond ((equal (fn-bpp-crc-type primary) 0)
+               (fn-bpn-refused :block-unintelligible))
+              ((not (fn-bpp-flags-conformantp primary))
                (fn-bpn-refused :flags-not-conformant))
               ((and (not allow-fragments)
                     (fn-bpp-fragmentp (fn-bpp-flags primary)))
