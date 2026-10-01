@@ -5871,7 +5871,9 @@
         "planning/evidence/bpsec-asb-terminal-source-2026-09-30.json",
         "books/bpsec-asb-target-types.lisp",
         "tests/acl2/bpsec-asb-target-types-tests.lisp",
-        "planning/evidence/bpsec-asb-target-types-source-2026-09-30.json"
+        "planning/evidence/bpsec-asb-target-types-source-2026-09-30.json",
+        "tests/acl2/bpsec-asb-window-differential-tests.lisp",
+        "planning/evidence/bpsec-asb-window-differential-source-2026-09-30.json"
       ],
       "implementation_note": "Additive source cursor and logical span abstraction. Guards and consumed-prefix component theorems admitted in exact persvati w28 source sessions; not normal certification. Every-schedule refinement, cursor invariant preservation, actual immutable provider/lifetime, target graph, crypto/key/nonce policy and served admission remain open. Structural parsing never implies verification."
     },

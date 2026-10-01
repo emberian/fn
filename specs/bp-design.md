@@ -1146,6 +1146,19 @@ are ghost typing predicates, never served whole-state validation. Remaining
 metadata grammar/count/uniqueness and every-window alpha, actual immutable
 provider lifetime and security verification remain open.
 
+`tests/acl2/bpsec-asb-window-differential-tests.lisp` exercises every two-window
+cut of frozen literal BIB/BCB success, refusal and unsupported inputs at work
+quanta1,7,64 with physical test windows bounded by64. Each invocation checks
+consumed-prefix, exact unconsumed window suffix and offset advance; terminal
+results include full decoded values, refusal offsets and complete unsupported
+raw retention, compared with independent literal expectations and the logical
+reference. A changed body octet under the same ID/offset parses structurally:
+alpha against the claimed old backing masks it, while alpha against actual
+input exposes it. This explicitly retains the missing genuine provider-slice
+relation; it is neither primitive verification nor a quantified every-window
+refinement theorem. The actual registered held/block source and pinned lifetime
+must establish that relation before the served parser supplies authority.
+
 The logical target-graph reference in `books/bpsec-target.lisp` binds each
 ASB as `(block-number . ASB)`, checks actual block existence/type, unique
 service/target pairs, forbidden security targets and payload BCB flags. Every
