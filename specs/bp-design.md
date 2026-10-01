@@ -1290,6 +1290,15 @@ reference. Bad tag, unsupported suite and unavailable/fault observations remain
 separate. Actual primitive provenance, canonical input/expected-span binding,
 immutable replay/current-key grant and installed acceptance caller remain open.
 
+The frozen source observation diagnostic now composes the actual retained
+segment/framing bodies, bounded ASB `STEP`, literal/span input commands and
+unchanged OpenSSL receiver primitives (SCN-1077). RFC9173 A.1/A.2 match under
+selected segment cuts and quantum1/7/64; changed AD/tag/ciphertext/length refuse.
+The A.1 short key remains refused by normative core key selection. Source slices,
+backing references, descriptors and keys are unissued test fixtures; this is
+neither an installed provider nor a current-policy grant or acceptance route.
+BP framing guards/refinement and the immutable issuer/pin join remain open.
+
 `fn-bps-input-plan` consumes fixed primary/canonical source-event metadata and
 emits `(:planned (:bps-input-plan descriptor transcript-commands ciphertext-span
 tag-span))`. Literals contain only deterministic CBOR headers; source bytes stay
