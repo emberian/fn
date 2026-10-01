@@ -110,7 +110,7 @@
 ; Called only with the actual primitive observation in the serialized owner
 ; action. No caller-supplied EOF/ready flag; zero successful read is EOF.
 (defun fn-owner-page-file-open-observe
- (token io-word count fn-page-file-open fn-page-read-pool)
+ (token expected-start expected-end io-word count fn-page-file-open fn-page-read-pool)
  (declare (xargs :stobjs (fn-page-file-open fn-page-read-pool)
                  :guard t :verify-guards nil))
  (let ((pending (fn-pfo-pending fn-page-file-open)))
@@ -129,6 +129,8 @@
    ((and (eq (fn-pfo-phase fn-page-file-open) :read-pending)
          (fn-prb-fixed-widthp 4 pending)
          (eq (fn-prl-nth 0 pending) :file-read)
+         (equal expected-start (fn-prl-nth 2 pending))
+         (equal expected-end (fn-prl-nth 3 pending))
          (natp count) (natp (fn-prl-nth 2 pending))
          (natp (fn-prl-nth 3 pending))
          (<= (fn-prl-nth 2 pending) (fn-prl-nth 3 pending))
@@ -140,6 +142,10 @@
            (fn-page-file-open (update-fn-pfo-pending nil fn-page-file-open))
            (fn-page-file-open (update-fn-pfo-phase (if (equal count 0) :eof :reading) fn-page-file-open)))
      (mv :file-read-recorded fn-page-file-open)))
+   ((and (eq (fn-pfo-phase fn-page-file-open) :read-pending)
+         (or (not (equal expected-start (fn-prl-nth 2 pending)))
+             (not (equal expected-end (fn-prl-nth 3 pending)))))
+    (mv :stale-file-observation fn-page-file-open))
    (t
     ; Unknown/failing primitive outcome retains pending plan, source and claim.
     (let ((fn-page-file-open (update-fn-pfo-phase :fenced fn-page-file-open)))
