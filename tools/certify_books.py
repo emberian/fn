@@ -92,7 +92,11 @@ FATAL_MARKERS = ("CERTIFICATION FAILED",)
 # emitted only from certify-book's successful branch, so it is the judge.
 ERROR_TEXT_MARKERS = ("ACL2 Error", "HARD ACL2 ERROR")
 FAILURE_MARKERS = FATAL_MARKERS + ERROR_TEXT_MARKERS
-BOOK_NAME = re.compile(r"(?:books|tests/acl2)/(?:[A-Za-z0-9_-]+/)*[A-Za-z0-9_-]+$")
+# A host book (host/NAME-host.lisp, included by the ld'ed host files and
+# listed in the Makefile's ACL2_BOOKS since 1bf2ddcaf) is certified like any
+# other; host/native/ holds raw files, never books (stage 0, 2026-10-01:
+# hbox_native's certify step refused the image's own roots).
+BOOK_NAME = re.compile(r"(?:books|tests/acl2|host(?!/native/))/(?:[A-Za-z0-9_-]+/)*[A-Za-z0-9_-]+$")
 # ACL2's provisional certification, in the three waves `:DOC
 # provisional-certification` names.  Create skips proofs and writes `.pcert0`;
 # Convert does every proof given only its own `.pcert0` and a `.cert`,
@@ -1015,7 +1019,7 @@ def main() -> int:
     invalid = [book for book in args.books if not BOOK_NAME.fullmatch(book)]
     if invalid:
         parser.error(
-            "book names must be repository-relative paths below books/ or tests/acl2/ "
+            "book names must be repository-relative paths below books/, tests/acl2/ or host/ (not host/native/) "
             "without .lisp: " + ", ".join(invalid)
         )
     repeated = sorted({book for book in args.books if args.books.count(book) > 1})
