@@ -934,7 +934,7 @@
              fn-record-decode-exact-successes))
 
 ; -----------------------------------------------------------------------------
-; The implementation's side of the seam (plan 2026-09-22 §4.1, step T1).
+; The implementation's side of the seam (plan 2026-09-22 section 4.1, step T1).
 ;
 ; `books/records-seam.lisp' constrains `fn-record-encode' and
 ; `fn-record-decode-exact' by six properties; these are the same six of
@@ -1044,7 +1044,7 @@
                                       fn-cbor-valuep-bounded)))))
 
 ; KEYSTONE (the record ceiling at the widths the runtime produces; design
-; 2026-09-25-bounds §2.1: the relation a profile's record bound must satisfy
+; 2026-09-25-bounds section 2.1: the relation a profile's record bound must satisfy
 ; for its article bound).  A record whose integer fields fit u32 encodes
 ; within `fn-record-encoded-octets-ceiling', the 1 141-octet overhead a
 ; profile's R has been checked against since before packet P6: the five
@@ -1203,8 +1203,8 @@
                                fn-record-decode-after-header)))
   :rule-classes nil)
 
-; The header split the way the seam states it (plan 2026-09-22 §4.1;
-; specs/acceptance-stamp.md §2.1): the five magic octets, and the schema
+; The header split the way the seam states it (plan 2026-09-22 section 4.1;
+; specs/acceptance-stamp.md section 2.1): the five magic octets, and the schema
 ; octet as the one the decoded record needs.  Both follow from the six-octet
 ; fact above.
 (defthm fn-record-impl-accepted-input-magic
