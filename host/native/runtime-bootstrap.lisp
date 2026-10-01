@@ -71,3 +71,14 @@
     (unless (eq outcome :accepted)
       (sb-ext:exit :code (fnn-core 'fn-outcome-code outcome) :abort t))
     :accepted))
+(defun fnn-runtime-bootstrap-production-entry ()
+  "Consume the earliest accepted process entry exactly once before facilities."
+  ; Direct raw entry performs the earliest attempt here. The extracted
+  ; trampoline has already performed it; STARTUP validates the SAME registry.
+  (fnn-runtime-bootstrap-startup)
+  (unless (and *fnn-runtime-bootstrap*
+               (eq (fnn-runtime-bootstrap-phase *fnn-runtime-bootstrap*)
+                   :startup-accepted))
+    (sb-ext:exit :code (fnn-core 'fn-outcome-code :fenced) :abort t))
+  (setf (fnn-runtime-bootstrap-phase *fnn-runtime-bootstrap*) :production-entered)
+  :accepted)

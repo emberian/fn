@@ -461,7 +461,7 @@
         (defun fn-native-entry (st)
           (declare (ignore st))
           ; Bootstrap precedes facility constructors and ordinary cleanup.
-          (fnn-runtime-bootstrap-startup)
+          (fnn-runtime-bootstrap-production-entry)
           ; A refused start exits 5 with its reason (io.lisp).
           (fnn-native-startup (lambda ()
                                 (fnn-crypto-startup)
