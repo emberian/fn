@@ -54,7 +54,10 @@
 (defun fn-pwrt-current-fixture-run ()
  (declare (xargs :guard t :verify-guards nil))
  (with-local-stobj fn-page-window-workers
-  (with-local-stobj fn-page-read-pool
-   (mv-let (answer fn-page-window-workers fn-page-read-pool)
-    (fn-pwrt-current-fixture fn-page-window-workers fn-page-read-pool) answer))))
+  (mv-let (answer fn-page-window-workers)
+   (with-local-stobj fn-page-read-pool
+    (mv-let (answer fn-page-window-workers fn-page-read-pool)
+     (fn-pwrt-current-fixture fn-page-window-workers fn-page-read-pool)
+     (mv answer fn-page-window-workers)))
+   answer)))
 (assert-event (fn-pwrt-current-fixture-run))

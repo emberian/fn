@@ -152,3 +152,8 @@
                                    fn-owner-page-read-binding-revision fn-prb-data-revision
                                    fn-prl-nth)
                                   (fn-pwrt-resolved-return fn-pwx-return fn-pwrt-carryp)))))
+
+(verify-guards fn-pwrt-current-step)
+(verify-guards fn-pwrt-node-step)
+(verify-guards fn-owner-page-window-return-step
+ :hints (("Goal" :in-theory (enable fn-pwx-rowp fn-prl-nth))))

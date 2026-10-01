@@ -60,15 +60,21 @@ one kept prefix cell per action. Its endpoint is the complete original
 `fn-pwx-return` result, including worker and ledger effects. Matching source
 admission for the 18-event prefix and two subsequent guards is archived in
 `planning/evidence/page-window-return-continuation-source-20260930`; the later
-endpoint composition and literal witness suffix are still unadmitted.
+endpoint composition and literal witness suffix subsequently passed in the
+matched current-source packet.
 
 The actual caller successor `fn-owner-page-window-return-step` descends the
 existing registered worker tree, derives the worker row from CURRENT, retains
 source and pending aliases, and publishes the resolved same-binding return
 through the shared pool. It persists `:return-publishing` intent before pool
 mutation and publishes the returned carry phase last. This caller and its
-complete CURRENT-effects theorem are source candidates awaiting matched
-admission; the logical cursor theorem alone does not establish their result.
+complete CURRENT-effects theorem and all three executable guards passed
+matched source admission. The actual owner-entry local-stobj witness also
+passed after two preserved test translation/context repairs, with seeded
+unfunded registry/domain scaffolding and an unverified recursive test driver.
+Evidence is in `planning/evidence/page-window-return-current-source-20260930`.
+This is source admission, not normal include-level certification or runtime
+qualification.
 
 The native `fnn-extent-executor-actual-return` calls the selected successor only
 after its existing actual job activation return or actual death join. Selection
