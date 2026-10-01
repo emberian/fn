@@ -36,12 +36,17 @@
 (local (include-book "arithmetic/top" :dir :system))
 
 ; The codec (books/store-tree-codec.lisp) is opened in the hints of the
-; proofs that read it, never book-wide (AGENTS.md; Codex r37 F3, r40 F1):
-; `adt-tree-codec' names its definitions for those hints.
+; proofs that read it, never in this book's scope (AGENTS.md; Codex r37 F3,
+; r40 F1): `adt-tree-codec' names its definitions for those hints, and the
+; three the included chain leaves enabled (fn-scc-octets-valuep,
+; fn-scc-octetp, fn-scc-le-digits; r47 F6) are disabled here locally, so
+; every member starts closed in this book.  The included books' own scopes
+; (store-checkpoint-buffer's local enable) are theirs.
 (local (deftheory adt-tree-codec
          '(fn-scc-program fn-scc-atom-octets fn-scc-atomp fn-scc-nat-octets
            fn-scc-nat-encodablep fn-scc-string-octets fn-scc-octets-valuep
            fn-scc-octet-listp fn-scc-octetp fn-sccb-treep fn-scc-le-digits)))
+(local (in-theory (disable fn-scc-octets-valuep fn-scc-octetp fn-scc-le-digits)))
 
 ; -----------------------------------------------------------------------------
 ; Counts without lists.
@@ -63,7 +68,8 @@
   (if (zp n) 0 (+ 1 (adt-tree-ndig (floor n 256)))))
 
 (defthm adt-tree-ndig-is-len-digits
-  (equal (adt-tree-ndig n) (len (fn-scc-le-digits n))))
+  (equal (adt-tree-ndig n) (len (fn-scc-le-digits n)))
+  :hints (("Goal" :in-theory (enable fn-scc-le-digits))))
 
 (local
  (defthm adt-tree-len-chars-octets
@@ -104,6 +110,17 @@
    (implies (true-listp a)
             (equal (fn-scc-octet-listp (append a b))
                    (and (fn-scc-octet-listp a) (fn-scc-octet-listp b))))))
+
+;; The codec's octet facts the equivalence reads, each opened in its hint.
+(local (defthm adt-tree-octetsp-le-digits
+         (adt-octetsp (fn-scc-le-digits n))
+         :hints (("Goal" :in-theory (enable fn-scc-le-digits adt-octetsp)))))
+(local (defthm adt-tree-octetsp-append
+         (implies (and (adt-octetsp a) (adt-octetsp b)) (adt-octetsp (append a b)))
+         :hints (("Goal" :in-theory (enable adt-octetsp)))))
+(local (defthm adt-tree-octetsp-chars-octets
+         (adt-octetsp (fn-scc-chars-octets cs))
+         :hints (("Goal" :in-theory (enable fn-scc-chars-octets adt-octetsp)))))
 
 (defthm adt-tree-okp-is-sccb-treep
   (equal (adt-tree-okp x) (fn-sccb-treep x))
@@ -385,7 +402,7 @@
 
 (defthm adt-h-tw-digits-is-puts
   (equal (adt-h-tw-digits n c) (adt-h-puts (fn-scc-le-digits n) c))
-  :hints (("Goal" :induct (adt-h-tw-digits n c))))
+  :hints (("Goal" :induct (adt-h-tw-digits n c) :in-theory (enable fn-scc-le-digits))))
 
 (defthm adt-h-tw-chars-is-puts
   (implies (and (stringp s) (natp k))
@@ -486,7 +503,7 @@
 
 (defthm adt-g-tw-digits-is-puts
   (equal (adt-g-tw-digits n c) (adt-pool-cputs (adt-g-pp) (fn-scc-le-digits n) c))
-  :hints (("Goal" :induct (adt-g-tw-digits n c))))
+  :hints (("Goal" :induct (adt-g-tw-digits n c) :in-theory (enable fn-scc-le-digits))))
 
 (defthm adt-g-tw-chars-is-puts
   (implies (and (stringp s) (natp k))
@@ -520,7 +537,7 @@
          (adt-pool-cputs (adt-g-pp)
                         (append (fn-scc-program x) (fn-scc-repeat (nfix n) *fn-scc-op-cons*))
                         c))
-  :hints (("Goal" :in-theory (enable adt-pool-cputs)
+  :hints (("Goal" :in-theory (enable adt-pool-cputs fn-scc-octets-valuep fn-scc-octetp fn-scc-le-digits)
            :use ((:functional-instance adt-h-tw-tree-is-puts
                                        (adt-h-put adt-g-put)
                                        (adt-h-puts (lambda (bytes c) (adt-pool-cputs (adt-g-pp) bytes c)))

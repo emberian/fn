@@ -573,7 +573,10 @@
 ; besides the one page it adds; the directory is made with
 ; *adt-pg-dir-reserve* slots at its first page and doubles past them
 ; (its slots are table-page headers, one per T*R rows: none below
-; *adt-pg-dir-reserve* * T * R = 4,194,304 rows).
+; *adt-pg-dir-reserve* * T * R = 4,194,304 rows).  The doubling is a step
+; proportional to the store; an instance's NAME$C-RESERVE widens the
+; directory once, at open, from the operator's profile, and below that no
+; append grows it (section 9, THE RESERVATION).
 ;
 ; The VIEW (`adt-pg-view') flattens each directory: the first ceil(NP/T)
 ; table pages concatenated (`adt-pg-dflat'), every one of them full
@@ -1983,22 +1986,25 @@
                  (:instance adt-corr-append (c (adt-pg-flat s (adt-pg-append-room s rec r q d dp c))))))))
 
 ;
-; THE WORK OF ONE CALL (Codex r37 F1).  Pages are fixed, so what one append
-; allocates is bounded by the record, not by the count: one row page at
-; most (adt-pg-append-pages-bound: NP grows by at most one), with at most
-; one table page of *adt-pg-tpages* page headers, and pool pages for its
-; octets only (Q*NQ grows by at most the record's load plus Q-1), with one
-; pool table page per *adt-pg-tpages* pool pages; the directory doubles
-; only past *adt-pg-dir-reserve* table pages.  The work is the record's:
-; an append writes its `adt-rec-load' octets, a set an octets value's
-; length, a get conses one.  So the per-call bound is PROPORTIONAL TO THE
-; VALUE'S SIZE, not to the store's; no generated call is resumable.  The
-; caller's admission profile bounds the value: for the catalog row
-; (books/catalog-paged.lisp fn-crow) the message-id is a header field, under
-; the profile's max header octets (*fn-bs-pf-max-header-octets*,
-; books/byte-store-frame.lisp), and every field under its max article
-; octets (*fn-bs-pf-max-article-octets*).  A value larger than one
-; scheduling step may write is the caller's to split; this library does not.
+; THE WORK OF ONE CALL (Codex r37 F1, r47 F1/F2).  Pages are fixed, so one
+; append adds at most one row page (adt-pg-append-pages-bound: NP grows by
+; at most one) and pool pages for its own octets only (Q*NQ grows by at
+; most the record's load plus Q-1); each new page readies at most one table
+; page of *adt-pg-tpages* headers.  The directory itself doubles when a
+; table page falls past its slots (adt-pg-dadd), a step proportional to the
+; store: the RESERVATION below removes it.  An instance's NAME$C-RESERVE
+; (`adt-pg-reserve-c') makes each directory wide enough for ROWS rows and
+; OCTETS pool octets once, at open, from the operator's profile; it changes
+; no stored value (adt-pg-corr-reserve).  Below the reservation an append
+; grows no directory (adt-pg-append-step-bound), so with the record's load
+; under L (the caller's admission bound: for the catalog row the profile's
+; max header octets, *fn-bs-pf-max-header-octets*, books/byte-store-frame
+; .lisp) one append allocates at most one row page, one table page, and
+; ceil((L+Q-1)/Q) pool pages with their table pages.  The work is the
+; record's: proportional to L, not to the store; no generated call is
+; resumable, so L is the per-step bound, and a value larger than one step
+; may write is the caller's to split (the profile caps L; this library does
+; not split).  A clear releases the pages and the reservation with them.
 
 (defthm adt-pg-corr-okp-fc
   (implies (adt-pg-corr s r q c a)
@@ -2036,6 +2042,163 @@
                  (:instance adt-pg-append-fields-meaning (s0 s) (ci 0)
                             (n (nth 2 (adt-pg-append-room s rec r q d dp c)))
                             (c (adt-pg-append-room s rec r q d dp c)))))))
+
+; Each directory's length is kept by every write and, below its slots, by
+; every page added (the reservation's meaning).
+(defthm adt-pg-len-dir-of-rput
+  (implies (and (natp n) (posp r))
+  (and (equal (len (nth 0 (adt-pg-rput ci n x r c))) (len (nth 0 c)))
+       (equal (len (nth 1 (adt-pg-rput ci n x r c))) (len (nth 1 c)))))
+  :hints (("Goal" :in-theory (e/d (adt-pg-rput) (floor mod)))))
+
+(defthm adt-pg-len-dir-of-pput
+  (implies (and (natp i) (posp q))
+  (and (equal (len (nth 0 (adt-pg-pput i b q c))) (len (nth 0 c)))
+       (equal (len (nth 1 (adt-pg-pput i b q c))) (len (nth 1 c)))))
+  :hints (("Goal" :in-theory (e/d (adt-pg-pput) (floor mod)))))
+
+(defthm adt-pg-len-dir-of-poolw
+  (implies (and (natp i) (posp q))
+  (and (equal (len (nth 0 (adt-pg-poolw i bytes q c))) (len (nth 0 c)))
+       (equal (len (nth 1 (adt-pg-poolw i bytes q c))) (len (nth 1 c)))))
+  :hints (("Goal" :induct (adt-pg-poolw i bytes q c) :in-theory (enable adt-pg-poolw))))
+
+(defthm adt-pg-len-dir-of-put-field
+  (implies (and (natp n) (posp r) (posp q) (natp (nth 3 c)))
+  (and (equal (len (nth 0 (adt-pg-put-field k ci n v r q c))) (len (nth 0 c)))
+       (equal (len (nth 1 (adt-pg-put-field k ci n v r q c))) (len (nth 1 c)))))
+  :hints (("Goal" :in-theory (enable adt-pg-put-field))))
+
+(defthm adt-pg-nth3-of-put-field-natp
+  (implies (natp (nth 3 c)) (natp (nth 3 (adt-pg-put-field k ci n v r q c))))
+  :rule-classes (:rewrite :type-prescription)
+  :hints (("Goal" :in-theory (enable adt-pg-put-field))))
+
+(defthm adt-pg-len-dir-of-append-fields
+  (implies (and (natp n) (posp r) (posp q) (natp (nth 3 c)))
+  (and (equal (len (nth 0 (adt-pg-append-fields s ci n rec r q c))) (len (nth 0 c)))
+       (equal (len (nth 1 (adt-pg-append-fields s ci n rec r q c))) (len (nth 1 c)))))
+  :hints (("Goal" :induct (adt-pg-append-fields s ci n rec r q c) :in-theory (enable adt-pg-append-fields))))
+
+(defthm adt-pg-len-dadd
+  (implies (and (natp k) (< (floor k *adt-pg-tpages*) (len dir)))
+           (equal (len (adt-pg-dadd m r d k dir)) (len dir)))
+  :hints (("Goal" :in-theory (e/d (adt-pg-dadd) (adt-pg-fresh adt-pg-tready floor mod)))))
+
+(defthm adt-pg-len-dir-of-addrow
+  (implies (and (natp (nth 4 c)) (< (floor (nth 4 c) *adt-pg-tpages*) (len (nth 0 c))))
+           (and (equal (len (nth 0 (adt-pg-addrow m r d c))) (len (nth 0 c)))
+                (equal (len (nth 1 (adt-pg-addrow m r d c))) (len (nth 1 c)))))
+  :hints (("Goal" :in-theory (e/d (adt-pg-addrow) (floor mod)))))
+
+(defthm adt-pg-len-dir-of-addpool
+  (implies (and (natp (nth 5 c)) (< (floor (nth 5 c) *adt-pg-tpages*) (len (nth 1 c))))
+           (and (equal (len (nth 0 (adt-pg-addpool q d c))) (len (nth 0 c)))
+                (equal (len (nth 1 (adt-pg-addpool q d c))) (len (nth 1 c)))))
+  :hints (("Goal" :in-theory (e/d (adt-pg-addpool) (floor mod)))))
+
+(local
+ (defthm adt-pg-below-reserve
+   (implies (and (natp k) (natp l) (posp r) (< (* r k) (* r *adt-pg-tpages* l)))
+            (< (floor k *adt-pg-tpages*) l))
+   :rule-classes nil
+   :hints (("Goal" :use ((:instance adt-pg-floor-below (n k) (r *adt-pg-tpages*) (np l)))
+            :nonlinearp t))))
+
+(defthm adt-pg-len-dir-of-rowroom
+  (implies (and (posp r) (natp (nth 4 c)) (natp (nth 2 c)) (<= (nth 2 c) (* r (nth 4 c)))
+                (< (nth 2 c) (* r *adt-pg-tpages* (len (nth 0 c)))))
+           (and (equal (len (nth 0 (adt-pg-rowroom m r d c))) (len (nth 0 c)))
+                (equal (len (nth 1 (adt-pg-rowroom m r d c))) (len (nth 1 c)))))
+  :hints (("Goal" :in-theory (e/d (adt-pg-rowroom) (floor mod))
+           :use ((:instance adt-pg-below-reserve (k (nth 4 c)) (l (len (nth 0 c))))))))
+
+(defthm adt-pg-len-dir-of-poolroom
+  (implies (and (posp q) (natp (nth 5 c)) (natp need)
+                (<= need (* q *adt-pg-tpages* (len (nth 1 c)))))
+           (and (equal (len (nth 0 (adt-pg-poolroom q d need c))) (len (nth 0 c)))
+                (equal (len (nth 1 (adt-pg-poolroom q d need c))) (len (nth 1 c)))))
+  :hints (("Goal" :induct (adt-pg-poolroom q d need c) :in-theory (e/d (adt-pg-poolroom) (floor mod)))
+          ("Subgoal *1/1" :use ((:instance adt-pg-below-reserve (k (nth 5 c)) (l (len (nth 1 c))) (r q))))))
+
+(defthm adt-pg-append-step-bound
+  (implies (and (adt-pg-corr s r q c a) (consp s)
+                (< (nth 2 c) (* r *adt-pg-tpages* (len (nth 0 c))))
+                (<= (+ (nth 3 c) (adt-rec-load s rec)) (* q *adt-pg-tpages* (len (nth 1 c))))
+                (<= (adt-rec-load s rec) l))
+           (let ((c2 (adt-pg-append-c s rec r q d dp c)))
+             (and (equal (len (nth 0 c2)) (len (nth 0 c)))
+                  (equal (len (nth 1 c2)) (len (nth 1 c)))
+                  (<= (nth 4 c2) (+ 1 (nth 4 c)))
+                  (<= (* q (nth 5 c2)) (+ (* q (nth 5 c)) l (- q 1))))))
+  :hints (("Goal" :in-theory (e/d (adt-pg-append-c adt-pg-append-at adt-pg-append-room)
+                                  (adt-pg-corr adt-pg-okp adt-pg-append-pages-bound
+                                   adt-pg-append-fields-meaning adt-pg-rowroom-meaning adt-pg-poolroom-meaning
+                                   adt-pg-poolroom-pages-bound adt-pg-append-room-meaning
+                                   adt-pg-corr-fill-bound adt-pg-np-of-rowroom
+                                   adt-pg-len-dir-of-rowroom adt-pg-len-dir-of-poolroom))
+           :do-not-induct t
+           :use (adt-pg-append-pages-bound
+                 adt-pg-corr-count-bound adt-pg-corr-count adt-pg-corr-fill-natp
+                 (:instance adt-pg-rowroom-meaning (m (adt-ncols s)))
+                 (:instance adt-pg-len-dir-of-rowroom (m (adt-ncols s)))
+                 (:instance adt-pg-len-dir-of-poolroom (c (adt-pg-rowroom (adt-ncols s) r d c)) (d dp)
+                            (need (+ (nth 3 c) (adt-rec-load s rec))))
+                 adt-pg-append-room-meaning
+                 (:instance adt-pg-corr-count (c (adt-pg-append-room s rec r q d dp c)))))))
+
+; THE RESERVATION: each directory at least ROWS (OCTETS) wide, once.
+(defun adt-pg-dslots (n per)
+  (declare (xargs :guard (and (natp n) (posp per))))
+  (+ 1 (floor n per)))
+
+(defun adt-pg-dreserve (p slots c)
+  (declare (xargs :verify-guards nil))
+  (if (< (len (nth p c)) slots) (update-nth p (resize-list (nth p c) slots '(nil)) c) c))
+
+(defun adt-pg-reserve-c (rows octets r q c)
+  (declare (xargs :verify-guards nil))
+  (adt-pg-dreserve 1 (adt-pg-dslots octets (* q *adt-pg-tpages*))
+                   (adt-pg-dreserve 0 (adt-pg-dslots rows (* r *adt-pg-tpages*)) c)))
+
+(defthm adt-pg-nth-of-reserve
+  (implies (and (natp k) (not (equal k 0)) (not (equal k 1)))
+           (equal (nth k (adt-pg-reserve-c rows octets r q c)) (nth k c))))
+
+(defthm adt-pg-reserve-capacity
+  (implies (and (natp rows) (natp octets) (posp r) (posp q))
+           (let ((c2 (adt-pg-reserve-c rows octets r q c)))
+             (and (< rows (* r *adt-pg-tpages* (len (nth 0 c2))))
+                  (< octets (* q *adt-pg-tpages* (len (nth 1 c2))))
+                  (<= (len (nth 0 c)) (len (nth 0 c2)))
+                  (<= (len (nth 1 c)) (len (nth 1 c2))))))
+  :hints (("Goal" :in-theory (e/d () (floor))
+           :use ((:instance adt-pg-floor-mod (n rows) (r (* r *adt-pg-tpages*)))
+                 (:instance adt-pg-floor-mod (n octets) (r (* q *adt-pg-tpages*))))
+           :nonlinearp t)))
+
+(defthm adt-pg-view-of-reserve
+  (implies (and (adt-pg-dokp *adt-pg-tpages* (nth 4 c) (nth 0 c))
+                (adt-pg-dokp *adt-pg-tpages* (nth 5 c) (nth 1 c)))
+           (let ((c2 (adt-pg-reserve-c rows octets r q c)))
+             (and (equal (adt-pg-view c2) (adt-pg-view c))
+                  (adt-pg-dokp *adt-pg-tpages* (nth 4 c) (nth 0 c2))
+                  (adt-pg-dokp *adt-pg-tpages* (nth 5 c) (nth 1 c2)))))
+  :hints (("Goal" :in-theory (e/d (adt-pg-view adt-pg-rtab adt-pg-ptab) (adt-pg-dslots))
+           :use ((:instance adt-pg-dir-resize (tsz *adt-pg-tpages*) (np (nth 4 c)) (dir (nth 0 c))
+                            (n (adt-pg-dslots rows (* r *adt-pg-tpages*))) (d '(nil)))
+                 (:instance adt-pg-dir-resize (tsz *adt-pg-tpages*) (np (nth 5 c)) (dir (nth 1 c))
+                            (n (adt-pg-dslots octets (* q *adt-pg-tpages*))) (d '(nil)))))))
+
+(defthm adt-pg-corr-reserve
+  (implies (adt-pg-corr s r q c a)
+           (and (adt-pg-corr s r q (adt-pg-reserve-c rows octets r2 q2 c) a)
+                (equal (adt-pg-flat s (adt-pg-reserve-c rows octets r2 q2 c)) (adt-pg-flat s c))))
+  :hints (("Goal" :in-theory (e/d (adt-pg-corr adt-pg-okp adt-pg-rokp adt-pg-pokp adt-pg-flat)
+                                  (adt-pg-reserve-c adt-pg-view-of-reserve))
+           :use ((:instance adt-pg-view-of-reserve (r r2) (q q2))))))
+
+(in-theory (disable adt-pg-dslots adt-pg-dreserve adt-pg-reserve-c))
 
 (defun adt-pg-set-room (s j v q dp c)
   (declare (xargs :verify-guards nil))

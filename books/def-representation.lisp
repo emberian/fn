@@ -96,7 +96,7 @@
                       ,l))
              (rep-l-field-execs l items upd (cdr fields) (+ 1 j))))))
 
-(defun rep-l-exec-events (name fields scalar)
+(defun rep-l-exec-events (name fields scalar paged)
   ; The :exec functions of the list foundation, each :guard t.
   (let* ((l (adt-sym name "$L"))
          (items (adt-sym l "-ITEMS"))
@@ -111,6 +111,12 @@
        (defun ,(adt-sym l "-CLEAR") (,l)
          (declare (xargs :stobjs ,l))
          (,upd nil ,l)))
+     ; A paged implementation's reservation is the identity on the list.
+     (if paged
+         `((defun ,(adt-sym l "-RESERVE") (rows octets ,l)
+             (declare (xargs :stobjs ,l) (ignore rows octets))
+             ,l))
+       nil)
      (if scalar
          `((defun ,(adt-sym l "-GET") (i ,l)
              (declare (xargs :stobjs ,l))
@@ -131,7 +137,13 @@
                :exec ,(adt-sym3 l "-SET-" f) :protect t)
              (rep-generic-field-exports name impl l (cdr fields))))))
 
-(defun rep-generic-exports (name impl fields scalar)
+(defun rep-generic-reserve-export (name impl l paged)
+  (if paged
+      `((,(adt-sym name "-RESERVE") :logic ,(adt-sym impl "$A-RESERVE") :exec ,(adt-sym l "-RESERVE")
+         :protect t))
+    nil))
+
+(defun rep-generic-exports (name impl fields scalar paged)
   ; In the implementation's order: `attach-stobj' matches the two export
   ; lists positionally.
   (let ((l (adt-sym name "$L")))
@@ -142,22 +154,25 @@
            :protect t)
           (,(adt-sym name "-APPEND") :logic ,(adt-sym impl "$A-APPEND") :exec ,(adt-sym l "-APPEND")
            :protect t)
+          ,@(rep-generic-reserve-export name impl l paged)
           (,(adt-sym name "-CLEAR") :logic ,(adt-sym impl "$A-CLEAR") :exec ,(adt-sym l "-CLEAR")
            :protect t))
       `((,(adt-sym name "-COUNT") :logic ,(adt-sym impl "$A-COUNT") :exec ,(adt-sym l "-COUNT"))
         (,(adt-sym name "-APPEND") :logic ,(adt-sym impl "$A-APPEND") :exec ,(adt-sym l "-APPEND")
          :protect t)
         ,@(rep-generic-field-exports name impl l fields)
+        ,@(rep-generic-reserve-export name impl l paged)
         (,(adt-sym name "-CLEAR") :logic ,(adt-sym impl "$A-CLEAR") :exec ,(adt-sym l "-CLEAR")
          :protect t)))))
 
 
-(defun rep-logic-names (impl fields scalar)
-  (if scalar
-      (list (adt-sym impl "$A-GET") (adt-sym impl "$A-SET"))
-    (adt-logic-names impl fields)))
+(defun rep-logic-names (impl fields scalar paged)
+  (append (if paged (list (adt-sym impl "$A-RESERVE")) nil)
+          (if scalar
+              (list (adt-sym impl "$A-GET") (adt-sym impl "$A-SET"))
+            (adt-logic-names impl fields))))
 
-(defun rep-generic-events (name impl fields scalar)
+(defun rep-generic-events (name impl fields scalar paged)
   (let* ((l (adt-sym name "$L"))
          (items (adt-sym l "-ITEMS"))
          (lp (adt-sym l "P"))
@@ -166,7 +181,7 @@
          (create-a (adt-sym-pre "CREATE-" (adt-sym impl "$A")))
          (create-l (adt-sym-pre "CREATE-" l))
          (recog (adt-sym name "P"))
-         (execs (rep-l-exec-events name fields scalar))
+         (execs (rep-l-exec-events name fields scalar paged))
          (exec-names (strip-cadrs execs))
          (defabs
            `(defabsstobj ,name
@@ -174,12 +189,12 @@
               :recognizer (,recog :logic ,ap :exec ,lp)
               :creator (,(adt-sym-pre "CREATE-" name) :logic ,create-a :exec ,create-l)
               :corr-fn ,lcorr
-              :exports ,(rep-generic-exports name impl fields scalar)
+              :exports ,(rep-generic-exports name impl fields scalar paged)
               :attachable t))
          (ob-hints `(("Goal" :in-theory (enable ,lcorr ,ap ,create-a ,create-l
                                                  ,(adt-sym impl "$A-COUNT") ,(adt-sym impl "$A-APPEND")
                                                  ,(adt-sym impl "$A-CLEAR")
-                                                 ,@(rep-logic-names impl fields scalar)
+                                                 ,@(rep-logic-names impl fields scalar paged)
                                                  ,@exec-names ,items
                                                  adt-set-a adt-scalar-seq-p)))))
     `((defstobj ,l (,items :type t :initially nil) :inline t)
@@ -647,7 +662,26 @@
       (defthm ,(adt-sym clear-c "-UNFOLDS")
         (equal (,clear-c c) (adt-pg-clear-c c))
         :hints (("Goal" :in-theory (enable ,clear-c adt-pg-clear-c resize-list))))
-      (in-theory (disable ,count-of ,append-c ,clear-c)))))
+      ; The reservation (Codex r47 F1): each directory made wide enough, once,
+      ; for ROWS rows and OCTETS pool octets (the operator's profile), so no
+      ; append below it grows a directory (adt-pg-append-step-bound).
+      (defun ,(adt-sym name "$C-RESERVE") (rows octets ,st)
+        (declare (xargs :stobjs ,st :guard (and (natp rows) (natp octets))))
+        (let* ((n (+ 1 (floor rows (* *adt-pg-rows* *adt-pg-tpages*))))
+               (,st (if (< (,(adt-sym rows "-LENGTH") ,st) n)
+                        (,(adt-sym-pre "RESIZE-" rows) n ,st)
+                      ,st))
+               (n (+ 1 (floor octets (* *adt-pg-octets* *adt-pg-tpages*)))))
+          (if (< (,(adt-sym ppages "-LENGTH") ,st) n)
+              (,(adt-sym-pre "RESIZE-" ppages) n ,st)
+            ,st)))
+      (defthm ,(adt-sym name "$C-RESERVE-UNFOLDS")
+        (equal (,(adt-sym name "$C-RESERVE") rows octets c)
+               (adt-pg-reserve-c rows octets *adt-pg-rows* *adt-pg-octets* c))
+        :hints (("Goal" :in-theory (e/d (,(adt-sym name "$C-RESERVE") adt-pg-reserve-c adt-pg-dreserve
+                                         adt-pg-dslots)
+                                        (floor)))))
+      (in-theory (disable ,count-of ,append-c ,clear-c ,(adt-sym name "$C-RESERVE"))))))
 
 
 ; The fill-is-load theorems of a write-once paged instance, over the flat
@@ -734,10 +768,13 @@
                         (,(adt-sym name "-GET") :logic ,get-a :exec ,get-c)
                         (,(adt-sym name "-SET") :logic ,set-a :exec ,set-c :protect t)
                         (,(adt-sym name "-APPEND") :logic ,append-a :exec ,append-c1 :protect t)
+                        ,@(and paged
+                               `((,(adt-sym name "-RESERVE") :logic ,(adt-sym name "$A-RESERVE")
+                                  :exec ,(adt-sym name "$C-RESERVE") :protect t)))
                         (,(adt-sym name "-CLEAR") :logic ,clear-a :exec ,clear-c :protect t))))
          (ob-hints `(("Goal" :in-theory (enable ,corr ,ap ,create-a ,count-a ,append-a ,get-a ,set-a
                                                  ,clear-a ,append-c1 adt-scalar-seq-p adt-val-okp
-                                                 ,@(and paged (list count-of))
+                                                 ,@(and paged (list count-of (adt-sym name "$A-RESERVE")))
                                                  ,@invariant-lemmas)))))
     `(encapsulate
        ()
@@ -777,6 +814,10 @@
        (defun ,clear-a (,a)
          (declare (xargs :guard (,ap ,a)) (ignore ,a))
          nil)
+       ,@(and paged
+              `((defun ,(adt-sym name "$A-RESERVE") (rows octets ,a)
+                  (declare (xargs :guard (and (,ap ,a) (natp rows) (natp octets))) (ignore rows octets))
+                  ,a)))
        (defun ,corr (c a)
          (declare (xargs :guard t :verify-guards nil))
          ,(if paged
@@ -801,6 +842,10 @@
        (defthm ,(adt-sym name "-CLEAR-IS-NIL")
          (equal (,(adt-sym name "-CLEAR") ,name) nil)
          :hints (("Goal" :in-theory (enable ,clear-a))))
+       ,@(and paged
+              `((defthm ,(adt-sym name "-RESERVE-IS-IDENTITY")
+                  (equal (,(adt-sym name "-RESERVE") rows octets ,name) ,name)
+                  :hints (("Goal" :in-theory (enable ,(adt-sym name "$A-RESERVE")))))))
        (defthm ,(adt-sym recog "-IS-SCALAR-SEQ-P")
          (equal (,recog x) (and (adt-scalar-seq-p ',kind x)
                                 ,@(if invariant `((,invariant x)) nil)))
@@ -988,8 +1033,11 @@
                                `((,(adt-sym name "-APPEND-T") :logic ,(adt-sym name "$A-APPEND-T")
                                   :exec ,(adt-sym name "$C-APPEND-T") :protect t)))
                         ,@(adt-exports-once name fields once)
+                        (,(adt-sym name "-RESERVE") :logic ,(adt-sym name "$A-RESERVE")
+                         :exec ,(adt-sym name "$C-RESERVE") :protect t)
                         (,(adt-sym name "-CLEAR") :logic ,clear-a :exec ,clear-c :protect t))))
          (ob-hints `(("Goal" :in-theory (enable ,corr ,ap ,create-a ,count-a ,append-a ,clear-a ,count-of
+                                                 ,(adt-sym name "$A-RESERVE")
                                                  ,@(and trees (list (adt-sym name "$A-APPEND-T")))
                                                  ,@(adt-logic-names name fields))))))
     `(encapsulate
@@ -1012,6 +1060,9 @@
        (defun ,clear-a (,a)
          (declare (xargs :guard (,ap ,a)) (ignore ,a))
          nil)
+       (defun ,(adt-sym name "$A-RESERVE") (rows octets ,a)
+         (declare (xargs :guard (and (,ap ,a) (natp rows) (natp octets))) (ignore rows octets))
+         ,a)
        ,@(adt-field-logic-events name fields 0)
        ,@(and trees (adt-pg-tree-logic-events name trees fields schema-const))
        (defun ,corr (c a)
@@ -1043,6 +1094,9 @@
        (defthm ,(adt-sym name "-CLEAR-IS-NIL")
          (equal (,(adt-sym name "-CLEAR") ,name) nil)
          :hints (("Goal" :in-theory (enable ,clear-a))))
+       (defthm ,(adt-sym name "-RESERVE-IS-IDENTITY")
+         (equal (,(adt-sym name "-RESERVE") rows octets ,name) ,name)
+         :hints (("Goal" :in-theory (enable ,(adt-sym name "$A-RESERVE")))))
        ,@(adt-is-thms-once name fields 0 once))))
 
 ; -----------------------------------------------------------------------------
@@ -1093,7 +1147,7 @@
                          (t (defadt-fn-trees-once impl fields0 trees once)))))
     `(progn
        ,instance
-       ,@(if generic (rep-generic-events name impl fields scalar) nil)
+       ,@(if generic (rep-generic-events name impl fields scalar paged) nil)
        (table fn-generated ',name
               '(:def-representation :scalar ,scalar :generic ,generic
                 :implementation ,impl :invariant ,invariant :trees ,trees
