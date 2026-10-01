@@ -156,12 +156,18 @@
 ; Called only with the actual primitive observation in the serialized owner
 ; action. No caller-supplied EOF/ready flag; zero successful read is EOF.
 (defun fn-owner-page-file-open-observe
- (token expected-start expected-end io-word count fn-page-file-open fn-page-read-pool)
- (declare (xargs :stobjs (fn-page-file-open fn-page-read-pool)
+ (token expected-start expected-end io-word count fn-page-file-open fn-page-read-pool fn-allocation-turn-slots)
+ (declare (xargs :stobjs (fn-page-file-open fn-page-read-pool fn-allocation-turn-slots)
                  :guard t :verify-guards nil))
  (let ((pending (fn-pfo-pending fn-page-file-open)))
   (cond
    ((not (and (eq (fn-prp-mode fn-page-read-pool) :served)
+               (natp (fn-pfo-slot fn-page-file-open))
+               (natp (fn-pfo-turn fn-page-file-open))
+               (fn-ats-role-bodyp (fn-pfo-slot fn-page-file-open)
+                                 (fn-pfo-turn fn-page-file-open)
+                                 :recovery-file-issue fn-allocation-turn-slots
+                                 fn-page-read-pool)
                (fn-prb-fixed-widthp 2 token)
                (eq (fn-prl-nth 0 token) :incarnation)
                (natp (fn-prl-nth 1 token))
