@@ -288,7 +288,7 @@
    :established ((fn-cdt-open fn-cdt-unrelated)))
  :unchecked "the establishing theorem concludes something else")
 
-(fn-cdt-problem-says "consequence of the carried invariant"
+(fn-cdt-problem-says "must have exactly one hypothesis"
  (:invariant fn-cdt-relp :established ((fn-cdt-open fn-cdt-open-establishes))
   :concludes ((fn-cdt-nonzerop fn-cdt-open-establishes))))
 (must-fail-checked
@@ -613,6 +613,143 @@
            (w state))
           (msg ":raw-with ~x0 on ~x1: value-state carried rows are enumerated, not world-derived, and cannot back raw dispatch"
                '(:carried fn-cdt-vcarried) 'fn-cdt-vstep)))))))
+
+; Bridge teeth: inspect the exact declaration check def-carried executes.
+; The adapter keeps the original declaration as data: def-carried's deliberate
+; make-event refusal cannot pass must-fail-checked's translation preflight.
+; Negating equality makes any other refusal (or acceptance) fail the tooth.
+(defmacro fn-cdt-bridge-acceptance (declaration expected)
+  `(assert-event
+    (not (equal (or (fn-cd-refusal ',(cadr declaration) ',(cddr declaration))
+                    (fn-cd-declaration-problem
+                     ',(cadr declaration) ',(cddr declaration) (w state)))
+                ,expected))))
+
+(encapsulate ()
+ (local
+  (encapsulate ()
+(defstobj r14-st (r14-n :type (integer 0 *) :initially 0))
+(defun r14-r (r14-st)
+  (declare (xargs :stobjs r14-st))
+  (< 0 (r14-n r14-st)))
+(defun r14-p (r14-st)
+  (declare (xargs :stobjs r14-st))
+  (equal (r14-n r14-st) 1))
+(defun r14-open (r14-st)
+  (declare (xargs :stobjs r14-st))
+  (update-r14-n 1 r14-st))
+(defun r14-break-p (r14-st)
+  (declare (xargs :stobjs r14-st
+                  :guard (and (r14-r r14-st) (r14-p r14-st))))
+  (update-r14-n 2 r14-st))
+(defthm r14-open-r (r14-r (r14-open r14-st)))
+(defthm r14-break-r
+  (implies (r14-r r14-st) (r14-r (r14-break-p r14-st))))
+(defthm r14-repaired-bridge
+  (implies (r14-r r14-st)
+           (r14-p (r14-open (r14-break-p r14-st))))
+  :rule-classes nil)
+(definterface r14-open :class :common-lisp-compliant)
+(definterface r14-break-p :class :common-lisp-compliant)
+(must-fail-checked
+ (fn-cdt-bridge-acceptance
+ (def-carried r14-carried
+  :invariant r14-r
+  :established ((r14-open r14-open-r))
+  :transitions ((r14-break-p r14-break-r))
+  :concludes ((r14-p r14-repaired-bridge))
+  :trace nil)
+ (msg "bridge ~x0 calls a function returning the carried stobj ~x1: bridges must describe the same state, never a transformed state"
+      'r14-repaired-bridge 'r14-st)))
+
+; The same honest R transition has no bridge for guard head P. No bridge,
+; establishing theorem, or occurrence of the entry may fill that gap.
+(def-carried r14-no-bridge
+  :invariant r14-r
+  :established ((r14-open r14-open-r))
+  :transitions ((r14-break-p r14-break-r))
+  :trace nil)
+(must-fail-checked
+ (assert-event
+  (not (equal
+        (fn-di-raw-with-problem
+         'r14-break-p '(:class :common-lisp-compliant
+                        :raw-with (:carried r14-no-bridge)) (w state))
+        (msg ":raw-with ~x0 on ~x1: guard head ~x2 has no validated bridge from the carried invariant"
+             '(:carried r14-no-bridge) 'r14-break-p 'r14-p)))))
+
+; A genuine bridge and a transition whose guard carries its consequence.
+(defun r14-q (r14-st)
+  (declare (xargs :stobjs r14-st))
+  (not (equal (r14-n r14-st) 0)))
+(defun r14-good (r14-st)
+  (declare (xargs :stobjs r14-st :guard (and (r14-r r14-st) (r14-q r14-st))))
+  (update-r14-n 3 r14-st))
+(defthm r14-good-r
+  (implies (r14-r r14-st) (r14-r (r14-good r14-st))))
+(defthm r14-same-state-bridge
+  (implies (r14-r r14-st) (r14-q r14-st)))
+(definterface r14-good :class :common-lisp-compliant)
+(def-carried r14-with-bridge
+  :invariant r14-r
+  :established ((r14-open r14-open-r))
+  :transitions ((r14-break-p r14-break-r) (r14-good r14-good-r))
+  :concludes ((r14-q r14-same-state-bridge))
+  :trace nil)
+(definterface r14-good :class :common-lisp-compliant
+  :raw-with (:carried r14-with-bridge))
+)))
+
+(encapsulate ()
+ (local
+  (encapsulate ()
+   (defun fn-cdt-bridge-r (x) (natp x))
+   (defun fn-cdt-bridge-p (x) (integerp x))
+   (defun fn-cdt-bridge-open (x) (declare (ignore x)) 0)
+   (defthm fn-cdt-bridge-established
+     (fn-cdt-bridge-r (fn-cdt-bridge-open x)))
+   (defun fn-cdt-bridge-arg (x y) (declare (ignore y)) x)
+   (defthm fn-cdt-bridge-extra-hyp
+     (implies (and (fn-cdt-bridge-r x) (natp y)) (fn-cdt-bridge-p x)))
+   (defthm fn-cdt-bridge-nonvariable
+     (implies (fn-cdt-bridge-r (car x)) (fn-cdt-bridge-p (car x))))
+   (defthm fn-cdt-bridge-extra-var
+     (implies (fn-cdt-bridge-r x)
+              (fn-cdt-bridge-p (fn-cdt-bridge-arg x y))))
+   (defthm fn-cdt-bridge-ok
+     (implies (fn-cdt-bridge-r x) (fn-cdt-bridge-p x)))
+   (must-fail-checked
+    (fn-cdt-bridge-acceptance
+     (def-carried fn-cdt-bridge-extra-hyp-row
+       :invariant fn-cdt-bridge-r
+       :established ((fn-cdt-bridge-open fn-cdt-bridge-established))
+       :concludes ((fn-cdt-bridge-p fn-cdt-bridge-extra-hyp))
+       :complete-by (:enumeration "no transitions") :trace nil)
+     (msg "bridge ~x0 must have exactly one hypothesis (~x1 x), with x a variable"
+          'fn-cdt-bridge-extra-hyp 'fn-cdt-bridge-r)))
+   (must-fail-checked
+    (fn-cdt-bridge-acceptance
+     (def-carried fn-cdt-bridge-nonvariable-row
+       :invariant fn-cdt-bridge-r
+       :established ((fn-cdt-bridge-open fn-cdt-bridge-established))
+       :concludes ((fn-cdt-bridge-p fn-cdt-bridge-nonvariable))
+       :complete-by (:enumeration "no transitions") :trace nil)
+     (msg "bridge ~x0 must have exactly one hypothesis (~x1 x), with x a variable"
+          'fn-cdt-bridge-nonvariable 'fn-cdt-bridge-r)))
+   (must-fail-checked
+    (fn-cdt-bridge-acceptance
+     (def-carried fn-cdt-bridge-extra-var-row
+       :invariant fn-cdt-bridge-r
+       :established ((fn-cdt-bridge-open fn-cdt-bridge-established))
+       :concludes ((fn-cdt-bridge-p fn-cdt-bridge-extra-var))
+       :complete-by (:enumeration "no transitions") :trace nil)
+     (msg "bridge ~x0's ~x1 conclusion has free variables other than the carried state variable ~x2"
+          'fn-cdt-bridge-extra-var 'fn-cdt-bridge-p 'x)))
+   (def-carried fn-cdt-bridge-ok-row
+     :invariant fn-cdt-bridge-r
+       :established ((fn-cdt-bridge-open fn-cdt-bridge-established))
+     :concludes ((fn-cdt-bridge-p fn-cdt-bridge-ok))
+     :complete-by (:enumeration "no transitions") :trace nil))))
 
 ; ---------------------------------------------------------------------------
 ; 1. Accepted.

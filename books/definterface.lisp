@@ -504,6 +504,18 @@
                        (list (cadr transition)))))
       form)))
 
+(defun fn-di-carried-uncovered-head (heads row)
+  (declare (xargs :mode :program))
+  ; Called only after fn-cd-problem validates the entire row in this world
+  ; and resolution confirms NAME's own transition. R is carried by that
+  ; transition; every other head needs its own validated same-state bridge.
+  ; Establishing theorems and mere occurrence of NAME cannot cover a head.
+  (cond ((atom heads) nil)
+        ((or (eq (car heads) (fn-cd-get :invariant row))
+             (assoc-eq (car heads) (fn-cd-get :concludes row)))
+         (fn-di-carried-uncovered-head (cdr heads) row))
+        (t (car heads))))
+
 (defun fn-di-raw-with-problem (name kvs w)
   (declare (xargs :mode :program))
   ; nil, or a msg naming the first check the world refutes
@@ -542,11 +554,19 @@
              (over-argument (fn-di-conjunct-over-argument conjuncts formals stobjs))
              (heads (fn-di-invariant-heads conjuncts w))
              (missing (fn-di-missing-theorem thms w))
-             (unconcluded (fn-di-unconcluded-head heads thms w))
-             (unpreserved (fn-di-unpreserved-head
-                           name heads thms (getpropc name 'guard *t* w) w))
-             (unrelated (fn-di-unrelated-theorem
-                         thms (fn-di-related-fnnames heads thms w) w)))
+             (carriedp (eq (car form) :carried))
+             (uncovered (and carriedp
+                             (fn-di-carried-uncovered-head
+                              heads (cdr (assoc-eq (cadr form)
+                                                  (table-alist 'fn-carried w))))))
+             (unconcluded (and (not carriedp)
+                               (fn-di-unconcluded-head heads thms w)))
+             (unpreserved (and (not carriedp)
+                              (fn-di-unpreserved-head
+                               name heads thms (getpropc name 'guard *t* w) w)))
+             (unrelated (and (not carriedp)
+                            (fn-di-unrelated-theorem
+                             thms (fn-di-related-fnnames heads thms w) w))))
         (cond
          ((not (eq (fn-di-get :class kvs) :common-lisp-compliant))
           (msg ":raw-with on ~x0, which is not :common-lisp-compliant: only a ~
@@ -562,6 +582,9 @@
                 nothing" name))
          (missing
           (msg ":raw-with names ~x0, which is not a theorem in this world" missing))
+         (uncovered
+          (msg ":raw-with ~x0 on ~x1: guard head ~x2 has no validated bridge from the carried invariant"
+               form name uncovered))
          (unconcluded
           (msg ":raw-with on ~x0: no named theorem concludes ~x1, a guard ~
                 conjunct raw dispatch leaves unevaluated (the named theorems ~

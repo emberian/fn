@@ -54,8 +54,12 @@
 ;     and every other conjunct of H over them alone (so the theorem IS a
 ;     step from a state to the state FN returns).  An establishing theorem
 ;     concludes R of PATTERN over such a call (its hypotheses are the
-;     open's preconditions).  A bridge has R among its hypotheses' heads
-;     and PRED among its conclusion's conjuncts' heads;
+;     open's preconditions). A bridge has exactly one hypothesis (R x),
+;     with x a variable, and a positive PRED conclusion conjunct whose free
+;     variables are only x. Its WHOLE formula calls no function whose world
+;     stobjs-out returns the carried stobj (including ACL2 state). Read-only
+;     field projections are allowed. Value rows use the same shape/variable
+;     checks but cannot authorize carried raw dispatch;
 ;   * a transition with no theorem is refused with the obligation stated;
 ;   * COMPLETENESS, derived from the world and never from the declaration.
 ;     When R's formal is a stobj (fn-cdt-st, state): every entry of the
@@ -526,6 +530,14 @@
                    fn thm r (cadr concl) pattern))
              (t (fn-cd-established-problem r (cdr established) w)))))))))
 
+(defun fn-cd-first-state-transformer (fns st w)
+  (declare (xargs :mode :program))
+  ; Inspect every call in the whole translated formula, not just PRED's
+  ; argument or the declared transitions. NIL denotes a value row.
+  (cond ((or (null st) (atom fns)) nil)
+        ((member-eq st (getpropc (car fns) 'stobjs-out nil w)) (car fns))
+        (t (fn-cd-first-state-transformer (cdr fns) st w))))
+
 (defun fn-cd-concludes-problem (r concludes w)
   (declare (xargs :mode :program))
   (if (atom concludes)
@@ -540,13 +552,26 @@
        (t (mv-let (hyps concl)
             (fn-cd-split formula nil)
             (cond
-             ((not (member-eq r (fn-cd-heads-of hyps)))
-              (msg "bridge ~x0 has no hypothesis applying ~x1: it is not a ~
-                    consequence of the carried invariant" thm r))
+             ((not (and (consp hyps) (null (cdr hyps))
+                        (consp (car hyps)) (eq (caar hyps) r)
+                        (equal (len (car hyps)) 2)
+                        (symbolp (cadar hyps)) (cadar hyps)))
+              (msg "bridge ~x0 must have exactly one hypothesis (~x1 x), with x a variable"
+                   thm r))
+             ((fn-cd-first-state-transformer
+               (all-fnnames formula) (car (getpropc r 'stobjs-in nil w)) w)
+              (msg "bridge ~x0 calls a function returning the carried stobj ~x1: bridges must describe the same state, never a transformed state"
+                   thm (car (getpropc r 'stobjs-in nil w))))
              ((not (member-eq pred (fn-cd-heads-of (fn-cd-conjuncts concl))))
               (msg "bridge ~x0 does not conclude ~x1 (its conclusion's ~
                     conjuncts apply ~&2)"
                    thm pred (fn-cd-heads-of (fn-cd-conjuncts concl))))
+             ((not (subsetp-eq
+                    (all-vars1-lst
+                     (fn-cd-with-head pred (fn-cd-conjuncts concl)) nil)
+                    (list (cadar hyps))))
+              (msg "bridge ~x0's ~x1 conclusion has free variables other than the carried state variable ~x2"
+                   thm pred (cadar hyps)))
              (t (fn-cd-concludes-problem r (cdr concludes) w)))))))))
 
 ; Completeness over the fn-interfaces table: the declared entries that
