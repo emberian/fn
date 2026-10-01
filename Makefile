@@ -91,6 +91,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/consumer-account-config-marker-invariants \
 	books/identity-hex \
 	books/consumer-account-config-preparation \
+	books/consumer-account-config-posting-relation \
 	books/account-adoption-input-source \
 	books/account-adoption-turn-state \
 	books/page-read-binding-revision \
@@ -122,6 +123,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-account-binding-codec-tests \
 	tests/acl2/consumer-account-config-marker-tests \
 	tests/acl2/consumer-account-config-preparation-tests \
+	tests/acl2/consumer-account-config-posting-relation-tests \
 	tests/acl2/consumer-account-config-commit-tests \
 	tests/acl2/consumer-account-transaction-driver-tests \
 	books/owner-connection-state \
@@ -2072,6 +2074,15 @@ ACL2_BOOKS ?= books/defrecord \
     books/ninep-group-directory-source \
     tests/acl2/allocation-dual-ceiling-tests \
     books/runtime-bootstrap-completion \
+    books/account-adoption-turn-continuation \
+    tests/acl2/account-adoption-turn-return-tests \
+    tests/acl2/account-adoption-turn-tests \
+    tests/acl2/consumer-account-config-domain-tests \
+    tests/acl2/consumer-account-index-depth-tests \
+    tests/acl2/consumer-account-binding-lookup-tests \
+    books/consumer-account-config-domain \
+    books/consumer-account-index-depth \
+    books/consumer-account-binding-lookup \
     tests/acl2/runtime-construction-inventory-tests \
     books/runtime-construction-inventory \
     tests/acl2/runtime-bootstrap-export-tests \

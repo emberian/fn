@@ -5,11 +5,12 @@
 (include-book "consumer-account-config-commit")
 (include-book "stx-keyring-records")
 
-(defun fn-cape-authority-finish (s produced next current-config base-row-carry)
+(defun fn-cape-authority-finish (s produced next current-config base-row-carry predecessor-count)
  (declare (xargs :guard t :verify-guards nil))
  (let* ((event (fn-cp-nth 0 (fn-cp-nth 15 s)))
         (es (fn-cp-nth 13 s)) (checked (fn-cp-nth 0 produced)))
   (cond
+   ((not (fn-cp-uintp predecessor-count)) (fn-capr-fault s :event-count))
    ((not (or (fn-cac-eventp event) (fn-cab-eventp event)))
     (list :unavailable s :semantic-family-unavailable))
    ((not (equal (fn-cp-nth 1 event) es)) (fn-capr-fault s :event-sequence))
@@ -28,7 +29,7 @@
      (if (not (eq (fn-cp-nth 0 full) :ok)) (fn-capr-fault s full)
       (fn-capr-install s next checked (fn-cp-nth 1 produced) full
         (fn-cp-nth 6 full)
-        (if beginp (nfix es) (if pending (fn-cp-nth 8 s) nil))
+        (if beginp predecessor-count (if pending (fn-cp-nth 8 s) nil))
         (fn-cp-nth 9 s) (fn-cp-nth 10 s) (fn-cp-nth 11 s)
         (fn-cp-nth 12 s) (1+ (nfix es))
         (fn-cp-nth 14 s) (ec-call (cdr (fn-cp-nth 15 s))))))))))
@@ -67,7 +68,7 @@
 
 (defthm fn-cape-authority-finish-preserves-exposed-view-and-root
  (let ((after (fn-cp-nth 1
-                         (fn-cape-authority-finish s produced next config rowcarry))))
+                         (fn-cape-authority-finish s produced next config rowcarry predecessor-count))))
            (and (equal (fn-cp-nth 9 after) (fn-cp-nth 9 s))
                 (equal (fn-cp-nth 10 after) (fn-cp-nth 10 s))
                 (equal (fn-cp-nth 11 after) (fn-cp-nth 11 s))

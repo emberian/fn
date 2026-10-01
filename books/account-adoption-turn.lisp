@@ -23,7 +23,7 @@
       (fn-cado-receipt-coordinatep (fn-cp-nth 1 current))
       (equal token (fn-cp-nth 1 current))
       (member-eq (fn-cp-nth 2 current)
-                 '(:reserved :produced :promoting :promoted :uncertain))))
+                 '(:reserved :produced :promoting :promoted :suspended :uncertain))))
 
 (defun fn-act-reserve (epoch generation operation source request job
                             demand rescue current ledger)

@@ -39,4 +39,17 @@
                     (list :account-turn-settlement ledger proposed
                           (fn-cp-nth 9 current)))
         proposed)))))
-(in-theory (disable fn-act-promotion-carry fn-act-return-proposal))
+; ALIASES is the literal four-root projection captured by the account
+; epilogue before changing any semantic global. This fixed carrier does not
+; traverse those roots and provides no return authority by itself.
+(defun fn-act-settlement-carry (aliases settling)
+ (declare (xargs :guard t))
+ (let ((intent (fn-cp-nth 9 settling)))
+  (fn-act-row (fn-cp-nth 1 settling) (fn-cp-nth 2 settling)
+              (fn-cp-nth 3 settling) (fn-cp-nth 4 settling)
+              (fn-cp-nth 5 settling) (fn-cp-nth 6 settling)
+              (fn-cp-nth 7 settling) (fn-cp-nth 8 settling)
+              (list (fn-cp-nth 0 intent) (fn-cp-nth 1 intent)
+                    (fn-cp-nth 2 intent) (fn-cp-nth 3 intent) aliases))))
+(in-theory (disable fn-act-promotion-carry fn-act-return-proposal
+                    fn-act-settlement-carry))

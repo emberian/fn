@@ -104,3 +104,25 @@
        (equal (fn-acj-commit cp (fn-cp-nth 1 *acjt-prepared*)
                             (fn-cp-nth 2 *acjt-prepared*) wrong 0 (fn-cp-nth 3 cp))
               '(:refused :account-config-commit)))))
+
+; The unchanged wire grammar carries the literal dense prefix counts. Codec
+; validity alone cannot replace the predecessor source admitted by the owner.
+;@mutation-witness typed-C-wire-preserves-independent-journal-coordinates
+(assert-event
+ (let* ((cp (fn-cp-nth 0 *acjt-prepared*))
+        (m (fn-cfg-record-change *acjt-record*)))
+  (and (equal (fn-cacm-decode-exact (fn-cacm-encode *acjt-record*))
+              (list :ok *acjt-record*))
+       (equal (fn-cp-nth 4 m) 0)
+       (equal (fn-cp-nth 5 m) (fn-cp-nth 3 cp))
+       (not (equal (fn-cfg-record-sequence *acjt-record*) (fn-cp-nth 5 m)))
+       (equal (fn-cp-nth 0 *acjt-final*) :ok))))
+;@corrupted-state wire-valid-but-different-begin-cut-is-not-admitted
+(assert-event
+ (let* ((cp (fn-cp-nth 0 *acjt-prepared*))
+        (bad (update-nth 3 (update-nth 4 1 *acjt-marker*) *acjt-record*)))
+  (and (fn-cacm-recordp bad)
+       (equal (fn-cacm-decode-exact (fn-cacm-encode bad)) (list :ok bad))
+       (equal (fn-acj-commit cp (fn-cp-nth 1 *acjt-prepared*)
+                            (fn-cp-nth 2 *acjt-prepared*) bad 0 (fn-cp-nth 3 cp))
+              '(:refused :account-config-commit)))))

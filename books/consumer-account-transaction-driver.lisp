@@ -62,9 +62,10 @@
 ; This is called exactly once inside the owner durable collector with the
 ; saved decision. E complete is full7, typed C complete is full8. No caller
 ; can turn a reply/socket acknowledgement into a persisted stage here.
-(defun fn-catd-published (job selection full)
+(defun fn-catd-published (job selection full predecessor-count)
  (declare (xargs :guard t))
- (if (not (eq (fn-cp-nth 0 full) :ok)) '(:recovery-required :account-decision)
+ (if (not (and (eq (fn-cp-nth 0 full) :ok)
+                (fn-cp-uintp predecessor-count))) '(:recovery-required :account-decision)
   (case (fn-cp-nth 0 selection)
    (:configure
     (if (fn-cp-nth 2 full)
@@ -84,7 +85,7 @@
                    (if consume (fn-cp-nth 2 (fn-cp-nth 9 job)) (fn-cp-nth 9 job))
                    (list :account-preparation (fn-cp-nth 6 full))
                    (if (eq (fn-cp-nth 0 op) :authority-begin)
-                       (fn-cp-nth 1 event) (fn-cp-nth 11 job))))))
+                       predecessor-count (fn-cp-nth 11 job))))))
    (otherwise '(:recovery-required :account-publication-selection)))))
 
 (in-theory (disable fn-catd-preparation fn-catd-next fn-catd-published))

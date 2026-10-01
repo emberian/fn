@@ -18290,6 +18290,49 @@
         }
       ],
       "pending_subject": "Exact guarded arithmetic called by isolated actual native construction-inventory source. Complete selected image recipe/ownership census, constructor reserve coordinates and positive recovery authority remain open."
+    },
+    {
+      "id": "PRF-1204",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bcp-tick-preserves-nonbinding-row-projection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bcp-tick-preserves-nonbinding-base-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bcp-prepared-preserves-nonbinding-accounts"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bcp-stage-preserves-nonbinding-binding-projection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bcp-seal-establishes-nonbinding-base-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-access-table-of-nonbinding-projection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-moderation-row-of-nonbinding-projection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-moderator-logins-of-nonbinding-projection"
+        }
+      ],
+      "pending_subject": "Original preparation functions called by fn-acj-stage/fn-acj-commit. Proof-only projection; actual funded host continuation and whole posting/view reuse remain open, with no runtime activation claim."
+    },
+    {
+      "id": "PRF-1198",
+      "events": [],
+      "pending_subject": "Actual high PROGRAM account/control source remains unadmitted; synthetic UNFUNDED transport recording is not funded lifecycle or authority."
     }
   ]
 }

@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2387 |
-| Certification roots in the Makefile | 2182 |
-| Books inside the root closure | 2351 |
-| `defthm` and `defthmd` events | 33429 |
-| `defun` events | 21436 |
+| Books read | 2417 |
+| Certification roots in the Makefile | 2193 |
+| Books inside the root closure | 2363 |
+| `defthm` and `defthmd` events | 33468 |
+| `defun` events | 21521 |
 | Functions with verified guards | 3751 |
-| Functions declared `:verify-guards nil` and never verified | 2617 |
-| Functions left at the default with an explicit guard | 12028 |
-| Functions left at the default with no guard | 3040 |
-| `assert-event` checks | 24832 |
+| Functions declared `:verify-guards nil` and never verified | 2639 |
+| Functions left at the default with an explicit guard | 12088 |
+| Functions left at the default with no guard | 3043 |
+| `assert-event` checks | 24898 |
 | `must-fail` checks | 2531 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 169 |
@@ -27,8 +27,8 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 387 |
 | Enabled-projection warnings | 79 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 3066 |
-| Host-names warnings | 2781 |
+| Include-hygiene warnings | 3075 |
+| Host-names warnings | 2946 |
 | Hand-written-record warnings | 19 |
 
 ## Lints
@@ -95,14 +95,20 @@ that `make certify` requests.
 | `books/acceptance-stamp-invariants.lisp` | root | 24 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/acceptance.lisp` | root | 69 | 53 | 40/1/12/0 | 0 | 0 | 1 |
 | `books/account-adoption-input-source.lisp` | root | 0 | 7 | 0/0/7/0 | 0 | 0 | 0 |
-| `books/account-adoption-turn-return.lisp` | root | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
+| `books/account-adoption-operation-source.lisp` | - | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/account-adoption-result.lisp` | - | 0 | 3 | 0/0/3/0 | 0 | 0 | 0 |
+| `books/account-adoption-turn-continuation.lisp` | root | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
+| `books/account-adoption-turn-return.lisp` | root | 0 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/account-adoption-turn-state.lisp` | root | 0 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/account-adoption-turn.lisp` | root | 0 | 8 | 0/0/8/0 | 0 | 0 | 0 |
+| `books/account-config-generation-cursor.lisp` | - | 4 | 7 | 0/0/7/0 | 0 | 0 | 0 |
+| `books/account-config-history-cursor.lisp` | - | 5 | 6 | 0/1/5/0 | 0 | 0 | 0 |
 | `books/account-list.lisp` | closure | 9 | 15 | 2/0/13/0 | 0 | 0 | 0 |
 | `books/accounts.lisp` | closure | 63 | 23 | 0/0/22/1 | 0 | 0 | 2 |
 | `books/admission-authority-install-plan.lisp` | root | 0 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/admission-preallocation-resources.lisp` | closure | 8 | 18 | 0/0/18/0 | 0 | 0 | 0 |
 | `books/admission-preparation-intent.lisp` | root | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
+| `books/admission-semantic-exclusion.lisp` | - | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/admission-semantic-node.lisp` | root | 10 | 2 | 2/0/0/0 | 0 | 0 | 0 |
 | `books/allocation-epoch-collection-request.lisp` | root | 2 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/allocation-epoch-domain.lisp` | root | 3 | 4 | 0/0/4/0 | 0 | 0 | 0 |
@@ -451,16 +457,21 @@ that `make certify` requests.
 | `books/consumer-account-availability.lisp` | root | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/consumer-account-binding-codec-invariants.lisp` | root | 10 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/consumer-account-binding-codec.lisp` | root | 0 | 8 | 0/0/8/0 | 0 | 0 | 0 |
+| `books/consumer-account-binding-lookup.lisp` | root | 3 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/consumer-account-candidate-model.lisp` | root | 2 | 3 | 0/3/0/0 | 0 | 0 | 0 |
 | `books/consumer-account-candidate.lisp` | root | 0 | 10 | 0/0/10/0 | 0 | 0 | 0 |
 | `books/consumer-account-carried.lisp` | closure | 14 | 15 | 1/0/14/0 | 0 | 0 | 0 |
 | `books/consumer-account-carries-state.lisp` | closure | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/consumer-account-config-commit.lisp` | root | 1 | 4 | 0/0/4/0 | 0 | 0 | 0 |
+| `books/consumer-account-config-domain.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/consumer-account-config-marker-invariants.lisp` | root | 24 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/consumer-account-config-marker.lisp` | root | 0 | 12 | 0/0/12/0 | 0 | 0 | 0 |
+| `books/consumer-account-config-posting-relation.lisp` | root | 13 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/consumer-account-config-preparation.lisp` | root | 0 | 10 | 0/0/10/0 | 0 | 0 | 0 |
 | `books/consumer-account-config-row-carry.lisp` | root | 1 | 2 | 0/0/2/0 | 0 | 0 | 0 |
+| `books/consumer-account-durable-outcome-state.lisp` | - | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/consumer-account-index-carry.lisp` | closure | 20 | 13 | 0/1/12/0 | 0 | 0 | 0 |
+| `books/consumer-account-index-depth.lisp` | root | 5 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/consumer-account-index-shape.lisp` | closure | 24 | 10 | 0/0/10/0 | 0 | 0 | 3 |
 | `books/consumer-account-index.lisp` | closure | 7 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/consumer-account-initial.lisp` | root | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
@@ -471,13 +482,21 @@ that `make certify` requests.
 | `books/consumer-account-state.lisp` | root | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/consumer-account-transaction-driver.lisp` | root | 0 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/consumer-artifact-retry.lisp` | root | 21 | 3 | 0/0/2/1 | 0 | 0 | 0 |
+| `books/consumer-authority-carried-fold.lisp` | - | 0 | 6 | 0/0/6/0 | 0 | 0 | 0 |
+| `books/consumer-authority-carried-result.lisp` | - | 0 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/consumer-authority-codec.lisp` | closure | 23 | 19 | 0/0/19/0 | 0 | 0 | 0 |
 | `books/consumer-authority-revision.lisp` | closure | 2 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/consumer-bound.lisp` | root | 26 | 15 | 7/1/7/0 | 0 | 0 | 5 |
 | `books/consumer-config-authority.lisp` | closure | 2 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/consumer-config-publication.lisp` | closure | 2 | 3 | 0/0/3/0 | 0 | 0 | 1 |
+| `books/consumer-configured-authority-event.lisp` | - | 0 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/consumer-configured-authority-finish.lisp` | root | 3 | 1 | 1/0/0/0 | 0 | 0 | 0 |
+| `books/consumer-configured-authority-replay.lisp` | - | 0 | 5 | 0/4/1/0 | 0 | 0 | 0 |
 | `books/consumer-configured-authority-state.lisp` | root | 0 | 4 | 0/0/4/0 | 0 | 0 | 0 |
+| `books/consumer-configured-control-event.lisp` | - | 0 | 7 | 0/7/0/0 | 0 | 0 | 0 |
+| `books/consumer-configured-control-source.lisp` | - | 0 | 3 | 0/3/0/0 | 0 | 0 | 0 |
+| `books/consumer-control-row-cursor.lisp` | - | 0 | 6 | 0/5/1/0 | 0 | 0 | 0 |
+| `books/consumer-entry-completion.lisp` | closure | 1 | 12 | 0/0/12/0 | 0 | 0 | 0 |
 | `books/consumer-event-charge.lisp` | closure | 3 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/consumer-event-index-read.lisp` | closure | 0 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/consumer-event-index.lisp` | root | 29 | 15 | 4/1/10/0 | 0 | 0 | 0 |
@@ -520,6 +539,7 @@ that `make certify` requests.
 | `books/container.lisp` | root | 2 | 43 | 0/1/42/0 | 0 | 0 | 0 |
 | `books/control-authority.lisp` | root | 48 | 67 | 8/0/59/0 | 0 | 0 | 1 |
 | `books/control-classify.lisp` | root | 8 | 22 | 4/0/18/0 | 1 | 0 | 1 |
+| `books/control-config-projection.lisp` | - | 3 | 6 | 0/1/5/0 | 0 | 0 | 0 |
 | `books/control-evidence-grammar.lisp` | root | 2 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/control-evidence.lisp` | root | 38 | 44 | 13/5/26/0 | 0 | 0 | 0 |
 | `books/control-request-word.lisp` | closure | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
@@ -602,6 +622,7 @@ that `make certify` requests.
 | `books/history-columns-relation.lisp` | root | 12 | 5 | 0/0/1/4 | 0 | 0 | 0 |
 | `books/history-columns-store.lisp` | root | 18 | 6 | 6/0/0/0 | 0 | 0 | 1 |
 | `books/history-columns.lisp` | root | 78 | 26 | 2/1/17/6 | 0 | 0 | 2 |
+| `books/history-config-journal-state.lisp` | - | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/history-decode-completion.lisp` | closure | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/history-decode-cursor.lisp` | root | 7 | 5 | 1/0/4/0 | 0 | 0 | 0 |
 | `books/history-decode-nodes.lisp` | root | 4 | 6 | 0/0/5/1 | 0 | 0 | 0 |
@@ -1529,6 +1550,8 @@ that `make certify` requests.
 | `tests/acl2/acceptance-payload-ref-tests.lisp` | root | 0 | 4 | 0/4/0/0 | 21 | 0 | 0 |
 | `tests/acl2/acceptance-stamp-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 61 | 14 | 0 |
 | `tests/acl2/acceptance-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 249 | 0 | 0 |
+| `tests/acl2/account-adoption-turn-return-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
+| `tests/acl2/account-adoption-turn-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 7 | 0 | 0 |
 | `tests/acl2/account-list-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 20 | 0 | 0 |
 | `tests/acl2/accounts-snapshot-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 26 | 7 | 0 |
 | `tests/acl2/accounts-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 116 | 17 | 0 |
@@ -1781,17 +1804,24 @@ that `make certify` requests.
 | `tests/acl2/connection-receiver-repin-tests.lisp` | root | 0 | 3 | 0/2/1/0 | 1 | 0 | 0 |
 | `tests/acl2/connection-receiver-source-tests.lisp` | root | 0 | 4 | 0/0/4/0 | 7 | 0 | 0 |
 | `tests/acl2/consumer-account-binding-codec-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 22 | 0 | 0 |
+| `tests/acl2/consumer-account-binding-lookup-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `tests/acl2/consumer-account-candidate-tests.lisp` | root | 0 | 2 | 0/2/0/0 | 8 | 0 | 0 |
-| `tests/acl2/consumer-account-config-commit-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 5 | 0 | 0 |
+| `tests/acl2/consumer-account-config-commit-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 7 | 0 | 0 |
+| `tests/acl2/consumer-account-config-domain-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 7 | 0 | 0 |
 | `tests/acl2/consumer-account-config-marker-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 18 | 0 | 0 |
 | `tests/acl2/consumer-account-config-owner-lineage-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 1 | 0 | 0 |
-| `tests/acl2/consumer-account-config-preparation-tests.lisp` | root | 0 | 3 | 0/1/2/0 | 4 | 0 | 0 |
+| `tests/acl2/consumer-account-config-posting-relation-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 14 | 0 | 0 |
+| `tests/acl2/consumer-account-config-preparation-tests.lisp` | root | 0 | 3 | 0/1/2/0 | 5 | 0 | 0 |
 | `tests/acl2/consumer-account-config-row-carry-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 3 | 0 | 0 |
+| `tests/acl2/consumer-account-index-depth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 0 | 0 |
 | `tests/acl2/consumer-account-input-tests.lisp` | root | 0 | 2 | 0/2/0/0 | 5 | 0 | 0 |
 | `tests/acl2/consumer-account-private-frame-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 3 | 0 | 0 |
-| `tests/acl2/consumer-account-transaction-driver-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 5 | 0 | 0 |
+| `tests/acl2/consumer-account-transaction-driver-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 9 | 0 | 0 |
 | `tests/acl2/consumer-artifact-retry-tests.lisp` | root | 0 | 8 | 0/2/0/6 | 8 | 2 | 0 |
 | `tests/acl2/consumer-bound-tests.lisp` | root | 0 | 23 | 0/11/0/12 | 62 | 5 | 0 |
+| `tests/acl2/consumer-configured-authority-event-tests.lisp` | - | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
+| `tests/acl2/consumer-configured-authority-finish-tests.lisp` | - | 0 | 0 | 0/0/0/0 | 7 | 0 | 0 |
+| `tests/acl2/consumer-control-row-cursor-tests.lisp` | - | 0 | 3 | 0/0/0/3 | 4 | 0 | 0 |
 | `tests/acl2/consumer-event-index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 3 | 0 |
 | `tests/acl2/consumer-local-control-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 48 | 5 | 0 |
 | `tests/acl2/consumer-owner-index-invariants-tests.lisp` | root | 0 | 2 | 0/2/0/0 | 7 | 1 | 0 |

@@ -67,3 +67,17 @@
               '(:refused :binding-stage))
        (equal (fn-bcp-stage await (fn-bcpt-event '(97) 1 0 *fn-cab-zero-principal* 1))
               '(:refused :binding-stage)))))
+
+; A stored CFG name outside the actual authority login domain is retained,
+; rather than truncated, refused, or coerced into a large temporary octet list.
+;@mutation-witness long-stored-config-name-preserved-during-bounded-intent-lookup
+(assert-event
+ (let* ((name (coerce (make-list 4096 :initial-element #\a) 'string))
+        (row (fn-cfg-row-make name "principal" "" 2))
+        (s (fn-bcp-state '(65) *bcpt-base* 3 :scan nil nil
+                         (fn-cp-nth 7 *bcpt-d*) (fn-cp-nth 8 *bcpt-d*)
+                         nil nil (list row) nil nil nil nil))
+        (one (fn-bcp-tick s (fn-scs-summary row))))
+  (and (equal (fn-cp-nth 0 one) :yield)
+       (null (fn-cp-nth 11 (fn-cp-nth 1 one)))
+       (equal (fn-cp-nth 12 (fn-cp-nth 1 one)) (list row)))))
