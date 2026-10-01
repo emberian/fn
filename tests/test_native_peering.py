@@ -1343,6 +1343,18 @@ class NativePeeringTests(unittest.TestCase):
             "kind": "retire-drained-prf-1029", "elapsed_s": round(elapsed, 2),
             "retire": out.decode("ascii", "replace").splitlines()}, sort_keys=True))
 
+    def test_plain_sigterm_after_feeding_a_peer_exits_ok(self):
+        """Row S9's other half (fn-ort-clean-stop-keeps-its-exit): a node that
+        served a POST and fed it to a peer stops on a plain SIGTERM with exit
+        0; the cleanup's log, journal and Store settlement never turns that
+        stop into uncertain."""
+        peer, source, message_id, served, got = self.feed_to_scripted_peer(
+            "203 streaming permitted", "sigterm-clean")
+        self.assertEqual(got, ("TAKETHIS", served))
+        status = source.stop(expect=EXIT_OK, grace=120)
+        print("NATIVE-PEERING-WITNESS " + json.dumps({
+            "kind": "plain-sigterm-exit-ok", "exit": status}, sort_keys=True))
+
     def test_obligations_report_of_five_thousand_articles_answers(self):
         """PRF-336 (the openbsd-rehearsal, stop 2): `operator CONFIG
         obligations' at about 1,029 held obligations (keep-forever, one per
