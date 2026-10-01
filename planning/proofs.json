@@ -21139,6 +21139,39 @@
         "specs/bp-node-machine.md"
       ],
       "progress_note": "PKT-202 (row Q3e). Host callers: host/native/owner.lisp fnn-owner-drain-one and fnn-owner-complete-bp-transit-submission both call host/owner-host.lisp fn-owner-transit-decide, which calls fn-pta-decide as fn-tsd-drain-decision does; OPEN JOIN (Codex r32 F1): no host code calls fn-tsd-drain-decision and no theorem equates it with fn-owner-transit-decide; the AUTHORITY-FIELD lane rewires the host to call it. The tests run both carriers through fn-ocfg-step (the host's fn-owner-step path; r32 F1's composition, witnessed not proved). Teeth (r32 F2/F3 closed): reachable full positives with the NNTP side through open-peer + IHAVE + the read + take; a removal per hypothesis (gate refusal past the limits; corrupted non-transit kind; a looping Path; a local post landing before the take; an early clock; a short limit; a disconnect; a corrupted pin table; a corrupted control pin) and a labelled mutation per keystone; Message-ID printability and the string peer proved, not assumed."
+    },
+    {
+      "id": "PRF-1228",
+      "title": "A BP receipt regenerates byte-identically after a crash of the record log, when the receiver acted only on acknowledged Store records (PKT-217 restated over format 10's crash model)",
+      "statement": "books/bp-receipt-log-crash.lisp KEYSTONE fn-brlc-receipt-regenerated-after-log-crash: from a receiver whose state is the replay of its journal (fn-bprr-replay, host fn-bprj-install), run any live trace (fn-bpr-live-run); let the record log be at any crash point of its served programs (fn-lgk-relp BS KS), take any admissible crash image (fn-bs-crash-imagep) under A-CRYPTO-TRAILER's premise on the tear (fn-lg-platform-tears-p); the open decodes and interns what the log's recovery holds (fn-brlc-rows: fn-srs-step from ARENA0, the host's fnn-bridge-recover calls fn-store-decode-records = fn-srs-decode then fn-srs-intern-step) and opens over those rows through fn-cpo-open-observed (host/store-node-host.lisp fn-store-sn-recover); run the recovery barriers to :ready; then the journal's replay is the live receiver state and fn-bpr-receipt-adu is byte-identical. Premises that replace the per-file image predicate fn-sf-crash-imagep: the live Store's history is a prefix of the rows of the log's ACKNOWLEDGED records (the first fn-lgk-acked of fn-lgk-committed), and the recovered records decode (fn-brlc-decodedp). Steps: fn-brlc-recovered-is-the-acknowledged-prefix-and-more (from fn-rr-log-crash-image-recovers-a-tree-sequence-member, over fn-lgk-crash-of-related-state-is-a-prefix), fn-brlc-rows-of-prefix-is-a-prefix (fn-srs-decode-of-append, fn-srs-intern-events-of-append), fn-brlc-acknowledged-rows-are-a-prefix-of-the-recovered-rows, then fn-sonb-live-receipt-regenerated-from-related-open. Hypotheses NOT discharged here, named: the open's success (fn-sn-open-okp of the host open over the recovered rows; under the per-file model it followed from the image predicate; under the log it is the store instance's obligation, books/recovery-refinement-store.lisp, PRF-1212/PRF-1213, written, not admitted; a refused open serves nothing); fn-sonb-configured-before-eventsp (a store reconfigured after an event needs the receipt over fn-cst-relation, PKT-217's first follow-up); the single FN-ARENA through which the replay reads payloads, as in PRF-007's per-file theorem. MODEL-LEVEL as PRF-1212: the host's open after a crash is fnn-recover-log (fn-lg-open-kernel, then the chunked decode and intern, then fn-rii-sco-extend-open / fn-sfi-extend-open or the full replay); this statement names the full open fn-cpo-open-observed. Teeth: tests/acl2/bp-receipt-log-crash-tests.lisp on the live trace of bp-receiver-evolving-tests, its two rows held by the log as their host encodings (the rows the open makes of them ARE the live rows): POSITIVE reachable, every hypothesis and both conclusions at the recovered quiet log (the image by fn-bs-crash-imagep-suff); REMOVAL of the acknowledged-prefix hypothesis (a log that acknowledged a different first article, every other hypothesis kept, the receipt gone), REMOVAL of fn-brlc-decodedp (an undecodable record in flight lands whole, the receipt gone); MUTATION (labelled): a recovery that drops the receipted record r1 is no tree-sequence member and the host open refuses it. A non-exact tear's premise is the constrained fn-assume-crash-tearp and is not evaluated (recovery-refinement-tests' note).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-003",
+        "STO-004",
+        "STO-005",
+        "FLR-001",
+        "FLR-002"
+      ],
+      "depends_on": [
+        "PRF-007",
+        "PRF-1212"
+      ],
+      "assumptions": [
+        "A-CRYPTO-TRAILER",
+        "A-DURABILITY",
+        "A-WRITE-ISOLATION"
+      ],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/bp-receipt-log-crash.lisp",
+        "tests/acl2/bp-receipt-log-crash-tests.lisp"
+      ],
+      "progress_note": "PKT-217 (coordinator decision 2026-10-01: restate, not retire): the per-file receipt theorem fn-bpr-live-receipt-regenerated-after-restart (PRF-007) stays as it is; this row carries the guarantee onto the record log's crash model. Open: the store instance (PRF-1212/1213) that would discharge the open's success; the reconfigured-after-an-event case (fn-cst-relation).",
+      "events": [
+        "fn-brlc-receipt-regenerated-after-log-crash",
+        "fn-brlc-acknowledged-rows-are-a-prefix-of-the-recovered-rows",
+        "fn-brlc-rows-of-prefix-is-a-prefix"
+      ]
     }
   ]
 }

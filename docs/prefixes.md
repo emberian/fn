@@ -439,6 +439,7 @@ anything a book does not already decide.
 | `fn-hma-`, `hmat-` | `held-message-id-answer`, `tests/acl2/held-message-id-answer-tests` | Q3d (i) PKT-239: a held Message-ID's existing-action answer is unchanged by a Store completion, from the carried Message-ID uniqueness |
 | `fn-crb-`, `crbt-` | `consumer-replay-bound`, `tests/acl2/consumer-replay-bound-tests` | Q3d (iii) PKT-370: the open's consumer replay keeps the table within the opened profile's field 9 when every replayed register was admitted |
 | `fn-arc-`, `arct-` | `account-redeem-count`, `tests/acl2/account-redeem-count-tests` | Q3d (iv) PKT-399: the redemption's admission bound counts the credential table itself (mark-1 accounts plus auth.toml) |
+| `fn-brlc-`, `brlct-` | `bp-receipt-log-crash`, `tests/acl2/bp-receipt-log-crash-tests` | Q3d (vi) PKT-217: the BP receipt regenerates after a crash of the record log (the recovery refinement's log cut model) when the receiver acted only on acknowledged records |
 | `fn-shd-` | `served-head-bridge`, `tests/acl2/served-head-bridge-tests` | HEAD retrieval composition through the actual served byte fold (PKT-772) |
 
 | `fn-saw-` | `served-auth-wire-bridge`, `tests/acl2/served-auth-wire-bridge-tests` | Served command framing and authentication hold composition (PKT-390) |

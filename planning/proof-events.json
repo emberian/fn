@@ -18780,6 +18780,23 @@
           "note": "Where the carriers differ: the BP submission's authority verdict is over no configuration. Teeth: tests/acl2/transit-same-decision-tests.lisp (positive under a governing live configuration; corrupted control pin; mutation to the live configuration)."
         }
       ]
+    },
+    {
+      "id": "PRF-1228",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-brlc-receipt-regenerated-after-log-crash"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-brlc-acknowledged-rows-are-a-prefix-of-the-recovered-rows"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-brlc-rows-of-prefix-is-a-prefix"
+        }
+      ]
     }
   ]
 }
