@@ -1089,6 +1089,14 @@ field through the actual ASB start/drive/step. Ghost predicates never enter
 the served body. This is a typed field basis for further span/grammar proof,
 not complete ASB refinement or an immutable provider/crypto claim.
 
+`books/bpsec-asb-metadata.lisp` establishes and preserves natural tracked
+metadata charge within the carried operator cap through the actual start,
+drive and step. Exact literal caps 8/7/0 distinguish parsed from refused;
+an insufficient cap retains its prior bounded charge. A representable 2^40
+operator cap is preserved, without a private replacement ceiling. The ghost
+predicate is never served. This is a tracked-charge invariant, separate from
+physical allocation, live work accounting and complete grammar/span proof.
+
 The logical target-graph reference in `books/bpsec-target.lisp` binds each
 ASB as `(block-number . ASB)`, checks actual block existence/type, unique
 service/target pairs, forbidden security targets and payload BCB flags. Every

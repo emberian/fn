@@ -17927,6 +17927,21 @@
           "kind": "theorem",
           "name": "fn-bps-asb-step-preserves-head-profile",
           "pending_subject": "Actual ASB nested CBOR-head profile and primitive typed-ready component. Ghost predicates never served revalidation; remaining ASB grammar/span/window refinement, immutable provider and actual BP caller/crypto gate remain open. Proper-local source admission is not normal certification."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-asb-start-establishes-metadata-budget",
+          "pending_subject": "Actual ASB tracked operator metadata charge component; not a physical allocation/cost theorem. Ghost predicate never served; remaining grammar/span/window refinement, immutable provider and installed BP caller remain open. Source admission only."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-asb-drive-preserves-metadata-budget",
+          "pending_subject": "Actual ASB tracked operator metadata charge component; not a physical allocation/cost theorem. Ghost predicate never served; remaining grammar/span/window refinement, immutable provider and installed BP caller remain open. Source admission only."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-asb-step-preserves-metadata-budget",
+          "pending_subject": "Actual ASB tracked operator metadata charge component; not a physical allocation/cost theorem. Ghost predicate never served; remaining grammar/span/window refinement, immutable provider and installed BP caller remain open. Source admission only."
         }
       ]
     },
