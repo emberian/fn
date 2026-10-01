@@ -2251,6 +2251,18 @@
 ;; retention, consumer and topic events complete here.
 ; Defined under the same host-called name in books/owner-retain-transitions.lisp.
 
+; fn-host-hist-sync clears its reload flag with f-put-global, which the ld
+; world opens to the global table before fn-owner-ocfg-of-other-global-put
+; can match; fn-owner-finish's guard needs the owner across that normalized
+; update (as fn-owner-retain-carry-of-other-global-update-by-definition
+; gives the carry).  Without it the guard proof searched 937 s and failed.
+(defthm fn-owner-ocfg-of-other-global-update-by-definition
+  (implies (not (equal key 'fn-owner))
+           (equal (fn-owner-ocfg (update-nth 2 (add-pair key value (nth 2 state)) state))
+                  (fn-owner-ocfg state)))
+  :hints (("Goal" :in-theory '(fn-owner-ocfg get-global global-table assoc-add-pair
+                               nth-update-nth (:executable-counterpart equal)))))
+
 ; The completion over the history stobj refreshed against the owner's Store
 ; (R at the read: fn-hist-refresh-is-the-history; the finish keeps the
 ; history, fn-ceis-finish-keeps-records), so fn-rix-ocfg-complete is
@@ -2259,7 +2271,27 @@
   (declare (xargs :stobjs (fn-hist state) :guard (and (boundp-global 'fn-owner state)
                               (fn-sn-statep (fn-sbud-oc-store (fn-owner-ocfg state)))
                               (fn-prc-carryp (fn-owner-retain-carry state)))
-                  :guard-hints (("Goal" :in-theory (enable fn-sbud-oc-store)))))
+                  ;; Its own theory (360 steps; the global theory spent
+                  ;; 1.6M steps here even with the lemma above).
+                  :guard-hints (("Goal" :in-theory
+                                 '(boundp-global boundp-global1 fn-host-hist-sync fn-sbud-oc-store
+                                   get-global global-table mv-nth not put-global state-p
+                                   update-global-table
+                                   (:executable-counterpart binary-+) (:executable-counterpart equal)
+                                   (:executable-counterpart nfix) (:executable-counterpart zp)
+                                   consp-assoc-equal eqlable-alistp-forward-to-alistp
+                                   ordered-symbol-alistp-forward-to-symbol-alistp
+                                   state-p-implies-and-forward-to-state-p1 state-p1-forward
+                                   symbol-alistp-forward-to-eqlable-alistp
+                                   assoc-add-pair cdr-cons fn-hist-p-is-true-listp
+                                   fn-owner-ocfg-of-other-global-update-by-definition
+                                   fn-owner-retain-carry-of-other-global-update-by-definition
+                                   fn-owner-store-is-configured-store-by-definition nth-update-nth
+                                   (:type-prescription alistp) (:type-prescription eqlable-alistp)
+                                   (:type-prescription fn-prc-carryp) (:type-prescription fn-sn-statep)
+                                   (:type-prescription ordered-symbol-alistp)
+                                   (:type-prescription state-p) (:type-prescription state-p1)
+                                   (:type-prescription symbol-alistp))))))
   (mv-let (fn-hist state) (fn-host-hist-sync (fn-owner-store state) fn-hist state)
     (mv-let (erp val state) (fn-owner-finish-synced fn-hist state)
       (mv erp val fn-hist state))))
