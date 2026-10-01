@@ -47,5 +47,9 @@ BINDING is the actual image holder; its SAME backing and FD remain rooted."
            (values :closed closed fd)))
       )
     (serious-condition (condition)
+      (declare (ignore condition))
       (setf (fnn-runtime-profile-envelope-binding-io-phase binding) :fenced)
-      (error condition))))
+      ; A condition is not a fabricated syscall result. This explicit unknown
+      ; observation fences the core while retaining the actual descriptor.
+      ; Never render or rethrow it through the general command error path.
+      (values :unknown 0 (fnn-runtime-profile-envelope-binding-fd binding)))))
