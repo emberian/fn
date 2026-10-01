@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2328 |
-| Certification roots in the Makefile | 2127 |
-| Books inside the root closure | 2269 |
-| `defthm` and `defthmd` events | 33131 |
-| `defun` events | 21203 |
+| Books read | 2330 |
+| Certification roots in the Makefile | 2128 |
+| Books inside the root closure | 2271 |
+| `defthm` and `defthmd` events | 33155 |
+| `defun` events | 21205 |
 | Functions with verified guards | 3746 |
 | Functions declared `:verify-guards nil` and never verified | 2595 |
-| Functions left at the default with an explicit guard | 11831 |
+| Functions left at the default with an explicit guard | 11833 |
 | Functions left at the default with no guard | 3031 |
-| `assert-event` checks | 24682 |
+| `assert-event` checks | 24696 |
 | `must-fail` checks | 2531 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 168 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 383 |
 | Enabled-projection warnings | 79 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2978 |
+| Include-hygiene warnings | 2981 |
 | Host-names warnings | 2630 |
 | Hand-written-record warnings | 19 |
 
@@ -325,6 +325,7 @@ that `make certify` requests.
 | `books/bpsec-asb-position.lisp` | closure | 37 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/bpsec-asb-quanta.lisp` | closure | 8 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bpsec-asb-spine.lisp` | closure | 18 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/bpsec-asb-terminal.lisp` | closure | 24 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/bpsec-asb.lisp` | closure | 3 | 21 | 0/0/21/0 | 0 | 0 | 0 |
 | `books/bpsec-head-invariant.lisp` | closure | 6 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/bpsec-head.lisp` | closure | 3 | 6 | 0/0/6/0 | 3 | 0 | 0 |
@@ -1651,6 +1652,7 @@ that `make certify` requests.
 | `tests/acl2/bpsec-asb-position-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 13 | 0 | 0 |
 | `tests/acl2/bpsec-asb-quanta-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 8 | 0 | 0 |
 | `tests/acl2/bpsec-asb-spine-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 6 | 0 | 0 |
+| `tests/acl2/bpsec-asb-terminal-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 14 | 0 | 0 |
 | `tests/acl2/bpsec-asb-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 14 | 0 | 0 |
 | `tests/acl2/bpsec-head-invariant-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 17 | 0 | 0 |
 | `tests/acl2/bpsec-operation-tests.lisp` | root | 0 | 7 | 0/0/7/0 | 21 | 0 | 0 |

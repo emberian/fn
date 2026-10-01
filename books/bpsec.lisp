@@ -16,3 +16,4 @@
 (include-book "bpsec-asb-metadata")
 (include-book "bpsec-asb-body")
 (include-book "bpsec-asb-aggregate")
+(include-book "bpsec-asb-terminal")

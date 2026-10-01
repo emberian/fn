@@ -2025,6 +2025,7 @@ ACL2_BOOKS ?= books/defrecord \
     tests/acl2/bpsec-asb-metadata-tests \
     tests/acl2/bpsec-asb-body-tests \
     tests/acl2/bpsec-asb-aggregate-tests \
+    tests/acl2/bpsec-asb-terminal-tests \
     tests/acl2/bpsec-target-cursor-tests \
     tests/acl2/bpsec-target-tests \
     tests/acl2/post-identity-source-cursor-source-complete-tests \
