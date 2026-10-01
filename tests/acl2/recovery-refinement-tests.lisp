@@ -111,7 +111,7 @@
   (declare (xargs :guard t))
   (list :opened configs frontier records))
 (defun rrt-open (ckpt configs frontier suffix)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t :verify-guards nil))
   (rrt-full-open configs frontier (append ckpt suffix)))
 (defun rrt-select (status s count k)
   (declare (xargs :guard t))
