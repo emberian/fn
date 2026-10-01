@@ -20,16 +20,24 @@
 ; ((g . page index) -> page id: one entry per 256 memberships) and carries
 ; its OWNER key, so a stale or foreign page id never reads as a hit (no
 ; injectivity invariant is needed).  A put allocates at most one page
-; (6 KiB); the page table and the page array still double, at N/256
-; entries (a pointer and an empty page header each): the step's worst
-; allocation is O(N/256) words, not O(N) records.
+; (6 KiB), but the put that allocates also resizes the page array to
+; 2*pages+4 and may grow the page table (an `equal' hash table) in that
+; same step: Theta(pages) work and allocation in one step.  Pages are one
+; per (group . 256-block) in use, so N/256 is the count only for dense
+; groups; G sparse groups of one membership each make G pages.  Pages are
+; never freed by a removal (the page count follows allocation history and
+; is reset only by a clear).  OPEN (D27, Codex r44 F1): fixed-fan-out
+; directory pages and a free list.
 ;
 ; THE ESCAPE.  What a cell cannot carry -- a key that is not (g . posint), a
 ; value that is not a natural below 2^64 - 1 -- goes to the escape table,
-; keyed (lane . key).  The composed catalog puts only sequences and live
-; numbers there (naturals) under (group . posint) keys, so the escape is
-; empty on every reachable state; it exists so that the logical side can be
-; the hash tables' own (total over every key and value).
+; keyed (lane . key).  The escape is the total-semantics
+; fallback: it exists so that the logical side can be the hash tables' own
+; (total over every key and value).  It is NOT proved empty on reachable
+; states: the composed catalog puts sequences and live numbers (naturals)
+; under (group . posint) keys, but no theorem bounds a sequence below
+; 2^64 - 1 (fn-cat$p-count is unbounded), and a value at or past it goes
+; here.  The escape is itself an `equal' hash table with rehash growth.
 ;
 ; THE LOGICAL SIDE is exactly three stobj hash tables: get = (cdr
 ; (hons-assoc-equal k al)), put = (cons (cons k v) al), rem =
