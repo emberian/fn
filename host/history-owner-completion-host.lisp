@@ -72,7 +72,7 @@
                   (eq (fn-hed-at 0 ready) :history-owner-ready)
                   (natp epoch) (equal epoch (fn-hed-at 1 ready))
                   (natp (fn-hed-at 2 ready)) (natp txid)
-                  (fn-hed-fixedp plan 5)
+                  (fn-hed-fixedp plan 6)
                   (eq (fn-hed-at 0 plan) :history-install-plan)
                   (eq (fn-hed-at 1 plan) :E)
                   (fn-hed-fixedp store-fields 14)
