@@ -11,11 +11,16 @@
 ; tables beside the rows.  This book states what an entry means over the
 ; logical rows (`fn-cpl-okp': every bound key is a live number and its
 ; value is that neighbour) and proves the tables' updates keep it: the
-; commit links the new number after the group's live high, the withdrawal
-; unlinks its number, a redecision and a clear-keyed change no number's
-; liveness.  books/catalog-paged.lisp carries `fn-cpl-okp' in its
-; correspondence and answers a scan from the table.
-;
+; commit links the new number after the group's live high
+; (fn-cpl-okp-of-commit), the withdrawal unlinks its number
+; (fn-cpl-okp-of-withdraw), a redecision changes no number's liveness
+; (fn-cpl-okp-of-redecide).  A clear or a keyed clear empties the rows, so
+; every number dies: the tables are cleared with them (fn-cpl-okp-nil).
+; books/catalog-paged.lisp will carry `fn-cpl-okp' in its correspondence
+; and answer a scan from the table (stage 3, gate C2).  An executable
+; reading of `fn-cpl-okp' for the witnesses (tests/acl2/catalog-live-links-
+; tests.lisp): fn-cpl-okp-is-all-goodp.
+
 ; The list-level lemmas about live numbers under an append and a withdrawal
 ; (section 1) are books/catalog-logic.lisp's own, local there; they are
 ; restated here, prefixed fn-cpl-, rather than exported from that book,
@@ -1169,3 +1174,37 @@
   :hints (("Goal" :in-theory (e/d (fn-cpl-okp) (fn-cpl-goodp fn-held-with-context))
            :use ((:instance fn-cpl-okp-necc
                             (x (fn-cpl-okp-witness dir tab (update-nth r (fn-held-with-context (nth r c) ctx) c))))))))
+
+; -----------------------------------------------------------------------------
+; 5. `fn-cpl-okp' as a check over the table's own keys (executable: the
+; witnesses evaluate it).
+
+(defun fn-cpl-all-goodp (dir keys tab c)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp keys)
+      (and (let ((x (car (car keys))))
+             (or (not (consp (hons-assoc-equal x tab)))
+                 (fn-cpl-goodp dir x (cdr (hons-assoc-equal x tab)) c)))
+           (fn-cpl-all-goodp dir (cdr keys) tab c))
+    t))
+
+(defthm fn-cpl-all-goodp-of-okp
+  (implies (fn-cpl-okp dir tab c) (fn-cpl-all-goodp dir keys tab c))
+  :hints (("Goal" :induct (fn-cpl-all-goodp dir keys tab c)
+           :in-theory (disable fn-cpl-goodp))
+          ("Subgoal *1/2" :use ((:instance fn-cpl-okp-necc (x (car (car keys))))))))
+
+(defthm fn-cpl-all-goodp-lookup
+  (implies (and (fn-cpl-all-goodp dir keys tab c) (consp (hons-assoc-equal x keys))
+                (consp (hons-assoc-equal x tab)))
+           (fn-cpl-goodp dir x (cdr (hons-assoc-equal x tab)) c))
+  :hints (("Goal" :induct (fn-cpl-all-goodp dir keys tab c) :in-theory (disable fn-cpl-goodp))))
+
+(defthm fn-cpl-okp-is-all-goodp
+  (equal (fn-cpl-okp dir tab c) (fn-cpl-all-goodp dir tab tab c))
+  :hints (("Goal" :in-theory (e/d (fn-cpl-okp) (fn-cpl-goodp))
+           :cases ((fn-cpl-okp dir tab c)))
+          ("Subgoal 2" :use ((:instance fn-cpl-all-goodp-lookup (keys tab) (x (fn-cpl-okp-witness dir tab c)))))))
+
+(in-theory (disable fn-cpl-okp-is-all-goodp))
+
