@@ -1,5 +1,30 @@
 # Retention, promises, and reclamation
 
+## Resumable obligation-view update (PRF-1192, SCN-1072)
+
+The dense owner's semantic producer supplies `:same`, `:arrival` or `:release`
+from its actual node mutation. Arrival/release use the subject and charge of
+the very pin inserted or matched, never infer success from a record kind.
+`fn-ovc-begin` retains that delta and the old view; `fn-ovc-drive` yields after
+at most its fuel. `fn-ovc-result` distinguishes a complete `(:done view)`, a
+yielded NIL, and `(:error :delta)` for an unsupported operation.
+
+The underlying `fn-vcu-step` walks one sibling or string character and rebuilds
+one persistent path cell per tick. It does not coerce the whole subject,
+refresh all obligations, or run a whole trie update inside one scheduling
+step. The completed trie equals `fn-vdc-bump`/`fn-vdc-unbump`; the full view
+also carries the exact total increment/decrement. Old views remain immutable.
+Ghost denotations and remaining-work measures are proof-only and must never
+be called on this served path. Sufficient ghost work is a termination bound,
+not an admission tariff or an executable whole-state scan.
+
+Executable cores have matching normal certificates; full-result/progress
+refinements and literal tests passed an exact original-source proof capsule.
+The complete refinement include-closure certificate, actual registered owner
+caller, source lifetime/funding, native allocation measurement and selected
+runtime numeric representation remain open. This component does not authorize
+an obligation or release physical storage.
+
 Status: explicit obligations and indefinite local retention until authorized
 release are agreed (D03). Receipt/release details and history/GC policy await
 D12 and D13.

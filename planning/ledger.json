@@ -7,6 +7,12 @@
     "tests/acl2/consumer-transaction-dispatch-tests",
     "tests/acl2/consumer-remote-store-category-tests",
     "tests/acl2/receiver-response-transfer-tests",
+    "books/obligation-view-cursor-refinement",
+    "books/obligation-view-cursor",
+    "books/view-delta-cursor-refinement",
+    "books/view-delta-cursor",
+    "tests/acl2/obligation-view-cursor-tests",
+    "tests/acl2/view-delta-cursor-tests",
     "books/index-reader-actor",
     "books/index-reader-receiver-issuer",
     "books/cbor-record-scalar",
@@ -2112,26 +2118,26 @@
     "tests/acl2/substrate-commit-codec-gap-tests"
   ],
   "totals": {
-    "books": 2306,
-    "books_in_root_closure": 2250,
-    "roots": 2108,
-    "theorems": 33088,
-    "functions": 21138,
-    "assert_events": 24657,
+    "books": 2312,
+    "books_in_root_closure": 2256,
+    "roots": 2114,
+    "theorems": 33115,
+    "functions": 21163,
+    "assert_events": 24670,
     "must_fails": 2519,
     "prover_refusals": 0,
     "encapsulates": 168,
     "guards": {
       "verified": 3742,
       "declared-off": 2592,
-      "default-guarded": 11783,
-      "default-unguarded": 3021
+      "default-guarded": 11806,
+      "default-unguarded": 3023
     },
-    "suspect_theorems": 1306,
+    "suspect_theorems": 1309,
     "export_hygiene_warnings": 382,
     "enabled_projection_warnings": 79,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2952,
+    "include_hygiene_warnings": 2958,
     "host_names_warnings": 2569,
     "hand_written_record_warnings": 19
   },
@@ -24356,6 +24362,62 @@
       "read_error": null
     },
     {
+      "book": "books/obligation-view-cursor-refinement.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 6,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "obligation-view-cursor",
+        "view-delta-cursor-refinement"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-ovc-child-done-meaning-by-definition",
+        "fn-ovc-done-meaning-by-definition"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/obligation-view-cursor.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 4,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "view-delta-cursor"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/octet-text.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -42269,6 +42331,61 @@
       "read_error": null
     },
     {
+      "book": "books/view-delta-cursor-refinement.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 18,
+      "functions": 7,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 7,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "view-delta-concrete",
+        "view-delta-cursor"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-vcu-done-meaning-by-definition"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/view-delta-cursor.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 9,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 9,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "view-delta"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/view-delta.lisp",
       "in_root_closure": true,
       "is_root": false,
@@ -56484,6 +56601,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/obligation-view-cursor-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 4,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/obligation-view-cursor-refinement"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/octet-text-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -67931,6 +68074,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/view-delta-cursor-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 9,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/view-delta-cursor-refinement"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/visibility-join-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -72972,6 +73141,22 @@
       "line": 329,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-ovc-child-done-meaning-by-definition",
+      "book": "books/obligation-view-cursor-refinement.lisp",
+      "line": 19,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-vcu-meaning and the conclusion is that arm's value"
+      ]
+    },
+    {
+      "theorem": "fn-ovc-done-meaning-by-definition",
+      "book": "books/obligation-view-cursor-refinement.lisp",
+      "line": 39,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-ovc-meaning and the conclusion is that arm's value"
       ]
     },
     {
@@ -78435,6 +78620,14 @@
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-th-topic-event-decode-exact and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-th-topic-event-decode-exact and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-vcu-done-meaning-by-definition",
+      "book": "books/view-delta-cursor-refinement.lisp",
+      "line": 151,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-vcu-meaning and the conclusion is that arm's value"
       ]
     },
     {
@@ -91130,6 +91323,27 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/obligation-view-cursor-refinement.lisp",
+        "line": 2,
+        "include": "obligation-view-cursor",
+        "included": "books/obligation-view-cursor.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/obligation-view-cursor-refinement.lisp",
+        "line": 3,
+        "include": "view-delta-cursor-refinement",
+        "included": "books/view-delta-cursor-refinement.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/obligation-view-cursor.lisp",
+        "line": 4,
+        "include": "view-delta-cursor",
+        "included": "books/view-delta-cursor.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/octet-text.lisp",
         "line": 48,
         "include": "rev-onto",
@@ -93710,6 +93924,13 @@
         "line": 32,
         "include": "article-header-limits",
         "included": "books/article-header-limits.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/view-delta-cursor-refinement.lisp",
+        "line": 3,
+        "include": "view-delta-cursor",
+        "included": "books/view-delta-cursor.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -100013,6 +100234,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/obligation-view-cursor-tests.lisp",
+        "line": 2,
+        "include": "../../books/obligation-view-cursor-refinement",
+        "included": "books/obligation-view-cursor-refinement.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/octet-text-tests.lisp",
         "line": 13,
         "include": "must-fail-checked",
@@ -105029,6 +105257,13 @@
         "line": 10,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/view-delta-cursor-tests.lisp",
+        "line": 2,
+        "include": "../../books/view-delta-cursor-refinement",
+        "included": "books/view-delta-cursor-refinement.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

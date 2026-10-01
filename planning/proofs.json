@@ -19939,6 +19939,30 @@
         "planning/evidence/manifests/certify-20261001T004700Z-2897961.json"
       ],
       "progress_note": "Fresh proper-local sic3 paid implementation full-result, sic4 exact borrowed span provenance and prefix-byte validity pass. Narrow normal certify-20261001T004700Z-2897961 passed thirteen fresh books plus two matching cached CBOR parents: actual strengthened statement seam, attachment, public paid full-result and legacy canonicality, and seven public literals. Two cached CBOR manifest citations remain to reconcile; no broader changed-parent/green gate, native caller/funding/lifetime or sidecar semantic READY transfer. Current source packet includes exact strengthened seam/public/attachment normal15-leaf receipt; wrapper include-only changed parents and span/terminal successor are separate convergence scope. No host producer/funding/lifetime activation."
+    },
+    {
+      "id": "PRF-1192",
+      "title": "Resumable obligation aggregate preserves the complete delta and makes progress",
+      "statement": "The guarded VCU trie step preserves its complete persistent update; every live nonterminal step strictly decreases ghost work, sufficient fuel terminates, and any completed result equals the original fn-vdc-bump/unbump. The OVC full-view cursor preserves the total and aggregate reference for same/arrival/release, and every drive consumes at most its supplied fuel. Caller-derived actual pin, registered source/lifetime, concrete runtime allocation and full owner composition remain separate obligations.",
+      "milestone": "M5",
+      "requirements": [
+        "RET-001",
+        "RET-002",
+        "RET-004"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/view-delta-cursor.lisp",
+        "books/view-delta-cursor-refinement.lisp",
+        "books/obligation-view-cursor.lisp",
+        "books/obligation-view-cursor-refinement.lisp",
+        "tests/acl2/view-delta-cursor-tests.lisp",
+        "tests/acl2/obligation-view-cursor-tests.lisp",
+        "planning/evidence/obligation-cursor-2026-10-01/README.md"
+      ],
+      "progress_note": "Both executable cores normally certified at matching manifests; complete literal-source refinement/progress and 13 assertions passed in proper62-event capsule. Full original include closure certification and actual caller integration remain open; no native or resource allowance claim."
     }
   ]
 }
