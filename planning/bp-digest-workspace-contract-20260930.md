@@ -90,3 +90,32 @@ owner. The public record constructor remains an infrastructure unavailable
 fault before allocation: compiled role callbacks are not per-job constructor
 authority. Runtime/physical must supply the actual record11+mutex creator gate
 and same-job claim before activation; raw recording fixtures are unfunded.
+
+## Actual received ciphertext provider connection
+
+At source86d0dbdf0 the actual TCPCL callback delivers an ACL2 `:inbound`
+complete octet list to `fnn-bp-deliver-node`, then `fnn-bps-receive`. The
+foundation held row retains the decoded bundle and exact wire, but has no
+immutable concrete backing registry. The POST/RX input holder is not a BP
+ciphertext source issuer. No backing coordinate or block-number tuple can
+substitute for that missing authority.
+
+The disjoint `bp-received-byte-storage` concrete leaf is a 256-octet allocation
+unit with a SAME-PRS source nonce and segment ordinal. It appends one byte at
+the exact expected offset, freezes once, rejects all later writes, and reads
+at most64 octets from the concrete array. A dynamic registered directory must
+allow any supported source size;256 is not a bundle ceiling. The parser's
+logical bounded window is `(:bps-window backing-id absolute-offset octets)`.
+The actual registered parent must derive that backing ID/extent from the
+original received holder, security block NUMBER and immutable source
+incarnation, and retain its pin through parsing and crypto input use. Neither
+caller-supplied bytes nor equal coordinates establish this relation.
+
+First required artifact: genuine reserve-before-construction received-wire
+operation receipt plus core-issued source registration. Physical owns SAMEpool
+accounting/issuer; runtime and owner install the actual constructor/BODY
+allowance. BP owns byte storage, actual TCPCL population and token-only bounded
+window caller. Public positive construction/adoption stays unavailable until
+that receipt exists. This source leaf's local fixture is deliberately unfunded;
+source admission, refinement, current-policy gate, trusted primitive completion
+and application acceptance remain separate.
