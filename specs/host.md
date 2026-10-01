@@ -1213,6 +1213,12 @@ command writes the same report a page at a time
 [status section](../docs/operator-internals.md#status-while-the-owner-runs) describes the
 verbs.
 
+### Operation diagnosis on the existing inspect route
+
+HST-044 (specified): the existing private status/health exchange adds ACL2-produced operation correlation, producer/current phase, wait or refusal reason, captured source/publication coordinates, outstanding charged custody and recovery fault. An unavailable observation is reported as unavailable, rather than an observed idle operation. Identifiers come from actual issued operation receipts; no host-generated correlation value or prepared object graph is reported. Request-budget mode is reported as such and does not assert physical fit.
+
+The source-specific response recipe and exact `:owner-control` allocation-turn ticket precede rendering. One nonyielding composed call uses the same original request/cache for source lookup, prepayment and BODY; a resumed report obtains a fresh turn over its retained report job. Existing status/health fields and paging remain complete. Fresh preparation retains the original immutable OC/config/pins/profile/observation references under an actually issued report claim. A singleton registered job owns each bounded cursor. Borrowed catalog/arena sources have a sticky invalidation fence installed before every relevant write or swap; an invalid job refuses before the next borrowed read and remains held until cleanup. A completed immutable report buffer no longer depends on those mutable sources. Publishing its buffer/digest occurs only at completion. The scalar renderer component is certified separately. Actual installed inspect authority, report capture, resumable preparation and transport remain open.
+
 ## Operator health
 
 HST-007: The operator's health verdict names which of ten things is wrong,

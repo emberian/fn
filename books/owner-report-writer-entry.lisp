@@ -1,0 +1,16 @@
+; Actual value/STATE wrapper ABI used by fnn-owner-core at mutable source cuts.
+; These fences confer no writer/admission permission and release no report claim.
+(in-package "ACL2")
+(include-book "owner-report-capture")
+(defun fn-owner-report-writer-enter (state)
+ (declare (xargs :stobjs state :guard t))
+ (let ((state (fn-orc-writer-enter state)))
+  (mv nil (fn-orc-source state) state)))
+(defun fn-owner-report-writer-leave (state)
+ (declare (xargs :stobjs state :guard t))
+ (let ((state (fn-orc-writer-leave state)))
+  (mv nil (fn-orc-source state) state)))
+(defun fn-owner-report-writer-fault (state)
+ (declare (xargs :stobjs state :guard t))
+ (let ((state (fn-orc-writer-fault state)))
+  (mv nil (fn-orc-source state) state)))

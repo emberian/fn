@@ -19,7 +19,7 @@
                              (natp fuel)) :verify-guards nil))
  (cond ((<= fuel depth) (mv :yield nil fuel))
        ((and (zp depth) (not (equal slot 0))) (mv :unavailable nil fuel))
-       ((zp depth)
+       ((equal slot 0)
         (if (not (fn-hep-node-presentp 'fn-history-event-page fn-hep-node))
          (mv :unavailable nil fuel)
          (stobj-let ((fn-history-event-page
@@ -52,7 +52,7 @@
  (declare (xargs :stobjs fn-hep-node :measure (nfix depth)
                  :guard (and (natp slot) (natp depth)) :verify-guards nil))
  (cond ((and (zp depth) (not (equal slot 0))) (mv :unavailable fn-hep-node))
-       ((zp depth)
+       ((equal slot 0)
         (if (not (fn-hep-node-presentp 'fn-history-event-page fn-hep-node))
          (mv :unavailable fn-hep-node)
          (stobj-let ((fn-history-event-page

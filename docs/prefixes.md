@@ -425,3 +425,11 @@ anything a book does not already decide.
 | `stcpbt-` | tests/acl2/substrate-commit-profile-bounds-tests | Explicit profile v2 source component; actual caller/runtime authority remains open. |
 
 | `stcpat-` | substrate-commit-profile-resume-tests | Accumulator cursor/count component fixtures; no native stack/cost claim. |
+
+| `fn-stpe-` | substrate-profile-entry | Selected-profile signed-carrier decoding, no authority grant. |
+| `fn-stpr-` | substrate-profile-selection,substrate-profile-row | Actual retained-row projection and quantum selection. |
+| `fn-stpet-` | tests/acl2/substrate-profile-entry-tests | Literal carrier/provenance/refusal fixtures. |
+
+| `fn-stprt-` | tests/acl2/substrate-profile-selection-tests | Literal pinned-source selector composition. |
+
+| `fn-stps-` | substrate-completed-source | Readonly actual completed-row and original prepare-source projection; no allocator grant. |

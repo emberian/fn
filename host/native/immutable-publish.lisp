@@ -17,7 +17,7 @@
 
 (defun fnn-immutable-publish-effect
   (publication stage final final-directory octets
-               &key cleanup-directory observer operation-label fault-observer)
+               &key cleanup-directory observer operation-label fault-observer registered-step)
   "Execute an ACL2-authorized immutable publication state.  PUBLICATION must
 come from the caller's ACL2 allocation/admission machine after it establishes
 exclusive authority and absence of that machine's exact final name.  Those are
@@ -30,7 +30,9 @@ executor does not assert the premise itself and returns fn-jpub's classification
         (fd nil))
     (labels ((advance (event)
                (setq publication
-                     (fnn-core 'fn-jpub-host-step publication event)))
+                     (if registered-step
+                         (funcall registered-step publication event)
+                       (fnn-core 'fn-jpub-host-step publication event))))
              (observed (point)
                ; Consumers use this for process-death tests at modelled cuts.
                ; The callback observes the already-reported ACL2 state and

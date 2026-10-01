@@ -8,10 +8,12 @@
 ; and source capture. A failed capture retains the original intent for recovery.
 (defun fn-owner-admission-authority-begin (state)
  (declare (xargs :stobjs state :mode :program :guard t))
+ (if (fn-owner-admission-semantic-busy-p state)
+     (mv :semantic-writer-busy nil state)
  (mv-let (word token state) (fn-owner-admission-prepare-intent state)
   (if (not (eq word :intent-retained)) (mv word token state)
    (mv-let (account-word state) (fn-owner-admission-account-capture state)
-    (mv account-word token state)))))
+    (mv account-word token state))))))
 
 ; Each invocation chooses one actual retained producer phase. No caller phase,
 ; node, row, result or authority Boolean is accepted. All producers recheck the
@@ -34,7 +36,7 @@
           (mv word (- fuel 1) fn-history-backing state))
       (let* ((builder (fn-hep-builder fn-history-backing))
              (tail (fn-hed-at 8 builder)))
-       (if (not (and (fn-apr-widthp 4 tail)
+       (if (not (and (or (fn-apr-widthp 4 tail) (fn-apr-widthp 7 tail))
                      (eq (fn-hed-at 0 tail) :history-tail-ready)))
            (fn-owner-admission-tail-step fuel fn-history-backing state)
         (mv-let (census-word pool rows source)

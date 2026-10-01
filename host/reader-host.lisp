@@ -1,5 +1,6 @@
 ; Trusted experimental adapter helpers.  ACL2 owns wire/session/archive state.
 (in-package "ACL2")
+(include-book "../books/owner-report-capture")
 (include-book "../books/store-node")
 (include-book "../books/served")
 (include-book "../books/reader-open-carried")
@@ -98,11 +99,14 @@
 
 (defun fn-reader-use-seed (fn-arena state)
   (declare (xargs :stobjs (fn-arena state) :guard t))
-  (let* ((fn-arena (fn-arena-clear fn-arena))
+  (let* ((state (fn-orc-writer-enter state))
+         (fn-arena (fn-arena-clear fn-arena))
          (fn-arena (fn-arena-seal-list *fn-reader-payload* fn-arena)))
     (mv-let (erp val state)
       (fn-reader-install-selection (fn-rdc-selection *fn-reader-archive* nil) state)
-      (mv erp val fn-arena state))))
+      (let ((state (if erp (fn-orc-writer-fault state)
+                     (fn-orc-writer-leave state))))
+        (mv erp val fn-arena state)))))
 
 ; The operator's posting permission and the host's clock reading.  A clock
 ; reading is an observation, not a computed value: books/clock.lisp says what

@@ -184,6 +184,8 @@
   (drain-release nil)
   ;; Retained original-input/controller holder; absent until core issuance.
   (captured-runtime nil)
+  ;; Only the genuine factory installs the retained inspector backing.
+  (inspector-binding nil)
   ;; Issued scheduler receipt; absent until genuine funded installation.
   (control-binding nil))
 
@@ -6253,6 +6255,9 @@ publication).  Answers the reply word."
                                                           (1- (fnn-arena-reader-count))
                                                           rebuilt)))
                                    (when (eq w :swap)
+                                     (fnn-owner-core 'fn-owner-report-writer-enter)
+                                     (handler-case
+                                      (progn
                                      ;; the commit point, then the swap, in one quantum
                                      (fnn-state-checkpoint-install store stage)
                                      (setq installed t)
@@ -6266,7 +6271,11 @@ publication).  Answers the reply word."
                                      ;; only after them, in this quantum
                                      ;; (fn-orrd-a-post-after-the-swap-is-
                                      ;; taken-as-before).
-                                     (fnn-owner-reclaim-barriers store))
+                                     (fnn-owner-reclaim-barriers store)
+                                       (fnn-owner-core 'fn-owner-report-writer-leave))
+                                      (error (condition)
+                                       (fnn-owner-core 'fn-owner-report-writer-fault)
+                                       (error condition))))
                                    w))))
                        (case sw
                          (:swap (return))

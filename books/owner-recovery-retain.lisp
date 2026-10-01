@@ -2,6 +2,7 @@
 ; The cold entry carries the recovered Store and node-secret key domains.
 ; These are proved at producers before any raw owner dispatch is considered.
 (in-package "ACL2")
+(include-book "owner-report-capture")
 (include-book "owner-retain-transitions")
 (include-book "owner-reclaim-carry")
 (include-book "store-checkpoint-arena-writer")
@@ -227,7 +228,8 @@
         ; byte and seals nothing (fn-sca-load-held-rows).
         ; THE SWITCH: under the ring's key (fn-sca-load-held-rows-keyed-is-
         ; load-held-rows: the same catalog, the table keyed).
-        (let ((fn-cat (fn-sca-load-held-rows-keyed key
+        (let* ((state (fn-orc-writer-enter state))
+               (fn-cat (fn-sca-load-held-rows-keyed key
                                                    (fn-sf-records (fn-sn-files store))
                                                    (fn-own-view-index (fn-own-view (fn-ocfg-owner oc)))
                                                    fn-arena fn-cat)))
@@ -245,7 +247,8 @@
                                         (and (boundp-global 'fn-store-genesis state)
                                              (f-get-global 'fn-store-genesis state)))
                                        fn-hist)))
-            (mv nil :recovering fn-arena fn-cat fn-hist state)))))))
+            (let ((state (fn-orc-writer-leave state)))
+              (mv nil :recovering fn-arena fn-cat fn-hist state))))))))
 
 (defthm fn-owner-install-extended-establishes-retain-carry
   (implies (and (not (equal oc :fault))

@@ -123,7 +123,7 @@
   (mv :unavailable nil (nfix fuel))
   (stobj-let ((fn-hep-node (fn-hep-provider fn-history-backing)))
    (word row left)
-   (fn-hep-node-read (fn-hed-at 1 leaf) (fn-hep-provider-depth fn-history-backing)
+   (fn-hep-node-read (fn-hed-at 1 leaf) (integer-length (nfix (fn-hed-at 1 leaf)))
      (fn-hed-at 4 leaf) (fn-hed-at 2 leaf) (fn-hed-at 3 leaf) ordinal
      (fn-hed-at 5 leaf) captured fuel fn-hep-node)
    (mv word row left))))
@@ -132,7 +132,7 @@
  (let* ((p (fn-hep-producer-receipts fn-history-backing))
         (builder (fn-hep-builder fn-history-backing))
         (old (fn-hed-at 7 builder)) (next (fn-hed-at 3 p)) (leaf (fn-hed-at 4 p))
-        (expected (fn-hed-at 5 p)) (depth (fn-hep-provider-depth fn-history-backing)))
+        (expected (fn-hed-at 5 p)) (depth (integer-length (nfix (fn-hed-at 1 leaf)))))
   (cond
    ((not (and (equal receipt (fn-hep-completion fn-history-backing))
               (fn-hep-completion-matchesp receipt (fn-hep-producer-token fn-history-backing)

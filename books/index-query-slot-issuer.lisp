@@ -4,6 +4,7 @@
 ; constructor is licensed by a supplied vector or this component alone.
 (in-package "ACL2")
 (logic)
+(include-book "index-reader-receipt-phase")
 (include-book "index-backing-provider")
 (include-book "index-publication-shape")
 (include-book "page-read-pool-state")
@@ -105,9 +106,7 @@
        (fn-omk-at 7 receipt) (fn-omk-at 8 receipt)
        (fn-omk-at 9 receipt) (fn-omk-at 10 receipt)))
 
-(defun fn-irq-committed-phasep (phase)
- (declare (xargs :guard t))
- (member-eq phase '(:committed :committed-repin-released :committed-repin-held :committed-repin-aborted)))
+
 (defun fn-irq-ready-phasep (phase)
  (declare (xargs :guard t))
  (member-eq phase '(:read-ready :read-ready-repin-released :read-ready-repin-held :read-ready-repin-aborted)))

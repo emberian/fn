@@ -1,10 +1,10 @@
 ; Actual pending request response/parser custody. Internal registered producers
 ; only: no host actor/root setter, category bitmap or supplied joined flag.
 (in-package "ACL2")
+(include-book "index-reader-request-shape")
 (include-book "index-reader-request")
 
-(defun fn-ira-receipt-root (receipt)
- (declare (xargs :guard t)) (fn-omk-at 10 receipt))
+
 
 (defun fn-ira-pending-bind (token fn-index-backing)
  (declare (xargs :stobjs fn-index-backing :guard t))

@@ -10,12 +10,18 @@
 (include-book "../books/incoming-octet-holder")
 (include-book "../books/incoming-buffer-carrier")
 (include-book "../books/page-read-pool-state")
+(include-book "../books/page-read-binding-revision")
 
  ; A served recovery is selected explicitly before Store open. Opening an
 ; offline Store supplies a separate context; absence alone grants no I/O.
 (defun fn-owner-page-read-enter-mode (mode fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool))
-  (if (and (member-eq mode '(:offline :served))
+  (if (and (not (and (eq mode :offline)
+                     (fn-prp-alloc-installation fn-page-read-pool)))
+           (not (and (eq mode :served)
+                     (fn-prp-alloc-installation fn-page-read-pool)
+                     (not (fn-prp-data fn-page-read-pool))))
+           (member-eq mode '(:offline :served))
            (or (equal (fn-prp-mode fn-page-read-pool) :uninitialized)
                (equal (fn-prp-mode fn-page-read-pool) mode)))
       (let ((fn-page-read-pool (update-fn-prp-mode mode fn-page-read-pool)))
@@ -30,7 +36,8 @@
 
 (defun fn-owner-page-read-direct-mode (fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool))
-  (cond ((equal (fn-prp-mode fn-page-read-pool) :offline) :offline)
+  (cond ((and (equal (fn-prp-mode fn-page-read-pool) :offline)
+              (null (fn-prp-alloc-installation fn-page-read-pool))) :offline)
         ((and (equal (fn-prp-mode fn-page-read-pool) :served)
               (fn-prp-data fn-page-read-pool)) :funded-pool)
         (t :read-resources-unavailable)))

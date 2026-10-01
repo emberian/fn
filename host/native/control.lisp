@@ -154,7 +154,7 @@ joins it before the process exits."
 (`fn-native-live-status-host-answer'); read and replaced under the owner
 mutex only.")
 
-(defun fnn-control-live-status-answer (service request)
+(defun fnn-control-live-status-legacy-answer (service request)
   "The running owner's page of its status report, under the owner mutex.
 
 ACL2 decodes the request, renders the report from the Store, the
@@ -192,6 +192,43 @@ mutex (HST-033: statvfs never runs inside the owner's critical section)."
        (setf *fnn-live-status-buffers* (second answer))
        (first answer)))
    :inspect))
+
+; Fixed result publication runs within the owner wrapper, after its returned
+; stobjs are retained and before scheduler cleanup. It constructs no frame.
+(defun fnn-control-publish-inspect-answer (word answer)
+ (unless (eq word :yield)
+  (unless (and (consp answer) (consp (cdr answer))
+               (fnn-octet-list-p (first answer)))
+   (fnn-fault "ACL2 returned a malformed installed inspect page"))
+  (setf *fnn-live-status-buffers* (second answer)))
+ (values word answer))
+
+; The installed closure owns capture, incremental preparation and paging.
+; Each yield reenters with a fresh actual control turn. Its core report job
+; retains the original source; the ticket itself never escapes a quantum.
+(defun fnn-control-live-status-answer (service request)
+ (let ((binding (fnn-owner-service-inspector-binding service)) (job-token nil)
+       (cached nil) (cache-captured nil))
+  (if (not binding) (fnn-control-live-status-legacy-answer service request)
+   (loop
+    (multiple-value-bind (word answer)
+        (fnn-owner-serialized-with-control-turn
+         service nil
+         (lambda (slot nonce slots pool)
+          ;; Capture under the first owner gate; later turns keep this exact
+          ;; lexical cache even if another request publishes a new one.
+          (unless cache-captured
+           (setf cached *fnn-live-status-buffers* cache-captured t))
+          (funcall binding request cached job-token slot nonce slots pool))
+         :inspect nil #'fnn-control-publish-inspect-answer)
+     (if (eq word :yield)
+         (progn
+          (unless (and (consp answer) (eq (first answer) :report-continuation)
+                       (consp (cdr answer)) (second answer) (null (cddr answer)))
+           (fnn-fault "ACL2 returned a malformed inspect continuation"))
+          ;; Core checks this real reservation identity on the next turn.
+          (setf job-token (second answer)))
+       (return (first answer))))))))
 
 (defvar *fnn-live-pages-cache* nil
   "The owner's paged-report cursors, as ACL2 chose them

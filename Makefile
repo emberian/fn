@@ -53,6 +53,12 @@ ACL2_BOOKS ?= books/defrecord \
 	books/substrate-commit-profile-bounds \
 	tests/acl2/substrate-commit-profile-bounds-tests \
 	books/substrate-commit-profile-resume \
+	books/substrate-profile-entry \
+	books/substrate-profile-selection \
+	books/substrate-profile-row \
+	books/substrate-completed-source \
+	tests/acl2/substrate-profile-entry-tests \
+	tests/acl2/substrate-profile-selection-tests \
 	tests/acl2/substrate-commit-profile-resume-tests \
 	host/history-owner-completion-host \
 	books/history-semantic-writer \
@@ -62,6 +68,8 @@ ACL2_BOOKS ?= books/defrecord \
 	host/history-admission-producer-host \
 	tests/acl2/admission-preparation-intent-tests \
 	books/admission-semantic-node \
+	books/receiver-turn-controller \
+	books/snapshot-row-source-grammar \
 	tests/acl2/admission-semantic-node-tests \
 	books/history-semantic-writer-state \
 	tests/acl2/history-semantic-writer-state-tests \
@@ -347,6 +355,12 @@ ACL2_BOOKS ?= books/defrecord \
 	books/native-live-status \
 	tests/acl2/native-live-status-tests \
 	books/native-live-status-words \
+	books/operation-diagnostics \
+	books/owner-inspect-operation \
+	books/owner-report-capture \
+	books/owner-report-reservation \
+	books/owner-report-count \
+	books/owner-report-count-host \
 	books/operator-report-fields \
 	books/operator-report-fields-text \
 	books/operator-report-fields-native-reference \

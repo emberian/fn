@@ -114,9 +114,9 @@
                       (fn-miq-with-progress query (fn-miq-cursor query)
                         (fn-miq-pending query) (fn-miq-best query) :cancelled)
                       fn-ibp-query-segment)
-                  fn-ibp-query-segment))
-               (fn-ibp-query-segment
-                (update-fn-ibp-qs-borrowsi slot (list :cancelled) fn-ibp-query-segment)))
+                  fn-ibp-query-segment)))
+          ; Cancelled admission/control forbids new work. Preserve the actual
+          ; in-flight borrow descriptor and prior roots until true settlement.
           (mv :cancelled fn-ibp-query-segment)))
        ((and (eq operation :release)
              (eq (fn-omk-at 2 (fn-ibp-qs-admissionsi slot fn-ibp-query-segment)) :released)
@@ -234,7 +234,7 @@
                               (natp slot) (natp depth) (natp active))))
   (let ((cost (+ 1 depth)))
     (mv-let (auth payload claim after-read)
-      (fn-ibp-node-query-grant-read token :settle fuel slot depth fn-ibp-node)
+      (fn-ibp-node-query-grant-read token (if (eq operation :release) :release :settle) fuel slot depth fn-ibp-node)
       (cond
        ((not (eq auth :authorized)) (mv auth ledger 0 after-read fn-ibp-node))
        ((not (and (fn-qpg-tokenp payload) (natp after-read) (<= after-read fuel)

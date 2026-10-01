@@ -846,3 +846,127 @@ preserves committed authority revision, watermark, namespace and adopted rows,
 so the captured account publication sidecar is kept literally; seven CP child
 size carries advance separately. Only the actual typed C commit changes
 committed account/config authority.
+
+The additive remote scanner source carries exact uninspected query and article
+group suffixes, compares one bounded name pair per tick, and emits each selected
+event once. Its original no-skipped-match source theorems and concrete
+single-FnHISTAt refinement retain their own evidence coordinate. The actual
+retained backing adapter uses the dense all-event source, validates token and
+ordinal custody, and offers EVERY non-NIL event to current visibility before
+query selection. A NIL dense row remains unavailable at its exact position.
+Catalog ordinals cannot stand in for Store event positions.
+
+The bounded current-view producer examines one maintained article or withdrawal
+cell per tick. It distinguishes visible articles, withdrawn articles, withdrawal
+causes and retired/invisible articles. A cause filed outside a query can offer
+its withdrawn TARGET inside that query; the cause's payload and groups are not
+the withdrawal report. Each target then passes bounded query selection and the
+same current READ/shared-queue moderation producer. Report inputs retain only
+readable, visible groups and their local-number memberships. These internal
+producers require actual owner-view/config/source custody across every yield;
+their guarded definitions and literal fixtures do not install that custody or
+prove the complete joined pipeline.
+
+The saved semantic continuation now composes those bounded visibility, query
+and READ producers for one dense event. Each tick invokes at most one existing
+producer tick. A withdrawal cause can select several targets: a filtered report
+input retains the original event position and its remaining visibility
+continuation, and only exhaustion of that event advances one dense position.
+READ exclusion resumes the remaining targets or the cause's eligible content.
+Source and READ-generation changes refuse before touching saved children.
+The actual owner STATE join retains each semantic/report continuation and
+callback alias; cancellation does not consume them. It refuses unregistered
+history custody, and a pending report stays unavailable until its genuine
+bounded writer can consume it. The guarded internal entries and fixtures are
+source evidence, while the high same-current CEP/CP validator, actual report
+writer, funding, physical completion and complete host refinement remain open.
+
+The target-only concrete withdrawal writer reuses the existing FNWD1 report.
+It appends one octet per tick into the concrete buffer and has a complete
+result-and-buffer-effect source boundary against its logical observation.
+The maximum Message-ID width comes from that existing codec. The writer emits
+only the selected target Message-ID; source/extent refusals preserve the buffer.
+It requires an actual reserved extent and retained source from the installed
+caller, which remains unavailable. It does not encode visible article content
+or finish aggregation of several targets into a complete poll response.
+
+The internal high reader captures the actual installed history/view/config
+readout and sole current CP/carries aliases in the same owner span, then freshly
+authenticates and rechecks fixed source/account/configuration coordinates before
+each bounded policy, consumer selection, READ-definition or event step. The
+current-C query limit is selected one row per tick and checked against the
+prepared count and actual record ceiling before consumer selection. A changed
+consumer, account incarnation, operation, source or supported dimension refuses
+without consuming saved aliases. This source caller does not establish the
+missing atomic current CP/carries/root publication association or native BODY;
+its activation readout remains unavailable. Actual high getter admission,
+complete host refinement and complete original remote scenarios remain open.
+
+Remote replies share the existing FNCT typed consumer response contract:
+kind 5 progress/position, kind 6 poll/WAIT, kind 9 status and kind 18 reasons.
+The logical remote client refuses the legacy local-request resend path. An
+unavailable source uses the existing busy status and fixed
+remote-source-unavailable reason; only that exact pair is interpreted as
+unavailable. Refusal and ambiguous durable outcomes remain distinct. The draft
+FNCR kind-2 response grammar is historical source only and is not the selected
+remote response contract. Store R bounds durable records independently of the
+actual report producer's ceiling; a large query event cannot invent report
+allocation or codec authority. Current-C query validation therefore covers
+FNCR request and FNCE4 Store-record widths, while the separate report-profile
+compatibility function validates the existing FNCT codec. Its genuine installed
+report-profile source remains unavailable.
+
+The serialized remote holder retains scanner/reader/reply/callback aliases on
+cancellation. The aggregate return invokes genuine callback completion before
+clearing aliases, quiescing the history reader and returning the registered
+backing epoch pin BEFORE refunding the SAME shared pool. The native completion
+getter remains explicitly unavailable; empty pure continuations cannot release
+physical custody. Source admission/guards and literal fixtures are separate
+from normal certificates, installed runtime authority, qualified images,
+deployment and the complete original remote scenarios. Those remain open.
+
+The internal visible report writer emits an ordinary RECORD with exactly the
+original payload and Message-ID and a current authorized group projection.
+The projected routing metadata is node supplied; it is not the author's signed
+statement, and no signature over a changed composite is claimed. It prepares
+one bounded codec name or emits one octet per tick. The complete concrete
+buffer-effect source boundary and actual RECORD/FNCT parser fixtures pass;
+physical payload reader funding, native report extent custody, complete CWAIT
+statement attachment composition and multi-target reply aggregation remain open.
+
+Remote scoped poll and WAIT use the existing typed FNCT poll/reason/uncertain
+contract. A report for no selected item stays empty; exactly one item keeps its
+existing FNWD1 or RECORD bytes. Two or more items use the additive **FNRB1** inner
+collection: four magic octets `FNRB`, version octet `1`, unsigned big-endian
+32-bit count (at least two), followed in maintained selection order by exactly
+that many unsigned big-endian 32-bit nonzero lengths and item byte strings.
+Each generated item is a target-only FNWD1 or ordinary authorized RECORD.
+Original payload and Message-ID stay exact; projected routing metadata is node
+supplied, not an author's signed statement. Existing signed singleton client
+paths stay unchanged; no modified composite signature or verification is claimed.
+
+The required operator current-C rows `:limit max-remote-report-items` and
+`:limit max-remote-report-octets` are read from one captured configured value and
+generation, one row per scheduling step. Missing/unsupported policy refuses;
+there is no default or inference from query-group count or Store record size.
+Both values must fit the collection/FNCT codec widths. They are policy bounds,
+not physical allocation authority or a changed persisted profile format; the
+selected immutable runtime representation/extent source must also admit them.
+
+Preparation exhausts every eligible target from one dense event before making
+its next cursor proposal. Every preparation/write tick rechecks current source
+and READ keys. Item/byte oversize refuses the complete event without durable
+cursor advancement, truncation or first-target success. Collection framing
+writes one octet per tick and invokes at most one existing item writer tick.
+Current READ/account/source revalidation remains required at final publication
+and after WAIT; an encoded buffer is not publication or callback completion.
+
+A version-aware remote client validates the complete collection before returning
+any next cursor proposal for ACK. Missing/unknown collection capability or
+version explicitly refuses, as do length/count/tail mismatches; a collection is
+never interpreted as one article. Located framing reads only its fixed nine
+header octets or one four-octet item length per step. Those concrete boundaries
+and encoder-to-client fixtures have source evidence; the logical per-item semantic
+decoder is not a qualified bounded physical decoder. Actual high reader inputs,
+current CP/carries association, genuine report BODY/representation/extent and
+native completion/publication remain open, with original endpoint scenarios intact.

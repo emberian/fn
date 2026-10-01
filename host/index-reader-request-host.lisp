@@ -5,6 +5,7 @@
 (include-book "../books/index-reader-request")
 (include-book "../books/index-reader-step")
 (include-book "../books/index-reader-actor")
+(include-book "../books/index-reader-render-registry")
 (include-book "index-connection-repin-prepare-host")
 (include-book "receiver-repin-source-host")
 (include-book "../books/index-reader-rx-source-completion")
@@ -17,8 +18,20 @@
  (declare (xargs :stobjs (fn-mio$c fn-render-holder state)
                  :guard (natp fuel)))
  (mv-let (word left fn-mio$c fn-render-holder)
-   (fn-irr-render-install token fuel fn-mio$c fn-render-holder)
+   (fn-irc-registered-render-install token fuel fn-mio$c fn-render-holder)
    (mv word left fn-mio$c fn-render-holder state)))
+
+; Named transport bridge, not a completion keystone.
+(defthm fn-owner-index-reader-request-render-install-by-definition
+ (let ((answer (fn-irc-registered-render-install token fuel fn-mio$c fn-render-holder)))
+  (equal (fn-owner-index-reader-request-render-install
+           token fuel fn-mio$c fn-render-holder state)
+         (mv (mv-nth 0 answer) (mv-nth 1 answer)
+             (mv-nth 2 answer) (mv-nth 3 answer) state)))
+ :rule-classes nil
+ :hints (("Goal" :in-theory
+  (e/d (fn-owner-index-reader-request-render-install)
+       (fn-irc-registered-render-install)))))
 
 ; Core-generated response projection from the SAME admitted registered
 ; request. The owner decides current account/configuration authority; this

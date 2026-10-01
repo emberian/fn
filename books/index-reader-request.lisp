@@ -3,6 +3,7 @@
 ; source refs, effects, resource operands or a prepared controller.
 (in-package "ACL2")
 (logic)
+(include-book "index-reader-request-shape")
 (include-book "index-query-slot-issuer")
 (include-book "index-backing-generations")
 (include-book "index-backing-connection-pins")
@@ -11,12 +12,8 @@
 (include-book "index-range-controller")
 (include-book "owner-read-result")
 
-(defun fn-irr-receipt-request (receipt)
- (declare (xargs :guard t)) (fn-omk-at 6 receipt))
-(defun fn-irr-receipt-committedp (receipt)
- (declare (xargs :guard t))
- (and (equal (fn-omk-at 0 receipt) :index-request-receipt)
-      (fn-irq-committed-phasep (fn-omk-at 7 receipt))))
+
+
 (defun fn-irr-receipt-step (receipt)
  (declare (xargs :guard t))
  (if (fn-irr-receipt-committedp receipt) (fn-omk-at 8 receipt) nil))
@@ -52,10 +49,8 @@
  (declare (xargs :guard t)) (fn-omk-at 8 request))
 (defun fn-irr-request-input-source (request)
  (declare (xargs :guard t)) (fn-omk-at 9 request))
-(defun fn-irr-request-pin (request)
- (declare (xargs :guard t)) (fn-omk-at 2 request))
-(defun fn-irr-request-publication (request)
- (declare (xargs :guard t)) (fn-omk-at 3 request))
+
+
 (defun fn-irr-request-origin (request)
  (declare (xargs :guard t)) (fn-omk-at 7 request))
 
@@ -143,35 +138,7 @@
 
 ; Fixed publication coordinates; retained opaque roots/key/view objects are
 ; not walked or compared. The publisher carries their scalar association.
-(defun fn-irr-publication-coordinatesp (a b)
- (declare (xargs :guard t))
- (and (natp (fn-ipub-generation a))
-      (natp (fn-ipub-count a))
-      (natp (fn-ipub-frontier a))
-      (natp (fn-ipub-view a))
-      (natp (fn-ipub-table-id a))
-      (natp (fn-ipub-row-id a))
-      (natp (fn-ipub-number-id a))
-      (natp (fn-ipub-arena-incarnation a))
-      (natp (fn-ipub-arena-prefix a))
-      (natp (fn-ipub-generation b))
-      (natp (fn-ipub-count b))
-      (natp (fn-ipub-frontier b))
-      (natp (fn-ipub-view b))
-      (natp (fn-ipub-table-id b))
-      (natp (fn-ipub-row-id b))
-      (natp (fn-ipub-number-id b))
-      (natp (fn-ipub-arena-incarnation b))
-      (natp (fn-ipub-arena-prefix b))
-      (equal (fn-ipub-generation a) (fn-ipub-generation b))
-      (equal (fn-ipub-count a) (fn-ipub-count b))
-      (equal (fn-ipub-frontier a) (fn-ipub-frontier b))
-      (equal (fn-ipub-view a) (fn-ipub-view b))
-      (equal (fn-ipub-table-id a) (fn-ipub-table-id b))
-      (equal (fn-ipub-row-id a) (fn-ipub-row-id b))
-      (equal (fn-ipub-number-id a) (fn-ipub-number-id b))
-      (equal (fn-ipub-arena-incarnation a) (fn-ipub-arena-incarnation b))
-      (equal (fn-ipub-arena-prefix a) (fn-ipub-arena-prefix b))))
+
 
 ; Only this receipt phase transition couples a connection alias to a request.
 ; Each successful registry effect is recorded before another action can run.
@@ -566,30 +533,7 @@
 ; Checks bounded scalar correspondence of the retained committed request.
 ; The registered publisher still owns the immutable root/object association;
 ; these scalar checks do not manufacture source authority from a tuple.
-(defun fn-irr-context-matchesp (token capture context control grant)
- (declare (xargs :guard t))
- (let* ((receipt (fn-omk-at 8 context))
-        (request (fn-irr-receipt-request receipt))
-        (publication (fn-irr-request-publication request))
-        (pin (fn-irr-request-pin request))
-        (control-pin (fn-omk-at 5 control)))
-  (and (equal (fn-omk-at 0 context) :reader-context)
-       (fn-irr-receipt-committedp receipt)
-       (equal (fn-omk-at 0 pin) :publication-pin)
-       (equal (fn-omk-at 0 control-pin) :publication-pin)
-       (fn-ibp-generation-tokenp (fn-omk-at 1 pin))
-       (equal (fn-omk-at 1 pin) (fn-omk-at 1 control-pin))
-       (fn-irr-publication-coordinatesp publication (fn-omk-at 2 pin))
-       (fn-irr-publication-coordinatesp publication (fn-omk-at 2 control-pin))
-       (equal (fn-ipub-arena-incarnation publication) (fn-omk-at 10 grant))
-       (equal (fn-ipub-arena-prefix publication) (fn-omk-at 11 grant))
-       (equal (fn-omk-at 2 receipt) (fn-omk-at 1 token))
-       (equal (fn-ipub-generation publication) (fn-omk-at 4 token))
-       (equal (fn-ipub-generation publication) (fn-ibp-capture-generation capture))
-       (equal (fn-ipub-count publication) (fn-ibp-capture-count capture))
-       (equal (fn-ipub-frontier publication) (fn-ibp-capture-frontier capture))
-       (equal (fn-ipub-table-id publication) (fn-ibp-capture-table-root-id capture))
-       (equal (fn-ipub-row-id publication) (fn-ibp-capture-row-root-id capture)))))
+
 
 ; Reads registered control only after BOTH the current slot's exact active
 ; query claim and the same indexed payload row authorize it. No control,
@@ -682,14 +626,3 @@
           (if (eq word :authorized) :unavailable-actor word))
         (if owned (fn-irr-receipt-step receipt) nil)
         (if owned (fn-irr-receipt-replacement receipt) nil) left))))
-
-(defun fn-irr-render-install (token fuel fn-mio$c fn-render-holder)
- (declare (xargs :stobjs (fn-mio$c fn-render-holder) :guard (natp fuel)))
- (if (fn-rh-live fn-render-holder) (mv :busy fuel fn-mio$c fn-render-holder)
-  (mv-let (word control receipt left)
-    (fn-irr-registered-read token fuel fn-mio$c)
-    (if (not (and (eq word :authorized) (fn-irr-receipt-response-ownedp receipt)))
-        (mv (if (eq word :authorized) :unavailable-actor word) left fn-mio$c fn-render-holder)
-      (mv-let (installed fn-render-holder)
-        (fn-ibr-registered-render-install control token fn-render-holder)
-        (mv installed left fn-mio$c fn-render-holder))))))

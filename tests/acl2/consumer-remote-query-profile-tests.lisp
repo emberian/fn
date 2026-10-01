@@ -57,3 +57,7 @@
                 (list (cadr (fn-crp-config-proposal 2 1000))) *fn-cfg-default-stamp*)))
   (and (fn-cfg-recordp record)
        (equal (fn-cfg-decode-exact (fn-cfg-encode record)) (list :ok record nil)))))
+
+; A large Store event ceiling does not invent an article report ceiling.
+(assert-event
+ (eq (car (fn-crp-policy-verdict 1 4294967295)) :query-policy))

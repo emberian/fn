@@ -23,6 +23,7 @@
 ; effect list, `fn-owner-submittedp' (fn-served-submission).  The host never
 ; writes a reply octet.
 (in-package "ACL2")
+(include-book "../books/owner-report-capture")
 (include-book "../books/index-writer-ticket")
 (include-book "payload-view-host")
 ; books/owner-fault includes books/owner and adds the host-fault transition
@@ -2326,14 +2327,19 @@
           ; longer shows, withdrawn at the count with this row as the cause,
           ; THEN the row completed by the completing record's token -- hidden
           ; when the view no longer shows its Message-ID (R1).
-          (let ((view (fn-own-view (cdr result))))
+          (let ((state (fn-orc-writer-enter state))
+                (view (fn-own-view (cdr result))))
             (mv-let (word pending2 fn-cat)
               (fn-sca-finish (cons (nfix (cdr completion)) (fn-pc-expected pending))
                              pending (fn-own-view-index view)
                              (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
                                                 (fn-own-view-withdrawals view))
                              fn-cat)
-              (let ((state (f-put-global 'fn-owner-cat-pending pending2 state)))
+              (let* ((state (if (or (equal (car word) :stale-token)
+                                      (equal (car word) :expected-mismatch))
+                               (fn-orc-writer-fault state)
+                             (fn-orc-writer-leave state)))
+                     (state (f-put-global 'fn-owner-cat-pending pending2 state)))
                 (if (or (equal (car word) :stale-token) (equal (car word) :expected-mismatch))
                     ; the catalog refused the completion the store made durable:
                     ; a recovery event, never a silent divergence (the catalog
@@ -2369,14 +2375,19 @@
       (let ((pending (f-get-global 'fn-owner-cat-pending state)))
         (if (not (and (equal word :durable) pending (consp completion)))
             (mv nil word fn-cat fn-hist state)
-          (let ((view (fn-own-view (fn-owner-core state))))
+          (let ((state (fn-orc-writer-enter state))
+                (view (fn-own-view (fn-owner-core state))))
             (mv-let (cword pending2 fn-cat)
               (fn-sca-finish (cons (nfix (cdr completion)) (fn-pc-expected pending))
                              pending (fn-own-view-index view)
                              (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
                                                 (fn-own-view-withdrawals view))
                              fn-cat)
-              (let ((state (f-put-global 'fn-owner-cat-pending pending2 state)))
+              (let* ((state (if (or (equal (car cword) :stale-token)
+                                      (equal (car cword) :expected-mismatch))
+                               (fn-orc-writer-fault state)
+                             (fn-orc-writer-leave state)))
+                     (state (f-put-global 'fn-owner-cat-pending pending2 state)))
                 (if (or (equal (car cword) :stale-token) (equal (car cword) :expected-mismatch))
                     (mv nil :fault fn-cat fn-hist state)
                   (mv nil word fn-cat fn-hist state))))))))))

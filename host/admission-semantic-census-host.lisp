@@ -6,8 +6,8 @@
 (include-book "../books/snapshot-row-source-remap")
 (include-book "../books/history-census-controller")
 
-(defun fn-owner-admission-census-begin (fn-history-backing state)
- (declare (xargs :stobjs (fn-history-backing state) :mode :program :guard t))
+(defun fn-owner-admission-census-begin-logic (fn-history-backing state)
+ (declare (xargs :stobjs (fn-history-backing state) :guard t :verify-guards nil))
  (let* ((current (fn-apr-owner-current state))
         (token (fn-prl-nth 0 current))
         (intent (and (boundp-global 'fn-owner-canonical-admission-executor state)
@@ -37,11 +37,11 @@
       (fn-hep-builder-readout fn-history-backing)
      (declare (ignore produced context fields))
      (if (not (and (eq word :candidate)
-                   (equal (fn-evc-sequence row) (fn-prl-nth 4 token))
-                   (equal (fn-evc-txid row) (fn-prl-nth 5 token))))
+                   (equal (fn-evc-field-by-shape 0 row) (fn-prl-nth 4 token))
+                   (equal (fn-evc-field-by-shape 1 row) (fn-prl-nth 5 token))))
          (mv :writer-stale fn-history-backing state)
       (let* ((files (fn-sn-files (fn-prl-nth 5 intent)))
-             (count (fn-sf-records-count files))
+             (count (fn-prl-nth 3 intent))
              (frontier (fn-sf-frontier files)))
        (if (not (and (natp count) (equal count (fn-prl-nth 3 token))
                      (natp frontier)))
@@ -61,8 +61,8 @@
 
 ; One actual source/remap/codec step. Decoded input remains parked until its
 ; owning provider delivers an authenticated completion; no supplied byte API.
-(defun fn-owner-admission-census-step (state)
- (declare (xargs :stobjs state :mode :program :guard t))
+(defun fn-owner-admission-census-step-logic (state)
+ (declare (xargs :stobjs state :guard t :verify-guards nil))
  (let* ((current (fn-apr-owner-current state))
         (token (fn-prl-nth 0 current))
         (job (and (boundp-global 'fn-owner-history-semantic-census state)
@@ -96,6 +96,10 @@
                            token source remap next) state)))
         (mv (if (eq word :continue) :continue :recovery-required) state))))))
    ((not (eq (fn-omk-at 0 census) :need-row)) (mv :recovery-required state))
+   ((not (fn-osrc-guardp source))
+    (let ((state (f-put-global 'fn-owner-history-semantic-census
+                  (list :history-census-fenced token source remap census) state)))
+     (mv :recovery-required state)))
    ((eq (fn-osrc-at 0 source) :waiting) (mv :source-row-required state))
    (t
     (let* ((step (fn-osrc-tick source nil)) (word (fn-osrc-at 0 step)))
@@ -110,7 +114,11 @@
         (mv :source-row-required state)))
       ((eq word :row)
        (mv-let (mapped row next-remap) (fn-osm-prepare-row remap step)
-        (if (not (eq mapped :mapped)) (mv :recovery-required state)
+        (if (not (eq mapped :mapped))
+         (let ((state (f-put-global 'fn-owner-history-semantic-census
+                       (list :history-census-fenced token
+                             (fn-osrc-at 4 step) next-remap census) state)))
+          (mv :recovery-required state))
          (mv-let (offered next-census)
            (fn-hct-offer census (fn-omk-at 1 row) (fn-omk-at 2 row))
           (let ((state (f-put-global 'fn-owner-history-semantic-census
@@ -118,6 +126,24 @@
                               token (fn-omk-at 4 row) next-remap next-census) state)))
            (mv (if (eq offered :started) :continue :recovery-required) state))))))
       (t (mv :recovery-required state))))))))
+
+(verify-guards fn-owner-admission-census-begin-logic
+ :hints (("Goal" :in-theory
+ (disable fn-apr-tokenp fn-apr-livep fn-prl-nth fn-apr-widthp
+          fn-apr-owner-current fn-owner-history-writer-gate
+          fn-hep-builder-readout fn-hed-at fn-sn-files fn-sf-frontier
+          fn-sfr-snoc fn-osrc-begin fn-osm-begin fn-hct-begin
+          fn-evc-field-by-shape))))
+
+(verify-guards fn-owner-admission-census-step-logic)
+
+(defun fn-owner-admission-census-begin (fn-history-backing state)
+ (declare (xargs :stobjs (fn-history-backing state) :mode :program :guard t))
+ (fn-owner-admission-census-begin-logic fn-history-backing state))
+
+(defun fn-owner-admission-census-step (state)
+ (declare (xargs :stobjs state :mode :program :guard t))
+ (fn-owner-admission-census-step-logic state))
 
 ; Read only the terminal actual registered source/remap/census. Scalar checks
 ; fence lineage; the carried prefix theorem establishes the full denotation.
