@@ -2363,22 +2363,22 @@
     "books/owner-retain-carried"
   ],
   "totals": {
-    "books": 2725,
+    "books": 2726,
     "books_in_root_closure": 2637,
     "roots": 2359,
-    "theorems": 35885,
-    "functions": 22961,
-    "assert_events": 25470,
-    "must_fails": 2610,
+    "theorems": 35971,
+    "functions": 22982,
+    "assert_events": 25484,
+    "must_fails": 2611,
     "prover_refusals": 0,
     "encapsulates": 209,
     "guards": {
       "verified": 3846,
-      "declared-off": 2905,
-      "default-guarded": 12821,
-      "default-unguarded": 3389
+      "declared-off": 2922,
+      "default-guarded": 12823,
+      "default-unguarded": 3391
     },
-    "suspect_theorems": 1341,
+    "suspect_theorems": 1344,
     "export_hygiene_warnings": 397,
     "enabled_projection_warnings": 80,
     "teeth_form_warnings": 279,
@@ -11946,6 +11946,36 @@
         "fn-cbo-ocfg-owner-of-with-owner",
         "fn-cbo-payload-of-with-context",
         "fn-cbo-payload-of-with-withdrawn"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/catalog-live-links.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 86,
+      "functions": 14,
+      "guards": {
+        "verified": 0,
+        "declared-off": 12,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "catalog-logic"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-cpl-assign-fields",
+        "fn-cpl-mark-withdrawn-is-update",
+        "fn-cpl-withdrawn-of-assign"
       ],
       "read_error": null
     },
@@ -57064,18 +57094,18 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 3,
+      "functions": 5,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 3
+        "default-unguarded": 5
       },
       "verify_guards_events": 0,
-      "assert_events": 17,
-      "must_fails": 2,
+      "assert_events": 30,
+      "must_fails": 3,
       "prover_refusals": 0,
-      "defconsts": 14,
+      "defconsts": 18,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -61324,15 +61354,15 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 9,
-      "functions": 20,
+      "functions": 25,
       "guards": {
         "verified": 0,
-        "declared-off": 10,
+        "declared-off": 15,
         "default-guarded": 5,
         "default-unguarded": 5
       },
       "verify_guards_events": 0,
-      "assert_events": 29,
+      "assert_events": 30,
       "must_fails": 8,
       "prover_refusals": 0,
       "defconsts": 5,
@@ -82331,6 +82361,30 @@
       "line": 1270,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-record-uint32p"
+      ]
+    },
+    {
+      "theorem": "fn-cpl-assign-fields",
+      "book": "books/catalog-live-links.lisp",
+      "line": 159,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-cpl-mark-withdrawn-is-update",
+      "book": "books/catalog-live-links.lisp",
+      "line": 354,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-cat-mark-withdrawn and the conclusion is that arm's value"
+      ]
+    },
+    {
+      "theorem": "fn-cpl-withdrawn-of-assign",
+      "book": "books/catalog-live-links.lisp",
+      "line": 184,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
     },
     {
