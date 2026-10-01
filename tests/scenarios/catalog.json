@@ -7478,7 +7478,9 @@
         "planning/evidence/bpsec-operation-source-2026-09-30.json",
         "books/bpsec-primitive-plan.lisp",
         "tests/acl2/bpsec-primitive-plan-tests.lisp",
-        "planning/evidence/bpsec-primitive-plan-source-2026-09-30/manifest.json"
+        "planning/evidence/bpsec-primitive-plan-source-2026-09-30/manifest.json",
+        "tests/native_bpsec_core_observation.lisp",
+        "planning/evidence/bpsec-core-observation-2026-09-30/manifest.json"
       ],
       "execution_scope": "Literal ACL2 component/source fixtures; actual immutable registry, provider, current lease, cryptographic realizer and native gate remain open."
     },
@@ -7512,7 +7514,9 @@
         "planning/evidence/bpsec-crypto-namespace-2026-09-30/manifest.json",
         "books/bpsec-primitive-plan.lisp",
         "tests/acl2/bpsec-primitive-plan-tests.lisp",
-        "planning/evidence/bpsec-primitive-plan-source-2026-09-30/manifest.json"
+        "planning/evidence/bpsec-primitive-plan-source-2026-09-30/manifest.json",
+        "tests/native_bpsec_core_observation.lisp",
+        "planning/evidence/bpsec-core-observation-2026-09-30/manifest.json"
       ],
       "execution_scope": "Actual SBCL/OpenSSL primitive component only at the recorded source/library hashes. Test descriptors are explicitly unissued; no native image, installer, source/key/policy grant, replay authorization, persistence or application acceptance. RFC9173 short keys/A.3 IPPT and A.4 reused nonce are frozen diagnostics, not normative profile admission."
     }
