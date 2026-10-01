@@ -2,7 +2,7 @@
 (in-package "ACL2")
 (defstruct (fnn-runtime-bootstrap
             (:constructor %make-fnn-runtime-bootstrap) (:copier nil))
-  pool observation admit phase participants)
+  pool observation admit phase participants image-policy)
 (defvar *fnn-runtime-bootstrap* nil)
 (defun fnn-runtime-bootstrap-image-prepare ()
   "Run only while constructing the image, before SAVE-LISP-AND-DIE."
@@ -14,7 +14,8 @@
          :observation (make-fnn-runtime-collection)
          :admit (fnn-fixed-raw-callback 'fn-owner-runtime-bootstrap-admit)
          :phase :saved
-         :participants cl-user::*fnn-runtime-participants*)))
+         :participants cl-user::*fnn-runtime-participants*
+         :image-policy cl-user::*fnn-runtime-image-policy*)))
 (defun fnn-runtime-bootstrap-entry ()
   "Single-thread entry before crypto, normalization, TLS and logger workers."
   (let ((binding *fnn-runtime-bootstrap*))
@@ -36,16 +37,24 @@
       (setf (fnn-runtime-bootstrap-phase binding) :registry-mismatch)
       (return-from fnn-runtime-bootstrap-entry
         (values :runtime-registry-mismatch :fenced)))
-    ; No qualified launch capsule/participant acknowledgement is installed yet.
-    ; Call the actual negative core boundary before any geometry observation.
+    ; Actual saved policy identity and parked acknowledgement precede the core
+    ; qualification boundary. Neither observation grants allocation authority.
     (multiple-value-bind (word outcome pool)
         (cl-user::fnn-with-runtime-participants-bootstrap
           ((fnn-runtime-bootstrap-participants binding)
            (fnn-runtime-bootstrap-pool binding))
-          (fnn-core-mv 'fn-owner-runtime-bootstrap-admit
-            (funcall (fnn-runtime-bootstrap-admit binding)
-                     :qualification-request nil nil nil
-                     (fnn-runtime-bootstrap-pool binding))))
+          (multiple-value-bind (policy-word policy)
+              (cl-user::fnn-runtime-image-policy-bootstrap-status
+                (fnn-runtime-bootstrap-pool binding)
+                (fnn-runtime-bootstrap-participants binding))
+            (if (and (eq policy-word :image-policy-closed)
+                     policy
+                     (eq policy (fnn-runtime-bootstrap-image-policy binding)))
+                (fnn-core-mv 'fn-owner-runtime-bootstrap-admit
+                  (funcall (fnn-runtime-bootstrap-admit binding)
+                           :qualification-request nil nil nil
+                           (fnn-runtime-bootstrap-pool binding)))
+              (values :runtime-image-policy-unavailable :fenced))))
       ; A participant refusal returns no pool MV: retain the SAME original.
       (when pool (setf (fnn-runtime-bootstrap-pool binding) pool))
       (setf (fnn-runtime-bootstrap-phase binding) word)
