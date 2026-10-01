@@ -31,6 +31,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/view-delta-cursor-tests \
 	books/index-reader-actor \
 	books/index-reader-receiver-issuer \
+	tests/acl2/index-reader-render-establishment-tests \
 	books/cbor-record-scalar \
 	books/cbor-record-stream \
 	books/statement-items-shape \
@@ -203,6 +204,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/history-semantic-writer-state \
 	tests/acl2/history-semantic-writer-state-tests \
 	books/index-reader-response-issuer \
+	tests/acl2/reader-output-storage-tests \
 	books/history-event-page \
 	books/history-event-directory \
 	books/history-event-directory-refinement \
