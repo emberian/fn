@@ -1561,6 +1561,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/msgid-pages-tests \
 	books/msgid-pages-exec \
 	tests/acl2/msgid-pages-exec-tests \
+	books/msgid-linear \
+	tests/acl2/msgid-linear-tests \
 	books/owner-number-bound-join \
 	tests/acl2/owner-number-bound-join-tests \
 	tests/acl2/owner-identity-served-tests \
