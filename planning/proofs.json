@@ -20730,6 +20730,39 @@
         "planning/evidence/ninep-mounted-directory-2026-10-01/README.md"
       ],
       "progress_note": "Normal045613 certifies actual guarded stat emitter, ordinary complete host/STATE boundary, four full-wire/refusal/corrupt fixtures and two host fixtures. Three inherited cache citation gaps remain. Source/QID authority, full mounted provider/request composition and per-action constructor/caller/fault/runtime units remain open. Complete external-client SCN1064 remains NOT RUN."
+    },
+    {
+      "id": "PRF-1218",
+      "title": "The Message-ID index as a linear-hashing table (stage 7, the index part): a root-carried round modulus N and split pointer S, address TAG mod N re-addressed by TAG mod 2N below S, a split that moves one home's movers to one new page, a lookup of at most the home page and its flagged next page; the reader is the specification under the faithful relation and a split preserves it",
+      "statement": "Subjects: books/msgid-linear.lisp. THE TABLE (fn-mpxl-tabp): pages (FLAG . ENTRIES) with entries (TAG . SEQ) in slot order, root (N S) with 0 <= S < N and N + S pages; fn-mpxl-addr tag n s = h = tag mod n, or tag mod 2n when h < s (fn-mpxl-addr-below: below N + S; fn-mpxl-mod-double: tag mod 2n is h or h + n). THE READER fn-mpxl-records msgid tab rows = fn-mpx-confirm (layer A of books/msgid-pages, reused unchanged) over fn-mpxl-cands: the home page's seqs and, when the home page's flag is set, the next page's, inserted ascending (fn-mpxl-ins). KEYSTONE fn-mpxl-records-is-the-records-for: under fn-mpxl-tabp and fn-mpxl-faithful (fn-mpxl-okp: every seq below the length; fn-mpxl-faithful-from 0: every held row's seq among its tag's candidates) the reader equals fn-cei-article-records-for, by fn-mpx-confirm-is-the-records-for with fn-mpxl-cands-nat-listp / -ascending / -below and the completeness lemma; fn-mpxl-records-is-hist-msgid-records restates it against fn-hist$a-msgid-records. THE WRITER fn-mpxl-put: the entry onto its home page when it has room, else onto the next page with the home page's flag set, else NOT AT ALL (fn-mpxl-put-places-iff-not-saturated: placed exactly when not fn-mpxl-saturatedp; fn-mpxl-put-unplaced-unchanged): fn-mpxl-put-finds (the placed seq is a candidate of its tag), fn-mpxl-put-keeps-candidate (every candidate of every tag survives), fn-mpxl-put-okp, fn-mpxl-put-preserves-faithful (a held row's entry at (len rows) keeps the table faithful to the rows with that row appended; fn-mpxl-faithful-append-not-held for a row that is no article). THE SPLIT fn-mpxl-split (Litwin): of the entries on page S and on S + 1 those whose address under mod 2N is N + S (fn-mpxl-moverp; fn-mpxl-mover-home: their home is S) move to the new page N + S, appended with flag clear; S advances, and at S = N the round ends (N doubles, S = 0); refused with the table unchanged when the movers exceed *fn-mpxl-cap* (fn-mpxl-split-refused-unchanged). fn-mpxl-addr-after-split-same-round / -next-round: the movers' address is the new page and every other tag's is unchanged. fn-mpxl-page-of-split-pages: only pages S, S + 1 and the new page differ (the bounded-work frame, D27). KEYSTONE fn-mpxl-split-keeps-candidate (stated on candidate membership for every tag, so every row model inherits it; proved over the root's variables as fn-mpxl-split-pages-keeps-candidate) and KEYSTONE fn-mpxl-split-preserves-faithful: fn-mpxl-tabp, an accepted split and fn-mpxl-faithful give fn-mpxl-faithful of the split table (with fn-mpxl-split-tabp, fn-mpxl-split-okp, fn-mpxl-faithful-from-of-split). The one representation change against books/msgid-pages-exec: the reader follows the home page's OVERFLOW FLAG, not its fullness, because a split empties slots and would otherwise orphan overflow entries. What this does not prove: the executable twin (books/msgid-linear-exec, PRF-1219), the catalog's switch, anything about the tag's distribution. Teeth tests/acl2/msgid-linear-tests.lisp: the colliding tag (FNV mod 3) attached; the four-row history placed by fn-mpxl-put into N = 2 pages, the keystone's complete antecedent and conclusion (two records in history order, one, none); the split of page 0 (ok, S = 1, three pages, every mover's address under mod 4 is 2, the count conserved) and the round's end (N = 4, S = 0), tabp and faithful and the reader's answers after each; the refusals (1,025 movers refused with the table unchanged, 1,024 taken; a put onto a full home page lands on the next page with the flag set and is found, a put with both full is refused with the table unchanged; the flag is what the reader follows); hypothesis removal: faithful-from dropped (an entry missing: the conclusion fails), tabp dropped (an entry with a string seq: faithful holds, the conclusion fails); fn-mpxl-okp has no removal witness (its redundancy is a proof task on layer A, not a counterexample).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-027"
+      ],
+      "depends_on": [
+        "PRF-957"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/msgid-linear.lisp",
+        "tests/acl2/msgid-linear-tests.lisp",
+        "planning/design-store-representation-2026-10-01.md"
+      ],
+      "progress_note": "2026-10-01 lane msgid-linear-hash: the whole book REPL-admitted on persvati (proof_repl mlh, every form); the teeth in a second session over the book loaded from source. Landed under LAND-AND-FIX-FORWARD (the runner's background cite certifies). The executable twin is PRF-1219.",
+      "events": [
+        "fn-mpxl-records-is-the-records-for",
+        "fn-mpxl-split-preserves-faithful",
+        "fn-mpxl-split-keeps-candidate",
+        "fn-mpxl-put-preserves-faithful",
+        "fn-mpxl-put-finds",
+        "fn-mpxl-put-keeps-candidate",
+        "fn-mpxl-put-places-iff-not-saturated",
+        "fn-mpxl-addr-after-split-same-round",
+        "fn-mpxl-addr-after-split-next-round",
+        "fn-mpxl-page-of-split-pages",
+        "fn-mpxl-split-refused-unchanged"
+      ]
     }
   ]
 }
