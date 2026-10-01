@@ -355,10 +355,13 @@
 (ld "host/anchor-server-host.lisp" :ld-error-action :error)
 (ld "host/reader-host.lisp" :ld-error-action :error)
 (ld "host/owner-host.lisp" :ld-error-action :error)
-(ld "host/account-adoption-host.lisp" :ld-error-action :error)
-(ld "host/account-adoption-publication-host.lisp" :ld-error-action :error)
-(ld "host/account-adoption-collection-host.lisp" :ld-error-action :error)
-(ld "host/account-adoption-return-host.lisp" :ld-error-action :error)
+;; Stage 0 (D46, planning/design-store-representation-2026-10-01.md section
+;; 4): the account-adoption host files (host/account-adoption-host,
+;; -publication-host, -collection-host, -return-host) are not ld'ed: their
+;; chain (books/account-adoption-turn-continuation, host/account-adoption-
+;; interfaces) does not certify, and no loaded line calls their entries since
+;; the auth start hook returned to 7aad444ce (host/native/auth.lisp).  They
+;; return with the account-adoption producer (D46 "Completion (forward)").
 (ld "host/page-read-host.lisp" :ld-error-action :error)
 (ld "host/consumer-remote-host.lisp" :ld-error-action :error)
 (ld "host/native-config-host.lisp" :ld-error-action :error)
@@ -493,7 +496,8 @@
         (load "host/native/feed-filename.lisp")
         ; Bounded credential transport.  ACL2 parses and owns every field;
         ; this module also defines the composable pre-listen owner hook.
-        (load "host/native/account-adoption.lisp")
+        ; Stage 0: host/native/account-adoption.lisp is not loaded (its
+        ; entries left the world with the ld's above; D46).
         (load "host/native/auth.lisp")
         ; Offline credential administration.  ACL2 owns argv plans, verifier
         ; derivation, serialization, reporting and persistence transitions.

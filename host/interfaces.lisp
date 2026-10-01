@@ -4888,8 +4888,8 @@
 (definterface fn-pvl-runtime-step :class ::common-lisp-compliant)
 (definterface fn-owner-payload-view-owned-p :class :program)
 
-; Actual account lifecycle declarations, checked after its selected core load.
-(include-book "account-adoption-interfaces")
+; Stage 0 (D46): host/account-adoption-interfaces.lisp is not included; its
+; entries' dispatcher (host/native/account-adoption.lisp) is not loaded.
 
 (definterface fn-par-host-accept-record-plan
   :class ::common-lisp-compliant

@@ -14,5 +14,5 @@
  :class :program)
 (definterface fn-owner-account-turn-return-current
  :class :program)
-(definterface fn-owner-account-adoption-status
- :class :common-lisp-compliant)
+; Stage 0 (D46): fn-owner-account-adoption-status is dispatched by no loaded
+; file (host/native/account-adoption.lisp is not loaded); declared again with it.
