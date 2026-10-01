@@ -1637,3 +1637,29 @@ its committed frontier and concurrent key/configuration changes, and its
 marker-last durability program need their own implementation and evidence.
 SCN-217 uses stopped copies with explicitly supplied completion-observation
 fixtures; it establishes no running-capture guarantee.
+
+
+### Early recovery profile workspace
+
+The first Store profile read uses a fixed image bootstrap envelope, distinct
+from the persisted operator policy. `fn-recovery-profile-envelope` derives
+`(:profile-envelope :fnsm-v1 10 600 32 642 1 643)` from the existing FNSM
+payload and frame header/trailer constants. The final cell is an overflow/EOF
+probe; it is never a decoded profile byte. These dimensions neither specify
+a Store capacity nor grant PRS or I/O authority.
+
+`fn-recovery-profile-buffer` is the one fixed concrete UB8 target created in
+the image. The native image carrier must retain the actual registered stobj
+and its backing, with the same pool and source/image association. A second
+vector with the same size is not that target. The bounded recovery controller
+owns the pending I/O ticket, observed count, EOF and cleanup. Only its actual
+completed EOF at at most 642 bytes permits `fn-rpf-prefix` and the existing
+`fn-spo-config-open`; an observed 643rd byte rejects before decoding. No caller
+supplied readiness Boolean or decoded profile establishes this transition.
+
+PRF-1201 names the complete logical-prefix representation boundary. Its
+source guards and full fixed-buffer fixture have passed; matching full-book
+certification, actual read/decode composition, target representability,
+operation admission and native image activation remain open. The decoded
+Store policy is retained separately and bound by the real genesis/profile
+checks before subsequent recovery installs it.
