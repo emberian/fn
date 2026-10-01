@@ -20003,6 +20003,26 @@
         "planning/evidence/recovery-profile-buffer-2026-10-01/coordinate.json"
       ],
       "progress_note": "Exact original constant cohort, buffer guards and unconditional complete-prefix boundary admitted in fresh protected source world with proper-local lemmas; complete actual-buffer fixture passed. Matching full include certification and native controller/image integration remain open. No allocation authority or runtime activation inferred."
+    },
+    {
+      "id": "PRF-1203",
+      "title": "Actual construction inventory resident sum stays in the selected immediate domain",
+      "statement": "The host-called fn-runtime-construction-inventory returns inventory-observed only with natural observed primary and resident totals, resident = 2*(observed primary + separately named future constructor primary) + native octets, and resident <= the supplied selected runtime immediate limit. Shallow observations and completeness/identity of the actual image construction recipe remain explicit native/compiler obligations; this does not prove whole process RSS or grant an operation.",
+      "milestone": "M1",
+      "requirements": [
+        "HST-002"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/runtime-construction-inventory.lisp",
+        "host/native/runtime-construction-inventory.lisp",
+        "tests/acl2/runtime-construction-inventory-tests.lisp",
+        "tests/native/runtime-construction-inventory.lisp",
+        "planning/evidence/runtime-construction-inventory-2026-10-01/coordinate.json"
+      ],
+      "progress_note": "Actual definitions/guards and resident bound admitted from source in fresh protected rci2; eight literal fixtures and native self-storage/seal fixture pass. Normal two-book certification pending. Actual image constructor cohort/source binding and positive recovery family remain open."
     }
   ]
 }

@@ -920,6 +920,9 @@
 (definterface fn-recovery-profile-envelope
   :class :common-lisp-compliant)
 
+(definterface fn-runtime-construction-inventory
+  :class :common-lisp-compliant)
+
 (definterface fn-rpf-prefix
   :class :common-lisp-compliant :kinds ((n natp)))
 

@@ -7736,6 +7736,34 @@
         "planning/evidence/recovery-profile-buffer-2026-10-01/coordinate.json"
       ],
       "execution_scope": "Exact original-constant cohort and actual concrete-stobj source fixture passed; matching full-book certificate, saved image and issued I/O/EOF/controller composition remain open."
+    },
+    {
+      "id": "SCN-1079",
+      "title": "Image construction inventory includes its own storage and rejects changed layouts",
+      "milestone": "M1",
+      "status": "specified",
+      "requirements": [
+        "HST-002"
+      ],
+      "steps": [
+        "Enumerate finite actual heap objects with a duplicate backing reference; prepare the native inventory using real shallow size observations.",
+        "Verify observer carrier and both arrays occur in the same inventory and the backing is counted once.",
+        "Replace a descriptor prototype with an equal-layout final object; attempt incompatible replacement and change a backing before seal.",
+        "Evaluate malformed, over-domain and boundary-equal core arithmetic fixtures."
+      ],
+      "expected": [
+        "ACL2 distinguishes observed primary, future constructor reserve and native octets, and computes the collector-copy-inclusive total within the immediate limit.",
+        "Incompatible replacement, changed layout and repeated/post-seal mutation through the builder API are refused.",
+        "No completeness of the boot cohort, PRS grant, qualified image or deployment follows from the fixture."
+      ],
+      "evidence": [
+        "books/runtime-construction-inventory.lisp",
+        "host/native/runtime-construction-inventory.lisp",
+        "tests/acl2/runtime-construction-inventory-tests.lisp",
+        "tests/native/runtime-construction-inventory.lisp",
+        "planning/evidence/runtime-construction-inventory-2026-10-01/coordinate.json"
+      ],
+      "execution_scope": "Actual literal core bodies and native primitive execution on synthetic finite constructor objects; full actual joined image construction remains owed."
     }
   ]
 }

@@ -1664,3 +1664,23 @@ certification, actual read/decode composition, target representability,
 operation admission and native image activation remain open. The decoded
 Store policy is retained separately and bound by the real genesis/profile
 checks before subsequent recovery installs it.
+
+The image builder's construction inventory enumerates actual constructor-owned
+objects, including each backing array; it does not walk the general heap.
+`fnn-runtime-construction-inventory-prepare` removes identity aliases at build
+time and includes its own carrier and reference/size arrays before observing
+shallow sizes with the selected runtime primitive. ACL2's
+`fn-runtime-construction-inventory` performs the resource arithmetic: observed
+primary storage and an explicitly separate future-constructor reserve are
+doubled under the existing PRS collector-copy convention; native storage is
+counted once. Every accepted total fits the selected immediate domain.
+PRF-1203 and SCN-1079 cover that arithmetic and the self-storage/seal checks.
+
+Final source descriptors replace fixed-shape prototypes before sealing. The
+builder rejects a changed type, size or aggregate, and the owning image recipe
+must check the actual pool, registry, source and image identities. A shallow
+observation does not establish that the recipe enumerated every owned object.
+Shared code, symbols and unrelated image storage retain their declared runtime
+boundary; future DATA6/controller/ATS allocations are constructor reserves until
+actually created. These observations alone neither install a baseline nor
+authorize a file operation, and they are not a whole-process RSS bound.
