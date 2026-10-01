@@ -226,6 +226,14 @@ def carried_rows(root: Path = ROOT) -> dict[str, dict]:
                       if isinstance(e, list) and len(e) >= 2
                       and isinstance(e[0], (str, ledger.Sym)) and isinstance(e[1], (str, ledger.Sym))]
                 for key in ("established", "transitions", "concludes")}
+            # the opens whose argument def-carried says is PRODUCED: the raw
+            # host must never hand them one (books/def-carried.lisp :produced)
+            rows[_sym(form[1])]["produced"] = [
+                _sym(e[0]) for e in (kv.get(":established") or [])
+                if isinstance(e, list) and len(e) >= 2
+                and isinstance(e[0], (str, ledger.Sym))
+                and any(isinstance(x, (str, ledger.Sym)) and _sym(x) == ":produced"
+                        for x in e[2:])]
     return rows
 
 
@@ -445,6 +453,18 @@ def findings(decls: list[dict], reading: dict, root: Path = ROOT) -> list[str]:
                 if theorem not in theorems:
                     out.append("{}: {} :raw-with names {}, which no book defines as a "
                                "non-local theorem".format(where, name, theorem))
+    # def-carried :produced: an open whose premises are discharged only at
+    # its producers' outputs; the raw host (outside the ACL2 world the
+    # caller scan reads) must never call it at all.
+    for row_name, row in sorted(carried_rows(root).items()):
+        for f in row.get("produced", []):
+            for kind in ("dispatched", "direct"):
+                if f in reading[kind]:
+                    out.append("the raw host {} {} ({}), an open whose argument the "
+                               "def-carried row {} says is produced (:produced): only an "
+                               "ACL2 caller passing a producer's call may reach it".format(
+                                   "dispatches" if kind == "dispatched" else "applies",
+                                   f, ", ".join(sorted(reading[kind][f])), row_name))
     for name in sorted(set(reading["dispatched"]) - set(seen)):
         out.append("the raw host dispatches {} ({}) and no definterface declares it".format(
             name, ", ".join(sorted(reading["dispatched"][name]))))

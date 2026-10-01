@@ -179,6 +179,30 @@ class HostBindingTests(unittest.TestCase):
             ":established ((fn-r-open fn-r-open-establishes)) :transitions ((fn-s fn-s-carries)))\n")
         self.assertTrue(any("resolves to no theorems" in p for p in found), found)
 
+    def test_produced_open_is_never_reached_by_the_raw_host(self):
+        # def-carried :produced: the open's premises hold only at its
+        # producers' outputs, so the raw host may neither dispatch it nor
+        # apply it directly (r25-F2)
+        book = ("(def-carried fn-p-carried :invariant fn-p-relation\n"
+                "  :established ((fn-p-open fn-p-open-establishes :hyps ((posp x))\n"
+                "                 :produced ((fn-p-make fn-p-make-pos)) :witness (1 nil)))\n"
+                "  :transitions ((fn-s fn-s-carries)))\n")
+        root = tree(SOURCE)
+        (root / "books").mkdir()
+        (root / "books" / "x.lisp").write_text("(in-package \"ACL2\")\n" + book)
+        self.assertEqual(interface_emit.carried_rows(root)["fn-p-carried"]["produced"],
+                         ["fn-p-open"])
+        decls = interface_emit.declarations(root)
+        for kind, word in (("dispatched", "dispatches"), ("direct", "applies")):
+            over = reading(**{kind: dict(reading()[kind], **{"fn-p-open": {"host/native/owner.lisp"}})})
+            found = [p for p in interface_emit.findings(decls, over, root)
+                     if "is not what the declarations say" not in p]
+            self.assertTrue(any("the raw host {} fn-p-open".format(word) in p
+                                and "fn-p-carried" in p for p in found), found)
+        clean = [p for p in interface_emit.findings(decls, reading(), root)
+                 if "is not what the declarations say" not in p]
+        self.assertFalse(any("fn-p-open" in p for p in clean), clean)
+
     def test_raw_with_carried_refuses_malformed_forms(self):
         for form in ("(:carried)", "(:carried fn-r-carried extra)"):
             found = self.raw_with_problems(
