@@ -10,14 +10,14 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1989 |
+| Books read | 1990 |
 | Certification roots in the Makefile | 1866 |
 | Books inside the root closure | 1938 |
-| `defthm` and `defthmd` events | 30283 |
-| `defun` events | 19331 |
-| Functions with verified guards | 3549 |
+| `defthm` and `defthmd` events | 30295 |
+| `defun` events | 19333 |
+| Functions with verified guards | 3550 |
 | Functions declared `:verify-guards nil` and never verified | 2350 |
-| Functions left at the default with an explicit guard | 10562 |
+| Functions left at the default with an explicit guard | 10563 |
 | Functions left at the default with no guard | 2870 |
 | `assert-event` checks | 24064 |
 | `must-fail` checks | 2519 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 348 |
 | Enabled-projection warnings | 55 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2721 |
+| Include-hygiene warnings | 2722 |
 | Host-names warnings | 2193 |
 | Hand-written-record warnings | 18 |
 
@@ -563,6 +563,7 @@ that `make certify` requests.
 | `books/index-range-render-active.lisp` | - | 3 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/index-range-render-custody.lisp` | - | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/index-range-render-demand.lisp` | - | 1 | 5 | 2/0/3/0 | 0 | 0 | 0 |
+| `books/index-range-render-output.lisp` | - | 10 | 1 | 1/0/0/0 | 0 | 0 | 0 |
 | `books/index-range-row-decision.lisp` | - | 7 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/index.lisp` | root | 35 | 26 | 24/0/2/0 | 0 | 0 | 3 |
 | `books/injection-info-params-invariants.lisp` | root | 82 | 4 | 0/0/4/0 | 0 | 0 | 2 |
@@ -936,7 +937,7 @@ that `make certify` requests.
 | `books/public-exposure-rows.lisp` | closure | 1 | 12 | 1/0/11/0 | 0 | 0 | 0 |
 | `books/public-exposure.lisp` | root | 36 | 82 | 10/0/72/0 | 0 | 0 | 0 |
 | `books/reader-open-carried.lisp` | root | 6 | 8 | 1/0/7/0 | 0 | 0 | 1 |
-| `books/reader-output-job.lisp` | - | 2 | 11 | 0/0/11/0 | 0 | 0 | 0 |
+| `books/reader-output-job.lisp` | - | 3 | 12 | 0/0/12/0 | 0 | 0 | 0 |
 | `books/reclaim-admission.lisp` | root | 13 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/reclaim-instant.lisp` | root | 10 | 9 | 0/3/6/0 | 0 | 0 | 1 |
 | `books/reclaim-rule.lisp` | root | 7 | 7 | 0/0/7/0 | 0 | 0 | 1 |
@@ -1864,7 +1865,7 @@ that `make certify` requests.
 | `tests/acl2/public-exposure-reply-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 13 | 2 | 0 |
 | `tests/acl2/public-exposure-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 121 | 15 | 0 |
 | `tests/acl2/reader-open-carried-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 29 | 0 | 0 |
-| `tests/acl2/reader-output-job-tests.lisp` | - | 4 | 1 | 0/0/0/1 | 0 | 0 | 0 |
+| `tests/acl2/reader-output-job-tests.lisp` | - | 5 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `tests/acl2/reclaim-admission-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 4 | 0 |
 | `tests/acl2/reclaim-article-subject-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `tests/acl2/reclaim-instant-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 3 | 0 |

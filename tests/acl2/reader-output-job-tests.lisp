@@ -69,3 +69,14 @@
         (not (fn-rog-successor-ready-p corrupt))
         (equal answer (list :busy corrupt ledger))))
  :rule-classes nil)
+
+(defthm rogmt-partial-write-core-slice-model-positive
+ (let* ((job (nth 1 (nth 2 (rogmt-current)))) (token (fn-prl-nth 4 job))
+        (part (fn-rog-observe-current token :written 2 job))
+        (next (mv-nth 2 part)) (view (mv-list 3 (fn-rog-window-current token next))))
+  (and (fn-rog-jobp next) (equal token (fn-prl-nth 4 next))
+       (equal (mv-nth 0 part) :writing)
+       (equal view '(:write-window 2 3))
+       (natp (nth 1 view)) (natp (nth 2 view))
+       (equal (+ (nth 1 view) (nth 2 view)) (fn-prl-nth 7 next))))
+ :rule-classes nil)

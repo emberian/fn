@@ -143,3 +143,27 @@
  (if (and job (not (fn-rog-successor-ready-p job)))
      (mv :busy job ledger)
   (fn-rog-reserve-current episode serial storage demand job ledger)))
+
+
+; INTERNAL CURRENT job view. Native receives only these derived offset/count
+; values through the registered parent; it does not subtract a whole reply.
+(defun fn-rog-window-current (token job)
+ (declare (xargs :guard t))
+ (cond
+  ((not (and (fn-rog-jobp job) (equal token (fn-prl-nth 4 job))))
+   (mv :stale nil 0))
+  ((member-eq (fn-prl-nth 3 job) '(:installed :writing :wait))
+   (mv :write-window (fn-prl-nth 8 job)
+                    (- (fn-prl-nth 7 job) (fn-prl-nth 8 job))))
+  (t (mv :retained (fn-prl-nth 8 job) 0))))
+(defthm fn-rog-window-current-bounded-socket-slice
+ (implies (eq (mv-nth 0 (fn-rog-window-current token job)) :write-window)
+  (let ((offset (mv-nth 1 (fn-rog-window-current token job)))
+        (count (mv-nth 2 (fn-rog-window-current token job))))
+   (and (fn-rog-jobp job) (equal token (fn-prl-nth 4 job))
+        (natp offset) (natp count)
+        (equal (+ offset count) (fn-prl-nth 7 job)))))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :in-theory (e/d (fn-rog-window-current fn-rog-jobp fn-prl-nth)
+                  (fn-rog-window-tokenp fn-rog-widthp fn-prs-vectorp)))))

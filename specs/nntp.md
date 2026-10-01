@@ -2352,3 +2352,14 @@ A missing complete installation refuses before output construction. The
 protected source admissions and MODEL partial-write fixtures establish the
 lower internal transition properties, not an installed storage allowance,
 registered producer, native activation or qualified image.
+
+The internal same-child `fn-ibr-joint-segment-held-output-one` appends the
+actual ONE output to separately owned octet storage. A full bounded window
+returns without advancing the registered cursor; otherwise the named boundary
+preserves the actual ONE phase/control and the complete prior buffer prefix.
+ONE emits at most one octet. The capacity is an admitted factory obligation,
+not a host-supplied allowance or permission to reuse the incoming RX buffer.
+`fn-rog-window-current` derives the current socket offset and remaining count
+in ACL2. Its partial-write boundary names the same token-selected bounded
+window. These conditional historical-source properties do not supply the
+missing storage factory, registered parent or terminal alias receipt.
