@@ -96,7 +96,7 @@ The core explicitly distinguishes an unfunded offline registration."
         (setf *fnn-extent-next-id* next id issued)
         (when (eq word :issued)
           (let ((registered
-                  (first (fnn-core-page-read-pool 'fn-owner-page-read-register-path id path))))
+                  (first (fnn-core-page-read-pool-state 'fn-owner-page-read-register-path id path))))
             (unless (eq registered :registered)
               (fnn-fault (format nil "extent incarnation resources refused: ~a" registered)))
             (setq funded t)))))

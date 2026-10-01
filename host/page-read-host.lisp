@@ -9,6 +9,7 @@
 (include-book "../books/cold-guard-bootstrap")
 
 (include-book "../books/page-read-pool-state")
+(include-book "../books/page-read-bindings-publish")
 
  ; A served recovery is selected explicitly before Store open. Opening an
 ; offline Store supplies a separate context; absence alone grants no I/O.
@@ -82,40 +83,48 @@
 
 (defun fn-owner-page-file-issue (next fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool))
-  (if (fn-prp-data fn-page-read-pool)
-      (fn-pio-file-issue-with-limit next (fn-prl-nth 4 (fn-prp-data fn-page-read-pool)))
-    (if (equal (fn-owner-page-read-direct-mode fn-page-read-pool) :offline)
-        (mv-let (word next1 id) (fn-pio-file-issue next)
-          (if (equal word :issued) (mv :unfunded-offline next1 id)
-            (mv word next1 id)))
-      (mv :read-resources-unavailable next nil))))
+  (cond
+   ((equal (fn-owner-page-read-direct-mode fn-page-read-pool) :offline)
+    (mv-let (word next1 id) (fn-pio-file-issue next)
+      (if (equal word :issued) (mv :unfunded-offline next1 id)
+        (mv word next1 id))))
+   ((not (and (eq (fn-prp-mode fn-page-read-pool) :served)
+              (member-eq (fn-prp-alloc-mode fn-page-read-pool) '(:active :draining))
+              (fn-prp-data fn-page-read-pool)))
+    (mv :read-resources-unavailable next nil))
+   ; The old native counter is not shared issuer authority. Actual served
+   ; startup uses the registered recovery-file source/PRS successor.
+   (t (mv :recovery-file-source-unavailable next nil))))
 
-(defun fn-owner-page-read-register (file fn-page-read-pool)
-  (declare (xargs :stobjs fn-page-read-pool))
-  (if (not (fn-prp-data fn-page-read-pool))
-      (mv :read-resources-unavailable fn-page-read-pool)
-    (mv-let (word ledger)
-      (fn-prl-register (fn-owner-page-read-ledger fn-page-read-pool) file
-                       (fn-prs-incarnation-demand (fn-prl-nth 3 (fn-prp-data fn-page-read-pool))))
-      (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
-        (mv word fn-page-read-pool)))))
+(defun fn-owner-page-read-register (file fn-page-read-pool state)
+ (declare (xargs :stobjs (fn-page-read-pool state) :guard t :verify-guards nil))
+ (mv-let (source-word source) (fn-owner-runtime-operation-source :page-read-register fn-page-read-pool state)
+  (declare (ignore source))
+  (if (not (eq source-word :runtime-operation-available))
+   (mv source-word fn-page-read-pool)
+   (let ((revision (fn-owner-page-read-binding-revision fn-page-read-pool)))
+    (mv-let (word ledger) (fn-prl-register (fn-owner-page-read-ledger fn-page-read-pool) file (fn-prs-incarnation-demand (fn-prl-nth 3 (fn-prp-data fn-page-read-pool))))
+     (if (not (equal word :registered)) (mv word fn-page-read-pool)
+      (mv-let (publication fn-page-read-pool) (fn-owner-page-read-bindings-publish ledger revision fn-page-read-pool state)
+       (mv (if (eq publication :published) word publication) fn-page-read-pool))))))))
 
-; Native supplies the actual path string. ACL2 computes its target-layout
-; charge; no canonical-cwd length guess or independent host calculation.
-(defun fn-owner-page-read-register-path (file path fn-page-read-pool)
-  (declare (xargs :stobjs fn-page-read-pool))
-  (if (not (fn-prp-data fn-page-read-pool))
-      (mv :read-resources-unavailable fn-page-read-pool)
-    (mv-let (word ledger)
-      (fn-prl-register (fn-owner-page-read-ledger fn-page-read-pool) file
-                       (fn-prs-incarnation-path-demand
-                        (fn-prl-nth 3 (fn-prp-data fn-page-read-pool)) path))
-      (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
-        (mv word fn-page-read-pool)))))
+(defun fn-owner-page-read-register-path (file path fn-page-read-pool state)
+ (declare (xargs :stobjs (fn-page-read-pool state) :guard t :verify-guards nil))
+ (mv-let (source-word source) (fn-owner-runtime-operation-source :page-read-register fn-page-read-pool state)
+  (declare (ignore source))
+  (if (not (eq source-word :runtime-operation-available))
+   (mv source-word fn-page-read-pool)
+   (let ((revision (fn-owner-page-read-binding-revision fn-page-read-pool)))
+    (mv-let (word ledger) (fn-prl-register (fn-owner-page-read-ledger fn-page-read-pool) file (fn-prs-incarnation-path-demand (fn-prl-nth 3 (fn-prp-data fn-page-read-pool)) path))
+     (if (not (equal word :registered)) (mv word fn-page-read-pool)
+      (mv-let (publication fn-page-read-pool) (fn-owner-page-read-bindings-publish ledger revision fn-page-read-pool state)
+       (mv (if (eq publication :published) word publication) fn-page-read-pool))))))))
 
 (defun fn-owner-page-read-admit (cid file eoff elen trailer fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool))
-  (if (not (fn-prp-data fn-page-read-pool))
+  (if (or (not (fn-prp-data fn-page-read-pool))
+          (not (eq (fn-prp-mode fn-page-read-pool) :served))
+          (fn-prb-fixed-widthp 6 (fn-prp-data fn-page-read-pool)))
       (mv :read-resources-unavailable nil fn-page-read-pool)
     (let* ((data (fn-prp-data fn-page-read-pool))
            (native (nfix (fn-prl-nth 2 data)))
@@ -133,34 +142,44 @@
 ; After private activation return/unwind or observed death + actual join.
 (defun fn-owner-page-read-settle (token cachedp fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool))
-  (mv-let (word ledger)
+  (if (or (not (eq (fn-prp-mode fn-page-read-pool) :served))
+          (fn-prb-fixed-widthp 6 (fn-prp-data fn-page-read-pool)))
+      (mv :runtime-operation-unavailable fn-page-read-pool)
+    (mv-let (word ledger)
     (fn-prl-settle (fn-owner-page-read-ledger fn-page-read-pool) token cachedp)
     (if (equal word :stale) (mv word fn-page-read-pool)
       (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
-        (mv word fn-page-read-pool)))))
+        (mv word fn-page-read-pool))))))
 
 (defun fn-owner-page-cache-evict (token fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool))
-  (mv-let (word ledger)
+  (if (or (not (eq (fn-prp-mode fn-page-read-pool) :served))
+          (fn-prb-fixed-widthp 6 (fn-prp-data fn-page-read-pool)))
+      (mv :runtime-operation-unavailable fn-page-read-pool)
+    (mv-let (word ledger)
     (fn-prl-evict (fn-owner-page-read-ledger fn-page-read-pool) token)
     (if (equal word :stale) (mv word fn-page-read-pool)
       (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
-        (mv word fn-page-read-pool)))))
+        (mv word fn-page-read-pool))))))
 
 (defun fn-owner-page-read-close (file fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool))
-  (mv-let (word ledger)
+  (if (or (not (eq (fn-prp-mode fn-page-read-pool) :served))
+          (fn-prb-fixed-widthp 6 (fn-prp-data fn-page-read-pool)))
+      (mv :runtime-operation-unavailable fn-page-read-pool)
+    (mv-let (word ledger)
     (fn-prl-close (fn-owner-page-read-ledger fn-page-read-pool) file)
     (if (equal word :stale) (mv word fn-page-read-pool)
       (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
-        (mv word fn-page-read-pool)))))
+        (mv word fn-page-read-pool))))))
 
 ; Unverified synchronous reads are charged before allocating any output.
 ; They borrow one execution slot conservatively. Native must release only
 ; after every derived representation has been relinquished or transferred.
 (defun fn-owner-page-read-discovery-admit (file eoff elen fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool))
-  (if (not (equal (fn-owner-page-read-direct-mode fn-page-read-pool) :funded-pool))
+  (if (or (not (equal (fn-owner-page-read-direct-mode fn-page-read-pool) :funded-pool))
+          (fn-prb-fixed-widthp 6 (fn-prp-data fn-page-read-pool)))
       (mv :read-resources-unavailable nil fn-page-read-pool)
     (mv-let (word token ledger)
       (fn-prd-admit (fn-owner-page-read-ledger fn-page-read-pool) file eoff elen
@@ -174,7 +193,20 @@
 
 (defun fn-owner-page-read-discovery-release (token fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool))
-  (mv-let (word ledger) (fn-prd-release (fn-owner-page-read-ledger fn-page-read-pool) token)
+  (if (or (not (eq (fn-prp-mode fn-page-read-pool) :served))
+          (fn-prb-fixed-widthp 6 (fn-prp-data fn-page-read-pool)))
+      (mv :runtime-operation-unavailable fn-page-read-pool)
+    (mv-let (word ledger) (fn-prd-release (fn-owner-page-read-ledger fn-page-read-pool) token)
     (if (equal word :stale) (mv word fn-page-read-pool)
       (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
-        (mv word fn-page-read-pool)))))
+        (mv word fn-page-read-pool))))))
+
+; Complete actual legacy registration entry refusal, before any binding scan.
+(defthm fn-owner-page-read-register-source-unavailable-keeps-pool
+ (equal (mv-list 2 (fn-owner-page-read-register file fn-page-read-pool state))
+        (list :runtime-operation-unavailable fn-page-read-pool))
+ :hints (("Goal" :in-theory (enable fn-owner-page-read-register fn-owner-runtime-operation-source))))
+(defthm fn-owner-page-read-register-path-source-unavailable-keeps-pool
+ (equal (mv-list 2 (fn-owner-page-read-register-path file path fn-page-read-pool state))
+        (list :runtime-operation-unavailable fn-page-read-pool))
+ :hints (("Goal" :in-theory (enable fn-owner-page-read-register-path fn-owner-runtime-operation-source))))
