@@ -426,7 +426,7 @@
                 (not (fn-stxe-p x)) (not (fn-stxk-p x))
                 (not (fn-cne-eventp x)) (not (fn-cae-eventp x)) (not (fn-th-topic-eventp x))))
   :hints (("Goal" :use ((:instance fn-cne-event-shape (event x)))
-           :in-theory (e/d fn-record-p fn-record-shapep fn-store-retention-event-p
+           :in-theory (e/d (fn-record-p fn-record-shapep fn-store-retention-event-p
                                      fn-stxe-p fn-stxe-shapep fn-stxk-p fn-stxk-shapep
                                      fn-stxa-p fn-stxa-shapep fn-cae-eventp fn-cac-eventp fn-cab-eventp
                                      fn-th-topic-eventp fn-th-local-admin-eventp)
@@ -438,7 +438,7 @@
                 (not (fn-stxe-p x)) (not (fn-stxk-p x))
                 (not (fn-cne-eventp x)) (not (fn-cae-eventp x)) (not (fn-th-topic-eventp x))))
   :hints (("Goal" :use ((:instance fn-cne-event-shape (event x)))
-           :in-theory (e/d fn-record-p fn-record-shapep fn-store-retention-event-p
+           :in-theory (e/d (fn-record-p fn-record-shapep fn-store-retention-event-p
                                      fn-stxe-p fn-stxe-shapep fn-stxk-p fn-stxk-shapep
                                      fn-cae-eventp fn-cac-eventp fn-cab-eventp
                                      fn-th-topic-eventp fn-th-local-admin-eventp)
