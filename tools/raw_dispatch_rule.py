@@ -105,8 +105,9 @@ HOF1 = {"mapcar", "mapc", "mapcan", "mapcon", "maplist", "mapl", "reduce",
         "count-if-not", "member-if", "member-if-not", "assoc-if", "assoc-if-not",
         "rassoc-if", "rassoc-if-not", "some", "every", "notany", "notevery",
         "funcall", "apply", "multiple-value-call", "sb-thread:make-thread",
-        "subst-if", "subst-if-not", "nsubst-if"}
-HOF2 = {"map", "map-into", "sort", "stable-sort", "merge"}
+        "subst-if", "subst-if-not", "nsubst-if", "sb-ext:make-timer",
+        "sb-int:encapsulate"}
+HOF2 = {"map", "map-into", "sort", "stable-sort", "merge", "sb-ext:finalize"}
 FN_KEYS = {":key", ":test", ":test-not"}
 # The functions whose :key / :test / :test-not is a function position.
 KEYED = {"member", "assoc", "rassoc", "find", "position", "count", "remove", "delete",
@@ -835,6 +836,10 @@ class Walker:
                         (self, args[1:] if h == "funcall" else args[1:-1], env))
         if h in HOF2 and len(args) > 1:
             fpos.append(args[1])
+        if h == "sb-int:encapsulate" and len(args) > 2:
+            fpos[-1:] = [args[2]]  # the wrapper, not the wrapped name
+        if h == "handler-bind" and args and isinstance(args[0], list):
+            fpos.extend(b[1] for b in args[0] if isinstance(b, list) and len(b) > 1)
         if h in KEYED:
             for key, value in zip(args, args[1:]):
                 if isinstance(key, Sym) and str(key) in FN_KEYS:

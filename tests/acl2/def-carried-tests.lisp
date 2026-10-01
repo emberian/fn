@@ -1767,3 +1767,36 @@
  (definterface fn-cdt-reset :class :common-lisp-compliant
    :raw-with (:carried fn-cdt-carried))
  :unchecked "the row is no longer complete in this world: fn-cdt-zap is owed")
+
+; ---------------------------------------------------------------------------
+; r29-F1 (and the r28-F2 teeth owed): an abstract stobj's export runs its
+; :exec with no caller the 'unnormalized-body scan sees, so
+; fn-cd-attached-to must name the abstract stobj for it.  attach-stobj has
+; no arm of its own: its implementation is itself a defabsstobj, so the
+; same absstobj-info scan finds a function run through it.  A tiny
+; abstract stobj over a one-field concrete stobj; its proof obligations are
+; ACL2's own (defabsstobj-missing-events), each admitted as a defthm.
+(defstobj cdta$c (cdta-fld$c :type integer :initially 0))
+(defun cdta$ap (x) (declare (xargs :guard t)) (integerp x))
+(defun create-cdta$a () (declare (xargs :guard t)) 0)
+(defun cdta-fld$a (x) (declare (xargs :guard (cdta$ap x))) x)
+(defun-nx cdta$corr (c a) (and (cdta$cp c) (equal (cdta-fld$c c) a)))
+(defun cdta-thms (es)
+  (declare (xargs :mode :program))
+  (if (atom es)
+      nil
+    (cons (list 'defthm (car (car es)) (cadr (car es))) (cdta-thms (cdr es)))))
+(make-event
+ (er-let* ((es (defabsstobj-missing-events cdta :foundation cdta$c
+                 :recognizer (cdtap :logic cdta$ap :exec cdta$cp)
+                 :creator (create-cdta :logic create-cdta$a :exec create-cdta$c)
+                 :corr-fn cdta$corr
+                 :exports ((cdta-fld :logic cdta-fld$a :exec cdta-fld$c)))))
+   (value (cons 'progn (cdta-thms es)))))
+(defabsstobj cdta :foundation cdta$c
+  :recognizer (cdtap :logic cdta$ap :exec cdta$cp)
+  :creator (create-cdta :logic create-cdta$a :exec create-cdta$c)
+  :corr-fn cdta$corr
+  :exports ((cdta-fld :logic cdta-fld$a :exec cdta-fld$c)))
+(assert-event (equal (fn-cd-attached-to 'cdta-fld$c (w state)) 'cdta))
+(assert-event (null (fn-cd-attached-to 'cdta-thms (w state))))
