@@ -27,6 +27,7 @@
 
 (in-package "ACL2")
 (include-book "adt-lib")
+(include-book "adt-load")
 
 (program)
 
