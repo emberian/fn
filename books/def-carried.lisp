@@ -35,7 +35,12 @@
 ;                        such a row still backs raw dispatch.  :ok on a
 ;                        transition is refused (one that refuses and leaves
 ;                        the state preserves R already).
-;   NAME-FN-reaches      (and G H... OK) at a declared :witness    per :ok open
+;   NAME-FN-reaches      (and G H... [OK]) at a declared :witness  per open
+;                        declaring :witness (required with :ok; required on
+;                        every open of a row that backs raw dispatch, r24-F1:
+;                        otherwise a never-true guard or invariant makes
+;                        every statement vacuous and the transitions' skipped
+;                        guards unjustified).
 ;                        :witness (T1 ... Tn), one term per formal of FN
 ;                        (stobj formals included, as terms over their
 ;                        logical values), and the statement is G, the Hs
@@ -113,7 +118,9 @@
 ; nil: a stobj row, FN a transition, the row re-checked in the current
 ; world with every generated name's formula EQUAL to the statement
 ; regenerated now (so a hand-written table row naming another theorem is
-; refused), and no :hyps in the row but an open's premises discharged by
+; refused), a non-empty :established whose every open declares :witness
+; (its generated NAME-FN-reaches present, r24-F1: R holds of some state),
+; and no :hyps in the row but an open's premises discharged by
 ; its producers (a declared hypothesis is a premise the host does not check:
 ; every transition of a raw row is guard-only, every open guard-only or
 ; produced).  Each skipped guard conjunct must then be (R s) itself or
@@ -380,9 +387,9 @@
                 answers success, so that its establishment is not vacuous"
                fn (getpropc fn 'formals nil w))
           nil))
-     ((and (assoc-keyword :witness opts) (not (assoc-keyword :ok opts)))
-      (mv (msg "~x0 declares :witness but no :ok: a witness is the reachable ~
-                success of an open that can refuse" fn)
+     ((and (assoc-keyword :witness opts) (eq suffix '-carries))
+      (mv (msg "~x0: :witness is for an establishing point: the arguments at ~
+                which it establishes the invariant" fn)
           nil))
      ((and (fn-cd-get :produced opts) (eq suffix '-carries))
       (mv (msg "~x0: :produced is for an establishing point; a transition's ~
@@ -424,9 +431,9 @@
               (mv nil (list* fn (cadr entry)
                              :name (packn-pos (list name '- fn suffix) name)
                              :hyps (cddr terms)
-                             (append (and (assoc-keyword :ok opts)
-                                          (list :ok (cadr terms)
-                                                :witness witness
+                             (append (and (assoc-keyword :ok opts) (list :ok (cadr terms)))
+                                     (and (assoc-keyword :witness opts)
+                                          (list :witness witness
                                                 :reaches (packn-pos (list name '- fn '-reaches)
                                                                     name)))
                                      (and produced (list :produced produced))
@@ -515,16 +522,16 @@
 
 (defun fn-cd-reaches-statement (st entry w)
   (declare (xargs :mode :program))
-  ; (mv MSG STATEMENT) for a normalized establishing ENTRY declaring :ok: FN's
-  ; guard, its :hyps and its :ok, each formal replaced by its :witness term;
-  ; (mv nil nil) when ENTRY declares no :ok
+  ; (mv MSG STATEMENT) for a normalized establishing ENTRY declaring :ok or
+  ; :witness: FN's guard, its :hyps and its :ok (if any), each formal
+  ; replaced by its :witness term; (mv nil nil) when ENTRY declares neither
   (let* ((fn (car entry))
          (opts (cddr entry))
          (ok (fn-cd-ok-term entry w))
          (formals (getpropc fn 'formals nil w))
          (witness (fn-cd-get :witness opts)))
     (cond
-     ((null ok) (mv nil nil))
+     ((and (null ok) (not (assoc-keyword :witness opts))) (mv nil nil))
      ((not (and (true-listp witness) (equal (len witness) (len formals))))
       (mv (msg "~x0 declares :ok but its :witness ~x1 is not one term per ~
                 formal ~x2: its success is not shown reachable" fn witness formals)
@@ -534,7 +541,7 @@
           (declare (ignore s ret))
           (if msg
               (mv msg nil)
-            (mv nil (fn-cd-subst (fn-cd-conj (append hyps (list ok)))
+            (mv nil (fn-cd-subst (fn-cd-conj (append hyps (and ok (list ok))))
                                  (pairlis$ formals witness)))))))))
 
 (defun fn-cd-generated-problem (name statement w)
@@ -720,6 +727,9 @@
                             (append (strip-cars established) (strip-cars transitions))))))
     (cond
      ((fn-cd-invariant-problem r w))
+     ((atom established)
+      (msg "~x0 has no establishing point: nothing shows ~x1 holds of any ~
+            state (r24-F1)" name r))
      ((fn-cd-entries-problem :establishes r st established generatedp w))
      ((fn-cd-entries-problem :carries r st transitions generatedp w))
      ((fn-cd-bridges-problem r st (fn-cd-get :concludes row) transitions generatedp w))
@@ -1091,6 +1101,12 @@
              (car bad) fn (cadr bad) f producers (fn-cd-get :hyps (cddar entries))))
        (t (fn-cd-produced-host-problem (cdr entries) w)))))))
 
+(defun fn-cd-unwitnessed-1 (entries)
+  (declare (xargs :mode :program))
+  (cond ((atom entries) nil)
+        ((null (fn-cd-get :reaches (cddar entries))) (caar entries))
+        (t (fn-cd-unwitnessed-1 (cdr entries)))))
+
 (defun fn-cd-raw-problem (name fn w)
   (declare (xargs :mode :program))
   ; nil when the row NAME backs raw dispatch of FN in this world; else a msg
@@ -1112,6 +1128,12 @@
       (msg "~x0 declares :hyps ~x1 at ~x2 beyond its guard: the host does not ~
             check them, so the carried premise is a claim and backs no raw ~
             dispatch" name (fn-cd-get :hyps (cddr hyps)) (car hyps)))
+     ((fn-cd-unwitnessed-1 (fn-cd-get :established row))
+      (msg "~x0 establishes ~x1 at no witnessed argument (~x2 declares no ~
+            :witness): only a row whose every establishing point is shown ~
+            reachable (its generated NAME-FN-reaches) backs raw dispatch, so ~
+            that the invariant the transitions assume holds of some state"
+           name (fn-cd-get :invariant row) (fn-cd-unwitnessed-1 (fn-cd-get :established row))))
      ((fn-cd-produced-host-problem (fn-cd-get :established row) w))
      (t nil))))
 
