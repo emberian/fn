@@ -58,6 +58,7 @@
 ; Row S3d (lane operability-5): `store inspect --group GROUP' rides the same
 ; frame (kind 3, code 11) as `moderation list GROUP'.
 (include-book "owner-inspect-group")
+(include-book "def-loop")
 
 ; -----------------------------------------------------------------------------
 ; Words
@@ -142,38 +143,9 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-cev-log-lines-loop (ws acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp ws)
-      (fn-cev-log-lines-loop (cdr ws) (cons (fn-cev-log-line (car ws)) acc))
-    (revappend acc nil)))
-
-(defun fn-cev-log-lines (ws)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp ws)
-           (cons (fn-cev-log-line (car ws)) (fn-cev-log-lines (cdr ws)))
-         nil)
-       :exec (fn-cev-log-lines-loop ws nil)))
-
-(local
- (defthm fn-cev-log-lines-loop-is-revappend
-   (equal (fn-cev-log-lines-loop ws acc)
-          (revappend acc (fn-cev-log-lines ws)))
-   :hints (("Goal" :induct (fn-cev-log-lines-loop ws acc)
-                   :in-theory (union-theories '(fn-cev-log-lines-loop fn-cev-log-lines revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-cev-log-lines-loop)
-
-(verify-guards fn-cev-log-lines
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-cev-log-lines)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-cev-log-lines-loop-is-revappend (acc nil))))))
+(def-loop fn-cev-log-lines (ws)
+  :shape :map
+  :body (fn-cev-log-line (car ws)))
 
 
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
