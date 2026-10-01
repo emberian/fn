@@ -18,6 +18,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/msgid-linear-exec")
+(include-book "must-fail-checked")
 
 (make-event
  (if (equal (len (formals 'fn-held-make (w state))) 16)
@@ -59,6 +60,20 @@
          (fn-mlh (update-fn-mlh-s 0 fn-mlh)))
     fn-mlh))
 
+; The reserved empty tag is rejected by the public guard.  Initialize a
+; valid page so the rejection cannot be attributed to another argument.
+(defun mlhx-try-put (tag)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-mlh
+    (mv-let (placed fn-mlh)
+      (let ((fn-mlh (mlhx-pages 1 fn-mlh)))
+        (fn-mlh-put tag 0 fn-mlh))
+      placed)))
+
+(assert-event (with-guard-checking :all (mlhx-try-put 1)))
+(must-fail-checked
+ (assert-event (with-guard-checking :all (mlhx-try-put 0))))
+
 ; The writer the host runs at load: rows I.. under their own keyed tags.
 (defun mlhx-build (i rows fn-mlh)
   (declare (xargs :stobjs fn-mlh :verify-guards nil
@@ -71,24 +86,29 @@
       (declare (ignore placed))
       (mlhx-build (1+ (nfix i)) rows fn-mlh))))
 
-; 1. POSITIVE: (faithful  seqs-a  spec-a  seqs-b  spec-b  seqs-none  spec-none  bridge)
+; 1. POSITIVE: all three reader hypotheses, three answers, and the bridge
+; with all four of its literal hypotheses.
 (defun mlhx-positive (rows)
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn-mlh
     (mv-let (result fn-mlh)
       (let* ((fn-mlh (mlhx-pages 1 fn-mlh))
              (fn-mlh (mlhx-build 0 rows fn-mlh)))
-        (mv (list (fn-mlh-faithful rows fn-mlh)
+        (mv (list (fn-mlhp fn-mlh) (fn-mlh-wfp fn-mlh)
+                  (fn-mlh-faithful rows fn-mlh)
                   (fn-mlh-seqs "<a@x>" rows fn-mlh) (fn-mpxt-spec-from 0 "<a@x>" rows)
                   (fn-mlh-seqs "<b@x>" rows fn-mlh) (fn-mpxt-spec-from 0 "<b@x>" rows)
                   (fn-mlh-seqs "<none@x>" rows fn-mlh) (fn-mpxt-spec-from 0 "<none@x>" rows)
+                  (fn-mlhp fn-mlh) (fn-mlh-wfp fn-mlh)
+                  (posp (fn-mlh-pages fn-mlh))
+                  (posp (fn-mlh-tag "<a@x>" (fn-mlh-key-octets fn-mlh)))
                   (equal (fn-mlh-candidates (fn-mlh-tag "<a@x>" (fn-mlh-key-octets fn-mlh)) fn-mlh)
                          (fn-mpxl-cands (fn-mlh-tag "<a@x>" (fn-mlh-key-octets fn-mlh)) (fn-mlh-abs fn-mlh))))
             fn-mlh))
       result)))
 
 (assert-event ; mlhx-positive-witness
-  (equal (mlhx-positive *mlhx-rows*) '(t (0 2) (0 2) (1) (1) nil nil t)))
+  (equal (mlhx-positive *mlhx-rows*) '(t t t (0 2) (0 2) (1) (1) nil nil t t t t t)))
 
 ; N entries under one TAG from sequence I.
 (defun mlhx-add-same (tag n i fn-mlh)
@@ -129,18 +149,95 @@
 (assert-event ; mlhx-flag-witness
   (equal (mlhx-flag) '(nil t t (1024) nil t nil (1024) nil)))
 
-; 4. faithful-from REMOVED: the writer skipped row 2.  (okp  faithful-from  seqs-a  spec-a)
+; 4. faithful REMOVED: the writer skipped row 2.  Both structural
+; hypotheses hold; faithful fails and the literal reader equality fails.
 (defun mlhx-unindexed (rows)
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn-mlh
     (mv-let (result fn-mlh)
       (let* ((fn-mlh (mlhx-pages 1 fn-mlh))
              (fn-mlh (mlhx-build 0 (list (nth 0 rows) (nth 1 rows)) fn-mlh)))
-        (mv (list (fn-mlh-okp (len rows) fn-mlh)
+        (mv (list (fn-mlhp fn-mlh) (fn-mlh-wfp fn-mlh)
+                  (fn-mlh-okp (len rows) fn-mlh)
+                  (fn-mlh-faithful rows fn-mlh)
                   (fn-mlh-faithful-from 0 rows fn-mlh)
                   (fn-mlh-seqs "<a@x>" rows fn-mlh) (fn-mpxt-spec-from 0 "<a@x>" rows))
             fn-mlh))
       result)))
 
 (assert-event ; mlhx-unindexed-witness
-  (equal (mlhx-unindexed *mlhx-rows*) '(t nil (0) (0 2))))
+  (equal (mlhx-unindexed *mlhx-rows*) '(t t t nil nil (0) (0 2))))
+
+; CORRUPTED-STATE hypothesis removal for fn-mlh-seqs-is-spec-from.
+; These are logical stobj values, not calls through the guarded raw API.
+; Page 0 is empty; allocated page 1 contains (tag 1, seq 0).  Only page 0
+; belongs to the abstraction (pages = 1).  With rows nil, faithful holds,
+; but the nil query has tag 1 and confirms the stale seq against (nth 0 nil).
+(defconst *mlhx-outside-words*
+  (append (make-list 2048 :initial-element 0)
+          (list 1) (make-list 1023 :initial-element 0)
+          (list 1) (make-list 1023 :initial-element 0)))
+
+; The malformed logical stobjs cannot use the raw executable counterparts
+; of the recursive readers.  Expand those readers in these two ground
+; proofs; a 1,024-slot page needs more than the default 1,000 rewrite depth.
+; ACL2 restores this defaults-table setting when the book finishes.
+(set-rewrite-stack-limit 10000)
+
+; fn-mlhp alone REMOVED: N = 2, S = -1 satisfies the literal root relation
+; N + S = pages = 1 and S < N, but violates the typed scalar recognizer.
+(defthm mlhx-recognizer-removal-witness
+  (let ((fn-mlh (list *mlhx-outside-words* 1 2 -1 0
+                      (make-list 32 :initial-element 0) 0)))
+    (and (not (fn-mlhp fn-mlh))
+         (fn-mlh-wfp fn-mlh)
+         (fn-mlh-faithful nil fn-mlh)
+         (not (equal (fn-mlh-seqs nil nil fn-mlh)
+                     (fn-mpxt-spec-from 0 nil nil)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-mlh-tag fn-mlh-candidates
+                                    fn-mlh-okp fn-record-msgid
+                                    fn-mlhp fn-mlh-wi fn-mlh-w-length
+                                    fn-mlh-pages fn-mlh-n fn-mlh-s
+                                    fn-mlh-key-octets fn-mlh-keyi
+                                    fn-mlh-slot fn-mlh-tag-at fn-mlh-seqw
+                                    fn-mlh-seq-at fn-mlh-ovf fn-mlh-abs
+                                    fn-mlh-abs-pages fn-mlh-pe fn-mlh-scan
+                                    fn-mlh-key-from fn-mpxt-ins
+                                    fn-mpxt-confirm fn-mpxt-hitp
+                                    fn-mpxl-seqs fn-mpxl-pages-okp
+                                    fn-mpxl-ents-below)
+                                   ((:e fn-mlh-abs-pages) (:e fn-mlh-pe)
+                                    (:e fn-mlh-scan) (:e fn-mlh-key-from)))
+           :expand ((:free (p fn-mlh) (fn-mlh-abs-pages p fn-mlh))
+                    (:free (p j fn-mlh) (fn-mlh-pe p j fn-mlh))
+                    (:free (i fn-mlh) (fn-mlh-key-from i fn-mlh))))))
+
+; fn-mlh-wfp alone REMOVED: all scalar and word types hold, but N + S = 2
+; disagrees with pages = 1.  The same stale entry supplies the false answer.
+(defthm mlhx-wfp-removal-witness
+  (let ((fn-mlh (list *mlhx-outside-words* 1 2 0 0
+                      (make-list 32 :initial-element 0) 0)))
+    (and (fn-mlhp fn-mlh)
+         (not (fn-mlh-wfp fn-mlh))
+         (fn-mlh-faithful nil fn-mlh)
+         (not (equal (fn-mlh-seqs nil nil fn-mlh)
+                     (fn-mpxt-spec-from 0 nil nil)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-mlh-tag fn-mlh-candidates
+                                    fn-mlh-okp fn-record-msgid
+                                    fn-mlhp fn-mlh-wi fn-mlh-w-length
+                                    fn-mlh-pages fn-mlh-n fn-mlh-s
+                                    fn-mlh-key-octets fn-mlh-keyi
+                                    fn-mlh-slot fn-mlh-tag-at fn-mlh-seqw
+                                    fn-mlh-seq-at fn-mlh-ovf fn-mlh-abs
+                                    fn-mlh-abs-pages fn-mlh-pe fn-mlh-scan
+                                    fn-mlh-key-from fn-mpxt-ins
+                                    fn-mpxt-confirm fn-mpxt-hitp
+                                    fn-mpxl-seqs fn-mpxl-pages-okp
+                                    fn-mpxl-ents-below)
+                                   ((:e fn-mlh-abs-pages) (:e fn-mlh-pe)
+                                    (:e fn-mlh-scan) (:e fn-mlh-key-from)))
+           :expand ((:free (p fn-mlh) (fn-mlh-abs-pages p fn-mlh))
+                    (:free (p j fn-mlh) (fn-mlh-pe p j fn-mlh))
+                    (:free (i fn-mlh) (fn-mlh-key-from i fn-mlh))))))
