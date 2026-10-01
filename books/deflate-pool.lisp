@@ -364,7 +364,9 @@
                             fn-zin-payload-ready-shape fn-zpl-ready-tab-logic fn-zfr-dirty
                             fn-zpl-pool-okp fn-zin-reset)))))
 
-(local (defthm fn-zpl-decode-bufs-is-pzd
+; The pooled host entry answers exactly what the unpooled one does --
+; refusal reason included -- and leaves the same output buffer.
+(defthm fn-zpl-decode-bufs-is-pzd
   (implies (and (fn-zpl-pool-okp pool fn-zin-win) (fn-cbor-octet-listp dict)
                 (fn-cbor-octet-listp c))
            (let ((r (fn-zpl-decode-bufs pool dict (len c) n c fn-zin-win fn-zin-tab fn-zin-out))
@@ -381,8 +383,11 @@
            :in-theory (e/d (fn-pzd-answer)
                            (fn-zpl-payload-bufs fn-zin-payload-bufs fn-zin-payload-with
                             fn-zpl-payload-bufs-is-payload-bufs fn-zin-payload-bufs-is-payload-with
-                            fn-zin-payload-with-octets fn-zpl-pool-okp))))))
+                            fn-zin-payload-with-octets fn-zpl-pool-okp)))))
 
+; Only the pool and window projections matter here: with the loop, the
+; payload bridges and the answer helpers closed this costs 8,298 steps
+; (it took 5.1M with them open, ~45 s).
 (local (defthm fn-zpl-decode-bufs-pool-okp
   (implies (and (fn-zpl-pool-okp pool fn-zin-win) (fn-cbor-octet-listp dict))
            (let ((r (fn-zpl-decode-bufs pool dict end n fn-octets fn-zin-win fn-zin-tab fn-zin-out)))
@@ -391,13 +396,19 @@
            :use ((:instance fn-zpl-payload-bufs-pool-okp (b (fn-pzd-budget end n)) (start 0)
                             (lim (+ 1 (nfix n)))))
            :in-theory (e/d (fn-zpl-decode-bufs)
-                           (fn-zpl-payload-bufs-pool-okp fn-zpl-payload-bufs fn-zpl-pool-okp))))))
+                           (fn-zpl-payload-bufs-pool-okp fn-zpl-payload-bufs fn-zpl-pool-okp
+                            fn-pzd-endedp fn-zin-out-clear fn-zin-out-len fn-pzd-budget
+                            fn-zin-loop fn-zin-payload-bufs fn-zpl-payload-bufs-is-payload-bufs
+                            fn-zin-payload-bufs-ignores-buffers fn-zin-stored-status))))))
 (defthm fn-zpl-decode-bufs-is-decode
   (implies (and (fn-cbor-octet-listp c) (natp n) (fn-cbor-octet-listp dict)
                 (fn-zpl-pool-okp pool fn-zin-win))
            (let ((r (fn-zpl-decode-bufs pool dict (len c) n c fn-zin-win fn-zin-tab fn-zin-out))
                  (d (fn-pzd-decode dict c n)))
-             (and (equal (car (car r)) (car d))
+             (and (equal (car r)
+                         (car (fn-pzd-decode-bufs dict (len c) n c fn-zin-win fn-zin-tab
+                                                  fn-zin-out)))
+                  (equal (car (car r)) (car d))
                   (implies (equal (car d) :ok)
                            (equal (mv-nth 4 r) (cadr d)))
                   (fn-zpl-pool-okp (mv-nth 1 r) (mv-nth 2 r)))))

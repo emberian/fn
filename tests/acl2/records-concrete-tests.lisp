@@ -114,7 +114,9 @@
                      *rcon-t-r*))
 
 ; Message-ID: the ASCII walk and the two bounds, one at a time.
-(assert-event (and (fn-record-p (rcon-t-with-msgid *rcon-t-r* *rcon-t-s250*))
+(assert-event (and (fn-record-msgidp *rcon-t-s250*)
+                   (fn-rcon-msgidp *rcon-t-s250*)
+                   (fn-record-p (rcon-t-with-msgid *rcon-t-r* *rcon-t-s250*))
                    (fn-rcon-record-p (rcon-t-with-msgid *rcon-t-r* *rcon-t-s250*))))
 (assert-event (and (not (fn-record-p (rcon-t-with-msgid *rcon-t-r* *rcon-t-s251*)))
                    (not (fn-rcon-record-p (rcon-t-with-msgid *rcon-t-r* *rcon-t-s251*)))))
@@ -133,7 +135,9 @@
 ; Metadata: the bounds, one at a time.  A 257-character string is a string
 ; and an octet string; the bound is what refuses it, so the concrete test
 ; is more than stringp.
-(assert-event (and (fn-record-p (rcon-t-with-subject *rcon-t-r* *rcon-t-s256*))
+(assert-event (and (fn-record-metadata-bytes-p *rcon-t-s256*)
+                   (fn-rcon-metadata-bytes-p *rcon-t-s256*)
+                   (fn-record-p (rcon-t-with-subject *rcon-t-r* *rcon-t-s256*))
                    (fn-rcon-record-p (rcon-t-with-subject *rcon-t-r* *rcon-t-s256*))))
 (assert-event (and (stringp *rcon-t-s257*)
                    (fn-record-octet-stringp *rcon-t-s257*)
