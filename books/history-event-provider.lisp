@@ -79,3 +79,8 @@
           (fn-hep-node-append (floor slot 2) (- depth 1) epoch id incarnation base expected row fn-hep-right)
           (mv word fn-hep-node))))))
 (verify-guards fn-hep-node-append)
+(defthm fn-hep-node-append-never-publishes
+ (not (equal (car (fn-hep-node-append slot depth epoch id incarnation base expected row fn-hep-node))
+             :published))
+ :hints (("Goal" :induct (fn-hep-node-append slot depth epoch id incarnation base expected row fn-hep-node)
+                 :in-theory (enable fn-hep-node-append fn-hec-append))))

@@ -1,0 +1,61 @@
+; Bounded lineage preflight for the actual pending admission producer.
+; This predicate confers no allocation or semantic-executor authority.
+(in-package "ACL2")
+(include-book "admission-preallocation-resources")
+(include-book "snapshot-source-token")
+
+(defun fn-api-current-coordinatesp (current canonical epoch count phase sequence txid)
+ (declare (xargs :guard t))
+ (let* ((token (fn-prl-nth 0 current))
+        (base (fn-prl-nth 3 current))
+        (source (fn-omk-at 9 canonical))
+        (base-source (fn-omk-at 9 base)))
+  (and (fn-apr-livep token current)
+       (eq (fn-prl-nth 2 current) :reserved)
+       (natp epoch) (natp count) (natp sequence) (natp txid)
+       (eq phase :record-staged)
+       (equal epoch (fn-prl-nth 2 token))
+       (equal count (fn-prl-nth 3 token))
+       (equal sequence count)
+       (equal sequence (fn-prl-nth 4 token))
+       (equal txid (fn-prl-nth 5 token))
+       (fn-omk-widthp canonical 10) (eq (fn-omk-at 0 canonical) :ready)
+       (equal epoch (fn-omk-at 1 canonical))
+       (equal count (fn-omk-at 2 canonical))
+       (fn-omk-widthp base 10) (eq (fn-omk-at 0 base) :ready)
+       (equal epoch (fn-omk-at 1 base))
+       (equal count (fn-omk-at 2 base))
+       ; Establish the bounded token domains before equality. The graphs in
+       ; either canonical context are borrowed, never compared here.
+       (fn-omk-tokenp source) (fn-omk-tokenp base-source)
+       (equal source base-source))))
+
+; BEGIN uses the actual reserved files before any semantic prepare mutates
+; the node. Keep the staged metadata observer above separate.
+(defun fn-api-reserved-coordinatesp (current canonical epoch count phase sequence txid)
+ (declare (xargs :guard t))
+ (let* ((token (fn-prl-nth 0 current))
+        (base (fn-prl-nth 3 current))
+        (source (fn-omk-at 9 canonical))
+        (base-source (fn-omk-at 9 base)))
+  (and (fn-apr-livep token current)
+       (eq (fn-prl-nth 2 current) :reserved)
+       (natp epoch) (natp count) (natp sequence) (natp txid)
+       (eq phase :reserved)
+       (equal epoch (fn-prl-nth 2 token))
+       (equal count (fn-prl-nth 3 token))
+       (equal sequence count)
+       (equal sequence (fn-prl-nth 4 token))
+       (equal txid (fn-prl-nth 5 token))
+       (fn-omk-widthp canonical 10) (eq (fn-omk-at 0 canonical) :ready)
+       (equal epoch (fn-omk-at 1 canonical))
+       (equal count (fn-omk-at 2 canonical))
+       (fn-omk-widthp base 10) (eq (fn-omk-at 0 base) :ready)
+       (equal epoch (fn-omk-at 1 base))
+       (equal count (fn-omk-at 2 base))
+       ; Establish the bounded token domains before equality. The graphs in
+       ; either canonical context are borrowed, never compared here.
+       (fn-omk-tokenp source) (fn-omk-tokenp base-source)
+       (equal source base-source))))
+
+(in-theory (disable fn-api-current-coordinatesp fn-api-reserved-coordinatesp))

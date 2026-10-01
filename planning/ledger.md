@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2267 |
-| Certification roots in the Makefile | 2071 |
-| Books inside the root closure | 2210 |
-| `defthm` and `defthmd` events | 32677 |
-| `defun` events | 21014 |
+| Books read | 2272 |
+| Certification roots in the Makefile | 2079 |
+| Books inside the root closure | 2216 |
+| `defthm` and `defthmd` events | 32680 |
+| `defun` events | 21021 |
 | Functions with verified guards | 3740 |
-| Functions declared `:verify-guards nil` and never verified | 2548 |
-| Functions left at the default with an explicit guard | 11711 |
+| Functions declared `:verify-guards nil` and never verified | 2550 |
+| Functions left at the default with an explicit guard | 11716 |
 | Functions left at the default with no guard | 3015 |
-| `assert-event` checks | 24547 |
+| `assert-event` checks | 24551 |
 | `must-fail` checks | 2519 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 168 |
@@ -27,8 +27,8 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 382 |
 | Enabled-projection warnings | 79 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2909 |
-| Host-names warnings | 2506 |
+| Include-hygiene warnings | 2911 |
+| Host-names warnings | 2569 |
 | Hand-written-record warnings | 19 |
 
 ## Lints
@@ -96,7 +96,8 @@ that `make certify` requests.
 | `books/acceptance.lisp` | root | 69 | 53 | 40/1/12/0 | 0 | 0 | 1 |
 | `books/account-list.lisp` | closure | 9 | 15 | 2/0/13/0 | 0 | 0 | 0 |
 | `books/accounts.lisp` | closure | 63 | 23 | 0/0/22/1 | 0 | 0 | 2 |
-| `books/admission-preallocation-resources.lisp` | - | 8 | 18 | 0/0/18/0 | 0 | 0 | 0 |
+| `books/admission-preallocation-resources.lisp` | closure | 8 | 18 | 0/0/18/0 | 0 | 0 | 0 |
+| `books/admission-preparation-intent.lisp` | root | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/allocation-epoch-collection-request.lisp` | root | 2 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/allocation-epoch-domain.lisp` | root | 3 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/allocation-epoch-observation.lisp` | root | 3 | 2 | 0/0/2/0 | 0 | 0 | 0 |
@@ -578,11 +579,11 @@ that `make certify` requests.
 | `books/history-decode-size.lisp` | closure | 15 | 14 | 0/0/12/2 | 0 | 0 | 0 |
 | `books/history-decode-stream.lisp` | root | 12 | 10 | 1/0/9/0 | 0 | 0 | 0 |
 | `books/history-decoded-record-cursor.lisp` | root | 17 | 7 | 0/3/4/0 | 0 | 0 | 1 |
-| `books/history-event-backing.lisp` | root | 8 | 21 | 0/0/21/0 | 0 | 0 | 2 |
+| `books/history-event-backing.lisp` | root | 10 | 21 | 0/0/21/0 | 0 | 0 | 2 |
 | `books/history-event-directory-refinement.lisp` | root | 13 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/history-event-directory.lisp` | root | 2 | 12 | 0/0/12/0 | 0 | 0 | 0 |
 | `books/history-event-page.lisp` | root | 19 | 5 | 0/0/5/0 | 0 | 0 | 1 |
-| `books/history-event-provider.lisp` | root | 0 | 3 | 2/0/1/0 | 0 | 0 | 0 |
+| `books/history-event-provider.lisp` | root | 1 | 3 | 2/0/1/0 | 0 | 0 | 0 |
 | `books/history-fold-refinement.lisp` | closure | 29 | 4 | 1/0/3/0 | 0 | 0 | 3 |
 | `books/history-image-binding.lisp` | root | 99 | 39 | 0/3/25/11 | 0 | 0 | 0 |
 | `books/history-image-census.lisp` | closure | 12 | 7 | 0/0/7/0 | 0 | 0 | 0 |
@@ -628,6 +629,7 @@ that `make certify` requests.
 | `books/history-records.lisp` | root | 141 | 46 | 0/0/28/18 | 0 | 0 | 0 |
 | `books/history-resource-refinement.lisp` | root | 12 | 8 | 0/0/8/0 | 0 | 0 | 1 |
 | `books/history-scalar-cursor.lisp` | root | 17 | 12 | 0/4/8/0 | 0 | 0 | 0 |
+| `books/history-semantic-writer.lisp` | root | 0 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/history-source-capture.lisp` | root | 0 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/history-symbol-normalize.lisp` | root | 37 | 13 | 0/0/8/5 | 0 | 0 | 2 |
 | `books/history-wire.lisp` | closure | 3 | 1 | 0/0/1/0 | 0 | 0 | 2 |
@@ -692,6 +694,7 @@ that `make certify` requests.
 | `books/index-query-slot-issuer.lisp` | root | 0 | 12 | 0/0/12/0 | 0 | 0 | 0 |
 | `books/index-range-controller.lisp` | root | 4 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/index-reader-request.lisp` | root | 0 | 33 | 3/0/30/0 | 0 | 0 | 0 |
+| `books/index-reader-response-issuer.lisp` | root | 0 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `books/index-writer-operation-demand.lisp` | root | 16 | 20 | 9/0/11/0 | 0 | 0 | 1 |
 | `books/index-writer-source-fence.lisp` | root | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/index-writer-ticket.lisp` | root | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
@@ -1454,6 +1457,7 @@ that `make certify` requests.
 | `tests/acl2/accounts-snapshot-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 26 | 7 | 0 |
 | `tests/acl2/accounts-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 116 | 17 | 0 |
 | `tests/acl2/accounts-wire-tests.lisp` | root | 0 | 5 | 0/1/0/4 | 31 | 0 | 0 |
+| `tests/acl2/admission-preparation-intent-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 3 | 0 | 0 |
 | `tests/acl2/allocation-dual-ceiling-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `tests/acl2/anchor-replace-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/anchor-server-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -1821,6 +1825,7 @@ that `make certify` requests.
 | `tests/acl2/history-records-tests.lisp` | root | 7 | 12 | 0/7/0/5 | 5 | 0 | 0 |
 | `tests/acl2/history-resource-refinement-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 0 | 0 |
 | `tests/acl2/history-scalar-cursor-tests.lisp` | root | 0 | 3 | 0/2/1/0 | 23 | 0 | 0 |
+| `tests/acl2/history-semantic-writer-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 1 | 0 | 0 |
 | `tests/acl2/history-symbol-normalize-tests.lisp` | root | 4 | 3 | 0/3/0/0 | 19 | 0 | 0 |
 | `tests/acl2/hmac-sha256-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 8 | 0 | 0 |
 | `tests/acl2/hostile-reader-archive.lisp` | root | 4 | 11 | 0/2/0/9 | 11 | 0 | 0 |
@@ -2656,8 +2661,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-hec-initialize-never-rebinds-issued-page-by-definition` | `books/history-event-page.lisp` | 187 | arm-of-definition: the hypotheses select one IF/COND arm of fn-hec-initialize and the conclusion is that arm's value |
 | `fn-held-accessors-are-the-wire-accessors` | `books/held-record-shape.lisp` | 137 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-held-with-context-fields` | `books/held-record-shape.lisp` | 333 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-hep-completion-replay-does-not-mutate` | `books/history-event-backing.lisp` | 267 | arm-of-definition: the hypotheses select one IF/COND arm of fn-hep-register-completion-internal and the conclusion is that arm's value |
-| `fn-hep-published-replay-does-not-append-or-install` | `books/history-event-backing.lisp` | 274 | arm-of-definition: the hypotheses select one IF/COND arm of fn-hep-publish-current and the conclusion is that arm's value |
+| `fn-hep-completion-replay-by-definition` | `books/history-event-backing.lisp` | 267 | arm-of-definition: the hypotheses select one IF/COND arm of fn-hep-register-completion-internal and the conclusion is that arm's value |
+| `fn-hep-published-replay-by-definition` | `books/history-event-backing.lisp` | 274 | arm-of-definition: the hypotheses select one IF/COND arm of fn-hep-publish-current and the conclusion is that arm's value |
 | `fn-hfr-held-wire-msgid` | `books/history-fold-refinement.lisp` | 263 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-hfr-wire-of-a-held-row` | `books/history-fold-refinement.lisp` | 57 | arm-of-definition: the hypotheses select one IF/COND arm of fn-row-wire-of and the conclusion is that arm's value |
 | `fn-hfr-wire-of-another-event` | `books/history-fold-refinement.lisp` | 63 | arm-of-definition: the hypotheses select one IF/COND arm of fn-row-wire-of and the conclusion is that arm's value |

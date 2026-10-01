@@ -19775,7 +19775,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-hed-grow-step-preserves-chronological-prefix",
         "fn-hed-grow-begin-is-one-chronological-page",
@@ -19807,6 +19807,8 @@
       "status": "certified",
       "events": [
         "fn-hep-offer-retains-exact-row-and-complete-producer",
+        "fn-hep-completion-registration-is-once-only",
+        "fn-hep-successful-publication-is-once-only",
         "fn-hep-uncertain-keeps-candidate-roots-and-debt",
         "fn-hep-return-cannot-drop-nonquiescent-custody",
         "fn-hep-retirement-keeps-epoch-and-retained-debt"
@@ -19816,9 +19818,11 @@
         "tests/acl2/history-event-directory-tests.lisp",
         "tests/acl2/history-event-backing-tests.lisp",
         "planning/evidence/manifests/certify-20261001T002318Z-84529.json",
-        "planning/evidence/manifests/certify-20261001T002534Z-86506.json"
+        "planning/evidence/manifests/certify-20261001T002534Z-86506.json",
+        "planning/evidence/manifests/certify-20261001T003715Z-99605.json",
+        "planning/evidence/manifests/certify-20261001T003750Z-537.json"
       ],
-      "progress_note": "Conditional guarded source component with matching normal manifests 002318 (directory/refinement/provider/test closure) and 002534 (backing/test successor). No native caller, raw atomicity, genuine constructor family or complete physical epoch/debt settlement claim. Current public include coordinate not certified; frozen manifests do not qualify changed prerequisites or host joins."
+      "progress_note": "Conditional guarded source component with matching normal manifests 002318 (directory/refinement/provider/test closure) and 002534 (backing/test successor). No native caller, raw atomicity, genuine constructor family or complete physical epoch/debt settlement claim. Current public include coordinate not certified; frozen manifests do not qualify changed prerequisites or host joins. Proof-only successor06d984 adds actual composed two-call once-only registration/publication keystones and renames replay-arm restatements by-definition. Matching frozen normal receipts retained; current combined source/caller qualification remains open."
     }
   ]
 }

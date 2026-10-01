@@ -18,6 +18,14 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-transaction-dispatch-tests \
 	tests/acl2/consumer-remote-store-category-tests \
 	tests/acl2/receiver-response-transfer-tests \
+	host/history-owner-completion-host \
+	books/history-semantic-writer \
+	tests/acl2/history-semantic-writer-tests \
+	books/admission-preparation-intent \
+	host/admission-preparation-host \
+	host/history-admission-producer-host \
+	tests/acl2/admission-preparation-intent-tests \
+	books/index-reader-response-issuer \
 	books/history-event-page \
 	books/history-event-directory \
 	books/history-event-directory-refinement \

@@ -35,6 +35,7 @@
 (include-book "page-read-host")
 (include-book "../books/owner-incoming-context")
 (include-book "../books/admission-preallocation-resources")
+(include-book "../books/history-semantic-writer")
 (include-book "../books/receiver-provider")
 (include-book "../books/receiver-turn-controller")
 (include-book "receiver-source-gate-host")
@@ -382,12 +383,14 @@
 ;; epochs strictly decreasing); the owner then carries it through every step.
 (defun fn-owner-install-node-secret (ring state)
   (declare (xargs :stobjs state :mode :program))
+  (if (not (fn-owner-history-bootstrap-mutationp state))
+      (value :refused)
   (if (fn-ns-ringp ring)
       (let ((state (fn-owner-replace-core
                     (fn-own-with-node-secret (fn-owner-core state) ring)
                     state)))
         (value :installed))
-    (value :refused)))
+    (value :refused))))
 
 ; Every projection `fn-owner-install-effects' makes EXCEPT the reply octets,
 ; which are never built as a list here: `fn-owner-output' is NIL and the reply is
@@ -519,6 +522,8 @@
 ; its connections with the codec ceiling recovery installed.
 (defun fn-owner-install-profile (values state)
   (declare (xargs :stobjs state :mode :program))
+  (if (not (fn-owner-history-bootstrap-mutationp state))
+      (value :refused)
   (mv-let (verdict next)
     (fn-osb-install (fn-owner-core state) values)
     (if (equal verdict :installed)
@@ -555,7 +560,7 @@
                                     (cons count (fn-pcb-tally-records records nil))
                                     state)))
           (value :installed))
-      (value :refused))))
+      (value :refused)))))
 
 ;; Row S1: serve an applied limit's profile (the one the configuration
 ;; history now records, fn-lim-effective, fn-lim-effective-of-append-record)
@@ -565,6 +570,8 @@
 ;; profile, and stay valid.
 (defun fn-owner-apply-limit-profile (values state)
   (declare (xargs :stobjs state :mode :program))
+  (if (not (fn-owner-history-bootstrap-mutationp state))
+      (value :refused)
   (mv-let (verdict next)
     (fn-osb-install (fn-owner-core state) values)
     (if (equal verdict :installed)
@@ -573,7 +580,7 @@
                (state (f-put-global 'fn-owner-profile-carry
                                     (fn-pvc-make values) state)))
           (value :installed))
-      (value :refused))))
+      (value :refused)))))
 
 (defun fn-owner-store-profile (state)
   (declare (xargs :stobjs state :guard t))
@@ -1070,6 +1077,8 @@
 ; changes the same fn-own-config value read by served POST and control.
 (defun fn-owner-posting-configure (allow state)
   (declare (xargs :stobjs state :mode :program))
+  (if (not (fn-owner-history-bootstrap-mutationp state))
+      (value :refused)
   (let* ((owner (fn-owner-core state))
          (cfg (fn-own-config owner))
          (next (fn-inj-make-config-full (and allow t)
@@ -1082,7 +1091,7 @@
     (if (not (fn-inj-configp next))
         (value :refused)
       (let ((state (fn-owner-replace-core (fn-own-configure owner next) state)))
-        (value :configured)))))
+        (value :configured))))))
 
 ; The committed record octets of the carried Store, from the carried
 ; (K . SUM) of the first K records advanced over the records committed since
@@ -2685,10 +2694,12 @@
 ; opens.  Raw Lisp cannot rebuild a credential row or change one policy bit.
 (defun fn-owner-set-auth-config (acfg state)
   (declare (xargs :stobjs state :guard t))
+  (if (not (fn-owner-history-bootstrap-mutationp state))
+      (value :rejected)
   (if (not (fn-auth-configp acfg))
       (value :rejected)
     (let ((state (f-put-global 'fn-owner-auth acfg state)))
-      (value :ok))))
+      (value :ok)))))
 
 ; -----------------------------------------------------------------------------
 ; The transit port (specs/peering.md 2.2).
