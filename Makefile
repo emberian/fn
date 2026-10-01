@@ -56,6 +56,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/substrate-profile-entry \
 	books/substrate-profile-selection \
 	books/substrate-profile-row \
+	books/substrate-completed-source \
 	tests/acl2/substrate-profile-entry-tests \
 	tests/acl2/substrate-profile-selection-tests \
 	tests/acl2/substrate-commit-profile-resume-tests \

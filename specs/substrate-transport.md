@@ -1346,3 +1346,13 @@ or allocation-turn slot: a real paid BODY/source producer must precede cursor
 construction. These source APIs do not manufacture that producer or imply an
 installed host caller. Legacy conflict retention remains separately scoped;
 a profile-aware authority/collision consumer is still required before adoption.
+
+The additive `fn-stps-completed-source` readout also supports the retained
+`:published` builder phase. It joins the actual stored completion/token with
+the original BEGIN intent and semantic lease, returning row, original CFG,
+original base Store and token without mutation. Its guarded source composition
+with the actual prepare-capture constructor is certified privately; literal
+composition teeth remain pending. This readout confers no disk, runtime or
+membership grant. A genuine pinned codec-profile producer remains absent;
+shared runtime binding metadata is not decoded as a codec profile. The paid
+wrapper and completion hook remain uninstalled at swarm closeout.

@@ -431,3 +431,5 @@ anything a book does not already decide.
 | `fn-stpet-` | tests/acl2/substrate-profile-entry-tests | Literal carrier/provenance/refusal fixtures. |
 
 | `fn-stprt-` | tests/acl2/substrate-profile-selection-tests | Literal pinned-source selector composition. |
+
+| `fn-stps-` | substrate-completed-source | Readonly actual completed-row and original prepare-source projection; no allocator grant. |
