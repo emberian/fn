@@ -2541,7 +2541,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/mailbox.lisp",
         "books/injection.lisp",
@@ -3926,7 +3926,7 @@
         "PRF-014"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/octets-stobj.lisp",
         "books/poster-bytes-buffer.lisp",
@@ -9855,7 +9855,7 @@
         "PRF-248"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-commit-steps.lisp",
         "tests/acl2/owner-commit-steps-tests.lisp",
@@ -9989,7 +9989,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-commit-pipeline.lisp",
         "tests/acl2/owner-commit-pipeline-tests.lisp",
@@ -11275,7 +11275,7 @@
         "PRF-288"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-time-model.lisp",
         "tests/acl2/owner-time-model-tests.lisp",
@@ -11770,7 +11770,7 @@
         "PRF-311"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-time-journal.lisp",
         "books/clock-wall-reading.lisp",
@@ -12141,7 +12141,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/octet-text.lisp",
         "tests/acl2/octet-text-tests.lisp",
@@ -12576,7 +12576,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/web-2047.lisp",
         "books/web-render.lisp",
@@ -12673,7 +12673,7 @@
         "A-CRYPTO",
         "A-CRYPTO-NATIVE"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-b3x-hash-is-hash",
         "fn-blake3-stobj-is-blake3",
@@ -12778,7 +12778,7 @@
         "PRF-311"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-commit-steps.lisp",
         "books/owner-commit-pipeline.lisp",
@@ -13059,7 +13059,7 @@
         "PRF-322"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-time-model.lisp",
         "tests/acl2/owner-time-space-tests.lisp",
@@ -13099,7 +13099,7 @@
         "PRF-322"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-time-journal-writer.lisp",
         "books/owner-time-journal.lisp",
@@ -13134,7 +13134,7 @@
         "PRF-311"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-stop-drain.lisp",
         "tests/acl2/owner-stop-drain-tests.lisp",
@@ -13739,7 +13739,7 @@
         "PRF-272"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-commit-fairness.lisp",
         "books/owner-commit-pipeline.lisp",
@@ -13795,7 +13795,7 @@
         "PRF-360"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-time-bars.lisp",
         "books/owner-time-journal.lisp",
@@ -13900,7 +13900,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/hmac-sha256.lisp",
         "books/scram.lisp",
@@ -14704,7 +14704,7 @@
         "PRF-384"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-time-bars.lisp",
         "tests/acl2/owner-time-bars-tests.lisp"
@@ -18011,7 +18011,9 @@
       "title": "Carried independent live Store projections establish configured snapshot recovery",
       "statement": "books/owner-snapshot-recovery.lisp: fn-osr-capture returns the existing Store pointer in O(1). fn-osr-livep carries a nonempty configuration history, the phase-aware fn-cst-relation, independent consumer/topic fn-sti-livep, and an identity replay-prefix relation including snapshots, cursor, generation and fault status. Successful actual fn-cpo-open-observed startup establishes this relation. Independent projection lemmas establish preservation of the component Store transitions; fn-snrt-run trace preservation is library-only and is not a production boundary citation. The production claim cites actual fn-sn-finish and fn-cpo-configure-durable for complete live-carry preservation. fn-osr-live-capture-opens derives successful observed open even during an in-flight transaction without assuming that open succeeds. fn-osr-ready-capture-keeps-established-projections equates target and source node, groups/capacity, configuration/history/frontier, identity cursor/snapshots, consumer obligations and topic conflicts/provenance. The relation is proof vocabulary; capture never recomputes it on the served path. fn-osr-retainedp additionally carries snapshot-resolved active statement keytable/generation, ordinary held verdicts and frozen row index from the completed prefix, and the retired event-index field. Actual successful configured open establishes full retained carry with sole open-success premise; proper configuration history was proved redundant. fn-osr-ready-capture-keeps-retained-fields equates these additional source/target fields under full retained carry and readiness. fn-osr-configure-durable-preserves-full-retained-carry proves actual durable CONFIG preserves the full retained carry. fn-osr-finish-preserves-full-retained-carry proves the actual durable completion preserves that entire relation, including ordinary/composite verdict publication and captured row deltas. The proof-only fn-osr-retained-view includes all additional retained fields and their completed history prefix; seven actual prepare/refuse/abort transitions preserve it unconditionally, and actual fn-sn-io preserves it under full retained carry. Its congruence composes with actual configured/identity/consumer/topic live preservation to recover the entire fn-osr-retainedp relation. Full HST-040 producer readiness still requires owner-context composition across the remaining actual transitions, canonical writer/load payload alpha, and physical producer publication/cost evidence; no canonical-handle tuple identity is claimed. No new trust assumption. Existing A-CHECKPOINT-PUBLICATION remains a separate bytes-to-tables boundary under PRF-992.",
       "milestone": "M5",
-      "requirements": [],
+      "requirements": [
+        "HST-040"
+      ],
       "depends_on": [
         "PRF-083",
         "PRF-144",
