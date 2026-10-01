@@ -33,7 +33,7 @@
 ; is not a tree is kept WHOLE as an object in the overflow cell (the nested
 ; old foundation's rows array, nil for every row the columns carry).
 ;
-; THE TABLES.  The index tables (the paged Message-ID table fn-mpxt, the
+; THE TABLES.  The index tables (the paged Message-ID table fn-mlh, the
 ; (group . number), group, live and withdrawn-by-version tables) are stage
 ; 4's (dense per-group runs); here they are the old foundation `fn-cat$c'
 ; NESTED whole, its rows array repurposed as the overflow cells, and every
@@ -515,10 +515,10 @@
 
 (defthm fn-cp-cp-fields
   (implies (fn-cat$cp c)
-           (and (true-listp c) (equal (len c) 11)
+           (and (true-listp c) (equal (len c) 10)
                 (true-listp (nth 0 c))
-                (natp (nth 1 c)) (natp (nth 5 c)) (natp (nth 7 c)) (natp (nth 10 c))
-                (fn-mpxtp (nth 2 c)) (fn-mpxtp (nth 9 c))))
+                (natp (nth 1 c)) (natp (nth 5 c)) (natp (nth 7 c)) (natp (nth 9 c))
+                (fn-mlhp (nth 2 c))))
   :rule-classes :forward-chaining
   :hints (("Goal" :in-theory (enable fn-cat$cp fn-cat$c-countp fn-cat$c-octetsp fn-cat$c-hzp
                                      fn-cat$c-unplacedp fn-cat$c-rowsp))))
@@ -792,10 +792,10 @@
   (let ((seqs (stobj-let ((fn-cat$c (fn-cat$p-tab fn-cat$p)))
                          (seqs)
                          (if (eql 0 (fn-cat$c-unplaced fn-cat$c))
-                             (stobj-let ((fn-mpxt (fn-cat$c-mpx fn-cat$c)))
+                             (stobj-let ((fn-mlh (fn-cat$c-mpx fn-cat$c)))
                                         (seqs)
-                                        (if (fn-mpxt-wfp fn-mpxt)
-                                            (fn-mpxt-candidates (fn-mpxt-tag msgid (fn-mpxt-key-octets fn-mpxt)) fn-mpxt)
+                                        (if (fn-mlh-wfp fn-mlh)
+                                            (fn-mlh-candidates (fn-mlh-tag msgid (fn-mlh-key-octets fn-mlh)) fn-mlh)
                                           nil)
                                         seqs)
                            :scan)
@@ -891,38 +891,38 @@
   (declare (xargs :stobjs fn-cat$p
                   :guard (and (fn-cat$p-wfp fn-cat$p)
                               (fn-mpxt-keyp key) (equal (len key) *fn-mpxt-key-octets*))
-                  :guard-hints (("Goal" :in-theory (disable fn-mpxt-saturatedp fn-mpxt-key-samep
-                                                            fn-cat$p-rows-list fn-mpxt-key-samep-is-equal
-                                                            fn-cat$p-rows-below-count fn-mpxtp fn-crowp fn-cat$cp)
+                  :guard-hints (("Goal" :in-theory (disable fn-mlh-saturatedp fn-mlh-key-samep
+                                                            fn-cat$p-rows-list fn-mlh-key-samep-is-equal
+                                                            fn-cat$p-rows-below-count fn-mlhp fn-crowp fn-cat$cp)
                                  :do-not-induct t))))
   (let ((own (stobj-let ((fn-cat$c (fn-cat$p-tab fn-cat$p)))
                         (own)
-                        (stobj-let ((fn-mpxt (fn-cat$c-mpx fn-cat$c)))
+                        (stobj-let ((fn-mlh (fn-cat$c-mpx fn-cat$c)))
                                    (own)
-                                   (if (and (fn-mpxt-wfp fn-mpxt) (fn-mpxt-key-samep key fn-mpxt))
-                                       (if (fn-mpxt-saturatedp (fn-mpxt-tag msgid key) fn-mpxt) :saturated :open)
+                                   (if (and (fn-mlh-wfp fn-mlh) (fn-mlh-key-samep key fn-mlh))
+                                       (if (fn-mlh-saturatedp (fn-mlh-tag msgid key) fn-mlh) :saturated :open)
                                      :other-key)
                                    own)
                         own)))
     (if (eq own :other-key)
-        (fn-mpxt-build-saturatedp key msgid (fn-cat$p-rows-below-count fn-cat$p))
-      (or (>= (+ 2 (fn-cat$p-count fn-cat$p)) *fn-mpxt-word-limit*)
+        (fn-mlh-build-saturatedp key msgid (fn-cat$p-rows-below-count fn-cat$p))
+      (or (>= (+ 2 (fn-cat$p-count fn-cat$p)) *fn-mlh-tag-limit*)
           (eq own :saturated)))))
 
 (defun fn-cat$p-index-health (key fn-cat$p)
   (declare (xargs :stobjs fn-cat$p
                   :guard (and (fn-cat$p-wfp fn-cat$p)
                               (fn-mpxt-keyp key) (equal (len key) *fn-mpxt-key-octets*))
-                  :guard-hints (("Goal" :in-theory (disable fn-mpxt-saturatedp fn-mpxt-key-samep
-                                                            fn-cat$p-rows-list fn-mpxt-key-samep-is-equal
-                                                            fn-cat$p-rows-below-count fn-mpxtp fn-crowp fn-cat$cp)
+                  :guard-hints (("Goal" :in-theory (disable fn-mlh-saturatedp fn-mlh-key-samep
+                                                            fn-cat$p-rows-list fn-mlh-key-samep-is-equal
+                                                            fn-cat$p-rows-below-count fn-mlhp fn-crowp fn-cat$cp)
                                  :do-not-induct t))))
   (let ((own (stobj-let ((fn-cat$c (fn-cat$p-tab fn-cat$p)))
                         (own)
-                        (stobj-let ((fn-mpxt (fn-cat$c-mpx fn-cat$c)))
+                        (stobj-let ((fn-mlh (fn-cat$c-mpx fn-cat$c)))
                                    (own)
-                                   (if (and (fn-mpxt-wfp fn-mpxt) (fn-mpxt-key-samep key fn-mpxt))
-                                       (list (fn-mpxt-pages fn-mpxt) (fn-mpxt-count fn-mpxt) (fn-mpxt-stuck fn-mpxt))
+                                   (if (and (fn-mlh-wfp fn-mlh) (fn-mlh-key-samep key fn-mlh))
+                                       (list (fn-mlh-pages fn-mlh) (fn-mlh-count fn-mlh) (fn-mlh-stuck fn-mlh))
                                      nil)
                                    own)
                         own)))
@@ -930,7 +930,7 @@
         (list (car own) (cadr own)
               (stobj-let ((fn-cat$c (fn-cat$p-tab fn-cat$p))) (u) (fn-cat$c-unplaced fn-cat$c) u)
               (caddr own))
-      (fn-mpxt-build-health key (fn-cat$p-rows-below-count fn-cat$p)))))
+      (fn-mlh-build-health key (fn-cat$p-rows-below-count fn-cat$p)))))
 
 ; --- the writes
 
@@ -1297,7 +1297,7 @@
 ; The old foundation's primitives, opened once here.
 (local (in-theory (enable fn-cat$c-count update-fn-cat$c-count fn-cat$c-rowsi update-fn-cat$c-rowsi
                           fn-cat$c-rows-length resize-fn-cat$c-rows fn-cat$c-octets update-fn-cat$c-octets
-                          fn-cat$c-mpx update-fn-cat$c-mpx fn-cat$c-mpx2 update-fn-cat$c-mpx2
+                          fn-cat$c-mpx update-fn-cat$c-mpx
                           fn-cat$c-unplaced update-fn-cat$c-unplaced fn-cat$c-hz update-fn-cat$c-hz
                           fn-cat$c-numbers-get fn-cat$c-numbers-put fn-cat$c-numbers-clear
                           fn-cat$c-groups-get fn-cat$c-groups-put fn-cat$c-groups-clear
@@ -1309,7 +1309,6 @@
    (and (equal (fn-cat$c-count (fn-cp-frame r nm wb c)) (fn-cat$c-count c))
         (equal (fn-cat$c-octets (fn-cp-frame r nm wb c)) (fn-cat$c-octets c))
         (equal (fn-cat$c-mpx (fn-cp-frame r nm wb c)) (fn-cat$c-mpx c))
-        (equal (fn-cat$c-mpx2 (fn-cp-frame r nm wb c)) (fn-cat$c-mpx2 c))
         (equal (fn-cat$c-unplaced (fn-cp-frame r nm wb c)) (fn-cat$c-unplaced c))
         (equal (fn-cat$c-hz (fn-cp-frame r nm wb c)) (fn-cat$c-hz c))
         (equal (fn-cat$c-numbers-get k (fn-cp-frame r nm wb c)) (cdr (hons-assoc-equal k nm)))
@@ -1324,7 +1323,6 @@
    (and (equal (update-fn-cat$c-count n (fn-cp-frame r nm wb c)) (fn-cp-frame r nm wb (update-fn-cat$c-count n c)))
         (equal (update-fn-cat$c-octets n (fn-cp-frame r nm wb c)) (fn-cp-frame r nm wb (update-fn-cat$c-octets n c)))
         (equal (update-fn-cat$c-mpx x (fn-cp-frame r nm wb c)) (fn-cp-frame r nm wb (update-fn-cat$c-mpx x c)))
-        (equal (update-fn-cat$c-mpx2 x (fn-cp-frame r nm wb c)) (fn-cp-frame r nm wb (update-fn-cat$c-mpx2 x c)))
         (equal (update-fn-cat$c-unplaced n (fn-cp-frame r nm wb c)) (fn-cp-frame r nm wb (update-fn-cat$c-unplaced n c)))
         (equal (update-fn-cat$c-hz n (fn-cp-frame r nm wb c)) (fn-cp-frame r nm wb (update-fn-cat$c-hz n c)))
         (equal (fn-cat$c-numbers-put k v (fn-cp-frame r nm wb c)) (fn-cp-frame r (cons (cons k v) nm) wb c))
@@ -1682,7 +1680,7 @@
                    (fn-cat$c-msgid-seqs msgid (fn-cat$p-view fn-cat$p))))
    :hints (("Goal" :in-theory (e/d (fn-cat$p-msgid-seqs fn-cat$c-msgid-seqs)
                                    (fn-cat$p-confirm fn-cat$c-confirm fn-cat$p-scan-msgid
-                                    fn-cat$c-scan-msgid fn-mpxt-candidates))))))
+                                    fn-cat$c-scan-msgid fn-mlh-candidates))))))
 
 (local
  (defthm fn-cat$p-rows-list-sim-s
@@ -1713,7 +1711,7 @@
                    (fn-cat$c-msgid-saturatedp key msgid (fn-cat$p-view fn-cat$p))))
    :hints (("Goal" :in-theory (e/d (fn-cat$p-msgid-saturatedp fn-cat$c-msgid-saturatedp)
                                    (fn-cat$p-rows-below-count fn-cat$c-rows-below-count
-                                    fn-mpxt-saturatedp fn-mpxt-key-samep fn-mpxt-build-saturatedp))))))
+                                    fn-mlh-saturatedp fn-mlh-key-samep fn-mlh-build-saturatedp))))))
 
 (local
  (defthm fn-cat$p-index-health-sim
@@ -1724,7 +1722,7 @@
                    (fn-cat$c-index-health key (fn-cat$p-view fn-cat$p))))
    :hints (("Goal" :in-theory (e/d (fn-cat$p-index-health fn-cat$c-index-health)
                                    (fn-cat$p-rows-below-count fn-cat$c-rows-below-count
-                                    fn-mpxt-key-samep fn-mpxt-build-health))))))
+                                    fn-mlh-key-samep fn-mlh-build-health))))))
 
 (local
  (defthm fn-cat$p-table-readers-sim
