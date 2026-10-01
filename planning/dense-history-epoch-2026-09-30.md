@@ -62,10 +62,14 @@ recomputed by a served tree walk. Shape recognition does not validate content.
 The new STATE global `fn-owner-history-publication` is exactly:
 
 ```
-(:history-installed source-id epoch root-id owner-publication-id)
+(:history-installed source-id epoch root-id owner-publication-id canonical-owner-epoch)
 ```
 
-It is installed with the actual Store/CP/config/publication transition. A
+The final field is read from `fn-owner-canonical-epoch` at the actual
+installation and checked against that current owner value by the getter.
+This prevents an old backing plus matching old association from surviving an
+independent canonical reset. Source9 remains unchanged. It is installed with
+the actual Store/CP/config/publication transition. A
 C-only publication can change source-id and owner-publication-id with the
 same F, forest and root-id. A within-page append changes F and source-id but
 can retain root-id. A new page obtains a newly issued root identity.
@@ -82,7 +86,7 @@ Proposed exact APIs (not currently sanctioned exports):
 ```
 
 `fn-hep-current` reads the installed object. The owner getter compares its
-four scalar association fields with actual STATE and returns `:source` and
+four source association fields and actual canonical owner epoch with STATE and returns `:source` and
 that exact object, `:unavailable` when uninstalled, or `:recovery-required`
 on disagreement. It never derives an installed source from a caller tuple,
 FnHIST count, Pub19, a ready flag, or a shaped runtime token.
