@@ -56,6 +56,25 @@
      (cons (list (car kinds) index)
            (fn-roc-slot-rows (cdr kinds) (+ 1 index))) nil))
 
+; Protocol roots supply executor roles independently of family operation kinds.
+; This build-only projection never infers a role from a request or role table.
+(defun fn-roc-executor-kinds (rows)
+ (declare (xargs :guard t))
+ (if (consp rows)
+  (let* ((row (car rows)) (role (fn-roc-at 1 row))
+         (rest (fn-roc-executor-kinds (cdr rows))))
+   (if (and (consp row) (symbolp role) role
+            (not (member-equal role rest))) (cons role rest) rest)) nil))
+(defun fn-roc-operation-slots (rows role-slots)
+ (declare (xargs :guard t))
+ (if (consp rows)
+  (let* ((row (car rows))
+         (slot (fn-roc-entry (fn-roc-at 1 row) role-slots)))
+   (if (and (consp row) (consp slot))
+       (cons (list (fn-roc-at 0 row) (fn-roc-at 1 slot))
+             (fn-roc-operation-slots (cdr rows) role-slots))
+     (fn-roc-operation-slots (cdr rows) role-slots))) nil))
+
 (in-theory (disable fn-roc-entry fn-roc-at fn-roc-family fn-roc-positive-entryp
                    fn-roc-binding-of-entry fn-roc-first-binding
                    fn-roc-binding-consistentp fn-roc-compiled-binding))
