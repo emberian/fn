@@ -1361,3 +1361,12 @@ getter remains explicitly unavailable; empty pure continuations cannot release
 physical custody. Source admission/guards and literal fixtures are separate
 from normal certificates, installed runtime authority, qualified images,
 deployment and the complete original remote scenarios. Those remain open.
+
+The internal visible report writer emits an ordinary RECORD with exactly the
+original payload and Message-ID and a current authorized group projection.
+The projected routing metadata is node supplied; it is not the author's signed
+statement, and no signature over a changed composite is claimed. It prepares
+one bounded codec name or emits one octet per tick. The complete concrete
+buffer-effect source boundary and actual RECORD/FNCT parser fixtures pass;
+physical payload reader funding, native report extent custody, complete CWAIT
+statement attachment composition and multi-target reply aggregation remain open.
