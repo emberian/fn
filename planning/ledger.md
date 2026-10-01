@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 398 |
 | Enabled-projection warnings | 80 |
 | Teeth-form warnings | 279 |
-| Include-hygiene warnings | 3548 |
+| Include-hygiene warnings | 3563 |
 | Host-names warnings | 3114 |
 | Hand-written-record warnings | 19 |
 
