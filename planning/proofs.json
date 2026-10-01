@@ -277,7 +277,7 @@
         "fn-record-impl-accepted-input-is-canonical",
         "fn-record-accepted-input-magic",
         "fn-record-accepted-schema-is-the-stamp-kind",
-        "fn-record-schema3-golden-octets-are-the-encoding",
+        "fn-record-schema1-golden-octets-are-the-encoding",
         "fn-bpa-round-trip",
         "fn-bpa-success-is-canonical"
       ],
@@ -1228,7 +1228,7 @@
       "assumptions": [
         "A-CRYPTO"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
       ],
@@ -4344,7 +4344,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/cbor-invariants.lisp",
         "books/records-canonicality.lisp",
@@ -14680,7 +14680,7 @@
         "PRF-038"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-node-host-transfer.lisp",
         "host/bp-node-host.lisp",

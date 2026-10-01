@@ -305,10 +305,9 @@
 ; the branch where fn-retain-admissiblep has just held (fn-retain-admit's
 ; body there), instead of fn-retain-admit deciding it a second time.
 (defun fn-pidx-node-prepare (s generation msgid payload groups
-                               obligation-id subject evidence charge stamp view binding)
+                               obligation-id subject evidence charge stamp view)
   (declare (xargs :guard (fn-node-statep s) :verify-guards nil))
-  (if (or (not (fn-ab-p binding))
-          (mbe :logic (not (fn-node-statep s)) :exec nil))
+  (if (mbe :logic (not (fn-node-statep s)) :exec nil)
       s
     (let ((retention (fn-node-retention s)))
       (if (not (fn-retain-admissiblep retention obligation-id subject :archive
@@ -331,17 +330,17 @@
                (cons (fn-retain-make-obligation obligation-id subject :archive
                                                 evidence charge)
                      (fn-retain-pins retention))
-               (fn-retain-releases retention)) binding)
+               (fn-retain-releases retention)))
              (fn-node-bindings s))))))))
 
 (defthm fn-pidx-node-prepare-is-node-prepare
   (implies (fn-pidx-view-okp view)
            (equal (fn-pidx-node-prepare s generation msgid payload groups
                                         obligation-id subject evidence charge
-                                        stamp view binding)
+                                        stamp view)
                   (fn-node-prepare s generation msgid payload groups
                                    obligation-id subject evidence charge
-                                   stamp binding)))
+                                   stamp)))
   :hints (("Goal" :in-theory (e/d (fn-pidx-node-prepare fn-node-prepare
                                    fn-retain-admit)
                                   (fn-node-statep fn-retain-admissiblep
@@ -366,7 +365,7 @@
                         (fn-record-release-evidence record)
                         (fn-record-charge record)
                         (fn-record-stamp record)
-                        view (fn-held-binding record)))
+                        view))
 
 (verify-guards fn-pidx-sn-prepare-node)
 

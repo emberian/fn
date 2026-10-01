@@ -24,10 +24,9 @@
 (include-book "owner-prepare-outcome")
 
 (defun fn-irc-node-prepare (s generation msgid payload groups
-                              obligation-id subject evidence charge stamp carry binding)
+                              obligation-id subject evidence charge stamp carry)
   (declare (xargs :guard (fn-node-statep s) :verify-guards nil))
-  (if (or (not (fn-ab-p binding))
-          (mbe :logic (not (fn-node-statep s)) :exec nil))
+  (if (mbe :logic (not (fn-node-statep s)) :exec nil)
       s
     (let ((retention (fn-node-retention s)))
       (if (not (fn-prc-admissiblep retention obligation-id subject :archive
@@ -49,7 +48,7 @@
                (cons (fn-retain-make-obligation obligation-id subject :archive
                                                 evidence charge)
                      (fn-retain-pins retention))
-               (fn-retain-releases retention)) binding)
+               (fn-retain-releases retention)))
              (fn-node-bindings s))))))))
 
 (encapsulate ()
@@ -61,9 +60,9 @@
   (implies (fn-prc-carryp carry)
            (equal (fn-irc-node-prepare s generation msgid payload groups
                                        obligation-id subject evidence charge
-                                       stamp carry binding)
+                                       stamp carry)
                   (fn-node-prepare s generation msgid payload groups
-                                   obligation-id subject evidence charge stamp binding)))
+                                   obligation-id subject evidence charge stamp)))
   :hints (("Goal" :in-theory (e/d (fn-irc-node-prepare fn-node-prepare
                                    fn-retain-admit)
                                   (fn-node-statep fn-retain-admissiblep
@@ -163,7 +162,7 @@
                                 (fn-record-release-evidence article)
                                 (fn-record-charge article)
                                 (fn-record-stamp article)
-                                carry (fn-held-binding article))))
+                                carry)))
           (if (not (fn-node-pending-matchesp
                     prepared
                     (fn-record-txid article)

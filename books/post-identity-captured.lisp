@@ -4,7 +4,7 @@
 ; remaining scheduling fuel.  Group tails and strings are retained aliases.
 (in-package "ACL2")
 (include-book "octets-stobj")
-(include-book "acceptance-binding-held-gate")
+(include-book "held-record")
 (include-book "post-identity-source-cursor-invariants")
 (include-book "pagestore-digest-byte-cursor")
 (include-book "reclaim-tombstone")

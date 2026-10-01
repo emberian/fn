@@ -14,4 +14,4 @@
                   (fn-record-charge w) (fn-record-stamp w)
                   (fn-held-facts-of bytes)
                   (fn-held-context-of bytes keyring generation)
-                  nil nil (fn-row-binding w))))
+                  nil nil)))

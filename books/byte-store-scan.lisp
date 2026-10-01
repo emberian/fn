@@ -444,17 +444,17 @@
                   (fn-bs-row-wire (nth n rows) arena))))
 
 ; The vocabularies are disjoint by shape: a held row's wire form is an
-; twelve-wide list with a natural head and its mandatory acceptance binding.
-; No other wire kind has that shape (store-intern's disjointness facts).
+; eleven-wide list with a natural head, which no other wire kind is (the
+; disjointness facts are store-intern's, restated here below it).
 (defthm fn-bs-held-wire-shape
   (implies (fn-held-p h)
            (and (true-listp (fn-held-wire h b))
-                (equal (len (fn-held-wire h b)) 12)
+                (equal (len (fn-held-wire h b)) 11)
                 (natp (car (fn-held-wire h b)))))
   :hints (("Goal" :use ((:instance fn-held-p-forward-natural-head (x h)))
            :in-theory (enable fn-held-wire fn-record-make fn-record-sequence))))
 (defthm fn-bs-natural-head-is-no-other-wire-event
-  (implies (and (natp (car x)) (equal (len x) 12))
+  (implies (and (natp (car x)) (equal (len x) 11))
            (and (not (fn-store-retention-event-p x))
                 (not (fn-stxe-p x)) (not (fn-stxk-p x)) (not (fn-stxa-p x))
                 (not (fn-cpe-eventp x)) (not (fn-cac-eventp x))

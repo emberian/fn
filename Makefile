@@ -2127,7 +2127,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/image-world \
 	books/image-world-dtn \
 	books/image-world-store-test \
-    books/acceptance-binding-held-gate \
     books/connection-receiver-source-invariants \
     books/owner-reader-response-domain \
     books/pagestore-digest-block-predicate \
@@ -2314,8 +2313,6 @@ ACL2_BOOKS ?= books/defrecord \
     books/index-writer-source-fence \
     tests/acl2/index-writer-source-fence-tests \
     books/catalog-prepare-sealed \
-    books/index-backing-served-producer-carry \
-    tests/acl2/index-backing-served-producer-tests \
     books/index-backing-writer \
     books/owner-node-secret-accessor \
     books/owner-report-owner-accessors \
@@ -2340,10 +2337,7 @@ ACL2_BOOKS ?= books/defrecord \
     books/group-number-source-pending \
     books/allocation-turn-raw-bridge \
     books/store-octet-entry \
-    tests/acl2/index-backing-publication-row-carry-tests \
-    books/index-backing-publication-row-carry \
     books/catalog-prepare \
-    books/index-backing-row-carry \
     books/store-intern-row \
     books/stx-commit-codec \
     books/substrate-committed-transcript \
