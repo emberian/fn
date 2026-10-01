@@ -10,21 +10,21 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2729 |
+| Books read | 2731 |
 | Certification roots in the Makefile | 2365 |
-| Books inside the root closure | 2641 |
-| `defthm` and `defthmd` events | 36097 |
-| `defun` events | 23030 |
+| Books inside the root closure | 2642 |
+| `defthm` and `defthmd` events | 36260 |
+| `defun` events | 23095 |
 | Functions with verified guards | 3847 |
-| Functions declared `:verify-guards nil` and never verified | 2932 |
-| Functions left at the default with an explicit guard | 12839 |
-| Functions left at the default with no guard | 3412 |
+| Functions declared `:verify-guards nil` and never verified | 2977 |
+| Functions left at the default with an explicit guard | 12840 |
+| Functions left at the default with no guard | 3431 |
 | `assert-event` checks | 25501 |
 | `must-fail` checks | 2611 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
-| `encapsulate` events | 209 |
-| Theorems flagged SUSPECT by shape | 1345 |
-| Export-hygiene warnings | 398 |
+| `encapsulate` events | 210 |
+| Theorems flagged SUSPECT by shape | 1347 |
+| Export-hygiene warnings | 400 |
 | Enabled-projection warnings | 80 |
 | Teeth-form warnings | 279 |
 | Include-hygiene warnings | 3563 |
@@ -644,8 +644,10 @@ that `make certify` requests.
 | `books/def-carried.lisp` | root | 2 | 47 | 0/0/0/47 | 0 | 0 | 0 |
 | `books/def-loop.lisp` | root | 5 | 31 | 0/0/0/31 | 0 | 0 | 0 |
 | `books/def-representation-lib.lisp` | root | 15 | 5 | 0/0/5/0 | 0 | 0 | 0 |
+| `books/def-representation-paged-tree.lisp` | - | 18 | 10 | 0/9/0/1 | 0 | 0 | 1 |
+| `books/def-representation-paged.lisp` | closure | 145 | 41 | 0/36/1/4 | 0 | 0 | 1 |
 | `books/def-representation-tree.lisp` | closure | 57 | 18 | 1/10/4/3 | 0 | 0 | 2 |
-| `books/def-representation.lisp` | root | 0 | 14 | 0/0/0/14 | 0 | 0 | 0 |
+| `books/def-representation.lisp` | root | 0 | 28 | 0/0/0/28 | 0 | 0 | 0 |
 | `books/defevent.lisp` | root | 0 | 14 | 0/0/0/14 | 0 | 0 | 0 |
 | `books/definterface.lisp` | root | 0 | 50 | 0/0/0/50 | 0 | 0 | 0 |
 | `books/defkeystone.lisp` | root | 0 | 28 | 0/0/0/28 | 0 | 0 | 0 |
@@ -2825,6 +2827,8 @@ Every theorem below is proved; none may be cited as a registry event in
 
 | Theorem | Book | Line | Why |
 | --- | --- | --- | --- |
+| `adt-h-puts-of-atom` | `books/def-representation-paged-tree.lisp` | 64 | arm-of-definition: the hypotheses select one IF/COND arm of adt-h-puts and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of adt-h-puts and the conclusion is that branch's value |
+| `adt-pg-set-c-is-room-then-set` | `books/def-representation-paged.lisp` | 1296 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
 | `adt-pool-cputs-of-atom` | `books/def-representation-tree.lisp` | 264 | arm-of-definition: the hypotheses select one IF/COND arm of adt-pool-cputs and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of adt-pool-cputs and the conclusion is that branch's value |
 | `adt-pool-puts-of-atom` | `books/def-representation-tree.lisp` | 155 | arm-of-definition: the hypotheses select one IF/COND arm of adt-pool-puts and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of adt-pool-puts and the conclusion is that branch's value |
 | `bpcd-job-key-of-with-status` | `books/bp-node-contact-driver.lisp` | 61 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
