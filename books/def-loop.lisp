@@ -69,6 +69,11 @@
 ; :keep-order :skip-first emits (if KEEP RECUR (cons BODY RECUR));
 ; the default :cons-first preserves the original expansion.
 ;
+; :map :base TERM emits (if TERM TAIL INNER), preserving every inner
+; option. Its only constraint is (implies (not TERM) (consp XS)); the
+; instance discharges it with the defining equations in minimal-theory.
+; :base excludes :while, including an explicitly supplied :while t.
+;
 ; :take :base TERM emits a base-first IF. The shape requires that
 ; (not TERM) imply (posp COUNT); each instance discharges that progress
 ; condition along with the two defining equations. :base excludes :while.
@@ -104,9 +109,10 @@
 
 ; -----------------------------------------------------------------------------
 ; The library: one constrained shape and one bridge per form.  The
-; constrained functions have no axioms (the local witnesses are trivial),
-; so a functional instance owes only the definitional equations of the two
-; defined functions it substitutes.  The variables are `dl-xs', `dl-acc',
+; element/selector functions have no constraints (their local witnesses
+; are trivial). Base-first shapes additionally require progress, and :into
+; requires the append equation below. An instance owes these constraints
+; plus the defining equations of the two functions it substitutes.  The variables are `dl-xs', `dl-acc',
 ; `dl-n', `dl-st' so that an instance's own formals never clash with them.
 
 ; --- :map
@@ -182,6 +188,43 @@
   (equal (fn-dl-map-fixed-loop dl-xs dl-acc)
          (revappend (true-list-fix dl-acc) (fn-dl-map dl-xs)))
   :hints (("Goal" :induct (fn-dl-map-fixed-loop dl-xs dl-acc))))
+
+; --- :map with a base-first predicate. The only base constraint is progress.
+; FIXP selects the existing accumulator convention; it has no constraints.
+; Skip-first instances negate KEEP in the substitution, leaving the emitted
+; branch order intact. All combinations use this one bridge.
+(encapsulate
+  (((fn-dl-mb-base *) => *) ((fn-dl-mb-fixp) => *))
+  (local (defun fn-dl-mb-base (xs) (atom xs)))
+  (local (defun fn-dl-mb-fixp () nil))
+  (defthm fn-dl-mb-base-progress
+    (implies (not (fn-dl-mb-base xs)) (consp xs))))
+
+(defun fn-dl-map-base (dl-xs)
+  (if (fn-dl-mb-base dl-xs)
+      (fn-dl-tail dl-xs)
+    (if (fn-dl-stop dl-xs)
+        (fn-dl-stop-value dl-xs)
+      (if (fn-dl-keep dl-xs)
+          (cons (fn-dl-f dl-xs) (fn-dl-map-base (cdr dl-xs)))
+        (fn-dl-map-base (cdr dl-xs))))))
+
+(defun fn-dl-map-base-loop (dl-xs dl-acc)
+  (if (fn-dl-mb-base dl-xs)
+      (revappend (if (fn-dl-mb-fixp) (true-list-fix dl-acc) dl-acc)
+                 (fn-dl-tail dl-xs))
+    (if (fn-dl-stop dl-xs)
+        (revappend (if (fn-dl-mb-fixp) (true-list-fix dl-acc) dl-acc)
+                   (fn-dl-stop-value dl-xs))
+      (if (fn-dl-keep dl-xs)
+          (fn-dl-map-base-loop (cdr dl-xs) (cons (fn-dl-f dl-xs) dl-acc))
+        (fn-dl-map-base-loop (cdr dl-xs) dl-acc)))))
+
+(defthm fn-dl-map-base-loop-is-revappend
+  (equal (fn-dl-map-base-loop dl-xs dl-acc)
+         (revappend (if (fn-dl-mb-fixp) (true-list-fix dl-acc) dl-acc)
+                    (fn-dl-map-base dl-xs)))
+  :hints (("Goal" :induct (fn-dl-map-base-loop dl-xs dl-acc))))
 
 ; --- :take
 
@@ -307,7 +350,9 @@
            (equal (fn-dl-into-loop dl-xs dl-st) (append dl-st (fn-dl-into-map dl-xs))))
   :hints (("Goal" :induct (fn-dl-into-loop dl-xs dl-st))))
 
-(in-theory (disable fn-dl-map fn-dl-map-loop fn-dl-map-loop-is-revappend
+(in-theory (disable fn-dl-mb-base-progress fn-dl-map-base
+                    fn-dl-map-base-loop fn-dl-map-base-loop-is-revappend
+                    fn-dl-map fn-dl-map-loop fn-dl-map-loop-is-revappend
                     fn-dl-map-fixed-loop fn-dl-map-fixed-loop-is-revappend
                     fn-dl-map-skip fn-dl-map-skip-loop fn-dl-map-skip-loop-is-revappend
                     fn-dl-take fn-dl-take-loop fn-dl-take-loop-is-revappend
@@ -351,6 +396,15 @@
   (declare (xargs :mode :program))
   (if bindings `(let* ,bindings ,body) body))
 
+; Base-first map proof substitutions may use only some LET bindings (for
+; example KEEP defaults to T). Declarations affect translation checks only;
+; they do not alter the instance's emitted logic or loop bodies.
+(defun fn-dl-map-proof-let (base bindings body)
+  (declare (xargs :mode :program))
+  (if (and base bindings)
+      `(let* ,bindings (declare (ignorable ,@(strip-cars bindings))) ,body)
+    (fn-dl-let bindings body)))
+
 ; TERM with the element variable ELT (if any) standing for `(car XS)'.
 (defun fn-dl-elt (elt xs term)
   (declare (xargs :mode :program))
@@ -387,11 +441,12 @@
 ; The generated events.
 
 (defun fn-dl-map-events (name formals xs elt body while stop stop-value keep tail
-                              let guard guard-hints guard-theory acc loop measure keep-order loop-guard acc-fix stobjs)
+                              let guard guard-hints guard-theory acc loop measure keep-order loop-guard acc-fix stobjs base)
   (declare (xargs :mode :program))
   (let* ((fixed (if acc-fix `(true-list-fix ,acc) acc))
          (body (fn-dl-elt elt xs body))
          (while (fn-dl-elt elt xs while))
+         (base (fn-dl-elt elt xs base))
          (stop (fn-dl-elt elt xs stop))
          (stop-value (fn-dl-elt elt xs stop-value))
          (keep (fn-dl-elt elt xs keep))
@@ -409,20 +464,28 @@
                           `(cons ,body ,rec)
                         `(if ,keep (cons ,body ,rec) ,rec))))
          (logic-body
-          `(if ,test
-               ,(fn-dl-let let (if stop `(if ,stop ,stop-value ,logic-inner) logic-inner))
-             ,tail))
+          (if base
+              `(if ,base ,tail
+                 ,(fn-dl-let let (if stop `(if ,stop ,stop-value ,logic-inner) logic-inner)))
+            `(if ,test
+                 ,(fn-dl-let let (if stop `(if ,stop ,stop-value ,logic-inner) logic-inner))
+               ,tail)))
          (loop-inner (if (eq keep-order :skip-first)
                          `(if ,keep ,loop-skip ,loop-cons)
                        (if (eq keep t)
                          loop-cons
                        `(if ,keep ,loop-cons ,loop-skip))))
          (loop-body
-          `(if ,test
-               ,(fn-dl-let let (if stop
-                                   `(if ,stop (revappend ,fixed ,stop-value) ,loop-inner)
-                                 loop-inner))
-             (revappend ,fixed ,tail))))
+          (if base
+              `(if ,base (revappend ,fixed ,tail)
+                 ,(fn-dl-let let (if stop
+                                     `(if ,stop (revappend ,fixed ,stop-value) ,loop-inner)
+                                   loop-inner)))
+            `(if ,test
+                 ,(fn-dl-let let (if stop
+                                     `(if ,stop (revappend ,fixed ,stop-value) ,loop-inner)
+                                   loop-inner))
+               (revappend ,fixed ,tail)))))
     `((defun ,loop (,@formals ,acc)
         (declare (xargs :guard ,(if (eq loop-guard :default)
                                     (if acc-fix guard (fn-dl-and guard `(true-listp ,acc)))
@@ -443,20 +506,27 @@
          :hints (("Goal"
                   :use ((:instance
                          (:functional-instance
-                          ,(cond (acc-fix 'fn-dl-map-fixed-loop-is-revappend)
+                          ,(cond (base 'fn-dl-map-base-loop-is-revappend)
+                                 (acc-fix 'fn-dl-map-fixed-loop-is-revappend)
                                  ((eq keep-order :skip-first) 'fn-dl-map-skip-loop-is-revappend)
                                  (t 'fn-dl-map-loop-is-revappend))
-                          (fn-dl-while (lambda (,xs) ,while))
-                          (fn-dl-stop (lambda (,xs) ,(if stop (fn-dl-let let stop) nil)))
-                          (fn-dl-stop-value (lambda (,xs) ,(if stop (fn-dl-let let stop-value) nil)))
+                          ,@(if base
+                                `((fn-dl-mb-base (lambda (,xs) ,base))
+                                  (fn-dl-mb-fixp (lambda () ,acc-fix)))
+                              `((fn-dl-while (lambda (,xs) ,while))))
+                          (fn-dl-stop (lambda (,xs) ,(if stop (fn-dl-map-proof-let base let stop) nil)))
+                          (fn-dl-stop-value (lambda (,xs) ,(if stop (fn-dl-map-proof-let base let stop-value) nil)))
                           (fn-dl-keep (lambda (,xs)
-                                       ,(fn-dl-let let
-                                          (if (and acc-fix (eq keep-order :skip-first))
+                                       ,(fn-dl-map-proof-let base let
+                                          (if (and (or base acc-fix) (eq keep-order :skip-first))
                                               `(not ,keep) keep))))
-                          (fn-dl-f (lambda (,xs) ,(fn-dl-let let body)))
+                          (fn-dl-f (lambda (,xs) ,(fn-dl-map-proof-let base let body)))
                           (fn-dl-tail (lambda (,xs) ,tail))
-                          (,(if (and (not acc-fix) (eq keep-order :skip-first)) 'fn-dl-map-skip 'fn-dl-map) (lambda (,xs) (,name ,@formals)))
-                          (,(cond (acc-fix 'fn-dl-map-fixed-loop)
+                          (,(cond (base 'fn-dl-map-base)
+                                  ((and (not acc-fix) (eq keep-order :skip-first)) 'fn-dl-map-skip)
+                                  (t 'fn-dl-map)) (lambda (,xs) (,name ,@formals)))
+                          (,(cond (base 'fn-dl-map-base-loop)
+                                  (acc-fix 'fn-dl-map-fixed-loop)
                                   ((eq keep-order :skip-first) 'fn-dl-map-skip-loop)
                                   (t 'fn-dl-map-loop)) (lambda (,xs ,acc) (,loop ,@formals ,acc))))
                          (dl-xs ,xs) (dl-acc ,acc)))
@@ -721,8 +791,8 @@
       (er soft ctx "~x0: :keep-order must be :cons-first or :skip-first." name))
      ((and (not (eq keep-order :cons-first)) (not (eq shape :map)))
       (er soft ctx "~x0: :keep-order is a :map option." name))
-     ((and base (not (eq shape :take)))
-      (er soft ctx "~x0: :base is a :take option." name))
+     ((and base (not (member-eq shape '(:map :take))))
+      (er soft ctx "~x0: :base is a :map or :take option." name))
      ((and base (not (eq while t)))
       (er soft ctx "~x0: :base and :while are mutually exclusive." name))
      ((and (not (eq loop-guard :default)) (not (eq shape :map)))
@@ -758,13 +828,13 @@
        (fn-dl-readonly-check
         name stobjs
         (fn-dl-elt elt xs
-          (fn-dl-let let `(list ,body ,while ,stop ,stop-value ,keep ,tail))) state)
+          (fn-dl-let let `(list ,body ,while ,stop ,stop-value ,keep ,tail ,base))) state)
        (value
        `(encapsulate
           ()
           ,@(case shape
               (:map (fn-dl-map-events name formals xs elt body while stop stop-value keep tail
-                                      let guard guard-hints guard-theory acc loop measure keep-order loop-guard acc-fix stobjs))
+                                      let guard guard-hints guard-theory acc loop measure keep-order loop-guard acc-fix stobjs base))
               (:take (if base
                          (fn-dl-take-base-events name formals n xs elt body base tail
                                                 guard guard-hints guard-theory acc loop measure)
@@ -780,11 +850,14 @@
 (defmacro def-loop (name formals &key
                          (shape ':map)
                          over count elt body
-                         (while 't) stop stop-value (keep 't) (tail 'nil) let
+                         (while 't while-p) stop stop-value (keep 't) (tail 'nil) let
                          (guard 't) guard-hints guard-theory measure
                          into write write-theory map
-                         (acc 'acc) loop (keep-order ':cons-first) base (loop-guard ':default) acc-fix stobjs)
+                         (acc 'acc) loop (keep-order ':cons-first) (base 'nil base-p) (loop-guard ':default) acc-fix stobjs)
   `(make-event
-    (fn-dl-fn ',name ',formals ',shape ',over ',count ',elt ',body ',while ',stop ',stop-value
+    (fn-dl-fn ',name ',formals ',shape ',over ',count ',elt ',body
+              ',(if (and (eq shape :map) base-p while-p) :explicit-while while) ',stop ',stop-value
               ',keep ',tail ',let ',guard ',guard-hints ',guard-theory ',measure
-              ',into ',write ',write-theory ',map ',acc ',loop ',keep-order ',base ',loop-guard ',acc-fix ',stobjs state)))
+              ',into ',write ',write-theory ',map ',acc ',loop ',keep-order
+              ',(if (and (not (eq shape :take)) base-p (null base)) '(quote nil) base)
+              ',loop-guard ',acc-fix ',stobjs state)))

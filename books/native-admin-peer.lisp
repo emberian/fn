@@ -187,25 +187,9 @@ decoded as source-address for durable command compatibility."
   ; The hex test stays closed: the guard needs only its truth value.
   :hints (("Goal" :in-theory (disable fn-native-admin-carries-hexp))))
 
-(defun fn-native-admin-before-carries-loop (words acc)
-  (declare (xargs :guard (true-listp acc)))
-  (if (or (atom words) (equal (car words) "carries"))
-      (revappend acc nil)
-    (fn-native-admin-before-carries-loop (cdr words) (cons (car words) acc))))
-
-(defun fn-native-admin-before-carries (words)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (if (or (atom words) (equal (car words) "carries"))
-                  nil
-                (cons (car words) (fn-native-admin-before-carries (cdr words))))
-       :exec (fn-native-admin-before-carries-loop words nil)))
-
-(local
- (defthm fn-native-admin-before-carries-loop-is-revappend
-   (equal (fn-native-admin-before-carries-loop words acc)
-          (revappend acc (fn-native-admin-before-carries words)))))
-
-(verify-guards fn-native-admin-before-carries)
+(def-loop fn-native-admin-before-carries (words)
+  :shape :map :base (or (atom words) (equal (car words) "carries"))
+  :body (car words))
 
 (defun fn-native-admin-peer-plan (words)
   (declare (xargs :guard t))
@@ -419,25 +403,9 @@ decoded as source-address for durable command compatibility."
 
 ; The clauses after the base form: [carries EID ...] [releases-for EID ...],
 ; each list non-empty, in that order.  (mv ok carried releases).
-(defun fn-native-admin-bp-before-releases-loop (words acc)
-  (declare (xargs :guard (true-listp acc)))
-  (if (or (atom words) (equal (car words) "releases-for"))
-      (revappend acc nil)
-    (fn-native-admin-bp-before-releases-loop (cdr words) (cons (car words) acc))))
-
-(defun fn-native-admin-bp-before-releases (words)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (if (or (atom words) (equal (car words) "releases-for"))
-                  nil
-                (cons (car words) (fn-native-admin-bp-before-releases (cdr words))))
-       :exec (fn-native-admin-bp-before-releases-loop words nil)))
-
-(local
- (defthm fn-native-admin-bp-before-releases-loop-is-revappend
-   (equal (fn-native-admin-bp-before-releases-loop words acc)
-          (revappend acc (fn-native-admin-bp-before-releases words)))))
-
-(verify-guards fn-native-admin-bp-before-releases)
+(def-loop fn-native-admin-bp-before-releases (words)
+  :shape :map :base (or (atom words) (equal (car words) "releases-for"))
+  :body (car words))
 
 (defun fn-native-admin-bp-list-clauses (tail)
   (declare (xargs :guard t))
