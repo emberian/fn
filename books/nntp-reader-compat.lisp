@@ -55,6 +55,7 @@
 ;                                              the field OVER and HEAD carry
 
 (in-package "ACL2")
+(include-book "def-loop")
 (include-book "nntp-xref")
 (include-book "protocol-table") ; reply texts: (fn-proto-text ROW KEY)
 (include-book "nntp-article-block")
@@ -71,45 +72,11 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-rcompat-facts-held-loop (groups facts acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp facts)
-      (if (and (consp (car facts))
-               (consp (cdr (car facts)))
-               (member-equal (cadr (car facts)) (true-list-fix groups)))
-          (fn-rcompat-facts-held-loop groups (cdr facts) (cons (car facts) acc))
-        (fn-rcompat-facts-held-loop groups (cdr facts) acc))
-    (revappend acc nil)))
-
-(defun fn-rcompat-facts-held (groups facts)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp facts)
-           (if (and (consp (car facts)) (consp (cdr (car facts)))
-                    (member-equal (cadr (car facts)) (true-list-fix groups)))
-               (cons (car facts) (fn-rcompat-facts-held groups (cdr facts)))
-             (fn-rcompat-facts-held groups (cdr facts)))
-         nil)
-       :exec (fn-rcompat-facts-held-loop groups facts nil)))
-
-(local
- (defthm fn-rcompat-facts-held-loop-is-revappend
-   (equal (fn-rcompat-facts-held-loop groups facts acc)
-          (revappend acc (fn-rcompat-facts-held groups facts)))
-   :hints (("Goal" :induct (fn-rcompat-facts-held-loop groups facts acc)
-                   :in-theory (union-theories '(fn-rcompat-facts-held-loop fn-rcompat-facts-held revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-rcompat-facts-held-loop)
-
-(verify-guards fn-rcompat-facts-held
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-rcompat-facts-held)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-rcompat-facts-held-loop-is-revappend (acc nil))))))
+(def-loop fn-rcompat-facts-held (groups facts)
+  :shape :map
+  :over facts
+  :keep (and (consp (car facts)) (consp (cdr (car facts))) (member-equal (cadr (car facts)) (true-list-fix groups)))
+  :body (car facts))
 
 
 (defun fn-rcompat-held-env (env groups)
@@ -206,42 +173,11 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-rcompat-names-held-loop (groups names acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp names)
-      (if (member-equal (car names) (true-list-fix groups))
-          (fn-rcompat-names-held-loop groups (cdr names) (cons (car names) acc))
-        (fn-rcompat-names-held-loop groups (cdr names) acc))
-    (revappend acc nil)))
-
-(defun fn-rcompat-names-held (groups names)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp names)
-           (if (member-equal (car names) (true-list-fix groups))
-               (cons (car names) (fn-rcompat-names-held groups (cdr names)))
-             (fn-rcompat-names-held groups (cdr names)))
-         nil)
-       :exec (fn-rcompat-names-held-loop groups names nil)))
-
-(local
- (defthm fn-rcompat-names-held-loop-is-revappend
-   (equal (fn-rcompat-names-held-loop groups names acc)
-          (revappend acc (fn-rcompat-names-held groups names)))
-   :hints (("Goal" :induct (fn-rcompat-names-held-loop groups names acc)
-                   :in-theory (union-theories '(fn-rcompat-names-held-loop fn-rcompat-names-held revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-rcompat-names-held-loop)
-
-(verify-guards fn-rcompat-names-held
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-rcompat-names-held)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-rcompat-names-held-loop-is-revappend (acc nil))))))
+(def-loop fn-rcompat-names-held (groups names)
+  :shape :map
+  :over names
+  :keep (member-equal (car names) (true-list-fix groups))
+  :body (car names))
 
 
 (defun fn-rcompat-subscription-names (configured groups)
@@ -272,44 +208,11 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-rcompat-name-lines-loop (names acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp names)
-      (if (fn-nntp-safe-group-namep (car names))
-          (fn-rcompat-name-lines-loop (cdr names)
-                                      (cons (fn-nntp-string-octets (car names)) acc))
-        (fn-rcompat-name-lines-loop (cdr names) acc))
-    (revappend acc nil)))
-
-(defun fn-rcompat-name-lines (names)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp names)
-           (if (fn-nntp-safe-group-namep (car names))
-               (cons (fn-nntp-string-octets (car names))
-                     (fn-rcompat-name-lines (cdr names)))
-             (fn-rcompat-name-lines (cdr names)))
-         nil)
-       :exec (fn-rcompat-name-lines-loop names nil)))
-
-(local
- (defthm fn-rcompat-name-lines-loop-is-revappend
-   (equal (fn-rcompat-name-lines-loop names acc)
-          (revappend acc (fn-rcompat-name-lines names)))
-   :hints (("Goal" :induct (fn-rcompat-name-lines-loop names acc)
-                   :in-theory (union-theories '(fn-rcompat-name-lines-loop fn-rcompat-name-lines revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-rcompat-name-lines-loop)
-
-(verify-guards fn-rcompat-name-lines
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-rcompat-name-lines)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-rcompat-name-lines-loop-is-revappend (acc nil))))))
+(def-loop fn-rcompat-name-lines (names)
+  :shape :map
+  :over names
+  :keep (fn-nntp-safe-group-namep (car names))
+  :body (fn-nntp-string-octets (car names)))
 
 
 (defconst *fn-rcompat-subscriptions-initial*
