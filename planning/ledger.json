@@ -301,6 +301,9 @@
     "tests/acl2/defrecord-tests",
     "books/def-loop",
     "tests/acl2/def-loop-tests",
+    "books/def-representation-lib",
+    "books/def-representation",
+    "tests/acl2/def-representation-tests",
     "tests/acl2/defkeystone-tests",
     "tests/acl2/definterface-tests",
     "tests/acl2/definterface-recognizer-tests",
@@ -2345,10 +2348,10 @@
   ],
   "totals": {
     "books": 2691,
-    "books_in_root_closure": 2596,
-    "roots": 2340,
-    "theorems": 35097,
-    "functions": 22480,
+    "books_in_root_closure": 2599,
+    "roots": 2343,
+    "theorems": 35098,
+    "functions": 22479,
     "assert_events": 25190,
     "must_fails": 2546,
     "prover_refusals": 0,
@@ -2357,7 +2360,7 @@
       "verified": 3840,
       "declared-off": 2777,
       "default-guarded": 12616,
-      "default-unguarded": 3247
+      "default-unguarded": 3246
     },
     "suspect_theorems": 1328,
     "export_hygiene_warnings": 392,
@@ -17652,9 +17655,9 @@
     },
     {
       "book": "books/def-representation-lib.lisp",
-      "in_root_closure": false,
-      "is_root": false,
-      "theorems": 13,
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 14,
       "functions": 5,
       "guards": {
         "verified": 0,
@@ -17678,15 +17681,15 @@
     },
     {
       "book": "books/def-representation.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
-      "functions": 12,
+      "functions": 11,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 12
+        "default-unguarded": 11
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -26614,7 +26617,6 @@
       "includes": [
         "bp-eid-shape",
         "consumer-position",
-        "def-loop",
         "feed-pause",
         "identity",
         "native-admin-shape",
@@ -60194,8 +60196,8 @@
     },
     {
       "book": "tests/acl2/def-representation-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 6,
       "functions": 5,
       "guards": {
@@ -89694,7 +89696,7 @@
     {
       "theorem": "kind-of-result",
       "book": "books/native-admin-peer.lisp",
-      "line": 693,
+      "line": 692,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -89728,7 +89730,7 @@
     {
       "theorem": "name-of-result",
       "book": "books/native-admin-peer.lisp",
-      "line": 693,
+      "line": 692,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -89850,7 +89852,7 @@
     {
       "theorem": "status-of-result",
       "book": "books/native-admin-peer.lisp",
-      "line": 693,
+      "line": 692,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
