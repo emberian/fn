@@ -10,6 +10,7 @@
 ; fn-native-admin-plan stayed there.
 
 (in-package "ACL2")
+(include-book "def-loop")
 (include-book "native-admin-shape")
 (include-book "peer-config")
 (include-book "native-config")
@@ -388,26 +389,8 @@ decoded as source-address for durable command compatibility."
 ; process in the originator set.  Its auth-principal value cannot be a SHA-256
 ; principal hex, so this row does not grant an NNTP peer login as a side effect.
 ; D23: the source EIDs the neighbour may carry, one row each.
-(defun fn-native-admin-bp-carries-rows-loop (name eids acc)
-  (declare (xargs :guard (true-listp acc)))
-  (if (consp eids)
-      (fn-native-admin-bp-carries-rows-loop name (cdr eids) (cons (fn-cfg-row-make name "bp-boundary-carries" (car eids) 0) acc))
-    (revappend acc nil)))
-
-(defun fn-native-admin-bp-carries-rows (name eids)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (if (consp eids)
-                  (cons (fn-cfg-row-make name "bp-boundary-carries" (car eids) 0)
-                        (fn-native-admin-bp-carries-rows name (cdr eids)))
-                nil)
-       :exec (fn-native-admin-bp-carries-rows-loop name eids nil)))
-
-(local
- (defthm fn-native-admin-bp-carries-rows-loop-is-revappend
-   (equal (fn-native-admin-bp-carries-rows-loop name eids acc)
-          (revappend acc (fn-native-admin-bp-carries-rows name eids)))))
-
-(verify-guards fn-native-admin-bp-carries-rows)
+(def-loop fn-native-admin-bp-carries-rows (name eids)
+  :over eids :body (fn-cfg-row-make name "bp-boundary-carries" (car eids) 0))
 
 ; A carried or release EID has the shape above; its scheme prefix also keeps
 ; it from being confused with the decimal limits of the long form.
@@ -427,26 +410,8 @@ decoded as source-address for durable command compatibility."
 ; D23: the release-issuer EIDs whose receipts the neighbour may relay, one
 ; (NAME "bp-boundary-releases-for" EID 0) row each.  A separate row kind from
 ; the carried list: a carried source is not a release issuer.
-(defun fn-native-admin-bp-releases-rows-loop (name eids acc)
-  (declare (xargs :guard (true-listp acc)))
-  (if (consp eids)
-      (fn-native-admin-bp-releases-rows-loop name (cdr eids) (cons (fn-cfg-row-make name "bp-boundary-releases-for" (car eids) 0) acc))
-    (revappend acc nil)))
-
-(defun fn-native-admin-bp-releases-rows (name eids)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (if (consp eids)
-                  (cons (fn-cfg-row-make name "bp-boundary-releases-for" (car eids) 0)
-                        (fn-native-admin-bp-releases-rows name (cdr eids)))
-                nil)
-       :exec (fn-native-admin-bp-releases-rows-loop name eids nil)))
-
-(local
- (defthm fn-native-admin-bp-releases-rows-loop-is-revappend
-   (equal (fn-native-admin-bp-releases-rows-loop name eids acc)
-          (revappend acc (fn-native-admin-bp-releases-rows name eids)))))
-
-(verify-guards fn-native-admin-bp-releases-rows)
+(def-loop fn-native-admin-bp-releases-rows (name eids)
+  :over eids :body (fn-cfg-row-make name "bp-boundary-releases-for" (car eids) 0))
 
 (defun fn-native-admin-bp-list-keywordp (word)
   (declare (xargs :guard t))
