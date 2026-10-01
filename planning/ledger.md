@@ -12,22 +12,22 @@ stale. Counts describe artifacts, not coverage; see
 | --- | --- |
 | Books read | 2705 |
 | Certification roots in the Makefile | 2346 |
-| Books inside the root closure | 2618 |
-| `defthm` and `defthmd` events | 35360 |
-| `defun` events | 22662 |
+| Books inside the root closure | 2616 |
+| `defthm` and `defthmd` events | 35362 |
+| `defun` events | 22663 |
 | Functions with verified guards | 3840 |
-| Functions declared `:verify-guards nil` and never verified | 2863 |
+| Functions declared `:verify-guards nil` and never verified | 2864 |
 | Functions left at the default with an explicit guard | 12693 |
 | Functions left at the default with no guard | 3266 |
-| `assert-event` checks | 25277 |
-| `must-fail` checks | 2557 |
+| `assert-event` checks | 25281 |
+| `must-fail` checks | 2558 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 193 |
 | Theorems flagged SUSPECT by shape | 1334 |
 | Export-hygiene warnings | 392 |
 | Enabled-projection warnings | 79 |
 | Teeth-form warnings | 279 |
-| Include-hygiene warnings | 3369 |
+| Include-hygiene warnings | 3355 |
 | Host-names warnings | 3114 |
 | Hand-written-record warnings | 19 |
 
@@ -96,7 +96,7 @@ that `make certify` requests.
 | `books/acceptance.lisp` | root | 69 | 53 | 40/1/12/0 | 0 | 0 | 1 |
 | `books/account-adoption-input-source.lisp` | root | 0 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/account-adoption-operation-source.lisp` | - | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
-| `books/account-adoption-result.lisp` | closure | 0 | 3 | 0/0/3/0 | 0 | 0 | 0 |
+| `books/account-adoption-result.lisp` | - | 0 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/account-adoption-turn-continuation.lisp` | root | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/account-adoption-turn-return.lisp` | root | 0 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/account-adoption-turn-state.lisp` | root | 0 | 4 | 0/0/4/0 | 0 | 0 | 0 |
@@ -1670,7 +1670,7 @@ that `make certify` requests.
 | `books/tcpcl-records.lisp` | root | 133 | 99 | 62/0/37/0 | 0 | 0 | 77 |
 | `books/tcpcl-segment-source-cursor.lisp` | closure | 0 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/tcpcl-session.lisp` | root | 107 | 59 | 12/0/47/0 | 0 | 0 | 1 |
-| `books/tcpcl-source-continuation.lisp` | closure | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
+| `books/tcpcl-source-continuation.lisp` | - | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/tcpcl-spool.lisp` | root | 3 | 19 | 2/0/17/0 | 0 | 0 | 0 |
 | `books/tls-handshake-budget.lisp` | closure | 37 | 12 | 0/1/10/1 | 0 | 0 | 0 |
 | `books/tls-handshake-decision.lisp` | closure | 37 | 44 | 0/0/44/0 | 0 | 0 | 0 |
@@ -2251,8 +2251,8 @@ that `make certify` requests.
 | `tests/acl2/moderation-verbs-tests.lisp` | root | 0 | 7 | 0/1/1/5 | 70 | 7 | 0 |
 | `tests/acl2/msgid-index-concrete-tests.lisp` | root | 4 | 2 | 0/1/0/1 | 18 | 1 | 0 |
 | `tests/acl2/msgid-index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 13 | 5 | 0 |
-| `tests/acl2/msgid-linear-exec-tests.lisp` | root | 0 | 6 | 0/5/1/0 | 5 | 0 | 0 |
-| `tests/acl2/msgid-linear-tests.lisp` | root | 1 | 9 | 0/4/5/0 | 46 | 0 | 0 |
+| `tests/acl2/msgid-linear-exec-tests.lisp` | root | 2 | 7 | 0/6/1/0 | 6 | 1 | 0 |
+| `tests/acl2/msgid-linear-tests.lisp` | root | 1 | 9 | 0/4/5/0 | 49 | 0 | 0 |
 | `tests/acl2/msgid-pages-exec-tests.lisp` | root | 5 | 14 | 0/3/11/0 | 10 | 0 | 0 |
 | `tests/acl2/msgid-pages-tests.lisp` | root | 1 | 4 | 0/3/1/0 | 23 | 0 | 0 |
 | `tests/acl2/must-fail-checked.lisp` | closure | 1 | 7 | 0/0/2/5 | 0 | 2 | 0 |
