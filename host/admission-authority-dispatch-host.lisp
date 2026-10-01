@@ -8,12 +8,7 @@
 ; and source capture. A failed capture retains the original intent for recovery.
 (defun fn-owner-admission-authority-begin (state)
  (declare (xargs :stobjs state :mode :program :guard t))
- (if (and (boundp-global 'fn-owner-history-semantic-source state)
-          (or (and (fn-apr-widthp 10 (f-get-global 'fn-owner-history-semantic-source state)) (eq (fn-prl-nth 0 (f-get-global 'fn-owner-history-semantic-source state))
-              :history-config-source))
-             (and (fn-apr-widthp 3 (f-get-global 'fn-owner-history-semantic-source state))
-                  (eq (fn-prl-nth 0 (f-get-global 'fn-owner-history-semantic-source state))
-                      :history-config-acquiring))))
+ (if (fn-owner-admission-semantic-busy-p state)
      (mv :semantic-writer-busy nil state)
  (mv-let (word token state) (fn-owner-admission-prepare-intent state)
   (if (not (eq word :intent-retained)) (mv word token state)

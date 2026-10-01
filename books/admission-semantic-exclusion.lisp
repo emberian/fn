@@ -1,0 +1,11 @@
+; Fixed exclusion readout shared by pre-issue and retained E preparation.
+(in-package "ACL2")
+(include-book "snapshot-source-token")
+(defun fn-owner-admission-semantic-busy-p (state)
+ (declare (xargs :stobjs state :guard t))
+ (let ((source (and (boundp-global 'fn-owner-history-semantic-source state)
+                    (f-get-global 'fn-owner-history-semantic-source state))))
+  (or (and (fn-omk-widthp source 10)
+           (eq (fn-omk-at 0 source) :history-config-source))
+      (and (fn-omk-widthp source 3)
+           (eq (fn-omk-at 0 source) :history-config-acquiring)))))

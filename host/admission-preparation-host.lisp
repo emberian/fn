@@ -9,6 +9,7 @@
 (include-book "../books/owner-canonical-read-state")
 (include-book "../books/store-events-carried")
 (include-book "../books/history-semantic-writer")
+(include-book "../books/admission-semantic-exclusion")
 
 (defun fn-owner-admission-prepare-intent (state)
  (declare (xargs :stobjs state :mode :program
@@ -31,12 +32,7 @@
         (prior (and (boundp-global 'fn-owner-canonical-admission-executor state)
                     (f-get-global 'fn-owner-canonical-admission-executor state))))
   (cond
-   ((and (boundp-global 'fn-owner-history-semantic-source state)
-         (or (and (fn-apr-widthp 10 (f-get-global 'fn-owner-history-semantic-source state)) (eq (fn-prl-nth 0 (f-get-global 'fn-owner-history-semantic-source state))
-             :history-config-source))
-             (and (fn-apr-widthp 3 (f-get-global 'fn-owner-history-semantic-source state))
-                  (eq (fn-prl-nth 0 (f-get-global 'fn-owner-history-semantic-source state))
-                      :history-config-acquiring))))
+   ((fn-owner-admission-semantic-busy-p state)
     (mv :semantic-writer-busy token state))
    ; Re-entry across a raw escape must not execute the semantic producer
    ; twice. Neither the reservation nor its retained source is discarded.
