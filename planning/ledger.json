@@ -2026,6 +2026,10 @@
     "books/group-number-source-assignment",
     "books/ninep-group-directory-source",
     "tests/acl2/allocation-dual-ceiling-tests",
+    "books/runtime-bootstrap-completion",
+    "books/runtime-bootstrap-source",
+    "tests/acl2/runtime-bootstrap-completion-tests",
+    "tests/acl2/runtime-bootstrap-source-tests",
     "tests/acl2/ninep-group-directory-source-tests",
     "books/consumer-account-availability",
     "books/consumer-account-state",
@@ -2127,26 +2131,26 @@
     "tests/acl2/substrate-commit-codec-gap-tests"
   ],
   "totals": {
-    "books": 2324,
-    "books_in_root_closure": 2265,
-    "roots": 2123,
+    "books": 2328,
+    "books_in_root_closure": 2269,
+    "roots": 2127,
     "theorems": 33131,
-    "functions": 21193,
-    "assert_events": 24674,
+    "functions": 21203,
+    "assert_events": 24682,
     "must_fails": 2531,
     "prover_refusals": 0,
     "encapsulates": 168,
     "guards": {
       "verified": 3746,
-      "declared-off": 2594,
-      "default-guarded": 11822,
+      "declared-off": 2595,
+      "default-guarded": 11831,
       "default-unguarded": 3031
     },
     "suspect_theorems": 1310,
     "export_hygiene_warnings": 383,
     "enabled_projection_warnings": 79,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2973,
+    "include_hygiene_warnings": 2978,
     "host_names_warnings": 2630,
     "hand_written_record_warnings": 19
   },
@@ -34768,6 +34772,59 @@
       "read_error": null
     },
     {
+      "book": "books/runtime-bootstrap-completion.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "allocation-epoch",
+        "page-read-pool-state"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/runtime-bootstrap-source.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 7,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 7,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "allocation-epoch"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/runtime-operation-source.lisp",
       "in_root_closure": true,
       "is_root": false,
@@ -63331,6 +63388,58 @@
       "includes": [
         "../../books/retention-invariants",
         "must-fail-checked"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/runtime-bootstrap-completion-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 2,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/runtime-bootstrap-completion"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/runtime-bootstrap-source-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 6,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/runtime-bootstrap-source"
       ],
       "system_includes": [],
       "suspects": [],
@@ -93196,6 +93305,27 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/runtime-bootstrap-completion.lisp",
+        "line": 5,
+        "include": "allocation-epoch",
+        "included": "books/allocation-epoch.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/runtime-bootstrap-completion.lisp",
+        "line": 6,
+        "include": "page-read-pool-state",
+        "included": "books/page-read-pool-state.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/runtime-bootstrap-source.lisp",
+        "line": 4,
+        "include": "allocation-epoch",
+        "included": "books/allocation-epoch.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/runtime-operation-source.lisp",
         "line": 4,
         "include": "page-read-pool-state",
@@ -103392,6 +103522,20 @@
         "line": 9,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/runtime-bootstrap-completion-tests.lisp",
+        "line": 2,
+        "include": "../../books/runtime-bootstrap-completion",
+        "included": "books/runtime-bootstrap-completion.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/runtime-bootstrap-source-tests.lisp",
+        "line": 2,
+        "include": "../../books/runtime-bootstrap-source",
+        "included": "books/runtime-bootstrap-source.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

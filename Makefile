@@ -2037,6 +2037,10 @@ ACL2_BOOKS ?= books/defrecord \
     books/group-number-source-assignment \
     books/ninep-group-directory-source \
     tests/acl2/allocation-dual-ceiling-tests \
+    books/runtime-bootstrap-completion \
+    books/runtime-bootstrap-source \
+    tests/acl2/runtime-bootstrap-completion-tests \
+    tests/acl2/runtime-bootstrap-source-tests \
     tests/acl2/ninep-group-directory-source-tests \
     books/consumer-account-availability \
     books/consumer-account-state \
