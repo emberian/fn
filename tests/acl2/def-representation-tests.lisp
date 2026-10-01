@@ -314,9 +314,9 @@
 ; 5. The world rows.
 
 (assert-event (equal (cdr (assoc-eq 'drt-pay (table-alist 'fn-generated (w state))))
-                     '(:def-representation :scalar t :generic nil :implementation drt-pay :invariant nil :trees nil :write-once nil)))
+                     '(:def-representation :scalar t :generic nil :implementation drt-pay :invariant nil :trees nil :write-once nil :paged nil)))
 (assert-event (equal (cdr (assoc-eq 'drt-gen (table-alist 'fn-generated (w state))))
-                     '(:def-representation :scalar t :generic t :implementation drt-gen-cols :invariant nil :trees nil :write-once nil)))
+                     '(:def-representation :scalar t :generic t :implementation drt-gen-cols :invariant nil :trees nil :write-once nil :paged nil)))
 
 ; -----------------------------------------------------------------------------
 ; 6. A TREE field (books/def-representation-tree.lisp, lane paged-catalog-3):
@@ -455,7 +455,7 @@
 
 (assert-event (equal (cdr (assoc-eq 'drt-t1 (table-alist 'fn-generated (w state))))
                      '(:def-representation :scalar nil :generic nil :implementation drt-t1 :invariant nil
-                       :trees (tr) :write-once nil)))
+                       :trees (tr) :write-once nil :paged nil)))
 
 ; -----------------------------------------------------------------------------
 ; 7. WRITE-ONCE (:write-once t, lane paged-catalog-4, Codex r21 F1): no
@@ -601,4 +601,4 @@
 
 (assert-event (equal (cdr (assoc-eq 'drt-w1 (table-alist 'fn-generated (w state))))
                      '(:def-representation :scalar nil :generic nil :implementation drt-w1 :invariant nil
-                       :trees (tr) :write-once t)))
+                       :trees (tr) :write-once t :paged nil)))
