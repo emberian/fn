@@ -124,8 +124,12 @@
   (if (equal (car (rrt-select status s (len records) k)) :checkpoint)
       (rrt-open ckpt configs frontier (nthcdr s records))
     (rrt-full-open configs frontier records)))
+; The ground open always succeeds and holds the records it opened.
+(defun rrt-open-okp (st) (declare (xargs :guard t :verify-guards nil)) (equal (car st) :opened))
+(defun rrt-holds (st r) (declare (xargs :guard t :verify-guards nil)) (member-equal r (nth 3 st)))
 
-; The medium's theorem, instantiated: the ground medium meets the interface.
+; The medium's theorem, instantiated: the ground medium meets the interface
+; (its three constraints discharged, the holding one included).
 (defthm rrt-open-is-the-full-open-of-the-recovered-records
   (implies (equal ckpt (rrt-capture configs (take s records)))
            (equal (rrt-composed-open status s ckpt configs frontier records k)
@@ -137,9 +141,52 @@
                   (fn-rr-medium-open rrt-open)
                   (fn-rr-medium-full-open rrt-full-open)
                   (fn-rr-medium-select rrt-select)
+                  (fn-rr-medium-open-okp rrt-open-okp)
+                  (fn-rr-medium-holds rrt-holds)
                   (fn-rr-open rrt-composed-open)))
            :in-theory (enable rrt-composed-open rrt-select rrt-open rrt-capture
-                              rrt-full-open))))
+                              rrt-full-open rrt-open-okp rrt-holds))))
+
+; The keystone itself over the ground medium: the literal theorem with the
+; medium's five functions instantiated (the Codex review of 2d1b10ed7, F4:
+; the positive witness below asserts THIS theorem's antecedent and
+; conclusion, not a paraphrase).
+(defthm rrt-keystone
+  (let ((recovered (fn-rr-recovered-records image ino genesis (fn-bs-unit bs) max next-txid)))
+    (implies (and (fn-lgk-relp bs ks ino genesis max)
+                  (fn-bs-crash-imagep bs image)
+                  (fn-lg-platform-tears-p
+                   (nthcdr (fn-lgk-frontier ks) (fn-bs-durable-content image ino))
+                   (fn-lgk-inflight ks) (fn-lgk-last ks) (fn-bs-unit bs))
+                  (natp s)
+                  (<= s (len (fn-lgk-committed ks)))
+                  (equal ckpt (rrt-capture configs (take s (fn-lgk-committed ks)))))
+             (and (fn-rr-tree-sequence-memberp recovered (fn-lgk-committed ks)
+                                               (fn-lgk-inflight ks))
+                  (equal (rrt-composed-open status s ckpt configs frontier recovered k)
+                         (rrt-full-open configs frontier recovered))
+                  (implies (member-equal r (take (fn-lgk-acked ks) (fn-lgk-committed ks)))
+                           (and (member-equal r recovered)
+                                (implies (rrt-open-okp
+                                          (rrt-composed-open status s ckpt configs frontier
+                                                             recovered k))
+                                         (rrt-holds
+                                          (rrt-composed-open status s ckpt configs frontier
+                                                             recovered k)
+                                          r)))))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:functional-instance
+                  fn-rr-recovery-refines-a-prefix-with-every-acknowledged-record
+                  (fn-rr-medium-capture rrt-capture)
+                  (fn-rr-medium-open rrt-open)
+                  (fn-rr-medium-full-open rrt-full-open)
+                  (fn-rr-medium-select rrt-select)
+                  (fn-rr-medium-open-okp rrt-open-okp)
+                  (fn-rr-medium-holds rrt-holds)
+                  (fn-rr-open rrt-composed-open)))
+           :in-theory (enable rrt-composed-open rrt-select rrt-open rrt-capture
+                              rrt-full-open rrt-open-okp rrt-holds))))
 
 ; Evaluated on the ground: an image bound at S = 0, 1, 2 (within K = 4),
 ; past K (K = 0: the full replay), and an absent image, each the full open
@@ -154,6 +201,44 @@
         (equal (rrt-composed-open :ok 1 (rrt-capture nil (take 1 rec)) nil 9 rec 0) full)
         (equal (car (rrt-select :ok 1 (len rec) 0)) :full-replay)
         (equal (rrt-composed-open :absent 0 nil nil 9 rec 4) full))))
+
+; -----------------------------------------------------------------------------
+; The reachable positive witness of rrt-keystone, complete antecedent and
+; conclusion, at two crash points: log-written with the batch landed whole
+; (the exact tear: fn-lg-platform-tears-p evaluates through its exact arm
+; and the empty batch, reaching no constrained call) and log-fenced
+; (nothing in flight).  The image is fn-bs-crash under choices asserted
+; admissible (fn-bs-crash-imagep's executable form).  At a non-exact tear
+; the premise is A-CRYPTO-TRAILER's constrained consequent and cannot be
+; evaluated: its applicability is the assumption's own tooth
+; (tests/acl2/assumptions-tests.lisp), and the local witness of
+; fn-assume-crash-tearp admits only the exact tear (the open item F4 of the
+; Codex review, recorded in specs/recovery-refinement.md section 6).
+(defun rrt-full-witness-p (pair choices s r)
+  (declare (xargs :guard t :verify-guards nil))
+  (let* ((bs (car pair)) (ks (cdr pair))
+         (image (fn-bs-crash bs choices))
+         (recovered (fn-rr-recovered-records image 0 (rrt-genesis) (fn-bs-unit bs) (rrt-max) 0))
+         (ckpt (rrt-capture nil (take s (fn-lgk-committed ks))))
+         (opened (rrt-composed-open :ok s ckpt nil 9 recovered 4)))
+    (and ; the antecedent
+         (fn-lgk-relp bs ks 0 (rrt-genesis) (rrt-max))
+         (fn-bs-crash-choicesp choices (fn-bs-pending bs) (fn-bs-unit bs))
+         (fn-lg-platform-tears-p (nthcdr (fn-lgk-frontier ks) (fn-bs-durable-content image 0))
+                                 (fn-lgk-inflight ks) (fn-lgk-last ks) (fn-bs-unit bs))
+         (natp s) (<= s (len (fn-lgk-committed ks)))
+         (member-equal r (take (fn-lgk-acked ks) (fn-lgk-committed ks)))
+         ; the conclusion
+         (fn-rr-tree-sequence-memberp recovered (fn-lgk-committed ks) (fn-lgk-inflight ks))
+         (equal opened (rrt-full-open nil 9 recovered))
+         (member-equal r recovered)
+         (rrt-open-okp opened)
+         (rrt-holds opened r))))
+(assert-event
+ (and (rrt-full-witness-p (rrt-appended) (list (rrt-sels (rrt-batch-units) :new)) 1 (rrt-r 1))
+      (rrt-full-witness-p (rrt-appended) (list (rrt-sels (rrt-batch-units) :new)) 2 (rrt-r 2))
+      (rrt-full-witness-p (nth 1 (rrt-fence-run)) nil 2 (rrt-r 2))
+      (rrt-full-witness-p (nth 1 (rrt-fence-run)) nil 0 (rrt-r 1))))
 
 ; -----------------------------------------------------------------------------
 ; MUTATION: a recovery that drops an acknowledged record.  The image whose
@@ -199,32 +284,53 @@
      (equal (rrt-composed-open :ok 2 (rrt-capture nil (list (rrt-r 2) (rrt-r 1))) nil 9 rec 4)
             (rrt-full-open nil 9 rec)))))
 
-; The relation R: a store whose pending write at the frontier is the log of
-; a record (r4) other than the one the kernel holds in flight (r3) is
-; unrelated (R's pending conjunct), and the image where that write lands
-; whole recovers r1 r2 r4: no tree-sequence member over COMMITTED and
-; INFLIGHT = (r3).  (The related state's images are, above.)
+; The relation R alone: the store at log-written with a SECOND pending
+; write to the segment, the log of r4 chained after r3's entry and placed
+; after it, while the kernel holds r3 alone in flight.  It is unrelated
+; (R's pending conjunct: the segment's write is not the only pending
+; operation; the lifted relation of books/recovery-refinement-concurrent
+; fails the same way, two writes to the segment), and every other
+; hypothesis is kept: the choices are admissible, the trailer premise
+; evaluates true on the image where both land whole (r3's entry is exact
+; and the batch is then exhausted, so no constrained call is reached), S
+; and the binding are the witness's own.  That image recovers r1 r2 r3 r4:
+; no tree-sequence member over COMMITTED and INFLIGHT = (r3).  (A single
+; write of r4 in r3's place, or of r3 r4 in one entry, would also falsify
+; the trailer premise: two hypotheses removed, the Codex review's F3.)
 (defun rrt-wrong-batch ()
   (declare (xargs :guard t :verify-guards nil))
   (let* ((bs (car (rrt-appended)))
          (ks (cdr (rrt-appended)))
-         (w (car (fn-bs-pending bs))))
+         (w (car (fn-bs-pending bs)))
+         (prev4 (fn-lg-scan-last (nth 3 w) (fn-lgk-last ks) (rrt-unit) (rrt-max))))
     (fn-bs-make (fn-bs-unit bs) (fn-bs-inodes bs) (fn-bs-dirs bs)
-                (list (list :write 0 (nth 2 w)
-                            (fn-lg-log (list (rrt-r 4)) (fn-lgk-last ks) (rrt-unit))))
+                (list w
+                      (list :write 0 (+ (nth 2 w) (len (nth 3 w)))
+                            (fn-lg-log (list (rrt-r 4)) prev4 (rrt-unit))))
                 (fn-bs-next-ino bs))))
-(defun rrt-wrong-units ()
+(defun rrt-wrong-choices ()
   (declare (xargs :guard t :verify-guards nil))
-  (rrt-units-of (nth 3 (car (fn-bs-pending (rrt-wrong-batch))))))
+  (list (rrt-sels (rrt-units-of (nth 3 (car (fn-bs-pending (rrt-wrong-batch))))) :new)
+        (rrt-sels (rrt-units-of (nth 3 (cadr (fn-bs-pending (rrt-wrong-batch))))) :new)))
+(defun rrt-wrong-image ()
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-bs-crash (rrt-wrong-batch) (rrt-wrong-choices)))
 (defun rrt-wrong-recovered ()
   (declare (xargs :guard t :verify-guards nil))
-  (fn-rr-recovered-records (fn-bs-crash (rrt-wrong-batch) (list (rrt-sels (rrt-wrong-units) :new)))
-                           0 (rrt-genesis) (rrt-unit) (rrt-max) 0))
+  (fn-rr-recovered-records (rrt-wrong-image) 0 (rrt-genesis) (rrt-unit) (rrt-max) 0))
 (assert-event
- (and (not (fn-lgk-relp (rrt-wrong-batch) (cdr (rrt-appended)) 0 (rrt-genesis) (rrt-max)))
-      (fn-bs-crash-choicesp (list (rrt-sels (rrt-wrong-units) :new))
-                            (fn-bs-pending (rrt-wrong-batch)) (rrt-unit))
-      (equal (rrt-wrong-recovered) (list (rrt-r 1) (rrt-r 2) (rrt-r 4)))))
+ (let ((ks (cdr (rrt-appended))))
+   (and ; the omitted hypothesis fails
+        (not (fn-lgk-relp (rrt-wrong-batch) ks 0 (rrt-genesis) (rrt-max)))
+        ; every retained hypothesis holds
+        (fn-bs-crash-choicesp (rrt-wrong-choices) (fn-bs-pending (rrt-wrong-batch)) (rrt-unit))
+        (fn-lg-platform-tears-p (nthcdr (fn-lgk-frontier ks) (fn-bs-durable-content (rrt-wrong-image) 0))
+                                (fn-lgk-inflight ks) (fn-lgk-last ks) (rrt-unit))
+        (<= 2 (len (fn-lgk-committed ks)))
+        ; the conclusion fails
+        (equal (rrt-wrong-recovered) (list (rrt-r 1) (rrt-r 2) (rrt-r 3) (rrt-r 4)))
+        (not (fn-rr-tree-sequence-memberp (rrt-wrong-recovered)
+                                          (fn-lgk-committed ks) (fn-lgk-inflight ks))))))
 (must-fail-checked
  (defthm rrt-without-the-relation
    (fn-rr-tree-sequence-memberp (rrt-wrong-recovered)

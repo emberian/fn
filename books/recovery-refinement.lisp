@@ -50,18 +50,25 @@
 ; medium holds (bound to a prefix of the committed records) is the full open
 ; of those records, and every acknowledged record is among them.
 ;
-; What the host runs (host/native/io.lisp fnn-recover-log, then
-; fnn-bridge-recover; host/store-node-host.lisp fn-store-sn-recover-from-
-; checkpoint / fn-store-sn-recover): the log's recovery (fn-lg-open-kernel,
-; proved the recovered kernel: fn-lg-open-kernel-is-the-recovered-kernel),
-; the record decode (fn-srs-decode, the octets of the log's records to the
-; open's events, one per record or :bad: fn-srs-decode-of-append), the
-; checkpoint's selection and the open.  `fn-rr-open' is that composition
-; over the medium's interface; the decode is the identity on the interface's
-; records here (the log's records ARE the medium's, see section 2's note) and
-; the store instance states it over fn-srs-decode.  No ACL2 function the
-; host calls composes the two layers (the open square is host code: the same
-; gap PRF-344 names for the page store); the registry row records it.
+; MODEL-LEVEL (the Codex review of 2d1b10ed7, F1).  No host file calls
+; fn-rr-open or the store instance's fn-rrs-open.  What the host runs
+; (host/native/io.lisp fnn-recover-log): the log's recovery (fnn-log-recover:
+; fn-lg-open-kernel, proved the recovered kernel by
+; fn-lg-open-kernel-is-the-recovered-kernel), the record decode
+; (fn-srs-decode, the octets of the log's records to the open's events, one
+; per record or :bad: fn-srs-decode-of-append), then the checkpoint's
+; selection and the open through fn-rii-sco-extend-open
+; (books/replay-identity-index.lisp) or fn-sfi-extend-open
+; (books/store-finalize-incremental.lisp), or the full replay.  `fn-rr-open'
+; is that composition over the medium's interface; the decode is the
+; identity on the interface's records here (the log's records ARE the
+; medium's, see section 2's note) and the store instance states it over
+; fn-srs-decode.  The claim becomes one about the served path only with the
+; store instance admitted AND a named equation of its open to those
+; host-called opens (PRF-1212's pending subject); until then the registry
+; row says MODEL-LEVEL.  No ACL2 function the host calls composes the two
+; layers (the open square is host code: the same gap PRF-344 names for the
+; page store).
 ;
 ; NOT proved here, named as open obligations in planning/proofs.json:
 ;   PRF-1214  the crash point INSIDE a publication while a batch is in
@@ -148,7 +155,9 @@
   (((fn-rr-medium-capture * *) => *)
    ((fn-rr-medium-open * * * *) => *)
    ((fn-rr-medium-full-open * * *) => *)
-   ((fn-rr-medium-select * * * *) => *))
+   ((fn-rr-medium-select * * * *) => *)
+   ((fn-rr-medium-open-okp *) => *)
+   ((fn-rr-medium-holds * *) => *))
 
   (local (defun fn-rr-medium-capture (configs records)
            (declare (ignore configs))
@@ -162,6 +171,13 @@
                     (natp k) (<= (- count s) k))
                (list :checkpoint s)
              (list :full-replay))))
+  ; The witness's open always succeeds, and it holds a record when its
+  ; records do.
+  (local (defun fn-rr-medium-open-okp (st)
+           (declare (ignore st))
+           t))
+  (local (defun fn-rr-medium-holds (st r)
+           (member-equal r (car (cdr (cdr st))))))
 
   ; PRF-083's shape: the open of the capture of P over Q is the full open
   ; of P ++ Q, with no hypothesis.
@@ -174,7 +190,21 @@
   (defthm fn-rr-medium-select-bounds-the-sequence
     (implies (equal (car (fn-rr-medium-select status s count k)) :checkpoint)
              (and (natp s) (natp count) (<= s count)))
-    :rule-classes nil))
+    :rule-classes nil)
+
+  ; An open that SUCCEEDED holds every record it was opened from (the Codex
+  ; review of 2d1b10ed7, F2: without it the two constraints above admit an
+  ; open that answers NIL, and "acknowledged => present" would be a fact
+  ; about the recovered list alone, not about the opened store).  The
+  ; store's full open refuses a bad history by name (fn-sn-open-error), so
+  ; the constraint is over a successful open: refused stays refused, and
+  ; conjunct (2) of the keystone carries the refusal through the composed
+  ; open unchanged.  What holding means is the medium's: the store instance
+  ; names it over the opened Store's replayed events.
+  (defthm fn-rr-medium-full-open-holds-its-records
+    (implies (and (member-equal r records)
+                  (fn-rr-medium-open-okp (fn-rr-medium-full-open configs frontier records)))
+             (fn-rr-medium-holds (fn-rr-medium-full-open configs frontier records) r))))
 
 ; The composed open after the log's recovery: the image's selection under
 ; K, then the open from the image over the suffix it leaves, or the full
@@ -359,7 +389,15 @@
 ;       prefix of the batch in flight (one element of the tree sequence);
 ;   (2) the composed open over the image is the full open of those records;
 ;   (3) every acknowledged record (the first ACKED of COMMITTED) is among
-;       them.
+;       them, and the opened state holds it.
+(local
+ (defthm fn-rr-holds-across-equal
+   (implies (and (equal a (fn-rr-medium-full-open configs frontier records))
+                 (member-equal r records)
+                 (fn-rr-medium-open-okp a))
+            (fn-rr-medium-holds a r))
+   :rule-classes nil
+   :hints (("Goal" :use ((:instance fn-rr-medium-full-open-holds-its-records))))))
 (defthm fn-rr-recovery-refines-a-prefix-with-every-acknowledged-record
   (let ((recovered (fn-rr-recovered-records image ino genesis (fn-bs-unit bs) max next-txid)))
     (implies (and (fn-lgk-relp bs ks ino genesis max)
@@ -375,7 +413,12 @@
                   (equal (fn-rr-open status s ckpt configs frontier recovered k)
                          (fn-rr-medium-full-open configs frontier recovered))
                   (implies (member-equal r (take (fn-lgk-acked ks) (fn-lgk-committed ks)))
-                           (member-equal r recovered)))))
+                           (and (member-equal r recovered)
+                                (implies (fn-rr-medium-open-okp
+                                          (fn-rr-open status s ckpt configs frontier recovered k))
+                                         (fn-rr-medium-holds
+                                          (fn-rr-open status s ckpt configs frontier recovered k)
+                                          r)))))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-rr-log-crash-image-recovers-a-tree-sequence-member)
@@ -384,6 +427,13 @@
                                                                 max next-txid))
                             (inflight (fn-lgk-inflight ks)))
                  (:instance fn-rr-open-is-the-full-open-of-the-recovered-records
+                            (records (fn-rr-recovered-records image ino genesis (fn-bs-unit bs)
+                                                              max next-txid)))
+                 (:instance fn-rr-holds-across-equal
+                            (a (fn-rr-open status s ckpt configs frontier
+                                           (fn-rr-recovered-records image ino genesis (fn-bs-unit bs)
+                                                                    max next-txid)
+                                           k))
                             (records (fn-rr-recovered-records image ino genesis (fn-bs-unit bs)
                                                               max next-txid)))
                  (:instance fn-rr-take-of-append-within

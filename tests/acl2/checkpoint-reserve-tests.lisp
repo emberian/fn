@@ -44,20 +44,32 @@
                                  nil nil 0)
                       nil 5 3)))
 
-; Violating values.  A new image of three octets under the bound 1: the
-; staged-durable state holds 2 + 3 > 2 * 1.
+; Violating values, one hypothesis removed each (the Codex review of
+; 2d1b10ed7, F3).  A new image of three octets under the bound 2: the old
+; image (two octets) is within the bound, the new one is not, and the
+; staged-durable state holds 2 + 3 > 2 * 2.
+(assert-event
+ (and (<= (len (fn-bs-durable-content *ckr-t-bs* 3)) 2)      ; old within: kept
+      (not (<= (len *ckr-t-octets*) 2))                      ; new past: removed
+      (not (fn-ckr-all-fit *ckr-t-run* 3 5 2))))             ; the conclusion fails
 (must-fail-checked
  (defthm ckr-t-new-image-past-the-bound
-   (fn-ckr-all-fit *ckr-t-run* 3 5 1)))
-; An old image past the bound (five octets, bound 2): 5 + 3 > 2 * 2.
+   (fn-ckr-all-fit *ckr-t-run* 3 5 2)))
+; An old image past the bound (five octets, bound 3): the new image (three
+; octets) is within the bound, the old one is not, and 5 + 3 > 2 * 3.
 (defconst *ckr-t-big-old*
   (fn-bs-make 4 (list (cons 3 '(7 7 7 7 7)))
               (list (cons :root (list (cons "store-checkpoint.fnsc" 3)))
                     (cons :staging nil))
               nil 5))
+(defconst *ckr-t-big-old-run*
+  (fn-bs-run *ckr-t-big-old* nil (fn-bs-scp-program ".stage-state-checkpoint-1" *ckr-t-octets*)
+             nil nil 0))
+(assert-event
+ (and (fn-bs-scp-inputp *ckr-t-big-old* ".stage-state-checkpoint-1" 3)  ; kept
+      (<= (len *ckr-t-octets*) 3)                                       ; new within: kept
+      (not (<= (len (fn-bs-durable-content *ckr-t-big-old* 3)) 3))      ; old past: removed
+      (not (fn-ckr-all-fit *ckr-t-big-old-run* 3 5 3))))                ; the conclusion fails
 (must-fail-checked
  (defthm ckr-t-old-image-past-the-bound
-   (fn-ckr-all-fit (fn-bs-run *ckr-t-big-old* nil
-                              (fn-bs-scp-program ".stage-state-checkpoint-1" *ckr-t-octets*)
-                              nil nil 0)
-                   3 5 2)))
+   (fn-ckr-all-fit *ckr-t-big-old-run* 3 5 3)))

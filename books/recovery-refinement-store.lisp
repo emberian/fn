@@ -28,12 +28,21 @@
 ; PRF-1212 and PRF-1213 say so.
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
+;
+; THE HOST'S OPEN (the Codex review of 2d1b10ed7, F1): host/native/io.lisp
+; fnn-recover-log calls fn-rii-sco-extend-open
+; (books/replay-identity-index.lisp) or fn-sfi-extend-open
+; (books/store-finalize-incremental.lisp), not fn-sco-open directly; the
+; instance below is stated over fn-sco-open, and a named equation of the
+; composed fn-rrs-open to the host-called open is part of the pending
+; subject, so the claim is MODEL-LEVEL until both land.
 (in-package "ACL2")
 (include-book "recovery-refinement")
 (include-book "checkpoint-reserve")
 (include-book "store-checkpoint-open")
 (include-book "store-recover-stream")
 (include-book "owner-checkpoint-writer")
+(include-book "store-node-files-selector")
 
 ; -----------------------------------------------------------------------------
 ; 1. The medium's interface, discharged by the store's open.
@@ -44,6 +53,19 @@
   (if (equal (car (fn-sco-select status s (len records) k)) :checkpoint)
       (fn-sco-open ckpt configs frontier (nthcdr s records))
     (fn-cpo-open-observed configs frontier records)))
+
+; A successful open (fn-sn-open-okp) holds a record when the opened Store's
+; files carry it among their records (fn-sf-records of fn-sn-files: the
+; open builds them from the replayed events, fn-sf-make :recovering).  The
+; interface's third constraint over these two is the instance's obligation
+; (OBLIGATION, not yet proved here): a successful fn-cpo-open-observed of
+; EVENTS holds every member of EVENTS.
+(defun fn-rrs-open-okp (result)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-sn-open-okp result))
+(defun fn-rrs-holds (result r)
+  (declare (xargs :guard t :verify-guards nil))
+  (member-equal r (fn-sf-records (fn-sn-files (fn-sn-open-state result)))))
 
 (defthm fn-rrs-open-is-the-full-open-of-the-recovered-records
   (implies (equal ckpt (fn-sco-capture configs (take s records)))
@@ -56,6 +78,8 @@
                   (fn-rr-medium-open fn-sco-open)
                   (fn-rr-medium-full-open fn-cpo-open-observed)
                   (fn-rr-medium-select fn-sco-select)
+                  (fn-rr-medium-open-okp fn-rrs-open-okp)
+                  (fn-rr-medium-holds fn-rrs-holds)
                   (fn-rr-open fn-rrs-open)))
            :in-theory (union-theories '(fn-rrs-open)
                                       (theory 'minimal-theory)))
@@ -83,7 +107,16 @@
                   (equal (fn-rrs-open status s ckpt configs frontier events k)
                          (fn-cpo-open-observed configs frontier events))
                   (implies (member-equal r (take (fn-lgk-acked ks) (fn-lgk-committed ks)))
-                           (member-equal r recovered)))))
+                           (member-equal r recovered))
+                  ; a successful open holds every decoded event (the instance's
+                  ; holding obligation, through the composed open); that the
+                  ; acknowledged record's own event is among EVENTS is the
+                  ; decode's position theorem, part of the pending subject
+                  (implies (and (fn-rrs-open-okp
+                                 (fn-rrs-open status s ckpt configs frontier events k))
+                                (member-equal e events))
+                           (fn-rrs-holds (fn-rrs-open status s ckpt configs frontier events k)
+                                         e)))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-rr-log-crash-image-recovers-a-tree-sequence-member)

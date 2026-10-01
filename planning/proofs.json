@@ -20734,7 +20734,7 @@
     {
       "id": "PRF-1212",
       "title": "Recovery refinement: at every crash point of the composed store the recovery holds a prefix of the committed-then-in-flight records that holds every acknowledged record, and the composed open is the full open of it",
-      "statement": "books/recovery-refinement.lisp (lane recovery-refinement, 2026-10-01; specs/recovery-refinement.md; design 2026-10-01 stage 7). Argosy's shape as DFSCQ's tree sequence: fn-rr-tree-sequence-memberp RECOVERED COMMITTED INFLIGHT says RECOVERED is COMMITTED followed by a prefix of INFLIGHT. KEYSTONE fn-rr-recovery-refines-a-prefix-with-every-acknowledged-record: over a related state (fn-lgk-relp BS KS, the log relation R every cut of the served log programs keeps: fn-lg-append/fence/reserve/order/extend-program-keeps-the-relation, fn-lg-recover-program-establishes-the-relation), any admissible crash image (fn-bs-crash-imagep), A-CRYPTO-TRAILER's premise on the tear past the frontier (fn-lg-platform-tears-p), and any image the medium holds bound to the capture of the first S committed records (S at most the committed count): (1) the records the log's recovery holds (fn-rr-recovered-records: fn-lgk-committed of fn-lgk-recover over the image's segment) are a tree-sequence member; (2) the composed open fn-rr-open (the selection under K, then the open from the image over the suffix it leaves, else the full open) is the medium's full open of those records; (3) every record among the first ACKED of COMMITTED (the kernel's acknowledged prefix, R's conjunct; the owner batch layer's fn-owb-acked members by fn-owb-alignedp and fn-lgu-acknowledged-record-is-committed) is among them. Composed from fn-lgk-crash-of-related-state-is-a-prefix with fn-lg-no-forgery-under-a-crypto-trailer (fn-rr-log-crash-image-in-flight-recovers-a-tree-sequence-member), fn-bs-crash-keeps-fenced-content with fn-lg-scan-of-complete-append and fn-lg-scan-of-zeros (fn-rr-log-crash-image-quiet-recovers-committed), and the medium's interface (fn-rr-open-is-the-full-open-of-the-recovered-records: one hypothesis, the binding). The medium is the encapsulate fn-rr-medium-capture/-open/-full-open/-select whose constraints are PRF-083's keystone shape (fn-rr-medium-open-of-capture-is-the-full-open) and the selection's bound (fn-rr-medium-select-bounds-the-sequence); books/recovery-refinement-store.lisp instantiates it with fn-sco-capture, fn-sco-open, fn-cpo-open-observed and fn-sco-select, the functions host/store-node-host.lisp fn-store-sn-recover-from-checkpoint and fn-store-sn-recover call, with the log's records decoded by fn-srs-decode (host fn-store-decode-records). Host subject: the composition host/native/io.lisp fnn-recover-log (fn-lg-open-kernel, fn-lg-open-kernel-is-the-recovered-kernel) then fnn-bridge-recover; no host-called ACL2 function composes the two layers (the open square is host code, as PRF-344 records for the page store). Teeth: tests/acl2/recovery-refinement-tests.lisp (the ground two-record log with a third in flight at log-written under every per-unit tear and at log-fenced; the ground medium instantiated into fn-rr-open at S = 0, 1, 2, past K and absent; MUTATION: the image whose segment drops the acknowledged r2 is no admissible image and the conclusion fails on it; hypothesis removal: the binding (a non-prefix capture), the relation (a misplaced pending write)).",
+      "statement": "books/recovery-refinement.lisp (lane recovery-refinement, 2026-10-01; specs/recovery-refinement.md; design 2026-10-01 stage 7). Argosy's shape as DFSCQ's tree sequence: fn-rr-tree-sequence-memberp RECOVERED COMMITTED INFLIGHT says RECOVERED is COMMITTED followed by a prefix of INFLIGHT. KEYSTONE fn-rr-recovery-refines-a-prefix-with-every-acknowledged-record: over a related state (fn-lgk-relp BS KS, the log relation R every cut of the served log programs keeps: fn-lg-append/fence/reserve/order/extend-program-keeps-the-relation, fn-lg-recover-program-establishes-the-relation), any admissible crash image (fn-bs-crash-imagep), A-CRYPTO-TRAILER's premise on the tear past the frontier (fn-lg-platform-tears-p), and any image the medium holds bound to the capture of the first S committed records (S at most the committed count): (1) the records the log's recovery holds (fn-rr-recovered-records: fn-lgk-committed of fn-lgk-recover over the image's segment) are a tree-sequence member; (2) the composed open fn-rr-open (the selection under K, then the open from the image over the suffix it leaves, else the full open) is the medium's full open of those records; (3) every record among the first ACKED of COMMITTED (the kernel's acknowledged prefix, R's conjunct; the owner batch layer's fn-owb-acked members by fn-owb-alignedp and fn-lgu-acknowledged-record-is-committed) is among them, and a composed open that succeeded (fn-rr-medium-open-okp) HOLDS it (fn-rr-medium-holds; the medium's third constraint fn-rr-medium-full-open-holds-its-records, added for the Codex review of 2d1b10ed7 F2: without it the opened state was unconstrained beyond its equation to fn-rr-medium-full-open). Composed from fn-lgk-crash-of-related-state-is-a-prefix with fn-lg-no-forgery-under-a-crypto-trailer (fn-rr-log-crash-image-in-flight-recovers-a-tree-sequence-member), fn-bs-crash-keeps-fenced-content with fn-lg-scan-of-complete-append and fn-lg-scan-of-zeros (fn-rr-log-crash-image-quiet-recovers-committed), and the medium's interface (fn-rr-open-is-the-full-open-of-the-recovered-records: one hypothesis, the binding). The medium is the encapsulate fn-rr-medium-capture/-open/-full-open/-select/-open-okp/-holds whose constraints are PRF-083's keystone shape (fn-rr-medium-open-of-capture-is-the-full-open), the selection's bound (fn-rr-medium-select-bounds-the-sequence) and holding (fn-rr-medium-full-open-holds-its-records); books/recovery-refinement-store.lisp instantiates it with fn-sco-capture, fn-sco-open, fn-cpo-open-observed and fn-sco-select, the functions host/store-node-host.lisp fn-store-sn-recover-from-checkpoint and fn-store-sn-recover call, with the log's records decoded by fn-srs-decode (host fn-store-decode-records). MODEL-LEVEL, not a served-path claim (the Codex review of 2d1b10ed7, F1): no host file calls fn-rr-open or fn-rrs-open. The served open is host/native/io.lisp fnn-recover-log (fnn-log-recover: fn-lg-open-kernel, fn-lg-open-kernel-is-the-recovered-kernel), then fn-rii-sco-extend-open (books/replay-identity-index.lisp) or fn-sfi-extend-open (books/store-finalize-incremental.lisp) or the full replay; the claim becomes one about the served path only with the store instance admitted AND a named theorem equating fn-rrs-open to the host-called open (both in pending_subject). No host-called ACL2 function composes the two layers (the open square is host code, as PRF-344 records for the page store). Teeth: tests/acl2/recovery-refinement-tests.lisp (the ground two-record log with a third in flight at log-written under every per-unit tear and at log-fenced; the ground medium instantiated into fn-rr-open at S = 0, 1, 2, past K and absent; MUTATION: the image whose segment drops the acknowledged r2 is no admissible image and the conclusion fails on it; hypothesis removal: the binding (a non-prefix capture), the relation (a misplaced pending write)).",
       "milestone": "M5",
       "requirements": [
         "STO-005",
@@ -20759,8 +20759,8 @@
         "specs/recovery-refinement.md",
         "books/recovery-refinement-store.lisp"
       ],
-      "pending_subject": "books/recovery-refinement-store.lisp (the instantiation with the store's open and fn-srs-decode) is WRITTEN, NOT ADMITTED: its include chain reaches the node tower, red at dev 896c48c16 (books/store-events-carried.lisp fn-evc-consumer-shape, books/store-node-traces.lisp fn-snt-record-directory-preserves-relation); it is no claim until that tower is green and the book certifies. The generic book's chain stops at the byte model and the log kernel and was REPL-admitted on hbox (0 refused) from the cache.",
-      "progress_note": "Open: PRF-1214 (a crash point inside a publication while a batch is in flight: R's pending conjunct names the segment's write alone), PRF-1215 (the page store as the medium). The sequential half of the checkpoint program's cuts is PRF-1216.",
+      "pending_subject": "MODEL-LEVEL until two things land: (a) books/recovery-refinement-store.lisp (the instantiation with the store's open and fn-srs-decode, and the holding obligation: a successful fn-cpo-open-observed of EVENTS holds every member of EVENTS in fn-sf-records of fn-sn-files) is WRITTEN, NOT ADMITTED: its include chain reaches the node tower, red at dev 896c48c16 (books/store-events-carried.lisp fn-evc-consumer-shape, books/store-node-traces.lisp fn-snt-record-directory-preserves-relation); (b) a named theorem equating fn-rrs-open to the opens host/native/io.lisp fnn-recover-log calls (fn-rii-sco-extend-open, fn-sfi-extend-open). The generic book's chain stops at the byte model and the log kernel and was REPL-admitted on hbox (0 refused) from the cache.",
+      "progress_note": "Open: PRF-1214 (a crash point inside a publication while a batch is in flight: R's pending conjunct names the segment's write alone), PRF-1215 (the page store as the medium). The sequential half of the checkpoint program's cuts is PRF-1216. Teeth after the Codex review of 2d1b10ed7: the keystone instantiated over the ground medium (rrt-keystone) with a reachable positive witness asserting its complete antecedent and conclusion at the exact tear and the quiet cut (F4); the relation witness removes exactly R (F3). The torn-write applicability of A-CRYPTO-TRAILER's premise rests on the assumption's own witness, which admits only the exact tear (F4, open against books/assumptions.lisp, not this row).",
       "events": [
         "fn-rr-recovery-refines-a-prefix-with-every-acknowledged-record",
         "fn-rr-open-is-the-full-open-of-the-recovered-records",
@@ -20793,7 +20793,7 @@
         "specs/recovery-refinement.md",
         "books/recovery-refinement-store.lisp"
       ],
-      "progress_note": "Retiring the statvfs observation from fn-ockp-decide under the format-time reserve is a served host change outside this lane (MODE 2026-10-01 section 2). The page-store generation sized by K (the dirty pages of at most K commits) is PRF-1215.",
+      "progress_note": "Retiring the statvfs observation from fn-ockp-decide under the format-time reserve is a served host change outside this lane (MODE 2026-10-01 section 2). The page-store generation sized by K (the dirty pages of at most K commits) is PRF-1215. OPEN JOIN (Codex review of 2d1b10ed7, F5): the theorem bounds fn-bs-scp-program's OCTETS; the host writes through fnn-state-checkpoint-write -> fnn-history-image-write and fnn-checkpoint-write-steps (host/native/io.lisp) with no refinement of those writes to OCTETS, so funded space is an assumption of the join: PRF-1222.",
       "events": [
         "fn-ckr-two-generations-fit-the-reserve-at-every-cut"
       ]
@@ -20862,6 +20862,45 @@
       ],
       "events": [
         "fn-rr-checkpoint-crash-point-recovers-committed-under-old-or-new"
+      ],
+      "progress_note": "The five cuts are the program's outer operations; the host's write loops have process-death points inside the single :write-all (fnn-checkpoint-write-steps' per-step fault kill, fnn-history-image-write's page writes; the Codex review of 2d1b10ed7, F6): their mapping to model crash points is PRF-1223."
+    },
+    {
+      "id": "PRF-1222",
+      "title": "OPEN: the host's state-checkpoint write refined to fn-bs-scp-program's OCTETS (the join of the reserve theorem to the served write)",
+      "statement": "OBLIGATION (lane recovery-refinement-2, 2026-10-01; the Codex review of 2d1b10ed7, F5). PRF-1213 bounds the OCTETS of fn-bs-scp-program's :write-all; the host writes the staged file through host/native/io.lisp fnn-state-checkpoint-write, whose callback runs fnn-history-image-write (the history image region: header, zero pad, one 16 KiB page per address) and fnn-checkpoint-write-steps (fnn-plan-write-all per ACL2 step). To state: the octets those two loops write, concatenated, are fn-sct-encode of the capture the owner was handed (fn-ock-finish-binds-the-captured-prefix, PRF-199's fn-sct-decode-file-of-file-is-the-capture), with length the estimate fn-ockp-decide planned (fn-ockp-estimate-is-len-file-octets); with it the reserve bound is about what the host writes, and the funded-space premise of fn-rrs-funded-reserve-never-defers-for-space is discharged rather than assumed.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-011",
+        "STO-019"
+      ],
+      "depends_on": [
+        "PRF-1213",
+        "PRF-199",
+        "PRF-083"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "specs/recovery-refinement.md"
+      ]
+    },
+    {
+      "id": "PRF-1223",
+      "title": "OPEN: the checkpoint write loops' inner process-death cuts as model crash points of the publish program",
+      "statement": "OBLIGATION (lane recovery-refinement-2, 2026-10-01; the Codex review of 2d1b10ed7, F6; AGENTS: every process-death cut is a model crash point). fn-bs-scp-program writes the staged file in one :write-all; the host writes it in a loop and may die between any two write(2) calls: fnn-checkpoint-write-steps kills itself after step N under fnn-checkpoint-batch-fault (host/native/io.lisp), and fnn-history-image-write's header, pad and page writes are each a death point. In the byte model a death after the k-th write is the state whose pending set holds the k writes to the staged inode (k fn-bs-write steps in place of one), and its crash images tear each; the root entry is still the old one there, so the recovery is COMMITTED and the image is OLD. To state: a chunked publish program (the :write-all split into the host's writes) whose every state's crash images satisfy fn-rr-checkpoint-crash-point-recovers-committed-under-old-or-new's conclusion (PRF-1216), and tests/campaign/native_cuts.py rows naming each inner cut; until then PRF-1216 covers the five outer cuts only.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-011",
+        "STO-005"
+      ],
+      "depends_on": [
+        "PRF-1216"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "specs/recovery-refinement.md"
       ]
     }
   ]

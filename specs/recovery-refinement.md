@@ -9,11 +9,15 @@ the image medium's cut models by citing their keystones; the checkpoint
 reserve is `books/checkpoint-reserve.lisp` (PRF-1213); the checkpoint
 program's own crash points are `fn-rr-checkpoint-crash-point-recovers-
 committed-under-old-or-new` (PRF-1216). Both books were REPL-admitted on
-hbox from the cached chain (0 refused) and are submitted for certification;
-their store instance `books/recovery-refinement-store.lisp` is written and
-NOT admitted (its chain reaches the node tower, red at dev 896c48c16). What
-the composition cannot yet cite is an open obligation by id (§5), never a
-paper premise.
+hbox from the cached chain (0 refused) and certified (the manifests are in
+the registry rows); their store instance `books/recovery-refinement-store.lisp`
+is written and NOT admitted (its chain reaches the node tower, red at dev
+896c48c16). **The claim is MODEL-LEVEL** (the Codex review of 2d1b10ed7,
+F1): no host file calls `fn-rr-open` or `fn-rrs-open`; it becomes a claim
+about the served path when the store instance is admitted and a named
+theorem equates its open to the one `fnn-recover-log` calls
+(`fn-rii-sco-extend-open`, `fn-sfi-extend-open`). What the composition
+cannot yet cite is an open obligation by id (§5), never a paper premise.
 Counts live in the generated ledger; this page carries the property, its
 premises and its scope.
 
@@ -36,10 +40,14 @@ The composed store is two layers over one byte model
   (`fn-sco-capture`), and the open serves it only when S is within the
   recovered records and the suffix within K (`fn-sco-select`). In the
   ACL2 statement the medium is an interface, the constrained
-  `fn-rr-medium-capture`, `-open`, `-full-open` and `-select`, whose two
-  constraints are PRF-083's keystone shape (the open of the capture of P
-  over Q is the full open of P ++ Q) and the selection's bound (a served S
-  is within the count); the store's functions discharge it by functional
+  `fn-rr-medium-capture`, `-open`, `-full-open`, `-select`, `-open-okp` and
+  `-holds`, whose three constraints are PRF-083's keystone shape (the open
+  of the capture of P over Q is the full open of P ++ Q), the selection's
+  bound (a served S is within the count) and holding (a full open that
+  SUCCEEDED holds every record it was opened from; without it the opened
+  state was unconstrained beyond its equation to the full open, the Codex
+  review's F2; the store's: `fn-sn-open-okp`, membership in
+  `fn-sf-records` of the opened Store's files); the store's functions discharge it by functional
   instantiation in `books/recovery-refinement-store.lisp`, the log's
   records decoded by `fn-srs-decode` (the host's `fn-store-decode-records`).
 
@@ -73,12 +81,15 @@ log's served programs, which is a state satisfying the log relation R
    records (`fn-sn-recover-from-checkpoint-equals-full-recover`, PRF-083).
    An image the selection refuses (absent, corrupt, past the reader's bound,
    ahead of the history, past K) is the full replay by definition.
-3. **Acknowledged implies present.** Every record among the first ACKED of
-   COMMITTED (the kernel's acknowledged prefix; ACKED <= len COMMITTED is a
-   conjunct of R) is among the recovered records. The owner batch layer's
-   acknowledged members are exactly those records (`fn-owb-alignedp`,
-   `fn-lgu-acknowledged-record-is-committed`, `books/store-log-durable.lisp`),
-   the owner-layer corollary.
+3. **Acknowledged implies present, in the opened state.** Every record
+   among the first ACKED of COMMITTED (the kernel's acknowledged prefix;
+   ACKED <= len COMMITTED is a conjunct of R) is among the recovered
+   records, and a composed open that succeeded holds it. The owner batch
+   layer's acknowledged members are exactly those records
+   (`fn-owb-alignedp`, `fn-lgu-acknowledged-record-is-committed`,
+   `books/store-log-durable.lisp`), the owner-layer corollary. A refused
+   open stays refused: conjunct 2 carries the full open's refusal through
+   the composed open unchanged.
 
 Stated as one event, `:rule-classes nil`:
 
@@ -97,18 +108,26 @@ Stated as one event, `:rule-classes nil`:
                   (equal (fn-rr-open status s ckpt configs frontier recovered k)
                          (fn-rr-medium-full-open configs frontier recovered))
                   (implies (member-equal r (take (fn-lgk-acked ks) (fn-lgk-committed ks)))
-                           (member-equal r recovered))))))
+                           (and (member-equal r recovered)
+                                (implies (fn-rr-medium-open-okp
+                                          (fn-rr-open status s ckpt configs frontier recovered k))
+                                         (fn-rr-medium-holds
+                                          (fn-rr-open status s ckpt configs frontier recovered k)
+                                          r))))))))
 ```
 
-The host functions whose composition the theorem is about:
+The host functions whose composition the theorem models:
 `host/native/io.lisp` `fnn-recover-log` (P-LOG-RECOVER, the kernel
 `fn-lg-open-kernel`, proved the recovered kernel by
-`fn-lg-open-kernel-is-the-recovered-kernel`), then `fnn-bridge-recover`;
-`host/store-node-host.lisp` `fn-store-sn-recover-from-checkpoint`
-(`fn-sco-select`, `fn-sco-open`) and `fn-store-sn-recover`
-(`fn-cpo-open-observed`). `fn-rr-open` names that composition in ACL2; no
-host-called ACL2 function composes the two, so the open square is host code,
-the same gap PRF-344 records for the page store. The registry row says so.
+`fn-lg-open-kernel-is-the-recovered-kernel`; `fnn-log-recover`), then the
+checkpoint's selection and the open through `fn-rii-sco-extend-open`
+(`books/replay-identity-index.lisp`) or `fn-sfi-extend-open`
+(`books/store-finalize-incremental.lisp`), or the full replay. `fn-rr-open`
+names that composition in ACL2 over `fn-sco-open`; no host file calls it or
+`fn-rrs-open`, and no host-called ACL2 function composes the two layers, so
+the open square is host code, the same gap PRF-344 records for the page
+store. The registry row says MODEL-LEVEL (F1) until the store instance and
+the equation of `fn-rrs-open` to the host-called opens land.
 
 ## 2. The premises, each named
 
@@ -236,6 +255,28 @@ literature-2026-10-01.md` A2, E.1.1).
   a captured prefix, the open from a root (the host's open loop; PRF-344's
   open square) and the dirty set of K commits as the generation bound are
   the stage-5 and stage-7 work.
+- **PRF-1222, the host's checkpoint write refined to OCTETS** (the Codex
+  review of 2d1b10ed7, F5). PRF-1213 bounds the model's OCTETS; the host
+  writes the staged file through `fnn-state-checkpoint-write` ->
+  `fnn-history-image-write` and `fnn-checkpoint-write-steps` with no
+  theorem that their concatenated writes are `fn-sct-encode` of the
+  captured prefix with the planned estimate's length; until it lands,
+  funded space is an assumption of the join, not a consequence of the
+  reserve.
+- **PRF-1223, the write loops' inner cuts** (F6). The model's `:write-all`
+  is one operation; the host dies between write(2) calls
+  (`fnn-checkpoint-write-steps`' per-step kill under
+  `fnn-checkpoint-batch-fault`, `fnn-history-image-write`'s header, pad
+  and page writes). Each is the model state with k pending writes to the
+  staged inode and the root entry old, so its images recover COMMITTED
+  and hold the OLD image; the chunked program and the cut rows that make
+  that a theorem are the row's work. PRF-1216 covers the five outer cuts.
+- **A-CRYPTO-TRAILER's witness** (F4, against `books/assumptions.lisp`, not
+  this lane's books). The keystone's premise `fn-lg-platform-tears-p` is a
+  constrained consequent; its local witness admits only the exact tear, so
+  the theorem's applicability to a torn write is witnessed by nothing
+  executable. The natural witness ("no tears": observed = written) needs
+  `fn-bs-view-is-an-admissible-image`, open there.
 
 ## 6. Teeth
 
@@ -243,15 +284,25 @@ literature-2026-10-01.md` A2, E.1.1).
 ground log (the fixture of `tests/acl2/store-log-durable-tests.lisp` under
 its own prefix: a related state, a third record in flight, every per-unit
 tear at log-written, nothing pending at log-fenced); the ground medium (the
-interface's witness, executable) instantiated into `fn-rr-open` and the
-composed open at S = 0, 1, 2, past K and absent; the MUTATION: a recovery
-that drops the acknowledged r2 (the segment zeroed from its entry) is no
+interface's witness, executable) instantiated into `fn-rr-open`, the
+composed open at S = 0, 1, 2, past K and absent, and the keystone itself
+instantiated over it (`rrt-keystone`, the literal theorem with the medium's
+six functions replaced) with a reachable positive witness asserting its
+complete antecedent and conclusion at log-written with the batch landed
+whole (the exact tear, where the trailer premise evaluates without reaching
+the constrained function) and at log-fenced; at a non-exact tear the
+premise is the assumption's consequent and only the conclusion is
+evaluated (§5, A-CRYPTO-TRAILER's witness); the MUTATION: a recovery that
+drops the acknowledged r2 (the segment zeroed from its entry) is no
 admissible image of the fenced segment and the conclusion fails on it;
-hypothesis removal: the binding (a non-prefix capture opens elsewhere), the
-relation (a misplaced pending write's image is no tree-sequence member);
-the trailer premise is a constrained function's consequent, witnessed in
-`tests/acl2/assumptions-tests.lisp`; and §8's theorem at all ten states of
-the publish run under two choices. `tests/acl2/checkpoint-reserve-tests.lisp`:
-the ten states at bound 3, the first publication without an old image, and
-the violating values (a new image past the bound, an old image past it)
-refused.
+hypothesis removal, one hypothesis each: the binding (a non-prefix capture
+opens elsewhere), the relation (a pending write of TWO records r3 r4 under
+INFLIGHT = (r3): the trailer premise still evaluates true on the landed
+image, the choice is admissible, and the recovered r1 r2 r3 r4 is no
+tree-sequence member); and §8's theorem at all ten states of the publish
+run under two choices. `tests/acl2/checkpoint-reserve-tests.lisp`: the ten
+states at bound 3, the first publication without an old image, and the
+violating values refused one hypothesis at a time (a new image past the
+bound 2 with the old within it; an old image past the bound 3 with the new
+within it), each witness asserting the retained hypotheses, the removed one's
+failure and the conclusion's failure.
