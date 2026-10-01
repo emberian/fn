@@ -264,14 +264,14 @@
          (mv :candidate row produced context fields)))
  :rule-classes nil
  :hints (("Goal" :in-theory (enable fn-hep-offer-produced fn-hep-builder-readout fn-hed-at))))
-(defthm fn-hep-completion-replay-does-not-mutate
+(defthm fn-hep-completion-replay-by-definition
  (implies (and (fn-hep-completion-matchesp receipt token fn-history-backing)
                 (member-eq (fn-hep-producer-phase fn-history-backing) '(:completed :published))
                 (equal receipt (fn-hep-completion fn-history-backing)))
   (equal (fn-hep-register-completion-internal receipt token fn-history-backing)
          (mv :already-completed fn-history-backing)))
  :rule-classes nil)
-(defthm fn-hep-published-replay-does-not-append-or-install
+(defthm fn-hep-published-replay-by-definition
  (implies (and (fn-hep-completion-matchesp receipt (fn-hep-producer-token fn-history-backing)
                                           fn-history-backing)
                 (equal receipt (fn-hep-completion fn-history-backing))
@@ -350,3 +350,22 @@
        (equal (fn-hed-at 10 after-epoch) (fn-hed-at 10 before-epoch))
        (equal (fn-hep-current after) (fn-hep-current fn-history-backing))))
  :rule-classes nil)
+
+(defthm fn-hep-completion-registration-is-once-only
+ (implies (and (fn-hep-completion-matchesp receipt token fn-history-backing)
+                (eq (fn-hep-producer-phase fn-history-backing) :prepared))
+  (let ((after (mv-nth 1 (fn-hep-register-completion-internal receipt token fn-history-backing))))
+   (equal (fn-hep-register-completion-internal receipt token after)
+          (mv :already-completed after))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (enable fn-hep-register-completion-internal
+                                    fn-hep-completion-matchesp))))
+(defthm fn-hep-successful-publication-is-once-only
+ (implies (and (fn-history-backingp fn-history-backing)
+               (equal (mv-nth 0 (fn-hep-publish-current receipt fn-history-backing)) :published))
+  (let ((after (mv-nth 1 (fn-hep-publish-current receipt fn-history-backing))))
+   (equal (fn-hep-publish-current receipt after) (mv :consumed after))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (e/d (fn-hep-publish-current fn-hep-completion-matchesp fn-hep-epoch-livep)
+                                 (fn-hep-node-append fn-hed-at fn-hep-sourcep update-nth
+                                  fn-hep-source-stamps-equal)))))
