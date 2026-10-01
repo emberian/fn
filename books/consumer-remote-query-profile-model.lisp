@@ -39,11 +39,11 @@
  (implies (eq (fn-cp-nth 0 (fn-crp-policy-verdict groups record-ceiling)) :query-policy)
           (and (posp groups) (fn-cp-uintp groups) (fn-frame-spec-listp (fn-cr-spec groups))
                (<= (fn-frame-specs-width (fn-cr-spec groups)) *fn-frame-max-payload*)
-               (natp record-ceiling) (<= (fn-crp-event-ceiling groups) record-ceiling)
+               (natp record-ceiling) (fn-crr-profilep record-ceiling) (<= (fn-crp-event-ceiling groups) record-ceiling)
                (equal (fn-cp-nth 1 (fn-crp-policy-verdict groups record-ceiling)) groups)
                (equal (fn-cp-nth 2 (fn-crp-policy-verdict groups record-ceiling)) (fn-cr-read-bound groups))))
  :rule-classes nil
  :hints (("Goal" :in-theory (e/d (fn-crp-policy-verdict fn-cp-nth)
-                               (fn-cr-spec fn-cr-read-bound fn-frame-spec-listp fn-frame-specs-width fn-crp-event-ceiling fn-cp-uintp)))))
+                               (fn-cr-spec fn-cr-read-bound fn-frame-spec-listp fn-frame-specs-width fn-crp-event-ceiling fn-cp-uintp fn-crr-profilep)))))
 
 (in-theory (disable fn-crpm-observe fn-crpm-answer))

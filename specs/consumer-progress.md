@@ -1294,3 +1294,12 @@ uncertain/unavailable and explicit nullable cursor/report tags; its 13 source
 fixtures pass. Retained all-event backing/custody, final current account/READ
 validation, bounded report/digest writer, callback quiescence, TLS activation
 and the original complete scenarios remain open. This is source evidence only.
+
+Current-C query policy also validates the complete FNCR reply payload width,
+including explicit nullable cursor/report tags. A representable request and
+FNCE4 event do not admit an overflowing reply. The serialized remote holder
+retains scanner/reader/reply/callback aliases on cancellation and refuses busy
+or stale tokens. Its native completion getter is explicitly unavailable, so
+empty pure continuations cannot release physical custody. Aggregate backing
+epoch-pin return and shared-pool refund require the actual terminal completion
+issuer and remain open. These guarded source checks grant no runtime authority.

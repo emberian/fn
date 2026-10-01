@@ -30,14 +30,14 @@
  (let* ((g 65536) (r 20000000) (p (fn-crp-policy-verdict g r)))
   (and (eq (fn-cp-nth 0 p) :query-policy) (posp g) (fn-cp-uintp g) (fn-frame-spec-listp (fn-cr-spec g))
        (<= (fn-frame-specs-width (fn-cr-spec g)) *fn-frame-max-payload*)
-       (natp r) (<= (fn-crp-event-ceiling g) r)
+       (natp r) (fn-crr-profilep r) (<= (fn-crp-event-ceiling g) r)
        (equal (fn-cp-nth 1 p) g) (equal (fn-cp-nth 2 p) (fn-cr-read-bound g)))))
 (assert-event
  (let* ((g 0) (r 1000) (p (fn-crp-policy-verdict g r)))
   (and (not (eq (fn-cp-nth 0 p) :query-policy))
        (not (and (posp g) (fn-cp-uintp g) (fn-frame-spec-listp (fn-cr-spec g))
           (<= (fn-frame-specs-width (fn-cr-spec g)) *fn-frame-max-payload*)
-          (natp r) (<= (fn-crp-event-ceiling g) r)
+          (natp r) (fn-crr-profilep r) (<= (fn-crp-event-ceiling g) r)
           (equal (fn-cp-nth 1 p) g) (equal (fn-cp-nth 2 p) (fn-cr-read-bound g)))))))
 (assert-event
  (and (equal (fn-crp-tick (fn-crp-state '(1) nil 1000 :lookup nil) '(1) 1000)
@@ -57,3 +57,9 @@
                 (list (cadr (fn-crp-config-proposal 2 1000))) *fn-cfg-default-stamp*)))
   (and (fn-cfg-recordp record)
        (equal (fn-cfg-decode-exact (fn-cfg-encode record)) (list :ok record nil)))))
+
+; Request/event representability cannot bless an overflowing reply payload.
+(assert-event
+ (and (equal (fn-crp-policy-verdict 1 4294967295) '(:refused :consumer-query-reply-width))
+      (eq (car (fn-crp-policy-verdict 1 1000000)) :query-policy)
+      (fn-crr-profilep 1000000)))
