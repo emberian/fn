@@ -5,9 +5,7 @@
 (unless (find-package "ACL2") (make-package "ACL2" :use '("COMMON-LISP")))
 (in-package "ACL2")
 (declaim (declaration xargs))
-(defparameter *fn-bpc-max-uint* 18446744073709551615)
-(defparameter *fn-cbor-max-uint* 4294967295)
-(defparameter *fn-bpc-max-text* 4096)
+(defmacro defconst (name value) `(defparameter ,name ,value))
 (defun natp (x) (and (integerp x) (<= 0 x)))
 (defun zp (x) (or (not (integerp x)) (<= x 0)))
 (defun nfix (x) (if (natp x) x 0))
@@ -18,9 +16,9 @@
 (defmacro mv (&rest xs) `(values ,@xs))
 (defmacro mv-let (vars value &body body) `(multiple-value-bind ,vars ,value ,@body))
 (dolist (selection
- '(("books/cbor.lisp" fn-cbor-octetp fn-cbor-ag-car fn-cbor-ag-cdr
+ '(("books/cbor.lisp" *fn-cbor-max-uint* fn-cbor-octetp fn-cbor-ag-car fn-cbor-ag-cdr
      fn-cbor-u16-bytes fn-cbor-u32-bytes fn-cbor-encode-argument)
-   ("books/bp-primary-cbor.lisp" fn-bpc-u32-octets fn-bpc-u64-bytes fn-bpc-argument)
+   ("books/bp-primary-cbor.lisp" *fn-bpc-max-uint* *fn-bpc-max-text* fn-bpc-u32-octets fn-bpc-u64-bytes fn-bpc-argument)
    ("books/bpsec-model.lisp" fn-bps-field fn-bps-uintp fn-bps-limits-make fn-bps-limitsp
      fn-bps-window-make fn-bps-span-make)
    ("books/bpsec-operation.lisp") ("books/bpsec-primitive-plan.lisp")
@@ -31,7 +29,7 @@
    ("build/bpsec-source-observation/bp-segmented-wire-job.lisp")))
  (with-open-file (stream (car selection))
   (loop for form = (read stream nil :end) until (eq form :end)
-   when (and (consp form) (eq (car form) 'defun)
+   when (and (consp form) (member (car form) '(defun defconst))
              (or (null (cdr selection)) (member (second form) (cdr selection))))
    do (eval form))))
 (handler-bind ((style-warning #'muffle-warning))
