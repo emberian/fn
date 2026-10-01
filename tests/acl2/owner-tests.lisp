@@ -911,7 +911,7 @@
                                    (fn-own-queue *own-p-done*)
                                    (fn-own-sub-make *fn-own-control-id* 0 2
                                                     (fn-own-sub-decision
-                                                     (fn-own-inflight *own-p-done*)))
+                                                     (fn-own-inflight *own-p-done*)) nil)
                                    (fn-own-feeds *own-p-done*) (fn-own-node-secret *own-p-done*) (fn-own-refused *own-p-done*))
                       :duplicate)
                      :uncertain))
@@ -949,7 +949,7 @@
 (defconst *own-w2-nil-mark*
   (own-w2-with *own-p-done* (fn-own-conns *own-p-done*)
                (fn-own-sub-make 4 (fn-own-sub-version (fn-own-inflight *own-p-done*))
-                                nil (fn-own-sub-decision (fn-own-inflight *own-p-done*)))))
+                                nil (fn-own-sub-decision (fn-own-inflight *own-p-done*)) nil)))
 (assert-event (and (null (fn-own-sub-mark (fn-own-inflight *own-w2-nil-mark*)))
                    (< 0 (len (fn-own-ledger *own-w2-nil-mark*)))))
 (must-fail-checked
@@ -1168,7 +1168,7 @@
     (own-with-inflight
      *own-control-fed-done*
      (fn-own-sub-make 4 (fn-own-sub-version sub) (fn-own-sub-mark sub)
-                      (fn-own-sub-decision sub)))))
+                      (fn-own-sub-decision sub) nil))))
 (assert-event (equal (len (own-control-commits)) 1))
 (assert-event (equal (len (fn-own-outcome-records
                            (own-fed-local-on-connection) 4 :durable)) 1))
@@ -1186,7 +1186,7 @@
      (fn-own-sub-make
       4 (fn-own-sub-version sub) (fn-own-sub-mark sub)
       (fn-peer-make-submission "p" :ihave *own-control-msgid*
-                               *own-control-source*)))))
+                               *own-control-source*) nil))))
 (assert-event (fn-own-transit-subp
                (fn-own-inflight (own-fed-transit-on-connection))))
 (assert-event (equal (len (fn-own-transit-outcome-records
@@ -1678,7 +1678,7 @@
 (defconst *own-forged-post*
   (fn-own-make (fn-own-store *own-p1*) (fn-own-view *own-p1*) (fn-own-conns *own-p1*)
                5 4 4 (list (cons 9 9)) (fn-own-clock *own-p1*) nil *own-config* nil
-               (fn-own-sub-make 4 2 0 (fn-served-submission (car *own-submitted*)))
+               (fn-own-sub-make 4 2 0 (fn-served-submission (car *own-submitted*)) nil)
                nil nil (fn-own-refused *own-p1*)))
 (assert-event (not (fn-own-relation *own-forged-post*)))
 (assert-event
@@ -1848,7 +1848,7 @@
      (fn-own-sub-make
       4 (fn-own-sub-version sub) (fn-own-sub-mark sub)
       (fn-peer-make-submission peer :ihave *own-transit-msgid*
-                               (own-transit-octets path))))))
+                               (own-transit-octets path)) nil))))
 (defun own-feed-targets-of (o)
   (fn-own-feed-targets (fn-own-feeds o)
                        (fn-own-sub-origin (fn-own-inflight o))
@@ -2107,7 +2107,7 @@
      *own-cancel-a*
      (fn-own-sub-make 4 (fn-own-sub-version sub) (fn-own-sub-mark sub)
                       (fn-peer-make-submission "out" :ihave *own-cancel-msgid*
-                                               (own-article-octets "p.example!x" "fn.letters" t))))))
+                                               (own-article-octets "p.example!x" "fn.letters" t)) nil))))
 (assert-event (equal (car (fn-own-feed-control-of (own-sub-octets-of *own-cancel-from-out*)))
                      :control))
 (must-fail-checked (assert-event (own-pkt400-antecedent *own-cancel-from-out* "out")))
@@ -2119,7 +2119,7 @@
      *own-cancel-a*
      (fn-own-sub-make 4 (fn-own-sub-version sub) (fn-own-sub-mark sub)
                       (fn-peer-make-submission "p" :ihave *own-cancel-msgid*
-                                               (own-article-octets "p.example!x" "local.general" t))))))
+                                               (own-article-octets "p.example!x" "local.general" t)) nil))))
 (defconst *own-ctl-from-p*
   (fn-own-with-feeds *own-cancel-from-p* (fn-own-feeds *own-cancel-b*)))
 (assert-event (own-pkt400-antecedent *own-ctl-from-p* "ctl"))
