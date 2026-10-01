@@ -1277,6 +1277,20 @@ completion decision. PRF-1185 and SCN-1068 cover matching and logical retirement
 not crypto, physical worker return, charge refund, pin release or native policy
 admission. A retry after uncertainty requires a fresh nonreused token.
 
+`books/bpsec-primitive-plan.lisp` selects context1 HMAC-SHA256/384/512 and
+context2 AES-GCM128/256 from the validated operation descriptor. The held-key
+extent must be the actual registry key extent: RFC9173 §3.5 requires full
+32/48/64-byte HMAC keys; §4.4 selects 16/32-byte AES keys. No native supplied
+width establishes key authority. `fn-bps-primitive-answer` requires exact retained
+descriptor association and complete fixed-width observed/expected HMAC octets;
+every tag byte participates in the bounded difference accumulator. This source
+traversal is not a compiler/CPU constant-time claim. GCM first-pass authentication
+returns pending plaintext, without a verified BCB completion or invented output
+reference. Bad tag, unsupported suite and unavailable/fault observations remain
+separate. Actual primitive provenance, canonical input/expected-span binding,
+immutable replay/current-key grant and installed acceptance caller remain open.
+
+
 Full cursor invariant preservation, equality for every chunk/quantum
 schedule, operational span refinement, served target graph (PRF-1179), canonical
 cryptographic inputs, actual descriptor-bound primitive completion, explicit key

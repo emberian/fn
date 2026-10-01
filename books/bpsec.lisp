@@ -6,6 +6,7 @@
 (include-book "bpsec-target-cursor")
 (include-book "bpsec-provider-model")
 (include-book "bpsec-operation")
+(include-book "bpsec-primitive-plan")
 (include-book "bpsec-asb-quanta")
 (include-book "bpsec-asb-spine")
 (include-book "bpsec-target-spine")
