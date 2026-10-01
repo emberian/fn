@@ -11,6 +11,22 @@ are ordinary news content. A site can accept local work without consulting a
 remote quorum. Future extraterrestrial use motivates long-delay operation and
 explicit resource accounting; it is not a current qualification claim.
 
+The longer-term direction is a high-assurance persistent event-log substrate
+between Robigalia systems, with minidregg and breadstuffs layered on or
+integrated with it (ember, 2026-09-30). This extends beyond the first agent
+exchange below. NNTP and the other interfaces can evolve as inter-node needs
+become concrete; durable identity, authorization, history, consumer progress,
+retention obligations and recovery must have explicit core contracts that
+applications and adapters can share. This direction does not claim those
+integrations are complete or select a replacement wire protocol.
+
+Observability is part of making that substrate usable: an operator needs to
+relate an issued operation to its current phase, reason for waiting or refusal,
+durable publication, and retained resources. Existing health reports, bounded
+logs, decision journals and protocol traces provide pieces of that view.
+Connecting the newer operation readouts to the running operator interface
+remains implementation work; internal getters alone do not establish it.
+
 The central questions are: what does this node have, why does it keep it, what
 has it undertaken to do, and what evidence permits it to release that obligation?
 
