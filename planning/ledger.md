@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1927 |
-| Certification roots in the Makefile | 1842 |
-| Books inside the root closure | 1920 |
-| `defthm` and `defthmd` events | 29124 |
-| `defun` events | 19180 |
+| Books read | 1929 |
+| Certification roots in the Makefile | 1844 |
+| Books inside the root closure | 1922 |
+| `defthm` and `defthmd` events | 29134 |
+| `defun` events | 19185 |
 | Functions with verified guards | 3500 |
 | Functions declared `:verify-guards nil` and never verified | 2295 |
-| Functions left at the default with an explicit guard | 10558 |
+| Functions left at the default with an explicit guard | 10563 |
 | Functions left at the default with no guard | 2827 |
-| `assert-event` checks | 24126 |
+| `assert-event` checks | 24136 |
 | `must-fail` checks | 2506 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 158 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 351 |
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2539 |
+| Include-hygiene warnings | 2540 |
 | Host-names warnings | 2198 |
 | Hand-written-record warnings | 19 |
 
@@ -399,6 +399,7 @@ that `make certify` requests.
 | `books/consumer-account-config-domain.lisp` | closure | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/consumer-account-config-marker-invariants.lisp` | root | 24 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/consumer-account-config-marker.lisp` | root | 0 | 12 | 0/0/12/0 | 0 | 0 | 0 |
+| `books/consumer-account-config-posting-relation.lisp` | root | 10 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/consumer-account-config-preparation.lisp` | root | 0 | 10 | 0/0/10/0 | 0 | 0 | 0 |
 | `books/consumer-account-config-row-carry.lisp` | root | 1 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/consumer-account-durable-outcome-state.lisp` | root | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
@@ -1420,6 +1421,7 @@ that `make certify` requests.
 | `tests/acl2/consumer-account-config-domain-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 7 | 0 | 0 |
 | `tests/acl2/consumer-account-config-marker-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 18 | 0 | 0 |
 | `tests/acl2/consumer-account-config-owner-lineage-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 1 | 0 | 0 |
+| `tests/acl2/consumer-account-config-posting-relation-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 10 | 0 | 0 |
 | `tests/acl2/consumer-account-config-preparation-tests.lisp` | root | 0 | 3 | 0/1/2/0 | 5 | 0 | 0 |
 | `tests/acl2/consumer-account-config-row-carry-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 3 | 0 | 0 |
 | `tests/acl2/consumer-account-index-carry-tests.lisp` | - | 0 | 1 | 0/1/0/0 | 6 | 0 | 0 |

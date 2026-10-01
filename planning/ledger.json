@@ -128,6 +128,7 @@
     "books/consumer-account-config-marker-invariants",
     "books/identity-hex",
     "books/consumer-account-config-preparation",
+    "books/consumer-account-config-posting-relation",
     "books/consumer-account-config-row-carry",
     "books/consumer-account-config-commit",
     "books/consumer-account-private-frame",
@@ -177,6 +178,7 @@
     "tests/acl2/consumer-account-binding-codec-tests",
     "tests/acl2/consumer-account-config-marker-tests",
     "tests/acl2/consumer-account-config-preparation-tests",
+    "tests/acl2/consumer-account-config-posting-relation-tests",
     "tests/acl2/consumer-account-config-row-carry-tests",
     "tests/acl2/consumer-account-private-frame-tests",
     "tests/acl2/consumer-account-index-depth-tests",
@@ -1846,26 +1848,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1927,
-    "books_in_root_closure": 1920,
-    "roots": 1842,
-    "theorems": 29124,
-    "functions": 19180,
-    "assert_events": 24126,
+    "books": 1929,
+    "books_in_root_closure": 1922,
+    "roots": 1844,
+    "theorems": 29134,
+    "functions": 19185,
+    "assert_events": 24136,
     "must_fails": 2506,
     "prover_refusals": 0,
     "encapsulates": 158,
     "guards": {
       "verified": 3500,
       "declared-off": 2295,
-      "default-guarded": 10558,
+      "default-guarded": 10563,
       "default-unguarded": 2827
     },
     "suspect_theorems": 1241,
     "export_hygiene_warnings": 351,
     "enabled_projection_warnings": 53,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2539,
+    "include_hygiene_warnings": 2540,
     "host_names_warnings": 2198,
     "hand_written_record_warnings": 19
   },
@@ -10690,6 +10692,32 @@
       "includes": [
         "config",
         "consumer-authority-codec"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/consumer-account-config-posting-relation.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 10,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 3,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "consumer-account-config-preparation"
       ],
       "system_includes": [],
       "suspects": [],
@@ -41214,6 +41242,32 @@
       "includes": [
         "../../books/owner-config",
         "consumer-account-config-commit-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/consumer-account-config-posting-relation-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 10,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 8,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/consumer-account-config-posting-relation"
       ],
       "system_includes": [],
       "suspects": [],
@@ -83012,6 +83066,13 @@
         "line": 2,
         "include": "../../books/consumer-account-config-marker-invariants",
         "included": "books/consumer-account-config-marker-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/consumer-account-config-posting-relation-tests.lisp",
+        "line": 2,
+        "include": "../../books/consumer-account-config-posting-relation",
+        "included": "books/consumer-account-config-posting-relation.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
