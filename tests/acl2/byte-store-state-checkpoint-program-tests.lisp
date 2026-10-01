@@ -84,3 +84,58 @@
                            (fn-bs-read-range s1 ino (+ off n) m))
                    (fn-bs-read-range s0 ino off (+ n m))))
    :hints (("Goal" :do-not-induct t))))
+
+; -----------------------------------------------------------------------------
+; The batched program (PRF-1223): the same quiet store, the file in three
+; batches.  Every state of the run, the batch states included, crashes to
+; the old checkpoint or the new one under the lose-everything and the
+; land-everything choices; before the rename the entry is the old inode at
+; every state.  Labelled MUTANT: the batches written at offset 0 each (the
+; running offset dropped) crash to a third content at the durable state.
+(defconst *scp-t-chunks* '((1 2) (3) (4 5 6)))
+(defconst *scp-t-batched-run*
+  (fn-bs-run *scp-t-bs* nil (fn-bs-scp-batched-program ".stage-state-checkpoint-1" *scp-t-chunks*)
+             nil nil 0))
+(assert-event (equal (len *scp-t-batched-run*) 15))
+(defun scp-t-all-old-or-new (pairs bs old-ino octets choices)
+  (if (consp pairs)
+      (and (fn-bs-scp-old-or-newp (fn-bs-crash (car (car pairs)) choices) bs old-ino octets)
+           (scp-t-all-old-or-new (cdr pairs) bs old-ino octets choices))
+    t))
+(defun scp-t-all-entry (pairs choices entry)
+  (if (consp pairs)
+      (and (equal (fn-bs-durable-entry (fn-bs-crash (car (car pairs)) choices)
+                                       :root "store-checkpoint.fnsc")
+                  entry)
+           (scp-t-all-entry (cdr pairs) choices entry))
+    t))
+(defconst *scp-t-drop-all* '(:drop :drop :drop :drop :drop :drop))
+(defconst *scp-t-apply-all* '(:apply :apply :apply :apply :apply :apply))
+(assert-event (scp-t-all-old-or-new *scp-t-batched-run* *scp-t-bs* 3 '(1 2 3 4 5 6) *scp-t-drop-all*))
+(assert-event (scp-t-all-old-or-new *scp-t-batched-run* *scp-t-bs* 3 '(1 2 3 4 5 6) *scp-t-apply-all*))
+; the eleven states before the rename: the old entry under every choice
+(assert-event (and (scp-t-all-entry (take 11 *scp-t-batched-run*) *scp-t-drop-all* 3)
+                   (scp-t-all-entry (take 11 *scp-t-batched-run*) *scp-t-apply-all* 3)))
+; the durable state: the new inode holds exactly the batches
+(assert-event (equal (fn-bs-durable-content (car (nth 14 *scp-t-batched-run*)) 5) '(1 2 3 4 5 6)))
+; MUTANT: every batch at offset 0
+(defun scp-t-write-steps-at-zero (stage chunks)
+  (if (consp chunks)
+      (list* (list :write-at :staging stage 0 (car chunks))
+             (list :cut "state-checkpoint-batch")
+             (scp-t-write-steps-at-zero stage (cdr chunks)))
+    nil))
+(defconst *scp-t-mutant-run*
+  (fn-bs-run *scp-t-bs* nil
+             (append (list (list :create :staging ".stage-state-checkpoint-1")
+                           (list :cut "state-checkpoint-created"))
+                     (scp-t-write-steps-at-zero ".stage-state-checkpoint-1" *scp-t-chunks*)
+                     (list (list :cut "state-checkpoint-written")
+                           (list :fsync-file :staging ".stage-state-checkpoint-1")
+                           (list :cut "state-checkpoint-staged-durable")
+                           (list :rename :staging ".stage-state-checkpoint-1" :root "store-checkpoint.fnsc")
+                           (list :cut "state-checkpoint-replaced")
+                           (list :fsync-dir :root)
+                           (list :cut "state-checkpoint-durable")))
+             nil nil 0))
+(assert-event (not (scp-t-all-old-or-new *scp-t-mutant-run* *scp-t-bs* 3 '(1 2 3 4 5 6) *scp-t-apply-all*)))
