@@ -464,7 +464,8 @@ may or may not be durable."
                   (push number points)
                   (setq number 0 digits 0)))
                (t
-                (let ((digit (digit-char-p character 10)))
+                (let ((digit (and (char<= #\0 character #\9)
+                                  (- (char-code character) (char-code #\0)))))
                   (unless digit
                     (return-from fnn-bp-profile-parse
                       (values nil "expected decimal digits, spaces or commas")))

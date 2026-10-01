@@ -55,6 +55,8 @@
                 "64 12a" "64 #.(error \"evaluated\")" "+5" "1.0" "1/2"))
   (check-refused text))
 (check-refused (format nil "1~c2" #\Tab))
+;; Only ASCII digits: SBCL's digit-char-p also weighs other Unicode decimal digits.
+(check-refused (format nil "1~c" (code-char #x0661)))
 (check-refused (format nil "1~c2" #\Newline))
 
 ;; The real profiler setup runs with an empty symbol set in this harness.
