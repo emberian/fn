@@ -319,38 +319,11 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-inj-diag-keyword-loop (x acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (and (consp x) (not (equal (car x) 46)))
-      (fn-inj-diag-keyword-loop (cdr x) (cons (car x) acc))
-    (revappend acc nil)))
-
-(defun fn-inj-diag-keyword (x)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (and (consp x) (not (equal (car x) 46)))
-           (cons (car x) (fn-inj-diag-keyword (cdr x)))
-         nil)
-       :exec (fn-inj-diag-keyword-loop x nil)))
-
-(local
- (defthm fn-inj-diag-keyword-loop-is-revappend
-   (equal (fn-inj-diag-keyword-loop x acc)
-          (revappend acc (fn-inj-diag-keyword x)))
-   :hints (("Goal" :induct (fn-inj-diag-keyword-loop x acc)
-                   :in-theory (union-theories '(fn-inj-diag-keyword-loop fn-inj-diag-keyword revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-inj-diag-keyword-loop)
-
-(verify-guards fn-inj-diag-keyword
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-inj-diag-keyword)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-inj-diag-keyword-loop-is-revappend (acc nil))))))
+(def-loop fn-inj-diag-keyword (x)
+  :shape :map
+  :over x
+  :while (not (equal (car x) 46))
+  :body (car x))
 
 
 (defun fn-inj-after-keyword (x)
@@ -407,36 +380,11 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-inj-but-last-loop (x acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (and (consp x) (consp (cdr x)))
-      (fn-inj-but-last-loop (cdr x) (cons (car x) acc))
-    (revappend acc nil)))
-
-(defun fn-inj-but-last (x)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (and (consp x) (consp (cdr x))) (cons (car x) (fn-inj-but-last (cdr x))) nil)
-       :exec (fn-inj-but-last-loop x nil)))
-
-(local
- (defthm fn-inj-but-last-loop-is-revappend
-   (equal (fn-inj-but-last-loop x acc)
-          (revappend acc (fn-inj-but-last x)))
-   :hints (("Goal" :induct (fn-inj-but-last-loop x acc)
-                   :in-theory (union-theories '(fn-inj-but-last-loop fn-inj-but-last revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-inj-but-last-loop)
-
-(verify-guards fn-inj-but-last
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-inj-but-last)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-inj-but-last-loop-is-revappend (acc nil))))))
+(def-loop fn-inj-but-last (x)
+  :shape :map
+  :over x
+  :while (consp (cdr x))
+  :body (car x))
 
 
 (defun fn-inj-path-valuep (value)

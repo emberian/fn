@@ -24,9 +24,10 @@
 ;   the capture of P over Q is the full open of P ++ Q
 ;   (fn-sn-recover-from-checkpoint-equals-full-recover), and a served
 ;   selection has S within the count (fn-sco-select-bounds-the-suffix).
-;   The store's medium discharges it by functional instantiation
+;   The store's medium is to discharge it by functional instantiation
 ;   (books/recovery-refinement-store.lisp: fn-sco-capture, fn-sco-open,
-;   fn-cpo-open-observed, fn-sco-select).  What an image on disk is at a
+;   fn-cpo-open-observed, fn-sco-select; an OBLIGATION, not yet proved
+;   there).  What an image on disk is at a
 ;   cut is the medium's own crash keystone: today the state checkpoint
 ;   file, OLD or NEW, never torn (fn-bs-scp-program-crash-is-old-or-new,
 ;   section 7); the design's target the page store's root
