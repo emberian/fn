@@ -35,9 +35,13 @@
 (include-book "store-checkpoint-buffer")
 (local (include-book "arithmetic/top" :dir :system))
 
-(local (in-theory (enable fn-scc-program fn-scc-atom-octets fn-scc-atomp fn-scc-nat-octets
-                          fn-scc-nat-encodablep fn-scc-string-octets fn-scc-octets-valuep
-                          fn-scc-octet-listp fn-scc-octetp fn-sccb-treep fn-scc-le-digits)))
+; The codec (books/store-tree-codec.lisp) is opened in the hints of the
+; proofs that read it, never book-wide (AGENTS.md; Codex r37 F3, r40 F1):
+; `adt-tree-codec' names its definitions for those hints.
+(local (deftheory adt-tree-codec
+         '(fn-scc-program fn-scc-atom-octets fn-scc-atomp fn-scc-nat-octets
+           fn-scc-nat-encodablep fn-scc-string-octets fn-scc-octets-valuep
+           fn-scc-octet-listp fn-scc-octetp fn-sccb-treep fn-scc-le-digits)))
 
 ; -----------------------------------------------------------------------------
 ; Counts without lists.
@@ -69,7 +73,7 @@
 (local
  (defthm adt-tree-chars-octets-octets
    (fn-scc-octet-listp (fn-scc-chars-octets chars))
-   :hints (("Goal" :in-theory (enable fn-scc-chars-octets)))))
+   :hints (("Goal" :in-theory (union-theories (theory 'adt-tree-codec) (enable fn-scc-chars-octets))))))
 
 ; An atom's encodability without its octets.
 (defun adt-tree-atom-okp (x)
@@ -92,7 +96,8 @@
 (local
  (defthm adt-tree-octet-listp-of-cons
    (equal (fn-scc-octet-listp (cons a b))
-          (and (fn-scc-octetp a) (fn-scc-octet-listp b)))))
+          (and (fn-scc-octetp a) (fn-scc-octet-listp b)))
+  :hints (("Goal" :in-theory (union-theories (theory 'adt-tree-codec) (current-theory :here))))))
 
 (local
  (defthm adt-tree-octet-listp-of-append
@@ -102,7 +107,7 @@
 
 (defthm adt-tree-okp-is-sccb-treep
   (equal (adt-tree-okp x) (fn-sccb-treep x))
-  :hints (("Goal" :induct (adt-tree-okp x))))
+  :hints (("Goal" :in-theory (union-theories (theory 'adt-tree-codec) (current-theory :here)) :induct (adt-tree-okp x))))
 
 ; The program's length, along the cdr spine onto an accumulator.
 (defun adt-tree-atom-plen (x)
@@ -128,7 +133,7 @@
 (defthm adt-tree-plen-is-len
   (implies (acl2-numberp acc)
            (equal (adt-tree-plen x acc) (+ acc (len (fn-scc-program x)))))
-  :hints (("Goal" :induct (adt-tree-plen x acc))))
+  :hints (("Goal" :in-theory (union-theories (theory 'adt-tree-codec) (current-theory :here)) :induct (adt-tree-plen x acc))))
 
 (defthm adt-tree-plen-natp
   (implies (natp acc) (natp (adt-tree-plen x acc)))
@@ -402,7 +407,7 @@
 (defthm adt-h-tw-atom-is-puts
   (implies (and (atom x) (not (fn-scc-octets-valuep x)))
            (equal (adt-h-tw-atom x c) (adt-h-puts (fn-scc-atom-octets x) c)))
-  :hints (("Goal" :in-theory (enable fn-scc-chars-octets))))
+  :hints (("Goal" :in-theory (union-theories (theory 'adt-tree-codec) (enable fn-scc-chars-octets)))))
 
 (local
  (defthm adt-h-append-assoc
@@ -412,7 +417,7 @@
   (equal (adt-h-tw-tree x n c)
          (adt-h-puts (append (fn-scc-program x) (fn-scc-repeat (nfix n) *fn-scc-op-cons*)) c))
   :hints (("Goal" :induct (adt-h-tw-tree x n c)
-           :in-theory (enable fn-scc-repeat))))
+           :in-theory (union-theories (theory 'adt-tree-codec) (enable fn-scc-repeat)))))
 
 (in-theory (disable adt-h-puts))
 
@@ -502,7 +507,7 @@
   (implies (not (fn-scc-octets-valuep x))
            (implies (atom x)
                     (equal (adt-g-tw-atom x c) (adt-pool-cputs (adt-g-pp) (fn-scc-atom-octets x) c))))
-  :hints (("Goal" :in-theory (enable fn-scc-chars-octets))))
+  :hints (("Goal" :in-theory (union-theories (theory 'adt-tree-codec) (enable fn-scc-chars-octets)))))
 
 (local
  (defthm adt-tree-append-repeat-cons
