@@ -1384,6 +1384,12 @@
     "books/catalog-entries",
     "books/catalog-refresh",
     "books/catalog-number-index",
+    "books/catalog-live-links",
+    "tests/acl2/catalog-live-links-tests",
+    "books/catalog-wbv-trie",
+    "books/catalog-paged",
+    "tests/acl2/catalog-paged-tests",
+    "books/catalog-paged-attach",
     "books/served-catalog-view",
     "books/served-columns",
     "tests/acl2/served-columns-tests",
@@ -2364,9 +2370,9 @@
   ],
   "totals": {
     "books": 2729,
-    "books_in_root_closure": 2639,
-    "roots": 2359,
-    "theorems": 36087,
+    "books_in_root_closure": 2641,
+    "roots": 2365,
+    "theorems": 36097,
     "functions": 23030,
     "assert_events": 25501,
     "must_fails": 2611,
@@ -11952,7 +11958,7 @@
     {
       "book": "books/catalog-live-links.lisp",
       "in_root_closure": true,
-      "is_root": false,
+      "is_root": true,
       "theorems": 128,
       "functions": 21,
       "guards": {
@@ -12129,7 +12135,7 @@
     {
       "book": "books/catalog-paged-attach.lisp",
       "in_root_closure": true,
-      "is_root": false,
+      "is_root": true,
       "theorems": 0,
       "functions": 1,
       "guards": {
@@ -12156,8 +12162,8 @@
     {
       "book": "books/catalog-paged.lisp",
       "in_root_closure": true,
-      "is_root": false,
-      "theorems": 202,
+      "is_root": true,
+      "theorems": 205,
       "functions": 62,
       "guards": {
         "verified": 0,
@@ -12395,7 +12401,7 @@
     {
       "book": "books/catalog-wbv-trie.lisp",
       "in_root_closure": true,
-      "is_root": false,
+      "is_root": true,
       "theorems": 25,
       "functions": 15,
       "guards": {
@@ -57384,9 +57390,9 @@
     },
     {
       "book": "tests/acl2/catalog-live-links-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
-      "theorems": 5,
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 12,
       "functions": 1,
       "guards": {
         "verified": 0,
@@ -57398,7 +57404,7 @@
       "assert_events": 7,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 20,
+      "defconsts": 22,
       "defmacros": 3,
       "encapsulates": 0,
       "includes": [
@@ -57465,8 +57471,8 @@
     },
     {
       "book": "tests/acl2/catalog-paged-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 14,
       "guards": {

@@ -11,9 +11,9 @@ stale. Counts describe artifacts, not coverage; see
 | Quantity | Count |
 | --- | --- |
 | Books read | 2729 |
-| Certification roots in the Makefile | 2359 |
-| Books inside the root closure | 2639 |
-| `defthm` and `defthmd` events | 36087 |
+| Certification roots in the Makefile | 2365 |
+| Books inside the root closure | 2641 |
+| `defthm` and `defthmd` events | 36097 |
 | `defun` events | 23030 |
 | Functions with verified guards | 3847 |
 | Functions declared `:verify-guards nil` and never verified | 2932 |
@@ -428,14 +428,14 @@ that `make certify` requests.
 | `books/catalog-context-recovery.lisp` | root | 4 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/catalog-delta.lisp` | root | 14 | 10 | 1/1/7/1 | 0 | 0 | 1 |
 | `books/catalog-entries.lisp` | root | 35 | 4 | 0/1/2/1 | 0 | 0 | 3 |
-| `books/catalog-live-links.lisp` | closure | 128 | 21 | 0/19/2/0 | 0 | 0 | 4 |
+| `books/catalog-live-links.lisp` | root | 128 | 21 | 0/19/2/0 | 0 | 0 | 4 |
 | `books/catalog-load-index.lisp` | root | 4 | 4 | 0/4/0/0 | 0 | 0 | 1 |
 | `books/catalog-logic.lisp` | closure | 355 | 125 | 14/20/64/27 | 0 | 0 | 7 |
 | `books/catalog-number-assignment.lisp` | closure | 0 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/catalog-number-index.lisp` | root | 46 | 10 | 3/0/6/1 | 0 | 0 | 1 |
 | `books/catalog-number-window.lisp` | root | 3 | 1 | 0/1/0/0 | 0 | 0 | 0 |
-| `books/catalog-paged-attach.lisp` | closure | 0 | 1 | 0/0/0/1 | 2 | 0 | 0 |
-| `books/catalog-paged.lisp` | closure | 202 | 62 | 0/4/39/19 | 3 | 0 | 1 |
+| `books/catalog-paged-attach.lisp` | root | 0 | 1 | 0/0/0/1 | 2 | 0 | 0 |
+| `books/catalog-paged.lisp` | root | 205 | 62 | 0/4/39/19 | 3 | 0 | 1 |
 | `books/catalog-prepare-sealed.lisp` | root | 0 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/catalog-prepare.lisp` | root | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/catalog-prepared-record.lisp` | closure | 12 | 11 | 5/0/6/0 | 0 | 0 | 0 |
@@ -443,7 +443,7 @@ that `make certify` requests.
 | `books/catalog-refresh.lisp` | root | 17 | 3 | 0/0/3/0 | 0 | 0 | 3 |
 | `books/catalog-relation.lisp` | root | 42 | 8 | 1/1/4/2 | 0 | 0 | 4 |
 | `books/catalog-view.lisp` | root | 21 | 12 | 5/0/6/1 | 0 | 0 | 3 |
-| `books/catalog-wbv-trie.lisp` | closure | 25 | 15 | 1/0/10/4 | 0 | 0 | 0 |
+| `books/catalog-wbv-trie.lisp` | root | 25 | 15 | 1/0/10/4 | 0 | 0 | 0 |
 | `books/catalog.lisp` | root | 30 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/cbor-invariants.lisp` | root | 73 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/cbor-record-scalar.lisp` | root | 0 | 1 | 1/0/0/0 | 0 | 0 | 0 |
@@ -1971,10 +1971,10 @@ that `make certify` requests.
 | `tests/acl2/catalog-context-recovery-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 0 | 0 |
 | `tests/acl2/catalog-delta-tests.lisp` | root | 7 | 5 | 0/0/0/5 | 4 | 2 | 0 |
 | `tests/acl2/catalog-entries-tests.lisp` | root | 4 | 20 | 0/3/0/17 | 59 | 0 | 0 |
-| `tests/acl2/catalog-live-links-tests.lisp` | - | 5 | 1 | 0/1/0/0 | 7 | 0 | 0 |
+| `tests/acl2/catalog-live-links-tests.lisp` | root | 12 | 1 | 0/1/0/0 | 7 | 0 | 0 |
 | `tests/acl2/catalog-load-index-tests.lisp` | root | 6 | 0 | 0/0/0/0 | 0 | 1 | 0 |
 | `tests/acl2/catalog-number-index-tests.lisp` | root | 8 | 4 | 0/0/0/4 | 2 | 3 | 0 |
-| `tests/acl2/catalog-paged-tests.lisp` | - | 0 | 14 | 0/0/0/14 | 10 | 0 | 0 |
+| `tests/acl2/catalog-paged-tests.lisp` | root | 0 | 14 | 0/0/0/14 | 10 | 0 | 0 |
 | `tests/acl2/catalog-record-tests.lisp` | root | 12 | 3 | 0/0/1/2 | 5 | 6 | 0 |
 | `tests/acl2/catalog-refresh-tests.lisp` | root | 0 | 10 | 0/0/0/10 | 24 | 0 | 0 |
 | `tests/acl2/catalog-relation-tests.lisp` | root | 7 | 3 | 0/0/0/3 | 3 | 2 | 0 |
