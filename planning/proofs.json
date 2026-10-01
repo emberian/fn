@@ -20014,15 +20014,20 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "planned",
+      "status": "certified",
       "evidence": [
         "books/runtime-construction-inventory.lisp",
         "host/native/runtime-construction-inventory.lisp",
         "tests/acl2/runtime-construction-inventory-tests.lisp",
         "tests/native/runtime-construction-inventory.lisp",
-        "planning/evidence/runtime-construction-inventory-2026-10-01/coordinate.json"
+        "planning/evidence/runtime-construction-inventory-2026-10-01/coordinate.json",
+        "planning/evidence/manifests/certify-20261001T034837Z-1583376.json",
+        "planning/evidence/manifests/certify-20261001T035045Z-1607035.json"
       ],
-      "progress_note": "Actual definitions/guards and resident bound admitted from source in fresh protected rci2; eight literal fixtures and native self-storage/seal fixture pass. Normal two-book certification pending. Actual image constructor cohort/source binding and positive recovery family remain open."
+      "progress_note": "Actual core definitions/guards and resident bound normal-certified in034837; unchanged book reused in035045 with final ten literal fixtures including full theorem antecedent/conclusion and sole-hypothesis removal. Native actual primitive fixtures pass local and selected Linux. Complete image recipe/source binding, real constructor reserves and positive recovery family remain open; this is the arithmetic boundary only.",
+      "events": [
+        "fn-runtime-construction-inventory-bounds-resident"
+      ]
     }
   ]
 }

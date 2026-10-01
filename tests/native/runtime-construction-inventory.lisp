@@ -30,6 +30,17 @@
        (recipe (compile nil '(lambda () :test-recipe)))
        (inventory nil))
   (setf (svref buffer 0) backing)
+  (let ((captured (fnn-runtime-construction-inventory-capture
+                   pool :test-image recipe (vector pool buffer backing))))
+    (assert (plusp (fnn-runtime-construction-inventory-primary captured)))
+    (assert (null (fnn-runtime-construction-inventory-constructor-primary captured)))
+    (assert (null (fnn-runtime-construction-inventory-native-octets captured)))
+    (assert (null (fnn-runtime-construction-inventory-resident captured)))
+    (expect-error (lambda () (fnn-runtime-construction-inventory-seal captured)))
+    (fnn-runtime-construction-inventory-complete captured 80 64)
+    (fnn-runtime-construction-inventory-seal captured)
+    (expect-error (lambda ()
+                    (fnn-runtime-construction-inventory-complete captured 80 64))))
   (setq inventory (fnn-runtime-construction-inventory-prepare
                    pool :test-image recipe
                    (vector pool buffer backing prototype backing) 80 64))

@@ -9,21 +9,25 @@
   (recipe nil :read-only t)
   objects sizes primary constructor-primary native-octets resident sealed)
 
-(defun fnn-runtime-construction-inventory-observe (inventory)
+(defun fnn-runtime-construction-inventory-observe-primary (inventory)
   "Shallow observations only; ACL2 computes every resource total."
   (let ((objects (fnn-runtime-construction-inventory-objects inventory))
         (sizes (fnn-runtime-construction-inventory-sizes inventory)))
     (dotimes (i (length objects))
       (setf (svref sizes i)
             (sb-ext:primitive-object-size (svref objects i))))
-    (fnn-core 'fn-runtime-construction-inventory
-              (coerce sizes 'list)
-              (fnn-runtime-construction-inventory-constructor-primary inventory)
-              (fnn-runtime-construction-inventory-native-octets inventory)
-              most-positive-fixnum)))
+    (fnn-core 'fn-rci-sum (coerce sizes 'list) 0 most-positive-fixnum)))
 
-(defun fnn-runtime-construction-inventory-prepare
-    (pool image recipe owned constructor-primary native-octets)
+(defun fnn-runtime-construction-inventory-observe (inventory)
+  (fnn-runtime-construction-inventory-observe-primary inventory)
+  (fnn-core 'fn-runtime-construction-inventory
+            (coerce (fnn-runtime-construction-inventory-sizes inventory) 'list)
+            (fnn-runtime-construction-inventory-constructor-primary inventory)
+            (fnn-runtime-construction-inventory-native-octets inventory)
+            most-positive-fixnum))
+
+(defun fnn-runtime-construction-inventory-capture
+    (pool image recipe owned)
   "OWNED is the finite actual constructor recipe, never a transitive heap walk.
 This private builder helper does not establish completeness of that recipe.
 The caller must include its source-descriptor cells and all owned backings.
@@ -46,17 +50,35 @@ Shared code/symbols are in the declared image boundary, not entries of OWNED."
           (svref objects 2) sizes)
     (loop for object in roots for i from 3 do (setf (svref objects i) object))
     (setf (fnn-runtime-construction-inventory-objects inventory) objects
-          (fnn-runtime-construction-inventory-sizes inventory) sizes
-          (fnn-runtime-construction-inventory-constructor-primary inventory)
-          constructor-primary
-          (fnn-runtime-construction-inventory-native-octets inventory)
-          native-octets)
-    (let ((answer (fnn-runtime-construction-inventory-observe inventory)))
-      (unless (eq (first answer) :inventory-observed)
-        (error "runtime-construction-inventory-domain"))
-      (setf (fnn-runtime-construction-inventory-primary inventory) (second answer)
-            (fnn-runtime-construction-inventory-resident inventory) (fifth answer)))
+          (fnn-runtime-construction-inventory-sizes inventory) sizes)
+    (let ((primary (fnn-runtime-construction-inventory-observe-primary inventory)))
+      (unless primary (error "runtime-construction-inventory-domain"))
+      (setf (fnn-runtime-construction-inventory-primary inventory) primary))
+    ;; Missing future/native coordinates remain NIL, not a zero allowance.
     inventory))
+
+(defun fnn-runtime-construction-inventory-complete
+    (inventory constructor-primary native-octets)
+  "Add actual compiler-derived reserves to a captured inventory before seal."
+  (when (or (fnn-runtime-construction-inventory-sealed inventory)
+            (fnn-runtime-construction-inventory-resident inventory))
+    (error "runtime-construction-inventory-completed"))
+  (setf (fnn-runtime-construction-inventory-constructor-primary inventory)
+        constructor-primary
+        (fnn-runtime-construction-inventory-native-octets inventory) native-octets)
+  (let ((answer (fnn-runtime-construction-inventory-observe inventory)))
+    (unless (and (eq (first answer) :inventory-observed)
+                 (eql (second answer)
+                      (fnn-runtime-construction-inventory-primary inventory)))
+      (error "runtime-construction-inventory-domain"))
+    (setf (fnn-runtime-construction-inventory-resident inventory) (fifth answer)))
+  inventory)
+
+(defun fnn-runtime-construction-inventory-prepare
+    (pool image recipe owned constructor-primary native-octets)
+  (fnn-runtime-construction-inventory-complete
+   (fnn-runtime-construction-inventory-capture pool image recipe owned)
+   constructor-primary native-octets))
 
 (defun fnn-runtime-construction-inventory-replace (inventory old replacement)
   "Replace a descriptor prototype with the actual final constructor object.

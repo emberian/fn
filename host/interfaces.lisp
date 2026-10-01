@@ -920,6 +920,9 @@
 (definterface fn-recovery-profile-envelope
   :class :common-lisp-compliant)
 
+(definterface fn-rci-sum
+  :class :common-lisp-compliant :kinds ((total natp) (limit natp)))
+
 (definterface fn-runtime-construction-inventory
   :class :common-lisp-compliant)
 

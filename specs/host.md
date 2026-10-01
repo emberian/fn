@@ -1684,3 +1684,10 @@ Shared code, symbols and unrelated image storage retain their declared runtime
 boundary; future DATA6/controller/ATS allocations are constructor reserves until
 actually created. These observations alone neither install a baseline nor
 authorize a file operation, and they are not a whole-process RSS bound.
+
+The builder may capture actual resident objects before the compiler has the
+future-constructor and native coordinates. This uses the same guarded
+`fn-rci-sum`; the missing coordinates and final resident total remain NIL.
+`fnn-runtime-construction-inventory-complete` supplies the actual compiler
+coordinates later. An incomplete capture cannot seal, so observing existing
+objects never silently supplies zero for an unavailable allocation allowance.
