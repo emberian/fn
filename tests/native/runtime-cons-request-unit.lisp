@@ -1,0 +1,27 @@
+(in-package "CL-USER")
+(proclaim '(optimize (speed 3) (space 1) (safety 0) (debug 1)
+                    (compilation-speed 0) (inhibit-warnings 3)
+                    (sb-c::instrument-consing 0)))
+(defun fnn-cons-unit-cons (a d) (cons a d))
+(defun fnn-cons-unit-list4 (a b c d) (list a b c d))
+(defun fnn-cons-unit-list5 (a b c d e) (list a b c d e))
+(defun fnn-cons-unit-primitive-readout ()
+  ;; Actual target compiler constants, not a host-supplied unit allowance.
+  (values sb-vm:cons-size sb-vm:n-word-bytes sb-vm:vector-data-offset
+          sb-vm:lowtag-mask most-positive-fixnum))
+(assert (equal (multiple-value-list (fnn-runtime-primitive-request-layout))
+               '(:selected-primitive-request-layout 2 8 2 15 4611686018427387903)))
+(assert (equal (multiple-value-list (fnn-cons-unit-primitive-readout))
+               '(2 8 2 15 4611686018427387903)))
+(let* ((a (list :borrowed-a)) (d (list :borrowed-d))
+       (pair (fnn-cons-unit-cons a d))
+       (l4 (fnn-cons-unit-list4 a d a d))
+       (l5 (fnn-cons-unit-list5 a d a d a)))
+  (assert (and (eq (car pair) a) (eq (cdr pair) d)))
+  (assert (and (equal l4 (list a d a d)) (equal l5 (list a d a d a)))))
+(dolist (name '(fnn-cons-unit-cons fnn-cons-unit-list4 fnn-cons-unit-list5
+                fnn-cons-unit-primitive-readout fnn-runtime-primitive-request-layout))
+  (format t "FULL-COMPONENT ~S~%" name)
+  (sb-disassem:disassemble-code-component
+    (sb-kernel:fun-code-header (symbol-function name))))
+(format t "SELECTED-CONS-UNIT PASS actual-constants/identity/list-effects~%")

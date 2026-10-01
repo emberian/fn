@@ -19,9 +19,13 @@
   (eql 0 (sb-sys:sap-ref-lispobj
           (sb-sys:foreign-symbol-sap "lisp_sig_handlers" t)
           (ash signal sb-vm:word-shift))))
+(defun fnn-runtime-image-policy-allocator-profiler-off-p ()
+  (zerop (sb-alien:extern-alien "gencgc_alloc_profiler" sb-alien:int)))
 (defun fnn-runtime-image-policy-source-quiet-p ()
   ;; Cold inventory before the heap sample; not a served-path revalidation.
-  (and (not sb-sprof::*profiling*) (null sb-impl::*active-processes*)
+  (and (not sb-sprof::*profiling*)
+       (fnn-runtime-image-policy-allocator-profiler-off-p)
+       (null sb-impl::*active-processes*)
        (null (sb-ext:list-all-timers))
        (every (lambda (thread)
                 (or (eq thread sb-thread:*current-thread*)
@@ -61,6 +65,7 @@
              (eq pool (fnn-runtime-image-policy-pool policy))
              (eq participants (fnn-runtime-image-policy-participants policy))
              (eq participants *fnn-runtime-participants*)
+             (fnn-runtime-image-policy-allocator-profiler-off-p)
              (every #'fnn-runtime-image-policy-signal-default-p
                     *fnn-runtime-bootstrap-ordinary-signals*))
         (values :image-policy-closed policy)
