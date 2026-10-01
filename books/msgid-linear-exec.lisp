@@ -1643,6 +1643,8 @@
            :in-theory (disable fn-mlh-split-page fn-mlh-split fn-mlh-abs-pages fn-mpxl-split-pages fn-mlh-pe
                                fn-mlh-ovf-is-seqw))))
 
+(local (in-theory (disable fn-mlh-nth-is-page)))
+
 ; The split is taken exactly when the logical split is.
 (defthm fn-mlh-split-taken-iff
   (implies (and (fn-mlhp fn-mlh) (fn-mlh-wfp fn-mlh) (posp (fn-mlh-pages fn-mlh)))
@@ -1707,3 +1709,129 @@
                 (fn-mlh-faithful rows fn-mlh))
            (fn-mlh-faithful rows (mv-nth 1 (fn-mlh-split fn-mlh))))
   :hints (("Goal" :in-theory (disable fn-mlh-faithful-from fn-mlh-okp))))
+
+; -----------------------------------------------------------------------------
+; 8. THE ADD AND THE FOLD.  The add places the entry (the put), counts it,
+; and -- when the count reaches half the round's slots (2 COUNT >= 1024 N)
+; and no split was ever refused -- splits ONE page: what one add reads,
+; writes and allocates is bounded by three pages whatever the table holds
+; (D27; the next-generation rebuild of books/msgid-pages-exec is gone).
+; The splits of a round come one per add, N of them in N consecutive adds,
+; so the load stays within [1/4, 1/2] (books/msgid-linear explains why the
+; trigger is the round's half, not the table's).  A refused split sets
+; STUCK: no further split is tried, and the table fills toward the named
+; refusal `fn-mlh-saturatedp'.
+
+; --- the table's scalars do not move its reader ---
+
+(defthm fn-mlh-seq-at-of-scalar-updates
+  (and (equal (fn-mlh-seq-at p j (update-fn-mlh-pages m fn-mlh)) (fn-mlh-seq-at p j fn-mlh))
+       (equal (fn-mlh-seq-at p j (update-fn-mlh-n m fn-mlh)) (fn-mlh-seq-at p j fn-mlh))
+       (equal (fn-mlh-seq-at p j (update-fn-mlh-s m fn-mlh)) (fn-mlh-seq-at p j fn-mlh))
+       (equal (fn-mlh-seq-at p j (update-fn-mlh-count m fn-mlh)) (fn-mlh-seq-at p j fn-mlh))
+       (equal (fn-mlh-seq-at p j (update-fn-mlh-stuck m fn-mlh)) (fn-mlh-seq-at p j fn-mlh))
+       (equal (fn-mlh-seq-at p j (update-fn-mlh-keyi i v fn-mlh)) (fn-mlh-seq-at p j fn-mlh)))
+  :hints (("Goal" :in-theory (enable fn-mlh-seq-at-is-seqw))))
+
+(defthm fn-mlh-scan-of-count-stuck
+  (and (equal (fn-mlh-scan tag p j acc (update-fn-mlh-count m fn-mlh)) (fn-mlh-scan tag p j acc fn-mlh))
+       (equal (fn-mlh-scan tag p j acc (update-fn-mlh-stuck m fn-mlh)) (fn-mlh-scan tag p j acc fn-mlh))))
+
+(defthm fn-mlh-candidates-of-count-stuck
+  (and (equal (fn-mlh-candidates tag (update-fn-mlh-count m fn-mlh)) (fn-mlh-candidates tag fn-mlh))
+       (equal (fn-mlh-candidates tag (update-fn-mlh-stuck m fn-mlh)) (fn-mlh-candidates tag fn-mlh)))
+  :hints (("Goal" :in-theory (e/d (fn-mlh-candidates fn-mlh-ovf-is-seqw) (fn-mlh-scan)))))
+
+(defthm fn-mlh-abs-pages-of-count-stuck
+  (and (equal (fn-mlh-abs-pages p (update-fn-mlh-count m fn-mlh)) (fn-mlh-abs-pages p fn-mlh))
+       (equal (fn-mlh-abs-pages p (update-fn-mlh-stuck m fn-mlh)) (fn-mlh-abs-pages p fn-mlh)))
+  :hints (("Goal" :induct (fn-mlh-abs-pages p fn-mlh) :in-theory (disable fn-mlh-pe))))
+
+(defthm fn-mlh-faithful-of-count-stuck
+  (and (equal (fn-mlh-faithful-from i rows (update-fn-mlh-count m fn-mlh)) (fn-mlh-faithful-from i rows fn-mlh))
+       (equal (fn-mlh-faithful-from i rows (update-fn-mlh-stuck m fn-mlh)) (fn-mlh-faithful-from i rows fn-mlh))
+       (equal (fn-mlh-okp n (update-fn-mlh-count m fn-mlh)) (fn-mlh-okp n fn-mlh))
+       (equal (fn-mlh-okp n (update-fn-mlh-stuck m fn-mlh)) (fn-mlh-okp n fn-mlh)))
+  :hints (("Goal" :in-theory (e/d (fn-mlh-okp fn-mlh-abs) (fn-mlh-candidates fn-mlh-abs-pages)))
+          ("Subgoal *1/2" :in-theory (disable fn-mlh-candidates))))
+
+; --- the put keeps the table faithful ---
+
+(defthm fn-mlh-ents-below-pe-of-write-slot
+  (implies (and (fn-mpxl-ents-below (fn-mlh-pe r i fn-mlh) n) (natp n) (natp seq) (< seq n)
+                (fn-mlhp fn-mlh) (< (+ 1 seq) *fn-mlh-tag-limit*)
+                (natp p) (natp j) (< j *fn-mlh-page-slots*) (natp r))
+           (fn-mpxl-ents-below (fn-mlh-pe r i (fn-mlh-write-slot p j tag seq fn-mlh)) n))
+  :hints (("Goal" :induct (fn-mlh-pe r i fn-mlh)
+           :in-theory (enable fn-mlh-seq-at-is-seqw))))
+
+(defthm fn-mlh-pages-okp-of-write-slot
+  (implies (and (fn-mpxl-pages-okp (fn-mlh-abs-pages k fn-mlh) n) (natp n) (natp seq) (< seq n)
+                (fn-mlhp fn-mlh) (< (+ 1 seq) *fn-mlh-tag-limit*)
+                (natp p) (natp j) (< j *fn-mlh-page-slots*))
+           (fn-mpxl-pages-okp (fn-mlh-abs-pages k (fn-mlh-write-slot p j tag seq fn-mlh)) n))
+  :hints (("Goal" :induct (fn-mlh-abs-pages k fn-mlh) :in-theory (disable fn-mlh-pe))))
+
+(defthm fn-mlh-abs-pages-of-set-ovf-ents
+  (implies (and (fn-mlhp fn-mlh) (natp p))
+           (equal (fn-mpxl-pages-okp (fn-mlh-abs-pages k (fn-mlh-set-ovf p fn-mlh)) n)
+                  (fn-mpxl-pages-okp (fn-mlh-abs-pages k fn-mlh) n)))
+  :hints (("Goal" :induct (fn-mlh-abs-pages k fn-mlh) :in-theory (disable fn-mlh-pe))))
+
+(defthm fn-mlh-pages-okp-mono
+  (implies (and (fn-mpxl-pages-okp pgs n) (natp n) (natp n2) (<= n n2))
+           (fn-mpxl-pages-okp pgs n2)))
+
+(defthm fn-mlh-put-okp
+  (implies (and (fn-mlhp fn-mlh) (fn-mlh-wfp fn-mlh) (fn-mlh-okp n fn-mlh)
+                (natp tag) (< tag *fn-mlh-tag-limit*)
+                (natp n) (natp seq) (< seq (+ 1 n)) (< (+ 1 seq) *fn-mlh-tag-limit*))
+           (fn-mlh-okp (+ 1 n) (mv-nth 1 (fn-mlh-put tag seq fn-mlh))))
+  :hints (("Goal" :in-theory (e/d (fn-mlh-okp fn-mlh-abs fn-mlh-put) (fn-mlh-abs-pages fn-mlh-pe fn-mpxl-addr-below))
+           :use ((:instance fn-mpxl-addr-below (n (fn-mlh-n fn-mlh)) (s (fn-mlh-s fn-mlh)))))))
+
+(local (defthm fn-mlh-nth-of-append-one
+  (implies (natp i)
+           (equal (nth i (append rows (list h)))
+                  (if (< i (len rows)) (nth i rows) (if (equal i (len rows)) h nil))))
+  :hints (("Goal" :in-theory (enable nth) :induct (nth i rows)))))
+
+(defthm fn-mlh-faithful-from-beyond
+  (implies (<= (len rows) (nfix i))
+           (fn-mlh-faithful-from i rows fn-mlh)))
+
+(defthm fn-mlh-faithful-from-append-last
+  (implies (and (true-listp rows)
+                (member-equal (len rows)
+                              (fn-mlh-candidates (fn-mlh-tag (fn-record-msgid h) (fn-mlh-key-octets fn-mlh)) fn-mlh)))
+           (fn-mlh-faithful-from (len rows) (append rows (list h)) fn-mlh))
+  :hints (("Goal" :expand ((fn-mlh-faithful-from (len rows) (append rows (list h)) fn-mlh))
+           :in-theory (disable fn-mlh-candidates fn-mlh-candidates-is-cands))))
+
+(defthm fn-mlh-faithful-from-of-put-append
+  (implies (and (fn-mlhp fn-mlh) (fn-mlh-wfp fn-mlh) (posp (fn-mlh-pages fn-mlh))
+                (true-listp rows) (natp i)
+                (fn-mlh-faithful-from i rows fn-mlh)
+                (equal tag (fn-mlh-tag (fn-record-msgid h) (fn-mlh-key-octets fn-mlh)))
+                (< (+ 1 (len rows)) *fn-mlh-tag-limit*)
+                (mv-nth 0 (fn-mlh-put tag (len rows) fn-mlh)))
+           (fn-mlh-faithful-from i (append rows (list h)) (mv-nth 1 (fn-mlh-put tag (len rows) fn-mlh))))
+  :hints (("Goal" :induct (fn-mlh-faithful-from i rows fn-mlh)
+           :in-theory (disable fn-mlh-candidates fn-mlh-candidates-is-cands fn-mlh-put-finds
+                               fn-mlh-faithful-from-append-last))
+          ("Subgoal *1/1" :cases ((equal i (len rows)))
+           :use ((:instance fn-mlh-put-finds (seq (len rows)))
+                 (:instance fn-mlh-faithful-from-append-last
+                            (fn-mlh (mv-nth 1 (fn-mlh-put tag (len rows) fn-mlh))))))))
+
+; The put of a row's entry at its sequence keeps the table faithful to the
+; rows with that row appended.
+(defthm fn-mlh-put-preserves-faithful
+  (implies (and (fn-mlhp fn-mlh) (fn-mlh-wfp fn-mlh) (posp (fn-mlh-pages fn-mlh))
+                (true-listp rows)
+                (fn-mlh-faithful rows fn-mlh)
+                (equal tag (fn-mlh-tag (fn-record-msgid h) (fn-mlh-key-octets fn-mlh)))
+                (< (+ 1 (len rows)) *fn-mlh-tag-limit*)
+                (mv-nth 0 (fn-mlh-put tag (len rows) fn-mlh)))
+           (fn-mlh-faithful (append rows (list h)) (mv-nth 1 (fn-mlh-put tag (len rows) fn-mlh))))
+  :hints (("Goal" :in-theory (disable fn-mlh-faithful-from fn-mlh-okp fn-mlh-candidates))))
