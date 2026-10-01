@@ -2016,3 +2016,259 @@
                  (:instance fn-mlh-settle-preserves-faithful
                             (rows (append rows (list h)))
                             (fn-mlh (mv-nth 1 (fn-mlh-put tag (len rows) (fn-mlh-first-page fn-mlh)))))))))
+
+; --- the clear and the key ---
+
+; Empty the table: no pages (the page array released), the root, count and
+; stuck reset, the key kept.
+(defun fn-mlh-clear (fn-mlh)
+  (declare (xargs :stobjs fn-mlh))
+  (let* ((fn-mlh (update-fn-mlh-pages 0 fn-mlh))
+         (fn-mlh (update-fn-mlh-n 0 fn-mlh))
+         (fn-mlh (update-fn-mlh-s 0 fn-mlh))
+         (fn-mlh (update-fn-mlh-count 0 fn-mlh))
+         (fn-mlh (update-fn-mlh-stuck 0 fn-mlh))
+         (fn-mlh (resize-fn-mlh-pg 0 fn-mlh)))
+    fn-mlh))
+
+(defthm fn-mlh-clear-shape
+  (implies (fn-mlhp fn-mlh)
+           (and (fn-mlhp (fn-mlh-clear fn-mlh))
+                (fn-mlh-wfp (fn-mlh-clear fn-mlh))
+                (fn-mlh-pgsp (fn-mlh-clear fn-mlh))
+                (equal (fn-mlh-pages (fn-mlh-clear fn-mlh)) 0)
+                (equal (fn-mlh-count (fn-mlh-clear fn-mlh)) 0)
+                (equal (fn-mlh-stuck (fn-mlh-clear fn-mlh)) 0)
+                (equal (fn-mlh-key-octets (fn-mlh-clear fn-mlh)) (fn-mlh-key-octets fn-mlh))))
+  :hints (("Goal" :in-theory (enable fn-mlh-pgsp))))
+
+(defthm fn-mlh-clear-root
+  (and (equal (fn-mlh-n (fn-mlh-clear fn-mlh)) 0)
+       (equal (fn-mlh-s (fn-mlh-clear fn-mlh)) 0)))
+
+; Write KEY's octets (clamped, missing ones 0) from index I.
+(defun fn-mlh-set-key-from (i key fn-mlh)
+  (declare (xargs :stobjs fn-mlh :guard (natp i)
+                  :measure (nfix (- *fn-mpxt-key-octets* (nfix i)))))
+  (if (>= (nfix i) *fn-mpxt-key-octets*)
+      fn-mlh
+    (let ((fn-mlh (update-fn-mlh-keyi (nfix i) (fn-ns-octet (if (consp key) (car key) 0)) fn-mlh)))
+      (fn-mlh-set-key-from (1+ (nfix i)) (if (consp key) (cdr key) nil) fn-mlh))))
+
+(defthm fn-mlh-set-key-from-shape
+  (implies (fn-mlhp fn-mlh)
+           (fn-mlhp (fn-mlh-set-key-from i key fn-mlh)))
+  :hints (("Goal" :induct (fn-mlh-set-key-from i key fn-mlh)
+           :in-theory (enable unsigned-byte-p))))
+
+(defthm fn-mlh-set-key-from-frame
+  (and (equal (fn-mlh-pages (fn-mlh-set-key-from i key fn-mlh)) (fn-mlh-pages fn-mlh))
+       (equal (fn-mlh-n (fn-mlh-set-key-from i key fn-mlh)) (fn-mlh-n fn-mlh))
+       (equal (fn-mlh-s (fn-mlh-set-key-from i key fn-mlh)) (fn-mlh-s fn-mlh))
+       (equal (fn-mlh-count (fn-mlh-set-key-from i key fn-mlh)) (fn-mlh-count fn-mlh))
+       (equal (fn-mlh-stuck (fn-mlh-set-key-from i key fn-mlh)) (fn-mlh-stuck fn-mlh))
+       (equal (fn-mlh-pgsp (fn-mlh-set-key-from i key fn-mlh)) (fn-mlh-pgsp fn-mlh)))
+  :hints (("Goal" :induct (fn-mlh-set-key-from i key fn-mlh))))
+
+; INSTALL the key into an emptied table (the open's step): the tags of the
+; entries a table holds are its key's, so a key change empties it.
+(defun fn-mlh-set-key (key fn-mlh)
+  (declare (xargs :stobjs fn-mlh))
+  (let ((fn-mlh (fn-mlh-clear fn-mlh)))
+    (fn-mlh-set-key-from 0 key fn-mlh)))
+
+(defthm fn-mlh-set-key-shape
+  (implies (fn-mlhp fn-mlh)
+           (and (fn-mlhp (fn-mlh-set-key key fn-mlh))
+                (fn-mlh-wfp (fn-mlh-set-key key fn-mlh))
+                (fn-mlh-pgsp (fn-mlh-set-key key fn-mlh))
+                (equal (fn-mlh-pages (fn-mlh-set-key key fn-mlh)) 0)
+                (equal (fn-mlh-count (fn-mlh-set-key key fn-mlh)) 0)
+                (equal (fn-mlh-stuck (fn-mlh-set-key key fn-mlh)) 0)))
+  :hints (("Goal" :in-theory (disable fn-mlh-clear))))
+
+(defthm fn-mlh-candidates-no-pages-faithful-nil
+  (implies (zp (fn-mlh-pages fn-mlh))
+           (fn-mlh-faithful nil fn-mlh))
+  :hints (("Goal" :in-theory (enable fn-mlh-faithful fn-mlh-okp))))
+
+(in-theory (disable fn-mlh-clear fn-mlh-set-key))
+
+; --- THE FOLD ---
+
+; THE FOLD: the table the catalog holds is the fold of the add over its rows
+; from the set-keyed empty table (books/catalog-logic's correspondence),
+; the unplaced count its first value; a fold whose every step placed is
+; faithful.  THE STEP IS BOUNDED as books/msgid-pages-exec's fold: a row
+; whose sequence would not leave room in the word is counted unplaced.
+(defun fn-mlh-build-from (i u rows fn-mlh)
+  (declare (xargs :stobjs fn-mlh :verify-guards nil
+                  :guard (and (natp i) (natp u) (true-listp rows) (fn-mlh-wfp fn-mlh))
+                  :measure (nfix (- (len rows) (nfix i)))))
+  (if (>= (nfix i) (len rows))
+      (mv u fn-mlh)
+    (if (>= (+ 2 (nfix i)) *fn-mlh-tag-limit*)
+        (fn-mlh-build-from (1+ (nfix i)) (1+ u) rows fn-mlh)
+      (mv-let (r fn-mlh)
+        (fn-mlh-add (fn-mlh-tag (fn-record-msgid (nth (nfix i) rows)) (fn-mlh-key-octets fn-mlh))
+                    (nfix i) fn-mlh)
+        (fn-mlh-build-from (1+ (nfix i)) (if (equal r :placed) u (1+ u)) rows fn-mlh)))))
+
+(defun-nx fn-mlh-build (key rows)
+  (mv-nth 1 (fn-mlh-build-from 0 0 rows (fn-mlh-set-key key (create-fn-mlh)))))
+
+(defun-nx fn-mlh-build-unplaced (key rows)
+  (mv-nth 0 (fn-mlh-build-from 0 0 rows (fn-mlh-set-key key (create-fn-mlh)))))
+
+(defthm fn-mlh-build-from-shape
+  (implies (and (fn-mlhp fn-mlh) (fn-mlh-wfp fn-mlh))
+           (and (fn-mlhp (mv-nth 1 (fn-mlh-build-from i u rows fn-mlh)))
+                (fn-mlh-wfp (mv-nth 1 (fn-mlh-build-from i u rows fn-mlh)))
+                (equal (fn-mlh-key-octets (mv-nth 1 (fn-mlh-build-from i u rows fn-mlh)))
+                       (fn-mlh-key-octets fn-mlh))))
+  :hints (("Goal" :induct (fn-mlh-build-from i u rows fn-mlh)
+           :in-theory (disable fn-mlh-add fn-mlh-wfp))))
+
+(defthm fn-mlh-build-from-count
+  (implies (natp u)
+           (and (natp (mv-nth 0 (fn-mlh-build-from i u rows fn-mlh)))
+                (<= u (mv-nth 0 (fn-mlh-build-from i u rows fn-mlh)))))
+  :rule-classes ((:rewrite) (:linear :corollary (implies (natp u) (<= u (mv-nth 0 (fn-mlh-build-from i u rows fn-mlh))))))
+  :hints (("Goal" :induct (fn-mlh-build-from i u rows fn-mlh)
+           :in-theory (disable fn-mlh-add))))
+
+(defthm fn-mlh-build-from-count-car
+  (implies (natp u)
+           (<= u (car (fn-mlh-build-from i u rows fn-mlh))))
+  :rule-classes :linear
+  :hints (("Goal" :use fn-mlh-build-from-count :in-theory (disable fn-mlh-build-from-count fn-mlh-build-from))))
+
+(defthm fn-mlh-build-from-faithful
+  (implies (and (fn-mlhp fn-mlh) (fn-mlh-wfp fn-mlh) (true-listp rows)
+                (natp i) (<= i (len rows)) (natp u)
+                (fn-mlh-faithful (fn-mpxt-prefix i rows) fn-mlh)
+                (equal (mv-nth 0 (fn-mlh-build-from i u rows fn-mlh)) u))
+           (fn-mlh-faithful rows (mv-nth 1 (fn-mlh-build-from i u rows fn-mlh))))
+  :hints (("Goal" :induct (fn-mlh-build-from i u rows fn-mlh)
+           :in-theory (disable fn-mlh-add fn-mlh-faithful fn-mpxt-prefix fn-mlh-add-preserves-faithful fn-mlh-wfp))
+          ("Subgoal *1/3" :use ((:instance fn-mlh-add-preserves-faithful
+                                           (rows (fn-mpxt-prefix i rows)) (h (nth i rows))
+                                           (tag (fn-mlh-tag (fn-record-msgid (nth i rows)) (fn-mlh-key-octets fn-mlh))))))))
+
+(defthm fn-mlh-build-from-past-the-limit
+  (implies (and (natp u) (natp i) (< i (len rows))
+                (<= *fn-mlh-tag-limit* (+ 1 (len rows))))
+           (< u (mv-nth 0 (fn-mlh-build-from i u rows fn-mlh))))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-mlh-build-from i u rows fn-mlh)
+           :in-theory (disable fn-mlh-add))))
+
+(defthm fn-mlh-create-is-a-table
+  (fn-mlhp (create-fn-mlh))
+  :hints (("Goal" :in-theory (enable fn-mlhp))))
+
+(in-theory (disable create-fn-mlh (:e create-fn-mlh)))
+
+(defthm fn-mlh-build-shape
+  (and (fn-mlhp (fn-mlh-build key rows))
+       (fn-mlh-wfp (fn-mlh-build key rows))
+       (natp (fn-mlh-build-unplaced key rows))
+       (equal (fn-mlh-key-octets (fn-mlh-build key rows))
+              (fn-mlh-key-octets (fn-mlh-set-key key (create-fn-mlh)))))
+  :hints (("Goal" :in-theory (disable fn-mlh-build-from fn-mlh-build-from-shape fn-mlh-wfp)
+           :use ((:instance fn-mlh-build-from-shape (i 0) (u 0)
+                            (fn-mlh (fn-mlh-set-key key (create-fn-mlh))))
+                 (:instance fn-mlh-build-from-count (i 0) (u 0)
+                            (fn-mlh (fn-mlh-set-key key (create-fn-mlh))))))))
+
+(defthm fn-mlh-build-unplaced-zero-bound
+  (implies (equal (fn-mlh-build-unplaced key rows) 0)
+           (< (+ 1 (len rows)) *fn-mlh-tag-limit*))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-mlh-build-from)
+           :use ((:instance fn-mlh-build-from-past-the-limit (i 0) (u 0)
+                            (fn-mlh (fn-mlh-set-key key (create-fn-mlh))))))))
+
+; KEYSTONE (the fold): a fold that placed every row is faithful to the rows.
+(defthm fn-mlh-build-faithful
+  (implies (and (true-listp rows)
+                (equal (fn-mlh-build-unplaced key rows) 0))
+           (fn-mlh-faithful rows (fn-mlh-build key rows)))
+  :hints (("Goal" :in-theory (disable fn-mlh-build-from fn-mlh-faithful fn-mlh-build-from-faithful)
+           :use ((:instance fn-mlh-build-from-faithful (i 0) (u 0)
+                            (fn-mlh (fn-mlh-set-key key (create-fn-mlh))))))))
+
+; The fold over one more row is one more (bounded) add: the catalog's commit.
+(local (defthm fn-mlh-nth-of-append-at-end
+  (implies (and (natp i) (equal i (len a)))
+           (equal (nth i (append a (list h))) h))))
+(local (defthm fn-mlh-len-of-append-one
+  (equal (len (append a (list h))) (+ 1 (len a)))))
+
+(local (defthm fn-mlh-build-from-append-base
+  (equal (fn-mlh-build-from (len rows) u (append rows (list h)) fn-mlh)
+         (if (< (+ 2 (len rows)) *fn-mlh-tag-limit*)
+             (mv-let (r fn-mlh)
+               (fn-mlh-add (fn-mlh-tag (fn-record-msgid h) (fn-mlh-key-octets fn-mlh))
+                           (len rows) fn-mlh)
+               (mv (if (equal r :placed) u (1+ u)) fn-mlh))
+           (mv (1+ u) fn-mlh)))
+  :hints (("Goal" :expand ((fn-mlh-build-from (len rows) u (append rows (list h)) fn-mlh)
+                           (:free (u a) (fn-mlh-build-from (+ 1 (len rows)) u (append rows (list h)) a)))
+           :in-theory (disable fn-mlh-add)))))
+
+(defthm fn-mlh-build-from-append
+  (implies (and (natp i) (<= i (len rows)))
+           (equal (fn-mlh-build-from i u (append rows (list h)) fn-mlh)
+                  (mv-let (u2 fn-mlh)
+                    (fn-mlh-build-from i u rows fn-mlh)
+                    (if (< (+ 2 (len rows)) *fn-mlh-tag-limit*)
+                        (mv-let (r fn-mlh)
+                          (fn-mlh-add (fn-mlh-tag (fn-record-msgid h) (fn-mlh-key-octets fn-mlh))
+                                      (len rows) fn-mlh)
+                          (mv (if (equal r :placed) u2 (1+ u2)) fn-mlh))
+                      (mv (1+ u2) fn-mlh)))))
+  :hints (("Goal" :induct (fn-mlh-build-from i u rows fn-mlh)
+           :in-theory (disable fn-mlh-add))
+          ("Subgoal *1/3" :expand ((fn-mlh-build-from i u (append rows (list h)) fn-mlh)))
+          ("Subgoal *1/2" :expand ((fn-mlh-build-from i u (append rows (list h)) fn-mlh)))))
+
+(defthm fn-mlh-build-append
+  (and (equal (fn-mlh-build key (append rows (list h)))
+              (if (< (+ 2 (len rows)) *fn-mlh-tag-limit*)
+                  (mv-nth 1 (fn-mlh-add (fn-mlh-tag (fn-record-msgid h) (fn-mlh-key-octets (fn-mlh-build key rows)))
+                                        (len rows) (fn-mlh-build key rows)))
+                (fn-mlh-build key rows)))
+       (equal (fn-mlh-build-unplaced key (append rows (list h)))
+              (if (and (< (+ 2 (len rows)) *fn-mlh-tag-limit*)
+                       (equal (mv-nth 0 (fn-mlh-add (fn-mlh-tag (fn-record-msgid h) (fn-mlh-key-octets (fn-mlh-build key rows)))
+                                                    (len rows) (fn-mlh-build key rows)))
+                              :placed))
+                  (fn-mlh-build-unplaced key rows)
+                (+ 1 (fn-mlh-build-unplaced key rows)))))
+  :hints (("Goal" :in-theory (disable fn-mlh-build-from fn-mlh-add fn-mlh-set-key))))
+
+(defthm fn-mlh-build-nil
+  (and (equal (fn-mlh-build key nil) (fn-mlh-set-key key (create-fn-mlh)))
+       (equal (fn-mlh-build-unplaced key nil) 0)))
+
+; THE OUTCOME AT THE COMMIT: the fold over one more row places it exactly
+; when the table is not saturated for its tag and the sequence space has
+; room -- the served refusal asks exactly that of the table as it is.
+(defthm fn-mlh-build-append-unplaced-iff
+  (iff (equal (fn-mlh-build-unplaced key (append rows (list h)))
+              (fn-mlh-build-unplaced key rows))
+       (and (< (+ 2 (len rows)) *fn-mlh-tag-limit*)
+            (not (fn-mlh-saturatedp (fn-mlh-tag (fn-record-msgid h) (fn-mlh-key-octets (fn-mlh-build key rows)))
+                                    (fn-mlh-build key rows)))))
+  :hints (("Goal" :in-theory (disable fn-mlh-build-from fn-mlh-add fn-mlh-set-key fn-mlh-saturatedp
+                                      fn-mlh-build fn-mlh-build-unplaced fn-mlh-build-shape
+                                      fn-mlh-add-places-iff-not-saturated)
+           :do-not-induct t
+           :use ((:instance fn-mlh-build-shape)
+                 (:instance fn-mlh-add-places-iff-not-saturated
+                            (tag (fn-mlh-tag (fn-record-msgid h) (fn-mlh-key-octets (fn-mlh-build key rows))))
+                            (seq (len rows))
+                            (fn-mlh (fn-mlh-build key rows)))))))
+
+(in-theory (disable fn-mlh-build fn-mlh-build-unplaced))
