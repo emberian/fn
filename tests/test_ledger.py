@@ -67,6 +67,17 @@ class DefLoopBridgeTests(unittest.TestCase):
             "(def-loop pairs (xs extra) :shape :map :elt e :body (cons e extra))",
             "(equal (pairs-loop xs extra acc) (revappend acc (pairs xs extra)))")
 
+    def test_skip_first(self):
+        declaration = "(def-loop drop (xs) :shape :map :keep-order :skip-first " \
+                      ":keep (integerp (car xs)) :body (car xs))"
+        self.check_bridge(declaration,
+                          "(equal (drop-loop xs acc) (revappend acc (drop xs)))")
+        events = ledger.def_loop_expansion(ledger.read_forms(declaration)[0])
+        self.assertEqual(events[0][3], ledger.read_forms(
+            "(declare (xargs :guard (true-listp acc) :verify-guards nil))")[0])
+        self.assertEqual(events[1][3], ledger.read_forms(
+            "(declare (xargs :guard t :verify-guards nil))")[0])
+
     def test_take(self):
         self.check_bridge(
             "(def-loop first (n xs) :shape :take :count n :over xs "

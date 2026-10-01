@@ -263,3 +263,30 @@
                      '(:def-loop :shape :map :loop dlt-pairs-loop :bridge dlt-pairs-loop-is-revappend)))
 (assert-event (equal (cdr (assoc-eq 'dlt-write-octets (table-alist 'fn-generated (w state))))
                      '(:def-loop :shape :into :bridge dlt-write-octets-is-append)))
+
+; Gap 1: KEEP may name the skip branch, without moving NOT into the logic.
+(def-loop dlt-skip-ints (xs)
+  :shape :map :keep-order :skip-first :keep (integerp (car xs))
+  :body (car xs))
+(assert-event (equal (dlt-skip-ints '(1 a 2 b)) '(a b)))
+(assert-event (equal (dlt-skip-ints nil) nil))
+(assert-event (equal (dlt-skip-ints '(1 2)) nil))
+(assert-event (equal (dlt-skip-ints-loop '(1 a 2 b) '(z))
+                     (revappend '(z) (dlt-skip-ints '(1 a 2 b)))))
+; @mutation-witness: swapping the meaning of KEEP keeps integers instead.
+(def-loop dlt-keep-ints-mutant (xs)
+  :shape :map :keep (integerp (car xs)) :body (car xs))
+(assert-event (not (equal (dlt-keep-ints-mutant '(1 a))
+                          (dlt-skip-ints '(1 a)))))
+(must-fail-checked
+ (defthm dlt-skip-ints-wrong-branch
+   (equal (dlt-keep-ints-mutant-loop '(1 a) nil)
+          (revappend nil (dlt-skip-ints '(1 a))))))
+(must-fail-checked
+ (def-loop dlt-bad-keep-order (xs) :shape :map :body (car xs)
+   :keep-order :sideways)
+ :unchecked "refused at expansion: :keep-order must be :cons-first or :skip-first")
+(must-fail-checked
+ (def-loop dlt-keep-order-on-sum (xs) :shape :sum :body 1
+   :keep-order :skip-first)
+ :unchecked "refused at expansion: :keep-order is a :map option")
