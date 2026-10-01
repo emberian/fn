@@ -380,6 +380,16 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     present = set(tracked())
+    # A planning/evidence/ path answers a citation when the evidence index
+    # names it: its bytes are in the archive (tools/evidence_store.py).
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import evidence_store  # noqa: PLC0415
+    for name in evidence_store.read_index(ROOT):
+        present.add(name)
+        parent = name.rpartition("/")[0]
+        while parent and parent not in present:
+            present.add(parent)
+            parent = parent.rpartition("/")[0]
     findings = scan(present, ever_existed())
     raised = [f for f in findings if f.klass in RAISED]
     load_bearing = [f for f in raised if f.tier == "load-bearing"]

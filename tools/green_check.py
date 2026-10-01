@@ -148,27 +148,29 @@ def manifests(root: Path = ROOT) -> list[tuple[Run, dict]]:
     """Every manifest a reader at this revision can open, newest last.
 
     The archive under `planning/evidence/manifests/` is the committed claim
-    (`tools/evidence_manifests.py`); the unarchived runs under `build/acl2/`
+    (`tools/evidence_manifests.py`; its bytes come from the evidence archive
+    by the hash the committed index names, `tools/evidence_store.py`); the
+    unarchived runs under `build/acl2/`
     are this worktree's own and are labelled so, because a reader elsewhere
     cannot see them.  Both are read through `certs.load_manifests`, which
     skips an unreadable or non-object file and records the evidence path.
     """
     found: list[tuple[Run, dict]] = []
-    archive = root / evidence_manifests.ARCHIVE_REL
-    paths = [(path, True) for path in sorted(archive.glob("certify-*.json"))]
-    paths += [(path, False)
-              for path in sorted(root.glob(certs.MANIFEST_GLOB))]
+    loaded = [(Path(rel), True, manifest)
+              for rel, manifest in evidence_manifests.load_all_archived(root)]
+    loaded += [(path, False, manifest)
+               for path in sorted(root.glob(certs.MANIFEST_GLOB))
+               for manifest in certs.load_manifests(root, path)]
     seen: set[str] = set()
-    for path, archived in paths:
-        for manifest in certs.load_manifests(root, path):
-            run_id = (evidence_manifests.run_id_of(path)
-                      or str(manifest.get("run_id") or ""))
-            if not run_id or run_id in seen:
-                continue
-            seen.add(run_id)
-            found.append((Run(
-                run_id=run_id, where=host_of(manifest), archived=archived,
-                sources=manifest.get("source_digests_sha256") or {}), manifest))
+    for path, archived, manifest in loaded:
+        run_id = (evidence_manifests.run_id_of(path)
+                  or str(manifest.get("run_id") or ""))
+        if not run_id or run_id in seen:
+            continue
+        seen.add(run_id)
+        found.append((Run(
+            run_id=run_id, where=host_of(manifest), archived=archived,
+            sources=manifest.get("source_digests_sha256") or {}), manifest))
     return sorted(found, key=lambda pair: pair[0].stamp)
 
 

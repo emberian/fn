@@ -46,6 +46,8 @@ import sys
 ROOT = Path(__file__).resolve().parents[3]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+if str(ROOT / "tools") not in sys.path:
+    sys.path.insert(0, str(ROOT / "tools"))
 
 from tools.resilience.scenario import (  # noqa: E402
     Scenario, Operation, Fault, check as check_scenario,
@@ -69,7 +71,12 @@ REQUIREMENTS = ["INT-001", "STO-002"]
 
 
 def records() -> list:
-    return sorted(EVIDENCE_DIR.glob("inn-lab-*.findings.json"))
+    """The committed findings files, read from the evidence archive by hash
+    when the working tree does not carry them (tools/evidence_store.py)."""
+    import evidence_store  # noqa: PLC0415
+    rel = EVIDENCE_DIR.relative_to(ROOT).as_posix()
+    return [evidence_store.materialize(ROOT, name)
+            for name in evidence_store.glob(ROOT, rel + "/inn-lab-*.findings.json")]
 
 
 def load(path) -> dict:

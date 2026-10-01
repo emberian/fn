@@ -131,8 +131,41 @@ def manifest_summary(manifest: object) -> dict | None:
             "cpus": cpus if isinstance(cpus, int) else None, "books": books}
 
 
-def summaries(paths: list[Path], summary: Path | None) -> list[dict | None]:
-    """Each path's manifest_summary, from the SUMMARY file where it is current."""
+def history_entries(history: Path) -> list[tuple[str, list, object]]:
+    """(name, stamp, read) for every `*certify-*.json` manifest in HISTORY.
+
+    The default history is the evidence archive's manifests: the committed
+    index's (read by hash, stamped by hash; tools/evidence_store.py) plus any
+    filed here and not yet added (stamped by size and mtime).  Another
+    directory is read from disk alone.
+    """
+    entries: dict[str, tuple[str, list, object]] = {}
+    if history.is_dir():
+        for path in history.glob("*certify-*.json"):
+            try:
+                stat = path.stat()
+            except OSError:
+                continue
+            entries[path.name] = (path.name, [stat.st_size, stat.st_mtime_ns],
+                                  lambda path=path: path.read_text(encoding="utf-8"))
+    if history.resolve() == HISTORY.resolve():
+        import evidence_store  # noqa: PLC0415
+        index = evidence_store.read_index(ROOT)
+        rel_dir = HISTORY.relative_to(ROOT).as_posix()
+        for rel in evidence_store.glob(ROOT, rel_dir + "/*certify-*.json"):
+            name = rel.rsplit("/", 1)[-1]
+            if name in entries or rel not in index:
+                continue
+            entries[name] = (name, ["sha256", index[rel][0]],
+                             lambda rel=rel: evidence_store.read_text(ROOT, rel))
+    return list(entries.values())
+
+
+def summaries(paths: list, summary: Path | None) -> list[dict | None]:
+    """Each entry's manifest_summary, from the SUMMARY file where it is current.
+
+    An entry is `history_entries`' (name, stamp, read); a bare Path is read
+    from disk."""
     known: dict = {}
     if summary is not None:
         try:
@@ -142,23 +175,26 @@ def summaries(paths: list[Path], summary: Path | None) -> list[dict | None]:
         except (OSError, ValueError, AttributeError):
             known = {}
     found, fresh, changed = [], {}, False
-    for path in paths:
-        try:
-            stat = path.stat()
-        except OSError:
-            found.append(None)
-            continue
-        stamp = [stat.st_size, stat.st_mtime_ns]
-        entry = known.get(path.name)
+    for item in paths:
+        if isinstance(item, Path):
+            try:
+                stat = item.stat()
+            except OSError:
+                found.append(None)
+                continue
+            item = (item.name, [stat.st_size, stat.st_mtime_ns],
+                    lambda path=item: path.read_text(encoding="utf-8"))
+        name, stamp, read = item
+        entry = known.get(name)
         if isinstance(entry, dict) and entry.get("stamp") == stamp:
             value = entry.get("summary")
         else:
             changed = True
             try:
-                value = manifest_summary(json.loads(path.read_text(encoding="utf-8")))
+                value = manifest_summary(json.loads(read()))
             except (OSError, ValueError):
                 value = None
-        fresh[path.name] = {"stamp": stamp, "summary": value}
+        fresh[name] = {"stamp": stamp, "summary": value}
         found.append(value)
     if summary is not None and (changed or set(fresh) != set(known)):
         try:
@@ -191,8 +227,8 @@ def quiet_walls(books: Iterable[str], history: Path | None = None,
     here = host_name(host)
     mine: dict[str, list[float]] = collections.defaultdict(list)
     anywhere: dict[str, list[float]] = collections.defaultdict(list)
-    paths = sorted(history.glob("*certify-*.json"),
-                   key=lambda p: p.name.split("certify-")[-1]) if history.is_dir() else []
+    paths = sorted(history_entries(history),
+                   key=lambda entry: entry[0].split("certify-")[-1])
     for one in summaries(paths, summary):
         if one is None:
             continue
@@ -386,9 +422,9 @@ def chain_lines(chain: list[str], walls: dict[str, float], factor: float = 1.0,
 def observations(history: Path) -> dict[tuple[str, str], list[tuple[float, float]]]:
     """(box, book) -> [(load per core, wall seconds)] over ordinary runs."""
     data: dict[tuple[str, str], list[tuple[float, float]]] = collections.defaultdict(list)
-    for path in sorted(history.glob("*certify-*.json")):
+    for _name, _stamp, read in sorted(history_entries(history), key=lambda e: e[0]):
         try:
-            manifest = json.loads(path.read_text(encoding="utf-8"))
+            manifest = json.loads(read())
         except (OSError, ValueError):
             continue
         if not isinstance(manifest, dict) or manifest.get("pcert"):

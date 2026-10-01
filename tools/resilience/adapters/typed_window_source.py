@@ -18,7 +18,11 @@ from ..scenario import check
 from ..typed_window_model import driver, from_scenario, judge_scenario, observe
 
 ROOT = Path(__file__).resolve().parents[3]
-EVIDENCE = ROOT / "planning/evidence/resilience-typed-window-2026-09-30"
+# The six frozen component sources and their inventory, copied byte-for-byte
+# from planning/evidence/resilience-typed-window-2026-09-30/ (lane
+# evidence-out, 2026-10-02): sources a tool loads stay in the repository when
+# the evidence moves to the archive; the inventory's digests still pin them.
+EVIDENCE = ROOT / "tools/resilience/typed_window_frozen"
 
 
 class SourceBackend:

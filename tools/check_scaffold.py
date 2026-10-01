@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from tools import ledger  # noqa: E402  (after ROOT is on the path)
 sys.path.insert(0, str(ROOT / "tools"))
+import evidence_store  # noqa: E402
 ERRORS: list[str] = []
 IGNORED = {".git", ".venv", ".cache", "build", "var", "__pycache__"}
 # The shared allocator pads to three digits; it does not stop at 999.
@@ -53,7 +54,16 @@ def link(target: str, base: Path, context: str) -> None:
     dest = (base.parent / unquote(parts.path)).resolve() if parts.path else base
     if not dest.is_relative_to(ROOT):
         fail(f"{context}: local link escapes repository: {target}")
-    elif not dest.exists():
+        return
+    rel = dest.relative_to(ROOT).as_posix()
+    if not dest.exists() and evidence_store.exists(ROOT, rel):
+        # Evidence the index names: its bytes are in the archive.
+        dest = evidence_store.materialize(ROOT, rel) if parts.fragment else dest
+        if not parts.fragment:
+            return
+    elif not dest.exists() and evidence_store.is_dir(ROOT, rel):
+        return
+    if not dest.exists():
         fail(f"{context}: missing target: {target}")
     elif parts.fragment and dest.suffix == ".md":
         if unquote(parts.fragment) not in anchors(dest):
@@ -99,7 +109,7 @@ def evidence(entry: dict, advanced: set[str]) -> None:
             fail(f"{entry['id']}: evidence must name a repository file")
         else:
             link(path, ROOT / "README.md", entry["id"])
-            if not (ROOT / path).is_file():
+            if not evidence_store.exists(ROOT, path):
                 fail(f"{entry['id']}: evidence is not a file: {path}")
 
 
@@ -126,10 +136,11 @@ def scenario_implementation(ident: str, entry: dict) -> None:
     if not isinstance(test, str) or not test:
         fail(f"{ident}: implementation.test is missing")
         return
-    module = ROOT / (test if "/" in test else test.replace(".", "/") + ".py")
-    if not module.is_file():
+    module_rel = test if "/" in test else test.replace(".", "/") + ".py"
+    if not evidence_store.exists(ROOT, module_rel):
         fail(f"{ident}: implementation.test {test} does not resolve to a file")
         return
+    module = evidence_store.materialize(ROOT, module_rel)
     cases = impl.get("cases", [])
     if not isinstance(cases, list) or any(not isinstance(c, str) or not c for c in cases):
         fail(f"{ident}: implementation.cases must be a list of names")
@@ -145,7 +156,9 @@ def scenario_implementation(ident: str, entry: dict) -> None:
         fail(f"{ident}: implementation.native must say whether a native image ran it")
     log, record = impl.get("log"), impl.get("record")
     for field, value in (("log", log), ("record", record)):
-        if not isinstance(value, str) or not (ROOT / value).is_file():
+        # Committed = tracked, or named by the evidence index (its bytes in
+        # the archive; tools/evidence_store.py).
+        if not isinstance(value, str) or not evidence_store.exists(ROOT, value):
             fail(f"{ident}: implementation.{field} must be a committed file: {value!r}")
             return
     if not record.endswith(".md"):

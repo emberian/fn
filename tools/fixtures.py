@@ -68,7 +68,12 @@ import native_env  # noqa: E402
 ROOT = Path("/tank/fn/scratch/fixtures")
 WORK = Path("/dev/shm/fn-fixtures")
 PY = sys.executable or "python3"
-EVIDENCE = "planning/evidence"
+# The recipes' scripts were written beside their evidence under
+# planning/evidence/<dir>/ and are copied byte-for-byte to
+# tools/fixture_scripts/<dir>/ (lane evidence-out, 2026-10-02), because
+# planning/evidence/ moved to the evidence archive and code a tool runs stays
+# in the repository.  The docstrings below name the evidence they came from.
+SCRIPTS = "tools/fixture_scripts"
 OPENSSL_TEST = "/tank/fn/toolchains/openssl-3.5.8"
 # The capacity the posting recipes init with: `--profile default` was the
 # old defaults (T = 2^32-1); the preset now holds 128 transactions, and its
@@ -199,7 +204,7 @@ def recipe_chain(ctx: Context, n: int) -> None:
     listing and `operator CONFIG store compact` (rotation and drop);
     the test copies it
     (tests.test_native_pack_chain, FN_P5_FIXTURE)."""
-    ctx.run([PY, TREE / EVIDENCE / "pack-chain-open-2026-09-26/chain_fixture.py", "build",
+    ctx.run([PY, TREE / SCRIPTS / "pack-chain-open-2026-09-26/chain_fixture.py", "build",
              ctx.work / "chain", ctx.dest, n])
 
 
@@ -208,10 +213,10 @@ def recipe_posted(ctx: Context, script: str, n: int) -> None:
     work = ctx.work / "load"
     env = dict(ctx.env, FN_FIXTURE_INIT_FLAGS=" ".join(CAPACITY))
     if script == "measure":
-        ctx.run([PY, TREE / EVIDENCE / "over-number-index-2026-09-26/measure.py", "load",
+        ctx.run([PY, TREE / SCRIPTS / "over-number-index-2026-09-26/measure.py", "load",
                  TREE, ctx.image, work, n], env=env)
     else:
-        ctx.run([PY, TREE / EVIDENCE / "post-identity-index-2026-09-26/postmeasure.py", "load",
+        ctx.run([PY, TREE / SCRIPTS / "post-identity-index-2026-09-26/postmeasure.py", "load",
                  ctx.image, work, n], env=env)
     check_load(work, n)
     copy_entries(work, ctx.dest, ["store"])
@@ -228,7 +233,7 @@ def recipe_signed(ctx: Context, n: int) -> None:
     lib = OPENSSL_TEST + "/lib"
     env = dict(ctx.env, LD_LIBRARY_PATH=lib + (":" + ctx.env["LD_LIBRARY_PATH"]
                                                 if ctx.env.get("LD_LIBRARY_PATH") else ""))
-    ctx.run([PY, TREE / EVIDENCE / "signed-post-linear-2026-09-26/prof_signed.py", "load",
+    ctx.run([PY, TREE / SCRIPTS / "signed-post-linear-2026-09-26/prof_signed.py", "load",
              TREE, ctx.image, work, "--n", n, "--signed", 32, "--probes", 40], env=env)
     copy_entries(work, ctx.dest, ["store", "keys", "probes"])
 
@@ -306,10 +311,10 @@ def recipe_synth(ctx: Context, n: int, flags: tuple, capacity: int | None = None
     (planning/evidence/snapshot-open-2-2026-09-27.md section 5)."""
     work = ctx.work / "seed"
     env = dict(ctx.env, FN_FIXTURE_INIT_FLAGS=" ".join(flags))
-    ctx.run([PY, TREE / EVIDENCE / "post-identity-index-2026-09-26/postmeasure.py", "load",
+    ctx.run([PY, TREE / SCRIPTS / "post-identity-index-2026-09-26/postmeasure.py", "load",
              ctx.image, work, 1000], env=env)
     check_load(work, 1000)
-    ctx.run([PY, TREE / EVIDENCE / "snapshot-open-3-2026-09-27/capseed.py", ctx.image,
+    ctx.run([PY, TREE / SCRIPTS / "snapshot-open-3-2026-09-27/capseed.py", ctx.image,
              work / "store", capacity or 2 * n + 4000])
     # The seed's history is its journal: no checkpoint goes into the copy.
     for path in (work / "store").glob("store-checkpoint*"):
@@ -418,10 +423,10 @@ def recipe_curve(ctx: Context) -> None:
     work = ctx.work / "seed"
     env = dict(ctx.env, FN_FIXTURE_INIT_FLAGS=" ".join(SYNTH_100K))
     started = time.monotonic()
-    ctx.run([PY, TREE / EVIDENCE / "post-identity-index-2026-09-26/postmeasure.py", "load",
+    ctx.run([PY, TREE / SCRIPTS / "post-identity-index-2026-09-26/postmeasure.py", "load",
              ctx.image, work, 1000], env=env)
     check_load(work, 1000)
-    ctx.run([PY, TREE / EVIDENCE / "snapshot-open-3-2026-09-27/capseed.py", ctx.image,
+    ctx.run([PY, TREE / SCRIPTS / "snapshot-open-3-2026-09-27/capseed.py", ctx.image,
              work / "store", 2 * max(CURVE_NS) + 100000])
     for path in (work / "store").glob("store-checkpoint*"):
         path.unlink()
@@ -484,7 +489,7 @@ def recipe_bp_open(ctx: Context) -> None:
     """planning/evidence/bp-checkpoint-open-2026-09-26/fixture.py: SCN-077's
     first half (1,311 held rows), the journal before and after the rotation
     as tars; measure.py beside it reads them."""
-    here = TREE / EVIDENCE / "bp-checkpoint-open-2026-09-26"
+    here = TREE / SCRIPTS / "bp-checkpoint-open-2026-09-26"
     env = dict(ctx.env, FIXTURE_DIR=str(ctx.dest))
     ctx.dest.mkdir(parents=True)
     ctx.run([PY, here / "fixture.py"], env=env)

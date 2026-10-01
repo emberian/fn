@@ -1,0 +1,12 @@
+{
+  "revision": "ed93fc3b6ee3b2ebcc0aec34d941ef168659aac1",
+  "sha256": {
+    "books/page-window-executor.lisp": "7201563e507fff9210902d0a5e21e5a5241ac638f0d7f58131267f4f1fe8bc0f",
+    "books/page-read-executor.lisp": "bceef532138d54ff89e75c2ac6e86e974c1dbae54af366ebcb9c1d2d72ffe2a4",
+    "books/page-read-ownership.lisp": "cba56c7b354af642583319b519ce61a259f712d65355b50b279783e543586a63",
+    "books/page-read-ledger.lisp": "c9cdc2d896d3c720b308256329bbd54df2d548d6f1e65072c6277a3f1b413bc1",
+    "books/page-read-resources.lisp": "50a31ef23b2133cd454a9d4eebfa4245062e99dce1482bc67a343d19618a6c9c",
+    "books/page-window-lease.lisp": "f8b98323bf87efcb6e266ad76a9d778e061baa58d1d6aeb9a4497403553f0c06"
+  },
+  "scope": "exact typed executor six-book component; logical calls only"
+}

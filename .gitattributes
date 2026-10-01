@@ -10,3 +10,7 @@ planning/requirements.json merge=fn-registry
 planning/proof-events.json merge=fn-registry
 tests/scenarios/catalog.json merge=fn-registry
 planning/reach-baseline.json merge=fn-registry
+# The evidence index (tools/evidence_store.py): one sorted line per file, so
+# two lanes that each file a manifest merge by union; a path the union kept
+# twice with different bytes is refused by every reader, never resolved.
+planning/evidence-index.tsv merge=union
