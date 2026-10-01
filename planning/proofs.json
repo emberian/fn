@@ -20737,14 +20737,27 @@
       "id": "PRF-1209",
       "title": "The resource vector and the bank: funded preserved by every transition, settle once, refusal keeps the slack, destroy returns exactly the unsettled draws",
       "statement": "books/resource-vector.lisp: the resource vector (a fixed-arity list of naturals, one coordinate a class of *fn-rv-coordinates*: resident, disk, descriptors, workers, read-ids, txids, config-gens, conn-ids, work; the first five Codex's fn-prs vector) with coordinate-wise plus, the order fn-rv-below and the truncated difference, split by the reusable mask into reusable and spent coordinates; the bank (BUDGET DRAWN SLOTS) with the drawn vector carried in state and direct-index rows (PHASE GEN . DEMAND), phase 0 idle, 1 drawn, 2 a sub-bank whose demand is its whole budget (sub-banks partition their parent), GEN the slot's generation raised by every charge and answered as the draw's completion token, which every later step on the slot names (:stale otherwise); the transitions draw, open, settle, refund, grow, destroy and the root fn-rv-install (slot 0 the owner's baseline, slot 1 the maintenance reserve as a sub-bank, before any user's slot). KEYSTONE fn-rv-step-keeps-okp: from an okp bank (funded; the reusable part of drawn exactly the reusable part of the outstanding rows; the spent part of the rows within the spent part of drawn) every transition's result is okp, admitted or refused; fn-rv-run-keeps-okp over sequences. KEYSTONE fn-rv-step-refused-keeps-the-bank: a refused step returns the bank itself, so fn-rv-refusal-keeps-slack and fn-rv-refused-run-keeps-the-bank. KEYSTONE fn-rv-draw-admits-exactly-within-the-budget (the check precedes every effect; fn-rv-draw-charges-exactly-the-demand). KEYSTONE fn-rv-settle-once. KEYSTONE fn-rv-replayed-completion-is-stale (Codex review r06 F2: the first draw's token, any run, a second admitted draw of the slot; the replayed token is :stale and leaves the bank; fn-rv-run-never-lowers-a-gen, fn-rv-charge-raises-the-gen). KEYSTONE fn-rv-step-keeps-the-other-slots and fn-rv-user-steps-keep-the-reserve (the reserve is never drawn by a user's step). KEYSTONE fn-rv-install-reserves-the-owner-first. KEYSTONE fn-rv-destroy-returns-exactly-the-unsettled-draws: destroying a sub-bank returns exactly its budget less what it spent, which covers the reusable part of every draw it still held. books/resource-vector-tree.lisp, a node's accounting as ONE state (ROOT SUBS), the sub-bank living in its parent's slot: KEYSTONE fn-rt-step-keeps-okp (and fn-rt-run-keeps-okp, fn-rt-step-refused-keeps-the-tree); KEYSTONE fn-rt-sub-bank-steps-keep-the-root (the partition); KEYSTONE fn-rt-destroy-revokes-the-sub-bank (r06 F2: after an admitted destroy, any run, and whatever the slot holds then, every step addressed to the destroyed sub-bank's token is :stale and leaves the tree; fn-rv-token-retiredp inductive over steps). Not claimed: which operation may draw which coordinate, any tariff, any served path (definterface :operation, specs/resource-vector.md); the refusal path's own transient allocation (the operation layer's, specs/resource-vector.md item 4).",
-      "status": "planned",
+      "status": "uncertified-at-current-digest",
       "milestone": "M5",
       "requirements": [
         "HST-045"
       ],
       "depends_on": [],
       "assumptions": [],
-      "events": [],
+      "events": [
+        "fn-rv-step-keeps-okp",
+        "fn-rv-run-keeps-okp",
+        "fn-rv-step-refused-keeps-the-bank",
+        "fn-rv-refusal-keeps-slack",
+        "fn-rv-refused-run-keeps-the-bank",
+        "fn-rv-draw-admits-exactly-within-the-budget",
+        "fn-rv-draw-charges-exactly-the-demand",
+        "fn-rv-settle-once",
+        "fn-rv-step-keeps-the-other-slots",
+        "fn-rv-user-steps-keep-the-reserve",
+        "fn-rv-install-reserves-the-owner-first",
+        "fn-rv-destroy-returns-exactly-the-unsettled-draws"
+      ],
       "evidence": [
         "books/resource-vector.lisp",
         "tests/acl2/resource-vector-tests.lisp",
@@ -20756,7 +20769,7 @@
       "id": "PRF-1210",
       "title": "One accounting: Codex's cold-read gate, the credit ledger, the heap reservation and the connection budget as projections of the resource vector",
       "statement": "books/resource-vector-relations.lisp: Codex's fn-prs 5-vector is the resource vector's prefix (fn-rv-prs-vector-is-the-prefix; fn-prs-plus and fn-prs-below agree with fn-rv-plus and fn-rv-below under the embedding); fn-prs-fundedp B U R C is exactly fn-rv-okp of the root bank whose rows are U (drawn), R (a sub-bank) and C (drawn) (fn-rv-prs-gate-is-a-funded-root); PRF-380's credit ledger is the :resident coordinate: a ledger is an okp bank whose rows are BASE, COMPLETION and RUNTIME (sub-banks), CACHE and one row an operation, every other coordinate 0, funded iff its total is within its budget BY CONSTRUCTION (fn-rv-credit-ledger-funded-by-definition, a projection identity, not a consistency keystone). NOT PROVED (Codex review r06 F5; NEXT): that a funded ledger is an okp bank (the row sum equals the total) and that Codex's release-the-reusable-coordinates is fn-rv-settle's split. books/resource-vector-relations-heap.lisp: PRF-198's accepted reservation is a funded root whose :resident coordinate is the reservation's octets against the machine's and whose :workers coordinate is the threads (fn-rv-heap-reservation-funds-the-root); PRF-223's held capacity is a funded root whose :resident coordinate is the resident figure of CAPACITY connections (fn-rv-connection-budget-funds-the-root). Not claimed: that the four budgets are one number (they are projections of different roots: the launcher's, the owner's, the cold pool's); their unification is the operation layer's.",
-      "status": "planned",
+      "status": "uncertified-at-current-digest",
       "milestone": "M5",
       "requirements": [
         "HST-045",
@@ -20769,7 +20782,12 @@
         "PRF-223"
       ],
       "assumptions": [],
-      "events": [],
+      "events": [
+        "fn-rv-prs-vector-is-the-prefix",
+        "fn-rv-prs-plus-is-plus",
+        "fn-rv-prs-below-is-below",
+        "fn-rv-prs-gate-is-a-funded-root"
+      ],
       "evidence": [
         "books/resource-vector-relations.lisp",
         "books/resource-vector-relations-heap.lisp",
@@ -20790,7 +20808,6 @@
         "PRF-1209"
       ],
       "assumptions": [],
-      "events": [],
       "evidence": [
         "books/resource-vector-exec.lisp"
       ],
