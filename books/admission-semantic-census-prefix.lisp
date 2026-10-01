@@ -247,6 +247,30 @@
   :in-theory (disable fn-rccap-idle-original-prefixp fn-rccap-remapped-prefix
                      fn-hp-pes-len fn-omk-at take))))
 
+(local (defthm fn-rccap-actual-census-tick-keeps-expected
+ (equal (fn-hrcur-field 1 (mv-nth 2 (fn-hct-tick census)))
+        (fn-hrcur-field 1 census))
+ :hints (("Goal" :do-not-induct t
+  :in-theory (e/d (fn-hct-tick fn-hrcur-field)
+                  (fn-hct-shapep fn-hsrcc-tick fn-hcc-row))))))
+
+(defthm fn-rccap-actual-codec-continue-retains-original-pending-prefix
+ (implies
+  (and (fn-rccap-waiting-original-prefixp remapper census originals original row pool)
+       (eq (mv-nth 0 (fn-hct-tick census)) :continue))
+  (fn-rccap-waiting-original-prefixp remapper
+   (mv-nth 2 (fn-hct-tick census)) originals original row pool))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :use ((:instance fn-rcct-actual-census-continue-retains-the-same-row
+         (c census) (history (mv-nth 0 (fn-rccap-remapped-prefix originals 0))))
+        (:instance fn-hct-tick-keeps-capture-and-lease (c census))
+        fn-rccap-actual-census-tick-keeps-expected)
+  :in-theory (e/d (fn-rccap-waiting-original-prefixp fn-rcca-waiting-rowp)
+                  (fn-hct-tick fn-rcct-current-row-invariantp fn-osm-row-source
+                   fn-rccap-remapped-prefix fn-omk-at fn-hrcur-field fn-omk-widthp
+                   fn-omk-tokenp fn-hdc-abstract)))))
+
 (defun-nx fn-rccap-idle-target-prefixp (cursor remapper census mapped-prefix)
  (let* ((ordinal (fn-osrc-at 2 cursor))
         (target (fn-sfr-list (fn-osrc-at 1 cursor))))
