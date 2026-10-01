@@ -10,15 +10,15 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1931 |
+| Books read | 1933 |
 | Certification roots in the Makefile | 1833 |
 | Books inside the root closure | 1922 |
-| `defthm` and `defthmd` events | 30395 |
-| `defun` events | 19153 |
+| `defthm` and `defthmd` events | 30455 |
+| `defun` events | 19156 |
 | Functions with verified guards | 3519 |
-| Functions declared `:verify-guards nil` and never verified | 2284 |
+| Functions declared `:verify-guards nil` and never verified | 2286 |
 | Functions left at the default with an explicit guard | 10414 |
-| Functions left at the default with no guard | 2936 |
+| Functions left at the default with no guard | 2937 |
 | `assert-event` checks | 23990 |
 | `must-fail` checks | 2516 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 340 |
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2609 |
+| Include-hygiene warnings | 2611 |
 | Host-names warnings | 2199 |
 | Hand-written-record warnings | 18 |
 
@@ -425,12 +425,14 @@ that `make certify` requests.
 | `books/decoded-window-digest-trajectory.lisp` | closure | 6 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/decoded-window-finite-output-trajectory.lisp` | closure | 12 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/decoded-window-input-trajectory.lisp` | closure | 82 | 3 | 0/0/0/3 | 0 | 0 | 0 |
+| `books/decoded-window-interleaved-frontier-trajectory.lisp` | - | 13 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/decoded-window-lease.lisp` | closure | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/decoded-window-literal-trajectory.lisp` | closure | 19 | 3 | 0/2/0/1 | 0 | 0 | 2 |
 | `books/decoded-window-output-trajectory.lisp` | closure | 47 | 7 | 0/2/0/5 | 0 | 0 | 0 |
 | `books/decoded-window-read.lisp` | closure | 3 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/decoded-window-selected-trajectory.lisp` | closure | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/decoded-window-step-trajectory.lisp` | closure | 12 | 4 | 0/0/0/4 | 0 | 0 | 1 |
+| `books/decoded-window-stored-frontier-trajectory.lisp` | - | 47 | 2 | 0/1/0/1 | 0 | 0 | 0 |
 | `books/decoded-window-stored-trajectory.lisp` | closure | 49 | 2 | 0/1/0/1 | 0 | 0 | 0 |
 | `books/decoded-window-terminal-budget.lisp` | closure | 10 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/decoded-window-yield-trajectory.lisp` | closure | 8 | 1 | 0/1/0/0 | 0 | 0 | 0 |
