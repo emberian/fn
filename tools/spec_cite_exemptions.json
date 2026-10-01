@@ -1,6 +1,7 @@
 {
  "_comment": "tools/spec_cite_check.py. exemptions: a name that is not a Lisp definition, with the reason. stale: citations of names no book, test book or host file defines, found when the check landed (tooling-velocity, 2026-09-26, dev 17ff24aa); each is a repair owed under its packet (correct the name, or move it to exemptions with a reason). --strict fails on a new one and on an entry no longer cited.",
  "exemptions": {
+  "fn-bpnp-contact-next": "retired name kept as history: specs/bp-node-machine.md records that the first contact driver was retired because no host entry called it; the live replacement is fn-bpnjc-contact-next (books/bp-node-job-cursor.lisp)",
   "fn-feed-parse-response": "retired name kept as history: specs/peering.md's closure notes name the w6 ACL2-side parser beside what replaced it, fn-own-feed-parse-response (books/owner-feed.lisp)",
   "fn-feed-offerablep": "a specification name mapped to its implementation: specs/peering.md's correspondence table sets section 3.2's fn-feed-offerablep beside fn-own-feed-offerablep (books/owner-feed.lisp)",
   "fn-store-cfg-peer-name-list": "retired name kept as history: specs/peering.md records that host/store-node-host.lisp's :program copy of that name was removed in favour of fn-cfg-peer-names",
