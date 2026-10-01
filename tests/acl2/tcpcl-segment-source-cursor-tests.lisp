@@ -4,7 +4,7 @@
 (include-book "../../books/tcpcl-received-source")
 (defun fn-tsc-test-run (job quantum turns out)
  (declare (xargs :guard (and (natp quantum) (<= quantum 64) (natp turns)
-                            (true-listp out)) :measure turns))
+                            (true-listp out)) :measure (nfix turns)))
  (if (zp turns) (list :exhausted job out)
   (mv-let (word next bytes used) (fn-tsc-turn job quantum)
    (if (or (eq word :source-complete) (eq word :refused))

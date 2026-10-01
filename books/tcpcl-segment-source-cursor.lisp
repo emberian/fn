@@ -14,7 +14,7 @@
   (list :tcl-source :reverse count 0 reverse-segments nil nil nil reverse-segments)
   (list :tcl-source :refused 0 0 reverse-segments nil nil :source-count-domain reverse-segments)))
 (defun fn-tsc-at (n x)
- (declare (xargs :guard (natp n) :measure n))
+ (declare (xargs :guard (natp n) :measure (nfix n)))
  (if (zp n) (fn-cbor-ag-car x) (fn-tsc-at (1- n) (fn-cbor-ag-cdr x))))
 (defun fn-tsc-next (job phase count copied reversed forward current reason)
  (declare (xargs :guard t))
@@ -66,7 +66,7 @@
 ; against caller quantum. A yielded empty result is NOT a parser window.
 (defun fn-tsc-turn-loop (job quantum reverse-bytes used)
  (declare (xargs :guard (and (natp quantum) (<= quantum 64) (true-listp reverse-bytes)
-                            (natp used)) :measure quantum))
+                            (natp used)) :measure (nfix quantum)))
  (if (zp quantum)
   (mv :yield job (reverse reverse-bytes) used)
   (mv-let (word octet next) (fn-tsc-one job)
