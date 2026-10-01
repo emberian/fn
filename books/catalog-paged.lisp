@@ -51,9 +51,6 @@
 (include-book "catalog-logic")
 (include-book "def-representation")
 (include-book "def-representation-tree")
-;; The row store (section 1), generated in its own book: the instance's
-;; events are half this book's proof time (D26, lane paged-catalog-4).
-(include-book "catalog-paged-rows")
 ;; The tree codec's executables with their guards verified, and the tree
 ;; recognizer whose program is octets (fn-sccb-treep); its closure carries
 ;; the frame trailer and the digest attachments, which no recognizer or
@@ -78,9 +75,13 @@
 ; -----------------------------------------------------------------------------
 ; 1. The row store: typed columns and the pool, from one declaration.
 
-; `fn-crow', books/catalog-paged-rows.lisp: seq txid gen payload charge
-; stamp (u64), msgid (octets), wpres (bool) wat wby (u64), esc (bool), aux
-; (tree), write-once.
+(def-representation fn-crow
+  (seq :u64) (txid :u64) (gen :u64) (payload :u64) (charge :u64) (stamp :u64)
+  (msgid :octets)
+  (wpres :bool) (wat :u64) (wby :u64)
+  (esc :bool)
+  (aux :tree)
+  :write-once t)
 
 ; -----------------------------------------------------------------------------
 ; 2. The foundation: the row store beside the old foundation (its tables,
