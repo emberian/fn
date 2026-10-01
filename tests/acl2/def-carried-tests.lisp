@@ -206,11 +206,10 @@
 ; ---------------------------------------------------------------------------
 ; 3. World refusals.
 
-(defconst *fn-cdt-complete*
-  ; every fixture entry returning the stobj, with its own theorem
-  '((fn-cdt-bump fn-cdt-bump-carries)
-    (fn-cdt-note fn-cdt-note-carries)
-    (fn-cdt-reset fn-cdt-reset-carries)))
+; Below, the complete transition list of the fixture is
+; ((fn-cdt-bump fn-cdt-bump-carries) (fn-cdt-note fn-cdt-note-carries)
+;  (fn-cdt-reset fn-cdt-reset-carries)), written out (a book is read before
+; its defconsts run, so #. cannot name one).
 
 (fn-cdt-refused fn-cdt-x (:invariant fn-cdt-nope
                           :established ((fn-cdt-open fn-cdt-open-establishes)))
@@ -270,12 +269,14 @@
 ; A bridge must have a guard conjunct to conclude, and a theorem.
 (fn-cdt-refused fn-cdt-x (:invariant fn-cdt-relp
                           :established ((fn-cdt-open fn-cdt-open-establishes))
-                          :transitions #.*fn-cdt-complete*
+                          :transitions ((fn-cdt-bump fn-cdt-bump-carries) (fn-cdt-note fn-cdt-note-carries)
+                         (fn-cdt-reset fn-cdt-reset-carries))
                           :concludes ((fn-cdt-peek fn-cdt-relp-nonzero)))
                 "has nothing to conclude")
 (fn-cdt-refused fn-cdt-x (:invariant fn-cdt-relp
                           :established ((fn-cdt-open fn-cdt-open-establishes))
-                          :transitions #.*fn-cdt-complete*
+                          :transitions ((fn-cdt-bump fn-cdt-bump-carries) (fn-cdt-note fn-cdt-note-carries)
+                         (fn-cdt-reset fn-cdt-reset-carries))
                           :concludes ((fn-cdt-nonzerop fn-cdt-no-such-theorem)))
                 "a bridge names")
 ; Vacuity, refuted: a constant-T invariant; contradictory declared hyps.
@@ -296,7 +297,8 @@
 (fn-cdt-refused fn-cdt-x (:invariant fn-cdt-relp
                           :established ((fn-cdt-open fn-cdt-open-establishes
                                                      :hyps ((not (fn-cdt-stp fn-cdt-st)))))
-                          :transitions #.*fn-cdt-complete* :trace nil)
+                          :transitions ((fn-cdt-bump fn-cdt-bump-carries) (fn-cdt-note fn-cdt-note-carries)
+                         (fn-cdt-reset fn-cdt-reset-carries)) :trace nil)
                 "establishing hypotheses are provably contradictory")
 
 ; Every theorem about another term: the generated statement fails, refused
@@ -339,7 +341,8 @@
                 fn-cdt-x-fn-cdt-bump-carries)
 (fn-cdt-refused fn-cdt-x (:invariant fn-cdt-relp
                           :established ((fn-cdt-open fn-cdt-unrelated))
-                          :transitions #.*fn-cdt-complete*)
+                          :transitions ((fn-cdt-bump fn-cdt-bump-carries) (fn-cdt-note fn-cdt-note-carries)
+                         (fn-cdt-reset fn-cdt-reset-carries)))
                 fn-cdt-x-fn-cdt-open-establishes)
 
 ; Completeness counts a stobj CONGRUENT to the carried one: a caller may
@@ -363,7 +366,8 @@
  (local
   (fn-cdt-refused fn-cdt-x (:invariant fn-cdt-relp
                             :established ((fn-cdt-open fn-cdt-open-establishes))
-                            :transitions #.*fn-cdt-complete*)
+                            :transitions ((fn-cdt-bump fn-cdt-bump-carries) (fn-cdt-note fn-cdt-note-carries)
+                         (fn-cdt-reset fn-cdt-reset-carries)))
                   "returns the carried state")))
 
 ; ---------------------------------------------------------------------------
@@ -448,7 +452,8 @@
                   (:invariant fn-cdt-relp
                    :established ((fn-cdt-open fn-cdt-open-establishes)
                                  (r09-bad-open r09-bad-open-repaired))
-                   :transitions #.*fn-cdt-complete*
+                   :transitions ((fn-cdt-bump fn-cdt-bump-carries) (fn-cdt-note fn-cdt-note-carries)
+                         (fn-cdt-reset fn-cdt-reset-carries))
                    :trace nil)
                   r09-bad-establishment-r09-bad-open-establishes))
  (local
@@ -457,7 +462,8 @@
      :invariant fn-cdt-relp
      :established ((fn-cdt-open fn-cdt-open-establishes)
                    (r09-bad-open r09-bad-open-repaired))
-     :transitions #.*fn-cdt-complete*
+     :transitions ((fn-cdt-bump fn-cdt-bump-carries) (fn-cdt-note fn-cdt-note-carries)
+                         (fn-cdt-reset fn-cdt-reset-carries))
      :trace nil)
    :unchecked "r09-F2: the generated r09-bad-establishment-r09-bad-open-establishes is false"))
  (local
@@ -465,7 +471,8 @@
                   (:invariant fn-cdt-relp
                    :established ((fn-cdt-open fn-cdt-open-establishes)
                                  (r09-bad-open r09-bad-open-repaired (fn-cdt-open _)))
-                   :transitions #.*fn-cdt-complete*
+                   :transitions ((fn-cdt-bump fn-cdt-bump-carries) (fn-cdt-note fn-cdt-note-carries)
+                         (fn-cdt-reset fn-cdt-reset-carries))
                    :trace nil)
                   :bad-established)))
 
@@ -642,7 +649,8 @@
 (fn-cdt-refused fn-cdt-carried
                 (:invariant fn-cdt-relp
                  :established ((fn-cdt-open fn-cdt-open-establishes))
-                 :transitions #.*fn-cdt-complete* :trace nil)
+                 :transitions ((fn-cdt-bump fn-cdt-bump-carries) (fn-cdt-note fn-cdt-note-carries)
+                         (fn-cdt-reset fn-cdt-reset-carries)) :trace nil)
                 "is already a carried invariant")
 
 ; The trace theorem, its statement pinned, and instances at literal events.
@@ -821,7 +829,8 @@
   (def-carried fn-cdt-hyped
     :invariant fn-cdt-relp
     :established ((fn-cdt-open fn-cdt-open-establishes :hyps ((natp (fn-cdt-n fn-cdt-st)))))
-    :transitions #.*fn-cdt-complete*
+    :transitions ((fn-cdt-bump fn-cdt-bump-carries) (fn-cdt-note fn-cdt-note-carries)
+                         (fn-cdt-reset fn-cdt-reset-carries))
     :trace nil))
  (local
   (assert-event
