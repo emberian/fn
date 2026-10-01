@@ -310,6 +310,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/rev-onto \
 	books/acceptance-alloc \
 	tests/acl2/defrecord-tests \
+	books/def-loop \
+	tests/acl2/def-loop-tests \
 	tests/acl2/defkeystone-tests \
 	tests/acl2/definterface-tests \
 	tests/acl2/definterface-recognizer-tests \
