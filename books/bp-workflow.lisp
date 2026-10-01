@@ -7,6 +7,7 @@
 (in-package "ACL2")
 
 (include-book "node-invariants")
+(include-book "def-loop")
 ; fn-node-statep is withdrawn at node's export (core, 2026-09-19); the guards below open it.
 (local (in-theory (enable fn-node-statep)))
 
@@ -679,39 +680,9 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-bp-restart-works-loop (works acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp works)
-      (fn-bp-restart-works-loop (cdr works) (cons (fn-bp-restart-work (car works)) acc))
-    (revappend acc nil)))
-
-(defun fn-bp-restart-works (works)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp works)
-           (cons (fn-bp-restart-work (car works))
-                 (fn-bp-restart-works (cdr works)))
-         nil)
-       :exec (fn-bp-restart-works-loop works nil)))
-
-(local
- (defthm fn-bp-restart-works-loop-is-revappend
-   (equal (fn-bp-restart-works-loop works acc)
-          (revappend acc (fn-bp-restart-works works)))
-   :hints (("Goal" :induct (fn-bp-restart-works-loop works acc)
-                   :in-theory (union-theories '(fn-bp-restart-works-loop fn-bp-restart-works revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-bp-restart-works-loop)
-
-(verify-guards fn-bp-restart-works
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-bp-restart-works)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-bp-restart-works-loop-is-revappend (acc nil))))))
+(def-loop fn-bp-restart-works (works)
+  :shape :map
+  :body (fn-bp-restart-work (car works)))
 
 
 (defun fn-bp-restart (s)

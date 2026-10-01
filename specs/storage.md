@@ -1993,7 +1993,7 @@ complete immutable typed token, including payload position and length. Its
 existing four-field core slot binds the exact token and slot; actual worker
 return retains all job credits and the physical file. Scalar borrowing checks
 that returned binding and the actual stream's published plan. The native worker
-runs `fn-ews-begin/effect/tick/read` over fixed 64-byte input and a private
+runs `fn-ews-begin`/`fn-ews-effect`/`fn-ews-tick`/`fn-ews-read` over fixed 64-byte input and a private
 16 KiB output window; all read coordinates/counts and digest decisions come
 from ACL2. The final release clears its retained result before refund. The
 native trajectory correspondence, complete selected-runtime demand, served

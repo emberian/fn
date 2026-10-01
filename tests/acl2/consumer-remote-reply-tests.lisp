@@ -30,7 +30,8 @@
       (equal (fn-crr-encode-reference '(:remote-reply :accepted :position nil 0 0 0 nil) 1024) :bad)))
 ; Profile bounds are codec representability checks, never allocation grants.
 (assert-event
- (and (not (fn-crr-profilep 0)) (not (fn-crr-profilep 4294967295))
+ (and (fn-crr-profilep 1) (fn-crr-profilep 1024)
+      (not (fn-crr-profilep 0)) (not (fn-crr-profilep 4294967295))
       (equal (fn-crr-encode-reference (list :remote-reply :accepted :poll *crrt-cursor* 0 0 0 '(65 66)) 1) :bad)))
 ; Recomputed integrity does not bless a request kind as a reply.
 (assert-event
