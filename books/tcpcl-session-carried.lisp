@@ -74,5 +74,84 @@
  (equal (fn-cd-raw-with 'fn-tcl-session-carried 'fn-tcl-open (w state))
         '(fn-tcl-initial-session-is-session fn-tcl-open-preserves-sessionp)))
 
+; Reachable positive teeth for the literal generated step/run theorems.
+; The active peer opens (RFC 9174 section 4.1), then records receipt time.
+; Events retain formal positions: nil occupies the replaced session slot.
+; The generated functions are defun-nx: evaluate their logical definitions
+; by ground reduction, with the generated preservation rules disabled.
+; Check the constructor's premises, both complete theorem antecedents,
+; their conclusions, and observable progress through the concrete trace.
+(local
+ (thm
+  (let* ((params (fn-tcl-make-params 30 3 64 '(100 116 110 58 47 47 97 47) nil nil))
+         (s (fn-tcl-initial-session :active params 0))
+         (e '(fn-tcl-open nil 1))
+         (es '((fn-tcl-open nil 1) (fn-tcl-touch-rx nil 2)))
+         (after-step (fn-tcl-session-carried-step s e))
+         (after-run (fn-tcl-session-carried-run s es)))
+    (and (fn-tcl-rolep :active) (fn-tcl-paramsp params) (fn-clock-timep 0)
+         (fn-tcl-sessionp s)
+         (fn-tcl-session-carried-okp s e)
+         (fn-tcl-sessionp after-step)
+         (equal (fn-tcl-session-phase after-step) :contact)
+         (fn-tcl-session-carried-run-okp s es)
+         (fn-tcl-sessionp after-run)
+         (equal (fn-tcl-session-phase after-run) :contact)
+         (equal (fn-tcl-session-last-rx after-run) 2)))
+  :hints (("Goal" :in-theory
+           (e/d (fn-tcl-session-carried-step fn-tcl-session-carried-okp
+                 fn-tcl-session-carried-run fn-tcl-session-carried-run-okp)
+                (fn-tcl-session-carried-step-carries
+                 fn-tcl-session-carried-run-carries))))))
+
+; Single-hypothesis removal, CORRUPTED INPUT STATE, not a reachable state:
+; omit only (fn-tcl-sessionp s).  The role is invalid; the retained okp and
+; run-okp hypotheses hold.  A real, nonempty touch-rx trace preserves the
+; bad role, so both generated conclusions fail.
+(local
+ (thm
+  (let* ((params (fn-tcl-make-params 30 3 64 '(100 116 110 58 47 47 97 47) nil nil))
+         (s (fn-tcl-initial-session :invalid-role params 0))
+         (e '(fn-tcl-touch-rx nil 2))
+         (es '((fn-tcl-touch-rx nil 2))))
+    (and (not (fn-tcl-sessionp s))
+         (fn-tcl-session-carried-okp s e)
+         (not (fn-tcl-sessionp (fn-tcl-session-carried-step s e)))
+         (fn-tcl-session-carried-run-okp s es)
+         (not (fn-tcl-sessionp (fn-tcl-session-carried-run s es)))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-tcl-session-carried-step fn-tcl-session-carried-okp
+                 fn-tcl-session-carried-run fn-tcl-session-carried-run-okp)
+                (fn-tcl-session-carried-step-carries
+                 fn-tcl-session-carried-run-carries))))))
+
+; MUTATION witness: an incorrect dispatcher corrupts the role after the
+; actual generated step/run.  This is a mutant output, not a counterexample
+; to either theorem: the actual outputs still satisfy their conclusions.
+(local
+ (thm
+  (let* ((params (fn-tcl-make-params 30 3 64 '(100 116 110 58 47 47 97 47) nil nil))
+         (s (fn-tcl-initial-session :active params 0))
+         (e '(fn-tcl-open nil 1))
+         (es '((fn-tcl-open nil 1) (fn-tcl-touch-rx nil 2)))
+         (after-step (fn-tcl-session-carried-step s e))
+         (after-run (fn-tcl-session-carried-run s es))
+         (mutant-step (update-nth 1 :invalid-role after-step))
+         (mutant-run (update-nth 1 :invalid-role after-run)))
+    (and (fn-tcl-sessionp s)
+         (fn-tcl-session-carried-okp s e)
+         (fn-tcl-sessionp after-step)
+         (equal (fn-tcl-session-role mutant-step) :invalid-role)
+         (not (fn-tcl-sessionp mutant-step))
+         (fn-tcl-session-carried-run-okp s es)
+         (fn-tcl-sessionp after-run)
+         (equal (fn-tcl-session-role mutant-run) :invalid-role)
+         (not (fn-tcl-sessionp mutant-run))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-tcl-session-carried-step fn-tcl-session-carried-okp
+                 fn-tcl-session-carried-run fn-tcl-session-carried-run-okp)
+                (fn-tcl-session-carried-step-carries
+                 fn-tcl-session-carried-run-carries))))))
+
 (in-theory (disable fn-tcl-session-carried-step fn-tcl-session-carried-okp
                     fn-tcl-session-carried-run fn-tcl-session-carried-run-okp))
