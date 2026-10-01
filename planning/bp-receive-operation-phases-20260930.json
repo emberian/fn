@@ -1,0 +1,59 @@
+{
+  "kind": ":bp-receive-wire",
+  "positive_family": false,
+  "abi": {
+    "family_fields": 15,
+    "request": "(:request role actual-body octets count)",
+    "role": "(role class actual-body)"
+  },
+  "phases": [
+    {
+      "name": "received-source-register/reserve",
+      "empty": false,
+      "qualified_request": null
+    },
+    {
+      "name": "segment-chain/spine traversal",
+      "empty": false,
+      "qualified_request": null
+    },
+    {
+      "name": "leaf constructor/populate/freeze",
+      "empty": false,
+      "qualified_request": null
+    },
+    {
+      "name": "registered source/pinned block window",
+      "empty": false,
+      "qualified_request": null
+    },
+    {
+      "name": "full-wire primary/canonical decode",
+      "empty": false,
+      "qualified_request": null
+    },
+    {
+      "name": "ASB/target/canonical security input",
+      "empty": false,
+      "qualified_request": null
+    },
+    {
+      "name": "current policy/primitive completion",
+      "empty": false,
+      "qualified_request": null
+    },
+    {
+      "name": "durable source/application disposition",
+      "empty": false,
+      "qualified_request": null
+    },
+    {
+      "name": "worker/source/native alias cleanup",
+      "empty": false,
+      "qualified_request": null
+    }
+  ],
+  "actual_source_manifest": "planning/evidence/tcpcl-source-continuation-20260930/manifest.json",
+  "initial_gate": "runtime-operation-source/role-table genuinely unavailable; no object-only or supplied-demand substitution",
+  "geometry": "conditional constructor-object unit2896 is not full BODY/frame/GC/fault operation family"
+}

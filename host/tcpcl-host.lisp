@@ -17,6 +17,8 @@
 (include-book "../books/tcpcl-host-drive")
 (include-book "../books/tcpcl-delivery")
 (include-book "../books/tcpcl-received-count")
+(include-book "../books/tcpcl-received-source")
+(include-book "../books/tcpcl-source-continuation")
 (include-book "../books/tcpcl-spool")
 
 ; Directory names and lstat kinds in; a complete recovery plan out.  The raw
