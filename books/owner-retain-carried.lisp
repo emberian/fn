@@ -29,10 +29,26 @@
 ; `fn-owner-retain-carried-run-carries'.
 ;
 ; What this book does NOT claim.  The install establishes the relation
-; only for a configured owner that opens and satisfies fn-lgoc-invariantp,
-; which its guard does not say: the row declares those as :hyps, so it
-; backs NO raw dispatch (fn-cd-raw-problem) until they are the install's
-; guard or the host's checked premise.  The carried state is the ACL2
+; only under two premises its guard does not say, declared as :hyps, so the
+; row backs NO raw dispatch (fn-cd-raw-problem).  They are not alike.
+; (fn-onb-open-okp (fn-ocfg-owner oc)) the install itself CHECKS, refusing
+; :article-numbers-damaged otherwise: it is a premise only because the
+; generated establishment has no verdict condition (an open that refuses
+; establishes nothing on its refusal arm).  (fn-lgoc-invariantp oc) no host
+; check can supply and no guard may evaluate (fn-cst-relation compares the
+; node to the replay of every event: an open from a checkpoint must not
+; re-walk the history, planning/design-store-representation-2026-10-01.md);
+; it is DISCHARGED BY THEOREM for the owner the host's open produces,
+; fn-lgoc-recover-installs-invariant (books/owner-log-ocl.lisp) over
+; fn-ock-install of the Store open's pair
+; (fn-ock-install-of-store-open-by-definition), under the one premise the
+; whole recovery rests on: the decoded checkpoint is a capture of a prefix
+; of the history the log continues (the recovery-refinement subject,
+; PRF-1212/1216).  Raw dispatch over this row therefore waits on def-carried
+; saying both honestly -- an establishment conditioned on the open's
+; success word, and a premise discharged by a named producer keystone under
+; named assumptions -- and on the recovery refinement admitting the store
+; instance; neither is a :hyps the host does not check.  The carried state is the ACL2
 ; state, so every host-called entry that RETURNS state owes a preservation
 ; theorem; the completeness check that demands it reads the `fn-interfaces'
 ; table, which is complete only in the image world (host/interfaces.lisp).
