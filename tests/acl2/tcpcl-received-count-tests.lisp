@@ -9,6 +9,7 @@
  (and (equal (cadr (fn-tcl-result-events *tcl-count-complete*))
              '(:bundle-received 7 (65 66 67)))
       (equal (fn-tcl-final-held-count *tcl-count-held* 7) '(:counted 7 3))
+      (fn-tcl-final-count-ready-p (fn-tcl-final-held-count *tcl-count-held* 7))
       (equal (fn-tcl-final-count-value
                (fn-tcl-final-held-count *tcl-count-held* 7)) 3)))
 (assert-event
