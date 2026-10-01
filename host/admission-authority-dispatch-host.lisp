@@ -34,7 +34,7 @@
           (mv word (- fuel 1) fn-history-backing state))
       (let* ((builder (fn-hep-builder fn-history-backing))
              (tail (fn-hed-at 8 builder)))
-       (if (not (and (fn-apr-widthp 4 tail)
+       (if (not (and (or (fn-apr-widthp 4 tail) (fn-apr-widthp 7 tail))
                      (eq (fn-hed-at 0 tail) :history-tail-ready)))
            (fn-owner-admission-tail-step fuel fn-history-backing state)
         (mv-let (census-word pool rows source)

@@ -52,7 +52,8 @@
               (fn-hep-sourcep old) (fn-hep-epoch-livep old fn-history-backing)
               (fn-hep-source-stamps-equal old (fn-hep-current fn-history-backing))
               (equal (fn-hed-at 7 old) (fn-prl-nth 3 token))
-              (fn-apr-widthp 4 tail) (eq (fn-hed-at 0 tail) :history-tail-ready)
+              (or (fn-apr-widthp 4 tail) (fn-apr-widthp 7 tail))
+              (eq (fn-hed-at 0 tail) :history-tail-ready)
               (fn-apr-tokenp (fn-hed-at 1 tail)) (equal token (fn-hed-at 1 tail))
               (fn-hed-leafp (fn-hed-at 2 tail))
               (natp (fn-hed-at 3 tail)) (< (fn-hed-at 3 tail) 256)))
@@ -102,8 +103,11 @@
                               plan (fn-prl-nth 4 full) root canonical
                               (fn-prl-nth 2 obligation) publication))
                  (next-source (list :history-source (fn-prl-nth 1 token)
-                                (fn-hed-at 2 old) (fn-hed-at 3 old) (fn-hed-at 4 old)
-                                (fn-hed-at 5 old) (fn-hed-at 6 old) (1+ count)
+                                (fn-hed-at 2 old) (fn-hed-at 3 old)
+                                (if (fn-apr-widthp 7 tail) (fn-hed-at 4 tail) (fn-hed-at 4 old))
+                                (if (fn-apr-widthp 7 tail) (fn-hed-at 6 tail) (fn-hed-at 5 old))
+                                (if (fn-apr-widthp 7 tail) (fn-hed-at 5 tail) (fn-hed-at 6 old))
+                                (1+ count)
                                 (fn-prl-nth 1 token)))
                  (state (f-put-global 'fn-owner-history-semantic-state
                           (list :history-semantic-done token row produced ready) state))

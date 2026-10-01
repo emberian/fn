@@ -18,7 +18,7 @@
                  :verify-guards nil))
  (cond ((<= fuel depth) (mv :yield fuel))
        ((and (zp depth) (not (equal slot 0))) (mv :unavailable fuel))
-       ((zp depth)
+       ((equal slot 0)
         (if (not (fn-hep-node-presentp 'fn-history-event-page fn-hep-node))
             (mv :constructor-required fuel)
          (stobj-let ((fn-history-event-page
