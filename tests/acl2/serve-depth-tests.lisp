@@ -76,6 +76,10 @@
 (assert-event (equal (fn-nntp-numbers-min-above 49998 *sdt-nums*) 49999))
 (assert-event (equal (fn-nntp-numbers-max-below 3 *sdt-nums*) 2))
 (assert-event (not (fn-nntp-descending-integersp *sdt-nums*)))
+;; Anchor: the numbers descending, the sort's fast path, answer ascending.
+(assert-event (let ((d (reverse (cdr *sdt-nums*))))
+                (and (fn-nntp-descending-integersp d)
+                     (equal (fn-nntp-numbers-sort d) (cdr *sdt-nums*)))))
 (defconst *sdt-sorted* (fn-nntp-numbers-sort *sdt-nums*))
 (assert-event (and (equal (len *sdt-sorted*) 50001)
                    (fn-nntp-orderedp *sdt-sorted*)

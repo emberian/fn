@@ -109,6 +109,9 @@
                *index-articles*))
 (assert-event (fn-index-soundp *index-omitted* *index-articles*))
 (assert-event (not (fn-index-completep *index-omitted* *index-articles*)))
+;; Anchor: the built index is complete and sound over the same articles.
+(assert-event (and (fn-index-completep *index-built* *index-articles*)
+                   (fn-index-soundp *index-built* *index-articles*)))
 (defconst *index-invented*
   (cons '("comp.lang" 99 "<invented@example.invalid>") *index-built*))
 (assert-event (fn-index-listp *index-invented*))
