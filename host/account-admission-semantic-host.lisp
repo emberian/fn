@@ -9,6 +9,7 @@
 (include-book "../books/consumer-account-state")
 (include-book "../books/consumer-account-transaction-driver")
 (include-book "../books/consumer-configured-authority-finish")
+(include-book "../books/consumer-account-config-row-carry")
 
 ; Capture happens immediately after the real reserved BEGIN retained its old
 ; Store/config/view, before node staging. It borrows the old account root at
@@ -41,7 +42,7 @@
                (equal token (fn-prl-nth 1 source))
                (fn-apr-widthp 4 reader) (eq (fn-prl-nth 0 reader) :history-reader-base)
                (equal token (fn-prl-nth 1 reader))
-               (fn-apr-widthp 13 selection)
+               (fn-apr-widthp 14 selection)
                (eq (fn-prl-nth 0 selection) :account-adoption-operation)
                (eq (fn-cp-nth 0 one) :publish)
                (or (fn-cac-eventp row) (fn-cab-eventp row))
@@ -116,15 +117,20 @@
        ((not (and (or (fn-cac-eventp row) (fn-cab-eventp row))
                    (equal row (fn-cp-nth 0 (fn-cp-nth 15 seed)))))
         (mv :account-selected-event-changed state))
-       ; Existing config preparation needs the actual selected configuration
-       ; row's carried size. No whole-row summary or guessed NIL carry here.
-       ((and (eq (fn-cp-nth 4 prep) :scan) (consp (fn-cp-nth 11 prep)))
-        (mv :configuration-row-carries-unavailable state))
+       ; The selected CFG row is a fixed spine of scalar fields. Its actual
+       ; size constructor reads string lengths, never string octets or a
+       ; shared tree. Reject a corrupted source leaf before reconstruction.
+       ((and (eq (fn-cp-nth 4 prep) :scan) (consp (fn-cp-nth 11 prep))
+             (not (fn-bcpr-row-domainp (car (fn-cp-nth 11 prep)))))
+        (mv :configuration-row-source-unavailable state))
        (t
-        (let* ((state (f-put-global 'fn-owner-history-account-state
+        (let* ((rowcarry (and (eq (fn-cp-nth 4 prep) :scan)
+                             (consp (fn-cp-nth 11 prep))
+                             (fn-bcpr-row-carry (car (fn-cp-nth 11 prep)))))
+               (state (f-put-global 'fn-owner-history-account-state
                        (list :history-account-intent token) state))
                (result (fn-cape-authority-finish seed produced next-cn
-                         (fn-cnode-config (fn-cp-nth 1 seed)) nil)))
+                         (fn-cnode-config (fn-cp-nth 1 seed)) rowcarry)))
          (if (eq (fn-cp-nth 0 result) :advanced)
              (let ((state (f-put-global 'fn-owner-history-account-state
                             (list :history-account-ready token

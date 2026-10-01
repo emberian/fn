@@ -138,7 +138,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/consumer-account-config-marker-invariants \
 	books/identity-hex \
 	books/consumer-account-config-preparation \
+	books/consumer-account-config-row-carry \
 	books/consumer-account-config-commit \
+	books/consumer-account-private-frame \
 	books/consumer-account-transaction-driver \
 	books/consumer-transaction-dispatch \
 	books/consumer-authority-carried-fold \
@@ -185,6 +187,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-account-binding-codec-tests \
 	tests/acl2/consumer-account-config-marker-tests \
 	tests/acl2/consumer-account-config-preparation-tests \
+	tests/acl2/consumer-account-config-row-carry-tests \
+	tests/acl2/consumer-account-private-frame-tests \
 	tests/acl2/consumer-account-index-depth-tests \
 	tests/acl2/consumer-account-binding-lookup-tests \
 	tests/acl2/consumer-account-config-domain-tests \
