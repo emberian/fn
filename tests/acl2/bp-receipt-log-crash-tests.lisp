@@ -269,21 +269,36 @@
       (not (brlct-decodedp (list *brlct-r1* *brlct-garbage*)))
       (not (fn-sf-prefixp (brlct-rows (list *brlct-r1*))
                           (brlct-rows (list *brlct-r1* *brlct-garbage*)))))))
-; fn-brlc-chunks-are-one-step: the host's two chunks (r1) (r2) give the rows
-; of the one step over r1 r2.
-(defun brlct-chunks-a (acc chunks fn-arena)
-  (declare (xargs :stobjs fn-arena :verify-guards nil))
-  (if (atom chunks)
-      (mv acc fn-arena)
-    (mv-let (acc fn-arena)
-      (fn-ssr-intern-step acc (fn-srs-decode (car chunks)) nil nil :resident nil fn-arena)
-      (brlct-chunks-a acc (cdr chunks) fn-arena))))
-(defun brlct-chunk-rows (chunks)
+; fn-brlc-chunks-are-one-step: the book's own fn-brlc-chunks-intern over
+; the host's two chunks (r1) (r2) gives the WHOLE accumulator (rows,
+; keyring, generation, identity) of the one step over r1 r2.  Its hypothesis
+; violated: an improper chunk (r1 . 5) decodes to :bad, while the flattened
+; one step (append drops the 5) interns r1.
+(defun brlct-chunks-acc (chunks)
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn-arena
-    (mv-let (acc fn-arena) (brlct-chunks-a (fn-brlc-seed) chunks fn-arena) (fn-ssr-rows acc))))
-(assert-event (equal (brlct-chunk-rows (list (list *brlct-r1*) (list *brlct-r2*)))
-                     (brlct-rows *brlct-octets*)))
+    (mv-let (acc fn-arena) (fn-brlc-chunks-intern (fn-brlc-seed) chunks fn-arena) acc)))
+(defun brlct-one-acc (octets)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (acc fn-arena)
+      (fn-ssr-intern-step (fn-brlc-seed) (fn-srs-decode octets) nil nil :resident nil fn-arena)
+      acc)))
+(assert-event
+ (let ((chunks (list (list *brlct-r1*) (list *brlct-r2*))))
+   (and (true-list-listp chunks)
+        (equal (fn-brlc-flatten chunks) *brlct-octets*)
+        (not (eq (brlct-chunks-acc chunks) :bad))
+        (equal (brlct-chunks-acc chunks) (brlct-one-acc (fn-brlc-flatten chunks))))))
+; (:logic evaluation: fn-brlc-flatten's guard asks for proper chunks.)
+(assert-event
+ (with-guard-checking
+  :none
+  (let ((chunks (list (cons *brlct-r1* 5))))
+    (and (not (true-list-listp chunks))
+         (eq (brlct-chunks-acc chunks) :bad)
+         (not (eq (brlct-one-acc (fn-brlc-flatten chunks)) :bad))
+         (not (equal (brlct-chunks-acc chunks) (brlct-one-acc (fn-brlc-flatten chunks))))))))
 ; The image predicate, by its witness.
 (defthm brlct-written-image-is-a-crash-image
   (fn-bs-crash-imagep *brlct-w-bs* *brlct-w-image*)

@@ -16,10 +16,10 @@ stale. Counts describe artifacts, not coverage; see
 | `defthm` and `defthmd` events | 35544 |
 | `defun` events | 22748 |
 | Functions with verified guards | 3856 |
-| Functions declared `:verify-guards nil` and never verified | 2883 |
+| Functions declared `:verify-guards nil` and never verified | 2884 |
 | Functions left at the default with an explicit guard | 12693 |
-| Functions left at the default with no guard | 3316 |
-| `assert-event` checks | 25461 |
+| Functions left at the default with no guard | 3315 |
+| `assert-event` checks | 25462 |
 | `must-fail` checks | 2564 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 193 |
@@ -312,7 +312,7 @@ that `make certify` requests.
 | `books/bp-primary-invariants.lisp` | root | 46 | 0 | 0/0/0/0 | 0 | 0 | 2 |
 | `books/bp-primary.lisp` | root | 77 | 89 | 79/0/5/5 | 0 | 0 | 0 |
 | `books/bp-receipt-alpha.lisp` | root | 8 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/bp-receipt-log-crash.lisp` | root | 24 | 8 | 0/1/2/5 | 0 | 0 | 2 |
+| `books/bp-receipt-log-crash.lisp` | root | 24 | 8 | 0/2/2/4 | 0 | 0 | 2 |
 | `books/bp-receipt-records.lisp` | root | 0 | 10 | 0/9/1/0 | 0 | 0 | 0 |
 | `books/bp-receipt.lisp` | root | 47 | 57 | 3/5/7/42 | 0 | 0 | 3 |
 | `books/bp-receive-evidence.lisp` | root | 8 | 25 | 11/2/0/12 | 0 | 0 | 0 |
@@ -1884,7 +1884,7 @@ that `make certify` requests.
 | `tests/acl2/bp-outbound-tests.lisp` | root | 0 | 3 | 0/2/0/1 | 38 | 0 | 0 |
 | `tests/acl2/bp-primary-tests.lisp` | root | 1 | 5 | 0/0/3/2 | 140 | 0 | 1 |
 | `tests/acl2/bp-receipt-alpha-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 11 | 1 | 0 |
-| `tests/acl2/bp-receipt-log-crash-tests.lisp` | root | 3 | 34 | 0/30/4/0 | 26 | 0 | 0 |
+| `tests/acl2/bp-receipt-log-crash-tests.lisp` | root | 3 | 34 | 0/30/4/0 | 27 | 0 | 0 |
 | `tests/acl2/bp-receipt-records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 0 | 0 |
 | `tests/acl2/bp-receipt-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 36 | 0 | 0 |
 | `tests/acl2/bp-receive-evidence-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 3 | 0 |
@@ -2969,8 +2969,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-bps-op-foreign-completion-preserves-rightful-state-by-definition` | `books/bpsec-operation.lisp` | 161 | arm-of-definition: the hypotheses select one IF/COND arm of fn-bps-op-complete and the conclusion is that arm's value |
 | `fn-bpsc-invalid-releases-no-contact-event-by-definition` | `books/bp-contact-service.lisp` | 64 | arm-of-definition: the hypotheses select one IF/COND arm of fn-bpsc-contact-event and the conclusion is that arm's value |
 | `fn-bpsr-adu-octets-of-unsigned` | `books/bp-signed-receipt.lisp` | 121 | arm-of-definition: the hypotheses select one IF/COND arm of fn-bpsr-adu-octets and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-bpsr-adu-octets and the conclusion is that branch's value |
-| `fn-brlc-ssr-of-bad` | `books/bp-receipt-log-crash.lisp` | 116 | arm-of-definition: constant arguments select one IF/COND arm of fn-ssr-intern-step and the conclusion is that arm's value |
-| `fn-brlc-ssr-of-bad-ws` | `books/bp-receipt-log-crash.lisp` | 126 | arm-of-definition: constant arguments select one IF/COND arm of fn-ssr-intern-step and the conclusion is that arm's value |
+| `fn-brlc-ssr-of-bad` | `books/bp-receipt-log-crash.lisp` | 117 | arm-of-definition: constant arguments select one IF/COND arm of fn-ssr-intern-step and the conclusion is that arm's value |
+| `fn-brlc-ssr-of-bad-ws` | `books/bp-receipt-log-crash.lisp` | 127 | arm-of-definition: constant arguments select one IF/COND arm of fn-ssr-intern-step and the conclusion is that arm's value |
 | `fn-bs-dirs-of-fn-bs-make` | `books/byte-store.lisp` | 87 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-bs-durable-content-of-the-durable-state` | `books/byte-store-scan.lisp` | 1747 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-bs-durable-entry-of-the-durable-state` | `books/byte-store-scan.lisp` | 1742 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |

@@ -102,12 +102,13 @@
 
 ; The host's chunks (fnn-recover-log-stream-flush per chunk): each chunk
 ; decoded, then interned from the accumulator so far.
-(defun-nx fn-brlc-chunks-intern (acc chunks arena)
+(defun fn-brlc-chunks-intern (acc chunks fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (if (atom chunks)
-      (mv acc arena)
-    (mv-let (acc arena)
-      (fn-ssr-intern-step acc (fn-srs-decode (car chunks)) nil nil :resident nil arena)
-      (fn-brlc-chunks-intern acc (cdr chunks) arena))))
+      (mv acc fn-arena)
+    (mv-let (acc fn-arena)
+      (fn-ssr-intern-step acc (fn-srs-decode (car chunks)) nil nil :resident nil fn-arena)
+      (fn-brlc-chunks-intern acc (cdr chunks) fn-arena))))
 
 (defun fn-brlc-flatten (chunks)
   (declare (xargs :guard (true-list-listp chunks)))

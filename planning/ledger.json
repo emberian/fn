@@ -2326,15 +2326,15 @@
     "roots": 2317,
     "theorems": 35544,
     "functions": 22748,
-    "assert_events": 25461,
+    "assert_events": 25462,
     "must_fails": 2564,
     "prover_refusals": 0,
     "encapsulates": 193,
     "guards": {
       "verified": 3856,
-      "declared-off": 2883,
+      "declared-off": 2884,
       "default-guarded": 12693,
-      "default-unguarded": 3316
+      "default-unguarded": 3315
     },
     "suspect_theorems": 1347,
     "export_hygiene_warnings": 392,
@@ -8679,9 +8679,9 @@
       "functions": 8,
       "guards": {
         "verified": 0,
-        "declared-off": 1,
+        "declared-off": 2,
         "default-guarded": 2,
-        "default-unguarded": 5
+        "default-unguarded": 4
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -54520,7 +54520,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 26,
+      "assert_events": 27,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 21,
@@ -81093,7 +81093,7 @@
     {
       "theorem": "fn-brlc-ssr-of-bad",
       "book": "books/bp-receipt-log-crash.lisp",
-      "line": 116,
+      "line": 117,
       "reasons": [
         "arm-of-definition: constant arguments select one IF/COND arm of fn-ssr-intern-step and the conclusion is that arm's value"
       ]
@@ -81101,7 +81101,7 @@
     {
       "theorem": "fn-brlc-ssr-of-bad-ws",
       "book": "books/bp-receipt-log-crash.lisp",
-      "line": 126,
+      "line": 127,
       "reasons": [
         "arm-of-definition: constant arguments select one IF/COND arm of fn-ssr-intern-step and the conclusion is that arm's value"
       ]

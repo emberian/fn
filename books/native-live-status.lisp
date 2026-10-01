@@ -1437,8 +1437,11 @@ malformed page."
 ; fn-nls-offline-report).  The reclaim line's figures depend on the clock
 ; observation (a release-after rule is measured at NOW), so they are not a
 ; carried quantity: each report computes them, in ONE walk of the Store's
-; articles (fn-nsc-tally-loop on the served path, from the catalog column,
-; no payload read).  The walk is NOT O(1) per article: each article asks
+; articles (fn-nsc-tally-loop on the served path, from the catalog column;
+; NOT payload-free: a GONE article's tomb length reads its payload,
+; fn-rcl-payload-tomb-length -> fn-rcl-payload-bytes in
+; books/store-reclaim-holders.lisp, and a catalog miss falls back to
+; fn-nntp-article-tombstonep in books/served-columns.lisp).  The walk is NOT O(1) per article: each article asks
 ; fn-rcl-verdict-heldp (books/store-reclaim.lisp), a walk of the verdict
 ; list, so a report costs O(articles x verdicts), quadratic when every
 ; article carries a verdict.  Nor is it a D27 work quantum: the walk runs to
