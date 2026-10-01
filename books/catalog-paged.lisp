@@ -725,7 +725,7 @@
     (fn-cat$p-set-cell seq (fn-held-with-withdrawn (fn-cat$p-at seq fn-cat$p) w) fn-cat$p)))
 
 ;; The row with its remainder as the TREE (the record NAME-APPEND-T takes:
-;; its executable walks the tree into the pool, books/def-representation-tree.lisp).
+;; its executable walks the tree into the pool, books/def-representation-tree-walk.lisp).
 (defun fn-cp-row-t-of (h tree nums)
   (declare (xargs :guard t))
   (let ((w (fn-held-withdrawn h)))

@@ -455,6 +455,31 @@
 
 (assert-event (drt-t1-is-append-ok))
 
+; The same keystone, DRT-T1$C-APPEND-T-IS-APPEND, over the WHOLE concrete
+; state (Codex r40 F2, r47 F5): the image after one append (reachable:
+; create, append), its correspondence asserted affirmatively, the tree's
+; okp, and the equality of the two whole images -- directories with every
+; slot (the reservation and the unused table-page headers included), the
+; counters, the pool.  Evaluated by the prover on the ground image, both
+; appends read through their unfoldings (named equalities; their stobj-let
+; bodies are non-executable on a constant).  Labelled MUTATION: the
+; append-t image with one more row-directory slot (an extra resize the
+; snapshot above cannot see) is unequal to the plain append's.
+(defthm drt-t1-append-t-whole-state-witness
+  (let ((c (drt-t1$c-append (list 1 '(9 9 9) '(4) nil) (create-drt-t1$c)))
+        (a (list (list 1 '(9 9 9) '(4) nil)))
+        (rec (list 7 '(1 2) *drt-tree* t)))
+    (and (adt-pg-corr *drt-t1-schema* *adt-pg-rows* *adt-pg-octets* c a)
+         (adt-tree-okp (car (cdr (cdr rec))))
+         (equal (drt-t1$c-append-t rec c)
+                (drt-t1$c-append (drt-t1-tree-enc rec) c))
+         (equal (len (nth 0 (drt-t1$c-append-t rec c))) *adt-pg-dir-reserve*)
+         (let ((m (drt-t1$c-append-t rec c)))
+           (not (equal (update-nth 0 (resize-list (nth 0 m) (+ 1 (len (nth 0 m))) '(nil)) m)
+                       (drt-t1$c-append (drt-t1-tree-enc rec) c))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable drt-t1$c-append-t-unfolds drt-t1$c-append-unfolds))))
+
 (defthm drt-t1-append-t-meaning
   (equal (drt-t1-append-t rec drt-t1)
          (append drt-t1 (list (list (car rec) (cadr rec) (fn-scc-program (caddr rec)) (cadddr rec)))))
@@ -566,8 +591,8 @@
 ;     one octet put in the pool and no record, a the empty sequence.  The
 ;     retained hypotheses hold (the paged correspondence, the tree's okp),
 ;     the omitted one fails, and so does the conclusion.  Evaluated by the
-;     prover on the ground image; append-t is read through its bridge
-;     (DRT-W1$C-APPEND-T-BRIDGE, a named equality), its stobj-let body
+;     prover on the ground image; append-t is read through its unfolding
+;     (DRT-W1$C-APPEND-T-UNFOLDS, a named equality), its stobj-let body
 ;     being non-executable on a constant.
 (defthm drt-w1-load-removal-witness
   (let ((c (drt-w1$c-pool-put 5 (drt-w1$c-poolroom 1 (create-drt-w1$c))))
@@ -579,7 +604,7 @@
          (not (adt-fill-is-load *drt-w1-schema* (adt-pg-flat *drt-w1-schema* (drt-w1$c-append-t rec c))
                                 (drt-w1$a-append-t rec a)))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (enable drt-w1$c-append-t-bridge))))
+  :hints (("Goal" :in-theory (enable drt-w1$c-append-t-unfolds))))
 
 ; (2)'s retained correspondence: every cleared image corresponds to the
 ; empty sequence.
