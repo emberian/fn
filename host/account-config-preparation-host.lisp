@@ -11,8 +11,8 @@
 (include-book "../books/account-config-history-cursor")
 (include-book "../books/account-config-generation-cursor")
 
-; Fixed13: tag,id,turn,full8,record,base8,metadata,phase,history,
-; group cursor,old generation,new generation,next node. The captured base
+; Fixed14: tag,id,turn,full8,record,base8,metadata,phase,history,
+; group cursor,old generation,new generation,next node,StoreFields14. The captured base
 ; includes the literal old view/posting/obligation aliases throughout yields.
 (defun fn-owner-account-config-preparation-state (state)
  (declare (xargs :stobjs state :guard t))
@@ -67,11 +67,11 @@
                                            (fn-cfg-generation (fn-prl-nth 3 base))
                                            (fn-cfg-generation cfg))
                              (fn-cfg-generation (fn-prl-nth 3 base))
-                             (fn-cfg-generation cfg) next-node) state)))
+                             (fn-cfg-generation cfg) next-node nil) state)))
          (mv :yield state)))))))
    ((eq (fn-prl-nth 0 prior) :account-config-preparation-refused)
     (mv :refused state))
-   ((not (and (fn-apr-widthp 13 prior)
+   ((not (and (fn-apr-widthp 14 prior)
                (eq (fn-prl-nth 0 prior) :account-config-preparation)
                (equal (fn-prl-nth 1 prior) (fn-prl-nth 1 lease))
                (fn-cado-receipt-coordinatep (fn-prl-nth 2 prior))
@@ -94,10 +94,44 @@
     (let* ((one (fn-ach-tick (fn-prl-nth 8 prior)))
            (next (update-nth 8 (fn-cp-nth 1 one) prior))
            (next (if (eq (fn-cp-nth 0 one) :ready)
-                     (update-nth 7 :semantic-joins next) next))
+                     (update-nth 7 :store-fields next) next))
            (state (f-put-global 'fn-owner-account-config-preparation next state)))
      (mv :yield state)))
+   ((eq (fn-prl-nth 7 prior) :store-fields-intent)
+    (mv :recovery-required state))
+   ((eq (fn-prl-nth 7 prior) :store-fields)
+    (let* ((base-store (fn-prl-nth 2 (fn-prl-nth 5 prior)))
+           (state (f-put-global 'fn-owner-account-config-preparation
+                    (update-nth 7 :store-fields-intent prior) state))
+           ; No physical E append, identity decision, account decision or
+           ; historical refresh occurs here. Every changed child is from
+           ; the once-produced C decision or actual completed history cursor.
+           (fields (list :history-store-fields
+                     (fn-sn-groups base-store) (fn-sn-capacity base-store)
+                     (fn-prl-nth 12 prior)
+                     (fn-sn-keyring base-store) (fn-sn-index base-store)
+                     (fn-sn-keyring-generation base-store)
+                     (fn-sn-verdicts base-store) (fn-sn-keyring-snapshots base-store)
+                     (fn-sn-identity-next base-store)
+                     (fn-cp-nth 4 (fn-prl-nth 8 prior))
+                     (fn-cp-nth 1 (fn-prl-nth 3 prior))
+                     (fn-sn-topic base-store) (fn-sn-event-index base-store)))
+           (next (update-nth 13 fields (update-nth 7 :semantic-joins prior)))
+           (state (f-put-global 'fn-owner-account-config-preparation next state)))
+     (mv :configuration-semantic-pending state)))
    (t (mv :configuration-semantic-pending state)))))
+
+; Actual fixed-field output from the registered continuation, not an input
+; tuple or freshly recomputed semantic result. Installation still requires
+; the complete plan/canonical/source producer returned by the MV7 boundary.
+(defun fn-owner-account-config-store-fields-result (state)
+ (declare (xargs :stobjs state :mode :program :guard (boundp-global 'fn-owner state)))
+ (let ((s (fn-owner-account-config-preparation-state state)))
+  (if (and (eq (fn-owner-history-config-writer-gate state) :config-writer-current)
+           (fn-apr-widthp 14 s) (eq (fn-prl-nth 0 s) :account-config-preparation)
+           (eq (fn-prl-nth 7 s) :semantic-joins))
+      (mv :config-store-fields (fn-prl-nth 13 s) (fn-prl-nth 3 s))
+    (mv :account-config-store-fields-unavailable nil nil))))
 
 ; MV7 frozen for actual journal begin. Pending readout retains the actual
 ; decision but has NIL plan/canonical/obligation/new-source, so it cannot be
@@ -107,7 +141,7 @@
  (declare (xargs :stobjs state :mode :program :guard (boundp-global 'fn-owner state)))
  (let ((s (fn-owner-account-config-preparation-state state)))
   (if (and (eq (fn-owner-history-config-writer-gate state) :config-writer-current)
-           (fn-apr-widthp 13 s) (eq (fn-prl-nth 0 s) :account-config-preparation))
+           (fn-apr-widthp 14 s) (eq (fn-prl-nth 0 s) :account-config-preparation))
       (mv :configuration-semantic-pending (fn-prl-nth 4 s) (fn-prl-nth 3 s)
           nil nil nil nil)
     (mv :account-config-source-unavailable nil nil nil nil nil nil))))

@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1927 |
-| Certification roots in the Makefile | 1842 |
-| Books inside the root closure | 1920 |
-| `defthm` and `defthmd` events | 29124 |
-| `defun` events | 19180 |
+| Books read | 1933 |
+| Certification roots in the Makefile | 1845 |
+| Books inside the root closure | 1926 |
+| `defthm` and `defthmd` events | 29146 |
+| `defun` events | 19199 |
 | Functions with verified guards | 3500 |
-| Functions declared `:verify-guards nil` and never verified | 2295 |
-| Functions left at the default with an explicit guard | 10558 |
+| Functions declared `:verify-guards nil` and never verified | 2296 |
+| Functions left at the default with an explicit guard | 10576 |
 | Functions left at the default with no guard | 2827 |
-| `assert-event` checks | 24126 |
+| `assert-event` checks | 24159 |
 | `must-fail` checks | 2506 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 158 |
@@ -27,8 +27,8 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 351 |
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2539 |
-| Host-names warnings | 2198 |
+| Include-hygiene warnings | 2542 |
+| Host-names warnings | 2253 |
 | Hand-written-record warnings | 19 |
 
 ## Lints
@@ -92,6 +92,8 @@ that `make certify` requests.
 | `books/acceptance-stamp-invariants.lisp` | root | 24 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/acceptance.lisp` | root | 69 | 53 | 40/1/12/0 | 0 | 0 | 1 |
 | `books/account-adoption-input-source.lisp` | - | 0 | 7 | 0/0/7/0 | 0 | 0 | 0 |
+| `books/account-config-generation-cursor.lisp` | closure | 4 | 7 | 0/0/7/0 | 0 | 0 | 0 |
+| `books/account-config-history-cursor.lisp` | closure | 5 | 6 | 0/1/5/0 | 0 | 0 | 0 |
 | `books/account-list.lisp` | closure | 9 | 15 | 2/0/13/0 | 0 | 0 | 0 |
 | `books/accounts.lisp` | closure | 63 | 23 | 0/0/22/1 | 0 | 0 | 2 |
 | `books/anchor-invariants.lisp` | root | 31 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -399,6 +401,7 @@ that `make certify` requests.
 | `books/consumer-account-config-domain.lisp` | closure | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/consumer-account-config-marker-invariants.lisp` | root | 24 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/consumer-account-config-marker.lisp` | root | 0 | 12 | 0/0/12/0 | 0 | 0 | 0 |
+| `books/consumer-account-config-posting-relation.lisp` | closure | 13 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/consumer-account-config-preparation.lisp` | root | 0 | 10 | 0/0/10/0 | 0 | 0 | 0 |
 | `books/consumer-account-config-row-carry.lisp` | root | 1 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/consumer-account-durable-outcome-state.lisp` | root | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
@@ -1192,6 +1195,8 @@ that `make certify` requests.
 | `tests/acl2/acceptance-payload-ref-tests.lisp` | root | 0 | 4 | 0/4/0/0 | 21 | 0 | 0 |
 | `tests/acl2/acceptance-stamp-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 61 | 14 | 0 |
 | `tests/acl2/acceptance-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 249 | 0 | 0 |
+| `tests/acl2/account-config-generation-cursor-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 0 | 0 |
+| `tests/acl2/account-config-history-cursor-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 9 | 0 | 0 |
 | `tests/acl2/account-list-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 20 | 0 | 0 |
 | `tests/acl2/accounts-snapshot-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 26 | 7 | 0 |
 | `tests/acl2/accounts-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 116 | 17 | 0 |
@@ -1420,6 +1425,7 @@ that `make certify` requests.
 | `tests/acl2/consumer-account-config-domain-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 7 | 0 | 0 |
 | `tests/acl2/consumer-account-config-marker-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 18 | 0 | 0 |
 | `tests/acl2/consumer-account-config-owner-lineage-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 1 | 0 | 0 |
+| `tests/acl2/consumer-account-config-posting-relation-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 14 | 0 | 0 |
 | `tests/acl2/consumer-account-config-preparation-tests.lisp` | root | 0 | 3 | 0/1/2/0 | 5 | 0 | 0 |
 | `tests/acl2/consumer-account-config-row-carry-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 3 | 0 | 0 |
 | `tests/acl2/consumer-account-index-carry-tests.lisp` | - | 0 | 1 | 0/1/0/0 | 6 | 0 | 0 |

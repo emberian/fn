@@ -197,6 +197,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-account-config-commit-tests \
 	tests/acl2/account-config-history-cursor-tests \
 	tests/acl2/account-config-generation-cursor-tests \
+	tests/acl2/consumer-account-config-posting-relation-tests \
 	tests/acl2/consumer-account-config-owner-lineage-tests \
 	tests/acl2/consumer-account-transaction-driver-tests \
 	tests/acl2/consumer-transaction-dispatch-tests \

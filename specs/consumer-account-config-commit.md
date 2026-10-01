@@ -113,6 +113,33 @@ pooled admission gate and refuses before preparation while its genuine
 allowance/turn producer is unavailable. No prior direct credential installation
 may substitute for that missing authority.
 
+## Preservation of nonbinding policy during signing preparation
+
+`consumer-account-config-posting-relation` observes the original preparation
+functions through a proof-only projection that removes exactly account rows
+whose mark is 2. It preserves every other row literally and in order, including
+access, moderation, invitation and redeemed credential rows. No projection scan
+is added to the served path.
+
+Successful `fn-bcp-stage` preserves that projection of the new-binding stack.
+`fn-bcp-seal`, from collect with an empty nonbinding stack projection,
+establishes a relation to the captured base accounts. Every actual
+`fn-bcp-tick` preserves this relation; its eventual nonbinding-row projection
+is preserved unconditionally. A related ready `fn-bcp-prepared` consequently
+returns the exact nonbinding projection of the captured configuration.
+PRF-1204 and SCN-1080 record the boundaries and literal transition witnesses.
+
+The same book connects this projection to the actual `fn-cfg-access-table`,
+`fn-cfg-moderation-row` and `fn-cfg-moderator-logins` observations. All three
+ignore exactly the removed signing rows: first-match moderation selection and
+moderator order are preserved, with no additional hypotheses.
+
+This is one premise for reusing posting policy during typed C preparation.
+It does not establish group liveness across a configuration-generation change,
+the relation between a retained posting/view cache and its captured source, or
+the lifetime and funding of the actual host continuation. Those joins must be
+established before a retained cache is published with the new configuration.
+
 ## Historical control configuration in the same source
 
 The actual accepted C successor produces one newest-first projection entry:

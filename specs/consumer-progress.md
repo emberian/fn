@@ -1371,6 +1371,17 @@ source assembly, not publication readiness. Actual typed C journal completion,
 complete semantic/canonical/source production, BODY/funding, cold restart and
 remote activation remain open; PRF-1140 stays planned.
 
+The typed C continuation also retains its fixed StoreFields14 once both
+cursors complete: saved next node and CP, the completed C-history root, and
+the original keyring/index/verdict/snapshot/identity/topic/event-index aliases.
+Its source readout is `fn-owner-account-config-store-fields-result`; this
+projection grants no installation authority. Exact nonbinding-row and access,
+moderation-row and ordered-moderator observations are normally certified at
+their committed source coordinates. The complete view/posting source law and
+canonical/obligation/successor-source producer still gate the journal plan.
+Temporary C preparation/base/lease aliases require their distinct retained
+pool settlement; the private E four-alias cleanup does not cover them.
+
 The account epilogue retains its four old semantic aliases in the actual pool
 settlement continuation before clearing account capture, ready result, selected
 operation and durable outcome. The internal clear requires the original turn
