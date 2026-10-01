@@ -1416,8 +1416,8 @@ its own scalar refusals remain results, while execution escapes are faults."
                  nil)))
          (case ,outcome
            (:ok nil)
-           (:thrown (fnn-fault "ACL2 raw evaluation escaped in ~(~a~)" ,name))
-           (otherwise (fnn-fault "ACL2 error in ~(~a~): ~a" ,name ,outcome)))))))
+           (:thrown (fnn-fixed-callback-fail ,name :raw-callback-escaped nil))
+           (otherwise (fnn-fixed-callback-fail ,name :raw-callback-failed ,outcome)))))))
 
 (defun fnn-core (name &rest args)
   "A state-free wrapper's single value."
