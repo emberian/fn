@@ -39,6 +39,8 @@
 (defconst *cpa-h1* (fn-held-plain *cpa-w1* 0))
 (defconst *cpa-h2* (fn-held-plain *cpa-w2* 1))
 
+(defconst *cpa-ctx* (fn-hc-make (fn-stx-make-verdict :verified nil 3) nil 3))
+
 ; The program over the live generic under the attachment.
 (defun fn-cpa-smoke (fn-cat)
   (declare (xargs :stobjs fn-cat))
@@ -46,7 +48,7 @@
          (fn-cat (fn-cat-commit *cpa-h1* fn-cat))
          (fn-cat (fn-cat-commit *cpa-h2* fn-cat))
          (fn-cat (fn-cat-withdraw 0 1 fn-cat))
-         (fn-cat (fn-cat-redecide 1 (fn-hc-make (fn-stx-make-verdict :verified nil 3) nil 3) fn-cat)))
+         (fn-cat (fn-cat-redecide 1 *cpa-ctx* fn-cat)))
     (mv (list (fn-cat-count fn-cat)
               (fn-cat-at 0 fn-cat)
               (fn-cat-at 1 fn-cat)
@@ -61,19 +63,36 @@
               (fn-cat-withdrawn-at 2 fn-cat))
         fn-cat)))
 
-; The same program over the logical side.
+;; The same program over the logical side: the :logic functions the generic's
+;; exports are (books/catalog-logic.lisp), on the list.
 (defconst *cpa-c*
-  (let* ((c nil)
-         (c (append c (list (fn-cat-assign *cpa-h1* c))))
-         (c (append c (list (fn-cat-assign *cpa-h2* c))))
-         (c (fn-cat-mark-withdrawn 0 (len c) 1 c))
-         (c (update-nth 1 (fn-held-with-context (nth 1 c)
-                                                (fn-hc-make (fn-stx-make-verdict :verified nil 3) nil 3))
-                        c)))
+  (let* ((c (fn-cat$a-clear nil))
+         (c (fn-cat$a-commit *cpa-h1* c))
+         (c (fn-cat$a-commit *cpa-h2* c))
+         (c (fn-cat$a-withdraw 0 1 c))
+         (c (fn-cat$a-redecide 1 *cpa-ctx* c)))
     c))
 
+(defconst *cpa-expected*
+  (let ((c *cpa-c*))
+    (list (fn-cat$a-count c)
+          (fn-cat$a-at 0 c)
+          (fn-cat$a-at 1 c)
+          (fn-cat$a-msgid-seqs "<b@x>" c)
+          (fn-cat$a-group-number "fn.test" 2 c)
+          (fn-cat$a-group-next "fn.other" c)
+          (fn-cat$a-group-count "fn.test" c)
+          (fn-cat$a-visible-at 0 1 c)
+          (fn-cat$a-visible-at 0 3 c)
+          (fn-cat$a-group-live-count "fn.test" c)
+          (fn-cat$a-horizon c)
+          (fn-cat$a-withdrawn-at 2 c))))
+
+;; Not vacuous: two rows, the second numbered 2 in fn.test, the first withdrawn.
+(assert-event (and (equal (car *cpa-expected*) 2)
+                   (equal (nth 4 *cpa-expected*) 1)
+                   (consp (fn-held-withdrawn (nth 1 *cpa-expected*)))))
+
 (assert-event (mv-let (result fn-cat) (fn-cpa-smoke fn-cat)
-                (mv (equal result
-                           (list 2 (nth 0 *cpa-c*) (nth 1 *cpa-c*) '(1) 1 2 2 t nil 1 3 '(0)))
-                    fn-cat))
+                (mv (equal result *cpa-expected*) fn-cat))
               :stobjs-out '(nil fn-cat))

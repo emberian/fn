@@ -283,6 +283,39 @@
                             fn-record-octets-string
                             fn-held-accessors-are-the-wire-accessors fn-held-make-of-accessors)))))
 
+
+; TEETH of the keystone.  A reachable positive witness (a plain article's
+; row after its commit numbers it): every hypothesis and the conclusion.
+; Hypothesis removal: a row that is not a catalog row (its Message-ID is a
+; number) whose remainder is still a tree, and a catalog row whose remainder
+; is not a tree (a number past the codec's 2^2040); each keeps the other
+; hypothesis, and the round trip fails for both -- which is why
+; fn-cp-overflow-of keeps exactly those rows whole in their cells (the
+; mutation half of each witness).
+(defconst *cp-w1*
+  (fn-record-make 0 1 0 "<a@x>" (append (fn-record-string-octets "Subject: a") '(13 10 13 10 97 13 10))
+                  '("fn.test") "o" "s" "e" 1 5
+                  (fn-ab-for-received :post-d25
+                                      (append (fn-record-string-octets "Subject: a") '(13 10 13 10 97 13 10)))))
+(defconst *cp-h1* (fn-held-with-numbers (fn-held-plain *cp-w1* 0) '(("fn.test" . 1))))
+(defconst *cp-h-badmsgid* (update-nth 3 5 *cp-h1*))
+(defconst *cp-h-bignum* (fn-held-with-numbers *cp-h1* (list (cons "fn.test" (expt 2 3000)))))
+
+(assert-event (let ((h *cp-h1*))
+                (and (fn-cat-rowp h) (fn-sccb-treep (fn-cp-tree-of h))
+                     (equal (fn-cp-row-held (fn-cp-row-of h)) h)
+                     (null (fn-cp-overflow-of h)))))
+
+(assert-event (let ((h *cp-h-badmsgid*))
+                (and (not (fn-cat-rowp h)) (fn-sccb-treep (fn-cp-tree-of h))
+                     (not (equal (fn-cp-row-held (fn-cp-row-of h)) h))
+                     (equal (fn-cp-overflow-of h) h))))
+
+(assert-event (let ((h *cp-h-bignum*))
+                (and (fn-cat-rowp h) (not (fn-sccb-treep (fn-cp-tree-of h)))
+                     (not (equal (fn-cp-row-held (fn-cp-row-of h)) h))
+                     (equal (fn-cp-overflow-of h) h))))
+
 ; -----------------------------------------------------------------------------
 ; 4. The view and the correspondence.
 
@@ -1559,3 +1592,532 @@
                                     fn-cat$c-live-apply fn-cat$c-index-add fn-cat$c-wbv-put
                                     fn-cat$c-wbv-get fn-cp-row-of fn-cp-overflow-of))))))
 
+(local
+ (defthm fn-cp-tab-withdraw-shape
+   (and (equal (nth 0 (fn-cat$p-tab-withdraw dplan hz v target fn-cat$p)) (nth 0 fn-cat$p))
+        (equal (nth 1 (nth 1 (fn-cat$p-tab-withdraw dplan hz v target fn-cat$p))) (nth 1 (nth 1 fn-cat$p))))
+   :hints (("Goal" :in-theory (e/d (fn-cat$p-tab-withdraw) (fn-cat$c-live-apply fn-cat$c-wbv-put))))))
+
+(local
+ (defthm fn-cp-withdraw-w-shape
+   (implies (and (natp target) (< target (len (nth 0 fn-cat$p)))
+                 (<= (len (nth 0 fn-cat$p)) (len (nth 0 (nth 1 fn-cat$p)))))
+            (and (equal (len (nth 0 (fn-cat$p-withdraw-w target by fn-cat$p))) (len (nth 0 fn-cat$p)))
+                 (equal (nth 1 (nth 1 (fn-cat$p-withdraw-w target by fn-cat$p))) (nth 1 (nth 1 fn-cat$p)))))
+   :hints (("Goal" :in-theory (e/d (fn-cat$p-withdraw-w)
+                                   (fn-cat$p-put-row fn-cat$p-tab-withdraw fn-cat$p-drop-plan))))))
+
+(local
+ (defthm fn-cp-redecide-shape
+   (implies (and (natp seq) (< seq (len (nth 0 fn-cat$p)))
+                 (<= (len (nth 0 fn-cat$p)) (len (nth 0 (nth 1 fn-cat$p)))))
+            (and (equal (len (nth 0 (fn-cat$p-redecide seq context fn-cat$p))) (len (nth 0 fn-cat$p)))
+                 (equal (nth 1 (nth 1 (fn-cat$p-redecide seq context fn-cat$p))) (nth 1 (nth 1 fn-cat$p)))))
+   :hints (("Goal" :in-theory (e/d (fn-cat$p-redecide) (fn-cat$p-put-row))))))
+
+(local
+ (defthm fn-cp-clear-shape
+   (and (equal (nth 0 (fn-cat$p-clear-w fn-cat$p)) nil)
+        (equal (nth 1 (nth 1 (fn-cat$p-clear-w fn-cat$p))) 0)
+        (equal (nth 0 (fn-cat$p-clear-keyed key fn-cat$p)) nil)
+        (equal (nth 1 (nth 1 (fn-cat$p-clear-keyed key fn-cat$p))) 0))
+   :hints (("Goal" :in-theory (enable fn-cat$p-clear-w fn-cat$p-clear-keyed fn-cat$c-clear-w fn-cat$c-clear
+                                      fn-cat$c-clear-base fn-cat$c-clear-keyed fn-cat$c-index-set-key
+                                      fn-cat$c-index-clear)))))
+
+; The obligations, as `defabsstobj-missing-events' states them: each the old
+; catalog's at the view, with the simulation of section 6.
+
+(defthm create-fn-cat-paged{correspondence}
+  (fn-cat$pcorr (create-fn-cat$p)
+                                                     (create-fn-cat$a))
+  :rule-classes nil
+  :hints (("Goal" :use create-fn-cat{correspondence} :in-theory (enable create-fn-cat$p fn-cat$pcorr))))
+
+(defthm create-fn-cat-paged{preserved}
+  (fn-cat$ap (create-fn-cat$a))
+  :rule-classes nil
+  :hints (("Goal" :by create-fn-cat{preserved})))
+
+(defthm fn-cat-paged-count{correspondence}
+  (implies (fn-cat$pcorr fn-cat$p fn-cat-paged)
+                (equal (fn-cat$p-count fn-cat$p)
+                       (fn-cat$a-count fn-cat-paged)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-cat-count{correspondence} (fn-cat$c (fn-cat$p-view fn-cat$p)) (fn-cat fn-cat-paged))
+                 (:instance fn-cp-corr-facts (fn-cat$a fn-cat-paged)))
+           :in-theory (disable fn-cp-corr-facts))))
+
+(defthm fn-cat-paged-at{correspondence}
+  (implies (if (fn-cat$pcorr fn-cat$p fn-cat-paged)
+                    (if (natp seq)
+                        (if (< seq (fn-cat$a-count fn-cat-paged))
+                            (fn-cat$ap fn-cat-paged)
+                          'nil)
+                      'nil)
+                  'nil)
+                (equal (fn-cat$p-at seq fn-cat$p)
+                       (fn-cat$a-at seq fn-cat-paged)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-cat-at{correspondence} (fn-cat$c (fn-cat$p-view fn-cat$p)) (fn-cat fn-cat-paged))
+                 (:instance fn-cp-corr-facts (fn-cat$a fn-cat-paged)))
+           :in-theory (disable fn-cp-corr-facts))))
+
+(defthm fn-cat-paged-at{guard-thm}
+  (implies (if (fn-cat$pcorr fn-cat$p fn-cat-paged)
+                    (if (natp seq)
+                        (if (< seq (fn-cat$a-count fn-cat-paged))
+                            (fn-cat$ap fn-cat-paged)
+                          'nil)
+                      'nil)
+                  'nil)
+                (if (fn-cat$p-wfp fn-cat$p)
+                    (if (natp seq)
+                        (< seq (fn-cat$p-count fn-cat$p))
+                      'nil)
+                  'nil))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-cat-at{guard-thm} (fn-cat$c (fn-cat$p-view fn-cat$p)) (fn-cat fn-cat-paged))
+                 (:instance fn-cp-corr-facts (fn-cat$a fn-cat-paged)))
+           :in-theory (disable fn-cp-corr-facts))))
+
+(defthm fn-cat-paged-msgid-seqs{correspondence}
+  (implies (fn-cat$pcorr fn-cat$p fn-cat-paged)
+                (equal (fn-cat$p-msgid-seqs msgid fn-cat$p)
+                       (fn-cat$a-msgid-seqs msgid fn-cat-paged)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-cat-msgid-seqs{correspondence} (fn-cat$c (fn-cat$p-view fn-cat$p)) (fn-cat fn-cat-paged))
+                 (:instance fn-cp-corr-facts (fn-cat$a fn-cat-paged)))
+           :in-theory (disable fn-cp-corr-facts))))
+
+(defthm fn-cat-paged-msgid-seqs{guard-thm}
+  (implies (fn-cat$pcorr fn-cat$p fn-cat-paged)
+                (fn-cat$p-wfp fn-cat$p))
+  :rule-classes nil
+)
+
+(defthm fn-cat-paged-group-number{correspondence}
+  (implies (fn-cat$pcorr fn-cat$p fn-cat-paged)
+                (equal (fn-cat$p-group-number group n fn-cat$p)
+                       (fn-cat$a-group-number group n fn-cat-paged)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-cat-group-number{correspondence} (fn-cat$c (fn-cat$p-view fn-cat$p)) (fn-cat fn-cat-paged))
+                 (:instance fn-cp-corr-facts (fn-cat$a fn-cat-paged)))
+           :in-theory (disable fn-cp-corr-facts))))
+
+(defthm fn-cat-paged-group-next{correspondence}
+  (implies (fn-cat$pcorr fn-cat$p fn-cat-paged)
+                (equal (fn-cat$p-group-next group fn-cat$p)
+                       (fn-cat$a-group-next group fn-cat-paged)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-cat-group-next{correspondence} (fn-cat$c (fn-cat$p-view fn-cat$p)) (fn-cat fn-cat-paged))
+                 (:instance fn-cp-corr-facts (fn-cat$a fn-cat-paged)))
+           :in-theory (disable fn-cp-corr-facts))))
+
+(defthm fn-cat-paged-group-count{correspondence}
+  (implies (fn-cat$pcorr fn-cat$p fn-cat-paged)
+                (equal (fn-cat$p-group-count group fn-cat$p)
+                       (fn-cat$a-group-count group fn-cat-paged)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-cat-group-count{correspondence} (fn-cat$c (fn-cat$p-view fn-cat$p)) (fn-cat fn-cat-paged))
+                 (:instance fn-cp-corr-facts (fn-cat$a fn-cat-paged)))
+           :in-theory (disable fn-cp-corr-facts))))
+
+(defthm fn-cat-paged-total-octets{correspondence}
+  (implies (fn-cat$pcorr fn-cat$p fn-cat-paged)
+                (equal (fn-cat$p-total-octets fn-cat$p)
+                       (fn-cat$a-total-octets fn-cat-paged)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-cat-total-octets{correspondence} (fn-cat$c (fn-cat$p-view fn-cat$p)) (fn-cat fn-cat-paged))
+                 (:instance fn-cp-corr-facts (fn-cat$a fn-cat-paged)))
+           :in-theory (disable fn-cp-corr-facts))))
+
+(defthm fn-cat-paged-visible-at{correspondence}
+  (implies (if (fn-cat$pcorr fn-cat$p fn-cat-paged)
+                    (if (natp seq)
+                        (if (< seq (fn-cat$a-count fn-cat-paged))
+                            (if (natp v)
+                                (fn-cat$ap fn-cat-paged)
+                              'nil)
+                          'nil)
+                      'nil)
+                  'nil)
+                (equal (fn-cat$p-visible-at seq v fn-cat$p)
+                       (fn-cat$a-visible-at seq v fn-cat-paged)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-cat-visible-at{correspondence} (fn-cat$c (fn-cat$p-view fn-cat$p)) (fn-cat fn-cat-paged))
+                 (:instance fn-cp-corr-facts (fn-cat$a fn-cat-paged)))
+           :in-theory (disable fn-cp-corr-facts))))
+
+(defthm fn-cat-paged-visible-at{guard-thm}
+  (implies
+    (if (fn-cat$pcorr fn-cat$p fn-cat-paged)
+        (if (natp seq)
+            (if (< seq (fn-cat$a-count fn-cat-paged))
+                (if (natp v)
+                    (fn-cat$ap fn-cat-paged)
+                  'nil)
+              'nil)
+          'nil)
+      'nil)
+    (if (fn-cat$p-wfp fn-cat$p)
+        (if (natp seq)
+            (if (natp v)
+                (if (< seq (fn-cat$p-count fn-cat$p))
+                    (fn-held-withdrawnp (fn-cat$p-withdrawn-of seq fn-cat$p))
+                  'nil)
+              'nil)
+          'nil)
+      'nil))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-cat-visible-at{guard-thm} (fn-cat$c (fn-cat$p-view fn-cat$p)) (fn-cat fn-cat-paged))
+                 (:instance fn-cp-corr-facts (fn-cat$a fn-cat-paged)))
+           :in-theory (disable fn-cp-corr-facts))))
+
+(defthm fn-cat-paged-group-live-count{correspondence}
+  (implies (if (fn-cat$pcorr fn-cat$p fn-cat-paged)
+                    (fn-cat$ap fn-cat-paged)
+                  'nil)
+                (equal (fn-cat$p-group-live-count group fn-cat$p)
+                       (fn-cat$a-group-live-count group fn-cat-paged)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-cat-group-live-count{correspondence} (fn-cat$c (fn-cat$p-view fn-cat$p)) (fn-cat fn-cat-paged))
+                 (:instance fn-cp-corr-facts (fn-cat$a fn-cat-paged)))
+           :in-theory (disable fn-cp-corr-facts))))
+
+(defthm fn-cat-paged-group-live-low{correspondence}
+  (implies (if (fn-cat$pcorr fn-cat$p fn-cat-paged)
+                    (fn-cat$ap fn-cat-paged)
+                  'nil)
+                (equal (fn-cat$p-group-live-low group fn-cat$p)
+                       (fn-cat$a-group-live-low group fn-cat-paged)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-cat-group-live-low{correspondence} (fn-cat$c (fn-cat$p-view fn-cat$p)) (fn-cat fn-cat-paged))
+                 (:instance fn-cp-corr-facts (fn-cat$a fn-cat-paged)))
+           :in-theory (disable fn-cp-corr-facts))))
+
+(defthm fn-cat-paged-group-live-high{correspondence}
+  (implies (if (fn-cat$pcorr fn-cat$p fn-cat-paged)
+                    (fn-cat$ap fn-cat-paged)
+                  'nil)
+                (equal (fn-cat$p-group-live-high group fn-cat$p)
+                       (fn-cat$a-group-live-high group fn-cat-paged)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-cat-group-live-high{correspondence} (fn-cat$c (fn-cat$p-view fn-cat$p)) (fn-cat fn-cat-paged))
+                 (:instance fn-cp-corr-facts (fn-cat$a fn-cat-paged)))
+           :in-theory (disable fn-cp-corr-facts))))
+
+(defthm fn-cat-paged-horizon{correspondence}
+  (implies (fn-cat$pcorr fn-cat$p fn-cat-paged)
+                (equal (fn-cat$p-horizon fn-cat$p)
+                       (fn-cat$a-horizon fn-cat-paged)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-cat-horizon{correspondence} (fn-cat$c (fn-cat$p-view fn-cat$p)) (fn-cat fn-cat-paged))
+                 (:instance fn-cp-corr-facts (fn-cat$a fn-cat-paged)))
+           :in-theory (disable fn-cp-corr-facts))))
+
+(defthm fn-cat-paged-commit{correspondence}
+  (implies (if (fn-cat$pcorr fn-cat$p fn-cat-paged)
+                    (if (fn-held-p h)
+                        (fn-cat$ap fn-cat-paged)
+                      'nil)
+                  'nil)
+                (fn-cat$pcorr (fn-cat$p-commit-w h fn-cat$p)
+                              (fn-cat$a-commit h fn-cat-paged)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-cat-commit{correspondence} (fn-cat$c (fn-cat$p-view fn-cat$p)) (fn-cat fn-cat-paged))
+                 (:instance fn-cp-corr-facts (fn-cat$a fn-cat-paged)))
+           :in-theory (e/d (fn-cat$pcorr) (fn-cp-corr-facts fn-cat$c-commit-w fn-cat$a-commit fn-held-p
+                                                fn-cat$ap fn-cat$corr-w)))))
+
+(defthm fn-cat-paged-commit{guard-thm}
+  (implies (if (fn-cat$pcorr fn-cat$p fn-cat-paged)
+                    (if (fn-held-p h)
+                        (fn-cat$ap fn-cat-paged)
+                      'nil)
+                  'nil)
+                (fn-cat$p-wfp fn-cat$p))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-cat-commit{guard-thm} (fn-cat$c (fn-cat$p-view fn-cat$p)) (fn-cat fn-cat-paged))
+                 (:instance fn-cp-corr-facts (fn-cat$a fn-cat-paged)))
+           :in-theory (disable fn-cp-corr-facts))))
+
+(defthm fn-cat-paged-commit{preserved}
+  (implies (if (fn-held-p h)
+                    (fn-cat$ap fn-cat-paged)
+                  'nil)
+                (fn-cat$ap (fn-cat$a-commit h fn-cat-paged)))
+  :rule-classes nil
+  :hints (("Goal" :by fn-cat-commit{preserved})))
+
+(defthm fn-cat-paged-withdraw{correspondence}
+  (implies (if (fn-cat$pcorr fn-cat$p fn-cat-paged)
+                    (if (natp target)
+                        (if (< target (fn-cat$a-count fn-cat-paged))
+                            (if (natp by)
+                                (fn-cat$ap fn-cat-paged)
+                              'nil)
+                          'nil)
+                      'nil)
+                  'nil)
+                (fn-cat$pcorr (fn-cat$p-withdraw-w target by fn-cat$p)
+                              (fn-cat$a-withdraw target by fn-cat-paged)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-cat-withdraw{correspondence} (fn-cat$c (fn-cat$p-view fn-cat$p)) (fn-cat fn-cat-paged))
+                 (:instance fn-cp-corr-facts (fn-cat$a fn-cat-paged)))
+           :in-theory (e/d (fn-cat$pcorr) (fn-cp-corr-facts)))))
+
+(defthm fn-cat-paged-withdraw{guard-thm}
+  (implies (if (fn-cat$pcorr fn-cat$p fn-cat-paged)
+                    (if (natp target)
+                        (if (< target (fn-cat$a-count fn-cat-paged))
+                            (if (natp by)
+                                (fn-cat$ap fn-cat-paged)
+                              'nil)
+                          'nil)
+                      'nil)
+                  'nil)
+                (if (fn-cat$p-wfp fn-cat$p)
+                    (if (natp target)
+                        (if (natp by)
+                            (< target (fn-cat$p-count fn-cat$p))
+                          'nil)
+                      'nil)
+                  'nil))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-cat-withdraw{guard-thm} (fn-cat$c (fn-cat$p-view fn-cat$p)) (fn-cat fn-cat-paged))
+                 (:instance fn-cp-corr-facts (fn-cat$a fn-cat-paged)))
+           :in-theory (disable fn-cp-corr-facts))))
+
+(defthm fn-cat-paged-withdraw{preserved}
+  (implies (if (natp target)
+                    (if (< target (fn-cat$a-count fn-cat-paged))
+                        (if (natp by)
+                            (fn-cat$ap fn-cat-paged)
+                          'nil)
+                      'nil)
+                  'nil)
+                (fn-cat$ap (fn-cat$a-withdraw target by fn-cat-paged)))
+  :rule-classes nil
+  :hints (("Goal" :by fn-cat-withdraw{preserved})))
+
+(defthm fn-cat-paged-redecide{correspondence}
+  (implies (if (fn-cat$pcorr fn-cat$p fn-cat-paged)
+                    (if (natp seq)
+                        (if (< seq (fn-cat$a-count fn-cat-paged))
+                            (if (fn-hc-p context)
+                                (fn-cat$ap fn-cat-paged)
+                              'nil)
+                          'nil)
+                      'nil)
+                  'nil)
+                (fn-cat$pcorr (fn-cat$p-redecide seq context fn-cat$p)
+                              (fn-cat$a-redecide seq context fn-cat-paged)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-cat-redecide{correspondence} (fn-cat$c (fn-cat$p-view fn-cat$p)) (fn-cat fn-cat-paged))
+                 (:instance fn-cp-corr-facts (fn-cat$a fn-cat-paged)))
+           :in-theory (e/d (fn-cat$pcorr) (fn-cp-corr-facts)))))
+
+(defthm fn-cat-paged-redecide{guard-thm}
+  (implies (if (fn-cat$pcorr fn-cat$p fn-cat-paged)
+                    (if (natp seq)
+                        (if (< seq (fn-cat$a-count fn-cat-paged))
+                            (if (fn-hc-p context)
+                                (fn-cat$ap fn-cat-paged)
+                              'nil)
+                          'nil)
+                      'nil)
+                  'nil)
+                (if (fn-cat$p-wfp fn-cat$p)
+                    (if (natp seq)
+                        (< seq (fn-cat$p-count fn-cat$p))
+                      'nil)
+                  'nil))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-cat-redecide{guard-thm} (fn-cat$c (fn-cat$p-view fn-cat$p)) (fn-cat fn-cat-paged))
+                 (:instance fn-cp-corr-facts (fn-cat$a fn-cat-paged)))
+           :in-theory (disable fn-cp-corr-facts))))
+
+(defthm fn-cat-paged-redecide{preserved}
+  (implies (if (natp seq)
+                    (if (< seq (fn-cat$a-count fn-cat-paged))
+                        (if (fn-hc-p context)
+                            (fn-cat$ap fn-cat-paged)
+                          'nil)
+                      'nil)
+                  'nil)
+                (fn-cat$ap (fn-cat$a-redecide seq context fn-cat-paged)))
+  :rule-classes nil
+  :hints (("Goal" :by fn-cat-redecide{preserved})))
+
+(defthm fn-cat-paged-clear{correspondence}
+  (implies (fn-cat$pcorr fn-cat$p fn-cat-paged)
+                (fn-cat$pcorr (fn-cat$p-clear-w fn-cat$p)
+                              (fn-cat$a-clear fn-cat-paged)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-cat-clear{correspondence} (fn-cat$c (fn-cat$p-view fn-cat$p)) (fn-cat fn-cat-paged))
+                 (:instance fn-cp-corr-facts (fn-cat$a fn-cat-paged)))
+           :in-theory (e/d (fn-cat$pcorr) (fn-cp-corr-facts)))))
+
+(defthm fn-cat-paged-clear{preserved}
+  (implies (fn-cat$ap fn-cat-paged)
+                (fn-cat$ap (fn-cat$a-clear fn-cat-paged)))
+  :rule-classes nil
+  :hints (("Goal" :by fn-cat-clear{preserved})))
+
+(defthm fn-cat-paged-withdrawn-at{correspondence}
+  (implies (fn-cat$pcorr fn-cat$p fn-cat-paged)
+                (equal (fn-cat$p-withdrawn-at w fn-cat$p)
+                       (fn-cat$a-withdrawn-at w fn-cat-paged)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-cat-withdrawn-at{correspondence} (fn-cat$c (fn-cat$p-view fn-cat$p)) (fn-cat fn-cat-paged))
+                 (:instance fn-cp-corr-facts (fn-cat$a fn-cat-paged)))
+           :in-theory (disable fn-cp-corr-facts))))
+
+(defthm fn-cat-paged-clear-keyed{correspondence}
+  (implies (if (fn-cat$pcorr fn-cat$p fn-cat-paged)
+                    (if (fn-mpxt-keyp key)
+                        (equal (len key) '32)
+                      'nil)
+                  'nil)
+                (fn-cat$pcorr (fn-cat$p-clear-keyed key fn-cat$p)
+                              (fn-cat$a-clear-keyed key fn-cat-paged)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-cat-clear-keyed{correspondence} (fn-cat$c (fn-cat$p-view fn-cat$p)) (fn-cat fn-cat-paged))
+                 (:instance fn-cp-corr-facts (fn-cat$a fn-cat-paged)))
+           :in-theory (e/d (fn-cat$pcorr) (fn-cp-corr-facts)))))
+
+(defthm fn-cat-paged-clear-keyed{preserved}
+  (implies (if (fn-cat$ap fn-cat-paged)
+                    (if (fn-mpxt-keyp key)
+                        (equal (len key) '32)
+                      'nil)
+                  'nil)
+                (fn-cat$ap (fn-cat$a-clear-keyed key fn-cat-paged)))
+  :rule-classes nil
+  :hints (("Goal" :by fn-cat-clear-keyed{preserved})))
+
+(defthm fn-cat-paged-msgid-saturatedp{correspondence}
+  (implies (if (fn-cat$pcorr fn-cat$p fn-cat-paged)
+                    (if (fn-mpxt-keyp key)
+                        (if (equal (len key) '32)
+                            (fn-cat$ap fn-cat-paged)
+                          'nil)
+                      'nil)
+                  'nil)
+                (equal (fn-cat$p-msgid-saturatedp key msgid fn-cat$p)
+                       (fn-cat$a-msgid-saturatedp key msgid fn-cat-paged)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-cat-msgid-saturatedp{correspondence} (fn-cat$c (fn-cat$p-view fn-cat$p)) (fn-cat fn-cat-paged))
+                 (:instance fn-cp-corr-facts (fn-cat$a fn-cat-paged)))
+           :in-theory (disable fn-cp-corr-facts))))
+
+(defthm fn-cat-paged-msgid-saturatedp{guard-thm}
+  (implies (if (fn-cat$pcorr fn-cat$p fn-cat-paged)
+                    (if (fn-mpxt-keyp key)
+                        (if (equal (len key) '32)
+                            (fn-cat$ap fn-cat-paged)
+                          'nil)
+                      'nil)
+                  'nil)
+                (if (fn-cat$p-wfp fn-cat$p)
+                    (if (fn-mpxt-keyp key)
+                        (equal (len key) '32)
+                      'nil)
+                  'nil))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-cat-msgid-saturatedp{guard-thm} (fn-cat$c (fn-cat$p-view fn-cat$p)) (fn-cat fn-cat-paged))
+                 (:instance fn-cp-corr-facts (fn-cat$a fn-cat-paged)))
+           :in-theory (disable fn-cp-corr-facts))))
+
+(defthm fn-cat-paged-index-health{correspondence}
+  (implies (if (fn-cat$pcorr fn-cat$p fn-cat-paged)
+                    (if (fn-mpxt-keyp key)
+                        (if (equal (len key) '32)
+                            (fn-cat$ap fn-cat-paged)
+                          'nil)
+                      'nil)
+                  'nil)
+                (equal (fn-cat$p-index-health key fn-cat$p)
+                       (fn-cat$a-index-health key fn-cat-paged)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-cat-index-health{correspondence} (fn-cat$c (fn-cat$p-view fn-cat$p)) (fn-cat fn-cat-paged))
+                 (:instance fn-cp-corr-facts (fn-cat$a fn-cat-paged)))
+           :in-theory (disable fn-cp-corr-facts))))
+
+(defthm fn-cat-paged-index-health{guard-thm}
+  (implies (if (fn-cat$pcorr fn-cat$p fn-cat-paged)
+                    (if (fn-mpxt-keyp key)
+                        (if (equal (len key) '32)
+                            (fn-cat$ap fn-cat-paged)
+                          'nil)
+                      'nil)
+                  'nil)
+                (if (fn-cat$p-wfp fn-cat$p)
+                    (if (fn-mpxt-keyp key)
+                        (equal (len key) '32)
+                      'nil)
+                  'nil))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-cat-index-health{guard-thm} (fn-cat$c (fn-cat$p-view fn-cat$p)) (fn-cat fn-cat-paged))
+                 (:instance fn-cp-corr-facts (fn-cat$a fn-cat-paged)))
+           :in-theory (disable fn-cp-corr-facts))))
+
+; -----------------------------------------------------------------------------
+; 8. The paged catalog: the same :logic functions as `fn-cat' (books/catalog.lisp),
+; so books/catalog-paged-attach.lisp attaches it to the generic.
+
+(defabsstobj fn-cat-paged
+  :foundation fn-cat$p
+  :recognizer (fn-cat-paged-p :logic fn-cat$ap :exec fn-cat$pp)
+  :creator (create-fn-cat-paged :logic create-fn-cat$a :exec create-fn-cat$p)
+  :corr-fn fn-cat$pcorr
+  :exports ((fn-cat-paged-count :logic fn-cat$a-count :exec fn-cat$p-count)
+            (fn-cat-paged-at :logic fn-cat$a-at :exec fn-cat$p-at)
+            (fn-cat-paged-msgid-seqs :logic fn-cat$a-msgid-seqs :exec fn-cat$p-msgid-seqs)
+            (fn-cat-paged-group-number :logic fn-cat$a-group-number :exec fn-cat$p-group-number)
+            (fn-cat-paged-group-next :logic fn-cat$a-group-next :exec fn-cat$p-group-next)
+            (fn-cat-paged-group-count :logic fn-cat$a-group-count :exec fn-cat$p-group-count)
+            (fn-cat-paged-total-octets :logic fn-cat$a-total-octets :exec fn-cat$p-total-octets)
+            (fn-cat-paged-visible-at :logic fn-cat$a-visible-at :exec fn-cat$p-visible-at)
+            (fn-cat-paged-group-live-count :logic fn-cat$a-group-live-count :exec fn-cat$p-group-live-count)
+            (fn-cat-paged-group-live-low :logic fn-cat$a-group-live-low :exec fn-cat$p-group-live-low)
+            (fn-cat-paged-group-live-high :logic fn-cat$a-group-live-high :exec fn-cat$p-group-live-high)
+            (fn-cat-paged-horizon :logic fn-cat$a-horizon :exec fn-cat$p-horizon)
+            (fn-cat-paged-commit :logic fn-cat$a-commit :exec fn-cat$p-commit-w :protect t)
+            (fn-cat-paged-withdraw :logic fn-cat$a-withdraw :exec fn-cat$p-withdraw-w :protect t)
+            (fn-cat-paged-redecide :logic fn-cat$a-redecide :exec fn-cat$p-redecide :protect t)
+            (fn-cat-paged-clear :logic fn-cat$a-clear :exec fn-cat$p-clear-w :protect t)
+            (fn-cat-paged-withdrawn-at :logic fn-cat$a-withdrawn-at :exec fn-cat$p-withdrawn-at)
+            (fn-cat-paged-clear-keyed :logic fn-cat$a-clear-keyed :exec fn-cat$p-clear-keyed :protect t)
+            (fn-cat-paged-msgid-saturatedp :logic fn-cat$a-msgid-saturatedp :exec fn-cat$p-msgid-saturatedp)
+            (fn-cat-paged-index-health :logic fn-cat$a-index-health :exec fn-cat$p-index-health))
+  :corr-fn-exists t
+  :attachable t)
