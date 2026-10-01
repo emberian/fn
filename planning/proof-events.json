@@ -17943,6 +17943,24 @@
           "name": "fn-dwcc-actual-current-read-retains-selected-window",
           "note": "CURRENT READ preserves entire selected private window under zero raw request. Actual codec/hash/hash/trailer publication positive and corrupted overlapping raw-plan/capture removal; no native source authority inference.",
           "pending_subject": "Registered physical source candidate FN-DWC-ONE/FN-DWC-READ-OBSERVATION; native issuer/installer remains unavailable, so this source boundary is not an installed host-called claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwy-actual-two-yielded-loops-complete-effects",
+          "note": "Two actual same-input basic-loop calls with first yield preserve the entire tuple at the summed generated action observer fuel. Full positive and first-yield removal; source scheduling observer is not native demand.",
+          "pending_subject": "Proof-only finite transcript of actual FN-ZIN-LOOP calls; current registered ONE has a named complete-effects refinement, but whole controller/refill/cleared-window composition and installed native consumer remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwy-actual-finite-yield-turns-complete-effects",
+          "note": "Finite actual loop-call transcript stops on actual first nonyield and equates complete tuple with atomic reference. Unconditional theorem; real multiple-yield/output128 and empty-quanta positives. Same buffer/frontier only.",
+          "pending_subject": "Proof-only finite transcript of actual FN-ZIN-LOOP calls; current registered ONE has a named complete-effects refinement, but whole controller/refill/cleared-window composition and installed native consumer remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwy-actual-completed-finite-yields-match-basic-loop",
+          "note": "Completed finite actual yield trajectory and completed ordinary actual basic loop have identical status/cursor/register/ring/table/output. Full positive and both complete completion-hypothesis removals. Does not equate unused scheduling fuel.",
+          "pending_subject": "Proof-only finite transcript of actual FN-ZIN-LOOP calls; current registered ONE has a named complete-effects refinement, but whole controller/refill/cleared-window composition and installed native consumer remain open."
         }
       ],
       "pending_subject": "Native compressed driver remains dormant and unreachable-in-composition. Actual selected-prefix cell accumulation and faithful-source compressed digest BEGIN/READ/HASH/new-publication are source-proved, with source-slice binding explicit. Arbitrary canonical decoder/controller iteration, selected dictionary/captured-view authority, full compiled workspace funding and retained native buffer/view/consumer joins remain open; PRF-1131 remains incomplete."

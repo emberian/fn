@@ -18743,7 +18743,10 @@
         "fn-pwzt-actual-issued-codec-one-retains-terminal-budget",
         "fn-dwcc-actual-codec-one-basic-loop-effects",
         "fn-dwcc-actual-noncodec-one-retains-selected-window",
-        "fn-dwcc-actual-current-read-retains-selected-window"
+        "fn-dwcc-actual-current-read-retains-selected-window",
+        "fn-pwy-actual-two-yielded-loops-complete-effects",
+        "fn-pwy-actual-finite-yield-turns-complete-effects",
+        "fn-pwy-actual-completed-finite-yields-match-basic-loop"
       ]
     },
     {

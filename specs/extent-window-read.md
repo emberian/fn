@@ -429,3 +429,18 @@ window. The actual codec, two hash turns and trailer publication witness keeps
 selected bytes `(66 67)`; a separately corrupted overlapping raw plan and
 matched capture refutes removal of the zero-request premise. None establishes
 installed private-buffer/view custody, whole runtime funding or activation.
+
+### Actual finite scheduling yields
+
+A finite transcript of actual `FN-ZIN-LOOP` calls, stopping at its first
+non-yield status, equals the atomic reference at its generated semantic action
+count. This includes the complete returned tuple. At completion it has the
+same status, cursor, registers, ring, table and output as a completed ordinary
+basic loop. The unused scheduling-fuel field is not equated across schedules.
+
+The witnesses use the real fixed-Huffman input, multiple yielded calls and
+128 emitted octets. Both completion conditions have complete removals. This
+component keeps one input buffer/frontier; actual scratch clearing, refill,
+registered controller iteration, source custody and full native funding remain.
+The generated action observer is a logical semantic reference, not a primitive
+allocation or runtime work tariff.
