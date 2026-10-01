@@ -24905,7 +24905,12 @@
       "subsystem": "nntp/served",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
-      "kinds": [],
+      "kinds": [
+        [
+          "base",
+          "natp"
+        ]
+      ],
       "exempt": {},
       "keystones": [],
       "extraction": null,

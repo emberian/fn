@@ -4209,7 +4209,9 @@ CLOSING STARTTLS CONSUMED)."
 (defun fnn-owner-cold-issue-locked (service cid entry)
   "Validated descriptor capture, owner mutex held, before retirement.
 Stage 0: with no funded pool the miss is :direct, the 7aad444ce per-miss
-read (fnn-owner-cold-line-direct), never an admission refusal."
+read (fnn-owner-cold-line-direct), never an admission refusal.  That read
+holds no retirement pin across its off-lock pread: Codex r31 F1, a known
+served defect owned by the COLD-READ-OWNERSHIP lane (see the direct line)."
   (unless (fnn-extent-pool-funded-p)
     (return-from fnn-owner-cold-issue-locked :direct))
   (multiple-value-bind (token word worker) (apply #'fnn-extent-issue-read cid entry)
@@ -4382,6 +4384,16 @@ A refusal or timeout never authorizes releasing the physical I/O lease."
 ;;; (books/owner-time-bars.lisp fn-otb-dependency-step); :serve runs the
 ;;; read again, warm; :unavailable answers the line (fnn-owner-unavailable-
 ;;; line).  Other connections are served meanwhile.
+;;; KNOWN SERVED DEFECTS (Codex r31 F1/F2, present in the 7aad444ce code this
+;;; restores; owner: the COLD-READ-OWNERSHIP lane, WAVE-STATE-2026-10-01):
+;;; F1 the direct read holds no issued row or pin on its file generation, so
+;;; retirement can close the fd during the off-lock pread (a pread on a closed
+;;; or reused fd, then a late cache insert for a retired file); F2 a :wait
+;;; that times out leaves the thread running unjoined -- one unbounded thread
+;;; and buffer per retry while a read stalls, and a fault it raises after the
+;;; line answered is never observed.  The fix is a pin held until the I/O
+;;; completes, a bounded worker pool, and a late completion for a retired
+;;; generation dropped without insert.
 (defun fnn-owner-cold-line-direct (service cid incoming socket class peerp entry)
   (let* ((since (fnn-owner-monotonic-ms))
          (limit nil)

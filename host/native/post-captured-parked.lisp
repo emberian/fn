@@ -65,7 +65,7 @@
     (values word left)))
 
 (defun fnn-owner-captured-precheck-locked (service)
-  "Between post precheck and frontier: actual source→step→confirm→retire."
+  "Between post precheck and frontier: actual source->step->confirm->retire."
   (sb-thread:with-mutex (*fnn-extent-lock*)
     (let ((runtime (fnn-owner-service-captured-runtime service)))
       (unless runtime
