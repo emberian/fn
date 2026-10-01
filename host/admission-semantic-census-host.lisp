@@ -41,7 +41,7 @@
                    (equal (fn-evc-field-by-shape 1 row) (fn-prl-nth 5 token))))
          (mv :writer-stale fn-history-backing state)
       (let* ((files (fn-sn-files (fn-prl-nth 5 intent)))
-             (count (fn-sf-records-count files))
+             (count (fn-prl-nth 3 intent))
              (frontier (fn-sf-frontier files)))
        (if (not (and (natp count) (equal count (fn-prl-nth 3 token))
                      (natp frontier)))
@@ -126,6 +126,14 @@
                               token (fn-omk-at 4 row) next-remap next-census) state)))
            (mv (if (eq offered :started) :continue :recovery-required) state))))))
       (t (mv :recovery-required state))))))))
+
+(verify-guards fn-owner-admission-census-begin-logic
+ :hints (("Goal" :in-theory
+ (disable fn-apr-tokenp fn-apr-livep fn-prl-nth fn-apr-widthp
+          fn-apr-owner-current fn-owner-history-writer-gate
+          fn-hep-builder-readout fn-hed-at fn-sn-files fn-sf-frontier
+          fn-sfr-snoc fn-osrc-begin fn-osm-begin fn-hct-begin
+          fn-evc-field-by-shape))))
 
 (verify-guards fn-owner-admission-census-step-logic)
 
