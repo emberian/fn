@@ -295,9 +295,11 @@
 ; and failure of the exact fn-mpxl-split-preserves-faithful conclusion.
 (assert-event
  (let ((tab (mpxl-empty 1)) (rows (list *mpxl-a*)))
-   (and (fn-mpxl-tabp tab)
-        (not (fn-mpxl-faithful tab rows))
-        (not (fn-mpxl-faithful (mv-nth 1 (fn-mpxl-split tab)) rows)))))
+   (mv-let (ok split-tab) (fn-mpxl-split tab)
+     (declare (ignore ok))
+     (and (fn-mpxl-tabp tab)
+          (not (fn-mpxl-faithful tab rows))
+          (not (fn-mpxl-faithful split-tab rows))))))
 
 ; CORRUPTED-STATE: tabp alone REMOVED.  N = 1, S = 0, but two pages.
 ; Tag 1 at seq 0 on page 0 is initially reachable (1 mod 1 = 0).
@@ -310,7 +312,8 @@
 (defconst *mpxl-one-row* (list (mpxl-held 0 *mpxl-m1* 100)))
 (assert-event
  (with-guard-checking :none
-   (and (not (fn-mpxl-tabp *mpxl-bad-root*))
-        (fn-mpxl-faithful *mpxl-bad-root* *mpxl-one-row*)
-        (not (fn-mpxl-faithful (mv-nth 1 (fn-mpxl-split *mpxl-bad-root*))
-                               *mpxl-one-row*)))))
+   (mv-let (ok split-tab) (fn-mpxl-split *mpxl-bad-root*)
+     (declare (ignore ok))
+     (and (not (fn-mpxl-tabp *mpxl-bad-root*))
+          (fn-mpxl-faithful *mpxl-bad-root* *mpxl-one-row*)
+          (not (fn-mpxl-faithful split-tab *mpxl-one-row*))))))

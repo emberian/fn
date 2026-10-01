@@ -178,6 +178,12 @@
           (list 1) (make-list 1023 :initial-element 0)
           (list 1) (make-list 1023 :initial-element 0)))
 
+; The malformed logical stobjs cannot use the raw executable counterparts
+; of the recursive readers.  Expand those readers in these two ground
+; proofs; a 1,024-slot page needs more than the default 1,000 rewrite depth.
+; ACL2 restores this defaults-table setting when the book finishes.
+(set-rewrite-stack-limit 10000)
+
 ; fn-mlhp alone REMOVED: N = 2, S = -1 satisfies the literal root relation
 ; N + S = pages = 1 and S < N, but violates the typed scalar recognizer.
 (defthm mlhx-recognizer-removal-witness
@@ -189,8 +195,23 @@
          (not (equal (fn-mlh-seqs nil nil fn-mlh)
                      (fn-mpxt-spec-from 0 nil nil)))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-mlh-tag fn-mlh-candidates
-                                    fn-mlh-okp fn-record-msgid))))
+  :hints (("Goal" :in-theory (e/d (fn-mlh-tag fn-mlh-candidates
+                                    fn-mlh-okp fn-record-msgid
+                                    fn-mlhp fn-mlh-wi fn-mlh-w-length
+                                    fn-mlh-pages fn-mlh-n fn-mlh-s
+                                    fn-mlh-key-octets fn-mlh-keyi
+                                    fn-mlh-slot fn-mlh-tag-at fn-mlh-seqw
+                                    fn-mlh-seq-at fn-mlh-ovf fn-mlh-abs
+                                    fn-mlh-abs-pages fn-mlh-pe fn-mlh-scan
+                                    fn-mlh-key-from fn-mpxt-ins
+                                    fn-mpxt-confirm fn-mpxt-hitp
+                                    fn-mpxl-seqs fn-mpxl-pages-okp
+                                    fn-mpxl-ents-below)
+                                   ((:e fn-mlh-abs-pages) (:e fn-mlh-pe)
+                                    (:e fn-mlh-scan) (:e fn-mlh-key-from)))
+           :expand ((:free (p fn-mlh) (fn-mlh-abs-pages p fn-mlh))
+                    (:free (p j fn-mlh) (fn-mlh-pe p j fn-mlh))
+                    (:free (i fn-mlh) (fn-mlh-key-from i fn-mlh))))))
 
 ; fn-mlh-wfp alone REMOVED: all scalar and word types hold, but N + S = 2
 ; disagrees with pages = 1.  The same stale entry supplies the false answer.
@@ -203,5 +224,20 @@
          (not (equal (fn-mlh-seqs nil nil fn-mlh)
                      (fn-mpxt-spec-from 0 nil nil)))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-mlh-tag fn-mlh-candidates
-                                    fn-mlh-okp fn-record-msgid))))
+  :hints (("Goal" :in-theory (e/d (fn-mlh-tag fn-mlh-candidates
+                                    fn-mlh-okp fn-record-msgid
+                                    fn-mlhp fn-mlh-wi fn-mlh-w-length
+                                    fn-mlh-pages fn-mlh-n fn-mlh-s
+                                    fn-mlh-key-octets fn-mlh-keyi
+                                    fn-mlh-slot fn-mlh-tag-at fn-mlh-seqw
+                                    fn-mlh-seq-at fn-mlh-ovf fn-mlh-abs
+                                    fn-mlh-abs-pages fn-mlh-pe fn-mlh-scan
+                                    fn-mlh-key-from fn-mpxt-ins
+                                    fn-mpxt-confirm fn-mpxt-hitp
+                                    fn-mpxl-seqs fn-mpxl-pages-okp
+                                    fn-mpxl-ents-below)
+                                   ((:e fn-mlh-abs-pages) (:e fn-mlh-pe)
+                                    (:e fn-mlh-scan) (:e fn-mlh-key-from)))
+           :expand ((:free (p fn-mlh) (fn-mlh-abs-pages p fn-mlh))
+                    (:free (p j fn-mlh) (fn-mlh-pe p j fn-mlh))
+                    (:free (i fn-mlh) (fn-mlh-key-from i fn-mlh))))))
