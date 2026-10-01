@@ -53,6 +53,7 @@
 (include-book "identity-invariants")
 ; PRF-237: the peer's distribution row's slot name (`peer distributions').
 (include-book "peer-carriage-rows")
+(include-book "def-loop")
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
 ;; Its work is proof time no prover step counts (docs/proof-style.md
@@ -996,43 +997,9 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-own-feed-fold-loop (bytes acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp bytes)
-      (fn-own-feed-fold-loop (cdr bytes)
-                             (cons (let ((b (car bytes)))
-                                     (if (and (natp b) (<= 65 b) (<= b 90)) (+ b 32) b))
-                                   acc))
-    (revappend acc nil)))
-
-(defun fn-own-feed-fold (bytes)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp bytes)
-           (cons (let ((b (car bytes)))
-                   (if (and (natp b) (<= 65 b) (<= b 90)) (+ b 32) b))
-                 (fn-own-feed-fold (cdr bytes)))
-         nil)
-       :exec (fn-own-feed-fold-loop bytes nil)))
-
-(local
- (defthm fn-own-feed-fold-loop-is-revappend
-   (equal (fn-own-feed-fold-loop bytes acc)
-          (revappend acc (fn-own-feed-fold bytes)))
-   :hints (("Goal" :induct (fn-own-feed-fold-loop bytes acc)
-                   :in-theory (union-theories '(fn-own-feed-fold-loop fn-own-feed-fold revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-own-feed-fold-loop)
-
-(verify-guards fn-own-feed-fold
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-own-feed-fold)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-own-feed-fold-loop-is-revappend (acc nil))))))
+(def-loop fn-own-feed-fold (bytes)
+  :shape :map
+  :body (let ((b (car bytes))) (if (and (natp b) (<= 65 b) (<= b 90)) (+ b 32) b)))
 
 
 ;; The comma-separated pieces, each reversed back into order.

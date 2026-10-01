@@ -61,6 +61,7 @@
 (include-book "catalog-record")
 (include-book "catalog-number-assignment")
 (include-book "msgid-pages-exec")
+(include-book "def-loop")
 
 ; The tau system is off in this book: it is time no prover step counts, and
 ; on these goals it was half the proof time (ACL2 time over the book's own
@@ -751,42 +752,9 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-cat-plan-numbers-loop (plan acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp plan)
-      (fn-cat-plan-numbers-loop (cdr plan)
-                                (cons (cons (fn-cbor-ag-car (car plan))
-                                            (fn-cbor-ag-car (fn-cbor-ag-cdr (car plan))))
-                                      acc))
-    (revappend acc nil)))
-
-(defun fn-cat-plan-numbers (plan)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp plan)
-           (cons (cons (fn-cbor-ag-car (car plan)) (fn-cbor-ag-car (fn-cbor-ag-cdr (car plan))))
-                 (fn-cat-plan-numbers (cdr plan)))
-         nil)
-       :exec (fn-cat-plan-numbers-loop plan nil)))
-
-(local
- (defthm fn-cat-plan-numbers-loop-is-revappend
-   (equal (fn-cat-plan-numbers-loop plan acc)
-          (revappend acc (fn-cat-plan-numbers plan)))
-   :hints (("Goal" :induct (fn-cat-plan-numbers-loop plan acc)
-                   :in-theory (union-theories '(fn-cat-plan-numbers-loop fn-cat-plan-numbers revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-cat-plan-numbers-loop)
-
-(verify-guards fn-cat-plan-numbers
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-cat-plan-numbers)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-cat-plan-numbers-loop-is-revappend (acc nil))))))
+(def-loop fn-cat-plan-numbers (plan)
+  :shape :map
+  :body (cons (fn-cbor-ag-car (car plan)) (fn-cbor-ag-car (fn-cbor-ag-cdr (car plan)))))
 
 
 (defun fn-cat$c-apply-plan (plan seq fn-cat$c)

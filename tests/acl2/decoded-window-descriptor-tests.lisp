@@ -3,12 +3,12 @@
 
 ; Reachable decoded coordinates: requested offset exceeds stored C but is
 ; within decoded N. A raw descriptor cannot represent this request.
+(defconst *pwzt-d* '(7 100 320 120 40 200 99 250 0))
+(defconst *pwzt-token* (cons :decoded-window (cons 17 *pwzt-d*)))
 (assert-event
- (let* ((d '(7 100 320 120 40 200 99 250 0))
-        (token (cons :decoded-window (cons 17 d))))
-   (and (fn-pwz-descriptorp d) (fn-pwz-tokenp token)
-        (equal (len token) 11) (equal (fn-pwz-dictionary token) nil)
-        (< (nth 4 d) (nth 5 d)))))
+ (and (fn-pwz-descriptorp *pwzt-d*) (fn-pwz-tokenp *pwzt-token*)
+      (equal (len *pwzt-token*) 11) (equal (fn-pwz-dictionary *pwzt-token*) nil)
+      (< (nth 4 *pwzt-d*) (nth 5 *pwzt-d*))))
 
 ; Unknown preset, invalid physical span, decoded offset and bomb admission
 ; are separately refused by the actual descriptor decision.

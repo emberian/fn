@@ -203,10 +203,21 @@
                 (equal (fn-feed-backoff-until f) (fn-feed-backoff-until g))
                 (equal (fn-feed-next-attempt f) (fn-feed-next-attempt g))))
   :hints (("Goal" :in-theory (enable fn-feed-durable-projection fn-feed-with-conn
-                                      (:d fn-feed-make) (:d fn-feed-peer)
+                                      (:d fn-feed-make) (:d fn-feed-make-counted) (:d fn-feed-peer)
                                       (:d fn-feed-limits-of) (:d fn-feed-queue)
                                       (:d fn-feed-contact) (:d fn-feed-backoff-until)
                                       (:d fn-feed-next-attempt) fn-bp-nth))))
+
+; The two carried counts are part of the durable projection too.
+(defthm fn-feed-projection-equal-implies-counts
+  (implies (equal (fn-feed-durable-projection f)
+                  (fn-feed-durable-projection g))
+           (and (equal (fn-feed-undelivered f) (fn-feed-undelivered g))
+                (equal (fn-feed-retry-dropped f) (fn-feed-retry-dropped g))))
+  :hints (("Goal" :in-theory (enable fn-feed-durable-projection fn-feed-with-conn
+                                      (:d fn-feed-make-counted)
+                                      (:d fn-feed-undelivered) (:d fn-feed-retry-dropped)
+                                      fn-bp-nth))))
 
 (defthm fn-feed-apply-record-respects-projection
   (implies (and (fn-feedp f) (fn-feedp g)
@@ -223,7 +234,8 @@
      fn-feed-queue-requeue-inflight fn-feed-queue-settle fn-feed-find
      fn-feed-state-of fn-feed-state-inflightp fn-feed-offeredp fn-feed-droppedp
      fn-feed-state-attempt fn-feed-backoff-delay))
-           :use ((:instance fn-feed-projection-equal-implies-persistent-fields)))))
+           :use ((:instance fn-feed-projection-equal-implies-persistent-fields)
+                 (:instance fn-feed-projection-equal-implies-counts)))))
 
 (local (defun fn-feed-pair-replay-induct (f g records)
          (if (atom records) (list f g)

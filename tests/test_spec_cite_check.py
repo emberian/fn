@@ -63,6 +63,24 @@ class SpecCiteCheckTests(unittest.TestCase):
         # record kind, which no defun spells.
         self.assertIn("fn-node-state", scc.defined_names())
 
+    def test_a_macro_generated_name_is_defined(self):
+        template = """(defmacro fn-rpf-define-buffer ()
+  `(defstobj fn-recovery-profile-buffer
+     (fn-rpf-bytes :type (array (unsigned-byte 8)
+                               (,(nth 7 (fn-recovery-profile-envelope))))
+                   :initially 0)
+     :inline t))
+"""
+        self.assertEqual(scc.macro_generated_definitions(
+            template + "(fn-rpf-define-buffer)\n"), {"fn-recovery-profile-buffer"})
+        self.assertEqual(scc.macro_generated_definitions(template), set())
+        self.assertEqual(scc.macro_generated_definitions("""
+(defmacro fn-define-buffer (name)
+  `(defstobj ,name (bytes :initially 0)))
+(fn-define-buffer fn-buffer)
+"""), set())
+        self.assertIn("fn-recovery-profile-buffer", scc.defined_names())
+
     def test_the_tree_is_green_under_strict(self):
         self.assertEqual(scc.main(["--summary", "--strict"]), 0)
 

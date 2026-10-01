@@ -47,6 +47,7 @@
 (include-book "octets-stobj")
 (include-book "rev-onto")
 (local (include-book "arithmetic-5/top" :dir :system))
+(include-book "def-loop")
 
 ; -----------------------------------------------------------------------------
 ; Octet classes (RFC 5234 appendix B.1).
@@ -885,38 +886,9 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-ot-downcase-loop (xs acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp xs)
-      (fn-ot-downcase-loop (cdr xs) (cons (fn-ot-downcase-octet (car xs)) acc))
-    (revappend acc nil)))
-
-(defun fn-ot-downcase (xs)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp xs)
-           (cons (fn-ot-downcase-octet (car xs)) (fn-ot-downcase (cdr xs)))
-         nil)
-       :exec (fn-ot-downcase-loop xs nil)))
-
-(local
- (defthm fn-ot-downcase-loop-is-revappend
-   (equal (fn-ot-downcase-loop xs acc)
-          (revappend acc (fn-ot-downcase xs)))
-   :hints (("Goal" :induct (fn-ot-downcase-loop xs acc)
-                   :in-theory (union-theories '(fn-ot-downcase-loop fn-ot-downcase revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-ot-downcase-loop)
-
-(verify-guards fn-ot-downcase
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-ot-downcase)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-ot-downcase-loop-is-revappend (acc nil))))))
+(def-loop fn-ot-downcase (xs)
+  :shape :map
+  :body (fn-ot-downcase-octet (car xs)))
 
 
 (defun fn-ot-upcase (xs)
