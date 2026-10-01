@@ -396,17 +396,37 @@
     (and (posp (fn-mlh-n fn-mlh)) (< (fn-mlh-s fn-mlh) (fn-mlh-n fn-mlh))
          (equal (fn-mlh-pages fn-mlh) (+ (fn-mlh-n fn-mlh) (fn-mlh-s fn-mlh))))))
 
-; Well formed: the pages in use are the page array (grown one page at a
-; time, so a new page is a fresh one) and the root is a root.
+; The pages in use are the page array (grown one page at a time, so a new
+; page is a fresh one).
+(defun fn-mlh-pgsp (fn-mlh)
+  (declare (xargs :stobjs fn-mlh))
+  (equal (fn-mlh-pages fn-mlh) (fn-mlh-pg-length fn-mlh)))
+
+; Well formed: that, and the root is a root.
 (defun fn-mlh-wfp (fn-mlh)
   (declare (xargs :stobjs fn-mlh))
-  (and (equal (fn-mlh-pages fn-mlh) (fn-mlh-pg-length fn-mlh))
+  (and (fn-mlh-pgsp fn-mlh)
        (fn-mlh-rootp fn-mlh)))
 
 (defun fn-mlh-slot-guardp (p j fn-mlh)
   (declare (xargs :stobjs fn-mlh))
   (and (natp p) (natp j) (< j *fn-mlh-page-slots*)
-       (< p (fn-mlh-pages fn-mlh)) (fn-mlh-wfp fn-mlh)))
+       (< p (fn-mlh-pages fn-mlh)) (fn-mlh-pgsp fn-mlh)))
+
+;; The page array's length is the page count wherever that is known; the
+;; predicate stays closed.
+(defthm fn-mlh-pgsp-length
+  (implies (fn-mlh-pgsp fn-mlh)
+           (equal (fn-mlh-pg-length fn-mlh) (fn-mlh-pages fn-mlh))))
+
+(defthm fn-mlh-pgsp-of-scalar-updates
+  (and (equal (fn-mlh-pgsp (update-fn-mlh-n m fn-mlh)) (fn-mlh-pgsp fn-mlh))
+       (equal (fn-mlh-pgsp (update-fn-mlh-s m fn-mlh)) (fn-mlh-pgsp fn-mlh))
+       (equal (fn-mlh-pgsp (update-fn-mlh-count m fn-mlh)) (fn-mlh-pgsp fn-mlh))
+       (equal (fn-mlh-pgsp (update-fn-mlh-stuck m fn-mlh)) (fn-mlh-pgsp fn-mlh))
+       (equal (fn-mlh-pgsp (update-fn-mlh-keyi i v fn-mlh)) (fn-mlh-pgsp fn-mlh))))
+
+(in-theory (disable fn-mlh-pgsp))
 
 ; The tag word of slot J on page P, a fixnum.
 (defun-inline fn-mlh-tag-at (p j fn-mlh)
@@ -845,7 +865,9 @@
   (implies (and (fn-mlhp fn-mlh) (fn-mlh-slot-guardp p j fn-mlh)
                 (unsigned-byte-p 61 tw) (unsigned-byte-p 61 sw))
            (and (fn-mlhp (fn-mlh-set-words p j tw sw fn-mlh))
-                (fn-mlh-wfp (fn-mlh-set-words p j tw sw fn-mlh)))))
+                (fn-mlh-pgsp (fn-mlh-set-words p j tw sw fn-mlh))
+                (equal (fn-mlh-wfp (fn-mlh-set-words p j tw sw fn-mlh)) (fn-mlh-wfp fn-mlh))))
+  :hints (("Goal" :in-theory (enable fn-mlh-pgsp))))
 
 (defthm fn-mlh-accessors-of-set-words
   (implies (and (natp q) (natp i) (< i *fn-mlh-page-slots*)
@@ -890,21 +912,26 @@
        (equal (fn-mlh-s (fn-mlh-set-ovf p fn-mlh)) (fn-mlh-s fn-mlh))
        (equal (fn-mlh-count (fn-mlh-set-ovf p fn-mlh)) (fn-mlh-count fn-mlh))
        (equal (fn-mlh-stuck (fn-mlh-set-ovf p fn-mlh)) (fn-mlh-stuck fn-mlh))
-       (equal (fn-mlh-key-octets (fn-mlh-set-ovf p fn-mlh)) (fn-mlh-key-octets fn-mlh))))
+       (equal (fn-mlh-key-octets (fn-mlh-set-ovf p fn-mlh)) (fn-mlh-key-octets fn-mlh))
+       (implies (and (natp p) (< p (fn-mlh-pg-length fn-mlh)))
+                (and (equal (fn-mlh-pg-length (fn-mlh-write-slot p j tag seq fn-mlh)) (fn-mlh-pg-length fn-mlh))
+                     (equal (fn-mlh-pg-length (fn-mlh-set-ovf p fn-mlh)) (fn-mlh-pg-length fn-mlh))))))
 
 (defthm fn-mlh-write-slot-shape
-  (implies (and (fn-mlhp fn-mlh) (fn-mlh-slot-guardp p j fn-mlh)
+  (implies (and (fn-mlhp fn-mlh) (fn-mlh-slot-guardp p j fn-mlh) (fn-mlh-wfp fn-mlh)
                 (natp tag) (< tag *fn-mlh-tag-limit*)
                 (natp seq) (< (+ 1 seq) *fn-mlh-tag-limit*))
            (and (fn-mlhp (fn-mlh-write-slot p j tag seq fn-mlh))
+                (fn-mlh-pgsp (fn-mlh-write-slot p j tag seq fn-mlh))
                 (fn-mlh-wfp (fn-mlh-write-slot p j tag seq fn-mlh))))
   :hints (("Goal" :in-theory (e/d (unsigned-byte-p) (fn-mlh-slot-guardp fn-mlh-wfp)))))
 
 (defthm fn-mlh-set-ovf-shape
   (implies (and (fn-mlhp fn-mlh) (natp p) (< p (fn-mlh-pages fn-mlh)) (fn-mlh-wfp fn-mlh))
            (and (fn-mlhp (fn-mlh-set-ovf p fn-mlh))
+                (fn-mlh-pgsp (fn-mlh-set-ovf p fn-mlh))
                 (fn-mlh-wfp (fn-mlh-set-ovf p fn-mlh))))
-  :hints (("Goal" :in-theory (e/d (unsigned-byte-p) (fn-mlh-wfp)))))
+  :hints (("Goal" :in-theory (enable unsigned-byte-p))))
 
 ; The slot accessors after a write: the written slot reads the entry, every
 ; other slot as before, and every flag as before.
@@ -1030,6 +1057,7 @@
                 (natp tag) (< tag *fn-mlh-tag-limit*)
                 (natp seq) (< (+ 1 seq) *fn-mlh-tag-limit*))
            (and (fn-mlhp (mv-nth 1 (fn-mlh-put tag seq fn-mlh)))
+                (fn-mlh-pgsp (mv-nth 1 (fn-mlh-put tag seq fn-mlh)))
                 (fn-mlh-wfp (mv-nth 1 (fn-mlh-put tag seq fn-mlh)))))
   :hints (("Goal" :in-theory (disable fn-mlh-find-empty fn-mpxl-addr-below)
            :use ((:instance fn-mpxl-addr-below (n (fn-mlh-n fn-mlh)) (s (fn-mlh-s fn-mlh)))))))
@@ -1124,3 +1152,413 @@
                                    fn-mlh-candidates-is-cands))
            :use ((:instance fn-mpxl-addr-below (n (fn-mlh-n fn-mlh)) (s (fn-mlh-s fn-mlh)))
                  (:instance fn-mpxl-addr-below (tag wtag) (n (fn-mlh-n fn-mlh)) (s (fn-mlh-s fn-mlh)))))))
+
+; -----------------------------------------------------------------------------
+; 7. THE SPLIT.  The movers of page S (and of its overflow page S + 1, when
+; there is one) are moved, in slot order, onto ONE new page N + S; the root
+; advances.  The work is the two pages read and the one page written; the
+; allocation is the one new page (and the page array's pointers).  Refused,
+; the table unchanged, when the movers exceed a page.  GEN: def-loop (the
+; count and the move).
+
+(local (in-theory (disable mod)))
+
+; Clear slot J of page P, keeping its seq word's flag part.
+(defun fn-mlh-clear-slot (p j fn-mlh)
+  (declare (xargs :stobjs fn-mlh
+                  :guard (fn-mlh-slot-guardp p j fn-mlh)
+                  :guard-hints (("Goal" :in-theory (enable unsigned-byte-p fn-mlh-flag-part)))))
+  (fn-mlh-set-words p j 0 (fn-mlh-flag-part (fn-mlh-seqw p j fn-mlh)) fn-mlh))
+
+(defthm fn-mlh-clear-slot-frame
+  (and (equal (fn-mlh-pages (fn-mlh-clear-slot p j fn-mlh)) (fn-mlh-pages fn-mlh))
+       (equal (fn-mlh-n (fn-mlh-clear-slot p j fn-mlh)) (fn-mlh-n fn-mlh))
+       (equal (fn-mlh-s (fn-mlh-clear-slot p j fn-mlh)) (fn-mlh-s fn-mlh))
+       (equal (fn-mlh-count (fn-mlh-clear-slot p j fn-mlh)) (fn-mlh-count fn-mlh))
+       (equal (fn-mlh-stuck (fn-mlh-clear-slot p j fn-mlh)) (fn-mlh-stuck fn-mlh))
+       (equal (fn-mlh-key-octets (fn-mlh-clear-slot p j fn-mlh)) (fn-mlh-key-octets fn-mlh))))
+
+(defthm fn-mlh-clear-slot-shape
+  (implies (and (fn-mlhp fn-mlh) (fn-mlh-slot-guardp p j fn-mlh))
+           (and (fn-mlhp (fn-mlh-clear-slot p j fn-mlh))
+                (fn-mlh-pgsp (fn-mlh-clear-slot p j fn-mlh))
+                (equal (fn-mlh-wfp (fn-mlh-clear-slot p j fn-mlh)) (fn-mlh-wfp fn-mlh))))
+  :hints (("Goal" :in-theory (e/d (unsigned-byte-p fn-mlh-flag-part) (fn-mlh-slot-guardp fn-mlh-wfp fn-mlh-pgsp)))))
+
+(defthm fn-mlh-accessors-of-clear-slot
+  (implies (and (natp q) (natp i) (< i *fn-mlh-page-slots*)
+                (natp p) (natp j) (< j *fn-mlh-page-slots*))
+           (and (equal (fn-mlh-tag-at q i (fn-mlh-clear-slot p j fn-mlh))
+                       (if (and (equal q p) (equal i j)) 0 (fn-mlh-tag-at q i fn-mlh)))
+                (equal (fn-mlh-seqw q i (fn-mlh-clear-slot p j fn-mlh))
+                       (if (and (equal q p) (equal i j))
+                           (fn-mlh-flag-part (fn-mlh-seqw p j fn-mlh))
+                         (fn-mlh-seqw q i fn-mlh)))))
+  :hints (("Goal" :in-theory (enable fn-mlh-flag-part))))
+
+(defthm fn-mlh-ovf-of-clear-slot
+  (implies (and (natp q) (natp p) (natp j) (< j *fn-mlh-page-slots*))
+           (equal (fn-mlh-ovf q (fn-mlh-clear-slot p j fn-mlh))
+                  (fn-mlh-ovf q fn-mlh)))
+  :hints (("Goal" :in-theory (enable fn-mlh-ovf-is-seqw fn-mlh-flag-part))))
+
+(defthm fn-mlh-seq-at-of-clear-slot
+  (implies (and (fn-mlhp fn-mlh) (natp q) (natp i) (< i *fn-mlh-page-slots*)
+                (natp p) (natp j) (< j *fn-mlh-page-slots*)
+                (not (and (equal q p) (equal i j))))
+           (equal (fn-mlh-seq-at q i (fn-mlh-clear-slot p j fn-mlh)) (fn-mlh-seq-at q i fn-mlh)))
+  :hints (("Goal" :in-theory (enable fn-mlh-seq-at-is-seqw))))
+
+(in-theory (disable fn-mlh-clear-slot))
+
+; A raw write of an entry onto the new page: slot C of page P reads (TAG,
+; SEQW) with no flag (the new page's flag is clear).
+(defthm fn-mlh-ovf-of-set-words-other
+  (implies (and (natp q) (natp p) (natp j) (< j *fn-mlh-page-slots*) (not (equal q p)))
+           (equal (fn-mlh-ovf q (fn-mlh-set-words p j tw sw fn-mlh))
+                  (fn-mlh-ovf q fn-mlh)))
+  :hints (("Goal" :in-theory (enable fn-mlh-ovf-is-seqw))))
+
+; Slot J of page Q holds an entry whose tag moves to page P (mod 2N).
+(defun fn-mlh-mover-at (q j n p fn-mlh)
+  (declare (xargs :stobjs fn-mlh
+                  :guard (and (fn-mlh-slot-guardp q j fn-mlh) (posp n) (natp p))))
+  (let ((tag (fn-mlh-tag-at q j fn-mlh)))
+    (and (not (equal 0 tag))
+         (<= 1 (fn-mlh-seq-at q j fn-mlh))
+         (equal (mod tag (* 2 n)) p))))
+
+; The movers of page Q from slot J, counted.
+(defun fn-mlh-count-movers (q j n p fn-mlh)
+  (declare (xargs :stobjs fn-mlh
+                  :guard (and (natp q) (natp j) (< q (fn-mlh-pages fn-mlh)) (fn-mlh-pgsp fn-mlh)
+                              (posp n) (natp p))
+                  :measure (nfix (- *fn-mlh-page-slots* (nfix j)))))
+  (if (>= (nfix j) *fn-mlh-page-slots*)
+      0
+    (+ (if (fn-mlh-mover-at q (nfix j) n p fn-mlh) 1 0)
+       (fn-mlh-count-movers q (1+ (nfix j)) n p fn-mlh))))
+
+(defthm fn-mlh-count-movers-is-len
+  (implies (natp j)
+           (equal (fn-mlh-count-movers q j n p fn-mlh)
+                  (len (fn-mpxl-movers (fn-mlh-pe q j fn-mlh) n p))))
+  :hints (("Goal" :induct (fn-mlh-count-movers q j n p fn-mlh)
+           :in-theory (enable fn-mpxl-moverp)
+           :expand ((fn-mlh-pe q j fn-mlh)))))
+
+(in-theory (disable fn-mlh-mover-at))
+
+; THE MOVE: the movers of page Q from slot J, in slot order, onto page P from
+; slot C, each cleared on Q.
+(defun fn-mlh-move (q j c p n fn-mlh)
+  (declare (xargs :stobjs fn-mlh
+                  :guard (and (natp q) (natp j) (natp c) (natp p) (posp n)
+                              (< q (fn-mlh-pages fn-mlh)) (< p (fn-mlh-pages fn-mlh))
+                              (fn-mlh-pgsp fn-mlh))
+                  :measure (nfix (- *fn-mlh-page-slots* (nfix j)))
+                  :guard-hints (("Goal" :in-theory (enable unsigned-byte-p)))))
+  (if (>= (nfix j) *fn-mlh-page-slots*)
+      fn-mlh
+    (if (and (fn-mlh-mover-at q (nfix j) n p fn-mlh) (< (nfix c) *fn-mlh-page-slots*))
+        (let* ((fn-mlh (fn-mlh-set-words p (nfix c) (fn-mlh-tag-at q (nfix j) fn-mlh)
+                                         (fn-mlh-seq-at q (nfix j) fn-mlh) fn-mlh))
+               (fn-mlh (fn-mlh-clear-slot q (nfix j) fn-mlh)))
+          (fn-mlh-move q (1+ (nfix j)) (1+ (nfix c)) p n fn-mlh))
+      (fn-mlh-move q (1+ (nfix j)) c p n fn-mlh))))
+
+(defthm fn-mlh-move-frame
+  (and (equal (fn-mlh-pages (fn-mlh-move q j c p n fn-mlh)) (fn-mlh-pages fn-mlh))
+       (equal (fn-mlh-n (fn-mlh-move q j c p n fn-mlh)) (fn-mlh-n fn-mlh))
+       (equal (fn-mlh-s (fn-mlh-move q j c p n fn-mlh)) (fn-mlh-s fn-mlh))
+       (equal (fn-mlh-count (fn-mlh-move q j c p n fn-mlh)) (fn-mlh-count fn-mlh))
+       (equal (fn-mlh-stuck (fn-mlh-move q j c p n fn-mlh)) (fn-mlh-stuck fn-mlh))
+       (equal (fn-mlh-key-octets (fn-mlh-move q j c p n fn-mlh)) (fn-mlh-key-octets fn-mlh)))
+  :hints (("Goal" :induct (fn-mlh-move q j c p n fn-mlh))))
+
+(defthm fn-mlh-move-shape
+  (implies (and (fn-mlhp fn-mlh) (fn-mlh-pgsp fn-mlh)
+                (natp q) (< q (fn-mlh-pages fn-mlh)) (natp p) (< p (fn-mlh-pages fn-mlh)))
+           (and (fn-mlhp (fn-mlh-move q j c p n fn-mlh))
+                (fn-mlh-pgsp (fn-mlh-move q j c p n fn-mlh))
+                (equal (fn-mlh-wfp (fn-mlh-move q j c p n fn-mlh)) (fn-mlh-wfp fn-mlh))))
+  :hints (("Goal" :induct (fn-mlh-move q j c p n fn-mlh)
+           :in-theory (e/d (unsigned-byte-p) (fn-mlh-wfp fn-mlh-pgsp fn-mlh-mover-at)))))
+
+; THE MOVE'S FRAME: a slot of another page, of Q below J, or of P below C is
+; as it was.
+(defthm fn-mlh-accessors-of-move
+  (implies (and (natp r) (natp i) (< i *fn-mlh-page-slots*)
+                (natp q) (natp p) (not (equal p q)) (natp j) (natp c)
+                (not (and (equal r q) (<= j i)))
+                (not (and (equal r p) (<= c i))))
+           (and (equal (fn-mlh-tag-at r i (fn-mlh-move q j c p n fn-mlh)) (fn-mlh-tag-at r i fn-mlh))
+                (equal (fn-mlh-seqw r i (fn-mlh-move q j c p n fn-mlh)) (fn-mlh-seqw r i fn-mlh))))
+  :hints (("Goal" :induct (fn-mlh-move q j c p n fn-mlh)
+           :in-theory (disable fn-mlh-mover-at))))
+
+(defthm fn-mlh-ovf-of-move
+  (implies (and (natp r) (natp q) (natp p) (not (equal r p)) (natp j))
+           (equal (fn-mlh-ovf r (fn-mlh-move q j c p n fn-mlh)) (fn-mlh-ovf r fn-mlh)))
+  :hints (("Goal" :induct (fn-mlh-move q j c p n fn-mlh)
+           :in-theory (disable fn-mlh-mover-at fn-mlh-ovf-is-seqw))))
+
+; The new page's flag stays clear: every write onto it is a seq below the flag.
+(defthm fn-mlh-ovf-of-move-dest
+  (implies (and (fn-mlhp fn-mlh) (fn-mlh-pgsp fn-mlh)
+                (natp q) (< q (fn-mlh-pages fn-mlh)) (natp p) (< p (fn-mlh-pages fn-mlh))
+                (not (equal q p)) (natp j)
+                (not (fn-mlh-ovf p fn-mlh)))
+           (not (fn-mlh-ovf p (fn-mlh-move q j c p n fn-mlh))))
+  :hints (("Goal" :induct (fn-mlh-move q j c p n fn-mlh)
+           :in-theory (e/d (fn-mlh-ovf-is-seqw unsigned-byte-p) (fn-mlh-mover-at fn-mlh-pgsp)))))
+
+; The entries of another page are as they were.
+(defthm fn-mlh-pe-of-move-other
+  (implies (and (natp r) (natp q) (natp p) (not (equal r q)) (not (equal r p)) (not (equal p q))
+                (natp j) (natp c))
+           (equal (fn-mlh-pe r i (fn-mlh-move q j c p n fn-mlh)) (fn-mlh-pe r i fn-mlh)))
+  :hints (("Goal" :induct (fn-mlh-pe r i fn-mlh)
+           :in-theory (e/d (fn-mlh-seq-at-is-seqw) (fn-mlh-move)))))
+
+; --- the move's effect on the entries ---
+
+(defthm fn-mlh-pe-of-set-words-frame
+  (implies (and (natp r) (natp p) (natp j) (< j *fn-mlh-page-slots*) (natp i)
+                (or (not (equal r p)) (< j i)))
+           (equal (fn-mlh-pe r i (fn-mlh-set-words p j tw sw fn-mlh)) (fn-mlh-pe r i fn-mlh)))
+  :hints (("Goal" :induct (fn-mlh-pe r i fn-mlh)
+           :in-theory (enable fn-mlh-seq-at-is-seqw))))
+
+(defthm fn-mlh-pe-of-clear-slot-frame
+  (implies (and (natp r) (natp p) (natp j) (< j *fn-mlh-page-slots*) (natp i)
+                (or (not (equal r p)) (< j i)))
+           (equal (fn-mlh-pe r i (fn-mlh-clear-slot p j fn-mlh)) (fn-mlh-pe r i fn-mlh)))
+  :hints (("Goal" :induct (fn-mlh-pe r i fn-mlh)
+           :in-theory (enable fn-mlh-seq-at-is-seqw))))
+
+; THE SOURCE PAGE keeps its stayers (the move has room for every mover).
+(defthm fn-mlh-pe-of-move-source
+  (implies (and (natp q) (natp p) (not (equal p q)) (natp j) (natp c)
+                (<= (+ c (len (fn-mpxl-movers (fn-mlh-pe q j fn-mlh) n p))) *fn-mlh-page-slots*))
+           (equal (fn-mlh-pe q j (fn-mlh-move q j c p n fn-mlh))
+                  (fn-mpxl-stayers (fn-mlh-pe q j fn-mlh) n p)))
+  :hints (("Goal" :induct (fn-mlh-move q j c p n fn-mlh)
+           :in-theory (e/d (fn-mlh-mover-at fn-mpxl-moverp fn-mlh-seq-at-is-seqw) (fn-mlh-pe))
+           :expand ((fn-mlh-pe q j fn-mlh)
+                    (:free (x) (fn-mlh-pe q j x))))))
+
+; Every slot of page P from C up is empty.
+(defun fn-mlh-empty-from (p c fn-mlh)
+  (declare (xargs :stobjs fn-mlh :verify-guards nil :measure (nfix (- *fn-mlh-page-slots* (nfix c)))))
+  (if (>= (nfix c) *fn-mlh-page-slots*)
+      t
+    (and (equal 0 (fn-mlh-tag-at p (nfix c) fn-mlh))
+         (fn-mlh-empty-from p (1+ (nfix c)) fn-mlh))))
+
+(defthm fn-mlh-empty-from-pe
+  (implies (fn-mlh-empty-from p c fn-mlh)
+           (equal (fn-mlh-pe p c fn-mlh) nil))
+  :hints (("Goal" :induct (fn-mlh-empty-from p c fn-mlh))))
+
+(defthm fn-mlh-empty-from-of-set-words-frame
+  (implies (and (natp r) (natp p) (natp j) (< j *fn-mlh-page-slots*) (natp k)
+                (or (not (equal r p)) (< j k)))
+           (equal (fn-mlh-empty-from r k (fn-mlh-set-words p j tw sw fn-mlh)) (fn-mlh-empty-from r k fn-mlh)))
+  :hints (("Goal" :induct (fn-mlh-empty-from r k fn-mlh))))
+
+(defthm fn-mlh-empty-from-of-clear-slot-frame
+  (implies (and (natp r) (natp p) (natp j) (< j *fn-mlh-page-slots*) (natp k) (not (equal r p)))
+           (equal (fn-mlh-empty-from r k (fn-mlh-clear-slot p j fn-mlh)) (fn-mlh-empty-from r k fn-mlh)))
+  :hints (("Goal" :induct (fn-mlh-empty-from r k fn-mlh))))
+
+(defthm fn-mlh-empty-from-tag-at
+  (implies (and (fn-mlh-empty-from p c fn-mlh) (natp c) (natp i) (<= c i) (< i *fn-mlh-page-slots*))
+           (equal (fn-mlh-tag-at p i fn-mlh) 0))
+  :hints (("Goal" :induct (fn-mlh-empty-from p c fn-mlh))))
+
+; THE NEW PAGE receives the movers, in slot order, from C.
+(defthm fn-mlh-pe-of-move-dest
+  (implies (and (fn-mlhp fn-mlh) (fn-mlh-pgsp fn-mlh)
+                (natp q) (< q (fn-mlh-pages fn-mlh)) (natp p) (< p (fn-mlh-pages fn-mlh))
+                (not (equal p q)) (natp j) (natp c)
+                (fn-mlh-empty-from p c fn-mlh)
+                (<= (+ c (len (fn-mpxl-movers (fn-mlh-pe q j fn-mlh) n p))) *fn-mlh-page-slots*))
+           (equal (fn-mlh-pe p c (fn-mlh-move q j c p n fn-mlh))
+                  (fn-mpxl-movers (fn-mlh-pe q j fn-mlh) n p)))
+  :hints (("Goal" :induct (fn-mlh-move q j c p n fn-mlh)
+           :in-theory (e/d (fn-mlh-mover-at fn-mpxl-moverp fn-mlh-seq-at-is-seqw unsigned-byte-p)
+                           (fn-mlh-pe fn-mlh-pgsp))
+           :expand ((fn-mlh-pe q j fn-mlh)
+                    (:free (x) (fn-mlh-pe p c x))))))
+
+; After the move the new page is empty from C plus the movers.
+(defthm fn-mlh-empty-from-of-move
+  (implies (and (natp q) (natp p) (not (equal p q)) (natp j) (natp c)
+                (fn-mlh-empty-from p c fn-mlh)
+                (<= (+ c (len (fn-mpxl-movers (fn-mlh-pe q j fn-mlh) n p))) *fn-mlh-page-slots*))
+           (fn-mlh-empty-from p (+ c (len (fn-mpxl-movers (fn-mlh-pe q j fn-mlh) n p)))
+                              (fn-mlh-move q j c p n fn-mlh)))
+  :hints (("Goal" :induct (fn-mlh-move q j c p n fn-mlh)
+           :in-theory (e/d (fn-mlh-mover-at fn-mpxl-moverp) (fn-mlh-pe fn-mlh-empty-from))
+           :expand ((fn-mlh-pe q j fn-mlh) (fn-mlh-empty-from p c fn-mlh)))))
+
+; The same, its index written as the rewriter meets it.
+(defthm fn-mlh-empty-from-of-move-at
+  (implies (and (natp q) (natp p) (not (equal p q)) (natp j) (natp c)
+                (fn-mlh-empty-from p c fn-mlh)
+                (equal k (+ c (len (fn-mpxl-movers (fn-mlh-pe q j fn-mlh) n p))))
+                (<= k *fn-mlh-page-slots*))
+           (fn-mlh-empty-from p k (fn-mlh-move q j c p n fn-mlh)))
+  :hints (("Goal" :use fn-mlh-empty-from-of-move
+           :in-theory (disable fn-mlh-empty-from-of-move fn-mlh-pe fn-mlh-move fn-mlh-empty-from))))
+
+; The entries below C of the new page are as they were.
+(defthm fn-mlh-pe-upto-of-move
+  (implies (and (natp q) (natp p) (not (equal p q)) (natp j) (natp c) (natp k) (<= k c)
+                (<= k *fn-mlh-page-slots*))
+           (equal (fn-mlh-pe-upto p k (fn-mlh-move q j c p n fn-mlh))
+                  (fn-mlh-pe-upto p k fn-mlh)))
+  :hints (("Goal" :induct (fn-mlh-pe-upto p k fn-mlh)
+           :in-theory (e/d (fn-mlh-seq-at-is-seqw) (fn-mlh-move)))))
+
+(defthm fn-mlh-pe-of-move-dest-whole
+  (implies (and (fn-mlhp fn-mlh) (fn-mlh-pgsp fn-mlh)
+                (natp q) (< q (fn-mlh-pages fn-mlh)) (natp p) (< p (fn-mlh-pages fn-mlh))
+                (not (equal p q)) (natp j) (natp c)
+                (fn-mlh-empty-from p c fn-mlh)
+                (<= (+ c (len (fn-mpxl-movers (fn-mlh-pe q j fn-mlh) n p))) *fn-mlh-page-slots*))
+           (equal (fn-mlh-pe p 0 (fn-mlh-move q j c p n fn-mlh))
+                  (append (fn-mlh-pe-upto p c fn-mlh) (fn-mpxl-movers (fn-mlh-pe q j fn-mlh) n p))))
+  :hints (("Goal" :use ((:instance fn-mlh-pe-upto-pe (j c) (fn-mlh (fn-mlh-move q j c p n fn-mlh))))
+           :in-theory (disable fn-mlh-pe-upto-pe fn-mlh-pe fn-mlh-pe-upto fn-mlh-move))))
+
+; --- the new page ---
+
+; GROW: one fresh page at the end of the page array (the pointers copied,
+; the old pages kept EQ, the new one the creator's zeros).
+(defun fn-mlh-grow (fn-mlh)
+  (declare (xargs :stobjs fn-mlh :guard (fn-mlh-pgsp fn-mlh)))
+  (let* ((np (fn-mlh-pages fn-mlh))
+         (fn-mlh (resize-fn-mlh-pg (+ 1 np) fn-mlh)))
+    (update-fn-mlh-pages (+ 1 np) fn-mlh)))
+
+(defthm fn-mlh-grow-shape
+  (implies (and (fn-mlhp fn-mlh) (fn-mlh-pgsp fn-mlh))
+           (and (fn-mlhp (fn-mlh-grow fn-mlh))
+                (fn-mlh-pgsp (fn-mlh-grow fn-mlh))
+                (equal (fn-mlh-pages (fn-mlh-grow fn-mlh)) (+ 1 (fn-mlh-pages fn-mlh)))
+                (equal (fn-mlh-n (fn-mlh-grow fn-mlh)) (fn-mlh-n fn-mlh))
+                (equal (fn-mlh-s (fn-mlh-grow fn-mlh)) (fn-mlh-s fn-mlh))
+                (equal (fn-mlh-count (fn-mlh-grow fn-mlh)) (fn-mlh-count fn-mlh))
+                (equal (fn-mlh-stuck (fn-mlh-grow fn-mlh)) (fn-mlh-stuck fn-mlh))
+                (equal (fn-mlh-key-octets (fn-mlh-grow fn-mlh)) (fn-mlh-key-octets fn-mlh))))
+  :hints (("Goal" :in-theory (enable fn-mlh-pgsp))))
+
+; Every old slot reads as before; every slot of the new page is empty.
+(defthm fn-mlh-accessors-of-grow
+  (implies (and (fn-mlhp fn-mlh) (fn-mlh-pgsp fn-mlh) (natp r))
+           (and (equal (fn-mlh-tag-at r i (fn-mlh-grow fn-mlh))
+                       (if (< r (fn-mlh-pages fn-mlh)) (fn-mlh-tag-at r i fn-mlh) 0))
+                (equal (fn-mlh-seqw r i (fn-mlh-grow fn-mlh))
+                       (if (< r (fn-mlh-pages fn-mlh)) (fn-mlh-seqw r i fn-mlh) 0))))
+  :hints (("Goal" :in-theory (enable fn-mlh-tag-at fn-mlh-seqw)
+           :cases ((< r (fn-mlh-pages fn-mlh))))
+          ("Subgoal 2" :cases ((equal r (fn-mlh-pages fn-mlh))))))
+
+(in-theory (disable fn-mlh-grow))
+
+(defthm fn-mlh-pe-of-grow
+  (implies (and (fn-mlhp fn-mlh) (fn-mlh-pgsp fn-mlh) (natp r) (< r (fn-mlh-pages fn-mlh)))
+           (equal (fn-mlh-pe r i (fn-mlh-grow fn-mlh)) (fn-mlh-pe r i fn-mlh)))
+  :hints (("Goal" :induct (fn-mlh-pe r i fn-mlh)
+           :in-theory (enable fn-mlh-seq-at-is-seqw))))
+
+(defthm fn-mlh-ovf-of-grow
+  (implies (and (fn-mlhp fn-mlh) (fn-mlh-pgsp fn-mlh) (natp r))
+           (equal (fn-mlh-ovf r (fn-mlh-grow fn-mlh))
+                  (and (< r (fn-mlh-pages fn-mlh)) (fn-mlh-ovf r fn-mlh))))
+  :hints (("Goal" :in-theory (enable fn-mlh-ovf-is-seqw))))
+
+(defthm fn-mlh-empty-from-of-grow
+  (implies (and (fn-mlhp fn-mlh) (fn-mlh-pgsp fn-mlh) (equal p (fn-mlh-pages fn-mlh)))
+           (fn-mlh-empty-from p c (fn-mlh-grow fn-mlh)))
+  :hints (("Goal" :induct (fn-mlh-empty-from p c (fn-mlh-grow fn-mlh)))))
+
+(defthm fn-mlh-pe-upto-0
+  (equal (fn-mlh-pe-upto p 0 fn-mlh) nil))
+
+; --- the split ---
+
+; THE SPLIT; (mv taken fn-mlh).  M0 movers on page S, M1 on S + 1; refused,
+; the table unchanged, when they exceed a page.  Taken: a fresh page N + S;
+; the movers of S from its slot 0, then those of S + 1 after them; the root
+; advances (S + 1, or N doubled and S = 0 at the round's end).
+(defun fn-mlh-split (fn-mlh)
+  (declare (xargs :stobjs fn-mlh :guard (fn-mlh-wfp fn-mlh)))
+  (let ((np (fn-mlh-pages fn-mlh)) (n (fn-mlh-n fn-mlh)) (s (fn-mlh-s fn-mlh)))
+    (if (zp np)
+        (mv nil fn-mlh)
+      (let* ((m0 (fn-mlh-count-movers s 0 n np fn-mlh))
+             (m1 (if (< (+ 1 s) np) (fn-mlh-count-movers (+ 1 s) 0 n np fn-mlh) 0)))
+        (if (< *fn-mpxl-cap* (+ m0 m1))
+            (mv nil fn-mlh)
+          (let* ((fn-mlh (fn-mlh-grow fn-mlh))
+                 (fn-mlh (fn-mlh-move s 0 0 np n fn-mlh))
+                 (fn-mlh (if (< (+ 1 s) np) (fn-mlh-move (+ 1 s) 0 m0 np n fn-mlh) fn-mlh))
+                 (fn-mlh (if (equal (+ 1 s) n) (update-fn-mlh-n (* 2 n) fn-mlh) fn-mlh))
+                 (fn-mlh (update-fn-mlh-s (if (equal (+ 1 s) n) 0 (+ 1 s)) fn-mlh)))
+            (mv t fn-mlh)))))))
+
+(defthm fn-mlh-pe-of-root-updates
+  (and (equal (fn-mlh-pe r i (update-fn-mlh-n m fn-mlh)) (fn-mlh-pe r i fn-mlh))
+       (equal (fn-mlh-pe r i (update-fn-mlh-s m fn-mlh)) (fn-mlh-pe r i fn-mlh))
+       (equal (fn-mlh-pe r i (update-fn-mlh-count m fn-mlh)) (fn-mlh-pe r i fn-mlh))
+       (equal (fn-mlh-pe r i (update-fn-mlh-stuck m fn-mlh)) (fn-mlh-pe r i fn-mlh)))
+  :hints (("Goal" :induct (fn-mlh-pe r i fn-mlh) :in-theory (enable fn-mlh-seq-at-is-seqw))))
+
+(defthm fn-mlh-ovf-of-root-updates
+  (and (equal (fn-mlh-ovf r (update-fn-mlh-n m fn-mlh)) (fn-mlh-ovf r fn-mlh))
+       (equal (fn-mlh-ovf r (update-fn-mlh-s m fn-mlh)) (fn-mlh-ovf r fn-mlh))
+       (equal (fn-mlh-ovf r (update-fn-mlh-count m fn-mlh)) (fn-mlh-ovf r fn-mlh))
+       (equal (fn-mlh-ovf r (update-fn-mlh-stuck m fn-mlh)) (fn-mlh-ovf r fn-mlh)))
+  :hints (("Goal" :in-theory (enable fn-mlh-ovf-is-seqw))))
+
+(local (defthm fn-mlh-true-listp-pe-upto
+  (true-listp (fn-mlh-pe-upto p c fn-mlh))))
+
+(defthm fn-mlh-pe-upto-when-empty-from
+  (implies (and (fn-mlh-empty-from p c fn-mlh) (natp c) (<= c *fn-mlh-page-slots*))
+           (equal (fn-mlh-pe-upto p c fn-mlh) (fn-mlh-pe p 0 fn-mlh)))
+  :hints (("Goal" :use ((:instance fn-mlh-pe-upto-pe (j c)))
+           :in-theory (disable fn-mlh-pe-upto-pe fn-mlh-pe fn-mlh-pe-upto))))
+
+(local (defthm fn-mlh-len-movers-bound
+  (<= (len (fn-mpxl-movers ents n p)) (len ents))
+  :rule-classes :linear))
+
+; THE PAGES AFTER THE SPLIT, page by page: S and S + 1 keep their stayers
+; and their flags, the new page N + S holds the movers of S then of S + 1
+; with its flag clear, every other page is as it was.
+(defthm fn-mlh-split-page
+  (implies (and (fn-mlhp fn-mlh) (fn-mlh-wfp fn-mlh) (posp (fn-mlh-pages fn-mlh))
+                (mv-nth 0 (fn-mlh-split fn-mlh))
+                (natp i) (<= i (fn-mlh-pages fn-mlh)))
+           (let ((np (fn-mlh-pages fn-mlh)) (n (fn-mlh-n fn-mlh)) (s (fn-mlh-s fn-mlh))
+                 (after (mv-nth 1 (fn-mlh-split fn-mlh))))
+             (and (equal (fn-mlh-ovf i after)
+                         (if (equal i np) nil (fn-mlh-ovf i fn-mlh)))
+                  (equal (fn-mlh-pe i 0 after)
+                         (cond ((equal i s) (fn-mpxl-stayers (fn-mlh-pe s 0 fn-mlh) n np))
+                               ((and (equal i (+ 1 s)) (< i np))
+                                (fn-mpxl-stayers (fn-mlh-pe i 0 fn-mlh) n np))
+                               ((equal i np)
+                                (append (fn-mpxl-movers (fn-mlh-pe s 0 fn-mlh) n np)
+                                        (if (< (+ 1 s) np)
+                                            (fn-mpxl-movers (fn-mlh-pe (+ 1 s) 0 fn-mlh) n np)
+                                          nil)))
+                               (t (fn-mlh-pe i 0 fn-mlh)))))))
+  :hints (("Goal" :in-theory (e/d (fn-mlh-split) (fn-mlh-pe fn-mlh-pe-upto fn-mlh-move fn-mlh-ovf-is-seqw
+                                                  fn-mlh-empty-from fn-mlh-count-movers))
+           :do-not-induct t
+           :cases ((< (+ 1 (fn-mlh-s fn-mlh)) (fn-mlh-pages fn-mlh))))))
