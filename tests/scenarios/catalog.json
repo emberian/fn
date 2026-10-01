@@ -1209,7 +1209,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -6918,6 +6918,34 @@
         "tests/acl2/history-page-reader-verdict-tests.lisp"
       ],
       "execution_scope": "Scanner component source only; authenticated continuation and host integration remain open."
+    },
+    {
+      "id": "SCN-1080",
+      "title": "Signing preparation conserves nonbinding policy rows across its actual bounded transitions",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "CNS-011"
+      ],
+      "steps": [
+        "Construct a real captured configuration with invitation, old signing, access, moderation and redeemed credential rows.",
+        "Run actual Begin, Expect, valid binding Stage, Seal, every original Tick and ready Prepared.",
+        "Assert complete antecedents/conclusions for all five boundaries and exact retained row bytes/order.",
+        "Remove each retained hypothesis with a reachable predecessor or explicitly labeled corrupted-state input."
+      ],
+      "expected": [
+        "Only signing rows are eligible for replacement; all non-mark-2 rows retain exact value and order.",
+        "A nonready preparation or corrupted projection cannot justify final policy preservation.",
+        "This scenario does not establish group liveness across generations, runtime funding or durable typed C publication."
+      ],
+      "implementation": {
+        "test": "tests/acl2/consumer-account-config-posting-relation-tests.lisp"
+      },
+      "evidence": [
+        "tests/acl2/consumer-account-config-posting-relation-tests.lisp",
+        "planning/evidence/account-config-posting-relation-2026-10-01/coordinate.json"
+      ],
+      "execution_scope": "Original ACL2 transition source fixture; no image or deployment claim."
     }
   ]
 }
