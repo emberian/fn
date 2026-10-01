@@ -146,6 +146,8 @@
 ; concatenation is not the sealed frame.  This is the clause keystone 1
 ; needs.
 (assert-event (not (fn-frame-magicp '(70 78 300 84))))
+;; Anchor: the store's own magic is one.
+(assert-event (fn-frame-magicp *fn-frame-magic-store*))
 (assert-event
  (not (fn-frame-inputp '(70 78 300 84) *fn-frame-version*
                        *fn-frame-store-kind* '(1 2 3)
