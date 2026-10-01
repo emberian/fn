@@ -342,6 +342,30 @@
                           :transitions #.*fn-cdt-complete*)
                 fn-cdt-x-fn-cdt-open-establishes)
 
+; Completeness counts a stobj CONGRUENT to the carried one: a caller may
+; pass the live fn-cdt-st where fn-cdt-st2 is expected.
+(encapsulate ()
+ (local
+  (defstobj fn-cdt-st2
+    (fn-cdt-n2 :type integer :initially 0)
+    (fn-cdt-log2 :type t :initially nil)
+    :congruent-to fn-cdt-st))
+ (local
+  (defun fn-cdt-zap2 (fn-cdt-st2)
+    (declare (xargs :stobjs fn-cdt-st2))
+    (update-fn-cdt-n2 0 fn-cdt-st2)))
+ (local (definterface fn-cdt-zap2 :class :common-lisp-compliant))
+ (local
+  (assert-event
+   (equal (fn-cd-returning-entries (table-alist 'fn-interfaces (w state))
+                                   'fn-cdt-st (w state))
+          '(fn-cdt-zap2 fn-cdt-reset fn-cdt-note fn-cdt-bump fn-cdt-open))))
+ (local
+  (fn-cdt-refused fn-cdt-x (:invariant fn-cdt-relp
+                            :established ((fn-cdt-open fn-cdt-open-establishes))
+                            :transitions #.*fn-cdt-complete*)
+                  "returns the carried state")))
+
 ; ---------------------------------------------------------------------------
 ; 4. The review findings: each exploit a must-fail with its refusal.
 

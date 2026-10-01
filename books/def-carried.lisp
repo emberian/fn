@@ -245,6 +245,16 @@
   ; the stobj R's one formal is, or nil for a value
   (car (getpropc r 'stobjs-in nil w)))
 
+(defun fn-cd-stobj-position (st slots w)
+  (declare (xargs :mode :program))
+  ; the first position in SLOTS (a stobjs-in or stobjs-out) holding ST or a
+  ; stobj congruent to it, which a caller may pass the live ST
+  (cond ((atom slots) nil)
+        ((and (car slots)
+              (eq (congruent-stobj-rep (car slots) w) (congruent-stobj-rep st w)))
+         0)
+        (t (let ((k (fn-cd-stobj-position st (cdr slots) w))) (and k (1+ k))))))
+
 (defun fn-cd-translate-list (xs w)
   (declare (xargs :mode :program))
   ; (mv BAD TERMS): BAD = (X) for the first X that does not translate
@@ -311,8 +321,8 @@
                fn hyps formals)
           nil nil nil))
      (st
-      (let ((i (position-eq st (stobjs-in fn w)))
-            (k (position-eq st (stobjs-out fn w))))
+      (let ((i (fn-cd-stobj-position st (stobjs-in fn w) w))
+            (k (fn-cd-stobj-position st (stobjs-out fn w) w)))
         (cond ((null i)
                (mv (msg "~x0 takes no ~x1 argument, so it carries no ~x1" fn st)
                    nil nil nil))
@@ -416,11 +426,11 @@
           (fn-cd-bridges-problem r st (cdr bridges) transitions generatedp w)))))
 
 ; Completeness over the fn-interfaces table: the declared entries that
-; return the carried stobj.
+; return the carried stobj or one congruent to it.
 (defun fn-cd-returning-entries (entries st w)
   (declare (xargs :mode :program))
   (cond ((atom entries) nil)
-        ((member-eq st (getpropc (car (car entries)) 'stobjs-out nil w))
+        ((fn-cd-stobj-position st (getpropc (car (car entries)) 'stobjs-out nil w) w)
          (cons (car (car entries)) (fn-cd-returning-entries (cdr entries) st w)))
         (t (fn-cd-returning-entries (cdr entries) st w))))
 
