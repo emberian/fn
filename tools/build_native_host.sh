@@ -73,6 +73,19 @@ case "$CATALOG" in
   *) echo "build_native_host: FN_NATIVE_CATALOG must be old or paged" >&2; exit 2 ;;
 esac
 IMAGE="${FN_NATIVE_IMAGE:-$DEFAULT_IMAGE}"
+# The image's name says its catalog (Codex r21 F2): an inherited
+# FN_NATIVE_CATALOG=paged with an explicit FN_NATIVE_IMAGE built a paged core
+# under the old catalog's name, which image_set then linked as production.
+# A paged image's name ends in -paged and no other's does; the catalog is
+# also recorded beside the image ($IMAGE.catalog), which tools/image_set.py
+# publishes in the set's manifest and checks on link and link-run.
+case "$CATALOG:$IMAGE" in
+  paged:*-paged|old:*) ;;
+  paged:*) echo "build_native_host: FN_NATIVE_CATALOG=paged builds an image named *-paged; $IMAGE is not" >&2; exit 2 ;;
+esac
+case "$CATALOG:$IMAGE" in
+  old:*-paged) echo "build_native_host: $IMAGE is a paged image's name; set FN_NATIVE_CATALOG=paged" >&2; exit 2 ;;
+esac
 # TLS is the system's libssl (OpenSSL 3.0+ or LibreSSL 3+; tls.lisp checks
 # every function it calls at build and at start).  FN_OPENSSL_PREFIX is
 # optional: set, it names another matched libcrypto/libssl pair.
@@ -120,7 +133,7 @@ openssl_hint() {
 }
 LOG="${FN_NATIVE_LOG:-build/native-host-build.log}"
 mkdir -p build
-rm -f "$IMAGE" "$IMAGE.core" "$IMAGE.world-deps"
+rm -f "$IMAGE" "$IMAGE.core" "$IMAGE.world-deps" "$IMAGE.catalog"
 if ! FN_NATIVE_PROFILE="$PROFILE" FN_NATIVE_IMAGE="$IMAGE" FN_NATIVE_WORLD="$WORLD" \
      ACL2_CUSTOMIZATION=NONE ACL2_SYSTEM_BOOKS= env -u ACL2_SYSTEM_BOOKS \
      "$ACL2" < "$RUN_BUILD" > "$LOG" 2>&1; then
@@ -258,4 +271,5 @@ else
     esac
     echo "build_native_host: $BUILD prints no stack figure; the launcher keeps ACL2's 64 MiB (not a served image)" >&2
 fi
-echo "built $IMAGE profile=$PROFILE world=$WORLD ($(du -h "$IMAGE.core" | cut -f1) core)"
+echo "$CATALOG" > "$IMAGE.catalog"
+echo "built $IMAGE profile=$PROFILE world=$WORLD catalog=$CATALOG ($(du -h "$IMAGE.core" | cut -f1) core)"
