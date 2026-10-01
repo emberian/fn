@@ -37,6 +37,12 @@
 (assert-event (equal (dlt-pairs-loop '(1 2) 9 '(z)) '(z (1 . 9) (2 . 9))))
 (assert-event (equal (dlt-pairs-loop nil 9 '(b a)) '(a b)))
 
+; Element substitution preserves quoted data.
+(def-loop dlt-quoted-elements (xs)
+  :shape :map :elt e :body (list e 'e))
+
+(assert-event (equal (dlt-quoted-elements '(7)) '((7 e))))
+
 ; 2. :map with :while (the `fn-path-butlast' shape) and :keep (a filter-map).
 
 (def-loop dlt-butlast-ints (xs)
@@ -103,6 +109,12 @@
 (assert-event (equal (dlt-count-ints nil) 0))
 (assert-event (equal (dlt-count-ints-loop '(1 a 2) 0) 2))
 (assert-event (equal (dlt-count-ints-loop '(1 a 2) 10) 12))
+; The literal sum bridge, including its numeric accumulator hypothesis.
+(assert-event
+ (and (acl2-numberp 10)
+      (equal (dlt-count-ints-loop '(1 a 2) 10)
+             (+ 10 (dlt-count-ints '(1 a 2))))))
+
 
 ; 7. :map with a guard that the body needs, and :into the octet buffer.
 
@@ -139,6 +151,15 @@
 
 (assert-event (equal (dlt-write-run '(1 256 300)) '(1 0 0)))
 (assert-event (equal (dlt-write-run nil) nil))
+
+; The stobj's logical value cannot be passed to an ordinary evaluated
+; term. THM evaluates this ground conjunction through the logical executable
+; counterparts; ASSERT-EVENT checks its successful error-triple result.
+(assert-event
+ (thm (and (true-listp '(9 8))
+           (equal (dlt-write-octets '(1 256 300) '(9 8))
+                  (append '(9 8) (dlt-octets-of '(1 256 300))))))
+ :stobjs-out :auto)
 
 ; The meaning theorem is exported, over the buffer's logical list.
 (defthm dlt-write-octets-meaning-at-a-constant
@@ -216,6 +237,16 @@
 (must-fail-checked
  (def-loop dlt-r8 (xs fn-octets) :shape :into :into fn-octets :elt e :body e)
  :unchecked "refused at expansion: :into without :write and :map")
+
+(must-fail-checked
+ (def-loop dlt-r9 (xs ordinary-buffer)
+   :shape :into :into ordinary-buffer
+   :write fn-octets-append-octet
+   :write-theory (fn-octets-append-octet fn-octets$a-append-octet fn-oct-snoc-is-append)
+   :map dlt-octets-of :elt x :body (dlt-octet-of x)
+   :guard (dlt-nat-listp xs)
+   :guard-hints (("Goal" :in-theory (enable fn-cbor-octetp dlt-octet-of))))
+ :unchecked "refused by ACL2: :into names an ordinary variable, not a stobj; all options are present")
 
 ; -----------------------------------------------------------------------------
 ; 10. Hygiene: the loop is disabled after the form, the library's shapes

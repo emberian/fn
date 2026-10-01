@@ -1,6 +1,7 @@
 ; RFC 3977 HDR :fn-verified, over the verdict list pinned with this reader's
 ; accepted archive.  It never asks a current keyring to reverify an article.
 (in-package "ACL2")
+(include-book "def-loop")
 (include-book "nntp-responses")
 (include-book "protocol-table") ; reply texts: (fn-proto-text ROW KEY)
 (include-book "stx-reader")
@@ -8,57 +9,12 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-nntp-verdict-hdr-lines-loop (group numbers articles verdicts acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp numbers)
-      (let* ((number (car numbers))
-             (article (fn-nntp-available-article group number articles)))
-        (if (consp article)
-            (fn-nntp-verdict-hdr-lines-loop group
-                                            (cdr numbers)
-                                            articles
-                                            verdicts
-                                            (cons (fn-nntp-hdr-line (fn-nntp-decimal-field number)
-                                                                    (fn-stx-reader-verdict (fn-article-msgid article)
-                                                                                           verdicts))
-                                                  acc))
-          (fn-nntp-verdict-hdr-lines-loop group (cdr numbers) articles verdicts acc)))
-    (revappend acc nil)))
-
-(defun fn-nntp-verdict-hdr-lines (group numbers articles verdicts)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp numbers)
-           (let* ((number (car numbers))
-                  (article (fn-nntp-available-article group number articles)))
-             (if (consp article)
-                 (cons (fn-nntp-hdr-line
-                        (fn-nntp-decimal-field number)
-                        (fn-stx-reader-verdict (fn-article-msgid article) verdicts))
-                       (fn-nntp-verdict-hdr-lines group (cdr numbers)
-                                                  articles verdicts))
-               (fn-nntp-verdict-hdr-lines group (cdr numbers) articles verdicts)))
-         nil)
-       :exec (fn-nntp-verdict-hdr-lines-loop group numbers articles verdicts nil)))
-
-(local
- (defthm fn-nntp-verdict-hdr-lines-loop-is-revappend
-   (equal (fn-nntp-verdict-hdr-lines-loop group numbers articles verdicts acc)
-          (revappend acc (fn-nntp-verdict-hdr-lines group numbers articles verdicts)))
-   :hints (("Goal" :induct (fn-nntp-verdict-hdr-lines-loop group numbers articles verdicts acc)
-                   :in-theory (union-theories '(fn-nntp-verdict-hdr-lines-loop fn-nntp-verdict-hdr-lines revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-nntp-verdict-hdr-lines-loop)
-
-(verify-guards fn-nntp-verdict-hdr-lines
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-nntp-verdict-hdr-lines)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-nntp-verdict-hdr-lines-loop-is-revappend (acc nil))))))
+(def-loop fn-nntp-verdict-hdr-lines (group numbers articles verdicts)
+  :shape :map
+  :over numbers
+  :let ((number (car numbers)) (article (fn-nntp-available-article group number articles)))
+  :keep (consp article)
+  :body (fn-nntp-hdr-line (fn-nntp-decimal-field number) (fn-stx-reader-verdict (fn-article-msgid article) verdicts)))
 
 
 (defun fn-nntp-verdict-hdr-current (session archive verdicts)

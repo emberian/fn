@@ -820,7 +820,8 @@ def def_loop_expansion(form: list) -> list:
     ``NAME-loop-is-revappend`` (``-is-plus`` for ``:sum``), the two
     ``verify-guards`` and the withdrawal of the loop.  A ``:into`` form
     defines ``NAME`` alone with the exported ``NAME-is-append``.  The bodies
-    here are the shapes, not the macro's exact output: the ledger reads
+    here are the shapes, but bridge statements match the templates exactly.
+    The ledger reads
     names, guards and ``verify-guards``, and the macro is proved by
     tests/acl2/def-loop-tests.lisp.
     """
@@ -836,12 +837,15 @@ def def_loop_expansion(form: list) -> list:
     body = options.get(":body", Sym("nil"))
     if shape == ":into":
         stobj = options.get(":into")
+        map_formals = list(formals)
+        if stobj in map_formals:
+            map_formals.remove(stobj)  # ACL2 remove1-eq preserves formal order.
         decl = [Sym("declare"), [Sym("xargs"), Sym(":stobjs"), stobj, Sym(":guard"), guard]]
         return [[Sym("defun"), Sym(name), list(formals), decl, body],
                 [Sym("defthm"), Sym(f"{name}-is-append"),
                  [Sym("implies"), [Sym("true-listp"), stobj],
                   [Sym("equal"), [Sym(name)] + list(formals),
-                   [Sym("append"), stobj, [options.get(":map", Sym("nil"))] + list(formals)]]]],
+                   [Sym("append"), stobj, [options.get(":map", Sym("nil"))] + map_formals]]]],
                 [Sym("in-theory"), [Sym("disable"), Sym(name)]]]
     acc_pred = Sym("acl2-numberp") if shape == ":sum" else Sym("true-listp")
     acc_guard: object = [acc_pred, acc]
@@ -852,14 +856,17 @@ def def_loop_expansion(form: list) -> list:
     name_decl = [Sym("declare"), [Sym("xargs"), Sym(":guard"), guard,
                                   Sym(":verify-guards"), Sym("nil")]]
     bridge = f"{loop}-is-plus" if shape == ":sum" else f"{loop}-is-revappend"
+    statement = [Sym("equal"), [Sym(loop)] + list(formals) + [acc],
+                 [Sym("+" if shape == ":sum" else "revappend"),
+                  acc, [Sym(name)] + list(formals)]]
+    if shape == ":sum":
+        statement = [Sym("implies"), [Sym("acl2-numberp"), acc], statement]
     unit = 0 if shape == ":sum" else Sym("nil")
     return [[Sym("defun"), Sym(loop), list(formals) + [acc], loop_decl, body],
             [Sym("defun"), Sym(name), list(formals), name_decl,
              [Sym("mbe"), Sym(":logic"), body,
               Sym(":exec"), [Sym(loop)] + list(formals) + [unit]]],
-            [Sym("local"), [Sym("defthm"), Sym(bridge),
-                            [Sym("equal"), [Sym(loop)] + list(formals) + [acc],
-                             [Sym("revappend"), acc, [Sym(name)] + list(formals)]]]],
+            [Sym("local"), [Sym("defthm"), Sym(bridge), statement]],
             [Sym("verify-guards"), Sym(loop)],
             [Sym("verify-guards"), Sym(name)],
             [Sym("in-theory"), [Sym("disable"), Sym(loop)]]]

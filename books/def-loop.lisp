@@ -202,13 +202,14 @@
   (declare (xargs :mode :program))
   (packn-pos parts witness))
 
-; BODY with every occurrence of the symbol VAR replaced by TERM.  A
+; BODY with unquoted occurrences of the symbol VAR replaced by TERM.  A
 ; syntactic substitution over the untranslated body: `:elt' must not be
 ; rebound inside BODY.
 (defun fn-dl-subst (var term body)
   (declare (xargs :mode :program))
   (cond ((eq body var) term)
         ((atom body) body)
+        ((eq (car body) 'quote) body)
         (t (cons (fn-dl-subst var term (car body))
                  (fn-dl-subst var term (cdr body))))))
 
