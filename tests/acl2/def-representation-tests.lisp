@@ -49,6 +49,39 @@
 
 (assert! (equal (drt-held-run) '(2 7 (200 201) t 9 (1 2 3) nil)))
 
+; The admitted foundation and the instance share a package.
+(assert-event (equal (symbol-package-name 'drt-held$c)
+                     (symbol-package-name 'drt-held)))
+
+; A non-ACL2 witness detects fixed-ACL2 interning without a new defpkg
+; portcullis. Check actual expansion trees for record, scalar and generic.
+(program)
+(defun drt-find-foundation (events)
+  (cond ((atom events) nil)
+        ((eq (car events) 'defstobj) (cadr events))
+        (t (or (drt-find-foundation (car events))
+               (drt-find-foundation (cdr events))))))
+(logic)
+
+(assert-event
+ (equal (symbol-package-name
+         (drt-find-foundation (rep-named-events :drt-package '((id :u64)) nil nil nil nil)))
+        (symbol-package-name :drt-package)))
+(assert-event
+ (equal (symbol-package-name
+         (drt-find-foundation (rep-named-events :drt-package '((id :u64)) t nil nil nil)))
+        (symbol-package-name :drt-package)))
+(assert-event
+ (equal (symbol-package-name
+         (drt-find-foundation (rep-named-events :drt-package '((id :u64)) t t nil nil)))
+        (symbol-package-name :drt-package)))
+
+; Relocation distinguishes generated references from unchanged user data.
+(assert-event
+ (equal (rep-package-events '(drt-package$c (quote drt-package$c))
+                            '(probe$c (quote drt-package$c)) :drt-package)
+        '(:drt-package$c (quote drt-package$c))))
+
 ; -----------------------------------------------------------------------------
 ; 2. The scalar pilot: the arena's logical view.
 
