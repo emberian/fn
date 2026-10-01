@@ -11,10 +11,14 @@ BUILDER = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(BUILDER)
 
 LOADS = '''(load "host/native/runtime-participants.lisp")
+(load "host/native/runtime-image-policy.lisp")
 (load "host/native/runtime-bootstrap.lisp")
 '''
-INSTALL = "(cl-user::fnn-runtime-participants-install-for-image (fnn-live-page-read-pool))\n"
-REGISTER = "(cl-user::fnn-runtime-participants-register-image-hooks)\n"
+INSTALL = ("(let* ((pool (fnn-live-page-read-pool))\n"
+           "       (gate (cl-user::fnn-runtime-participants-install-for-image pool)))\n"
+           "  (cl-user::fnn-runtime-image-policy-prepare pool gate))\n")
+REGISTER = ("(cl-user::fnn-runtime-image-policy-register-image-hook)\n"
+            "(cl-user::fnn-runtime-participants-register-image-hooks)\n")
 PREPARE = "(fnn-runtime-bootstrap-image-prepare)\n"
 
 
@@ -42,7 +46,7 @@ class BootstrapBuilderTest(unittest.TestCase):
         self.assertEqual(self.generate(body), "\n" + body)
 
     def test_missing_or_late_macro_load_refuses(self):
-        for body in (PREPARE, PREPARE + LOADS, LOADS.splitlines()[1] + "\n" + PREPARE):
+        for body in (PREPARE, PREPARE + LOADS, LOADS.replace('(load "host/native/runtime-image-policy.lisp")\n', "") + PREPARE):
             with self.subTest(body=body), self.assertRaises(ValueError):
                 self.generate(body)
 
@@ -57,6 +61,14 @@ class BootstrapBuilderTest(unittest.TestCase):
                      LOADS + PREPARE + PREPARE, LOADS + REGISTER + INSTALL + PREPARE):
             with self.subTest(body=body), self.assertRaises(ValueError):
                 self.generate(body)
+
+    def test_policy_setup_missing_or_changed_refuses(self):
+        body = LOADS + INSTALL + REGISTER + PREPARE
+        for altered in (body.replace("fnn-runtime-image-policy-prepare pool gate", "fnn-runtime-image-policy-prepare pool nil"),
+                        body.replace("(cl-user::fnn-runtime-image-policy-register-image-hook)\n", ""),
+                        body.replace(REGISTER, REGISTER + REGISTER)):
+            with self.subTest(body=altered), self.assertRaises(ValueError):
+                self.generate(altered)
 
     def test_changed_prepare_arguments_refuse(self):
         with self.assertRaises(ValueError):
