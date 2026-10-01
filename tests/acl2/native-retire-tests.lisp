@@ -6,6 +6,7 @@
 ; constructed (as tests/acl2/native-health-tests.lisp's are), labelled so.
 (in-package "ACL2")
 (include-book "../../books/owner-retire")
+(include-book "../../books/owner-retire-counted")
 (include-book "must-fail-checked")
 
 ; ---------------------------------------------------------------------------
@@ -107,6 +108,49 @@
 (assert-event (and (not (< 0 (fn-oret-pending-total *nrt-drained*)))
                    (not (equal (fn-oret-drain-step *nrt-s0* (nrt-at 59999) 60 *nrt-drained*)
                                :wait))))
+
+; ---------------------------------------------------------------------------
+; The HOST-CALLED drain (fn-ort-drain-step-counted, books/owner-retire-counted;
+; host/owner-host.lisp fn-owner-retire-step passes the carried pending count,
+; intake-fenced T and producers-settled NIL).  Reachable witnesses over the
+; same reached scheduler snapshots, per literal keystone.
+
+; fn-ort-deadline-is-independent-of-the-fences, positive: the antecedent (at
+; the 60 s window) and the conclusion (not :wait), in the host's own shape
+; (pending 1, T, NIL) and with both fences settled and nothing pending.
+(assert-event (and (<= (* 1000 (nfix 60)) (fn-osd-elapsed *nrt-s0* (nrt-at 60000)))
+                   (not (equal (fn-ort-drain-step-counted *nrt-s0* (nrt-at 60000) 60 1 t nil)
+                               :wait))
+                   (equal (fn-ort-drain-step-counted *nrt-s0* (nrt-at 60000) 60 1 t nil)
+                          :deadline)))
+; Hypothesis removal: the omitted hypothesis fails (one millisecond before
+; the window) and the conclusion fails (it waits).
+(assert-event (and (not (<= (* 1000 (nfix 60)) (fn-osd-elapsed *nrt-s0* (nrt-at 59999))))
+                   (equal (fn-ort-drain-step-counted *nrt-s0* (nrt-at 59999) 60 1 t nil)
+                          :wait)))
+
+; fn-ort-counted-drain-waits-before-window-without-fenced-zero, positive:
+; before the window (59,999 ms of 60 s), not (both fences and zero) -- the
+; host's own call, pending 0 with producers-settled NIL -- and it waits.
+; This is S9's served defect stated as a witness: the host's step cannot
+; answer :drained, so the retire runs to its window.
+(assert-event (and (< (fn-osd-elapsed *nrt-s0* (nrt-at 59999)) (* 1000 (nfix 60)))
+                   (not (and (equal t t) (equal nil t) (natp 0) (equal 0 0)))
+                   (equal (fn-ort-drain-step-counted *nrt-s0* (nrt-at 59999) 60 0 t nil)
+                          :wait)))
+; Hypothesis removal (the window): the retained hypothesis holds (not both
+; fences), the omitted one fails (at the window), the conclusion fails.
+(assert-event (and (not (and (equal t t) (equal nil t) (natp 0) (equal 0 0)))
+                   (not (< (fn-osd-elapsed *nrt-s0* (nrt-at 60000)) (* 1000 (nfix 60))))
+                   (not (equal (fn-ort-drain-step-counted *nrt-s0* (nrt-at 60000) 60 0 t nil)
+                               :wait))))
+; Hypothesis removal (fenced zero): the retained hypothesis holds (before the
+; window), the omitted one fails (both fences, zero pending), the conclusion
+; fails (:drained).
+(assert-event (and (< (fn-osd-elapsed *nrt-s0* (nrt-at 59999)) (* 1000 (nfix 60)))
+                   (and (equal t t) (equal t t) (natp 0) (equal 0 0))
+                   (equal (fn-ort-drain-step-counted *nrt-s0* (nrt-at 59999) 60 0 t t)
+                          :drained)))
 
 ; ---------------------------------------------------------------------------
 ; The report (fn-oret-report).

@@ -1469,19 +1469,33 @@
         (value word)))))
 
 (defun fn-owner-reconfigure-complete (generation state)
-  ; The write has already been reported durable. Consume the exact saved
-  ; proposal once, then retain the complete core publication result for the
-  ; single owner/carry/account-root collector. Mismatch requires recovery.
+  ; Called only after Store.write_config_record has named the record durable;
+  ; an uncertain write has no call here and forces recovery.  The whole
+  ; completion is ACL2's `fn-oclc-publish' (books/config-owner-carried): the
+  ; refusal, the carried physical history in one owner transition, the posting
+  ; configuration of the published generation, and the verdict.  On :refused
+  ; and :recovery-required its owner is the one installed now, so the host
+  ; installs it unconditionally and decides nothing.  Under the owner's
+  ; invariant it is `fn-ocl-publish' (fn-oclc-publish-is-publish, PRF-274).
+  ;
+  ; Stage 0 (MODE 2026-10-01 section 3, no gate before its producer): the
+  ; consumer-authority completion (`fn-ccp-publish' over the proposal saved by
+  ; `fn-owner-authority-proposal-capture', then
+  ; `fn-owner-authority-publication-install') is not the served completion:
+  ; on the served path no proposal reaches the consume (stage-0-3's probe: the
+  ; global is NIL after a :staged stage), so every live reconfiguration ended
+  ; :recovery-required and fenced the owner.  The capture, the consume and the
+  ; install stay in the tree; the proposal is cleared here so a stale one is
+  ; never reused.  Forward completion (AUTHORITY-FIELD lane): the authority
+  ; binding produced on the stage path and proved to reach this call, then
+  ; this body returns to the consume + fn-ccp-publish + install collector.
   (declare (xargs :stobjs state :mode :program))
-  (let* ((oc (fn-owner-ocfg state))
-         (cp (fn-sn-consumer (fn-own-store (fn-ocfg-owner oc))))
-         (record (fn-ocfg-staged oc))
-         (epoch (fn-owner-canonical-epoch state)))
-    (mv-let (approved state)
-      (fn-owner-authority-proposal-consume epoch cp record state)
-      (let ((one (fn-ccp-publish oc generation
-                                (fn-owner-served-post-bound state) approved)))
-        (fn-owner-authority-publication-install one state)))))
+  (let ((state (fn-owner-authority-proposal-clear state)))
+    (mv-let (verdict next)
+      (fn-oclc-publish (fn-owner-ocfg state) generation
+                       (fn-owner-served-post-bound state))
+      (let ((state (fn-owner-install-ocfg next state)))
+        (value verdict)))))
 
 
 ;; PKT-827 (b), PRF-287: the live request's authorization from the owner's

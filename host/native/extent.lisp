@@ -1143,6 +1143,28 @@ only observed worker relinquishment allows owner settlement/publication."
 (defun acl2_*1*_acl2::fn-pgs-fill-realize (file addr)
   (fn-pgs-fill-realize file addr))
 
+;;; A-PGS-HOST-IO's frame form (books/assumptions-pgs-host-io.lisp
+;;; `fn-pgs-fill-frame', codex-pagefix): page ADDR of FILE into words BASE ..
+;;; BASE+2047 of the pgs-mem array SEL selects.  Until this definition the
+;;; image left the constrained function unattached, so every history-records
+;;; read (store export, fn-store-sco-image-open) faulted on it.  It is the
+;;; constraint's own right-hand side, `fn-pgs-frame-put' of the page's words,
+;;; over the one pread above (a short read or an unknown file refused by name
+;;; there; the guard's selector and range are ACL2's, checked here again so a
+;;; raw caller cannot write outside the range).  Forward (D27): pread straight
+;;; into the selected array's storage at word BASE (sb-sys:vector-sap,
+;;; A-PGS-LE) instead of through the 2048-word list.
+(defun fn-pgs-fill-frame (file addr sel base pgs-mem)
+  (unless (and (member sel '(0 1 2)) (integerp base) (<= 0 base)
+               (<= (+ base 2048) (fn-pgs-frame-len sel pgs-mem)))
+    (error 'fnn-extent-fault
+           :message (format nil "history-page-read: frame ~a at word ~a is outside the page store"
+                            sel base)))
+  (fn-pgs-frame-put sel base (fn-pgs-fill-realize file addr) pgs-mem))
+
+(defun acl2_*1*_acl2::fn-pgs-fill-frame (file addr sel base pgs-mem)
+  (fn-pgs-fill-frame file addr sel base pgs-mem))
+
 ;;; Online disk release (lane online-reclaim-2, row Q16, PRF-930;
 ;;; books/extent-retire.lisp).  A descriptor is no longer held for the
 ;;; process's life: once a checkpoint publication has reseated the live
