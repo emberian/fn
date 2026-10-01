@@ -1327,6 +1327,18 @@ It requires an actual reserved extent and retained source from the installed
 caller, which remains unavailable. It does not encode visible article content
 or finish aggregation of several targets into a complete poll response.
 
+The internal high reader captures the actual installed history/view/config
+readout and sole current CP/carries aliases in the same owner span, then freshly
+authenticates and rechecks fixed source/account/configuration coordinates before
+each bounded policy, consumer selection, READ-definition or event step. The
+current-C query limit is selected one row per tick and checked against the
+prepared count and actual record ceiling before consumer selection. A changed
+consumer, account incarnation, operation, source or supported dimension refuses
+without consuming saved aliases. This source caller does not establish the
+missing atomic current CP/carries/root publication association or native BODY;
+its activation readout remains unavailable. Actual high getter admission,
+complete host refinement and complete original remote scenarios remain open.
+
 Remote replies share the existing FNCT typed consumer response contract:
 kind 5 progress/position, kind 6 poll/WAIT, kind 9 status and kind 18 reasons.
 The logical remote client refuses the legacy local-request resend path. An
