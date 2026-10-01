@@ -14595,7 +14595,7 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-mpxt-seqs-is-cat-msgid-seqs"
+          "name": "fn-mlh-seqs-is-cat-msgid-seqs"
         },
         {
           "kind": "theorem",
@@ -17086,7 +17086,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-mpxt-seqs-is-cat-msgid-seqs"
+          "name": "fn-mlh-seqs-is-cat-msgid-seqs"
         },
         {
           "kind": "theorem",
