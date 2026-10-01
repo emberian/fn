@@ -305,16 +305,19 @@ this change the per-operation cost is the operation's own work.
 
 The carrying argument itself -- where the invariant is established, which
 host-called transitions preserve it, what it concludes -- is one
-`def-carried` form (`books/def-carried.lisp`), not a comment table: the form
-names the invariant, its establishing points, its transitions and their
-preservation theorems, and is refused in the world unless every named
-theorem has the carrying shape, every transition has a theorem, and every
-declared host entry (`fn-interfaces`) whose definition reaches a writer of
-the carried state is listed. It emits the trace theorem `NAME-run-carries`
-by functional instantiation of a generic theory, and the row a
-`definterface` `:raw-with (:carried NAME)` resolves to, so D40's raw
-dispatch is derived from a checked table. The pilot is
-`books/owner-retain-carried.lisp`.
+`def-carried` form (`books/def-carried.lisp`), not a comment table. The
+form GENERATES the statements, from the world: per transition
+`NAME-FN-carries` (the invariant and FN's guard to the invariant of the
+state FN returns, its place read from `stobjs-out`), per open
+`NAME-FN-establishes`, per bridge `NAME-PRED-bridge` (the invariant to the
+transitions' literal guard conjuncts); the named theorems are only `:use`
+hints. It is refused unless each generated statement is proved, every
+declared host entry (`fn-interfaces`) returning the carried stobj is
+listed, and the vacuity probes fail. It emits the trace theorem
+`NAME-run-carries` by functional instantiation of a generic theory. A
+`definterface` `:raw-with (:carried NAME)` resolves only to generated names,
+re-checked against the statements regenerated from the world. Pilots:
+`books/tcpcl-session-carried.lisp`, `books/owner-retain-carried.lisp`.
 
 ## 5. Teeth are concrete witnesses
 
