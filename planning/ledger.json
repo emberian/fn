@@ -7,6 +7,19 @@
     "tests/acl2/consumer-transaction-dispatch-tests",
     "tests/acl2/consumer-remote-store-category-tests",
     "tests/acl2/receiver-response-transfer-tests",
+    "books/cbor-record-scalar",
+    "books/cbor-record-stream",
+    "books/statement-items-shape",
+    "books/statement-items-encoder-reference",
+    "books/statement-items-cursor",
+    "books/statement-items-cursor-refinement",
+    "books/statement-items-cursor-public",
+    "books/statement-items-cursor-spans",
+    "books/statement-items-cursor-terminal",
+    "tests/acl2/statement-items-cursor-tests",
+    "tests/acl2/statement-items-cursor-public-tests",
+    "tests/acl2/statement-items-cursor-spans-tests",
+    "tests/acl2/statement-items-cursor-terminal-tests",
     "books/history-source-capture-refinement",
     "tests/acl2/history-source-capture-refinement-tests",
     "books/substrate-commit-profile-codec",
@@ -2094,26 +2107,26 @@
     "tests/acl2/substrate-commit-codec-gap-tests"
   ],
   "totals": {
-    "books": 2287,
-    "books_in_root_closure": 2231,
-    "roots": 2090,
-    "theorems": 32815,
-    "functions": 21070,
-    "assert_events": 24614,
+    "books": 2300,
+    "books_in_root_closure": 2244,
+    "roots": 2103,
+    "theorems": 32994,
+    "functions": 21123,
+    "assert_events": 24628,
     "must_fails": 2519,
     "prover_refusals": 0,
     "encapsulates": 168,
     "guards": {
       "verified": 3740,
-      "declared-off": 2550,
-      "default-guarded": 11759,
+      "declared-off": 2592,
+      "default-guarded": 11770,
       "default-unguarded": 3021
     },
-    "suspect_theorems": 1301,
+    "suspect_theorems": 1306,
     "export_hygiene_warnings": 382,
     "enabled_projection_warnings": 79,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2932,
+    "include_hygiene_warnings": 2942,
     "host_names_warnings": 2569,
     "hand_written_record_warnings": 19
   },
@@ -10459,6 +10472,59 @@
         "arithmetic/top",
         "ihs/quotient-remainder-lemmas"
       ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/cbor-record-scalar.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 1,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "cbor"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/cbor-record-stream.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 10,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "cbor-invariants",
+        "cbor-record-scalar"
+      ],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
@@ -33550,7 +33616,7 @@
       "book": "books/records-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 45,
+      "theorems": 35,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -33567,6 +33633,7 @@
       "encapsulates": 0,
       "includes": [
         "cbor-invariants",
+        "cbor-record-stream",
         "records"
       ],
       "system_includes": [],
@@ -33605,14 +33672,14 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 72,
-      "functions": 58,
+      "functions": 57,
       "guards": {
-        "verified": 42,
+        "verified": 41,
         "declared-off": 0,
         "default-guarded": 16,
         "default-unguarded": 0
       },
-      "verify_guards_events": 44,
+      "verify_guards_events": 43,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -33622,6 +33689,7 @@
       "includes": [
         "acceptance-binding",
         "cbor",
+        "cbor-record-scalar",
         "defrecord"
       ],
       "system_includes": [
@@ -36428,11 +36496,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 32,
-      "functions": 2,
+      "functions": 1,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 1,
+        "default-guarded": 0,
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
@@ -36443,8 +36511,11 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "statement-items",
-        "statement-items-reference"
+        "cbor-record-stream",
+        "statement-items-encoder-reference",
+        "statement-items-reference",
+        "statement-items-shape",
+        "statement-results"
       ],
       "system_includes": [],
       "suspects": [
@@ -36481,6 +36552,181 @@
       "read_error": null
     },
     {
+      "book": "books/statement-items-cursor-public.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 3,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "statement-items-cursor-refinement",
+        "statement-seam"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/statement-items-cursor-refinement.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 105,
+      "functions": 38,
+      "guards": {
+        "verified": 0,
+        "declared-off": 38,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "statement-items-cursor",
+        "statement-items-reference"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-sic-argument-complete-outside-phase",
+        "fn-sic-argument-complete-outside-phase",
+        "fn-sic-argument-complete-outside-phase",
+        "fn-sic-bytes-complete-outside-phase",
+        "fn-sic-bytes-complete-outside-phase",
+        "fn-sic-bytes-complete-outside-phase",
+        "fn-sic-done-is-absorbing",
+        "fn-sic-sequence-complete-outside-head",
+        "fn-sic-sequence-complete-outside-head"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/statement-items-cursor-spans.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 40,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 4,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "statement-items-cursor-refinement"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-sic-argument-complete-outside-phase",
+        "fn-sic-bytes-complete-outside-phase",
+        "fn-sic-sequence-complete-outside-head"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/statement-items-cursor-terminal.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 3,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "statement-items-cursor-refinement"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-sic-run-of-done"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/statement-items-cursor.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 11,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 11,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "cbor",
+        "statement-results"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/statement-items-encoder-reference.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "statement-items-shape"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/statement-items-reference.lisp",
       "in_root_closure": true,
       "is_root": false,
@@ -36508,7 +36754,7 @@
       "read_error": null
     },
     {
-      "book": "books/statement-items.lisp",
+      "book": "books/statement-items-shape.lisp",
       "in_root_closure": true,
       "is_root": true,
       "theorems": 2,
@@ -36527,7 +36773,34 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "cbor"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/statement-items.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
         "crypto-seam",
+        "statement-items-shape",
         "statement-results"
       ],
       "system_includes": [],
@@ -36633,9 +36906,11 @@
       "defmacros": 0,
       "encapsulates": 1,
       "includes": [
+        "cbor-record-stream",
         "statement-codec",
-        "statement-items",
-        "statement-items-reference"
+        "statement-items-reference",
+        "statement-items-shape",
+        "statement-results"
       ],
       "system_includes": [],
       "suspects": [],
@@ -63549,6 +63824,112 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/statement-items-cursor-public-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 6,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/statement-attach",
+        "../../books/statement-items-cursor-public"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/statement-items-cursor-spans-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 5,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/statement-items-cursor-spans"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/statement-items-cursor-terminal-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 3,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/statement-items-cursor-spans",
+        "../../books/statement-items-cursor-terminal"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/statement-items-cursor-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 27,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/statement-items-cursor-refinement"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/statement-keyring-publication-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -75760,6 +76141,49 @@
       ]
     },
     {
+      "theorem": "fn-sic-argument-complete-outside-phase",
+      "book": "books/statement-items-cursor-refinement.lisp",
+      "line": 226,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-sic-argument-complete and the conclusion is that arm's value",
+        "branch-of-definition: the hypothesis negates a branch test of fn-sic-argument-complete and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-sic-bytes-complete-outside-phase",
+      "book": "books/statement-items-cursor-refinement.lisp",
+      "line": 226,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-sic-bytes-complete and the conclusion is that arm's value",
+        "branch-of-definition: the hypothesis negates a branch test of fn-sic-bytes-complete and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-sic-done-is-absorbing",
+      "book": "books/statement-items-cursor-refinement.lisp",
+      "line": 22,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-sic-step and the conclusion is that arm's value"
+      ]
+    },
+    {
+      "theorem": "fn-sic-run-of-done",
+      "book": "books/statement-items-cursor-terminal.lisp",
+      "line": 4,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-sic-run and the conclusion is that arm's value"
+      ]
+    },
+    {
+      "theorem": "fn-sic-sequence-complete-outside-head",
+      "book": "books/statement-items-cursor-refinement.lisp",
+      "line": 741,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-sic-sequence-complete and the conclusion is that arm's value",
+        "branch-of-definition: the hypothesis is a branch test of fn-sic-sequence-complete and the conclusion is that branch's value"
+      ]
+    },
+    {
       "theorem": "fn-sis-identity-next-of-v6",
       "book": "books/store-identity-sequence-invariants.lisp",
       "line": 19,
@@ -76858,7 +77282,7 @@
     {
       "theorem": "fn-stmt-impl-encode-items-of-atom",
       "book": "books/statement-codec.lisp",
-      "line": 337,
+      "line": 335,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-stmt-encode-items-impl and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis negates a branch test of fn-stmt-encode-items-impl and the conclusion is that branch's value"
@@ -81024,9 +81448,10 @@
           "books/bp-node-report-step.lisp",
           "books/bp-node-rotation-step.lisp",
           "books/bp-report-author.lisp",
-          "books/hybrid-signature.lisp"
+          "books/hybrid-signature.lisp",
+          "books/statement-items-cursor-spans.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 21 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 22 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-cbor-ag-cdr",
@@ -85587,6 +86012,13 @@
         "line": 62,
         "include": "catalog-number-assignment",
         "included": "books/catalog-number-assignment.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/cbor-record-stream.lisp",
+        "line": 3,
+        "include": "cbor-record-scalar",
+        "included": "books/cbor-record-scalar.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -91834,6 +92266,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/records-invariants.lisp",
+        "line": 5,
+        "include": "cbor-record-stream",
+        "included": "books/cbor-record-stream.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/records-shape.lisp",
+        "line": 24,
+        "include": "cbor-record-scalar",
+        "included": "books/cbor-record-scalar.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/refusal-effect.lisp",
         "line": 51,
         "include": "store-log-route-phases",
@@ -92303,6 +92749,27 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/statement-codec.lisp",
+        "line": 18,
+        "include": "statement-results",
+        "included": "books/statement-results.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/statement-codec.lisp",
+        "line": 20,
+        "include": "cbor-record-stream",
+        "included": "books/cbor-record-stream.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/statement-items-cursor.lisp",
+        "line": 5,
+        "include": "statement-results",
+        "included": "books/statement-results.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/statement-items-reference.lisp",
         "line": 4,
         "include": "statement-results",
@@ -92335,6 +92802,13 @@
         "line": 6,
         "include": "payload-lz-replay",
         "included": "books/payload-lz-replay.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/statement-seam.lisp",
+        "line": 44,
+        "include": "statement-results",
+        "included": "books/statement-results.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -102443,6 +102917,27 @@
         "line": 17,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/statement-items-cursor-public-tests.lisp",
+        "line": 2,
+        "include": "../../books/statement-items-cursor-public",
+        "included": "books/statement-items-cursor-public.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/statement-items-cursor-public-tests.lisp",
+        "line": 3,
+        "include": "../../books/statement-attach",
+        "included": "books/statement-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/statement-items-cursor-terminal-tests.lisp",
+        "line": 2,
+        "include": "../../books/statement-items-cursor-terminal",
+        "included": "books/statement-items-cursor-terminal.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

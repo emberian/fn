@@ -19901,6 +19901,33 @@
         "planning/evidence/history-source-custody-refinement-2026-09-30/manifest.json"
       ],
       "progress_note": "Custody core and actual STATE wrappers source-admitted in narrow protected worlds; actual nine source/getter/capture/pin/read/release guards replayed against17d1 backing .06s/4577steps. Conditional attribution/old-parent/nonretained-read laws admitted .02s/997steps; eight internal-metadata executable fixtures pass. These small output/body equations are bridge evidence, not a complete caller keystone. Full logical STATE literal tooth is prepared but unreplayed after donor closure. No certification/image/native claim or changed-dependency green transfer. Source tariff and native completion getter honestly unavailable; actual atomic publication and installed-source lineage remain producer obligations."
+    },
+    {
+      "id": "PRF-1186",
+      "title": "Paid borrowed nested statement-items decoder preserves the original result",
+      "statement": "For natural item fuel and profile budgets, completion of the actual fn-sic-run over fn-sic-begin terminates and its borrowed-span abstraction equals the complete unchanged fn-stmt-decode-items-bounded-impl result, including every refusal. Public-wrapper canonicality, generic span provenance, scalar/allocation funding and original-context producer/consumer integration remain separate obligations.",
+      "milestone": "M4",
+      "requirements": [
+        "ENC-002",
+        "HST-002"
+      ],
+      "depends_on": [
+        "PRF-016"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/statement-items-cursor.lisp",
+        "books/statement-items-cursor-refinement.lisp",
+        "books/statement-items-cursor-public.lisp",
+        "tests/acl2/statement-items-cursor-tests.lisp",
+        "planning/evidence/statement-items-cursor/paid-source.json",
+        "books/statement-items-cursor-spans.lisp",
+        "tests/acl2/statement-items-cursor-spans-tests.lisp",
+        "tests/acl2/statement-items-cursor-public-tests.lisp",
+        "planning/evidence/manifests/certify-20261001T004700Z-2897961.json"
+      ],
+      "progress_note": "Fresh proper-local sic3 paid implementation full-result, sic4 exact borrowed span provenance and prefix-byte validity pass. Narrow normal certify-20261001T004700Z-2897961 passed thirteen fresh books plus two matching cached CBOR parents: actual strengthened statement seam, attachment, public paid full-result and legacy canonicality, and seven public literals. Two cached CBOR manifest citations remain to reconcile; no broader changed-parent/green gate, native caller/funding/lifetime or sidecar semantic READY transfer. Current source packet includes exact strengthened seam/public/attachment normal15-leaf receipt; wrapper include-only changed parents and span/terminal successor are separate convergence scope. No host producer/funding/lifetime activation."
     }
   ]
 }

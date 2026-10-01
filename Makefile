@@ -18,6 +18,19 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-transaction-dispatch-tests \
 	tests/acl2/consumer-remote-store-category-tests \
 	tests/acl2/receiver-response-transfer-tests \
+	books/cbor-record-scalar \
+	books/cbor-record-stream \
+	books/statement-items-shape \
+	books/statement-items-encoder-reference \
+	books/statement-items-cursor \
+	books/statement-items-cursor-refinement \
+	books/statement-items-cursor-public \
+	books/statement-items-cursor-spans \
+	books/statement-items-cursor-terminal \
+	tests/acl2/statement-items-cursor-tests \
+	tests/acl2/statement-items-cursor-public-tests \
+	tests/acl2/statement-items-cursor-spans-tests \
+	tests/acl2/statement-items-cursor-terminal-tests \
 	books/history-source-capture-refinement \
 	tests/acl2/history-source-capture-refinement-tests \
 	books/substrate-commit-profile-codec \

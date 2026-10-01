@@ -14,27 +14,25 @@
 ; unchanged apart from the names.
 
 (in-package "ACL2")
-(include-book "statement-items")
+(include-book "statement-items-shape")
+(include-book "statement-results")
+(include-book "statement-items-encoder-reference")
+(include-book "cbor-record-stream")
 (include-book "statement-items-reference")
-(local (in-theory (enable fn-stmt-decode-prefix-items-prechecked
+(local (in-theory (enable fn-stmt-encode-items-impl fn-stmt-decode-prefix-items-prechecked
  fn-stmt-decode-prefix-items-bounded-impl fn-stmt-decode-items-prechecked
  fn-stmt-decode-items-bounded-impl fn-stmt-decode-items-impl)))
 
 ;; Convergence: the codecs cluster withdraws its proof vocabulary on export;
 ;; re-open it locally (agreed on the deputy board, codecs ANSWER to substrate).
-(local (in-theory (enable fn-cbor-codec-vocabulary fn-cbor-invariants-vocabulary fn-record-record-vocabulary fn-record-codec-vocabulary fn-record-guard-vocabulary fn-record-invariants-vocabulary)))
+(local (in-theory (enable fn-cbor-codec-vocabulary fn-cbor-invariants-vocabulary)))
 
 ; cluster-local theory: this book is inside the substrate cluster and opens
 ; the definitions its neighbours withdraw at export (docs/proof-style.md 2).
-(local (in-theory (enable fn-crypto-seam-internals)))
 
 
-(defun fn-stmt-encode-items-impl (items)
-  (declare (xargs :guard (fn-stmt-item-listp items)))
-  (if (consp items)
-      (append (fn-cbor-encode (car items))
-              (fn-stmt-encode-items-impl (cdr items)))
-    nil))
+
+
 
 (defthm fn-stmt-impl-encode-items-is-octet-list
   (fn-cbor-octet-listp (fn-stmt-encode-items-impl items))

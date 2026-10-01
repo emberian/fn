@@ -86,3 +86,27 @@ A-CRYPTO for content-id uniqueness and signature unforgeability; the CBOR
 primitive profile's own proofs (`books/cbor-invariants.lisp`); no relation to
 the article source bytes yet (an `:article` payload is opaque octets here; the
 D01 exact-source binding is C2-01).
+
+## Incremental retained item sequences (source component)
+
+`fn-sic-begin`, `fn-sic-step`, `fn-sic-result` and `fn-sic-run` retain the
+original resident octet-list source. One step consumes at most one source or
+result link, or performs bounded control; zero quantum yields the same state.
+Byte-string items are `(:bytes start length borrowed-content-tail)`; unsigned
+items retain `(:uint . n)`. The proof-only abstraction takes exactly the span
+length and reproduces the existing item representation. The caller must keep
+the original snapshot/source alive until all spans are consumed.
+
+PRF-1186 / SCN-1069 record a source-admitted paid full-result refinement to
+the unchanged bounded implementation, preserving the existing wire grammar,
+profile parameters and error precedence. `fn-sic-begin-legacy` supplies the
+original public wrapper budgets. The semantic reference is exported disabled;
+the strengthened public seam equality is explicit and is not supplied by an
+attachment. Its public full-result and legacy canonicality bridge, strengthened seam and
+actual attachment passed narrow normal certification in committed manifest
+`certify-20261001T004700Z-2897961` (thirteen fresh books, two matching cached
+CBOR parents whose committed provenance is still being reconciled). Fresh
+protected span proofs establish exact natural offsets, source tails and
+prefix-byte validity. Scalar/allocation funding and actual ORIGINALctx
+enrollment publisher/consumer integration remain open; this component is not deployment
+or native proof evidence.

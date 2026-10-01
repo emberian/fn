@@ -11,6 +11,7 @@
 (in-package "ACL2")
 (include-book "crypto-seam")
 (include-book "statement-results")
+(include-book "statement-items-shape")
 
 ; -----------------------------------------------------------------------------
 ; Result records.  (:ok value) / (:ok value rest) / (:error code).  Accessors
@@ -26,12 +27,7 @@
 ; -----------------------------------------------------------------------------
 ; Item sequences
 
-(defun fn-stmt-item-listp (xs)
-  (declare (xargs :guard t))
-  (if (consp xs)
-      (and (fn-cbor-valuep (car xs))
-           (fn-stmt-item-listp (cdr xs)))
-    (null xs)))
+
 
 ; The two shape facts an indexing consumer of an item sequence needs, the
 ; twins of `fn-stmt-id-listp-implies-true-listp' below.  A successful bounded
@@ -46,14 +42,9 @@
 ; into a recognizer joins the other recognizer-implies-true-listp rules of the
 ; books above into a rewriter loop (call depth 1000 in
 ; books/statement-invariants, same date), so a caller names them in its hint.
-(defthm fn-stmt-item-listp-implies-true-listp
-  (implies (fn-stmt-item-listp xs) (true-listp xs)))
 
-(defthm fn-stmt-item-listp-nth-is-item-or-nil
-  (implies (fn-stmt-item-listp xs)
-           (or (consp (nth n xs)) (equal (nth n xs) nil)))
-  :rule-classes ((:type-prescription :typed-term (nth n xs)))
-  :hints (("Goal" :in-theory (enable fn-cbor-valuep fn-cbor-valuep-bounded))))
+
+
 
 (in-theory (disable fn-stmt-item-listp-implies-true-listp
                     fn-stmt-item-listp-nth-is-item-or-nil))

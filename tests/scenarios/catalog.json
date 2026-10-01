@@ -7621,6 +7621,37 @@
         "planning/evidence/history-source-custody-refinement-2026-09-30/manifest.json"
       ],
       "execution_scope": "Literal ACL2 component/source fixtures and selected source gates only. Whole logical STATE tooth, complete owner publication/lifetime composition, physical constructor, funding, callback issuer and native quantum qualification remain open."
+    },
+    {
+      "id": "SCN-1069",
+      "title": "Retained enrollment nested parse yields and resumes with exact original refusal",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "ENC-002",
+        "HST-002"
+      ],
+      "steps": [
+        "Retain the original STXK snapshot octet-list source and ORIGINALctx while the same issued incremental parser advances one source or result link per scheduling step.",
+        "Yield at zero and split quanta; resume the same continuation. Decode canonical enrollment byte widths 32/32/1952 and algorithm integers 1/2 without byte-string copying.",
+        "Exercise malformed octets, improper tails, nonminimal arguments, reserved heads, truncated arguments/content, item fuel and both profile budgets, retaining original refusal precedence.",
+        "Publish derived enrollment evidence only with original source/context after terminal parse and consumer validation; retain pending/refused/accepted distinctions."
+      ],
+      "expected": [
+        "Paid terminal borrowed-span abstraction equals the complete original implementation result; outer limit takes precedence over malformed input.",
+        "Scheduling exhaustion yields the same parser state and does not truncate or become a decoder refusal.",
+        "The original source/context is retained; paid exact span provenance and public full-result/canonicality have component evidence, while actual producer/caller funding and lifetime remain open."
+      ],
+      "evidence": [
+        "books/statement-items-cursor.lisp",
+        "books/statement-items-cursor-refinement.lisp",
+        "tests/acl2/statement-items-cursor-tests.lisp",
+        "planning/evidence/statement-items-cursor/paid-source.json",
+        "tests/acl2/statement-items-cursor-spans-tests.lisp",
+        "tests/acl2/statement-items-cursor-public-tests.lisp",
+        "planning/evidence/manifests/certify-20261001T004700Z-2897961.json"
+      ],
+      "execution_scope": "Protected proper-local ACL2 source components and literal fixtures; no normal/native/image/deployment claim."
     }
   ]
 }

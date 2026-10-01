@@ -21,6 +21,7 @@
 
 (in-package "ACL2")
 (include-book "cbor")
+(include-book "cbor-record-scalar")
 (include-book "defrecord")
 (include-book "acceptance-binding")
 
@@ -483,9 +484,8 @@
                   (< 0 (length text))
                   (<= (length text) *fn-record-max-metadata*))))
 
-(defun fn-record-uint32p (n)
-  (and (natp n) (<= n *fn-cbor-max-uint*)))
-(verify-guards fn-record-uint32p)
+
+
 
 ; The record's integer fields -- sequence, transaction ID, generation,
 ; charge and a natural stamp -- are u64 (D27, packet P6): the CBOR uint's

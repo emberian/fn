@@ -40,8 +40,10 @@
 ; statement-codec together.
 
 (in-package "ACL2")
-(include-book "statement-items")
+(include-book "statement-items-shape")
+(include-book "statement-results")
 (include-book "statement-items-reference")
+(local (include-book "cbor-record-stream"))
 
 (encapsulate
   (((fn-stmt-encode-items *) => *
@@ -139,7 +141,7 @@
            :in-theory (disable fn-stmt-encode-items-of-cons))))
 
 (local (in-theory (enable fn-cbor-invariants-vocabulary
-                          fn-record-invariants-vocabulary)))
+                         )))
 
 (defthm fn-stmt-encode-items-is-octet-list
   (fn-cbor-octet-listp (fn-stmt-encode-items items))
@@ -155,7 +157,7 @@
   :hints (("Goal" :induct (len a))))
 
 (local (in-theory (disable fn-cbor-invariants-vocabulary
-                           fn-record-invariants-vocabulary)))
+                          )))
 
 ; Opening the encoder on a term merely known to be a cons is left to a
 ; caller that asks for it by name: enabled, it takes apart an encoding whose
