@@ -4,8 +4,10 @@
 ;;; (host/native/account-adoption.lisp, books/consumer-account-adoption)
 ;;; that bbf414f8f routed every start and reload through needs an owner
 ;;; control binding nothing installs (fnn-owner-control-binding-make has no
-;;; caller), so it refused every start, credential file or not.  It stays
-;;; loaded for its tests; it returns to this path with its producer.
+;;; caller), so it refused every start, credential file or not.  It is NOT
+;;; loaded (build.lisp; D46), and fnn-native-auth-adopt-config is parked in
+;;; host/native/auth-adoption-parked.lisp; both return to this path with
+;;; their producer (stage-0 unwired item 5).
 ;;;
 ;;; Native AUTHINFO profile transport.
 ;;;

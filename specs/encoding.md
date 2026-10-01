@@ -32,7 +32,7 @@ stamp are deleted (no migrations: fresh deploys at 6.6.0), and a schema-0
 header is refused `:unknown-version`. Article records carry a uint32 stamp in seconds since the
 DTN epoch inside the committed record; the schema-1 item adds at most five
 octets inside the existing 65,538-octet record limit. The exact octets are concrete facts of the implementation,
-`fn-record-schema3-golden-octets-are-the-encoding` in `books/records.lisp`:
+`fn-record-schema1-golden-octets-are-the-encoding` and `fn-record-schema2-golden-octets-are-the-encoding` in `books/records.lisp` (the schema-3 golden left with D43's acceptance-binding revert):
 a round trip and canonicality hold of any length-preserving permutation of
 the encodings, so they do not identify the wire language. Every book above the
 codec, and the host, calls the constrained names; the image and the test

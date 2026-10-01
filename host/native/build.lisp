@@ -476,8 +476,8 @@
           ; through *fn-runtime-operation-compiled-table*, which no build
           ; step produces (books/runtime-operation-compiled-table.lisp is
           ; nil), so every verb exited at bootstrap.  The runtime-* host
-          ; files stay loaded below for their tests; the gate returns with
-          ; its producer.
+          ; files are not loaded (see below); they and the gate return with
+          ; their producer.
           ; A refused start exits 5 with its reason (io.lisp).
           (fnn-native-startup (lambda ()
                                 (fnn-crypto-startup)
