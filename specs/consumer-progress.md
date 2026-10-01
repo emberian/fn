@@ -1347,3 +1347,12 @@ interrupted or mismatched account collection requires recovery. The new host
 collector and hook are source assembly only, pending the exact typed-turn host
 include and composed source/BODY qualification. Typed C needs its distinct real
 C completion producer and cannot use this E receipt.
+
+The account epilogue retains its four old semantic aliases in the actual pool
+settlement continuation before clearing account capture, ready result, selected
+operation and durable outcome. The internal clear requires the original turn
+and issued counter-publication receipt while the pool remains in recovery.
+CURRENT is dropped afterward; physical counter finish restores modes last.
+Canonical admission cleanup is separate. The joined epilogue still owes its
+complete source/BODY and last-alias correspondence; scalar gates alone do not
+establish that lifetime or funding relation.
