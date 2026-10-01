@@ -18280,6 +18280,16 @@
           "note": "Additive accumulator execution equivalence component; later execution roots pending certification and actual host caller remains open. Counter equivalence requires acl2-numberp initial accumulator; cursor equivalence is unconditional."
         }
       ]
+    },
+    {
+      "id": "PRF-1203",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-runtime-construction-inventory-bounds-resident"
+        }
+      ],
+      "pending_subject": "Exact guarded arithmetic called by isolated actual native construction-inventory source. Complete selected image recipe/ownership census, constructor reserve coordinates and positive recovery authority remain open."
     }
   ]
 }

@@ -7409,7 +7409,13 @@
         "planning/evidence/bpsec-asb-window-differential-source-2026-09-30.json",
         "books/bpsec-received-window.lisp",
         "tests/acl2/bpsec-received-window-tests.lisp",
-        "planning/evidence/bpsec-received-window-source-2026-09-30.json"
+        "planning/evidence/bpsec-received-window-source-2026-09-30.json",
+        "books/bpsec-input-plan.lisp",
+        "tests/acl2/bpsec-input-plan-tests.lisp",
+        "planning/evidence/bpsec-input-plan-source-2026-09-30/manifest.json",
+        "tests/native_bpsec_source_observation.lisp",
+        "tools/bpsec_source_observation.py",
+        "planning/evidence/bpsec-source-observation-2026-10-01/manifest.json"
       ],
       "execution_scope": "ACL2 literal source fixture only; full every-schedule theorem and operational provider/native execution remain open."
     },
@@ -7577,7 +7583,18 @@
       "evidence": [
         "books/bpsec-operation.lisp",
         "tests/acl2/bpsec-operation-tests.lisp",
-        "planning/evidence/bpsec-operation-source-2026-09-30.json"
+        "planning/evidence/bpsec-operation-source-2026-09-30.json",
+        "books/bpsec-primitive-plan.lisp",
+        "tests/acl2/bpsec-primitive-plan-tests.lisp",
+        "planning/evidence/bpsec-primitive-plan-source-2026-09-30/manifest.json",
+        "tests/native_bpsec_core_observation.lisp",
+        "planning/evidence/bpsec-core-observation-2026-09-30/manifest.json",
+        "books/bpsec-input-plan.lisp",
+        "tests/acl2/bpsec-input-plan-tests.lisp",
+        "planning/evidence/bpsec-input-plan-source-2026-09-30/manifest.json",
+        "tests/native_bpsec_source_observation.lisp",
+        "tools/bpsec_source_observation.py",
+        "planning/evidence/bpsec-source-observation-2026-10-01/manifest.json"
       ],
       "execution_scope": "Literal ACL2 component/source fixtures; actual immutable registry, provider, current lease, cryptographic realizer and native gate remain open."
     },
@@ -7768,7 +7785,19 @@
         "tests/native_bpsec_crypto.lisp",
         "tests/fixtures/bpsec/nist-gcm-decrypt.json",
         "planning/evidence/bpsec-crypto-2026-09-30/manifest.json",
-        "tests/fixtures/bpsec/nist-gcm-decrypt.lisp"
+        "tests/fixtures/bpsec/nist-gcm-decrypt.lisp",
+        "planning/evidence/bpsec-crypto-namespace-2026-09-30/manifest.json",
+        "books/bpsec-primitive-plan.lisp",
+        "tests/acl2/bpsec-primitive-plan-tests.lisp",
+        "planning/evidence/bpsec-primitive-plan-source-2026-09-30/manifest.json",
+        "tests/native_bpsec_core_observation.lisp",
+        "planning/evidence/bpsec-core-observation-2026-09-30/manifest.json",
+        "books/bpsec-input-plan.lisp",
+        "tests/acl2/bpsec-input-plan-tests.lisp",
+        "planning/evidence/bpsec-input-plan-source-2026-09-30/manifest.json",
+        "tests/native_bpsec_source_observation.lisp",
+        "tools/bpsec_source_observation.py",
+        "planning/evidence/bpsec-source-observation-2026-10-01/manifest.json"
       ],
       "execution_scope": "Actual SBCL/OpenSSL primitive component only at the recorded source/library hashes. Test descriptors are explicitly unissued; no native image, installer, source/key/policy grant, replay authorization, persistence or application acceptance. RFC9173 short keys/A.3 IPPT and A.4 reused nonce are frozen diagnostics, not normative profile admission."
     },
@@ -7797,6 +7826,34 @@
         "planning/evidence/recovery-profile-buffer-2026-10-01/coordinate.json"
       ],
       "execution_scope": "Exact original-constant cohort and actual concrete-stobj source fixture passed; matching full-book certificate, saved image and issued I/O/EOF/controller composition remain open."
+    },
+    {
+      "id": "SCN-1079",
+      "title": "Image construction inventory includes its own storage and rejects changed layouts",
+      "milestone": "M1",
+      "status": "specified",
+      "requirements": [
+        "HST-002"
+      ],
+      "steps": [
+        "Enumerate finite actual heap objects with a duplicate backing reference; prepare the native inventory using real shallow size observations.",
+        "Verify observer carrier and both arrays occur in the same inventory and the backing is counted once.",
+        "Replace a descriptor prototype with an equal-layout final object; attempt incompatible replacement and change a backing before seal.",
+        "Evaluate malformed, over-domain and boundary-equal core arithmetic fixtures."
+      ],
+      "expected": [
+        "ACL2 distinguishes observed primary, future constructor reserve and native octets, and computes the collector-copy-inclusive total within the immediate limit.",
+        "Incompatible replacement, changed layout and repeated/post-seal mutation through the builder API are refused.",
+        "No completeness of the boot cohort, PRS grant, qualified image or deployment follows from the fixture."
+      ],
+      "evidence": [
+        "books/runtime-construction-inventory.lisp",
+        "host/native/runtime-construction-inventory.lisp",
+        "tests/acl2/runtime-construction-inventory-tests.lisp",
+        "tests/native/runtime-construction-inventory.lisp",
+        "planning/evidence/runtime-construction-inventory-2026-10-01/coordinate.json"
+      ],
+      "execution_scope": "Actual literal core bodies and native primitive execution on synthetic finite constructor objects; full actual joined image construction remains owed."
     }
   ]
 }

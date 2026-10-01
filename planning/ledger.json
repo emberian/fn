@@ -2030,6 +2030,8 @@
     "books/query-payload-scalar",
     "books/query-payload-state",
     "tests/acl2/bpsec-operation-tests",
+    "tests/acl2/bpsec-primitive-plan-tests",
+    "tests/acl2/bpsec-input-plan-tests",
     "tests/acl2/bpsec-asb-quanta-tests",
     "tests/acl2/bpsec-asb-spine-tests",
     "tests/acl2/bpsec-target-spine-tests",
@@ -2059,6 +2061,8 @@
     "books/ninep-group-directory-source",
     "tests/acl2/allocation-dual-ceiling-tests",
     "books/runtime-bootstrap-completion",
+    "tests/acl2/runtime-construction-inventory-tests",
+    "books/runtime-construction-inventory",
     "tests/acl2/runtime-bootstrap-export-tests",
     "tests/acl2/allocation-turn-source-cost-tests",
     "tests/acl2/allocation-turn-body-authority-tests",
@@ -2182,27 +2186,27 @@
     "tests/acl2/substrate-commit-codec-gap-tests"
   ],
   "totals": {
-    "books": 2381,
-    "books_in_root_closure": 2345,
-    "roots": 2178,
-    "theorems": 33419,
-    "functions": 21421,
-    "assert_events": 24801,
+    "books": 2387,
+    "books_in_root_closure": 2351,
+    "roots": 2182,
+    "theorems": 33429,
+    "functions": 21436,
+    "assert_events": 24832,
     "must_fails": 2531,
     "prover_refusals": 0,
     "encapsulates": 169,
     "guards": {
       "verified": 3751,
       "declared-off": 2617,
-      "default-guarded": 12013,
+      "default-guarded": 12028,
       "default-unguarded": 3040
     },
     "suspect_theorems": 1314,
     "export_hygiene_warnings": 387,
     "enabled_projection_warnings": 79,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 3059,
-    "host_names_warnings": 2772,
+    "include_hygiene_warnings": 3066,
+    "host_names_warnings": 2781,
     "hand_written_record_warnings": 19
   },
   "books": [
@@ -9230,6 +9234,32 @@
       "read_error": null
     },
     {
+      "book": "books/bpsec-input-plan.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 3,
+      "functions": 7,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 7,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bpsec-operation"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/bpsec-model.lisp",
       "in_root_closure": true,
       "is_root": false,
@@ -9281,6 +9311,32 @@
       "suspects": [
         "fn-bps-op-foreign-completion-preserves-rightful-state-by-definition"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/bpsec-primitive-plan.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 5,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 5,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bpsec-operation"
+      ],
+      "system_includes": [],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -9448,7 +9504,9 @@
         "bpsec-asb-target-types",
         "bpsec-asb-terminal",
         "bpsec-head-invariant",
+        "bpsec-input-plan",
         "bpsec-operation",
+        "bpsec-primitive-plan",
         "bpsec-provider-model",
         "bpsec-received-window",
         "bpsec-target",
@@ -35850,6 +35908,30 @@
       "read_error": null
     },
     {
+      "book": "books/runtime-construction-inventory.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/runtime-operation-compiled-source.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -49322,6 +49404,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/bpsec-input-plan-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 10,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 3,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bpsec-input-plan"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/bpsec-operation-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -49342,6 +49450,32 @@
       "encapsulates": 0,
       "includes": [
         "../../books/bpsec-operation"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/bpsec-primitive-plan-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 11,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 3,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bpsec-primitive-plan"
       ],
       "system_includes": [],
       "suspects": [],
@@ -64999,6 +65133,32 @@
       "encapsulates": 0,
       "includes": [
         "../../books/runtime-bootstrap-source"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/runtime-construction-inventory-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 10,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/runtime-construction-inventory"
       ],
       "system_includes": [],
       "suspects": [],
@@ -88178,10 +88338,24 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/bpsec-input-plan.lisp",
+        "line": 7,
+        "include": "bpsec-operation",
+        "included": "books/bpsec-operation.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/bpsec-operation.lisp",
         "line": 6,
         "include": "bpsec-model",
         "included": "books/bpsec-model.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bpsec-primitive-plan.lisp",
+        "line": 7,
+        "include": "bpsec-operation",
+        "included": "books/bpsec-operation.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -88271,90 +88445,104 @@
       {
         "book": "books/bpsec.lisp",
         "line": 9,
+        "include": "bpsec-primitive-plan",
+        "included": "books/bpsec-primitive-plan.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bpsec.lisp",
+        "line": 10,
+        "include": "bpsec-input-plan",
+        "included": "books/bpsec-input-plan.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bpsec.lisp",
+        "line": 11,
         "include": "bpsec-asb-quanta",
         "included": "books/bpsec-asb-quanta.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/bpsec.lisp",
-        "line": 10,
+        "line": 12,
         "include": "bpsec-asb-spine",
         "included": "books/bpsec-asb-spine.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/bpsec.lisp",
-        "line": 11,
+        "line": 13,
         "include": "bpsec-target-spine",
         "included": "books/bpsec-target-spine.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/bpsec.lisp",
-        "line": 12,
+        "line": 14,
         "include": "bpsec-asb-control",
         "included": "books/bpsec-asb-control.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/bpsec.lisp",
-        "line": 13,
+        "line": 15,
         "include": "bpsec-asb-position",
         "included": "books/bpsec-asb-position.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/bpsec.lisp",
-        "line": 14,
+        "line": 16,
         "include": "bpsec-head-invariant",
         "included": "books/bpsec-head-invariant.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/bpsec.lisp",
-        "line": 15,
+        "line": 17,
         "include": "bpsec-asb-head-invariant",
         "included": "books/bpsec-asb-head-invariant.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/bpsec.lisp",
-        "line": 16,
+        "line": 18,
         "include": "bpsec-asb-metadata",
         "included": "books/bpsec-asb-metadata.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/bpsec.lisp",
-        "line": 17,
+        "line": 19,
         "include": "bpsec-asb-body",
         "included": "books/bpsec-asb-body.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/bpsec.lisp",
-        "line": 18,
+        "line": 20,
         "include": "bpsec-asb-aggregate",
         "included": "books/bpsec-asb-aggregate.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/bpsec.lisp",
-        "line": 19,
+        "line": 21,
         "include": "bpsec-asb-terminal",
         "included": "books/bpsec-asb-terminal.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/bpsec.lisp",
-        "line": 20,
+        "line": 22,
         "include": "bpsec-asb-target-types",
         "included": "books/bpsec-asb-target-types.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/bpsec.lisp",
-        "line": 21,
+        "line": 23,
         "include": "bpsec-received-window",
         "included": "books/bpsec-received-window.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -99287,10 +99475,24 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/bpsec-input-plan-tests.lisp",
+        "line": 3,
+        "include": "../../books/bpsec-input-plan",
+        "included": "books/bpsec-input-plan.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/bpsec-operation-tests.lisp",
         "line": 3,
         "include": "../../books/bpsec-operation",
         "included": "books/bpsec-operation.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bpsec-primitive-plan-tests.lisp",
+        "line": 3,
+        "include": "../../books/bpsec-primitive-plan",
+        "included": "books/bpsec-primitive-plan.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -105745,6 +105947,13 @@
         "line": 2,
         "include": "../../books/runtime-bootstrap-source",
         "included": "books/runtime-bootstrap-source.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/runtime-construction-inventory-tests.lisp",
+        "line": 2,
+        "include": "../../books/runtime-construction-inventory",
+        "included": "books/runtime-construction-inventory.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -122303,6 +122512,69 @@
         "name": "fnn-runtime-geometry-into",
         "source": "host/native/runtime-collector.lisp",
         "reason": "defined in host/native/runtime-collector.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/runtime-construction-inventory.lisp",
+        "line": 12,
+        "name": "svref",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/native/runtime-construction-inventory.lisp",
+        "line": 12,
+        "name": "fnn-core",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/runtime-construction-inventory.lisp",
+        "line": 29,
+        "name": "compiled-function-p",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/native/runtime-construction-inventory.lisp",
+        "line": 29,
+        "name": "simple-vector-p",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/native/runtime-construction-inventory.lisp",
+        "line": 29,
+        "name": "remove-duplicates",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/native/runtime-construction-inventory.lisp",
+        "line": 29,
+        "name": "arrayp",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/native/runtime-construction-inventory.lisp",
+        "line": 60,
+        "name": "fifth",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/native/runtime-construction-inventory.lisp",
+        "line": 83,
+        "name": "find",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/native/runtime-construction-inventory.lisp",
+        "line": 83,
+        "name": "type-of",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/native/runtime-image-policy.lisp",

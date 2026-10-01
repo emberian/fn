@@ -1,7 +1,7 @@
 ; Frozen NIST CAVP literal diagnostics, selected from archive SHA256
 ; f9fc479e134cde2980b3bb7cddbcb567b2cd96fd753835243ed067699f26a023
 (in-package "ACL2")
-(defparameter *fnn-bps-test-nist-gcm*
+(defparameter *fnn-bpsec-test-nist-gcm*
  '(
   ("gcmDecrypt128.rsp/PT0/AAD0/Count0" :aes128-gcm "cf063a34d4a9a76c2c86787d3f96db71" "113b9785971864c83b01c787" "" "" "72ac8493e3a5228b5d130a69d2510e42" "")
   ("gcmDecrypt128.rsp/PT0/AAD0/Count1" :aes128-gcm "a49a5e26a2f8cb63d05546c2a62f5343" "907763b19b9b4ab6bd4f0281" "" "" "a2be08210d8c470a8df6e8fbd79ec5cf" nil)

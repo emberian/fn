@@ -2041,6 +2041,8 @@ ACL2_BOOKS ?= books/defrecord \
     books/query-payload-scalar \
     books/query-payload-state \
     tests/acl2/bpsec-operation-tests \
+    tests/acl2/bpsec-primitive-plan-tests \
+    tests/acl2/bpsec-input-plan-tests \
     tests/acl2/bpsec-asb-quanta-tests \
     tests/acl2/bpsec-asb-spine-tests \
     tests/acl2/bpsec-target-spine-tests \
@@ -2070,6 +2072,8 @@ ACL2_BOOKS ?= books/defrecord \
     books/ninep-group-directory-source \
     tests/acl2/allocation-dual-ceiling-tests \
     books/runtime-bootstrap-completion \
+    tests/acl2/runtime-construction-inventory-tests \
+    books/runtime-construction-inventory \
     tests/acl2/runtime-bootstrap-export-tests \
     tests/acl2/allocation-turn-source-cost-tests \
     tests/acl2/allocation-turn-body-authority-tests \

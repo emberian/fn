@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2381 |
-| Certification roots in the Makefile | 2178 |
-| Books inside the root closure | 2345 |
-| `defthm` and `defthmd` events | 33419 |
-| `defun` events | 21421 |
+| Books read | 2387 |
+| Certification roots in the Makefile | 2182 |
+| Books inside the root closure | 2351 |
+| `defthm` and `defthmd` events | 33429 |
+| `defun` events | 21436 |
 | Functions with verified guards | 3751 |
 | Functions declared `:verify-guards nil` and never verified | 2617 |
-| Functions left at the default with an explicit guard | 12013 |
+| Functions left at the default with an explicit guard | 12028 |
 | Functions left at the default with no guard | 3040 |
-| `assert-event` checks | 24801 |
+| `assert-event` checks | 24832 |
 | `must-fail` checks | 2531 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 169 |
@@ -27,8 +27,8 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 387 |
 | Enabled-projection warnings | 79 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 3059 |
-| Host-names warnings | 2772 |
+| Include-hygiene warnings | 3066 |
+| Host-names warnings | 2781 |
 | Hand-written-record warnings | 19 |
 
 ## Lints
@@ -337,8 +337,10 @@ that `make certify` requests.
 | `books/bpsec-asb.lisp` | closure | 3 | 21 | 0/0/21/0 | 0 | 0 | 0 |
 | `books/bpsec-head-invariant.lisp` | closure | 6 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/bpsec-head.lisp` | closure | 3 | 6 | 0/0/6/0 | 3 | 0 | 0 |
+| `books/bpsec-input-plan.lisp` | closure | 3 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/bpsec-model.lisp` | closure | 0 | 26 | 0/0/26/0 | 0 | 0 | 0 |
 | `books/bpsec-operation.lisp` | root | 5 | 14 | 0/0/14/0 | 0 | 0 | 1 |
+| `books/bpsec-primitive-plan.lisp` | closure | 5 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/bpsec-provider-model.lisp` | root | 0 | 2 | 0/0/2/0 | 2 | 0 | 0 |
 | `books/bpsec-received-window.lisp` | root | 10 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/bpsec-target-cursor.lisp` | root | 5 | 11 | 0/0/11/0 | 0 | 0 | 0 |
@@ -1233,6 +1235,7 @@ that `make certify` requests.
 | `books/runtime-bootstrap-completion.lisp` | root | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/runtime-bootstrap-source.lisp` | root | 0 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/runtime-bootstrap-turn-installation.lisp` | root | 1 | 2 | 0/0/2/0 | 0 | 0 | 0 |
+| `books/runtime-construction-inventory.lisp` | root | 2 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/runtime-operation-compiled-source.lisp` | root | 1 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/runtime-operation-compiled-table.lisp` | root | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/runtime-operation-installed-source.lisp` | root | 1 | 4 | 0/0/4/0 | 0 | 0 | 0 |
@@ -1699,7 +1702,9 @@ that `make certify` requests.
 | `tests/acl2/bpsec-asb-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 14 | 0 | 0 |
 | `tests/acl2/bpsec-asb-window-differential-tests.lisp` | root | 0 | 3 | 0/0/3/0 | 12 | 0 | 0 |
 | `tests/acl2/bpsec-head-invariant-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 17 | 0 | 0 |
+| `tests/acl2/bpsec-input-plan-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 10 | 0 | 0 |
 | `tests/acl2/bpsec-operation-tests.lisp` | root | 0 | 7 | 0/0/7/0 | 21 | 0 | 0 |
+| `tests/acl2/bpsec-primitive-plan-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 0 | 0 |
 | `tests/acl2/bpsec-received-window-tests.lisp` | root | 8 | 3 | 0/0/2/1 | 2 | 0 | 0 |
 | `tests/acl2/bpsec-target-cursor-tests.lisp` | root | 0 | 3 | 0/0/3/0 | 12 | 0 | 0 |
 | `tests/acl2/bpsec-target-spine-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 6 | 0 | 0 |
@@ -2269,6 +2274,7 @@ that `make certify` requests.
 | `tests/acl2/runtime-bootstrap-completion-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 2 | 0 | 0 |
 | `tests/acl2/runtime-bootstrap-export-tests.lisp` | root | 4 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/runtime-bootstrap-source-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 0 | 0 |
+| `tests/acl2/runtime-construction-inventory-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 0 | 0 |
 | `tests/acl2/runtime-operation-compiled-source-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 0 | 0 |
 | `tests/acl2/scheduler-peers-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 31 | 0 | 0 |
 | `tests/acl2/scheduler-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 103 | 0 | 0 |

@@ -20142,6 +20142,31 @@
         "planning/evidence/bootstrap-data6-current-source-2026-10-01/scope.json"
       ],
       "progress_note": "DATA6 split successor: actual source/guard and complete-result/census source proofs passed in stopped ats-split. Fresh normal qualification remains scoped by the new manifests; predecessor39/40 kernel13 and monolithic50/52 evidence is historical. No native lowering/tariff, all-writer activation or image claim. Selected source/component receipts are retained separately; this public target remains planned with no completion events until current host/build/source/funding composition qualifies. Physical-fit authority is distinct from request-budget authority."
+    },
+    {
+      "id": "PRF-1203",
+      "title": "Actual construction inventory resident sum stays in the selected immediate domain",
+      "statement": "The host-called fn-runtime-construction-inventory returns inventory-observed only with natural observed primary and resident totals, resident = 2*(observed primary + separately named future constructor primary) + native octets, and resident <= the supplied selected runtime immediate limit. Shallow observations and completeness/identity of the actual image construction recipe remain explicit native/compiler obligations; this does not prove whole process RSS or grant an operation.",
+      "milestone": "M1",
+      "requirements": [
+        "HST-002"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/runtime-construction-inventory.lisp",
+        "host/native/runtime-construction-inventory.lisp",
+        "tests/acl2/runtime-construction-inventory-tests.lisp",
+        "tests/native/runtime-construction-inventory.lisp",
+        "planning/evidence/runtime-construction-inventory-2026-10-01/coordinate.json",
+        "planning/evidence/manifests/certify-20261001T034837Z-1583376.json",
+        "planning/evidence/manifests/certify-20261001T035045Z-1607035.json"
+      ],
+      "progress_note": "Actual core definitions/guards and resident bound normal-certified in034837; unchanged book reused in035045 with final ten literal fixtures including full theorem antecedent/conclusion and sole-hypothesis removal. Native actual primitive fixtures pass local and selected Linux. Complete image recipe/source binding, real constructor reserves and positive recovery family remain open; this is the arithmetic boundary only.",
+      "events": [
+        "fn-runtime-construction-inventory-bounds-resident"
+      ]
     }
   ]
 }
