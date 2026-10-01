@@ -75,6 +75,16 @@ BASE_DISPATCHERS = {
 # The positions that only NAME an entry (a fault's subject), never resolve it:
 # a literal there need not be a declared entry.
 LABELS = {("fnn-fixed-callback-fail", 0)}
+# Positions where a quoted symbol is compared or looked up and never escapes
+# as a value: a book function's name there names nothing callable.
+KEY_POSITIONS = {"assoc": (0,), "rassoc": (0,), "member": (0,), "gethash": (0,),
+                 "getf": (1,), "find": (0,), "position": (0,), "eq": (0, 1),
+                 "eql": (0, 1), "equal": (0, 1), "fboundp": (0,), "remove": (0,),
+                 "fnn-global": (0,), "f-get-global": (0,), "boundp": (0,)}
+# Where a value is only printed: a book symbol there labels a message.
+LABEL_SINKS = {"format": 1, "fnn-fault": 0, "fnn-refuse": 0, "error": 1, "fnn-out": 0,
+               "warn": 0, "cerror": 1, "fnn-fixed-callback-fail": 0}
+
 # The table resolutions: their value is the entry's function object.
 RESOLVERS = {"fnn-fixed-raw-callback", "fnn-dispatch-function"}
 
@@ -121,7 +131,7 @@ SELECT = {"car": 0, "cdr": 0, "first": 0, "second": 0, "third": 0, "fourth": 0,
           "stable-sort": 0, "butlast": 0}
 # Functions whose value is never a symbol or function: numbers, strings,
 # booleans, characters, octet vectors, OS objects (sockets, threads, mutexes).
-NONFUNCTION = {"+", "-", "*", "/", "1+", "1-", "length", "format", "concatenate",
+NONFUNCTION = {"error", "+", "-", "*", "/", "1+", "1-", "length", "format", "concatenate",
                "string=", "string-equal", "eq", "eql", "equal", "equalp", "=", "<",
                ">", "<=", ">=", "/=", "not", "null", "zerop", "plusp", "minusp",
                "min", "max", "floor", "ceiling", "truncate", "round", "mod", "rem",
@@ -166,15 +176,76 @@ class Allow:
 # quoted dispatch owed after stage 0 (no served-path host edit before it).
 
 INTERNAL = "dispatcher internal: resolves an entry name against the generated table"
+DIGEST = ("the BLAKE3 reference/native pair (host/native/digest.lisp): the ACL2 "
+          "definitions of these digest functions are captured once and the native "
+          "accelerator installed over them; fnn-digest-check compares the two -- a "
+          "fixed list, no entry of the table, never a def-carried function (checked)")
+LOOKUPS = ("developer lookup counters, FN_NATIVE_COUNT_LOOKUPS only (fnn-developer-"
+           "selector; a production image refuses to start with it set): "
+           "sb-int:encapsulate wraps each listed read function to count its calls")
 ALLOW: list[Allow] = [
     Allow("WORLD", "host/native/io.lisp", "fnn-install-raw-dispatch",
-          INTERNAL + " (reads fn-interfaces from the world once, at image build)"),
+          INTERNAL + " (reads fn-interfaces off the world once, at image build)"),
     Allow("WORLD", "host/native/io.lisp", "fnn-entry-guard-spec",
-          INTERNAL + " (reads the entry's formals and guard off the world, cached)"),
+          INTERNAL + " (reads the entry's formals, stobjs-in and guard, cached)"),
+    Allow("WORLD", "host/native/io.lisp", "fnn-trailing-kind",
+          INTERNAL + " (reads the entry's stobjs-in, cached)"),
+    Allow("WORLD", "host/native/io.lisp", "fnn-fixed-raw-callback",
+          INTERNAL + " (the compiled function of a :raw-with entry the table resolved)"),
     Allow("MAKE", "host/native/io.lisp", "fnn-counterpart",
-          INTERNAL + " (find-symbol of the *1* counterpart in ACL2_*1*_ACL2)"),
+          INTERNAL + " (find-symbol of the entry's *1* counterpart in ACL2_*1*_ACL2)"),
     Allow("CALL", "host/native/io.lisp", "fnn-entry-guard",
-          INTERNAL + " (funcalls a kind recognizer read off *fn-entry-guard-kinds*)"),
+          INTERNAL + " (funcalls a kind recognizer of *fn-entry-guard-kinds*, "
+          "books/payload-kinds.lisp: guard-t, linear, read off the entry's guard)"),
+    Allow("NAMEVAR", "host/native/io.lisp", "fnn-cold-guard-cache-prepare",
+          INTERNAL + " (reads the guard spec of each name of ACL2's fixed cold roster "
+          "fn-cgb-roster; calls nothing)"),
+    Allow("WORLD", "host/native/io.lisp", "fnn-global",
+          "reads an ACL2 state global by name (f-get-global); a value read is data, "
+          "and CALL refuses any value that reaches a function position untraced"),
+    Allow("WORLD", "host/native/io.lisp", "fnn-developer-selector-gate",
+          "sb-int:encapsulate of the SBCL condition sb-kernel::control-stack-exhausted-error "
+          "only (fnn-stack-exhaustion-report): no book function"),
+    Allow("NAME", "host/native/digest.lisp", "*fnn-digest-entries*", DIGEST),
+    Allow("NAME", "host/native/digest.lisp", "*fnn-digest-natives*", DIGEST),
+    Allow("CALL", "host/native/digest.lisp", "fnn-digest-capture-references", DIGEST),
+    Allow("WORLD", "host/native/digest.lisp", "fnn-digest-capture-references", DIGEST),
+    Allow("WORLD", "host/native/digest.lisp", "fnn-digest-install-natives", DIGEST),
+    Allow("WORLD", "host/native/digest.lisp", "fnn-digest-restore-references", DIGEST),
+    Allow("NAME", "host/native/digest.lisp", "fnn-b3-reference-range", DIGEST),
+    Allow("NAME", "host/native/digest.lisp", "fnn-b3-reference-list", DIGEST),
+    Allow("NAME", "host/native/digest.lisp", "fnn-blake3-list-native", DIGEST),
+    Allow("NAME", "host/native/digest.lisp", "fnn-blake3-prefixed-range-native", DIGEST),
+    Allow("NAME", "host/native/digest.lisp", "fnn-blake3-prefixed-buffer-native", DIGEST),
+    Allow("NAME", "host/native/io.lisp", "+fnn-lookup-functions+", LOOKUPS),
+    Allow("CALL", "host/native/io.lisp", "fnn-install-lookup-counters", LOOKUPS),
+    Allow("MAKE", "host/native/io.lisp", "fnn-install-lookup-counters", LOOKUPS),
+    Allow("WORLD", "host/native/io.lisp", "fnn-install-lookup-counters", LOOKUPS),
+    Allow("CALL", "host/native/io.lisp", "fnn-lookup-counter", LOOKUPS),
+    Allow("CALL", "host/native/io.lisp", "fnn-lookup-walk-counter", LOOKUPS),
+    Allow("MAKE", "host/native/bp.lisp", "fnn-bp-profile-points",
+          "developer BP profile, FN_BP_TEST_PROFILE only (a production image refuses it): "
+          "names read from +fnn-bp-profile-names+ and the *1* package for sb-profile"),
+    Allow("WORLD", "host/native/bp.lisp", "fnn-bp-profile-points",
+          "developer BP profile, FN_BP_TEST_PROFILE only: (eval `(sb-profile:profile ...))"),
+]
+
+# Rewrites owed after stage 0 (MODE-2026-10-01 section 2: no served-path host
+# edit before it lands), each to a quoted dispatch the rule accepts.
+STAGE0 = "rewrite after stage 0: "
+PENDING: list[Allow] = [
+    Allow("MAKE", "host/native/owner.lisp", "fnn-fresh-stobj",
+          STAGE0 + "call the creator directly per literal stobj ((create-fn-cat), "
+          "(create-fn-hist)) instead of intern + eval", pending=True),
+    Allow("WORLD", "host/native/owner.lisp", "fnn-fresh-stobj",
+          STAGE0 + "the eval of (CREATOR) goes with the intern", pending=True),
+    Allow("NAME", "host/native/owner.lisp", "fnn-owner-chunk-span-no-io",
+          STAGE0 + "fnn-core-receiver-state is defined nowhere (host load); dispatch "
+          "through a defined state dispatcher", pending=True),
+    Allow("NAME", "host/native/owner.lisp", "fnn-owner-unavailable-line",
+          STAGE0 + "the undefined fnn-core-receiver-state, as above", pending=True),
+    Allow("NAME", "host/native/owner.lisp", "fnn-owner-resource-unavailable-line",
+          STAGE0 + "the undefined fnn-core-receiver-state, as above", pending=True),
 ]
 
 
@@ -256,6 +327,7 @@ class Scan:
     sites: list[Site] = field(default_factory=list)
     dispatchers: dict[str, set] = field(default_factory=dict)
     resolving: set = field(default_factory=set)    # (head, position) that resolve
+    labels: dict = field(default_factory=dict)     # raw function -> label positions
     named: dict = field(default_factory=dict)      # resolved literal -> {file}
     fparams: set = field(default_factory=set)      # (defun, key)
     fspecials: set = field(default_factory=set)
@@ -424,6 +496,44 @@ def _only_as_name(var: str, body, disp) -> bool:
     return total > 0 and total == named
 
 
+def _labels(scan: Scan) -> None:
+    """Raw definitions' parameters used only as a printed label, to a fixpoint."""
+    labels: dict[str, set] = {}
+    changed = True
+    while changed:
+        changed = False
+        for d in scan.raw.values():
+            for key, name in d.params:
+                if not isinstance(key, int) or key in labels.get(d.name, ()):
+                    continue
+                uses = printed = 0
+
+                def walk(form):
+                    nonlocal uses, printed
+                    if isinstance(form, Sym):
+                        uses += str(form) == name
+                        return
+                    if not isinstance(form, list) or not form or _head(form) == "quote":
+                        return
+                    h = _head(form)
+                    if h == "quasiquote":
+                        walk(_detemplate(form[1]))
+                        return
+                    for index, item in enumerate(form[1:]):
+                        if isinstance(item, Sym) and str(item) == name and (
+                                (h in LABEL_SINKS and index >= LABEL_SINKS[h])
+                                or index in labels.get(h, ())):
+                            printed += 1
+                    for item in form:
+                        walk(item)
+                for item in d.body:
+                    walk(item)
+                if uses and uses == printed:
+                    labels.setdefault(d.name, set()).add(key)
+                    changed = True
+    scan.labels = labels
+
+
 def _literal_leaves(arg) -> list | None:
     """The quoted-symbol leaves of a name argument whose every value is a
     quoted literal (a quote, or an if / case / cond over them); else None."""
@@ -473,12 +583,12 @@ class Walker:
                                     frozenset(symbols)))
 
     # -- NAME ---------------------------------------------------------------
-    def literal(self, form, allowed_positions=False):
+    def literal(self, form, allowed_positions=False, env=None):
         """A quote/function form not in a dispatcher name position."""
         h = _head(form)
         body = form[1] if len(form) > 1 else None
         if h == "function" and _head(body) == "lambda":
-            self.code(body, {})
+            self.code(body, env or {})
             return
         books = sorted({s for s in _symbols(body) if s in self.scan.book})
         if books and not allowed_positions and id(form) not in self.allowed:
@@ -503,8 +613,15 @@ class Walker:
                 self.code(item, env)
             return
         if h in ("quote", "function"):
-            self.literal(form)
+            self.literal(form, env=env)
             return
+        # a quoted symbol compared, looked up or printed never escapes as a value
+        for index, item in enumerate(form[1:]):
+            if _head(item) == "quote" and (
+                    index in KEY_POSITIONS.get(h, ())
+                    or (h in LABEL_SINKS and index >= LABEL_SINKS[h])
+                    or index in self.scan.labels.get(h, ())):
+                self.allowed.add(id(item))
         if h == "quasiquote":
             template = _detemplate(form[1])
             # a template's literal symbols become code or data when expanded:
@@ -513,10 +630,13 @@ class Walker:
             return
         if h in ("let", "let*") and len(form) > 1 and isinstance(form[1], list):
             inner = dict(env)
-            for binding in form[1]:
+            for i, binding in enumerate(form[1]):
                 if isinstance(binding, list) and len(binding) > 1 and isinstance(binding[0], Sym):
                     leaves = _literal_leaves(binding[1])
-                    if leaves and _only_as_name(str(binding[0]), form[2:], self.disp):
+                    scope = list(form[2:])
+                    if h == "let*":
+                        scope += [b[1:] for b in form[1][i + 1:] if isinstance(b, list)]
+                    if leaves and _only_as_name(str(binding[0]), scope, self.disp):
                         self.allowed.update(id(leaf) for leaf in leaves)
                         self.namevars.add(str(binding[0]))
                         for leaf in leaves:
@@ -613,8 +733,11 @@ class Walker:
             return
         if h == "lambda" and len(form) > 1:
             inner = dict(env)
-            for _k, n in _lambda_params(form[1]):
-                inner[n] = None
+            slot = self.scan.lambda_slot.get(id(form))
+            for k, n in _lambda_params(form[1]):
+                # a lambda handed to a raw function: its parameters are what
+                # that function funcalls it with (checked in the fixpoint)
+                inner[n] = ("lam",) + slot + (k,) if slot else None
             for item in form[2:]:
                 self.code(item, inner)
             return
@@ -640,7 +763,10 @@ class Walker:
                     elif _head(base) in self.scan.slots:
                         self.slot_write(_head(base), value, env)
                 elif _head(place) in ("symbol-function", "fdefinition"):
-                    self.site("WORLD", "(setf ({} ...))".format(_head(place)))
+                    quoted = _quoted_symbol(place[1]) if len(place) > 1 else None
+                    if quoted is None or quoted in self.scan.book:
+                        self.site("WORLD", "(setf ({} {}))".format(
+                            _head(place), _show(place[1]) if len(place) > 1 else ""))
             # walk normally below
         if h in ("push", "pushnew") and len(form) > 2:
             place, value = form[2], [Sym("cons"), form[1], form[2]]
@@ -690,8 +816,11 @@ class Walker:
                 self.site("MAKE", _show(form))
         if h in WORLD:
             quoted = _quoted_symbol(args[0]) if args else None
-            if not (h in ("symbol-function", "fdefinition") and quoted is not None
-                    and quoted not in self.scan.book):
+            resolved = (h in ("symbol-function", "fdefinition") and args
+                        and _head(args[0]) in RESOLVERS and len(args[0]) == 2
+                        and _literal_leaves(args[0][1]) is not None)
+            if not resolved and not (h in ("symbol-function", "fdefinition")
+                                     and quoted is not None and quoted not in self.scan.book):
                 self.site("WORLD", _show(form))
         if h == "coerce" and len(args) > 1 and _quoted_symbol(args[1]) == "function":
             self.site("WORLD", _show(form))
@@ -699,6 +828,11 @@ class Walker:
         fpos = []
         if h in HOF1 and args:
             fpos.append(args[0] if target == h else None)
+            if h in ("funcall", "apply") and target == h and isinstance(args[0], Sym) \
+                    and self.defn and str(args[0]) in self.params and str(args[0]) not in env:
+                self.scan.param_calls.setdefault(
+                    (self.defn.name, self.params[str(args[0])]), []).append(
+                        (self, args[1:] if h == "funcall" else args[1:-1], env))
         if h in HOF2 and len(args) > 1:
             fpos.append(args[1])
         if h in KEYED:
@@ -715,6 +849,11 @@ class Walker:
             callee, call_args = _quoted_symbol(args[0]), args[1:]
         if callee in self.scan.raw:
             self.scan.calls.append((self, callee, call_args, env))
+            for i, arg in enumerate(call_args):
+                if _head(arg) == "function" and len(arg) == 2 and _head(arg[1]) == "lambda":
+                    arg = arg[1]
+                if _head(arg) == "lambda":
+                    self.scan.lambda_slot[id(arg)] = (callee, i)
         if callee in self.scan.ctors:
             self.scan.ctor_calls.append((self, callee, call_args, env))
         for index, item in enumerate(form[1:]):
@@ -776,6 +915,9 @@ class Walker:
                 init = env[name]
                 if init is None:
                     return "an opaque binding"
+                if isinstance(init, tuple) and init[0] == "lam":
+                    self.scan.lamparams.add(init[1:])
+                    return None
                 if isinstance(init, tuple):
                     self.flparams.add(init[1:])
                     return None
@@ -892,9 +1034,11 @@ def scan_sources(files: dict[str, list], book: set[str]) -> Scan:
     defs, tops = _definitions(files)
     scan = Scan(book=book - set(defs), raw=defs)
     scan.calls, scan.ctor_calls = [], []
+    scan.lambda_slot, scan.lamparams, scan.param_calls = {}, set(), {}
     scan.special_writes, scan.slot_writes = [], []
     _structs(scan, tops)
     _dispatchers(scan)
+    _labels(scan)
     returns: dict[str, str | None] = {}
 
     def returns_traced(name):
@@ -939,6 +1083,15 @@ def scan_sources(files: dict[str, list], book: set[str]) -> Scan:
                     for k, v in zip(args, args[1:]):
                         if isinstance(k, Sym) and str(k) == key:
                             work.append((w, v, env, "{} of {}".format(key, callee)))
+        for callee, i, k in sorted(scan.lamparams, key=str):
+            keys = [key for key, _n in defs[callee].params if key == i]
+            for key in keys:
+                for w, args, env in scan.param_calls.get((callee, key), []):
+                    if isinstance(k, int):
+                        work.append((w, args[k] if k < len(args) else None, env,
+                                     "argument {} {} passes its lambda".format(k + 1, callee)))
+                if not scan.param_calls.get((callee, key)):
+                    pass  # never called: the parameter receives nothing
         for w in walkers:
             for local, args, env in w.local_calls:
                 for i, arg in enumerate(args):
@@ -1011,12 +1164,14 @@ def raw_sources(tree=None) -> dict[str, list]:
 
 
 def carried_functions() -> set[str]:
-    """Every function a def-carried row names: opens, transitions, produced."""
+    """Every function a def-carried row names: its opens, transitions and
+    bridged recognizers, and the opens it says are produced."""
     from tools import interface_emit
     out: set[str] = set()
     for row in interface_emit.carried_rows().values():
-        for key in ("opens", "transitions", "produced"):
-            out.update(row.get(key, []))
+        for key in ("established", "transitions", "concludes"):
+            out.update(pair[0] for pair in row.get(key, []))
+        out.update(row.get("produced", []))
     return out
 
 
@@ -1029,13 +1184,46 @@ def book_functions(tree) -> set[str]:
             | interface_emit.generated_names())
 
 
-def findings(tree=None) -> tuple[list[str], dict]:
+# Entry names a derived dispatcher resolves with no definterface declaration
+# (fnn-call takes any name's counterpart).  A ratchet: the count may fall,
+# never rise; the dispatcher's own table check is owed after stage 0.
+UNDECLARED_CEILING = 148
+
+
+def findings(tree=None, declared: set[str] | None = None) -> tuple[list[str], dict]:
+    from tools import interface_emit
     tree = tree or ledger.load_tree(lazy=True)
     scan = scan_sources(raw_sources(tree), book_functions(tree))
     problems, covered = judge(scan, ALLOW + PENDING, carried_functions())
+    # a produced open is never dispatched by any dispatcher (def-carried
+    # :produced; interface_emit checks the RAW_DISPATCHERS reading, this the
+    # derived dispatchers too)
+    for row_name, row in sorted(interface_emit.carried_rows().items()):
+        for f in row.get("produced", []):
+            if f in scan.named:
+                problems.append("the raw host dispatches {} ({}), an open whose argument "
+                                "the def-carried row {} says is produced".format(
+                                    f, ", ".join(sorted(scan.named[f])), row_name))
+    if declared is None:
+        declared = {d["name"] for d in interface_emit.declarations()}
+    undeclared = sorted(set(scan.named) - declared)
+    if len(undeclared) > UNDECLARED_CEILING:
+        problems.append("{} names a dispatcher resolves have no definterface declaration "
+                        "(ceiling {}); declare the new ones: {}".format(
+                            len(undeclared), UNDECLARED_CEILING,
+                            " ".join(undeclared[:20])))
     covered["sites"] = len(scan.sites)
     covered["dispatchers"] = len(scan.dispatchers)
+    covered["undeclared"] = len(undeclared)
     return problems, covered
+
+
+def summary(covered: dict, problems: list) -> str:
+    return ("raw_dispatch_rule: {} site(s) outside the rule; {} allowed, {} pending stage 0; "
+            "{} dispatcher(s); {} undeclared dispatched name(s) (ceiling {}); "
+            "{} finding(s)".format(covered["sites"], covered["allowed"], covered["pending"],
+                                   covered["dispatchers"], covered["undeclared"],
+                                   UNDECLARED_CEILING, len(problems)))
 
 
 def main(argv=None) -> int:
@@ -1050,16 +1238,11 @@ def main(argv=None) -> int:
             print("{}\t{}\t{}\t{}\t{}".format(s.rule, s.file, s.context, s.line, s.detail))
         return 0
     problems, covered = findings()
-    print("raw_dispatch_rule: {} site(s) outside the rule; {} allowed, {} pending stage 0; "
-          "{} dispatcher(s); {} finding(s)".format(covered["sites"], covered["allowed"],
-                                                   covered["pending"], covered["dispatchers"],
-                                                   len(problems)))
+    print(summary(covered, problems))
     for problem in problems:
         print("  " + problem)
     return 1 if (args.check and problems) else 0
 
-
-PENDING: list[Allow] = []
 
 if __name__ == "__main__":
     raise SystemExit(main())

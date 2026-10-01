@@ -23,6 +23,15 @@
 ; bound, about 2^-128 per chosen pair of frames, for a checkpoint file that
 ; verifies and is not the writer's.
 ;
+; Neither predicate is empty: each holds of the empty history's checkpoint
+; and its Store open (the last two constraints); and neither is everything:
+; tests/acl2/owner-retain-carried-tests.lisp derives, from the producer
+; theorems, that each FAILS on a forged checkpoint and on a crossed pair.
+; Why it cannot be proved here: the checkpoint is read from a file the host
+; did not just write; that its folds are the capture of the history it
+; continues is the recovery refinement (open), and that the global holds the
+; pair of the open the host ran is the host's wiring (no ACL2 subject).
+;
 ; The theorems that rest on it name it: books/owner-retain-carried.lisp's
 ; produced premises (def-carried :produced, NAME-FN-P-produced), so raw
 ; dispatch over the owner row is a claim UNDER A-RECOVERED-OPEN.
@@ -49,16 +58,19 @@
   (local (defun fn-assume-capture-suffix (e configs) (declare (ignore e configs)) nil))
   (local (defun fn-assume-store-open-e (replayed opened)
            (declare (ignore replayed opened))
-           (fn-sco-extend (fn-sco-capture nil nil) nil nil)))
+           (fn-sco-extend (fn-sco-capture (list *fn-cfg-default-record*) nil)
+                          (list *fn-cfg-default-record*) nil)))
   (local (defun fn-assume-store-open-configs (replayed opened)
            (declare (ignore replayed opened))
-           nil))
+           (list *fn-cfg-default-record*)))
   (local (defun fn-assume-store-open-frontier (replayed opened)
            (declare (ignore replayed opened))
            0))
   (local (defun fn-assume-store-open-pairp (replayed opened)
-           (let ((pair (fn-sco-store-open (fn-sco-extend (fn-sco-capture nil nil) nil nil)
-                                          nil 0)))
+           (let ((pair (fn-sco-store-open
+                        (fn-sco-extend (fn-sco-capture (list *fn-cfg-default-record*) nil)
+                                       (list *fn-cfg-default-record*) nil)
+                        (list *fn-cfg-default-record*) 0)))
              (and (equal replayed (car pair)) (equal opened (cadr pair))))))
 
   ; E is the capture of a prefix of the history, extended over the rest.
@@ -86,4 +98,18 @@
   (defthm fn-assume-capture-extension-of-the-empty-history
     (fn-assume-capture-extensionp (fn-sco-extend (fn-sco-capture configs nil) configs nil)
                                   configs)
+    :rule-classes nil)
+
+  ; Nor is the pair predicate empty (r29-F2: interpreted as constantly NIL it
+  ; satisfied every other constraint, and the producer theorem over it was
+  ; vacuous): the Store open of the empty history under the default
+  ; configuration -- the open a fresh store's first start runs -- is a pair
+  ; it holds of.  tests/acl2/owner-retain-carried-tests.lisp installs the
+  ; owner from exactly this pair and evaluates the producer's conclusion.
+  (defthm fn-assume-store-open-pair-of-the-empty-history
+    (let ((pair (fn-sco-store-open
+                 (fn-sco-extend (fn-sco-capture (list *fn-cfg-default-record*) nil)
+                                (list *fn-cfg-default-record*) nil)
+                 (list *fn-cfg-default-record*) 0)))
+      (fn-assume-store-open-pairp (car pair) (cadr pair)))
     :rule-classes nil))
