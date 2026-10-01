@@ -21045,6 +21045,69 @@
         "pgs-x-fill-is-frame-put",
         "fn-hrc-get-is-hrecs-get"
       ]
+    },
+    {
+      "id": "PRF-1209",
+      "title": "The resource vector and the bank: funded preserved by every transition, settle once, refusal keeps the slack, destroy returns exactly the unsettled draws",
+      "statement": "books/resource-vector.lisp: the resource vector (a fixed-arity list of naturals, one coordinate a class of *fn-rv-coordinates*: resident, disk, descriptors, workers, read-ids, txids, config-gens, conn-ids, work; the first five Codex's fn-prs vector) with coordinate-wise plus, the order fn-rv-below and the truncated difference, split by the reusable mask into reusable and spent coordinates; the bank (BUDGET DRAWN SLOTS) with the drawn vector carried in state and direct-index rows (PHASE GEN . DEMAND), phase 0 idle, 1 drawn, 2 a sub-bank whose demand is its whole budget (sub-banks partition their parent), GEN the slot's generation raised by every charge and answered as the draw's completion token, which every later step on the slot names (:stale otherwise); the transitions draw, open, settle, refund, grow, destroy and the root fn-rv-install (slot 0 the owner's baseline, slot 1 the maintenance reserve as a sub-bank, before any user's slot). KEYSTONE fn-rv-step-keeps-okp: from an okp bank (funded; the reusable part of drawn exactly the reusable part of the outstanding rows; the spent part of the rows within the spent part of drawn) every transition's result is okp, admitted or refused; fn-rv-run-keeps-okp over sequences. KEYSTONE fn-rv-step-refused-keeps-the-bank: a refused step returns the bank itself, so fn-rv-refusal-keeps-slack and fn-rv-refused-run-keeps-the-bank. KEYSTONE fn-rv-draw-admits-exactly-within-the-budget (the check precedes every effect; fn-rv-draw-charges-exactly-the-demand). KEYSTONE fn-rv-settle-once. KEYSTONE fn-rv-replayed-completion-is-stale (Codex review r06 F2: the first draw's token, any run, a second admitted draw of the slot; the replayed token is :stale and leaves the bank; fn-rv-run-never-lowers-a-gen, fn-rv-charge-raises-the-gen). KEYSTONE fn-rv-step-keeps-the-other-slots and fn-rv-user-steps-keep-the-reserve (the reserve is never drawn by a user's step). KEYSTONE fn-rv-install-reserves-the-owner-first. KEYSTONE fn-rv-destroy-returns-exactly-the-unsettled-draws: destroying a sub-bank returns exactly its budget less what it spent, which covers the reusable part of every draw it still held. books/resource-vector-tree.lisp, a node's accounting as ONE state (ROOT SUBS), the sub-bank living in its parent's slot: KEYSTONE fn-rt-step-keeps-okp (and fn-rt-run-keeps-okp, fn-rt-step-refused-keeps-the-tree); KEYSTONE fn-rt-sub-bank-steps-keep-the-root (the partition); KEYSTONE fn-rt-destroy-revokes-the-sub-bank (r06 F2: after an admitted destroy, any run, and whatever the slot holds then, every step addressed to the destroyed sub-bank's token is :stale and leaves the tree; fn-rv-token-retiredp inductive over steps). Not claimed: which operation may draw which coordinate, any tariff, any served path (definterface :operation, specs/resource-vector.md); the refusal path's own transient allocation (the operation layer's, specs/resource-vector.md item 4).",
+      "status": "planned",
+      "milestone": "M5",
+      "requirements": [
+        "HST-045"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "events": [],
+      "evidence": [
+        "books/resource-vector.lisp",
+        "tests/acl2/resource-vector-tests.lisp",
+        "specs/resource-vector.md"
+      ],
+      "progress_note": "Lane resource-ledger (Fable, 2026-10-01): books/resource-vector.lisp REPL-admitted and certified on the laptop (179 forms); teeth tests/acl2/resource-vector-tests.lisp (defkeystone, one removal witness a hypothesis, corrupted-state witnesses labelled, mutations for the hypothesis-free keystones). NO EVENTS ARE CITED: no host line calls the bank yet (MODE 2026-10-01 section 3: no gate before its producer); the first caller is definterface :operation (the next lane), which charges every host-called entry through the typed twin (PRF-1211)."
+    },
+    {
+      "id": "PRF-1210",
+      "title": "One accounting: Codex's cold-read gate, the credit ledger, the heap reservation and the connection budget as projections of the resource vector",
+      "statement": "books/resource-vector-relations.lisp: Codex's fn-prs 5-vector is the resource vector's prefix (fn-rv-prs-vector-is-the-prefix; fn-prs-plus and fn-prs-below agree with fn-rv-plus and fn-rv-below under the embedding); fn-prs-fundedp B U R C is exactly fn-rv-okp of the root bank whose rows are U (drawn), R (a sub-bank) and C (drawn) (fn-rv-prs-gate-is-a-funded-root); PRF-380's credit ledger is the :resident coordinate: a ledger is an okp bank whose rows are BASE, COMPLETION and RUNTIME (sub-banks), CACHE and one row an operation, every other coordinate 0, funded iff its total is within its budget BY CONSTRUCTION (fn-rv-credit-ledger-funded-by-definition, a projection identity, not a consistency keystone). NOT PROVED (Codex review r06 F5; NEXT): that a funded ledger is an okp bank (the row sum equals the total) and that Codex's release-the-reusable-coordinates is fn-rv-settle's split. books/resource-vector-relations-heap.lisp: PRF-198's accepted reservation is a funded root whose :resident coordinate is the reservation's octets against the machine's and whose :workers coordinate is the threads (fn-rv-heap-reservation-funds-the-root); PRF-223's held capacity is a funded root whose :resident coordinate is the resident figure of CAPACITY connections (fn-rv-connection-budget-funds-the-root). Not claimed: that the four budgets are one number (they are projections of different roots: the launcher's, the owner's, the cold pool's); their unification is the operation layer's.",
+      "status": "planned",
+      "milestone": "M5",
+      "requirements": [
+        "HST-045",
+        "HST-013"
+      ],
+      "depends_on": [
+        "PRF-1209",
+        "PRF-380",
+        "PRF-198",
+        "PRF-223"
+      ],
+      "assumptions": [],
+      "events": [],
+      "evidence": [
+        "books/resource-vector-relations.lisp",
+        "books/resource-vector-relations-heap.lisp",
+        "tests/acl2/resource-vector-relations-tests.lisp"
+      ],
+      "progress_note": "Lane resource-ledger (Fable, 2026-10-01): the light book (PRS prefix, credits) REPL-driven on persvati; the heap book's include closure is the owner's (fifty-odd books uncertified at this digest on persvati), so it is certified by the farm after the next cite. See build/coordinator/lanedumps/resource-ledger.md for what is admitted and what remains."
+    },
+    {
+      "id": "PRF-1211",
+      "title": "The resource ledger as a typed stobj: u64 budget and drawn words, direct-index typed slot columns, Codex's pool reshaped onto it",
+      "statement": "books/resource-vector-exec.lisp: fn-resource-ledger, a stobj with no list -- the budget and drawn vectors as (unsigned-byte 64) arrays of *fn-rv-k* words, the slots as direct-index typed columns (a phase column, a generation column, one u64 column a coordinate for the demands), Codex's per-read ownership row (the token (id cid file eoff elen trailer), books/page-read-ledger.lisp) as six u64 columns by slot, and Codex's five-element pool list (books/page-read-pool-state.lisp fn-prp-data) as typed scalars; fn-rl-bank abstracts it to the logical bank and fn-rl-wfp is the representation invariant; the representation domain is explicit (r06 F4, D27): a budget word past u64 refuses the install (:unrepresentable-profile) before any store, a slot at the last generation refuses its next charge (:slot-exhausted); nothing saturates or wraps. STATUS: no correspondence theorem is proved and the exports' guards are declared, not verified (tests/acl2/resource-vector-exec-tests.lisp evaluates the abstraction against the logical transitions on values only). Owed: per export the correspondence theorem (the abstraction of fn-rl-draw / fn-rl-settle / fn-rl-install's result is fn-rv-draw / fn-rv-settle / fn-rv-install of the abstraction) and the exports' guard verification; with them PRF-1209's keystones are the typed ledger's. Marked ; GEN: def-representation (MODE 2026-10-01 section 4).",
+      "status": "planned",
+      "milestone": "M5",
+      "requirements": [
+        "HST-045"
+      ],
+      "depends_on": [
+        "PRF-1209"
+      ],
+      "assumptions": [],
+      "events": [],
+      "evidence": [
+        "books/resource-vector-exec.lisp"
+      ],
+      "progress_note": "Lane resource-ledger (Fable, 2026-10-01): the stobj, its abstraction and the draw/settle/install exports are REPL-admitted with guards declared and not yet verified; the correspondence theorems are the lane's NEXT (build/coordinator/lanedumps/resource-ledger.md)."
     }
   ]
 }

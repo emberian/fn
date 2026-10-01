@@ -6464,6 +6464,27 @@
         "planning/evidence/operation-diagnostics-2026-10-01/README.md"
       ],
       "note": "Preserve complete existing status/health information and paging. Exact owner-control turn and installed response source precede rendering. Missing observer or source is explicitly unavailable. Diagnostic scalar renderer is certified; composed transport, immutable report capture and resumable whole-report preparation remain open."
+    },
+    {
+      "id": "HST-045",
+      "title": "Every resource spent on a user's behalf is drawn from that user's bank before the effect: one resource vector, the owner's needs reserved first, teardown returns the sub-bank",
+      "specification": "specs/resource-vector.md",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-1209",
+        "PRF-1210",
+        "PRF-1211"
+      ],
+      "verification": [
+        "proof"
+      ],
+      "evidence": [
+        "books/resource-vector.lisp",
+        "tests/acl2/resource-vector-tests.lisp"
+      ],
+      "implementation_note": "The warranty (planning/design-store-representation-2026-10-01.md section 2, stage 6): a fixed-arity resource vector (resident, disk, descriptors, workers, the finite identity spaces, work) and a bank with a carried drawn vector and direct-index slots; U + C + R <= B(P) with R the maintenance reserve opened before any user's slot; dW+ charged by growing the reserve before acceptance; refusal returns the bank itself.",
+      "note": "Logical foundation and typed representation only (lane resource-ledger, 2026-10-01); no served entry draws on a bank until definterface :operation lands (MODE 2026-10-01 section 3)."
     }
   ]
 }
