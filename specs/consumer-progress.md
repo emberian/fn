@@ -1306,3 +1306,17 @@ are source-level results. Outer configured-node/identity correspondence,
 source/funding gates, whole carried-state association and owner/restart
 installation remain open. Authored outer composition tests do not qualify
 those joins or activate account authority.
+
+The internal account scheduler retains one selected E/C operation with its
+original input-source key and job. Native code receives only its opaque ID;
+the durable adapter obtains the selected record internally. Before a private
+authority E node is staged, the same reserved BEGIN captures the old Store,
+canonical context, account metadata and committed root alias. Its subsequent
+account step consumes the actual retained node result and calls the guarded
+private authority stage once. A readout returns the complete full7 and captured
+root under the current typed operation/writer lease. The typed C sequence is
+not inferred from configuration generation. These new host callers are source
+assembly only; their modern includes, funding census, current-source invariant
+and actual durable activation remain unqualified. Preparation of a nonempty
+configuration row refuses explicitly until that row's carried size is supplied
+by its actual producer.
