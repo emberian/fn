@@ -122,19 +122,19 @@
 ; kinds of call present (record, scalar and generic).
 (assert-event
  (drt-clear-calls-in-package-p
-  (rep-instance-events :drt-package '((id :u64)) nil nil nil nil)
+  (rep-instance-events :drt-package '((id :u64)) nil nil nil nil nil)
   (symbol-package-name :drt-package)))
 (assert-event
  (drt-clear-calls-in-package-p
-  (rep-instance-events :drt-package '((id :u64)) t nil nil nil)
+  (rep-instance-events :drt-package '((id :u64)) t nil nil nil nil)
   (symbol-package-name :drt-package)))
 (assert-event
  (drt-clear-calls-in-package-p
-  (rep-instance-events :drt-package '((id :u64)) t t nil nil)
+  (rep-instance-events :drt-package '((id :u64)) t t nil nil nil)
   (symbol-package-name :drt-package)))
 (assert-event
  (drt-clear-calls-in-package-p
-  (rep-instance-events 'drt-two '((id :u64)) nil nil nil nil) "ACL2"))
+  (rep-instance-events 'drt-two '((id :u64)) nil nil nil nil nil) "ACL2"))
 
 ; One spelling in two packages: two instances, two foundations.
 (assert-event
