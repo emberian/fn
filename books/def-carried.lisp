@@ -31,7 +31,9 @@
 ;
 ; PATTERN says where the carried state is in FN's result: a term over the
 ; placeholder `_' (default `_': the call itself), such as (mv-nth 2 _) or
-; (fn-tcl-result-session _).  The theorem's conclusion must be R of exactly
+; (fn-tcl-result-session _) for a value state.  For a carried stobj, only
+; `_` for its sole output or (mv-nth K _) at a world-confirmed output
+; position is allowed for transitions.  The theorem's conclusion must be R of exactly
 ; PATTERN with `_' replaced by a call (FN v1 ... vn) on distinct variables
 ; -- never R of some larger term that merely contains the call (a theorem
 ; about (fn-open (fn-break s)) is not fn-break's preservation).
@@ -389,16 +391,39 @@
            (subsetp-eq (all-vars1-lst others nil) (cdr call))
            (list term call svar others)))))
 
+(defun fn-cd-stobj-patternp (r fn pattern w)
+  (declare (xargs :mode :program))
+  ; Value-state projections retain their explicit enumeration contract.
+  ; A stobj projection is determined by ACL2, never by an author-supplied
+  ; operation that might repair the returned state.
+  (let ((st (car (getpropc r 'stobjs-in nil w)))
+        (outputs (getpropc fn 'stobjs-out nil w)))
+    (or (null st)
+        (if (eq pattern '_)
+            (equal outputs (list st))
+          (and (true-listp pattern) (equal (len pattern) 3)
+               (eq (car pattern) 'mv-nth)
+               (natp (cadr pattern))
+               (< (cadr pattern) (len outputs))
+               (eq (caddr pattern) '_)
+               (eq (nth (cadr pattern) outputs) st))))))
+
 (defun fn-cd-transition-problem (r entry w)
   (declare (xargs :mode :program))
   (let* ((fn (car entry))
          (thm (cadr entry))
          (pattern (fn-cd-pattern entry))
          (formula (fn-cd-theorem thm w)))
-    (if (null formula)
-        (msg "transition ~x0 names ~x1, which is not a theorem in this world"
-             fn thm)
-      (mv-let (hyps concl)
+    (cond
+     ((not (fn-cd-stobj-patternp r fn pattern w))
+      (msg "transition ~x0 has invalid carried-stobj PATTERN ~x1: use `_
+            only for a sole carried-stobj output, or (mv-nth K _) where
+            ACL2's stobjs-out identifies that carried stobj at K"
+           fn pattern))
+     ((null formula)
+      (msg "transition ~x0 names ~x1, which is not a theorem in this world"
+           fn thm))
+     (t (mv-let (hyps concl)
         (fn-cd-split formula nil)
         (let ((rhyps (fn-cd-with-head r hyps)))
           (cond
@@ -428,7 +453,7 @@
                   one of the call's variables, and the conclusion's and the ~
                   other hypotheses' variables must all be the call's"
                  fn thm))
-           (t nil)))))))
+           (t nil))))))))
 
 (defun fn-cd-transitions-problem (r transitions w)
   (declare (xargs :mode :program))

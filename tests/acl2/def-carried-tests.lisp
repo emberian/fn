@@ -259,7 +259,7 @@
  :unchecked "the call's argument is not a variable")
 
 ; The wrong pattern: the note answers (mv x st); its state is (mv-nth 1 _).
-(fn-cdt-problem-says "the state ~x0 returns"
+(fn-cdt-problem-says "invalid carried-stobj PATTERN"
  (:invariant fn-cdt-relp :established ((fn-cdt-open fn-cdt-open-establishes))
   :transitions ((fn-cdt-note fn-cdt-note-carries))))
 (must-fail-checked
@@ -355,6 +355,58 @@
                  (fn-cdt-note fn-cdt-note-carries (mv-nth 1 _))
                  (fn-cdt-reset fn-cdt-reset-carries)))
  :unchecked "contradictory hypotheses prove their own negation")
+
+; r08-F1: complete declarations, checked at the same world-check boundary
+; def-carried uses.  These assert the diagnostic independently of failure.
+(encapsulate ()
+ (local
+  (defun fn-cdt-break (fn-cdt-st)
+    (declare (xargs :stobjs fn-cdt-st :guard (fn-cdt-relp fn-cdt-st)))
+    (update-fn-cdt-n 0 fn-cdt-st)))
+ (local
+  (defthm fn-cdt-break-repaired
+    (implies (fn-cdt-relp fn-cdt-st)
+             (fn-cdt-relp (fn-cdt-open (fn-cdt-break fn-cdt-st))))))
+ (local (definterface fn-cdt-break :class :common-lisp-compliant))
+ (local
+  (fn-cdt-problem-says "invalid carried-stobj PATTERN"
+   (:invariant fn-cdt-relp
+    :established ((fn-cdt-open fn-cdt-open-establishes))
+    :transitions ((fn-cdt-bump fn-cdt-bump-carries)
+                  (fn-cdt-note fn-cdt-note-carries (mv-nth 1 _))
+                  (fn-cdt-reset fn-cdt-reset-carries)
+                  (fn-cdt-break fn-cdt-break-repaired (fn-cdt-open _))))))
+ (local
+  (must-fail-checked
+   (assert-event
+    (null (fn-cd-problem
+           'fn-cdt-repaired-carried
+           '(:invariant fn-cdt-relp
+             :established ((fn-cdt-open fn-cdt-open-establishes))
+             :transitions ((fn-cdt-bump fn-cdt-bump-carries)
+                           (fn-cdt-note fn-cdt-note-carries (mv-nth 1 _))
+                           (fn-cdt-reset fn-cdt-reset-carries)
+                           (fn-cdt-break fn-cdt-break-repaired (fn-cdt-open _))))
+           (w state)))
+    :msg "invalid carried-stobj PATTERN: fn-cdt-break (fn-cdt-open _)"))))
+
+(fn-cdt-problem-says "invalid carried-stobj PATTERN"
+ (:invariant fn-cdt-relp
+  :established ((fn-cdt-open fn-cdt-open-establishes))
+  :transitions ((fn-cdt-bump fn-cdt-bump-carries)
+                (fn-cdt-note fn-cdt-note-carries (mv-nth 0 _))
+                (fn-cdt-reset fn-cdt-reset-carries))))
+(must-fail-checked
+ (assert-event
+  (null (fn-cd-problem
+         'fn-cdt-wrong-output
+         '(:invariant fn-cdt-relp
+           :established ((fn-cdt-open fn-cdt-open-establishes))
+           :transitions ((fn-cdt-bump fn-cdt-bump-carries)
+                         (fn-cdt-note fn-cdt-note-carries (mv-nth 0 _))
+                         (fn-cdt-reset fn-cdt-reset-carries)))
+         (w state)))
+  :msg "invalid carried-stobj PATTERN: fn-cdt-note (mv-nth 0 _)"))
 
 ; ---------------------------------------------------------------------------
 ; 1. Accepted.
