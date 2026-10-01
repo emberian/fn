@@ -202,6 +202,12 @@
            (adt-set-a ,j i v ,(adt-sym name "$A"))))
        (adt-field-logic-events name (cdr fields) (+ 1 j))))))
 
+(defun adt-clear-body (cols st)
+  (if (endp cols)
+      nil
+    (cons `(,st (,(adt-sym "RESIZE-" (symbol-name (car (car cols)))) 0 ,st))
+          (adt-clear-body (cdr cols) st))))
+
 (defun adt-append-body (name fields recv st)
   (if (endp fields)
       nil
@@ -348,7 +354,22 @@
       (defthm ,(adt-sym name "$C-APPEND-BRIDGE")
         (equal (,(adt-sym name "$C-APPEND") rec c) (adt-append-c ,schema-const rec c))
         :hints (("Goal" :in-theory (enable ,(adt-sym name "$C-APPEND") adt-instance-unfold))))
-      (in-theory (disable ,(adt-sym name "$C-COUNT-OF") ,(adt-sym name "$C-APPEND"))))))
+      ; The clear (lane paged-catalog, 2026-10-01): every column and the pool
+      ; resized to nothing, the count and the fill to 0, in place: the
+      ; library's cleared image, which corresponds to the empty sequence
+      ; (adt-corr-of-clear-c).
+      (defun ,(adt-sym name "$C-CLEAR") (,st)
+        (declare (xargs :stobjs ,st))
+        (let* (,@(adt-clear-body cols st)
+               (,st (,(adt-sym "RESIZE-" (symbol-name pool)) 0 ,st))
+               (,st (,(adt-sym "UPDATE-" (symbol-name (adt-sym name "$C-COUNT"))) 0 ,st)))
+          (,(adt-sym "UPDATE-" (symbol-name (adt-sym name "$C-FILL"))) 0 ,st)))
+      (defthm ,(adt-sym name "$C-CLEAR-BRIDGE")
+        (equal (,(adt-sym name "$C-CLEAR") c) (adt-clear-c ,schema-const c))
+        :hints (("Goal" :in-theory (enable ,(adt-sym name "$C-CLEAR") adt-clear-c adt-clear-down
+                                           resize-list))))
+      (in-theory (disable ,(adt-sym name "$C-COUNT-OF") ,(adt-sym name "$C-APPEND")
+                          ,(adt-sym name "$C-CLEAR"))))))
 
 (defun defadt-fn (name fields0)
   (let* ((fields (adt-norm-fields fields0))
@@ -363,6 +384,8 @@
          (append-c (adt-sym name "$C-APPEND"))
          (append-a (adt-sym name "$A-APPEND"))
          (count-a (adt-sym name "$A-COUNT"))
+         (clear-a (adt-sym name "$A-CLEAR"))
+         (clear-c (adt-sym name "$C-CLEAR"))
          (create-a (adt-sym "CREATE-" (symbol-name a)))
          (create-c (adt-sym "CREATE-" (symbol-name st)))
          (recog (adt-sym name "P"))
@@ -375,8 +398,9 @@
               :corr-fn-exists t
               :exports ((,(adt-sym name "-COUNT") :logic ,count-a :exec ,count-of)
                         (,(adt-sym name "-APPEND") :logic ,append-a :exec ,append-c :protect t)
-                        ,@(adt-exports name fields))))
-         (ob-hints `(("Goal" :in-theory (enable ,corr ,ap ,create-a ,count-a ,append-a
+                        ,@(adt-exports name fields)
+                        (,(adt-sym name "-CLEAR") :logic ,clear-a :exec ,clear-c :protect t))))
+         (ob-hints `(("Goal" :in-theory (enable ,corr ,ap ,create-a ,count-a ,append-a ,clear-a
                                                  ,@(adt-logic-names name fields))))))
     `(encapsulate
        ()
@@ -401,6 +425,9 @@
        (defun ,append-a (rec ,a)
          (declare (xargs :guard (and (,ap ,a) (adt-rec-p ,schema-const rec))))
          (append ,a (list rec)))
+       (defun ,clear-a (,a)
+         (declare (xargs :guard (,ap ,a)) (ignore ,a))
+         nil)
        ,@(adt-field-logic-events name fields 0)
        (defun ,corr (c a)
          (declare (xargs :guard t :verify-guards nil))
@@ -419,6 +446,9 @@
        (defthm ,(adt-sym recog "-IS-SEQ-P")
          (equal (,recog x) (adt-seq-p ,schema-const x))
          :hints (("Goal" :in-theory (enable ,ap))))
+       (defthm ,(adt-sym name "-CLEAR-IS-NIL")
+         (equal (,(adt-sym name "-CLEAR") ,name) nil)
+         :hints (("Goal" :in-theory (enable ,clear-a))))
        ,@(adt-is-thms name fields 0))))
 
 (defmacro defadt (name &rest fields)
