@@ -19100,9 +19100,47 @@
         "tests/acl2/ninep-refusal-tests.lisp",
         "planning/evidence/manifests/certify-20260930T224511Z-301355.json",
         "planning/evidence/manifests/certify-20260930T224555Z-312904.json",
-        "planning/evidence/manifests/certify-20260930T224638Z-321626.json"
+        "planning/evidence/manifests/certify-20260930T224638Z-321626.json",
+        "books/ninep-session.lisp",
+        "books/ninep-qids.lisp",
+        "books/ninep-dispatch.lisp",
+        "books/ninep-mount.lisp",
+        "host/ninep-mount-host.lisp",
+        "tests/acl2/ninep-session-tests.lisp",
+        "tests/acl2/ninep-qids-tests.lisp",
+        "tests/acl2/ninep-mount-tests.lisp",
+        "planning/evidence/ninep-session-lifetime-2026-10-01/README.md",
+        "planning/evidence/manifests/certify-20261001T014307Z-94237.json",
+        "planning/evidence/manifests/certify-20261001T021401Z-510698.json",
+        "host/ninep-session-host.lisp",
+        "tests/acl2/ninep-session-host-tests.lisp",
+        "planning/evidence/manifests/certify-20261001T022549Z-665008.json",
+        "planning/evidence/manifests/certify-20261001T022835Z-698698.json"
       ],
-      "progress_note": "Normal 213247 certifies the actual guarded bounded field step, carried-ready preservation and six literal wire fixtures; normal 213317 certifies the actual host dispatch and unchanged STATE bridge. Matching dependencies install from cache; their uncited status is explicit in the manifests. Full literal parser refinement, fids, genuine committed mount issuer, native/runtime funding and source lifetime remain open. No activation, image or deployment claim. Normal 214200 certifies core-owned version negotiation, literal octet selector refinement, reply-size/msize bounds, actual version host bridge and complete literal reply/refusal/hypothesis-removal fixtures. Mounted-holder/pin issuer and group enumeration are absent, not inferred from current publication readout. Normal 215611 certifies the exact borrowed-trie directory step/conservation and complete literal/quantum/refusal fixtures; normal 215516 certifies its actual host bridge and STATE frame. Results borrow persistent bit paths and actual group values, not rendered names or supplied catalogs. Entry formatting/profile scalar widths/constructor and graph lifetime remain open. Refusal successor supplies guarded core Rerror byte emission and actual host equality/STATE frame, fixed reply at most26 bytes, literal replies/refusals and verdict-removal tooth. Normal224511 certifies codec/host components but overall fixture root initially failed rewrite-rule installation; repaired host fixture224555 and current refusal fixture224638 pass. Runtime allocation and installed mount issuer remain open."
+      "progress_note": "Normal 213247 certifies the actual guarded bounded field step, carried-ready preservation and six literal wire fixtures; normal 213317 certifies the actual host dispatch and unchanged STATE bridge. Matching dependencies install from cache; their uncited status is explicit in the manifests. Full literal parser refinement, fids, genuine committed mount issuer, native/runtime funding and source lifetime remain open. No activation, image or deployment claim. Normal 214200 certifies core-owned version negotiation, literal octet selector refinement, reply-size/msize bounds, actual version host bridge and complete literal reply/refusal/hypothesis-removal fixtures. Mounted-holder/pin issuer and group enumeration are absent, not inferred from current publication readout. Normal 215611 certifies the exact borrowed-trie directory step/conservation and complete literal/quantum/refusal fixtures; normal 215516 certifies its actual host bridge and STATE frame. Results borrow persistent bit paths and actual group values, not rendered names or supplied catalogs. Entry formatting/profile scalar widths/constructor and graph lifetime remain open. Refusal successor supplies guarded core Rerror byte emission and actual host equality/STATE frame, fixed reply at most26 bytes, literal replies/refusals and verdict-removal tooth. Normal224511 certifies codec/host components but overall fixture root initially failed rewrite-rule installation; repaired host fixture224555 and current refusal fixture224638 pass. Runtime allocation and installed mount issuer remain open. Normal014307 certifies concrete session/fid/request and once-only return plus complete Flush/tag-reuse/stale-slot/refusal witnesses. Normal021401 certifies mount-scoped bounded bit-path qid registry and seven complete literal witnesses. Three inherited dependencies remain matching but uncited. Actual SAMEPRS mount reserve/pin/quiesce/drop/refund guards and complete internal fixtures pass in narrow real modern helper world; this is source-only, not a normal mount-root certificate. Full mounted group/query source producers, stat/reply streaming, native listener and whole-operation runtime family remain open. Normal022549 passed exact dispatcher but rejected initial host raw-with declarations (guard-T skips no carry). Repaired ordinary host boundary/complete disconnect fixture normal022835 passed; no cosmetic carry or hot export was invented."
+    },
+    {
+      "id": "PRF-1196",
+      "title": "Concrete 9P cancellation and once-only retained request return",
+      "statement": "The actual concrete session transition suppresses cancelled reply publication, preserves source and borrowing authority through Flush, and consumes an exact retained request receipt once. Reused tags and reused physical slots remain distinct. The mounted source is released only after bounded quiescence and actual generation return.",
+      "milestone": "M6",
+      "requirements": [
+        "HST-043"
+      ],
+      "depends_on": [
+        "PRF-1177"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/ninep-session.lisp",
+        "books/ninep-mount.lisp",
+        "tests/acl2/ninep-session-tests.lisp",
+        "tests/acl2/ninep-mount-tests.lisp",
+        "planning/evidence/manifests/certify-20261001T014307Z-94237.json",
+        "planning/evidence/ninep-session-lifetime-2026-10-01/README.md"
+      ],
+      "progress_note": "Concrete session component normal-certified; actual mount internal guards/source fixtures passed. Complete host-called provider/returned-physical-borrow refinement and native source/allowance integration remain planned. Synthetic internal fixtures do not activate a listener or issue a genuine runtime family."
     }
   ]
 }

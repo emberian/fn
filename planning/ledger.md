@@ -10,25 +10,25 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1916 |
-| Certification roots in the Makefile | 1817 |
-| Books inside the root closure | 1885 |
-| `defthm` and `defthmd` events | 29927 |
-| `defun` events | 19193 |
-| Functions with verified guards | 3540 |
+| Books read | 1924 |
+| Certification roots in the Makefile | 1823 |
+| Books inside the root closure | 1895 |
+| `defthm` and `defthmd` events | 29962 |
+| `defun` events | 19233 |
+| Functions with verified guards | 3545 |
 | Functions declared `:verify-guards nil` and never verified | 2289 |
-| Functions left at the default with an explicit guard | 10487 |
-| Functions left at the default with no guard | 2877 |
+| Functions left at the default with an explicit guard | 10514 |
+| Functions left at the default with no guard | 2885 |
 | `assert-event` checks | 24066 |
 | `must-fail` checks | 2519 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 158 |
-| Theorems flagged SUSPECT by shape | 1260 |
+| Theorems flagged SUSPECT by shape | 1262 |
 | Export-hygiene warnings | 350 |
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2583 |
-| Host-names warnings | 2197 |
+| Include-hygiene warnings | 2590 |
+| Host-names warnings | 2202 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -617,11 +617,15 @@ that `make certify` requests.
 | `books/native-retire.lisp` | root | 6 | 15 | 0/0/15/0 | 0 | 0 | 1 |
 | `books/native-statement-material.lisp` | root | 0 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/native-status-columns.lisp` | closure | 23 | 12 | 1/8/3/0 | 0 | 0 | 1 |
-| `books/ninep-fields.lisp` | - | 11 | 8 | 1/0/7/0 | 0 | 0 | 0 |
+| `books/ninep-dispatch.lisp` | root | 1 | 4 | 1/0/3/0 | 0 | 0 | 0 |
+| `books/ninep-fields.lisp` | closure | 11 | 8 | 1/0/7/0 | 0 | 0 | 0 |
 | `books/ninep-group-directory-source.lisp` | - | 4 | 5 | 0/0/5/0 | 0 | 0 | 2 |
-| `books/ninep-header.lisp` | - | 1 | 6 | 0/1/5/0 | 0 | 0 | 0 |
-| `books/ninep-refusal.lisp` | - | 1 | 2 | 0/0/2/0 | 0 | 0 | 0 |
-| `books/ninep-version.lisp` | - | 3 | 7 | 0/1/6/0 | 0 | 0 | 0 |
+| `books/ninep-header.lisp` | closure | 1 | 6 | 0/1/5/0 | 0 | 0 | 0 |
+| `books/ninep-mount.lisp` | - | 5 | 5 | 4/0/1/0 | 0 | 0 | 0 |
+| `books/ninep-qids.lisp` | root | 2 | 6 | 0/0/6/0 | 0 | 0 | 0 |
+| `books/ninep-refusal.lisp` | closure | 1 | 2 | 0/0/2/0 | 0 | 0 | 0 |
+| `books/ninep-session.lisp` | root | 7 | 17 | 0/0/17/0 | 0 | 0 | 2 |
+| `books/ninep-version.lisp` | closure | 3 | 7 | 0/1/6/0 | 0 | 0 | 0 |
 | `books/nntp-article-block.lisp` | root | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/nntp-article-pass.lisp` | root | 19 | 12 | 0/0/10/2 | 0 | 0 | 2 |
 | `books/nntp-auth-fold.lisp` | root | 78 | 4 | 0/3/1/0 | 0 | 0 | 0 |
@@ -1590,8 +1594,12 @@ that `make certify` requests.
 | `tests/acl2/ninep-fields-tests.lisp` | - | 6 | 6 | 0/0/0/6 | 0 | 0 | 0 |
 | `tests/acl2/ninep-group-directory-source-tests.lisp` | - | 3 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `tests/acl2/ninep-header-tests.lisp` | - | 4 | 4 | 0/0/0/4 | 0 | 0 | 0 |
+| `tests/acl2/ninep-mount-tests.lisp` | - | 3 | 6 | 0/0/0/6 | 0 | 0 | 0 |
 | `tests/acl2/ninep-protocol-host-tests.lisp` | - | 4 | 3 | 0/0/0/3 | 0 | 0 | 0 |
+| `tests/acl2/ninep-qids-tests.lisp` | root | 7 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/ninep-refusal-tests.lisp` | - | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `tests/acl2/ninep-session-host-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `tests/acl2/ninep-session-tests.lisp` | root | 9 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `tests/acl2/ninep-version-tests.lisp` | - | 7 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `tests/acl2/nntp-article-block-tests.lisp` | root | 1 | 1 | 0/0/0/1 | 17 | 0 | 0 |
 | `tests/acl2/nntp-auth-fold-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 2 | 0 |
@@ -2017,6 +2025,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `bprsend-job-with-status-fields` | `books/bp-node-receipt-send.lisp` | 278 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-9p-ge-tree-of-atom` | `books/ninep-group-directory-source.lisp` | 78 | arm-of-definition: the hypotheses select one IF/COND arm of fn-9p-ge-tree and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-9p-ge-tree and the conclusion is that branch's value |
 | `fn-9p-ge-tree-unfolds` | `books/ninep-group-directory-source.lisp` | 68 | arm-of-definition: the hypotheses select one IF/COND arm of fn-9p-ge-tree and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-9p-ge-tree and the conclusion is that branch's value |
+| `fn-9ps-fid-with-borrow-cannot-retire` | `books/ninep-session.lisp` | 321 | arm-of-definition: the hypotheses select one IF/COND arm of fn-9ps-fid-retire-step and the conclusion is that arm's value |
+| `fn-9ps-mutation-open-is-refused-without-effect` | `books/ninep-session.lisp` | 258 | arm-of-definition: the hypotheses select one IF/COND arm of fn-9ps-open-at and the conclusion is that arm's value |
 | `fn-acct-redeem-bounded-plan-is-the-plan-unless-it-redeems` | `books/accounts.lisp` | 762 | arm-of-definition: the hypotheses select one IF/COND arm of fn-acct-redeem-bounded-plan and the conclusion is that arm's value |
 | `fn-af-message-id-equalp-is-exact` | `books/article-fields.lisp` | 346 | definition-restated: the conclusion is the body of fn-af-message-id-equalp with the conjuncts the hypotheses already assert struck out |
 | `fn-ag-less-is-less` | `books/acceptance-alloc.lisp` | 81 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-ag-less; reflexive-conclusion: a conjunct is (equal X X) |

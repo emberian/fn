@@ -7341,12 +7341,14 @@
       "steps": [
         "Negotiate base9P2000 on scratchloopback with tinymsize; attach a genuinely issued committed capture, walk groups/localnumber and by-id paths, page directory stat entries and read exact source ranges.",
         "Commit a new article while old fids hold the original capture; old mount stays fixed until remount. Refuse unsupported writes/auth/extensions appropriately and degrade only unservable article framing.",
-        "Flush an outstanding cold read and disconnect/clunk; suppress cancelled reply but retain issued worker/query/source aliases until actual completion and final join."
+        "Flush an outstanding cold read and disconnect/clunk; suppress cancelled reply but retain issued worker/query/source aliases until actual completion and final join.",
+        "Within one captured-view connection, attach twice and confirm shared qid namespace; Flush a cold read, reuse its wire tag while the old physical slot remains cancelled, then return old work and confirm it cannot publish or decrement a newer receipt."
       ],
       "expected": [
         "Names/numbers/qids/lengths/wirebytes originate in actual core and registered provider; ordinal0 is valid. Exact stored binary/dotted source is neither NNTPstuffed nor whole-store materialized.",
         "Directory reads honor stable offsets and integral stat entries; message/body size is checked against the supported representable profile before allocation.",
-        "No newercommit appears in retained old capture; no grant/root release from shape, copied payload or Flush alone. Missing genuine issuer remains unavailable."
+        "No newercommit appears in retained old capture; no grant/root release from shape, copied payload or Flush alone. Missing genuine issuer remains unavailable.",
+        "Same exported node has the same mount-scoped qid.path; distinct group-specific virtual files have distinct paths. A new independent mount is a new filesystem instance; no cross-remount identity guarantee is asserted."
       ],
       "evidence": [
         "tests/acl2/ninep-header-tests.lisp",
@@ -7354,9 +7356,12 @@
         "tests/acl2/ninep-version-tests.lisp",
         "tests/acl2/ninep-group-directory-source-tests.lisp",
         "tests/acl2/ninep-protocol-host-tests.lisp",
-        "tests/acl2/ninep-refusal-tests.lisp"
+        "tests/acl2/ninep-refusal-tests.lisp",
+        "tests/acl2/ninep-session-tests.lisp",
+        "tests/acl2/ninep-qids-tests.lisp",
+        "tests/acl2/ninep-mount-tests.lisp"
       ],
-      "scope_note": "Specified native acceptance scenario, not executed. Normal source header/field/version and borrowed group-trie/host witnesses are separate from native mounted source/lifetime qualification. Core fixed Rerror and actual host refusal fixture pass source certification; native client refusal remains unexecuted."
+      "scope_note": "Specified native acceptance scenario, not executed. Normal source header/field/version and borrowed group-trie/host witnesses are separate from native mounted source/lifetime qualification. Core fixed Rerror and actual host refusal fixture pass source certification; native client refusal remains unexecuted. Session/qid components are normal-certified at014307/021401; actual mount lifecycle fixture source-pass only. External client/listener scenario still NOT RUN."
     }
   ]
 }

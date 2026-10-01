@@ -74,6 +74,26 @@ remain invisible; remount acquires a newer capture. Each fid derives its
 selection from that same source. A writer is not blocked by materializing or
 holding a whole-store lock for the mount lifetime.
 
+For this immutable projection, qid.path identifies exported nodes within the
+captured filesystem instance. Multiple attaches on the same versioned
+connection share its retained source and qid registry. The core assigns
+injective unsigned64 path numbers: repeated selection of the same exported
+node returns the same number; different directories and group-specific
+virtual files have different keys. No hash or truncation derives these IDs.
+An independent remount exports a new filesystem instance; persistence across
+independent mounts or process restart is not an fn guarantee. Exhausting the
+supported registry/codec representation refuses admission and retains work,
+without truncating stored articles or names. This is the local realization of
+the qid requirements in [intro(5)](https://9p.io/magic/man2html/5/intro).
+
+Per [flush(5)](https://9p.io/magic/man2html/5/flush), Rflush releases the old
+wire tag. A cancelled physical request therefore remains in its own slot
+while a new request may use that tag. Its exact issued receipt still governs
+return; an old callback cannot clear a reused slot or decrement the new
+borrow. A partially successful Twalk leaves both fid bindings unchanged;
+only a complete walk installs newfid, as required by
+[walk(5)](https://9p.io/magic/man2html/5/walk).
+
 Read uses the actual retained selected-query/QPG source byte and length
 interfaces. Each outstanding physical read retains its issued authority and
 source aliases until its definite completion. Flush cancels reply publication;
