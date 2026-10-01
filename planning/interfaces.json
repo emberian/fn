@@ -26190,12 +26190,16 @@
       "exempt": {},
       "keystones": [
         {
-          "theorem": "fn-oret-drain-step-ends-by-the-window",
-          "via": "fn-oret-drain-step"
+          "theorem": "fn-ort-retire-step-ends-by-the-window",
+          "via": "fn-ort-retire-step"
         },
         {
-          "theorem": "fn-oret-drain-step-waits-while-feeds-drain",
-          "via": "fn-oret-drain-step"
+          "theorem": "fn-ort-retire-step-drains-a-settled-zero",
+          "via": "fn-ort-retire-step"
+        },
+        {
+          "theorem": "fn-ort-retire-step-waits-while-anything-drains",
+          "via": "fn-ort-retire-step"
         }
       ],
       "extraction": null,
