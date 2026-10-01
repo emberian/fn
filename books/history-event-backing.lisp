@@ -140,6 +140,18 @@
     (mv :unavailable fn-history-backing))
    ((eq (fn-hep-producer-phase fn-history-backing) :published)
     (mv :consumed fn-history-backing))
+   ; C-only preparation is recorded by the actual owner issuer. It changes
+   ; the persisted publication association, with no row append or F growth.
+   ((and (eq (fn-hep-producer-phase fn-history-backing) :completed)
+          (fn-hed-fixedp builder 10) (eq (fn-hed-at 0 builder) :history-builder)
+          (fn-hep-source-stamps-equal old (fn-hep-current fn-history-backing))
+          (fn-hep-sourcep next) (eq expected :control)
+          (equal (fn-hed-at 2 next) (fn-hed-at 2 old))
+          (equal (fn-hed-at 3 next) (fn-hed-at 3 old))
+          (equal (fn-hed-at 7 next) (fn-hed-at 7 old)))
+    (let* ((fn-history-backing (update-fn-hep-installed-source next fn-history-backing))
+           (fn-history-backing (update-fn-hep-producer-phase :published fn-history-backing)))
+     (mv :published fn-history-backing)))
    ((not (and (eq (fn-hep-producer-phase fn-history-backing) :completed)
                (fn-hed-fixedp builder 10) (eq (fn-hed-at 0 builder) :history-builder)
                (fn-hep-source-stamps-equal old (fn-hep-current fn-history-backing))
@@ -231,3 +243,50 @@
    (let* ((fn-history-backing (update-fn-hep-capture nil fn-history-backing))
           (fn-history-backing (update-fn-hep-epoch (update-nth 6 0 epoch) fn-history-backing)))
     (mv :returned fn-history-backing)))))
+(defun fn-hep-capture-livep (source token fn-history-backing)
+ (declare (xargs :stobjs fn-history-backing :guard t))
+ (let ((capture (fn-hep-capture fn-history-backing)) (epoch (fn-hep-epoch fn-history-backing)))
+  (and token (equal token (fn-hed-at 0 capture))
+       (fn-hep-source-stamps-equal source (fn-hed-at 1 capture))
+       (fn-hep-epoch-livep source fn-history-backing)
+       (equal (fn-hed-at 6 epoch) 1))))
+
+(defthm fn-hep-offer-retains-exact-row-and-complete-producer
+ (implies (and (fn-hep-offer-currentp token fn-history-backing)
+                (fn-hed-fixedp produced 6))
+  (equal (fn-hep-builder-readout
+           (mv-nth 1 (fn-hep-offer-produced row produced context fields token fn-history-backing)))
+         (mv :candidate row produced context fields)))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (enable fn-hep-offer-produced fn-hep-builder-readout fn-hed-at))))
+(defthm fn-hep-completion-replay-does-not-mutate
+ (implies (and (fn-hep-completion-matchesp receipt token fn-history-backing)
+                (member-eq (fn-hep-producer-phase fn-history-backing) '(:completed :published))
+                (equal receipt (fn-hep-completion fn-history-backing)))
+  (equal (fn-hep-register-completion-internal receipt token fn-history-backing)
+         (mv :already-completed fn-history-backing)))
+ :rule-classes nil)
+(defthm fn-hep-published-replay-does-not-append-or-install
+ (implies (and (fn-hep-completion-matchesp receipt (fn-hep-producer-token fn-history-backing)
+                                          fn-history-backing)
+                (equal receipt (fn-hep-completion fn-history-backing))
+                (eq (fn-hep-producer-phase fn-history-backing) :published))
+  (equal (fn-hep-publish-current receipt fn-history-backing)
+         (mv :consumed fn-history-backing)))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (e/d (fn-hep-publish-current)
+                        (fn-hep-completion-matchesp fn-hep-node-append)))))
+(defthm fn-hep-uncertain-keeps-candidate-roots-and-debt
+ (let ((after (mv-nth 1 (fn-hep-fence-current token fn-history-backing))))
+  (and (equal (fn-hep-current after) (fn-hep-current fn-history-backing))
+       (equal (fn-hep-builder after) (fn-hep-builder fn-history-backing))
+       (equal (fn-hep-producer-receipts after) (fn-hep-producer-receipts fn-history-backing))
+       (equal (fn-hep-epoch after) (fn-hep-epoch fn-history-backing))))
+ :rule-classes nil)
+(defthm fn-hep-return-cannot-drop-nonquiescent-custody
+ (implies (and (f-boundp-global 'fn-owner-history-capture state)
+                (not (eq (fn-hed-at 5 (f-get-global 'fn-owner-history-capture state)) :quiescent)))
+  (equal (fn-hep-capture-return token state fn-history-backing)
+         (mv :unavailable fn-history-backing)))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (e/d (fn-hep-capture-return) (fn-hep-source-stamps-equal fn-hed-at)))))
