@@ -2275,7 +2275,7 @@ log reopen)."
     (fnn-owner-shared-action-locked service cid thunk)))
 
 (defun fnn-owner-serialized-with-control-turn
- (service cid callback &optional (class :control) epilogue)
+ (service cid callback &optional (class :control) epilogue result-publisher)
  "Pass actual slot/nonce/slots/pool through one scheduler quantum.
 CALLBACK is preconstructed by its funded caller and returns five CL values:
 word, answer, actual slots, pool and STATE. Retain effects before classification.
@@ -2297,7 +2297,10 @@ No numeric BODY or supplied receipt is accepted."
          (unless (and next-slots next-pool next-state)
           (fnn-fixed-callback-fail 'fn-ats-prepay-body-internal
                                    :control-body-missing-state nil))
-         (values word answer)))))
+         ; Source-specific publication remains inside the owner mutex and
+         ; follows retention of every actual returned stobj.
+         (if result-publisher (funcall result-publisher word answer)
+           (values word answer))))))
      ; The actual scheduler cleanup has returned. The caller must already
      ; have relinquished its registered private aliases; NIL here alone is
      ; not a retirement receipt. The static epilogue leaves ATS slots readonly.
