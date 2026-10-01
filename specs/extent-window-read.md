@@ -413,3 +413,19 @@ The native decoded path remains dormant. Installed captured-source authority,
 exact private-child custody/lifetime, complete runtime allowance and arbitrary
 canonical controller iteration remain required. See the controller/terminal
 source evidence packet; no component admission closes PRF-1131.
+
+### Registered basic-loop effects and retained output
+
+The current owned codec branch of `FN-DWC-ONE` is connected to the actual
+`FN-ZIN-FEED` basic loop by the complete status, cursor, recredited registers,
+ring, table and scratch tuple. Recredit is the existing logical reference
+observation, not a native budget substitution. The bounded actual input span
+and current token remain explicit premises. Arbitrary canonical iteration
+from BEGIN across all yields and selected dictionaries remains open.
+
+Subsequent noncodec ONE turns preserve the entire selected private window.
+CURRENT READ also preserves it when the compressed raw plan requests no raw
+window. The actual codec, two hash turns and trailer publication witness keeps
+selected bytes `(66 67)`; a separately corrupted overlapping raw plan and
+matched capture refutes removal of the zero-request premise. None establishes
+installed private-buffer/view custody, whole runtime funding or activation.

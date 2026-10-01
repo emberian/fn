@@ -17925,6 +17925,24 @@
           "name": "fn-pwzt-actual-issued-codec-one-retains-terminal-budget",
           "note": "Actual current token/owned/no-pending codec ONE decoded completion retains >=3839+7*C STEPfuel under actual span/shape and incoming joint carry. Full terminal positive and corrupted-budget retained-premise removal; no native tariff.",
           "pending_subject": "Registered physical source candidate FN-DWC-ONE/FN-DWC-READ-OBSERVATION; native issuer/installer remains unavailable, so this source boundary is not an installed host-called claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-dwcc-actual-codec-one-basic-loop-effects",
+          "note": "Actual CURRENT owned codec ONE complete status/cursor/recredited registers/ring/table/scratch tuple equals actual FN-ZIN-FEED under real bounded input span. Full positive and complete current-token removal; arbitrary canonical iteration remains open.",
+          "pending_subject": "Registered physical source candidate FN-DWC-ONE/FN-DWC-READ-OBSERVATION; native issuer/installer remains unavailable, so this source boundary is not an installed host-called claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-dwcc-actual-noncodec-one-retains-selected-window",
+          "note": "Actual noncodec registered ONE preserves the entire private selected window; subsequent hash positive and actual codec action removal.",
+          "pending_subject": "Registered physical source candidate FN-DWC-ONE/FN-DWC-READ-OBSERVATION; native issuer/installer remains unavailable, so this source boundary is not an installed host-called claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-dwcc-actual-current-read-retains-selected-window",
+          "note": "CURRENT READ preserves entire selected private window under zero raw request. Actual codec/hash/hash/trailer publication positive and corrupted overlapping raw-plan/capture removal; no native source authority inference.",
+          "pending_subject": "Registered physical source candidate FN-DWC-ONE/FN-DWC-READ-OBSERVATION; native issuer/installer remains unavailable, so this source boundary is not an installed host-called claim."
         }
       ],
       "pending_subject": "Native compressed driver remains dormant and unreachable-in-composition. Actual selected-prefix cell accumulation and faithful-source compressed digest BEGIN/READ/HASH/new-publication are source-proved, with source-slice binding explicit. Arbitrary canonical decoder/controller iteration, selected dictionary/captured-view authority, full compiled workspace funding and retained native buffer/view/consumer joins remain open; PRF-1131 remains incomplete."

@@ -18740,7 +18740,10 @@
         "fn-dwct-actual-one-preserves-charged-budget-carry",
         "fn-dwct-actual-read-observation-preserves-captured-source-digest",
         "fn-pwzt-actual-stored-final-global-charge-envelope",
-        "fn-pwzt-actual-issued-codec-one-retains-terminal-budget"
+        "fn-pwzt-actual-issued-codec-one-retains-terminal-budget",
+        "fn-dwcc-actual-codec-one-basic-loop-effects",
+        "fn-dwcc-actual-noncodec-one-retains-selected-window",
+        "fn-dwcc-actual-current-read-retains-selected-window"
       ]
     },
     {
