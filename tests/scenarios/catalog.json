@@ -7519,6 +7519,41 @@
         "planning/evidence/bpsec-operation-source-2026-09-30.json"
       ],
       "execution_scope": "Literal ACL2 component/source fixtures; actual immutable registry, provider, current lease, cryptographic realizer and native gate remain open."
+    },
+    {
+      "id": "SCN-1073",
+      "title": "All-event history prefix custody rejects stale epochs and retains cancellation until real terminal return",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-10004"
+      ],
+      "steps": [
+        "Issue an INTERNAL captured Source9 through actual shared PRL admission and retain its exact dense F; read the last in-prefix ordinal and refuse the frontier itself.",
+        "Publish a matching parent6 and observe exact source attribution; change actual canonical epoch while leaving parent/source metadata unchanged and refuse recovery-required.",
+        "Cancel an actual issued slot after read-begin; preserve slot/read aliases and registered pin, refuse read-step with exact status/row/fuel, and block reset.",
+        "Compare retained zero-fuel read yielding unchanged with the cancelled refusal; check each retained hypothesis for missing-parent, missing-source and matching-epoch removals.",
+        "After a genuine alias/native callback terminal producer, return the registered epoch pin before refunding reusable SAME-pool charge; repeat return cannot refund spent identity.",
+        "Attempt owner checkpoint swap and recovery while held, before durable replacement/reset; long-poll waiting completes return before sleep."
+      ],
+      "expected": [
+        "Dense F counts every committed Store event; no article catalog ordinal substitution or NIL skip.",
+        "Exact current metadata returns :source; old parent epoch and invalid ownership refuse distinctly.",
+        "Cancellation never clears custody, pin or charge. Only actual terminal return can unblock reset.",
+        "No synthetic source/token, caller completion Boolean or shaped metadata grants installation.",
+        "Public capture stays unavailable without genuine selected funding and physical constructor; native completion remains unavailable until its real issuer exists."
+      ],
+      "evidence": [
+        "books/history-capture-custody.lisp",
+        "books/history-capture-state.lisp",
+        "books/history-source-capture.lisp",
+        "books/history-source-capture-refinement.lisp",
+        "tests/acl2/history-capture-custody-tests.lisp",
+        "tests/acl2/history-source-capture-refinement-tests.lisp",
+        "planning/evidence/history-prefix-custody-2026-09-30/manifest.json",
+        "planning/evidence/history-source-custody-refinement-2026-09-30/manifest.json"
+      ],
+      "execution_scope": "Literal ACL2 component/source fixtures and selected source gates only. Whole logical STATE tooth, complete owner publication/lifetime composition, physical constructor, funding, callback issuer and native quantum qualification remain open."
     }
   ]
 }

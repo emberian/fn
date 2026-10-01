@@ -19650,6 +19650,29 @@
         "planning/evidence/source-convergence-2026-09-30/served-writer-source.json"
       ],
       "progress_note": "Current compatible row/served/writer source assembled with modern provider3 appended fields. Actor source proofs and predecessor132 normal are distinct scopes; combined current PROGRAM arena/catalog declarations, SAMEarena lifetime, delta publication, guarded concrete closure, genuine constructor census and runtime issuance remain open. No predecessor proof verdict transfers to this combined source."
+    },
+    {
+      "id": "PRF-1193",
+      "title": "Actual captured history source custody, current epoch and terminal return composition",
+      "statement": "The host-called retained history path must obtain exact committed Source9 under actual owner publication/canonical epoch, issue and debit the same shared ledger identity, register a physical epoch pin, read only below captured dense F, retain all aliases/charges on cancellation, block reset before durable replacement, and return the pin before once-only reusable charge refund while preserving spent identity. Every event kind and successful NIL row is retained; same-epoch appends preserve old captured prefixes. Full caller/source/funding/native lifetime joins are required, not a supplied readiness Boolean.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-10004"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/history-capture-custody.lisp",
+        "books/history-capture-state.lisp",
+        "books/history-source-capture.lisp",
+        "books/history-source-capture-refinement.lisp",
+        "tests/acl2/history-capture-custody-tests.lisp",
+        "tests/acl2/history-source-capture-refinement-tests.lisp",
+        "planning/evidence/history-prefix-custody-2026-09-30/manifest.json",
+        "planning/evidence/history-source-custody-refinement-2026-09-30/manifest.json"
+      ],
+      "progress_note": "Custody core and actual STATE wrappers source-admitted in narrow protected worlds; actual nine source/getter/capture/pin/read/release guards replayed against17d1 backing .06s/4577steps. Conditional attribution/old-parent/nonretained-read laws admitted .02s/997steps; eight internal-metadata executable fixtures pass. These small output/body equations are bridge evidence, not a complete caller keystone. Full logical STATE literal tooth is prepared but unreplayed after donor closure. No certification/image/native claim or changed-dependency green transfer. Source tariff and native completion getter honestly unavailable; actual atomic publication and installed-source lineage remain producer obligations."
     }
   ]
 }

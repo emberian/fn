@@ -1,27 +1,39 @@
-# Exact continuation
+# Actual history source custody continuation
 
-1. Obtain frozen four-book directory/provider/backing/page source coordinate
-   from allocation_turn_receipts. Do not copy a moving worktree or define a
-   second backing. Page source is separately ready at 902c9772f.
-2. Verify exact external capture registration/currentness before page lookup;
-   allow older SAMEepoch captured Source9 across later append/publication.
-   Candidate writer-reference reads are a separate producer path.
-3. Finish Source9 getter/read/capture/terminal source guards against that
-   minimal coherent leaf set, with named first-refusal evidence. hhc3 is a
-   narrow custody-only paid world; extra source dependencies need an exact
-   agreed packet, not a Store ancestry expansion.
-4. Public capture positive must include genuine selected capture tariff and
-   registered backing epoch pin in SAME owner->pool transition. Missing
-   tariff is explicit unavailable. Failed/ambiguous pin holds slot/charge and
-   returns recovery-required, never forged captured/refund.
-5. Remote exact terminal holder owns native callback receipt and complete
-   alias return. Aggregate history release returns pin while quiescent slot
-   exists, then refunds SAMEpool once. WAIT must finish this before sleeping.
-6. Snapshot/owner actual same-row publication joins backing install and
-   parent6 installation with SAME Store/CP/config transition; don't publish a
-   prepared source. Remove legacy unbounded append in that bounded route.
-7. Runner alone integrates selected host hunks. Current public three function
-   preimages were form-equal to this baseline at last check; no wholesale
-   owner-host overwrite or inherited guard/native claim.
-8. Stop hhc3 after the useful exact source handoff; save final evidence and
-   report actual remaining producer/funding/native obligations.
+Source runtime endpoint is bd0a693c9, with canonical backing imported from
+17d1fb72ba08b09b09532ff9576b2a546f13c8e2 (SHA6640e0d3). Source9 and parent6,
+all signatures and actual bd0 wrapper bodies are unchanged. Runner alone
+integrates the source and selected owner gates. No process is held here;
+hhc3 and borrowed hepp are stopped, and both SEND loans were returned.
+
+1. Actual publisher must install backing Source9 and parent6 in the SAME
+   Store/CP/config transition. Canonical owner epoch is obtained from STATE,
+   never from a supplied tuple. Source metadata shape is not installation.
+   Snapshot retains exact MV6 row separately from produced6; its candidate
+   read at oldF is private until that whole publication commits.
+2. Genuine selected capture tariff is unavailable; do not replace it with a
+   vector or readiness Boolean. Actual shared PRL issuance debits before slot
+   creation and backing pin; ambiguous pin failure keeps slot/charge.
+3. Remote terminal joins callback receipt and every alias before quiescence.
+   It calls aggregate history release (backing pin return before SAMEpool
+   refund), not release-issued. Cancellation retains, WAIT returns before
+   sleeping, and a busy slot yields fairly rather than remaining across WAIT.
+4. Full logical STATE literal cancellation positive is offline WIP at
+   build/history-source/complete-state-positive-wip.lisp. It was not sent
+   after donor closure. Use a next matching world, no broad bootstrap for
+   this optional tooth. The eight shipping executable assertions are the
+   exact passed nineteen-form packet; they observe relevant STATE globals.
+5. Conditional source companion was admitted at SHA4ff0f2a (.02s/997steps).
+   Final old-parent equation name gained -by-definition after ledger marked
+   an arm-of-definition. Formula/hints/runtime are unchanged; the naming-only
+   delta still needs a matching wave replay. No cited keystone or certified
+   claim is attached. PRF-1193 is planned for complete caller/lifetime joins.
+6. The physical nested provider depth needs its selected profile envelope;
+   one resumable directory cursor is not a full physical lookup cost proof.
+   Constructor/registration and raw bound-NIL construction remain explicit.
+7. Remove the legacy unbounded FnHist grow/rehash/clear/load producer from
+   this bounded route; no dual append, Sync or whole-history scan claim.
+8. Runner regenerates ledger/current-view centrally from the joined tree.
+   New IDs STO-10004/PRF-1193/SCN-1073 were claimed before entries and passed
+   next_id check with explicit lane history-prefix-source. Planned status,
+   spec/scenario and immutable source receipts carry all open boundaries.

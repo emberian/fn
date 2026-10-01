@@ -6090,6 +6090,32 @@
         "planning/evidence/bpsec-operation-source-2026-09-30.json"
       ],
       "implementation_note": "Receiver-only fixed metadata matching and logical retirement. Actual immutable registry/interning, canonical input construction, completion provenance, nonreused token allocator and serialized current-policy lease remain open. No crypto or application admission capability follows from shaped references."
+    },
+    {
+      "id": "STO-10004",
+      "title": "Remote history captures retain an exact committed all-event prefix through reset fencing and once-only shared-pool return",
+      "specification": "specs/history-source-custody.md",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-1193"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/history-capture-custody.lisp",
+        "books/history-capture-state.lisp",
+        "books/history-source-capture.lisp",
+        "books/history-source-capture-refinement.lisp",
+        "tests/acl2/history-capture-custody-tests.lisp",
+        "tests/acl2/history-source-capture-refinement-tests.lisp",
+        "planning/evidence/history-prefix-custody-2026-09-30/manifest.json",
+        "planning/evidence/history-source-custody-refinement-2026-09-30/manifest.json"
+      ],
+      "implementation_note": "Actual Source9/parent6 readout, shared PRL-issued slot, backing epoch pin, bounded directory continuation and selected owner swap/recovery gates are additive source preparation. NIL is a successful :row value, never a skipped gap. Long-poll waiting must return before sleep. Actual Store/CP/source atomic publication, selected capture tariff, constructor provenance, physical callback receipt, raw provider boundary and full caller lifetime composition remain open; metadata shape gives no installation authority."
     }
   ]
 }
