@@ -62,8 +62,21 @@
    (implies (and (true-listp x) (not (consp x))) (equal x nil))
    :rule-classes :forward-chaining))
 
+; The model's entries come in two shapes since the Codex era: the eight
+; fields above, or ten with the remote metadata (query groups, account) at
+; 8 and 9 (books/consumer-position.lisp fn-cp-entryp).  A defadt-keyed
+; record has one arity, so this pilot covers the eight-field tables: the
+; hypothesis `cpent-eight-field-entriesp' says which, and a table with a
+; remote-metadata entry is outside the pilot (deputy-1 fix-forward,
+; 2026-10-01; a variable-arity record is a defadt limitation to record).
+(defun cpent-eight-field-entriesp (es)
+  (if (consp es)
+      (and (equal (len (car es)) 8) (cpent-eight-field-entriesp (cdr es)))
+    t))
+
 (defthm fn-cp-entryp-is-cpent-record
-  (implies (and (fn-cp-entryp e frontier next-epoch) (fn-cp-uintp next-epoch))
+  (implies (and (fn-cp-entryp e frontier next-epoch) (fn-cp-uintp next-epoch)
+                (equal (len e) 8))
            (adt-rec-p *cpent-user-schema* e))
   :hints (("Goal" :in-theory (enable adt-rec-p-open adt-schema-fns-of-atom
                                      adt-val-okp fn-cp-idp fn-cp-uintp nth))))
@@ -80,13 +93,15 @@
             (and (true-list-listp es) (not (member-equal nil es))))))
 
 (defthm fn-cp-entriesp-is-cpentp
-  (implies (and (fn-cp-entriesp entries frontier next-epoch) (fn-cp-uintp next-epoch))
+  (implies (and (fn-cp-entriesp entries frontier next-epoch) (fn-cp-uintp next-epoch)
+                (cpent-eight-field-entriesp entries))
            (cpentp entries))
   :hints (("Goal" :in-theory (e/d (adt-kunique-cons) (fn-cp-entryp fn-cp-uintp adt-rec-p))
            :induct (fn-cp-entriesp entries frontier next-epoch))))
 
 (defthm fn-cp-statep-table-is-cpentp
-  (implies (fn-cp-statep s) (cpentp (fn-cp-nth 5 s)))
+  (implies (and (fn-cp-statep s) (cpent-eight-field-entriesp (fn-cp-nth 5 s)))
+           (cpentp (fn-cp-nth 5 s)))
   :hints (("Goal" :in-theory (disable fn-cp-entriesp fn-cp-nth-is-nth fn-cp-entriesp-is-cpentp)
            :use ((:instance fn-cp-entriesp-is-cpentp (entries (fn-cp-nth 5 s))
                             (frontier (fn-cp-nth 3 s)) (next-epoch (fn-cp-nth 4 s)))))))

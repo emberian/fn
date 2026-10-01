@@ -606,6 +606,14 @@
     "tests/acl2/heap-breakdown-tests",
     "books/memory-credits",
     "tests/acl2/memory-credits-tests",
+    "books/resource-vector",
+    "tests/acl2/resource-vector-tests",
+    "books/resource-vector-relations",
+    "tests/acl2/resource-vector-relations-tests",
+    "books/resource-vector-exec",
+    "tests/acl2/resource-vector-exec-tests",
+    "books/resource-vector-tree",
+    "tests/acl2/resource-vector-tree-tests",
     "tests/acl2/heap-figure-tests",
     "tests/acl2/open-frontier-tests",
     "books/open-frontier-wire",
@@ -2350,26 +2358,26 @@
     "tests/acl2/substrate-commit-codec-gap-tests"
   ],
   "totals": {
-    "books": 2707,
-    "books_in_root_closure": 2620,
-    "roots": 2346,
-    "theorems": 35372,
-    "functions": 22680,
-    "assert_events": 25318,
-    "must_fails": 2559,
+    "books": 2719,
+    "books_in_root_closure": 2629,
+    "roots": 2354,
+    "theorems": 35756,
+    "functions": 22828,
+    "assert_events": 25391,
+    "must_fails": 2584,
     "prover_refusals": 0,
     "encapsulates": 193,
     "guards": {
-      "verified": 3844,
-      "declared-off": 2864,
-      "default-guarded": 12691,
-      "default-unguarded": 3281
+      "verified": 3845,
+      "declared-off": 2881,
+      "default-guarded": 12795,
+      "default-unguarded": 3307
     },
-    "suspect_theorems": 1334,
-    "export_hygiene_warnings": 392,
+    "suspect_theorems": 1339,
+    "export_hygiene_warnings": 396,
     "enabled_projection_warnings": 80,
     "teeth_form_warnings": 279,
-    "include_hygiene_warnings": 3367,
+    "include_hygiene_warnings": 3373,
     "host_names_warnings": 3114,
     "hand_written_record_warnings": 19
   },
@@ -11966,6 +11974,43 @@
       "read_error": null
     },
     {
+      "book": "books/catalog-logic.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 355,
+      "functions": 125,
+      "guards": {
+        "verified": 14,
+        "declared-off": 20,
+        "default-guarded": 64,
+        "default-unguarded": 27
+      },
+      "verify_guards_events": 14,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "catalog-number-assignment",
+        "catalog-record",
+        "def-loop",
+        "msgid-pages-exec"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-ctg-assign-fields",
+        "fn-ctg-corr-live-facts",
+        "fn-ctg-mark-withdrawn-is-update",
+        "fn-ctg-withdrawn-of-assign",
+        "fn-ctg-withdrawn-of-with-context",
+        "fn-ctg-withdrawn-of-with-withdrawn",
+        "fn-ctw-corr-wbv-parts"
+      ],
+      "read_error": null
+    },
+    {
       "book": "books/catalog-number-assignment.lisp",
       "in_root_closure": true,
       "is_root": false,
@@ -12043,6 +12088,64 @@
       ],
       "system_includes": [],
       "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/catalog-paged-attach.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 2,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 7,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "catalog",
+        "catalog-paged"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/catalog-paged.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 151,
+      "functions": 49,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 32,
+        "default-unguarded": 15
+      },
+      "verify_guards_events": 0,
+      "assert_events": 3,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 5,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "catalog-logic",
+        "def-representation",
+        "records-invariants",
+        "store-checkpoint-buffer"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-cp-withdrawn-of-held"
+      ],
       "read_error": null
     },
     {
@@ -12254,15 +12357,15 @@
       "book": "books/catalog.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 385,
-      "functions": 125,
+      "theorems": 30,
+      "functions": 0,
       "guards": {
-        "verified": 14,
-        "declared-off": 20,
-        "default-guarded": 64,
-        "default-unguarded": 27
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
       },
-      "verify_guards_events": 14,
+      "verify_guards_events": 0,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -12270,21 +12373,10 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "catalog-number-assignment",
-        "catalog-record",
-        "def-loop",
-        "msgid-pages-exec"
+        "catalog-logic"
       ],
       "system_includes": [],
-      "suspects": [
-        "fn-ctg-assign-fields",
-        "fn-ctg-corr-live-facts",
-        "fn-ctg-mark-withdrawn-is-update",
-        "fn-ctg-withdrawn-of-assign",
-        "fn-ctg-withdrawn-of-with-context",
-        "fn-ctg-withdrawn-of-with-withdrawn",
-        "fn-ctw-corr-wbv-parts"
-      ],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -17742,12 +17834,12 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 14,
+      "functions": 12,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 14
+        "default-unguarded": 12
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -40754,6 +40846,152 @@
       "read_error": null
     },
     {
+      "book": "books/resource-vector-exec.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 20,
+      "guards": {
+        "verified": 0,
+        "declared-off": 9,
+        "default-guarded": 8,
+        "default-unguarded": 3
+      },
+      "verify_guards_events": 0,
+      "assert_events": 1,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "resource-vector"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/resource-vector-relations-heap.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 2,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "connection-budget",
+        "heap-reservation",
+        "resource-vector"
+      ],
+      "system_includes": [
+        "arithmetic-5/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/resource-vector-relations.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 15,
+      "functions": 6,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 5,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "memory-credits",
+        "page-read-resources",
+        "resource-vector"
+      ],
+      "system_includes": [
+        "arithmetic-5/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/resource-vector-tree.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 47,
+      "functions": 14,
+      "guards": {
+        "verified": 0,
+        "declared-off": 5,
+        "default-guarded": 9,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "resource-vector"
+      ],
+      "system_includes": [
+        "arithmetic-5/top"
+      ],
+      "suspects": [
+        "fn-rt-okp-forward"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/resource-vector.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 151,
+      "functions": 53,
+      "guards": {
+        "verified": 1,
+        "declared-off": 1,
+        "default-guarded": 48,
+        "default-unguarded": 3
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 5,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [],
+      "system_includes": [
+        "arithmetic-5/top"
+      ],
+      "suspects": [
+        "fn-rv-bankp-forward",
+        "fn-rv-okp-forward",
+        "fn-rv-row-demand-of-nth"
+      ],
+      "read_error": null
+    },
+    {
       "book": "books/response-plan-pins.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -60495,18 +60733,18 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 7,
-      "functions": 6,
+      "functions": 10,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 5,
-        "default-unguarded": 1
+        "default-unguarded": 5
       },
       "verify_guards_events": 0,
-      "assert_events": 11,
+      "assert_events": 17,
       "must_fails": 5,
       "prover_refusals": 0,
-      "defconsts": 2,
+      "defconsts": 4,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -73733,6 +73971,122 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/resource-vector-exec-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 6,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/resource-vector-exec"
+      ],
+      "system_includes": [
+        "std/testing/assert-bang"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/resource-vector-relations-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 8,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/resource-vector-relations"
+      ],
+      "system_includes": [
+        "std/testing/assert-bang"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/resource-vector-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 13,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 46,
+      "must_fails": 20,
+      "prover_refusals": 0,
+      "defconsts": 28,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/defkeystone",
+        "../../books/resource-vector",
+        "must-fail-checked"
+      ],
+      "system_includes": [
+        "std/testing/assert-bang"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/resource-vector-tree-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 5,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 15,
+      "must_fails": 5,
+      "prover_refusals": 0,
+      "defconsts": 22,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/defkeystone",
+        "../../books/resource-vector-tree",
+        "must-fail-checked"
+      ],
+      "system_includes": [
+        "std/testing/assert-bang"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/response-plan-pins-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -81344,6 +81698,14 @@
       ]
     },
     {
+      "theorem": "fn-cp-withdrawn-of-held",
+      "book": "books/catalog-paged.lisp",
+      "line": 1083,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
       "theorem": "fn-cpc-assemble-accessors",
       "book": "books/checkpoint-codec.lisp",
       "line": 1242,
@@ -81505,7 +81867,7 @@
     },
     {
       "theorem": "fn-ctg-assign-fields",
-      "book": "books/catalog.lisp",
+      "book": "books/catalog-logic.lisp",
       "line": 1421,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
@@ -81513,15 +81875,15 @@
     },
     {
       "theorem": "fn-ctg-corr-live-facts",
-      "book": "books/catalog.lisp",
-      "line": 3352,
+      "book": "books/catalog-logic.lisp",
+      "line": 3348,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-cat$corr-live"
       ]
     },
     {
       "theorem": "fn-ctg-mark-withdrawn-is-update",
-      "book": "books/catalog.lisp",
+      "book": "books/catalog-logic.lisp",
       "line": 1619,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-cat-mark-withdrawn and the conclusion is that arm's value"
@@ -81529,7 +81891,7 @@
     },
     {
       "theorem": "fn-ctg-withdrawn-of-assign",
-      "book": "books/catalog.lisp",
+      "book": "books/catalog-logic.lisp",
       "line": 1446,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
@@ -81537,16 +81899,16 @@
     },
     {
       "theorem": "fn-ctg-withdrawn-of-with-context",
-      "book": "books/catalog.lisp",
-      "line": 3658,
+      "book": "books/catalog-logic.lisp",
+      "line": 3654,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
     },
     {
       "theorem": "fn-ctg-withdrawn-of-with-withdrawn",
-      "book": "books/catalog.lisp",
-      "line": 3589,
+      "book": "books/catalog-logic.lisp",
+      "line": 3585,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -81611,8 +81973,8 @@
     },
     {
       "theorem": "fn-ctw-corr-wbv-parts",
-      "book": "books/catalog.lisp",
-      "line": 4234,
+      "book": "books/catalog-logic.lisp",
+      "line": 4230,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-cat$corr-wbv"
       ]
@@ -86439,6 +86801,38 @@
       ]
     },
     {
+      "theorem": "fn-rt-okp-forward",
+      "book": "books/resource-vector-tree.lisp",
+      "line": 182,
+      "reasons": [
+        "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-rt-okp"
+      ]
+    },
+    {
+      "theorem": "fn-rv-bankp-forward",
+      "book": "books/resource-vector.lisp",
+      "line": 840,
+      "reasons": [
+        "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-rv-bankp"
+      ]
+    },
+    {
+      "theorem": "fn-rv-okp-forward",
+      "book": "books/resource-vector.lisp",
+      "line": 847,
+      "reasons": [
+        "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-rv-okp"
+      ]
+    },
+    {
+      "theorem": "fn-rv-row-demand-of-nth",
+      "book": "books/resource-vector.lisp",
+      "line": 899,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
       "theorem": "fn-sbsp-files-of-advance-identity-next",
       "book": "books/store-budget-stored-post.lisp",
       "line": 109,
@@ -90746,6 +91140,30 @@
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
+        "theorem": "fn-scc-octet-listp-is-adt-octetsp",
+        "book": "books/catalog-paged.lisp",
+        "line": 128,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-cbor-octet-listp-is-adt-octetsp",
+        "book": "books/catalog-paged.lisp",
+        "line": 132,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-cp-len-of-set-column",
+        "book": "books/catalog-paged.lisp",
+        "line": 387,
+        "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
+      },
+      {
+        "theorem": "fn-cp-len-of-adt-set-a",
+        "book": "books/catalog-paged.lisp",
+        "line": 392,
+        "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
+      },
+      {
         "theorem": "fn-hf-nov-of-held-facts-of",
         "book": "books/catalog-record.lisp",
         "line": 234,
@@ -90778,7 +91196,7 @@
       {
         "theorem": "fn-cat-total-octets-is-octets-of",
         "book": "books/catalog.lisp",
-        "line": 4691,
+        "line": 75,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -92722,13 +93140,13 @@
       {
         "theorem": "drt-pay-recognizer-is-arena-recognizer",
         "book": "tests/acl2/def-representation-tests.lisp",
-        "line": 135,
+        "line": 224,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "drt-pay-count-is-arena-count",
         "book": "tests/acl2/def-representation-tests.lisp",
-        "line": 140,
+        "line": 229,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -98184,10 +98602,31 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/catalog-logic.lisp",
+        "line": 62,
+        "include": "catalog-number-assignment",
+        "included": "books/catalog-number-assignment.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/catalog-number-window.lisp",
         "line": 16,
         "include": "catalog-number-index",
         "included": "books/catalog-number-index.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/catalog-paged-attach.lisp",
+        "line": 28,
+        "include": "catalog-paged",
+        "included": "books/catalog-paged.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/catalog-paged.lisp",
+        "line": 52,
+        "include": "def-representation",
+        "included": "books/def-representation.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -98209,13 +98648,6 @@
         "line": 38,
         "include": "group-bucket-article",
         "included": "books/group-bucket-article.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/catalog.lisp",
-        "line": 62,
-        "include": "catalog-number-assignment",
-        "included": "books/catalog-number-assignment.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -117067,6 +117499,34 @@
         "line": 9,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/resource-vector-exec-tests.lisp",
+        "line": 9,
+        "include": "../../books/resource-vector-exec",
+        "included": "books/resource-vector-exec.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/resource-vector-relations-tests.lisp",
+        "line": 8,
+        "include": "../../books/resource-vector-relations",
+        "included": "books/resource-vector-relations.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/resource-vector-tests.lisp",
+        "line": 14,
+        "include": "must-fail-checked",
+        "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/resource-vector-tree-tests.lisp",
+        "line": 11,
+        "include": "must-fail-checked",
+        "included": "tests/acl2/must-fail-checked.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
