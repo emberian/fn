@@ -120,4 +120,7 @@ executor does not assert the premise itself and returns fn-jpub's classification
             (fnn-immutable-test-fault "cleanup" cleanup-directory
                                       operation-label)
             (fnn-fsync-dir cleanup-directory)))))
-    (fnn-core 'fn-jpub-host-outcome publication)))
+    ; The second value is the actual ACL2 machine that consumed these I/O
+    ; observations. Typed C completion binds it to its retained journal job;
+    ; neither a generation nor the primary outcome atom is that receipt.
+    (values (fnn-core 'fn-jpub-host-outcome publication) publication)))

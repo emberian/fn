@@ -1239,6 +1239,9 @@
 
 (defun fn-owner-reconfigure-deltas-admitted (id deltas fn-arena state)
   (declare (xargs :stobjs (state fn-arena) :mode :program))
+  (if (and (boundp-global 'fn-owner-history-semantic-source state)
+           (f-get-global 'fn-owner-history-semantic-source state))
+      (value (fn-ores-config-refused :semantic-writer-busy))
   (let* ((oc (fn-owner-ocfg state))
          (cp (fn-sn-consumer (fn-own-store (fn-ocfg-owner oc))))
          (reason (fn-ocfg-reconfig-refusal oc id deltas))
@@ -1262,6 +1265,7 @@
                            (fn-owner-canonical-epoch state) cp staged approved state)
                         (fn-owner-authority-proposal-clear state)))))
         (value (fn-ores-config-staged-result staged reason))))))
+)
 
 ;; PKT-605 (PRF-223): the bound the run installed (fn-owner-connection-budget)
 ;; is kept by every live reconfiguration: a delta list whose configuration
