@@ -21187,6 +21187,29 @@
         "tests/acl2/catalog-paged-tests.lisp"
       ],
       "progress_note": "Lane stage-4: certified at the merged head (origin/dev efaf27dd2) hbox run-20261001T193159Z-46e7 (certify-20261001T193215Z-3429821: catalog-paged, catalog-paged-tests, catalog-paged-attach; the dense-map books cached at these bytes); before the merge hbox run-20261001T192035Z-510a (catalog-dense-map, catalog-paged, catalog-paged-tests, catalog-paged-attach 4/0) and run-20261001T192544Z-7fe5 (catalog-dense-map-tests 1/0)."
+    },
+    {
+      "id": "PRF-1229",
+      "title": "The served LIST / LIST ACTIVE, NEXT / LAST, current-article and OVER (no argument, <msgid>) arms read the catalog, never the view's article list, and answer the list model's reply bytes",
+      "statement": "books/served-catalog.lisp + books/served-catalog-dispatch.lisp; the subject is fn-nntp-archive-command-cat (host/owner-host.lisp fn-owner-chunk-span -> books/served-catalog-chain.lisp fn-scr-command), whose arms fn-nntp-list-active-cat (fn-scat-group-summary per group), fn-nntp-next-or-last-cat (fn-scat-next-number / fn-scat-previous-number: fn-scv-first-p / fn-scv-last-p probes from the current number), fn-nntp-current-retrieval-cat (fn-scat-available-article) and, through fn-nntp-xref-reply-cat, fn-nntp-over-current-served-cat / fn-nntp-over-msgid-served-cat (fn-scat-available-article, fn-scat-msgid-article) replace the list-model walks (fn-nntp-group-summary, fn-nntp-group-next/last-number, fn-nntp-available-article, fn-find-article). KEYSTONES fn-nntp-list-active-cat-is-list-command, fn-nntp-next-or-last-cat-is-next-or-last (with fn-scat-next-number-is-next-number, fn-scat-previous-number-is-last-number), fn-nntp-current-retrieval-cat-is-current-retrieval, fn-nntp-over-current-served-cat-is-col, fn-nntp-over-msgid-served-cat-is-col: each equals the list model's answer under archive = the view's articles and a fresh number column (LIST also fn-statep and the LIST form); fn-nntp-archive-command-cat-is-pinned keeps its statement. A current number that is not a natural is answered by the list model (no session the reader builds carries one). Measured (hbox REPL, guards on, 10 groups, per call): LIST 3.51 / 36.3 / 377.6 MB and 1.7 / 17.5 / 187 ms before, 22.9 / 22.9 / 24.6 KB after at 1k / 10k / 100k articles; NEXT 172 KB / 1.74 MB / 18.1 MB before, 8.2 KB after; current STAT 57 KB / 536 KB / 5.53 MB before, 6.5-8.2 KB after; OVER <msgid> O(N) work without allocation before (1 ms at 100k), O(1) work and about 10 KB more allocation after (the Message-ID column's keyed tag). Scope: NEXT/LAST work is the gap to the served neighbour; replies are still built in one step (audit R7); the entry guard fn-cat-handles-inp is unchanged (raw-dispatch-3).",
+      "milestone": "M5",
+      "requirements": [
+        "REP-012",
+        "NNT-042"
+      ],
+      "depends_on": [
+        "PRF-346",
+        "PRF-363"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/served-catalog.lisp",
+        "books/served-catalog-dispatch.lisp",
+        "tests/acl2/served-incremental-tests.lisp",
+        "planning/evidence/served-incremental-1-2026-10-02.md"
+      ],
+      "progress_note": "Lane served-incremental-1 (2026-10-02): REPL-admitted on hbox (served-catalog 329 forms, served-catalog-dispatch 23 forms, the test book's 40 witnesses); certification in the READY."
     }
   ]
 }
