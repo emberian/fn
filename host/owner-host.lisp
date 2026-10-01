@@ -1680,10 +1680,11 @@
 
 (defun fn-owner-retire-step (s0 s seconds state)
   (declare (xargs :stobjs state :mode :program))
-  ;; The native accepted-producer/barrier settlement observation is still
-  ;; OPEN. Until its lifecycle relation lands, zero cannot authorize drained.
-  (value (fn-ort-drain-step-counted
-          s0 s seconds (fn-owner-feed-pending state) t nil)))
+  ;; Under the owner mutex: the carried feed count and the owner's queue,
+  ;; the producers left once intake is fenced (books/owner-retire-counted.lisp
+  ;; fn-ort-retire-step, fn-ort-producers-settled).
+  (value (fn-ort-retire-step s0 s seconds (fn-owner-feed-pending state)
+                             (fn-own-queue (fn-owner-core state)))))
 
 (defun fn-owner-retire-report (step state)
   (declare (xargs :stobjs state :mode :program))

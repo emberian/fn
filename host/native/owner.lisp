@@ -5215,12 +5215,14 @@ the node retires (row S9), refuse it by name instead."
 ;;; (books/native-retire.lisp fn-nret-request) starts the retire: from then
 ;;; on new connections are refused by name (host/native/owner.lisp
 ;;; fnn-owner-launch-client), the pull service stops, and at each accept-loop
-;;; tick ACL2 checks the independent drain window, then carried pending
-;;; under the owner mutex (fn-ort-window-step and fn-ort-drain-step-counted).
-;;; Producer settlement remains unestablished, so zero alone cannot end the
-;;; drain. The deadline stops intake and starts SIGTERM cleanup. Report
-;;; observation follows worker and committer joins; definite log/journal
-;;; settlement, funded bounded rendering and final checkpoint remain OPEN.
+;;; tick ACL2 checks the independent drain window, then, under the owner
+;;; mutex, the carried feed count and the owner's queue (fn-ort-window-step,
+;;; then fn-owner-retire-step's fn-ort-retire-step): :drained once nothing is
+;;; pending and nothing queued, :deadline once the window passed.  When it
+;;; ends the owner takes its final checkpoint (the compaction request `store
+;;; checkpoint' makes) and stops as a SIGTERM stops it; the report is
+;;; rendered and written after the worker, committer, log and journal joins
+;;; (fnn-owner-retire-final-report), so it reads the settled owner.
 (defun fnn-owner-retire-report-path (service)
   (fnn-join (fnn-store-root (fnn-owner-service-store service))
             (fnn-octets-string (fnn-octets (fnn-core 'fn-nret-report-file-name)))))
@@ -5285,9 +5287,13 @@ renamed into place, the directory fenced."
           (unless (member step '(:wait :drained :deadline))
             (fnn-fault "owner returned a malformed retire step ~a" step))
           (unless (eq step :wait)
-            ;; Record the ACL2 decision, then begin stop immediately. Rendering
-            ;; is deferred until the accepted producers and workers are joined.
+            ;; Record the ACL2 decision; the final checkpoint, as `store
+            ;; checkpoint' asks it (its answer is logged; a :blocked or
+            ;; :nothing-to-compact answer does not hold the stop); then the
+            ;; stop a SIGTERM takes.  Rendering is deferred until the
+            ;; accepted producers and workers are joined.
             (setf (fnn-owner-service-retire service) (list s0 seconds step))
+            (fnn-owner-compaction-request service)
             (setf *fnn-sigterm-requested* t)))))))
 
 (defun fnn-owner-retire-final-report (service)

@@ -4769,8 +4769,9 @@
 
 (definterface fn-owner-retire-step
   :class ::program
-  :keystones ((fn-oret-drain-step-ends-by-the-window :via fn-oret-drain-step)
-              (fn-oret-drain-step-waits-while-feeds-drain :via fn-oret-drain-step)))
+  :keystones ((fn-ort-retire-step-ends-by-the-window :via fn-ort-retire-step)
+              (fn-ort-retire-step-drains-a-settled-zero :via fn-ort-retire-step)
+              (fn-ort-retire-step-waits-while-anything-drains :via fn-ort-retire-step)))
 
 (definterface fn-tls-self-signed-host-certificate-pem
   :class :program

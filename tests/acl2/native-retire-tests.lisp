@@ -6,6 +6,7 @@
 ; constructed (as tests/acl2/native-health-tests.lisp's are), labelled so.
 (in-package "ACL2")
 (include-book "../../books/owner-retire")
+(include-book "../../books/owner-retire-counted")
 (include-book "must-fail-checked")
 
 ; ---------------------------------------------------------------------------
@@ -150,3 +151,100 @@ retire release: what stays is released only by `carry drop WORK --abandon REASON
          "obligations=0 reserved=0
 retired state=drained undelivered=0 obligations=0
 ")))
+
+; ---------------------------------------------------------------------------
+; The drain step the host calls (fn-ort-retire-step, through
+; host/owner-host.lisp fn-owner-retire-step): the carried feed count and the
+; owner's queue.  Scheduler values reached as above; the queued submission
+; is constructed (the step reads only whether the queue is empty).
+
+(defconst *nrt-queued* '((:constructed-submission 7)))
+
+; fn-ort-retire-step-drains-a-settled-zero, positive: nothing pending,
+; nothing queued, inside the window: :drained (the regression this lane
+; repairs answered :deadline here, after waiting out the window).
+(assert-event (and (equal 0 0) (not (consp nil))
+                   (< (fn-osd-elapsed *nrt-s0* (nrt-at 1)) (* 1000 600))
+                   (equal (fn-ort-retire-step *nrt-s0* (nrt-at 1) 600 0 nil) :drained)))
+; ... and past the window too.
+(assert-event (and (<= (* 1000 60) (fn-osd-elapsed *nrt-s0* (nrt-at 60000)))
+                   (equal (fn-ort-retire-step *nrt-s0* (nrt-at 60000) 60 0 nil) :drained)))
+; Hypothesis removal (pending = 0): the queue hypothesis holds, pending is
+; 1, and the conclusion fails (it waits).
+(assert-event (and (not (consp nil)) (not (equal 1 0))
+                   (not (equal (fn-ort-retire-step *nrt-s0* (nrt-at 1) 600 1 nil) :drained))))
+; Hypothesis removal (an empty queue): pending is 0, a submission is
+; queued, and the conclusion fails (it waits).
+(assert-event (and (equal 0 0) (consp *nrt-queued*)
+                   (not (equal (fn-ort-retire-step *nrt-s0* (nrt-at 1) 600 0 *nrt-queued*)
+                               :drained))))
+
+; fn-ort-retire-step-waits-while-anything-drains, positive: inside the
+; window, one feed entry pending -> :wait; one submission queued -> :wait.
+(assert-event (and (< (fn-osd-elapsed *nrt-s0* (nrt-at 59999)) (* 1000 60))
+                   (not (equal 1 0))
+                   (equal (fn-ort-retire-step *nrt-s0* (nrt-at 59999) 60 1 nil) :wait)))
+(assert-event (and (< (fn-osd-elapsed *nrt-s0* (nrt-at 59999)) (* 1000 60))
+                   (consp *nrt-queued*)
+                   (equal (fn-ort-retire-step *nrt-s0* (nrt-at 59999) 60 0 *nrt-queued*) :wait)))
+; Hypothesis removal (inside the window): at the window, the other
+; hypothesis holds, and it does not wait.
+(assert-event (and (not (< (fn-osd-elapsed *nrt-s0* (nrt-at 60000)) (* 1000 60)))
+                   (not (equal 1 0))
+                   (not (equal (fn-ort-retire-step *nrt-s0* (nrt-at 60000) 60 1 nil) :wait))))
+; Hypothesis removal (something drains): inside the window, nothing
+; pending or queued, and it does not wait.
+(assert-event (and (< (fn-osd-elapsed *nrt-s0* (nrt-at 59999)) (* 1000 60))
+                   (not (or (not (equal 0 0)) (consp nil)))
+                   (not (equal (fn-ort-retire-step *nrt-s0* (nrt-at 59999) 60 0 nil) :wait))))
+
+; fn-ort-retire-step-ends-by-the-window, positive: at the window with a
+; feed entry pending and a submission queued, :deadline.
+(assert-event (and (<= (* 1000 60) (fn-osd-elapsed *nrt-s0* (nrt-at 60000)))
+                   (equal (fn-ort-retire-step *nrt-s0* (nrt-at 60000) 60 3 *nrt-queued*)
+                          :deadline)))
+(assert-event (equal (fn-ort-retire-step *nrt-s0* *nrt-s0* 0 3 *nrt-queued*) :deadline))
+; Hypothesis removal: before the window, it waits.
+(assert-event (and (not (<= (* 1000 60) (fn-osd-elapsed *nrt-s0* (nrt-at 59999))))
+                   (equal (fn-ort-retire-step *nrt-s0* (nrt-at 59999) 60 3 *nrt-queued*) :wait)))
+(must-fail-checked
+ (thm (not (equal (fn-ort-retire-step s0 s seconds pending queue) :wait))))
+; Mutation: the producer fence hard-coded unsettled (the Codex-era step,
+; fn-ort-drain-step-counted with producers-settled nil) never drains.
+(must-fail-checked
+ (thm (implies (and (equal pending 0) (not (consp queue)))
+               (equal (fn-ort-drain-step-counted s0 s seconds pending t nil) :drained))))
+(assert-event (equal (fn-ort-drain-step-counted *nrt-s0* (nrt-at 1) 600 0 t nil) :wait))
+
+; ---------------------------------------------------------------------------
+; fn-ort-clean-stop-keeps-its-exit: positive witnesses over the observations
+; fnn-owner-run's cleanup takes (writer joined, nothing accounted, journal
+; closed, Store closed), for each of fnn-owner-store-settlement's branches.
+
+(defun nrt-settle (join lines octets queuedp journal store authority caller-fd)
+  (let* ((log (fn-ort-log-close-action join lines octets queuedp))
+         (report (fn-ort-report-close-action log journal))
+         (action (fn-ort-store-close-action report authority caller-fd)))
+    (case action
+      (:defer report)
+      (:settled (fn-ort-service-settlement-action report :absent))
+      (t (fn-ort-service-settlement-action report store)))))
+
+; :close (authority held, no caller descriptor), the ordinary SIGTERM.
+(assert-event (and (equal (fn-ort-store-close-action :joined t nil) :close)
+                   (equal (nrt-settle :joined 0 0 nil :closed :closed t nil) :joined)
+                   (equal (fn-ort-log-close-exit 0 3 (nrt-settle :joined 0 0 nil :closed :closed t nil))
+                          0)))
+; :defer (the operator caller still holds its descriptor) and :settled.
+(assert-event (and (equal (fn-ort-store-close-action :joined t t) :defer)
+                   (equal (fn-ort-log-close-exit 0 3 (nrt-settle :absent 0 0 nil :absent :closed t t))
+                          0)))
+(assert-event (and (equal (fn-ort-store-close-action :joined nil nil) :settled)
+                   (equal (fn-ort-log-close-exit 0 3 (nrt-settle :joined 0 0 nil :closed :closed nil nil))
+                          0)))
+; Hypothesis removal: one accounted log line left, a journal not closed,
+; a Store close that failed: each is uncertain (exit 3).
+(assert-event (equal (fn-ort-log-close-exit 0 3 (nrt-settle :joined 1 0 nil :closed :closed t nil)) 3))
+(assert-event (equal (fn-ort-log-close-exit 0 3 (nrt-settle :joined 0 0 nil :uncertain :closed t nil)) 3))
+(assert-event (equal (fn-ort-log-close-exit 0 3 (nrt-settle :joined 0 0 nil :closed :uncertain t nil)) 3))
+(assert-event (equal (fn-ort-log-close-exit 0 3 (nrt-settle :timeout 0 0 nil :closed :closed t nil)) 3))

@@ -1295,6 +1295,54 @@ class NativePeeringTests(unittest.TestCase):
             "refused": refused.decode("ascii", "replace").strip(),
             "retire": out.decode("ascii", "replace").splitlines()}, sort_keys=True))
 
+    def test_retire_waits_for_a_peer_then_stops_drained_with_a_checkpoint(self):
+        """Row S9 (PRF-1029, fn-ort-retire-step): `retire --drain 120' on a
+        node whose one peer has the article but withholds its 239.  While the
+        feed still owes it the drain waits (no report, the owner runs); once
+        the peer answers, nothing is pending and nothing queued, so the drain
+        ends `drained' long before the window: the owner takes its final
+        checkpoint (the compaction request, answered in its log), writes the
+        report and stops by itself with exit 0."""
+        gate = threading.Event()
+        peer = ScriptedTransitPeer("203 streaming permitted", accept_gate=gate)
+        self.addCleanup(peer.close)
+        source = self.initialize("retire-drained-source")
+        target = types.SimpleNamespace(name="retire-drained-peer", port=peer.port)
+        self.configure_peer(source, target)
+        self.start(source)
+        message_id = "<retire-drained@example.invalid>"
+        self.post(source, message_id, ".retire-drained")
+        self.assertIsNotNone(peer.await_article(message_id), peer.commands)
+        result = {}
+        started = time.monotonic()
+        worker = threading.Thread(
+            target=lambda: result.setdefault(
+                "retire", source.operator("retire", "--drain", "120", timeout=240)))
+        worker.start()
+        time.sleep(4)
+        report = Path(source.store_path) / "retire-report.txt"
+        self.assertTrue(worker.is_alive(), "retire ended while the peer still owed its 239")
+        self.assertIsNone(source.process.poll())
+        self.assertFalse(report.exists())
+        gate.set()
+        worker.join(timeout=240)
+        elapsed = time.monotonic() - started
+        retire = result["retire"]
+        self.assertEqual(retire.returncode, EXIT_OK, retire.stdout + retire.stderr)
+        out = retire.stdout
+        self.assertIn(b"retire draining", out)
+        self.assertIn(b"retire peer=retire-drained-peer undelivered=0 dropped=0", out)
+        self.assertIn(b"retired state=drained undelivered=0", out)
+        self.assertLess(elapsed, 100, "the drain waited out its window")
+        self.assertTrue(report.exists())
+        self.assertIn(report.read_bytes(), out)
+        source.exited(EXIT_OK, timeout=120)
+        log = source.process.stderr.since(0)
+        self.assertIn(b"COMPACTION request answer=", log)
+        print("NATIVE-PEERING-WITNESS " + json.dumps({
+            "kind": "retire-drained-prf-1029", "elapsed_s": round(elapsed, 2),
+            "retire": out.decode("ascii", "replace").splitlines()}, sort_keys=True))
+
     def test_obligations_report_of_five_thousand_articles_answers(self):
         """PRF-336 (the openbsd-rehearsal, stop 2): `operator CONFIG
         obligations' at about 1,029 held obligations (keep-forever, one per

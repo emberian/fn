@@ -575,7 +575,7 @@ fnn-owner-compaction-request).  With no owner, OFFLINE runs as before."
 ;;; no owner the verb is refused by name (nothing drains a stopped node).
 ;;; After the answer the operator waits while ACL2's liveness decision over
 ;;; the socket and the lock says an owner runs (the owner's drain ends by its
-;;; window, books/owner-retire.lisp fn-oret-drain-step-ends-by-the-window,
+;;; window, books/owner-retire-counted.lisp fn-ort-retire-step-ends-by-the-window,
 ;;; and its stop by the deadline, PRF-357), then prints the report the owner
 ;;; fenced before it stopped.  No report is uncertain, never success.
 (defun fnn-operator-execute-retire (result root)
