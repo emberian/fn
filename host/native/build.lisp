@@ -352,6 +352,9 @@
 (ld "host/anchor-server-host.lisp" :ld-error-action :error)
 (ld "host/reader-host.lisp" :ld-error-action :error)
 (ld "host/owner-host.lisp" :ld-error-action :error)
+(ld "host/account-adoption-host.lisp" :ld-error-action :error)
+(ld "host/account-adoption-collection-host.lisp" :ld-error-action :error)
+(ld "host/account-adoption-return-host.lisp" :ld-error-action :error)
 (ld "host/page-read-host.lisp" :ld-error-action :error)
 (ld "host/consumer-remote-host.lisp" :ld-error-action :error)
 (ld "host/native-config-host.lisp" :ld-error-action :error)
@@ -480,6 +483,7 @@
         (load "host/native/feed-filename.lisp")
         ; Bounded credential transport.  ACL2 parses and owns every field;
         ; this module also defines the composable pre-listen owner hook.
+        (load "host/native/account-adoption.lisp")
         (load "host/native/auth.lisp")
         ; Offline credential administration.  ACL2 owns argv plans, verifier
         ; derivation, serialization, reporting and persistence transitions.

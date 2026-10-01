@@ -98,3 +98,22 @@ installation still have to join. Startup/reload caller source now names the
 pooled admission gate and refuses before preparation while its genuine
 allowance/turn producer is unavailable. No prior direct credential installation
 may substitute for that missing authority.
+
+The actual input/turn boundary is planned PRF-1198 (SCN-160). Begin retains
+original parsed config/bindings/entropy/base config/redeemed aliases under
+sourceKey6. Candidate40 uses current CP incarnation and observed transaction
+coordinate through the existing namespace codec; neither observation is
+authority or uniqueness. The sole selector revalidates before durable begin;
+interference refuses until funded rebind/restart, while durable begin retains
+the same candidate/input through recovery.
+
+Begin/Tick/selection thread the actual owner-control slot/nonce/slots/pool/STATE
+and preserve five mutable outputs. Original complete operation resources and
+BODY prepayment precede constructors. Reservation/promotion/settlement retain
+original and produced roots in STATE plus the actual pool counter intent before
+mutation; finalize CURRENT effects before restoring pool modes. The actual
+final epilogue runs after private result/closure drops and scheduler cleanup,
+before ATS finish; permanent request/job/selection roots remain charged. A
+source key, ready job, native durable word or ATS:left is never alias return.
+Complete installed allowance, durable C destination, funded rebind/restart,
+all-writer source/raw-cut/alias-return proofs and native qualification remain open.

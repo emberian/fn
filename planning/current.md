@@ -112,7 +112,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 - Tested: no: The actual approved consumer publication wrapper requires a complete result/effect bridge to the old OCL publication property; fn-oclc-publish-is-publish covers only its inner predecessor subject..
 - Deployed: no: The actual approved consumer publication wrapper requires a complete result/effect bridge to the old OCL publication property; fn-oclc-publish-is-publish covers only its inner predecessor subject..
 - Latest positive result: CFG-LIVE accepted and CFG-LIVE-REFUSE refused; live_reconfiguration 11/11, admin 9/9, operator_verbs 18/18, profile_upgrade 5/5 ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).
-- Remaining obstruction: The actual approved consumer publication wrapper requires a complete result/effect bridge to the old OCL publication property; fn-oclc-publish-is-publish covers only its inner predecessor subject.
+- Remaining obstruction: The actual approved consumer publication wrapper requires a complete result/effect bridge to the old OCL publication property; fn-oclc-publish-is-publish covers only its inner predecessor subject. Account Begin/Tick and typed turn/epilogue source is a planned PRF-1198 component; complete installed operation resources, durable C output and native alias-return qualification remain open.
 - Next positive gate: Prove the actual fn-ccp-publish wrapper preserves complete publication and approved consumer effects, then qualify the coherent caller.
 
 ### P7

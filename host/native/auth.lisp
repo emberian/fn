@@ -44,50 +44,50 @@
 ;;; finish must be installed together with the operation census and restart
 ;;; producer. This caller deliberately has no direct-set-config fallback.
 (defun fnn-native-auth-adopt-config (service config bindings)
-  (let* ((entropy (fnn-owner-consumer-entropy-observation))
-         (begun (fnn-owner-serialized
-                 service nil
-                 (lambda ()
-                   ;; The actual pooled gate currently returns only named
-                   ;; busy/unavailable answers. No pending holder, parsed
-                   ;; table or supplied demand can bypass that missing turn.
-                   (let ((admission (fnn-account-preparation-admit
-                                     nil '(:account-candidate-begin))))
-                     (case (fnn-core 'fn-cad-action-kind admission)
-                       ((:admission-busy :account-preparation-allowance-unavailable)
-                        (return-from fnn-native-auth-adopt-config :refused))
-                       (otherwise
-                        (fnn-fault "account preparation returned an uninstalled admission arm"))))
-                   (fnn-owner-core 'fn-owner-account-adoption-begin
-                                   config bindings entropy)))))
-    (unless (eq (fnn-core 'fn-cad-action-kind begun) :yield)
-      (return-from fnn-native-auth-adopt-config
-        (if (eq (fnn-core 'fn-cad-action-kind begun) :accepted)
-            :accepted :refused)))
+  (let ((entropy (fnn-owner-consumer-entropy-observation)))
+    (multiple-value-bind (word answer)
+        (fnn-owner-serialized-with-control-turn
+          service nil
+          (lambda (slot nonce slots pool)
+            (let ((result (fnn-account-adoption-begin
+                            config bindings entropy slot nonce slots pool)))
+              (setf config nil bindings nil entropy nil)
+              (multiple-value-prog1 (values-list result) (setf result nil))))
+          :control #'fnn-account-adoption-epilogue)
+      (declare (ignore answer))
+      ;; The outer issuer exposes only core word/answer after scheduler
+      ;; cleanup. Missing installed binding invokes no allocating callback.
+      (unless (eq word :yield)
+        (return-from fnn-native-auth-adopt-config
+          (case word
+            (:accepted :accepted)
+            (:recovery-required (fnn-indeterminate "account begin requires recovery"))
+            ((:refused :unavailable :owner-control-unavailable) :refused)
+            (otherwise (fnn-fault "malformed account begin result"))))))
     (loop
-      (let ((one
-              (fnn-owner-serialized
-               service nil
-               (lambda ()
-                 (let* ((step (fnn-owner-core 'fn-owner-account-adoption-tick))
-                        (kind (fnn-core 'fn-cad-action-kind step)))
-                   (if (member kind '(:publish :configure))
-                       (let ((word
-                              (if (eq kind :configure)
-                                  (fnn-owner-account-configuration-publication-locked service)
-                                (fnn-owner-account-publication-locked service))))
-                         ;; Only an actual durable completion advances the
-                         ;; candidate cursor; a transport answer never does.
-                         (if (eq word :durable)
-                             ;; Durable collector advances the SAME saved
-                             ;; job/decision atomically; this is a readout.
-                             (fnn-owner-core 'fn-owner-account-adoption-status)
-                           (fnn-fault "account publication returned ~a" word)))
-                     step))))))
-        (case (fnn-core 'fn-cad-action-kind one)
+      (multiple-value-bind (word answer)
+          (fnn-owner-serialized-with-control-turn
+            service nil
+            (lambda (slot nonce slots pool)
+              (let* ((result (fnn-account-adoption-tick slot nonce slots pool))
+                     (step (fnn-core 'fn-cado-result-action result))
+                     (kind (fnn-core 'fn-cad-action-kind step)))
+                (when (member kind '(:publish :configure))
+                  (let ((durable
+                         (if (eq kind :configure)
+                             (fnn-owner-account-configuration-publication-locked service)
+                           (fnn-owner-account-publication-locked service))))
+                    (unless (eq durable :durable)
+                      (fnn-fault "account publication returned ~a" durable))
+                    (setf result (fnn-account-adoption-collect slot nonce slots pool))))
+                (setf step nil)
+                (multiple-value-prog1 (values-list result) (setf result nil))))
+            :control #'fnn-account-adoption-epilogue)
+        (declare (ignore answer))
+        (case word
           (:yield nil)
           (:accepted (return :accepted))
-          (:refused (return :refused))
+          ((:refused :unavailable :owner-control-unavailable) (return :refused))
           (:recovery-required
            (fnn-indeterminate "account authority adoption requires recovery"))
           (otherwise (fnn-fault "owner returned malformed account adoption action")))))))
