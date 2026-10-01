@@ -183,7 +183,9 @@
   ;; stall.  Read and written under COMMIT-LOCK.
   (drain-release nil)
   ;; Retained original-input/controller holder; absent until core issuance.
-  (captured-runtime nil))
+  (captured-runtime nil)
+  ;; Issued scheduler receipt; absent until genuine funded installation.
+  (control-binding nil))
 
 ;;; Opaque connection custody. These are INTERNAL composition subjects until
 ;;; startup installs the genuine indexed runtime and its constructor allowance.
@@ -2271,6 +2273,30 @@ log reopen)."
     (when (fnn-owner-service-stopping service)
       (fnn-refuse "owner service is stopping"))
     (fnn-owner-shared-action-locked service cid thunk)))
+
+(defun fnn-owner-serialized-with-control-turn
+ (service cid callback &optional (class :control))
+ "Pass actual slot/nonce/slots/pool through one scheduler quantum.
+CALLBACK is preconstructed by its funded caller and returns five CL values:
+word, answer, actual slots, pool and STATE. Retain effects before classification.
+No numeric BODY or supplied receipt is accepted."
+ (let ((binding (fnn-owner-service-control-binding service)))
+  (if (not binding) (values :owner-control-unavailable :refused)
+   (fnn-with-owner-control-issued-turn (binding slot nonce slots pool)
+    (fnn-owner-gated (service class)
+     (when (fnn-owner-service-stopping service)
+      (fnn-refuse "owner service is stopping"))
+     (fnn-owner-shared-action-locked service cid
+      (lambda ()
+       (multiple-value-bind (word answer next-slots next-pool next-state)
+           (funcall callback slot nonce slots pool)
+        (when next-slots (setf slots next-slots))
+        (when next-pool (setf pool next-pool))
+        (when next-state (setf *the-live-state* next-state))
+        (unless (and next-slots next-pool next-state)
+         (fnn-fixed-callback-fail 'fn-ats-prepay-body-internal
+                                  :control-body-missing-state nil))
+        (values word answer)))))))))
 
 (defun fnn-owner-transit-serialized (service cid thunk)
   "fnn-owner-serialized for a peer's quantum (the :transit class): the push
