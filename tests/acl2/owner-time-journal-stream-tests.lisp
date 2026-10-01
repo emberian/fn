@@ -63,3 +63,30 @@
 ; The empty file: one empty chunk and no chunk agree with the whole read.
 (assert-event (otjst-agree nil))
 (assert-event (otjst-agree (list nil)))
+
+; KEYSTONE fn-otjs-feed-reports-the-prefix-read (the host's step), reachable
+; witnesses: after 7-octet chunks of the first 70 octets, one more 7-octet
+; chunk reports the 77-octet prefix (torn mid-line, exit 1 has no meaning
+; there: the status is the prefix's); the last chunk of the whole file
+; reports the whole file, entries 12, exit 0.
+(defun otjst-step-agree (chunks chunk)
+  (declare (xargs :mode :program))
+  (let ((st (fn-otjs-feed (fn-otjs-feed-all (fn-otjs-init) chunks) chunk))
+        (read (append (fn-otjs-concat chunks) chunk)))
+    (and (equal (fn-otjs-report st) (fn-otm-journal-report read))
+         (equal (fn-otjs-exit st) (fn-otm-journal-exit read)))))
+(assert-event (otjst-step-agree (otjst-chunks (take 70 *otjst-file*) 7)
+                                (take 7 (nthcdr 70 *otjst-file*))))
+(assert-event (let* ((cs (otjst-chunks *otjst-file* 7))
+                     (st (fn-otjs-feed (fn-otjs-feed-all (fn-otjs-init) (butlast cs 1))
+                                       (car (last cs)))))
+                (and (otjst-step-agree (butlast cs 1) (car (last cs)))
+                     (equal (fn-otjs-exit st) 0)
+                     (equal (fn-otjs-status st) :whole))))
+; Conclusion failure (mutation witness): the step's report differs from the
+; report of the prefix WITHOUT the chunk just fed.
+(assert-event (let* ((cs (otjst-chunks *otjst-file* 7))
+                     (st (fn-otjs-feed (fn-otjs-feed-all (fn-otjs-init) (butlast cs 1))
+                                       (car (last cs)))))
+                (not (equal (fn-otjs-report st)
+                            (fn-otm-journal-report (fn-otjs-concat (butlast cs 1)))))))

@@ -652,7 +652,7 @@
 (definterface fn-otjs-feed
   :class ::common-lisp-compliant
   :kinds ((chunk fn-cbor-octet-listp))
-  :keystones (fn-otjs-report-of-the-chunks-is-the-journal-report))
+  :keystones (fn-otjs-feed-reports-the-prefix-read))
 
 (definterface fn-otjs-init
   :class ::common-lisp-compliant)

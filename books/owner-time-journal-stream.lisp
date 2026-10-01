@@ -304,6 +304,28 @@
                             (:e fn-otjs-init) fn-otjs-report fn-otjs-exit
                             fn-otm-journal-report fn-otm-journal-exit)))))
 
+; KEYSTONE (the step the host calls, fn-otjs-feed).  Feeding one more chunk
+; to the state the earlier chunks left gives the whole file's report and
+; exit over the octets read so far: each host step keeps the state the
+; journal report of its prefix.
+(defthm fn-otjs-feed-reports-the-prefix-read
+  (let ((st (fn-otjs-feed (fn-otjs-feed-all (fn-otjs-init) chunks) chunk)))
+    (and (equal (fn-otjs-report st)
+                (fn-otm-journal-report (append (fn-otjs-concat chunks) chunk)))
+         (equal (fn-otjs-exit st)
+                (fn-otm-journal-exit (append (fn-otjs-concat chunks) chunk)))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-otjs-report-of-feed-is-the-journal-report
+                            (octets (append (fn-otjs-concat chunks) chunk)))
+                 (:instance fn-otjs-feed-of-append
+                            (st (fn-otjs-init)) (a (fn-otjs-concat chunks)) (b chunk)))
+           :in-theory (e/d (fn-otjs-feed-all-is-feed-of-concat)
+                           (fn-otjs-report-of-feed-is-the-journal-report
+                            fn-otjs-feed-of-append
+                            fn-otjs-feed-all fn-otjs-concat fn-otjs-feed fn-otjs-init
+                            (:e fn-otjs-init) fn-otjs-report fn-otjs-exit
+                            fn-otm-journal-report fn-otm-journal-exit)))))
+
 ; The host reads the report after its last chunk without the fold's final
 ; empty feed: that feed changes neither the line nor the exit.
 (defthm fn-otjs-feed-nil-keeps-the-report
