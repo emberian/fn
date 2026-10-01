@@ -131,3 +131,17 @@ return exist; E alias cleanup cannot substitute. Yield continuation needs the
 SAME account claim and a fresh paid enclosing ATS nonce without reissuing PRS.
 The complete enclosing BODY must price acquisition, preparation and cleanup;
 a readonly publish-c family does not fund these allocations.
+
+Typed C yield retains the original CURRENT token, demand, source and
+reservation provenance in phase `:suspended`; a fixed suspension packet owns
+the actual source/base/preparation/lease aliases. No pool release or promotion
+occurs. Any registered journal intent excludes this park. The account
+epilogue may return `:account-turn-retained` to finish only that allocating
+turn. A fresh receipt from the same installed control slot prepays the exact
+`:account-config-resume` closure and rebinds only its newer nonce/slot in the
+original intent. It cannot issue another account claim or reselect. The
+source-derived resume peak must fit the original held claim. Unavailable
+source and budget yield keep the claim; unknown source/prepay fences it.
+Named semantic-joins pending is retained without executing a semantic step.
+These new source paths remain unadmitted/unqualified; compiled complete
+continuation cost, C durability and alias-return obligations remain open.

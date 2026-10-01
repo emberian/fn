@@ -433,3 +433,165 @@ def test_actual_configuration_caller_retains_each_returned_effect(tmp_path):
                          capture_output=True, text=True, timeout=30)
     assert out.returncode == 0, out.stdout + out.stderr
     assert 'ACCOUNT_C_CALLER_RETAINED_EFFECTS_PASS' in out.stdout
+
+
+def test_actual_configuration_claim_parks_and_rebinds_without_issue(tmp_path):
+    """Actual CURRENT transforms/host calls; synthetic UNFUNDED ATS/source parents."""
+    program = '''
+(defpackage "ACL2" (:use "COMMON-LISP"))
+(in-package "ACL2")
+(defmacro mv (&rest x) `(values ,@x))
+(defmacro mv-let (names form &body body) `(multiple-value-bind ,names ,form ,@body))
+(defun zp (x) (or (not (integerp x)) (<= x 0)))
+(defun natp (x) (and (integerp x) (>= x 0)))
+(defun member-eq (x xs) (member x xs :test #'eq))
+(defun update-nth (n val xs)
+ (if (zerop n) (cons val (cdr xs)) (cons (car xs) (update-nth (1- n) val (cdr xs)))))
+(defun boundp-global (key state) (not (null (assoc key state))))
+(defun f-get-global (key state) (cdr (assoc key state)))
+(defun f-put-global (key val state) (acons key val (remove key state :key #'car :test #'eq)))
+(defun fn-cbor-octet-listp (xs) (every (lambda (n) (and (natp n) (< n 256))) xs))
+(defun fn-cp-uintp (n) (and (natp n) (< n (expt 2 64))))
+(defun fn-owner-account-turn-current (state) (f-get-global 'current state))
+(defun fn-owner-account-turn-keep (row state) (f-put-global 'current row state))
+(defun fn-owner-account-adoption-operation (state) (f-get-global 'holder state))
+(defun fn-owner-account-adoption-job (state) (nth 7 (fn-owner-account-turn-current state)))
+(defun fn-owner-account-adoption-source (state) (declare (ignore state)) (values :source-current nil nil nil))
+(defun fn-owner-account-turn-epilogue-token (&rest x) (declare (ignore x)) (error "C incorrectly entered E return"))
+(defun fn-owner-account-turn-return (&rest x) (declare (ignore x)) (error "C incorrectly settled E aliases"))
+(defun fn-owner-account-config-source (state) (f-get-global 'lease state))
+(defun fn-owner-account-config-preparation-state (state) (f-get-global 'prep state))
+(defun fn-owner-history-config-writer-gate (state) (declare (ignore state)) :config-writer-current)
+(defvar *phase* 3)
+(defvar *resources-available* nil)
+(defvar *resources-word* nil)
+(defvar *prepay-word* :prepaid)
+(defvar *prepay-count* 0)
+(defun fn-ats-matchingp (slot nonce slots pool)
+ (declare (ignore slots pool)) (and (= slot 2) (member nonce '(17 18 19 20 21))))
+(defun fn-ats-kindsi (slot slots) (declare (ignore slot slots)) :owner-control)
+(defun fn-ats-phasesi (slot slots) (declare (ignore slot slots)) *phase*)
+(defun fn-ats-role-bodyp (slot nonce role slots pool)
+ (and (eq role :owner-control) (= *phase* 3) (fn-ats-matchingp slot nonce slots pool)))
+(defun fn-owner-runtime-operation-resources (kind pool state)
+ (declare (ignore pool state)) (assert (eq kind :account-config-resume))
+ (values (or *resources-word* (if *resources-available* :runtime-operation-available :runtime-operation-unavailable))
+         '(:account-adoption-resources :account-config-resume (4 0 0 0 0) nil nil 100 :source :return)))
+(defun fn-ats-prepay-body-internal (slot nonce body slots pool)
+ (declare (ignore slot nonce pool)) (assert (= body 100))
+ (incf *prepay-count*) (when (eq *prepay-word* :prepaid) (setf *phase* 3))
+ (values *prepay-word* slots :actual-fresh-Q-pool))
+(defun fn-act-reserve (&rest x) (declare (ignore x)) (error "second account claim issue"))
+(defun fn-prs-issue (&rest x) (declare (ignore x)) (error "unexpected PRS issue"))
+(defun fn-catd-next (&rest x) (declare (ignore x)) (error "unexpected reselection"))
+'''
+    for file, prefix in (
+        ('books/consumer-position-fields.lisp', '(defun fn-cp-nth '),
+        ('books/account-adoption-input-source.lisp', '(defun fn-cado-widthp '),
+        ('books/account-adoption-input-source.lisp', '(defun fn-cado-receipt-coordinatep '),
+        ('books/account-adoption-input-source.lisp', '(defun fn-cado-source-keyp '),
+        ('books/account-adoption-turn.lisp', '(defun fn-act-row '),
+        ('books/account-adoption-turn.lisp', '(defun fn-act-livep '),
+        ('books/account-adoption-turn.lisp', '(defun fn-act-uncertain '),
+        ('books/account-adoption-turn-state.lisp', '(defun fn-owner-account-turn-fence '),
+        ('books/account-adoption-turn-continuation.lisp', '(defun fn-act-suspend '),
+        ('books/account-adoption-turn-continuation.lisp', '(defun fn-act-rebind '),
+        ('host/account-adoption-turn-host.lisp', '(defun fn-owner-account-turn-current-bodyp\n'),
+        ('books/history-config-journal-state.lisp', '(defun fn-owner-history-config-journal '),
+        ('host/account-config-continuation-host.lisp', '(defun fn-owner-account-config-continuation-currentp '),
+        ('host/account-config-continuation-host.lisp', '(defun fn-owner-account-config-suspended-currentp '),
+        ('host/account-config-continuation-host.lisp', '(defun fn-owner-account-config-suspend-current\n'),
+        ('host/account-config-continuation-host.lisp', '(defun fn-owner-account-config-resume\n'),
+        ('host/account-adoption-host.lisp', '(defun fn-owner-account-adoption-tick\n'),
+        ('host/account-adoption-return-host.lisp', '(defun fn-owner-account-turn-return-current\n'),
+    ):
+        program += cl_form(named(file, prefix))
+    program += '''
+(defun fn-prs-vectorp (v) (and (= (length v) 5) (every #'natp v)))
+(defun fn-prs-below (a b) (every #'<= a b))
+(let* ((token '(:account-preparation-turn 7 3 4))
+       (id '(:account-operation :candidate 9 10))
+       (key (list :account-adoption-source token 3 4 (make-list 32 :initial-element 0) 10))
+       (oldrequest (list :original-input)) (oldjob (list :original-job))
+       (intent (list :account-turn-reservation :original-ledger :proposed-ledger
+                     :original-complete-resources 2 17))
+       (row (list :account-turn token :reserved '(8 0 0 0 1)
+                  :operation-select key oldrequest oldjob nil intent))
+       (holder (list :account-adoption-operation id key '(:configure :marker)
+                     oldjob 3 4 8 9 10 :namespace 12 oldrequest token))
+       (base (list :history-config-base id :original-store :original-config
+                   :canonical :view :posting :obligation))
+       (prep (list :account-config-preparation id token :full8 :record base :metadata
+                   :groups :history-cursor :generation-cursor 4 5 :next-node))
+       (lease (list :history-config-source id token :parent 3 8 4 :coordinate :record :acquired))
+       (state (list (cons 'current row) (cons 'holder holder) (cons 'lease lease)
+                    (cons 'prep prep) (cons 'fn-owner-history-config-base base)))
+       (pool (list :original-pool)) (slots (list :actual-slots)))
+ (assert (fn-owner-account-config-continuation-currentp state))
+ ;; Any actual registered journal intent forbids park; effects unchanged.
+ (let ((s (f-put-global 'fn-owner-history-config-journal '(:history-config-journal-intent) state)))
+  (multiple-value-bind (word np ns)
+    (fn-owner-account-config-suspend-current 2 17 slots pool s)
+   (assert (and (eq word :account-return-pending) (eq np pool) (eq ns s)))))
+ ;; First park owns actual roots while retaining the original claim/counters.
+ (multiple-value-bind (word np parked)
+   (fn-owner-account-turn-return-current 2 17 slots pool state)
+  (assert (and (eq word :account-turn-retained) (eq np pool)))
+  (let ((saved (fn-owner-account-turn-current parked)))
+   (assert (eq (third saved) :suspended))
+   (dolist (i '(1 3 4 5 6 7 9)) (assert (eq (nth i saved) (nth i row))))
+   (assert (equal (nth 8 saved) (list :account-config-suspension id key base prep lease)))
+   (assert (fn-owner-account-config-suspended-currentp parked))
+   (setf *phase* 2)
+   ;; Missing source/prepay keeps all parked aliases and original counters.
+   (multiple-value-bind (w answer sl po st)
+     (fn-owner-account-config-resume 2 18 slots pool parked)
+    (assert (and (eq w :unavailable) (eq answer :account-config-resume-resources-unavailable)
+                 (eq sl slots) (eq po pool) (eq st parked) (zerop *prepay-count*))))
+   (multiple-value-bind (w po st)
+     (fn-owner-account-config-suspend-current 2 18 slots pool parked)
+    (assert (and (eq w :account-turn-retained) (eq po pool) (eq st parked))))
+   ;; Corrupted receipt/slot removal cannot rebind or spend another claim.
+   (multiple-value-bind (w answer sl po st)
+     (fn-owner-account-config-resume 3 18 slots pool parked)
+    (assert (and (eq w :refused) (eq answer :account-continuation-changed)
+                 (eq sl slots) (eq po pool) (eq st parked) (zerop *prepay-count*))))
+   ;; Unknown source outcome fences original aliases, never finishes the turn.
+   (setf *resources-word* :unknown-source-outcome)
+   (multiple-value-bind (w answer sl po st)
+     (fn-owner-account-config-resume 2 20 slots pool parked)
+    (assert (and (eq w :recovery-required) (eq answer :unknown-source-outcome)
+                 (eq sl slots) (eq po pool) (zerop *prepay-count*)))
+    (let ((fenced (fn-owner-account-turn-current st)))
+     (assert (eq (third fenced) :uncertain))
+     (dolist (i '(1 3 4 5 6 7 8 9)) (assert (eq (nth i fenced) (nth i saved)))))
+    (multiple-value-bind (rw rp rs)
+      (fn-owner-account-turn-return-current 2 20 slots pool st)
+     (assert (and (eq rw :account-return-pending) (eq rp pool) (eq rs st)))))
+   (setf *resources-word* nil *resources-available* t *prepay-word* :yield)
+   ;; Budget yield retains the parked account claim and all returned Q effects.
+   (multiple-value-bind (w answer sl po st)
+     (fn-owner-account-config-resume 2 21 slots pool parked)
+    (assert (and (eq w :yield) (eq answer :account-config-resume-budget-yield)
+                 (eq sl slots) (eq po :actual-fresh-Q-pool) (eq st parked)
+                 (= *prepay-count* 1))))
+   (setf *prepay-word* :prepaid)
+   ;; Synthetic source availability exercises actual prepay/rebind transport.
+   (setf *resources-available* t)
+   (multiple-value-bind (w answer sl po st)
+     (fn-owner-account-adoption-tick 2 19 slots pool parked)
+    (assert (and (eq w :configure) (eq answer id) (eq sl slots)
+                 (eq po :actual-fresh-Q-pool) (= *prepay-count* 2)))
+    (let* ((rebound (fn-owner-account-turn-current st)) (newintent (nth 9 rebound)))
+     (assert (eq (third rebound) :reserved))
+     (dolist (i '(1 3 4 5 6 7 8)) (assert (eq (nth i rebound) (nth i saved))))
+     (dolist (i '(0 1 2 3)) (assert (eq (nth i newintent) (nth i intent))))
+     (assert (and (= (nth 4 newintent) 2) (= (nth 5 newintent) 19))))))))
+(format t "ACCOUNT_C_RETAINED_CLAIM_REBIND_PASS~%")
+'''
+    path = tmp_path / 'account-c-retained-claim.lisp'
+    path.write_text(program)
+    out = subprocess.run(['sbcl', '--noinform', '--script', str(path)],
+                         capture_output=True, text=True, timeout=30)
+    assert out.returncode == 0, out.stdout + out.stderr
+    assert 'ACCOUNT_C_RETAINED_CLAIM_REBIND_PASS' in out.stdout

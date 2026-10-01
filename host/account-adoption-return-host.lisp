@@ -3,6 +3,7 @@
 ; installed family/cleanup producer and whole native proof remain unqualified.
 (in-package "ACL2")
 (include-book "account-adoption-turn-host")
+(include-book "account-config-continuation-host")
 (include-book "../books/account-adoption-turn-return")
 (include-book "account-durable-alias-clear-host")
 
@@ -87,6 +88,9 @@
                   (member-eq (fn-prp-alloc-mode fn-page-read-pool) '(:active :draining)))
              :account-turn-not-owned :account-return-pending)
          fn-page-read-pool state)
+  (if (eq (fn-cp-nth 0 (fn-cp-nth 3 (fn-owner-account-adoption-operation state))) :configure)
+      (fn-owner-account-config-suspend-current slot nonce fn-allocation-turn-slots
+                                              fn-page-read-pool state)
   (mv-let (word token)
     (fn-owner-account-turn-epilogue-token slot nonce fn-allocation-turn-slots
                                        fn-page-read-pool state)
@@ -94,3 +98,5 @@
        (mv :account-return-pending fn-page-read-pool state)
     (fn-owner-account-turn-return token slot nonce fn-allocation-turn-slots
                                   fn-page-read-pool state)))))
+
+)

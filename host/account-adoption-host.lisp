@@ -4,6 +4,7 @@
 (include-book "account-adoption-turn-host")
 (include-book "account-adoption-begin-source-host")
 (include-book "account-adoption-operation-host")
+(include-book "account-config-continuation-host")
 (include-book "../books/account-adoption-result")
 (include-book "../books/consumer-account-adoption-driver")
 
@@ -82,6 +83,9 @@
          (phase (fn-cp-nth 1 job))
          (operation (if (eq phase :ready) :operation-select :candidate-step)))
    (cond
+    ((eq (fn-cp-nth 2 (fn-owner-account-turn-current state)) :suspended)
+     (fn-owner-account-config-resume slot nonce fn-allocation-turn-slots
+                                   fn-page-read-pool state))
     ((not (eq source-word :source-current))
      (mv :refused :account-input-source-unavailable fn-allocation-turn-slots fn-page-read-pool state))
     ; A genuine durable typed C collector advances configuration generation.

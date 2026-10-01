@@ -4607,7 +4607,8 @@
         "Drain bob-pub, alice-priv (bound) and operator (plain); bound-poll bob-priv; `account access bob --read '*' --post '*'`; drain bob-priv; `consumer unbind bob-pub`; bound-poll and plain poll of bob-pub.",
         "Run pooled account Begin/Tick with genuine owner-control ticket; interleave the frontier before authority begin, retain exact candidate/input after durable begin, refuse changed input, and perform actual account alias-return epilogue before ATS finish.",
         "Refuse actual native account adoption with no installed control binding before entropy I/O or constructors; refuse a new account reservation while CURRENT holds configuration acquiring3/source10.",
-        "Exercise actual typed C publication transport: retain acquisition effects before one preparation quantum, resume the same source without acquisition, and preserve pending/full8/lease roots until genuine journal completion."
+        "Exercise actual typed C publication transport: retain acquisition effects before one preparation quantum, resume the same source without acquisition, and preserve pending/full8/lease roots until genuine journal completion.",
+        "Park a yielded typed C claim, refuse parking with any registered journal intent, then resume on a genuine newer receipt from the same control slot; inject unavailable source, budget yield, wrong slot and unknown source."
       ],
       "expected": [
         "The malformed binding exits non-zero; `consumer show` prints `consumer bob-pub account bob` and `consumer alice-priv account alice`. It contains no pending invitation or redeemed-account line.",
@@ -4616,7 +4617,8 @@
         "After the restart: bob-pub pub2, cross; alice-priv secret1 (re-served), secret2, cross; operator secret1, secret2, cross; bob-priv refused, then after the widened rule secret1, secret2, cross (nothing skipped); unbound bob-pub: bound-poll exits 1, plain poll an empty page.",
         "Source/candidate shape never grants allocation or authority; uncertainty retains original/produced roots, and ATS:left never settles account lifetime.",
         "Both refusal paths retain all original effects and spend no account PRS identity; an existing configuration continuation requires its retained receipt, never a candidate-ID bypass. Negative recording evidence does not qualify funded lifecycle.",
-        "C preparation yield, refusal and recovery remain distinct; pending result never publishes or invokes E alias-clear. Original BODY must cover the whole C closure; C suspended-claim resume and durable/alias receipts remain unqualified."
+        "C preparation yield, refusal and recovery remain distinct; pending result never publishes or invokes E alias-clear. Original BODY must cover the whole C closure; C suspended-claim resume and durable/alias receipts remain unqualified.",
+        "Original token/demand/roots/reservation survive; only phase/output or original intent slot/nonce change. No account PRS reissue, reselect, refund or E clear occurs. Source unknown fences. These actual-source recording paths remain unfunded and unqualified."
       ],
       "implementation": {
         "test": "tests.test_native_consumer_identity",
@@ -4634,7 +4636,8 @@
         "planning/evidence/account-adoption-lifecycle-2026-10-01/README.md",
         "planning/evidence/account-adoption-lifecycle-2026-10-01/before-creator-recording.json",
         "planning/evidence/account-adoption-lifecycle-2026-10-01/semantic-exclusion-caller.json",
-        "planning/evidence/account-adoption-lifecycle-2026-10-01/configuration-caller-source.json"
+        "planning/evidence/account-adoption-lifecycle-2026-10-01/configuration-caller-source.json",
+        "planning/evidence/account-adoption-lifecycle-2026-10-01/configuration-continuation-source.json"
       ]
     },
     {
