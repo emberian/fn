@@ -36,3 +36,17 @@
  (with-local-stobj fn-pww-node
   (mv-let (ok fn-pww-node) (fn-dwb-storage-fixture fn-pww-node) ok)))
 (assert-event (fn-dwb-local-fixture))
+
+; Literal frame theorem positive: reachable first nonmatching binding step,
+; every conjunct of the hypothesis-free conclusion is checked explicitly.
+(assert-event
+ (let* ((rows (list (cons '(:incarnation 3) '(old :incarnation nil))
+                    (cons '(:incarnation 7) '(paid :incarnation nil))))
+        (scan (fn-dwb-start 7 9 rows '(:test-source)))
+        (next (fn-dwb-one scan)))
+  (and (eq (fn-prl-nth 6 scan) :scan)
+       (eq (fn-dwb-word next) :yield)
+       (equal (fn-prl-nth 1 next) (fn-prl-nth 1 scan))
+       (equal (fn-prl-nth 2 next) (fn-prl-nth 2 scan))
+       (equal (fn-prl-nth 3 next) (fn-prl-nth 3 scan))
+       (equal (fn-prl-nth 7 next) (fn-prl-nth 7 scan)))))
