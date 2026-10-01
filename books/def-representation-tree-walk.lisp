@@ -287,6 +287,135 @@
 
 (in-theory (disable adt-pool-cputs adt-pool-cput))
 
+(local
+ (defthm adt-tree-nthcdr-open
+   (implies (and (natp k) (< k (len l)))
+            (equal (nthcdr k l) (cons (nth k l) (nthcdr (+ 1 k) l))))
+   :hints (("Goal" :in-theory (enable nth nthcdr)))))
+
+(local
+ (defthm adt-tree-chars-octets-of-nthcdr
+   (implies (and (stringp s) (natp k) (< k (length s)))
+            (equal (fn-scc-chars-octets (nthcdr k (coerce s 'list)))
+                   (cons (char-code (char s k))
+                         (fn-scc-chars-octets (nthcdr (+ 1 k) (coerce s 'list))))))
+   :hints (("Goal" :in-theory (e/d (char) (nthcdr))
+            :use ((:instance adt-tree-nthcdr-open (l (coerce s 'list))))
+            :expand ((fn-scc-chars-octets (cons (nth k (coerce s 'list))
+                                                (nthcdr (+ 1 k) (coerce s 'list)))))))))
+
+(local
+ (defthm adt-tree-nthcdr-past
+   (implies (and (natp k) (<= (len l) k))
+            (not (consp (nthcdr k l))))))
+
+
+; -----------------------------------------------------------------------------
+; The writer over ANY put (lane gate-b, 2026-10-01): the walk is the fold of
+; its put over the tree's program, whatever the put is.  A paged instance
+; (books/def-representation-paged.lisp) instantiates it at its paged checked
+; put, whose fold is `adt-pg-cputs' below.
+
+(encapsulate
+  (((adt-h-put * *) => *))
+  (local (defun adt-h-put (b c) (cons b c))))
+
+(defun adt-h-puts (bytes c)
+  (declare (xargs :verify-guards nil))
+  (if (atom bytes) c (adt-h-puts (cdr bytes) (adt-h-put (car bytes) c))))
+
+(defthm adt-h-puts-of-append
+  (equal (adt-h-puts (append a b) c) (adt-h-puts b (adt-h-puts a c))))
+
+(defthm adt-h-puts-of-atom
+  (implies (atom bytes) (equal (adt-h-puts bytes c) c)))
+
+(defun adt-h-tw-digits (n c)
+  (declare (xargs :verify-guards nil))
+  (if (zp n) c (adt-h-tw-digits (floor n 256) (adt-h-put (mod n 256) c))))
+
+(defun adt-h-tw-chars (s k c)
+  (declare (xargs :verify-guards nil :measure (nfix (- (length s) (nfix k)))))
+  (if (and (stringp s) (natp k) (< k (length s)))
+      (adt-h-tw-chars s (+ 1 k) (adt-h-put (char-code (char s k)) c))
+    c))
+
+(defun adt-h-tw-bytes (xs c)
+  (declare (xargs :verify-guards nil))
+  (if (atom xs) c (adt-h-tw-bytes (cdr xs) (adt-h-put (car xs) c))))
+
+(defun adt-h-tw-ops (n c)
+  (declare (xargs :verify-guards nil))
+  (if (zp n) c (adt-h-tw-ops (1- n) (adt-h-put *fn-scc-op-cons* c))))
+
+(defun adt-h-tw-atom (x c)
+  (declare (xargs :verify-guards nil))
+  (cond ((null x) (adt-h-put *fn-scc-op-nil* c))
+        ((natp x) (adt-h-tw-digits x (adt-h-put (adt-tree-ndig x) (adt-h-put *fn-scc-op-nat* c))))
+        ((integerp x) (adt-h-tw-digits (- -1 x) (adt-h-put (adt-tree-ndig (- -1 x))
+                                                           (adt-h-put *fn-scc-op-neg* c))))
+        ((characterp x) (adt-h-put (char-code x) (adt-h-put *fn-scc-op-char* c)))
+        ((stringp x) (adt-h-tw-chars x 0 (adt-h-tw-digits (length x)
+                                                          (adt-h-put (adt-tree-ndig (length x))
+                                                                     (adt-h-put *fn-scc-op-string* c)))))
+        (t (let ((s (symbol-name x)))
+             (adt-h-tw-chars s 0 (adt-h-tw-digits (length s)
+                                                  (adt-h-put (adt-tree-ndig (length s))
+                                                             (adt-h-put (fn-scc-package-index (symbol-package-name x))
+                                                                        (adt-h-put *fn-scc-op-symbol* c)))))))))
+
+(defun adt-h-tw-tree (x n c)
+  (declare (xargs :verify-guards nil :measure (acl2-count x)))
+  (cond ((fn-scc-octets-valuep x)
+         (adt-h-tw-ops n (adt-h-tw-bytes x (adt-h-tw-digits (len x)
+                                                            (adt-h-put (adt-tree-ndig (len x))
+                                                                       (adt-h-put *fn-scc-op-octets* c))))))
+        ((consp x) (adt-h-tw-tree (cdr x) (+ 1 (nfix n)) (adt-h-tw-tree (car x) 0 c)))
+        (t (adt-h-tw-ops n (adt-h-tw-atom x c)))))
+
+(defthm adt-h-puts-of-cons
+  (equal (adt-h-puts (cons b bytes) c) (adt-h-puts bytes (adt-h-put b c))))
+
+(local (in-theory (disable adt-h-puts)))
+
+(defthm adt-h-tw-digits-is-puts
+  (equal (adt-h-tw-digits n c) (adt-h-puts (fn-scc-le-digits n) c))
+  :hints (("Goal" :induct (adt-h-tw-digits n c))))
+
+(defthm adt-h-tw-chars-is-puts
+  (implies (and (stringp s) (natp k))
+           (equal (adt-h-tw-chars s k c)
+                  (adt-h-puts (fn-scc-chars-octets (nthcdr k (coerce s 'list))) c)))
+  :hints (("Goal" :induct (adt-h-tw-chars s k c))
+          ("Subgoal *1/1" :use ((:instance adt-tree-chars-octets-of-nthcdr))
+           :in-theory (disable adt-tree-chars-octets-of-nthcdr))
+          ("Subgoal *1/2" :expand ((fn-scc-chars-octets (nthcdr k (coerce s 'list)))))))
+
+(defthm adt-h-tw-bytes-is-puts
+  (equal (adt-h-tw-bytes xs c) (adt-h-puts xs c))
+  :hints (("Goal" :induct (adt-h-tw-bytes xs c))))
+
+(defthm adt-h-tw-ops-is-puts
+  (equal (adt-h-tw-ops n c) (adt-h-puts (fn-scc-repeat (nfix n) *fn-scc-op-cons*) c))
+  :hints (("Goal" :induct (adt-h-tw-ops n c) :in-theory (enable fn-scc-repeat))))
+
+(defthm adt-h-tw-atom-is-puts
+  (implies (and (atom x) (not (fn-scc-octets-valuep x)))
+           (equal (adt-h-tw-atom x c) (adt-h-puts (fn-scc-atom-octets x) c)))
+  :hints (("Goal" :in-theory (enable fn-scc-chars-octets))))
+
+(local
+ (defthm adt-h-append-assoc
+   (equal (append (append a b) c) (append a (append b c)))))
+
+(defthm adt-h-tw-tree-is-puts
+  (equal (adt-h-tw-tree x n c)
+         (adt-h-puts (append (fn-scc-program x) (fn-scc-repeat (nfix n) *fn-scc-op-cons*)) c))
+  :hints (("Goal" :induct (adt-h-tw-tree x n c)
+           :in-theory (enable fn-scc-repeat))))
+
+(in-theory (disable adt-h-puts))
+
 ; -----------------------------------------------------------------------------
 ; The writer over a constrained put.
 
@@ -354,28 +483,6 @@
   (equal (adt-g-tw-digits n c) (adt-pool-cputs (adt-g-pp) (fn-scc-le-digits n) c))
   :hints (("Goal" :induct (adt-g-tw-digits n c))))
 
-(local
- (defthm adt-tree-nthcdr-open
-   (implies (and (natp k) (< k (len l)))
-            (equal (nthcdr k l) (cons (nth k l) (nthcdr (+ 1 k) l))))
-   :hints (("Goal" :in-theory (enable nth nthcdr)))))
-
-(local
- (defthm adt-tree-chars-octets-of-nthcdr
-   (implies (and (stringp s) (natp k) (< k (length s)))
-            (equal (fn-scc-chars-octets (nthcdr k (coerce s 'list)))
-                   (cons (char-code (char s k))
-                         (fn-scc-chars-octets (nthcdr (+ 1 k) (coerce s 'list))))))
-   :hints (("Goal" :in-theory (e/d (char) (nthcdr))
-            :use ((:instance adt-tree-nthcdr-open (l (coerce s 'list))))
-            :expand ((fn-scc-chars-octets (cons (nth k (coerce s 'list))
-                                                (nthcdr (+ 1 k) (coerce s 'list)))))))))
-
-(local
- (defthm adt-tree-nthcdr-past
-   (implies (and (natp k) (<= (len l) k))
-            (not (consp (nthcdr k l))))))
-
 (defthm adt-g-tw-chars-is-puts
   (implies (and (stringp s) (natp k))
            (equal (adt-g-tw-chars s k c)
@@ -408,8 +515,16 @@
          (adt-pool-cputs (adt-g-pp)
                         (append (fn-scc-program x) (fn-scc-repeat (nfix n) *fn-scc-op-cons*))
                         c))
-  :hints (("Goal" :induct (adt-g-tw-tree x n c)
-           :in-theory (enable fn-scc-repeat))))
+  :hints (("Goal" :in-theory (enable adt-pool-cputs)
+           :use ((:functional-instance adt-h-tw-tree-is-puts
+                                       (adt-h-put adt-g-put)
+                                       (adt-h-puts (lambda (bytes c) (adt-pool-cputs (adt-g-pp) bytes c)))
+                                       (adt-h-tw-digits adt-g-tw-digits)
+                                       (adt-h-tw-chars adt-g-tw-chars)
+                                       (adt-h-tw-bytes adt-g-tw-bytes)
+                                       (adt-h-tw-ops adt-g-tw-ops)
+                                       (adt-h-tw-atom adt-g-tw-atom)
+                                       (adt-h-tw-tree adt-g-tw-tree))))))
 
 ; -----------------------------------------------------------------------------
 ; The push of a tree's program: the room made for its length, then the
@@ -501,111 +616,3 @@
 ; An instance's guards read `adt-tree-okp' by its definition (the walk's
 ; cases); the equality with `fn-sccb-treep' is cited where it is wanted.
 (in-theory (disable adt-tree-okp-is-sccb-treep))
-
-; -----------------------------------------------------------------------------
-; The writer over ANY put (lane gate-b, 2026-10-01): the walk is the fold of
-; its put over the tree's program, whatever the put is.  A paged instance
-; (books/def-representation-paged.lisp) instantiates it at its paged checked
-; put, whose fold is `adt-pg-cputs' below.
-
-(encapsulate
-  (((adt-h-put * *) => *))
-  (local (defun adt-h-put (b c) (cons b c))))
-
-(defun adt-h-puts (bytes c)
-  (declare (xargs :verify-guards nil))
-  (if (atom bytes) c (adt-h-puts (cdr bytes) (adt-h-put (car bytes) c))))
-
-(defthm adt-h-puts-of-puts
-  (equal (adt-h-puts b (adt-h-puts a c)) (adt-h-puts (append a b) c)))
-
-(defthm adt-h-puts-of-atom
-  (implies (atom bytes) (equal (adt-h-puts bytes c) c)))
-
-(defun adt-h-tw-digits (n c)
-  (declare (xargs :verify-guards nil))
-  (if (zp n) c (adt-h-tw-digits (floor n 256) (adt-h-put (mod n 256) c))))
-
-(defun adt-h-tw-chars (s k c)
-  (declare (xargs :verify-guards nil :measure (nfix (- (length s) (nfix k)))))
-  (if (and (stringp s) (natp k) (< k (length s)))
-      (adt-h-tw-chars s (+ 1 k) (adt-h-put (char-code (char s k)) c))
-    c))
-
-(defun adt-h-tw-bytes (xs c)
-  (declare (xargs :verify-guards nil))
-  (if (atom xs) c (adt-h-tw-bytes (cdr xs) (adt-h-put (car xs) c))))
-
-(defun adt-h-tw-ops (n c)
-  (declare (xargs :verify-guards nil))
-  (if (zp n) c (adt-h-tw-ops (1- n) (adt-h-put *fn-scc-op-cons* c))))
-
-(defun adt-h-tw-atom (x c)
-  (declare (xargs :verify-guards nil))
-  (cond ((null x) (adt-h-put *fn-scc-op-nil* c))
-        ((natp x) (adt-h-tw-digits x (adt-h-put (adt-tree-ndig x) (adt-h-put *fn-scc-op-nat* c))))
-        ((integerp x) (adt-h-tw-digits (- -1 x) (adt-h-put (adt-tree-ndig (- -1 x))
-                                                           (adt-h-put *fn-scc-op-neg* c))))
-        ((characterp x) (adt-h-put (char-code x) (adt-h-put *fn-scc-op-char* c)))
-        ((stringp x) (adt-h-tw-chars x 0 (adt-h-tw-digits (length x)
-                                                          (adt-h-put (adt-tree-ndig (length x))
-                                                                     (adt-h-put *fn-scc-op-string* c)))))
-        (t (let ((s (symbol-name x)))
-             (adt-h-tw-chars s 0 (adt-h-tw-digits (length s)
-                                                  (adt-h-put (adt-tree-ndig (length s))
-                                                             (adt-h-put (fn-scc-package-index (symbol-package-name x))
-                                                                        (adt-h-put *fn-scc-op-symbol* c)))))))))
-
-(defun adt-h-tw-tree (x n c)
-  (declare (xargs :verify-guards nil :measure (acl2-count x)))
-  (cond ((fn-scc-octets-valuep x)
-         (adt-h-tw-ops n (adt-h-tw-bytes x (adt-h-tw-digits (len x)
-                                                            (adt-h-put (adt-tree-ndig (len x))
-                                                                       (adt-h-put *fn-scc-op-octets* c))))))
-        ((consp x) (adt-h-tw-tree (cdr x) (+ 1 (nfix n)) (adt-h-tw-tree (car x) 0 c)))
-        (t (adt-h-tw-ops n (adt-h-tw-atom x c)))))
-
-(local
- (defthm adt-h-put-is-puts
-   (equal (adt-h-put b c) (adt-h-puts (list b) c))
-   :hints (("Goal" :expand ((adt-h-puts (list b) c))))))
-
-(local (in-theory (disable adt-h-puts)))
-
-(defthm adt-h-tw-digits-is-puts
-  (equal (adt-h-tw-digits n c) (adt-h-puts (fn-scc-le-digits n) c))
-  :hints (("Goal" :induct (adt-h-tw-digits n c))))
-
-(defthm adt-h-tw-chars-is-puts
-  (implies (and (stringp s) (natp k))
-           (equal (adt-h-tw-chars s k c)
-                  (adt-h-puts (fn-scc-chars-octets (nthcdr k (coerce s 'list))) c)))
-  :hints (("Goal" :induct (adt-h-tw-chars s k c))
-          ("Subgoal *1/1" :use ((:instance adt-tree-chars-octets-of-nthcdr))
-           :in-theory (disable adt-tree-chars-octets-of-nthcdr))
-          ("Subgoal *1/2" :expand ((fn-scc-chars-octets (nthcdr k (coerce s 'list)))))))
-
-(defthm adt-h-tw-bytes-is-puts
-  (equal (adt-h-tw-bytes xs c) (adt-h-puts xs c))
-  :hints (("Goal" :induct (adt-h-tw-bytes xs c))))
-
-(defthm adt-h-tw-ops-is-puts
-  (equal (adt-h-tw-ops n c) (adt-h-puts (fn-scc-repeat (nfix n) *fn-scc-op-cons*) c))
-  :hints (("Goal" :induct (adt-h-tw-ops n c) :in-theory (enable fn-scc-repeat))))
-
-(defthm adt-h-tw-atom-is-puts
-  (implies (and (atom x) (not (fn-scc-octets-valuep x)))
-           (equal (adt-h-tw-atom x c) (adt-h-puts (fn-scc-atom-octets x) c)))
-  :hints (("Goal" :in-theory (enable fn-scc-chars-octets))))
-
-(local
- (defthm adt-h-append-assoc
-   (equal (append (append a b) c) (append a (append b c)))))
-
-(defthm adt-h-tw-tree-is-puts
-  (equal (adt-h-tw-tree x n c)
-         (adt-h-puts (append (fn-scc-program x) (fn-scc-repeat (nfix n) *fn-scc-op-cons*)) c))
-  :hints (("Goal" :induct (adt-h-tw-tree x n c)
-           :in-theory (enable fn-scc-repeat))))
-
-(in-theory (disable adt-h-puts))
