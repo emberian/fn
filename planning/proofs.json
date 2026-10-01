@@ -17526,6 +17526,63 @@
         "fn-bpnf-family-next-selects-exactly-the-first-ready-family",
         "fn-bpnf-family-next-aux-answers-the-first-ready-row"
       ]
+    },
+    {
+      "id": "PRF-1190",
+      "title": "Chronological persistent forest growth and exact resumable page selection",
+      "statement": "Chronological persistent forest growth and exact resumable page selection on the actual guarded source operations. Conditional internal component only; no served installer or raw atomicity claim.",
+      "milestone": "M2",
+      "requirements": [
+        "STO-10003"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "certified",
+      "events": [
+        "fn-hed-grow-step-preserves-chronological-prefix",
+        "fn-hed-grow-begin-is-one-chronological-page",
+        "fn-hed-read-step-preserves-exact-selected-page",
+        "fn-hed-read-leaf-is-complete-selected-result",
+        "fn-hed-read-begin-refines-chronological-page",
+        "fn-hed-read-yield-makes-structural-progress",
+        "fn-hed-grow-merge-pops-one-forest-cell"
+      ],
+      "evidence": [
+        "specs/history-event-directory.md",
+        "tests/acl2/history-event-directory-tests.lisp",
+        "tests/acl2/history-event-backing-tests.lisp",
+        "planning/evidence/manifests/certify-20261001T002318Z-84529.json",
+        "planning/evidence/manifests/certify-20261001T002534Z-86506.json"
+      ],
+      "progress_note": "Conditional guarded source component with matching normal manifests 002318 (directory/refinement/provider/test closure) and 002534 (backing/test successor). No native caller, raw atomicity, genuine constructor family or complete physical epoch/debt settlement claim."
+    },
+    {
+      "id": "PRF-1191",
+      "title": "Registered exact candidate, completion replay and epoch custody frames",
+      "statement": "Registered exact candidate, completion replay and epoch custody frames on the actual guarded source operations. Conditional internal component only; no served installer or raw atomicity claim.",
+      "milestone": "M2",
+      "requirements": [
+        "STO-10003"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "certified",
+      "events": [
+        "fn-hep-offer-retains-exact-row-and-complete-producer",
+        "fn-hep-completion-replay-does-not-mutate",
+        "fn-hep-published-replay-does-not-append-or-install",
+        "fn-hep-uncertain-keeps-candidate-roots-and-debt",
+        "fn-hep-return-cannot-drop-nonquiescent-custody",
+        "fn-hep-retirement-keeps-epoch-and-retained-debt"
+      ],
+      "evidence": [
+        "specs/history-event-directory.md",
+        "tests/acl2/history-event-directory-tests.lisp",
+        "tests/acl2/history-event-backing-tests.lisp",
+        "planning/evidence/manifests/certify-20261001T002318Z-84529.json",
+        "planning/evidence/manifests/certify-20261001T002534Z-86506.json"
+      ],
+      "progress_note": "Conditional guarded source component with matching normal manifests 002318 (directory/refinement/provider/test closure) and 002534 (backing/test successor). No native caller, raw atomicity, genuine constructor family or complete physical epoch/debt settlement claim."
     }
   ]
 }

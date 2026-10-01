@@ -1221,6 +1221,13 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-bound-commit \
 	books/consumer-event-index \
 	tests/acl2/consumer-event-index-tests \
+	books/history-event-directory \
+	books/history-event-directory-refinement \
+	books/history-event-page \
+	books/history-event-provider \
+	books/history-event-backing \
+	tests/acl2/history-event-directory-tests \
+	tests/acl2/history-event-backing-tests \
 	books/history-columns \
 	books/history-columns-relation \
 	tests/acl2/history-columns-relation-tests \

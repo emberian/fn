@@ -17125,6 +17125,81 @@
           "name": "fn-bpnf-family-next-aux-answers-the-first-ready-row"
         }
       ]
+    },
+    {
+      "id": "PRF-1190",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hed-grow-step-preserves-chronological-prefix",
+          "pending_subject": "Actual internal history directory/backing subject; native owner/custody caller and genuine allocating-family installation are not installed in this source packet. No whole served completion or raw alias/retirement claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hed-grow-begin-is-one-chronological-page",
+          "pending_subject": "Actual internal history directory/backing subject; native owner/custody caller and genuine allocating-family installation are not installed in this source packet. No whole served completion or raw alias/retirement claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hed-read-step-preserves-exact-selected-page",
+          "pending_subject": "Actual internal history directory/backing subject; native owner/custody caller and genuine allocating-family installation are not installed in this source packet. No whole served completion or raw alias/retirement claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hed-read-leaf-is-complete-selected-result",
+          "pending_subject": "Actual internal history directory/backing subject; native owner/custody caller and genuine allocating-family installation are not installed in this source packet. No whole served completion or raw alias/retirement claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hed-read-begin-refines-chronological-page",
+          "pending_subject": "Actual internal history directory/backing subject; native owner/custody caller and genuine allocating-family installation are not installed in this source packet. No whole served completion or raw alias/retirement claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hed-read-yield-makes-structural-progress",
+          "pending_subject": "Actual internal history directory/backing subject; native owner/custody caller and genuine allocating-family installation are not installed in this source packet. No whole served completion or raw alias/retirement claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hed-grow-merge-pops-one-forest-cell",
+          "pending_subject": "Actual internal history directory/backing subject; native owner/custody caller and genuine allocating-family installation are not installed in this source packet. No whole served completion or raw alias/retirement claim."
+        }
+      ]
+    },
+    {
+      "id": "PRF-1191",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hep-offer-retains-exact-row-and-complete-producer",
+          "pending_subject": "Actual internal history directory/backing subject; native owner/custody caller and genuine allocating-family installation are not installed in this source packet. No whole served completion or raw alias/retirement claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hep-completion-replay-does-not-mutate",
+          "pending_subject": "Actual internal history directory/backing subject; native owner/custody caller and genuine allocating-family installation are not installed in this source packet. No whole served completion or raw alias/retirement claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hep-published-replay-does-not-append-or-install",
+          "pending_subject": "Actual internal history directory/backing subject; native owner/custody caller and genuine allocating-family installation are not installed in this source packet. No whole served completion or raw alias/retirement claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hep-uncertain-keeps-candidate-roots-and-debt",
+          "pending_subject": "Actual internal history directory/backing subject; native owner/custody caller and genuine allocating-family installation are not installed in this source packet. No whole served completion or raw alias/retirement claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hep-return-cannot-drop-nonquiescent-custody",
+          "pending_subject": "Actual internal history directory/backing subject; native owner/custody caller and genuine allocating-family installation are not installed in this source packet. No whole served completion or raw alias/retirement claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hep-retirement-keeps-epoch-and-retained-debt",
+          "pending_subject": "Actual internal history directory/backing subject; native owner/custody caller and genuine allocating-family installation are not installed in this source packet. No whole served completion or raw alias/retirement claim."
+        }
+      ]
     }
   ]
 }
