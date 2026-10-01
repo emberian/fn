@@ -44,24 +44,12 @@
 ; Fixtures: the history-columns rows (seq 0 <a@x>, 1 <b@x>, 2 a retention
 ; event, 3 <a@x> again) and the writer.
 
-; The held constructor's arity follows the acceptance-binding field (16
-; formals with it, 15 without: stage 0 of the 2026-10-01 design reverts it);
-; the fixture is built for whichever the world has.
-(make-event
- (if (equal (len (formals 'fn-held-make (w state))) 16)
-     '(defun mpxl-held (seq msgid octets)
-        (declare (xargs :verify-guards nil))
-        (fn-held-make seq (+ 1 seq) 0 msgid seq '("fn.test") "o" "s" "e" 1 5
-                      (fn-hf-make octets 14 2 nil)
-                      (fn-hc-make (fn-stx-make-verdict :unverified nil 0) nil 0)
-                      nil nil
-                      (fn-ab-make :post-d25 (append *fn-ab-subject-head* (make-list 32 :initial-element 0)))))
-   '(defun mpxl-held (seq msgid octets)
-      (declare (xargs :verify-guards nil))
-      (fn-held-make seq (+ 1 seq) 0 msgid seq '("fn.test") "o" "s" "e" 1 5
-                    (fn-hf-make octets 14 2 nil)
-                    (fn-hc-make (fn-stx-make-verdict :unverified nil 0) nil 0)
-                    nil nil))))
+(defun mpxl-held (seq msgid octets)
+  (declare (xargs :verify-guards nil))
+  (fn-held-make seq (+ 1 seq) 0 msgid seq '("fn.test") "o" "s" "e" 1 5
+                (fn-hf-make octets 14 2 nil)
+                (fn-hc-make (fn-stx-make-verdict :unverified nil 0) nil 0)
+                nil nil))
 
 (defconst *mpxl-a* (mpxl-held 0 "<a@x>" 100))
 (defconst *mpxl-b* (mpxl-held 1 "<b@x>" 200))
@@ -281,8 +269,39 @@
 (assert-event (not (equal (fn-mpxl-records "<a@x>" *mpxl-table-missing* *mpxl-rows*)
                           (fn-cei-article-records-for "<a@x>" *mpxl-rows*))))
 
-; fn-mpxl-tabp: no removal witness.  Dropping it admits an entry whose seq
+; READER fn-mpxl-tabp: no removal witness.  Dropping it admits an entry whose seq
 ; is no natural, and every such table either keeps the conclusion (the
 ; confirmation drops a seq no row has) or cannot be evaluated (nth's
 ; guard); its redundancy is a proof task (layer A's type side conditions),
 ; not a counterexample, so the hypothesis stays.
+
+; SPLIT KEYSTONE: single-hypothesis removal, separate from the reader above
+; and from the deliberately mutated split.  Neither theorem is weakened.
+
+; faithful alone REMOVED: the well-formed empty table has no mapping for
+; a held row; splitting it still has no mapping.  Check both input literals
+; and failure of the exact fn-mpxl-split-preserves-faithful conclusion.
+(assert-event
+ (let ((tab (mpxl-empty 1)) (rows (list *mpxl-a*)))
+   (mv-let (ok split-tab) (fn-mpxl-split tab)
+     (declare (ignore ok))
+     (and (fn-mpxl-tabp tab)
+          (not (fn-mpxl-faithful tab rows))
+          (not (fn-mpxl-faithful split-tab rows))))))
+
+; CORRUPTED-STATE: tabp alone REMOVED.  N = 1, S = 0, but two pages.
+; Tag 1 at seq 0 on page 0 is initially reachable (1 mod 1 = 0).
+; The split wrongly tests movers against the actual page count 2; tag 1
+; stays on page 0.  The advanced N = 2 root looks on page 1 and loses it.
+(defconst *mpxl-m1* (mpxl-find-msgid 1 0))
+(assert-event (equal (mpxl-tag *mpxl-m1*) 1))
+(defconst *mpxl-bad-root*
+  (fn-mpxl-make (list (cons nil (list (cons 1 0))) (cons nil nil)) 1 0))
+(defconst *mpxl-one-row* (list (mpxl-held 0 *mpxl-m1* 100)))
+(assert-event
+ (with-guard-checking :none
+   (mv-let (ok split-tab) (fn-mpxl-split *mpxl-bad-root*)
+     (declare (ignore ok))
+     (and (not (fn-mpxl-tabp *mpxl-bad-root*))
+          (fn-mpxl-faithful *mpxl-bad-root* *mpxl-one-row*)
+          (not (fn-mpxl-faithful split-tab *mpxl-one-row*))))))

@@ -66,7 +66,7 @@
 
 (defun rep-scalar-events (name fields invariant invariant-lemmas)
   (let* ((kind (cadr (car fields)))
-         (schema-const (adt-sym3 '* (symbol-name name) '-schema*))
+         (schema-const (adt-sym-const name "-SCHEMA*"))
          (cols (adt-columns name fields))
          (p (len cols))
          (st (adt-sym name "$C"))
@@ -81,23 +81,26 @@
          (set-a (adt-sym name "$A-SET"))
          (get-c (adt-sym3 name "$C-GET-" (car (car fields))))
          (set-c (adt-sym3 name "$C-SET-" (car (car fields))))
-         (create-a (adt-sym "CREATE-" (symbol-name a)))
-         (create-c (adt-sym "CREATE-" (symbol-name st)))
+         (create-a (adt-sym-pre "CREATE-" a))
+         (create-c (adt-sym-pre "CREATE-" st))
          (recog (adt-sym name "P"))
          (append-c1 (adt-sym name "$C-APPEND1"))
+         (clear-a (adt-sym name "$A-CLEAR"))
+         (clear-c (adt-sym name "$C-CLEAR"))
          (defabs
            `(defabsstobj ,name
               :foundation ,st
               :recognizer (,recog :logic ,ap :exec ,(adt-sym name "$CP"))
-              :creator (,(adt-sym "CREATE-" (symbol-name name)) :logic ,create-a :exec ,create-c)
+              :creator (,(adt-sym-pre "CREATE-" name) :logic ,create-a :exec ,create-c)
               :corr-fn ,corr
               :corr-fn-exists t
               :exports ((,(adt-sym name "-COUNT") :logic ,count-a :exec ,count-of)
                         (,(adt-sym name "-GET") :logic ,get-a :exec ,get-c)
                         (,(adt-sym name "-SET") :logic ,set-a :exec ,set-c :protect t)
-                        (,(adt-sym name "-APPEND") :logic ,append-a :exec ,append-c1 :protect t))))
+                        (,(adt-sym name "-APPEND") :logic ,append-a :exec ,append-c1 :protect t)
+                        (,(adt-sym name "-CLEAR") :logic ,clear-a :exec ,clear-c :protect t))))
          (ob-hints `(("Goal" :in-theory (enable ,corr ,ap ,create-a ,count-a ,append-a ,get-a ,set-a
-                                                 ,append-c1 adt-scalar-seq-p adt-val-okp
+                                                 ,clear-a ,append-c1 adt-scalar-seq-p adt-val-okp
                                                  ,@invariant-lemmas)))))
     `(encapsulate
        ()
@@ -131,6 +134,9 @@
        (defun ,append-a (v ,a)
          (declare (xargs :guard (and (,ap ,a) (adt-val-okp ',kind v))))
          (append ,a (list v)))
+       (defun ,clear-a (,a)
+         (declare (xargs :guard (,ap ,a)) (ignore ,a))
+         nil)
        (defun ,corr (c a)
          (declare (xargs :guard t :verify-guards nil))
          (adt-corr ,schema-const c (adt-wrap1 a)))
@@ -150,6 +156,9 @@
        (defthm ,(adt-sym name "-APPEND-IS-APPEND")
          (equal (,(adt-sym name "-APPEND") v ,name) (append ,name (list v)))
          :hints (("Goal" :in-theory (enable ,append-a))))
+       (defthm ,(adt-sym name "-CLEAR-IS-NIL")
+         (equal (,(adt-sym name "-CLEAR") ,name) nil)
+         :hints (("Goal" :in-theory (enable ,clear-a))))
        (defthm ,(adt-sym recog "-IS-SCALAR-SEQ-P")
          (equal (,recog x) (and (adt-scalar-seq-p ',kind x)
                                 ,@(if invariant `((,invariant x)) nil)))
@@ -180,14 +189,17 @@
   ; The :exec functions of the list foundation, each :guard t.
   (let* ((l (adt-sym name "$L"))
          (items (adt-sym l "-ITEMS"))
-         (upd (adt-sym "UPDATE-" (symbol-name items))))
+         (upd (adt-sym-pre "UPDATE-" items)))
     (append
      `((defun ,(adt-sym l "-COUNT") (,l)
          (declare (xargs :stobjs ,l))
          (len (,items ,l)))
        (defun ,(adt-sym l "-APPEND") (rec ,l)
          (declare (xargs :stobjs ,l))
-         (,upd (adt-l-snoc (,items ,l) rec) ,l)))
+         (,upd (adt-l-snoc (,items ,l) rec) ,l))
+       (defun ,(adt-sym l "-CLEAR") (,l)
+         (declare (xargs :stobjs ,l))
+         (,upd nil ,l)))
      (if scalar
          `((defun ,(adt-sym l "-GET") (i ,l)
              (declare (xargs :stobjs ,l))
@@ -218,11 +230,15 @@
           (,(adt-sym name "-SET") :logic ,(adt-sym impl "$A-SET") :exec ,(adt-sym l "-SET")
            :protect t)
           (,(adt-sym name "-APPEND") :logic ,(adt-sym impl "$A-APPEND") :exec ,(adt-sym l "-APPEND")
+           :protect t)
+          (,(adt-sym name "-CLEAR") :logic ,(adt-sym impl "$A-CLEAR") :exec ,(adt-sym l "-CLEAR")
            :protect t))
       `((,(adt-sym name "-COUNT") :logic ,(adt-sym impl "$A-COUNT") :exec ,(adt-sym l "-COUNT"))
         (,(adt-sym name "-APPEND") :logic ,(adt-sym impl "$A-APPEND") :exec ,(adt-sym l "-APPEND")
          :protect t)
-        ,@(rep-generic-field-exports name impl l fields)))))
+        ,@(rep-generic-field-exports name impl l fields)
+        (,(adt-sym name "-CLEAR") :logic ,(adt-sym impl "$A-CLEAR") :exec ,(adt-sym l "-CLEAR")
+         :protect t)))))
 
 
 (defun rep-logic-names (impl fields scalar)
@@ -236,8 +252,8 @@
          (lp (adt-sym l "P"))
          (lcorr (adt-sym name "$LCORR"))
          (ap (adt-sym impl "$AP"))
-         (create-a (adt-sym "CREATE-" (symbol-name (adt-sym impl "$A"))))
-         (create-l (adt-sym "CREATE-" (symbol-name l)))
+         (create-a (adt-sym-pre "CREATE-" (adt-sym impl "$A")))
+         (create-l (adt-sym-pre "CREATE-" l))
          (recog (adt-sym name "P"))
          (execs (rep-l-exec-events name fields scalar))
          (exec-names (strip-cadrs execs))
@@ -245,12 +261,13 @@
            `(defabsstobj ,name
               :foundation ,l
               :recognizer (,recog :logic ,ap :exec ,lp)
-              :creator (,(adt-sym "CREATE-" (symbol-name name)) :logic ,create-a :exec ,create-l)
+              :creator (,(adt-sym-pre "CREATE-" name) :logic ,create-a :exec ,create-l)
               :corr-fn ,lcorr
               :exports ,(rep-generic-exports name impl fields scalar)
               :attachable t))
          (ob-hints `(("Goal" :in-theory (enable ,lcorr ,ap ,create-a ,create-l
                                                  ,(adt-sym impl "$A-COUNT") ,(adt-sym impl "$A-APPEND")
+                                                 ,(adt-sym impl "$A-CLEAR")
                                                  ,@(rep-logic-names impl fields scalar)
                                                  ,@exec-names ,items
                                                  adt-set-a adt-scalar-seq-p)))))
@@ -283,11 +300,49 @@
          (rep-theorem-names-p (cdr names) wrld))
         (t nil)))
 
+; Every generated name is interned in NAME's package by construction:
+; adt-sym and adt-sym3 follow their base symbol's package and adt-sym-pre
+; the symbol it prefixes (books/proto/adt.lisp), so an instance in another
+; package gets its foundation, exports and lemmas there, and the same
+; spelling in two packages never collides.  (Codex t10 found the names
+; interned in ACL2 and relocated them by a double expansion and a diff;
+; deputy-1 2026-10-01 put the rule where the names are made.)
+; A `(F :tree)' field is an :octets field (the schema and the logical value
+; are unchanged) with the extra export NAME-APPEND-T (books/proto/adt.lisp,
+; `adt-tree-exec-events'; books/def-representation-tree.lisp).
+(defun rep-tree-names (fields0)
+  (cond ((atom fields0) nil)
+        ((eq (cadr (car fields0)) :tree)
+         (cons (car (car fields0)) (rep-tree-names (cdr fields0))))
+        (t (rep-tree-names (cdr fields0)))))
+
+(defun rep-untree (fields0)
+  (cond ((atom fields0) nil)
+        ((eq (cadr (car fields0)) :tree)
+         (cons (list (car (car fields0)) :octets) (rep-untree (cdr fields0))))
+        (t (cons (car fields0) (rep-untree (cdr fields0))))))
+
+(defun rep-instance-events (name fields1 scalar generic invariant invariant-lemmas)
+  (let* ((trees (rep-tree-names fields1))
+         (fields0 (rep-untree fields1))
+         (fields (adt-norm-fields fields0))
+         (impl (if generic (adt-sym name "-COLS") name))
+         (instance (if scalar
+                       (rep-scalar-events impl fields invariant invariant-lemmas)
+                     (defadt-fn-trees impl fields0 trees))))
+    `(progn
+       ,instance
+       ,@(if generic (rep-generic-events name impl fields scalar) nil)
+       (table fn-generated ',name
+              '(:def-representation :scalar ,scalar :generic ,generic
+                :implementation ,impl :invariant ,invariant :trees ,trees)))))
+
 (defun def-representation-fn (name fields0 scalar generic invariant invariant-lemmas state)
   (declare (xargs :stobjs state))
   (let* ((wrld (w state))
          (ctx 'def-representation)
-         (fields (adt-norm-fields fields0))
+         (trees (rep-tree-names fields0))
+         (fields (adt-norm-fields (rep-untree fields0)))
          (roots (append '(adt-corr adt-seq-p adt-scalar-seq-p)
                         (if invariant (list invariant) nil)))
          (attached (and (symbol-listp roots) (rep-attached-ancestors roots wrld))))
@@ -296,6 +351,10 @@
       (er soft ctx "the name must be a non-nil symbol; ~x0 is not." name))
      ((or (atom fields) (not (adt-schemap (adt-schema-of fields))))
       (er soft ctx "~x0: the fields must be a non-empty list of (FIELD KIND) with KIND one of :u8 :u32 :u64 :bool :octets (:nat B) (:enum ...); ~x1 is not." name fields0))
+     ((and trees (or scalar generic))
+      (er soft ctx "~x0: a :tree field is supported without :scalar and :generic in this stage." name))
+     ((and trees (not (function-symbolp 'adt-g-tw-tree wrld)))
+      (er soft ctx "~x0: a :tree field needs books/def-representation-tree.lisp included first (the writer and its theorems)." name))
      ((and scalar (not (equal (len fields) 1)))
       (er soft ctx "~x0: :scalar t needs exactly one field; ~x1 were given." name (len fields)))
      ((and invariant (not (and (symbolp invariant) (function-symbolp invariant wrld)
@@ -308,17 +367,7 @@
      ((and invariant (not scalar))
       (er soft ctx "~x0: :invariant is supported with :scalar t in this stage." name))
      (t
-      (let* ((impl (if generic (adt-sym name "-COLS") name))
-             (instance (if scalar
-                           (rep-scalar-events impl fields invariant invariant-lemmas)
-                         (defadt-fn impl fields0))))
-        (value
-         `(progn
-            ,instance
-            ,@(if generic (rep-generic-events name impl fields scalar) nil)
-            (table fn-generated ',name
-                   '(:def-representation :scalar ,scalar :generic ,generic
-                     :implementation ,impl :invariant ,invariant)))))))))
+      (value (rep-instance-events name fields0 scalar generic invariant invariant-lemmas))))))
 
 (defun rep-fields-of (args)
   (if (or (endp args) (keywordp (car args)))

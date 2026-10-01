@@ -3,8 +3,9 @@
 ; sections 1 and 4).  Prefix fn-rrs-.
 ;
 ; books/recovery-refinement.lisp proves the composition over the image
-; medium's interface (the constrained fn-rr-medium-*); this book discharges
-; the interface with the store's functions, the ones
+; medium's interface (the constrained fn-rr-medium-*); this book is to
+; discharge the interface (an OBLIGATION, not yet proved: the book is
+; written, not admitted) with the store's functions, the ones
 ; host/store-node-host.lisp calls at open: fn-sco-capture, fn-sco-open,
 ; fn-cpo-open-observed and fn-sco-select (books/store-checkpoint-open.lisp),
 ; by functional instantiation.  The constraints are the keystones
@@ -45,7 +46,7 @@
 (include-book "store-node-files-selector")
 
 ; -----------------------------------------------------------------------------
-; 1. The medium's interface, discharged by the store's open.
+; 1. The medium's interface, to be discharged by the store's open.
 
 ; The composed open this instance MODELS over the store's functions (not
 ; what the host calls: fnn-recover-log reaches fn-rii-sco-extend-open /

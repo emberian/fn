@@ -226,6 +226,7 @@
 (include-book "page-window-lease")
 (include-book "page-window-executor")
 (include-book "cold-read-window")
+(include-book "page-read-counter-transaction")
 (include-book "page-window-read")
 (include-book "payload-arena")
 (include-book "history-columns-relation")

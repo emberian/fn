@@ -5,7 +5,9 @@ that would make this one lie: a function the host demonstrably calls must
 never be reported unreachable, and a function named nowhere outside the
 books must never be reported hosted.
 """
+import io
 import json
+from contextlib import redirect_stdout
 import subprocess
 import sys
 import tempfile
@@ -213,6 +215,104 @@ class SubjectRuleTests(unittest.TestCase):
             self.assertNotIn(other, [o for o, _ in bridges.get(unhosted, [])], form)
 
 
+class CorrespondenceBridgeTests(unittest.TestCase):
+    """Export attribution needs a named proof link and an executable call."""
+
+    def setUp(self):
+        self.event = "clear{correspondence}"
+        self.link = "clear-keyed{correspondence}"
+        self.theorems = {
+            self.event: ("books/catalog.lisp", """(defthm clear{correspondence}
+              (implies (corr c a) (corr (clear-c c) (clear-a a))))"""),
+            self.link: ("books/catalog.lisp", """(defthm clear-keyed{correspondence}
+              (implies (and (corr c a) (keyp key))
+                (corr (keyed-c key c) (keyed-a key a)))
+              :hints (("Goal" :use ((:instance clear{correspondence})))) )"""),
+        }
+        exports = {"clear": ("clear-a", "clear-c"),
+                   "clear-keyed": ("keyed-a", "keyed-c"),
+                   "clear-lookalike": ("look-a", "look-c")}
+        self.graph = SimpleNamespace(
+            books=[], book_defs=dict.fromkeys(exports),
+            export_of=dict.fromkeys(exports, "catalog"),
+            stobjs={"catalog": {"file": "books/catalog.lisp", "exports": exports}},
+            stobj_names={"catalog"}, reachable={"clear-keyed", "clear-lookalike"},
+            edges={"keyed-c": {"clear-c"}}, unreadable={}, unloaded_hosts=[], seeds={},
+            host_chain=lambda name: ["host/owner.lisp", name])
+        self.rows = [{"id": "PRF-201", "events": [self.event]}]
+
+    def audit(self):
+        with patch.object(reach_check, "theorem_forms", return_value=self.theorems), \
+                patch.object(reach_check, "load_rows", return_value=self.rows):
+            return reach_check.audit(self.graph)
+
+    def test_linked_export_hosts_event_and_names_evidence_without_hosting_code(self):
+        self.assertEqual(self.audit(), ([], 1, []))
+        self.assertEqual(self.graph.correspondence_bridged,
+                         [("PRF-201", self.event, "clear-keyed", self.link)])
+        self.assertNotIn("clear", self.graph.reachable)
+
+    def test_unlinked_lookalike_is_not_a_join(self):
+        del self.theorems[self.link]
+        findings, hosted, unresolved = self.audit()
+        self.assertEqual((hosted, unresolved), (0, []))
+        self.assertEqual([f.event for f in findings], [self.event])
+
+    def test_citation_alone_or_call_alone_does_not_join(self):
+        self.graph.edges = {}
+        self.assertEqual(self.audit()[1], 0)
+        self.graph.edges = {"keyed-c": {"clear-c"}}
+        book, form = self.theorems[self.link]
+        for hint in (':in-theory (enable clear{correspondence})',
+                     ':use ((:instance clear{correspondence} (c other)))',
+                     ':use ((:functional-instance clear{correspondence}))',
+                     ':use (:functional-instance clear{correspondence})'):
+            with self.subTest(hint=hint):
+                self.theorems[self.link] = (book, form.replace(
+                    ':use ((:instance clear{correspondence}))', hint))
+                self.assertEqual(self.audit()[1], 0)
+
+    def test_unreached_link_or_wrong_statement_does_not_join(self):
+        self.graph.reachable = {"clear-lookalike"}
+        self.assertEqual(self.audit()[1], 0)
+        self.graph.reachable.add("clear-keyed")
+        book, form = self.theorems[self.link]
+        for old, new in (("(corr (keyed-c", "(other-corr (keyed-c"),
+                         ("(keyed-c key c)", "(look-c key c)"),
+                         ("(keyed-a key a)", "(look-a key a)")):
+            with self.subTest(new=new):
+                self.theorems[self.link] = (book, form.replace(old, new))
+                self.assertEqual(self.audit()[1], 0)
+
+    def test_other_stobj_and_preservation_are_not_attributed(self):
+        self.graph.stobjs["other"] = self.graph.stobjs["catalog"]
+        self.graph.export_of["clear-keyed"] = "other"
+        self.assertEqual(self.audit()[1], 0)
+        self.graph.export_of["clear-keyed"] = "catalog"
+        self.rows[0]["events"] = ["clear{preserved}"]
+        self.assertEqual(self.audit()[1], 0)
+
+    def test_existing_named_export_equation_still_hosts(self):
+        self.theorems = {"clear-equation": ("books/catalog.lisp",
+                          "(defthm clear-equation (equal (clear a) (clear-keyed key a)))")}
+        self.assertEqual(self.audit(), ([], 1, []))
+        self.assertEqual(self.graph.bridged,
+                         [("PRF-201", self.event, "clear", "clear-keyed", "clear-equation")])
+
+    def test_listing_and_explanation_name_correspondence(self):
+        for flags in (("--strict",), ("--explain", self.event)):
+            output = io.StringIO()
+            with patch.object(reach_check, "Graph", return_value=self.graph), \
+                    patch.object(reach_check, "theorem_forms", return_value=self.theorems), \
+                    patch.object(reach_check, "load_rows", return_value=self.rows), \
+                    patch.object(reach_check, "load_baseline", return_value={"accepted": {}}), \
+                    redirect_stdout(output):
+                self.assertEqual(reach_check.main(flags), 0)
+            self.assertIn("hosted through the named correspondence " + self.link,
+                          output.getvalue())
+            self.assertIn("clear-keyed (reached) uses " + self.event, output.getvalue())
+
+
 class ResultProjectionBridgeTests(unittest.TestCase):
     """A complete named output abstraction, not an arbitrary composition."""
 
@@ -331,9 +431,15 @@ class SharedGraphTests(unittest.TestCase):
         self.assertNotIn("fn-feed-drivenp", self.graph.edges["fn-feed-apply-record"])
 
     def test_a_macro_body_is_followed(self):
-        """fn-nntp-command's arms are named only by the dispatcher macro."""
+        """The generated dispatcher macro reaches the session arm via its term builder."""
         self.assertIn("fn-nntp-command-dispatch", self.graph.edges["fn-nntp-command"])
-        self.assertIn("fn-nntp-session-command", self.graph.edges["fn-nntp-command-dispatch"])
+        # 6aa65979f moved the handwritten macro body into the table's
+        # generator.  Both edges matter: merely finding the session arm
+        # reachable would also pass if some unrelated host path reached it.
+        self.assertIn("fn-proto-command-dispatch-term",
+                      self.graph.edges["fn-nntp-command-dispatch"])
+        self.assertIn("fn-nntp-session-command",
+                      self.graph.edges["fn-proto-command-dispatch-term"])
 
     def test_the_host_chain_starts_at_a_host_line(self):
         chain = self.graph.host_chain("fn-nntp-session-command")

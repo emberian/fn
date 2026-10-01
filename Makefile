@@ -614,6 +614,14 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/heap-breakdown-tests \
 	books/memory-credits \
 	tests/acl2/memory-credits-tests \
+	books/resource-vector \
+	tests/acl2/resource-vector-tests \
+	books/resource-vector-relations \
+	tests/acl2/resource-vector-relations-tests \
+	books/resource-vector-exec \
+	tests/acl2/resource-vector-exec-tests \
+	books/resource-vector-tree \
+	tests/acl2/resource-vector-tree-tests \
 	tests/acl2/heap-figure-tests \
 	tests/acl2/open-frontier-tests \
 	books/open-frontier-wire \
@@ -2132,6 +2140,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/image-world \
 	books/image-world-dtn \
 	books/image-world-store-test \
+	books/image-world-paged \
     books/connection-receiver-source-invariants \
     books/owner-reader-response-domain \
     books/pagestore-digest-block-predicate \
