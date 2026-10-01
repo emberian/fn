@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "replay-enrollment-parser-refinement")
 (include-book "statement-items-cursor-public")
+(include-book "statement-items-cursor-terminal")
 (include-book "hybrid-store")
 
 (local (defthm fn-rse-stxe-encoder-is-public-statement-encoder
@@ -108,9 +109,12 @@
      (:definition fn-record-uint32p)
      (:definition fn-hsig-subject-p) (:definition fn-hsig-keyset-p)
      (:definition fn-hsig-exact-octets-p)
+     (:definition fn-cbor-ag-car) (:definition fn-cbor-ag-cdr)
+     (:definition len)
      (:rewrite car-cons) (:rewrite cdr-cons) (:rewrite cons-equal)
      (:executable-counterpart len)
-     (:executable-counterpart fn-record-uint32p))))))
+     (:executable-counterpart fn-cbor-octet-listp)
+     (:executable-counterpart fn-record-uint32p)))))))
 (defthm fn-rse-paid-selected-enrollment-is-actual-public-value
  (let* ((snapshot-bytes (fn-stxk-snapshot snapshot))
         (begin (fn-sic-begin-legacy 5 snapshot-bytes))
@@ -123,7 +127,11 @@
           (fn-rse-enrollment-model spans))))
  :rule-classes nil
  :hints (("Goal" :do-not-induct t
-  :use ((:instance fn-rse-selected-parser-result-is-accepted-by-definition
+  :use ((:instance fn-rse-public-selected-five-items-fold-to-subject
+          (principal (car (fn-rse-enrollment-model (fn-rse-result-spans (fn-sic-result (fn-sic-run (fn-sic-completion-cost (fn-sic-begin-legacy 5 (fn-stxk-snapshot snapshot))) (fn-sic-begin-legacy 5 (fn-stxk-snapshot snapshot))))))))
+          (ed (cdr (car (cadr (fn-rse-enrollment-model (fn-rse-result-spans (fn-sic-result (fn-sic-run (fn-sic-completion-cost (fn-sic-begin-legacy 5 (fn-stxk-snapshot snapshot))) (fn-sic-begin-legacy 5 (fn-stxk-snapshot snapshot))))))))))
+          (ml (cdr (cadr (cadr (fn-rse-enrollment-model (fn-rse-result-spans (fn-sic-result (fn-sic-run (fn-sic-completion-cost (fn-sic-begin-legacy 5 (fn-stxk-snapshot snapshot))) (fn-sic-begin-legacy 5 (fn-stxk-snapshot snapshot)))))))))))
+        (:instance fn-rse-selected-parser-result-is-accepted-by-definition
           (result (fn-sic-result (fn-sic-run
            (fn-sic-completion-cost (fn-sic-begin-legacy 5 (fn-stxk-snapshot snapshot)))
            (fn-sic-begin-legacy 5 (fn-stxk-snapshot snapshot))))))
@@ -150,8 +158,7 @@
           (outer-budget *fn-cbor-max-input*) (item-budget *fn-cbor-max-bytes*)))
   :in-theory
   (union-theories (theory 'minimal-theory)
-   '((:definition fn-hsig-keyring-snapshot-value)
-     (:definition fn-sic-begin-legacy)
+   '((:definition fn-sic-begin-legacy)
      (:definition fn-sic-result-abstract)
      (:definition fn-stmt-okp) (:definition fn-stmt-value)
      (:definition fn-stmt-ok)
@@ -171,3 +178,27 @@
      (:executable-counterpart fn-sic-items-abstract)
      (:executable-counterpart fn-sic-item-abstract)
      (:executable-counterpart fn-rse-result-spans))))))
+
+; The actual caller schedules the original parser one step at a time. It
+; need not execute the ghost completion-cost function to consume this bridge.
+(defthm fn-rse-scheduled-terminal-enrollment-is-actual-public-value
+ (let* ((begin (fn-sic-begin-legacy 5 (fn-stxk-snapshot snapshot)))
+        (parser (fn-sic-run q begin))
+        (spans (fn-rse-result-spans (fn-sic-result parser))))
+  (implies (and (natp q) (fn-stxk-p snapshot)
+                (equal (fn-sic-at 0 parser) :done) spans
+                (equal (fn-stxk-profile snapshot) *fn-hsig-profile-tag*))
+   (equal (fn-hsig-keyring-snapshot-value snapshot)
+          (fn-rse-enrollment-model spans))))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :use ((:instance fn-sic-terminal-begin-is-paid-completion
+                    (fuel 5) (octets (fn-stxk-snapshot snapshot))
+                    (outer-budget *fn-cbor-max-input*)
+                    (item-budget *fn-cbor-max-bytes*))
+        fn-rse-paid-selected-enrollment-is-actual-public-value)
+  :in-theory (e/d (fn-sic-begin-legacy)
+                  (fn-sic-run fn-sic-begin fn-sic-completion-cost fn-sic-at
+                   fn-sic-result fn-rse-result-spans fn-rse-enrollment-model
+                   fn-hsig-keyring-snapshot-value
+                   fn-sic-terminal-begin-is-paid-completion)))))
