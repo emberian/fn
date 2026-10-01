@@ -146,6 +146,72 @@ class HostBindingTests(unittest.TestCase):
         self.assertTrue(any("fn-r :raw-with names fn-r-local, which no book defines" in p
                             for p in found), found)
 
+    def test_raw_with_carried_resolves_from_the_def_carried_row(self):
+        book = ("(def-carried fn-r-carried :invariant fn-r-relation\n"
+                "  :established ((fn-r-open fn-r-open-establishes))\n"
+                "  :transitions ((fn-r fn-r-carries) (fn-s fn-s-carries))\n"
+                "  :concludes ((fn-r-okp fn-r-statep)))\n"
+                "(defthm fn-r-open-establishes (fn-r-relation (fn-r-open)))\n"
+                "(defthm fn-r-carries (implies (fn-r-relation s) (fn-r-relation (fn-r s))))\n")
+        self.assertEqual(self.raw_with_problems(
+            "(definterface fn-r :class :common-lisp-compliant :raw-with (:carried fn-r-carried))\n",
+            book), [])
+        root = tree(SOURCE + "(definterface fn-r :class :common-lisp-compliant "
+                    ":raw-with (:carried fn-r-carried))\n")
+        (root / "books").mkdir()
+        (root / "books" / "x.lisp").write_text("(in-package \"ACL2\")\n" + book)
+        decl = interface_emit.declarations(root)[-1]
+        self.assertEqual(decl["raw_with_carried"], "fn-r-carried")
+        # only generated names: the declared theorems are hints, never resolved
+        self.assertEqual(decl["raw_with"], ["fn-r-carried-fn-r-carries",
+                                            "fn-r-carried-fn-r-okp-bridge"])
+        rendered = interface_emit.render_raw_declarations([decl])
+        self.assertIn(":raw-with (:carried fn-r-carried)", rendered)
+
+    def test_raw_with_carried_refuses_a_missing_row_or_transition(self):
+        found = self.raw_with_problems(
+            "(definterface fn-r :class :common-lisp-compliant :raw-with (:carried fn-r-carried))\n")
+        self.assertTrue(any("fn-r :raw-with (:carried fn-r-carried) resolves to no theorems" in p
+                            for p in found), found)
+        found = self.raw_with_problems(
+            "(definterface fn-r :class :common-lisp-compliant :raw-with (:carried fn-r-carried))\n",
+            "(def-carried fn-r-carried :invariant fn-r-relation "
+            ":established ((fn-r-open fn-r-open-establishes)) :transitions ((fn-s fn-s-carries)))\n")
+        self.assertTrue(any("resolves to no theorems" in p for p in found), found)
+
+    def test_produced_open_is_never_reached_by_the_raw_host(self):
+        # def-carried :produced: the open's premises hold only at its
+        # producers' outputs, so the raw host may neither dispatch it nor
+        # apply it directly (r25-F2)
+        book = ("(def-carried fn-p-carried :invariant fn-p-relation\n"
+                "  :established ((fn-p-open fn-p-open-establishes :hyps ((posp x))\n"
+                "                 :produced ((fn-p-make fn-p-make-pos)) :witness (1 nil)))\n"
+                "  :transitions ((fn-s fn-s-carries)))\n")
+        root = tree(SOURCE)
+        (root / "books").mkdir()
+        (root / "books" / "x.lisp").write_text("(in-package \"ACL2\")\n" + book)
+        self.assertEqual(interface_emit.carried_rows(root)["fn-p-carried"]["produced"],
+                         ["fn-p-open"])
+        decls = interface_emit.declarations(root)
+        for kind, word in (("dispatched", "dispatches"), ("direct", "applies")):
+            over = reading(**{kind: dict(reading()[kind], **{"fn-p-open": {"host/native/owner.lisp"}})})
+            found = [p for p in interface_emit.findings(decls, over, root)
+                     if "is not what the declarations say" not in p]
+            self.assertTrue(any("the raw host {} fn-p-open".format(word) in p
+                                and "fn-p-carried" in p for p in found), found)
+        clean = [p for p in interface_emit.findings(decls, reading(), root)
+                 if "is not what the declarations say" not in p]
+        self.assertFalse(any("fn-p-open" in p for p in clean), clean)
+
+    def test_raw_with_carried_refuses_malformed_forms(self):
+        for form in ("(:carried)", "(:carried fn-r-carried extra)"):
+            found = self.raw_with_problems(
+                "(definterface fn-r :class :common-lisp-compliant :raw-with %s)\n" % form,
+                "(def-carried fn-r-carried :invariant fn-r-relation "
+                ":established ((fn-r-open fn-r-open-establishes)) "
+                ":transitions ((fn-r fn-r-carries)))\n")
+            self.assertTrue(any("resolves to no theorems" in p for p in found), (form, found))
+
     def test_raw_with_refuses_a_program_entry(self):
         found = self.raw_with_problems(
             "(definterface fn-r :class :program :raw-with (fn-r-statep))\n")
@@ -158,7 +224,7 @@ class HostBindingTests(unittest.TestCase):
         import json
         doc = json.loads(interface_emit.render_registry(
             interface_emit.declarations(root), reading()))
-        self.assertEqual(doc["raw_dispatched"], [{"name": "fn-a", "raw_with": ["fn-a-thm"]}])
+        self.assertEqual(doc["raw_dispatched"], [{"name": "fn-a", "raw_with": ["fn-a-thm"], "raw_with_carried": None}])
         self.assertEqual(doc["coverage"]["raw_dispatched"], 1)
         self.assertEqual(doc["entries"][0]["raw_with"], ["fn-a-thm"])
         self.assertEqual(doc["entries"][1]["raw_with"], [])

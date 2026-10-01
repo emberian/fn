@@ -303,6 +303,22 @@ The measured reason: `fn-statep` is Θ(n²) in Message-ID comparisons and
 per replayed record (`planning/lanes/HANDOFF-w3-scale-profile.md`). After
 this change the per-operation cost is the operation's own work.
 
+The carrying argument itself -- where the invariant is established, which
+host-called transitions preserve it, what it concludes -- is one
+`def-carried` form (`books/def-carried.lisp`), not a comment table. The
+form GENERATES the statements, from the world: per transition
+`NAME-FN-carries` (the invariant and FN's guard to the invariant of the
+state FN returns, its place read from `stobjs-out`), per open
+`NAME-FN-establishes` (an open that can refuse declares `:ok`, a term over `_` for its success word, and establishes under it; it also declares `:witness`, one term per formal, and the generated `NAME-FN-reaches` -- the guard and `:ok` at the witness, proved -- shows the success reachable, a world fact D40 re-checks), per bridge `NAME-PRED-bridge` (the invariant to the
+transitions' literal guard conjuncts); the named theorems are only `:use`
+hints. It is refused unless each generated statement is proved, every
+declared host entry (`fn-interfaces`) returning the carried stobj is
+listed, and the vacuity probes fail. It emits the trace theorem
+`NAME-run-carries` by functional instantiation of a generic theory. A
+`definterface` `:raw-with (:carried NAME)` resolves only to generated names,
+re-checked against the statements regenerated from the world. Pilots:
+`books/tcpcl-session-carried.lisp`, `books/owner-retain-carried.lisp`.
+
 ## 5. Teeth are concrete witnesses
 
 A keystone ships with a reachable non-degenerate witness and one concrete

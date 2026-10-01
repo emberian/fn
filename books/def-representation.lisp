@@ -4,7 +4,8 @@
 ; planning/design-store-representation-2026-10-01.md.
 ;
 ;   (def-representation NAME (FIELD KIND) ...
-;     [:scalar t] [:generic t] [:invariant PRED :invariant-lemmas (L ...)])
+;     [:scalar t] [:generic t] [:invariant PRED :invariant-lemmas (L ...)]
+;     [:write-once t])
 ;
 ; KIND is :u8 :u32 :u64 :bool :octets, (:nat B) or (:enum OBJ ...).  What
 ; `defadt' already generates, this generates (the foundation of typed
@@ -44,6 +45,13 @@
 ;     and the same export skeleton, so that a book certified against NAME
 ;     is included unchanged under the attachment (the pattern of
 ;     books/payload-arena.lisp and payload-arena-attach.lisp, generated).
+;   * `:write-once t' (lane paged-catalog-4, Codex r21 F1): no :octets or
+;     :tree field has a set export, so the pool is written only by an
+;     append; NAME$C-FILL-IS-LOAD-OF-{CREATE,APPEND,APPEND-T,SET-F,CLEAR},
+;     one per writing export, say the pool's fill is `adt-load' of the
+;     logical sequence (the sum of its records' octets) in every reachable
+;     foundation: the pool is bounded by the live records, never by the
+;     history of their writes.
 ;
 ; Every generated name is derived from NAME (`NAME$c', `NAME$a', `NAME$ap',
 ; `NAME$corr', `NAME-count', `NAME-get-FIELD', ...; `NAME$l' for the list
@@ -322,22 +330,23 @@
          (cons (list (car (car fields0)) :octets) (rep-untree (cdr fields0))))
         (t (cons (car fields0) (rep-untree (cdr fields0))))))
 
-(defun rep-instance-events (name fields1 scalar generic invariant invariant-lemmas)
+(defun rep-instance-events (name fields1 scalar generic invariant invariant-lemmas once)
   (let* ((trees (rep-tree-names fields1))
          (fields0 (rep-untree fields1))
          (fields (adt-norm-fields fields0))
          (impl (if generic (adt-sym name "-COLS") name))
          (instance (if scalar
                        (rep-scalar-events impl fields invariant invariant-lemmas)
-                     (defadt-fn-trees impl fields0 trees))))
+                     (defadt-fn-trees-once impl fields0 trees once))))
     `(progn
        ,instance
        ,@(if generic (rep-generic-events name impl fields scalar) nil)
        (table fn-generated ',name
               '(:def-representation :scalar ,scalar :generic ,generic
-                :implementation ,impl :invariant ,invariant :trees ,trees)))))
+                :implementation ,impl :invariant ,invariant :trees ,trees
+                :write-once ,once)))))
 
-(defun def-representation-fn (name fields0 scalar generic invariant invariant-lemmas state)
+(defun def-representation-fn (name fields0 scalar generic invariant invariant-lemmas once state)
   (declare (xargs :stobjs state))
   (let* ((wrld (w state))
          (ctx 'def-representation)
@@ -364,10 +373,14 @@
       (er soft ctx "~x0: the recognizer or correspondence would reach ~&1, which ~#1~[has~/have~] an attachment; ACL2 refuses such an abstract stobj (:DOC stobj-attachment-restrictions).  Carry that part of the invariant beside the stobj (def-carried), not in it." name attached))
      ((and invariant (not (and invariant-lemmas (rep-theorem-names-p invariant-lemmas wrld))))
       (er soft ctx "~x0: :invariant ~x1 needs :invariant-lemmas naming theorems already proved (of the empty sequence, of an append, of a field update); ~x2 does not." name invariant invariant-lemmas))
+     ((and once (or scalar generic))
+      (er soft ctx "~x0: :write-once is supported without :scalar and :generic in this stage." name))
+     ((not (booleanp once))
+      (er soft ctx "~x0: :write-once takes t or nil; ~x1 is neither." name once))
      ((and invariant (not scalar))
       (er soft ctx "~x0: :invariant is supported with :scalar t in this stage." name))
      (t
-      (value (rep-instance-events name fields0 scalar generic invariant invariant-lemmas))))))
+      (value (rep-instance-events name fields0 scalar generic invariant invariant-lemmas once))))))
 
 (defun rep-fields-of (args)
   (if (or (endp args) (keywordp (car args)))
@@ -384,6 +397,7 @@
         ',(cadr (assoc-keyword :generic opts))
         ',(cadr (assoc-keyword :invariant opts))
         ',(cadr (assoc-keyword :invariant-lemmas opts))
+        ',(cadr (assoc-keyword :write-once opts))
         state))))
 
 
