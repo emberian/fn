@@ -129,6 +129,11 @@ is preserved unconditionally. A related ready `fn-bcp-prepared` consequently
 returns the exact nonbinding projection of the captured configuration.
 PRF-1204 and SCN-1080 record the boundaries and literal transition witnesses.
 
+The same book connects this projection to the actual `fn-cfg-access-table`,
+`fn-cfg-moderation-row` and `fn-cfg-moderator-logins` observations. All three
+ignore exactly the removed signing rows: first-match moderation selection and
+moderator order are preserved, with no additional hypotheses.
+
 This is one premise for reusing posting policy during typed C preparation.
 It does not establish group liveness across a configuration-generation change,
 the relation between a retained posting/view cache and its captured source, or

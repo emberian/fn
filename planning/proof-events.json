@@ -17688,6 +17688,18 @@
         {
           "kind": "theorem",
           "name": "fn-bcp-seal-establishes-nonbinding-base-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-access-table-of-nonbinding-projection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-moderation-row-of-nonbinding-projection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-moderator-logins-of-nonbinding-projection"
         }
       ],
       "pending_subject": "Original preparation functions called by fn-acj-stage/fn-acj-commit. Proof-only projection; actual funded host continuation and whole posting/view reuse remain open, with no runtime activation claim."

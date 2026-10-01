@@ -6931,7 +6931,8 @@
         "Construct a real captured configuration with invitation, old signing, access, moderation and redeemed credential rows.",
         "Run actual Begin, Expect, valid binding Stage, Seal, every original Tick and ready Prepared.",
         "Assert complete antecedents/conclusions for all five boundaries and exact retained row bytes/order.",
-        "Remove each retained hypothesis with a reachable predecessor or explicitly labeled corrupted-state input."
+        "Remove each retained hypothesis with a reachable predecessor or explicitly labeled corrupted-state input.",
+        "Check nonempty actual access-table, first moderation-row and ordered moderator-logins results across the projection and actual signing-change/Prepared path."
       ],
       "expected": [
         "Only signing rows are eligible for replacement; all non-mark-2 rows retain exact value and order.",

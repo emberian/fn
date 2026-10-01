@@ -120,3 +120,56 @@
    (and (not (equal (car answer) :ok))
         (not (equal (fn-bcpo-policy-rows (fn-cp-nth 9 (fn-cp-nth 1 answer)))
                     (fn-bcpo-policy-rows (fn-cp-nth 9 corrupt)))))))
+
+; Nonempty actual observer results, with signing rows interleaved between
+; policy rows. The equations are unconditional and have no hypotheses to drop.
+(defconst *fn-bcpo-observer-rows*
+  '(("a" "old-signing" "" 2)
+    ("alice" "*" "fn.discuss" 3)
+    ("fn.discuss" "fn.queue" "moderator@example" 5)
+    ("alice" "fn.discuss" "" 4)
+    ("b" "other-signing" "" 2)
+    ("bob" "fn.discuss" "" 4)
+    ("fn.discuss" "later-queue" "later-address" 5)))
+(assert-event
+ (and (equal (fn-cfg-access-table (fn-bcpo-policy-rows *fn-bcpo-observer-rows*))
+             (fn-cfg-access-table *fn-bcpo-observer-rows*))
+      (equal (fn-cfg-access-table *fn-bcpo-observer-rows*)
+             '(("alice" "*" "fn.discuss" 3)))))
+(assert-event
+ (and (equal (fn-cfg-moderation-row
+              (fn-bcpo-policy-rows *fn-bcpo-observer-rows*) "fn.discuss")
+             (fn-cfg-moderation-row *fn-bcpo-observer-rows* "fn.discuss"))
+      (equal (fn-cfg-moderation-row *fn-bcpo-observer-rows* "fn.discuss")
+             '("fn.discuss" "fn.queue" "moderator@example" 5))))
+(assert-event
+ (and (equal (fn-cfg-moderator-logins
+              (fn-bcpo-policy-rows *fn-bcpo-observer-rows*) "fn.discuss")
+             (fn-cfg-moderator-logins *fn-bcpo-observer-rows* "fn.discuss"))
+      (equal (fn-cfg-moderator-logins *fn-bcpo-observer-rows* "fn.discuss")
+             '("alice" "bob"))))
+
+(defconst *fn-bcpo-observer-ready*
+  (fn-bcpo-test-run 32
+   (fn-cp-nth 1 (fn-bcp-seal
+    (fn-cp-nth 1 (fn-bcp-stage
+     (fn-cp-nth 1 (fn-bcp-expect
+      (fn-bcp-begin '(99)
+       (fn-cfg-make 7
+        (fn-cfg-value-make-full nil nil nil nil nil nil nil nil nil
+                                *fn-bcpo-observer-rows* nil)) 5)
+      '(97) :row)) *fn-bcpo-test-event*))))))
+(assert-event
+ (let* ((s *fn-bcpo-observer-ready*)
+        (answer (fn-bcp-prepared s 8))
+        (before (fn-cfg-accounts (fn-cfg-value (fn-cp-nth 2 s))))
+        (after (fn-cfg-accounts (fn-cfg-value (fn-cp-nth 1 answer)))))
+   (and (fn-bcpo-base-relatedp s)
+        (equal (fn-cp-nth 4 s) :ready)
+        (equal (car answer) :ok)
+        (not (equal before after))
+        (equal (fn-cfg-access-table after) (fn-cfg-access-table before))
+        (equal (fn-cfg-moderation-row after "fn.discuss")
+               (fn-cfg-moderation-row before "fn.discuss"))
+        (equal (fn-cfg-moderator-logins after "fn.discuss")
+               (fn-cfg-moderator-logins before "fn.discuss")))))

@@ -1851,9 +1851,9 @@
     "books": 1929,
     "books_in_root_closure": 1922,
     "roots": 1844,
-    "theorems": 29134,
+    "theorems": 29137,
     "functions": 19185,
-    "assert_events": 24136,
+    "assert_events": 24140,
     "must_fails": 2506,
     "prover_refusals": 0,
     "encapsulates": 158,
@@ -10701,7 +10701,7 @@
       "book": "books/consumer-account-config-posting-relation.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 10,
+      "theorems": 13,
       "functions": 3,
       "guards": {
         "verified": 0,
@@ -41260,10 +41260,10 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 10,
+      "assert_events": 14,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 8,
+      "defconsts": 10,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [

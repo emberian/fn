@@ -18953,7 +18953,7 @@
     {
       "id": "PRF-1204",
       "title": "Actual signing-binding preparation preserves ordered nonbinding configuration rows",
-      "statement": "The original fn-bcp-stage success preserves the non-mark-2 projection of new bindings; collect/empty-projection Seal establishes the captured-base relation; actual fn-bcp-tick preserves that relation and, unconditionally, the projected eventual nonbinding rows. Related ready fn-bcp-prepared returns exactly the captured base nonbinding account rows in order. These are the actual preparation functions used by fn-acj-stage/fn-acj-commit, not a replacement transition. Configuration-generation group liveness, posting/view cache source relations, funded host continuation and typed C publication remain separate obligations.",
+      "statement": "The original fn-bcp-stage success preserves the non-mark-2 projection of new bindings; collect/empty-projection Seal establishes the captured-base relation; actual fn-bcp-tick preserves that relation and, unconditionally, the projected eventual nonbinding rows. Related ready fn-bcp-prepared returns exactly the captured base nonbinding account rows in order. These are the actual preparation functions used by fn-acj-stage/fn-acj-commit, not a replacement transition. Configuration-generation group liveness, posting/view cache source relations, funded host continuation and typed C publication remain separate obligations. The actual access table, first moderation row and ordered moderator-logins observations are unchanged by the nonbinding projection, unconditionally, so equality of projected rows supports those actual policy observations.",
       "milestone": "M4",
       "requirements": [
         "CNS-011"
@@ -18966,7 +18966,10 @@
         "fn-bcp-tick-preserves-nonbinding-base-relation",
         "fn-bcp-prepared-preserves-nonbinding-accounts",
         "fn-bcp-stage-preserves-nonbinding-binding-projection",
-        "fn-bcp-seal-establishes-nonbinding-base-relation"
+        "fn-bcp-seal-establishes-nonbinding-base-relation",
+        "fn-cfg-access-table-of-nonbinding-projection",
+        "fn-cfg-moderation-row-of-nonbinding-projection",
+        "fn-cfg-moderator-logins-of-nonbinding-projection"
       ],
       "evidence": [
         "books/consumer-account-config-posting-relation.lisp",
@@ -18974,9 +18977,11 @@
         "planning/evidence/account-config-posting-relation-2026-10-01/coordinate.json",
         "planning/evidence/account-config-posting-relation-2026-10-01/README.md",
         "specs/consumer-account-config-commit.md",
-        "planning/evidence/manifests/certify-20261001T042215Z-1962690.json"
+        "planning/evidence/manifests/certify-20261001T042215Z-1962690.json",
+        "planning/evidence/manifests/certify-20261001T043222Z-2066724.json",
+        "planning/evidence/account-config-posting-relation-2026-10-01/observer-coordinate.json"
       ],
-      "progress_note": "Normal narrow certification passed all 15 fresh books with 47 matching cached dependencies; all 62 source hashes match. Ten literal assertions cover reachable complete premises/conclusions and every retained hypothesis removal, with corrupted states separately labeled. No host activation, group-liveness or whole posting/view-reuse claim."
+      "progress_note": "Final normal certification passed both changed books with 60 matching cached dependencies; all 62 source hashes match. Fourteen literal assertions cover reachable complete premises/conclusions, every retained hypothesis removal, nonempty actual access/moderation observers and the original signing-change→Prepared path. Corrupted states are separately labeled. No host activation, group-liveness or whole posting/view-reuse claim."
     }
   ]
 }

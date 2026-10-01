@@ -127,3 +127,29 @@
            (e/d (fn-bcp-seal fn-bcp-with fn-bcp-state fn-cp-nth
                   fn-bcpo-base-relatedp fn-bcpo-projected-result)
                 (fn-cfg-accounts fn-cfg-value fn-bcpo-policy-rows)))))
+
+; Actual configuration observers depend only on this projection. These
+; equations permit policy reuse; they do not evaluate a fold on the host path.
+(defthm fn-cfg-access-table-of-nonbinding-projection
+  (equal (fn-cfg-access-table (fn-bcpo-policy-rows rows))
+         (fn-cfg-access-table rows))
+  :hints (("Goal" :induct (fn-bcpo-policy-rows rows)
+           :in-theory (e/d (fn-bcpo-policy-rows fn-cfg-access-table
+                            fn-cfg-access-rowp)
+                           (fn-cfg-row-n)))))
+
+(defthm fn-cfg-moderation-row-of-nonbinding-projection
+  (equal (fn-cfg-moderation-row (fn-bcpo-policy-rows rows) name)
+         (fn-cfg-moderation-row rows name))
+  :hints (("Goal" :induct (fn-bcpo-policy-rows rows)
+           :in-theory (e/d (fn-bcpo-policy-rows fn-cfg-moderation-row
+                            fn-cfg-moderation-rowp)
+                           (fn-cfg-row-n fn-cfg-row-a)))))
+
+(defthm fn-cfg-moderator-logins-of-nonbinding-projection
+  (equal (fn-cfg-moderator-logins (fn-bcpo-policy-rows rows) name)
+         (fn-cfg-moderator-logins rows name))
+  :hints (("Goal" :induct (fn-bcpo-policy-rows rows)
+           :in-theory (e/d (fn-bcpo-policy-rows fn-cfg-moderator-logins
+                            fn-cfg-moderator-rowp)
+                           (fn-cfg-row-n fn-cfg-row-a fn-cfg-row-b)))))
