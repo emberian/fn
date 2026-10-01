@@ -24,6 +24,26 @@
 ;
 ;   NAME-FN-carries      (implies (and (R s) G H...) (R RET))   per transition
 ;   NAME-FN-establishes  (implies (and G H...) (R RET))         per open
+;                        (implies (and G H...) (if OK (R RET) t)) per open
+;                        that can REFUSE, declaring :ok OK, a term over `_'
+;                        (the call) alone: its success word.  An open that
+;                        refuses establishes nothing on its refusal arm; the
+;                        word is the open's own answer, which the host
+;                        branches on, never a premise about its input, so
+;                        such a row still backs raw dispatch.  A provably
+;                        never-true OK is refused (the vacuity probe, with
+;                        FN open); :ok on a transition is refused (one that
+;                        refuses and leaves the state preserves R already).
+;                        NOT LANDED (deputy2/def-carried-ok, H1 OPEN): the
+;                        probe is an event, not a world fact, so a
+;                        hand-written `table fn-carried' row with a
+;                        never-true OK regenerates a trivially provable
+;                        establishment and fn-cd-raw-problem would accept
+;                        it.  Close it before landing: a declared ground
+;                        :witness per :ok open, from which def-carried
+;                        generates and proves NAME-FN-reaches, the witness
+;                        instance of (and G OK), and fn-cd-raw-problem
+;                        demands that theorem by the same exact-formula rule.
 ;   NAME-PRED-bridge     (implies (R x) (and C...))             per bridge
 ;
 ; where the Cs are every conjunct of a listed transition's guard that
@@ -121,7 +141,7 @@
 (defconst *fn-cd-keys*
   '(:invariant :established :transitions :concludes :complete-by :trace))
 
-(defconst *fn-cd-entry-keys* '(:hyps :state :result))
+(defconst *fn-cd-entry-keys* '(:hyps :state :result :ok))
 
 (defconst *fn-cd-vacuity-steps* 50000)
 
@@ -290,17 +310,32 @@
      ((and (null st) (assoc-keyword :state opts) (not (natp (fn-cd-get :state opts))))
       (mv (msg "~x0: :state ~x1 is not a 0-based position" fn (fn-cd-get :state opts))
           nil))
+     ((and (assoc-keyword :ok opts) (eq suffix '-carries))
+      (mv (msg "~x0: :ok is for an establishing point; a transition that ~
+                refuses and leaves the state as it was preserves the ~
+                invariant already, so drop :ok" fn)
+          nil))
      (t (mv-let (bad terms)
-          (fn-cd-translate-list (cons result (fn-cd-get :hyps opts)) w)
-          (if bad
-              (mv (msg "~x0: ~x1 does not translate in this world" fn (car bad))
-                  nil)
+          (fn-cd-translate-list (list* result
+                                       (if (assoc-keyword :ok opts) (fn-cd-get :ok opts) t)
+                                       (fn-cd-get :hyps opts))
+                                w)
+          (cond
+           (bad
+            (mv (msg "~x0: ~x1 does not translate in this world" fn (car bad))
+                nil))
+           ((and (assoc-keyword :ok opts) (not (equal (all-vars (cadr terms)) '(_))))
+            (mv (msg "~x0's :ok ~x1 is not a term over `_' (the call) alone"
+                     fn (fn-cd-get :ok opts))
+                nil))
+           (t
             (mv nil (list* fn (cadr entry)
                            :name (packn-pos (list name '- fn suffix) name)
-                           :hyps (cdr terms)
-                           (if st nil
+                           :hyps (cddr terms)
+                           (append (and (assoc-keyword :ok opts) (list :ok (cadr terms)))
+                                   (if st nil
                              (list :state (fn-cd-get :state opts)
-                                   :result (car terms)))))))))))
+                                   :result (car terms)))))))))))))
 
 (defun fn-cd-parts (st entry w)
   (declare (xargs :mode :program))
@@ -358,16 +393,28 @@
                      (fn-cd-subst result (list (cons '_ call)))
                      all))))))))
 
+(defun fn-cd-ok-term (entry w)
+  (declare (xargs :mode :program))
+  ; the declared :ok of a normalized establishing ENTRY, over its call; nil
+  ; when the open cannot refuse
+  (let ((ok (fn-cd-get :ok (cddr entry))))
+    (and ok
+         (fn-cd-subst ok (list (cons '_ (cons (car entry)
+                                              (getpropc (car entry) 'formals nil w))))))))
+
 (defun fn-cd-statement (kind r st entry w)
   (declare (xargs :mode :program))
   ; (mv MSG STATEMENT): KIND :carries for a transition, :establishes for an open
   (mv-let (msg s ret hyps)
     (fn-cd-parts st entry w)
-    (cond (msg (mv msg nil))
-          ((eq kind :carries)
-           (mv nil (list 'implies (fn-cd-conj (cons (list r s) hyps)) (list r ret))))
-          (hyps (mv nil (list 'implies (fn-cd-conj hyps) (list r ret))))
-          (t (mv nil (list r ret))))))
+    (let ((ok (and (eq kind :establishes) (fn-cd-ok-term entry w))))
+      (cond (msg (mv msg nil))
+            ((eq kind :carries)
+             (mv nil (list 'implies (fn-cd-conj (cons (list r s) hyps)) (list r ret))))
+            (t (let ((conclusion (if ok (list 'if ok (list r ret) *t*) (list r ret))))
+                 (mv nil (if hyps
+                             (list 'implies (fn-cd-conj hyps) conclusion)
+                           conclusion))))))))
 
 (defun fn-cd-pred-conjuncts (pred terms s)
   (declare (xargs :mode :program))
@@ -611,7 +658,8 @@
     (mv-let (msg s ret hyps)
       (fn-cd-parts st (car entries) w)
       (declare (ignore msg ret))
-      (let ((hyps (if (eq kind :carries) (cons (list r s) hyps) hyps)))
+      (let ((hyps (if (eq kind :carries) (cons (list r s) hyps) hyps))
+            (ok (and (eq kind :establishes) (fn-cd-ok-term (car entries) w))))
         (append
          (and hyps
               `((local (fn-cd-nonvacuous
@@ -620,6 +668,15 @@
                            "establishing hypotheses are provably contradictory")
                         (not ,(fn-cd-conj hyps))
                         (("Goal" :in-theory (theory 'minimal-theory)))))))
+         ; the success word must be reachable: with the open's definition
+         ; alone, its :ok is not provably never true under the hypotheses
+         (and ok
+              `((local (fn-cd-nonvacuous
+                        "the establishing point's :ok is provably never true"
+                        (not ,(fn-cd-conj (append hyps (list ok))))
+                        (("Goal" :in-theory (union-theories
+                                             '(,(caar entries) mv-nth car-cons cdr-cons)
+                                             (theory 'minimal-theory))))))))
          (fn-cd-vacuity-events kind r st (cdr entries) w))))))
 
 (defun fn-cd-arg-alist (formals s i)

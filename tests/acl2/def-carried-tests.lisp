@@ -860,6 +860,86 @@
           :raw-with (:carried fn-cdt-carried))))
 
 ; ---------------------------------------------------------------------------
+; 3b. An open that can REFUSE: the establishment under its success word.
+; fn-cdt-open-maybe answers (mv :opened st') or (mv :refused st); on the
+; refusal arm it establishes nothing, so the entry declares
+; :ok (equal (mv-nth 0 _) :opened) and the generated statement is
+; (implies G (if OK (R RET) t)).  The word is the open's own answer, which
+; the host branches on, not a premise about its input: the row has no
+; :hyps and backs raw dispatch.
+(defun fn-cdt-open-maybe (flag fn-cdt-st)
+  (declare (xargs :stobjs fn-cdt-st))
+  (if flag
+      (let ((fn-cdt-st (update-fn-cdt-n 1 fn-cdt-st))) (mv :opened fn-cdt-st))
+    (mv :refused fn-cdt-st)))
+(defthm fn-cdt-open-maybe-establishes
+  (implies (equal (mv-nth 0 (fn-cdt-open-maybe flag fn-cdt-st)) :opened)
+           (fn-cdt-relp (mv-nth 1 (fn-cdt-open-maybe flag fn-cdt-st)))))
+(def-carried fn-cdt-ok-carried
+  :invariant fn-cdt-relp
+  :established ((fn-cdt-open fn-cdt-open-establishes)
+                (fn-cdt-open-maybe fn-cdt-open-maybe-establishes
+                                   :ok (equal (mv-nth 0 _) :opened)))
+  :transitions ((fn-cdt-bump fn-cdt-bump-carries)
+                (fn-cdt-note fn-cdt-note-carries)
+                (fn-cdt-reset fn-cdt-reset-carries))
+  :concludes ((fn-cdt-nonzerop fn-cdt-relp-nonzero))
+  :trace nil)
+; the generated statement, literally: the guard, the word, the invariant
+(assert-event
+ (equal (getpropc 'fn-cdt-ok-carried-fn-cdt-open-maybe-establishes 'theorem nil (w state))
+        '(implies (fn-cdt-stp fn-cdt-st)
+                  (if (equal (mv-nth '0 (fn-cdt-open-maybe flag fn-cdt-st)) ':opened)
+                      (fn-cdt-relp (mv-nth '1 (fn-cdt-open-maybe flag fn-cdt-st)))
+                      't))))
+; no :hyps anywhere: the row backs raw dispatch of its transitions
+(assert-event (null (fn-cd-raw-problem 'fn-cdt-ok-carried 'fn-cdt-bump (w state))))
+; reachable, both arms on the live stobj: refused claims nothing (and the
+; state is not in R), opened satisfies R
+(defun fn-cdt-witness-open-maybe ()
+  (declare (xargs :guard t))
+  (with-local-stobj fn-cdt-st
+    (mv-let (ok fn-cdt-st)
+      (mv-let (w1 fn-cdt-st)
+        (fn-cdt-open-maybe nil fn-cdt-st)
+        (let ((refused (and (eq w1 :refused) (not (fn-cdt-relp fn-cdt-st)))))
+          (mv-let (w2 fn-cdt-st)
+            (fn-cdt-open-maybe t fn-cdt-st)
+            (mv (and refused (eq w2 :opened) (fn-cdt-relp fn-cdt-st)) fn-cdt-st))))
+      ok)))
+(assert-event (fn-cdt-witness-open-maybe)
+              :msg "fn-cdt-ok-carried-fn-cdt-open-maybe-establishes: witness")
+; r17: a never-true :ok would make the establishment vacuous -- refused by
+; the probe (the open's definition decides its words); an :ok over other
+; variables, and :ok on a transition, refused by name.
+(fn-cdt-refused fn-cdt-ok-x (:invariant fn-cdt-relp
+                             :established ((fn-cdt-open fn-cdt-open-establishes)
+                                           (fn-cdt-open-maybe fn-cdt-open-maybe-establishes
+                                                              :ok (equal (mv-nth 0 _) :never)))
+                             :transitions ((fn-cdt-bump fn-cdt-bump-carries)
+                                           (fn-cdt-note fn-cdt-note-carries)
+                                           (fn-cdt-reset fn-cdt-reset-carries))
+                             :trace nil)
+                "provably never true")
+(fn-cdt-refused fn-cdt-ok-x (:invariant fn-cdt-relp
+                             :established ((fn-cdt-open fn-cdt-open-establishes)
+                                           (fn-cdt-open-maybe fn-cdt-open-maybe-establishes
+                                                              :ok (equal flag t)))
+                             :transitions ((fn-cdt-bump fn-cdt-bump-carries)
+                                           (fn-cdt-note fn-cdt-note-carries)
+                                           (fn-cdt-reset fn-cdt-reset-carries))
+                             :trace nil)
+                "is not a term over")
+(fn-cdt-refused fn-cdt-ok-x (:invariant fn-cdt-relp
+                             :established ((fn-cdt-open fn-cdt-open-establishes))
+                             :transitions ((fn-cdt-bump fn-cdt-bump-carries
+                                                        :ok (equal (mv-nth 0 _) :x))
+                                           (fn-cdt-note fn-cdt-note-carries)
+                                           (fn-cdt-reset fn-cdt-reset-carries))
+                             :trace nil)
+                "is for an establishing point")
+
+; ---------------------------------------------------------------------------
 ; 4 (cont.). What r15 is asked: a statement other than the generated forms.
 
 ; A hand-written table row (no def-carried) naming TRUE theorems about other
