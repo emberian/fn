@@ -796,6 +796,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-extend-tests \
 	books/store-log-durable \
 	tests/acl2/store-log-durable-tests \
+	books/recovery-refinement \
+	tests/acl2/recovery-refinement-tests \
+	books/checkpoint-reserve \
+	tests/acl2/checkpoint-reserve-tests \
 	books/store-init-log-publication \
 	tests/acl2/store-init-log-publication-tests \
 	books/owner-feed-txid-reuse \
