@@ -111,7 +111,7 @@
 
 ; Removal: no author (an unauthenticated POST; the four-element submission).
 (defconst *oclt-anon* (oclt-sub *oclt-injected* nil))
-(assert-event (equal *oclt-anon* (fn-own-sub-make 4 2 0 (fn-own-sub-decision *oclt-anon*))))
+(assert-event (equal *oclt-anon* (fn-own-sub-make 4 2 0 (fn-own-sub-decision *oclt-anon*) nil)))
 (assert-event (equal (fn-own-sub-stored-octets nil *oclt-anon* *oclt-secret*)
                      *oclt-injected*))
 (assert-event (not (oclt-conclusion nil *oclt-anon* *oclt-secret*)))
