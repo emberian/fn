@@ -861,5 +861,311 @@
 ; KEYSTONE (withdrawal): unlinking the withdrawn row's live numbers --
 ; removing (g . k), pointing its PREV's NEXT past it and its NEXT's PREV
 ; below it -- keeps every entry good over the withdrawn rows.
-; fn-cpl-okp-of-withdraw above.  The commit's links (fn-cpl-cplan,
-; fn-cpl-link) are defined; their preservation theorem is NEXT.
+; fn-cpl-okp-of-withdraw above.
+
+; -----------------------------------------------------------------------------
+; 3. The commit.  The plan (fn-cpl-cplan) names, per group of the committed
+; row whose new number n = high + 1 is live, (g n hi) with hi the group's
+; live high before the commit; the link puts (g . n) with no NEXT and hi
+; as its PREV, and points hi's NEXT at n.  The loop invariant's bad set is
+; the old live highs' NEXT entries (0 before, n after); PREV has none.
+
+(defthm fn-cpl-high-of-commit
+  (equal (fn-cat-group-high g (append c (list (fn-cat-assign h c))))
+         (if (member-equal g (fn-record-groups h))
+             (+ 1 (fn-cat-group-high g c))
+           (fn-cat-group-high g c))))
+
+(defthm fn-cpl-first-past-last
+  (implies (natp top)
+           (equal (fn-cat-live-first g (+ 1 (fn-cat-live-last g top c)) top c) 0))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-cat-live-numberp fn-cpl-first-from-gap fn-cpl-last-from-gap
+                               fn-cat-live-first fn-cat-live-last fn-cpl-live-first-bounds fn-cpl-last-skips)
+           :use ((:instance fn-cpl-live-first-bounds (k (+ 1 (fn-cat-live-last g top c))))
+                 (:instance fn-cpl-last-skips (b top) (m (fn-cat-live-first g (+ 1 (fn-cat-live-last g top c)) top c)))))))
+
+(defun fn-cpl-centry-okp (e h c)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((g (car e)) (n (cadr e)) (hi (caddr e)))
+    (and (true-listp e) (equal (len e) 3)
+         (member-equal g (fn-record-groups h))
+         (equal n (+ 1 (fn-cat-group-high g c)))
+         (null (fn-held-withdrawn h)) (fn-scat-msgid-idp (fn-record-msgid h))
+         (<= n *fn-nntp-max-article-number*)
+         (equal hi (fn-cat-live-last g (fn-cat-group-high g c) c)))))
+
+(defun fn-cpl-cplan-okp (plan h c)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp plan)
+      (and (fn-cpl-centry-okp (car plan) h c) (fn-cpl-cplan-okp (cdr plan) h c))
+    t))
+
+(defthm fn-cpl-cplan-okp-of-cplan-gen
+  (implies (and (subsetp-equal groups (fn-record-groups h))
+                (equal livep (and (null (fn-held-withdrawn h)) (fn-scat-msgid-idp (fn-record-msgid h)))))
+           (fn-cpl-cplan-okp (fn-cpl-cplan groups livep c) h c))
+  :hints (("Goal" :in-theory (disable fn-cat-live-last fn-scat-msgid-idp))))
+
+(defthm fn-cpl-cplan-okp-of-cplan
+  (fn-cpl-cplan-okp (fn-cpl-cplan (fn-record-groups h)
+                                  (and (null (fn-held-withdrawn h)) (fn-scat-msgid-idp (fn-record-msgid h)))
+                                  c)
+                    h c)
+  :hints (("Goal" :use ((:instance fn-cpl-cplan-okp-of-cplan-gen (groups (fn-record-groups h))
+                                   (livep (and (null (fn-held-withdrawn h)) (fn-scat-msgid-idp (fn-record-msgid h))))))
+           :in-theory (disable fn-cpl-cplan-okp-of-cplan-gen fn-cpl-cplan fn-cpl-cplan-okp))))
+
+(defthm fn-cpl-centry-new-live
+  (implies (and (fn-cpl-centry-okp e h c) (fn-cat-rowsp c))
+           (fn-cat-live-numberp (car e) (cadr e) (append c (list (fn-cat-assign h c)))))
+  :hints (("Goal" :in-theory (disable fn-cat-live-numberp fn-cat-assign fn-scat-msgid-idp fn-cat-live-last))))
+
+(defthm fn-cpl-cgood-new-next
+  (implies (and (fn-cpl-centry-okp e h c) (fn-cat-rowsp c))
+           (fn-cpl-goodp t (cons (car e) (cadr e)) 0 (append c (list (fn-cat-assign h c)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-cpl-next-of) (fn-cat-live-numberp fn-cat-assign fn-scat-msgid-idp fn-cat-live-last
+                                             fn-cat-live-first fn-cpl-centry-okp))
+           :use fn-cpl-centry-new-live
+           :expand ((fn-cpl-centry-okp e h c)))))
+
+(defthm fn-cpl-cgood-new-prev
+  (implies (and (fn-cpl-centry-okp e h c) (fn-cat-rowsp c))
+           (fn-cpl-goodp nil (cons (car e) (cadr e)) (caddr e) (append c (list (fn-cat-assign h c)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-cpl-prev-of) (fn-cat-live-numberp fn-cat-assign fn-scat-msgid-idp fn-cat-live-last
+                                             fn-cat-live-first fn-cpl-centry-okp))
+           :use fn-cpl-centry-new-live
+           :expand ((fn-cpl-centry-okp e h c)))))
+
+(defthm fn-cpl-cgood-hi-next
+  (implies (and (fn-cpl-centry-okp e h c) (fn-cat-rowsp c) (posp (caddr e)))
+           (fn-cpl-goodp t (cons (car e) (caddr e)) (cadr e) (append c (list (fn-cat-assign h c)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-cpl-next-of) (fn-cat-live-numberp fn-cat-assign fn-scat-msgid-idp fn-cat-live-last
+                                             fn-cat-live-first fn-cpl-centry-okp))
+           :use (fn-cpl-centry-new-live
+                 (:instance fn-cpl-live-last-bounds (g (car e)) (k (fn-cat-group-high (car e) c)))
+                 (:instance fn-cpl-live-below-high (g (car e)) (k (caddr e)))
+                 (:instance fn-cpl-live-append-other (g (car e)) (k (caddr e)))
+                 (:instance fn-cpl-live-first-top (g (car e)) (k (+ 1 (caddr e))) (top (fn-cat-group-high (car e) c))
+                            (c (append c (list (fn-cat-assign h c)))))
+                 (:instance fn-cpl-live-first-append (g (car e)) (k (+ 1 (caddr e))) (top (fn-cat-group-high (car e) c)))
+                 (:instance fn-cpl-first-past-last (g (car e)) (top (fn-cat-group-high (car e) c))))
+           :expand ((fn-cpl-centry-okp e h c)))))
+
+(defun fn-cpl-cbad (x plan)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp plan)
+      (let* ((e (car plan)) (g (car e)) (hi (caddr e)))
+        (or (and (posp hi) (equal x (cons g hi)))
+            (fn-cpl-cbad x (cdr plan))))
+    nil))
+
+(defthm fn-cpl-cbad-of-cplan
+  (implies (and (member-equal g groups) livep
+                (<= (+ 1 (fn-cat-group-high g c)) *fn-nntp-max-article-number*)
+                (posp (fn-cat-live-last g (fn-cat-group-high g c) c)))
+           (fn-cpl-cbad (cons g (fn-cat-live-last g (fn-cat-group-high g c) c)) (fn-cpl-cplan groups livep c)))
+  :hints (("Goal" :in-theory (disable fn-cat-live-last))))
+
+(defthm fn-cpl-cchanged-is-bad
+  (implies (and (fn-cat-rowsp c)
+                (fn-cpl-goodp dir x v c)
+                (not (fn-cpl-goodp dir x v (append c (list (fn-cat-assign h c))))))
+           (and dir
+                (fn-cpl-cbad x (fn-cpl-cplan (fn-record-groups h)
+                                             (and (null (fn-held-withdrawn h)) (fn-scat-msgid-idp (fn-record-msgid h)))
+                                             c))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-cpl-goodp fn-cpl-next-of fn-cpl-prev-of)
+                           (fn-cat-live-numberp fn-cat-assign fn-scat-msgid-idp fn-cat-live-last fn-cat-live-first
+                            fn-cpl-cplan fn-cpl-cbad fn-cpl-live-append-other fn-cpl-live-append-new
+                            fn-cpl-live-last-append fn-cpl-live-first-append fn-cpl-live-first-top
+                            fn-cpl-last-from-gap fn-cpl-first-from-gap fn-cpl-cbad-of-cplan))
+           :cases ((member-equal (car x) (fn-record-groups h)))
+           :use ((:instance fn-cpl-live-below-high (g (car x)) (k (cdr x)))
+                 (:instance fn-cpl-live-append-other (g (car x)) (k (cdr x)))
+                 (:instance fn-cpl-live-last-append (g (car x)) (k (- (cdr x) 1)))
+                 (:instance fn-cpl-live-first-append (g (car x)) (k (+ 1 (cdr x))) (top (fn-cat-group-high (car x) c)))
+                 (:instance fn-cpl-live-first-top (g (car x)) (k (+ 1 (cdr x))) (top (fn-cat-group-high (car x) c))
+                            (c (append c (list (fn-cat-assign h c)))))
+                 (:instance fn-cpl-live-append-new (g (car x)) (n (+ 1 (fn-cat-group-high (car x) c))))
+                 (:instance fn-cpl-last-from-gap (g (car x)) (j (cdr x)) (m (fn-cat-group-high (car x) c))
+                            (top (fn-cat-group-high (car x) c)))
+                 (:instance fn-cpl-cbad-of-cplan (g (car x)) (groups (fn-record-groups h))
+                            (livep (and (null (fn-held-withdrawn h)) (fn-scat-msgid-idp (fn-record-msgid h)))))))))
+
+(defun-sk fn-cpl-cinv (dir tab plan c c2)
+  (forall x (implies (consp (hons-assoc-equal x tab))
+                     (or (fn-cpl-goodp dir x (cdr (hons-assoc-equal x tab)) c2)
+                         (and dir (fn-cpl-cbad x plan)
+                              (fn-cpl-goodp dir x (cdr (hons-assoc-equal x tab)) c))))))
+
+(in-theory (disable fn-cpl-cinv fn-cpl-cinv-necc))
+
+(defthm fn-cpl-cinv-init
+  (implies (and (fn-cat-rowsp c) (fn-cpl-okp dir tab c))
+           (fn-cpl-cinv dir tab
+                        (fn-cpl-cplan (fn-record-groups h)
+                                      (and (null (fn-held-withdrawn h)) (fn-scat-msgid-idp (fn-record-msgid h)))
+                                      c)
+                        c (append c (list (fn-cat-assign h c)))))
+  :hints (("Goal" :in-theory (union-theories '(fn-cpl-cinv) (theory 'minimal-theory))
+           :use ((:instance fn-cpl-cchanged-is-bad
+                            (x (fn-cpl-cinv-witness dir tab
+                                                    (fn-cpl-cplan (fn-record-groups h)
+                                                                  (and (null (fn-held-withdrawn h)) (fn-scat-msgid-idp (fn-record-msgid h)))
+                                                                  c)
+                                                    c (append c (list (fn-cat-assign h c)))))
+                            (v (cdr (hons-assoc-equal
+                                     (fn-cpl-cinv-witness dir tab
+                                                          (fn-cpl-cplan (fn-record-groups h)
+                                                                        (and (null (fn-held-withdrawn h)) (fn-scat-msgid-idp (fn-record-msgid h)))
+                                                                        c)
+                                                          c (append c (list (fn-cat-assign h c))))
+                                     tab))))
+                 (:instance fn-cpl-okp-necc
+                            (x (fn-cpl-cinv-witness dir tab
+                                                    (fn-cpl-cplan (fn-record-groups h)
+                                                                  (and (null (fn-held-withdrawn h)) (fn-scat-msgid-idp (fn-record-msgid h)))
+                                                                  c)
+                                                    c (append c (list (fn-cat-assign h c))))))))))
+
+(defun fn-cpl-lstep (dir g n hi tab)
+  (declare (xargs :guard t :verify-guards nil))
+  (if dir
+      (cons (cons (cons g n) 0) (if (posp hi) (cons (cons (cons g hi) n) tab) tab))
+    (cons (cons (cons g n) hi) tab)))
+
+(defthm fn-cpl-lookup-of-lstep
+  (equal (hons-assoc-equal x (fn-cpl-lstep dir g n hi tab))
+         (cond ((equal x (cons g n)) (cons x (if dir 0 hi)))
+               ((and dir (posp hi) (equal x (cons g hi))) (cons x n))
+               (t (hons-assoc-equal x tab)))))
+
+(in-theory (disable fn-cpl-lstep))
+
+(defthm fn-cpl-cinv-step
+  (implies (and (fn-cat-rowsp c) (fn-cpl-centry-okp (list g n hi) h c)
+                (fn-cpl-cinv dir tab (cons (list g n hi) rest) c (append c (list (fn-cat-assign h c)))))
+           (fn-cpl-cinv dir (fn-cpl-lstep dir g n hi tab) rest c (append c (list (fn-cat-assign h c)))))
+  :hints (("Goal" :in-theory (union-theories '(fn-cpl-goodp-dir fn-cpl-cinv fn-cpl-lookup-of-lstep fn-cpl-cbad
+                                               car-cons cdr-cons)
+                                             (theory 'minimal-theory))
+           :use ((:instance fn-cpl-cinv-necc (plan (cons (list g n hi) rest)) (c2 (append c (list (fn-cat-assign h c))))
+                            (x (fn-cpl-cinv-witness dir (fn-cpl-lstep dir g n hi tab) rest c
+                                                    (append c (list (fn-cat-assign h c))))))
+                 (:instance fn-cpl-cgood-new-next (e (list g n hi)))
+                 (:instance fn-cpl-cgood-new-prev (e (list g n hi)))
+                 (:instance fn-cpl-cgood-hi-next (e (list g n hi)))))))
+
+(defthm fn-cpl-link-is-lsteps
+  (equal (fn-cpl-link dir plan tab)
+         (if (consp plan)
+             (fn-cpl-link dir (cdr plan)
+                          (fn-cpl-lstep dir (car (car plan)) (cadr (car plan)) (caddr (car plan)) tab))
+           tab))
+  :rule-classes ((:definition :controller-alist ((fn-cpl-link nil t nil))))
+  :hints (("Goal" :in-theory (enable fn-cpl-lstep))))
+
+(defthm fn-cpl-list3
+  (implies (and (true-listp e) (equal (len e) 3))
+           (equal (list (car e) (cadr e) (caddr e)) e))
+  :hints (("Goal" :expand ((len e) (len (cdr e)) (len (cddr e)) (len (cdddr e))))))
+
+(defthm fn-cpl-cinv-end-atom
+  (implies (and (not (consp plan)) (fn-cpl-cinv dir tab plan c c2)) (fn-cpl-okp dir tab c2))
+  :hints (("Goal" :in-theory (enable fn-cpl-okp)
+           :use ((:instance fn-cpl-cinv-necc (x (fn-cpl-okp-witness dir tab c2)))))))
+
+(defun fn-cpl-link-ind (dir plan tab)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp plan)
+      (fn-cpl-link-ind dir (cdr plan)
+                       (fn-cpl-lstep dir (car (car plan)) (cadr (car plan)) (caddr (car plan)) tab))
+    tab))
+
+(defthm fn-cpl-link-okp
+  (implies (and (fn-cat-rowsp c) (fn-cpl-cplan-okp plan h c)
+                (fn-cpl-cinv dir tab plan c (append c (list (fn-cat-assign h c)))))
+           (fn-cpl-okp dir (fn-cpl-link dir plan tab) (append c (list (fn-cat-assign h c)))))
+  :hints (("Goal" :induct (fn-cpl-link-ind dir plan tab)
+           :in-theory (union-theories '((:induction fn-cpl-link-ind) fn-cpl-link-is-lsteps fn-cpl-cplan-okp
+                                        fn-cpl-centry-okp fn-cpl-list3 fn-cpl-cinv-end-atom car-cons cdr-cons cons-car-cdr)
+                                      (theory 'minimal-theory)))
+          ("Subgoal *1/1" :use ((:instance fn-cpl-cinv-step (g (car (car plan))) (n (cadr (car plan)))
+                                           (hi (caddr (car plan))) (rest (cdr plan)))))))
+
+; KEYSTONE (commit): linking the committed row's new live numbers --
+; (g . n) a live number with no NEXT and the group's live high as its
+; PREV, the old live high's NEXT pointed at n -- keeps every entry good
+; over the appended rows.
+(defthm fn-cpl-okp-of-commit
+  (implies (and (fn-cat-rowsp c) (fn-cpl-okp dir tab c))
+           (fn-cpl-okp dir
+                       (fn-cpl-link dir (fn-cpl-cplan (fn-record-groups h)
+                                                      (and (null (fn-held-withdrawn h))
+                                                           (fn-scat-msgid-idp (fn-record-msgid h)))
+                                                      c)
+                                    tab)
+                       (append c (list (fn-cat-assign h c)))))
+  :hints (("Goal" :in-theory (union-theories '() (theory 'minimal-theory))
+           :use ((:instance fn-cpl-link-okp
+                            (plan (fn-cpl-cplan (fn-record-groups h)
+                                                (and (null (fn-held-withdrawn h)) (fn-scat-msgid-idp (fn-record-msgid h)))
+                                                c)))
+                 fn-cpl-cinv-init
+                 fn-cpl-cplan-okp-of-cplan))))
+
+; -----------------------------------------------------------------------------
+; 4. A redecision keeps every row's keys and withdrawal: no liveness moves.
+
+(defthm fn-cpl-live-rowp-with-context
+  (equal (fn-cat-live-rowp g k (fn-held-with-context h ctx))
+         (fn-cat-live-rowp g k h))
+  :hints (("Goal" :in-theory (e/d (fn-cat-live-rowp) (fn-scat-msgid-idp))
+           :use ((:instance fn-cpl-number-in-same-keys (h1 (fn-held-with-context h ctx)) (h2 h))))
+          (and stable-under-simplificationp '(:in-theory (e/d (fn-held-with-context) (fn-scat-msgid-idp))))))
+
+(defthm fn-cpl-live-recontext
+  (implies (and (natp r) (< r (len c)))
+           (equal (fn-cat-live-numberp g k (update-nth r (fn-held-with-context (nth r c) ctx) c))
+                  (fn-cat-live-numberp g k c)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-cat-live-numberp)
+                           (fn-cat-number-seq fn-scat-msgid-idp fn-cat-live-rowp fn-held-with-context))
+           :use ((:instance fn-cpl-number-seq-update-nth (k r) (n k) (i 0) (h (fn-held-with-context (nth r c) ctx))))
+           :cases ((equal (fn-cat-number-seq g k c 0) r)))))
+
+(defthm fn-cpl-live-first-recontext
+  (implies (and (natp r) (< r (len c)))
+           (equal (fn-cat-live-first g k top (update-nth r (fn-held-with-context (nth r c) ctx) c))
+                  (fn-cat-live-first g k top c)))
+  :hints (("Goal" :induct (fn-cat-live-first g k top c)
+           :in-theory (disable fn-cat-live-numberp fn-held-with-context))))
+
+(defthm fn-cpl-live-last-recontext
+  (implies (and (natp r) (< r (len c)))
+           (equal (fn-cat-live-last g k (update-nth r (fn-held-with-context (nth r c) ctx) c))
+                  (fn-cat-live-last g k c)))
+  :hints (("Goal" :induct (fn-cat-live-last g k c)
+           :in-theory (disable fn-cat-live-numberp fn-held-with-context))))
+
+(defthm fn-cpl-goodp-recontext
+  (implies (and (natp r) (< r (len c)))
+           (equal (fn-cpl-goodp dir x v (update-nth r (fn-held-with-context (nth r c) ctx) c))
+                  (fn-cpl-goodp dir x v c)))
+  :hints (("Goal" :in-theory (e/d (fn-cpl-next-of fn-cpl-prev-of)
+                                  (fn-cat-live-numberp fn-cat-live-first fn-cat-live-last fn-held-with-context))
+           :use ((:instance fn-cpl-high-update-nth (k r) (g (car x)) (h (fn-held-with-context (nth r c) ctx)))))))
+
+; A redecision changes no number's liveness: every entry stays good.
+(defthm fn-cpl-okp-of-redecide
+  (implies (and (natp r) (< r (len c)) (fn-cpl-okp dir tab c))
+           (fn-cpl-okp dir tab (update-nth r (fn-held-with-context (nth r c) ctx) c)))
+  :hints (("Goal" :in-theory (e/d (fn-cpl-okp) (fn-cpl-goodp fn-held-with-context))
+           :use ((:instance fn-cpl-okp-necc
+                            (x (fn-cpl-okp-witness dir tab (update-nth r (fn-held-with-context (nth r c) ctx) c))))))))
