@@ -14,10 +14,10 @@ stale. Counts describe artifacts, not coverage; see
 | Certification roots in the Makefile | 2342 |
 | Books inside the root closure | 2598 |
 | `defthm` and `defthmd` events | 35100 |
-| `defun` events | 22448 |
+| `defun` events | 22450 |
 | Functions with verified guards | 3826 |
-| Functions declared `:verify-guards nil` and never verified | 2805 |
-| Functions left at the default with an explicit guard | 12609 |
+| Functions declared `:verify-guards nil` and never verified | 2808 |
+| Functions left at the default with an explicit guard | 12608 |
 | Functions left at the default with no guard | 3208 |
 | `assert-event` checks | 25157 |
 | `must-fail` checks | 2537 |
@@ -26,7 +26,7 @@ stale. Counts describe artifacts, not coverage; see
 | Theorems flagged SUSPECT by shape | 1330 |
 | Export-hygiene warnings | 390 |
 | Enabled-projection warnings | 79 |
-| Teeth-form warnings | 275 |
+| Teeth-form warnings | 276 |
 | Include-hygiene warnings | 3367 |
 | Host-names warnings | 3114 |
 | Hand-written-record warnings | 19 |
@@ -2555,7 +2555,7 @@ that `make certify` requests.
 | `tests/acl2/recovery-initial-operation-lineage-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 3 | 0 | 0 |
 | `tests/acl2/recovery-profile-buffer-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 1 | 0 | 0 |
 | `tests/acl2/recovery-profile-envelope-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 3 | 0 | 0 |
-| `tests/acl2/recovery-refinement-tests.lisp` | root | 1 | 29 | 0/21/8/0 | 6 | 4 | 0 |
+| `tests/acl2/recovery-refinement-tests.lisp` | root | 1 | 31 | 0/24/7/0 | 6 | 4 | 0 |
 | `tests/acl2/refusal-effect-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 33 | 0 | 0 |
 | `tests/acl2/refusal-headroom-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 5 | 0 | 0 |
 | `tests/acl2/relay-source-routes-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 15 | 5 | 0 |

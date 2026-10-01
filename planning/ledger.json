@@ -2350,21 +2350,21 @@
     "books_in_root_closure": 2598,
     "roots": 2342,
     "theorems": 35100,
-    "functions": 22448,
+    "functions": 22450,
     "assert_events": 25157,
     "must_fails": 2537,
     "prover_refusals": 0,
     "encapsulates": 188,
     "guards": {
       "verified": 3826,
-      "declared-off": 2805,
-      "default-guarded": 12609,
+      "declared-off": 2808,
+      "default-guarded": 12608,
       "default-unguarded": 3208
     },
     "suspect_theorems": 1330,
     "export_hygiene_warnings": 390,
     "enabled_projection_warnings": 79,
-    "teeth_form_warnings": 275,
+    "teeth_form_warnings": 276,
     "include_hygiene_warnings": 3367,
     "host_names_warnings": 3114,
     "hand_written_record_warnings": 19
@@ -72865,11 +72865,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 1,
-      "functions": 29,
+      "functions": 31,
       "guards": {
         "verified": 0,
-        "declared-off": 21,
-        "default-guarded": 8,
+        "declared-off": 24,
+        "default-guarded": 7,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -95035,6 +95035,12 @@
         "check": "rec-teeth-record-p-without-payload-without-payloadp",
         "book": "tests/acl2/records-teeth-tests.lisp",
         "line": 243,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "rrt-without-the-relation",
+        "book": "tests/acl2/recovery-refinement-tests.lisp",
+        "line": 228,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {

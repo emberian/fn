@@ -20752,7 +20752,7 @@
         "A-DURABILITY",
         "A-WRITE-ISOLATION"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/recovery-refinement.lisp",
         "tests/acl2/recovery-refinement-tests.lisp",
@@ -20786,7 +20786,7 @@
         "PRF-083"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/checkpoint-reserve.lisp",
         "tests/acl2/checkpoint-reserve-tests.lisp",
@@ -20855,7 +20855,7 @@
         "A-DURABILITY",
         "A-WRITE-ISOLATION"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/recovery-refinement.lisp",
         "tests/acl2/recovery-refinement-tests.lisp"
