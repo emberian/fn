@@ -1870,11 +1870,11 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1999,
+    "books": 2005,
     "books_in_root_closure": 1938,
     "roots": 1866,
-    "theorems": 30323,
-    "functions": 19348,
+    "theorems": 30328,
+    "functions": 19361,
     "assert_events": 24064,
     "must_fails": 2519,
     "prover_refusals": 0,
@@ -1882,14 +1882,14 @@
     "guards": {
       "verified": 3553,
       "declared-off": 2350,
-      "default-guarded": 10573,
-      "default-unguarded": 2872
+      "default-guarded": 10585,
+      "default-unguarded": 2873
     },
     "suspect_theorems": 1266,
     "export_hygiene_warnings": 348,
     "enabled_projection_warnings": 55,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2733,
+    "include_hygiene_warnings": 2740,
     "host_names_warnings": 2193,
     "hand_written_record_warnings": 18
   },
@@ -16480,6 +16480,82 @@
       "read_error": null
     },
     {
+      "book": "books/index-reader-receipt-phase.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/index-reader-render-establishment-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 3,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "index-reader-render-establishment"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/index-reader-render-establishment.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 1,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "index-reader-render-slot"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/index-reader-render-ready.lisp",
       "in_root_closure": false,
       "is_root": false,
@@ -16501,6 +16577,62 @@
       "includes": [
         "index-backing-provider",
         "served-render-holder"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/index-reader-render-slot.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 3,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "index-range-render-custody",
+        "index-reader-render-ready",
+        "index-reader-request-shape"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/index-reader-request-shape.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 7,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 7,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "index-backing-generations",
+        "index-publication-shape",
+        "index-reader-receipt-phase"
       ],
       "system_includes": [],
       "suspects": [],
@@ -27454,6 +27586,32 @@
       "encapsulates": 0,
       "includes": [
         "page-read-ledger"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/receiver-render-custody.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 1,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "index-backing-provider"
       ],
       "system_includes": [],
       "suspects": [],
@@ -79290,6 +79448,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/index-range-render-custody.lisp",
+        "line": 5,
+        "include": "receiver-render-custody",
+        "included": "books/receiver-render-custody.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/index-range-render-demand.lisp",
         "line": 5,
         "include": "index-range-held-row-controller",
@@ -79332,10 +79497,52 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/index-reader-render-establishment-tests.lisp",
+        "line": 2,
+        "include": "index-reader-render-establishment",
+        "included": "books/index-reader-render-establishment.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/index-reader-render-establishment.lisp",
+        "line": 2,
+        "include": "index-reader-render-slot",
+        "included": "books/index-reader-render-slot.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/index-reader-render-ready.lisp",
         "line": 6,
         "include": "served-render-holder",
         "included": "books/served-render-holder.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/index-reader-render-slot.lisp",
+        "line": 3,
+        "include": "index-reader-request-shape",
+        "included": "books/index-reader-request-shape.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/index-reader-render-slot.lisp",
+        "line": 4,
+        "include": "index-range-render-custody",
+        "included": "books/index-range-render-custody.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/index-reader-render-slot.lisp",
+        "line": 5,
+        "include": "index-reader-render-ready",
+        "included": "books/index-reader-render-ready.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/index-reader-request-shape.lisp",
+        "line": 3,
+        "include": "index-reader-receipt-phase",
+        "included": "books/index-reader-receipt-phase.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
