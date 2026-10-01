@@ -2026,6 +2026,10 @@
         {
           "kind": "theorem",
           "name": "fn-feed-journal-uncertainty-survives-all-later-observations"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-feed-journal-batch-is-durable-only-at-its-one-barrier"
         }
       ]
     },

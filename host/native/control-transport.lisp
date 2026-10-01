@@ -8,7 +8,7 @@
 (defstruct (fnn-control-state (:constructor %make-fnn-control-state))
   path listener accept-thread service
   (lock (sb-thread:make-mutex :name "fn local control"))
-  (workers nil) (clients nil) (stopping nil) (max-clients 0)
+  (workers nil) (clients nil) (stopping nil)
   (read-maximum 0)
   device inode lease-path lease-fd)
 

@@ -3469,8 +3469,9 @@ them across processes, copies, checkpoint and full replay, and boxes."
 
 (defun fnn-command-store-journal (root)
   "`store ROOT journal' (lane time-model-2, HST-028): read the decision
-journal STORE/decisions/decisions.fnj back and print ACL2's one-line replay
-(books/owner-time-journal.lisp fn-otm-journal-report: entries, segments,
+journal STORE/decisions/decisions.fnj back, a bounded chunk at a time, and
+print ACL2's one-line replay (books/owner-time-journal-stream.lisp
+fn-otjs-report, fn-otm-journal-report's line: entries, segments,
 whole/torn/malformed, and agrees or the first gap, divergence or malformed
 entry).  It opens no store (a running owner keeps its journal open for
 append; a torn last line is one the writer had not finished).  Exit 0 when
@@ -3478,13 +3479,23 @@ the replay agrees, 1 otherwise."
   (let ((path (fnn-join (fnn-join root "decisions") "decisions.fnj")))
     (unless (probe-file path)
       (fnn-refuse "no decision journal at ~a" path))
-    (let* ((octets (with-open-file (in path :element-type '(unsigned-byte 8))
-                     (let ((v (make-array (file-length in) :element-type '(unsigned-byte 8))))
-                       (read-sequence v in)
-                       (coerce v 'list))))
-           (report (fnn-core 'fn-otm-journal-report octets)))
-      (fnn-write-report report)
-      (let ((exit (fnn-core 'fn-otm-journal-exit octets)))
+    ;; PKT-893 (D27): a bounded chunk a step, never the whole file as one
+    ;; list (books/owner-time-journal-stream.lisp; KEYSTONE
+    ;; fn-otjs-report-of-the-chunks-is-the-journal-report: the line and exit
+    ;; are fn-otm-journal-report's and -exit's over the whole file).
+    (let* ((size (fnn-core 'fn-otjs-chunk-octets))
+           (buffer (progn
+                     (unless (and (integerp size) (> size 0))
+                       (fnn-fault "ACL2 returned no journal chunk bound"))
+                     (make-array size :element-type '(unsigned-byte 8))))
+           (st (fnn-core 'fn-otjs-init)))
+      (with-open-file (in path :element-type '(unsigned-byte 8))
+        (loop
+          (let ((n (read-sequence buffer in)))
+            (when (= n 0) (return))
+            (setq st (fnn-core 'fn-otjs-feed st (coerce (subseq buffer 0 n) 'list))))))
+      (fnn-write-report (fnn-core 'fn-otjs-report st))
+      (let ((exit (fnn-core 'fn-otjs-exit st)))
         (unless (member exit '(0 1))
           (fnn-fault "ACL2 returned a malformed journal verdict"))
         exit))))

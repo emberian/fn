@@ -1213,7 +1213,10 @@ lowers `--max-open-suffix` with it.
 Limits: `--max-transactions`, `--max-history-octets`,
 `--max-record-octets`, `--max-article-octets`, `--max-groups-per-article`,
 `--max-open-suffix`, `--max-consumers`, `--max-config-generations`,
-`--max-credentials`. `--profile scale|development|default` names a starting
+`--max-credentials`, `--max-control-clients` (the local control connections
+served at once, default 16: four are kept for operator commands, the rest
+take `consumer wait` waiters, so at least 5; the memory check counts a
+thread for each). `--profile scale|development|default` names a starting
 set. When this machine's memory cannot hold the limits you name, `init`
 refuses and makes nothing:
 `fn: refused init-budget-cannot-hold-profile profile=scale sizing=requested reservation=14272 MB budget=2048 MB`

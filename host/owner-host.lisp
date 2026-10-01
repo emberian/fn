@@ -257,6 +257,8 @@
 (include-book "../books/owner-credits")
 ; lane health-truth-journal (PKT-872, PRF-360): the journal writer never keeps a torn line.
 (include-book "../books/owner-time-journal-writer")
+; PKT-893: `store ROOT journal' reads the journal a bounded chunk at a time.
+(include-book "../books/owner-time-journal-stream")
 ; lane time-bars (PRF-384): the committer's ledger of the request in flight
 ; (its generation, the connections told before its late completion), a
 ; read's page-dependency outcome, the restart's clock domain.
@@ -2692,7 +2694,9 @@
 
 (defun fn-owner-consumer-local-wait-admit (waiters state)
   (declare (xargs :stobjs state :guard t))
-  (value (fn-cwait-admit waiters)))
+  ;; PKT-700: the capacity is the store profile's control ceiling less the
+  ;; reserved workers (books/consumer-wait.lisp fn-cwait-capacity).
+  (value (fn-cwait-admit waiters (fn-owner-store-profile state))))
 
 (defun fn-owner-consumer-local-bound-ack (cursor-octets secret state)
   (declare (xargs :stobjs state :mode :program

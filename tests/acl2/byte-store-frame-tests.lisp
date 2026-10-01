@@ -294,8 +294,9 @@
                                       (take 12 (cdr *bsft-free*)))
                             '(("max-header-fields" . 64)
                               ("max-header-lines" . 256)
-                              ("max-header-octets" . 16384))))))
-(assert-event (equal (len *fn-bs-meta-profile-spec*) 16))
+                              ("max-header-octets" . 16384)
+                              ("max-control-clients" . 16))))))
+(assert-event (equal (len *fn-bs-meta-profile-spec*) 17))
 
 ; A truncated authentic frame must not become a frontier.  The visible value
 ; is not merely a wrong integer: decoding reports no value at all.
@@ -394,3 +395,23 @@
 (assert-event (equal (cdr (assoc-equal "max-header-fields"
                                        (fn-bs-profile-report *bsft-raised-headers*)))
                      1000))
+
+; PKT-700: the control worker ceiling is profile field 16, default the
+; node's former fixed 16; at least the four reserved workers and one waiter,
+; at most the count width; each refusal by name; it round-trips the frame.
+(assert-event (equal (fn-bs-profile-max-control-clients *fn-bs-profile-defaults*) 16))
+(assert-event (equal (fn-bs-profile-max-control-clients *fn-bs-profile-scale*) 16))
+(defconst *bsft-wide-control*
+  (fn-bs-profile-resolve '(:development ((16 . 200))) nil))
+(assert-event (fn-bs-profile-validp *bsft-wide-control*))
+(assert-event (equal (fn-bs-profile-max-control-clients *bsft-wide-control*) 200))
+(assert-event (equal (fn-bs-config-decode (fn-bs-config-encode *bsft-wide-control*))
+                     *bsft-wide-control*))
+(assert-event (fn-bs-profile-validp (fn-bs-profile-resolve '(:development ((16 . 5))) nil)))
+(assert-event (equal (fn-bs-profile-resolve '(:development ((16 . 4))) nil)
+                     '(:invalid :max-control-clients-outside-the-reserved-workers)))
+(assert-event (equal (fn-bs-profile-resolve '(:development ((16 . 4294967296))) nil)
+                     '(:invalid :max-control-clients-outside-the-reserved-workers)))
+(assert-event (equal (cdr (assoc-equal "max-control-clients"
+                                       (fn-bs-profile-report *bsft-wide-control*)))
+                     200))

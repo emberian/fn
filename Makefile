@@ -1854,6 +1854,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-credits-tests \
 	books/owner-time-journal-writer \
 	tests/acl2/owner-time-journal-writer-tests \
+	books/owner-time-journal-stream \
+	tests/acl2/owner-time-journal-stream-tests \
 	books/owner-stop-drain \
 	tests/acl2/owner-stop-drain-tests \
 	books/owner-time-bars \

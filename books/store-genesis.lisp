@@ -168,7 +168,7 @@
 
 (defconst *fn-gen-schema-octets*
   (coerce
-   "fn-store-10;profile=max-transactions,max-history-octets,max-record-octets,max-article-octets,max-groups-per-article,max-group-name-octets,max-open-suffix,max-consumers,max-bp-rows,max-config-generations,max-credentials,max-policy-members,max-header-fields,max-header-lines,max-header-octets;log=FNLG/1:record=1,batch=2,genesis=3;genesis=fn-g/0;record=FNST;event=fn-r,fn-e;identity=v1;digest=fn-digest;tombstone=FN-RCL2:relay-v1-subject"
+   "fn-store-10;profile=max-transactions,max-history-octets,max-record-octets,max-article-octets,max-groups-per-article,max-group-name-octets,max-open-suffix,max-consumers,max-bp-rows,max-config-generations,max-credentials,max-policy-members,max-header-fields,max-header-lines,max-header-octets,max-control-clients;log=FNLG/1:record=1,batch=2,genesis=3;genesis=fn-g/0;record=FNST;event=fn-r,fn-e;identity=v1;digest=fn-digest;tombstone=FN-RCL2:relay-v1-subject"
    'list))
 
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one

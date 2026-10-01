@@ -1340,8 +1340,30 @@ books/owner-feed-article.lisp fn-ofa-feed-article).  It seals nothing."
         (when fd (ignore-errors (fnn-close fd)))
         (error e)))))
 
+(defvar *fnn-owner-feed-batch* nil
+  "True inside a START quantum (fnn-owner-commit-start-locked): an append
+writes its frame and leaves the journal in ACL2's :sync phase; the START's
+one barrier per written journal (fnn-owner-feed-sync-batch) makes them
+durable before the batch is sealed (PKT-825a, books/feed-journal.lisp
+fn-feed-journal-batch-is-durable-only-at-its-one-barrier).")
+
+(defun fnn-owner-feed-fail (journal path e)
+  (ignore-errors (fnn-owner-feed-phase journal :failed))
+  (fnn-owner-feed-close journal)
+  (fnn-indeterminate "FNFD append uncertain: ~a (~a)" path e))
+
+(defun fnn-owner-feed-barrier (journal)
+  "The append barrier: every frame written since the journal's last barrier
+is durable when it returns."
+  (handler-case
+      (progn
+        (fnn-fsync-file (fnn-owner-feed-journal-fd journal))
+        (fnn-owner-feed-phase journal :append-durable))
+    (error (e)
+      (fnn-owner-feed-fail journal (fnn-owner-feed-journal-path journal) e))))
+
 (defun fnn-owner-feed-append (journal frame)
-  "Append one ACL2-sealed frame and cross every ordered durability barrier."
+  "Append one ACL2-sealed frame; outside a START batch, cross its barrier."
   (handler-case
       (let ((envelope (fnn-core 'fn-feed-journal-wrap
                                 (fnn-octet-list frame))))
@@ -1350,14 +1372,20 @@ books/owner-feed-article.lisp fn-ofa-feed-article).  It seals nothing."
         (fnn-owner-feed-phase journal :append)
         (fnn-write-all (fnn-owner-feed-journal-fd journal)
                        (fnn-octets envelope))
-        (fnn-owner-feed-phase journal :written)
-        (fnn-fsync-file (fnn-owner-feed-journal-fd journal))
-        (fnn-owner-feed-phase journal :append-durable))
+        (fnn-owner-feed-phase journal :written))
     (error (e)
-      (ignore-errors (fnn-owner-feed-phase journal :failed))
-      (fnn-owner-feed-close journal)
-      (fnn-indeterminate "FNFD append uncertain: ~a (~a)"
-                         (fnn-owner-feed-journal-path journal) e))))
+      (fnn-owner-feed-fail journal (fnn-owner-feed-journal-path journal) e)))
+  (unless *fnn-owner-feed-batch*
+    (fnn-owner-feed-barrier journal)))
+
+(defun fnn-owner-feed-sync-batch (service)
+  "One barrier per journal ACL2's phase says holds unbarriered writes (:sync):
+the START's feed frames are durable before its batch is sealed or a told
+member is answered."
+  (dolist (entry (fnn-owner-service-feeds service))
+    (let ((journal (cdr entry)))
+      (when (eq (fnn-owner-feed-journal-phase journal) :sync)
+        (fnn-owner-feed-barrier journal)))))
 
 (defun fnn-owner-feed-decoded-peer (components location)
   "Refuse a discovered entry unless ACL2 reconstructs its exact peer label."
@@ -3609,7 +3637,8 @@ nil when nothing was queued (or the store does not commit through the log)."
         (setf (fnn-log-bmax log) bmax (fnn-log-omax log) omax))
       (fnn-owner-refresh-compression log)
       (let ((*fnn-log-batch* t)
-            (*fnn-owner-deferred* deferred))
+            (*fnn-owner-deferred* deferred)
+            (*fnn-owner-feed-batch* t))
         (handler-case
             (progn
               ;; One START takes at most the operator's batch bound of
@@ -3634,12 +3663,18 @@ nil when nothing was queued (or the store does not commit through the log)."
                             (if (eq (car item) :log)
                                 (fnn-log-line (cdr item))
                               (fnn-owner-feed-flush service (cdr item))))
+                          ;; Its resolution is durable before its reply.
+                          (fnn-owner-feed-sync-batch service)
                           (fnn-owner-deliver service cid reply))
                       (progn
                         ;; A member ACL2 answered uncertain ends the START: the
                         ;; batch is not appended (its :started-uncertain).
                         (push (list cid reply word *fnn-owner-uncertain-render*) members)
                         (when stop (setq uncertain t) (return)))))))
+              ;; PKT-825a: the drained members' feed intents, one barrier
+              ;; per written peer journal, before the batch is appended
+              ;; here or (START-NEXT) at the COMPLETE that seals it.
+              (fnn-owner-feed-sync-batch service)
               ;; The bound ended the drain: members may still be queued.
               ;; Keep the committer's wake-up count positive (host
               ;; bookkeeping: a START-NEXT or the next START that finds

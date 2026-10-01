@@ -315,6 +315,7 @@
 (include-book "owner-article-slots")
 (include-book "owner-credits")
 (include-book "owner-time-journal-writer")
+(include-book "owner-time-journal-stream")
 (include-book "owner-time-bars")
 (include-book "owner-cold-line")
 (include-book "owner-resource-line")

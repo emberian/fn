@@ -58,7 +58,7 @@ class AgentWaitSourceTests(unittest.TestCase):
         # The step over the live arena (records flip), with the view's
         # withdrawals in its page (PKT-710, books/consumer-withdrawal.lisp).
         self.assertIn("(fn-cwd-wait-step-over (fn-owner-ocfg state) (fn-owner-auth state)", host)
-        self.assertIn("(fn-cwait-admit waiters)", host)
+        self.assertIn("(fn-cwait-admit waiters (fn-owner-store-profile state))", host)
         control = (ROOT / "host" / "native-control-host.lisp").read_text(encoding="ascii")
         self.assertIn("(fn-cwait-request-decode octets)", control)
         owner = (ROOT / "host" / "native" / "owner.lisp").read_text(encoding="ascii")
@@ -185,9 +185,10 @@ class NativeAgentWaitTests(unittest.TestCase):
         lines = result.stdout.decode("utf-8").strip().splitlines()
         return result.returncode, (json.loads(lines[-1]) if lines else None), text(result)
 
-    def scenario(self, image):
+    def started(self, image, *init):
+        """A running node with alice's and bob's accounts and bound inboxes."""
         node = self.node(image)
-        self.ok(node, "init", "local.general")
+        self.ok(node, "init", *init, "local.general")
         for group in ("fn.alice", "fn.bob"):
             self.ok(node, "group", "create", group)
         node.start(timeout=240)
@@ -202,7 +203,10 @@ class NativeAgentWaitTests(unittest.TestCase):
                                    node.root / ("registered-" + name))
             self.assertEqual(result.returncode, 0, text(result))
             self.ok(node, "consumer", "bind", name, "--account", login)
+        return node
 
+    def scenario(self, image):
+        node = self.started(image)
         # 1. Two agents asleep; a post to fn.bob wakes bob's, not alice's.
         alice = Wait(self, node, "alice-inbox", "alice", 60)
         bob = Wait(self, node, "bob-inbox", "bob", 60)
@@ -293,6 +297,22 @@ class NativeAgentWaitTests(unittest.TestCase):
         self.assertEqual(self.agent(node, "alice", "ack")[0], 0)
         code, empty_event, _ = self.agent(node, "bob", "next", "--timeout", "1")
         self.assertEqual((code, empty_event), (0, {"kind": "empty"}))
+        node.stop()
+
+    def test_the_profile_sets_the_waiter_capacity(self):
+        # PKT-700: the control worker ceiling is the store profile's field 16.
+        # At --max-control-clients 5 (the four reserved workers and one
+        # waiter) the first wait is admitted and the second refused by name.
+        node = self.started(IMAGES[0][1], "--max-control-clients", "5")
+        first = Wait(self, node, "bob-inbox", "bob", 60)
+        time.sleep(4)
+        self.assertIsNone(first.process.poll(), "the one waiter returned early")
+        second = Wait(self, node, "bob-inbox", "bob", 60)
+        code, _, elapsed = second.finish(timeout=60)
+        self.assertEqual(code, 1, "the second waiter was not refused")
+        self.assertLess(elapsed, 30)
+        self.post(node, "fn.bob", "for-one")
+        self.assertEqual(first.finish(timeout=60)[:2], (0, "for-one"))
         node.stop()
 
     def test_two_agents_wait_for_their_own_news(self):

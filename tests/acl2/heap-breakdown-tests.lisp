@@ -24,7 +24,7 @@
           (fn-heap-breakdown action profile core nursery observed connections))
          (fn-heap-reservation-octets
           (fn-heap-mb-of (fn-heap-operation-figure-octets action profile core nursery observed))
-          core (fn-heap-stack-kib profile) (fn-heap-thread-count connections))))
+          core (fn-heap-stack-kib profile) (fn-heap-thread-count profile))))
 
 ;; The reachable witness: `init''s number for the small preset (the run of
 ;; the full store, unobserved, at init's connections): the hypothesis holds,
@@ -89,7 +89,7 @@
            (fn-heap-breakdown action profile core nursery observed connections))
           (fn-heap-reservation-octets
            (fn-heap-mb-of (fn-heap-operation-figure-octets action profile core nursery observed))
-           core (fn-heap-stack-kib profile) (fn-heap-thread-count connections)))
+           core (fn-heap-stack-kib profile) (fn-heap-thread-count profile)))
    :hints (("Goal" :in-theory (e/d (fn-heap-operation-figure-octets fn-heap-reservation-octets)
                                    (fn-heap-breakdown-base fn-heap-store-base-octets
                                     fn-heap-store-figure-octets fn-heap-thread-count

@@ -46,4 +46,3 @@
                      (fn-native-control-host-max-frame)))
 (assert-event (< (+ 1048576 (fn-native-control-host-max-frame))
                  (fn-native-control-host-read-bound 1310720 1)))
-(assert-event (equal (fn-native-control-host-max-active-clients) 16))

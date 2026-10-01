@@ -536,7 +536,8 @@ THREADS x (STACK + <!--limit:thread-runtime-mib-->4<!--/limit--> MiB; measured 2
 THREADS the <!--limit:fixed-threads-->12<!--/limit--> fixed threads, the <!--limit:mux-loops-->2<!--/limit--> I/O loops that serve every connection
 (a connection is no thread since connection-multiplexing; the reservation
 counted one per `max-connections` until lane reservation-after-flip) and the
-<!--limit:control-clients-->16<!--/limit--> control clients: <!--limit:fixed-threads + mux-loops + control-clients-->30<!--/limit-->; STACK a constant <!--limit:stack-kib,-->1,024<!--/limit--> KiB, seven times the 142 KiB
+control clients of the store profile's `max-control-clients` (field 16,
+PKT-700; default <!--limit:control-clients-->16<!--/limit-->): <!--limit:fixed-threads + mux-loops + control-clients-->30<!--/limit--> at the default; STACK a constant <!--limit:stack-kib,-->1,024<!--/limit--> KiB, seven times the 142 KiB
 the node needs whatever the article since the served path's per-line
 recursions became loops (lane served-line-iterative, PRF-218; before, the
 need grew by 32 octets per line and this figure carried a per-line term). A total the machine cannot hold is refused by name
@@ -798,7 +799,11 @@ start (a start entry, SEQ 0, per run) to agreement at the run's disk and
 clock, and every decision the host asks of the value reads only those.
 The operator's replay is `fn store ROOT journal`: ACL2 reads the file back
 and replays it (`fn-otm-journal-report`, `fn-otm-journal-exit`: exit 0 when
-it agrees, 1 at a gap, divergence or malformed entry).
+it agrees, 1 at a gap, divergence or malformed entry). The host reads the
+file a bounded chunk at a time (PKT-893: `fn-otjs-feed` per 64 KiB, keeping
+only the entries' count, segments and the replay's verdict and state) and
+prints `fn-otjs-report`, which is that line whatever the chunking (PRF-1030,
+KEYSTONE `fn-otjs-report-of-the-chunks-is-the-journal-report`).
 What a process death with entries unflushed loses is exactly those entries:
 the replay of decisions that stored nothing. No durable state depends on an
 entry (a disk event keeps the pipeline; a refusal stores nothing), and the

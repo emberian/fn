@@ -1430,23 +1430,22 @@ still on its loop, what it is owed before the fence closes it."
 (defun fnn-mux-thread-stack-octets ()
   (sb-alien:extern-alien "thread_control_stack_size" sb-alien:unsigned-long))
 
-;;; The control socket's client threads.  host/native/control.lisp binds this
-;;; to ACL2's ceiling (fn-native-control-host-max-active-clients) around the
-;;; run it starts; an image without the control module (the DTN build), and
-;;; the launcher's probe, count the most that ceiling allows.
-(defvar *fnn-mux-control-clients* 64)
-
+;;; The control socket's client threads are the store profile's ceiling
+;;; (field 16, PKT-700), read here after the open; an image without the
+;;; control module (the DTN build) counts them too, as the launcher's
+;;; reservation does.
 (defun fnn-mux-thread-count (service)
   "ACL2's count of the node's threads (books/heap-reservation.lisp
-fn-heap-thread-count: the fixed threads, the I/O loops and the control
-clients' ceiling), the one the launcher's reservation holds; the host's own
-constants must agree with it or the budget is refused as a fault."
-  (declare (ignore service))
-  (let ((threads (fnn-core 'fn-heap-thread-count 0)))
+fn-heap-thread-count over the store's profile: the fixed threads, the I/O
+loops and the profile's control-client ceiling), the one the launcher's
+reservation holds; the host's own constants must agree with it or the budget
+is refused as a fault."
+  (let* ((profile (fnn-store-config (fnn-owner-service-store service)))
+         (threads (fnn-core 'fn-heap-thread-count profile)))
     (unless (and (= +fnn-mux-loops+ (fnn-core 'fn-heap-mux-loops))
                  (>= threads (+ +fnn-mux-fixed-threads+ +fnn-mux-loops+
-                                (min *fnn-mux-control-clients*
-                                     (fnn-core 'fn-native-control-max-active-clients)))))
+                                (fnn-core 'fn-bs-profile-max-control-clients
+                                          profile))))
       (fnn-fault "the host's thread constants disagree with ACL2's thread count"))
     threads))
 

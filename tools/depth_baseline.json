@@ -305,7 +305,6 @@
   "fn-native-control-host-lease-path": "control: a :program host entry the K2 2b burn-down makes :logic + guard-verified by subsystem (baselined 2026-09-29, lane depth-debt-3; host/native-control-host.lisp)",
   "fn-native-control-host-liveness": "control: a :program host entry the K2 2b burn-down makes :logic + guard-verified by subsystem (baselined 2026-09-29, lane depth-debt-3; host/native-control-host.lisp)",
   "fn-native-control-host-liveness-note": "control: a :program host entry the K2 2b burn-down makes :logic + guard-verified by subsystem (baselined 2026-09-29, lane depth-debt-3; host/native-control-host.lisp)",
-  "fn-native-control-host-max-active-clients": "control: a :program host entry the K2 2b burn-down makes :logic + guard-verified by subsystem (baselined 2026-09-29, lane depth-debt-3; host/native-control-host.lisp)",
   "fn-native-control-host-max-article": "control: a :program host entry the K2 2b burn-down makes :logic + guard-verified by subsystem (baselined 2026-09-29, lane depth-debt-3; host/native-control-host.lisp)",
   "fn-native-control-host-max-frame": "control: a :program host entry the K2 2b burn-down makes :logic + guard-verified by subsystem (baselined 2026-09-29, lane depth-debt-3; host/native-control-host.lisp)",
   "fn-native-control-host-moderation-decode": "control: a :program host entry the K2 2b burn-down makes :logic + guard-verified by subsystem (baselined 2026-09-29, lane depth-debt-3; host/native-control-host.lisp)",

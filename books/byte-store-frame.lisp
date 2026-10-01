@@ -21,6 +21,7 @@
 (in-package "ACL2")
 (include-book "byte-store-scan")
 (include-book "frame-trailer")
+(include-book "profile-limits")
 (local (include-book "arithmetic/top" :dir :system))
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
@@ -119,14 +120,15 @@
   (if (zp n) (if (consp values) (car values) nil)
     (fn-bs-meta-nth (1- n) (if (consp values) (cdr values) nil))))
 
-; The profile's fields (format 10): the format word, then fifteen eight-octet
+; The profile's fields (format 10): the format word, then sixteen eight-octet
 ; frame naturals, in this order.  Fields 13 to 15 are the header limits (D27,
-; lane header-limits-profile).  Per-store codec and policy switches are
+; lane header-limits-profile); field 16 the local control socket's worker
+; ceiling (PKT-700).  Per-store codec and policy switches are
 ; configuration rows in the log, never profile fields (the coordinator's
 ; decision of 2026-09-27: a profile field is a layout event under D34).
 (defconst *fn-bs-meta-profile-spec*
   '(:text :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat
-    :nat))
+    :nat :nat))
 
 (defconst *fn-bs-pf-max-transactions* 1)        ; T
 (defconst *fn-bs-pf-max-history-octets* 2)      ; H
@@ -145,6 +147,23 @@
 (defconst *fn-bs-pf-max-header-fields* 13)
 (defconst *fn-bs-pf-max-header-lines* 14)
 (defconst *fn-bs-pf-max-header-octets* 15)
+; The local control socket's worker ceiling (PKT-700, D27: an admission
+; limit is the operator's): the owner serves at most this many control
+; clients at once (books/native-control-launch.lisp), of which all but
+; *fn-bs-profile-control-reserved-workers* may be consumer waits
+; (books/consumer-wait.lisp fn-cwait-capacity); every one is a thread the
+; heap reservation holds (books/heap-reservation.lisp fn-heap-thread-count),
+; so a ceiling the machine cannot hold is refused there, by name.
+(defconst *fn-bs-pf-max-control-clients* 16)
+
+; The control workers a consumer wait may never take (the operator's own
+; verbs, status and a poll stay servable while waiters sleep), and the
+; smallest ceiling: those and one waiter.  The default is the ceiling the
+; node had before it was the operator's.
+(defconst *fn-bs-profile-control-reserved-workers* 4)
+(defconst *fn-bs-profile-min-control-clients*
+  (+ 1 *fn-bs-profile-control-reserved-workers*))
+(defconst *fn-bs-profile-default-control-clients* (fn-profile-limit :control-clients))
 
 ; The fields in order, with the operator's name for each (the `init' and
 ; `store import' flag is `--' followed by the name).
@@ -156,7 +175,7 @@
     (10 . "max-config-generations") (11 . "max-credentials")
     (12 . "max-policy-members")
     (13 . "max-header-fields") (14 . "max-header-lines")
-    (15 . "max-header-octets")))
+    (15 . "max-header-octets") (16 . "max-control-clients")))
 
 ; The codec ceilings no field may pass.  Each is the width the codec that
 ; carries the bounded quantity accepts today; packet P2 (codec ceilings) and
@@ -253,6 +272,12 @@
            :max-header-lines-above-octets)
           ((< *fn-bs-profile-article-ceiling-codec* (fn-bs-pf *fn-bs-pf-max-header-octets* values))
            :max-header-octets-above-codec)
+          ; PKT-700: at least the reserved workers and one waiter; above,
+          ; only the count width (the heap reservation decides whether the
+          ; machine holds that many threads).
+          ((or (< (fn-bs-pf *fn-bs-pf-max-control-clients* values) *fn-bs-profile-min-control-clients*)
+               (< *fn-bs-profile-count-ceiling* (fn-bs-pf *fn-bs-pf-max-control-clients* values)))
+           :max-control-clients-outside-the-reserved-workers)
           (t nil))))
 
 (defun fn-bs-profile-validp (values)
@@ -295,7 +320,8 @@
           *fn-bs-profile-default-namespace-count*
           *fn-bs-profile-default-header-fields*
           *fn-bs-profile-default-header-lines*
-          *fn-bs-profile-default-header-octets*)))
+          *fn-bs-profile-default-header-octets*
+          *fn-bs-profile-default-control-clients*)))
 
 ; The profile a store is run under: a valid profile as it is, anything else
 ; NIL (one format, D34: nothing is translated).
@@ -357,6 +383,14 @@
   (list (fn-bs-profile-field *fn-bs-pf-max-header-fields* values)
         (fn-bs-profile-field *fn-bs-pf-max-header-lines* values)
         (fn-bs-profile-field *fn-bs-pf-max-header-octets* values)))
+; The control worker ceiling of the profile a store runs under (PKT-700).
+(defun fn-bs-profile-max-control-clients (values)
+  (declare (xargs :guard t))
+  (fn-bs-profile-field *fn-bs-pf-max-control-clients* values))
+(defthm fn-bs-profile-max-control-clients-natp
+  (natp (fn-bs-profile-max-control-clients values))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable fn-bs-profile-max-control-clients fn-bs-profile-field fn-bs-pf))))
 
 ; Kept under its old name: the record ceiling is now field R itself.
 (defun fn-bs-profile-record-ceiling (values)
@@ -405,12 +439,29 @@
                                                       (fn-bs-pf *fn-bs-pf-max-groups-per-article* values))
                     (fn-bs-pf *fn-bs-pf-max-record-octets* values))
                 (<= 1 (fn-bs-pf *fn-bs-pf-max-open-suffix* values))
-                (<= (fn-bs-pf *fn-bs-pf-max-open-suffix* values) (fn-bs-pf *fn-bs-pf-max-transactions* values))))
+                (<= (fn-bs-pf *fn-bs-pf-max-open-suffix* values) (fn-bs-pf *fn-bs-pf-max-transactions* values))
+                (<= *fn-bs-profile-min-control-clients* (fn-bs-pf *fn-bs-pf-max-control-clients* values))))
   :rule-classes :forward-chaining
   :hints (("Goal" :in-theory (e/d (fn-bs-profile-validp
                                    fn-bs-profile-invalid-reason)
                                   (fn-bs-pf fn-frame-values-okp
                                    fn-record-encoded-octets-ceiling)))))
+
+; PKT-700: an admitted profile's control ceiling holds the reserved workers
+; and one waiter.
+(defthm fn-bs-profile-max-control-clients-of-admitted
+  (implies (fn-bs-profile-admittedp values)
+           (and (natp (fn-bs-profile-max-control-clients values))
+                (<= *fn-bs-profile-min-control-clients*
+                    (fn-bs-profile-max-control-clients values))))
+  :rule-classes ((:rewrite)
+                 (:linear :corollary
+                  (implies (fn-bs-profile-admittedp values)
+                           (<= *fn-bs-profile-min-control-clients*
+                               (fn-bs-profile-max-control-clients values)))))
+  :hints (("Goal" :use ((:instance fn-bs-profile-validp-facts (values (fn-bs-profile-of values))))
+           :in-theory (e/d (fn-bs-profile-admittedp fn-bs-profile-max-control-clients fn-bs-profile-field)
+                           (fn-bs-profile-validp-facts fn-bs-profile-validp fn-bs-profile-of fn-bs-pf)))))
 
 (defthm fn-bs-profile-of-valid
   (implies (fn-bs-profile-validp values)
@@ -956,7 +1007,7 @@
             (equal (len (fn-frame-fields-octets *fn-bs-meta-profile-spec*
                                                 values))
                    (+ (len (fn-frame-field-octets :text *fn-bs-meta-format-10*))
-                      120)))
+                      128)))
    :hints (("Goal"
             :use ((:instance fn-bs-profile-validp-facts)
                   (:instance fn-bs-all-nat-fields-octets-len
@@ -1068,7 +1119,8 @@
         *fn-bs-profile-default-namespace-count*
         *fn-bs-profile-default-header-fields*
         *fn-bs-profile-default-header-lines*
-        *fn-bs-profile-default-header-octets*))
+        *fn-bs-profile-default-header-octets*
+        *fn-bs-profile-default-control-clients*))
 
 (defun fn-bs-config-for-profile (profile)
   (declare (xargs :guard t))

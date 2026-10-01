@@ -260,7 +260,7 @@ class NativeOperatorInitTests(NativeOperatorVerbFixture):
         helped = self.operator("help", "init")
         self.assertEqual(helped.returncode, EXIT_OK, helped.stderr.decode())
         text = helped.stdout.decode()
-        grammar = ("usage: fn operator CONFIG init [--budget MB] [--largest] [--profile development|scale|default] [--max-transactions N] [--max-history-octets N] [--max-record-octets N] [--max-article-octets N] [--max-groups-per-article N] [--max-group-name-octets N] [--max-open-suffix N] [--max-consumers N] [--max-bp-rows N] [--max-config-generations N] [--max-credentials N] [--max-policy-members N] GROUP [GROUP...]")
+        grammar = ("usage: fn operator CONFIG init [--budget MB] [--largest] [--profile development|scale|default] [--max-transactions N] [--max-history-octets N] [--max-record-octets N] [--max-article-octets N] [--max-groups-per-article N] [--max-group-name-octets N] [--max-open-suffix N] [--max-consumers N] [--max-bp-rows N] [--max-config-generations N] [--max-credentials N] [--max-policy-members N] [--max-control-clients N] GROUP [GROUP...]")
         self.assertTrue(text.endswith("\n") and text.count("\n") == 1, text)
         self.assertTrue(text.startswith(grammar), text)
         clause = text[len(grammar):-1]

@@ -346,6 +346,7 @@
 (include-book "tls-proxy")
 (include-book "owner-stop-drain")
 (include-book "owner-time-journal-writer")
+(include-book "owner-time-journal-stream")
 (include-book "owner-time-bars")
 (include-book "owner-cold-line")
 (include-book "owner-resource-line")

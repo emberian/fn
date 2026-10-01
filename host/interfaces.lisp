@@ -642,6 +642,26 @@
 (definterface fn-olr-omax
   :class ::common-lisp-compliant)
 
+(definterface fn-otjs-chunk-octets
+  :class ::common-lisp-compliant)
+
+(definterface fn-otjs-exit
+  :class ::common-lisp-compliant
+  :keystones (fn-otjs-report-of-the-chunks-is-the-journal-report))
+
+(definterface fn-otjs-feed
+  :class ::common-lisp-compliant
+  :kinds ((chunk fn-cbor-octet-listp))
+  :keystones (fn-otjs-report-of-the-chunks-is-the-journal-report))
+
+(definterface fn-otjs-init
+  :class ::common-lisp-compliant)
+
+(definterface fn-otjs-report
+  :class ::common-lisp-compliant
+  :keystones (fn-otjs-report-of-the-chunks-is-the-journal-report
+              fn-otm-journal-report-of-a-run))
+
 (definterface fn-otm-admit-post
   :class ::common-lisp-compliant
   :keystones (fn-otm-space-recovers
@@ -674,15 +694,6 @@
 
 (definterface fn-otm-init
   :class ::common-lisp-compliant)
-
-(definterface fn-otm-journal-exit
-  :class ::common-lisp-compliant
-  :kinds ((octets fn-cbor-octet-listp)))
-
-(definterface fn-otm-journal-report
-  :class ::common-lisp-compliant
-  :kinds ((octets fn-cbor-octet-listp))
-  :keystones (fn-otm-journal-report-of-a-run))
 
 (definterface fn-otm-jw-after
   :class ::common-lisp-compliant)
@@ -3261,6 +3272,9 @@
 (definterface fn-aj-host-recover
   :class ::ideal)
 
+(definterface fn-bs-profile-max-control-clients
+  :class ::common-lisp-compliant)
+
 (definterface fn-bs-profile-resolve
   :class ::common-lisp-compliant
   :keystones (fn-native-mission-profiles-valid
@@ -3861,9 +3875,6 @@
 (definterface fn-native-control-host-liveness-note
   :class ::program)
 
-(definterface fn-native-control-host-max-active-clients
-  :class ::program)
-
 (definterface fn-native-control-host-max-article
   :class ::program)
 
@@ -3927,9 +3938,6 @@
 
 (definterface fn-native-control-host-transport-word
   :class ::program)
-
-(definterface fn-native-control-max-active-clients
-  :class ::common-lisp-compliant)
 
 (definterface fn-native-hybrid-control-host-author-decode
   :class ::program)
