@@ -281,8 +281,36 @@
 (assert-event (not (equal (fn-mpxl-records "<a@x>" *mpxl-table-missing* *mpxl-rows*)
                           (fn-cei-article-records-for "<a@x>" *mpxl-rows*))))
 
-; fn-mpxl-tabp: no removal witness.  Dropping it admits an entry whose seq
+; READER fn-mpxl-tabp: no removal witness.  Dropping it admits an entry whose seq
 ; is no natural, and every such table either keeps the conclusion (the
 ; confirmation drops a seq no row has) or cannot be evaluated (nth's
 ; guard); its redundancy is a proof task (layer A's type side conditions),
 ; not a counterexample, so the hypothesis stays.
+
+; SPLIT KEYSTONE: single-hypothesis removal, separate from the reader above
+; and from the deliberately mutated split.  Neither theorem is weakened.
+
+; faithful alone REMOVED: the well-formed empty table has no mapping for
+; a held row; splitting it still has no mapping.  Check both input literals
+; and failure of the exact fn-mpxl-split-preserves-faithful conclusion.
+(assert-event
+ (let ((tab (mpxl-empty 1)) (rows (list *mpxl-a*)))
+   (and (fn-mpxl-tabp tab)
+        (not (fn-mpxl-faithful tab rows))
+        (not (fn-mpxl-faithful (mv-nth 1 (fn-mpxl-split tab)) rows)))))
+
+; CORRUPTED-STATE: tabp alone REMOVED.  N = 1, S = 0, but two pages.
+; Tag 1 at seq 0 on page 0 is initially reachable (1 mod 1 = 0).
+; The split wrongly tests movers against the actual page count 2; tag 1
+; stays on page 0.  The advanced N = 2 root looks on page 1 and loses it.
+(defconst *mpxl-m1* (mpxl-find-msgid 1 0))
+(assert-event (equal (mpxl-tag *mpxl-m1*) 1))
+(defconst *mpxl-bad-root*
+  (fn-mpxl-make (list (cons nil (list (cons 1 0))) (cons nil nil)) 1 0))
+(defconst *mpxl-one-row* (list (mpxl-held 0 *mpxl-m1* 100)))
+(assert-event
+ (with-guard-checking :none
+   (and (not (fn-mpxl-tabp *mpxl-bad-root*))
+        (fn-mpxl-faithful *mpxl-bad-root* *mpxl-one-row*)
+        (not (fn-mpxl-faithful (mv-nth 1 (fn-mpxl-split *mpxl-bad-root*))
+                               *mpxl-one-row*)))))
