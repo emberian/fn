@@ -315,3 +315,53 @@ def test_real_owner_nil_binding_refuses_before_account_creator(tmp_path):
                          capture_output=True, text=True, timeout=30)
     assert out.returncode == 0, out.stdout + out.stderr
     assert 'REAL_OWNER_NIL_BINDING_BEFORE_CREATOR_PASS' in out.stdout
+
+
+def test_actual_semantic_lease_refuses_before_account_reservation(tmp_path):
+    """Actual CURRENT fixed-tag check precedes PRS issue; no shape grant."""
+    program = '''
+(defpackage "ACL2" (:use "COMMON-LISP"))
+(in-package "ACL2")
+(defmacro mv (&rest x) `(values ,@x))
+(defmacro mv-let (names form &body body) `(multiple-value-bind ,names ,form ,@body))
+(defun zp (n) (or (not (integerp n)) (<= n 0)))
+(defun boundp-global (key state) (not (null (assoc key state))))
+(defun f-get-global (key state) (cdr (assoc key state)))
+(defun fn-ats-role-bodyp (&rest args) (declare (ignore args)) t)
+(defun fn-owner-account-turn-current (state) (declare (ignore state)) nil)
+(defun fn-act-reserve (&rest args) (declare (ignore args)) (error "unexpected account PRS issue"))
+'''
+    for path, prefix in [
+        ('books/snapshot-source-token.lisp', '(defun fn-omk-at '),
+        ('books/snapshot-source-token.lisp', '(defun fn-omk-widthp '),
+        ('books/admission-semantic-exclusion.lisp', '(defun fn-owner-admission-semantic-busy-p '),
+        ('host/account-adoption-turn-host.lisp', '(defun fn-owner-account-turn-admit-resources-internal\n'),
+    ]:
+        program += cl_form(named(path, prefix))
+    program += '''
+(dolist (source '((:history-config-acquiring :original-owner :original-turn)
+                 (:history-config-source :token :base :generation :incarnation
+                     :count :cursor :wire :output :receipt)))
+ (let* ((state (list (cons 'fn-owner-history-semantic-source source)))
+        (pool (list :original-pool))
+        (resources '(:account-adoption-resources :operation-select
+                     :demand :rescue :retained :body :coordinate :contract)))
+  (assert (fn-owner-admission-semantic-busy-p state))
+  (multiple-value-bind (word next-pool next-state)
+    (fn-owner-account-turn-admit-resources-internal :operation-select
+        :original-source resources 2 17 :actual-slots pool state)
+   (assert (eq word :account-semantic-source-busy))
+   (assert (and (eq pool next-pool) (eq state next-state))))))
+(dolist (source '(nil (:history-config-acquiring :short)
+                  (:history-config-source :short)
+                  (:other-source :a :b)))
+ (assert (not (fn-owner-admission-semantic-busy-p
+               (list (cons 'fn-owner-history-semantic-source source))))))
+(format t "ACCOUNT_SEMANTIC_BUSY_BEFORE_RESERVATION_PASS~%")
+'''
+    path = tmp_path / 'account-semantic-reservation-refusal.lisp'
+    path.write_text(program)
+    out = subprocess.run(['sbcl', '--noinform', '--script', str(path)],
+                         capture_output=True, text=True, timeout=30)
+    assert out.returncode == 0, out.stdout + out.stderr
+    assert 'ACCOUNT_SEMANTIC_BUSY_BEFORE_RESERVATION_PASS' in out.stdout

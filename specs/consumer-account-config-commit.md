@@ -103,7 +103,12 @@ The actual input/turn boundary is planned PRF-1198 (SCN-160). Begin retains
 original parsed config/bindings/entropy/base config/redeemed aliases under
 sourceKey6. Candidate40 uses current CP incarnation and observed transaction
 coordinate through the existing namespace codec; neither observation is
-authority or uniqueness. The sole selector revalidates before durable begin;
+authority or uniqueness. The native account entry passes NIL for unused entropy
+and refuses a missing control binding before entropy I/O or constructors. A new
+account resource reservation also checks the actual bounded CURRENT
+configuration acquiring/source lease before PRS issue. A configuration
+continuation retains its original receipt; candidate identity never bypasses
+this exclusion. The sole selector revalidates before durable begin;
 interference refuses until funded rebind/restart, while durable begin retains
 the same candidate/input through recovery.
 

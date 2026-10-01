@@ -7,6 +7,7 @@
 (include-book "../books/owner-canonical-epoch")
 (include-book "owner-host")
 (include-book "../books/runtime-operation-source")
+(include-book "../books/admission-semantic-exclusion")
 
 ; The original account resource result is selected by the installed compiler
 ; source getter. A family/request list subtotal is never lowered here.
@@ -22,6 +23,8 @@
   ((not (fn-ats-role-bodyp slot nonce :owner-control
                           fn-allocation-turn-slots fn-page-read-pool))
    (mv :account-turn-body-unavailable fn-page-read-pool state))
+  ((fn-owner-admission-semantic-busy-p state)
+   (mv :account-semantic-source-busy fn-page-read-pool state))
   ((fn-owner-account-turn-current state)
    (mv :account-turn-busy fn-page-read-pool state))
   ((not (and (fn-cado-widthp 8 resources)
