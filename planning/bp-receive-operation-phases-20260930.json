@@ -53,7 +53,77 @@
       "qualified_request": null
     }
   ],
-  "actual_source_manifest": "planning/evidence/tcpcl-source-continuation-20260930/manifest.json",
+  "actual_source_manifest": "planning/evidence/bp-segmented-wire-job-20260930/source.json",
   "initial_gate": "runtime-operation-source/role-table genuinely unavailable; no object-only or supplied-demand substitution",
-  "geometry": "conditional constructor-object unit2896 is not full BODY/frame/GC/fault operation family"
+  "geometry": "conditional constructor-object unit2896 is not full BODY/frame/GC/fault operation family",
+  "source_body_roster": [
+    {
+      "path": "host/native/tcpcl.lisp",
+      "sha256": "8d438bdfd4afa0b3729816765656d686ed9ce2082507314ffa9fabdde6b50344",
+      "subjects": [
+        "fnn-tcl-session",
+        "fnn-tcl-act",
+        "fnn-tcl-source-tick",
+        "fnn-tcl-source-escape"
+      ],
+      "qualification": "unavailable"
+    },
+    {
+      "path": "books/tcpcl-received-source.lisp",
+      "sha256": "35075302545a611c0eced854f1859c0386090c48c6b2a63f1e2a1d04adaaf023",
+      "subjects": [
+        "fn-tcl-host-source-drive",
+        "fn-tcl-step-source",
+        "fn-tcl-recv-segment-source"
+      ],
+      "qualification": "unavailable"
+    },
+    {
+      "path": "books/tcpcl-segment-source-cursor.lisp",
+      "sha256": "9ae2f150a94767d3c9df7cb3b4ad708230eec339f0b1de595450d4c9a74970ed",
+      "subjects": [
+        "fn-tsc-begin",
+        "fn-tsc-one"
+      ],
+      "qualification": "unavailable"
+    },
+    {
+      "path": "books/bp-segmented-wire-job.lisp",
+      "sha256": "1aa15656903d4232ffed9e294905a7655d02e0782f0ae2947b62b2eb5dea9ddc",
+      "subjects": [
+        "fn-bpsw-begin",
+        "fn-bpsw-one",
+        "fn-bpsw-turn"
+      ],
+      "qualification": "unavailable"
+    },
+    {
+      "path": "books/bp-wire-primary-cursor.lisp",
+      "sha256": "6b072d05c727deb65902238f7213b19470f8d6b774e910052cdf37379a3433e3",
+      "subjects": [
+        "fn-bpwp-feed",
+        "fn-bpwp-window-loop"
+      ],
+      "qualification": "unavailable"
+    },
+    {
+      "path": "books/bp-wire-canonical-cursor.lisp",
+      "sha256": "f4c00c50dcd37986a1ba3f29f7358061351439a9ba94a56d99794105c7717600",
+      "subjects": [
+        "fn-bpwc-feed",
+        "fn-bpwc-window-loop"
+      ],
+      "qualification": "unavailable"
+    },
+    {
+      "path": "books/bp-received-byte-storage.lisp",
+      "sha256": "66f7d8abe01c27698a7c63df09adfacf6b048053833ee232dd5221f61cd2dea6",
+      "subjects": [
+        "fn-bprx-segment-window"
+      ],
+      "qualification": "unavailable"
+    }
+  ],
+  "retained_graph_demand": "Not derived from byte count: reversed segment spine can grow on empty segments. Must precharge raw/TCPCL body/cons before construction, and retain source/job/connection/condition roots through real joins.",
+  "native_boundary": "Source callbacks default NIL. Recording callback may not install family or mint capability. Condition holds same mutable connection after outer unwind; constructor/frames/escape envelope unqualified."
 }
