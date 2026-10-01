@@ -566,8 +566,8 @@
 ;     one octet put in the pool and no record, a the empty sequence.  The
 ;     retained hypotheses hold (the paged correspondence, the tree's okp),
 ;     the omitted one fails, and so does the conclusion.  Evaluated by the
-;     prover on the ground image; append-t is read through its bridge
-;     (DRT-W1$C-APPEND-T-BRIDGE, a named equality), its stobj-let body
+;     prover on the ground image; append-t is read through its unfolding
+;     (DRT-W1$C-APPEND-T-UNFOLDS, a named equality), its stobj-let body
 ;     being non-executable on a constant.
 (defthm drt-w1-load-removal-witness
   (let ((c (drt-w1$c-pool-put 5 (drt-w1$c-poolroom 1 (create-drt-w1$c))))
@@ -579,7 +579,7 @@
          (not (adt-fill-is-load *drt-w1-schema* (adt-pg-flat *drt-w1-schema* (drt-w1$c-append-t rec c))
                                 (drt-w1$a-append-t rec a)))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (enable drt-w1$c-append-t-bridge))))
+  :hints (("Goal" :in-theory (enable drt-w1$c-append-t-unfolds))))
 
 ; (2)'s retained correspondence: every cleared image corresponds to the
 ; empty sequence.

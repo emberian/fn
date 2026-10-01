@@ -260,7 +260,7 @@
       nil
     (cons (adt-pg-col ci np rt) (adt-pg-cols (1+ ci) (1- k) np rt))))
 
-(defun adt-pg-flat (s c)
+(defun adt-pg1-flat (s c)
   (declare (xargs :verify-guards nil))
   (append (adt-pg-cols 0 (adt-ncols s) (nth 4 c) (nth 0 c))
           (list (adt-pg-col 0 (nth 5 c) (nth 1 c)) (nth 2 c) (nth 3 c))))
@@ -290,9 +290,9 @@
    :hints (("Goal" :expand ((nth k (list a b c)) (nth (+ -1 k) (list b c))
                             (nth (+ -2 k) (list c)) (nth (+ -3 k) nil))))))
 
-(defthm adt-pg-nth-flat
+(defthm adt-pg1-nth-flat
   (implies (natp m)
-           (equal (nth m (adt-pg-flat s c))
+           (equal (nth m (adt-pg1-flat s c))
                   (cond ((< m (adt-ncols s)) (adt-pg-col m (nth 4 c) (nth 0 c)))
                         ((equal m (adt-ncols s)) (adt-pg-col 0 (nth 5 c) (nth 1 c)))
                         ((equal m (+ 1 (adt-ncols s))) (nth 2 c))
@@ -301,16 +301,16 @@
   :hints (("Goal" :cases ((< m (adt-ncols s)) (equal m (adt-ncols s))
                           (equal m (+ 1 (adt-ncols s))) (equal m (+ 2 (adt-ncols s)))))))
 
-(defthm adt-pg-len-flat
-  (equal (len (adt-pg-flat s c)) (+ 3 (adt-ncols s))))
+(defthm adt-pg1-len-flat
+  (equal (len (adt-pg1-flat s c)) (+ 3 (adt-ncols s))))
 
-(defthm adt-pg-true-listp-flat
-  (true-listp (adt-pg-flat s c)))
+(defthm adt-pg1-true-listp-flat
+  (true-listp (adt-pg1-flat s c)))
 
 ; The flat view is a function of the tables, the counters and nothing else.
-(defthm adt-pg-flat-of-update-np
+(defthm adt-pg1-flat-of-update-np
   (implies (natp np)
-           (equal (adt-pg-flat s (update-nth 4 np c))
+           (equal (adt-pg1-flat s (update-nth 4 np c))
                   (append (adt-pg-cols 0 (adt-ncols s) np (nth 0 c))
                           (list (adt-pg-col 0 (nth 5 c) (nth 1 c)) (nth 2 c) (nth 3 c))))))
 
@@ -359,29 +359,20 @@
 ; apart, so that every rule about a row operation binds its variables from
 ; the row invariant alone.
 
-(defun adt-pg-rokp (m r c)
+(defun adt-pg1-rokp (m r c)
   (declare (xargs :verify-guards nil))
   (and (natp m) (posp r) (natp (nth 4 c)) (adt-pg-fullp m r (nth 4 c) (nth 0 c))))
 
-(defun adt-pg-pokp (q c)
+(defun adt-pg1-pokp (q c)
   (declare (xargs :verify-guards nil))
   (and (posp q) (natp (nth 5 c)) (adt-pg-fullp 1 q (nth 5 c) (nth 1 c))))
 
-(defun adt-pg-okp (s r q c)
-  (declare (xargs :verify-guards nil))
-  (and (adt-pg-rokp (adt-ncols s) r c) (adt-pg-pokp q c)))
-
-(defun adt-pg-corr (s r q c a)
-  (declare (xargs :verify-guards nil))
-  (and (adt-pg-okp s r q c)
-       (adt-corr s (adt-pg-flat s c) a)))
-
-(defthm adt-pg-rokp-fc
-  (implies (adt-pg-rokp m r c) (and (natp m) (posp r) (natp (nth 4 c))))
+(defthm adt-pg1-rokp-fc
+  (implies (adt-pg1-rokp m r c) (and (natp m) (posp r) (natp (nth 4 c))))
   :rule-classes :forward-chaining)
 
-(defthm adt-pg-pokp-fc
-  (implies (adt-pg-pokp q c) (and (posp q) (natp (nth 5 c))))
+(defthm adt-pg1-pokp-fc
+  (implies (adt-pg1-pokp q c) (and (posp q) (natp (nth 5 c))))
   :rule-classes :forward-chaining)
 
 ; -----------------------------------------------------------------------------
@@ -390,7 +381,7 @@
 
 ; Row N of column CI: page floor(N/R), entry N mod R.  Out of range (never,
 ; under the invariant) the write is nothing and the read 0.
-(defun adt-pg-rput (ci n x r c)
+(defun adt-pg1-rput (ci n x r c)
   (declare (xargs :verify-guards nil))
   (let* ((rt (nth 0 c)) (k (floor n r)) (j (mod n r)))
     (if (< k (len rt))
@@ -401,14 +392,14 @@
                     c)
       c)))
 
-(defun adt-pg-rget (ci n r c)
+(defun adt-pg1-rget (ci n r c)
   (declare (xargs :verify-guards nil))
   (let* ((rt (nth 0 c)) (k (floor n r)) (j (mod n r)))
     (if (< k (len rt))
         (if (< j (len (nth ci (nth k rt)))) (nth j (nth ci (nth k rt))) 0)
       0)))
 
-(defun adt-pg-pput (i b q c)
+(defun adt-pg1-pput (i b q c)
   (declare (xargs :verify-guards nil))
   (let* ((pt (nth 1 c)) (k (floor i q)) (j (mod i q)))
     (if (< k (len pt))
@@ -419,7 +410,7 @@
                     c)
       c)))
 
-(defun adt-pg-pget (i q c)
+(defun adt-pg1-pget (i q c)
   (declare (xargs :verify-guards nil))
   (let* ((pt (nth 1 c)) (k (floor i q)) (j (mod i q)))
     (if (< k (len pt))
@@ -432,25 +423,25 @@
             (equal (update-nth k (nth k l) l) l))
    :hints (("Goal" :in-theory (enable nth update-nth)))))
 
-(defthm adt-pg-nth-of-rput
+(defthm adt-pg1-nth-of-rput
   (implies (and (natp k) (not (equal k 0)))
-           (equal (nth k (adt-pg-rput ci n x r c)) (nth k c))))
+           (equal (nth k (adt-pg1-rput ci n x r c)) (nth k c))))
 
-(defthm adt-pg-nth-of-pput
+(defthm adt-pg1-nth-of-pput
   (implies (and (natp k) (not (equal k 1)))
-           (equal (nth k (adt-pg-pput i b q c)) (nth k c))))
+           (equal (nth k (adt-pg1-pput i b q c)) (nth k c))))
 
-(defthm adt-pg-pokp-of-rput
-  (equal (adt-pg-pokp q (adt-pg-rput ci n x r c)) (adt-pg-pokp q c)))
+(defthm adt-pg1-pokp-of-rput
+  (equal (adt-pg1-pokp q (adt-pg1-rput ci n x r c)) (adt-pg1-pokp q c)))
 
-(defthm adt-pg-rokp-of-pput
-  (equal (adt-pg-rokp m r2 (adt-pg-pput i b q c)) (adt-pg-rokp m r2 c)))
+(defthm adt-pg1-rokp-of-pput
+  (equal (adt-pg1-rokp m r2 (adt-pg1-pput i b q c)) (adt-pg1-rokp m r2 c)))
 
-(defthm adt-pg-flat-of-rput
-  (implies (and (adt-pg-rokp (adt-ncols s) r c) (natp ci) (< ci (adt-ncols s))
+(defthm adt-pg1-flat-of-rput
+  (implies (and (adt-pg1-rokp (adt-ncols s) r c) (natp ci) (< ci (adt-ncols s))
                 (natp n) (< n (* r (nth 4 c))))
-           (equal (adt-pg-flat s (adt-pg-rput ci n x r c))
-                  (update-nth ci (update-nth n x (nth ci (adt-pg-flat s c))) (adt-pg-flat s c))))
+           (equal (adt-pg1-flat s (adt-pg1-rput ci n x r c))
+                  (update-nth ci (update-nth n x (nth ci (adt-pg1-flat s c))) (adt-pg1-flat s c))))
   :hints (("Goal" :in-theory (e/d (adt-pg-pw) (adt-pg-cols-of-pw adt-pg-floor-mod adt-pg-pagefullp-nth
                                                adt-pg-pagefullp-nth-page))
            :do-not-induct t
@@ -462,10 +453,10 @@
                  (:instance adt-pg-cols-of-pw (k (adt-ncols s)) (np (nth 4 c)) (rt (nth 0 c))
                             (c0 0) (m (adt-ncols s)) (kk (floor n r)) (j (mod n r)))))))
 
-(defthm adt-pg-rokp-of-rput
-  (implies (and (adt-pg-rokp m r c) (natp ci) (< ci m)
+(defthm adt-pg1-rokp-of-rput
+  (implies (and (adt-pg1-rokp m r c) (natp ci) (< ci m)
                 (natp n) (< n (* r (nth 4 c))))
-           (adt-pg-rokp m r (adt-pg-rput ci n x r c)))
+           (adt-pg1-rokp m r (adt-pg1-rput ci n x r c)))
   :hints (("Goal" :in-theory (e/d (adt-pg-pw) (adt-pg-floor-mod adt-pg-fullp-of-pw adt-pg-pagefullp-nth
                                                adt-pg-pagefullp-nth-page))
            :do-not-induct t
@@ -477,10 +468,10 @@
                  (:instance adt-pg-fullp-of-pw (k m) (np (nth 4 c)) (rt (nth 0 c))
                             (kk (floor n r)) (j (mod n r)))))))
 
-(defthm adt-pg-rget-is-nth
-  (implies (and (adt-pg-rokp m r c) (natp ci) (< ci m)
+(defthm adt-pg1-rget-is-nth
+  (implies (and (adt-pg1-rokp m r c) (natp ci) (< ci m)
                 (natp n) (< n (* r (nth 4 c))))
-           (equal (adt-pg-rget ci n r c) (nth n (adt-pg-col ci (nth 4 c) (nth 0 c)))))
+           (equal (adt-pg1-rget ci n r c) (nth n (adt-pg-col ci (nth 4 c) (nth 0 c)))))
   :hints (("Goal" :in-theory (disable adt-pg-floor-mod adt-pg-nth-col adt-pg-pagefullp-nth
                                       adt-pg-pagefullp-nth-page)
            :do-not-induct t
@@ -492,11 +483,11 @@
                  (:instance adt-pg-nth-col (k m) (np (nth 4 c)) (rt (nth 0 c))
                             (kk (floor n r)) (j (mod n r)))))))
 
-(defthm adt-pg-flat-of-pput
-  (implies (and (adt-pg-pokp q c) (natp i) (< i (* q (nth 5 c))))
-           (equal (adt-pg-flat s (adt-pg-pput i b q c))
-                  (update-nth (adt-ncols s) (update-nth i b (nth (adt-ncols s) (adt-pg-flat s c)))
-                              (adt-pg-flat s c))))
+(defthm adt-pg1-flat-of-pput
+  (implies (and (adt-pg1-pokp q c) (natp i) (< i (* q (nth 5 c))))
+           (equal (adt-pg1-flat s (adt-pg1-pput i b q c))
+                  (update-nth (adt-ncols s) (update-nth i b (nth (adt-ncols s) (adt-pg1-flat s c)))
+                              (adt-pg1-flat s c))))
   :hints (("Goal" :in-theory (e/d (adt-pg-pw) (adt-pg-floor-mod adt-pg-col-of-pw-same adt-pg-pagefullp-nth
                                                adt-pg-pagefullp-nth-page))
            :do-not-induct t
@@ -508,9 +499,9 @@
                  (:instance adt-pg-col-of-pw-same (k 1) (r q) (np (nth 5 c)) (rt (nth 1 c))
                             (ci 0) (x b) (kk (floor i q)) (j (mod i q)))))))
 
-(defthm adt-pg-pool-of-pput
-  (implies (and (adt-pg-pokp q c) (natp i) (< i (* q (nth 5 c))))
-           (equal (adt-pg-col 0 (nth 5 c) (nth 1 (adt-pg-pput i b q c)))
+(defthm adt-pg1-pool-of-pput
+  (implies (and (adt-pg1-pokp q c) (natp i) (< i (* q (nth 5 c))))
+           (equal (adt-pg-col 0 (nth 5 c) (nth 1 (adt-pg1-pput i b q c)))
                   (update-nth i b (adt-pg-col 0 (nth 5 c) (nth 1 c)))))
   :hints (("Goal" :in-theory (e/d (adt-pg-pw) (adt-pg-floor-mod adt-pg-col-of-pw-same adt-pg-pagefullp-nth
                                                adt-pg-pagefullp-nth-page))
@@ -523,9 +514,9 @@
                  (:instance adt-pg-col-of-pw-same (k 1) (r q) (np (nth 5 c)) (rt (nth 1 c))
                             (ci 0) (x b) (kk (floor i q)) (j (mod i q)))))))
 
-(defthm adt-pg-pokp-of-pput
-  (implies (and (adt-pg-pokp q c) (natp i) (< i (* q (nth 5 c))))
-           (adt-pg-pokp q (adt-pg-pput i b q c)))
+(defthm adt-pg1-pokp-of-pput
+  (implies (and (adt-pg1-pokp q c) (natp i) (< i (* q (nth 5 c))))
+           (adt-pg1-pokp q (adt-pg1-pput i b q c)))
   :hints (("Goal" :in-theory (e/d (adt-pg-pw) (adt-pg-floor-mod adt-pg-fullp-of-pw adt-pg-pagefullp-nth
                                                adt-pg-pagefullp-nth-page))
            :do-not-induct t
@@ -537,9 +528,9 @@
                  (:instance adt-pg-fullp-of-pw (k 1) (r q) (np (nth 5 c)) (rt (nth 1 c))
                             (ci 0) (x b) (kk (floor i q)) (j (mod i q)))))))
 
-(defthm adt-pg-pget-is-nth
-  (implies (and (adt-pg-pokp q c) (natp i) (< i (* q (nth 5 c))))
-           (equal (adt-pg-pget i q c) (nth i (adt-pg-col 0 (nth 5 c) (nth 1 c)))))
+(defthm adt-pg1-pget-is-nth
+  (implies (and (adt-pg1-pokp q c) (natp i) (< i (* q (nth 5 c))))
+           (equal (adt-pg1-pget i q c) (nth i (adt-pg-col 0 (nth 5 c) (nth 1 c)))))
   :hints (("Goal" :in-theory (disable adt-pg-floor-mod adt-pg-nth-col adt-pg-pagefullp-nth
                                       adt-pg-pagefullp-nth-page)
            :do-not-induct t
@@ -551,25 +542,489 @@
                  (:instance adt-pg-nth-col (k 1) (r q) (np (nth 5 c)) (rt (nth 1 c)) (ci 0)
                             (kk (floor i q)) (j (mod i q)))))))
 
-(defthm adt-pg-rokp-of-update
+(defthm adt-pg1-rokp-of-update
   (implies (and (natp k) (not (equal k 0)) (not (equal k 4)))
-           (equal (adt-pg-rokp m r (update-nth k x c)) (adt-pg-rokp m r c))))
+           (equal (adt-pg1-rokp m r (update-nth k x c)) (adt-pg1-rokp m r c))))
 
-(defthm adt-pg-pokp-of-update
+(defthm adt-pg1-pokp-of-update
   (implies (and (natp k) (not (equal k 1)) (not (equal k 5)))
-           (equal (adt-pg-pokp q (update-nth k x c)) (adt-pg-pokp q c))))
+           (equal (adt-pg1-pokp q (update-nth k x c)) (adt-pg1-pokp q c))))
 
-(defthm adt-pg-len-col-rokp
-  (implies (and (adt-pg-rokp m r c) (natp ci) (< ci m))
+(defthm adt-pg1-len-col-rokp
+  (implies (and (adt-pg1-rokp m r c) (natp ci) (< ci m))
            (equal (len (adt-pg-col ci (nth 4 c) (nth 0 c))) (* r (nth 4 c))))
   :hints (("Goal" :use ((:instance adt-pg-len-col (k m) (np (nth 4 c)) (rt (nth 0 c)))))))
 
-(defthm adt-pg-len-col-pokp
-  (implies (adt-pg-pokp q c)
+(defthm adt-pg1-len-col-pokp
+  (implies (adt-pg1-pokp q c)
            (equal (len (adt-pg-col 0 (nth 5 c) (nth 1 c))) (* q (nth 5 c))))
   :hints (("Goal" :use ((:instance adt-pg-len-col (k 1) (r q) (ci 0) (np (nth 5 c)) (rt (nth 1 c)))))))
 
-(in-theory (disable adt-pg-rput adt-pg-rget adt-pg-pput adt-pg-pget adt-pg-flat adt-pg-rokp adt-pg-pokp))
+(in-theory (disable adt-pg1-rput adt-pg1-rget adt-pg1-pput adt-pg1-pget adt-pg1-flat adt-pg1-rokp adt-pg1-pokp))
+;
+; -----------------------------------------------------------------------------
+; 4b. THE TWO-LEVEL TABLE (lane gate-b-3, Codex r37).  Sections 2-4 are the
+; paged image over ONE flat table of pages (the adt-pg1-* operations); a
+; table that doubles copies its K pointers and makes K empty page headers
+; at K = 8, 16, ... (measured 129 KB at 65,536 rows, 228 KB at 131,072).
+; The table an instance executes is TWO-LEVEL: slot 0 (slot 1 for the
+; pool) is a DIRECTORY of table pages, each holding T = *adt-pg-tpages*
+; pages.  Growth readies at most one table page (T empty page headers)
+; besides the one page it adds; the directory is made with
+; *adt-pg-dir-reserve* slots at its first page and doubles past them
+; (its slots are table-page headers, one per T*R rows: none below
+; *adt-pg-dir-reserve* * T * R = 4,194,304 rows).
+;
+; The VIEW (`adt-pg-view') flattens each directory: the first ceil(NP/T)
+; table pages concatenated (`adt-pg-dflat'), every one of them full
+; (`adt-pg-dokp').  The two-level put and get are the one-level put and
+; get of the view (adt-pg-view-of-rput, -rget, -pput, -pget), so the
+; one-level theorems carry over by instance; `adt-pg-flat', `adt-pg-rokp'
+; and `adt-pg-pokp' are the one-level ones of the view, with the
+; directory invariant beside them.
+
+(defconst *adt-pg-tpages* 64)
+(defconst *adt-pg-dir-reserve* 256)
+
+(defun adt-pg-dokp (tsz np dir)
+  (declare (xargs :guard (and (natp tsz) (natp np)) :verify-guards nil :measure (nfix np)))
+  (if (or (zp np) (zp tsz))
+      (zp np)
+    (and (consp dir)
+         (equal (len (nth 0 (car dir))) tsz)
+         (adt-pg-dokp tsz (nfix (- np tsz)) (cdr dir)))))
+
+(defun adt-pg-dflat (tsz np dir)
+  (declare (xargs :guard (and (natp tsz) (natp np)) :verify-guards nil :measure (nfix np)))
+  (if (or (zp np) (zp tsz))
+      nil
+    (append (nth 0 (car dir)) (adt-pg-dflat tsz (nfix (- np tsz)) (cdr dir)))))
+
+(defthm adt-pg-true-listp-dflat
+  (implies (adt-pg-dokp tsz np dir) (true-listp (adt-pg-dflat tsz np dir)))
+  :hints (("Goal" :in-theory (enable nth))))
+
+(defthm adt-pg-len-dflat
+  (implies (and (adt-pg-dokp tsz np dir) (natp np))
+           (<= np (len (adt-pg-dflat tsz np dir))))
+  :rule-classes :linear)
+(local
+ (defun adt-pg-dind2 (tsz np jt dir)
+  (declare (xargs :measure (nfix jt)))
+  (if (zp jt)
+      (list tsz np dir)
+    (adt-pg-dind2 tsz (- np tsz) (1- jt) (cdr dir)))))
+
+(defthm adt-pg-dir-read-at
+  (implies (and (adt-pg-dokp tsz np dir) (natp np) (posp tsz) (natp jt) (natp it) (< it tsz)
+                (< (+ it (* tsz jt)) np))
+           (and (< jt (len dir))
+                (equal (len (nth 0 (nth jt dir))) tsz)
+                (equal (nth it (nth 0 (nth jt dir)))
+                       (nth (+ it (* tsz jt)) (adt-pg-dflat tsz np dir)))))
+  :hints (("Goal" :induct (adt-pg-dind2 tsz np jt dir) :in-theory (enable nth))
+          ("Subgoal *1/2" :use ((:instance adt-pg-kk-r (r tsz) (kk jt)))
+           :expand ((adt-pg-dokp tsz np dir) (adt-pg-dflat tsz np dir)))
+          ("Subgoal *1/1" :expand ((adt-pg-dokp tsz np dir) (adt-pg-dflat tsz np dir)))))
+
+(defthm adt-pg-dir-write-at
+  (implies (and (adt-pg-dokp tsz np dir) (natp np) (posp tsz) (natp jt) (natp it) (< it tsz)
+                (< (+ it (* tsz jt)) np))
+           (let ((dir2 (update-nth jt (update-nth 0 (update-nth it pg (nth 0 (nth jt dir))) (nth jt dir)) dir)))
+             (and (equal (adt-pg-dflat tsz np dir2) (update-nth (+ it (* tsz jt)) pg (adt-pg-dflat tsz np dir)))
+                  (adt-pg-dokp tsz np dir2))))
+  :hints (("Goal" :induct (adt-pg-dind2 tsz np jt dir) :in-theory (enable nth update-nth))
+          ("Subgoal *1/2" :use ((:instance adt-pg-kk-r (r tsz) (kk jt)))
+           :expand ((adt-pg-dokp tsz np dir) (adt-pg-dflat tsz np dir)
+                    (:free (x) (adt-pg-dokp tsz np (cons x (cdr dir))))
+                    (:free (x) (adt-pg-dflat tsz np (cons x (cdr dir))))))
+          ("Subgoal *1/1" :expand ((adt-pg-dokp tsz np dir) (adt-pg-dflat tsz np dir)
+                                   (:free (x) (adt-pg-dokp tsz np (cons x (cdr dir))))
+                                   (:free (x) (adt-pg-dflat tsz np (cons x (cdr dir))))))))
+
+(local
+ (defun adt-pg-dind3 (jt dir)
+   (declare (xargs :measure (nfix jt)))
+   (if (zp jt) (list dir) (adt-pg-dind3 (1- jt) (cdr dir)))))
+
+(defthm adt-pg-dir-ready-flat
+  (implies (and (adt-pg-dokp *adt-pg-tpages* (* *adt-pg-tpages* jt) dir) (natp jt)
+                (< jt (len dir)) (true-listp (nth 0 tp)))
+           (equal (adt-pg-dflat *adt-pg-tpages* (+ 1 (* *adt-pg-tpages* jt)) (update-nth jt tp dir))
+                  (append (adt-pg-dflat *adt-pg-tpages* (* *adt-pg-tpages* jt) dir) (nth 0 tp))))
+  :hints (("Goal" :induct (adt-pg-dind3 jt dir)
+           :in-theory (e/d (nth update-nth) (adt-pg-len-dflat adt-pg-fullp-len adt-pg-dir-read-at adt-pg-dir-write-at
+                                             adt-pg-dflat adt-pg-dokp)))
+          ("Subgoal *1/2" :expand ((:free (d) (adt-pg-dflat *adt-pg-tpages* (+ 1 (* *adt-pg-tpages* jt)) d))
+                                   (adt-pg-dflat *adt-pg-tpages* (* *adt-pg-tpages* jt) dir)
+                                   (adt-pg-dokp *adt-pg-tpages* (* *adt-pg-tpages* jt) dir)))
+          ("Subgoal *1/1" :expand ((:free (d) (adt-pg-dflat *adt-pg-tpages* 1 d)) (:free (d) (adt-pg-dflat *adt-pg-tpages* 0 d))))))
+
+(defthm adt-pg-dir-ready-okp
+  (implies (and (adt-pg-dokp *adt-pg-tpages* (* *adt-pg-tpages* jt) dir) (natp jt)
+                (< jt (len dir)))
+           (equal (adt-pg-dokp *adt-pg-tpages* (+ 1 (* *adt-pg-tpages* jt)) (update-nth jt tp dir))
+                  (equal (len (nth 0 tp)) *adt-pg-tpages*)))
+  :hints (("Goal" :induct (adt-pg-dind3 jt dir)
+           :in-theory (e/d (nth update-nth) (adt-pg-len-dflat adt-pg-fullp-len adt-pg-dir-read-at adt-pg-dir-write-at
+                                             adt-pg-dflat adt-pg-dokp)))
+          ("Subgoal *1/2" :expand ((:free (d) (adt-pg-dokp *adt-pg-tpages* (+ 1 (* *adt-pg-tpages* jt)) d))
+                                   (adt-pg-dokp *adt-pg-tpages* (* *adt-pg-tpages* jt) dir)))
+          ("Subgoal *1/1" :expand ((:free (d) (adt-pg-dokp *adt-pg-tpages* 1 d)) (:free (d) (adt-pg-dokp *adt-pg-tpages* 0 d))))))
+
+(defthm adt-pg-dir-inside
+  (implies (and (posp tsz) (natp jt) (natp it) (< 0 it) (< it tsz))
+           (and (equal (adt-pg-dflat tsz (+ 1 it (* tsz jt)) dir) (adt-pg-dflat tsz (+ it (* tsz jt)) dir))
+                (equal (adt-pg-dokp tsz (+ 1 it (* tsz jt)) dir) (adt-pg-dokp tsz (+ it (* tsz jt)) dir))))
+  :hints (("Goal" :induct (adt-pg-dind3 jt dir))
+          ("Subgoal *1/2" :use ((:instance adt-pg-kk-r (r tsz) (kk jt)))
+           :expand ((:free (np) (adt-pg-dokp tsz np dir)) (:free (np) (adt-pg-dflat tsz np dir))))
+          ("Subgoal *1/1" :expand ((adt-pg-dokp tsz (+ 1 it) dir) (adt-pg-dflat tsz (+ 1 it) dir)
+                                   (adt-pg-dokp tsz it dir) (adt-pg-dflat tsz it dir)))))
+
+(local
+ (defun adt-pg-resize-ind2 (tsz np dir n)
+   (declare (xargs :measure (nfix np)))
+   (if (or (zp np) (zp tsz))
+       (list dir n)
+     (adt-pg-resize-ind2 tsz (nfix (- np tsz)) (cdr dir) (1- n)))))
+
+(defthm adt-pg-dir-resize
+  (implies (and (adt-pg-dokp tsz np dir) (natp n) (<= (len dir) n))
+           (and (adt-pg-dokp tsz np (resize-list dir n d))
+                (equal (adt-pg-dflat tsz np (resize-list dir n d)) (adt-pg-dflat tsz np dir))))
+  :hints (("Goal" :induct (adt-pg-resize-ind2 tsz np dir n)
+           :in-theory (enable adt-pg-resize-list-open nth))))
+
+(defun adt-pg-rtab (c)
+  (declare (xargs :verify-guards nil))
+  (adt-pg-dflat *adt-pg-tpages* (nth 4 c) (nth 0 c)))
+
+(defun adt-pg-ptab (c)
+  (declare (xargs :verify-guards nil))
+  (adt-pg-dflat *adt-pg-tpages* (nth 5 c) (nth 1 c)))
+
+(defun adt-pg-view (c)
+  (declare (xargs :verify-guards nil))
+  (update-nth 0 (adt-pg-rtab c) (update-nth 1 (adt-pg-ptab c) c)))
+
+(defthm adt-pg-nth-view
+  (implies (natp k)
+           (equal (nth k (adt-pg-view c))
+                  (cond ((equal k 0) (adt-pg-rtab c))
+                        ((equal k 1) (adt-pg-ptab c))
+                        (t (nth k c)))))
+  :hints (("Goal" :in-theory (e/d (adt-pg-view) (adt-pg-rtab adt-pg-ptab)))))
+
+(in-theory (disable adt-pg-rtab adt-pg-ptab adt-pg-view))
+
+(defthm adt-pg-view-of-update
+  (implies (and (natp k) (not (member k '(0 1 4 5))))
+           (equal (adt-pg-view (update-nth k x c)) (update-nth k x (adt-pg-view c))))
+  :hints (("Goal" :in-theory (enable adt-pg-view adt-pg-rtab adt-pg-ptab))))
+
+(defun adt-pg-rput (ci n x r c)
+  (declare (xargs :verify-guards nil))
+  (let* ((dir (nth 0 c)) (k (floor n r)) (j (mod n r))
+         (jt (floor k *adt-pg-tpages*)) (it (mod k *adt-pg-tpages*)))
+    (if (< jt (len dir))
+        (update-nth 0 (update-nth jt (let ((tp (nth jt dir)))
+                                       (if (< it (len (nth 0 tp)))
+                                           (update-nth 0 (update-nth it (let ((pg (nth it (nth 0 tp))))
+                                                                          (if (< j (len (nth ci pg)))
+                                                                              (update-nth ci (update-nth j x (nth ci pg)) pg)
+                                                                            pg))
+                                                                     (nth 0 tp))
+                                                       tp)
+                                         tp))
+                                  dir)
+                    c)
+      c)))
+
+(defun adt-pg-rget (ci n r c)
+  (declare (xargs :verify-guards nil))
+  (let* ((dir (nth 0 c)) (k (floor n r)) (j (mod n r))
+         (jt (floor k *adt-pg-tpages*)) (it (mod k *adt-pg-tpages*)))
+    (if (< jt (len dir))
+        (if (< it (len (nth 0 (nth jt dir))))
+            (let ((pg (nth it (nth 0 (nth jt dir)))))
+              (if (< j (len (nth ci pg))) (nth j (nth ci pg)) 0))
+          0)
+      0)))
+
+(defun adt-pg-pput (i b q c)
+  (declare (xargs :verify-guards nil))
+  (let* ((dir (nth 1 c)) (k (floor i q)) (j (mod i q))
+         (jt (floor k *adt-pg-tpages*)) (it (mod k *adt-pg-tpages*)))
+    (if (< jt (len dir))
+        (update-nth 1 (update-nth jt (let ((tp (nth jt dir)))
+                                       (if (< it (len (nth 0 tp)))
+                                           (update-nth 0 (update-nth it (let ((pg (nth it (nth 0 tp))))
+                                                                          (if (< j (len (nth 0 pg)))
+                                                                              (update-nth 0 (update-nth j b (nth 0 pg)) pg)
+                                                                            pg))
+                                                                     (nth 0 tp))
+                                                       tp)
+                                         tp))
+                                  dir)
+                    c)
+      c)))
+
+(defun adt-pg-pget (i q c)
+  (declare (xargs :verify-guards nil))
+  (let* ((dir (nth 1 c)) (k (floor i q)) (j (mod i q))
+         (jt (floor k *adt-pg-tpages*)) (it (mod k *adt-pg-tpages*)))
+    (if (< jt (len dir))
+        (if (< it (len (nth 0 (nth jt dir))))
+            (let ((pg (nth it (nth 0 (nth jt dir)))))
+              (if (< j (len (nth 0 pg))) (nth j (nth 0 pg)) 0))
+          0)
+      0)))
+
+(defthm adt-pg-view-of-rput
+  (implies (and (adt-pg-dokp *adt-pg-tpages* (nth 4 c) (nth 0 c)) (natp (nth 4 c))
+                (natp n) (posp r) (< n (* r (nth 4 c))))
+           (and (equal (adt-pg-view (adt-pg-rput ci n x r c)) (adt-pg1-rput ci n x r (adt-pg-view c)))
+                (adt-pg-dokp *adt-pg-tpages* (nth 4 c) (nth 0 (adt-pg-rput ci n x r c)))))
+  :hints (("Goal" :in-theory (e/d (adt-pg-rput adt-pg1-rput adt-pg-view adt-pg-rtab adt-pg-ptab)
+                                  (adt-pg-floor-mod adt-pg-dir-read-at adt-pg-dir-write-at adt-pg-len-dflat))
+           :do-not-induct t
+           :use ((:instance adt-pg-floor-mod)
+                 (:instance adt-pg-floor-below (np (nth 4 c)))
+                 (:instance adt-pg-floor-mod (n (floor n r)) (r *adt-pg-tpages*))
+                 (:instance adt-pg-len-dflat (tsz *adt-pg-tpages*) (np (nth 4 c)) (dir (nth 0 c)))
+                 (:instance adt-pg-dir-read-at (tsz *adt-pg-tpages*) (np (nth 4 c)) (dir (nth 0 c))
+                            (jt (floor (floor n r) *adt-pg-tpages*)) (it (mod (floor n r) *adt-pg-tpages*)))
+                 (:instance adt-pg-dir-write-at (tsz *adt-pg-tpages*) (np (nth 4 c)) (dir (nth 0 c))
+                            (jt (floor (floor n r) *adt-pg-tpages*)) (it (mod (floor n r) *adt-pg-tpages*))
+                            (pg (let ((pg (nth (floor n r) (adt-pg-dflat *adt-pg-tpages* (nth 4 c) (nth 0 c)))))
+                                  (if (< (mod n r) (len (nth ci pg)))
+                                      (update-nth ci (update-nth (mod n r) x (nth ci pg)) pg)
+                                    pg))))))))
+
+(defthm adt-pg-view-of-rget
+  (implies (and (adt-pg-dokp *adt-pg-tpages* (nth 4 c) (nth 0 c)) (natp (nth 4 c))
+                (natp n) (posp r) (< n (* r (nth 4 c))))
+           (equal (adt-pg-rget ci n r c) (adt-pg1-rget ci n r (adt-pg-view c))))
+  :hints (("Goal" :in-theory (e/d (adt-pg-rget adt-pg1-rget adt-pg-view adt-pg-rtab)
+                                  (adt-pg-floor-mod adt-pg-dir-read-at adt-pg-len-dflat))
+           :do-not-induct t
+           :use ((:instance adt-pg-floor-mod)
+                 (:instance adt-pg-floor-below (np (nth 4 c)))
+                 (:instance adt-pg-floor-mod (n (floor n r)) (r *adt-pg-tpages*))
+                 (:instance adt-pg-len-dflat (tsz *adt-pg-tpages*) (np (nth 4 c)) (dir (nth 0 c)))
+                 (:instance adt-pg-dir-read-at (tsz *adt-pg-tpages*) (np (nth 4 c)) (dir (nth 0 c))
+                            (jt (floor (floor n r) *adt-pg-tpages*)) (it (mod (floor n r) *adt-pg-tpages*)))))))
+
+(defthm adt-pg-view-of-pput
+  (implies (and (adt-pg-dokp *adt-pg-tpages* (nth 5 c) (nth 1 c)) (natp (nth 5 c))
+                (natp i) (posp q) (< i (* q (nth 5 c))))
+           (and (equal (adt-pg-view (adt-pg-pput i b q c)) (adt-pg1-pput i b q (adt-pg-view c)))
+                (adt-pg-dokp *adt-pg-tpages* (nth 5 c) (nth 1 (adt-pg-pput i b q c)))))
+  :hints (("Goal" :in-theory (e/d (adt-pg-pput adt-pg1-pput adt-pg-view adt-pg-rtab adt-pg-ptab)
+                                  (adt-pg-floor-mod adt-pg-dir-read-at adt-pg-dir-write-at adt-pg-len-dflat))
+           :do-not-induct t
+           :use ((:instance adt-pg-floor-mod (n i) (r q))
+                 (:instance adt-pg-floor-below (n i) (r q) (np (nth 5 c)))
+                 (:instance adt-pg-floor-mod (n (floor i q)) (r *adt-pg-tpages*))
+                 (:instance adt-pg-len-dflat (tsz *adt-pg-tpages*) (np (nth 5 c)) (dir (nth 1 c)))
+                 (:instance adt-pg-dir-read-at (tsz *adt-pg-tpages*) (np (nth 5 c)) (dir (nth 1 c))
+                            (jt (floor (floor i q) *adt-pg-tpages*)) (it (mod (floor i q) *adt-pg-tpages*)))
+                 (:instance adt-pg-dir-write-at (tsz *adt-pg-tpages*) (np (nth 5 c)) (dir (nth 1 c))
+                            (jt (floor (floor i q) *adt-pg-tpages*)) (it (mod (floor i q) *adt-pg-tpages*))
+                            (pg (let ((pg (nth (floor i q) (adt-pg-dflat *adt-pg-tpages* (nth 5 c) (nth 1 c)))))
+                                  (if (< (mod i q) (len (nth 0 pg)))
+                                      (update-nth 0 (update-nth (mod i q) b (nth 0 pg)) pg)
+                                    pg))))))))
+
+(defthm adt-pg-view-of-pget
+  (implies (and (adt-pg-dokp *adt-pg-tpages* (nth 5 c) (nth 1 c)) (natp (nth 5 c))
+                (natp i) (posp q) (< i (* q (nth 5 c))))
+           (equal (adt-pg-pget i q c) (adt-pg1-pget i q (adt-pg-view c))))
+  :hints (("Goal" :in-theory (e/d (adt-pg-pget adt-pg1-pget adt-pg-view adt-pg-ptab)
+                                  (adt-pg-floor-mod adt-pg-dir-read-at adt-pg-len-dflat))
+           :do-not-induct t
+           :use ((:instance adt-pg-floor-mod (n i) (r q))
+                 (:instance adt-pg-floor-below (n i) (r q) (np (nth 5 c)))
+                 (:instance adt-pg-floor-mod (n (floor i q)) (r *adt-pg-tpages*))
+                 (:instance adt-pg-len-dflat (tsz *adt-pg-tpages*) (np (nth 5 c)) (dir (nth 1 c)))
+                 (:instance adt-pg-dir-read-at (tsz *adt-pg-tpages*) (np (nth 5 c)) (dir (nth 1 c))
+                            (jt (floor (floor i q) *adt-pg-tpages*)) (it (mod (floor i q) *adt-pg-tpages*)))))))
+
+(defthm adt-pg-nth-of-rput
+  (implies (and (natp k) (not (equal k 0)))
+           (equal (nth k (adt-pg-rput ci n x r c)) (nth k c))))
+
+(defthm adt-pg-nth-of-pput
+  (implies (and (natp k) (not (equal k 1)))
+           (equal (nth k (adt-pg-pput i b q c)) (nth k c))))
+
+(in-theory (disable adt-pg-rput adt-pg-rget adt-pg-pput adt-pg-pget))
+
+(defun adt-pg-flat (s c)
+  (declare (xargs :verify-guards nil))
+  (adt-pg1-flat s (adt-pg-view c)))
+
+(defun adt-pg-rokp (m r c)
+  (declare (xargs :verify-guards nil))
+  (and (adt-pg-dokp *adt-pg-tpages* (nth 4 c) (nth 0 c))
+       (adt-pg1-rokp m r (adt-pg-view c))))
+
+(defun adt-pg-pokp (q c)
+  (declare (xargs :verify-guards nil))
+  (and (adt-pg-dokp *adt-pg-tpages* (nth 5 c) (nth 1 c))
+       (adt-pg1-pokp q (adt-pg-view c))))
+
+(defun adt-pg-okp (s r q c)
+  (declare (xargs :verify-guards nil))
+  (and (adt-pg-rokp (adt-ncols s) r c) (adt-pg-pokp q c)))
+
+(defun adt-pg-corr (s r q c a)
+  (declare (xargs :verify-guards nil))
+  (and (adt-pg-okp s r q c)
+       (adt-corr s (adt-pg-flat s c) a)))
+
+(defthm adt-pg-rokp-fc
+  (implies (adt-pg-rokp m r c) (and (natp m) (posp r) (natp (nth 4 c))))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable adt-pg1-rokp))))
+
+(defthm adt-pg-pokp-fc
+  (implies (adt-pg-pokp q c) (and (posp q) (natp (nth 5 c))))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable adt-pg1-pokp))))
+
+(defthm adt-pg-nth-flat
+  (implies (natp m)
+           (equal (nth m (adt-pg-flat s c))
+                  (cond ((< m (adt-ncols s)) (adt-pg-col m (nth 4 c) (adt-pg-rtab c)))
+                        ((equal m (adt-ncols s)) (adt-pg-col 0 (nth 5 c) (adt-pg-ptab c)))
+                        ((equal m (+ 1 (adt-ncols s))) (nth 2 c))
+                        ((equal m (+ 2 (adt-ncols s))) (nth 3 c))
+                        (t nil))))
+  :hints (("Goal" :in-theory (e/d (adt-pg-flat) (adt-pg-rtab adt-pg-ptab adt-pg-view)))))
+
+(defthm adt-pg-len-flat
+  (equal (len (adt-pg-flat s c)) (+ 3 (adt-ncols s))))
+
+(defthm adt-pg-true-listp-flat
+  (true-listp (adt-pg-flat s c)))
+
+(local
+ (defthm adt-pg-rtab-of-update
+   (implies (and (natp k) (not (equal k 0)) (not (equal k 4)))
+            (equal (adt-pg-rtab (update-nth k x c)) (adt-pg-rtab c)))
+   :hints (("Goal" :in-theory (enable adt-pg-rtab)))))
+
+(local
+ (defthm adt-pg-ptab-of-update
+   (implies (and (natp k) (not (equal k 1)) (not (equal k 5)))
+            (equal (adt-pg-ptab (update-nth k x c)) (adt-pg-ptab c)))
+   :hints (("Goal" :in-theory (enable adt-pg-ptab)))))
+
+(defthm adt-pg-pokp-of-rput
+  (equal (adt-pg-pokp q (adt-pg-rput ci n x r c)) (adt-pg-pokp q c))
+  :hints (("Goal" :in-theory (e/d (adt-pg1-pokp adt-pg-ptab) (adt-pg-rput)))))
+
+(defthm adt-pg-rokp-of-pput
+  (equal (adt-pg-rokp m r2 (adt-pg-pput i b q c)) (adt-pg-rokp m r2 c))
+  :hints (("Goal" :in-theory (e/d (adt-pg1-rokp adt-pg-rtab) (adt-pg-pput)))))
+
+(defthm adt-pg-flat-of-rput
+  (implies (and (adt-pg-rokp (adt-ncols s) r c) (natp ci) (< ci (adt-ncols s))
+                (natp n) (< n (* r (nth 4 c))))
+           (equal (adt-pg-flat s (adt-pg-rput ci n x r c))
+                  (update-nth ci (update-nth n x (nth ci (adt-pg-flat s c))) (adt-pg-flat s c))))
+  :hints (("Goal" :in-theory (e/d (adt-pg-flat adt-pg-rokp adt-pg-pokp) (adt-pg-rput adt-pg-view adt-pg1-flat-of-rput adt-pg-view-of-rput
+                                                 adt-pg-nth-flat adt-pg1-nth-flat))
+           :do-not-induct t
+           :use (adt-pg-view-of-rput
+                 (:instance adt-pg1-rokp-fc (m (adt-ncols s)) (c (adt-pg-view c)))
+                 (:instance adt-pg1-flat-of-rput (c (adt-pg-view c)))))))
+
+(defthm adt-pg-rokp-of-rput
+  (implies (and (adt-pg-rokp m r c) (natp ci) (< ci m)
+                (natp n) (< n (* r (nth 4 c))))
+           (adt-pg-rokp m r (adt-pg-rput ci n x r c)))
+  :hints (("Goal" :in-theory (e/d (adt-pg-flat adt-pg-rokp adt-pg-pokp) (adt-pg-rput adt-pg-view adt-pg1-rokp-of-rput adt-pg-view-of-rput))
+           :do-not-induct t
+           :use (adt-pg-view-of-rput
+                 (:instance adt-pg1-rokp-fc (c (adt-pg-view c)))
+                 (:instance adt-pg1-rokp-of-rput (c (adt-pg-view c)))))))
+
+(defthm adt-pg-rget-is-nth
+  (implies (and (adt-pg-rokp m r c) (natp ci) (< ci m)
+                (natp n) (< n (* r (nth 4 c))))
+           (equal (adt-pg-rget ci n r c) (nth n (adt-pg-col ci (nth 4 c) (adt-pg-rtab c)))))
+  :hints (("Goal" :in-theory (e/d (adt-pg-flat adt-pg-rokp adt-pg-pokp) (adt-pg-rget adt-pg-view adt-pg1-rget-is-nth adt-pg-view-of-rget adt-pg-rtab))
+           :do-not-induct t
+           :use (adt-pg-view-of-rget
+                 (:instance adt-pg1-rokp-fc (c (adt-pg-view c)))
+                 (:instance adt-pg1-rget-is-nth (c (adt-pg-view c)))))))
+
+(defthm adt-pg-flat-of-pput
+  (implies (and (adt-pg-pokp q c) (natp i) (< i (* q (nth 5 c))))
+           (equal (adt-pg-flat s (adt-pg-pput i b q c))
+                  (update-nth (adt-ncols s) (update-nth i b (nth (adt-ncols s) (adt-pg-flat s c)))
+                              (adt-pg-flat s c))))
+  :hints (("Goal" :in-theory (e/d (adt-pg-flat adt-pg-rokp adt-pg-pokp) (adt-pg-pput adt-pg-view adt-pg1-flat-of-pput adt-pg-view-of-pput
+                                                 adt-pg-nth-flat adt-pg1-nth-flat))
+           :do-not-induct t
+           :use (adt-pg-view-of-pput
+                 (:instance adt-pg1-pokp-fc (c (adt-pg-view c)))
+                 (:instance adt-pg1-flat-of-pput (c (adt-pg-view c)))))))
+
+(defthm adt-pg-pool-of-pput
+  (implies (and (adt-pg-pokp q c) (natp i) (< i (* q (nth 5 c))))
+           (equal (adt-pg-col 0 (nth 5 c) (adt-pg-ptab (adt-pg-pput i b q c)))
+                  (update-nth i b (adt-pg-col 0 (nth 5 c) (adt-pg-ptab c)))))
+  :hints (("Goal" :in-theory (e/d (adt-pg-flat adt-pg-rokp adt-pg-pokp) (adt-pg-pput adt-pg-view adt-pg1-pool-of-pput adt-pg-view-of-pput adt-pg-ptab))
+           :do-not-induct t
+           :use (adt-pg-view-of-pput
+                 (:instance adt-pg1-pokp-fc (c (adt-pg-view c)))
+                 (:instance adt-pg1-pool-of-pput (c (adt-pg-view c)))))))
+
+(defthm adt-pg-pokp-of-pput
+  (implies (and (adt-pg-pokp q c) (natp i) (< i (* q (nth 5 c))))
+           (adt-pg-pokp q (adt-pg-pput i b q c)))
+  :hints (("Goal" :in-theory (e/d (adt-pg-flat adt-pg-rokp adt-pg-pokp) (adt-pg-pput adt-pg-view adt-pg1-pokp-of-pput adt-pg-view-of-pput))
+           :do-not-induct t
+           :use (adt-pg-view-of-pput
+                 (:instance adt-pg1-pokp-fc (c (adt-pg-view c)))
+                 (:instance adt-pg1-pokp-of-pput (c (adt-pg-view c)))))))
+
+(defthm adt-pg-pget-is-nth
+  (implies (and (adt-pg-pokp q c) (natp i) (< i (* q (nth 5 c))))
+           (equal (adt-pg-pget i q c) (nth i (adt-pg-col 0 (nth 5 c) (adt-pg-ptab c)))))
+  :hints (("Goal" :in-theory (e/d (adt-pg-flat adt-pg-rokp adt-pg-pokp) (adt-pg-pget adt-pg-view adt-pg1-pget-is-nth adt-pg-view-of-pget adt-pg-ptab))
+           :do-not-induct t
+           :use (adt-pg-view-of-pget
+                 (:instance adt-pg1-pokp-fc (c (adt-pg-view c)))
+                 (:instance adt-pg1-pget-is-nth (c (adt-pg-view c)))))))
+
+(defthm adt-pg-rokp-of-update
+  (implies (and (natp k) (not (equal k 0)) (not (equal k 4)))
+           (equal (adt-pg-rokp m r (update-nth k x c)) (adt-pg-rokp m r c)))
+  :hints (("Goal" :in-theory (e/d (adt-pg1-rokp) (adt-pg-rtab)))))
+
+(defthm adt-pg-pokp-of-update
+  (implies (and (natp k) (not (equal k 1)) (not (equal k 5)))
+           (equal (adt-pg-pokp q (update-nth k x c)) (adt-pg-pokp q c)))
+  :hints (("Goal" :in-theory (e/d (adt-pg1-pokp) (adt-pg-ptab)))))
+
+(defthm adt-pg-len-col-rokp
+  (implies (and (adt-pg-rokp m r c) (natp ci) (< ci m))
+           (equal (len (adt-pg-col ci (nth 4 c) (adt-pg-rtab c))) (* r (nth 4 c))))
+  :hints (("Goal" :in-theory (e/d () (adt-pg-rtab adt-pg-view adt-pg1-len-col-rokp))
+           :use ((:instance adt-pg1-len-col-rokp (c (adt-pg-view c)))))))
+
+(defthm adt-pg-len-col-pokp
+  (implies (adt-pg-pokp q c)
+           (equal (len (adt-pg-col 0 (nth 5 c) (adt-pg-ptab c))) (* q (nth 5 c))))
+  :hints (("Goal" :in-theory (e/d () (adt-pg-ptab adt-pg-view adt-pg1-len-col-pokp))
+           :use ((:instance adt-pg1-len-col-pokp (c (adt-pg-view c)))))))
+
+(in-theory (disable adt-pg-flat adt-pg-rokp adt-pg-pokp))
 
 ; -----------------------------------------------------------------------------
 ; 5. Growth.  A page added is every column extended by a page of zeros (the
@@ -760,21 +1215,78 @@
       pg
     (adt-pg-fresh (1+ ci) (1- m) r (update-nth ci (resize-list (resize-list (nth ci pg) 0 0) r 0) pg))))
 
-; Page NP of the row table made ready (the table doubling its pointers when
-; it has no spare slot; D is the page stobj's creator).
+; A table page made ready: its page array emptied, then T fresh page headers
+; (D is the page stobj's creator).
+(defun adt-pg-tready (d tp)
+  (declare (xargs :verify-guards nil))
+  (update-nth 0 (resize-list (resize-list (nth 0 tp) 0 d) *adt-pg-tpages* d) tp))
+
+; Page K of a directory made ready.  At a table-page boundary the table
+; page is readied first (the directory made *adt-pg-dir-reserve* slots wide
+; at its first page and doubled when full; an empty slot is an empty table
+; page '(nil)); then the page itself is freshened (M columns of R entries).
+(defun adt-pg-dadd (m r d k dir)
+  (declare (xargs :verify-guards nil))
+  (let* ((jt (floor k *adt-pg-tpages*)) (it (mod k *adt-pg-tpages*))
+         (dir (if (and (equal it 0) (<= (len dir) jt))
+                  (resize-list dir (max *adt-pg-dir-reserve* (* 2 jt)) '(nil))
+                dir))
+         (dir (if (and (equal it 0) (< jt (len dir)))
+                  (update-nth jt (adt-pg-tready d (nth jt dir)) dir)
+                dir)))
+    (if (< jt (len dir))
+        (update-nth jt (let ((tp (nth jt dir)))
+                         (if (< it (len (nth 0 tp)))
+                             (update-nth 0 (update-nth it (adt-pg-fresh 0 m r (nth it (nth 0 tp))) (nth 0 tp)) tp)
+                           tp))
+                    dir)
+      dir)))
+
+; The same on slot P of an image, step by step as an instance executes it
+; (each step writes the slot back only when it changes it); its slot P is
+; the directory's `adt-pg-dadd' (adt-pg-nth-of-cdadd).
+(defun adt-pg-cdadd (p m r d k c)
+  (declare (xargs :verify-guards nil))
+  (let* ((jt (floor k *adt-pg-tpages*)) (it (mod k *adt-pg-tpages*))
+         (c (if (and (equal it 0) (<= (len (nth p c)) jt))
+                (update-nth p (resize-list (nth p c) (max *adt-pg-dir-reserve* (* 2 jt)) '(nil)) c)
+              c))
+         (c (if (and (equal it 0) (< jt (len (nth p c))))
+                (update-nth p (update-nth jt (adt-pg-tready d (nth jt (nth p c))) (nth p c)) c)
+              c)))
+    (if (< jt (len (nth p c)))
+        (update-nth p (update-nth jt (let ((tp (nth jt (nth p c))))
+                                       (if (< it (len (nth 0 tp)))
+                                           (update-nth 0 (update-nth it (adt-pg-fresh 0 m r (nth it (nth 0 tp))) (nth 0 tp)) tp)
+                                         tp))
+                                  (nth p c))
+                    c)
+      c)))
+
+(defthm adt-pg-nth-of-cdadd
+  (implies (and (natp p) (natp j))
+           (equal (nth j (adt-pg-cdadd p m r d k c))
+                  (if (equal j p) (adt-pg-dadd m r d k (nth p c)) (nth j c))))
+  :hints (("Goal" :in-theory (enable adt-pg-dadd))))
+
 (defun adt-pg-addrow (m r d c)
   (declare (xargs :verify-guards nil))
-  (let* ((k (nth 4 c))
-         (c (if (< k (len (nth 0 c))) c (update-nth 0 (resize-list (nth 0 c) (max 8 (* 2 k)) d) c)))
-         (c (update-nth 0 (update-nth k (adt-pg-fresh 0 m r (nth k (nth 0 c))) (nth 0 c)) c)))
-    (update-nth 4 (+ 1 k) c)))
+  (let ((k (nth 4 c)))
+    (update-nth 4 (+ 1 k) (adt-pg-cdadd 0 m r d k c))))
 
 (defun adt-pg-addpool (q d c)
   (declare (xargs :verify-guards nil))
-  (let* ((k (nth 5 c))
-         (c (if (< k (len (nth 1 c))) c (update-nth 1 (resize-list (nth 1 c) (max 8 (* 2 k)) d) c)))
-         (c (update-nth 1 (update-nth k (adt-pg-fresh 0 1 q (nth k (nth 1 c))) (nth 1 c)) c)))
-    (update-nth 5 (+ 1 k) c)))
+  (let ((k (nth 5 c)))
+    (update-nth 5 (+ 1 k) (adt-pg-cdadd 1 1 q d k c))))
+
+; The flat table a directory grows to before page K is freshened.
+(defun adt-pg-dgrown (d k dir)
+  (declare (xargs :verify-guards nil))
+  (if (equal (mod k *adt-pg-tpages*) 0)
+      (append (adt-pg-dflat *adt-pg-tpages* k dir) (resize-list nil *adt-pg-tpages* d))
+    (adt-pg-dflat *adt-pg-tpages* k dir)))
+
+(in-theory (disable adt-pg-tready adt-pg-dadd adt-pg-cdadd adt-pg-dgrown))
 
 (defun adt-pg-rowroom (m r d c)
   (declare (xargs :verify-guards nil))
@@ -854,6 +1366,161 @@
  (defthm adt-pg-true-listp-cols
    (true-listp (adt-pg-cols ci k np rt))))
 
+(local
+ (defthm adt-pg-max-reserve
+   (implies (natp jt) (< jt (max *adt-pg-dir-reserve* (* 2 jt))))
+   :rule-classes :linear))
+
+(defthm adt-pg-nth-0-tready
+  (equal (nth 0 (adt-pg-tready d tp)) (resize-list nil *adt-pg-tpages* d))
+  :hints (("Goal" :in-theory (enable adt-pg-tready))))
+
+(local
+ (defthm adt-pg-len-dflat-boundary
+   (implies (and (adt-pg-dokp *adt-pg-tpages* (* *adt-pg-tpages* jt) dir) (natp jt))
+            (equal (len (adt-pg-dflat *adt-pg-tpages* (* *adt-pg-tpages* jt) dir)) (* *adt-pg-tpages* jt)))
+   :hints (("Goal" :induct (adt-pg-dind3 jt dir) :in-theory (e/d (nth) (adt-pg-len-dflat adt-pg-dflat adt-pg-dokp)))
+           ("Subgoal *1/2" :expand ((adt-pg-dflat *adt-pg-tpages* (* *adt-pg-tpages* jt) dir)
+                                    (adt-pg-dokp *adt-pg-tpages* (* *adt-pg-tpages* jt) dir)))
+           ("Subgoal *1/1" :expand ((:free (d) (adt-pg-dflat *adt-pg-tpages* 0 d)))))))
+
+(local
+ (defthm adt-pg-dadd-inside
+   (implies (and (adt-pg-dokp *adt-pg-tpages* k dir) (natp k) (not (equal (mod k *adt-pg-tpages*) 0)))
+            (let ((dir2 (adt-pg-dadd m r d k dir)) (g (adt-pg-dflat *adt-pg-tpages* k dir)))
+              (and (adt-pg-dokp *adt-pg-tpages* (+ 1 k) dir2)
+                   (equal (adt-pg-dflat *adt-pg-tpages* (+ 1 k) dir2)
+                          (update-nth k (adt-pg-fresh 0 m r (nth k g)) g)))))
+   :hints (("Goal" :in-theory (e/d (adt-pg-dadd)
+                                   (adt-pg-floor-mod adt-pg-dir-read-at adt-pg-dir-write-at adt-pg-len-dflat
+                                    adt-pg-dir-ready-flat adt-pg-dir-ready-okp adt-pg-dir-inside adt-pg-dir-resize
+                                    adt-pg-fresh))
+            :do-not-induct t
+            :use ((:instance adt-pg-floor-mod (n k) (r *adt-pg-tpages*))
+                  (:instance adt-pg-dir-inside (tsz *adt-pg-tpages*) (jt (floor k *adt-pg-tpages*))
+                             (it (mod k *adt-pg-tpages*)))
+                  (:instance adt-pg-dir-read-at (tsz *adt-pg-tpages*) (np (+ 1 k)) (jt (floor k *adt-pg-tpages*))
+                             (it (mod k *adt-pg-tpages*)))
+                  (:instance adt-pg-dir-write-at (tsz *adt-pg-tpages*) (np (+ 1 k)) (jt (floor k *adt-pg-tpages*))
+                             (it (mod k *adt-pg-tpages*))
+                             (pg (adt-pg-fresh 0 m r (nth k (adt-pg-dflat *adt-pg-tpages* k dir))))))))))
+
+(local
+ (defthm adt-pg-dadd-boundary-core
+  (implies (and (adt-pg-dokp *adt-pg-tpages* (* *adt-pg-tpages* jt) dir) (natp jt) (< jt (len dir)))
+           (let* ((dir2 (update-nth jt (adt-pg-tready d (nth jt dir)) dir))
+                  (dir3 (update-nth jt (update-nth 0 (update-nth 0 (adt-pg-fresh 0 m r (nth 0 (nth 0 (nth jt dir2))))
+                                                                 (nth 0 (nth jt dir2)))
+                                                   (nth jt dir2))
+                                    dir2))
+                  (g (append (adt-pg-dflat *adt-pg-tpages* (* *adt-pg-tpages* jt) dir)
+                             (resize-list nil *adt-pg-tpages* d))))
+             (and (adt-pg-dokp *adt-pg-tpages* (+ 1 (* *adt-pg-tpages* jt)) dir3)
+                  (equal (adt-pg-dflat *adt-pg-tpages* (+ 1 (* *adt-pg-tpages* jt)) dir3)
+                         (update-nth (* *adt-pg-tpages* jt) (adt-pg-fresh 0 m r (nth (* *adt-pg-tpages* jt) g)) g)))))
+  :hints (("Goal" :in-theory (e/d (adt-pg-tready)
+                                  (adt-pg-dir-read-at adt-pg-dir-write-at adt-pg-len-dflat
+                                   adt-pg-dir-ready-flat adt-pg-dir-ready-okp adt-pg-dir-inside adt-pg-dir-resize
+                                   adt-pg-fresh))
+           :do-not-induct t
+           :use ((:instance adt-pg-dir-ready-flat (tp (adt-pg-tready d (nth jt dir))))
+                 (:instance adt-pg-dir-ready-okp (tp (adt-pg-tready d (nth jt dir))))
+                 (:instance adt-pg-dir-read-at (tsz *adt-pg-tpages*) (np (+ 1 (* *adt-pg-tpages* jt))) (it 0)
+                            (dir (update-nth jt (adt-pg-tready d (nth jt dir)) dir)))
+                 (:instance adt-pg-dir-write-at (tsz *adt-pg-tpages*) (np (+ 1 (* *adt-pg-tpages* jt))) (it 0)
+                            (dir (update-nth jt (adt-pg-tready d (nth jt dir)) dir))
+                            (pg (adt-pg-fresh 0 m r
+                                              (nth (* *adt-pg-tpages* jt)
+                                                   (append (adt-pg-dflat *adt-pg-tpages* (* *adt-pg-tpages* jt) dir)
+                                                           (resize-list nil *adt-pg-tpages* d)))))))))))
+
+(local
+ (defthm adt-pg-dadd-boundary
+  (implies (and (adt-pg-dokp *adt-pg-tpages* k dir) (natp k) (equal (mod k *adt-pg-tpages*) 0))
+           (let ((dir2 (adt-pg-dadd m r d k dir))
+                 (g (append (adt-pg-dflat *adt-pg-tpages* k dir) (resize-list nil *adt-pg-tpages* d))))
+             (and (adt-pg-dokp *adt-pg-tpages* (+ 1 k) dir2)
+                  (equal (adt-pg-dflat *adt-pg-tpages* (+ 1 k) dir2)
+                         (update-nth k (adt-pg-fresh 0 m r (nth k g)) g)))))
+  :hints (("Goal" :in-theory (e/d (adt-pg-dadd)
+                                  (adt-pg-floor-mod adt-pg-dir-read-at adt-pg-dir-write-at adt-pg-len-dflat
+                                   adt-pg-dir-ready-flat adt-pg-dir-ready-okp adt-pg-dir-inside adt-pg-dir-resize
+                                   adt-pg-dadd-boundary-core adt-pg-fresh adt-pg-tready))
+           :do-not-induct t
+           :cases ((<= (len dir) (floor k *adt-pg-tpages*))))
+          ("Subgoal 2"
+           :use ((:instance adt-pg-floor-mod (n k) (r *adt-pg-tpages*))
+                 (:instance adt-pg-dadd-boundary-core (jt (floor k *adt-pg-tpages*)))
+                 (:instance adt-pg-dir-resize (tsz *adt-pg-tpages*) (np k) (d '(nil))
+                            (n (max *adt-pg-dir-reserve* (* 2 (floor k *adt-pg-tpages*)))))
+                 (:instance adt-pg-dadd-boundary-core (jt (floor k *adt-pg-tpages*))
+                            (dir (resize-list dir (max *adt-pg-dir-reserve* (* 2 (floor k *adt-pg-tpages*))) '(nil))))))
+          ("Subgoal 1"
+           :use ((:instance adt-pg-floor-mod (n k) (r *adt-pg-tpages*))
+                 (:instance adt-pg-dadd-boundary-core (jt (floor k *adt-pg-tpages*)))
+                 (:instance adt-pg-dir-resize (tsz *adt-pg-tpages*) (np k) (d '(nil))
+                            (n (max *adt-pg-dir-reserve* (* 2 (floor k *adt-pg-tpages*)))))
+                 (:instance adt-pg-dadd-boundary-core (jt (floor k *adt-pg-tpages*))
+                            (dir (resize-list dir (max *adt-pg-dir-reserve* (* 2 (floor k *adt-pg-tpages*))) '(nil)))))))))
+
+(defthm adt-pg-dadd-meaning
+  (implies (and (adt-pg-dokp *adt-pg-tpages* k dir) (natp k))
+           (let ((dir2 (adt-pg-dadd m r d k dir)) (g (adt-pg-dgrown d k dir)))
+             (and (adt-pg-dokp *adt-pg-tpages* (+ 1 k) dir2)
+                  (equal (adt-pg-dflat *adt-pg-tpages* (+ 1 k) dir2)
+                         (update-nth k (adt-pg-fresh 0 m r (nth k g)) g)))))
+  :hints (("Goal" :in-theory (e/d (adt-pg-dgrown) (adt-pg-dadd adt-pg-dadd-inside adt-pg-dadd-boundary adt-pg-fresh))
+           :use (adt-pg-dadd-inside adt-pg-dadd-boundary))))
+
+(defthm adt-pg-col-of-append-above
+  (implies (and (natp np) (<= np (len rt)))
+           (equal (adt-pg-col ci np (append rt z)) (adt-pg-col ci np rt)))
+  :hints (("Goal" :induct (adt-pg-col ci np rt))))
+
+(defthm adt-pg-fullp-of-append-above
+  (implies (and (natp np) (<= np (len rt)))
+           (equal (adt-pg-fullp kk r np (append rt z)) (adt-pg-fullp kk r np rt)))
+  :hints (("Goal" :induct (adt-pg-fullp kk r np rt))))
+
+(defthm adt-pg-dgrown-facts
+  (implies (and (adt-pg-dokp *adt-pg-tpages* k dir) (natp k))
+           (and (< k (len (adt-pg-dgrown d k dir)))
+                (equal (adt-pg-col ci k (adt-pg-dgrown d k dir))
+                       (adt-pg-col ci k (adt-pg-dflat *adt-pg-tpages* k dir)))
+                (equal (adt-pg-fullp kk r k (adt-pg-dgrown d k dir))
+                       (adt-pg-fullp kk r k (adt-pg-dflat *adt-pg-tpages* k dir)))))
+  :hints (("Goal" :in-theory (e/d (adt-pg-dgrown) (adt-pg-floor-mod adt-pg-dir-inside adt-pg-len-dflat))
+           :do-not-induct t
+           :use ((:instance adt-pg-floor-mod (n k) (r *adt-pg-tpages*))
+                 (:instance adt-pg-len-dflat (tsz *adt-pg-tpages*) (np k))
+                 (:instance adt-pg-len-dflat (tsz *adt-pg-tpages*) (np (+ 1 k)))
+                 (:instance adt-pg-dir-inside (tsz *adt-pg-tpages*) (jt (floor k *adt-pg-tpages*))
+                            (it (mod k *adt-pg-tpages*)))))))
+
+(local
+ (defthm adt-pg-cols-of-dgrown
+  (implies (and (adt-pg-dokp *adt-pg-tpages* k dir) (natp k))
+           (equal (adt-pg-cols c0 kk k (adt-pg-dgrown d k dir))
+                  (adt-pg-cols c0 kk k (adt-pg-dflat *adt-pg-tpages* k dir))))
+  :hints (("Goal" :induct (adt-pg-cols c0 kk k (adt-pg-dflat *adt-pg-tpages* k dir))
+           :in-theory (disable adt-pg-col)))))
+
+(defthm adt-pg-addrow-tab
+  (implies (and (adt-pg-dokp *adt-pg-tpages* (nth 4 c) (nth 0 c)) (natp (nth 4 c)))
+           (let ((c2 (adt-pg-addrow m r d c)) (g (adt-pg-dgrown d (nth 4 c) (nth 0 c))))
+             (and (adt-pg-dokp *adt-pg-tpages* (+ 1 (nth 4 c)) (nth 0 c2))
+                  (equal (adt-pg-rtab c2) (update-nth (nth 4 c) (adt-pg-fresh 0 m r (nth (nth 4 c) g)) g))
+                  (equal (adt-pg-ptab c2) (adt-pg-ptab c)))))
+  :hints (("Goal" :in-theory (e/d (adt-pg-addrow adt-pg-rtab adt-pg-ptab) (adt-pg-fresh)))))
+
+(defthm adt-pg-addpool-tab
+  (implies (and (adt-pg-dokp *adt-pg-tpages* (nth 5 c) (nth 1 c)) (natp (nth 5 c)))
+           (let ((c2 (adt-pg-addpool q d c)) (g (adt-pg-dgrown d (nth 5 c) (nth 1 c))))
+             (and (adt-pg-dokp *adt-pg-tpages* (+ 1 (nth 5 c)) (nth 1 c2))
+                  (equal (adt-pg-ptab c2) (update-nth (nth 5 c) (adt-pg-fresh 0 1 q (nth (nth 5 c) g)) g))
+                  (equal (adt-pg-rtab c2) (adt-pg-rtab c)))))
+  :hints (("Goal" :in-theory (e/d (adt-pg-addpool adt-pg-ptab adt-pg-rtab) (adt-pg-fresh)))))
+
 (defthm adt-pg-nth-of-addrow
   (implies (and (natp k) (not (equal k 0)) (not (equal k 4)))
            (equal (nth k (adt-pg-addrow m r d c)) (nth k c))))
@@ -868,41 +1535,54 @@
 (defthm adt-pg-nq-of-addpool
   (equal (nth 5 (adt-pg-addpool q d c)) (+ 1 (nth 5 c))))
 
+(defthm adt-pg-dflat-is-rtab
+  (and (equal (adt-pg-dflat *adt-pg-tpages* (nth 4 c) (nth 0 c)) (adt-pg-rtab c))
+       (equal (adt-pg-dflat *adt-pg-tpages* (nth 5 c) (nth 1 c)) (adt-pg-ptab c)))
+  :hints (("Goal" :in-theory (enable adt-pg-rtab adt-pg-ptab))))
+
+(in-theory (disable adt-pg-dflat-is-rtab))
+
 (defthm adt-pg-flat-of-addrow
   (implies (and (adt-pg-rokp m r c) (equal m (adt-ncols s)))
            (equal (adt-pg-flat s (adt-pg-addrow m r d c))
                   (adt-grow (adt-ncols s) (resize-list nil r 0) (adt-pg-flat s c))))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (adt-pg-flat adt-pg-rokp adt-grow)
-                           (adt-pg-fresh adt-ncols adt-pg-cols adt-pg-col)))))
+           :in-theory (e/d (adt-pg-dflat-is-rtab adt-pg-flat adt-pg1-flat adt-pg-rokp adt-pg1-rokp adt-grow)
+                           (adt-pg-fresh adt-ncols adt-pg-cols adt-pg-col adt-pg-addrow adt-pg-dgrown-facts))
+           :use ((:instance adt-pg-dgrown-facts (k (nth 4 c)) (dir (nth 0 c)) (ci 0) (kk m))))))
 
 (defthm adt-pg-rokp-of-addrow
   (implies (adt-pg-rokp m r c)
            (adt-pg-rokp m r (adt-pg-addrow m r d c)))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (adt-pg-rokp adt-pg-fullp-snoc) (adt-pg-fresh adt-pg-cols adt-pg-col)))))
+           :in-theory (e/d (adt-pg-dflat-is-rtab adt-pg-rokp adt-pg1-rokp adt-pg-fullp-snoc)
+                           (adt-pg-fresh adt-pg-cols adt-pg-col adt-pg-addrow adt-pg-dgrown-facts))
+           :use ((:instance adt-pg-dgrown-facts (k (nth 4 c)) (dir (nth 0 c)) (ci 0) (kk m))))))
 
 (defthm adt-pg-pokp-of-addrow
   (equal (adt-pg-pokp q (adt-pg-addrow m r d c)) (adt-pg-pokp q c))
-  :hints (("Goal" :in-theory (enable adt-pg-pokp))))
+  :hints (("Goal" :in-theory (enable adt-pg-pokp adt-pg1-pokp adt-pg-addrow adt-pg-ptab))))
 
 (defthm adt-pg-flat-of-addpool
   (implies (adt-pg-pokp q c)
            (equal (adt-pg-flat s (adt-pg-addpool q d c))
                   (adt-grow-pool (adt-ncols s) (resize-list nil q 0) (adt-pg-flat s c))))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (adt-pg-flat adt-pg-pokp adt-grow-pool)
-                           (adt-pg-fresh adt-ncols adt-pg-cols adt-pg-col)))))
+           :in-theory (e/d (adt-pg-dflat-is-rtab adt-pg-flat adt-pg1-flat adt-pg-pokp adt-pg1-pokp adt-grow-pool)
+                           (adt-pg-fresh adt-ncols adt-pg-cols adt-pg-col adt-pg-addpool adt-pg-dgrown-facts))
+           :use ((:instance adt-pg-dgrown-facts (k (nth 5 c)) (dir (nth 1 c)) (ci 0) (kk 1) (r q))))))
 
 (defthm adt-pg-pokp-of-addpool
   (implies (adt-pg-pokp q c)
            (adt-pg-pokp q (adt-pg-addpool q d c)))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (adt-pg-pokp adt-pg-fullp-snoc) (adt-pg-fresh adt-pg-cols adt-pg-col)))))
+           :in-theory (e/d (adt-pg-dflat-is-rtab adt-pg-pokp adt-pg1-pokp adt-pg-fullp-snoc)
+                           (adt-pg-fresh adt-pg-cols adt-pg-col adt-pg-addpool adt-pg-dgrown-facts))
+           :use ((:instance adt-pg-dgrown-facts (k (nth 5 c)) (dir (nth 1 c)) (ci 0) (kk 1) (r q))))))
 
 (defthm adt-pg-rokp-of-addpool
   (equal (adt-pg-rokp m r (adt-pg-addpool q d c)) (adt-pg-rokp m r c))
-  :hints (("Goal" :in-theory (enable adt-pg-rokp))))
+  :hints (("Goal" :in-theory (enable adt-pg-rokp adt-pg1-rokp adt-pg-addpool adt-pg-rtab))))
 
 (in-theory (disable adt-pg-addrow adt-pg-addpool))
 
@@ -994,8 +1674,8 @@
  (defthm adt-pg-poolw-steps
    (implies (and (adt-pg-pokp q c) (natp i) (<= (+ i (len bytes)) (* q (nth 5 c))))
             (let ((c2 (adt-pg-poolw i bytes q c)))
-              (and (equal (adt-pg-col 0 (nth 5 c) (nth 1 c2))
-                          (adt-pool-writes (adt-pg-col 0 (nth 5 c) (nth 1 c)) i bytes))
+              (and (equal (adt-pg-col 0 (nth 5 c) (adt-pg-ptab c2))
+                          (adt-pool-writes (adt-pg-col 0 (nth 5 c) (adt-pg-ptab c)) i bytes))
                    (adt-pg-pokp q c2)
                    (equal (nth 5 c2) (nth 5 c)))))
    :hints (("Goal" :induct (adt-pg-poolw i bytes q c)
@@ -1006,8 +1686,7 @@
            (equal (nth k (adt-pg-poolw i bytes q c)) (nth k c))))
 
 (defthm adt-pg-rokp-of-poolw
-  (equal (adt-pg-rokp m r (adt-pg-poolw i bytes q c)) (adt-pg-rokp m r c))
-  :hints (("Goal" :in-theory (enable adt-pg-rokp))))
+  (equal (adt-pg-rokp m r (adt-pg-poolw i bytes q c)) (adt-pg-rokp m r c)))
 
 (defthm adt-pg-pokp-of-poolw
   (implies (and (adt-pg-pokp q c) (natp i) (<= (+ i (len bytes)) (* q (nth 5 c))))
@@ -1019,14 +1698,14 @@
                   (update-nth (adt-ncols s)
                               (adt-pool-writes (nth (adt-ncols s) (adt-pg-flat s c)) i bytes)
                               (adt-pg-flat s c))))
-  :hints (("Goal" :in-theory (e/d (adt-pg-flat) (adt-pg-col adt-pg-cols adt-pg-poolw-steps))
+  :hints (("Goal" :in-theory (e/d (adt-pg-flat adt-pg1-flat adt-pg-rtab) (adt-pg-col adt-pg-cols adt-pg-poolw-steps))
            :do-not-induct t
            :use adt-pg-poolw-steps)))
 
 (defthm adt-pg-poolr-meaning
   (implies (and (adt-pg-pokp q c) (natp off) (natp n) (<= (+ off n) (* q (nth 5 c))))
            (equal (adt-pg-poolr off n acc q c)
-                  (adt-poolr 0 off n acc (list (adt-pg-col 0 (nth 5 c) (nth 1 c))))))
+                  (adt-poolr 0 off n acc (list (adt-pg-col 0 (nth 5 c) (adt-pg-ptab c))))))
   :hints (("Goal" :induct (adt-pg-poolr off n acc q c)
            :in-theory (e/d (adt-poolr) (adt-poolr-is-slice)))))
 
@@ -1086,12 +1765,12 @@
 (defthm adt-pg-flat-of-update-fill
   (equal (adt-pg-flat s (update-nth 3 x c))
          (update-nth (+ 2 (adt-ncols s)) x (adt-pg-flat s c)))
-  :hints (("Goal" :in-theory (enable adt-pg-flat))))
+  :hints (("Goal" :in-theory (enable adt-pg-flat adt-pg1-flat))))
 
 (defthm adt-pg-flat-of-update-count
   (equal (adt-pg-flat s (update-nth 2 x c))
          (update-nth (+ 1 (adt-ncols s)) x (adt-pg-flat s c)))
-  :hints (("Goal" :in-theory (enable adt-pg-flat))))
+  :hints (("Goal" :in-theory (enable adt-pg-flat adt-pg1-flat))))
 
 (local
  (defthm adt-pg-col-put-in-room
@@ -1343,13 +2022,13 @@
 (defthm adt-pg-flat-of-empty
   (implies (and (equal (nth 4 c) 0) (equal (nth 5 c) 0) (equal (nth 2 c) 0) (equal (nth 3 c) 0))
            (equal (adt-pg-flat s c) (adt-empty-c s)))
-  :hints (("Goal" :in-theory (enable adt-pg-flat adt-empty-c))))
+  :hints (("Goal" :in-theory (enable adt-pg-flat adt-pg1-flat adt-empty-c))))
 
 (defthm adt-pg-corr-empty
   (implies (and (adt-schemap s) (posp r) (posp q)
                 (equal (nth 4 c) 0) (equal (nth 5 c) 0) (equal (nth 2 c) 0) (equal (nth 3 c) 0))
            (adt-pg-corr s r q c nil))
-  :hints (("Goal" :in-theory (enable adt-pg-corr adt-pg-okp adt-pg-rokp adt-pg-pokp))))
+  :hints (("Goal" :in-theory (enable adt-pg-corr adt-pg-okp adt-pg-rokp adt-pg-pokp adt-pg1-rokp adt-pg1-pokp))))
 
 (defthm adt-pg-corr-clear
   (implies (and (adt-schemap s) (posp r) (posp q))
