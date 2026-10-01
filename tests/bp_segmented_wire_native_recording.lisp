@@ -1,0 +1,40 @@
+; Actual native source tick invokes actual segmented framing bodies. All I/O,
+; authority and delivery plan observations remain recording-only. Completion
+; is deliberately REFUSED: structural parsing cannot fabricate acceptance.
+(load "tests/bp_segmented_wire_job_recording.lisp")
+(load "tests/tcpcl_source_continuation_host_refuter.lisp")
+(in-package "ACL2")
+(let* ((conn (make-fnn-tcl-conn)) (*flushes* 0)
+       (root (list (nthcdr 7 *bundle*) nil (subseq *bundle* 0 7)))
+       (token (list :recording-source-job)) (job nil) (turns 0) (events nil)
+       (*fnn-tcl-source-start*
+        (lambda (actual id chain count)
+         (assert (eq actual conn)) (assert (= id 7)) (assert (eq chain root))
+         (setf job (fn-bpsw-begin :held-transfer chain count))
+         (list :source-yield token)))
+       (*fnn-tcl-source-turn*
+        (lambda (actual actual-token)
+         (assert (eq actual conn)) (assert (eq actual-token token))
+         (assert (eq (fnn-tclc-source-root actual) root))
+         (assert (equal (fnn-tclc-source-held actual)
+                        (list (list :xfer-ack 3 7 (length *bundle*)))))
+         (assert (zerop *flushes*))
+         (incf turns)
+         (multiple-value-bind (word next used event) (fn-bpsw-turn job 1 0)
+          (assert (<= used 1)) (setf job next)
+          (when event (push event events))
+          (if (member word '(:source-complete :refused))
+              '(:refused :no-installed-source-authority)
+              (list :source-yield token))))))
+ (fnn-tcl-act conn (list (list :send (list :xfer-ack 3 7 (length *bundle*)))
+                        (list :bundle-segments-received 7 root (length *bundle*))))
+ (loop repeat 1000 while (fnn-tclc-source-pending conn) do
+  (fnn-tcl-source-tick conn))
+ (assert (> turns (length *bundle*)))
+ (assert (= (length events) 2))
+ (assert (zerop (fnn-tclc-accepted conn)))
+ (assert (null (fnn-tclc-source-pending conn)))
+ (assert (= *flushes* 1))
+ ; Native borrow clearing after definite refused callback is not core release.
+ (assert (eq (fn-tsc-at 8 (fn-bps-field 5 job)) root)))
+(format t "PASS actual native ticks -> retained segment/primary/canonical framing; no early ACK flush or acceptance.~%")
