@@ -2342,19 +2342,19 @@
     "tests/acl2/substrate-commit-codec-gap-tests"
   ],
   "totals": {
-    "books": 2686,
-    "books_in_root_closure": 2594,
+    "books": 2687,
+    "books_in_root_closure": 2595,
     "roots": 2338,
-    "theorems": 35064,
-    "functions": 22407,
+    "theorems": 35080,
+    "functions": 22417,
     "assert_events": 25149,
     "must_fails": 2531,
     "prover_refusals": 0,
-    "encapsulates": 187,
+    "encapsulates": 188,
     "guards": {
       "verified": 3826,
       "declared-off": 2777,
-      "default-guarded": 12600,
+      "default-guarded": 12610,
       "default-unguarded": 3204
     },
     "suspect_theorems": 1328,
@@ -4275,6 +4275,32 @@
       "read_error": null
     },
     {
+      "book": "books/assumptions-pgs-host-io.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 10,
+      "functions": 8,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 6,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 2,
+      "includes": [
+        "pagestore-words"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/assumptions-publication.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -4331,13 +4357,13 @@
       "book": "books/assumptions.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 20,
-      "functions": 16,
+      "theorems": 18,
+      "functions": 14,
       "guards": {
         "verified": 0,
         "declared-off": 1,
         "default-guarded": 0,
-        "default-unguarded": 15
+        "default-unguarded": 13
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -4345,9 +4371,10 @@
       "prover_refusals": 0,
       "defconsts": 0,
       "defmacros": 0,
-      "encapsulates": 13,
+      "encapsulates": 12,
       "includes": [
         "assumptions-durable",
+        "assumptions-pgs-host-io",
         "byte-store-invariants"
       ],
       "system_includes": [],
@@ -20409,11 +20436,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 99,
-      "functions": 39,
+      "functions": 40,
       "guards": {
         "verified": 0,
         "declared-off": 3,
-        "default-guarded": 25,
+        "default-guarded": 26,
         "default-unguarded": 11
       },
       "verify_guards_events": 0,
@@ -21682,7 +21709,7 @@
       "book": "books/history-records-disk.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 31,
+      "theorems": 34,
       "functions": 20,
       "guards": {
         "verified": 0,
@@ -21710,12 +21737,12 @@
       "book": "books/history-records.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 141,
-      "functions": 46,
+      "theorems": 146,
+      "functions": 49,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 28,
+        "default-guarded": 31,
         "default-unguarded": 18
       },
       "verify_guards_events": 0,
@@ -90297,7 +90324,7 @@
       {
         "theorem": "fn-hib-tw-page",
         "book": "books/history-image-binding.lisp",
-        "line": 531,
+        "line": 534,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {

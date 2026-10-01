@@ -18559,6 +18559,41 @@
         }
       ],
       "pending_subject": "Native compressed driver remains dormant and unreachable-in-composition. Actual selected-prefix cell accumulation and faithful-source compressed digest BEGIN/READ/HASH/new-publication are source-proved, with source-slice binding explicit. Arbitrary canonical decoder/controller iteration, selected dictionary/captured-view authority, full compiled workspace funding and retained native buffer/view/consumer joins remain open; PRF-1131 remains incomplete. Three nonexistent proposed DWCC citations are withheld in protocol-source-closeout-2026-10-01/withheld-events.json; no theorem admission is inferred."
+    },
+    {
+      "id": "PRF-1217",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pgs-fill-frame-is-frame-put",
+          "note": "KEYSTONE. A-PGS-HOST-IO's frame form: the in-place fill is the put of the page's words (books/assumptions-pgs-host-io.lisp)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pgs-page-words-u64",
+          "note": "The page's words are u64 words (the constraint the put needs)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrs-put-is-frame-put",
+          "note": "BRIDGE: the image fill's put is fn-pgs-frame-put 0 (used by name in fn-hrs-frame-fill-pgs's guard proof, the mbe bridge)."
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-x-fill-is-frame-put",
+          "note": "BRIDGE: the page store's put for the metadata and table arrays is fn-pgs-frame-put (fn-hrs-fill-run's guard proof)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrecs-frame-fill{correspondence}",
+          "note": "The frame export of fn-hrecs is the list fill's at the realizer's words. pending_subject (lane page-word-boundary 2026-10-01): fn-hrecs-frame-fill / fn-hrs-frame-fill-pgs are not host-called yet, as PRF-372's subjects are not (fn-hrs-h-file is the family's only interface at dev); the raw realizer of fn-pgs-fill-frame lands in host/native/extent.lisp after stage 0"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrecs-frame-fill{preserved}",
+          "note": "Its invariant, the list fill's. pending_subject (lane page-word-boundary 2026-10-01): fn-hrecs-frame-fill / fn-hrs-frame-fill-pgs are not host-called yet, as PRF-372's subjects are not (fn-hrs-h-file is the family's only interface at dev); the raw realizer of fn-pgs-fill-frame lands in host/native/extent.lisp after stage 0"
+        }
+      ]
     }
   ]
 }
