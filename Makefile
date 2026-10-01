@@ -857,6 +857,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-capacity-vector \
 	tests/acl2/store-capacity-vector-tests \
 	books/store-capacity-config \
+	books/served-auth-wire-bridge \
+	tests/acl2/served-auth-wire-bridge-tests \
+	books/served-head-bridge \
+	tests/acl2/served-head-bridge-tests \
 	books/store-config-generation \
 	tests/acl2/store-config-generation-tests \
 	tests/acl2/store-capacity-config-tests \

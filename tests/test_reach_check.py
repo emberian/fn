@@ -233,6 +233,7 @@ class ResultProjectionBridgeTests(unittest.TestCase):
             "concrete": ("books/bridge.lisp", "(defun concrete (s r a) nil)"),
             "model": ("books/model.lisp", "(defun model (s r a) nil)"),
             "receiver-only": ("books/bridge.lisp", "(defun receiver-only (r) t)"),
+            "caaaaaar": ("books/bridge.lisp", "(defun caaaaaar (x) (+ 1 (car x)))"),
         }, reachable={"concrete"})
 
     def test_full_result_projection_ties_only_model_to_concrete(self):
@@ -273,7 +274,8 @@ class ResultProjectionBridgeTests(unittest.TestCase):
         self.assertEqual(graph.bridged, [])
 
     def test_identity_and_plain_field_selection_are_projections(self):
-        for body in ("answer", "(car answer)", "(cons (car answer) (cdr answer))",
+        for body in ("answer", "(car answer)", "(cadddr answer)",
+                     "(cons (car answer) (cdr answer))",
                      "(let* ((state (cadr answer)) (receiver (car state))) "
                      "(list (car answer) receiver))"):
             graph = self.graph(f"(defun result (answer) {body})")
@@ -283,7 +285,7 @@ class ResultProjectionBridgeTests(unittest.TestCase):
         bodies = (
             "nil", "(list nil nil)", "(car (cons nil answer))",
             "(let ((x (cons nil answer))) (car x))",
-            "(+ 1 (car answer))", "(model answer)",
+            "(+ 1 (car answer))", "(model answer)", "(caaaaaar answer)",
             "(if (equal (car answer) :ok) (cdr answer) nil)",
             "(if (consp answer) nil (car answer))",
             "(if (and (consp answer) (not (consp answer))) (car answer) nil)",

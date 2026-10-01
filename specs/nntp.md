@@ -406,6 +406,21 @@ environment always carries; a blind environment answers as before.
   XPAT are unchanged (XPAT Xref still matches the stored header, which has
   none: a deferral).
 
+The HEAD composition is also stated over the host-called `fn-served-step`
+(PRF-1114, `fn-shd-command-wire-head-is-served-retrieval`). A concrete
+command-wire connection receiving a complete HEAD line produces exactly
+`fn-rcompat-retrieval`'s `:head` effects and reader session, preserving its
+pinned view, archive and Message-ID index. The literal hypotheses require
+valid bounded command framing; a valid authorized authentication session
+outside TLS/SASL negotiation; the reader role outside POST collection; an
+open projected reader; matching HEAD tokenization; an Xref server and pinned
+index; and no number/Message-ID withdrawal override. Both local-number and
+Message-ID requests have reachable complete witnesses. Each retained
+condition has a separate removal counterexample. This is a source-level
+composition of the existing RFC 3977 §6.2.2 HEAD behavior and fn's Xref
+policy, with no additional served-path validation. ARTICLE's productive
+read composition and the XPAT-on-Xref deferral are separate obligations.
+
 ## Sessions and framing
 
 NNT-002: maintain a per-connection selected group and current article number.
@@ -1621,6 +1636,20 @@ gives them.
 
       XREDEEM CODE NAME        -> 381 send the password with XREDEEM PASS
       XREDEEM PASS PASSWORD    -> (held) then 281 or 482
+
+  The command framing and hold compose at the actual `fn-served-step`
+  boundary (PRF-1123). `fn-saw-command-wire-is-auth-dispatch` equates the
+  complete served result to the authentication dispatch core for a valid
+  command wire, a plain line fitting its wire limit, a nonhalted connection,
+  and a command that does not advance the pinned view.
+  `fn-saw-held-read-prefix-stops-the-pipeline` proves that whenever the
+  actual prefix result is held, every appended suffix leaves the complete
+  result unchanged. Both have reachable positives and a counterexample
+  for every retained hypothesis. The existing pre-TLS XREDEEM keystone has
+  complete literal teeth, including a 498-octet argument that refutes its
+  argument-bound removal while satisfying every other premise. These are
+  source-level fn guarantees; they do not prove account persistence or the
+  native adapter's accounting for unconsumed bytes.
 
   `XREDEEM CODE NAME` caches the code and the login in the connection's memory
   and answers `381`. `XREDEEM PASS PASSWORD` (one token, like AUTHINFO PASS;

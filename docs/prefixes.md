@@ -433,3 +433,7 @@ anything a book does not already decide.
 | `fn-stprt-` | tests/acl2/substrate-profile-selection-tests | Literal pinned-source selector composition. |
 
 | `fn-stps-` | substrate-completed-source | Readonly actual completed-row and original prepare-source projection; no allocator grant. |
+| `fn-pcr-` | `productive-read`, `productive-read-chain`, `productive-read-message-id`, `tests/acl2/productive-read-*-tests` | Discovery composition of the host-called funded READ with actual pinned ARTICLE dispatch and wire effects; numbered reads update the cursor, Message-ID reads preserve it. Source admission and partial teeth only; qualification and remaining variants stay open (W6b). |
+| `fn-shd-` | `served-head-bridge`, `tests/acl2/served-head-bridge-tests` | HEAD retrieval composition through the actual served byte fold (PKT-772) |
+
+| `fn-saw-` | `served-auth-wire-bridge`, `tests/acl2/served-auth-wire-bridge-tests` | Served command framing and authentication hold composition (PKT-390) |

@@ -5805,6 +5805,14 @@
           "kind": "theorem",
           "name": "fn-auth-config-with-accounts-after-an-account-delete-offers-only-the-operators-credential",
           "note": "KEYSTONE. Every later credential snapshot offers only auth.toml's credential under the deleted login. Teeth: tests/acl2/accounts-snapshot-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-saw-command-wire-is-auth-dispatch"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-saw-held-read-prefix-stops-the-pipeline"
         }
       ]
     },
@@ -18704,6 +18712,28 @@
           "kind": "theorem",
           "name": "fn-hrc-get-is-hrecs-get",
           "note": "BRIDGE (existing, books/history-records-disk.lisp): the concrete retry loop, where the frame fill runs, is fn-hrecs-get over the abstract stobj; the frame fill cannot be an export (stobj-attachment-restrictions)."
+        }
+      ]
+    },
+    {
+      "id": "PRF-1114",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-shd-command-wire-head-is-served-retrieval"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1123",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-saw-command-wire-is-auth-dispatch"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-saw-held-read-prefix-stops-the-pipeline"
         }
       ]
     }
