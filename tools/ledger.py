@@ -811,6 +811,60 @@ def defrecord_expansion(form: list) -> list:
     return events
 
 
+def def_loop_expansion(form: list) -> list:
+    """The events ``(def-loop NAME FORMALS ...)`` generates, as the ledger sees them.
+
+    books/def-loop.lisp owns the loop twin: the accumulator loop
+    ``NAME-loop`` (``:verify-guards nil``, verified after the local bridge),
+    the wrapper ``NAME`` whose ``mbe`` runs the loop, the local bridge
+    ``NAME-loop-is-revappend`` (``-is-plus`` for ``:sum``), the two
+    ``verify-guards`` and the withdrawal of the loop.  A ``:into`` form
+    defines ``NAME`` alone with the exported ``NAME-is-append``.  The bodies
+    here are the shapes, not the macro's exact output: the ledger reads
+    names, guards and ``verify-guards``, and the macro is proved by
+    tests/acl2/def-loop-tests.lisp.
+    """
+    if not (len(form) >= 3 and isinstance(form[1], Sym) and isinstance(form[2], list)):
+        return []
+    name = str(form[1])
+    formals = [item for item in form[2] if isinstance(item, Sym)]
+    options = keyword_plist(form[3:])
+    shape = str(options.get(":shape", Sym(":map")))
+    guard = options.get(":guard", Sym("t"))
+    acc = options.get(":acc", Sym("acc"))
+    loop = str(options.get(":loop") or Sym(name + "-loop"))
+    body = options.get(":body", Sym("nil"))
+    if shape == ":into":
+        stobj = options.get(":into")
+        decl = [Sym("declare"), [Sym("xargs"), Sym(":stobjs"), stobj, Sym(":guard"), guard]]
+        return [[Sym("defun"), Sym(name), list(formals), decl, body],
+                [Sym("defthm"), Sym(f"{name}-is-append"),
+                 [Sym("implies"), [Sym("true-listp"), stobj],
+                  [Sym("equal"), [Sym(name)] + list(formals),
+                   [Sym("append"), stobj, [options.get(":map", Sym("nil"))] + list(formals)]]]],
+                [Sym("in-theory"), [Sym("disable"), Sym(name)]]]
+    acc_pred = Sym("acl2-numberp") if shape == ":sum" else Sym("true-listp")
+    acc_guard: object = [acc_pred, acc]
+    if not (isinstance(guard, Sym) and str(guard) == "t"):
+        acc_guard = [Sym("and"), guard, acc_guard]
+    loop_decl = [Sym("declare"), [Sym("xargs"), Sym(":guard"), acc_guard,
+                                  Sym(":verify-guards"), Sym("nil")]]
+    name_decl = [Sym("declare"), [Sym("xargs"), Sym(":guard"), guard,
+                                  Sym(":verify-guards"), Sym("nil")]]
+    bridge = f"{loop}-is-plus" if shape == ":sum" else f"{loop}-is-revappend"
+    unit = 0 if shape == ":sum" else Sym("nil")
+    return [[Sym("defun"), Sym(loop), list(formals) + [acc], loop_decl, body],
+            [Sym("defun"), Sym(name), list(formals), name_decl,
+             [Sym("mbe"), Sym(":logic"), body,
+              Sym(":exec"), [Sym(loop)] + list(formals) + [unit]]],
+            [Sym("local"), [Sym("defthm"), Sym(bridge),
+                            [Sym("equal"), [Sym(loop)] + list(formals) + [acc],
+                             [Sym("revappend"), acc, [Sym(name)] + list(formals)]]]],
+            [Sym("verify-guards"), Sym(loop)],
+            [Sym("verify-guards"), Sym(name)],
+            [Sym("in-theory"), [Sym("disable"), Sym(loop)]]]
+
+
 def defprotocol_expansion(form: list) -> list:
     """The host-reached macro ``(defprotocol NAME ROWS...)`` defines, as read.
 
@@ -1098,8 +1152,9 @@ def record(book: Book, form: object, line: int, *, local: bool,
         return
     if name == "make-event":
         return  # not statically readable; reporting it as an event would be a guess
-    if name in ("fn-defrecord", "fn-defrecord-export"):
+    if name in ("fn-defrecord", "fn-defrecord-export", "def-loop"):
         expansion = (defrecord_expansion(form) if name == "fn-defrecord"
+                     else def_loop_expansion(form) if name == "def-loop"
                      else defrecord_export_expansion(form))
         for item in expansion:
             record(book, item, line, local=local, suppressed=suppressed,

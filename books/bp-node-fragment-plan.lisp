@@ -3,49 +3,15 @@
 ; whole bundle or retire the source rows.  No Store dispatch follows :ready.
 (in-package "ACL2")
 (include-book "bp-node-fragment-family")
+(include-book "def-loop")
 
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-bpnf-family-consumed-ids-loop (rows acc)
-  (declare (xargs :measure (acl2-count rows) :guard (true-listp acc) :verify-guards nil))
-  (if (consp rows)
-      (fn-bpnf-family-consumed-ids-loop (cdr rows)
-                                        (cons (list (fn-bpnf-held-principal (car rows))
-                                                    (fn-bpnf-held-id (car rows))
-                                                    (fn-bpn-nth 3 (car rows)))
-                                              acc))
-    (revappend acc nil)))
-
-(defun fn-bpnf-family-consumed-ids (rows)
-  (declare (xargs :verify-guards nil :guard t :measure (acl2-count rows)))
-  (mbe :logic
-       (if (consp rows)
-           (cons (list (fn-bpnf-held-principal (car rows))
-                       (fn-bpnf-held-id (car rows))
-                       (fn-bpn-nth 3 (car rows)))
-                 (fn-bpnf-family-consumed-ids (cdr rows)))
-         nil)
-       :exec (fn-bpnf-family-consumed-ids-loop rows nil)))
-
-(local
- (defthm fn-bpnf-family-consumed-ids-loop-is-revappend
-   (equal (fn-bpnf-family-consumed-ids-loop rows acc)
-          (revappend acc (fn-bpnf-family-consumed-ids rows)))
-   :hints (("Goal" :induct (fn-bpnf-family-consumed-ids-loop rows acc)
-                   :in-theory (union-theories '(fn-bpnf-family-consumed-ids-loop fn-bpnf-family-consumed-ids revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-bpnf-family-consumed-ids-loop)
-
-(verify-guards fn-bpnf-family-consumed-ids
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-bpnf-family-consumed-ids)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-bpnf-family-consumed-ids-loop-is-revappend (acc nil))))))
+(def-loop fn-bpnf-family-consumed-ids (rows)
+  :shape :map
+  :body (list (fn-bpnf-held-principal (car rows)) (fn-bpnf-held-id (car rows)) (fn-bpn-nth 3 (car rows)))
+  :measure (acl2-count rows))
 
 
 (defun fn-bpnf-family-whole-bundle (zero bytes)

@@ -312,6 +312,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/rev-onto \
 	books/acceptance-alloc \
 	tests/acl2/defrecord-tests \
+	books/def-loop \
+	tests/acl2/def-loop-tests \
+	books/def-representation-lib \
+	books/def-representation \
+	tests/acl2/def-representation-tests \
 	tests/acl2/defkeystone-tests \
 	tests/acl2/definterface-tests \
 	tests/acl2/definterface-recognizer-tests \
@@ -1563,6 +1568,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/msgid-pages-tests \
 	books/msgid-pages-exec \
 	tests/acl2/msgid-pages-exec-tests \
+	books/msgid-linear \
+	tests/acl2/msgid-linear-tests \
 	books/owner-number-bound-join \
 	tests/acl2/owner-number-bound-join-tests \
 	tests/acl2/owner-identity-served-tests \

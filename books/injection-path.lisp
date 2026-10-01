@@ -25,6 +25,7 @@
 ; supplied Path with leading extra WSP is refused as malformed.
 
 (in-package "ACL2")
+(include-book "def-loop")
 
 (defconst *fn-inj-posted-keyword* '(112 111 115 116 101 100)) ; "posted"
 
@@ -308,46 +309,9 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-inj-downcase-loop (x acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp x)
-      (fn-inj-downcase-loop (cdr x)
-                            (cons (if (and (integerp (car x))
-                                           (<= 65 (car x))
-                                           (<= (car x) 90))
-                                      (+ 32 (car x))
-                                    (car x))
-                                  acc))
-    (revappend acc nil)))
-
-(defun fn-inj-downcase (x)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp x)
-           (cons (if (and (integerp (car x)) (<= 65 (car x)) (<= (car x) 90))
-                     (+ 32 (car x)) (car x))
-                 (fn-inj-downcase (cdr x)))
-         nil)
-       :exec (fn-inj-downcase-loop x nil)))
-
-(local
- (defthm fn-inj-downcase-loop-is-revappend
-   (equal (fn-inj-downcase-loop x acc)
-          (revappend acc (fn-inj-downcase x)))
-   :hints (("Goal" :induct (fn-inj-downcase-loop x acc)
-                   :in-theory (union-theories '(fn-inj-downcase-loop fn-inj-downcase revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-inj-downcase-loop)
-
-(verify-guards fn-inj-downcase
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-inj-downcase)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-inj-downcase-loop-is-revappend (acc nil))))))
+(def-loop fn-inj-downcase (x)
+  :shape :map
+  :body (if (and (integerp (car x)) (<= 65 (car x)) (<= (car x) 90)) (+ 32 (car x)) (car x)))
 
 
 ; diag-other without its leading "!": "." diag-keyword [ "." diag-identity ].

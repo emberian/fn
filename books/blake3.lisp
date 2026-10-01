@@ -44,6 +44,7 @@
 
 (local (include-book "arithmetic/top" :dir :system))
 (local (include-book "ihs/quotient-remainder-lemmas" :dir :system))
+(include-book "def-loop")
 
 (local (in-theory (disable floor mod truncate rem)))
 
@@ -235,38 +236,9 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-b3-fix-octets-walk-loop (m acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp m)
-      (fn-b3-fix-octets-walk-loop (cdr m) (cons (fn-b3-octet (car m)) acc))
-    (revappend acc nil)))
-
-(defun fn-b3-fix-octets-walk (m)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp m)
-           (cons (fn-b3-octet (car m)) (fn-b3-fix-octets-walk (cdr m)))
-         nil)
-       :exec (fn-b3-fix-octets-walk-loop m nil)))
-
-(local
- (defthm fn-b3-fix-octets-walk-loop-is-revappend
-   (equal (fn-b3-fix-octets-walk-loop m acc)
-          (revappend acc (fn-b3-fix-octets-walk m)))
-   :hints (("Goal" :induct (fn-b3-fix-octets-walk-loop m acc)
-                   :in-theory (union-theories '(fn-b3-fix-octets-walk-loop fn-b3-fix-octets-walk revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-b3-fix-octets-walk-loop)
-
-(verify-guards fn-b3-fix-octets-walk
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-b3-fix-octets-walk)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-b3-fix-octets-walk-loop-is-revappend (acc nil))))))
+(def-loop fn-b3-fix-octets-walk (m)
+  :shape :map
+  :body (fn-b3-octet (car m)))
 
 
 (defthm fn-b3-fix-octets-walk-of-octets
