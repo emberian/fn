@@ -887,6 +887,10 @@ def def_loop_bodies(name: str, formals: list, options: dict) -> tuple:
         if present(bindings):
             logic_inner = term("let*", bindings, logic_inner)
             loop_inner = term("let*", bindings, loop_inner)
+        if present(options.get(":base")):
+            # :map :base TERM is base-first (books/def-loop.lisp: (if BASE TAIL INNER)).
+            return (term("if", option(":base"), tail, logic_inner),
+                    term("if", option(":base"), done, loop_inner))
     return term("if", test, logic_inner, tail), term("if", test, loop_inner, done)
 
 

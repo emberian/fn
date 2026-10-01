@@ -178,6 +178,9 @@ class GeneratedScannerTests(unittest.TestCase):
            '(if (not (zp n)) (take-n-loop (- n 1) (cdr xs) (cons (car xs) acc)) (revappend acc nil))'),
           ('(def-loop take-b (n xs) :shape :take :over xs :count n :base (done n) :body (car xs))',
            '(if (done n) (revappend acc nil) (take-b-loop (- n 1) (cdr xs) (cons (car xs) acc)))'),
+          ('(def-loop map-b (xs) :base (atom-ish xs) :keep (ok (car xs)) :tail (tl xs) :body (car xs))',
+           '(if (atom-ish xs) (revappend acc (tl xs)) '
+           '(if (ok (car xs)) (map-b-loop (cdr xs) (cons (car xs) acc)) (map-b-loop (cdr xs) acc)))'),
           ('(def-loop sum (xs) :shape :sum :elt e :body (f e))',
            '(if (consp xs) (sum-loop (cdr xs) (+ (f (car xs)) acc)) acc)'),
           ('(def-loop cat (xs) :shape :concat :body (f (car xs)))',
