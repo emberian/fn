@@ -56,6 +56,10 @@ ACL2_BOOKS ?= books/defrecord \
 	host/admission-preparation-host \
 	host/history-admission-producer-host \
 	tests/acl2/admission-preparation-intent-tests \
+	books/admission-semantic-node \
+	tests/acl2/admission-semantic-node-tests \
+	books/history-semantic-writer-state \
+	tests/acl2/history-semantic-writer-state-tests \
 	books/index-reader-response-issuer \
 	books/history-event-page \
 	books/history-event-directory \
