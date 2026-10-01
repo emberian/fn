@@ -71,6 +71,7 @@
 (in-package "ACL2")
 (include-book "web-render")
 (include-book "web-health")
+(include-book "def-loop")
 
 ; -----------------------------------------------------------------------------
 ; Base64 (RFC 4648 4 and 5): tokens use the URL alphabet unpadded; the
@@ -1083,44 +1084,9 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-wss-one-line-loop (xs acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp xs)
-      (fn-wss-one-line-loop (cdr xs)
-                            (cons (if (member (car xs) '(13 10 9 0))
-                                      32
-                                    (fn-wss-octet (car xs)))
-                                  acc))
-    (revappend acc nil)))
-
-(defun fn-wss-one-line (xs)
-  ; A header value from form text: CR, LF and TAB become SP.
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp xs)
-           (cons (if (member (car xs) '(13 10 9 0)) 32 (fn-wss-octet (car xs)))
-                 (fn-wss-one-line (cdr xs)))
-         nil)
-       :exec (fn-wss-one-line-loop xs nil)))
-
-(local
- (defthm fn-wss-one-line-loop-is-revappend
-   (equal (fn-wss-one-line-loop xs acc)
-          (revappend acc (fn-wss-one-line xs)))
-   :hints (("Goal" :induct (fn-wss-one-line-loop xs acc)
-                   :in-theory (union-theories '(fn-wss-one-line-loop fn-wss-one-line revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-wss-one-line-loop)
-
-(verify-guards fn-wss-one-line
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-wss-one-line)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-wss-one-line-loop-is-revappend (acc nil))))))
+(def-loop fn-wss-one-line (xs)
+  :shape :map
+  :body (if (member (car xs) '(13 10 9 0)) 32 (fn-wss-octet (car xs))))
 
 
 (defun fn-wss-asciip (xs)

@@ -6,6 +6,7 @@
 (include-book "bp-ingress")
 ; A context holds its request by REFERENCE (PKT-646, PRF-249).
 (include-book "bp-request-ref")
+(include-book "def-loop")
 ; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19);
 ; this book reasons under them, so open them here, locally.
 (local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary fn-record-guard-vocabulary
@@ -330,40 +331,9 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-bpr-article-records-loop (events acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp events)
-      (fn-bpr-article-records-loop (cdr events)
-                                   (cons (fn-bpr-event-article (car events)) acc))
-    (revappend acc nil)))
-
-(defun fn-bpr-article-records (events)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp events)
-           (cons (fn-bpr-event-article (car events))
-                 (fn-bpr-article-records (cdr events)))
-         nil)
-       :exec (fn-bpr-article-records-loop events nil)))
-
-(local
- (defthm fn-bpr-article-records-loop-is-revappend
-   (equal (fn-bpr-article-records-loop events acc)
-          (revappend acc (fn-bpr-article-records events)))
-   :hints (("Goal" :induct (fn-bpr-article-records-loop events acc)
-                   :in-theory (union-theories '(fn-bpr-article-records-loop fn-bpr-article-records revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-bpr-article-records-loop)
-
-(verify-guards fn-bpr-article-records
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-bpr-article-records)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-bpr-article-records-loop-is-revappend (acc nil))))))
+(def-loop fn-bpr-article-records (events)
+  :shape :map
+  :body (fn-bpr-event-article (car events)))
 
 
 ;;; The retained row a WIRE record names (records-flip).  The receiver is
