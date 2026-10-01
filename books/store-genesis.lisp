@@ -54,6 +54,7 @@
 (local (include-book "frame-invariants"))
 (local (include-book "cbor-invariants"))
 (local (include-book "arithmetic/top" :dir :system))
+(include-book "def-loop")
 
 ; -----------------------------------------------------------------------------
 ; The record
@@ -174,43 +175,9 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-gen-schema-chars-octets-loop (chars acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp chars)
-      (fn-gen-schema-chars-octets-loop (cdr chars)
-                                       (cons (if (characterp (car chars))
-                                                 (char-code (car chars))
-                                               0)
-                                             acc))
-    (revappend acc nil)))
-
-(defun fn-gen-schema-chars-octets (chars)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp chars)
-           (cons (if (characterp (car chars)) (char-code (car chars)) 0)
-                 (fn-gen-schema-chars-octets (cdr chars)))
-         nil)
-       :exec (fn-gen-schema-chars-octets-loop chars nil)))
-
-(local
- (defthm fn-gen-schema-chars-octets-loop-is-revappend
-   (equal (fn-gen-schema-chars-octets-loop chars acc)
-          (revappend acc (fn-gen-schema-chars-octets chars)))
-   :hints (("Goal" :induct (fn-gen-schema-chars-octets-loop chars acc)
-                   :in-theory (union-theories '(fn-gen-schema-chars-octets-loop fn-gen-schema-chars-octets revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-gen-schema-chars-octets-loop)
-
-(verify-guards fn-gen-schema-chars-octets
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-gen-schema-chars-octets)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-gen-schema-chars-octets-loop-is-revappend (acc nil))))))
+(def-loop fn-gen-schema-chars-octets (chars)
+  :shape :map
+  :body (if (characterp (car chars)) (char-code (car chars)) 0))
 
 
 ; This image's schema digest.  A function, not a constant: a defconst never

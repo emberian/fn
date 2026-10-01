@@ -15,6 +15,7 @@
 ; (books/peer-authored-accept.lisp), which every ingress calls.
 (in-package "ACL2")
 (include-book "article-fields")
+(include-book "def-loop")
 
 ; "control" and "supersedes" as the parser's lower-cased field names.
 (defconst *fn-ctl-control-name* '(99 111 110 116 114 111 108))
@@ -125,45 +126,9 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-ctl-downcase-loop (bytes acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp bytes)
-      (fn-ctl-downcase-loop (cdr bytes)
-                            (cons (let ((b (car bytes)))
-                                    (if (and (integerp b) (<= 65 b) (<= b 90))
-                                        (+ b 32)
-                                      b))
-                                  acc))
-    (revappend acc nil)))
-
-(defun fn-ctl-downcase (bytes)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp bytes)
-           (cons (let ((b (car bytes)))
-                   (if (and (integerp b) (<= 65 b) (<= b 90)) (+ b 32) b))
-                 (fn-ctl-downcase (cdr bytes)))
-         nil)
-       :exec (fn-ctl-downcase-loop bytes nil)))
-
-(local
- (defthm fn-ctl-downcase-loop-is-revappend
-   (equal (fn-ctl-downcase-loop bytes acc)
-          (revappend acc (fn-ctl-downcase bytes)))
-   :hints (("Goal" :induct (fn-ctl-downcase-loop bytes acc)
-                   :in-theory (union-theories '(fn-ctl-downcase-loop fn-ctl-downcase revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-ctl-downcase-loop)
-
-(verify-guards fn-ctl-downcase
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-ctl-downcase)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-ctl-downcase-loop-is-revappend (acc nil))))))
+(def-loop fn-ctl-downcase (bytes)
+  :shape :map
+  :body (let ((b (car bytes))) (if (and (integerp b) (<= 65 b) (<= b 90)) (+ b 32) b)))
 
 
 ; One Control field's command.  The grammar has SP, not FWS, after the
