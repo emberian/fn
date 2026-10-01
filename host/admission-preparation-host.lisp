@@ -31,6 +31,13 @@
         (prior (and (boundp-global 'fn-owner-canonical-admission-executor state)
                     (f-get-global 'fn-owner-canonical-admission-executor state))))
   (cond
+   ((and (boundp-global 'fn-owner-history-semantic-source state)
+         (or (and (fn-apr-widthp 10 (f-get-global 'fn-owner-history-semantic-source state)) (eq (fn-prl-nth 0 (f-get-global 'fn-owner-history-semantic-source state))
+             :history-config-source))
+             (and (fn-apr-widthp 3 (f-get-global 'fn-owner-history-semantic-source state))
+                  (eq (fn-prl-nth 0 (f-get-global 'fn-owner-history-semantic-source state))
+                      :history-config-acquiring))))
+    (mv :semantic-writer-busy token state))
    ; Re-entry across a raw escape must not execute the semantic producer
    ; twice. Neither the reservation nor its retained source is discarded.
    (prior (mv :admission-recovery-required token state))
