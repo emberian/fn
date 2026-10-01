@@ -1,0 +1,52 @@
+; Internal first-family orchestration. A genuine canonical operation allowance
+; must precede these allocating calls. This supplies no issuer or native grant.
+(in-package "ACL2")
+(include-book "admission-preparation-host")
+(include-book "admission-authority-preparation-host")
+
+; Capture account aliases in the SAME nonyielding span as the original Store
+; and source capture. A failed capture retains the original intent for recovery.
+(defun fn-owner-admission-authority-begin (state)
+ (declare (xargs :stobjs state :mode :program :guard t))
+ (mv-let (word token state) (fn-owner-admission-prepare-intent state)
+  (if (not (eq word :intent-retained)) (mv word token state)
+   (mv-let (account-word state) (fn-owner-admission-account-capture state)
+    (mv account-word token state)))))
+
+; Each invocation chooses one actual retained producer phase. No caller phase,
+; node, row, result or authority Boolean is accepted. All producers recheck the
+; current token/source; ordinary yield resumes their saved roots.
+(defun fn-owner-admission-authority-step (fuel fn-history-backing state)
+ (declare (xargs :stobjs (fn-history-backing state) :mode :program :guard (natp fuel)))
+ (if (zp fuel) (mv :yield 0 fn-history-backing state)
+  (mv-let (node-word row produced next-cn delta)
+   (fn-owner-admission-node-result state)
+   (declare (ignore row produced next-cn delta))
+   (if (not (eq node-word :node-ready))
+       (mv-let (word fn-history-backing state)
+        (fn-owner-admission-authority-node-step 1 fn-history-backing state)
+        (mv word (- fuel 1) fn-history-backing state))
+    (mv-let (account-word next-state full root)
+     (fn-owner-admission-account-result state)
+     (declare (ignore next-state full root))
+     (if (not (eq account-word :account-ready))
+         (mv-let (word state) (fn-owner-admission-account-step state)
+          (mv word (- fuel 1) fn-history-backing state))
+      (let* ((builder (fn-hep-builder fn-history-backing))
+             (tail (fn-hed-at 8 builder)))
+       (if (not (and (fn-apr-widthp 4 tail)
+                     (eq (fn-hed-at 0 tail) :history-tail-ready)))
+           (fn-owner-admission-tail-step fuel fn-history-backing state)
+        (mv-let (census-word pool rows source)
+         (fn-owner-admission-census-result state)
+         (declare (ignore pool rows source))
+         (if (eq census-word :census-prepared)
+             (fn-owner-admission-authority-prepare-step fuel fn-history-backing state)
+          (let ((job (and (boundp-global 'fn-owner-history-semantic-census state)
+                          (f-get-global 'fn-owner-history-semantic-census state))))
+           (if job
+               (mv-let (word state) (fn-owner-admission-census-step state)
+                (mv word (- fuel 1) fn-history-backing state))
+            (mv-let (word fn-history-backing state)
+             (fn-owner-admission-census-begin fn-history-backing state)
+             (mv word (- fuel 1) fn-history-backing state))))))))))))))
