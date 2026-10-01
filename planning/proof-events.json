@@ -5556,6 +5556,11 @@
         {
           "kind": "theorem",
           "name": "fn-cp-apply-preserves-consumer-capacity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-crb-replay-keeps-the-consumer-bound",
+          "note": "KEYSTONE (PKT-370). Host: the open's replay fn-cpe-projection-replay nil RECORDS 0 (books/config-observed.lisp fn-nco-observe, books/checkpoint-auxiliary.lisp); field 9 is host/store-host.lisp fn-store-profile-max-consumers. Teeth: tests/acl2/consumer-replay-bound-tests.lisp (positive with an unregister making room; a register past field 9 the replay applies; mutation to strictly below)."
         }
       ]
     },

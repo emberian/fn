@@ -437,6 +437,7 @@ anything a book does not already decide.
 | `fn-prwo-`, `prwot-` | `post-record-width-owner`, `tests/acl2/post-record-width-owner-tests` | PRF-123's record-width composition over the owner's two host calls (PKT-250): boundary `fn-pak-post-admission`, then the catalog prepare of the interned article record |
 | `fn-tsd-`, `tsdt-` | `transit-same-decision`, `tests/acl2/transit-same-decision-tests` | K6 (PKT-202): one transit decision for the NNTP and BP carriers, the owner's drain decision `fn-tsd-drain-decision` and where the carriers differ |
 | `fn-hma-`, `hmat-` | `held-message-id-answer`, `tests/acl2/held-message-id-answer-tests` | Q3d (i) PKT-239: a held Message-ID's existing-action answer is unchanged by a Store completion, from the carried Message-ID uniqueness |
+| `fn-crb-`, `crbt-` | `consumer-replay-bound`, `tests/acl2/consumer-replay-bound-tests` | Q3d (iii) PKT-370: the open's consumer replay keeps the table within the opened profile's field 9 when every replayed register was admitted |
 | `fn-shd-` | `served-head-bridge`, `tests/acl2/served-head-bridge-tests` | HEAD retrieval composition through the actual served byte fold (PKT-772) |
 
 | `fn-saw-` | `served-auth-wire-bridge`, `tests/acl2/served-auth-wire-bridge-tests` | Served command framing and authentication hold composition (PKT-390) |

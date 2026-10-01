@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2715 |
-| Certification roots in the Makefile | 2311 |
-| Books inside the root closure | 2580 |
-| `defthm` and `defthmd` events | 35505 |
-| `defun` events | 22693 |
+| Books read | 2717 |
+| Certification roots in the Makefile | 2313 |
+| Books inside the root closure | 2582 |
+| `defthm` and `defthmd` events | 35514 |
+| `defun` events | 22699 |
 | Functions with verified guards | 3843 |
 | Functions declared `:verify-guards nil` and never verified | 2865 |
-| Functions left at the default with an explicit guard | 12683 |
-| Functions left at the default with no guard | 3302 |
-| `assert-event` checks | 25399 |
-| `must-fail` checks | 2562 |
+| Functions left at the default with an explicit guard | 12685 |
+| Functions left at the default with no guard | 3306 |
+| `assert-event` checks | 25411 |
+| `must-fail` checks | 2563 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 193 |
 | Theorems flagged SUSPECT by shape | 1345 |
 | Export-hygiene warnings | 392 |
 | Enabled-projection warnings | 80 |
 | Teeth-form warnings | 281 |
-| Include-hygiene warnings | 3385 |
+| Include-hygiene warnings | 3388 |
 | Host-names warnings | 3139 |
 | Hand-written-record warnings | 19 |
 
@@ -589,6 +589,7 @@ that `make certify` requests.
 | `books/consumer-remote-visible-buffer.lisp` | closure | 1 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/consumer-remote-wire-charge.lisp` | root | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/consumer-remote-withdrawal-buffer.lisp` | closure | 1 | 5 | 0/0/5/0 | 0 | 0 | 0 |
+| `books/consumer-replay-bound.lisp` | root | 9 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/consumer-store-events.lisp` | root | 1 | 13 | 13/0/0/0 | 0 | 0 | 0 |
 | `books/consumer-store-invariants.lisp` | root | 101 | 5 | 0/5/0/0 | 0 | 0 | 8 |
 | `books/consumer-store-projection.lisp` | root | 2 | 4 | 4/0/0/0 | 0 | 0 | 0 |
@@ -2061,6 +2062,7 @@ that `make certify` requests.
 | `tests/acl2/consumer-remote-visible-buffer-tests.lisp` | root | 0 | 6 | 0/0/6/0 | 5 | 0 | 0 |
 | `tests/acl2/consumer-remote-wire-charge-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 4 | 0 | 0 |
 | `tests/acl2/consumer-remote-withdrawal-buffer-tests.lisp` | root | 0 | 4 | 0/0/4/0 | 5 | 0 | 0 |
+| `tests/acl2/consumer-replay-bound-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 12 | 1 | 0 |
 | `tests/acl2/consumer-store-events-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 6 | 1 | 0 |
 | `tests/acl2/consumer-store-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 34 | 4 | 0 |
 | `tests/acl2/consumer-store-node-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 32 | 0 | 0 |

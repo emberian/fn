@@ -852,6 +852,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/transit-same-decision-tests \
 	books/held-message-id-answer \
 	tests/acl2/held-message-id-answer-tests \
+	books/consumer-replay-bound \
+	tests/acl2/consumer-replay-bound-tests \
 	tests/acl2/profile-monotonicity-tests \
 	books/store-budget-article \
 	tests/acl2/store-budget-article-tests \

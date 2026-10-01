@@ -195,7 +195,7 @@
       "assumptions": [
         "A-POLICY"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-retain-exact-release-records-its-evidence",
         "fn-retain-admit-preserves-statep",
@@ -4757,7 +4757,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/visibility-join.lisp",
         "tests/acl2/visibility-join-tests.lisp",
@@ -6063,7 +6063,7 @@
     {
       "id": "PRF-167",
       "title": "The consumer count is the operator's profile field 9: the served registration refuses exactly past it and the table stays within it",
-      "statement": "The consumer registration the owner serves (fn-cp-register-within, called by books/consumer-owner-local.lisp fn-col-register from host/owner-host.lisp fn-owner-consumer-local-register with MAX = fn-store-profile-max-consumers of the carried profile, host/store-host.lisp) is (:refused :max-consumers) iff fn-cp-register answers :write and the table already holds (nfix MAX) entries, and is fn-cp-register's answer otherwise (fn-cp-register-within-refuses-exactly-past-the-operator-bound, no hypothesis). From a table of at most MAX entries, applying any non-register event or the served decision's write keeps at most MAX (fn-cp-apply-preserves-consumer-capacity); with fn-profile-upgrade-keeps-namespace-counts the bound survives reopen. Replay re-runs the validity decision fn-cp-register, not the admission bound.",
+      "statement": "The consumer registration the owner serves (fn-cp-register-within, called by books/consumer-owner-local.lisp fn-col-register from host/owner-host.lisp fn-owner-consumer-local-register with MAX = fn-store-profile-max-consumers of the carried profile, host/store-host.lisp) is (:refused :max-consumers) iff fn-cp-register answers :write and the table already holds (nfix MAX) entries, and is fn-cp-register's answer otherwise (fn-cp-register-within-refuses-exactly-past-the-operator-bound, no hypothesis). From a table of at most MAX entries, applying any non-register event or the served decision's write keeps at most MAX (fn-cp-apply-preserves-consumer-capacity); Replay re-runs the validity decision fn-cp-register, not the admission bound, and a store keeps the profile it was opened under (D34; no migrations): when every :register the open's replay applies (fn-cpe-projection-replay nil RECORDS 0, books/config-observed.lisp, books/checkpoint-auxiliary.lisp) is one fn-cp-register-within under the opened profile's field 9 writes in the state the replay has reached (fn-crb-registers-within), the replayed table holds at most field 9 entries (fn-crb-replay-keeps-the-consumer-bound, PKT-370; a live completion's one fn-cpe-projection-step: fn-crb-projection-step-keeps-the-bound).",
       "milestone": "M5",
       "requirements": [
         "STO-021"
@@ -6080,12 +6080,15 @@
         "tests/acl2/consumer-owner-local-tests.lisp",
         "planning/evidence/community-bounds-2026-09-26.md",
         "planning/evidence/manifests/certify-20260926T095002Z-4098660.json",
-        "planning/evidence/manifests/certify-20260926T100254Z-46471.json"
+        "planning/evidence/manifests/certify-20260926T100254Z-46471.json",
+        "books/consumer-replay-bound.lisp",
+        "tests/acl2/consumer-replay-bound-tests.lisp"
       ],
       "progress_note": "Open (PKT-435): field 7 has no served reader and the group-name width is 256; the checkpoint generation names (PKT-168 (1)); PKT-183's contiguity lemma and credential-file bound; the FNFD payload fit. A-HOST dropped from this row's assumptions (lane audit-fixes, keystone-audit G3-9, 2026-09-27): no theorem of the row takes fn-assume-host-report or fn-assume-host-events (books/assumptions.lisp) as a hypothesis, so the citation was decorative (AGENTS.md: the theorems that use a named assumption mention it). The host's honest I/O remains the trust boundary these theorems sit inside, not a hypothesis of them.",
       "events": [
         "fn-cp-register-within-refuses-exactly-past-the-operator-bound",
-        "fn-cp-apply-preserves-consumer-capacity"
+        "fn-cp-apply-preserves-consumer-capacity",
+        "fn-crb-replay-keeps-the-consumer-bound"
       ]
     },
     {
@@ -21120,7 +21123,7 @@
         "PRF-230"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-tsd-bp-gate-is-the-drain-decision",
         "fn-tsd-nntp-and-bp-transit-decide-alike",
