@@ -252,17 +252,33 @@
             :use ((:instance fn-record-string-round-trip (text (fn-held-msgid h)))
                   (:instance fn-cp-msgidp-octet-string (x (fn-held-msgid h))))))))
 
+; The columns' row on a program: the tree decoded (fn-cp-decode-tree-of-program),
+; the decoder kept closed.
+(local
+ (defthm fn-cp-held-of-program
+   (implies (fn-sccb-treep tree)
+            (equal (fn-cp-held s tx g p c st m wp wa wb e (fn-scc-program tree))
+                   (fn-held-make s tx g (fn-record-octets-string m)
+                                 (if e (adt-l-nth 0 (adt-l-nth 8 tree)) p)
+                                 (adt-l-nth 0 tree) (adt-l-nth 1 tree) (adt-l-nth 2 tree)
+                                 (adt-l-nth 3 tree) c st (adt-l-nth 4 tree) (adt-l-nth 5 tree)
+                                 (adt-l-nth 6 tree)
+                                 (if e (adt-l-nth 1 (adt-l-nth 8 tree)) (if wp (cons wa wb) nil))
+                                 (adt-l-nth 7 tree))))
+   :hints (("Goal" :in-theory (e/d (fn-cp-held) (fn-scc-decode-tree fn-scc-program fn-sccb-treep))))))
+
 (defthm fn-cp-row-held-of-row-of
   (implies (and (fn-cat-rowp h) (fn-sccb-treep (fn-cp-tree-of h)))
            (equal (fn-cp-row-held (fn-cp-row-of h)) h))
-  :hints (("Goal" :in-theory (e/d (fn-cat-rowp fn-cp-row-held fn-cp-held fn-cp-row-of
-                                   fn-cp-escapedp fn-cp-u64 fn-cp-smallp unsigned-byte-p
-                                   fn-record-uint64p fn-record-stampp fn-held-withdrawnp
-                                   adt-l-nth-is-nth)
-                                  (fn-sccb-treep fn-scc-decode-tree fn-scc-program
-                                   fn-cp-msgid-octets fn-record-string-octets
-                                   fn-record-octets-string
-                                   fn-held-accessors-are-the-wire-accessors)))))
+  :hints (("Goal" :do-not-induct t :use ((:instance fn-held-make-of-accessors (x h)))
+           :in-theory (e/d (fn-cat-rowp fn-cp-row-held fn-cp-row-of fn-cp-tree-of
+                            fn-cp-escapedp fn-cp-u64 fn-cp-smallp unsigned-byte-p
+                            fn-record-uint64p fn-record-stampp fn-held-withdrawnp
+                            adt-l-nth)
+                           (fn-cp-held fn-sccb-treep fn-scc-decode-tree fn-scc-program
+                            fn-cp-msgid-octets fn-record-string-octets
+                            fn-record-octets-string
+                            fn-held-accessors-are-the-wire-accessors fn-held-make-of-accessors)))))
 
 ; -----------------------------------------------------------------------------
 ; 4. The view and the correspondence.
