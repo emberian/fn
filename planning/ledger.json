@@ -2372,19 +2372,19 @@
     "books": 2733,
     "books_in_root_closure": 2644,
     "roots": 2365,
-    "theorems": 36347,
-    "functions": 23148,
-    "assert_events": 25507,
+    "theorems": 36507,
+    "functions": 23179,
+    "assert_events": 25510,
     "must_fails": 2611,
     "prover_refusals": 0,
     "encapsulates": 210,
     "guards": {
-      "verified": 3847,
-      "declared-off": 2983,
-      "default-guarded": 12853,
-      "default-unguarded": 3465
+      "verified": 3848,
+      "declared-off": 2989,
+      "default-guarded": 12867,
+      "default-unguarded": 3475
     },
-    "suspect_theorems": 1350,
+    "suspect_theorems": 1351,
     "export_hygiene_warnings": 401,
     "enabled_projection_warnings": 80,
     "teeth_form_warnings": 279,
@@ -27164,15 +27164,15 @@
       "book": "books/msgid-linear-exec.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 83,
-      "functions": 24,
+      "theorems": 244,
+      "functions": 50,
       "guards": {
-        "verified": 0,
-        "declared-off": 2,
-        "default-guarded": 18,
-        "default-unguarded": 4
+        "verified": 1,
+        "declared-off": 3,
+        "default-guarded": 32,
+        "default-unguarded": 14
       },
-      "verify_guards_events": 0,
+      "verify_guards_events": 1,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -27188,7 +27188,8 @@
       ],
       "suspects": [
         "fn-mlh-candidates-no-pages",
-        "fn-mlh-flag-part-of-seqw"
+        "fn-mlh-flag-part-of-seqw",
+        "fn-mlh-nth-is-page"
       ],
       "read_error": null
     },
@@ -65676,19 +65677,19 @@
       "book": "tests/acl2/msgid-linear-exec-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 2,
-      "functions": 7,
+      "theorems": 1,
+      "functions": 12,
       "guards": {
         "verified": 0,
-        "declared-off": 6,
+        "declared-off": 11,
         "default-guarded": 1,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 6,
+      "assert_events": 9,
       "must_fails": 1,
       "prover_refusals": 0,
-      "defconsts": 4,
+      "defconsts": 8,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -84135,7 +84136,7 @@
     {
       "theorem": "fn-mlh-candidates-no-pages",
       "book": "books/msgid-linear-exec.lisp",
-      "line": 649,
+      "line": 786,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-mlh-candidates and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-mlh-candidates and the conclusion is that branch's value"
@@ -84144,11 +84145,20 @@
     {
       "theorem": "fn-mlh-flag-part-of-seqw",
       "book": "books/msgid-linear-exec.lisp",
-      "line": 792,
+      "line": 969,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)",
         "definition-restated: the conclusion is the body of fn-mlh-flag-part",
         "reflexive-conclusion: a conjunct is (equal X X)"
+      ]
+    },
+    {
+      "theorem": "fn-mlh-nth-is-page",
+      "book": "books/msgid-linear-exec.lisp",
+      "line": 1629,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-mpxl-page and the conclusion is that arm's value",
+        "branch-of-definition: the hypothesis is a branch test of fn-mpxl-page and the conclusion is that branch's value"
       ]
     },
     {
