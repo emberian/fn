@@ -37,6 +37,17 @@
   (fn-own-queue current) (fn-own-inflight current) (fn-own-feeds current)
   (fn-own-node-secret current) (fn-own-refused current)))
 
+ ; Typed C installation changes semantic fields only. The journal completion
+; has no E file completion, pending consumption or submission-ledger append.
+(defun fn-odhc-config-owner-current-shell (current store view posting)
+ (declare (xargs :guard t))
+ (fn-own-make store view (fn-own-conns current)
+  (fn-own-next-id current) (fn-own-max-conns current)
+  (fn-own-pending current) (fn-own-ledger-field current)
+  (fn-own-clock current) (fn-own-facts current) posting
+  (fn-own-queue current) (fn-own-inflight current) (fn-own-feeds current)
+  (fn-own-node-secret current) (fn-own-refused current)))
+
 (defun fn-owner-history-completion-fence (token reason fn-history-backing state)
  (declare (xargs :stobjs (fn-history-backing state) :mode :program))
  (mv-let (word fn-history-backing)
