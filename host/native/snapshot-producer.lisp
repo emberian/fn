@@ -608,7 +608,7 @@ operational fence does not claim the complete rescue reserve is installed."
              ; Private account preparation is not fully represented by CP/root.
              ; Keep its begin replay source held; do not capture a checkpoint.
              (let ((checkpoint-word
-                     (fnn-core 'fn-cpa-checkpoint-word publication)))
+                     (fnn-core-state 'fn-owner-checkpoint-account-word)))
                (unless (eq checkpoint-word :checkpoint)
                  (fnn-refuse-io "snapshot deferred: account preparation pending")))
              (when (second plan)
