@@ -30,13 +30,28 @@
 
 (program)
 
+; A generated name lives in the package of the symbol it is derived from
+; (as defstobj's own CREATE-/UPDATE-/RESIZE- names do), so an instance in
+; another package gets its names there and two instances of one spelling
+; in two packages never collide; a string base has no package of its own
+; and names the generator's (deputy-1 2026-10-01, after Codex t10).
 (defun adt-sym (base suffix)
   (intern-in-package-of-symbol
-   (concatenate 'string (if (stringp base) base (symbol-name base)) suffix) 'adt-sym))
+   (concatenate 'string (if (stringp base) base (symbol-name base)) suffix)
+   (if (symbolp base) base 'adt-sym)))
 
 (defun adt-sym3 (a mid b)
   (intern-in-package-of-symbol
-   (concatenate 'string (symbol-name a) mid (symbol-name b)) 'adt-sym))
+   (concatenate 'string (symbol-name a) mid (symbol-name b)) a))
+
+; PREFIX before the symbol's name, in the symbol's package.
+(defun adt-sym-pre (prefix sym)
+  (intern-in-package-of-symbol (concatenate 'string prefix (symbol-name sym)) sym))
+
+; The constant *NAME<suffix>*, in NAME's package (never COMMON-LISP's, where
+; the symbol * lives and ACL2 refuses a defconst).
+(defun adt-sym-const (name suffix)
+  (intern-in-package-of-symbol (concatenate 'string "*" (symbol-name name) suffix) name))
 
 (defun adt-norm-kind (k)
   (if (keywordp k) (list k) k))
@@ -81,8 +96,8 @@
            (st (adt-sym name "$C"))
            (put (adt-sym cname "-PUT"))
            (len (adt-sym cname "-LENGTH"))
-           (rsz (adt-sym "RESIZE-" (symbol-name cname)))
-           (upd (adt-sym "UPDATE-" (concatenate 'string (symbol-name cname) "I")))
+           (rsz (adt-sym-pre "RESIZE-" cname))
+           (upd (adt-sym-pre "UPDATE-" (adt-sym cname "I")))
            (recog (adt-sym cname "P")))
       (append
        `((defthm ,(adt-sym recog "-IS")
@@ -121,7 +136,7 @@
            (getf (adt-sym3 name "$C-GET-" f))
            (okp (adt-sym getf "-OKP"))
            (setf (adt-sym3 name "$C-SET-" f))
-           (schema (adt-sym3 '* (symbol-name name) '-schema*))
+           (schema (adt-sym-const name "-SCHEMA*"))
            (ghints `(("Goal" :in-theory (e/d (,(adt-sym name "$CP") adt-elt-p)
                                               (,(adt-sym name "$CP-IS-SHAPE")))))))
       (append
@@ -205,7 +220,7 @@
 (defun adt-clear-body (cols st)
   (if (endp cols)
       nil
-    (cons `(,st (,(adt-sym "RESIZE-" (symbol-name (car (car cols)))) 0 ,st))
+    (cons `(,st (,(adt-sym-pre "RESIZE-" (car (car cols))) 0 ,st))
           (adt-clear-body (cdr cols) st))))
 
 (defun adt-append-body (name fields recv st)
@@ -295,7 +310,7 @@
                         :guard-hints (("Goal" :in-theory (enable ,cp adt-elt-p)))))
         (if (atom bytes)
             ,st
-          (let ((,st (,(adt-sym "UPDATE-" (concatenate 'string (symbol-name pool) "I"))
+          (let ((,st (,(adt-sym-pre "UPDATE-" (adt-sym pool "I"))
                       i (car bytes) ,st)))
             (,poolw (+ 1 i) (cdr bytes) ,st))))
       (defthm ,(adt-sym poolw "-BRIDGE")
@@ -323,10 +338,10 @@
                (need (+ fl (len bytes)))
                (,st (if (<= need (,(adt-sym pool "-LENGTH") ,st))
                         ,st
-                      (,(adt-sym "RESIZE-" (symbol-name pool))
+                      (,(adt-sym-pre "RESIZE-" pool)
                        (max need (* 2 (,(adt-sym pool "-LENGTH") ,st))) ,st)))
                (,st (,poolw fl bytes ,st)))
-          (,(adt-sym "UPDATE-" (symbol-name (adt-sym name "$C-FILL"))) need ,st)))
+          (,(adt-sym-pre "UPDATE-" (adt-sym name "$C-FILL")) need ,st)))
       (defthm ,(adt-sym push "-BRIDGE")
         (equal (,push bytes c) (adt-pool-push ,p bytes c))
         :hints (("Goal" :in-theory (enable ,push adt-pool-push adt-pool-room))))
@@ -350,7 +365,7 @@
                                                              (,(adt-sym cp "-IS-SHAPE")))))))
         (let* ((n (,(adt-sym name "$C-COUNT") ,st))
                ,@(adt-append-body name fields 'rec st))
-          (,(adt-sym "UPDATE-" (symbol-name (adt-sym name "$C-COUNT"))) (+ 1 n) ,st)))
+          (,(adt-sym-pre "UPDATE-" (adt-sym name "$C-COUNT")) (+ 1 n) ,st)))
       (defthm ,(adt-sym name "$C-APPEND-BRIDGE")
         (equal (,(adt-sym name "$C-APPEND") rec c) (adt-append-c ,schema-const rec c))
         :hints (("Goal" :in-theory (enable ,(adt-sym name "$C-APPEND") adt-instance-unfold))))
@@ -361,9 +376,9 @@
       (defun ,(adt-sym name "$C-CLEAR") (,st)
         (declare (xargs :stobjs ,st))
         (let* (,@(adt-clear-body cols st)
-               (,st (,(adt-sym "RESIZE-" (symbol-name pool)) 0 ,st))
-               (,st (,(adt-sym "UPDATE-" (symbol-name (adt-sym name "$C-COUNT"))) 0 ,st)))
-          (,(adt-sym "UPDATE-" (symbol-name (adt-sym name "$C-FILL"))) 0 ,st)))
+               (,st (,(adt-sym-pre "RESIZE-" pool) 0 ,st))
+               (,st (,(adt-sym-pre "UPDATE-" (adt-sym name "$C-COUNT")) 0 ,st)))
+          (,(adt-sym-pre "UPDATE-" (adt-sym name "$C-FILL")) 0 ,st)))
       (defthm ,(adt-sym name "$C-CLEAR-BRIDGE")
         (equal (,(adt-sym name "$C-CLEAR") c) (adt-clear-c ,schema-const c))
         :hints (("Goal" :in-theory (enable ,(adt-sym name "$C-CLEAR") adt-clear-c adt-clear-down
@@ -373,7 +388,7 @@
 
 (defun defadt-fn (name fields0)
   (let* ((fields (adt-norm-fields fields0))
-         (schema-const (adt-sym3 '* (symbol-name name) '-schema*))
+         (schema-const (adt-sym-const name "-SCHEMA*"))
          (cols (adt-columns name fields))
          (p (len cols))
          (st (adt-sym name "$C"))
@@ -386,14 +401,14 @@
          (count-a (adt-sym name "$A-COUNT"))
          (clear-a (adt-sym name "$A-CLEAR"))
          (clear-c (adt-sym name "$C-CLEAR"))
-         (create-a (adt-sym "CREATE-" (symbol-name a)))
-         (create-c (adt-sym "CREATE-" (symbol-name st)))
+         (create-a (adt-sym-pre "CREATE-" a))
+         (create-c (adt-sym-pre "CREATE-" st))
          (recog (adt-sym name "P"))
          (defabs
            `(defabsstobj ,name
               :foundation ,st
               :recognizer (,recog :logic ,ap :exec ,(adt-sym name "$CP"))
-              :creator (,(adt-sym "CREATE-" (symbol-name name)) :logic ,create-a :exec ,create-c)
+              :creator (,(adt-sym-pre "CREATE-" name) :logic ,create-a :exec ,create-c)
               :corr-fn ,corr
               :corr-fn-exists t
               :exports ((,(adt-sym name "-COUNT") :logic ,count-a :exec ,count-of)
