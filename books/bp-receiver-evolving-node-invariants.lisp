@@ -341,9 +341,9 @@
 (defthm fn-bprv-staged-prepare-facts
   (implies (and (fn-node-statep s) (fn-bprv-node-idlep s)
                 (consp (fn-node-stage (fn-node-prepare s generation msgid payload groups
-                                                       obligation-id subject evidence charge stamp binding))))
+                                                       obligation-id subject evidence charge stamp))))
            (let ((prepared (fn-node-prepare s generation msgid payload groups
-                                            obligation-id subject evidence charge stamp binding)))
+                                            obligation-id subject evidence charge stamp)))
              (and (equal (fn-node-stage-msgid (fn-node-stage prepared)) msgid)
                   (equal (fn-node-stage-subject (fn-node-stage prepared)) subject)
                   (equal (fn-node-stage-id (fn-node-stage prepared)) obligation-id)
@@ -498,7 +498,7 @@
                    m (fn-state-articles
                       (fn-node-acceptance
                        (fn-node-prepare s generation msgid payload groups
-                                        obligation-id subject evidence charge stamp binding))))
+                                        obligation-id subject evidence charge stamp))))
                   (fn-find-article m (fn-state-articles (fn-node-acceptance s)))))
   :hints (("Goal" :in-theory (union-theories '(car-cons cdr-cons fn-node-prepare fn-bprv-node-make-state-fields
                                 fn-prepare-preserves-existing-message-id-binding
@@ -535,7 +535,7 @@
                             (subject (fn-record-content-subject record2))
                             (evidence (fn-record-release-evidence record2))
                             (charge (fn-record-charge record2))
-                            (stamp (fn-record-stamp record2)) (binding (fn-held-binding record2)))
+                            (stamp (fn-record-stamp record2)))
                  (:instance fn-replay-apply-record-non-nil-is-node-state (record record2))
                  (:instance fn-bprv-article-record-is-not-consumer-event
                             (record record2))
@@ -547,7 +547,7 @@
                                 (fn-record-obligation-id record2)
                                 (fn-record-content-subject record2)
                                 (fn-record-release-evidence record2)
-                                (fn-record-charge record2) (fn-record-stamp record2) (fn-held-binding record2)))
+                                (fn-record-charge record2) (fn-record-stamp record2)))
                             (msgid (fn-record-msgid record))
                             (txid (fn-record-txid record2))
                             (generation (fn-record-generation record2))
@@ -615,7 +615,7 @@
                                    (fn-record-obligation-id article)
                                    (fn-record-content-subject article)
                                    (fn-record-release-evidence article)
-                                   (fn-record-charge article) (fn-record-stamp article) (fn-held-binding article))))
+                                   (fn-record-charge article) (fn-record-stamp article))))
     (implies (and (fn-bpi-node-record-committedp node record)
                   (fn-node-statep (fn-node-complete prepared (fn-record-txid article)
                                                     (fn-record-generation article) :durable)))
@@ -635,7 +635,7 @@
                             (subject (fn-record-content-subject article))
                             (evidence (fn-record-release-evidence article))
                             (charge (fn-record-charge article))
-                            (stamp (fn-record-stamp article)) (binding (fn-held-binding article)))
+                            (stamp (fn-record-stamp article)))
                  (:instance fn-node-complete-preserves-existing-binding
                             (s (fn-node-prepare
                                 (fn-replay-advance-txid node txid)
@@ -644,7 +644,7 @@
                                 (fn-record-obligation-id article)
                                 (fn-record-content-subject article)
                                 (fn-record-release-evidence article)
-                                (fn-record-charge article) (fn-record-stamp article) (fn-held-binding article)))
+                                (fn-record-charge article) (fn-record-stamp article)))
                             (msgid (fn-record-msgid record))
                             (txid (fn-record-txid article))
                             (generation (fn-record-generation article))

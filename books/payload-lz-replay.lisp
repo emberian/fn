@@ -58,7 +58,7 @@
                       (fn-record-charge w) (fn-record-stamp w)
                       (fn-held-facts-of bytes)
                       (fn-held-context-of bytes keyring generation)
-                      nil nil (fn-row-binding w))
+                      nil nil)
         fn-arena)))
 
 (defun fn-lzr-intern-event (w z position file dicts keyring generation fn-arena)

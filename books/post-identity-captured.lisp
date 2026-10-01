@@ -1,10 +1,11 @@
+; UNHOOKED stage 0 (2026-10-01): depends on the reverted acceptance-binding field (planning/design-store-representation-2026-10-01.md section 5, D43): the captured-identity chain over the held binding gate is parked (review 2026-10-01 F01: KEEP-PARKED); not in the Makefile check roots or any image world.
 ; Captured-row semantic confirmation over retained provider/holder tokens.
 ; The actual owner boundary must join provider and holder lease invariants.
 ; No independent resource account: every activation consumes the caller's
 ; remaining scheduling fuel.  Group tails and strings are retained aliases.
 (in-package "ACL2")
 (include-book "octets-stobj")
-(include-book "acceptance-binding-held-gate")
+(include-book "held-record")
 (include-book "post-identity-source-cursor-invariants")
 (include-book "pagestore-digest-byte-cursor")
 (include-book "reclaim-tombstone")

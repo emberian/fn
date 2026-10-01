@@ -101,7 +101,7 @@
                         (:instance fn-orix-records-count-is-length-by-definition
                                    (files (fn-sn-files (fn-own-store o)))))
            :in-theory (e/d (fn-own-refresh-ix fn-own-refresh
-                            fn-ctl-refresh-withdrawals-fx fn-sf-records-count fn-sbud-used)
+                            fn-ctl-refresh-withdrawals-fx fn-sf-records-count)
                            (fn-sn-statep
                             fn-ctl-rows-okp
                             fn-orix-store-rows-agree

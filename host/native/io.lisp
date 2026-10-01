@@ -3680,6 +3680,10 @@ the records are read after the open by the verbs that need them
     (handler-case
         (let ((before (get-internal-real-time)))
           (fnn-bridge-reset)
+          ;; Stage 0: the page pool's unfunded context, before the first
+          ;; extent registration of the replay (host/native/extent.lisp
+          ;; fnn-extent-pool-open-context).
+          (fnn-extent-pool-open-context)
           (let ((count (fnn-recover store)))
             (setf (fnn-store-open-ms store)
                   (floor (* 1000 (- (get-internal-real-time) before))

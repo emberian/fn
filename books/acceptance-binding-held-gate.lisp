@@ -1,3 +1,4 @@
+; UNHOOKED stage 0 (2026-10-01): depends on the reverted acceptance-binding field (planning/design-store-representation-2026-10-01.md section 5)
 ; Unchanged binding action over one captured held16 row. No codec ancestry.
 (in-package "ACL2")
 (include-book "held-record-shape")

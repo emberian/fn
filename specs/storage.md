@@ -2027,18 +2027,6 @@ installation, selected-runtime adequacy, captured-row authorization and native
 execution remain separate obligations. Compressed getters refuse before eager
 decoding. The default realizer does not enable this staged mode.
 
-### Current mandatory article binding
-
-The current article record has twelve fields, including the mandatory binding.
-Its narrow and wide encodings use schema 3 and schema 4 respectively. The
-current decoder refuses a schema-1 header as `:unknown-version`; the old
-schema-1 golden encoding citation is predecessor evidence, not a current
-codec event. PRF-005 names the current schema-3 encoding subject, with both
-current golden vectors and the retired-header refusal authored in
-`records-current-schema-tests`. This changes no supported-profile limit.
-The new fixture has not run at this assembled coordinate. Older codec ceiling
-fixtures still require migration; no deployed store compatibility is claimed.
-
 
 ### Captured confirmation caller source (PRF-1148)
 

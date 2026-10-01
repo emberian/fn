@@ -862,20 +862,20 @@
            (fn-sn-verdict-listp (cons (cons msgid verdict) verdicts))))
 
 (defun fn-sn-article-record (s obs msgid payload groups
-                              obligation-id subject evidence charge binding)
+                              obligation-id subject evidence charge)
   (declare (xargs :guard t))
   (let ((stamp (fn-record-stamp-of-observation obs))
         (txid (fn-state-next-txid (fn-node-acceptance (fn-sn-node s)))))
     (if (not (natp stamp))
         :clock-unusable
       (fn-record-make (fn-sn-identity-next s) txid txid msgid payload groups
-                      obligation-id subject evidence charge stamp binding))))
+                      obligation-id subject evidence charge stamp))))
 
 (defthm fn-sn-article-record-stamps-the-observation
   (implies (natp (fn-record-stamp-of-observation obs))
            (equal (fn-record-stamp
                    (fn-sn-article-record s obs msgid payload groups
-                                         obligation-id subject evidence charge binding))
+                                         obligation-id subject evidence charge))
                   (floor (fn-clock-wall obs) 1000)))
   :hints (("Goal" :in-theory (enable fn-sn-article-record
                                      fn-record-stamp-of-observation))))
@@ -883,7 +883,7 @@
 (defthm fn-sn-article-record-without-a-usable-clock-is-refused
   (implies (not (natp (fn-record-stamp-of-observation obs)))
            (equal (fn-sn-article-record s obs msgid payload groups
-                                        obligation-id subject evidence charge binding)
+                                        obligation-id subject evidence charge)
                   :clock-unusable))
   :hints (("Goal" :in-theory (enable fn-sn-article-record))))
 
@@ -898,16 +898,15 @@
                     (fn-pending-msgid pending) (fn-pending-payload pending)
                     (fn-pending-groups pending) (fn-node-stage-id stage)
                     (fn-node-stage-subject stage) (fn-node-stage-evidence stage)
-                    (fn-node-stage-charge stage) (fn-pending-stamp pending) (fn-node-stage-binding stage))))
+                    (fn-node-stage-charge stage) (fn-pending-stamp pending))))
 
 (verify-guards fn-sn-pending-record)
-; The completing row is a HELD record (books/held-record.lisp). Its current
-; wire projection, with the handle at the payload position, is the pending
-; record's (fn-sn-prepare-node put that handle there). The mandatory trailing
-; wire descriptor comes from held binding field 15 and must equal the exact
-; node-stage descriptor. The intern's byte facts and context remain distinct
-; held fields. This compares fixed field coordinates and a fixed descriptor,
-; never the article payload.
+; The completing row is a HELD record (books/held-record.lisp): its eleven
+; wire positions, with the handle at the payload position, are the pending
+; record's (whose payload is the pending's handle: fn-sn-prepare-node put it
+; there).  The byte facts and the context beside them are the intern's and
+; are bound by nothing in the node.  The comparison is eleven positions and
+; one natural, never a payload walk.
 (defun fn-sn-record-bindsp (node record)
   (declare (xargs :guard (fn-node-statep node) :verify-guards nil))
   (and (fn-held-p record)
@@ -929,7 +928,7 @@
                    (fn-record-obligation-id record)
                    (fn-record-content-subject record)
                    (fn-record-release-evidence record) (fn-record-charge record)
-                   (fn-record-stamp record) (fn-held-binding record)))
+                   (fn-record-stamp record)))
 
 (verify-guards fn-sn-prepare-node)
 

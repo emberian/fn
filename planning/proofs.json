@@ -277,7 +277,7 @@
         "fn-record-impl-accepted-input-is-canonical",
         "fn-record-accepted-input-magic",
         "fn-record-accepted-schema-is-the-stamp-kind",
-        "fn-record-schema3-golden-octets-are-the-encoding",
+        "fn-record-schema1-golden-octets-are-the-encoding",
         "fn-bpa-round-trip",
         "fn-bpa-success-is-canonical"
       ],
@@ -3898,7 +3898,7 @@
         "fn-evc-class-by-shape-is-fn-stxe-p",
         "fn-evc-class-by-shape-is-fn-stxk-p",
         "fn-evc-class-by-shape-is-fn-hstxa-p",
-        "fn-evc-class-by-shape-is-fn-cne-eventp",
+        "fn-evc-class-by-shape-is-fn-cpe-eventp",
         "fn-evc-class-by-shape-is-fn-th-topic-eventp",
         "fn-ccar-ocfg-complete-is-ocfg-step-complete",
         "fn-ccar-own-finish-is-own-finish",
@@ -14685,7 +14685,7 @@
         "PRF-038"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-node-host-transfer.lisp",
         "host/bp-node-host.lisp",

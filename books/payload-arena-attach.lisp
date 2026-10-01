@@ -46,8 +46,7 @@
           (fn-record-string-octets "line1") '(13 10)))
 
 (defconst *paa-w*
-  (fn-record-make 0 1 0 "<a@x>" *paa-art* '("fn.test") "o" "s" "e" 1 5
-                  (fn-ab-for-received :post-d25 *paa-art*)))
+  (fn-record-make 0 1 0 "<a@x>" *paa-art* '("fn.test") "o" "s" "e" 1 5))
 
 ; The exec path on the live generic under the attachment: a clear, two
 ; seals, the intern of *paa-w* (a third seal, handle 2), the materialization

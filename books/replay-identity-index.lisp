@@ -344,11 +344,10 @@
 ; fn-node-prepare with both identity questions answered from IX, and the
 ; admitted ledger built where admissibility has just held.
 (defun fn-rii-node-prepare (s generation msgid payload groups
-                              obligation-id subject evidence charge stamp ix binding)
+                              obligation-id subject evidence charge stamp ix)
   (declare (xargs :guard (and (fn-node-statep s) (fn-rii-okp ix s))
                   :verify-guards nil))
-  (if (or (not (fn-ab-p binding))
-          (mbe :logic (not (fn-node-statep s)) :exec nil))
+  (if (mbe :logic (not (fn-node-statep s)) :exec nil)
       s
     (let ((retention (fn-node-retention s)))
       (if (not (fn-rii-admissiblep retention obligation-id subject :archive
@@ -366,17 +365,17 @@
              (fn-node-make-stage
               msgid generation obligation-id subject evidence charge
               (fn-rii-admitted retention obligation-id subject :archive
-                               evidence charge) binding)
+                               evidence charge))
              (fn-node-bindings s))))))))
 
 (defthm fn-rii-node-prepare-is-node-prepare
   (implies (fn-rii-okp ix s)
            (equal (fn-rii-node-prepare s generation msgid payload groups
                                        obligation-id subject evidence charge
-                                       stamp ix binding)
+                                       stamp ix)
                   (fn-node-prepare s generation msgid payload groups
                                    obligation-id subject evidence charge
-                                   stamp binding)))
+                                   stamp)))
   :hints (("Goal" :in-theory (e/d (fn-rii-node-prepare fn-node-prepare)
                                   (fn-node-statep fn-retain-admissiblep
                                    fn-rii-admissiblep fn-retain-admit
@@ -478,7 +477,7 @@
                                           (fn-record-release-evidence article)
                                           (fn-record-charge article)
                                           (fn-record-stamp article)
-                                          ix (fn-held-binding article))))
+                                          ix)))
                 (if (not (fn-node-pending-matchesp
                           prepared
                           (fn-record-txid article)

@@ -1,5 +1,9 @@
-; Legacy :none route: no structural/stale BIB metadata is verified authority.
-; Source tests proposed, not admitted. No real crypto/provider is fabricated.
+; CRC-0 primary blocks are ACCEPTED (stage 0, 2026-10-01: the cc14ca24e
+; refusal is reverted, planning/design-store-representation-2026-10-01.md
+; section 5; dtn7-rs 0.21.0 sends CRC-0 primaries, specs/bp-design.md).  A
+; BIB block beside one is carried as an opaque extension block: no
+; structural or stale BIB metadata is verified authority, and none refuses.
+; No real crypto/provider is fabricated.
 (in-package "ACL2")
 (include-book "../../books/bp-node-receive-boundary")
 (include-book "../../books/bpsec-operation")
@@ -34,12 +38,14 @@
       (fn-bpnf-cl-ingressp *bpcrc-ingress*)
       (fn-bpb-bundlep *bpcrc-bare*) (fn-bpb-bundlep *bpcrc-bib*)
       (fn-bpb-bundlep *bpcrc-malformed*)
-      (equal (fn-bpn-receive-carrier *bpcrc-config* (fn-bpb-encode *bpcrc-bare*) *bpcrc-obs*)
-             '(:refused :block-unintelligible))
-      (equal (fn-bpnf-receive-wire-event *bpcrc-config* (fn-bpb-encode *bpcrc-bib*)
-               *bpcrc-obs* *bpcrc-ingress*) '(:refused :block-unintelligible))
-      (equal (fn-bpnf-receive-wire-event *bpcrc-config* (fn-bpb-encode *bpcrc-malformed*)
-               *bpcrc-obs* *bpcrc-ingress*) '(:refused :block-unintelligible))))
+      (fn-bpn-acceptedp
+       (fn-bpn-receive-carrier *bpcrc-config* (fn-bpb-encode *bpcrc-bare*) *bpcrc-obs*))
+      (fn-bpnf-receive-wire-readyp
+       (fn-bpnf-receive-wire-event *bpcrc-config* (fn-bpb-encode *bpcrc-bib*)
+         *bpcrc-obs* *bpcrc-ingress*))
+      (fn-bpnf-receive-wire-readyp
+       (fn-bpnf-receive-wire-event *bpcrc-config* (fn-bpb-encode *bpcrc-malformed*)
+         *bpcrc-obs* *bpcrc-ingress*))))
 ; Real current-source/key/provider provenance remains absent even when supplied
 ; descriptor matching metadata says verified; a stale view emits no evidence.
 (defconst *bpcrc-op*
@@ -55,8 +61,9 @@
  (and (fn-bps-opp *bpcrc-op*) (eq (fn-bps-field 1 *bpcrc-stale*) :ignored)
       (eq (fn-bps-field 2 *bpcrc-stale*) :stale-current)
       (null (fn-bps-field 4 *bpcrc-stale*))
-      (equal (fn-bpnf-receive-wire-event *bpcrc-config* (fn-bpb-encode *bpcrc-bib*)
-               *bpcrc-obs* *bpcrc-ingress*) '(:refused :block-unintelligible))))
+      (fn-bpnf-receive-wire-readyp
+       (fn-bpnf-receive-wire-event *bpcrc-config* (fn-bpb-encode *bpcrc-bib*)
+         *bpcrc-obs* *bpcrc-ingress*))))
 (assert-event
  (and (fn-bpn-acceptedp (fn-bpn-receive-carrier *bpcrc-config*
                          (fn-bpb-encode *bpcrc-valid*) *bpcrc-obs*))

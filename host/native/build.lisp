@@ -355,10 +355,13 @@
 (ld "host/anchor-server-host.lisp" :ld-error-action :error)
 (ld "host/reader-host.lisp" :ld-error-action :error)
 (ld "host/owner-host.lisp" :ld-error-action :error)
-(ld "host/account-adoption-host.lisp" :ld-error-action :error)
-(ld "host/account-adoption-publication-host.lisp" :ld-error-action :error)
-(ld "host/account-adoption-collection-host.lisp" :ld-error-action :error)
-(ld "host/account-adoption-return-host.lisp" :ld-error-action :error)
+;; Stage 0 (D46, planning/design-store-representation-2026-10-01.md section
+;; 4): the account-adoption host files (host/account-adoption-host,
+;; -publication-host, -collection-host, -return-host) are not ld'ed: their
+;; chain (books/account-adoption-turn-continuation, host/account-adoption-
+;; interfaces) does not certify, and no loaded line calls their entries since
+;; the auth start hook returned to 7aad444ce (host/native/auth.lisp).  They
+;; return with the account-adoption producer (D46 "Completion (forward)").
 (ld "host/page-read-host.lisp" :ld-error-action :error)
 (ld "host/consumer-remote-host.lisp" :ld-error-action :error)
 (ld "host/native-config-host.lisp" :ld-error-action :error)
@@ -467,8 +470,14 @@
         (fnn-deflate-initialize)
         (defun fn-native-entry (st)
           (declare (ignore st))
-          ; Bootstrap precedes facility constructors and ordinary cleanup.
-          (fnn-runtime-bootstrap-production-entry)
+          ; Stage 0 (planning/design-store-representation-2026-10-01.md
+          ; section 4; MODE 2026-10-01 section 3): no runtime bootstrap gate
+          ; here.  fnn-runtime-bootstrap-production-entry admitted the start
+          ; through *fn-runtime-operation-compiled-table*, which no build
+          ; step produces (books/runtime-operation-compiled-table.lisp is
+          ; nil), so every verb exited at bootstrap.  The runtime-* host
+          ; files stay loaded below for their tests; the gate returns with
+          ; its producer.
           ; A refused start exits 5 with its reason (io.lisp).
           (fnn-native-startup (lambda ()
                                 (fnn-crypto-startup)
@@ -487,7 +496,8 @@
         (load "host/native/feed-filename.lisp")
         ; Bounded credential transport.  ACL2 parses and owns every field;
         ; this module also defines the composable pre-listen owner hook.
-        (load "host/native/account-adoption.lisp")
+        ; Stage 0: host/native/account-adoption.lisp is not loaded (its
+        ; entries left the world with the ld's above; D46).
         (load "host/native/auth.lisp")
         ; Offline credential administration.  ACL2 owns argv plans, verifier
         ; derivation, serialization, reporting and persistence transitions.
@@ -565,12 +575,16 @@
         ; The saved image is a host, not a session: no ACL2 banner on stdout,
         ; and `--noinform' below keeps SBCL's own banner off it too.  The
         ; `model' verb writes reply octets to stdout and nothing else may.
-        (load "host/native/runtime-collector.lisp")
-        (load "host/native/runtime-participants.lisp")
-        (load "host/native/runtime-image-policy.lisp")
-        (load "host/native/runtime-profile-envelope.lisp")
-        (load "host/native/runtime-bootstrap.lisp")
-        (fnn-runtime-bootstrap-image-prepare)
+        ; Stage 0 (planning/design-store-representation-2026-10-01.md
+        ; section 4): the runtime bootstrap helpers (host/native/runtime-
+        ; collector, -participants, -image-policy, -profile-envelope,
+        ; -bootstrap) and (fnn-runtime-bootstrap-image-prepare) are not
+        ; loaded: no loaded line calls them once the gate is off
+        ; fn-native-entry, and runtime-profile-envelope reads a stobj
+        ; (fn-recovery-profile-buffer) outside this world.  They return with
+        ; the bootstrap producer (section 4, stage 6); tools/extract/
+        ; core_build.py splices their participant setup only when the
+        ; prepare form is present.
         (setq *print-startup-banner* nil))
 (defttag nil)
 (value-triple (prog2$ (cw "FN_NATIVE_BUILD_LOADED~%") :loaded))

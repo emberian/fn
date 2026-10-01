@@ -916,19 +916,6 @@
 (definterface fn-store-frame-constants
   :class ::ideal)
 
-; Image-time fixed FNSM workspace dimensions; no Store policy or I/O grant.
-(definterface fn-recovery-profile-envelope
-  :class :common-lisp-compliant)
-
-(definterface fn-rci-sum
-  :class :common-lisp-compliant :kinds ((total natp) (limit natp)))
-
-(definterface fn-runtime-construction-inventory
-  :class :common-lisp-compliant)
-
-(definterface fn-rpf-prefix
-  :class :common-lisp-compliant :kinds ((n natp)))
-
 (definterface fn-store-genesis-chain
   :class ::ideal)
 
@@ -4562,7 +4549,7 @@
 
 ; host/native/owner.lisp dispatches it (lane online-reclaim).
 (definterface fn-owner-orcp-swap
-  :class ::program)
+  :class ::common-lisp-compliant :kinds ((rebuilt true-listp)))
 
 ; host/native/owner.lisp dispatches it (lane online-reclaim).
 (definterface fn-owner-orcp-swap-word
@@ -4820,9 +4807,6 @@
               fn-ssr-lz-step-refines-resident))
 (definterface fn-ssr-rows
   :class :common-lisp-compliant)
-(definterface fn-ssr-at
-  :class :common-lisp-compliant
-  :kinds ((n natp)))
 (definterface fn-ssr-seed
   :class :common-lisp-compliant)
 ; Source: host/store-node-host.lisp, program mode over STATE.
@@ -4901,48 +4885,78 @@
 (definterface fn-owner-payload-view-live-p :class :program)
 (definterface fn-owner-payload-view-release :class :program)
 (definterface fn-owner-payload-view-reset :class :program)
-(definterface fn-owner-recovery-source-reset :class :program)
-
 (definterface fn-pvl-runtime-step :class ::common-lisp-compliant)
 (definterface fn-owner-payload-view-owned-p :class :program)
 
-; Actual account lifecycle declarations, checked after its selected core load.
-(include-book "account-adoption-interfaces")
+; Stage 0 (D46): host/account-adoption-interfaces.lisp is not included; its
+; entries' dispatcher (host/native/account-adoption.lisp) is not loaded.
 
 (definterface fn-par-host-accept-record-plan
   :class ::common-lisp-compliant
   :delegates fn-par-accept-record-plan)
 
 (definterface fn-owner-runtime-bootstrap-admit
- :class :common-lisp-compliant :root :extract
- :raw-guarded (5 (nil nil nil nil fn-page-read-pool)
-                 (nil nil fn-page-read-pool)))
+ :class :common-lisp-compliant :root :extract)
 
 ; Actual fixed callbacks captured by the image-owned bootstrap carrier.
 ; Source declarations do not qualify the changed composition.
 (definterface fn-owner-runtime-ats-construct-internal
- :class :common-lisp-compliant :root :extract
- :raw-guarded (2 (fn-allocation-turn-slots fn-page-read-pool)
-                 (nil fn-allocation-turn-slots)))
+ :class :common-lisp-compliant :root :extract)
 (definterface fn-owner-runtime-operation-binding-install-internal
- :class :common-lisp-compliant :root :extract
- :raw-guarded (2 (fn-page-read-pool state) (nil state)))
+ :class :common-lisp-compliant :root :extract)
 (definterface fn-owner-runtime-bootstrap-fence-internal
- :class :common-lisp-compliant :root :extract
- :raw-guarded (1 (fn-page-read-pool) (nil fn-page-read-pool)))
+ :class :common-lisp-compliant :root :extract)
 (definterface fn-owner-recovery-prs-install
- :class :common-lisp-compliant :root :extract
- :raw-guarded (2 (fn-page-read-pool state) (nil fn-page-read-pool)))
+ :class :common-lisp-compliant :root :extract)
 
-; Early pre-service source-owned ticket. Readonly STATE is not returned.
-(definterface fn-owner-recovery-file-turn-begin
- :class :common-lisp-compliant :root :extract
- :raw-guarded (4 (nil fn-allocation-turn-slots fn-page-read-pool state)
-                 (nil nil nil fn-allocation-turn-slots fn-page-read-pool)))
 (definterface fn-ats-finish-owned
- :class :common-lisp-compliant :root :extract
- :raw-guarded (4 (nil nil fn-allocation-turn-slots fn-page-read-pool)
-                 (nil fn-allocation-turn-slots fn-page-read-pool)))
+ :class :common-lisp-compliant :root :extract)
+
+; Stage 0 (2026-10-01): the six entries above were :raw-guarded routes of the
+; runtime bootstrap (host/native/runtime-bootstrap.lisp, owner-control-turn),
+; which stage 0 took off the start (host/native/build.lisp fn-native-entry);
+; the raw routes, and the fn-allocation-turn-slots ABI the DTN world lacks,
+; return with the bootstrap producer (planning/design-store-representation-
+; 2026-10-01.md section 4, stage 6).
 
 (definterface fn-pwz-tokenp :class :common-lisp-compliant
   :direct "Guard-t full decoded token discrimination precedes raw token destructuring; decoded execution remains refused")
+
+; Stage 0 (2026-10-01, planning/design-store-representation-2026-10-01.md
+; section 4): the entries the Codex-era host dispatched without declaring
+; them (interface_emit --check at dev e014f2c5a: 33), and the page pool's
+; context entry stage 0 dispatches (host/native/extent.lisp
+; fnn-extent-pool-open-context).  Declared as the raw host calls them;
+; their classes are the sources' (tools/interface_emit.py --check).
+(definterface fn-crb-open :class :common-lisp-compliant)
+(definterface fn-cre-header-octets :class :common-lisp-compliant)
+(definterface fn-cre-header-plan :class :common-lisp-compliant)
+(definterface fn-cre-receive-failure :class :common-lisp-compliant)
+(definterface fn-log-sink-pending-lines :class :common-lisp-compliant)
+(definterface fn-log-sink-pending-octets :class :common-lisp-compliant)
+(definterface fn-ort-fenced-input-consumed :class :common-lisp-compliant)
+(definterface fn-ort-intake-action :class :common-lisp-compliant)
+(definterface fn-ort-log-close-action :class :common-lisp-compliant)
+(definterface fn-ort-log-close-exit :class :common-lisp-compliant
+  :kinds ((prior integerp) (uncertain integerp)))
+(definterface fn-ort-report-close-action :class :common-lisp-compliant)
+(definterface fn-ort-service-claim-action :class :common-lisp-compliant)
+(definterface fn-ort-service-settlement-action :class :common-lisp-compliant)
+(definterface fn-ort-service-start-action :class :common-lisp-compliant)
+(definterface fn-ort-service-start-reason :class :common-lisp-compliant)
+(definterface fn-ort-store-close-action :class :common-lisp-compliant)
+(definterface fn-ort-window-step :class :common-lisp-compliant)
+(definterface fn-owner-consumer-publication-verdict :class :program)
+(definterface fn-owner-identity-reservation :class :program)
+(definterface fn-owner-page-read-open-context :class :common-lisp-compliant)
+(definterface fn-owner-remote-ingress :class :program)
+(definterface fn-owner-remote-operation-preflight :class :common-lisp-compliant)
+(definterface fn-owner-retire-intake-refused :class :program)
+(definterface fn-splan-of-effects :class :common-lisp-compliant)
+(definterface fn-tcl-final-count-ready-p :class :common-lisp-compliant)
+(definterface fn-tcl-final-count-value :class :common-lisp-compliant)
+(definterface fn-tcl-final-held-count :class :common-lisp-compliant)
+(definterface fn-tcl-host-source-drive :class :ideal :kinds ((buf fn-cbor-octet-listp)))
+(definterface fn-tcl-host-source-more-p :class :ideal)
+(definterface fn-tcl-source-result-action :class :common-lisp-compliant)
+(definterface fn-tcl-source-result-token :class :common-lisp-compliant)

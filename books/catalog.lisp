@@ -119,7 +119,6 @@
        (fn-record-metadata-bytes-p (fn-held-release-evidence x))
        (fn-record-uint64p (fn-held-charge x))
        (fn-record-stampp (fn-held-stamp x))
-       (fn-ab-p (fn-held-binding x))
        (fn-hf-p (fn-held-facts x))
        (fn-cat-ctxp (fn-held-context x))
        (fn-held-numbersp (fn-held-numbers x))
@@ -140,7 +139,6 @@
 (defthm fn-cat-rowp-fields
   (implies (fn-cat-rowp h)
            (and (natp (fn-record-payload h))
-                (fn-ab-p (fn-held-binding h))
                 (fn-hf-p (fn-held-facts h))
                 (fn-held-numbersp (fn-held-numbers h))
                 (fn-held-withdrawnp (fn-held-withdrawn h))))
@@ -2635,7 +2633,7 @@
                                      (fn-record-release-evidence h)
                                      (fn-record-charge h) (fn-record-stamp h)
                                      (fn-held-facts h) (fn-held-context h)
-                                     ns (fn-held-withdrawn h) (fn-held-binding h))))
+                                     ns (fn-held-withdrawn h))))
    :hints (("Goal" :in-theory (enable fn-cat-rowp fn-record-internals fn-held-internals)))))
 
 (local

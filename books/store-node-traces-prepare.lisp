@@ -736,9 +736,8 @@
 ; now, because applying the event is the WHOLE node effect of a deferred
 ; publication.
 
-; This disjunction only unfolds the actual Store union. Consumer progress,
-; consumer authority and topic events are distinct final arms; this equation
-; does not prove their projections were applied.
+; This disjunction only unfolds the Store union.  Consumer and topic events
+; are separate final arms; it does not prove their projections were applied.
 (local
  (defthm fn-snt-store-event-final-arms-by-definition
    (implies (and (fn-store-event-p event)
@@ -746,12 +745,12 @@
                  (not (fn-store-retention-event-p event))
                  (not (fn-stxe-p event))
                  (not (fn-stxk-p event)))
-            (or (fn-hstxa-p event) (fn-cne-eventp event)
-                (fn-cae-eventp event) (fn-th-topic-eventp event)))
+            (or (fn-hstxa-p event) (fn-cpe-eventp event)
+                (fn-th-topic-eventp event)))
    :hints (("Goal" :in-theory (e/d (fn-store-event-p)
                                    (fn-record-p fn-held-p fn-hstxa-p fn-store-retention-event-p
                                     fn-stxe-p fn-stxk-p fn-stxa-p fn-hstxa-p
-                                    fn-cne-eventp fn-cae-eventp fn-th-topic-eventp
+                                    fn-cpe-eventp fn-th-topic-eventp
                                     fn-record-shape-vocabulary
                                     fn-record-record-vocabulary))))))
 

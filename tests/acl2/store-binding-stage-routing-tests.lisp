@@ -1,3 +1,4 @@
+; UNHOOKED stage 0 (2026-10-01): depends on the reverted FNCE consumer-authority event kinds in the wire-event grammar (planning/design-store-representation-2026-10-01.md section 4)
 ; Actual composed Store regression. Execute on the matching modern owner
 ; source world; authoring these assertions is not their execution verdict.
 (in-package "ACL2")

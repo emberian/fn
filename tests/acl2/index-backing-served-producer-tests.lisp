@@ -1,3 +1,4 @@
+; UNHOOKED stage 0 (2026-10-01): depends on the reverted acceptance-binding field (planning/design-store-representation-2026-10-01.md section 5)
 (in-package "ACL2")
 (include-book "index-backing-publication-row-carry-tests")
 (include-book "../../books/index-backing-served-producer-carry")
