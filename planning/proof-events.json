@@ -18571,7 +18571,7 @@
         {
           "kind": "theorem",
           "name": "fn-pgs-page-words-u64",
-          "note": "The page's words are u64 words (the constraint the put needs)."
+          "note": "A-PGS-HOST-IO's added u64 constraint, a strict strengthening of the old shape/equality constraints; needed to preserve the frame's type."
         },
         {
           "kind": "theorem",

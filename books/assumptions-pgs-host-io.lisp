@@ -54,20 +54,23 @@
 ; 16-octet bignum for every word at or above 2^62, and a put loop into the
 ; stobj, per 16 KiB page (build/coordinator/scholar-representation-2026-10-01.md
 ; section 1.3: three copies, 50 to 60 KiB of garbage a page).
-; `fn-pgs-fill-frame' is the SAME assumption stated over the frame: the host
-; preads page ADDR of FILE into words BASE.. of the array SEL selects, and
-; the constraint says the state it leaves is exactly the one putting
-; `fn-pgs-page-words' there leaves (`fn-pgs-frame-put', the put loop in the
-; logic).  Nothing is assumed of the fill that was not assumed of the list:
-; a theorem over the list form transfers to the frame form by that one
-; equation, and the list form stays for the theorems and tests that take
-; words as data.  What the host's raw definition must do is unchanged in
-; kind (one pread, short counts looped, every error a named condition,
-; never a silent zero fill; A-PGS-LE); what changes is where the words
-; land: in the stobj's (unsigned-byte 64) array, through its storage, so
-; no word is ever boxed or consed.  The words are u64 words (new constraint
-; fn-pgs-page-words-u64: what "u64 words" in the sentence above always
-; meant; stated so that the put of them keeps the stobj's type).
+; The encapsulate GAINED the u64 constraint `fn-pgs-page-words-u64'.
+; It is a strict strengthening: the old shape and realizer-equality
+; constraints also admitted a constant list of 2048 negative words.
+; The existing host realizer `fn-pgs-fill-realize' in host/native/extent.lisp
+; reads 16384 (unsigned-byte 8) octets with `fnn-extent-pread' and assembles
+; each word from eight octets, little-endian, so its words are u64 by
+; construction.  It does not yet pread into a u64 array.  This host-code
+; observation is the reason for the added assumption, not an ACL2 proof
+; of that implementation.  The constraint lets the put preserve the
+; stobj's type.
+;
+; `fn-pgs-fill-frame' extends this strengthened A-PGS-HOST-IO boundary:
+; its whole-state equation is the put of `fn-pgs-page-words' at BASE in
+; SEL's array.  Its local witness constructs that extension; it does not
+; prove a raw host replacement correct.  The intended in-place realizer
+; preads into the stobj's (unsigned-byte 64) array, avoiding boxed words
+; and conses; the list form remains for proofs and tests taking word data.
 
 (defun fn-pgs-u64-listp (ws)
   (declare (xargs :guard t))
@@ -92,6 +95,7 @@
     (and (true-listp (fn-pgs-page-words file addr))
          (equal (len (fn-pgs-page-words file addr)) 2048)))
 
+  ; A-PGS-HOST-IO: added u64 constraint, not derived from the old shape.
   (defthm fn-pgs-page-words-u64
     (fn-pgs-u64-listp (fn-pgs-page-words file addr)))
 
@@ -165,7 +169,7 @@
 ; A-PGS-HOST-IO, the frame form.  `(fn-pgs-fill-frame file addr sel base
 ; pgs-mem)' is the host's in-place fill: page ADDR of FILE into words
 ; BASE .. BASE+2047 of the array SEL selects.  Its raw definition
-; (host/native/extent.lisp) preads the 16 KiB straight into that array's
+; is not yet present in host/native/extent.lisp; it must pread the 16 KiB into that array's
 ; storage at word BASE (sb-sys:vector-sap; A-PGS-LE for the word order),
 ; refusing by name a short read, an unknown file, a selector or a range the
 ; guard excludes, never writing outside the range or answering made-up
@@ -190,6 +194,7 @@
     (equal (fn-pgs-fill-frame file addr sel base pgs-mem)
            (fn-pgs-frame-put sel base (fn-pgs-page-words file addr) pgs-mem))))
 
+; A-PGS-HOST-IO (including fn-pgs-page-words-u64) discharges this guard.
 ; The fill as the logic says it (the witness, kept): what a test or an
 ; oracle attaches to `fn-pgs-fill-frame' once `fn-pgs-page-words' is
 ; attached to its page file as data (tests/acl2/history-records-disk-tests.lisp).
@@ -213,6 +218,8 @@
   :hints (("Goal" :use ((:instance fn-pgs-page-words-shape)
                         (:instance fn-pgs-frame-put-lengths (ws (fn-pgs-page-words file addr)))))))
 
+; A-PGS-HOST-IO: uses the added fn-pgs-page-words-u64 constraint
+; and the assumed whole-state fill equation to preserve the stobj type.
 (defthm fn-pgs-fill-frame-memp
   (implies (and (pgs-memp pgs-mem) (natp base) (<= (+ base 2048) (fn-pgs-frame-len sel pgs-mem)))
            (pgs-memp (fn-pgs-fill-frame file addr sel base pgs-mem)))
