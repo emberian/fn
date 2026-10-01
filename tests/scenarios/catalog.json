@@ -7400,7 +7400,10 @@
         "tests/acl2/bpsec-asb-target-types-tests.lisp",
         "planning/evidence/bpsec-asb-target-types-source-2026-09-30.json",
         "tests/acl2/bpsec-asb-window-differential-tests.lisp",
-        "planning/evidence/bpsec-asb-window-differential-source-2026-09-30.json"
+        "planning/evidence/bpsec-asb-window-differential-source-2026-09-30.json",
+        "books/bpsec-received-window.lisp",
+        "tests/acl2/bpsec-received-window-tests.lisp",
+        "planning/evidence/bpsec-received-window-source-2026-09-30.json"
       ],
       "execution_scope": "ACL2 literal source fixture only; full every-schedule theorem and operational provider/native execution remain open."
     },

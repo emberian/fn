@@ -1159,6 +1159,22 @@ relation; it is neither primitive verification nor a quantified every-window
 refinement theorem. The actual registered held/block source and pinned lifetime
 must establish that relation before the served parser supplies authority.
 
+`books/bpsec-received-window.lisp` names the actual internal concrete reader
+`fn-bprx-segment-window`: under the exact array representation, frozen matching
+nonce/ordinal and valid offset/count range, its successful bytes equal the
+corresponding slice of the concrete segment, have exactly count<=64 octets and
+form a valid parser window. The whole segment abstraction is ghost only; the
+served reader reads bounded array cells. Its fixed256 allocation unit is not
+a bundle/profile ceiling. An explicitly unfunded local-stobj fixture writes a
+literal BCB, freezes, reads actual array windows and feeds only source-window
+bytes to the actual ASB stepper, obtaining the complete literal ASB. Every
+named hypothesis has an affirmative omission witness; malformed representation
+and guard-input cases are ground logical proofs, separate from permitted
+concrete executions. Stale/unpublished/range remain pre-I/O refusals, never
+manufactured successful empty windows. The real registered original-held/block
+source issuer, multi-segment backing directory, pinned lifetime and installed
+native/crypto admission remain open; a local alias supplies no such authority.
+
 The logical target-graph reference in `books/bpsec-target.lisp` binds each
 ASB as `(block-number . ASB)`, checks actual block existence/type, unique
 service/target pairs, forbidden security targets and payload BCB flags. Every

@@ -18002,6 +18002,11 @@
           "kind": "theorem",
           "name": "fn-bps-asb-step-preserves-target-types",
           "pending_subject": "Actual ASB uint64 target/pending and active duplicate/reversal scratch typing with typed head/fixed34 spine. Ghost predicates never served; complete grammar/count/uniqueness/every-window alpha, physical immutable backing/pinned lifetime and installed BP caller/crypto gate remain open. Proper-local source admission only."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-received-window-is-exact-concrete-slice",
+          "pending_subject": "Actual internal FnBprxSegmentWindow concrete array output boundary, with frozen/current/range/representation hypotheses and ghost alpha only. No registered backing/original held/block source pin or installed native caller; full parser/crypto/current-authority gate remains open. Proper-local source admission only."
         }
       ]
     },
