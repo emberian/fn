@@ -2372,15 +2372,15 @@
     "books": 2733,
     "books_in_root_closure": 2644,
     "roots": 2365,
-    "theorems": 36345,
-    "functions": 23146,
-    "assert_events": 25506,
+    "theorems": 36347,
+    "functions": 23148,
+    "assert_events": 25507,
     "must_fails": 2611,
     "prover_refusals": 0,
     "encapsulates": 210,
     "guards": {
       "verified": 3847,
-      "declared-off": 2981,
+      "declared-off": 2983,
       "default-guarded": 12853,
       "default-unguarded": 3465
     },
@@ -17935,7 +17935,7 @@
       "book": "books/def-representation-lib.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 15,
+      "theorems": 16,
       "functions": 5,
       "guards": {
         "verified": 0,
@@ -17951,6 +17951,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "def-representation-paged",
         "proto/adt-lib"
       ],
       "system_includes": [],
@@ -61534,16 +61535,16 @@
       "book": "tests/acl2/def-representation-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 11,
-      "functions": 23,
+      "theorems": 12,
+      "functions": 25,
       "guards": {
         "verified": 0,
-        "declared-off": 13,
+        "declared-off": 15,
         "default-guarded": 5,
         "default-unguarded": 5
       },
       "verify_guards_events": 0,
-      "assert_events": 29,
+      "assert_events": 30,
       "must_fails": 8,
       "prover_refusals": 0,
       "defconsts": 5,
@@ -94067,13 +94068,13 @@
       {
         "theorem": "drt-pay-recognizer-is-arena-recognizer",
         "book": "tests/acl2/def-representation-tests.lisp",
-        "line": 231,
+        "line": 235,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "drt-pay-count-is-arena-count",
         "book": "tests/acl2/def-representation-tests.lisp",
-        "line": 236,
+        "line": 240,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
