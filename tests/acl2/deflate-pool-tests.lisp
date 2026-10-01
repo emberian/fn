@@ -123,3 +123,50 @@
   (and (equal (nth 9 *dpt-pooled*) nil)
        (equal (nth 10 *dpt-pooled*) nil))
   :rule-classes nil)
+
+; The unpooled host entry (fn-pzd-decode-bufs) over fresh buffers: its answer.
+(defun dpt-unpooled (dict c n)
+  (declare (xargs :guard (and (fn-cbor-octet-listp dict) (fn-cbor-octet-listp c) (natp n))))
+  (with-local-stobj fn-octets
+    (mv-let (r fn-octets)
+      (with-local-stobj fn-zin-win
+        (mv-let (r fn-zin-win fn-octets)
+          (with-local-stobj fn-zin-tab
+            (mv-let (r fn-zin-tab fn-zin-win fn-octets)
+              (with-local-stobj fn-zin-out
+                (mv-let (r fn-zin-out fn-zin-tab fn-zin-win fn-octets)
+                  (let ((fn-octets (fn-octets-from-list c fn-octets)))
+                    (mv-let (a fn-zin-win fn-zin-tab fn-zin-out)
+                      (fn-pzd-decode-bufs dict (fn-octets-len fn-octets) n
+                                          fn-octets fn-zin-win fn-zin-tab fn-zin-out)
+                      (mv a fn-zin-out fn-zin-tab fn-zin-win fn-octets)))
+                  (mv r fn-zin-tab fn-zin-win fn-octets)))
+              (mv r fn-zin-win fn-octets)))
+          (mv r fn-octets)))
+      r)))
+
+(defconst *dpt-truncated* (dpt-reads nil *plz-dict* (take 6 *plz-dict-block*) 750))
+(defconst *dpt-full* (dpt-reads nil *plz-dict* *plz-dict-block* 3))
+(defconst *dpt-t6* (take 6 *plz-dict-block*))
+
+; KEYSTONE fn-zpl-decode-bufs-is-decode, its refusal arm: the pooled read
+; answers the unpooled host entry's whole answer, the refusal reason
+; included, and two refusals with different reasons are told apart -- a
+; stream cut after six octets (truncated) and the whole stream into a
+; three-octet output bound (full).  Each read starts from the host's NIL
+; pool, and the pool it returns passes fn-zpl-pool-check (the invariant).
+(defthm dpt-refusal-reason-witness
+  (and (fn-cbor-octet-listp *dpt-t6*) (fn-cbor-octet-listp *plz-dict-block*)
+       (natp 750) (natp 3) (fn-cbor-octet-listp *plz-dict*)
+       (fn-zpl-pool-okp nil fn-zin-win)
+       (equal (nth 0 *dpt-truncated*) (dpt-unpooled *plz-dict* *dpt-t6* 750))
+       (equal (nth 0 *dpt-truncated*) '(:error (:refused :truncated)))
+       (equal (car (nth 0 *dpt-truncated*)) (car (fn-pzd-decode *plz-dict* *dpt-t6* 750)))
+       (equal (nth 7 *dpt-truncated*) t)
+       (equal (nth 0 *dpt-full*) (dpt-unpooled *plz-dict* *plz-dict-block* 3))
+       (equal (nth 0 *dpt-full*) '(:error :full))
+       (equal (car (nth 0 *dpt-full*)) (car (fn-pzd-decode *plz-dict* *plz-dict-block* 3)))
+       (equal (nth 7 *dpt-full*) t)
+       (not (equal (nth 0 *dpt-truncated*) (nth 0 *dpt-full*))))
+  :hints (("Goal" :in-theory (enable (:e fn-pzd-decode) (:e dpt-unpooled))))
+  :rule-classes nil)

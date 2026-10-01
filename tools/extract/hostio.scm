@@ -273,6 +273,21 @@ static int fnx_statfs(const char *p, unsigned char *buf) {
                         (if (< b 0) w (wl (- b 1) (+ (* w 256) (u8vector-ref buf (+ (* 8 k) b))))))
                       acc))))))
 
+;; A-PGS-HOST-IO's frame fill (host/native/extent.lisp fn-pgs-fill-frame;
+;; books/assumptions-pgs-host-io.lisp): the same page put IN PLACE into words
+;; BASE.. of the pgs-mem array SEL selects (slot 0 pgs-w, 1 pgs-m, 2 pgs-t;
+;; the u64 arrays are Scheme vectors here).  The oracle does what the
+;; constraint says, the put of the page's words; the native host preads into
+;; the array's storage.  Lane page-word-boundary, 2026-10-01.
+(define (a-pgs-fill-frame file addr sel base pgs-mem)
+  (let ((arr (vector-ref pgs-mem sel)))
+    (unless (<= (+ base 2048) (vector-length arr))
+      (error (sprintf "history-page-fill: selector ~a at word ~a is outside the page store (page ~a)" sel base addr)))
+    (let loop ((k 0) (ws (a-pgs-fill-realize file addr)))
+      (if (< k 2048)
+          (begin (vector-set! arr (+ base k) (car ws)) (loop (+ k 1) (cdr ws)))
+          pgs-mem))))
+
 ;; A-DURABLE-LZ's realizer (host/native/extent.lisp fn-durable-realize-lz):
 ;; the block read through the extent realizer (trailer checked), ACL2's
 ;; decoder fn-lzr-lz-read over it (called as the host calls it, through the

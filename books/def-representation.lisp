@@ -283,6 +283,42 @@
          (rep-theorem-names-p (cdr names) wrld))
         (t nil)))
 
+; The prototype's naming helpers have other callers and intentionally use
+; ACL2.  Relocate only NAME-derived symbols in this generator's output.
+; Expand the same schema with a second name to identify those occurrences:
+; library symbols, field names, enum values and supplied invariant lemmas
+; are identical in both expansions, even when their spelling resembles NAME.
+; This also covers the prototype-generated foundation without copying it.
+(defun rep-package-events (events probe name)
+  (cond ((and (consp events) (consp probe))
+         (cons (rep-package-events (car events) (car probe) name)
+               (rep-package-events (cdr events) (cdr probe) name)))
+        ((and (symbolp events) (symbolp probe) (not (eq events probe)))
+         (intern-in-package-of-symbol (symbol-name events) name))
+        (t events)))
+
+(defun rep-instance-events (name fields0 scalar generic invariant invariant-lemmas)
+  (let* ((fields (adt-norm-fields fields0))
+         (impl (if generic (adt-sym name "-COLS") name))
+         (instance (if scalar
+                       (rep-scalar-events impl fields invariant invariant-lemmas)
+                     (defadt-fn impl fields0))))
+    `(progn
+       ,instance
+       ,@(if generic (rep-generic-events name impl fields scalar) nil)
+       (table fn-generated ',name
+              '(:def-representation :scalar ,scalar :generic ,generic
+                :implementation ,impl :invariant ,invariant)))))
+
+(defun rep-named-events (name fields0 scalar generic invariant invariant-lemmas)
+  (rep-package-events
+   (rep-instance-events name fields0 scalar generic invariant invariant-lemmas)
+   (rep-instance-events
+    (intern-in-package-of-symbol
+     (concatenate 'string (symbol-name name) "-REP-PACKAGE-PROBE") name)
+    fields0 scalar generic invariant invariant-lemmas)
+   name))
+
 (defun def-representation-fn (name fields0 scalar generic invariant invariant-lemmas state)
   (declare (xargs :stobjs state))
   (let* ((wrld (w state))
@@ -308,17 +344,7 @@
      ((and invariant (not scalar))
       (er soft ctx "~x0: :invariant is supported with :scalar t in this stage." name))
      (t
-      (let* ((impl (if generic (adt-sym name "-COLS") name))
-             (instance (if scalar
-                           (rep-scalar-events impl fields invariant invariant-lemmas)
-                         (defadt-fn impl fields0))))
-        (value
-         `(progn
-            ,instance
-            ,@(if generic (rep-generic-events name impl fields scalar) nil)
-            (table fn-generated ',name
-                   '(:def-representation :scalar ,scalar :generic ,generic
-                     :implementation ,impl :invariant ,invariant)))))))))
+      (value (rep-named-events name fields0 scalar generic invariant invariant-lemmas))))))
 
 (defun rep-fields-of (args)
   (if (or (endp args) (keywordp (car args)))

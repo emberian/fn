@@ -208,6 +208,15 @@
                                          (fn-rcl-reclaim-articles *rt-arts1* "<a1@x>" *rt-t2*))
                      :conflict))
 (assert-event (not (fn-rcl-collisionp *rt-p1* *rt-tomb-octets*)))
+; fn-rcl-collisionp's in-domain positive -- two distinct octet lists with one
+; BLAKE3 digest -- is a BLAKE3 collision: UNCONSTRUCTIBLE, so no witness over
+; octets exists.  OUT-OF-DOMAIN anchor (labelled): fn-blake3 reads any object
+; as octets, and NIL and the symbol FOO both read as the empty message, so
+; they are distinct and digest alike.  A constantly-false definition fails
+; this; it says nothing about octet lists.
+(assert-event (and (not (equal nil 'foo))
+                   (equal (fn-blake3 nil) (fn-blake3 'foo))
+                   (fn-rcl-collisionp nil 'foo)))
 (must-fail-checked (assert-event (equal (fn-rcl-action-over "<a1@x>" *rt-p1* '("g")
                                                     (fn-rcl-reclaim-articles *rt-arts1* "<a1@x>" *rt-t2*))
                                 (fn-rcl-action-over "<a1@x>" *rt-p1* '("g") *rt-arts1*))))

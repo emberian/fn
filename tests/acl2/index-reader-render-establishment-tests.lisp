@@ -1,5 +1,5 @@
 (in-package "ACL2")
-(include-book "index-reader-render-establishment")
+(include-book "../../books/index-reader-render-establishment")
 
 ; MODEL: synthetic captured publication/source/claim/receipt seeds. Actual
 ; query registration and actual intent/install transitions are executed.

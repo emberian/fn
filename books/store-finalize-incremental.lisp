@@ -31,10 +31,13 @@
 ; rebuild's count and last transaction id; the open has the checkpoint's
 ; count (fn-sco-freeze-of-capture-carries-the-count) and its last record.
 ; Cost of fn-sfi-extend-open beyond the folds' resume: O(|Q|) record checks
-; + O(configuration) + O(1).  Also dropped: the twin's fn-stx-index-of-store
-; over the opened store, which parses every retained article's payload
-; against the empty keyring for the index that
-; fn-stx-index-of-store-without-a-keyring proves empty.  Not changed here
+; + O(configuration) + O(1), plus the opened Store's two row folds over every
+; retained record: fn-sn-update-replayed's verdicts (fn-sn-row-verdicts) and
+; the statement index of the frozen row deltas (fn-sn-index-of-rows), which
+; the configured twin installs too.  (Until 2026-10-01 this open installed
+; the EMPTY index, correct only while a reopened Store had no keyring; the
+; reopen now derives its keyring from the retained snapshots, and the empty
+; index diverged from the twin.)  Neither fold parses a payload.  Not changed here
 ; (named in the lane's record): the resume's check of the paused node and
 ; the tries it rebuilds (fn-rii-sco-cpr-resume), inherited from section 7 of
 ; the twin book; and the one node check the empty-suffix path keeps
@@ -188,13 +191,14 @@
                  event-index)))
     (and (fn-sn-shapep opened)
          (equal (fn-sn-files opened) files)
-         (equal (fn-sn-keyring opened) nil)
-         (equal (fn-sn-verdicts opened)
-                (fn-replay-verdict-pairs (fn-stxk-context-verdicts identity)))
+         (equal (fn-sn-keyring opened)
+                (fn-ssk-keyring-of-snapshots (fn-stxk-context-snapshots identity)))
+         (equal (fn-sn-verdicts opened) (fn-sn-row-verdicts (fn-sf-records files)))
          (equal (fn-sn-keyring-snapshots opened)
                 (fn-stxk-context-snapshots identity))
          (equal (fn-sn-identity-next opened) (fn-stxk-context-next identity))
-         (equal (fn-sn-keyring-generation opened) 0)))
+         (equal (fn-sn-keyring-generation opened)
+                (fn-ssk-generation (fn-stxk-context-snapshots identity)))))
   :hints (("Goal" :in-theory (e/d (fn-sn-with-event-index fn-sn-with-topic
                                    fn-sn-with-consumer fn-cpo-install
                                    fn-sn-update-replayed fn-sn-observed-seed
@@ -206,6 +210,8 @@
                                    fn-sn-config-history fn-sn-consumer fn-sn-topic
                                    fn-sn-event-index)
                                   (fn-replay-verdict-pairs fn-sf-make
+                                   fn-ssk-keyring-of-snapshots fn-ssk-generation
+                                   fn-sn-row-verdicts fn-sf-records
                                    fn-node-initial-state fn-cnode-make fn-cnode-node
                                    fn-cnode-config fn-cnode-domain-of
                                    fn-cfg-capacity fn-cfg-value)))))
@@ -270,10 +276,10 @@
                               (fn-cpo-install
                                (fn-sn-update-replayed
                                 seed files advanced
-                                ; the open has no keyring: its index IS the
-                                ; empty one (fn-stx-index-of-store-without-a-
-                                ; keyring), so no article payload is parsed
-                                (fn-stx-index-empty)
+                                ; the frozen row deltas, as the configured
+                                ; finalize installs them: no payload is
+                                ; reinterned under the reopened keyring
+                                (fn-sn-index-of-rows events)
                                 identity)
                                (fn-cnode-make advanced config) configs)
                               (fn-cp-nth 1 consumer))
@@ -298,6 +304,52 @@
                                    fn-sco-cpr-prefix)))))
 
 ; Under the two carried facts the finalize is the twin book's.
+; The opened Store's verdicts are fn-sn-row-verdicts of its records: each row
+; contributes a well-formed verdict pair or nothing.
+(local (defthm fn-sfi-held-msgid-stringp
+  (implies (fn-held-p row) (stringp (fn-record-msgid row)))
+  :hints (("Goal" :in-theory (enable fn-held-p fn-held-p-fields fn-record-msgidp)))))
+(local (defthm fn-sfi-held-verdict-valid
+  (implies (fn-held-p row)
+           (and (member-equal (fn-stx-verdict-token (fn-hc-verdict (fn-held-context row)))
+                              *fn-stx-verdicts*)
+                (natp (fn-stx-verdict-generation (fn-hc-verdict (fn-held-context row))))))
+  :hints (("Goal" :in-theory (enable fn-held-p fn-held-p-fields fn-hc-p fn-hc-p-fields
+                                     fn-hc-verdictp fn-stx-verdict-token
+                                     fn-stx-verdict-generation)))))
+(local (defthm fn-sfi-replay-verdict-pair-valid
+  (implies (fn-stxe-p e)
+           (let ((p (fn-replay-verdict-pair e)))
+             (implies p (and (consp p) (stringp (car p))
+                             (member-equal (fn-stx-verdict-token (cdr p)) *fn-stx-verdicts*)
+                             (natp (fn-stx-verdict-generation (cdr p)))))))
+  :hints (("Goal" :in-theory (enable fn-replay-verdict-pair fn-stx-make-verdict
+                                     fn-stx-verdict-token fn-stx-verdict-generation
+                                     fn-stxe-tokenp fn-record-msgidp)))))
+(local (defthm fn-sfi-row-verdict-pair-valid
+  (let ((p (fn-sn-row-verdict-pair row)))
+    (implies p (and (consp p) (stringp (car p))
+                    (member-equal (fn-stx-verdict-token (cdr p)) *fn-stx-verdicts*)
+                    (natp (fn-stx-verdict-generation (cdr p))))))
+  :hints (("Goal" :in-theory (e/d (fn-sn-row-verdict-pair)
+                                  (fn-held-p fn-hstxa-p fn-stxe-p fn-stmt-okp fn-stmt-value
+                                   fn-stxe-decode-exact fn-replay-verdict-pair fn-record-msgid
+                                   fn-hc-verdict fn-held-context fn-stx-verdict-token
+                                   fn-stx-verdict-generation))
+           :use ((:instance fn-sfi-replay-verdict-pair-valid
+                            (e (fn-stmt-value (fn-stxe-decode-exact
+                                               (fn-stxa-verdict-event (fn-hstxa-stxa row)))))))))))
+(local (defthm fn-sfi-row-verdicts-fold-valid
+  (implies (fn-sn-verdict-listp verdicts)
+           (fn-sn-verdict-listp (fn-sn-row-verdicts-fold rows verdicts)))
+  :hints (("Goal" :induct (fn-sn-row-verdicts-fold rows verdicts)
+                  :in-theory (e/d (fn-sn-row-verdicts-fold fn-sn-verdict-listp)
+                                  (fn-sn-row-verdict-pair fn-stx-verdict-token
+                                   fn-stx-verdict-generation))))))
+(local (defthm fn-sfi-row-verdicts-valid
+  (fn-sn-verdict-listp (fn-sn-row-verdicts rows))
+  :hints (("Goal" :in-theory (enable fn-sn-row-verdicts fn-sn-verdict-listp)))))
+
 (defthm fn-sfi-finalize-carried-is-finalize-configured
   (implies (and (equal (fn-sfi-historyp-extend count next frontier suffix)
                        (fn-rii-observed-historyp frontier (fn-sco-records c)))

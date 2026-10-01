@@ -406,7 +406,10 @@
         (if (zp np)
             (mv (list :refused :image-pages) fn-hrecs$c)
           (mv-let (fv fn-hrecs$c)
-            (fn-hrc-fill 0 (fn-pgs-fill-realize file (fn-hrc-phys 0 fn-hrecs$c)) fn-hrecs$c)
+            ; the list form in the logic; the frame fill runs (the same term
+            ; by fn-hrc-frame-fill's definition; lane page-word-boundary)
+            (mbe :logic (fn-hrc-fill 0 (fn-pgs-fill-realize file (fn-hrc-phys 0 fn-hrecs$c)) fn-hrecs$c)
+                 :exec (fn-hrc-frame-fill file (fn-hrc-phys 0 fn-hrecs$c) 0 fn-hrecs$c))
             (if (not (eq fv :ok))
                 (mv (if (consp fv) fv (list :refused :page0 fv)) fn-hrecs$c)
               (mv-let (hv hr)
@@ -727,6 +730,26 @@
           ((not (and (equal (fn-hib-q-phys q) (first e)) (equal (fn-hib-q-digest q) (third e))))
            (mv (list :refused :stale-page p) fn-hrecs$c))
           (t (fn-hrc-fill p words fn-hrecs$c)))))
+
+(defun fn-hib-frame-complete (file q fn-hrecs$c)
+  ; `fn-hib-complete' with the words read by the fill itself, in place: the
+  ; completion of request Q from the page FILE at Q's PHYS (lane
+  ; page-word-boundary, 2026-10-01).  In the logic it is fn-hib-complete at
+  ; the realizer's words, so every verdict above is its verdict; what runs
+  ; reads the page into the frame only after the root and the entry are
+  ; found current (a stale request reads nothing).
+  (declare (xargs :stobjs fn-hrecs$c :guard (and (fn-hib-requestp q) (fn-hrc-wfp fn-hrecs$c))
+                  :guard-hints (("Goal" :in-theory (union-theories '(fn-hib-complete fn-hrc-frame-fill fn-hib-requestp
+                                                                     fn-hib-q-page fn-hib-q-phys fn-hib-entry-shape natp len
+                                                                     (:e len) (:e natp))
+                                                                   (theory 'minimal-theory))))))
+  (mbe :logic (fn-hib-complete q (fn-pgs-fill-realize file (fn-hib-q-phys q)) fn-hrecs$c)
+       :exec (let ((p (fn-hib-q-page q)) (e (fn-hib-entry (fn-hib-q-page q) fn-hrecs$c)))
+               (cond ((not (equal (fn-hib-q-root q) (fn-hrc-txid fn-hrecs$c)))
+                      (mv (list :refused :stale-root (fn-hib-q-root q) (fn-hrc-txid fn-hrecs$c)) fn-hrecs$c))
+                     ((not (and (equal (fn-hib-q-phys q) (first e)) (equal (fn-hib-q-digest q) (third e))))
+                      (mv (list :refused :stale-page p) fn-hrecs$c))
+                     (t (fn-hrc-frame-fill file (fn-hib-q-phys q) p fn-hrecs$c))))))
 
 
 (defthm fn-hib-complete-stale

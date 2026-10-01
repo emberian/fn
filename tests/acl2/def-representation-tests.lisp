@@ -49,6 +49,39 @@
 
 (assert! (equal (drt-held-run) '(2 7 (200 201) t 9 (1 2 3) nil)))
 
+; The admitted foundation and the instance share a package.
+(assert-event (equal (symbol-package-name 'drt-held$c)
+                     (symbol-package-name 'drt-held)))
+
+; A non-ACL2 witness detects fixed-ACL2 interning without a new defpkg
+; portcullis. Check actual expansion trees for record, scalar and generic.
+(program)
+(defun drt-find-foundation (events)
+  (cond ((atom events) nil)
+        ((eq (car events) 'defstobj) (cadr events))
+        (t (or (drt-find-foundation (car events))
+               (drt-find-foundation (cdr events))))))
+(logic)
+
+(assert-event
+ (equal (symbol-package-name
+         (drt-find-foundation (rep-named-events :drt-package '((id :u64)) nil nil nil nil)))
+        (symbol-package-name :drt-package)))
+(assert-event
+ (equal (symbol-package-name
+         (drt-find-foundation (rep-named-events :drt-package '((id :u64)) t nil nil nil)))
+        (symbol-package-name :drt-package)))
+(assert-event
+ (equal (symbol-package-name
+         (drt-find-foundation (rep-named-events :drt-package '((id :u64)) t t nil nil)))
+        (symbol-package-name :drt-package)))
+
+; Relocation distinguishes generated references from unchanged user data.
+(assert-event
+ (equal (rep-package-events '(drt-package$c (quote drt-package$c))
+                            '(probe$c (quote drt-package$c)) :drt-package)
+        '(:drt-package$c (quote drt-package$c))))
+
 ; -----------------------------------------------------------------------------
 ; 2. The scalar pilot: the arena's logical view.
 
@@ -66,6 +99,24 @@
       out)))
 
 (assert! (equal (drt-pay-run) '(2 (9 9) (4))))
+
+; DRT-PAY-COUNT{CORRESPONDENCE}: both hypotheses and its exact conclusion
+; at a reachable one-payload foundation, built from the canonical empty.
+(defconst *drt-pay-witness-c*
+  (adt-append-c *drt-pay-schema* '((1 2 3)) (adt-empty-c *drt-pay-schema*)))
+(defconst *drt-pay-witness-a* '((1 2 3)))
+
+(assert-event
+ (and (drt-pay$corr *drt-pay-witness-c* *drt-pay-witness-a*)
+      (drt-pay$ap *drt-pay-witness-a*)))
+; As in the seeded :into witness, THM permits the concrete stobj's logical
+; value and evaluates the ground assertion; no implication hides a premise.
+(assert-event
+ (thm (and (drt-pay$corr *drt-pay-witness-c* *drt-pay-witness-a*)
+           (drt-pay$ap *drt-pay-witness-a*)
+           (equal (drt-pay$c-count-of *drt-pay-witness-c*)
+                  (drt-pay$a-count *drt-pay-witness-a*))))
+ :stobjs-out :auto)
 
 ; The same program over the logical value: the list of payloads.
 (assert! (equal (let* ((a (append (append nil (list '(1 2 3))) (list '(4))))
