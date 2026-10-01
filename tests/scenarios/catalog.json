@@ -7547,6 +7547,33 @@
         "planning/evidence/bpsec-operation-source-2026-09-30.json"
       ],
       "execution_scope": "Literal ACL2 component/source fixtures; actual immutable registry, provider, current lease, cryptographic realizer and native gate remain open."
+    },
+    {
+      "id": "SCN-1072",
+      "title": "Obligation delta yields while preserving shared subjects and sibling branches",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "RET-001",
+        "RET-002",
+        "RET-004"
+      ],
+      "steps": [
+        "Advance arrival/release aggregate cursors one tick at a time.",
+        "Release one of two same-subject obligations, then the other, while retaining unrelated siblings and original view.",
+        "Exercise empty/long subjects, invalid delta, yielded results and sufficient-fuel completion."
+      ],
+      "expected": [
+        "Completed trie equals the original aggregate update; full view includes exact total.",
+        "Yield has no completed result and does not truncate input.",
+        "Terminal result is stable; every live trie step makes structural progress."
+      ],
+      "evidence": [
+        "tests/acl2/view-delta-cursor-tests.lisp",
+        "tests/acl2/obligation-view-cursor-tests.lisp",
+        "planning/evidence/obligation-cursor-2026-10-01/README.md"
+      ],
+      "execution_scope": "Pure ACL2 source component fixtures passed, including literal complete hypotheses/removal witnesses. No owner/physical custody/native execution."
     }
   ]
 }

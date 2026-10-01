@@ -1,0 +1,38 @@
+; A typed semantic delta supplies subject/charge from the SAME actual pin.
+; This cursor is computation, never evidence of authority or a retention grant.
+(in-package "ACL2")
+(include-book "view-delta-cursor")
+
+; phase, new total, aggregate cursor, completed full view.
+(defun fn-ovc-begin (op subject charge view)
+ (declare (xargs :guard t))
+ (cond ((eq op :same) (list :done 0 nil view))
+       ((or (eq op :arrival) (eq op :release))
+        (let ((count (if (consp view) (nfix (car view)) 0)))
+         (list :drive (if (eq op :release) (nfix (- count 1)) (+ 1 count))
+          (fn-vcu-begin subject charge (eq op :release)
+                        (if (consp view) (cdr view) nil)) nil)))
+       (t (list :refused 0 nil nil))))
+(defun fn-ovc-step (c)
+ (declare (xargs :guard t))
+ (if (eq (fn-vcu-at 0 c) :drive)
+  (let ((child (fn-vcu-step (fn-vcu-at 2 c))))
+   (if (eq (fn-vcu-at 0 child) :done)
+    (list :done (fn-vcu-at 1 c) child
+     (cons (fn-vcu-at 1 c) (fn-vcu-at 6 child)))
+    (list :drive (fn-vcu-at 1 c) child nil)))
+  c))
+(defun fn-ovc-drive (c fuel)
+ (declare (xargs :guard (natp fuel) :measure (nfix fuel)))
+ (if (or (zp fuel) (not (eq (fn-vcu-at 0 c) :drive))) (mv c 0)
+  (mv-let (next used) (fn-ovc-drive (fn-ovc-step c) (1- fuel))
+   (mv next (+ 1 (nfix used))))))
+(defun fn-ovc-result (c)
+ (declare (xargs :guard t))
+ (cond ((eq (fn-vcu-at 0 c) :done) (list :done (fn-vcu-at 3 c)))
+       ((eq (fn-vcu-at 0 c) :refused) '(:error :delta))
+       (t nil)))
+(defthm fn-ovc-drive-work-bound
+ (<= (mv-nth 1 (fn-ovc-drive c fuel)) (nfix fuel))
+ :hints (("Goal" :induct (fn-ovc-drive c fuel)
+          :in-theory (disable fn-ovc-step fn-vcu-at))))
