@@ -26,8 +26,16 @@
 ;     clock and limits), :want.  The gate and the drain cannot disagree.
 ;   fn-tsd-nntp-and-bp-transit-decide-alike: an NNTP transit in flight with the
 ;     same peer, Message-ID and octets, over the same store, clock and limits,
-;     gets the same byte decision; the whole decision (with the authority
-;     verdict) is the same when the two submissions' pinned configurations are.
+;     gets the same byte decision.
+;   fn-tsd-open-connection-pin-is-not-the-control-pin: in a configured owner
+;     state, an open connection's pinned configuration is never the control
+;     id's.  An NNTP transit is in flight only while its connection is open
+;     (fn-ocfg-close drops the connection's in-flight submission; witnessed in
+;     the tests), so the two carriers' authority configurations differ on
+;     every reachable drain, and the authority verdicts are compared by
+;     fn-tsd-bp-transit-authority-is-ungoverned, not equated.
+;   Neither keystone needs (stringp peer): a submitted BP delivery names a
+;   configured peer, whose name is a string (fn-tsd-submitted-names-a-string-peer).
 ;
 ; WHERE THEY CAN DIFFER (named, not hidden):
 ;   1. The principal.  NNTP's PEER is the session's (fn-peer-session-peer,
@@ -126,8 +134,53 @@
                   :in-theory (e/d (fn-af-message-idp fn-nntp-printable-tokenp)
                                   (fn-tsd-close-is-printable))))))
 
-; KEYSTONE (PKT-202).
-(defthm fn-tsd-bp-gate-is-the-drain-decision
+; A submitted BP delivery names a configured peer, and a peer record's name
+; is a configuration label, a string: the gate needs no string hypothesis.
+(local (defthm fn-tsd-peer-record-is-named-by-a-string
+  (implies (fn-cfg-peerp (fn-cfg-peer-make name pid transport inbound outbound auth))
+           (stringp name))
+  :hints (("Goal" :in-theory (e/d (fn-cfg-peerp fn-cfg-labelp fn-record-ascii-stringp)
+                                  (fn-cfg-peer-transportp fn-cfg-peer-inboundp))))))
+(local (defthm fn-tsd-found-peer-is-named-by-a-string
+  (implies (fn-cfg-peer-find name peers)
+           (stringp name))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-cfg-peer-find fn-cfg-peer-of-rows
+                                fn-tsd-peer-record-is-named-by-a-string)
+                              (theory 'minimal-theory))))))
+(local (defthm fn-tsd-want-names-a-configured-peer
+  (implies (equal (fn-peer-decision-kind
+                   (fn-peer-decide-transfer node cfg peer msgid octets clock id subject))
+                  :want)
+           (stringp peer))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-tsd-found-peer-is-named-by-a-string
+                                   (name peer) (peers (fn-cfg-peers (fn-cfg-value cfg)))))
+                  :in-theory (e/d (fn-peer-decide-transfer)
+                                  (fn-af-message-idp fn-article-parse
+                                   fn-peer-intrinsic-refusal-of fn-peer-scope-groups
+                                   fn-peer-date-futurep fn-peer-path-missingp
+                                   fn-peer-history-hasp fn-path-names-p fn-cfg-peer-find))))))
+(defthm fn-tsd-submitted-names-a-string-peer
+  (implies (equal (fn-own-bp-transit-submit-result o cfg peer msgid octets id subject)
+                  :submitted)
+           (stringp peer))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-peer-decide-transfer-under-wants-only-what-transfer-wants
+                                   (node (fn-sn-node (fn-own-store o)))
+                                   (clock (fn-own-clock o))
+                                   (limits (fn-own-config-header-limits (fn-own-config o))))
+                        (:instance fn-tsd-want-names-a-configured-peer
+                                   (node (fn-sn-node (fn-own-store o)))
+                                   (clock (fn-own-clock o))))
+                  :in-theory (e/d (fn-own-bp-transit-submit-result)
+                                  (fn-peer-decide-transfer-under-wants-only-what-transfer-wants
+                                   fn-peer-decide-transfer-under fn-peer-decide-transfer
+                                   fn-own-config-header-limits fn-article-parse-under
+                                   fn-peer-relayed-octets)))))
+
+(local (defthm fn-tsd-bp-gate-for-a-string-peer
   (implies (and (equal (fn-own-bp-transit-submit-result o cfg peer msgid octets id subject)
                        :submitted)
                 (stringp peer))
@@ -154,7 +207,29 @@
                                    fn-own-transit-inflightp fn-own-transit-subp)
                                   (fn-af-message-idp fn-peer-decide-transfer-under
                                    fn-peer-decide-transfer fn-pta-decide
-                                   fn-own-config-header-limits)))))
+                                   fn-own-config-header-limits))))))
+
+; KEYSTONE (PKT-202).
+(defthm fn-tsd-bp-gate-is-the-drain-decision
+  (implies (equal (fn-own-bp-transit-submit-result o cfg peer msgid octets id subject)
+                  :submitted)
+           (let ((o2 (fn-own-take-submission
+                      (fn-own-bp-transit-submit o cfg peer msgid octets id subject))))
+             (and (fn-own-transit-inflightp o2)
+                  (equal (fn-own-sub-id (fn-own-inflight o2)) *fn-own-control-id*)
+                  (equal (fn-own-sub-decision (fn-own-inflight o2))
+                         (fn-peer-make-submission peer :takethis msgid octets))
+                  (equal (mv-nth 0 (fn-tsd-drain-decision o2 oc cfg id subject))
+                         (fn-peer-decide-transfer-under
+                          (fn-sn-node (fn-own-store o)) cfg peer msgid octets
+                          (fn-own-clock o) id subject
+                          (fn-own-config-header-limits (fn-own-config o))))
+                  (equal (fn-peer-decision-kind
+                          (mv-nth 0 (fn-tsd-drain-decision o2 oc cfg id subject)))
+                         :want))))
+  :hints (("Goal" :use (fn-tsd-bp-gate-for-a-string-peer fn-tsd-submitted-names-a-string-peer)
+                  :in-theory (union-theories '((:definition mv-nth))
+                                             (theory 'minimal-theory)))))
 
 (local (defthm fn-tsd-bp-take-keeps-the-deciding-state
   (implies (equal (fn-own-bp-transit-submit-result o cfg peer msgid octets id subject)
@@ -193,8 +268,7 @@
                   :in-theory (disable fn-pta-decide-keeps-the-byte-decision-by-definition
                                       fn-peer-decide-transfer-under)))))
 
-; KEYSTONE (PKT-202).
-(defthm fn-tsd-nntp-and-bp-transit-decide-alike
+(local (defthm fn-tsd-decide-alike-for-a-string-peer
   (implies (and (equal (fn-own-bp-transit-submit-result o cfg peer msgid octets id subject)
                        :submitted)
                 (stringp peer)
@@ -222,7 +296,27 @@
                                    fn-peer-decide-transfer
                                    fn-own-config-header-limits fn-own-transit-subp
                                    fn-ocfg-conn-config fn-tsd-bp-gate-is-the-drain-decision
-                                   fn-peer-make-submission)))))
+                                   fn-peer-make-submission))))))
+
+; KEYSTONE (PKT-202).
+(defthm fn-tsd-nntp-and-bp-transit-decide-alike
+  (implies (and (equal (fn-own-bp-transit-submit-result o cfg peer msgid octets id subject)
+                       :submitted)
+                (fn-own-transit-inflightp n)
+                (equal (fn-own-sub-decision (fn-own-inflight n))
+                       (fn-peer-make-submission peer kind msgid octets))
+                (equal (fn-own-store n) (fn-own-store o))
+                (equal (fn-own-clock n) (fn-own-clock o))
+                (equal (fn-own-config-header-limits (fn-own-config n))
+                       (fn-own-config-header-limits (fn-own-config o))))
+           (equal (mv-nth 0 (fn-tsd-drain-decision n oc cfg id subject))
+                  (mv-nth 0 (fn-tsd-drain-decision
+                             (fn-own-take-submission
+                              (fn-own-bp-transit-submit o cfg peer msgid octets id subject))
+                             oc cfg id subject))))
+  :hints (("Goal" :use (fn-tsd-decide-alike-for-a-string-peer
+                        fn-tsd-submitted-names-a-string-peer)
+                  :in-theory (theory 'minimal-theory))))
 
 ; Where the carriers differ: BP's authority verdict is over no configuration.
 (local (defthm fn-tsd-pinned-id-is-a-connection
@@ -246,6 +340,35 @@
                         (:instance fn-tsd-control-is-no-connection
                                    (conns (fn-own-conns (fn-ocfg-owner oc)))
                                    (next (fn-own-next-id (fn-ocfg-owner oc)))))))))
+;; An open connection holds a pin (fn-ocfg-conns-pinnedp), and a pin is a
+;; well-formed configuration (fn-ocfg-pins-okp), never the control id's nil.
+(local (defthm fn-tsd-open-conn-is-pinned
+  (implies (and (fn-ocfg-conns-pinnedp conns pins)
+                (fn-own-find-conn id conns))
+           (fn-ocfg-pin-find id pins))
+  :hints (("Goal" :in-theory (enable fn-ocfg-conns-pinnedp fn-own-find-conn)))))
+(local (defthm fn-tsd-found-pin-is-a-configuration
+  (implies (and (fn-ocfg-pins-okp pins)
+                (fn-ocfg-pin-find id pins))
+           (fn-cfgp (cdr (fn-ocfg-pin-find id pins))))
+  :hints (("Goal" :in-theory (enable fn-ocfg-pins-okp fn-ocfg-pin-find)))))
+; KEYSTONE (PKT-202).
+(defthm fn-tsd-open-connection-pin-is-not-the-control-pin
+  (implies (and (fn-ocfg-statep oc)
+                (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))
+           (not (equal (fn-ocfg-conn-config oc id)
+                       (fn-ocfg-conn-config oc *fn-own-control-id*))))
+  :hints (("Goal" :use (fn-tsd-control-has-no-pin
+                        (:instance fn-tsd-open-conn-is-pinned
+                                   (conns (fn-own-conns (fn-ocfg-owner oc)))
+                                   (pins (fn-ocfg-pins oc)))
+                        (:instance fn-tsd-found-pin-is-a-configuration
+                                   (pins (fn-ocfg-pins oc))))
+                  :in-theory (e/d (fn-ocfg-statep fn-ocfg-conn-config (:e fn-cfgp))
+                                  (fn-tsd-open-conn-is-pinned
+                                   fn-tsd-found-pin-is-a-configuration
+                                   fn-tsd-control-has-no-pin
+                                   fn-own-relation fn-cfgp)))))
 (local (defthm fn-tsd-no-configuration-group-authority
   (equal (fn-pta-group-authority nil nil name) nil)
   :hints (("Goal" :in-theory (enable fn-pta-group-authority fn-cfg-group-find)))))

@@ -18761,8 +18761,13 @@
         },
         {
           "kind": "theorem",
+          "name": "fn-tsd-open-connection-pin-is-not-the-control-pin",
+          "note": "KEYSTONE. Where the carriers differ: under fn-ocfg-statep an open connection's pinned configuration (read by fn-owner-transit-decide for an NNTP transit) is never the control id's. Teeth: tests/acl2/transit-same-decision-tests.lisp (reachable open connection; reachable disconnect; corrupted pin table; mutation to the live configuration)."
+        },
+        {
+          "kind": "theorem",
           "name": "fn-tsd-bp-transit-authority-is-ungoverned",
-          "note": "Where the carriers differ: the BP submission's authority verdict is over no configuration. Teeth: tests/acl2/transit-same-decision-tests.lisp (positive under a governing live configuration; corrupted control pin)."
+          "note": "Where the carriers differ: the BP submission's authority verdict is over no configuration. Teeth: tests/acl2/transit-same-decision-tests.lisp (positive under a governing live configuration; corrupted control pin; mutation to the live configuration)."
         }
       ]
     }
