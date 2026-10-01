@@ -24,7 +24,8 @@
 ; (tools/extract/clruntime.lisp): never roots.
 (defconst *xt-core-runtime-names*
   '(w getpropc getprop user-stobj-alist f-get-global f-put-global f-boundp-global
-    get-global put-global boundp-global stobjs-in global-symbol state-p state-p1
+    get-global put-global boundp-global stobjs-in stobjs-out symbol-class guard
+    table-alist get-stobj-creator get-stobj-recognizer get-event global-symbol state-p state-p1
     hard-error illegal throw-nonexec-error fmt-to-comment-window cw-print-base-radix))
 
 (defun xt-core-root-p (s w)
@@ -170,6 +171,59 @@
                           (guard (car roots) nil w))
                     acc))))
 
+; Installation reads the selected world's declarations and their citations,
+; not an inferred class or a host-created dispatch table.  Preserve raw
+; property presence (including NIL), then add the system queries whose value
+; is computed by ACL2 rather than stored verbatim.
+(defun xt-interface-raw-roots (entries w)
+  (if (endp entries) nil
+    (let ((entry (car entries)))
+      (if (and (or (assoc-keyword :raw-with (cdr entry))
+                   (assoc-keyword :raw-guarded (cdr entry)))
+               (xt-core-root-p (car entry) w))
+          (cons (car entry) (xt-interface-raw-roots (cdr entries) w))
+        (xt-interface-raw-roots (cdr entries) w)))))
+
+(defun xt-interface-citations (entries)
+  (if (endp entries) nil
+    (append (cadr (assoc-keyword :raw-with (cdar entries)))
+            (xt-interface-citations (cdr entries)))))
+
+(defun xt-snapshot-stored-properties (name trips seen)
+  (if (endp trips) nil
+    (let ((trip (car trips)))
+      (if (and (eq (car trip) name)
+               (not (member-eq (cadr trip) seen))
+               (member-eq (cadr trip)
+                          '(formals stobjs-in guard symbol-class stobj
+                            absstobj-info stobj-function unnormalized-body
+                            theorem invariant-risk predefined const table-alist)))
+          (let ((tail (xt-snapshot-stored-properties
+                       name (cdr trips) (cons (cadr trip) seen))))
+            (if (eq (cddr trip) *acl2-property-unbound*) tail
+              (cons (cons (cadr trip) (cddr trip)) tail)))
+        (xt-snapshot-stored-properties name (cdr trips) seen)))))
+
+(defun xt-world-snapshot (names w)
+  (if (endp names) nil
+    (let* ((name (car names))
+           (functionp (not (eq (getpropc name 'formals :none w) :none)))
+           (stobjp (or (eq name 'state) (getpropc name 'stobj nil w)))
+           (computed
+            (append
+             (and (eq name 'fn-interfaces)
+                  (list (cons 'table-alist (table-alist name w))))
+             (and functionp
+                  (list (cons 'guard (guard name nil w))
+                        (cons 'symbol-class (symbol-class name w))
+                        (cons 'stobjs-out (stobjs-out name w))))
+             (and stobjp
+                  (list (cons :xl-stobj-event (get-event name w))
+                        (cons :xl-stobj-creator (get-stobj-creator name w))
+                        (cons :xl-stobj-recognizer (get-stobj-recognizer name w)))))))
+      (cons (cons name (append computed (xt-snapshot-stored-properties name w nil)))
+            (xt-world-snapshot (cdr names) w)))))
+
 ; The packages: each non-builtin package's imports, by (package . name).
 (defun xt-sym-pairs (syms)
   (if (endp syms) nil
@@ -254,12 +308,12 @@
   (let* ((w (w state))
          (macros (xt-core-macros tokens w nil))
          (roots (append (xt-core-roots tokens w nil)
-                        (xt-core-roots (xt-sym-names (xt-macro-callees macros nil)) w nil)))
+                        (xt-core-roots (xt-sym-names (xt-macro-callees macros nil)) w nil)
+                        (xt-interface-raw-roots (table-alist 'fn-interfaces w) w)))
          (consts (xt-core-consts tokens w nil)))
     (mv-let (erp n state) (xt-extract-with roots (xt-core-stobj-creators tokens w nil) json-path state)
       (declare (ignore erp n))
       (mv-let (entries stobjs) (xt-walk-closed (append roots (xt-boundary-extra roots w nil)) 4 w)
-        (declare (ignore stobjs))
         (let ((globals (xt-token-globals tokens (xt-entries-globals entries nil) state))
               (types (xt-world-types w nil)))
           (mv-let (channel state) (open-output-channel pkg-path :character state)
@@ -278,8 +332,15 @@
                        (state (xt-print-globals globals channel state))
                        ; every function of the closure (host/native's fnn-call
                        ; may name any): formals, stobjs-in, guard
-                       (state (xt-print (list 'xl-set-props
-                                              (list 'quote (xt-props (xt-entry-fns entries nil) w nil)))
+                       (state (xt-print (list 'xl-set-world-snapshot
+                                              (list 'quote
+                                                    (xt-world-snapshot
+                                                     (remove-duplicates-eq
+                                                      (append (xt-entry-fns entries nil)
+                                                              (xt-stobj-closure-1 stobjs nil w)
+                                                              (xt-interface-citations (table-alist 'fn-interfaces w))
+                                                              '(state fn-interfaces *fn-entry-guard-kinds*)))
+                                                     w)))
                                         channel state))
                        (state (close-output-channel channel state)))
                   (value (list :roots (len roots) :consts (len consts) :globals (len globals)

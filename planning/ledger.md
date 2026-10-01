@@ -10,25 +10,25 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2323 |
+| Books read | 2324 |
 | Certification roots in the Makefile | 2123 |
 | Books inside the root closure | 2265 |
 | `defthm` and `defthmd` events | 33131 |
-| `defun` events | 21182 |
+| `defun` events | 21193 |
 | Functions with verified guards | 3746 |
 | Functions declared `:verify-guards nil` and never verified | 2594 |
-| Functions left at the default with an explicit guard | 11817 |
-| Functions left at the default with no guard | 3025 |
+| Functions left at the default with an explicit guard | 11822 |
+| Functions left at the default with no guard | 3031 |
 | `assert-event` checks | 24674 |
-| `must-fail` checks | 2519 |
+| `must-fail` checks | 2531 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 168 |
 | Theorems flagged SUSPECT by shape | 1310 |
 | Export-hygiene warnings | 383 |
 | Enabled-projection warnings | 79 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2972 |
-| Host-names warnings | 2628 |
+| Include-hygiene warnings | 2973 |
+| Host-names warnings | 2630 |
 | Hand-written-record warnings | 19 |
 
 ## Lints
@@ -510,7 +510,7 @@ that `make certify` requests.
 | `books/crypto-attach.lisp` | root | 9 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/crypto-seam.lisp` | root | 19 | 14 | 0/0/10/4 | 0 | 0 | 0 |
 | `books/defevent.lisp` | root | 0 | 14 | 0/0/0/14 | 0 | 0 | 0 |
-| `books/definterface.lisp` | root | 0 | 42 | 0/0/0/42 | 0 | 0 | 0 |
+| `books/definterface.lisp` | root | 0 | 46 | 0/0/0/46 | 0 | 0 | 0 |
 | `books/defkeystone.lisp` | root | 0 | 28 | 0/0/0/28 | 0 | 0 | 0 |
 | `books/deflate-frame.lisp` | closure | 37 | 3 | 0/0/2/1 | 0 | 0 | 0 |
 | `books/deflate-inflate.lisp` | root | 171 | 81 | 0/0/70/11 | 0 | 0 | 0 |
@@ -2185,6 +2185,7 @@ that `make certify` requests.
 | `tests/acl2/provenance-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 103 | 0 | 0 |
 | `tests/acl2/public-exposure-reply-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 13 | 2 | 0 |
 | `tests/acl2/public-exposure-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 121 | 15 | 0 |
+| `tests/acl2/raw-guarded-interface-tests.lisp` | - | 0 | 7 | 0/0/5/2 | 0 | 12 | 0 |
 | `tests/acl2/reader-open-carried-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 29 | 0 | 0 |
 | `tests/acl2/reader-response-disposition-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |
 | `tests/acl2/receiver-output-custody-tests.lisp` | root | 2 | 0 | 0/0/0/0 | 0 | 0 | 0 |
