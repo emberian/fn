@@ -629,7 +629,7 @@
 
 (defthm fn-cpl-winv-end
   (implies (fn-cpl-winv dir tab nil c c2) (fn-cpl-okp dir tab c2))
-  :hints (("Goal" :in-theory (enable fn-cpl-okp)
+  :hints (("Goal" :in-theory (union-theories '(fn-cpl-okp fn-cpl-bad) (theory 'minimal-theory))
            :use ((:instance fn-cpl-winv-necc (plan nil) (x (fn-cpl-okp-witness dir tab c2)))))))
 
 (defthm fn-cpl-live-below-high
@@ -653,19 +653,39 @@
       (and (fn-cpl-wentry-okp (car plan) r c) (fn-cpl-wplan-okp (cdr plan) r c))
     t))
 
+(defthm fn-cpl-wentry-of-plan
+  (implies (and (natp r) (< r (len c)) (consp p)
+                (equal (fn-cat-number-seq (car p) (cdr p) c 0) r)
+                (fn-cat-live-rowp (car p) (cdr p) (nth r c)))
+           (fn-cpl-wentry-okp (list (car p) (cdr p) (fn-cpl-prev-of (car p) (cdr p) c)
+                                    (fn-cpl-next-of (car p) (cdr p) c))
+                              r c))
+  :hints (("Goal" :in-theory (union-theories '(fn-cpl-wentry-okp fn-ctg-kstar fn-cat-live-numberp fn-cat-live-rowp
+                                               true-listp len car-cons cdr-cons natp posp
+                                               (:executable-counterpart len) (:executable-counterpart true-listp))
+                                             (theory 'minimal-theory)))))
+
 (defthm fn-cpl-wplan-okp-of-wplan
   (implies (and (natp r) (< r (len c)))
            (fn-cpl-wplan-okp (fn-cpl-wplan pairs r c) r c))
-  :hints (("Goal" :in-theory (enable fn-ctg-kstar fn-cat-live-numberp))))
+  :hints (("Goal" :induct (fn-cpl-wplan pairs r c)
+           :in-theory (union-theories '(fn-cpl-wplan fn-cpl-wplan-okp fn-cpl-wentry-of-plan car-cons cdr-cons
+                                        (:induction fn-cpl-wplan))
+                                      (theory 'minimal-theory)))))
 
 (defthm fn-cpl-g2-prev-of-next
   (implies (and (fn-cpl-wentry-okp e r c) (fn-cat-rowsp c) (natp r) (< r (len c))
                 (null (fn-held-withdrawn (nth r c))) (posp (cadddr e)))
            (fn-cpl-goodp nil (cons (car e) (cadddr e)) (caddr e) (fn-cat-mark-withdrawn r v by c)))
-  :hints (("Goal" :in-theory (disable fn-cat-live-numberp fn-cat-mark-withdrawn fn-cpl-mark-withdrawn-is-update
-                                      fn-ctg-kstar fn-cpl-first-from-gap)
+  :hints (("Goal" :in-theory (union-theories '(fn-cpl-goodp fn-cpl-prev-of fn-cpl-next-of fn-cpl-wentry-okp
+                                               natp posp nfix car-cons cdr-cons
+                                               (:type-prescription fn-cat-group-high))
+                                             (theory 'minimal-theory))
            :use ((:instance fn-cpl-live-first-bounds (g (car e)) (k (+ 1 (cadr e)))
                             (top (fn-cat-group-high (car e) c)))
+                 (:instance fn-cpl-live-withdrawn (g (car e)) (j (cadddr e)))
+                 (:instance fn-cpl-live-last-withdrawn (g (car e)) (j (- (cadddr e) 1)))
+                 (:instance fn-cpl-live-types (g (car e)) (k (+ 1 (cadr e))) (top (fn-cat-group-high (car e) c)))
                  (:instance fn-cpl-last-from-gap (g (car e)) (j (cadr e)) (m (- (cadddr e) 1))
                             (top (fn-cat-group-high (car e) c)))))))
 
@@ -830,7 +850,7 @@
 
 (defthm fn-cpl-winv-end-atom
   (implies (and (not (consp plan)) (fn-cpl-winv dir tab plan c c2)) (fn-cpl-okp dir tab c2))
-  :hints (("Goal" :in-theory (enable fn-cpl-okp)
+  :hints (("Goal" :in-theory (union-theories '(fn-cpl-okp fn-cpl-bad) (theory 'minimal-theory))
            :use ((:instance fn-cpl-winv-necc (x (fn-cpl-okp-witness dir tab c2)))))))
 
 (defun fn-cpl-unlink-ind (dir plan tab)
@@ -1083,7 +1103,7 @@
 
 (defthm fn-cpl-cinv-end-atom
   (implies (and (not (consp plan)) (fn-cpl-cinv dir tab plan c c2)) (fn-cpl-okp dir tab c2))
-  :hints (("Goal" :in-theory (enable fn-cpl-okp)
+  :hints (("Goal" :in-theory (union-theories '(fn-cpl-okp fn-cpl-cbad) (theory 'minimal-theory))
            :use ((:instance fn-cpl-cinv-necc (x (fn-cpl-okp-witness dir tab c2)))))))
 
 (defun fn-cpl-link-ind (dir plan tab)
