@@ -39,7 +39,8 @@
 ; and fn-ock-install of the Store open's pair (fn-owner-recover-from-store-
 ; open), each under the named assumption A-RECOVERED-OPEN
 ; (books/assumptions-recovery.lisp): the checkpoint is a capture extension
-; (KEYSTONE fn-lgoc-recover-installs-invariant).  D40 accepts the row
+; (KEYSTONE fn-lgoc-recover-installs-invariant; the recovery-refinement
+; subject, PRF-1212/1216).  D40 accepts the row
 ; because the open is no host entry and every ACL2 caller passes a
 ; producer's call; tools/interface_emit.py refuses any raw-host call of it.
 ; The open is witnessed (the empty history's recovery, ground stobj values,

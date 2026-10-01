@@ -70,6 +70,33 @@ class ImageSetTests(unittest.TestCase):
         self.assertEqual(self.quiet(image_set.publish, self.tree, "short", self.base)[0], 2)
 
 
+    def test_a_paged_catalog_image_is_never_published_or_linked_as_the_old(self):
+        # Codex r21 F2: the catalog is recorded beside the image
+        # (tools/build_native_host.sh) and in the manifest; a paged core
+        # under the old catalog's name is refused at publish and at link.
+        build = self.tree / "build"
+        (build / "fn-host.catalog").write_text("paged\n")
+        code, err = self.quiet(image_set.publish, self.tree, SHA, self.base)
+        self.assertEqual(code, 1)
+        self.assertIn("production (paged)", err)
+        self.assertFalse((self.base / SHA).exists())
+        (build / "fn-host.catalog").write_text("old\n")
+        self.assertEqual(self.quiet(image_set.publish, self.tree, SHA, self.base)[0], 0)
+        manifest = (self.base / SHA / "MANIFEST.json").read_text()
+        self.assertIn('"catalog": "old"', manifest)
+        # A manifest that records another catalog is not linked.
+        import json
+        path = self.base / SHA / "MANIFEST.json"
+        data = json.loads(manifest)
+        data["images"]["developer"]["catalog"] = "paged"
+        path.write_text(json.dumps(data))
+        image_set.write_sums(self.base / SHA)
+        code, err = self.quiet(image_set.link, SHA, self.root / "t", ["developer"], self.base)
+        self.assertEqual(code, 1)
+        self.assertIn("developer (paged)", err)
+        self.assertEqual(self.quiet(image_set.link, SHA, self.root / "t", ["production"],
+                                    self.base)[0], 0)
+
 
 class LinkRunTests(unittest.TestCase):
     """hbox_native --reuse-image: an earlier run's images, with their source."""
@@ -108,6 +135,16 @@ class LinkRunTests(unittest.TestCase):
             with contextlib.redirect_stderr(io.StringIO()) as said:
                 self.assertEqual(image_set.link_run(run, tree, ["developer"]), 1)
             self.assertIn("names no `== source` line", said.getvalue())
+            self.assertFalse((tree / "build" / "fn-host-developer").exists())
+
+    def test_link_run_refuses_a_paged_catalog_image(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run = self.run_dir(directory)
+            (run / "tree" / "build" / "fn-host-developer.catalog").write_text("paged\n")
+            tree = Path(directory) / "new"
+            with contextlib.redirect_stderr(io.StringIO()) as said:
+                self.assertEqual(image_set.link_run(run, tree, ["developer"]), 1)
+            self.assertIn("developer (paged)", said.getvalue())
             self.assertFalse((tree / "build" / "fn-host-developer").exists())
 
 
