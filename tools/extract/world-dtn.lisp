@@ -160,6 +160,7 @@
 (include-book "../../books/page-window-lease")
 (include-book "../../books/page-window-executor")
 (include-book "../../books/cold-read-window")
+(include-book "../../books/page-read-counter-transaction")
 (include-book "../../books/page-window-read")
 (include-book "../../books/payload-arena")
 (include-book "../../books/history-columns-relation")

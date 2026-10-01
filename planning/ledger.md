@@ -14,10 +14,10 @@ stale. Counts describe artifacts, not coverage; see
 | Certification roots in the Makefile | 2311 |
 | Books inside the root closure | 2584 |
 | `defthm` and `defthmd` events | 35813 |
-| `defun` events | 22855 |
+| `defun` events | 22856 |
 | Functions with verified guards | 3843 |
 | Functions declared `:verify-guards nil` and never verified | 2898 |
-| Functions left at the default with an explicit guard | 12799 |
+| Functions left at the default with an explicit guard | 12800 |
 | Functions left at the default with no guard | 3315 |
 | `assert-event` checks | 25406 |
 | `must-fail` checks | 2585 |
@@ -28,7 +28,7 @@ stale. Counts describe artifacts, not coverage; see
 | Enabled-projection warnings | 80 |
 | Teeth-form warnings | 279 |
 | Include-hygiene warnings | 3555 |
-| Host-names warnings | 3138 |
+| Host-names warnings | 3141 |
 | Hand-written-record warnings | 19 |
 
 ## Lints
@@ -657,7 +657,7 @@ that `make certify` requests.
 | `books/expiry-instant.lisp` | root | 4 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/expiry-policy.lisp` | root | 11 | 23 | 0/0/23/0 | 0 | 0 | 0 |
 | `books/expiry-verdict.lisp` | root | 6 | 3 | 0/0/3/0 | 0 | 0 | 1 |
-| `books/expiry.lisp` | root | 22 | 33 | 2/5/26/0 | 0 | 0 | 0 |
+| `books/expiry.lisp` | root | 22 | 34 | 2/5/27/0 | 0 | 0 | 0 |
 | `books/extent-retire.lisp` | root | 16 | 10 | 4/1/4/1 | 0 | 0 | 0 |
 | `books/extent-window-buffer.lisp` | closure | 3 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/extent-window-capture.lisp` | closure | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
