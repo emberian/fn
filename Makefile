@@ -2135,6 +2135,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/image-world \
 	books/image-world-dtn \
 	books/image-world-store-test \
+	books/image-world-paged \
     books/acceptance-binding-held-gate \
     books/connection-receiver-source-invariants \
     books/owner-reader-response-domain \
