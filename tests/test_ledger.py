@@ -84,6 +84,18 @@ class DefLoopBridgeTests(unittest.TestCase):
             ":body (car xs) :acc seed :loop first-walk)",
             "(equal (first-walk n xs seed) (revappend seed (first n xs)))")
 
+    def test_take_base(self):
+        declaration = "(def-loop take-base (n xs) :shape :take :count n :over xs " \
+                      ":base (or (not (posp n)) (atom xs)) :body (car xs))"
+        self.check_bridge(declaration,
+                          "(equal (take-base-loop n xs acc) "
+                          "(revappend acc (take-base n xs)))")
+        events = ledger.def_loop_expansion(ledger.read_forms(declaration)[0])
+        self.assertEqual(events[0][3], ledger.read_forms(
+            "(declare (xargs :guard (true-listp acc) :verify-guards nil))")[0])
+        self.assertEqual(events[1][3], ledger.read_forms(
+            "(declare (xargs :guard t :verify-guards nil))")[0])
+
     def test_sum(self):
         self.check_bridge(
             "(def-loop count-ints (xs) :shape :sum :elt e "

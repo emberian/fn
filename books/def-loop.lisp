@@ -66,6 +66,10 @@
 ; :keep-order :skip-first emits (if KEEP RECUR (cons BODY RECUR));
 ; the default :cons-first preserves the original expansion.
 ;
+; :take :base TERM emits a base-first IF. The shape requires that
+; (not TERM) imply (posp COUNT); each instance discharges that progress
+; condition along with the two defining equations. :base excludes :while.
+;
 ; Guards.  `:guard G' is the wrapper's guard (default t); the loop's is
 ; `(and G (true-listp ACC))' (`(acl2-numberp ACC)' for `:sum').  The
 ; wrapper's `verify-guards' runs in `minimal-theory' plus `revappend', the
@@ -170,6 +174,39 @@
   (equal (fn-dl-take-loop dl-n dl-xs dl-acc) (revappend dl-acc (fn-dl-take dl-n dl-xs)))
   :hints (("Goal" :induct (fn-dl-take-loop dl-n dl-xs dl-acc))))
 
+; --- :take with a caller's base predicate. Progress is the shape's
+; termination condition, not an assumption about any stored data.
+(encapsulate
+  (((fn-dl-tb-base * *) => *))
+  (local (defun fn-dl-tb-base (n xs) (declare (ignore xs)) (not (posp n))))
+  (defthm fn-dl-tb-base-progress
+    (implies (not (fn-dl-tb-base n xs)) (posp n))))
+
+(defun fn-dl-take-base (dl-n dl-xs)
+  (declare (xargs :measure (nfix dl-n)
+                  :hints (("Goal" :use ((:instance fn-dl-tb-base-progress
+                                                   (n dl-n) (xs dl-xs)))
+                                  :in-theory (enable posp)))))
+  (if (fn-dl-tb-base dl-n dl-xs)
+      (fn-dl-tk-tail dl-n dl-xs)
+    (cons (fn-dl-tk-f dl-n dl-xs)
+          (fn-dl-take-base (- dl-n 1) (cdr dl-xs)))))
+
+(defun fn-dl-take-base-loop (dl-n dl-xs dl-acc)
+  (declare (xargs :measure (nfix dl-n)
+                  :hints (("Goal" :use ((:instance fn-dl-tb-base-progress
+                                                   (n dl-n) (xs dl-xs)))
+                                  :in-theory (enable posp)))))
+  (if (fn-dl-tb-base dl-n dl-xs)
+      (revappend dl-acc (fn-dl-tk-tail dl-n dl-xs))
+    (fn-dl-take-base-loop (- dl-n 1) (cdr dl-xs)
+                         (cons (fn-dl-tk-f dl-n dl-xs) dl-acc))))
+
+(defthm fn-dl-take-base-loop-is-revappend
+  (equal (fn-dl-take-base-loop dl-n dl-xs dl-acc)
+         (revappend dl-acc (fn-dl-take-base dl-n dl-xs)))
+  :hints (("Goal" :induct (fn-dl-take-base-loop dl-n dl-xs dl-acc))))
+
 ; --- :sum
 
 (encapsulate
@@ -218,6 +255,8 @@
 (in-theory (disable fn-dl-map fn-dl-map-loop fn-dl-map-loop-is-revappend
                     fn-dl-map-skip fn-dl-map-skip-loop fn-dl-map-skip-loop-is-revappend
                     fn-dl-take fn-dl-take-loop fn-dl-take-loop-is-revappend
+                    fn-dl-tb-base-progress fn-dl-take-base fn-dl-take-base-loop
+                    fn-dl-take-base-loop-is-revappend
                     fn-dl-sum fn-dl-sum-loop fn-dl-sum-loop-is-plus
                     fn-dl-into-map fn-dl-into-loop fn-dl-into-loop-is-append))
 
@@ -383,6 +422,50 @@
       (in-theory (disable ,loop))
       (table fn-generated ',name '(:def-loop :shape :take :loop ,loop :bridge ,bridge)))))
 
+(defun fn-dl-take-base-events (name formals n xs elt body base tail
+                               guard guard-hints guard-theory acc loop measure)
+  (declare (xargs :mode :program))
+  (let* ((body (fn-dl-elt elt xs body))
+         (base (fn-dl-elt elt xs base))
+         (tail (fn-dl-elt elt xs tail))
+         (next (fn-dl-replace (fn-dl-replace formals xs `(cdr ,xs)) n `(- ,n 1)))
+         (bridge (fn-dl-name (list loop "-IS-REVAPPEND") name)))
+    `((defun ,loop (,@formals ,acc)
+        (declare (xargs :guard ,(fn-dl-and guard `(true-listp ,acc))
+                        :verify-guards nil
+                        ,@(and measure `(:measure ,measure))))
+        (if ,base
+            (revappend ,acc ,tail)
+          (,loop ,@next (cons ,body ,acc))))
+      (defun ,name ,formals
+        (declare (xargs :guard ,guard :verify-guards nil
+                        ,@(and measure `(:measure ,measure))))
+        (mbe :logic (if ,base ,tail (cons ,body (,name ,@next)))
+             :exec (,loop ,@formals nil)))
+      (local
+       (defthm ,bridge
+         (equal (,loop ,@formals ,acc) (revappend ,acc (,name ,@formals)))
+         :hints (("Goal"
+                  :use ((:instance
+                         (:functional-instance
+                          fn-dl-take-base-loop-is-revappend
+                          (fn-dl-tb-base (lambda (,n ,xs) ,base))
+                          (fn-dl-tk-f (lambda (,n ,xs) ,body))
+                          (fn-dl-tk-tail (lambda (,n ,xs) ,tail))
+                          (fn-dl-take-base (lambda (,n ,xs) (,name ,@formals)))
+                          (fn-dl-take-base-loop (lambda (,n ,xs ,acc) (,loop ,@formals ,acc))))
+                         (dl-n ,n) (dl-xs ,xs) (dl-acc ,acc)))
+                  :in-theory (union-theories '(,name ,loop) (theory 'minimal-theory))))))
+      (verify-guards ,loop ,@(and guard-hints `(:hints ,guard-hints)))
+      (verify-guards ,name
+        :hints (("Goal"
+                 :use ((:instance ,bridge (,acc nil)))
+                 :in-theory (union-theories '(revappend ,name ,@guard-theory)
+                                            (union-theories (theory 'minimal-theory)
+                                                            (executable-counterpart-theory :here))))))
+      (in-theory (disable ,loop))
+      (table fn-generated ',name '(:def-loop :shape :take :loop ,loop :bridge ,bridge)))))
+
 (defun fn-dl-sum-events (name formals xs elt body guard guard-hints guard-theory acc loop measure)
   (declare (xargs :mode :program))
   (let* ((body (if elt (fn-dl-subst elt `(car ,xs) body) body))
@@ -483,7 +566,7 @@
 
 (defun fn-dl-fn (name formals shape over count elt body while stop stop-value keep tail let
                       guard guard-hints guard-theory measure into write write-theory map
-                      acc loop keep-order state)
+                      acc loop keep-order base state)
   (declare (xargs :mode :program :stobjs state))
   (let* ((loop (or loop (fn-dl-name (list name "-LOOP") name)))
          (xs (or over (if (eq shape :into) (car (remove1-eq into formals)) (car formals))))
@@ -504,6 +587,10 @@
       (er soft ctx "~x0: :keep-order must be :cons-first or :skip-first." name))
      ((and (not (eq keep-order :cons-first)) (not (eq shape :map)))
       (er soft ctx "~x0: :keep-order is a :map option." name))
+     ((and base (not (eq shape :take)))
+      (er soft ctx "~x0: :base is a :take option." name))
+     ((and base (not (eq while t)))
+      (er soft ctx "~x0: :base and :while are mutually exclusive." name))
      ((null body)
       (er soft ctx "~x0: :body is required." name))
      ((and stop (not (eq shape :map)))
@@ -527,8 +614,11 @@
           ,@(case shape
               (:map (fn-dl-map-events name formals xs elt body while stop stop-value keep tail
                                       let guard guard-hints guard-theory acc loop measure keep-order))
-              (:take (fn-dl-take-events name formals n xs elt body while tail
-                                        guard guard-hints guard-theory acc loop measure))
+              (:take (if base
+                         (fn-dl-take-base-events name formals n xs elt body base tail
+                                                guard guard-hints guard-theory acc loop measure)
+                       (fn-dl-take-events name formals n xs elt body while tail
+                                          guard guard-hints guard-theory acc loop measure)))
               (:sum (fn-dl-sum-events name formals xs elt body guard guard-hints guard-theory
                                       acc loop measure))
               (otherwise (fn-dl-into-events name formals xs elt body into write write-theory map
@@ -540,8 +630,8 @@
                          (while 't) stop stop-value (keep 't) (tail 'nil) let
                          (guard 't) guard-hints guard-theory measure
                          into write write-theory map
-                         (acc 'acc) loop (keep-order ':cons-first))
+                         (acc 'acc) loop (keep-order ':cons-first) base)
   `(make-event
     (fn-dl-fn ',name ',formals ',shape ',over ',count ',elt ',body ',while ',stop ',stop-value
               ',keep ',tail ',let ',guard ',guard-hints ',guard-theory ',measure
-              ',into ',write ',write-theory ',map ',acc ',loop ',keep-order state)))
+              ',into ',write ',write-theory ',map ',acc ',loop ',keep-order ',base state)))

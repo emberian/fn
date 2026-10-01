@@ -847,6 +847,7 @@ def def_loop_expansion(form: list) -> list:
                   [Sym("equal"), [Sym(name)] + list(formals),
                    [Sym("append"), stobj, [options.get(":map", Sym("nil"))] + map_formals]]]],
                 [Sym("in-theory"), [Sym("disable"), Sym(name)]]]
+    # :base selects the base-first :take shape and its library proof.
     # :keep-order only selects branch order and its library proof; emitted
     # names, guards and bridge statements are identical for both orders.
     acc_pred = Sym("acl2-numberp") if shape == ":sum" else Sym("true-listp")

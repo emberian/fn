@@ -290,3 +290,31 @@
  (def-loop dlt-keep-order-on-sum (xs) :shape :sum :body 1
    :keep-order :skip-first)
  :unchecked "refused at expansion: :keep-order is a :map option")
+
+; Gap 5: the base term and base-first branch survive expansion literally.
+(def-loop dlt-take-base (n xs)
+  :shape :take :count n :over xs :body (car xs)
+  :base (or (not (posp n)) (atom xs)) :measure (nfix n))
+(assert-event (equal (dlt-take-base 2 '(a b c)) '(a b)))
+(assert-event (equal (dlt-take-base 9 '(a b)) '(a b)))
+(assert-event (equal (dlt-take-base -1 '(a b)) nil))
+(assert-event (equal (dlt-take-base 2 nil) nil))
+(assert-event (equal (dlt-take-base-loop 2 '(a b c) '(z))
+                     (revappend '(z) (dlt-take-base 2 '(a b c)))))
+; @mutation-witness: stopping at one drops the last requested element.
+(def-loop dlt-take-base-mutant (n xs)
+  :shape :take :count n :over xs :body (car xs)
+  :base (or (not (posp n)) (equal n 1) (atom xs)) :measure (nfix n))
+(assert-event (not (equal (dlt-take-base-mutant 2 '(a b))
+                          (dlt-take-base 2 '(a b)))))
+(must-fail-checked
+ (defthm dlt-take-base-mutant-bridge
+   (equal (dlt-take-base-mutant-loop 2 '(a b) nil)
+          (revappend nil (dlt-take-base 2 '(a b))))))
+(must-fail-checked
+ (def-loop dlt-base-on-map (xs) :shape :map :body (car xs) :base (atom xs))
+ :unchecked "refused at expansion: :base is a :take option")
+(must-fail-checked
+ (def-loop dlt-base-and-while (n xs) :shape :take :count n :over xs
+   :body (car xs) :base (not (posp n)) :while (consp xs))
+ :unchecked "refused at expansion: :base and :while are mutually exclusive")
