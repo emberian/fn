@@ -100,6 +100,24 @@
 
 (assert! (equal (drt-pay-run) '(2 (9 9) (4))))
 
+; DRT-PAY-COUNT{CORRESPONDENCE}: both hypotheses and its exact conclusion
+; at a reachable one-payload foundation, built from the canonical empty.
+(defconst *drt-pay-witness-c*
+  (adt-append-c *drt-pay-schema* '((1 2 3)) (adt-empty-c *drt-pay-schema*)))
+(defconst *drt-pay-witness-a* '((1 2 3)))
+
+(assert-event
+ (and (drt-pay$corr *drt-pay-witness-c* *drt-pay-witness-a*)
+      (drt-pay$ap *drt-pay-witness-a*)))
+; As in the seeded :into witness, THM permits the concrete stobj's logical
+; value and evaluates the ground assertion; no implication hides a premise.
+(assert-event
+ (thm (and (drt-pay$corr *drt-pay-witness-c* *drt-pay-witness-a*)
+           (drt-pay$ap *drt-pay-witness-a*)
+           (equal (drt-pay$c-count-of *drt-pay-witness-c*)
+                  (drt-pay$a-count *drt-pay-witness-a*))))
+ :stobjs-out :auto)
+
 ; The same program over the logical value: the list of payloads.
 (assert! (equal (let* ((a (append (append nil (list '(1 2 3))) (list '(4))))
                        (a (update-nth 0 '(9 9) a)))
