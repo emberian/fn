@@ -198,6 +198,55 @@
                    fn-rccap-remapped-prefix fn-osm-row-source fn-omk-at fn-omk-widthp
                    fn-hct-shapep fn-hp-pes-len)))))
 
+(local (defthm fn-rccap-take-next-is-prefix-and-selected-row
+ (implies (and (natp ordinal) (< ordinal (len target)))
+  (equal (take (+ 1 ordinal) target)
+         (append (take ordinal target) (list (nth ordinal target)))))
+ :hints (("Goal" :induct (take ordinal target)
+  :in-theory (enable take nth binary-append)))))
+
+; The actual OSRC selection theorem supplies ORIGINAL = NTH ordinal target.
+; This composes that selection with the SAME actual row-done ACK, without
+; a second traversal or a caller-supplied scalar completion certificate.
+(defthm fn-rccap-actual-ack-extends-the-selected-target-prefix
+ (implies
+  (and (natp ordinal) (< ordinal (len target))
+       (equal original (nth ordinal target))
+       (fn-rccap-waiting-original-prefixp remapper census
+                                          (take ordinal target) original row pool)
+       (eq (mv-nth 0 (fn-hct-tick census)) :row-done))
+  (let* ((completed (mv-nth 2 (fn-hct-tick census)))
+         (next (mv-nth 1 (fn-osm-census-ack remapper completed))))
+   (fn-rccap-idle-original-prefixp next completed (take (+ 1 ordinal) target))))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :use ((:instance fn-rccap-actual-ack-preserves-the-original-to-remapped-prefix
+         (originals (take ordinal target)))
+        fn-rccap-take-next-is-prefix-and-selected-row)
+  :in-theory (disable fn-rccap-idle-original-prefixp fn-rccap-waiting-original-prefixp
+   fn-hct-tick fn-osm-census-ack take nth binary-append))))
+
+(local (defthm fn-rccap-take-full-true-list
+ (implies (true-listp target) (equal (take (len target) target) target))
+ :hints (("Goal" :induct (len target) :in-theory
+  (e/d (take len true-listp) (fn-rccap-take-next-is-prefix-and-selected-row adt-take-len-self))))))
+
+(defthm fn-rccap-terminal-selected-target-has-exact-count-and-pool
+ (implies
+  (and (true-listp target) (equal ordinal (len target))
+       (fn-rccap-idle-original-prefixp remapper census (take ordinal target))
+       (eq (fn-omk-at 0 census) :prepared))
+  (and (equal (fn-omk-at 2 census) (len target))
+       (equal (fn-omk-at 3 (fn-omk-at 1 remapper)) (len target))
+       (equal (fn-omk-at 3 census)
+              (fn-hp-pes-len (mv-nth 0 (fn-rccap-remapped-prefix target 0))))))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :use ((:instance fn-rccap-actual-completed-prefix-has-original-count-and-mapped-pool
+         (originals target)))
+  :in-theory (disable fn-rccap-idle-original-prefixp fn-rccap-remapped-prefix
+                     fn-hp-pes-len fn-omk-at take))))
+
 (defun-nx fn-rccap-idle-target-prefixp (cursor remapper census mapped-prefix)
  (let* ((ordinal (fn-osrc-at 2 cursor))
         (target (fn-sfr-list (fn-osrc-at 1 cursor))))

@@ -31,3 +31,18 @@
   fn-hsrcc-total fn-hsrcb-invariantp fn-hsrcb-rest fn-hsrcb-coldp
   fn-hrcur-census-invariantp fn-hrcur-census-total fn-hrcur-byte-invariantp
   fn-hrcur-byte-rest fn-hct-shapep))))
+; Positive terminal target witness: original list, actual transformed list,
+; ordinal and HCT completion are checked together.
+(thm
+ (let* ((target '(nil)) (c *rccap-test-before*)
+        (completed (mv-nth 2 (fn-hct-tick c)))
+        (next (mv-nth 1 (fn-osm-census-ack *rccap-test-waiting* completed))))
+  (and (true-listp target) (equal 1 (len target))
+       (fn-rccap-idle-original-prefixp next completed (take 1 target))
+       (eq (fn-omk-at 0 completed) :prepared)
+       (equal (fn-omk-at 2 completed) (len target))
+       (equal (fn-omk-at 3 (fn-omk-at 1 next)) (len target))
+       (equal (fn-omk-at 3 completed)
+              (fn-hp-pes-len (mv-nth 0 (fn-rccap-remapped-prefix target 0))))))
+ :hints (("Goal" :in-theory (enable fn-rccap-idle-original-prefixp
+  fn-rccap-remapped-prefix fn-rcca-idle-prefixp fn-hct-shapep))))
