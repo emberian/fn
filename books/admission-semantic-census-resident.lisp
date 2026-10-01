@@ -46,13 +46,12 @@
  :hints (("Goal" :do-not-induct t
   :use (fn-hrcur-census-begin-refines-length
         (:instance fn-rccap-resident-census-is-not-cold
-         (c (fn-hrcur-census-begin (list :resident row) capture lease))))
-  :in-theory
-   (e/d (fn-hsrcc-resident-begin-by-definition fn-hsrcc-invariantp
-         fn-hsrcc-total fn-hsrcb-invariantp fn-hsrcb-rest
-         fn-hrcur-census-invariantp fn-hrcur-census-total)
-        (fn-hsrcc-begin fn-hrcur-census-begin fn-hsrcb-coldp
-         fn-hrcur-byte-invariantp fn-hrcur-byte-rest fn-scc-encode)))))
+         (c (fn-hrcur-census-begin (list :resident row) capture lease)))
+        fn-hsrcc-resident-begin-by-definition)
+  :in-theory (union-theories (theory 'minimal-theory)
+   '(fn-hsrcc-invariantp fn-hsrcc-total fn-hsrcb-invariantp fn-hsrcb-rest
+     fn-hrcur-census-invariantp fn-hrcur-census-total fn-hrcur-field
+     fn-hrcur-widthp)))))
 
 (defthm fn-rccap-actual-resident-offer-establishes-same-mapped-row
  (implies

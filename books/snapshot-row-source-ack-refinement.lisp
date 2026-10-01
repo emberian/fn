@@ -129,7 +129,8 @@
  :hints (("Goal" :do-not-induct t
   :expand ((fn-omk-widthp x 2) (fn-omk-widthp (cdr x) 1)
            (fn-omk-widthp (cddr x) 0))
-  :in-theory (enable fn-omk-at fn-omk-widthp)))))
+  :in-theory (e/d (fn-omk-at fn-omk-widthp)
+                       (fn-rcca-field-lenses-agree fn-rcca-width-lenses-agree))))))
 (defthm fn-rcca-actual-begin-establishes-the-empty-mapped-prefix
  (implies (and (fn-omk-tokenp source) (equal (fn-omk-at 3 source) 0)
                (unsigned-byte-p 61 (fn-omk-at 1 (fn-omk-at 1 source))))
