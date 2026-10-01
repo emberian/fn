@@ -15,3 +15,4 @@
 (include-book "bpsec-asb-head-invariant")
 (include-book "bpsec-asb-metadata")
 (include-book "bpsec-asb-body")
+(include-book "bpsec-asb-aggregate")

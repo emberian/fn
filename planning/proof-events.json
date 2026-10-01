@@ -17957,6 +17957,21 @@
           "kind": "theorem",
           "name": "fn-bps-asb-step-preserves-body-context",
           "pending_subject": "Actual ASB composite current-body span/source/head/range invariant. Ghost predicates never served; all accumulated-value spans, complete grammar/every-window refinement, physical immutable backing/pinned lifetime and installed BP caller/crypto gate remain open. Proper-local source admission only."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-asb-start-establishes-aggregate-context",
+          "pending_subject": "Actual ASB accumulated metadata span extent composed with current body/head/source range. Ghost predicates never served; complete grammar/every-window alpha, physical immutable backing/pinned lifetime and installed BP caller/crypto gate remain open. Proper-local source admission only."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-asb-drive-preserves-aggregate-context",
+          "pending_subject": "Actual ASB accumulated metadata span extent composed with current body/head/source range. Ghost predicates never served; complete grammar/every-window alpha, physical immutable backing/pinned lifetime and installed BP caller/crypto gate remain open. Proper-local source admission only."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-asb-step-preserves-aggregate-context",
+          "pending_subject": "Actual ASB accumulated metadata span extent composed with current body/head/source range. Ghost predicates never served; complete grammar/every-window alpha, physical immutable backing/pinned lifetime and installed BP caller/crypto gate remain open. Proper-local source admission only."
         }
       ]
     },
