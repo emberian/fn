@@ -1,0 +1,9 @@
+# Immutable operation sources
+
+The image build selects actual guarded protocol producer roots. ACL2 evaluates each four-value result into the immutable table. The build driver verifies actual formals, stobj usage, result arity and guard class; those checks do not prove complete phase costs or source lifetime. Each protocol owns that evidence and its original PRS descriptor.
+
+`fn-runtime-operation-compiled-source(kind)` returns status, family15, role table3 and original resources. Positive status is `:compiled-operation-source`; absent/incomplete kinds return `:runtime-operation-unavailable`. `fn-runtime-operation-compiled-coordinate()` returns the common binding5 only when complete rows agree. The build retains complete kinds and their zero-based scalar slots; `fn-runtime-operation-compiled-slot(kind)` returns the position under the same binding. Runtime ATS association, kind and current nonce validation belong to the owner, not this readout.
+
+`fn-runtime-operation-compiled-body-cost(kind,request,cached)` calls only the actual selected bounded dynamic recipe under a complete family binding. It accepts no budget. No generic request-stream subtotal substitutes for full BODY/caller/frame/collector/cleanup coverage. Request-budget policy reserves headroom without conferring physical-fit authority.
+
+The current default artifact has no complete positive family. Early `:recovery-file-issue` must obtain real pinned profile/header/path sources and bounded file-issuer phase/PRS coverage before Storeopen; served service or canonical view cannot be its prerequisite. The owner publishes the resulting binding once into STATE for the same installed pool. Protocol source hooks for BP, 9P, account and inspect remain available for future complete producers. No host table setter or arbitrary stored-data ceiling is introduced.

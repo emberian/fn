@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2355 |
-| Certification roots in the Makefile | 2153 |
-| Books inside the root closure | 2319 |
-| `defthm` and `defthmd` events | 33256 |
-| `defun` events | 21320 |
+| Books read | 2360 |
+| Certification roots in the Makefile | 2158 |
+| Books inside the root closure | 2324 |
+| `defthm` and `defthmd` events | 33257 |
+| `defun` events | 21342 |
 | Functions with verified guards | 3748 |
 | Functions declared `:verify-guards nil` and never verified | 2602 |
-| Functions left at the default with an explicit guard | 11932 |
+| Functions left at the default with an explicit guard | 11954 |
 | Functions left at the default with no guard | 3038 |
-| `assert-event` checks | 24702 |
+| `assert-event` checks | 24709 |
 | `must-fail` checks | 2531 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 168 |
@@ -27,8 +27,8 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 386 |
 | Enabled-projection warnings | 79 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 3022 |
-| Host-names warnings | 2749 |
+| Include-hygiene warnings | 3026 |
+| Host-names warnings | 2752 |
 | Hand-written-record warnings | 19 |
 
 ## Lints
@@ -1222,7 +1222,11 @@ that `make certify` requests.
 | `books/runtime-bootstrap-admission.lisp` | closure | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/runtime-bootstrap-completion.lisp` | root | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/runtime-bootstrap-source.lisp` | root | 0 | 7 | 0/0/7/0 | 0 | 0 | 0 |
-| `books/runtime-operation-source.lisp` | closure | 0 | 4 | 0/0/4/0 | 0 | 0 | 0 |
+| `books/runtime-operation-compiled-source.lisp` | root | 1 | 5 | 0/0/5/0 | 0 | 0 | 0 |
+| `books/runtime-operation-compiled-table.lisp` | root | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/runtime-operation-installed-source.lisp` | root | 0 | 3 | 0/0/3/0 | 0 | 0 | 0 |
+| `books/runtime-operation-source-assembly.lisp` | root | 0 | 10 | 0/0/10/0 | 0 | 0 | 0 |
+| `books/runtime-operation-source.lisp` | closure | 0 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/sasl.lisp` | root | 23 | 25 | 0/0/25/0 | 0 | 0 | 0 |
 | `books/scheduler-invariants.lisp` | root | 59 | 0 | 0/0/0/0 | 0 | 0 | 2 |
 | `books/scheduler-peers.lisp` | root | 26 | 22 | 1/0/21/0 | 0 | 0 | 0 |
@@ -2244,6 +2248,7 @@ that `make certify` requests.
 | `tests/acl2/retention-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 66 | 1 | 0 |
 | `tests/acl2/runtime-bootstrap-completion-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 2 | 0 | 0 |
 | `tests/acl2/runtime-bootstrap-source-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 0 | 0 |
+| `tests/acl2/runtime-operation-compiled-source-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 7 | 0 | 0 |
 | `tests/acl2/scheduler-peers-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 31 | 0 | 0 |
 | `tests/acl2/scheduler-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 103 | 0 | 0 |
 | `tests/acl2/scram-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 27 | 0 | 0 |

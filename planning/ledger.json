@@ -2053,6 +2053,11 @@
     "books/ninep-group-directory-source",
     "tests/acl2/allocation-dual-ceiling-tests",
     "books/runtime-bootstrap-completion",
+    "tests/acl2/runtime-operation-compiled-source-tests",
+    "books/runtime-operation-compiled-source",
+    "books/runtime-operation-installed-source",
+    "books/runtime-operation-compiled-table",
+    "books/runtime-operation-source-assembly",
     "books/runtime-bootstrap-source",
     "tests/acl2/runtime-bootstrap-completion-tests",
     "tests/acl2/runtime-bootstrap-source-tests",
@@ -2157,27 +2162,27 @@
     "tests/acl2/substrate-commit-codec-gap-tests"
   ],
   "totals": {
-    "books": 2355,
-    "books_in_root_closure": 2319,
-    "roots": 2153,
-    "theorems": 33256,
-    "functions": 21320,
-    "assert_events": 24702,
+    "books": 2360,
+    "books_in_root_closure": 2324,
+    "roots": 2158,
+    "theorems": 33257,
+    "functions": 21342,
+    "assert_events": 24709,
     "must_fails": 2531,
     "prover_refusals": 0,
     "encapsulates": 168,
     "guards": {
       "verified": 3748,
       "declared-off": 2602,
-      "default-guarded": 11932,
+      "default-guarded": 11954,
       "default-unguarded": 3038
     },
     "suspect_theorems": 1313,
     "export_hygiene_warnings": 386,
     "enabled_projection_warnings": 79,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 3022,
-    "host_names_warnings": 2749,
+    "include_hygiene_warnings": 3026,
+    "host_names_warnings": 2752,
     "hand_written_record_warnings": 19
   },
   "books": [
@@ -35523,15 +35528,15 @@
       "read_error": null
     },
     {
-      "book": "books/runtime-operation-source.lisp",
+      "book": "books/runtime-operation-compiled-source.lisp",
       "in_root_closure": true,
-      "is_root": false,
-      "theorems": 0,
-      "functions": 4,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 5,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 4,
+        "default-guarded": 5,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -35542,7 +35547,113 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "page-read-pool-state"
+        "runtime-operation-compiled-table"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/runtime-operation-compiled-table.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 4,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "runtime-operation-source-assembly"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/runtime-operation-installed-source.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 3,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "allocation-epoch",
+        "page-read-pool-state",
+        "runtime-operation-compiled-source",
+        "state-globals"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/runtime-operation-source-assembly.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 10,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 10,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/runtime-operation-source.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 7,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 7,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "page-read-pool-state",
+        "runtime-operation-installed-source"
       ],
       "system_includes": [],
       "suspects": [],
@@ -64299,6 +64410,32 @@
       "encapsulates": 0,
       "includes": [
         "../../books/runtime-bootstrap-source"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/runtime-operation-compiled-source-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 7,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/runtime-operation-compiled-source"
       ],
       "system_includes": [],
       "suspects": [],
@@ -94522,10 +94659,38 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/runtime-operation-installed-source.lisp",
+        "line": 5,
+        "include": "allocation-epoch",
+        "included": "books/allocation-epoch.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/runtime-operation-installed-source.lisp",
+        "line": 6,
+        "include": "page-read-pool-state",
+        "included": "books/page-read-pool-state.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/runtime-operation-installed-source.lisp",
+        "line": 7,
+        "include": "state-globals",
+        "included": "books/state-globals.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/runtime-operation-source.lisp",
         "line": 4,
         "include": "page-read-pool-state",
         "included": "books/page-read-pool-state.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/runtime-operation-source.lisp",
+        "line": 5,
+        "include": "runtime-operation-installed-source",
+        "included": "books/runtime-operation-installed-source.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -107505,8 +107670,8 @@
         "host": "host/account-adoption-turn-host.lisp",
         "line": 13,
         "name": "fn-owner-account-operation-resources",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+        "source": "books/runtime-operation-source.lisp",
+        "reason": "defined in books/runtime-operation-source.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/account-adoption-turn-host.lisp",
@@ -121209,15 +121374,36 @@
       },
       {
         "host": "host/native/runtime-bootstrap.lisp",
-        "line": 18,
+        "line": 19,
         "name": "fnn-fixed-callback-fail",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/runtime-bootstrap.lisp",
-        "line": 18,
+        "line": 19,
         "name": "user-stobj-alist",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
+      },
+      {
+        "host": "host/native/runtime-image-policy.lisp",
+        "line": 34,
+        "name": "*fnn-runtime-participants*",
+        "source": "host/native/runtime-participants.lisp",
+        "reason": "defined in host/native/runtime-participants.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/runtime-image-policy.lisp",
+        "line": 34,
+        "name": "fnn-runtime-participants-pool",
+        "source": "host/native/runtime-participants.lisp",
+        "reason": "defined in host/native/runtime-participants.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/runtime-image-policy.lisp",
+        "line": 73,
+        "name": "pushnew",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },

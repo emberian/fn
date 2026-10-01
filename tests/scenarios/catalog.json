@@ -7710,6 +7710,29 @@
         "planning/evidence/allocation-request-split.json"
       ],
       "execution_scope": "Guarded pure scalar component and three-book normal source certification; synthetic fixtures are not genuine runtime authority, physical fit or native qualification."
+    },
+    {
+      "id": "SCN-1076",
+      "title": "Immutable compiled sources preserve unavailable and original protocol resources",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-10001"
+      ],
+      "steps": [
+        "Read missing recovery/inspect kinds and malformed caller data.",
+        "Compile only explicitly selected actual guarded four-MV roots; preserve original resources without host arithmetic."
+      ],
+      "expected": [
+        "Incomplete source and slot/body readouts remain unavailable.",
+        "No table setter, readiness flag or caller slot input exists."
+      ],
+      "evidence": [
+        "tests/acl2/runtime-operation-compiled-source-tests.lisp",
+        "tests/test_operation_source_driver.py",
+        "planning/evidence/manifests/certify-20261001T025802Z-1029297.json"
+      ],
+      "execution_scope": "Four-book narrow normal certification and generator fixtures; no genuine positive operation/caller or native installation yet."
     }
   ]
 }

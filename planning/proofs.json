@@ -19982,6 +19982,24 @@
         "planning/evidence/obligation-cursor-2026-10-01/README.md"
       ],
       "progress_note": "Both executable cores normally certified at matching manifests; complete literal-source refinement/progress and 13 assertions passed in proper62-event capsule. Full original include closure certification and actual caller integration remain open; no native or resource allowance claim."
+    },
+    {
+      "id": "PRF-1200",
+      "title": "Immutable actual operation source compilation and SAMEpool installation",
+      "statement": "Complete selected protocol phase/PRS producers compile into immutable operation and role readouts with exact compiler/source/profile/image binding; only the same installed pool may consume them. Missing phase evidence remains unavailable.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-10001"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/runtime-operation-compiled-source.lisp",
+        "specs/runtime-operation-compiled-source.md",
+        "planning/evidence/manifests/certify-20261001T025802Z-1029297.json"
+      ],
+      "progress_note": "Common guarded readouts and build-only actual-world ABI/source compiler are source-qualified. Current roster empty: no complete positive family, installed ATS slot, native entry, full BODY cost or SAMEpool publication claim. Definitional lookup equation is not a keystone. Early recovery-file-issue is the first actual integration target."
     }
   ]
 }

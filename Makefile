@@ -2064,6 +2064,11 @@ ACL2_BOOKS ?= books/defrecord \
     books/ninep-group-directory-source \
     tests/acl2/allocation-dual-ceiling-tests \
     books/runtime-bootstrap-completion \
+    tests/acl2/runtime-operation-compiled-source-tests \
+    books/runtime-operation-compiled-source \
+    books/runtime-operation-installed-source \
+    books/runtime-operation-compiled-table \
+    books/runtime-operation-source-assembly \
     books/runtime-bootstrap-source \
     tests/acl2/runtime-bootstrap-completion-tests \
     tests/acl2/runtime-bootstrap-source-tests \

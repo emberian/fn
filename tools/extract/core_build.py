@@ -57,33 +57,34 @@ def product_block(tree, build="host/native/build.lisp"):
         raise ValueError("duplicate runtime bootstrap image preparation")
     cut = prepare[0].start()
     loads = []
-    for name in ("runtime-participants", "runtime-bootstrap"):
+    for name in ("runtime-participants", "runtime-image-policy", "runtime-bootstrap"):
         matches = list(re.finditer(
             r'(?im)^[ \t]*\(load "host/native/' + name + r'\.lisp"\)', body))
         if len(matches) != 1 or matches[0].start() >= cut:
             raise ValueError("bootstrap helper load must precede image preparation: " + name)
         loads.append(matches[0].end())
-    if loads[0] >= loads[1]:
-        raise ValueError("runtime participant macro must load before bootstrap")
-    calls = {}
-    for name in ("install-for-image", "register-image-hooks"):
-        calls[name] = list(re.finditer(
-            r"(?im)^[ \t]*\((?:cl-user::)?fnn-runtime-participants-" + name + r"\b", body))
-    if any(calls.values()):
-        install = re.search(
-            r"(?im)^[ \t]*\(cl-user::fnn-runtime-participants-install-for-image "
-            r"\(fnn-live-page-read-pool\)\)[ \t]*$", body)
-        register = re.search(
-            r"(?im)^[ \t]*\(cl-user::fnn-runtime-participants-register-image-hooks\)[ \t]*$", body)
-        if (not install or not register or
-                any(len(found) != 1 for found in calls.values()) or
-                not (max(loads) < install.start() < register.start() < cut)):
-            raise ValueError("partial, repeated or mismatched bootstrap participant setup")
-        return body
-    indent = prepare[0].group(1)
-    hooks = (indent + "(cl-user::fnn-runtime-participants-install-for-image "
-             "(fnn-live-page-read-pool))\n" + indent +
+    if loads != sorted(loads):
+        raise ValueError("bootstrap helper order must be participants, image policy, bootstrap")
+    # Only this image-builder form installs actual participants and policy.
+    # The native source world has no such side effects. Both receive the SAME
+    # live pool, and ImagePrepare captures their actual objects afterwards.
+    hooks = ("(let* ((pool (fnn-live-page-read-pool))\n"
+             "       (gate (cl-user::fnn-runtime-participants-install-for-image pool)))\n"
+             "  (cl-user::fnn-runtime-image-policy-prepare pool gate))\n"
+             "(cl-user::fnn-runtime-image-policy-register-image-hook)\n"
              "(cl-user::fnn-runtime-participants-register-image-hooks)\n")
+    setup_names = ("fnn-runtime-participants-install-for-image",
+                   "fnn-runtime-participants-register-image-hooks",
+                   "fnn-runtime-image-policy-prepare",
+                   "fnn-runtime-image-policy-register-image-hook")
+    present = [len(re.findall(r"(?<![\w-])" + name + r"\b", body, re.I))
+               for name in setup_names]
+    if any(present):
+        pos = body.find(hooks)
+        if (present != [1, 1, 1, 1] or pos < max(loads) or
+                pos + len(hooks) > cut):
+            raise ValueError("partial, repeated or mismatched bootstrap policy setup")
+        return body
     return body[:cut] + hooks + body[cut:]
 
 
