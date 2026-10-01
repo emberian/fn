@@ -353,6 +353,19 @@
   (implies (and (natp i) (< i (len a)))
            (equal (len (update-nth i r a)) (len a))))
 
+; The generated setters rewrite to adt-set-a: its length and the recognizer.
+(defthm fn-cp-len-of-adt-set-a
+  (implies (and (natp i) (< i (len a)))
+           (equal (len (adt-set-a j i v a)) (len a)))
+  :hints (("Goal" :in-theory (enable adt-set-a))))
+
+(defthm fn-cp-crowp-of-adt-set-a
+  (implies (and (fn-crowp a) (natp i) (< i (len a)) (natp j) (< j 12)
+                (adt-val-okp (nth j *fn-crow-schema*) v))
+           (fn-crowp (adt-set-a j i v a)))
+  :hints (("Goal" :in-theory (e/d (adt-set-a) (fn-cp-crowp-of-set-column))
+           :use fn-cp-crowp-of-set-column)))
+
 (local (in-theory (disable fn-cat$pp fn-crowp fn-cat$cp fn-cp-row-of fn-cp-held fn-cp-tree-of
                            fn-cp-escapedp fn-cp-u64 fn-cp-smallp fn-cp-msgid-octets
                            fn-cp-overflow-of fn-cp-row-held)))
@@ -528,11 +541,22 @@
   (declare (xargs :stobjs fn-cat$p))
   (stobj-let ((fn-cat$c (fn-cat$p-tab fn-cat$p))) (x) (fn-cat$c-total-octets fn-cat$c) x))
 
+; A present withdrawal is an (at . by) pair of naturals (books/catalog.lisp's
+; fn-ctg-withdrawn-present-is-pair, local there), forward only.
+(local
+ (defthm fn-cp-withdrawn-present-is-pair
+   (implies (and (fn-held-withdrawnp w) w)
+            (and (consp w) (natp (car w)) (natp (cdr w))))
+   :rule-classes :forward-chaining
+   :hints (("Goal" :in-theory (enable fn-held-withdrawnp)))))
+
 (defun fn-cat$p-visible-at (seq v fn-cat$p)
   (declare (xargs :stobjs fn-cat$p
                   :guard (and (fn-cat$p-wfp fn-cat$p) (natp seq) (natp v)
                               (< seq (fn-cat$p-count fn-cat$p))
-                              (fn-held-withdrawnp (fn-cat$p-withdrawn-of seq fn-cat$p)))))
+                              (fn-held-withdrawnp (fn-cat$p-withdrawn-of seq fn-cat$p)))
+                  :guard-hints (("Goal" :do-not-induct t
+                                 :in-theory (disable fn-cat$p-withdrawn-of)))))
   (and (< seq v)
        (let ((w (fn-cat$p-withdrawn-of seq fn-cat$p)))
          (or (null w) (<= v (car w))))))
@@ -571,10 +595,25 @@
   (declare (xargs :stobjs fn-cat$p :guard (fn-cat$p-wfp fn-cat$p)))
   (fn-cat$p-rows-list (fn-cat$p-count fn-cat$p) nil fn-cat$p))
 
+(local
+ (defthm fn-cp-rows-list-true-listp
+   (implies (true-listp acc)
+            (true-listp (fn-cat$p-rows-list i acc fn-cat$p)))
+   :hints (("Goal" :induct (fn-cat$p-rows-list i acc fn-cat$p)))))
+
+(local
+ (defthm fn-cp-rows-below-count-true-listp
+   (true-listp (fn-cat$p-rows-below-count fn-cat$p))
+   :hints (("Goal" :in-theory (enable fn-cat$p-rows-below-count)))))
+
 (defun fn-cat$p-msgid-saturatedp (key msgid fn-cat$p)
   (declare (xargs :stobjs fn-cat$p
                   :guard (and (fn-cat$p-wfp fn-cat$p)
-                              (fn-mpxt-keyp key) (equal (len key) *fn-mpxt-key-octets*))))
+                              (fn-mpxt-keyp key) (equal (len key) *fn-mpxt-key-octets*))
+                  :guard-hints (("Goal" :in-theory (disable fn-mpxt-saturatedp fn-mpxt-key-samep
+                                                            fn-cat$p-rows-list fn-mpxt-key-samep-is-equal
+                                                            fn-cat$p-rows-below-count fn-mpxtp fn-crowp fn-cat$cp)
+                                 :do-not-induct t))))
   (let ((own (stobj-let ((fn-cat$c (fn-cat$p-tab fn-cat$p)))
                         (own)
                         (stobj-let ((fn-mpxt (fn-cat$c-mpx fn-cat$c)))
@@ -592,7 +631,11 @@
 (defun fn-cat$p-index-health (key fn-cat$p)
   (declare (xargs :stobjs fn-cat$p
                   :guard (and (fn-cat$p-wfp fn-cat$p)
-                              (fn-mpxt-keyp key) (equal (len key) *fn-mpxt-key-octets*))))
+                              (fn-mpxt-keyp key) (equal (len key) *fn-mpxt-key-octets*))
+                  :guard-hints (("Goal" :in-theory (disable fn-mpxt-saturatedp fn-mpxt-key-samep
+                                                            fn-cat$p-rows-list fn-mpxt-key-samep-is-equal
+                                                            fn-cat$p-rows-below-count fn-mpxtp fn-crowp fn-cat$cp)
+                                 :do-not-induct t))))
   (let ((own (stobj-let ((fn-cat$c (fn-cat$p-tab fn-cat$p)))
                         (own)
                         (stobj-let ((fn-mpxt (fn-cat$c-mpx fn-cat$c)))
@@ -610,8 +653,52 @@
 
 ; --- the writes
 
+(local
+ (defthm fn-cp-octets-of-apply-plan
+   (equal (nth *fn-cat$c-octets* (fn-cat$c-apply-plan plan seq c))
+          (nth *fn-cat$c-octets* c))
+   :hints (("Goal" :in-theory (enable fn-cat$c-apply-plan fn-cat$c-numbers-put fn-cat$c-groups-put)))))
+
+; The commit's table steps, each one stobj-let over the nested tables.
+(defun fn-cat$p-tab-index-add (msgid seq fn-cat$p)
+  (declare (xargs :stobjs fn-cat$p :guard (natp seq)))
+  (stobj-let ((fn-cat$c (fn-cat$p-tab fn-cat$p)))
+             (fn-cat$c)
+             (fn-cat$c-index-add msgid seq fn-cat$c)
+             fn-cat$p))
+
+(defun fn-cat$p-tab-commit (plan lplan hz seq h fn-cat$p)
+  (declare (xargs :stobjs fn-cat$p :guard (and (natp seq) (natp hz))))
+  (stobj-let ((fn-cat$c (fn-cat$p-tab fn-cat$p)))
+             (fn-cat$c)
+             (let* ((x (fn-held-withdrawn h))
+                    (fn-cat$c (fn-cat$c-apply-plan plan seq fn-cat$c))
+                    (fn-cat$c (update-fn-cat$c-octets
+                               (+ (fn-cat$c-octets fn-cat$c)
+                                  (nfix (fn-hf-octets (fn-held-facts h))))
+                               fn-cat$c))
+                    (fn-cat$c (update-fn-cat$c-count (+ 1 seq) fn-cat$c))
+                    (fn-cat$c (fn-cat$c-live-apply lplan fn-cat$c))
+                    (fn-cat$c (update-fn-cat$c-hz hz fn-cat$c)))
+               (if (consp x)
+                   (fn-cat$c-wbv-put (car x)
+                                     (fn-cat-insert-asc seq (fn-cat$c-wbv-get (car x) fn-cat$c))
+                                     fn-cat$c)
+                 fn-cat$c))
+             fn-cat$p))
+
+(local
+ (defthm fn-cp-wfp-of-tab-index-add
+   (implies (fn-cat$p-wfp fn-cat$p)
+            (fn-cat$p-wfp (fn-cat$p-tab-index-add m s fn-cat$p)))
+   :hints (("Goal" :in-theory (enable fn-cat$p-tab-index-add)))))
+
 (defun fn-cat$p-commit-w (h fn-cat$p)
-  (declare (xargs :stobjs fn-cat$p :guard (fn-cat$p-wfp fn-cat$p)))
+  (declare (xargs :stobjs fn-cat$p :guard (fn-cat$p-wfp fn-cat$p)
+                  :guard-hints (("Goal" :do-not-induct t
+                                 :in-theory (disable fn-cat$p-tab-index-add fn-cat$p-tab-commit
+                                                     fn-cat$p-append-row fn-cat$p-wfp
+                                                     fn-cat$c-live-plan fn-cat$c-plan)))))
   (let* ((seq (fn-cat$p-count fn-cat$p))
          (x (fn-held-withdrawn h))
          (lplan (stobj-let ((fn-cat$c (fn-cat$p-tab fn-cat$p)))
@@ -629,28 +716,9 @@
                           (fn-cat$c-plan (fn-record-groups h) fn-cat$c)
                           plan))
          (row (fn-held-with-numbers h (fn-cat-plan-numbers plan)))
-         (fn-cat$p (stobj-let ((fn-cat$c (fn-cat$p-tab fn-cat$p)))
-                              (fn-cat$c)
-                              (fn-cat$c-index-add (fn-record-msgid h) seq fn-cat$c)
-                              fn-cat$p))
-         (fn-cat$p (fn-cat$p-append-row row fn-cat$p))
-         (fn-cat$p (stobj-let ((fn-cat$c (fn-cat$p-tab fn-cat$p)))
-                              (fn-cat$c)
-                              (let* ((fn-cat$c (fn-cat$c-apply-plan plan seq fn-cat$c))
-                                     (fn-cat$c (update-fn-cat$c-octets
-                                                (+ (fn-cat$c-octets fn-cat$c)
-                                                   (nfix (fn-hf-octets (fn-held-facts h))))
-                                                fn-cat$c))
-                                     (fn-cat$c (update-fn-cat$c-count (+ 1 seq) fn-cat$c))
-                                     (fn-cat$c (fn-cat$c-live-apply lplan fn-cat$c))
-                                     (fn-cat$c (update-fn-cat$c-hz hz fn-cat$c)))
-                                (if (consp x)
-                                    (fn-cat$c-wbv-put (car x)
-                                                      (fn-cat-insert-asc seq (fn-cat$c-wbv-get (car x) fn-cat$c))
-                                                      fn-cat$c)
-                                  fn-cat$c))
-                              fn-cat$p)))
-    fn-cat$p))
+         (fn-cat$p (fn-cat$p-tab-index-add (fn-record-msgid h) seq fn-cat$p))
+         (fn-cat$p (fn-cat$p-append-row row fn-cat$p)))
+    (fn-cat$p-tab-commit plan lplan hz seq h fn-cat$p)))
 
 ; The live summary's scans, over the paged rows (the old fn-cat$c-live-at-p,
 ; -scan-up, -scan-down, -drop-entry, -drop-plan).
@@ -679,7 +747,8 @@
 
 (defun fn-cat$p-drop-entry (group k fn-cat$p)
   (declare (xargs :stobjs fn-cat$p :guard (and (fn-cat$p-wfp fn-cat$p) (posp k))))
-  (let* ((top (nfix (- (fn-cat$p-group-next group fn-cat$p) 1)))
+  (let* ((ge (stobj-let ((fn-cat$c (fn-cat$p-tab fn-cat$p))) (ge) (fn-cat$c-groups-get group fn-cat$c) ge))
+         (top (nfix (- (if (consp ge) (nfix (cdr ge)) 1) 1)))
          (count (fn-cat$p-group-live-count group fn-cat$p))
          (low (fn-cat$p-group-live-low group fn-cat$p))
          (high (fn-cat$p-group-live-high group fn-cat$p)))
