@@ -81,3 +81,16 @@ PRF-1190 and PRF-1191 are conditional source components. SCN-1071 exercises actu
 directory kernels and concrete page publication under explicitly synthetic test
 registration. No native route, image, deployment, whole operation tariff or
 served completion is qualified by these fixtures.
+
+The registered census uses guarded LOGIC BEGIN and STEP transitions. Their
+PROGRAM boundary functions delegate once and return the actual backing/STATE
+results. PrepareIntent reads the committed count from its same captured base
+Store and retains it with that base and the current source before semantic
+work. Census BEGIN consumes that retained count and checks its APR association;
+it does not recompute the history or accept a host count. The actual source
+constructor establishes its five natural cursor fields. STEP checks that fixed
+scalar domain before source Tick, and retains returned source/remap frames in a
+fenced job on refusal. The original-prefix/remap relation remains a carried
+proof invariant, not a served validation walk. Source-only guard/effect proofs
+and normal capture-component certification do not qualify an installed
+canonical allowance or the authenticated cold row/byte worker.
