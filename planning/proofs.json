@@ -11927,7 +11927,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-log-walk-once.lisp",
         "books/store-log-txid.lisp",
@@ -15599,7 +15599,7 @@
         "PRF-326"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/deflate-pool.lisp",
         "books/deflate-pool-check.lisp",

@@ -13,7 +13,7 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 2690 |
 | Certification roots in the Makefile | 2342 |
 | Books inside the root closure | 2598 |
-| `defthm` and `defthmd` events | 35240 |
+| `defthm` and `defthmd` events | 35248 |
 | `defun` events | 22474 |
 | Functions with verified guards | 3826 |
 | Functions declared `:verify-guards nil` and never verified | 2788 |
@@ -640,7 +640,7 @@ that `make certify` requests.
 | `books/deflate-frame.lisp` | closure | 37 | 3 | 0/0/2/1 | 0 | 0 | 0 |
 | `books/deflate-inflate.lisp` | root | 171 | 85 | 0/0/74/11 | 0 | 0 | 0 |
 | `books/deflate-pool-check.lisp` | root | 13 | 5 | 0/0/3/2 | 0 | 0 | 1 |
-| `books/deflate-pool.lisp` | closure | 35 | 12 | 0/0/6/6 | 0 | 0 | 0 |
+| `books/deflate-pool.lisp` | closure | 42 | 12 | 0/0/6/6 | 0 | 0 | 0 |
 | `books/defrecord.lisp` | root | 0 | 16 | 0/0/0/16 | 0 | 0 | 0 |
 | `books/deftransition.lisp` | root | 0 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `books/exchange-invariants.lisp` | root | 22 | 2 | 0/0/2/0 | 0 | 0 | 0 |
@@ -665,7 +665,7 @@ that `make certify` requests.
 | `books/feed-auth-profile.lisp` | root | 4 | 8 | 8/0/0/0 | 0 | 0 | 0 |
 | `books/feed-connection-invariants.lisp` | root | 48 | 22 | 2/0/20/0 | 0 | 0 | 1 |
 | `books/feed-connection.lisp` | root | 11 | 50 | 49/0/1/0 | 0 | 0 | 1 |
-| `books/feed-correspondence.lisp` | root | 26 | 1 | 0/0/0/1 | 0 | 0 | 1 |
+| `books/feed-correspondence.lisp` | root | 27 | 1 | 0/0/0/1 | 0 | 0 | 1 |
 | `books/feed-events.lisp` | root | 0 | 19 | 0/0/19/0 | 0 | 0 | 0 |
 | `books/feed-filename.lisp` | root | 2 | 21 | 0/0/21/0 | 0 | 0 | 0 |
 | `books/feed-journal.lisp` | root | 3 | 6 | 2/0/4/0 | 0 | 0 | 0 |
@@ -3150,7 +3150,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-lg-last-trailer-unfolds` | `books/store-log.lisp` | 1309 | arm-of-definition: the hypotheses select one IF/COND arm of fn-lg-last-trailer and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-lg-last-trailer and the conclusion is that branch's value |
 | `fn-lg-log-unfolds` | `books/store-log.lisp` | 1298 | arm-of-definition: the hypotheses select one IF/COND arm of fn-lg-log and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-lg-log and the conclusion is that branch's value |
 | `fn-lgb-event-decode-of-legacy` | `books/store-log-walk-once.lisp` | 211 | branch-of-definition: the hypothesis is a branch test of fn-store-event-decode-exact and the conclusion is that branch's value |
-| `fn-lgb-legacy-is-a-wire-event` | `books/store-log-walk-once.lisp` | 218 | reflexive-conclusion: a conjunct is (equal X X) |
+| `fn-lgb-legacy-is-a-wire-event` | `books/store-log-walk-once.lisp` | 222 | reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-lgc-committed-of-lgk-make` | `books/store-log-kernel-concrete.lisp` | 765 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-lgc-of-make` | `books/store-log-kernel-concrete.lisp` | 761 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-lgd-slice-when-short` | `books/store-log-decode.lisp` | 214 | arm-of-definition: the hypotheses select one IF/COND arm of fn-lg-slice and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-lg-slice and the conclusion is that branch's value |

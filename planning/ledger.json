@@ -2349,7 +2349,7 @@
     "books": 2690,
     "books_in_root_closure": 2598,
     "roots": 2342,
-    "theorems": 35240,
+    "theorems": 35248,
     "functions": 22474,
     "assert_events": 25200,
     "must_fails": 2531,
@@ -17783,7 +17783,7 @@
       "book": "books/deflate-pool.lisp",
       "in_root_closure": true,
       "is_root": false,
-      "theorems": 35,
+      "theorems": 42,
       "functions": 12,
       "guards": {
         "verified": 0,
@@ -18472,7 +18472,7 @@
       "book": "books/feed-correspondence.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 26,
+      "theorems": 27,
       "functions": 1,
       "guards": {
         "verified": 0,
@@ -59704,7 +59704,7 @@
       "assert_events": 11,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 0,
+      "defconsts": 2,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -81956,7 +81956,7 @@
     {
       "theorem": "fn-lgb-legacy-is-a-wire-event",
       "book": "books/store-log-walk-once.lisp",
-      "line": 218,
+      "line": 222,
       "reasons": [
         "reflexive-conclusion: a conjunct is (equal X X)"
       ]
