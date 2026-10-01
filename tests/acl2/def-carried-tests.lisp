@@ -468,6 +468,152 @@
          (w state)))
   :msg "invalid carried-stobj PATTERN: fn-cdt-note (mv-nth 0 _)"))
 
+; Enumeration of every pattern-accepting keyword/state-kind pair.  The
+; assertion negates the EXACT expected diagnostic (including FN/PATTERN),
+; so an unrelated refusal or acceptance makes must-fail-checked fail.
+; These are complete declarations; trace nil prevents generated-name or
+; trace-proof failures from masking the pattern check.
+(defmacro fn-cdt-pattern-acceptance (name kvs fn pattern stobjp)
+  `(assert-event
+    (not (equal
+          (fn-cd-declaration-problem ',name ',kvs (w state))
+          ,(if stobjp
+               `(msg "~x0 has invalid carried-stobj PATTERN ~x1: use `_ only for a sole carried-stobj output, or (mv-nth K _) where ACL2's stobjs-out identifies that carried stobj at K" ',fn ',pattern)
+             `(msg "~x0 has invalid carried-value PATTERN ~x1: use `_, an in-range (mv-nth K _) for multiple outputs, or (SEL _) with a defined non-recursive unary logical selector" ',fn ',pattern))))))
+
+(encapsulate ()
+ (local
+  (defun fn-cdt-bad-return (fn-cdt-st)
+    (declare (xargs :stobjs fn-cdt-st))
+    (update-fn-cdt-n 0 fn-cdt-st)))
+ (local (definterface fn-cdt-bad-return :class :common-lisp-compliant))
+ (local
+  (defthm fn-cdt-bad-return-established-repaired
+    (fn-cdt-relp (fn-cdt-open (fn-cdt-bad-return fn-cdt-st)))))
+ (local
+  (defthm fn-cdt-bad-return-transition-repaired
+    (implies (fn-cdt-relp fn-cdt-st)
+             (fn-cdt-relp (fn-cdt-open (fn-cdt-bad-return fn-cdt-st))))))
+ ; STOBJ :transitions
+ (local
+  (must-fail-checked
+   (fn-cdt-pattern-acceptance fn-cdt-enum-st-transition
+    (:invariant fn-cdt-relp
+     :established ((fn-cdt-open fn-cdt-open-establishes))
+     :transitions ((fn-cdt-bump fn-cdt-bump-carries)
+                   (fn-cdt-note fn-cdt-note-carries (mv-nth 1 _))
+                   (fn-cdt-reset fn-cdt-reset-carries)
+                   (fn-cdt-bad-return fn-cdt-bad-return-transition-repaired (fn-cdt-open _)))
+     :trace nil)
+    fn-cdt-bad-return (fn-cdt-open _) t)))
+ ; STOBJ :established
+ (local
+  (must-fail-checked
+   (fn-cdt-pattern-acceptance fn-cdt-enum-st-established
+    (:invariant fn-cdt-relp
+     :established ((fn-cdt-open fn-cdt-open-establishes)
+                   (fn-cdt-bad-return fn-cdt-bad-return-established-repaired (fn-cdt-open _)))
+     :transitions ((fn-cdt-bump fn-cdt-bump-carries)
+                   (fn-cdt-note fn-cdt-note-carries (mv-nth 1 _))
+                   (fn-cdt-reset fn-cdt-reset-carries))
+     :trace nil)
+    fn-cdt-bad-return (fn-cdt-open _) t)))
+ (local
+  (assert-event
+   (null (fn-cd-returned-call
+          'fn-cdt-relp 'fn-cdt-bad-return '(fn-cdt-open _)
+          '(fn-cdt-open (fn-cdt-bad-return fn-cdt-st)) (w state))))))
+
+(encapsulate ()
+ (local (defun fn-cdt-vp (s) (equal s '(1))))
+ (local (defun fn-cdt-vrepair (s) (declare (ignore s)) (cons 1 nil)))
+ (local (defun fn-cdt-vbad (s) (declare (ignore s)) nil))
+ (local (defun fn-cdt-vselect (x) (car x)))
+ (local (defun fn-cdt-vid (x) x))
+ (local (defun fn-cdt-vstep (s) (list s)))
+ (local (defun fn-cdt-vrecursive (x)
+          (if (consp (cdr x)) (fn-cdt-vrecursive (cdr x)) (car x))))
+ (local (defthm fn-cdt-vopen (fn-cdt-vp (fn-cdt-vrepair s))))
+ (local (defthm fn-cdt-vbad-open
+          (fn-cdt-vp (fn-cdt-vrepair (fn-cdt-vbad s)))))
+ (local (defthm fn-cdt-vbad-carries
+          (implies (fn-cdt-vp s)
+                   (fn-cdt-vp (fn-cdt-vrepair (fn-cdt-vbad s))))))
+ (local (defthm fn-cdt-vstep-carries
+          (implies (fn-cdt-vp s)
+                   (fn-cdt-vp (fn-cdt-vselect (fn-cdt-vstep s))))))
+ (local (defthm fn-cdt-vnested-carries
+          (implies (fn-cdt-vp s)
+                   (fn-cdt-vp (fn-cdt-vid (fn-cdt-vid (fn-cdt-vrepair s)))))))
+ (local (defthm fn-cdt-vrecursive-carries
+          (implies (fn-cdt-vp s)
+                   (fn-cdt-vp (fn-cdt-vrecursive (fn-cdt-vstep s))))))
+ ; VALUE :transitions
+ (local
+  (must-fail-checked
+   (fn-cdt-pattern-acceptance fn-cdt-enum-v-transition
+    (:invariant fn-cdt-vp
+     :established ((fn-cdt-vrepair fn-cdt-vopen))
+     :transitions ((fn-cdt-vbad fn-cdt-vbad-carries (fn-cdt-vrepair _)))
+     :complete-by (:enumeration "repair opens; bad is the sole transition") :trace nil)
+    fn-cdt-vbad (fn-cdt-vrepair _) nil)))
+ ; VALUE :established
+ (local
+  (must-fail-checked
+   (fn-cdt-pattern-acceptance fn-cdt-enum-v-established
+    (:invariant fn-cdt-vp
+     :established ((fn-cdt-vbad fn-cdt-vbad-open (fn-cdt-vrepair _)))
+     :transitions ((fn-cdt-vstep fn-cdt-vstep-carries (fn-cdt-vselect _)))
+     :complete-by (:enumeration "bad opens; step is the sole transition") :trace nil)
+    fn-cdt-vbad (fn-cdt-vrepair _) nil)))
+ (local
+  (must-fail-checked
+   (fn-cdt-pattern-acceptance fn-cdt-enum-v-nested
+    (:invariant fn-cdt-vp
+     :established ((fn-cdt-vrepair fn-cdt-vopen))
+     :transitions ((fn-cdt-vrepair fn-cdt-vnested-carries (fn-cdt-vid (fn-cdt-vid _))))
+     :complete-by (:enumeration "repair opens and is the sole transition") :trace nil)
+    fn-cdt-vrepair (fn-cdt-vid (fn-cdt-vid _)) nil)))
+ (local
+  (must-fail-checked
+   (fn-cdt-pattern-acceptance fn-cdt-enum-v-recursive
+    (:invariant fn-cdt-vp
+     :established ((fn-cdt-vrepair fn-cdt-vopen))
+     :transitions ((fn-cdt-vstep fn-cdt-vrecursive-carries (fn-cdt-vrecursive _)))
+     :complete-by (:enumeration "repair opens; step is the sole transition") :trace nil)
+    fn-cdt-vstep (fn-cdt-vrecursive _) nil)))
+ ; Positive selector fixture includes generated step/run theorems.
+ (local
+  (def-carried fn-cdt-vcarried
+    :invariant fn-cdt-vp
+    :established ((fn-cdt-vrepair fn-cdt-vopen))
+    :transitions ((fn-cdt-vstep fn-cdt-vstep-carries (fn-cdt-vselect _)))
+    :complete-by (:enumeration "repair opens; step is the sole transition")))
+ (local
+  (thm
+   (let ((s (fn-cdt-vrepair nil)) (e '(fn-cdt-vstep nil)))
+     (and (fn-cdt-vp s) (fn-cdt-vcarried-okp s e)
+          (fn-cdt-vp (fn-cdt-vcarried-step s e))
+          (fn-cdt-vcarried-run-okp s (list e))
+          (fn-cdt-vp (fn-cdt-vcarried-run s (list e)))))
+   :hints (("Goal" :in-theory (disable fn-cdt-vcarried-step-carries
+                                       fn-cdt-vcarried-run-carries)))))
+ (local
+  (assert-event
+   (and (fn-cd-valid-pattern-p 'fn-cdt-vp 'fn-cdt-vstep '(fn-cdt-vselect _) (w state))
+        (not (fn-cd-valid-pattern-p 'fn-cdt-vp 'fn-cdt-vstep '(mv-nth 0 _) (w state)))
+        (null (fn-cd-returned-call 'fn-cdt-vp 'fn-cdt-vbad '(fn-cdt-vrepair _)
+                                 '(fn-cdt-vrepair (fn-cdt-vbad s)) (w state))))))
+ (local
+  (must-fail-checked
+   (assert-event
+    (not (equal
+          (fn-di-raw-with-problem
+           'fn-cdt-vstep '(:class :common-lisp-compliant :raw-with (:carried fn-cdt-vcarried))
+           (w state))
+          (msg ":raw-with ~x0 on ~x1: value-state carried rows are enumerated, not world-derived, and cannot back raw dispatch"
+               '(:carried fn-cdt-vcarried) 'fn-cdt-vstep)))))))
+
 ; ---------------------------------------------------------------------------
 ; 1. Accepted.
 

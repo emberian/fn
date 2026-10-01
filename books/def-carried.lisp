@@ -33,7 +33,13 @@
 ; placeholder `_' (default `_': the call itself), such as (mv-nth 2 _) or
 ; (fn-tcl-result-session _) for a value state.  For a carried stobj, only
 ; `_` for its sole output or (mv-nth K _) at a world-confirmed output
-; position is allowed for transitions.  The theorem's conclusion must be R of exactly
+; position is allowed.  For a value state, allow `_`, an in-range mv-nth
+; only for multiple outputs, or one unary, defined, non-recursive selector.
+; Its translated logical body selects using car/cdr/nth/mv-nth (and MBE's
+; logic branch); it never constructs or repairs state. Nested named selectors
+; in PATTERN are refused. This rule applies to establishing points and
+; transitions, including stored rows and generated traces.
+; The theorem's conclusion must be R of exactly
 ; PATTERN with `_' replaced by a call (FN v1 ... vn) on distinct variables
 ; -- never R of some larger term that merely contains the call (a theorem
 ; about (fn-open (fn-break s)) is not fn-break's preservation).
@@ -359,19 +365,67 @@
        nil
      (cons (fn-cd-translate-pattern (car xs)) (fn-cd-translate-pattern-lst (cdr xs))))))
 
-(defun fn-cd-returned-call (fn pattern term)
+; Only logical selection is allowed: MBE's executable branch is not the
+; logical subject of the theorem.  No helper calls, construction or repair.
+(defun fn-cd-selector-termp (term formal)
+  (declare (xargs :mode :program))
+  (cond ((atom term) (eq term formal))
+        ((not (true-listp term)) nil)
+        ((and (member-eq (car term) '(car cdr)) (equal (len term) 2))
+         (fn-cd-selector-termp (cadr term) formal))
+        ((and (member-eq (car term) '(nth mv-nth)) (equal (len term) 3)
+              (true-listp (cadr term)) (equal (len (cadr term)) 2)
+              (eq (car (cadr term)) 'quote) (natp (cadr (cadr term))))
+         (fn-cd-selector-termp (caddr term) formal))
+        ((and (eq (car term) 'return-last) (equal (len term) 4)
+              (equal (cadr term) '(quote mbe1-raw)))
+         (fn-cd-selector-termp (cadddr term) formal))
+        (t nil)))
+
+(defun fn-cd-selector-p (sel w)
+  (declare (xargs :mode :program))
+  (and (symbolp sel)
+       (let ((formals (getpropc sel 'formals nil w))
+             (body (getpropc sel 'unnormalized-body nil w)))
+         (and (consp formals) (null (cdr formals)) body
+              (null (getpropc sel 'recursivep nil w))
+              (fn-cd-selector-termp body (car formals))))))
+
+(defun fn-cd-valid-pattern-p (r fn pattern w)
+  (declare (xargs :mode :program))
+  (let ((st (car (getpropc r 'stobjs-in nil w)))
+        (outputs (getpropc fn 'stobjs-out nil w)))
+    (cond ((eq pattern '_) (if st (equal outputs (list st)) t))
+          ((and (true-listp pattern) (equal (len pattern) 3)
+                (eq (car pattern) 'mv-nth) (natp (cadr pattern))
+                (< (cadr pattern) (len outputs)) (eq (caddr pattern) '_))
+           (if st (eq (nth (cadr pattern) outputs) st)
+             (< 1 (len outputs))))
+          ((and (null st) (true-listp pattern) (equal (len pattern) 2)
+                (eq (cadr pattern) '_))
+           (fn-cd-selector-p (car pattern) w))
+          (t nil))))
+
+(defun fn-cd-pattern-problem (r fn pattern w)
+  (declare (xargs :mode :program))
+  (and (not (fn-cd-valid-pattern-p r fn pattern w))
+       (if (car (getpropc r 'stobjs-in nil w))
+           (msg "~x0 has invalid carried-stobj PATTERN ~x1: use `_ only for a sole carried-stobj output, or (mv-nth K _) where ACL2's stobjs-out identifies that carried stobj at K" fn pattern)
+         (msg "~x0 has invalid carried-value PATTERN ~x1: use `_, an in-range (mv-nth K _) for multiple outputs, or (SEL _) with a defined non-recursive unary logical selector" fn pattern))))
+
+(defun fn-cd-returned-call (r fn pattern term w)
   (declare (xargs :mode :program))
   ; the call (FN v1 .. vn) when TERM is exactly PATTERN with `_' replaced by
   ; it and the vi are distinct variables; else nil
   (let* ((calls (fn-cd-calls fn term))
          (call (and (consp calls) (null (cdr calls)) (car calls))))
-    (and call
+    (and (fn-cd-valid-pattern-p r fn pattern w) call
          (symbol-listp (cdr call)) (no-duplicatesp-eq (cdr call))
          (equal (fn-cd-subst (fn-cd-translate-pattern pattern) (list (cons '_ call)))
                 term)
          call)))
 
-(defun fn-cd-transition-shape (r fn pattern formula)
+(defun fn-cd-transition-shape (r fn pattern formula w)
   (declare (xargs :mode :program))
   ; (TERM CALL SVAR OTHERS) when FORMULA is a step from s to the state FN
   ; returns (the shape in the header); else nil
@@ -382,7 +436,7 @@
            (term (and (consp concl) (eq (car concl) r)
                       (consp (cdr concl)) (null (cddr concl))
                       (cadr concl)))
-           (call (and term (fn-cd-returned-call fn pattern term)))
+           (call (and term (fn-cd-returned-call r fn pattern term w)))
            (svar (and (consp rhyps) (null (cdr rhyps))
                       (consp (cdr (car rhyps))) (null (cddr (car rhyps)))
                       (cadr (car rhyps)))))
@@ -392,23 +446,6 @@
            (subsetp-eq (all-vars1-lst others nil) (cdr call))
            (list term call svar others)))))
 
-(defun fn-cd-stobj-patternp (r fn pattern w)
-  (declare (xargs :mode :program))
-  ; Value-state projections retain their explicit enumeration contract.
-  ; A stobj projection is determined by ACL2, never by an author-supplied
-  ; operation that might repair the returned state.
-  (let ((st (car (getpropc r 'stobjs-in nil w)))
-        (outputs (getpropc fn 'stobjs-out nil w)))
-    (or (null st)
-        (if (eq pattern '_)
-            (equal outputs (list st))
-          (and (true-listp pattern) (equal (len pattern) 3)
-               (eq (car pattern) 'mv-nth)
-               (natp (cadr pattern))
-               (< (cadr pattern) (len outputs))
-               (eq (caddr pattern) '_)
-               (eq (nth (cadr pattern) outputs) st))))))
-
 (defun fn-cd-transition-problem (r entry w)
   (declare (xargs :mode :program))
   (let* ((fn (car entry))
@@ -416,11 +453,7 @@
          (pattern (fn-cd-pattern entry))
          (formula (fn-cd-theorem thm w)))
     (cond
-     ((not (fn-cd-stobj-patternp r fn pattern w))
-      (msg "transition ~x0 has invalid carried-stobj PATTERN ~x1: use `_
-            only for a sole carried-stobj output, or (mv-nth K _) where
-            ACL2's stobjs-out identifies that carried stobj at K"
-           fn pattern))
+     ((fn-cd-pattern-problem r fn pattern w))
      ((null formula)
       (msg "transition ~x0 names ~x1, which is not a theorem in this world"
            fn thm))
@@ -442,13 +475,13 @@
             (msg "transition ~x0's theorem ~x1 does not conclude ~x2 (its ~
                   conclusion applies ~x3)"
                  fn thm r (fn-cd-head concl)))
-           ((not (fn-cd-returned-call fn pattern (cadr concl)))
+           ((not (fn-cd-returned-call r fn pattern (cadr concl) w))
             (msg "transition ~x0's theorem ~x1 concludes ~x2 of ~x3, which is ~
                   not ~x4 over a call (~x0 v1 ... vn) on distinct variables: ~
                   the conclusion must be about the state ~x0 returns (name its ~
                   place in the result as the entry's PATTERN over `_')"
                  fn thm r (cadr concl) pattern))
-           ((null (fn-cd-transition-shape r fn pattern formula))
+           ((null (fn-cd-transition-shape r fn pattern formula w))
             (msg "transition ~x0's theorem ~x1 is not a step from the assumed ~
                   state to the state ~x0 returns: the assumed state must be ~
                   one of the call's variables, and the conclusion's and the ~
@@ -472,6 +505,7 @@
            (pattern (fn-cd-pattern entry))
            (formula (fn-cd-theorem thm w)))
       (cond
+       ((fn-cd-pattern-problem r fn pattern w))
        ((null formula)
         (msg "establishing point ~x0 names ~x1, which is not a theorem in ~
               this world" fn thm))
@@ -484,7 +518,7 @@
                     ~x2 (its conclusion applies ~x3)"
                    fn thm r (fn-cd-head concl)))
              ((not (and (consp (cdr concl)) (null (cddr concl))
-                        (fn-cd-returned-call fn pattern (cadr concl))))
+                        (fn-cd-returned-call r fn pattern (cadr concl) w)))
               (msg "establishing point ~x0's theorem ~x1 concludes ~x2 of ~x3, ~
                     which is not ~x4 over a call (~x0 v1 ... vn) on distinct ~
                     variables: the conclusion must be about the state ~x0 ~
@@ -589,11 +623,14 @@
   ; present by fn-cd-problem)
   (if (atom transitions)
       nil
-    (let ((entry (car transitions)))
-      (cons (list* (car entry) (cadr entry)
-                   (fn-cd-transition-shape r (car entry) (fn-cd-pattern entry)
-                                           (fn-cd-theorem (cadr entry) w)))
-            (fn-cd-shapes r (cdr transitions) w)))))
+    (let* ((entry (car transitions))
+           (problem (fn-cd-pattern-problem r (car entry) (fn-cd-pattern entry) w)))
+      (if problem
+          (er hard 'def-carried "~@0" problem)
+        (cons (list* (car entry) (cadr entry)
+                     (fn-cd-transition-shape r (car entry) (fn-cd-pattern entry)
+                                             (fn-cd-theorem (cadr entry) w) w))
+              (fn-cd-shapes r (cdr transitions) w))))))
 
 (defun fn-cd-arg-alist (args svar i)
   (declare (xargs :mode :program))
@@ -713,37 +750,44 @@
                                                   (fn-cd-run ,run)
                                                   (fn-cd-run-okp ,run-okp))))))))
 
-(defun fn-cd-normalize (entries)
+(defun fn-cd-normalize (r entries w)
   (declare (xargs :mode :program))
   ; every entry as (FN THM PATTERN)
   (if (atom entries)
       nil
-    (cons (list (car (car entries)) (cadr (car entries)) (fn-cd-pattern (car entries)))
-          (fn-cd-normalize (cdr entries)))))
+    (let* ((entry (car entries))
+           (problem (fn-cd-pattern-problem r (car entry) (fn-cd-pattern entry) w)))
+      (if problem
+          (er hard 'def-carried "~@0" problem)
+        (cons (list (car entry) (cadr entry) (fn-cd-pattern entry))
+              (fn-cd-normalize r (cdr entries) w))))))
 
 (defun fn-cd-events (name kvs w)
   (declare (xargs :mode :program))
-  (let* ((r (fn-cd-get :invariant kvs))
-         (transitions (fn-cd-get :transitions kvs))
-         (traced (not (and (assoc-keyword :trace kvs) (null (fn-cd-get :trace kvs)))))
-         (shapes (fn-cd-shapes r transitions w))
-         (x (car (getpropc r 'formals nil w))))
-    `(progn
-       (table fn-carried ',name
-              '(:invariant ,r
-                :state ,(fn-cd-state-stobj r w)
-                :established ,(fn-cd-normalize (fn-cd-get :established kvs))
-                :transitions ,(fn-cd-normalize transitions)
-                :concludes ,(fn-cd-get :concludes kvs)
-                :complete-by ,(fn-cd-get :complete-by kvs)
-                :trace ,(if traced t nil)))
-       (local (fn-cd-nonvacuous
-               "the carried invariant is provably always true"
-               (,r ,x)
-               (("Goal" :in-theory (union-theories '(,r)
-                                                  (theory 'minimal-theory))))))
-       ,@(fn-cd-vacuity-events r shapes)
-       ,@(if traced (fn-cd-trace-events name r shapes w) nil))))
+  (let ((problem (fn-cd-problem name kvs w)))
+    (if problem
+        (er hard 'def-carried "~@0" problem)
+      (let* ((r (fn-cd-get :invariant kvs))
+             (transitions (fn-cd-get :transitions kvs))
+             (traced (not (and (assoc-keyword :trace kvs) (null (fn-cd-get :trace kvs)))))
+             (shapes (fn-cd-shapes r transitions w))
+             (x (car (getpropc r 'formals nil w))))
+        `(progn
+           (table fn-carried ',name
+                  '(:invariant ,r
+                    :state ,(fn-cd-state-stobj r w)
+                    :established ,(fn-cd-normalize r (fn-cd-get :established kvs) w)
+                    :transitions ,(fn-cd-normalize r transitions w)
+                    :concludes ,(fn-cd-get :concludes kvs)
+                    :complete-by ,(fn-cd-get :complete-by kvs)
+                    :trace ,(if traced t nil)))
+           (local (fn-cd-nonvacuous
+                   "the carried invariant is provably always true"
+                   (,r ,x)
+                   (("Goal" :in-theory (union-theories '(,r)
+                                                      (theory 'minimal-theory))))))
+           ,@(fn-cd-vacuity-events r shapes)
+           ,@(if traced (fn-cd-trace-events name r shapes w) nil))))))
 
 (defun fn-cd-declaration-problem (name kvs w)
   (declare (xargs :mode :program))

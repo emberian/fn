@@ -516,6 +516,12 @@
             (books/def-carried.lisp) names ~x1 among its transitions"
            form name (cadr form)))
      ((and (eq (car form) :carried)
+           (null (fn-cd-state-stobj
+                  (fn-cd-get :invariant
+                             (cdr (assoc-eq (cadr form) (table-alist 'fn-carried w))))
+                  w)))
+      (msg ":raw-with ~x0 on ~x1: value-state carried rows are enumerated, not world-derived, and cannot back raw dispatch" form name))
+     ((and (eq (car form) :carried)
            (fn-cd-problem (cadr form)
                           (cdr (assoc-eq (cadr form) (table-alist 'fn-carried w)))
                           w))
