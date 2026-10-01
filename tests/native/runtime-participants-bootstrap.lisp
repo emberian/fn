@@ -26,6 +26,10 @@
                         '(:participant-not-ready :refused)))
          (sb-thread:with-mutex ((fnn-runtime-participants-lock gate))
            (setf (fnn-runtime-participants-active gate) nil))
+         (sb-thread:with-mutex ((fnn-runtime-participants-lock gate))
+           (assert (equal (multiple-value-list
+                           (fnn-bootstrap-component-attempt gate pool :marker))
+                          '(:participant-reentrant :fenced))))
          (fnn-with-runtime-participants-parked (gate pool)
            (assert (equal (multiple-value-list
                            (fnn-bootstrap-component-attempt gate pool :marker))
