@@ -813,8 +813,8 @@
 (assert-event (equal (fn-own-pending *own-taken*) 4))
 ; A second submission cannot be taken while one is in flight.
 (assert-event (equal (fn-own-take-submission
-                      (fn-own-enqueue *own-taken* (fn-own-sub-make 3 2 nil nil)))
-                     (fn-own-enqueue *own-taken* (fn-own-sub-make 3 2 nil nil))))
+                      (fn-own-enqueue *own-taken* (fn-own-sub-make 3 2 nil nil nil)))
+                     (fn-own-enqueue *own-taken* (fn-own-sub-make 3 2 nil nil nil))))
 ; A host word of :durable before any completion is consumed is not 240.
 (defconst *own-early* (fn-own-outcome *own-taken* 4 :durable))
 (assert-event (equal (fn-own-outcome-completion *own-taken* :durable) :uncertain))
@@ -1776,7 +1776,7 @@
  (equal (fn-own-sub-id
          (fn-own-inflight
           (in-arena-fn-own-step *sr-arena* (fn-own-enqueue (cdr *own-faulted*)
-                                       (fn-own-sub-make 3 2 nil nil)) '(:take))))
+                                       (fn-own-sub-make 3 2 nil nil nil)) '(:take))))
         3))
 
 ; K-FAULT-4 on the witness: nothing durable moved.
