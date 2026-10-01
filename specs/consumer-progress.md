@@ -1318,6 +1318,15 @@ bounded writer can consume it. The guarded internal entries and fixtures are
 source evidence, while the high same-current CEP/CP validator, actual report
 writer, funding, physical completion and complete host refinement remain open.
 
+The target-only concrete withdrawal writer reuses the existing FNWD1 report.
+It appends one octet per tick into the concrete buffer and has a complete
+result-and-buffer-effect source boundary against its logical observation.
+The maximum Message-ID width comes from that existing codec. The writer emits
+only the selected target Message-ID; source/extent refusals preserve the buffer.
+It requires an actual reserved extent and retained source from the installed
+caller, which remains unavailable. It does not encode visible article content
+or finish aggregation of several targets into a complete poll response.
+
 Remote replies share the existing FNCT typed consumer response contract:
 kind 5 progress/position, kind 6 poll/WAIT, kind 9 status and kind 18 reasons.
 The logical remote client refuses the legacy local-request resend path. An
