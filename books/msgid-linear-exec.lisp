@@ -2272,3 +2272,276 @@
                             (fn-mlh (fn-mlh-build key rows)))))))
 
 (in-theory (disable fn-mlh-build fn-mlh-build-unplaced))
+
+; --- THE CLEARED TABLE IS CANONICAL (books/msgid-pages-exec 7h's shape) ---
+; `fn-mlh-set-key' writes every one of the 32 key octets over a cleared
+; table, so no trace of the table it was given remains; `fn-mlh-clear' is
+; the set-key of the table's own key, the fold's base case.
+
+(defun fn-mlh-keytail (i key)
+  (declare (xargs :guard (natp i) :measure (nfix (- *fn-mpxt-key-octets* (nfix i)))))
+  (if (>= (nfix i) *fn-mpxt-key-octets*)
+      nil
+    (cons (fn-ns-octet (if (consp key) (car key) 0))
+          (fn-mlh-keytail (1+ (nfix i)) (if (consp key) (cdr key) nil)))))
+
+(local (defthm fn-mlh-keyp-true-listp
+  (implies (fn-mlh-keyp l) (true-listp l))))
+(local (defthm fn-mlh-recognizer-facts
+  (implies (fn-mlhp x)
+           (and (true-listp x) (equal (len x) 7)
+                (fn-mlh-keyp (nth 5 x)) (true-listp (nth 5 x)) (equal (len (nth 5 x)) 32)))
+  :hints (("Goal" :in-theory (enable fn-mlhp)))))
+
+(local (defthm fn-mlh-list-of-seven
+  (implies (and (true-listp x) (equal (len x) 7))
+           (equal (list (nth 0 x) (nth 1 x) (nth 2 x) (nth 3 x) (nth 4 x) (nth 5 x) (nth 6 x)) x))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable len nth)))))
+
+(local (defthm fn-mlh-clear-nths
+  (and (equal (nth 0 (fn-mlh-clear fn-mlh)) nil)
+       (equal (nth 1 (fn-mlh-clear fn-mlh)) 0)
+       (equal (nth 2 (fn-mlh-clear fn-mlh)) 0)
+       (equal (nth 3 (fn-mlh-clear fn-mlh)) 0)
+       (equal (nth 4 (fn-mlh-clear fn-mlh)) 0)
+       (equal (nth 5 (fn-mlh-clear fn-mlh)) (nth 5 fn-mlh))
+       (equal (nth 6 (fn-mlh-clear fn-mlh)) 0))
+  :hints (("Goal" :in-theory (e/d (fn-mlh-clear update-fn-mlh-pages update-fn-mlh-n update-fn-mlh-s
+                                   update-fn-mlh-count update-fn-mlh-stuck resize-fn-mlh-pg)
+                                  (nth update-nth))))))
+
+(defthm fn-mlh-clear-is-a-list
+  (implies (fn-mlhp fn-mlh)
+           (equal (fn-mlh-clear fn-mlh) (list nil 0 0 0 0 (nth *fn-mlh-keyi* fn-mlh) 0)))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-mlh-list-of-seven (x (fn-mlh-clear fn-mlh)))
+                        (:instance fn-mlh-recognizer-facts (x (fn-mlh-clear fn-mlh))))
+           :in-theory (disable fn-mlh-recognizer-facts))))
+
+(local (defthm fn-mlh-cdr-nthcdr
+  (implies (natp i) (equal (cdr (nthcdr i l)) (nthcdr (+ 1 i) l)))))
+(local (defthm fn-mlh-car-nthcdr
+  (implies (natp i) (equal (car (nthcdr i l)) (nth i l)))))
+(local (defthm fn-mlh-nthcdr-unfold
+  (implies (and (natp i) (< i (len l)))
+           (equal (cons (nth i l) (nthcdr (+ 1 i) l)) (nthcdr i l)))
+  :hints (("Goal" :induct (nthcdr i l)))))
+(local (defthm fn-mlh-consp-nthcdr
+  (implies (natp i) (iff (consp (nthcdr i l)) (< i (len l))))
+  :hints (("Goal" :induct (nthcdr i l) :in-theory (enable nthcdr)))))
+(local (defthm fn-mlh-nthcdr-of-true-list-end
+  (implies (and (true-listp l) (natp i) (<= (len l) i)) (equal (nthcdr i l) nil))))
+(local (defthm fn-mlh-keyp-nth-octet
+  (implies (and (fn-mlh-keyp l) (natp i) (< i (len l)))
+           (equal (fn-ns-octet (nth i l)) (nth i l)))
+  :hints (("Goal" :in-theory (enable nth)))))
+(local (defthm fn-mlh-take-of-update-nth
+  (implies (and (natp i) (< i (len l)))
+           (equal (take (+ 1 i) (update-nth i v l)) (append (take i l) (list v))))
+  :hints (("Goal" :induct (update-nth i v l) :in-theory (enable update-nth)))))
+(local (defthm fn-mlh-take-of-len
+  (implies (true-listp l) (equal (take (len l) l) l))))
+(local (in-theory (disable nth nthcdr fn-mlh-keyp)))
+(local (defthm fn-mlh-nthcdr-0
+  (equal (nthcdr 0 l) l)
+  :hints (("Goal" :in-theory (enable nthcdr)))))
+
+(defthm fn-mlh-key-from-is-nthcdr
+  (implies (and (fn-mlhp fn-mlh) (natp i))
+           (equal (fn-mlh-key-from i fn-mlh) (nthcdr i (nth *fn-mlh-keyi* fn-mlh))))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-mlh-key-from i fn-mlh)
+           :in-theory (enable fn-mlh-keyi))))
+
+(local (defthm fn-mlh-keytail-of-own-tail
+  (implies (and (fn-mlh-keyp l) (equal (len l) *fn-mpxt-key-octets*) (natp i))
+           (equal (fn-mlh-keytail i (nthcdr i l)) (nthcdr i l)))
+  :hints (("Goal" :induct (fn-mlh-keytail i (nthcdr i l))))))
+
+(local (defun fn-mlh-skf-ind (i key l)
+  (declare (xargs :measure (nfix (- *fn-mpxt-key-octets* (nfix i)))))
+  (if (>= (nfix i) *fn-mpxt-key-octets*)
+      (list i key l)
+    (fn-mlh-skf-ind (1+ (nfix i)) (if (consp key) (cdr key) nil)
+                    (update-nth (nfix i) (fn-ns-octet (if (consp key) (car key) 0)) l)))))
+
+(local (defthm fn-mlh-set-key-from-over-a-list
+  (implies (and (true-listp l) (equal (len l) *fn-mpxt-key-octets*) (natp i) (<= i *fn-mpxt-key-octets*))
+           (equal (fn-mlh-set-key-from i key (list nil 0 0 0 0 l 0))
+                  (list nil 0 0 0 0 (append (take i l) (fn-mlh-keytail i key)) 0)))
+  :hints (("Goal" :induct (fn-mlh-skf-ind i key l)
+           :in-theory (enable update-fn-mlh-keyi))
+          ("Subgoal *1/2" :expand ((fn-mlh-set-key-from i key (list nil 0 0 0 0 l 0))
+                                   (fn-mlh-keytail i key)))
+          ("Subgoal *1/1" :use fn-mlh-take-of-len))))
+
+(defthm fn-mlh-set-key-is-a-list
+  (implies (fn-mlhp fn-mlh)
+           (equal (fn-mlh-set-key key fn-mlh)
+                  (list nil 0 0 0 0 (fn-mlh-keytail 0 key) 0)))
+  :hints (("Goal" :in-theory (e/d (fn-mlh-set-key) (fn-mlh-set-key-from fn-mlh-clear))
+           :use ((:instance fn-mlh-clear-is-a-list)
+                 (:instance fn-mlh-set-key-from-over-a-list (i 0) (l (nth 5 fn-mlh)))))))
+
+(defthm fn-mlh-set-key-canonical
+  (implies (fn-mlhp fn-mlh)
+           (equal (fn-mlh-set-key key fn-mlh)
+                  (fn-mlh-set-key key (create-fn-mlh))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-mlh-set-key))))
+
+; CLEAR IS THE SET-KEY OF THE TABLE'S OWN KEY: the fold's base case.
+(defthm fn-mlh-clear-is-build-nil
+  (implies (fn-mlhp fn-mlh)
+           (equal (fn-mlh-clear fn-mlh)
+                  (fn-mlh-build (fn-mlh-key-octets fn-mlh) nil)))
+  :hints (("Goal" :use ((:instance fn-mlh-clear-is-a-list)
+                        (:instance fn-mlh-set-key-is-a-list (key (fn-mlh-key-octets fn-mlh)) (fn-mlh (create-fn-mlh)))
+                        (:instance fn-mlh-key-from-is-nthcdr (i 0))
+                        (:instance fn-mlh-keytail-of-own-tail (i 0) (l (nth 5 fn-mlh))))
+           :in-theory (e/d (fn-mlh-key-octets fn-mlh-build-nil)
+                           (fn-mlh-set-key fn-mlh-clear fn-mlh-key-from fn-mlh-set-key-is-a-list
+                            fn-mlh-keytail-of-own-tail)))))
+
+(defthm fn-mlh-create-is-build-nil
+  (equal (fn-mlh-build (fn-mlh-key-octets (create-fn-mlh)) nil) (create-fn-mlh))
+  :hints (("Goal" :use ((:instance fn-mlh-clear-is-build-nil (fn-mlh (create-fn-mlh)))
+                        (:instance fn-mlh-clear-is-a-list (fn-mlh (create-fn-mlh))))
+           :in-theory (e/d (create-fn-mlh (:e create-fn-mlh))
+                           (fn-mlh-clear-is-build-nil fn-mlh-clear fn-mlh-set-key-is-a-list)))))
+
+(local (defthm fn-mlh-keyp-of-mpxt-keyp
+  (implies (fn-mpxt-keyp l) (fn-mlh-keyp l))
+  :hints (("Goal" :in-theory (enable fn-mpxt-keyp fn-mlh-keyp)))))
+
+; A 32-octet key written by the open reads back as itself.
+(defthm fn-mlh-key-octets-of-set-key
+  (implies (and (fn-mlhp fn-mlh) (fn-mpxt-keyp key) (equal (len key) *fn-mpxt-key-octets*))
+           (equal (fn-mlh-key-octets (fn-mlh-set-key key fn-mlh)) key))
+  :hints (("Goal" :use ((:instance fn-mlh-set-key-is-a-list)
+                        (:instance fn-mlh-key-from-is-nthcdr (i 0) (fn-mlh (fn-mlh-set-key key fn-mlh)))
+                        (:instance fn-mlh-keytail-of-own-tail (i 0) (l key)))
+           :in-theory (e/d (fn-mlh-key-octets fn-mlhp)
+                           (fn-mlh-set-key fn-mlh-key-from fn-mlh-set-key-is-a-list
+                            fn-mlh-keytail-of-own-tail fn-mlh-recognizer-facts)))))
+
+(in-theory (disable fn-mlh-keytail))
+
+; --- the fold reads a row's Message-ID only ---
+
+(local (defthm fn-mlh-nth-of-update-nth-msgid
+  (implies (and (natp k) (< k (len rows)) (natp i)
+                (equal (fn-record-msgid h) (fn-record-msgid (nth k rows))))
+           (equal (fn-record-msgid (nth i (update-nth k h rows)))
+                  (fn-record-msgid (nth i rows))))
+  :hints (("Goal" :in-theory (enable nth update-nth)))))
+
+(defthm fn-mlh-build-from-of-update-nth-same-msgid
+  (implies (and (natp k) (< k (len rows))
+                (equal (fn-record-msgid h) (fn-record-msgid (nth k rows))))
+           (equal (fn-mlh-build-from i u (update-nth k h rows) fn-mlh)
+                  (fn-mlh-build-from i u rows fn-mlh)))
+  :hints (("Goal" :induct (fn-mlh-build-from i u rows fn-mlh)
+           :in-theory (disable fn-mlh-add update-nth nth)
+           :expand ((fn-mlh-build-from i u (update-nth k h rows) fn-mlh)))))
+
+(defthm fn-mlh-build-of-update-nth-same-msgid
+  (implies (and (natp k) (< k (len rows))
+                (equal (fn-record-msgid h) (fn-record-msgid (nth k rows))))
+           (and (equal (fn-mlh-build key (update-nth k h rows)) (fn-mlh-build key rows))
+                (equal (fn-mlh-build-unplaced key (update-nth k h rows)) (fn-mlh-build-unplaced key rows))))
+  :hints (("Goal" :in-theory (e/d (fn-mlh-build fn-mlh-build-unplaced)
+                                  (fn-mlh-build-from fn-mlh-set-key fn-mlh-build-from-of-update-nth-same-msgid
+                                   fn-mlh-set-key-is-a-list))
+           :use ((:instance fn-mlh-build-from-of-update-nth-same-msgid (i 0) (u 0)
+                            (fn-mlh (fn-mlh-set-key key (create-fn-mlh))))))))
+
+; --- THE FOLD, EXECUTABLE (books/msgid-pages-exec 7j's shape) ---
+
+(verify-guards fn-mlh-build-from
+  :hints (("Goal" :in-theory (disable fn-mlh-add fn-mlh-wfp) :do-not-induct t)))
+
+(defun fn-mlh-key-same-from (i key fn-mlh)
+  (declare (xargs :stobjs fn-mlh :guard (natp i)
+                  :measure (nfix (- *fn-mpxt-key-octets* (nfix i)))))
+  (if (>= (nfix i) *fn-mpxt-key-octets*)
+      (atom key)
+    (and (consp key)
+         (equal (car key) (fn-mlh-keyi (nfix i) fn-mlh))
+         (fn-mlh-key-same-from (1+ (nfix i)) (cdr key) fn-mlh))))
+
+(defthm fn-mlh-key-same-from-is-equal
+  (implies (and (true-listp key) (natp i))
+           (equal (fn-mlh-key-same-from i key fn-mlh)
+                  (equal key (fn-mlh-key-from i fn-mlh))))
+  :hints (("Goal" :induct (fn-mlh-key-same-from i key fn-mlh)
+           :expand ((fn-mlh-key-from i fn-mlh)))))
+
+(defun fn-mlh-key-samep (key fn-mlh)
+  (declare (xargs :stobjs fn-mlh))
+  (fn-mlh-key-same-from 0 key fn-mlh))
+
+(defthm fn-mlh-key-samep-is-equal
+  (implies (true-listp key)
+           (equal (fn-mlh-key-samep key fn-mlh)
+                  (equal key (fn-mlh-key-octets fn-mlh))))
+  :hints (("Goal" :in-theory (enable fn-mlh-key-octets))))
+
+(in-theory (disable fn-mlh-key-samep))
+
+; The fold's outcome for one more row carrying MSGID, over a local table.
+(defun fn-mlh-build-saturatedp (key msgid rows)
+  (declare (xargs :guard (true-listp rows)
+                  :guard-hints (("Goal" :in-theory (disable fn-mlh-build-from fn-mlh-saturatedp fn-mlh-set-key
+                                                            fn-mlh-set-key-is-a-list)))))
+  (with-local-stobj fn-mlh
+    (mv-let (r fn-mlh)
+      (let ((fn-mlh (fn-mlh-set-key key fn-mlh)))
+        (mv-let (u fn-mlh)
+          (fn-mlh-build-from 0 0 rows fn-mlh)
+          (declare (ignore u))
+          (mv (or (>= (+ 2 (len rows)) *fn-mlh-tag-limit*)
+                  (fn-mlh-saturatedp (fn-mlh-tag msgid (fn-mlh-key-octets fn-mlh)) fn-mlh))
+              fn-mlh)))
+      r)))
+
+; The table's health over a local table: (pages count unplaced stuck).
+(defun fn-mlh-build-health (key rows)
+  (declare (xargs :guard (true-listp rows)
+                  :guard-hints (("Goal" :in-theory (disable fn-mlh-build-from fn-mlh-set-key
+                                                            fn-mlh-set-key-is-a-list)))))
+  (with-local-stobj fn-mlh
+    (mv-let (r fn-mlh)
+      (let ((fn-mlh (fn-mlh-set-key key fn-mlh)))
+        (mv-let (u fn-mlh)
+          (fn-mlh-build-from 0 0 rows fn-mlh)
+          (mv (list (fn-mlh-pages fn-mlh) (fn-mlh-count fn-mlh) u (fn-mlh-stuck fn-mlh))
+              fn-mlh)))
+      r)))
+
+(defthm fn-mlh-build-saturatedp-is-the-build
+  (equal (fn-mlh-build-saturatedp key msgid rows)
+         (or (>= (+ 2 (len rows)) *fn-mlh-tag-limit*)
+             (fn-mlh-saturatedp (fn-mlh-tag msgid (fn-mlh-key-octets (fn-mlh-build key rows)))
+                                (fn-mlh-build key rows))))
+  :hints (("Goal" :in-theory (e/d (fn-mlh-build) (fn-mlh-build-from fn-mlh-saturatedp fn-mlh-set-key
+                                                  fn-mlh-set-key-is-a-list)))))
+
+(defthm fn-mlh-build-health-is-the-build
+  (equal (fn-mlh-build-health key rows)
+         (list (fn-mlh-pages (fn-mlh-build key rows)) (fn-mlh-count (fn-mlh-build key rows))
+               (fn-mlh-build-unplaced key rows) (fn-mlh-stuck (fn-mlh-build key rows))))
+  :hints (("Goal" :in-theory (e/d (fn-mlh-build fn-mlh-build-unplaced)
+                                  (fn-mlh-build-from fn-mlh-set-key fn-mlh-set-key-is-a-list)))))
+
+; THE OUTCOME AT THE COMMIT, over the executable projection.
+(defthm fn-mlh-build-saturatedp-is-the-outcome
+  (implies (equal msgid (fn-record-msgid h))
+           (iff (equal (fn-mlh-build-unplaced key (append rows (list h)))
+                       (fn-mlh-build-unplaced key rows))
+                (not (fn-mlh-build-saturatedp key msgid rows))))
+  :hints (("Goal" :in-theory (disable fn-mlh-build-from fn-mlh-saturatedp fn-mlh-set-key
+                                      fn-mlh-build-saturatedp fn-mlh-build-append))))
+
+(in-theory (disable fn-mlh-build-saturatedp fn-mlh-build-health))
