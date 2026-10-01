@@ -199,27 +199,37 @@
      (equal (rrt-composed-open :ok 2 (rrt-capture nil (list (rrt-r 2) (rrt-r 1))) nil 9 rec 4)
             (rrt-full-open nil 9 rec)))))
 
-; The relation R: a store whose pending write is NOT at the kernel's
-; frontier (the append issued twice) is unrelated, and a crash image of it
-; can hold r3's log at the wrong offset: the scan is no tree-sequence
-; member.  (The related state's images are, above.)
-(defun rrt-misplaced ()
+; The relation R: a store whose pending write at the frontier is the log of
+; a record (r4) other than the one the kernel holds in flight (r3) is
+; unrelated (R's pending conjunct), and the image where that write lands
+; whole recovers r1 r2 r4: no tree-sequence member over COMMITTED and
+; INFLIGHT = (r3).  (The related state's images are, above.)
+(defun rrt-wrong-batch ()
   (declare (xargs :guard t :verify-guards nil))
   (let* ((bs (car (rrt-appended)))
+         (ks (cdr (rrt-appended)))
          (w (car (fn-bs-pending bs))))
     (fn-bs-make (fn-bs-unit bs) (fn-bs-inodes bs) (fn-bs-dirs bs)
-                (list (list :write 0 (+ (nth 2 w) (rrt-unit)) (nth 3 w)))
+                (list (list :write 0 (nth 2 w)
+                            (fn-lg-log (list (rrt-r 4)) (fn-lgk-last ks) (rrt-unit))))
                 (fn-bs-next-ino bs))))
+(defun rrt-wrong-units ()
+  (declare (xargs :guard t :verify-guards nil))
+  (rrt-units-of (nth 3 (car (fn-bs-pending (rrt-wrong-batch))))))
+(defun rrt-wrong-recovered ()
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-rr-recovered-records (fn-bs-crash (rrt-wrong-batch) (list (rrt-sels (rrt-wrong-units) :new)))
+                           0 (rrt-genesis) (rrt-unit) (rrt-max) 0))
 (assert-event
- (and (not (fn-lgk-relp (rrt-misplaced) (cdr (rrt-appended)) 0 (rrt-genesis) (rrt-max)))
-      (fn-bs-crash-choicesp (list (rrt-sels (rrt-batch-units) :new))
-                            (fn-bs-pending (rrt-misplaced)) (rrt-unit))))
+ (and (not (fn-lgk-relp (rrt-wrong-batch) (cdr (rrt-appended)) 0 (rrt-genesis) (rrt-max)))
+      (fn-bs-crash-choicesp (list (rrt-sels (rrt-wrong-units) :new))
+                            (fn-bs-pending (rrt-wrong-batch)) (rrt-unit))
+      (equal (rrt-wrong-recovered) (list (rrt-r 1) (rrt-r 2) (rrt-r 4)))))
 (must-fail-checked
  (defthm rrt-without-the-relation
-   (fn-rr-tree-sequence-memberp
-    (fn-rr-recovered-records (fn-bs-crash (rrt-misplaced) (list (rrt-sels (rrt-batch-units) :new)))
-                             0 (rrt-genesis) (rrt-unit) (rrt-max) 0)
-    (fn-lgk-committed (cdr (rrt-appended))) (fn-lgk-inflight (cdr (rrt-appended))))))
+   (fn-rr-tree-sequence-memberp (rrt-wrong-recovered)
+                                (fn-lgk-committed (cdr (rrt-appended)))
+                                (fn-lgk-inflight (cdr (rrt-appended))))))
 
 ; A-CRYPTO-TRAILER's premise (fn-lg-platform-tears-p) is a constrained
 ; function's consequent; without it the in-flight theorem keeps the forgery
