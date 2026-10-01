@@ -521,9 +521,9 @@ keeps."
         (len (fn-own-view-raw view))))
 
 (defun fn-nls-counts-words (seen)
-  (declare (xargs :guard (consp seen)))
-  (append (fn-nls-text "transactions=") (fn-nls-nat (nfix (car seen)))
-          (fn-nls-field "articles" (nfix (cdr seen)))))
+  (declare (xargs :guard t))
+  (append (fn-nls-text "transactions=") (fn-nls-nat (nfix (fn-ag-car seen)))
+          (fn-nls-field "articles" (nfix (fn-ag-cdr seen)))))
 
 (defun fn-nls-report (kind profile s bytes seen cfg pins obs fn-arena)
   "The octets `operator CONFIG KIND' prints.
@@ -1429,3 +1429,18 @@ malformed page."
     :hints (("Goal" :in-theory (disable fn-nls-obligation-line)))))
 (verify-guards fn-nls-retention)
 (verify-guards fn-nls-pins-line)
+
+; Q3h (assurance-remainder-4): the FNLS report runs guard-verified from the
+; host's entry down (host/native-live-status-host.lisp calls
+; books/native-status-columns.lisp fn-nsc-answer-report, which is
+; fn-nh-answer-report under the column relation; the offline command calls
+; fn-nls-offline-report).  The reclaim line's figures depend on the clock
+; observation (a release-after rule is measured at NOW), so they are not a
+; carried quantity: each report computes them, and its work is ONE walk of
+; the Store's articles (fn-nsc-tally-loop on the served path, O(1) per
+; article from the catalog column, no payload read), bounded by the article
+; count the profile admits; nothing on it revalidates a carried invariant.
+(verify-guards fn-nls-reclaim-words)
+(verify-guards fn-nls-report)
+(verify-guards fn-nls-offline-report)
+(verify-guards fn-nls-live-report)
