@@ -9258,7 +9258,7 @@
       "assumptions": [
         "A-CRYPTO-TRAILER"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-log-crash.lisp",
         "planning/evidence/w6-log-core-2026-09-27.md",
@@ -9293,7 +9293,7 @@
       "assumptions": [
         "A-CRYPTO-TRAILER"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-log-kernel.lisp",
         "planning/evidence/w6-log-core-2026-09-27.md",
@@ -20754,7 +20754,7 @@
         "A-DURABILITY",
         "A-WRITE-ISOLATION"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/recovery-refinement.lisp",
         "tests/acl2/recovery-refinement-tests.lisp",
@@ -20789,7 +20789,7 @@
         "PRF-083"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/checkpoint-reserve.lisp",
         "tests/acl2/checkpoint-reserve-tests.lisp",
@@ -20881,7 +20881,7 @@
         "A-DURABILITY",
         "A-WRITE-ISOLATION"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/recovery-refinement.lisp",
         "tests/acl2/recovery-refinement-tests.lisp"
@@ -20933,8 +20933,8 @@
     },
     {
       "id": "PRF-1222",
-      "title": "OPEN: the host's state-checkpoint write refined to fn-bs-scp-program's OCTETS (the join of the reserve theorem to the served write)",
-      "statement": "OBLIGATION (lane recovery-refinement-2, 2026-10-01; the Codex review of 2d1b10ed7, F5). PRF-1213 bounds the OCTETS of fn-bs-scp-program's :write-all; the host writes the staged file through host/native/io.lisp fnn-state-checkpoint-write, whose callback runs fnn-history-image-write (the history image region: header, zero pad, one 16 KiB page per address) and fnn-checkpoint-write-steps (fnn-plan-write-all per ACL2 step). To state: the octets those two loops write, concatenated, are fn-sct-encode of the capture the owner was handed (fn-ock-finish-binds-the-captured-prefix, PRF-199's fn-sct-decode-file-of-file-is-the-capture), with length the estimate fn-ockp-decide planned (fn-ockp-estimate-is-len-file-octets); with it the reserve bound is about what the host writes, and the funded-space premise of fn-rrs-funded-reserve-never-defers-for-space is discharged rather than assumed.",
+      "title": "OPEN: the host's state-checkpoint write joined to the reserve (fn-his-file-octets within the capture budget, and a reservation invariant in place of the free-space observation)",
+      "statement": "OBLIGATION (lane recovery-refinement-2, 2026-10-01; the Codex review of 2d1b10ed7 F5, restated after r10). PRF-1213 bounds the OCTETS of fn-bs-scp-program's one :write-all. The staged file the host writes is fn-his-file-octets (host/store-node-host.lisp: fn-his-region-octets of the history image's page count plus the stream the checkpoint steps write), produced by host/native/io.lisp fnn-history-image-write then fnn-checkpoint-write-steps; it is not the table estimate fn-ockp-decide plans against, and no fn-sct-encode exists. Two obligations, neither a byte equality: (a) the length of what the two loops write is fn-his-file-octets of the image's page count and the steps' stream, within fn-ock-capture-budget (the reader's bound the old image is held to, fn-sccr-file-read-bound), so the two generations are what fn-ckr-two-generations-fit-the-reserve-at-every-cut bounds; (b) a RESERVATION invariant: the reserve's octets are set aside at format time and each publication draws on them, so fn-ockp-decide's statvfs observation can be retired (a served host change, MODE 2026-10-01 section 2). Until both land, the funded-space premise of fn-rrs-funded-reserve-never-defers-for-space is an assumption of the join.",
       "milestone": "M5",
       "requirements": [
         "STO-011",
@@ -20953,8 +20953,8 @@
     },
     {
       "id": "PRF-1223",
-      "title": "OPEN: the checkpoint write loops' inner process-death cuts as model crash points of the publish program",
-      "statement": "OBLIGATION (lane recovery-refinement-2, 2026-10-01; the Codex review of 2d1b10ed7, F6; AGENTS: every process-death cut is a model crash point). fn-bs-scp-program writes the staged file in one :write-all; the host writes it in a loop and may die between any two write(2) calls: fnn-checkpoint-write-steps kills itself after step N under fnn-checkpoint-batch-fault (host/native/io.lisp), and fnn-history-image-write's header, pad and page writes are each a death point. In the byte model a death after the k-th write is the state whose pending set holds the k writes to the staged inode (k fn-bs-write steps in place of one), and its crash images tear each; the root entry is still the old one there, so the recovery is COMMITTED and the image is OLD. To state: a chunked publish program (the :write-all split into the host's writes) whose every state's crash images satisfy fn-rr-checkpoint-crash-point-recovers-committed-under-old-or-new's conclusion (PRF-1216), and tests/campaign/native_cuts.py rows naming each inner cut; until then PRF-1216 covers the five outer cuts only.",
+      "title": "OPEN (registered, not resolved): the checkpoint write loops' intra-batch process-death cuts have no model crash point",
+      "statement": "OBLIGATION (lane recovery-refinement-2, 2026-10-01; the Codex review of 2d1b10ed7 F6, confirmed open by r10; AGENTS: every process-death cut is a model crash point). STATUS: registered only. books/byte-store-state-checkpoint-program.lisp fn-bs-scp-program is still one :write-all, tests/campaign/native_cuts.py is unchanged, and the intra-batch SIGKILL points of host/native/io.lisp (fnn-checkpoint-write-steps' per-step kill under fnn-checkpoint-batch-fault; fnn-history-image-write's header, pad and page writes) have no model crash point. To do: split the :write-all into the batch's writes, each a cut (k fn-bs-write steps to the staged inode; fn-bs-step has no :write-at kind, so either add one or run the writes through fn-bs-write), prove every state's crash images recover COMMITTED under the OLD image (the root entry is untouched until the rename; PRF-1216's conclusion), and add the cut rows so native_program_check ties them to io.lisp. PRF-1216 covers the five outer cuts only.",
       "milestone": "M5",
       "requirements": [
         "STO-011",

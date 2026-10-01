@@ -47,9 +47,11 @@ The composed store is two layers over one byte model
   SUCCEEDED holds every record it was opened from; without it the opened
   state was unconstrained beyond its equation to the full open, the Codex
   review's F2; the store's: `fn-sn-open-okp`, membership in
-  `fn-sf-records` of the opened Store's files); the store's functions discharge it by functional
-  instantiation in `books/recovery-refinement-store.lisp`, the log's
-  records decoded by `fn-srs-decode` (the host's `fn-store-decode-records`).
+  `fn-sf-records` of the opened Store's files); the store's functions are
+  to discharge it by functional instantiation in
+  `books/recovery-refinement-store.lisp` (WRITTEN, NOT ADMITTED: nothing
+  there is a claim yet), the log's records decoded by `fn-srs-decode` (the
+  host's `fn-store-decode-records`).
 
 **The tree sequence** (DFSCQ's metadata-prefix form, Chen et al. SOSP 2017)
 at a crash point is the list of abstract states the recovery may land on:
@@ -75,10 +77,13 @@ log's served programs, which is a state satisfying the log relation R
    record is lost.
 2. **The composed open is the full open of that prefix.** Whatever image
    the medium holds, bound to the capture of its first S records (S at most
-   the committed count), the open the host composes (`fn-rr-open`: the
-   selection under K, then `fn-sco-open` of the image over the suffix it
-   leaves, or the full open) equals `fn-cpo-open-observed` of the recovered
-   records (`fn-sn-recover-from-checkpoint-equals-full-recover`, PRF-083).
+   the committed count), the open the composition MODELS (`fn-rr-open`:
+   the selection under K, then the medium's open of the image over the
+   suffix it leaves, or the full open; the store instance's `fn-rrs-open`
+   over `fn-sco-open` is not what the host calls, §1's MODEL-LEVEL note)
+   equals the medium's full open of the recovered records (the store's
+   `fn-cpo-open-observed`; `fn-sn-recover-from-checkpoint-equals-full-recover`,
+   PRF-083).
    An image the selection refuses (absent, corrupt, past the reader's bound,
    ahead of the history, past K) is the full replay by definition.
 3. **Acknowledged implies present, in the opened state.** Every record
@@ -89,7 +94,11 @@ log's served programs, which is a state satisfying the log relation R
    (`fn-owb-alignedp`, `fn-lgu-acknowledged-record-is-committed`,
    `books/store-log-durable.lisp`), the owner-layer corollary. A refused
    open stays refused: conjunct 2 carries the full open's refusal through
-   the composed open unchanged.
+   the composed open unchanged, and the holding constraint is conditional
+   on the open's success, so an always-refusing open satisfies the
+   interface. LIVENESS OF THE OPEN IS NOT CLAIMED here: that the full open
+   of a well-formed history succeeds is the open's own theorem
+   (`fn-cpo-open-observed` over `fn-sn-observed-historyp`), not this one's.
 
 Stated as one event, `:rule-classes nil`:
 
@@ -307,22 +316,34 @@ literature-2026-10-01.md` A2, E.1.1).
   the subject (PRF-344's open square); (e) |DIRTY| <= K * D on the host
   (the due rule at K/2 and a per-record dirty bound from the profile),
   discharging `fn-rrp-two-generations-fit-the-reserve`'s hypotheses.
-- **PRF-1222, the host's checkpoint write refined to OCTETS** (the Codex
-  review of 2d1b10ed7, F5). PRF-1213 bounds the model's OCTETS; the host
-  writes the staged file through `fnn-state-checkpoint-write` ->
-  `fnn-history-image-write` and `fnn-checkpoint-write-steps` with no
-  theorem that their concatenated writes are `fn-sct-encode` of the
-  captured prefix with the planned estimate's length; until it lands,
-  funded space is an assumption of the join, not a consequence of the
-  reserve.
-- **PRF-1223, the write loops' inner cuts** (F6). The model's `:write-all`
-  is one operation; the host dies between write(2) calls
+- **PRF-1222, the host's checkpoint write joined to the reserve** (the
+  Codex review of 2d1b10ed7, F5; restated after r10). PRF-1213 bounds the
+  model's OCTETS, one `:write-all`. The staged file the host writes is
+  `fn-his-file-octets` (`host/store-node-host.lisp`: the history image
+  region, `fn-his-region-octets` of the image's page count, plus the
+  stream the checkpoint steps write), produced by `fnn-history-image-write`
+  then `fnn-checkpoint-write-steps`, and it is not the table estimate
+  `fn-ockp-decide` plans against. Two obligations, neither a byte
+  equality: (a) the octets the two loops write have length
+  `fn-his-file-octets` of the image's page count and the steps' stream,
+  and that length is within `fn-ock-capture-budget` (the reader's bound the
+  old image is held to), so the two generations are what PRF-1213 bounds;
+  (b) a RESERVATION invariant: the reserve's space is set aside at format
+  time and the publication draws on it, so that `fn-ockp-decide`'s free-
+  space observation (statvfs) can be retired (MODE §2: a served host
+  change). Byte equality alone discharges neither; until both land the
+  funded-space premise is an assumption of the join.
+- **PRF-1223, the write loops' inner cuts: REGISTERED, NOT RESOLVED**
+  (F6). `fn-bs-scp-program` (`books/byte-store-state-checkpoint-program.lisp`)
+  is still one `:write-all`, `tests/campaign/native_cuts.py` is unchanged,
+  and the intra-batch SIGKILL points of `host/native/io.lisp`
   (`fnn-checkpoint-write-steps`' per-step kill under
-  `fnn-checkpoint-batch-fault`, `fnn-history-image-write`'s header, pad
-  and page writes). Each is the model state with k pending writes to the
-  staged inode and the root entry old, so its images recover COMMITTED
-  and hold the OLD image; the chunked program and the cut rows that make
-  that a theorem are the row's work. PRF-1216 covers the five outer cuts.
+  `fnn-checkpoint-batch-fault`; `fnn-history-image-write`'s header, pad and
+  page writes) have NO model crash point today. Expected shape: the
+  `:write-all` split into the batch's writes, each a cut, every state's
+  images recovering COMMITTED under the OLD image (the root entry is
+  untouched until the rename); the cut rows added to the table. PRF-1216
+  covers the five outer cuts only.
 - **A-CRYPTO-TRAILER's witness** (F4, against `books/assumptions.lisp`, not
   this lane's books). The keystone's premise `fn-lg-platform-tears-p` is a
   constrained consequent; its local witness admits only the exact tear, so

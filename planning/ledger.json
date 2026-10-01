@@ -2361,15 +2361,15 @@
     "books_in_root_closure": 2609,
     "roots": 2353,
     "theorems": 35267,
-    "functions": 22617,
-    "assert_events": 25248,
+    "functions": 22619,
+    "assert_events": 25249,
     "must_fails": 2557,
     "prover_refusals": 0,
     "encapsulates": 192,
     "guards": {
       "verified": 3840,
-      "declared-off": 2849,
-      "default-guarded": 12667,
+      "declared-off": 2850,
+      "default-guarded": 12668,
       "default-unguarded": 3261
     },
     "suspect_theorems": 1333,
@@ -73196,15 +73196,15 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 2,
-      "functions": 35,
+      "functions": 37,
       "guards": {
         "verified": 0,
-        "declared-off": 28,
-        "default-guarded": 7,
+        "declared-off": 29,
+        "default-guarded": 8,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 7,
+      "assert_events": 8,
       "must_fails": 4,
       "prover_refusals": 0,
       "defconsts": 0,
@@ -86254,7 +86254,7 @@
     {
       "theorem": "fn-rrs-reserve-is-two-capture-budgets",
       "book": "books/recovery-refinement-store.lisp",
-      "line": 138,
+      "line": 140,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -95446,7 +95446,7 @@
       {
         "check": "rrt-without-the-relation",
         "book": "tests/acl2/recovery-refinement-tests.lisp",
-        "line": 334,
+        "line": 360,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {

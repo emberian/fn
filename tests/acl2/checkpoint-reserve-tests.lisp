@@ -49,7 +49,9 @@
 ; image (two octets) is within the bound, the new one is not, and the
 ; staged-durable state holds 2 + 3 > 2 * 2.
 (assert-event
- (and (<= (len (fn-bs-durable-content *ckr-t-bs* 3)) 2)      ; old within: kept
+ (and (fn-bs-scp-inputp *ckr-t-bs* ".stage-state-checkpoint-1" 3)  ; kept
+      (fn-cbor-octet-listp *ckr-t-octets*) (consp *ckr-t-octets*)  ; kept
+      (<= (len (fn-bs-durable-content *ckr-t-bs* 3)) 2)      ; old within: kept
       (not (<= (len *ckr-t-octets*) 2))                      ; new past: removed
       (not (fn-ckr-all-fit *ckr-t-run* 3 5 2))))             ; the conclusion fails
 (must-fail-checked
@@ -67,6 +69,7 @@
              nil nil 0))
 (assert-event
  (and (fn-bs-scp-inputp *ckr-t-big-old* ".stage-state-checkpoint-1" 3)  ; kept
+      (fn-cbor-octet-listp *ckr-t-octets*) (consp *ckr-t-octets*)       ; kept
       (<= (len *ckr-t-octets*) 3)                                       ; new within: kept
       (not (<= (len (fn-bs-durable-content *ckr-t-big-old* 3)) 3))      ; old past: removed
       (not (fn-ckr-all-fit *ckr-t-big-old-run* 3 5 3))))                ; the conclusion fails
