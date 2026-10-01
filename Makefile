@@ -25,6 +25,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/connection-receiver-repin-state-tests \
 	books/obligation-view-cursor-refinement \
 	books/obligation-view-cursor \
+	books/retention-obligation-view \
+	books/obligation-view-budget \
 	books/view-delta-cursor-refinement \
 	books/view-delta-cursor \
 	tests/acl2/obligation-view-cursor-tests \
