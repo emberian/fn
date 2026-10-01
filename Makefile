@@ -53,6 +53,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/substrate-commit-profile-bounds \
 	tests/acl2/substrate-commit-profile-bounds-tests \
 	books/substrate-commit-profile-resume \
+	books/substrate-profile-entry \
+	books/substrate-profile-selection \
+	books/substrate-profile-row \
+	tests/acl2/substrate-profile-entry-tests \
+	tests/acl2/substrate-profile-selection-tests \
 	tests/acl2/substrate-commit-profile-resume-tests \
 	host/history-owner-completion-host \
 	books/history-semantic-writer \

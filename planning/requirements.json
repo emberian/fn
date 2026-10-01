@@ -6160,7 +6160,8 @@
       "status": "planned",
       "proof_targets": [
         "PRF-1176",
-        "PRF-1189"
+        "PRF-1189",
+        "PRF-1205"
       ],
       "verification": [
         "proof",
@@ -6180,7 +6181,12 @@
         "tests/acl2/substrate-commit-profile-codec-tests.lisp",
         "tests/acl2/substrate-commit-profile-refinement-tests.lisp",
         "books/substrate-commit-profile-bounds.lisp",
-        "tests/acl2/substrate-commit-profile-bounds-tests.lisp"
+        "tests/acl2/substrate-commit-profile-bounds-tests.lisp",
+        "books/substrate-profile-entry.lisp",
+        "books/substrate-profile-row.lisp",
+        "tests/acl2/substrate-profile-entry-tests.lisp",
+        "books/substrate-profile-selection.lisp",
+        "tests/acl2/substrate-profile-selection-tests.lisp"
       ],
       "implementation_note": "Resumable evidence leaf and actual-row/config adapter supplied. Actual definite-persistence completion and cold replay caller installation remain open; no founding roster or adoption policy is invented. Concrete open codec disagreement: fn-stx-commit-encodablep accepts ID=513 octets, base=0, actor/subject=32 octets and remove, and encode produces exactly 586 octets, while decode-exact returns :limit at its fixed 512 cap. Existing certified retention/authority packet is distinct from this counterexample. Repair requires profile-aligned bounded/resumable codec work and agreed uint32 format evolution; no full supported-profile source capability claim. Explicit v2 component certified at private closure only; actual profile-aware transcript/owner caller, general roundtrip and runtime custody/funding remain open. Legacy586\u2192512 negative evidence unchanged."
     },

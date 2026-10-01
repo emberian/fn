@@ -1326,3 +1326,23 @@ under `acl2-numberp` of that accumulator. The actual resume variants initialize
 it to zero and return identical cursor/count. The execution roots are certified at matching private source. Tail recursion is a source property; native stack use and cost
 improvements require matched runtime evidence. The original codec and external
 oracle source scope remain unchanged.
+
+### Selected-profile committed carrier entry
+
+PRF-1205 introduces an additive candidate boundary distinct from the legacy
+transcript entry. `fn-stpe-resume` uses the actual accumulator codec and returns
+word, next cursor, envelope/refusal result and used ticks. Its model boundary
+compares all four outputs. A successful envelope retains the explicitly selected
+profile, actual group, complete signed statement and exactly decoded commit.
+It does not normalize commit IDs or install membership authority. Yield retains
+cursor state; refusal retains carrier provenance and the codec reason.
+
+`fn-stpr-row-start-carried` projects the actual retained held row and pins the
+original configuration, generation and keyring. Selection advances one group
+or statement boundary, or one selected decoder quantum. This is source work
+accounting, not an allocation tariff. Actual definite completion remains the
+owner's persistence boundary. Its current two-argument completion has no pool
+or allocation-turn slot: a real paid BODY/source producer must precede cursor
+construction. These source APIs do not manufacture that producer or imply an
+installed host caller. Legacy conflict retention remains separately scoped;
+a profile-aware authority/collision consumer is still required before adoption.
