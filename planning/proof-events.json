@@ -3357,8 +3357,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-evc-class-by-shape-is-fn-cne-eventp",
-          "pending_subject": "Current FNCE4 category widens this carried recognizer; changed Store/caller refinement is not qualified. Catalog/SNT references now name the actual union; runtime and proof status are unchanged."
+          "name": "fn-evc-class-by-shape-is-fn-cpe-eventp"
         },
         {
           "kind": "theorem",

@@ -27,23 +27,12 @@
 ; these are the facts a book above needs about an event, and proving them
 ; there means opening the recognizer again -- which is a 15018-way splitter
 ; case in books/store-files (measured 2026-09-22).
-(local
- (defthm fn-replay-authority-record-shape
-   (implies (fn-cae-eventp record)
-            (and (true-listp record)
-                 (natp (fn-cp-nth 1 record))
-                 (natp (fn-cp-nth 2 record))
-                 (natp (fn-cp-nth 3 record))))
-   :hints (("Goal" :in-theory
-            (e/d (fn-cae-eventp fn-cac-eventp fn-cab-eventp fn-cac-u64p)
-                 (fn-cac-operationp fn-cp-nth))))))
-
 (defthm fn-replay-record-is-a-true-list
    (implies (fn-store-event-p record) (true-listp record))
    :rule-classes :forward-chaining
    :hints (("Goal" :in-theory (enable fn-store-event-p
                                       fn-store-retention-event-p
-                                      fn-cne-eventp fn-th-topic-eventp
+                                      fn-cpe-eventp fn-th-topic-eventp
                                       fn-record-shape-vocabulary
                                       fn-record-record-vocabulary))))
 (local
@@ -86,11 +75,11 @@
    :hints (("Goal" :in-theory (enable fn-record-uint32p fn-hstxa-p fn-hstxa-stxa)))))
 (local
  (defthm fn-replay-cpe-counters-are-natural
-   (implies (fn-cne-eventp record)
+   (implies (fn-cpe-eventp record)
             (and (natp (fn-cpe-sequence record))
                  (natp (fn-cpe-txid record))
                  (natp (fn-cpe-generation record))))
-   :hints (("Goal" :in-theory (enable fn-cne-eventp fn-cp-uintp)))))
+   :hints (("Goal" :in-theory (enable fn-cpe-eventp fn-cp-uintp)))))
 (defthm fn-replay-record-counters-are-natural
    (implies (fn-store-event-p record)
             (and (natp (fn-store-event-sequence record))
@@ -109,8 +98,7 @@
                   fn-replay-stxe-counters-are-natural
                   fn-replay-stxk-counters-are-natural
                   fn-replay-stxa-counters-are-natural
-                  fn-replay-cpe-counters-are-natural
-                  fn-replay-authority-record-shape)
+                  fn-replay-cpe-counters-are-natural)
             :cases ((fn-held-p record)
                     (fn-store-retention-event-p record)
                     (fn-stxe-p record)
@@ -120,7 +108,7 @@
             (e/d (fn-store-event-p fn-store-event-sequence
                                    fn-store-event-txid fn-store-event-generation)
                  (fn-record-p fn-held-p fn-hstxa-p fn-store-retention-event-p fn-stxe-p fn-stxk-p
-                              fn-stxa-p fn-cne-eventp fn-cae-eventp
+                              fn-stxa-p fn-cpe-eventp
                               fn-replay-article-counters-are-natural
                               fn-replay-retention-counters-are-natural
                               fn-replay-stxe-counters-are-natural
@@ -416,75 +404,9 @@
   (declare (xargs :guard t))
   (if (fn-hstxa-p event) (fn-hstxa-stxa event) event))
 
-; Return the actual appended child beside the original checked context.
-; :none means neither shared list changed. Standalone verdict validation
-; intentionally suppresses the accepted-verdict append.
-(defun fn-replay-identity-verdict-effect (ctx child)
-  (declare (xargs :guard t))
-  (mv ctx (if (equal (fn-stxk-context-kind ctx) :ok) :verdict :none)
-      (if (equal (fn-stxk-context-kind ctx) :ok) child nil)))
-
-(defun fn-replay-identity-effects (ctx event)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (not (equal (fn-stxk-context-kind ctx) :ok)) (mv ctx :none nil)
-    (if (not (equal (fn-store-event-sequence event)
-                    (fn-stxk-context-next ctx)))
-        (mv (fn-stxk-fault ctx :sequence) :none nil)
-     (let ((event (fn-replay-identity-wire event)))
-      (cond
-       ((fn-stxk-p event)
-        (let* ((checked (fn-stxk-apply-snapshot ctx event))
-               (changed (not (equal (fn-stxk-context-current-generation checked)
-                                    (fn-stxk-context-current-generation ctx)))))
-          (mv checked (if changed :snapshot :none) (if changed event nil))))
-       ((fn-stxe-p event)
-        (let ((checked (fn-stxk-apply-verdict ctx event)))
-          (mv (if (not (equal (fn-stxk-context-kind checked) :ok)) checked
-                (fn-stxk-context :ok (fn-stxk-context-next checked)
-                                 (fn-stxk-context-snapshots checked)
-                                 (fn-stxk-context-verdicts ctx)
-                                 (fn-stxk-context-current-generation checked) nil))
-              :none nil)))
-       ((fn-hsig-article-event-carried-bindsp event)
-        (let ((child (fn-stmt-value (fn-stxe-decode-exact
-                                    (fn-stxa-verdict-event event)))))
-          (fn-replay-identity-verdict-effect
-           (fn-replay-apply-carried-verdict ctx child) child)))
-       ((fn-hsig-article-event-revoked-bindsp event)
-        (let ((child (fn-stmt-value (fn-stxe-decode-exact
-                                    (fn-stxa-verdict-event event)))))
-          (fn-replay-identity-verdict-effect
-           (fn-replay-apply-revoked-verdict
-            ctx child (fn-hsig-article-event-carrier-keys event)) child)))
-       ((fn-stxa-p event)
-        (let ((snapshot
-               (fn-stxk-find (fn-stxa-keyring-generation event)
-                              (fn-stxk-context-snapshots ctx))))
-          (if (or (not (fn-stxa-bindsp event))
-                  (not snapshot)
-                  (not (fn-hsig-article-event-snapshot-bindsp event snapshot)))
-              (mv (fn-stxk-fault ctx :composite-binding) :none nil)
-            (let ((decoded (fn-stxe-decode-exact
-                            (fn-stxa-verdict-event event))))
-              (if (not (fn-stmt-okp decoded))
-                  (mv (fn-stxk-fault ctx :composite-verdict) :none nil)
-                (fn-replay-identity-verdict-effect
-                 (fn-stxk-apply-verdict ctx (fn-stmt-value decoded))
-                 (fn-stmt-value decoded)))))))
-       (t (mv (fn-replay-identity-advance ctx) :none nil)))))))
-
-(verify-guards fn-replay-identity-effects)
-
 (defun fn-replay-identity-step (ctx event)
-  (declare (xargs :guard t))
-  (mv-let (checked effect child) (fn-replay-identity-effects ctx event)
-    (declare (ignore effect child))
-    checked))
-
-; Exact pre-change decision, stated literally as a refactoring fact.
-(defthm fn-replay-identity-effects-context-is-original-by-definition
-  (equal (mv-nth 0 (fn-replay-identity-effects ctx event))
-         (if (not (equal (fn-stxk-context-kind ctx) :ok)) ctx
+  (declare (xargs :guard t :verify-guards nil))
+  (if (not (equal (fn-stxk-context-kind ctx) :ok)) ctx
     (if (not (equal (fn-store-event-sequence event)
                     (fn-stxk-context-next ctx)))
         (fn-stxk-fault ctx :sequence)
@@ -524,18 +446,8 @@
                 (fn-stxk-fault ctx :composite-verdict)
                 (fn-stxk-apply-verdict ctx (fn-stmt-value decoded)))))))
        (t (fn-replay-identity-advance ctx)))))))
-  :rule-classes nil
-  :hints (("Goal" :in-theory
-           (e/d (fn-replay-identity-effects fn-replay-identity-verdict-effect
-                 )
-                (fn-stxk-p fn-stxe-p fn-stxa-p fn-stxk-apply-snapshot
-                 fn-stxk-apply-verdict fn-replay-identity-wire
-                 fn-hsig-article-event-carried-bindsp
-                 fn-hsig-article-event-revoked-bindsp
-                 fn-replay-apply-carried-verdict fn-replay-apply-revoked-verdict
-                 fn-stxk-find fn-stxa-bindsp
-                 fn-hsig-article-event-snapshot-bindsp
-                 fn-stxe-decode-exact fn-stmt-okp)))))
+
+(verify-guards fn-replay-identity-step)
 
 (defun fn-replay-identity-loop (records ctx)
   (declare (xargs :guard t :measure (len records) :verify-guards nil
@@ -709,9 +621,9 @@
                   :verify-guards nil))
   (if (fn-store-retention-event-p record)
       (fn-replay-apply-retention-event node record)
-    (if (or (fn-stxe-p record) (fn-stxk-p record) (fn-cne-eventp record)
-            (fn-cae-eventp record) (fn-th-topic-eventp record))
-        (if (and (or (fn-cne-eventp record) (fn-cae-eventp record) (fn-th-topic-eventp record))
+    (if (or (fn-stxe-p record) (fn-stxk-p record) (fn-cpe-eventp record)
+            (fn-th-topic-eventp record))
+        (if (and (or (fn-cpe-eventp record) (fn-th-topic-eventp record))
                  (not (null (fn-node-stage node))))
             nil
           (fn-replay-apply-identity-neutral node record))
@@ -763,7 +675,7 @@
 ; for the same reason.
 (local (in-theory (disable fn-store-event-p fn-store-event-sequence
                            fn-record-p fn-stxe-p fn-stxk-p fn-stxa-p
-                           fn-store-retention-event-p fn-cne-eventp
+                           fn-store-retention-event-p fn-cpe-eventp
                            fn-replay-composite-record)))
 
 ; A non-NIL one-record result is the existing node transaction machine's

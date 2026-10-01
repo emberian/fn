@@ -457,11 +457,11 @@
   (implies (and (natp (car x)) (equal (len x) 11))
            (and (not (fn-store-retention-event-p x))
                 (not (fn-stxe-p x)) (not (fn-stxk-p x)) (not (fn-stxa-p x))
-                (not (fn-cpe-eventp x)) (not (fn-cac-eventp x))
-                (not (fn-th-topic-eventp x)) (not (fn-hstxa-p x))))
+                (not (fn-cpe-eventp x)) (not (fn-th-topic-eventp x))
+                (not (fn-hstxa-p x))))
   :hints (("Goal" :in-theory (enable fn-store-retention-event-p
                                      fn-stxe-p fn-stxe-shapep fn-stxk-p fn-stxk-shapep
-                                     fn-stxa-p fn-stxa-shapep fn-cpe-eventp fn-cac-eventp fn-hstxa-p
+                                     fn-stxa-p fn-stxa-shapep fn-cpe-eventp fn-hstxa-p
                                      fn-th-topic-eventp fn-th-local-admin-eventp))))
 (defthm fn-bs-stxa-is-a-cons
   (implies (fn-stxa-p x) (consp x))
@@ -487,7 +487,7 @@
                                    (b (fn-bs-handle-bytes (fn-record-payload row) arena))))
            :in-theory (e/d (fn-store-event-p fn-bs-row-wire fn-store-retention-event-p
                             fn-stxe-p fn-stxe-shapep fn-stxk-p fn-stxk-shapep
-                            fn-cpe-eventp fn-cac-eventp fn-th-topic-eventp fn-th-local-admin-eventp)
+                            fn-cpe-eventp fn-th-topic-eventp fn-th-local-admin-eventp)
                            (fn-held-p fn-hstxa-p fn-stxa-p fn-held-wire fn-bs-held-wire-shape)))))
 ; Alpha keeps the sequence: the index the scan checks against a decoded
 ; frame is the retained row's.  The hypothesis is the decode's success.
@@ -507,7 +507,7 @@
                            (fn-held-p fn-hstxa-p fn-stxa-p fn-record-p fn-held-wire
                             fn-bs-held-wire-shape fn-bs-natural-head-is-no-other-wire-event
                             fn-store-retention-event-p fn-stxe-p fn-stxk-p
-                            fn-cpe-eventp fn-cac-eventp fn-th-topic-eventp)))))
+                            fn-cpe-eventp fn-th-topic-eventp)))))
 
 (in-theory (disable fn-bs-row-wire fn-bs-handle-bytes))
 

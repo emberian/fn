@@ -15,7 +15,7 @@
 ;   head :retention         a retention event, fields at 2 3 4
 ;   head :consumer          a consumer event,  fields at 1 2 3
 ;   head another symbol     a topic event,     fields at 1 2 3
-;   head a number           a held article row (15 wide), a statement verdict
+;   head a number           an article record (11 wide), a statement verdict
 ;                           (8), a keyring snapshot (6) or an accepted-article
 ;                           composite (10); fields at 0 1 2
 ;
@@ -60,7 +60,6 @@
     (let ((head (car x)))
       (cond ((eq head :retention) :retention)
             ((eq head :consumer) :consumer)
-            ((eq head :consumer-authority) :authority)
             ((eq head :hstxa) :hstxa)
             ((symbolp head) :topic)
             ((not (consp (fn-evc-drop 6 x))) :stxk)
@@ -168,17 +167,10 @@
                                 zp (:executable-counterpart zp))))))
 (local
  (defthm fn-evc-consumer-shape
-   (implies (fn-cne-eventp x)
+   (implies (fn-cpe-eventp x)
             (and (consp x) (equal (car x) :consumer)))
    :rule-classes :forward-chaining
-   :hints (("Goal" :in-theory '(fn-cne-eventp fn-cp-nth
-                                zp (:executable-counterpart zp))))))
-(local
- (defthm fn-evc-authority-shape
-   (implies (fn-cae-eventp x)
-            (and (consp x) (equal (car x) :consumer-authority)))
-   :rule-classes :forward-chaining
-   :hints (("Goal" :in-theory '(fn-cae-eventp fn-cac-eventp fn-cab-eventp fn-cp-nth
+   :hints (("Goal" :in-theory '(fn-cpe-eventp fn-cp-nth
                                 zp (:executable-counterpart zp))))))
 (local
  (defthm fn-evc-topic-shape
@@ -186,7 +178,6 @@
             (and (consp x) (symbolp (car x))
                  (not (equal (car x) :retention))
                  (not (equal (car x) :consumer))
-                 (not (equal (car x) :consumer-authority))
                  (not (equal (car x) :hstxa))))
    :rule-classes :forward-chaining
    :hints (("Goal" :in-theory '(fn-th-topic-eventp fn-th-local-admin-eventp
@@ -229,7 +220,7 @@
                                 fn-cpe-sequence fn-evc-cp-nth-is-event-nth fn-evc-th-at-is-event-nth
                                 fn-evc-held-shape fn-evc-stxe-shape
                                 fn-evc-stxk-shape fn-evc-stxa-shape fn-evc-hstxa-shape fn-evc-hstxa-inner fn-evc-stxa-fields-by-nth
-                                fn-evc-retention-shape fn-evc-consumer-shape fn-evc-authority-shape
+                                fn-evc-retention-shape fn-evc-consumer-shape
                                 fn-evc-topic-shape zp)
                               (theory 'ground-zero)))))
 (defthm fn-evc-field-by-shape-is-store-event-txid
@@ -243,7 +234,7 @@
                                 fn-cpe-txid fn-evc-cp-nth-is-event-nth fn-evc-th-at-is-event-nth
                                 fn-evc-held-shape fn-evc-stxe-shape
                                 fn-evc-stxk-shape fn-evc-stxa-shape fn-evc-hstxa-shape fn-evc-hstxa-inner fn-evc-stxa-fields-by-nth
-                                fn-evc-retention-shape fn-evc-consumer-shape fn-evc-authority-shape
+                                fn-evc-retention-shape fn-evc-consumer-shape
                                 fn-evc-topic-shape zp)
                               (theory 'ground-zero)))))
 (defthm fn-evc-field-by-shape-is-store-event-generation
@@ -257,7 +248,7 @@
                                 fn-cpe-generation fn-evc-cp-nth-is-event-nth fn-evc-th-at-is-event-nth
                                 fn-evc-held-shape fn-evc-stxe-shape
                                 fn-evc-stxk-shape fn-evc-stxa-shape fn-evc-hstxa-shape fn-evc-hstxa-inner fn-evc-stxa-fields-by-nth
-                                fn-evc-retention-shape fn-evc-consumer-shape fn-evc-authority-shape
+                                fn-evc-retention-shape fn-evc-consumer-shape
                                 fn-evc-topic-shape zp)
                               (theory 'ground-zero))
            :expand ((fn-store-event-nth 2 x) (fn-store-event-nth 1 (cdr x))
@@ -274,7 +265,7 @@
                                 fn-evc-consp-drop
                                 fn-evc-held-shape fn-evc-stxe-shape
                                 fn-evc-stxk-shape fn-evc-stxa-shape fn-evc-hstxa-shape fn-evc-hstxa-inner fn-evc-stxa-fields-by-nth
-                                fn-evc-retention-shape fn-evc-consumer-shape fn-evc-authority-shape
+                                fn-evc-retention-shape fn-evc-consumer-shape
                                 fn-evc-topic-shape)
                               (theory 'ground-zero)))))
 (defthm fn-evc-class-by-shape-is-fn-store-retention-event-p
@@ -286,7 +277,7 @@
                                 fn-evc-consp-drop
                                 fn-evc-held-shape fn-evc-stxe-shape
                                 fn-evc-stxk-shape fn-evc-stxa-shape fn-evc-hstxa-shape fn-evc-hstxa-inner fn-evc-stxa-fields-by-nth
-                                fn-evc-retention-shape fn-evc-consumer-shape fn-evc-authority-shape
+                                fn-evc-retention-shape fn-evc-consumer-shape
                                 fn-evc-topic-shape)
                               (theory 'ground-zero)))))
 (defthm fn-evc-class-by-shape-is-fn-stxe-p
@@ -298,7 +289,7 @@
                                 fn-evc-consp-drop
                                 fn-evc-held-shape fn-evc-stxe-shape
                                 fn-evc-stxk-shape fn-evc-stxa-shape fn-evc-hstxa-shape fn-evc-hstxa-inner fn-evc-stxa-fields-by-nth
-                                fn-evc-retention-shape fn-evc-consumer-shape fn-evc-authority-shape
+                                fn-evc-retention-shape fn-evc-consumer-shape
                                 fn-evc-topic-shape)
                               (theory 'ground-zero)))))
 (defthm fn-evc-class-by-shape-is-fn-stxk-p
@@ -310,7 +301,7 @@
                                 fn-evc-consp-drop
                                 fn-evc-held-shape fn-evc-stxe-shape
                                 fn-evc-stxk-shape fn-evc-stxa-shape fn-evc-hstxa-shape fn-evc-hstxa-inner fn-evc-stxa-fields-by-nth
-                                fn-evc-retention-shape fn-evc-consumer-shape fn-evc-authority-shape
+                                fn-evc-retention-shape fn-evc-consumer-shape
                                 fn-evc-topic-shape)
                               (theory 'ground-zero)))))
 (defthm fn-evc-class-by-shape-is-fn-hstxa-p
@@ -322,31 +313,19 @@
                                 fn-evc-consp-drop
                                 fn-evc-held-shape fn-evc-stxe-shape
                                 fn-evc-stxk-shape fn-evc-stxa-shape fn-evc-hstxa-shape fn-evc-hstxa-inner fn-evc-stxa-fields-by-nth
-                                fn-evc-retention-shape fn-evc-consumer-shape fn-evc-authority-shape
+                                fn-evc-retention-shape fn-evc-consumer-shape
                                 fn-evc-topic-shape)
                               (theory 'ground-zero)))))
-(defthm fn-evc-class-by-shape-is-fn-cne-eventp
+(defthm fn-evc-class-by-shape-is-fn-cpe-eventp
   (implies (fn-store-event-p x)
-           (iff (fn-cne-eventp x) (equal (fn-evc-class-by-shape x) :consumer)))
+           (iff (fn-cpe-eventp x) (equal (fn-evc-class-by-shape x) :consumer)))
   :rule-classes nil
   :hints (("Goal" :in-theory (union-theories
                               '(fn-store-event-p fn-evc-class-by-shape
                                 fn-evc-consp-drop
                                 fn-evc-held-shape fn-evc-stxe-shape
                                 fn-evc-stxk-shape fn-evc-stxa-shape fn-evc-hstxa-shape fn-evc-hstxa-inner fn-evc-stxa-fields-by-nth
-                                fn-evc-retention-shape fn-evc-consumer-shape fn-evc-authority-shape
-                                fn-evc-topic-shape)
-                              (theory 'ground-zero)))))
-(defthm fn-evc-class-by-shape-is-fn-cae-eventp
-  (implies (fn-store-event-p x)
-           (iff (fn-cae-eventp x) (equal (fn-evc-class-by-shape x) :authority)))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-store-event-p fn-evc-class-by-shape
-                                fn-evc-consp-drop
-                                fn-evc-held-shape fn-evc-stxe-shape
-                                fn-evc-stxk-shape fn-evc-stxa-shape fn-evc-hstxa-shape fn-evc-hstxa-inner fn-evc-stxa-fields-by-nth
-                                fn-evc-retention-shape fn-evc-consumer-shape fn-evc-authority-shape
+                                fn-evc-retention-shape fn-evc-consumer-shape
                                 fn-evc-topic-shape)
                               (theory 'ground-zero)))))
 (defthm fn-evc-class-by-shape-is-fn-th-topic-eventp
@@ -358,7 +337,7 @@
                                 fn-evc-consp-drop
                                 fn-evc-held-shape fn-evc-stxe-shape
                                 fn-evc-stxk-shape fn-evc-stxa-shape fn-evc-hstxa-shape fn-evc-hstxa-inner fn-evc-stxa-fields-by-nth
-                                fn-evc-retention-shape fn-evc-consumer-shape fn-evc-authority-shape
+                                fn-evc-retention-shape fn-evc-consumer-shape
                                 fn-evc-topic-shape)
                               (theory 'ground-zero)))))
 
@@ -416,16 +395,10 @@
   (mbe :logic (fn-hstxa-p x) :exec (eq (fn-evc-class-by-shape x) :hstxa)))
 (defun fn-evc-consumerp (x)
   (declare (xargs :guard (fn-store-event-p x)
-                  :guard-hints (("Goal" :use fn-evc-class-by-shape-is-fn-cne-eventp
-                                 :in-theory (union-theories '((:type-prescription fn-cne-eventp))
+                  :guard-hints (("Goal" :use fn-evc-class-by-shape-is-fn-cpe-eventp
+                                 :in-theory (union-theories '((:type-prescription fn-cpe-eventp))
                                                             (theory 'ground-zero))))))
-  (mbe :logic (fn-cne-eventp x) :exec (eq (fn-evc-class-by-shape x) :consumer)))
-(defun fn-evc-authorityp (x)
-  (declare (xargs :guard (fn-store-event-p x)
-                  :guard-hints (("Goal" :use fn-evc-class-by-shape-is-fn-cae-eventp
-                                 :in-theory (union-theories '((:type-prescription fn-cae-eventp))
-                                                            (theory 'ground-zero))))))
-  (mbe :logic (fn-cae-eventp x) :exec (eq (fn-evc-class-by-shape x) :authority)))
+  (mbe :logic (fn-cpe-eventp x) :exec (eq (fn-evc-class-by-shape x) :consumer)))
 (defun fn-evc-topicp (x)
   (declare (xargs :guard (fn-store-event-p x)
                   :guard-hints (("Goal" :use fn-evc-class-by-shape-is-fn-th-topic-eventp
@@ -436,7 +409,7 @@
 (deftheory fn-evc-carried-definitions
   '(fn-evc-sequence fn-evc-txid fn-evc-generation fn-evc-recordp
     fn-evc-retentionp fn-evc-stxep fn-evc-stxkp fn-evc-stxap
-    fn-evc-consumerp fn-evc-authorityp fn-evc-topicp))
+    fn-evc-consumerp fn-evc-topicp))
 
 (in-theory (disable fn-evc-carried-definitions fn-evc-class-by-shape
                     fn-evc-field-by-shape fn-evc-drop))
