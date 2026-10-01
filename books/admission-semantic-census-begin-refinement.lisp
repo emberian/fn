@@ -1,6 +1,11 @@
 (in-package "ACL2")
 (include-book "../host/admission-semantic-census-host")
 (encapsulate ()
+(local (defthm fn-owner-census-source-begin-retains-captured-source-local
+ (and (equal (fn-osrc-at 1 (fn-osrc-begin field count epoch lease)) field)
+      (equal (fn-osrc-at 9 (fn-osrc-begin field count epoch lease)) epoch)
+      (equal (fn-osrc-at 10 (fn-osrc-begin field count epoch lease)) lease))
+ :hints (("Goal" :in-theory (enable fn-osrc-begin fn-osrc-at)))))
 (local (defthm fn-owner-census-source-begin-count-by-definition
  (equal (fn-osrc-at 3 (fn-osrc-begin field count epoch lease)) count)
  :hints (("Goal" :in-theory (enable fn-osrc-at fn-osrc-begin)))))
