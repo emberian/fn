@@ -588,34 +588,37 @@
   :hints (("Goal" :use ((:instance fn-dm-agree-necc (c fn-dmap$c) (a fn-dmap)))
                   :in-theory (disable fn-dm-agree-necc fn-dmap$c-get fn-dmap$a-get))))
 
-(defthm fn-dmap-put{correspondence}
-  (implies (and (fn-dmap$corr fn-dmap$c fn-dmap) (fn-dmap$ap fn-dmap) (fn-dm-lanep lane))
-           (fn-dmap$corr (fn-dmap$c-put lane k v fn-dmap$c) (fn-dmap$a-put lane k v fn-dmap)))
-  :hints (("Goal" :in-theory (disable fn-dmap$c-put fn-dmap$a-put fn-dm-agree))))
-
 (defthm fn-dmap-put{preserved}
   (implies (and (fn-dmap$ap fn-dmap) (fn-dm-lanep lane))
            (fn-dmap$ap (fn-dmap$a-put lane k v fn-dmap)))
   :hints (("Goal" :in-theory (enable fn-dm-lanep))))
 
-(defthm fn-dmap-rem{correspondence}
+(defthm fn-dmap-put{correspondence}
   (implies (and (fn-dmap$corr fn-dmap$c fn-dmap) (fn-dmap$ap fn-dmap) (fn-dm-lanep lane))
-           (fn-dmap$corr (fn-dmap$c-rem lane k fn-dmap$c) (fn-dmap$a-rem lane k fn-dmap)))
-  :hints (("Goal" :in-theory (disable fn-dmap$c-rem fn-dmap$a-rem fn-dm-agree))))
+           (fn-dmap$corr (fn-dmap$c-put lane k v fn-dmap$c) (fn-dmap$a-put lane k v fn-dmap)))
+  :hints (("Goal" :use fn-dmap-put{preserved}
+                  :in-theory (disable fn-dmap$c-put fn-dmap$a-put fn-dm-agree fn-dmap-put{preserved}))))
 
 (defthm fn-dmap-rem{preserved}
   (implies (and (fn-dmap$ap fn-dmap) (fn-dm-lanep lane))
            (fn-dmap$ap (fn-dmap$a-rem lane k fn-dmap)))
   :hints (("Goal" :in-theory (enable fn-dm-lanep))))
 
-(defthm fn-dmap-clear{correspondence}
-  (implies (and (fn-dmap$corr fn-dmap$c fn-dmap) (fn-dmap$ap fn-dmap))
-           (fn-dmap$corr (fn-dmap$c-clear fn-dmap$c) (fn-dmap$a-clear fn-dmap)))
-  :hints (("Goal" :in-theory (disable fn-dmap$c-clear fn-dmap$a-clear fn-dm-agree))))
+(defthm fn-dmap-rem{correspondence}
+  (implies (and (fn-dmap$corr fn-dmap$c fn-dmap) (fn-dmap$ap fn-dmap) (fn-dm-lanep lane))
+           (fn-dmap$corr (fn-dmap$c-rem lane k fn-dmap$c) (fn-dmap$a-rem lane k fn-dmap)))
+  :hints (("Goal" :use fn-dmap-rem{preserved}
+                  :in-theory (disable fn-dmap$c-rem fn-dmap$a-rem fn-dm-agree fn-dmap-rem{preserved}))))
 
 (defthm fn-dmap-clear{preserved}
   (implies (fn-dmap$ap fn-dmap)
            (fn-dmap$ap (fn-dmap$a-clear fn-dmap))))
+
+(defthm fn-dmap-clear{correspondence}
+  (implies (and (fn-dmap$corr fn-dmap$c fn-dmap) (fn-dmap$ap fn-dmap))
+           (fn-dmap$corr (fn-dmap$c-clear fn-dmap$c) (fn-dmap$a-clear fn-dmap)))
+  :hints (("Goal" :use fn-dmap-clear{preserved}
+                  :in-theory (disable fn-dmap$c-clear fn-dmap$a-clear fn-dm-agree fn-dmap-clear{preserved}))))
 
 (defabsstobj fn-dmap
   :foundation fn-dmap$c
