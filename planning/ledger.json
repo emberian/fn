@@ -2309,7 +2309,7 @@
     "books": 2704,
     "books_in_root_closure": 2569,
     "roots": 2302,
-    "theorems": 35354,
+    "theorems": 35363,
     "functions": 22658,
     "assert_events": 25282,
     "must_fails": 2557,
@@ -31949,7 +31949,7 @@
       "book": "books/owner-offer-indexed.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 55,
+      "theorems": 56,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -46668,7 +46668,7 @@
       "book": "books/store-open-bridge.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 26,
+      "theorems": 34,
       "functions": 2,
       "guards": {
         "verified": 0,

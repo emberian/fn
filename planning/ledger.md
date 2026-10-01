@@ -13,7 +13,7 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 2704 |
 | Certification roots in the Makefile | 2302 |
 | Books inside the root closure | 2569 |
-| `defthm` and `defthmd` events | 35354 |
+| `defthm` and `defthmd` events | 35363 |
 | `defun` events | 22658 |
 | Functions with verified guards | 3837 |
 | Functions declared `:verify-guards nil` and never verified | 2863 |
@@ -1100,7 +1100,7 @@ that `make certify` requests.
 | `books/owner-number-bound.lisp` | root | 36 | 5 | 0/0/1/4 | 0 | 0 | 0 |
 | `books/owner-numbering.lisp` | root | 47 | 4 | 0/0/2/2 | 0 | 0 | 0 |
 | `books/owner-obligation-state.lisp` | closure | 11 | 3 | 0/0/3/0 | 0 | 0 | 0 |
-| `books/owner-offer-indexed.lisp` | root | 55 | 0 | 0/0/0/0 | 0 | 0 | 1 |
+| `books/owner-offer-indexed.lisp` | root | 56 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/owner-open-carried.lisp` | root | 14 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/owner-outcome-counted.lisp` | closure | 19 | 7 | 5/0/2/0 | 0 | 0 | 1 |
 | `books/owner-outcome-pinned.lisp` | root | 5 | 5 | 0/0/5/0 | 0 | 0 | 0 |
@@ -1607,7 +1607,7 @@ that `make certify` requests.
 | `books/store-observed-traces.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/store-observed.lisp` | root | 39 | 16 | 15/0/1/0 | 0 | 0 | 5 |
 | `books/store-octet-entry.lisp` | root | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
-| `books/store-open-bridge.lisp` | root | 26 | 2 | 0/2/0/0 | 0 | 0 | 0 |
+| `books/store-open-bridge.lisp` | root | 34 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `books/store-open-node-bridge.lisp` | root | 21 | 4 | 0/0/2/2 | 0 | 0 | 0 |
 | `books/store-open-pre-c1.lisp` | root | 19 | 9 | 1/1/7/0 | 0 | 0 | 1 |
 | `books/store-open-replay-refusal.lisp` | root | 3 | 9 | 4/0/5/0 | 0 | 0 | 0 |
