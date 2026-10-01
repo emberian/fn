@@ -204,9 +204,13 @@
 (assert! (equal (drt-pay-run) '((2 (9 9) (4)) 0)))
 
 ; DRT-PAY-COUNT{CORRESPONDENCE}: both hypotheses and its exact conclusion
-; at a reachable one-payload foundation, built from the canonical empty.
+; at a reachable one-payload foundation, built from the creator's image
+; (the paged foundation, lane gate-b-2: one row page of the offset and
+; length columns, one pool page; the fresh page values are the page
+; stobjs' creators, (nil nil) and (nil)).
 (defconst *drt-pay-witness-c*
-  (adt-append-c *drt-pay-schema* '((1 2 3)) (adt-empty-c *drt-pay-schema*)))
+  (adt-pg-append-c *drt-pay-schema* '((1 2 3)) *adt-pg-rows* *adt-pg-octets* '(nil nil) '(nil)
+                   '(nil nil 0 0 0 0)))
 (defconst *drt-pay-witness-a* '((1 2 3)))
 
 (assert-event
@@ -314,9 +318,9 @@
 ; 5. The world rows.
 
 (assert-event (equal (cdr (assoc-eq 'drt-pay (table-alist 'fn-generated (w state))))
-                     '(:def-representation :scalar t :generic nil :implementation drt-pay :invariant nil :trees nil :write-once nil :paged nil)))
+                     '(:def-representation :scalar t :generic nil :implementation drt-pay :invariant nil :trees nil :write-once nil :paged t)))
 (assert-event (equal (cdr (assoc-eq 'drt-gen (table-alist 'fn-generated (w state))))
-                     '(:def-representation :scalar t :generic t :implementation drt-gen-cols :invariant nil :trees nil :write-once nil :paged nil)))
+                     '(:def-representation :scalar t :generic t :implementation drt-gen-cols :invariant nil :trees nil :write-once nil :paged t)))
 
 ; -----------------------------------------------------------------------------
 ; 6. A TREE field (books/def-representation-tree.lisp, lane paged-catalog-3):
@@ -612,3 +616,31 @@
 (assert-event (equal (cdr (assoc-eq 'drt-w1 (table-alist 'fn-generated (w state))))
                      '(:def-representation :scalar nil :generic nil :implementation drt-w1 :invariant nil
                        :trees (tr) :write-once t :paged t)))
+
+; -----------------------------------------------------------------------------
+; 8. TWO TREE FIELDS.
+; TWO :tree fields in one declaration (the catalog's aux and nums, lane
+; gate-b-2): each walked into the pool by its own put, the append-t the
+; append of the record with both programs; executed and read back.
+(def-representation drt-t2 (a :u64) (x :tree) (m :octets) (y :tree) :write-once t)
+
+(defun drt-t2-run (drt-t2)
+  (declare (xargs :stobjs drt-t2 :verify-guards nil))
+  (let ((drt-t2 (drt-t2-append-t (list 3 *drt-tree* '(8 9) '(1 (2 . "z"))) drt-t2)))
+    (mv (list (drt-t2-count drt-t2) (drt-t2-get-a 0 drt-t2) (drt-t2-get-x 0 drt-t2)
+              (drt-t2-get-m 0 drt-t2) (drt-t2-get-y 0 drt-t2))
+        drt-t2)))
+
+(defun drt-t2-run-ok ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj drt-t2
+    (mv-let (got drt-t2) (drt-t2-run drt-t2)
+      (equal got (list 1 3 (fn-scc-program *drt-tree*) '(8 9) (fn-scc-program '(1 (2 . "z"))))))))
+
+(assert-event (drt-t2-run-ok))
+
+(defthm drt-t2-append-t-meaning
+  (equal (drt-t2-append-t rec drt-t2)
+         (append drt-t2 (list (list (car rec) (fn-scc-program (cadr rec)) (caddr rec)
+                                    (fn-scc-program (cadddr rec))))))
+  :hints (("Goal" :in-theory (enable drt-t2-tree-enc-is-list))))
