@@ -236,60 +236,15 @@
 
 
 
-(defun fnn-owner-connection-settle-locked (service node fuel abortp)
-  "A real alias return or definite pre-open refusal requests core settlement."
-  (sb-thread:with-mutex (*fnn-extent-lock*)
-    (multiple-value-bind (erp word left mio pool state)
-        (fnn-core-mv (if abortp 'fn-owner-index-connection-abort 'fn-owner-index-connection-settle)
-          (funcall (if abortp (fnn-owner-service-connection-abort service)
-                     (fnn-owner-service-connection-settle service))
-                   (fnn-connection-custody-token node) fuel
-                   (fnn-owner-service-connection-mio service)
-                   (fnn-owner-service-connection-pool service) *the-live-state*))
-      (declare (ignore state))
-      (setf (fnn-owner-service-connection-mio service) mio
-            (fnn-owner-service-connection-pool service) pool)
-      (when erp (fnn-fixed-callback-fail 'fnn-owner-connection-settle-locked :settle-error erp))
-      (case word
-        (:released (fnn-connection-custody-released service node))
-        ((:held :busy :yield) nil)
-        (otherwise (fnn-fixed-callback-fail 'fnn-owner-connection-settle-locked :settle-unresolved word)))
-      (values word left))))
-
 (defun fnn-owner-connection-close-locked (service cid node faultp)
-  "Logical close/fault followed by core settlement; held aliases stay rooted."
-  (unless node
-    (when (fnn-owner-connection-selected-p service)
-      (fnn-fixed-callback-fail 'fn-owner-index-rx-close :custody-missing nil))
-    (return-from fnn-owner-connection-close-locked
-      (fnn-owner-action (if faultp 'fn-owner-fault 'fn-owner-close) cid)))
-  (when (eq (fnn-connection-custody-phase node) :released)
-    (return-from fnn-owner-connection-close-locked :closed))
-  (when (eq (fnn-connection-custody-phase node) :retiring)
-    (return-from fnn-owner-connection-close-locked
-      (fnn-owner-connection-settle-locked
-       service node (fnn-owner-service-connection-fuel service) nil)))
-  (sb-thread:with-mutex (*fnn-extent-lock*)
-    (multiple-value-bind (erp result mio pool state)
-        (fnn-core-mv 'fn-owner-index-rx-close
-          (funcall (fnn-owner-service-connection-close service)
-                   cid (fnn-connection-custody-token node) faultp
-                   (fnn-owner-service-connection-fuel service)
-                   (fnn-owner-service-connection-mio service)
-                   (fnn-owner-service-connection-pool service)
-                   (fnn-live-arena) *the-live-state*))
-      (declare (ignore state))
-      (setf (fnn-owner-service-connection-mio service) mio
-            (fnn-owner-service-connection-pool service) pool)
-      (when erp (fnn-fixed-callback-fail 'fn-owner-index-rx-close :close-error erp))
-      (case (first result)
-        (:closed
-         (when (third result) (fnn-fixed-callback-fail 'fn-owner-index-rx-close :released-retained result))
-         (fnn-connection-custody-released service node))
-        (:closed-held (setf (fnn-connection-custody-phase node) :retiring))
-        (:yield (setf (fnn-connection-custody-phase node) :close-pending))
-        (otherwise (fnn-fixed-callback-fail 'fn-owner-index-rx-close :close-unresolved result)))
-      (first result))))
+  "CID's logical close or fault: the owner's own action.  Stage 0: NODE, an
+index-connection custody, is always NIL (its constructor is parked in
+host/native/receiver-turn-parked.lisp with the custody arms of this
+function, whose counterparts fn-owner-index-rx-close / -connection-settle /
+-abort are in neither image world)."
+  (when node
+    (fnn-fixed-callback-fail 'fnn-owner-connection-close-locked :custody-unavailable nil))
+  (fnn-owner-action (if faultp 'fn-owner-fault 'fn-owner-close) cid))
 
 
 

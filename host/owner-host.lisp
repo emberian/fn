@@ -39,7 +39,11 @@
 (include-book "../books/receiver-provider")
 (include-book "../books/receiver-turn-controller")
 (include-book "receiver-source-gate-host")
-(include-book "post-identity-captured-host")
+; Stage 0 (2026-10-01): post-identity-captured-host (fn-owner-pic-demand, the
+; captured-identity precheck's readout) is not included: its chain
+; (books/post-identity-captured over the acceptance-binding held gate) is
+; parked with D43's revert, and no served entry dispatches it since the POST
+; precheck returned to the 7aad444ce check (host/native/owner.lisp).
 (include-book "../books/owner-config")
 (include-book "../books/owner-authority-proposal-state")
 (include-book "../books/consumer-account-carries-state")

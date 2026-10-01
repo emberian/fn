@@ -217,7 +217,6 @@
 (include-book "receiver-provider")
 (include-book "receiver-turn-controller")
 (include-book "../host/receiver-source-gate-host")
-(include-book "../host/post-identity-captured-host")
 (include-book "owner-config")
 (include-book "owner-authority-proposal-state")
 (include-book "consumer-account-carries-state")

@@ -1,3 +1,4 @@
+; UNHOOKED stage 0 (2026-10-01): depends on the reverted acceptance-binding field (planning/design-store-representation-2026-10-01.md section 5, D43): the captured-identity chain over the held binding gate is parked (review 2026-10-01 F01: KEEP-PARKED); not in the Makefile check roots or any image world.
 ; Exact retained incoming agent at the actual funded controller boundary.
 ; Trace counters and octet-list denotations below are proof-only.
 (in-package "ACL2")
