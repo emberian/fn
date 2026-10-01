@@ -2366,7 +2366,7 @@
     "books": 2728,
     "books_in_root_closure": 2638,
     "roots": 2359,
-    "theorems": 36080,
+    "theorems": 36085,
     "functions": 23019,
     "assert_events": 25502,
     "must_fails": 2611,
@@ -12157,7 +12157,7 @@
       "book": "books/catalog-paged.lisp",
       "in_root_closure": true,
       "is_root": false,
-      "theorems": 220,
+      "theorems": 225,
       "functions": 75,
       "guards": {
         "verified": 0,
@@ -82370,7 +82370,7 @@
     {
       "theorem": "fn-cp-withdrawn-of-held",
       "book": "books/catalog-paged.lisp",
-      "line": 1560,
+      "line": 1564,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -91850,43 +91850,43 @@
       {
         "theorem": "fn-scc-octet-listp-is-adt-octetsp",
         "book": "books/catalog-paged.lisp",
-        "line": 143,
+        "line": 145,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-cbor-octet-listp-is-adt-octetsp",
         "book": "books/catalog-paged.lisp",
-        "line": 147,
+        "line": 149,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-cp-msort-is-isort",
         "book": "books/catalog-paged.lisp",
-        "line": 422,
+        "line": 424,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-cp-isort-of-desc",
         "book": "books/catalog-paged.lisp",
-        "line": 547,
+        "line": 549,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-cp-len-of-set-column",
         "book": "books/catalog-paged.lisp",
-        "line": 656,
+        "line": 660,
         "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
       },
       {
         "theorem": "fn-cp-len-of-adt-set-a",
         "book": "books/catalog-paged.lisp",
-        "line": 661,
+        "line": 665,
         "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
       },
       {
         "theorem": "fn-cp-tree-enc-of-row-t-of",
         "book": "books/catalog-paged.lisp",
-        "line": 802,
+        "line": 806,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {

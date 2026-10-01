@@ -13,7 +13,7 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 2728 |
 | Certification roots in the Makefile | 2359 |
 | Books inside the root closure | 2638 |
-| `defthm` and `defthmd` events | 36080 |
+| `defthm` and `defthmd` events | 36085 |
 | `defun` events | 23019 |
 | Functions with verified guards | 3846 |
 | Functions declared `:verify-guards nil` and never verified | 2936 |
@@ -435,7 +435,7 @@ that `make certify` requests.
 | `books/catalog-number-index.lisp` | root | 46 | 10 | 3/0/6/1 | 0 | 0 | 1 |
 | `books/catalog-number-window.lisp` | root | 3 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/catalog-paged-attach.lisp` | closure | 0 | 1 | 0/0/0/1 | 2 | 0 | 0 |
-| `books/catalog-paged.lisp` | closure | 220 | 75 | 0/7/47/21 | 3 | 0 | 1 |
+| `books/catalog-paged.lisp` | closure | 225 | 75 | 0/7/47/21 | 3 | 0 | 1 |
 | `books/catalog-prepare-sealed.lisp` | root | 0 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/catalog-prepare.lisp` | root | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/catalog-prepared-record.lisp` | closure | 12 | 11 | 5/0/6/0 | 0 | 0 | 0 |
@@ -3053,7 +3053,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-col-bind-refusal-refuses-exactly-an-unregistered-bind` | `books/consumer-owner-local.lisp` | 120 | iff-of-definition-test: fn-col-bind-refusal is (if TEST non-nil nil) and the statement is its truth iff TEST |
 | `fn-col-poll-index-get-non-uint-is-nil-by-definition` | `books/consumer-poll-index.lisp` | 145 | arm-of-definition: the hypotheses select one IF/COND arm of fn-cei-get and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-cei-get and the conclusion is that branch's value |
 | `fn-cp-cursor-decode-overlong-by-definition` | `books/consumer-position.lisp` | 871 | arm-of-definition: the hypotheses select one IF/COND arm of fn-cp-cursor-decode and the conclusion is that arm's value |
-| `fn-cp-withdrawn-of-held` | `books/catalog-paged.lisp` | 1560 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-cp-withdrawn-of-held` | `books/catalog-paged.lisp` | 1564 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-cpc-assemble-accessors` | `books/checkpoint-codec.lisp` | 1242 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-cpc-uint32p-bridge` | `books/checkpoint-codec.lisp` | 1270 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-record-uint32p |
 | `fn-cpl-assign-fields` | `books/catalog-live-links.lisp` | 167 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
