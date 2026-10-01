@@ -18585,13 +18585,8 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-hrecs-frame-fill{correspondence}",
-          "note": "The frame export of fn-hrecs is the list fill's at the realizer's words. pending_subject (lane page-word-boundary 2026-10-01): fn-hrecs-frame-fill / fn-hrs-frame-fill-pgs are not host-called yet, as PRF-372's subjects are not (fn-hrs-h-file is the family's only interface at dev); the raw realizer of fn-pgs-fill-frame lands in host/native/extent.lisp after stage 0"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hrecs-frame-fill{preserved}",
-          "note": "Its invariant, the list fill's. pending_subject (lane page-word-boundary 2026-10-01): fn-hrecs-frame-fill / fn-hrs-frame-fill-pgs are not host-called yet, as PRF-372's subjects are not (fn-hrs-h-file is the family's only interface at dev); the raw realizer of fn-pgs-fill-frame lands in host/native/extent.lisp after stage 0"
+          "name": "fn-hrc-get-is-hrecs-get",
+          "note": "BRIDGE (existing, books/history-records-disk.lisp): the concrete retry loop, where the frame fill runs, is fn-hrecs-get over the abstract stobj; the frame fill cannot be an export (stobj-attachment-restrictions)."
         }
       ]
     }

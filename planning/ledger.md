@@ -13,11 +13,11 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 2687 |
 | Certification roots in the Makefile | 2338 |
 | Books inside the root closure | 2595 |
-| `defthm` and `defthmd` events | 35080 |
-| `defun` events | 22417 |
+| `defthm` and `defthmd` events | 35077 |
+| `defun` events | 22416 |
 | Functions with verified guards | 3826 |
 | Functions declared `:verify-guards nil` and never verified | 2777 |
-| Functions left at the default with an explicit guard | 12610 |
+| Functions left at the default with an explicit guard | 12609 |
 | Functions left at the default with no guard | 3204 |
 | `assert-event` checks | 25149 |
 | `must-fail` checks | 2531 |
@@ -780,7 +780,7 @@ that `make certify` requests.
 | `books/history-preparation-page-ready.lisp` | root | 0 | 2 | 1/0/1/0 | 0 | 0 | 0 |
 | `books/history-record-cursor.lisp` | root | 73 | 40 | 0/17/23/0 | 0 | 0 | 0 |
 | `books/history-records-disk.lisp` | root | 34 | 20 | 0/0/19/1 | 0 | 0 | 0 |
-| `books/history-records.lisp` | root | 146 | 49 | 0/0/31/18 | 0 | 0 | 0 |
+| `books/history-records.lisp` | root | 143 | 48 | 0/0/30/18 | 0 | 0 | 0 |
 | `books/history-resource-refinement.lisp` | root | 12 | 8 | 0/0/8/0 | 0 | 0 | 1 |
 | `books/history-scalar-cursor.lisp` | root | 17 | 12 | 0/4/8/0 | 0 | 0 | 0 |
 | `books/history-semantic-writer-state.lisp` | root | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |

@@ -1219,11 +1219,6 @@
   (let ((r (non-exec (fn-hrc-fill p words (cdr a)))))
     (mv (mv-nth 0 r) (cons (car a) (mv-nth 1 r)))))
 
-(defun fn-hrs$a-frame-fill (file addr p a)
-  ; the fill at the realizer's words (fn-hrc-frame-fill's logic, by its mbe)
-  (declare (xargs :guard (and (natp p) (fn-hrs$ap a))))
-  (fn-hrs$a-fill p (fn-pgs-fill-realize file addr) a))
-
 (defun fn-hrs$a-load (events salt a)
   (declare (xargs :guard (and (true-listp events) (natp salt) (fn-hrs$ap a))))
   (cons events (non-exec (fn-hrc-load events salt (cdr a)))))
@@ -1314,29 +1309,13 @@
   :hints (("Goal" :in-theory (disable fn-hrc-fill fn-hrc-wfp fn-hrc-fill-shape)))
   :rule-classes nil)
 
-; The frame fill's three: the list fill's at the realizer's words (both
-; sides are that term by definition).
-(defthm fn-hrecs-frame-fill{correspondence}
-  (implies (and (fn-hrs$corr fn-hrecs$c fn-hrecs) (natp p) (fn-hrs$ap fn-hrecs))
-           (let ((lhs (fn-hrc-frame-fill file addr p fn-hrecs$c))
-                 (rhs (fn-hrs$a-frame-fill file addr p fn-hrecs)))
-             (and (equal (mv-nth 0 lhs) (mv-nth 0 rhs)) (fn-hrs$corr (mv-nth 1 lhs) (mv-nth 1 rhs)))))
-  :hints (("Goal" :use ((:instance fn-hrecs-fill{correspondence} (words (fn-pgs-fill-realize file addr))))
-           :in-theory (e/d (fn-hrc-frame-fill fn-hrs$a-frame-fill)
-                           (fn-hrc-fill fn-hrc-fill-shape fn-hrs-fill-pgs fn-hrs$a-fill))))
-  :rule-classes nil)
-
-(defthm fn-hrecs-frame-fill{guard-thm}
-  (implies (and (fn-hrs$corr fn-hrecs$c fn-hrecs) (natp p) (fn-hrs$ap fn-hrecs))
-           (and (natp p) (fn-hrc-wfp fn-hrecs$c)))
-  :rule-classes nil)
-
-(defthm fn-hrecs-frame-fill{preserved}
-  (implies (and (natp p) (fn-hrs$ap fn-hrecs))
-           (fn-hrs$ap (mv-nth 1 (fn-hrs$a-frame-fill file addr p fn-hrecs))))
-  :hints (("Goal" :use ((:instance fn-hrecs-fill{preserved} (words (fn-pgs-fill-realize file addr))))
-           :in-theory (e/d (fn-hrs$a-frame-fill) (fn-hrs$a-fill fn-hrc-fill fn-hrc-wfp fn-hrc-fill-shape))))
-  :rule-classes nil)
+; No frame export of the abstract stobj: an export whose :logic reaches
+; fn-pgs-fill-realize makes fn-pgs-page-words an ancestor of an export, and
+; ACL2 then forbids attaching to it (stobj-attachment-restrictions; the page
+; file tests attach it).  The frame fill lives on the concrete fn-hrecs$c
+; (fn-hrc-frame-fill), where the open, the retry loop and the completion run;
+; fn-hrc-get-is-hrecs-get (books/history-records-disk.lisp) bridges the
+; concrete loop to fn-hrecs-get.
 
 (defthm fn-hrecs-load{correspondence}
   (implies (and (fn-hrs$corr fn-hrecs$c fn-hrecs) (true-listp events) (natp salt) (fn-hrs$ap fn-hrecs))
@@ -1386,7 +1365,6 @@
             (fn-hrecs-phys :logic fn-hrs$a-phys :exec fn-hrc-phys)
             (fn-hrecs-append :logic fn-hrs$a-append :exec fn-hrc-append :protect t)
             (fn-hrecs-fill :logic fn-hrs$a-fill :exec fn-hrc-fill :protect t)
-            (fn-hrecs-frame-fill :logic fn-hrs$a-frame-fill :exec fn-hrc-frame-fill :protect t)
             (fn-hrecs-load :logic fn-hrs$a-load :exec fn-hrc-load :protect t)
             (fn-hrecs-flush :logic fn-hrs$a-flush :exec fn-hrc-flush-one :protect t)))
 
@@ -1593,13 +1571,12 @@
 (defun fn-hrecs-serve (p file fn-hrecs)
   ; One fill: page P from the page FILE at the address its table entry
   ; names, then the page store's check.  (mv VERDICT fn-hrecs).
-  ; In the logic the list form; what runs is the frame fill (the words put
-  ; in place by the host), the same term by fn-hrecs-frame-fill's definition.
-  (declare (xargs :stobjs fn-hrecs :guard (natp p)
-                  :guard-hints (("Goal" :in-theory (enable fn-hrecs-frame-fill fn-hrs$a-frame-fill fn-hrecs-fill)))))
-  (mbe :logic (let ((words (fn-pgs-fill-realize file (fn-hrecs-phys p fn-hrecs))))
-                (fn-hrecs-fill p words fn-hrecs))
-       :exec (fn-hrecs-frame-fill file (fn-hrecs-phys p fn-hrecs) p fn-hrecs)))
+  ; The list form, kept: the abstract stobj cannot export the frame fill
+  ; (see the note before the defabsstobj), and nothing host-called reaches
+  ; this composition; the concrete loop fn-hrc-get is the frame path.
+  (declare (xargs :stobjs fn-hrecs :guard (natp p)))
+  (let ((words (fn-pgs-fill-realize file (fn-hrecs-phys p fn-hrecs))))
+    (fn-hrecs-fill p words fn-hrecs)))
 
 
 (defthm fn-hrs-fill-st-pgs

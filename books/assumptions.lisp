@@ -468,4 +468,14 @@
 ; constrained to be the put of the same words).  Its own book because that
 ; form is stated over `pgs-mem' (books/pagestore-words.lisp), which this
 ; book did not include; nothing under pagestore-words includes this book.
+; The include leaves every rule that existed before it as enabled as it was:
+; books/pagestore-words.lisp disables fn-cbor-octet-listp and its true-listp
+; corollary at its top level, and this book's dependents (books/store-log
+; first) prove with the codec open.  Re-evaluated in each including world,
+; so a world that already had that disable (the history towers, which
+; include pagestore-exec before this book) keeps it.
+(deflabel a-pgs-host-io-include)
 (include-book "assumptions-pgs-host-io")
+(in-theory (union-theories (current-theory 'a-pgs-host-io-include)
+                           (set-difference-theories (current-theory :here)
+                                                    (universal-theory 'a-pgs-host-io-include))))
