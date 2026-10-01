@@ -19997,9 +19997,10 @@
       "evidence": [
         "books/runtime-operation-compiled-source.lisp",
         "specs/runtime-operation-compiled-source.md",
-        "planning/evidence/manifests/certify-20261001T025802Z-1029297.json"
+        "planning/evidence/manifests/certify-20261001T025802Z-1029297.json",
+        "planning/evidence/manifests/certify-20261001T030909Z-1159638.json"
       ],
-      "progress_note": "Common guarded readouts and build-only actual-world ABI/source compiler are source-qualified. Current roster empty: no complete positive family, installed ATS slot, native entry, full BODY cost or SAMEpool publication claim. Definitional lookup equation is not a keystone. Early recovery-file-issue is the first actual integration target."
+      "progress_note": "Common guarded readouts and build-only actual-world ABI/source compiler are source-qualified. Current roster empty: no complete positive family, installed ATS slot, native entry, full BODY cost or SAMEpool publication claim. Definitional lookup equation is not a keystone. Early recovery-file-issue is the first actual integration target. Executor-role successor compiles protocol roles separately from operation kinds and maps each operation to its actual deduplicated role slot via an ACL2 role producer; the empty roster still supplies no positive family or installed allowance."
     }
   ]
 }

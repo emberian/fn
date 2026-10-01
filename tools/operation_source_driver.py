@@ -14,9 +14,9 @@ import re
 
 def driver(rows):
     seen = set()
-    includes, terms, checks, body_terms = [], [], [], []
+    includes, terms, checks, body_terms, role_terms = [], [], [], [], []
     for row in rows:
-        if not {"kind", "book", "producer"} <= set(row) or set(row) - {"kind", "book", "producer", "body_producer"}:
+        if not {"kind", "book", "producer"} <= set(row) or set(row) - {"kind", "book", "producer", "body_producer", "executor_role_producer"}:
             raise ValueError("selected root needs kind/book/producer and optional actual body_producer")
         kind, book, source = row["kind"], row["book"], row["producer"]
         if not isinstance(kind, str) or not re.fullmatch(r":[a-z][a-z0-9-]*", kind):
@@ -48,9 +48,23 @@ def driver(rows):
              (equal (getpropc '%s 'stobjs-out :missing (w state)) '(nil nil))
              (equal (getpropc '%s 'symbol-class :missing (w state)) :common-lisp-compliant))""" % ((body,) * 4))
             body_terms.append("(%s (%s kind request cached))" % (kind, body))
+        role_source = row.get("executor_role_producer")
+        if role_source is not None:
+            if not isinstance(role_source, str) or not re.fullmatch(r"fn-[a-z][a-z0-9-]*", role_source):
+                raise ValueError("invalid actual executor-role source function")
+            checks.append("""(and (equal (getpropc '%s 'formals :missing (w state)) '(kind))
+             (equal (getpropc '%s 'stobjs-in :missing (w state)) '(nil))
+             (equal (getpropc '%s 'stobjs-out :missing (w state)) '(nil nil))
+             (equal (getpropc '%s 'symbol-class :missing (w state)) :common-lisp-compliant))""" % ((role_source,) * 4))
+            role_terms.append("""(if (fn-roc-positive-entryp
+                       (fn-roc-entry %s *fn-runtime-operation-compiled-table*))
+                 (mv-let (status role) (%s %s)
+                   (if (and (eq status :compiled-operation-source) (symbolp role) role)
+                       (list %s role) nil)) nil)""" % (kind, role_source, kind, kind))
         terms.append("(mv-let (status family roles prs) (%s %s)\n       (list %s status family roles prs))" % (source, kind, kind))
     check = "(and " + "\n        ".join(checks) + ")" if checks else "t"
     table = "(list " + "\n      ".join(terms) + ")" if terms else "nil"
+    roles = "(list " + "\n      ".join(role_terms) + ")" if role_terms else "nil"
     body_dispatch = """(defun fn-roc-selected-body-cost (kind request cached)
         (declare (xargs :guard t))
         (if (and *fn-runtime-operation-compiled-binding*
@@ -72,15 +86,17 @@ def driver(rows):
        (defconst *fn-runtime-operation-compiled-table* %s)
        (defconst *fn-runtime-operation-compiled-binding*
         (fn-roc-compiled-binding *fn-runtime-operation-compiled-table*))
+       (defconst *fn-runtime-operation-compiled-executor-rows* %s)
        (defconst *fn-runtime-operation-compiled-kinds*
         (if *fn-runtime-operation-compiled-binding*
-            (fn-roc-positive-kinds *fn-runtime-operation-compiled-table*) nil))
+            (fn-roc-executor-kinds *fn-runtime-operation-compiled-executor-rows*) nil))
        (defconst *fn-runtime-operation-compiled-slots*
-        (fn-roc-slot-rows *fn-runtime-operation-compiled-kinds* 0))
+        (fn-roc-operation-slots *fn-runtime-operation-compiled-executor-rows*
+         (fn-roc-slot-rows *fn-runtime-operation-compiled-kinds* 0)))
        %s))
    (er soft 'runtime-operation-source-compile
        "Selected actual producer is absent, unguarded, impure, or has a different ABI.")))
-""" % ("\n".join(includes), check, table, body_dispatch)
+""" % ("\n".join(includes), check, table, roles, body_dispatch)
 
 
 def main():

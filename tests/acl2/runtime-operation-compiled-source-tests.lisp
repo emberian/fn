@@ -37,3 +37,15 @@
 (assert-event
  (mv-let (status slot) (fn-runtime-operation-compiled-slot :recovery-file-issue)
   (and (equal status :runtime-operation-unavailable) (null slot))))
+
+; Representation-only mapping tests, not protocol readiness evidence.
+(assert-event
+ (let* ((rows '((:owner-control-inspect :owner-control)
+                (:account-adoption :owner-control)
+                (:recovery-file-issue :recovery-file-issue)))
+        (roles (fn-roc-executor-kinds rows)))
+  (and (equal roles '(:owner-control :recovery-file-issue))
+       (equal (fn-roc-operation-slots rows (fn-roc-slot-rows roles 0))
+              '((:owner-control-inspect 0) (:account-adoption 0)
+                (:recovery-file-issue 1))))))
+(assert-event (equal (fn-roc-operation-slots nil '((:owner-control 0))) nil))

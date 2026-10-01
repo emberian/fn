@@ -17,6 +17,19 @@ class DriverTests(unittest.TestCase):
         self.assertIn("'(nil nil nil nil)", text)
         self.assertIn(":common-lisp-compliant", text)
         self.assertNotIn("qualified", text.splitlines()[-1])
+    def test_executor_role_is_actual_source_result(self):
+        row = {"kind": ":owner-control-inspect", "book": "operation-diagnostics-source",
+               "producer": "fn-owner-inspect-compiled-source",
+               "executor_role_producer": "fn-inspect-compiled-executor-role"}
+        text = module.driver([row])
+        self.assertIn("(fn-inspect-compiled-executor-role :owner-control-inspect)", text)
+        self.assertIn("(list :owner-control-inspect role)", text)
+        self.assertIn("fn-roc-executor-kinds", text)
+        self.assertIn("fn-roc-operation-slots", text)
+        self.assertNotIn("(list :owner-control-inspect :owner-control)", text)
+        with self.assertRaises(ValueError):
+            module.driver([dict(row, executor_role=":owner-control")])
+
     def test_no_readiness_or_arithmetic_input(self):
         row = {"kind": ":owner-control-inspect", "book": "operation-diagnostics-source",
                "producer": "fn-owner-inspect-compiled-source", "qualified": True}

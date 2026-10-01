@@ -12,8 +12,10 @@
  (mv :runtime-operation-unavailable nil))
 (in-theory (disable fn-roc-selected-body-cost))
 
+(defconst *fn-runtime-operation-compiled-executor-rows* nil)
 (defconst *fn-runtime-operation-compiled-kinds*
  (if *fn-runtime-operation-compiled-binding*
-     (fn-roc-positive-kinds *fn-runtime-operation-compiled-table*) nil))
+     (fn-roc-executor-kinds *fn-runtime-operation-compiled-executor-rows*) nil))
 (defconst *fn-runtime-operation-compiled-slots*
- (fn-roc-slot-rows *fn-runtime-operation-compiled-kinds* 0))
+ (fn-roc-operation-slots *fn-runtime-operation-compiled-executor-rows*
+  (fn-roc-slot-rows *fn-runtime-operation-compiled-kinds* 0)))

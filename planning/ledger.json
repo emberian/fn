@@ -2166,15 +2166,15 @@
     "books_in_root_closure": 2324,
     "roots": 2158,
     "theorems": 33257,
-    "functions": 21342,
-    "assert_events": 24709,
+    "functions": 21344,
+    "assert_events": 24711,
     "must_fails": 2531,
     "prover_refusals": 0,
     "encapsulates": 168,
     "guards": {
       "verified": 3748,
       "declared-off": 2602,
-      "default-guarded": 11954,
+      "default-guarded": 11956,
       "default-unguarded": 3038
     },
     "suspect_theorems": 1313,
@@ -35569,7 +35569,7 @@
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 4,
+      "defconsts": 5,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -35613,11 +35613,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 10,
+      "functions": 12,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 10,
+        "default-guarded": 12,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -64428,7 +64428,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 7,
+      "assert_events": 9,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 0,
