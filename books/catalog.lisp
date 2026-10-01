@@ -100,19 +100,19 @@
 ; the refusal does not fire -- the POST that is accepted is indexed.
 (defthm fn-cat-msgid-saturatedp-is-the-outcome
   (implies (equal msgid (fn-record-msgid h))
-           (iff (equal (fn-mpxt-build-unplaced key (append fn-cat (list h)))
-                       (fn-mpxt-build-unplaced key fn-cat))
+           (iff (equal (fn-mlh-build-unplaced key (append fn-cat (list h)))
+                       (fn-mlh-build-unplaced key fn-cat))
                 (not (fn-cat-msgid-saturatedp key msgid fn-cat))))
   :hints (("Goal" :in-theory (e/d (fn-cat-msgid-saturatedp fn-cat$a-msgid-saturatedp)
-                                  (fn-mpxt-build-append fn-mpxt-build-saturatedp-is-the-build
-                                   fn-mpxt-build-nil fn-mpxt-set-key-is-a-list mv-nth
-                                   fn-mpxt-build-saturatedp-is-the-outcome))
-           :use ((:instance fn-mpxt-build-saturatedp-is-the-outcome (rows fn-cat))))))
+                                  (fn-mlh-build-append fn-mlh-build-saturatedp-is-the-build
+                                   fn-mlh-build-nil fn-mlh-set-key-is-a-list mv-nth
+                                   fn-mlh-build-saturatedp-is-the-outcome))
+           :use ((:instance fn-mlh-build-saturatedp-is-the-outcome (rows fn-cat))))))
 
 (defthm fn-cat-index-health-is-the-build
   (equal (fn-cat-index-health key fn-cat)
-         (list (fn-mpxt-pages (fn-mpxt-build key fn-cat)) (fn-mpxt-count (fn-mpxt-build key fn-cat))
-               (fn-mpxt-build-unplaced key fn-cat) (fn-mpxt-stuck (fn-mpxt-build key fn-cat)))))
+         (list (fn-mlh-pages (fn-mlh-build key fn-cat)) (fn-mlh-count (fn-mlh-build key fn-cat))
+               (fn-mlh-build-unplaced key fn-cat) (fn-mlh-stuck (fn-mlh-build key fn-cat)))))
 
 (defthm fn-cat-group-live-count-is-count-from
   (equal (fn-cat-group-live-count g fn-cat)

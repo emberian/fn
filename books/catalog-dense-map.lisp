@@ -20,16 +20,20 @@
 ; ((g . page index) -> page id: one entry per 256 memberships) and carries
 ; its OWNER key, so a stale or foreign page id never reads as a hit (no
 ; injectivity invariant is needed).  A put allocates at most one page
-; (6 KiB); the page table and the page array still double, at N/256
-; entries (a pointer and an empty page header each): the step's worst
-; allocation is O(N/256) words, not O(N) records.
+; (6 KiB), but the page table and the page array still double in one step:
+; Theta(pages) work, and pages are one per (group . 256-block), so G sparse
+; groups make G pages, never freed on rem (Codex r44 F1).  For dense groups
+; that is N/256 words; it is not flat in general (a two-level directory is
+; the open fix).
 ;
 ; THE ESCAPE.  What a cell cannot carry -- a key that is not (g . posint), a
 ; value that is not a natural below 2^64 - 1 -- goes to the escape table,
 ; keyed (lane . key).  The composed catalog puts only sequences and live
-; numbers there (naturals) under (group . posint) keys, so the escape is
-; empty on every reachable state; it exists so that the logical side can be
-; the hash tables' own (total over every key and value).
+; numbers there (naturals) under (group . posint) keys, so only a value
+; reaching 2^64 - 1 escapes (a sequence can: the count is unbounded).  The
+; escape is NOT proved empty (Codex r44 F2): it is the total-semantics
+; fallback, so that the logical side can be the hash tables' own, and it is
+; itself an equal hash table that rehashes as it grows.
 ;
 ; THE LOGICAL SIDE is exactly three stobj hash tables: get = (cdr
 ; (hons-assoc-equal k al)), put = (cons (cons k v) al), rem =
