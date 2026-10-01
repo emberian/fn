@@ -1165,11 +1165,15 @@
 
 (defun fn-cd-attached-to (fn w)
   (declare (xargs :mode :program))
-  ; a name through which FN runs with no caller the scan sees, else nil
+  ; a name through which FN runs with no caller the scan sees, else nil.
+  ; attach-stobj needs no arm of its own (r29-F1): ACL2 8.7 records
+  ; (attach-stobj GEN IMPL) in attach-stobj-table as the pair (GEN . IMPL)
+  ; of stobj NAMES (basis-b.lisp; other-events.lisp attached-stobj), and
+  ; IMPL is itself a defabsstobj, so a function run through it is an :exec
+  ; in IMPL's absstobj-info -- the scan above finds it there.
   (or (and (getpropc fn 'attachment nil w) fn)
       (fn-cd-alias-of fn 'attachment w w)
-      (fn-cd-alias-of fn 'absstobj-info w w)
-      (and (fn-cd-occurs fn (table-alist 'attach-stobj w)) 'attach-stobj)))
+      (fn-cd-alias-of fn 'absstobj-info w w)))
 
 (defun fn-cd-produced-host-problem (entries w)
   (declare (xargs :mode :program))
@@ -1190,8 +1194,8 @@
         (msg "~x0 is a host-called entry (fn-interfaces): the host may hand it ~
               any ~x1, so its produced premises back no raw dispatch" fn f))
        ((fn-cd-attached-to fn w)
-        (msg "~x0 is attached to ~x1 (defattach, an abstract stobj's :exec, or ~
-              attach-stobj): a call through ~x1 runs ~x0 with an argument the ~
+        (msg "~x0 is attached to ~x1 (defattach, or an abstract stobj's :exec, ~
+              attach-stobj implementations included): a call through ~x1 runs ~x0 with an argument the ~
               caller scan does not see, so its produced premises back no raw ~
               dispatch" fn (fn-cd-attached-to fn w)))
        ((null pos) (msg "~x0 has no formal ~x1" fn f))

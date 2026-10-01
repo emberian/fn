@@ -60,6 +60,18 @@
 ; -known-abort, -refuse-reservation) wait on stage 0's host load, and
 ; fn-owner-finish-synced's state half needs (fn-hist-of-storep fn-hist
 ; store), a TWO-stobj premise one-stobj rows cannot carry (stage 5).
+;
+; NOT RAW-DISPATCHED (r29-Q4).  Only an entry this row covers -- the open
+; and the three transitions above -- may be declared `:raw-with (:carried
+; fn-owner-retain-carried)'.  These state-returning owner entries have no
+; preservation theorem here and stay on the executable-counterpart path,
+; whole guard evaluated: fn-owner-step, fn-owner-io, fn-owner-begin,
+; fn-owner-finish, fn-owner-known-abort, fn-owner-refuse-reservation,
+; fn-owner-finish-synced, fn-owner-reconfigure-unstage,
+; fn-owner-set-auth-config and fn-owner-orcp-swap.  And until each of them
+; carries the relation, the relation is not an invariant of the served
+; state, so no entry is raw-dispatched over this row at all: the image
+; world's completeness check names the first of them.
 
 ; Nothing changes for dependents: this book adds a row, its theorems and the
 ; trace over functions its includes define; it redefines nothing.

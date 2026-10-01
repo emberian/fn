@@ -42,7 +42,12 @@ applies directly, and refuses
 * a declaration whose NAME no book or ACL2-mode host file defines;
 * a dispatched entry that no declaration names (every host-called entry is
   declared);
-* a generated file that differs from what the forms say.
+* a generated file that differs from what the forms say;
+
+* any way the raw host could reach a book function other than a quoted
+  dispatch (tools/raw_dispatch_rule.py: a book symbol outside a dispatcher's
+  name position, a symbol made at run time, a world or function-cell read,
+  a function position holding a value not traced to a host function).
 
 * a `:raw-with` on an entry not declared :common-lisp-compliant, or naming a
   theorem no book defines (the world check -- every carried guard conjunct
@@ -503,6 +508,12 @@ def main(argv=None) -> int:
         REGISTRY.write_text(render_registry(decls, reading))
         RAW_DECLARATIONS.write_text(render_raw_declarations(decls))
     problems = findings(decls, reading)
+    # the raw host reaches a book function only through the dispatcher
+    # (tools/raw_dispatch_rule.py: r28-F1, by construction)
+    from tools import raw_dispatch_rule
+    rule_problems, covered = raw_dispatch_rule.findings(declared={d["name"] for d in decls})
+    print(raw_dispatch_rule.summary(covered, rule_problems))
+    problems += rule_problems
     if args.check or args.kinds:
         # the image build's :class / :kinds check, estimated from the source
         # (tools/interface_kinds.py, obstructions-8 item 68)
