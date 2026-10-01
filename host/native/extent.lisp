@@ -302,18 +302,52 @@ FN_NATIVE_EXTENT_CACHE_TEST_OFF=1 (the matched measurement's cache-off arm)."
                    (setq plan next hash hash1 window window1)))))
             (otherwise (return (list plan window)))))))))
 
+ ; Qualified selection is default NIL. It may be installed only with the SAME
+; saved worker registry, genuine source assignment/operation allowance and the
+; complete binding-revision writer cohort. No setter or lazy factory here.
+(defvar *fnn-window-return-step* nil)
+
+(defun fnn-extent-registered-return-step (worker token)
+  "Extent lock held; one bounded core traversal/scan/publication quantum."
+  (fnn-call 'fn-owner-page-window-return-step
+            (fnn-cold-worker-row worker) token 64
+            (fnn-live-page-window-workers) (fnn-live-page-read-pool)))
+
 (defun fnn-extent-executor-actual-return (worker)
-  "Extent lock held; job activation has returned, or dead thread was joined."
+  "Extent lock held; job activation has returned, or dead thread was joined.
+A selected resumable return retains every result/source alias until core commit."
   (let ((token (fnn-cold-worker-token worker)))
-    (destructuring-bind (word row &rest ignored)
-        (if (fnn-extent-window-p token)
-            (fnn-core-cold-pool 'fn-owner-page-window-executor-return
-                                    (fnn-cold-worker-row worker) token)
-          (fnn-call 'fn-pxe-return (fnn-cold-worker-row worker) token))
-      (declare (ignore ignored))
-      (unless (eq word :returned) (fnn-fault "cold worker returned a different job"))
-      (setf (fnn-cold-worker-row worker) row
-            (fnn-cold-worker-phase worker) :returned))))
+    (if (and (fnn-extent-window-p token) *fnn-window-return-step*)
+        (progn
+          (setf (fnn-cold-worker-phase worker) :returning)
+          (handler-case
+           (destructuring-bind (word row &rest ignored)
+            (funcall *fnn-window-return-step* worker token)
+          (declare (ignore ignored))
+          (case word
+            (:returned
+             (setf (fnn-cold-worker-row worker) row
+                   (fnn-cold-worker-phase worker) :returned))
+            (:yield
+             ;; Actual activation return has already occurred. This phase is
+             ;; retained continuation custody, never a last-borrow receipt.
+             (setf (fnn-cold-worker-phase worker) :returning))
+            (otherwise
+             ;; Do not retry a faulted publication or fall back to old scans.
+             (setf (fnn-cold-worker-phase worker) :return-fenced)
+             (fnn-fault "registered worker return retained: ~a" word))))
+           (serious-condition (condition)
+            (setf (fnn-cold-worker-phase worker) :return-fenced)
+            (error condition))))
+      (destructuring-bind (word row &rest ignored)
+          (if (fnn-extent-window-p token)
+              (fnn-core-cold-pool 'fn-owner-page-window-executor-return
+                                      (fnn-cold-worker-row worker) token)
+            (fnn-call 'fn-pxe-return (fnn-cold-worker-row worker) token))
+        (declare (ignore ignored))
+        (unless (eq word :returned) (fnn-fault "cold worker returned a different job"))
+        (setf (fnn-cold-worker-row worker) row
+              (fnn-cold-worker-phase worker) :returned)))))
 
 (defun fnn-extent-window-byte (worker token i)
   "Borrow one scalar after physical return, retaining every window credit."
@@ -594,6 +628,14 @@ The served caller must await complete demand/allocator and descriptor joins."
 (defun fnn-extent-executor-observe-returned (worker)
   "Extent lock held. An unexpected death requires a real join before failure
 settlement; the dead executor is never reused for another admitted job."
+  ;; Resume only a continuation entered by the actual returned activation or
+  ;; joined death path. Never derive physical return from a core phase/socket.
+  (when (eq (fnn-cold-worker-phase worker) :returning)
+    (fnn-extent-executor-actual-return worker)
+    (return-from fnn-extent-executor-observe-returned
+      (eq (fnn-cold-worker-phase worker) :returned)))
+  (when (eq (fnn-cold-worker-phase worker) :return-fenced)
+    (return-from fnn-extent-executor-observe-returned nil))
   (unless (eq (fnn-cold-worker-phase worker) :returned)
     (when (eq (fnn-core 'fn-pio-worker-death-step
                         (not (sb-thread:thread-alive-p (fnn-cold-worker-thread worker)))) :settle)

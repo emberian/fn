@@ -616,6 +616,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/decoded-worker-resolved-admission \
 	tests/acl2/decoded-worker-resolved-admission-tests \
 	books/decoded-worker-return-provider \
+	books/page-window-return-continuation \
+	tests/acl2/page-window-return-continuation-tests \
+	books/page-window-return-current \
 	tests/acl2/decoded-worker-return-provider-tests \
 	books/query-payload-grants \
 	tests/acl2/query-payload-grants-tests \
