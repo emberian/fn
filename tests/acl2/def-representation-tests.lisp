@@ -59,8 +59,8 @@
 (assert-event (equal (symbol-package-name 'drt-held$c)
                      (symbol-package-name 'drt-held)))
 
-; A non-ACL2 witness detects fixed-ACL2 interning without a new defpkg
-; portcullis. Check actual expansion trees for record, scalar and generic.
+; A non-ACL2 witness: the expansion trees for record, scalar and generic
+; put the foundation in the instance's package.
 (program)
 (defun drt-find-foundation (events)
   (cond ((atom events) nil)
@@ -71,22 +71,41 @@
 
 (assert-event
  (equal (symbol-package-name
-         (drt-find-foundation (rep-named-events :drt-package '((id :u64)) nil nil nil nil)))
+         (drt-find-foundation (rep-instance-events :drt-package '((id :u64)) nil nil nil nil)))
         (symbol-package-name :drt-package)))
 (assert-event
  (equal (symbol-package-name
-         (drt-find-foundation (rep-named-events :drt-package '((id :u64)) t nil nil nil)))
+         (drt-find-foundation (rep-instance-events :drt-package '((id :u64)) t nil nil nil)))
         (symbol-package-name :drt-package)))
 (assert-event
  (equal (symbol-package-name
-         (drt-find-foundation (rep-named-events :drt-package '((id :u64)) t t nil nil)))
+         (drt-find-foundation (rep-instance-events :drt-package '((id :u64)) t t nil nil)))
         (symbol-package-name :drt-package)))
 
-; Relocation distinguishes generated references from unchanged user data.
+; One spelling in two packages: two instances, two foundations.
 (assert-event
- (equal (rep-package-events '(drt-package$c (quote drt-package$c))
-                            '(probe$c (quote drt-package$c)) :drt-package)
-        '(:drt-package$c (quote drt-package$c))))
+ (not (equal (drt-find-foundation (rep-instance-events :drt-two '((id :u64)) nil nil nil nil))
+             (drt-find-foundation (rep-instance-events 'drt-two '((id :u64)) nil nil nil nil)))))
+(assert-event
+ (equal (symbol-package-name
+         (drt-find-foundation (rep-instance-events 'drt-two '((id :u64)) nil nil nil nil)))
+        "ACL2"))
+; An admitted two-package instance needs a defpkg portcullis, which
+; tools/certify_books.py does not carry for a test book yet (NEXT).
+
+;; Teeth for adt-corr-of-clear-c (books/proto/adt-lib.lisp): the complete
+;; antecedent on a one-column schema, the cleared image exactly, and two
+;; images no clear produces: one that forgets the count (adt-corr rejects
+;; it) and one that forgets the column (adt-corr ACCEPTS it with the empty
+;; abstraction, so only the clear's own image tells it apart).
+(defconst *drt-clear-s* '((:u64)))
+(defconst *drt-clear-c* '((7 0) nil 2 0))
+(assert! (and (adt-schemap *drt-clear-s*) (true-listp *drt-clear-c*)
+              (adt-corr *drt-clear-s* (adt-clear-c *drt-clear-s* *drt-clear-c*) nil)))
+(assert! (equal (adt-clear-c *drt-clear-s* *drt-clear-c*) '(nil nil 0 0)))
+(assert! (not (adt-corr *drt-clear-s* '(nil nil 1 0) nil)))          ; MUTANT forget-count
+(assert! (adt-corr *drt-clear-s* '((7 0) nil 0 0) nil))               ; MUTANT forget-column: corr-blind
+(assert! (not (equal (adt-clear-c *drt-clear-s* *drt-clear-c*) '((7 0) nil 0 0))))
 
 ; -----------------------------------------------------------------------------
 ; 2. The scalar pilot: the arena's logical view.
