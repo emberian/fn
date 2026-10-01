@@ -12,7 +12,13 @@
 ;   a level of growth when the number is past the root's range -- O(log N);
 ;   the reader (fn-cpt-list's exec, fn-cpt-walk) visits each non-empty node
 ;   once, right subtree first onto an accumulator, so its only allocation is
-;   the answer's own conses, and its recursion depth is D.
+;   the answer's own conses, and its recursion depth is D.  Its TIME is the
+;   nodes visited: O(k * D) for k members at the worst (a sparse bucket, one
+;   member per path), O(k + D) when the members share paths; D is the bit
+;   length of the largest number ever added to the bucket (Codex r35: a
+;   bucket holding only 2^64 walks 65 nodes for one answer).  Not O(k): a
+;   patricia trie (single-child chains collapsed) would make it O(k) in the
+;   bucket's members, at the price of a path-compression writer.
 ;
 ; KEYSTONE fn-cpt-list-of-add: the trie's ascending list after an add is the
 ; ascending insertion of the number into the list before it (fn-cpt-insert,
