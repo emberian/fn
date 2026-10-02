@@ -39,7 +39,8 @@ class RawDispatchImageTests(unittest.TestCase):
                                     run.stdout, re.M)
                 self.assertIsNotNone(summary, run.stdout + run.stderr)
                 count, intact, bad = (int(g) for g in summary.groups())
-                self.assertGreater(count, 0)
+                self.assertIn("FN_RAW_TRAP_PROBE dispatch=served direct=trapped interned=trapped",
+                              run.stdout)
                 self.assertEqual((intact, bad), (count, 0), run.stdout)
                 rows = re.findall(r"^FN_RAW_TRAP (\S+) (.*)$", run.stdout, re.M)
                 self.assertEqual(len(rows), count, run.stdout)

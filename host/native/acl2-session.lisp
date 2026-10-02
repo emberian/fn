@@ -18,6 +18,10 @@
 ; so every certified function is there to evaluate.  Guard checking stays as
 ; the image has it (t; fnn-main checks); invariant-risk mode is fnn-main's (t).
 
+(defun fnn-raw-trap-probe-target (x y)
+  "The developer raw-traps probe's target (never an ACL2 function)."
+  (values (- x y) (list x y)))
+
 (defun fnn-command-acl2 (command args)
   (cond
     ((and (string= command "session") (null args))
@@ -71,6 +75,33 @@
                (incf bad))
              (fnn-out "FN_RAW_TRAP ~(~a~) direct=~a interned=~a binding=~a inside=~a dispatch=~a"
                       name direct interned binding inside dispatch)))
+         ;; The mechanism on this image itself, whatever the table holds: a
+         ;; probe entry is installed exactly as fnn-install-raw-dispatch
+         ;; installs one, called through fnn-call and directly, then removed.
+         ;; The probe name is a developer-only table row for the run of this
+         ;; verb, never an ACL2 entry, so it is held in a variable: no
+         ;; definterface declares it (interface_emit counts literal names).
+         (let* ((raw 'fnn-raw-trap-probe-target)
+                (probe 'fnn-raw-trap-probe)
+                (original (symbol-function raw)))
+           (setf (gethash probe *fnn-raw-dispatch*) raw)
+           (fnn-raw-trap-install raw)
+           (let ((served (handler-case
+                             (if (equal (fnn-call probe 7 2) '(5 (7 2)))
+                                 "served" "wrong")
+                           (serious-condition () "faulted")))
+                 (direct (outcome (lambda () (funcall raw 7 2))))
+                 (interned (outcome (lambda ()
+                                      (funcall (intern (symbol-name raw) (symbol-package raw)) 7 2)))))
+             (remhash probe *fnn-raw-dispatch*)
+             (remhash raw *fnn-raw-traps*)
+             (remhash raw *fnn-raw-captured*)
+             (setf (symbol-function raw) original)
+             (unless (and (equal served "served") (equal direct "trapped")
+                          (equal interned "trapped"))
+               (incf bad))
+             (fnn-out "FN_RAW_TRAP_PROBE dispatch=~a direct=~a interned=~a"
+                      served direct interned)))
          (fnn-out "FN_RAW_TRAPS ~d intact=~d bad=~d"
                   (length names) (fnn-raw-dispatch-traps-intact) bad)
          (if (zerop bad) +fnn-exit-ok+ +fnn-exit-fault+))))
