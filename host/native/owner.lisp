@@ -4121,14 +4121,31 @@ CLOSING STARTTLS CONSUMED)."
 ;;; Returns (values REPLY CLOSING UNCERTAIN): the reply's octets; CLOSING when
 ;;; the step closed the connection; UNCERTAIN when a submission's completion
 ;;; was the bare uncertain one (no reply rendered: the batch's barrier
-;;; failed, or the owner stopped before the member was answered), which the
-;;; caller reports as no reply, never as a refusal or an acceptance.
+;;; failed, or the owner stopped before the member was answered), or when
+;;; the caller's DEADLINE passed first (sweep S032: the web face's request
+;;; window, fn-web-host-request-seconds; a submission still pending then may
+;;; yet be stored) -- the caller reports it as no reply, never as a refusal
+;;; or an acceptance.  The reply is joined once from its rendered windows
+;;; (it was concatenated per window: quadratic in the windows, S032).
 
-(defun fnn-owner-await-logical (service cid)
+(defun fnn-owner-join-octets (parts)
+  "One octet vector of PARTS, in order, copied once."
+  (let ((out (fnn-make-octets (loop for part in parts sum (length part))))
+        (at 0))
+    (dolist (part parts out)
+      (replace out part :start1 at)
+      (incf at (length part)))))
+
+(defun fnn-owner-past-p (deadline)
+  "DEADLINE (internal real time, or nil for none) has passed."
+  (and deadline (>= (fnn-now) deadline)))
+
+(defun fnn-owner-await-logical (service cid &optional deadline)
   "CID's completion, waited for off the owner mutex: the member's rendered
 completion, (:close . OCTETS), or :uncertain.  The callback runs in the
 committer's COMPLETE (owner held, commit-lock released) and takes only this
-wait's own lock.  A stop that answers nobody is :uncertain."
+wait's own lock.  A stop that answers nobody, or DEADLINE passing first, is
+:uncertain."
   (let* ((lock (sb-thread:make-mutex :name "fn logical await"))
          (ready (sb-thread:make-waitqueue))
          (cell nil)
@@ -4141,22 +4158,25 @@ wait's own lock.  A stop that answers nobody is :uncertain."
                  nil)))
     (when early (return-from fnn-owner-await-logical early))
     (sb-thread:with-mutex (lock)
-      (loop until (or cell (fnn-owner-service-stopping service))
+      (loop until (or cell (fnn-owner-service-stopping service) (fnn-owner-past-p deadline))
             do (sb-thread:condition-wait ready lock :timeout 1)))
     (unless cell
-      ;; Stopping and unanswered: withdraw the registration; a completion
-      ;; delivered meanwhile is still taken.
+      ;; Stopping or past the deadline, unanswered: withdraw the
+      ;; registration; a completion delivered meanwhile is still taken.
       (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
         (remhash cid (fnn-owner-service-awaiting service))))
     (sb-thread:with-mutex (lock)
       (if cell (first cell) :uncertain))))
 
-(defun fnn-owner-feed-logical (service cid octets class what)
+(defun fnn-owner-feed-logical (service cid octets class what &optional deadline)
   "Feed OCTETS to the logical connection CID as CLASS; WHAT names the caller
-in a fault.  (values REPLY CLOSING UNCERTAIN), above."
-  (let ((pending (fnn-octets octets)) (reply (fnn-make-octets 0))
+in a fault; DEADLINE (internal real time) bounds the whole feed.
+(values REPLY CLOSING UNCERTAIN), above."
+  (let ((pending (fnn-octets octets)) (parts nil)
         (closing nil) (uncertain nil))
     (loop while (and (> (length pending) 0) (not closing)) do
+     (if (fnn-owner-past-p deadline)
+         (setq uncertain t closing t)
       (let ((results (multiple-value-list
                       (fnn-owner-handle-chunk service cid pending nil class))))
         (case (first results)
@@ -4171,7 +4191,7 @@ in a fault.  (values REPLY CLOSING UNCERTAIN), above."
                         (destructuring-bind (tag step redeem close starttls used) results
                           (declare (ignore tag starttls))
                           (setq consumed used closing close)
-                          (let ((completion (fnn-owner-await-logical service cid)))
+                          (let ((completion (fnn-owner-await-logical service cid deadline)))
                             (cond ((eq completion :uncertain)
                                    (setq uncertain t closing t))
                                   (t
@@ -4183,17 +4203,20 @@ in a fault.  (values REPLY CLOSING UNCERTAIN), above."
                         (declare (ignore starttls more))
                         (setq plan step-plan consumed used closing close)))
                     (loop while plan do
+                      (when (fnn-owner-past-p deadline)
+                        (setq uncertain t closing t plan nil)
+                        (return))
                       (multiple-value-bind (part rest donep yieldedp)
                           (fnn-owner-render-next-quantum service cid plan class)
-                        (setq reply (concatenate 'fnn-octets reply part))
+                        (push part parts)
                         (setq plan (if donep nil rest))
                         (when (and plan yieldedp)
                           (sleep (/ (fnn-core 'fn-splan-cursor-resume-ms) 1000))))))
                (fnn-owner-response-unpin service cid))
              (when (and (zerop consumed) (not closing))
                (fnn-fault "owner consumed no octets of a ~a" what))
-             (setq pending (subseq pending consumed)))))))
-    (values reply closing uncertain)))
+             (setq pending (subseq pending consumed))))))))
+    (values (fnn-owner-join-octets (nreverse parts)) closing uncertain)))
 
 ;;; Developer image only (the resilience framework's `page-read-outstanding'
 ;;; point, planning/design-resilience-framework-2026-09-29.md section 5):

@@ -101,17 +101,20 @@ exposure admission decides (the id, or NIL when it refused)."
        :reader))
     opened))
 
-(defun fnn-web-feed (service cid octets)
+(defun fnn-web-feed (service cid octets deadline)
   "Feed OCTETS to CID through the owner's served step (host/native/owner.lisp
 fnn-owner-feed-logical: a POST joins the next batch and is awaited off the
 owner, r71 F5): the whole reply; :GONE when the owner refused the step by
 name (it no longer knows CID, or it is stopping); :UNCERTAIN when a
 submission's outcome has no reply (the batch's barrier failed, or the owner
-stopped before answering it).  A Store fault or an indeterminate outcome is
-the owner's and is re-signalled, never a vanished session (sweep S031)."
+stopped before answering it), or when the request's DEADLINE (fnn-web-seconds,
+fn-web-host-request-seconds after its start) passed first (sweep S032).  A
+Store fault or an indeterminate outcome is the owner's and is re-signalled,
+never a vanished session (sweep S031)."
   (handler-case
       (multiple-value-bind (reply closing uncertain)
-          (fnn-owner-feed-logical service cid octets :reader "web command")
+          (fnn-owner-feed-logical service cid octets :reader "web command"
+                                  (* deadline internal-time-units-per-second))
         (declare (ignore closing))
         (if uncertain :uncertain reply))
     (fnn-store-indeterminate (e) (error e))
@@ -243,7 +246,7 @@ the owner's and is re-signalled, never a vanished session (sweep S031)."
                         (setq flow next event (list :opened cid)))))
                    (:send
                     (destructuring-bind (cid start stop next) (rest action)
-                      (let ((reply (fnn-web-feed service cid (fnn-web-slice out start stop))))
+                      (let ((reply (fnn-web-feed service cid (fnn-web-slice out start stop) deadline)))
                         (setq flow next)
                         (cond ((eq reply :gone) (setq event (list :gone)))
                               ;; A submission whose outcome has no reply: the
