@@ -18916,6 +18916,23 @@
           "name": "fn-brlc-open-ok-implies-decoded"
         }
       ]
+    },
+    {
+      "id": "PRF-1236",
+      "events": [
+        {
+          "name": "fn-proto-archive-command-cat-is-pinned",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-proto-advance-eventp-is-served-advance-eventp",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-proto-archive-keywordp-is-nntp-archive-keywordp",
+          "kind": "theorem"
+        }
+      ]
     }
   ]
 }
