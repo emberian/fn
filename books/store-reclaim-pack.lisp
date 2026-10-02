@@ -640,3 +640,77 @@
 (defun fn-rclp-ctx (rule now s)
   (declare (xargs :guard t :verify-guards nil))
   (fn-rclp-ctx-expiring rule now s nil))
+
+; -----------------------------------------------------------------------------
+; The canonical BP retention pin, over the context the host builds
+; (RECLAIM-RETENTION, 2026-10-03).
+
+(local
+ (defthm fn-rclp-msgid-of-found-article
+   (implies (consp (fn-find-article m articles))
+            (equal (fn-article-msgid (fn-find-article m articles)) m))
+   :hints (("Goal" :in-theory (enable fn-find-article)))))
+
+(local
+ (defthm fn-rclp-keyed-article-is-not-releasable
+   (implies (fn-rcl-keyedp (fn-article-msgid article) (fn-rcl-bp h))
+            (not (fn-xpy-releasablep rule now h verdicts expired article)))
+   :hints (("Goal" :in-theory (e/d (fn-xpy-releasablep fn-xpy-standing-verdict
+                                    fn-rcl-standing-verdict)
+                                   (fn-rcl-keyedp fn-rcl-tombstonep fn-rcl-rulep
+                                    fn-rcl-rule-permits fn-rcl-pinned-p
+                                    fn-rcl-undelivered-p fn-rcl-unacknowledged-p
+                                    fn-rcl-verdict-heldp fn-xpy-expiredp))))))
+
+;  The context's verdict: a forward-pinned article's Message-ID is not
+; releasable.
+(defthm fn-rclp-ctx-keeps-a-forward-pinned-article
+  (let ((node (fn-sn-node s)))
+    (implies (and (member-equal pin (fn-retain-pins (fn-node-retention node)))
+                  (not (equal (fn-retain-obligation-kind pin) :archive))
+                  (member-equal b (fn-node-bindings node))
+                  (equal (fn-node-binding-subject b) (fn-retain-obligation-subject pin))
+                  (equal (fn-node-binding-msgid b) m)
+                  (consp (fn-find-article m (fn-state-articles (fn-node-acceptance node)))))
+             (not (fn-rclp-ctx-reclaimable (fn-rclp-ctx-expiring rule now s expired) m))))
+  :hints (("Goal" :in-theory (e/d (fn-rclp-ctx-reclaimable fn-rclp-ctx-expiring)
+                                  (fn-rcl-store-holders fn-xpy-releasablep fn-rcl-keyedp
+                                   fn-rclp-index-built
+                                   fn-rcl-store-holders-keep-a-forward-pinned-article))
+                  :use ((:instance fn-rcl-store-holders-keep-a-forward-pinned-article
+                                   (article (fn-find-article
+                                             m (fn-state-articles
+                                                (fn-node-acceptance (fn-sn-node s))))))
+                        (:instance fn-rclp-keyed-article-is-not-releasable
+                                   (h (fn-rcl-store-holders s))
+                                   (verdicts (fn-sn-verdicts s))
+                                   (article (fn-find-article
+                                             m (fn-state-articles
+                                                (fn-node-acceptance (fn-sn-node s))))))))))
+
+;  KEYSTONE (RECLAIM-RETENTION).  The subject is the per-record rewrite the
+; host calls (host/checkpoint-host.lisp fn-store-log-reclaim-event offline;
+; the online pass's rows are this rewrite, books/owner-reclaim
+; fn-orc-rewrite-rows-is-the-offline-rewrite) under the context the host
+; builds (fn-rclp-ctx-expiring: the rule's, or the expiry policy's at the
+; recorded instant).  An article record whose article a live non-archive
+; retention pin of the Store holds -- through its archive binding's subject
+; -- is the same octets after the rewrite: neither the rule nor expiry
+; reclaims it.
+(defthm fn-rclp-ctx-never-releases-a-forward-pinned-article
+  (let* ((node (fn-sn-node s))
+         (m (fn-record-msgid (fn-record-result-record (fn-record-decode-exact octets)))))
+    (implies (and (member-equal pin (fn-retain-pins (fn-node-retention node)))
+                  (not (equal (fn-retain-obligation-kind pin) :archive))
+                  (member-equal b (fn-node-bindings node))
+                  (equal (fn-node-binding-subject b) (fn-retain-obligation-subject pin))
+                  (equal (fn-node-binding-msgid b) m)
+                  (consp (fn-find-article m (fn-state-articles (fn-node-acceptance node)))))
+             (equal (fn-rclp-event octets (fn-rclp-ctx-expiring rule now s expired))
+                    octets)))
+  :hints (("Goal" :in-theory (e/d (fn-rclp-event fn-rclp-rewrites-p)
+                                  (fn-rclp-ctx-reclaimable fn-rclp-ctx-expiring
+                                   fn-rclp-ctx-keeps-a-forward-pinned-article))
+                  :use ((:instance fn-rclp-ctx-keeps-a-forward-pinned-article
+                                   (m (fn-record-msgid (fn-record-result-record
+                                                        (fn-record-decode-exact octets)))))))))

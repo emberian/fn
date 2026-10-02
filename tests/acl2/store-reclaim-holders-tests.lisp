@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "../../books/store-reclaim-holders")
 (include-book "../../books/native-live-status")
+(include-book "../../books/expiry-verdict")
 (include-book "must-fail-checked")
 (include-book "owner-served-invariants-tests")
 ; A verified article (*stxt-r1*) and the keyring it verifies under.
@@ -329,3 +330,95 @@
         (equal (nth 0 (in-arena-fn-rcl-store-classes *rht-payloads* *rht-rule* 0
                                                      *rht-signed*))
                1))))
+
+; -----------------------------------------------------------------------------
+; The canonical BP retention pin (RECLAIM-RETENTION, 2026-10-03; KEYSTONE
+; fn-rcl-store-holders-never-reclaim-a-forward-pinned-article).  The pin is
+; made by the Store's own retention step (books/replay
+; fn-replay-apply-retention-event, what the finish of an owner's :undertake
+; event runs), on the subject of the article's archive binding, exactly as
+; the BP workflow takes it (books/bp-workflow fn-bp-prepare-enqueue).
+(defconst *rht-binding*
+  (fn-node-find-binding *rht-msgid* (fn-node-bindings (fn-sn-node *rht-caught*))))
+(defconst *rht-subject* (fn-node-binding-subject *rht-binding*))
+(assert-event (and (consp *rht-binding*) (stringp *rht-subject*)
+                   (member-equal *rht-binding* (fn-node-bindings (fn-sn-node *rht-caught*)))))
+(defun rht-retention (s kind id subject)
+  (declare (xargs :verify-guards nil))
+  (let* ((node (fn-sn-node s))
+         (txid (fn-state-next-txid (fn-node-acceptance node)))
+         (event (fn-store-retention-event-make kind 0 txid txid id subject
+                                               "fwd-evidence" (if (equal kind :undertake) 4 0)))
+         (next (fn-replay-apply-retention-event node event)))
+    (if (consp next) (fn-sn-update s (fn-sn-files s) next) nil)))
+(defconst *rht-pinned* (rht-retention *rht-caught* :undertake "fwd-1" *rht-subject*))
+(defconst *rht-pin*
+  (fn-retain-find-id "fwd-1" (fn-retain-pins (fn-node-retention (fn-sn-node *rht-pinned*)))))
+; Positive witness, every literal of the keystone: the pin is live and
+; :forward, the binding is the article's and has the pin's subject, and the
+; article is held by the BP slot under the releasing rule (consumer caught up,
+; verdicts nil), so not reclaimable.
+(assert-event
+ (let ((node (fn-sn-node *rht-pinned*)))
+   (and (consp *rht-pinned*)
+        (member-equal *rht-pin* (fn-retain-pins (fn-node-retention node)))
+        (equal (fn-retain-obligation-kind *rht-pin*) :forward)
+        (member-equal *rht-binding* (fn-node-bindings node))
+        (equal (fn-node-binding-subject *rht-binding*) (fn-retain-obligation-subject *rht-pin*))
+        (equal (fn-node-binding-msgid *rht-binding*) (fn-article-msgid *rht-art*))
+        (equal (fn-rcl-verdict *rht-rule* 0 (fn-rcl-store-holders *rht-pinned*) nil *rht-art*)
+               :held-bp-obligation)
+        (not (fn-rcl-reclaimable *rht-rule* 0 (fn-rcl-store-holders *rht-pinned*) nil
+                                 *rht-art*)))))
+; Tooth (the conclusion can fail): the same article, unpinned, is reclaimable.
+(must-fail-checked
+ (assert-event (not (fn-rcl-reclaimable *rht-rule* 0 (fn-rcl-store-holders *rht-caught*) nil
+                                        *rht-art*))))
+; Tooth (the pin is live): after the receipt's :release event the same pin
+; is gone and the next reclaim takes the article.
+(defconst *rht-released* (rht-retention *rht-pinned* :release "fwd-1" *rht-subject*))
+(assert-event (and (consp *rht-released*)
+                   (not (member-equal *rht-pin* (fn-retain-pins (fn-node-retention
+                                                                 (fn-sn-node *rht-released*)))))
+                   (fn-rcl-reclaimable *rht-rule* 0 (fn-rcl-store-holders *rht-released*) nil
+                                       *rht-art*)))
+; Tooth (the pin is not an archive pin): the article's own archive pin has
+; the binding's subject and holds nothing.
+(defconst *rht-archive-pin*
+  (fn-retain-find-id (fn-node-binding-id *rht-binding*)
+                     (fn-retain-pins (fn-node-retention (fn-sn-node *rht-caught*)))))
+(assert-event (and (equal (fn-retain-obligation-kind *rht-archive-pin*) :archive)
+                   (equal (fn-retain-obligation-subject *rht-archive-pin*) *rht-subject*)
+                   (fn-rcl-reclaimable *rht-rule* 0 (fn-rcl-store-holders *rht-caught*) nil
+                                       *rht-art*)))
+; Tooth (the binding has the pin's subject): a :forward pin on another
+; subject holds nothing.
+(defconst *rht-elsewhere* (rht-retention *rht-caught* :undertake "fwd-2" "other-subject"))
+(assert-event (and (consp *rht-elsewhere*)
+                   (fn-rcl-reclaimable *rht-rule* 0 (fn-rcl-store-holders *rht-elsewhere*) nil
+                                       *rht-art*)))
+; Tooth (the binding is the article's): another article (another Message-ID)
+; is not held by the pin on this one's subject.
+(defconst *rht-stranger* (fn-make-article "<stranger@x>" (fn-article-payload *rht-art*)
+                                          (fn-article-groups *rht-art*)
+                                          (fn-article-memberships *rht-art*) t
+                                          (fn-article-stamp *rht-art*)))
+(assert-event (fn-rcl-reclaimable *rht-rule* 0 (fn-rcl-store-holders *rht-pinned*) nil
+                                  *rht-stranger*))
+; MUTATION (labelled; not a hypothesis removal): the holders with the BP slot
+; dropped -- what the slot was before this lane, literally nil -- reclaim the
+; pinned article.
+(assert-event (fn-rcl-reclaimable *rht-rule* 0
+                                  (update-nth 3 nil (fn-rcl-store-holders *rht-pinned*))
+                                  nil *rht-art*))
+; The expiry release reads the same slot: an article the policy has expired
+; is still kept by the pin (books/expiry-verdict).
+(assert-event
+ (let ((expired (make-fast-alist (list (cons *rht-msgid* t)))))
+   (and (not (fn-xpy-releasablep '(:keep-forever) 0 (fn-rcl-store-holders *rht-pinned*) nil
+                                 expired *rht-art*))
+        (fn-xpy-releasablep '(:keep-forever) 0 (fn-rcl-store-holders *rht-released*) nil
+                            expired *rht-art*))))
+; The status counts the pinned article held.
+(assert-event (let ((c (in-arena-fn-rcl-store-counts *rht-payloads* *rht-rule* 0 *rht-pinned*)))
+                (equal (nth 4 c) 1)))

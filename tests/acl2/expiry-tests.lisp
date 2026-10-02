@@ -163,7 +163,7 @@
                      :expired))
 ; Held: a BP obligation, an authorship verdict.
 (assert-event (equal (fn-xpy-standing-verdict '(:keep-forever) *xt-sep28*
-                                              (list nil nil nil (list "<a1@x>")) nil
+                                              (list nil nil nil (list (cons "<a1@x>" "subject-a1"))) nil
                                               *xt-set-a1* *xt-a1*)
                      :held-bp-obligation))
 (assert-event (equal (fn-xpy-standing-verdict '(:keep-forever) *xt-sep28* *xt-none*
@@ -180,7 +180,7 @@
                      :reclaimable))
 (must-fail-checked
  (assert-event (equal (fn-xpy-standing-verdict '(:keep-forever) *xt-sep28*
-                                               (list nil nil nil (list "<a1@x>")) nil
+                                               (list nil nil nil (list (cons "<a1@x>" "subject-a1"))) nil
                                                *xt-set-a1* *xt-a1*)
                       :expired)))
 

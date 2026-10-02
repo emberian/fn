@@ -60,9 +60,14 @@
 ; pins     ((group . number) ...)          a reader holds that one article
 ; cursors  ((group . acknowledged) ...)    a consumer holds every article
 ;                                          numbered above what it acknowledged
-; feeds    ((peer retiredp msgid ...) ...)  a live peer holds what it has
-;                                          not been delivered
-; bp       (msgid ...)                     an unresolved BP obligation
+; feeds    ((msgid . peer) ...)            a live peer's queue owes it MSGID
+; bp       ((msgid . subject) ...)         a live BP retention pin names it
+;
+; FEEDS and BP are keyed by Message-ID (a fast alist in the context the
+; host builds, books/store-reclaim-holders `fn-rcl-store-holders'): each
+; candidate's test is one hashed probe (`fn-rcl-keyedp'), never a walk over
+; every queue entry or pin (RECLAIM-RETENTION, 2026-10-03).  A literal list
+; (a witness) is made fast at the probe.
 
 (defun fn-rcl-pairsp (xs)
   (declare (xargs :guard t))
@@ -73,14 +78,17 @@
            (fn-rcl-pairsp (cdr xs)))
     (null xs)))
 
-(defun fn-rcl-feedsp (xs)
+(defun fn-rcl-keyedsp (xs)
   (declare (xargs :guard t))
   (if (consp xs)
       (and (consp (car xs))
-           (consp (cdr (car xs)))
-           (true-listp (cddr (car xs)))
-           (fn-rcl-feedsp (cdr xs)))
+           (fn-rcl-keyedsp (cdr xs)))
     (null xs)))
+
+; Whether the Message-ID-keyed slot AL names K: one hashed probe.
+(defun fn-rcl-keyedp (k al)
+  (declare (xargs :guard t))
+  (if (hons-get k (make-fast-alist al)) t nil))
 
 (defun fn-rcl-holdersp (h)
   (declare (xargs :guard t))
@@ -88,8 +96,8 @@
        (equal (len h) 4)
        (fn-rcl-pairsp (nth 0 h))
        (fn-rcl-pairsp (nth 1 h))
-       (fn-rcl-feedsp (nth 2 h))
-       (true-listp (nth 3 h))))
+       (fn-rcl-keyedsp (nth 2 h))
+       (fn-rcl-keyedsp (nth 3 h))))
 
 (defun fn-rcl-pins (h) (declare (xargs :guard t)) (and (true-listp h) (nth 0 h)))
 (defun fn-rcl-cursors (h) (declare (xargs :guard t)) (and (true-listp h) (nth 1 h)))
@@ -125,28 +133,22 @@
             (fn-rcl-cursor-obligations (cdr cursors)))
     nil))
 
-(defun fn-rcl-feed-msgid-obligations (peer msgids)
-  (declare (xargs :guard t))
-  (if (consp msgids)
-      (cons (list :feed peer (car msgids))
-            (fn-rcl-feed-msgid-obligations peer (cdr msgids)))
-    nil))
-
 (defun fn-rcl-feed-obligations-list (feeds)
   (declare (xargs :guard t))
   (if (consp feeds)
-      (append (let ((feed (car feeds)))
-                (if (and (consp feed) (consp (cdr feed)) (not (cadr feed)))
-                    (fn-rcl-feed-msgid-obligations (car feed) (cddr feed))
-                  nil))
-              (fn-rcl-feed-obligations-list (cdr feeds)))
+      (if (consp (car feeds))
+          (cons (list :feed (cdr (car feeds)) (car (car feeds)))
+                (fn-rcl-feed-obligations-list (cdr feeds)))
+        (fn-rcl-feed-obligations-list (cdr feeds)))
     nil))
 
-(defun fn-rcl-bp-obligations (msgids)
+(defun fn-rcl-bp-obligations (pins)
   (declare (xargs :guard t))
-  (if (consp msgids)
-      (cons (list :bp-obligation (car msgids))
-            (fn-rcl-bp-obligations (cdr msgids)))
+  (if (consp pins)
+      (if (consp (car pins))
+          (cons (list :bp-obligation (car (car pins)))
+                (fn-rcl-bp-obligations (cdr pins)))
+        (fn-rcl-bp-obligations (cdr pins)))
     nil))
 
 ; Every active reference the lifetimes table lists, one entry each.
@@ -210,12 +212,7 @@
 
 (defun fn-rcl-undelivered-p (feeds msgid)
   (declare (xargs :guard t))
-  (if (consp feeds)
-      (or (let ((feed (car feeds)))
-            (and (consp feed) (consp (cdr feed)) (not (cadr feed))
-                 (if (member-equal msgid (true-list-fix (cddr feed))) t nil)))
-          (fn-rcl-undelivered-p (cdr feeds) msgid))
-    nil))
+  (fn-rcl-keyedp msgid feeds))
 
 ; The rule's own condition, before holders.
 (defun fn-rcl-rule-permits (rule now stamp)
@@ -272,7 +269,7 @@
           ((fn-rcl-unacknowledged-p memberships (fn-rcl-cursors h))
            :held-consumer-cursor)
           ((fn-rcl-undelivered-p (fn-rcl-feeds h) msgid) :held-feed)
-          ((member-equal msgid (true-list-fix (fn-rcl-bp h))) :held-bp-obligation)
+          ((fn-rcl-keyedp msgid (fn-rcl-bp h)) :held-bp-obligation)
           (t :reclaimable))))
 
 ; The verdict of the OCTET model: an article whose payload is its octets
@@ -317,12 +314,6 @@
             (fn-rcl-some-names-p b msgid memberships)))))
 
 (local
- (defthm feed-msgid-obligations-name
-   (iff (fn-rcl-some-names-p (fn-rcl-feed-msgid-obligations peer msgids)
-                             msgid memberships)
-        (member-equal msgid (true-list-fix msgids)))))
-
-(local
  (defthm feed-obligations-name
    (iff (fn-rcl-some-names-p (fn-rcl-feed-obligations-list feeds)
                              msgid memberships)
@@ -330,8 +321,8 @@
 
 (local
  (defthm bp-obligations-name
-   (iff (fn-rcl-some-names-p (fn-rcl-bp-obligations msgids) msgid memberships)
-        (member-equal msgid (true-list-fix msgids)))))
+   (iff (fn-rcl-some-names-p (fn-rcl-bp-obligations pins) msgid memberships)
+        (fn-rcl-keyedp msgid pins))))
 
 (local
  (defthm cursor-obligations-name
