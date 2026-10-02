@@ -223,25 +223,38 @@
 (defconst *cat-h3* (cat-held 3 "<d@x>" '("fn.test") 400))
 (defconst *cat-rows* (list *cat-h0* *cat-h1* *cat-h2*))
 
+; fn-mlh-build and fn-mlh-build-unplaced are non-executable (defun-nx folds
+; over a local table); their executable twin is fn-mlh-build-health, whose
+; third element IS the fold's unplaced count (this bridge, by the keystone
+; fn-cat-index-health-is-the-build).
+(defthm cat-health-is-the-build
+  (equal (fn-mlh-build-health key rows)
+         (list (fn-mlh-pages (fn-mlh-build key rows)) (fn-mlh-count (fn-mlh-build key rows))
+               (fn-mlh-build-unplaced key rows) (fn-mlh-stuck (fn-mlh-build key rows))))
+  :hints (("Goal" :use ((:instance fn-cat-index-health-is-the-build (fn-cat rows)))
+           :in-theory (e/d (fn-cat-index-health fn-cat$a-index-health)
+                           (fn-cat-index-health-is-the-build))))
+  :rule-classes nil)
+
 ; The keystone's positive witness over the opened view: the complete
 ; antecedent (MSGID is the fourth row's) and the conclusion (the iff, both
 ; sides evaluated), on the rows through the exports' :logic functions
-; (fn-cat$a-*: an abstract stobj takes no ground constant); the executable
-; side over the live fn-cat follows (cat-keyed-exec-run).
+; (fn-cat$a-*: an abstract stobj takes no ground constant) and the unplaced
+; counts through the executable build (cat-health-is-the-build); the
+; executable side over the live fn-cat follows (cat-keyed-exec-run).
 (assert-event
- (and (equal "<d@x>" (fn-record-msgid *cat-h3*))
-      (iff (equal (fn-mlh-build-unplaced *cat-key* (append *cat-rows* (list *cat-h3*)))
-                  (fn-mlh-build-unplaced *cat-key* *cat-rows*))
-           (not (fn-cat$a-msgid-saturatedp *cat-key* "<d@x>" *cat-rows*)))
-      (not (fn-cat$a-msgid-saturatedp *cat-key* "<d@x>" *cat-rows*))
-      (equal (fn-mlh-build-unplaced *cat-key* (append *cat-rows* (list *cat-h3*))) 0)
-      ; fn-cat-clear-keyed-is-nil, fn-cat-index-health-is-the-build
-      (equal (fn-cat$a-clear-keyed *cat-key* *cat-rows*) nil)
-      (equal (fn-cat$a-index-health *cat-key* *cat-rows*)
-             (list (fn-mlh-pages (fn-mlh-build *cat-key* *cat-rows*))
-                   (fn-mlh-count (fn-mlh-build *cat-key* *cat-rows*))
-                   (fn-mlh-build-unplaced *cat-key* *cat-rows*)
-                   (fn-mlh-stuck (fn-mlh-build *cat-key* *cat-rows*))))))
+ (let ((unplaced-after (third (fn-mlh-build-health *cat-key* (append *cat-rows* (list *cat-h3*)))))
+       (unplaced-before (third (fn-mlh-build-health *cat-key* *cat-rows*))))
+   (and (equal "<d@x>" (fn-record-msgid *cat-h3*))
+        (iff (equal unplaced-after unplaced-before)
+             (not (fn-cat$a-msgid-saturatedp *cat-key* "<d@x>" *cat-rows*)))
+        (not (fn-cat$a-msgid-saturatedp *cat-key* "<d@x>" *cat-rows*))
+        (equal unplaced-after 0)
+        ; fn-cat-clear-keyed-is-nil; fn-cat-index-health-is-the-build is
+        ; cat-health-is-the-build above (fn-cat$a-index-health is the build's health)
+        (equal (fn-cat$a-clear-keyed *cat-key* *cat-rows*) nil)
+        (equal (fn-cat$a-index-health *cat-key* *cat-rows*)
+               (fn-mlh-build-health *cat-key* *cat-rows*)))))
 
 (defun cat-keyed-exec-run (fn-cat)
   (declare (xargs :stobjs fn-cat))
@@ -275,5 +288,5 @@
         (equal (nth 4 r) '(1))                    ; the paged reader, PRF-1037
         (equal (nth 5 r) nil)
         (equal (nth 6 r) 0)
-        (equal (nth 7 r) (fn-cat-index-health *cat-other-key* nil))
+        (equal (nth 7 r) (fn-cat$a-index-health *cat-other-key* nil))
         (equal (cadr (nth 7 r)) 0))))

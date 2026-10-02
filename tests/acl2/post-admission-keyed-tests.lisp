@@ -76,6 +76,19 @@
       (pak-admit-run carry profile msgid-octets payload-length group-count charge key rows fn-cat)
       verdict)))
 
+;; fn-mlh-build / fn-mlh-build-unplaced are non-executable folds; the
+;; witnesses below evaluate their executable twin fn-mlh-build-health, whose
+;; elements ARE the build's (pages count unplaced stuck) -- this bridge, by
+;; the keystone fn-cat-index-health-is-the-build.
+(defthm pak-health-is-the-build
+  (equal (fn-mlh-build-health key rows)
+         (list (fn-mlh-pages (fn-mlh-build key rows)) (fn-mlh-count (fn-mlh-build key rows))
+               (fn-mlh-build-unplaced key rows) (fn-mlh-stuck (fn-mlh-build key rows))))
+  :hints (("Goal" :use ((:instance fn-cat-index-health-is-the-build (fn-cat rows)))
+           :in-theory (e/d (fn-cat-index-health fn-cat$a-index-health)
+                           (fn-cat-index-health-is-the-build))))
+  :rule-classes nil)
+
 (assert-event (and (fn-held-p *pak-h0*) (fn-held-p *pak-h1*) (fn-held-p *pak-h2*)
                    (fn-held-p *pak-h3*)
                    (equal (fn-record-msgid *pak-h3*) (fn-record-octets-string *pak-msgid-octets*))))
@@ -94,9 +107,9 @@
  (and (equal (pak-admit nil *pak-profile* *pak-msgid-octets* 2048 1 3
                                     *pak-key* *pak-rows*)
              :ok)
-      (equal (fn-mlh-build-unplaced *pak-key* (append *pak-rows* (list *pak-h3*)))
-             (fn-mlh-build-unplaced *pak-key* *pak-rows*))
-      (equal (fn-mlh-build-unplaced *pak-key* (append *pak-rows* (list *pak-h3*))) 0)))
+      (equal (third (fn-mlh-build-health *pak-key* (append *pak-rows* (list *pak-h3*))))
+             (third (fn-mlh-build-health *pak-key* *pak-rows*)))
+      (equal (third (fn-mlh-build-health *pak-key* (append *pak-rows* (list *pak-h3*)))) 0)))
 
 ; fn-pak-post-admission-refused-is-the-boundary-by-definition: every bound's
 ; refusal passes through, whatever the key and the catalog; and the sixth
@@ -178,10 +191,7 @@
    (and (equal (first result) :ok)
         (equal (second result) :ok)
         ; fn-cat-index-health-is-the-build: (pages entries unplaced stuck)
-        (equal health (list (fn-mlh-pages (fn-mlh-build *pak-key* *pak-rows*))
-                            (fn-mlh-count (fn-mlh-build *pak-key* *pak-rows*))
-                            (fn-mlh-build-unplaced *pak-key* *pak-rows*)
-                            (fn-mlh-stuck (fn-mlh-build *pak-key* *pak-rows*))))
+        (equal health (fn-mlh-build-health *pak-key* *pak-rows*))
         (equal (second health) 3) (equal (third health) 0) (equal (fourth health) 0)
         (fn-sbud-printable-ascii-p (butlast (fourth result) 1))
         (equal (car (last (fourth result))) 10)
