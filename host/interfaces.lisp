@@ -553,12 +553,6 @@
 (definterface fn-log-sink-pending-bound
   :class ::common-lisp-compliant)
 
-; Guard-T observations of the log sink's pending work (books/log-sink).
-(definterface fn-log-sink-pending-lines
-  :class :common-lisp-compliant)
-(definterface fn-log-sink-pending-octets
-  :class :common-lisp-compliant)
-
 (definterface fn-log-sink-take
   :class ::common-lisp-compliant
   :keystones (fn-log-sink-take-preserves-okp))
@@ -1442,27 +1436,6 @@
 (definterface fn-owner-consumer-local-wait-step
   :class ::program)
 
-; Publication checks over the owner's history and STATE are PROGRAM entries.
-(definterface fn-owner-consumer-publication-verdict
-  :class :program)
-(definterface fn-owner-identity-reservation
-  :class :program)
-
-; Authenticated remote ingress: total guarded readers/planners, followed by
-; the PROGRAM owner ingress and the guarded source-owned preflight.
-(definterface fn-crb-open
-  :class :common-lisp-compliant)
-(definterface fn-cre-header-octets
-  :class :common-lisp-compliant)
-(definterface fn-cre-header-plan
-  :class :common-lisp-compliant)
-(definterface fn-cre-receive-failure
-  :class :common-lisp-compliant)
-(definterface fn-owner-remote-ingress
-  :class :program)
-(definterface fn-owner-remote-operation-preflight
-  :class :common-lisp-compliant)
-
 (definterface fn-owner-credits-batch-done
   :class ::program)
 
@@ -1854,9 +1827,6 @@
 
 (definterface fn-splan-donep
   :class ::common-lisp-compliant)
-
-(definterface fn-splan-of-effects
-  :class :common-lisp-compliant)
 
 (definterface fn-splan-step-closep
   :class ::common-lisp-compliant)
@@ -3133,26 +3103,6 @@
 (definterface fn-tcl-host-send
   :class ::ideal
   :kinds ((octets fn-cbor-octet-listp)))
-
-; The received-source driver and its result accessor are not guard-verified:
-; tcpcl-received-source sets eagerness 0 and never verifies these guards.
-(definterface fn-tcl-host-source-drive
-  :class :ideal
-  :kinds ((buf fn-cbor-octet-listp)))
-(definterface fn-tcl-host-source-more-p
-  :class :ideal)
-
-; Guard-T count and continuation observations, verified at eagerness 2.
-(definterface fn-tcl-final-count-ready-p
-  :class :common-lisp-compliant)
-(definterface fn-tcl-final-count-value
-  :class :common-lisp-compliant)
-(definterface fn-tcl-final-held-count
-  :class :common-lisp-compliant)
-(definterface fn-tcl-source-result-action
-  :class :common-lisp-compliant)
-(definterface fn-tcl-source-result-token
-  :class :common-lisp-compliant)
 
 (definterface fn-tcl-host-spool-recovery-plan
   :class ::ideal)
@@ -4826,34 +4776,6 @@
               (fn-ort-counted-drain-waits-before-window-without-fenced-zero
                :via fn-ort-drain-step-counted)))
 
-; Counted retirement and exact settlement observations. All are guard-T
-; except log-close-exit's two integer exit-code inputs.
-(definterface fn-ort-fenced-input-consumed
-  :class :common-lisp-compliant)
-(definterface fn-ort-intake-action
-  :class :common-lisp-compliant)
-(definterface fn-ort-window-step
-  :class :common-lisp-compliant)
-(definterface fn-ort-log-close-action
-  :class :common-lisp-compliant)
-(definterface fn-ort-log-close-exit
-  :class :common-lisp-compliant
-  :kinds ((prior integerp) (uncertain integerp)))
-(definterface fn-ort-report-close-action
-  :class :common-lisp-compliant)
-(definterface fn-ort-service-claim-action
-  :class :common-lisp-compliant)
-(definterface fn-ort-service-settlement-action
-  :class :common-lisp-compliant)
-(definterface fn-ort-service-start-action
-  :class :common-lisp-compliant)
-(definterface fn-ort-service-start-reason
-  :class :common-lisp-compliant)
-(definterface fn-ort-store-close-action
-  :class :common-lisp-compliant)
-(definterface fn-owner-retire-intake-refused
-  :class :program)
-
 (definterface fn-tls-self-signed-host-certificate-pem
   :class :program
   :kinds ((tbs fn-cbor-octet-listp) (sig fn-cbor-octet-listp))
@@ -4985,12 +4907,6 @@
 
 ; Stage 0 (D46): host/account-adoption-interfaces.lisp is not included; its
 ; entries' dispatcher (host/native/account-adoption.lisp) is not loaded.
-
-; Guard-T action projections used by the native account-adoption driver.
-(definterface fn-cad-action-kind
-  :class :common-lisp-compliant)
-(definterface fn-cado-result-action
-  :class :common-lisp-compliant)
 
 (definterface fn-par-host-accept-record-plan
   :class ::common-lisp-compliant
