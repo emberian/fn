@@ -21,7 +21,7 @@ with N.  The module asserts only what does not depend on the box's load: the
 reply is one row per article, and the two windows' replies are equal.
 
     FN_OPEN_DEPTH_FIXTURES=/tank/fn/scratch/fixtures \\
-    FN_OVER_COST_FIXTURES=n1k-2k,n10k-2k,syn100k-2k FN_NATIVE_DEVELOPER_HOST=... \\
+    FN_OVER_COST_FIXTURES=n1k-2k:n10k-2k:syn100k-2k FN_NATIVE_DEVELOPER_HOST=... \\
         python3 -m unittest tests.test_native_over_cursor_cost
 """
 import os
@@ -36,7 +36,7 @@ from tests.native_harness import Client, Node, executable, native_image
 
 IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
 FIXTURES = os.environ.get("FN_OPEN_DEPTH_FIXTURES")
-NAMES = [n for n in os.environ.get("FN_OVER_COST_FIXTURES", "").split(",") if n]
+NAMES = [n for n in os.environ.get("FN_OVER_COST_FIXTURES", "").replace(":", ",").split(",") if n]
 WHOLE = "100000000"
 OPEN_SECONDS = 3600
 MEASURE = re.compile(rb"fn-owner-measure (\S+) holds=(\d+) held-us=(\d+) max-us=(\d+) bytes=(\d+)")
