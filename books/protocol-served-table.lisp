@@ -316,10 +316,16 @@
            (fn-proto-served-rows-okp (cdr rows) prows))
     (null rows)))
 
+(defun fn-proto-memberp (x ys)
+  (declare (xargs :guard t))
+  (if (consp ys)
+      (or (equal x (car ys)) (fn-proto-memberp x (cdr ys)))
+    nil))
+
 (defun fn-proto-subsetp (xs ys)
   (declare (xargs :guard t))
   (if (consp xs)
-      (and (member-equal (car xs) ys) (fn-proto-subsetp (cdr xs) ys))
+      (and (fn-proto-memberp (car xs) ys) (fn-proto-subsetp (cdr xs) ys))
     t))
 
 ; The served table and the protocol table name the same served commands,
