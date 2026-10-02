@@ -5051,6 +5051,14 @@ through fn-bs-scp-program's staged file before the next), all outside the
 mutex; then fn-owner-sco-publication-done under it.  A failed write leaves
 the old checkpoint (or, at and after the rename, the old or the new one:
 the crash keystone) and serving continues."
+  ;; r71 F10 (sweep S018): this thread stays in the worker roster through
+  ;; every action it takes -- the publication, its unpin, the nursery, the
+  ;; next decision -- and leaves it as the last act of its unwind, so the
+  ;; stop's join (fnn-owner-wait-workers) never sees `all joined' while it
+  ;; runs.  The publisher SLOT (one publication at a time) is released once
+  ;; the pin and the nursery are back, before the next decision.
+  (unwind-protect
+       (progn
   ;; The publication allocates in proportion to the history: the open's
   ;; trigger while it runs, the service trigger again when it ends.
   (setf (sb-ext:bytes-consed-between-gcs) (fnn-gc-nursery-octets))
@@ -5169,14 +5177,13 @@ the crash keystone) and serving continues."
           (when durablep
             (fnn-owner-release-extents service (fnn-owner-service-store service)
                                        *fnn-checkpoint-frames* dropped-paths pin)))
-        (fnn-with-roster (service)
-          (setf (fnn-owner-service-publisher service) nil
-                (fnn-owner-service-workers service)
-                (delete sb-thread:*current-thread*
-                        (fnn-owner-service-workers service) :test #'eq))))))
+        nil)))
     (fnn-owner-worker-tail-hold "publisher")
     (when pin (fnn-arena-unpin pin))
     (fnn-owner-service-nursery))
+  ;; The slot: the next publication may start now (the pin and the nursery
+  ;; are back).
+  (fnn-owner-publisher-release service)
   ;; PKT-583 (b): the publication finished; decide again from the newest
   ;; committed frontier now, not at the next accept (a load's tail has
   ;; none), so a coalesced request is served as soon as it can be and a
@@ -5184,8 +5191,34 @@ the crash keystone) and serving continues."
   ;; fnn-owner-maybe-publish takes the mutex itself and refuses while
   ;; stopping; at most one publication is in flight (fn-ock-one-
   ;; publication-in-flight).  After the service trigger is back, so a
-  ;; publication it starts sets its own.
-  (fnn-owner-maybe-publish service))
+  ;; publication it starts sets its own.  A stopping owner decides nothing
+  ;; more.  This thread's own failure here is classified, never an
+  ;; unhandled thread error (which ends the process with code 1 under
+  ;; --disable-debugger, skipping the stop's settlement).
+  (unless (fnn-owner-service-stopping service)
+    (handler-case (fnn-owner-maybe-publish service)
+      (fnn-store-indeterminate (e)
+        (fnn-err "CHECKPOINT auto uncertain; the store needs recovery: ~a" e)
+        (ignore-errors (fnn-owner-fence-service service)))
+      (fnn-store-fault (e)
+        (ignore-errors (fnn-owner-fault-service service nil e)))
+      (fnn-store-error (e)
+        (fnn-err "CHECKPOINT auto failed: ~a" e))
+      (serious-condition (e)
+        (ignore-errors (fnn-owner-fault-service service nil e))))))
+    ;; Last: the slot if a failure skipped its release, then the roster.
+    (fnn-owner-publisher-release service)
+    (fnn-with-roster (service)
+      (setf (fnn-owner-service-workers service)
+            (delete sb-thread:*current-thread*
+                    (fnn-owner-service-workers service) :test #'eq)))))
+
+(defun fnn-owner-publisher-release (service)
+  "Clear the publisher slot when it is this thread's (a later publication
+may already hold it)."
+  (fnn-with-roster (service)
+    (when (eq (fnn-owner-service-publisher service) sb-thread:*current-thread*)
+      (setf (fnn-owner-service-publisher service) nil))))
 
 (defun fnn-owner-maybe-publish (service)
   "One publication decision (fnn-owner-maybe-publish-quantum), and when it
@@ -5435,15 +5468,21 @@ the stop's refusal at a chunk boundary is `owner-stopping'."
              (serious-condition (e)
                (setq outcome (cons :failed :archive-write))
                (fnn-err "EXPORT failed archive=~a reason=archive-write: ~a" dir e))))
-      (fnn-with-roster (service)
-        (setf (fnn-owner-service-exporter service) nil
-              (fnn-owner-service-export-outcome service)
-              (or outcome (cons :failed :archive-write))
-              (fnn-owner-service-workers service)
-              (delete sb-thread:*current-thread*
-                      (fnn-owner-service-workers service) :test #'eq)))
-      (fnn-owner-worker-tail-hold "exporter")
-      (fnn-arena-unpin pin))))
+      ;; r71 F10: the outcome and the exporter slot first (the request's
+      ;; answer), the unpin, and only then this thread leaves the roster,
+      ;; the last act of its unwind: the stop joins it through its unpin.
+      (unwind-protect
+           (progn
+             (fnn-with-roster (service)
+               (setf (fnn-owner-service-exporter service) nil
+                     (fnn-owner-service-export-outcome service)
+                     (or outcome (cons :failed :archive-write))))
+             (fnn-owner-worker-tail-hold "exporter")
+             (fnn-arena-unpin pin))
+        (fnn-with-roster (service)
+          (setf (fnn-owner-service-workers service)
+                (delete sb-thread:*current-thread*
+                        (fnn-owner-service-workers service) :test #'eq)))))))
 
 ;;; Q16 (lane online-reclaim): `store reclaim --dry-run' on the running
 ;;; owner (books/owner-reclaim.lisp; host/owner-host.lisp fn-owner-orc-*).
