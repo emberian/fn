@@ -82504,7 +82504,7 @@
     {
       "theorem": "fn-cp-numbers-of-held",
       "book": "books/catalog-paged.lisp",
-      "line": 1567,
+      "line": 1565,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -82512,7 +82512,7 @@
     {
       "theorem": "fn-cp-withdrawn-of-held",
       "book": "books/catalog-paged.lisp",
-      "line": 1559,
+      "line": 1557,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -92094,19 +92094,19 @@
       {
         "theorem": "fn-cp-len-of-set-column",
         "book": "books/catalog-paged.lisp",
-        "line": 548,
+        "line": 546,
         "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
       },
       {
         "theorem": "fn-cp-len-of-adt-set-a",
         "book": "books/catalog-paged.lisp",
-        "line": 553,
+        "line": 551,
         "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
       },
       {
         "theorem": "fn-cp-tree-enc-of-row-t-of",
         "book": "books/catalog-paged.lisp",
-        "line": 718,
+        "line": 716,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
