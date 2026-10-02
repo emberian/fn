@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import tempfile
+import contextlib
+import io
 from pathlib import Path
 import sys
 import unittest
@@ -178,6 +180,55 @@ class HostBindingTests(unittest.TestCase):
             "(def-carried fn-r-carried :invariant fn-r-relation "
             ":established ((fn-r-open fn-r-open-establishes)) :transitions ((fn-s fn-s-carries)))\n")
         self.assertTrue(any("resolves to no theorems" in p for p in found), found)
+
+    def test_check_carried_completeness_requires_every_dispatch_declared(self):
+        from tools import interface_kinds
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "host").mkdir()
+            (root / "books").mkdir()
+            source = root / "host/interfaces.lisp"
+            carried = ("(definterface fn-r :class :common-lisp-compliant "
+                       ":raw-with (:carried fn-r-carried))\n")
+            (root / "books/x.lisp").write_text(
+                "(def-carried fn-r-carried :invariant fn-r-relation "
+                ":transitions ((fn-r fn-r-carries)))\n")
+            observed = reading(
+                dispatched={"fn-r": {"host/native/io.lisp"},
+                            "fn-z": {"host/native/owner.lisp"}},
+                direct={}, defined={"fn-r", "fn-z"}, entries=2)
+            actual_findings = interface_emit.findings
+            for declared in (False, True):
+                with self.subTest(declared=declared):
+                    source.write_text(carried + (
+                        "(definterface fn-z :class :program)\n" if declared else ""))
+                    decls = interface_emit.declarations(root)
+                    roots = root / "roots.sh"
+                    registry = root / "interfaces.json"
+                    raw = root / "interfaces-raw.lisp"
+                    roots.write_text(interface_emit.render_roots(decls))
+                    registry.write_text(interface_emit.render_registry(decls, observed))
+                    raw.write_text(interface_emit.render_raw_declarations(decls))
+                    output = io.StringIO()
+                    with mock.patch.multiple(interface_emit, ROOTS_SH=roots,
+                                             REGISTRY=registry, RAW_DECLARATIONS=raw), \
+                            mock.patch.object(interface_emit, "declarations", return_value=decls), \
+                            mock.patch.object(interface_emit, "host_reading", return_value=observed), \
+                            mock.patch.object(interface_emit, "findings", side_effect=lambda d, r:
+                                              actual_findings(d, r, root)), \
+                            mock.patch.object(interface_kinds, "tree_files", return_value=[]), \
+                            mock.patch.object(interface_kinds, "judge", return_value=([], 0)), \
+                            contextlib.redirect_stdout(output):
+                        status = interface_emit.main(["--check"])
+                    if declared:
+                        self.assertEqual(status, 0, output.getvalue())
+                        self.assertIn("0 finding(s)", output.getvalue())
+                    else:
+                        self.assertEqual(status, 1, output.getvalue())
+                        self.assertIn(
+                            "fn-r :raw-with (:carried fn-r-carried) cannot rely on "
+                            "def-carried's completeness: requires 0 undeclared dispatches; "
+                            "undeclared entries: fn-z", output.getvalue())
 
     def test_raw_with_carried_refuses_malformed_forms(self):
         for form in ("(:carried)", "(:carried fn-r-carried extra)"):
