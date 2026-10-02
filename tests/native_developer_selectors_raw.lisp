@@ -162,6 +162,8 @@
 (defun fnn-open-streams () nil)
 (defun fnn-global (name) (declare (ignore name)) t)
 (defun fnn-dispatch (argv) (note :dispatch argv) 0)
+;; fnn-main checks every raw-dispatched target is still trapped (io.lisp THE TRAP).
+(defun fnn-raw-dispatch-traps-intact () (note :traps-intact) 0)
 (defun fnn-err (control &rest args) (note :err (apply #'format nil control args)))
 (defun fnn-out (control &rest args) (note :out (apply #'format nil control args)))
 (defun fnn-exit (code) (throw 'exit code))
