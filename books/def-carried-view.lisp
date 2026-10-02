@@ -538,7 +538,7 @@
            (,okp ,ws (,build-onto ,ws (,empty)))
            :hints (("Goal" :use ((:instance (:functional-instance fn-cv-set-okp-of-build ,@subst)
                                             (ws ,ws)))
-                    :in-theory (union-theories '(,okp ,build-onto ,hasp-of-put ,put-has-key)
+                    :in-theory (union-theories '(,okp ,build-onto ,empty ,hasp-of-put ,put-has-key)
                                                (theory 'minimal-theory)))))
          (defthm ,(fn-cv-name name '- idx '-okp-of-extend)
            (implies (,okp old idxs) (,okp (append new old) (,build-onto new idxs)))
@@ -641,7 +641,7 @@
                                                                 (fn-cv-build-onto ,build-onto)
                                                                 (fn-cv-fold ,fold))
                                           (ys ,ws) (racc nil) (idx (,empty))))
-                  :in-theory (union-theories '(,build ,build-onto ,fold fn-cv-rev-is-revappend)
+                  :in-theory (union-theories '(,build ,build-onto ,fold ,empty fn-cv-rev-is-revappend)
                                              (theory 'minimal-theory)))))
        ,@(if setp
              (fn-cv-set-index-events name ws entries 0 n)
@@ -660,14 +660,14 @@
              `((defthm ,okp-of-build
                  (,okp ,ws (,build-onto ,ws (,empty)))
                  :hints (("Goal" :use ,(fn-cv-okp-instances name entries '-okp-of-build nil)
-                          :in-theory (union-theories '(,okp) (theory 'minimal-theory)))))
+                          :in-theory (union-theories '(,okp ,empty) (theory 'minimal-theory)))))
                (defthm ,okp-of-extend
                  (implies (,okp old idxs) (,okp (append new old) (,build-onto new idxs)))
                  :hints (("Goal" :use ,(fn-cv-okp-instances name entries '-okp-of-extend nil)
                           :in-theory (union-theories '(,okp) (theory 'minimal-theory))))))
            `((defthm ,okp-of-build
                (,okp ,ws (,build-onto ,ws (,empty)))
-               :hints (("Goal" :in-theory (union-theories '(,okp) (theory 'minimal-theory)))))
+               :hints (("Goal" :in-theory (union-theories '(,okp ,empty) (theory 'minimal-theory)))))
              (defthm ,okp-of-extend
                (implies (,okp old idxs) (,okp (append new old) (,build-onto new idxs)))
                :hints (("Goal" :use ((:instance (:functional-instance fn-cv-exact-okp-of-extend
@@ -677,7 +677,7 @@
                                                                       (fn-cv-build-onto ,build-onto)
                                                                       (fn-cv-exact-okp ,okp))
                                                 (old old) (new new) (idx idxs)))
-                        :in-theory (union-theories '(,okp ,build-onto)
+                        :in-theory (union-theories '(,okp ,build-onto ,empty)
                                                    (theory 'minimal-theory)))))))
        (defun ,refresh (carry ,ws)
          (declare (xargs :guard t))
@@ -701,7 +701,7 @@
                                                                 (fn-cv-carryp ,carryp)
                                                                 (fn-cv-refresh ,refresh))
                                           (carry carry) (ws ,ws)))
-                  :in-theory (union-theories '(,carryp ,refresh ,build-onto ,fold
+                  :in-theory (union-theories '(,carryp ,refresh ,build-onto ,fold ,empty
                                                ,okp-of-build ,okp-of-extend)
                                              (theory 'minimal-theory)))))
        (defthm ,(fn-cv-name ws-of '-of-refresh)

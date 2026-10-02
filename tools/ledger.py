@@ -1544,6 +1544,320 @@ def defkeystone_make_event(form: list) -> list | None:
                              _dk_quote(Sym("defkeystone")), _dk_quote(spec), Sym("state")]]]
 
 
+
+# --------------------------------------------------------------------------
+# def-carried-view, def-carried-reader, def-keyset-check
+# --------------------------------------------------------------------------
+#
+# books/def-carried-view.lisp and books/def-keyset-check.lisp own these
+# generators; the ledger reads their output the way `def_loop_expansion`
+# reads def-loop's: the definitions (names, formals, a faithful body) and
+# every exported theorem's statement, proof hints and table rows omitted.
+# A form the Lisp macro refuses on its shape expands to nothing.
+
+
+def _gen_sym(*parts: object) -> Sym:
+    return Sym("".join(str(part) for part in parts))
+
+
+def _gen_lambda(form: object, arity: int) -> list | None:
+    if not (isinstance(form, list) and len(form) == 3 and head(form) == "lambda"
+            and isinstance(form[1], list) and len(form[1]) == arity
+            and all(isinstance(v, Sym) for v in form[1])):
+        return None
+    return form
+
+
+def _gen_sub(lam: list, actuals: list) -> object:
+    alist = {str(v): a for v, a in zip(lam[1], actuals)}
+
+    def walk(term: object) -> object:
+        if isinstance(term, Sym):
+            return alist.get(str(term), term)
+        if isinstance(term, list):
+            if head(term) == "quote":
+                return term
+            return [walk(item) for item in term]
+        return term
+    return walk(lam[2])
+
+
+def _gen_nth(k: int, x: object) -> object:
+    term = x
+    for _ in range(k):
+        term = [Sym("fn-cv-cdr"), term]
+    return [Sym("fn-cv-car"), term]
+
+
+def _gen_component(k: int, n: int, x: object) -> object:
+    return x if n == 1 else _gen_nth(k, x)
+
+
+def _gen_defun(name: Sym, formals: list, body: object, guard: object = Sym("t"),
+               stobjs: object = None) -> list:
+    xargs = [Sym("xargs"), Sym(":guard"), guard]
+    if stobjs is not None:
+        xargs += [Sym(":stobjs"), stobjs]
+    return [Sym("defun"), name, formals, [Sym("declare"), xargs], body]
+
+
+def _gen_implies(hyps: list, concl: object) -> object:
+    return _dk_implies(hyps, concl)
+
+
+def def_carried_view_parts(form: list) -> dict | None:
+    """The parsed declaration, or None where `fn-cv-refusal` refuses."""
+    if not (len(form) >= 2 and isinstance(form[1], Sym) and str(form[1]) != "nil"):
+        return None
+    options = _dk_plist(list(form[2:]))
+    if options is None or any(key not in {":key", ":indexes", ":build"} for key in options):
+        return None
+    key = options.get(":key")
+    indexes = options.get(":indexes")
+    if not (isinstance(key, Sym) and str(key) != "nil" and isinstance(indexes, list) and indexes):
+        return None
+    entries = []
+    kinds = set()
+    for entry in indexes:
+        if not (isinstance(entry, list) and entry and isinstance(entry[0], Sym)):
+            return None
+        opts = _dk_plist(list(entry[1:]))
+        if opts is None or any(key not in {":kind", ":key-fn", ":put", ":hasp", ":empty", ":lemmas"}
+                               for key in opts):
+            return None
+        kind = str(opts.get(":kind", ""))
+        if kind not in (":set", ":exact"):
+            return None
+        if _gen_lambda(opts.get(":put"), 2) is None or ":empty" not in opts:
+            return None
+        if kind == ":set" and (_gen_lambda(opts.get(":key-fn"), 1) is None
+                               or _gen_lambda(opts.get(":hasp"), 2) is None):
+            return None
+        if kind == ":exact" and (":key-fn" in opts or ":hasp" in opts):
+            return None
+        kinds.add(kind)
+        entries.append({"name": entry[0], "kind": kind, "put": opts[":put"],
+                        "empty": opts[":empty"], "key_fn": opts.get(":key-fn"),
+                        "hasp": opts.get(":hasp")})
+    if len(kinds) != 1 or len({str(e["name"]) for e in entries}) != len(entries):
+        return None
+    return {"name": form[1], "key": key, "indexes": entries, "set": kinds == {":set"},
+            "build": options.get(":build")}
+
+
+def def_carried_view_expansion(form: list) -> list:
+    parts = def_carried_view_parts(form)
+    if parts is None:
+        return []
+    name, ws, entries = parts["name"], parts["key"], parts["indexes"]
+    n = len(entries)
+    setp = parts["set"]
+    ws_of = _gen_sym(name, "-", ws)
+    put, empty = _gen_sym(name, "-put"), _gen_sym(name, "-empty")
+    build_onto, fold = _gen_sym(name, "-build-onto"), _gen_sym(name, "-fold")
+    build = parts["build"] if parts["build"] is not None else _gen_sym(name, "-build")
+    okp, carryp, refresh = _gen_sym(name, "-okp"), _gen_sym(name, "-carryp"), _gen_sym(name, "-refresh")
+    carry, idxs, e = Sym("carry"), Sym("idxs"), Sym("e")
+    put_terms = [_gen_sub(entry["put"], [e, _gen_component(k, n, idxs)])
+                 for k, entry in enumerate(entries)]
+    empty_terms = [entry["empty"] for entry in entries]
+    tuple_ = (lambda terms: terms[0] if n == 1 else [Sym("list")] + terms)
+    events: list = [
+        _gen_defun(ws_of, [carry], [Sym("fn-cv-car"), carry]),
+        _gen_defun(put, [e, idxs], tuple_(put_terms)),
+        _gen_defun(empty, [], tuple_(empty_terms)),
+        _gen_defun(build_onto, [Sym("ys"), idxs],
+                   [Sym("if"), [Sym("consp"), Sym("ys")],
+                    [put, [Sym("car"), Sym("ys")], [build_onto, [Sym("cdr"), Sym("ys")], idxs]], idxs]),
+        _gen_defun(fold, [Sym("racc"), idxs],
+                   [Sym("if"), [Sym("consp"), Sym("racc")],
+                    [fold, [Sym("cdr"), Sym("racc")], [put, [Sym("car"), Sym("racc")], idxs]], idxs]),
+        _gen_defun(build, [ws], [fold, [Sym("fn-cv-rev"), ws, Sym("nil")], [empty]]),
+        [Sym("defthm"), _gen_sym(build, "-is-build-onto"),
+         [Sym("equal"), [build, ws], [build_onto, ws, [empty]]]],
+    ]
+    conjuncts = []
+    for k, entry in enumerate(entries):
+        idx = entry["name"]
+        of = _gen_sym(name, "-", idx, "-of")
+        events.append(_gen_defun(of, [idxs], _gen_component(k, n, idxs)))
+        events.append(_gen_defun(_gen_sym(name, "-", idx), [carry], [of, [Sym("fn-cv-cdr"), carry]]))
+        if setp:
+            index_okp = _gen_sym(name, "-", idx, "-okp")
+            key_car = _gen_sub(entry["key_fn"], [[Sym("car"), ws]])
+            events.append(_gen_defun(
+                index_okp, [ws, idxs],
+                [Sym("if"), [Sym("consp"), ws],
+                 [Sym("and"), [Sym("or"), [Sym("not"), key_car],
+                               _gen_sub(entry["hasp"], [key_car, [of, idxs]])],
+                  [index_okp, [Sym("cdr"), ws], idxs]],
+                 Sym("t")]))
+            key_e2 = _gen_sub(entry["key_fn"], [Sym("e2")])
+            key_e = _gen_sub(entry["key_fn"], [e])
+            events.append([Sym("defthm"), _gen_sym(name, "-", idx, "-hasp-of-put"),
+                           [Sym("implies"),
+                            [Sym("and"), key_e2, _gen_sub(entry["hasp"], [key_e2, [of, idxs]])],
+                            _gen_sub(entry["hasp"], [key_e2, [of, [put, e, idxs]]])]])
+            events.append([Sym("defthm"), _gen_sym(name, "-", idx, "-put-has-key"),
+                           [Sym("implies"), key_e,
+                            _gen_sub(entry["hasp"], [key_e, [of, [put, e, idxs]]])]])
+            events.append([Sym("defthm"), _gen_sym(name, "-", idx, "-okp-of-build"),
+                           [index_okp, ws, [build_onto, ws, [empty]]]])
+            events.append([Sym("defthm"), _gen_sym(name, "-", idx, "-okp-of-extend"),
+                           [Sym("implies"), [index_okp, Sym("old"), idxs],
+                            [index_okp, [Sym("append"), Sym("new"), Sym("old")],
+                             [build_onto, Sym("new"), idxs]]]])
+            conjuncts.append([index_okp, ws, idxs])
+    if setp:
+        events.append(_gen_defun(okp, [ws, idxs], [Sym("and")] + conjuncts))
+    else:
+        events.append(_gen_defun(okp, [ws, idxs], [Sym("equal"), idxs, [build_onto, ws, [empty]]]))
+    events.append(_gen_defun(carryp, [carry], [okp, [Sym("fn-cv-car"), carry], [Sym("fn-cv-cdr"), carry]]))
+    events.append([Sym("defthm"), _gen_sym(name, "-okp-of-build"), [okp, ws, [build_onto, ws, [empty]]]])
+    events.append([Sym("defthm"), _gen_sym(name, "-okp-of-extend"),
+                   [Sym("implies"), [okp, Sym("old"), idxs],
+                    [okp, [Sym("append"), Sym("new"), Sym("old")], [build_onto, Sym("new"), idxs]]]])
+    events.append(_gen_defun(
+        refresh, [carry, ws],
+        [Sym("if"), [Sym("equal"), ws, [Sym("fn-cv-car"), carry]],
+         [Sym("cons"), ws, [Sym("fn-cv-cdr"), carry]],
+         [Sym("mv-let"), [Sym("found"), Sym("racc")],
+          [Sym("fn-cv-walk"), ws, [Sym("fn-cv-car"), carry], Sym("nil")],
+          [Sym("if"), Sym("found"),
+           [Sym("cons"), ws, [fold, Sym("racc"), [Sym("fn-cv-cdr"), carry]]],
+           [Sym("cons"), ws, [fold, [Sym("fn-cv-rev"), ws, Sym("nil")], [empty]]]]]]))
+    events.append([Sym("defthm"), _gen_sym(carryp, "-of-refresh"),
+                   [Sym("implies"), [carryp, carry], [carryp, [refresh, carry, ws]]]])
+    events.append([Sym("defthm"), _gen_sym(ws_of, "-of-refresh"),
+                   [Sym("equal"), [ws_of, [refresh, carry, ws]], ws]])
+    events.append([Sym("defthm"), _gen_sym(refresh, "-walks-the-delta"),
+                   [Sym("equal"),
+                    [Sym("fn-cv-walk-steps"), [Sym("append"), Sym("new"), [ws_of, carry]], [ws_of, carry]],
+                    [Sym("len"), Sym("new")]]])
+    if setp or (n == 1 and isinstance(empty_terms[0], Sym) and str(empty_terms[0]) == "nil"):
+        events.append([Sym("defthm"), _gen_sym(carryp, "-of-nil"), [carryp, Sym("nil")]])
+    events.append([Sym("table"), Sym("fn-teeth-owed"), _dk_quote(_gen_sym(carryp, "-of-refresh")),
+                   _dk_quote([Sym(":by"), Sym("def-carried-view"), Sym(":claim"),
+                              [[[Sym("carried"), [carryp, carry]]], [carryp, [refresh, carry, ws]]]])])
+    return events
+
+
+def def_carried_reader_expansion(form: list) -> list:
+    if not (len(form) >= 3 and isinstance(form[1], Sym) and isinstance(form[2], list)):
+        return []
+    r, formals = form[1], list(form[2])
+    options = _dk_plist(list(form[3:]))
+    wanted = {":of", ":carry", ":list", ":when", ":probe", ":fast", ":reference", ":by",
+              ":name", ":guard", ":stobjs"}
+    if options is None or any(key not in wanted for key in options):
+        return []
+    for key in (":of", ":carry", ":list", ":probe", ":fast", ":reference", ":by"):
+        if key not in options:
+            return []
+    view, c, ws = options[":of"], options[":carry"], options[":list"]
+    probe = options[":probe"]
+    if not (isinstance(probe, list) and len(probe) == 2 and isinstance(probe[0], Sym)):
+        return []
+    reference = options[":reference"]
+    carryp = _gen_sym(view, "-carryp")
+    thm = options.get(":name") or _gen_sym(r, "-is-", head(reference) or "reference")
+    # the probe's :hasp is the view's declaration, which the ledger does not
+    # resolve statically: the reader body keeps the probe as the view's
+    # NAME-IDX accessor applied to the key, a faithful shape for the hygiene
+    # checks (the exact hasp term is the world's)
+    body = [Sym("if"),
+            [Sym("and"), options.get(":when", Sym("t")),
+             [Sym("equal"), ws, [_gen_sym(view, "-", Sym("key")), c]],
+             [Sym("not"), [_gen_sym(view, "-", probe[0], "-probe"), probe[1], c]]],
+            options[":fast"], reference]
+    return [_gen_defun(r, formals, body, options.get(":guard", Sym("t")), options.get(":stobjs")),
+            [Sym("defthm"), thm, [Sym("implies"), [carryp, c], [Sym("equal"), [r] + formals, reference]]],
+            [Sym("table"), Sym("fn-teeth-owed"), _dk_quote(thm),
+             _dk_quote([Sym(":by"), Sym("def-carried-reader"), Sym(":claim"),
+                        [[[Sym("carried"), [carryp, c]]], [Sym("equal"), [r] + formals, reference]]])],
+            [Sym("in-theory"), [Sym("disable"), r]]]
+
+
+def def_keyset_check_expansion(form: list) -> list:
+    if not (len(form) >= 3 and isinstance(form[1], Sym) and isinstance(form[2], list)
+            and len(form[2]) == 2 and all(isinstance(v, Sym) for v in form[2])):
+        return []
+    name, (xs, ys) = form[1], form[2]
+    options = _dk_plist(list(form[3:]))
+    wanted = {":sense", ":xs-key", ":ys-key", ":each", ":base", ":logic-member", ":member-is",
+              ":keys", ":policy"}
+    if options is None or any(key not in wanted for key in options):
+        return []
+    if str(options.get(":sense")) not in (":present", ":absent"):
+        return []
+    present = str(options[":sense"]) == ":present"
+    xkey = options.get(":xs-key", [Sym("lambda"), [Sym("x")], Sym("x")])
+    ykey = options.get(":ys-key", [Sym("lambda"), [Sym("y")], Sym("y")])
+    each = options.get(":each", [Sym("lambda"), [Sym("x")], Sym("t")])
+    base = options.get(":base", Sym("t"))
+    base_term = _gen_sub([Sym("lambda"), [Sym("xs")], base], [xs])
+    policy = str(options.get(":policy", ":long"))
+    keys = options.get(":keys") or _gen_sym(name, "-keys")
+    filler, scan, ks, walk = (_gen_sym(name, "-fill"), _gen_sym(name, "-scan"),
+                              _gen_sym(name, "-ks"), _gen_sym(name, "-walk"))
+    car_xs, car_ys = [Sym("car"), xs], [Sym("car"), ys]
+    if ":logic-member" in options:
+        member = _gen_sub(options[":logic-member"], [car_xs, ys])
+    else:
+        member = [Sym("if"), [Sym("member-equal"), _gen_sub(xkey, [car_xs]), [keys, ys]], Sym("t"), Sym("nil")]
+    want = (lambda b: b if present else [Sym("not"), b])
+    ks_stobj = Sym("fn-keyset")
+    events: list = []
+    if ":keys" not in options:
+        events.append(_gen_defun(keys, [ys], [Sym("if"), [Sym("consp"), ys],
+                                               [Sym("cons"), _gen_sub(ykey, [car_ys]), [keys, [Sym("cdr"), ys]]],
+                                               Sym("nil")]))
+    logic_body = [Sym("if"), [Sym("consp"), xs],
+                  [Sym("and"), _gen_sub(each, [car_xs]), want(member), [walk, [Sym("cdr"), xs], ys]],
+                  base_term]
+    events.append(_gen_defun(walk, [xs, ys], logic_body))
+    events.append(_gen_defun(filler, [ys, ks_stobj],
+                             [Sym("if"), [Sym("consp"), ys],
+                              [Sym("let"), [[ks_stobj, [Sym("fn-keyset-tab-put"), _gen_sub(ykey, [car_ys]), Sym("t"), ks_stobj]]],
+                               [filler, [Sym("cdr"), ys], ks_stobj]],
+                              ks_stobj], stobjs=ks_stobj))
+    events.append(_gen_defun(scan, [xs, ks_stobj],
+                             [Sym("if"), [Sym("consp"), xs],
+                              [Sym("and"), _gen_sub(each, [car_xs]),
+                               want([Sym("if"), [Sym("fn-keyset-tab-boundp"), _gen_sub(xkey, [car_xs]), ks_stobj], Sym("t"), Sym("nil")]),
+                               [scan, [Sym("cdr"), xs], ks_stobj]],
+                              base_term], stobjs=ks_stobj))
+    events.append(_gen_defun(ks, [xs, ys],
+                             [Sym("with-local-stobj"), ks_stobj,
+                              [Sym("mv-let"), [Sym("ok"), ks_stobj],
+                               [Sym("let"), [[ks_stobj, [filler, ys, ks_stobj]]],
+                                [Sym("mv"), [scan, xs, ks_stobj], ks_stobj]],
+                               Sym("ok")]]))
+    events.append([Sym("defthm"), _gen_sym(name, "-scan-after-fill"),
+                   [Sym("implies"), [Sym("not"), [Sym("consp"), [Sym("nth"), 0, ks_stobj]]],
+                    [Sym("equal"), [scan, xs, [filler, ys, ks_stobj]], [walk, xs, ys]]]])
+    events.append([Sym("defthm"), _gen_sym(name, "-ks-is-logic"),
+                   [Sym("equal"), [ks, xs, ys], [walk, xs, ys]]])
+    exec_body = {":always": [ks, xs, ys],
+                 ":nonempty": [Sym("if"), [Sym("consp"), xs], [ks, xs, ys], base_term]}.get(
+        policy, [Sym("if"), [Sym("fn-ks-longp"), ys], [ks, xs, ys], [walk, xs, ys]])
+    name_logic = [Sym("if"), [Sym("consp"), xs],
+                  [Sym("and"), _gen_sub(each, [car_xs]), want(member), [name, [Sym("cdr"), xs], ys]],
+                  base_term]
+    events.append([Sym("defun"), name, [xs, ys],
+                   [Sym("declare"), [Sym("xargs"), Sym(":guard"), Sym("t"), Sym(":verify-guards"), Sym("nil")]],
+                   [Sym("mbe"), Sym(":logic"), name_logic, Sym(":exec"), exec_body]])
+    events.append([Sym("defthm"), _gen_sym(name, "-walk-is-logic"),
+                   [Sym("equal"), [walk, xs, ys], [name, xs, ys]]])
+    events.append([Sym("verify-guards"), name])
+    for thm, claim in ((_gen_sym(name, "-ks-is-logic"), [Sym("equal"), [ks, xs, ys], [walk, xs, ys]]),
+                       (_gen_sym(name, "-walk-is-logic"), [Sym("equal"), [walk, xs, ys], [name, xs, ys]])):
+        events.append([Sym("table"), Sym("fn-teeth-owed"), _dk_quote(thm),
+                       _dk_quote([Sym(":by"), Sym("def-keyset-check"), Sym(":claim"), [Sym("nil"), claim]])])
+    events.append([Sym("in-theory"), [Sym("disable"), keys, walk, filler, scan, ks, _gen_sym(name, "-ks-is-logic")]])
+    return events
+
+
 GENERATOR_EXPANSIONS = {
     "fn-defrecord": defrecord_expansion,
     "fn-defrecord-export": defrecord_export_expansion,
@@ -1551,6 +1865,9 @@ GENERATOR_EXPANSIONS = {
     "defprotocol": defprotocol_expansion,
     "defkeystone": defkeystone_expansion,
     "defteeth": defteeth_expansion,
+    "def-carried-view": def_carried_view_expansion,
+    "def-carried-reader": def_carried_reader_expansion,
+    "def-keyset-check": def_keyset_check_expansion,
 }
 
 
