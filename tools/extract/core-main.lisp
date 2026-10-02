@@ -27,10 +27,10 @@
 ;; module after that check would evade the saved-image exclusion contract.
 (load (cl-user::xl-path "host-block.lisp"))
 (defun cl-user::xl-toplevel ()
-  ;; The saved native baseline authorizes launch before profiling, ordinary
-  ;; argument handling or facility startup. Refusal/uncertainty exits here;
-  ;; the native trampoline returns only after actual ACL2 acceptance.
-  (acl2::fnn-runtime-bootstrap-startup)
+  ;; Stage 0 (planning/design-store-representation-2026-10-01.md section 4):
+  ;; no (acl2::fnn-runtime-bootstrap-startup) gate before argv; its
+  ;; producer (the compiled operation table) does not exist, so it exited
+  ;; every verb (host/native/build.lisp fn-native-entry says the same).
   ;; a profiling build (XL_PROF at build and at run): a statistical profile of
   ;; the command, reported to stderr at exit.  A measurement tool only.
   (when (and (find-package "SB-SPROF") (sb-ext:posix-getenv "XL_PROF"))

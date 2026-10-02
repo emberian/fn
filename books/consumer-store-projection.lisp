@@ -31,10 +31,7 @@
 ; sequence is checked here as well as by Store files.  A replay that drops a
 ; nonarticle record therefore cannot silently renumber an issued cursor.
 (defun fn-cpe-projection-step (s event expected)
-  (if (or (fn-cae-eventp event) (fn-crev-eventp event))
-      (list :refused (if (fn-cae-eventp event) :authority-interpreter-required
-                      :remote-consumer-interpreter-required))
-    (if (or (not (fn-store-event-p event))
+  (if (or (not (fn-store-event-p event))
           (not (fn-cp-uintp expected))
           (equal expected *fn-cbor-max-uint*)
           (not (equal (fn-store-event-sequence event) expected)))
@@ -65,7 +62,7 @@
          ((equal (fn-cpe-projection-decision s op) (list :write op))
           (list :ok (fn-cpe-projection-advance (fn-cp-apply s op)
                                                  (1+ expected))))
-         (t (list :refused :operation))))))))
+         (t (list :refused :operation)))))))
 
 (defun fn-cpe-projection-replay (s records expected)
   (declare (xargs :measure (len records)))

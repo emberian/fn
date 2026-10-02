@@ -181,6 +181,15 @@
   :hints (("Goal" :in-theory (e/d (fn-scar-view-indexedp fn-own-control-submit )
                                   (fn-midx-correspondencep fn-own-refresh )))))
 
+; The legacy BP/control verb (:legacy-control-submit, 1bf2ddcaf) enqueues the
+; same control submission with the :relay-v1 source.
+(defthm fn-oix-legacy-control-submit-keeps-view-indexed
+  (implies (fn-scar-view-indexedp o)
+           (fn-scar-view-indexedp (fn-own-legacy-control-submit o a b c)))
+  :hints (("Goal" :in-theory (e/d (fn-scar-view-indexedp fn-own-legacy-control-submit fn-own-control-submit-result fn-own-enqueue)
+                                  (fn-midx-correspondencep fn-own-refresh )))))
+
+
 (defthm fn-oix-bp-transit-submit-keeps-view-indexed
   (implies (fn-scar-view-indexedp o)
            (fn-scar-view-indexedp (fn-own-bp-transit-submit o a b c d e f)))
@@ -275,7 +284,7 @@
   (implies (fn-scar-view-indexedp o)
            (fn-scar-view-indexedp (fn-own-step o ev fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-own-step)
-                                  (fn-scar-view-indexedp fn-own-advance fn-own-advance-result fn-own-begin fn-own-bp-transit-outcome fn-own-bp-transit-submit fn-own-close fn-own-complete fn-own-configure fn-own-control-outcome fn-own-control-submit fn-own-declare-group fn-own-fault fn-own-feed-connect fn-own-feed-lost fn-own-feed-recover fn-own-feed-reply fn-own-feeds-reconfigure fn-own-observe fn-own-open fn-own-open-peer fn-own-operator-submit fn-own-outcome fn-own-read fn-own-read-step fn-own-read-full fn-own-read-step-full fn-own-reader-context fn-own-reopen fn-own-store-step fn-own-take-submission fn-own-tick fn-own-tick-peer fn-own-transit-outcome)))))
+                                  (fn-scar-view-indexedp fn-own-advance fn-own-advance-result fn-own-begin fn-own-bp-transit-outcome fn-own-bp-transit-submit fn-own-close fn-own-complete fn-own-configure fn-own-control-outcome fn-own-control-submit fn-own-legacy-control-submit fn-own-declare-group fn-own-fault fn-own-feed-connect fn-own-feed-lost fn-own-feed-recover fn-own-feed-reply fn-own-feeds-reconfigure fn-own-observe fn-own-open fn-own-open-peer fn-own-operator-submit fn-own-outcome fn-own-read fn-own-read-step fn-own-read-full fn-own-read-step-full fn-own-reader-context fn-own-reopen fn-own-store-step fn-own-take-submission fn-own-tick fn-own-tick-peer fn-own-transit-outcome)))))
 
 ; PRESERVATION over every event the host drives through fn-owner-step.
 (defthm fn-oix-ocfg-step-keeps-view-indexed
@@ -287,7 +296,7 @@
                                    fn-ocfg-reconfigure fn-ocfg-complete
                                    fn-ocfg-pass fn-ocfg-with-owner
                                    fn-ocfg-with-read-owner)
-                                  (fn-scar-view-indexedp fn-own-advance fn-own-advance-result fn-own-begin fn-own-bp-transit-outcome fn-own-bp-transit-submit fn-own-close fn-own-complete fn-own-configure fn-own-control-outcome fn-own-control-submit fn-own-declare-group fn-own-fault fn-own-feed-connect fn-own-feed-lost fn-own-feed-recover fn-own-feed-reply fn-own-feeds-reconfigure fn-own-observe fn-own-open fn-own-open-peer fn-own-operator-submit fn-own-outcome fn-own-read fn-own-read-step fn-own-read-full fn-own-read-step-full fn-own-reader-context fn-own-reopen fn-own-store-step fn-own-take-submission fn-own-tick fn-own-tick-peer fn-own-transit-outcome)))))
+                                  (fn-scar-view-indexedp fn-own-advance fn-own-advance-result fn-own-begin fn-own-bp-transit-outcome fn-own-bp-transit-submit fn-own-close fn-own-complete fn-own-configure fn-own-control-outcome fn-own-control-submit fn-own-legacy-control-submit fn-own-declare-group fn-own-fault fn-own-feed-connect fn-own-feed-lost fn-own-feed-recover fn-own-feed-reply fn-own-feeds-reconfigure fn-own-observe fn-own-open fn-own-open-peer fn-own-operator-submit fn-own-outcome fn-own-read fn-own-read-step fn-own-read-full fn-own-read-step-full fn-own-reader-context fn-own-reopen fn-own-store-step fn-own-take-submission fn-own-tick fn-own-tick-peer fn-own-transit-outcome)))))
 
 ; host/owner-host.lisp fn-owner-observe installs fn-ocfg-observe.
 (defthm fn-oix-ocfg-observe-keeps-view-indexed

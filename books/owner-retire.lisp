@@ -3,12 +3,22 @@
 ;
 ; After the retire request the owner observes, at each tick of its accept
 ; loop (host/native/owner.lisp fnn-owner-maybe-retire), a scheduler snapshot
-; S and its feed table, and ACL2 decides from them whether the drain goes on
-; (fn-oret-drain-step): :drained once no feed entry is still being tried,
-; :deadline once the window SECONDS has passed since the request's snapshot
-; S0, :wait otherwise.  At :drained or :deadline the owner renders the report
-; (fn-oret-report), writes it beside the store, takes its final checkpoint
-; and stops.
+; S, and ACL2 decides whether the drain goes on.  THE HOST-CALLED DECISION is
+; not fn-oret-drain-step below: since 1bf2ddcaf host/owner-host.lisp
+; fn-owner-retire-step calls fn-ort-drain-step-counted
+; (books/owner-retire-counted.lisp) over the carried pending count, the intake
+; fence T and the producer-settlement observation NIL -- the native
+; accepted-producer/barrier settlement observation is not produced yet, so
+; the counted drain never answers :drained and EVERY retire ends :deadline,
+; at the window (known served defect S9; the producer and its fence are
+; lane/retire-fence's).  The host-called keystones are the counted drain's,
+; fn-ort-deadline-is-independent-of-the-fences and
+; fn-ort-counted-drain-waits-before-window-without-fenced-zero (witnessed in
+; tests/acl2/native-retire-tests.lisp).  fn-oret-drain-step, which decides
+; from the feed table (:drained once no feed entry is still being tried), and
+; its theorems below are no host function's subject.  At :drained or
+; :deadline the owner renders the report (fn-oret-report), writes it beside
+; the store, takes its final checkpoint and stops.
 ;
 ; The report names, per configured peer, what stays undelivered (the feed
 ; queue's length: fn-feed-queue-length-is-undelivered) and how much of it the
@@ -48,21 +58,22 @@
         ((<= (* 1000 (nfix seconds)) (fn-osd-elapsed s0 s)) :deadline)
         (t :wait)))
 
-; KEYSTONE (the drain ends by its window).  The subject is fn-oret-drain-step,
-; which host/owner-host.lisp fn-owner-retire-step calls for
-; host/native/owner.lisp fnn-owner-maybe-retire at each accept-loop tick over
-; the owner's feed table.  An observation at or past the window since the
-; request never answers :wait, whatever the feeds hold; the host observes at
-; least once a second (the accept loop's one-second readiness poll), so the
-; stop begins within one second of the window.
+; The feed-table drain ends by its window: an observation at or past the
+; window since the request never answers :wait, whatever the feeds hold.
+; Not host-called (see the header): the host's step is
+; fn-ort-drain-step-counted, whose window statement is
+; fn-ort-deadline-is-independent-of-the-fences.  The host observes at least
+; once a second (the accept loop's one-second readiness poll), so the stop
+; begins within one second of the window.
 (defthm fn-oret-drain-step-ends-by-the-window
   (implies (<= (* 1000 (nfix seconds)) (fn-osd-elapsed s0 s))
            (not (equal (fn-oret-drain-step s0 s seconds tbl) :wait))))
 
-; KEYSTONE (a drain is never cut short).  The drain answers :drained only
-; when no feed entry is still being tried, and it answers :deadline only when
-; the window has passed: before the window, with something still being
-; tried, it waits.
+; The feed-table drain is never cut short: it answers :drained only when no
+; feed entry is still being tried, and :deadline only when the window has
+; passed; before the window, with something still being tried, it waits.
+; Not host-called (see the header; the counted drain's statement is
+; fn-ort-counted-drain-waits-before-window-without-fenced-zero).
 (defthm fn-oret-drain-step-waits-while-feeds-drain
   (implies (and (< (fn-osd-elapsed s0 s) (* 1000 (nfix seconds)))
                 (< 0 (fn-oret-pending-total tbl)))

@@ -1640,7 +1640,7 @@
        (fn-state-next-txid
         (fn-node-acceptance
          (fn-node-prepare s generation msgid payload groups
-                          obligation-id subject evidence charge stamp binding))))
+                          obligation-id subject evidence charge stamp))))
    :rule-classes :linear
    :hints (("Goal" :in-theory (e/d (fn-node-prepare fn-accept-prepare
                                     fn-node-statep fn-statep
@@ -1723,12 +1723,12 @@
                  (equal (fn-state-pending (fn-node-acceptance s)) nil)
                  (fn-node-pending-matchesp
                   (fn-node-prepare s generation msgid payload groups
-                                   obligation-id subject evidence charge stamp binding)
+                                   obligation-id subject evidence charge stamp)
                   txid gen))
             (equal (fn-state-next-txid
                     (fn-node-acceptance
                      (fn-node-prepare s generation msgid payload groups
-                                      obligation-id subject evidence charge stamp binding)))
+                                      obligation-id subject evidence charge stamp)))
                    (1+ (fn-state-next-txid (fn-node-acceptance s)))))
    ; The recognizers stay closed: the conclusion is one field, and
    ; `fn-snx-node-state-acceptance-is-state' answers the one `fn-statep'

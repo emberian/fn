@@ -1,3 +1,4 @@
+; UNHOOKED stage 0 (2026-10-01): depends on the reverted FNCE consumer-authority event kinds in the wire-event grammar (planning/design-store-representation-2026-10-01.md section 4)
 ; Bounded node phase for the complete consumer-authority E family.
 ; The configured-node/event invariants are carried by the registered producer.
 ; This kernel grants no issuer, BODY, or native execution authority.

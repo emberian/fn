@@ -18,8 +18,10 @@
 ;   wpres wat wby               bool u64 u64  the withdrawal (at . by)
 ;   aux                         octets  the REMAINDER: groups, the three
 ;                                       identities, the facts, the context
-;                                       and the binding as ONE tree in the
-;                                       pool (books/store-tree-codec.lisp,
+;                                       and an empty slot (D43: the
+;                                       acceptance binding's, reverted; its
+;                                       relay-v1 return fills it) as ONE tree
+;                                       in the pool (books/store-tree-codec.lisp,
 ;                                       KEYSTONE fn-scc-decode-tree-of-encode)
 ;   nums                        octets  the (group . number) bindings as a
 ;                                       tree of their own: the withdrawal
@@ -69,8 +71,6 @@
 (include-book "records-invariants")
 
 (local (in-theory (disable (tau-system))))
-; D26: two included event-shape rules fire on every term and never help here.
-(local (in-theory (disable fn-cne-event-shape fn-cae-event-shape)))
 
 ; The stobjs' logical lists stay as `nth' and `update-nth' terms in every
 ; proof: the old foundation's accessors open to them, and the facts below
@@ -226,7 +226,7 @@
   (declare (xargs :guard t))
   (list (fn-held-groups h) (fn-held-obligation-id h) (fn-held-content-subject h)
         (fn-held-release-evidence h) (fn-held-facts h) (fn-held-context h)
-        (fn-held-binding h)
+        nil   ; D43: the binding's slot, empty while the field is reverted
         (if (fn-cp-escapedp h) (list (fn-held-payload h) (fn-held-withdrawn h)) nil)))
 
 (defthm fn-scc-octet-listp-is-adt-octetsp
@@ -290,7 +290,7 @@
     (fn-held-make seq txid gen (fn-record-octets-string msgid) payload
                   (adt-l-nth 0 tree) (adt-l-nth 1 tree) (adt-l-nth 2 tree) (adt-l-nth 3 tree)
                   charge stamp (adt-l-nth 4 tree) (adt-l-nth 5 tree) (fn-cp-decoded nums)
-                  w (adt-l-nth 6 tree))))
+                  w)))
 
 (defun fn-cp-row-held (r)
   (declare (xargs :guard t :verify-guards nil))
@@ -387,8 +387,7 @@
                                  (adt-l-nth 0 tree) (adt-l-nth 1 tree) (adt-l-nth 2 tree)
                                  (adt-l-nth 3 tree) c st (adt-l-nth 4 tree) (adt-l-nth 5 tree)
                                  nums
-                                 (if e (adt-l-nth 1 (adt-l-nth 7 tree)) (if wp (cons wa wb) nil))
-                                 (adt-l-nth 6 tree))))
+                                 (if e (adt-l-nth 1 (adt-l-nth 7 tree)) (if wp (cons wa wb) nil)))))
    :hints (("Goal" :in-theory (e/d (fn-cp-held) (fn-cp-decoded fn-scc-decode-tree fn-scc-program fn-sccb-treep))))))
 
 (defthm fn-cp-row-held-of-row-of
@@ -416,9 +415,7 @@
 ; rows whole in their cells (the mutation half of each witness).
 (defconst *cp-w1*
   (fn-record-make 0 1 0 "<a@x>" (append (fn-record-string-octets "Subject: a") '(13 10 13 10 97 13 10))
-                  '("fn.test") "o" "s" "e" 1 5
-                  (fn-ab-for-received :post-d25
-                                      (append (fn-record-string-octets "Subject: a") '(13 10 13 10 97 13 10)))))
+                  '("fn.test") "o" "s" "e" 1 5))
 (defconst *cp-h1* (fn-held-with-numbers (fn-held-plain *cp-w1* 0) '(("fn.test" . 1))))
 (defconst *cp-h-badmsgid* (update-nth 3 5 *cp-h1*))
 (defconst *cp-h-bignum* (fn-held-with-numbers *cp-h1* (list (cons "fn.test" (expt 2 3000)))))

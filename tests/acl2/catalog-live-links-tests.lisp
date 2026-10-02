@@ -25,8 +25,7 @@
 (defun cllt-held (seq msgid groups)
   (declare (xargs :guard t :verify-guards nil))
   (let ((art (append (fn-record-string-octets "Subject: a") '(13 10 13 10 97 13 10))))
-    (fn-held-plain (fn-record-make seq (+ 1 seq) 0 msgid art groups "o" "s" "e" 1 5
-                                   (fn-ab-for-received :post-d25 art))
+    (fn-held-plain (fn-record-make seq (+ 1 seq) 0 msgid art groups "o" "s" "e" 1 5)
                    seq)))
 
 (defconst *cat-h0* (cllt-held 0 "<a@x>" '("fn.test")))

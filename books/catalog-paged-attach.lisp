@@ -36,10 +36,10 @@
 ; Two ground held rows: a plain article in one group and a crosspost.
 (defconst *cpa-w1*
   (fn-record-make 0 1 0 "<a@x>" (append (fn-record-string-octets "Subject: a") '(13 10 13 10 97 13 10))
-                  '("fn.test") "o" "s" "e" 1 5 (fn-ab-for-received :post-d25 '(97))))
+                  '("fn.test") "o" "s" "e" 1 5))
 (defconst *cpa-w2*
   (fn-record-make 1 2 0 "<b@x>" (append (fn-record-string-octets "Subject: b") '(13 10 13 10 98 13 10))
-                  '("fn.test" "fn.other") "o" "s" "e" 1 6 (fn-ab-for-received :post-d25 '(98))))
+                  '("fn.test" "fn.other") "o" "s" "e" 1 6))
 (defconst *cpa-h1* (fn-held-plain *cpa-w1* 0))
 (defconst *cpa-h2* (fn-held-plain *cpa-w2* 1))
 

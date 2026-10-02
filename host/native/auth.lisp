@@ -1,3 +1,14 @@
+;;; Stage 0 (planning/design-store-representation-2026-10-01.md section 4;
+;;; MODE 2026-10-01 section 3): the 7aad444ce module, less fnn-native-auth-read
+;;; (host/native/auth-read.lisp).  The account-adoption continuation
+;;; (host/native/account-adoption.lisp, books/consumer-account-adoption)
+;;; that bbf414f8f routed every start and reload through needs an owner
+;;; control binding nothing installs (fnn-owner-control-binding-make has no
+;;; caller), so it refused every start, credential file or not.  It is NOT
+;;; loaded (build.lisp; D46), and fnn-native-auth-adopt-config is parked in
+;;; host/native/auth-adoption-parked.lisp; both return to this path with
+;;; their producer (stage-0 unwired item 5).
+;;;
 ;;; Native AUTHINFO profile transport.
 ;;;
 ;;; This raw module reads one bounded regular file selected by ACL2 and hands
@@ -9,8 +20,6 @@
 (in-package "ACL2")
 
 (defvar *fnn-owner-startup-hooks* nil)
-
-
 
 (defvar *fnn-native-auth-live-path* nil
   "The credential file this owner was started with, for the reload
@@ -33,85 +42,12 @@
         (values (fnn-core 'fn-native-auth-host-config result) nil)
       (values nil (fnn-core 'fn-native-auth-host-reason result)))))
 
-;;; Actual account adoption is a continuation, not a table setter. The core
-;;; owns its source capture, funded candidate work, selected record and saved
-;;; publication decision. One serialized action is one bounded preparation or
-;;; durable publication quantum; concurrent configuration changes are checked
-;;; by the core before any later mutation. No credentials become usable from
-;;; a pending stage or merely from successful parsing of this file.
-;;;
-;;; NOTREADY source join: owner adoption begin/tick and typed account prepare/
-;;; finish must be installed together with the operation census and restart
-;;; producer. This caller deliberately has no direct-set-config fallback.
-(defun fnn-native-auth-adopt-config (service config bindings)
-  ;; The core uses actual CP incarnation/transaction coordinate for this
-  ;; nonauthorizing candidate. No entropy observation is requested before the
-  ;; genuine issuer; NIL records absence and confers no uniqueness authority.
-  (let ((entropy nil))
-    (multiple-value-bind (word answer)
-        (fnn-owner-serialized-with-control-turn
-          service nil
-          (lambda (slot nonce slots pool)
-            (let ((result (fnn-account-adoption-begin
-                            config bindings entropy slot nonce slots pool)))
-              (fnn-account-retain-control-effects service result)
-              (setf config nil bindings nil entropy nil)
-              (multiple-value-prog1 (values-list result) (setf result nil))))
-          :control #'fnn-account-adoption-epilogue)
-      (declare (ignore answer))
-      ;; The outer issuer exposes only core word/answer after scheduler
-      ;; cleanup. Missing installed binding invokes no allocating callback.
-      (unless (eq word :yield)
-        (return-from fnn-native-auth-adopt-config
-          (case word
-            (:accepted :accepted)
-            (:recovery-required (fnn-indeterminate "account begin requires recovery"))
-            ((:refused :unavailable :owner-control-unavailable) :refused)
-            (otherwise (fnn-fault "malformed account begin result"))))))
-    (loop
-      (multiple-value-bind (word answer)
-          (fnn-owner-serialized-with-control-turn
-            service nil
-            (lambda (slot nonce slots pool)
-              (let* ((result (fnn-account-adoption-tick slot nonce slots pool))
-                     (retained (fnn-account-retain-control-effects service result))
-                     (slots (third retained)) (pool (fourth retained))
-                     (step (fnn-core 'fn-cado-result-action retained))
-                     (kind (fnn-core 'fn-cad-action-kind step)))
-                (when (member kind '(:publish :configure))
-                  (let* ((publication
-                         (if (eq kind :configure)
-                             (fnn-owner-account-configuration-publication-locked
-                               service slot nonce slots pool)
-                           (fnn-owner-account-publication-locked service slot nonce slots pool)))
-                         (retained-publication (fnn-account-retain-control-effects service publication))
-                         (next-slots (third retained-publication))
-                         (next-pool (fourth retained-publication))
-                         (published (fnn-core 'fn-cado-result-action retained-publication)))
-                    (setf result publication)
-                    (when (eq (fnn-core 'fn-cad-action-kind published) :durable)
-                      ; The pooled collector still reads the registered
-                      ; genuine outcome internally, never this transport word.
-                      (setf result (fnn-account-adoption-collect slot nonce next-slots next-pool))
-                      (fnn-account-retain-control-effects service result))
-                    (setf publication nil retained-publication nil published nil)))
-                (setf step nil retained nil)
-                (multiple-value-prog1 (values-list result) (setf result nil))))
-            :control #'fnn-account-adoption-epilogue)
-        (declare (ignore answer))
-        (case word
-          (:yield nil)
-          (:accepted (return :accepted))
-          ((:refused :unavailable :owner-control-unavailable) (return :refused))
-          (:recovery-required
-           (fnn-indeterminate "account authority adoption requires recovery"))
-          (otherwise (fnn-fault "owner returned malformed account adoption action")))))))
-
 (defun fnn-native-auth-reload-config (service octets presentp max-credentials)
-  "Adopt the parsed credential file through the durable account continuation.
-The caller is outside the owner mutex; each bounded step acquires its own
-quantum. Answers :accepted only after the final typed account/config commit, or
-:refused while the previously admitted authority remains usable."
+  "Replace the running owner's credential table with ACL2's table for the
+credential file as it is now (a `principal set-password' against a running
+owner).  The caller holds the owner mutex.  A connection open at that moment
+keeps the table it pinned (fn-ocfg-open); the next connection pins this one.
+Answers :accepted, or :refused (the old table stays) with the reason logged."
   (multiple-value-bind (config reason)
       (fnn-native-auth-load-config octets presentp
                                    (first *fnn-native-auth-live-policy*)
@@ -121,10 +57,9 @@ quantum. Answers :accepted only after the final typed account/config commit, or
     (cond ((null config)
            (fnn-err "credential file reload refused: ~a" reason)
            :refused)
-          (t (fnn-native-auth-adopt-config
-              service config
-              (fnn-core 'fn-native-auth-host-load-bindings
-                        octets presentp max-credentials))))))
+          ((eq (fnn-owner-action 'fn-owner-set-auth-config config) :ok) :accepted)
+          (t (fnn-err "credential file reload: the owner rejected ACL2's table")
+             :refused))))
 
 (defun fnn-native-auth-publish-bindings (service octets presentp max-credentials)
   "Publish the credential file's login bindings into the owner's configuration.
@@ -159,16 +94,20 @@ MAX-CREDENTIALS is the store profile's max-credentials (D27, PRF-102)."
                                      tls-availablep max-credentials)
       (unless config
         (fnn-refuse "AUTHINFO profile refused: ~a" reason))
-      (unless (eq (fnn-native-auth-adopt-config
-                   service config
-                   (fnn-core 'fn-native-auth-host-load-bindings
-                             octets presentp max-credentials)) :accepted)
-        (fnn-refuse "owner refused durable AUTHINFO account adoption"))
-      ;; Publishing the file's signing/login bindings is part of the account
-      ;; transaction's final configuration fence, not a second publication
-      ;; after credentials have already become authoritative.
+      (unless (eq (fnn-owner-action 'fn-owner-set-auth-config config) :ok)
+        (fnn-fault "owner rejected ACL2-produced AUTHINFO configuration"))
+      ;; The same accepted file's login bindings (`signing' fields), for the
+      ;; posting policy, are published into the configuration (PKT-221,
+      ;; books/login-binding-live.lisp) before the listener opens.
       (setq *fnn-native-auth-live-path* path
             *fnn-native-auth-live-policy* (list requiredp protected-onlyp))
+      (unless (eq (fnn-owner-serialized
+                   service nil
+                   (lambda ()
+                     (fnn-native-auth-publish-bindings service octets presentp
+                                                       max-credentials)))
+                  :accepted)
+        (fnn-refuse "owner refused to publish the credential file's login bindings"))
       :accepted)))
 
 (defun fnn-native-auth-startup-hook (path requiredp protected-onlyp)

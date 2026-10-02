@@ -257,7 +257,7 @@
       "name": "live reconfiguration",
       "contract": "No reader observes a half-applied configuration change, and a crash at any instant recovers the live or the whole published generation.",
       "host": {
-        "function": "fn-ccp-publish",
+        "function": "fn-oclc-publish",
         "file": "host/owner-host.lisp"
       },
       "keystone": "fn-ocl-no-reader-observes-a-half-change",
@@ -267,9 +267,9 @@
       },
       "profile": "default",
       "latest": "CFG-LIVE accepted and CFG-LIVE-REFUSE refused; live_reconfiguration 11/11, admin 9/9, operator_verbs 18/18, profile_upgrade 5/5 ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).",
-      "obstruction": "The actual approved consumer publication wrapper requires a complete result/effect bridge to the old OCL publication property; fn-oclc-publish-is-publish covers only its inner predecessor subject.",
-      "next": "Prove the actual fn-ccp-publish wrapper preserves complete publication and approved consumer effects, then qualify the coherent caller.",
-      "pending_bridge": "The actual approved consumer publication wrapper requires a complete result/effect bridge to the old OCL publication property; fn-oclc-publish-is-publish covers only its inner predecessor subject."
+      "obstruction": "Stage 0 (MODE 2026-10-01 section 3): fn-owner-reconfigure-complete calls fn-oclc-publish directly (fn-oclc-publish-is-publish, PRF-274) because the consumer-authority proposal it consumed was never produced on the served path; the approved-consumer collector (fn-ccp-publish + fn-owner-authority-publication-install) stays in the tree unwired until the AUTHORITY-FIELD lane produces the authority binding.",
+      "next": "The AUTHORITY-FIELD lane: produce the authority binding on the stage path, prove it reaches the completion, then rewire fn-ccp-publish with its complete result/effect bridge to the OCL publication property and qualify the caller.",
+      "bridge": "fn-oclc-publish-is-publish"
     },
     {
       "id": "P7",

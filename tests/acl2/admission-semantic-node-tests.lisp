@@ -1,3 +1,4 @@
+; UNHOOKED stage 0 (2026-10-01): depends on the reverted FNCE consumer-authority event kinds in the wire-event grammar (planning/design-store-representation-2026-10-01.md section 4)
 (in-package "ACL2")
 (include-book "../../books/admission-semantic-node")
 (defconst *asn-node* (fn-node-initial-state nil 4))

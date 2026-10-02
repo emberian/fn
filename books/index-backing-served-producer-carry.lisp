@@ -1,3 +1,4 @@
+; UNHOOKED stage 0 (2026-10-01): depends on the reverted acceptance-binding field (planning/design-store-representation-2026-10-01.md section 5)
 ; Actual staged held16 and single-seal producer -> registered builder carry.
 ; No new runtime source hook, installer or supplied allowance boundary.
 (in-package "ACL2")

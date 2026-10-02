@@ -403,7 +403,7 @@
                       (fn-record-charge w) (fn-record-stamp w)
                       (fn-held-facts-of bytes)
                       (fn-held-context-of bytes keyring generation)
-                      nil nil (fn-row-binding w))
+                      nil nil)
         fn-arena)))
 
 ; From the octet buffer (the prepare): the wire record W supplies the
@@ -424,7 +424,7 @@
                       (fn-record-charge w) (fn-record-stamp w)
                       (fn-held-facts-of bytes)
                       (fn-held-context-of bytes keyring generation)
-                      nil nil (fn-row-binding w))
+                      nil nil)
         fn-arena)))
 
 ; -----------------------------------------------------------------------------
