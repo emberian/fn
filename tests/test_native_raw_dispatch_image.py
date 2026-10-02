@@ -1,0 +1,57 @@
+"""D40 raw dispatch in a built image: every raw-dispatched entry is trapped.
+
+`fn acl2 raw-traps' (developer images, host/native/acl2-session.lisp) calls
+each raw-dispatched entry's target outside the dispatcher -- by its literal
+symbol, by a symbol interned from its name, through its function binding --
+and requires the trap's fault each time; inside the dispatcher's extent the
+trap passes; the dispatcher applies the captured function object.  Every
+start of every image also runs fnn-raw-dispatch-traps-intact (fnn-main), so
+any native that starts an image checks no target was redefined.  That the
+dispatcher's calls serve is the native matrix (POST/ARTICLE/OVER) itself.
+"""
+import os
+import re
+import subprocess
+import unittest
+
+from tests.native_harness import ROOT, environment, executable, native_image
+
+
+class RawDispatchImageTests(unittest.TestCase):
+    def images(self):
+        found = []
+        for variable in ("FN_NATIVE_DEVELOPER_HOST", "FN_NATIVE_DTN_DEVELOPER_HOST"):
+            image = native_image(variable)
+            if executable(image):
+                found.append(image)
+        if not found:
+            self.skipTest("no developer image")
+        return found
+
+    def test_every_raw_dispatched_entry_is_trapped(self):
+        for image in self.images():
+            with self.subTest(image=str(image)):
+                run = subprocess.run([str(image), "--fn", "acl2", "raw-traps"], cwd=ROOT,
+                                     env=environment({}), capture_output=True, text=True,
+                                     timeout=120)
+                self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+                summary = re.search(r"^FN_RAW_TRAPS (\d+) intact=(\d+) bad=(\d+)$",
+                                    run.stdout, re.M)
+                self.assertIsNotNone(summary, run.stdout + run.stderr)
+                count, intact, bad = (int(g) for g in summary.groups())
+                self.assertGreater(count, 0)
+                self.assertEqual((intact, bad), (count, 0), run.stdout)
+                rows = re.findall(r"^FN_RAW_TRAP (\S+) (.*)$", run.stdout, re.M)
+                self.assertEqual(len(rows), count, run.stdout)
+                for name, fields in rows:
+                    self.assertEqual(
+                        fields,
+                        "direct=trapped interned=trapped binding=trapped inside=passed "
+                        "dispatch=captured", name)
+                if os.environ.get("FN_RAW_DISPATCH_EXPECT"):
+                    expected = set(os.environ["FN_RAW_DISPATCH_EXPECT"].split(","))
+                    self.assertLessEqual(expected, {name for name, _ in rows}, run.stdout)
+
+
+if __name__ == "__main__":
+    unittest.main()

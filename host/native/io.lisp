@@ -1202,6 +1202,74 @@ offered to the writer while the owner runs (PKT-508), else written here."
 (defvar *fnn-dispatch-counterpart* nil
   "T when the developer selector keeps the executable-counterpart path.")
 
+;;; THE TRAP (raw-dispatch-3; Codex r34: a scan of the host's source cannot
+;;; see an intern-built name, a defconstant initializer, a redefinition or an
+;;; unscanned file, so the guarantee lives in the image, not the text).  At
+;;; installation each raw-dispatched function OBJECT is captured into
+;;; *fnn-raw-captured* and the symbol's function binding is REPLACED by a
+;;; trap.  The dispatcher (fnn-call, and a callback fnn-fixed-raw-callback
+;;; hands out) applies the captured object inside *fnn-in-core*; the trap
+;;; runs the captured object only inside that extent -- where the caller is
+;;; ACL2 code: the raw body of a guard-verified function, or a *1*
+;;; counterpart that has just checked the guard -- and otherwise faults.  So
+;;; a host call of a raw-dispatched function that skips the dispatcher faults
+;;; however it is spelled: a literal call compiled into a raw host file,
+;;; funcall/apply of an interned or found symbol, symbol-function, a
+;;; defconstant initializer or load-time form after installation (installed
+;;; right after io.lisp loads, before every other raw host file).  A later
+;;; redefinition replaces the trap; fnn-raw-dispatch-traps-intact refuses
+;;; that at the end of the build and again at every start (fnn-main).
+;;; tools/raw_dispatch_rule.py stays as an early lint over the source.
+;;; What the trap does not see: host code running INSIDE the extent (an
+;;; attachment or callback the core calls back into) -- none of the
+;;; raw-dispatched functions is reachable that way by a host body today, and
+;;; the lint refuses a host body that names one.
+
+(define-condition fnn-raw-dispatch-trap (fnn-store-fault) ())
+
+(defvar *fnn-in-core* nil
+  "T inside the dispatcher's dynamic extent: a raw-dispatched function's
+trap runs its captured object only here.")
+
+(defvar *fnn-raw-captured* (make-hash-table :test 'eq)
+  "raw-dispatched function symbol -> its function object, captured at installation")
+
+(defvar *fnn-raw-traps* (make-hash-table :test 'eq)
+  "raw-dispatched function symbol -> the trap installed as its function binding")
+
+(defun fnn-raw-trap-for (raw captured)
+  (lambda (&rest args)
+    (if *fnn-in-core*
+        (apply captured args)
+      (error 'fnn-raw-dispatch-trap
+             :message (format nil "raw-dispatch: ~(~a~) called outside the dispatcher (D40: only fnn-call may skip its carried guard)"
+                              raw)))))
+
+(defun fnn-raw-trap-install (raw)
+  "Capture RAW's function object and replace its binding by a trap; idempotent."
+  (let ((current (symbol-function raw)))
+    (unless (eq current (gethash raw *fnn-raw-traps*))
+      (let ((trap (fnn-raw-trap-for raw current)))
+        (setf (gethash raw *fnn-raw-captured*) current
+              (gethash raw *fnn-raw-traps*) trap
+              (symbol-function raw) trap)))
+    raw))
+
+(defun fnn-raw-dispatch-traps-intact ()
+  "Fault unless every raw-dispatched target's binding is still its trap; the count."
+  (maphash (lambda (name raw)
+             (let ((trap (gethash raw *fnn-raw-traps*)))
+               (unless (and trap (fboundp raw) (eq (symbol-function raw) trap))
+                 (fnn-fault "raw-dispatch: ~(~a~)'s target ~(~a~) is no longer trapped (redefined after installation)"
+                            name raw))))
+           *fnn-raw-dispatch*)
+  (hash-table-count *fnn-raw-traps*))
+
+(defun fnn-raw-captured (raw)
+  "The captured function object of the raw-dispatched target RAW."
+  (or (gethash raw *fnn-raw-captured*)
+      (fnn-fault "raw-dispatch: ~(~a~) has no captured function (not installed)" raw)))
+
 (defun fnn-install-raw-dispatch (&key (report t))
   "Fill *fnn-raw-dispatch* from the fn-interfaces table of the loaded world:
 the :raw-with and :raw-guarded entries, checked against the world; the count."
@@ -1239,6 +1307,7 @@ the :raw-with and :raw-guarded entries, checked against the world; the count."
             (when (and guarded (not (compiled-function-p (symbol-function raw))))
               (error "fnn-install-raw-dispatch: ~a has no compiled guarded callback" name))
             (setf (gethash name *fnn-raw-dispatch*) raw)
+            (fnn-raw-trap-install raw)
             (when report
               (format t "~&FN_RAW_DISPATCH ~(~a~) ~(~a~) invariant-risk=~a with=~(~a~)~%"
                       name (symbol-class name wrld)
@@ -1250,9 +1319,11 @@ the :raw-with and :raw-guarded entries, checked against the world; the count."
   "The function fnn-call applies for NAME: its raw definition when NAME is
 raw-dispatched and the counterpart selector is off, else its executable
 counterpart."
-  (or (and (not *fnn-dispatch-counterpart*)
-           (gethash name *fnn-raw-dispatch*))
-      (fnn-counterpart name)))
+  (let ((raw (and (not *fnn-dispatch-counterpart*)
+                  (gethash name *fnn-raw-dispatch*))))
+    (if raw
+        (fnn-raw-captured raw)
+      (fnn-counterpart name))))
 
 ;;; The entry guard (lane entry-guards, 2026-09-27).  Every call into the
 ;;; core passes through fnn-call; before the counterpart runs, the host checks
@@ -1380,7 +1451,9 @@ execution-boundary fault, never a claim that the core refused an input."
     (setq values
           (catch 'raw-ev-fncall
             (handler-case
-                (prog1 (multiple-value-list (apply (fnn-dispatch-function name) args))
+                (prog1 (multiple-value-list
+                        (let ((*fnn-in-core* t))
+                          (apply (fnn-dispatch-function name) args)))
                   (setq outcome :ok))
               (serious-condition (c)
                 (setq outcome (princ-to-string c))
@@ -1403,10 +1476,13 @@ execution-boundary fault, never a claim that the core refused an input."
       (fnn-fault "fixed callback ~(~a~) is missing verified raw dispatch" name))
     (when (macro-function raw)
       (fnn-fault "fixed callback ~(~a~) names a macro, not a callable function" name))
-    (let ((function (symbol-function raw)))
+    (let ((function (fnn-raw-captured raw)))
       (unless (compiled-function-p function)
         (fnn-fault "fixed callback ~(~a~) is not compiled" name))
-      function)))
+      ;; The callback is the dispatcher's: its calls run inside the extent.
+      (lambda (&rest args)
+        (let ((*fnn-in-core* t))
+          (apply function args))))))
 
 (defmacro fnn-core-mv (name call)
   "Preserve fixed CALL's scalar MVs without an argument or result container.
@@ -8605,6 +8681,9 @@ of standard input; at most 512 octets (the XREDEEM PASS line's bound)."
                  (fnn-developer-selector-gate argv)
                  (unless (eq (fnn-global 'guard-checking-on) t)
                    (fnn-fault "guard-checking-on is not t in the saved image"))
+                 ;; D40: every raw-dispatched target still trapped (a
+                 ;; redefinition after installation refuses the start).
+                 (fnn-raw-dispatch-traps-intact)
                  ;; D40: a developer image may keep the counterpart path.
                  (setq *fnn-dispatch-counterpart*
                        (equal (fnn-developer-selector "FN_NATIVE_DISPATCH_COUNTERPART") "1"))

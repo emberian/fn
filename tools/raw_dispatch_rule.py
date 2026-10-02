@@ -7,10 +7,18 @@ generated `fn-interfaces' table (host/native/io.lisp fnn-dispatch-function,
 fnn-fixed-raw-callback), and a def-carried open whose premise is produced
 (:produced) is never such an entry.  Codex review r28 (F1) found the hole:
 `(funcall 'F ...)', `(apply #'F ...)', a symbol held in a variable, a
-symbol built by `intern' -- each reaches F with no table and no lint.  This
-rule closes it BY CONSTRUCTION over the raw-loaded host files
-(tools/ledger.py raw_host_paths): it does not chase where a book symbol
-could flow, it refuses every way one could be made.
+symbol built by `intern' -- each reaches F with no table and no lint.
+
+AN EARLY LINT, NOT THE GUARANTEE (raw-dispatch-3, after Codex r34: a scan of
+source text cannot see a defconstant initializer, a redefinition, a
+package-qualified intern, an unscanned loaded file).  The guarantee is the
+image's: host/native/io.lisp THE TRAP replaces each raw-dispatched
+function's binding by a trap that faults outside the dispatcher, however the
+call is spelled (tests/test_native_raw_dispatch_trap.py, the r34 bypasses as
+cases; tests/test_native_raw_dispatch_image.py, a built image).  This rule
+still refuses, early and by file and line, every way it sees over the
+raw-loaded host files (tools/ledger.py raw_host_paths) that a book symbol
+could be made or reach a function position.
 
 NAME   A book function's symbol occurs -- quoted, `#'', inside quoted data
        or as a backquote template's head -- only as the name argument of a
@@ -184,9 +192,20 @@ DIGEST = ("the BLAKE3 reference/native pair (host/native/digest.lisp): the ACL2 
 LOOKUPS = ("developer lookup counters, FN_NATIVE_COUNT_LOOKUPS only (fnn-developer-"
            "selector; a production image refuses to start with it set): "
            "sb-int:encapsulate wraps each listed read function to count its calls")
+RAWTRAPS = ("developer `acl2 raw-traps' probe (developer images only): calls each trapped target OUTSIDE the dispatcher -- literal, interned, function binding -- and requires the trap's fault (io.lisp THE TRAP)")
 ALLOW: list[Allow] = [
     Allow("WORLD", "host/native/io.lisp", "fnn-install-raw-dispatch",
           INTERNAL + " (reads fn-interfaces off the world once, at image build)"),
+    Allow("CALL", "host/native/io.lisp", "fnn-install-raw-dispatch",
+          INTERNAL + " (hands each accepted target to fnn-raw-trap-install)"),
+    Allow("WORLD", "host/native/io.lisp", "fnn-raw-trap-install",
+          INTERNAL + " (THE TRAP: captures the target's function object and replaces "
+          "its binding by the trap, at installation)"),
+    Allow("CALL", "host/native/io.lisp", "fnn-raw-trap-install",
+          INTERNAL + " (THE TRAP: the captured object goes only into *fnn-raw-captured* "
+          "and the trap closure)"),
+    Allow("WORLD", "host/native/io.lisp", "fnn-raw-dispatch-traps-intact",
+          INTERNAL + " (THE TRAP: compares each target's binding with its trap)"),
     Allow("WORLD", "host/native/io.lisp", "fnn-entry-guard-spec",
           INTERNAL + " (reads the entry's formals, stobjs-in and guard, cached)"),
     Allow("WORLD", "host/native/io.lisp", "fnn-trailing-kind",
@@ -224,6 +243,10 @@ ALLOW: list[Allow] = [
     Allow("WORLD", "host/native/io.lisp", "fnn-install-lookup-counters", LOOKUPS),
     Allow("CALL", "host/native/io.lisp", "fnn-lookup-counter", LOOKUPS),
     Allow("CALL", "host/native/io.lisp", "fnn-lookup-walk-counter", LOOKUPS),
+    Allow("CALL", "host/native/acl2-session.lisp", "fnn-command-acl2", RAWTRAPS),
+    Allow("MAKE", "host/native/acl2-session.lisp", "fnn-command-acl2", RAWTRAPS),
+    Allow("NAMEVAR", "host/native/acl2-session.lisp", "fnn-command-acl2", RAWTRAPS),
+    Allow("WORLD", "host/native/acl2-session.lisp", "fnn-command-acl2", RAWTRAPS),
     Allow("MAKE", "host/native/bp.lisp", "fnn-bp-profile-points",
           "developer BP profile, FN_BP_TEST_PROFILE only (a production image refuses it): "
           "names read from +fnn-bp-profile-names+ and the *1* package for sb-profile"),
@@ -240,13 +263,6 @@ PENDING: list[Allow] = [
           "(create-fn-hist)) instead of intern + eval", pending=True),
     Allow("WORLD", "host/native/owner.lisp", "fnn-fresh-stobj",
           STAGE0 + "the eval of (CREATOR) goes with the intern", pending=True),
-    Allow("NAME", "host/native/owner.lisp", "fnn-owner-chunk-span-no-io",
-          STAGE0 + "fnn-core-receiver-state is defined nowhere (host load); dispatch "
-          "through a defined state dispatcher", pending=True),
-    Allow("NAME", "host/native/owner.lisp", "fnn-owner-unavailable-line",
-          STAGE0 + "the undefined fnn-core-receiver-state, as above", pending=True),
-    Allow("NAME", "host/native/owner.lisp", "fnn-owner-resource-unavailable-line",
-          STAGE0 + "the undefined fnn-core-receiver-state, as above", pending=True),
 ]
 
 

@@ -25,6 +25,9 @@
        ;; A nested LD over standard input: fn-native-entry itself runs inside
        ;; the one-form LD that :return-from-lp starts, with its prompt and
        ;; printing switched off; this loop restores both for its own reads.
+       ;; ACL2's loop evaluates through *1* counterparts, which check each
+       ;; guard before the raw body: a dispatcher (io.lisp, THE TRAP).
+       (let ((*fnn-in-core* t))
        (ld-fn (list (cons 'standard-oi *standard-oi*)
                     (cons 'standard-co *standard-co*)
                     (cons 'proofs-co *standard-co*)
@@ -34,11 +37,46 @@
                     (cons 'ld-post-eval-print :command-conventions)
                     (cons 'ld-error-action :continue))
               state
-              nil))
+              nil)))
      (finish-output *standard-output*)
      +fnn-exit-ok+)
+    ((and (string= command "raw-traps") (null args))
+     ;; D40 (io.lisp, THE TRAP): for every raw-dispatched entry, a host call
+     ;; of its target outside the dispatcher faults however it is spelled
+     ;; (the literal symbol, a symbol interned from its name, its function
+     ;; binding), the trap passes inside the dispatcher's extent (the
+     ;; captured function then refuses the empty argument list itself), and
+     ;; the dispatcher applies the captured object.  One line per entry.
+     (flet ((outcome (thunk)
+              (handler-case (progn (funcall thunk) "returned")
+                (fnn-raw-dispatch-trap () "trapped")
+                (serious-condition () "passed"))))
+       (let ((bad 0) (names nil))
+         (maphash (lambda (name raw) (declare (ignore raw)) (push name names))
+                  *fnn-raw-dispatch*)
+         (dolist (name (sort names #'string< :key #'symbol-name))
+           (let* ((raw (gethash name *fnn-raw-dispatch*))
+                  (direct (outcome (lambda () (funcall raw))))
+                  (interned (outcome (lambda ()
+                                       (funcall (intern (symbol-name raw)
+                                                        (symbol-package raw))))))
+                  (binding (outcome (lambda () (funcall (symbol-function raw)))))
+                  (inside (outcome (lambda () (let ((*fnn-in-core* t)) (funcall raw)))))
+                  (dispatch (if (eq (fnn-dispatch-function name)
+                                    (gethash raw *fnn-raw-captured*))
+                                "captured" "other")))
+             (unless (and (equal direct "trapped") (equal interned "trapped")
+                          (equal binding "trapped") (equal inside "passed")
+                          (or *fnn-dispatch-counterpart* (equal dispatch "captured")))
+               (incf bad))
+             (fnn-out "FN_RAW_TRAP ~(~a~) direct=~a interned=~a binding=~a inside=~a dispatch=~a"
+                      name direct interned binding inside dispatch)))
+         (fnn-out "FN_RAW_TRAPS ~d intact=~d bad=~d"
+                  (length names) (fnn-raw-dispatch-traps-intact) bad)
+         (if (zerop bad) +fnn-exit-ok+ +fnn-exit-fault+))))
     (t
      (fnn-out "usage: fn acl2 session   (developer image: ACL2's loop over this image's world, forms on standard input)")
+     (fnn-out "       fn acl2 raw-traps (developer image: each raw-dispatched entry's trap, D40)")
      (if (string= command "help") +fnn-exit-ok+ +fnn-exit-usage+))))
 
 (fnn-register-developer-verb "acl2" #'fnn-command-acl2)

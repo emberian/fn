@@ -16,9 +16,12 @@ class ScalarMVTests(unittest.TestCase):
     def test_actual_bridge_preserves_scalar_values_and_fails_closed(self):
         selected = []
         for form in proof_repl.forms((ROOT / "host/native/io.lisp").read_text()):
-            if proof_repl.head_and_name(form)[1] in {"fnn-fixed-raw-callback", "fnn-core-mv"}:
+            if proof_repl.head_and_name(form)[1] in {
+                    "fnn-fixed-raw-callback", "fnn-core-mv", "fnn-raw-dispatch-trap", "*fnn-in-core*",
+                    "*fnn-raw-captured*", "*fnn-raw-traps*", "fnn-raw-trap-for", "fnn-raw-trap-install",
+                    "fnn-raw-captured", "fnn-fixed-callback-fault", "fnn-fixed-callback-fail"}:
                 selected.append(form)
-        self.assertEqual(len(selected), 2)
+        self.assertEqual(len(selected), 11)
         driver = '''(defpackage "ACL2" (:use "COMMON-LISP"))
 (in-package "ACL2")
 (define-condition fnn-store-fault (error) ((message :initarg :message)))
@@ -36,6 +39,7 @@ class ScalarMVTests(unittest.TestCase):
       (compile nil '(lambda (token controller pool)
         (values :range 3 5 8 controller pool token))))
 (setf (gethash 'input-next *fnn-raw-dispatch*) 'raw-input-next)
+(fnn-raw-trap-install 'raw-input-next)
 (let ((callback (fnn-fixed-raw-callback 'input-next))
       (controller (vector 0)) (pool (vector nil :uninitialized nil)))
   (multiple-value-bind (word start count end new-controller new-pool token)
@@ -48,6 +52,7 @@ class ScalarMVTests(unittest.TestCase):
       (let ((sb-ext:*evaluator-mode* :interpret)) (eval '(lambda () :unprepared))))
 (setf (gethash 'not-compiled *fnn-raw-dispatch*) 'not-compiled)
 (assert (not (compiled-function-p (symbol-function 'not-compiled))))
+(fnn-raw-trap-install 'not-compiled)
 (expect-fault (lambda () (fnn-fixed-raw-callback 'not-compiled)))
 (assert (zerop (length (multiple-value-list (fnn-core-mv 'zero (values))))))
 (assert (eq (fnn-core-mv 'one (values :refused)) :refused))

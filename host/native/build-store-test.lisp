@@ -125,6 +125,9 @@
           (fnn-deflate-reset)
           (fnn-main)
           (values nil :exited *the-live-state*))
+        ; D40: no raw host file loaded since io.lisp redefined a trapped
+        ; raw-dispatched function (io.lisp, THE TRAP); fnn-main rechecks.
+        (fnn-raw-dispatch-traps-intact)
         (setq *print-startup-banner* nil))
 (defttag nil)
 (value-triple (prog2$ (cw "FN_NATIVE_BUILD_LOADED~%") :loaded))

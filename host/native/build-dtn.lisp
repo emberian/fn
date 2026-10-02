@@ -411,6 +411,9 @@
         ; The saved image is a host, not a session: no ACL2 banner on stdout,
         ; and `--noinform' below keeps SBCL's own banner off it too.  The
         ; `model' verb writes reply octets to stdout and nothing else may.
+        ; D40: no raw host file loaded since io.lisp redefined a trapped
+        ; raw-dispatched function (io.lisp, THE TRAP); fnn-main rechecks.
+        (fnn-raw-dispatch-traps-intact)
         (setq *print-startup-banner* nil))
 (defttag nil)
 (value-triple (prog2$ (cw "FN_NATIVE_BUILD_LOADED~%") :loaded))
