@@ -30,7 +30,9 @@
 #     be the expected revision); `bin/fn --version` must print it too
 #     (`fn VERSION (REV12)` from a versioned release, VERSION an entry of
 #     D37's release sequence; `fn REV` before VERSION).
-#  4. the store: `--store fresh` (default) inits TARGET/store and enrols the
+#  4. the store (its record TARGET/DEPLOY-STORE is written once the whole
+#     step held; a store without it is an interrupted run's and is refused):
+#     `--store fresh` (default) inits TARGET/store and enrols the
 #     retired credentials.txt logins (the password fed on stdin, never argv);
 #     `--store import` is `cp -a` of the STOPPED retired store (the release
 #     has no store import verb), control.sock* dropped, and `store STORE
@@ -55,9 +57,12 @@ MODE=
 TARGET=
 ROLLBACK=
 OLD_NODE=/tank/fn/node
-TARBALL=/tank/fn/scratch/qual-69046a76/friends/release/fn-69046a76798b-linux-x86_64.tar.gz
-TAR_SHA=1a2a61e997c086c333760cf27b2e3b1eaf0fa0101aa54dda95abbc3b9e174003
-EXPECT_REV=69046a76798b8be6169eeed5a66cc46fbe399e51
+# No default release (S140, sweep 2026-10-03): a deploy names its tarball,
+# digest and revision, or is refused; a forgotten flag never deploys an old
+# ungated build from a scratch path.
+TARBALL=
+TAR_SHA=
+EXPECT_REV=
 UNIT=fn-node.service
 UNIT_DIR=${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user
 STORE=fresh
@@ -301,11 +306,16 @@ step "disk"; check_disk "$TARGET"
 
 say "  free: $(df -P -h "$(p=$TARGET; while [ ! -e "$p" ]; do p=$(dirname "$p"); done; echo "$p")" | tail -1)"
 
-step "tarball $TARBALL"
+step "tarball ${TARBALL:-(none named)}"
+[ -n "$TARBALL" ] && [ -n "$TAR_SHA" ] || die "a deploy names its release: --tarball PATH and --sha256 HEX are required (no default)"
 [ -f "$TARBALL" ] || die "no tarball $TARBALL"
 got=$(sha256sum "$TARBALL" | cut -d' ' -f1)
 [ "$got" = "$TAR_SHA" ] || die "tarball sha256 $got, expected $TAR_SHA"
 say "  sha256 $got ok"
+case $EXPECT_REV in
+  *[!0-9a-f]*|'') die "--expect-rev REV40 is required: the full commit the release was built from (no default)" ;;
+esac
+[ ${#EXPECT_REV} -eq 40 ] || die "--expect-rev must be a full 40-hex commit, not '$EXPECT_REV'"
 
 # Where the retired node is: this run's, or an earlier run's (idempotent).
 RETIRED=
@@ -405,9 +415,20 @@ if [ -f "$TARGET/credentials.txt" ]; then say "  skip: present"
 else run cp -p "$RETIRED/credentials.txt" "$TARGET/credentials.txt"; fi
 
 step "store ($STORE)"
-if [ -d "$TARGET/store" ]; then say "  skip: $TARGET/store present"
+# The step's postcondition is its record, $TARGET/DEPLOY-STORE, written only
+# after the whole step held (S064, sweep 2026-10-03): the copy, the socket
+# drop, the node secret and the rebind; or the init and every login's
+# enrolment.  A store directory without it is an interrupted run's (a copy
+# cut short, an enrolment that died): refused by name, never taken as done
+# and never deleted.  The import copies beside the store and renames into
+# place, so a partial copy never sits at the store's path.
+STORE_DONE=$TARGET/DEPLOY-STORE
+if [ -f "$STORE_DONE" ] && [ -d "$TARGET/store" ]; then say "  skip: $TARGET/store present and complete ($(head -1 "$STORE_DONE"))"
+elif [ -e "$TARGET/store" ]; then
+  die "$TARGET/store is present without $STORE_DONE: an earlier run stopped inside this step (a partial copy or enrolment); move it aside (mv $TARGET/store $TARGET/store.interrupted-$STAMP) and run again"
 elif [ "$STORE" = import ]; then
-  run cp -a "$RETIRED/store" "$TARGET/store"
+  run cp -a "$RETIRED/store" "$TARGET/store.copy-$STAMP"
+  run mv -T "$TARGET/store.copy-$STAMP" "$TARGET/store"
   [ "$MODE" = go ] && for s in "$TARGET"/store/control.sock*; do [ -e "$s" ] && mv "$s" "$TARGET/store.dropped-$(basename "$s")-$STAMP"; done
   say "  imported by cp -a of the stopped store"
   # SEC-006: a store from before the node key files gets its secret once
@@ -419,6 +440,7 @@ elif [ "$STORE" = import ]; then
   # store older than the filesystem record has none): record where it is
   # now, keeping its durability policy.
   run clean_env "$FN" operator "$TARGET/fn.toml" store rebind-filesystem
+  [ "$MODE" = go ] && printf 'store=import from=%s stamp=%s\n' "$RETIRED/store" "$STAMP" >"$STORE_DONE"
 else
   # shellcheck disable=SC2086
   run clean_env "$FN" operator "$TARGET/fn.toml" init $INIT_ARGS $NODE_GROUPS
@@ -429,6 +451,11 @@ else
         || die "principal set-password $u failed"
       say "  enrolled $u (posting)"
     done
+    # The pipeline's die ends only its subshell; every login must be in.
+    want=$(awk 'NF>=2 {print $1}' "$TARGET/credentials.txt" | wc -l | tr -d ' ')
+    got=$(grep -c '^  enrolled .* (posting)$' "$LOG" || true)
+    [ "$got" -ge "$want" ] || die "enrolled $got of $want credentials.txt logins; $STORE_DONE not written"
+    printf 'store=fresh logins=%s stamp=%s\n' "$want" "$STAMP" >"$STORE_DONE"
   else echo "  would: principal set-password LOGIN --posting for each credentials.txt login (stdin)"; fi
 fi
 if [ "$MODE" = go ]; then clean_env "$FN" operator "$TARGET/fn.toml" status 2>&1 | head -3 | sed 's/^/  /' | tee -a "$LOG"; fi

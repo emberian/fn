@@ -133,6 +133,9 @@ check "refuses FN_TEST_* in its environment" refuses 'FN_TEST_X' env FN_TEST_X=1
 check "refuses a tank target without --scratch" refuses 'never tank' dfr --go --old-node "$OLD" --unit "$UNIT" --tarball "$TARBALL" --sha256 "$TAR_SHA" "$NEW1"
 check "refuses a scratch flag outside /tank/fn/scratch" refuses 'never tank' dfr --go --old-node "$OLD" --unit "$UNIT" --tarball "$TARBALL" --sha256 "$TAR_SHA" --scratch /tank/fn/deploy-fresh-never
 check "refuses a wrong tarball digest before touching anything" refuses 'tarball sha256' dfr --go --old-node "$OLD" --unit "$UNIT" --tarball "$TARBALL" --sha256 0000 --scratch "$NEW1"
+# S140: no default release; a deploy that names none is refused before the stop.
+check "refuses a deploy that names no tarball" refuses 'tarball PATH and --sha256 HEX are required' dfr --go --old-node "$OLD" --unit "$UNIT" --scratch "$NEW1"
+check "refuses a deploy that names no revision" refuses 'expect-rev REV40 is required' dfr --go --old-node "$OLD" --unit "$UNIT" --tarball "$TARBALL" --sha256 "$TAR_SHA" --scratch "$NEW1"
 check "refuses a rollback of a directory it never retired" refuses 'not a node this script retired' dfr --go $COMMON --rollback "$OLD"
 
 # ---- the disk choice -------------------------------------------------------
@@ -171,6 +174,15 @@ set +e; dfr --go $COMMON --store import "$NEW1" >"$RUN/import-again.out" 2>&1; r
 check "a second --go exits 0" [ $rc -eq 0 ]
 check "a second --go skipped every step" sh -c "grep -q 'resuming' '$RUN/import-again.out' && grep -q 'skip: .*present' '$RUN/import-again.out' && grep -q 'skip: already points' '$RUN/import-again.out' && [ $m1 = \$(stat -c %Y '$NEW1/fn.toml') ] && [ \$(ls -d '$OLD'-retired-* | wc -l) = 1 ]"
 
+# ---- S064: a store without its record is an interrupted run's, never done ----------
+mv "$NEW1/DEPLOY-STORE" "$RUN/DEPLOY-STORE.kept"
+set +e; dfr --go $COMMON --store import "$NEW1" >"$RUN/interrupted.out" 2>&1; rc=$?; set -e
+check "a store without DEPLOY-STORE is refused, not skipped" sh -c "[ $rc -eq 2 ] && grep -q 'present without $NEW1/DEPLOY-STORE' '$RUN/interrupted.out' && ! grep -q 'DEPLOY DONE' '$RUN/interrupted.out' && [ -d '$NEW1/store' ]"
+mv "$RUN/DEPLOY-STORE.kept" "$NEW1/DEPLOY-STORE"
+set +e; dfr --go $COMMON --store import "$NEW1" >"$RUN/import-third.out" 2>&1; rc=$?; set -e
+check "with its record back, --go completes again" sh -c "[ $rc -eq 0 ] && grep -q 'present and complete' '$RUN/import-third.out'"
+check "with its record back, the unit is active" active
+
 # ---- rollback ---------------------------------------------------------------------
 set +e; dfr --go $COMMON --rollback "$R1" >"$RUN/rollback1.out" 2>&1; rc=$?; set -e
 sed 's/^/     | /' "$RUN/rollback1.out"
@@ -186,6 +198,7 @@ set +e; dfr --go $COMMON --init-args "$SMALL" --store fresh "$NEW2" >"$RUN/fresh
 sed 's/^/     | /' "$RUN/fresh.out"
 check "fresh deploy exits 0" [ $rc -eq 0 ]
 check "fresh: a new store, the login enrolled, health 0, probe held" sh -c "grep -q 'enrolled tester' '$RUN/fresh.out' && grep -q 'health rc=0' '$RUN/fresh.out' && grep -q 'probe tester.* rc=0' '$RUN/fresh.out'"
+check "fresh: the store step's record names every login" grep -q '^store=fresh logins=1 ' "$NEW2/DEPLOY-STORE"
 check "fresh: the store starts empty (GROUP 211 0 before the probe's post)" grep -q '211 0 ' "$RUN/fresh.out"
 check "fresh: the credentials file is not in argv or the log" sh -c "! grep -q '$PW' '$RUN/fresh.out' && ! grep -rq '$PW' '$BASE/deploy-fresh-logs'"
 R2=$(ls -d "$OLD"-retired-* 2>/dev/null | head -1)
