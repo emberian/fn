@@ -345,6 +345,16 @@
   :rule-classes :linear
   :hints (("Goal" :use adt-pg-floor-mod)))
 
+; Exported type fact: an instance's guard needs the index in the page to be a
+; number even in a caller's theory without arithmetic books (def-representation-
+; tests' drt-held$c-addrow failed its guard there: (rationalp (mod np 64))).
+(defthm adt-pg-mod-integerp
+  (implies (and (integerp n) (posp r))
+           (integerp (mod n r)))
+  :rule-classes :type-prescription
+  :hints (("Goal" :use ((:instance adt-pg-floor-mod (n (nfix n))))
+           :cases ((natp n)))))
+
 (local
  (defthm adt-pg-floor-below
    (implies (and (natp n) (posp r) (natp np) (< n (* r np)))
