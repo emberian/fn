@@ -33,18 +33,12 @@ this laptop: `tools/certify_books.py` when a local run finishes and
 no box, lane or gate in the path, because the box, the lane and the gate are
 exactly the things that get deleted.
 
-`planning/evidence/manifests/` is ignored by default and a manifest is
-tracked with `git add -f`, which `sync` does.  Committing a manifest is
-therefore the same act as citing the run: an exploratory run nobody cites
-stays out of the history, and every run somebody cites is in it.
-
-Why the archive stays ignored (tooling-obstructions, 2026-09-28, asked to
-un-ignore it so lanes stop typing `git add -f`): a manifest is 1 kB to
-2.4 MB (the 2,458 tracked ones are 397 MB), every certify run on every
-lane files one, and un-ignoring would put each exploratory run in `git
-status` and one `git add` away from the history.  `add RUN-ID...` is the
-one step instead: it files the manifest when this disk has the run and
-tracks it, citation or not; the farm and the runner print that line.
+`planning/evidence/manifests/` holds ignored local drafts. `add RUN-ID...`
+archives the exact bytes by SHA-256 and stages planning/evidence-index.tsv;
+`sync --add` does this for cited runs. Commit the index line with the claim.
+The logical evidence name is unchanged; readers verify bytes through
+`evidence_store`, including on clones without the draft. Exploratory runs
+stay out of Git. The farm and runner print the filing command.
 
     python3 tools/evidence_manifests.py archive build/acl2/certify-...
     python3 tools/evidence_manifests.py add RUN-ID... [--from DIR ...]
@@ -407,7 +401,7 @@ def add_command(run_id: str) -> str:
 
 
 def cmd_add(args: argparse.Namespace, root: Path = ROOT) -> int:
-    """File (when needed) and track the named runs' manifests: `git add -f`."""
+    """Archive named manifests and stage their verified evidence index lines."""
     wanted = []
     for word in args.run_ids:
         match = RUN_ID.search(word)
@@ -654,7 +648,7 @@ def main(argv: list[str] | None = None) -> int:
     one.add_argument("paths", nargs="+")
     one.set_defaults(func=cmd_archive)
 
-    add = subs.add_parser("add", help="file and track (git add -f) the named runs' manifests")
+    add = subs.add_parser("add", help="archive named manifests and stage their index lines")
     add.add_argument("run_ids", nargs="+", metavar="RUN-ID",
                      help="certify-<UTC>-<pid>, a farm run-<UTC>-<hex> (mapped "
                           "through its fetched build/farm log), or a path or text "
@@ -667,7 +661,7 @@ def main(argv: list[str] | None = None) -> int:
     sync.add_argument("--from", dest="source", action="append", default=[],
                       help="an extra directory of certify-* run directories")
     sync.add_argument("--add", action="store_true",
-                      help="git add -f the archived manifests of cited runs")
+                      help="archive cited manifests and stage their index lines")
     sync.add_argument("--list-missing", action="store_true")
     sync.add_argument("--record-lost", action="store_true",
                       help=f"write the still-unresolvable run ids to {LOST_REL}")

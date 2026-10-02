@@ -12,3 +12,8 @@ class CurrentPaths(unittest.TestCase):
         self.assertIn('`host/interfaces.lisp`', spec)
         self.assertIn('(definterface fn-ats-finish-owned',
                       (ROOT / 'host/interfaces.lisp').read_text())
+
+    def test_evidence_instructions_do_not_force_add_ignored_bytes(self):
+        for rel in ('.gitignore', 'tests/README.md', 'tools/evidence_manifests.py'):
+            with self.subTest(path=rel):
+                self.assertNotIn('git add -f', (ROOT / rel).read_text())
