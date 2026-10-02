@@ -477,20 +477,72 @@
        (equal (fn-store-event-generation record) (fn-store-event-txid record))))
 (local (in-theory (disable (tau-system))))
 
+; The success list's validation executes in O(S + n) and conses no pair per
+; comparison (stage 5, lane sf-success, 2026-10-02).  The logical
+; definitions are unchanged: each :exec arm is proved equal to its :logic
+; arm before the guards are verified (below).  With the quadratic walk,
+; S = n = 10k cost 23.2 s and 802 MB per evaluation (every success walked
+; the records and fn-sf-record-pair consed a pair per comparison); every
+; completed commit appends a success, so on a live node that was every
+; fn-sn-statep-guarded entry, O(POSTs since open x log length).
+;
+; A record's pair is compared field by field: no (sequence . txid) is built.
+(defun fn-sf-record-has-pair-walkp (pair records)
+  (declare (xargs :guard (consp pair) :verify-guards nil))
+  (if (consp records)
+      (or (and (equal (car pair) (fn-store-event-sequence (car records)))
+               (equal (cdr pair) (fn-store-event-txid (car records))))
+          (fn-sf-record-has-pair-walkp pair (cdr records)))
+    nil))
+
 (defun fn-sf-record-has-pairp (pair records)
   (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp records)
+           (or (equal pair (fn-sf-record-pair (car records)))
+               (fn-sf-record-has-pairp pair (cdr records)))
+         nil)
+       :exec (and (consp pair) (fn-sf-record-has-pair-walkp pair records))))
+
+; The keyset of the records' pairs (one pair per record, built once per
+; evaluation into a local hash table, books/acceptance-alloc.lisp's
+; fn-keyset: safe from any thread), then one lookup per success.
+(defun fn-sf-ks-fill-pairs (records fn-keyset)
+  (declare (xargs :stobjs fn-keyset :guard t :verify-guards nil))
   (if (consp records)
-      (or (equal pair (fn-sf-record-pair (car records)))
-          (fn-sf-record-has-pairp pair (cdr records)))
-    nil))
+      (let ((fn-keyset (fn-keyset-tab-put (fn-sf-record-pair (car records)) t
+                                          fn-keyset)))
+        (fn-sf-ks-fill-pairs (cdr records) fn-keyset))
+    fn-keyset))
+
+(defun fn-sf-ks-successes-boundp (successes fn-keyset)
+  (declare (xargs :stobjs fn-keyset :guard t :verify-guards nil))
+  (if (consp successes)
+      (and (fn-sf-pairp (car successes))
+           (fn-keyset-tab-boundp (car successes) fn-keyset)
+           (fn-sf-ks-successes-boundp (cdr successes) fn-keyset))
+    (null successes)))
+
+(defun fn-sf-ks-success-listp (successes records)
+  (declare (xargs :guard t :verify-guards nil))
+  (with-local-stobj fn-keyset
+    (mv-let (ok fn-keyset)
+      (let ((fn-keyset (fn-sf-ks-fill-pairs records fn-keyset)))
+        (mv (fn-sf-ks-successes-boundp successes fn-keyset) fn-keyset))
+      ok)))
 
 (defun fn-sf-success-listp (successes records)
   (declare (xargs :guard t :verify-guards nil))
-  (if (consp successes)
-      (and (fn-sf-pairp (car successes))
-           (fn-sf-record-has-pairp (car successes) records)
-           (fn-sf-success-listp (cdr successes) records))
-    (null successes)))
+  (mbe :logic
+       (if (consp successes)
+           (and (fn-sf-pairp (car successes))
+                (fn-sf-record-has-pairp (car successes) records)
+                (fn-sf-success-listp (cdr successes) records))
+         (null successes))
+       ; Reopen has no successes: do not allocate or fill a local keyset.
+       :exec (if (consp successes)
+                 (fn-sf-ks-success-listp successes records)
+               (null successes))))
 
 (defun fn-sf-frontier-phasep (phase)
   (declare (xargs :guard t :verify-guards nil))
@@ -1113,7 +1165,35 @@
  :hints (("Goal" :in-theory (disable fn-store-event-p fn-store-event-sequence
                                      fn-store-event-txid fn-store-event-generation))))
 (local (in-theory (disable (tau-system))))
-(verify-guards fn-sf-record-has-pairp)
+(defthm fn-sf-record-has-pair-walkp-is-has-pairp
+  (implies (consp pair)
+           (equal (fn-sf-record-has-pair-walkp pair records)
+                  (fn-sf-record-has-pairp pair records)))
+  :hints (("Goal" :in-theory (enable fn-sf-record-pair))))
+(verify-guards fn-sf-record-has-pair-walkp)
+(verify-guards fn-sf-record-has-pairp
+  :hints (("Goal" :in-theory (enable fn-sf-record-pair))))
+(local
+ (defthm fn-sf-ks-bound-after-fill-pairs
+   (iff (consp (hons-assoc-equal k (nth 0 (fn-sf-ks-fill-pairs records fn-keyset))))
+        (or (fn-sf-record-has-pairp k records)
+            (consp (hons-assoc-equal k (nth 0 fn-keyset)))))
+   :hints (("Goal" :induct (fn-sf-ks-fill-pairs records fn-keyset)
+            :in-theory (disable fn-keyset-tab-put nth)))))
+(local
+ (defthm fn-sf-ks-successes-boundp-after-fill
+   (implies (not (consp (nth 0 fn-keyset)))
+            (equal (fn-sf-ks-successes-boundp successes
+                                              (fn-sf-ks-fill-pairs records fn-keyset))
+                   (fn-sf-success-listp successes records)))
+   :hints (("Goal" :induct (fn-sf-success-listp successes records)
+            :in-theory (disable fn-sf-ks-fill-pairs nth)))))
+(defthm fn-sf-ks-success-listp-is-success-listp
+  (equal (fn-sf-ks-success-listp successes records)
+         (fn-sf-success-listp successes records)))
+(verify-guards fn-sf-ks-fill-pairs)
+(verify-guards fn-sf-ks-successes-boundp)
+(verify-guards fn-sf-ks-success-listp)
 (verify-guards fn-sf-success-listp)
 (verify-guards fn-sf-frontier-phasep)
 (verify-guards fn-sf-record-phasep)
