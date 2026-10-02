@@ -14,29 +14,35 @@
 ;      lines, on the served-catalog fixture (three articles in fn.test /
 ;      fn.other, the pinned archive = the view at 3, its index the pin built
 ;      from it): the hypotheses conjunct by conjunct and the conclusion on
-;      both components; and the composed subject on BOTH routes reaches each
-;      row (fn-scr-command, the unrestricted route; fn-pix-command-pinned,
-;      the restricted route's dispatcher): a reply, never the 500 of an
+;      both components, with and without an Xref server named; the lines
+;      answer (221, 211, 411, 224; OVER's cursor arm answers a cursor only
+;      with no Xref server named: c07's spot-check); and the composed subject
+;      on BOTH routes reaches each declared row (fn-scr-command, the
+;      unrestricted route's command layer; fn-pix-command-pinned, the
+;      restricted route's dispatcher): a reply, never the 500 of an
 ;      unrecognized command (the HELP closure's converse, by evaluation).
-;  (2) removal witnesses: the view hypothesis (the pinned archive served at a
-;      view the pin does not name answers ARTICLE 3 differently: reachable);
-;      the trie correspondence (an index whose trie is the build of another
-;      view: logical); the others :deferred, with the weakened theorems
-;      registered as must-fails.
-;  (3) a mutation of the claim: the conclusion with the sessions swapped for
-;      the effects fails on a line whose reply moves the current article.
+;  (2) removal witnesses: view-articles (the pinned archive served at a view
+;      the pin does not name: reachable); trie-correspondence (an index whose
+;      trie is the build of another view: logical); statep, pin-correspondence,
+;      fresh and columns :deferred (no ground state outside each is built
+;      here; the weakened theorems are registered as must-fails, which is not
+;      a counterexample).
+;  (3) a mutation (:conclusion): the sessions compared for the effects fails
+;      on a line whose reply moves the current article.
 ;  (4) fn-proto-advance-eventp-is-served-advance-eventp and
 ;      fn-proto-archive-keywordp-is-nntp-archive-keywordp witnessed on every
 ;      served keyword, with a mutation: a table whose :view :select rows are
 ;      GROUP alone differs from the machine on LISTGROUP.
 ;  (5) the fail-closed checks of the served columns: the real table passes;
-;      a served row without :view, a form without :by's cost, a :pinned row
-;      whose arms mention the live formal, a :view-decided without a registry
-;      id, and a duplicated form name are refused.
-;  (6) the generated dispatcher is guard-verified.
+;      a served row without :view, forms without :cost, a :pinned row whose
+;      arm mentions the live formal, a :view-decided without a registry id,
+;      two forms of one name and a form list whose last test is not t are
+;      refused.
+;  (6) the generated dispatcher and the policy sites are guard-verified.
 
 (in-package "ACL2")
 (include-book "../../books/protocol-served")
+(include-book "../../books/served-catalog-chain")   ; fn-scr-command: the unrestricted route
 (include-book "must-fail-checked")
 
 ;; The served-catalog fixture (tests/acl2/served-catalog-tests.lisp).
@@ -64,6 +70,9 @@
 (defconst *pst-a* (list *pst-p0* *pst-p1* *pst-p2*))
 (defconst *pst-c* (pst-catalog (list *pst-w0* *pst-w1* *pst-w2*) 0 nil))
 
+;; Macros: a theorem may name the arena's and the catalog's logical values
+;; where the stobjs are required; a function may not (so the helpers below
+;; take the archive, the index and the stobjs as formals).
 (defmacro pst-arch (v)
   `(fn-make-state '("fn.test" "fn.other") '(("fn.test" . 4) ("fn.other" . 2))
                   (fn-cat-view-articles ,v *pst-a* *pst-c*) 0 nil nil))
@@ -82,39 +91,29 @@
   (fn-nntp-env-listed nil nil nil (list nil nil (fn-nntp-string-octets "news.example.invalid"))))
 (defconst *pst-env-0* (fn-nntp-env-listed nil nil nil nil))
 
-;; The two dispatchers at the pinned view 3, under the keystone's hypotheses.
-(defun pst-cat (env line fn-arena fn-cat)
-  (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
-  (let ((tokens (fn-nntp-tokenize (fn-nntp-string-octets line))))
-    (fn-proto-archive-command-cat *pst-session* (pst-arch 3) (pst-index 3) nil env
-                                  (car tokens) (cdr tokens) 3 fn-arena fn-cat)))
-
-(defun pst-pinned (env line fn-arena)
-  (declare (xargs :stobjs fn-arena :verify-guards nil))
-  (let ((tokens (fn-nntp-tokenize (fn-nntp-string-octets line))))
-    (fn-nntp-archive-command-pinned *pst-session* (pst-arch 3) (pst-index 3) nil env
-                                    (car tokens) (cdr tokens) fn-arena)))
-
 ;; The conclusion of fn-proto-archive-command-cat-is-pinned at one line: the
-;; sessions equal, the expanded effects equal (a theorem over the logical
-;; values of the stobjs: the fixture's arena and catalog).
-(defun pst-agree (env line)
-  (declare (xargs :verify-guards nil))
-  (let ((cat (pst-cat env line *pst-a* *pst-c*))
-        (pinned (pst-pinned env line *pst-a*)))
+;; sessions equal, the expanded effects equal.
+(defun pst-agree (env line arch index fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
+  (let* ((tokens (fn-nntp-tokenize (fn-nntp-string-octets line)))
+         (cat (fn-proto-archive-command-cat *pst-session* arch index nil env
+                                            (car tokens) (cdr tokens) 3 fn-arena fn-cat))
+         (pinned (fn-nntp-archive-command-pinned *pst-session* arch index nil env
+                                                 (car tokens) (cdr tokens) fn-arena)))
     (and (equal (fn-nntp-result-session cat) (fn-nntp-result-session pinned))
-         (equal (fn-ovw-expand (fn-nntp-result-effects cat) *pst-a* *pst-c*)
-                (fn-ovw-expand (fn-nntp-result-effects pinned) *pst-a* *pst-c*)))))
+         (equal (fn-ovw-expand (fn-nntp-result-effects cat) fn-arena fn-cat)
+                (fn-ovw-expand (fn-nntp-result-effects pinned) fn-arena fn-cat)))))
 
-(defun pst-agree-all (env lines)
-  (declare (xargs :verify-guards nil))
+(defun pst-agree-all (env lines arch index fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
   (if (consp lines)
-      (and (pst-agree env (car lines)) (pst-agree-all env (cdr lines)))
+      (and (pst-agree env (car lines) arch index fn-arena fn-cat)
+           (pst-agree-all env (cdr lines) arch index fn-arena fn-cat))
     t))
 
 ;; The declared rows' :teeth lines, from the table.
 (defun pst-teeth-lines (names rows)
-  (declare (xargs :guard t))
+  (declare (xargs :verify-guards nil))
   (if (consp names)
       (append (fn-proto-plist-get :teeth (fn-proto-row-plist (fn-proto-row (car names) rows)))
               (pst-teeth-lines (cdr names) rows))
@@ -122,8 +121,9 @@
 
 (defconst *pst-lines* (pst-teeth-lines *fn-proto-cat-rows* *fn-proto-table*))
 
-;; (1) The positive witness: every hypothesis, then the conclusion on every
-;; declared line, with and without an Xref server.
+;; (1) The positive witness: every hypothesis (fn-scol-okp is a defun-nx:
+;; its definition is opened so the fixture evaluates it), then the
+;; conclusion on every declared line, with and without an Xref server.
 (defthm pst-keystone-witness
   (let ((arch (pst-arch 3)) (index (pst-index 3)))
     (and ;; view-articles
@@ -140,25 +140,37 @@
          (fn-scol-okp *pst-a* *pst-c*)
          ;; the conclusion, on every declared line
          (<= 20 (len *pst-lines*))
-         (pst-agree-all *pst-env-x* *pst-lines*)
-         (pst-agree-all *pst-env-0* *pst-lines*)))
-  :rule-classes nil)
+         (pst-agree-all *pst-env-x* *pst-lines* arch index *pst-a* *pst-c*)
+         (pst-agree-all *pst-env-0* *pst-lines* arch index *pst-a* *pst-c*)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-scol-okp))))
 
 ;; The lines are not trivial: a 221 (XPAT), a 211 (GROUP) and a 224 (OVER)
-;; answered; GROUP of an unknown group 411; and OVER's cursor arm answered
-;; the range as a cursor with no Xref server named (the only route to the
-;; cursor arm in composition today, c07's spot-check).
-(defun pst-code (env line)
-  (declare (xargs :verify-guards nil))
-  (take 3 (cadr (car (fn-nntp-result-effects (pst-pinned env line *pst-a*))))))
+;; answered; GROUP of an unknown group 411; and OVER's cursor arm answers
+;; the range as a cursor only with no Xref server named.
+(defun pst-code (env line arch index fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let ((tokens (fn-nntp-tokenize (fn-nntp-string-octets line))))
+    (take 3 (cadr (car (fn-nntp-result-effects
+                        (fn-nntp-archive-command-pinned *pst-session* arch index nil env
+                                                        (car tokens) (cdr tokens) fn-arena)))))))
+
+(defun pst-cursorp (env line arch index fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
+  (let ((tokens (fn-nntp-tokenize (fn-nntp-string-octets line))))
+    (fn-ovw-cursor-effectp
+     (car (fn-nntp-result-effects
+           (fn-proto-archive-command-cat *pst-session* arch index nil env
+                                         (car tokens) (cdr tokens) 3 fn-arena fn-cat))))))
 
 (defthm pst-lines-answer
-  (and (equal (pst-code *pst-env-x* "XPAT Subject 1-3 *") (list 50 50 49))
-       (equal (pst-code *pst-env-x* "GROUP fn.test") (list 50 49 49))
-       (equal (pst-code *pst-env-x* "GROUP fn.none") (list 52 49 49))
-       (equal (pst-code *pst-env-x* "OVER 1-3") (list 50 50 52))
-       (fn-ovw-cursor-effectp (car (fn-nntp-result-effects (pst-cat *pst-env-0* "OVER 1-3" *pst-a* *pst-c*))))
-       (not (fn-ovw-cursor-effectp (car (fn-nntp-result-effects (pst-cat *pst-env-x* "OVER 1-3" *pst-a* *pst-c*))))))
+  (let ((arch (pst-arch 3)) (index (pst-index 3)))
+    (and (equal (pst-code *pst-env-x* "XPAT Subject 1-3 *" arch index *pst-a*) (list 50 50 49))
+         (equal (pst-code *pst-env-x* "GROUP fn.test" arch index *pst-a*) (list 50 49 49))
+         (equal (pst-code *pst-env-x* "GROUP fn.none" arch index *pst-a*) (list 52 49 49))
+         (equal (pst-code *pst-env-x* "OVER 1-3" arch index *pst-a*) (list 50 50 52))
+         (pst-cursorp *pst-env-0* "OVER 1-3" arch index *pst-a* *pst-c*)
+         (not (pst-cursorp *pst-env-x* "OVER 1-3" arch index *pst-a* *pst-c*))))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-ovw-cursor-effectp))))
 
@@ -167,7 +179,7 @@
 ;; layer (fn-scr-command) and from the restricted route's dispatcher
 ;; (fn-pix-command-pinned).
 (defun pst-first-lines (names rows)
-  (declare (xargs :guard t))
+  (declare (xargs :verify-guards nil))
   (if (consp names)
       (let ((teeth (fn-proto-plist-get :teeth (fn-proto-row-plist (fn-proto-row (car names) rows)))))
         (if (consp teeth)
@@ -180,30 +192,45 @@
   (and (consp effects) (consp (car effects)) (equal (car (car effects)) :reply)
        (not (equal (take 3 (cadr (car effects))) (list 53 48 48)))))
 
-(defun pst-reaches (lines)
-  (declare (xargs :verify-guards nil))
+(defun pst-reaches (lines arch index fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
   (if (consp lines)
       (and (pst-not-500
             (fn-nntp-result-effects
-             (fn-scr-command *pst-session* (pst-arch 3) (pst-index 3) nil *pst-env-x*
-                             (pst-tokens (car lines)) 3 *pst-a* *pst-c*)))
+             (fn-scr-command *pst-session* arch index nil *pst-env-x*
+                             (fn-nntp-tokenize (fn-nntp-string-octets (car lines)))
+                             3 fn-arena fn-cat)))
            (pst-not-500
             (fn-nntp-result-effects
-             (fn-pix-command-pinned *pst-session* (pst-arch 3) (pst-index 3) nil *pst-env-x*
-                                    (pst-tokens (car lines)) *pst-a*)))
-           (pst-reaches (cdr lines)))
+             (fn-pix-command-pinned *pst-session* arch index nil *pst-env-x*
+                                    (fn-nntp-tokenize (fn-nntp-string-octets (car lines)))
+                                    fn-arena)))
+           (pst-reaches (cdr lines) arch index fn-arena fn-cat))
     t))
 
 (defthm pst-rows-reach-both-routes
   (and (equal (len (pst-first-lines *fn-proto-cat-rows* *fn-proto-table*))
               (len *fn-proto-cat-rows*))
-       (pst-reaches (pst-first-lines *fn-proto-cat-rows* *fn-proto-table*)))
+       (pst-reaches (pst-first-lines *fn-proto-cat-rows* *fn-proto-table*)
+                    (pst-arch 3) (pst-index 3) *pst-a* *pst-c*))
   :rule-classes nil)
 
 ;; (2) Removal witnesses.
 ;; view-articles, reachable: the pinned archive served at view 2 (the third
-;; row invisible) answers ARTICLE 3 (an undeclared row, the fallthrough) and
-;; XPAT (a declared row) differently from the pinned reference.
+;; row invisible) answers XPAT (a declared row) differently from the pinned
+;; reference.
+(defun pst-cat-at (env line v arch index fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
+  (let ((tokens (fn-nntp-tokenize (fn-nntp-string-octets line))))
+    (fn-proto-archive-command-cat *pst-session* arch index nil env
+                                  (car tokens) (cdr tokens) v fn-arena fn-cat)))
+
+(defun pst-pinned-of (env line arch index fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let ((tokens (fn-nntp-tokenize (fn-nntp-string-octets line))))
+    (fn-nntp-archive-command-pinned *pst-session* arch index nil env
+                                    (car tokens) (cdr tokens) fn-arena)))
+
 (defthm pst-without-view-articles
   (let ((arch (pst-arch 3)) (index (pst-index 3)))
     (and ;; retained
@@ -212,21 +239,19 @@
          (fn-midx-correspondencep (fn-gidx-pin-trie index) (fn-state-articles arch))
          (fn-cnx-freshp *pst-c*)
          (fn-scol-okp *pst-a* *pst-c*)
-         ;; removed
+         ;; removed: served at view 2, which the pin does not name
          (not (equal (fn-state-articles arch) (fn-cat-view-articles 2 *pst-a* *pst-c*)))
          ;; the conclusion fails
          (not (equal (fn-ovw-expand
                       (fn-nntp-result-effects
-                       (fn-proto-archive-command-cat *pst-session* arch index nil *pst-env-x*
-                                                     (car (pst-tokens "XPAT Subject 1-3 *"))
-                                                     (cdr (pst-tokens "XPAT Subject 1-3 *"))
-                                                     2 *pst-a* *pst-c*))
+                       (pst-cat-at *pst-env-x* "XPAT Subject 1-3 *" 2 arch index *pst-a* *pst-c*))
                       *pst-a* *pst-c*)
                      (fn-ovw-expand
                       (fn-nntp-result-effects
-                       (pst-pinned *pst-env-x* "XPAT Subject 1-3 *" *pst-a*))
+                       (pst-pinned-of *pst-env-x* "XPAT Subject 1-3 *" arch index *pst-a*))
                       *pst-a* *pst-c*)))))
-  :rule-classes nil)
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-scol-okp))))
 
 (local (must-fail-checked
         (defthm fn-proto-archive-command-cat-is-pinned-without-view-articles
@@ -245,8 +270,9 @@
           :hints (("Goal" :by fn-proto-archive-command-cat-is-pinned-by-rows)))))
 
 ;; trie-correspondence, logical: an index whose trie is the build of view 2
-;; (no row for <c@x>) with the buckets of view 3; STAT <c@x> finds the
-;; article by the catalog and not by the pin's trie.
+;; (no row for <c@x>) with the buckets of view 3; STAT <c@x> (an undeclared
+;; row, served by the fallthrough's catalog arm) is found by the catalog and
+;; not by the pin's trie.
 (defthm pst-without-trie-correspondence
   (let ((arch (pst-arch 3))
         (index (fn-gidx-pin (fn-midx-build (fn-cat-view-articles 2 *pst-a* *pst-c*))
@@ -259,24 +285,15 @@
          (fn-scol-okp *pst-a* *pst-c*)
          ;; removed
          (not (fn-midx-correspondencep (fn-gidx-pin-trie index) (fn-state-articles arch)))
-         ;; the conclusion fails (STAT <c@x>: an undeclared row, served by the
-         ;; fallthrough's catalog arm; the pinned reference's trie lacks it)
+         ;; the conclusion fails
          (not (equal (fn-nntp-result-effects
-                      (fn-proto-archive-command-cat *pst-session* arch index nil *pst-env-x*
-                                                    (car (pst-tokens "STAT <c@x>"))
-                                                    (cdr (pst-tokens "STAT <c@x>"))
-                                                    3 *pst-a* *pst-c*))
+                      (pst-cat-at *pst-env-x* "STAT <c@x>" 3 arch index *pst-a* *pst-c*))
                      (fn-nntp-result-effects
-                      (fn-nntp-archive-command-pinned *pst-session* arch index nil *pst-env-x*
-                                                      (car (pst-tokens "STAT <c@x>"))
-                                                      (cdr (pst-tokens "STAT <c@x>"))
-                                                      *pst-a*))))))
+                      (pst-pinned-of *pst-env-x* "STAT <c@x>" arch index *pst-a*))))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-midx-correspondencep))))
+  :hints (("Goal" :in-theory (enable fn-scol-okp fn-midx-correspondencep))))
 
-;; statep, pin-correspondence, fresh, columns: :deferred (no ground state
-;; outside each is built here; the weakened theorems are registered as
-;; must-fails below, which is not a counterexample).
+;; statep, pin-correspondence, fresh, columns: :deferred.
 (local (must-fail-checked
         (defthm fn-proto-archive-command-cat-is-pinned-without-pin-correspondence
           (implies (and (equal (fn-state-articles archive)
@@ -302,22 +319,26 @@
 ;; STAT 2 the catalog's reply moves the current article: the session is not
 ;; the effects.
 (defthm pst-mutant-conclusion
-  (let ((cat (pst-cat *pst-env-x* "STAT 2" *pst-a* *pst-c*)))
-    (and (pst-agree *pst-env-x* "STAT 2")
-         (not (equal (fn-nntp-result-session cat)
-                     (fn-ovw-expand (fn-nntp-result-effects cat) *pst-a* *pst-c*)))))
+  (let ((arch (pst-arch 3)) (index (pst-index 3)))
+    (and (pst-agree *pst-env-x* "STAT 2" arch index *pst-a* *pst-c*)
+         (not (equal (fn-nntp-result-session
+                      (pst-cat-at *pst-env-x* "STAT 2" 3 arch index *pst-a* *pst-c*))
+                     (fn-ovw-expand
+                      (fn-nntp-result-effects
+                       (pst-cat-at *pst-env-x* "STAT 2" 3 arch index *pst-a* *pst-c*))
+                      *pst-a* *pst-c*)))))
   :rule-classes nil)
 
 ;; (4) The :view column's executable sites, on every served keyword.
 (defun pst-advance-lines (names)
-  (declare (xargs :guard t))
+  (declare (xargs :verify-guards nil))
   (if (consp names)
       (cons (list :command (fn-nntp-string-octets (concatenate 'string (car names) " x")))
             (pst-advance-lines (cdr names)))
     nil))
 
 (defun pst-advance-agree (events)
-  (declare (xargs :guard t))
+  (declare (xargs :verify-guards nil))
   (if (consp events)
       (and (equal (fn-proto-advance-eventp (car events))
                   (fn-served-advance-eventp (car events)))
@@ -325,7 +346,7 @@
     t))
 
 (defun pst-archive-agree (names)
-  (declare (xargs :guard t))
+  (declare (xargs :verify-guards nil))
   (if (consp names)
       (and (equal (fn-proto-archive-keywordp (fn-nntp-string-octets (car names)))
                   (fn-nntp-archive-keywordp (fn-nntp-string-octets (car names))))
@@ -352,14 +373,14 @@
 
 ;; (5) Fail closed: the served columns' checks, on edits of the real table.
 (defun pst-drop (key plist)
-  (declare (xargs :guard t))
+  (declare (xargs :verify-guards nil))
   (cond ((or (atom plist) (atom (cdr plist))) nil)
         ((equal (car plist) key) (cddr plist))
         (t (cons (car plist) (cons (cadr plist) (pst-drop key (cddr plist)))))))
 
 (defun pst-edit (name key value rows)
   ; the row NAME with KEY set to VALUE (:drop removes it)
-  (declare (xargs :guard t))
+  (declare (xargs :verify-guards nil))
   (if (atom rows)
       nil
     (cons (if (and (consp (car rows)) (equal (car (car rows)) name) (true-listp (cdr (car rows))))
