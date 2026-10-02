@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "../books/bp-release")
 (include-book "../books/bp-ion-workflow")
+(include-book "../books/bp-payload-gate")
 
 ; The entries that replay or apply workflow records read the attempt's
 ; request through the live payload arena (books/bp-outbound.lisp); they take
@@ -30,6 +31,21 @@
 (defun fn-owner-workflow-preflight-record (record fn-arena state)
  (declare (xargs :stobjs (fn-arena state) :mode :program))
  (fn-workflow-preflight-record record fn-arena state))
+
+;; The generic request on the shared owner (`bp-obligation request'):
+;; fn-workflow-request-plan's plan through the payload gate, whose canonical
+;; node is the OWNER's Store (books/bp-payload-gate.lisp KEYSTONE
+;; fn-bppg-request-gate-sends-only-pinned-live-payload): no ADU leaves
+;; without the work's :forward pin live in the Store reclaim honours, and
+;; never one carrying a reclaim tombstone.
+(defun fn-owner-workflow-request-plan (work-id attempt-id fn-arena state)
+ (declare (xargs :stobjs (fn-arena state) :mode :program))
+ (mv-let (erp plan state)
+   (fn-workflow-request-plan work-id attempt-id fn-arena state)
+  (declare (ignore erp))
+  (value (fn-bppg-request-gate (fn-sn-node (fn-owner-store state))
+                               (f-get-global 'fn-workflow-state state)
+                               work-id plan))))
 
 (defun fn-owner-workflow-forward-pinnedp (work-id state)
  (declare (xargs :stobjs state :mode :program))

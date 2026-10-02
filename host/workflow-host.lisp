@@ -3,6 +3,7 @@
 (include-book "../books/bp-workflow-constructors")
 (include-book "../books/bp-ion-workflow")
 (include-book "../books/bp-request-plan")
+(include-book "../books/bp-payload-gate")
 ; PKT-869: the operator's carry control and its journal's frame.
 (include-book "../books/bp-carry-control")
 (include-book "../books/bp-carry-frame")
@@ -280,12 +281,18 @@
 
 ; The ION sender's (RETRY ATTEMPT): the journaled retry request first when a
 ; reopen marked the last attempt :restart-observed, so replay agrees.
+;; Through the payload gate (books/bp-payload-gate.lisp
+;; fn-bppg-ion-gates-send-only-pinned-live-payload): the canonical node is the
+;; opened Store's, so an FNWF-local undertaking does not admit an attempt.
 (defun fn-workflow-ion-attempt-plan
-    (txid tx-generation work-id attempt-id state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-bprq-ion-attempt-plan
-          (f-get-global 'fn-workflow-state state)
-          txid tx-generation work-id attempt-id)))
+    (txid tx-generation work-id attempt-id fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
+  (let* ((s (f-get-global 'fn-workflow-state state))
+         (sn (f-get-global 'fn-store-sn state)))
+    (value (fn-bppg-ion-attempt-gate
+            (and sn (fn-sn-node sn)) s work-id
+            (fn-bprq-ion-attempt-plan s txid tx-generation work-id attempt-id)
+            fn-arena))))
 
 ; Native ION sender calls these exact ACL2 constructors. Raw Lisp only
 ; publishes their returned records and executes their returned ADU bytes.
@@ -321,8 +328,13 @@
   (let ((result (fn-bpo-request-adu
                  (f-get-global 'fn-workflow-state state)
                  work-id attempt-id generation fn-arena)))
-    (value (if (fn-bpo-result-okp result)
-               (fn-bpo-result-value result) nil))))
+    ;; An octet list, or the refusal's name: :request-refused (no request
+    ;; for this attempt) or :article-reclaimed (it would carry a reclaim
+    ;; tombstone, books/bp-payload-gate.lisp fn-bppg-ion-adu).
+    (value (cond ((not (fn-bpo-result-okp result)) :request-refused)
+                 ((fn-bppg-ion-adu (fn-bpo-result-value result))
+                  (fn-bpo-result-value result))
+                 (t :article-reclaimed)))))
 
 (defun fn-workflow-ion-status (work-id attempt-id generation state)
   (declare (xargs :stobjs state :mode :program))

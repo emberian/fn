@@ -37,6 +37,7 @@
 (include-book "acceptance-payload-ref")
 (include-book "store-intern")
 (include-book "owner-results")
+(include-book "reclaim-tombstone")
 
 ; -----------------------------------------------------------------------------
 ; The bytes.
@@ -195,3 +196,54 @@
            (fn-ores-feed-publication-p (fn-ofa-publication pub)))
   :hints (("Goal" :in-theory (e/d (fn-ores-feed-publication-p)
                                   (fn-ofa-unsendable-line)))))
+
+; -----------------------------------------------------------------------------
+; A reclaimed article is refused by name, never sent (RECLAIM-RETENTION,
+; 2026-10-03).
+;
+; The feed renders a queued article's bytes from the arena only when the
+; peer answers 335 (IHAVE) or 238 (CHECK) (books/peer-feed fn-feed-observe:
+; exactly those two codes reach fn-feed-send).  Reclaim keeps every queued
+; article (books/store-reclaim-owner-holders
+; fn-rclp-owner-ctx-never-releases-a-queued-article), so a tombstone here is
+; a broken holder, not a policy: the entry refuses the reply with the reason
+; :article-reclaimed instead of handing the port the tombstone octets.  The
+; port step does not run, so the entry stays offered; the host drops the
+; connection on an :unsendable publication and fn-feed-lost requeues it.
+
+(defun fn-ofa-send-codep (response)
+  (declare (xargs :guard t))
+  (if (member-equal (fn-feed-response-code response) '(335 238)) t nil))
+
+; Whether this reply would send ARTICLE and ARTICLE is a tombstone.
+(defun fn-ofa-reclaimed-sendp (response article)
+  (declare (xargs :guard t))
+  (and (fn-ofa-send-codep response)
+       (fn-rcl-tombstonep article)))
+
+(defun fn-ofa-reclaimed-line (peer)
+  (declare (xargs :guard t))
+  (append (fn-record-string-octets "feed peer=")
+          (if (stringp peer) (fn-record-string-octets peer) nil)
+          (fn-record-string-octets
+           " unsendable reason=ARTICLE-RECLAIMED (the offered article's payload is a reclaim tombstone; it is not sent, the connection closes and the offer is requeued)")))
+
+(defun fn-ofa-reclaimed-publication (peer)
+  (declare (xargs :guard t))
+  (list :feed-publication :unsendable (if (stringp peer) peer nil) nil nil nil
+        :article-reclaimed (fn-ofa-reclaimed-line peer)))
+
+; KEYSTONE.  Subject: host/owner-host.lisp fn-owner-feed-octets, which
+; answers fn-ofa-reclaimed-publication exactly when fn-ofa-reclaimed-sendp
+; holds of the reply and fn-ofa-feed-article.  That publication is
+; well-formed, carries no command and no record plan, and names the reason.
+(defthm fn-ofa-reclaimed-publication-sends-nothing
+  (let ((out (fn-ofa-reclaimed-publication peer)))
+    (and (fn-ores-feed-publication-p out)
+         (equal (fn-ores-feedpub-word out) :unsendable)
+         (equal (fn-ores-feedpub-command out) nil)
+         (equal (fn-ores-feedpub-plan out) nil)
+         (equal (fn-ores-feedpub-status out) :article-reclaimed)))
+  :hints (("Goal" :in-theory (e/d (fn-ores-feed-publication-p fn-cbor-octet-listp-append)
+                                  (fn-record-string-octets)))))
+
