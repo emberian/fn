@@ -1323,14 +1323,25 @@ def fetch(host: str, identifier: str, root: Path,
             since = dt.datetime.fromisoformat(submitted).timestamp() - 600
         except (TypeError, ValueError):
             since = time.time() - 24 * 3600
-        try:
-            if MIRROR(host, since, report.cache_entries) != 0:
+        # The mirror is a convenience for the other box: it never decides
+        # this run's verdict.  FN_NO_MIRROR=1 skips it (the other box is
+        # full or down: persvati at 0 bytes free, 2026-10-02), and any
+        # failure of it (unreachable, disk full, a sync refusal) is a
+        # warning naming the command that repeats it.
+        if os.environ.get("FN_NO_MIRROR", "") not in ("", "0"):
+            print(f"{host}: FN_NO_MIRROR set: the run's pairs stay in {host}'s "
+                  f"cache; `tools/cert_cache_sync.py {host} OTHER` mirrors them later")
+        else:
+            try:
+                if MIRROR(host, since, report.cache_entries) != 0:
+                    print(f"{host}: mirroring the run's pairs to the other box "
+                          f"failed; `tools/cert_cache_sync.py {host} OTHER` again",
+                          file=sys.stderr)
+            except (Exception, SystemExit) as error:
                 print(f"{host}: mirroring the run's pairs to the other box "
-                      f"failed; `tools/cert_cache_sync.py {host} OTHER` again",
+                      f"failed: {type(error).__name__}: {error}; "
+                      f"`tools/cert_cache_sync.py {host} OTHER` again",
                       file=sys.stderr)
-        except SystemExit as error:
-            print(f"{host}: mirroring the run's pairs to the other box "
-                  f"failed: {error}", file=sys.stderr)
     for line in report_lines(report.lines(), verbose):
         print(line)
 
