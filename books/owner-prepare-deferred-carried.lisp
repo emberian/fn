@@ -33,7 +33,12 @@
 ;   * under the CONFIGURED relation fn-cst-relation (the one the host
 ;     carries), stage-iff-configured-admits: the carried prepare stages
 ;     exactly when the configured replay admits the appended history
-;     (fn-pdc-configured-admitsp; both directions, below);
+;     (fn-pdc-configured-admitsp; both directions, below) -- at a
+;     :reserved store, for an event of the prepare's own kind
+;     (fn-store-retention-event-p, fn-cpe-eventp, fn-th-topic-eventp) whose
+;     gate test passes: the consumer projection step answers :ok
+;     (retention, consumer) or the topic prefix step does (topic).  A
+;     projection or topic refusal is outside these theorems;
 ;   * the host-carried owner invariant fn-lgoc-invariantp is preserved by the
 ;     owner entries over them (fn-pdc-ocfg-prepare-*), so the staged state
 ;     satisfies the CONFIGURED relation (fn-cst-relation): the configured
@@ -201,7 +206,11 @@
 ; each carried prepare stages EXACTLY when the configured replay admits the
 ; appended history: the candidate is well placed and the configured replay
 ; of the history with it appended recovers at the frontier
-; (fn-pdc-configured-admitsp).  The reference prepares decide by the
+; (fn-pdc-configured-admitsp).  Scope: a :reserved store, an event of the
+; prepare's kind, and the gate's projection test passing (the consumer
+; projection step :ok for retention and consumer events, the topic prefix
+; step :ok for topic events); the theorems say nothing where that test
+; refuses.  The reference prepares decide by the
 ; UNconfigured replay over the final groups and capacity, which refuses a
 ; history the configuration admitted once capacity was lowered after a
 ; charge (tests/acl2/owner-prepare-deferred-carried-tests.lisp *pdt-bad-cap*);
