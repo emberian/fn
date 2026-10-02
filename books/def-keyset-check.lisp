@@ -27,10 +27,15 @@
 ;                                      ; (KEYS ys)) t nil)) over the adopted
 ;                                      ; :keys; default: member-equal over
 ;                                      ; NAME-keys itself
-;     [:policy :long | :always | :nonempty])   ; when the :exec takes the set:
+;     [:policy :long | :always | :nonempty]   ; when the :exec takes the set:
 ;                                      ; YS long (fn-ks-longp, the default),
 ;                                      ; always, or XS non-empty (a reopen has
 ;                                      ; no successes: no table is filled)
+;     [:verify-guards nil])            ; every executable is admitted with
+;                                      ; :verify-guards nil and no verify-guards
+;                                      ; is emitted: a book that verifies its
+;                                      ; guards in one late block (store-files)
+;                                      ; does NAME-fill, -scan, -ks, -walk, NAME
 ;
 ; Generated: NAME-keys (the YS keys, :logic), NAME-fill (the set of YS's
 ; keys), NAME-scan (XS against the set), NAME-ks (the with-local-stobj
@@ -120,7 +125,7 @@
 ; The generator.
 
 (defconst *fn-kc-keys*
-  '(:sense :xs-key :ys-key :each :base :logic-member :member-is :keys :policy))
+  '(:sense :xs-key :ys-key :each :base :logic-member :member-is :keys :policy :verify-guards))
 
 (defun fn-kc-get (key kvs)
   (declare (xargs :mode :program))
@@ -163,6 +168,8 @@
     (list :bad-policy (fn-kc-get :policy kvs)))
    ((and (assoc-keyword :keys kvs) (not (and (symbolp (fn-kc-get :keys kvs)) (fn-kc-get :keys kvs))))
     (list :bad-keys (fn-kc-get :keys kvs)))
+   ((and (assoc-keyword :verify-guards kvs) (not (member-eq (fn-kc-get :verify-guards kvs) '(t nil))))
+    (list :bad-verify-guards (fn-kc-get :verify-guards kvs)))
    ((and (assoc-keyword :base kvs) (not (member-equal (fn-kc-get :base kvs) '(t (null xs)))))
     (list :bad-base (fn-kc-get :base kvs)))
    (t nil)))
@@ -220,6 +227,8 @@
          (base (if (assoc-keyword :base kvs) (fn-kc-get :base kvs) t))
          (base-term (fn-kc-subst base (list (cons 'xs xs))))
          (policy (or (fn-kc-get :policy kvs) :long))
+         (vg (if (assoc-keyword :verify-guards kvs) (fn-kc-get :verify-guards kvs) t))
+         (xg (if vg '(:guard t) '(:guard t :verify-guards nil)))
          (keys (or (fn-kc-get :keys kvs) (fn-kc-name name '(-keys))))
          (filler (fn-kc-name name '(-fill)))
          (scan (fn-kc-name name '(-scan)))
@@ -247,27 +256,27 @@
                   (if (consp ,ys) (cons ,(fn-kc-sub ykey (list `(car ,ys))) (,keys (cdr ,ys))) nil))))
        ; the direct walk: the :logic body, executable
        (defun ,walk (,xs ,ys)
-         (declare (xargs :guard t))
+         (declare (xargs ,@xg))
          (if (consp ,xs)
              (and ,(fn-kc-sub each (list `(car ,xs)))
                   ,(fn-kc-want-term present member-term)
                   (,walk (cdr ,xs) ,ys))
            ,base-term))
        (defun ,filler (,ys fn-keyset)
-         (declare (xargs :stobjs fn-keyset :guard t))
+         (declare (xargs :stobjs fn-keyset ,@xg))
          (if (consp ,ys)
              (let ((fn-keyset (fn-keyset-tab-put ,(fn-kc-sub ykey (list `(car ,ys))) t fn-keyset)))
                (,filler (cdr ,ys) fn-keyset))
            fn-keyset))
        (defun ,scan (,xs fn-keyset)
-         (declare (xargs :stobjs fn-keyset :guard t))
+         (declare (xargs :stobjs fn-keyset ,@xg))
          (if (consp ,xs)
              (and ,(fn-kc-sub each (list `(car ,xs)))
                   ,(fn-kc-want-term present `(if (fn-keyset-tab-boundp ,(fn-kc-sub xkey (list `(car ,xs))) fn-keyset) t nil))
                   (,scan (cdr ,xs) fn-keyset))
            ,base-term))
        (defun ,ks (,xs ,ys)
-         (declare (xargs :guard t))
+         (declare (xargs ,@xg))
          (with-local-stobj fn-keyset
            (mv-let (ok fn-keyset)
              (let ((fn-keyset (,filler ,ys fn-keyset)))
@@ -300,10 +309,11 @@
          (equal (,walk ,xs ,ys) (,name ,xs ,ys))
          :hints (("Goal" :induct (,walk ,xs ,ys)
                   :in-theory (union-theories '(,walk ,name) (theory 'minimal-theory)))))
-       (verify-guards ,name
-         :hints (("Goal" :use (,ks-is-logic ,walk-is-logic)
-                  :in-theory (union-theories '(,name fn-ks-longp)
-                                             (theory 'minimal-theory)))))
+       ,@(and vg
+              `((verify-guards ,name
+                  :hints (("Goal" :use (,ks-is-logic ,walk-is-logic)
+                           :in-theory (union-theories '(,name fn-ks-longp)
+                                                      (theory 'minimal-theory)))))))
        (table fn-teeth-owed ',ks-is-logic
               '(:by def-keyset-check :claim (nil (equal (,ks ,xs ,ys) (,walk ,xs ,ys)))))
        (table fn-teeth-owed ',walk-is-logic

@@ -53,32 +53,32 @@
 ; 1. The index: a string id put in a trie, a non-string ignored; the two
 ; facts a :set index owes.
 
-(defun fn-wix-put (x set)
+(defun fn-wix-add (x set)
   (declare (xargs :guard t))
   (if (stringp x) (fn-rit-put x 0 set) set))
 
 (defthm fn-wix-hasp-of-put
   (implies (and (stringp x) (fn-rit-hasp x 0 set))
-           (fn-rit-hasp x 0 (fn-wix-put y set)))
+           (fn-rit-hasp x 0 (fn-wix-add y set)))
   :hints (("Goal" :in-theory (disable fn-rit-hasp fn-rit-put))))
 
 (defthm fn-wix-put-has-it
-  (implies (stringp x) (fn-rit-hasp x 0 (fn-wix-put x set)))
+  (implies (stringp x) (fn-rit-hasp x 0 (fn-wix-add x set)))
   :hints (("Goal" :in-theory (disable fn-rit-hasp fn-rit-put))))
 
-(in-theory (disable fn-wix-put))
+(in-theory (disable fn-wix-add))
 
 (def-carried-view fn-wix
   :key ws
   :indexes ((tset :kind :set
                   :key-fn (lambda (e) (let ((x (fn-ctl-w-target e))) (if (stringp x) x nil)))
-                  :put (lambda (e idx) (fn-wix-put (fn-ctl-w-target e) idx))
+                  :put (lambda (e idx) (fn-wix-add (fn-ctl-w-target e) idx))
                   :hasp (lambda (k idx) (fn-rit-hasp k 0 idx))
                   :empty nil
                   :lemmas (fn-wix-hasp-of-put fn-wix-put-has-it))
             (cset :kind :set
                   :key-fn (lambda (e) (let ((x (fn-ctl-w-cause e))) (if (stringp x) x nil)))
-                  :put (lambda (e idx) (fn-wix-put (fn-ctl-w-cause e) idx))
+                  :put (lambda (e idx) (fn-wix-add (fn-ctl-w-cause e) idx))
                   :hasp (lambda (k idx) (fn-rit-hasp k 0 idx))
                   :empty nil
                   :lemmas (fn-wix-hasp-of-put fn-wix-put-has-it))))

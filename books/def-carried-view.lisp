@@ -726,6 +726,7 @@
        (table fn-teeth-owed ',(fn-cv-name carryp '-of-refresh)
               '(:by def-carried-view :claim ,claim-refresh))
        (in-theory (disable ,ws-of ,put ,empty ,build-onto ,fold ,build ,okp ,carryp ,refresh
+                           ,(fn-cv-name build '-is-build-onto)
                            ,@(fn-cv-index-accessors name entries))))))
 
 (defun fn-cv-first-non-theorem (names w)

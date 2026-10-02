@@ -98,7 +98,8 @@
          (if (consp arts)
              (cons (fn-nnw-smax arts) (fn-nnw-maxes (cdr arts)))
            nil))
-  :rule-classes :definition
+  :rule-classes (:definition
+                 (:induction :pattern (fn-nnw-maxes arts) :scheme (fn-nnw-smax arts)))
   :hints (("Goal" :in-theory (enable fn-nnw-maxes-is-build-onto fn-nnw-build-onto
                                      fn-nnw-put fn-nnw-empty))))
 

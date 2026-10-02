@@ -99,6 +99,15 @@
 (assert-event (equal (cvx-maxes (cvx-refresh *cvx-c* '(1 20 3 9 2))) (cvx-build '(1 20 3 9 2))))
 (assert-event (not (cvx-carryp (cons '(3 9 2) '(9 9 3)))))
 
+(defteeth cvx-carryp-of-refresh
+  :claim (((carried (cvx-carryp carry))) (cvx-carryp (cvx-refresh carry arts)))
+  :subject cvx-refresh
+  :witness ((carry *cvx-c*) (arts '(1 20 3 9 2)))
+  :breaks ((carried ((carry (cons '(3 9 2) '(9 9 3))))))
+  :mutations ((old-index (:conclusion (cvx-carryp (cons arts (cdr carry))))
+                         ((carry *cvx-c*) (arts '(1 20 3 9 2)))
+                         :fault "a refresh that installs the new list over the old maxima")))
+
 ; ---------------------------------------------------------------------------
 ; 3. A reader over the :set view: "is X a target?", the reference a walk.
 
@@ -132,9 +141,12 @@
   :subject cvt-targetedp-fast
   :witness ((x "n") (ws *cvt-ws0*) (carry *cvt-c0*))
   :breaks ((carried ((x "t1") (carry (cons *cvt-ws0* '(nil nil))))))
+  ; a complete carry whose target set holds an extra key: the probe is a
+  ; false positive, the walk answers, a reader trusting the probe would not
   :mutations ((positive-trusted (:conclusion (equal (cvt-targetedp-fast x ws carry)
                                                     (cvt-has x (cvt-tset carry))))
-                                ((x "t2") (ws *cvt-ws0*) (carry (cons *cvt-ws0* '(("t2" "x") nil))))
+                                ((x "n") (ws *cvt-ws0*)
+                                 (carry (list *cvt-ws0* '("n" "t1" "t2" "t3") '("c1" "c2"))))
                                 :fault "a reader that trusts a positive probe")))
 
 (defteeth-check)

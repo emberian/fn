@@ -1785,7 +1785,7 @@ def def_keyset_check_expansion(form: list) -> list:
     name, (xs, ys) = form[1], form[2]
     options = _dk_plist(list(form[3:]))
     wanted = {":sense", ":xs-key", ":ys-key", ":each", ":base", ":logic-member", ":member-is",
-              ":keys", ":policy"}
+              ":keys", ":policy", ":verify-guards"}
     if options is None or any(key not in wanted for key in options):
         return []
     if str(options.get(":sense")) not in (":present", ":absent"):
@@ -1849,7 +1849,8 @@ def def_keyset_check_expansion(form: list) -> list:
                    [Sym("mbe"), Sym(":logic"), name_logic, Sym(":exec"), exec_body]])
     events.append([Sym("defthm"), _gen_sym(name, "-walk-is-logic"),
                    [Sym("equal"), [walk, xs, ys], [name, xs, ys]]])
-    events.append([Sym("verify-guards"), name])
+    if str(options.get(":verify-guards", Sym("t"))) != "nil":
+        events.append([Sym("verify-guards"), name])
     for thm, claim in ((_gen_sym(name, "-ks-is-logic"), [Sym("equal"), [ks, xs, ys], [walk, xs, ys]]),
                        (_gen_sym(name, "-walk-is-logic"), [Sym("equal"), [walk, xs, ys], [name, xs, ys]])):
         events.append([Sym("table"), Sym("fn-teeth-owed"), _dk_quote(thm),
