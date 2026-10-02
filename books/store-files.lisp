@@ -539,7 +539,10 @@
                 (fn-sf-record-has-pairp (car successes) records)
                 (fn-sf-success-listp (cdr successes) records))
          (null successes))
-       :exec (fn-sf-ks-success-listp successes records)))
+       ; Reopen has no successes: do not allocate or fill a local keyset.
+       :exec (if (consp successes)
+                 (fn-sf-ks-success-listp successes records)
+               (null successes))))
 
 (defun fn-sf-frontier-phasep (phase)
   (declare (xargs :guard t :verify-guards nil))

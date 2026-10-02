@@ -381,3 +381,105 @@
                          :old :absent))
            (append (fn-sf-records *sft-record-durable*)
                    (list (fn-sf-record-candidate *sft-record-durable*)))))))
+
+; sf-success :exec vs :logic (r68 F2)
+; Independent quadratic reference: construct each record's pair during the
+; walk, and check the success pair's shape without the optimized predicates.
+(local
+ (defun sft-record-has-pair-ref (pair records)
+   (declare (xargs :guard t))
+   (if (consp records)
+       (or (equal pair (cons (fn-store-event-sequence (car records))
+                             (fn-store-event-txid (car records))))
+           (sft-record-has-pair-ref pair (cdr records)))
+     nil)))
+
+(local
+ (defun sft-success-ref (successes records)
+   (declare (xargs :guard t))
+   (if (consp successes)
+       (and (consp (car successes))
+            (natp (caar successes))
+            (natp (cdar successes))
+            (sft-record-has-pair-ref (car successes) records)
+            (sft-success-ref (cdr successes) records))
+     (null successes))))
+
+(local
+ (defconst *sft-success-record*
+   (fn-store-retention-event-make :release 0 0 0 "o" "s" "e" 0)))
+
+; Duplicate successes and records are allowed.
+(assert-event
+ (with-guard-checking :all
+   (let* ((successes '((0 . 0) (0 . 0)))
+          (records (list *sft-success-record* *sft-success-record*))
+          (actual (fn-sf-success-listp successes records)))
+     (and (equal actual t)
+          (equal actual (sft-success-ref successes records))))))
+
+; Empty success history after reopen, with and without retained records.
+(assert-event
+ (with-guard-checking :all
+   (let* ((records (list *sft-success-record* *sft-success-record*))
+          (actual (fn-sf-success-listp nil records)))
+     (and (equal actual t)
+          (equal actual (sft-success-ref nil records))))))
+
+(assert-event
+ (with-guard-checking :all
+   (let ((actual (fn-sf-success-listp nil nil)))
+     (and (equal actual t)
+          (equal actual (sft-success-ref nil nil))))))
+
+; A well-shaped pair absent from the records.
+(assert-event
+ (with-guard-checking :all
+   (let* ((successes '((0 . 1)))
+          (records (list *sft-success-record*))
+          (actual (fn-sf-success-listp successes records)))
+     (and (equal actual nil)
+          (equal actual (sft-success-ref successes records))))))
+
+; Junk selectors yield NIL fields, which are not a valid success pair.
+(assert-event
+ (with-guard-checking :all
+   (let* ((successes '((nil . nil)))
+          (records '(junk))
+          (actual (fn-sf-success-listp successes records)))
+     (and (equal actual nil)
+          (equal actual (sft-success-ref successes records))))))
+
+(assert-event
+ (with-guard-checking :all
+   (let* ((successes '(5))
+          (records (list *sft-success-record*))
+          (actual (fn-sf-success-listp successes records)))
+     (and (equal actual nil)
+          (equal actual (sft-success-ref successes records))))))
+
+; Finding the first pair does not make an improper tail acceptable.
+(assert-event
+ (with-guard-checking :all
+   (let* ((successes '((0 . 0) . 7))
+          (records (list *sft-success-record*))
+          (actual (fn-sf-success-listp successes records)))
+     (and (equal actual nil)
+          (equal actual (sft-success-ref successes records))))))
+
+; Membership alone preserves total selector semantics, without pairp's gate.
+(assert-event
+ (with-guard-checking :all
+   (let* ((pair '(nil . nil))
+          (records '(junk))
+          (actual (fn-sf-record-has-pairp pair records)))
+     (and (equal actual t)
+          (equal actual (sft-record-has-pair-ref pair records))))))
+
+(assert-event
+ (with-guard-checking :all
+   (let* ((pair 5)
+          (records (list *sft-success-record*))
+          (actual (fn-sf-record-has-pairp pair records)))
+     (and (equal actual nil)
+          (equal actual (sft-record-has-pair-ref pair records))))))
