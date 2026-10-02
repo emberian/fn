@@ -29,9 +29,10 @@
 (defthm fn-feed-restart-forgets-the-previous-clock-domain
   (implies (and (fn-feedp f) (natp b))
            (and (equal (fn-feed-restart
-                        (fn-feed-make (fn-feed-peer f) (fn-feed-limits-of f) (fn-feed-queue f)
-                                      (fn-feed-contact f) b (fn-feed-conn f)
-                                      (fn-feed-next-attempt f)))
+                        (fn-feed-make-counted (fn-feed-peer f) (fn-feed-limits-of f) (fn-feed-queue f)
+                                              (fn-feed-contact f) b (fn-feed-conn f)
+                                              (fn-feed-next-attempt f)
+                                              (fn-feed-undelivered f) (fn-feed-retry-dropped f)))
                        (fn-feed-restart f))
                 (equal (fn-feed-backoff-until (fn-feed-restart f)) 0)
                 (<= (nfix (fn-feed-backoff-until (fn-feed-restart f)))

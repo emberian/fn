@@ -145,7 +145,8 @@
 ; -----------------------------------------------------------------------------
 ; Transitions: the host-called consumer and topic prepares (books/owner-
 ; cursor-domain.lisp) keep the relation, from the owner keystones
-; fn-psrv-prepare-consumer-preserves-invariant and
+; fn-pdc-ocfg-prepare-consumer-preserves-invariant (the consumer prepare is
+; the carried fn-pdc-pout-prepare-consumer since PRF-1230) and
 ; fn-psrv-prepare-topic-preserves-invariant; the retention carry and the
 ; owner binding pass through fn-owner-install-ocfg.
 (defthm fn-owner-prepare-consumer-preserves-retain-state
@@ -154,10 +155,10 @@
             (mv-nth 2 (fn-owner-prepare-consumer event fn-arena state))))
   :hints (("Goal" :in-theory
            '(fn-owner-retain-statep fn-owner-prepare-consumer
-             fn-pout-prepare-consumer mv-nth nth zp car-cons cdr-cons
+             fn-pdc-pout-prepare-consumer mv-nth nth zp car-cons cdr-cons
              fn-owner-bound-of-install-ocfg fn-owner-ocfg-of-install-ocfg
              fn-owner-retain-carry-of-install-ocfg
-             fn-psrv-prepare-consumer-preserves-invariant))))
+             fn-pdc-ocfg-prepare-consumer-preserves-invariant))))
 (defthm fn-owner-prepare-topic-preserves-retain-state
   (implies (fn-owner-retain-statep state)
            (fn-owner-retain-statep

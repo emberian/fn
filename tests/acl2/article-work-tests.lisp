@@ -71,7 +71,7 @@
 
 ; The measured charge and the envelope quoted in specs/article-work.md.
 (assert-event (equal (len *fn-aw-test-fold-sample*) 520))
-(assert-event (equal (fn-aw-c (fn-aw-parse *fn-aw-test-fold-sample*)) 30195))
+(assert-event (equal (fn-aw-c (fn-aw-parse *fn-aw-test-fold-sample*)) 46833))
 (assert-event
  (equal (fn-article-parse-under-work-budget *fn-aw-test-fold-sample*
                                             *fn-article-default-limits*)

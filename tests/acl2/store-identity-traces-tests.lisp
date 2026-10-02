@@ -127,8 +127,12 @@
 
 (make-event `(defconst *sit-legacy-wire* ',(fn-record-make 2 3 3 "<legacy@example.invalid>" '(76 13 10) *sit-groups*
                   "legacy-obligation" "legacy-subject" "legacy-release" 2 841000000)))
-; The held row of the legacy record, interned after the composite (handle 1).
-(make-event `(defconst *sit-legacy* ',(fn-hrt-row-after *sit-wire-prefix* *sit-legacy-wire* nil 0)))
+; The held row of the legacy record, interned after the composite (handle 1),
+; under the keyring and generation in force (the enrollment's generation 1):
+; fn-sn-prepare stages only a row of the generation in force.
+(make-event `(defconst *sit-legacy* ',(fn-hrt-row-after *sit-wire-prefix* *sit-legacy-wire*
+                                                         (fn-sn-keyring *sit-refused*)
+                                                         (fn-sn-keyring-generation *sit-refused*))))
 (assert-event (and (fn-held-p *sit-legacy*) (equal (fn-record-payload *sit-legacy*) 1)))
 (make-event `(defconst *sit-after-legacy* ',(fn-sit-commit-legacy *sit-refused* *sit-legacy*)))
 (assert-event (equal (fn-sf-successes (fn-sn-files *sit-after-legacy*))
@@ -168,10 +172,16 @@
  (equal (fn-sn-verdict-lookup *sit-recovered* "<signed@example.invalid>")
         (fn-sn-verdict-lookup *sit-after-composite* "<signed@example.invalid>")))
 (assert-event
- (equal (fn-sn-verdict-lookup *sit-recovered* "<legacy@example.invalid>") nil))
-; A legacy fn-r has no durable verdict bytes.  Its live :unverified result
-; above is intentionally absent after reopen; recovery neither invents
-; historical authority nor re-evaluates it under the current keyring.
+ (and (equal (fn-sn-verdict-lookup *sit-recovered* "<legacy@example.invalid>")
+             (fn-sn-verdict-lookup *sit-after-legacy* "<legacy@example.invalid>"))
+      (equal (fn-stx-verdict-token
+              (fn-sn-verdict-lookup *sit-recovered* "<legacy@example.invalid>"))
+             :unverified)))
+; Since the records flip a held row carries its context, decided once at
+; intern under the generation in force, and the durable row persists it:
+; recovery restores the legacy record's :unverified verdict from the row
+; exactly as committed.  It neither invents authority (the token stays
+; :unverified) nor re-evaluates it under the current keyring.
 ; by specification: the flip (as above): handle 0, whose bytes are *sit-source*.
 (assert-event (equal (fn-article-payload
                       (car (last (fn-stx-store (fn-sn-node *sit-recovered*)))))

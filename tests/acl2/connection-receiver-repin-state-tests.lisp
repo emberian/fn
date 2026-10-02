@@ -4,6 +4,7 @@
 (in-package "ACL2")
 (include-book "../../host/receiver-repin-source-host")
 (include-book "../../books/index-reader-rx-source-completion")
+(include-book "../../books/index-reader-receiver-issuer") ; fn-irq-reserve-receiver-request
 (defun fn-icr-test-setup (children fn-index-backing fn-page-read-pool)
  (declare (xargs :stobjs (fn-index-backing fn-page-read-pool) :guard t))
  (let* ((fn-page-read-pool
@@ -62,7 +63,7 @@
  (fn-icr-test-setup t fn-index-backing fn-page-read-pool)
  (declare (ignorable fn-index-backing fn-page-read-pool))
  (mv-let (fn-rx-provider fn-receiver-turn fn-page-read-pool)
- (let* ((fn-rx-provider (fn-rxtl-seed-provider fn-rx-provider)) (fn-receiver-turn (update-fn-rxt-receipt '(:receiver-install (:rx-capacity 0 0 4096) 0) fn-receiver-turn)) (fn-page-read-pool (update-fn-prp-mode :served fn-page-read-pool))) (mv fn-rx-provider fn-receiver-turn fn-page-read-pool))
+ (let* ((fn-rx-provider (fn-rxtl-seed-provider fn-rx-provider)) (fn-receiver-turn (update-fn-rxt-receipt '(:receiver-install (:rx-capacity 0 0 4096) 0) fn-receiver-turn)) (fn-page-read-pool (update-fn-prp-mode :served fn-page-read-pool)) (fn-page-read-pool (update-fn-prp-alloc-mode :active fn-page-read-pool))) (mv fn-rx-provider fn-receiver-turn fn-page-read-pool))
  (declare (ignorable fn-rx-provider fn-receiver-turn fn-page-read-pool))
  (mv-let (a old fn-index-backing fn-page-read-pool)
  (fn-icr-reserve 1000000 '(40 0 0 0 1) fn-index-backing fn-page-read-pool)

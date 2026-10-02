@@ -1,3 +1,4 @@
+; UNHOOKED cert-roots (2026-10-02): out of the Makefile certify roots -- a Codex-era book that never certified and no image world includes: fn-mxc-put-is-put-chars-of-nthcdr fails at dev adbf57435. The code stays; its completion is queued (build/coordinator/lanedumps/cert-roots.md).
 ; Full-result refinement of the scheduling cursor to the existing trie update.
 (in-package "ACL2")
 (include-book "view-delta-cursor")

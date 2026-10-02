@@ -8,6 +8,7 @@
 (include-book "../books/consumer-account-carries-state")
 (include-book "../books/consumer-account-state")
 (include-book "../books/owner-canonical-epoch")
+(include-book "../books/store-node-files-selector") ; fn-sn-files
 
 (defun fn-owner-remote-ingress (request protectedp g state)
  (declare (xargs :stobjs state :mode :program))

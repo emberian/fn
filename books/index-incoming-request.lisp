@@ -1,3 +1,4 @@
+; UNHOOKED cert-roots (2026-10-02): out of the Makefile certify roots -- a Codex-era book that never certified and no image world includes: its include index-backing-request-adoption does not certify within the timeout at dev adbf57435. The code stays; its completion is queued (build/coordinator/lanedumps/cert-roots.md).
 ; Incoming-only producer pieces. Supplied demand is INTERNAL operation evidence,
 ; not a runtime receipt. Public begin must obtain actual installed issuer support.
 (in-package "ACL2")

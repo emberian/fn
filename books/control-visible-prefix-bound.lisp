@@ -23,6 +23,10 @@
                             (fn-store-event-p fn-store-event-txid
                              fn-store-event-sequence fn-store-event-generation))))))
 
+; The theorem keeps nfix closed (the txid side); the frontier is a natural.
+(local (defthm fn-ctl-nfix-of-natp
+  (implies (natp x) (equal (nfix x) x))))
+
 (defthm fn-ctl-archive-entries-below-record-frontier
   (implies (and (natp frontier)
                 (fn-sf-record-listp records sequence lower frontier))

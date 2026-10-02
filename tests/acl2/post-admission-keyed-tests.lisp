@@ -52,6 +52,43 @@
 (defconst *pak-msgid-octets* (fn-record-string-octets *pak-msgid*))
 (defconst *pak-h3* (pak-held 3 *pak-msgid* '("fn.test") 400))
 
+;; fn-pak-post-admission reads the live catalog (an abstract stobj takes no
+;; ground constant): a local fn-cat keyed with KEY and holding ROWS, then the
+;; host's admission call itself.
+(defun pak-commit-rows (rows fn-cat)
+  (declare (xargs :stobjs fn-cat :mode :program))
+  (if (endp rows) fn-cat
+    (let ((fn-cat (fn-cat-commit (car rows) fn-cat)))
+      (pak-commit-rows (cdr rows) fn-cat))))
+
+(defun pak-admit-run (carry profile msgid-octets payload-length group-count charge key rows fn-cat)
+  (declare (xargs :stobjs fn-cat :mode :program))
+  (let* ((fn-cat (fn-cat-clear-keyed key fn-cat))
+         (fn-cat (pak-commit-rows rows fn-cat)))
+    (mv (fn-pak-post-admission carry profile msgid-octets payload-length group-count charge
+                               key fn-cat)
+        fn-cat)))
+
+(defun pak-admit (carry profile msgid-octets payload-length group-count charge key rows)
+  (declare (xargs :mode :program))
+  (with-local-stobj fn-cat
+    (mv-let (verdict fn-cat)
+      (pak-admit-run carry profile msgid-octets payload-length group-count charge key rows fn-cat)
+      verdict)))
+
+;; fn-mlh-build / fn-mlh-build-unplaced are non-executable folds; the
+;; witnesses below evaluate their executable twin fn-mlh-build-health, whose
+;; elements ARE the build's (pages count unplaced stuck) -- this bridge, by
+;; the keystone fn-cat-index-health-is-the-build.
+(defthm pak-health-is-the-build
+  (equal (fn-mlh-build-health key rows)
+         (list (fn-mlh-pages (fn-mlh-build key rows)) (fn-mlh-count (fn-mlh-build key rows))
+               (fn-mlh-build-unplaced key rows) (fn-mlh-stuck (fn-mlh-build key rows))))
+  :hints (("Goal" :use ((:instance fn-cat-index-health-is-the-build (fn-cat rows)))
+           :in-theory (e/d (fn-cat-index-health fn-cat$a-index-health)
+                           (fn-cat-index-health-is-the-build))))
+  :rule-classes nil)
+
 (assert-event (and (fn-held-p *pak-h0*) (fn-held-p *pak-h1*) (fn-held-p *pak-h2*)
                    (fn-held-p *pak-h3*)
                    (equal (fn-record-msgid *pak-h3*) (fn-record-octets-string *pak-msgid-octets*))))
@@ -63,16 +100,16 @@
 (assert-event
  (equal (fn-pvc-post-boundary-carried nil *pak-profile* *pak-msgid-octets* 2048 1 3) :ok))
 
-; fn-pak-post-admission over the opened view (the abstract catalog is its
-; rows): :ok, and the keystone's conclusion -- the fold over the rows and the
+; fn-pak-post-admission over the opened view (a live catalog holding the
+; rows, pak-admit): :ok, and the keystone's conclusion -- the fold over the rows and the
 ; fourth row places it (no unplaced row is added).
 (assert-event
- (and (equal (fn-pak-post-admission nil *pak-profile* *pak-msgid-octets* 2048 1 3
+ (and (equal (pak-admit nil *pak-profile* *pak-msgid-octets* 2048 1 3
                                     *pak-key* *pak-rows*)
              :ok)
-      (equal (fn-mlh-build-unplaced *pak-key* (append *pak-rows* (list *pak-h3*)))
-             (fn-mlh-build-unplaced *pak-key* *pak-rows*))
-      (equal (fn-mlh-build-unplaced *pak-key* (append *pak-rows* (list *pak-h3*))) 0)))
+      (equal (third (fn-mlh-build-health *pak-key* (append *pak-rows* (list *pak-h3*))))
+             (third (fn-mlh-build-health *pak-key* *pak-rows*)))
+      (equal (third (fn-mlh-build-health *pak-key* (append *pak-rows* (list *pak-h3*)))) 0)))
 
 ; fn-pak-post-admission-refused-is-the-boundary-by-definition: every bound's
 ; refusal passes through, whatever the key and the catalog; and the sixth
@@ -81,9 +118,9 @@
  (let ((bad-msgid (fn-record-string-octets "not a message id")))
    (and (equal (fn-pvc-post-boundary-carried nil *pak-profile* bad-msgid 2048 1 3)
                :bad-message-id)
-        (equal (fn-pak-post-admission nil *pak-profile* bad-msgid 2048 1 3 *pak-key* *pak-rows*)
+        (equal (pak-admit nil *pak-profile* bad-msgid 2048 1 3 *pak-key* *pak-rows*)
                :bad-message-id)
-        (equal (fn-pak-post-admission nil *pak-profile* *pak-msgid-octets* 2048 0 3
+        (equal (pak-admit nil *pak-profile* *pak-msgid-octets* 2048 0 3
                                       *pak-key* *pak-rows*)
                (fn-pvc-post-boundary-carried nil *pak-profile* *pak-msgid-octets* 2048 0 3))
         (not (equal (fn-pvc-post-boundary-carried nil *pak-profile* *pak-msgid-octets* 2048 0 3)
@@ -96,9 +133,9 @@
 ; (books/store-budget-naming.lisp).
 (assert-event
  (and (fn-sbud-post-boundary-verdictp
-       (fn-pak-post-admission nil *pak-profile* *pak-msgid-octets* 2048 1 3 *pak-key* *pak-rows*))
+       (pak-admit nil *pak-profile* *pak-msgid-octets* 2048 1 3 *pak-key* *pak-rows*))
       (fn-sbud-post-boundary-verdictp
-       (fn-pak-post-admission nil *pak-profile* *pak-msgid-octets* 2048 0 3 *pak-key* *pak-rows*))
+       (pak-admit nil *pak-profile* *pak-msgid-octets* 2048 0 3 *pak-key* *pak-rows*))
       (fn-sbud-post-boundary-verdictp :mpx-saturated)
       (not (fn-sbud-post-boundary-verdictp :unnamed))
       (equal (fn-sbud-post-boundary-refusal :mpx-saturated) *fn-sbud-refusal-mpx-saturated*)
@@ -118,7 +155,7 @@
 ; fails, and the retained one (the verdict :ok) holds.
 (assert-event
  (let ((other (pak-held 3 "<pak-other@example.invalid>" '("fn.test") 400)))
-   (and (equal (fn-pak-post-admission nil *pak-profile* *pak-msgid-octets* 2048 1 3
+   (and (equal (pak-admit nil *pak-profile* *pak-msgid-octets* 2048 1 3
                                       *pak-key* *pak-rows*)
                :ok)
         (not (equal (fn-record-msgid other) (fn-record-octets-string *pak-msgid-octets*))))))
@@ -154,10 +191,7 @@
    (and (equal (first result) :ok)
         (equal (second result) :ok)
         ; fn-cat-index-health-is-the-build: (pages entries unplaced stuck)
-        (equal health (list (fn-mlh-pages (fn-mlh-build *pak-key* *pak-rows*))
-                            (fn-mlh-count (fn-mlh-build *pak-key* *pak-rows*))
-                            (fn-mlh-build-unplaced *pak-key* *pak-rows*)
-                            (fn-mlh-stuck (fn-mlh-build *pak-key* *pak-rows*))))
+        (equal health (fn-mlh-build-health *pak-key* *pak-rows*))
         (equal (second health) 3) (equal (third health) 0) (equal (fourth health) 0)
         (fn-sbud-printable-ascii-p (butlast (fourth result) 1))
         (equal (car (last (fourth result))) 10)

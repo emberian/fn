@@ -1,3 +1,4 @@
+; UNHOOKED cert-roots (2026-10-02): out of the Makefile certify roots -- it depends on the FNCE consumer-authority / remote-consumer event kinds stage 0 reverted from the wire-event grammar (814763fdf; planning/design-store-representation-2026-10-01.md section 4). The code stays; it returns with that grammar.
 ; AUTHORED composition tests; actual source admission is still pending.
 ; Metadata/source labels below are test fixtures, never runtime readiness.
 (in-package "ACL2")

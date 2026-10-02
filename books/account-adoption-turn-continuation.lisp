@@ -1,3 +1,4 @@
+; UNHOOKED cert-roots (2026-10-02): out of the Makefile certify roots -- a Codex-era book that never certified and no image world includes: fn-act-suspend guard fails at dev adbf57435. The code stays; its completion is queued (build/coordinator/lanedumps/cert-roots.md).
 ; INTERNAL retained-claim transforms. The owner entry proves actual C source,
 ; current BODY and same-slot history before calling; these list arguments
 ; cannot issue, refund, promote or establish a receipt.

@@ -1,3 +1,4 @@
+; UNHOOKED cert-roots (2026-10-02): out of the Makefile certify roots -- its include closure reaches host/owner-host.lisp, which `ld's host/store-node-host.lisp and so is a host file, never a certifiable book (d4826a7b1). The code stays; it certifies again when it names the books it needs instead of the owner host file.
 ; Internal FINISH of the retained semantic producer. No native declaration.
 ; The semantic dispatcher alone writes :history-semantic-done, and the
 ; backing producer alone registers the page/forest preparation. Neither

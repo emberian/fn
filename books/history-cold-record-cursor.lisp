@@ -530,6 +530,14 @@
                    (append (cons 6 (fn-scc-nat-octets (len x))) x)))
    :hints (("Goal" :in-theory (e/d (fn-scc-program)
                                   (fn-scc-octets-valuep fn-scc-atom-octets fn-scc-nat-octets))))))
+; One more digit only when n reaches 256^k: floor(n/256) < p from n < 256p.
+(local
+ (encapsulate ()
+   (local (include-book "arithmetic-5/top" :dir :system))
+   (defthm fn-hrcur-floor-256-below
+     (implies (and (natp n) (natp p) (< n (* 256 p)))
+              (< (floor n 256) p))
+     :rule-classes :linear)))
 (local
  (defthm fn-hrcur-cold-digits-length-bound
    (implies (and (natp n) (natp k) (< n (expt 256 k)))

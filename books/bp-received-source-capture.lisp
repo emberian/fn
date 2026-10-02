@@ -6,7 +6,7 @@
 (set-verify-guards-eagerness 2)
 
 (defun fn-bprx-fixed-recordp (x fields)
- (declare (xargs :guard (natp fields) :measure fields))
+ (declare (xargs :guard (natp fields) :measure (nfix fields)))
  (if (zp fields) (null x)
   (and (consp x) (fn-bprx-fixed-recordp (cdr x) (1- fields)))))
 

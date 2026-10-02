@@ -110,6 +110,7 @@
                          fn-pct-feed-requires-entry
                          fn-own-feed-entry-of-of-put-same fn-own-feed-entry-feed-of-entry-scoped
                          fn-feed-queue-of-fn-feed-make fn-feed-next-attempt-of-fn-feed-make
+                         fn-feed-queue-of-counted-make fn-feed-next-attempt-of-counted-make
                          fn-feed-state-of-of-set-state-same
                          fn-pct-selected-is-queued fn-pct-selected-present
                          fn-pct-next-attempt-natural fn-pct-selection-when-selectable-by-definition

@@ -52,7 +52,7 @@
 (defconst *cdt-alice* (make-list 32 :initial-element 1))
 (defconst *cdt-bob* (make-list 32 :initial-element 2))
 (defun cdt-sub (source obs login account)
-  (fn-own-sub-make-author 4 2 0 (cdt-d source obs) (cdt-text login) account))
+  (fn-own-sub-make-author 4 2 0 (cdt-d source obs) (cdt-text login) account nil))
 (defun cdt-stored (source obs login account ring)
   (fn-own-sub-stored-octets nil (cdt-sub source obs login account) ring))
 

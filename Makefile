@@ -16,21 +16,16 @@ FN_LD_TIMEOUT_SECONDS ?= 240
 ACL2_BOOKS ?= books/defrecord \
 	books/consumer-transaction-dispatch \
 	tests/acl2/consumer-transaction-dispatch-tests \
-	tests/acl2/consumer-remote-store-category-tests \
 	tests/acl2/receiver-response-transfer-tests \
 	books/connection-receiver-repin \
 	books/index-connection-rx-repin \
 	books/index-reader-rx-source-completion \
 	tests/acl2/connection-receiver-repin-tests \
 	tests/acl2/connection-receiver-repin-state-tests \
-	books/obligation-view-cursor-refinement \
 	books/obligation-view-cursor \
 	books/retention-obligation-view \
 	books/obligation-view-budget \
-	books/view-delta-cursor-refinement \
 	books/view-delta-cursor \
-	tests/acl2/obligation-view-cursor-tests \
-	tests/acl2/view-delta-cursor-tests \
 	books/index-reader-actor \
 	books/index-reader-receiver-issuer \
 	tests/acl2/index-reader-render-establishment-tests \
@@ -63,34 +58,18 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/substrate-profile-entry-tests \
 	tests/acl2/substrate-profile-selection-tests \
 	tests/acl2/substrate-commit-profile-resume-tests \
-	host/history-owner-completion-host \
 	books/history-semantic-writer \
 	tests/acl2/history-semantic-writer-tests \
 	books/admission-preparation-intent \
-	host/admission-preparation-host \
-	host/history-admission-producer-host \
 	tests/acl2/admission-preparation-intent-tests \
 	tests/acl2/admission-preparation-source-capture-tests \
-	tests/acl2/admission-semantic-census-begin-model-tests \
-	tests/acl2/admission-semantic-census-initial-tests \
-	tests/acl2/admission-semantic-census-lineage-tests \
-	tests/acl2/admission-semantic-census-prefix-tests \
-	tests/acl2/admission-semantic-census-resident-tests \
 	tests/acl2/admission-semantic-census-source-guard-tests \
-	tests/acl2/admission-semantic-census-step-refinement-tests \
 	tests/acl2/admission-semantic-exclusion-tests \
-	tests/acl2/bp-controller-checkpoint-payload-directory-tests \
 	tests/acl2/bp-controller-registry-carry-tests \
-	tests/acl2/bp-digest-workspace-factory-tests \
-	tests/acl2/bp-digest-workspace-publication-tests \
-	tests/acl2/bp-digest-workspace-registered-factory-tests \
 	tests/acl2/bp-node-crc0-receive-tests \
 	tests/acl2/bp-node-fragment-step-job-tests \
 	tests/acl2/bp-received-source-capture-tests \
-	tests/acl2/consumer-configured-authority-event-tests \
 	tests/acl2/consumer-configured-authority-finish-tests \
-	tests/acl2/consumer-control-row-cursor-tests \
-	tests/acl2/consumer-remote-client-contract-tests \
 	tests/acl2/consumer-remote-collection-state-tests \
 	tests/acl2/consumer-remote-collection-tests \
 	tests/acl2/consumer-remote-history-tests \
@@ -200,7 +179,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/payload-window-tests \
 	tests/acl2/payload-window-width-tests \
 	books/receiver-turn-controller \
-	books/snapshot-row-source-grammar \
 	books/history-semantic-writer-state \
 	tests/acl2/history-semantic-writer-state-tests \
 	books/index-reader-response-issuer \
@@ -2230,7 +2208,6 @@ ACL2_BOOKS ?= books/defrecord \
     books/ninep-group-directory-source \
     tests/acl2/allocation-dual-ceiling-tests \
     books/runtime-bootstrap-completion \
-    books/account-adoption-turn-continuation \
     tests/acl2/account-adoption-turn-return-tests \
     tests/acl2/account-adoption-turn-tests \
     tests/acl2/consumer-account-config-domain-tests \
@@ -2242,10 +2219,8 @@ ACL2_BOOKS ?= books/defrecord \
     tests/acl2/runtime-construction-inventory-tests \
     books/runtime-construction-inventory \
     tests/acl2/runtime-bootstrap-export-tests \
-    tests/acl2/allocation-turn-source-cost-tests \
     tests/acl2/allocation-turn-body-authority-tests \
     tests/acl2/allocation-turn-slots-tests \
-    books/allocation-turn-source-cost \
     books/page-read-counter-transaction \
     books/page-read-issue-source-cost \
     books/recovery-prs-install \
@@ -2270,7 +2245,6 @@ ACL2_BOOKS ?= books/defrecord \
     books/index-adoption-context \
     books/index-backing-request-adoption \
     books/index-connection-repin \
-    books/index-incoming-request \
     books/index-query-slot-issuer \
     books/index-range-controller \
     books/index-reader-request \

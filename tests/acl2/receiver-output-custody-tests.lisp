@@ -5,7 +5,10 @@
 (defconst *fn-rxpa-idle* '(nil nil :idle nil nil (:receiver-install (:rx-capacity 0 0 4096) 0)))
 (defconst *fn-rxpa-pool*
  (list (list (fn-prl-build '(8192 0 0 0 8) '(0 0 0 0 1) 1 nil '(4608 0 0 0 0))
-             nil nil nil nil) :served nil))
+             nil nil nil nil) :served nil
+       ;; the allocation epoch (fn-page-read-pool's fields 3-9): active, as
+       ;; 19603e149's counter publication requires
+       nil :active 0 0 0 0 nil))
 (defthm fn-rxpa-output-current-episode-and-busy-literal
 (let* ((rxpa-start  (fn-owner-rx-turn-start '(:rx-capacity 0 0 4096) '(256 0 0 0 1)
    *fn-rxpa-provider* *fn-rxpa-idle* *fn-rxpa-pool*))

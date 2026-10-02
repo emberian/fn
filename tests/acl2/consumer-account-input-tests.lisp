@@ -1,6 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/consumer-account-input")
-(local (include-book "consumer-account-candidate-tests"))
+(include-book "consumer-account-candidate-tests") ; its fixtures are used by non-local events
 
 (defun fn-aict-complete (s fuel)
  (declare (xargs :guard t :verify-guards nil :measure (nfix fuel)))

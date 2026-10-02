@@ -101,9 +101,10 @@ In one sentence: the envelope is degree one in `N` — substituting `k = 257` an
 whose quadratic factor is the header fuel `k`, not the input length — and at the
 520-octet, 128-header-line regression article it allows 1,103,275,316 units.
 Measured on that same article by the executable cost model in
-`books/article-public-bound`, `fn-aw-parse` charges **30,195 work units**, so
-the envelope is **about 36,538 times** the cost it bounds
-(1,103,275,316 / 30,195); both numbers are asserted as executable witnesses in
+`books/article-public-bound`, `fn-aw-parse` charges **46,833 work units**
+(30,195 before 575629468 carried the visible header values through the list
+parser), so the envelope is **about 23,558 times** the cost it bounds
+(1,103,275,316 / 46,833); both numbers are asserted as executable witnesses in
 `tests/acl2/article-work-tests.lisp`. That sample is retained across profile
 changes for comparison; a separate 1,032-octet vector exercises the current
 256-header-line boundary, and a 257-header-line vector is rejected.

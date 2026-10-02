@@ -2,6 +2,14 @@
 (in-package "ACL2")
 (include-book "../../books/tcpcl-segment-source-cursor")
 (include-book "../../books/tcpcl-received-source")
+; A turn's bytes are a true list (the harness appends them).
+(local (defthm tsc-turn-loop-bytes-true-listp
+  (implies (true-listp rev)
+           (true-listp (mv-nth 2 (fn-tsc-turn-loop job quantum rev used))))
+  :hints (("Goal" :in-theory (enable fn-tsc-turn-loop)))))
+(local (defthm tsc-turn-bytes-true-listp
+  (true-listp (mv-nth 2 (fn-tsc-turn job quantum)))
+  :hints (("Goal" :in-theory (enable fn-tsc-turn)))))
 (defun fn-tsc-test-run (job quantum turns out)
  (declare (xargs :guard (and (natp quantum) (<= quantum 64) (natp turns)
                             (true-listp out)) :measure (nfix turns)))
