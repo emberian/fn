@@ -1,33 +1,41 @@
 ;;; `principal set-password|bind|unbind' against a running owner (PKT-221;
 ;;; control request 14, books/peer-invite.lisp fn-pinv-bindings-request-*).
-;;; The owner adopts its credential table from the file (ACL2's
+;;; The owner rebuilds its credential table from the file (ACL2's
 ;;; fn-native-auth-host-load, host/native/auth.lisp
-;;; fnn-native-auth-reload-config) and bindings in one typed C adoption commit.
+;;; fnn-native-auth-reload-config), then republishes the bindings.
 ;;;
 ;;; I/O only.  After the verb made the credential file durable
 ;;; (host/native/auth-admin.lisp), it asks the owner, over the control socket,
-;;; to re-read the file it was started with. The bounded startup reader feeds
-;;; the same ACL2 account/signing preparation used by startup; each scheduler
-;;; quantum is admitted before construction. The typed durable C completion
-;;; publishes both roots together. Its runtime allowance remains unavailable
-;;; until the genuine pooled issuer and producer are installed. Existing
-;;; connections retain their pinned configuration.
+;;; to re-read the file it was started with; the owner, under its mutex, reads
+;;; it with the same bounded reader as at start and publishes ACL2's plan
+;;; (books/login-binding-live.lisp fn-lb-sync-plan) through
+;;; fnn-owner-live-reconfigure-locked (host/native/auth.lisp
+;;; fnn-native-auth-publish-bindings).  A connection open at that moment keeps
+;;; the table it pinned; the next connection pins the published one.
 
 (in-package "ACL2")
 
 (defun fnn-login-bindings-owner-reload (service)
-  ;; The bounded adoption driver enters/leaves the owner for each tick.
-  ;; Holding a surrounding quantum would either deadlock a nested entry or
-  ;; monopolize the owner for an operator table of arbitrary supported size.
-  (let ((path *fnn-native-auth-live-path*))
-    (if (null path) :refused
-      (let ((max-credentials
-              (fnn-profile-nat 'fn-store-profile-max-credentials
-                               (fnn-owner-service-store service))))
-        (multiple-value-bind (octets presentp)
-            (fnn-native-auth-read path (fnn-core 'fn-native-auth-host-max-octets
-                                                 max-credentials))
-          (fnn-native-auth-reload-config service octets presentp max-credentials))))))
+  (fnn-owner-serialized
+   service nil
+   (lambda ()
+     (let ((path *fnn-native-auth-live-path*))
+       (if (null path)
+           :refused
+         (let ((max-credentials
+                 (fnn-profile-nat 'fn-store-profile-max-credentials
+                                  (fnn-owner-service-store service))))
+           (multiple-value-bind (octets presentp)
+               (fnn-native-auth-read path (fnn-core 'fn-native-auth-host-max-octets
+                                                    max-credentials))
+             ;; The passwords first (a `principal set-password'), then the
+             ;; bindings; a refused file leaves both as they were.
+             (if (eq (fnn-native-auth-reload-config service octets presentp
+                                                    max-credentials)
+                     :accepted)
+                 (fnn-native-auth-publish-bindings service octets presentp
+                                                   max-credentials)
+               :refused))))))))
 
 (defvar *fnn-login-bindings-next-handler* *fnn-hybrid-control-handler*)
 

@@ -14,7 +14,8 @@
 ; decoded again and compared with the damaged tables before it is written.
 ;
 ; Driven by tools/fixtures/damaged_checkpoint.py, which first includes
-; books/store-checkpoint-tables and books/crypto-attach.
+; books/store-checkpoint-tables, books/history-image-snapshot and
+; books/crypto-attach.
 
 (set-guard-checking :none)
 (program)
@@ -74,7 +75,7 @@
                    (list :ok tables2 (caar old) (cdar old))
                  (list :refused :nexts-not-replaced)))))))
 
-(defun fx-damage-octets (xs v)
+(defun fx-damage-segments (xs v)
   (let ((segs (fx-split xs nil)))
     (if (or (eq segs :bad) (not (consp segs)))
         (list :refused :segments)
@@ -102,6 +103,24 @@
                         (list :refused :round-trip)
                       (list :ok (append (fn-scc-concat (take arena-count segs)) octets)
                             (nth 2 d) (nth 3 d)))))))))))))
+
+; A file that carries a history image region (books/history-image-snapshot.lisp)
+; starts with it; the region is kept as written and the framed segments
+; after it (fn-his-region-octets) are what is split, as the open skips it
+; (fn-his-image-header-np, fn-his-skip-octets).
+(defun fx-image-region (xs)
+  (let ((np (and (<= *fn-his-header-octets* (len xs))
+                 (fn-his-image-header-np (take *fn-his-header-octets* xs)))))
+    (if (and (natp np) (<= (fn-his-region-octets np) (len xs)))
+        (take (fn-his-region-octets np) xs)
+      nil)))
+
+(defun fx-damage-octets (xs v)
+  (let ((region (fx-image-region xs)))
+    (let ((d (fx-damage-segments (nthcdr (len region) xs) v)))
+      (if (eq (car d) :ok)
+          (list :ok (append region (nth 1 d)) (nth 2 d) (nth 3 d))
+        d))))
 
 (defun fx-damage-file (in out v state)
   (declare (xargs :stobjs state))

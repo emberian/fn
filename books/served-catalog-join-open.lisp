@@ -40,9 +40,9 @@
 (defthm fn-scj-node-prepare-staged
   (implies (and (null (fn-node-stage s))
                 (consp (fn-node-stage (fn-node-prepare s generation msgid payload groups
-                                                       obligation-id subject evidence charge stamp binding))))
+                                                       obligation-id subject evidence charge stamp))))
            (and (equal (fn-node-acceptance (fn-node-prepare s generation msgid payload groups
-                                                            obligation-id subject evidence charge stamp binding))
+                                                            obligation-id subject evidence charge stamp))
                        (fn-accept-prepare (fn-node-acceptance s) generation msgid payload groups stamp))
                 (not (equal (fn-accept-prepare (fn-node-acceptance s) generation msgid payload groups stamp)
                             (fn-node-acceptance s)))))
@@ -109,7 +109,7 @@
   (let* ((adv (fn-replay-advance-txid node x))
          (prepared (fn-node-prepare adv (fn-record-generation h) (fn-record-msgid h)
                                     (fn-record-payload h) (fn-record-groups h)
-                                    oid subj ev charge (fn-record-stamp h) (fn-held-binding h))))
+                                    oid subj ev charge (fn-record-stamp h))))
     (implies (and (null (fn-node-stage node))
                   (fn-node-pending-matchesp prepared txid gen)
                   (fn-scj-acc-rowsp (fn-node-acceptance node) c))
@@ -126,7 +126,7 @@
                             (s (fn-replay-advance-txid node x))
                             (generation (fn-record-generation h)) (msgid (fn-record-msgid h))
                             (payload (fn-record-payload h)) (groups (fn-record-groups h))
-                            (obligation-id oid) (subject subj) (evidence ev) (stamp (fn-record-stamp h)) (binding (fn-held-binding h)))
+                            (obligation-id oid) (subject subj) (evidence ev) (stamp (fn-record-stamp h)))
                  (:instance fn-scj-acc-rowsp-of-same-fields
                             (a (fn-node-acceptance (fn-replay-advance-txid node x)))
                             (b (fn-node-acceptance node)))

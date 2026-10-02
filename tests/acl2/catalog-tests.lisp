@@ -228,18 +228,18 @@
 ; sides evaluated).
 (assert-event
  (and (equal "<d@x>" (fn-record-msgid *cat-h3*))
-      (iff (equal (fn-mpxt-build-unplaced *cat-key* (append *cat-rows* (list *cat-h3*)))
-                  (fn-mpxt-build-unplaced *cat-key* *cat-rows*))
+      (iff (equal (fn-mlh-build-unplaced *cat-key* (append *cat-rows* (list *cat-h3*)))
+                  (fn-mlh-build-unplaced *cat-key* *cat-rows*))
            (not (fn-cat-msgid-saturatedp *cat-key* "<d@x>" *cat-rows*)))
       (not (fn-cat-msgid-saturatedp *cat-key* "<d@x>" *cat-rows*))
-      (equal (fn-mpxt-build-unplaced *cat-key* (append *cat-rows* (list *cat-h3*))) 0)
+      (equal (fn-mlh-build-unplaced *cat-key* (append *cat-rows* (list *cat-h3*))) 0)
       ; fn-cat-clear-keyed-is-nil, fn-cat-index-health-is-the-build
       (equal (fn-cat-clear-keyed *cat-key* *cat-rows*) nil)
       (equal (fn-cat-index-health *cat-key* *cat-rows*)
-             (list (fn-mpxt-pages (fn-mpxt-build *cat-key* *cat-rows*))
-                   (fn-mpxt-count (fn-mpxt-build *cat-key* *cat-rows*))
-                   (fn-mpxt-build-unplaced *cat-key* *cat-rows*)
-                   (fn-mpxt-stuck (fn-mpxt-build *cat-key* *cat-rows*))))))
+             (list (fn-mlh-pages (fn-mlh-build *cat-key* *cat-rows*))
+                   (fn-mlh-count (fn-mlh-build *cat-key* *cat-rows*))
+                   (fn-mlh-build-unplaced *cat-key* *cat-rows*)
+                   (fn-mlh-stuck (fn-mlh-build *cat-key* *cat-rows*))))))
 
 (defun cat-keyed-exec-run (fn-cat)
   (declare (xargs :stobjs fn-cat))

@@ -32,7 +32,6 @@
 ; exception in the serve loop ended the process for every connection.
 (include-book "payload-view-host")
 (include-book "../books/consumer-config-publication")
-(include-book "../books/acceptance-binding-injection")
 (include-book "page-read-host")
 (include-book "../books/owner-incoming-context")
 (include-book "../books/admission-preallocation-resources")
@@ -40,7 +39,11 @@
 (include-book "../books/receiver-provider")
 (include-book "../books/receiver-turn-controller")
 (include-book "receiver-source-gate-host")
-(include-book "post-identity-captured-host")
+; Stage 0 (2026-10-01): post-identity-captured-host (fn-owner-pic-demand, the
+; captured-identity precheck's readout) is not included: its chain
+; (books/post-identity-captured over the acceptance-binding held gate) is
+; parked with D43's revert, and no served entry dispatches it since the POST
+; precheck returned to the 7aad444ce check (host/native/owner.lisp).
 (include-book "../books/owner-config")
 (include-book "../books/owner-authority-proposal-state")
 (include-book "../books/consumer-account-carries-state")
@@ -1252,11 +1255,17 @@
          (reason (fn-ocfg-reconfig-refusal oc id deltas))
          ; Same ACL2 authority step as durable config/recovery. This normal
          ; refusal occurs before staging or any native configuration write.
-         ; Read the same metadata4 installed with actual CP publication.
-         ; Its maintained correspondence is an owner producer obligation;
-         ; absence remains unavailable, never reconstructed from CP graphs.
+         ; Stage 0 (planning/design-store-representation-2026-10-01.md section
+         ; 4, MODE 2026-10-01 section 3: no gate before its producer): the
+         ; five-field preflight (fn-cpm-config-preflight) refuses every live
+         ; reconfiguration of a node with a consumer position until
+         ; fn-owner-authority-publication-install has produced the account
+         ; metadata, and that producer runs only after a reconfiguration
+         ; completes.  Until the producer is on the served path the preflight
+         ; is fn-cca-preflight, which carries the consumer position and an
+         ; absent metadata through the proposal (the pre-a0096952f entry).
          (approved (if reason nil
-                     (fn-cpm-config-preflight cp (fn-owner-account-carries-read state)))))
+                     (fn-cca-preflight cp (fn-owner-account-carries-read state)))))
     (if (and (not reason) (not (eq (fn-cp-nth 0 approved) :ok)))
         (value (fn-ores-config-refused (fn-cp-nth 1 approved)))
       (let* ((state (fn-owner-step (list :reconfigure id deltas) fn-arena state))
@@ -1460,19 +1469,33 @@
         (value word)))))
 
 (defun fn-owner-reconfigure-complete (generation state)
-  ; The write has already been reported durable. Consume the exact saved
-  ; proposal once, then retain the complete core publication result for the
-  ; single owner/carry/account-root collector. Mismatch requires recovery.
+  ; Called only after Store.write_config_record has named the record durable;
+  ; an uncertain write has no call here and forces recovery.  The whole
+  ; completion is ACL2's `fn-oclc-publish' (books/config-owner-carried): the
+  ; refusal, the carried physical history in one owner transition, the posting
+  ; configuration of the published generation, and the verdict.  On :refused
+  ; and :recovery-required its owner is the one installed now, so the host
+  ; installs it unconditionally and decides nothing.  Under the owner's
+  ; invariant it is `fn-ocl-publish' (fn-oclc-publish-is-publish, PRF-274).
+  ;
+  ; Stage 0 (MODE 2026-10-01 section 3, no gate before its producer): the
+  ; consumer-authority completion (`fn-ccp-publish' over the proposal saved by
+  ; `fn-owner-authority-proposal-capture', then
+  ; `fn-owner-authority-publication-install') is not the served completion:
+  ; on the served path no proposal reaches the consume (stage-0-3's probe: the
+  ; global is NIL after a :staged stage), so every live reconfiguration ended
+  ; :recovery-required and fenced the owner.  The capture, the consume and the
+  ; install stay in the tree; the proposal is cleared here so a stale one is
+  ; never reused.  Forward completion (AUTHORITY-FIELD lane): the authority
+  ; binding produced on the stage path and proved to reach this call, then
+  ; this body returns to the consume + fn-ccp-publish + install collector.
   (declare (xargs :stobjs state :mode :program))
-  (let* ((oc (fn-owner-ocfg state))
-         (cp (fn-sn-consumer (fn-own-store (fn-ocfg-owner oc))))
-         (record (fn-ocfg-staged oc))
-         (epoch (fn-owner-canonical-epoch state)))
-    (mv-let (approved state)
-      (fn-owner-authority-proposal-consume epoch cp record state)
-      (let ((one (fn-ccp-publish oc generation
-                                (fn-owner-served-post-bound state) approved)))
-        (fn-owner-authority-publication-install one state)))))
+  (let ((state (fn-owner-authority-proposal-clear state)))
+    (mv-let (verdict next)
+      (fn-oclc-publish (fn-owner-ocfg state) generation
+                       (fn-owner-served-post-bound state))
+      (let ((state (fn-owner-install-ocfg next state)))
+        (value verdict)))))
 
 
 ;; PKT-827 (b), PRF-287: the live request's authorization from the owner's
@@ -1572,12 +1595,6 @@
 ;; different octets and answers a durable POST 441-uncertain.  The take is
 ;; this global's only writer and fn-owner-finish-submission-synced its only
 ;; reader; before any take it is the live configuration.
-(defun fn-owner-submit-binding (state)
-  (declare (xargs :stobjs state :mode :program))
-  (if (boundp-global 'fn-owner-submit-binding state)
-      (f-get-global 'fn-owner-submit-binding state)
-    nil))
-
 (defun fn-owner-take-config (state)
   (declare (xargs :stobjs state :mode :program))
   (if (boundp-global 'fn-owner-take-config state)
@@ -1608,8 +1625,7 @@
          (token (fn-prl-nth 0 slot))
          (prior (if (boundp-global 'fn-owner-incoming-context state)
                     (f-get-global 'fn-owner-incoming-context state) nil))
-         (sub (fn-own-inflight (fn-owner-core state)))
-         (binding (fn-owner-submit-binding state)))
+         (sub (fn-own-inflight (fn-owner-core state))))
     (cond
      ((not (equal (fn-ioh-access slot token :read) :holder-readonly))
       (mv nil :incoming-busy fn-page-read-pool state))
@@ -1619,8 +1635,8 @@
                        (equal (fn-owner-canonical-epoch state)
                               (fn-prl-nth 2 prior)))
                   :registered :incoming-busy) fn-page-read-pool state))
-     ((or (null sub) (not (fn-ab-p binding)))
-      (mv nil :invalid-binding fn-page-read-pool state))
+     ((null sub)
+      (mv nil :no-submission fn-page-read-pool state))
      (t
       (let* ((parse (fn-owner-parse-carry state))
              (groups (if (fn-own-transit-subp sub)
@@ -1628,7 +1644,7 @@
                        (fn-inj-decision-groups (fn-own-sub-decision sub))))
              (context (list :incoming-context token
                             (fn-owner-canonical-epoch state) sub
-                            (fn-own-sub-msgid sub) binding groups
+                            (fn-own-sub-msgid sub) groups
                             (fn-owner-take-config state) parse
                             (f-get-global 'fn-owner-submit-intent state)))
              (state (f-put-global 'fn-owner-incoming-context context state)))
@@ -1741,9 +1757,7 @@
 (defun fn-owner-prepare (msgid-octets payload group-codes id-octets
                           subject-octets evidence-octets charge fn-arena fn-hist state)
   (declare (xargs :stobjs (fn-arena fn-hist state) :mode :program))
-  (if (not (fn-ab-p (fn-owner-submit-binding state)))
-      (mv nil :invalid-binding fn-arena fn-hist state)
-    (let* ((s (fn-owner-store state))
+  (let* ((s (fn-owner-store state))
          (groups (fn-store-groups-from-codes
                   group-codes (fn-state-groups (fn-node-acceptance (fn-sn-node s))))))
     ; The fields' checks are ACL2's (books/post-fields.lisp
@@ -1769,7 +1783,7 @@
                           (fn-store-octets->string id-octets)
                           (fn-store-octets->string subject-octets)
                           (fn-store-octets->string evidence-octets)
-                          charge (fn-owner-submit-binding state)))
+                          charge))
                  ; fn-opc-prepare is equal to the former fn-ocfg-step event
                  ; under fn-own-relation, established by observed recovery
                  ; and preserved by every live owner transition.
@@ -1839,7 +1853,7 @@
               ; and the host seals it with one fn-arena-seal-list call
               ; (tools/run_owner.py prepare), exactly when ACL2 answered
               ; :prepared.
-              (mv nil (list :seal payload) fn-arena fn-hist state))))))))))))
+              (mv nil (list :seal payload) fn-arena fn-hist state)))))))))))
 
 ; Step 8 (catalog slice) after the records flip: the host sealed the POST's
 ; payload (host/native/owner.lisp fnn-owner-attempt, after
@@ -1908,13 +1922,11 @@
                                  subject-octets evidence-octets charge
                                  fn-octets fn-arena fn-cat fn-hist state)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat fn-hist state) :mode :program))
-  (if (not (fn-ab-p (fn-owner-submit-binding state)))
-      (mv nil :invalid-binding fn-arena fn-hist state)
-    ; No allocation or payload-list conversion before a matching installed
-    ; canonical context is available. Actual bootstrap establishes it.
-    (if (not (fn-owner-canonical-availablep
-              (fn-sf-records-count (fn-sn-files (fn-owner-store state))) state))
-        (mv nil :canonical-size-unavailable fn-arena fn-hist state)
+  ; Stage 0 (MODE 2026-10-01 section 3, no gate before its producer): the
+  ; canonical-context gate 1bf2ddcaf put here (fn-owner-canonical-availablep,
+  ; :canonical-size-unavailable) has no producer: nothing calls
+  ; fn-owner-canonical-install, so it refused every POST.  It returns with
+  ; the producer.
     (let* ((s (fn-owner-store state))
          (groups (fn-store-groups-from-codes
                   group-codes (fn-state-groups (fn-node-acceptance (fn-sn-node s))))))
@@ -1942,7 +1954,7 @@
                           (fn-store-octets->string id-octets)
                           (fn-store-octets->string subject-octets)
                           (fn-store-octets->string evidence-octets)
-                          charge (fn-owner-submit-binding state)))
+                          charge))
                  ; Packet 1: the history gate at the article's own figure
                  ; (books/store-budget-article.lisp), and PRF-138: 0 unless
                  ; the capacity vector (a release per open undertaking and
@@ -2023,7 +2035,7 @@
               ; catalog's prepare after that seal (fn-owner-cat-prepare-sealed;
               ; books/served-catalog-owner.lisp fn-cat-prepare-sealed).
               (let ((state (f-put-global 'fn-owner-cat-candidate (cons record row) state)))
-                (mv nil :seal-buffer fn-arena fn-hist state))))))))))))))
+                (mv nil :seal-buffer fn-arena fn-hist state))))))))))))
 
 (defun fn-owner-prepare-retention
   (kind id-octets subject-octets evidence-octets charge fn-arena state)
@@ -2227,11 +2239,9 @@
   ; installed (fn-owner-install-extended), BEFORE the duplicate test, the
   ; prepare and any durable acceptance.  The sixth word `:mpx-saturated' is a
   ; refusal by name (books/store-budget-naming.lisp).
+  ; Stage 0: the canonical-context gate (fn-owner-canonical-availablep) is
+  ; off this entry too, as in fn-owner-prepare-buffer above.
   (value (cond
-           ((not (fn-ab-p (fn-owner-submit-binding state))) :invalid-binding)
-           ((not (fn-owner-canonical-availablep
-                   (fn-sf-records-count (fn-sn-files (fn-owner-store state))) state))
-            :canonical-size-unavailable)
            (t (fn-pak-post-admission (fn-owner-profile-carry state)
                                 (fn-owner-store-profile state)
                                 msgid-octets payload-length group-count charge
@@ -2255,6 +2265,18 @@
 ;; retention, consumer and topic events complete here.
 ; Defined under the same host-called name in books/owner-retain-transitions.lisp.
 
+; fn-host-hist-sync clears its reload flag with f-put-global, which the ld
+; world opens to the global table before fn-owner-ocfg-of-other-global-put
+; can match; fn-owner-finish's guard needs the owner across that normalized
+; update (as fn-owner-retain-carry-of-other-global-update-by-definition
+; gives the carry).  Without it the guard proof searched 937 s and failed.
+(defthm fn-owner-ocfg-of-other-global-update-by-definition
+  (implies (not (equal key 'fn-owner))
+           (equal (fn-owner-ocfg (update-nth 2 (add-pair key value (nth 2 state)) state))
+                  (fn-owner-ocfg state)))
+  :hints (("Goal" :in-theory '(fn-owner-ocfg get-global global-table assoc-add-pair
+                               nth-update-nth (:executable-counterpart equal)))))
+
 ; The completion over the history stobj refreshed against the owner's Store
 ; (R at the read: fn-hist-refresh-is-the-history; the finish keeps the
 ; history, fn-ceis-finish-keeps-records), so fn-rix-ocfg-complete is
@@ -2263,7 +2285,27 @@
   (declare (xargs :stobjs (fn-hist state) :guard (and (boundp-global 'fn-owner state)
                               (fn-sn-statep (fn-sbud-oc-store (fn-owner-ocfg state)))
                               (fn-prc-carryp (fn-owner-retain-carry state)))
-                  :guard-hints (("Goal" :in-theory (enable fn-sbud-oc-store)))))
+                  ;; Its own theory (360 steps; the global theory spent
+                  ;; 1.6M steps here even with the lemma above).
+                  :guard-hints (("Goal" :in-theory
+                                 '(boundp-global boundp-global1 fn-host-hist-sync fn-sbud-oc-store
+                                   get-global global-table mv-nth not put-global state-p
+                                   update-global-table
+                                   (:executable-counterpart binary-+) (:executable-counterpart equal)
+                                   (:executable-counterpart nfix) (:executable-counterpart zp)
+                                   consp-assoc-equal eqlable-alistp-forward-to-alistp
+                                   ordered-symbol-alistp-forward-to-symbol-alistp
+                                   state-p-implies-and-forward-to-state-p1 state-p1-forward
+                                   symbol-alistp-forward-to-eqlable-alistp
+                                   assoc-add-pair cdr-cons fn-hist-p-is-true-listp
+                                   fn-owner-ocfg-of-other-global-update-by-definition
+                                   fn-owner-retain-carry-of-other-global-update-by-definition
+                                   fn-owner-store-is-configured-store-by-definition nth-update-nth
+                                   (:type-prescription alistp) (:type-prescription eqlable-alistp)
+                                   (:type-prescription fn-prc-carryp) (:type-prescription fn-sn-statep)
+                                   (:type-prescription ordered-symbol-alistp)
+                                   (:type-prescription state-p) (:type-prescription state-p1)
+                                   (:type-prescription symbol-alistp))))))
   (mv-let (fn-hist state) (fn-host-hist-sync (fn-owner-store state) fn-hist state)
     (mv-let (erp val state) (fn-owner-finish-synced fn-hist state)
       (mv erp val fn-hist state))))
@@ -2327,8 +2369,10 @@
           ; longer shows, withdrawn at the count with this row as the cause,
           ; THEN the row completed by the completing record's token -- hidden
           ; when the view no longer shows its Message-ID (R1).
-          (let ((state (fn-orc-writer-enter state))
-                (view (fn-own-view (cdr result))))
+          ; The view of the state before the writer enters (a single
+          ; stobj binding per LET: the ld world refuses a parallel one).
+          (let* ((view (fn-own-view (cdr result)))
+                 (state (fn-orc-writer-enter state)))
             (mv-let (word pending2 fn-cat)
               (fn-sca-finish (cons (nfix (cdr completion)) (fn-pc-expected pending))
                              pending (fn-own-view-index view)
@@ -2375,8 +2419,10 @@
       (let ((pending (f-get-global 'fn-owner-cat-pending state)))
         (if (not (and (equal word :durable) pending (consp completion)))
             (mv nil word fn-cat fn-hist state)
-          (let ((state (fn-orc-writer-enter state))
-                (view (fn-own-view (fn-owner-core state))))
+          ; The view of the state before the writer enters (a single
+          ; stobj binding per LET: the ld world refuses a parallel one).
+          (let* ((view (fn-own-view (fn-owner-core state)))
+                 (state (fn-orc-writer-enter state)))
             (mv-let (cword pending2 fn-cat)
               (fn-sca-finish (cons (nfix (cdr completion)) (fn-pc-expected pending))
                              pending (fn-own-view-index view)
@@ -2449,8 +2495,6 @@
       ; A served POST under a login gets its RFC 8315 Cancel-Lock in the
       ; stored octets (SEC-006, PRF-210): the owner's node secret.
       (let* ((take-config (fn-owner-config state))
-             (binding (fn-abi-sub-binding sub))
-             (state (f-put-global 'fn-owner-submit-binding binding state))
              (tk (fn-apc-take take-config sub (fn-own-node-secret after)))
              (state (f-put-global 'fn-owner-take-config take-config state))
              (intent (fn-apc-icar-carry-of sub (cdr tk)))
@@ -3894,9 +3938,10 @@
 
 
 
-(defun fn-owner-exposure-limits (state)
-  (declare (xargs :stobjs state :mode :program))
-  (fn-owner-callback-exposure-limits state))
+;; fn-owner-exposure-limits and fn-owner-exposure-observe (after a served
+;; step, below) are host/owner-exposure-host.lisp: a certified host book, so
+;; that host books calling them (index-reader-request-host) certify too.
+(include-book "owner-exposure-host")
 
 ;; PRF-986 (PKT-639, W2a): the TLS handshake as an admission decision
 ;; (books/tls-handshake-budget.lisp).  The limits are the operator's live
@@ -4100,26 +4145,6 @@
                            (fn-owner-exposure-now state)))
          (state (f-put-global 'fn-owner-exposure (cdr r) state)))
     (value (if (equal (car r) :proceed) :proceed (cadr (car r))))))
-
-;; After a served step (fn-owner-chunk-span-at below): `fn-owner-exposure-close'
-;; holds the 400 the host appends before it closes, or NIL.  The step's
-;; EFFECTS go in, not its reply octets: fn-exp-observe-effects is
-;; fn-exp-observe of (fn-served-reply-octets effects)
-;; (fn-exp-observe-effects-unfolds) and scans the effects in constant stack
-;; without building that list (books/public-exposure-reply.lisp; PKT-481).
-(defun fn-owner-exposure-observe (id effects consumed state)
-  (declare (xargs :stobjs state :mode :program))
-  (let* ((conn (fn-own-find-conn id (fn-own-conns (fn-owner-core state))))
-         (subject (and conn (fn-auth-session-subject (fn-own-conn-session conn))))
-         (r (fn-exp-observe-effects (fn-owner-exposure-state state)
-                                    (fn-owner-exposure-limits state) id
-                                    (fn-owner-exposure-now state)
-                                    effects consumed subject
-                                    (and (fn-served-submission effects) t)))
-         (state (f-put-global 'fn-owner-exposure (cdr r) state))
-         (state (f-put-global 'fn-owner-exposure-close
-                              (if (consp (car r)) (cadr (car r)) nil) state)))
-    state))
 
 ;; On a receive timeout: :keep or :close (RFC 3977 3.1: close, send nothing).
 (defun fn-owner-exposure-idle (id state)

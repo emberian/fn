@@ -129,15 +129,15 @@
 (defthm fn-sn-article-record-stamp-and-charge
   (implies (fn-record-p (fn-sn-article-record s obs msgid payload groups
                                               obligation-id subject evidence
-                                              charge binding))
+                                              charge))
            (and (fn-record-uint32p
                  (fn-record-stamp (fn-sn-article-record
                                    s obs msgid payload groups obligation-id
-                                   subject evidence charge binding)))
+                                   subject evidence charge)))
                 (equal (fn-record-charge
                         (fn-sn-article-record s obs msgid payload groups
                                               obligation-id subject evidence
-                                              charge binding))
+                                              charge))
                        charge)))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-sn-article-record
@@ -165,17 +165,17 @@
                 (not (equal (mv-nth 0 (fn-store-prepare-interned
                              s (fn-sn-article-record s obs msgid payload groups
                                                      obligation-id subject
-                                                     evidence charge binding) fn-arena))
+                                                     evidence charge) fn-arena))
                             s)))
            (not (fn-record-widep
                  (fn-sn-article-record s obs msgid payload groups obligation-id
-                                       subject evidence charge binding))))
+                                       subject evidence charge))))
   :rule-classes nil
   :hints (("Goal" :use ((:instance fn-store-prepare-interned-stages-u32-coordinates
                                    (w (fn-sn-article-record
                                             s obs msgid payload groups
                                             obligation-id subject evidence
-                                            charge binding)))
+                                            charge)))
                         (:instance fn-sn-article-record-stamp-and-charge))
            :in-theory (e/d (fn-record-widep)
                            (fn-sn-article-record fn-sn-prepare fn-store-prepare-interned fn-record-p
@@ -206,12 +206,12 @@
                 (not (equal (mv-nth 0 (fn-store-prepare-interned
                              s (fn-sn-article-record s obs msgid payload groups
                                                      obligation-id subject
-                                                     evidence charge binding) fn-arena))
+                                                     evidence charge) fn-arena))
                             s)))
            (<= (len (fn-record-encode
                      (fn-sn-article-record s obs msgid payload groups
                                            obligation-id subject evidence
-                                           charge binding)))
+                                           charge)))
                (fn-bs-profile-max-record-octets profile)))
   :rule-classes nil
   :hints (("Goal" :use ((:instance fn-sbud-post-boundary-admits-a-u32-charge
@@ -223,7 +223,7 @@
                                    (record (fn-sn-article-record
                                             s obs msgid payload groups
                                             obligation-id subject evidence
-                                            charge binding))))
+                                            charge))))
            :in-theory (e/d (fn-sbud-post-boundary fn-sbud-payload-bound
                             fn-sbud-group-bound fn-sn-article-record)
                            (fn-sn-prepare fn-store-prepare-interned fn-record-widep
@@ -277,7 +277,7 @@
                 (not (equal (mv-nth 0 (fn-store-prepare-interned
                              s (fn-sn-article-record s obs msgid payload groups
                                                      obligation-id subject
-                                                     evidence charge binding) fn-arena))
+                                                     evidence charge) fn-arena))
                             s)))
            (fn-profile-replay-within-boundp
             profile
@@ -285,7 +285,7 @@
                (len (fn-record-encode
                      (fn-sn-article-record s obs msgid payload groups
                                            obligation-id subject evidence
-                                           charge binding))))))
+                                           charge))))))
   :rule-classes nil
   :hints (("Goal" :use ((:instance fn-sbud-post-boundary-admits-a-u32-charge
                                    (payload-length (len payload))
@@ -297,7 +297,7 @@
                                    (record (fn-sn-article-record
                                             s obs msgid payload groups
                                             obligation-id subject evidence
-                                            charge binding))))
+                                            charge))))
            :in-theory (e/d (fn-sn-article-record)
                            (fn-sbud-article-verdict-at fn-sn-prepare fn-store-prepare-interned
                             fn-record-widep fn-sbud-post-boundary
@@ -321,26 +321,26 @@
 (defthm fn-sn-article-record-charge-and-groups
   (implies (fn-record-p (fn-sn-article-record s obs msgid payload groups
                                               obligation-id subject evidence
-                                              charge binding))
+                                              charge))
            (and (equal (fn-record-charge
                         (fn-sn-article-record s obs msgid payload groups
                                               obligation-id subject evidence
-                                              charge binding))
+                                              charge))
                        charge)
                 (equal (fn-record-groups
                         (fn-sn-article-record s obs msgid payload groups
                                               obligation-id subject evidence
-                                              charge binding))
+                                              charge))
                        groups)
                 (equal (fn-record-payload
                         (fn-sn-article-record s obs msgid payload groups
                                               obligation-id subject evidence
-                                              charge binding))
+                                              charge))
                        payload)
                 (equal (fn-record-stamp
                         (fn-sn-article-record s obs msgid payload groups
                                               obligation-id subject evidence
-                                              charge binding))
+                                              charge))
                        (fn-record-stamp-of-observation obs))))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-sn-article-record))))
@@ -383,25 +383,25 @@
                 (not (equal (mv-nth 0 (fn-store-prepare-interned
                              s (fn-sn-article-record s obs msgid payload groups
                                                      obligation-id subject
-                                                     evidence charge binding) fn-arena))
+                                                     evidence charge) fn-arena))
                             s)))
            (<= (len (fn-record-encode
                      (fn-sn-article-record s obs msgid payload groups
                                            obligation-id subject evidence
-                                           charge binding)))
+                                           charge)))
                (fn-record-encoded-octets-ceiling (len payload) (len groups))))
   :rule-classes nil
   :hints (("Goal" :use ((:instance fn-store-prepare-interned-stages-u32-coordinates
                                    (w (fn-sn-article-record
                                             s obs msgid payload groups
                                             obligation-id subject evidence
-                                            charge binding)))
+                                            charge)))
                         (:instance fn-sn-article-record-charge-and-groups)
                         (:instance fn-record-encode-producer-length-bound
                                    (record (fn-sn-article-record
                                             s obs msgid payload groups
                                             obligation-id subject evidence
-                                            charge binding))))
+                                            charge))))
            :in-theory (e/d ()
                            (fn-sn-article-record fn-sn-prepare fn-store-prepare-interned fn-record-p
                             fn-record-uint32p fn-sf-prepare-record

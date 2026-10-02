@@ -51,6 +51,8 @@
 ;   .selection-   checkpoint.lisp selection marker, committed by rename(2)
 ;   .pack-        checkpoint.lisp pack generation and its .pack-selection-
 ;                 marker, committed by link(2) and rename(2)
+;   .retire-      owner.lisp fnn-owner-retire-write-report (S9's report),
+;                 committed by rename(2) onto retire-report.txt
 ;
 ; The decision (finding F2 of
 ; planning/evidence/campaign-dabebb84-2026-09-22.md): a staged file that was
@@ -79,7 +81,8 @@
     (46 97 110 99 104 111 114 45)                           ; .anchor-
     (46 99 104 101 99 107 112 111 105 110 116 45)          ; .checkpoint-
     (46 115 101 108 101 99 116 105 111 110 45)              ; .selection-
-    (46 112 97 99 107 45)))                                 ; .pack-
+    (46 112 97 99 107 45)                                   ; .pack-
+    (46 114 101 116 105 114 101 45)))                       ; .retire-
 
 ; The host's staging observation is bounded before it builds an ACL2 input
 ; list: one enumeration retains at most this many names and reports whether

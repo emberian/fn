@@ -51,10 +51,17 @@
                    (not (equal (fn-mlh-tag "<a@x>" *mlhx-key-a*) (fn-mlh-tag "<a@x>" *mlhx-key-b*)))
                    (not (equal (fn-mlh-tag "<a@x>" *mlhx-key-a*) (fn-mlh-tag "<b@x>" *mlhx-key-a*)))))
 
-; A table of NP pages, N = NP, S = 0 (the zero key).
+; A table of NP pages, N = NP, S = 0 (the zero key): each page taken fresh.
+(defun mlhx-fresh (k fn-mlh)
+  (declare (xargs :stobjs fn-mlh :guard (natp k)))
+  (if (zp k)
+      fn-mlh
+    (let ((fn-mlh (fn-mlh-fresh-page (1- k) fn-mlh)))
+      (mlhx-fresh (1- k) fn-mlh))))
+
 (defun mlhx-pages (np fn-mlh)
   (declare (xargs :stobjs fn-mlh :guard (posp np)))
-  (let* ((fn-mlh (resize-fn-mlh-w (* *fn-mlh-page-words* np) fn-mlh))
+  (let* ((fn-mlh (mlhx-fresh np fn-mlh))
          (fn-mlh (update-fn-mlh-pages np fn-mlh))
          (fn-mlh (update-fn-mlh-n np fn-mlh))
          (fn-mlh (update-fn-mlh-s 0 fn-mlh)))
@@ -170,53 +177,26 @@
 
 ; CORRUPTED-STATE hypothesis removal for fn-mlh-seqs-is-spec-from.
 ; These are logical stobj values, not calls through the guarded raw API.
-; Page 0 is empty; allocated page 1 contains (tag 1, seq 0).  Only page 0
-; belongs to the abstraction (pages = 1).  With rows nil, faithful holds,
-; but the nil query has tag 1 and confirms the stale seq against (nth 0 nil).
-(defconst *mlhx-outside-words*
-  (append (make-list 2048 :initial-element 0)
-          (list 1) (make-list 1023 :initial-element 0)
-          (list 1) (make-list 1023 :initial-element 0)))
+; Page 0 is empty; page 1 of the page array holds (tag 1, seq 0), but only
+; page 0 belongs to the abstraction (pages = 1).  With rows nil, faithful
+; holds, but the nil query has tag 1 and confirms the stale seq against
+; (nth 0 nil).
+(defconst *mlhx-page-empty* (list (make-list 2048 :initial-element 0)))
+(defconst *mlhx-page-stale*
+  (list (append (list 1) (make-list 1023 :initial-element 0)
+                (list 1) (make-list 1023 :initial-element 0))))
 
 ; The malformed logical stobjs cannot use the raw executable counterparts
-; of the recursive readers.  Expand those readers in these two ground
-; proofs; a 1,024-slot page needs more than the default 1,000 rewrite depth.
-; ACL2 restores this defaults-table setting when the book finishes.
+; of the recursive readers.  Expand those readers in the ground proof; a
+; 1,024-slot page needs more than the default 1,000 rewrite depth.  ACL2
+; restores this defaults-table setting when the book finishes.
 (set-rewrite-stack-limit 10000)
 
-; fn-mlhp alone REMOVED: N = 2, S = -1 satisfies the literal root relation
-; N + S = pages = 1 and S < N, but violates the typed scalar recognizer.
-(defthm mlhx-recognizer-removal-witness
-  (let ((fn-mlh (list *mlhx-outside-words* 1 2 -1 0
-                      (make-list 32 :initial-element 0) 0)))
-    (and (not (fn-mlhp fn-mlh))
-         (fn-mlh-wfp fn-mlh)
-         (fn-mlh-faithful nil fn-mlh)
-         (not (equal (fn-mlh-seqs nil nil fn-mlh)
-                     (fn-mpxt-spec-from 0 nil nil)))))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-mlh-tag fn-mlh-candidates
-                                    fn-mlh-okp fn-record-msgid
-                                    fn-mlhp fn-mlh-wi fn-mlh-w-length
-                                    fn-mlh-pages fn-mlh-n fn-mlh-s
-                                    fn-mlh-key-octets fn-mlh-keyi
-                                    fn-mlh-slot fn-mlh-tag-at fn-mlh-seqw
-                                    fn-mlh-seq-at fn-mlh-ovf fn-mlh-abs
-                                    fn-mlh-abs-pages fn-mlh-pe fn-mlh-scan
-                                    fn-mlh-key-from fn-mpxt-ins
-                                    fn-mpxt-confirm fn-mpxt-hitp
-                                    fn-mpxl-seqs fn-mpxl-pages-okp
-                                    fn-mpxl-ents-below)
-                                   ((:e fn-mlh-abs-pages) (:e fn-mlh-pe)
-                                    (:e fn-mlh-scan) (:e fn-mlh-key-from)))
-           :expand ((:free (p fn-mlh) (fn-mlh-abs-pages p fn-mlh))
-                    (:free (p j fn-mlh) (fn-mlh-pe p j fn-mlh))
-                    (:free (i fn-mlh) (fn-mlh-key-from i fn-mlh))))))
-
 ; fn-mlh-wfp alone REMOVED: all scalar and word types hold, but N + S = 2
-; disagrees with pages = 1.  The same stale entry supplies the false answer.
+; and the page array's two pages disagree with pages = 1.  The stale entry
+; supplies the false answer.
 (defthm mlhx-wfp-removal-witness
-  (let ((fn-mlh (list *mlhx-outside-words* 1 2 0 0
+  (let ((fn-mlh (list (list (list (list *mlhx-page-empty* *mlhx-page-stale*))) 1 2 0 0
                       (make-list 32 :initial-element 0) 0)))
     (and (fn-mlhp fn-mlh)
          (not (fn-mlh-wfp fn-mlh))
@@ -226,10 +206,11 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-mlh-tag fn-mlh-candidates
                                     fn-mlh-okp fn-record-msgid
-                                    fn-mlhp fn-mlh-wi fn-mlh-w-length
+                                    fn-mlhp fn-mltp fn-mlgp fn-mlh-diri fn-mlt-pgi fn-mlg-wi fn-mlh-dir-length
+                                    fn-mlt-pg-length fn-mlh-word fn-mlh-pgsp
                                     fn-mlh-pages fn-mlh-n fn-mlh-s
                                     fn-mlh-key-octets fn-mlh-keyi
-                                    fn-mlh-slot fn-mlh-tag-at fn-mlh-seqw
+                                    fn-mlh-tag-at fn-mlh-seqw
                                     fn-mlh-seq-at fn-mlh-ovf fn-mlh-abs
                                     fn-mlh-abs-pages fn-mlh-pe fn-mlh-scan
                                     fn-mlh-key-from fn-mpxt-ins
@@ -241,3 +222,137 @@
            :expand ((:free (p fn-mlh) (fn-mlh-abs-pages p fn-mlh))
                     (:free (p j fn-mlh) (fn-mlh-pe p j fn-mlh))
                     (:free (i fn-mlh) (fn-mlh-key-from i fn-mlh))))))
+
+; fn-mlhp alone: the flat predecessor's witness (a negative S) reads only
+; pages the abstraction also reads on the paged representation, so it no
+; longer separates; no witness is claimed here (the lane's LANEDUMP has it
+; as an open item: prove the weakened keystone or find one).
+
+; -----------------------------------------------------------------------------
+; THE SPLIT, THE ADD, THE FOLD (lane msgid-linear-hash-2).
+
+; 5. POSITIVE ACROSS SPLITS: 1,100 rows, distinct Message-IDs, folded by
+;    the add from the set-keyed empty table: nothing unplaced, the table
+;    split past one page, faithful, and the reader is the walk for rows on
+;    either side of the splits.
+(defun mlhx-rows-from (i n acc)
+  (declare (xargs :verify-guards nil :measure (nfix (- (nfix n) (nfix i)))))
+  (if (>= (nfix i) (nfix n))
+      (reverse acc)
+    (mlhx-rows-from (1+ (nfix i)) n
+                    (cons (mlhx-held (nfix i) (concatenate 'string "<" (coerce (explode-atom (nfix i) 10) 'string) "@x>") 100)
+                          acc))))
+
+(defconst *mlhx-big* (mlhx-rows-from 0 1100 nil))
+
+(defun mlhx-fold (rows)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-mlh
+    (mv-let (result fn-mlh)
+      (let ((fn-mlh (fn-mlh-set-key *mlhx-key-a* fn-mlh)))
+        (mv-let (u fn-mlh)
+          (fn-mlh-build-from 0 0 rows fn-mlh)
+          (mv (list u (fn-mlh-pages fn-mlh) (fn-mlh-n fn-mlh) (fn-mlh-s fn-mlh) (fn-mlh-stuck fn-mlh)
+                    (fn-mlhp fn-mlh) (fn-mlh-wfp fn-mlh)
+                    (fn-mlh-faithful rows fn-mlh)
+                    (fn-mlh-seqs "<0@x>" rows fn-mlh) (fn-mpxt-spec-from 0 "<0@x>" rows)
+                    (fn-mlh-seqs "<600@x>" rows fn-mlh) (fn-mpxt-spec-from 0 "<600@x>" rows)
+                    (fn-mlh-seqs "<1099@x>" rows fn-mlh) (fn-mpxt-spec-from 0 "<1099@x>" rows)
+                    (fn-mlh-seqs "<none@x>" rows fn-mlh))
+              fn-mlh)))
+      result)))
+
+(defconst *mlhx-big-result* (mlhx-fold *mlhx-big*))
+
+(assert-event ; mlhx-fold-across-splits-witness
+ (let ((r *mlhx-big-result*))
+   (and (equal (nth 0 r) 0)                 ; nothing unplaced
+        (< 1 (nth 1 r))                     ; the table split past one page
+        (equal (nth 4 r) 0)                 ; no split refused
+        (nth 5 r) (nth 6 r) (nth 7 r)       ; fn-mlhp, wfp, faithful
+        (equal (nth 8 r) (nth 9 r)) (equal (nth 8 r) '(0))
+        (equal (nth 10 r) (nth 11 r)) (equal (nth 10 r) '(600))
+        (equal (nth 12 r) (nth 13 r)) (equal (nth 12 r) '(1099))
+        (equal (nth 14 r) nil))))
+
+; 6. THE SPLIT REFINES THE LOGICAL SPLIT, positive: N = 2, S = 0; tags 2
+;    and 6 move (mod 4 = 2 = the new page), 4 and 3 stay; the abstraction
+;    after the split is the logical split of the abstraction before it, and
+;    the movers are found on the new page.
+(defun mlhx-put-tags (tags seq fn-mlh)
+  (declare (xargs :stobjs fn-mlh :verify-guards nil))
+  (if (atom tags)
+      fn-mlh
+    (mv-let (placed fn-mlh)
+      (fn-mlh-put (car tags) seq fn-mlh)
+      (declare (ignore placed))
+      (mlhx-put-tags (cdr tags) (+ 1 seq) fn-mlh))))
+
+(defun mlhx-split-witness (tags)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-mlh
+    (mv-let (result fn-mlh)
+      (let* ((fn-mlh (mlhx-pages 2 fn-mlh))
+             (fn-mlh (mlhx-put-tags tags 0 fn-mlh))
+             (before (fn-mlh-abs fn-mlh)))
+        (mv-let (ok fn-mlh)
+          (fn-mlh-split fn-mlh)
+          (mv (list ok (mv-let (lok ltab) (fn-mpxl-split before) (declare (ignore ltab)) lok)
+                    (equal (fn-mlh-abs fn-mlh) (mv-let (lok ltab) (fn-mpxl-split before) (declare (ignore lok)) ltab))
+                    (equal (fn-mlh-abs fn-mlh) before)
+                    (fn-mlh-pages fn-mlh) (fn-mlh-n fn-mlh) (fn-mlh-s fn-mlh)
+                    (fn-mlh-candidates 2 fn-mlh) (fn-mlh-candidates 6 fn-mlh)
+                    (fn-mlh-candidates 4 fn-mlh) (fn-mlh-candidates 3 fn-mlh)
+                    (if (< 2 (fn-mlh-pages fn-mlh)) (fn-mlh-pe 2 0 fn-mlh) :none))
+              fn-mlh)))
+      result)))
+
+(assert-event ; mlhx-split-refines-witness
+ (let ((r (mlhx-split-witness '(2 4 6 3))))
+   (and (equal (nth 0 r) t) (equal (nth 1 r) t)
+        (nth 2 r) (not (nth 3 r))
+        (equal (nth 4 r) 3) (equal (nth 5 r) 2) (equal (nth 6 r) 1)
+        (equal (nth 7 r) '(0)) (equal (nth 8 r) '(2))
+        (equal (nth 9 r) '(1)) (equal (nth 10 r) '(3))
+        (equal (nth 11 r) '((2 . 0) (6 . 2))))))
+
+; 7. THE REFUSED SPLIT: 1,025 movers (tags 2 + 4k, home page 0; the last
+;    overflows onto page 1 with page 0's flag set) exceed a page: the split
+;    is refused exactly when the logical one is, and the table is unchanged
+;    -- every entry still found.
+(defun mlhx-mover-tags (k acc)
+  (declare (xargs :verify-guards nil))
+  (if (zp k) acc (mlhx-mover-tags (1- k) (cons (+ 2 (* 4 (1- k))) acc))))
+
+(defconst *mlhx-refused-result* (mlhx-split-witness (mlhx-mover-tags 1025 nil)))
+
+(assert-event ; mlhx-split-refused-witness
+ (let ((r *mlhx-refused-result*))
+   (and (equal (nth 0 r) nil) (equal (nth 1 r) nil)
+        (nth 2 r) (nth 3 r)
+        (equal (nth 4 r) 2) (equal (nth 5 r) 2) (equal (nth 6 r) 0)
+        (equal (nth 7 r) '(0)))))
+
+; -----------------------------------------------------------------------------
+; THE PAGED DIRECTORY (catalog-commit-flat-3, Codex r42 F1 / r48 F3): page 64
+; opens the second table page; the write reads back there and nowhere else
+; (fn-mlh-word-of-put-word, all hypotheses: natp p q i j, j < 2,048), the
+; fresh page reads 0 (fn-mlh-word-of-fresh-page), the directory took its
+; first width, and a reservation widens it without changing a word
+; (fn-mlh-word-of-reserve).
+(defun mlhx-dir-witness ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-mlh
+    (mv-let (r fn-mlh)
+      (let* ((fn-mlh (fn-mlh-fresh-page 63 fn-mlh))
+             (fn-mlh (fn-mlh-fresh-page 64 fn-mlh))
+             (fn-mlh (fn-mlh-put-word 64 5 77 fn-mlh))
+             (a (list (fn-mlh-word 64 5 fn-mlh) (fn-mlh-word 64 6 fn-mlh) (fn-mlh-word 63 5 fn-mlh)
+                      (fn-mlh-dir-length fn-mlh)))
+             (fn-mlh (fn-mlh-reserve 100000 fn-mlh))
+             (b (list (fn-mlh-word 64 5 fn-mlh) (fn-mlh-dir-length fn-mlh)))
+             (fn-mlh (fn-mlh-fresh-page 64 fn-mlh)))
+        (mv (list a b (fn-mlh-word 64 5 fn-mlh)) fn-mlh))
+      r)))
+
+(assert-event (equal (mlhx-dir-witness) '((77 0 0 256) (77 1563) 0)))

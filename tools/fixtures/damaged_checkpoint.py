@@ -64,6 +64,7 @@ def damage(checkpoint: Path, watermark: int = DEFAULT_WATERMARK,
         out = Path(scratch) / "checkpoint"
         forms = "\n".join([
             '(include-book "books/store-checkpoint-tables")',
+            '(include-book "books/history-image-snapshot")',
             '(include-book "books/crypto-attach")',
             "(ld {})".format(lisp_string(SCRIPT)),
             "(mv-let (result state) (fx-damage-file {} {} {} state)".format(

@@ -71,8 +71,8 @@
          (declare (ignore resources))
          ; Availability of a compiled recipe is not an executor/storage/wire
          ; receipt. E requires real SF :reserved + original writer backing,
-         ; produced row/SAME token, bounded wire stage→HEP offer→admission
-         ; Begin/Step→actual SF completion→HistoryCompleteCurrent. C requires
+         ; produced row/SAME token, bounded wire stage->HEP offer->admission
+         ; Begin/Step->actual SF completion->HistoryCompleteCurrent. C requires
          ; a distinct configuration journal receipt. Its source/preparation
          ; producer is now explicit, but its pending result cannot publish.
          ; No legacy whole RIS/hist-sync/finish is invoked.

@@ -259,7 +259,7 @@
                (fn-nntp-set-cursor *nabt-session* "fn.two" 7)))))
 
 ; ... a reclaimed article (a tombstone at the handle): 423, session unchanged.
-(defconst *nabt-tombstone* (append *fn-rcl-magic* (make-list 81 :initial-element 0)))
+(defconst *nabt-tombstone* (append *fn-rcl-magic* (make-list 137 :initial-element 0)))
 (assert-event
  (let ((r (in-arena-fn-nntp-article-response (list *nabt-tombstone*) *nabt-session* *nabt-a*
                                              7 :body t "fn.two")))

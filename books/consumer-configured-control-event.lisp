@@ -1,3 +1,4 @@
+; UNHOOKED stage 0 (2026-10-01): depends on the reverted FNCE consumer-authority event kinds in the wire-event grammar (planning/design-store-representation-2026-10-01.md section 4)
 ; SAME actual physical/identity decision retained through control-input yields.
 ; SOURCE-ASSEMBLY ONLY: actual candidate source custody, predicates/guards,
 ; carry establishment and allocation/retirement grants are not yet qualified.

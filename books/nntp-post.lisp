@@ -544,7 +544,6 @@
                        ;; The keyed Message-ID table refused placement
                        ;; before staging (fn-pak-post-admission, PRF-1044).
                        :mpx-saturated
-                       :canonical-size-unavailable :invalid-binding
                        :storage-failed
                        ;; A signed POST refused at its FN-Authorship carrier
                        ;; (books/peer-authored-accept.lisp fn-pa-served-word):
@@ -589,10 +588,6 @@
     "a group this article is posted to has no article number left (RFC 3977 section 6 ends at 2147483647), nothing was stored (article-numbers-exhausted)")
    ((equal kind :mpx-saturated)
     "the keyed Message-ID index cannot place this article, nothing was stored (mpx-saturated); the node's operator must rebuild the index")
-   ((equal kind :canonical-size-unavailable)
-    "the store is not ready to accept articles, nothing was stored (canonical-size-unavailable)")
-   ((equal kind :invalid-binding)
-    "the article's submission identity is invalid, nothing was stored (invalid-binding)")
    ((equal kind :storage-failed)
     "the store could not write the article, nothing was stored")
    ((equal kind :article)

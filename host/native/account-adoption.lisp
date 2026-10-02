@@ -4,7 +4,7 @@
 (in-package "ACL2")
 
 ;;; Retain EACH literal FnNCall result before status/next-call dispatch. This
-;;; updates the actual existing installed binding under owner→extent; it is
+;;; updates the actual existing installed binding under owner->extent; it is
 ;;; not another source association or ticket. Partial returned effects survive
 ;;; a malformed transport before the fixed fault fences the original receipt.
 (defun fnn-account-retain-control-effects (service result)
