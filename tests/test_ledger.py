@@ -1374,6 +1374,61 @@ class LintReportingTests(unittest.TestCase):
                       ledger.ledger_markdown(ledger_data))
 
 
+class GeneratorMirrorTests(unittest.TestCase):
+    """The ledger's static mirrors of def-carried-view, def-carried-reader
+    and def-keyset-check (books/def-carried-view.lisp, def-keyset-check.lisp)
+    name every theorem the Lisp generators admit on the fixture books, so a
+    registry citation of a generated keystone resolves without evaluating."""
+
+    ROOT = Path(__file__).resolve().parents[1]
+
+    def generated(self, book: str, kind: str) -> dict[str, list[str]]:
+        forms = ledger.read_forms((self.ROOT / book).read_text(encoding="utf-8"))
+        found: dict[str, list[str]] = {}
+        for form in forms:
+            if ledger.head(form) != kind:
+                continue
+            expansion = ledger.generated_expansion(form)
+            self.assertIsNotNone(expansion, form[:2])
+            found[str(form[1])] = [str(e[1]) for e in expansion
+                                   if ledger.head(e) in ("defthm", "defun")]
+        return found
+
+    def test_carried_view_names_on_the_fixture_and_the_pilot(self):
+        views = self.generated("tests/acl2/def-carried-view-tests.lisp", "def-carried-view")
+        self.assertEqual(set(views), {"cvt", "cvx"})
+        for thm in ("cvt-carryp-of-refresh", "cvt-ws-of-refresh", "cvt-carryp-of-nil",
+                    "cvt-refresh-walks-the-delta", "cvt-tset-okp-of-extend", "cvt-cset-hasp-of-put"):
+            self.assertIn(thm, views["cvt"])
+        self.assertIn("cvx-carryp-of-nil", views["cvx"])
+        self.assertNotIn("cvx-tset-okp", views["cvx"])
+        wix = self.generated("books/withdrawal-index-carried.lisp", "def-carried-view")["fn-wix"]
+        for thm in ("fn-wix-carryp-of-refresh", "fn-wix-carryp-of-nil", "fn-wix-ws-of-refresh",
+                    "fn-wix-refresh", "fn-wix-ws", "fn-wix-tset", "fn-wix-cset"):
+            self.assertIn(thm, wix)
+        readers = self.generated("books/withdrawal-index-carried.lisp", "def-carried-reader")
+        self.assertEqual(readers["fn-wix-targetedp"],
+                         ["fn-wix-targetedp", "fn-wix-targetedp-is-pidx-targetedp"])
+        self.assertEqual(readers["fn-wix-targets-of"],
+                         ["fn-wix-targets-of", "fn-wix-targets-of-is-sca-targets-of"])
+
+    def test_keyset_check_names_on_the_fixture(self):
+        checks = self.generated("tests/acl2/def-keyset-check-tests.lisp", "def-keyset-check")
+        self.assertIn("kct-disjointp-keys", checks["kct-disjointp"])
+        for thm in ("kct-disjointp-ks-is-logic", "kct-disjointp-walk-is-logic", "kct-disjointp"):
+            self.assertIn(thm, checks["kct-disjointp"])
+        # an adopted :keys function is not regenerated
+        self.assertNotIn("kct-success-listp-keys", checks["kct-success-listp"])
+        self.assertIn("kct-success-listp-ks-is-logic", checks["kct-success-listp"])
+        # a refused shape expands to nothing
+        self.assertEqual(ledger.generated_expansion(ledger.read_forms(
+            "(def-keyset-check k (xs ys) :sense :sometimes)")[0]), [])
+        self.assertEqual(ledger.generated_expansion(ledger.read_forms(
+            "(def-carried-view v :key ws :indexes ((i :kind :exact :put (lambda (e idx) idx) :empty nil)"
+            " (j :kind :set :put (lambda (e idx) idx) :empty nil :key-fn (lambda (e) e)"
+            " :hasp (lambda (k idx) t))))")[0]), [])
+
+
 class DefkeystoneExpansionTests(unittest.TestCase):
     """`defkeystone` (books/defkeystone.lisp) is a macro from another book;
     the ledger expands it itself, never by evaluating.
