@@ -169,11 +169,13 @@
 ; A-PGS-HOST-IO, the frame form.  `(fn-pgs-fill-frame file addr sel base
 ; pgs-mem)' is the host's in-place fill: page ADDR of FILE into words
 ; BASE .. BASE+2047 of the array SEL selects.  Its raw definition is
-; host/native/extent.lisp's fn-pgs-fill-frame (attached by stage-0-4); it
-; preads the 16 KiB into that array's storage at word BASE
-; (sb-sys:vector-sap; A-PGS-LE for the word order), refusing by name a short read, an unknown file, a selector or a range the
-; guard excludes, never writing outside the range or answering made-up
-; words.  The constraint: the state it leaves is the put of the page's
+; host/native/extent.lisp's fn-pgs-fill-frame (attached by stage-0-4): the
+; put (fn-pgs-frame-put) of the list realizer's 2048 words
+; (fn-pgs-fill-realize) at BASE.  Forward: a direct pread of the 16 KiB
+; into that array's storage at word BASE (sb-sys:vector-sap; A-PGS-LE for
+; the word order).  Either way it refuses by name a short read, an
+; unknown file, a selector or a range the guard excludes, never writing
+; outside the range or answering made-up words.  The constraint: the state it leaves is the put of the page's
 ; words.  Whether those words are the page the committed table names is
 ; ACL2's digest check, as for the list form.
 (encapsulate
