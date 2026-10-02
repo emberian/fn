@@ -983,8 +983,11 @@ def cmd_migrate_history(args) -> int:
     print(f"migrating {len(blobs)} historical blobs + {len(extras)} untracked files "
           f"to {archive_spec()}", flush=True)
     rows = stream_objects_to_archive(ROOT, blobs, extras)
-    ledger = cache_dir(ROOT) / ("history-ledger.tsv" if not args.path
-                                else "history-ledger-extra.tsv")
+    # One ledger per run, never over an earlier one: a narrower run (one
+    # --path, one revision) must not replace the ledger of a wider run.
+    stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
+    kind = "history-ledger" if not args.path else "history-ledger-extra"
+    ledger = cache_dir(ROOT) / f"{kind}-{stamp}-{time.time_ns() % 10**9:09d}.tsv"
     ledger.parent.mkdir(parents=True, exist_ok=True)
     ledger.write_text("".join(f"{sha} {size} {blob} {path}\n"
                               for sha, size, blob, path in sorted(rows, key=lambda r: r[3])))

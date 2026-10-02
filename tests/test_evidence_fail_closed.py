@@ -446,5 +446,27 @@ class UnavailableIsDistinctTests(Sandbox):
         self.assertIn("UNAVAILABLE", out.getvalue())
 
 
+class MigrationLedgersAccumulateTests(Sandbox):
+    def test_a_narrower_migration_never_replaces_an_earlier_ledger(self):
+        # evidence-out-3: every migrate-history run wrote history-ledger.tsv
+        # (or -extra.tsv) and copied it over the archive's, so a one-path run
+        # replaced the ledger of the all-history run.
+        init_repo(self.root)
+        self.write("planning/evidence/a.md", b"a\n")
+        self.write("planning/lanes/x.md", b"x\n")
+        git(self.root, "add", "-A")
+        git(self.root, "commit", "-q", "-m", "e")
+        self.archive.mkdir()
+        out = io.StringIO()
+        with mock.patch.object(store, "ROOT", self.root), contextlib.redirect_stdout(out):
+            self.assertEqual(store.main(["migrate-history", "--path", "planning/lanes"]), 0)
+            self.assertEqual(store.main(["migrate-history", "--path", "planning/evidence"]), 0)
+        ledgers = sorted(self.cache.glob("history-ledger-extra-*.tsv"))
+        self.assertEqual(len(ledgers), 2)
+        self.assertEqual({p.read_text().split()[3] for p in ledgers},
+                         {"planning/lanes/x.md", "planning/evidence/a.md"})
+        self.assertEqual(store.object_bytes(self.root, store.sha256_bytes(b"x\n")), b"x\n")
+
+
 if __name__ == "__main__":
     unittest.main()
