@@ -12,7 +12,9 @@ nobody asked it.
     python3 tools/green_check.py --summary   # the three lines `make check` prints
     python3 tools/green_check.py --table     # every book, red first, then never
     python3 tools/green_check.py --json      # the same records, machine-readable
-    python3 tools/green_check.py --strict    # exit 1 on a book red at its digest
+    python3 tools/green_check.py --strict    # exit 1 unless every book is green
+                                             # at its digest and closure in a
+                                             # committed manifest
     python3 tools/green_check.py --profile default --strict
                                              # the release gate: every book in
                                              # the native image profile's
@@ -131,9 +133,28 @@ def green_at_these_bytes(record: dict | None) -> bool:
     archived (committed) manifest.  planning/proofs.json's `certified` status
     is generated from it (tools/ledger.py derived_status) and
     tools/certified_claims.py checks it; no other rule says "certified"."""
-    return bool(record and record.get("verdict") == "green"
-                and not record.get("deps_moved_since")
-                and record.get("certified_archived"))
+    return standing(record) == "green"
+
+
+def standing(record: dict | None) -> str:
+    """Every gate's answer for one book, from `green_at_these_bytes`' rule.
+
+    `green` only when that rule holds.  A green verdict whose include closure
+    moved since its run is `stale`; one backed only by a local unfiled
+    manifest is `unarchived`; otherwise the audit's own verdict (`red`,
+    `never`, `absent`).  A missing record is `absent`: unmeasured is not
+    clean (S009: the release gate counted only `red` and passed the rest).
+    """
+    if not record:
+        return "absent"
+    verdict = record.get("verdict") or "absent"
+    if verdict != "green":
+        return verdict
+    if record.get("deps_moved_since"):
+        return "stale"
+    if not record.get("certified_archived"):
+        return "unarchived"
+    return "green"
 
 
 def host_of(manifest: dict) -> str:
@@ -202,6 +223,12 @@ def failed_books(manifest: dict) -> set[str]:
     return set()
 
 
+def preferred(run: Run, held: Run) -> bool:
+    """Whether `run` answers for a book instead of `held`: archived first,
+    then the newer stamp."""
+    return (run.archived, run.stamp) >= (held.archived, held.stamp)
+
+
 @dataclass
 class Record:
     """One book's standing: what it hashes to now and what vouches for it."""
@@ -213,6 +240,7 @@ class Record:
     exact_green: Run | None = None
     red: Run | None = None
     last_green: Run | None = None
+    local_green: Run | None = None
     deps_moved: list[str] = field(default_factory=list)
 
     def note(self) -> str:
@@ -232,12 +260,19 @@ class Record:
         return "not a requested root in any manifest we hold"
 
 
-def audit(root: Path = ROOT, roots: list[str] | None = None) -> dict:
+def audit(root: Path = ROOT, roots: list[str] | None = None,
+          include_local: bool = True) -> dict:
     """Every root and every book those roots include, judged at its digest.
 
     `roots` defaults to the Makefile's `ACL2_BOOKS`, read by the one parser
     `make certify` reads it with, and is passed explicitly only by a test
     standing up a synthetic tree with no Makefile in it.
+
+    `include_local=False` reads committed manifests only, so a generated,
+    committed answer (planning/proofs.json's status) is a function of
+    committed inputs and not of this worktree's `build/acl2` (S127).  With
+    local runs included, an archived green still answers before a newer
+    local one, which is reported beside it and never hides it.
     """
     roots = list(roots) if roots is not None else ledger.makefile_roots()
     digests: dict[str, str] = {}
@@ -249,6 +284,8 @@ def audit(root: Path = ROOT, roots: list[str] | None = None) -> dict:
                 for book in records}
 
     read = manifests(root)
+    if not include_local:
+        read = [(run, manifest) for run, manifest in read if run.archived]
     runs = {run.run_id: run for run, _ in read}
     unattributed: list[str] = []
     requested_somewhere: set[str] = set()
@@ -289,10 +326,15 @@ def audit(root: Path = ROOT, roots: list[str] | None = None) -> dict:
                 record.last_green = run
             if entry.source != record.digest:
                 continue
-            if record.green is None or run.stamp >= record.green.stamp:
+            if not run.archived and (record.local_green is None
+                                     or run.stamp >= record.local_green.stamp):
+                record.local_green = run
+            # An archived run answers before any local one, whatever their
+            # stamps: a newer unfiled run must not hide a committed green.
+            if record.green is None or preferred(run, record.green):
                 record.green = run
             if not certs.closure_drift(listings[book], entry.closure_sources):
-                if record.exact_green is None or run.stamp >= record.exact_green.stamp:
+                if record.exact_green is None or preferred(run, record.exact_green):
                     record.exact_green = run
 
     for record in records.values():
@@ -332,6 +374,11 @@ def audit(root: Path = ROOT, roots: list[str] | None = None) -> dict:
                 "note": record.note(),
                 "certified_at_digest": record.green.run_id if record.green else None,
                 "certified_archived": bool(record.green and record.green.archived),
+                "green_local_unarchived": (
+                    record.local_green.run_id
+                    if record.local_green is not None
+                    and record.local_green is not record.green
+                    and record.verdict == "green" else None),
                 "failed_at_digest": record.red.run_id if record.red else None,
                 "last_green_any_digest": (record.last_green.run_id
                                           if record.last_green else None),
@@ -343,18 +390,35 @@ def audit(root: Path = ROOT, roots: list[str] | None = None) -> dict:
     }
 
 
+# Every directory whose `.lisp` files can sit in a book's include closure:
+# books include host files (books/image-world-dtn includes
+# ../host/page-read-host), so a host edit moves their certificate key (S056).
+CLOSURE_DIRS = ("books", "tests/acl2", "host")
+ROOT_DIRS = ("books/", "tests/acl2/")
+
+
 def changed_books(root: Path, rev: str) -> list[str]:
-    """The books and test books whose bytes differ from `rev`'s merge base.
+    """Every closure source (book, test book or host include) whose bytes
+    differ from `rev`'s merge base, untracked new files included.
 
     Working tree against the merge base, so an uncommitted edit counts: the
     question is what a merge would carry, and a lane's tree is what it has.
+    `git diff` does not list an untracked file, so a new book nobody `git
+    add`ed is read from `git ls-files --others` (S056).
     """
-    base = subprocess.run(["git", "merge-base", rev, "HEAD"], cwd=root,
-                          capture_output=True, text=True, check=True).stdout.strip()
-    names = subprocess.run(["git", "diff", "--name-only", base, "--",
-                            "books", "tests/acl2"], cwd=root,
-                           capture_output=True, text=True, check=True).stdout.split()
-    return sorted(name[:-5] for name in names if name.endswith(".lisp"))
+    def git(*words: str) -> list[str]:
+        return subprocess.run(["git", *words], cwd=root, capture_output=True,
+                              text=True, check=True).stdout.splitlines()
+    base = git("merge-base", rev, "HEAD")[0].strip()
+    names = git("diff", "--name-only", base, "--", *CLOSURE_DIRS)
+    names += git("ls-files", "--others", "--exclude-standard", "--", *CLOSURE_DIRS)
+    return sorted({name[:-5] for name in names if name.endswith(".lisp")})
+
+
+def certifiable(changed: list[str]) -> list[str]:
+    """The changed sources a certification run can request as roots; a host
+    include is judged only through the books whose closure reaches it."""
+    return [name for name in changed if name.startswith(ROOT_DIRS)]
 
 
 def dependents(root: Path, report: dict, changed: list[str]) -> dict[str, list[str]]:
@@ -395,9 +459,7 @@ def gate(report: dict, changed: list[str], deps: dict[str, list[str]]) -> dict:
         entry = verdicts.get(book)
         if entry is None:
             return "unaudited"
-        if entry["verdict"] == "green" and entry.get("deps_moved_since"):
-            return "stale"
-        return entry["verdict"]
+        return standing(entry)
 
     rows = [{"book": book, "role": "changed", "verdict": verdict(book), "via": []}
             for book in changed]
@@ -420,33 +482,66 @@ def gate_lines(answer: dict) -> list[str]:
         drift = ("; changed or unrecorded dependency bytes: " +
                  " ".join(row["deps_moved_since"])) if row.get("deps_moved_since") else ""
         lines.append(f"  {row['verdict']:9} {row['role']:9} {row['book']:{width}}{via}{drift}")
-    if not answer["rows"]:
-        lines.append("  no book or test book differs from the merge base")
+    for name in answer.get("changed_host", []):
+        lines.append(f"  {'host':9} {'changed':9} {name} (judged through the books "
+                     f"that include it)")
+    if not answer["rows"] and not answer.get("changed_host"):
+        lines.append("  no book, test book or host include differs from the merge base")
     return lines
 
 
-def profile_gate(report: dict, profile: str) -> dict:
-    """The release gate: the verdict of every book in the include closure of
+def profile_gate(report: dict, profile: str, root: Path = ROOT,
+                 roots: list[str] | None = None) -> dict:
+    """The release gate: the standing of every book in the include closure of
     a native image profile's roots (tools/proof_artifacts.py's roots, the same
-    closure its acquire loads)."""
-    import proof_artifacts  # noqa: E402  (same directory)
-    roots = proof_artifacts.profile_roots(ROOT, profile)
+    closure its acquire loads).  Green means `green_at_these_bytes`: a stale
+    closure, a local unfiled run, `never` and `absent` all fail it (S009).
+    `roots` is passed only by a test standing up a synthetic tree."""
+    if roots is None:
+        import proof_artifacts  # noqa: E402  (same directory)
+        roots = proof_artifacts.profile_roots(root, profile)
     closure = sorted(name.removesuffix(".lisp")
-                     for name in certs.required_closure(ROOT, roots))
+                     for name in certs.required_closure(root, roots))
     by = report["books_by_verdict"]
-    rows = [{"book": book, "verdict": by.get(book, {}).get("verdict", "absent")}
-            for book in closure]
+    rows = [{"book": book, "verdict": standing(by.get(book))} for book in closure]
     not_green = [row["book"] for row in rows if row["verdict"] != "green"]
     return {"schema": "fn-green-profile-v1", "profile": profile, "roots": len(roots),
             "books": len(rows), "not_green": not_green, "rows": rows}
 
 
+def by_standing(rows: list[dict]) -> str:
+    """`stale=3 never=2 ...` over the rows that are not green."""
+    counted: dict[str, int] = {}
+    for row in rows:
+        if row["verdict"] != "green":
+            counted[row["verdict"]] = counted.get(row["verdict"], 0) + 1
+    return " ".join(f"{name}={count}" for name, count in sorted(counted.items())) or "none"
+
+
 def profile_lines(answer: dict) -> list[str]:
     shown = " ".join(answer["not_green"][:8]) or "none"
+    more = (f" (+{len(answer['not_green']) - 8} more)"
+            if len(answer["not_green"]) > 8 else "")
     return [f"green-check profile={answer['profile']}: {answer['books']} books in the "
             f"closure of {answer['roots']} roots, "
             f"{answer['books'] - len(answer['not_green'])} green at their current "
-            f"digest; not green: {shown}"]
+            f"digest and closure in a committed manifest; not green "
+            f"({by_standing(answer['rows'])}): {shown}{more}"]
+
+
+def strict_rows(report: dict) -> list[dict]:
+    """Every audited book under `standing`: what bare `--strict` judges."""
+    return [{"book": book, "verdict": standing(entry)}
+            for book, entry in report["books_by_verdict"].items()]
+
+
+def strict_lines(rows: list[dict]) -> list[str]:
+    bad = [row["book"] for row in rows if row["verdict"] != "green"]
+    shown = " ".join(bad[:8]) or "none"
+    more = f" (+{len(bad) - 8} more; --table for all)" if len(bad) > 8 else ""
+    return [f"green-check strict: {len(bad)} of {len(rows)} books not green at "
+            f"their digest and closure in a committed manifest "
+            f"({by_standing(rows)}): {shown}{more}"]
 
 
 def worklist(report: dict) -> list[str]:
@@ -498,10 +593,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--json", action="store_true",
                         help="the whole audit as one JSON object")
     parser.add_argument("--strict", action="store_true",
-                        help="exit 1 when a book is RED at its current digest "
-                             "in a run newer than any green for those bytes; "
-                             "with --changed-since, exit 1 unless every changed "
-                             "book and every book that includes one is green")
+                        help="exit 1 unless every audited book is green at its "
+                             "current digest and include closure in a committed "
+                             "manifest (red, never, absent, stale and unarchived "
+                             "all fail); with --changed-since or --profile, the "
+                             "same rule over that gate's books")
     parser.add_argument("--changed-since", metavar="REV", default=None,
                         help="the merge gate: the books this tree changed since "
                              "its merge base with REV, the books that include "
@@ -536,7 +632,9 @@ def main(argv: list[str] | None = None) -> int:
             print(f"green-check: git cannot resolve {args.changed_since}: "
                   f"{error.stderr.strip()}", file=sys.stderr)
             return 2
-        answer = gate(report, changed, dependents(ROOT, report, changed))
+        answer = gate(report, certifiable(changed), dependents(ROOT, report, changed))
+        answer["changed_host"] = [name for name in changed
+                                  if name not in answer["changed"]]
         if args.json:
             print(json.dumps(answer, indent=1, sort_keys=True))
         else:
@@ -549,7 +647,12 @@ def main(argv: list[str] | None = None) -> int:
         print("\n".join(table(report)))
     if args.summary or not (args.json or args.table):
         print("\n".join(summary(report)))
-    return 1 if args.strict and report["counts"]["red"] else 0
+    if not args.strict:
+        return 0
+    rows = strict_rows(report)
+    if not args.json:
+        print("\n".join(strict_lines(rows)))
+    return 1 if any(row["verdict"] != "green" for row in rows) else 0
 
 
 if __name__ == "__main__":

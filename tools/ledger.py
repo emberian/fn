@@ -4040,7 +4040,8 @@ def derived_status(entry: dict, names: list[str], books: set[str],
     report = state.get("__green__") or {}
     records = report.get("books_by_verdict", {})
     if any(book not in records for book in books):
-        report = green_check.audit(root, roots=sorted(set(books) | set(records)))
+        report = green_check.audit(root, roots=sorted(set(books) | set(records)),
+                                    include_local=False)
         state["__green__"] = report
         records = report.get("books_by_verdict", {})
     if all(green_check.green_at_these_bytes(records.get(book)) for book in books):
@@ -4059,7 +4060,8 @@ def apply_events(regenerated: dict[str, list[str]],
         if here not in sys.path:
             sys.path.insert(0, here)
         import green_check
-        state["__green__"] = green_check.audit(ROOT, roots=sorted(set().union(*books.values())))
+        state["__green__"] = green_check.audit(
+            ROOT, roots=sorted(set().union(*books.values())), include_local=False)
     for entry in registry["proofs"]:
         names = regenerated.get(entry["id"], [])
         # proofs.json's events are GENERATED from planning/proof-events.json:
