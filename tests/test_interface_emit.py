@@ -182,7 +182,8 @@ class HostBindingTests(unittest.TestCase):
         self.assertTrue(any("resolves to no theorems" in p for p in found), found)
 
     def test_check_carried_completeness_requires_every_dispatch_declared(self):
-        from tools import interface_kinds
+        # the raw-dispatch rule reads the real host, not this temporary tree
+        from tools import interface_kinds, raw_dispatch_rule
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "host").mkdir()
@@ -218,6 +219,8 @@ class HostBindingTests(unittest.TestCase):
                                               actual_findings(d, r, root)), \
                             mock.patch.object(interface_kinds, "tree_files", return_value=[]), \
                             mock.patch.object(interface_kinds, "judge", return_value=([], 0)), \
+                            mock.patch.object(raw_dispatch_rule, "findings", return_value=([], {})), \
+                            mock.patch.object(raw_dispatch_rule, "summary", return_value="raw_dispatch_rule: mocked"), \
                             contextlib.redirect_stdout(output):
                         status = interface_emit.main(["--check"])
                     if declared:

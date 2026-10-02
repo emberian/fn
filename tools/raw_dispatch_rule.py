@@ -240,13 +240,6 @@ PENDING: list[Allow] = [
           "(create-fn-hist)) instead of intern + eval", pending=True),
     Allow("WORLD", "host/native/owner.lisp", "fnn-fresh-stobj",
           STAGE0 + "the eval of (CREATOR) goes with the intern", pending=True),
-    Allow("NAME", "host/native/owner.lisp", "fnn-owner-chunk-span-no-io",
-          STAGE0 + "fnn-core-receiver-state is defined nowhere (host load); dispatch "
-          "through a defined state dispatcher", pending=True),
-    Allow("NAME", "host/native/owner.lisp", "fnn-owner-unavailable-line",
-          STAGE0 + "the undefined fnn-core-receiver-state, as above", pending=True),
-    Allow("NAME", "host/native/owner.lisp", "fnn-owner-resource-unavailable-line",
-          STAGE0 + "the undefined fnn-core-receiver-state, as above", pending=True),
 ]
 
 
