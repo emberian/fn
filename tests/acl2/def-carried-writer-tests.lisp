@@ -197,6 +197,39 @@
   (declare (xargs :stobjs cwt-st :guard (and (natp n) (cwt-relp cwt-st)) :verify-guards nil))
   (let ((cwt-st (cwt-install (cwt-bump-core (cwt-core cwt-st) n) cwt-st)))
     (mv :ok cwt-st)))
+; The whole expansion, pinned literally (a reviewer reads the events; a drift
+; fails here): the guard verification under minimal-theory and the named
+; rules, the theorem with its hints, the two table rows.
+(assert-event
+ (equal (fn-cw-events 'cwt-bump '(:profile cwt-profile :via (cwt-bump-core-keeps-corep))
+                      nil (w state))
+        '(progn
+          (verify-guards cwt-bump
+            :hints (("Goal" :in-theory (union-theories
+                                        '(cwt-bump cwt-relp cwt-okp cwt-bump-core-integerp
+                                          cwt-stp cwt-okp (:type-prescription cwt-core))
+                                        (theory 'minimal-theory)))))
+          (defthm cwt-bump-preserves-relp
+            (implies (cwt-relp cwt-st) (cwt-relp (mv-nth 1 (cwt-bump n cwt-st))))
+            :hints (("Goal" :in-theory (union-theories
+                                        '(cwt-bump cwt-relp-of-update-note cwt-relp-of-install
+                                          mv-nth zp car-cons cdr-cons
+                                          (:executable-counterpart zp)
+                                          (:executable-counterpart binary-+)
+                                          (:executable-counterpart unary--)
+                                          (:executable-counterpart equal)
+                                          (:executable-counterpart nfix) nfix)
+                                        (theory 'minimal-theory))
+                     :use ((:instance cwt-bump-core-keeps-corep (c (cwt-core cwt-st)))
+                           cwt-relp-implies-corep))))
+          (table fn-carried-writers 'cwt-bump
+                 '(:profile cwt-profile :theorem cwt-bump-preserves-relp
+                   :via (cwt-bump-core-keeps-corep) :opens nil :lemmas nil :step nil
+                   :bridges nil :hyps nil :put-keys nil :uncovered nil :hand-hints nil))
+          (table fn-teeth-owed 'cwt-bump-preserves-relp
+                 '(:by def-carried-writer
+                   :claim (((inv (cwt-relp cwt-st))) (cwt-relp (mv-nth 1 (cwt-bump n cwt-st))))
+                   :subject cwt-bump)))))
 (def-carried-writer cwt-bump
   :profile cwt-profile
   :via (cwt-bump-core-keeps-corep))

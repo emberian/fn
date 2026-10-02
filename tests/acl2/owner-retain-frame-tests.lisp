@@ -91,9 +91,12 @@
 ; concluded by the pilot row's bridge, so a writer carrying it is accepted
 ; (the three prepares of the pilot do); one applying another predicate to
 ; the state alone names the bridge it needs
+(defun ort-has-log-line (state)
+  (declare (xargs :stobjs state :guard t))
+  (boundp-global 'fn-owner-log-line state))
 (defun ort-other-pred (state)
   (declare (xargs :stobjs state :guard (and (boundp-global 'fn-owner state)
-                                            (fn-owner-history-bootstrap-mutationp state))))
+                                            (ort-has-log-line state))))
   (f-put-global 'fn-owner-log-line nil state))
 (ort-refused ort-other-pred (:profile fn-owner-retain) "no bridge concludes it")
 
@@ -119,9 +122,14 @@
         '(fn-owner-prepare-identity fn-owner-prepare-consumer fn-owner-prepare-topic
           fn-owner-callback-close fn-owner-callback-fault fn-owner-callback-open-peer)))
 (def-carried-check ort-row)
-; the row's statement carries the guard; it is proved from the writer's by :use
+; the row's statement carries the world's guard (the stobj recognizers ACL2
+; conjoins included); it is proved from the writer's stronger theorem by :use
 (assert-event
  (equal (getpropc 'ort-row-fn-owner-callback-close-carries 'theorem nil (w state))
-        '(implies (if (fn-owner-retain-statep state) (boundp-global 'fn-owner state) 'nil)
+        '(implies (if (fn-owner-retain-statep state)
+                      (if (state-p state)
+                          (if (fn-arena-p fn-arena) (boundp-global 'fn-owner state) 'nil)
+                        'nil)
+                    'nil)
                   (fn-owner-retain-statep (mv-nth '2 (fn-owner-callback-close id fn-arena state))))))
 (assert-event (null (fn-cw-owed 'fn-owner-retain 'fn-owner-retain-carried (w state))))
