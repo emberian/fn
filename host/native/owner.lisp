@@ -131,6 +131,13 @@
   ;; The I/O loops that serve every reader and transit connection
   ;; (host/native/mux.lisp), and the round-robin cursor over them.
   (mux nil) (mux-next 0)
+  ;; r71 F13: the accepted sockets not yet taken by a loop are bounded by the
+  ;; loops: an accept thread takes a socket from the kernel only into a
+  ;; loop's free slot (no reservation, empty inbox), reserved under
+  ;; MUX-SLOT-LOCK (host/native/mux.lisp fnn-mux-reserve); MUX-SLOT-FREE is
+  ;; signalled when a loop takes its inbox or a reservation is given back.
+  (mux-slot-lock (sb-thread:make-mutex :name "fn mux slots"))
+  (mux-slot-free (sb-thread:make-waitqueue :name "fn mux slot free"))
   (start-hooks nil) (stop-hooks nil) (close-hooks nil)
   ;; Private executable-test injection.  Production instances leave this NIL;
   ;; the value names a real connection envelope, not a second fault decision.
@@ -4779,12 +4786,30 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
 ;;; runtime regions for the connection's whole life (PKT-605).  Everything
 ;;; the worker did, in its order and under its handlers, is the loop's
 ;;; connection record now.
-(defun fnn-owner-launch-client (service socket &optional implicit-tls)
-  "Register the socket with a loop before it can enter the owner core; while
-the node retires (row S9), refuse it by name instead."
+(defun fnn-owner-launch-client (service socket &optional implicit-tls reserved)
+  "Register the socket with a loop before it can enter the owner core (the
+slot RESERVED for it, fnn-mux-reserve); while the node retires (row S9),
+refuse it by name instead, giving the slot back."
   (if (fnn-owner-service-retire service)
-      (fnn-owner-retire-refuse socket implicit-tls)
-    (fnn-mux-adopt service socket implicit-tls)))
+      (unwind-protect (fnn-owner-retire-refuse socket implicit-tls)
+        (when reserved (fnn-mux-unreserve service reserved)))
+    (fnn-mux-adopt service socket implicit-tls nil reserved)))
+
+(defun fnn-owner-accept-one (service listener seconds &optional implicit-tls)
+  "At most one connection from LISTENER into a loop's free slot (r71 F13,
+host/native/mux.lisp fnn-mux-reserve): wait SECONDS for one to be queued;
+then reserve a slot (at most SECONDS more; none free: the connection stays
+in the kernel's queue for the next call); then one accept(2)
+(fnn-accept-attempt: an attempt that takes no connection gives the slot
+back and backs off as it names)."
+  (when (fnn-accept-ready-p listener seconds)
+    (let ((slot (fnn-mux-reserve service seconds)))
+      (when slot
+        (let ((got (fnn-accept-attempt listener)))
+          (if (keywordp got)
+              (progn (fnn-mux-unreserve service slot)
+                     (fnn-accept-backoff got seconds))
+            (fnn-owner-launch-client service got implicit-tls slot)))))))
 
 ;;; Row S9: while the node retires every new connection is refused by name
 ;;; (books/native-retire.lisp): on a plain listener RFC 3977's 502 greeting,
@@ -6110,9 +6135,7 @@ thread is a worker, so the stop joins it with the clients."
                           (when (or *fnn-sigterm-requested*
                                     (fnn-owner-service-stopping service))
                             (return))
-                          (let ((socket (fnn-accept-observe listener 1)))
-                            (unless (eq socket :timeout)
-                              (fnn-owner-launch-client service socket implicit-tls))))
+                          (fnn-owner-accept-one service listener 1 implicit-tls))
                       ;; A client's event is no condition here (fnn-accept-
                       ;; observe names it and this loop goes on).  What is
                       ;; left is the listener's own failure or a defect: past
@@ -6143,13 +6166,13 @@ thread is a worker, so the stop joins it with the clients."
               (fnn-owner-service-stopping service))
       (return))
     (handler-case
-        (let ((socket (fnn-accept-observe listener 1)))
-          (unless (eq socket :timeout)
-            (if once
-                (progn
+        (progn
+          (if once
+              (let ((socket (fnn-accept-observe listener 1)))
+                (unless (eq socket :timeout)
                   (fnn-mux-serve-once service socket)
-                  (return))
-              (fnn-owner-launch-client service socket)))
+                  (return)))
+            (fnn-owner-accept-one service listener 1))
           ;; Before the next accept: the owner's checkpoint publication,
           ;; and a log reopen a SIGHUP asked for (PKT-101).
           (fnn-owner-cold-reap service)

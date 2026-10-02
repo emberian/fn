@@ -5754,6 +5754,10 @@ backoff an attempt that took no connection owes."
       (progn (fnn-accept-backoff got seconds) :timeout)
     got))
 
+(defun fnn-accept-ready-p (listener seconds)
+  "LISTENER has a connection queued (or an error to report) within SECONDS."
+  (funcall *fnn-fd-waiter* (fnn-socket-fd listener) :input seconds))
+
 (defun fnn-accept-observe (listener seconds)
   "Return one accepted socket or :TIMEOUT after a bounded readiness wait;
 an attempt that took no connection (fnn-accept-attempt's :AGAIN or
@@ -5762,7 +5766,7 @@ an attempt that took no connection (fnn-accept-attempt's :AGAIN or
 The listener is nonblocking so shutdown(2) need not wake a blocking accept(2)
 on every supported host.  Listener-level socket conditions remain conditions
 for the caller to classify against its own stop and fault state."
-  (if (funcall *fnn-fd-waiter* (fnn-socket-fd listener) :input seconds)
+  (if (fnn-accept-ready-p listener seconds)
       (fnn-accept-settle (fnn-accept-attempt listener) seconds)
     :timeout))
 
