@@ -104,7 +104,8 @@ def manifest_failures(proofs: list[dict], owners: dict[str, set[str]],
     rows = {str(proof.get("id")): proof for proof in proofs}
     if report is None:
         books = sorted(set().union(*owners.values())) if owners else []
-        report = green_check.audit(root, roots=books) if books else {"books_by_verdict": {}}
+        report = (green_check.audit(root, roots=books, include_local=False)
+                  if books else {"books_by_verdict": {}})
     records = report.get("books_by_verdict", {})
     failures: list[str] = []
     for ident, books in sorted(owners.items()):
@@ -238,7 +239,8 @@ def audit() -> tuple[int, int, list[str]]:
     tree = ledger.load_tree()
     owners, warnings = event_owners(proofs, curated, tree)
     books = sorted(set().union(*owners.values())) if owners else []
-    report = green_check.audit(root, roots=books) if books else {"books_by_verdict": {}}
+    report = (green_check.audit(root, roots=books, include_local=False)
+              if books else {"books_by_verdict": {}})
     warnings.extend(evidence_warnings(owners, report))
     return len(owners), len(books), warnings, manifest_failures(proofs, owners, root, report)
 
