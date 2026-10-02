@@ -51,7 +51,8 @@
   :witness ((x 3) (y 4))
   :breaks ((natp ((x -1)))
            (small ((x 10)) :logical "a label test, not a claim"))
-  :mutations ((strict (:conclusion (< (fix y) (fn-dkt-add x y))) ((x 0))))
+  :mutations ((strict (:conclusion (< (fix y) (fn-dkt-add x y))) ((x 0))
+                      :fault "an off-by-one adder"))
   :corrupt ((not-a-number ((x 'a))))
   :hints (("Goal" :in-theory (enable fn-dkt-add))))
 
@@ -62,9 +63,10 @@
           :formula (implies (if (natp x) (< x '10) 'nil)
                             (not (< (fn-dkt-add x y) (fix y))))
           :subject fn-dkt-add
+          :witness :executable
           :hyps (natp small)
           :removals ((natp :reachable) (small :logical))
-          :mutations ((strict :conclusion))
+          :mutations ((strict :conclusion "an off-by-one adder"))
           :corrupt (not-a-number)
           :visits nil :allocation nil)))
 
@@ -81,7 +83,8 @@
      :witness ((x 3) (y 4))
      :breaks ((natp ((x -1)))
               (small ((x 10)) :logical "a label test, not a claim"))
-     :mutations ((strict (:conclusion (< (fix y) (fn-dkt-add x y))) ((x 0))))
+     :mutations ((strict (:conclusion (< (fix y) (fn-dkt-add x y))) ((x 0))
+                         :fault "an off-by-one adder"))
      :corrupt ((not-a-number ((x 'a))))
      :hints (("Goal" :in-theory (enable fn-dkt-add)))))
 
@@ -91,7 +94,8 @@
     :witness ((x 3) (y 4))
     :breaks ((natp ((x -1)))
              (small ((x 10)) :logical "a label test, not a claim"))
-    :mutations ((strict (:conclusion (< (fix y) (fn-dkt-add x y))) ((x 0))))
+    :mutations ((strict (:conclusion (< (fix y) (fn-dkt-add x y))) ((x 0))
+                        :fault "an off-by-one adder"))
     :corrupt ((not-a-number ((x 'a))))
     :hints (("Goal" :in-theory (enable fn-dkt-add)))))
 
@@ -105,7 +109,8 @@
                                  :witness ((x 3) (y 4))
                                  :breaks ((natp ((x -1)))
                                           (small ((x 10)) :logical "a label test, not a claim"))
-                                 :mutations ((strict (:conclusion (< (fix y) (fn-dkt-add x y))) ((x 0))))
+                                 :mutations ((strict (:conclusion (< (fix y) (fn-dkt-add x y))) ((x 0))
+                                                     :fault "an off-by-one adder"))
                                  :corrupt ((not-a-number ((x 'a))))
                                  :hints (("Goal" :in-theory (enable fn-dkt-add))))
                                state))))
@@ -121,9 +126,10 @@
              :claim (((natp (natp x)) (small (< x 10))) (<= (fix y) (fn-dkt-add x y)))
              :formula nil
              :subject fn-dkt-add
+             :witness :executable
              :hyps (natp small)
              :removals ((natp :reachable) (small :logical))
-             :mutations ((strict :conclusion))
+             :mutations ((strict :conclusion "an off-by-one adder"))
              :corrupt (not-a-number)
              :visits nil :allocation nil))))
 
@@ -203,35 +209,43 @@
                             '(:subject fn-dkt-add :hyps (natp small)
                               :witness ((x 3) (y 4))
                               :breaks ((natp ((x -1))) (small ((x 10))))
-                              :mutations ((m nil ((x 0)))))))
+                              :mutations ((m nil ((x 0)) :fault "x")))))
+        :bad-mutations))
+; an edit without its fault intent
+(assert-event
+ (equal (car (fn-dk-refusal 'k *fn-dkt-term*
+                            '(:subject fn-dkt-add :hyps (natp small)
+                              :witness ((x 3) (y 4))
+                              :breaks ((natp ((x -1))) (small ((x 10))))
+                              :mutations ((m (:conclusion (< (fix y) (fn-dkt-add x y))) ((x 0)))))))
         :bad-mutations))
 (assert-event
  (equal (fn-dk-refusal 'k *fn-dkt-term*
                        '(:subject fn-dkt-add :hyps (natp small)
                          :witness ((x 3) (y 4))
                          :breaks ((natp ((x -1))) (small ((x 10))))
-                         :mutations ((m (:conclusion nil) ((x 0))))))
+                         :mutations ((m (:conclusion nil) ((x 0)) :fault "x"))))
         '(:bad-edit m :constant-conclusion)))
 (assert-event
  (equal (fn-dk-refusal 'k *fn-dkt-term*
                        '(:subject fn-dkt-add :hyps (natp small)
                          :witness ((x 3) (y 4))
                          :breaks ((natp ((x -1))) (small ((x 10))))
-                         :mutations ((m (:conclusion (<= (fix y) (fn-dkt-add x y))) ((x 0))))))
+                         :mutations ((m (:conclusion (<= (fix y) (fn-dkt-add x y))) ((x 0)) :fault "x"))))
         '(:bad-edit m :same-conclusion)))
 (assert-event
  (equal (fn-dk-refusal 'k *fn-dkt-term*
                        '(:subject fn-dkt-add :hyps (natp small)
                          :witness ((x 3) (y 4))
                          :breaks ((natp ((x -1))) (small ((x 10))))
-                         :mutations ((m (:hypothesis small t) ((x 0))))))
+                         :mutations ((m (:hypothesis small t) ((x 0)) :fault "x"))))
         '(:bad-edit m :trivial-hypothesis)))
 (assert-event
  (equal (fn-dk-refusal 'k *fn-dkt-term*
                        '(:subject fn-dkt-add :hyps (natp small)
                          :witness ((x 3) (y 4))
                          :breaks ((natp ((x -1))) (small ((x 10))))
-                         :mutations ((m (:hypothesis big (< x 100)) ((x 0))))))
+                         :mutations ((m (:hypothesis big (< x 100)) ((x 0)) :fault "x"))))
         '(:bad-edit m :edit-names-no-hypothesis)))
 ; bounds: the shape, duplicates, and a bound without a subject
 (assert-event
@@ -326,11 +340,12 @@
           :formula (implies (if (natp x) (< x '10) 'nil)
                             (not (< (fn-dkt-add x y) (fix y))))
           :subject fn-dkt-add
+          :witness :executable
           :hyps (natp small)
           :removals ((natp :reachable) (small :reachable))
           :mutations :deferred
           :corrupt nil
-          :visits ((steps x 9 :attains :rests-on nil))
+          :visits ((steps x 9 :attains :rests-on nil :derived-by nil))
           :allocation nil)))
 
 ; The visit bound is a theorem of this world, named by its label.
@@ -400,9 +415,29 @@
   :witness-lemma fn-dkt-ground-witness
   :breaks ((natp ((x -1)) :lemma fn-dkt-ground-removal)
            (small ((x 10))))
-  :mutations ((weaker (:hypothesis small (< x 20)) ((x 15))))
+  :mutations ((weaker (:hypothesis small (< x 20)) ((x 15))
+                      :fault "a bound of 20 where the adder stops at 10"))
   :must-fail t
   :hints (("Goal" :in-theory (enable fn-dkt-add))))
+
+(assert-event
+ (equal (fn-dk-get :witness (cdr (assoc-eq 'fn-dkt-add-adds-again (table-alist 'fn-teeth (w state)))))
+        :lemma))
+(assert-event
+ (equal (fn-dk-get :removals (cdr (assoc-eq 'fn-dkt-add-adds-again (table-alist 'fn-teeth (w state)))))
+        '((natp :lemma) (small :reachable))))
+
+; A lemma-mode witness whose substitution is not closed is refused.
+(assert-event
+ (equal (car (fn-dt-lemma-problem 'fn-dkt-add-adds-again 'fn-dkt-ground-witness
+                                  '((x 3)) '(and (natp x) (< x 10) (<= (fix y) (fn-dkt-add x y)))
+                                  (w state)))
+        :lemma-open))
+(assert-event
+ (equal (car (fn-dt-lemma-problem 'fn-dkt-add-adds-again 'fn-dkt-ground-witness
+                                  '((x 3) (y z)) '(and (natp x) (< x 10) (<= (fix y) (fn-dkt-add x y)))
+                                  (w state)))
+        :lemma-open))
 
 ; A lemma whose formula is not the instantiated claim is refused.
 (must-fail-checked

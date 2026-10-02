@@ -1550,6 +1550,7 @@ GENERATOR_EXPANSIONS = {
     "def-loop": def_loop_expansion,
     "defprotocol": defprotocol_expansion,
     "defkeystone": defkeystone_expansion,
+    "defteeth": defteeth_expansion,
 }
 
 

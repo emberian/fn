@@ -69,7 +69,7 @@
   (implies (fn-prs-vectorp v)
            (fn-rv-vectorp (fn-rv-of-prs v)))
   :subject fn-rv-of-prs
-  :mutations (:none "hypothesis removals only")
+  :mutations (:deferred "no false neighbour named yet")
   :restates fn-rv-prs-vector-is-the-prefix
   :hyps (vector)
   :witness ((v *rvrt-b*))
@@ -81,7 +81,7 @@
            (equal (fn-rv-of-prs (fn-prs-plus a b))
                   (fn-rv-plus (fn-rv-of-prs a) (fn-rv-of-prs b))))
   :subject fn-prs-plus
-  :mutations (:none "hypothesis removals only")
+  :mutations (:deferred "no false neighbour named yet")
   :restates fn-rv-prs-plus-is-plus
   :hyps (a-vector b-vector)
   :witness ((a *rvrt-u*) (b *rvrt-c*))
@@ -100,19 +100,19 @@
            (equal (fn-prs-fundedp budget used rescue charged)
                   (fn-rv-okp (fn-rv-prs-root budget used rescue charged))))
   :subject fn-prs-fundedp
-  :mutations (:none "hypothesis removals only")
+  :mutations (:deferred "no false neighbour named yet")
   :restates fn-rv-prs-gate-is-a-funded-root
   :hyps (budget-vector used-vector rescue-vector charged-vector)
   :witness ((budget *rvrt-b*) (used *rvrt-u*)
             (rescue *rvrt-r*) (charged *rvrt-c*))
   :breaks ((budget-vector ((budget (append *rvrt-b* 'bad-tail)))
-                          :corrupt "dotted budget; embedding drops its tail")
+                          :logical "dotted budget; embedding drops its tail")
            (used-vector ((used (append *rvrt-u* 'bad-tail)))
-                        :corrupt "dotted used; embedding drops its tail")
+                        :logical "dotted used; embedding drops its tail")
            (rescue-vector ((rescue (append *rvrt-r* 'bad-tail)))
-                          :corrupt "dotted rescue; embedding drops its tail")
+                          :logical "dotted rescue; embedding drops its tail")
            (charged-vector ((charged (append *rvrt-c* 'bad-tail)))
-                           :corrupt "dotted charged; embedding drops its tail"))
+                           :logical "dotted charged; embedding drops its tail"))
   :hints (("Goal" :by fn-rv-prs-gate-is-a-funded-root)))
 
 ;; fn-rv-prs-below-is-below: full-antecedent positive witness.  No breaking

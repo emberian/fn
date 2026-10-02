@@ -32,14 +32,16 @@ imports the ledger's reader and adds the evaluation the ledger may not do.
     python3 tools/teeth_check.py --table          # macro-generated teeth, marked apart
 
 DEFKEYSTONE, DEFTEETH.  `(defkeystone NAME ...)` and `(defteeth NAME ...)`
-(books/defkeystone.lisp) are the macros from another book this tool expands,
-through the ledger's `defkeystone_expansion` and `defteeth_expansion` (the
-latter from the theorem's statement in the tree, as the Lisp reads it from
-the world): their positive, removal, mutant, corrupted-state and visit-bound
-witnesses are read as the assert-events they expand to, and `--table` lists
-the keystone, its bounds and its must-fails with the MACRO's name.  A
-`defteeth` form is a structural citation of its keystone, so the section
-convention below is exact for it.
+(books/defkeystone.lisp, TEETH CONTRACT v1) are the macros from another book
+this tool expands, through the ledger's `defkeystone_expansion` and
+`defteeth_expansion`, from the form's declared :claim (the world checks the
+claim against the theorem at certification): their positive, removal,
+mutant, corrupted-state and bound witnesses are read as the assert-events
+they expand to, and `--table` lists the keystone, its bounds and its
+must-fails (under :must-fail t) with the MACRO's name.  A `defteeth` form is
+a structural citation of its keystone, so the section convention below is
+exact for it.  Coverage classes (generated, hand, exemptions, underived
+bounds) are tools/keystone_emit.py's, from the obligation manifest.
 
 MACRO-GENERATED TEETH.  A book may write its witnesses through a `defmacro`
 that expands to one `defthm` -- `feed-connection-teeth-tests.lisp` admits a
@@ -366,10 +368,8 @@ def read_book(path: Path) -> tuple[list[Assertion], list[str], str | None]:
                 walk(item, line)
             return
         if name == "defteeth" and isinstance(form, list) and len(form) > 1:
-            source = tree_statements().get(str(form[1]))
-            if source is not None:
-                for item in ledger.defteeth_expansion(form, source):
-                    walk(item, line)
+            for item in ledger.defteeth_expansion(form):
+                walk(item, line)
             return
         if name in TRANSPARENT and isinstance(form, list):
             for item in form[1:]:
@@ -378,20 +378,6 @@ def read_book(path: Path) -> tuple[list[Assertion], list[str], str | None]:
     for top, (form, line) in enumerate(forms):
         walk(form, line)
     return assertions, constants, None
-
-
-_STATEMENTS: dict[str, object] | None = None
-
-
-def tree_statements() -> dict[str, object]:
-    """Every theorem's source statement, by name, cached: what a `defteeth`
-    form's expansion is stated over."""
-    global _STATEMENTS
-    if _STATEMENTS is None:
-        _STATEMENTS = {theorem.name: theorem.statement
-                       for book in ledger.load_tree(lazy=True).books.values()
-                       for theorem in book.theorems}
-    return _STATEMENTS
 
 
 # --------------------------------------------------------------------------
@@ -1364,7 +1350,7 @@ def generated_coverage() -> tuple[int, int]:
         for event in target.get("events", [])}
     declared: set[str] = set()
     for book in tree.books.values():
-        declared |= book.teeth_declared
+        declared |= set(book.teeth_declared)
     return len(events & declared), len(events - declared)
 
 
@@ -1741,8 +1727,8 @@ def main(argv: list[str] | None = None) -> int:
                   f"hypothesis is unchecked for {total - cited}")
             generated, hand = generated_coverage()
             print(f"teeth: {generated} registry keystones have generated teeth "
-                  f"(defkeystone/defteeth rows), {hand} hand teeth; tools/"
-                  f"keystone_emit.py --check holds the hand count to its baseline")
+                  f"(defkeystone/defteeth forms), {hand} hand teeth; tools/"
+                  f"keystone_emit.py holds planning/teeth-obligations.json to its base")
         for check, number in sorted(by_check.items()):
             print(f"teeth: {number} {check}")
         if not by_check:

@@ -198,13 +198,13 @@
                            (fn-fc-drive st events)))
   :id "PRF-047"
   :subject fn-fc-drive
-  :mutations (:none "hypothesis removals only")
+  :mutations (:deferred "no false neighbour named yet")
   :restates fn-fc-offers-and-credentials-wait-for-tls-and-login
   :hyps (protected-profile opening-phase)
   :witness ((st *fct-starttls*) (events *fct-full-trace*))
   :breaks ((protected-profile ((st *fct-clear-open*) (events (list *fct-200*))))
            (opening-phase ((st *fct-ready-unopened*) (events (list *fct-238*)))
-                          :corrupt "a :ready STARTTLS connection built by fn-fc-make-state, never through 382, TLS or 281"))
+                          :logical "a :ready STARTTLS connection built by fn-fc-make-state, never through 382, TLS or 281"))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-fc-gate-holds-above-the-floor
                             (k (fn-fc-gate-start (fn-fc-security st)))))
@@ -284,15 +284,15 @@
                   (fn-fc-quiet-obsp (fn-fc-drive (fn-fc-next-state r) events)))))
   :id "PRF-051"
   :subject fn-fc-step
-  :mutations (:none "hypothesis removals only")
+  :mutations (:deferred "no false neighbour named yet")
   :restates fn-fc-refused-login-closes-without-an-offer
   :hyps (statep phase a-line not-281 not-381)
   :witness ((st *fct-at-pass*) (octets *fct-481*)
             (events (list *fct-281* :tls-up *fct-203* *fct-238*)))
   :breaks ((statep ((st *fct-not-a-state*))
-                   :corrupt "security :bogus, which no dial installs")
+                   :logical "security :bogus, which no dial installs")
            (phase ((st *fct-ready-unopened*))
-                  :corrupt "a :ready connection built by fn-fc-make-state")
+                  :logical "a :ready connection built by fn-fc-make-state")
            (a-line ((octets *fct-half*)))
            (not-281 ((octets *fct-281*)))
            (not-381 ((st *fct-at-user*) (octets *fct-381*))))
@@ -355,15 +355,15 @@
                   (fn-fc-quiet-obsp (fn-fc-drive (fn-fc-next-state r) events)))))
   :id "PRF-047"
   :subject fn-fc-step
-  :mutations (:none "hypothesis removals only")
+  :mutations (:deferred "no false neighbour named yet")
   :restates fn-fc-starttls-refusal-closes-before-the-credential
   :hyps (statep phase a-line not-382)
   :witness ((st *fct-at-starttls*) (octets *fct-580*)
             (events (list *fct-382* :tls-up *fct-281*)))
   :breaks ((statep ((st *fct-not-a-state-starttls*))
-                   :corrupt "security :bogus, which no dial installs")
+                   :logical "security :bogus, which no dial installs")
            (phase ((st *fct-ready-unopened*))
-                  :corrupt "a :ready connection built by fn-fc-make-state")
+                  :logical "a :ready connection built by fn-fc-make-state")
            (a-line ((octets '(53 56))))
            (not-382 ((octets *fct-382*))))
   :hints (("Goal" :do-not-induct t
@@ -412,14 +412,14 @@
                   (append *fn-fc-auth-user-prefix* (fn-fc-user st) '(13 10))))
   :id "PRF-051"
   :subject fn-fc-auth-user-command
-  :mutations (:none "hypothesis removals only")
+  :mutations (:deferred "no false neighbour named yet")
   :restates fn-fc-auth-user-command-sends-the-configured-name-alone
   :hyps (tokenp true-listp)
   :witness ((st *fct-at-user*))
   :breaks ((tokenp ((st *fct-smuggling-state*))
-                   :corrupt "a name fn-fap-decode refuses, so no profile installs it")
+                   :logical "a name fn-fap-decode refuses, so no profile installs it")
            (true-listp ((st *fct-improper-state*))
-                       :corrupt "an improper token no decode produces"))
+                       :logical "an improper token no decode produces"))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-fc-auth-user-command)
                            (fn-fc-auth-command fn-fap-tokenp)))))
@@ -430,14 +430,14 @@
                   (append *fn-fc-auth-pass-prefix* (fn-fc-pass st) '(13 10))))
   :id "PRF-051"
   :subject fn-fc-auth-pass-command
-  :mutations (:none "hypothesis removals only")
+  :mutations (:deferred "no false neighbour named yet")
   :restates fn-fc-auth-pass-command-sends-the-configured-secret-alone
   :hyps (tokenp true-listp)
   :witness ((st *fct-at-pass*))
   :breaks ((tokenp ((st *fct-smuggling-state*))
-                   :corrupt "a secret fn-fap-decode refuses, so no profile installs it")
+                   :logical "a secret fn-fap-decode refuses, so no profile installs it")
            (true-listp ((st *fct-improper-state*))
-                       :corrupt "an improper token no decode produces"))
+                       :logical "an improper token no decode produces"))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-fc-auth-pass-command)
                            (fn-fc-auth-command fn-fap-tokenp)))))
@@ -475,6 +475,7 @@
             (allow-clear nil) (events *fct-full-trace*))
   :mutations
   ((undecoded
+    (:conclusion
     (let ((st (fn-fc-drive-state
                (fn-fc-initial-auth-state streamingp conn security
                                          user pass allow-clear)
@@ -482,8 +483,9 @@
       (and (equal (fn-fc-auth-user-command st)
                   (append *fn-fc-auth-user-prefix* user '(13 10)))
            (equal (fn-fc-auth-pass-command st)
-                  (append *fn-fc-auth-pass-prefix* pass '(13 10)))))
-    ((user *fct-smuggled*) (pass *fct-smuggled*) (events nil))))
+                  (append *fn-fc-auth-pass-prefix* pass '(13 10))))))
+    ((user *fct-smuggled*) (pass *fct-smuggled*) (events nil))
+    :fault "the undecoded credential rendered verbatim"))
   :hints (("Goal" :do-not-induct t
            :cases ((equal (car (fn-fap-decode profile)) :ok))
            :use ((:instance fn-fap-decode-yields-two-renderable-tokens

@@ -1393,8 +1393,22 @@ class DefkeystoneExpansionTests(unittest.TestCase):
     def test_expansion_equals_the_literal_the_lisp_macro_is_pinned_to(self):
         constants, _forms = self.constants()
         sample = constants["*fn-dkt-sample*"][1]
-        expected = constants["*fn-dkt-sample-expansion*"][1]
-        self.assertEqual(ledger.defkeystone_expansion(sample), [expected])
+        # fn-dk-expand: the defthm, the restates check, the world-binding make-event
+        self.assertEqual(ledger.defkeystone_make_event(sample),
+                         constants["*fn-dkt-sample-expansion*"][1])
+        # fn-dk-spec-of: the defteeth spec the form stands for
+        spec = ledger.defkeystone_spec(sample)
+        flat: list = []
+        for key, value in spec.items():
+            flat += [ledger.Sym(key), value]
+        self.assertEqual(flat, constants["*fn-dkt-sample-spec*"][1])
+        # fn-dk-teeth-events: the teeth, :formula nil as the static side reads them
+        parts = ledger.defkeystone_parts(sample)
+        self.assertEqual(ledger.teeth_events(parts, "defkeystone"),
+                         constants["*fn-dkt-sample-teeth*"][1])
+        # and the tools' reading is the defthm + restates + those teeth
+        expansion = ledger.defkeystone_expansion(sample)[0]
+        self.assertEqual(expansion[3:], constants["*fn-dkt-sample-teeth*"][1])
 
     def test_the_sample_is_the_form_the_book_admits(self):
         constants, forms = self.constants()
@@ -1408,21 +1422,20 @@ class DefkeystoneExpansionTests(unittest.TestCase):
         self.assertIn("fn-dkt-add-adds", names)
         # the weakened theorems are asked to FAIL, so they are not theorems
         self.assertNotIn("fn-dkt-add-adds-without-natp", names)
+        # must-fail is opt-in (:must-fail t): only fn-dkt-add-adds-again's
+        # weakened and mutant statements are registered and paired
         self.assertEqual(book.paired_must_fails,
-                         {"fn-dkt-add-adds-without-natp",
-                          "fn-dkt-add-adds-without-small",
-                          "fn-dkt-add-adds-mutant-strict",
-                          "fn-dkt-add-adds-source-without-natp",
-                          "fn-dkt-add-adds-source-without-small"})
-        # five generated must-fails (three from the defkeystone, two from the
-        # defteeth), five literal ones around refused forms
-        self.assertEqual(book.must_fails, 10)
-        # the defteeth's visit bound is a theorem of the book once the tree
-        # supplies the source statement (Tree.__init__)
+                         {"fn-dkt-add-adds-again-without-natp",
+                          "fn-dkt-add-adds-again-without-small",
+                          "fn-dkt-add-adds-again-mutant-weaker"})
+        # three generated must-fails, eight literal ones around refused forms
+        self.assertEqual(book.must_fails, 11)
+        # a defteeth's bound is a theorem of its book, from the claim
         self.assertIn("fn-dkt-add-adds-source-visits-steps", names)
-        self.assertEqual(book.teeth_declared,
-                         {"fn-dkt-add-adds", "fn-dkt-add-adds-source"})
-        self.assertEqual(book.teeth_owed, {"fn-dkt-add-adds-source"})
+        self.assertEqual(set(book.teeth_declared),
+                         {"fn-dkt-add-adds", "fn-dkt-add-adds-source",
+                          "fn-dkt-add-adds-again"})
+        self.assertEqual(set(book.teeth_owed), {"fn-dkt-add-adds-source"})
 
     def test_a_form_the_macro_refuses_expands_to_nothing(self):
         refused = ledger.read_forms(
@@ -1436,25 +1449,43 @@ class DefkeystoneExpansionTests(unittest.TestCase):
             "(defkeystone k (r x) :subject r :witness ((x 1)))")[0]
         self.assertEqual(ledger.defkeystone_expansion(no_teeth), [])
 
-    def test_defteeth_expands_with_the_statement_the_tree_supplies(self):
+    def test_defteeth_expands_from_its_claim(self):
         form = ledger.read_forms(
-            '(defteeth k :witness ((x 1)) :breaks ((h1 ((x 2))) (h2 ((x 3))))'
-            ' :mutations (:none "test") :visits ((steps x 9 :attains ((x 9)))))')[0]
-        statement = ledger.read_forms("(implies (and (p x) (q x)) (r x))")[0]
-        events = ledger.defteeth_expansion(form, statement)
+            '(defteeth k :claim (((p (p x)) (q (q x))) (r x)) :subject r'
+            ' :witness ((x 1)) :breaks ((p ((x 2))) (q ((x 3)) :logical "outside"))'
+            ' :mutations ((m (:hypothesis q (s x)) ((x 4)) :fault "s for q"))'
+            ' :visits ((steps x 9 :attains ((x 9)))))')[0]
+        events = ledger.defteeth_expansion(form)
         self.assertEqual(len(events), 1)
         heads = [ledger.head(item) for item in events[0][1:]]
-        self.assertEqual(heads, ["assert-event", "assert-event", "local",
-                                 "assert-event", "local", "defthm", "assert-event",
+        self.assertEqual(heads, ["assert-event", "assert-event", "assert-event",
+                                 "assert-event", "defthm", "assert-event",
                                  "assert-event", "table"])
-        self.assertEqual(str(events[0][6][1]), "k-visits-steps")
-        # a statement whose hypotheses the :breaks do not number: nothing
-        self.assertEqual(ledger.defteeth_expansion(
-            form, ledger.read_forms("(implies (p x) (r x))")[0]), [])
-        # the spec alone: labels come from the breaks
+        self.assertEqual(str(events[0][5][1]), "k-visits-steps")
+        # the hypothesis mutation asserts the other hypothesis, the edited one,
+        # not the original and not the conclusion
+        mutant = events[0][4][1]
+        self.assertEqual(ledger.source_text(mutant[3]),
+                         "(and (p x) (s x) (not (q x)) (not (r x)))")
+        # the row: witness mode, removal kinds, the fault, the underived bound
+        row = events[0][8][3][1]
+        self.assertEqual(ledger.source_text(row),
+                         "(:by defteeth :claim (((p (p x)) (q (q x))) (r x)) :formula nil"
+                         " :subject r :witness :executable :hyps (p q)"
+                         " :removals ((p :reachable) (q :logical))"
+                         ' :mutations ((m :hypothesis "s for q")) :corrupt nil'
+                         " :visits ((steps x 9 :attains :rests-on nil :derived-by nil))"
+                         " :allocation nil)")
         parts = ledger.defteeth_parts(form)
-        self.assertEqual([str(x) for x in parts["labels"]], ["h1", "h2"])
         self.assertEqual(ledger.defteeth_names(parts)["bounds"], ["k-visits-steps"])
+        self.assertEqual(ledger.defteeth_names(parts)["without"], [])
+        # refused on the spec: no claim, a free-term mutation, a bound without a subject
+        for text in ['(defteeth k :witness ((x 1)) :breaks nil :mutations (:deferred "x"))',
+                     '(defteeth k :claim (nil (r x)) :witness ((x 1)) :breaks nil'
+                     ' :mutations ((m nil ((x 1)) :fault "x")))',
+                     '(defteeth k :claim (nil (r x)) :witness ((x 1)) :breaks nil'
+                     ' :mutations (:deferred "x") :visits ((v x 1 :attains ((x 1)))))']:
+            self.assertIsNone(ledger.defteeth_parts(ledger.read_forms(text)[0]), text)
 
     def test_generated_must_fails_are_not_bare_general_claims(self):
         source = ('(in-package "ACL2")\n'

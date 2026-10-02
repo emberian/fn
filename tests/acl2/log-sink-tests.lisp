@@ -48,7 +48,7 @@
   (implies (fn-log-sink-okp s bound)
            (fn-log-sink-okp (cadr (fn-log-sink-offer s len bound)) bound))
   :subject fn-log-sink-offer
-  :mutations (:none "hypothesis removals only")
+  :mutations (:deferred "no false neighbour named yet")
   :id "PRF-187"
   :restates fn-log-sink-offer-preserves-okp
   :hyps (okp)
@@ -60,7 +60,7 @@
   (implies (fn-log-sink-okp s bound)
            (fn-log-sink-okp (fn-log-sink-take s len outcome) bound))
   :subject fn-log-sink-take
-  :mutations (:none "hypothesis removals only")
+  :mutations (:deferred "no false neighbour named yet")
   :id "PRF-187"
   :restates fn-log-sink-take-preserves-okp
   :hyps (okp)
@@ -93,7 +93,7 @@
                   (equal (fn-log-sink-pending-lines s2) (fn-log-sink-pending-lines s))
                   (equal (fn-log-sink-pending-octets s2) (fn-log-sink-pending-octets s)))))
   :subject fn-log-sink-offer
-  :mutations (:none "hypothesis removals only")
+  :mutations (:deferred "no false neighbour named yet")
   :id "PRF-187"
   :restates fn-log-sink-drop-counts
   :hyps (drop)

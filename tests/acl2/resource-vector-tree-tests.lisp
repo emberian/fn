@@ -134,12 +134,12 @@
            (fn-rt-okp (cadr (fn-rt-step tree op))))
   :id "PRF-1209"
   :subject fn-rt-step
-  :mutations (:none "hypothesis removals only")
+  :mutations (:deferred "no false neighbour named yet")
   :restates fn-rt-step-keeps-okp
   :hyps (okp)
   :witness ((tree *rtt-t1*) (op (list (cons 2 1) :draw 0 *rtt-read*)))
   :breaks ((okp ((tree *rtt-corrupt-missing*) (op (list :root :settle 0 1)))
-                :corrupt "a sub-bank row with no sub-bank behind it; no step builds it"))
+                :logical "a sub-bank row with no sub-bank behind it; no step builds it"))
   :hints (("Goal" :by fn-rt-step-keeps-okp)))
 
 (defkeystone rtt-run-keeps-okp
@@ -147,12 +147,12 @@
            (fn-rt-okp (cadr (fn-rt-run tree ops))))
   :id "PRF-1209"
   :subject fn-rt-run
-  :mutations (:none "hypothesis removals only")
+  :mutations (:deferred "no false neighbour named yet")
   :restates fn-rt-run-keeps-okp
   :hyps (okp)
   :witness ((tree *rtt-t7*) (ops *rtt-admitted-run*))
   :breaks ((okp ((tree *rtt-corrupt-missing*) (ops (list (list :root :settle 0 1))))
-                :corrupt "a sub-bank row with no sub-bank behind it; no step builds it"))
+                :logical "a sub-bank row with no sub-bank behind it; no step builds it"))
   :hints (("Goal" :by fn-rt-run-keeps-okp)))
 
 (defkeystone rtt-step-refused-keeps-the-tree
@@ -160,7 +160,7 @@
            (equal (cadr (fn-rt-step tree op)) tree))
   :id "PRF-1209"
   :subject fn-rt-step
-  :mutations (:none "hypothesis removals only")
+  :mutations (:deferred "no false neighbour named yet")
   :restates fn-rt-step-refused-keeps-the-tree
   :hyps (refused)
   :witness ((tree *rtt-t6*) (op (list (cons 2 1) :settle 1 1)))
@@ -175,9 +175,11 @@
   :restates fn-rt-sub-bank-steps-keep-the-root
   :witness ((tree *rtt-t1*) (slot 2) (gen 1) (step (list :draw 0 *rtt-read*)))
   :mutations ((a-root-step-keeps-the-root
-               (equal (fn-rt-root (cadr (fn-rt-step tree (cons :root step))))
-                      (fn-rt-root tree))
-               ((tree *rtt-t1*) (slot 2) (gen 1) (step (list :open 3 *rtt-conn-budget* 2)))))
+               (:conclusion
+                (equal (fn-rt-root (cadr (fn-rt-step tree (cons :root step))))
+                       (fn-rt-root tree)))
+               ((tree *rtt-t1*) (slot 2) (gen 1) (step (list :open 3 *rtt-conn-budget* 2)))
+               :fault "a root step claimed to keep the root"))
   :hints (("Goal" :by fn-rt-sub-bank-steps-keep-the-root)))
 
 (defkeystone rtt-destroy-revokes-the-sub-bank
@@ -188,7 +190,7 @@
                   (equal (cadr (fn-rt-step later (cons (cons slot gen) step))) later))))
   :id "PRF-1209"
   :subject fn-rt-step
-  :mutations (:none "hypothesis removals only")
+  :mutations (:deferred "no false neighbour named yet")
   :restates fn-rt-destroy-revokes-the-sub-bank
   :hyps (destroyed)
   :witness ((tree *rtt-t5*) (slot 2) (gen 1)
@@ -196,5 +198,5 @@
             (step (list :settle 1 1)))
   :breaks ((destroyed ((tree *rtt-corrupt-overspent*) (slot 2) (gen 1) (ops nil)
                        (step (list :draw 1 *rtt-read*)))
-                      :corrupt "a sub-bank that spent past its budget refuses its destroy (:sub-bank-overspent) and stays addressable; no step builds it"))
+                      :logical "a sub-bank that spent past its budget refuses its destroy (:sub-bank-overspent) and stays addressable; no step builds it"))
   :hints (("Goal" :by fn-rt-destroy-revokes-the-sub-bank)))
