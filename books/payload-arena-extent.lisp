@@ -175,6 +175,7 @@
         ((fn-arn-lz-extentp e)
          (fn-lzr-lz-value (nth 7 e) (fn-durable-octets (nth 0 e) (nth 3 e) (nth 4 e)) (nth 6 e)))
         ((eq e :staged) (fn-arx-stage-octets s))
+        ((eq e :forgotten) nil)
         (t x)))
 
 (defthm fn-arx-nth-of-payload-listp
@@ -203,8 +204,13 @@
   (equal (fn-arx-entry :staged x s) (fn-arx-stage-octets s)))
 
 (defthm fn-arx-entry-of-resident
-  (implies (and (not (fn-arn-extentp e)) (not (fn-arn-lz-extentp e)) (not (equal e :staged)))
+  (implies (and (not (fn-arn-extentp e)) (not (fn-arn-lz-extentp e)) (not (equal e :staged))
+                (not (equal e :forgotten)))
            (equal (fn-arx-entry e x s) x)))
+
+;; A forgotten handle's payload is empty, whatever the child and the stage hold.
+(defthm fn-arx-entry-of-forgotten
+  (equal (fn-arx-entry :forgotten x s) nil))
 
 ;; The stage slot matters only through its payload.
 (defthm fn-arx-entry-stage-congruence
@@ -298,6 +304,25 @@
 
 ; Only the reseat's obligation uses it (it would split every seal's view).
 (in-theory (disable fn-arx-view-of-update-inside))
+
+;; A stage slot below the view does not show, and one inside it changes its
+;; own position only (the forget's obligation: the slot of the handle it
+;; empties).
+(defthm fn-arx-view-of-stage-update-below
+  (implies (and (natp k) (natp h) (< k h))
+           (equal (fn-arx-view h n ext a (update-nth k s st))
+                  (fn-arx-view h n ext a st)))
+  :hints (("Goal" :induct (fn-arx-view h n ext a st))))
+
+(defthm fn-arx-view-of-stage-update-inside
+  (implies (and (natp h) (natp k) (natp n) (<= h k) (< k n))
+           (equal (fn-arx-view h n ext a (update-nth k s st))
+                  (update-nth (- k h) (fn-arx-entry (nth k ext) (nth k a) s)
+                              (fn-arx-view h n ext a st))))
+  :hints (("Goal" :induct (fn-arx-view h n ext a st)
+           :in-theory (enable update-nth))))
+
+(in-theory (disable fn-arx-view-of-stage-update-inside))
 
 (local
  (defthm fn-arx-nth-resize-list
@@ -408,6 +433,7 @@
     (cond ((fn-arn-extentp e) (nth 4 e))
           ((fn-arn-lz-extentp e) (nth 6 e))
           ((eq e :staged) (fn-arx-stage-len h fn-arena$x))
+          ((eq e :forgotten) 0)
           (t (stobj-let ((fn-arena-paged (fn-arena$x-inner fn-arena$x)))
                         (n)
                         (fn-arena-paged-payload-len h fn-arena-paged)
@@ -425,6 +451,7 @@
            (fn-oct-nth i (fn-durable-realize-lz (nth 0 e) (nth 1 e) (nth 2 e) (nth 3 e) (nth 4 e)
                                                 (nth 5 e) (nth 6 e) (nth 7 e))))
           ((eq e :staged) (fn-arx-stage-get h i fn-arena$x))
+          ((eq e :forgotten) 0)
           (t (stobj-let ((fn-arena-paged (fn-arena$x-inner fn-arena$x)))
                         (v)
                         (fn-arena-paged-get h i fn-arena-paged)
@@ -441,6 +468,7 @@
            (fn-durable-realize-lz (nth 0 e) (nth 1 e) (nth 2 e) (nth 3 e) (nth 4 e) (nth 5 e)
                                   (nth 6 e) (nth 7 e)))
           ((eq e :staged) (fn-arx-stage-payload h fn-arena$x))
+          ((eq e :forgotten) nil)
           (t (stobj-let ((fn-arena-paged (fn-arena$x-inner fn-arena$x)))
                         (v)
                         (fn-arena-paged-payload h fn-arena-paged)
@@ -694,6 +722,25 @@
                  (fn-arena-page)
                  (resize-fn-arena-page-bytes 0 fn-arena-page)
                  fn-arena$x)
+    fn-arena$x))
+
+; The forget (lane arena-forget, 2026-10-03): handle H's entry becomes
+; :forgotten -- whatever it was: an extent (its file's count falls by one,
+; fn-arx-mark), a staged copy or a resident payload -- and its stage slot is
+; emptied.  No read of H reaches a realizer or the child again: its payload
+; is the empty one.  A handle outside the arena is left alone.  One entry
+; write, one count move, one page resize: no walk.
+(defun fn-arena$x-forget (h fn-arena$x)
+  (declare (xargs :stobjs fn-arena$x
+                  :guard (and (natp h) (fn-arena$x-wfp fn-arena$x))))
+  (if (< h (fn-arena$x-count fn-arena$x))
+      (let ((fn-arena$x (fn-arx-mark h :forgotten fn-arena$x)))
+        (if (< h (fn-arena$x-stage-length fn-arena$x))
+            (stobj-let ((fn-arena-page (fn-arena$x-stagei h fn-arena$x)))
+                       (fn-arena-page)
+                       (resize-fn-arena-page-bytes 0 fn-arena-page)
+                       fn-arena$x)
+          fn-arena$x))
     fn-arena$x))
 
 ; -----------------------------------------------------------------------------
@@ -1121,7 +1168,7 @@
                 (fn-arena$x-wfp fn-arena$x)
                 (natp i) (< i (fn-arena$x-payload-len h fn-arena$x))))
   :rule-classes nil
-  )
+  :hints (("Goal" :cases ((equal (nth h (nth *fn-arena$x-exti* fn-arena$x)) :forgotten)))))
 
 (defthm fn-arena-extent-payload{correspondence}
   (implies (and (fn-arena$xcorr fn-arena$x fn-arena-extent)
@@ -1356,6 +1403,33 @@
            (fn-arena$ap (fn-arena$a-release h fn-arena-extent)))
   :rule-classes nil)
 
+(local
+ (defthm fn-arx-update-nth-twice
+   (equal (update-nth h v (update-nth h w l)) (update-nth h v l))
+   :hints (("Goal" :in-theory (enable update-nth)))))
+
+(defthm fn-arena-extent-forget{correspondence}
+  (implies (and (fn-arena$xcorr fn-arena$x fn-arena-extent)
+                (natp h))
+           (fn-arena$xcorr (fn-arena$x-forget h fn-arena$x)
+                           (fn-arena$a-forget h fn-arena-extent)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-arx-view-of-update-inside fn-arx-view-of-stage-update-inside
+                                     fn-oct-update-is-update-nth))))
+
+(defthm fn-arena-extent-forget{guard-thm}
+  (implies (and (fn-arena$xcorr fn-arena$x fn-arena-extent)
+                (natp h))
+           (and (natp h) (fn-arena$x-wfp fn-arena$x)))
+  :rule-classes nil)
+
+(defthm fn-arena-extent-forget{preserved}
+  (implies (and (fn-arena$ap fn-arena-extent)
+                (natp h))
+           (fn-arena$ap (fn-arena$a-forget h fn-arena-extent)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-oct-update-is-update-nth))))
+
 (defabsstobj fn-arena-extent
   :foundation fn-arena$x
   :recognizer (fn-arena-extent-p :logic fn-arena$ap :exec fn-arena$xp)
@@ -1381,7 +1455,9 @@
             (fn-arena-extent-seal-lz-extent :logic fn-arena$a-seal-lz-extent
                                             :exec fn-arena$x-seal-lz-extent :protect t)
             (fn-arena-extent-reseat-lz-extent :logic fn-arena$a-reseat-lz-extent
-                                              :exec fn-arena$x-reseat-lz-extent :protect t)))
+                                              :exec fn-arena$x-reseat-lz-extent :protect t)
+            (fn-arena-extent-forget :logic fn-arena$a-forget :exec fn-arena$x-forget
+                                    :protect t)))
 
 ; -----------------------------------------------------------------------------
 ; The file count, read (lane composed-owner-4, row A6).  The host reads the
@@ -1478,3 +1554,43 @@
   (implies (or (fn-arn-extentp e) (fn-arn-lz-extentp e))
            (equal (fn-arx-entry-file e) (nth 0 e)))
   :hints (("Goal" :in-theory (enable fn-arx-entry-file))))
+
+; -----------------------------------------------------------------------------
+; The forget, over the concrete arena (lane arena-forget, 2026-10-03).
+
+; The forget writes one entry: H's is :forgotten (it names no file and no
+; realizer call reads through it), every other handle's is what it was.
+(defthm fn-arx-forget-entries
+  (implies (and (fn-arena$xcorr fn-arena$x fn-arena$a)
+                (natp h) (< h (len fn-arena$a)) (natp k))
+           (equal (nth k (nth *fn-arena$x-exti* (fn-arena$x-forget h fn-arena$x)))
+                  (if (equal k h)
+                      :forgotten
+                    (nth k (nth *fn-arena$x-exti* fn-arena$x)))))
+  :hints (("Goal" :do-not-induct t)))
+
+; KEYSTONE (PRF-ARF-2).  The forget gives back exactly H's name: the count of
+; the file H's entry named falls by one and every other file's count is
+; unchanged.  So once every handle that named a dropped file is reseated or
+; forgotten its count is 0, fn-xrt-quiet-files answers it
+; (books/extent-retire.lisp) and the host closes its descriptor while
+; serving.  Host subject: host/native/io.lisp fnn-arena-forget-due calls
+; fn-arena-forget on the live arena, whose attachment runs fn-arena$x-forget.
+(defthm fn-arx-forget-file-count
+  (implies (and (fn-arena$xcorr fn-arena$x fn-arena$a)
+                (natp h) (< h (len fn-arena$a)) (natp f))
+           (equal (fn-arx-file-count f (fn-arena$x-forget h fn-arena$x))
+                  (- (fn-arx-file-count f fn-arena$x)
+                     (if (equal (fn-arx-entry-file (nth h (nth *fn-arena$x-exti* fn-arena$x))) f)
+                         1
+                       0))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-arx-files-agree-necc fn-arx-tally-positive-when-named
+                               fn-arx-file-count)
+           :use ((:instance fn-arx-files-agree-necc
+                            (ext (nth *fn-arena$x-exti* fn-arena$x))
+                            (files (nth *fn-arena$x-filesi* fn-arena$x)))
+                 (:instance fn-arx-tally-positive-when-named
+                            (ext (nth *fn-arena$x-exti* fn-arena$x)))))))
+
+(in-theory (disable fn-arena$x-forget))

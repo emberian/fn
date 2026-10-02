@@ -33,6 +33,7 @@
 ;   fn-arena-seal-list xs      (append a (list xs))      a new handle (the old count)
 ;   fn-arena-seal-buffer st    (append a (list st))      the octet buffer's value sealed
 ;   fn-arena-clear             nil
+;   fn-arena-forget h          (update-nth h nil a)      h's payload taken away
 ;   fn-arena-seal-range a b st (append a (list st[a..b)))   the buffer's cells [A, B) sealed as one
 ;                                                            payload: the intern from a buffer range
 ;
@@ -48,11 +49,16 @@
 ;     (`fn-arena-reseat-extent', lane arena-offheap-3): the commit moves a
 ;     durable payload to its log extent, and under the faithful write the
 ;     arena is unchanged (`fn-arena-reseat-extent-keeps-a-faithful-arena');
-;   - nothing removes a payload: the arena has no delete export, so no
-;     reference held by a pinned reader, a feed, a consumer or a BP job can
-;     dangle across a seal (the reclaim interface: a reclaimed record's
-;     tombstone is a new seal, the old handle stays valid until the next
-;     open rebuilds the arena from the retained records: books/records-freeze.lisp).
+;   - no seal removes a payload, so no reference held by a pinned reader,
+;     a feed, a consumer or a BP job dangles across a seal (the reclaim
+;     interface: a reclaimed record's tombstone is a new seal);
+;   - the one export that takes a payload away is the forget
+;     (`fn-arena-forget', lane arena-forget 2026-10-03): the handle's payload
+;     becomes empty, every other handle and the count are unchanged
+;     (`fn-arena-forget-payload'), and a handle is still never reused.  The
+;     owner forgets a reclaimed record's old handle only once no row of the
+;     served history names it and every reader that could hold it has ended
+;     (books/arena-forget.lisp); until then the old handle stays valid.
 ;   `fn-arn-store-corr' is the relation between an arena and a store
 ;   history: the arena is the history's payloads oldest first.  Commit
 ;   (a seal of the finished record's payload, `fn-arn-store-corr-of-commit')
@@ -186,6 +192,16 @@
   (declare (xargs :stobjs fn-arena$l :guard (natp h))
            (ignore h))
   fn-arena$l)
+
+; The forget over the reference (lane arena-forget): the handle's payload
+; becomes the empty payload.
+(defun fn-arena$l-forget (h fn-arena$l)
+  (declare (xargs :stobjs fn-arena$l
+                  :guard (and (fn-arena$l-wfp fn-arena$l) (natp h))))
+  (if (< h (fn-arena$l-count fn-arena$l))
+      (update-fn-arena$l-items (fn-oct-update h nil (fn-arena$l-items fn-arena$l))
+                               fn-arena$l)
+    fn-arena$l))
 
 ; The abstraction relation of the reference: the field is the logical value.
 (defun fn-arena$lcorr (fn-arena$l fn-arena$a)
@@ -457,6 +473,27 @@
            (fn-arena$ap (fn-arena$a-release h fn-arena)))
   :rule-classes nil)
 
+(defthm fn-arena-forget{correspondence}
+  (implies (and (fn-arena$lcorr fn-arena$l fn-arena)
+                (natp h))
+           (fn-arena$lcorr (fn-arena$l-forget h fn-arena$l)
+                           (fn-arena$a-forget h fn-arena)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-oct-update-is-update-nth))))
+
+(defthm fn-arena-forget{guard-thm}
+  (implies (and (fn-arena$lcorr fn-arena$l fn-arena)
+                (natp h))
+           (and (fn-arena$l-wfp fn-arena$l) (natp h)))
+  :rule-classes nil)
+
+(defthm fn-arena-forget{preserved}
+  (implies (and (fn-arena$ap fn-arena)
+                (natp h))
+           (fn-arena$ap (fn-arena$a-forget h fn-arena)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-oct-update-is-update-nth))))
+
 ; -----------------------------------------------------------------------------
 ; The generic.  `:attachable t' is what lets (attach-stobj fn-arena IMPL),
 ; evaluated before this book is included, replace the foundation and the
@@ -486,7 +523,8 @@
             (fn-arena-seal-lz-extent :logic fn-arena$a-seal-lz-extent
                                      :exec fn-arena$l-seal-lz-extent :protect t)
             (fn-arena-reseat-lz-extent :logic fn-arena$a-reseat-lz-extent
-                                       :exec fn-arena$l-reseat-lz-extent :protect t))
+                                       :exec fn-arena$l-reseat-lz-extent :protect t)
+            (fn-arena-forget :logic fn-arena$a-forget :exec fn-arena$l-forget :protect t))
   :attachable t)
 
 ; -----------------------------------------------------------------------------
@@ -692,6 +730,39 @@
 (defthm fn-arena-release-unfolds
   (equal (fn-arena-release h fn-arena) fn-arena)
   :hints (("Goal" :in-theory (enable fn-arena-release))))
+
+; KEYSTONE (lane arena-forget, PRF-ARF-1) fn-arena-forget-payload: the forget
+; empties handle H and nothing else: H denotes the empty payload, every
+; other handle keeps its payload, the count is unchanged (so no later seal
+; reuses H), and the value is still an arena.  The hypotheses are that the
+; value is an arena and H a handle of it: a forget outside the arena is the
+; identity (fn-arena-forget-outside), which is why H < count is not
+; redundant for the first conjunct.
+(defthm fn-arena-forget-payload
+  (implies (and (fn-arena-p fn-arena) (natp h) (< h (fn-arena-count fn-arena)))
+           (and (equal (fn-arena-payload h (fn-arena-forget h fn-arena)) nil)
+                (implies (and (natp k) (not (equal k h)))
+                         (equal (fn-arena-payload k (fn-arena-forget h fn-arena))
+                                (fn-arena-payload k fn-arena)))
+                (equal (fn-arena-count (fn-arena-forget h fn-arena))
+                       (fn-arena-count fn-arena))
+                (fn-arena-p (fn-arena-forget h fn-arena))))
+  :hints (("Goal" :in-theory (enable fn-arena-payload fn-arena-forget fn-arena-count
+                                     fn-arena-p fn-oct-update-is-update-nth))))
+
+; A forget of a handle the arena does not have changes nothing.
+(defthm fn-arena-forget-outside
+  (implies (not (and (natp h) (< h (fn-arena-count fn-arena))))
+           (equal (fn-arena-forget h fn-arena) fn-arena))
+  :hints (("Goal" :in-theory (enable fn-arena-forget fn-arena-count))))
+
+; The opened view: an update at H.
+(defthm fn-arena-forget-is-update-nth
+  (implies (and (fn-arena-p fn-arena) (natp h) (< h (len fn-arena)))
+           (equal (fn-arena-forget h fn-arena) (update-nth h nil fn-arena)))
+  :hints (("Goal" :in-theory (enable fn-arena-forget fn-arena-p fn-oct-update-is-update-nth))))
+
+(in-theory (disable fn-arena-forget))
 
 (defthm fn-arena-seal-count
   (equal (fn-arena-count (fn-arena-seal-list xs fn-arena))
