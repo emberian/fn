@@ -54,9 +54,9 @@ raw bridge at exact source bytes. The ordinary test-root manifest
 `certify-20260930T160950Z-9393` certifies the standalone concrete fixtures. Tests use
 real local concrete stobjs and cover
 concurrent slots, duplicates, reuse, refusals, drain between gate/body, prepaid drain
-epilogue, and retained-intent raw fencing. `host/allocation-turn-host.lisp` declares
-only enter/finish/uncertain compiled callbacks, with actual carried-state and frame
-proofs. Source declaration admission is not native execution or image qualification.
+epilogue, and retained-intent raw fencing. `host/interfaces.lisp` declares the
+surviving `fn-ats-finish-owned` callback; its carried-state and frame proofs are in
+`books/allocation-turn-raw-bridge.lisp`. Source declaration admission is not native execution or image qualification.
 
 Still open: genuine profile/constructor baseline installation; actual source allowance
 composition; all concurrent executor/native outer-return joins; full-GC barrier and
