@@ -22,7 +22,9 @@
 (defun cvt-target (e) (declare (xargs :guard t)) (if (consp e) (car e) nil))
 (defun cvt-cause (e) (declare (xargs :guard t)) (if (consp e) (cdr e) nil))
 (defun cvt-key (x) (declare (xargs :guard t)) (if (stringp x) x nil))
-(defun cvt-has (k set) (declare (xargs :guard t)) (if (member-equal k set) t nil))
+(defun cvt-has (k set)
+  (declare (xargs :guard t))
+  (if (consp set) (or (equal k (car set)) (cvt-has k (cdr set))) nil))
 (defun cvt-add (x set) (declare (xargs :guard t)) (if (stringp x) (cons x set) set))
 
 (defthm cvt-has-of-add
@@ -129,7 +131,7 @@
   :claim (((carried (cvt-carryp carry))) (equal (cvt-targetedp-fast x ws carry) (cvt-targetedp x ws)))
   :subject cvt-targetedp-fast
   :witness ((x "n") (ws *cvt-ws0*) (carry *cvt-c0*))
-  :breaks ((carried ((x "t1") (carry (cons *cvt-ws0* '(nil nil)))))))
+  :breaks ((carried ((x "t1") (carry (cons *cvt-ws0* '(nil nil))))))
   :mutations ((positive-trusted (:conclusion (equal (cvt-targetedp-fast x ws carry)
                                                     (cvt-has x (cvt-tset carry))))
                                 ((x "t2") (ws *cvt-ws0*) (carry (cons *cvt-ws0* '(("t2" "x") nil))))
