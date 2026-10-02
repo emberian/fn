@@ -61,6 +61,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import re
 import subprocess
 import sys
 
@@ -154,28 +155,29 @@ def subject_findings(keystones: list[Keystone]) -> tuple[list[str], dict[str, st
     """Findings on subjects, and each registry keystone's host line (or how
     it is reached)."""
     import reach_check
-    tree = ledger.load_tree(lazy=True)
-    graph = reach_check.Graph(tree)
+    graph = reach_check.Graph()
+    theorems = reach_check.theorem_forms(graph.books)
     problems: list[str] = []
     reached: dict[str, str] = {}
     for keystone in keystones:
-        theorem = tree.theorems.get(keystone.registry_name)
-        if theorem is None:
-            problems.append(f"{keystone.where}: {keystone.name}: registry keystone "
-                            f"{keystone.registry_name} is not a theorem the tree defines")
+        name = keystone.registry_name
+        entry = theorems.get(name.lower())
+        text = entry[1] if entry else render([Sym("defthm"), Sym(name),
+                                              keystone.parts["term"]])
+        subject = reach_check.Subject(graph, name.lower(), text)
+        if keystone.subject not in subject.functions:
+            problems.append(
+                f"{keystone.where}: {keystone.name}: :subject {keystone.subject} is not "
+                f"a function {name}'s conclusion calls (reach_check reads "
+                f"{', '.join(sorted(subject.functions)) or 'nothing'})")
             continue
-        subjects = {str(name) for name in reach_check.Subject(theorem.statement).calls()}
-        if keystone.subject not in subjects:
-            problems.append(f"{keystone.where}: {keystone.name}: :subject "
-                            f"{keystone.subject} is not a function the conclusion "
-                            f"calls ({', '.join(sorted(subjects)) or 'none'})")
+        if keystone.subject not in graph.reachable:
+            problems.append(
+                f"{keystone.where}: {keystone.name}: :subject {keystone.subject} is "
+                f"reached by no host line (reach_check)")
             continue
-        if not graph.reachable(keystone.subject):
-            problems.append(f"{keystone.where}: {keystone.name}: no host line reaches "
-                            f"the subject {keystone.subject}")
-            continue
-        reached[keystone.registry_name] = (host_line(keystone.subject)
-                                           or "reached through book functions")
+        line = host_line(keystone.subject)
+        reached[name] = line or "reached through book functions only"
     return problems, reached
 
 
@@ -445,16 +447,22 @@ def gate(write: bool, bootstrap: bool = False) -> list[str]:
 
 
 def claim(keystone: Keystone, lane: str, milestone: str, title: str) -> str:
-    import next_id
-    ident = next_id.claim(ROOT, "PRF", lane)
+    """Claim a PRF id for a new keystone and add its planned row."""
+    answer = subprocess.run(
+        [sys.executable, str(ROOT / "tools/next_id.py"), "claim", "PRF", "--lane", lane,
+         "--note", f"defkeystone {keystone.name} ({keystone.book})"],
+        capture_output=True, text=True, check=True)
+    match = re.search(r"PRF-\d{3,}", answer.stdout)
+    if not match:
+        raise SystemExit(f"keystone_emit: next_id.py claim printed no id: {answer.stdout}")
+    ident = match.group(0)
     registry = json.loads(PROOFS.read_text(encoding="utf-8"))
     registry["proofs"].append({
         "id": ident, "title": title,
-        "statement": f"Keystone {keystone.registry_name} (books/defkeystone.lisp "
-                     f"form at {keystone.where}); subject {keystone.subject}.",
+        "statement": (f"{keystone.registry_name} (defkeystone {keystone.name}, "
+                      f"{keystone.book}); subject {keystone.subject}."),
         "milestone": milestone, "requirements": [], "depends_on": [],
-        "assumptions": [], "status": "planned", "evidence": [keystone.book],
-        "progress_note": f"Claimed by tools/keystone_emit.py for lane {lane}."})
+        "assumptions": [], "status": "planned", "evidence": [keystone.book]})
     PROOFS.write_text(json.dumps(registry, indent=2, ensure_ascii=False) + "\n",
                       encoding="utf-8")
     return ident
