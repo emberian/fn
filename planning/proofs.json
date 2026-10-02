@@ -21463,6 +21463,62 @@
         "fn-arf-changed-handles-are-unnamed"
       ],
       "progress_note": "Lane arena-forget (Opus 5.5, 2026-10-03). REPL-admitted on hbox (books and teeth); not certified. Design: build/coordinator/decisions/arena-forget-2026-10-03.md, Codex consultation c08."
+    },
+    {
+      "id": "PRF-1239",
+      "title": "Holding as a declared relation: a holder table's late holder is refused by name, a key's count over any run is its holds less its drops, and a duplicate drop never takes another holder's hold",
+      "statement": "Subject: books/def-holder.lisp fn-hd-keyed-step (the keyed step over the arena readers' table of books/arena-reader-pins.lisp: :hold K / :drop K / :count K / :quiet K, any other event refused) and fn-hd-ident-step (the identified step: a token per holder). HOST: the generic that every def-holder instance's host-called entries thread (the first instances: books/handle-holds.lisp over the arena generation table, and the cold read's file table, in progress). fn-hd-drop-of-unheld-is-refused (KEYSTONE): a :drop of a key nobody holds, or of a non-natural key, answers :refused and leaves the table as it was -- the late holder's outcome, distinct from :dropped. fn-hd-run-count-is-holds-less-drops (KEYSTONE): over any run of keyed events a key's count is what it was plus its holds less its drops answered :dropped; fn-hd-quiet-from-empty-means-every-hold-was-dropped: from the empty table a quiet key is one whose every hold was dropped. fn-hd-ident-duplicate-hold-is-refused and fn-hd-ident-drop-of-absent-token-is-refused (KEYSTONES): a hold by a token already holding the key and a drop by a token not holding it are refused and change nothing, so a duplicate drop by one holder can never take another's hold (consultation c05). def-holder is an ACCOUNTING component: it authorizes no forget or close by itself; a release is licensed by an instance's root theorem over every root, this accounting, physical custody ended and the durable ordering (a :physical effect's release cut must follow the durable replacement in the declared cut list, else the declaration is refused). Scope: the table's counts and tokens; which host functions hold is the declaration's and tools/holder_check.py's (the raw host, both ways); no claim about a copy of a key the declaration does not name.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-017"
+      ],
+      "depends_on": [
+        "PRF-941"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/def-holder.lisp",
+        "tests/acl2/def-holder-tests.lisp",
+        "tools/holder_check.py"
+      ],
+      "events": [
+        "fn-hd-drop-of-unheld-is-refused",
+        "fn-hd-run-count-is-holds-less-drops",
+        "fn-hd-quiet-from-empty-means-every-hold-was-dropped",
+        "fn-hd-ident-duplicate-hold-is-refused",
+        "fn-hd-ident-drop-of-absent-token-is-refused"
+      ],
+      "progress_note": "Lane def-holder (Fable 5.1, 2026-10-03). REPL-admitted on hbox (book 68 forms, teeth 74 forms, 0 refused); certification submitted. Inventory, interface and consultation c05: build/coordinator/lanedumps/def-holder.md."
+    },
+    {
+      "id": "PRF-1240",
+      "title": "A released retirement of the handles a reclaim swap un-named is named by no row of the rewritten history and postdates every live reader",
+      "statement": "Subject: books/handle-holds.lisp, the payload-handle instance of def-holder (fn-handle-holds: the arena generation table of books/arena-reader-pins.lisp as a :stamped holder relation with four host holders -- the checkpoint publication, the export, the reclaim dry run, the reclaim pass -- the connection's response plan as a logic holder (fn-rpin-step's two arms, fn-hh-rpin-acquire-pins / fn-hh-rpin-release-unpins), and the roots declared with their status: connection views :repinned by the swap, OVER cursors :pinned, fenced log members and cold reads' physical custody :excluded, the BP workflow node :serialized, the remote-visible writer, the NEWNEWS tail and the whole-arena leases :unwired; effect (:physical *fn-orcp-cuts* :cut :released :after :installed)). HOST: the owner passes (fn-arf-retire-event (fn-arf-changed-handles old new)) to fn-arpn-step in the swap's quantum and hands the step's :release answer to fn-arf-apply-released at the :released cut (ARENA-FORGET, PRF-1235; NOT WIRED YET). fn-handle-holds-released-handles-are-unnamed-and-postdate-every-pin (KEYSTONE): a retirement the pins step's :release answers whose items are the tagged handles of the swap's pairwise walk was pending, its stamp is below every live pin, its items are exactly those handles, and each is named by no row of the rewritten history (hypotheses: fn-arpn-okp; the old rows' handles pairwise distinct and the new rows a rewrite of them -- PRF-1235's open root fact). What it does NOT cover, each a declared clause of the row the host establishes: the fenced and in-flight log members (the swap must refuse while one names a retired handle), physical custody (a cold read holds a place, not a handle; the forget reuses no storage; the file closes on fn-pio-file-clear-p), the serialized and unwired roots. Scope: TOP (the rewritten history) and CONNS (by the swap's repin, fn-orcp-repin-conns) and READERS (every pin taken before the retirement); tools/holder_check.py closes the declared holders over the raw host.",
+      "milestone": "M5",
+      "requirements": [
+        "RET-008",
+        "STO-017"
+      ],
+      "depends_on": [
+        "PRF-941",
+        "PRF-1059",
+        "PRF-1235",
+        "PRF-1239"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/handle-holds.lisp",
+        "books/def-holder.lisp",
+        "tools/holder_check.py"
+      ],
+      "events": [
+        "fn-handle-holds-released-handles-are-unnamed-and-postdate-every-pin",
+        "fn-hh-rpin-acquire-pins",
+        "fn-hh-rpin-release-unpins"
+      ],
+      "progress_note": "Lane def-holder (Fable 5.1, 2026-10-03). REPL-admitted on hbox (12 forms with def-holder, arena-forget, payload-arena, payload-arena-extent-logic, reclaim-cuts from source); certifies with ARENA-FORGET's closure. Consultation c05 shaped the relation: build/coordinator/lanedumps/def-holder.md sections 1b and 2."
     }
   ]
 }
