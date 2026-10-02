@@ -1713,10 +1713,9 @@ disk's outcome DISK (PRF-358) and its deferred checkpoint publication CKPT
 
 ; PKT-269 (PRF-187): the verdict and the three health reports run
 ; guard-verified, the owner's `fn-nh-live-report' (FNLS kind 6, under the
-; owner mutex) included.  `fn-nh-answer-report' waits on
-; books/native-live-status.lisp `fn-nls-live-report' for the other kinds
-; (`fn-nls-report''s reclaim words call books/store-reclaim-holders.lisp
-; `fn-rcl-store-counts', :verify-guards nil).
+; owner mutex) included, and `fn-nh-answer-report' for every kind (Q3h:
+; books/native-live-status.lisp verifies `fn-nls-live-report' and the
+; reclaim line's books/store-reclaim-holders.lisp figures).
 (verify-guards fn-nh-forward-pins)
 (verify-guards fn-nh-store-hr)
 (verify-guards fn-nh-store-debt)
@@ -1728,6 +1727,7 @@ disk's outcome DISK (PRF-358) and its deferred checkpoint publication CKPT
 (verify-guards fn-nh-offline-report)
 (verify-guards fn-nh-fenced-report)
 (verify-guards fn-nh-live-report)
+(verify-guards fn-nh-answer-report)
 
 ; -----------------------------------------------------------------------------
 ; The node that is not running (lane friend-path-2, 2026-09-27).

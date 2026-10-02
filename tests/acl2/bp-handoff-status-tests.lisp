@@ -1,7 +1,7 @@
 (in-package "ACL2")
 (include-book "../../books/bp-handoff-status")
 (include-book "bp-receipt-tests")
-(include-book "../../books/bp-fnbs-delivery-replay")
+(include-book "../../books/bp-fnbs-family-replay")
 (include-book "must-fail-checked")
 
 ; A committed FNRJ receipt for the same request that the kind-5 held row
@@ -42,8 +42,10 @@
               (fn-bpnf-stored-record-frame *bphs-stored*))
         (list (fn-bpnf-stored-record-name 3 1)
               (fn-bpah-delivery-frame *bphs-delivered*))))
-(make-event `(defconst *bphs-replay* ',(fn-bpah-replay-rows (bphs-rows)
-                                                       4 1048576)))
+(make-event `(defconst *bphs-replay*
+               ',(fn-bpnf-family-replay-rows
+                  (bphs-rows)
+                  (fn-bpn-initial-machine-state *bphs-receiver-config* 4 1048576))))
 (defconst *bphs-handoff* (car (nth 2 *bphs-replay*)))
 (make-event `(defconst *bphs-receipt-adu* ',(fn-bpr-receipt-adu *bpr-committed* *bpr-request*)))
 (defconst *bphs-route*

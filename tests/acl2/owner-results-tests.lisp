@@ -136,7 +136,7 @@
 ; owner's vocabulary (a corrupted state: no fn-own-sub-make builds it).
 (defmacro ort-owner (id)
   `(fn-own-make nil nil nil 0 1 nil nil 0 nil nil nil
-                (fn-own-sub-make ,id 0 nil nil) nil nil nil))
+                (fn-own-sub-make ,id 0 nil nil nil) nil nil nil))
 
 ; The pre-fix value: the recognizer refuses a publication whose token is
 ; :control only if :control is not a submission id; now it is one.
@@ -229,7 +229,7 @@
 ; answer is accepted; a take whose stored octets are not octets is refused.
 (defconst *ort-inj* (fn-inj-make-decision :injected nil *ort-msgid* (list *ort-inn*) '(65 66)))
 (assert-event
- (let ((x (fn-ores-take-result (fn-own-sub-make :control 0 nil *ort-inj*) '(65 66))))
+ (let ((x (fn-ores-take-result (fn-own-sub-make :control 0 nil *ort-inj* nil) '(65 66))))
    (and (fn-ores-submission-taken-p x)
         (equal (fn-ores-taken-word x) :taken-control)
         (equal (fn-ores-taken-id x) :control)
@@ -237,12 +237,12 @@
         (equal (fn-ores-taken-groups x) (list *ort-inn*))
         (equal (fn-ores-taken-transitp x) nil))))
 (assert-event
- (let ((x (fn-ores-take-result (fn-own-sub-make 3 0 nil *ort-inj*) '(65 66))))
+ (let ((x (fn-ores-take-result (fn-own-sub-make 3 0 nil *ort-inj* nil) '(65 66))))
    (and (fn-ores-submission-taken-p x)
         (equal (fn-ores-taken-word x) :taken)
         (equal (fn-ores-taken-id x) 3))))
 (assert-event (fn-ores-submission-taken-p *fn-ores-take-idle*))
 (assert-event (not (fn-ores-submission-taken-p
-                    (fn-ores-take-result (fn-own-sub-make 3 0 nil *ort-inj*) '(300)))))
+                    (fn-ores-take-result (fn-own-sub-make 3 0 nil *ort-inj* nil) '(300)))))
 (assert-event (not (fn-ores-submission-taken-p
-                    (fn-ores-take-result (fn-own-sub-make "3" 0 nil *ort-inj*) '(65 66)))))
+                    (fn-ores-take-result (fn-own-sub-make "3" 0 nil *ort-inj* nil) '(65 66)))))

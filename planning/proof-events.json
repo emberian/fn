@@ -4488,6 +4488,11 @@
         {
           "kind": "theorem",
           "name": "fn-vj-a-held-message-id-is-answered-441"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hma-a-completion-keeps-the-held-answer",
+          "note": "KEYSTONE (Q3d (i), PKT-239): a held Message-ID's answer is unchanged by fn-sn-finish (a :duplicate stays :duplicate), from the carried fn-statep uniqueness. Host: host/native/owner.lisp fnn-owner-attempt reaches fn-store-existing-action through host/owner-host.lisp fn-owner-existing-action-buffer. Teeth: tests/acl2/held-message-id-answer-tests.lisp."
         }
       ]
     },
@@ -4501,6 +4506,11 @@
         {
           "kind": "theorem",
           "name": "fn-post-admitted-article-record-is-within-r"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prwo-owner-post-record-is-narrow-within-the-profile",
+          "note": "KEYSTONE (PKT-250): the record width over the owner's two host calls. Host: host/owner-host.lisp fn-owner-post-boundary calls fn-pak-post-admission, then fn-owner-prepare-buffer the catalog prepare of the interned article record. Teeth: tests/acl2/post-record-width-owner-tests.lisp."
         },
         {
           "kind": "theorem",
@@ -5575,6 +5585,11 @@
         {
           "kind": "theorem",
           "name": "fn-cp-apply-preserves-consumer-capacity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-crb-replay-keeps-the-consumer-bound",
+          "note": "KEYSTONE (PKT-370). Host: the open's replay fn-cpe-projection-replay nil RECORDS 0 (books/config-observed.lisp fn-nco-observe, books/checkpoint-auxiliary.lisp); field 9 is host/store-host.lisp fn-store-profile-max-consumers. Teeth: tests/acl2/consumer-replay-bound-tests.lisp (positive with an unregister making room; a register past field 9 the replay applies; mutation to strictly below)."
         }
       ]
     },
@@ -5833,6 +5848,19 @@
           "kind": "theorem",
           "name": "fn-auth-config-with-accounts-after-an-account-delete-offers-only-the-operators-credential",
           "note": "KEYSTONE. Every later credential snapshot offers only auth.toml's credential under the deleted login. Teeth: tests/acl2/accounts-snapshot-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-saw-command-wire-is-auth-dispatch"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-saw-held-read-prefix-stops-the-pipeline"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arc-redeem-refuses-exactly-past-the-operator-bound",
+          "note": "KEYSTONE (PKT-399). MODEL-LEVEL: host/native-admin-host.lisp fn-acct-host-owner-redeem-stage is rewired to call fn-arc-redeem-plan after stage 0 (it computes the same table today). Teeth: tests/acl2/account-redeem-count-tests.lisp (a live value with a redeemed row, a pending invitation and a binding; auth.toml counted; corrupted AUTHINFO configuration; mutation counting every row)."
         }
       ]
     },
@@ -18810,6 +18838,82 @@
           "kind": "theorem",
           "name": "fn-hrc-get-is-hrecs-get",
           "note": "BRIDGE (existing, books/history-records-disk.lisp): the concrete retry loop, where the frame fill runs, is fn-hrecs-get over the abstract stobj; the frame fill cannot be an export (stobj-attachment-restrictions)."
+        }
+      ]
+    },
+    {
+      "id": "PRF-1114",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-shd-command-wire-head-is-served-retrieval"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1123",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-saw-command-wire-is-auth-dispatch"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-saw-held-read-prefix-stops-the-pipeline"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1224",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-tsd-bp-gate-is-the-drain-decision",
+          "note": "KEYSTONE. Host: host/owner-host.lisp fn-owner-bp-transit-submit calls fn-own-bp-transit-submit-result; host/native/owner.lisp fnn-owner-complete-bp-transit-submission then decides through fn-owner-transit-decide (fn-pta-decide). Teeth: tests/acl2/transit-same-decision-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tsd-nntp-and-bp-transit-decide-alike",
+          "note": "KEYSTONE. Host: fnn-owner-drain-one (NNTP) and fnn-owner-complete-bp-transit-submission (BP) both call fn-owner-transit-decide. Teeth: tests/acl2/transit-same-decision-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tsd-open-connection-pin-is-not-the-control-pin",
+          "note": "KEYSTONE. Where the carriers differ: under fn-ocfg-statep an open connection's pinned configuration (read by fn-owner-transit-decide for an NNTP transit) is never the control id's. Teeth: tests/acl2/transit-same-decision-tests.lisp (reachable open connection; reachable disconnect; corrupted pin table; mutation to the live configuration)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tsd-bp-transit-authority-is-ungoverned",
+          "note": "Where the carriers differ: the BP submission's authority verdict is over no configuration. Teeth: tests/acl2/transit-same-decision-tests.lisp (positive under a governing live configuration; corrupted control pin; mutation to the live configuration)."
+        }
+      ]
+    },
+    {
+      "id": "PRF-1228",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-brlc-receipt-regenerated-after-log-crash"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-brlc-acknowledged-rows-are-a-prefix-of-the-recovered-rows"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-brlc-rows-of-prefix-is-a-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-brlc-host-open-is-the-observed-open"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-brlc-chunks-are-one-step"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-brlc-open-ok-implies-decoded"
         }
       ]
     }

@@ -42,6 +42,7 @@
 ; planning/lanes/HANDOFF-w7-substrate-s1.md).
 
 (in-package "ACL2")
+(include-book "def-loop")
 (include-book "statement-invariants")
 (include-book "article")
 (include-book "rev-onto") ; the loop twins' step (PKT-877)
@@ -551,43 +552,10 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-stx-strip-wsp-loop (octets acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp octets)
-      (if (or (equal (car octets) 32) (equal (car octets) 9))
-          (fn-stx-strip-wsp-loop (cdr octets) acc)
-        (fn-stx-strip-wsp-loop (cdr octets) (cons (car octets) acc)))
-    (revappend acc nil)))
-
-(defun fn-stx-strip-wsp (octets)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp octets)
-           (if (or (equal (car octets) 32) (equal (car octets) 9))
-               (fn-stx-strip-wsp (cdr octets))
-             (cons (car octets) (fn-stx-strip-wsp (cdr octets))))
-         nil)
-       :exec (fn-stx-strip-wsp-loop octets nil)))
-
-(local
- (defthm fn-stx-strip-wsp-loop-is-revappend
-   (equal (fn-stx-strip-wsp-loop octets acc)
-          (revappend acc (fn-stx-strip-wsp octets)))
-   :hints (("Goal" :induct (fn-stx-strip-wsp-loop octets acc)
-                   :in-theory (union-theories '(fn-stx-strip-wsp-loop fn-stx-strip-wsp revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-stx-strip-wsp-loop)
-
-(verify-guards fn-stx-strip-wsp
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-stx-strip-wsp)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-stx-strip-wsp-loop-is-revappend (acc nil))))))
-
+(def-loop fn-stx-strip-wsp (octets)
+  :over octets :keep-order :skip-first
+  :keep (or (equal (car octets) 32) (equal (car octets) 9))
+  :body (car octets))
 
 (defun fn-stx-header-value-parts (header signature)
   (declare (xargs :guard t))
@@ -689,7 +657,6 @@
                                                                   (executable-counterpart-theory :here)))
                   :use ((:instance fn-stx-field-octets-loop-of-rev-onto (zs nil))))))
 
-
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
@@ -739,7 +706,6 @@
                                            (executable-counterpart-theory :here)))
            :use
            ((:instance fn-stx-authored-header-loop-is-revappend (acc nil))))))
-
 
 ; D01 authored source: the received octets with every injected field removed.
 ; A function of the received octets alone -- no peer, no route, no clock.

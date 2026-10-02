@@ -99,6 +99,10 @@ def stobj_events(text: str) -> tuple[frozenset[str], frozenset[str]]:
         form = pending.pop()
         if not isinstance(form, list) or not form:
             continue
+        expansion = ledger.generated_expansion(form)
+        if expansion is not None:
+            pending.extend(expansion)
+            continue
         head = form[0]
         if isinstance(head, ledger.Sym) and len(form) >= 2 and isinstance(form[1], ledger.Sym):
             if head in ("defstobj", "defabsstobj"):

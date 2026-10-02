@@ -11,7 +11,9 @@
 ;
 ;   (def-carried NAME
 ;     :invariant R                    ; a function of one formal, the state
-;     :established ((FN THM [:hyps (H ...)] [:state I] [:result P]) ...)
+;     :established ((FN THM [:hyps (H ...)] [:state I] [:result P]
+;                       [:ok OK :witness (T ...)]
+;                       [:produced ((P THM [:assuming (A ...)]) ...)]) ...)
 ;     :transitions ((FN THM [:hyps (H ...)] [:state I] [:result P]) | FN ...)
 ;     [:concludes ((PRED THM) ...)]   ; bridges to the entry guards
 ;     [:complete-by (:enumeration "why")]   ; a value state only
@@ -24,6 +26,61 @@
 ;
 ;   NAME-FN-carries      (implies (and (R s) G H...) (R RET))   per transition
 ;   NAME-FN-establishes  (implies (and G H...) (R RET))         per open
+;                        (implies (and G H...) (if OK (R RET) t)) per open
+;                        that can REFUSE, declaring :ok OK, a term over `_'
+;                        (the call) alone: its success word.  An open that
+;                        refuses establishes nothing on its refusal arm; the
+;                        word is the open's own answer, which the host
+;                        branches on, never a premise about its input, so
+;                        such a row still backs raw dispatch.  :ok on a
+;                        transition is refused (one that refuses and leaves
+;                        the state preserves R already).
+;   NAME-FN-reaches      (and G H... [OK]) at a declared :witness  per open
+;                        declaring :witness (required with :ok; required on
+;                        every open of a row that backs raw dispatch, r24-F1:
+;                        otherwise a never-true guard or invariant makes
+;                        every statement vacuous and the transitions' skipped
+;                        guards unjustified).
+;                        :witness (T1 ... Tn), one term per formal of FN
+;                        (stobj formals included, as terms over their
+;                        logical values), and the statement is G, the Hs
+;                        and OK with each formal replaced by its Ti.  A
+;                        theorem, so some instance of FN's arguments meets
+;                        the guard and the open answers success there: OK
+;                        is not never-true, and the conditional
+;                        establishment is not vacuous.  (A Ti may mention
+;                        variables; the theorem then holds at every
+;                        instance, in particular a ground one.)  The
+;                        reachability is a WORLD FACT, not a probe: the row
+;                        records :witness and :reaches, and fn-cd-problem
+;                        regenerates the statement and demands the theorem
+;                        by the exact-formula rule, so a hand-written
+;                        `table fn-carried' row with a never-true OK has no
+;                        provable reaches theorem and backs no raw dispatch
+;                        (hole H1, deputy2/def-carried-ok).
+;   NAME-FN-P-produced   (implies (and A...) (and H...)[F := (P pf...)])
+;                        per producer P of an open's argument F.  An open
+;                        whose establishment needs premises Hs its guard
+;                        does not say (all over ONE formal F) names the
+;                        functions whose output the host hands it there
+;                        (:produced), each with THM and the NAMED
+;                        ASSUMPTIONS As over P's formals pf it rests on
+;                        (applications of functions an encapsulate in
+;                        books/assumptions.lisp or books/assumptions-*.lisp
+;                        constrains, by the world's record of the book that
+;                        introduced them).  D40 then accepts the open's :hyps
+;                        -- discharged, not unchecked -- when FN is not
+;                        itself a host entry (fn-interfaces), nothing is
+;                        attached to it (defattach), and every function body
+;                        in the world that calls FN passes a literal call of
+;                        a declared P at F (:no-unproduced-caller; a
+;                        let-bound or computed argument is refused).  Raw
+;                        Lisp is outside the world: tools/interface_emit.py
+;                        refuses a raw-host dispatch or direct application of
+;                        such an FN (with FN in no fn-interfaces entry, its
+;                        undeclared-dispatch check already does).  Raw
+;                        dispatch then rests on the As, named.  Transitions
+;                        take no :hyps.
 ;   NAME-PRED-bridge     (implies (R x) (and C...))             per bridge
 ;
 ; where the Cs are every conjunct of a listed transition's guard that
@@ -55,7 +112,7 @@
 ;
 ; Emits the row (table fn-carried NAME '(:invariant R :state ST|nil
 ; :established ((FN THM :name NAME-FN-establishes :hyps (H...)
-; [:state I :result P]) ...) :transitions (... :name NAME-FN-carries ...)
+; [:ok OK :witness (T...) :reaches NAME-FN-reaches] [:state I :result P]) ...) :transitions (... :name NAME-FN-carries ...)
 ; :concludes ((PRED THM :name NAME-PRED-bridge) ...) :complete-by ...
 ; :trace t|nil)), the generated theorems, and unless :trace nil the trace:
 ; NAME-step/-okp/-run/-run-okp (defun-nx; okp is G and the Hs at the event)
@@ -68,9 +125,12 @@
 ; nil: a stobj row, FN a transition, the row re-checked in the current
 ; world with every generated name's formula EQUAL to the statement
 ; regenerated now (so a hand-written table row naming another theorem is
-; refused), and no :hyps anywhere in the row (a declared hypothesis is a
-; premise the host does not check: every transition and open of a raw row
-; is guard-only).  Each skipped guard conjunct must then be (R s) itself or
+; refused), a non-empty :established whose every open declares :witness
+; (its generated NAME-FN-reaches present, r24-F1: R holds of some state),
+; and no :hyps in the row but an open's premises discharged by
+; its producers (a declared hypothesis is a premise the host does not check:
+; every transition of a raw row is guard-only, every open guard-only or
+; produced).  Each skipped guard conjunct must then be (R s) itself or
 ; a conjunct of a generated bridge (fn-cd-uncovered-conjunct).
 ;
 ; What is NOT claimed: that the host calls nothing else returning ST is the
@@ -121,7 +181,7 @@
 (defconst *fn-cd-keys*
   '(:invariant :established :transitions :concludes :complete-by :trace))
 
-(defconst *fn-cd-entry-keys* '(:hyps :state :result))
+(defconst *fn-cd-entry-keys* '(:hyps :state :result :ok :witness :produced))
 
 (defconst *fn-cd-vacuity-steps* 50000)
 
@@ -135,6 +195,18 @@
         ((member-eq (car kvs) keys) (fn-cd-unknown-keys (cddr kvs) keys))
         (t (cons (car kvs) (fn-cd-unknown-keys (cddr kvs) keys)))))
 
+(defun fn-cd-producersp (x)
+  (declare (xargs :mode :program))
+  ; ((PRODUCER THM [:assuming (A ...)]) ...)
+  (if (atom x)
+      (null x)
+    (and (true-listp (car x)) (consp (cdar x))
+         (symbolp (caar x)) (caar x) (symbolp (cadar x)) (cadar x)
+         (keyword-value-listp (cddar x))
+         (null (fn-cd-unknown-keys (cddar x) '(:assuming)))
+         (true-listp (fn-cd-get :assuming (cddar x)))
+         (fn-cd-producersp (cdr x)))))
+
 (defun fn-cd-entryp (x)
   (declare (xargs :mode :program))
   ; (FN THM . OPTIONS): FN and THM non-nil symbols, OPTIONS over
@@ -143,7 +215,9 @@
        (symbolp (car x)) (car x) (symbolp (cadr x)) (cadr x)
        (keyword-value-listp (cddr x))
        (null (fn-cd-unknown-keys (cddr x) *fn-cd-entry-keys*))
-       (true-listp (fn-cd-get :hyps (cddr x)))))
+       (true-listp (fn-cd-get :hyps (cddr x)))
+       (true-listp (fn-cd-get :witness (cddr x)))
+       (fn-cd-producersp (fn-cd-get :produced (cddr x)))))
 
 (defun fn-cd-entriesp (x bare-ok)
   (declare (xargs :mode :program))
@@ -267,6 +341,25 @@
         (mv-let (bad rest) (fn-cd-translate-list (cdr xs) w)
           (mv bad (cons val rest)))))))
 
+(defun fn-cd-normal-producers (name fn producers w)
+  (declare (xargs :mode :program))
+  ; (mv BAD PRODUCERS'): each (P THM :assuming (A'...) :name NAME-FN-P-produced)
+  ; with its assumptions translated
+  (if (atom producers)
+      (mv nil nil)
+    (mv-let (bad as)
+      (fn-cd-translate-list (fn-cd-get :assuming (cddar producers)) w)
+      (if bad
+          (mv bad nil)
+        (mv-let (bad rest)
+          (fn-cd-normal-producers name fn (cdr producers) w)
+          (mv bad (cons (list (caar producers) (cadar producers)
+                              :assuming as
+                              :name (packn-pos (list name '- fn '- (caar producers)
+                                                     '-produced)
+                                               name))
+                        rest)))))))
+
 (defun fn-cd-normal-entry (name suffix st entry w)
   (declare (xargs :mode :program))
   ; (mv MSG ENTRY'): ENTRY with its generated name and translated options
@@ -290,17 +383,70 @@
      ((and (null st) (assoc-keyword :state opts) (not (natp (fn-cd-get :state opts))))
       (mv (msg "~x0: :state ~x1 is not a 0-based position" fn (fn-cd-get :state opts))
           nil))
+     ((and (assoc-keyword :ok opts) (eq suffix '-carries))
+      (mv (msg "~x0: :ok is for an establishing point; a transition that ~
+                refuses and leaves the state as it was preserves the ~
+                invariant already, so drop :ok" fn)
+          nil))
+     ((and (assoc-keyword :ok opts) (not (assoc-keyword :witness opts)))
+      (mv (msg "~x0 declares :ok but no :witness: name arguments (one term ~
+                per formal ~x1) at which the guard holds and the open ~
+                answers success, so that its establishment is not vacuous"
+               fn (getpropc fn 'formals nil w))
+          nil))
+     ((and (assoc-keyword :witness opts) (eq suffix '-carries))
+      (mv (msg "~x0: :witness is for an establishing point: the arguments at ~
+                which it establishes the invariant" fn)
+          nil))
+     ((and (fn-cd-get :produced opts) (eq suffix '-carries))
+      (mv (msg "~x0: :produced is for an establishing point; a transition's ~
+                carried state is the one it is handed, so its preservation ~
+                takes no premise beyond its guard" fn)
+          nil))
+     ((and (fn-cd-get :produced opts) (null (fn-cd-get :hyps opts)))
+      (mv (msg "~x0 declares :produced but no :hyps: a producer discharges ~
+                the declared premises of the argument it produces" fn)
+          nil))
+     ((and (assoc-keyword :witness opts)
+           (not (equal (len (fn-cd-get :witness opts))
+                       (len (getpropc fn 'formals nil w)))))
+      (mv (msg "~x0's :witness ~x1 is not one term per formal ~x2"
+               fn (fn-cd-get :witness opts) (getpropc fn 'formals nil w))
+          nil))
      (t (mv-let (bad terms)
-          (fn-cd-translate-list (cons result (fn-cd-get :hyps opts)) w)
-          (if bad
-              (mv (msg "~x0: ~x1 does not translate in this world" fn (car bad))
-                  nil)
-            (mv nil (list* fn (cadr entry)
-                           :name (packn-pos (list name '- fn suffix) name)
-                           :hyps (cdr terms)
-                           (if st nil
-                             (list :state (fn-cd-get :state opts)
-                                   :result (car terms)))))))))))
+          (fn-cd-translate-list (list* result
+                                       (if (assoc-keyword :ok opts) (fn-cd-get :ok opts) t)
+                                       (fn-cd-get :hyps opts))
+                                w)
+          (mv-let (badw witness)
+            (fn-cd-translate-list (fn-cd-get :witness opts) w)
+           (mv-let (badp produced)
+            (fn-cd-normal-producers name fn (fn-cd-get :produced opts) w)
+            (cond
+             ((or bad badw)
+              (mv (msg "~x0: ~x1 does not translate in this world" fn
+                       (car (or bad badw)))
+                  nil))
+             (badp
+              (mv (msg "~x0: ~x1 does not translate in this world" fn (car badp))
+                  nil))
+             ((and (assoc-keyword :ok opts) (not (equal (all-vars (cadr terms)) '(_))))
+              (mv (msg "~x0's :ok ~x1 is not a term over `_' (the call) alone"
+                       fn (fn-cd-get :ok opts))
+                  nil))
+             (t
+              (mv nil (list* fn (cadr entry)
+                             :name (packn-pos (list name '- fn suffix) name)
+                             :hyps (cddr terms)
+                             (append (and (assoc-keyword :ok opts) (list :ok (cadr terms)))
+                                     (and (assoc-keyword :witness opts)
+                                          (list :witness witness
+                                                :reaches (packn-pos (list name '- fn '-reaches)
+                                                                    name)))
+                                     (and produced (list :produced produced))
+                                     (if st nil
+                                       (list :state (fn-cd-get :state opts)
+                                             :result (car terms)))))))))))))))
 
 (defun fn-cd-parts (st entry w)
   (declare (xargs :mode :program))
@@ -358,16 +504,181 @@
                      (fn-cd-subst result (list (cons '_ call)))
                      all))))))))
 
+(defun fn-cd-ok-term (entry w)
+  (declare (xargs :mode :program))
+  ; the declared :ok of a normalized establishing ENTRY, over its call; nil
+  ; when the open cannot refuse
+  (let ((ok (fn-cd-get :ok (cddr entry))))
+    (and ok
+         (fn-cd-subst ok (list (cons '_ (cons (car entry)
+                                              (getpropc (car entry) 'formals nil w))))))))
+
 (defun fn-cd-statement (kind r st entry w)
   (declare (xargs :mode :program))
   ; (mv MSG STATEMENT): KIND :carries for a transition, :establishes for an open
   (mv-let (msg s ret hyps)
     (fn-cd-parts st entry w)
-    (cond (msg (mv msg nil))
-          ((eq kind :carries)
-           (mv nil (list 'implies (fn-cd-conj (cons (list r s) hyps)) (list r ret))))
-          (hyps (mv nil (list 'implies (fn-cd-conj hyps) (list r ret))))
-          (t (mv nil (list r ret))))))
+    (let ((ok (and (eq kind :establishes) (fn-cd-ok-term entry w))))
+      (cond (msg (mv msg nil))
+            ((eq kind :carries)
+             (mv nil (list 'implies (fn-cd-conj (cons (list r s) hyps)) (list r ret))))
+            (t (let ((conclusion (if ok (list 'if ok (list r ret) *t*) (list r ret))))
+                 (mv nil (if hyps
+                             (list 'implies (fn-cd-conj hyps) conclusion)
+                           conclusion))))))))
+
+(defun fn-cd-reaches-statement (st entry required w)
+  (declare (xargs :mode :program))
+  ; (mv MSG STATEMENT) for a normalized establishing ENTRY: FN's guard, its
+  ; :hyps and its :ok (if any), each formal replaced by its :witness term.
+  ; The witness is REQUIRED when REQUIRED (raw dispatch), or when the entry
+  ; carries any of :ok, :witness, :reaches; (mv nil nil) only for an entry
+  ; with none of them in a row that backs no raw dispatch
+  (let* ((fn (car entry))
+         (opts (cddr entry))
+         (ok (fn-cd-ok-term entry w))
+         (formals (getpropc fn 'formals nil w))
+         (witness (fn-cd-get :witness opts)))
+    (cond
+     ((not (or required ok (assoc-keyword :witness opts) (assoc-keyword :reaches opts)))
+      (mv nil nil))
+     ((not (and (assoc-keyword :witness opts) (true-listp witness)
+                (equal (len witness) (len formals))))
+      (mv (msg "~x0's :witness ~x1 is not one term per formal ~x2: its success ~
+                is not shown reachable" fn witness formals)
+          nil))
+     (t (mv-let (msg s ret hyps)
+          (fn-cd-parts st entry w)
+          (declare (ignore s ret))
+          (if msg
+              (mv msg nil)
+            (mv nil (fn-cd-subst (fn-cd-conj (append hyps (and ok (list ok))))
+                                 (pairlis$ formals witness)))))))))
+
+(defun fn-cd-generated-problem (name statement w)
+  (declare (xargs :mode :program))
+  (let ((formula (getpropc name 'theorem nil w)))
+    (and (not (equal formula statement))
+         (msg "~x0 is not the generated statement in this world: it is ~x1, ~
+               the statement is ~x2" name formula statement))))
+
+;  A NAMED ASSUMPTION is an application of a function an encapsulate
+; introduced (constrained) IN books/assumptions.lisp or a books/assumptions-
+; *.lisp book (AGENTS.md: "A named assumption is an `encapsulate' with a
+; local witness in books/assumptions.lisp or a book it includes
+; (books/assumptions-*.lisp)").  Provenance is the world's: the innermost
+; book on the include-book path in force when the function was introduced
+; (the newest 'include-book-path global older than its 'formals), never its
+; spelling.  A function introduced in the book being certified, or by a
+; book of another name, is not one.
+(defun fn-cd-book-at (wrld)
+  (declare (xargs :mode :program))
+  ; the innermost book being included at the world WRLD's point, or nil
+  (cond ((atom wrld) nil)
+        ((and (eq (caar wrld) 'include-book-path) (eq (cadar wrld) 'global-value))
+         (car (cddar wrld)))
+        (t (fn-cd-book-at (cdr wrld)))))
+
+(defun fn-cd-introduction (fn wrld)
+  (declare (xargs :mode :program))
+  ; the world from FN's newest 'formals triple on (it and everything older)
+  (cond ((atom wrld) nil)
+        ((and (eq (caar wrld) fn) (eq (cadar wrld) 'formals)) wrld)
+        (t (fn-cd-introduction fn (cdr wrld)))))
+
+(defun fn-cd-dir-of (book)
+  (declare (xargs :mode :program))
+  ; the directory part of a full book name, with its final slash, or nil
+  (and (stringp book)
+       (let ((slash (search "/" book :from-end t)))
+         (and slash (subseq book 0 (1+ slash))))))
+
+(defun fn-cd-assumptions-bookp (book w)
+  (declare (xargs :mode :program))
+  ; BOOK (a full book name) is assumptions.lisp or assumptions-*.lisp in the
+  ; directory of THIS book (books/def-carried.lisp, whose own include path
+  ; the world records): a file of that name anywhere else is not one.  When
+  ; this book was not included (a REPL loading it from source) the world
+  ; has no path for it, and the directory is any one ending /books/ -- a
+  ; certified world always has the path.
+  (let ((dir (or (fn-cd-dir-of (fn-cd-book-at (fn-cd-introduction 'fn-cd-get w)))
+                 (and (stringp book)
+                      (let ((slash (search "/books/" book :from-end t)))
+                        (and slash (subseq book 0 (+ slash 7))))))))
+    (and dir (stringp book)
+         (< (length dir) (length book))
+         (equal (subseq book 0 (length dir)) dir)
+         (let ((file (subseq book (length dir) (length book))))
+           (and (not (search "/" file))
+                (or (equal file "assumptions.lisp")
+                    (and (< 17 (length file))
+                         (equal (subseq file 0 12) "assumptions-")
+                         (equal (subseq file (- (length file) 5) (length file))
+                                ".lisp"))))))))
+
+(defun fn-cd-named-assumptionp (a w)
+  (declare (xargs :mode :program))
+  (and (consp a) (symbolp (car a)) (not (eq (car a) 'quote))
+       (getpropc (car a) 'constrainedp nil w)
+       (fn-cd-assumptions-bookp
+        (fn-cd-book-at (fn-cd-introduction (car a) w)) w)))
+
+(defun fn-cd-first-unnamed-assumption (as w)
+  (declare (xargs :mode :program))
+  (cond ((atom as) nil)
+        ((fn-cd-named-assumptionp (car as) w)
+         (fn-cd-first-unnamed-assumption (cdr as) w))
+        (t (list (car as)))))
+
+(defun fn-cd-produced-formal (entry)
+  (declare (xargs :mode :program))
+  ; the one formal a normalized ENTRY's declared :hyps mention, or nil
+  (let ((vars (all-vars1-lst (fn-cd-get :hyps (cddr entry)) nil)))
+    (and (consp vars) (null (cdr vars)) (car vars))))
+
+(defun fn-cd-produced-statement (entry producer w)
+  (declare (xargs :mode :program))
+  ; (mv MSG STATEMENT): PRODUCER = (P THM :assuming (A...) ...) of the
+  ; establishing ENTRY; the entry's declared :hyps, their one formal F
+  ; replaced by P's call over P's formals, under the named assumptions As
+  (let* ((fn (car entry))
+         (p (car producer))
+         (as (fn-cd-get :assuming (cddr producer)))
+         (hyps (fn-cd-get :hyps (cddr entry)))
+         (f (fn-cd-produced-formal entry))
+         (pformals (getpropc p 'formals :none w)))
+    (cond
+     ((null f)
+      (mv (msg "~x0's :hyps ~x1 do not mention exactly one formal: a producer ~
+                discharges the premises of the one argument it produces" fn hyps)
+          nil))
+     ((eq pformals :none)
+      (mv (msg "~x0's producer ~x1 is not a function in this world" fn p) nil))
+     ((eq p fn)
+      (mv (msg "~x0 cannot produce its own argument" fn) nil))
+     ((not (subsetp-eq (all-vars1-lst as nil) pformals))
+      (mv (msg "~x0's producer ~x1: :assuming ~x2 mention variables that are ~
+                not ~x1's formals ~x3" fn p as pformals)
+          nil))
+     ((fn-cd-first-unnamed-assumption as w)
+      (mv (msg "~x0's producer ~x1: ~x2 is not a named assumption (an ~
+                application of a function an encapsulate in ~
+                books/assumptions.lisp or books/assumptions-*.lisp constrains)"
+               fn p (car (fn-cd-first-unnamed-assumption as w)))
+          nil))
+     (t (let ((conclusion (fn-cd-subst (fn-cd-conj hyps) (list (cons f (cons p pformals))))))
+          (mv nil (if as (list 'implies (fn-cd-conj as) conclusion) conclusion)))))))
+
+(defun fn-cd-produced-problem (entry producers generatedp w)
+  (declare (xargs :mode :program))
+  (if (atom producers)
+      nil
+    (mv-let (msg statement)
+      (fn-cd-produced-statement entry (car producers) w)
+      (or msg
+          (and generatedp
+               (fn-cd-generated-problem (fn-cd-get :name (cddar producers)) statement w))
+          (fn-cd-produced-problem entry (cdr producers) generatedp w)))))
 
 (defun fn-cd-pred-conjuncts (pred terms s)
   (declare (xargs :mode :program))
@@ -406,23 +717,27 @@
                (car bridge) r)
           nil))))
 
-(defun fn-cd-generated-problem (name statement w)
-  (declare (xargs :mode :program))
-  (let ((formula (getpropc name 'theorem nil w)))
-    (and (not (equal formula statement))
-         (msg "~x0 is not the generated statement in this world: it is ~x1, ~
-               the statement is ~x2" name formula statement))))
-
 (defun fn-cd-entries-problem (kind r st entries generatedp w)
   (declare (xargs :mode :program))
   (if (atom entries)
       nil
     (mv-let (msg statement)
       (fn-cd-statement kind r st (car entries) w)
-      (or msg
-          (and generatedp
-               (fn-cd-generated-problem (fn-cd-get :name (cddar entries)) statement w))
-          (fn-cd-entries-problem kind r st (cdr entries) generatedp w)))))
+      (mv-let (rmsg reaches)
+        (if (eq kind :establishes)
+            (fn-cd-reaches-statement st (car entries) nil w)
+          (mv nil nil))
+        (or msg
+            rmsg
+            (and generatedp
+                 (fn-cd-generated-problem (fn-cd-get :name (cddar entries)) statement w))
+            (and generatedp reaches
+                 (fn-cd-generated-problem (fn-cd-get :reaches (cddar entries)) reaches w))
+            (and (eq kind :establishes)
+                 (fn-cd-produced-problem (car entries)
+                                         (fn-cd-get :produced (cddar entries))
+                                         generatedp w))
+            (fn-cd-entries-problem kind r st (cdr entries) generatedp w))))))
 
 (defun fn-cd-bridges-problem (r st bridges transitions generatedp w)
   (declare (xargs :mode :program))
@@ -473,6 +788,9 @@
                             (append (strip-cars established) (strip-cars transitions))))))
     (cond
      ((fn-cd-invariant-problem r w))
+     ((atom established)
+      (msg "~x0 has no establishing point: nothing shows ~x1 holds of any ~
+            state (r24-F1)" name r))
      ((fn-cd-entries-problem :establishes r st established generatedp w))
      ((fn-cd-entries-problem :carries r st transitions generatedp w))
      ((fn-cd-bridges-problem r st (fn-cd-get :concludes row) transitions generatedp w))
@@ -564,6 +882,20 @@
       nil
     (cons (fn-cd-get :name (cddar entries)) (fn-cd-names (cdr entries)))))
 
+(defun fn-cd-produced-defthms (entry producers w)
+  (declare (xargs :mode :program))
+  ; per producer, the discharged premises at its output, from its THM
+  (if (atom producers)
+      nil
+    (mv-let (msg statement)
+      (fn-cd-produced-statement entry (car producers) w)
+      (declare (ignore msg))
+      (cons `(defthm ,(fn-cd-get :name (cddar producers)) ,statement
+               :hints (("Goal" :use ,(cadar producers)
+                        :in-theory (theory 'minimal-theory)))
+               :rule-classes nil)
+            (fn-cd-produced-defthms entry (cdr producers) w)))))
+
 (defun fn-cd-defthms (kind r st entries rule w)
   (declare (xargs :mode :program))
   ; the generated statements, each proved from its declared theorem
@@ -572,11 +904,25 @@
     (mv-let (msg statement)
       (fn-cd-statement kind r st (car entries) w)
       (declare (ignore msg))
-      (cons `(defthm ,(fn-cd-get :name (cddar entries)) ,statement
-               :hints (("Goal" :use ,(cadar entries)
-                        :in-theory (theory 'minimal-theory)))
-               :rule-classes ,rule)
-            (fn-cd-defthms kind r st (cdr entries) rule w)))))
+      (mv-let (rmsg reaches)
+        (if (eq kind :establishes)
+            (fn-cd-reaches-statement st (car entries) nil w)
+          (mv nil nil))
+        (declare (ignore rmsg))
+        (append
+         ; the open's success, reached at its witness: proved in the
+         ; current theory (a ground witness evaluates)
+         (and reaches
+              `((defthm ,(fn-cd-get :reaches (cddar entries)) ,reaches
+                  :rule-classes nil)))
+         (and (eq kind :establishes)
+              (fn-cd-produced-defthms (car entries)
+                                      (fn-cd-get :produced (cddar entries)) w))
+         (cons `(defthm ,(fn-cd-get :name (cddar entries)) ,statement
+                  :hints (("Goal" :use ,(cadar entries)
+                           :in-theory (theory 'minimal-theory)))
+                  :rule-classes ,rule)
+               (fn-cd-defthms kind r st (cdr entries) rule w)))))))
 
 (defun fn-cd-bridge-defthms (r st bridges transitions w)
   (declare (xargs :mode :program))
@@ -612,6 +958,8 @@
       (fn-cd-parts st (car entries) w)
       (declare (ignore msg ret))
       (let ((hyps (if (eq kind :carries) (cons (list r s) hyps) hyps)))
+        ; an :ok open's success is shown reachable by its generated
+        ; NAME-FN-reaches theorem (fn-cd-defthms), a world fact
         (append
          (and hyps
               `((local (fn-cd-nonvacuous
@@ -674,12 +1022,19 @@
                                       (theory 'minimal-theory)))))
         (defthm ,(packn-pos (list name '-run-carries) name)
           (implies (and (,r s) (,run-okp s es)) (,r (,run s es)))
+          ; the instance's obligations are the step theorem above and the
+          ; run definitions: proved in exactly that theory, so a transition's
+          ; body is never opened (measured: the owner row's three state
+          ; transitions, 5.9M steps and out of time in the default theory)
           :hints (("Goal" :by (:functional-instance fn-cd-run-carries
                                                     (fn-cd-inv ,r)
                                                     (fn-cd-okp ,okp)
                                                     (fn-cd-step ,step)
                                                     (fn-cd-run ,run)
-                                                    (fn-cd-run-okp ,run-okp)))))
+                                                    (fn-cd-run-okp ,run-okp))
+                   :in-theory (union-theories
+                               '(,run ,run-okp ,(packn-pos (list name '-step-carries) name))
+                               (theory 'minimal-theory)))))
         (in-theory (disable ,@(fn-cd-names transitions)))))))
 
 (defun fn-cd-events (name row w)
@@ -740,34 +1095,192 @@
          (cons (fn-cd-get :name (cddr transition))
                (fn-cd-names (fn-cd-get :concludes row))))))
 
-(defun fn-cd-declared-hyps (entries)
-  (declare (xargs :mode :program))
-  (cond ((atom entries) nil)
-        ((fn-cd-get :hyps (cddar entries)) (car entries))
-        (t (fn-cd-declared-hyps (cdr entries)))))
+(mutual-recursion
+ (defun fn-cd-unproduced-actual (term fn pos producers)
+   (declare (xargs :mode :program))
+   ; (ACTUAL) for the first call of FN in TERM whose argument at POS is not a
+   ; call of one of PRODUCERS, else nil
+   (cond ((or (atom term) (eq (car term) 'quote)) nil)
+         ((and (eq (car term) fn)
+               (let ((a (nth pos (cdr term))))
+                 (not (and (consp a) (member-eq (car a) producers)))))
+          (list (nth pos (cdr term))))
+         ((consp (car term))
+          (or (fn-cd-unproduced-actual (caddr (car term)) fn pos producers)
+              (fn-cd-unproduced-actual-lst (cdr term) fn pos producers)))
+         (t (fn-cd-unproduced-actual-lst (cdr term) fn pos producers))))
+ (defun fn-cd-unproduced-actual-lst (terms fn pos producers)
+   (declare (xargs :mode :program))
+   (if (atom terms)
+       nil
+     (or (fn-cd-unproduced-actual (car terms) fn pos producers)
+         (fn-cd-unproduced-actual-lst (cdr terms) fn pos producers)))))
 
-(defun fn-cd-raw-problem (name fn w)
+(defun fn-cd-unproduced-call (fn pos producers wrld)
   (declare (xargs :mode :program))
-  ; nil when the row NAME backs raw dispatch of FN in this world; else a msg
-  (let* ((row (cdr (assoc-eq name (table-alist 'fn-carried w))))
-         (hyps (or (fn-cd-declared-hyps (fn-cd-get :established row))
-                   (fn-cd-declared-hyps (fn-cd-get :transitions row)))))
+  ; (CALLER ACTUAL) for the first function in the world WRLD whose body
+  ; calls FN with an unproduced argument at POS, else nil
+  (cond ((atom wrld) nil)
+        ((and (eq (cadar wrld) 'unnormalized-body)
+              (not (eq (cddar wrld) *acl2-property-unbound*))
+              (fn-cd-unproduced-actual (cddar wrld) fn pos producers))
+         (cons (caar wrld) (fn-cd-unproduced-actual (cddar wrld) fn pos producers)))
+        (t (fn-cd-unproduced-call fn pos producers (cdr wrld)))))
+
+(defun fn-cd-occurs (x tree)
+  (declare (xargs :mode :program))
+  (if (consp tree)
+      (or (fn-cd-occurs x (car tree)) (fn-cd-occurs x (cdr tree)))
+    (eq x tree)))
+
+(defun fn-cd-alias-of (fn prop wrld w)
+  (declare (xargs :mode :program))
+  ; a symbol whose CURRENT PROP (in W) mentions FN, found among the symbols
+  ; that ever carried PROP in WRLD, else nil: 'attachment (a defattach of FN
+  ; to it, in either direction) or 'absstobj-info (FN an abstract stobj's
+  ; :exec, run by its export with no caller in the world).  Current, so a
+  ; removed attachment stops refusing (r28-F3).
+  (cond ((atom wrld) nil)
+        ((and (eq (cadar wrld) prop)
+              (fn-cd-occurs fn (getpropc (caar wrld) prop nil w)))
+         (caar wrld))
+        (t (fn-cd-alias-of fn prop (cdr wrld) w))))
+
+(defun fn-cd-attached-to (fn w)
+  (declare (xargs :mode :program))
+  ; a name through which FN runs with no caller the scan sees, else nil.
+  ; attach-stobj needs no arm of its own (r29-F1): ACL2 8.7 records
+  ; (attach-stobj GEN IMPL) in attach-stobj-table as the pair (GEN . IMPL)
+  ; of stobj NAMES (basis-b.lisp; other-events.lisp attached-stobj), and
+  ; IMPL is itself a defabsstobj, so a function run through it is an :exec
+  ; in IMPL's absstobj-info -- the scan above finds it there.
+  (or (and (getpropc fn 'attachment nil w) fn)
+      (fn-cd-alias-of fn 'attachment w w)
+      (fn-cd-alias-of fn 'absstobj-info w w)))
+
+;  What a raw row MUST carry is derived from what each entry is, never from
+; which optional fields happen to be present (r25-F1): the table below lists,
+; by kind, the requirements in order; fn-cd-raw-requirement-problem says what
+; each refuses.  The produced requirements are vacuous for an open without
+; :hyps (by :hyps-iff-produced, also without :produced).  An open's :hyps
+; back raw dispatch only where the host can hand FN no argument but a
+; producer's: FN is no host entry, runs through no attachment or
+; abstract-stobj :exec, and every caller in the world passes a literal
+; producer call at the produced formal (syntactic, conservative).  Every
+; generated name holds its regenerated statement by fn-cd-problem first.
+(defconst *fn-cd-raw-requirements*
+  '((:transition :no-hyps)
+    (:open :witnessed-reaches :hyps-iff-produced :producers-exact
+           :not-an-interface :not-attached :produced-formal
+           :no-unproduced-caller)))
+
+(defun fn-cd-raw-requirement-problem (req name st entry w)
+  (declare (xargs :mode :program))
+  ; nil when ENTRY (normalized, of the row NAME over the stobj ST) meets the
+  ; requirement REQ; else a msg
+  (let* ((fn (car entry))
+         (opts (cddr entry))
+         (hyps (fn-cd-get :hyps opts))
+         (produced (fn-cd-get :produced opts)))
+    (case req
+      (:no-hyps
+       (and hyps
+            (msg "~x0 declares :hyps ~x1 at ~x2 beyond its guard: the host does not ~
+            check them, so the carried premise is a claim and backs no raw ~
+            dispatch" name hyps fn)))
+      (:witnessed-reaches
+       (mv-let (msg reaches)
+         (fn-cd-reaches-statement st entry t w)
+         (if msg
+             (msg "~x0 establishes its invariant at ~x1 with no witnessed ~
+                  argument: only a row whose every establishing point is ~
+                  shown reachable (a generated NAME-FN-reaches) backs raw ~
+                  dispatch: ~@2" name fn msg)
+           (fn-cd-generated-problem (fn-cd-get :reaches opts) reaches w))))
+      (:hyps-iff-produced
+       (cond ((and hyps (null produced))
+              (msg "~x0 declares :hyps ~x1 at ~x2 beyond its guard and no producer ~
+              discharges them: the host does not check them, so the carried ~
+              premise is a claim and backs no raw dispatch"
+                   name hyps fn))
+             ((and produced (null hyps))
+              (msg "~x0 declares :produced at ~x1 with no :hyps to discharge"
+                   name fn))
+             (t nil)))
+      (:producers-exact
+       (and hyps (fn-cd-produced-problem entry produced t w)))
+      (:not-an-interface
+       (and hyps
+            (assoc-eq fn (table-alist 'fn-interfaces w))
+            (msg "~x0 is a host-called entry (fn-interfaces): the host may hand it ~
+              any ~x1, so its produced premises back no raw dispatch" fn (fn-cd-produced-formal entry))))
+      (:not-attached
+       (and hyps
+            (fn-cd-attached-to fn w)
+            (msg "~x0 is attached to ~x1 (defattach, or an abstract stobj's :exec, ~
+              attach-stobj implementations included): a call through ~x1 runs ~x0 with an argument the ~
+              caller scan does not see, so its produced premises back no raw ~
+              dispatch"
+                 fn (fn-cd-attached-to fn w))))
+      (:produced-formal
+       (let ((f (fn-cd-produced-formal entry)))
+         (and hyps
+              (null (position-eq f (getpropc fn 'formals nil w)))
+              (msg "~x0 has no formal ~x1" fn f))))
+      (:no-unproduced-caller
+       (let* ((f (fn-cd-produced-formal entry))
+              (pos (position-eq f (getpropc fn 'formals nil w)))
+              (bad (and hyps pos
+                        (fn-cd-unproduced-call fn pos (strip-cars produced) w))))
+         (and bad
+              (msg "~x0 calls ~x1 with ~x2 as ~x3, which is not a call of a declared ~
+              producer ~&4: the premises ~x5 are not discharged there"
+                   (car bad) fn (cadr bad) f (strip-cars produced) hyps))))
+      (otherwise (msg "unknown raw requirement ~x0" req)))))
+
+(defun fn-cd-raw-entry-problem (name st entry reqs w)
+  (declare (xargs :mode :program))
+  ; the first of REQS that ENTRY fails, as a msg, else nil
+  (and (consp reqs)
+       (or (fn-cd-raw-requirement-problem (car reqs) name st entry w)
+           (fn-cd-raw-entry-problem name st entry (cdr reqs) w))))
+
+(defun fn-cd-raw-entries-problem (name st kind entries w)
+  (declare (xargs :mode :program))
+  ; the first failing requirement of KIND over ENTRIES, in order
+  (and (consp entries)
+       (or (fn-cd-raw-entry-problem
+            name st (car entries)
+            (cdr (assoc-eq kind *fn-cd-raw-requirements*)) w)
+           (fn-cd-raw-entries-problem name st kind (cdr entries) w))))
+
+(defun fn-cd-raw-problem-row (name row fn w)
+  (declare (xargs :mode :program))
+  ; nil when ROW (the row NAME) backs raw dispatch of FN in this world; else
+  ; a msg: the row checks (fn-cd-problem, GENERATEDP: a non-empty
+  ; :established included), then the table's requirements over the
+  ; transitions and then the establishing points
+  (let* ((r (fn-cd-get :invariant row))
+         (st (and r (symbolp r) (fn-cd-state-stobj r w))))
     (cond
      ((null row) (msg "no carried invariant ~x0 in this world" name))
      ((null (assoc-eq fn (fn-cd-get :transitions row)))
       (msg "~x0 is not a transition of ~x1: only a listed transition's ~
             generated preservation backs raw dispatch" fn name))
-     ((null (fn-cd-state-stobj (fn-cd-get :invariant row) w))
+     ((null st)
       (msg "value-state carried rows are enumerated, not world-derived, and ~
             cannot back raw dispatch"))
      ((fn-cd-problem name row t w)
       (msg "the carried invariant's row no longer checks in this world: ~@0"
            (fn-cd-problem name row t w)))
-     (hyps
-      (msg "~x0 declares :hyps ~x1 at ~x2 beyond its guard: the host does not ~
-            check them, so the carried premise is a claim and backs no raw ~
-            dispatch" name (fn-cd-get :hyps (cddr hyps)) (car hyps)))
+     ((fn-cd-raw-entries-problem name st :transition (fn-cd-get :transitions row) w))
+     ((fn-cd-raw-entries-problem name st :open (fn-cd-get :established row) w))
      (t nil))))
+
+(defun fn-cd-raw-problem (name fn w)
+  (declare (xargs :mode :program))
+  ; nil when the row NAME backs raw dispatch of FN in this world; else a msg
+  (fn-cd-raw-problem-row name (cdr (assoc-eq name (table-alist 'fn-carried w))) fn w))
 
 (defun fn-cd-uncovered-conjunct (name fn conjuncts w)
   (declare (xargs :mode :program))

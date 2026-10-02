@@ -79,6 +79,11 @@ def definitions(form, line: int, out: list) -> None:
         for item in form[1:]:
             definitions(item, line, out)
         return
+    expansion = ledger.generated_expansion(form)
+    if expansion is not None:
+        for item in expansion:
+            definitions(item, line, out)
+        return
     if name in DEFINERS and len(form) >= 4 and isinstance(form[1], ledger.Sym):
         out.append((str(form[1]).lower(), form, line))
 

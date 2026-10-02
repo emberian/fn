@@ -194,43 +194,10 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-bp-replace-work-loop (work xs acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp xs)
-      (if (equal (fn-bp-work-id work) (fn-bp-work-id (car xs)))
-          (revappend acc (cons work (cdr xs)))
-        (fn-bp-replace-work-loop work (cdr xs) (cons (car xs) acc)))
-    (revappend acc nil)))
-
-(defun fn-bp-replace-work (work xs)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp xs)
-           (if (equal (fn-bp-work-id work) (fn-bp-work-id (car xs)))
-               (cons work (cdr xs))
-             (cons (car xs) (fn-bp-replace-work work (cdr xs))))
-         nil)
-       :exec (fn-bp-replace-work-loop work xs nil)))
-
-(local
- (defthm fn-bp-replace-work-loop-is-revappend
-   (equal (fn-bp-replace-work-loop work xs acc)
-          (revappend acc (fn-bp-replace-work work xs)))
-   :hints (("Goal" :induct (fn-bp-replace-work-loop work xs acc)
-                   :in-theory (union-theories '(fn-bp-replace-work-loop fn-bp-replace-work revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-bp-replace-work-loop)
-
-(verify-guards fn-bp-replace-work
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-bp-replace-work)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-bp-replace-work-loop-is-revappend (acc nil))))))
-
+(def-loop fn-bp-replace-work (work xs)
+  :over xs :stop (equal (fn-bp-work-id work) (fn-bp-work-id (car xs)))
+  :stop-value (cons work (cdr xs))
+  :body (car xs))
 
 (defun fn-bp-work-outstandingp (work)
   (declare (xargs :guard t))
@@ -683,7 +650,6 @@
 (def-loop fn-bp-restart-works (works)
   :shape :map
   :body (fn-bp-restart-work (car works)))
-
 
 (defun fn-bp-restart (s)
   (declare (xargs :guard t))

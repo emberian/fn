@@ -329,24 +329,39 @@ reply; never a degraded mode. *Not bounded*: what this row leaves out.
   proof id registered). At dev the funded pool is never installed
   (`fnn-extent-pool-storage-start` has no caller): a policy that names a
   pool reserves memory for a structure that does not run. Stage 0 opens
-  every store in the pool's `:offline` context and serves a cold miss by a
-  direct per-miss read thread, neither of which this figure charges; the
-  funded install (`fn-crv-pool-budget` to `fnn-extent-executor-start`,
+  every store in the pool's `:offline` context. A served cold miss takes
+  `fnn-owner-cold-line-direct` (`host/native/owner.lisp`), which starts a
+  per-miss thread calling `fnn-extent-prefetch-direct`: it reads, verifies
+  and caches the extent, then the owner retries the line warm or answers
+  unavailable at the dependency deadline. Synchronous misses use
+  `fnn-extent-entry-direct`'s `:offline` arm. This figure charges neither
+  direct path; the funded install (`fn-crv-pool-budget` to
+  `fnn-extent-executor-start`,
   PRF-1057) is the resource vector's (stage 6), and it charges the pool
   as it installs it.
 - Exceeded: at start, `:machine-cannot-hold-threads`, exit 1.
 - Not bounded: the unfunded direct reads (their threads and extent
-  buffers) until stage 6.
+  buffers); a dependency timeout can leave a read thread running, so
+  retries can accumulate threads and buffers. The funded installation
+  remains stage 6 work.
 
 **M10** -- the allocation epoch.
-- Bounded: nothing, and nothing is charged: the allocation-epoch books
-  (`books/allocation-epoch*.lisp`, Makefile roots) and
-  `host/allocation-epoch-host.lisp` are outside the image (the native build
-  loads neither), so the figure has no term for them. The parked-families
+- Bounded: no active allocation-epoch admission is charged by this figure.
+  The default native build includes `books/runtime-bootstrap-admission`
+  and `books/runtime-bootstrap-turn-installation`, whose transitive
+  includes load the allocation-epoch books. The DTN build also reaches
+  `books/allocation-epoch` and its domain through `books/image-world-dtn`,
+  the receiver source host and `books/runtime-operation-installed-source`.
+  Loaded logic is distinct from an installed runtime: stage 0 omits the
+  runtime bootstrap helpers and
+  `fnn-runtime-bootstrap-image-prepare`, and neither native build loads
+  `host/allocation-epoch-host.lisp`. There is no allocation-epoch term;
+  this does not establish zero image footprint. The parked-families
   row (COMPLETE-BEFORE-6.6.0.md, L3) keeps `allocation-epoch` and its turn
   slots parked and deletes the rest.
 - Mechanism: none on a served path.
-- Evidence: OPEN; the absence is the native build's load list.
+- Evidence: OPEN; the native build's include chains establish the loaded
+  logic, while its host load list omits the runtime installation.
 - Exceeded: not applicable.
 - Not bounded: not applicable.
 
@@ -821,10 +836,11 @@ memory and stack row's "exceeded" field runs into are named too: the TLS
 library (**T1**) by A-TLS-NATIVE, and the SBCL runtime (its collector, its
 dynamic-space cap, its control-stack guard page) by A-SBCL-RUNTIME, each
 with the qualification evidence that stands in for a proof, as
-A-CRYPTO-NATIVE does for BLAKE3. A-SBCL-INTERNALS names the unexported
-runtime internals `host/native/runtime-collector.lisp` reads (the
-collector's page-table lock, `next_free_page`, `sub-gc`); that file is not
-on a served path and goes with the runtime bootstrap family (L3).
+A-CRYPTO-NATIVE does for BLAKE3. A-SBCL-INTERNALS is now a parked-code trust
+note in specs/failures.md: stage 0 loads neither
+`host/native/runtime-collector.lisp` nor another user of its named SBCL
+internals. Loading that code again requires a named encapsulate assumption
+mentioned by its users.
 
 ## Not bounded
 

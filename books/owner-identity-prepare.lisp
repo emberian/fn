@@ -4,15 +4,21 @@
 (in-package "ACL2")
 (include-book "store-identity-reserve")
 (include-book "owner-prepare-outcome")
+(include-book "owner-prepare-deferred-carried")
 
 (defun fn-idrp-prepare-retention (oc event grant fn-arena)
   (declare (xargs :stobjs fn-arena
                   :guard (fn-sn-statep (fn-sbud-oc-store oc))
-                  :verify-guards nil))
+                  :verify-guards nil)
+           (ignorable fn-arena))
   (mv-let (allowed remaining)
     (fn-idr-consume-grant (fn-sbud-oc-store oc) event grant)
     (if (not allowed) (mv :refused oc remaining nil)
-      (mv-let (word next) (fn-pout-prepare-retention oc event fn-arena)
+      ; The carried Store prepare (lane served-incremental-2): no
+      ; appended-history replay; fn-pout-prepare-retention's under
+      ; fn-snt-relation and whenever the reference stages
+      ; (books/owner-prepare-deferred-carried.lisp).
+      (mv-let (word next) (fn-pdc-pout-prepare-retention oc event)
         (mv word next remaining t)))))
 
 (verify-guards fn-idrp-prepare-retention)
@@ -26,7 +32,7 @@
          (equal (mv-nth 3 result) (if authorized t nil))
          (equal (mv-nth 1 result)
                 (if authorized
-                    (fn-ocfg-step oc (list :store (list :prepare-retention event)) fn-arena)
+                    (fn-pdc-ocfg-prepare-retention oc event)
                   oc))
          (equal (mv-nth 0 result)
                 (if (and authorized
@@ -34,10 +40,25 @@
                                      (fn-sbud-oc-store oc))))
                     :prepared :refused))))
   :hints (("Goal"
-           :use ((:instance fn-pout-prepare-retention-answers-the-store-change
+           :use ((:instance fn-pdc-pout-prepares-answer-the-store-change
                             (e event)))
            :in-theory (e/d (fn-idrp-prepare-retention fn-idr-consume-grant)
-                            (fn-idr-grant-boundp fn-pout-prepare-retention
-                             fn-ocfg-step fn-sbud-oc-store)))))
+                            (fn-idr-grant-boundp fn-pdc-pout-prepare-retention
+                             fn-pdc-ocfg-prepare-retention fn-sbud-oc-store)))))
+
+; The owner it installs is the configured owner's (:store (:prepare-retention
+; E)) -- the reference the host called before -- on every owner whose Store
+; the live-history relation admits; and keeps the host-carried invariant
+; (fn-pdc-ocfg-prepare-retention-preserves-invariant).
+(defthm fn-idrp-retention-preparation-is-ocfg-step-under-relation
+  (implies (fn-snt-relation (fn-sbud-oc-store oc))
+           (equal (mv-nth 1 (fn-idrp-prepare-retention oc event grant fn-arena))
+                  (if (fn-idr-grant-boundp (fn-sbud-oc-store oc) event grant)
+                      (fn-ocfg-step oc (list :store (list :prepare-retention event)) fn-arena)
+                    oc)))
+  :hints (("Goal"
+           :use (fn-idrp-retention-preparation-consumes-exact-current-grant
+                 (:instance fn-pdc-ocfg-prepare-retention-is-ocfg-step-under-relation))
+           :in-theory '(fn-sbud-oc-store))))
 
 (in-theory (disable fn-idrp-prepare-retention))
