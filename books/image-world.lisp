@@ -365,6 +365,7 @@
 (include-book "owner-connection-callbacks")
 (include-book "../host/owner-exposure-host")
 (include-book "../host/index-reader-request-host")
+(include-book "owner-host-relation")
 (include-book "consumer-account-state")
 (include-book "owner-canonical-epoch")
 (include-book "store-node-files-selector")
