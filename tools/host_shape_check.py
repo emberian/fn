@@ -145,9 +145,8 @@ def definitions_in(form, where: str, host: bool, out: list, *, raw: bool = False
         for item in form[start:]:
             definitions_in(item, where, host, out)
         return
-    if name in ("fn-defrecord", "fn-defrecord-export"):
-        expansion = (ledger.defrecord_expansion(form) if name == "fn-defrecord"
-                     else ledger.defrecord_export_expansion(form))
+    expansion = ledger.generated_expansion(form)
+    if expansion is not None:
         for item in expansion:
             definitions_in(item, where, host, out)
         return

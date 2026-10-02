@@ -811,6 +811,89 @@ def defrecord_expansion(form: list) -> list:
     return events
 
 
+def def_loop_bodies(name: str, formals: list, options: dict) -> tuple:
+    """Logic and executable bodies from books/def-loop.lisp's event builders.
+
+    Keep the term structure: consumers also inspect tail position, guards
+    and bindings, not just mentions. No Lisp evaluation or world lookup.
+    """
+    def term(fn, *args):
+        return [Sym(fn), *args]
+
+    def present(value):
+        return value is not None and value != Sym("nil") and value != []
+
+    shape = str(options.get(":shape", ":map"))
+    st = options.get(":into")
+    xs = options.get(":over")
+    if not present(xs):
+        xs = next((f for f in formals if shape != ":into" or f != st), Sym("nil"))
+    n = options.get(":count", formals[0] if formals else Sym("nil"))
+    elt = options.get(":elt")
+
+    def subst(value):
+        if present(elt) and isinstance(value, Sym) and value == elt:
+            return term("car", xs)
+        if isinstance(value, list) and head(value) != "quote":
+            return [subst(v) for v in value]
+        return value
+
+    def option(key, default="nil"):
+        return subst(options.get(key, Sym(default)))
+
+    body, tail = option(":body"), option(":tail")
+    acc = options.get(":acc", Sym("acc"))
+    loop = str(options.get(":loop") or name + "-loop")
+    next_args = [term("cdr", xs) if f == xs else
+                 term("-", n, 1) if shape == ":take" and f == n else f for f in formals]
+    rec = term(name, *next_args)
+    again = lambda value: term(loop, *next_args, value)
+    test = term("consp", xs)
+    if shape == ":into":
+        logic = term("if", test,
+                     term("let", [[st, [options.get(":write"), body, st]]], rec), st)
+        return logic, logic
+    if shape == ":sum":
+        return (term("if", test, term("+", body, rec), 0),
+                term("if", test, again(term("+", body, acc)), acc))
+    if shape == ":concat":
+        return (term("if", test, term("append", body, rec), Sym("nil")),
+                term("if", test, again(term("revappend", body, acc)),
+                     term("revappend", acc, Sym("nil"))))
+    logic_inner, loop_inner = term("cons", body, rec), again(term("cons", body, acc))
+    fixed = term("true-list-fix", acc) if options.get(":acc-fix") == Sym("t") else acc
+    done = term("revappend", fixed, tail)
+    if shape == ":take" and present(options.get(":base")):
+        return (term("if", option(":base"), tail, logic_inner),
+                term("if", option(":base"), done, loop_inner))
+    if shape == ":take":
+        test = term("not", term("zp", n))
+    while_term = option(":while", "t")
+    if while_term != Sym("t"):
+        test = term("and", test, while_term)
+    if shape == ":map":
+        keep = option(":keep", "t")
+        if options.get(":keep-order") == Sym(":skip-first"):
+            logic_inner = term("if", keep, rec, logic_inner)
+            loop_inner = term("if", keep, again(acc), loop_inner)
+        elif keep != Sym("t"):
+            logic_inner = term("if", keep, logic_inner, rec)
+            loop_inner = term("if", keep, loop_inner, again(acc))
+        if present(options.get(":stop")):
+            logic_inner = term("if", option(":stop"), option(":stop-value"), logic_inner)
+            loop_inner = term("if", option(":stop"),
+                              term("revappend", fixed, option(":stop-value")), loop_inner)
+        bindings = option(":let")
+        if present(bindings):
+            logic_inner = term("let*", bindings, logic_inner)
+            loop_inner = term("let*", bindings, loop_inner)
+        if present(options.get(":base")):
+            # :map :base TERM is base-first (books/def-loop.lisp: (if BASE TAIL INNER)).
+            return (term("if", option(":base"), tail, logic_inner),
+                    term("if", option(":base"), done, loop_inner))
+    return term("if", test, logic_inner, tail), term("if", test, loop_inner, done)
+
+
 def def_loop_expansion(form: list) -> list:
     """The events ``(def-loop NAME FORMALS ...)`` generates, as the ledger sees them.
 
@@ -820,7 +903,8 @@ def def_loop_expansion(form: list) -> list:
     ``NAME-loop-is-revappend`` (``-is-plus`` for ``:sum``), the two
     ``verify-guards`` and the withdrawal of the loop.  A ``:into`` form
     defines ``NAME`` alone with the exported ``NAME-is-append``.  The bodies
-    here are the shapes, but bridge statements match the templates exactly.
+    preserve the generated term structure; proof hints and table rows are
+    omitted, and bridge statements match the templates exactly.
     The ledger reads
     names, guards and ``verify-guards``, and the macro is proved by
     tests/acl2/def-loop-tests.lisp.
@@ -834,35 +918,57 @@ def def_loop_expansion(form: list) -> list:
     guard = options.get(":guard", Sym("t"))
     acc = options.get(":acc", Sym("acc"))
     loop = str(options.get(":loop") or Sym(name + "-loop"))
-    body = options.get(":body", Sym("nil"))
+    body, loop_body = def_loop_bodies(name, formals, options)
     if shape == ":into":
         stobj = options.get(":into")
         map_formals = list(formals)
         if stobj in map_formals:
             map_formals.remove(stobj)  # ACL2 remove1-eq preserves formal order.
         decl = [Sym("declare"), [Sym("xargs"), Sym(":stobjs"), stobj, Sym(":guard"), guard]]
+        for key in (":guard-hints", ":measure"):
+            if key in options:
+                decl[1] += [Sym(key), options[key]]
         return [[Sym("defun"), Sym(name), list(formals), decl, body],
                 [Sym("defthm"), Sym(f"{name}-is-append"),
                  [Sym("implies"), [Sym("true-listp"), stobj],
                   [Sym("equal"), [Sym(name)] + list(formals),
                    [Sym("append"), stobj, [options.get(":map", Sym("nil"))] + map_formals]]]],
                 [Sym("in-theory"), [Sym("disable"), Sym(name)]]]
+    acc_fix = str(options.get(":acc-fix", Sym("nil"))) == "t"
+    # :concat shares the map bridge signature and list accumulator guard.
+    # :base selects the base-first :map/:take shape and its library proof.
+    # It changes no emitted name, guard, or bridge statement.
+    # :keep-order only selects branch order and its library proof; emitted
+    # names, guards and bridge statements are identical for both orders.
     acc_pred = Sym("acl2-numberp") if shape == ":sum" else Sym("true-listp")
     acc_guard: object = [acc_pred, acc]
     if not (isinstance(guard, Sym) and str(guard) == "t"):
         acc_guard = [Sym("and"), guard, acc_guard]
+    if acc_fix:
+        acc_guard = guard
+    if str(options.get(":loop-guard", Sym(":default"))) != ":default":
+        acc_guard = options[":loop-guard"]
     loop_decl = [Sym("declare"), [Sym("xargs"), Sym(":guard"), acc_guard,
                                   Sym(":verify-guards"), Sym("nil")]]
     name_decl = [Sym("declare"), [Sym("xargs"), Sym(":guard"), guard,
                                   Sym(":verify-guards"), Sym("nil")]]
+    stobjs = options.get(":stobjs")
+    if stobjs and str(stobjs) != "nil":
+        stobjs = [stobjs] if isinstance(stobjs, Sym) else stobjs
+        loop_decl[1] += [Sym(":stobjs"), stobjs]
+        name_decl[1] += [Sym(":stobjs"), stobjs]
+    if ":measure" in options:
+        loop_decl[1] += [Sym(":measure"), options[":measure"]]
+        name_decl[1] += [Sym(":measure"), options[":measure"]]
     bridge = f"{loop}-is-plus" if shape == ":sum" else f"{loop}-is-revappend"
     statement = [Sym("equal"), [Sym(loop)] + list(formals) + [acc],
                  [Sym("+" if shape == ":sum" else "revappend"),
-                  acc, [Sym(name)] + list(formals)]]
+                  [Sym("true-list-fix"), acc] if acc_fix else acc,
+                  [Sym(name)] + list(formals)]]
     if shape == ":sum":
         statement = [Sym("implies"), [Sym("acl2-numberp"), acc], statement]
     unit = 0 if shape == ":sum" else Sym("nil")
-    return [[Sym("defun"), Sym(loop), list(formals) + [acc], loop_decl, body],
+    return [[Sym("defun"), Sym(loop), list(formals) + [acc], loop_decl, loop_body],
             [Sym("defun"), Sym(name), list(formals), name_decl,
              [Sym("mbe"), Sym(":logic"), body,
               Sym(":exec"), [Sym(loop)] + list(formals) + [unit]]],
@@ -1127,6 +1233,62 @@ def defkeystone_expansion(form: list) -> list:
     return [[Sym("progn")] + events]
 
 
+GENERATOR_EXPANSIONS = {
+    "fn-defrecord": defrecord_expansion,
+    "fn-defrecord-export": defrecord_export_expansion,
+    "def-loop": def_loop_expansion,
+    "defprotocol": defprotocol_expansion,
+    "defkeystone": defkeystone_expansion,
+}
+
+
+def generated_expansion(form: object) -> list | None:
+    """Shared, non-evaluating generator dispatch; None means not mirrored.
+
+    These are source models, not ACL2 admission evidence. Callers retain
+    their own local/suppressed-event and definition traversal policies.
+    Unknown generators are never guessed from similar names.
+    """
+    expand = GENERATOR_EXPANSIONS.get(head(form))
+    return expand(form) if expand is not None else None
+
+
+def source_text(form: object) -> str:
+    """Print a non-evaluated reader form for consumers with lexical APIs."""
+    if isinstance(form, Sym):
+        return str(form)
+    if isinstance(form, str):
+        return '"' + form.replace('\\', '\\\\').replace('"', '\\"') + '"'
+    if isinstance(form, list):
+        return "(" + " ".join(source_text(item) for item in form) + ")"
+    return str(form)
+
+
+def source_events(forms, *, include_local: bool = True):
+    """Yield source events with generator forms expanded and origin retained.
+
+    Only event containers are traversed; quoted templates, function bodies,
+    make-event and must-fail forms are not admitted events. The origin may
+    be a source line or a top-level event number supplied by the caller.
+    """
+    for form, origin in forms:
+        name = head(form)
+        if name in SUPPRESSING or name in ("quote", "quasiquote", "make-event"):
+            continue
+        if name == "local" and not include_local:
+            continue
+        expansion = generated_expansion(form)
+        if expansion is not None:
+            yield from source_events(((item, origin) for item in expansion),
+                                     include_local=include_local)
+        elif name in TRANSPARENT or name in ("encapsulate", "mutual-recursion"):
+            start = 2 if name == "encapsulate" else 1
+            yield from source_events(((item, origin) for item in form[start:]),
+                                     include_local=include_local)
+        else:
+            yield form, origin
+
+
 def record(book: Book, form: object, line: int, *, local: bool,
            suppressed: bool, generated: bool = False) -> None:
     name = head(form)
@@ -1159,14 +1321,6 @@ def record(book: Book, form: object, line: int, *, local: bool,
         return
     if name == "make-event":
         return  # not statically readable; reporting it as an event would be a guess
-    if name in ("fn-defrecord", "fn-defrecord-export", "def-loop"):
-        expansion = (defrecord_expansion(form) if name == "fn-defrecord"
-                     else def_loop_expansion(form) if name == "def-loop"
-                     else defrecord_export_expansion(form))
-        for item in expansion:
-            record(book, item, line, local=local, suppressed=suppressed,
-                   generated=True)
-        return
     if name == "defkeystone":
         parts = defkeystone_parts(form)
         if parts is not None and not suppressed:
@@ -1175,7 +1329,9 @@ def record(book: Book, form: object, line: int, *, local: bool,
             # bare general claim (`teeth_form`).
             names = defkeystone_names(parts)
             book.paired_must_fails |= set(names["without"] + names["mutant"])
-        for item in defkeystone_expansion(form):
+    expansion = generated_expansion(form)
+    if expansion is not None:
+        for item in expansion:
             record(book, item, line, local=local, suppressed=suppressed,
                    generated=True)
         return

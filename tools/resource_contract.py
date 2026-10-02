@@ -147,9 +147,9 @@ ROWS: tuple[Row, ...] = (
         records=("planning/evidence/connection-multiplexing-2026-09-26.md",)),
     Row("M8", "the F8 split: virtual, accountable physical, working set",
         records=("planning/evidence/f8-reservation-2026-09-28.md",)),
-    Row("M9", "the page pool (P12): its heap and its executor threads are added to the launch decision only under an explicit cold-resource policy, and the accepted launch fits the machine",
+    Row("M9", "the page pool (P12): an explicit cold-resource policy reserves its heap and executor threads at launch; stage 0 instead uses unfunded offline reads and a per-miss thread for served cold lines, with threads and buffers able to outlive a dependency timeout",
         theorems=(("books/cold-read-reservation", "fn-crv-accepted-launch-fits-observed-machine"),)),
-    Row("M10", "the allocation epoch: no term, because it does not run (parked, outside the image)"),
+    Row("M10", "the allocation epoch: no active admission term; allocation-epoch logic is included transitively in both native images, but stage 0 omits runtime bootstrap installation and the allocation-epoch host adapter is not loaded"),
     Row("M11", "W9's obligation view: no term, because it does not run (parked until its reader lands); no install maintains it",
         theorems=(("books/owner-obligation-state", "fn-owner-install-keeps-the-obligation-view"),
                   ("books/owner-obligation-state", "fn-owner-open-keeps-the-obligation-view"),
@@ -402,8 +402,19 @@ def theorem_defined(root: Path, book: str, name: str) -> bool | None:
     path = root / f"{book}.lisp"
     if not path.is_file():
         return None
+    import ledger
+    text = path.read_text(encoding="utf-8")
     pattern = r"^\((?:%s)\s+%s(?=[\s)])" % ("|".join(THEOREM_FORMS), re.escape(name))
-    return re.search(pattern, path.read_text(encoding="utf-8"), re.M) is not None
+    if re.search(pattern, text, re.M) is not None:
+        return True
+    # Preserve the literal citation policy; also resolve generated exports.
+    for form, line in ledger.Reader(text).top_level():
+        expansion = ledger.generated_expansion(form)
+        if expansion is not None:
+            for event, _ in ledger.source_events(((e, line) for e in expansion), include_local=False):
+                if ledger.head(event) in ("defthm", "defthmd") and str(event[1]) == name:
+                    return True
+    return False
 
 
 def proof_ids(root: Path = ROOT) -> dict[str, dict]:

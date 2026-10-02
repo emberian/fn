@@ -44,6 +44,7 @@
 ; obligation.  A reassembled ADU is not an accepted article.
 
 (in-package "ACL2")
+(include-book "def-loop")
 
 (include-book "bp-fragment")
 (include-book "rev-onto")
@@ -235,7 +236,6 @@
            :use
            ((:instance fn-bpfw-evens-loop-is-revappend (acc nil))))))
 
-
 (defthm fn-bpfw-len-evens
   (<= (len (fn-bpfw-evens xs)) (len xs))
   :rule-classes :linear)
@@ -287,7 +287,6 @@
                                            (executable-counterpart-theory :here)))
            :use
            ((:instance fn-bpfw-merge-loop-is-revappend (acc nil))))))
-
 
 (defthm fn-bpfw-evens-fragment-list
   (implies (fn-bpfw-fragment-listp xs)
@@ -460,43 +459,10 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-bpfw-advance-loop (active acc)
-  (declare (xargs :guard (and (true-list-listp active) (true-listp acc)) :verify-guards nil))
-  (if (consp active)
-      (if (consp (cdr (car active)))
-          (fn-bpfw-advance-loop (cdr active) (cons (cdr (car active)) acc))
-        (fn-bpfw-advance-loop (cdr active) acc))
-    (revappend acc nil)))
-
-(defun fn-bpfw-advance (active)
-  (declare (xargs :verify-guards nil :guard (true-list-listp active)))
-  (mbe :logic
-       (if (consp active)
-           (if (consp (cdr (car active)))
-               (cons (cdr (car active)) (fn-bpfw-advance (cdr active)))
-             (fn-bpfw-advance (cdr active)))
-         nil)
-       :exec (fn-bpfw-advance-loop active nil)))
-
-(local
- (defthm fn-bpfw-advance-loop-is-revappend
-   (equal (fn-bpfw-advance-loop active acc)
-          (revappend acc (fn-bpfw-advance active)))
-   :hints (("Goal" :induct (fn-bpfw-advance-loop active acc)
-                   :in-theory (union-theories '(fn-bpfw-advance-loop fn-bpfw-advance revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-bpfw-advance-loop)
-
-(verify-guards fn-bpfw-advance
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-bpfw-advance)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-bpfw-advance-loop-is-revappend (acc nil))))))
-
+(def-loop fn-bpfw-advance (active)
+  :over active :guard (true-list-listp active)
+  :keep (consp (cdr (car active)))
+  :body (cdr (car active)))
 
 (local
  (defthm fn-bpfw-true-listp-of-nthcdr

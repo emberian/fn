@@ -24,7 +24,8 @@ macro's template that writes `(defun ...)' is the macro's body, not a
 definition) and except under `quote'.  `fn-defrecord' forms contribute the
 functions the ledger's own expansion generates (books/defrecord.lisp), and
 the `defprotocol' form the macro `fn-nntp-command-dispatch' it defines
-(ledger.defprotocol_expansion).
+(ledger.generated_expansion). The same shared dispatch exposes def-loop
+wrappers and accumulator loops, including their executable bodies.
 
 AN EDGE is a MENTION: A -> B when the symbol B occurs anywhere in A's
 definition and B is itself defined somewhere in the tree.  That is
@@ -155,20 +156,16 @@ def collect(forms: list[tuple[object, int]], path: str, records: bool = True) ->
                 found.append(Definition(defined, "macro" if name in MACRO_HEADS else "function",
                                         path, line, form))
                 return
-        if name == "defprotocol":  # books/protocol-table.lisp: the generated macro
-            for item in ledger.defprotocol_expansion(form):
-                found.append(Definition(definition_name(item), "macro", path, line, item))
+        if not records and name in RECORD_HEADS:
             return
-        if records and name in RECORD_HEADS:
-            try:
-                expansion = (ledger.defrecord_expansion(form) if name == "fn-defrecord"
-                             else ledger.defrecord_export_expansion(form))
-            except Exception:  # an unusual spelling: the record adds nothing
-                expansion = []
+        expansion = ledger.generated_expansion(form)
+        if expansion is not None:
+            start = len(found)
             for item in expansion:
-                defined = definition_name(item) if head(item) in DEFINITION_HEADS else None
-                if defined is not None:
-                    found.append(Definition(defined, "record", path, line, item))
+                visit(item, line)
+            if name in RECORD_HEADS:
+                for definition in found[start:]:
+                    definition.kind = "record"
             return
         for item in form:
             visit(item, line)

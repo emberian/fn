@@ -856,6 +856,18 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/snoc-list-tests \
 	books/record-width-producers \
 	tests/acl2/record-width-producers-tests \
+	books/post-record-width-owner \
+	tests/acl2/post-record-width-owner-tests \
+	books/transit-same-decision \
+	tests/acl2/transit-same-decision-tests \
+	books/held-message-id-answer \
+	tests/acl2/held-message-id-answer-tests \
+	books/consumer-replay-bound \
+	tests/acl2/consumer-replay-bound-tests \
+	books/account-redeem-count \
+	tests/acl2/account-redeem-count-tests \
+	books/bp-receipt-log-crash \
+	tests/acl2/bp-receipt-log-crash-tests \
 	tests/acl2/profile-monotonicity-tests \
 	books/store-budget-article \
 	tests/acl2/store-budget-article-tests \
@@ -864,6 +876,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-capacity-vector \
 	tests/acl2/store-capacity-vector-tests \
 	books/store-capacity-config \
+	books/served-auth-wire-bridge \
+	tests/acl2/served-auth-wire-bridge-tests \
+	books/served-head-bridge \
+	tests/acl2/served-head-bridge-tests \
 	books/store-config-generation \
 	tests/acl2/store-config-generation-tests \
 	tests/acl2/store-capacity-config-tests \
@@ -927,10 +943,13 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/post-identity-catalog-tests \
 	books/post-prepare-catalog \
 	tests/acl2/post-prepare-catalog-tests \
+	books/peer-transit-indexed \
+	tests/acl2/peer-transit-indexed-tests \
 	books/post-retain-carried \
 	tests/acl2/post-retain-carried-tests \
 	books/identity-retain-carried \
 	tests/acl2/identity-retain-carried-tests \
+	tests/acl2/owner-retain-carried-tests \
 	books/store-profile-carried \
 	books/post-admission-keyed \
 	tests/acl2/post-admission-keyed-tests \
@@ -1121,7 +1140,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-fnbs-byte-publisher \
 	books/bp-fnbs-byte-invariants \
 	books/bp-fnbs-replay \
-	books/bp-fnbs-replay-invariants \
 	tests/acl2/bp-fnbs-replay-tests \
 	books/bp-fnbs-namespace \
 	tests/acl2/bp-fnbs-namespace-tests \
@@ -1415,6 +1433,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/nov-column-window-tests \
 	books/served-catalog \
 	books/served-catalog-chain \
+	books/served-catalog-dispatch \
 	books/served-catalog-owner \
 	books/served-catalog-owner-keyed \
 	books/served-catalog-join-refresh \
@@ -1484,6 +1503,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/catalog-entries-tests \
 	tests/acl2/catalog-refresh-tests \
 	tests/acl2/served-catalog-tests \
+	tests/acl2/served-incremental-tests \
 	tests/acl2/over-window-tests \
 	tests/acl2/served-catalog-view-tests \
 	tests/acl2/served-catalog-chain-tests \

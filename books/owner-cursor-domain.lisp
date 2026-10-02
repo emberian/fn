@@ -5,6 +5,7 @@
 (include-book "consumer-store-invariants")
 (include-book "record-width-producers")
 (include-book "owner-snapshot-recovery")
+(include-book "owner-prepare-deferred-carried")
 
 (local (in-theory (disable (tau-system))))
 
@@ -50,6 +51,32 @@
             (fn-sbud-oc-store (fn-psrv-prepare-topic oc e))))
   :hints (("Goal" :use fn-pout-store-of-psrv-prepare-topic
            :in-theory '(fn-csi-prepare-topic-preserves-identity-sequence))))
+
+;; The carried deferred prepares (books/owner-prepare-deferred-carried.lisp)
+;; stage a candidate without appending the journal or moving its cursor.
+(defthm fn-owner-carried-deferred-prepares-preserve-cursor
+  (implies (fn-sn-identity-sequencep s)
+           (and (fn-sn-identity-sequencep (fn-pdc-sn-prepare-retention s event))
+                (fn-sn-identity-sequencep (fn-pdc-sn-prepare-consumer s event))
+                (fn-sn-identity-sequencep (fn-pdc-sn-prepare-topic s event))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-sn-identity-sequencep fn-pdc-sn-prepare-retention
+                 fn-pdc-sn-prepare-consumer fn-pdc-sn-prepare-topic
+                 fn-pcar-stage-record fn-sn-update fn-sf-completion-phasep)
+                (fn-pcar-stage-record-is-stage-record fn-store-retention-event-p
+                 fn-cpe-eventp fn-th-topic-eventp fn-th-prefix-step
+                 fn-sn-statep fn-ccar-cpe-projection-step fn-replay-apply-record
+                 fn-replay-apply-retention-event fn-sn-make-v6)))))
+
+(defthm fn-owner-served-deferred-prepares-preserve-cursor
+  (implies (fn-sn-identity-sequencep (fn-sbud-oc-store oc))
+           (and (fn-sn-identity-sequencep
+                 (fn-sbud-oc-store (mv-nth 1 (fn-pdc-pout-prepare-consumer oc e))))
+                (fn-sn-identity-sequencep
+                 (fn-sbud-oc-store (mv-nth 1 (fn-pdc-pout-prepare-topic oc e))))))
+  :hints (("Goal" :use (fn-pdc-store-of-owner-prepares
+                        fn-pdc-pout-prepares-answer-the-store-change)
+           :in-theory '(fn-owner-carried-deferred-prepares-preserve-cursor))))
 
 (local
  (defthm fn-owner-cursor-store-by-definition
@@ -117,13 +144,18 @@
 ; Exact host-called entries, including their previously verified guards.
 (defun fn-owner-prepare-consumer (event fn-arena state)
   (declare (xargs :stobjs (state fn-arena) :guard (and (boundp-global 'fn-owner state)
-                              (fn-sn-statep (fn-sbud-oc-store (fn-owner-ocfg state))))))
+                              (fn-sn-statep (fn-sbud-oc-store (fn-owner-ocfg state)))))
+           (ignorable fn-arena))
   (if (not (fn-cpe-eventp event))
       (value :invalid)
-    ; fn-pout-prepare-consumer: (:store (:prepare-consumer E)) and its word
-    ; (KEYSTONE fn-pout-prepare-consumer-answers-the-store-change).
+    ; fn-pdc-pout-prepare-consumer: (:store (:prepare-consumer E)) with the
+    ; carried Store prepare, no appended-history replay
+    ; (books/owner-prepare-deferred-carried.lisp: equal to
+    ; fn-pout-prepare-consumer under fn-snt-relation and whenever the
+    ; reference stages; keeps fn-lgoc-invariantp), and its word
+    ; (fn-pdc-pout-prepares-answer-the-store-change).
     (mv-let (word next)
-      (fn-pout-prepare-consumer (fn-owner-ocfg state) event fn-arena)
+      (fn-pdc-pout-prepare-consumer (fn-owner-ocfg state) event)
       (let ((state (fn-owner-install-ocfg next state)))
         (value word)))))
 
@@ -139,8 +171,12 @@
     ; fn-psrv-prepare-topic-preserves-invariant); fn-pout-prepare-topic
     ; answers its word (KEYSTONE
     ; fn-pout-prepare-topic-answers-the-store-change).
+    ; Since lane served-incremental-2: fn-pdc-pout-prepare-topic, the same
+    ; with the carried Store prepare (no appended-history replay; equal to
+    ; fn-pout-prepare-topic under fn-snt-relation and whenever the reference
+    ; stages; fn-pdc-psrv-prepare-topic-preserves-invariant).
     (mv-let (word next)
-      (fn-pout-prepare-topic (fn-owner-ocfg state) event)
+      (fn-pdc-pout-prepare-topic (fn-owner-ocfg state) event)
       (let ((state (fn-owner-install-ocfg next state)))
         (value word)))))
 
@@ -151,8 +187,7 @@
              (mv-nth 2 (fn-owner-prepare-consumer event fn-arena state)))))
   :hints (("Goal" :in-theory
            '(fn-owner-cursor-store-by-definition fn-owner-prepare-consumer
-             fn-pout-prepare-consumer fn-pout-store-of-store-step fn-snrt-step
-             fn-sn-prepare-consumer-preserves-identity-sequence
+             fn-owner-served-deferred-prepares-preserve-cursor
              fn-owner-ocfg-of-install-ocfg
              mv-nth nth zp car-cons cdr-cons
              (:executable-counterpart zp) (:executable-counterpart binary-+)
@@ -165,7 +200,7 @@
              (mv-nth 2 (fn-owner-prepare-topic event fn-arena state)))))
   :hints (("Goal" :in-theory
            '(fn-owner-cursor-store-by-definition fn-owner-prepare-topic
-             fn-pout-prepare-topic fn-owner-served-topic-prepare-preserves-cursor
+             fn-owner-served-deferred-prepares-preserve-cursor
              fn-owner-ocfg-of-install-ocfg
              mv-nth nth zp car-cons cdr-cons
              (:executable-counterpart zp) (:executable-counterpart binary-+)

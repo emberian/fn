@@ -35,38 +35,9 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-inj-take-n-loop (n x acc)
-  (declare (xargs :measure (nfix n) :guard (true-listp acc) :verify-guards nil))
-  (if (or (not (posp n)) (atom x))
-      (revappend acc nil)
-    (fn-inj-take-n-loop (- n 1) (cdr x) (cons (car x) acc))))
-
-(defun fn-inj-take-n (n x)
-  (declare (xargs :verify-guards nil :guard t :measure (nfix n)))
-  (mbe :logic
-       (if (or (not (posp n)) (atom x)) nil
-         (cons (car x) (fn-inj-take-n (- n 1) (cdr x))))
-       :exec (fn-inj-take-n-loop n x nil)))
-
-(local
- (defthm fn-inj-take-n-loop-is-revappend
-   (equal (fn-inj-take-n-loop n x acc)
-          (revappend acc (fn-inj-take-n n x)))
-   :hints (("Goal" :induct (fn-inj-take-n-loop n x acc)
-                   :in-theory (union-theories '(fn-inj-take-n-loop fn-inj-take-n revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-inj-take-n-loop)
-
-(verify-guards fn-inj-take-n
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-inj-take-n)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-inj-take-n-loop-is-revappend (acc nil))))))
-
+(def-loop fn-inj-take-n (n x)
+  :shape :take :count n :over x :body (car x)
+  :base (or (not (posp n)) (atom x)) :measure (nfix n))
 
 (defun fn-inj-drop-n (n x)
   (declare (xargs :guard t :measure (nfix n)))

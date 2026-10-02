@@ -51,7 +51,7 @@
 
 (include-book "served-span")
 (include-book "protocol-table") ; reply texts: (fn-proto-text ROW KEY)
-(include-book "served-catalog")
+(include-book "served-catalog-dispatch") ; fn-nntp-archive-command-cat and its keystone
 (include-book "group-access-cache")
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).

@@ -291,7 +291,7 @@
 (defun pbt-owner (id ledger)
   (fn-own-make nil nil (list *pbt-conn*) 1 4 nil ledger *pbt-b* nil
                *pbt-config* nil
-               (fn-own-sub-make id 0 0 (fn-inj-decide *pbt-dateless* *pbt-config* *pbt-b*))
+               (fn-own-sub-make id 0 0 (fn-inj-decide *pbt-dateless* *pbt-config* *pbt-b*) nil)
                nil nil nil))
 (defconst *pbt-owner* (pbt-owner 0 nil))
 (defconst *pbt-consumed* (pbt-owner 0 '(committed)))

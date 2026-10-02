@@ -3,31 +3,15 @@
 ; This projection reuses the operator-enrolled stable principal; it never
 ; derives or substitutes a second principal from either public key.
 (in-package "ACL2")
+(include-book "def-loop")
 (include-book "hybrid-lifecycle")
 (include-book "principal")
 
-(defun fn-ssk-remove-principal-loop (principal keyring acc)
-  (declare (xargs :guard t))
-  (if (consp keyring)
-      (fn-ssk-remove-principal-loop principal (cdr keyring)
-        (if (equal principal (fn-cbor-ag-car (car keyring))) acc
-          (cons (car keyring) acc)))
-    (revappend (true-list-fix acc) nil)))
-(defun fn-ssk-remove-principal (principal keyring)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp keyring)
-           (if (equal principal (fn-cbor-ag-car (car keyring)))
-               (fn-ssk-remove-principal principal (cdr keyring))
-             (cons (car keyring) (fn-ssk-remove-principal principal (cdr keyring))))
-         nil)
-       :exec (fn-ssk-remove-principal-loop principal keyring nil)))
-(local (defthm fn-ssk-remove-loop-is-revappend
- (equal (fn-ssk-remove-principal-loop p k acc)
-        (revappend (true-list-fix acc) (fn-ssk-remove-principal p k)))
- :hints (("Goal" :induct (fn-ssk-remove-principal-loop p k acc)
-                 :in-theory (enable fn-ssk-remove-principal)))))
-(verify-guards fn-ssk-remove-principal)
+(def-loop fn-ssk-remove-principal (principal keyring)
+  :shape :map :over keyring :keep-order :skip-first :acc-fix t
+  :keep (equal principal (fn-cbor-ag-car (car keyring)))
+  :body (car keyring))
+
 (defthm fn-ssk-remove-preserves-keyringp
  (implies (fn-prin-keyringp keyring)
           (fn-prin-keyringp (fn-ssk-remove-principal principal keyring)))

@@ -32,7 +32,7 @@
                             *scol-crlf*
                             "line one" *scol-crlf* "line two" *scol-crlf*)))
 (defconst *scol-garbage* '(1 2 3 255))
-(defconst *scol-tomb* (append *fn-rcl-magic* (make-list 81 :initial-element 0)))
+(defconst *scol-tomb* (append *fn-rcl-magic* (make-list 137 :initial-element 0)))
 
 (defun scol-w (seq msgid payload)
   (declare (xargs :guard (natp seq)))
