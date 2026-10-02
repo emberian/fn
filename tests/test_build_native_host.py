@@ -28,6 +28,7 @@ echo 'fn-world-deps 2' > "$FN_NATIVE_IMAGE.world-deps"
 printf '#!/bin/sh\\nexec "/sbcl" --tls-limit 16384 --dynamic-space-size 32000 --core "c"\\n' > "$FN_NATIVE_IMAGE"
 chmod +x "$FN_NATIVE_IMAGE"
 echo core > "$FN_NATIVE_IMAGE.core"
+exit "${FAKE_EXIT:-0}"
 """
 MARKERS = ("ACL2 Error [Failure] in ( DEFUN FNN-X ...)",
            "HARD ACL2 ERROR in FMT: bad directive",
@@ -59,6 +60,8 @@ class BuildNativeHostRefusalTests(unittest.TestCase):
             self.launcher_text = launcher.read_text() if launcher.exists() else ""
             record = base / "fn-host-test.catalog"
             self.catalog_text = record.read_text() if record.exists() else None
+            record = base / "fn-host-test.source"
+            self.source_text = record.read_text() if record.exists() else None
             log = base / "build.log"
             return answer, (log.read_text() if log.exists() else ""), library, base
 
@@ -100,6 +103,22 @@ class BuildNativeHostRefusalTests(unittest.TestCase):
         self.assertEqual(openssl, "unset")
         # The catalog is recorded beside the image (tools/image_set.py reads it).
         self.assertEqual(self.catalog_text, "old\n")
+        # So is the source the image was built from (S057): this checkout's
+        # HEAD, `commit` only when nothing differs from it.
+        head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True,
+                              text=True, check=True).stdout.strip()
+        clean = not subprocess.run(["git", "status", "--porcelain", "--untracked-files=normal"],
+                                   cwd=ROOT, capture_output=True, text=True).stdout.strip()
+        self.assertEqual(self.source_text,
+                         (f"commit {head}" if clean else f"worktree {head}+dirty") + "\n")
+
+    def test_a_failed_acl2_names_its_real_exit_status(self):
+        """S142: inside `if ! cmd; then`, $? is the negation's 0, so every
+        failed build said 'acl2 exited with status 0'."""
+        answer, _log, _, _ = self.build("ACL2 !>", FAKE_EXIT="137")
+        self.assertEqual(answer.returncode, 1, answer.stdout + answer.stderr)
+        self.assertIn("acl2 exited with status 137", answer.stderr)
+        self.assertIsNone(self.source_text)
 
     def test_old_catalog_refuses_paged_build_by_name_before_running_acl2(self):
         answer, log, _, _ = self.build(

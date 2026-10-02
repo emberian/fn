@@ -28,7 +28,12 @@ were built from):
                                                published_utc, source tree
     SHA256SUMS                                 every file above but itself
 
-`publish` copies TREE/build's images into BASE/SHA.partial, rewrites each
+`publish` refuses unless every image in TREE/build is the tree's own build
+(no build/REUSED_SOURCE, no symlinked launcher, core, world-deps or lib/)
+and records `commit SHA` as its source (FILE.source, which
+tools/build_native_host.sh writes from the tree it built: S057/S063, the
+label is the build's record, never the caller's word).  It then
+copies TREE/build's images into BASE/SHA.partial, rewrites each
 launcher's absolute `--core` path to the published core (a launcher names
 its core by absolute path), writes the manifest and sums and renames the
 directory into place; an existing BASE/SHA is left alone (refused, exit 1).
@@ -176,6 +181,38 @@ def backfill_catalog(sha: str, repo: Path, base: Path = BASE,
     return 0
 
 
+def source_of(build: Path, file: str) -> str:
+    """The source identity the builder recorded beside the image
+    (tools/build_native_host.sh writes FILE.source: `commit SHA` for a
+    clean commit, `worktree ...` otherwise); absent evidence is unknown."""
+    record = build / f"{file}.source"
+    if not record.is_file() or record.is_symlink():
+        return "unknown"
+    return record.read_text(encoding="utf-8").strip() or "unknown"
+
+
+def not_built_here(build: Path, found: dict[str, str]) -> list[str]:
+    """Why TREE/build's images are not this tree's own build: a reused run's
+    record, or a launcher, core, world-deps or lib/ that is a symlink placed
+    by `link`/`link-run` (S063: publishing those relabels another set's
+    cores under a new sha)."""
+    why = []
+    if (build / "REUSED_SOURCE").exists():
+        why.append("build/REUSED_SOURCE (its images were linked from an earlier run)")
+    names = ["lib"] + [name for file in found.values()
+                       for name in (file, f"{file}.core", f"{file}.world-deps")]
+    why += [f"{name} is a symlink to {os.readlink(build / name)}"
+            for name in names if (build / name).is_symlink()]
+    return why
+
+
+def wrong_source(build: Path, found: dict[str, str], sha: str) -> list[str]:
+    """The images whose recorded source is not exactly `commit SHA` (S057:
+    the set's label is the build's own record, never the caller's word)."""
+    return [f"{name} ({source_of(build, file)})" for name, file in sorted(found.items())
+            if source_of(build, file) != f"commit {sha}"]
+
+
 def wrong_catalog(found: dict[str, str]) -> list[str]:
     """The images, by name, whose recorded catalog is not the old one: a set
     and a reused run hold the names the old catalog's images take."""
@@ -203,6 +240,18 @@ def publish(tree: Path, sha: str, base: Path = BASE) -> int:
               "not published; rebuild with tools/build_native_host.sh, which writes FILE.catalog",
               file=sys.stderr)
         return 1
+    linked = not_built_here(build, found)
+    if linked:
+        print(f"image_set: {build} holds images it did not build: {'; '.join(linked)}; "
+              "not published (publish from the tree that built them)", file=sys.stderr)
+        return 1
+    sources = wrong_source(build, found, sha)
+    if sources:
+        print(f"image_set: {build}'s images do not record source commit {sha}: "
+              f"{', '.join(sources)}; not published (build from `git archive {sha}`, "
+              "tools/hbox_native.sh REV, or a clean checkout at it: "
+              "tools/build_native_host.sh writes FILE.source)", file=sys.stderr)
+        return 1
     partial = base / f"{sha}.partial"
     shutil.rmtree(partial, ignore_errors=True)
     partial.mkdir(parents=True)
@@ -221,7 +270,8 @@ def publish(tree: Path, sha: str, base: Path = BASE) -> int:
         deps = build / f"{file}.world-deps"
         if deps.is_file():
             shutil.copy2(deps, partial / deps.name)
-        images[name] = {"launcher": file, "core": core.name, "catalog": catalogs[name]}
+        images[name] = {"launcher": file, "core": core.name, "catalog": catalogs[name],
+                        "source": f"commit {sha}"}
     if (build / "lib").is_dir():
         shutil.copytree(build / "lib", partial / "lib")
     (partial / "TREE_SHA").write_text(sha + "\n")
@@ -251,6 +301,16 @@ def link(sha: str, tree: Path, wanted: list[str], base: Path = BASE) -> int:
     bad = verify(directory)
     if bad:
         print(f"image_set: {directory} fails its SHA256SUMS: {', '.join(bad[:5])}",
+              file=sys.stderr)
+        return 1
+    # A set published since S057 records each image's source; one that says
+    # another commit is refused (older sets carry no source and are judged
+    # by their TREE_SHA, as before).
+    bad = [f"{name} ({manifest['images'][name]['source']})" for name in wanted
+           if "source" in manifest["images"][name]
+           and manifest["images"][name]["source"] != f"commit {sha}"]
+    if bad:
+        print(f"image_set: {directory} records another source for {', '.join(bad)}; not linked",
               file=sys.stderr)
         return 1
     bad = wrong_catalog({name: manifest["images"][name].get("catalog", "unknown") for name in wanted})
