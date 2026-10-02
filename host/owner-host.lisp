@@ -81,6 +81,7 @@
 ;; online-reclaim-5: the swapped owner is :ready after the open's barriers.
 (include-book "../books/owner-reclaim-ready")
 (include-book "../books/owner-reclaim-carry")
+(include-book "../books/owner-reclaim-seal")
 (include-book "../books/owner-recovery-retain")
 (include-book "../books/owner-cursor-domain")
 ; Q16 (b): online disk release of dropped files (fn-xrt-).
@@ -5132,9 +5133,9 @@ existing port only after fn-fc has made this connection ready."
           (value (list :captured captured
                        (fn-own-max-conns (fn-owner-core state)))))))))
 
-; Under the mutex, a chunk of the rewritten rows: its tombstoned records
-; interned into the live arena under the captured Store's key ring
-; (fn-orcp-intern-rows).  (mv ROWS FN-ARENA).
+; The rewritten rows' tombstoned records are no longer interned before the
+; swap: fn-orcs-predict (off the mutex) and fn-orcs-seal (in the swap
+; quantum), books/owner-reclaim-seal.lisp.
 ;; Q16 (lane online-reclaim-6): the reclaim's instant recorded LIVE, the twin
 ;; of the offline host/checkpoint-host.lisp fn-store-reclaim-instant-record:
 ;; the one delta fn-rci-delta of CLOCK's stamp, staged on the private
@@ -5155,9 +5156,6 @@ existing port only after fn-fc has made this connection ready."
         (fn-owner-reconfigure-deltas cid (list (fn-rci-delta now)) fn-arena state)
       (value (fn-ores-config-refused :reclaim-instant)))))
 
-(defun fn-owner-orcp-intern-chunk (rows keyring generation fn-arena)
-  (declare (xargs :stobjs fn-arena :mode :program))
-  (fn-orcp-intern-rows rows keyring generation fn-arena))
 
 (defun fn-owner-orcp-keyring (s)
   (declare (xargs :mode :program))

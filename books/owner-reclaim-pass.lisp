@@ -204,8 +204,10 @@
 ;               publication in flight, its credit reserved);
 ;   :rewritten  the walk over the captured rows off the mutex;
 ;   :staged     the reclaimed checkpoint written and fenced in staging/;
-;   :interned   the tombstoned records interned into the live arena (fresh
-;               handles no row names yet);
+;   :interned   the tombstoned records' held rows PREDICTED at the arena's
+;               count (books/owner-reclaim-seal.lisp; their payloads are
+;               sealed only in the swap's quantum, so a deferred pass
+;               leaves the arena as it found it);
 ;   :rebuilt    the rebuilt Store, catalog and history columns off the mutex;
 ;   :installed  the staged checkpoint renamed into place (the commit point);
 ;   :swapped    the owner's state replaced by the rebuilt one;

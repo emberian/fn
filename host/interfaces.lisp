@@ -4535,9 +4535,20 @@
 (definterface fn-owner-orcp-finish
   :class ::program)
 
-; host/native/owner.lisp dispatches it (lane online-reclaim).
-(definterface fn-owner-orcp-intern-chunk
-  :class ::program)
+; host/native/owner.lisp dispatches it (lane arena-forget: the deferred
+; reclaim seals nothing).
+(definterface fn-orcs-predict
+  :class ::common-lisp-compliant
+  :kinds ((keyring fn-prin-keyringp) (generation natp) (h natp))
+  :keystones (fn-orcs-seal-is-the-intern))
+
+(definterface fn-orcs-seal
+  :class ::common-lisp-compliant
+  :keystones (fn-orcs-seal-is-the-intern))
+
+(definterface fn-orcs-seal-word
+  :class ::common-lisp-compliant
+  :keystones (fn-orcs-seal-word-swap-means-base))
 
 ; host/native/owner.lisp dispatches it (lane online-reclaim).
 (definterface fn-owner-orcp-keyring

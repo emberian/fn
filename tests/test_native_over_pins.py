@@ -51,6 +51,16 @@ class NativeOverPinsTests(unittest.TestCase):
             self.assertNotIn(b"installed", refused.stdout, refused.stdout)
             deferred = self.owner_lines(owner, re.compile(rb"RECLAIM deferred reason=readers"), 1)
             self.assertEqual(len(deferred), 1, owner.stderr.since(0)[-3000:])
+            # A deferred pass seals nothing (books/owner-reclaim-seal.lisp):
+            # two more deferred passes leave the live arena's count where the
+            # first left it (before, each grew it by its two tombstones).
+            for _ in range(2):
+                again = self.reclaim(node, "--recorded", expect=None)
+                self.assertNotIn(b"installed", again.stdout, again.stdout)
+            pattern = re.compile(rb"RECLAIM deferred reason=readers arena=(\d+)")
+            arenas = [int(pattern.search(l).group(1)) for l in self.owner_lines(owner, pattern, 3)]
+            self.assertEqual(len(arenas), 3, owner.stderr.since(0)[-3000:])
+            self.assertEqual(len(set(arenas)), 1, arenas)
             if cancel:
                 client.close(False)
             stall.unlink()

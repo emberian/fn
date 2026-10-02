@@ -5583,22 +5583,6 @@ pointer and the live state's binding)."
       (fn-cat (setq *fnn-cat* value))
       (fn-hist (setq *fnn-hist* value)))))
 
-(defun fnn-owner-reclaim-intern (service rows keyring generation)
-  "The rewritten ROWS with their tombstoned records interned into the live
-arena, +fnn-reclaim-chunk-rows+ rows per owner quantum (fn-owner-orcp-
-intern-chunk).  NIL when ACL2 refused a record."
-  (let ((out nil) (rest rows))
-    (loop while rest do
-      (let* ((chunk (loop repeat +fnn-reclaim-chunk-rows+ while rest collect (pop rest)))
-             (done (fnn-owner-gated (service :control)
-                     (first (fnn-call 'fn-owner-orcp-intern-chunk chunk keyring generation
-                                      (fnn-live-arena))))))
-        (when (eq done :bad) (return-from fnn-owner-reclaim-intern nil))
-        (unless (and (listp done) (= (length done) (length chunk)))
-          (fnn-fault "owner returned a malformed interned chunk"))
-        (push done out)))
-    (let ((all nil)) (dolist (c out all) (setq all (nconc c all))))))
-
 ;;; Q16 (a) (lane online-reclaim-5): the swapped owner is the owner the full
 ;;; open of the rewritten history installs, BEFORE the open's recovery
 ;;; barriers (its Store :recovering; books/owner-reclaim-ready.lisp).  The
@@ -5638,12 +5622,17 @@ publication).  Answers the reply word."
          (clock (fnn-store-prepare-observation))
          (answer nil) (captured nil) (pin nil) (position nil) (stage nil) (ident nil)
          (installed nil) (swapped nil) (word :failed) (*fnn-checkpoint-frames* nil)
+         (base nil) (seal-payloads nil)
          (image nil)
          (started (get-internal-real-time)))
     (flet ((ms () (round (* 1000 (- (get-internal-real-time) started))
                          internal-time-units-per-second))
            (deferred (reason &rest more)
-             (fnn-err "RECLAIM deferred reason=~(~a~)~{ ~a~}" reason more)
+             ;; arena=: the live arena's count (natives: a deferred pass
+             ;; leaves it as it found it)
+             (fnn-err "RECLAIM deferred reason=~(~a~)~{ ~a~} arena=~d" reason more
+                      (fnn-owner-gated (service :control)
+                        (first (fnn-call 'fn-arena-count (fnn-live-arena)))))
              (setq word (intern (format nil "DEFERRED-~a" (symbol-name reason)) :keyword))))
       (unwind-protect
            (block pass
@@ -5723,10 +5712,18 @@ publication).  Answers the reply word."
                                           (fnn-live-octets-pub) arun))))
                        (fnn-octets-pub-release))))
                  (fnn-reclaim-cut :staged)
+                 ;; The tombstones are PREDICTED here (their handles from
+                 ;; BASE, the live arena's count now) and sealed only in the
+                 ;; swap quantum, after the seal word answers :swap: a
+                 ;; deferred pass seals nothing (books/owner-reclaim-seal.lisp,
+                 ;; KEYSTONE fn-orcs-seal-is-the-intern).
                  (destructuring-bind (keyring generation)
                      (fnn-core 'fn-owner-orcp-keyring s)
-                   (setq rows (fnn-owner-reclaim-intern service rows keyring generation)))
-                 (unless rows (deferred :unencodable) (return-from pass))
+                   (setq base (fnn-owner-gated (service :control)
+                                (first (fnn-call 'fn-arena-count (fnn-live-arena)))))
+                   (destructuring-bind (predicted payloads)
+                       (fnn-core 'fn-orcs-predict rows keyring generation base)
+                     (setq rows predicted seal-payloads payloads)))
                  (fnn-reclaim-cut :interned)
                  (let* ((rebuilt (fnn-core 'fn-owner-orcp-rebuild rows configs frontier
                                            (third answer)))
@@ -5743,10 +5740,16 @@ publication).  Answers the reply word."
                    (fnn-reclaim-cut :rebuilt)
                    (dotimes (round +fnn-reclaim-swap-rounds+)
                      (let ((sw (fnn-owner-gated (service :control)
-                                 (let ((w (fnn-owner-core 'fn-owner-orcp-swap-word count frontier s
-                                                          (1- (fnn-arena-reader-count))
-                                                          rebuilt)))
+                                 (let ((w (fnn-core 'fn-orcs-seal-word
+                                                    (fnn-owner-core 'fn-owner-orcp-swap-word count frontier s
+                                                                    (1- (fnn-arena-reader-count))
+                                                                    rebuilt)
+                                                    (first (fnn-call 'fn-arena-count (fnn-live-arena)))
+                                                    base)))
                                    (when (eq w :swap)
+                                     ;; the predicted tombstones sealed: their
+                                     ;; handles are BASE + i (the seal word)
+                                     (fnn-call 'fn-orcs-seal seal-payloads (fnn-live-arena))
                                      ;; the commit point, then the swap, in one quantum
                                      ;; (stage 0: the report-writer enter/leave/fault
                                      ;; fences around it dispatched entries of
@@ -5770,6 +5773,7 @@ publication).  Answers the reply word."
                        (case sw
                          (:swap (return))
                          (:delta (deferred :delta) (return-from pass))
+                         (:moved (deferred :moved) (return-from pass))
                          (:unbound (deferred :unbound) (return-from pass))
                          ((:busy :readers)
                           (when (= round (1- +fnn-reclaim-swap-rounds+))
