@@ -287,3 +287,53 @@
   (implies (and (not pass) (not (natp inflight)) blockedp)
            (equal (fn-orc-request-status (fn-orc-request-word pass inflight blockedp recordedp))
                   :refused)))
+
+; The capture's own admission (sweep S038).  The request above is answered in
+; one owner quantum and the capture taken in a later one (host/native/owner.lisp
+; fnn-owner-reclaim-pass, fnn-owner-reclaim-dry-run), so a second reclaim, or
+; an automatic publication, can take the slot between them.  The capture
+; therefore decides again, over the slot as it is in its own quantum: PASS
+; the reclaim pass in flight (its mode, nil when none), INFLIGHT the count a
+; publication in flight captured (a reclaim that writes is one: it holds
+; INFLIGHT at its count).  A dry run writes nothing and leaves INFLIGHT alone.
+;   :in-flight  a pass already holds the slot; this capture takes nothing.
+;   :queued     a publication holds it; a writing pass takes nothing (the
+;               host answers DEFERRED-QUEUED, a refusal by name).
+;   :capture    the slot is free: PASS becomes MODE, and INFLIGHT the
+;               captured COUNT for a writing pass.
+; The result is (WORD PASS' INFLIGHT'), which host/owner-host.lisp
+; fn-owner-orc-capture installs; it writes nothing else.
+(defun fn-orc-capture-word (pass inflight dryp)
+  (declare (xargs :guard t))
+  (cond (pass :in-flight)
+        ((and (not dryp) (natp inflight)) :queued)
+        (t :capture)))
+
+(defun fn-orc-capture-slot (mode count pass inflight)
+  (declare (xargs :guard t))
+  (let* ((dryp (eq mode :dry-run))
+         (word (fn-orc-capture-word pass inflight dryp)))
+    (if (eq word :capture)
+        (list word mode (if dryp inflight count))
+      (list word pass inflight))))
+
+; KEYSTONE (no hypotheses beyond the ones each conjunct names): a capture
+; that is refused leaves the slot exactly as it found it; one that is taken
+; found no pass in flight and, when it writes, no publication; and while a
+; taken capture holds the slot (MODE is a keyword, as every caller passes),
+; every other capture, of any mode, is refused.  So at most one reclaim
+; pass, and never a writing pass beside a publication, is in flight across
+; the request's and the capture's separate quanta.
+(defthm fn-orc-capture-takes-only-a-free-slot
+  (let ((r (fn-orc-capture-slot mode count pass inflight)))
+    (and (implies (not (equal (car r) :capture))
+                  (equal (cdr r) (list pass inflight)))
+         (implies (equal (car r) :capture)
+                  (and (not pass)
+                       (or (equal mode :dry-run) (not (natp inflight)))
+                       (equal (cadr r) mode)))
+         (implies (and (keywordp mode) (equal (car r) :capture))
+                  (not (equal (car (fn-orc-capture-slot mode2 count2
+                                                        (cadr r) (caddr r)))
+                              :capture)))))
+  :rule-classes nil)

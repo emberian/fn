@@ -98,3 +98,42 @@
             (equal (fn-orc-request-status (fn-orc-request-word pass inflight blockedp recordedp))
                    :refused))
    :rule-classes nil))
+
+; Sweep S038: the capture's own admission (fn-orc-capture-slot, KEYSTONE
+; fn-orc-capture-takes-only-a-free-slot).
+; Positive witnesses, every arm: a free slot is taken (a writing pass holds
+; INFLIGHT at its count, a dry run leaves it); a held pass refuses
+; :in-flight and a publication in flight refuses a writing pass :queued,
+; each leaving the slot as it was; a dry run beside a publication is taken.
+(assert-event
+ (and (equal (fn-orc-capture-slot :recorded 7 nil nil) '(:capture :recorded 7))
+      (equal (fn-orc-capture-slot :dry-run 7 nil nil) '(:capture :dry-run nil))
+      (equal (fn-orc-capture-slot :recorded 9 :dry-run nil) '(:in-flight :dry-run nil))
+      (equal (fn-orc-capture-slot :dry-run 9 :recorded 7) '(:in-flight :recorded 7))
+      (equal (fn-orc-capture-slot :recorded 9 nil 5) '(:queued nil 5))
+      (equal (fn-orc-capture-slot :dry-run 9 nil 5) '(:capture :dry-run 5))))
+; The third conjunct, positive: after a taken capture every second capture,
+; of either mode, is refused.
+(assert-event
+ (let ((r (fn-orc-capture-slot :recorded 7 nil nil)))
+   (and (keywordp :recorded) (equal (car r) :capture)
+        (equal (car (fn-orc-capture-slot :recorded 8 (cadr r) (caddr r))) :in-flight)
+        (equal (car (fn-orc-capture-slot :dry-run 8 (cadr r) (caddr r))) :in-flight))))
+; Hypothesis removal for (keywordp mode): a MODE of nil is taken (the
+; antecedent's other half holds), is not a keyword, and leaves the slot
+; free of a pass, so a second capture (a dry run, which no publication
+; count stops) is taken too: the conclusion fails.
+(assert-event
+ (let ((r (fn-orc-capture-slot nil 7 nil nil)))
+   (and (equal (car r) :capture)
+        (not (keywordp nil))
+        (equal (car (fn-orc-capture-slot :dry-run 8 (cadr r) (caddr r))) :capture))))
+; Mutation (labelled): the pre-S038 capture, which wrote the slot without
+; deciding, over a slot a publication holds (case (b) of the finding): it
+; overwrites the publication's count, which the decision above never does.
+(defun ost-pre-s038-capture (mode count pass inflight)
+  (declare (ignore pass))
+  (list :capture mode (if (eq mode :dry-run) inflight count)))
+(assert-event
+ (and (not (equal (cdr (ost-pre-s038-capture :recorded 9 nil 5)) (list nil 5)))
+      (equal (cdr (fn-orc-capture-slot :recorded 9 nil 5)) (list nil 5))))
