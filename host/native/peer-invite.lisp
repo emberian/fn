@@ -43,12 +43,41 @@
   (fnn-hsig-command-read-exact (fnn-pinv-path directory "principal.bin") 32
                                "principal"))
 
+;;; A document this verb writes is a new file, never a replacement: its
+;;; name is reserved O_EXCL (owner-only) before anything is recorded
+;;; elsewhere, so an existing or unwritable path refuses first (sweep S105),
+;;; and it is filled, fsynced and its directory fsynced before the verb
+;;; reports it.  A reservation that is never filled is removed.
+(defun fnn-pinv-reserve (path)
+  "Create PATH empty, O_EXCL, mode 0600; its fd.  An existing PATH refuses."
+  (when (fnn-lstat path)
+    (fnn-refuse "~a exists; this verb never overwrites a document" path))
+  (fnn-open path (logior sb-posix:o-wronly sb-posix:o-creat sb-posix:o-excl)
+            #o600))
+
+(defun fnn-pinv-fill (fd path octets)
+  "Write OCTETS through the reservation FD, make it durable, close it."
+  (unwind-protect
+       (progn (fnn-write-all fd (fnn-octets octets))
+              (fnn-fsync-file fd))
+    (fnn-close fd))
+  (fnn-fsync-dir (fnn-parent path)))
+
+(defun fnn-pinv-call-reserved (path thunk)
+  "Reserve PATH, then call THUNK with a filler (a function of the octets).
+If THUNK returns without filling, or unwinds, the reservation is removed."
+  (let ((fd (fnn-pinv-reserve path)) (state :reserved))
+    (unwind-protect
+         (funcall thunk (lambda (octets)
+                          (setq state :filling)
+                          (fnn-pinv-fill fd path octets)
+                          (setq state :filled)))
+      (unless (eq state :filled)
+        (when (eq state :reserved) (ignore-errors (fnn-close fd)))
+        (ignore-errors (fnn-unlink path))))))
+
 (defun fnn-pinv-write-new (path octets)
-  (with-open-file (stream path :direction :output
-                               :element-type '(unsigned-byte 8)
-                               :if-exists :error :if-does-not-exist :create)
-    (write-sequence (fnn-octets octets) stream)
-    (finish-output stream)))
+  (fnn-pinv-call-reserved path (lambda (fill) (funcall fill octets))))
 
 (defun fnn-pinv-sign (directory source principal keys)
   "Sign SOURCE with DIRECTORY's secret halves; ACL2 builds the preimage and
@@ -381,17 +410,33 @@ keys and its token (a fresh CSPRNG token when token.bin is absent)."
                              (fnn-pinv-text inviter-port))))
       (unless (and (fnn-octet-list-p source) (consp source))
         (fnn-refuse "ACL2 refused the invitation's words"))
-      (let* ((signed (fnn-pinv-sign directory source principal keys))
-             (code (fnn-pinv-status-code
-                    (fnn-pinv-send control-path :issue signed))))
-        ;; The invitation is recorded before it exists anywhere else.
-        (when (= code +fnn-exit-ok+)
-          (fnn-pinv-write-new out signed)
-          (fnn-out "invitation nonce=~a out=~a" (fnn-hex nonce) out))
-        code))))
+      (let ((signed (fnn-pinv-sign directory source principal keys)))
+        ;; OUT is reserved first (sweep S105): an existing or unwritable OUT
+        ;; refuses before the owner records anything.  The invitation is
+        ;; then recorded before it exists anywhere else, and written.
+        (fnn-pinv-call-reserved
+         out
+         (lambda (fill)
+           (let ((code (fnn-pinv-status-code
+                        (fnn-pinv-send control-path :issue signed))))
+             (when (= code +fnn-exit-ok+)
+               (handler-bind
+                   ((error (lambda (condition)
+                             (fnn-err "invitation nonce=~a is recorded by the owner but ~a could not be written: ~a"
+                                      (fnn-hex nonce) out condition))))
+                 (funcall fill signed))
+               (fnn-out "invitation nonce=~a out=~a" (fnn-hex nonce) out))
+             code)))))))
 
 (defun fnn-pinv-accept (control-path words)
   (destructuring-bind (file directory path reachable out) words
+    ;; OUT is reserved before the owner records the acceptance (S105).
+    (fnn-pinv-call-reserved out (lambda (fill)
+                                  (fnn-pinv-accept-reserved control-path file directory path
+                                                            reachable out fill)))))
+
+(defun fnn-pinv-accept-reserved (control-path file directory path reachable out fill)
+  (progn
     (let* ((received (fnn-pinv-read-document file))
            (code (fnn-pinv-status-code
                   (fnn-pinv-send control-path :accept received))))
@@ -412,7 +457,7 @@ keys and its token (a fresh CSPRNG token when token.bin is absent)."
           (let ((signed (fnn-pinv-sign directory source
                                        (fnn-pinv-principal directory)
                                        (fnn-pinv-public-keys directory))))
-            (fnn-pinv-write-new out signed)
+            (funcall fill signed)
             (fnn-out "acceptance out=~a" out)
             +fnn-exit-ok+))))))
 
@@ -429,55 +474,58 @@ keys and its token (a fresh CSPRNG token when token.bin is absent)."
 ;;; the terminal (or two lines of stdin), never from argv; ACL2 decides the
 ;;; entries agree and renders the FNAUTH1 octets (books/peer-set.lisp
 ;;; fn-pset-login-file, whose file reads back as exactly that login and
-;;; password: fn-pset-login-file-reads-back).  The file is written owner-only
-;;; beside FILE and renamed over it, then `peer set NAME --login FILE' is
-;;; applied, to the running owner when there is one.
-(defun fnn-pinv-write-private (path octets)
-  (let* ((tmp (format nil "~a.tmp-~d" path (sb-posix:getpid)))
-         (buffer (coerce (fnn-octets octets) '(simple-array (unsigned-byte 8) (*))))
-         (fd (sb-posix:open tmp (logior sb-posix:o-wronly sb-posix:o-creat
-                                        sb-posix:o-excl)
-                            #o600)))
-    (unwind-protect
-         (sb-sys:with-pinned-objects (buffer)
-           (let ((written (sb-posix:write fd (sb-sys:vector-sap buffer)
-                                          (length buffer))))
-             (unless (= written (length buffer))
-               (fnn-refuse "peer login: short write to ~a" tmp)))
-           (sb-posix:fsync fd))
-      (sb-posix:close fd))
-    (sb-posix:rename tmp path)))
+;;; password: fn-pset-login-file-reads-back).
+;;;
+;;; Sweep S034: nothing is replaced before the change is accepted.  The
+;;; `peer set NAME --login FILE' plan is decided first (pure: NAME and FILE);
+;;; the octets are staged owner-only beside FILE (O_EXCL, fsync); the plan is
+;;; applied, to the running owner when ACL2's liveness decision says one
+;;; holds the store (S104: fnn-olo-admin-observe, which also clears a stale
+;;; socket node, as every other admin verb does), else offline; and only an
+;;; accepted change renames the stage over FILE and fsyncs its directory.  A
+;;; refused or uncertain change removes the stage and leaves FILE as it was,
+;;; and the exit says which (refused 1, uncertain 3).
+(defun fnn-pinv-login-apply (result argv plan)
+  "Apply the accepted `peer set' PLAN (host/native/operator.lisp
+fnn-operator-apply-admin); its exit code."
+  (values (fnn-operator-apply-admin
+           (fnn-core 'fn-native-operator-host-result-store-root result)
+           (fnn-core 'fn-native-operator-host-result-peering-control-path-octets
+                     result)
+           argv plan)))
 
 (defun fnn-pinv-login (result words)
   (let ((name (first words)) (login (second words)) (file (third words)))
     (unless (fboundp 'fnn-native-auth-admin-prompt-secrets)
       (fnn-refuse "peer login: this image has no credentials surface"))
-    (multiple-value-bind (password confirm)
-        (funcall 'fnn-native-auth-admin-prompt-secrets)
-      (let ((decision (fnn-core 'fn-pset-login-file login password confirm)))
-        (unless (eq (first decision) :ok)
-          (fnn-refuse "peer login refused: ~a"
-                      (string-downcase (symbol-name (second decision)))))
-        (fnn-pinv-write-private file (second decision))
-        (fnn-out "login peer=~a file=~a" name file)
-        (let* ((argv (fnn-core 'fn-pset-login-argv name file))
-               (plan (fnn-core 'fn-native-admin-host-plan argv))
-               (root (fnn-core 'fn-native-operator-host-result-store-root result))
-               (control (fnn-core
-                         'fn-native-operator-host-result-peering-control-path-octets
-                         result))
-               (control-path (and (fnn-octet-list-p control) (consp control)
-                                  (fnn-octets control)))
-               (live *fnn-operator-live-owner*))
-          (unless (fnn-admin-plan-acceptedp plan)
-            (fnn-refuse "peer login: ACL2 refused `peer set ~a --login': ~a"
-                        name (fnn-admin-plan-reason plan)))
-          (if (and control-path live
-                   (funcall (fnn-olo-socket-present live) control-path))
-              ;; The live owner's refusal detail (the reason word ACL2
-              ;; named over its table) goes to the status line.
-              (funcall (fnn-olo-admin live) control-path argv :live)
-            (fnn-admin-execute root plan)))))))
+    (let* ((argv (fnn-core 'fn-pset-login-argv name file))
+           (plan (fnn-core 'fn-native-admin-host-plan argv)))
+      (unless (fnn-admin-plan-acceptedp plan)
+        (fnn-refuse "peer login: ACL2 refused `peer set ~a --login': ~a"
+                    name (fnn-admin-plan-reason plan)))
+      (multiple-value-bind (password confirm)
+          (funcall 'fnn-native-auth-admin-prompt-secrets)
+        (let ((decision (fnn-core 'fn-pset-login-file login password confirm)))
+          (unless (eq (first decision) :ok)
+            (fnn-refuse "peer login refused: ~a"
+                        (string-downcase (symbol-name (second decision)))))
+          (let ((stage (format nil "~a.tmp-~d" file (sb-posix:getpid)))
+                (published nil))
+            (unwind-protect
+                 (progn
+                   (fnn-write-staged stage (fnn-octets (second decision)))
+                   (let ((exit (fnn-pinv-login-apply result argv plan)))
+                     (cond
+                       ((eql exit +fnn-exit-ok+)
+                        (fnn-replace stage file)
+                        (setq published t)
+                        (fnn-fsync-dir (fnn-parent file))
+                        (fnn-out "login peer=~a file=~a" name file))
+                       (t (fnn-err "peer login: `peer set ~a --login' was not accepted (exit ~d); ~a is unchanged"
+                                   name exit file)))
+                     exit))
+              (unless published
+                (ignore-errors (fnn-unlink stage))))))))))
 
 (defun fnn-pinv-execute (result)
   "Execute an accepted `peer keygen|genesis|invite|accept|confirm|login' plan."

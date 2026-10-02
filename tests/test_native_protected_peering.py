@@ -335,6 +335,17 @@ class NativeProtectedPeeringTests(unittest.TestCase):
                            input=(b.password + "\n" + b.password + "\n").encode())
         self.assertNotEqual(early.returncode, EXIT_OK)
         self.assertIn("needs-send", early.stdout.decode() + early.stderr.decode())
+        # Sweep S034: a refused change writes nothing, and an existing FILE
+        # (here another peer's login file) is left exactly as it was.
+        self.assertFalse((a.root / "early.fnauth").exists())
+        kept = a.root / "kept.fnauth"
+        kept.write_bytes(b"FNAUTH1\nkept\nkept-secret\n")
+        clobber = a.operator("peer", "login", "nobody", b.login, str(kept),
+                             input=(b.password + "\n" + b.password + "\n").encode())
+        self.assertNotEqual(clobber.returncode, EXIT_OK)
+        self.assertEqual(kept.read_bytes(), b"FNAUTH1\nkept\nkept-secret\n")
+        self.assertEqual(sorted(p.name for p in a.root.glob("kept.fnauth*")),
+                         ["kept.fnauth"])
         differ = a.operator("peer", "login", b.name, b.login, str(a.root / "x.fnauth"),
                             input=b"one\ntwo\n")
         self.assertNotEqual(differ.returncode, EXIT_OK)

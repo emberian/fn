@@ -1807,11 +1807,17 @@ before the mutex can be released, so no queued client can mutate afterward."
     (fnn-store-error (condition) (error condition))
     ;; An OS or arbitrary failure inside a semantic/persistence action has no
     ;; safe connection-only attribution.  Preserve the shared state by stopping.
+    ;; The owner has stopped as a FAULT (exit 4), so the caller sees a fault:
+    ;; the condition goes on as an fnn-store-fault naming it (sweep S028).
+    ;; Re-raised as itself, an fnn-os-error or a socket error read to the
+    ;; control worker as a refusal raised before any owner work, and the
+    ;; operator was told REFUSED (exit 1: nothing happened) by a stopped node.
     ((or fnn-os-error serious-condition) (condition)
       (when (and cid (not (fnn-owner-connection-selected-p service)))
         (ignore-errors (fnn-owner-action 'fn-owner-fault cid)))
       (fnn-owner-stop-service-locked service +fnn-exit-fault+)
-      (error condition))))
+      (error 'fnn-store-fault
+             :message (format nil "owner stopped as a fault: ~a" condition)))))
 
 (defun fnn-owner-serialized (service cid thunk &optional (class :control))
   "Run one semantic action, fencing before its mutex can be released.

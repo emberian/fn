@@ -367,8 +367,12 @@ ACL2 returns."
                      (fourth moderation) (fifth moderation)))
                    (t :refused)))
              ;; The owner has already fenced itself on these two (exit 3 and
-             ;; exit 4, `fnn-owner-shared-action-locked'); the reason goes to
-             ;; the owner's log, and the caller gets the status word.
+             ;; exit 4, `fnn-owner-shared-action-locked', which hands on an
+             ;; OS, socket or any other failure inside an owner action as an
+             ;; fnn-store-fault, sweep S028); the reason goes to the owner's
+             ;; log, and the caller gets the status word.  An fnn-os-error or
+             ;; a socket error that reaches the clauses below was raised
+             ;; before any owner work (the frame read, the reply), a refusal.
              (fnn-store-indeterminate (condition)
                (fnn-err "control request uncertain; owner fenced: ~a" condition)
                :uncertain)

@@ -361,6 +361,26 @@ observation into the outcome and this function only carries it out."
                                     "init" condition)
           code)))))
 
+(defun fnn-operator-apply-admin (root control-path-list argv plan)
+  "Apply the accepted administrative PLAN (ARGV its words) to the running
+owner when ACL2's liveness decision says one holds the store, else offline:
+the exit code and the live owner's refusal detail.  PKT-344: the liveness is
+ACL2's over two observations (fn-native-control-liveness-decides), taken by
+the live-owner surface, which also clears a stale socket node; an image
+without that surface (the DTN image) has no socket to observe, and its
+executor's exclusive lock refuses a held store.  Every mutating admin verb
+dispatches here (`peer login', `account invite' too: sweep S104)."
+  (let* ((control-path (and (fnn-octet-list-p control-path-list)
+                            (fnn-octets control-path-list)))
+         (live *fnn-operator-live-owner*)
+         (liveness (if live
+                       (funcall (fnn-olo-admin-observe live)
+                                root control-path-list nil)
+                     :offline)))
+    (if (member liveness '(:live :held))
+        (funcall (fnn-olo-admin live) control-path argv liveness)
+      (values (fnn-admin-execute root plan) nil))))
+
 (defun fnn-operator-execute-admin (result)
   "Execute only the exact accepted ACL2 administrative plan."
   (let ((live-detail nil)
@@ -373,19 +393,6 @@ observation into the outcome and this function only carries it out."
                     result)))
     (handler-case
         (let* ((queryp (fnn-core 'fn-native-admin-host-queryp plan))
-               (control-path (and (not queryp)
-                                  (fnn-octet-list-p control-path-list)
-                                  (fnn-octets control-path-list)))
-               (live *fnn-operator-live-owner*)
-               ;; PKT-344: the owner's liveness is ACL2's decision over two
-               ;; observations (fn-native-control-liveness-decides), taken by
-               ;; the live-owner surface.  An image without it (the DTN
-               ;; image) has no socket to observe, and its executor's
-               ;; exclusive lock refuses a held store, as before PKT-344.
-               (liveness (if live
-                             (funcall (fnn-olo-admin-observe live)
-                                      root control-path-list queryp)
-                           :offline))
                (code
                  (progn
                   (cond
@@ -403,13 +410,11 @@ observation into the outcome and this function only carries it out."
                                (fnn-octets control-path-list))
                      (fnn-core 'fn-native-admin-host-report-kind plan)))
                    (queryp (fnn-admin-query root plan))
-                   ;; :live and :held come only from the live-owner surface.
-                   ((member liveness '(:live :held))
-                    (multiple-value-bind (exit detail)
-                        (funcall (fnn-olo-admin live) control-path argv liveness)
-                      (when detail (setq live-detail detail))
-                      exit))
-                   (t (fnn-admin-execute root plan))))))
+                   (t (multiple-value-bind (exit detail)
+                          (fnn-operator-apply-admin root control-path-list
+                                                    argv plan)
+                        (when detail (setq live-detail detail))
+                        exit))))))
           (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) command
                                     live-detail)
           code)
@@ -445,20 +450,13 @@ observation into the outcome and this function only carries it out."
                (argv (and (stringp digest)
                           (fnn-core 'fn-acct-host-invite-argv digest seconds)))
                (plan (and argv (fnn-core 'fn-native-admin-host-plan argv)))
-               (control-path (and (fnn-octet-list-p control-path-list)
-                                  (consp control-path-list)
-                                  (fnn-octets control-path-list)))
-               (live *fnn-operator-live-owner*)
-               (livep (and control-path live
-                           (funcall (fnn-olo-socket-present live) control-path)))
                (exit
                  (progn
                    (unless (and (stringp code) (stringp digest)
                                 (fnn-admin-plan-acceptedp plan))
                      (fnn-fault "ACL2 refused its own invitation vector"))
-                   (if livep
-                       (values (funcall (fnn-olo-admin live) control-path argv :live))
-                     (fnn-admin-execute root plan)))))
+                   (values (fnn-operator-apply-admin root control-path-list
+                                                     argv plan)))))
           (when (eql exit +fnn-exit-ok+)
             (write-sequence (fnn-octets (fnn-ascii-octet-list
                                          (format nil "~a~%" code)))
