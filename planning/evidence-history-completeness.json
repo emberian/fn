@@ -2,15 +2,15 @@
  "schema": 2,
  "what": "every git blob version a history-rewrite drop rule matches, on every ref, worktree HEAD and private ref and reflog-named commit of the frozen snapshot, and every object the committed index names, archived at objects/<sha256[:2]>/<sha256>.gz and verified on the archive box (decompressed, SHA-256 and length)",
  "generated_by": "python3 tools/evidence_history.py complete --rules planning/history-rewrite-paths.txt --migrate",
- "generated_at": "2026-10-02T07:49:44Z",
- "head": "1ffe1dcd5a1614c3f7039f8dbea14809572a242e",
+ "generated_at": "2026-10-02T08:30:30Z",
+ "head": "21d4fe9427c6d8803ade19fb8b3e8efc111122f0",
  "archive": "hbox:/tank/fn/evidence",
  "rules_file": "planning/history-rewrite-paths.txt",
  "rules_sha256": "bbe6efb58dedab77d680a1c40b3280c915870d60d89e20a6f0b89f0464c67cab",
  "refs_count": 1900,
- "refs_sha256": "4d4f84a17b2937a668c97e761b8f17d348482ae13f3eeba200caf3eb1d18b49c",
- "reflog_commits": 14066,
- "reflog_commits_sha256": "f02a7b95ab5ea80e8074bb04b677e0b90eea19f8bdffe40051e6d48ebdf8cca8",
+ "refs_sha256": "b85d0e856ced07eba04062257cd8f01322d45d30c8097c862959bdb02e1f4895",
+ "reflog_commits": 14068,
+ "reflog_commits_sha256": "e9f360e9b90a045f4a3d12ac2620fdcedf7841de7b223a0fb34520b23f51e723",
  "rules": {
   "planning/evidence": {
    "paths": 15693,
@@ -203,7 +203,7 @@
   [
    "HEAD /Users/ember/dev/fn/build/lanes/batch-bi",
    "commit",
-   "1ffe1dcd5a1614c3f7039f8dbea14809572a242e"
+   "21d4fe9427c6d8803ade19fb8b3e8efc111122f0"
   ],
   [
    "HEAD /Users/ember/dev/fn/build/lanes/catalog-commit-flat",
@@ -578,7 +578,7 @@
   [
    "refs/heads/batch/bi",
    "commit",
-   "1ffe1dcd5a1614c3f7039f8dbea14809572a242e"
+   "21d4fe9427c6d8803ade19fb8b3e8efc111122f0"
   ],
   [
    "refs/heads/branchw13/storage-initializer",
@@ -8118,7 +8118,7 @@
   [
    "refs/remotes/origin/HEAD",
    "commit",
-   "1ffe1dcd5a1614c3f7039f8dbea14809572a242e"
+   "21d4fe9427c6d8803ade19fb8b3e8efc111122f0"
   ],
   [
    "refs/remotes/origin/batch/bb",
@@ -8523,7 +8523,7 @@
   [
    "refs/remotes/origin/dev",
    "commit",
-   "1ffe1dcd5a1614c3f7039f8dbea14809572a242e"
+   "21d4fe9427c6d8803ade19fb8b3e8efc111122f0"
   ],
   [
    "refs/remotes/origin/lane/architect",
