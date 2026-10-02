@@ -238,21 +238,23 @@
 (in-theory (disable fn-exp-observe-effects))
 
 ; -----------------------------------------------------------------------------
-; Progress on a reply the step did not write (lane served-catalog-live,
-; 2026-10-02; Codex r67 F3)
+; Output progress: the transport accepted octets of a reply (lane
+; served-catalog-live, 2026-10-02; Codex r67 F3; Astra c07)
 ;
-; A served OVER/XOVER range answers with a CURSOR (books/served-catalog.lisp
-; fn-nntp-over-range-ovw): its step sends no octet, so fn-exp-observe-effects
-; above records no progress for it, and the reply is written afterwards, one
-; quantum at a time (books/served-plan-cursor.lisp fn-splan-cursor-step).
-; Without this entry the connection's LAST stayed at the command before the
-; OVER, and the first idle check after a reply that took longer than the
-; idle limit to drain closed a connection that had just been written to.
-; The host calls fn-exp-progress with each cursor quantum, in the quantum's
-; own hold of the owner mutex (host/native/owner.lisp fnn-owner-cursor-step,
-; through host/owner-host.lisp fn-owner-exposure-progress): the connection's
-; LAST becomes NOW and it has answered.  Nothing else changes: no rate, no
-; failed-login or post count, no counter, no other connection.
+; The observation above runs once per served step, when the step DECIDES its
+; reply; it never sees the reply DRAIN.  A reply that takes longer than the
+; idle limit to drain -- a large ARTICLE to a slow reader, or an OVER range
+; written in cursor quanta, whose step sends no octet at all -- left the
+; connection's LAST at the command, and the first idle check after the drain
+; (the mux checks idle only with no reply outstanding) closed a connection
+; that had just been written to.  Two events now advance LAST: a command
+; received (fn-exp-observe-effects) and the transport accepting output
+; (fn-exp-progress, called by the host each time the socket takes a whole
+; output window: host/native/mux.lisp fnn-mux-flush through
+; host/owner-host.lisp fn-owner-exposure-progress).  A yield or a cursor
+; quantum is NOT progress; only octets the socket took are.  Nothing else
+; changes: no rate, no failed-login or post count, no counter, no other
+; connection.
 
 (defun fn-exp-progress (xs id now)
   (declare (xargs :guard t))

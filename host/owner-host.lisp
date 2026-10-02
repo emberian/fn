@@ -4183,11 +4183,12 @@
          (state (f-put-global 'fn-owner-exposure (cdr r) state)))
     (value (car r))))
 
-; A cursor quantum wrote part of a reply the step did not write (a served
-; OVER/XOVER range): the connection's idle deadline is refreshed
-; (books/public-exposure-reply.lisp fn-exp-progress, keystone
-; fn-exp-idle-keeps-after-progress; Codex r67 F3).  Called by
-; host/native/owner.lisp fnn-owner-cursor-step in the quantum's own hold.
+; The transport accepted a whole output window of the connection's reply:
+; its last activity advances (books/public-exposure-reply.lisp
+; fn-exp-progress, keystone fn-exp-idle-keeps-after-progress; Codex r67 F3,
+; Astra c07).  Called by host/native/mux.lisp fnn-mux-flush through
+; host/native/owner.lisp fnn-owner-exposure-progress, in its own reader-class
+; quantum under the owner mutex, after the socket took the window.
 (defun fn-owner-exposure-progress (id state)
   (declare (xargs :stobjs state :mode :program))
   (let ((state (f-put-global 'fn-owner-exposure

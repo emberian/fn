@@ -447,6 +447,17 @@ window (off the owner mutex) and go on; with nothing left, run AFTER."
                           (return-from fnn-mux-flush nil)))))
       (unless (fnn-mux-conn-out conn)
         (return-from fnn-mux-flush nil))
+      ;; The transport accepted the whole window: output progress for the
+      ;; exposure's idle accounting (fn-exp-progress), the event Astra c07
+      ;; names "transport accepted output bytes".  Never on a yield or a
+      ;; quantum: only octets the socket took count.
+      ;; A reply's window only (the greeting precedes the exposure's first
+      ;; command, and the open already set its time); not once the service
+      ;; is stopping (the gate refuses then; the drain needs no idle check).
+      (when (and (eq (fnn-mux-conn-out-op conn) :send-reply)
+                 (> (length (fnn-mux-conn-out conn)) 0)
+                 (not (fnn-owner-service-stopping service)))
+        (fnn-owner-exposure-progress service (fnn-mux-conn-cid conn) :reader))
       (let ((plan (fnn-mux-conn-plan conn)))
         ;; A completed output window must not chain another semantic
         ;; cursor quantum into this same I/O event, even when the socket

@@ -121,7 +121,8 @@
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE fn-exp-idle-keeps-after-progress (lane served-catalog-live; Codex
-; r67 F3): a cursor quantum's progress refreshes the idle deadline.
+; r67 F3; Astra c07): the transport accepting output refreshes the idle
+; deadline.
 ;   H  (< (nfix later) (+ (nfix now) (* 1000 (fn-exp-lim-idle lim))))
 ; The connection (id 5, registered at 5000, limits idle 600 s / first 60 s)
 ; steps an OVER range whose effects are one cursor: the step sends no octet,
@@ -136,8 +137,8 @@
 (assert-event (not (fn-exp-entry-answered (fn-exp-find 5 (fn-exp-conns *pxr-after-over*)))))
 (assert-event (equal (car (fn-exp-idle *pxr-after-over* *pxr-lim* 5 65000)) :close))
 
-; POSITIVE: the hypothesis and the conclusion.  A quantum at 64000 is
-; progress: the check at 65000 keeps, and so does every check until the idle
+; POSITIVE: the hypothesis and the conclusion.  The socket taking a window
+; of the reply at 64000 is progress: the check at 65000 keeps, and so does every check until the idle
 ; limit has passed since the quantum.
 (defconst *pxr-progressed* (fn-exp-progress *pxr-after-over* 5 64000))
 (assert-event (< 65000 (+ 64000 (* 1000 (fn-exp-lim-idle *pxr-lim*)))))

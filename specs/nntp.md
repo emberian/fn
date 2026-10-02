@@ -1878,11 +1878,14 @@ Not yet on the cursor: the read-restricted route (a session with a READ rule
 is served by the reference walk over its projected pin,
 `fn-scr-auth-delegate`), OVER by Message-ID and with no argument (one row).
 
-A cursor step sends no octet, so the exposure's observation of the step
-records no progress. Each quantum refreshes the connection's idle deadline
-(`fn-exp-progress`, `fn-exp-idle-keeps-after-progress`), in the quantum's own
-hold; a reply that takes longer than the idle limit to drain is not closed
-by the first idle check after it (Codex r67 F3).
+Two events advance a connection's last activity for the idle limit (RFC
+3977 section 3.1): a command received, and the transport accepting a window
+of a reply (`fn-exp-progress`, called by the mux each time the socket takes
+a whole window; `fn-exp-idle-keeps-after-progress`). A reply that takes
+longer than the idle limit to drain -- a cursor OVER, whose step sends no
+octet, or a large ARTICLE to a slow reader -- is not closed by the first idle
+check after it. A yield or a cursor quantum is not progress (Codex r67 F3,
+Astra c07).
 
 A quantum's guard is O(1): `fn-splan-cursor-step` asks `(natp w)`. Until
 2026-10-02 it also asked `fn-cat-handles-inp` of the whole catalog, which a
