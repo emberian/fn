@@ -128,6 +128,12 @@ class Mentions:
 
     def form(self, form: object, owner: str | None, where: str, test: bool) -> None:
         """Attribute FORM's mentions to OWNER, or find the definitions inside it."""
+        if owner is None:
+            expansion = ledger.generated_expansion(form)
+            if expansion is not None:
+                for item in expansion:
+                    self.form(item, None, where, test)
+                return
         if owner is None and isinstance(form, list) and form and head(form) not in ("quote", "quasiquote"):
             if head(form) in callgraph.DEFINITION_HEADS and callgraph.definition_name(form):
                 owner = callgraph.definition_name(form)

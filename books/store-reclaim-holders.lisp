@@ -872,3 +872,9 @@ a (MSGID . VERDICT) pair whose verdict is not :absent."
                         fn-rcl-summary-in-shape fn-rcl-nth-of-four-and-one
                         nth-0-cons nth-add1 car-cons cdr-cons (:e nth)
                         (:e zp) (:e binary-+) (:e unary--)))))
+
+; Q3h (assurance-remainder-4): the three Store-level reclaim figures run
+; guard-verified (books/native-live-status.lisp fn-nls-reclaim-words).
+(verify-guards fn-rcl-store-holders)
+(verify-guards fn-rcl-store-counts)
+(verify-guards fn-rcl-store-classes)

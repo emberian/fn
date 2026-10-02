@@ -25,6 +25,7 @@
 ; a per-number cursor over the paged report (books/native-live-pages.lisp) is
 ; the named next step -- measure at convergence.
 (in-package "ACL2")
+(include-book "def-loop")
 (include-book "nntp-projection")
 (include-book "control-evidence-grammar")
 
@@ -52,32 +53,14 @@
 
 ; Insertion by number, as fn-nntp-insert-number inserts a number: the loop
 ; is the executable (PKT-693: no recursion on the served depth).
-(defun fn-oig-insert-loop (row rows prefix)
-  (declare (xargs :guard (and (consp row) (natp (car row))
-                              (fn-oig-rowsp rows) (true-listp prefix))))
-  (if (consp rows)
-      (if (< (car row) (car (car rows)))
-          (revappend prefix (cons row rows))
-        (fn-oig-insert-loop row (cdr rows) (cons (car rows) prefix)))
-    (revappend prefix (list row))))
-
-(defun fn-oig-insert (row rows)
-  (declare (xargs :guard (and (consp row) (natp (car row)) (fn-oig-rowsp rows))
-                  :verify-guards nil))
-  (mbe :logic
-       (if (consp rows)
-           (if (< (car row) (car (car rows)))
-               (cons row rows)
-             (cons (car rows) (fn-oig-insert row (cdr rows))))
-         (list row))
-       :exec (fn-oig-insert-loop row rows nil)))
-
-(local
- (defthm fn-oig-insert-loop-is-revappend
-   (equal (fn-oig-insert-loop row rows prefix)
-          (revappend prefix (fn-oig-insert row rows)))))
-
-(verify-guards fn-oig-insert)
+(def-loop fn-oig-insert (row rows)
+  :shape :map :over rows :acc prefix
+  :guard (and (consp row) (natp (car row)) (fn-oig-rowsp rows))
+  :loop-guard (and (consp row) (natp (car row))
+                   (fn-oig-rowsp rows) (true-listp prefix))
+  :stop (< (car row) (car (car rows))) :stop-value (cons row rows)
+  :body (car rows) :tail (list row)
+  :guard-theory (fn-oig-rowsp))
 
 (defthm fn-oig-rowsp-of-insert
   (implies (and (consp row) (natp (car row)) (stringp (cdr row))
@@ -200,33 +183,9 @@
           (fn-oig-text (cdr row))
           *fn-oig-lf*))
 
-(defun fn-oig-lines-loop (rows acc)
-  (declare (xargs :guard (and (fn-oig-rowsp rows) (true-listp acc))))
-  (if (consp rows)
-      (fn-oig-lines-loop (cdr rows) (revappend (fn-oig-line (car rows)) acc))
-    (revappend acc nil)))
-
-(defun fn-oig-lines (rows)
-  (declare (xargs :guard (fn-oig-rowsp rows) :verify-guards nil))
-  (mbe :logic
-       (if (consp rows)
-           (append (fn-oig-line (car rows)) (fn-oig-lines (cdr rows)))
-         nil)
-       :exec (fn-oig-lines-loop rows nil)))
-
-(local
- (defthm fn-oig-revappend-revappend
-   (equal (revappend (revappend a b) c)
-          (revappend b (append a c)))))
-
-(local
- (defthm fn-oig-lines-loop-is-revappend
-   (equal (fn-oig-lines-loop rows acc)
-          (revappend acc (fn-oig-lines rows)))
-   :hints (("Goal" :in-theory (disable fn-oig-line)))))
-
-(verify-guards fn-oig-lines
-  :hints (("Goal" :in-theory (disable fn-oig-line))))
+(def-loop fn-oig-lines (rows)
+  :shape :concat :body (fn-oig-line (car rows))
+  :guard (fn-oig-rowsp rows) :guard-theory (fn-oig-rowsp))
 
 ; -----------------------------------------------------------------------------
 ; The report

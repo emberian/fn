@@ -2838,8 +2838,75 @@
                             fn-gidx-range-of-build-equals-archive-fold
                             fn-scat-range-numbers-is-group-range-numbers)))))
 
-(defun fn-nntp-xref-reply-cat (session archive index env keyword args v fn-arena fn-cat)
+;;; OVER/XOVER with no argument and OVER <msgid> (audit R4, lane
+;;; served-incremental-1): the current article from the number table
+;;; (fn-scat-available-article, KEYSTONE P) and the Message-ID form from the
+;;; catalog's Message-ID column (fn-scat-msgid-article, KEYSTONE A), never a
+;;; walk of the view's articles (fn-nntp-available-article,
+;;; fn-find-article: O(N) per command).
+(defun fn-nntp-over-current-served-cat (session server v fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat) :guard (fn-scat-guard)))
+  (let ((group (fn-nntp-session-group session))
+        (current (fn-nntp-session-current session)))
+    (if (null group)
+        (fn-nntp-single session "412 no newsgroup selected")
+      (if (null current)
+          (fn-nntp-single session "420 no current article")
+        (let ((article (fn-scat-available-article group current v fn-arena fn-cat)))
+          (if (not (consp article))
+              (fn-nntp-single session "420 no current article")
+            (if (fn-scol-tombstonep article fn-arena fn-cat)
+                (fn-nntp-single session "423 article reclaimed")
+              (let ((over (fn-scol-overview-of article fn-arena fn-cat)))
+                (if (fn-nov-okp over)
+                    (fn-nntp-multi session "224 overview information follows"
+                                   (list (fn-nov-served-line current over
+                                                             server article)))
+                  (fn-nntp-single
+                   session "503 stored article framing unavailable"))))))))))
+
+(defthm fn-nntp-over-current-served-cat-is-col
+  (implies (and (fn-cnx-freshp fn-cat)
+                (equal (fn-state-articles archive) (fn-cat-view-articles v fn-arena fn-cat)))
+           (equal (fn-nntp-over-current-served-cat session server v fn-arena fn-cat)
+                  (fn-nntp-over-current-served-col session archive server fn-arena fn-cat)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-nntp-over-current-served-col)
+                           (fn-scat-available-article fn-nntp-available-article
+                            fn-cat-view-articles fn-cnx-freshp fn-scol-tombstonep
+                            fn-scol-overview-of fn-nov-okp fn-nov-served-line
+                            fn-nntp-multi fn-nntp-single)))))
+
+(defun fn-nntp-over-msgid-served-cat (session token server v fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard (fn-scat-guard)))
+  (let ((article (fn-scat-msgid-article (fn-nntp-token-string token) v fn-arena fn-cat)))
+    (if (not (consp article))
+        (fn-nntp-single session "430 no article with that message-id")
+      (if (fn-scol-tombstonep article fn-arena fn-cat)
+          (fn-nntp-single session "430 article reclaimed")
+        (let ((over (fn-scol-overview-of article fn-arena fn-cat)))
+          (if (fn-nov-okp over)
+              (fn-nntp-multi session "224 overview information follows"
+                             (list (fn-nov-served-line 0 over server article)))
+            (fn-nntp-single session
+                            "503 stored article framing unavailable")))))))
+
+(defthm fn-nntp-over-msgid-served-cat-is-col
+  (implies (equal (fn-state-articles archive) (fn-cat-view-articles v fn-arena fn-cat))
+           (equal (fn-nntp-over-msgid-served-cat session token server v fn-arena fn-cat)
+                  (fn-nntp-over-msgid-served-col session archive token server fn-arena fn-cat)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-nntp-over-msgid-served-col)
+                           (fn-scat-msgid-article fn-find-article
+                            fn-cat-view-articles fn-scol-tombstonep
+                            fn-scol-overview-of fn-nov-okp fn-nov-served-line
+                            fn-nntp-multi fn-nntp-single)))))
+
+(in-theory (disable fn-nntp-over-current-served-cat fn-nntp-over-msgid-served-cat))
+
+(defun fn-nntp-xref-reply-cat (session archive index env keyword args v fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard (fn-scat-guard))
+           (ignorable archive))
   (cond
    ((and (fn-nntp-keywordp keyword "LIST")
          (fn-nntp-xref-server env)
@@ -2859,18 +2926,19 @@
              (fn-nntp-keywordp keyword "XOVER"))
          (fn-nntp-xref-server env)
          (null args))
-    (fn-nntp-over-current-served-col session archive (fn-nntp-xref-server env) fn-arena fn-cat))
+    (fn-nntp-over-current-served-cat session (fn-nntp-xref-server env) v fn-arena fn-cat))
    ((and (fn-nntp-keywordp keyword "OVER")
          (fn-nntp-xref-server env)
          (consp args) (null (cdr args))
          (not (fn-nntp-range-okp (fn-nntp-parse-range (car args))))
          (fn-nntp-message-id-tokenp (car args)))
-    (fn-nntp-over-msgid-served-col session archive (car args)
-                                   (fn-nntp-xref-server env) fn-arena fn-cat))
+    (fn-nntp-over-msgid-served-cat session (car args)
+                                   (fn-nntp-xref-server env) v fn-arena fn-cat))
    (t nil)))
 
 (defthm fn-nntp-xref-reply-cat-is-col
   (implies (and (fn-article-listp configured (fn-cat-view-articles v fn-arena fn-cat))
+                (equal (fn-state-articles archive) (fn-cat-view-articles v fn-arena fn-cat))
                 (fn-cnx-freshp fn-cat)
                 (implies (fn-gidx-pinp index)
                          (and (equal (fn-gidx-pin-buckets index)
@@ -2883,6 +2951,7 @@
            :in-theory (e/d (fn-nntp-xref-reply-cat fn-nntp-xref-reply-col)
                            (fn-nntp-over-range-served-cat fn-nntp-over-range-served-col
                             fn-nntp-over-current-served-col fn-nntp-over-msgid-served-col
+                            fn-nntp-over-current-served-cat fn-nntp-over-msgid-served-cat
                             fn-nntp-list-overview-fmt-served fn-nntp-keywordp fn-nntp-xref-server
                             fn-gidx-pinp fn-nntp-parse-range fn-nntp-range-okp fn-nntp-keyword-tokenp
                             fn-nntp-message-id-tokenp fn-gidx-build fn-midx-build fn-cat-view-articles
@@ -2890,6 +2959,10 @@
            :use ((:instance fn-nntp-over-range-served-cat-is-col
                             (token (car args)) (legacyp (fn-nntp-keywordp keyword "XOVER"))
                             (server (fn-nntp-xref-server env)))
+                 (:instance fn-nntp-over-current-served-cat-is-col
+                            (server (fn-nntp-xref-server env)))
+                 (:instance fn-nntp-over-msgid-served-cat-is-col
+                            (token (car args)) (server (fn-nntp-xref-server env)))
                  (:instance fn-nntp-parse-range-ok-has-natural-bounds (token (car args)))))))
 
 (defun fn-nntp-msgid-withdrawn-p-cat (index token v fn-arena fn-cat)
@@ -3050,324 +3123,300 @@
 ;;; verified with the lift (fn-nntp-command-pinned and above call it then);
 ;;; the host calls nothing in this book yet.
 
-(defun fn-nntp-archive-command-cat
-    (session archive index verdicts env keyword args v fn-arena fn-cat)
-  (declare (xargs :stobjs (fn-arena fn-cat)
-                  :guard (and (natp v)
-                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
-                  :verify-guards nil))
-  (let ((xref (fn-nntp-xref-reply-cat session archive index env keyword args v fn-arena fn-cat)))
-    (if xref xref
-      (cond
-       ((and (fn-nntp-keywordp keyword "LIST")
-             (fn-gidx-pinp index)
-             (consp args)
-             (fn-nntp-keyword-tokenp (car args))
-             (fn-nntp-keywordp (car args) "COUNTS"))
-        (fn-nntp-list-counts-command-cat session archive (fn-nntp-env-closed env)
-                                         (cdr args) v fn-cat))
-       ((and (or (fn-nntp-keywordp keyword "ARTICLE")
-                 (fn-nntp-keywordp keyword "HEAD")
-                 (fn-nntp-keywordp keyword "BODY")
-                 (fn-nntp-keywordp keyword "STAT"))
-             (consp args) (null (cdr args))
-             (fn-nntp-number-withdrawn-p-cat session index (car args) v fn-arena fn-cat))
-        (fn-nntp-withdrawn-reply session nil))
-       ((and (or (fn-nntp-keywordp keyword "ARTICLE")
-                 (fn-nntp-keywordp keyword "HEAD")
-                 (fn-nntp-keywordp keyword "BODY")
-                 (fn-nntp-keywordp keyword "STAT"))
-             (consp args) (null (cdr args))
-             (fn-nntp-message-id-tokenp (car args))
-             (fn-nntp-msgid-withdrawn-p-cat index (car args) v fn-arena fn-cat))
-        (fn-nntp-withdrawn-reply session t))
-       ;; PRF-243: the served compatibility arms, where the pinned dispatcher
-       ;; has them (books/nntp.lisp fn-nntp-archive-command-pinned); ARTICLE
-       ;; and HEAD find the article in the catalog (fn-rcompat-reply-cat).
-       ;; A one-element clause answers with its test's value: the reply is
-       ;; computed once.
-       ((fn-rcompat-reply-cat session archive index env keyword args v fn-arena fn-cat))
-       ((and (or (fn-nntp-keywordp keyword "ARTICLE")
-                 (fn-nntp-keywordp keyword "HEAD")
-                 (fn-nntp-keywordp keyword "BODY")
-                 (fn-nntp-keywordp keyword "STAT"))
-             (consp args) (null (cdr args))
-             (fn-nntp-message-id-tokenp (car args)))
-        (fn-nntp-msgid-retrieval-cat
-         session v
-         (cond ((fn-nntp-keywordp keyword "ARTICLE") :article)
-               ((fn-nntp-keywordp keyword "HEAD") :head)
-               ((fn-nntp-keywordp keyword "BODY") :body)
-               (t :stat))
-         (car args) fn-arena fn-cat))
-       ((and (or (fn-nntp-keywordp keyword "ARTICLE")
-                 (fn-nntp-keywordp keyword "HEAD")
-                 (fn-nntp-keywordp keyword "BODY")
-                 (fn-nntp-keywordp keyword "STAT"))
-             (consp args) (null (cdr args))
-             (fn-nntp-number-tokenp (car args)))
-        (fn-nntp-number-retrieval-cat
-         session v
-         (cond ((fn-nntp-keywordp keyword "ARTICLE") :article)
-               ((fn-nntp-keywordp keyword "HEAD") :head)
-               ((fn-nntp-keywordp keyword "BODY") :body)
-               (t :stat))
-         (car args) fn-arena fn-cat))
-       ((and (fn-nntp-keywordp keyword "LISTGROUP")
-             (fn-gidx-pinp index))
-        (fn-nntp-listgroup-command-cat session archive args v fn-cat))
-       ((and (or (fn-nntp-keywordp keyword "OVER")
-                 (fn-nntp-keywordp keyword "XOVER"))
-             (fn-gidx-pinp index)
-             (consp args) (null (cdr args))
-             (fn-nntp-range-okp (fn-nntp-parse-range (car args))))
-        (fn-nntp-over-range-ovw session v (car args) (fn-nntp-keywordp keyword "XOVER")
-                                fn-cat))
-       ((and (fn-nntp-keywordp keyword "HDR")
-             (consp args)
-             (fn-nntp-keywordp (car args) ":FN-VERIFIED"))
-        (fn-nntp-verdict-hdr-response-cat session verdicts args v fn-arena fn-cat))
-       ((and (fn-nntp-keywordp keyword "HDR")
-             (consp args)
-             (fn-nntp-keywordp (car args) ":FN-CONTROL"))
-        (fn-nntp-control-hdr-response-cat session archive index verdicts args v fn-arena fn-cat))
-       ((and (fn-nntp-keywordp keyword "HDR")
-             (consp args)
-             (fn-nntp-keywordp (car args) ":FN-ENROLLMENT"))
-        (fn-nntp-enrollment-hdr-response-cat session index verdicts args v fn-arena fn-cat))
-       ((fn-nntp-keywordp keyword "GROUP")
-        (if (and (consp args) (null (cdr args)) (fn-nntp-printable-tokenp (car args)))
-            (fn-nntp-group-result-cat session archive (fn-nntp-token-string (car args)) v fn-cat)
-          (fn-nntp-single session (fn-proto-text * :syntax))))
-       ((fn-nntp-keywordp keyword "HDR")
-        (fn-nntp-hdr-command-cat session args v nil fn-arena fn-cat))
-       ((fn-nntp-keywordp keyword "XHDR")
-        (fn-nntp-hdr-command-cat session args v t fn-arena fn-cat))
-       ((fn-nntp-keywordp keyword "XPAT")
-        (fn-nntp-xpat-response-cat session args v fn-arena fn-cat))
-       (t (fn-nntp-archive-command session archive env keyword args fn-arena))))))
+;;; LIST / LIST ACTIVE (audit R1, lane served-incremental-1): each group's
+;;; line from the catalog's group summary (fn-scat-group-summary: the live
+;;; table at the top view, fn-scv-summary below it), never the list model's
+;;; per-group walk (fn-nntp-group-summary: three walks and three N-cons
+;;; copies of the view's articles per group, O(G*N) per LIST).
 
-;;; KEYSTONE (the boundary theorem of this increment): under archive = the
-;;; view's articles, trie = its Message-ID index and a fresh number column,
-;;; the -cat dispatcher IS the pinned dispatcher.
+(defun fn-scat-active-line (archive group v fn-cat)
+  (declare (xargs :stobjs fn-cat :guard (natp v)))
+  (let ((summary (fn-scat-group-summary archive group v fn-cat)))
+    (fn-nntp-append-pieces
+     (list (fn-nntp-string-octets group) '(32)
+           (fn-nntp-decimal-field (fn-nntp-summary-high summary)) '(32)
+           (fn-nntp-decimal-field (fn-nntp-summary-low summary))
+           (fn-nntp-string-octets " y")))))
 
-;; The by-number line of the pinned dispatcher reaches fn-nntp-number-retrieval
-;; through the fallthrough (fn-nntp-archive-command, fn-nntp-retrieval).
-(local
- (defthm fn-scat-pinned-number-line-is-number-retrieval
-   (implies (and (or (fn-nntp-keywordp keyword "ARTICLE")
-                     (fn-nntp-keywordp keyword "HEAD")
-                     (fn-nntp-keywordp keyword "BODY")
-                     (fn-nntp-keywordp keyword "STAT"))
-                 (consp args) (null (cdr args))
-                 (fn-nntp-number-tokenp (car args)))
-            (equal (fn-nntp-archive-command session archive env keyword args fn-arena)
-                   (fn-nntp-number-retrieval
-                    session archive
-                    (cond ((fn-nntp-keywordp keyword "ARTICLE") :article)
-                          ((fn-nntp-keywordp keyword "HEAD") :head)
-                          ((fn-nntp-keywordp keyword "BODY") :body)
-                          (t :stat))
-                    (car args) fn-arena)))
-   :hints (("Goal" :in-theory (e/d (fn-nntp-archive-command fn-nntp-retrieval)
-                                   (fn-nntp-number-retrieval fn-nntp-msgid-retrieval
-                                    fn-nntp-current-retrieval fn-nntp-number-tokenp
-                                    fn-nntp-message-id-tokenp fn-nntp-upcase-keyword))))))
+(defun fn-scat-active-status-line (archive group closed v fn-cat)
+  (declare (xargs :stobjs fn-cat :guard (natp v)))
+  (let ((summary (fn-scat-group-summary archive group v fn-cat)))
+    (fn-nntp-append-pieces
+     (list (fn-nntp-string-octets group) '(32)
+           (fn-nntp-decimal-field (fn-nntp-summary-high summary)) '(32)
+           (fn-nntp-decimal-field (fn-nntp-summary-low summary)) '(32)
+           (fn-nntp-string-octets
+            (fn-nntp-closed-status (fn-nntp-string-octets group) closed))))))
 
-;; The three pinned bucket arms are the archive folds under the pin's
-;; correspondence (books/nntp-list-counts.lisp, group-bucket-invariants.lisp,
-;; nntp-range-indexed-invariants.lisp).
-(local
- (defthm fn-scat-pin-buckets-are-built
-   (implies (and (fn-gidx-pin-correspondencep index archive) (fn-gidx-pinp index))
-            (equal (fn-gidx-pin-buckets index)
-                   (fn-gidx-build (fn-state-articles archive))))
-   :hints (("Goal" :in-theory (enable fn-gidx-pin-correspondencep)))))
+; GEN: def-loop (a read-only stobj formal; :map has no stobj formals yet).
+(defun fn-scat-active-lines-loop (archive groups closed statusp v fn-cat acc)
+  (declare (xargs :stobjs fn-cat :guard (and (natp v) (true-listp acc)) :verify-guards nil))
+  (if (consp groups)
+      (fn-scat-active-lines-loop
+       archive (cdr groups) closed statusp v fn-cat
+       (cons (if statusp
+                 (fn-scat-active-status-line archive (car groups) closed v fn-cat)
+               (fn-scat-active-line archive (car groups) v fn-cat))
+             acc))
+    (revappend acc nil)))
+
+(defun fn-scat-active-lines (archive groups closed statusp v fn-cat)
+  (declare (xargs :verify-guards nil :stobjs fn-cat :guard (natp v)))
+  (mbe :logic
+       (if (consp groups)
+           (cons (if statusp
+                     (fn-scat-active-status-line archive (car groups) closed v fn-cat)
+                   (fn-scat-active-line archive (car groups) v fn-cat))
+                 (fn-scat-active-lines archive (cdr groups) closed statusp v fn-cat))
+         nil)
+       :exec (fn-scat-active-lines-loop archive groups closed statusp v fn-cat nil)))
 
 (local
- (defthm fn-scat-pin-trie-is-built
-   (implies (fn-midx-correspondencep (fn-gidx-pin-trie index) (fn-state-articles archive))
-            (equal (fn-gidx-pin-trie index)
-                   (fn-midx-build (fn-state-articles archive))))
-   :hints (("Goal" :in-theory (enable fn-midx-correspondencep)))))
+ (defthm fn-scat-active-lines-loop-is-revappend
+   (equal (fn-scat-active-lines-loop archive groups closed statusp v fn-cat acc)
+          (revappend acc (fn-scat-active-lines archive groups closed statusp v fn-cat)))
+   :hints (("Goal" :induct (fn-scat-active-lines-loop archive groups closed statusp v fn-cat acc)
+                   :in-theory (union-theories '(fn-scat-active-lines-loop fn-scat-active-lines
+                                                revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
 
-(local
- (defthm fn-scat-built-trie-corresponds
-   (fn-midx-correspondencep (fn-midx-build articles) articles)
-   :hints (("Goal" :in-theory (enable fn-midx-correspondencep)))))
+(verify-guards fn-scat-active-lines-loop)
 
-;; The pinned bucket arms of LISTGROUP and LIST COUNTS are the archive folds
-;; for every state (books/group-bucket-invariants.lisp and
-;; books/nntp-list-counts.lisp state them under fn-nntp-projectionp, of which
-;; their proofs read only fn-statep and string group names).
-(local
- (defthm fn-scat-built-listgroup-is-fold
-   (implies (fn-statep archive)
-            (equal (fn-gidx-listgroup-command
-                    session archive (fn-gidx-build (fn-state-articles archive)) args)
-                   (fn-nntp-listgroup-command session archive args)))
-   :hints (("Goal" :do-not-induct t
-            :use ((:instance fn-gidx-listgroup-result-of-build
-                             (group (fn-nntp-session-group session))
-                             (range (list :ok 1 2147483647)))
-                  (:instance fn-gidx-listgroup-result-of-build
-                             (group (fn-nntp-token-string (car args)))
-                             (range (list :ok 1 2147483647)))
-                  (:instance fn-gidx-listgroup-result-of-build
-                             (group (fn-nntp-token-string (car args)))
-                             (range (fn-nntp-parse-range (cadr args))))
-                  (:instance fn-gidx-parse-range-natp
-                             (token (cadr args))))
-            :in-theory
-            (e/d (fn-gidx-listgroup-command fn-nntp-listgroup-command
-                   fn-nntp-token-string)
-                 (fn-gidx-listgroup-result fn-nntp-listgroup-result
-                  fn-nntp-parse-range fn-nntp-printable-tokenp))))))
+(verify-guards fn-scat-active-lines
+  :hints (("Goal" :in-theory (union-theories '(revappend fn-scat-active-lines)
+                                             (union-theories (theory 'minimal-theory)
+                                                             (executable-counterpart-theory :here)))
+                  :use ((:instance fn-scat-active-lines-loop-is-revappend (acc nil))))))
 
-(local
- (defthm fn-scat-gidx-counts-lines-of-build
-   (implies (and (fn-statep archive)
-                 (fn-string-listp groups))
-            (equal (fn-gidx-counts-lines
-                    archive (fn-gidx-build (fn-state-articles archive)) groups closed)
-                   (fn-nntp-counts-lines archive groups closed)))
-   :hints (("Goal" :induct (fn-nntp-counts-lines archive groups closed)
-            :in-theory (e/d (fn-gidx-counts-lines fn-nntp-counts-lines
-                             fn-gidx-counts-line fn-nntp-counts-line fn-string-listp)
-                            (fn-gidx-build fn-statep fn-gidx-group-summary
-                             fn-nntp-group-summary fn-nntp-counts-summary-line)))
-           ("Subgoal *1/1" :use ((:instance fn-gidx-group-summary-of-build
-                                  (group (car groups))))))))
+(defthm fn-scat-active-lines-is-active-lines
+  (implies (and (fn-cnx-freshp fn-cat) (not (member-equal nil groups))
+                (equal (fn-state-articles archive) (fn-cat-view-articles v fn-arena fn-cat)))
+           (equal (fn-scat-active-lines archive groups closed nil v fn-cat)
+                  (fn-nntp-active-lines archive groups)))
+  :hints (("Goal" :induct (fn-nntp-active-lines archive groups)
+           :in-theory (e/d (fn-nntp-active-lines fn-nntp-active-line fn-scat-active-line)
+                           (fn-scat-group-summary fn-nntp-group-summary
+                            fn-cat-view-articles fn-cnx-freshp fn-nntp-append-pieces
+                            fn-nntp-decimal-field fn-nntp-summary-high fn-nntp-summary-low)))))
 
-(local
- (defthm fn-scat-gidx-list-counts-is-fold
-   (implies (and (fn-statep archive)
-                 (equal buckets (fn-gidx-build (fn-state-articles archive))))
-            (equal (fn-gidx-list-counts-command session archive buckets closed args)
-                   (fn-nntp-list-counts-command session archive closed args)))
-   :hints (("Goal" :do-not-induct t
-            :in-theory (e/d (fn-gidx-list-counts-command
-                             fn-nntp-list-counts-command fn-nntp-list-counts)
-                            (fn-gidx-build fn-statep
-                             fn-gidx-counts-lines fn-nntp-counts-lines
-                             fn-nntp-filter-groups-by-wildmat
-                             fn-wildmat-parse fn-nntp-multi fn-nntp-single))))))
+(defthm fn-scat-active-lines-is-active-status-lines
+  (implies (and (fn-cnx-freshp fn-cat) (not (member-equal nil groups))
+                (equal (fn-state-articles archive) (fn-cat-view-articles v fn-arena fn-cat)))
+           (equal (fn-scat-active-lines archive groups closed t v fn-cat)
+                  (fn-nntp-active-status-lines archive groups closed)))
+  :hints (("Goal" :induct (fn-nntp-active-status-lines archive groups closed)
+           :in-theory (e/d (fn-nntp-active-status-lines fn-nntp-active-status-line
+                            fn-scat-active-status-line)
+                           (fn-scat-group-summary fn-nntp-group-summary
+                            fn-cat-view-articles fn-cnx-freshp fn-nntp-append-pieces
+                            fn-nntp-decimal-field fn-nntp-summary-high fn-nntp-summary-low
+                            fn-nntp-closed-status)))))
 
-(local
- (defthm fn-scat-statep-article-listp
-   (implies (fn-statep archive)
-            (fn-article-listp (fn-state-groups archive) (fn-state-articles archive)))
-   :hints (("Goal" :in-theory (enable fn-statep)))))
+;; The LIST forms this arm answers: LIST and LIST ACTIVE [wildmat].
+(defun fn-scat-list-active-formp (args)
+  (declare (xargs :guard t))
+  (or (null args)
+      (and (consp args)
+           (fn-nntp-keyword-tokenp (car args))
+           (fn-nntp-keywordp (car args) "ACTIVE"))))
 
-; The dispatcher agrees with the pinned reference modulo the OVER cursor:
-; the results' sessions are equal and their effects are equal once both are
-; expanded (fn-ovw-expand; the OVER/XOVER range arm is the one place the two
-; differ, by fn-nntp-over-range-ovw-expands-to-over-range-cat).  Proved once
-; as the equality of the expanded results, then read component by component.
-(defun fn-ovw-expand-result (result fn-arena fn-cat)
-  (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
-  (cons (car result) (fn-ovw-expand (cdr result) fn-arena fn-cat)))
+(defun fn-nntp-list-active-cat (session archive closed args v fn-cat)
+  (declare (xargs :stobjs fn-cat :guard (natp v)))
+  (let ((arguments (if (consp args) (cdr args) nil))
+        (statusp (consp closed)))
+    (if (null arguments)
+        (fn-nntp-multi session (fn-proto-text "LIST" :active)
+                       (fn-scat-active-lines archive (fn-state-groups archive)
+                                             closed statusp v fn-cat))
+      (if (and (consp arguments) (null (cdr arguments)))
+          (let ((parsed (fn-wildmat-parse (car arguments))))
+            (if (fn-wildmat-result-okp parsed)
+                (fn-nntp-multi session (fn-proto-text "LIST" :active)
+                               (fn-scat-active-lines
+                                archive
+                                (fn-nntp-filter-groups-by-wildmat
+                                 (fn-wildmat-result-value parsed) (fn-state-groups archive))
+                                closed statusp v fn-cat))
+              (fn-nntp-single session (fn-proto-text * :syntax))))
+        (fn-nntp-single session (fn-proto-text * :syntax))))))
 
-(local
- (defthm fn-nntp-archive-command-cat-is-pinned-expanded
-  (implies (and (equal (fn-state-articles archive)
-                       (fn-cat-view-articles v fn-arena fn-cat))
-                (fn-statep archive)
-                (fn-gidx-pin-correspondencep index archive)
-                (fn-midx-correspondencep (fn-gidx-pin-trie index)
-                                         (fn-state-articles archive))
-                (fn-cnx-freshp fn-cat)
-                (fn-scol-okp fn-arena fn-cat))
-           (equal (fn-ovw-expand-result
-                   (fn-nntp-archive-command-cat
-                    session archive index verdicts env keyword args v fn-arena fn-cat)
-                   fn-arena fn-cat)
-                  (fn-ovw-expand-result
-                   (fn-nntp-archive-command-pinned
-                    session archive index verdicts env keyword args fn-arena)
-                   fn-arena fn-cat)))
+(defthm fn-nntp-list-active-cat-is-list-command
+  (implies (and (fn-scat-list-active-formp args)
+                (fn-cnx-freshp fn-cat) (fn-statep archive)
+                (equal (fn-state-articles archive) (fn-cat-view-articles v fn-arena fn-cat)))
+           (equal (fn-nntp-list-active-cat session archive (fn-nntp-env-closed env) args v fn-cat)
+                  (fn-nntp-list-command session archive env args)))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-nntp-archive-command-cat fn-nntp-archive-command-pinned
-                            fn-ovw-expand-result fn-nntp-over-range-ovw-expands-to-over-range-cat
-                            fn-nntp-archive-command fn-nntp-list-command
-                            fn-nntp-hdr-response fn-nntp-xhdr-response
-                            fn-nntp-over-response fn-nntp-xover-response
-                            fn-nntp-retrieval)
-                           (fn-rcompat-reply fn-nntp-xref-reply fn-gidx-list-counts-command
-                            fn-rcompat-reply-cat fn-nntp-number-withdrawn-p-cat
-                            fn-nntp-number-withdrawn-p fn-nntp-msgid-withdrawn-p
-                            fn-nntp-withdrawn-reply fn-gidx-listgroup-command
-                            fn-nntp-over-range-indexed fn-nntp-verdict-hdr-response
-                            fn-nntp-verdict-hdr-response-cat
-                            fn-nntp-control-hdr-response
-                            fn-nntp-enrollment-hdr-response
-                            fn-nntp-upcase-keyword
-                            fn-nntp-keyword-tokenp fn-gidx-pinp fn-gidx-pin-trie
-                            fn-gidx-pin-buckets fn-nntp-message-id-tokenp
-                            fn-nntp-number-tokenp fn-nntp-range-okp
-                            fn-nntp-parse-range fn-nntp-msgid-retrieval-cat
-                            fn-nntp-number-retrieval-cat
-                            fn-nntp-msgid-retrieval-indexed
-                            fn-nntp-msgid-retrieval fn-nntp-number-retrieval
-                            fn-cat-view-articles fn-midx-correspondencep
-                            fn-gidx-pin-correspondencep
-                            fn-nntp-list-counts-command-cat fn-nntp-list-counts-command
-                            fn-nntp-listgroup-command-cat fn-nntp-listgroup-command
-                            fn-nntp-over-range-cat fn-nntp-over-range fn-nntp-xover-range
-                            fn-nntp-group-result-cat fn-nntp-group-result
-                            fn-nntp-hdr-command-cat fn-nntp-hdr-command
-                            fn-nntp-xpat-response-cat fn-nntp-xpat-response
-                            fn-nntp-current-retrieval fn-nntp-over-current fn-nntp-over-msgid
-                            fn-nntp-list-response fn-nntp-list-active-times
-                            fn-nntp-list-newsgroups-described fn-nntp-list-motd
-                            fn-nntp-printable-tokenp fn-nntp-token-string
-                            fn-nntp-single fn-gidx-build fn-midx-build fn-statep
-                            fn-nntp-over-range-indexed-is-walk
-                            fn-nntp-xref-reply-cat fn-nntp-msgid-withdrawn-p-cat
-                            fn-nntp-xref-reply-cat-is-col fn-nntp-msgid-withdrawn-p-cat-is-trie
-                            fn-nntp-control-hdr-response-cat fn-nntp-enrollment-hdr-response-cat
-                            fn-nntp-over-range-ovw fn-ovw-expand fn-ovw-start fn-ovw-cursor-effect
-                            fn-nntp-multi fn-nntp-multi-octets fn-nntp-reply-effect
-                            fn-nntp-make-result))
-           :use ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
-                 (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
-                 (:instance fn-nntp-control-hdr-response-cat-is-pinned)
-                 (:instance fn-nntp-enrollment-hdr-response-cat-is-pinned)
-                 (:instance fn-scat-statep-article-listp)
-                 (:instance fn-scat-pin-trie-is-built)
-                 (:instance fn-scat-pin-buckets-are-built))))))
+           :in-theory (e/d (fn-nntp-list-command fn-nntp-list-status-response
+                            fn-nntp-list-response fn-nntp-list-active-status
+                            fn-nntp-list-active fn-nntp-list-active-or-newsgroups
+                            fn-nntp-list-filtered-response)
+                           (fn-scat-active-lines fn-nntp-active-lines
+                            fn-nntp-active-status-lines
+                            fn-cat-view-articles fn-cnx-freshp fn-statep
+                            fn-wildmat-parse fn-nntp-filter-groups-by-wildmat
+                            fn-nntp-multi fn-nntp-single fn-nntp-list-active-times
+                            fn-nntp-list-counts-command fn-nntp-list-newsgroups-described
+                            fn-nntp-list-motd fn-nntp-list-unmaintained-response
+                            fn-nntp-list-newsgroups)))))
 
-(defthm fn-nntp-archive-command-cat-is-pinned
-  (implies (and (equal (fn-state-articles archive)
-                       (fn-cat-view-articles v fn-arena fn-cat))
-                (fn-statep archive)
-                (fn-gidx-pin-correspondencep index archive)
-                (fn-midx-correspondencep (fn-gidx-pin-trie index)
-                                         (fn-state-articles archive))
-                (fn-cnx-freshp fn-cat)
-                (fn-scol-okp fn-arena fn-cat))
-           (and (equal (fn-nntp-result-session
-                        (fn-nntp-archive-command-cat
-                         session archive index verdicts env keyword args v fn-arena fn-cat))
-                       (fn-nntp-result-session
-                        (fn-nntp-archive-command-pinned
-                         session archive index verdicts env keyword args fn-arena)))
-                (equal (fn-ovw-expand
-                        (fn-nntp-result-effects
-                         (fn-nntp-archive-command-cat
-                          session archive index verdicts env keyword args v fn-arena fn-cat))
-                        fn-arena fn-cat)
-                       (fn-ovw-expand
-                        (fn-nntp-result-effects
-                         (fn-nntp-archive-command-pinned
-                          session archive index verdicts env keyword args fn-arena))
-                        fn-arena fn-cat))))
-  :hints (("Goal" :use ((:instance fn-nntp-archive-command-cat-is-pinned-expanded))
-           :in-theory (union-theories '(fn-ovw-expand-result fn-nntp-result-session
-                                        fn-nntp-result-effects cons-equal)
-                                      (theory 'minimal-theory)))))
+(in-theory (disable fn-nntp-list-active-cat))
 
-(in-theory (disable fn-ovw-expand-result))
+;;; NEXT / LAST (audit R2, lane served-incremental-1): the neighbour of the
+;;; current number served at V, probed number by number up (down) from the
+;;; current one through the number table (fn-scv-first-p / fn-scv-last-p:
+;;; one probe and one visibility test a number, nothing consed), never the
+;;; list model's copy of every article (fn-nntp-group-next-number's
+;;; fn-ag-rev-onto) plus two walks.  The work is the gap to the neighbour.
+
+;; The list model's neighbours are the ends of a range of available numbers.
+(defthm fn-scat-group-next-number-is-car
+  (implies (natp current)
+           (equal (fn-nntp-group-next-number group current articles)
+                  (let ((l (fn-nntp-group-range-numbers
+                            group (+ 1 current) *fn-nntp-max-article-number* articles)))
+                    (if (consp l) (car l) 0))))
+  :hints (("Goal" :induct (fn-nntp-group-next-number group current articles)
+           :in-theory (enable fn-nntp-group-next-number fn-nntp-group-range-numbers))))
+
+(defthm fn-scat-group-last-number-is-last
+  (implies (natp current)
+           (equal (fn-nntp-group-last-number group current articles)
+                  (fn-scat-last-number
+                   (fn-nntp-group-range-numbers group 1 (- current 1) articles))))
+  :hints (("Goal" :induct (fn-nntp-group-last-number group current articles)
+           :in-theory (enable fn-nntp-group-last-number fn-nntp-group-range-numbers))))
+
+(local
+ (defthm fn-scat-range-numbers-from-at-view
+   (implies (and (natp v) (natp k) (natp top))
+            (equal (fn-scat-range-numbers group k top v fn-cat)
+                   (fn-scat-view-list group k (min top (fn-cat-group-high group fn-cat))
+                                      v fn-cat)))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-cnx-view-range)
+                            (fn-scat-view-list fn-cnx-range-aux fn-scat-range-keep))))))
+
+(defun fn-scat-next-number (group current v fn-cat)
+  (declare (xargs :stobjs fn-cat :guard (and (natp current) (natp v))))
+  (fn-scv-first-p group (+ 1 current) (nfix (- (fn-cat-group-next group fn-cat) 1)) v fn-cat))
+
+(defun fn-scat-previous-number (group current v fn-cat)
+  (declare (xargs :stobjs fn-cat :guard (and (natp current) (natp v))))
+  (if (posp current)
+      (fn-scv-last-p group (min (- current 1) (nfix (- (fn-cat-group-next group fn-cat) 1)))
+                     v fn-cat)
+    0))
+
+(defthm fn-scat-next-number-is-next-number
+  (implies (and (fn-cnx-freshp fn-cat) group (natp current) (natp v))
+           (equal (fn-scat-next-number group current v fn-cat)
+                  (fn-nntp-group-next-number group current
+                                             (fn-cat-view-articles v fn-arena fn-cat))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-scat-next-number)
+                           (fn-scv-first-p fn-scat-view-list fn-scat-range-numbers
+                            fn-nntp-group-range-numbers fn-cat-view-articles fn-cnx-freshp
+                            fn-scat-range-numbers-is-group-range-numbers))
+           :use ((:instance fn-scat-range-numbers-is-group-range-numbers
+                            (low (+ 1 current)) (high *fn-nntp-max-article-number*))
+                 (:instance fn-scat-range-numbers-from-at-view
+                            (k (+ 1 current)) (top *fn-nntp-max-article-number*))
+                 (:instance fn-scat-view-list-clamp (k (+ 1 current))
+                            (top (fn-cat-group-high group fn-cat)))
+                 (:instance fn-scat-view-list-car (k (+ 1 current))
+                            (top (fn-cat-group-high group fn-cat)))))))
+
+(local
+ (defthm fn-scat-range-numbers-below-one
+   (implies (and (rationalp high) (< high 1))
+            (equal (fn-nntp-group-range-numbers group low high articles) nil))
+   :hints (("Goal" :induct (fn-nntp-group-range-numbers group low high articles)
+            :in-theory (enable fn-nntp-group-range-numbers)))))
+
+(defthm fn-scat-previous-number-is-last-number
+  (implies (and (fn-cnx-freshp fn-cat) group (natp current) (natp v))
+           (equal (fn-scat-previous-number group current v fn-cat)
+                  (fn-nntp-group-last-number group current
+                                             (fn-cat-view-articles v fn-arena fn-cat))))
+  :hints (("Goal" :do-not-induct t
+           :cases ((posp current))
+           :in-theory (e/d (fn-scat-previous-number)
+                           (fn-scv-last-p fn-scat-view-list fn-scat-range-numbers
+                            fn-nntp-group-range-numbers fn-cat-view-articles fn-cnx-freshp
+                            fn-scat-range-numbers-is-group-range-numbers))
+           :use ((:instance fn-scat-range-numbers-is-group-range-numbers
+                            (low 1) (high (- current 1)))
+                 (:instance fn-scat-range-numbers-from-at-view
+                            (k 1) (top (- current 1)))
+                 (:instance fn-scat-view-list-last
+                            (top (min (- current 1) (fn-cat-group-high group fn-cat))))))
+))
+
+(in-theory (disable fn-scat-next-number fn-scat-previous-number))
+
+;; A current number that is not a natural (no session the reader machine
+;; builds carries one) is answered by the list model unchanged.
+(defun fn-nntp-next-or-last-cat (session archive direction v fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard (fn-scat-guard) :verify-guards nil))
+  (let ((group (fn-nntp-session-group session))
+        (current (fn-nntp-session-current session)))
+    (if (and group (natp current) (natp v))
+        (let ((number (if (equal direction :next)
+                          (fn-scat-next-number group current v fn-cat)
+                        (fn-scat-previous-number group current v fn-cat))))
+          (if (posp number)
+              (fn-nntp-article-response
+               session (fn-scat-available-article group number v fn-arena fn-cat)
+               number :stat t group fn-arena)
+            (if (equal direction :next)
+                (fn-nntp-single session (fn-proto-text "NEXT" :no-next))
+              (fn-nntp-single session (fn-proto-text "LAST" :no-previous)))))
+      (fn-nntp-next-or-last session archive direction fn-arena))))
+
+(defthm fn-nntp-next-or-last-cat-is-next-or-last
+  (implies (and (fn-cnx-freshp fn-cat)
+                (equal (fn-state-articles archive) (fn-cat-view-articles v fn-arena fn-cat)))
+           (equal (fn-nntp-next-or-last-cat session archive direction v fn-arena fn-cat)
+                  (fn-nntp-next-or-last session archive direction fn-arena)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-nntp-next-or-last)
+                           (fn-scat-available-article fn-nntp-available-article
+                            fn-nntp-group-next-number fn-nntp-group-last-number
+                            fn-cat-view-articles fn-cnx-freshp fn-nntp-article-response
+                            fn-nntp-single)))))
+
+;;; The current article of ARTICLE/HEAD/BODY/STAT with no argument (audit
+;;; R4): the number table, as fn-rcompat-retrieval-cat reads it for the Xref
+;;; form, never the walk of fn-nntp-current-retrieval.
+(defun fn-nntp-current-retrieval-cat (session kind v fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard (fn-scat-guard) :verify-guards nil))
+  (let ((group (fn-nntp-session-group session))
+        (current (fn-nntp-session-current session)))
+    (if (null group)
+        (fn-nntp-single session (fn-proto-text * :no-group-selected))
+      (if (null current)
+          (fn-nntp-single session (fn-proto-text * :no-current))
+        (let ((article (fn-scat-available-article group current v fn-arena fn-cat)))
+          (if (consp article)
+              (fn-nntp-article-response session article current kind t group fn-arena)
+            (fn-nntp-single session (fn-proto-text * :no-current))))))))
+
+(defthm fn-nntp-current-retrieval-cat-is-current-retrieval
+  (implies (and (fn-cnx-freshp fn-cat)
+                (equal (fn-state-articles archive) (fn-cat-view-articles v fn-arena fn-cat)))
+           (equal (fn-nntp-current-retrieval-cat session kind v fn-arena fn-cat)
+                  (fn-nntp-current-retrieval session archive kind fn-arena)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-nntp-current-retrieval)
+                           (fn-scat-available-article fn-nntp-available-article
+                            fn-cat-view-articles fn-cnx-freshp fn-nntp-article-response
+                            fn-nntp-single)))))
+
+(verify-guards fn-nntp-next-or-last-cat)
+(verify-guards fn-nntp-current-retrieval-cat)
+(in-theory (disable fn-nntp-next-or-last-cat fn-nntp-current-retrieval-cat))
 
 ; Guards of the arms the lift executes (books/served-catalog-chain.lisp
 ; fn-scr-command calls the dispatcher): the whole -cat path is guard-verified.
@@ -3390,9 +3439,6 @@
 (verify-guards fn-rcompat-hdr-cat)
 (verify-guards fn-rcompat-reply-cat)
 (verify-guards fn-nntp-number-withdrawn-p-cat)
-(verify-guards fn-nntp-archive-command-cat
-  :hints (("Goal" :in-theory (enable (tau-system)))))
-
 ;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
 ;; Each is tried in includers' proofs and pays for its frames in
 ;; almost none (planning/evidence/rule-cost-*.json has the counts;

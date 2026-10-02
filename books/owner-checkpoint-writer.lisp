@@ -953,7 +953,10 @@
 ; a loop that runs out of fuel before K = 4 says so (:fuel), so that :ok
 ; means the four tables were written.  (mv VERDICT OCTETS fn-octets)
 (defun fn-ockp-run (setup pst b bytes seg s segment-bound file-bound fuel fn-octets)
-  (declare (xargs :stobjs fn-octets :measure (nfix fuel) :verify-guards nil))
+  (declare (xargs :stobjs fn-octets :measure (nfix fuel)
+                  :guard (and (fn-ockp-statep pst fn-octets) (natp b) (natp bytes) (natp seg)
+                              (natp s) (natp fuel))
+                  :verify-guards nil))
   (if (fn-ockp-donep pst)
       (mv :ok nil fn-octets)
     (if (zp fuel)

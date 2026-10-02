@@ -496,11 +496,11 @@
                                  (car (fn-own-queue (fn-own-enqueue *opt-0* *opt-pk-sub*))))))))
 (assert-event (opt-pk-concl *opt-0*))
 ; Removed (null queue): another submission queued first is what the take installs.
-(defconst *opt-pk-q* (fn-own-enqueue *opt-0* (fn-own-sub-make 5 3 nil :witness)))
+(defconst *opt-pk-q* (fn-own-enqueue *opt-0* (fn-own-sub-make 5 3 nil :witness nil)))
 (assert-event (equal (opt-pk-hyps *opt-pk-q*) '(t nil t t)))
 (assert-event (not (opt-pk-concl *opt-pk-q*)))
 ; Removed (null inflight), a corrupted-state witness: nothing is taken.
-(defconst *opt-pk-i* (opt-o *opt-0* 'same 'same (fn-own-sub-make 5 3 0 :witness)))
+(defconst *opt-pk-i* (opt-o *opt-0* 'same 'same (fn-own-sub-make 5 3 0 :witness nil)))
 (assert-event (equal (opt-pk-hyps *opt-pk-i*) '(nil t t t)))
 (assert-event (not (opt-pk-concl *opt-pk-i*)))
 ; Removed (null pending), a corrupted-state witness: nothing is taken.

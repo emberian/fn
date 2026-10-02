@@ -411,16 +411,12 @@ def render_registry(decls: list[dict], reading: dict) -> str:
     return json.dumps(doc, indent=2, sort_keys=False) + "\n"
 
 
-THEOREM_FORM = re.compile(r"^\s*\(defthmd?\s+([^\s()]+)", re.M)
-
-
 def tree_theorems(root: Path = ROOT) -> set[str]:
-    """The names every non-local defthm/defthmd of the tree's books defines
-    (a `(local (defthm' line starts with `(local', so it is not one)."""
+    """Non-local theorems, including the ledger's shared generator mirrors."""
     found: set[str] = set()
     for path in sorted((root / "books").glob("*.lisp")):
-        found.update(m.group(1).lower()
-                     for m in THEOREM_FORM.finditer(path.read_text(encoding="utf-8")))
+        book = ledger.analyze_book(path, path.relative_to(root).as_posix())
+        found.update(theorem.name for theorem in book.theorems if not theorem.local)
     return found | carried_generated(carried_rows(root))
 
 

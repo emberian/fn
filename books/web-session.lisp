@@ -769,42 +769,10 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-wss-drop-loop (token sessions acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp sessions)
-      (if (equal (fn-wss-s-token (car sessions)) token)
-          (fn-wss-drop-loop token (cdr sessions) acc)
-        (fn-wss-drop-loop token (cdr sessions) (cons (car sessions) acc)))
-    (revappend acc nil)))
-
-(defun fn-wss-drop (token sessions)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp sessions)
-           (if (equal (fn-wss-s-token (car sessions)) token)
-               (fn-wss-drop token (cdr sessions))
-             (cons (car sessions) (fn-wss-drop token (cdr sessions))))
-         nil)
-       :exec (fn-wss-drop-loop token sessions nil)))
-
-(local
- (defthm fn-wss-drop-loop-is-revappend
-   (equal (fn-wss-drop-loop token sessions acc)
-          (revappend acc (fn-wss-drop token sessions)))
-   :hints (("Goal" :induct (fn-wss-drop-loop token sessions acc)
-                   :in-theory (union-theories '(fn-wss-drop-loop fn-wss-drop revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-wss-drop-loop)
-
-(verify-guards fn-wss-drop
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-wss-drop)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-wss-drop-loop-is-revappend (acc nil))))))
+(def-loop fn-wss-drop (token sessions)
+  :shape :map :over sessions :keep-order :skip-first
+  :keep (equal (fn-wss-s-token (car sessions)) token)
+  :body (car sessions))
 
 
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
@@ -861,43 +829,10 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-wss-expired-loop (sessions now idle acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp sessions)
-      (if (fn-wss-livep (car sessions) now idle)
-          (fn-wss-expired-loop (cdr sessions) now idle acc)
-        (fn-wss-expired-loop (cdr sessions) now idle (cons (car sessions) acc)))
-    (revappend acc nil)))
-
-(defun fn-wss-expired (sessions now idle)
-  ; The sessions past their idle time.
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp sessions)
-           (if (fn-wss-livep (car sessions) now idle)
-               (fn-wss-expired (cdr sessions) now idle)
-             (cons (car sessions) (fn-wss-expired (cdr sessions) now idle)))
-         nil)
-       :exec (fn-wss-expired-loop sessions now idle nil)))
-
-(local
- (defthm fn-wss-expired-loop-is-revappend
-   (equal (fn-wss-expired-loop sessions now idle acc)
-          (revappend acc (fn-wss-expired sessions now idle)))
-   :hints (("Goal" :induct (fn-wss-expired-loop sessions now idle acc)
-                   :in-theory (union-theories '(fn-wss-expired-loop fn-wss-expired revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-wss-expired-loop)
-
-(verify-guards fn-wss-expired
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-wss-expired)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-wss-expired-loop-is-revappend (acc nil))))))
+(def-loop fn-wss-expired (sessions now idle)
+  :shape :map :keep-order :skip-first
+  :keep (fn-wss-livep (car sessions) now idle)
+  :body (car sessions))
 
 
 (defun fn-wss-live (sessions now idle)
