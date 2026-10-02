@@ -947,6 +947,9 @@
 (definterface fn-store-log-initial-extent
   :class ::ideal)
 
+(definterface fn-store-log-partial-segment-verdict
+  :class ::ideal)
+
 (definterface fn-store-log-next-txid-join
   :class ::program)
 

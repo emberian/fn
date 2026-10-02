@@ -226,6 +226,47 @@ class NativeInitializerFidelityTests(unittest.TestCase):
         self.assertIn(b"recovered transactions=0 articles=0", reopened.stdout)
         self.assertGreater((store / "journal" / "000001.log").stat().st_size, 0)
 
+    def test_a_partly_zero_filled_segment_completes_as_a_rotation(self):
+        # codex r72 F1: a segment at a length that is not whole units with
+        # every octet zero is an interrupted rotation (or init) the writable
+        # open completes.
+        store = self.base / "killed-segment-partial-fill"
+        killed = self.invoke(store, "init", "init-segment-created:kill")
+        self.assertEqual(killed.returncode, -9, killed.stderr)
+        segment = store / "journal" / "000001.log"
+        segment.write_bytes(bytes(70000))
+        reopened = self.invoke(store, "recover")
+        self.assertEqual(reopened.returncode, EXIT_OK, reopened.stderr)
+        self.assertIn(b"recovered transactions=0 articles=0", reopened.stdout)
+
+    def test_committed_segment_at_a_misaligned_length_is_refused_untouched(self):
+        # codex r72 F1: a committed segment with one stray trailing octet is
+        # NOT an interrupted rotation.  Before the fix the writable open
+        # preallocated it from offset 0 (on a host without fallocate: zeros
+        # over the first MiB of acknowledged records) before any scan.  Now
+        # it is refused by name and not one octet is written.
+        if not executable(DEVELOPER):
+            self.skipTest("store post is a developer-image verb")
+        store = self.base / "misaligned-committed"
+        payload = self.base / "misaligned-payload"
+        payload.write_bytes(b"misaligned segment payload\r\n")
+        made = run([DEVELOPER, "--fn", "store", store, "init", "fn.letters"], timeout=None,
+                   env=environment({}))
+        self.assertEqual(made.returncode, EXIT_OK, made.stderr)
+        posted = run([DEVELOPER, "--fn", "store", store, "post", "<misaligned@example.invalid>",
+                      payload, "-", "-", "fn.letters"], timeout=None, env=environment({}))
+        self.assertEqual(posted.returncode, EXIT_OK, posted.stderr)
+        segment = store / "journal" / "000001.log"
+        with open(segment, "ab") as f:
+            f.write(b"\x00")
+        before = segment.read_bytes()
+        self.assertNotEqual(before.strip(b"\x00"), b"")
+        for command in ("recover", "status"):
+            result = self.invoke(store, command)
+            self.assertEqual(result.returncode, EXIT_REFUSED, (command, result.stderr))
+            self.assertIn(b"reason=segment-misaligned", result.stderr)
+            self.assertEqual(segment.read_bytes(), before, command)
+
     def test_sigkill_after_the_segment_recovers_in_a_new_process(self):
         # Lane log-2: init's last cut is the fenced segment; the store is
         # complete and a new process recovers it empty.

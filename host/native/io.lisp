@@ -7327,23 +7327,54 @@ go (the same book's fn-lgob-two-barriers-without-* counterexamples)."
                               (fnn-nat (fnn-core 'fn-lgs-listing-bound))
                               "log segment"))
 
+(defun fnn-log-first-nonzero (path)
+  "The offset of the first nonzero octet of the file at PATH, or NIL when
+every octet is zero: one bounded buffer, read to the first nonzero chunk."
+  (let ((fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+)))
+        (buffer (fnn-make-octets 65536)) (at 0))
+    (unwind-protect
+         (loop
+           (let ((got (fnn-read-fd fd buffer)))
+             (when (zerop got) (return nil))
+             (let ((i (position-if-not #'zerop buffer :end got)))
+               (when i (return (+ at i))))
+             (incf at got)))
+      (fnn-close fd))))
+
 (defun fnn-log-complete-rotation (store path)
   "The active segment as an interrupted rotation left it (created, not yet
 preallocated to whole units): a writable open completes the rotation's
 steps -- preallocate to ACL2's initial extent, fence the file, fence
 journal/ -- before it scans; a reader refuses it.  A segment the rotation
-created holds no entry (every append follows its rotate-durable)."
-  (let ((size (sb-posix:stat-size (fnn-check-regular path)))
-        (unit (fnn-store-log-unit)))
-    (unless (fnn-core 'fn-lg-extent-okp size unit)
-      (unless (fnn-store-writable store)
-        (fnn-refuse "log segment ~a is an interrupted rotation: open it writable (recover)" path))
-      (let ((fd (fnn-open path (logior sb-posix:o-rdwr +fnn-o-nofollow+))))
-        (unwind-protect
-             (progn (fnn-log-preallocate fd (fnn-nat (fnn-core 'fn-store-log-initial-extent)))
-                    (fnn-fsync-file fd))
-          (fnn-close fd)))
-      (fnn-fsync-dir (fnn-journal-dir store)))))
+created holds no entry (every append follows its rotate-durable), so ACL2
+admits the completion only when no octet of the segment is nonzero
+(host/store-host.lisp fn-store-log-partial-segment-verdict, codex r72 F1):
+any other segment at a length that is not whole units is refused by name
+with nothing written (on a host without fallocate the preallocation writes
+zeros from offset 0, which over committed records would destroy them)."
+  (let* ((size (sb-posix:stat-size (fnn-check-regular path)))
+         (unit (fnn-store-log-unit))
+         (verdict (if (fnn-core 'fn-lg-extent-okp size unit)
+                      :whole
+                      (fnn-core 'fn-store-log-partial-segment-verdict size unit
+                                (fnn-log-first-nonzero path)))))
+    (case verdict
+      (:whole nil)
+      (:complete-rotation
+       (unless (fnn-store-writable store)
+         (fnn-refuse "log segment ~a is an interrupted rotation: open it writable (recover)" path))
+       (let ((fd (fnn-open path (logior sb-posix:o-rdwr +fnn-o-nofollow+))))
+         (unwind-protect
+              (progn (fnn-log-preallocate fd (fnn-nat (fnn-core 'fn-store-log-initial-extent)))
+                     (fnn-fsync-file fd))
+           (fnn-close fd)))
+       (fnn-fsync-dir (fnn-journal-dir store)))
+      (t
+       (unless (equal verdict '(:refused :segment-misaligned))
+         (fnn-fault "ACL2 returned a malformed partial-segment verdict"))
+       (error 'fnn-store-open-refusal
+              :message (format nil "open refused reason=segment-misaligned: log segment ~a holds data at ~d octets, not whole ~d-octet units; nothing was written (restore it, or quarantine it by hand)"
+                               path size unit))))))
 
 (defun fnn-log-drop (store indices)
   "P-DROP (design 2026-09-27 storage-log section 6): unlink each covered

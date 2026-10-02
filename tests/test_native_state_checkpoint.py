@@ -658,6 +658,33 @@ class StateCheckpointCutTests(StateCheckpointFixture):
         self.assertEqual(self.open_line(), "open=checkpoint:5 suffix=0")
         return line
 
+    def test_a_staged_file_that_does_not_read_back_keeps_the_old_and_the_log(self, entry="store"):
+        """Sweep 2026-10-03 S045: the staged checkpoint is read back from
+        disk and verified (books/store-checkpoint-verify.lisp) after its
+        fence and before the rename.  One bit of the stage flipped in
+        between (FN_NATIVE_STATE_CHECKPOINT_READBACK_FLIP, at an offset
+        inside the new file's frames: past the old file's length) makes the
+        publication a known failure: exit 1, the stage removed, the old
+        checkpoint byte for byte, no log segment dropped, and the same
+        reconstructed state."""
+        self.init_with_checkpoint_at_three(entry)
+        old = self.digest()
+        expected = self.observation()
+        segments = {p.name for p in (self.store / "journal").iterdir()}
+        offset = self.path().stat().st_size - 1
+        refused = self.checkpoint(entry, env={
+            "FN_NATIVE_STATE_CHECKPOINT_READBACK_FLIP": str(offset)})
+        self.assertEqual(refused.returncode, EXIT_REFUSED, refused.stderr.decode())
+        self.assertIn(b"does not read back", refused.stderr)
+        self.assertEqual(self.digest(), old)
+        self.assertEqual(list((self.store / "staging").iterdir()), [])
+        self.assertLessEqual(segments, {p.name for p in (self.store / "journal").iterdir()})
+        self.assertEqual(self.open_line(), "open=checkpoint:3 suffix=2")
+        self.assertEqual(self.observation(), expected)
+        retried = self.checkpoint(entry)
+        self.assertEqual(retried.returncode, EXIT_OK, retried.stderr.decode())
+        self.assertEqual(self.open_line(), "open=checkpoint:5 suffix=0")
+
     def test_a_killed_owner_reopens_from_the_checkpoint_without_replay(self):
         """Records flip (checkpoint-arena-2): the checkpoint carries the arena,
         so after the serving owner dies (SIGKILL) the next open reads the
