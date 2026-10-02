@@ -323,3 +323,100 @@
 (assert-event (equal (car (last (fn-retain-obligation-ids *retention-od-many*))) "archive-1"))
 (assert-event (equal (fn-retain-sum *retention-od-many*) (+ (* 50000 4) 6)))
 (assert-event (equal (len (fn-retain-remove-id "archive-1" *retention-od-many*)) 50000))
+
+; Disjointness execution boundary: reachable positive witnesses exercise both
+; branches; corrupted-state witnesses isolate overlap; MUTATION is separate.
+(encapsulate ()
+  (local
+   (defun ret-disjoint-populate (ids releasep s)
+     (declare (xargs :guard (fn-retain-statep s)))
+     (if (consp ids)
+         (let* ((id (car ids))
+                (s (fn-retain-admit s id "subject" :archive "release" 1))
+                (s (if releasep
+                       (fn-retain-release s id "subject" :archive "release")
+                     s)))
+           (ret-disjoint-populate (cdr ids) releasep s))
+       s)))
+  (local
+   (defconst *ret-disjoint-long*
+     (ret-disjoint-populate
+      '("p0" "p1" "p2" "p3" "p4" "p5" "p6" "p7" "p8") nil
+      (ret-disjoint-populate
+       '("r0" "r1" "r2" "r3" "r4" "r5" "r6" "r7" "r8") t
+       (fn-retain-initial-state 18)))))
+  (local
+   (defconst *ret-disjoint-short*
+     (ret-disjoint-populate '("p0" "p1") nil
+      (ret-disjoint-populate '("r0" "r1") t
+       (fn-retain-initial-state 4)))))
+
+  ; Complete antecedent (none for the hash theorem; true lists for the
+  ; executable wrapper's guard) and conclusion, plus the reached state.
+  (local
+   (defun ret-disjoint-positivep (s n)
+     (declare (xargs :guard (fn-retain-statep s)
+                     :guard-hints (("Goal" :in-theory (enable fn-retain-statep)))))
+     (let ((xs (fn-retain-obligation-ids (fn-retain-pins s)))
+           (ys (fn-retain-release-ids (fn-retain-releases s))))
+       (and (fn-retain-statep s)
+            (equal (len xs) n) (equal (len ys) n)
+            (true-listp xs) (true-listp ys)
+            (fn-retain-ids-disjointp xs ys)
+            (equal (fn-retain-ks-disjointp xs ys)
+                   (not (intersection-equal xs ys)))
+            (equal (fn-retain-ids-disjointp xs ys)
+                   (not (intersection-equal xs ys)))))))
+  (assert-event (ret-disjoint-positivep *ret-disjoint-long* 9))
+  (assert-event (ret-disjoint-positivep *ret-disjoint-short* 2))
+
+  ; CORRUPTED STATE: replace the last pin's id by a release id.  Counts,
+  ; types, uniqueness within each list, charge and capacity still hold.
+  (local
+   (defun ret-disjoint-corrupt (s)
+     (declare (xargs :guard (and (fn-retain-statep s)
+                                (true-listp (fn-retain-pins s)))))
+     (fn-retain-make-state
+      (fn-retain-capacity s) (fn-retain-reserved s)
+      (append (butlast (fn-retain-pins s) 1)
+              (list (fn-retain-make-obligation
+                     "r0" "subject" :archive "release" 1)))
+      (fn-retain-releases s))))
+  (local
+   (defconst *ret-overlap-long* (ret-disjoint-corrupt *ret-disjoint-long*)))
+  (local
+   (defconst *ret-overlap-short* (ret-disjoint-corrupt *ret-disjoint-short*)))
+  (local
+   (defun ret-disjoint-negativep (s n)
+     (declare (xargs :guard (and (fn-retain-obligation-listp (fn-retain-pins s))
+                                (fn-retain-release-listp (fn-retain-releases s)))))
+     (let ((xs (fn-retain-obligation-ids (fn-retain-pins s)))
+           (ys (fn-retain-release-ids (fn-retain-releases s))))
+       (and (equal (len xs) n) (equal (len ys) n)
+            (true-listp xs) (true-listp ys)
+            (fn-retain-no-duplicatesp xs) (fn-retain-no-duplicatesp ys)
+            (equal (fn-retain-reserved s)
+                   (+ (fn-retain-sum (fn-retain-pins s)) (len ys)))
+            (equal (fn-retain-capacity s) (fn-retain-reserved s))
+            (not (fn-retain-ids-disjointp xs ys))
+            (not (fn-retain-statep s))
+            (equal (fn-retain-ks-disjointp xs ys)
+                   (not (intersection-equal xs ys)))
+            (equal (fn-retain-ids-disjointp xs ys)
+                   (not (intersection-equal xs ys)))))))
+  (assert-event (ret-disjoint-negativep *ret-overlap-long* 9))
+  (assert-event (ret-disjoint-negativep *ret-overlap-short* 2))
+
+  ; MUTATION: checking just the first pin misses overlap at the last pin.
+  (local
+   (defun ret-disjoint-mutant (xs ys)
+     (declare (xargs :guard (and (true-listp xs) (true-listp ys))))
+     (or (endp xs) (not (member-equal (car xs) ys)))))
+  (assert-event
+   (let ((xs (fn-retain-obligation-ids (fn-retain-pins *ret-overlap-long*)))
+         (ys (fn-retain-release-ids (fn-retain-releases *ret-overlap-long*))))
+     (and (fn-ks-longp xs) (fn-ks-longp ys)
+          (ret-disjoint-mutant xs ys)
+          (not (fn-retain-ids-disjointp xs ys))
+          (not (equal (ret-disjoint-mutant xs ys)
+                      (fn-retain-ids-disjointp xs ys)))))))
