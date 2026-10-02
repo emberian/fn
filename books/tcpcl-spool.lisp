@@ -6,6 +6,7 @@
 ; acknowledgement is released.
 
 (in-package "ACL2")
+(include-book "def-loop")
 
 (defconst *fn-tcl-spool-stage-prefix*
   '(46 105 110 99 111 109 105 110 103 45)) ; .incoming-
@@ -78,44 +79,10 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-tcl-spool-recovery-actions-loop (entries acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (atom entries)
-      (revappend acc nil)
-    (let ((entry (if (consp (car entries)) (car entries) nil)))
-      (fn-tcl-spool-recovery-actions-loop (cdr entries)
-                                          (cons (fn-tcl-spool-entry-action (car entry)
-                                                                           (cdr entry))
-                                                acc)))))
-
-(defun fn-tcl-spool-recovery-actions (entries)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (atom entries)
-           nil
-         (let ((entry (if (consp (car entries)) (car entries) nil)))
-           (cons (fn-tcl-spool-entry-action (car entry) (cdr entry))
-                 (fn-tcl-spool-recovery-actions (cdr entries)))))
-       :exec (fn-tcl-spool-recovery-actions-loop entries nil)))
-
-(local
- (defthm fn-tcl-spool-recovery-actions-loop-is-revappend
-   (equal (fn-tcl-spool-recovery-actions-loop entries acc)
-          (revappend acc (fn-tcl-spool-recovery-actions entries)))
-   :hints (("Goal" :induct (fn-tcl-spool-recovery-actions-loop entries acc)
-                   :in-theory (union-theories '(fn-tcl-spool-recovery-actions-loop fn-tcl-spool-recovery-actions revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-tcl-spool-recovery-actions-loop)
-
-(verify-guards fn-tcl-spool-recovery-actions
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-tcl-spool-recovery-actions)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-tcl-spool-recovery-actions-loop-is-revappend (acc nil))))))
+(def-loop fn-tcl-spool-recovery-actions (entries)
+  :shape :map :base (atom entries)
+  :let ((entry (if (consp (car entries)) (car entries) nil)))
+  :body (fn-tcl-spool-entry-action (car entry) (cdr entry)))
 
 
 (defun fn-tcl-spool-member-eq (x xs)

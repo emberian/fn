@@ -1443,6 +1443,11 @@ def _acl2_definition_forms(tree, raw: set[str]) -> dict[str, tuple[list, str]]:
             for item in form[1:]:
                 visit(item, where)
             return
+        expansion = ledger.generated_expansion(form)
+        if expansion is not None:
+            for item in expansion:
+                visit(item, where)
+            return
         if (name in ("defun", "defund", "defun-nx", "defun-inline") and len(form) >= 4
                 and isinstance(form[1], ledger.Sym)):
             found.setdefault(str(form[1]).lower(), (form, where))

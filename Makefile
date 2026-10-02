@@ -856,6 +856,18 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/snoc-list-tests \
 	books/record-width-producers \
 	tests/acl2/record-width-producers-tests \
+	books/post-record-width-owner \
+	tests/acl2/post-record-width-owner-tests \
+	books/transit-same-decision \
+	tests/acl2/transit-same-decision-tests \
+	books/held-message-id-answer \
+	tests/acl2/held-message-id-answer-tests \
+	books/consumer-replay-bound \
+	tests/acl2/consumer-replay-bound-tests \
+	books/account-redeem-count \
+	tests/acl2/account-redeem-count-tests \
+	books/bp-receipt-log-crash \
+	tests/acl2/bp-receipt-log-crash-tests \
 	tests/acl2/profile-monotonicity-tests \
 	books/store-budget-article \
 	tests/acl2/store-budget-article-tests \
@@ -864,6 +876,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-capacity-vector \
 	tests/acl2/store-capacity-vector-tests \
 	books/store-capacity-config \
+	books/served-auth-wire-bridge \
+	tests/acl2/served-auth-wire-bridge-tests \
+	books/served-head-bridge \
+	tests/acl2/served-head-bridge-tests \
 	books/store-config-generation \
 	tests/acl2/store-config-generation-tests \
 	tests/acl2/store-capacity-config-tests \
@@ -1123,7 +1139,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-fnbs-byte-publisher \
 	books/bp-fnbs-byte-invariants \
 	books/bp-fnbs-replay \
-	books/bp-fnbs-replay-invariants \
 	tests/acl2/bp-fnbs-replay-tests \
 	books/bp-fnbs-namespace \
 	tests/acl2/bp-fnbs-namespace-tests \

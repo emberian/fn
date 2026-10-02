@@ -1,6 +1,8 @@
-; Ordered, byte-decoded FNBS kind-5 recovery with inherited authority.
+; Ordered, byte-decoded FNBS kind-5 recovery with inherited authority, over
+; the recovery fold the node runs (`fn-bpnf-family-replay-rows'; the
+; kind-5-only fold these witnesses first exercised was retired, Q3a PKT-298).
 (in-package "ACL2")
-(include-book "../../books/bp-fnbs-replay-invariants")
+(include-book "../../books/bp-fnbs-family-replay")
 (include-book "bp-fnbs-codec-tests")
 (include-book "must-fail-checked")
 
@@ -15,51 +17,58 @@
   (list (fn-bpnf-stored-record-name 9 1)
         (fn-bpnf-stored-record-frame *bpnfr-second*)))
 (defun bpnfr-rows () (list (bpnfr-first-row) (bpnfr-second-row)))
+; The replay's held and octet budgets are the machine state's.
+(defun bpnfr-base (max-held max-octets)
+  (fn-bpn-initial-machine-state *bpnfc-config* max-held max-octets))
+(defun bpnfr-replay (rows max-held max-octets)
+  (fn-bpnf-family-replay-rows rows (bpnfr-base max-held max-octets)))
 
-(assert-event (equal (fn-bpnf-replay-rows nil 4 1048576)
-                     '(:ready nil nil)))
+(assert-event (equal (bpnfr-replay nil 4 1048576)
+                     '(:ready nil nil nil 0)))
 (assert-event (fn-bpnf-replay-rowp (bpnfr-first-row)))
 (assert-event (fn-bpnf-replay-rowp (bpnfr-second-row)))
 (assert-event
- (equal (fn-bpnf-replay-rows (bpnfr-rows) 4 1048576)
+ (equal (bpnfr-replay (bpnfr-rows) 4 1048576)
         (list :ready (list (nth 3 *bpnfr-second*) (nth 3 *bpnfc-record*))
-              (cons 9 1))))
+              nil (cons 9 1) 2)))
 ; Two rows fill this fixture's exact max-held budget, and the byte replay
 ; returns the next arrival frontier 2. A third row is capacity-refused.
 (assert-event
  (equal (fn-bpnf-held-arrival-frontier
-         (cadr (fn-bpnf-replay-rows (bpnfr-rows) 2 1048576)))
+         (cadr (bpnfr-replay (bpnfr-rows) 2 1048576)))
         2))
 ; A second process crash/replay with zero newly published rows is a fixed
 ; point on the authoritative byte observation.
 (assert-event
- (equal (fn-bpnf-replay-rows (bpnfr-rows) 4 1048576)
-        (fn-bpnf-replay-rows (bpnfr-rows) 4 1048576)))
+ (equal (bpnfr-replay (bpnfr-rows) 4 1048576)
+        (bpnfr-replay (bpnfr-rows) 4 1048576)))
 
 (assert-event
- (equal (car (fn-bpnf-replay-rows
+ (equal (car (bpnfr-replay
               (list (list "9-0.fnb" (cadr (bpnfr-first-row)))) 4 1048576))
         :fault))
 (assert-event
- (equal (car (fn-bpnf-replay-rows
+ (equal (car (bpnfr-replay
               (list (bpnfr-second-row) (bpnfr-first-row)) 4 1048576))
         :fault))
 (assert-event
- (equal (car (fn-bpnf-replay-rows
+ (equal (car (bpnfr-replay
               (list (list (car (bpnfr-first-row)) '(1 2 3))) 4 1048576))
         :fault))
 (assert-event
- (equal (car (fn-bpnf-replay-rows (bpnfr-rows) 1 1048576)) :fault))
+ (equal (car (bpnfr-replay (bpnfr-rows) 1 1048576)) :fault))
 (must-fail-checked
  (assert-event
-  (equal (fn-bpnf-replay-rows
+  (equal (bpnfr-replay
           (list (list "9-0.fnb" (cadr (bpnfr-first-row)))) 4 1048576)
-         (fn-bpnf-replay-rows (list (bpnfr-first-row)) 4 1048576))))
+         (bpnfr-replay (list (bpnfr-first-row)) 4 1048576))))
 
 ; The same actual byte replay result is the recovery-only step argument.
 (defun bpnfr-recover (st epoch rows)
   (fn-bpnf-step
-   st (fn-bpnf-recover-event st epoch nil :ready rows)))
+   st (list :recover-fnbs epoch nil :ready
+            (fn-bpnf-family-replay-rows rows (fn-bpnf-base st))
+            (len rows))))
 (defun bpnfr-uncertain-state ()
   (fn-bpnf-answer-state
    (fn-bpnf-step (fn-bpnf-answer-state *bpnfc-proposal*)
@@ -92,17 +101,17 @@
 (assert-event (equal (nth 5 (fn-bpnf-issued (bpnfr-uncertain-state)))
                      :uncertain))
 (assert-event
- (equal (nth 1 (fn-bpnf-recover-auto-event
+ (equal (nth 1 (fn-bpnf-family-recover-auto-event
                 (bpnfr-uncertain-state) nil :ready (bpnfr-rows)))
         10))
 (assert-event
- (equal (nth 1 (fn-bpnf-recover-auto-event
+ (equal (nth 1 (fn-bpnf-family-recover-auto-event
                 (bpnfr-uncertain-state) nil :ready nil))
         10))
 (assert-event
  (equal (fn-bpnf-answer-state
          (fn-bpnf-step (bpnfr-uncertain-state)
-                       (fn-bpnf-recover-auto-event
+                       (fn-bpnf-family-recover-auto-event
                         (bpnfr-uncertain-state) nil :ready (bpnfr-rows))))
         (fn-bpnf-answer-state
          (bpnfr-recover (bpnfr-uncertain-state) 10 (bpnfr-rows)))))
@@ -112,7 +121,7 @@
 (assert-event
  (equal (fn-bpnf-answer-state
          (fn-bpnf-step *bpnfr-terminal-epoch*
-                       (fn-bpnf-recover-auto-event
+                       (fn-bpnf-family-recover-auto-event
                         *bpnfr-terminal-epoch* nil :ready nil)))
         *bpnfr-terminal-epoch*))
 (assert-event

@@ -156,7 +156,7 @@
                  (fn-own-next-id o) (fn-own-max-conns o) (fn-own-pending o)
                  (fn-own-ledger-field o) (fn-own-clock o) (fn-own-facts o)
                  (fn-own-config o) (fn-own-queue o)
-                 (fn-own-sub-make 1 (fn-own-conn-version *acar-t-conn*) 0 nil)
+                 (fn-own-sub-make 1 (fn-own-conn-version *acar-t-conn*) 0 nil nil)
                  (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
 (assert-event (fn-acar-conn-sessionp *acar-t-bad-view-inflight-o* 1))
 (must-fail-checked
@@ -219,7 +219,7 @@
                  (fn-own-next-id o) (fn-own-max-conns o) (fn-own-pending o)
                  (fn-own-ledger-field o) (fn-own-clock o) (fn-own-facts o)
                  (fn-own-config o) (fn-own-queue o)
-                 (fn-own-sub-make 1 (fn-own-conn-version *acar-t-conn*) 0 nil)
+                 (fn-own-sub-make 1 (fn-own-conn-version *acar-t-conn*) 0 nil nil)
                  (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
 (defconst *acar-t-bad-inflight-oc*
   (fn-ocfg-make *acar-t-bad-inflight-o* (fn-ocfg-config *acar-t-committed*)

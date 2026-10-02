@@ -127,6 +127,11 @@ def exported(book: str, root: Path = ROOT) -> tuple[list[str], list[str]]:
             for item in form[1:]:
                 walk(item)
             return
+        expansion = ledger.generated_expansion(form)
+        if expansion is not None:
+            for item in expansion:
+                walk(item)
+            return
         if len(form) > 1 and isinstance(form[1], str):
             name = str(form[1]).lower()
             if head in THEOREM_HEADS:

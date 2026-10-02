@@ -323,7 +323,7 @@ def guard_events(text: str) -> list[tuple[int, str, list[tuple[str, int]]]]:
     verified_at: dict[str, int] = {}
     events: list[tuple[int, str, object]] = []
     defs: dict[str, object] = {}
-    for index, form in enumerate(forms, 1):
+    for form, index in _ledger().source_events((f, i) for i, f in enumerate(forms, 1)):
         if not isinstance(form, list) or not form:
             continue
         head = _low(form[0])

@@ -58,6 +58,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "tools"))
 DEFAULT_BUILD = "host/native/build.lisp"
 DTN_BUILD = "host/native/build-dtn.lisp"
 
@@ -287,6 +288,13 @@ class BookIndex:
     def defs(self, rel: str) -> set[str]:
         if rel not in self._defs:
             self._defs[rel] = {n.lower() for n in BOOK_DEF.findall(self._code(rel))}
+            import ledger
+            parsed = ledger.analyze_book(self.root / rel, rel)
+            # Keep the existing special-form names; add the shared generator
+            # definitions (without treating generated theorems as callables).
+            self._defs[rel].update(f.name for f in parsed.functions if not f.local)
+            self._defs[rel].update(parsed.macros)
+
         return self._defs[rel]
 
     def close(self, books: set[str], start: list[str]) -> None:

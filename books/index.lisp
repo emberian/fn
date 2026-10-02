@@ -3,6 +3,7 @@
 ; materialized entries; the reference functions below independently enumerate
 ; the authoritative article memberships for correspondence theorems.
 (in-package "ACL2")
+(include-book "def-loop")
 (include-book "acceptance")
 (include-book "acceptance-invariants")
 
@@ -186,47 +187,9 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-index-range-query-raw-loop (index group low high acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp index)
-      (if (fn-index-entry-in-range-p group low high (car index))
-          (fn-index-range-query-raw-loop (cdr index)
-                                         group
-                                         low
-                                         high
-                                         (cons (car index) acc))
-        (fn-index-range-query-raw-loop (cdr index) group low high acc))
-    (revappend acc nil)))
-
-(defun fn-index-range-query-raw (index group low high)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp index)
-           (if (fn-index-entry-in-range-p group low high (car index))
-               (cons (car index)
-                     (fn-index-range-query-raw (cdr index) group low high))
-             (fn-index-range-query-raw (cdr index) group low high))
-         nil)
-       :exec (fn-index-range-query-raw-loop index group low high nil)))
-
-(local
- (defthm fn-index-range-query-raw-loop-is-revappend
-   (equal (fn-index-range-query-raw-loop index group low high acc)
-          (revappend acc (fn-index-range-query-raw index group low high)))
-   :hints (("Goal" :induct (fn-index-range-query-raw-loop index group low high acc)
-                   :in-theory (union-theories '(fn-index-range-query-raw-loop fn-index-range-query-raw revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-index-range-query-raw-loop)
-
-(verify-guards fn-index-range-query-raw
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-index-range-query-raw)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-index-range-query-raw-loop-is-revappend (acc nil))))))
+(def-loop fn-index-range-query-raw (index group low high)
+  :over index :keep (fn-index-entry-in-range-p group low high (car index))
+  :body (car index))
 
 (defun fn-index-query-range (index group low high)
   (declare (xargs :guard t :verify-guards nil))
