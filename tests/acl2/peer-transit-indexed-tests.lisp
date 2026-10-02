@@ -162,3 +162,55 @@
                      '((t t nil t)
                        (:want nil) (:have :history) (:want nil) (:have :history)
                        ((:want nil) :ungoverned) ((:have :history) :none))))
+
+;; 6. HYPOTHESIS REMOVAL (fn-node-statep), CORRUPTED STATE, for the history
+;; keystone and the transfer decision: the owner's node with an orphan
+;; binding naming the fresh Message-ID (no accepted article carries it, which
+;; fn-node-statep forbids).  The view, the join and the carry hold, the node
+;; invariant does not, and the reference has the fresh article (by its
+;; binding) where the catalog does not.
+(defconst *ptit-orphan-node*
+  (fn-node-make-state (fn-node-acceptance *ptit-node*) (fn-node-retention *ptit-node*)
+                      (fn-node-stage *ptit-node*)
+                      (cons (fn-node-make-binding "<fresh7@example>" "s" "orphan")
+                            (fn-node-bindings *ptit-node*))))
+
+(defun ptit-node-run (node msgid fn-arena fn-cat)
+  (declare (xargs :mode :program :stobjs (fn-arena fn-cat)))
+  (let* ((o (fn-ocfg-owner *pit-oc*))
+         (view (fn-own-view o))
+         (fn-cat (fn-sca-load-held-rows (fn-sf-records (fn-sn-files (fn-own-store o)))
+                                        *ptit-ok-index* fn-arena fn-cat))
+         (c (ptit-rows-of 0 fn-cat))
+         (carry (fn-prc-refresh nil (fn-node-retention node)))
+         (mid (pt-o msgid))
+         (octets (ptit-article msgid)))
+    (mv (list (list (fn-node-statep node)
+                    (fn-pidx-view-okp view)
+                    (and (equal (fn-cat-view-articles (fn-cat-count fn-cat) fn-arena fn-cat)
+                                (fn-state-articles (fn-own-view-archive view)))
+                         (fn-scj-marks-below c (fn-cat-count fn-cat))
+                         (fn-scj-seqs-below c (fn-own-view-version view)))
+                    (fn-prc-carryp carry))
+              (fn-peer-history-hasp-cat msgid node view fn-arena fn-cat)
+              (fn-peer-history-hasp msgid node)
+              (fn-peer-decide-transfer-cat node *pt-cfg* "innA" mid octets nil "ob" "s"
+                                           view carry fn-arena fn-cat)
+              (fn-peer-decide-transfer node *pt-cfg* "innA" mid octets nil "ob" "s"))
+        fn-arena fn-cat)))
+
+(defun ptit-node (node msgid)
+  (declare (xargs :mode :program))
+  (with-local-stobj fn-arena
+    (mv-let (result fn-arena)
+      (with-local-stobj fn-cat
+        (mv-let (result fn-arena fn-cat)
+          (ptit-node-run node msgid fn-arena fn-cat)
+          (mv result fn-arena)))
+      result)))
+
+; The control: the uncorrupted node answers the same on both sides.
+(assert-event (equal (ptit-node *ptit-node* "<fresh7@example>")
+                     '((t t t t) nil nil (:want nil) (:want nil))))
+(assert-event (equal (ptit-node *ptit-orphan-node* "<fresh7@example>")
+                     '((nil t t t) nil t (:want nil) (:have :history))))

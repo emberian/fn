@@ -242,4 +242,6 @@
                             fn-stx-parse fn-peer-relayed-octets fn-peer-injection-arguments
                             fn-pta-groups-verdict fn-peer-decision-kind)))))
 
+(verify-guards fn-pta-decide-cat)
+
 (in-theory (disable fn-peer-decide-transfer-cat fn-peer-decide-transfer-under-cat fn-pta-decide-cat))
