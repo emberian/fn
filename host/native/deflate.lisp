@@ -1,5 +1,5 @@
 ;;; fn native host: the NNTP COMPRESS DEFLATE layer's two halves (lane
-;;; compress; RFC 8054).  Loaded after io.lisp and lz4.lisp by
+;;; compress; RFC 8054).  Loaded after io.lisp by
 ;;; host/native/build.lisp.
 ;;;
 ;;; INBOUND: the client's raw DEFLATE stream is decoded by ACL2

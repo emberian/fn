@@ -77,7 +77,7 @@ python3 "$X/core_build.py" "$TREE" "$OUT/host-block.lisp" "$BUILD"
 # The image's libraries, as tools/build_native_host.sh names them for its build.
 LIB=$TREE/build/lib
 export FN_DEFLATE_LIBRARY=$LIB/libfn-deflate.so
-export FN_MLDSA_LIBRARY=$LIB/libfn-mldsa65.so FN_LZ4_LIBRARY=$LIB/libfn-lz4.so FN_BLAKE3_LIBRARY=$LIB/libfn-blake3.so
+export FN_MLDSA_LIBRARY=$LIB/libfn-mldsa65.so FN_BLAKE3_LIBRARY=$LIB/libfn-blake3.so
 # The image's runtime options (its launcher's: heap, control stack, thread-
 # local storage, from the profile: tools/build_native_host.sh), recorded in
 # the generated launcher, so the product runs as the image does.
