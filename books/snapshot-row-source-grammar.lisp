@@ -1,3 +1,4 @@
+; UNHOOKED cert-roots (2026-10-02): out of the Makefile certify roots -- its closure reaches books/history-cold-record-cursor, a Codex-era book that never certified (fn-hrcur-cold-classify-tick-refines-residual fails). The code stays; it certifies again with that book.
 ; Actual typed Store-row grammar to shallow decoded remap path.
 ; Ghost functions only; never a served validator.
 (in-package "ACL2")

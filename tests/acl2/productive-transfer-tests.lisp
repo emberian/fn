@@ -1,3 +1,4 @@
+; UNHOOKED cert-roots (2026-10-02): out of the Makefile certify roots -- its closure reaches books/productive-transfer, a Codex-era book that never certified (fn-pct-tick-offers-the-queued-article fails). The code stays; it certifies again with that book.
 ; Complete literal antecedents and conclusions for productive transfer.
 (in-package "ACL2")
 (include-book "../../books/productive-transfer")

@@ -1,3 +1,4 @@
+; UNHOOKED cert-roots (2026-10-02): out of the Makefile certify roots -- its closure reaches books/feed-restart-domain, a Codex-era book that never certified (fn-feed-restart-forgets-the-previous-clock-domain fails). The code stays; it certifies again with that book.
 ; Witnesses and teeth for books/feed-restart-domain.lisp (lane time-bars,
 ; 2026-09-28; PRF-385).  The feed is REACHED from fn-feed-open through the
 ; transitions the host drives (fn-feed-enqueue, fn-feed-tick-step,

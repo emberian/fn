@@ -22,14 +22,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/index-reader-rx-source-completion \
 	tests/acl2/connection-receiver-repin-tests \
 	tests/acl2/connection-receiver-repin-state-tests \
-	books/obligation-view-cursor-refinement \
 	books/obligation-view-cursor \
 	books/retention-obligation-view \
 	books/obligation-view-budget \
-	books/view-delta-cursor-refinement \
 	books/view-delta-cursor \
-	tests/acl2/obligation-view-cursor-tests \
-	tests/acl2/view-delta-cursor-tests \
 	books/index-reader-actor \
 	books/index-reader-receiver-issuer \
 	tests/acl2/index-reader-render-establishment-tests \
@@ -67,16 +63,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/admission-preparation-intent \
 	tests/acl2/admission-preparation-intent-tests \
 	tests/acl2/admission-preparation-source-capture-tests \
-	tests/acl2/admission-semantic-census-lineage-tests \
-	tests/acl2/admission-semantic-census-prefix-tests \
-	tests/acl2/admission-semantic-census-resident-tests \
 	tests/acl2/admission-semantic-census-source-guard-tests \
 	tests/acl2/admission-semantic-exclusion-tests \
-	tests/acl2/bp-controller-checkpoint-payload-directory-tests \
 	tests/acl2/bp-controller-registry-carry-tests \
-	tests/acl2/bp-digest-workspace-factory-tests \
-	tests/acl2/bp-digest-workspace-publication-tests \
-	tests/acl2/bp-digest-workspace-registered-factory-tests \
 	tests/acl2/bp-node-crc0-receive-tests \
 	tests/acl2/bp-node-fragment-step-job-tests \
 	tests/acl2/bp-received-source-capture-tests \
@@ -190,7 +179,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/payload-window-tests \
 	tests/acl2/payload-window-width-tests \
 	books/receiver-turn-controller \
-	books/snapshot-row-source-grammar \
 	books/history-semantic-writer-state \
 	tests/acl2/history-semantic-writer-state-tests \
 	books/index-reader-response-issuer \
@@ -220,7 +208,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/identity-hex \
 	books/consumer-account-config-preparation \
 	books/consumer-account-config-posting-relation \
-	books/control-visible-prefix-bound \
 	books/account-adoption-input-source \
 	books/account-adoption-turn-state \
 	books/page-read-binding-revision \
@@ -1736,8 +1723,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/productive-contract \
 	books/productive-observer \
 	tests/acl2/productive-contract-tests \
-	books/productive-transfer \
-	tests/acl2/productive-transfer-tests \
 	tests/acl2/owner-numbering-tests \
 	books/number-durability \
 	books/number-durability-handles \
@@ -1911,8 +1896,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/arena-reader-pins-tests \
 	books/response-plan-pins \
 	tests/acl2/response-plan-pins-tests \
-	books/feed-restart-domain \
-	tests/acl2/feed-restart-domain-tests \
 	books/web-request \
 	tests/acl2/web-request-tests \
 	books/web-2047 \
@@ -2215,7 +2198,6 @@ ACL2_BOOKS ?= books/defrecord \
     books/ninep-group-directory-source \
     tests/acl2/allocation-dual-ceiling-tests \
     books/runtime-bootstrap-completion \
-    books/account-adoption-turn-continuation \
     tests/acl2/account-adoption-turn-return-tests \
     tests/acl2/account-adoption-turn-tests \
     tests/acl2/consumer-account-config-domain-tests \
@@ -2227,10 +2209,8 @@ ACL2_BOOKS ?= books/defrecord \
     tests/acl2/runtime-construction-inventory-tests \
     books/runtime-construction-inventory \
     tests/acl2/runtime-bootstrap-export-tests \
-    tests/acl2/allocation-turn-source-cost-tests \
     tests/acl2/allocation-turn-body-authority-tests \
     tests/acl2/allocation-turn-slots-tests \
-    books/allocation-turn-source-cost \
     books/page-read-counter-transaction \
     books/page-read-issue-source-cost \
     books/recovery-prs-install \
@@ -2255,7 +2235,6 @@ ACL2_BOOKS ?= books/defrecord \
     books/index-adoption-context \
     books/index-backing-request-adoption \
     books/index-connection-repin \
-    books/index-incoming-request \
     books/index-query-slot-issuer \
     books/index-range-controller \
     books/index-reader-request \

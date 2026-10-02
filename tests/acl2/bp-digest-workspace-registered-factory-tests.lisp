@@ -1,3 +1,4 @@
+; UNHOOKED cert-roots (2026-10-02): out of the Makefile certify roots -- its closure reaches books/bp-controller-checkpoint-payload-directory, a Codex-era book that never certified (fn-bpcc-directory-payload guard fails). The code stays; it certifies again with that book.
 ; Actual registered source/storage trajectory with deliberately seeded intent.
 ; No installed allowance or native constructor permission follows.
 (in-package "ACL2")

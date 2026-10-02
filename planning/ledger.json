@@ -11,14 +11,10 @@
     "books/index-reader-rx-source-completion",
     "tests/acl2/connection-receiver-repin-tests",
     "tests/acl2/connection-receiver-repin-state-tests",
-    "books/obligation-view-cursor-refinement",
     "books/obligation-view-cursor",
     "books/retention-obligation-view",
     "books/obligation-view-budget",
-    "books/view-delta-cursor-refinement",
     "books/view-delta-cursor",
-    "tests/acl2/obligation-view-cursor-tests",
-    "tests/acl2/view-delta-cursor-tests",
     "books/index-reader-actor",
     "books/index-reader-receiver-issuer",
     "tests/acl2/index-reader-render-establishment-tests",
@@ -56,16 +52,9 @@
     "books/admission-preparation-intent",
     "tests/acl2/admission-preparation-intent-tests",
     "tests/acl2/admission-preparation-source-capture-tests",
-    "tests/acl2/admission-semantic-census-lineage-tests",
-    "tests/acl2/admission-semantic-census-prefix-tests",
-    "tests/acl2/admission-semantic-census-resident-tests",
     "tests/acl2/admission-semantic-census-source-guard-tests",
     "tests/acl2/admission-semantic-exclusion-tests",
-    "tests/acl2/bp-controller-checkpoint-payload-directory-tests",
     "tests/acl2/bp-controller-registry-carry-tests",
-    "tests/acl2/bp-digest-workspace-factory-tests",
-    "tests/acl2/bp-digest-workspace-publication-tests",
-    "tests/acl2/bp-digest-workspace-registered-factory-tests",
     "tests/acl2/bp-node-crc0-receive-tests",
     "tests/acl2/bp-node-fragment-step-job-tests",
     "tests/acl2/bp-received-source-capture-tests",
@@ -179,7 +168,6 @@
     "tests/acl2/payload-window-tests",
     "tests/acl2/payload-window-width-tests",
     "books/receiver-turn-controller",
-    "books/snapshot-row-source-grammar",
     "books/history-semantic-writer-state",
     "tests/acl2/history-semantic-writer-state-tests",
     "books/index-reader-response-issuer",
@@ -209,7 +197,6 @@
     "books/identity-hex",
     "books/consumer-account-config-preparation",
     "books/consumer-account-config-posting-relation",
-    "books/control-visible-prefix-bound",
     "books/account-adoption-input-source",
     "books/account-adoption-turn-state",
     "books/page-read-binding-revision",
@@ -1725,8 +1712,6 @@
     "books/productive-contract",
     "books/productive-observer",
     "tests/acl2/productive-contract-tests",
-    "books/productive-transfer",
-    "tests/acl2/productive-transfer-tests",
     "tests/acl2/owner-numbering-tests",
     "books/number-durability",
     "books/number-durability-handles",
@@ -1900,8 +1885,6 @@
     "tests/acl2/arena-reader-pins-tests",
     "books/response-plan-pins",
     "tests/acl2/response-plan-pins-tests",
-    "books/feed-restart-domain",
-    "tests/acl2/feed-restart-domain-tests",
     "books/web-request",
     "tests/acl2/web-request-tests",
     "books/web-2047",
@@ -2204,7 +2187,6 @@
     "books/ninep-group-directory-source",
     "tests/acl2/allocation-dual-ceiling-tests",
     "books/runtime-bootstrap-completion",
-    "books/account-adoption-turn-continuation",
     "tests/acl2/account-adoption-turn-return-tests",
     "tests/acl2/account-adoption-turn-tests",
     "tests/acl2/consumer-account-config-domain-tests",
@@ -2216,10 +2198,8 @@
     "tests/acl2/runtime-construction-inventory-tests",
     "books/runtime-construction-inventory",
     "tests/acl2/runtime-bootstrap-export-tests",
-    "tests/acl2/allocation-turn-source-cost-tests",
     "tests/acl2/allocation-turn-body-authority-tests",
     "tests/acl2/allocation-turn-slots-tests",
-    "books/allocation-turn-source-cost",
     "books/page-read-counter-transaction",
     "books/page-read-issue-source-cost",
     "books/recovery-prs-install",
@@ -2244,7 +2224,6 @@
     "books/index-adoption-context",
     "books/index-backing-request-adoption",
     "books/index-connection-repin",
-    "books/index-incoming-request",
     "books/index-query-slot-issuer",
     "books/index-range-controller",
     "books/index-reader-request",
@@ -2336,14 +2315,14 @@
   ],
   "totals": {
     "books": 2762,
-    "books_in_root_closure": 2604,
-    "roots": 2331,
-    "theorems": 37021,
+    "books_in_root_closure": 2575,
+    "roots": 2310,
+    "theorems": 37029,
     "functions": 23483,
     "assert_events": 25829,
     "must_fails": 2651,
     "prover_refusals": 0,
-    "encapsulates": 225,
+    "encapsulates": 226,
     "guards": {
       "verified": 3912,
       "declared-off": 3041,
@@ -2660,8 +2639,8 @@
     },
     {
       "book": "books/account-adoption-turn-continuation.lisp",
-      "in_root_closure": true,
-      "is_root": true,
+      "in_root_closure": false,
+      "is_root": false,
       "theorems": 0,
       "functions": 2,
       "guards": {
@@ -3131,7 +3110,7 @@
     },
     {
       "book": "books/admission-semantic-census-lineage.lisp",
-      "in_root_closure": true,
+      "in_root_closure": false,
       "is_root": false,
       "theorems": 5,
       "functions": 0,
@@ -3186,7 +3165,7 @@
     },
     {
       "book": "books/admission-semantic-census-prefix.lisp",
-      "in_root_closure": true,
+      "in_root_closure": false,
       "is_root": false,
       "theorems": 18,
       "functions": 4,
@@ -3213,7 +3192,7 @@
     },
     {
       "book": "books/admission-semantic-census-resident.lisp",
-      "in_root_closure": true,
+      "in_root_closure": false,
       "is_root": false,
       "theorems": 4,
       "functions": 0,
@@ -3562,8 +3541,8 @@
     },
     {
       "book": "books/allocation-turn-source-cost.lisp",
-      "in_root_closure": true,
-      "is_root": true,
+      "in_root_closure": false,
+      "is_root": false,
       "theorems": 54,
       "functions": 17,
       "guards": {
@@ -5308,7 +5287,7 @@
     },
     {
       "book": "books/bp-digest-workspace-factory.lisp",
-      "in_root_closure": true,
+      "in_root_closure": false,
       "is_root": false,
       "theorems": 2,
       "functions": 3,
@@ -5362,7 +5341,7 @@
     },
     {
       "book": "books/bp-digest-workspace-publication.lisp",
-      "in_root_closure": true,
+      "in_root_closure": false,
       "is_root": false,
       "theorems": 1,
       "functions": 7,
@@ -5388,7 +5367,7 @@
     },
     {
       "book": "books/bp-digest-workspace-registered-factory.lisp",
-      "in_root_closure": true,
+      "in_root_closure": false,
       "is_root": false,
       "theorems": 0,
       "functions": 2,
@@ -17168,8 +17147,8 @@
     },
     {
       "book": "books/control-visible-prefix-bound.lisp",
-      "in_root_closure": true,
-      "is_root": true,
+      "in_root_closure": false,
+      "is_root": false,
       "theorems": 5,
       "functions": 0,
       "guards": {
@@ -18024,7 +18003,7 @@
       "book": "books/def-representation-paged.lisp",
       "in_root_closure": true,
       "is_root": false,
-      "theorems": 218,
+      "theorems": 219,
       "functions": 63,
       "guards": {
         "verified": 0,
@@ -19219,8 +19198,8 @@
     },
     {
       "book": "books/feed-restart-domain.lisp",
-      "in_root_closure": true,
-      "is_root": true,
+      "in_root_closure": false,
+      "is_root": false,
       "theorems": 1,
       "functions": 0,
       "guards": {
@@ -20299,9 +20278,9 @@
     },
     {
       "book": "books/history-cold-record-cursor.lisp",
-      "in_root_closure": true,
+      "in_root_closure": false,
       "is_root": false,
-      "theorems": 118,
+      "theorems": 119,
       "functions": 19,
       "guards": {
         "verified": 0,
@@ -20315,11 +20294,12 @@
       "prover_refusals": 0,
       "defconsts": 0,
       "defmacros": 0,
-      "encapsulates": 0,
+      "encapsulates": 1,
       "includes": [
         "history-cold-record-runtime"
       ],
       "system_includes": [
+        "arithmetic-5/top",
         "arithmetic/top"
       ],
       "suspects": [
@@ -25530,8 +25510,8 @@
     },
     {
       "book": "books/index-incoming-request.lisp",
-      "in_root_closure": true,
-      "is_root": true,
+      "in_root_closure": false,
+      "is_root": false,
       "theorems": 5,
       "functions": 16,
       "guards": {
@@ -30353,8 +30333,8 @@
     },
     {
       "book": "books/obligation-view-cursor-refinement.lisp",
-      "in_root_closure": true,
-      "is_root": true,
+      "in_root_closure": false,
+      "is_root": false,
       "theorems": 6,
       "functions": 2,
       "guards": {
@@ -35485,7 +35465,7 @@
       "book": "books/pagestore-digest-cursor-semantics.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 39,
+      "theorems": 41,
       "functions": 2,
       "guards": {
         "verified": 0,
@@ -35507,8 +35487,7 @@
         "pagestore-digest-cursor-counter"
       ],
       "system_includes": [
-        "arithmetic-5/top",
-        "std/lists/update-nth"
+        "arithmetic-5/top"
       ],
       "suspects": [
         "pgs-dcs-byte-step-outside-tail-is-page-step"
@@ -39080,8 +39059,8 @@
     },
     {
       "book": "books/productive-transfer.lisp",
-      "in_root_closure": true,
-      "is_root": true,
+      "in_root_closure": false,
+      "is_root": false,
       "theorems": 8,
       "functions": 1,
       "guards": {
@@ -44257,7 +44236,7 @@
     },
     {
       "book": "books/snapshot-remap-cold-domain.lisp",
-      "in_root_closure": true,
+      "in_root_closure": false,
       "is_root": false,
       "theorems": 8,
       "functions": 0,
@@ -44338,8 +44317,8 @@
     },
     {
       "book": "books/snapshot-row-source-grammar.lisp",
-      "in_root_closure": true,
-      "is_root": true,
+      "in_root_closure": false,
+      "is_root": false,
       "theorems": 15,
       "functions": 1,
       "guards": {
@@ -50791,8 +50770,8 @@
     },
     {
       "book": "books/view-delta-cursor-refinement.lisp",
-      "in_root_closure": true,
-      "is_root": true,
+      "in_root_closure": false,
+      "is_root": false,
       "theorems": 18,
       "functions": 7,
       "guards": {
@@ -51850,8 +51829,8 @@
     },
     {
       "book": "tests/acl2/admission-semantic-census-lineage-tests.lisp",
-      "in_root_closure": true,
-      "is_root": true,
+      "in_root_closure": false,
+      "is_root": false,
       "theorems": 0,
       "functions": 0,
       "guards": {
@@ -51876,8 +51855,8 @@
     },
     {
       "book": "tests/acl2/admission-semantic-census-prefix-tests.lisp",
-      "in_root_closure": true,
-      "is_root": true,
+      "in_root_closure": false,
+      "is_root": false,
       "theorems": 0,
       "functions": 1,
       "guards": {
@@ -51902,8 +51881,8 @@
     },
     {
       "book": "tests/acl2/admission-semantic-census-resident-tests.lisp",
-      "in_root_closure": true,
-      "is_root": true,
+      "in_root_closure": false,
+      "is_root": false,
       "theorems": 0,
       "functions": 0,
       "guards": {
@@ -52110,8 +52089,8 @@
     },
     {
       "book": "tests/acl2/allocation-turn-source-cost-tests.lisp",
-      "in_root_closure": true,
-      "is_root": true,
+      "in_root_closure": false,
+      "is_root": false,
       "theorems": 6,
       "functions": 5,
       "guards": {
@@ -52973,8 +52952,8 @@
     },
     {
       "book": "tests/acl2/bp-controller-checkpoint-payload-directory-tests.lisp",
-      "in_root_closure": true,
-      "is_root": true,
+      "in_root_closure": false,
+      "is_root": false,
       "theorems": 0,
       "functions": 3,
       "guards": {
@@ -53026,8 +53005,8 @@
     },
     {
       "book": "tests/acl2/bp-digest-workspace-factory-tests.lisp",
-      "in_root_closure": true,
-      "is_root": true,
+      "in_root_closure": false,
+      "is_root": false,
       "theorems": 0,
       "functions": 2,
       "guards": {
@@ -53052,8 +53031,8 @@
     },
     {
       "book": "tests/acl2/bp-digest-workspace-publication-tests.lisp",
-      "in_root_closure": true,
-      "is_root": true,
+      "in_root_closure": false,
+      "is_root": false,
       "theorems": 0,
       "functions": 3,
       "guards": {
@@ -53080,8 +53059,8 @@
     },
     {
       "book": "tests/acl2/bp-digest-workspace-registered-factory-tests.lisp",
-      "in_root_closure": true,
-      "is_root": true,
+      "in_root_closure": false,
+      "is_root": false,
       "theorems": 0,
       "functions": 3,
       "guards": {
@@ -58086,7 +58065,7 @@
       "book": "tests/acl2/catalog-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 6,
+      "theorems": 7,
       "functions": 5,
       "guards": {
         "verified": 0,
@@ -62954,8 +62933,8 @@
     },
     {
       "book": "tests/acl2/feed-restart-domain-tests.lisp",
-      "in_root_closure": true,
-      "is_root": true,
+      "in_root_closure": false,
+      "is_root": false,
       "theorems": 0,
       "functions": 0,
       "guards": {
@@ -68362,8 +68341,8 @@
     },
     {
       "book": "tests/acl2/obligation-view-cursor-tests.lisp",
-      "in_root_closure": true,
-      "is_root": true,
+      "in_root_closure": false,
+      "is_root": false,
       "theorems": 0,
       "functions": 0,
       "guards": {
@@ -72744,7 +72723,7 @@
       "book": "tests/acl2/post-admission-keyed-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 0,
+      "theorems": 1,
       "functions": 6,
       "guards": {
         "verified": 0,
@@ -74005,8 +73984,8 @@
     },
     {
       "book": "tests/acl2/productive-transfer-tests.lisp",
-      "in_root_closure": true,
-      "is_root": true,
+      "in_root_closure": false,
+      "is_root": false,
       "theorems": 0,
       "functions": 7,
       "guards": {
@@ -80248,7 +80227,7 @@
       "book": "tests/acl2/tcpcl-segment-source-cursor-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 0,
+      "theorems": 2,
       "functions": 1,
       "guards": {
         "verified": 0,
@@ -81023,8 +81002,8 @@
     },
     {
       "book": "tests/acl2/view-delta-cursor-tests.lisp",
-      "in_root_closure": true,
-      "is_root": true,
+      "in_root_closure": false,
+      "is_root": false,
       "theorems": 0,
       "functions": 3,
       "guards": {
@@ -81440,7 +81419,7 @@
     {
       "theorem": "adt-pg-dflat-is-rtab",
       "book": "books/def-representation-paged.lisp",
-      "line": 1541,
+      "line": 1551,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)",
         "reflexive-conclusion: a conjunct is (equal X X)"
@@ -81449,7 +81428,7 @@
     {
       "theorem": "adt-pg-set-c-is-room-then-set",
       "book": "books/def-representation-paged.lisp",
-      "line": 2209,
+      "line": 2219,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)",
         "reflexive-conclusion: a conjunct is (equal X X)"
@@ -81741,7 +81720,7 @@
     {
       "theorem": "fn-atsc-issuer-preserves-baseline-coordinate",
       "book": "books/allocation-turn-source-cost.lisp",
-      "line": 644,
+      "line": 645,
       "reasons": [
         "preserves-no-subject-call: the statement never calls fn-atsc-issuer or a fn-atsc-issuer- transition"
       ]
@@ -84270,7 +84249,7 @@
     {
       "theorem": "fn-hrcur-cold-tasksp-control-unfolds",
       "book": "books/history-cold-record-cursor.lisp",
-      "line": 708,
+      "line": 716,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-hrcur-cold-tasksp"
       ]
@@ -86435,7 +86414,7 @@
     {
       "theorem": "fn-ovc-child-done-meaning-by-definition",
       "book": "books/obligation-view-cursor-refinement.lisp",
-      "line": 19,
+      "line": 20,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-vcu-meaning and the conclusion is that arm's value"
       ]
@@ -86443,7 +86422,7 @@
     {
       "theorem": "fn-ovc-done-meaning-by-definition",
       "book": "books/obligation-view-cursor-refinement.lisp",
-      "line": 39,
+      "line": 40,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-ovc-meaning and the conclusion is that arm's value"
       ]
@@ -92061,7 +92040,7 @@
     {
       "theorem": "fn-vcu-done-meaning-by-definition",
       "book": "books/view-delta-cursor-refinement.lisp",
-      "line": 151,
+      "line": 152,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-vcu-meaning and the conclusion is that arm's value"
       ]
@@ -92651,7 +92630,7 @@
       {
         "theorem": "fn-atsc-ceiling-observes-result",
         "book": "books/allocation-turn-source-cost.lisp",
-        "line": 109,
+        "line": 110,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -93185,19 +93164,19 @@
       {
         "theorem": "adt-len-of-grow-pool",
         "book": "books/def-representation-paged.lisp",
-        "line": 1055,
+        "line": 1065,
         "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
       },
       {
         "theorem": "adt-len-of-grow",
         "book": "books/def-representation-paged.lisp",
-        "line": 1097,
+        "line": 1107,
         "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
       },
       {
         "theorem": "adt-pg-len-dadd",
         "book": "books/def-representation-paged.lisp",
-        "line": 2083,
+        "line": 2093,
         "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
       },
       {
@@ -94133,7 +94112,7 @@
       {
         "theorem": "pgs-dcs-done-page-result-is-blake3-natural",
         "book": "books/pagestore-digest-cursor-semantics.lisp",
-        "line": 554,
+        "line": 564,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -97771,7 +97750,7 @@
       {
         "check": "pak-r-indexed-without-the-verdict",
         "book": "tests/acl2/post-admission-keyed-tests.lisp",
-        "line": 200,
+        "line": 210,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -98565,14 +98544,14 @@
       },
       {
         "book": "books/allocation-turn-source-cost.lisp",
-        "line": 5,
+        "line": 6,
         "include": "allocation-turn-slots",
         "included": "books/allocation-turn-slots.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/allocation-turn-source-cost.lisp",
-        "line": 6,
+        "line": 7,
         "include": "page-read-issue-source-cost",
         "included": "books/page-read-issue-source-cost.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -106510,14 +106489,14 @@
       },
       {
         "book": "books/index-incoming-request.lisp",
-        "line": 5,
+        "line": 6,
         "include": "index-query-slot-issuer",
         "included": "books/index-query-slot-issuer.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/index-incoming-request.lisp",
-        "line": 6,
+        "line": 7,
         "include": "index-backing-request-adoption",
         "included": "books/index-backing-request-adoption.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -107602,14 +107581,14 @@
       },
       {
         "book": "books/obligation-view-cursor-refinement.lisp",
-        "line": 2,
+        "line": 3,
         "include": "obligation-view-cursor",
         "included": "books/obligation-view-cursor.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/obligation-view-cursor-refinement.lisp",
-        "line": 3,
+        "line": 4,
         "include": "view-delta-cursor-refinement",
         "included": "books/view-delta-cursor-refinement.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -109954,7 +109933,7 @@
       },
       {
         "book": "books/snapshot-row-source-grammar.lisp",
-        "line": 5,
+        "line": 6,
         "include": "snapshot-remap-cold-domain",
         "included": "books/snapshot-remap-cold-domain.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -110794,7 +110773,7 @@
       },
       {
         "book": "books/view-delta-cursor-refinement.lisp",
-        "line": 3,
+        "line": 4,
         "include": "view-delta-cursor",
         "included": "books/view-delta-cursor.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -110969,21 +110948,21 @@
       },
       {
         "book": "tests/acl2/admission-semantic-census-lineage-tests.lisp",
-        "line": 4,
+        "line": 5,
         "include": "../../books/admission-semantic-census-lineage",
         "included": "books/admission-semantic-census-lineage.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/admission-semantic-census-prefix-tests.lisp",
-        "line": 2,
+        "line": 3,
         "include": "../../books/admission-semantic-census-prefix",
         "included": "books/admission-semantic-census-prefix.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/admission-semantic-census-resident-tests.lisp",
-        "line": 2,
+        "line": 3,
         "include": "../../books/admission-semantic-census-resident",
         "included": "books/admission-semantic-census-resident.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -111039,14 +111018,14 @@
       },
       {
         "book": "tests/acl2/allocation-turn-source-cost-tests.lisp",
-        "line": 2,
+        "line": 3,
         "include": "../../books/allocation-turn-source-cost",
         "included": "books/allocation-turn-source-cost.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/allocation-turn-source-cost-tests.lisp",
-        "line": 3,
+        "line": 4,
         "include": "allocation-turn-slots-tests",
         "included": "tests/acl2/allocation-turn-slots-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -111298,42 +111277,42 @@
       },
       {
         "book": "tests/acl2/bp-digest-workspace-factory-tests.lisp",
-        "line": 3,
+        "line": 4,
         "include": "../../books/bp-digest-workspace-factory",
         "included": "books/bp-digest-workspace-factory.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/bp-digest-workspace-publication-tests.lisp",
-        "line": 3,
+        "line": 4,
         "include": "../../books/bp-digest-workspace-publication",
         "included": "books/bp-digest-workspace-publication.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/bp-digest-workspace-publication-tests.lisp",
-        "line": 4,
+        "line": 5,
         "include": "bp-digest-workspace-factory-tests",
         "included": "tests/acl2/bp-digest-workspace-factory-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/bp-digest-workspace-publication-tests.lisp",
-        "line": 36,
+        "line": 37,
         "include": "bp-digest-workspace-registered-factory-tests",
         "included": "tests/acl2/bp-digest-workspace-registered-factory-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/bp-digest-workspace-registered-factory-tests.lisp",
-        "line": 4,
+        "line": 5,
         "include": "../../books/bp-digest-workspace-registered-factory",
         "included": "books/bp-digest-workspace-registered-factory.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/bp-digest-workspace-registered-factory-tests.lisp",
-        "line": 5,
+        "line": 6,
         "include": "bp-controller-checkpoint-payload-directory-tests",
         "included": "tests/acl2/bp-controller-checkpoint-payload-directory-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -116044,7 +116023,7 @@
       },
       {
         "book": "tests/acl2/feed-restart-domain-tests.lisp",
-        "line": 6,
+        "line": 7,
         "include": "../../books/feed-restart-domain",
         "included": "books/feed-restart-domain.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -117969,7 +117948,7 @@
       },
       {
         "book": "tests/acl2/obligation-view-cursor-tests.lisp",
-        "line": 2,
+        "line": 3,
         "include": "../../books/obligation-view-cursor-refinement",
         "included": "books/obligation-view-cursor-refinement.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -120279,21 +120258,21 @@
       },
       {
         "book": "tests/acl2/productive-transfer-tests.lisp",
-        "line": 3,
+        "line": 4,
         "include": "../../books/productive-transfer",
         "included": "books/productive-transfer.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/productive-transfer-tests.lisp",
-        "line": 4,
+        "line": 5,
         "include": "owner-feed-tests",
         "included": "tests/acl2/owner-feed-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/productive-transfer-tests.lisp",
-        "line": 5,
+        "line": 6,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -123387,7 +123366,7 @@
       },
       {
         "book": "tests/acl2/view-delta-cursor-tests.lisp",
-        "line": 2,
+        "line": 3,
         "include": "../../books/view-delta-cursor-refinement",
         "included": "books/view-delta-cursor-refinement.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"

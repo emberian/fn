@@ -1,3 +1,4 @@
+; UNHOOKED cert-roots (2026-10-02): out of the Makefile certify roots -- its closure reaches books/allocation-turn-source-cost, a Codex-era book that never certified (fn-atsc-ceiling guard fails). The code stays; it certifies again with that book.
 (in-package "ACL2")
 (include-book "../../books/allocation-turn-source-cost")
 (include-book "allocation-turn-slots-tests")

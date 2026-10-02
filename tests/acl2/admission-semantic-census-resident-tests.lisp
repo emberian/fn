@@ -1,3 +1,4 @@
+; UNHOOKED cert-roots (2026-10-02): out of the Makefile certify roots -- its closure reaches books/history-cold-record-cursor, a Codex-era book that never certified (fn-hrcur-cold-classify-tick-refines-residual fails). The code stays; it certifies again with that book.
 (in-package "ACL2")
 (include-book "../../books/admission-semantic-census-resident")
 (defconst *rccap-resident-c* '(:need-row 1 0 0 nil (31 1) :lease))

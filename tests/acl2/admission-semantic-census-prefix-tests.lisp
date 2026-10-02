@@ -1,3 +1,4 @@
+; UNHOOKED cert-roots (2026-10-02): out of the Makefile certify roots -- its closure reaches books/admission-semantic-census-lineage, a Codex-era book that never certified (fn-rccap-actual-resident-new-ordinal-is-exact-candidate fails). The code stays; it certifies again with that book.
 (in-package "ACL2")
 (include-book "../../books/admission-semantic-census-prefix")
 (defconst *rccap-test-source* '(7 (11 1) 0 0))

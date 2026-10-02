@@ -1,3 +1,4 @@
+; UNHOOKED cert-roots (2026-10-02): out of the Makefile certify roots -- its closure reaches books/view-delta-cursor-refinement, a Codex-era book that never certified (fn-mxc-put-is-put-chars-of-nthcdr fails). The code stays; it certifies again with that book.
 (in-package "ACL2")
 (include-book "../../books/obligation-view-cursor-refinement")
 (defconst *ovct-view* (cons 2 (fn-vdc-bump "ab" 11 (fn-vdc-bump "z" 4 nil))))

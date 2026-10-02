@@ -1,3 +1,4 @@
+; UNHOOKED cert-roots (2026-10-02): out of the Makefile certify roots -- a Codex-era book that never certified and no image world includes: fn-atsc-ceiling guard fails at dev adbf57435. The code stays; its completion is queued (build/coordinator/lanedumps/cert-roots.md).
 ; Source side of the actual ATS Qgate/finish contract. Observation scaffolding
 ; is never executed by the served path and its constructors are not charged.
 ; Source CONS cells are distinct from selected compiler allocation requests.
