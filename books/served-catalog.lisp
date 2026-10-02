@@ -47,6 +47,7 @@
 (include-book "nntp-range-indexed-invariants")
 (include-book "nntp-list-counts")
 (include-book "served-columns")   ; the overview column: OVER/HDR/XPAT without the bytes
+(include-book "newnews-cursor")   ; the NEWNEWS plan cursor (fn-nnwp-*), PRF-1232
 
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
@@ -858,11 +859,19 @@
 ; What a cursor effect stands for: the reply of the numbers K..TOP of GROUP
 ; in view V with the status line owed (the cursor a served step emits is
 ; fn-ovw-start's, whose status line is unsent).
+;
+; A NEWNEWS plan cursor (books/newnews-cursor.lisp fn-nnwp-cursorp: its third
+; element a scan cursor, which an OVER cursor's clamped TOP never is) stands
+; for the NEWNEWS reply of its scan cursor, status line owed, as an OVER
+; cursor stands for its reply with the status line owed: the cursor a served
+; step emits is fresh (fn-nntp-newnews-ovw's, fn-ovw-start's).
 (defun fn-ovw-cursor-octets (cur fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
-  (fn-ovw-reply (fn-ovw-lines (nth 0 cur) (nfix (nth 1 cur)) (nfix (nth 2 cur)) (nth 3 cur)
-                              fn-arena fn-cat)
-                (nth 4 cur) t))
+  (if (fn-nnwp-cursorp cur)
+      (fn-nnwp-octets (fn-nnwp-cursor t (nth 2 cur)) fn-arena)
+    (fn-ovw-reply (fn-ovw-lines (nth 0 cur) (nfix (nth 1 cur)) (nfix (nth 2 cur)) (nth 3 cur)
+                                fn-arena fn-cat)
+                  (nth 4 cur) t)))
 
 ; The expansion: every cursor effect becomes the reply it stands for; every
 ; other element, and the list's final cdr, is kept.
@@ -994,8 +1003,9 @@
    (let ((octets (fn-ovw-cursor-octets cur fn-arena fn-cat)))
      (not (and (consp octets) (equal (car octets) 50)
                (consp (cdr octets)) (equal (car (cdr octets)) 49))))
-   :hints (("Goal" :in-theory (e/d (fn-ovw-cursor-octets fn-ovw-reply fn-ovw-empty-text fn-ovw-status)
-                                   (fn-ovw-lines fn-nntp-stuff-lines))))))
+   :hints (("Goal" :in-theory (e/d (fn-ovw-cursor-octets fn-ovw-reply fn-ovw-empty-text fn-ovw-status
+                                    fn-nnwp-octets fn-nnwp-cursor)
+                                   (fn-ovw-lines fn-nntp-stuff-lines fn-nnw-owes))))))
 
 (defthm fn-ovw-selectedp-of-expand
   (equal (fn-served-selectedp (fn-ovw-expand effects fn-arena fn-cat))
@@ -1051,6 +1061,125 @@
                             fn-nntp-make-result fn-nntp-reply-effect fn-ovw-over-range-cat-is-spec)
                            (fn-ovw-lines fn-ovw-reply fn-ovw-status fn-nntp-parse-range
                             fn-cat-group-next fn-nntp-over-range-cat)))))
+
+;;; NEWNEWS (PRF-1232; Codex r59): the served arm answers a well-formed
+;;; NEWNEWS with ONE plan-cursor effect, the NEWNEWS plan cursor
+;;; (books/newnews-cursor.lisp fn-nnwp-cursor, status line owed) over the scan
+;;; cursor fn-nnw-start makes of the pinned archive's article list; the host's
+;;; render plan steps it in quanta (books/served-plan-cursor.lisp
+;;; fn-splan-rest-cursor-step: at most (max 1 W) articles read per quantum,
+;;; fn-nnw-step-reads-at-most-q), where the reference materializes the whole
+;;; reply in the step.  The malformed forms answer as the reference does.
+;;; The carry of suffix-max stamps (fn-nnw-carryp) is NIL here: the cursor
+;;; then walks to the end of the list, still in bounded quanta; the early stop
+;;; past the date needs the carry threaded to the dispatcher (open).
+;;; KEYSTONE fn-nntp-newnews-ovw-expands-to-newnews-response: expanded, the
+;;; arm's effects are the reference's (books/nntp-responses.lisp
+;;; fn-nntp-newnews-response, what books/nntp.lisp fn-nntp-archive-command
+;;; answers for NEWNEWS), byte for byte.
+(defun fn-nntp-newnews-ovw (session archive env args)
+  (declare (xargs :guard t))
+  (if (not (and (consp args) (consp (cdr args)) (consp (cdr (cdr args)))
+                (or (null (cdr (cdr (cdr args))))
+                    (and (consp (cdr (cdr (cdr args))))
+                         (null (cdr (cdr (cdr (cdr args)))))
+                         (fn-nntp-keywordp (car (cdr (cdr (cdr args))))
+                                           "GMT")))))
+      (fn-nntp-single session (fn-proto-text * :syntax))
+    (let ((date (fn-nntp-newgroups-date-parse
+                 (car (cdr args))
+                 (fn-nntp-observed-year (fn-nntp-env-observation env))))
+          (time (fn-nntp-newgroups-time-parse (car (cdr (cdr args)))))
+          (patterns (fn-wildmat-parse (car args))))
+      (if (and (not (fn-nntp-parse-okp date))
+               (equal (car (cdr date)) :no-century))
+          (fn-nntp-single session (fn-proto-text * :no-century))
+        (if (or (not (fn-nntp-parse-okp date))
+                (not (fn-nntp-parse-okp time))
+                (not (fn-wildmat-result-okp patterns)))
+            (fn-nntp-single session (fn-proto-text * :syntax))
+          (fn-nntp-make-result
+           session
+           (list (fn-ovw-cursor-effect
+                  (fn-nnwp-cursor
+                   t
+                   (fn-nnw-start
+                    (fn-nntp-filter-groups-by-wildmat
+                     (fn-wildmat-result-value patterns)
+                     (fn-state-groups archive))
+                    (fn-nntp-civil-dtn-ms
+                     (fn-nntp-parse-1 date) (fn-nntp-parse-2 date)
+                     (fn-nntp-parse-3 date) (fn-nntp-parse-1 time)
+                     (fn-nntp-parse-2 time) (fn-nntp-parse-3 time))
+                    (fn-state-articles archive)
+                    (fn-nntp-newnews-reader-horizon env) nil))))))))))
+
+(local
+ (defthm fn-ovw-nnwp-status-is-multi-status
+   (equal (fn-nnwp-status)
+          (fn-nntp-crlf (fn-nntp-string-octets (fn-proto-text "NEWNEWS" :listed))))
+   :hints (("Goal" :in-theory (enable fn-nnwp-status)))))
+
+(local
+ (defthm fn-ovw-nnwp-cursorp-of-start
+   (fn-nnwp-cursorp (list :nnw-reply owedp (fn-nnw-start groups threshold arts horizon carry)))
+   :hints (("Goal" :in-theory (enable fn-nnw-start fn-nnwp-cursor)))))
+
+(defthm fn-nntp-newnews-ovw-expands-to-newnews-response
+  (and (equal (car (fn-nntp-newnews-ovw session archive env args)) session)
+       (equal (fn-ovw-expand (cdr (fn-nntp-newnews-ovw session archive env args))
+                             fn-arena fn-cat)
+              (cdr (fn-nntp-newnews-response session archive env args fn-arena))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-nnwp-octets-of-start
+                            (groups (fn-nntp-filter-groups-by-wildmat
+                                     (fn-wildmat-result-value (fn-wildmat-parse (car args)))
+                                     (fn-state-groups archive)))
+                            (threshold
+                             (let ((date (fn-nntp-newgroups-date-parse
+                                          (car (cdr args))
+                                          (fn-nntp-observed-year (fn-nntp-env-observation env))))
+                                   (time (fn-nntp-newgroups-time-parse (car (cdr (cdr args))))))
+                               (fn-nntp-civil-dtn-ms
+                                (fn-nntp-parse-1 date) (fn-nntp-parse-2 date)
+                                (fn-nntp-parse-3 date) (fn-nntp-parse-1 time)
+                                (fn-nntp-parse-2 time) (fn-nntp-parse-3 time))))
+                            (arts (fn-state-articles archive))
+                            (horizon (fn-nntp-newnews-reader-horizon env))
+                            (carry nil)))
+           :in-theory (e/d (fn-nntp-newnews-ovw fn-nntp-newnews-response
+                            fn-ovw-cursor-effect fn-ovw-cursor-effectp fn-ovw-cursor-octets
+                            fn-ovw-expand fn-nntp-make-result fn-nntp-reply-effect
+                            fn-nntp-multi fn-nnwp-cursor)
+                           (fn-nnwp-octets-of-start fn-nnwp-octets fn-nnw-start
+                            fn-nntp-newnews-scan fn-nntp-stuff-lines fn-nntp-single
+                            fn-nntp-newgroups-date-parse fn-nntp-newgroups-time-parse
+                            fn-wildmat-parse fn-nntp-parse-okp fn-wildmat-result-okp
+                            fn-nntp-filter-groups-by-wildmat fn-nntp-civil-dtn-ms
+                            fn-nntp-keywordp fn-nntp-newnews-reader-horizon
+                            fn-wildmat-result-value fn-nntp-crlf fn-nntp-string-octets
+                            fn-nnwp-cursorp)))))
+
+; The reference's session is kept (the dispatcher keystone's session half).
+(defthm fn-ovw-newnews-response-session
+  (equal (car (fn-nntp-newnews-response session archive env args fn-arena)) session)
+  :hints (("Goal" :in-theory (e/d (fn-nntp-newnews-response)
+                                  (fn-nntp-single fn-nntp-multi fn-nntp-newnews-scan
+                                   fn-nntp-newgroups-date-parse fn-nntp-newgroups-time-parse
+                                   fn-wildmat-parse fn-nntp-parse-okp fn-wildmat-result-okp
+                                   fn-nntp-filter-groups-by-wildmat fn-nntp-civil-dtn-ms)))))
+
+(defthm fn-ovw-expand-of-newnews-response-effects
+  (equal (fn-ovw-expand (cdr (fn-nntp-newnews-response session archive env args fn-arena))
+                        fn-arena fn-cat)
+         (cdr (fn-nntp-newnews-response session archive env args fn-arena)))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-newnews-response)
+                                  (fn-nntp-single fn-nntp-multi fn-nntp-newnews-scan
+                                   fn-nntp-newgroups-date-parse fn-nntp-newgroups-time-parse
+                                   fn-wildmat-parse fn-nntp-parse-okp fn-wildmat-result-okp
+                                   fn-nntp-filter-groups-by-wildmat fn-nntp-civil-dtn-ms)))))
+
+(in-theory (disable fn-nntp-newnews-ovw))
 
 ;;; GROUP / LISTGROUP / LIST COUNTS: count, low and high are the length,
 ;;; first and last of the group's numbers (the served fold's

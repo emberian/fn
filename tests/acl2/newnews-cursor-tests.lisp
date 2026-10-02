@@ -108,3 +108,83 @@
 (assert-event (and (not (fn-nnw-carryp *nct-low-c*))
                    (not (equal (fn-nnw-response nil *nct-archive* *nct-env* *nct-args-o* *nct-low-c* 4 fn-arena)
                                (fn-nntp-newnews-response nil *nct-archive* *nct-env* *nct-args-o* fn-arena)))))
+
+; -----------------------------------------------------------------------------
+; fn-nnw-scan-nil-past-bound (Codex r59 F2), over *nct-arts* with the reader
+; clock at 86000 s.  The suffix of the articles 9..0 (stamps 86390..86399,
+; article 7 without one) has smax 86399; B = 86399, 1000 B below the
+; threshold 86400000.
+(defconst *nct-old* (nthcdr 10 *nct-arts*))
+(defconst *nct-b* 86399)
+; Positive: every hypothesis holds, and the scan lists nothing.
+(assert-event (and (natp 86000) (natp *nct-b*)
+                   (<= (fn-nnw-smax *nct-old*) *nct-b*)
+                   (<= 86000 *nct-b*)
+                   (< (* 1000 *nct-b*) *nct-th*)
+                   (equal (fn-nntp-newnews-scan *nct-g* *nct-th* *nct-old* 86000 fn-arena) nil)))
+; Removal of (<= (fn-nnw-smax arts) b): the whole list (smax 86409); the
+; other hypotheses hold, the scan lists the ten newer articles.
+(assert-event (and (natp 86000) (<= 86000 *nct-b*) (< (* 1000 *nct-b*) *nct-th*)
+                   (not (<= (fn-nnw-smax *nct-arts*) *nct-b*))
+                   (equal (len (fn-nntp-newnews-scan *nct-g* *nct-th* *nct-arts* 86000 fn-arena))
+                          10)))
+; Removal of (<= horizon b): the suffix 7..0, its newest article without a
+; stamp (its instant is the horizon), horizon 86500.  The smax and threshold
+; hypotheses hold; the scan lists that article.
+(defconst *nct-old7* (nthcdr 12 *nct-arts*))
+(assert-event (and (equal (fn-article-stamp (car *nct-old7*)) :none)
+                   (natp 86500) (<= (fn-nnw-smax *nct-old7*) *nct-b*) (< (* 1000 *nct-b*) *nct-th*)
+                   (not (<= 86500 *nct-b*))
+                   (equal (fn-nntp-newnews-scan *nct-g* *nct-th* *nct-old7* 86500 fn-arena)
+                          (list (fn-nntp-string-octets "<a7@x>")))))
+; Removal of (natp horizon): no reader clock (:none); the stampless article
+; is listed (an instant that is not natural is new).
+(assert-event (and (not (natp :none)) (<= (fn-nnw-smax *nct-old7*) *nct-b*)
+                   (equal (fn-nntp-newnews-scan *nct-g* *nct-th* *nct-old7* :none fn-arena)
+                          (list (fn-nntp-string-octets "<a7@x>")))))
+
+; -----------------------------------------------------------------------------
+; ARTICLES VISITED: fn-nnw-step-reads-at-most-q, fn-nnw-step-consumes-q.  A
+; quantum of 3 from the start of the list without an index (it continues).
+(assert-event
+ (mv-let (lines next) (fn-nnw-step (fn-nnw-cursor *nct-g* *nct-th* *nct-arts* nil :none) 3 fn-arena)
+   (and next
+        (equal (fn-nnw-tail next) (nthcdr 3 *nct-arts*))
+        (equal lines
+               (car (mv-list 2 (fn-nnw-step (fn-nnw-cursor *nct-g* *nct-th* (fn-nnw-firstn 3 *nct-arts*)
+                                                     nil :none)
+                                      3 fn-arena))))
+        (equal (len lines) 3))))
+; MUTATION (labelled): an article past the first three replaced (made new
+; and in the group) changes nothing in the quantum; the same replacement
+; inside the prefix changes its lines.
+(defconst *nct-odd* (fn-make-article "<odd@x>" nil '("g") (list (cons "g" 99)) t 99999))
+(assert-event
+ (and (equal (car (mv-list 2 (fn-nnw-step (fn-nnw-cursor *nct-g* *nct-th*
+                                                   (append (take 3 *nct-arts*) (list *nct-odd*)
+                                                           (nthcdr 4 *nct-arts*))
+                                                   nil :none) 3 fn-arena)))
+             (car (mv-list 2 (fn-nnw-step (fn-nnw-cursor *nct-g* *nct-th* *nct-arts* nil :none) 3 fn-arena))))
+      (not (equal (car (mv-list 2 (fn-nnw-step (fn-nnw-cursor *nct-g* *nct-th*
+                                                        (cons *nct-odd* (cdr *nct-arts*))
+                                                        nil :none) 3 fn-arena)))
+                  (car (mv-list 2 (fn-nnw-step (fn-nnw-cursor *nct-g* *nct-th* *nct-arts* nil :none)
+                                         3 fn-arena)))))))
+
+; -----------------------------------------------------------------------------
+; THE PLAN CURSOR: fn-nnwp-run-is-octets at quanta 1, 3 and 64, and
+; fn-nnwp-octets-of-start: the fresh plan cursor is the reference reply's
+; octets (status line, stuffed scan, dot).
+(defconst *nct-pc* (fn-nnwp-cursor t (fn-nnw-start *nct-g* *nct-th* *nct-arts* :none *nct-c*)))
+(assert-event (fn-nnwp-cursor-okp *nct-pc*))
+(assert-event (and (equal (fn-nnwp-run *nct-pc* 1 fn-arena) (fn-nnwp-octets *nct-pc* fn-arena))
+                   (equal (fn-nnwp-run *nct-pc* 3 fn-arena) (fn-nnwp-octets *nct-pc* fn-arena))
+                   (equal (fn-nnwp-run *nct-pc* 64 fn-arena) (fn-nnwp-octets *nct-pc* fn-arena))))
+(assert-event (equal (fn-nnwp-octets *nct-pc* fn-arena)
+                     (cadr (cadr (fn-nntp-multi nil (fn-proto-text "NEWNEWS" :listed) (nct-scan))))))
+; Residual of one quantum: its octets, then what the next plan cursor stands
+; for (no status line: it was written), are the whole reply.
+(assert-event (mv-let (octets next) (fn-nnwp-step *nct-pc* 3 fn-arena)
+                (and next (null (nth 1 next))
+                     (equal (append octets (fn-nnwp-octets next fn-arena))
+                            (fn-nnwp-octets *nct-pc* fn-arena)))))

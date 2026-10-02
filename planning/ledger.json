@@ -2348,21 +2348,21 @@
   ],
   "totals": {
     "books": 2763,
-    "books_in_root_closure": 2618,
+    "books_in_root_closure": 2619,
     "roots": 2343,
-    "theorems": 37078,
-    "functions": 23465,
-    "assert_events": 25866,
+    "theorems": 37099,
+    "functions": 23475,
+    "assert_events": 25876,
     "must_fails": 2647,
     "prover_refusals": 0,
     "encapsulates": 215,
     "guards": {
       "verified": 3914,
-      "declared-off": 3038,
-      "default-guarded": 12960,
+      "declared-off": 3041,
+      "default-guarded": 12967,
       "default-unguarded": 3553
     },
-    "suspect_theorems": 1371,
+    "suspect_theorems": 1372,
     "export_hygiene_warnings": 402,
     "enabled_projection_warnings": 79,
     "teeth_form_warnings": 282,
@@ -28381,14 +28381,14 @@
     },
     {
       "book": "books/newnews-cursor.lisp",
-      "in_root_closure": false,
+      "in_root_closure": true,
       "is_root": false,
-      "theorems": 35,
-      "functions": 27,
+      "theorems": 50,
+      "functions": 35,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
-        "default-guarded": 27,
+        "declared-off": 2,
+        "default-guarded": 33,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -43585,12 +43585,12 @@
       "book": "books/served-catalog.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 177,
-      "functions": 86,
+      "theorems": 182,
+      "functions": 87,
       "guards": {
         "verified": 30,
         "declared-off": 5,
-        "default-guarded": 50,
+        "default-guarded": 51,
         "default-unguarded": 1
       },
       "verify_guards_events": 30,
@@ -43602,6 +43602,7 @@
       "encapsulates": 0,
       "includes": [
         "catalog-number-index",
+        "newnews-cursor",
         "nntp",
         "nntp-list-counts",
         "nntp-range-indexed-invariants",
@@ -43612,6 +43613,7 @@
       "system_includes": [],
       "suspects": [
         "fn-ovw-cursor-fields",
+        "fn-ovw-nnwp-status-is-multi-status",
         "fn-ovw-session-of-multi",
         "fn-ovw-session-of-multi-octets",
         "fn-ovw-session-of-single",
@@ -43740,11 +43742,11 @@
       "book": "books/served-plan-cursor.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 29,
-      "functions": 11,
+      "theorems": 30,
+      "functions": 12,
       "guards": {
         "verified": 1,
-        "declared-off": 3,
+        "declared-off": 4,
         "default-guarded": 7,
         "default-unguarded": 0
       },
@@ -67090,10 +67092,10 @@
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 19,
+      "assert_events": 29,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 13,
+      "defconsts": 18,
       "defmacros": 2,
       "encapsulates": 0,
       "includes": [
@@ -86584,15 +86586,24 @@
     {
       "theorem": "fn-ovw-cursor-fields",
       "book": "books/served-catalog.lisp",
-      "line": 796,
+      "line": 797,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
     },
     {
+      "theorem": "fn-ovw-nnwp-status-is-multi-status",
+      "book": "books/served-catalog.lisp",
+      "line": 1117,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)",
+        "definition-restated: the conclusion is the body of fn-nnwp-status"
+      ]
+    },
+    {
       "theorem": "fn-ovw-session-of-multi",
       "book": "books/served-catalog.lisp",
-      "line": 918,
+      "line": 927,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -86600,7 +86611,7 @@
     {
       "theorem": "fn-ovw-session-of-multi-octets",
       "book": "books/served-catalog.lisp",
-      "line": 922,
+      "line": 931,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -86608,7 +86619,7 @@
     {
       "theorem": "fn-ovw-session-of-single",
       "book": "books/served-catalog.lisp",
-      "line": 914,
+      "line": 923,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -86616,7 +86627,7 @@
     {
       "theorem": "fn-ovw-status-is-crlf",
       "book": "books/served-catalog.lisp",
-      "line": 1021,
+      "line": 1031,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)",
         "definition-restated: the conclusion is the body of fn-ovw-status"
@@ -88861,7 +88872,7 @@
     {
       "theorem": "fn-scat-article-idp-is-msgid-idp",
       "book": "books/served-catalog.lisp",
-      "line": 535,
+      "line": 536,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -88869,7 +88880,7 @@
     {
       "theorem": "fn-scat-built-trie-corresponds",
       "book": "books/served-catalog-dispatch.lisp",
-      "line": 209,
+      "line": 213,
       "reasons": [
         "reflexive-conclusion: a conjunct is (equal X X)"
       ]
@@ -88877,7 +88888,7 @@
     {
       "theorem": "fn-scat-pin-trie-is-built",
       "book": "books/served-catalog-dispatch.lisp",
-      "line": 202,
+      "line": 206,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-midx-correspondencep"
       ]
@@ -91037,7 +91048,7 @@
     {
       "theorem": "fn-splan-cursor-effectp-is-ovw-by-definition",
       "book": "books/served-plan-cursor.lisp",
-      "line": 106,
+      "line": 114,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)",
         "reflexive-conclusion: a conjunct is (equal X X)"
@@ -109947,7 +109958,7 @@
       },
       {
         "book": "books/served-plan-cursor.lisp",
-        "line": 101,
+        "line": 109,
         "include": "over-window",
         "included": "books/over-window.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"

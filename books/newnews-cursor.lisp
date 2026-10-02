@@ -27,8 +27,9 @@
 ; 2. The cursor (:newnews GROUPS THRESHOLD TAIL MAXES HORIZON): what the
 ;    reply still owes is (fn-nntp-newnews-scan GROUPS THRESHOLD TAIL HORIZON)
 ;    (fn-nnw-owes).  MAXES is (fn-nnw-maxes TAIL) or nil (no index: the
-;    cursor walks to the end, still in quanta).  fn-nnw-step visits at most
-;    (max 1 Q) articles (fn-nnw-step-lines-at-most-q) and always progresses
+;    cursor walks to the end, still in quanta).  fn-nnw-step reads at most
+;    (max 1 Q) articles (fn-nnw-step-reads-at-most-q, fn-nnw-step-consumes-q;
+;    fn-nnw-step-lines-at-most-q bounds its lines) and always progresses
 ;    (fn-nnw-step-progresses); RESIDUAL: the lines it emits followed by what
 ;    the next cursor owes are what the cursor owed
 ;    (fn-nnw-step-residual), so a reply in quanta never truncates and never
@@ -39,11 +40,12 @@
 ;   fn-nnw-response-is-newnews-response: under fn-nnw-carryp, the NEWNEWS
 ;     response with the run in the scan's place is
 ;     fn-nntp-newnews-response, byte for byte.
-; The served subject: fn-nnw-response is called by nothing served yet.  Its
-; host path (the -cat dispatcher's NEWNEWS arm emitting the cursor as a
-; plan cursor effect, books/served-plan-cursor.lisp stepping it, the host
-; refreshing the carry) waits for stage 0 and the dispatcher's owners
-; (build/coordinator/lanedumps/served-incremental-4.md NEXT).
+; The served subject: the -cat dispatcher's NEWNEWS arm
+; (books/served-catalog.lisp fn-nntp-newnews-ovw) emits section 7's plan
+; cursor, which books/served-plan-cursor.lisp steps (fn-nnwp-step).  The arm
+; passes the carry NIL for now (not threaded to the dispatcher): the cursor
+; then walks to the end in bounded quanta.  fn-nnw-response is the list
+; model of the reply with the carry.
 
 (in-package "ACL2")
 (include-book "nntp-responses")
@@ -528,3 +530,227 @@
                                    fn-nntp-filter-groups-by-wildmat fn-nntp-civil-dtn-ms
                                    fn-nntp-keywordp fn-nntp-newnews-reader-horizon
                                    fn-wildmat-result-value)))))
+
+; -----------------------------------------------------------------------------
+; 6. ARTICLES VISITED (Codex r59 F1).  fn-nnw-step-lines-at-most-q bounds the
+; lines a quantum emits; these bound the articles it reads.  A quantum reads
+; at most the first (max 1 Q) articles of its tail: its lines are the lines of
+; the step over that prefix alone (fn-nnw-step-reads-at-most-q), and a
+; quantum that leaves a cursor consumed exactly that many
+; (fn-nnw-step-consumes-q).  Per article the work is the candidate test over
+; the selected groups (fn-nntp-newnews-candidatep: one membership probe per
+; group of GROUPS), the tombstone probe (the payload's fixed head) and the
+; stamp test; GROUPS is selected once, at the command's step, by
+; fn-nntp-filter-groups-by-wildmat over the configured groups.  So a quantum
+; is O(max(1,Q) x |GROUPS|) and the command's step O(G x |wildmat|), G the
+; configured group count: bounded by the operator's group profile (D27: an
+; admission limit, not a data ceiling), not by the article count.
+
+(defun fn-nnw-firstn (n x)
+  (declare (xargs :guard (natp n)))
+  (if (or (zp n) (atom x)) nil (cons (car x) (fn-nnw-firstn (1- n) (cdr x)))))
+
+(local
+ (defthm fn-nnw-loop-reads-firstn
+   (equal (car (fn-nnw-loop groups threshold (fn-nnw-firstn q tail) maxes horizon q
+                            fn-arena acc))
+          (car (fn-nnw-loop groups threshold tail maxes horizon q fn-arena acc)))
+   :hints (("Goal" :induct (fn-nnw-loop groups threshold tail maxes horizon q fn-arena acc)
+            :in-theory (disable fn-nntp-newnews-candidatep fn-nntp-article-tombstonep
+                                fn-nntp-newnews-newp fn-nntp-string-octets
+                                fn-article-msgid fn-nnw-pastp)))))
+
+(local
+ (defthm fn-nnw-loop-next-tail
+   (let ((next (mv-nth 1 (fn-nnw-loop groups threshold tail maxes horizon q fn-arena acc))))
+     (implies next
+              (equal (fn-nnw-tail next) (nthcdr (nfix q) tail))))
+   :hints (("Goal" :induct (fn-nnw-loop groups threshold tail maxes horizon q fn-arena acc)
+            :in-theory (disable fn-nntp-newnews-candidatep fn-nntp-article-tombstonep
+                                fn-nntp-newnews-newp fn-nntp-string-octets
+                                fn-article-msgid fn-nnw-pastp)))))
+
+; KEYSTONE (articles read): the quantum's lines depend on the first
+; (max 1 Q) articles of the tail and on nothing after them.
+(defthm fn-nnw-step-reads-at-most-q
+  (equal (mv-nth 0 (fn-nnw-step (fn-nnw-cursor groups threshold
+                                               (fn-nnw-firstn (max 1 (nfix q)) tail)
+                                               maxes horizon)
+                                q fn-arena))
+         (mv-nth 0 (fn-nnw-step (fn-nnw-cursor groups threshold tail maxes horizon)
+                                q fn-arena)))
+  :hints (("Goal" :in-theory (e/d (fn-nnw-step) (fn-nnw-loop fn-nnw-firstn))
+           :use ((:instance fn-nnw-loop-reads-firstn (q (max 1 (nfix q))) (acc nil))))))
+
+(local
+ (defthm fn-nnw-tail-of-cursor-list
+   (equal (fn-nnw-tail (list :newnews groups threshold tail maxes horizon)) tail)))
+
+; A quantum that leaves a cursor consumed exactly (max 1 Q) articles.
+(defthm fn-nnw-step-consumes-q
+  (let ((next (mv-nth 1 (fn-nnw-step (fn-nnw-cursor groups threshold tail maxes horizon)
+                                     q fn-arena))))
+    (implies next
+             (equal (fn-nnw-tail next) (nthcdr (max 1 (nfix q)) tail))))
+  :hints (("Goal" :in-theory (e/d (fn-nnw-step) (fn-nnw-loop mv-nth fn-nnw-tail))
+           :use ((:instance fn-nnw-loop-next-tail (q (max 1 (nfix q))) (acc nil))))))
+
+; -----------------------------------------------------------------------------
+; 7. THE PLAN CURSOR: the NEWNEWS reply as a cursor in the connection's render
+; plan (books/served-plan-cursor.lisp steps it; books/served-catalog.lisp
+; fn-ovw-cursor-octets is what it stands for).  (:nnw-reply OWEDP CUR): CUR the
+; scan cursor above, OWEDP whether the 230 status line is still owed.  Its
+; third element is a scan cursor, which an OVER cursor's (its clamped TOP, a
+; number) never is: fn-nnwp-cursorp tells the two apart.
+;
+; THE PIN (Codex r59): the cursor reads the arena between quanta (the
+; tombstone probe of each candidate's payload head).  It is held where OVER's
+; is, in the connection's response plan, and the host takes the plan's
+; reader hold after every served step (host/native/owner.lisp
+; fnn-owner-response-pin, books/response-plan-pins.lisp fn-rpin-step,
+; PRF-1059), which reclaim's swap excludes while the plan lives: a reclaim
+; between quanta cannot retire a payload a later quantum probes.  The tail is
+; the pinned archive's own article list (an immutable value), so a commit or
+; withdrawal between quanta changes no quantum either.
+
+(defun fn-nnwp-cursor (owedp cur)
+  (declare (xargs :guard t))
+  (list :nnw-reply owedp cur))
+
+(defun fn-nnwp-cursorp (pc)
+  (declare (xargs :guard t))
+  (and (true-listp pc) (fn-nnw-cursorp (nth 2 pc))))
+
+(defun fn-nnwp-cursor-okp (pc)
+  (declare (xargs :guard t))
+  (and (fn-nnwp-cursorp pc) (fn-nnw-cursor-okp (nth 2 pc))))
+
+(defun fn-nnwp-status ()
+  (declare (xargs :guard t))
+  (fn-nntp-crlf (fn-nntp-string-octets (fn-proto-text "NEWNEWS" :listed))))
+
+; What the plan cursor stands for: the status line if owed, the stuffed lines
+; the scan cursor owes, the terminator.
+(defun fn-nnwp-octets (pc fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (append (if (nth 1 pc) (fn-nnwp-status) nil)
+          (fn-nntp-stuff-lines (fn-nnw-owes (nth 2 pc) fn-arena))
+          '(46 13 10)))
+
+; One quantum: at most (max 1 W) articles read (section 6).
+(defun fn-nnwp-step (pc w fn-arena)
+  (declare (xargs :stobjs fn-arena :guard (true-listp pc)))
+  (mv-let (lines next)
+    (fn-nnw-step (nth 2 pc) w fn-arena)
+    (mv (append (if (nth 1 pc) (fn-nnwp-status) nil)
+                (fn-nntp-stuff-lines lines)
+                (if next nil '(46 13 10)))
+        (if next (fn-nnwp-cursor nil next) nil))))
+
+(defthm fn-nnwp-step-next-is-cursor
+  (let ((next (mv-nth 1 (fn-nnwp-step pc w fn-arena))))
+    (implies next
+             (and (consp next) (equal (car next) :nnw-reply)
+                  (implies (fn-nnwp-cursor-okp pc) (fn-nnwp-cursor-okp next)))))
+  :hints (("Goal" :use ((:instance fn-nnw-step-residual (cur (nth 2 pc)) (q w)))
+           :in-theory (e/d (fn-nnw-cursor-okp) (fn-nnw-step-residual fn-nntp-stuff-lines)))))
+
+(local
+ (defthm fn-nnw-loop-next-cursorp
+   (let ((next (mv-nth 1 (fn-nnw-loop groups threshold tail maxes horizon q fn-arena acc))))
+     (implies next (fn-nnw-cursorp next)))
+   :hints (("Goal" :induct (fn-nnw-loop groups threshold tail maxes horizon q fn-arena acc)
+            :in-theory (disable fn-nntp-newnews-candidatep fn-nntp-article-tombstonep
+                                fn-nntp-newnews-newp fn-nntp-string-octets
+                                fn-article-msgid fn-nnw-pastp)))))
+
+; Every plan cursor a quantum leaves is a NEWNEWS plan cursor.
+(defthm fn-nnwp-step-next-cursorp
+  (let ((next (mv-nth 1 (fn-nnwp-step pc w fn-arena))))
+    (implies next (fn-nnwp-cursorp next)))
+  :hints (("Goal" :in-theory (e/d (fn-nnw-step fn-nnwp-step fn-nnwp-cursor) (fn-nnw-loop))
+           :use ((:instance fn-nnw-loop-next-cursorp
+                            (groups (fn-nnw-groups (nth 2 pc))) (threshold (fn-nnw-threshold (nth 2 pc)))
+                            (tail (fn-nnw-tail (nth 2 pc))) (maxes (fn-nnw-maxes-of (nth 2 pc)))
+                            (horizon (fn-nnw-horizon (nth 2 pc))) (q (max 1 (nfix w))) (acc nil))))))
+
+(defun fn-nnwp-run (pc w fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil
+                  :measure (acl2-count (fn-nnw-tail (nth 2 pc)))
+                  :hints (("Goal" :use ((:instance fn-nnw-step-progresses (cur (nth 2 pc)) (q w)))
+                           :in-theory (disable fn-nnw-step-progresses fn-nnw-tail)))))
+  (mv-let (octets next)
+    (fn-nnwp-step pc w fn-arena)
+    (if next
+        (append octets (fn-nnwp-run next w fn-arena))
+      octets)))
+
+(local
+ (defthm fn-nnwp-stuff-lines-append
+   (equal (fn-nntp-stuff-lines (append a b))
+          (append (fn-nntp-stuff-lines a) (fn-nntp-stuff-lines b)))
+   :hints (("Goal" :induct (fn-nntp-stuff-lines a)
+            :in-theory (e/d (fn-nntp-stuff-lines) (fn-nntp-crlf fn-wire-stuff-line))))))
+
+(local
+ (defthm fn-nnwp-append-assoc
+   (equal (append (append x y) z) (append x (append y z)))))
+
+(local
+ (defthm fn-nnwp-stuff-split
+   (implies (equal (append l r) o)
+            (equal (append (fn-nntp-stuff-lines l) (append (fn-nntp-stuff-lines r) tl))
+                   (append (fn-nntp-stuff-lines o) tl)))
+   :hints (("Goal" :in-theory (disable fn-nntp-stuff-lines)
+            :use ((:instance fn-nnwp-stuff-lines-append (a l) (b r)))))))
+
+; RESIDUAL: a quantum's octets followed by what the next plan cursor stands
+; for are what the plan cursor stood for.
+(defthm fn-nnwp-step-residual
+  (implies (fn-nnwp-cursor-okp pc)
+           (equal (append (mv-nth 0 (fn-nnwp-step pc w fn-arena))
+                          (if (mv-nth 1 (fn-nnwp-step pc w fn-arena))
+                              (fn-nnwp-octets (mv-nth 1 (fn-nnwp-step pc w fn-arena)) fn-arena)
+                            nil))
+                  (fn-nnwp-octets pc fn-arena)))
+  :hints (("Goal" :use ((:instance fn-nnw-step-residual (cur (nth 2 pc)) (q w)))
+           :in-theory (e/d (fn-nnw-cursor-okp fn-nnwp-step fn-nnwp-octets fn-nnwp-cursor)
+                           (fn-nnw-step-residual fn-nntp-stuff-lines fn-nnwp-status
+                            fn-nnwp-stuff-lines-append)))))
+
+(defthm fn-nnwp-step-octets-true-listp
+  (true-listp (car (fn-nnwp-step pc w fn-arena)))
+  :hints (("Goal" :in-theory (e/d (fn-nnwp-step) (fn-nntp-stuff-lines fn-nnwp-status)))))
+
+; KEYSTONE (the plan cursor's run is what it stands for), every quantum W.
+(defthm fn-nnwp-run-is-octets
+  (implies (fn-nnwp-cursor-okp pc)
+           (equal (fn-nnwp-run pc w fn-arena) (fn-nnwp-octets pc fn-arena)))
+  :hints (("Goal" :induct (fn-nnwp-run pc w fn-arena)
+           :in-theory (e/d (fn-nnwp-run) (fn-nnwp-step fn-nnwp-octets fn-nnwp-cursor-okp)))
+          ("Subgoal *1/2" :use ((:instance fn-nnwp-step-residual)
+                                (:instance fn-nnwp-step-next-is-cursor)))
+          ("Subgoal *1/1" :use ((:instance fn-nnwp-step-residual)
+                                (:instance fn-nnwp-step-next-is-cursor)))))
+
+; The fresh plan cursor a NEWNEWS starts stands for the reference's reply
+; octets: the status line, the scan's stuffed lines, the terminator.
+(defthm fn-nnwp-octets-of-start
+  (implies (fn-nnw-carryp carry)
+           (equal (fn-nnwp-octets (fn-nnwp-cursor t (fn-nnw-start groups threshold arts
+                                                                  horizon carry))
+                                  fn-arena)
+                  (append (fn-nnwp-status)
+                          (fn-nntp-stuff-lines
+                           (fn-nntp-newnews-scan groups threshold arts horizon fn-arena))
+                          '(46 13 10))))
+  :hints (("Goal" :use ((:instance fn-nnw-run-of-start (q 1))
+                        (:instance fn-nnw-run-is-owes
+                                   (cur (fn-nnw-start groups threshold arts horizon carry))
+                                   (q 1))
+                        (:instance fn-nnw-start-okp))
+           :in-theory (e/d (fn-nnwp-octets fn-nnwp-cursor) (fn-nnw-run fn-nnw-run-of-start fn-nnw-run-is-owes
+                               fn-nnw-start-okp fn-nntp-stuff-lines fn-nnwp-status
+                               fn-nntp-newnews-scan)))))
+
+(in-theory (disable fn-nnwp-step fn-nnwp-run fn-nnwp-octets fn-nnwp-status))

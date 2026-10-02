@@ -160,6 +160,10 @@
                ((fn-nntp-keywordp keyword "BODY") :body)
                (t :stat))
          v fn-arena fn-cat))
+       ;; PRF-1232: NEWNEWS answers a plan cursor the host's render plan
+       ;; steps in quanta (books/served-catalog.lisp fn-nntp-newnews-ovw).
+       ((fn-nntp-keywordp keyword "NEWNEWS")
+        (fn-nntp-newnews-ovw session archive env args))
        (t (fn-nntp-archive-command session archive env keyword args fn-arena))))))
 
 ;;; KEYSTONE (the boundary theorem of this increment): under archive = the
@@ -346,8 +350,12 @@
                             fn-nntp-make-result
                             fn-nntp-list-active-cat fn-nntp-next-or-last-cat
                             fn-nntp-current-retrieval-cat fn-nntp-next-or-last
-                            fn-scat-list-active-formp))
+                            fn-scat-list-active-formp
+                            fn-nntp-newnews-ovw fn-nntp-newnews-response))
            :use ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
+                 (:instance fn-nntp-newnews-ovw-expands-to-newnews-response)
+                 (:instance fn-ovw-newnews-response-session)
+                 (:instance fn-ovw-expand-of-newnews-response-effects)
                  (:instance fn-nntp-list-active-cat-is-list-command)
                  (:instance fn-nntp-next-or-last-cat-is-next-or-last (direction :next))
                  (:instance fn-nntp-next-or-last-cat-is-next-or-last (direction :last))

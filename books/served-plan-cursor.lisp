@@ -96,6 +96,14 @@
 ;   (fn-ovw-expand), so the external history carries no cursor (join-f2-12's
 ;   design; GPT-6's "request/connection state" is the plan).
 
+; NEWNEWS (PRF-1232): a plan cursor may also be the NEWNEWS reply's
+; (books/newnews-cursor.lisp fn-nnwp-cursor, emitted by books/served-catalog.lisp
+; fn-nntp-newnews-ovw); fn-splan-rest-cursor-step runs its quantum
+; (fn-nnwp-step: at most (max 1 W) articles read), fn-splan-pc-run its run, and
+; every keystone above holds of it (fn-splan-fresh-cursorp admits it with its
+; status line owed; fn-nnwp-run-is-octets).  It is held in the response plan
+; like OVER's, under the same reader hold.
+
 (in-package "ACL2")
 (include-book "served-plan")
 (include-book "over-window")
@@ -133,6 +141,10 @@
 ; -----------------------------------------------------------------------------
 ; The step: the first cursor of REST, stepped once
 
+; A plan cursor is an OVER range's (books/over-window.lisp fn-ovw-step) or a
+; NEWNEWS reply's (books/newnews-cursor.lisp fn-nnwp-step: at most (max 1 W)
+; articles read, fn-nnw-step-reads-at-most-q); fn-nnwp-cursorp tells them
+; apart (an OVER cursor's third element is its clamped TOP, a number).
 (defun fn-splan-rest-cursor-step (rest w fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat)
                   :guard (and (natp w)
@@ -141,21 +153,28 @@
   (if (consp rest)
       (if (fn-splan-cursor-effectp (car rest))
           (let ((cur (car (cdr (car rest)))))
-            (if (and (consp cur) (fn-ovw-cursorp cur))
-                (mv-let (octets next)
-                  (fn-ovw-step cur w fn-arena fn-cat)
-                  (mv :ok (cons (fn-nntp-reply-effect octets)
-                                (if next
-                                    (cons (fn-ovw-cursor-effect next) (cdr rest))
-                                  (cdr rest)))))
-              (mv :malformed rest)))
+            (cond ((fn-nnwp-cursorp cur)
+                   (mv-let (octets next)
+                     (fn-nnwp-step cur w fn-arena)
+                     (mv :ok (cons (fn-nntp-reply-effect octets)
+                                   (if next
+                                       (cons (fn-ovw-cursor-effect next) (cdr rest))
+                                     (cdr rest))))))
+                  ((and (consp cur) (fn-ovw-cursorp cur))
+                   (mv-let (octets next)
+                     (fn-ovw-step cur w fn-arena fn-cat)
+                     (mv :ok (cons (fn-nntp-reply-effect octets)
+                                   (if next
+                                       (cons (fn-ovw-cursor-effect next) (cdr rest))
+                                     (cdr rest))))))
+                  (t (mv :malformed rest))))
         (mv-let (status rest2)
           (fn-splan-rest-cursor-step (cdr rest) w fn-arena fn-cat)
           (mv status (cons (car rest) rest2))))
     (mv :ok rest)))
 
 (verify-guards fn-splan-rest-cursor-step
-  :hints (("Goal" :in-theory (disable fn-ovw-step fn-ovw-cursorp))))
+  :hints (("Goal" :in-theory (disable fn-ovw-step fn-ovw-cursorp fn-nnwp-step))))
 
 ; The host-called subject (W a natural: the entry guard's kind).
 (defun fn-splan-cursor-step (p w fn-arena fn-cat)
@@ -169,11 +188,18 @@
 ; -----------------------------------------------------------------------------
 ; The list model: what a plan owes with every cursor read as its run
 
+; A plan cursor's run: the NEWNEWS reply's or the OVER range's.
+(defun fn-splan-pc-run (cur wl fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
+  (if (fn-nnwp-cursorp cur)
+      (fn-nnwp-run cur wl fn-arena)
+    (fn-ovw-run cur wl fn-arena fn-cat)))
+
 (defun fn-splan-cw-octets (rest wl fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
   (if (consp rest)
       (append (if (fn-splan-cursor-effectp (car rest))
-                  (fn-ovw-run (car (cdr (car rest))) wl fn-arena fn-cat)
+                  (fn-splan-pc-run (car (cdr (car rest))) wl fn-arena fn-cat)
                 (fn-srb-effect-octets (car rest)))
               (fn-splan-cw-octets (cdr rest) wl fn-arena fn-cat))
     nil))
@@ -248,14 +274,24 @@
 
 ; A quantum keeps what the plan owes: the cursor's run is its step's octets
 ; followed by the run of the cursor that remains (fn-ovw-run unfolds).
+; The OVER step's next cursor is an OVER cursor (its third element the
+; clamped TOP, a number), never a NEWNEWS plan cursor.
+(local
+ (defthm fn-splan-ovw-step-next-not-nnwp
+   (not (fn-nnwp-cursorp (mv-nth 1 (fn-ovw-step cur w fn-arena fn-cat))))
+   :hints (("Goal" :in-theory (e/d (fn-ovw-step fn-ovw-cursor fn-nnwp-cursorp fn-nnw-cursorp)
+                                   (fn-ovw-lines fn-nntp-stuff-lines fn-ovw-status))))))
+
 (defthm fn-splan-rest-cursor-step-keeps-cw-octets
   (implies (equal (mv-nth 0 (fn-splan-rest-cursor-step rest wl fn-arena fn-cat)) :ok)
            (equal (fn-splan-cw-octets (mv-nth 1 (fn-splan-rest-cursor-step rest wl fn-arena fn-cat))
                                       wl fn-arena fn-cat)
                   (fn-splan-cw-octets rest wl fn-arena fn-cat)))
   :hints (("Goal" :induct (fn-splan-rest-cursor-step rest wl fn-arena fn-cat)
-           :in-theory (disable fn-ovw-step fn-ovw-cursorp fn-ovw-run)
-           :expand ((fn-ovw-run (car (cdr (car rest))) wl fn-arena fn-cat)))))
+           :in-theory (disable fn-ovw-step fn-ovw-cursorp fn-ovw-run fn-nnwp-step fn-nnwp-run
+                               fn-nnwp-cursorp)
+           :expand ((fn-ovw-run (car (cdr (car rest))) wl fn-arena fn-cat)
+                    (fn-nnwp-run (car (cdr (car rest))) wl fn-arena)))))
 
 (defthm fn-splan-cursor-step-keeps-cw-remaining
   (implies (equal (mv-nth 0 (fn-splan-cursor-step p wl fn-arena fn-cat)) :ok)
@@ -298,9 +334,13 @@
 
 (defun fn-splan-fresh-cursorp (cur)
   (declare (xargs :guard t))
-  (and (consp cur) (true-listp cur)
-       (equal cur (fn-ovw-cursor (nth 0 cur) (nth 1 cur) (nth 2 cur) (nth 3 cur) (nth 4 cur) t))
-       (natp (nth 1 cur)) (natp (nth 2 cur)) (natp (nth 3 cur))))
+  (or (and (consp cur) (true-listp cur)
+           (equal cur (fn-ovw-cursor (nth 0 cur) (nth 1 cur) (nth 2 cur) (nth 3 cur) (nth 4 cur) t))
+           (natp (nth 1 cur)) (natp (nth 2 cur)) (natp (nth 3 cur)))
+      ;; a NEWNEWS plan cursor with its status line owed (fn-nntp-newnews-ovw's)
+      (and (true-listp cur)
+           (equal cur (fn-nnwp-cursor t (nth 2 cur)))
+           (fn-nnwp-cursor-okp cur))))
 
 (defun fn-splan-fresh-effectsp (effects)
   (declare (xargs :guard t))
@@ -312,14 +352,17 @@
 
 (defthm fn-splan-fresh-run-is-cursor-octets
   (implies (fn-splan-fresh-cursorp cur)
-           (equal (fn-ovw-run cur wl fn-arena fn-cat)
+           (equal (fn-splan-pc-run cur wl fn-arena fn-cat)
                   (fn-ovw-cursor-octets cur fn-arena fn-cat)))
   :hints (("Goal" :do-not-induct t
+           :cases ((fn-nnwp-cursorp cur))
            :use ((:instance fn-ovw-run-is-reply
                             (group (nth 0 cur)) (k (nth 1 cur)) (top (nth 2 cur))
-                            (v (nth 3 cur)) (legacyp (nth 4 cur)) (owedp t) (w wl)))
-           :in-theory (e/d (fn-ovw-cursor-octets)
-                           (fn-ovw-run fn-ovw-run-is-reply fn-ovw-lines fn-ovw-reply)))))
+                            (v (nth 3 cur)) (legacyp (nth 4 cur)) (owedp t) (w wl))
+                 (:instance fn-nnwp-run-is-octets (pc cur) (w wl)))
+           :in-theory (e/d (fn-ovw-cursor-octets fn-splan-pc-run)
+                           (fn-ovw-run fn-ovw-run-is-reply fn-ovw-lines fn-ovw-reply
+                            fn-nnwp-run fn-nnwp-run-is-octets fn-nnwp-octets)))))
 
 (defthm fn-splan-cw-octets-is-the-expanded-reply
   (implies (fn-splan-fresh-effectsp effects)
@@ -327,7 +370,8 @@
                   (fn-served-reply-octets (fn-ovw-expand effects fn-arena fn-cat))))
   :hints (("Goal" :induct (fn-splan-fresh-effectsp effects)
            :in-theory (e/d (fn-ovw-expand fn-ovw-cursor-effectp)
-                           (fn-ovw-run fn-ovw-cursor-octets fn-splan-fresh-cursorp)))))
+                           (fn-ovw-run fn-ovw-cursor-octets fn-splan-fresh-cursorp
+                            fn-splan-pc-run)))))
 
 ; RESIDUAL RENDERING (GPT-6's invariant, section 4): after ANY number of
 ; rounds, the octets written followed by what the continuation still owes
@@ -443,6 +487,7 @@
   (declare (xargs :guard t))
   (if (consp rest)
       (and (or (not (fn-splan-cursor-effectp (car rest)))
+               (fn-nnwp-cursorp (car (cdr (car rest))))
                (and (consp (car (cdr (car rest))))
                     (fn-ovw-cursorp (car (cdr (car rest))))))
            (fn-splan-cw-rest-okp (cdr rest)))
@@ -455,7 +500,7 @@
 (defthm fn-splan-fresh-effectsp-is-cw-okp
   (implies (fn-splan-fresh-effectsp effects)
            (fn-splan-cw-okp (fn-splan-of-effects effects)))
-  :hints (("Goal" :in-theory (enable fn-ovw-cursor fn-ovw-cursorp))))
+  :hints (("Goal" :in-theory (enable fn-ovw-cursor fn-ovw-cursorp fn-nnwp-cursor-okp))))
 
 (local
  (defthm fn-splan-cw-step-next-is-consp
@@ -469,7 +514,7 @@
            (and (equal (mv-nth 0 (fn-splan-rest-cursor-step rest wl fn-arena fn-cat)) :ok)
                 (fn-splan-cw-rest-okp (mv-nth 1 (fn-splan-rest-cursor-step rest wl fn-arena fn-cat)))))
   :hints (("Goal" :induct (fn-splan-rest-cursor-step rest wl fn-arena fn-cat)
-           :in-theory (disable fn-ovw-step fn-ovw-cursorp))))
+           :in-theory (disable fn-ovw-step fn-ovw-cursorp fn-nnwp-step fn-nnwp-cursorp))))
 
 (defthm fn-splan-cursor-step-of-okp-is-ok
   (implies (fn-splan-cw-okp p)
@@ -484,6 +529,7 @@
            :in-theory (e/d (fn-splan-take) (fn-ovw-cursorp)))))
 
 (in-theory (disable fn-splan-cursor-window fn-splan-rest-cursor-step fn-splan-cursor-step
+                    fn-splan-pc-run
                     fn-splan-cw-octets fn-splan-cw-remaining fn-splan-cw-drain
                     fn-splan-fresh-cursorp fn-splan-fresh-effectsp
                     fn-splan-cw-rest-okp fn-splan-cw-okp))

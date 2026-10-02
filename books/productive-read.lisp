@@ -235,8 +235,9 @@
   (("Goal"
      :in-theory
      (e/d
-       (fn-ovw-cursor-octets fn-ovw-reply fn-ovw-status fn-ovw-empty-text fn-nntp-crlf)
-       (fn-ovw-lines fn-nntp-stuff-lines)))))
+       (fn-ovw-cursor-octets fn-ovw-reply fn-ovw-status fn-ovw-empty-text fn-nntp-crlf
+        fn-nnwp-octets fn-nnwp-cursor)
+       (fn-ovw-lines fn-nntp-stuff-lines fn-nnw-owes)))))
 
 (defthm
   fn-pcr-expand-inverts-220-reply

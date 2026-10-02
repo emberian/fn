@@ -933,8 +933,8 @@
   ("NEWNEWS"
    :rfc "RFC 3977 7.4" :dispatch :archive
    :parser (fn-wildmat-parse fn-nntp-newgroups-date-parse fn-nntp-newgroups-time-parse)
-   :model (fn-nntp-newnews-response) :cat nil :xref nil
-   :live (("any" fn-nntp-newnews-response))
+   :model (fn-nntp-newnews-response) :cat (fn-nntp-newnews-ovw) :xref nil
+   :live (("any" fn-nntp-newnews-ovw))
    :arms (:archive
            (t (fn-nntp-newnews-response session archive env args fn-arena)))
    :framing :command
