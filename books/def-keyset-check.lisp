@@ -90,7 +90,7 @@
   (declare (xargs :stobjs fn-keyset :verify-guards nil))
   (if (consp xs)
       (and (fn-kc-each (car xs))
-           (fn-kc-want (fn-keyset-tab-boundp (fn-kc-xkey (car xs)) fn-keyset))
+           (fn-kc-want (if (fn-keyset-tab-boundp (fn-kc-xkey (car xs)) fn-keyset) t nil))
            (fn-kc-scan (cdr xs) fn-keyset))
     (fn-kc-base xs)))
 
@@ -252,7 +252,7 @@
          (declare (xargs :stobjs fn-keyset :guard t))
          (if (consp ,xs)
              (and ,(fn-kc-sub each (list `(car ,xs)))
-                  ,(fn-kc-want-term present `(fn-keyset-tab-boundp ,(fn-kc-sub xkey (list `(car ,xs))) fn-keyset))
+                  ,(fn-kc-want-term present `(if (fn-keyset-tab-boundp ,(fn-kc-sub xkey (list `(car ,xs))) fn-keyset) t nil))
                   (,scan (cdr ,xs) fn-keyset))
            ,base-term))
        (defun ,ks (,xs ,ys)

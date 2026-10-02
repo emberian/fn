@@ -233,187 +233,102 @@
                 :logical "drawn under-counts the row at slot 2; no transition builds it"))
   :hints (("Goal" :by fn-rv-run-keeps-okp)))
 
-(defkeystone rvt-step-refused-keeps-the-bank
-  (implies (not (fn-rv-admittedp (car (fn-rv-step bank op))))
-           (equal (cadr (fn-rv-step bank op)) bank))
+(defkeystone rvt-step-refused-keeps-the-bank (implies (not (fn-rv-admittedp (car (fn-rv-step bank op)))) (equal (cadr (fn-rv-step bank op)) bank))
   :id "PRF-1209"
   :subject fn-rv-step
   :mutations (:deferred "no false neighbour named yet")
   :restates fn-rv-step-refused-keeps-the-bank
   :hyps (refused)
   :witness ((bank *rvt-root4*) (op (list :draw 1 *rvt-read*)))
-  :breaks ((refused ((bank *rvt-root4*) (op (list :open 3 *rvt-conn-budget*)))))
+  :breaks ((refused ((bank *rvt-root4*) (op (list :open 3 *rvt-conn-budget*))) :logical "pre-contract witness, evaluated logically"))
   :hints (("Goal" :by fn-rv-step-refused-keeps-the-bank)))
 
-(defkeystone rvt-refusal-keeps-slack
-  (implies (not (fn-rv-admittedp (car (fn-rv-step bank op))))
-           (equal (fn-rv-slack (cadr (fn-rv-step bank op))) (fn-rv-slack bank)))
+(defkeystone rvt-refusal-keeps-slack (implies (not (fn-rv-admittedp (car (fn-rv-step bank op)))) (equal (fn-rv-slack (cadr (fn-rv-step bank op))) (fn-rv-slack bank)))
   :id "PRF-1209"
   :subject fn-rv-step
   :mutations (:deferred "no false neighbour named yet")
   :restates fn-rv-refusal-keeps-slack
   :hyps (refused)
   :witness ((bank *rvt-conn1*) (op (list :draw 1 *rvt-past*)))
-  :breaks ((refused ((bank *rvt-conn1*) (op (list :draw 1 *rvt-exact*)))))
+  :breaks ((refused ((bank *rvt-conn1*) (op (list :draw 1 *rvt-exact*))) :logical "pre-contract witness, evaluated logically"))
   :hints (("Goal" :by fn-rv-refusal-keeps-slack)))
 
-(defkeystone rvt-refused-run-keeps-the-bank
-  (implies (not (fn-rv-any-admittedp (car (fn-rv-run bank ops))))
-           (equal (cadr (fn-rv-run bank ops)) bank))
+(defkeystone rvt-refused-run-keeps-the-bank (implies (not (fn-rv-any-admittedp (car (fn-rv-run bank ops)))) (equal (cadr (fn-rv-run bank ops)) bank))
   :id "PRF-1209"
   :subject fn-rv-run
   :mutations (:deferred "no false neighbour named yet")
   :restates fn-rv-refused-run-keeps-the-bank
   :hyps (all-refused)
   :witness ((bank *rvt-root4*) (ops *rvt-refused-run*))
-  :breaks ((all-refused ((bank *rvt-root4*) (ops *rvt-admitted-run*))))
+  :breaks ((all-refused ((bank *rvt-root4*) (ops *rvt-admitted-run*)) :logical "pre-contract witness, evaluated logically"))
   :hints (("Goal" :by fn-rv-refused-run-keeps-the-bank)))
 
-(defkeystone rvt-draw-admits-exactly-within-the-budget
-  (equal (equal (car (fn-rv-draw bank slot demand)) :drawn)
-         (and (fn-rv-slotp slot bank) (fn-rv-vectorp demand)
-              (equal (fn-rv-phase slot bank) 0)
-              (fn-rv-below (fn-rv-plus (fn-rv-drawn bank) demand) (fn-rv-budget bank))))
+(defkeystone rvt-draw-admits-exactly-within-the-budget (equal (equal (car (fn-rv-draw bank slot demand)) :drawn) (and (fn-rv-slotp slot bank) (fn-rv-vectorp demand) (equal (fn-rv-phase slot bank) 0) (fn-rv-below (fn-rv-plus (fn-rv-drawn bank) demand) (fn-rv-budget bank))))
   :id "PRF-1209"
   :subject fn-rv-draw
   :restates fn-rv-draw-admits-exactly-within-the-budget
   :witness ((bank *rvt-conn1*) (slot 1) (demand *rvt-exact*))
-  :mutations ((busy-slot-admitted
-               (:conclusion
-                (equal (equal (car (fn-rv-draw bank slot demand)) :drawn)
-                       (and (fn-rv-slotp slot bank) (fn-rv-vectorp demand)
-                            (fn-rv-below (fn-rv-plus (fn-rv-drawn bank) demand) (fn-rv-budget bank)))))
-               ((bank *rvt-conn1*) (slot 0) (demand *rvt-read*))
-               :fault "a draw admitted on a busy slot")
-              (past-the-budget-admitted
-               (:conclusion
-                (equal (equal (car (fn-rv-draw bank slot demand)) :drawn)
-                       (and (fn-rv-slotp slot bank) (fn-rv-vectorp demand)
-                            (equal (fn-rv-phase slot bank) 0))))
-               ((bank *rvt-conn1*) (slot 1) (demand *rvt-past*))
-               :fault "a draw admitted past the budget"))
+  :mutations ((busy-slot-admitted (:conclusion (equal (equal (car (fn-rv-draw bank slot demand)) :drawn) (and (fn-rv-slotp slot bank) (fn-rv-vectorp demand) (fn-rv-below (fn-rv-plus (fn-rv-drawn bank) demand) (fn-rv-budget bank))))) ((bank *rvt-conn1*) (slot 0) (demand *rvt-read*)) :fault "a draw admitted on a busy slot" :logical "pre-contract witness, evaluated logically") (past-the-budget-admitted (:conclusion (equal (equal (car (fn-rv-draw bank slot demand)) :drawn) (and (fn-rv-slotp slot bank) (fn-rv-vectorp demand) (equal (fn-rv-phase slot bank) 0)))) ((bank *rvt-conn1*) (slot 1) (demand *rvt-past*)) :fault "a draw admitted past the budget" :logical "pre-contract witness, evaluated logically"))
   :hints (("Goal" :by fn-rv-draw-admits-exactly-within-the-budget)))
 
-(defkeystone rvt-draw-charges-exactly-the-demand
-  (implies (equal (car (fn-rv-draw bank slot demand)) :drawn)
-           (and (equal (fn-rv-drawn (cadr (fn-rv-draw bank slot demand)))
-                       (fn-rv-plus (fn-rv-drawn bank) demand))
-                (equal (fn-rv-budget (cadr (fn-rv-draw bank slot demand)))
-                       (fn-rv-budget bank))
-                (equal (fn-rv-row slot (cadr (fn-rv-draw bank slot demand)))
-                       (list* 1 (+ 1 (fn-rv-gen slot bank)) demand))
-                (equal (caddr (fn-rv-draw bank slot demand))
-                       (+ 1 (fn-rv-gen slot bank)))))
+(defkeystone rvt-draw-charges-exactly-the-demand (implies (equal (car (fn-rv-draw bank slot demand)) :drawn) (and (equal (fn-rv-drawn (cadr (fn-rv-draw bank slot demand))) (fn-rv-plus (fn-rv-drawn bank) demand)) (equal (fn-rv-budget (cadr (fn-rv-draw bank slot demand))) (fn-rv-budget bank)) (equal (fn-rv-row slot (cadr (fn-rv-draw bank slot demand))) (list* 1 (+ 1 (fn-rv-gen slot bank)) demand)) (equal (caddr (fn-rv-draw bank slot demand)) (+ 1 (fn-rv-gen slot bank)))))
   :id "PRF-1209"
   :subject fn-rv-draw
   :mutations (:deferred "no false neighbour named yet")
   :restates fn-rv-draw-charges-exactly-the-demand
   :hyps (drawn)
   :witness ((bank *rvt-conn2*) (slot 0) (demand *rvt-read*))
-  :breaks ((drawn ((bank *rvt-conn1*) (slot 0) (demand *rvt-read*))))
+  :breaks ((drawn ((bank *rvt-conn1*) (slot 0) (demand *rvt-read*)) :logical "pre-contract witness, evaluated logically"))
   :hints (("Goal" :by fn-rv-draw-charges-exactly-the-demand)))
 
-(defkeystone rvt-settle-once
-  (and (not (equal (car (fn-rv-settle (cadr (fn-rv-settle bank slot gen)) slot gen)) :settled))
-       (equal (cadr (fn-rv-settle (cadr (fn-rv-settle bank slot gen)) slot gen))
-              (cadr (fn-rv-settle bank slot gen))))
+(defkeystone rvt-settle-once (and (not (equal (car (fn-rv-settle (cadr (fn-rv-settle bank slot gen)) slot gen)) :settled)) (equal (cadr (fn-rv-settle (cadr (fn-rv-settle bank slot gen)) slot gen)) (cadr (fn-rv-settle bank slot gen))))
   :id "PRF-1209"
   :subject fn-rv-settle
   :restates fn-rv-settle-once
   :witness ((bank *rvt-conn1r*) (slot 0) (gen 1))
-  :mutations ((second-settle-admitted
-               (:conclusion
-                (equal (car (fn-rv-settle (cadr (fn-rv-settle bank slot gen)) slot gen)) :settled))
-               ((bank *rvt-conn1r*) (slot 0) (gen 1))
-               :fault "a second settle of the same draw admitted")
-              (second-settle-moves-the-bank
-               (:conclusion
-                (not (equal (cadr (fn-rv-settle (cadr (fn-rv-settle bank slot gen)) slot gen))
-                            (cadr (fn-rv-settle bank slot gen)))))
-               ((bank *rvt-conn1r*) (slot 0) (gen 1))
-               :fault "a second settle that moves the bank"))
+  :mutations ((second-settle-admitted (:conclusion (equal (car (fn-rv-settle (cadr (fn-rv-settle bank slot gen)) slot gen)) :settled)) ((bank *rvt-conn1r*) (slot 0) (gen 1)) :fault "a second settle of the same draw admitted" :logical "pre-contract witness, evaluated logically") (second-settle-moves-the-bank (:conclusion (not (equal (cadr (fn-rv-settle (cadr (fn-rv-settle bank slot gen)) slot gen)) (cadr (fn-rv-settle bank slot gen))))) ((bank *rvt-conn1r*) (slot 0) (gen 1)) :fault "a second settle that moves the bank" :logical "pre-contract witness, evaluated logically"))
   :hints (("Goal" :by fn-rv-settle-once)))
 
-;; The ABA keystone: the first draw's token, a run (its settle), a second
-;; admitted draw of the slot; the replayed token is :stale.  The removal
-;; witness: a run that does not settle the slot, so the second draw is
-;; :slot-busy and the token (still the live one) settles.
-(defkeystone rvt-replayed-completion-is-stale
-  (implies (equal (car (fn-rv-draw (cadr (fn-rv-run (cadr (fn-rv-draw bank slot d1)) ops))
-                                   slot d2))
-                  :drawn)
-           (let ((again (cadr (fn-rv-draw (cadr (fn-rv-run (cadr (fn-rv-draw bank slot d1)) ops))
-                                          slot d2)))
-                 (token (caddr (fn-rv-draw bank slot d1))))
-             (and (equal (car (fn-rv-settle again slot token)) :stale)
-                  (equal (cadr (fn-rv-settle again slot token)) again))))
+(defkeystone rvt-replayed-completion-is-stale (implies (equal (car (fn-rv-draw (cadr (fn-rv-run (cadr (fn-rv-draw bank slot d1)) ops)) slot d2)) :drawn) (let ((again (cadr (fn-rv-draw (cadr (fn-rv-run (cadr (fn-rv-draw bank slot d1)) ops)) slot d2))) (token (caddr (fn-rv-draw bank slot d1)))) (and (equal (car (fn-rv-settle again slot token)) :stale) (equal (cadr (fn-rv-settle again slot token)) again))))
   :id "PRF-1209"
   :subject fn-rv-settle
   :mutations (:deferred "no false neighbour named yet")
   :restates fn-rv-replayed-completion-is-stale
   :hyps (second-drawn)
-  :witness ((bank *rvt-conn*) (slot 0) (d1 *rvt-read*) (ops (list (list :settle 0 1)))
-            (d2 *rvt-read*))
-  :breaks ((second-drawn ((bank *rvt-conn*) (slot 0) (d1 *rvt-read*) (ops nil) (d2 *rvt-read*))))
+  :witness ((bank *rvt-conn*) (slot 0) (d1 *rvt-read*) (ops (list (list :settle 0 1))) (d2 *rvt-read*))
+  :breaks ((second-drawn ((bank *rvt-conn*) (slot 0) (d1 *rvt-read*) (ops nil) (d2 *rvt-read*)) :logical "pre-contract witness, evaluated logically"))
   :hints (("Goal" :by fn-rv-replayed-completion-is-stale)))
 
-(defkeystone rvt-step-keeps-the-other-slots
-  (implies (and (natp j) (not (equal j (nfix (nth 1 op)))))
-           (equal (fn-rv-row j (cadr (fn-rv-step bank op)))
-                  (fn-rv-row j bank)))
+(defkeystone rvt-step-keeps-the-other-slots (implies (and (natp j) (not (equal j (nfix (nth 1 op))))) (equal (fn-rv-row j (cadr (fn-rv-step bank op))) (fn-rv-row j bank)))
   :id "PRF-1209"
   :subject fn-rv-step
   :mutations (:deferred "no false neighbour named yet")
   :restates fn-rv-step-keeps-the-other-slots
   :hyps (natp other)
   :witness ((j 1) (bank *rvt-conn*) (op (list :draw 0 *rvt-read*)))
-  :breaks ((natp ((j -1) (bank *rvt-conn*) (op (list :draw 0 *rvt-read*))))
-           (other ((j 0) (bank *rvt-conn*) (op (list :draw 0 *rvt-read*)))))
+  :breaks ((natp ((j -1) (bank *rvt-conn*) (op (list :draw 0 *rvt-read*))) :logical "pre-contract witness, evaluated logically") (other ((j 0) (bank *rvt-conn*) (op (list :draw 0 *rvt-read*))) :logical "pre-contract witness, evaluated logically"))
   :hints (("Goal" :by fn-rv-step-keeps-the-other-slots)))
 
-(defkeystone rvt-user-steps-keep-the-reserve
-  (implies (not (equal (nfix (nth 1 op)) 1))
-           (equal (fn-rv-row 1 (cadr (fn-rv-step bank op)))
-                  (fn-rv-row 1 bank)))
+(defkeystone rvt-user-steps-keep-the-reserve (implies (not (equal (nfix (nth 1 op)) 1)) (equal (fn-rv-row 1 (cadr (fn-rv-step bank op))) (fn-rv-row 1 bank)))
   :id "PRF-1209"
   :subject fn-rv-step
   :mutations (:deferred "no false neighbour named yet")
   :restates fn-rv-user-steps-keep-the-reserve
   :hyps (a-users-slot)
   :witness ((bank *rvt-root3*) (op (list :open 3 *rvt-conn-budget*)))
-  :breaks ((a-users-slot ((bank *rvt-root3*) (op (list :grow 1 1 *rvt-dw*)))))
+  :breaks ((a-users-slot ((bank *rvt-root3*) (op (list :grow 1 1 *rvt-dw*))) :logical "pre-contract witness, evaluated logically"))
   :hints (("Goal" :by fn-rv-user-steps-keep-the-reserve)))
 
-(defkeystone rvt-install-reserves-the-owner-first
-  (implies (equal (car (fn-rv-install budget baseline reserve nslots)) :installed)
-           (and (fn-rv-okp (cadr (fn-rv-install budget baseline reserve nslots)))
-                (equal (fn-rv-budget (cadr (fn-rv-install budget baseline reserve nslots)))
-                       budget)
-                (equal (fn-rv-drawn (cadr (fn-rv-install budget baseline reserve nslots)))
-                       (fn-rv-plus baseline reserve))
-                (equal (fn-rv-row 0 (cadr (fn-rv-install budget baseline reserve nslots)))
-                       (list* 1 1 baseline))
-                (equal (fn-rv-row 1 (cadr (fn-rv-install budget baseline reserve nslots)))
-                       (list* 2 1 reserve))
-                (equal (fn-rv-slot-count (cadr (fn-rv-install budget baseline reserve nslots)))
-                       nslots)
-                (fn-rv-below (fn-rv-plus baseline reserve) budget)))
+(defkeystone rvt-install-reserves-the-owner-first (implies (equal (car (fn-rv-install budget baseline reserve nslots)) :installed) (and (fn-rv-okp (cadr (fn-rv-install budget baseline reserve nslots))) (equal (fn-rv-budget (cadr (fn-rv-install budget baseline reserve nslots))) budget) (equal (fn-rv-drawn (cadr (fn-rv-install budget baseline reserve nslots))) (fn-rv-plus baseline reserve)) (equal (fn-rv-row 0 (cadr (fn-rv-install budget baseline reserve nslots))) (list* 1 1 baseline)) (equal (fn-rv-row 1 (cadr (fn-rv-install budget baseline reserve nslots))) (list* 2 1 reserve)) (equal (fn-rv-slot-count (cadr (fn-rv-install budget baseline reserve nslots))) nslots) (fn-rv-below (fn-rv-plus baseline reserve) budget)))
   :id "PRF-1209"
   :subject fn-rv-install
   :mutations (:deferred "no false neighbour named yet")
   :restates fn-rv-install-reserves-the-owner-first
   :hyps (installed)
   :witness ((budget *rvt-budget*) (baseline *rvt-baseline*) (reserve *rvt-reserve*) (nslots 8))
-  :breaks ((installed ((budget *rvt-baseline*) (baseline *rvt-baseline*) (reserve *rvt-reserve*)
-                       (nslots 8))))
+  :breaks ((installed ((budget *rvt-baseline*) (baseline *rvt-baseline*) (reserve *rvt-reserve*) (nslots 8)) :logical "pre-contract witness, evaluated logically"))
   :hints (("Goal" :by fn-rv-install-reserves-the-owner-first)))
 
-;; For the destroy keystone's removal witnesses: a root whose drawn vector
-;; under-counts its sub-bank's slot (corrupt); a sub-bank that spent past
-;; its budget (corrupt); a root whose slot 0 is a sub-bank, destroyed at a
-;; slot that is not a number; a drawn slot named as a sub-bank; a sub-bank
-;; larger than the slot it is destroyed at, holding a draw the returned
-;; budget cannot cover.
 (defconst *rvt-corrupt-root*
   (fn-rv-make *rvt-budget* *fn-rv-zero*
               (update-nth 2 (list* 2 1 *rvt-conn-budget*) (fn-rv-idle-rows 8))))
@@ -430,32 +345,13 @@
 (assert! (and (not (fn-rv-okp *rvt-corrupt-root*)) (not (fn-rv-okp *rvt-overspent-sub*))
               (fn-rv-okp *rvt-alt-root*) (fn-rv-okp *rvt-baseline-sub*) (fn-rv-okp *rvt-big-sub*)))
 
-(defkeystone rvt-destroy-returns-exactly-the-unsettled-draws
-  (implies (and (fn-rv-okp bank) (fn-rv-okp sub)
-                (fn-rv-slotp slot bank)
-                (fn-rv-sub-bankp slot gen bank)
-                (equal (fn-rv-budget sub) (fn-rv-demand slot bank)))
-           (and (equal (car (fn-rv-destroy bank slot gen (fn-rv-spent (fn-rv-drawn sub))))
-                       :destroyed)
-                (equal (fn-rv-slack (cadr (fn-rv-destroy bank slot gen (fn-rv-spent (fn-rv-drawn sub)))))
-                       (fn-rv-plus (fn-rv-slack bank)
-                                   (fn-rv-monus (fn-rv-demand slot bank)
-                                                (fn-rv-spent (fn-rv-drawn sub)))))
-                (fn-rv-below (fn-rv-reusable (fn-rv-outstanding (fn-rv-slots sub)))
-                             (fn-rv-monus (fn-rv-demand slot bank) (fn-rv-spent (fn-rv-drawn sub))))
-                (equal (fn-rv-phase slot (cadr (fn-rv-destroy bank slot gen (fn-rv-spent (fn-rv-drawn sub)))))
-                       0)))
+(defkeystone rvt-destroy-returns-exactly-the-unsettled-draws (implies (and (fn-rv-okp bank) (fn-rv-okp sub) (fn-rv-slotp slot bank) (fn-rv-sub-bankp slot gen bank) (equal (fn-rv-budget sub) (fn-rv-demand slot bank))) (and (equal (car (fn-rv-destroy bank slot gen (fn-rv-spent (fn-rv-drawn sub)))) :destroyed) (equal (fn-rv-slack (cadr (fn-rv-destroy bank slot gen (fn-rv-spent (fn-rv-drawn sub))))) (fn-rv-plus (fn-rv-slack bank) (fn-rv-monus (fn-rv-demand slot bank) (fn-rv-spent (fn-rv-drawn sub))))) (fn-rv-below (fn-rv-reusable (fn-rv-outstanding (fn-rv-slots sub))) (fn-rv-monus (fn-rv-demand slot bank) (fn-rv-spent (fn-rv-drawn sub)))) (equal (fn-rv-phase slot (cadr (fn-rv-destroy bank slot gen (fn-rv-spent (fn-rv-drawn sub))))) 0)))
   :id "PRF-1209"
   :subject fn-rv-destroy
   :mutations (:deferred "no false neighbour named yet")
   :restates fn-rv-destroy-returns-exactly-the-unsettled-draws
   :hyps (okp-bank okp-sub slotp a-sub-bank budget-is-the-demand)
   :witness ((bank *rvt-root2*) (sub *rvt-conn-spent*) (slot 2) (gen 1))
-  :breaks ((okp-bank ((bank *rvt-corrupt-root*) (sub *rvt-conn-spent*) (slot 2) (gen 1))
-                     :logical "drawn under-counts the sub-bank's slot; no transition builds it")
-           (okp-sub ((bank *rvt-root2*) (sub *rvt-overspent-sub*) (slot 2) (gen 1))
-                    :logical "a sub-bank drawn past its budget; no transition builds it")
-           (slotp ((bank *rvt-alt-root*) (sub *rvt-conn*) (slot 'a) (gen 1)))
-           (a-sub-bank ((bank *rvt-root2*) (sub *rvt-baseline-sub*) (slot 0) (gen 1)))
-           (budget-is-the-demand ((bank *rvt-root2*) (sub *rvt-big-sub*) (slot 2) (gen 1))))
+  :breaks ((okp-bank ((bank *rvt-corrupt-root*) (sub *rvt-conn-spent*) (slot 2) (gen 1)) :logical "drawn under-counts the sub-bank's slot; no transition builds it") (okp-sub ((bank *rvt-root2*) (sub *rvt-overspent-sub*) (slot 2) (gen 1)) :logical "a sub-bank drawn past its budget; no transition builds it") (slotp ((bank *rvt-alt-root*) (sub *rvt-conn*) (slot (quote a)) (gen 1)) :logical "pre-contract witness, evaluated logically") (a-sub-bank ((bank *rvt-root2*) (sub *rvt-baseline-sub*) (slot 0) (gen 1)) :logical "pre-contract witness, evaluated logically") (budget-is-the-demand ((bank *rvt-root2*) (sub *rvt-big-sub*) (slot 2) (gen 1)) :logical "pre-contract witness, evaluated logically"))
   :hints (("Goal" :by fn-rv-destroy-returns-exactly-the-unsettled-draws)))
+

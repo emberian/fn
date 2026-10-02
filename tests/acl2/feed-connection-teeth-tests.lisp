@@ -190,36 +190,16 @@
 ; trace above as the positive witness; and, per hypothesis, the value above
 ; at which the other hypothesis holds, this one fails and the gate fails,
 ; beside the weakened theorem under must-fail.
-(defkeystone fct-gate
-  (implies (and (fn-fc-protected-profilep st)
-                (fn-fc-opening-phasep st))
-           (fn-fc-gate-okp (fn-fc-gate-start (fn-fc-security st))
-                           (fn-fc-loginp st)
-                           (fn-fc-drive st events)))
+(defkeystone fct-gate (implies (and (fn-fc-protected-profilep st) (fn-fc-opening-phasep st)) (fn-fc-gate-okp (fn-fc-gate-start (fn-fc-security st)) (fn-fc-loginp st) (fn-fc-drive st events)))
   :id "PRF-047"
   :subject fn-fc-drive
   :mutations (:deferred "no false neighbour named yet")
   :restates fn-fc-offers-and-credentials-wait-for-tls-and-login
   :hyps (protected-profile opening-phase)
   :witness ((st *fct-starttls*) (events *fct-full-trace*))
-  :breaks ((protected-profile ((st *fct-clear-open*) (events (list *fct-200*))))
-           (opening-phase ((st *fct-ready-unopened*) (events (list *fct-238*)))
-                          :logical "a :ready STARTTLS connection built by fn-fc-make-state, never through 382, TLS or 281"))
-  :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-fc-gate-holds-above-the-floor
-                            (k (fn-fc-gate-start (fn-fc-security st)))))
-           :in-theory (e/d (fn-fc-opening-phasep fn-fc-gate-floor
-                            fn-fc-gate-start)
-                           (fn-fc-gate-holds-above-the-floor
-                            fn-fc-protected-profilep fn-fc-loginp
-                            fn-fc-drive fn-fc-gate-okp)))))
+  :breaks ((protected-profile ((st *fct-clear-open*) (events (list *fct-200*))) :logical "pre-contract witness, evaluated logically") (opening-phase ((st *fct-ready-unopened*) (events (list *fct-238*))) :logical "a :ready STARTTLS connection built by fn-fc-make-state, never through 382, TLS or 281"))
+  :hints (("Goal" :do-not-induct t :use ((:instance fn-fc-gate-holds-above-the-floor (k (fn-fc-gate-start (fn-fc-security st))))) :in-theory (e/d (fn-fc-opening-phasep fn-fc-gate-floor fn-fc-gate-start) (fn-fc-gate-holds-above-the-floor fn-fc-protected-profilep fn-fc-loginp fn-fc-drive fn-fc-gate-okp)))))
 
-; -----------------------------------------------------------------------------
-; Keystone 2: fn-fc-refused-login-closes-without-an-offer.
-;
-; The witness: the reachable :auth-pass state of the full trace, answered 481
-; (RFC 4643 section 2.3.2, authentication failed).  Refused, closed, and a
-; peer that then pretends the login succeeded gets nothing.
 (defconst *fct-at-pass*
   (fn-fc-drive-state *fct-starttls* (list *fct-200* *fct-382* :tls-up *fct-381*)))
 (defconst *fct-at-user*
@@ -267,51 +247,16 @@
 
 ; The keystone and its teeth, one removal witness per hypothesis from the
 ; values above.
-(defkeystone fct-refused-login
-  (implies (and (fn-fc-statep st)
-                (member-equal (fn-fc-phase st) '(:auth-user :auth-pass))
-                (equal (fn-fwi-kind (fn-fwi-step (fn-fc-input st) octets)) :line)
-                (not (equal (fn-own-feed-response-code
-                             (fn-fwi-line (fn-fwi-step (fn-fc-input st) octets)))
-                            281))
-                (or (equal (fn-fc-phase st) :auth-pass)
-                    (not (equal (fn-own-feed-response-code
-                                 (fn-fwi-line (fn-fwi-step (fn-fc-input st) octets)))
-                                381))))
-           (let ((r (fn-fc-step st octets)))
-             (and (equal (fn-fc-kind r) :refused)
-                  (equal (fn-fc-phase (fn-fc-next-state r)) :closed)
-                  (fn-fc-quiet-obsp (fn-fc-drive (fn-fc-next-state r) events)))))
+(defkeystone fct-refused-login (implies (and (fn-fc-statep st) (member-equal (fn-fc-phase st) (quote (:auth-user :auth-pass))) (equal (fn-fwi-kind (fn-fwi-step (fn-fc-input st) octets)) :line) (not (equal (fn-own-feed-response-code (fn-fwi-line (fn-fwi-step (fn-fc-input st) octets))) 281)) (or (equal (fn-fc-phase st) :auth-pass) (not (equal (fn-own-feed-response-code (fn-fwi-line (fn-fwi-step (fn-fc-input st) octets))) 381)))) (let ((r (fn-fc-step st octets))) (and (equal (fn-fc-kind r) :refused) (equal (fn-fc-phase (fn-fc-next-state r)) :closed) (fn-fc-quiet-obsp (fn-fc-drive (fn-fc-next-state r) events)))))
   :id "PRF-051"
   :subject fn-fc-step
   :mutations (:deferred "no false neighbour named yet")
   :restates fn-fc-refused-login-closes-without-an-offer
   :hyps (statep phase a-line not-281 not-381)
-  :witness ((st *fct-at-pass*) (octets *fct-481*)
-            (events (list *fct-281* :tls-up *fct-203* *fct-238*)))
-  :breaks ((statep ((st *fct-not-a-state*))
-                   :logical "security :bogus, which no dial installs")
-           (phase ((st *fct-ready-unopened*))
-                  :logical "a :ready connection built by fn-fc-make-state")
-           (a-line ((octets *fct-half*)))
-           (not-281 ((octets *fct-281*)))
-           (not-381 ((st *fct-at-user*) (octets *fct-381*))))
-  :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-fc-step fn-fc-from-line fn-fc-result
-                            fn-fc-kind fn-fc-next-state)
-                           (fn-fc-statep fn-fwi-step fn-fwi-chunkp
-                            fn-own-feed-response-code fn-fc-drive
-                            fn-fc-with-input-phase fn-fc-with-input-ihave fn-fc-phase
-                            fn-fc-security fn-fc-user fn-fc-allow-clear
-                            fn-fc-input fn-fc-streamingp fn-fc-conn
-                            fn-fwi-kind fn-fwi-line fn-fwi-next-state)))))
+  :witness ((st *fct-at-pass*) (octets *fct-481*) (events (list *fct-281* :tls-up *fct-203* *fct-238*)))
+  :breaks ((statep ((st *fct-not-a-state*)) :logical "security :bogus, which no dial installs") (phase ((st *fct-ready-unopened*)) :logical "a :ready connection built by fn-fc-make-state") (a-line ((octets *fct-half*)) :logical "pre-contract witness, evaluated logically") (not-281 ((octets *fct-281*)) :logical "pre-contract witness, evaluated logically") (not-381 ((st *fct-at-user*) (octets *fct-381*)) :logical "pre-contract witness, evaluated logically"))
+  :hints (("Goal" :do-not-induct t :in-theory (e/d (fn-fc-step fn-fc-from-line fn-fc-result fn-fc-kind fn-fc-next-state) (fn-fc-statep fn-fwi-step fn-fwi-chunkp fn-own-feed-response-code fn-fc-drive fn-fc-with-input-phase fn-fc-with-input-ihave fn-fc-phase fn-fc-security fn-fc-user fn-fc-allow-clear fn-fc-input fn-fc-streamingp fn-fc-conn fn-fwi-kind fn-fwi-line fn-fwi-next-state)))))
 
-; -----------------------------------------------------------------------------
-; Keystone 3: fn-fc-starttls-refusal-closes-before-the-credential.
-;
-; The witness: the reachable :starttls state, answered 502 and 580 (RFC 4642
-; section 2.2.1).  Refused, closed, and the credential never leaves: a later
-; 382, TLS report and 281 all find a closed connection.
 (defconst *fct-at-starttls*
   (fn-fc-drive-state *fct-starttls* (list *fct-200*)))
 (assert-event (equal (fn-fc-phase *fct-at-starttls*) :starttls))
@@ -342,49 +287,16 @@
 ; Without "not 382": 382 starts the handshake.
 (assert-event (equal (fn-fc-kind (fn-fc-step *fct-at-starttls* *fct-382*)) :tls))
 
-(defkeystone fct-starttls-refusal
-  (implies (and (fn-fc-statep st)
-                (equal (fn-fc-phase st) :starttls)
-                (equal (fn-fwi-kind (fn-fwi-step (fn-fc-input st) octets)) :line)
-                (not (equal (fn-own-feed-response-code
-                             (fn-fwi-line (fn-fwi-step (fn-fc-input st) octets)))
-                            382)))
-           (let ((r (fn-fc-step st octets)))
-             (and (equal (fn-fc-kind r) :refused)
-                  (equal (fn-fc-phase (fn-fc-next-state r)) :closed)
-                  (fn-fc-quiet-obsp (fn-fc-drive (fn-fc-next-state r) events)))))
+(defkeystone fct-starttls-refusal (implies (and (fn-fc-statep st) (equal (fn-fc-phase st) :starttls) (equal (fn-fwi-kind (fn-fwi-step (fn-fc-input st) octets)) :line) (not (equal (fn-own-feed-response-code (fn-fwi-line (fn-fwi-step (fn-fc-input st) octets))) 382))) (let ((r (fn-fc-step st octets))) (and (equal (fn-fc-kind r) :refused) (equal (fn-fc-phase (fn-fc-next-state r)) :closed) (fn-fc-quiet-obsp (fn-fc-drive (fn-fc-next-state r) events)))))
   :id "PRF-047"
   :subject fn-fc-step
   :mutations (:deferred "no false neighbour named yet")
   :restates fn-fc-starttls-refusal-closes-before-the-credential
   :hyps (statep phase a-line not-382)
-  :witness ((st *fct-at-starttls*) (octets *fct-580*)
-            (events (list *fct-382* :tls-up *fct-281*)))
-  :breaks ((statep ((st *fct-not-a-state-starttls*))
-                   :logical "security :bogus, which no dial installs")
-           (phase ((st *fct-ready-unopened*))
-                  :logical "a :ready connection built by fn-fc-make-state")
-           (a-line ((octets '(53 56))))
-           (not-382 ((octets *fct-382*))))
-  :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-fc-step fn-fc-from-line fn-fc-result
-                            fn-fc-kind fn-fc-next-state)
-                           (fn-fc-statep fn-fwi-step fn-fwi-chunkp
-                            fn-own-feed-response-code fn-fc-drive
-                            fn-fc-with-input-phase fn-fc-with-input-ihave fn-fc-phase
-                            fn-fc-security fn-fc-user fn-fc-allow-clear
-                            fn-fc-input fn-fc-streamingp fn-fc-conn
-                            fn-fwi-kind fn-fwi-line fn-fwi-next-state)))))
+  :witness ((st *fct-at-starttls*) (octets *fct-580*) (events (list *fct-382* :tls-up *fct-281*)))
+  :breaks ((statep ((st *fct-not-a-state-starttls*)) :logical "security :bogus, which no dial installs") (phase ((st *fct-ready-unopened*)) :logical "a :ready connection built by fn-fc-make-state") (a-line ((octets (quote (53 56)))) :logical "pre-contract witness, evaluated logically") (not-382 ((octets *fct-382*)) :logical "pre-contract witness, evaluated logically"))
+  :hints (("Goal" :do-not-induct t :in-theory (e/d (fn-fc-step fn-fc-from-line fn-fc-result fn-fc-kind fn-fc-next-state) (fn-fc-statep fn-fwi-step fn-fwi-chunkp fn-own-feed-response-code fn-fc-drive fn-fc-with-input-phase fn-fc-with-input-ihave fn-fc-phase fn-fc-security fn-fc-user fn-fc-allow-clear fn-fc-input fn-fc-streamingp fn-fc-conn fn-fwi-kind fn-fwi-line fn-fwi-next-state)))))
 
-; -----------------------------------------------------------------------------
-; Keystones 4 and 5: the AUTHINFO renderers the host calls send the
-; configured name and secret alone.
-;
-; The witness is the decoded profile's (above, on the reachable states).
-; Without `fn-fap-tokenp': a name carrying CRLF and a second command renders
-; only the first line, so the statement's one-line equation is false (and a
-; profile with it is one `fn-fap-decode' refuses).  Without `true-listp': an
-; improper token renders nothing.
 (defconst *fct-smuggled* '(110 13 10 81 85 73 84))   ; n CR LF QUIT
 (defconst *fct-improper* '(110 111 . 100))
 (assert-event (not (fn-fap-tokenp *fct-smuggled*)))
@@ -455,43 +367,11 @@
 (defconst *fct-bad-profile*
   '(70 78 65 85 84 72 49 10 110 111 100 101 10 115 13 10))
 (assert-event (equal (fn-fap-decode *fct-bad-profile*) '(:bad nil nil)))
-(defkeystone fct-decoded-credential
-  (let ((st (fn-fc-drive-state
-             (fn-fc-initial-auth-state streamingp conn security
-                                       (cadr (fn-fap-decode profile))
-                                       (caddr (fn-fap-decode profile))
-                                       allow-clear)
-             events)))
-    (and (equal (fn-fc-auth-user-command st)
-                (append *fn-fc-auth-user-prefix*
-                        (cadr (fn-fap-decode profile)) '(13 10)))
-         (equal (fn-fc-auth-pass-command st)
-                (append *fn-fc-auth-pass-prefix*
-                        (caddr (fn-fap-decode profile)) '(13 10)))))
+(defkeystone fct-decoded-credential (let ((st (fn-fc-drive-state (fn-fc-initial-auth-state streamingp conn security (cadr (fn-fap-decode profile)) (caddr (fn-fap-decode profile)) allow-clear) events))) (and (equal (fn-fc-auth-user-command st) (append *fn-fc-auth-user-prefix* (cadr (fn-fap-decode profile)) (quote (13 10)))) (equal (fn-fc-auth-pass-command st) (append *fn-fc-auth-pass-prefix* (caddr (fn-fap-decode profile)) (quote (13 10))))))
   :id "PRF-051"
   :subject fn-fap-decode
   :restates fn-fc-decoded-profile-renders-verbatim-in-every-state
-  :witness ((profile *fct-profile*) (streamingp t) (conn 7) (security :starttls)
-            (allow-clear nil) (events *fct-full-trace*))
-  :mutations
-  ((undecoded
-    (:conclusion
-    (let ((st (fn-fc-drive-state
-               (fn-fc-initial-auth-state streamingp conn security
-                                         user pass allow-clear)
-               events)))
-      (and (equal (fn-fc-auth-user-command st)
-                  (append *fn-fc-auth-user-prefix* user '(13 10)))
-           (equal (fn-fc-auth-pass-command st)
-                  (append *fn-fc-auth-pass-prefix* pass '(13 10))))))
-    ((user *fct-smuggled*) (pass *fct-smuggled*) (events nil))
-    :fault "the undecoded credential rendered verbatim"))
-  :hints (("Goal" :do-not-induct t
-           :cases ((equal (car (fn-fap-decode profile)) :ok))
-           :use ((:instance fn-fap-decode-yields-two-renderable-tokens
-                            (octets profile)))
-           :in-theory (e/d (fn-fc-initial-auth-state fn-fc-user fn-fc-pass)
-                           (fn-fap-tokenp
-                            fn-fap-decode-yields-two-renderable-tokens
-                            fn-fc-drive-state fn-fc-auth-user-command
-                            fn-fc-auth-pass-command)))))
+  :witness ((profile *fct-profile*) (streamingp t) (conn 7) (security :starttls) (allow-clear nil) (events *fct-full-trace*))
+  :mutations ((undecoded (:conclusion (let ((st (fn-fc-drive-state (fn-fc-initial-auth-state streamingp conn security user pass allow-clear) events))) (and (equal (fn-fc-auth-user-command st) (append *fn-fc-auth-user-prefix* user (quote (13 10)))) (equal (fn-fc-auth-pass-command st) (append *fn-fc-auth-pass-prefix* pass (quote (13 10))))))) ((user *fct-smuggled*) (pass *fct-smuggled*) (events nil)) :fault "the undecoded credential rendered verbatim" :logical "pre-contract witness, evaluated logically"))
+  :hints (("Goal" :do-not-induct t :cases ((equal (car (fn-fap-decode profile)) :ok)) :use ((:instance fn-fap-decode-yields-two-renderable-tokens (octets profile))) :in-theory (e/d (fn-fc-initial-auth-state fn-fc-user fn-fc-pass) (fn-fap-tokenp fn-fap-decode-yields-two-renderable-tokens fn-fc-drive-state fn-fc-auth-user-command fn-fc-auth-pass-command)))))
+

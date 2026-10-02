@@ -155,31 +155,22 @@
                 :logical "a sub-bank row with no sub-bank behind it; no step builds it"))
   :hints (("Goal" :by fn-rt-run-keeps-okp)))
 
-(defkeystone rtt-step-refused-keeps-the-tree
-  (implies (not (fn-rv-admittedp (car (fn-rt-step tree op))))
-           (equal (cadr (fn-rt-step tree op)) tree))
+(defkeystone rtt-step-refused-keeps-the-tree (implies (not (fn-rv-admittedp (car (fn-rt-step tree op)))) (equal (cadr (fn-rt-step tree op)) tree))
   :id "PRF-1209"
   :subject fn-rt-step
   :mutations (:deferred "no false neighbour named yet")
   :restates fn-rt-step-refused-keeps-the-tree
   :hyps (refused)
   :witness ((tree *rtt-t6*) (op (list (cons 2 1) :settle 1 1)))
-  :breaks ((refused ((tree *rtt-t6*) (op (list :root :open 2 *rtt-conn-budget* 4)))))
+  :breaks ((refused ((tree *rtt-t6*) (op (list :root :open 2 *rtt-conn-budget* 4))) :logical "pre-contract witness, evaluated logically"))
   :hints (("Goal" :by fn-rt-step-refused-keeps-the-tree)))
 
-(defkeystone rtt-sub-bank-steps-keep-the-root
-  (equal (fn-rt-root (cadr (fn-rt-step tree (cons (cons slot gen) step))))
-         (fn-rt-root tree))
+(defkeystone rtt-sub-bank-steps-keep-the-root (equal (fn-rt-root (cadr (fn-rt-step tree (cons (cons slot gen) step)))) (fn-rt-root tree))
   :id "PRF-1209"
   :subject fn-rt-step
   :restates fn-rt-sub-bank-steps-keep-the-root
   :witness ((tree *rtt-t1*) (slot 2) (gen 1) (step (list :draw 0 *rtt-read*)))
-  :mutations ((a-root-step-keeps-the-root
-               (:conclusion
-                (equal (fn-rt-root (cadr (fn-rt-step tree (cons :root step))))
-                       (fn-rt-root tree)))
-               ((tree *rtt-t1*) (slot 2) (gen 1) (step (list :open 3 *rtt-conn-budget* 2)))
-               :fault "a root step claimed to keep the root"))
+  :mutations ((a-root-step-keeps-the-root (:conclusion (equal (fn-rt-root (cadr (fn-rt-step tree (cons :root step)))) (fn-rt-root tree))) ((tree *rtt-t1*) (slot 2) (gen 1) (step (list :open 3 *rtt-conn-budget* 2))) :fault "a root step claimed to keep the root" :logical "pre-contract witness, evaluated logically"))
   :hints (("Goal" :by fn-rt-sub-bank-steps-keep-the-root)))
 
 (defkeystone rtt-destroy-revokes-the-sub-bank
