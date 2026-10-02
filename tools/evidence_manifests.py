@@ -174,16 +174,26 @@ def load_archived(root: Path, rel: str) -> list[dict]:
     """One archived manifest, read as `certs.load_manifests` reads a file.
 
     Its `evidence` is the logical path under `root`, whichever store held
-    the bytes, so every citation and run-id lookup is unchanged.  An unreadable
-    or non-object manifest is skipped, as before; an indexed manifest the
-    archive cannot deliver raises `evidence_store.EvidenceUnavailable`.
+    the bytes, so every citation and run-id lookup is unchanged.  An INDEXED
+    manifest that cannot be read, fetched, verified or parsed as a JSON
+    object raises `evidence_store.EvidenceUnavailable`: a committed claim
+    that cannot be read must stop the audit, never let an older green win
+    (r56 F2).  An unindexed local draft that is partial or not an object is
+    skipped, as before; it never carries archived authority.
     """
     import certs  # noqa: PLC0415  (certs is heavy; most callers never load it)
+    committed = evidence_store.indexed(root, rel)
     try:
         manifest = json.loads(evidence_store.read_text(root, rel))
-    except (OSError, ValueError):
+    except (OSError, ValueError) as error:
+        if committed:
+            raise evidence_store.EvidenceUnavailable(
+                f"{rel}: the indexed manifest is unreadable: {error}") from error
         return []
     if not isinstance(manifest, dict):
+        if committed:
+            raise evidence_store.EvidenceUnavailable(
+                f"{rel}: the indexed manifest is not a JSON object")
         return []
     manifest.setdefault("evidence", str(root / rel))
     return [certs.read_as_current(manifest, root)]
@@ -448,6 +458,7 @@ def cmd_sync(args: argparse.Namespace) -> int:
     cites = cited_run_ids()
     have = archived()
     candidates = local_candidates(ROOT, args.source)
+    status = 0
     recovered = 0
     for run_id in sorted(set(cites) - have):
         if run_id in candidates:
@@ -463,7 +474,8 @@ def cmd_sync(args: argparse.Namespace) -> int:
         # cited: its bytes go to the archive and its line to the index.
         untracked = sorted(set(to_add) - tracked_manifests())
         if untracked:
-            commit_paths(ROOT, [f"{ARCHIVE_REL}/{run_id}.json" for run_id in untracked])
+            status = commit_paths(ROOT, [f"{ARCHIVE_REL}/{run_id}.json"
+                                         for run_id in untracked])
     tracked = tracked_manifests()
     missing = sorted(set(cites) - have)
     if args.record_lost:
@@ -488,7 +500,8 @@ def cmd_sync(args: argparse.Namespace) -> int:
     if args.list_missing:
         for run_id in missing:
             print(f"  {run_id}  {cites[run_id][0]}")
-    return 0
+    # commit_paths' 3 (the archive refused) is UNAVAILABLE, not success (r56 F10).
+    return status
 
 
 def cmd_harvest(args: argparse.Namespace) -> int:
@@ -613,7 +626,11 @@ def main(argv: list[str] | None = None) -> int:
     check.set_defaults(func=cmd_check)
 
     args = parser.parse_args(argv)
-    return args.func(args)
+    try:
+        return args.func(args)
+    except evidence_store.EvidenceUnavailable as error:
+        print(f"evidence_manifests: UNAVAILABLE: {error}", file=sys.stderr)
+        return evidence_store.EXIT_UNAVAILABLE
 
 
 if __name__ == "__main__":

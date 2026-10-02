@@ -255,6 +255,9 @@ def main(argv: list[str] | None = None) -> int:
             print("\n".join(explain(args.explain)))
             return 0
         targets, books, warnings, failures = audit()
+    except evidence_manifests.evidence_store.EvidenceUnavailable as error:
+        print(f"certified-claims: UNAVAILABLE: committed evidence cannot be read: {error}")
+        return evidence_manifests.evidence_store.EXIT_UNAVAILABLE
     except (OSError, ValueError, KeyError, TypeError,
             green_check.certs.UnreadableBook) as error:
         print(f"certified-claims: evidence unavailable: {error}")

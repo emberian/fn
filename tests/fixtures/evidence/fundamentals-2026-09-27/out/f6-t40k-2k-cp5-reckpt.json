@@ -1,0 +1,33 @@
+{
+ "mode": "reckpt",
+ "image": "/tank/fn/scratch/fundamentals-scoreboard/heaptree/build/fn-host-developer-heap",
+ "core_sha256": "69fbe6b83299102fb8d56ea274af0fcf960a5606029f46aba38e8fb94fc4bd30",
+ "fixture": "/tank/fn/scratch/fixtures/t40k-2k-cp5",
+ "rebind_rc": 0,
+ "node_secret_rc": 1,
+ "checkpoint_seconds": 51.026083989068866,
+ "checkpoint_rc": 0,
+ "checkpoint_out": "checkpoint sequence=40001 octets=128808561 steps=167 segment=13 dropped=1 open=checkpoint:35825 suffix=4176\n",
+ "checkpoint_err_tail": "lts: 0\n\tMinor (reclaiming a frame) page faults: 693631\n\tVoluntary context switches: 1094\n\tInvoluntary context switches: 770\n\tSwaps: 0\n\tFile system inputs: 275\n\tFile system outputs: 0\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+ "checkpoint_maxrss_kib": 1779268,
+ "checkpoint_octets": 128808561,
+ "open_seconds": 16.169109623879194,
+ "residency_open": {
+  "rss_kib": 751232,
+  "hwm_kib": 1246288,
+  "heap": {
+   "tag": "gc-001-open",
+   "bytes_consed": 5796679888,
+   "dynamic_usage": 622460400,
+   "dynamic_usage_after_gc": 622423152,
+   "gc_seconds": 0.325,
+   "bytes_consed_between_gcs": 8388608,
+   "gc_run_time_ms": 2736
+  },
+  "rss_after_gc_kib": 751264
+ },
+ "open_line": [
+  "OWNER-OPEN open=checkpoint:40001 suffix=0"
+ ],
+ "stderr_tail": "fnh: heap hook installed\nwarning: store filesystem tmpfs at /dev/shm from tmpfs (fsid 9c7e63c8f1d5d50d) is held in memory (tmpfs or ramfs): every article is lost at power loss or reboot (docs/operator.md, Storage requirements)\nOWNER-OPEN open=checkpoint:40001 suffix=0\nconnections holds=31845 per-connection=793 KiB\naccepted operator run\n"
+}

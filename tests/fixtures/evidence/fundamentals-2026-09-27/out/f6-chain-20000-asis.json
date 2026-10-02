@@ -1,0 +1,27 @@
+{
+ "mode": "asis",
+ "image": "/tank/fn/scratch/fundamentals-scoreboard/heaptree/build/fn-host-developer-heap",
+ "core_sha256": "69fbe6b83299102fb8d56ea274af0fcf960a5606029f46aba38e8fb94fc4bd30",
+ "fixture": "/tank/fn/scratch/fixtures/chain-20000",
+ "rebind_rc": 0,
+ "node_secret_rc": 1,
+ "open_seconds": 8.097836066037416,
+ "residency_open": {
+  "rss_kib": 577416,
+  "hwm_kib": 870424,
+  "heap": {
+   "tag": "gc-001-open",
+   "bytes_consed": 3129231056,
+   "dynamic_usage": 447876960,
+   "dynamic_usage_after_gc": 447879808,
+   "gc_seconds": 0.14,
+   "bytes_consed_between_gcs": 8388608,
+   "gc_run_time_ms": 1205
+  },
+  "rss_after_gc_kib": 577260
+ },
+ "open_line": [
+  "OWNER-OPEN open=checkpoint:20000 suffix=0"
+ ],
+ "stderr_tail": "fnh: heap hook installed\nwarning: store filesystem tmpfs at /dev/shm from tmpfs (fsid 9c7e63c8f1d5d50d) is held in memory (tmpfs or ramfs): every article is lost at power loss or reboot (docs/operator.md, Storage requirements)\nOWNER-OPEN open=checkpoint:20000 suffix=0\nconnections holds=31845 per-connection=317 KiB\naccepted operator run\n"
+}

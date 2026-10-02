@@ -1,0 +1,44 @@
+{
+ "image": "/tank/fn/scratch/fundamentals-scoreboard/native-fs-33bbfae9c/tree/build/fn-host-developer",
+ "tls": false,
+ "idle": 1000,
+ "active": {
+  "seconds": 158.355,
+  "greeting": {
+   "n": 200,
+   "p50_ms": 278.039,
+   "p95_ms": 1326.66,
+   "max_ms": 1369.879
+  },
+  "over": {
+   "n": 2000,
+   "p50_ms": 15500.704,
+   "p95_ms": 18094.33,
+   "max_ms": 25502.938
+  },
+  "errors": [],
+  "error_count": 0,
+  "rss_kib": 534756
+ },
+ "overs": 10,
+ "posts": 50,
+ "capacity": 1264,
+ "rest": {
+  "rss_kib": 469628,
+  "threads": 9
+ },
+ "setup_sequential_per_s": 1844.0,
+ "idle_held": {
+  "rss_kib": 478844,
+  "threads": 9,
+  "rss_per_connection_kib": 9.22
+ },
+ "setup_concurrent_per_s": 928.8,
+ "hwm_rss_kib": 546084,
+ "closed": {
+  "rss_kib": 546852,
+  "threads": 9
+ },
+ "errors_total": 0,
+ "owner_rc": 0
+}

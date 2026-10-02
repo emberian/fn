@@ -11,6 +11,7 @@ import importlib.util
 import contextlib
 import io
 import json
+import os
 from pathlib import Path
 import re
 import sys
@@ -622,6 +623,13 @@ class GeneratedStatusTests(unittest.TestCase):
                 folder.mkdir(parents=True)
                 (folder / "certify-20260901T010000Z-1.json").write_text(json.dumps(manifest(root)))
                 entry["evidence"].append("planning/evidence/manifests/certify-20260901T010000Z-1.json")
+                # Archived = filed: indexed by hash, bytes in a scratch archive.
+                import evidence_store
+                with mock.patch.dict(os.environ, {
+                        "FN_EVIDENCE_ARCHIVE": str(root / "_archive"),
+                        "FN_EVIDENCE_CACHE": str(root / "_cache")}):
+                    evidence_store.put(root, [entry["evidence"][-1]])
+                    return ledger.derived_status(entry, names, books, {}, root)
             return ledger.derived_status(entry, names, books, {}, root)
 
     def passed(self, root, digest=None):

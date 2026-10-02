@@ -11,7 +11,7 @@ class SwapWriter(unittest.TestCase):
         self.run_fixture(("(fnn-owner-core 'fn-owner-report-writer-fault)", "(fnn-owner-core 'fn-owner-report-writer-leave)"))
     def run_fixture(self, mutation=None):
         source='\n'.join(f for path in ['books/owner-report-capture.lisp','books/owner-report-writer-entry.lisp'] for f in pr.forms((ROOT/path).read_text()) if f.lower().startswith('(defun '))
-        swap=(ROOT/'planning/evidence/operation-diagnostics-2026-10-01/native-swap-hook/source.lisp').read_text()
+        swap=(ROOT/'tests/fixtures/evidence/operation-diagnostics-2026-10-01/native-swap-hook/source.lisp').read_text()
         if mutation:
             old,new=mutation;self.assertEqual(swap.count(old),1);swap=swap.replace(old,new)
         with tempfile.TemporaryDirectory() as d:

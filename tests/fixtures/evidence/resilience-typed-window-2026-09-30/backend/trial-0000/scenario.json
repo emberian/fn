@@ -1,0 +1,105 @@
+{
+ "actors": [
+  {
+   "kind": "client",
+   "name": "core"
+  }
+ ],
+ "assertions": {
+  "contract-consistent": true
+ },
+ "contract": "typed-window-model",
+ "expected": "consistent",
+ "faults": [],
+ "healing": [
+  "op-5",
+  "op-6",
+  "op-7"
+ ],
+ "healing_bound": null,
+ "id": "typed-stateful",
+ "initial": {
+  "recipe": "typed-window-assigned-vector"
+ },
+ "operations": [
+  {
+   "actor": "core",
+   "args": {
+    "request": "initial",
+    "selector": "wrong-ticket"
+   },
+   "id": "op-0",
+   "op": "window-cancel"
+  },
+  {
+   "actor": "core",
+   "args": {
+    "request": "initial",
+    "selector": "exact"
+   },
+   "id": "op-1",
+   "op": "window-cancel"
+  },
+  {
+   "actor": "core",
+   "args": {
+    "request": "initial",
+    "selector": "wrong-ticket"
+   },
+   "id": "op-2",
+   "op": "window-cancel"
+  },
+  {
+   "actor": "core",
+   "args": {
+    "request": "initial",
+    "selector": "wrong-ticket"
+   },
+   "id": "op-3",
+   "op": "window-cancel"
+  },
+  {
+   "actor": "core",
+   "args": {
+    "request": "initial",
+    "selector": "exact"
+   },
+   "id": "op-4",
+   "op": "window-cancel"
+  },
+  {
+   "actor": "core",
+   "args": {
+    "request": "initial",
+    "selector": "exact"
+   },
+   "id": "op-5",
+   "op": "window-cancel"
+  },
+  {
+   "actor": "core",
+   "args": {
+    "request": "initial",
+    "selector": "exact"
+   },
+   "id": "op-6",
+   "op": "window-return"
+  },
+  {
+   "actor": "core",
+   "args": {
+    "request": "initial",
+    "selector": "exact"
+   },
+   "id": "op-7",
+   "op": "window-settle"
+  }
+ ],
+ "replay": "exact",
+ "requirements": [],
+ "title": "Bundle symbolic typed request lifecycle",
+ "version": 2,
+ "witnesses": [
+  "typed-window-settled"
+ ]
+}

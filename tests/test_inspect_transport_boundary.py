@@ -21,7 +21,7 @@ class InspectTransport(unittest.TestCase):
             old,new=mutation;self.assertEqual(source.count(old),1);source=source.replace(old,new,1)
         with tempfile.TemporaryDirectory() as d:
             d=Path(d);(d/'source.lisp').write_text(source)
-            owner=ROOT/'planning/evidence/operation-diagnostics-2026-10-01/native-source/serialized.lisp'
+            owner=ROOT/'tests/fixtures/evidence/operation-diagnostics-2026-10-01/native-source/serialized.lisp'
             if owner_mutation:
                 body=owner.read_text();old='(when next-state (setf *the-live-state* next-state))';self.assertEqual(body.count(old),2);body=body.replace(old,'(when next-state nil)',1);(d/'owner-mutant.lisp').write_text(body);owner=d/'owner-mutant.lisp'
             fixture=(ROOT/'tests/fixtures/inspect_transport_boundary.lisp').read_text().replace('__OWNER_SOURCE__',str(owner)).replace('__CONTROL_SOURCE__',str(d/'source.lisp'))

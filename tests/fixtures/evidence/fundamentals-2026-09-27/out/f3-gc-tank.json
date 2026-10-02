@@ -1,0 +1,142 @@
+{
+  "label": "tank",
+  "image": "/tank/fn/scratch/fundamentals-scoreboard/native-fs-33bbfae9c/tree/build/fn-host-developer",
+  "core_sha256": "2c424054413ba3972f97ca931550abfea4bf7c0ee5af9f0f78545a88d3605a17",
+  "filesystem": {
+    "type": "zfs",
+    "dataset": "tank",
+    "zfs_list": "tank\t1998809260032\t897609310208\t701095993344\tlz4\t131072\tstandard",
+    "zpool_list": "tank\t2.73T\t1.82T\t936G\t25%\t66%\tONLINE",
+    "zpool_log_devices": false
+  },
+  "profile": "scale-1m",
+  "octets": 2048,
+  "seconds": 60,
+  "rows": [
+    {
+      "connections": 1,
+      "seconds": 60.042,
+      "posts": 1028,
+      "post_per_s": 17.121,
+      "latency": {
+        "n": 1028,
+        "p50_ms": 49.505,
+        "p95_ms": 133.723,
+        "p99_ms": 214.081,
+        "max_ms": 366.232
+      },
+      "errors": [],
+      "warmup_posts": 100,
+      "owner_cpu_ms_per_post": 6.167,
+      "box_before": {
+        "utc": "2026-09-27T16:30:11Z",
+        "loadavg": [
+          28.0400390625,
+          27.48486328125,
+          19.24169921875
+        ],
+        "arc_octets": 25669909136
+      },
+      "box_after": {
+        "utc": "2026-09-27T16:31:11Z",
+        "loadavg": [
+          27.9970703125,
+          27.3515625,
+          19.7041015625
+        ],
+        "arc_octets": 25661003872
+      }
+    },
+    {
+      "connections": 8,
+      "seconds": 55.212,
+      "posts": 2000,
+      "post_per_s": 36.224,
+      "latency": {
+        "n": 2000,
+        "p50_ms": 191.206,
+        "p95_ms": 438.939,
+        "p99_ms": 724.246,
+        "max_ms": 1768.684
+      },
+      "errors": [],
+      "warmup_posts": 100,
+      "owner_cpu_ms_per_post": 22.835,
+      "box_before": {
+        "utc": "2026-09-27T16:31:21Z",
+        "loadavg": [
+          27.17236328125,
+          27.20263671875,
+          19.77880859375
+        ],
+        "arc_octets": 25312611896
+      },
+      "box_after": {
+        "utc": "2026-09-27T16:32:17Z",
+        "loadavg": [
+          26.67138671875,
+          27.08447265625,
+          20.17041015625
+        ],
+        "arc_octets": 25495016872
+      }
+    },
+    {
+      "connections": 32,
+      "seconds": 15.654,
+      "posts": 1999,
+      "post_per_s": 127.702,
+      "latency": {
+        "n": 1999,
+        "p50_ms": 212.19,
+        "p95_ms": 464.211,
+        "p99_ms": 629.875,
+        "max_ms": 833.413
+      },
+      "errors": [
+        "SystemExit(\"POST 3366: b''\")"
+      ],
+      "warmup_posts": 100,
+      "owner_cpu_ms_per_post": 4.317,
+      "box_before": {
+        "utc": "2026-09-27T16:32:42Z",
+        "loadavg": [
+          29.806640625,
+          27.8115234375,
+          20.59716796875
+        ],
+        "arc_octets": 25598661288
+      },
+      "box_after": {
+        "utc": "2026-09-27T16:32:58Z",
+        "loadavg": [
+          29.2705078125,
+          27.7880859375,
+          20.7060546875
+        ],
+        "arc_octets": 25510533168
+      }
+    }
+  ],
+  "fsync": {
+    "open-only": 11,
+    "open-only_trace": "% time     seconds  usecs/call     calls    errors syscall\n------ ----------- ----------- --------- --------- ----------------\n 56.67    0.000068           8         8           fsync\n 43.33    0.000052          17         3           fdatasync\n------ ----------- ----------- --------- --------- ----------------\n100.00    0.000120          10        11           total\n",
+    "window": {
+      "connections": 8,
+      "seconds": 0.92,
+      "posts": 64,
+      "post_per_s": 69.555,
+      "latency": {
+        "n": 64,
+        "p50_ms": 97.57,
+        "p95_ms": 194.893,
+        "p99_ms": 198.289,
+        "max_ms": 206.776
+      },
+      "errors": []
+    },
+    "posts": 33,
+    "posts_trace": "% time     seconds  usecs/call     calls    errors syscall\n------ ----------- ----------- --------- --------- ----------------\n 99.65    0.012822         512        25           fdatasync\n  0.35    0.000045           5         8           fsync\n------ ----------- ----------- --------- --------- ----------------\n100.00    0.012867         389        33           total\n",
+    "per_post": 0.344
+  }
+}

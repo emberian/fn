@@ -1,0 +1,6003 @@
+{
+ "image": "/tank/fn/scratch/fundamentals-scoreboard/native-fs-33bbfae9c/tree/build/fn-host-developer",
+ "hour_seconds": 3600.0,
+ "owner_alive_at_end": true,
+ "owner_exit": 0,
+ "owner_stdout_after_listening": "",
+ "latency": {
+  "reader-group": {
+   "n": 77119,
+   "p50_ms": 22.274970076978207,
+   "p95_ms": 79.91760224103928,
+   "p99_ms": 188.5566795244813,
+   "max_ms": 7932.63000715524
+  },
+  "post": {
+   "n": 5252,
+   "p50_ms": 106.04795068502426,
+   "p95_ms": 438.0686040967703,
+   "p99_ms": 1676.9424909725785,
+   "max_ms": 11303.190067410469
+  },
+  "reader-over": {
+   "n": 77116,
+   "p50_ms": 41.51099547743797,
+   "p95_ms": 79.07950598746538,
+   "p99_ms": 149.38216656446457,
+   "max_ms": 7172.1401903778315
+  },
+  "reader-article": {
+   "n": 77116,
+   "p50_ms": 21.34325634688139,
+   "p95_ms": 69.9950996786356,
+   "p99_ms": 166.90234653651714,
+   "max_ms": 10352.71308477968
+  },
+  "reader-xpat": {
+   "n": 77116,
+   "p50_ms": 19.04221810400486,
+   "p95_ms": 59.29366685450077,
+   "p99_ms": 148.54740351438522,
+   "max_ms": 10354.210019111633
+  },
+  "status-live": {
+   "n": 114,
+   "p50_ms": 358.9356914162636,
+   "p95_ms": 2841.282892972231,
+   "p99_ms": 5332.2717901319265,
+   "max_ms": 7377.610690891743
+  },
+  "health-live": {
+   "n": 114,
+   "p50_ms": 303.6997625604272,
+   "p95_ms": 2998.5237549990416,
+   "p99_ms": 6142.990775406361,
+   "max_ms": 6162.026864476502
+  },
+  "control-group-create": {
+   "n": 28,
+   "p50_ms": 3518.6887374147773,
+   "p95_ms": 7251.045601442456,
+   "p99_ms": 8042.124852538109,
+   "max_ms": 8042.124852538109
+  },
+  "control-grant": {
+   "n": 28,
+   "p50_ms": 3352.415055036545,
+   "p95_ms": 6266.269122250378,
+   "p99_ms": 7869.169527664781,
+   "max_ms": 7869.169527664781
+  }
+ },
+ "samples": [
+  {
+   "t": 2.2,
+   "cpu_s": 0.15,
+   "rss_kib": "458276",
+   "hwm_kib": "464324",
+   "store_octets": 1049003,
+   "store_inodes": 10,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 12.2,
+   "cpu_s": 1.12,
+   "rss_kib": "480548",
+   "hwm_kib": "480548",
+   "store_octets": 1049003,
+   "store_inodes": 10,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 22.2,
+   "cpu_s": 2.75,
+   "rss_kib": "506852",
+   "hwm_kib": "506852",
+   "store_octets": 1049003,
+   "store_inodes": 10,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 32.2,
+   "cpu_s": 4.73,
+   "rss_kib": "550628",
+   "hwm_kib": "550628",
+   "store_octets": 1049003,
+   "store_inodes": 10,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 42.2,
+   "cpu_s": 6.68,
+   "rss_kib": "598436",
+   "hwm_kib": "598436",
+   "store_octets": 1049003,
+   "store_inodes": 10,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 52.2,
+   "cpu_s": 8.83,
+   "rss_kib": "658340",
+   "hwm_kib": "658340",
+   "store_octets": 1049003,
+   "store_inodes": 10,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 62.3,
+   "cpu_s": 11.2,
+   "rss_kib": "730724",
+   "hwm_kib": "730724",
+   "store_octets": 1049003,
+   "store_inodes": 10,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 72.3,
+   "cpu_s": 13.87,
+   "rss_kib": "796964",
+   "hwm_kib": "796964",
+   "store_octets": 1049003,
+   "store_inodes": 10,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 82.3,
+   "cpu_s": 16.47,
+   "rss_kib": "487824",
+   "hwm_kib": "849764",
+   "store_octets": 1049003,
+   "store_inodes": 10,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 92.3,
+   "cpu_s": 18.91,
+   "rss_kib": "557520",
+   "hwm_kib": "849764",
+   "store_octets": 1049003,
+   "store_inodes": 10,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 102.3,
+   "cpu_s": 21.24,
+   "rss_kib": "630096",
+   "hwm_kib": "849764",
+   "store_octets": 1049003,
+   "store_inodes": 10,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 112.3,
+   "cpu_s": 23.58,
+   "rss_kib": "702480",
+   "hwm_kib": "849764",
+   "store_octets": 1049003,
+   "store_inodes": 10,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 122.3,
+   "cpu_s": 26.07,
+   "rss_kib": "778704",
+   "hwm_kib": "849764",
+   "store_octets": 1049003,
+   "store_inodes": 10,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 132.3,
+   "cpu_s": 28.55,
+   "rss_kib": "843408",
+   "hwm_kib": "849764",
+   "store_octets": 1049239,
+   "store_inodes": 12,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 142.3,
+   "cpu_s": 30.77,
+   "rss_kib": "533768",
+   "hwm_kib": "849764",
+   "store_octets": 1049239,
+   "store_inodes": 12,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 152.3,
+   "cpu_s": 33.2,
+   "rss_kib": "604040",
+   "hwm_kib": "849764",
+   "store_octets": 1049239,
+   "store_inodes": 12,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 162.3,
+   "cpu_s": 34.95,
+   "rss_kib": "656648",
+   "hwm_kib": "849764",
+   "store_octets": 2097815,
+   "store_inodes": 12,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 172.3,
+   "cpu_s": 37.53,
+   "rss_kib": "733064",
+   "hwm_kib": "849764",
+   "store_octets": 2097815,
+   "store_inodes": 12,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 182.3,
+   "cpu_s": 40.42,
+   "rss_kib": "817352",
+   "hwm_kib": "849764",
+   "store_octets": 2097815,
+   "store_inodes": 12,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 192.3,
+   "cpu_s": 43.34,
+   "rss_kib": "520504",
+   "hwm_kib": "851528",
+   "store_octets": 2097815,
+   "store_inodes": 12,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 202.4,
+   "cpu_s": 46.06,
+   "rss_kib": "608056",
+   "hwm_kib": "851528",
+   "store_octets": 2097815,
+   "store_inodes": 12,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 212.4,
+   "cpu_s": 48.8,
+   "rss_kib": "691000",
+   "hwm_kib": "851528",
+   "store_octets": 2097815,
+   "store_inodes": 12,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 222.4,
+   "cpu_s": 51.53,
+   "rss_kib": "765112",
+   "hwm_kib": "851528",
+   "store_octets": 2097815,
+   "store_inodes": 12,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 232.4,
+   "cpu_s": 54.4,
+   "rss_kib": "847096",
+   "hwm_kib": "851528",
+   "store_octets": 2097815,
+   "store_inodes": 12,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 242.4,
+   "cpu_s": 57.21,
+   "rss_kib": "541168",
+   "hwm_kib": "854776",
+   "store_octets": 2097815,
+   "store_inodes": 12,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 252.4,
+   "cpu_s": 60.3,
+   "rss_kib": "618160",
+   "hwm_kib": "854776",
+   "store_octets": 2098053,
+   "store_inodes": 14,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 262.4,
+   "cpu_s": 63.83,
+   "rss_kib": "708592",
+   "hwm_kib": "854776",
+   "store_octets": 2098053,
+   "store_inodes": 14,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 272.4,
+   "cpu_s": 67.16,
+   "rss_kib": "796528",
+   "hwm_kib": "854776",
+   "store_octets": 2098053,
+   "store_inodes": 14,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 282.4,
+   "cpu_s": 70.3,
+   "rss_kib": "489164",
+   "hwm_kib": "859504",
+   "store_octets": 2098053,
+   "store_inodes": 14,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 292.4,
+   "cpu_s": 73.32,
+   "rss_kib": "572876",
+   "hwm_kib": "859504",
+   "store_octets": 2098053,
+   "store_inodes": 14,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 302.4,
+   "cpu_s": 76.3,
+   "rss_kib": "651980",
+   "hwm_kib": "859504",
+   "store_octets": 4195205,
+   "store_inodes": 14,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 312.4,
+   "cpu_s": 79.37,
+   "rss_kib": "727820",
+   "hwm_kib": "859504",
+   "store_octets": 4195205,
+   "store_inodes": 14,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 322.4,
+   "cpu_s": 82.6,
+   "rss_kib": "811148",
+   "hwm_kib": "859504",
+   "store_octets": 4195205,
+   "store_inodes": 14,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 332.4,
+   "cpu_s": 85.77,
+   "rss_kib": "505588",
+   "hwm_kib": "863948",
+   "store_octets": 4195205,
+   "store_inodes": 14,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 342.5,
+   "cpu_s": 89.05,
+   "rss_kib": "586804",
+   "hwm_kib": "863948",
+   "store_octets": 4195205,
+   "store_inodes": 14,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 352.5,
+   "cpu_s": 92.3,
+   "rss_kib": "679732",
+   "hwm_kib": "863948",
+   "store_octets": 4195205,
+   "store_inodes": 14,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 362.5,
+   "cpu_s": 95.5,
+   "rss_kib": "766132",
+   "hwm_kib": "863948",
+   "store_octets": 4195205,
+   "store_inodes": 14,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 372.5,
+   "cpu_s": 99.19,
+   "rss_kib": "852916",
+   "hwm_kib": "863948",
+   "store_octets": 4195445,
+   "store_inodes": 16,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 382.5,
+   "cpu_s": 103.06,
+   "rss_kib": "552284",
+   "hwm_kib": "864052",
+   "store_octets": 4195445,
+   "store_inodes": 16,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 392.5,
+   "cpu_s": 106.53,
+   "rss_kib": "636572",
+   "hwm_kib": "864052",
+   "store_octets": 4195445,
+   "store_inodes": 16,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 402.5,
+   "cpu_s": 110.09,
+   "rss_kib": "724124",
+   "hwm_kib": "864052",
+   "store_octets": 4195445,
+   "store_inodes": 16,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 412.5,
+   "cpu_s": 113.85,
+   "rss_kib": "814556",
+   "hwm_kib": "864052",
+   "store_octets": 4195445,
+   "store_inodes": 16,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 422.5,
+   "cpu_s": 117.8,
+   "rss_kib": "513528",
+   "hwm_kib": "871388",
+   "store_octets": 4195445,
+   "store_inodes": 16,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 432.5,
+   "cpu_s": 121.55,
+   "rss_kib": "609912",
+   "hwm_kib": "871388",
+   "store_octets": 4195445,
+   "store_inodes": 16,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 442.5,
+   "cpu_s": 125.38,
+   "rss_kib": "692664",
+   "hwm_kib": "871388",
+   "store_octets": 4195445,
+   "store_inodes": 16,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 452.5,
+   "cpu_s": 129.18,
+   "rss_kib": "781176",
+   "hwm_kib": "871388",
+   "store_octets": 4195445,
+   "store_inodes": 16,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 462.6,
+   "cpu_s": 133.21,
+   "rss_kib": "494256",
+   "hwm_kib": "871388",
+   "store_octets": 4195445,
+   "store_inodes": 16,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 472.6,
+   "cpu_s": 136.83,
+   "rss_kib": "583728",
+   "hwm_kib": "871388",
+   "store_octets": 4195445,
+   "store_inodes": 16,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 482.6,
+   "cpu_s": 140.78,
+   "rss_kib": "674736",
+   "hwm_kib": "871388",
+   "store_octets": 4195445,
+   "store_inodes": 16,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 492.6,
+   "cpu_s": 145.1,
+   "rss_kib": "769968",
+   "hwm_kib": "871388",
+   "store_octets": 4195685,
+   "store_inodes": 18,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 502.6,
+   "cpu_s": 149.16,
+   "rss_kib": "862704",
+   "hwm_kib": "871388",
+   "store_octets": 4195685,
+   "store_inodes": 18,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 512.6,
+   "cpu_s": 153.4,
+   "rss_kib": "558044",
+   "hwm_kib": "875760",
+   "store_octets": 4195685,
+   "store_inodes": 18,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 522.6,
+   "cpu_s": 157.71,
+   "rss_kib": "657500",
+   "hwm_kib": "875760",
+   "store_octets": 4195685,
+   "store_inodes": 18,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 532.7,
+   "cpu_s": 161.87,
+   "rss_kib": "749084",
+   "hwm_kib": "875760",
+   "store_octets": 4195685,
+   "store_inodes": 18,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 542.7,
+   "cpu_s": 165.85,
+   "rss_kib": "842204",
+   "hwm_kib": "875760",
+   "store_octets": 4195685,
+   "store_inodes": 18,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 552.7,
+   "cpu_s": 169.92,
+   "rss_kib": "551636",
+   "hwm_kib": "880028",
+   "store_octets": 4195685,
+   "store_inodes": 18,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 562.7,
+   "cpu_s": 174.11,
+   "rss_kib": "648596",
+   "hwm_kib": "880028",
+   "store_octets": 4195685,
+   "store_inodes": 18,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 572.7,
+   "cpu_s": 178.43,
+   "rss_kib": "743444",
+   "hwm_kib": "880028",
+   "store_octets": 4195685,
+   "store_inodes": 18,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 582.7,
+   "cpu_s": 182.63,
+   "rss_kib": "827540",
+   "hwm_kib": "880028",
+   "store_octets": 4195685,
+   "store_inodes": 18,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 592.7,
+   "cpu_s": 186.85,
+   "rss_kib": "520560",
+   "hwm_kib": "880724",
+   "store_octets": 8389989,
+   "store_inodes": 18,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 602.7,
+   "cpu_s": 191.25,
+   "rss_kib": "639024",
+   "hwm_kib": "880724",
+   "store_octets": 8389989,
+   "store_inodes": 18,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 612.7,
+   "cpu_s": 195.5,
+   "rss_kib": "733872",
+   "hwm_kib": "880724",
+   "store_octets": 8390229,
+   "store_inodes": 20,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 622.7,
+   "cpu_s": 199.6,
+   "rss_kib": "830640",
+   "hwm_kib": "880724",
+   "store_octets": 8390229,
+   "store_inodes": 20,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 632.8,
+   "cpu_s": 203.21,
+   "rss_kib": "524372",
+   "hwm_kib": "880724",
+   "store_octets": 8390229,
+   "store_inodes": 20,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 642.8,
+   "cpu_s": 207.25,
+   "rss_kib": "614420",
+   "hwm_kib": "880724",
+   "store_octets": 8390229,
+   "store_inodes": 20,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 652.8,
+   "cpu_s": 211.48,
+   "rss_kib": "725012",
+   "hwm_kib": "880724",
+   "store_octets": 8390229,
+   "store_inodes": 20,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 662.8,
+   "cpu_s": 214.6,
+   "rss_kib": "795476",
+   "hwm_kib": "880724",
+   "store_octets": 8390229,
+   "store_inodes": 20,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 672.8,
+   "cpu_s": 218.13,
+   "rss_kib": "868052",
+   "hwm_kib": "880724",
+   "store_octets": 8390229,
+   "store_inodes": 20,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 682.9,
+   "cpu_s": 221.97,
+   "rss_kib": "556900",
+   "hwm_kib": "883988",
+   "store_octets": 8390229,
+   "store_inodes": 20,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 692.9,
+   "cpu_s": 226.62,
+   "rss_kib": "658468",
+   "hwm_kib": "883988",
+   "store_octets": 8390229,
+   "store_inodes": 20,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 702.9,
+   "cpu_s": 231.28,
+   "rss_kib": "735268",
+   "hwm_kib": "883988",
+   "store_octets": 8390229,
+   "store_inodes": 20,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 712.9,
+   "cpu_s": 235.58,
+   "rss_kib": "813220",
+   "hwm_kib": "883988",
+   "store_octets": 8390229,
+   "store_inodes": 20,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 722.9,
+   "cpu_s": 240.42,
+   "rss_kib": "502436",
+   "hwm_kib": "894436",
+   "store_octets": 8390229,
+   "store_inodes": 20,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 732.9,
+   "cpu_s": 245.24,
+   "rss_kib": "593252",
+   "hwm_kib": "894436",
+   "store_octets": 8390469,
+   "store_inodes": 22,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 743.0,
+   "cpu_s": 249.7,
+   "rss_kib": "688292",
+   "hwm_kib": "894436",
+   "store_octets": 8390469,
+   "store_inodes": 22,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 753.0,
+   "cpu_s": 254.45,
+   "rss_kib": "798884",
+   "hwm_kib": "894436",
+   "store_octets": 8390469,
+   "store_inodes": 22,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 763.0,
+   "cpu_s": 258.98,
+   "rss_kib": "519596",
+   "hwm_kib": "894436",
+   "store_octets": 8390469,
+   "store_inodes": 22,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 773.0,
+   "cpu_s": 263.6,
+   "rss_kib": "629036",
+   "hwm_kib": "894436",
+   "store_octets": 8390469,
+   "store_inodes": 22,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 783.0,
+   "cpu_s": 268.16,
+   "rss_kib": "733484",
+   "hwm_kib": "894436",
+   "store_octets": 8390469,
+   "store_inodes": 22,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 793.0,
+   "cpu_s": 272.75,
+   "rss_kib": "843692",
+   "hwm_kib": "894436",
+   "store_octets": 8390469,
+   "store_inodes": 22,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 803.0,
+   "cpu_s": 277.2,
+   "rss_kib": "554124",
+   "hwm_kib": "894436",
+   "store_octets": 8390469,
+   "store_inodes": 22,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 813.0,
+   "cpu_s": 281.62,
+   "rss_kib": "652812",
+   "hwm_kib": "894436",
+   "store_octets": 8390469,
+   "store_inodes": 22,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 823.0,
+   "cpu_s": 286.09,
+   "rss_kib": "765516",
+   "hwm_kib": "894436",
+   "store_octets": 8390469,
+   "store_inodes": 22,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 833.0,
+   "cpu_s": 290.8,
+   "rss_kib": "869772",
+   "hwm_kib": "894436",
+   "store_octets": 8390469,
+   "store_inodes": 22,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 843.0,
+   "cpu_s": 295.19,
+   "rss_kib": "585772",
+   "hwm_kib": "894436",
+   "store_octets": 8390469,
+   "store_inodes": 22,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 853.0,
+   "cpu_s": 299.82,
+   "rss_kib": "692908",
+   "hwm_kib": "894436",
+   "store_octets": 8390709,
+   "store_inodes": 24,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 863.0,
+   "cpu_s": 304.12,
+   "rss_kib": "798316",
+   "hwm_kib": "894436",
+   "store_octets": 8390709,
+   "store_inodes": 24,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 873.1,
+   "cpu_s": 308.25,
+   "rss_kib": "505440",
+   "hwm_kib": "894436",
+   "store_octets": 8390709,
+   "store_inodes": 24,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 883.1,
+   "cpu_s": 311.93,
+   "rss_kib": "598944",
+   "hwm_kib": "894436",
+   "store_octets": 8390709,
+   "store_inodes": 24,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 893.1,
+   "cpu_s": 315.7,
+   "rss_kib": "694560",
+   "hwm_kib": "894436",
+   "store_octets": 8390709,
+   "store_inodes": 24,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 903.1,
+   "cpu_s": 319.8,
+   "rss_kib": "801120",
+   "hwm_kib": "894436",
+   "store_octets": 8390709,
+   "store_inodes": 24,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 913.1,
+   "cpu_s": 324.18,
+   "rss_kib": "506700",
+   "hwm_kib": "894436",
+   "store_octets": 8390709,
+   "store_inodes": 24,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 923.1,
+   "cpu_s": 328.66,
+   "rss_kib": "614988",
+   "hwm_kib": "894436",
+   "store_octets": 8390709,
+   "store_inodes": 24,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 933.1,
+   "cpu_s": 333.78,
+   "rss_kib": "729036",
+   "hwm_kib": "894436",
+   "store_octets": 8390709,
+   "store_inodes": 24,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 943.1,
+   "cpu_s": 338.34,
+   "rss_kib": "827340",
+   "hwm_kib": "894436",
+   "store_octets": 8390709,
+   "store_inodes": 24,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 953.1,
+   "cpu_s": 343.09,
+   "rss_kib": "549200",
+   "hwm_kib": "894436",
+   "store_octets": 8390709,
+   "store_inodes": 24,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 963.2,
+   "cpu_s": 347.93,
+   "rss_kib": "648464",
+   "hwm_kib": "894436",
+   "store_octets": 8390709,
+   "store_inodes": 24,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 973.2,
+   "cpu_s": 353.47,
+   "rss_kib": "753872",
+   "hwm_kib": "894436",
+   "store_octets": 8390949,
+   "store_inodes": 26,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 983.2,
+   "cpu_s": 358.98,
+   "rss_kib": "860048",
+   "hwm_kib": "894436",
+   "store_octets": 8390949,
+   "store_inodes": 26,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 993.2,
+   "cpu_s": 363.95,
+   "rss_kib": "570424",
+   "hwm_kib": "897104",
+   "store_octets": 8390949,
+   "store_inodes": 26,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1003.2,
+   "cpu_s": 369.03,
+   "rss_kib": "681592",
+   "hwm_kib": "897104",
+   "store_octets": 8390949,
+   "store_inodes": 26,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1013.2,
+   "cpu_s": 374.3,
+   "rss_kib": "787384",
+   "hwm_kib": "897104",
+   "store_octets": 8390949,
+   "store_inodes": 26,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1023.2,
+   "cpu_s": 379.64,
+   "rss_kib": "897592",
+   "hwm_kib": "897592",
+   "store_octets": 8390949,
+   "store_inodes": 26,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1033.2,
+   "cpu_s": 384.81,
+   "rss_kib": "611156",
+   "hwm_kib": "901048",
+   "store_octets": 8390949,
+   "store_inodes": 26,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1043.2,
+   "cpu_s": 389.97,
+   "rss_kib": "722708",
+   "hwm_kib": "901048",
+   "store_octets": 8390949,
+   "store_inodes": 26,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1053.2,
+   "cpu_s": 395.63,
+   "rss_kib": "854228",
+   "hwm_kib": "901048",
+   "store_octets": 8390949,
+   "store_inodes": 26,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1063.2,
+   "cpu_s": 400.92,
+   "rss_kib": "570596",
+   "hwm_kib": "901048",
+   "store_octets": 8390949,
+   "store_inodes": 26,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1073.2,
+   "cpu_s": 405.48,
+   "rss_kib": "666212",
+   "hwm_kib": "901048",
+   "store_octets": 8390949,
+   "store_inodes": 26,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1083.2,
+   "cpu_s": 410.56,
+   "rss_kib": "783332",
+   "hwm_kib": "901048",
+   "store_octets": 8390949,
+   "store_inodes": 26,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1093.2,
+   "cpu_s": 415.93,
+   "rss_kib": "876644",
+   "hwm_kib": "901048",
+   "store_octets": 8390949,
+   "store_inodes": 26,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1103.2,
+   "cpu_s": 421.39,
+   "rss_kib": "555308",
+   "hwm_kib": "903524",
+   "store_octets": 8391189,
+   "store_inodes": 28,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1113.2,
+   "cpu_s": 425.35,
+   "rss_kib": "637292",
+   "hwm_kib": "903524",
+   "store_octets": 8391189,
+   "store_inodes": 28,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1123.2,
+   "cpu_s": 428.68,
+   "rss_kib": "708524",
+   "hwm_kib": "903524",
+   "store_octets": 8391189,
+   "store_inodes": 28,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1133.3,
+   "cpu_s": 432.03,
+   "rss_kib": "775148",
+   "hwm_kib": "903524",
+   "store_octets": 8391189,
+   "store_inodes": 28,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1143.3,
+   "cpu_s": 437.14,
+   "rss_kib": "881708",
+   "hwm_kib": "903524",
+   "store_octets": 8391189,
+   "store_inodes": 28,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1153.3,
+   "cpu_s": 441.72,
+   "rss_kib": "565528",
+   "hwm_kib": "914156",
+   "store_octets": 8391189,
+   "store_inodes": 28,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1163.3,
+   "cpu_s": 445.98,
+   "rss_kib": "649816",
+   "hwm_kib": "914156",
+   "store_octets": 8391189,
+   "store_inodes": 28,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1173.3,
+   "cpu_s": 450.57,
+   "rss_kib": "746008",
+   "hwm_kib": "914156",
+   "store_octets": 8391189,
+   "store_inodes": 28,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1183.3,
+   "cpu_s": 455.17,
+   "rss_kib": "835672",
+   "hwm_kib": "914156",
+   "store_octets": 8391189,
+   "store_inodes": 28,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1193.3,
+   "cpu_s": 460.31,
+   "rss_kib": "541400",
+   "hwm_kib": "915352",
+   "store_octets": 8391189,
+   "store_inodes": 28,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1203.3,
+   "cpu_s": 465.39,
+   "rss_kib": "634136",
+   "hwm_kib": "915352",
+   "store_octets": 8391189,
+   "store_inodes": 28,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1213.3,
+   "cpu_s": 471.74,
+   "rss_kib": "887384",
+   "hwm_kib": "915352",
+   "store_octets": 21696204,
+   "store_inodes": 30,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1223.4,
+   "cpu_s": 477.41,
+   "rss_kib": "543624",
+   "hwm_kib": "915352",
+   "store_octets": 4919229,
+   "store_inodes": 31,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1233.4,
+   "cpu_s": 481.04,
+   "rss_kib": "599688",
+   "hwm_kib": "915352",
+   "store_octets": 4919229,
+   "store_inodes": 31,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1243.4,
+   "cpu_s": 485.57,
+   "rss_kib": "674760",
+   "hwm_kib": "915352",
+   "store_octets": 4919229,
+   "store_inodes": 31,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1253.4,
+   "cpu_s": 490.47,
+   "rss_kib": "761160",
+   "hwm_kib": "915352",
+   "store_octets": 4919229,
+   "store_inodes": 31,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1263.4,
+   "cpu_s": 495.37,
+   "rss_kib": "840072",
+   "hwm_kib": "915352",
+   "store_octets": 4919229,
+   "store_inodes": 31,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1273.4,
+   "cpu_s": 500.7,
+   "rss_kib": "518272",
+   "hwm_kib": "923400",
+   "store_octets": 4919229,
+   "store_inodes": 31,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1283.4,
+   "cpu_s": 506.61,
+   "rss_kib": "622912",
+   "hwm_kib": "923400",
+   "store_octets": 4919229,
+   "store_inodes": 31,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1293.4,
+   "cpu_s": 512.19,
+   "rss_kib": "722944",
+   "hwm_kib": "923400",
+   "store_octets": 4919229,
+   "store_inodes": 31,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1303.4,
+   "cpu_s": 518.0,
+   "rss_kib": "818752",
+   "hwm_kib": "923400",
+   "store_octets": 4919229,
+   "store_inodes": 31,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1313.4,
+   "cpu_s": 523.07,
+   "rss_kib": "897472",
+   "hwm_kib": "923400",
+   "store_octets": 4919229,
+   "store_inodes": 31,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1323.5,
+   "cpu_s": 527.94,
+   "rss_kib": "575364",
+   "hwm_kib": "924160",
+   "store_octets": 4919229,
+   "store_inodes": 31,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1333.5,
+   "cpu_s": 532.18,
+   "rss_kib": "647748",
+   "hwm_kib": "924160",
+   "store_octets": 4919229,
+   "store_inodes": 31,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1343.5,
+   "cpu_s": 537.22,
+   "rss_kib": "715908",
+   "hwm_kib": "924160",
+   "store_octets": 4919470,
+   "store_inodes": 33,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1353.5,
+   "cpu_s": 541.41,
+   "rss_kib": "790404",
+   "hwm_kib": "924160",
+   "store_octets": 4919470,
+   "store_inodes": 33,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1363.6,
+   "cpu_s": 546.4,
+   "rss_kib": "880260",
+   "hwm_kib": "924160",
+   "store_octets": 4919470,
+   "store_inodes": 33,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1373.6,
+   "cpu_s": 550.72,
+   "rss_kib": "546340",
+   "hwm_kib": "924160",
+   "store_octets": 4919470,
+   "store_inodes": 33,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1383.6,
+   "cpu_s": 554.57,
+   "rss_kib": "609508",
+   "hwm_kib": "924160",
+   "store_octets": 5968046,
+   "store_inodes": 33,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1393.6,
+   "cpu_s": 558.88,
+   "rss_kib": "684772",
+   "hwm_kib": "924160",
+   "store_octets": 5968046,
+   "store_inodes": 33,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1403.6,
+   "cpu_s": 563.38,
+   "rss_kib": "758500",
+   "hwm_kib": "924160",
+   "store_octets": 5968046,
+   "store_inodes": 33,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1413.7,
+   "cpu_s": 567.67,
+   "rss_kib": "828964",
+   "hwm_kib": "924160",
+   "store_octets": 5968046,
+   "store_inodes": 33,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1423.7,
+   "cpu_s": 571.9,
+   "rss_kib": "902884",
+   "hwm_kib": "924160",
+   "store_octets": 5968046,
+   "store_inodes": 33,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1433.7,
+   "cpu_s": 576.19,
+   "rss_kib": "560092",
+   "hwm_kib": "934180",
+   "store_octets": 5968046,
+   "store_inodes": 33,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1443.7,
+   "cpu_s": 581.05,
+   "rss_kib": "644956",
+   "hwm_kib": "934180",
+   "store_octets": 5968046,
+   "store_inodes": 33,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1453.7,
+   "cpu_s": 585.61,
+   "rss_kib": "727324",
+   "hwm_kib": "934180",
+   "store_octets": 5968046,
+   "store_inodes": 33,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1463.7,
+   "cpu_s": 590.12,
+   "rss_kib": "810076",
+   "hwm_kib": "934180",
+   "store_octets": 5968046,
+   "store_inodes": 33,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1473.7,
+   "cpu_s": 596.21,
+   "rss_kib": "893404",
+   "hwm_kib": "934180",
+   "store_octets": 5968290,
+   "store_inodes": 35,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1483.7,
+   "cpu_s": 601.06,
+   "rss_kib": "577868",
+   "hwm_kib": "934180",
+   "store_octets": 5968290,
+   "store_inodes": 35,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1493.8,
+   "cpu_s": 605.43,
+   "rss_kib": "652748",
+   "hwm_kib": "934180",
+   "store_octets": 5968290,
+   "store_inodes": 35,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1503.8,
+   "cpu_s": 609.38,
+   "rss_kib": "719564",
+   "hwm_kib": "934180",
+   "store_octets": 5968290,
+   "store_inodes": 35,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1513.8,
+   "cpu_s": 613.26,
+   "rss_kib": "782540",
+   "hwm_kib": "934180",
+   "store_octets": 5968290,
+   "store_inodes": 35,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1523.8,
+   "cpu_s": 617.87,
+   "rss_kib": "860684",
+   "hwm_kib": "934180",
+   "store_octets": 5968290,
+   "store_inodes": 35,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1533.9,
+   "cpu_s": 622.77,
+   "rss_kib": "523196",
+   "hwm_kib": "934604",
+   "store_octets": 5968290,
+   "store_inodes": 35,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1543.9,
+   "cpu_s": 627.35,
+   "rss_kib": "604220",
+   "hwm_kib": "934604",
+   "store_octets": 8065442,
+   "store_inodes": 35,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1553.9,
+   "cpu_s": 632.09,
+   "rss_kib": "679292",
+   "hwm_kib": "934604",
+   "store_octets": 8065442,
+   "store_inodes": 35,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1563.9,
+   "cpu_s": 635.62,
+   "rss_kib": "737660",
+   "hwm_kib": "934604",
+   "store_octets": 8065442,
+   "store_inodes": 35,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1573.9,
+   "cpu_s": 638.5,
+   "rss_kib": "784124",
+   "hwm_kib": "934604",
+   "store_octets": 8065442,
+   "store_inodes": 35,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1584.0,
+   "cpu_s": 642.3,
+   "rss_kib": "847100",
+   "hwm_kib": "934604",
+   "store_octets": 8065442,
+   "store_inodes": 35,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1594.0,
+   "cpu_s": 648.37,
+   "rss_kib": "913724",
+   "hwm_kib": "934604",
+   "store_octets": 8065687,
+   "store_inodes": 37,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1604.0,
+   "cpu_s": 651.94,
+   "rss_kib": "556964",
+   "hwm_kib": "934604",
+   "store_octets": 8065687,
+   "store_inodes": 37,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1614.0,
+   "cpu_s": 655.99,
+   "rss_kib": "631652",
+   "hwm_kib": "934604",
+   "store_octets": 8065687,
+   "store_inodes": 37,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1624.1,
+   "cpu_s": 660.48,
+   "rss_kib": "716324",
+   "hwm_kib": "934604",
+   "store_octets": 8065687,
+   "store_inodes": 37,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1634.1,
+   "cpu_s": 664.31,
+   "rss_kib": "780644",
+   "hwm_kib": "934604",
+   "store_octets": 8065687,
+   "store_inodes": 37,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1644.2,
+   "cpu_s": 668.26,
+   "rss_kib": "845156",
+   "hwm_kib": "934604",
+   "store_octets": 8065687,
+   "store_inodes": 37,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1654.3,
+   "cpu_s": 672.39,
+   "rss_kib": "911780",
+   "hwm_kib": "934604",
+   "store_octets": 8065687,
+   "store_inodes": 37,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1664.3,
+   "cpu_s": 676.27,
+   "rss_kib": "567444",
+   "hwm_kib": "935588",
+   "store_octets": 8065687,
+   "store_inodes": 37,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1674.3,
+   "cpu_s": 679.79,
+   "rss_kib": "632340",
+   "hwm_kib": "935588",
+   "store_octets": 8065687,
+   "store_inodes": 37,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1684.3,
+   "cpu_s": 683.17,
+   "rss_kib": "694164",
+   "hwm_kib": "935588",
+   "store_octets": 8065687,
+   "store_inodes": 37,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1694.4,
+   "cpu_s": 688.67,
+   "rss_kib": "784404",
+   "hwm_kib": "935588",
+   "store_octets": 8065687,
+   "store_inodes": 37,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1704.4,
+   "cpu_s": 693.13,
+   "rss_kib": "859092",
+   "hwm_kib": "935588",
+   "store_octets": 8065687,
+   "store_inodes": 37,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1714.4,
+   "cpu_s": 697.37,
+   "rss_kib": "927828",
+   "hwm_kib": "935588",
+   "store_octets": 8065687,
+   "store_inodes": 37,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1724.5,
+   "cpu_s": 701.22,
+   "rss_kib": "551264",
+   "hwm_kib": "935588",
+   "store_octets": 8065932,
+   "store_inodes": 39,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1734.6,
+   "cpu_s": 703.94,
+   "rss_kib": "600992",
+   "hwm_kib": "935588",
+   "store_octets": 8065932,
+   "store_inodes": 39,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1744.6,
+   "cpu_s": 706.93,
+   "rss_kib": "641696",
+   "hwm_kib": "935588",
+   "store_octets": 8065932,
+   "store_inodes": 39,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1754.7,
+   "cpu_s": 710.38,
+   "rss_kib": "705056",
+   "hwm_kib": "935588",
+   "store_octets": 8065932,
+   "store_inodes": 39,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1764.7,
+   "cpu_s": 713.79,
+   "rss_kib": "774176",
+   "hwm_kib": "935588",
+   "store_octets": 8065932,
+   "store_inodes": 39,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1774.7,
+   "cpu_s": 718.9,
+   "rss_kib": "858656",
+   "hwm_kib": "935588",
+   "store_octets": 8065932,
+   "store_inodes": 39,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1784.8,
+   "cpu_s": 723.54,
+   "rss_kib": "933920",
+   "hwm_kib": "935588",
+   "store_octets": 8065932,
+   "store_inodes": 39,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1794.9,
+   "cpu_s": 728.21,
+   "rss_kib": "600236",
+   "hwm_kib": "938336",
+   "store_octets": 8065932,
+   "store_inodes": 39,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1804.9,
+   "cpu_s": 732.31,
+   "rss_kib": "668396",
+   "hwm_kib": "938336",
+   "store_octets": 8065932,
+   "store_inodes": 39,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1814.9,
+   "cpu_s": 736.4,
+   "rss_kib": "731948",
+   "hwm_kib": "938336",
+   "store_octets": 8065932,
+   "store_inodes": 39,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1825.1,
+   "cpu_s": 738.53,
+   "rss_kib": "769004",
+   "hwm_kib": "938336",
+   "store_octets": 8065932,
+   "store_inodes": 39,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1835.3,
+   "cpu_s": 740.65,
+   "rss_kib": "796652",
+   "hwm_kib": "938336",
+   "store_octets": 8065932,
+   "store_inodes": 39,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1845.3,
+   "cpu_s": 744.79,
+   "rss_kib": "841388",
+   "hwm_kib": "938336",
+   "store_octets": 8065932,
+   "store_inodes": 39,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1855.3,
+   "cpu_s": 748.14,
+   "rss_kib": "872492",
+   "hwm_kib": "938336",
+   "store_octets": 8066177,
+   "store_inodes": 41,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1865.3,
+   "cpu_s": 750.82,
+   "rss_kib": "910508",
+   "hwm_kib": "938336",
+   "store_octets": 8066177,
+   "store_inodes": 41,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1875.3,
+   "cpu_s": 754.46,
+   "rss_kib": "550852",
+   "hwm_kib": "939692",
+   "store_octets": 8066177,
+   "store_inodes": 41,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1885.3,
+   "cpu_s": 758.35,
+   "rss_kib": "617860",
+   "hwm_kib": "939692",
+   "store_octets": 8066177,
+   "store_inodes": 41,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1895.4,
+   "cpu_s": 760.53,
+   "rss_kib": "651652",
+   "hwm_kib": "939692",
+   "store_octets": 8066177,
+   "store_inodes": 41,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1905.4,
+   "cpu_s": 762.28,
+   "rss_kib": "676996",
+   "hwm_kib": "939692",
+   "store_octets": 8066177,
+   "store_inodes": 41,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1915.4,
+   "cpu_s": 765.39,
+   "rss_kib": "721732",
+   "hwm_kib": "939692",
+   "store_octets": 8066177,
+   "store_inodes": 41,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1925.4,
+   "cpu_s": 769.81,
+   "rss_kib": "793924",
+   "hwm_kib": "939692",
+   "store_octets": 8066177,
+   "store_inodes": 41,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1935.4,
+   "cpu_s": 774.37,
+   "rss_kib": "866116",
+   "hwm_kib": "939692",
+   "store_octets": 8066177,
+   "store_inodes": 41,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1945.5,
+   "cpu_s": 777.88,
+   "rss_kib": "915652",
+   "hwm_kib": "939692",
+   "store_octets": 12260481,
+   "store_inodes": 41,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1955.5,
+   "cpu_s": 781.35,
+   "rss_kib": "544964",
+   "hwm_kib": "950980",
+   "store_octets": 12260481,
+   "store_inodes": 41,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1965.5,
+   "cpu_s": 785.21,
+   "rss_kib": "607172",
+   "hwm_kib": "950980",
+   "store_octets": 12260481,
+   "store_inodes": 41,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1975.5,
+   "cpu_s": 790.03,
+   "rss_kib": "661316",
+   "hwm_kib": "950980",
+   "store_octets": 12260542,
+   "store_inodes": 42,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1985.6,
+   "cpu_s": 795.07,
+   "rss_kib": "723972",
+   "hwm_kib": "950980",
+   "store_octets": 12260726,
+   "store_inodes": 43,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 1995.6,
+   "cpu_s": 798.72,
+   "rss_kib": "784452",
+   "hwm_kib": "950980",
+   "store_octets": 12260726,
+   "store_inodes": 43,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2005.6,
+   "cpu_s": 802.06,
+   "rss_kib": "831492",
+   "hwm_kib": "950980",
+   "store_octets": 12260726,
+   "store_inodes": 43,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2015.7,
+   "cpu_s": 806.24,
+   "rss_kib": "898116",
+   "hwm_kib": "950980",
+   "store_octets": 12260726,
+   "store_inodes": 43,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2025.7,
+   "cpu_s": 810.16,
+   "rss_kib": "539476",
+   "hwm_kib": "950980",
+   "store_octets": 12260726,
+   "store_inodes": 43,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2035.7,
+   "cpu_s": 813.43,
+   "rss_kib": "592468",
+   "hwm_kib": "950980",
+   "store_octets": 12260726,
+   "store_inodes": 43,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2045.8,
+   "cpu_s": 816.8,
+   "rss_kib": "640852",
+   "hwm_kib": "950980",
+   "store_octets": 12260726,
+   "store_inodes": 43,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2055.8,
+   "cpu_s": 820.83,
+   "rss_kib": "706708",
+   "hwm_kib": "950980",
+   "store_octets": 12260726,
+   "store_inodes": 43,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2065.8,
+   "cpu_s": 824.71,
+   "rss_kib": "764500",
+   "hwm_kib": "950980",
+   "store_octets": 12260726,
+   "store_inodes": 43,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2075.8,
+   "cpu_s": 829.83,
+   "rss_kib": "840148",
+   "hwm_kib": "950980",
+   "store_octets": 12260726,
+   "store_inodes": 43,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2085.8,
+   "cpu_s": 834.65,
+   "rss_kib": "906964",
+   "hwm_kib": "950980",
+   "store_octets": 12260726,
+   "store_inodes": 43,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2095.8,
+   "cpu_s": 838.41,
+   "rss_kib": "541836",
+   "hwm_kib": "954196",
+   "store_octets": 12260726,
+   "store_inodes": 43,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2105.9,
+   "cpu_s": 845.31,
+   "rss_kib": "608460",
+   "hwm_kib": "954196",
+   "store_octets": 12260787,
+   "store_inodes": 44,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2115.9,
+   "cpu_s": 850.28,
+   "rss_kib": "678156",
+   "hwm_kib": "954196",
+   "store_octets": 12260971,
+   "store_inodes": 45,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2125.9,
+   "cpu_s": 855.34,
+   "rss_kib": "757836",
+   "hwm_kib": "954196",
+   "store_octets": 12260971,
+   "store_inodes": 45,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2135.9,
+   "cpu_s": 861.3,
+   "rss_kib": "845964",
+   "hwm_kib": "954196",
+   "store_octets": 12260971,
+   "store_inodes": 45,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2145.9,
+   "cpu_s": 867.76,
+   "rss_kib": "528088",
+   "hwm_kib": "954196",
+   "store_octets": 12260971,
+   "store_inodes": 45,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2155.9,
+   "cpu_s": 873.84,
+   "rss_kib": "624280",
+   "hwm_kib": "954196",
+   "store_octets": 12260971,
+   "store_inodes": 45,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2165.9,
+   "cpu_s": 880.45,
+   "rss_kib": "728536",
+   "hwm_kib": "954196",
+   "store_octets": 12260971,
+   "store_inodes": 45,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2175.9,
+   "cpu_s": 886.16,
+   "rss_kib": "808984",
+   "hwm_kib": "954196",
+   "store_octets": 12260971,
+   "store_inodes": 45,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2186.0,
+   "cpu_s": 891.91,
+   "rss_kib": "893848",
+   "hwm_kib": "954196",
+   "store_octets": 12260971,
+   "store_inodes": 45,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2196.0,
+   "cpu_s": 897.54,
+   "rss_kib": "544960",
+   "hwm_kib": "958360",
+   "store_octets": 12260971,
+   "store_inodes": 45,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2206.0,
+   "cpu_s": 903.65,
+   "rss_kib": "650944",
+   "hwm_kib": "958360",
+   "store_octets": 12260971,
+   "store_inodes": 45,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2216.0,
+   "cpu_s": 909.76,
+   "rss_kib": "755008",
+   "hwm_kib": "958360",
+   "store_octets": 12260971,
+   "store_inodes": 45,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2226.0,
+   "cpu_s": 916.23,
+   "rss_kib": "856576",
+   "hwm_kib": "958360",
+   "store_octets": 12260971,
+   "store_inodes": 45,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2236.0,
+   "cpu_s": 924.43,
+   "rss_kib": "938176",
+   "hwm_kib": "958360",
+   "store_octets": 12261216,
+   "store_inodes": 47,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2246.0,
+   "cpu_s": 931.2,
+   "rss_kib": "628336",
+   "hwm_kib": "958360",
+   "store_octets": 12261216,
+   "store_inodes": 47,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2256.0,
+   "cpu_s": 937.39,
+   "rss_kib": "722416",
+   "hwm_kib": "958360",
+   "store_octets": 12261216,
+   "store_inodes": 47,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2266.0,
+   "cpu_s": 943.44,
+   "rss_kib": "811504",
+   "hwm_kib": "958360",
+   "store_octets": 12261216,
+   "store_inodes": 47,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2276.0,
+   "cpu_s": 949.06,
+   "rss_kib": "900784",
+   "hwm_kib": "958360",
+   "store_octets": 12261216,
+   "store_inodes": 47,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2286.0,
+   "cpu_s": 954.79,
+   "rss_kib": "566600",
+   "hwm_kib": "958360",
+   "store_octets": 12261216,
+   "store_inodes": 47,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2296.0,
+   "cpu_s": 960.68,
+   "rss_kib": "654920",
+   "hwm_kib": "958360",
+   "store_octets": 12261216,
+   "store_inodes": 47,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2306.1,
+   "cpu_s": 966.59,
+   "rss_kib": "748232",
+   "hwm_kib": "958360",
+   "store_octets": 12261216,
+   "store_inodes": 47,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2316.1,
+   "cpu_s": 972.54,
+   "rss_kib": "837128",
+   "hwm_kib": "958360",
+   "store_octets": 12261216,
+   "store_inodes": 47,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2326.1,
+   "cpu_s": 978.43,
+   "rss_kib": "931976",
+   "hwm_kib": "958360",
+   "store_octets": 12261216,
+   "store_inodes": 47,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2336.1,
+   "cpu_s": 984.41,
+   "rss_kib": "594184",
+   "hwm_kib": "958360",
+   "store_octets": 12261216,
+   "store_inodes": 47,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2346.1,
+   "cpu_s": 989.87,
+   "rss_kib": "673288",
+   "hwm_kib": "958360",
+   "store_octets": 12261216,
+   "store_inodes": 47,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2356.1,
+   "cpu_s": 996.8,
+   "rss_kib": "748168",
+   "hwm_kib": "958360",
+   "store_octets": 12261277,
+   "store_inodes": 48,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2366.1,
+   "cpu_s": 1003.38,
+   "rss_kib": "813640",
+   "hwm_kib": "958360",
+   "store_octets": 12261461,
+   "store_inodes": 49,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2376.1,
+   "cpu_s": 1008.74,
+   "rss_kib": "884296",
+   "hwm_kib": "958360",
+   "store_octets": 12261461,
+   "store_inodes": 49,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2386.1,
+   "cpu_s": 1014.29,
+   "rss_kib": "607848",
+   "hwm_kib": "958792",
+   "store_octets": 12261461,
+   "store_inodes": 49,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2396.2,
+   "cpu_s": 1020.09,
+   "rss_kib": "617188",
+   "hwm_kib": "958792",
+   "store_octets": 12261461,
+   "store_inodes": 49,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2406.2,
+   "cpu_s": 1025.72,
+   "rss_kib": "699748",
+   "hwm_kib": "958792",
+   "store_octets": 12261461,
+   "store_inodes": 49,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2416.2,
+   "cpu_s": 1030.92,
+   "rss_kib": "766372",
+   "hwm_kib": "958792",
+   "store_octets": 12261461,
+   "store_inodes": 49,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2426.2,
+   "cpu_s": 1035.92,
+   "rss_kib": "833380",
+   "hwm_kib": "958792",
+   "store_octets": 12261461,
+   "store_inodes": 49,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2436.3,
+   "cpu_s": 1041.11,
+   "rss_kib": "905764",
+   "hwm_kib": "958792",
+   "store_octets": 12261461,
+   "store_inodes": 49,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2446.4,
+   "cpu_s": 1045.77,
+   "rss_kib": "964132",
+   "hwm_kib": "964132",
+   "store_octets": 12261461,
+   "store_inodes": 49,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2456.4,
+   "cpu_s": 1050.3,
+   "rss_kib": "600980",
+   "hwm_kib": "966244",
+   "store_octets": 12261461,
+   "store_inodes": 49,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2466.5,
+   "cpu_s": 1054.9,
+   "rss_kib": "665876",
+   "hwm_kib": "966244",
+   "store_octets": 12261461,
+   "store_inodes": 49,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2476.6,
+   "cpu_s": 1059.56,
+   "rss_kib": "732116",
+   "hwm_kib": "966244",
+   "store_octets": 12261461,
+   "store_inodes": 49,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2486.6,
+   "cpu_s": 1065.34,
+   "rss_kib": "782804",
+   "hwm_kib": "966244",
+   "store_octets": 12261522,
+   "store_inodes": 50,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2496.6,
+   "cpu_s": 1071.51,
+   "rss_kib": "841556",
+   "hwm_kib": "966244",
+   "store_octets": 12261706,
+   "store_inodes": 51,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2506.6,
+   "cpu_s": 1075.79,
+   "rss_kib": "906836",
+   "hwm_kib": "966244",
+   "store_octets": 12261706,
+   "store_inodes": 51,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2516.6,
+   "cpu_s": 1079.02,
+   "rss_kib": "949268",
+   "hwm_kib": "966244",
+   "store_octets": 12261706,
+   "store_inodes": 51,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2526.7,
+   "cpu_s": 1083.23,
+   "rss_kib": "586652",
+   "hwm_kib": "966244",
+   "store_octets": 12261706,
+   "store_inodes": 51,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2536.7,
+   "cpu_s": 1087.19,
+   "rss_kib": "639836",
+   "hwm_kib": "966244",
+   "store_octets": 12261706,
+   "store_inodes": 51,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2546.8,
+   "cpu_s": 1092.77,
+   "rss_kib": "721244",
+   "hwm_kib": "966244",
+   "store_octets": 12261706,
+   "store_inodes": 51,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2556.8,
+   "cpu_s": 1098.11,
+   "rss_kib": "795164",
+   "hwm_kib": "966244",
+   "store_octets": 12261706,
+   "store_inodes": 51,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2566.8,
+   "cpu_s": 1103.36,
+   "rss_kib": "871004",
+   "hwm_kib": "966244",
+   "store_octets": 12261706,
+   "store_inodes": 51,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2576.9,
+   "cpu_s": 1108.61,
+   "rss_kib": "941084",
+   "hwm_kib": "966244",
+   "store_octets": 12261706,
+   "store_inodes": 51,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2586.9,
+   "cpu_s": 1113.99,
+   "rss_kib": "573552",
+   "hwm_kib": "966244",
+   "store_octets": 12261706,
+   "store_inodes": 51,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2597.0,
+   "cpu_s": 1117.98,
+   "rss_kib": "632304",
+   "hwm_kib": "966244",
+   "store_octets": 12261706,
+   "store_inodes": 51,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2607.0,
+   "cpu_s": 1120.22,
+   "rss_kib": "663600",
+   "hwm_kib": "966244",
+   "store_octets": 12261706,
+   "store_inodes": 51,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2617.0,
+   "cpu_s": 1126.84,
+   "rss_kib": "726576",
+   "hwm_kib": "966244",
+   "store_octets": 12261767,
+   "store_inodes": 52,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2627.0,
+   "cpu_s": 1134.02,
+   "rss_kib": "792432",
+   "hwm_kib": "966244",
+   "store_octets": 12261951,
+   "store_inodes": 53,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2637.0,
+   "cpu_s": 1140.08,
+   "rss_kib": "872688",
+   "hwm_kib": "966244",
+   "store_octets": 12261951,
+   "store_inodes": 53,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2647.0,
+   "cpu_s": 1146.15,
+   "rss_kib": "949872",
+   "hwm_kib": "966244",
+   "store_octets": 12261951,
+   "store_inodes": 53,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2657.0,
+   "cpu_s": 1151.95,
+   "rss_kib": "600512",
+   "hwm_kib": "966576",
+   "store_octets": 12261951,
+   "store_inodes": 53,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2667.0,
+   "cpu_s": 1157.42,
+   "rss_kib": "677312",
+   "hwm_kib": "966576",
+   "store_octets": 12261951,
+   "store_inodes": 53,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2677.0,
+   "cpu_s": 1162.65,
+   "rss_kib": "747776",
+   "hwm_kib": "966576",
+   "store_octets": 12261951,
+   "store_inodes": 53,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2687.1,
+   "cpu_s": 1168.14,
+   "rss_kib": "822656",
+   "hwm_kib": "966576",
+   "store_octets": 12261951,
+   "store_inodes": 53,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2697.1,
+   "cpu_s": 1176.46,
+   "rss_kib": "643136",
+   "hwm_kib": "1026944",
+   "store_octets": 25516809,
+   "store_inodes": 55,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2707.1,
+   "cpu_s": 1181.48,
+   "rss_kib": "675392",
+   "hwm_kib": "1026944",
+   "store_octets": 8806933,
+   "store_inodes": 53,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2717.1,
+   "cpu_s": 1183.55,
+   "rss_kib": "697280",
+   "hwm_kib": "1026944",
+   "store_octets": 8806933,
+   "store_inodes": 53,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2727.1,
+   "cpu_s": 1186.39,
+   "rss_kib": "734336",
+   "hwm_kib": "1026944",
+   "store_octets": 8806933,
+   "store_inodes": 53,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2737.1,
+   "cpu_s": 1189.02,
+   "rss_kib": "771968",
+   "hwm_kib": "1026944",
+   "store_octets": 8806933,
+   "store_inodes": 53,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2747.1,
+   "cpu_s": 1192.67,
+   "rss_kib": "800576",
+   "hwm_kib": "1026944",
+   "store_octets": 8806933,
+   "store_inodes": 53,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2757.1,
+   "cpu_s": 1199.3,
+   "rss_kib": "845888",
+   "hwm_kib": "1026944",
+   "store_octets": 8807178,
+   "store_inodes": 56,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2767.2,
+   "cpu_s": 1200.95,
+   "rss_kib": "867200",
+   "hwm_kib": "1026944",
+   "store_octets": 8807178,
+   "store_inodes": 55,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2777.2,
+   "cpu_s": 1202.62,
+   "rss_kib": "886784",
+   "hwm_kib": "1026944",
+   "store_octets": 8807178,
+   "store_inodes": 55,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2787.2,
+   "cpu_s": 1204.7,
+   "rss_kib": "913664",
+   "hwm_kib": "1026944",
+   "store_octets": 8807178,
+   "store_inodes": 55,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2797.2,
+   "cpu_s": 1206.76,
+   "rss_kib": "942272",
+   "hwm_kib": "1026944",
+   "store_octets": 8807178,
+   "store_inodes": 55,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2807.2,
+   "cpu_s": 1209.53,
+   "rss_kib": "563664",
+   "hwm_kib": "1026944",
+   "store_octets": 8807178,
+   "store_inodes": 55,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2817.2,
+   "cpu_s": 1212.47,
+   "rss_kib": "601296",
+   "hwm_kib": "1026944",
+   "store_octets": 8807178,
+   "store_inodes": 55,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2827.2,
+   "cpu_s": 1214.9,
+   "rss_kib": "637008",
+   "hwm_kib": "1026944",
+   "store_octets": 8807178,
+   "store_inodes": 55,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2837.3,
+   "cpu_s": 1217.46,
+   "rss_kib": "676752",
+   "hwm_kib": "1026944",
+   "store_octets": 8807178,
+   "store_inodes": 55,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2847.3,
+   "cpu_s": 1223.21,
+   "rss_kib": "752208",
+   "hwm_kib": "1026944",
+   "store_octets": 8807178,
+   "store_inodes": 55,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2857.3,
+   "cpu_s": 1229.12,
+   "rss_kib": "832848",
+   "hwm_kib": "1026944",
+   "store_octets": 8807178,
+   "store_inodes": 55,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2867.3,
+   "cpu_s": 1235.23,
+   "rss_kib": "909648",
+   "hwm_kib": "1026944",
+   "store_octets": 8807178,
+   "store_inodes": 55,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2877.3,
+   "cpu_s": 1240.78,
+   "rss_kib": "558500",
+   "hwm_kib": "1026944",
+   "store_octets": 8807178,
+   "store_inodes": 55,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2887.4,
+   "cpu_s": 1248.75,
+   "rss_kib": "608036",
+   "hwm_kib": "1026944",
+   "store_octets": 8807239,
+   "store_inodes": 56,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2897.4,
+   "cpu_s": 1254.54,
+   "rss_kib": "672548",
+   "hwm_kib": "1026944",
+   "store_octets": 8807423,
+   "store_inodes": 57,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2907.4,
+   "cpu_s": 1257.96,
+   "rss_kib": "717668",
+   "hwm_kib": "1026944",
+   "store_octets": 8807423,
+   "store_inodes": 57,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2917.4,
+   "cpu_s": 1261.42,
+   "rss_kib": "765092",
+   "hwm_kib": "1026944",
+   "store_octets": 8807423,
+   "store_inodes": 57,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2927.4,
+   "cpu_s": 1265.73,
+   "rss_kib": "824420",
+   "hwm_kib": "1026944",
+   "store_octets": 8807423,
+   "store_inodes": 57,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2937.4,
+   "cpu_s": 1271.56,
+   "rss_kib": "899300",
+   "hwm_kib": "1026944",
+   "store_octets": 8807423,
+   "store_inodes": 57,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2947.5,
+   "cpu_s": 1277.78,
+   "rss_kib": "552060",
+   "hwm_kib": "1026944",
+   "store_octets": 8807423,
+   "store_inodes": 57,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2957.5,
+   "cpu_s": 1283.56,
+   "rss_kib": "632700",
+   "hwm_kib": "1026944",
+   "store_octets": 8807423,
+   "store_inodes": 57,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2967.5,
+   "cpu_s": 1289.3,
+   "rss_kib": "704316",
+   "hwm_kib": "1026944",
+   "store_octets": 9855999,
+   "store_inodes": 57,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2977.5,
+   "cpu_s": 1295.15,
+   "rss_kib": "781116",
+   "hwm_kib": "1026944",
+   "store_octets": 9855999,
+   "store_inodes": 57,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2987.5,
+   "cpu_s": 1300.92,
+   "rss_kib": "856572",
+   "hwm_kib": "1026944",
+   "store_octets": 9855999,
+   "store_inodes": 57,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 2997.5,
+   "cpu_s": 1306.19,
+   "rss_kib": "931644",
+   "hwm_kib": "1026944",
+   "store_octets": 9855999,
+   "store_inodes": 57,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3007.6,
+   "cpu_s": 1312.49,
+   "rss_kib": "582588",
+   "hwm_kib": "1026944",
+   "store_octets": 9855999,
+   "store_inodes": 57,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3017.6,
+   "cpu_s": 1320.91,
+   "rss_kib": "645948",
+   "hwm_kib": "1026944",
+   "store_octets": 9856060,
+   "store_inodes": 58,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3027.6,
+   "cpu_s": 1327.87,
+   "rss_kib": "712764",
+   "hwm_kib": "1026944",
+   "store_octets": 9856244,
+   "store_inodes": 59,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3037.6,
+   "cpu_s": 1334.39,
+   "rss_kib": "796860",
+   "hwm_kib": "1026944",
+   "store_octets": 9856244,
+   "store_inodes": 59,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3047.6,
+   "cpu_s": 1340.71,
+   "rss_kib": "881724",
+   "hwm_kib": "1026944",
+   "store_octets": 9856244,
+   "store_inodes": 59,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3057.6,
+   "cpu_s": 1347.37,
+   "rss_kib": "971388",
+   "hwm_kib": "1026944",
+   "store_octets": 9856244,
+   "store_inodes": 59,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3067.6,
+   "cpu_s": 1354.39,
+   "rss_kib": "641840",
+   "hwm_kib": "1026944",
+   "store_octets": 9856244,
+   "store_inodes": 59,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3077.6,
+   "cpu_s": 1361.09,
+   "rss_kib": "741104",
+   "hwm_kib": "1026944",
+   "store_octets": 9856244,
+   "store_inodes": 59,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3087.7,
+   "cpu_s": 1367.44,
+   "rss_kib": "829232",
+   "hwm_kib": "1026944",
+   "store_octets": 9856244,
+   "store_inodes": 59,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3097.7,
+   "cpu_s": 1374.49,
+   "rss_kib": "926384",
+   "hwm_kib": "1026944",
+   "store_octets": 9856244,
+   "store_inodes": 59,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3107.7,
+   "cpu_s": 1381.65,
+   "rss_kib": "601412",
+   "hwm_kib": "1026944",
+   "store_octets": 9856244,
+   "store_inodes": 59,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3117.7,
+   "cpu_s": 1388.54,
+   "rss_kib": "687044",
+   "hwm_kib": "1026944",
+   "store_octets": 9856244,
+   "store_inodes": 59,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3127.7,
+   "cpu_s": 1395.18,
+   "rss_kib": "773444",
+   "hwm_kib": "1026944",
+   "store_octets": 9856244,
+   "store_inodes": 59,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3137.7,
+   "cpu_s": 1401.69,
+   "rss_kib": "856388",
+   "hwm_kib": "1026944",
+   "store_octets": 9856244,
+   "store_inodes": 59,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3147.7,
+   "cpu_s": 1407.73,
+   "rss_kib": "904964",
+   "hwm_kib": "1026944",
+   "store_octets": 9856244,
+   "store_inodes": 59,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3157.7,
+   "cpu_s": 1415.76,
+   "rss_kib": "967556",
+   "hwm_kib": "1026944",
+   "store_octets": 9856489,
+   "store_inodes": 61,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3167.7,
+   "cpu_s": 1421.95,
+   "rss_kib": "626268",
+   "hwm_kib": "1026944",
+   "store_octets": 11953641,
+   "store_inodes": 61,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3177.7,
+   "cpu_s": 1428.38,
+   "rss_kib": "722652",
+   "hwm_kib": "1026944",
+   "store_octets": 11953641,
+   "store_inodes": 61,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3187.8,
+   "cpu_s": 1435.12,
+   "rss_kib": "829212",
+   "hwm_kib": "1026944",
+   "store_octets": 11953641,
+   "store_inodes": 61,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3197.8,
+   "cpu_s": 1441.67,
+   "rss_kib": "924828",
+   "hwm_kib": "1026944",
+   "store_octets": 11953641,
+   "store_inodes": 61,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3207.8,
+   "cpu_s": 1449.11,
+   "rss_kib": "604680",
+   "hwm_kib": "1026944",
+   "store_octets": 11953641,
+   "store_inodes": 61,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3217.8,
+   "cpu_s": 1456.2,
+   "rss_kib": "706632",
+   "hwm_kib": "1026944",
+   "store_octets": 11953641,
+   "store_inodes": 61,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3227.8,
+   "cpu_s": 1463.36,
+   "rss_kib": "805320",
+   "hwm_kib": "1026944",
+   "store_octets": 11953641,
+   "store_inodes": 61,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3237.8,
+   "cpu_s": 1470.17,
+   "rss_kib": "901896",
+   "hwm_kib": "1026944",
+   "store_octets": 11953641,
+   "store_inodes": 61,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3247.8,
+   "cpu_s": 1477.09,
+   "rss_kib": "575056",
+   "hwm_kib": "1026944",
+   "store_octets": 11953641,
+   "store_inodes": 61,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3257.8,
+   "cpu_s": 1484.16,
+   "rss_kib": "684304",
+   "hwm_kib": "1026944",
+   "store_octets": 11953641,
+   "store_inodes": 61,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3267.8,
+   "cpu_s": 1491.27,
+   "rss_kib": "792784",
+   "hwm_kib": "1026944",
+   "store_octets": 11953641,
+   "store_inodes": 61,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3277.8,
+   "cpu_s": 1499.66,
+   "rss_kib": "889552",
+   "hwm_kib": "1026944",
+   "store_octets": 11953641,
+   "store_inodes": 61,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3287.8,
+   "cpu_s": 1508.84,
+   "rss_kib": "953488",
+   "hwm_kib": "1026944",
+   "store_octets": 11953886,
+   "store_inodes": 63,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3297.8,
+   "cpu_s": 1516.37,
+   "rss_kib": "648000",
+   "hwm_kib": "1026944",
+   "store_octets": 11953886,
+   "store_inodes": 63,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3307.8,
+   "cpu_s": 1523.48,
+   "rss_kib": "768768",
+   "hwm_kib": "1026944",
+   "store_octets": 11953886,
+   "store_inodes": 63,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3317.8,
+   "cpu_s": 1530.51,
+   "rss_kib": "888768",
+   "hwm_kib": "1026944",
+   "store_octets": 11953886,
+   "store_inodes": 63,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3327.8,
+   "cpu_s": 1537.37,
+   "rss_kib": "571244",
+   "hwm_kib": "1026944",
+   "store_octets": 11953886,
+   "store_inodes": 63,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3337.8,
+   "cpu_s": 1544.45,
+   "rss_kib": "690476",
+   "hwm_kib": "1026944",
+   "store_octets": 11953886,
+   "store_inodes": 63,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3347.8,
+   "cpu_s": 1551.4,
+   "rss_kib": "808748",
+   "hwm_kib": "1026944",
+   "store_octets": 11953886,
+   "store_inodes": 63,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3357.9,
+   "cpu_s": 1558.89,
+   "rss_kib": "929516",
+   "hwm_kib": "1026944",
+   "store_octets": 11953886,
+   "store_inodes": 63,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3367.9,
+   "cpu_s": 1566.07,
+   "rss_kib": "622176",
+   "hwm_kib": "1026944",
+   "store_octets": 11953886,
+   "store_inodes": 63,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3377.9,
+   "cpu_s": 1571.77,
+   "rss_kib": "713760",
+   "hwm_kib": "1026944",
+   "store_octets": 11953886,
+   "store_inodes": 63,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3387.9,
+   "cpu_s": 1575.29,
+   "rss_kib": "769056",
+   "hwm_kib": "1026944",
+   "store_octets": 11953886,
+   "store_inodes": 63,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3397.9,
+   "cpu_s": 1578.11,
+   "rss_kib": "812448",
+   "hwm_kib": "1026944",
+   "store_octets": 11953886,
+   "store_inodes": 63,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3407.9,
+   "cpu_s": 1585.32,
+   "rss_kib": "921888",
+   "hwm_kib": "1026944",
+   "store_octets": 11953886,
+   "store_inodes": 63,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3417.9,
+   "cpu_s": 1595.2,
+   "rss_kib": "559556",
+   "hwm_kib": "1026944",
+   "store_octets": 11953947,
+   "store_inodes": 64,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3427.9,
+   "cpu_s": 1602.74,
+   "rss_kib": "676292",
+   "hwm_kib": "1026944",
+   "store_octets": 11954131,
+   "store_inodes": 65,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3437.9,
+   "cpu_s": 1610.17,
+   "rss_kib": "798596",
+   "hwm_kib": "1026944",
+   "store_octets": 11954131,
+   "store_inodes": 65,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3447.9,
+   "cpu_s": 1617.82,
+   "rss_kib": "913604",
+   "hwm_kib": "1026944",
+   "store_octets": 11954131,
+   "store_inodes": 65,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3457.9,
+   "cpu_s": 1625.29,
+   "rss_kib": "604868",
+   "hwm_kib": "1026944",
+   "store_octets": 11954131,
+   "store_inodes": 65,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3467.9,
+   "cpu_s": 1633.0,
+   "rss_kib": "726212",
+   "hwm_kib": "1026944",
+   "store_octets": 11954131,
+   "store_inodes": 65,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3477.9,
+   "cpu_s": 1640.64,
+   "rss_kib": "841028",
+   "hwm_kib": "1026944",
+   "store_octets": 11954131,
+   "store_inodes": 65,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3487.9,
+   "cpu_s": 1648.2,
+   "rss_kib": "969092",
+   "hwm_kib": "1026944",
+   "store_octets": 11954131,
+   "store_inodes": 65,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3497.9,
+   "cpu_s": 1655.45,
+   "rss_kib": "663428",
+   "hwm_kib": "1026944",
+   "store_octets": 11954131,
+   "store_inodes": 65,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3507.9,
+   "cpu_s": 1662.3,
+   "rss_kib": "783044",
+   "hwm_kib": "1026944",
+   "store_octets": 11954131,
+   "store_inodes": 65,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3517.9,
+   "cpu_s": 1669.79,
+   "rss_kib": "904388",
+   "hwm_kib": "1026944",
+   "store_octets": 16148435,
+   "store_inodes": 65,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3527.9,
+   "cpu_s": 1677.35,
+   "rss_kib": "602328",
+   "hwm_kib": "1026944",
+   "store_octets": 16148435,
+   "store_inodes": 65,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3537.9,
+   "cpu_s": 1684.27,
+   "rss_kib": "730008",
+   "hwm_kib": "1026944",
+   "store_octets": 16148435,
+   "store_inodes": 65,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3547.9,
+   "cpu_s": 1693.57,
+   "rss_kib": "792600",
+   "hwm_kib": "1026944",
+   "store_octets": 16148496,
+   "store_inodes": 66,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3557.9,
+   "cpu_s": 1701.54,
+   "rss_kib": "897240",
+   "hwm_kib": "1026944",
+   "store_octets": 16148680,
+   "store_inodes": 67,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3567.9,
+   "cpu_s": 1708.89,
+   "rss_kib": "594580",
+   "hwm_kib": "1026944",
+   "store_octets": 16148680,
+   "store_inodes": 67,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3577.9,
+   "cpu_s": 1716.25,
+   "rss_kib": "713428",
+   "hwm_kib": "1026944",
+   "store_octets": 16148680,
+   "store_inodes": 67,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3587.9,
+   "cpu_s": 1723.64,
+   "rss_kib": "829012",
+   "hwm_kib": "1026944",
+   "store_octets": 16148680,
+   "store_inodes": 67,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3598.0,
+   "cpu_s": 1728.73,
+   "rss_kib": "911188",
+   "hwm_kib": "1026944",
+   "store_octets": 16148680,
+   "store_inodes": 67,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  },
+  {
+   "t": 3604.8,
+   "cpu_s": 1730.56,
+   "rss_kib": "930580",
+   "hwm_kib": "1026944",
+   "store_octets": 16148680,
+   "store_inodes": 67,
+   "bp_journal_octets": 0,
+   "owner_alive": true
+  }
+ ],
+ "events": [
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=49 articles=49 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=49 transactions-budget=131072 bytes-used=45256 history-bound=67108864 charge-reserved=98 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file=absent"
+   ],
+   "t": 32.39
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": " hold<10ms=14 hold<100ms=0 hold<1s=0 hold>=1s=0 hold-max-ms=1 wait-max-ms=925 waits>=1s=0\nheap=38354 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 32.6
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=100 articles=100 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=100 transactions-budget=131072 bytes-used=92380 history-bound=67108864 charge-reserved=200 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file=absent"
+   ],
+   "t": 62.79
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": " hold<10ms=37 hold<100ms=0 hold<1s=0 hold>=1s=0 hold-max-ms=3 wait-max-ms=925 waits>=1s=0\nheap=38354 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 62.96
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=151 articles=151 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=151 transactions-budget=131072 bytes-used=139606 history-bound=67108864 charge-reserved=302 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file=absent"
+   ],
+   "t": 93.13
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": " hold<10ms=72 hold<100ms=0 hold<1s=0 hold>=1s=0 hold-max-ms=8 wait-max-ms=925 waits>=1s=0\nheap=38354 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 93.3
+  },
+  {
+   "kind": "group-create",
+   "n": 1,
+   "rc": 0,
+   "tail": "accepted operator group ACCEPTED",
+   "t": 122.64
+  },
+  {
+   "kind": "control-grant",
+   "rc": 0,
+   "tail": "accepted operator control ACCEPTED",
+   "t": 122.95
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=205 articles=205 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=205 transactions-budget=131072 bytes-used=189610 history-bound=67108864 charge-reserved=410 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file=absent"
+   ],
+   "t": 123.48
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": " hold<10ms=99 hold<100ms=0 hold<1s=0 hold>=1s=0 hold-max-ms=8 wait-max-ms=925 waits>=1s=0\nheap=38354 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 123.64
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=255 articles=255 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=255 transactions-budget=131072 bytes-used=235910 history-bound=67108864 charge-reserved=510 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file=absent"
+   ],
+   "t": 154.24
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "old<10ms=115 hold<100ms=0 hold<1s=0 hold>=1s=0 hold-max-ms=8 wait-max-ms=2095 waits>=1s=1\nheap=38354 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 154.43
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=308 articles=308 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=308 transactions-budget=131072 bytes-used=284988 history-bound=67108864 charge-reserved=616 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file=absent"
+   ],
+   "t": 184.6
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "old<10ms=152 hold<100ms=0 hold<1s=0 hold>=1s=0 hold-max-ms=8 wait-max-ms=2095 waits>=1s=1\nheap=38290 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 184.77
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=362 articles=362 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=362 transactions-budget=131072 bytes-used=334992 history-bound=67108864 charge-reserved=724 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file=absent"
+   ],
+   "t": 214.94
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "old<10ms=183 hold<100ms=0 hold<1s=0 hold>=1s=0 hold-max-ms=8 wait-max-ms=2095 waits>=1s=1\nheap=38290 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 215.11
+  },
+  {
+   "kind": "group-create",
+   "n": 2,
+   "rc": 0,
+   "tail": "accepted operator group ACCEPTED",
+   "t": 243.29
+  },
+  {
+   "kind": "control-grant",
+   "rc": 0,
+   "tail": "accepted operator control ACCEPTED",
+   "t": 243.75
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=418 articles=418 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=418 transactions-budget=131072 bytes-used=386848 history-bound=67108864 charge-reserved=836 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file=absent"
+   ],
+   "t": 245.29
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "old<10ms=203 hold<100ms=0 hold<1s=0 hold>=1s=0 hold-max-ms=8 wait-max-ms=2095 waits>=1s=1\nheap=38290 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 245.48
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=474 articles=474 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=474 transactions-budget=131072 bytes-used=438704 history-bound=67108864 charge-reserved=948 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file=absent"
+   ],
+   "t": 275.68
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "old<10ms=234 hold<100ms=0 hold<1s=0 hold>=1s=0 hold-max-ms=8 wait-max-ms=2095 waits>=1s=1\nheap=38290 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 275.87
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=530 articles=530 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=530 transactions-budget=131072 bytes-used=490560 history-bound=67108864 charge-reserved=1060 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file=absent"
+   ],
+   "t": 306.08
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "old<10ms=258 hold<100ms=0 hold<1s=0 hold>=1s=0 hold-max-ms=8 wait-max-ms=2095 waits>=1s=1\nheap=38298 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 306.25
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=585 articles=585 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=585 transactions-budget=131072 bytes-used=541490 history-bound=67108864 charge-reserved=1170 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file=absent"
+   ],
+   "t": 336.45
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "old<10ms=290 hold<100ms=0 hold<1s=0 hold>=1s=0 hold-max-ms=8 wait-max-ms=2095 waits>=1s=1\nheap=38298 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 336.63
+  },
+  {
+   "kind": "group-create",
+   "n": 3,
+   "rc": 0,
+   "tail": "accepted operator group ACCEPTED",
+   "t": 364.21
+  },
+  {
+   "kind": "control-grant",
+   "rc": 0,
+   "tail": "accepted operator control ACCEPTED",
+   "t": 364.72
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=638 articles=638 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=638 transactions-budget=131072 bytes-used=590568 history-bound=67108864 charge-reserved=1276 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file=absent"
+   ],
+   "t": 366.84
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "old<10ms=325 hold<100ms=0 hold<1s=0 hold>=1s=0 hold-max-ms=8 wait-max-ms=2095 waits>=1s=1\nheap=38298 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 367.04
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=693 articles=693 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=693 transactions-budget=131072 bytes-used=641498 history-bound=67108864 charge-reserved=1386 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file=absent"
+   ],
+   "t": 397.25
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "old<10ms=368 hold<100ms=0 hold<1s=0 hold>=1s=0 hold-max-ms=8 wait-max-ms=2095 waits>=1s=1\nheap=38298 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 397.44
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=750 articles=750 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=750 transactions-budget=131072 bytes-used=694280 history-bound=67108864 charge-reserved=1500 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file=absent"
+   ],
+   "t": 427.64
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "old<10ms=405 hold<100ms=0 hold<1s=0 hold>=1s=0 hold-max-ms=8 wait-max-ms=2095 waits>=1s=1\nheap=38298 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 427.85
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=805 articles=805 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=805 transactions-budget=131072 bytes-used=745210 history-bound=67108864 charge-reserved=1610 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file=absent"
+   ],
+   "t": 458.09
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "old<10ms=449 hold<100ms=0 hold<1s=0 hold>=1s=0 hold-max-ms=8 wait-max-ms=2095 waits>=1s=1\nheap=38298 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 458.34
+  },
+  {
+   "kind": "group-create",
+   "n": 4,
+   "rc": 0,
+   "tail": "accepted operator group ACCEPTED",
+   "t": 485.38
+  },
+  {
+   "kind": "control-grant",
+   "rc": 0,
+   "tail": "accepted operator control ACCEPTED",
+   "t": 485.97
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=861 articles=861 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=861 transactions-budget=131072 bytes-used=797066 history-bound=67108864 charge-reserved=1722 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file=absent"
+   ],
+   "t": 488.58
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "old<10ms=482 hold<100ms=0 hold<1s=0 hold>=1s=0 hold-max-ms=8 wait-max-ms=2095 waits>=1s=1\nheap=38298 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 488.8
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=917 articles=917 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=917 transactions-budget=131072 bytes-used=848922 history-bound=67108864 charge-reserved=1834 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file=absent"
+   ],
+   "t": 519.05
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "old<10ms=520 hold<100ms=0 hold<1s=0 hold>=1s=0 hold-max-ms=8 wait-max-ms=2095 waits>=1s=1\nheap=38298 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 519.27
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=969 articles=969 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=969 transactions-budget=131072 bytes-used=897074 history-bound=67108864 charge-reserved=1938 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file=absent"
+   ],
+   "t": 549.53
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "old<10ms=547 hold<100ms=0 hold<1s=0 hold>=1s=0 hold-max-ms=8 wait-max-ms=2095 waits>=1s=1\nheap=38298 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 549.75
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=1019 articles=1019 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=1019 transactions-budget=131072 bytes-used=943412 history-bound=67108864 charge-reserved=2038 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file=absent"
+   ],
+   "t": 580.07
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "ld<10ms=584 hold<100ms=1 hold<1s=0 hold>=1s=0 hold-max-ms=10 wait-max-ms=2095 waits>=1s=1\nheap=38298 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 580.36
+  },
+  {
+   "kind": "group-create",
+   "n": 5,
+   "rc": 0,
+   "tail": "accepted operator group ACCEPTED",
+   "t": 606.89
+  },
+  {
+   "kind": "control-grant",
+   "rc": 0,
+   "tail": "accepted operator control ACCEPTED",
+   "t": 607.66
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=1067 articles=1067 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=1067 transactions-budget=131072 bytes-used=987956 history-bound=67108864 charge-reserved=2134 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file=absent"
+   ],
+   "t": 610.67
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "ld<10ms=621 hold<100ms=1 hold<1s=0 hold>=1s=0 hold-max-ms=10 wait-max-ms=2095 waits>=1s=1\nheap=38314 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 610.92
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=1114 articles=1114 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=1114 transactions-budget=131072 bytes-used=1031572 history-bound=67108864 charge-reserved=2228 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file=absent"
+   ],
+   "t": 641.14
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "ld<10ms=653 hold<100ms=1 hold<1s=0 hold>=1s=0 hold-max-ms=10 wait-max-ms=2095 waits>=1s=1\nheap=38314 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 641.39
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=1157 articles=1157 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=1157 transactions-budget=131072 bytes-used=1071476 history-bound=67108864 charge-reserved=2314 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file=absent"
+   ],
+   "t": 671.77
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "ld<10ms=687 hold<100ms=1 hold<1s=0 hold>=1s=0 hold-max-ms=10 wait-max-ms=2095 waits>=1s=1\nheap=38314 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 672.08
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=1206 articles=1206 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=1206 transactions-budget=131072 bytes-used=1116948 history-bound=67108864 charge-reserved=2412 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file=absent"
+   ],
+   "t": 702.49
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "ld<10ms=722 hold<100ms=1 hold<1s=0 hold>=1s=0 hold-max-ms=10 wait-max-ms=2095 waits>=1s=1\nheap=38314 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 702.79
+  },
+  {
+   "kind": "group-create",
+   "n": 6,
+   "rc": 0,
+   "tail": "accepted operator group ACCEPTED",
+   "t": 728.77
+  },
+  {
+   "kind": "control-grant",
+   "rc": 0,
+   "tail": "accepted operator control ACCEPTED",
+   "t": 729.57
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=1259 articles=1259 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=1259 transactions-budget=131072 bytes-used=1166132 history-bound=67108864 charge-reserved=2518 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file=absent"
+   ],
+   "t": 733.59
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "ld<10ms=740 hold<100ms=2 hold<1s=0 hold>=1s=0 hold-max-ms=11 wait-max-ms=2095 waits>=1s=1\nheap=38314 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 734.37
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=1314 articles=1314 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=1314 transactions-budget=131072 bytes-used=1217172 history-bound=67108864 charge-reserved=2628 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file=absent"
+   ],
+   "t": 764.65
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "ld<10ms=781 hold<100ms=2 hold<1s=0 hold>=1s=0 hold-max-ms=11 wait-max-ms=2095 waits>=1s=1\nheap=38314 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 764.92
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=1366 articles=1366 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=1366 transactions-budget=131072 bytes-used=1265428 history-bound=67108864 charge-reserved=2732 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file=absent"
+   ],
+   "t": 795.16
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "ld<10ms=819 hold<100ms=2 hold<1s=0 hold>=1s=0 hold-max-ms=11 wait-max-ms=2095 waits>=1s=1\nheap=38314 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 795.38
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=1418 articles=1418 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=1418 transactions-budget=131072 bytes-used=1313684 history-bound=67108864 charge-reserved=2836 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file=absent"
+   ],
+   "t": 825.62
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "ld<10ms=840 hold<100ms=2 hold<1s=0 hold>=1s=0 hold-max-ms=11 wait-max-ms=2095 waits>=1s=1\nheap=38314 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 825.85
+  },
+  {
+   "kind": "group-create",
+   "n": 7,
+   "rc": 0,
+   "tail": "accepted operator group ACCEPTED",
+   "t": 850.46
+  },
+  {
+   "kind": "control-grant",
+   "rc": 0,
+   "tail": "accepted operator control ACCEPTED",
+   "t": 851.32
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=1469 articles=1469 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=1469 transactions-budget=131072 bytes-used=1361012 history-bound=67108864 charge-reserved=2938 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file=absent"
+   ],
+   "t": 856.03
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "ld<10ms=877 hold<100ms=2 hold<1s=0 hold>=1s=0 hold-max-ms=11 wait-max-ms=2095 waits>=1s=1\nheap=38314 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 856.22
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=1517 articles=1517 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=1517 transactions-budget=131072 bytes-used=1405556 history-bound=67108864 charge-reserved=3034 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file=absent"
+   ],
+   "t": 886.39
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "ld<10ms=907 hold<100ms=2 hold<1s=0 hold>=1s=0 hold-max-ms=11 wait-max-ms=2095 waits>=1s=1\nheap=38314 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 886.56
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=1566 articles=1566 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=1566 transactions-budget=131072 bytes-used=1451028 history-bound=67108864 charge-reserved=3132 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file=absent"
+   ],
+   "t": 916.78
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "ld<10ms=935 hold<100ms=2 hold<1s=0 hold>=1s=0 hold-max-ms=11 wait-max-ms=2095 waits>=1s=1\nheap=38314 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 916.99
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=1620 articles=1620 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=1620 transactions-budget=131072 bytes-used=1501140 history-bound=67108864 charge-reserved=3240 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file=absent"
+   ],
+   "t": 947.22
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "ld<10ms=969 hold<100ms=2 hold<1s=0 hold>=1s=0 hold-max-ms=11 wait-max-ms=2095 waits>=1s=1\nheap=38314 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 947.41
+  },
+  {
+   "kind": "group-create",
+   "n": 8,
+   "rc": 0,
+   "tail": "accepted operator group ACCEPTED",
+   "t": 972.13
+  },
+  {
+   "kind": "control-grant",
+   "rc": 0,
+   "tail": "accepted operator control ACCEPTED",
+   "t": 973.09
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=1675 articles=1675 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=1675 transactions-budget=131072 bytes-used=1552180 history-bound=67108864 charge-reserved=3350 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file=absent"
+   ],
+   "t": 977.66
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "d<10ms=1001 hold<100ms=2 hold<1s=0 hold>=1s=0 hold-max-ms=11 wait-max-ms=2095 waits>=1s=1\nheap=38314 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 977.93
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=1729 articles=1729 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=1729 transactions-budget=131072 bytes-used=1602292 history-bound=67108864 charge-reserved=3458 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file=absent"
+   ],
+   "t": 1008.17
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "d<10ms=1047 hold<100ms=2 hold<1s=0 hold>=1s=0 hold-max-ms=11 wait-max-ms=2095 waits>=1s=1\nheap=38314 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 1008.39
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=1786 articles=1786 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=1786 transactions-budget=131072 bytes-used=1655188 history-bound=67108864 charge-reserved=3572 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file=absent"
+   ],
+   "t": 1038.61
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "d<10ms=1082 hold<100ms=2 hold<1s=0 hold>=1s=0 hold-max-ms=11 wait-max-ms=2095 waits>=1s=1\nheap=38314 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 1038.82
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=1838 articles=1838 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=1838 transactions-budget=131072 bytes-used=1703444 history-bound=67108864 charge-reserved=3676 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file=absent"
+   ],
+   "t": 1069.03
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "d<10ms=1122 hold<100ms=2 hold<1s=0 hold>=1s=0 hold-max-ms=11 wait-max-ms=2095 waits>=1s=1\nheap=38314 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 1069.25
+  },
+  {
+   "kind": "group-create",
+   "n": 9,
+   "rc": 0,
+   "tail": "accepted operator group ACCEPTED",
+   "t": 1094.48
+  },
+  {
+   "kind": "control-grant",
+   "rc": 0,
+   "tail": "accepted operator control ACCEPTED",
+   "t": 1095.9
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=1887 articles=1887 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=1887 transactions-budget=131072 bytes-used=1748916 history-bound=67108864 charge-reserved=3774 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file=absent"
+   ],
+   "t": 1099.52
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "d<10ms=1158 hold<100ms=2 hold<1s=0 hold>=1s=0 hold-max-ms=11 wait-max-ms=2095 waits>=1s=3\nheap=38314 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 1099.79
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=1920 articles=1920 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=1920 transactions-budget=131072 bytes-used=1779540 history-bound=67108864 charge-reserved=3840 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file=absent"
+   ],
+   "t": 1129.99
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "d<10ms=1177 hold<100ms=2 hold<1s=0 hold>=1s=0 hold-max-ms=11 wait-max-ms=2614 waits>=1s=5\nheap=38314 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 1130.19
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=1969 articles=1969 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=1969 transactions-budget=131072 bytes-used=1825012 history-bound=67108864 charge-reserved=3938 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file=absent"
+   ],
+   "t": 1160.6
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "d<10ms=1203 hold<100ms=2 hold<1s=0 hold>=1s=0 hold-max-ms=11 wait-max-ms=2614 waits>=1s=5\nheap=38314 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 1160.78
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=2017 articles=2017 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=2017 transactions-budget=131072 bytes-used=1869556 history-bound=67108864 charge-reserved=4034 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file=absent"
+   ],
+   "t": 1190.97
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "d<10ms=1240 hold<100ms=2 hold<1s=0 hold>=1s=0 hold-max-ms=11 wait-max-ms=2614 waits>=1s=5\nheap=38314 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 1191.16
+  },
+  {
+   "kind": "group-create",
+   "n": 10,
+   "rc": 0,
+   "tail": "accepted operator group ACCEPTED",
+   "t": 1217.4
+  },
+  {
+   "kind": "control-grant",
+   "rc": 0,
+   "tail": "accepted operator control ACCEPTED",
+   "t": 1218.84
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=2061 articles=2061 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=2061 transactions-budget=131072 bytes-used=1910388 history-bound=67108864 charge-reserved=4122 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 1221.41
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "d<10ms=1262 hold<100ms=2 hold<1s=0 hold>=1s=0 hold-max-ms=11 wait-max-ms=2614 waits>=1s=7\nheap=38324 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 1221.64
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=2106 articles=2106 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=2106 transactions-budget=131072 bytes-used=1952148 history-bound=67108864 charge-reserved=4212 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 1251.95
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "d<10ms=1293 hold<100ms=2 hold<1s=0 hold>=1s=0 hold-max-ms=11 wait-max-ms=2614 waits>=1s=7\nheap=38324 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 1252.18
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=2155 articles=2155 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=2155 transactions-budget=131072 bytes-used=1997620 history-bound=67108864 charge-reserved=4310 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 1282.45
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "d<10ms=1328 hold<100ms=2 hold<1s=0 hold>=1s=0 hold-max-ms=11 wait-max-ms=2614 waits>=1s=7\nheap=38324 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 1282.72
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=2207 articles=2207 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=2207 transactions-budget=131072 bytes-used=2045876 history-bound=67108864 charge-reserved=4414 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 1313.08
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "d<10ms=1356 hold<100ms=2 hold<1s=0 hold>=1s=0 hold-max-ms=11 wait-max-ms=2614 waits>=1s=7\nheap=38324 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 1313.39
+  },
+  {
+   "kind": "group-create",
+   "n": 11,
+   "rc": 0,
+   "tail": "accepted operator group ACCEPTED",
+   "t": 1341.28
+  },
+  {
+   "kind": "control-grant",
+   "rc": 0,
+   "tail": "accepted operator control ACCEPTED",
+   "t": 1343.35
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=2252 articles=2252 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=2252 transactions-budget=131072 bytes-used=2087636 history-bound=67108864 charge-reserved=4504 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 1344.33
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "<10ms=1387 hold<100ms=2 hold<1s=0 hold>=1s=0 hold-max-ms=11 wait-max-ms=2614 waits>=1s=10\nheap=38324 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 1344.68
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=2302 articles=2302 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=2302 transactions-budget=131072 bytes-used=2134036 history-bound=67108864 charge-reserved=4604 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 1375.55
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "<10ms=1417 hold<100ms=3 hold<1s=0 hold>=1s=0 hold-max-ms=14 wait-max-ms=2614 waits>=1s=10\nheap=38324 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 1375.98
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=2346 articles=2346 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=2346 transactions-budget=131072 bytes-used=2174868 history-bound=67108864 charge-reserved=4692 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 1406.37
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "<10ms=1440 hold<100ms=4 hold<1s=0 hold>=1s=0 hold-max-ms=68 wait-max-ms=2614 waits>=1s=10\nheap=38252 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 1407.0
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=2395 articles=2395 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=2395 transactions-budget=131072 bytes-used=2220340 history-bound=67108864 charge-reserved=4790 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 1437.71
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "<10ms=1473 hold<100ms=4 hold<1s=0 hold>=1s=0 hold-max-ms=68 wait-max-ms=2614 waits>=1s=10\nheap=38252 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 1438.02
+  },
+  {
+   "kind": "group-create",
+   "n": 12,
+   "rc": 0,
+   "tail": "accepted operator group ACCEPTED",
+   "t": 1465.36
+  },
+  {
+   "kind": "control-grant",
+   "rc": 0,
+   "tail": "accepted operator control ACCEPTED",
+   "t": 1467.44
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=2441 articles=2441 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=2441 transactions-budget=131072 bytes-used=2263028 history-bound=67108864 charge-reserved=4882 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 1468.52
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "<10ms=1493 hold<100ms=4 hold<1s=0 hold>=1s=0 hold-max-ms=68 wait-max-ms=2614 waits>=1s=12\nheap=38252 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 1469.05
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=2491 articles=2491 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=2491 transactions-budget=131072 bytes-used=2309428 history-bound=67108864 charge-reserved=4982 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 1500.03
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "<10ms=1514 hold<100ms=4 hold<1s=0 hold>=1s=0 hold-max-ms=68 wait-max-ms=2614 waits>=1s=12\nheap=38252 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 1500.65
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=2540 articles=2540 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=2540 transactions-budget=131072 bytes-used=2354900 history-bound=67108864 charge-reserved=5080 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 1531.13
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "<10ms=1550 hold<100ms=4 hold<1s=0 hold>=1s=0 hold-max-ms=68 wait-max-ms=2614 waits>=1s=12\nheap=38252 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 1531.45
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=2589 articles=2589 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=2589 transactions-budget=131072 bytes-used=2400372 history-bound=67108864 charge-reserved=5178 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 1561.79
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "<10ms=1578 hold<100ms=4 hold<1s=0 hold>=1s=0 hold-max-ms=68 wait-max-ms=2614 waits>=1s=12\nheap=38380 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 1562.21
+  },
+  {
+   "kind": "group-create",
+   "n": 13,
+   "rc": 0,
+   "tail": "accepted operator group ACCEPTED",
+   "t": 1589.85
+  },
+  {
+   "kind": "control-grant",
+   "rc": 0,
+   "tail": "accepted operator control ACCEPTED",
+   "t": 1592.1
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=2628 articles=2628 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=2628 transactions-budget=131072 bytes-used=2436564 history-bound=67108864 charge-reserved=5256 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 1593.2
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "<10ms=1600 hold<100ms=5 hold<1s=0 hold>=1s=0 hold-max-ms=68 wait-max-ms=2614 waits>=1s=16\nheap=38380 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 1593.93
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=2676 articles=2676 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=2676 transactions-budget=131072 bytes-used=2481108 history-bound=67108864 charge-reserved=5352 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 1624.98
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "<10ms=1618 hold<100ms=5 hold<1s=0 hold>=1s=0 hold-max-ms=68 wait-max-ms=2614 waits>=1s=16\nheap=38380 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 1625.68
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=2724 articles=2724 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=2724 transactions-budget=131072 bytes-used=2525652 history-bound=67108864 charge-reserved=5448 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 1656.62
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "<10ms=1649 hold<100ms=5 hold<1s=0 hold>=1s=0 hold-max-ms=68 wait-max-ms=2614 waits>=1s=16\nheap=38380 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 1657.35
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=2769 articles=2769 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=2769 transactions-budget=131072 bytes-used=2567412 history-bound=67108864 charge-reserved=5538 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 1687.67
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "<10ms=1671 hold<100ms=5 hold<1s=0 hold>=1s=0 hold-max-ms=68 wait-max-ms=2614 waits>=1s=16\nheap=38380 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 1688.02
+  },
+  {
+   "kind": "group-create",
+   "n": 14,
+   "rc": 0,
+   "tail": "accepted operator group ACCEPTED",
+   "t": 1715.89
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=2810 articles=2810 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=2810 transactions-budget=131072 bytes-used=2605460 history-bound=67108864 charge-reserved=5620 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 1720.68
+  },
+  {
+   "kind": "control-grant",
+   "rc": 0,
+   "tail": "accepted operator control ACCEPTED",
+   "t": 1720.72
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "<10ms=1702 hold<100ms=6 hold<1s=0 hold>=1s=0 hold-max-ms=68 wait-max-ms=4255 waits>=1s=20\nheap=38380 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 1720.98
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=2845 articles=2845 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=2845 transactions-budget=131072 bytes-used=2637940 history-bound=67108864 charge-reserved=5690 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 1751.61
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "<10ms=1721 hold<100ms=6 hold<1s=0 hold>=1s=0 hold-max-ms=68 wait-max-ms=4255 waits>=1s=20\nheap=38380 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 1752.74
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=2889 articles=2889 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=2889 transactions-budget=131072 bytes-used=2678772 history-bound=67108864 charge-reserved=5778 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 1783.27
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "<10ms=1756 hold<100ms=7 hold<1s=0 hold>=1s=0 hold-max-ms=68 wait-max-ms=4255 waits>=1s=20\nheap=38380 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 1783.59
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=2932 articles=2932 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=2932 transactions-budget=131072 bytes-used=2718676 history-bound=67108864 charge-reserved=5864 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 1813.96
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "<10ms=1775 hold<100ms=7 hold<1s=0 hold>=1s=0 hold-max-ms=68 wait-max-ms=4255 waits>=1s=20\nheap=38380 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 1814.37
+  },
+  {
+   "kind": "group-create",
+   "n": 15,
+   "rc": 0,
+   "tail": "accepted operator group ACCEPTED",
+   "t": 1846.37
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=2965 articles=2965 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=2965 transactions-budget=131072 bytes-used=2749300 history-bound=67108864 charge-reserved=5930 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 1846.7
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "<10ms=1798 hold<100ms=7 hold<1s=0 hold>=1s=0 hold-max-ms=68 wait-max-ms=4412 waits>=1s=22\nheap=38380 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 1849.7
+  },
+  {
+   "kind": "control-grant",
+   "rc": 0,
+   "tail": "accepted operator control ACCEPTED",
+   "t": 1849.73
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=3001 articles=3001 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=3001 transactions-budget=131072 bytes-used=2782708 history-bound=67108864 charge-reserved=6002 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 1880.2
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "<10ms=1822 hold<100ms=8 hold<1s=0 hold>=1s=0 hold-max-ms=68 wait-max-ms=4412 waits>=1s=25\nheap=38380 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 1880.85
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=3032 articles=3032 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=3032 transactions-budget=131072 bytes-used=2811476 history-bound=67108864 charge-reserved=6064 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 1911.73
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "<10ms=1839 hold<100ms=8 hold<1s=0 hold>=1s=0 hold-max-ms=68 wait-max-ms=4412 waits>=1s=25\nheap=38380 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 1911.97
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=3077 articles=3077 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=3077 transactions-budget=131072 bytes-used=2853236 history-bound=67108864 charge-reserved=6154 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 1943.06
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "<10ms=1863 hold<100ms=8 hold<1s=0 hold>=1s=0 hold-max-ms=68 wait-max-ms=4412 waits>=1s=25\nheap=38364 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 1943.47
+  },
+  {
+   "kind": "group-create",
+   "n": 16,
+   "rc": 0,
+   "tail": "accepted operator group ACCEPTED",
+   "t": 1974.85
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=3117 articles=3117 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=3117 transactions-budget=131072 bytes-used=2890356 history-bound=67108864 charge-reserved=6234 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 1974.85
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "<10ms=1882 hold<100ms=8 hold<1s=0 hold>=1s=0 hold-max-ms=68 wait-max-ms=4418 waits>=1s=27\nheap=38364 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 1975.79
+  },
+  {
+   "kind": "control-grant",
+   "rc": 0,
+   "tail": "accepted operator control ACCEPTED",
+   "t": 1979.22
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=3156 articles=3156 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=3156 transactions-budget=131072 bytes-used=2926548 history-bound=67108864 charge-reserved=6312 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 2006.95
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "<10ms=1905 hold<100ms=8 hold<1s=0 hold>=1s=0 hold-max-ms=68 wait-max-ms=4418 waits>=1s=29\nheap=38364 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 2007.51
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=3202 articles=3202 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=3202 transactions-budget=131072 bytes-used=2969236 history-bound=67108864 charge-reserved=6404 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 2039.01
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "10ms=1936 hold<100ms=8 hold<1s=1 hold>=1s=0 hold-max-ms=117 wait-max-ms=4418 waits>=1s=29\nheap=38364 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 2039.68
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=3247 articles=3247 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=3247 transactions-budget=131072 bytes-used=3010996 history-bound=67108864 charge-reserved=6494 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 2070.72
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "10ms=1963 hold<100ms=8 hold<1s=1 hold>=1s=0 hold-max-ms=117 wait-max-ms=4418 waits>=1s=29\nheap=38364 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 2071.62
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=3283 articles=3283 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=3283 transactions-budget=131072 bytes-used=3044404 history-bound=67108864 charge-reserved=6566 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 2102.7
+  },
+  {
+   "kind": "group-create",
+   "n": 17,
+   "rc": 0,
+   "tail": "accepted operator group ACCEPTED",
+   "t": 2102.75
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "10ms=1990 hold<100ms=8 hold<1s=1 hold>=1s=0 hold-max-ms=117 wait-max-ms=4418 waits>=1s=31\nheap=38364 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 2103.19
+  },
+  {
+   "kind": "control-grant",
+   "rc": 0,
+   "tail": "accepted operator control ACCEPTED",
+   "t": 2106.16
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=3325 articles=3325 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=3325 transactions-budget=131072 bytes-used=3083380 history-bound=67108864 charge-reserved=6650 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 2133.57
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "10ms=2008 hold<100ms=8 hold<1s=1 hold>=1s=0 hold-max-ms=117 wait-max-ms=4418 waits>=1s=33\nheap=38364 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 2133.84
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=3374 articles=3374 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=3374 transactions-budget=131072 bytes-used=3128852 history-bound=67108864 charge-reserved=6748 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 2164.12
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "10ms=2053 hold<100ms=8 hold<1s=1 hold>=1s=0 hold-max-ms=117 wait-max-ms=4418 waits>=1s=33\nheap=38364 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 2164.38
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=3421 articles=3421 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=3421 transactions-budget=131072 bytes-used=3172468 history-bound=67108864 charge-reserved=6842 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 2194.65
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "10ms=2100 hold<100ms=8 hold<1s=1 hold>=1s=0 hold-max-ms=117 wait-max-ms=4418 waits>=1s=33\nheap=38364 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 2194.86
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=3469 articles=3469 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=3469 transactions-budget=131072 bytes-used=3217012 history-bound=67108864 charge-reserved=6938 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 2225.13
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "10ms=2128 hold<100ms=8 hold<1s=1 hold>=1s=0 hold-max-ms=117 wait-max-ms=4418 waits>=1s=33\nheap=38364 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 2225.32
+  },
+  {
+   "kind": "group-create",
+   "n": 18,
+   "rc": 0,
+   "tail": "accepted operator group ACCEPTED",
+   "t": 2229.23
+  },
+  {
+   "kind": "control-grant",
+   "rc": 0,
+   "tail": "accepted operator control ACCEPTED",
+   "t": 2232.32
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=3511 articles=3511 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=3511 transactions-budget=131072 bytes-used=3255988 history-bound=67108864 charge-reserved=7022 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 2255.65
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "10ms=2160 hold<100ms=8 hold<1s=1 hold>=1s=0 hold-max-ms=117 wait-max-ms=4418 waits>=1s=37\nheap=38364 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 2255.93
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=3560 articles=3560 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=3560 transactions-budget=131072 bytes-used=3301460 history-bound=67108864 charge-reserved=7120 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 2286.42
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "10ms=2205 hold<100ms=8 hold<1s=1 hold>=1s=0 hold-max-ms=117 wait-max-ms=4418 waits>=1s=37\nheap=38364 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 2286.77
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=3610 articles=3610 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=3610 transactions-budget=131072 bytes-used=3347860 history-bound=67108864 charge-reserved=7220 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 2317.11
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "10ms=2247 hold<100ms=8 hold<1s=1 hold>=1s=0 hold-max-ms=117 wait-max-ms=4418 waits>=1s=37\nheap=38364 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 2317.41
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=3659 articles=3659 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=3659 transactions-budget=131072 bytes-used=3393332 history-bound=67108864 charge-reserved=7318 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 2348.14
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "10ms=2284 hold<100ms=8 hold<1s=1 hold>=1s=0 hold-max-ms=117 wait-max-ms=4418 waits>=1s=37\nheap=38364 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 2348.95
+  },
+  {
+   "kind": "group-create",
+   "n": 19,
+   "rc": 0,
+   "tail": "accepted operator group ACCEPTED",
+   "t": 2355.97
+  },
+  {
+   "kind": "control-grant",
+   "rc": 0,
+   "tail": "accepted operator control ACCEPTED",
+   "t": 2360.14
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=3697 articles=3697 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=3697 transactions-budget=131072 bytes-used=3428596 history-bound=67108864 charge-reserved=7394 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 2379.39
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "10ms=2318 hold<100ms=8 hold<1s=1 hold>=1s=0 hold-max-ms=117 wait-max-ms=4418 waits>=1s=41\nheap=38364 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 2379.88
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=3746 articles=3746 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=3746 transactions-budget=131072 bytes-used=3474068 history-bound=67108864 charge-reserved=7492 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 2410.49
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "10ms=2347 hold<100ms=8 hold<1s=1 hold>=1s=0 hold-max-ms=117 wait-max-ms=4418 waits>=1s=41\nheap=38364 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 2410.83
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=3790 articles=3790 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=3790 transactions-budget=131072 bytes-used=3514900 history-bound=67108864 charge-reserved=7580 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 2441.61
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "10ms=2377 hold<100ms=8 hold<1s=2 hold>=1s=0 hold-max-ms=137 wait-max-ms=4418 waits>=1s=41\nheap=38364 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 2442.08
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=3832 articles=3832 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=3832 transactions-budget=131072 bytes-used=3553876 history-bound=67108864 charge-reserved=7664 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 2472.56
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "10ms=2396 hold<100ms=9 hold<1s=2 hold>=1s=0 hold-max-ms=137 wait-max-ms=4418 waits>=1s=41\nheap=38364 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 2473.04
+  },
+  {
+   "kind": "group-create",
+   "n": 20,
+   "rc": 0,
+   "tail": "accepted operator group ACCEPTED",
+   "t": 2486.31
+  },
+  {
+   "kind": "control-grant",
+   "rc": 0,
+   "tail": "accepted operator control ACCEPTED",
+   "t": 2492.17
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=3858 articles=3858 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=3858 transactions-budget=131072 bytes-used=3578004 history-bound=67108864 charge-reserved=7716 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 2503.59
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "10ms=2414 hold<100ms=9 hold<1s=2 hold>=1s=0 hold-max-ms=137 wait-max-ms=5239 waits>=1s=45\nheap=38364 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 2503.86
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=3892 articles=3892 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=3892 transactions-budget=131072 bytes-used=3609556 history-bound=67108864 charge-reserved=7784 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 2534.78
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "10ms=2434 hold<100ms=9 hold<1s=2 hold>=1s=0 hold-max-ms=137 wait-max-ms=5239 waits>=1s=45\nheap=38364 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 2535.63
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=3939 articles=3939 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=3939 transactions-budget=131072 bytes-used=3653172 history-bound=67108864 charge-reserved=7878 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 2566.0
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "0ms=2463 hold<100ms=10 hold<1s=2 hold>=1s=0 hold-max-ms=137 wait-max-ms=5239 waits>=1s=45\nheap=38364 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 2566.29
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=3981 articles=3981 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=3981 transactions-budget=131072 bytes-used=3692148 history-bound=67108864 charge-reserved=7962 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 2596.9
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "0ms=2491 hold<100ms=10 hold<1s=2 hold>=1s=0 hold-max-ms=137 wait-max-ms=5239 waits>=1s=46\nheap=38364 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 2597.36
+  },
+  {
+   "kind": "group-create",
+   "n": 21,
+   "rc": 0,
+   "tail": "accepted operator group ACCEPTED",
+   "t": 2616.92
+  },
+  {
+   "kind": "control-grant",
+   "rc": 0,
+   "tail": "accepted operator control ACCEPTED",
+   "t": 2621.92
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=4002 articles=4002 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=4002 transactions-budget=131072 bytes-used=3711636 history-bound=67108864 charge-reserved=8004 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 2627.77
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "0ms=2512 hold<100ms=10 hold<1s=2 hold>=1s=0 hold-max-ms=137 wait-max-ms=5239 waits>=1s=50\nheap=38364 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 2628.09
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=4051 articles=4051 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=4051 transactions-budget=131072 bytes-used=3757108 history-bound=67108864 charge-reserved=8102 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 2658.49
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "0ms=2551 hold<100ms=10 hold<1s=2 hold>=1s=0 hold-max-ms=137 wait-max-ms=5239 waits>=1s=50\nheap=38364 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 2658.81
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=4096 articles=4096 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=4096 transactions-budget=131072 bytes-used=3798868 history-bound=67108864 charge-reserved=8192 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=3867831 modified=1790527298"
+   ],
+   "t": 2689.23
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "0ms=2594 hold<100ms=10 hold<1s=2 hold>=1s=0 hold-max-ms=137 wait-max-ms=5239 waits>=1s=50\nheap=38332 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 2689.76
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=4131 articles=4131 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=4131 transactions-budget=131072 bytes-used=3831348 history-bound=67108864 charge-reserved=8262 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=7752845 modified=1790528782"
+   ],
+   "t": 2720.17
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "0ms=2611 hold<100ms=10 hold<1s=2 hold>=1s=0 hold-max-ms=137 wait-max-ms=5239 waits>=1s=51\nheap=38289 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 2720.5
+  },
+  {
+   "kind": "group-create",
+   "n": 22,
+   "rc": 0,
+   "tail": "accepted operator group ACCEPTED",
+   "t": 2749.96
+  },
+  {
+   "kind": "control-grant",
+   "rc": 0,
+   "tail": "accepted operator control ACCEPTED",
+   "t": 2757.83
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=4148 articles=4148 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=4148 transactions-budget=131072 bytes-used=3847124 history-bound=67108864 charge-reserved=8296 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=7752845 modified=1790528782"
+   ],
+   "t": 2757.88
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "0ms=2620 hold<100ms=11 hold<1s=2 hold>=1s=0 hold-max-ms=137 wait-max-ms=6386 waits>=1s=57\nheap=38289 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 2758.91
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=4165 articles=4165 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=4165 transactions-budget=131072 bytes-used=3862900 history-bound=67108864 charge-reserved=8330 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=7752845 modified=1790528782"
+   ],
+   "t": 2789.36
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "0ms=2635 hold<100ms=11 hold<1s=2 hold>=1s=0 hold-max-ms=137 wait-max-ms=7055 waits>=1s=58\nheap=38289 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 2789.67
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=4187 articles=4187 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=4187 transactions-budget=131072 bytes-used=3883316 history-bound=67108864 charge-reserved=8374 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=7752845 modified=1790528782"
+   ],
+   "t": 2820.02
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "0ms=2649 hold<100ms=11 hold<1s=2 hold>=1s=0 hold-max-ms=137 wait-max-ms=7055 waits>=1s=60\nheap=38289 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 2820.41
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=4217 articles=4217 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=4217 transactions-budget=131072 bytes-used=3911156 history-bound=67108864 charge-reserved=8434 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=7752845 modified=1790528782"
+   ],
+   "t": 2851.05
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "0ms=2671 hold<100ms=11 hold<1s=2 hold>=1s=0 hold-max-ms=137 wait-max-ms=7055 waits>=1s=60\nheap=38289 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 2851.44
+  },
+  {
+   "kind": "group-create",
+   "n": 23,
+   "rc": 0,
+   "tail": "accepted operator group ACCEPTED",
+   "t": 2884.17
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=4259 articles=4259 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=4259 transactions-budget=131072 bytes-used=3950132 history-bound=67108864 charge-reserved=8518 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=7752845 modified=1790528782"
+   ],
+   "t": 2884.28
+  },
+  {
+   "kind": "control-grant",
+   "rc": 0,
+   "tail": "accepted operator control ACCEPTED",
+   "t": 2889.49
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "0ms=2711 hold<100ms=12 hold<1s=2 hold>=1s=0 hold-max-ms=137 wait-max-ms=7055 waits>=1s=62\nheap=38289 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 2889.53
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=4290 articles=4290 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=4290 transactions-budget=131072 bytes-used=3978900 history-bound=67108864 charge-reserved=8580 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=7752845 modified=1790528782"
+   ],
+   "t": 2920.36
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "0ms=2729 hold<100ms=12 hold<1s=2 hold>=1s=0 hold-max-ms=137 wait-max-ms=7055 waits>=1s=65\nheap=38289 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 2920.68
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=4334 articles=4334 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=4334 transactions-budget=131072 bytes-used=4019732 history-bound=67108864 charge-reserved=8668 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=7752845 modified=1790528782"
+   ],
+   "t": 2951.29
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "0ms=2766 hold<100ms=12 hold<1s=2 hold>=1s=0 hold-max-ms=137 wait-max-ms=7055 waits>=1s=65\nheap=38289 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 2952.46
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=4381 articles=4381 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=4381 transactions-budget=131072 bytes-used=4063348 history-bound=67108864 charge-reserved=8762 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=7752845 modified=1790528782"
+   ],
+   "t": 2983.04
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "0ms=2797 hold<100ms=12 hold<1s=2 hold>=1s=0 hold-max-ms=137 wait-max-ms=7055 waits>=1s=65\nheap=38353 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 2983.49
+  },
+  {
+   "kind": "group-create",
+   "n": 24,
+   "rc": 0,
+   "tail": "accepted operator group ACCEPTED",
+   "t": 3015.07
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=4419 articles=4419 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=4419 transactions-budget=131072 bytes-used=4098612 history-bound=67108864 charge-reserved=8838 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=7752845 modified=1790528782"
+   ],
+   "t": 3015.17
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "0ms=2834 hold<100ms=13 hold<1s=2 hold>=1s=0 hold-max-ms=137 wait-max-ms=7055 waits>=1s=67\nheap=38353 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 3021.31
+  },
+  {
+   "kind": "control-grant",
+   "rc": 0,
+   "tail": "accepted operator control ACCEPTED",
+   "t": 3021.33
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=4465 articles=4465 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=4465 transactions-budget=131072 bytes-used=4141300 history-bound=67108864 charge-reserved=8930 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=7752845 modified=1790528782"
+   ],
+   "t": 3051.63
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "0ms=2872 hold<100ms=13 hold<1s=2 hold>=1s=0 hold-max-ms=137 wait-max-ms=7055 waits>=1s=69\nheap=38353 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 3051.91
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=4513 articles=4513 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=4513 transactions-budget=131072 bytes-used=4185844 history-bound=67108864 charge-reserved=9026 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=7752845 modified=1790528782"
+   ],
+   "t": 3082.24
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "0ms=2927 hold<100ms=13 hold<1s=2 hold>=1s=0 hold-max-ms=137 wait-max-ms=7055 waits>=1s=69\nheap=38353 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 3082.59
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=4562 articles=4562 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=4562 transactions-budget=131072 bytes-used=4231316 history-bound=67108864 charge-reserved=9124 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=7752845 modified=1790528782"
+   ],
+   "t": 3112.94
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "0ms=2969 hold<100ms=13 hold<1s=2 hold>=1s=0 hold-max-ms=137 wait-max-ms=7055 waits>=1s=69\nheap=38353 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 3113.29
+  },
+  {
+   "kind": "group-create",
+   "n": 25,
+   "rc": 0,
+   "tail": "accepted operator group ACCEPTED",
+   "t": 3148.58
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=4602 articles=4602 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=4602 transactions-budget=131072 bytes-used=4268436 history-bound=67108864 charge-reserved=9204 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=7752845 modified=1790528782"
+   ],
+   "t": 3148.62
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "0ms=3019 hold<100ms=13 hold<1s=2 hold>=1s=0 hold-max-ms=137 wait-max-ms=7055 waits>=1s=71\nheap=38353 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 3154.59
+  },
+  {
+   "kind": "control-grant",
+   "rc": 0,
+   "tail": "accepted operator control ACCEPTED",
+   "t": 3154.6
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=4647 articles=4647 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=4647 transactions-budget=131072 bytes-used=4310196 history-bound=67108864 charge-reserved=9294 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=7752845 modified=1790528782"
+   ],
+   "t": 3184.82
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "0ms=3049 hold<100ms=13 hold<1s=2 hold>=1s=0 hold-max-ms=137 wait-max-ms=7055 waits>=1s=73\nheap=38345 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 3185.13
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=4695 articles=4695 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=4695 transactions-budget=131072 bytes-used=4354740 history-bound=67108864 charge-reserved=9390 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=7752845 modified=1790528782"
+   ],
+   "t": 3215.49
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "0ms=3088 hold<100ms=13 hold<1s=2 hold>=1s=0 hold-max-ms=137 wait-max-ms=7055 waits>=1s=74\nheap=38345 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 3215.83
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=4743 articles=4743 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=4743 transactions-budget=131072 bytes-used=4399284 history-bound=67108864 charge-reserved=9486 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=7752845 modified=1790528782"
+   ],
+   "t": 3246.3
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "0ms=3130 hold<100ms=13 hold<1s=2 hold>=1s=0 hold-max-ms=137 wait-max-ms=7055 waits>=1s=74\nheap=38345 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 3246.7
+  },
+  {
+   "kind": "group-create",
+   "n": 26,
+   "rc": 0,
+   "tail": "accepted operator group ACCEPTED",
+   "t": 3280.61
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=4789 articles=4789 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=4789 transactions-budget=131072 bytes-used=4441972 history-bound=67108864 charge-reserved=9578 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=7752845 modified=1790528782"
+   ],
+   "t": 3280.61
+  },
+  {
+   "kind": "control-grant",
+   "rc": 0,
+   "tail": "accepted operator control ACCEPTED",
+   "t": 3286.63
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "0ms=3164 hold<100ms=13 hold<1s=2 hold>=1s=0 hold-max-ms=137 wait-max-ms=7055 waits>=1s=76\nheap=38345 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 3286.65
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=4840 articles=4840 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=4840 transactions-budget=131072 bytes-used=4489300 history-bound=67108864 charge-reserved=9680 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=7752845 modified=1790528782"
+   ],
+   "t": 3316.89
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "0ms=3191 hold<100ms=13 hold<1s=2 hold>=1s=0 hold-max-ms=137 wait-max-ms=7055 waits>=1s=78\nheap=38345 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 3317.08
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=4891 articles=4891 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=4891 transactions-budget=131072 bytes-used=4536628 history-bound=67108864 charge-reserved=9782 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=7752845 modified=1790528782"
+   ],
+   "t": 3347.33
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "0ms=3223 hold<100ms=13 hold<1s=2 hold>=1s=0 hold-max-ms=137 wait-max-ms=7055 waits>=1s=78\nheap=38345 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 3347.54
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=4938 articles=4938 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=4938 transactions-budget=131072 bytes-used=4580244 history-bound=67108864 charge-reserved=9876 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=7752845 modified=1790528782"
+   ],
+   "t": 3377.83
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "0ms=3262 hold<100ms=13 hold<1s=2 hold>=1s=0 hold-max-ms=137 wait-max-ms=7055 waits>=1s=78\nheap=38345 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 3378.86
+  },
+  {
+   "kind": "group-create",
+   "n": 27,
+   "rc": 0,
+   "tail": "accepted operator group ACCEPTED",
+   "t": 3412.4
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=4967 articles=4967 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=4967 transactions-budget=131072 bytes-used=4607156 history-bound=67108864 charge-reserved=9934 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=7752845 modified=1790528782"
+   ],
+   "t": 3412.43
+  },
+  {
+   "kind": "control-grant",
+   "rc": 0,
+   "tail": "accepted operator control ACCEPTED",
+   "t": 3418.56
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "0ms=3284 hold<100ms=13 hold<1s=2 hold>=1s=0 hold-max-ms=137 wait-max-ms=7055 waits>=1s=82\nheap=38345 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 3418.59
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=5019 articles=5019 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=5019 transactions-budget=131072 bytes-used=4655412 history-bound=67108864 charge-reserved=10038 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=7752845 modified=1790528782"
+   ],
+   "t": 3448.83
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "0ms=3323 hold<100ms=13 hold<1s=2 hold>=1s=0 hold-max-ms=137 wait-max-ms=7055 waits>=1s=84\nheap=38345 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 3449.08
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=5071 articles=5071 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=5071 transactions-budget=131072 bytes-used=4703668 history-bound=67108864 charge-reserved=10142 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=7752845 modified=1790528782"
+   ],
+   "t": 3479.32
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "0ms=3353 hold<100ms=13 hold<1s=2 hold>=1s=0 hold-max-ms=137 wait-max-ms=7055 waits>=1s=84\nheap=38345 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 3479.57
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=5122 articles=5122 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=5122 transactions-budget=131072 bytes-used=4750996 history-bound=67108864 charge-reserved=10244 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=7752845 modified=1790528782"
+   ],
+   "t": 3509.88
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "0ms=3387 hold<100ms=13 hold<1s=2 hold>=1s=0 hold-max-ms=137 wait-max-ms=7055 waits>=1s=84\nheap=38329 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 3510.13
+  },
+  {
+   "kind": "group-create",
+   "n": 28,
+   "rc": 0,
+   "tail": "accepted operator group ACCEPTED",
+   "t": 3544.73
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=5171 articles=5171 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=5171 transactions-budget=131072 bytes-used=4796468 history-bound=67108864 charge-reserved=10342 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=7752845 modified=1790528782"
+   ],
+   "t": 3544.75
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "0ms=3427 hold<100ms=13 hold<1s=2 hold>=1s=0 hold-max-ms=137 wait-max-ms=7055 waits>=1s=86\nheap=38329 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 3544.96
+  },
+  {
+   "kind": "control-grant",
+   "rc": 0,
+   "tail": "accepted operator control ACCEPTED",
+   "t": 3550.71
+  },
+  {
+   "kind": "status",
+   "rc": 0,
+   "lines": [
+    "transactions=5213 articles=5213 staging-orphans=0 unsigned-legacy-experiment",
+    "headroom transactions-used=5213 transactions-budget=131072 bytes-used=4835444 history-bound=67108864 charge-reserved=10426 charge-capacity=1048576",
+    "open=full-replay reason=absent",
+    "checkpoint-file octets=7752845 modified=1790528782"
+   ],
+   "t": 3575.23
+  },
+  {
+   "kind": "health",
+   "rc": 0,
+   "tail": "0ms=3457 hold<100ms=13 hold<1s=2 hold>=1s=0 hold-max-ms=137 wait-max-ms=7055 waits>=1s=88\nheap=38329 MB profile=custom machine=40960 MB\naccepted operator health",
+   "t": 3575.45
+  }
+ ],
+ "recover": [
+  0,
+  "recovered transactions=5252 articles=5252 staging-orphans=0 anchor=none checkpoint=none\nopen=checkpoint:4098 suffix=1154\naccepted operator recover\n",
+  3.9183674780651927
+ ],
+ "status_after": [
+  0,
+  "transactions=5252 articles=5252 staging-orphans=0 unsigned-legacy-experiment\nprofile format=9 max-transactions=131072 max-history-octets=67108864 max-record-octets=4199563 max-article-octets=4194304 max-groups-per-article=16 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked max-header-fields=64 max-header-lines=256 max-header-octets=16384\nopen-cost replay-records=131072 list-memory-octets=2147483648\nheadroom transactions-used=5252 transactions-budget=131072 bytes-used=4871636 history-bound=67108864 charge-reserved=10504 charge-capacity=1048576\ncapacity articles-left=67096 (an estimate at the average article so far; at 0 posts are refused)\nmaintenance-reserve octets=4096 transactions=1 debt=0 held\nopen=checkpoint:4098 suffix=1154\nreclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0\ncheckpoint-file octets=7752845 modified=1790528782\npins=5252 reserved=10504 connections=0\npack-chain none\nheap=38329 MB profile=custom machine=40960 MB\naccepted operator status\n"
+ ],
+ "health_after": [
+  19,
+  "health exit=19 state=none-held (some states unobserved)\nfenced clear\nexhausted clear\nunqualified-profile clear\nspace-pressure clear\nno-route clear\nstranded-transfer unobserved (no running owner: the feed table lives in the owner)\nunavailable-peer unobserved (no running owner: the feed table lives in the owner)\nreceipt-debt clear\nheap=38325 MB profile=custom machine=40960 MB\naccepted operator health\n"
+ ],
+ "agent_a_summary": "",
+ "agent_b_summary": ""
+}

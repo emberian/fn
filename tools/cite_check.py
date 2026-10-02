@@ -91,6 +91,7 @@ WHAT IT CANNOT SEE.  Every line below is a question for a reader.
 from __future__ import annotations
 
 import argparse
+import bisect
 import json
 import re
 import subprocess
@@ -303,14 +304,43 @@ def disclosed(lines: list[str], number: int) -> bool:
     return bool(DISCLOSURE.search(prose))
 
 
+def unverified_evidence(root: Path, tokens: list[str]) -> list[str]:
+    """The tokens, answered only by the evidence index, whose bytes do not
+    fetch and verify (r56 F3: an index row is a name, not bytes).
+
+    A file token checks its own indexed bytes (or the implied source's); a
+    directory token checks the first indexed file under it.
+    """
+    import evidence_store  # noqa: PLC0415
+    index = evidence_store.read_index(root)
+    names = sorted(index)
+    chosen: dict[str, str | None] = {}
+    for token in tokens:
+        base = token.rstrip("/")
+        stem, dot, extension = base.rpartition(".")
+        candidates = [token, base] + [stem + e for e in IMPLIED_EXTENSIONS if dot] \
+            + [base + e for e in IMPLIED_EXTENSIONS]
+        name = next((c for c in candidates if c in index), None)
+        if name is None:
+            prefix = base + "/"
+            at = bisect.bisect_left(names, prefix)
+            name = names[at] if at < len(names) and names[at].startswith(prefix) else None
+        chosen[token] = name
+    problems = evidence_store.verify_paths(
+        root, sorted({n for n in chosen.values() if n}), index)
+    return sorted(token for token, name in chosen.items()
+                  if name is None or problems.get(name) is not None)
+
+
 def scan(present: set[str], history: set[str],
-         files: list[str] | None = None) -> list[Finding]:
+         files: list[str] | None = None, answered: dict[str, bool] | None = None,
+         unavailable: set[str] = frozenset()) -> list[Finding]:
     findings: list[Finding] = []
     # One answer per distinct token: the same citations recur across the
     # tree, and each miss in `present` was a run of filesystem probes --
     # 1.7 million `resolves` calls and 2.5 million `stat`s in one `make
     # check` (harness-repair).  The tree does not change during a scan.
-    answered: dict[str, bool] = {}
+    answered = {} if answered is None else answered
     for citer in (tracked() if files is None else files):
         if re.match(r"^rfc\d+\.txt$", citer):
             continue          # the supplied RFCs are not ours to cite-check
@@ -329,9 +359,9 @@ def scan(present: set[str], history: set[str],
                 hit = answered.get(token)
                 if hit is None:
                     hit = answered[token] = resolves(token, present)
-                if hit:
+                if hit and token not in unavailable:
                     continue
-                klass = benign(token, citer, line, match.start(1))
+                klass = "unavailable" if hit else benign(token, citer, line, match.start(1))
                 if klass is None:
                     if token.split("#")[0] in RETIRED:
                         # Disclosed centrally: planning/retired-paths.json says
@@ -379,9 +409,12 @@ def main(argv: list[str] | None = None) -> int:
                         help="exit non-zero on any load-bearing finding")
     args = parser.parse_args(argv)
 
-    present = set(tracked())
+    tracked_set = set(tracked())
+    present = set(tracked_set)
     # A planning/evidence/ path answers a citation when the evidence index
-    # names it: its bytes are in the archive (tools/evidence_store.py).
+    # names it AND its bytes fetch and verify from the archive
+    # (tools/evidence_store.py); the bytes are checked after the scan, for
+    # the tokens only the index answered.
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import evidence_store  # noqa: PLC0415
     for name in evidence_store.read_index(ROOT):
@@ -390,7 +423,15 @@ def main(argv: list[str] | None = None) -> int:
         while parent and parent not in present:
             present.add(parent)
             parent = parent.rpartition("/")[0]
-    findings = scan(present, ever_existed())
+    history = ever_existed()
+    answered: dict[str, bool] = {}
+    findings = scan(present, history, answered=answered)
+    via_index = [token for token, hit in answered.items()
+                 if hit and not resolves(token, tracked_set)]
+    failed = set(unverified_evidence(ROOT, via_index)) if via_index else set()
+    if failed:
+        findings = scan(present, history, unavailable=failed)
+    unavailable = [f for f in findings if f.klass == "unavailable"]
     raised = [f for f in findings if f.klass in RAISED]
     load_bearing = [f for f in raised if f.tier == "load-bearing"]
 
@@ -403,8 +444,9 @@ def main(argv: list[str] | None = None) -> int:
                         for t in ("load-bearing", "spec", "tool", "planning")},
             "distinct_targets": len({f.token for f in raised}),
             "load_bearing": len(load_bearing),
+            **({"unavailable": [f.as_dict() for f in unavailable]} if unavailable else {}),
         }, indent=2))
-        return 1 if args.strict and load_bearing else 0
+        return verdict(args.strict, load_bearing, unavailable)
 
     if not args.summary:
         order = {"load-bearing": 0, "spec": 1, "tool": 2, "planning": 3}
@@ -427,7 +469,21 @@ def main(argv: list[str] | None = None) -> int:
           f"{tiers['planning']} planning; "
           + ", ".join(f"{sum(1 for f in findings if f.klass == k)} {k}"
                       for k in BENIGN) + " not raised.")
-    return 1 if args.strict and load_bearing else 0
+    if unavailable:
+        print(f"cite_check: UNAVAILABLE: {len(unavailable)} citations of "
+              f"{len({f.token for f in unavailable})} indexed evidence paths whose "
+              "bytes did not fetch and verify from the archive:")
+        for finding in sorted(unavailable, key=lambda f: (f.token, f.citer)):
+            print(f"  {finding.token}  {finding.citer}:{finding.line}")
+    return verdict(args.strict, load_bearing, unavailable)
+
+
+def verdict(strict: bool, load_bearing: list, unavailable: list) -> int:
+    """--strict: 1 refused (a load-bearing absent path), 3 uncertain (cited
+    evidence the archive cannot deliver), 0 accepted.  Report mode is 0."""
+    if not strict:
+        return 0
+    return 1 if load_bearing else 3 if unavailable else 0
 
 
 if __name__ == "__main__":

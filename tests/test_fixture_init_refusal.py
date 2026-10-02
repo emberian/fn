@@ -23,7 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 import fixtures  # noqa: E402
 
-POSTMEASURE = ROOT / "planning/evidence/post-identity-index-2026-09-26/postmeasure.py"
+POSTMEASURE = ROOT / "tools/fixture_scripts/post-identity-index-2026-09-26/postmeasure.py"
 REFUSAL = ("fn: refused init-budget-cannot-hold-profile profile=custom sizing=requested "
            "reservation=188365 MB budget=40960 MB")
 STAND_IN = """#!/bin/sh

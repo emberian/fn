@@ -9,8 +9,8 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-PACKET = ROOT / "planning/evidence/native-parser-turn-2026-09-30"
-SOURCES = [ROOT / "planning/evidence/native-parser-stop-2026-09-30/native-stop-source.lisp",
+PACKET = ROOT / "tests/fixtures/evidence/native-parser-turn-2026-09-30"
+SOURCES = [ROOT / "tests/fixtures/evidence/native-parser-stop-2026-09-30/native-stop-source.lisp",
            PACKET / "native-boundary-source.lisp", PACKET / "runtime-source.lisp",
            ROOT / "host/native/receiver-parser-turn.lisp"]
 

@@ -156,7 +156,10 @@ def manifests(root: Path = ROOT) -> list[tuple[Run, dict]]:
     skips an unreadable or non-object file and records the evidence path.
     """
     found: list[tuple[Run, dict]] = []
-    loaded = [(Path(rel), True, manifest)
+    # Archived means the committed index names it, and the bytes read are the
+    # ones it names (evidence_store verifies); an unindexed file under
+    # planning/evidence is a local draft, labelled so (r56 F1).
+    loaded = [(Path(rel), evidence_manifests.evidence_store.indexed(root, rel), manifest)
               for rel, manifest in evidence_manifests.load_all_archived(root)]
     loaded += [(path, False, manifest)
                for path in sorted(root.glob(certs.MANIFEST_GLOB))
@@ -511,6 +514,10 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         report = audit()
+    except evidence_manifests.evidence_store.EvidenceUnavailable as error:
+        print(f"green-check: UNAVAILABLE: committed evidence cannot be read: {error}",
+              file=sys.stderr)
+        return evidence_manifests.evidence_store.EXIT_UNAVAILABLE
     except (certs.UnreadableBook, ValueError, OSError) as error:
         print(f"green-check: cannot read this tree: {error}", file=sys.stderr)
         return 2

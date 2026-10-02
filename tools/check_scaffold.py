@@ -16,6 +16,7 @@ from tools import ledger  # noqa: E402  (after ROOT is on the path)
 sys.path.insert(0, str(ROOT / "tools"))
 import evidence_store  # noqa: E402
 ERRORS: list[str] = []
+UNAVAILABLE: list[str] = []
 IGNORED = {".git", ".venv", ".cache", "build", "var", "__pycache__"}
 # The shared allocator pads to three digits; it does not stop at 999.
 REQUIREMENT_ID = r"[A-Z]{3}-\d{3,}"
@@ -25,6 +26,11 @@ SCENARIO_ID = r"SCN-\d{3,}"
 
 def fail(message: str) -> None:
     ERRORS.append(message)
+
+
+def unavailable(message: str) -> None:
+    """Uncertain, not failed: an indexed target whose bytes cannot be read."""
+    UNAVAILABLE.append(message)
 
 
 def prose(path: Path) -> str:
@@ -57,8 +63,16 @@ def link(target: str, base: Path, context: str) -> None:
         return
     rel = dest.relative_to(ROOT).as_posix()
     if not dest.exists() and evidence_store.exists(ROOT, rel):
-        # Evidence the index names: its bytes are in the archive.
-        dest = evidence_store.materialize(ROOT, rel) if parts.fragment else dest
+        # Evidence the index names: the link holds only if its bytes can be
+        # fetched and verify (a name is not bytes; r56 F3).
+        try:
+            if parts.fragment:
+                dest = evidence_store.materialize(ROOT, rel)
+            else:
+                evidence_store.read_bytes(ROOT, rel)
+        except evidence_store.EvidenceUnavailable as error:
+            unavailable(f"{context}: indexed target cannot be read: {target}: {error}")
+            return
         if not parts.fragment:
             return
     elif not dest.exists() and evidence_store.is_dir(ROOT, rel):
@@ -140,7 +154,11 @@ def scenario_implementation(ident: str, entry: dict) -> None:
     if not evidence_store.exists(ROOT, module_rel):
         fail(f"{ident}: implementation.test {test} does not resolve to a file")
         return
-    module = evidence_store.materialize(ROOT, module_rel)
+    try:
+        module = evidence_store.materialize(ROOT, module_rel)
+    except evidence_store.EvidenceUnavailable as error:
+        unavailable(f"{ident}: implementation.test {test} cannot be read: {error}")
+        return
     cases = impl.get("cases", [])
     if not isinstance(cases, list) or any(not isinstance(c, str) or not c for c in cases):
         fail(f"{ident}: implementation.cases must be a list of names")
@@ -163,8 +181,14 @@ def scenario_implementation(ident: str, entry: dict) -> None:
             return
     if not record.endswith(".md"):
         fail(f"{ident}: implementation.record must be an evidence record (.md)")
-    body = (ROOT / log).read_text(encoding="utf-8", errors="replace")
-    prose = (ROOT / record).read_text(encoding="utf-8", errors="replace")
+    # Through the store, so the bytes read are the ones the index names
+    # (the working tree no longer carries planning/evidence).
+    try:
+        body = evidence_store.read_bytes(ROOT, log).decode("utf-8", errors="replace")
+        prose = evidence_store.read_bytes(ROOT, record).decode("utf-8", errors="replace")
+    except evidence_store.EvidenceUnavailable as error:
+        unavailable(f"{ident}: implementation log/record cannot be read: {error}")
+        return
     names = {module.stem, module.name} | {c.split(".")[-1] for c in cases}
     log_named = Path(log).name in prose
     if not (module.name in prose or module.stem in prose or log_named):
@@ -253,6 +277,19 @@ def main() -> int:
     if set(definitions) != set(requirements):
         fail(f"requirement definitions/registry differ: {sorted(set(definitions) ^ set(requirements))}")
 
+    # Every indexed file the registries name is read (verified) below: one
+    # fetch for all of them, never one round trip each.
+    named = [path for entries in (requirements, proofs, scenarios)
+             for entry in entries.values()
+             for path in list(entry.get("evidence") or [])
+             + [(entry.get("implementation") or {}).get(key)
+                for key in ("log", "record", "test")]
+             if isinstance(path, str)]
+    try:
+        evidence_store.prefetch(ROOT, named)
+    except evidence_store.EvidenceUnavailable:
+        pass  # each read below reports its own object as UNAVAILABLE
+
     for entries, statuses, advanced in [
         (requirements, {"specified", "implemented", "validated", "deferred"}, {"implemented", "validated"}),
         (proofs, {"planned", "uncertified-at-current-digest", "certified"}, {"certified"}),
@@ -334,10 +371,12 @@ def main() -> int:
     if set(requirements) - covered:
         fail(f"requirements without scenario specifications: {sorted(set(requirements) - covered)}")
 
-    if ERRORS:
+    if ERRORS or UNAVAILABLE:
         for error in ERRORS:
             print(f"ERROR: {error}", file=sys.stderr)
-        return 1
+        for message in UNAVAILABLE:
+            print(f"UNAVAILABLE: {message}", file=sys.stderr)
+        return 1 if ERRORS else evidence_store.EXIT_UNAVAILABLE
     print(f"Scaffold OK: {len(markdown)} Markdown files, {len(requirements)} requirements, "
           f"{len(proofs)} proof targets, {len(scenarios)} scenario specifications.")
     print("Ledger OK: cited events exist, are not SUSPECT, and planning/ledger.md is current.")
@@ -351,6 +390,9 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         sys.exit(main())
+    except evidence_store.EvidenceUnavailable as exc:
+        print(f"UNAVAILABLE: committed evidence cannot be read: {exc}", file=sys.stderr)
+        sys.exit(evidence_store.EXIT_UNAVAILABLE)
     except (OSError, ValueError, TypeError, KeyError, AttributeError) as exc:
         print(f"ERROR: malformed scaffold: {exc}", file=sys.stderr)
         sys.exit(1)

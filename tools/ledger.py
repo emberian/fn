@@ -4113,11 +4113,17 @@ def book_report(paths: list[str]) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    import evidence_store  # noqa: PLC0415  (beside this file; tools/ is on sys.path)
     try:
         return _main(argv)
     except AnalysisIncomplete as error:
         print(f"ERROR: analysis-incomplete: {error}", file=sys.stderr)
         return 1
+    except evidence_store.EvidenceUnavailable as error:
+        # Uncertain, not failed: committed evidence could not be read (r56 F10).
+        print(f"ERROR: UNAVAILABLE: committed evidence cannot be read: {error}",
+              file=sys.stderr)
+        return evidence_store.EXIT_UNAVAILABLE
 
 
 def _main(argv: list[str] | None = None) -> int:

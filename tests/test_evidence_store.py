@@ -24,6 +24,7 @@ sys.path.insert(0, str(TOOLS))
 import evidence_store as store  # noqa: E402
 
 REL = "planning/evidence/manifests/certify-20261002T000000Z-1.json"
+REAL_RUN = subprocess.run
 
 
 class Sandbox(unittest.TestCase):
@@ -95,11 +96,16 @@ class PutAndReadTests(Sandbox):
                          [REL])
         self.assertEqual(store.materialize(self.root, REL).read_bytes(), data)
 
-    def test_the_working_tree_shadows_the_index(self):
+    def test_the_working_tree_never_silently_shadows_the_index(self):
+        # r56 F1: a working-tree file that differs from its index line is an
+        # error, never preferred; an unindexed one is "local".
         self.write(REL, b"old\n")
         store.put(self.root, [REL])
         self.write(REL, b"new, not yet put\n")
-        self.assertEqual(store.read_bytes(self.root, REL), b"new, not yet put\n")
+        with self.assertRaises(store.EvidenceMismatch):
+            store.read_bytes(self.root, REL)
+        store.put(self.root, [REL])
+        self.assertEqual(store.locate(self.root, REL), (b"new, not yet put\n", "indexed"))
 
     def test_a_path_named_by_neither_is_absent(self):
         self.assertFalse(store.exists(self.root, "planning/evidence/none.md"))
@@ -131,12 +137,16 @@ class RemoteFetchTests(Sandbox):
 
         def run(command, *args, **kwargs):
             calls.append(command)
+            if command[0] == "ssh":
+                # The archive box: run its command here (mkdir, the ingest).
+                return REAL_RUN(["bash", "-c", command[2]], input=kwargs.get("input"),
+                                capture_output=True, text=True, check=False)
             if command[0] != "rsync":
                 return subprocess.CompletedProcess(command, 1, "", "")
             listing = Path(command[command.index("--files-from") + 1]).read_text()
             source, target = command[-2], command[-1]
-            source_dir = remote_dir if ":" in source else Path(source)
-            target_dir = remote_dir if ":" in target else Path(target)
+            source_dir = Path(source.partition(":")[2]) if ":" in source else Path(source)
+            target_dir = Path(target.partition(":")[2]) if ":" in target else Path(target)
             for rel in listing.split():
                 src = source_dir / rel
                 if src.is_file():

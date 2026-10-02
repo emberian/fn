@@ -1,0 +1,27 @@
+test_adu_past_the_profile_is_refused_before_custody (tests.test_bp_fragment_node_native.NativeBpFragmentNodeTests.test_adu_past_the_profile_is_refused_before_custody) ... ok
+test_journal_past_its_profile_is_refused_at_open (tests.test_bp_fragment_node_native.NativeBpFragmentNodeTests.test_journal_past_its_profile_is_refused_at_open) ... ok
+test_nonzero_fragment_then_restart_offset_zero_dispatches_once (tests.test_bp_fragment_node_native.NativeBpFragmentNodeTests.test_nonzero_fragment_then_restart_offset_zero_dispatches_once) ... ok
+test_rotation_with_a_family_in_flight_loses_no_fragment (tests.test_bp_fragment_node_native.NativeBpFragmentNodeTests.test_rotation_with_a_family_in_flight_loses_no_fragment) ... FAIL
+test_seventy_fragments_across_a_kill_reassemble_once (tests.test_bp_fragment_node_native.NativeBpFragmentNodeTests.test_seventy_fragments_across_a_kill_reassemble_once) ... ok
+test_sixty_four_fragments_across_a_kill_reassemble_once (tests.test_bp_fragment_node_native.NativeBpFragmentNodeTests.test_sixty_four_fragments_across_a_kill_reassemble_once) ... ok
+test_ten_mebibyte_article_through_four_kib_fragments (tests.test_bp_fragment_node_native.NativeBpFragmentNodeTests.test_ten_mebibyte_article_through_four_kib_fragments) ... SCN-077 adu-octets=10486094 fragments=2622 author-seconds=31.9
+SCN-077 first-half-seconds=106.5
+SCN-077 second-half-seconds=156.8
+SCN-077 reassembly-and-handoff-seconds=374.5
+ok
+
+======================================================================
+FAIL: test_rotation_with_a_family_in_flight_loses_no_fragment (tests.test_bp_fragment_node_native.NativeBpFragmentNodeTests.test_rotation_with_a_family_in_flight_loses_no_fragment)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/fundamentals-scoreboard/native-fs-33bbfae9c/tree/tests/test_bp_fragment_node_native.py", line 594, in test_rotation_with_a_family_in_flight_loses_no_fragment
+    self.rotate(stop)
+  File "/tank/fn/scratch/fundamentals-scoreboard/native-fs-33bbfae9c/tree/tests/test_bp_fragment_node_native.py", line 558, in rotate
+    self.assertIn(marker, seen, seen)
+AssertionError: b'BP journal rotation stopped at=replace' not found in b'' : b''
+
+----------------------------------------------------------------------
+Ran 7 tests in 739.804s
+
+FAILED (failures=1)
+FN_TEST_BUDGET_RESULT {"module": "tests.test_bp_fragment_node_native", "tests": 7, "failures": 1, "errors": 0, "skipped": 0, "executed": 7, "skips": [], "timings": [["tests.test_bp_fragment_node_native.NativeBpFragmentNodeTests.test_adu_past_the_profile_is_refused_before_custody", 2.936], ["tests.test_bp_fragment_node_native.NativeBpFragmentNodeTests.test_journal_past_its_profile_is_refused_at_open", 14.342], ["tests.test_bp_fragment_node_native.NativeBpFragmentNodeTests.test_nonzero_fragment_then_restart_offset_zero_dispatches_once", 2.649], ["tests.test_bp_fragment_node_native.NativeBpFragmentNodeTests.test_rotation_with_a_family_in_flight_loses_no_fragment", 3.631], ["tests.test_bp_fragment_node_native.NativeBpFragmentNodeTests.test_seventy_fragments_across_a_kill_reassemble_once", 15.375], ["tests.test_bp_fragment_node_native.NativeBpFragmentNodeTests.test_sixty_four_fragments_across_a_kill_reassemble_once", 14.617], ["tests.test_bp_fragment_node_native.NativeBpFragmentNodeTests.test_ten_mebibyte_article_through_four_kib_fragments", 686.252]]}

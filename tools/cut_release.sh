@@ -240,12 +240,18 @@ g_fundamentals() {
       total=$((total + 1))
       if [ "$status" != MET ]; then
         open=$((open + 1)); echo "$id $status: $(echo "$what" | sed 's/^ *//; s/ *$//')"
-      elif ! git cat-file -e "$REV:$evidence" 2>/dev/null \
-          && ! git show "$REV:planning/evidence-index.tsv" 2>/dev/null \
-               | awk -v p="$evidence" '{ sub(/^[^ ]+ [^ ]+ /, "") } $0 == p { found = 1 } END { exit !found }'; then
-        # Committed = tracked at REV, or named by REV's evidence index (its
-        # bytes in the archive; tools/evidence_store.py).
-        open=$((open + 1)); echo "$id MET but its evidence '$evidence' is not in REV"
+      elif git cat-file -e "$REV:$evidence" 2>/dev/null; then
+        :  # tracked at REV: git holds the bytes
+      else
+        # Named by REV's evidence index: the bytes must fetch from the archive
+        # and hash to the index line (a name alone is not evidence; r56 F3).
+        # 1 = not indexed at REV, 3 = indexed but unavailable (uncertain).
+        "$PY" "$ROOT/tools/evidence_store.py" verify-paths --revision "$REV" "$evidence" >/dev/null 2>&1
+        case $? in
+          0) ;;
+          3) open=$((open + 1)); echo "$id MET but its evidence '$evidence' is UNAVAILABLE: indexed at REV, its bytes did not fetch and verify from the archive" ;;
+          *) open=$((open + 1)); echo "$id MET but its evidence '$evidence' is not in REV" ;;
+        esac
       fi
     done
     if [ "$open" -gt 0 ]; then echo "$open of $total fundamentals not met (blocking)"; exit 1; fi

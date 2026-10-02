@@ -1,0 +1,12 @@
+test_a_capacity_the_machine_cannot_hold_is_refused_at_start (tests.test_native_mux.DeveloperImageMux.test_a_capacity_the_machine_cannot_hold_is_refused_at_start) ... ok
+test_connections_cost_no_thread_and_the_bound_is_kept_live (tests.test_native_mux.DeveloperImageMux.test_connections_cost_no_thread_and_the_bound_is_kept_live) ... ok
+test_a_capacity_the_machine_cannot_hold_is_refused_at_start (tests.test_native_mux.ProductionImageMux.test_a_capacity_the_machine_cannot_hold_is_refused_at_start) ... ok
+test_connections_cost_no_thread_and_the_bound_is_kept_live (tests.test_native_mux.ProductionImageMux.test_connections_cost_no_thread_and_the_bound_is_kept_live) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 13.477s
+
+OK
+NATIVE-MUX holds=10764 per-connection-figure=1337 KiB threads=9->9 rss=459132->467580 kB rss-per-connection=28.3 kB
+NATIVE-MUX holds=11165 per-connection-figure=1337 KiB threads=9->9 rss=227480->235352 kB rss-per-connection=26.3 kB
+FN_TEST_BUDGET_RESULT {"module": "tests.test_native_mux", "tests": 4, "failures": 0, "errors": 0, "skipped": 0, "executed": 4, "skips": [], "timings": [["tests.test_native_mux.DeveloperImageMux.test_a_capacity_the_machine_cannot_hold_is_refused_at_start", 0.833], ["tests.test_native_mux.DeveloperImageMux.test_connections_cost_no_thread_and_the_bound_is_kept_live", 6.022], ["tests.test_native_mux.ProductionImageMux.test_a_capacity_the_machine_cannot_hold_is_refused_at_start", 0.976], ["tests.test_native_mux.ProductionImageMux.test_connections_cost_no_thread_and_the_bound_is_kept_live", 5.645]]}
