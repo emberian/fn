@@ -21230,6 +21230,23 @@
         "tests/acl2/withdrawal-index-carried-tests.lisp"
       ],
       "progress_note": "Lane served-incremental-4, 2026-10-01: book (5.2 s) and teeth (4.2 s) certified on hbox over stage-0's certified tree (gates/si2). Host wiring waits for stage 0 on dev. hbox per call, W = 1k / 10k / 100k: fn-pidx-targetedp 11 / 115 / 1,150 us -> fn-wix-targetedp 0.04 us; fn-sca-targets-of 22 / 215 / 2,200 us -> fn-wix-targets-of 0.04 us; both 0 B; fn-wix-refresh 0.01 us (same list) or 0.2 us and 192 B (one new record)."
+    },
+    {
+      "id": "PRF-1232",
+      "title": "NEWNEWS selected through a carried stamp index and replied in bounded quanta",
+      "statement": "Subject (served once wired; until then the host serves books/nntp-responses.lisp fn-nntp-newnews-response through the old list-model dispatcher books/nntp.lisp fn-nntp-archive-command): books/newnews-cursor.lisp fn-nnw-response, and the cursor step fn-nnw-step a plan cursor will run (books/served-plan-cursor.lisp, not yet dispatching it). The carry (ARTS . MAXES): MAXES = fn-nnw-maxes ARTS, the largest natural stamp of each suffix (0 when none); stamps are not assumed monotone. KEYSTONES: fn-nnw-scan-nil-past-bound (with a natural horizon H, once 1000 * max(smax T, H) is below the threshold the reference scan of T lists nothing); fn-nnw-run-is-newnews-scan (for MAXES nil or exact, the run of the cursor is fn-nntp-newnews-scan, every quantum); fn-nnw-response-is-newnews-response (under fn-nnw-carryp, the response is fn-nntp-newnews-response byte for byte); fn-nnw-step-residual (lines then what the next cursor owes = what the cursor owed; next cursor okp), fn-nnw-step-lines-at-most-q (at most max(1,Q) articles visited and lines), fn-nnw-step-progresses; fn-nnw-carryp-of-refresh, fn-nnw-carryp-of-nil, fn-nnw-car-of-refresh. Scope: the early stop needs a natural horizon (a reader clock); with none (:none) the cursor walks to the end, still in quanta. The tombstone test still reads the payload head per visited candidate (only the articles past the date). The list model fn-nnw-run is non-tail over quanta (not the served shape).",
+      "status": "planned",
+      "milestone": "M5",
+      "requirements": [
+        "HST-001"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "books/newnews-cursor.lisp",
+        "tests/acl2/newnews-cursor-tests.lisp"
+      ],
+      "progress_note": "Lane served-incremental-4, 2026-10-01: book (1.05 s) and teeth (0.84 s) certified on hbox over stage-0's tree. hbox per NEWNEWS, N = 1k / 10k / 100k articles, 10 new: fn-nntp-newnews-scan 0.21 / 1.85 / 21 ms and 383 KB / 4.3 MB / 47.5 MB -> fn-nnw-run (quantum 256, natural horizon) 2.7 / 3.0 / 3.2 us and 8.5 / 9.5 / 10.5 KB (the reply's own lines); results EQUAL; refresh by one article 0 B measured; build 32 B per article. Wiring (dispatcher arm + plan-cursor kind + host carry refresh) waits for stage 0 and the dispatcher owners."
     }
   ]
 }
