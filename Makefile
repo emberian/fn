@@ -300,6 +300,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/definterface-recognizer-tests \
 	tests/acl2/defevent-tests \
 	tests/acl2/def-carried-tests \
+	books/def-holder \
+	tests/acl2/def-holder-tests \
 	books/acceptance \
 	books/acceptance-invariants \
 	tests/acl2/acceptance-tests \
@@ -780,6 +782,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/extent-retire-tests \
 	books/arena-forget \
 	tests/acl2/arena-forget-tests \
+	books/handle-holds \
 	books/owner-reclaim-instant \
 	tests/acl2/owner-reclaim-instant-tests \
 	books/store-log-route-phases \
