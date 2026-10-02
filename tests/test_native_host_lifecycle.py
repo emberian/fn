@@ -10,6 +10,10 @@ stop cleanly) and that the client gets the protocol's answer.
     FN_NATIVE_DEVELOPER_HOST=build/fn-host-developer \\
         python3 -m unittest tests.test_native_host_lifecycle
 """
+import os
+import resource
+import socket
+import sys
 import time
 import unittest
 
@@ -90,6 +94,64 @@ class TlsPipelineTests(unittest.TestCase):
             self.assertIsNone(self.owner.poll(), "a TLS client's pipeline stopped the owner")
             self.node.stop(process=self.owner, expect=EXIT.OK)
 
+
+
+@requires(DEVELOPER)
+@unittest.skipUnless(sys.platform.startswith("linux"), "prlimit and /proc are Linux's")
+class AcceptExhaustionTests(unittest.TestCase):
+    """Sweep S001/S004 (io.lisp fnn-accept-attempt): an accept(2) that fails
+    for one connection or for want of a descriptor (EMFILE under a flood:
+    nothing caps descriptors before accept) was a socket-error re-signalled
+    out of the main accept loop (the owner stopped) and out of the TLS
+    listener's thread (that port stopped accepting for good).  It is a named
+    attempt outcome now: the queued connection waits in the kernel's queue,
+    the loop backs off and goes on, and every port serves again once
+    descriptors free."""
+
+    def test_a_descriptor_flood_on_both_listeners_is_survived(self):
+        node = Node(self, DEVELOPER).use_tls(protected_only=False)
+        node.init()
+        owner = node.start()
+        with node.log_on_failure(owner):
+            pid = owner.pid
+            held = len(os.listdir("/proc/{}/fd".format(pid)))
+            soft, hard = resource.prlimit(pid, resource.RLIMIT_NOFILE)
+            flood = []
+            try:
+                # Eight descriptors past what the owner holds now: the flood
+                # below exhausts them on both listeners.
+                resource.prlimit(pid, resource.RLIMIT_NOFILE, (held + 8, hard))
+                for port in (node.port, node.tls_port) * 12:
+                    flood.append(socket.create_connection(("127.0.0.1", port), timeout=30))
+                # The owner meets EMFILE at accept(2) on both listeners.
+                deadline = time.monotonic() + 30
+                while time.monotonic() < deadline and \
+                        b"no descriptor for a queued connection" not in owner.stderr.since(0):
+                    time.sleep(0.25)
+                    self.assertIsNone(owner.poll(), "EMFILE at accept stopped the owner")
+                time.sleep(3)
+                self.assertIsNone(owner.poll(), "EMFILE at accept stopped the owner")
+            finally:
+                for peer in flood:
+                    peer.close()
+                resource.prlimit(pid, resource.RLIMIT_NOFILE, (soft, hard))
+            # Descriptors free: the queued connections are accepted and end,
+            # and both ports serve a new client.
+            deadline = time.monotonic() + 60
+            while True:
+                try:
+                    with Client(node.port, timeout=10) as plain:
+                        self.assertTrue(plain.command(b"DATE").startswith(b"111 "))
+                    with Client(node.tls_port, timeout=10, implicit_tls=client_context()) as tls:
+                        self.assertTrue(tls.command(b"DATE").startswith(b"111 "))
+                    break
+                except (OSError, EOFError, AssertionError):
+                    self.assertIsNone(owner.poll(), "the owner stopped")
+                    if time.monotonic() > deadline:
+                        raise
+                    time.sleep(1)
+            self.assertIsNone(owner.poll())
+            node.stop(process=owner, expect=EXIT.OK)
 
 if __name__ == "__main__":
     unittest.main()
