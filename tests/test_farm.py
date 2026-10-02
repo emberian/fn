@@ -1443,8 +1443,11 @@ class FrictionTests(unittest.TestCase):
             (root / "host" / "op-host.lisp").write_text("(in-package \"ACL2\")\n")
             farm.refuse_bad_book_names(root, ["books/alpha"], [],
                                        ["host/op-host", "books/beta"])
+            # Stage 0 (cf53f68d9): certify_books takes a host book as a root
+            # (hbox_native's certify step names the image's own host roots).
+            farm.refuse_bad_book_names(root, ["host/op-host"], [])
             with self.assertRaises(farm.FarmError):
-                farm.refuse_bad_book_names(root, ["host/op-host"], [])
+                farm.refuse_bad_book_names(root, ["host/native/op"], [])
             with self.assertRaises(farm.FarmError):
                 farm.refuse_bad_book_names(root, ["books/alpha"], [], ["../x"])
             with self.assertRaises(farm.FarmError):

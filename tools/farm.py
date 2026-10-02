@@ -477,8 +477,8 @@ def book_name_problem(root: Path, word: str, kind: str) -> str | None:
             return (f"{kind} {word!r} is not a repository-relative book "
                     "(e.g. books/wire or host/native-operator-host)")
     elif not BOOK_NAME.fullmatch(name):
-        return (f"{kind} {word!r} is not a repository-relative book below books/ "
-                "or tests/acl2/ (e.g. books/wire or books/wire.lisp)")
+        return (f"{kind} {word!r} is not a repository-relative book below books/, "
+                "tests/acl2/ or host/ (not host/native/; e.g. books/wire or books/wire.lisp)")
     if not (root / f"{name}.lisp").is_file():
         return f"{kind} {word!r}: no {name}.lisp under {root}"
     return None
