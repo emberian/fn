@@ -3903,7 +3903,8 @@
       "milestone": "M3",
       "status": "implemented",
       "proof_targets": [
-        "PRF-194"
+        "PRF-194",
+        "PRF-1236"
       ],
       "verification": [
         "proof",
@@ -3926,7 +3927,8 @@
       "milestone": "M6",
       "status": "specified",
       "proof_targets": [
-        "PRF-195"
+        "PRF-195",
+        "PRF-1237"
       ],
       "verification": [
         "proof",

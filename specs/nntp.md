@@ -545,16 +545,27 @@ connection's pinned view, NNT-042's "other reads"), `:select` (GROUP and
 LISTGROUP: re-pinned to the owner's committed view before the arm, kept iff
 211; `fn-proto-advance-eventp-is-served-advance-eventp` pins the column to
 `fn-served-advance-eventp`, the one executable site of the policy),
-`:completed` (the latest completed durable view, the pin unmoved: the LIST
-decision of 2026-10-02, recorded as "decided, not landed" until its arm
-lands) or `:live-index` (a peer's offer against the live Message-ID index).
-The served catalog dispatcher is generated from the rows' `:cat-arms`
-(`books/protocol-served.lisp` `fn-proto-archive-command-cat`) and each row's
-case of the pinned-boundary theorem from its `:cat-by`
-(`fn-proto-archive-command-cat-is-pinned`); the restricted route (a session
-with a group-access rule, PRF-222) is always the reference walk over the
-projected pin, so the cost column states both routes and a `-cat` cost claim
-is never the restricted client's. The table below is written from the book
+`:completed` (one latest completed durable discovery snapshot captured per
+response, the pin unmoved: the LIST decision of 2026-10-02 and consultation
+c07's rulings B, C and D), `:pin-or-completed` (by Message-ID: the pinned
+article when it is retrievable there, else the completed snapshot, number
+fields 0 on fallback: c07 C) or `:live-index` (a peer's offer against the
+live Message-ID index). A ruling the arms do not execute yet is DEBT, not
+the rule: the row carries `:view-decided (VIEW ID)` naming the open registry
+row (PRF-1237, PRF-1238), `tools/view_policy_debt.json` ratchets it
+(`tools/protocol_emit.py --check` refuses growth) and the table below shows
+the executed rule with the debt beside it. A row's view is per FORM where
+the forms differ (ARTICLE n is pinned; ARTICLE <id> is the pin-first form).
+The served catalog dispatcher is generated from the rows' `:forms`
+(`books/protocol-served.lisp` `fn-proto-archive-command-cat`), each form's
+view contract is a generated theorem proved from the form's `:by`, and the
+pinned-boundary theorem is their case split
+(`fn-proto-archive-command-cat-is-pinned`; one context, replaced by the
+two-context refinement when the first `:completed` or `:pin-or-completed`
+form lands). The restricted route (a session with a group-access rule,
+PRF-222) is always the reference walk over the projected pin, so the cost
+column states both routes and a `-cat` cost claim is never the restricted
+client's. The table below is written from the book
 (`tools/docs_check.py --write`) and checked by `make check`.
 
 [generated from books/protocol-table.lisp (the served columns); do not edit]
