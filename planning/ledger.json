@@ -197,6 +197,7 @@
     "books/identity-hex",
     "books/consumer-account-config-preparation",
     "books/consumer-account-config-posting-relation",
+    "books/control-visible-prefix-bound",
     "books/account-adoption-input-source",
     "books/account-adoption-turn-state",
     "books/page-read-binding-revision",
@@ -1712,6 +1713,8 @@
     "books/productive-contract",
     "books/productive-observer",
     "tests/acl2/productive-contract-tests",
+    "books/productive-transfer",
+    "tests/acl2/productive-transfer-tests",
     "tests/acl2/owner-numbering-tests",
     "books/number-durability",
     "books/number-durability-handles",
@@ -1885,6 +1888,8 @@
     "tests/acl2/arena-reader-pins-tests",
     "books/response-plan-pins",
     "tests/acl2/response-plan-pins-tests",
+    "books/feed-restart-domain",
+    "tests/acl2/feed-restart-domain-tests",
     "books/web-request",
     "tests/acl2/web-request-tests",
     "books/web-2047",
@@ -2315,8 +2320,8 @@
   ],
   "totals": {
     "books": 2762,
-    "books_in_root_closure": 2575,
-    "roots": 2310,
+    "books_in_root_closure": 2580,
+    "roots": 2315,
     "theorems": 37029,
     "functions": 23483,
     "assert_events": 25829,
@@ -17147,8 +17152,8 @@
     },
     {
       "book": "books/control-visible-prefix-bound.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 5,
       "functions": 0,
       "guards": {
@@ -19198,8 +19203,8 @@
     },
     {
       "book": "books/feed-restart-domain.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 1,
       "functions": 0,
       "guards": {
@@ -39059,8 +39064,8 @@
     },
     {
       "book": "books/productive-transfer.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 8,
       "functions": 1,
       "guards": {
@@ -62933,8 +62938,8 @@
     },
     {
       "book": "tests/acl2/feed-restart-domain-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 0,
       "guards": {
@@ -73984,8 +73989,8 @@
     },
     {
       "book": "tests/acl2/productive-transfer-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 7,
       "guards": {
@@ -116023,7 +116028,7 @@
       },
       {
         "book": "tests/acl2/feed-restart-domain-tests.lisp",
-        "line": 7,
+        "line": 6,
         "include": "../../books/feed-restart-domain",
         "included": "books/feed-restart-domain.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -120258,21 +120263,21 @@
       },
       {
         "book": "tests/acl2/productive-transfer-tests.lisp",
-        "line": 4,
+        "line": 3,
         "include": "../../books/productive-transfer",
         "included": "books/productive-transfer.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/productive-transfer-tests.lisp",
-        "line": 5,
+        "line": 4,
         "include": "owner-feed-tests",
         "included": "tests/acl2/owner-feed-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/productive-transfer-tests.lisp",
-        "line": 6,
+        "line": 5,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"

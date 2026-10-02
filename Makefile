@@ -208,6 +208,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/identity-hex \
 	books/consumer-account-config-preparation \
 	books/consumer-account-config-posting-relation \
+	books/control-visible-prefix-bound \
 	books/account-adoption-input-source \
 	books/account-adoption-turn-state \
 	books/page-read-binding-revision \
@@ -1723,6 +1724,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/productive-contract \
 	books/productive-observer \
 	tests/acl2/productive-contract-tests \
+	books/productive-transfer \
+	tests/acl2/productive-transfer-tests \
 	tests/acl2/owner-numbering-tests \
 	books/number-durability \
 	books/number-durability-handles \
@@ -1896,6 +1899,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/arena-reader-pins-tests \
 	books/response-plan-pins \
 	tests/acl2/response-plan-pins-tests \
+	books/feed-restart-domain \
+	tests/acl2/feed-restart-domain-tests \
 	books/web-request \
 	tests/acl2/web-request-tests \
 	books/web-2047 \

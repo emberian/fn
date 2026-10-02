@@ -1,4 +1,3 @@
-; UNHOOKED cert-roots (2026-10-02): out of the Makefile certify roots -- a Codex-era book that never certified and no image world includes: fn-pct-tick-offers-the-queued-article fails at dev adbf57435. The code stays; its completion is queued (build/coordinator/lanedumps/cert-roots.md).
 ; Productive outbound NNTP feed transitions (W6b).
 ; Host subjects: fn-own-feed-port-tick-peer in fn-owner-feed-tick, and
 ; fn-own-feed-port-observe-peer in fn-owner-feed-octets.

@@ -1,4 +1,3 @@
-; UNHOOKED cert-roots (2026-10-02): out of the Makefile certify roots -- a Codex-era book that never certified and no image world includes: fn-feed-restart-forgets-the-previous-clock-domain fails at dev adbf57435. The code stays; its completion is queued (build/coordinator/lanedumps/cert-roots.md).
 ; fn: the push feed's restart is a new clock domain (lane time-bars,
 ; 2026-09-28; PRF-385, HST-031; planning/design-time-model-2026-09-27.md
 ; section 4b).

@@ -11,8 +11,8 @@ stale. Counts describe artifacts, not coverage; see
 | Quantity | Count |
 | --- | --- |
 | Books read | 2762 |
-| Certification roots in the Makefile | 2310 |
-| Books inside the root closure | 2575 |
+| Certification roots in the Makefile | 2315 |
+| Books inside the root closure | 2580 |
 | `defthm` and `defthmd` events | 37029 |
 | `defun` events | 23483 |
 | Functions with verified guards | 3912 |
@@ -617,7 +617,7 @@ that `make certify` requests.
 | `books/control-served.lisp` | root | 39 | 16 | 1/0/14/1 | 0 | 0 | 2 |
 | `books/control-visible-effect.lisp` | closure | 7 | 10 | 0/0/10/0 | 0 | 0 | 0 |
 | `books/control-visible-indexed.lisp` | root | 31 | 8 | 0/2/6/0 | 0 | 0 | 1 |
-| `books/control-visible-prefix-bound.lisp` | - | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/control-visible-prefix-bound.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/control-visible.lisp` | root | 74 | 37 | 7/0/30/0 | 0 | 0 | 2 |
 | `books/crypto-attach.lisp` | root | 9 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/crypto-seam.lisp` | root | 19 | 14 | 0/0/10/4 | 0 | 0 | 0 |
@@ -691,7 +691,7 @@ that `make certify` requests.
 | `books/feed-live-carried.lisp` | closure | 22 | 21 | 21/0/0/0 | 0 | 0 | 0 |
 | `books/feed-pause.lisp` | root | 29 | 11 | 2/0/9/0 | 0 | 0 | 1 |
 | `books/feed-port-replay.lisp` | root | 11 | 4 | 0/0/4/0 | 0 | 0 | 0 |
-| `books/feed-restart-domain.lisp` | - | 1 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/feed-restart-domain.lisp` | root | 1 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/feed-totality.lisp` | closure | 8 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/feed-wire-input.lisp` | root | 3 | 23 | 23/0/0/0 | 0 | 0 | 1 |
 | `books/fixed-buffer-capacity.lisp` | closure | 2 | 7 | 7/0/0/0 | 0 | 0 | 0 |
@@ -1330,7 +1330,7 @@ that `make certify` requests.
 | `books/productive-read-credit.lisp` | closure | 1 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/productive-read-message-id.lisp` | closure | 24 | 1 | 0/1/0/0 | 0 | 0 | 1 |
 | `books/productive-read.lisp` | - | 8 | 2 | 0/2/0/0 | 0 | 0 | 0 |
-| `books/productive-transfer.lisp` | - | 8 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/productive-transfer.lisp` | root | 8 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/profile-limits.lisp` | closure | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/protocol-builders.lisp` | root | 82 | 7 | 0/1/6/0 | 0 | 0 | 2 |
 | `books/protocol-codes-rows.lisp` | root | 7 | 5 | 0/1/4/0 | 0 | 0 | 0 |
@@ -2175,7 +2175,7 @@ that `make certify` requests.
 | `tests/acl2/feed-link-backoff-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 15 | 0 | 0 |
 | `tests/acl2/feed-pause-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 17 | 0 | 0 |
 | `tests/acl2/feed-port-replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 1 | 0 |
-| `tests/acl2/feed-restart-domain-tests.lisp` | - | 0 | 0 | 0/0/0/0 | 10 | 0 | 0 |
+| `tests/acl2/feed-restart-domain-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 0 | 0 |
 | `tests/acl2/feed-totality-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 14 | 3 | 0 |
 | `tests/acl2/feed-wire-input-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 12 | 0 | 0 |
 | `tests/acl2/frame-buffer-tests.lisp` | root | 3 | 3 | 0/3/0/0 | 6 | 0 | 0 |
@@ -2579,7 +2579,7 @@ that `make certify` requests.
 | `tests/acl2/productive-read-credit-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/productive-read-message-id-tests.lisp` | root | 13 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/productive-read-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `tests/acl2/productive-transfer-tests.lisp` | - | 0 | 7 | 0/0/0/7 | 15 | 12 | 0 |
+| `tests/acl2/productive-transfer-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 15 | 12 | 0 |
 | `tests/acl2/profile-monotonicity-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 23 | 0 | 0 |
 | `tests/acl2/proto-adt-2-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 26 | 0 | 0 |
 | `tests/acl2/proto-adt-tests.lisp` | root | 0 | 6 | 0/0/3/3 | 21 | 0 | 0 |

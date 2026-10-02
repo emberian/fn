@@ -1,4 +1,3 @@
-; UNHOOKED cert-roots (2026-10-02): out of the Makefile certify roots -- a Codex-era book that never certified and no image world includes: fn-ctl-archive-entries-below-record-frontier fails at dev adbf57435. The code stays; its completion is queued (build/coordinator/lanedumps/cert-roots.md).
 ; The captured ready Store's actual replay relation gives the strict-past
 ; premise of the existing later-configuration withdrawal law. Proof-only:
 ; neither a served history scan nor a replacement source predicate.
