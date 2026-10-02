@@ -2343,7 +2343,7 @@
     "export_hygiene_warnings": 402,
     "enabled_projection_warnings": 79,
     "teeth_form_warnings": 282,
-    "include_hygiene_warnings": 3605,
+    "include_hygiene_warnings": 3609,
     "host_names_warnings": 3152,
     "hand_written_record_warnings": 19
   },
@@ -115246,6 +115246,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/consumer-account-config-owner-lineage-tests.lisp",
+        "line": 6,
+        "include": "consumer-account-config-commit-tests",
+        "included": "tests/acl2/consumer-account-config-commit-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/consumer-account-config-posting-relation-tests.lisp",
         "line": 2,
         "include": "../../books/consumer-account-config-posting-relation",
@@ -115264,6 +115271,20 @@
         "line": 2,
         "include": "../../books/consumer-account-private-frame",
         "included": "books/consumer-account-private-frame.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/consumer-account-private-frame-tests.lisp",
+        "line": 4,
+        "include": "consumer-account-config-commit-tests",
+        "included": "tests/acl2/consumer-account-config-commit-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/consumer-account-transaction-driver-tests.lisp",
+        "line": 3,
+        "include": "consumer-account-config-commit-tests",
+        "included": "tests/acl2/consumer-account-config-commit-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -115306,6 +115327,13 @@
         "line": 16,
         "include": "../../books/consumer-bound",
         "included": "books/consumer-bound.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/consumer-configured-authority-finish-tests.lisp",
+        "line": 5,
+        "include": "consumer-account-config-commit-tests",
+        "included": "tests/acl2/consumer-account-config-commit-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
