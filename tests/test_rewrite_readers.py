@@ -40,3 +40,27 @@ class InteropCorpus(Sandbox):
             self.assertNotEqual(interop.main(['unused-library']), 0)
         self.assertIn('EvidenceUnavailable', err.getvalue())
         self.assertIn(rel, err.getvalue())
+
+
+class CostInputs(Sandbox):
+    def test_indexed_rankings_and_manifest_in_all_four_branches(self):
+        import tau_cost
+        import rule_cost
+        rank = 'planning/evidence/ranking.json'
+        manifest = 'planning/evidence/manifest.json'
+        payload = {'books': [], 'runes': []}
+        self.write(rank, json.dumps(payload).encode())
+        self.write(manifest, b'{"book_results":{}}')
+        store.put(self.root, [rank, manifest])
+        (self.root / rank).unlink()
+        (self.root / manifest).unlink()
+        with mock.patch.object(tau_cost, 'ROOT', self.root), mock.patch.object(rule_cost, 'ROOT', self.root), mock.patch.object(tau_cost, 'apply', return_value=[]) as apply, mock.patch.object(tau_cost, 'repair', return_value=[]) as repair, mock.patch.object(tau_cost, 'rank', return_value={}):
+            self.assertEqual(tau_cost.main(['apply', str(self.root / rank)]), 0)
+            apply.assert_called_once_with(payload, 1.0, 0.2)
+            self.assertEqual(tau_cost.main(['repair', str(self.root / rank), 'unused.log']), 0)
+            repair.assert_called_once_with({}, payload)
+            self.assertEqual(rule_cost.main(['withdraw', str(self.root / rank), '--dry-run', '--enable-in', 'failed', '--manifest', str(self.root / manifest)]), 0)
+            self.write('local.json', json.dumps(payload).encode())
+            self.assertEqual(rule_cost.main(['withdraw', str(self.root / 'local.json'), '--dry-run']), 0)
+            self.write(rank, b'bad shadow')
+            self.assertNotEqual(tau_cost.main(['apply', str(self.root / rank)]), 0)

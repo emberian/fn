@@ -503,6 +503,26 @@ def read_text(root: Path, rel: str | Path) -> str:
     return read_bytes(root, rel).decode("utf-8")
 
 
+def read_input_text(root: Path, path: str | Path) -> str:
+    """CLI input: logical evidence names use the store, ordinary files stay local."""
+    path = Path(path)
+    # Normalize spelling lexically: resolving a local symlink could hide the
+    # indexed name behind a shadow outside the tree.
+    absolute = Path(os.path.abspath(path))
+    name = os.path.normpath(path.as_posix())
+    for base in (root.absolute(), root.resolve()):
+        try:
+            name = absolute.relative_to(base).as_posix()
+            break
+        except ValueError:
+            pass
+    if name.startswith(EVIDENCE_REL + "/"):
+        name = os.path.normpath(name)
+        if name.startswith(EVIDENCE_REL + "/"):
+            return read_text(root, name)
+    return path.read_text(encoding="utf-8")
+
+
 def glob(root: Path, pattern: str) -> list[str]:
     """Logical paths matching `pattern` (fnmatch, `*` crosses no `/`)."""
     def matches(path: str) -> bool:
