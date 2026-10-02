@@ -209,12 +209,10 @@
                               (theory 'minimal-theory))
            :use ((:instance fn-owner-retain-statep-implies-lgoc (state state))))))
 
-; fn-owner-io under its guard's safe-observation conjunct (the io-safep gap,
-; closed in the guard): each arm is a configured-owner keystone.
+; fn-owner-io: an unsafe observation is refused in the body (state
+; unchanged); each safe arm is a configured-owner keystone.
 (defthm fn-owner-io-preserves-retain-state
-  (implies (and (fn-owner-retain-statep state)
-                (fn-owner-io-safep (fn-sbud-oc-store (fn-owner-ocfg state))
-                                   operation result))
+  (implies (fn-owner-retain-statep state)
            (fn-owner-retain-statep (mv-nth 2 (fn-owner-io operation result state))))
   :hints (("Goal" :in-theory '(fn-owner-io fn-owner-io-safep fn-sbud-oc-store
                                mv-nth nth zp car-cons cdr-cons
@@ -227,3 +225,19 @@
                             (oc (fn-owner-ocfg state)))
                  (:instance fn-lgoc-rcon-io-preserves-invariant
                             (oc (fn-owner-ocfg state)))))))
+
+; The refusal arm (teeth): an unsafe observation answers :unsafe-observation
+; and returns the state it was given, so the refusal is distinct from every
+; phase word the step answers and writes nothing.  Both arms are inhabited:
+; a reservation is safe on any store, and an operation the file route does
+; not name is unsafe on any store.
+(defthm fn-owner-io-refuses-an-unsafe-observation
+  (implies (not (fn-owner-io-safep (fn-sbud-oc-store (fn-owner-ocfg state))
+                                   operation result))
+           (and (equal (mv-nth 1 (fn-owner-io operation result state))
+                       :unsafe-observation)
+                (equal (mv-nth 2 (fn-owner-io operation result state)) state)))
+  :hints (("Goal" :in-theory '(fn-owner-io mv-nth nth zp car-cons cdr-cons
+                               (:executable-counterpart zp)))))
+(assert-event (fn-owner-io-safep nil :log-reserve :ok))
+(assert-event (not (fn-owner-io-safep nil :no-such-operation :ok)))
