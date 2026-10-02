@@ -42,7 +42,7 @@
 (defun fnn-login-bindings-control-handle (service frame)
   (cond ((and (typep frame 'fnn-octets)
               (fnn-core 'fn-pinv-host-bindings-request-decode
-                        (fnn-octet-list frame)))
+                        (fnn-control-frame-octet-list frame)))
          (fnn-login-bindings-owner-reload service))
         (*fnn-login-bindings-next-handler*
          (funcall *fnn-login-bindings-next-handler* service frame))

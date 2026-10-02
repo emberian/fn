@@ -266,7 +266,7 @@ the enrolment follows it."
 (defvar *fnn-pinv-next-handler* *fnn-hybrid-control-handler*)
 
 (defun fnn-pinv-control-handle (service frame)
-  (let* ((octets (and (typep frame 'fnn-octets) (fnn-octet-list frame)))
+  (let* ((octets (and (typep frame 'fnn-octets) (fnn-control-frame-octet-list frame)))
          (issue (and octets (fnn-core 'fn-pinv-host-request-decode
                                       (fnn-core 'fn-pinv-host-kind :issue)
                                       octets)))
