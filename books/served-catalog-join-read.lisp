@@ -289,8 +289,13 @@
                 (fn-scar-view-indexedp (fn-ocfg-owner oc))
                 (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
                 (natp i) (natp end))
-           (equal (fn-scr-ocfg-read-span oc id i end cache fn-octets fn-arena fn-cat)
-                  (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))
+           ;; Since join-f2-12 the chain's equation is fn-scr-tls-agrees:
+           ;; equal consumed count, owner and repin, the effects equal after
+           ;; fn-ovw-expand (an OVER range answers a plan cursor where the
+           ;; reference answers its lines).
+           (fn-scr-tls-agrees
+            (fn-scr-ocfg-read-span oc id i end cache fn-octets fn-arena fn-cat)
+            (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))
   :hints (("Goal" :in-theory (union-theories '() (theory 'minimal-theory))
            :use ((:instance fn-scj-invp-gives-owner-catalogp (o (fn-ocfg-owner oc)))
                  (:instance fn-scr-ocfg-read-span-is-reference-under-ocl-relation)))))
