@@ -56,7 +56,10 @@
                      (fnn-owner-connection-fault-cause condition)))))
 
 (defstruct (fnn-owner-cold-read (:constructor %make-fnn-owner-cold-read))
-  token worker prev next queuedp settledp outcome)
+  token worker prev next queuedp settledp outcome
+  ;; T: issued by the unfunded cold line (host/native/extent.lisp
+  ;; fnn-extent-issue-direct), settled by fn-pio-direct-settle, no ledger.
+  directp)
 
 ;;; Retained admission envelope. Every phase/verdict is an opaque ACL2
 ;;; result; these fields retain I/O references across unlocked yields.
@@ -4208,16 +4211,18 @@ CLOSING STARTTLS CONSUMED)."
 
 (defun fnn-owner-cold-issue-locked (service cid entry)
   "Validated descriptor capture, owner mutex held, before retirement.
-Stage 0: with no funded pool the miss is :direct, the 7aad444ce per-miss
-read (fnn-owner-cold-line-direct), never an admission refusal.  That read
-holds no retirement pin across its off-lock pread: Codex r31 F1, a known
-served defect owned by the COLD-READ-OWNERSHIP lane (see the direct line)."
-  (unless (fnn-extent-pool-funded-p)
-    (return-from fnn-owner-cold-issue-locked :direct))
-  (multiple-value-bind (token word worker) (apply #'fnn-extent-issue-read cid entry)
-    (if (and word (not (eq word :admitted))) word
-      (fnn-owner-cold-enqueue-locked
-       service (%make-fnn-owner-cold-read :token token :worker worker)))))
+The issued row (the read's pin on its file incarnation) and its worker are
+bound here, before the mutex that excludes retirement is released: by the
+funded pool's admission, or, while the pool is unfunded, by
+fn-pio-direct-admit (host/native/extent.lisp fnn-extent-issue-direct; lane
+cold-read-ownership, Codex r31 F1/F2).  A refusal is ACL2's word."
+  (let ((directp (not (fnn-extent-pool-funded-p))))
+    (multiple-value-bind (token word worker)
+        (apply (if directp #'fnn-extent-issue-direct #'fnn-extent-issue-read) cid entry)
+      (if (and word (not (eq word :admitted))) word
+        (fnn-owner-cold-enqueue-locked
+         service (%make-fnn-owner-cold-read :token token :worker worker
+                                            :directp (and token directp)))))))
 
 (declaim (notinline fnn-owner-cold-transfer-result-locked))
 (defun fnn-owner-cold-transfer-result-locked (read)
@@ -4225,6 +4230,7 @@ served defect owned by the COLD-READ-OWNERSHIP lane (see the direct line)."
 vector or discard it, then clear its slot. Return no vector/result-container
 alias; the caller may refund only AFTER this activation has returned."
   (let* ((token (fnn-owner-cold-read-token read))
+         (directp (fnn-owner-cold-read-directp read))
          (worker (fnn-owner-cold-read-worker read))
          (result (and worker (fnn-cold-worker-result worker)))
          (condition (and (typep result 'serious-condition) result))
@@ -4234,17 +4240,27 @@ alias; the caller may refund only AFTER this activation has returned."
          (mode (fnn-developer-selector "FN_NATIVE_PAGE_IO_RESULT"))
          (answer :stale) (settled-io nil) (cachedp nil) (evicted nil))
     (when (equal mode "stale")
-      (fnn-err "PAGE-IO stale answer=~s" (fnn-extent-complete-read nil :ok)))
-    (if token (multiple-value-setq (answer settled-io) (fnn-extent-complete-read token verdict))
-      (setq answer :publish))
+      (fnn-err "PAGE-IO stale answer=~s"
+               (if directp (fnn-extent-direct-settle worker nil :ok)
+                 (fnn-extent-complete-read nil :ok))))
+    (cond ((null token) (setq answer :publish))
+          ;; The unfunded line settles the row and idles the worker in one
+          ;; ACL2 transition (fn-pio-direct-settle); the vector stays in
+          ;; OCTETS for the cache below.
+          (directp (multiple-value-setq (answer settled-io)
+                     (fnn-extent-direct-settle worker token verdict)))
+          (t (multiple-value-setq (answer settled-io) (fnn-extent-complete-read token verdict))))
     (when hold (fnn-err "PAGE-IO settled token=~s answer=~s" token answer))
     (when (equal mode "duplicate")
-      (fnn-err "PAGE-IO duplicate answer=~s" (fnn-extent-complete-read token verdict)))
+      (fnn-err "PAGE-IO duplicate answer=~s"
+               (if directp (fnn-extent-direct-settle worker token verdict)
+                 (fnn-extent-complete-read token verdict))))
     (when (and token (eq answer :publish))
       (destructuring-bind (id cid file eoff elen trailer) token
         (declare (ignore id cid))
+        ;; An unfunded entry carries no ledger charge to release on eviction.
         (multiple-value-setq (cachedp evicted)
-          (fnn-extent-cache-store file eoff elen trailer octets token))))
+          (fnn-extent-cache-store file eoff elen trailer octets (and (not directp) token)))))
     ;; No caller has received RESULT: readiness is a predicate, never a
     ;; borrowing getter. An exceptional transfer keeps the slot and charge.
     (when worker (setf (fnn-cold-worker-result worker) nil))
@@ -4265,7 +4281,8 @@ before exact settlement releases a charge. Owner->extent serializes it."
       (fnn-owner-cold-remove-locked service read)
       (when token
         (when (eq answer :stale) (fnn-fault "returned cold job lost its exact I/O owner"))
-        (fnn-extent-executor-commit (fnn-owner-cold-read-worker read) settled-io token cachedp))
+        (unless (fnn-owner-cold-read-directp read)
+          (fnn-extent-executor-commit (fnn-owner-cold-read-worker read) settled-io token cachedp)))
       (setf (fnn-owner-cold-read-settledp read) t
             (fnn-owner-cold-read-worker read) nil)
       (fnn-extent-cache-release evicted))
@@ -4376,51 +4393,8 @@ A refusal or timeout never authorizes releasing the physical I/O lease."
                    (t (fnn-fault "owner returned a malformed dependency step")))))
       (fnn-extent-cancel-read token))))
 
-;;; Stage 0 (planning/design-store-representation-2026-10-01.md section 4):
-;;; the 7aad444ce cold line, taken while the page pool is unfunded
-;;; (host/native/extent.lisp fnn-extent-pool-open-context): one thread per
-;;; miss reads the entry into the realizer's cache (fnn-extent-prefetch-direct,
-;;; its pread off every lock), waited for at most ACL2's dependency deadline
-;;; (books/owner-time-bars.lisp fn-otb-dependency-step); :serve runs the
-;;; read again, warm; :unavailable answers the line (fnn-owner-unavailable-
-;;; line).  Other connections are served meanwhile.
-;;; KNOWN SERVED DEFECTS (Codex r31 F1/F2, present in the 7aad444ce code this
-;;; restores; owner: the COLD-READ-OWNERSHIP lane, WAVE-STATE-2026-10-01):
-;;; F1 the direct read holds no issued row or pin on its file generation, so
-;;; retirement can close the fd during the off-lock pread (a pread on a closed
-;;; or reused fd, then a late cache insert for a retired file); F2 a :wait
-;;; that times out leaves the thread running unjoined -- one unbounded thread
-;;; and buffer per retry while a read stalls, and a fault it raises after the
-;;; line answered is never observed.  The fix is a pin held until the I/O
-;;; completes, a bounded worker pool, and a late completion for a retired
-;;; generation dropped without insert.
-(defun fnn-owner-cold-line-direct (service cid incoming socket class peerp entry)
-  (let* ((since (fnn-owner-monotonic-ms))
-         (limit nil)
-         (thread (sb-thread:make-thread
-                  (lambda ()
-                    (handler-case (apply #'fnn-extent-prefetch-direct entry)
-                      (serious-condition (c) c)))
-                  :name "fn cold extent")))
-    (loop
-      (let* ((now (fnn-owner-monotonic-ms))
-             (done (not (sb-thread:thread-alive-p thread)))
-             (decision (fnn-core 'fn-otb-dependency-step since now limit done)))
-        (cond ((eq decision :serve)
-               (let ((got (sb-thread:join-thread thread :default nil)))
-                 (when (typep got 'serious-condition) (error got)))
-               (return (fnn-owner-handle-chunk service cid incoming socket class peerp)))
-              ((eq decision :unavailable)
-               (return (fnn-owner-unavailable-line service cid incoming since now limit class)))
-              ((and (consp decision) (eq (car decision) :wait)
-                    (integerp (second decision)) (plusp (second decision)))
-               (sb-thread:join-thread thread :default nil :timeout (/ (second decision) 1000)))
-              (t (fnn-fault "owner returned a malformed dependency step")))))))
-
 (defun fnn-owner-cold-line (service cid incoming socket class peerp entry read)
-  (when (eq read :direct)
-    (return-from fnn-owner-cold-line
-      (fnn-owner-cold-line-direct service cid incoming socket class peerp entry)))
+  (declare (ignore entry))
   (multiple-value-bind (word since now limit) (fnn-owner-cold-await service read)
     (case word
       (:serve (fnn-owner-handle-chunk service cid incoming socket class peerp))
@@ -6112,6 +6086,10 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                   ;; Before any client/module starts, retire startup-only
                   ;; cache borrows; absent policy never gets a warm bypass.
                   (fnn-extent-end-recovery-cache)
+                  ;; The unfunded cold line's persistent workers, before any
+                  ;; read is served (host/native/extent.lisp
+                  ;; fnn-extent-direct-start; joined by fnn-owner-cold-shutdown).
+                  (fnn-extent-direct-start)
                   ;; Lane time-model-2: the decision journal
                   ;; (books/owner-time-journal.lisp), a segment per run
                   ;; opened by its start entry; the served reads' clock

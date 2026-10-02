@@ -957,6 +957,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/page-file-lease-tests \
 	books/page-read-executor \
 	tests/acl2/page-read-executor-tests \
+	books/page-read-direct \
+	tests/acl2/page-read-direct-tests \
 	host/page-executor-host \
 	host/page-file-lease-host \
 	host/page-window-lease-host \

@@ -536,7 +536,7 @@ THREADS x (STACK + <!--limit:thread-runtime-mib-->4<!--/limit--> MiB; measured 2
 THREADS the <!--limit:fixed-threads-->12<!--/limit--> fixed threads, the <!--limit:mux-loops-->2<!--/limit--> I/O loops that serve every connection
 (a connection is no thread since connection-multiplexing; the reservation
 counted one per `max-connections` until lane reservation-after-flip) and the
-<!--limit:control-clients-->16<!--/limit--> control clients: <!--limit:fixed-threads + mux-loops + control-clients-->30<!--/limit-->; STACK a constant <!--limit:stack-kib,-->1,024<!--/limit--> KiB, seven times the 142 KiB
+<!--limit:control-clients-->16<!--/limit--> control clients and the <!--limit:cold-workers-->4<!--/limit--> cold-read workers (books/page-read-direct.lisp): <!--limit:fixed-threads + mux-loops + control-clients + cold-workers-->34<!--/limit-->; STACK a constant <!--limit:stack-kib,-->1,024<!--/limit--> KiB, seven times the 142 KiB
 the node needs whatever the article since the served path's per-line
 recursions became loops (lane served-line-iterative, PRF-218; before, the
 need grew by 32 octets per line and this figure carried a per-line term). A total the machine cannot hold is refused by name

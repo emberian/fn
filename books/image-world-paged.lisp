@@ -223,6 +223,7 @@
 (include-book "incoming-copy-stobj")
 (include-book "../host/page-read-host")
 (include-book "page-read-executor")
+(include-book "page-read-direct")
 (include-book "page-file-lease")
 (include-book "page-window-lease")
 (include-book "page-window-executor")

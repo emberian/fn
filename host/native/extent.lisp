@@ -212,9 +212,11 @@ FN_NATIVE_EXTENT_CACHE_TEST_OFF=1 (the matched measurement's cache-off arm)."
 ;;; still issues every file incarnation (fn-pio-file-issue), registration is
 ;;; :unfunded-offline, a miss is read and cached directly
 ;;; (fnn-extent-entry-direct's :offline arm) under the realizer's cache bound
-;;; (fn-arx-read-cache-entries), and the served cold line is the 7aad444ce
-;;; per-miss read (fnn-extent-prefetch-direct, host/native/owner.lisp
-;;; fnn-owner-cold-line-direct).  The cold executor, admission and
+;;; (fn-arx-read-cache-entries), and the served cold line issues each miss to
+;;; a bounded set of persistent workers under an fn-pio row that pins its file
+;;; incarnation until the worker returns (fnn-extent-issue-direct, books/
+;;; page-read-direct.lisp; lane cold-read-ownership replaced the 7aad444ce
+;;; thread per miss, Codex r31 F1/F2).  Admission, the ledger and its
 ;;; settlement stay in this module, entered only once the pool is funded
 ;;; (fnn-extent-pool-funded-p).
 (defun fnn-extent-pool-open-context ()
@@ -556,7 +558,11 @@ No cancellation, timeout or thread termination releases a job or baseline."
       (sb-thread:condition-broadcast (fnn-cold-worker-ready worker))))
   (dolist (worker *fnn-cold-workers*)
     (when (fnn-cold-worker-thread worker)
-      (sb-thread:join-thread (fnn-cold-worker-thread worker) :default nil))))
+      (sb-thread:join-thread (fnn-cold-worker-thread worker) :default nil)))
+  ;; Every worker has actually returned and exited: no slot can be offered
+  ;; again (fnn-extent-direct-start may install a fresh set in a later run).
+  (sb-thread:with-mutex (*fnn-extent-lock*)
+    (setq *fnn-cold-free* nil *fnn-cold-workers* nil)))
 
 (defun fnn-extent-executor-enqueue (worker row token)
   "Extent lock held; ACL2 already assigned this exact funded physical slot."
@@ -743,59 +749,6 @@ for the core resource ledger. No timeout or cancellation invokes this."
       (if (member (first entry) files) (push entry drop) (push entry keep)))
     (setq *fnn-extent-cache* (nreverse keep))
     (fnn-extent-cache-forget (nreverse drop))))
-
-;;; The entry a cold span needs, read into the cache (a store fault is
-;;; signalled as always: the caller re-signals it in the owner's thread).
-;;; Called OFF the owner mutex, from a thread of its own (the 7aad444ce
-;;; fnn-extent-prefetch; stage 0, see fnn-extent-pool-open-context).  The
-;;; pread runs WITHOUT the realizer's lock, so a stalled disk holds only this
-;;; thread: cached reads on every other connection proceed (the lock is taken
-;;; to find the descriptor, and again to decide the entry -- ACL2's verdict
-;;; uses the realizer's one buffer -- and keep it).  The entry is decided
-;;; against the descriptor's TRAILER (fnn-extent-entry-verdict) and cached
-;;; under that identity, exactly as fnn-extent-entry-direct decides and
-;;; caches it in the pool's :offline context.
-(defun fnn-extent-prefetch-direct (file eoff elen trailer)
-  (let ((fd nil)
-        (octets (make-array (+ elen 32) :element-type '(unsigned-byte 8))))
-    (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
-      (when (find-if (lambda (e) (and (eql (first e) file) (eql (second e) eoff)
-                                      (eql (third e) elen) (eql (fourth e) trailer)))
-                     *fnn-extent-cache*)
-        (return-from fnn-extent-prefetch-direct t))
-      (setq fd (gethash file *fnn-extent-fds*))
-      (incf (second *fnn-extent-stats*))
-      (unless fd
-        (incf (third *fnn-extent-stats*))
-        (error 'fnn-extent-fault
-               :message (format nil "arena-extent-read: no durable file ~a is registered" file))))
-    (let ((got (fnn-extent-pread fd octets eoff)))
-      (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
-        (unless (= got (+ elen 32))
-          (incf (third *fnn-extent-stats*))
-          (error 'fnn-extent-fault
-                 :message (format nil "arena-extent-read: ~a holds fewer than ~a octets"
-                                  (fnn-extent-where file eoff) (+ elen 32))))
-        (let ((verdict (fnn-extent-entry-verdict octets elen trailer)))
-          (unless (eq verdict :ok)
-            (incf (third *fnn-extent-stats*))
-            (error 'fnn-extent-fault
-                   :message
-                   (case verdict
-                     (:trailer
-                      (format nil "arena-extent-trailer: the entry at ~a is not the extent's: its recorded trailer is not the descriptor's"
-                              (fnn-extent-where file eoff)))
-                     (:digest
-                      (format nil "arena-extent-digest: the entry at ~a does not match its trailer"
-                              (fnn-extent-where file eoff)))
-                     (t
-                      (format nil "arena-extent-verdict: ACL2 answered ~s for the entry at ~a"
-                              verdict (fnn-extent-where file eoff)))))))
-        (multiple-value-bind (cachedp evicted)
-            (fnn-extent-cache-store file eoff elen trailer octets)
-          (declare (ignore cachedp))
-          (fnn-extent-cache-release evicted))
-        t))))
 
 (defun fnn-extent-end-recovery-cache ()
   "Before serving, drop startup-only borrows and every direct/offline cache.
@@ -1004,6 +957,79 @@ only observed worker relinquishment allows owner settlement/publication."
           (list (if (= got (+ elen 32))
                     (fnn-extent-entry-verdict octets elen trailer) :read)
                 octets))))))
+
+;;; THE UNFUNDED COLD LINE (lane cold-read-ownership; Codex r31 F1/F2;
+;;; books/page-read-direct.lisp).  While the page pool runs in its :offline
+;;; context the served cold line uses the same issued rows, persistent
+;;; workers and owner settlement as the funded pool, without the ledger:
+;;; fn-pio-direct-admit binds an idle worker to an fn-pio row naming the file
+;;; incarnation, kept in *fnn-extent-issued* until the worker ACTUALLY
+;;; returns, so fnn-extent-close (fn-pio-file-clear-p) never closes the
+;;; descriptor under its pread; a timeout only cancels the row
+;;; (fnn-extent-cancel-read); a miss with every worker busy is refused by
+;;; name (:read-resources-unavailable: the 403 of books/owner-resource-line.lisp),
+;;; never given a thread; fn-pio-direct-settle
+;;; settles once (:publish, :cancelled, (:fault V) or :stale).  The worker
+;;; count is ACL2's (fn-pio-direct-workers, a profile-limits row the
+;;; launcher's thread reservation counts).
+(defvar *fnn-extent-direct-next* nil)
+;; guarded-by: *fnn-extent-lock* (the direct read counter, advanced only by
+;; fn-pio-direct-admit)
+
+(defun fnn-extent-direct-start ()
+  "Before serving: install the unfunded cold line's persistent workers, once
+per run, unless the funded pool already started its executor."
+  (unless (or *fnn-cold-workers* (fnn-extent-pool-funded-p))
+    (let ((workers (fnn-core 'fn-pio-direct-workers)))
+      (unless (and (integerp workers) (plusp workers))
+        (fnn-fault "owner returned a malformed cold worker count"))
+      (fnn-extent-executor-start workers))))
+
+(defun fnn-extent-issue-direct (cid file eoff elen trailer)
+  "Owner mutex held (retirement excluded), unfunded pool: issue the read's
+row and bind an idle worker before the mutex is released.  NIL: warm.
+Otherwise (values TOKEN WORD WORKER): WORD :admitted, or ACL2's refusal."
+  (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+    (let ((mode (fnn-core 'fn-pxe-cache-mode (plusp (fnn-extent-cache-limit)))))
+      (unless (eq mode :ready) (return-from fnn-extent-issue-direct (values nil mode nil))))
+    (when (find-if (lambda (e) (and (eql (first e) file) (eql (second e) eoff)
+                                   (eql (third e) elen) (eql (fourth e) trailer)))
+                  *fnn-extent-cache*)
+      (return-from fnn-extent-issue-direct nil))
+    (unless (gethash file *fnn-extent-fds*)
+      (error 'fnn-extent-fault
+             :message (format nil "arena-extent-read: no durable file ~a is registered" file)))
+    (let ((worker (and (not *fnn-cold-stopping*) *fnn-cold-free*)))
+      (destructuring-bind (word next token row worker-row)
+          (fnn-call 'fn-pio-direct-admit *fnn-extent-direct-next* cid file eoff elen trailer
+                    (and worker (fnn-cold-worker-row worker)))
+        (unless (eq word :admitted)
+          ;; Every worker busy is ACL2's named refusal; any other word means
+          ;; the host offered a row ACL2 does not recognize as idle and fresh.
+          (unless (eq word :read-resources-unavailable)
+            (fnn-fault (format nil "cold worker binding refused: ~a" word)))
+          (return-from fnn-extent-issue-direct (values nil word nil)))
+        (setq *fnn-extent-direct-next* next)
+        (setf (gethash token *fnn-extent-issued*) row)
+        (values token :admitted (fnn-extent-executor-enqueue worker worker-row token))))))
+
+(defun fnn-extent-direct-settle (worker token verdict)
+  "Owner and extent locks held, WORKER observed returned: ACL2's settlement
+of the issued row and the worker together.  (values ANSWER SETTLED-ROW).
+Anything but :stale removes the row (the file pin) and idles the worker."
+  (destructuring-bind (answer row worker-row)
+      (fnn-call 'fn-pio-direct-settle (gethash token *fnn-extent-issued*)
+                (fnn-cold-worker-row worker) token verdict)
+    (unless (eq answer :stale)
+      (remhash token *fnn-extent-issued*)
+      (setf (fnn-cold-worker-row worker) worker-row
+            (fnn-cold-worker-token worker) nil
+            (fnn-cold-worker-phase worker) :idle)
+      (when (and (not *fnn-cold-stopping*)
+                 (sb-thread:thread-alive-p (fnn-cold-worker-thread worker)))
+        (setf (fnn-cold-worker-next worker) *fnn-cold-free*
+              *fnn-cold-free* worker)))
+    (values answer row)))
 
 ;;; The realizer (A-DURABLE-EXTENT's constrained function), raw and *1*.
 ;;; The descriptor's guard (books/payload-arena-extent-logic.lisp

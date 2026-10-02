@@ -96,10 +96,15 @@
   (declare (xargs :guard t))
   *fn-heap-mux-loops*)
 
+;; The unfunded cold line's persistent read workers (books/page-read-direct.lisp
+;; fn-pio-direct-workers, the same row) are threads of the node too: before
+;; lane cold-read-ownership each cold miss started an uncounted thread.
+(defconst *fn-heap-cold-workers* (fn-profile-limit :cold-workers))
+
 (defun fn-heap-thread-count (connections)
   (declare (xargs :guard t) (ignore connections))
   (+ *fn-heap-mux-loops* (fn-native-control-max-active-clients)
-     *fn-heap-fixed-threads*))
+     *fn-heap-fixed-threads* *fn-heap-cold-workers*))
 
 (defun fn-heap-reservation-octets (mb core stack-kib threads)
   (declare (xargs :guard t))

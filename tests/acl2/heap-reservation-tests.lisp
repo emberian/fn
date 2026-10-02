@@ -50,8 +50,8 @@
 ; reservation-figure): heap-figure's heap at the preset's bounds, 1,572 MB
 ; on this core since lane heap-bounds derived the records' term from the
 ; profile's limits (929 MB before, with the 12 KiB record constant that
-; long headers exceeded), and 30 threads -- the
-; 12 fixed, the 2 I/O loops, the 16 control clients -- of a 1 MiB stack
+; long headers exceeded), and 34 threads -- the
+; 12 fixed, the 2 I/O loops, the 16 control clients, the 4 cold-read workers -- of a 1 MiB stack
 ; each, whatever the connections (since connection-multiplexing a
 ; connection is no thread; the reservation counted 60 before this lane).
 ; On OpenBSD's 1,536 MiB datasize the preset's full store fits (994 MB
@@ -61,18 +61,18 @@
 ; judgement).
 (defconst *hrt-4096* (list (* 4096 *fn-heap-mib*)))
 (assert! (equal (fn-heap-stack-kib *fn-heap-small-profile*) 1024))
-(assert! (equal (fn-heap-thread-count 32) 30))
-(assert! (equal (fn-heap-thread-count 0) 30))
+(assert! (equal (fn-heap-thread-count 32) 34))
+(assert! (equal (fn-heap-thread-count 0) 34))
 (assert! (equal (fn-heap-reserve-decide *fn-heap-small-profile* *hrt-core* *hrt-nursery*
                                         *hrt-4096* 32)
-                '(:heap 662 "small" 4096 1024 30)))
+                '(:heap 662 "small" 4096 1024 34)))
 (assert! (equal (car (fn-heap-reserve-decide *fn-heap-small-profile* *hrt-core*
                                              *hrt-nursery* (list *hrt-datasize*) 32))
                 :heap))
 (assert! (equal (fn-heap-reserve-full-store-decide *fn-heap-small-profile* *hrt-core*
                                                   *hrt-nursery* (list *hrt-datasize*) 32)
-                '(:heap 662 "small" 1536 1024 30)))
-(assert! (<= (fn-heap-reservation-octets 660 *hrt-core* 1024 30)
+                '(:heap 662 "small" 1536 1024 34)))
+(assert! (<= (fn-heap-reservation-octets 660 *hrt-core* 1024 34)
              *hrt-datasize*))
 
 ; The threads push it past a machine the heap alone fits.
@@ -82,7 +82,7 @@
 (assert! (equal (fn-heap-reserve-decide *fn-heap-small-profile* *hrt-core* *hrt-nursery*
                                         (list (* 800 *fn-heap-mib*)) 32)
                 (list :refused :machine-cannot-hold-threads
-                      (fn-heap-mb-of (fn-heap-reservation-octets 662 *hrt-core* 1024 30))
+                      (fn-heap-mb-of (fn-heap-reservation-octets 662 *hrt-core* 1024 34))
                       800)))
 
 ; The default profile's 16 MiB article: the same stack; heap-figure refuses
@@ -155,7 +155,7 @@
 ; The refusal is exact at the boundary: the machine exactly the reservation
 ; is accepted, one octet less is refused.
 (defconst *hrt-exact*
-  (fn-heap-reservation-octets 662 *hrt-core* 1024 30))
+  (fn-heap-reservation-octets 662 *hrt-core* 1024 34))
 (assert! (equal (car (fn-heap-reserve-decide *fn-heap-small-profile* *hrt-core*
                                              *hrt-nursery* (list *hrt-exact*) 32))
                 :heap))
@@ -908,14 +908,14 @@
 (assert! (equal (fn-heap-reserve-operation-decide :run *fn-heap-small-profile* *hrt-core*
                                                   *hrt-nursery* (list *hrt-datasize*) 32
                                                   '(0 . 0))
-                '(:heap 520 "small" 1536 1024 30)))
+                '(:heap 520 "small" 1536 1024 34)))
 (assert! (equal (car (fn-heap-reserve-operation-decide :run *fn-heap-small-profile*
                                                        *hrt-core* *hrt-nursery*
                                                        (list *hrt-datasize*) 32 nil))
                 :heap))
 (assert! (equal (fn-heap-reserve-operation-decide :run *fn-heap-small-profile* *hrt-core*
                                                   *hrt-nursery* *hrt-2g* 32 '(0 . 0))
-                '(:heap 520 "small" 2048 1024 30)))
+                '(:heap 520 "small" 2048 1024 34)))
 (assert! (equal (car (fn-heap-reserve-operation-decide :run *fn-heap-small-profile*
                                                        *hrt-core* *hrt-nursery*
                                                        *hrt-2g* 32 nil))
@@ -923,16 +923,16 @@
 (defconst *hrt-2200* (list (* 2200 *fn-heap-mib*)))
 (assert! (equal (fn-heap-reserve-operation-decide :reclaim *fn-heap-small-profile* 195856696
                                                   *hrt-nursery* *hrt-2200* 0 nil)
-                '(:heap 1843 "small" 2200 1024 30)))
+                '(:heap 1843 "small" 2200 1024 34)))
 (assert! (equal (fn-heap-reserve-operation-decide :reclaim *fn-heap-small-profile* 195856696
                                                   *hrt-nursery* *hrt-2g* 0 nil)
                 '(:refused :machine-cannot-hold-threads 2180 2048)))
 (assert! (equal (fn-heap-reserve-operation-decide :reclaim *fn-heap-small-profile* 195856696
                                                   *hrt-nursery* *hrt-2g* 0 '(7271160 . 3000))
-                '(:heap 1639 "small" 2048 1024 30)))
+                '(:heap 1639 "small" 2048 1024 34)))
 (assert! (equal (fn-heap-reserve-operation-decide :compact *fn-heap-small-profile* 195856696
                                                   *hrt-nursery* *hrt-2g* 0 '(0 . 0))
-                '(:heap 524 "small" 2048 1024 30)))
+                '(:heap 524 "small" 2048 1024 34)))
 (assert! (equal (car (fn-heap-reserve-operation-decide :reclaim *fn-heap-small-profile*
                                                        195856696 *hrt-nursery*
                                                        (list *hrt-datasize*) 0 nil))
@@ -1119,7 +1119,7 @@
 (assert! (equal (car *hrt-of-d2*) :heap))
 (assert! (equal *hrt-of-r2* '(:refused :machine-cannot-hold-threads 996 800)))
 (assert! (not (<= (fn-heap-reservation-octets (fn-heap-decision-mb *hrt-of-d2*) *hrt-core*
-                                              1024 30)
+                                              1024 34)
                   (fn-heap-machine-octets *hrt-1300m*))))
 
 ; fn-heap-reserve-decide-is-reserve-of-heap-decide (no hypothesis): both
@@ -1305,7 +1305,7 @@
 (defconst *hrt-dsz* *hrt-2g*)
 (assert! (equal (fn-heap-reserve-full-store-decide *fn-heap-small-profile* *hrt-core*
                                                    *hrt-nursery* *hrt-dsz* 32)
-                '(:heap 662 "small" 2048 1024 30)))
+                '(:heap 662 "small" 2048 1024 34)))
 (assert! (equal (hrt-reopens-hyps *fn-heap-small-profile* *hrt-dsz* 32) '(t)))
 (assert! (hrt-reopens-conclusion *fn-heap-small-profile* *hrt-dsz* 32 nil))
 (assert! (hrt-reopens-conclusion *fn-heap-small-profile* *hrt-dsz* 32 '(0 . 0)))

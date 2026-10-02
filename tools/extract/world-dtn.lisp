@@ -156,6 +156,7 @@
 (include-book "../../books/incoming-copy-stobj")
 (include-book "../../host/page-read-host")
 (include-book "../../books/page-read-executor")
+(include-book "../../books/page-read-direct")
 (include-book "../../books/page-file-lease")
 (include-book "../../books/page-window-lease")
 (include-book "../../books/page-window-executor")
