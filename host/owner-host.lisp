@@ -71,6 +71,9 @@
 ; W5b: the transit AUTHORITY verdict beside the byte decision (fn-pta-decide),
 ; from the store's carried index and keyring.
 (include-book "../books/peer-transit-authority")
+; served-incremental-5: the transfer decision from the owner's indexes
+; (fn-pta-decide-cat, KEYSTONE fn-pta-decide-cat-of-live-owner).
+(include-book "../books/peer-transit-indexed")
 (include-book "../books/article-subject")
 ; Q16: content reclamation on a running owner (fn-orc-).
 (include-book "../books/owner-reclaim")
@@ -2825,8 +2828,8 @@
 ; derives, and leaves them where the bridge can read them.  The obligation id
 ; and the subject are the host's digests, as for POST (fn-frame-digest is
 ; constrained and unattached).
-(defun fn-owner-transit-decide (id-octets subject-octets state)
-  (declare (xargs :stobjs state :mode :program
+(defun fn-owner-transit-decide (id-octets subject-octets fn-arena fn-cat state)
+  (declare (xargs :stobjs (fn-arena fn-cat state) :mode :program
                   :guard (and (fn-cbor-octet-listp id-octets)
                               (fn-cbor-octet-listp subject-octets))))
   (let* ((owner (fn-owner-core state))
@@ -2855,12 +2858,26 @@
           ; before any durable intent, and named beside the decision
           ; (the global fn-owner-transit-authority; the transit log line
           ; fn-owner-transit-log-line carries it as authority=NAME).
+          ;
+          ; served-incremental-5 (audit I1): the history test is one probe of
+          ; the catalog's Message-ID column at the owner's view and the
+          ; capacity test reads the carried obligation-id trie, as POST
+          ; (fn-prc-refresh; fn-owner-prepare-buffer) -- never a walk of the
+          ; node's articles or of the retention ledger.  Equal to
+          ; fn-pta-decide (books/peer-transit-indexed.lisp KEYSTONE
+          ; fn-pta-decide-cat-of-live-owner: fn-ocl-relation and
+          ; fn-scj-invp, the owner's carried relations, and fn-prc-carryp of
+          ; the refreshed carry).
+          (let* ((carry (fn-prc-refresh (fn-owner-retain-carry state)
+                                        (fn-node-retention node)))
+                 (state (fn-owner-retain-carry-put carry state)))
           (mv-let (d authority)
-            (fn-pta-decide (fn-sn-index (fn-own-store owner))
-                           (fn-sn-keyring (fn-own-store owner))
-                           (fn-cfg-value authority-cfg) (fn-cfg-generation authority-cfg)
-                           node cfg peer msgid octets (fn-own-clock owner) id subject
-                           (fn-own-config-header-limits (fn-own-config owner)))
+            (fn-pta-decide-cat (fn-sn-index (fn-own-store owner))
+                               (fn-sn-keyring (fn-own-store owner))
+                               (fn-cfg-value authority-cfg) (fn-cfg-generation authority-cfg)
+                               node cfg peer msgid octets (fn-own-clock owner) id subject
+                               (fn-own-config-header-limits (fn-own-config owner))
+                               (fn-own-view owner) carry fn-arena fn-cat)
           (let* ((args (fn-peer-injection-arguments node cfg peer msgid octets
                                                     0 id subject
                                                     (fn-own-clock owner)))
@@ -2934,7 +2951,7 @@
                                           (nth 2 args)
                                         nil)
                                       state)))
-            (value (fn-peer-decision-kind d)))))))))
+            (value (fn-peer-decision-kind d))))))))))
 
 ; The transit reply.  `kind' and `reason' are the decision this image just
 ; made; `word' is the store's observed outcome (:durable, :refused,

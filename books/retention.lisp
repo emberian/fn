@@ -17,6 +17,57 @@
 (include-book "defrecord")
 (include-book "provenance")
 
+; Fill the release ids once, then look up each pin id.  The local keyset
+; cannot escape this call; the theorem covers its complete Boolean result.
+(defun fn-retain-ks-none-boundp (xs fn-keyset)
+  (declare (xargs :stobjs fn-keyset :guard t))
+  (if (consp xs)
+      (and (not (fn-keyset-tab-boundp (car xs) fn-keyset))
+           (fn-retain-ks-none-boundp (cdr xs) fn-keyset))
+    t))
+
+(defthm fn-retain-ks-none-boundp-after-fill
+  (implies (not (consp (nth 0 fn-keyset)))
+           (equal (fn-retain-ks-none-boundp xs (fn-ks-fill ys fn-keyset))
+                  (not (intersection-equal xs ys))))
+  :hints (("Goal" :induct (fn-retain-ks-none-boundp xs fn-keyset)
+           :in-theory (disable fn-ks-fill nth))))
+
+(defun fn-retain-ks-disjointp (xs ys)
+  (declare (xargs :guard t))
+  (with-local-stobj fn-keyset
+    (mv-let (ok fn-keyset)
+      (let ((fn-keyset (fn-ks-fill ys fn-keyset)))
+        (mv (fn-retain-ks-none-boundp xs fn-keyset) fn-keyset))
+      ok)))
+
+(defthm fn-retain-ks-disjointp-is-disjoint
+  (equal (fn-retain-ks-disjointp xs ys)
+         (not (intersection-equal xs ys))))
+
+(defun fn-retain-ids-disjoint-walkp (xs ys)
+  (declare (xargs :guard (and (true-listp xs) (true-listp ys))))
+  (if (consp xs)
+      (and (not (member-equal (car xs) ys))
+           (fn-retain-ids-disjoint-walkp (cdr xs) ys))
+    t))
+
+(defthm fn-retain-ids-disjoint-walkp-is-disjoint
+  (equal (fn-retain-ids-disjoint-walkp xs ys)
+         (not (intersection-equal xs ys))))
+
+; Keep this nonrecursive wrapper enabled: opening the record recognizer
+; must expose exactly its original intersection-equal conjunct.  A short
+; release list bounds each direct lookup; longer lists use the hash set.
+(defun fn-retain-ids-disjointp (xs ys)
+  (declare (xargs :guard (and (true-listp xs) (true-listp ys))))
+  (mbe :logic (not (intersection-equal xs ys))
+       :exec (if (fn-ks-longp ys)
+                 (fn-retain-ks-disjointp xs ys)
+               (fn-retain-ids-disjoint-walkp xs ys))))
+
+(verify-guards fn-retain-ids-disjointp)
+
 ; -----------------------------------------------------------------------------
 ; Records and finite-list utilities
 
@@ -296,10 +347,10 @@
                                             (fn-retain-pins x)))
                  (fn-retain-no-duplicatesp (fn-retain-release-ids
                                             (fn-retain-releases x)))
-                 (not (intersection-equal (fn-retain-obligation-ids
-                                           (fn-retain-pins x))
-                                          (fn-retain-release-ids
-                                           (fn-retain-releases x))))
+                 (fn-retain-ids-disjointp (fn-retain-obligation-ids
+                                          (fn-retain-pins x))
+                                         (fn-retain-release-ids
+                                          (fn-retain-releases x)))
                  (equal (fn-retain-reserved x)
                         (+ (fn-retain-sum (fn-retain-pins x))
                            (len (fn-retain-releases x))))
