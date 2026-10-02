@@ -426,5 +426,56 @@ class LogicalFeedTests(unittest.TestCase):
             self.assertIsNone(self.owner.poll())
             self.node.stop(process=self.owner, expect=EXIT.OK)
 
+
+@requires(DEVELOPER)
+@unittest.skipUnless(sys.platform.startswith("linux"), "/proc is Linux's")
+class PendingAcceptBoundTests(unittest.TestCase):
+    """r71 F13 (host/native/mux.lisp fnn-mux-adopt): the accept threads took
+    every queued connection from the kernel and pushed it onto a loop's
+    inbox, whatever the loop was doing, so while the loops were held (a cold
+    read's wait holds its loop, r71 F7) the accepted-but-unadmitted sockets
+    grew without bound, outside every capacity ACL2 decides.  Now an accept
+    takes a socket only into a loop's free slot (fnn-mux-reserve): at most one
+    pending per loop, the rest wait in the kernel's listen queue."""
+
+    def test_accepted_sockets_stay_bounded_while_the_loops_are_held(self):
+        node = Node(self, DEVELOPER)
+        node.init()
+        owner = node.start()
+        ids = [b"<held-a@example.invalid>", b"<held-b@example.invalid>"]
+        with Client(node.port, timeout=60) as poster:
+            for message_id in ids:
+                _, final = poster.post(article(message_id, body=b"held\r\n"))
+                self.assertTrue(final.startswith(b"240"), final)
+        node.stop(process=owner)
+        readstall = node.root / "readstall"
+        self.addCleanup(lambda: readstall.unlink() if readstall.exists() else None)
+        owner = node.start(env={"FN_NATIVE_TEST_READ_STALL_FILE": str(readstall)})
+        with node.log_on_failure(owner):
+            holders = [Client(node.port, timeout=60) for _ in ids]
+            readstall.write_bytes(b"")
+            # One cold read per loop (adoption is round-robin): both loops
+            # wait for a page the device does not return (up to ACL2's
+            # dependency deadline, 5,000 ms).
+            for client, message_id in zip(holders, ids):
+                client.send(b"ARTICLE " + message_id + b"\r\n")
+            time.sleep(0.5)
+            before = len(os.listdir("/proc/{}/fd".format(owner.pid)))
+            flood = [socket.create_connection(("127.0.0.1", node.port), timeout=30)
+                     for _ in range(30)]
+            time.sleep(2)
+            after = len(os.listdir("/proc/{}/fd".format(owner.pid)))
+            self.assertLessEqual(after - before, 4,
+                                 "{} sockets accepted while every loop was held".format(after - before))
+            readstall.unlink()
+            for peer in flood:
+                peer.close()
+            for client in holders:
+                client.close(quit=False)
+            with Client(node.port, timeout=60) as reader:
+                self.assertTrue(reader.command(b"DATE").startswith(b"111 "))
+            self.assertIsNone(owner.poll())
+            node.stop(process=owner, expect=EXIT.OK)
+
 if __name__ == "__main__":
     unittest.main()
