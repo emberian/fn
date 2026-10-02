@@ -304,37 +304,46 @@ def disclosed(lines: list[str], number: int) -> bool:
     return bool(DISCLOSURE.search(prose))
 
 
-def unverified_evidence(root: Path, tokens: list[str]) -> list[str]:
-    """The tokens, answered only by the evidence index, whose bytes do not
-    fetch and verify (r56 F3: an index row is a name, not bytes).
+def indexed_answer(token: str, index: dict, names: list[str]) -> str | None:
+    """The indexed file that answers this token: its own name or the implied
+    source's; for a directory token, the first indexed file under it."""
+    base = token.rstrip("/")
+    stem, dot, extension = base.rpartition(".")
+    candidates = [token, base] + [stem + e for e in IMPLIED_EXTENSIONS if dot] \
+        + [base + e for e in IMPLIED_EXTENSIONS]
+    name = next((c for c in candidates if c in index), None)
+    if name is None:
+        prefix = base + "/"
+        at = bisect.bisect_left(names, prefix)
+        name = names[at] if at < len(names) and names[at].startswith(prefix) else None
+    return name
 
-    A file token checks its own indexed bytes (or the implied source's); a
-    directory token checks the first indexed file under it.
+
+def unverified_evidence(root: Path, tokens: list[str]) -> dict[str, str]:
+    """{token: "unavailable" | "refused"} for the tokens whose indexed answer
+    does not verify (r56 F3: an index row is a name, not bytes).  A
+    working-tree file at an indexed path must hash to its index line; it
+    never answers as itself (r61 F2).  A token with no indexed answer at all
+    is "unavailable" (the caller sent it because only the index answered).
     """
     import evidence_store  # noqa: PLC0415
     index = evidence_store.read_index(root)
     names = sorted(index)
-    chosen: dict[str, str | None] = {}
-    for token in tokens:
-        base = token.rstrip("/")
-        stem, dot, extension = base.rpartition(".")
-        candidates = [token, base] + [stem + e for e in IMPLIED_EXTENSIONS if dot] \
-            + [base + e for e in IMPLIED_EXTENSIONS]
-        name = next((c for c in candidates if c in index), None)
-        if name is None:
-            prefix = base + "/"
-            at = bisect.bisect_left(names, prefix)
-            name = names[at] if at < len(names) and names[at].startswith(prefix) else None
-        chosen[token] = name
+    chosen = {token: indexed_answer(token, index, names) for token in tokens}
     problems = evidence_store.verify_paths(
-        root, sorted({n for n in chosen.values() if n}), index)
-    return sorted(token for token, name in chosen.items()
-                  if name is None or problems.get(name) is not None)
+        root, sorted({n for n in chosen.values() if n}), index, prefer_local=True)
+    failed = {}
+    for token, name in chosen.items():
+        problem = problems.get(name) if name else FileNotFoundError(token)
+        if problem is not None:
+            failed[token] = ("refused" if isinstance(problem, evidence_store.EvidenceRefused)
+                             else "unavailable")
+    return dict(sorted(failed.items()))
 
 
 def scan(present: set[str], history: set[str],
          files: list[str] | None = None, answered: dict[str, bool] | None = None,
-         unavailable: set[str] = frozenset()) -> list[Finding]:
+         unavailable: set[str] | dict[str, str] = frozenset()) -> list[Finding]:
     findings: list[Finding] = []
     # One answer per distinct token: the same citations recur across the
     # tree, and each miss in `present` was a run of filesystem probes --
@@ -361,7 +370,9 @@ def scan(present: set[str], history: set[str],
                     hit = answered[token] = resolves(token, present)
                 if hit and token not in unavailable:
                     continue
-                klass = "unavailable" if hit else benign(token, citer, line, match.start(1))
+                klass = ((unavailable.get(token, "unavailable")
+                          if isinstance(unavailable, dict) else "unavailable")
+                         if hit else benign(token, citer, line, match.start(1)))
                 if klass is None:
                     if token.split("#")[0] in RETIRED:
                         # Disclosed centrally: planning/retired-paths.json says
@@ -426,12 +437,20 @@ def main(argv: list[str] | None = None) -> int:
     history = ever_existed()
     answered: dict[str, bool] = {}
     findings = scan(present, history, answered=answered)
+    # Every answered token whose answer the index names is checked against
+    # the index, a local file included (r61 F2: an untracked shadow at an
+    # indexed path answered by existing); the rest only when nothing tracked
+    # answers them.
+    index = evidence_store.read_index(ROOT)
+    names = sorted(index)
     via_index = [token for token, hit in answered.items()
-                 if hit and not resolves(token, tracked_set)]
-    failed = set(unverified_evidence(ROOT, via_index)) if via_index else set()
+                 if hit and (indexed_answer(token, index, names) is not None
+                             or not resolves(token, tracked_set))]
+    failed = unverified_evidence(ROOT, via_index) if via_index else {}
     if failed:
         findings = scan(present, history, unavailable=failed)
     unavailable = [f for f in findings if f.klass == "unavailable"]
+    refused = [f for f in findings if f.klass == "refused"]
     raised = [f for f in findings if f.klass in RAISED]
     load_bearing = [f for f in raised if f.tier == "load-bearing"]
 
@@ -445,8 +464,9 @@ def main(argv: list[str] | None = None) -> int:
             "distinct_targets": len({f.token for f in raised}),
             "load_bearing": len(load_bearing),
             **({"unavailable": [f.as_dict() for f in unavailable]} if unavailable else {}),
+            **({"refused": [f.as_dict() for f in refused]} if refused else {}),
         }, indent=2))
-        return verdict(args.strict, load_bearing, unavailable)
+        return verdict(args.strict, load_bearing, unavailable, refused)
 
     if not args.summary:
         order = {"load-bearing": 0, "spec": 1, "tool": 2, "planning": 3}
@@ -475,15 +495,23 @@ def main(argv: list[str] | None = None) -> int:
               "bytes did not fetch and verify from the archive:")
         for finding in sorted(unavailable, key=lambda f: (f.token, f.citer)):
             print(f"  {finding.token}  {finding.citer}:{finding.line}")
-    return verdict(args.strict, load_bearing, unavailable)
+    if refused:
+        print(f"cite_check: REFUSED: {len(refused)} citations of "
+              f"{len({f.token for f in refused})} indexed evidence paths whose bytes "
+              "(a working-tree file, or the archive object) do not hash to the index line:")
+        for finding in sorted(refused, key=lambda f: (f.token, f.citer)):
+            print(f"  {finding.token}  {finding.citer}:{finding.line}")
+    return verdict(args.strict, load_bearing, unavailable, refused)
 
 
-def verdict(strict: bool, load_bearing: list, unavailable: list) -> int:
-    """--strict: 1 refused (a load-bearing absent path), 3 uncertain (cited
+def verdict(strict: bool, load_bearing: list, unavailable: list,
+            refused: list = ()) -> int:
+    """--strict: 1 refused (a load-bearing absent path), 4 refused evidence
+    (cited bytes that do not hash to their index line), 3 uncertain (cited
     evidence the archive cannot deliver), 0 accepted.  Report mode is 0."""
     if not strict:
         return 0
-    return 1 if load_bearing else 3 if unavailable else 0
+    return 1 if load_bearing else 4 if refused else 3 if unavailable else 0
 
 
 if __name__ == "__main__":

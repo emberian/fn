@@ -514,10 +514,11 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         report = audit()
-    except evidence_manifests.evidence_store.EvidenceUnavailable as error:
-        print(f"green-check: UNAVAILABLE: committed evidence cannot be read: {error}",
-              file=sys.stderr)
-        return evidence_manifests.evidence_store.EXIT_UNAVAILABLE
+    except evidence_manifests.evidence_store.EvidenceError as error:
+        store = evidence_manifests.evidence_store
+        print(f"green-check: {store.outcome(error)}: committed evidence cannot be "
+              f"accepted: {error}", file=sys.stderr)
+        return store.exit_code(error)
     except (certs.UnreadableBook, ValueError, OSError) as error:
         print(f"green-check: cannot read this tree: {error}", file=sys.stderr)
         return 2

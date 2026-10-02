@@ -4119,11 +4119,12 @@ def main(argv: list[str] | None = None) -> int:
     except AnalysisIncomplete as error:
         print(f"ERROR: analysis-incomplete: {error}", file=sys.stderr)
         return 1
-    except evidence_store.EvidenceUnavailable as error:
-        # Uncertain, not failed: committed evidence could not be read (r56 F10).
-        print(f"ERROR: UNAVAILABLE: committed evidence cannot be read: {error}",
-              file=sys.stderr)
-        return evidence_store.EXIT_UNAVAILABLE
+    except evidence_store.EvidenceError as error:
+        # Uncertain (3) when committed evidence could not be read, refused (4)
+        # when its bytes are there and wrong; never a plain failure (r61 F3).
+        print(f"ERROR: {evidence_store.outcome(error)}: committed evidence cannot be "
+              f"accepted: {error}", file=sys.stderr)
+        return evidence_store.exit_code(error)
 
 
 def _main(argv: list[str] | None = None) -> int:

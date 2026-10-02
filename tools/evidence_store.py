@@ -27,9 +27,13 @@ the shared checkout; FN_EVIDENCE_CACHE overrides) or fetched from the archive
 by hash, each verified on every read.  An UNINDEXED working-tree file (a
 lane's fresh, not yet filed output) is returned too, but `locate` labels it
 "local", and nothing may count it as archived or certified.  A path named by
-neither is absent.  An indexed object that cannot be read, fetched, or does
-not hash to its name raises `EvidenceUnavailable`: an unreadable claim is
-uncertain (exit 3), never "absent".
+neither is absent.  Three outcomes stay distinct (r61 F3): an indexed object
+that cannot be read or fetched raises `EvidenceUnavailable` -- uncertain,
+exit 3, never "absent"; bytes that are there but do not hash to their index
+line (a differing working-tree file, a corrupt object with no good copy, any
+gzip or zlib decoder error) raise `EvidenceRefused` (`EvidenceMismatch` for
+the working tree) -- refused, exit 4; a path the index does not name is
+absent.  Both derive from `EvidenceError`; `exit_code` maps them.
 
 Writers verify before the index names anything: every object, including one
 already at its name, is re-hashed (a bad one is quarantined, never trusted
@@ -68,6 +72,7 @@ import sys
 import tarfile
 import tempfile
 import time
+import zlib
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import evidence_ingest  # noqa: E402
@@ -80,16 +85,33 @@ HEADER = ("# fn evidence index: <sha256> <bytes> <path>; the bytes live in the "
           "archive at objects/<sha256[:2]>/<sha256>.gz (tools/evidence_store.py)")
 
 
-class EvidenceUnavailable(RuntimeError):
-    """An indexed object could not be read or fetched, or did not hash to its name."""
+class EvidenceError(RuntimeError):
+    """Indexed evidence could not be accepted (see the two kinds below)."""
 
 
-class EvidenceMismatch(EvidenceUnavailable):
+class EvidenceUnavailable(EvidenceError):
+    """An indexed object could not be read or fetched: uncertain (exit 3)."""
+
+
+class EvidenceRefused(EvidenceError):
+    """Bytes are there and do not hash to the name they claim: refused (exit 4)."""
+
+
+class EvidenceMismatch(EvidenceRefused):
     """A working-tree file differs from the bytes its index line names."""
 
 
 HEX64 = evidence_ingest.HEX64
 EXIT_UNAVAILABLE = 3
+EXIT_REFUSED = 4
+
+
+def exit_code(error: EvidenceError) -> int:
+    return EXIT_REFUSED if isinstance(error, EvidenceRefused) else EXIT_UNAVAILABLE
+
+
+def outcome(error: EvidenceError) -> str:
+    return "REFUSED" if isinstance(error, EvidenceRefused) else "UNAVAILABLE"
 
 
 # ------------------------------------------------------------------ places
@@ -220,14 +242,19 @@ def write_index(root: Path, entries: dict[str, tuple[str, int]]) -> None:
     evidence_ingest.fsync_dir(path.parent)
 
 
+def index_lock_path(root: Path) -> Path:
+    """The lock beside the index it guards: one name per index file whatever
+    FN_EVIDENCE_CACHE says (r61 F6: two cache settings were two locks)."""
+    index = (root / INDEX_REL).resolve()
+    return index.with_name(index.name + ".lock")
+
+
 @contextlib.contextmanager
 def index_lock(root: Path):
     """One writer at a time per index file (flock; released on process death)."""
-    index = (root / INDEX_REL).resolve()
-    locks = cache_dir(root) / "locks"
-    locks.mkdir(parents=True, exist_ok=True)
-    name = hashlib.sha256(str(index).encode()).hexdigest()[:32] + ".lock"
-    with open(locks / name, "a") as handle:
+    lock = index_lock_path(root)
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    with open(lock, "a") as handle:
         fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
         try:
             yield
@@ -254,10 +281,10 @@ def add_to_index(root: Path, new: dict[str, tuple[str, int]]) -> None:
 def _verified(data_gz: bytes, sha: str) -> bytes:
     try:
         data = gzip.decompress(data_gz)
-    except (OSError, EOFError) as error:
-        raise EvidenceUnavailable(f"object {sha} is not a gzip stream: {error}") from error
+    except (OSError, EOFError, ValueError, zlib.error) as error:
+        raise EvidenceRefused(f"object {sha} is not a gzip stream: {error}") from error
     if sha256_bytes(data) != sha:
-        raise EvidenceUnavailable(f"object {sha} does not hash to its name")
+        raise EvidenceRefused(f"object {sha} does not hash to its name")
     return data
 
 
@@ -269,7 +296,7 @@ def store_object(directory: Path, data: bytes, sha: str | None = None) -> str:
     """
     sha = sha or sha256_bytes(data)
     if sha256_bytes(data) != sha:
-        raise EvidenceUnavailable(f"bytes offered for {sha} do not hash to it")
+        raise EvidenceRefused(f"bytes offered for {sha} do not hash to it")
     try:
         evidence_ingest.place(directory, sha, compress(data))
     except (OSError, ValueError) as error:
@@ -316,14 +343,14 @@ def fetch(root: Path, shas: list[str] | set[str], verify_present: bool = True) -
         if found is not None and verify_present:
             try:
                 _read_verified(found, sha)
-            except EvidenceUnavailable:
+            except EvidenceRefused:
                 if found.is_relative_to(cache):
                     _quarantine(cache, found, sha)
                     found = object_path(root, sha)
                     if found is not None:
                         try:
                             _read_verified(found, sha)
-                        except EvidenceUnavailable:
+                        except EvidenceRefused:
                             corrupt_archive.append(sha)
                         continue
                 else:
@@ -332,7 +359,7 @@ def fetch(root: Path, shas: list[str] | set[str], verify_present: bool = True) -
         if found is None:
             wanted_set.add(sha)
     if corrupt_archive:
-        raise EvidenceUnavailable(
+        raise EvidenceRefused(
             f"{len(corrupt_archive)} objects in the local archive {local_archive()} do "
             f"not verify (first {sorted(corrupt_archive)[0]})")
     wanted = sorted(wanted_set)
@@ -354,20 +381,25 @@ def fetch(root: Path, shas: list[str] | set[str], verify_present: bool = True) -
             capture_output=True, text=True, check=False)
     finally:
         os.unlink(listing_name)
-    bad = []
+    bad, absent = [], []
     for sha in wanted:
         target = cache / object_rel(sha)
         try:
             _read_verified(target, sha)
-        except EvidenceUnavailable:
+        except EvidenceRefused:
             bad.append(sha)
-            if target.exists():
-                _quarantine(cache, target, sha)
-    if bad:
-        raise EvidenceUnavailable(
-            f"{len(bad)} of {len(wanted)} evidence objects did not arrive verified "
-            f"from {archive_spec()} (rsync exit {done.returncode}: "
-            f"{done.stderr.strip()[-300:]}); first {bad[0]}")
+            _quarantine(cache, target, sha)
+        except EvidenceUnavailable:
+            absent.append(sha)
+    if bad or absent:
+        # Bytes that arrived and do not verify are refused; bytes that did
+        # not arrive are unavailable (r61 F3).
+        kind = EvidenceRefused if bad else EvidenceUnavailable
+        raise kind(
+            f"{len(bad) + len(absent)} of {len(wanted)} evidence objects did not arrive "
+            f"verified from {archive_spec()} ({len(bad)} arrived and do not verify, "
+            f"{len(absent)} did not arrive; rsync exit {done.returncode}: "
+            f"{done.stderr.strip()[-300:]}); first {(bad + absent)[0]}")
 
 
 def object_bytes(root: Path, sha: str) -> bytes:
@@ -379,7 +411,7 @@ def object_bytes(root: Path, sha: str) -> bytes:
     if found is not None:
         try:
             return _read_verified(found, sha)
-        except EvidenceUnavailable:
+        except EvidenceRefused:
             if not found.is_relative_to(cache):
                 raise
             _quarantine(cache, found, sha)
@@ -516,18 +548,24 @@ def prefetch(root: Path, rels: list[str]) -> None:
 
 
 def verify_paths(root: Path, rels: list[str],
-                 index: dict[str, tuple[str, int]] | None = None
-                 ) -> dict[str, Exception | None]:
+                 index: dict[str, tuple[str, int]] | None = None,
+                 prefer_local: bool = False) -> dict[str, Exception | None]:
     """{path: None if its indexed bytes are readable and verify, else why}.
 
-    Names are not bytes: an index row alone proves nothing (r56 F3).  A
-    path the index does not name is FileNotFoundError; an indexed one that
-    cannot be fetched or does not verify is EvidenceUnavailable.
+    Names are not bytes: an index row alone proves nothing (r56 F3).  A path
+    the index does not name is FileNotFoundError; an indexed one whose
+    object cannot be fetched is EvidenceUnavailable; one whose bytes are
+    there and wrong is EvidenceRefused.  A working-tree file at an indexed
+    path must hash to the index line (EvidenceMismatch otherwise, r61 F2);
+    with `prefer_local` (a reader's question: what `locate` would return)
+    a matching working-tree file answers without the archive, without it
+    (the cut gate's question) the archive object must verify too.
     """
     index = read_index(root) if index is None else index
     result: dict[str, Exception | None] = {}
-    with contextlib.suppress(EvidenceUnavailable):
-        fetch(root, {index[rel][0] for rel in rels if rel in index},
+    with contextlib.suppress(EvidenceError):
+        fetch(root, {index[rel][0] for rel in rels if rel in index
+                     and not (prefer_local and (root / rel).is_file())},
               verify_present=False)
     for rel in rels:
         entry = index.get(rel)
@@ -535,11 +573,17 @@ def verify_paths(root: Path, rels: list[str],
             result[rel] = FileNotFoundError(rel)
             continue
         try:
+            local = root / rel
+            if local.is_file():
+                _local_matching(local, rel, entry)
+                if prefer_local:
+                    result[rel] = None
+                    continue
             data = object_bytes(root, entry[0])
             if len(data) != entry[1]:
-                raise EvidenceUnavailable(f"{rel}: {len(data)} bytes, index says {entry[1]}")
+                raise EvidenceRefused(f"{rel}: {len(data)} bytes, index says {entry[1]}")
             result[rel] = None
-        except EvidenceUnavailable as error:
+        except EvidenceError as error:
             result[rel] = error
     return result
 
@@ -723,26 +767,17 @@ def cat_blobs(root: Path, blobs: dict[str, str]):
 
 def history_blobs(root: Path, refs: list[str],
                   prefixes: list[str] | None = None) -> dict[str, str]:
-    """{blob id: first path} for every blob ever under PREFIXES (default
-    planning/evidence; a prefix is a directory or one file)."""
-    prefixes = prefixes or [EVIDENCE_REL]
-    found: dict[str, str] = {}
-    rows = git_lines(root, "rev-list", "--objects", *refs, "--", *prefixes)
-    candidates = {}
-    for row in rows:
-        oid, _, path = row.partition(" ")
-        if any(path == prefix or path.startswith(prefix.rstrip("/") + "/")
-               for prefix in prefixes):
-            candidates.setdefault(oid, path)
-    checked = subprocess.run(["git", "-C", str(root), "cat-file",
-                              "--batch-check=%(objectname) %(objecttype)"],
-                             input="".join(oid + "\n" for oid in candidates),
-                             capture_output=True, text=True, check=False).stdout
-    for row in checked.splitlines():
-        parts = row.split()
-        if len(parts) == 2 and parts[1] == "blob":
-            found[parts[0]] = candidates[parts[0]]
-    return found
+    """{blob id: first path} for every blob version ever under PREFIXES
+    (default planning/evidence; a prefix is a directory or one file, or a
+    `glob:`/`regex:` rule as the rewrite list writes it) on REFS (`--all`).
+
+    The full raw-diff walk of tools/evidence_history.py, never a pathspec
+    walk: `rev-list --objects REFS -- PATHS` simplifies history and missed
+    real versions (r61 F11)."""
+    import evidence_history  # noqa: PLC0415
+    rules = evidence_history.parse_rules("\n".join(prefixes or [EVIDENCE_REL]))
+    snapshot = evidence_history.resolve_refs(root, refs)
+    return evidence_history.union(evidence_history.rule_blobs(root, rules, snapshot))
 
 
 def stream_objects_to_archive(root: Path, blobs: dict[str, str],
@@ -807,37 +842,49 @@ def stream_objects_to_archive(root: Path, blobs: dict[str, str],
 
 
 def archive_listing(spec: str | None = None) -> dict[str, int]:
-    """sha -> compressed size of every object the archive holds."""
+    """sha -> compressed size of every object the archive holds AT ITS
+    CANONICAL NAME objects/<sha[:2]>/<sha>.gz (r61 F5: a file of the right
+    name in another shard is not at the address every reader opens)."""
     host, path = split_spec(spec or archive_spec())
-    command = (f"cd {shlex.quote(path)} 2>/dev/null && find objects -name '*.gz' "
-               "-printf '%f %s\\n'")
+    command = (f"cd {shlex.quote(path)} && find objects -name '*.gz' "
+               "-printf '%h/%f %s\\n'")
     if host:
-        text = subprocess.run(["ssh", host, command], capture_output=True,
-                              text=True, check=False).stdout
+        done = subprocess.run(["ssh", host, command], capture_output=True,
+                              text=True, check=False)
+        if done.returncode != 0:
+            raise EvidenceUnavailable(f"cannot list the archive {host}:{path} "
+                                      f"(exit {done.returncode}): {done.stderr.strip()[-300:]}")
+        text = done.stdout
     else:
-        text = "".join(f"{p.name} {p.stat().st_size}\n"
+        text = "".join(f"objects/{p.parent.name}/{p.name} {p.stat().st_size}\n"
                        for p in Path(path, "objects").glob("*/*.gz"))
     listing = {}
     for row in text.splitlines():
-        name, _, size = row.partition(" ")
-        if name.endswith(".gz"):
+        rel, _, size = row.rpartition(" ")
+        name = rel.rsplit("/", 1)[-1]
+        if not name.endswith(".gz") or not HEX64.fullmatch(name[:-3]):
+            continue
+        if rel == object_rel(name[:-3]):
             listing[name[:-3]] = int(size or 0)
     return listing
 
 
 VERIFY_SCRIPT = r"""
-import gzip, hashlib, sys, pathlib
-root = pathlib.Path(sys.argv[1]); bad = 0; n = 0
+import gzip, hashlib, re, sys, pathlib
+root = pathlib.Path(sys.argv[1]); bad = 0; n = 0; hex64 = re.compile('[0-9a-f]{64}')
 for p in sorted(root.glob('objects/*/*.gz')):
     n += 1
+    sha = p.name[:-3]
+    if not hex64.fullmatch(sha) or p.parent.name != sha[:2]:
+        bad += 1; print('MISPLACED', p); continue
     try:
-        ok = hashlib.sha256(gzip.decompress(p.read_bytes())).hexdigest() == p.name[:-3]
+        ok = hashlib.sha256(gzip.decompress(p.read_bytes())).hexdigest() == sha
     except Exception:
         ok = False
     if not ok:
         bad += 1; print('BAD', p)
-print('verified', n, 'objects,', bad, 'bad')
-sys.exit(1 if bad else 0)
+print('verified', n, 'objects,', bad, 'bad or misplaced')
+sys.exit(4 if bad else 0)
 """
 
 
@@ -918,17 +965,25 @@ def cmd_verify(args) -> int:
         print(f"  not archived: {path}")
     status = 1 if absent else 0
     if args.archive:
+        # Every object on the box, decompressed and re-hashed there; a bad or
+        # misplaced one is refused (4); a box that cannot run it is uncertain.
         host, path = split_spec(archive_spec())
         command = ["python3", "-", path]
         done = subprocess.run(["ssh", host, *map(shlex.quote, command)] if host else command,
                               input=VERIFY_SCRIPT, text=True, check=False)
-        status = status or done.returncode
+        if done.returncode == EXIT_REFUSED:
+            return EXIT_REFUSED
+        if done.returncode != 0:
+            print(f"evidence_store: UNAVAILABLE: the archive check did not run "
+                  f"(exit {done.returncode})", file=sys.stderr)
+            return status or EXIT_UNAVAILABLE
     return status
 
 
 def cmd_verify_paths(args) -> int:
     """Each PATH's indexed bytes are readable and verify (exit 0); a path the
-    index does not name is refused (1); an unverifiable one is UNAVAILABLE (3)."""
+    index does not name is refused (1); bytes there and wrong are REFUSED (4);
+    an object that cannot be fetched is UNAVAILABLE (3)."""
     index = index_at(ROOT, args.revision) if args.revision else read_index(ROOT)
     problems = verify_paths(ROOT, args.paths, index)
     for rel, problem in problems.items():
@@ -937,9 +992,11 @@ def cmd_verify_paths(args) -> int:
         elif isinstance(problem, FileNotFoundError):
             print(f"NOT INDEXED {rel}")
         else:
-            print(f"UNAVAILABLE {rel}: {problem}")
+            print(f"{outcome(problem)} {rel}: {problem}")
     if any(isinstance(p, FileNotFoundError) for p in problems.values()):
         return 1
+    if any(isinstance(p, EvidenceRefused) for p in problems.values()):
+        return EXIT_REFUSED
     return EXIT_UNAVAILABLE if any(problems.values()) else 0
 
 
@@ -952,20 +1009,25 @@ def cmd_history_check(args) -> int:
     blobs = history_blobs(ROOT, refs, prefixes)
     digests = {blob: (sha256_bytes(data), len(data))
                for blob, data in cat_blobs(ROOT, {blob: blob for blob in blobs})}
-    listing = archive_listing()
+    if len(digests) != len(blobs):
+        print(f"  git delivered {len(digests)} of {len(blobs)} blobs")
+        return 1
+    import evidence_history  # noqa: PLC0415
+    # The canonical object, decompressed and re-hashed on the box (r61 F5).
+    report = evidence_history.archive_check({sha: size for sha, size in digests.values()})
+    absent, bad = set(report["missing"]), set(report["bad"])
     missing = sorted((blobs[blob], blob, sha) for blob, (sha, _) in digests.items()
-                     if sha not in listing)
+                     if sha in absent or sha in bad)
     distinct = {sha for sha, _ in digests.values()}
     print(f"history {' '.join(refs)} under {' '.join(prefixes)}: {len(blobs)} blobs, "
           f"{len(distinct)} distinct sha256, "
           f"{sum(size for _, size in digests.values()) / 1e6:.1f} MB raw; archive "
-          f"{archive_spec()} holds {len(listing)} objects; historical blobs not in "
-          f"the archive: {len(missing)}")
+          f"{archive_spec()}: historical blobs not archived and verified at their "
+          f"canonical name: {len(missing)} ({len(absent)} absent, {len(bad)} refused)")
     for path, blob, sha in missing[:20]:
         print(f"  not archived: {blob} {sha} {path}")
-    if len(digests) != len(blobs):
-        print(f"  git delivered {len(digests)} of {len(blobs)} blobs")
-        return 1
+    if bad:
+        return EXIT_REFUSED
     return 1 if missing else 0
 
 
@@ -983,10 +1045,17 @@ def cmd_migrate_history(args) -> int:
     print(f"migrating {len(blobs)} historical blobs + {len(extras)} untracked files "
           f"to {archive_spec()}", flush=True)
     rows = stream_objects_to_archive(ROOT, blobs, extras)
-    # One ledger per run, never over an earlier one: a narrower run (one
-    # --path, one revision) must not replace the ledger of a wider run.
+    ledger = write_ledger(rows, "history-ledger" if not args.path else "history-ledger-extra")
+    print(f"streamed {len(rows)} rows, {len({r[0] for r in rows})} distinct objects; "
+          f"ledger {ledger}")
+    return 0
+
+
+def write_ledger(rows: list[tuple[str, int, str, str]], kind: str) -> Path:
+    """One ledger per run (sha256, bytes, blob id, path), beside the cache and
+    on the archive, never over an earlier one: a narrower run (one --path,
+    one revision) must not replace the ledger of a wider run."""
     stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
-    kind = "history-ledger" if not args.path else "history-ledger-extra"
     ledger = cache_dir(ROOT) / f"{kind}-{stamp}-{time.time_ns() % 10**9:09d}.tsv"
     ledger.parent.mkdir(parents=True, exist_ok=True)
     ledger.write_text("".join(f"{sha} {size} {blob} {path}\n"
@@ -998,9 +1067,7 @@ def cmd_migrate_history(args) -> int:
         if done.returncode != 0:
             raise EvidenceUnavailable(f"the history ledger did not reach {host}:{path} "
                                       f"(rsync exit {done.returncode}): {done.stderr[-300:]}")
-    print(f"streamed {len(rows)} rows, {len({r[0] for r in rows})} distinct objects; "
-          f"ledger {ledger}")
-    return 0
+    return ledger
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -1055,9 +1122,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         return args.func(args)
-    except EvidenceUnavailable as error:
-        print(f"evidence_store: UNAVAILABLE: {error}", file=sys.stderr)
-        return EXIT_UNAVAILABLE
+    except EvidenceError as error:
+        print(f"evidence_store: {outcome(error)}: {error}", file=sys.stderr)
+        return exit_code(error)
 
 
 if __name__ == "__main__":

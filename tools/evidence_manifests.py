@@ -135,6 +135,15 @@ def cited_run_ids(root: Path = ROOT) -> dict[str, list[str]]:
     return cites
 
 
+def manifest_paths(root: Path = ROOT) -> dict[str, str]:
+    """{run id: logical path} of every committed manifest (as `tracked_manifests`)."""
+    names = git("ls-files", "--", ARCHIVE_REL, root=root).split()
+    names += [name for name in evidence_store.read_index(root)
+              if name.startswith(ARCHIVE_REL + "/")]
+    return {Path(name).stem: name for name in sorted(names)
+            if RUN_ID.fullmatch(Path(name).stem)}
+
+
 def tracked_manifests(root: Path = ROOT) -> set[str]:
     """Run ids whose manifest is committed, which is what a reader can see.
 
@@ -185,14 +194,20 @@ def load_archived(root: Path, rel: str) -> list[dict]:
     committed = evidence_store.indexed(root, rel)
     try:
         manifest = json.loads(evidence_store.read_text(root, rel))
-    except (OSError, ValueError) as error:
+    except OSError as error:
         if committed:
             raise evidence_store.EvidenceUnavailable(
                 f"{rel}: the indexed manifest is unreadable: {error}") from error
         return []
+    except ValueError as error:
+        # Verified bytes that are not a manifest: there, and refused (r61 F3).
+        if committed:
+            raise evidence_store.EvidenceRefused(
+                f"{rel}: the indexed manifest is not JSON: {error}") from error
+        return []
     if not isinstance(manifest, dict):
         if committed:
-            raise evidence_store.EvidenceUnavailable(
+            raise evidence_store.EvidenceRefused(
                 f"{rel}: the indexed manifest is not a JSON object")
         return []
     manifest.setdefault("evidence", str(root / rel))
@@ -442,10 +457,10 @@ def commit_paths(root: Path, paths: list[str]) -> int:
     """
     try:
         evidence_store.put(root, paths)
-    except evidence_store.EvidenceUnavailable as error:
-        print(f"evidence_manifests: not committed, the archive refused: {error}",
-              file=sys.stderr)
-        return 3
+    except evidence_store.EvidenceError as error:
+        print(f"evidence_manifests: not committed, the archive did not confirm "
+              f"({evidence_store.outcome(error)}): {error}", file=sys.stderr)
+        return evidence_store.exit_code(error)
     done = subprocess.run(["git", "-C", str(root), "add", evidence_store.INDEX_REL],
                           check=False)
     if done.returncode == 0:
@@ -549,16 +564,31 @@ def cmd_harvest(args: argparse.Namespace) -> int:
 
 def cmd_check(args: argparse.Namespace) -> int:
     cites = cited_run_ids()
-    tracked = tracked_manifests()
+    paths = manifest_paths(ROOT)
+    tracked = set(paths)
     lost = lost_run_ids()
-    resolved = sorted(set(cites) & tracked)
+    # Bytes, not names (r61 F10): an indexed manifest counts as resolvable
+    # only when its bytes verify -- the working-tree file against the index
+    # line, else the archive object.  A git-tracked unindexed one is git's.
+    index = evidence_store.read_index(ROOT)
+    named = {run_id: paths[run_id] for run_id in set(cites) & tracked}
+    problems = evidence_store.verify_paths(
+        ROOT, sorted(rel for rel in named.values() if rel in index), index,
+        prefer_local=True)
+    unreadable = {run_id: problems[rel] for run_id, rel in named.items()
+                  if problems.get(rel) is not None}
+    resolved = sorted(set(named) - set(unreadable))
     missing = sorted(set(cites) - tracked)
     fresh = [run_id for run_id in missing if run_id not in lost]
     print(f"certification run ids cited in tracked files: {len(cites)}; "
           f"manifests committed under {ARCHIVE_REL}/: {len(tracked)}; "
           f"cited and resolvable: {len(resolved)}; cited and unresolvable: "
           f"{len(missing)}, of which {len(missing) - len(fresh)} are the "
-          f"recorded backlog in {LOST_REL}")
+          f"recorded backlog in {LOST_REL}; cited, committed and not readable: "
+          f"{len(unreadable)}")
+    for run_id, problem in sorted(unreadable.items()):
+        print(f"  {evidence_store.outcome(problem)}: {run_id}  ({cites[run_id][0]}): "
+              f"{problem}")
     # Say which of them are still recoverable here.  A lane worktree under
     # `build/lanes/` usually still holds its own runs when its handoff lands,
     # and then the repair is one command rather than a question.
@@ -581,6 +611,11 @@ def cmd_check(args: argparse.Namespace) -> int:
         print(f"{len(missing)} cited certification runs have no committed "
               f"manifest.", file=sys.stderr)
         return 1
+    if unreadable:
+        # Never "whatever they are": refused (4) or uncertain (3) stays distinct.
+        refused = any(isinstance(p, evidence_store.EvidenceRefused)
+                      for p in unreadable.values())
+        return evidence_store.EXIT_REFUSED if refused else evidence_store.EXIT_UNAVAILABLE
     return 0
 
 
@@ -628,9 +663,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         return args.func(args)
-    except evidence_store.EvidenceUnavailable as error:
-        print(f"evidence_manifests: UNAVAILABLE: {error}", file=sys.stderr)
-        return evidence_store.EXIT_UNAVAILABLE
+    except evidence_store.EvidenceError as error:
+        print(f"evidence_manifests: {evidence_store.outcome(error)}: {error}", file=sys.stderr)
+        return evidence_store.exit_code(error)
 
 
 if __name__ == "__main__":

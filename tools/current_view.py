@@ -417,10 +417,10 @@ def main(argv: list[str] | None = None) -> int:
         return pin_image(args.pin_image)
     try:
         text = build()
-    except evidence_store.EvidenceUnavailable as error:
-        print(f"current view: UNAVAILABLE: committed evidence cannot be read: {error}",
-              file=sys.stderr)
-        return evidence_store.EXIT_UNAVAILABLE
+    except evidence_store.EvidenceError as error:
+        print(f"current view: {evidence_store.outcome(error)}: committed evidence cannot "
+              f"be accepted: {error}", file=sys.stderr)
+        return evidence_store.exit_code(error)
     except (ViewError, KeyError) as error:
         print(f"current view: {error}", file=sys.stderr)
         return 1

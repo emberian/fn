@@ -181,8 +181,11 @@ gate() {
   ( $fn ) > "$log" 2>&1
   rc=$?
   last=$(grep -v '^$' "$log" | tail -1 | cut -c1-200)
+  # 3 is uncertain (evidence that could not be fetched), never a plain RED:
+  # it blocks the cut all the same, under its own verdict and exit (r61 F3).
   case $rc in
     0) word=GREEN ;;
+    3) word=UNAVAILABLE ;;
     10) word=DRY ;;
     11) word=SKIPPED ;;
     *) word=RED ;;
@@ -191,12 +194,12 @@ gate() {
   echo "$line" >> "$V"
   echo "   $word: $last"
   [ "$word" != SKIPPED ] || SKIPS="$SKIPS $nn"
-  if [ "$word" = RED ]; then
+  if [ "$word" = RED ] || [ "$word" = UNAVAILABLE ]; then
     [ -n "$FIRST_RED" ] || FIRST_RED="$nn $name"
     if [ "$DRY" = no ]; then
-      echo "VERDICT RED at $nn $name (log $log)" >> "$V"
-      echo "cut_release: RED at $nn $name; log $log; verdict $V" >&2
-      exit 1
+      echo "VERDICT $word at $nn $name (log $log)" >> "$V"
+      echo "cut_release: $word at $nn $name; log $log; verdict $V" >&2
+      case $word in UNAVAILABLE) exit 3 ;; *) exit 1 ;; esac
     fi
   fi
 }
@@ -232,7 +235,7 @@ g_fundamentals() {
   git show "$REV:$CHECKLIST" > "$OUT/checklist.md" 2>/dev/null || { echo "no $CHECKLIST at $REV"; return 1; }
   rows=$(awk '/<!-- fundamentals -->/{on=1; next} /<!-- end fundamentals -->/{on=0} on && /^\| *F[0-9]+ *\|/' "$OUT/checklist.md")
   [ -n "$rows" ] || { echo "no fundamentals table in $CHECKLIST"; return 1; }
-  open=0 total=0
+  open=0 total=0 uncertain=0
   echo "$rows" | {
     while IFS="|" read -r _ id what _bar status evidence _; do
       id=$(echo "$id" | tr -d ' ') status=$(echo "$status" | tr -d ' *')
@@ -245,16 +248,19 @@ g_fundamentals() {
       else
         # Named by REV's evidence index: the bytes must fetch from the archive
         # and hash to the index line (a name alone is not evidence; r56 F3).
-        # 1 = not indexed at REV, 3 = indexed but unavailable (uncertain).
+        # 1 = not indexed at REV, 3 = indexed but unavailable (uncertain),
+        # 4 = indexed and its bytes do not hash to the line (refused).
         "$PY" "$ROOT/tools/evidence_store.py" verify-paths --revision "$REV" "$evidence" >/dev/null 2>&1
         case $? in
           0) ;;
-          3) open=$((open + 1)); echo "$id MET but its evidence '$evidence' is UNAVAILABLE: indexed at REV, its bytes did not fetch and verify from the archive" ;;
+          3) uncertain=$((uncertain + 1)); echo "$id MET but its evidence '$evidence' is UNAVAILABLE: indexed at REV, its object did not fetch from the archive" ;;
+          4) open=$((open + 1)); echo "$id MET but its evidence '$evidence' is REFUSED: indexed at REV, its bytes do not hash to the index line" ;;
           *) open=$((open + 1)); echo "$id MET but its evidence '$evidence' is not in REV" ;;
         esac
       fi
     done
-    if [ "$open" -gt 0 ]; then echo "$open of $total fundamentals not met (blocking)"; exit 1; fi
+    if [ "$open" -gt 0 ]; then echo "$open of $total fundamentals not met, $uncertain unavailable (blocking)"; exit 1; fi
+    if [ "$uncertain" -gt 0 ]; then echo "$uncertain of $total fundamentals UNAVAILABLE: uncertain, not refused (blocking)"; exit 3; fi
     echo "all $total fundamentals met, each with its evidence at REV"
   }
 }

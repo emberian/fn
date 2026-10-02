@@ -8,11 +8,15 @@ the archive box for a remote one).  Standard library only: it runs as
 
 What `place` guarantees when it returns: the object at its final name
 decompresses to bytes whose SHA-256 is its name, it was read back after the
-write, and the file and its directory were fsync'd.  So an index line written
-after `place` (or after `ingest` reported every expected digest) never names
-bytes the archive lacks, to the extent the archive's filesystem honours fsync
-(hbox: ZFS, sync=standard).  An existing object is never trusted by its name:
-it is re-read and re-hashed; one that does not verify is moved to
+write, and the file, its directory and every directory `place` created were
+fsync'd -- an object already at its name too, before `place` reports it
+present, so the index can never become durable before the object (r61 F1).
+A failed fsync is an error, never swallowed.  So an index line written after
+`place` (or after `ingest` reported every expected digest) never names bytes
+the archive lacks, to the extent the archive's filesystem honours a fsync
+that reported success (hbox: ZFS, sync=standard).  An existing object is
+never trusted by its name: it is re-read and re-hashed (any decoder error,
+zlib's included, is "does not verify"); one that does not verify is moved to
 `quarantine/` (kept, never deleted) and replaced.
 """
 
@@ -26,6 +30,7 @@ from pathlib import Path
 import re
 import sys
 import time
+import zlib
 
 HEX64 = re.compile(r"[0-9a-f]{64}")
 
@@ -39,7 +44,7 @@ def object_rel(sha: str) -> str:
 def matches(data_gz: bytes, sha: str) -> bool:
     try:
         return hashlib.sha256(gzip.decompress(data_gz)).hexdigest() == sha
-    except (OSError, EOFError, ValueError):
+    except (OSError, EOFError, ValueError, zlib.error):
         return False
 
 
@@ -52,16 +57,27 @@ def fsync_file(path: Path) -> None:
 
 
 def fsync_dir(path: Path) -> None:
-    try:
-        fd = os.open(path, os.O_RDONLY)
-    except OSError:
-        return
+    """fsync a directory, so the names in it are durable.  Errors propagate:
+    a barrier that failed is not a filesystem honouring one (r61 F1)."""
+    fd = os.open(path, os.O_RDONLY)
     try:
         os.fsync(fd)
-    except OSError:
-        pass  # some filesystems refuse a directory fsync; the file's still holds
     finally:
         os.close(fd)
+
+
+def make_dirs(path: Path) -> None:
+    """mkdir -p, then fsync each directory created into its parent, so a
+    fresh shard (or a fresh archive) survives a crash with its object."""
+    created = []
+    walk = path
+    while not walk.exists():
+        created.append(walk)
+        walk = walk.parent
+    path.mkdir(parents=True, exist_ok=True)
+    for made in reversed(created):
+        fsync_dir(made)
+        fsync_dir(made.parent)
 
 
 def _readable_and_matching(path: Path, sha: str) -> bool:
@@ -74,7 +90,7 @@ def _readable_and_matching(path: Path, sha: str) -> bool:
 def quarantine(directory: Path, path: Path, sha: str) -> Path:
     """Move a file that does not verify out of the object namespace (kept)."""
     place_dir = directory / "quarantine"
-    place_dir.mkdir(parents=True, exist_ok=True)
+    make_dirs(place_dir)
     target = place_dir / f"{sha}.gz.{time.time_ns()}.{os.getpid()}"
     os.replace(path, target)
     fsync_dir(place_dir)
@@ -98,12 +114,17 @@ def place(directory: Path, sha: str, data_gz: bytes | None = None,
     outcome = "placed"
     if target.exists():
         if _readable_and_matching(target, sha):
+            # Verified, but perhaps never synced (a crashed writer, a copy
+            # made by hand): make it durable before anyone indexes it.
+            fsync_file(target)
+            fsync_dir(target.parent)
+            fsync_dir(target.parent.parent)
             if staged is not None:
                 staged.unlink()
             return "present"
         quarantine(directory, target, sha)
         outcome = "replaced"
-    target.parent.mkdir(parents=True, exist_ok=True)
+    make_dirs(target.parent)
     if staged is not None:
         fsync_file(staged)
         os.replace(staged, target)

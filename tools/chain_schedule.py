@@ -61,6 +61,9 @@ HISTORY = ROOT / "planning" / "evidence" / "manifests"
 # or unreadable summary is rebuilt, never trusted over the file.
 SUMMARY = ROOT / "build" / "wall-summary.json"
 SUMMARY_VERSION = 1
+# (manifest name, UNAVAILABLE | REFUSED) for each archived manifest a
+# summaries() call had to skip; scheduling reads it, no claim does.
+UNREADABLE: list[tuple[str, str]] = []
 
 # (knee, slope) of s(L) per box, from `python3 tools/chain_schedule.py fit`
 # on 2026-09-28 over planning/evidence/manifests at 48a736d5e: persvati
@@ -135,21 +138,32 @@ def history_entries(history: Path) -> list[tuple[str, list, object]]:
     """(name, stamp, read) for every `*certify-*.json` manifest in HISTORY.
 
     The default history is the evidence archive's manifests: the committed
-    index's (read by hash, stamped by hash; tools/evidence_store.py) plus any
-    filed here and not yet added (stamped by size and mtime).  Another
-    directory is read from disk alone.
+    index's (read by hash, stamped by hash, verified on every read;
+    tools/evidence_store.py) plus any filed here and not yet added (stamped
+    by size and mtime).  An indexed name is ALWAYS the index's: a working-tree
+    file at that path is never read as itself (r61 F9), and a summary is
+    cached against the index hash, so it is a function of verified bytes.
+    Another directory is read from disk alone.
     """
     entries: dict[str, tuple[str, list, object]] = {}
+    default = history.resolve() == HISTORY.resolve()
+    indexed: set[str] = set()
+    if default:
+        import evidence_store  # noqa: PLC0415
+        rel_dir = HISTORY.relative_to(ROOT).as_posix()
+        indexed = {rel.rsplit("/", 1)[-1] for rel in evidence_store.read_index(ROOT)
+                   if rel.startswith(rel_dir + "/")}
     if history.is_dir():
         for path in history.glob("*certify-*.json"):
+            if path.name in indexed:
+                continue
             try:
                 stat = path.stat()
             except OSError:
                 continue
             entries[path.name] = (path.name, [stat.st_size, stat.st_mtime_ns],
                                   lambda path=path: path.read_text(encoding="utf-8"))
-    if history.resolve() == HISTORY.resolve():
-        import evidence_store  # noqa: PLC0415
+    if default:
         index = evidence_store.read_index(ROOT)
         rel_dir = HISTORY.relative_to(ROOT).as_posix()
         for rel in evidence_store.glob(ROOT, rel_dir + "/*certify-*.json"):
@@ -174,6 +188,7 @@ def summaries(paths: list, summary: Path | None) -> list[dict | None]:
                 known = loaded.get("files") or {}
         except (OSError, ValueError, AttributeError):
             known = {}
+    import evidence_store  # noqa: PLC0415
     found, fresh, changed = [], {}, False
     for item in paths:
         if isinstance(item, Path):
@@ -194,6 +209,16 @@ def summaries(paths: list, summary: Path | None) -> list[dict | None]:
                 value = manifest_summary(json.loads(read()))
             except (OSError, ValueError):
                 value = None
+            except evidence_store.EvidenceError as error:
+                # An archived manifest that is unavailable (cold cache,
+                # archive unreachable) or refused (bytes that do not hash to
+                # the index line).  Scheduling cost, not a claim: skip it, say
+                # so, never raise, never cache the miss (r61 F9).
+                UNREADABLE.append((name, evidence_store.outcome(error)))
+                print(f"chain_schedule: skipping {name}: {evidence_store.outcome(error)}: "
+                      f"{error}", file=sys.stderr)
+                found.append(None)
+                continue
         fresh[name] = {"stamp": stamp, "summary": value}
         found.append(value)
     if summary is not None and (changed or set(fresh) != set(known)):

@@ -2,8 +2,9 @@
 
 What these hold: a committed index line names bytes the archive has and a
 reader gets exactly those bytes back by hash; the working tree shadows the
-index the way a git working tree shadows HEAD; an object that is missing or
-does not hash to its name is UNAVAILABLE (uncertain), never "absent"; and a
+index the way a git working tree shadows HEAD; an object that is missing is
+UNAVAILABLE (uncertain), one that does not hash to its name is REFUSED,
+neither is "absent"; and a
 union merge that kept two versions of one path is refused, not resolved.
 """
 
@@ -112,12 +113,12 @@ class PutAndReadTests(Sandbox):
         with self.assertRaises(FileNotFoundError):
             store.read_bytes(self.root, "planning/evidence/none.md")
 
-    def test_a_corrupt_object_is_unavailable_not_absent(self):
+    def test_a_corrupt_object_is_refused_not_absent(self):
         self.write(REL, b"bytes\n")
         sha, _ = store.put(self.root, [REL])[REL]
         (self.root / REL).unlink()
         (self.archive / store.object_rel(sha)).write_bytes(gzip.compress(b"other\n"))
-        with self.assertRaisesRegex(store.EvidenceUnavailable, "does not hash"):
+        with self.assertRaisesRegex(store.EvidenceRefused, "does not hash"):
             store.read_bytes(self.root, REL)
 
     def test_an_indexed_object_the_archive_lacks_is_unavailable(self):
@@ -184,7 +185,7 @@ class RemoteFetchTests(Sandbox):
         os.environ["FN_EVIDENCE_ARCHIVE"] = f"box:{remote}"
         run, _ = self.fake_rsync(remote, corrupt=True)
         with mock.patch.object(store.subprocess, "run", side_effect=run):
-            with self.assertRaisesRegex(store.EvidenceUnavailable, "did not arrive verified"):
+            with self.assertRaisesRegex(store.EvidenceRefused, "did not arrive verified"):
                 store.read_bytes(self.root, REL)
         self.assertFalse((self.cache / store.object_rel(sha)).exists())
 

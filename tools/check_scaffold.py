@@ -62,14 +62,19 @@ def link(target: str, base: Path, context: str) -> None:
         fail(f"{context}: local link escapes repository: {target}")
         return
     rel = dest.relative_to(ROOT).as_posix()
-    if not dest.exists() and evidence_store.exists(ROOT, rel):
-        # Evidence the index names: the link holds only if its bytes can be
-        # fetched and verify (a name is not bytes; r56 F3).
+    if evidence_store.indexed(ROOT, rel):
+        # Evidence the index names: the link holds only if the bytes it
+        # reaches hash to the index line -- a working-tree file at that path
+        # is checked against it, never accepted as itself (r61 F2), and with
+        # none here the object must fetch and verify (a name is not bytes).
         try:
             if parts.fragment:
                 dest = evidence_store.materialize(ROOT, rel)
             else:
                 evidence_store.read_bytes(ROOT, rel)
+        except evidence_store.EvidenceRefused as error:
+            fail(f"{context}: indexed target does not match its index line: {target}: {error}")
+            return
         except evidence_store.EvidenceUnavailable as error:
             unavailable(f"{context}: indexed target cannot be read: {target}: {error}")
             return
@@ -156,6 +161,9 @@ def scenario_implementation(ident: str, entry: dict) -> None:
         return
     try:
         module = evidence_store.materialize(ROOT, module_rel)
+    except evidence_store.EvidenceRefused as error:
+        fail(f"{ident}: implementation.test {test} does not match its index line: {error}")
+        return
     except evidence_store.EvidenceUnavailable as error:
         unavailable(f"{ident}: implementation.test {test} cannot be read: {error}")
         return
@@ -186,6 +194,9 @@ def scenario_implementation(ident: str, entry: dict) -> None:
     try:
         body = evidence_store.read_bytes(ROOT, log).decode("utf-8", errors="replace")
         prose = evidence_store.read_bytes(ROOT, record).decode("utf-8", errors="replace")
+    except evidence_store.EvidenceRefused as error:
+        fail(f"{ident}: implementation log/record does not match its index line: {error}")
+        return
     except evidence_store.EvidenceUnavailable as error:
         unavailable(f"{ident}: implementation log/record cannot be read: {error}")
         return
@@ -287,8 +298,8 @@ def main() -> int:
              if isinstance(path, str)]
     try:
         evidence_store.prefetch(ROOT, named)
-    except evidence_store.EvidenceUnavailable:
-        pass  # each read below reports its own object as UNAVAILABLE
+    except evidence_store.EvidenceError:
+        pass  # each read below reports its own object (UNAVAILABLE or REFUSED)
 
     for entries, statuses, advanced in [
         (requirements, {"specified", "implemented", "validated", "deferred"}, {"implemented", "validated"}),
@@ -390,9 +401,10 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except evidence_store.EvidenceUnavailable as exc:
-        print(f"UNAVAILABLE: committed evidence cannot be read: {exc}", file=sys.stderr)
-        sys.exit(evidence_store.EXIT_UNAVAILABLE)
+    except evidence_store.EvidenceError as exc:
+        print(f"{evidence_store.outcome(exc)}: committed evidence cannot be accepted: {exc}",
+              file=sys.stderr)
+        sys.exit(evidence_store.exit_code(exc))
     except (OSError, ValueError, TypeError, KeyError, AttributeError) as exc:
         print(f"ERROR: malformed scaffold: {exc}", file=sys.stderr)
         sys.exit(1)

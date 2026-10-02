@@ -112,7 +112,7 @@ class LocalFilesAreVerifiedTests(Sandbox):
         self.write(REL, b'{"status": "passed"}')
         with self.assertRaises(store.EvidenceMismatch):
             store.read_bytes(self.root, REL)
-        self.assertTrue(issubclass(store.EvidenceMismatch, store.EvidenceUnavailable))
+        self.assertTrue(issubclass(store.EvidenceMismatch, store.EvidenceRefused))
 
     def test_F1_a_matching_local_file_is_indexed_and_an_unindexed_one_is_local(self):
         data = b'{"status": "passed"}'
@@ -195,11 +195,12 @@ class UnreadableClaimsAreUnavailableTests(Sandbox):
             with self.assertRaises(store.EvidenceUnavailable):
                 evidence_manifests.load_archived(self.root, REL)
 
-    def test_F2_indexed_bytes_that_are_not_json_are_unavailable(self):
+    def test_F2_indexed_bytes_that_are_not_json_are_refused(self):
+        # Verified bytes that are not a manifest: there, and refused (r61 F3).
         self.write(REL, b"{not json")
         store.put(self.root, [REL])
         (self.root / REL).unlink()
-        with self.assertRaises(store.EvidenceUnavailable):
+        with self.assertRaises(store.EvidenceRefused):
             evidence_manifests.load_archived(self.root, REL)
 
     def test_F2_a_partial_local_draft_is_still_skipped(self):
@@ -409,7 +410,7 @@ class FetchVerifiesPresentObjectsTests(Sandbox):
         with mock.patch.object(store, "ROOT", self.root), \
                 contextlib.redirect_stdout(io.StringIO()), \
                 contextlib.redirect_stderr(io.StringIO()):
-            self.assertEqual(store.main(["fetch", "--all"]), 3)
+            self.assertEqual(store.main(["fetch", "--all"]), 4)  # bytes there and wrong: refused (r61 F3)
 
 
 # ----------------------------------------------------------------------- F10
