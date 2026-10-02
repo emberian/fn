@@ -64,3 +64,26 @@ class CostInputs(Sandbox):
             self.assertEqual(rule_cost.main(['withdraw', str(self.root / 'local.json'), '--dry-run']), 0)
             self.write(rank, b'bad shadow')
             self.assertNotEqual(tau_cost.main(['apply', str(self.root / rank)]), 0)
+
+
+class PowerLossRecords(Sandbox):
+    def test_indexed_path_spellings_and_shadow_are_verified(self):
+        from tools.resilience.adapters import power_loss
+        rel = 'planning/evidence/cuts.jsonl'
+        self.write(rel, b'{"cut":1}\n')
+        store.put(self.root, [rel])
+        (self.root / rel).unlink()
+        cwd = Path.cwd()
+        with mock.patch.object(power_loss, 'ROOT', self.root), mock.patch.object(power_loss, 'EVIDENCE', self.root / rel):
+            try:
+                os.chdir(self.root)
+                for path in (rel, './' + rel, 'planning/../' + rel, self.root / rel):
+                    self.assertEqual(power_loss.records(path), [{'cut': 1}])
+                self.write(rel, b'{"cut":999}\n')
+                for path in (rel, './' + rel, 'planning/../' + rel, self.root / rel):
+                    with self.assertRaises(store.EvidenceMismatch):
+                        power_loss.records(path)
+                self.write('ordinary.jsonl', b'{"cut":2}\n')
+                self.assertEqual(power_loss.records('ordinary.jsonl'), [{'cut': 2}])
+            finally:
+                os.chdir(cwd)
