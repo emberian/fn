@@ -18,8 +18,9 @@
 ;     administrative record `account bind|unbind', admitted by
 ;     `fn-lb-account-bind-plan' only while the login holds that account, and
 ;     the start publication leaves its binding as it is;
-;   * the gate the host calls (`fn-lb-ocfg-gate', through host/owner-host.lisp
-;     fn-owner-login-gate, called by host/native/owner.lisp
+;   * the gate the host calls (`fn-lb-ocfg-gate', as its buffer twin
+;     books/article-buffer.lisp fn-ars-lb-ocfg-gate through
+;     host/owner-host.lisp fn-owner-login-gate-buffer, called by host/native/owner.lisp
 ;     fnn-owner-attempt-served) reads the posting policy from the LIVE
 ;     configuration, as before, and the binding table from the configuration
 ;     the in-flight submission's CONNECTION pinned when it opened
@@ -148,7 +149,8 @@
   (declare (xargs :guard t))
   (fn-lb-value-bindings (fn-cfg-value (fn-ocfg-conn-config oc id))))
 
-; THE FUNCTION THE HOST CALLS (host/owner-host.lisp fn-owner-login-gate):
+; THE FUNCTION THE HOST CALLS, over the buffer (host/owner-host.lisp
+; fn-owner-login-gate-buffer; fn-ars-lb-ocfg-gate-is-reference):
 ; the policy from the live configuration, the table from the pin.
 (defun fn-lb-ocfg-gate (oc received)
   (declare (xargs :guard t))

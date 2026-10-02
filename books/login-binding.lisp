@@ -26,7 +26,7 @@
 ; (books/peer-authored-accept.lisp fn-pa-carrier-form), before the plan
 ; verifies it.  The host calls it first on the served path
 ; (host/native/owner.lisp fnn-owner-attempt-served through
-; host/owner-host.lisp fn-owner-login-gate) and on a refusal relays the reason
+; host/owner-host.lisp fn-owner-login-gate-buffer) and on a refusal relays the reason
 ; as the served word (fn-pa-served-word, the 441 line of
 ; books/nntp-post.lisp fn-post-store-refusal-text); on a pass it continues
 ; into the unchanged transit attempt, which calls fn-pa-current-plan.  The
@@ -93,7 +93,7 @@
         (fn-own-sub-login sub)
       nil)))
 
-; The function the host calls (host/owner-host.lisp fn-owner-login-gate):
+; The function the host calls (host/owner-host.lisp fn-owner-login-gate-buffer):
 ; the owner, its live configuration and the binding table the native auth
 ; profile loaded.
 (defun fn-lb-owner-gate (o cfg bindings received)

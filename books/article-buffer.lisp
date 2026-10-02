@@ -45,6 +45,7 @@
 (include-book "octets-stobj")
 (include-book "peer-authored-accept")
 (include-book "login-binding-live")
+(include-book "peer-carriage")
 (local (include-book "arithmetic/top" :dir :system))
 
 ; -----------------------------------------------------------------------------
@@ -956,3 +957,41 @@
                                   (fn-lb-owner-gate fn-ars-lb-owner-gate
                                    fn-ocfg-owner fn-ocfg-config
                                    fn-lb-conn-bindings fn-lb-inflight-id)))))
+
+; books/peer-carriage.lisp fn-pcb-transit-verdict (host
+; fn-owner-transit-verdict-buffer; lane sweep-ops, S002): the verdict the
+; service log records for every transit attempt.  On the unsigned arm (the
+; carrier form :absent: every served POST without a carrier) it is decided
+; from the buffer, with no list of the article; on a present carrier it is
+; the reference over the buffer's value (the signed arm's events carry the
+; article as a list anyway: PKT-743).
+(defun fn-ars-transit-verdict (snapshots carried transitp ed ml fn-octets)
+  (declare (xargs :stobjs fn-octets :guard t))
+  (if (equal (fn-ars-carrier-form fn-octets) :absent)
+      :unsigned
+    (fn-pcb-transit-verdict (fn-octets-list fn-octets) snapshots carried
+                            transitp ed ml)))
+
+; A carrier-absent article is the unsigned arm of the transit verdict, on
+; and off transit.
+(defthm fn-pcb-transit-verdict-of-an-absent-carrier
+  (implies (equal (fn-pa-carrier-form received) :absent)
+           (equal (fn-pcb-transit-verdict received snapshots carried
+                                          transitp ed ml)
+                  :unsigned))
+  :hints (("Goal" :in-theory (e/d (fn-pcb-transit-verdict
+                                   fn-pcb-admission-verdict
+                                   fn-pa-current-plan)
+                                  (fn-pa-carrier-form fn-pcb-refusal-class
+                                   fn-pcb-revoked-principalp)))))
+
+; KEYSTONE for the host line.
+(defthm fn-ars-transit-verdict-is-reference
+  (implies (fn-octets-p fn-octets)
+           (equal (fn-ars-transit-verdict snapshots carried transitp ed ml
+                                          fn-octets)
+                  (fn-pcb-transit-verdict fn-octets snapshots carried
+                                          transitp ed ml)))
+  :hints (("Goal" :in-theory (e/d (fn-oct-list-is-identity)
+                                  (fn-ars-carrier-form fn-pa-carrier-form
+                                   fn-pcb-transit-verdict)))))

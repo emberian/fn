@@ -8,8 +8,9 @@
 ; count takes for a reclaimed one.  This book proves that cannot happen at
 ; the served ingresses: every one reaches the Store prepare only through
 ; `fn-pa-carrier-form' (books/peer-authored-accept), which the host calls as
-; `fn-owner-peer-carrier-form' (host/owner-host.lisp) at
-; host/native/owner.lisp `fnn-owner-attempt-transit' (the `form' binding,
+; `fn-owner-peer-carrier-form-buffer' (host/owner-host.lisp; its buffer twin
+; fn-ars-carrier-form-is-reference) at host/native/owner.lisp
+; `fnn-owner-attempt-filled' (the `form' binding,
 ; before any Store call; POST, IHAVE, TAKETHIS, peer and BP transit, and
 ; bound submissions all go through it), and it refuses a tombstone with
 ; (:refused :article), because an octet string whose first octet is NUL is
