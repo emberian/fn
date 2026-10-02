@@ -477,5 +477,44 @@ class PendingAcceptBoundTests(unittest.TestCase):
             self.assertIsNone(owner.poll())
             node.stop(process=owner, expect=EXIT.OK)
 
+
+@unittest.skipUnless(os.environ.get("FN_HOST_LIFECYCLE_MEASURE") == "1",
+                     "a measurement: set FN_HOST_LIFECYCLE_MEASURE=1 (and FN_NATIVE_HOST)")
+class PullCommitLatencyMeasure(unittest.TestCase):
+    """The pull feed's commit latency (coordinator's request for r71 F5): node
+    B pulls COUNT articles from node A in one round.  Before F5's fix each
+    pulled article committed inline under the owner (its own barrier in the
+    transit quantum); after, it joins the committer's batch and is awaited off
+    the owner.  Prints the seconds from B's start to its last article stored
+    and the per-article figure; asserts only that every article arrived."""
+
+    COUNT = 200
+
+    def setUp(self):
+        from tests import test_native_peer_pull as pull
+        if not pull.READY:
+            self.skipTest("set FN_NATIVE_HOST")
+        self.pull = pull
+        self.case = pull.NativePeerPullTests("test_pull_from_fn_node")
+        self.case.setUp()
+        self.addCleanup(self.case.doCleanups)
+
+    def test_measure_pull_commit_latency(self):
+        case, pull = self.case, self.pull
+        a, b, _ = case.two_nodes()
+        ids = ["<latency-{}@example.invalid>".format(n) for n in range(self.COUNT)]
+        for n, message_id in enumerate(ids):
+            case.post(a, pull.article(message_id, "latency-{}".format(n)))
+        started = time.monotonic()
+        case.start(b)
+        case.await_article(b, ids[-1], timeout=600)
+        for message_id in ids:
+            case.await_article(b, message_id, timeout=60)
+        seconds = time.monotonic() - started
+        print("PULL-COMMIT-LATENCY articles={} seconds={:.3f} per-article-ms={:.2f}".format(
+            self.COUNT, seconds, 1000 * seconds / self.COUNT), flush=True)
+        case.stop(b)
+        case.stop(a)
+
 if __name__ == "__main__":
     unittest.main()
