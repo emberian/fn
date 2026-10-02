@@ -55,8 +55,11 @@
 ; One quantum: the window K..HI (at most W numbers).
 (defun fn-ovw-step (cur w fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat)
-                  :guard (and (fn-ovw-cursorp cur)
-                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
+                  ;; No fact about the whole catalog (Codex r67 F1): a quantum
+                  ;; reads the rows of its own window, each through a reader
+                  ;; that checks its handle, so the guard a guard-checked host
+                  ;; call evaluates per quantum is O(1), not a walk of N rows.
+                  :guard (fn-ovw-cursorp cur)
                   :verify-guards nil))
   (let* ((group (nth 0 cur)) (k (nfix (nth 1 cur))) (top (nfix (nth 2 cur)))
          (v (nth 3 cur)) (legacyp (nth 4 cur)) (owedp (nth 5 cur)) (server (nth 6 cur))

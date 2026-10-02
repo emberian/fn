@@ -205,3 +205,13 @@
          (not (equal old (spct-old s *spct-range* nil)))))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-splan-arm-reference))))
+
+;; THE QUANTUM'S GUARD IS O(1) (Codex r67 F1; lane served-catalog-live).  With
+;; no raw dispatch the counterpart evaluates the host-called entry's guard on
+;; every quantum under the owner mutex; these are the guards as the world
+;; holds them, stobj recognizers aside: no fact about the whole catalog.  A
+;; guard that asks fn-cat-handles-inp again fails here by name.
+(assert-event (equal (guard 'fn-splan-cursor-step t (w state)) '(natp w)))
+(assert-event (equal (guard 'fn-ovw-step t (w state)) '(fn-ovw-cursorp cur)))
+(assert-event (not (member-eq 'fn-cat-handles-inp
+                              (all-ffn-symbs (guard 'fn-cat-row-article t (w state)) nil))))

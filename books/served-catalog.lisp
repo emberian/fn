@@ -87,8 +87,7 @@
 ;; article; nil otherwise (books/catalog-number-index.lisp fn-cnx-view-seq).
 (defun fn-scat-number-article (group n v fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat)
-                  :guard (and (natp v)
-                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
+                  :guard (natp v)
                   :verify-guards nil))
   (let ((seq (fn-cnx-view-seq group n v fn-cat)))
     (if seq (fn-cat-row-article seq fn-arena fn-cat) nil)))
@@ -356,8 +355,7 @@
 
 (defun fn-scat-available-article (group n v fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat)
-                  :guard (and (natp v)
-                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))))
+                  :guard (natp v)))
   (if (and (posp n) (<= n *fn-nntp-max-article-number*))
       (let ((article (fn-scat-number-article group n v fn-arena fn-cat)))
         (if (and article (fn-nntp-article-idp article)) article nil))
@@ -647,8 +645,12 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
+; The OVER line builders ask (natp v) and nothing of the whole catalog: a
+; window reads the rows of its own numbers, each through a reader that
+; checks its handle (see fn-cat-row-article).  They are what a cursor
+; quantum runs (fn-ovw-lines), so their guard is checked once per quantum.
 (defun fn-nov-lines-for-numbers-cat-loop (group numbers v fn-arena fn-cat acc)
-  (declare (xargs :stobjs (fn-arena fn-cat) :guard (and (fn-scat-guard) (true-listp acc)) :verify-guards nil))
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard (and (natp v) (true-listp acc)) :verify-guards nil))
   (if (consp numbers)
       (let* ((number (car numbers))
              (article (fn-scat-available-article group number v fn-arena fn-cat))
@@ -667,7 +669,7 @@
     (revappend acc nil)))
 
 (defun fn-nov-lines-for-numbers-cat (group numbers v fn-arena fn-cat)
-  (declare (xargs :verify-guards nil :stobjs (fn-arena fn-cat) :guard (fn-scat-guard)))
+  (declare (xargs :verify-guards nil :stobjs (fn-arena fn-cat) :guard (natp v)))
   (mbe :logic
        (if (consp numbers)
            (let* ((number (car numbers))
@@ -749,7 +751,7 @@
 ;;; (fn-ovw-lines); their equation with the column fold is with the served
 ;;; range arm below (fn-nov-served-lines-for-numbers-cat-is-col).
 (defun fn-nov-served-lines-for-numbers-cat-loop (group numbers server v fn-arena fn-cat acc)
-  (declare (xargs :stobjs (fn-arena fn-cat) :guard (and (fn-scat-guard) (true-listp acc)) :verify-guards nil))
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard (and (natp v) (true-listp acc)) :verify-guards nil))
   (if (consp numbers)
       (let* ((number (car numbers))
              (article (fn-scat-available-article group number v fn-arena fn-cat))
@@ -765,7 +767,7 @@
     (revappend acc nil)))
 
 (defun fn-nov-served-lines-for-numbers-cat (group numbers server v fn-arena fn-cat)
-  (declare (xargs :verify-guards nil :stobjs (fn-arena fn-cat) :guard (fn-scat-guard)))
+  (declare (xargs :verify-guards nil :stobjs (fn-arena fn-cat) :guard (natp v)))
   (mbe :logic
        (if (consp numbers)
            (let* ((number (car numbers))
@@ -835,7 +837,7 @@
 ; reader's (fn-nntp-over-range-cat).
 (defun fn-ovw-lines (group k hi server v fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat)
-                  :guard (and (natp k) (natp hi) (fn-scat-guard))))
+                  :guard (and (natp k) (natp hi) (natp v))))
   (let ((numbers (fn-scat-range-keep group (fn-cnx-range-aux group k hi v fn-cat) fn-cat)))
     (if server
         (fn-nov-served-lines-for-numbers-cat group numbers server v fn-arena fn-cat)

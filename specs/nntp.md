@@ -1868,6 +1868,26 @@ Web and pull worker threads yield after empty progress too. This bounds
 cursor chaining per I/O event; it preserves the existing complete-residual
 contract and introduces no new bytes into a response.
 
+The cursor carries the node's Xref server name when the environment has
+one (`fn-nntp-xref-server`), and its rows are then the served rows (the Xref
+field, the overview column): `fn-nntp-over-range-ovw-expands-to-over-range-
+served-cat`, `fn-ovw-run-is-over-range-served-cat`. Before 2026-10-02 the
+dispatcher's Xref arm answered the whole range in one step whenever a server
+name was configured, so the cursor was reached only by a node with no name.
+Not yet on the cursor: the read-restricted route (a session with a READ rule
+is served by the reference walk over its projected pin,
+`fn-scr-auth-delegate`), OVER by Message-ID and with no argument (one row).
+
+A cursor step sends no octet, so the exposure's observation of the step
+records no progress. Each quantum refreshes the connection's idle deadline
+(`fn-exp-progress`, `fn-exp-idle-keeps-after-progress`), in the quantum's own
+hold; a reply that takes longer than the idle limit to drain is not closed
+by the first idle check after it (Codex r67 F3).
+
+A quantum's guard is O(1): `fn-splan-cursor-step` asks `(natp w)`. Until
+2026-10-02 it also asked `fn-cat-handles-inp` of the whole catalog, which a
+guard-checked call evaluated on every quantum (Codex r67 F1).
+
 The current quantum bounds numbers probed and overview rows formatted.
 It still parses a complete article and formats a complete overview row;
 byte-budgeted long-row continuation remains an identified Q5c/J1 obligation.

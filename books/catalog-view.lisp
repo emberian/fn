@@ -50,10 +50,16 @@
 ; HANDLE, as the owner's archive does; a served reader reads the bytes through
 ; the arena (books/nntp-session.lisp fn-nntp-article-bytes), so no view read
 ; materializes a payload and the view's articles can equal the archive's.
+; The guard asks for a row below the count and nothing of the arena: the
+; article carries the row's HANDLE and this function reads no payload (the
+; readers of the bytes check the handle themselves: books/article-arena-
+; reads.lisp).  Until lane served-catalog-live (2026-10-02) the guard also
+; asked fn-cat-handles-inp of the WHOLE catalog, which the body never used
+; and which every guard-checked caller paid as a walk of all N rows (a
+; cursor quantum of the served OVER: Codex r67 F1).
 (defun fn-cat-row-article (seq fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat)
-                  :guard (and (natp seq) (< seq (fn-cat-count fn-cat))
-                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
+                  :guard (and (natp seq) (< seq (fn-cat-count fn-cat)))
                   :verify-guards nil)
            (ignorable fn-arena))
   (let ((h (fn-cat-at seq fn-cat)))
@@ -65,8 +71,7 @@
                      (fn-record-stamp h))))
 
 (verify-guards fn-cat-row-article
-  :hints (("Goal" :in-theory (disable fn-cat-p-is-rowsp fn-cat-count-is-len fn-cat-at-is-nth)
-           :use ((:instance fn-cat-handles-inp-at (n (fn-cat-count fn-cat)) (seq seq))))))
+  :hints (("Goal" :in-theory (disable fn-cat-p-is-rowsp fn-cat-count-is-len fn-cat-at-is-nth))))
 
 ; The rows below I visible at V, newest first (the archive's order).
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one

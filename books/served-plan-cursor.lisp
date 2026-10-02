@@ -135,8 +135,7 @@
 
 (defun fn-splan-rest-cursor-step (rest w fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat)
-                  :guard (and (natp w)
-                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
+                  :guard (natp w)
                   :verify-guards nil))
   (if (consp rest)
       (if (fn-splan-cursor-effectp (car rest))
@@ -157,11 +156,15 @@
 (verify-guards fn-splan-rest-cursor-step
   :hints (("Goal" :in-theory (disable fn-ovw-step fn-ovw-cursorp))))
 
-; The host-called subject (W a natural: the entry guard's kind).
+; The host-called subject (W a natural: the entry guard's kind).  The guard
+; is O(1): with no raw dispatch the counterpart evaluates it on EVERY quantum
+; under the owner mutex, and until lane served-catalog-live it included
+; fn-cat-handles-inp of the whole catalog, a walk of all N rows per quantum
+; (a quantized OVER of a whole group cost about N x ceil(N/W): Codex r67 F1).
+; A quantum's reads are its window's: fn-ovw-step-window-at-most-w.
 (defun fn-splan-cursor-step (p w fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat)
-                  :guard (and (natp w)
-                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))))
+                  :guard (natp w)))
   (mv-let (status rest)
     (fn-splan-rest-cursor-step (fn-splan-rest p) w fn-arena fn-cat)
     (mv status (cons (fn-splan-cur p) rest))))
