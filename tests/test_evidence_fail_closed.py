@@ -1121,5 +1121,16 @@ class R66Tests(Sandbox):
         self.assertEqual(report["bad"], [sha])
 
 
+    def test_a_worktree_that_cannot_be_asked_is_an_error(self):
+        import evidence_history
+        init_repo(self.root)
+        commit_all(self.root, "one")
+        other = self.base / "wt"
+        git(self.root, "worktree", "add", "-q", "--detach", str(other))
+        shutil.rmtree(other)        # listed by `worktree list`, unreadable
+        with self.assertRaisesRegex(RuntimeError, "prune or restore"):
+            evidence_history.snapshot_refs(self.root)
+
+
 if __name__ == "__main__":
     unittest.main()

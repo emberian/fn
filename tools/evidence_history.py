@@ -173,10 +173,17 @@ def snapshot_refs(root: Path, reflogs: bool = True) -> list[Ref]:
         elif row.startswith("HEAD ") and worktree is not None:
             refs[f"HEAD {worktree}"] = Ref(f"HEAD {worktree}", row[5:].strip(), "commit")
             # That worktree's private refs (any object type, trees included).
+            # A worktree that cannot be asked is an error, never a silent
+            # skip: `git worktree prune` (or restore it) and measure again.
             done = subprocess.run([*GIT, "-C", worktree, "for-each-ref", fmt, "refs/worktree",
                                    "refs/bisect", "refs/rewritten"],
                                   capture_output=True, check=False)
-            for line in done.stdout.decode().splitlines() if done.returncode == 0 else []:
+            if done.returncode != 0:
+                raise RuntimeError(
+                    f"cannot list the private refs of worktree {worktree} (git exit "
+                    f"{done.returncode}: {done.stderr.decode(errors='replace').strip()[-200:]}); "
+                    "prune or restore it, then measure again")
+            for line in done.stdout.decode().splitlines():
                 sha, kind, name = line.split(" ", 2)
                 refs[f"{worktree} {name}"] = Ref(f"{worktree} {name}", sha, kind)
     tags = [ref for ref in refs.values() if ref.type == "tag"]
