@@ -2534,7 +2534,13 @@ the file is built (rep-wave-d-3): the decoder reads the buffer by index
           (trailer-octets (fnn-core 'fn-store-sco-trailer-octets))
           (profile (fnn-store-config store))
           (fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+)))
-          (frames nil) (total 0) (at 0))
+          (frames nil) (total 0) (at 0)
+          ;; The image region is recognized at the file's first header
+          ;; only: once (codex r72 F3).  A second image header at the seek
+          ;; target was taken again and seeked to the same offset forever,
+          ;; under the store lock; now it is a segment header, refused by
+          ;; the admission.
+          (at-start t))
       (unless (and (integerp header-octets) (> header-octets 0)
                    (integerp trailer-octets) (> trailer-octets 0))
         (fnn-close fd)
@@ -2555,10 +2561,11 @@ the file is built (rep-wave-d-3): the decoder reads the buffer by index
                  (let ((rest (fnn-read-exact-fd fd (1- header-octets))))
                    (unless rest
                      (return-from fnn-state-checkpoint-plan (values :refused :truncated)))
-                  (let ((np (and (= at 0) (null frames)
+                  (let ((np (and at-start
                                  (fnn-core 'fn-his-image-header-np
                                            (fnn-octet-list
                                             (concatenate '(vector (unsigned-byte 8)) first rest))))))
+                   (setq at-start nil)
                    ;; The history image region (books/history-image-snapshot.lisp):
                    ;; ACL2 recognized its header at the file's start; the framed
                    ;; segments begin after it.  Its pages are not read here: the
@@ -6501,21 +6508,32 @@ EXTENT octets, or refused."
            :message (format nil "log extent ~a is not a positive number of ~a-octet units"
                             extent unit)))
   (let ((st (fnn-check-regular path)))
+    ;; The descriptor is the caller's only when this returns it: every
+    ;; fallible step after the open closes it on failure (codex r72 F11).
     (cond (st
            (let ((fd (fnn-open path (logior (if read-only sb-posix:o-rdonly sb-posix:o-rdwr)
-                                            +fnn-o-nofollow+))))
-             (unless (= (sb-posix:stat-size (fnn-fstat fd)) extent)
-               (fnn-close fd)
-               (fnn-refuse "log segment ~a is not ~a octets long" path extent))
-             fd))
+                                            +fnn-o-nofollow+)))
+                 (done nil))
+             (unwind-protect
+                  (progn
+                    (unless (= (sb-posix:stat-size (fnn-fstat fd)) extent)
+                      (fnn-refuse "log segment ~a is not ~a octets long" path extent))
+                    (setq done t)
+                    fd)
+               (unless done (fnn-close fd)))))
           (read-only (fnn-refuse "no log segment at ~a" path))
           (t
            (let ((fd (fnn-open path (logior sb-posix:o-rdwr sb-posix:o-creat
-                                            sb-posix:o-excl +fnn-o-nofollow+))))
-             (fnn-log-preallocate fd extent)
-             (fnn-fsync-file fd)
-             (fnn-fsync-dir (fnn-log-parent path))
-             fd)))))
+                                            sb-posix:o-excl +fnn-o-nofollow+)))
+                 (done nil))
+             (unwind-protect
+                  (progn
+                    (fnn-log-preallocate fd extent)
+                    (fnn-fsync-file fd)
+                    (fnn-fsync-dir (fnn-log-parent path))
+                    (setq done t)
+                    fd)
+               (unless done (fnn-close fd))))))))
 
 (defun fnn-log-pread (fd offset count)
   "COUNT octets of the segment at OFFSET (lseek, then read to completion); a
@@ -6787,10 +6805,15 @@ the records, ACL2's octet lists): for the log rig's oracle, never the open."
                                      (lambda (r) (push r records)))))
     (values (nreverse records) ks)))
 
+(defconstant +fnn-log-zero-chunk+ 1048576
+  "The octets of zeros one write of the recovered tail carries: a bound on
+the buffer, not on the tail (fnn-log-recover).")
+
 (defun fnn-log-recover (path extent unit max &optional (genesis *fn-lg-genesis*) (sink #'identity))
   "P-LOG-RECOVER (fn-lg-recover-program): the kernel of the segment's decode
 from GENESIS, each record handed to SINK as it is read (fnn-log-stream-
-segment), then the tail [F, EXTENT) zeroed by one write and fenced.  The
+segment), then the tail [F, EXTENT) zeroed (the program's one write, from a
+bounded buffer) and fenced.  The
 kernel is R-related to the segment at log-recovered
 (fn-lg-recover-program-establishes-the-relation)."
   (let* ((fd (fnn-log-open-segment path extent unit))
@@ -6805,12 +6828,24 @@ kernel is R-related to the segment at log-recovered
                    ks)
                (error (e) (fnn-close fd) (error e)))))
     ;; fn-lg-recover-tail-of-abstraction: the range read from the
-    ;; concrete kernel is the logical kernel's.
-    (destructuring-bind (offset count) (fnn-call 'fn-lg-recover-tail ks extent)
-      (fnn-log-pwrite fd offset (fnn-make-octets count))
-      (fnn-log-at :log-truncated)
-      (fnn-log-fdatasync fd)
-      (fnn-log-at :log-recovered))
+    ;; concrete kernel is the logical kernel's.  The program's one write of
+    ;; zeros over [OFFSET, OFFSET+COUNT) is written from one reusable buffer
+    ;; of at most +fnn-log-zero-chunk+ octets (sweep S047, codex r72 F8: it
+    ;; was one vector of the whole tail, GiBs after the extent doubled):
+    ;; the same octets at the same places, the allocation bounded.  A
+    ;; failure here or at the fence closes FD before it is passed on.
+    (handler-case
+        (destructuring-bind (offset count) (fnn-call 'fn-lg-recover-tail ks extent)
+          (let ((zeros (fnn-make-octets (min count +fnn-log-zero-chunk+)))
+                (end (+ offset count)))
+            (loop for at from offset below end by +fnn-log-zero-chunk+ do
+              (fnn-log-pwrite fd at (if (<= (+ at (length zeros)) end)
+                                        zeros
+                                        (subseq zeros 0 (- end at))))))
+          (fnn-log-at :log-truncated)
+          (fnn-log-fdatasync fd)
+          (fnn-log-at :log-recovered))
+      (error (e) (fnn-close fd) (error e)))
     (%make-fnn-log :path path :fd fd :kernel ks :unit unit :max max :extent extent)))
 
 (defun fnn-log-prepare (log record)
@@ -7623,12 +7658,15 @@ the process's life) and the stream binds each record's place for SINK
       (let ((path (fnn-segment-path-at store k)))
         (if more
             (let* ((extent (fnn-log-observed-extent path))
-                   (fd (fnn-log-open-segment path extent unit t))
-                   (*fnn-extent-file* (and places (fnn-extent-register path))))
+                   (fd (fnn-log-open-segment path extent unit t)))
+              ;; FD is closed whatever follows its open, the extent
+              ;; registration included (codex r72 F11).
               (unwind-protect
-                   (setq genesis (fnn-core 'fn-lgc-last
-                                           (fnn-log-stream-segment fd extent unit max genesis sink
-                                                                   (file-namestring path))))
+                   (let ((*fnn-extent-file* (and places (fnn-extent-register path))))
+                     (setq genesis (fnn-core 'fn-lgc-last
+                                             (fnn-log-stream-segment fd extent unit max genesis
+                                                                     sink
+                                                                     (file-namestring path)))))
                 (fnn-close fd)))
           (progn
             (fnn-log-complete-rotation store path)
