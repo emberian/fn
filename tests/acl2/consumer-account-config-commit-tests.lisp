@@ -1,7 +1,7 @@
 (in-package "ACL2")
 (include-book "../../books/consumer-account-config-commit")
-(local (include-book "consumer-account-candidate-tests"))
-(local (include-book "consumer-account-config-preparation-tests"))
+(include-book "consumer-account-candidate-tests") ; its fixtures are used by non-local events
+(include-book "consumer-account-config-preparation-tests") ; its fixtures are used by non-local events
 
 ; Test-only annotation/caller. Actual runtime consumes carried parsed roots.
 (defun fn-acjt-fields (fields)
