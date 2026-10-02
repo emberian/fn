@@ -6096,6 +6096,10 @@ tree root), or stop the build."
     "FN_NATIVE_CHECKPOINT_BUDGET_TEST" "FN_NATIVE_RECLAIM_FAULT"
     "FN_NATIVE_TEST_RECLAIM_STALL_FILE" "FN_NATIVE_RECLAIM_HOLD"
     "FN_NATIVE_PAGE_READ_HOLD"
+    ;; lane host-lifecycle: lifecycle windows held open for the natives
+    ;; (host/native/owner.lisp fnn-owner-worker-tail-hold, host/native/mux.lisp
+    ;; fnn-mux-adopt-hold).
+    "FN_NATIVE_WORKER_TAIL_HOLD" "FN_NATIVE_ADOPT_HOLD"
     "FN_NATIVE_PAGE_IO_HOLD" "FN_NATIVE_PAGE_IO_RESULT"
     "FN_NATIVE_DISK_FREE"
     "FN_NATIVE_EXTENT_CACHE_TEST_OFF"

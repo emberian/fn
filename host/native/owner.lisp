@@ -5011,6 +5011,20 @@ or pending (closed by a later release) and serving continues."
       (serious-condition (e)
         (fnn-err "CHECKPOINT release failed (files stay retired): ~a" e)))))
 
+;;; Developer image only (lane host-lifecycle, r71 F10): FN_NATIVE_WORKER_
+;;; TAIL_HOLD=RELEASE-FILE holds the checkpoint publisher and the exporter at
+;;; the tail of their work -- the publication finished (or the export's
+;;; outcome is published) and the arena generation is still pinned -- until
+;;; the file exists, printing `WORKER-TAIL held worker=NAME'.  A scenario
+;;; stops the owner there: the stop must join the held worker before it
+;;; settles the Store.
+(defun fnn-owner-worker-tail-hold (name)
+  (let ((release (fnn-developer-selector "FN_NATIVE_WORKER_TAIL_HOLD")))
+    (when (and release (plusp (length release)) (not (probe-file release)))
+      (fnn-err "WORKER-TAIL held worker=~a" name)
+      (loop until (probe-file release) do (sleep 0.05))
+      (fnn-err "WORKER-TAIL released worker=~a" name))))
+
 (defun fnn-owner-publish-captured (service captured &optional position pin)
   "The publication's thread: ACL2's fn-ock-next-checkpoint over the values
 captured under the owner mutex (NEXT, the capture of the history at the
@@ -5149,6 +5163,7 @@ the crash keystone) and serving continues."
                 (fnn-owner-service-workers service)
                 (delete sb-thread:*current-thread*
                         (fnn-owner-service-workers service) :test #'eq))))))
+    (fnn-owner-worker-tail-hold "publisher")
     (when pin (fnn-arena-unpin pin))
     (fnn-owner-service-nursery))
   ;; PKT-583 (b): the publication finished; decide again from the newest
@@ -5412,6 +5427,7 @@ the stop's refusal at a chunk boundary is `owner-stopping'."
               (fnn-owner-service-workers service)
               (delete sb-thread:*current-thread*
                       (fnn-owner-service-workers service) :test #'eq)))
+      (fnn-owner-worker-tail-hold "exporter")
       (fnn-arena-unpin pin))))
 
 ;;; Q16 (lane online-reclaim): `store reclaim --dry-run' on the running

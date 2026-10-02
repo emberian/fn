@@ -400,15 +400,17 @@ DONEP)."
                                  (fnn-mux-conn-class conn)
                                  (and (fnn-mux-conn-zout conn) t)))
 
-(defun fnn-mux-plan-yield (conn plan after &optional empty-progressp)
+(defun fnn-mux-plan-yield (loop conn plan after &optional empty-progressp)
   "Retain the cursor's exact continuation and ownership until its
 positive ACL2 scheduling delay expires.  AFTER belongs to the whole reply."
   (let ((ms (fnn-core 'fn-splan-cursor-resume-ms)))
     (unless (and (integerp ms) (> ms 0))
       (fnn-fault "owner returned a malformed cursor resume delay"))
     (when (fnn-developer-selector "FN_NATIVE_OVER_WINDOW")
-      (fnn-err "OVER ~a cid=~d" (if empty-progressp "empty-yield" "cursor-yield")
-               (fnn-mux-conn-cid conn)))
+      ;; PASSES: the loop's completed passes (lane host-lifecycle: an
+      ;; ineligible idle deadline made a yield's wait a busy poll, r71 F11).
+      (fnn-err "OVER ~a cid=~d passes=~d" (if empty-progressp "empty-yield" "cursor-yield")
+               (fnn-mux-conn-cid conn) (fnn-mux-loop-passes loop)))
     (setf (fnn-mux-conn-plan conn) plan
           (fnn-mux-conn-after conn) after
           (fnn-mux-conn-out conn) nil
@@ -426,7 +428,7 @@ whole reply; a plan with nothing to write runs AFTER at once."
   (multiple-value-bind (octets rest donep yieldedp)
       (fnn-mux-render-next loop conn plan)
     (setf (fnn-mux-conn-plan conn) (if donep nil rest))
-    (cond (yieldedp (fnn-mux-plan-yield conn rest after t))
+    (cond (yieldedp (fnn-mux-plan-yield loop conn rest after t))
           ((> (length octets) 0) (fnn-mux-queue loop conn octets :send-reply after))
           (t (fnn-mux-after loop conn after)))))
 
@@ -452,13 +454,13 @@ window (off the owner mutex) and go on; with nothing left, run AFTER."
         ;; cursor quantum into this same I/O event, even when the socket
         ;; could accept every window immediately.  Timers re-feed it.
         (when (and plan (fnn-core 'fn-splan-at-cursorp plan))
-          (fnn-mux-plan-yield conn plan (fnn-mux-conn-after conn))
+          (fnn-mux-plan-yield loop conn plan (fnn-mux-conn-after conn))
           (return-from fnn-mux-flush nil))
         (if plan
             (multiple-value-bind (octets rest donep yieldedp)
                 (fnn-mux-render-next loop conn plan)
               (when yieldedp
-                (fnn-mux-plan-yield conn rest (fnn-mux-conn-after conn) t)
+                (fnn-mux-plan-yield loop conn rest (fnn-mux-conn-after conn) t)
                 (return-from fnn-mux-flush nil))
               (setf (fnn-mux-conn-plan conn) (if donep nil rest)
                     (fnn-mux-conn-out conn) (fnn-mux-z-out conn octets)
@@ -1379,6 +1381,18 @@ the stop spared, fnn-owner-stop-service-locked), then end every connection."
             (setf (fnn-mux-loop-thread loop) thread)
             (push thread (fnn-owner-service-workers service))))))))
 
+;;; Developer image only (lane host-lifecycle, r71 F9): FN_NATIVE_ADOPT_HOLD=
+;;; RELEASE-FILE holds an implicit-TLS socket's adoption (a further accept
+;;; thread's, never the main accept loop's) after its registration as a
+;;; client and before a loop takes it, printing `ADOPT held', until the file
+;;; exists.  A scenario stops the owner there.
+(defun fnn-mux-adopt-hold (implicit-tls)
+  (let ((release (and implicit-tls (fnn-developer-selector "FN_NATIVE_ADOPT_HOLD"))))
+    (when (and release (plusp (length release)) (not (probe-file release)))
+      (fnn-err "ADOPT held")
+      (loop until (probe-file release) do (sleep 0.05))
+      (fnn-err "ADOPT released"))))
+
 (defun fnn-mux-adopt (service socket &optional implicit-tls done)
   "Hand SOCKET to a loop (round-robin).  Registered as a client first, so a
 stop shuts it down whichever thread holds it."
@@ -1393,6 +1407,7 @@ stop shuts it down whichever thread holds it."
           (setq loop (nth (mod (fnn-owner-service-mux-next service) (length loops))
                           loops))
           (incf (fnn-owner-service-mux-next service)))))
+    (when loop (fnn-mux-adopt-hold implicit-tls))
     (when loop
       (sb-thread:with-mutex ((fnn-mux-loop-lock loop))
         (push (%make-fnn-mux-conn :socket socket :implicit-tls implicit-tls
