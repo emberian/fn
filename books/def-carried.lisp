@@ -73,7 +73,7 @@
 ;                        itself a host entry (fn-interfaces), nothing is
 ;                        attached to it (defattach), and every function body
 ;                        in the world that calls FN passes a literal call of
-;                        a declared P at F (fn-cd-produced-host-problem; a
+;                        a declared P at F (:no-unproduced-caller; a
 ;                        let-bound or computed argument is refused).  Raw
 ;                        Lisp is outside the world: tools/interface_emit.py
 ;                        refuses a raw-host dispatch or direct application of
@@ -1095,23 +1095,6 @@
          (cons (fn-cd-get :name (cddr transition))
                (fn-cd-names (fn-cd-get :concludes row))))))
 
-;  An establishing point with :produced: its declared :hyps are discharged
-; at every producer's output (NAME-FN-P-produced, generated, under named
-; assumptions only), so they back raw dispatch WHEN the host can hand FN no
-; other argument there.  That is a world fact too: FN is not itself a
-; host-called entry (fn-interfaces), and every function body in the world
-; that calls FN passes, at the produced formal, a literal call of a declared
-; producer (fn-cd-unproduced-call).  A let-bound or computed argument is
-; refused: the check is syntactic and conservative.
-(defun fn-cd-declared-hyps (entries produced-ok)
-  (declare (xargs :mode :program))
-  ; the first entry with :hyps not discharged by a producer
-  (cond ((atom entries) nil)
-        ((and (fn-cd-get :hyps (cddar entries))
-              (not (and produced-ok (fn-cd-get :produced (cddar entries)))))
-         (car entries))
-        (t (fn-cd-declared-hyps (cdr entries) produced-ok))))
-
 (mutual-recursion
  (defun fn-cd-unproduced-actual (term fn pos producers)
    (declare (xargs :mode :program))
@@ -1175,81 +1158,112 @@
       (fn-cd-alias-of fn 'attachment w w)
       (fn-cd-alias-of fn 'absstobj-info w w)))
 
-(defun fn-cd-produced-host-problem (entries w)
-  (declare (xargs :mode :program))
-  ; the first establishing entry with :produced the host can hand an
-  ; unproduced argument, as a msg
-  (cond
-   ((atom entries) nil)
-   ((null (fn-cd-get :hyps (cddar entries)))
-    (fn-cd-produced-host-problem (cdr entries) w))
-   (t
-    (let* ((fn (caar entries))
-           (f (fn-cd-produced-formal (car entries)))
-           (pos (position-eq f (getpropc fn 'formals nil w)))
-           (producers (strip-cars (fn-cd-get :produced (cddar entries))))
-           (bad (and pos (fn-cd-unproduced-call fn pos producers w))))
-      (cond
-       ((assoc-eq fn (table-alist 'fn-interfaces w))
-        (msg "~x0 is a host-called entry (fn-interfaces): the host may hand it ~
-              any ~x1, so its produced premises back no raw dispatch" fn f))
-       ((fn-cd-attached-to fn w)
-        (msg "~x0 is attached to ~x1 (defattach, or an abstract stobj's :exec, ~
-              attach-stobj implementations included): a call through ~x1 runs ~x0 with an argument the ~
-              caller scan does not see, so its produced premises back no raw ~
-              dispatch" fn (fn-cd-attached-to fn w)))
-       ((null pos) (msg "~x0 has no formal ~x1" fn f))
-       (bad
-        (msg "~x0 calls ~x1 with ~x2 as ~x3, which is not a call of a declared ~
-              producer ~&4: the premises ~x5 are not discharged there"
-             (car bad) fn (cadr bad) f producers (fn-cd-get :hyps (cddar entries))))
-       (t (fn-cd-produced-host-problem (cdr entries) w)))))))
+;  What a raw row MUST carry is derived from what each entry is, never from
+; which optional fields happen to be present (r25-F1): the table below lists,
+; by kind, the requirements in order; fn-cd-raw-requirement-problem says what
+; each refuses.  The produced requirements are vacuous for an open without
+; :hyps (by :hyps-iff-produced, also without :produced).  An open's :hyps
+; back raw dispatch only where the host can hand FN no argument but a
+; producer's: FN is no host entry, runs through no attachment or
+; abstract-stobj :exec, and every caller in the world passes a literal
+; producer call at the produced formal (syntactic, conservative).  Every
+; generated name holds its regenerated statement by fn-cd-problem first.
+(defconst *fn-cd-raw-requirements*
+  '((:transition :no-hyps)
+    (:open :witnessed-reaches :hyps-iff-produced :producers-exact
+           :not-an-interface :not-attached :produced-formal
+           :no-unproduced-caller)))
 
-;  What a raw row MUST carry is derived from what it is, never from which
-; optional fields happen to be present (r25-F1: three times a check was
-; skipped because a field was absent).  Every open: a :witness, one term per
-; formal, and a :reaches name whose theorem is the statement regenerated
-; from it (unconditionally); an open with :hyps: :produced, every
-; producer's generated name holding its regenerated statement, and no
-; caller handing FN an unproduced argument.  Every transition: no :hyps.
-; Every generated name (opens, transitions, bridges): its regenerated
-; statement (fn-cd-problem, with GENERATEDP).
-(defun fn-cd-raw-open-problem (name r st entry w)
+(defun fn-cd-raw-requirement-problem (req name st entry w)
   (declare (xargs :mode :program))
-  (declare (ignore r))
-  (let ((opts (cddr entry)))
-    (mv-let (msg reaches)
-      (fn-cd-reaches-statement st entry t w)
-      (cond
-       (msg (msg "~x0 establishes its invariant at ~x1 with no witnessed ~
-                  argument: only a row whose every establishing point is ~
-                  shown reachable (a generated NAME-FN-reaches) backs raw ~
-                  dispatch: ~@2" name (car entry) msg))
-       ((fn-cd-generated-problem (fn-cd-get :reaches opts) reaches w))
-       ((and (fn-cd-get :hyps opts) (null (fn-cd-get :produced opts)))
-        (msg "~x0 declares :hyps ~x1 at ~x2 beyond its guard and no producer ~
-              discharges them: the host does not check them, so the carried ~
-              premise is a claim and backs no raw dispatch"
-             name (fn-cd-get :hyps opts) (car entry)))
-       ((and (fn-cd-get :produced opts) (null (fn-cd-get :hyps opts)))
-        (msg "~x0 declares :produced at ~x1 with no :hyps to discharge" name (car entry)))
-       ((and (fn-cd-get :hyps opts)
-             (fn-cd-produced-problem entry (fn-cd-get :produced opts) t w)))
-       (t nil)))))
+  ; nil when ENTRY (normalized, of the row NAME over the stobj ST) meets the
+  ; requirement REQ; else a msg
+  (let* ((fn (car entry))
+         (opts (cddr entry))
+         (hyps (fn-cd-get :hyps opts))
+         (produced (fn-cd-get :produced opts)))
+    (case req
+      (:no-hyps
+       (and hyps
+            (msg "~x0 declares :hyps ~x1 at ~x2 beyond its guard: the host ~
+                  does not check them, so the carried premise is a claim and ~
+                  backs no raw dispatch" name hyps fn)))
+      (:witnessed-reaches
+       (mv-let (msg reaches)
+         (fn-cd-reaches-statement st entry t w)
+         (if msg
+             (msg "~x0 establishes its invariant at ~x1 with no witnessed ~
+                   argument: only a row whose every establishing point is ~
+                   shown reachable (a generated NAME-FN-reaches) backs raw ~
+                   dispatch: ~@2" name fn msg)
+           (fn-cd-generated-problem (fn-cd-get :reaches opts) reaches w))))
+      (:hyps-iff-produced
+       (cond ((and hyps (null produced))
+              (msg "~x0 declares :hyps ~x1 at ~x2 beyond its guard and no ~
+                    producer discharges them: the host does not check them, so ~
+                    the carried premise is a claim and backs no raw dispatch"
+                   name hyps fn))
+             ((and produced (null hyps))
+              (msg "~x0 declares :produced at ~x1 with no :hyps to discharge"
+                   name fn))
+             (t nil)))
+      (:producers-exact
+       (and hyps (fn-cd-produced-problem entry produced t w)))
+      (:not-an-interface
+       (and hyps
+            (assoc-eq fn (table-alist 'fn-interfaces w))
+            (msg "~x0 is a host-called entry (fn-interfaces): the host may ~
+                  hand it any ~x1, so its produced premises back no raw ~
+                  dispatch" fn (fn-cd-produced-formal entry))))
+      (:not-attached
+       (and hyps
+            (fn-cd-attached-to fn w)
+            (msg "~x0 is attached to ~x1 (defattach, or an abstract stobj's ~
+                  :exec, attach-stobj implementations included): a call ~
+                  through ~x1 runs ~x0 with an argument the caller scan does ~
+                  not see, so its produced premises back no raw dispatch"
+                 fn (fn-cd-attached-to fn w))))
+      (:produced-formal
+       (let ((f (fn-cd-produced-formal entry)))
+         (and hyps
+              (null (position-eq f (getpropc fn 'formals nil w)))
+              (msg "~x0 has no formal ~x1" fn f))))
+      (:no-unproduced-caller
+       (let* ((f (fn-cd-produced-formal entry))
+              (pos (position-eq f (getpropc fn 'formals nil w)))
+              (bad (and hyps pos
+                        (fn-cd-unproduced-call fn pos (strip-cars produced) w))))
+         (and bad
+              (msg "~x0 calls ~x1 with ~x2 as ~x3, which is not a call of a ~
+                    declared producer ~&4: the premises ~x5 are not discharged ~
+                    there"
+                   (car bad) fn (cadr bad) f (strip-cars produced) hyps))))
+      (otherwise (msg "unknown raw requirement ~x0" req)))))
 
-(defun fn-cd-raw-opens-problem (name r st entries w)
+(defun fn-cd-raw-entry-problem (name st entry reqs w)
   (declare (xargs :mode :program))
-  (if (atom entries)
-      nil
-    (or (fn-cd-raw-open-problem name r st (car entries) w)
-        (fn-cd-raw-opens-problem name r st (cdr entries) w))))
+  ; the first of REQS that ENTRY fails, as a msg, else nil
+  (and (consp reqs)
+       (or (fn-cd-raw-requirement-problem (car reqs) name st entry w)
+           (fn-cd-raw-entry-problem name st entry (cdr reqs) w))))
+
+(defun fn-cd-raw-entries-problem (name st kind entries w)
+  (declare (xargs :mode :program))
+  ; the first failing requirement of KIND over ENTRIES, in order
+  (and (consp entries)
+       (or (fn-cd-raw-entry-problem
+            name st (car entries)
+            (cdr (assoc-eq kind *fn-cd-raw-requirements*)) w)
+           (fn-cd-raw-entries-problem name st kind (cdr entries) w))))
 
 (defun fn-cd-raw-problem-row (name row fn w)
   (declare (xargs :mode :program))
-  ; nil when ROW (the row NAME) backs raw dispatch of FN in this world; else a msg
+  ; nil when ROW (the row NAME) backs raw dispatch of FN in this world; else
+  ; a msg: the row checks (fn-cd-problem, GENERATEDP: a non-empty
+  ; :established included), then the table's requirements over the
+  ; transitions and then the establishing points
   (let* ((r (fn-cd-get :invariant row))
-         (st (and r (symbolp r) (fn-cd-state-stobj r w)))
-         (hyps (fn-cd-declared-hyps (fn-cd-get :transitions row) nil)))
+         (st (and r (symbolp r) (fn-cd-state-stobj r w))))
     (cond
      ((null row) (msg "no carried invariant ~x0 in this world" name))
      ((null (assoc-eq fn (fn-cd-get :transitions row)))
@@ -1261,15 +1275,8 @@
      ((fn-cd-problem name row t w)
       (msg "the carried invariant's row no longer checks in this world: ~@0"
            (fn-cd-problem name row t w)))
-     ((atom (fn-cd-get :established row))
-      (msg "~x0 has no establishing point: nothing shows ~x1 holds of any ~
-            state (r24-F1)" name r))
-     (hyps
-      (msg "~x0 declares :hyps ~x1 at ~x2 beyond its guard: the host does not ~
-            check them, so the carried premise is a claim and backs no raw ~
-            dispatch" name (fn-cd-get :hyps (cddr hyps)) (car hyps)))
-     ((fn-cd-raw-opens-problem name r st (fn-cd-get :established row) w))
-     ((fn-cd-produced-host-problem (fn-cd-get :established row) w))
+     ((fn-cd-raw-entries-problem name st :transition (fn-cd-get :transitions row) w))
+     ((fn-cd-raw-entries-problem name st :open (fn-cd-get :established row) w))
      (t nil))))
 
 (defun fn-cd-raw-problem (name fn w)
