@@ -432,12 +432,17 @@
    (implies (fn-hd-identp table) (true-listp table))
    :rule-classes :forward-chaining))
 
-(local
- (defthm fn-hd-tokens-of-shape
-   (implies (fn-hd-identp table)
-            (and (true-listp (fn-hd-tokens-of k table))
-                 (no-duplicatesp-equal (fn-hd-tokens-of k table))))
-   :hints (("Goal" :induct (fn-hd-identp table)))))
+; Exported: a key's tokens are a list with no duplicates (so a dropped
+; token is not among the rest: fn-hd-no-member-of-remove1-of-no-dups).
+(defthm fn-hd-tokens-of-shape
+  (implies (fn-hd-identp table)
+           (and (true-listp (fn-hd-tokens-of k table))
+                (no-duplicatesp-equal (fn-hd-tokens-of k table))))
+  :hints (("Goal" :induct (fn-hd-identp table))))
+
+(defthm fn-hd-no-member-of-remove1-of-no-dups
+  (implies (no-duplicatesp-equal x)
+           (not (member-equal a (remove1-equal a x)))))
 
 (local
  (defthm fn-hd-row-of-ident-put
@@ -549,6 +554,12 @@
   (implies (not (member-equal tok (fn-hd-tokens-of k table)))
            (equal (mv-list 2 (fn-hd-ident-step table (list :drop k tok)))
                   (list table :refused))))
+
+; A key that is not a natural is refused whatever the verb (so an answer
+; :held or :dropped says the key was one).
+(defthm fn-hd-ident-step-refuses-a-bad-key
+  (implies (not (natp (cadr ev)))
+           (equal (mv-list 2 (fn-hd-ident-step table ev)) (list table :refused))))
 
 ; The count is the tokens: a key is quiet exactly when no token holds it.
 (defthm fn-hd-ident-quiet-is-no-token
