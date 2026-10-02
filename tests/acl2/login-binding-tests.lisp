@@ -42,7 +42,7 @@
                (fn-own-sub-make-author 5 0 0 nil (if authenticatedp login nil)
                                        (if authenticatedp
                                            (make-list 32 :initial-element 1)
-                                         nil))
+                                         nil) nil)
                nil nil nil))
 (defconst *lbt-o* (lbt-owner *lbt-login* t))
 (defconst *lbt-o-guest* (lbt-owner *lbt-other-login* t))
@@ -60,7 +60,7 @@
 (defconst *lbt-o-gone*
   (fn-own-make nil nil nil 6 8 nil nil nil nil nil nil
                (fn-own-sub-make-author 5 0 0 nil *lbt-login*
-                                       (make-list 32 :initial-element 1))
+                                       (make-list 32 :initial-element 1) nil)
                nil nil nil))
 (assert-event (equal (fn-lb-inflight-login *lbt-o-gone*) *lbt-login*))
 (defconst *lbt-o-since*
@@ -73,7 +73,7 @@
                       nil nil nil))
                6 8 nil nil nil nil nil nil
                (fn-own-sub-make-author 5 0 0 nil *lbt-login*
-                                       (make-list 32 :initial-element 1))
+                                       (make-list 32 :initial-element 1) nil)
                nil nil nil))
 (assert-event (equal (fn-lb-inflight-login *lbt-o-since*) *lbt-login*))
 

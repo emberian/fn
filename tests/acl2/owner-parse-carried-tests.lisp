@@ -378,7 +378,8 @@
 (defconst *apc-g-sub*
   (let ((s *osi-sub*))
     (fn-own-sub-make-author (fn-own-sub-id s) (fn-own-sub-version s) (fn-own-sub-mark s)
-                            (fn-own-sub-decision s) (fn-record-string-octets "alice") *apc-g-account*)))
+                            (fn-own-sub-decision s) (fn-record-string-octets "alice") *apc-g-account*
+                            (fn-own-sub-source-context s))))
 (defun apc-g-with-sub (o sub secret)
   (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o) (fn-own-next-id o)
                (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger-field o)

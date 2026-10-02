@@ -36,7 +36,7 @@
 (defun oclt-sub (octets account)
   (fn-own-sub-make-author 4 2 0 (fn-inj-make-decision :injected nil *oclt-msgid*
                                                       (list "local.general") octets)
-                          (if account (oclt-octets "alice") nil) account))
+                          (if account (oclt-octets "alice") nil) account nil))
 (defconst *oclt-sub* (oclt-sub *oclt-injected* *oclt-alice*))
 
 (defun oclt-hyps (sub secret)
@@ -97,7 +97,7 @@
 (defconst *oclt-transit*
   (fn-own-sub-make-author 4 2 0 (fn-peer-make-submission "p" :ihave *oclt-msgid*
                                                          *oclt-injected*)
-                          (oclt-octets "alice") *oclt-alice*))
+                          (oclt-octets "alice") *oclt-alice* nil))
 (assert-event (fn-peer-submissionp (fn-own-sub-decision *oclt-transit*)))
 (assert-event (not (oclt-conclusion nil *oclt-transit* *oclt-secret*)))
 (must-fail-checked (assert-event (oclt-conclusion nil *oclt-transit* *oclt-secret*)))
@@ -135,11 +135,11 @@
 (must-fail-checked (assert-event (oclt-conclusion nil *oclt-tin-sub* *oclt-secret*)))
 
 ; The submission's author survives the writer's take (the mark set, the
-; login and account kept), and a submission without one keeps its
-; four-element shape.
+; login and account kept), and a submission without one keeps the same
+; seven-field shape with nil login and account.
 (assert-event
- (let ((sub (fn-own-sub-make-author 4 2 7 nil (oclt-octets "alice") *oclt-alice*)))
+ (let ((sub (fn-own-sub-make-author 4 2 7 nil (oclt-octets "alice") *oclt-alice* nil)))
    (and (equal (fn-own-sub-login sub) (oclt-octets "alice"))
         (equal (fn-own-sub-account sub) *oclt-alice*)
         (fn-own-sub-shapep sub))))
-(assert-event (equal (len (fn-own-sub-make-author 4 2 7 nil nil *oclt-alice*)) 4))
+(assert-event (equal (len (fn-own-sub-make-author 4 2 7 nil nil *oclt-alice* nil)) 7))

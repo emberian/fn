@@ -29,7 +29,7 @@ Hello, news.
 (defconst *oiit-ring* (list (fn-ns-make-entry 1 (oiit-o "local")
                                               (make-list 32 :initial-element 7))))
 (defconst *oiit-account* (make-list 32 :initial-element 5))
-(defconst *oiit-sub* (fn-own-sub-make-author 3 0 nil *oiit-d* (oiit-o "alice") *oiit-account*))
+(defconst *oiit-sub* (fn-own-sub-make-author 3 0 nil *oiit-d* (oiit-o "alice") *oiit-account* nil))
 (defconst *oiit-cfg* (fn-cfg-initial))
 (defconst *oiit-stored* (fn-own-sub-stored-octets *oiit-cfg* *oiit-sub* *oiit-ring*))
 
@@ -45,7 +45,7 @@ Hello, news.
 ; Omitted hypothesis (an injection): a submission whose decision is not the
 ; injection named gives no source.
 (assert-event
- (let ((sub (fn-own-sub-make-author 3 0 nil nil (oiit-o "alice") *oiit-account*)))
+ (let ((sub (fn-own-sub-make-author 3 0 nil nil (oiit-o "alice") *oiit-account* nil)))
    (not (equal (fn-pb-subject (fn-own-sub-stored-octets *oiit-cfg* sub *oiit-ring*)
                               *oiit-agent* (fn-inj-decision-msgid *oiit-d*))
                (cons :source *oiit-source*)))))

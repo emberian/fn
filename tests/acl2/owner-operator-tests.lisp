@@ -478,7 +478,7 @@
                           (fn-inj-make-decision :injected nil (fn-nntp-string-octets "<pk@example.invalid>")
                                                 (list (fn-nntp-string-octets "fn.test") (fn-nntp-string-octets "fn.other"))
                                                 (make-list 3000 :initial-element 97))
-                          "login" 11))
+                          "login" 11 nil))
 (defun opt-pk-hyps (o)
   (declare (xargs :mode :program))
   (list (null (fn-own-inflight o)) (null (fn-own-queue o)) (null (fn-own-pending o))
@@ -487,7 +487,7 @@
   (declare (xargs :mode :program))
   (equal (fn-own-inflight (fn-own-take-submission (fn-own-enqueue o *opt-pk-sub*)))
          (fn-own-sub-make-author 7 3 (len (fn-own-ledger o))
-                                 (fn-own-sub-decision *opt-pk-sub*) "login" 11)))
+                                 (fn-own-sub-decision *opt-pk-sub*) "login" 11 nil)))
 ; Positive: the queue holds the submission PACKED (not the enqueued record),
 ; and the take installs the enqueued one exactly.
 (assert-event (equal (opt-pk-hyps *opt-0*) '(t t t t)))
