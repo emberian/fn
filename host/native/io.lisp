@@ -6072,7 +6072,8 @@ tree root), or stop the build."
     ;; The power-loss rig's handshake for `fn log append': after each RECOVERED
     ;; and ACK line, wait for the client's line, so its device mark precedes
     ;; the next batch's writes; tools/power_loss.py log_run.
-    "FN_NATIVE_LOG_RIG_HANDSHAKE"))
+    "FN_NATIVE_LOG_RIG_HANDSHAKE"
+    "FN_NATIVE_TEST_FEED_FSYNC_MS" "FN_NATIVE_TEST_FEED_STALL_FILE"))
 
 (defun fnn-developer-selector (name)
   "The value of developer selector NAME on a developer image, else NIL."
