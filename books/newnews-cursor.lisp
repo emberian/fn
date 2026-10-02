@@ -17,13 +17,16 @@
 ;    lists nothing and the walk stops.  With arrival-ordered stamps that is
 ;    right after the last new article: the walk visits the articles newer
 ;    than the date, plus one.
-;    The carry is (ARTS . MAXES), fn-nnw-carryp: MAXES is (fn-nnw-maxes
-;    ARTS).  fn-nnw-refresh brings it to a list by walking to the tail EQUAL
-;    to the carried list and folding the walked prefix onto the carried
-;    maxes (the view's article list grows by consing the new article,
-;    books/control-visible.lisp fn-ctl-visible-add); else it rebuilds.  It
-;    keeps fn-nnw-carryp, and nil has it (fn-nnw-carryp-of-refresh,
-;    fn-nnw-carryp-of-nil).
+;    The carry is (ARTS . INDEX), an :exact view DECLARED through
+;    books/def-carried-view.lisp (lane generators-2, the second pilot):
+;    fn-nnw-carryp says INDEX is the fold (fn-nnw-maxes ARTS).
+;    fn-nnw-refresh brings it to a list by walking to the tail EQUAL to the
+;    carried list and folding the walked prefix oldest-first onto the
+;    carried maxima (the view's article list grows by consing the new
+;    article, books/control-visible.lisp fn-ctl-visible-add); else it
+;    rebuilds.  It keeps fn-nnw-carryp, nil has it, and the walk steps
+;    exactly the delta (fn-nnw-carryp-of-refresh, fn-nnw-carryp-of-nil,
+;    fn-nnw-refresh-walks-the-delta; all generated).
 ; 2. The cursor (:newnews GROUPS THRESHOLD TAIL MAXES HORIZON): what the
 ;    reply still owes is (fn-nntp-newnews-scan GROUPS THRESHOLD TAIL HORIZON)
 ;    (fn-nnw-owes).  MAXES is (fn-nnw-maxes TAIL) or nil (no index: the
@@ -47,6 +50,7 @@
 
 (in-package "ACL2")
 (include-book "nntp-responses")
+(include-book "def-carried-view")
 
 (local (in-theory (disable (tau-system))))
 (local (in-theory (enable fn-nntp-newnews-scan)))
@@ -69,18 +73,15 @@
   (declare (xargs :guard t))
   (if (consp maxes) (nfix (car maxes)) 0))
 
-; Oldest-first fold: YS reversed onto the maxima of what follows them.
-(defun fn-nnw-fold (ys acc)
-  (declare (xargs :guard t))
-  (if (consp ys)
-      (fn-nnw-fold (cdr ys) (cons (max (fn-nnw-s (car ys)) (fn-nnw-top acc)) acc))
-    acc))
-
-(defun fn-nnw-maxes-rec (arts)
-  (declare (xargs :guard t))
-  (if (consp arts)
-      (cons (fn-nnw-smax arts) (fn-nnw-maxes-rec (cdr arts)))
-    nil))
+; The index: the suffix maxima, an :exact fold.  fn-nnw-maxes is the
+; generated build (oldest-first, tail-recursive); fn-nnw-maxes-unfolds is
+; its newest-first reading, a definition rule for the cursor's proofs.
+(def-carried-view fn-nnw
+  :key arts
+  :indexes ((index :kind :exact
+                   :put (lambda (e idx) (cons (max (fn-nnw-s e) (fn-nnw-top idx)) idx))
+                   :empty nil))
+  :build fn-nnw-maxes)
 
 (local
  (defthm fn-nnw-smax-natp
@@ -88,56 +89,18 @@
    :rule-classes :type-prescription))
 
 (local
- (defthm fn-nnw-top-of-maxes-rec
-   (equal (fn-nnw-top (fn-nnw-maxes-rec zs)) (fn-nnw-smax zs))))
-
-(local
- (defthm fn-nnw-fold-onto-maxes
-   (equal (fn-nnw-fold ys (fn-nnw-maxes-rec zs))
-          (fn-nnw-maxes-rec (revappend ys zs)))
-   :hints (("Goal" :induct (revappend ys zs)
-            :in-theory (disable fn-nnw-s revappend-removal)))))
-
-(local
- (defthm fn-nnw-smax-of-true-list-fix
-   (equal (fn-nnw-smax (append x nil)) (fn-nnw-smax x))))
-
-(local
- (defthm fn-nnw-maxes-rec-of-true-list-fix
-   (equal (fn-nnw-maxes-rec (append x nil)) (fn-nnw-maxes-rec x))))
-
-(local
- (defthm fn-nnw-maxes-rec-of-revappend-revappend
-   (equal (fn-nnw-maxes-rec (revappend (revappend arts nil) nil))
-          (fn-nnw-maxes-rec arts))
-   :hints (("Goal" :in-theory (disable fn-nnw-maxes-rec)))))
-
-(defun fn-nnw-rev (x acc)
-  (declare (xargs :guard t))
-  (if (consp x) (fn-nnw-rev (cdr x) (cons (car x) acc)) acc))
-
-(local
- (defthm fn-nnw-rev-is-revappend
-   (equal (fn-nnw-rev x acc) (revappend x acc))))
-
-; The index, built by one oldest-first fold.
-(defun fn-nnw-maxes (arts)
-  (declare (xargs :guard t
-                  :guard-hints (("Goal" :use ((:instance fn-nnw-fold-onto-maxes
-                                                         (ys (revappend arts nil)) (zs nil)))
-                                 :in-theory (disable fn-nnw-fold-onto-maxes revappend-removal
-                                                     fn-nnw-fold fn-nnw-maxes-rec)))))
-  (mbe :logic (fn-nnw-maxes-rec arts)
-       :exec (fn-nnw-fold (fn-nnw-rev arts nil) nil)))
+ (defthm fn-nnw-top-of-build-onto
+   (equal (fn-nnw-top (fn-nnw-build-onto zs nil)) (fn-nnw-smax zs))
+   :hints (("Goal" :in-theory (enable fn-nnw-build-onto fn-nnw-put)))))
 
 (defthm fn-nnw-maxes-unfolds
   (equal (fn-nnw-maxes arts)
          (if (consp arts)
              (cons (fn-nnw-smax arts) (fn-nnw-maxes (cdr arts)))
            nil))
-  :rule-classes :definition)
-
-(in-theory (disable fn-nnw-maxes))
+  :rule-classes :definition
+  :hints (("Goal" :in-theory (enable fn-nnw-maxes-is-build-onto fn-nnw-build-onto
+                                     fn-nnw-put fn-nnw-empty))))
 
 ; -----------------------------------------------------------------------------
 ; 2. The bound: past it the scan lists nothing.
@@ -161,67 +124,8 @@
                             fn-nntp-string-octets fn-article-msgid)))))
 
 ; -----------------------------------------------------------------------------
-; 3. The carry.
-
-(defun fn-nnw-carryp (carry)
-  (declare (xargs :guard t))
-  (equal (fn-ag-cdr carry) (fn-nnw-maxes (fn-ag-car carry))))
-
-(defthm fn-nnw-carryp-of-nil
-  (fn-nnw-carryp nil)
-  :hints (("Goal" :in-theory (enable fn-nnw-maxes))))
-
-; Walk TAIL until it is EQUAL to OLD, collecting the walked articles
-; reversed (oldest first).  (mv FOUND ACC).
-(defun fn-nnw-collect (tail old acc)
-  (declare (xargs :guard t))
-  (cond ((equal tail old) (mv t acc))
-        ((atom tail) (mv nil acc))
-        (t (fn-nnw-collect (cdr tail) old (cons (car tail) acc)))))
-
-(local
- (defthm fn-nnw-collect-found
-   (implies (mv-nth 0 (fn-nnw-collect tail old acc))
-            (equal (revappend (mv-nth 1 (fn-nnw-collect tail old acc)) old)
-                   (revappend acc tail)))
-   :hints (("Goal" :induct (fn-nnw-collect tail old acc)
-            :in-theory (disable revappend-removal)))))
-
-(local
- (defthm fn-nnw-refresh-found-maxes
-   (implies (and (mv-nth 0 (fn-nnw-collect arts old nil))
-                 (equal m (fn-nnw-maxes-rec old)))
-            (equal (fn-nnw-fold (mv-nth 1 (fn-nnw-collect arts old nil)) m)
-                   (fn-nnw-maxes-rec arts)))
-   :hints (("Goal" :use ((:instance fn-nnw-collect-found (tail arts) (acc nil))
-                         (:instance fn-nnw-fold-onto-maxes
-                                    (ys (mv-nth 1 (fn-nnw-collect arts old nil)))
-                                    (zs old)))
-            :in-theory (disable fn-nnw-collect-found fn-nnw-fold-onto-maxes
-                                fn-nnw-collect fn-nnw-fold fn-nnw-maxes-rec
-                                revappend-removal)))))
-
-(defun fn-nnw-refresh (carry arts)
-  (declare (xargs :guard t))
-  (if (equal arts (fn-ag-car carry))
-      carry
-    (mv-let (found acc)
-      (fn-nnw-collect arts (fn-ag-car carry) nil)
-      (if found
-          (cons arts (fn-nnw-fold acc (fn-ag-cdr carry)))
-        (cons arts (fn-nnw-maxes arts))))))
-
-(defthm fn-nnw-carryp-of-refresh
-  (implies (fn-nnw-carryp carry)
-           (fn-nnw-carryp (fn-nnw-refresh carry arts)))
-  :hints (("Goal" :in-theory (e/d (fn-nnw-maxes) (fn-nnw-collect fn-nnw-fold fn-nnw-smax
-                                                   revappend-removal fn-nnw-maxes-unfolds
-                                                   fn-nnw-maxes-rec)))))
-
-(defthm fn-nnw-car-of-refresh
-  (equal (car (fn-nnw-refresh carry arts)) arts))
-
-(in-theory (disable fn-nnw-carryp fn-nnw-refresh))
+; 3. The carry: generated (fn-nnw-carryp, fn-nnw-refresh, fn-nnw-arts,
+; fn-nnw-index and their keystones, section 1).
 
 ; -----------------------------------------------------------------------------
 ; 4. The cursor.
@@ -298,18 +202,18 @@
  (defthm fn-nnw-maxes-okp-of-cdr
    (implies (fn-nnw-maxes-okp tail maxes)
             (fn-nnw-maxes-okp (cdr tail) (cdr maxes)))
-   :hints (("Goal" :in-theory (enable fn-nnw-maxes)))))
+   :hints (("Goal" :in-theory (enable fn-nnw-maxes-unfolds)))))
 
 (local
  (defthm fn-nnw-car-maxes
    (implies (consp tail)
             (equal (car (fn-nnw-maxes tail)) (fn-nnw-smax tail)))
-   :hints (("Goal" :in-theory (enable fn-nnw-maxes)))))
+   :hints (("Goal" :in-theory (enable fn-nnw-maxes-unfolds)))))
 
 (local
  (defthm fn-nnw-consp-maxes
    (equal (consp (fn-nnw-maxes tail)) (consp tail))
-   :hints (("Goal" :in-theory (enable fn-nnw-maxes)))))
+   :hints (("Goal" :in-theory (enable fn-nnw-maxes-unfolds)))))
 
 ; Past the bound, the scan of the tail is nil.
 (local
@@ -454,13 +358,15 @@
 (defun fn-nnw-start (groups threshold arts horizon carry)
   (declare (xargs :guard t))
   (fn-nnw-cursor groups threshold arts
-                 (if (equal arts (fn-ag-car carry)) (fn-ag-cdr carry) nil)
+                 (if (equal arts (fn-nnw-arts carry)) (fn-nnw-index carry) nil)
                  horizon))
 
 (defthm fn-nnw-start-okp
   (implies (fn-nnw-carryp carry)
            (fn-nnw-cursor-okp (fn-nnw-start groups threshold arts horizon carry)))
-  :hints (("Goal" :in-theory (enable fn-nnw-carryp))))
+  :hints (("Goal" :in-theory (enable fn-nnw-carryp fn-nnw-okp fn-nnw-arts fn-nnw-index
+                                     fn-nnw-index-of fn-cv-car fn-cv-cdr
+                                     fn-nnw-maxes-is-build-onto))))
 
 ; fn-nntp-newnews-response with the run of the started cursor in the scan's
 ; place (QUANTUM is the reply's quantum; a host that serves the cursor in
@@ -507,10 +413,12 @@
            (equal (fn-nnw-run (fn-nnw-start groups threshold arts horizon carry) q fn-arena)
                   (fn-nntp-newnews-scan groups threshold arts horizon fn-arena)))
   :hints (("Goal" :use ((:instance fn-nnw-run-is-newnews-scan
-                                   (maxes (if (equal arts (fn-ag-car carry))
-                                              (fn-ag-cdr carry)
+                                   (maxes (if (equal arts (fn-nnw-arts carry))
+                                              (fn-nnw-index carry)
                                             nil))))
-           :in-theory (e/d (fn-nnw-start fn-nnw-carryp fn-nnw-maxes-okp)
+           :in-theory (e/d (fn-nnw-start fn-nnw-carryp fn-nnw-okp fn-nnw-arts fn-nnw-index
+                            fn-nnw-index-of fn-cv-car fn-cv-cdr fn-nnw-maxes-is-build-onto
+                            fn-nnw-maxes-okp)
                            (fn-nnw-run fn-nnw-run-is-newnews-scan fn-nnw-run-is-owes
                             fn-nnw-cursor fn-nntp-newnews-scan fn-nnw-maxes)))))
 
