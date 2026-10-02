@@ -1198,6 +1198,15 @@ def audit(graph: Graph, books: "set[str] | None" = None):
                 else:
                     findings.append(Finding(row["id"], name, book, [function], declared=True))
                 continue
+            if not entry and name in graph.book_defs:
+                # A cited definition (a guard-verified function event): its
+                # subject is itself (sweep 2026-10-03 S126: these sat in
+                # "unresolvable" and --strict never judged them).
+                if name in graph.reachable:
+                    hosted += 1
+                else:
+                    findings.append(Finding(row["id"], name, graph.book_defs[name][0], [name]))
+                continue
             subject = Subject(graph, name, entry[1] if entry else None)
             if not entry and subject.via != "export":
                 unresolved.append((row["id"], name, "no such defthm here"))
@@ -1253,6 +1262,21 @@ def unexplained(accepted: dict) -> list[str]:
                   if PLACEHOLDER in reason or not reason.startswith(DISPOSITIONS))
 
 
+def unresolved_failures(unresolved, triaged: dict) -> list[str]:
+    """The unresolvable events --strict fails on (S126): each one not named
+    in the baseline's `unresolved` table with a disposition.  An event this
+    reader cannot resolve is not hosted; it passes only when someone has
+    said why it has no subject to host (SPEC, HOST or
+    UNREACHABLE-IN-COMPOSITION, as for an orphan)."""
+    out = []
+    for proof_id, name, why in unresolved:
+        key = f"{proof_id}:{name}"
+        reason = triaged.get(key, "")
+        if PLACEHOLDER in reason or not reason.startswith(DISPOSITIONS):
+            out.append(f"{key} ({why})")
+    return sorted(out)
+
+
 def write_baseline(findings) -> None:
     current = load_baseline()
     existing = current.get("accepted", {})
@@ -1267,7 +1291,8 @@ def write_baseline(findings) -> None:
                   "fails on any orphan NOT listed here, so the number can "
                   "shrink and cannot grow silently.  Remove an entry by "
                   "hosting the subject, not by editing this file."),
-         "accepted": accepted}, indent=2, sort_keys=True) + "\n")
+         "accepted": accepted,
+         "unresolved": current.get("unresolved", {})}, indent=2, sort_keys=True) + "\n")
 
 
 def main(argv=None) -> int:
@@ -1349,7 +1374,9 @@ def main(argv=None) -> int:
               f"orphan(s) in {BASELINE.relative_to(ROOT)}")
         return 0
 
-    accepted = load_baseline().get("accepted", {})
+    baseline = load_baseline()
+    accepted = baseline.get("accepted", {})
+    untriaged_unresolved = unresolved_failures(unresolved, baseline.get("unresolved", {}))
     fresh = [f for f in findings if f.key() not in accepted]
     stale = sorted(set(accepted) - {f.key() for f in findings})
     if chosen is not None:
@@ -1399,7 +1426,12 @@ def main(argv=None) -> int:
                              if key not in stale})
     for key in untriaged:
         print(f"reach_check: baselined without a SPEC or HOST disposition: {key}")
-    return 1 if (arguments.strict and (fresh or untriaged)) else 0
+    for key in untriaged_unresolved:
+        print(f"reach_check: UNRESOLVED event with no disposition: {key}")
+    for relative in sorted(graph.unreadable):
+        print(f"reach_check: UNREADABLE book {relative}: its events cannot be judged")
+    failed = fresh or untriaged or untriaged_unresolved or graph.unreadable
+    return 1 if (arguments.strict and failed) else 0
 
 
 if __name__ == "__main__":
