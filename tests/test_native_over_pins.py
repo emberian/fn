@@ -229,6 +229,55 @@ class NativeOverPinsTests(unittest.TestCase):
         finally:
             node.stop(expect=None, grace=300)
 
+    def test_a_cold_quantum_reads_off_the_owner_mutex(self):
+        """Codex r67 F2 for OVER: a cursor quantum that needs a payload not in
+        the realizer's cache issues the read and waits for it OFF the owner
+        mutex.  The node is restarted (its cache empty) with every cold read
+        held before its pread (FN_NATIVE_PAGE_IO_HOLD).  While an OVER's read
+        is held, another connection's command is answered (it needs the
+        owner mutex); after release the OVER completes, byte for byte the
+        reply of a warm run.  If no quantum of this node's OVER reads a
+        payload (the overview column answers it), no hold is reached and the
+        test says so in its output: then there is no pread to place."""
+        node = self.copy_of(self.recorded_base(), "cold-over")
+        warm = self.copy_of(self.recorded_base(), "warm-over")
+        replies = []
+        for which, target in (("warm", warm), ("cold", node)):
+            release = self.root / ("release-" + which)
+            env = {"FN_NATIVE_OVER_WINDOW": "1"}
+            if which == "cold":
+                env["FN_NATIVE_PAGE_IO_HOLD"] = str(release)
+            else:
+                release.touch()
+            owner = target.start(timeout=600, env=env)
+            client = Client(target.port, timeout=300, greeting=None)
+            try:
+                self.assertTrue(client.command("GROUP " + GROUP).startswith(b"211 5 "))
+                client.send(b"OVER 1-100\r\n")
+                if which == "cold":
+                    held = self.owner_lines(owner, re.compile(rb"PAGE-IO held token="), 1, deadline=20)
+                    if held:
+                        with Client(target.port, timeout=30, greeting=None) as other:
+                            self.assertTrue(other.command("DATE").startswith(b"111 "))
+                    else:
+                        print("OVER-COLD no payload read by the OVER quanta", flush=True)
+                    release.touch()
+                self.assertTrue(client.line().startswith(b"224 "))
+                rows = []
+                while True:
+                    line = client.line()
+                    if line == b".\r\n":
+                        break
+                    rows.append(line)
+                replies.append(rows)
+                if which == "cold" and held:
+                    self.assertTrue(self.owner_lines(owner, re.compile(rb"OVER cold-quantum cid="), 1))
+            finally:
+                client.close(False)
+                target.stop(expect=None, grace=300)
+        self.assertEqual([int(r.split(b"\t", 1)[0]) for r in replies[0]], [1, 2, 3, 4, 5])
+        self.assertEqual(replies[0], replies[1])
+
     def test_service_stop_settles_a_paused_response(self):
         node = self.copy_of(self.recorded_base(), "stop-over")
         stall = self.root / "over-stop-stall"
