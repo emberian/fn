@@ -15,11 +15,11 @@ from tools import ledger, raw_dispatch_rule as rule  # noqa: E402
 
 BOOK = {"fn-open", "fn-step", "fn-pred", "create-fn-cat"}
 
-# The base dispatcher, as host/native/io.lisp defines it (its body is the
+# The base dispatcher, as host/native/io.lisp and raw-trap.lisp define it (its body is the
 # rule's allow-listed internal; here it only needs its lambda list).
 PRELUDE = """
-(defun fnn-call (name &rest args) (apply (fnn-dispatch-function name) args))
-(defun fnn-dispatch-function (name) name)
+(defun fnn-call (name &rest args) (apply #'fnn-raw-dispatch-apply name args))
+(defun fnn-raw-dispatch-apply (name &rest args) (list name args))
 (defun fnn-core (name &rest args) (first (apply #'fnn-call name args)))
 (defun fnn-fault (fmt &rest args) (error "~?" fmt args))
 """
@@ -33,7 +33,7 @@ def scan(source: str):
 def rules(source: str, context: str | None = None) -> list[str]:
     return sorted({s.rule for s in scan(source).sites
                    if context is None or s.context == context
-                   if s.context not in ("fnn-call", "fnn-dispatch-function")})
+                   if s.context not in ("fnn-call", "fnn-raw-dispatch-apply")})
 
 
 class Accepted(unittest.TestCase):
@@ -79,7 +79,7 @@ class Accepted(unittest.TestCase):
   (mapcar #'g x))"""), [])
 
     def test_table_resolution(self):
-        self.assertEqual(rules("(defun h (x) (funcall (fnn-dispatch-function 'fn-step) x))"), [])
+        self.assertEqual(rules("(defun h (x) (funcall (fnn-dispatch-symbol 'fn-step) x))"), [])
 
     def test_keyword_intern(self):
         self.assertEqual(rules("(defun h (s) (intern s :keyword))"), [])

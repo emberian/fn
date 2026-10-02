@@ -3,8 +3,9 @@
 `fn acl2 raw-traps' (developer images, host/native/acl2-session.lisp) calls
 each raw-dispatched entry's target outside the dispatcher -- by its literal
 symbol, by a symbol interned from its name, through its function binding --
-and requires the trap's fault each time; inside the dispatcher's extent the
-trap passes; the dispatcher applies the captured function object.  Every
+and with a hand-bound token that no dispatcher call minted (Codex r63 F3),
+and requires the trap's fault each time; the dispatcher applies the captured
+function object.  Every
 start of every image also runs fnn-raw-dispatch-traps-intact (fnn-main), so
 any native that starts an image checks no target was redefined.  That the
 dispatcher's calls serve is the native matrix (POST/ARTICLE/OVER) itself.
@@ -47,7 +48,7 @@ class RawDispatchImageTests(unittest.TestCase):
                 for name, fields in rows:
                     self.assertEqual(
                         fields,
-                        "direct=trapped interned=trapped binding=trapped inside=passed "
+                        "direct=trapped interned=trapped binding=trapped forged=trapped "
                         "dispatch=captured", name)
                 if os.environ.get("FN_RAW_DISPATCH_EXPECT"):
                     expected = set(os.environ["FN_RAW_DISPATCH_EXPECT"].split(","))

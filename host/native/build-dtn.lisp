@@ -319,12 +319,15 @@
         ; `fnn-owner-attempt-transit', reached from bp-app's BP transit), so
         ; this image carries the same native crypto facility, TLS library and
         ; restart revalidation as host/native/build.lisp, in the same order.
+        ;; D40 (Codex r63 F2): the dispatch table and the traps load and install
+        ;; FIRST, from the fn-interfaces table of this world, so no raw host
+        ;; file or load-time form below can capture a raw-dispatched function
+        ;; object before its trap (an unknown or unverified target stops the build).
+        (load "host/native/raw-trap.lisp")
+        (fnn-install-raw-dispatch)
         (load "host/native/crypto.lisp")
         (fnn-crypto-initialize)
         (load "host/native/io.lisp")
-        ;; D40: the raw-dispatched entries, from the fn-interfaces table of
-        ;; this world (an unknown or unverified target stops the build).
-        (fnn-install-raw-dispatch)
         ; The payload arena's extent realizer (A-DURABLE-EXTENT; PRF-281).
         (load "host/native/extent.lisp")
         ; The COMPRESS DEFLATE layer (RFC 8054): mux.lisp serves it here too.

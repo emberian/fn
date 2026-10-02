@@ -1363,6 +1363,19 @@
    (definterface fn-cdt-bump :class :common-lisp-compliant :kinds ((n natp))
      :raw-with (:carried fn-cdt-produced-carried))
    :unchecked "fn-cdt-open-from is the :exec of the abstract stobj cdtb")))
+; a kind the requirement table does not list refuses, never "no
+; requirements" (r60 item 1, db542a2b5; Codex r63 F6): the same transition
+; entries under their own kind pass and under an unlisted kind refuse.
+(assert-event
+ (let* ((row (cdr (assoc-eq 'fn-cdt-produced-carried (table-alist 'fn-carried (w state)))))
+        (entries (fn-cd-get :transitions row)))
+   (and (consp entries)
+        (null (fn-cd-raw-entries-problem 'fn-cdt-produced-carried 'fn-cdt-st
+                                         :transition entries (w state)))
+        (let ((m (fn-cd-raw-entries-problem 'fn-cdt-produced-carried 'fn-cdt-st
+                                            :bogus-kind entries (w state))))
+          (and (search "no raw requirements for the entry kind" (car m))
+               (eq (cdr (assoc #\0 (cdr m))) :bogus-kind))))))
 ; a forged row naming a true theorem about another producer as the
 ; generated produced name
 (encapsulate ()

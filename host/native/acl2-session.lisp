@@ -18,9 +18,7 @@
 ; so every certified function is there to evaluate.  Guard checking stays as
 ; the image has it (t; fnn-main checks); invariant-risk mode is fnn-main's (t).
 
-(defun fnn-raw-trap-probe-target (x y)
-  "The developer raw-traps probe's target (never an ACL2 function)."
-  (values (- x y) (list x y)))
+;; fnn-raw-trap-probe-target and the probe itself: host/native/raw-trap.lisp.
 
 (defun fnn-command-acl2 (command args)
   (cond
@@ -31,7 +29,8 @@
        ;; printing switched off; this loop restores both for its own reads.
        ;; ACL2's loop evaluates through *1* counterparts, which check each
        ;; guard before the raw body: a dispatcher (io.lisp, THE TRAP).
-       (let ((*fnn-in-core* t))
+       (fnn-raw-session-extent
+        (lambda ()
        (ld-fn (list (cons 'standard-oi *standard-oi*)
                     (cons 'standard-co *standard-co*)
                     (cons 'proofs-co *standard-co*)
@@ -41,7 +40,7 @@
                     (cons 'ld-post-eval-print :command-conventions)
                     (cons 'ld-error-action :continue))
               state
-              nil)))
+              nil))))
      (finish-output *standard-output*)
      +fnn-exit-ok+)
     ((and (string= command "raw-traps") (null args))
@@ -55,53 +54,36 @@
               (handler-case (progn (funcall thunk) "returned")
                 (fnn-raw-dispatch-trap () "trapped")
                 (serious-condition () "passed"))))
-       (let ((bad 0) (names nil))
-         (maphash (lambda (name raw) (declare (ignore raw)) (push name names))
-                  *fnn-raw-dispatch*)
-         (dolist (name (sort names #'string< :key #'symbol-name))
-           (let* ((raw (gethash name *fnn-raw-dispatch*))
+       (let ((bad 0) (names (fnn-raw-dispatch-names)))
+         (dolist (name names)
+           (let* ((raw (fnn-raw-dispatch-target name))
                   (direct (outcome (lambda () (funcall raw))))
                   (interned (outcome (lambda ()
                                        (funcall (intern (symbol-name raw)
                                                         (symbol-package raw))))))
                   (binding (outcome (lambda () (funcall (symbol-function raw)))))
-                  (inside (outcome (lambda () (let ((*fnn-in-core* t)) (funcall raw)))))
-                  (dispatch (if (eq (fnn-dispatch-function name)
-                                    (gethash raw *fnn-raw-captured*))
-                                "captured" "other")))
+                  ;; a bound token that is not a live dispatcher token grants
+                  ;; nothing (Codex r63 F3)
+                  (forged (outcome (lambda ()
+                                     (let ((*fnn-core-token* (list :fnn-core-token)))
+                                       (funcall raw)))))
+                  (dispatch (if (fnn-raw-dispatch-captured-p name) "captured" "other")))
              (unless (and (equal direct "trapped") (equal interned "trapped")
-                          (equal binding "trapped") (equal inside "passed")
+                          (equal binding "trapped") (equal forged "trapped")
                           (or *fnn-dispatch-counterpart* (equal dispatch "captured")))
                (incf bad))
-             (fnn-out "FN_RAW_TRAP ~(~a~) direct=~a interned=~a binding=~a inside=~a dispatch=~a"
-                      name direct interned binding inside dispatch)))
+             (fnn-out "FN_RAW_TRAP ~(~a~) direct=~a interned=~a binding=~a forged=~a dispatch=~a"
+                      name direct interned binding forged dispatch)))
          ;; The mechanism on this image itself, whatever the table holds: a
-         ;; probe entry is installed exactly as fnn-install-raw-dispatch
-         ;; installs one, called through fnn-call and directly, then removed.
-         ;; The probe name is a developer-only table row for the run of this
-         ;; verb, never an ACL2 entry, so it is held in a variable: no
-         ;; definterface declares it (interface_emit counts literal names).
-         (let* ((raw 'fnn-raw-trap-probe-target)
-                (probe 'fnn-raw-trap-probe)
-                (original (symbol-function raw)))
-           (setf (gethash probe *fnn-raw-dispatch*) raw)
-           (fnn-raw-trap-install raw)
-           (let ((served (handler-case
-                             (if (equal (fnn-call probe 7 2) '(5 (7 2)))
-                                 "served" "wrong")
-                           (serious-condition () "faulted")))
-                 (direct (outcome (lambda () (funcall raw 7 2))))
-                 (interned (outcome (lambda ()
-                                      (funcall (intern (symbol-name raw) (symbol-package raw)) 7 2)))))
-             (remhash probe *fnn-raw-dispatch*)
-             (remhash raw *fnn-raw-traps*)
-             (remhash raw *fnn-raw-captured*)
-             (setf (symbol-function raw) original)
-             (unless (and (equal served "served") (equal direct "trapped")
-                          (equal interned "trapped"))
-               (incf bad))
-             (fnn-out "FN_RAW_TRAP_PROBE dispatch=~a direct=~a interned=~a"
-                      served direct interned)))
+         ;; probe row installed, called through the dispatcher and directly,
+         ;; and removed under unwind-protect (host/native/raw-trap.lisp
+         ;; fnn-raw-trap-self-probe).
+         (multiple-value-bind (served direct interned) (fnn-raw-trap-self-probe)
+           (unless (and (equal served "served") (equal direct "trapped")
+                        (equal interned "trapped"))
+             (incf bad))
+           (fnn-out "FN_RAW_TRAP_PROBE dispatch=~a direct=~a interned=~a"
+                    served direct interned))
          (fnn-out "FN_RAW_TRAPS ~d intact=~d bad=~d"
                   (length names) (fnn-raw-dispatch-traps-intact) bad)
          (if (zerop bad) +fnn-exit-ok+ +fnn-exit-fault+))))

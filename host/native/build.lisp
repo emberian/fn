@@ -422,12 +422,15 @@
         ; crypto.lisp and tls.lisp load with :dont-save t, so SBCL does not
         ; serialize build-host foreign-library paths into a relocatable core.
         ; Serialized readiness and the OpenSSL pair are cleared on restart.
+        ;; D40 (Codex r63 F2): the dispatch table and the traps load and install
+        ;; FIRST, from the fn-interfaces table of this world, so no raw host
+        ;; file or load-time form below can capture a raw-dispatched function
+        ;; object before its trap (an unknown or unverified target stops the build).
+        (load "host/native/raw-trap.lisp")
+        (fnn-install-raw-dispatch)
         (load "host/native/crypto.lisp")
         (fnn-crypto-initialize)
         (load "host/native/io.lisp")
-        ;; D40: the raw-dispatched entries, from the fn-interfaces table of
-        ;; this world (an unknown or unverified target stops the build).
-        (fnn-install-raw-dispatch)
         ; The payload arena's extent realizer (A-DURABLE-EXTENT; PRF-281).
         (load "host/native/extent.lisp")
         ; DEFLATE (lib/libfn-deflate, vendored zlib; untrusted: ACL2's

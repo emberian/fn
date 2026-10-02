@@ -3,7 +3,7 @@
 
 D40 lets the host run a carried entry's raw definition because every way
 into it is known: the dispatcher resolves a QUOTED entry name against the
-generated `fn-interfaces' table (host/native/io.lisp fnn-dispatch-function,
+generated `fn-interfaces' table (host/native/raw-trap.lisp fnn-raw-dispatch-apply,
 fnn-fixed-raw-callback), and a def-carried open whose premise is produced
 (:produced) is never such an entry.  Codex review r28 (F1) found the hole:
 `(funcall 'F ...)', `(apply #'F ...)', a symbol held in a variable, a
@@ -12,7 +12,7 @@ symbol built by `intern' -- each reaches F with no table and no lint.
 AN EARLY LINT, NOT THE GUARANTEE (raw-dispatch-3, after Codex r34: a scan of
 source text cannot see a defconstant initializer, a redefinition, a
 package-qualified intern, an unscanned loaded file).  The guarantee is the
-image's: host/native/io.lisp THE TRAP replaces each raw-dispatched
+image's: host/native/raw-trap.lisp THE TRAP replaces each raw-dispatched
 function's binding by a trap that faults outside the dispatcher, however the
 call is spelled (tests/test_native_raw_dispatch_trap.py, the r34 bypasses as
 cases; tests/test_native_raw_dispatch_image.py, a built image).  This rule
@@ -39,7 +39,7 @@ CALL   Every function position (funcall / apply / multiple-value-call, the
        CL higher-order functions' function argument, every :key / :test /
        :test-not) holds a value TRACED to a host function: #'G or 'G with G
        no book function, a lambda, a table resolution (fnn-fixed-raw-callback
-       / fnn-dispatch-function of a literal), or a variable, special, struct
+       / fnn-dispatch-symbol of a literal), or a variable, special, struct
        slot or raw function result every one of whose sources is such.  An
        ACL2 value is never a function object, so a value the host cannot
        trace -- a dispatched result, an opaque binding -- is refused, which
@@ -70,13 +70,15 @@ from tools import ledger  # noqa: E402
 Sym = ledger.Sym
 
 # The base dispatchers: head -> the argument positions holding an entry
-# name.  fnn-call resolves through fnn-dispatch-function (the table, else
+# name.  fnn-call resolves through fnn-raw-dispatch-apply (raw-trap.lisp: the table, else
 # the executable counterpart of a definterface-declared name: interface_emit
 # refuses an undeclared dispatched name); fnn-fixed-raw-callback resolves
 # only a :raw-with entry of the table; fnn-fixed-callback-fail only names
 # the entry in a fault.  Every other dispatcher is derived from these.
 BASE_DISPATCHERS = {
-    "fnn-call": (0,), "fnn-dispatch-function": (0,), "fnn-fixed-raw-callback": (0,),
+    "fnn-call": (0,), "fnn-raw-dispatch-apply": (0,), "fnn-fixed-raw-callback": (0,),
+    "fnn-raw-dispatch-callback": (0,), "fnn-dispatch-symbol": (0,),
+    "fnn-raw-dispatch-target": (0,), "fnn-raw-dispatch-captured-p": (0,),
     "fnn-fixed-callback-fail": (0,), "fnn-counterpart": (0,),
     "fnn-entry-guard": (0,), "fnn-entry-guard-spec": (0,), "fnn-trailing-kind": (0,),
 }
@@ -94,7 +96,8 @@ LABEL_SINKS = {"format": 1, "fnn-fault": 0, "fnn-refuse": 0, "error": 1, "fnn-ou
                "warn": 0, "cerror": 1, "fnn-fixed-callback-fail": 0}
 
 # The table resolutions: their value is the entry's function object.
-RESOLVERS = {"fnn-fixed-raw-callback", "fnn-dispatch-function"}
+RESOLVERS = {"fnn-fixed-raw-callback", "fnn-raw-dispatch-callback", "fnn-dispatch-symbol",
+             "fnn-raw-dispatch-target"}
 
 MAKERS = {"intern", "find-symbol", "read", "read-from-string",
           "read-preserving-whitespace", "find-all-symbols", "do-symbols",
@@ -192,20 +195,21 @@ DIGEST = ("the BLAKE3 reference/native pair (host/native/digest.lisp): the ACL2 
 LOOKUPS = ("developer lookup counters, FN_NATIVE_COUNT_LOOKUPS only (fnn-developer-"
            "selector; a production image refuses to start with it set): "
            "sb-int:encapsulate wraps each listed read function to count its calls")
-RAWTRAPS = ("developer `acl2 raw-traps' probe (developer images only): calls each trapped target OUTSIDE the dispatcher -- literal, interned, function binding -- and requires the trap's fault (io.lisp THE TRAP)")
+# An allow entry whose context is FILE_WIDE covers every site of its rule in
+# its file: only for a file that IS the dispatcher (host/native/raw-trap.lisp,
+# whose definitions share one lexical closure, so no defun names a context).
+FILE_WIDE = "*"
+TRAPFILE = ("THE TRAP (host/native/raw-trap.lisp, Codex r34/r63): the dispatch table, "
+            "the captured objects and the traps, lexical to one closure; reads "
+            "fn-interfaces off the world once at image build, captures each accepted "
+            "target and replaces its binding by the trap, applies a captured object or "
+            "the *1* counterpart only inside a fresh per-call extent, and probes itself")
+RAWTRAPS = ("developer `acl2 raw-traps' probe (developer images only): calls each trapped target OUTSIDE the dispatcher -- literal, interned, function binding -- and requires the trap's fault (raw-trap.lisp THE TRAP)")
 ALLOW: list[Allow] = [
-    Allow("WORLD", "host/native/io.lisp", "fnn-install-raw-dispatch",
-          INTERNAL + " (reads fn-interfaces off the world once, at image build)"),
-    Allow("CALL", "host/native/io.lisp", "fnn-install-raw-dispatch",
-          INTERNAL + " (hands each accepted target to fnn-raw-trap-install)"),
-    Allow("WORLD", "host/native/io.lisp", "fnn-raw-trap-install",
-          INTERNAL + " (THE TRAP: captures the target's function object and replaces "
-          "its binding by the trap, at installation)"),
-    Allow("CALL", "host/native/io.lisp", "fnn-raw-trap-install",
-          INTERNAL + " (THE TRAP: the captured object goes only into *fnn-raw-captured* "
-          "and the trap closure)"),
-    Allow("WORLD", "host/native/io.lisp", "fnn-raw-dispatch-traps-intact",
-          INTERNAL + " (THE TRAP: compares each target's binding with its trap)"),
+    Allow("WORLD", "host/native/raw-trap.lisp", FILE_WIDE, TRAPFILE),
+    Allow("CALL", "host/native/raw-trap.lisp", FILE_WIDE, TRAPFILE),
+    Allow("MAKE", "host/native/raw-trap.lisp", FILE_WIDE, TRAPFILE),
+    Allow("NAMEVAR", "host/native/raw-trap.lisp", FILE_WIDE, TRAPFILE),
     Allow("WORLD", "host/native/io.lisp", "fnn-entry-guard-spec",
           INTERNAL + " (reads the entry's formals, stobjs-in and guard, cached)"),
     Allow("WORLD", "host/native/io.lisp", "fnn-trailing-kind",
@@ -244,8 +248,8 @@ ALLOW: list[Allow] = [
     Allow("CALL", "host/native/io.lisp", "fnn-lookup-counter", LOOKUPS),
     Allow("CALL", "host/native/io.lisp", "fnn-lookup-walk-counter", LOOKUPS),
     Allow("CALL", "host/native/acl2-session.lisp", "fnn-command-acl2", RAWTRAPS),
-    Allow("MAKE", "host/native/acl2-session.lisp", "fnn-command-acl2", RAWTRAPS),
     Allow("NAMEVAR", "host/native/acl2-session.lisp", "fnn-command-acl2", RAWTRAPS),
+    Allow("MAKE", "host/native/acl2-session.lisp", "fnn-command-acl2", RAWTRAPS),
     Allow("WORLD", "host/native/acl2-session.lisp", "fnn-command-acl2", RAWTRAPS),
     Allow("MAKE", "host/native/bp.lisp", "fnn-bp-profile-points",
           "developer BP profile, FN_BP_TEST_PROFILE only (a production image refuses it): "
@@ -1159,7 +1163,8 @@ def judge(scan: Scan, allows: list[Allow], carried: set[str]) -> tuple[list[str]
     covered = {"allowed": 0, "pending": 0}
     for s in scan.sites:
         match = [i for i, a in enumerate(allows)
-                 if (a.rule, a.file, a.context) == (s.rule, s.file, s.context)]
+                 if (a.rule, a.file) == (s.rule, s.file)
+                 and a.context in (s.context, FILE_WIDE)]
         bad = sorted(s.symbols & carried)
         if match and not bad:
             used.update(match)
