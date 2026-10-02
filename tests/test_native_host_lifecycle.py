@@ -22,8 +22,9 @@ import time
 import unittest
 
 from tests import test_native_checkpoint_auto as auto
+from tests.test_native_web import PASSWORD, Browser
 from tests.native_harness import (EXIT, EXIT_OK, Client, Node, article, client_context,
-                                  native_image, requires)
+                                  free_port, native_image, requires)
 
 DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
 
@@ -343,6 +344,87 @@ class IdleTimerTests(unittest.TestCase):
             # write; a busy poll is hundreds per millisecond of wait.
             self.assertLess(statistics.median(deltas), 10, deltas[:50])
             node.stop(process=owner, expect=EXIT.OK)
+
+
+@requires(DEVELOPER)
+class LogicalFeedTests(unittest.TestCase):
+    """r71 F5 / sweep S003 (host/native/owner.lisp fnn-owner-handle-chunk-read):
+    a web-face POST (a logical :reader connection, no socket) committed
+    INLINE, as if the owner were idle: its START and barrier ran inside the
+    reader's quantum, under the owner mutex -- after waiting there for
+    another batch's barrier when one was in flight (the gate admits :reader
+    then).  On a stalled device that held every other quantum.  It joins the
+    next batch now and is awaited off the owner (fnn-owner-feed-logical), as
+    an NNTP POST is: while the browser's POST waits for the device, the
+    owner answers others at once, and the post is accepted when the device
+    returns."""
+
+    STALL_SECONDS = 4
+
+    def setUp(self):
+        node = self.node = Node(self, DEVELOPER, name="web-stall")
+        node.use_tls(alt_name=True, protected_only=False)
+        self.web_port = free_port()
+        node.write_config(extra=(
+            'tls_port = {}\ntls_cert = "{}"\ntls_key = "{}"\n\n'
+            '[auth]\nrequired = true\nprotected_only = true\n\n'
+            '[web]\nport = {}\nsite = "Friends news"\ndomain = "friends.invalid"\n'.format(
+                node.tls_port, node.cert, node.root / "key.pem", self.web_port)))
+        node.init("local.general", "control.cancel", timeout=240)
+        node.listening = 3
+        self.stall = node.root / "stall"
+        self.addCleanup(lambda: self.stall.unlink() if self.stall.exists() else None)
+        self.owner = node.start(env={"FN_NATIVE_TEST_DISK_STALL_FILE": str(self.stall)})
+
+    def signed_in(self):
+        b = Browser(self.web_port)
+        _, _, page, _, _ = b.request("GET", "/redeem")
+        invite = self.node.operator("account", "invite", "--expires", "3600", timeout=240,
+                                    expect=EXIT.OK)
+        code = re.findall(rb"^[0-9a-f]{32}$", invite.stdout, re.M)[0].decode("ascii")
+        status, where, page, _, _ = b.request("POST", "/redeem", {
+            "pre": b.form_value(page, "pre"), "code": code, "user": "wren",
+            "password": PASSWORD, "again": PASSWORD})
+        self.assertEqual((status, where), (303, "/"), page)
+        status, _, page, _, _ = b.request("GET", "/")
+        self.assertEqual(status, 200)
+        return b, b.form_value(page, "csrf")
+
+    def timed_health(self):
+        started = time.monotonic()
+        result = self.node.operator("health", timeout=120)
+        return time.monotonic() - started, result
+
+    def test_a_web_post_on_a_stalled_device_waits_off_the_owner(self):
+        with self.node.log_on_failure(self.owner):
+            b, csrf = self.signed_in()
+            baseline, _ = self.timed_health()
+            self.stall.write_bytes(b"")
+            answer = {}
+
+            def post():
+                answer["reply"] = b.request("POST", "/post", {
+                    "csrf": csrf, "g": "local.general", "subject": "During a stall",
+                    "body": "posted while the device does not return"})
+
+            poster = threading.Thread(target=post)
+            started = time.monotonic()
+            poster.start()
+            time.sleep(1)
+            self.assertTrue(poster.is_alive(), "the post was answered before its barrier")
+            waited, health = self.timed_health()
+            self.assertLess(waited, baseline + 1.5,
+                            "the owner held its mutex for a web post's barrier")
+            self.assertLess(time.monotonic() - started, self.STALL_SECONDS)
+            time.sleep(max(0, self.STALL_SECONDS - (time.monotonic() - started)))
+            self.stall.unlink()
+            poster.join(timeout=120)
+            self.assertFalse(poster.is_alive())
+            status, _, page, _, _ = answer["reply"]
+            self.assertEqual(status, 200, page)
+            self.assertIn("Posted!", page)
+            self.assertIsNone(self.owner.poll())
+            self.node.stop(process=self.owner, expect=EXIT.OK)
 
 if __name__ == "__main__":
     unittest.main()
