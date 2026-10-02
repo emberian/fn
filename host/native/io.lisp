@@ -6021,7 +6021,7 @@ tree root), or stop the build."
     "FN_NATIVE_PAGE_READ_HOLD"
     "FN_NATIVE_PAGE_IO_HOLD" "FN_NATIVE_PAGE_IO_RESULT"
     "FN_NATIVE_DISK_FREE"
-    "FN_NATIVE_EXTENT_CACHE_TEST_OFF"
+    "FN_NATIVE_EXTENT_CACHE_TEST_OFF" "FN_NATIVE_EXTENT_CLOSE_FAULT"
     ;; host/native/digest.lisp: the matched measurement's reference arm.
     "FN_NATIVE_DIGEST_TEST_OFF"
     ;; D40: the executable-counterpart path for every :raw-with entry, so a

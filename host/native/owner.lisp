@@ -4297,7 +4297,7 @@ before exact settlement releases a charge. Owner->extent serializes it."
                                          (t "arena-extent-verdict: issued read failed")))))
       (incf (third *fnn-extent-stats*)))
     (setf (fnn-owner-cold-read-outcome read) (or condition t))
-    (fnn-owner-release-pending-extents-locked)
+    (fnn-owner-release-pending-extents-locked service)
     (when condition
       (unless *fnn-owner-last-fault*
         (setq *fnn-owner-last-fault*
@@ -4846,23 +4846,30 @@ resident set the owner serves from is its live heap, not the recovery's
 high-water mark.  Work proportional to the live heap, once per start."
   (sb-ext:gc :full t))
 
-(defun fnn-owner-release-pending-extents-locked (&optional pin)
+(defun fnn-owner-release-pending-extents-locked (service &optional pin)
   "Release pending groups whose reader generations and issued I/O are clear.
-Caller holds owner mutex; extent lock is acquired only after it."
-  (let ((closed 0) (keep nil))
-    (dolist (entry *fnn-extent-pending*)
-      (if (fnn-arena-clear-p (car entry) pin)
-          (multiple-value-bind (count owned) (fnn-extent-close (cdr entry))
-            (incf closed count)
-            (when owned (push (cons (car entry) owned) keep)))
-        (push entry keep)))
-    (setq *fnn-extent-pending* (nreverse keep))
-    closed))
+Caller holds owner mutex; extent lock is acquired only after it. Close
+uncertainty fences before owner exclusion is released, including worker and
+snapshot cleanup callers. A stopped owner never retries an ambiguous fd."
+  (when (fnn-owner-service-stopping service)
+    (return-from fnn-owner-release-pending-extents-locked 0))
+  (fnn-owner-shared-action-locked
+   service nil
+   (lambda ()
+     (let ((closed 0) (keep nil))
+       (dolist (entry *fnn-extent-pending*)
+         (if (fnn-arena-clear-p (car entry) pin)
+             (multiple-value-bind (count owned) (fnn-extent-close (cdr entry))
+               (incf closed count)
+               (when owned (push (cons (car entry) owned) keep)))
+           (push entry keep)))
+       (setq *fnn-extent-pending* (nreverse keep))
+       closed))))
 
 (defun fnn-owner-release-pending-extents (service)
   "Actual worker completion retries pending closes after dropping extent lock."
   (fnn-owner-gated (service :control)
-    (fnn-owner-release-pending-extents-locked)))
+    (fnn-owner-release-pending-extents-locked service)))
 
 (defun fnn-snapshot-source-root-acquire (service base-handle maintenance-lease)
   "Caller holds SERVICE's owner mutex while capturing BASE-HANDLE. Acquire
@@ -4885,7 +4892,7 @@ admission closes, so it takes the owner mutex directly rather than the gate."
     (sb-thread:with-mutex (*fnn-extent-lock*)
       (unless (eq (first (fnn-core-page-read-pool 'fn-owner-page-file-unpin token)) :released)
         (fnn-fault "snapshot root lease release is stale")))
-    (fnn-owner-release-pending-extents-locked)))
+    (fnn-owner-release-pending-extents-locked service)))
 
 (defun fnn-snapshot-source-read-page (service root-token request buffer-lease)
   "Read one core-authorized physical page. Return vector, exact buffer token,
@@ -4937,8 +4944,9 @@ are-unnamed) become pending at a fresh arena-reader stamp S: a reader that
 pins after S never sees an entry naming them.  Every pending group whose
 stamp no other reader is pinned at or below (fnn-arena-clear-p S PIN, PIN
 this thread's own pin) is closed.  Runs on a thread that is itself an
-off-mutex arena reader pinned at PIN.  A failure leaves the files retired
-or pending (closed by a later release) and serving continues."
+off-mutex arena reader pinned at PIN. Known pre-close discovery refusals
+leave files retired/pending for retry. Ambiguous close fences under the owner
+mutex; other faults stop the owner. Neither terminal outcome resumes serving."
   (let ((arena (fnn-live-arena)) (new-id nil) (reseated 0) (incomplete 0) (closed 0)
         (named-detail nil))
     (handler-case
@@ -4992,7 +5000,7 @@ or pending (closed by a later release) and serving continues."
                 (setq *fnn-extent-pending*
                       (append *fnn-extent-pending* (list (cons (fnn-arena-stamp) quiet)))
                       *fnn-extent-retired* (set-difference *fnn-extent-retired* quiet)))
-              (incf closed (fnn-owner-release-pending-extents-locked pin))
+              (incf closed (fnn-owner-release-pending-extents-locked service pin))
               ;; Each retired file still named, and by what: (ID COUNT LOG),
               ;; COUNT the extent column's entries naming it, LOG whether a
               ;; log member in flight or fenced names it.
@@ -5008,8 +5016,19 @@ or pending (closed by a later release) and serving continues."
                    (fnn-extent-open-count)
                    (cond (*fnn-extent-retired* :named) (*fnn-extent-pending* :pending))
                    named-detail))
+      (fnn-store-indeterminate (e)
+        ;; The pending-close boundary has already fenced under owner exclusion.
+        ;; Also cover uncertainty from registration/discovery. This background
+        ;; publisher has no outer condition handler; finish its cleanup normally
+        ;; with the service's terminal exit 3, never an unhandled thread error.
+        (fnn-owner-fence-service service)
+        (fnn-err "CHECKPOINT release uncertain; recovery required: ~a" e))
+      (fnn-store-fault (e)
+        (fnn-owner-fault-service service nil e))
+      (fnn-store-error (e)
+        (fnn-err "CHECKPOINT release refused (files stay retired): ~a" e))
       (serious-condition (e)
-        (fnn-err "CHECKPOINT release failed (files stay retired): ~a" e)))))
+        (fnn-owner-fault-service service nil e)))))
 
 (defun fnn-owner-publish-captured (service captured &optional position pin)
   "The publication's thread: ACL2's fn-ock-next-checkpoint over the values

@@ -16,6 +16,65 @@ IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
 
 
 class NativeOwnerHandlerStructureTests(unittest.TestCase):
+    def test_extent_close_uncertainty_fences_before_unlock_and_never_retries(self):
+        from tests.campaign.native_cuts import host_function
+        sys.path.insert(0, str(ROOT / "tools"))
+        from ledger import head, read_forms
+        owner = (ROOT / "host/native/owner.lisp").read_text()
+        extent = (ROOT / "host/native/extent.lisp").read_text()
+        release = host_function(owner, "fnn-owner-release-extents")
+        release_form = read_forms(release)[0]
+        release_handler = release_form[-1][-1]
+        self.assertEqual(head(release_handler), "handler-case")
+        self.assertEqual([head(arm) for arm in release_handler[2:]],
+                         ["fnn-store-indeterminate", "fnn-store-fault",
+                          "fnn-store-error", "serious-condition"])
+        pending = host_function(owner, "fnn-owner-release-pending-extents-locked")
+        self.assertIn("(service &optional pin)", pending)
+        self.assertLess(pending.index("(fnn-owner-service-stopping service)"),
+                        pending.index("(fnn-extent-close"))
+        form = read_forms(pending)[0]
+
+        def ancestors(form, target, parents=()):
+            if isinstance(form, list):
+                if head(form) == target:
+                    yield parents
+                for child in form:
+                    yield from ancestors(child, target, parents + (form,))
+
+        paths = list(ancestors(form, "fnn-extent-close"))
+        self.assertEqual(len(paths), 1)
+        self.assertIn("fnn-owner-shared-action-locked", [head(p) for p in paths[0]])
+        close = host_function(extent, "fnn-extent-close")
+        forms = read_forms(close)[0]
+        for target in ("fnn-close", "remhash"):
+            for parents in ancestors(forms, target):
+                handlers = [p for p in parents if head(p) == "handler-case"]
+                self.assertTrue(handlers, target)
+                self.assertEqual(head(handlers[-1][-1]), "serious-condition")
+                self.assertTrue(list(ancestors(handlers[-1][-1], "fnn-indeterminate")))
+        self.assertLess(close.index("(fnn-close fd)"),
+                        close.index("'fn-owner-page-read-close id"))
+        # Held files are normal retry results, not ambiguous close errors.
+        def nodes(form):
+            if isinstance(form, list):
+                yield form
+                for child in form:
+                    yield from nodes(child)
+        held = next(f for f in nodes(forms) if head(f) == ":read-file-held")
+        self.assertEqual(held[1], ["push", "id", "keep"])
+        self.assertFalse(list(ancestors(held, "fnn-close")))
+        release = host_function(owner, "fnn-owner-release-extents")
+        self.assertIn("(fnn-store-indeterminate (e)", release)
+        self.assertIn("(fnn-owner-fence-service service)", release)
+        self.assertIn("(fnn-owner-fault-service service nil e)", release)
+        self.assertNotIn("release failed (files stay retired)", release)
+        # Every family caller supplies the service needed to fence under lock.
+        for path in (ROOT / "host/native").glob("*.lisp"):
+            text = path.read_text()
+            for call in re.findall(r"\(fnn-owner-release-pending-extents-locked([^)]*)\)", text):
+                self.assertIn("service", call, str(path))
+
     def test_transit_take_uses_transfer_decision_and_store_outcome(self):
         # A transit take is a normal queued submission.  Treating the tag as
         # a fault stopped the whole owner before Store ran; the later reply

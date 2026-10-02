@@ -1240,19 +1240,39 @@ actual eviction, descriptor credits only after successful OS close."
                   ((:closable :unfunded-offline :stale)
                    (when (and fd (eq word :stale))
                      (fnn-fault "registered incarnation lacks its resource lease"))
-                   ;; Any error escapes with the tables/lease intact. The
-                   ;; owner fences; ambiguous close never refunds and resumes.
-                   (when fd (fnn-close fd) (incf closed))
-                   (unless (eq word :unfunded-offline)
-                     (let ((settled (first (fnn-core-page-read-pool 'fn-owner-page-read-close id))))
-                       (unless (member settled '(:closed :stale))
-                         (fnn-fault "closed incarnation still has a resource owner"))))
-                   (remhash id *fnn-extent-fds*)
-                   (remhash id *fnn-extent-paths*)
-                   (remhash id *fnn-extent-incarnations*)
-                   (remhash id *fnn-extent-bases*)
-                   (when (and fd (fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD"))
-                     (fnn-err "PAGE-IO closed file=~d" id)))
+                   ;; From the attempted OS close through settlement/table
+                   ;; removal, any error is uncertain, never a retry/refusal.
+                   ;; The owner fences while it still holds its mutex. No
+                   ;; refund or table removal runs after a failed close.
+                   (handler-case
+                       (progn
+                         (when fd
+                           (let ((fault (fnn-developer-selector "FN_NATIVE_EXTENT_CLOSE_FAULT")))
+                             (when (equal fault "before-close") (fnn-os-fail 5))
+                             (fnn-close fd)
+                             (when (equal fault "after-close") (fnn-os-fail 5)))
+                           (incf closed))
+                         (unless (eq word :unfunded-offline)
+                           (let ((settled (first (fnn-core-page-read-pool 'fn-owner-page-read-close id))))
+                             (unless (member settled '(:closed :stale))
+                               (fnn-fault "closed incarnation still has a resource owner"))))
+                         (remhash id *fnn-extent-fds*)
+                         (remhash id *fnn-extent-paths*)
+                         (remhash id *fnn-extent-incarnations*)
+                         (remhash id *fnn-extent-bases*)
+                         (when (and fd (fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD"))
+                           (fnn-err "PAGE-IO closed file=~d" id)))
+                     (serious-condition (e)
+                       ;; Developer observation of the retained descriptor and
+                       ;; ACL2 lease after the failure, before the owner fence.
+                       (unwind-protect
+                            (when (fnn-developer-selector "FN_NATIVE_EXTENT_CLOSE_FAULT")
+                              (fnn-err "EXTENT close uncertain file=~d registered=~a lease=~a"
+                                       id (not (null (gethash id *fnn-extent-fds*)))
+                                       (first (fnn-core-page-read-pool 'fn-owner-page-read-close-preview id))))
+                         (if fd
+                             (fnn-indeterminate "extent close ~d: recovery required: ~a" id e)
+                           (error e))))))
                   (:read-file-held (push id keep))
                   (otherwise (fnn-fault "invalid incarnation close preview ~a" word)))))
           (progn

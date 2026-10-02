@@ -387,6 +387,19 @@ selector, before any store or socket is opened. Store diagnostics and the existi
 verbs remain available in the production image; this split does not claim full
 operator parity for them.
 
+Extent retirement is a resource-effect boundary: a file still named by the
+arena, pinned by a reader, or held by an issued read/lease stays retired or
+pending for retry without attempting OS close. A known discovery admission
+refusal may likewise defer release. Once OS close is attempted, any error
+through lease settlement and descriptor-table removal is an uncertain outcome.
+The pending-close owner boundary installs the existing service fence under the
+owner mutex before releasing exclusion (exit 3); no later commit or pending
+close retry is admitted in that process. A close error skips the descriptor
+lease refund and table removal. Other core/host faults stop the owner as faults
+(exit 4), rather than being treated as admission refusals. A new process
+recovers the durable checkpoint and reconstructs its extent registrations.
+This is an fn resource-lifecycle guarantee, not an RFC NNTP requirement.
+
 **Selected production entry restriction (2026-09-23).**
 Raw `store ROOT post` is a developer diagnostic. A production image,
 including the production DTN image, must reject that entry with the existing
