@@ -217,7 +217,7 @@
              (stamp (fn-record-stamp-of-observation clock-observation))
              (record (fn-record-make sequence txid generation msgid received
                                      groups obligation-id content-subject
-                                     release-evidence charge stamp (fn-ab-for-received :native-source received)))
+                                     release-evidence charge stamp))
              (source-id (fn-hsig-authored-source-id source)))
         (if (and (natp stamp) fields source-id
                  (equal msgid (car fields))
@@ -411,7 +411,7 @@
              (stamp (fn-record-stamp-of-observation clock-observation))
              (record (fn-record-make sequence txid generation msgid received
                                      groups obligation-id content-subject
-                                     release-evidence charge stamp (fn-ab-for-received :native-source received)))
+                                     release-evidence charge stamp))
              (source-id (fn-hsig-authored-source-id source)))
         (if (and (natp stamp) fields source-id
                  (equal msgid (car fields))

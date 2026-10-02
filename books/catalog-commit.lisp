@@ -416,7 +416,7 @@
                  (not (fn-stxe-p w))
                  (not (fn-stxk-p w))
                  (not (fn-hstxa-p w))
-                 (not (fn-cne-eventp w))
+                 (not (fn-cpe-eventp w))
                  (not (fn-th-topic-eventp w))))
    :hints (("Goal" :in-theory (union-theories '(fn-store-event-p) (theory 'minimal-theory))
             :use ((:instance fn-evc-class-by-shape-is-fn-held-p (x w))
@@ -424,7 +424,7 @@
                   (:instance fn-evc-class-by-shape-is-fn-stxe-p (x w))
                   (:instance fn-evc-class-by-shape-is-fn-stxk-p (x w))
                   (:instance fn-evc-class-by-shape-is-fn-hstxa-p (x w))
-                  (:instance fn-evc-class-by-shape-is-fn-cne-eventp (x w))
+                  (:instance fn-evc-class-by-shape-is-fn-cpe-eventp (x w))
                   (:instance fn-evc-class-by-shape-is-fn-th-topic-eventp (x w)))))))
 
 (local

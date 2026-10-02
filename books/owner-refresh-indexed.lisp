@@ -91,7 +91,7 @@
            (equal (fn-own-refresh-ix o fn-hist) (fn-own-refresh o)))
   :hints (("Goal" :use ((:instance fn-orix-store-rows-agree (s (fn-own-store o))))
            :in-theory (e/d (fn-own-refresh-ix fn-own-refresh
-                            fn-ctl-refresh-withdrawals-fx fn-sf-records-count fn-sbud-used)
+                            fn-ctl-refresh-withdrawals-fx fn-sf-records-count)
                            (fn-sn-statep
                             fn-ctl-rows-okp
                             fn-orix-store-rows-agree

@@ -421,13 +421,11 @@
         (fn-bpn-refused (fn-cbor-result-value d))
       (let* ((bundle (fn-cbor-result-value d))
              (primary (fn-bpb-bundle-primary bundle)))
-        ; RFC9171 section4.3.1 permits primary CRC0 only with BIB protection.
-        ; This legacy wire entry has no registered verified BIB completion or
-        ; current-policy capability input. Structural BIB bytes cannot supply
-        ; either. A future verified route must carry that actual evidence.
-        (cond ((equal (fn-bpp-crc-type primary) 0)
-               (fn-bpn-refused :block-unintelligible))
-              ((not (fn-bpp-flags-conformantp primary))
+        ; A CRC-0 primary block is accepted (RFC 9171 section 4.3.1 wants a
+        ; BIB in its place; the refusal cc14ca24e added here is REVERTED,
+        ; planning/design-store-representation-2026-10-01.md section 5:
+        ; dtn7-rs 0.21.0 sends CRC-0 primaries, specs/bp-design.md).
+        (cond ((not (fn-bpp-flags-conformantp primary))
                (fn-bpn-refused :flags-not-conformant))
               ((and (not allow-fragments)
                     (fn-bpp-fragmentp (fn-bpp-flags primary)))

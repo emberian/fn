@@ -283,14 +283,14 @@
                                fn-record-string-octets-aux floor mod))))
 
 (defthm fn-record-reconstruct
-  (implies (and (true-listp record) (equal (len record) 12))
+  (implies (and (true-listp record) (equal (len record) 11))
            (equal (fn-record-make
                    (fn-record-sequence record) (fn-record-txid record)
                    (fn-record-generation record) (fn-record-msgid record)
                    (fn-record-payload record) (fn-record-groups record)
                    (fn-record-obligation-id record) (fn-record-content-subject record)
                    (fn-record-release-evidence record) (fn-record-charge record)
-                   (fn-record-stamp record) (fn-record-binding record))
+                   (fn-record-stamp record))
                   record)))
 
 (defthm fn-record-read-magic-prefix
@@ -312,21 +312,21 @@
            :in-theory (disable fn-record-read-uint
                                fn-record-read-uint-of-wide-encoding))))
 
-(defthm fn-record-read-version3-prefix
+(defthm fn-record-read-version1-prefix
   (implies (fn-cbor-octet-listp rest)
-           (equal (fn-record-read-uint (cons 3 rest))
-                  (fn-record-parse-ok 3 rest)))
+           (equal (fn-record-read-uint (cons 1 rest))
+                  (fn-record-parse-ok 1 rest)))
   :hints (("Goal"
-           :use ((:instance fn-record-read-uint-of-wide-encoding (n 3)))
+           :use ((:instance fn-record-read-uint-of-wide-encoding (n 1)))
            :in-theory (disable fn-record-read-uint
                                fn-record-read-uint-of-wide-encoding))))
 
-(defthm fn-record-read-version4-prefix
+(defthm fn-record-read-version2-prefix
   (implies (fn-cbor-octet-listp rest)
-           (equal (fn-record-read-uint (cons 4 rest))
-                  (fn-record-parse-ok 4 rest)))
+           (equal (fn-record-read-uint (cons 2 rest))
+                  (fn-record-parse-ok 2 rest)))
   :hints (("Goal"
-           :use ((:instance fn-record-read-uint-of-wide-encoding (n 4)))
+           :use ((:instance fn-record-read-uint-of-wide-encoding (n 2)))
            :in-theory (disable fn-record-read-uint
                                fn-record-read-uint-of-wide-encoding))))
 
@@ -337,17 +337,6 @@
   :hints (("Goal"
            :use ((:instance fn-record-read-uint-wide-encoded (rest nil)))
            :in-theory (disable fn-record-read-uint fn-record-uint-encode))))
-
-(defthm fn-record-read-last-binding
-  (implies (fn-ab-p binding)
-           (equal (fn-record-read-bytes
-                   (fn-record-item-encode (cons :bytes (fn-ab-encode binding))))
-                  (fn-record-parse-ok (fn-ab-encode binding) nil)))
-  :hints (("Goal" :use ((:instance fn-record-read-bytes-of-item-encoding
-                                   (xs (fn-ab-encode binding)) (rest nil)))
-                  :in-theory (disable fn-record-read-bytes
-                                      fn-record-item-encode
-                                      fn-record-read-bytes-of-item-encoding))))
 
 (defthm fn-record-impl-round-trip
   (implies (fn-record-p record)
@@ -370,7 +359,7 @@
                                fn-record-generation fn-record-msgid fn-record-payload
                                fn-record-groups fn-record-obligation-id
                                fn-record-content-subject fn-record-release-evidence
-                               fn-record-charge fn-record-stamp fn-record-binding floor mod
+                               fn-record-charge floor mod
                                ; The encoder is a thirteen-deep right-nested
                                ; `append'.  With this rule on, every type-set
                                ; of it backchains through each level's
@@ -402,8 +391,8 @@
     fn-record-read-bytes-encoded fn-record-encoded-groups-are-octets
     fn-record-group-encoding-bound fn-record-groups-prefix-round-trip
     fn-record-reconstruct fn-record-read-magic-prefix
-    fn-record-read-version-prefix fn-record-read-version3-prefix
-    fn-record-read-version4-prefix
+    fn-record-read-version-prefix fn-record-read-version1-prefix
+    fn-record-read-version2-prefix
     fn-record-read-last-uint fn-record-read-last-uint-wide fn-record-uint-encode-octets
     fn-record-uint-encode-true-list fn-record-uint-encode-length-bound
     fn-record-item-encode-is-cbor-encode fn-record-item-encode-octets
@@ -428,8 +417,8 @@
              fn-record-group-encoding-bound
              fn-record-groups-prefix-round-trip fn-record-reconstruct
              fn-record-read-magic-prefix fn-record-read-version-prefix
-             fn-record-read-version3-prefix
-             fn-record-read-version4-prefix
+             fn-record-read-version1-prefix
+             fn-record-read-version2-prefix
              fn-record-read-last-uint fn-record-read-last-uint-wide fn-record-uint-encode-octets
     fn-record-uint-encode-true-list fn-record-uint-encode-length-bound
              fn-record-item-encode-is-cbor-encode fn-record-item-encode-octets

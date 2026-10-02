@@ -1,3 +1,4 @@
+; UNHOOKED stage 0 (2026-10-01): depends on the reverted acceptance-binding field (planning/design-store-representation-2026-10-01.md section 5, D43): the captured-identity chain over the held binding gate is parked (review 2026-10-01 F01: KEEP-PARKED); not in the Makefile check roots or any image world.
 ; Actual source parser begin receives a producer-established retained agent.
 (in-package "ACL2")
 (include-book "post-identity-captured-source-pair-context")

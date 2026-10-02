@@ -155,11 +155,24 @@
          (fn-sn-keyring-snapshot-listp (fn-stxk-context-snapshots ctx))
          (natp (fn-stxk-context-next ctx)))))
 
+; The opened Store's verdicts are read off the rows since 8444bb42d, so its
+; state no longer carries the identity fold's verdict pairs; every such list
+; is a verdict list regardless.
+(local
+ (defthm fn-sob-verdict-pairs-are-verdicts
+   (fn-sn-verdict-listp (fn-replay-verdict-pairs xs))
+   :hints (("Goal" :in-theory (enable fn-replay-verdict-pairs fn-sn-verdict-listp
+                                      fn-stx-make-verdict fn-stx-verdict-token
+                                      fn-stx-verdict-generation fn-stxe-tokenp
+                                      fn-record-msgidp fn-record-uint32p)))))
+
 (local (defthm fn-sob-sn-open-ok-identity-typed
   (implies (fn-sn-open-okp (fn-sn-open-observed groups capacity frontier events))
            (fn-sob-identity-typedp events))
   :hints (("Goal"
-           :use (fn-sn-open-observed-success-is-state)
+           :use (fn-sn-open-observed-success-is-state
+                 (:instance fn-sob-verdict-pairs-are-verdicts
+                            (xs (fn-stxk-context-verdicts (fn-replay-identity events)))))
            :in-theory
            (e/d (fn-sn-open-observed fn-sn-open-okp fn-sn-observed-seed
                  fn-sn-recover fn-sf-recover fn-sn-update fn-sn-update-replayed
@@ -169,8 +182,59 @@
                  fn-sf-replay-node fn-replay-identity fn-cpe-projection-replay
                  fn-th-prefix-project fn-stx-index-of-store fn-cei-build
                  fn-sn-verdict-listp fn-sn-keyring-snapshot-listp
-                 fn-replay-verdict-pairs
+                 fn-replay-verdict-pairs fn-sob-verdict-pairs-are-verdicts
                  fn-sn-open-observed-success-is-state))))))
+
+; The opened Store's verdicts are fn-sn-row-verdicts of its records and its
+; keyring generation the retained snapshots' (8444bb42d); each row gives a
+; well-formed verdict pair or nothing (the chain of store-finalize-incremental).
+(local (defthm fn-sob-held-msgid-stringp
+  (implies (fn-held-p row) (stringp (fn-record-msgid row)))
+  :hints (("Goal" :in-theory (enable fn-held-p fn-held-p-fields fn-record-msgidp)))))
+(local (defthm fn-sob-held-verdict-valid
+  (implies (fn-held-p row)
+           (and (member-equal (fn-stx-verdict-token (fn-hc-verdict (fn-held-context row)))
+                              *fn-stx-verdicts*)
+                (natp (fn-stx-verdict-generation (fn-hc-verdict (fn-held-context row))))))
+  :hints (("Goal" :in-theory (enable fn-held-p fn-held-p-fields fn-hc-p fn-hc-p-fields
+                                     fn-hc-verdictp fn-stx-verdict-token
+                                     fn-stx-verdict-generation)))))
+(local (defthm fn-sob-replay-verdict-pair-valid
+  (implies (fn-stxe-p e)
+           (let ((p (fn-replay-verdict-pair e)))
+             (implies p (and (consp p) (stringp (car p))
+                             (member-equal (fn-stx-verdict-token (cdr p)) *fn-stx-verdicts*)
+                             (natp (fn-stx-verdict-generation (cdr p)))))))
+  :hints (("Goal" :in-theory (enable fn-replay-verdict-pair fn-stx-make-verdict
+                                     fn-stx-verdict-token fn-stx-verdict-generation
+                                     fn-stxe-tokenp fn-record-msgidp)))))
+(local (defthm fn-sob-row-verdict-pair-valid
+  (let ((p (fn-sn-row-verdict-pair row)))
+    (implies p (and (consp p) (stringp (car p))
+                    (member-equal (fn-stx-verdict-token (cdr p)) *fn-stx-verdicts*)
+                    (natp (fn-stx-verdict-generation (cdr p))))))
+  :hints (("Goal" :in-theory (e/d (fn-sn-row-verdict-pair)
+                                  (fn-held-p fn-hstxa-p fn-stxe-p fn-stmt-okp fn-stmt-value
+                                   fn-stxe-decode-exact fn-replay-verdict-pair fn-record-msgid
+                                   fn-hc-verdict fn-held-context fn-stx-verdict-token
+                                   fn-stx-verdict-generation))
+           :use ((:instance fn-sob-replay-verdict-pair-valid
+                            (e (fn-stmt-value (fn-stxe-decode-exact
+                                               (fn-stxa-verdict-event (fn-hstxa-stxa row)))))))))))
+(local (defthm fn-sob-row-verdicts-fold-valid
+  (implies (fn-sn-verdict-listp verdicts)
+           (fn-sn-verdict-listp (fn-sn-row-verdicts-fold rows verdicts)))
+  :hints (("Goal" :induct (fn-sn-row-verdicts-fold rows verdicts)
+                  :in-theory (e/d (fn-sn-row-verdicts-fold fn-sn-verdict-listp)
+                                  (fn-sn-row-verdict-pair fn-stx-verdict-token
+                                   fn-stx-verdict-generation))))))
+(local (defthm fn-sob-row-verdicts-valid
+  (fn-sn-verdict-listp (fn-sn-row-verdicts rows))
+  :hints (("Goal" :in-theory (enable fn-sn-row-verdicts fn-sn-verdict-listp)))))
+(local (defthm fn-sob-ssk-generation-natp
+  (natp (fn-ssk-generation snapshots))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable fn-ssk-generation)))))
 
 (defthm fn-sob-cpo-opens-on-configured-image
   (implies (and (fn-sob-configured-openp configs frontier events)

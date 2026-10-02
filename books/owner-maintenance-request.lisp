@@ -201,7 +201,9 @@
           *fn-nls-lf*))
 
 ; The checkpoint file's lstat, (OCTETS MODIFIED) or nil (host/native/io.lisp
-; fnn-state-checkpoint-file-observation).
+; fnn-state-checkpoint-file-observation), in the words the live status prints
+; for the same observation (books/native-live-status.lisp
+; fn-nls-checkpoint-file-words): `checkpoint-file=absent' when there is none.
 (defun fn-omr-checkpoint-file-words (obs)
   (declare (xargs :guard t :verify-guards nil))
   (if (and (consp obs) (consp (cdr obs)) (natp (car obs)) (natp (cadr obs)))
@@ -209,7 +211,7 @@
               (fn-nls-field "octets" (car obs))
               (fn-nls-field "modified" (cadr obs))
               *fn-nls-lf*)
-    (append (fn-nls-text "checkpoint-file none") *fn-nls-lf*)))
+    (append (fn-nls-text "checkpoint-file=absent") *fn-nls-lf*)))
 
 ; The refusal a stopped report prints when config.json does not open: the
 ; open's own line for another release's store (fn-spo-refusal-text), else a

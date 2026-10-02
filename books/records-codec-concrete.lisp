@@ -78,8 +78,7 @@
        (fn-rcon-metadata-bytes-p (fn-record-content-subject x))
        (fn-rcon-metadata-bytes-p (fn-record-release-evidence x))
        (fn-record-uint64p (fn-record-charge x))
-       (fn-record-stampp (fn-record-stamp x))
-       (fn-ab-p (fn-record-binding x))))
+       (fn-record-stampp (fn-record-stamp x))))
 
 ; -----------------------------------------------------------------------------
 ; The correspondence, field by field.
@@ -205,9 +204,7 @@
                                   (fn-record-string-octets
                                    (fn-record-release-evidence record))))
             (fn-record-uint-encode (fn-record-charge record))
-            (fn-record-uint-encode (fn-record-stamp record))
-            (fn-record-item-encode
-             (cons :bytes (fn-ab-encode (fn-record-binding record)))))))
+            (fn-record-uint-encode (fn-record-stamp record)))))
       (if (fn-cbor-at-mostp octets *fn-record-max-octets*) octets nil))))
 (local (in-theory (enable (:type-prescription true-listp-append))))
 

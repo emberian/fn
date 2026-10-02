@@ -184,11 +184,11 @@
 ; -----------------------------------------------------------------------------
 ; Indexed served lines over a reclaimed article (audit packets G5-5 and G5-6,
 ; lane audit-fixes).  C is a third article in fn.one at number 5 whose
-; handle (2) holds a reclaim tombstone: the FN-RCL1 magic padded to the fixed
+; handle (2) holds a reclaim tombstone: the FN-RCL2 magic padded to the fixed
 ; tombstone length.  The number index and trie are the ones the owner's
 ; refresh builds from the article list (fn-gidx-build, fn-midx-build;
 ; group-number-index-tests shows refresh = build).
-(defconst *xrt-tomb-octets* (append *fn-rcl-magic* (make-list 81 :initial-element 32)))
+(defconst *xrt-tomb-octets* (append *fn-rcl-magic* (make-list 137 :initial-element 32)))
 (defconst *xrt-c*
   (fn-make-article "<xrt-c@example.invalid>" 2
                    '("fn.one") (list (cons "fn.one" 5))

@@ -24,7 +24,7 @@
   (implies (fn-node-statep s)
            (fn-node-statep
             (fn-node-prepare s generation msgid payload groups
-                             obligation-id subject evidence charge stamp binding))))
+                             obligation-id subject evidence charge stamp))))
 
 (defthm fn-member-of-subset
   (implies (and (fn-subsetp xs ys)
@@ -144,14 +144,14 @@
             (fn-state-articles
              (fn-node-acceptance
               (fn-node-prepare s generation msgid payload groups
-                               obligation-id subject evidence charge stamp binding)))
+                               obligation-id subject evidence charge stamp)))
             (fn-node-bindings
              (fn-node-prepare s generation msgid payload groups
-                              obligation-id subject evidence charge stamp binding))
+                              obligation-id subject evidence charge stamp))
             (fn-retain-pins
              (fn-node-retention
               (fn-node-prepare s generation msgid payload groups
-                               obligation-id subject evidence charge stamp binding)))))
+                               obligation-id subject evidence charge stamp)))))
   :rule-classes nil
   :hints (("Goal" :in-theory '(fn-node-prepare-preserves-state
                                fn-node-state-has-committed-archive-pins))))
@@ -187,7 +187,7 @@
 (defthm fn-node-prepare-preserves-bindings
   (equal (fn-node-bindings
           (fn-node-prepare s generation msgid payload groups
-                           obligation-id subject evidence charge stamp binding))
+                           obligation-id subject evidence charge stamp))
          (fn-node-bindings s)))
 
 (defthm fn-node-complete-preserves-existing-binding
@@ -225,15 +225,3 @@
     fn-node-pending-message-is-new
     fn-node-find-binding-absent))
 (in-theory (disable fn-node-invariants-vocabulary))
-
-; PRF-1129: the changed transaction stage keeps the exact caller descriptor.
-; The entry validates its domain before allocating either prospective side.
-(defthm fn-node-prepare-installs-the-exact-acceptance-binding
-  (let ((next (fn-node-prepare s generation msgid payload groups
-                               obligation-id subject evidence charge stamp binding)))
-    (implies (not (equal next s))
-             (and (fn-ab-p binding)
-                  (equal (fn-node-stage-binding (fn-node-stage next)) binding))))
-  :hints (("Goal" :in-theory (e/d (fn-node-prepare)
-                                  (fn-ab-p fn-node-statep fn-retain-admissiblep
-                                   fn-retain-admit fn-accept-prepare)))))

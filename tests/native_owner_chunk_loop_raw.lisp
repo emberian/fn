@@ -77,7 +77,10 @@
   '("host/native/io.lisp" "host/native/owner.lisp" "host/native/mux.lisp"
     ;; Only the COMPRESS layer's structures (fnn-zin-pending on the mux's
     ;; step loop); its functions are declared unreached below.
-    "host/native/deflate.lisp"))
+    "host/native/deflate.lisp"
+    ;; Likewise the cold line's structures (fnn-cold-worker); its functions
+    ;; are declared unreached below.
+    "host/native/extent.lisp"))
 
 (defvar *host* (make-hash-table :test 'eq))   ; name -> list of (kind file form)
 (defvar *ordinal* (make-hash-table :test 'eq)) ; form -> its position in the host
@@ -126,13 +129,38 @@
                                        (if (consp slot) (car slot) slot)))
                        :struct))))))))))
 
+(defun loaded-host-files ()
+  "The host/native files the image build loads (host/native/build.lisp), and
+what they load in turn, in order.  A file in host/native that no build loads
+(a parked block, a runtime extension the image leaves out, such as
+runtime-image-policy.lisp since stage 0) is not deployed code: indexing it
+would either fail to read (its packages are absent) or offer the harness a
+definition the node never runs."
+  (let ((seen '()) (queue (list "host/native/build.lisp")) (needle "(load \"host/native/"))
+    (loop while queue
+          do (let* ((file (pop queue))
+                    (text (with-open-file (stream file)
+                            (let ((s (make-string (file-length stream))))
+                              (subseq s 0 (read-sequence s stream))))))
+               (loop for start = (search needle text) then (search needle text :start2 end)
+                     for end = (and start (+ start (length needle)))
+                     while start
+                     do (let* ((close (position #\" text :start end))
+                               (name (concatenate 'string "host/native/" (subseq text end close))))
+                          (unless (or (member name seen :test #'string=)
+                                      (member name queue :test #'string=)
+                                      (string= name "host/native/build.lisp"))
+                            (setq queue (append queue (list name))))))
+               (unless (string= file "host/native/build.lisp")
+                 (push file seen))))
+    (nreverse seen)))
+
 (let ((*read-eval* nil))
-  (dolist (path (directory "host/native/*.lisp"))
-    (let ((file (format nil "host/native/~a" (file-namestring path))))
-      (with-open-file (stream path)
-        (loop for form = (read stream nil :eof)
-              until (eq form :eof)
-              do (index-form form file))))))
+  (dolist (file (loaded-host-files))
+    (with-open-file (stream file)
+      (loop for form = (read stream nil :eof)
+            until (eq form :eof)
+            do (index-form form file)))))
 
 (defun host-entries (name) (gethash name *host*))
 
@@ -215,8 +243,8 @@ unbounded (&rest or &key)."
 (defun fnn-owner-fault-service (service cid condition)
   (declare (ignore service cid))
   (push (princ-to-string condition) *faults*))
-(defun fnn-owner-abandon-connection (service cid condition)
-  (declare (ignore service cid condition)) nil)
+(defun fnn-owner-abandon-connection (service cid condition &optional custody)
+  (declare (ignore service cid condition custody)) nil)
 (defun fnn-owner-send (fd channel octets seconds)
   (declare (ignore fd channel seconds))
   (push (text octets) *sent*))
@@ -306,7 +334,22 @@ unbounded (&rest or &key)."
      (destructuring-bind (sched kind now deadline) args
        (declare (ignore deadline))
        (push (list :disk kind now) *timeline*)
-       (list :none sched)))))
+       (list :none sched)))
+    ;; Response ownership (books/response-plan-pins.lisp fn-rpin-step: the
+    ;; reply plan's hold, acquired at capture and released by stage 0's
+    ;; restored unpin in fnn-owner-response-unpin).  The stub keeps the
+    ;; model's owner table, one hold per connection, at generation 0; the
+    ;; arena's pin table is the token fn-arpn-initial answered.
+    (fn-rpin-step
+     (destructuring-bind (owners pins event) args
+       (let ((held (assoc (second event) owners)))
+         (ecase (first event)
+           (:acquire (if held
+                         (list owners pins :duplicate)
+                       (list (acons (second event) 0 owners) pins :acquired)))
+           (:release (if held
+                         (list (remove held owners) pins :released)
+                       (list owners pins :absent)))))))))
 
 ;; The step's typed result (books/served-plan.lisp fn-splan-step-*): the
 ;; scenario's plan supplies it, so the loop reads it exactly where
@@ -330,6 +373,11 @@ unbounded (&rest or &key)."
     (fn-otm-monotonic-ms
      (destructuring-bind (ticks units) args
        (floor (* ticks 1000) units)))
+    ;; The empty arena-pin table (fn-arpn-initial), on the first release.
+    (fn-arpn-initial :arena-pins)
+    ;; S9's intake fence (books/owner-retire-counted.lisp
+    ;; fn-ort-intake-action): the model's value; no scenario here retires.
+    (fn-ort-intake-action (if (first args) :refused :admit))
     (fn-splan-step-p t)
     (fn-splan-step-closep (second *step*))
     (fn-splan-step-handshake-owed (third *step*))
@@ -389,8 +437,17 @@ unbounded (&rest or &key)."
     fnn-owner-drain-one
     ;; XREDEEM (PRF-164): no connection here waits for a redeem.
     fnn-owner-redeem-quantum
-    ;; Row A4 (c): no read here meets a cold payload (see the stub above).
-    fnn-extent-prefetch
+    ;; Row A4 (c): no read here meets a cold payload (see the stub above);
+    ;; stage 0 serves a cold miss by the direct per-miss read.
+    fnn-extent-prefetch-direct
+    ;; The rest of the cold line (host/native/extent.lisp, reached through
+    ;; fnn-owner-cold-issue-locked / -await / -result-locked / -shutdown and
+    ;; the pending-extent release): no extent is ever issued here.
+    fnn-extent-cache-release fnn-extent-cache-store
+    fnn-extent-cancel-read fnn-extent-close fnn-extent-complete-read
+    fnn-extent-executor-commit fnn-extent-executor-observe-returned
+    fnn-extent-executor-returned-p fnn-extent-executor-wait
+    fnn-extent-issue-read fnn-extent-pool-funded-p
     ;; COMPRESS (RFC 8054): no scenario negotiates the DEFLATE layer.
     fnn-zin-new fnn-zin-inflate fnn-zout-new fnn-zout-sync fnn-zout-free))
 

@@ -1,3 +1,4 @@
+; UNHOOKED stage 0 (2026-10-01): depends on the reverted acceptance-binding field (planning/design-store-representation-2026-10-01.md section 5)
 ; Typed row establishment and physical-prefix preservation, PRF-1168.
 ; These are proof relations, not validators on the served path. Header seals
 ; and row counts never establish a row's types or its source arena identity.

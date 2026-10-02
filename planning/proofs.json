@@ -337,7 +337,7 @@
         "fn-record-impl-accepted-input-is-canonical",
         "fn-record-accepted-input-magic",
         "fn-record-accepted-schema-is-the-stamp-kind",
-        "fn-record-schema3-golden-octets-are-the-encoding",
+        "fn-record-schema1-golden-octets-are-the-encoding",
         "fn-bpa-round-trip",
         "fn-bpa-success-is-canonical"
       ],
@@ -3958,7 +3958,7 @@
         "fn-evc-class-by-shape-is-fn-stxe-p",
         "fn-evc-class-by-shape-is-fn-stxk-p",
         "fn-evc-class-by-shape-is-fn-hstxa-p",
-        "fn-evc-class-by-shape-is-fn-cne-eventp",
+        "fn-evc-class-by-shape-is-fn-cpe-eventp",
         "fn-evc-class-by-shape-is-fn-th-topic-eventp",
         "fn-ccar-ocfg-complete-is-ocfg-step-complete",
         "fn-ccar-own-finish-is-own-finish",
@@ -14740,7 +14740,7 @@
         "PRF-038"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-node-host-transfer.lisp",
         "host/bp-node-host.lisp",
@@ -19574,7 +19574,7 @@
     {
       "id": "PRF-1148",
       "title": "Captured-row resumable SAME authority, exact semantic refinement and shared fuel",
-      "statement": "Planned actual caller boundary for fn-owner-pic-next/confirm/retire called by fnn-owner-attempt, and fn-pic-held-next, fn-pic-next and fn-pic-digest-next composed with the actual selected-read/payload wrappers and sealed incoming holder. Every duplicate/conflict decision must equal fn-rclb-same-articlep plus exact held groups after the mandatory binding gate on the SAME captured row; both inverses share the incoming-derived agent, either inverse failure selects whole-octet comparison, and current RCL2 source/whole digests retain their existing semantics. Provider, arena incarnation/prefix and incoming leases remain valid across resumptions; shared caller fuel bounds every scalar/control action and allocation, with mutating effects and feedback atomic at yield. Full parser inverse, derivation of the carried source/whole choice relation and actual funded host authority composition remain open.",
+      "statement": "Planned actual caller boundary for fn-owner-pic-next/confirm/retire called by fnn-owner-attempt, and fn-pic-held-next, fn-pic-next and fn-pic-digest-next composed with the actual selected-read/payload wrappers and sealed incoming holder. Every duplicate/conflict decision must equal fn-rclb-same-articlep plus exact held groups after the mandatory binding gate on the SAME captured row; both inverses share the incoming-derived agent, either inverse failure selects whole-octet comparison, and current RCL2 source/whole digests retain their existing semantics. Provider, arena incarnation/prefix and incoming leases remain valid across resumptions; shared caller fuel bounds every scalar/control action and allocation, with mutating effects and feedback atomic at yield. Full parser inverse, derivation of the carried source/whole choice relation and actual funded host authority composition remain open. Stage 0 (2026-10-01, D43): the precheck runtime is PARKED in host/native/post-captured-parked.lisp (loaded by no build) and tests/test_native_captured_attempt.py was removed with it; the native evidence returns with the relay-v1 subject binding.",
       "milestone": "M3",
       "requirements": [
         "STO-014",
@@ -19699,7 +19699,6 @@
         "planning/evidence/captured-source-completion-inventory-2026-09-30.json",
         "planning/evidence/manifests/certify-20260930T194035Z-349673.json",
         "host/post-identity-captured-host.lisp",
-        "tests/test_native_captured_attempt.py",
         "planning/evidence/captured-native-caller-2026-09-30.json",
         "planning/evidence/captured-native-caller-2026-09-30.md"
       ],
