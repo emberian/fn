@@ -240,7 +240,11 @@ g_fundamentals() {
       total=$((total + 1))
       if [ "$status" != MET ]; then
         open=$((open + 1)); echo "$id $status: $(echo "$what" | sed 's/^ *//; s/ *$//')"
-      elif ! git cat-file -e "$REV:$evidence" 2>/dev/null; then
+      elif ! git cat-file -e "$REV:$evidence" 2>/dev/null \
+          && ! git show "$REV:planning/evidence-index.tsv" 2>/dev/null \
+               | awk -v p="$evidence" '{ sub(/^[^ ]+ [^ ]+ /, "") } $0 == p { found = 1 } END { exit !found }'; then
+        # Committed = tracked at REV, or named by REV's evidence index (its
+        # bytes in the archive; tools/evidence_store.py).
         open=$((open + 1)); echo "$id MET but its evidence '$evidence' is not in REV"
       fi
     done

@@ -452,14 +452,18 @@ def cat_blobs(root: Path, blobs: dict[str, str]):
     process.wait()
 
 
-def history_blobs(root: Path, refs: list[str]) -> dict[str, str]:
-    """{blob id: first path} for every blob ever under planning/evidence."""
+def history_blobs(root: Path, refs: list[str],
+                  prefixes: list[str] | None = None) -> dict[str, str]:
+    """{blob id: first path} for every blob ever under PREFIXES (default
+    planning/evidence; a prefix is a directory or one file)."""
+    prefixes = prefixes or [EVIDENCE_REL]
     found: dict[str, str] = {}
-    rows = git_lines(root, "rev-list", "--objects", *refs, "--", EVIDENCE_REL)
+    rows = git_lines(root, "rev-list", "--objects", *refs, "--", *prefixes)
     candidates = {}
     for row in rows:
         oid, _, path = row.partition(" ")
-        if path.startswith(EVIDENCE_REL + "/"):
+        if any(path == prefix or path.startswith(prefix.rstrip("/") + "/")
+               for prefix in prefixes):
             candidates.setdefault(oid, path)
     checked = subprocess.run(["git", "-C", str(root), "cat-file",
                               "--batch-check=%(objectname) %(objecttype)"],
@@ -627,7 +631,7 @@ def cmd_verify(args) -> int:
 
 def cmd_migrate_history(args) -> int:
     refs = ["--all"] if args.all_refs else [args.revision]
-    blobs = history_blobs(ROOT, refs)
+    blobs = history_blobs(ROOT, refs, args.path or None)
     extras = []
     if args.untracked:
         tracked = set(git_lines(checkout_of(ROOT), "ls-files", "--", EVIDENCE_REL))
@@ -639,13 +643,14 @@ def cmd_migrate_history(args) -> int:
     print(f"migrating {len(blobs)} historical blobs + {len(extras)} untracked files "
           f"to {archive_spec()}", flush=True)
     rows = stream_objects_to_archive(ROOT, blobs, extras)
-    ledger = cache_dir(ROOT) / "history-ledger.tsv"
+    ledger = cache_dir(ROOT) / ("history-ledger.tsv" if not args.path
+                                else "history-ledger-extra.tsv")
     ledger.parent.mkdir(parents=True, exist_ok=True)
     ledger.write_text("".join(f"{sha} {size} {blob} {path}\n"
                               for sha, size, blob, path in sorted(rows, key=lambda r: r[3])))
     host, path = split_spec(archive_spec())
     if host:
-        subprocess.run(["rsync", "-a", str(ledger), f"{host}:{path}/history-ledger.tsv"],
+        subprocess.run(["rsync", "-a", str(ledger), f"{host}:{path}/{ledger.name}"],
                        check=False)
     print(f"streamed {len(rows)} rows, {len({r[0] for r in rows})} distinct objects; "
           f"ledger {ledger}")
@@ -683,6 +688,9 @@ def main(argv: list[str] | None = None) -> int:
                           help="copy every historical planning/evidence blob to the archive")
     one.add_argument("--revision", default="HEAD")
     one.add_argument("--all-refs", action="store_true")
+    one.add_argument("--path", action="append", default=[],
+                     help="a path prefix to migrate instead of planning/evidence "
+                          "(repeatable; the history-rewrite drop list)")
     one.add_argument("--untracked", action="store_true",
                      help="also the shared checkout's untracked evidence files")
     one.set_defaults(func=cmd_migrate_history)
