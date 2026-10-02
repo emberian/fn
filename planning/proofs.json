@@ -15267,7 +15267,7 @@
         "PRF-969"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/catalog.lisp",
         "tests/acl2/msgid-pages-exec-tests.lisp",
@@ -21186,6 +21186,66 @@
         "books/resource-vector-exec.lisp"
       ],
       "progress_note": "Lane resource-ledger (Fable, 2026-10-01): the stobj, its abstraction and the draw/settle/install exports are REPL-admitted with guards declared and not yet verified; the correspondence theorems are the lane's NEXT (build/coordinator/lanedumps/resource-ledger.md)."
+    },
+    {
+      "id": "PRF-1230",
+      "title": "The retention, consumer and topic prepares the host calls stage without replaying the appended history",
+      "statement": "Host-called subjects: books/owner-cursor-domain.lisp fn-owner-prepare-consumer and fn-owner-prepare-topic (host/native/owner.lisp fnn-owner-consumer-commit and fnn-owner-topic-commit via fnn-owner-action) and books/owner-identity-prepare.lisp fn-idrp-prepare-retention (host/owner-host.lisp fn-owner-prepare-retention). Each now installs a carried prepare of books/owner-prepare-deferred-carried.lisp (fn-pdc-pout-prepare-consumer / -topic / -retention over fn-pdc-ocfg-prepare-consumer, fn-pdc-psrv-prepare-topic, fn-pdc-ocfg-prepare-retention), whose Store step fn-pdc-sn-prepare-X is fn-sn-prepare-X with the file stage fn-pcar-stage-record (the reference's candidate predicate from the history's count and last record) in place of fn-sf-prepare-record, whose gate fn-sf-history-recoverablep replays the whole durable history with the candidate appended (fn-replay over (append (fn-sf-records s) (list e)); fn-sf-records of a based records field decodes the whole history image). KEYSTONES (Store) fn-pdc-sn-prepare-retention/-consumer/-topic-is-sn-prepare-X-under-relation: (fn-snt-relation s) implies (fn-pdc-sn-prepare-X s e) = (fn-sn-prepare-X s e), by fn-spc-related-identity-candidate-is-recoverable (PRF-144's bridge; its antecedent is the gate's applied-node test). KEYSTONES, no hypothesis, fn-pdc-sn-prepare-X-is-sn-prepare-X-when-staged: wherever the reference stages, the carried prepare is the reference; they differ only where the reference's replay refuses. KEYSTONES (owner) fn-pdc-ocfg-prepare-retention/-consumer-is-ocfg-step-under-relation and fn-pdc-psrv-prepare-topic-is-psrv-prepare-topic-under-relation (premise fn-snt-relation of the owner's Store), their -when-staged forms, fn-pdc-pout-prepares-are-pout-prepares-under-relation (the words), fn-idrp-retention-preparation-is-ocfg-step-under-relation; and fn-pdc-ocfg-prepare-retention/-consumer-preserves-invariant, fn-pdc-psrv-prepare-topic-preserves-invariant: fn-lgoc-invariantp (the relation the host carries, books/owner-host-relation.lisp) is preserved, so a staged record's CONFIGURED replay is the applied node (fn-cst-deferred-linkp). KEYSTONES (configured, both directions; Codex r54 and the coordinator's 2026-10-01 ruling): fn-pdc-sn-prepare-retention/-consumer/-topic-stages-iff-configured-admits: under fn-cst-relation (the relation the host carries), at a reservation, with the gate's own event-kind and projection (or topic prefix) tests, the carried prepare stages EXACTLY when fn-pdc-configured-admitsp holds: the candidate is well placed (fn-sf-candidatep) and the CONFIGURED replay of the history with it appended recovers at the frontier (fn-cst-recoverablep over (append records (list e))); core lemma fn-pdc-configured-admits-is-applied-node (the configured admission is the candidate test and the live node's one-record step, for any non-article event). Scope: the reference gate replays UNconfigured, over the final groups and capacity (fn-sf-history-recoverablep calls fn-replay with fn-sn-groups/fn-sn-capacity), which is not the configured relation fn-cst-relation the host carries; under a configuration history the carried prepare decides by the configured node. The divergence is the reference's: after capacity is lowered below a historical charge (cap 20 at tx 0, undertake charge 5, cap 2 at tx 3) the reference refuses every later consumer, retention or topic prepare because its final-capacity replay refuses the charge-5 undertake the configured history admitted (tests/acl2/owner-prepare-deferred-carried-tests.lisp *pdt-bad-cap* shows the store-level shape); the carried prepare follows the configured semantics. fn-idrp-retention-preparation-consumes-exact-current-grant now equates the host's call to fn-pdc-ocfg-prepare-retention; its old equation to fn-ocfg-step holds only under fn-snt-relation. What remains per call: the gate's own work (fn-replay-apply-retention-event is O(P + R + bindings) for a retention event: fn-node-binding-ids, fn-retain-admissiblep's scan of every pin and every retained release (fn-retain-release-id-scanp, books/retention.lisp), fn-retain-find-id), the entry guard fn-sn-statep where the entry is dispatched as an executable counterpart (host/interfaces.lisp: consumer and topic retain *1* dispatch; raw-dispatch's scope), and one decode of a based image when nothing was appended since it (fn-sfr-last).",
+      "status": "planned",
+      "milestone": "M4",
+      "requirements": [
+        "HST-004",
+        "REP-009"
+      ],
+      "depends_on": [
+        "PRF-144"
+      ],
+      "assumptions": [],
+      "evidence": [
+        "books/owner-prepare-deferred-carried.lisp",
+        "books/owner-cursor-domain.lisp",
+        "books/owner-identity-prepare.lisp",
+        "tests/acl2/owner-prepare-deferred-carried-tests.lisp",
+        "planning/evidence/served-incremental-2-2026-10-01.md"
+      ],
+      "progress_note": "Lane served-incremental-2, 2026-10-01: admitted and certified (3.7 s) on hbox over stage-0's certified tree c2a4baad8. Lane served-incremental-4, 2026-10-01: the configured both-directions keystones added; book recertified there (4.5 s). Dev certification waits on stage 0. Measured figures (planning/evidence/served-incremental-2-2026-10-01.md) are the RAW Store prepare (fn-pdc-sn-prepare-X against fn-sn-prepare-X), 0.003 ms flat against 1.82 / 17.7 / 179.5 ms at N = 1k / 10k / 100k, not the host call (which adds the entry guard where dispatched as *1* and the owner wrapper). TEETH GAPS (Codex r54 F1): no reachable witness of the configured keystones yet (every store-level fixture has an empty configuration history, so fn-cst-relation is false there; the configured owner fixture *lgt-reserved* is behind tests/acl2/owner-advance-carried-tests, red on fn-own-sub-make arity, CERT-ROOTS after stage 0); the store teeth book lacks a topic witness, relation- and when-staged-removal witnesses for retention and topic, and mutations for consumer and topic; the owner teeth book (retention invariant, relation removals, fn-idrp-retention-preparation-is-ocfg-step-under-relation) is unrun."
+    },
+    {
+      "id": "PRF-1231",
+      "title": "A POST's withdrawal-record tests read a carried target and cause index",
+      "statement": "Subjects (host-called once wired after stage 0; until then the host calls the references): books/withdrawal-index-carried.lisp fn-wix-existing-action-cat (to replace fn-pidx-existing-action-cat in host/owner-host.lisp fn-owner-prepare-buffer and fn-owner-existing-action-buffer) and fn-wix-targets-of (to replace fn-sca-targets-of in fn-owner-finish-submission-synced and fn-owner-finish-identity). The carry is (WS TSET . CSET), two path-compressed id tries (fn-rit-*, PRF-289) of the string targets and causes of WS's records; fn-wix-carryp says they are complete (soundness not needed: only a negative answer is trusted, a positive one runs the reference walk). KEYSTONES, sole hypothesis (fn-wix-carryp carry): fn-wix-targetedp-is-pidx-targetedp, fn-wix-targets-of-is-sca-targets-of, fn-wix-find-article-cat-is-pidx-find-article-cat, fn-wix-existing-action-cat-is-pidx-existing-action-cat (hence, by fn-pidx-existing-action-cat-is-store-existing-action, the Store's duplicate entry). Writer: fn-wix-carryp-of-refresh and fn-wix-carryp-of-nil (a global written only by fn-wix-refresh of nil or of a value it read keeps the recognizer); fn-wix-ws-of-refresh. fn-wix-refresh walks the new list to the tail EQUAL to the carried one (the view refresh prepends the new article's records, fn-ctl-refresh-withdrawals) and rebuilds when none matches. Scope: books/control-visible.lisp fn-ctl-resolve-tlocks still walks the list once per new article inside the owner refresh (fn-ctl-targets-p); the tries' heap is about 1.26 KB per record at a rebuild (126 MB allocated building W = 100k).",
+      "status": "planned",
+      "milestone": "M5",
+      "requirements": [
+        "HST-001"
+      ],
+      "depends_on": [
+        "PRF-191",
+        "PRF-289"
+      ],
+      "assumptions": [],
+      "evidence": [
+        "books/withdrawal-index-carried.lisp",
+        "tests/acl2/withdrawal-index-carried-tests.lisp"
+      ],
+      "progress_note": "Lane served-incremental-4, 2026-10-01: book (5.2 s) and teeth (4.2 s) certified on hbox over stage-0's certified tree (gates/si2). Host wiring waits for stage 0 on dev. hbox per call, W = 1k / 10k / 100k: fn-pidx-targetedp 11 / 115 / 1,150 us -> fn-wix-targetedp 0.04 us; fn-sca-targets-of 22 / 215 / 2,200 us -> fn-wix-targets-of 0.04 us; both 0 B; fn-wix-refresh 0.01 us (same list) or 0.2 us and 192 B (one new record)."
+    },
+    {
+      "id": "PRF-1232",
+      "title": "NEWNEWS selected through a carried stamp index and replied in bounded quanta",
+      "statement": "Subject (served once wired; until then the host serves books/nntp-responses.lisp fn-nntp-newnews-response through the old list-model dispatcher books/nntp.lisp fn-nntp-archive-command): books/newnews-cursor.lisp fn-nnw-response, and the cursor step fn-nnw-step a plan cursor will run (books/served-plan-cursor.lisp, not yet dispatching it). The carry (ARTS . MAXES): MAXES = fn-nnw-maxes ARTS, the largest natural stamp of each suffix (0 when none); stamps are not assumed monotone. KEYSTONES: fn-nnw-scan-nil-past-bound (with a natural horizon H, once 1000 * max(smax T, H) is below the threshold the reference scan of T lists nothing); fn-nnw-run-is-newnews-scan (for MAXES nil or exact, the run of the cursor is fn-nntp-newnews-scan, every quantum); fn-nnw-response-is-newnews-response (under fn-nnw-carryp, the response is fn-nntp-newnews-response byte for byte); fn-nnw-step-residual (lines then what the next cursor owes = what the cursor owed; next cursor okp), fn-nnw-step-lines-at-most-q (at most max(1,Q) articles visited and lines), fn-nnw-step-progresses; fn-nnw-carryp-of-refresh, fn-nnw-carryp-of-nil, fn-nnw-car-of-refresh. Scope: the early stop needs a natural horizon (a reader clock); with none (:none) the cursor walks to the end, still in quanta. The tombstone test still reads the payload head per visited candidate (only the articles past the date). The list model fn-nnw-run is non-tail over quanta (not the served shape).",
+      "status": "planned",
+      "milestone": "M5",
+      "requirements": [
+        "HST-001"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "books/newnews-cursor.lisp",
+        "tests/acl2/newnews-cursor-tests.lisp"
+      ],
+      "progress_note": "Lane served-incremental-4, 2026-10-01: book (1.05 s) and teeth (0.84 s) certified on hbox over stage-0's tree. hbox per NEWNEWS, N = 1k / 10k / 100k articles, 10 new: fn-nntp-newnews-scan 0.21 / 1.85 / 21 ms and 383 KB / 4.3 MB / 47.5 MB -> fn-nnw-run (quantum 256, natural horizon) 2.7 / 3.0 / 3.2 us and 8.5 / 9.5 / 10.5 KB (the reply's own lines); results EQUAL; refresh by one article 0 B measured; build 32 B per article. Wiring (dispatcher arm + plan-cursor kind + host carry refresh) waits for stage 0 and the dispatcher owners."
     }
   ]
 }

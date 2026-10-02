@@ -31,9 +31,11 @@
 ;   fn-owner-io                       fn-olr-ocfg-order/-reserve, fn-rcon-ocfg-io  fn-lgoc-log-order/-log-reserve/-rcon-io-preserves-invariant (PRF-286)
 ;   fn-owner-prepare, -prepare-buffer fn-pout-prepare-article (= fn-psrv-prepare)  fn-psrv-prepare-preserves-invariant (PRF-290)
 ;   fn-owner-prepare-identity         fn-pout-prepare-identity (= fn-oiis-prepare-identity)  fn-oiis-prepare-identity-preserves-invariant
-;   fn-owner-prepare-topic            fn-pout-prepare-topic  fn-psrv-prepare-topic-preserves-invariant
-;   fn-owner-prepare-retention/-consumer, -refuse-reservation, -known-abort
-;                                     fn-ocfg-step (:store ...)  fn-psrv-prepare-retention/-consumer-, fn-lgoc-refuse-reservation-, fn-psrv-known-abort-preserves-invariant
+;   fn-owner-prepare-topic            fn-pdc-pout-prepare-topic (= fn-pdc-psrv-prepare-topic)  fn-pdc-psrv-prepare-topic-preserves-invariant
+;   fn-owner-prepare-retention/-consumer  fn-pdc-pout-prepare-retention/-consumer (fn-idrp-prepare-retention; = fn-pdc-ocfg-prepare-*)
+;                                     fn-pdc-ocfg-prepare-retention/-consumer-preserves-invariant (books/owner-prepare-deferred-carried.lisp)
+;   fn-owner-refuse-reservation, -known-abort
+;                                     fn-ocfg-step (:store ...)  fn-lgoc-refuse-reservation-, fn-psrv-known-abort-preserves-invariant
 ;   fn-owner-finish-submission-synced fn-apc-own-finish (= fn-ccar-own-finish)  fn-lgoc-finish-preserves-invariant (PRF-286)
 ;   fn-owner-open-at                  fn-ocar-ocfg-open (= fn-ocfg-open)  fn-ocl-open-preserves-historical-relation
 ;   fn-owner-observe                  fn-ocfg-observe        fn-ocl-observe-preserves-historical-relation
