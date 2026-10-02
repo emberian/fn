@@ -5,7 +5,7 @@
 # node" is a fixture built from the release tarball under
 # /tank/fn/scratch/deploy-fresh/, served on loopback by a scratch user unit.
 #
-#   sh tests/test_deploy_fresh.sh [TARBALL [REV40]]
+#   sh tests/test_deploy_fresh.sh TARBALL [REV40]
 #
 # TARBALL's digest comes from TARBALL.sha256 or a SHA256SUMS beside it; a
 # release-product tarball (top directory fn) names REV40 itself in
