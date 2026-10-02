@@ -133,3 +133,11 @@
                     'nil)
                   (fn-owner-retain-statep (mv-nth '2 (fn-owner-callback-close id fn-arena state))))))
 (assert-event (null (fn-cw-owed 'fn-owner-retain 'fn-owner-retain-carried (w state))))
+; completeness bites once a state-returning host entry is declared and is no
+; writer (what the image world's row will say of every undeclared owner writer)
+(definterface fn-owner-callback-install-effects :class :common-lisp-compliant)
+(assert-event (equal (fn-cw-owed 'fn-owner-retain 'fn-owner-retain-carried (w state))
+                     '(fn-owner-callback-install-effects)))
+(def-carried-writers-owed fn-owner-retain :from fn-owner-retain-carried)
+(must-fail-checked (def-carried-check ort-row)
+                   :unchecked "def-carried's completeness refuses the unlisted entry")

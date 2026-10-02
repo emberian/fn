@@ -428,6 +428,14 @@
                   (cwt-relp (mv-nth '1 (cwt-bump n cwt-st))))))
 (def-carried-writers-owed cwt-profile :from cwt-pilot)
 (assert-event (null (fn-cw-owed 'cwt-profile 'cwt-pilot (w state))))
+; completeness bites once a host-called entry returning the carrier is
+; declared and is no writer: the owed report names it, and the row no longer
+; checks (def-carried's unlisted-entry refusal), until it is declared a writer
+(definterface cwt-bad :class :common-lisp-compliant :kinds ((c integerp)))
+(assert-event (equal (fn-cw-owed 'cwt-profile 'cwt-pilot (w state)) '(cwt-bad)))
+(def-carried-writers-owed cwt-profile :from cwt-pilot)
+(must-fail-checked (def-carried-check cwt-row)
+                   :unchecked "def-carried's completeness refuses the unlisted entry cwt-bad")
 
 ; a second row over the same profile is a second def-carried row: refused by
 ; def-carried when NAME is taken
