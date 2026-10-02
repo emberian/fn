@@ -86,7 +86,14 @@
 (assert-event (equal (fn-sn-identity-next *cpa-reopened*) 5))
 (assert-event (equal (fn-sn-keyring-snapshots *cpa-reopened*)
                      (list *cpa-snapshot*)))
-(assert-event (equal (fn-sn-verdicts *cpa-reopened*) nil))
+; The reopened verdict is the article row's own frozen context (interned with
+; no keyring at generation 0: :unverified :malformed), never the standalone
+; verdict event's claim: nothing of *cpa-verdict* is promoted.
+(assert-event
+ (and (equal (fn-sn-verdicts *cpa-reopened*)
+             (fn-sn-row-verdicts (fn-sf-records (fn-sn-files *cpa-reopened*))))
+      (equal (fn-sn-verdicts *cpa-reopened*)
+             '(("<preserve@example.invalid>" :unverified :malformed 0)))))
 
 ; A selected exact-prefix pack also retains an acknowledged E2 cursor.  The
 ; writable clone rollover fences that cursor by changing incarnation, while

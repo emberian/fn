@@ -45,8 +45,12 @@
     (if (and (equal (fn-stxk-context-kind identity) :ok)
              (equal (car consumer) :ok)
              (equal (fn-th-at 0 topic) :ok))
+        ; The verdicts are the rows' frozen contexts (records-flip: decided at
+        ; intern, persisted with the row), as the Store's own reopen derives
+        ; them (fn-sn-update-replayed); the identity replay no longer holds a
+        ; legacy row's verdict.
         (list :ok *fn-cpa-version*
-              (fn-replay-verdict-pairs (fn-stxk-context-verdicts identity))
+              (fn-sn-row-verdicts records)
               (fn-stxk-context-snapshots identity)
               (fn-stxk-context-next identity)
               (fn-cp-nth 1 consumer)
