@@ -17,11 +17,21 @@ import hashlib,json,pathlib,sys
 packet,image,source,expected,repo=sys.argv[1:]
 actual=hashlib.sha256(pathlib.Path(image).read_bytes()).hexdigest()
 if actual != expected: raise SystemExit('supplied image SHA256 mismatch')
-p=pathlib.Path(packet); p.mkdir(mode=0o700)
 subjects=['host/native/workflow.lisp','host/workflow-host.lisp',
-          'books/bp-ion-lifetime.lisp','books/bp-ion-workflow.lisp',
-          'tests/test_native_ion_workflow.py','tests/test_native_ion_receipt_recovery.py',
-          'tests/test_native_ion_ltp.py','tests/ltp/fn_ltp_send.c']
+          'books/bp-ion-workflow.lisp','tests/test_native_ion_receipt_recovery.py',
+          'tests/ltp/fn_ltp_send.c']
+# The removed lifetime/workflow/LTP subjects have no successor in this history.
+# Do not claim to fingerprint absent code or run a reduced acceptance suite.
+for subject in subjects:
+    if not (pathlib.Path(repo)/subject).is_file():
+        raise SystemExit('MissingAcceptanceSubject: ' + subject)
+# Receipt recovery imports the former workflow test helper; the lab runner is
+# absent too. These are execution prerequisites, not current source claims.
+for dependency in ['tests/test_native_ion_workflow.py',
+                   'tests/ltp/run_native_workflow_lab.sh']:
+    if not (pathlib.Path(repo)/dependency).is_file():
+        raise SystemExit('MissingAcceptanceDependency: ' + dependency)
+p=pathlib.Path(packet); p.mkdir(mode=0o700)
 (p/'inputs.json').write_text(json.dumps({
  'image_source':source,'image_path':image,'image_sha256':actual,
  'scope':'caller tests and isolated ION integration; no image qualification',
