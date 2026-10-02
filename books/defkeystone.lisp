@@ -856,11 +856,11 @@
   (mv-let (bad term)
     (fn-dt-translate (fn-dk-statement claim) w)
     (cond ((null (getpropc name 'theorem nil w)) (list :not-a-theorem name))
-          ((assoc-eq name (table-alist 'fn-teeth w)) (list :declared-twice name))
           (bad (list :bad-term name (car bad)))
           ((not (equal term (getpropc name 'theorem nil w)))
            (list :claim-differs name (fn-dk-statement claim) term
                  (getpropc name 'theorem nil w)))
+          ((assoc-eq name (table-alist 'fn-teeth w)) (list :declared-twice name))
           (t nil))))
 
 (defun fn-dt-expand (name by kvs state)

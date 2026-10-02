@@ -381,6 +381,13 @@
                                   '(((natp (natp x))) (<= (fix y) (fn-dkt-add x y)))
                                   (w state)))
         :claim-differs))
+; the claim is checked before the once-only rule: a differing claim on a
+; name with teeth is refused as differing
+(assert-event
+ (equal (car (fn-dt-world-problem 'fn-dkt-add-adds-source-visits-steps
+                                  '(((natp (natp x))) (<= x 9))
+                                  (w state)))
+        :claim-differs))
 (assert-event
  (equal (fn-dt-world-problem 'fn-dkt-add-adds-source *fn-dkt-claim* (w state))
         '(:declared-twice fn-dkt-add-adds-source)))
