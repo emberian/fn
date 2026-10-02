@@ -2,15 +2,15 @@
  "schema": 2,
  "what": "every git blob version a history-rewrite drop rule matches, on every ref, worktree HEAD and private ref and reflog-named commit of the frozen snapshot, and every object the committed index names, archived at objects/<sha256[:2]>/<sha256>.gz and verified on the archive box (decompressed, SHA-256 and length)",
  "generated_by": "python3 tools/evidence_history.py complete --rules planning/history-rewrite-paths.txt --migrate",
- "generated_at": "2026-10-02T04:24:29Z",
- "head": "f3b243fc47434af44a1258ea60bd6aede8f0b0ad",
+ "generated_at": "2026-10-02T07:49:44Z",
+ "head": "1ffe1dcd5a1614c3f7039f8dbea14809572a242e",
  "archive": "hbox:/tank/fn/evidence",
  "rules_file": "planning/history-rewrite-paths.txt",
  "rules_sha256": "bbe6efb58dedab77d680a1c40b3280c915870d60d89e20a6f0b89f0464c67cab",
- "refs_count": 1901,
- "refs_sha256": "e56538c002bfd81b4df87bd33d7691398928a89d205ffc88a813803e7b721302",
- "reflog_commits": 14023,
- "reflog_commits_sha256": "6ef53c2f7a4632f65934ed65c0c01e99c55089ad95c55961cb6469dc0685b5e3",
+ "refs_count": 1900,
+ "refs_sha256": "4d4f84a17b2937a668c97e761b8f17d348482ae13f3eeba200caf3eb1d18b49c",
+ "reflog_commits": 14066,
+ "reflog_commits_sha256": "f02a7b95ab5ea80e8074bb04b677e0b90eea19f8bdffe40051e6d48ebdf8cca8",
  "rules": {
   "planning/evidence": {
    "paths": 15693,
@@ -26,8 +26,8 @@
   },
   "glob:LANEDUMP*.md": {
    "paths": 11,
-   "blobs": 164,
-   "distinct_sha256": 164,
+   "blobs": 169,
+   "distinct_sha256": 169,
    "missing": 0
   },
   "glob:HANDOFF*.md": {
@@ -175,18 +175,18 @@
    "missing": 0
   }
  },
- "blobs": 19235,
- "blobs_sha256": "739bf1b994f73049a7c1750c8cb221a3093d6730aaee28ae8b8468f8293c5bbc",
- "distinct_sha256": 19235,
- "raw_bytes": 1714416379,
- "archived_verified": 19235,
+ "blobs": 19240,
+ "blobs_sha256": "d8e92d694cefcbc10bd40574a03f6642faeb7885cb3505c368046e07f47369ed",
+ "distinct_sha256": 19240,
+ "raw_bytes": 1714465224,
+ "archived_verified": 19240,
  "missing": 0,
  "bad": 0,
  "index": {
   "path": "planning/evidence-index.tsv",
-  "rows": 12064,
-  "sha256": "427e965e1cdad96f2898aa1207ea599bef97739e805e30822830ebd1f5e012ee",
-  "objects": 11562,
+  "rows": 12335,
+  "sha256": "c133c48b50ff21d4a0700ae8f32864291b946cf1710bd45af34e8a37e33a55ba",
+  "objects": 11833,
   "rows_not_archived_verified": 0
  },
  "refs": [
@@ -196,19 +196,14 @@
    "7aad444ce733b27b4a0df0680aaa36b60c8067b0"
   ],
   [
-   "HEAD /Users/ember/dev/fn/build/lanes/assurance-remainder",
-   "commit",
-   "0c8a8578c8ea389ccb3254c94fb63d09285a1278"
-  ],
-  [
    "HEAD /Users/ember/dev/fn/build/lanes/batch-bh-cert",
    "commit",
-   "77b7d258d62f5d3d4a7838f8fabf61bfb518eeec"
+   "bdb1f854f13394df34bab2102753f351f63ad9fc"
   ],
   [
    "HEAD /Users/ember/dev/fn/build/lanes/batch-bi",
    "commit",
-   "77b7d258d62f5d3d4a7838f8fabf61bfb518eeec"
+   "1ffe1dcd5a1614c3f7039f8dbea14809572a242e"
   ],
   [
    "HEAD /Users/ember/dev/fn/build/lanes/catalog-commit-flat",
@@ -218,7 +213,7 @@
   [
    "HEAD /Users/ember/dev/fn/build/lanes/cert-roots",
    "commit",
-   "f27614d3a400eca2a205c218730145f851ef44a0"
+   "b7dc39b5690f4e3fbaa328e0a4849698bd7c5fe7"
   ],
   [
    "HEAD /Users/ember/dev/fn/build/lanes/codex-c01-listview",
@@ -256,9 +251,19 @@
    "4d01f4624ce9ea8e90a64a3a702bcbfbe424c0dd"
   ],
   [
-   "HEAD /Users/ember/dev/fn/build/lanes/codex-retain",
+   "HEAD /Users/ember/dev/fn/build/lanes/codex-r-r67-served-wiring",
    "commit",
-   "74810d36d671fffe6cc2eb9d5fdf76f5ff06e45f"
+   "b32f40f4e55c3e8ffa0dc761f140b667929165f9"
+  ],
+  [
+   "HEAD /Users/ember/dev/fn/build/lanes/codex-r-r68-sf-success",
+   "commit",
+   "bcdfa55ecc6a9b636ea82a82009483074412c320"
+  ],
+  [
+   "HEAD /Users/ember/dev/fn/build/lanes/codex-r-r69-rd3-trap-delta",
+   "commit",
+   "c2b836ca2570209648e61c5fbae2ed9dbf908e0d"
   ],
   [
    "HEAD /Users/ember/dev/fn/build/lanes/codex-testiso",
@@ -266,39 +271,24 @@
    "49a60f4501927272462a92f7866445f0e5052214"
   ],
   [
-   "HEAD /Users/ember/dev/fn/build/lanes/cold-read-ownership",
-   "commit",
-   "5bde3422acd234b319e072d0b4372297b56db317"
-  ],
-  [
    "HEAD /Users/ember/dev/fn/build/lanes/evidence-out",
    "commit",
-   "f3b243fc47434af44a1258ea60bd6aede8f0b0ad"
+   "4b3c94a19bf3c7160fa917de10ca8092fc8981dc"
   ],
   [
    "HEAD /Users/ember/dev/fn/build/lanes/raw-dispatch-3",
    "commit",
-   "d8b8bef3f595b0a903433b595f81a93d504f85ac"
+   "9f645e41d4da3648857a548420a949d26ed42e30"
   ],
   [
    "HEAD /Users/ember/dev/fn/build/lanes/rd3-trap",
    "commit",
-   "67524974b707e5a50f5850bb49de3436c0ef88c2"
+   "c2b836ca2570209648e61c5fbae2ed9dbf908e0d"
   ],
   [
    "HEAD /Users/ember/dev/fn/build/lanes/served-incremental-1",
    "commit",
-   "41a733d4b5ee6eac45a053182746e9c6db61ae7f"
-  ],
-  [
-   "HEAD /Users/ember/dev/fn/build/lanes/served-incremental-2",
-   "commit",
-   "793da7ff4db8376c093cdb7305f97f3dbd138c31"
-  ],
-  [
-   "HEAD /Users/ember/dev/fn/build/lanes/sf-success",
-   "commit",
-   "bcdfa55ecc6a9b636ea82a82009483074412c320"
+   "ceaea8d7c0d50aaf15dd8eed9c3273516833d62e"
   ],
   [
    "HEAD /Users/ember/dev/fn/build/lanes/stage-0",
@@ -588,7 +578,7 @@
   [
    "refs/heads/batch/bi",
    "commit",
-   "77b7d258d62f5d3d4a7838f8fabf61bfb518eeec"
+   "1ffe1dcd5a1614c3f7039f8dbea14809572a242e"
   ],
   [
    "refs/heads/branchw13/storage-initializer",
@@ -2573,7 +2563,7 @@
   [
    "refs/heads/lane/cert-roots",
    "commit",
-   "f27614d3a400eca2a205c218730145f851ef44a0"
+   "b7dc39b5690f4e3fbaa328e0a4849698bd7c5fe7"
   ],
   [
    "refs/heads/lane/chain-scheduler",
@@ -2823,7 +2813,7 @@
   [
    "refs/heads/lane/cold-read-ownership",
    "commit",
-   "5bde3422acd234b319e072d0b4372297b56db317"
+   "58cb07e92297b9a5308e99f6f5057cd95bc6cc3f"
   ],
   [
    "refs/heads/lane/commit-onto-log",
@@ -3368,7 +3358,7 @@
   [
    "refs/heads/lane/evidence-out",
    "commit",
-   "f3b243fc47434af44a1258ea60bd6aede8f0b0ad"
+   "4b3c94a19bf3c7160fa917de10ca8092fc8981dc"
   ],
   [
    "refs/heads/lane/expiry",
@@ -5083,7 +5073,7 @@
   [
    "refs/heads/lane/raw-dispatch-3",
    "commit",
-   "d8b8bef3f595b0a903433b595f81a93d504f85ac"
+   "9f645e41d4da3648857a548420a949d26ed42e30"
   ],
   [
    "refs/heads/lane/raw-dispatch-owner",
@@ -5093,7 +5083,7 @@
   [
    "refs/heads/lane/rd3-trap",
    "commit",
-   "67524974b707e5a50f5850bb49de3436c0ef88c2"
+   "c2b836ca2570209648e61c5fbae2ed9dbf908e0d"
   ],
   [
    "refs/heads/lane/reader-2",
@@ -5518,7 +5508,7 @@
   [
    "refs/heads/lane/served-incremental-1",
    "commit",
-   "41a733d4b5ee6eac45a053182746e9c6db61ae7f"
+   "ceaea8d7c0d50aaf15dd8eed9c3273516833d62e"
   ],
   [
    "refs/heads/lane/served-incremental-2",
@@ -5578,7 +5568,7 @@
   [
    "refs/heads/lane/sf-success",
    "commit",
-   "bcdfa55ecc6a9b636ea82a82009483074412c320"
+   "3291b99d3c837954a1a2312f004a6b363699e3fa"
   ],
   [
    "refs/heads/lane/shared-books",
@@ -8128,7 +8118,7 @@
   [
    "refs/remotes/origin/HEAD",
    "commit",
-   "77b7d258d62f5d3d4a7838f8fabf61bfb518eeec"
+   "1ffe1dcd5a1614c3f7039f8dbea14809572a242e"
   ],
   [
    "refs/remotes/origin/batch/bb",
@@ -8533,7 +8523,7 @@
   [
    "refs/remotes/origin/dev",
    "commit",
-   "77b7d258d62f5d3d4a7838f8fabf61bfb518eeec"
+   "1ffe1dcd5a1614c3f7039f8dbea14809572a242e"
   ],
   [
    "refs/remotes/origin/lane/architect",
@@ -8638,7 +8628,7 @@
   [
    "refs/remotes/origin/lane/cert-roots",
    "commit",
-   "5a4aea8a838e638a38379314d16d75663e161892"
+   "b7dc39b5690f4e3fbaa328e0a4849698bd7c5fe7"
   ],
   [
    "refs/remotes/origin/lane/chain-scheduler",
@@ -8803,7 +8793,7 @@
   [
    "refs/remotes/origin/lane/cold-read-ownership",
    "commit",
-   "5bde3422acd234b319e072d0b4372297b56db317"
+   "58cb07e92297b9a5308e99f6f5057cd95bc6cc3f"
   ],
   [
    "refs/remotes/origin/lane/composed-owner",
@@ -8988,7 +8978,7 @@
   [
    "refs/remotes/origin/lane/evidence-out",
    "commit",
-   "41ec96a81b0a6963d09a0ad6f5f4ec61d54aa15c"
+   "4b3c94a19bf3c7160fa917de10ca8092fc8981dc"
   ],
   [
    "refs/remotes/origin/lane/expiry",
@@ -9393,12 +9383,17 @@
   [
    "refs/remotes/origin/lane/raw-dispatch-3",
    "commit",
-   "67524974b707e5a50f5850bb49de3436c0ef88c2"
+   "9f645e41d4da3648857a548420a949d26ed42e30"
   ],
   [
    "refs/remotes/origin/lane/raw-dispatch-owner",
    "commit",
    "317626fc649c71a00b1216b2ef0125f77bfb2153"
+  ],
+  [
+   "refs/remotes/origin/lane/rd3-trap",
+   "commit",
+   "c2b836ca2570209648e61c5fbae2ed9dbf908e0d"
   ],
   [
    "refs/remotes/origin/lane/reclaim-equivalence",
@@ -9498,7 +9493,7 @@
   [
    "refs/remotes/origin/lane/served-incremental-1",
    "commit",
-   "41a733d4b5ee6eac45a053182746e9c6db61ae7f"
+   "ceaea8d7c0d50aaf15dd8eed9c3273516833d62e"
   ],
   [
    "refs/remotes/origin/lane/served-incremental-2",
@@ -9508,7 +9503,7 @@
   [
    "refs/remotes/origin/lane/sf-success",
    "commit",
-   "bcdfa55ecc6a9b636ea82a82009483074412c320"
+   "3291b99d3c837954a1a2312f004a6b363699e3fa"
   ],
   [
    "refs/remotes/origin/lane/shared-books",
