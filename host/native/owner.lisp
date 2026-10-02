@@ -5476,15 +5476,21 @@ the reply word: :dry-run, or ACL2's refusal."
                                             (fnn-checkpoint-budget-test-override nil)
                                             free (fnn-checkpoint-revision)))
              (setq pin (fnn-arena-pin)))
-           (unless (and (true-listp captured) (= (length captured) 12))
+           (unless (and (true-listp captured) (= (length captured) 13))
              (fnn-fault "owner returned a malformed reclaim capture"))
            (destructuring-bind (records count v s profile configs frontier budget free revision
-                                now record-octets)
+                                now record-octets feeds)
                captured
              (declare (ignore configs frontier budget free revision record-octets))
-             (let* ((ctx (fnn-core 'fn-owner-orc-ctx :dry-run v s now (fnn-live-arena)))
-                    (classes (fnn-core 'fn-owner-orc-classes ctx (fnn-live-arena)))
-                    (acc (fnn-owner-reclaim-walk records ctx nil))
+             (let* ((ctx (fnn-core 'fn-owner-orc-ctx :dry-run v s now feeds (fnn-live-arena)))
+                    (classes nil) (acc nil))
+               ;; the context's hash tables freed whatever the walk does
+               (unwind-protect
+                    (setq classes (fnn-core 'fn-owner-orc-classes ctx (fnn-live-arena))
+                          acc (fnn-owner-reclaim-walk records ctx nil))
+                 (fnn-core 'fn-owner-orc-ctx-free ctx))
+             (let* ((decision (fnn-core 'fn-owner-orc-decide :dry-run profile v s now acc
+                                        (fnn-live-arena)))
                     (decision (fnn-core 'fn-owner-orc-decide :dry-run profile v s now acc
                                         (fnn-live-arena)))
                     (expired (if (and (listp classes) (= (length classes) 6)
@@ -5509,7 +5515,7 @@ the reply word: :dry-run, or ACL2's refusal."
                     (dolist (m msgids)
                       (fnn-err "RECLAIM would-reclaim ~a"
                                (if (stringp m) m (fnn-fault "malformed msgid")))))
-                  :dry-run)))))
+                  :dry-run))))))
       (when pin (fnn-arena-unpin pin))
       (when captured
         (fnn-owner-gated (service :control)
@@ -5662,16 +5668,20 @@ publication).  Answers the reply word."
                  (fnn-fault "owner returned a malformed reclaim capture"))
                (deferred :credit (format nil "estimate=~d" (third answer)))
                (return-from pass))
-             (unless (and (true-listp captured) (= (length captured) 12))
+             (unless (and (true-listp captured) (= (length captured) 13))
                (fnn-fault "owner returned a malformed reclaim capture"))
              (fnn-reclaim-cut :captured)
              (destructuring-bind (records count v s profile configs frontier budget free* revision
-                                  now record-octets)
+                                  now record-octets feeds)
                  captured
                (declare (ignore now))
-               (let* ((ctx (fnn-core 'fn-owner-orc-ctx :recorded v s nil (fnn-live-arena)))
+               (let* ((ctx (fnn-core 'fn-owner-orc-ctx :recorded v s nil feeds (fnn-live-arena)))
                       (acc nil) (rows nil) (decision nil))
-                 (multiple-value-setq (acc rows) (fnn-owner-reclaim-walk records ctx t))
+                 ;; the context freed right after the walk (orc-decide does
+                 ;; not read it), also when the walk faults
+                 (unwind-protect
+                      (multiple-value-setq (acc rows) (fnn-owner-reclaim-walk records ctx t))
+                   (fnn-core 'fn-owner-orc-ctx-free ctx))
                  (setq decision (fnn-core 'fn-owner-orc-decide :recorded profile v s nil acc
                                           (fnn-live-arena)))
                  (fnn-reclaim-cut :rewritten)
