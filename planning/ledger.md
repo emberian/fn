@@ -11,14 +11,14 @@ stale. Counts describe artifacts, not coverage; see
 | Quantity | Count |
 | --- | --- |
 | Books read | 2762 |
-| Certification roots in the Makefile | 2341 |
-| Books inside the root closure | 2617 |
+| Certification roots in the Makefile | 2331 |
+| Books inside the root closure | 2604 |
 | `defthm` and `defthmd` events | 37021 |
-| `defun` events | 23480 |
-| Functions with verified guards | 3911 |
+| `defun` events | 23483 |
+| Functions with verified guards | 3912 |
 | Functions declared `:verify-guards nil` and never verified | 3041 |
-| Functions left at the default with an explicit guard | 12944 |
-| Functions left at the default with no guard | 3584 |
+| Functions left at the default with an explicit guard | 12943 |
+| Functions left at the default with no guard | 3587 |
 | `assert-event` checks | 25829 |
 | `must-fail` checks | 2651 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
@@ -27,8 +27,8 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 402 |
 | Enabled-projection warnings | 79 |
 | Teeth-form warnings | 282 |
-| Include-hygiene warnings | 3595 |
-| Host-names warnings | 3155 |
+| Include-hygiene warnings | 3600 |
+| Host-names warnings | 3150 |
 | Hand-written-record warnings | 19 |
 
 ## Lints
@@ -111,15 +111,15 @@ that `make certify` requests.
 | `books/admission-preallocation-resources.lisp` | closure | 8 | 18 | 0/0/18/0 | 0 | 0 | 0 |
 | `books/admission-preparation-intent.lisp` | root | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/admission-preparation-source-capture.lisp` | closure | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
-| `books/admission-semantic-census-begin-refinement.lisp` | closure | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/admission-semantic-census-begin-refinement.lisp` | - | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/admission-semantic-census-initial-order-refinement.lisp` | - | 2 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/admission-semantic-census-initial-refinement.lisp` | closure | 7 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/admission-semantic-census-initial-refinement.lisp` | - | 7 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/admission-semantic-census-lineage.lisp` | closure | 5 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/admission-semantic-census-owner-refinement.lisp` | - | 2 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `books/admission-semantic-census-prefix.lisp` | closure | 18 | 4 | 0/0/0/4 | 0 | 0 | 0 |
 | `books/admission-semantic-census-resident.lisp` | closure | 4 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/admission-semantic-census-source-guard.lisp` | closure | 2 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/admission-semantic-census-step-refinement.lisp` | closure | 9 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/admission-semantic-census-step-refinement.lisp` | - | 9 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/admission-semantic-exclusion.lisp` | closure | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/admission-semantic-node.lisp` | - | 10 | 2 | 2/0/0/0 | 0 | 0 | 0 |
 | `books/allocation-epoch-collection-request.lisp` | root | 2 | 3 | 0/0/3/0 | 0 | 0 | 0 |
@@ -300,7 +300,7 @@ that `make certify` requests.
 | `books/bp-node-report-step.lisp` | root | 2 | 4 | 0/3/1/0 | 0 | 0 | 0 |
 | `books/bp-node-retire.lisp` | root | 18 | 21 | 7/4/10/0 | 0 | 0 | 0 |
 | `books/bp-node-rotation-buffer.lisp` | root | 23 | 13 | 4/1/7/1 | 0 | 0 | 1 |
-| `books/bp-node-rotation-codec.lisp` | root | 32 | 35 | 32/0/2/1 | 0 | 0 | 0 |
+| `books/bp-node-rotation-codec.lisp` | root | 32 | 35 | 33/0/1/1 | 0 | 0 | 0 |
 | `books/bp-node-rotation-cursor.lisp` | - | 23 | 12 | 8/4/0/0 | 0 | 0 | 0 |
 | `books/bp-node-rotation-due.lisp` | root | 6 | 3 | 0/1/2/0 | 0 | 0 | 0 |
 | `books/bp-node-rotation-slice.lisp` | root | 12 | 2 | 0/0/1/1 | 0 | 0 | 0 |
@@ -538,13 +538,13 @@ that `make certify` requests.
 | `books/consumer-bound.lisp` | root | 26 | 15 | 7/1/7/0 | 0 | 0 | 5 |
 | `books/consumer-config-authority.lisp` | closure | 2 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/consumer-config-publication.lisp` | closure | 2 | 3 | 0/0/3/0 | 0 | 0 | 1 |
-| `books/consumer-configured-authority-event.lisp` | closure | 0 | 1 | 0/1/0/0 | 0 | 0 | 0 |
+| `books/consumer-configured-authority-event.lisp` | - | 0 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/consumer-configured-authority-finish.lisp` | root | 3 | 1 | 1/0/0/0 | 0 | 0 | 0 |
 | `books/consumer-configured-authority-replay.lisp` | - | 0 | 5 | 0/4/1/0 | 0 | 0 | 0 |
 | `books/consumer-configured-authority-state.lisp` | root | 0 | 4 | 0/0/4/0 | 0 | 0 | 0 |
-| `books/consumer-configured-control-event.lisp` | closure | 0 | 7 | 0/7/0/0 | 0 | 0 | 0 |
+| `books/consumer-configured-control-event.lisp` | - | 0 | 7 | 0/7/0/0 | 0 | 0 | 0 |
 | `books/consumer-configured-control-source.lisp` | - | 0 | 3 | 0/3/0/0 | 0 | 0 | 0 |
-| `books/consumer-control-row-cursor.lisp` | closure | 0 | 6 | 0/5/1/0 | 0 | 0 | 0 |
+| `books/consumer-control-row-cursor.lisp` | - | 0 | 6 | 0/5/1/0 | 0 | 0 | 0 |
 | `books/consumer-entry-completion.lisp` | closure | 1 | 12 | 0/0/12/0 | 0 | 0 | 0 |
 | `books/consumer-entry-preparation.lisp` | closure | 0 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/consumer-event-charge.lisp` | closure | 3 | 3 | 0/0/3/0 | 0 | 0 | 0 |
@@ -1769,13 +1769,13 @@ that `make certify` requests.
 | `tests/acl2/accounts-wire-tests.lisp` | root | 11 | 5 | 0/1/0/4 | 31 | 0 | 0 |
 | `tests/acl2/admission-preparation-intent-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 3 | 0 | 0 |
 | `tests/acl2/admission-preparation-source-capture-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `tests/acl2/admission-semantic-census-begin-model-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 0 | 0 | 0 |
-| `tests/acl2/admission-semantic-census-initial-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 0 | 0 | 0 |
+| `tests/acl2/admission-semantic-census-begin-model-tests.lisp` | - | 0 | 1 | 0/0/0/1 | 0 | 0 | 0 |
+| `tests/acl2/admission-semantic-census-initial-tests.lisp` | - | 0 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `tests/acl2/admission-semantic-census-lineage-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/admission-semantic-census-prefix-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `tests/acl2/admission-semantic-census-resident-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/admission-semantic-census-source-guard-tests.lisp` | root | 2 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `tests/acl2/admission-semantic-census-step-refinement-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 0 | 0 | 0 |
+| `tests/acl2/admission-semantic-census-step-refinement-tests.lisp` | - | 0 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `tests/acl2/admission-semantic-exclusion-tests.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/admission-semantic-node-tests.lisp` | - | 4 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/allocation-dual-ceiling-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 7 | 0 | 0 |
@@ -2054,9 +2054,9 @@ that `make certify` requests.
 | `tests/acl2/consumer-account-transaction-driver-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 9 | 0 | 0 |
 | `tests/acl2/consumer-artifact-retry-tests.lisp` | root | 0 | 8 | 0/2/0/6 | 8 | 2 | 0 |
 | `tests/acl2/consumer-bound-tests.lisp` | root | 0 | 23 | 0/11/0/12 | 62 | 5 | 0 |
-| `tests/acl2/consumer-configured-authority-event-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
+| `tests/acl2/consumer-configured-authority-event-tests.lisp` | - | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `tests/acl2/consumer-configured-authority-finish-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 7 | 0 | 0 |
-| `tests/acl2/consumer-control-row-cursor-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 4 | 0 | 0 |
+| `tests/acl2/consumer-control-row-cursor-tests.lisp` | - | 0 | 3 | 0/0/0/3 | 4 | 0 | 0 |
 | `tests/acl2/consumer-event-index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 3 | 0 |
 | `tests/acl2/consumer-local-control-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 48 | 5 | 0 |
 | `tests/acl2/consumer-owner-index-invariants-tests.lisp` | root | 0 | 2 | 0/2/0/0 | 7 | 1 | 0 |
@@ -2067,7 +2067,7 @@ that `make certify` requests.
 | `tests/acl2/consumer-position-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 48 | 10 | 0 |
 | `tests/acl2/consumer-reason-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 58 | 1 | 0 |
 | `tests/acl2/consumer-remote-buffer-tests.lisp` | root | 1 | 2 | 0/0/2/0 | 2 | 0 | 0 |
-| `tests/acl2/consumer-remote-client-contract-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 0 | 0 | 0 |
+| `tests/acl2/consumer-remote-client-contract-tests.lisp` | - | 0 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `tests/acl2/consumer-remote-collection-state-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `tests/acl2/consumer-remote-collection-tests.lisp` | root | 0 | 6 | 0/0/6/0 | 4 | 0 | 0 |
 | `tests/acl2/consumer-remote-completion-tests.lisp` | root | 0 | 15 | 0/12/3/0 | 19 | 0 | 0 |
@@ -2087,7 +2087,7 @@ that `make certify` requests.
 | `tests/acl2/consumer-remote-semantic-scan-tests.lisp` | root | 0 | 4 | 0/0/4/0 | 4 | 0 | 0 |
 | `tests/acl2/consumer-remote-semantic-state-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/consumer-remote-source-scan-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
-| `tests/acl2/consumer-remote-store-category-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 2 | 0 | 0 |
+| `tests/acl2/consumer-remote-store-category-tests.lisp` | - | 0 | 0 | 0/0/0/0 | 2 | 0 | 0 |
 | `tests/acl2/consumer-remote-transaction-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 2 | 0 | 0 |
 | `tests/acl2/consumer-remote-visibility-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 4 | 0 | 0 |
 | `tests/acl2/consumer-remote-visible-buffer-tests.lisp` | root | 0 | 6 | 0/0/6/0 | 5 | 0 | 0 |
@@ -2532,7 +2532,7 @@ that `make certify` requests.
 | `tests/acl2/peer-transit-forms-tests.lisp` | root | 0 | 9 | 0/2/0/7 | 34 | 5 | 0 |
 | `tests/acl2/peer-transit-indexed-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 3 | 0 | 0 |
 | `tests/acl2/policy-tests.lisp` | root | 0 | 27 | 0/0/0/27 | 66 | 0 | 0 |
-| `tests/acl2/post-admission-keyed-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 10 | 1 | 0 |
+| `tests/acl2/post-admission-keyed-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 10 | 1 | 0 |
 | `tests/acl2/post-fields-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 35 | 2 | 0 |
 | `tests/acl2/post-identity-captured-agent-join-tests.lisp` | - | 24 | 6 | 0/2/0/4 | 1 | 0 | 0 |
 | `tests/acl2/post-identity-captured-classification-tests.lisp` | - | 9 | 4 | 0/3/0/1 | 0 | 0 | 0 |

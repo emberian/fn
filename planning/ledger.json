@@ -5,7 +5,6 @@
     "books/defrecord",
     "books/consumer-transaction-dispatch",
     "tests/acl2/consumer-transaction-dispatch-tests",
-    "tests/acl2/consumer-remote-store-category-tests",
     "tests/acl2/receiver-response-transfer-tests",
     "books/connection-receiver-repin",
     "books/index-connection-rx-repin",
@@ -52,21 +51,15 @@
     "tests/acl2/substrate-profile-entry-tests",
     "tests/acl2/substrate-profile-selection-tests",
     "tests/acl2/substrate-commit-profile-resume-tests",
-    "host/history-owner-completion-host",
     "books/history-semantic-writer",
     "tests/acl2/history-semantic-writer-tests",
     "books/admission-preparation-intent",
-    "host/admission-preparation-host",
-    "host/history-admission-producer-host",
     "tests/acl2/admission-preparation-intent-tests",
     "tests/acl2/admission-preparation-source-capture-tests",
-    "tests/acl2/admission-semantic-census-begin-model-tests",
-    "tests/acl2/admission-semantic-census-initial-tests",
     "tests/acl2/admission-semantic-census-lineage-tests",
     "tests/acl2/admission-semantic-census-prefix-tests",
     "tests/acl2/admission-semantic-census-resident-tests",
     "tests/acl2/admission-semantic-census-source-guard-tests",
-    "tests/acl2/admission-semantic-census-step-refinement-tests",
     "tests/acl2/admission-semantic-exclusion-tests",
     "tests/acl2/bp-controller-checkpoint-payload-directory-tests",
     "tests/acl2/bp-controller-registry-carry-tests",
@@ -76,10 +69,7 @@
     "tests/acl2/bp-node-crc0-receive-tests",
     "tests/acl2/bp-node-fragment-step-job-tests",
     "tests/acl2/bp-received-source-capture-tests",
-    "tests/acl2/consumer-configured-authority-event-tests",
     "tests/acl2/consumer-configured-authority-finish-tests",
-    "tests/acl2/consumer-control-row-cursor-tests",
-    "tests/acl2/consumer-remote-client-contract-tests",
     "tests/acl2/consumer-remote-collection-state-tests",
     "tests/acl2/consumer-remote-collection-tests",
     "tests/acl2/consumer-remote-history-tests",
@@ -2346,26 +2336,26 @@
   ],
   "totals": {
     "books": 2762,
-    "books_in_root_closure": 2617,
-    "roots": 2341,
+    "books_in_root_closure": 2604,
+    "roots": 2331,
     "theorems": 37021,
-    "functions": 23480,
+    "functions": 23483,
     "assert_events": 25829,
     "must_fails": 2651,
     "prover_refusals": 0,
     "encapsulates": 225,
     "guards": {
-      "verified": 3911,
+      "verified": 3912,
       "declared-off": 3041,
-      "default-guarded": 12944,
-      "default-unguarded": 3584
+      "default-guarded": 12943,
+      "default-unguarded": 3587
     },
     "suspect_theorems": 1365,
     "export_hygiene_warnings": 402,
     "enabled_projection_warnings": 79,
     "teeth_form_warnings": 282,
-    "include_hygiene_warnings": 3595,
-    "host_names_warnings": 3155,
+    "include_hygiene_warnings": 3600,
+    "host_names_warnings": 3150,
     "hand_written_record_warnings": 19
   },
   "books": [
@@ -3059,7 +3049,7 @@
     },
     {
       "book": "books/admission-semantic-census-begin-refinement.lisp",
-      "in_root_closure": true,
+      "in_root_closure": false,
       "is_root": false,
       "theorems": 5,
       "functions": 0,
@@ -3114,7 +3104,7 @@
     },
     {
       "book": "books/admission-semantic-census-initial-refinement.lisp",
-      "in_root_closure": true,
+      "in_root_closure": false,
       "is_root": false,
       "theorems": 7,
       "functions": 0,
@@ -3275,7 +3265,7 @@
     },
     {
       "book": "books/admission-semantic-census-step-refinement.lisp",
-      "in_root_closure": true,
+      "in_root_closure": false,
       "is_root": false,
       "theorems": 9,
       "functions": 0,
@@ -8356,12 +8346,12 @@
       "theorems": 32,
       "functions": 35,
       "guards": {
-        "verified": 32,
+        "verified": 33,
         "declared-off": 0,
-        "default-guarded": 2,
+        "default-guarded": 1,
         "default-unguarded": 1
       },
-      "verify_guards_events": 30,
+      "verify_guards_events": 31,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -14986,7 +14976,7 @@
     },
     {
       "book": "books/consumer-configured-authority-event.lisp",
-      "in_root_closure": true,
+      "in_root_closure": false,
       "is_root": false,
       "theorems": 0,
       "functions": 1,
@@ -15096,7 +15086,7 @@
     },
     {
       "book": "books/consumer-configured-control-event.lisp",
-      "in_root_closure": true,
+      "in_root_closure": false,
       "is_root": false,
       "theorems": 0,
       "functions": 7,
@@ -15150,7 +15140,7 @@
     },
     {
       "book": "books/consumer-control-row-cursor.lisp",
-      "in_root_closure": true,
+      "in_root_closure": false,
       "is_root": false,
       "theorems": 0,
       "functions": 6,
@@ -51808,8 +51798,8 @@
     },
     {
       "book": "tests/acl2/admission-semantic-census-begin-model-tests.lisp",
-      "in_root_closure": true,
-      "is_root": true,
+      "in_root_closure": false,
+      "is_root": false,
       "theorems": 0,
       "functions": 1,
       "guards": {
@@ -51834,8 +51824,8 @@
     },
     {
       "book": "tests/acl2/admission-semantic-census-initial-tests.lisp",
-      "in_root_closure": true,
-      "is_root": true,
+      "in_root_closure": false,
+      "is_root": false,
       "theorems": 0,
       "functions": 1,
       "guards": {
@@ -51964,8 +51954,8 @@
     },
     {
       "book": "tests/acl2/admission-semantic-census-step-refinement-tests.lisp",
-      "in_root_closure": true,
-      "is_root": true,
+      "in_root_closure": false,
+      "is_root": false,
       "theorems": 0,
       "functions": 1,
       "guards": {
@@ -59148,6 +59138,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/index-reader-receiver-issuer",
         "../../books/index-reader-rx-source-completion",
         "../../host/receiver-repin-source-host"
       ],
@@ -59691,8 +59682,8 @@
     },
     {
       "book": "tests/acl2/consumer-configured-authority-event-tests.lisp",
-      "in_root_closure": true,
-      "is_root": true,
+      "in_root_closure": false,
+      "is_root": false,
       "theorems": 0,
       "functions": 0,
       "guards": {
@@ -59746,8 +59737,8 @@
     },
     {
       "book": "tests/acl2/consumer-control-row-cursor-tests.lisp",
-      "in_root_closure": true,
-      "is_root": true,
+      "in_root_closure": false,
+      "is_root": false,
       "theorems": 0,
       "functions": 3,
       "guards": {
@@ -60050,8 +60041,8 @@
     },
     {
       "book": "tests/acl2/consumer-remote-client-contract-tests.lisp",
-      "in_root_closure": true,
-      "is_root": true,
+      "in_root_closure": false,
+      "is_root": false,
       "theorems": 0,
       "functions": 2,
       "guards": {
@@ -60577,8 +60568,8 @@
     },
     {
       "book": "tests/acl2/consumer-remote-store-category-tests.lisp",
-      "in_root_closure": true,
-      "is_root": true,
+      "in_root_closure": false,
+      "is_root": false,
       "theorems": 0,
       "functions": 0,
       "guards": {
@@ -72754,12 +72745,12 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 3,
+      "functions": 6,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 3
+        "default-unguarded": 6
       },
       "verify_guards_events": 0,
       "assert_events": 10,
@@ -97780,7 +97771,7 @@
       {
         "check": "pak-r-indexed-without-the-verdict",
         "book": "tests/acl2/post-admission-keyed-tests.lisp",
-        "line": 176,
+        "line": 200,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -110964,14 +110955,14 @@
       },
       {
         "book": "tests/acl2/admission-semantic-census-begin-model-tests.lisp",
-        "line": 2,
+        "line": 3,
         "include": "../../books/admission-semantic-census-begin-refinement",
         "included": "books/admission-semantic-census-begin-refinement.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/admission-semantic-census-initial-tests.lisp",
-        "line": 2,
+        "line": 3,
         "include": "../../books/admission-semantic-census-initial-refinement",
         "included": "books/admission-semantic-census-initial-refinement.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -111006,7 +110997,7 @@
       },
       {
         "book": "tests/acl2/admission-semantic-census-step-refinement-tests.lisp",
-        "line": 2,
+        "line": 3,
         "include": "../../books/admission-semantic-census-step-refinement",
         "included": "books/admission-semantic-census-step-refinement.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -114960,6 +114951,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/connection-receiver-repin-state-tests.lisp",
+        "line": 7,
+        "include": "../../books/index-reader-receiver-issuer",
+        "included": "books/index-reader-receiver-issuer.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/connection-receiver-repin-tests.lisp",
         "line": 2,
         "include": "../../books/index-connection-rx-repin",
@@ -114988,10 +114986,31 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/consumer-account-config-commit-tests.lisp",
+        "line": 3,
+        "include": "consumer-account-candidate-tests",
+        "included": "tests/acl2/consumer-account-candidate-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/consumer-account-config-commit-tests.lisp",
+        "line": 4,
+        "include": "consumer-account-config-preparation-tests",
+        "included": "tests/acl2/consumer-account-config-preparation-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/consumer-account-config-domain-tests.lisp",
         "line": 2,
         "include": "../../books/consumer-account-config-domain",
         "included": "books/consumer-account-config-domain.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/consumer-account-config-domain-tests.lisp",
+        "line": 3,
+        "include": "consumer-account-config-preparation-tests",
+        "included": "tests/acl2/consumer-account-config-preparation-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -115006,6 +115025,13 @@
         "line": 2,
         "include": "../../books/consumer-account-config-posting-relation",
         "included": "books/consumer-account-config-posting-relation.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/consumer-account-input-tests.lisp",
+        "line": 3,
+        "include": "consumer-account-candidate-tests",
+        "included": "tests/acl2/consumer-account-candidate-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -115199,7 +115225,7 @@
       },
       {
         "book": "tests/acl2/consumer-remote-client-contract-tests.lisp",
-        "line": 5,
+        "line": 6,
         "include": "../../books/records-attach",
         "included": "books/records-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -125687,77 +125713,77 @@
       },
       {
         "host": "host/admission-preparation-host.lisp",
-        "line": 15,
+        "line": 16,
         "name": "fn-owner-store",
         "source": "books/owner-state-accessors.lisp",
         "reason": "defined in books/owner-state-accessors.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/admission-preparation-host.lisp",
-        "line": 15,
+        "line": 16,
         "name": "fn-sn-files",
         "source": "books/owner-report-owner-accessors.lisp",
         "reason": "defined in books/owner-report-owner-accessors.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/admission-preparation-host.lisp",
-        "line": 15,
+        "line": 16,
         "name": "fn-sf-frontier",
         "source": "books/owner-report-owner-accessors.lisp",
         "reason": "defined in books/owner-report-owner-accessors.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/admission-preparation-host.lisp",
-        "line": 15,
+        "line": 16,
         "name": "fn-sf-records-count",
         "source": "books/store-files.lisp",
         "reason": "defined in books/store-files.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/admission-preparation-host.lisp",
-        "line": 15,
+        "line": 16,
         "name": "fn-owner-config",
         "source": "books/owner-config-state.lisp",
         "reason": "defined in books/owner-config-state.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/admission-preparation-host.lisp",
-        "line": 15,
+        "line": 16,
         "name": "fn-owner-obligation-view",
         "source": "books/owner-obligation-state.lisp",
         "reason": "defined in books/owner-obligation-state.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/admission-preparation-host.lisp",
-        "line": 15,
+        "line": 16,
         "name": "fn-own-view",
         "source": "books/owner-report-owner-accessors.lisp",
         "reason": "defined in books/owner-report-owner-accessors.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/admission-preparation-host.lisp",
-        "line": 15,
+        "line": 16,
         "name": "fn-owner-core",
         "source": "books/owner-state-accessors.lisp",
         "reason": "defined in books/owner-state-accessors.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/admission-preparation-host.lisp",
-        "line": 15,
+        "line": 16,
         "name": "fn-own-config",
         "source": "books/owner.lisp",
         "reason": "defined in books/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/admission-preparation-host.lisp",
-        "line": 15,
+        "line": 16,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/admission-preparation-host.lisp",
-        "line": 15,
+        "line": 16,
         "name": "fn-sf-phase",
         "source": "books/store-files.lisp",
         "reason": "defined in books/store-files.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
@@ -126415,91 +126441,84 @@
       },
       {
         "host": "host/consumer-remote-host.lisp",
-        "line": 12,
-        "name": "fn-sn-files",
-        "source": "books/owner-report-owner-accessors.lisp",
-        "reason": "defined in books/owner-report-owner-accessors.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/consumer-remote-host.lisp",
-        "line": 12,
+        "line": 13,
         "name": "fn-owner-store",
         "source": "books/owner-state-accessors.lisp",
         "reason": "defined in books/owner-state-accessors.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/consumer-remote-host.lisp",
-        "line": 12,
+        "line": 13,
         "name": "fn-sn-consumer",
         "source": "books/store-node.lisp",
         "reason": "defined in books/store-node.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/consumer-remote-host.lisp",
-        "line": 12,
+        "line": 13,
         "name": "fn-sf-records-count",
         "source": "books/store-files.lisp",
         "reason": "defined in books/store-files.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/consumer-remote-host.lisp",
-        "line": 26,
+        "line": 27,
         "name": "fn-owner-config",
         "source": "books/owner-config-state.lisp",
         "reason": "defined in books/owner-config-state.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/consumer-remote-host.lisp",
-        "line": 26,
+        "line": 27,
         "name": "fn-own-config",
         "source": "books/owner.lisp",
         "reason": "defined in books/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/consumer-remote-host.lisp",
-        "line": 26,
+        "line": 27,
         "name": "fn-owner-core",
         "source": "books/owner-state-accessors.lisp",
         "reason": "defined in books/owner-state-accessors.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/consumer-remote-host.lisp",
-        "line": 101,
+        "line": 102,
         "name": "fn-owner-store-profile",
         "source": "host/owner-host.lisp",
         "reason": "defined in host/owner-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/consumer-remote-host.lisp",
-        "line": 101,
+        "line": 102,
         "name": "fn-store-profile-max-consumers",
         "source": "host/store-host.lisp",
         "reason": "defined in host/store-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/consumer-remote-host.lisp",
-        "line": 151,
+        "line": 152,
         "name": "fn-owner-profile-carry",
         "source": "host/owner-host.lisp",
         "reason": "defined in host/owner-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/consumer-remote-host.lisp",
-        "line": 151,
+        "line": 152,
         "name": "fn-bs-pf",
         "source": "books/byte-store-frame.lisp",
         "reason": "defined in books/byte-store-frame.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/consumer-remote-host.lisp",
-        "line": 151,
+        "line": 152,
         "name": "*fn-bs-pf-max-record-octets*",
         "source": "books/byte-store-frame.lisp",
         "reason": "defined in books/byte-store-frame.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/consumer-remote-host.lisp",
-        "line": 185,
+        "line": 186,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
@@ -126625,343 +126644,343 @@
       },
       {
         "host": "host/history-admission-producer-host.lisp",
-        "line": 10,
+        "line": 11,
         "name": "fn-hep-producer-token",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/history-admission-producer-host.lisp",
-        "line": 10,
+        "line": 11,
         "name": "fn-hep-builder",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/history-admission-producer-host.lisp",
-        "line": 10,
+        "line": 11,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/history-admission-producer-host.lisp",
-        "line": 10,
+        "line": 11,
         "name": "member-eq",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/history-admission-producer-host.lisp",
-        "line": 10,
+        "line": 11,
         "name": "fn-omk-widthp",
         "source": "books/snapshot-source-token.lisp",
         "reason": "defined in books/snapshot-source-token.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/history-admission-producer-host.lisp",
-        "line": 10,
+        "line": 11,
         "name": "fn-omk-at",
         "source": "books/snapshot-source-token.lisp",
         "reason": "defined in books/snapshot-source-token.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/history-admission-producer-host.lisp",
-        "line": 10,
+        "line": 11,
         "name": "fn-hep-producer-phase",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/history-admission-producer-host.lisp",
-        "line": 10,
+        "line": 11,
         "name": "fn-sf-phase",
         "source": "books/store-files.lisp",
         "reason": "defined in books/store-files.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/history-admission-producer-host.lisp",
-        "line": 10,
+        "line": 11,
         "name": "fn-sn-files",
         "source": "books/owner-report-owner-accessors.lisp",
         "reason": "defined in books/owner-report-owner-accessors.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/history-admission-producer-host.lisp",
-        "line": 10,
+        "line": 11,
         "name": "fn-owner-store",
         "source": "books/owner-state-accessors.lisp",
         "reason": "defined in books/owner-state-accessors.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/history-admission-producer-host.lisp",
-        "line": 10,
+        "line": 11,
         "name": "fn-sf-records-count",
         "source": "books/store-files.lisp",
         "reason": "defined in books/store-files.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/history-admission-producer-host.lisp",
-        "line": 10,
+        "line": 11,
         "name": "fn-evc-sequence",
         "source": "books/store-events-carried.lisp",
         "reason": "defined in books/store-events-carried.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/history-admission-producer-host.lisp",
-        "line": 10,
+        "line": 11,
         "name": "fn-evc-txid",
         "source": "books/store-events-carried.lisp",
         "reason": "defined in books/store-events-carried.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/history-admission-producer-host.lisp",
-        "line": 10,
+        "line": 11,
         "name": "fn-sn-node",
         "source": "books/owner-report-owner-accessors.lisp",
         "reason": "defined in books/owner-report-owner-accessors.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/history-owner-completion-host.lisp",
-        "line": 23,
+        "line": 24,
         "name": "fn-sn-make-v6",
         "source": "books/store-node.lisp",
         "reason": "defined in books/store-node.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/history-owner-completion-host.lisp",
-        "line": 31,
+        "line": 32,
         "name": "fn-own-make",
         "source": "books/owner.lisp",
         "reason": "defined in books/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/history-owner-completion-host.lisp",
-        "line": 31,
+        "line": 32,
         "name": "fn-own-conns",
         "source": "books/owner.lisp",
         "reason": "defined in books/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/history-owner-completion-host.lisp",
-        "line": 31,
+        "line": 32,
         "name": "fn-own-next-id",
         "source": "books/owner.lisp",
         "reason": "defined in books/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/history-owner-completion-host.lisp",
-        "line": 31,
+        "line": 32,
         "name": "fn-own-max-conns",
         "source": "books/owner.lisp",
         "reason": "defined in books/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/history-owner-completion-host.lisp",
-        "line": 31,
+        "line": 32,
         "name": "fn-sl-snoc",
         "source": "books/snoc-list.lisp",
         "reason": "defined in books/snoc-list.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/history-owner-completion-host.lisp",
-        "line": 31,
+        "line": 32,
         "name": "fn-own-ledger-field",
         "source": "books/owner.lisp",
         "reason": "defined in books/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/history-owner-completion-host.lisp",
-        "line": 31,
+        "line": 32,
         "name": "fn-own-clock",
         "source": "books/owner.lisp",
         "reason": "defined in books/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/history-owner-completion-host.lisp",
-        "line": 31,
+        "line": 32,
         "name": "fn-own-facts",
         "source": "books/owner.lisp",
         "reason": "defined in books/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/history-owner-completion-host.lisp",
-        "line": 31,
+        "line": 32,
         "name": "fn-own-config",
         "source": "books/owner.lisp",
         "reason": "defined in books/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/history-owner-completion-host.lisp",
-        "line": 31,
+        "line": 32,
         "name": "fn-own-queue",
         "source": "books/owner.lisp",
         "reason": "defined in books/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/history-owner-completion-host.lisp",
-        "line": 31,
+        "line": 32,
         "name": "fn-own-inflight",
         "source": "books/owner.lisp",
         "reason": "defined in books/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/history-owner-completion-host.lisp",
-        "line": 31,
+        "line": 32,
         "name": "fn-own-feeds",
         "source": "books/owner-report-owner-accessors.lisp",
         "reason": "defined in books/owner-report-owner-accessors.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/history-owner-completion-host.lisp",
-        "line": 31,
+        "line": 32,
         "name": "fn-own-node-secret",
         "source": "books/owner-node-secret-accessor.lisp",
         "reason": "defined in books/owner-node-secret-accessor.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/history-owner-completion-host.lisp",
-        "line": 31,
+        "line": 32,
         "name": "fn-own-refused",
         "source": "books/owner.lisp",
         "reason": "defined in books/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/history-owner-completion-host.lisp",
-        "line": 42,
+        "line": 43,
         "name": "fn-own-pending",
         "source": "books/owner.lisp",
         "reason": "defined in books/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/history-owner-completion-host.lisp",
-        "line": 51,
+        "line": 52,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/history-owner-completion-host.lisp",
-        "line": 61,
+        "line": 62,
         "name": "fn-sn-files",
         "source": "books/owner-report-owner-accessors.lisp",
         "reason": "defined in books/owner-report-owner-accessors.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/history-owner-completion-host.lisp",
-        "line": 61,
+        "line": 62,
         "name": "fn-owner-store",
         "source": "books/owner-state-accessors.lisp",
         "reason": "defined in books/owner-state-accessors.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/history-owner-completion-host.lisp",
-        "line": 61,
+        "line": 62,
         "name": "fn-hep-producer-phase",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/history-owner-completion-host.lisp",
-        "line": 61,
+        "line": 62,
         "name": "fn-sf-completion",
         "source": "books/store-files.lisp",
         "reason": "defined in books/store-files.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/history-owner-completion-host.lisp",
-        "line": 61,
+        "line": 62,
         "name": "fn-sf-phase",
         "source": "books/store-files.lisp",
         "reason": "defined in books/store-files.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/history-owner-completion-host.lisp",
-        "line": 61,
+        "line": 62,
         "name": "fn-sf-records-count",
         "source": "books/store-files.lisp",
         "reason": "defined in books/store-files.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/history-owner-completion-host.lisp",
-        "line": 61,
+        "line": 62,
         "name": "member-eq",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/history-owner-completion-host.lisp",
-        "line": 61,
+        "line": 62,
         "name": "fn-ocfg-staged",
         "source": "books/owner-config.lisp",
         "reason": "defined in books/owner-config.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/history-owner-completion-host.lisp",
-        "line": 61,
+        "line": 62,
         "name": "fn-owner-ocfg",
         "source": "books/owner-state-accessors.lisp",
         "reason": "defined in books/owner-state-accessors.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/history-owner-completion-host.lisp",
-        "line": 61,
+        "line": 62,
         "name": "fn-cfg-generation",
         "source": "books/config.lisp",
         "reason": "defined in books/config.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/history-owner-completion-host.lisp",
-        "line": 61,
+        "line": 62,
         "name": "fn-owner-config",
         "source": "books/owner-config-state.lisp",
         "reason": "defined in books/owner-config-state.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/history-owner-completion-host.lisp",
-        "line": 61,
+        "line": 62,
         "name": "fn-sf-frontier",
         "source": "books/owner-report-owner-accessors.lisp",
         "reason": "defined in books/owner-report-owner-accessors.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/history-owner-completion-host.lisp",
-        "line": 61,
+        "line": 62,
         "name": "fn-sf-emit-success",
         "source": "books/store-files.lisp",
         "reason": "defined in books/store-files.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/history-owner-completion-host.lisp",
-        "line": 61,
+        "line": 62,
         "name": "fn-sf-core-completion",
         "source": "books/store-files.lisp",
         "reason": "defined in books/store-files.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/history-owner-completion-host.lisp",
-        "line": 61,
+        "line": 62,
         "name": "fn-ocfg-owner",
         "source": "books/owner-config.lisp",
         "reason": "defined in books/owner-config.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/history-owner-completion-host.lisp",
-        "line": 61,
+        "line": 62,
         "name": "fn-ocfg-make",
         "source": "books/owner-config.lisp",
         "reason": "defined in books/owner-config.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/history-owner-completion-host.lisp",
-        "line": 61,
+        "line": 62,
         "name": "fn-ocfg-pins",
         "source": "books/owner-config.lisp",
         "reason": "defined in books/owner-config.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/history-owner-completion-host.lisp",
-        "line": 61,
+        "line": 62,
         "name": "fn-owner-account-durable-complete-internal",
         "source": "host/account-durable-completion-host.lisp",
         "reason": "defined in host/account-durable-completion-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
@@ -141871,98 +141890,77 @@
       },
       {
         "host": "host/page-file-lease-host.lisp",
-        "line": 6,
+        "line": 7,
         "name": "fn-prp-mode",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/page-file-lease-host.lisp",
-        "line": 6,
+        "line": 7,
         "name": "fn-prp-alloc-installation",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/page-file-lease-host.lisp",
-        "line": 6,
-        "name": "fn-prb-fixed-widthp",
-        "source": "books/page-read-counter-transaction.lisp",
-        "reason": "defined in books/page-read-counter-transaction.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/page-file-lease-host.lisp",
-        "line": 6,
+        "line": 7,
         "name": "fn-prp-data",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/page-file-lease-host.lisp",
-        "line": 13,
+        "line": 14,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/page-file-lease-host.lisp",
-        "line": 13,
+        "line": 14,
         "name": "fn-owner-page-read-direct-mode",
         "source": "host/page-read-host.lisp",
         "reason": "defined in host/page-read-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/page-file-lease-host.lisp",
-        "line": 13,
-        "name": "fn-owner-page-read-ledger",
-        "source": "books/page-read-pool-state.lisp",
-        "reason": "defined in books/page-read-pool-state.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/page-file-lease-host.lisp",
-        "line": 13,
+        "line": 14,
         "name": "fn-crl-token-integer-octets",
         "source": "books/cold-read-layout.lisp",
         "reason": "defined in books/cold-read-layout.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/page-file-lease-host.lisp",
-        "line": 13,
-        "name": "fn-owner-page-read-keep-ledger",
-        "source": "books/page-read-pool-state.lisp",
-        "reason": "defined in books/page-read-pool-state.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/page-file-lease-host.lisp",
-        "line": 40,
+        "line": 41,
         "name": "defthm",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/page-file-lease-host.lisp",
-        "line": 40,
+        "line": 41,
         "name": "implies",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/page-file-lease-host.lisp",
-        "line": 40,
+        "line": 41,
         "name": "mv-list",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/page-file-lease-host.lisp",
-        "line": 40,
+        "line": 41,
         "name": "mv-nth",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/page-file-lease-host.lisp",
-        "line": 50,
+        "line": 51,
         "name": "fn-owner-page-read-discovery-admit",
         "source": "host/page-read-host.lisp",
         "reason": "defined in host/page-read-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
@@ -142739,98 +142737,91 @@
       },
       {
         "host": "host/receiver-resource-host.lisp",
-        "line": 8,
+        "line": 9,
         "name": "fn-prp-mode",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/receiver-resource-host.lisp",
-        "line": 8,
+        "line": 9,
         "name": "fn-prp-alloc-installation",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/receiver-resource-host.lisp",
-        "line": 8,
-        "name": "fn-prb-fixed-widthp",
-        "source": "books/page-read-counter-transaction.lisp",
-        "reason": "defined in books/page-read-counter-transaction.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/receiver-resource-host.lisp",
-        "line": 8,
+        "line": 9,
         "name": "fn-prp-data",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/receiver-resource-host.lisp",
-        "line": 8,
+        "line": 9,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/receiver-resource-host.lisp",
-        "line": 24,
+        "line": 25,
         "name": "fn-octets-rx-reserve",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/receiver-resource-host.lisp",
-        "line": 24,
+        "line": 25,
         "name": "update-fn-rxc-token",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/receiver-resource-host.lisp",
-        "line": 24,
+        "line": 25,
         "name": "update-fn-rxc-instance",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/receiver-resource-host.lisp",
-        "line": 24,
+        "line": 25,
         "name": "update-fn-rxc-capacity",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/receiver-resource-host.lisp",
-        "line": 46,
+        "line": 47,
         "name": "stobj-let",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/receiver-resource-host.lisp",
-        "line": 46,
+        "line": 47,
         "name": "fn-rxp-octets",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/receiver-resource-host.lisp",
-        "line": 46,
+        "line": 47,
         "name": "fn-rxp-carry",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/receiver-resource-host.lisp",
-        "line": 46,
+        "line": 47,
         "name": "word",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/receiver-resource-host.lisp",
-        "line": 57,
+        "line": 58,
         "name": "verify-guards",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
