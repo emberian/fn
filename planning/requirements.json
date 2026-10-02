@@ -5459,12 +5459,14 @@
     },
     {
       "id": "HST-033",
-      "title": "The owner holds its mutex for no disk I/O at a connection's greeting or a checkpoint's capture: the free-space observation is taken before a quantum's gate entry, and the log rotation's file creation, preallocation and fences run outside the mutex, the switch under it being one rename",
+      "title": "The owner holds its mutex for no disk I/O at a connection's greeting or a checkpoint's capture: the free-space observation is taken before a quantum's gate entry, and the log rotation's file creation, preallocation and fences run outside the mutex, the switch under it being one rename; a commit's blocking effects (FNFD intents and resolutions, the log's extension, append and barrier) run off the mutex as one job in ACL2's order, consumed by a receipt",
       "specification": "specs/host.md#operator-commands-and-owner-critical-sections",
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-907"
+        "PRF-907",
+        "PRF-1245",
+        "PRF-1246"
       ],
       "verification": [
         "proof",
@@ -5479,7 +5481,10 @@
         "host/native/control.lisp",
         "tests/campaign/native_cuts.py",
         "tests/test_native_checkpoint_auto.py",
-        "tests/test_native_log_compaction.py"
+        "tests/test_native_log_compaction.py",
+        "books/owner-queued-work.lisp",
+        "books/feed-journal-order.lisp",
+        "tests/test_native_owner_offlock.py"
       ],
       "implementation_note": "Lane operations (row N1 item 4; GPT-6's 2026-09-28 review asked that I/O leave the semantic critical section). Before: every greeting's clock observation ran statvfs under the owner mutex when a space observation was due, the checkpoint capture ran statvfs and the whole of P-ROTATE (create, fallocate, fsync, fsync journal/) under it, and a status render ran statvfs under it. Now fnn-owner-gated observes before the gate admits the quantum (ACL2's fn-otm-space-due-p decides when; the NEED ACL2 computes under the mutex is kept on the service), the status render and the drain observe before their quantum, the capture's statvfs precedes its quantum, and P-ROTATE is three programs: the spare staged in staging/ off the mutex, the rename under it, journal/'s fence off it (by the new segment's first fence before any member there is acknowledged, and by the publication before its checkpoint names the segment). The whole-state greeting cost PKT-190 was retired earlier (served-path-scale-2)."
     },

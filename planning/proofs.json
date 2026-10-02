@@ -21434,6 +21434,55 @@
         "fn-pio-direct-settle-happens-once"
       ],
       "progress_note": "Lane cold-read-ownership (Opus, 2026-10-01): REPL-admitted (6.7 s with dependencies from source) and 44 teeth forms passed on the laptop; certification and natives (test_native_page_io, slow_disk storm) in the lane's LANEDUMP."
+    },
+    {
+      "id": "PRF-1245",
+      "title": "Off-owner jobs: the commit's batch effects run in ACL2's order with no owner lock, and the job's receipt is consumed once into its own generation with distinct outcomes",
+      "statement": "books/owner-queued-work.lisp. Subjects fn-oqw-start, fn-oqw-step, fn-oqw-receipt, fn-oqw-outcome-of-final, host-called in host/native/owner.lisp: fnn-owner-run-job (the syncer thread's body through fnn-owner-batch-job, and the bound submission's inline quantum) executes exactly the phase fn-oqw-step names; fnn-owner-commit-pipeline consumes the job's end through fn-oqw-receipt (fnn-owner-complete-generation) on the time-bars ledger (PRF-384) it issued the job under; fnn-owner-commit-queued-locked maps an inline job's end through fn-oqw-outcome-of-final. KEYSTONE fn-oqw-batch-effect-order: from the :batch job's first phase, under any answers, the log's append runs only after the FNFD intents and the extension returned, the barrier only after the append returned, an FNFD resolution only after the barrier returned, and the job is :done iff all five phases returned, having run exactly :intents :extend :append :fence :resolutions in order. fn-oqw-a-failed-effect-ends-the-job: a phase answering other than :ok ends the job (:uncertain or :fault) and runs nothing after it. KEYSTONE fn-oqw-receipt-outcomes-are-distinct: the receipt is one of :fenced :failed :fault :stale :consumed; :fenced iff open at its generation and the job ran every phase, :failed iff it ended uncertain, :fault for any other end; :stale iff another generation's; stale and consumed answer no one and leave the ledger unchanged; the job's own receipt closes the ledger with fn-otb-complete's answer.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-033"
+      ],
+      "depends_on": [
+        "PRF-384"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-queued-work.lisp",
+        "tests/acl2/owner-queued-work-tests.lisp",
+        "host/native/owner.lisp",
+        "host/native/io.lisp",
+        "tests/test_native_owner_offlock.py",
+        "tests/campaign/native_cuts.py"
+      ],
+      "events": [
+        "fn-oqw-batch-effect-order",
+        "fn-oqw-a-failed-effect-ends-the-job",
+        "fn-oqw-receipt-outcomes-are-distinct"
+      ],
+      "progress_note": "Lane owner-offlock (Opus 5.5, 2026-10-03). REPL-admitted on persvati against certified dependencies (effect order 15.8k steps; receipt 2.1M steps, 2.35 s). Teeth: tests/acl2/owner-queued-work-tests.lisp (prefix oqwt-): the reached runs (all :ok, an uncertain intent, a barrier fault), the effect-order keystone by conjunct with a positive and one removal per antecedent, a labelled phase-table mutation, the receipt reached from fn-otb-issue (fenced, failed, fault, an unfinished job, stale, consumed, a late receipt after a stall's early answer) and each :fenced hypothesis removed. Native: tests.test_native_owner_offlock."
+    },
+    {
+      "id": "PRF-1246",
+      "title": "An FNFD journal written in the old batch order (intents N, intents N+1, resolutions N) replays exactly as one in the new order (intents N, resolutions N, intents N+1)",
+      "statement": "books/feed-journal-order.lisp. The open replays each FNFD frame through the host-called host/owner-host.lisp fn-owner-feed-journal-scan into two folds: the unresolved-intent set (fn-own-feed-intent-apply) and the peer's offerable feed (fn-feed-replay via fn-owner-feed-replay-counted and fn-own-feed-port-replay-peer). KEYSTONE fn-fjo-an-intent-moved-past-another-resolution-replays-alike: for any prefix XS and suffix YS, an intent frame I moved past a resolution frame R (:feed-commit or :feed-abort) of a different intent key leaves both folds unchanged. Since lane owner-offlock the batch job writes a batch's resolutions before the next batch's intents, so a journal a running node wrote under the old order is read alike at its upgrade (no migration). Helpers: fn-fjo-intent-commutes-with-another-resolution, fn-fjo-feed-replay-ignores-an-intent-unfolds (an intent is a no-op in the offerable feed).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-033"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/feed-journal-order.lisp",
+        "tests/acl2/feed-journal-order-tests.lisp"
+      ],
+      "events": [
+        "fn-fjo-an-intent-moved-past-another-resolution-replays-alike",
+        "fn-fjo-intent-commutes-with-another-resolution"
+      ],
+      "progress_note": "Lane owner-offlock (Opus 5.5, 2026-10-03). REPL-admitted on persvati (9.7k steps). Teeth: tests/acl2/feed-journal-order-tests.lisp (prefix fjot-): THE OLD-ORDER REPLAY TEST, two journals built by fn-own-feed-intent-records / fn-own-feed-resolution-records (batch N members 1 2, N+1 members 3 4, an earlier and a later intent) in both orders: both fn-feed-journalp, equal unresolved intents (4) and equal feeds (2 queued); a reached positive of the keystone; one removal per hypothesis (same key: the intent fold differs; I a commit: the feed queue order differs; R an intent: the intent fold differs)."
     }
   ]
 }
