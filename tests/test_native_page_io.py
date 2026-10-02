@@ -4,13 +4,16 @@ The hold occurs after issue/acquisition and before pread, off both locks.
 Reclaim retires the old file while the original worker remains live; its
 close must wait. Client cancellation does not publish into a new request.
 Late short/error results remain named store faults, not swallowed threads.
+Runs on the unfunded line's issued rows and persistent workers
+(books/page-read-direct.lisp, PRF-1234; lane cold-read-ownership).
 """
 import re
 import time
 import unittest
 
 from tests.native_harness import Client, EXIT, requires, scratch
-from tests.test_native_expiry import DEVELOPER, DeveloperExpiryTests, ExpiryMixin, msgid
+from tests import test_native_expiry as expiry  # module access: no second run of its test classes here
+from tests.test_native_expiry import DEVELOPER, ExpiryMixin, msgid
 
 
 def page_io_logical_lines(data):
@@ -46,27 +49,15 @@ class PageIOTests(unittest.TestCase):
     filled = ExpiryMixin.filled
     reclaim = ExpiryMixin.reclaim
     owner_lines = ExpiryMixin.owner_lines
-    recorded_base = DeveloperExpiryTests.recorded_base
+    recorded_base = expiry.DeveloperExpiryTests.recorded_base
+    node = ExpiryMixin.node
+    copy_of = expiry.DeveloperExpiryTests.copy_of
 
-    # Explicit scenario input, not a default or a full Store productivity claim.
-    cold_resources = {
-        "cold_heap_octets": 67108864,
-        "cold_workers": 2,
-        "cold_descriptors": 64,
-        "cold_read_ids": 100000,
-        "cold_file_ids": 100000,
-    }
-
-    def fund(self, node):
-        node.cold_resources = dict(self.cold_resources)
-        node.write_config()
-        return node
-
-    def node(self, name="node"):
-        return self.fund(ExpiryMixin.node(self, name))
-
-    def copy_of(self, base, name):
-        return self.fund(DeveloperExpiryTests.copy_of(self, base, name))
+    # The unfunded served line (books/page-read-direct.lisp, lane
+    # cold-read-ownership): an operator run refuses a [resources] cold pool
+    # (UNSUPPORTED-PROFILE cold_resources) until stage 6 installs it, so these
+    # nodes run the default profile, whose cold reads hold an issued row and
+    # one of the fixed persistent workers.
 
     def setUp(self):
         self.root = scratch(self, "fn-page-io-")
