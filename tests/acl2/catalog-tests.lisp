@@ -225,17 +225,19 @@
 
 ; The keystone's positive witness over the opened view: the complete
 ; antecedent (MSGID is the fourth row's) and the conclusion (the iff, both
-; sides evaluated).
+; sides evaluated), on the rows through the exports' :logic functions
+; (fn-cat$a-*: an abstract stobj takes no ground constant); the executable
+; side over the live fn-cat follows (cat-keyed-exec-run).
 (assert-event
  (and (equal "<d@x>" (fn-record-msgid *cat-h3*))
       (iff (equal (fn-mlh-build-unplaced *cat-key* (append *cat-rows* (list *cat-h3*)))
                   (fn-mlh-build-unplaced *cat-key* *cat-rows*))
-           (not (fn-cat-msgid-saturatedp *cat-key* "<d@x>" *cat-rows*)))
-      (not (fn-cat-msgid-saturatedp *cat-key* "<d@x>" *cat-rows*))
+           (not (fn-cat$a-msgid-saturatedp *cat-key* "<d@x>" *cat-rows*)))
+      (not (fn-cat$a-msgid-saturatedp *cat-key* "<d@x>" *cat-rows*))
       (equal (fn-mlh-build-unplaced *cat-key* (append *cat-rows* (list *cat-h3*))) 0)
       ; fn-cat-clear-keyed-is-nil, fn-cat-index-health-is-the-build
-      (equal (fn-cat-clear-keyed *cat-key* *cat-rows*) nil)
-      (equal (fn-cat-index-health *cat-key* *cat-rows*)
+      (equal (fn-cat$a-clear-keyed *cat-key* *cat-rows*) nil)
+      (equal (fn-cat$a-index-health *cat-key* *cat-rows*)
              (list (fn-mlh-pages (fn-mlh-build *cat-key* *cat-rows*))
                    (fn-mlh-count (fn-mlh-build *cat-key* *cat-rows*))
                    (fn-mlh-build-unplaced *cat-key* *cat-rows*)
@@ -267,8 +269,8 @@
  (let ((r (cat-keyed-exec)))
    (and (equal (nth 0 r) nil)                     ; not saturated, the table's own answer
         (equal (nth 1 r) nil)                     ; the fold's answer, the same
-        (equal (nth 2 r) (fn-cat-index-health *cat-key* *cat-rows*))
-        (equal (nth 3 r) (fn-cat-index-health *cat-other-key* *cat-rows*))
+        (equal (nth 2 r) (fn-cat$a-index-health *cat-key* *cat-rows*))
+        (equal (nth 3 r) (fn-cat$a-index-health *cat-other-key* *cat-rows*))
         (equal (cadr (nth 2 r)) 3) (equal (caddr (nth 2 r)) 0) (equal (cadddr (nth 2 r)) 0)
         (equal (nth 4 r) '(1))                    ; the paged reader, PRF-1037
         (equal (nth 5 r) nil)

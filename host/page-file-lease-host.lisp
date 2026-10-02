@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "page-read-host")
 (include-book "../books/page-file-lease")
+(include-book "../books/page-read-counter-transaction") ; fn-prb-fixed-widthp
 ; Historical writers are excluded from installed DATA6 custody.
 (defun fn-owner-page-file-legacy-writablep (fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool :guard t))
