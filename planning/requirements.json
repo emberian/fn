@@ -4233,7 +4233,10 @@
         "PRF-346",
         "PRF-363",
         "PRF-1152",
-        "PRF-1229"
+        "PRF-1229",
+        "PRF-1236",
+        "PRF-1237",
+        "PRF-1238"
       ],
       "verification": [
         "proof",
@@ -4249,7 +4252,10 @@
         "books/owner-invariants.lisp",
         "books/config-owner-live.lisp",
         "tests/acl2/owner-tests.lisp",
-        "tests/test_native_reader_freshness.py"
+        "tests/test_native_reader_freshness.py",
+        "books/protocol-table.lisp",
+        "books/protocol-served.lisp",
+        "tests/acl2/protocol-served-tests.lisp"
       ],
       "keystones": [
         "fn-view-cancel-after-target",
@@ -4257,9 +4263,10 @@
         "fn-served-successful-selection-is-the-repinned-dispatch",
         "fn-served-failed-selection-keeps-the-connection",
         "fn-own-read-preserves-relation",
-        "fn-ocl-read-preserves-historical-relation"
+        "fn-ocl-read-preserves-historical-relation",
+        "fn-proto-advance-eventp-is-served-advance-eventp"
       ],
-      "implementation_note": "An explicit specification change (2026-09-26, gpt-6's wave-5 review section 1; before it a connection kept the view it pinned at open until the control channel advanced it). Implemented in the served machine the host calls (catalog-slice-5): the owner hands every read its committed view as the served connection's live pin (books/owner.lisp fn-own-served-conn, fn-own-view-live); fn-served-dispatch dispatches a GROUP/LISTGROUP line over the connection re-pinned at it (fn-served-repin) and keeps the re-pin exactly when the reply is 211 (fn-served-selectedp); fn-own-finish-read takes the pin back and the configured owner moves the connection's configuration pin with it (fn-ocfg-with-read-owner). ACL2: fn-served-step-pin-is-old-or-live, fn-served-successful-selection-is-the-repinned-dispatch, fn-served-failed-selection-keeps-the-connection, fn-served-repin-preserves-connp; the owner relations re-proved with the second case. Witness: tests/acl2/owner-tests.lisp (the reader pinned at version 0 lists the article after LISTGROUP and GROUP, is pinned at the view afterwards, and STAT on it before that still answers 430 with no pin moved). Native: tests.test_native_reader_freshness asserts the long-lived reader sees another connection's POST and a peer's IHAVE after its next GROUP. The catalog form (fn-view-advance = fn-cat-count, fn-view-cancel-after-target) is the same semantics over the catalog; the retrieval arms over the catalog and the crossed-view acceptance tests (HDR/XHDR, OVER/XOVER, XPAT, counts) are 7b (PKT-585).",
+      "implementation_note": "An explicit specification change (2026-09-26, gpt-6's wave-5 review section 1; before it a connection kept the view it pinned at open until the control channel advanced it). Implemented in the served machine the host calls (catalog-slice-5): the owner hands every read its committed view as the served connection's live pin (books/owner.lisp fn-own-served-conn, fn-own-view-live); fn-served-dispatch dispatches a GROUP/LISTGROUP line over the connection re-pinned at it (fn-served-repin) and keeps the re-pin exactly when the reply is 211 (fn-served-selectedp); fn-own-finish-read takes the pin back and the configured owner moves the connection's configuration pin with it (fn-ocfg-with-read-owner). ACL2: fn-served-step-pin-is-old-or-live, fn-served-successful-selection-is-the-repinned-dispatch, fn-served-failed-selection-keeps-the-connection, fn-served-repin-preserves-connp; the owner relations re-proved with the second case. Witness: tests/acl2/owner-tests.lisp (the reader pinned at version 0 lists the article after LISTGROUP and GROUP, is pinned at the view afterwards, and STAT on it before that still answers 430 with no pin moved). Native: tests.test_native_reader_freshness asserts the long-lived reader sees another connection's POST and a peer's IHAVE after its next GROUP. The catalog form (fn-view-advance = fn-cat-count, fn-view-cancel-after-target) is the same semantics over the catalog; the retrieval arms over the catalog and the crossed-view acceptance tests (HDR/XHDR, OVER/XOVER, XPAT, counts) are 7b (PKT-585). def-command (2026-10-03): the policy is a column of the protocol table (books/protocol-table.lisp :view per row and per form; fn-proto-advance-eventp-is-served-advance-eventp pins the :select rows to fn-served-advance-eventp); the rulings of consultation c07 (one completed discovery snapshot for the LIST family, NEWGROUPS and NEWNEWS; by-Message-ID pin first then the completed snapshot) are recorded as :view-decided debt, PRF-1237 and PRF-1238, and the spec's served command table shows the executed rule.",
       "note": "Lane catalog-slice-2 (wave 5 lane 2 continuation, D33; the id the deputy assigned for PKT-585's REQ line)."
     },
     {

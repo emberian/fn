@@ -1002,10 +1002,27 @@ def defprotocol_expansion(form: list) -> list:
                     and isinstance(items[index + 1], list) and items[index + 1]
                     and str(items[index + 1][0]) == ":pinned"):
                 pinned.extend(items[index + 1][1:])
-    return [[Sym("defmacro"), Sym("fn-nntp-command-dispatch"),
-             [Sym("archive-call"), Sym("&key"), Sym("pinned")],
-             [Sym("fn-proto-command-dispatch-term"), Sym("archive-call"), Sym("pinned"),
-              [Sym("quote"), pinned]]]]
+    name = form[1]
+    # The served columns' constants (lane def-command): the :select rows'
+    # names (fn-served-advance-eventp's keywords), the :archive rows', every
+    # served keyword (HELP's table is checked against it) and the rows with
+    # :cat-arms (books/protocol-served.lisp generates the served dispatcher
+    # from them).
+    constants = [
+        [Sym("defconst"), Sym("*fn-proto-select-names*"),
+         [Sym("fn-proto-names-with-view"), Sym(":select"), name]],
+        [Sym("defconst"), Sym("*fn-proto-archive-names*"),
+         [Sym("fn-proto-names-with-dispatch"), Sym(":archive"), name]],
+        [Sym("defconst"), Sym("*fn-proto-served-names*"),
+         [Sym("fn-proto-served-names"), name]],
+        [Sym("defconst"), Sym("*fn-proto-cat-rows*"),
+         [Sym("fn-proto-cat-row-names"), name]],
+    ]
+    return constants + [
+        [Sym("defmacro"), Sym("fn-nntp-command-dispatch"),
+         [Sym("archive-call"), Sym("&key"), Sym("pinned")],
+         [Sym("fn-proto-command-dispatch-term"), Sym("archive-call"), Sym("pinned"),
+          [Sym("quote"), pinned]]]]
 
 
 def defrecord_export_expansion(form: list) -> list:
