@@ -1311,6 +1311,58 @@
  (local
   (assert-event
    (null (fn-cd-raw-problem 'fn-cdt-produced-carried 'fn-cdt-bump (w state))))))
+; the open run as an abstract stobj's :exec (r28, r60 item 2): the export
+; cdtb-open-from runs fn-cdt-open-from on the foundation with an argument no
+; 'unnormalized-body the caller scan reads ever passes, so the produced
+; premise is not discharged there.  End to end: the row refuses and the
+; :raw-with acceptance must-fails; the helper-level case is section 6.
+(encapsulate ()
+ (local (defun cdtb$ap (a)
+          (declare (xargs :guard t))
+          (and (consp a) (integerp (car a)))))
+ (local (defun create-cdtb$a ()
+          (declare (xargs :guard t))
+          (cons 0 nil)))
+ (local (defun cdtb-open-from$a (x a)
+          (declare (xargs :guard (and (integerp x) (cdtb$ap a))))
+          (cons x (cdr a))))
+ (local (defun-nx cdtb$corr (c a)
+          (and (fn-cdt-stp c) (cdtb$ap a)
+               (equal (fn-cdt-n c) (car a))
+               (equal (fn-cdt-log c) (cdr a)))))
+ (local (defun cdtb-thms (es)
+          (declare (xargs :mode :program))
+          (if (atom es)
+              nil
+            (cons (list 'defthm (car (car es)) (cadr (car es)))
+                  (cdtb-thms (cdr es))))))
+ (local
+  (make-event
+   (er-let* ((es (defabsstobj-missing-events cdtb :foundation fn-cdt-st
+                   :recognizer (cdtbp :logic cdtb$ap :exec fn-cdt-stp)
+                   :creator (create-cdtb :logic create-cdtb$a :exec create-fn-cdt-st)
+                   :corr-fn cdtb$corr
+                   :exports ((cdtb-open-from :logic cdtb-open-from$a
+                                             :exec fn-cdt-open-from)))))
+     (value (cons 'progn (cdtb-thms es))))))
+ (local (defabsstobj cdtb :foundation fn-cdt-st
+          :recognizer (cdtbp :logic cdtb$ap :exec fn-cdt-stp)
+          :creator (create-cdtb :logic create-cdtb$a :exec create-fn-cdt-st)
+          :corr-fn cdtb$corr
+          :exports ((cdtb-open-from :logic cdtb-open-from$a
+                                    :exec fn-cdt-open-from))))
+ (local (assert-event (eq (fn-cd-attached-to 'fn-cdt-open-from (w state)) 'cdtb)))
+ (local
+  (assert-event
+   (let ((m (fn-cd-raw-problem 'fn-cdt-produced-carried 'fn-cdt-bump (w state))))
+     (and (search "is attached to" (car m))
+          (eq (cdr (assoc #\0 (cdr m))) 'fn-cdt-open-from)
+          (eq (cdr (assoc #\1 (cdr m))) 'cdtb)))))
+ (local
+  (must-fail-checked
+   (definterface fn-cdt-bump :class :common-lisp-compliant :kinds ((n natp))
+     :raw-with (:carried fn-cdt-produced-carried))
+   :unchecked "fn-cdt-open-from is the :exec of the abstract stobj cdtb")))
 ; a forged row naming a true theorem about another producer as the
 ; generated produced name
 (encapsulate ()

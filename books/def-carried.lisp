@@ -1133,6 +1133,18 @@
       (or (fn-cd-occurs x (car tree)) (fn-cd-occurs x (cdr tree)))
     (eq x tree)))
 
+;  An 'attachment value (:attachment-disallowed . X) is ACL2's mark that
+; nothing may be attached to the symbol (a defabsstobj :exec, an ancestor of
+; a meta rule or clause processor: other-events.lisp, rewrite.lisp's
+; "attachment" essay), never an attachment; read as one, it named the :exec
+; itself as its own attachment (r60 item 2).
+(defun fn-cd-current-prop (sym prop w)
+  (declare (xargs :mode :program))
+  (let ((v (getpropc sym prop nil w)))
+    (if (and (eq prop 'attachment) (consp v) (eq (car v) :attachment-disallowed))
+        nil
+      v)))
+
 (defun fn-cd-alias-of (fn prop wrld w)
   (declare (xargs :mode :program))
   ; a symbol whose CURRENT PROP (in W) mentions FN, found among the symbols
@@ -1142,7 +1154,7 @@
   ; removed attachment stops refusing (r28-F3).
   (cond ((atom wrld) nil)
         ((and (eq (cadar wrld) prop)
-              (fn-cd-occurs fn (getpropc (caar wrld) prop nil w)))
+              (fn-cd-occurs fn (fn-cd-current-prop (caar wrld) prop w)))
          (caar wrld))
         (t (fn-cd-alias-of fn prop (cdr wrld) w))))
 
@@ -1154,7 +1166,7 @@
   ; of stobj NAMES (basis-b.lisp; other-events.lisp attached-stobj), and
   ; IMPL is itself a defabsstobj, so a function run through it is an :exec
   ; in IMPL's absstobj-info -- the scan above finds it there.
-  (or (and (getpropc fn 'attachment nil w) fn)
+  (or (and (fn-cd-current-prop fn 'attachment w) fn)
       (fn-cd-alias-of fn 'attachment w w)
       (fn-cd-alias-of fn 'absstobj-info w w)))
 
