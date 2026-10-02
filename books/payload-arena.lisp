@@ -734,21 +734,33 @@
 ; KEYSTONE (lane arena-forget, PRF-ARF-1) fn-arena-forget-payload: the forget
 ; empties handle H and nothing else: H denotes the empty payload, every
 ; other handle keeps its payload, the count is unchanged (so no later seal
-; reuses H), and the value is still an arena.  The hypotheses are that the
-; value is an arena and H a handle of it: a forget outside the arena is the
-; identity (fn-arena-forget-outside), which is why H < count is not
-; redundant for the first conjunct.
+; reuses H), and an arena stays an arena.  The hypotheses left are the ones
+; with a counterexample: H and K naturals (a non-natural reads position 0).
+; H below the count is not needed (a forget outside the arena is the
+; identity, fn-arena-forget-outside, and a handle outside reads empty).
+(local
+ (defthm fn-arn-oct-update-is-update-nth
+   (equal (fn-oct-update h o xs) (update-nth h o xs))
+   :hints (("Goal" :in-theory (enable update-nth fn-oct-update)))))
+
+(local
+ (defthm fn-arn-len-of-update-nth-inside
+   (implies (and (natp h) (< h (len xs)))
+            (equal (len (update-nth h o xs)) (len xs)))
+   :hints (("Goal" :in-theory (enable update-nth)))))
+
 (defthm fn-arena-forget-payload
-  (implies (and (fn-arena-p fn-arena) (natp h) (< h (fn-arena-count fn-arena)))
-           (and (equal (fn-arena-payload h (fn-arena-forget h fn-arena)) nil)
-                (implies (and (natp k) (not (equal k h)))
-                         (equal (fn-arena-payload k (fn-arena-forget h fn-arena))
-                                (fn-arena-payload k fn-arena)))
-                (equal (fn-arena-count (fn-arena-forget h fn-arena))
-                       (fn-arena-count fn-arena))
+  (and (implies (natp h)
+                (equal (fn-arena-payload h (fn-arena-forget h fn-arena)) nil))
+       (implies (and (natp k) (not (equal k h)))
+                (equal (fn-arena-payload k (fn-arena-forget h fn-arena))
+                       (fn-arena-payload k fn-arena)))
+       (equal (fn-arena-count (fn-arena-forget h fn-arena))
+              (fn-arena-count fn-arena))
+       (implies (fn-arena-p fn-arena)
                 (fn-arena-p (fn-arena-forget h fn-arena))))
   :hints (("Goal" :in-theory (enable fn-arena-payload fn-arena-forget fn-arena-count
-                                     fn-arena-p fn-oct-update-is-update-nth))))
+                                     fn-arena-p nth))))
 
 ; A forget of a handle the arena does not have changes nothing.
 (defthm fn-arena-forget-outside
@@ -758,9 +770,9 @@
 
 ; The opened view: an update at H.
 (defthm fn-arena-forget-is-update-nth
-  (implies (and (fn-arena-p fn-arena) (natp h) (< h (len fn-arena)))
+  (implies (and (natp h) (< h (len fn-arena)))
            (equal (fn-arena-forget h fn-arena) (update-nth h nil fn-arena)))
-  :hints (("Goal" :in-theory (enable fn-arena-forget fn-arena-p fn-oct-update-is-update-nth))))
+  :hints (("Goal" :in-theory (enable fn-arena-forget))))
 
 (in-theory (disable fn-arena-forget))
 
