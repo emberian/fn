@@ -164,7 +164,8 @@ check "the unit runs the release in the new node" sh -c "[ \"\$(sed -n 's/^ExecS
 check "the rewritten unit dropped every Environment=FN_ line" sh -c "! grep -q '^Environment=FN_' '$UNIT_FILE'"
 check "the unit is active" active
 check "fn.toml names no retired path" sh -c "! grep -q '${OLD}[\"/]' '$NEW1/fn.toml' && ! grep -q retired '$NEW1/fn.toml'"
-check "--version printed the release" grep -Eq "fn ($REV|6\.7\.(0|[1-9][0-9]*) \($(printf %s "$REV" | cut -c1-12)\))" "$RUN/import.out"
+# deploy_fresh itself checks VERSION against the release sequence (D37).
+check "--version printed the release" grep -Eq "fn ($REV|[0-9]+(\.[0-9]+)+ \($(printf %s "$REV" | cut -c1-12)\))" "$RUN/import.out"
 check "health 0 and the probe held" sh -c "grep -q 'health rc=0' '$RUN/import.out' && grep -q 'probe tester@127.0.0.1:$PORT group fn.test rc=0' '$RUN/import.out'"
 check "the imported article is there (GROUP 211 1 before the probe's post)" grep -q '211 1 1 1 fn.test' "$RUN/import.out"
 
