@@ -1600,6 +1600,9 @@
     "tests/acl2/msgid-pages-tests",
     "books/msgid-pages-exec",
     "tests/acl2/msgid-pages-exec-tests",
+    "books/blake3-string",
+    "books/msgid-tag-exec",
+    "tests/acl2/blake3-string-tests",
     "books/msgid-linear",
     "tests/acl2/msgid-linear-tests",
     "books/msgid-linear-exec",
@@ -2345,26 +2348,26 @@
     "books/owner-retain-carried"
   ],
   "totals": {
-    "books": 2764,
-    "books_in_root_closure": 2619,
-    "roots": 2341,
-    "theorems": 37106,
-    "functions": 23514,
-    "assert_events": 25840,
+    "books": 2765,
+    "books_in_root_closure": 2620,
+    "roots": 2344,
+    "theorems": 37108,
+    "functions": 23533,
+    "assert_events": 25914,
     "must_fails": 2651,
     "prover_refusals": 0,
     "encapsulates": 228,
     "guards": {
       "verified": 3915,
       "declared-off": 3040,
-      "default-guarded": 12964,
-      "default-unguarded": 3595
+      "default-guarded": 12981,
+      "default-unguarded": 3597
     },
     "suspect_theorems": 1371,
     "export_hygiene_warnings": 402,
     "enabled_projection_warnings": 79,
     "teeth_form_warnings": 282,
-    "include_hygiene_warnings": 3596,
+    "include_hygiene_warnings": 3597,
     "host_names_warnings": 3155,
     "hand_written_record_warnings": 19
   },
@@ -4533,7 +4536,7 @@
     {
       "book": "books/blake3-string.lisp",
       "in_root_closure": true,
-      "is_root": false,
+      "is_root": true,
       "theorems": 60,
       "functions": 12,
       "guards": {
@@ -27538,7 +27541,7 @@
     {
       "book": "books/msgid-tag-exec.lisp",
       "in_root_closure": true,
-      "is_root": false,
+      "is_root": true,
       "theorems": 17,
       "functions": 3,
       "guards": {
@@ -52699,6 +52702,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/blake3-string-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 17,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 17,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 72,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 9,
+      "defmacros": 1,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/msgid-tag-exec"
+      ],
+      "system_includes": [
+        "arithmetic-5/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/blake3-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -72771,15 +72802,15 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 8,
+      "functions": 10,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 8
+        "default-unguarded": 10
       },
       "verify_guards_events": 0,
-      "assert_events": 9,
+      "assert_events": 11,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 4,
@@ -72788,7 +72819,8 @@
       "includes": [
         "../../books/peer-transit-indexed",
         "peer-inbound-tests",
-        "post-identity-index-tests"
+        "post-identity-index-tests",
+        "served-catalog-join-inv-tests"
       ],
       "system_includes": [],
       "suspects": [],
@@ -119946,6 +119978,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/peer-transit-indexed-tests.lisp",
+        "line": 15,
+        "include": "served-catalog-join-inv-tests",
+        "included": "tests/acl2/served-catalog-join-inv-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/policy-tests.lisp",
         "line": 5,
         "include": "crypto-seam-tests",
@@ -141894,70 +141933,70 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 2989,
+        "line": 3000,
         "name": "assoc-eq",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 3989,
+        "line": 4000,
         "name": "fn-owner-exposure-limits",
         "source": "host/owner-exposure-host.lisp",
         "reason": "defined in host/owner-exposure-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 4270,
+        "line": 4281,
         "name": "fn-owner-exposure-observe",
         "source": "host/owner-exposure-host.lisp",
         "reason": "defined in host/owner-exposure-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 4302,
+        "line": 4313,
         "name": "fn-owner-rx-parser-source-currentp",
         "source": "host/receiver-source-gate-host.lisp",
         "reason": "defined in host/receiver-source-gate-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 4302,
+        "line": 4313,
         "name": "stobj-let",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 4302,
+        "line": 4313,
         "name": "fn-rxp-octets",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 4302,
+        "line": 4313,
         "name": "fn-rxp-carry",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 4302,
+        "line": 4313,
         "name": "erp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 4302,
+        "line": 4313,
         "name": "fn-rxc-token",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 4641,
+        "line": 4652,
         "name": "cadddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
