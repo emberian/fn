@@ -42,6 +42,7 @@ from __future__ import annotations
 import argparse
 import collections
 import dataclasses
+import hashlib
 import heapq
 import json
 import math
@@ -60,7 +61,7 @@ HISTORY = ROOT / "planning" / "evidence" / "manifests"
 # (tooling-obstructions, 2026-09-28).  build/ is per tree and ignored; a stale
 # or unreadable summary is rebuilt, never trusted over the file.
 SUMMARY = ROOT / "build" / "wall-summary.json"
-SUMMARY_VERSION = 1
+SUMMARY_VERSION = 2  # 2: keyed by the SHA-256 of the bytes read
 # (manifest name, UNAVAILABLE | REFUSED) for each archived manifest a
 # summaries() call had to skip; scheduling reads it, no claim does.
 UNREADABLE: list[tuple[str, str]] = []
@@ -141,9 +142,9 @@ def history_entries(history: Path) -> list[tuple[str, list, object]]:
     index's (read by hash, stamped by hash, verified on every read;
     tools/evidence_store.py) plus any filed here and not yet added (stamped
     by size and mtime).  An indexed name is ALWAYS the index's: a working-tree
-    file at that path is never read as itself (r61 F9), and a summary is
-    cached against the index hash, so it is a function of verified bytes.
-    Another directory is read from disk alone.
+    file at that path is never read as itself (r61 F9).  `read` returns the
+    bytes (an indexed one verified against its line on every read); the
+    stamp only names the entry.  Another directory is read from disk alone.
     """
     entries: dict[str, tuple[str, list, object]] = {}
     default = history.resolve() == HISTORY.resolve()
@@ -162,7 +163,7 @@ def history_entries(history: Path) -> list[tuple[str, list, object]]:
             except OSError:
                 continue
             entries[path.name] = (path.name, [stat.st_size, stat.st_mtime_ns],
-                                  lambda path=path: path.read_text(encoding="utf-8"))
+                                  lambda path=path: path.read_bytes())
     if default:
         index = evidence_store.read_index(ROOT)
         rel_dir = HISTORY.relative_to(ROOT).as_posix()
@@ -171,7 +172,7 @@ def history_entries(history: Path) -> list[tuple[str, list, object]]:
             if name in entries or rel not in index:
                 continue
             entries[name] = (name, ["sha256", index[rel][0]],
-                             lambda rel=rel: evidence_store.read_text(ROOT, rel))
+                             lambda rel=rel: evidence_store.read_bytes(ROOT, rel))
     return list(entries.values())
 
 
@@ -179,7 +180,11 @@ def summaries(paths: list, summary: Path | None) -> list[dict | None]:
     """Each entry's manifest_summary, from the SUMMARY file where it is current.
 
     An entry is `history_entries`' (name, stamp, read); a bare Path is read
-    from disk."""
+    from disk.  Every entry's bytes are read on every call (an archived one
+    verified against its index line); the SUMMARY file only saves parsing
+    them, keyed by the SHA-256 of the bytes read now, so no cached summary
+    stands in for bytes that were not read, changed, or are gone (r61 F9).
+    The file is this tool's own cache under build/, trusted as build/ is."""
     known: dict = {}
     if summary is not None:
         try:
@@ -198,27 +203,33 @@ def summaries(paths: list, summary: Path | None) -> list[dict | None]:
                 found.append(None)
                 continue
             item = (item.name, [stat.st_size, stat.st_mtime_ns],
-                    lambda path=item: path.read_text(encoding="utf-8"))
-        name, stamp, read = item
+                    lambda path=item: path.read_bytes())
+        name, _, read = item
+        try:
+            data = read()
+        except OSError:
+            found.append(None)
+            continue
+        except evidence_store.EvidenceError as error:
+            # An archived manifest that is unavailable (cold cache,
+            # archive unreachable) or refused (bytes that do not hash to
+            # the index line).  Scheduling cost, not a claim: skip it, say
+            # so, never raise, never cache the miss (r61 F9).
+            UNREADABLE.append((name, evidence_store.outcome(error)))
+            print(f"chain_schedule: skipping {name}: {evidence_store.outcome(error)}: "
+                  f"{error}", file=sys.stderr)
+            found.append(None)
+            continue
+        stamp = ["sha256", hashlib.sha256(data).hexdigest()]
         entry = known.get(name)
         if isinstance(entry, dict) and entry.get("stamp") == stamp:
             value = entry.get("summary")
         else:
             changed = True
             try:
-                value = manifest_summary(json.loads(read()))
-            except (OSError, ValueError):
+                value = manifest_summary(json.loads(data))
+            except ValueError:
                 value = None
-            except evidence_store.EvidenceError as error:
-                # An archived manifest that is unavailable (cold cache,
-                # archive unreachable) or refused (bytes that do not hash to
-                # the index line).  Scheduling cost, not a claim: skip it, say
-                # so, never raise, never cache the miss (r61 F9).
-                UNREADABLE.append((name, evidence_store.outcome(error)))
-                print(f"chain_schedule: skipping {name}: {evidence_store.outcome(error)}: "
-                      f"{error}", file=sys.stderr)
-                found.append(None)
-                continue
         fresh[name] = {"stamp": stamp, "summary": value}
         found.append(value)
     if summary is not None and (changed or set(fresh) != set(known)):

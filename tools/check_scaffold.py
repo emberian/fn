@@ -17,6 +17,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 import evidence_store  # noqa: E402
 ERRORS: list[str] = []
 UNAVAILABLE: list[str] = []
+REFUSED: list[str] = []
 IGNORED = {".git", ".venv", ".cache", "build", "var", "__pycache__"}
 # The shared allocator pads to three digits; it does not stop at 999.
 REQUIREMENT_ID = r"[A-Z]{3}-\d{3,}"
@@ -31,6 +32,12 @@ def fail(message: str) -> None:
 def unavailable(message: str) -> None:
     """Uncertain, not failed: an indexed target whose bytes cannot be read."""
     UNAVAILABLE.append(message)
+
+
+def refused(message: str) -> None:
+    """Refused evidence: an indexed target whose bytes are there and do not
+    hash to its index line (a working-tree file or the archive object)."""
+    REFUSED.append(message)
 
 
 def prose(path: Path) -> str:
@@ -73,7 +80,7 @@ def link(target: str, base: Path, context: str) -> None:
             else:
                 evidence_store.read_bytes(ROOT, rel)
         except evidence_store.EvidenceRefused as error:
-            fail(f"{context}: indexed target does not match its index line: {target}: {error}")
+            refused(f"{context}: indexed target does not match its index line: {target}: {error}")
             return
         except evidence_store.EvidenceUnavailable as error:
             unavailable(f"{context}: indexed target cannot be read: {target}: {error}")
@@ -162,7 +169,7 @@ def scenario_implementation(ident: str, entry: dict) -> None:
     try:
         module = evidence_store.materialize(ROOT, module_rel)
     except evidence_store.EvidenceRefused as error:
-        fail(f"{ident}: implementation.test {test} does not match its index line: {error}")
+        refused(f"{ident}: implementation.test {test} does not match its index line: {error}")
         return
     except evidence_store.EvidenceUnavailable as error:
         unavailable(f"{ident}: implementation.test {test} cannot be read: {error}")
@@ -195,7 +202,7 @@ def scenario_implementation(ident: str, entry: dict) -> None:
         body = evidence_store.read_bytes(ROOT, log).decode("utf-8", errors="replace")
         prose = evidence_store.read_bytes(ROOT, record).decode("utf-8", errors="replace")
     except evidence_store.EvidenceRefused as error:
-        fail(f"{ident}: implementation log/record does not match its index line: {error}")
+        refused(f"{ident}: implementation log/record does not match its index line: {error}")
         return
     except evidence_store.EvidenceUnavailable as error:
         unavailable(f"{ident}: implementation log/record cannot be read: {error}")
@@ -206,6 +213,17 @@ def scenario_implementation(ident: str, entry: dict) -> None:
         fail(f"{ident}: {record} names neither {test} nor {Path(log).name}")
     if not any(name in body for name in names) and not log_named:
         fail(f"{ident}: neither {log} names {test} nor {record} names the log")
+
+
+def exit_status(errors: list, refused_: list, unavailable_: list) -> int:
+    """4 when evidence is refused (bytes that do not hash to their index
+    line), else 1 for any structural error, else 3 when evidence could not
+    be read (uncertain), else 0: never collapse 3 or 4 into 1 (r65 F4)."""
+    if refused_:
+        return evidence_store.EXIT_REFUSED
+    if errors:
+        return 1
+    return evidence_store.EXIT_UNAVAILABLE if unavailable_ else 0
 
 
 def conflict_markers() -> None:
@@ -382,12 +400,14 @@ def main() -> int:
     if set(requirements) - covered:
         fail(f"requirements without scenario specifications: {sorted(set(requirements) - covered)}")
 
-    if ERRORS or UNAVAILABLE:
+    if ERRORS or UNAVAILABLE or REFUSED:
         for error in ERRORS:
             print(f"ERROR: {error}", file=sys.stderr)
+        for message in REFUSED:
+            print(f"REFUSED: {message}", file=sys.stderr)
         for message in UNAVAILABLE:
             print(f"UNAVAILABLE: {message}", file=sys.stderr)
-        return 1 if ERRORS else evidence_store.EXIT_UNAVAILABLE
+        return exit_status(ERRORS, REFUSED, UNAVAILABLE)
     print(f"Scaffold OK: {len(markdown)} Markdown files, {len(requirements)} requirements, "
           f"{len(proofs)} proof targets, {len(scenarios)} scenario specifications.")
     print("Ledger OK: cited events exist, are not SUSPECT, and planning/ledger.md is current.")

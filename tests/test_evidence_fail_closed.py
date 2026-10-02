@@ -722,10 +722,54 @@ class RefusedIsNotUnavailableTests(Sandbox):
             self.assertEqual(store.main(["verify-paths", gone]), 3)
             self.assertEqual(store.main(["verify-paths", "planning/evidence/no.md"]), 1)
 
-    def test_F3_the_cut_gate_keeps_unavailable_distinct_from_red(self):
+    def cut_gate(self, gate: str, py_exit: dict[str, int], checklist: str = "") -> tuple[int, str]:
+        """Run cut_release.sh's real `gate`, `keep34` and gate function (cut
+        out of the script by name) with PY a stub whose exit depends on its
+        arguments; return (exit, verdict file)."""
         text = (TOOLS / "cut_release.sh").read_text()
-        self.assertIn("UNAVAILABLE) ", text)      # a verdict word of its own
-        self.assertIn("exit 3", text)
+        functions = []
+        for name in ("gate", "keep34", gate):
+            lines = text.splitlines()
+            start = next(i for i, line in enumerate(lines) if line.startswith(f"{name}() {{"))
+            end = start if lines[start].rstrip().endswith("}") else next(
+                i for i in range(start, len(lines)) if lines[i] == "}")
+            functions.append("\n".join(lines[start:end + 1]))
+        stub = self.base / "py"
+        stub.write_text("#!/bin/sh\ncase \"$*\" in\n" + "".join(
+            f"  *{key}*) exit {code} ;;\n" for key, code in py_exit.items())
+            + "esac\nexit 0\n")
+        stub.chmod(0o755)
+        script = self.base / "gate.sh"
+        out = self.base / "out"
+        out.mkdir(exist_ok=True)
+        script.write_text("\n".join([
+            "FROM=0 TO=99 DRY=no FIRST_RED= SKIPS=", f"OUT={out}", f"V={out}/verdict.txt",
+            f"PY={stub}", f"ROOT={TOOLS.parent}", "REV=HEAD CHECKLIST=checklist.md",
+            "stamp() { echo now; }", *functions, f"gate 05 x {gate}", "echo passed"]))
+        done = REAL_RUN(["sh", str(script)], cwd=self.root if checklist else self.base,
+                        capture_output=True, text=True)
+        verdict = (out / "verdict.txt").read_text() if (out / "verdict.txt").exists() else ""
+        return done.returncode, verdict
+
+    def test_F3_the_cut_closure_gate_keeps_3_and_4_distinct_from_red(self):
+        for code, word in ((3, "UNAVAILABLE"), (4, "REFUSED"), (1, "RED"), (2, "RED")):
+            rc, verdict = self.cut_gate("g_closure", {"green_check": code})
+            self.assertEqual(rc, 1 if word == "RED" else code, verdict)
+            self.assertIn(f"VERDICT {word} at 05 x", verdict)
+        rc, verdict = self.cut_gate("g_closure", {})
+        self.assertEqual(rc, 0, verdict)
+
+    def test_F3_the_cut_fundamentals_gate_keeps_3_and_4_distinct(self):
+        init_repo(self.root)
+        (self.root / "checklist.md").write_text(
+            "<!-- fundamentals -->\n| F1 | thing | bar | MET | planning/evidence/x.md |\n"
+            "<!-- end fundamentals -->\n")
+        git(self.root, "add", "checklist.md")
+        git(self.root, "commit", "-q", "-m", "c")
+        for code, word in ((3, "UNAVAILABLE"), (4, "REFUSED"), (1, "RED")):
+            rc, verdict = self.cut_gate("g_fundamentals", {"verify-paths": code}, checklist="y")
+            self.assertEqual(rc, code, verdict)
+            self.assertIn(f"VERDICT {word} at 05 x", verdict)
 
     def test_F3_claim_tools_exit_4_on_refused_evidence(self):
         import certified_claims
@@ -837,9 +881,11 @@ class LocalShadowTests(Sandbox):
         doc.write_text("x\n")
         with mock.patch.object(check_scaffold, "ROOT", self.root), \
                 mock.patch.object(check_scaffold, "ERRORS", []), \
+                mock.patch.object(check_scaffold, "REFUSED", []), \
                 mock.patch.object(check_scaffold, "UNAVAILABLE", []):
             check_scaffold.link(f"../{rel}", doc, "docs/x.md")
-            self.assertEqual(len(check_scaffold.ERRORS) + len(check_scaffold.UNAVAILABLE), 1)
+            self.assertEqual(len(check_scaffold.REFUSED), 1)
+            self.assertEqual(check_scaffold.ERRORS + check_scaffold.UNAVAILABLE, [])
 
 
 class SchedulerReadsVerifiedTests(Sandbox):
@@ -894,6 +940,145 @@ class ManifestCheckReadsBytesTests(Sandbox):
             code = evidence_manifests.cmd_check(args)
         self.assertIn("cited and resolvable: 0", out.getvalue())
         self.assertEqual(code, 3)
+
+
+
+# ===================================================================== r65
+# Codex review r65 on 28e18380c (liaison-verified).
+
+
+class R65RulesAndScopeTests(Sandbox):
+    def setUp(self):
+        super().setUp()
+        import evidence_history
+        self.history = evidence_history
+
+    def test_F2_a_glob_not_ending_in_star_drops_directory_descendants(self):
+        rules = self.history.parse_rules("glob:LANEDUMP*.md\nglob:planning/x/\nglob:a*\n")
+        lanedump, slash, star = rules
+        self.assertTrue(lanedump.matches("LANEDUMP-a.md"))
+        self.assertTrue(lanedump.matches("LANEDUMP-a.md/inner.txt"))   # filter-repo's <glob>/*
+        self.assertTrue(slash.matches("planning/x/y"))                 # <glob>* after a slash
+        self.assertFalse(star.matches("b/a"))
+
+    def test_scope_a_commit_named_only_by_a_reflog_is_measured(self):
+        init_repo(self.root)
+        self.write("planning/evidence/a.md", b"kept\n")
+        commit_all(self.root, "one")
+        self.write("planning/evidence/a.md", b"amended away, reflog only\n")
+        commit_all(self.root, "two")
+        lost = git(self.root, "rev-parse", "HEAD:planning/evidence/a.md").strip()
+        git(self.root, "reset", "-q", "--hard", "HEAD~1")
+        self.assertNotIn(lost, git(self.root, "rev-list", "--objects", "--all"))
+        rules = self.history.parse_rules("planning/evidence\n")
+        found = self.history.union(self.history.rule_blobs(
+            self.root, rules, self.history.snapshot_refs(self.root)))
+        self.assertIn(lost, found)
+
+    def test_drift_from_the_pinned_summary_is_refused(self):
+        init_repo(self.root)
+        self.write("planning/evidence/a.md", b"a\n")
+        commit_all(self.root, "one")
+        rules = self.base / "rules.txt"
+        rules.write_text("planning/evidence\n")
+        self.archive.mkdir()
+        pin = self.base / "pin.json"
+
+        def run(*extra):
+            out = io.StringIO()
+            with mock.patch.object(store, "ROOT", self.root), \
+                    contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
+                return self.history.main(["complete", "--rules", str(rules), *extra]), \
+                    out.getvalue()
+        self.assertEqual(run("--migrate", "--write", str(pin))[0], 0)
+        self.assertEqual(json.loads(pin.read_text())["index"]["rows"], 0)
+        self.write("docs/unrelated.md", b"moves a ref, drops nothing new\n")
+        commit_all(self.root, "two")
+        self.assertEqual(run("--check", str(pin))[0], 0)
+        self.write("planning/evidence/b.md", b"filed the old way\n")
+        commit_all(self.root, "three")
+        code, out = run("--migrate", "--check", str(pin))
+        self.assertEqual(code, 1, out)       # archived now, but not what was pinned
+        self.assertIn("DRIFT dropped-blob set", out)
+
+    def test_index_rows_are_measured_in_the_archive(self):
+        init_repo(self.root)
+        self.write(REL, b"filed\n")
+        store.put(self.root, [REL], publish=False)   # indexed, never archived
+        (self.root / REL).unlink()
+        commit_all(self.root, "index")
+        rules = self.base / "rules.txt"
+        rules.write_text("planning/evidence\n")
+        self.archive.mkdir()
+        out = io.StringIO()
+        with mock.patch.object(store, "ROOT", self.root), contextlib.redirect_stdout(out):
+            self.assertEqual(self.history.main(["complete", "--rules", str(rules)]), 1)
+        self.assertIn("INDEX ROW NOT ARCHIVED+VERIFIED", out.getvalue())
+
+
+class R65DurabilityTests(Sandbox):
+    def test_F3_every_placement_syncs_the_archive_root_and_its_parent(self):
+        import evidence_ingest
+        data = b"into an existing shard\n"
+        sha = store.sha256_bytes(data)
+        (self.archive / store.object_rel(sha)).parent.mkdir(parents=True)
+        opened: list[str] = []
+        real_open = os.open
+
+        def track(path, flags, *args, **kwargs):
+            opened.append(os.fspath(path))
+            return real_open(path, flags, *args, **kwargs)
+        for _ in range(2):          # placed, then present: both sync the chain
+            opened.clear()
+            with mock.patch.object(os, "open", side_effect=track):
+                evidence_ingest.place(self.archive, sha, store.compress(data))
+            self.assertIn(str(self.archive), opened)
+            self.assertIn(str(self.archive.parent), opened)
+            self.assertIn(str(self.archive / "objects"), opened)
+
+
+class R65OutcomesTests(Sandbox):
+    def test_F4_check_scaffold_keeps_3_and_4(self):
+        import check_scaffold
+        self.assertEqual(check_scaffold.exit_status([], [], []), 0)
+        self.assertEqual(check_scaffold.exit_status([], [], ["u"]), 3)
+        self.assertEqual(check_scaffold.exit_status(["e"], [], ["u"]), 1)
+        self.assertEqual(check_scaffold.exit_status(["e"], ["r"], ["u"]), 4)
+
+    def test_F4_scenario_implementation_refuses_a_mismatched_record(self):
+        import check_scaffold
+        record = "planning/evidence/run.md"
+        log = "planning/evidence/run.log"
+        self.write("tests/test_x.py", b"class Case: pass\n")
+        self.write(log, b"tests.test_x Case ok\n")
+        self.write(record, b"test_x ran\n")
+        store.put(self.root, [log, record], publish=False)
+        self.write(record, b"edited after filing\n")
+        entry = {"status": "implemented", "implementation": {
+            "test": "tests.test_x", "cases": ["Case"], "native": False,
+            "log": log, "record": record}}
+        with mock.patch.object(check_scaffold, "ROOT", self.root), \
+                mock.patch.object(check_scaffold, "ERRORS", []), \
+                mock.patch.object(check_scaffold, "REFUSED", []), \
+                mock.patch.object(check_scaffold, "UNAVAILABLE", []):
+            check_scaffold.scenario_implementation("SCN-001", entry)
+            self.assertEqual(len(check_scaffold.REFUSED), 1, check_scaffold.ERRORS)
+
+    def test_F5_a_cached_summary_never_stands_in_for_missing_bytes(self):
+        import chain_schedule
+        history = self.root / "planning/evidence/manifests"
+        rel = "planning/evidence/manifests/certify-20261002T000000Z-1.json"
+        sha = "e" * 64
+        store.write_index(self.root, {rel: (sha, 10)})
+        summary = self.base / "summary.json"
+        summary.write_text(json.dumps({"version": chain_schedule.SUMMARY_VERSION, "files": {
+            "certify-20261002T000000Z-1.json": {
+                "stamp": ["sha256", sha],
+                "summary": {"box": "hbox", "cpus": 1, "books": {"books/a": [1.0, None]}}}}}))
+        with mock.patch.multiple(chain_schedule, ROOT=self.root, HISTORY=history), \
+                contextlib.redirect_stderr(io.StringIO()):
+            entries = chain_schedule.history_entries(history)
+            self.assertEqual(chain_schedule.summaries(entries, summary), [None])
 
 
 if __name__ == "__main__":

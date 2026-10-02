@@ -87,6 +87,20 @@ def _readable_and_matching(path: Path, sha: str) -> bool:
         return False
 
 
+def sync_chain(directory: Path, target: Path) -> None:
+    """fsync every directory entry from the object's shard up to the archive
+    root's parent, on every placement (r65 F3): a name created by an earlier,
+    crashed call is made durable here too, not only one this call made."""
+    walk = target.parent
+    root = directory.resolve()
+    while True:
+        fsync_dir(walk)
+        if walk.resolve() == root:
+            break
+        walk = walk.parent
+    fsync_dir(walk.parent)
+
+
 def quarantine(directory: Path, path: Path, sha: str) -> Path:
     """Move a file that does not verify out of the object namespace (kept)."""
     place_dir = directory / "quarantine"
@@ -117,8 +131,7 @@ def place(directory: Path, sha: str, data_gz: bytes | None = None,
             # Verified, but perhaps never synced (a crashed writer, a copy
             # made by hand): make it durable before anyone indexes it.
             fsync_file(target)
-            fsync_dir(target.parent)
-            fsync_dir(target.parent.parent)
+            sync_chain(directory, target)
             if staged is not None:
                 staged.unlink()
             return "present"
@@ -135,8 +148,7 @@ def place(directory: Path, sha: str, data_gz: bytes | None = None,
             handle.flush()
             os.fsync(handle.fileno())
         os.replace(temporary, target)
-    fsync_dir(target.parent)
-    fsync_dir(target.parent.parent)
+    sync_chain(directory, target)
     if not _readable_and_matching(target, sha):
         raise ValueError(f"object {sha} did not read back verified after placement")
     return outcome
