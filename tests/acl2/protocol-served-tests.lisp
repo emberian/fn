@@ -33,8 +33,9 @@
 ;      fn-proto-archive-keywordp-is-nntp-archive-keywordp witnessed on every
 ;      served keyword, with a mutation: a table whose :view :select rows are
 ;      GROUP alone differs from the machine on LISTGROUP.
-;  (5) the fail-closed checks of the served columns: the real table passes;
-;      a served row without :view, forms without :cost, a :pinned row whose
+;  (5) the fail-closed checks of the served table: the real one passes; a
+;      served command with no served row, a served row no protocol row
+;      names, a served row without :view, forms without :cost, a :pinned row whose
 ;      arm mentions the live formal, a :view-decided without a registry id,
 ;      two forms of one name and a form list whose last test is not t are
 ;      refused.
@@ -119,7 +120,7 @@
               (pst-teeth-lines (cdr names) rows))
     nil))
 
-(defconst *pst-lines* (pst-teeth-lines *fn-proto-cat-rows* *fn-proto-table*))
+(defconst *pst-lines* (pst-teeth-lines *fn-proto-cat-rows* *fn-proto-served-table*))
 
 ;; (1) The positive witness: every hypothesis (fn-scol-okp is a defun-nx:
 ;; its definition is opened so the fixture evaluates it), then the
@@ -209,9 +210,9 @@
     t))
 
 (defthm pst-rows-reach-both-routes
-  (and (equal (len (pst-first-lines *fn-proto-cat-rows* *fn-proto-table*))
+  (and (equal (len (pst-first-lines *fn-proto-cat-rows* *fn-proto-served-table*))
               (len *fn-proto-cat-rows*))
-       (pst-reaches (pst-first-lines *fn-proto-cat-rows* *fn-proto-table*)
+       (pst-reaches (pst-first-lines *fn-proto-cat-rows* *fn-proto-served-table*)
                     (pst-arch 3) (pst-index 3) *pst-a* *pst-c*))
   :rule-classes nil)
 
@@ -392,29 +393,40 @@
 
 (defthm pst-table-fails-closed
   (and (fn-proto-tablep *fn-proto-table*)
+       (fn-proto-served-tablep *fn-proto-served-table* *fn-proto-table*)
+       ;; a served command with no served row
+       (not (fn-proto-served-tablep (cdr *fn-proto-served-table*) *fn-proto-table*))
+       ;; a served row for a command no protocol row names
+       (not (fn-proto-served-tablep (cons '("FROBNICATE" :view :none :effect :none :view-rfc "none")
+                                          *fn-proto-served-table*)
+                                    *fn-proto-table*))
        ;; a served row without a view
-       (not (fn-proto-tablep (pst-edit "GROUP" :view :drop *fn-proto-table*)))
+       (not (fn-proto-served-tablep (pst-edit "GROUP" :view :drop *fn-proto-served-table*) *fn-proto-table*))
        ;; forms without a cost
-       (not (fn-proto-tablep (pst-edit "XPAT" :cost :drop *fn-proto-table*)))
+       (not (fn-proto-served-tablep (pst-edit "XPAT" :cost :drop *fn-proto-served-table*) *fn-proto-table*))
        ;; a pinned row whose arm reads the live view (the lint)
-       (not (fn-proto-tablep
+       (not (fn-proto-served-tablep
              (pst-edit "XPAT" :forms
                        '(("any" :test t :cat (fn-nntp-xpat-response-cat session args live fn-arena fn-cat)
                           :by (fn-nntp-xpat-response-cat-is-archive)))
-                       *fn-proto-table*)))
+                       *fn-proto-served-table*)
+             *fn-proto-table*))
        ;; a ruling without its registry row
-       (not (fn-proto-tablep (pst-edit "LIST" :view-decided :completed *fn-proto-table*)))
+       (not (fn-proto-served-tablep (pst-edit "LIST" :view-decided :completed *fn-proto-served-table*)
+                                    *fn-proto-table*))
        ;; two forms of one name
-       (not (fn-proto-tablep
+       (not (fn-proto-served-tablep
              (pst-edit "XPAT" :forms
                        '(("any" :test (null args) :cat (fn-nntp-single session "501 syntax error"))
                          ("any" :test t :cat (fn-nntp-xpat-response-cat session args v fn-arena fn-cat)))
-                       *fn-proto-table*)))
+                       *fn-proto-served-table*)
+             *fn-proto-table*))
        ;; a form list whose last test is not t
-       (not (fn-proto-tablep
+       (not (fn-proto-served-tablep
              (pst-edit "XPAT" :forms
                        '(("any" :test (consp args) :cat (fn-nntp-xpat-response-cat session args v fn-arena fn-cat)))
-                       *fn-proto-table*)))
+                       *fn-proto-served-table*)
+             *fn-proto-table*))
        ;; a row that no HELP line lists is refused by the served book's
        ;; assertion, not here: the set check reads two declarations
        (equal (len *fn-proto-served-names*) 31))

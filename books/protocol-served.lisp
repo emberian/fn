@@ -57,7 +57,7 @@
 (include-book "served-catalog-dispatch")
 (include-book "served")       ; fn-served-advance-eventp
 (include-book "nntp-help")    ; *fn-nntp-served-command-table*
-(include-book "protocol-table")
+(include-book "protocol-served-table")
 
 (local (in-theory (disable (tau-system))))
 
@@ -111,7 +111,7 @@
                                 (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
                     :verify-guards nil))
     (cond
-     ,@(fn-proto-cat-flat-clauses *fn-proto-table*)
+     ,@(fn-proto-cat-flat-clauses *fn-proto-served-table*)
      (t (fn-nntp-archive-command-cat ,@*fn-proto-cat-formals*)))))
 
 ; -----------------------------------------------------------------------------
@@ -358,7 +358,7 @@
                (fn-proto-cat-row-is-pinned-events (cdr names) rows))))
     nil))
 
-(make-event (cons 'progn (fn-proto-cat-row-is-pinned-events *fn-proto-cat-rows* *fn-proto-table*)))
+(make-event (cons 'progn (fn-proto-cat-row-is-pinned-events *fn-proto-cat-rows* *fn-proto-served-table*)))
 
 ; -----------------------------------------------------------------------------
 ; The case split: a declared row by its generated case, an undeclared one by

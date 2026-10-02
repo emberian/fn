@@ -45,6 +45,9 @@ import ledger  # noqa: E402
 from ledger import Sym  # noqa: E402
 
 TABLE = ROOT / "books" / "protocol-table.lisp"
+# The served columns (lane def-command): one row per served command, joined
+# with the protocol table by name (books/protocol-served-table.lisp).
+SERVED_TABLE = ROOT / "books" / "protocol-served-table.lisp"
 
 # The productions tests/fuzz_nntp.py interprets (Gen.words).
 FUZZ_OPS = {"pool", "choice", "opt", "msgid", "pool+msgid", "alt", "split",
@@ -140,26 +143,29 @@ def _plist(items) -> dict:
     return out
 
 
-def read_table(path: Path = TABLE) -> list:
+def read_table(path: Path = TABLE, head: str = "defprotocol") -> list:
     forms = ledger.Reader(path.read_text(encoding="utf-8")).top_level()
     for form, _line in forms:
-        if isinstance(form, list) and form and form[0] == "defprotocol":
+        if isinstance(form, list) and form and form[0] == head:
             return form[2:]
-    raise SystemExit("%s: no defprotocol form" % path)
+    raise SystemExit("%s: no %s form" % (path, head))
 
 
-def load(path: Path = TABLE) -> dict:
+def load(path: Path = TABLE, served_path: Path = SERVED_TABLE) -> dict:
     rows = []
+    served = {str(row[0]): _plist(row[1:])
+              for row in read_table(served_path, "defprotocol-served")}
     for row in read_table(path):
         name = str(row[0])
         pl = _plist(row[1:])
+        sv = served.get(name, {})
         replies = []
         for e in pl.get("replies") or []:
             replies.append({"code": int(e[0]), "class": _kw(e[1]), "layer": _kw(e[2]),
                             "key": _kw(e[3]), "text": str(e[4]),
                             "flags": [_kw(f) for f in e[5:]]})
-        cost = _plist(pl.get("cost") or [])
-        quantum = pl.get("quantum")
+        cost = _plist(sv.get("cost") or [])
+        quantum = sv.get("quantum")
         rows.append({
             "name": name,
             "rfc": str(pl.get("rfc", "")),
@@ -167,16 +173,17 @@ def load(path: Path = TABLE) -> dict:
             # The served columns (lane def-command): the view policy per
             # command, its effect, the served clauses and their lemmas.
             "arms": bool(pl.get("arms")),
-            "view": _kw(pl["view"]) if "view" in pl else None,
-            "view_rfc": str(pl.get("view_rfc", pl.get("view-rfc", ""))),
-            "view_decided": _decided(pl.get("view-decided")),
-            "effect": _kw(pl["effect"]) if "effect" in pl else None,
-            "forms": _forms(pl.get("forms"), _kw(pl["view"]) if "view" in pl else None),
+            "served": name in served,
+            "view": _kw(sv["view"]) if "view" in sv else None,
+            "view_rfc": str(sv.get("view-rfc", "")),
+            "view_decided": _decided(sv.get("view-decided")),
+            "effect": _kw(sv["effect"]) if "effect" in sv else None,
+            "forms": _forms(sv.get("forms"), _kw(sv["view"]) if "view" in sv else None),
             "cost": {"unrestricted": str(cost.get("unrestricted", "")),
                      "restricted": str(cost.get("restricted", ""))} if cost else None,
             "quantum": ([_kw(quantum[0])] + [str(x).lower() for x in quantum[1:]]
                         if isinstance(quantum, list) and quantum else None),
-            "teeth": [str(t) for t in (pl.get("teeth") or [])],
+            "teeth": [str(t) for t in (sv.get("teeth") or [])],
             "parser": _symbols(pl.get("parser")),
             "model": _symbols(pl.get("model")),
             "cat": _symbols(pl.get("cat")),
@@ -188,7 +195,11 @@ def load(path: Path = TABLE) -> dict:
             "fuzz": _production(pl["fuzz"]) if "fuzz" in pl else None,
             "faq": str(pl.get("faq", "")),
         })
-    return {"source": TABLE.relative_to(ROOT).as_posix(), "rows": rows}
+    names = {r["name"] for r in rows}
+    return {"source": TABLE.relative_to(ROOT).as_posix(),
+            "served_source": SERVED_TABLE.relative_to(ROOT).as_posix(),
+            "rows": rows,
+            "served_orphans": sorted(n for n in served if n not in names)}
 
 
 def row(table: dict, name: str) -> dict:
@@ -268,6 +279,8 @@ def check(table: dict) -> list[str]:
     defined = defined_functions()
     theorems = defined_theorems()
     seen = set()
+    for n in table["served_orphans"]:
+        failures.append("%s has a row %s that no protocol row names" % (table["served_source"], n))
     for r in table["rows"]:
         if r["name"] in seen:
             failures.append("row %s appears twice" % r["name"])
@@ -283,8 +296,11 @@ def check(table: dict) -> list[str]:
                                 % (r["name"], form, fn))
         # The served columns: a served row (one with :arms) names its view;
         # the lemmas, definitions and cursor predicate a row names exist.
-        if r["arms"] and r["view"] is None:
-            failures.append("row %s is served (has :arms) and names no :view" % r["name"])
+        if (r["arms"] or r["dispatch"] == "auth") and not r["served"]:
+            failures.append("row %s is served and has no row in %s"
+                            % (r["name"], table["served_source"]))
+        if r["served"] and r["view"] is None:
+            failures.append("row %s names no :view" % r["name"])
         if r["forms"] and r["cost"] is None:
             failures.append("row %s has :forms and no :cost" % r["name"])
         for form in r["forms"]:

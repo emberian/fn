@@ -1791,6 +1791,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/protocol-dispatch \
 	tests/acl2/protocol-codes-tests \
 	tests/acl2/protocol-dispatch-tests \
+	books/protocol-served-table \
 	books/protocol-served \
 	tests/acl2/protocol-served-tests \
 	tests/acl2/protocol-codes-hra-tests \
