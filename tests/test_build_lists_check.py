@@ -18,6 +18,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+from tools import commit_map
+
 from tools import build_lists_check as check  # noqa: E402
 
 CHECKPOINT_LD = '(ld "host/checkpoint-host.lisp" :ld-error-action :error)\n'
@@ -254,7 +256,7 @@ class BuildListsCheckTests(unittest.TestCase):
             root = Path(tmp)
             shutil.copytree(ROOT / "host", root / "host")
             for path in ("host/native/io.lisp", "host/native/checkpoint.lisp"):
-                old = subprocess.run(["git", "show", f"c7b76b59:{path}"], cwd=ROOT,
+                old = subprocess.run(["git", "show", f"{commit_map.resolve('c7b76b59')}:{path}"], cwd=ROOT,
                                      check=True, capture_output=True, text=True).stdout
                 (root / path).write_text(old)
             found = check.findings(root=root)
@@ -268,7 +270,7 @@ class BuildListsCheckTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             shutil.copytree(ROOT / "host", root / "host")
-            old = subprocess.run(["git", "show", "6f397c158:host/native/operator.lisp"],
+            old = subprocess.run(["git", "show", commit_map.resolve("6f397c158") + ":host/native/operator.lisp"],
                                  cwd=ROOT, check=True, capture_output=True,
                                  text=True).stdout
             (root / "host/native/operator.lisp").write_text(old)

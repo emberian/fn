@@ -9,6 +9,9 @@ import json
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from commit_map import resolve
+
 ROOT = Path(__file__).resolve().parents[1]
 REVISION = "640f482a1"
 PATHS = [
@@ -30,7 +33,7 @@ def main():
         raise SystemExit("usage: bpsec_registered_source_observation.py /absolute/path/to/sbcl")
     destination = ROOT / "build/bpsec-registered-source-observation"
     destination.mkdir(parents=True, exist_ok=True)
-    full_revision = subprocess.check_output(["git", "rev-parse", REVISION], cwd=ROOT, text=True).strip()
+    full_revision = resolve(REVISION, ROOT)
     manifest = []
     for path in PATHS:
         body = subprocess.check_output(["git", "show", f"{full_revision}:{path}"], cwd=ROOT)
@@ -40,7 +43,7 @@ def main():
         output = destination / path
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_bytes(body)
-        manifest.append(dict(revision=full_revision, path=path, sha256=digest))
+        manifest.append(dict(revision=REVISION, path=path, sha256=digest))
     # Use only the frozen trusted recording loader, not its original scenarios.
     # Path adjustment is an owned test adapter; production bodies are unchanged.
     prefix = (destination / PATHS[-1]).read_text().split("; Complete raw transfer", 1)[0]
@@ -55,7 +58,7 @@ def main():
     framing = ROOT / "build/bpsec-source-observation"
     framing.mkdir(parents=True, exist_ok=True)
     for revision, path, digest in DEPENDENCIES:
-        body = subprocess.check_output(["git", "show", f"{revision}:{path}"], cwd=ROOT)
+        body = subprocess.check_output(["git", "show", f"{resolve(revision, ROOT)}:{path}"], cwd=ROOT)
         if hashlib.sha256(body).hexdigest() != digest:
             raise SystemExit(f"framing source mismatch: {path}")
         (framing / Path(path).name).write_bytes(body)

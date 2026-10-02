@@ -42,6 +42,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import certified_claims  # noqa: E402
+import commit_map
 import evidence_store  # noqa: E402
 import green_check  # noqa: E402
 import ledger  # noqa: E402
@@ -382,16 +383,17 @@ def pin_image(name: str, root: Path = ROOT) -> int:
         books = sorted({theorem(tree, name_).book
                         for cap in view["capabilities"]
                         for name_ in (cap["keystone"], cap.get("bridge")) if name_})
+    revision = commit_map.resolve(image["source"], root)
     digests = {}
     for rel in files:
-        blob = subprocess.run(["git", "-C", str(root), "show", f"{image['source']}:{rel}"],
+        blob = subprocess.run(["git", "-C", str(root), "show", f"{revision}:{rel}"],
                               check=True, capture_output=True).stdout
         digests[rel] = hashlib.sha256(blob).hexdigest()
     image["host_sha256"] = digests
     if books:
         pinned = {}
         for rel in books:
-            found = subprocess.run(["git", "-C", str(root), "show", f"{image['source']}:{rel}"],
+            found = subprocess.run(["git", "-C", str(root), "show", f"{revision}:{rel}"],
                                    capture_output=True)
             if found.returncode == 0:
                 pinned[rel] = hashlib.sha256(found.stdout).hexdigest()

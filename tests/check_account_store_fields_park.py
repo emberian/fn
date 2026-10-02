@@ -19,6 +19,7 @@ p.add_argument('--frozen-preparation', action='store_true')
 p.add_argument('--continuation', type=Path)
 a = p.parse_args()
 sys.path.insert(0, str(a.tree))
+from tools.commit_map import resolve
 ns = runpy.run_path(str(a.tree / 'tests/test_native_account_adoption_transport.py'))
 module = ast.parse((a.tree / 'tests/test_native_account_adoption_transport.py').read_text())
 test = next(x for x in module.body if isinstance(x, ast.FunctionDef) and x.name == 'test_actual_configuration_claim_parks_and_rebinds_without_issue')
@@ -27,7 +28,7 @@ program += '\n(defun true-listp (x) (or (null x) (and (consp x) (true-listp (cdr
 
 def named(path, prefix):
     if path == 'host/account-config-preparation-host.lisp' and a.frozen_preparation:
-        text = subprocess.check_output(['git', 'show', '52ef6a642:' + path], cwd=a.tree, text=True)
+        text = subprocess.check_output(['git', 'show', resolve('52ef6a642', a.tree) + ':' + path], cwd=a.tree, text=True)
     elif path == 'host/account-config-continuation-host.lisp' and a.continuation:
         text = a.continuation.read_text()
     else:
