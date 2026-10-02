@@ -331,11 +331,13 @@ as at 7aad444ce."
 
 ;;; Measurement (adapter-retirement-2; opt-in, FN_OWNER_MEASURE=1 at start):
 ;;; per label, how many times the owner mutex was held, for how long, and
-;;; how many octets SBCL allocated while it was (sb-ext:get-bytes-consed is
-;;; process-wide: a measurement run keeps other threads quiet).  The label
-;;; is the dynamic *fnn-owner-measure-label*: :control inside a control
-;;; request (an operator post), :feed-flush for the flush's own cost (nested
-;;; in a hold), :other otherwise.  Off, it costs one special-variable test
+;;; how many octets SBCL allocated while it was, in all and in the largest
+;;; single hold (sb-ext:get-bytes-consed is process-wide: a measurement run
+;;; keeps other threads quiet).  The label is the dynamic
+;;; *fnn-owner-measure-label*: :control inside a control request (an
+;;; operator post), :feed-flush for the flush's own cost (nested in a hold),
+;;; otherwise the gate class the hold was admitted as (:commit for the
+;;; committer's quanta, which run every served POST's attempt).  Off, it costs one special-variable test
 ;;; per hold.  The totals go to stderr when the owner stops
 ;;; (fnn-owner-measure-report).  It decides nothing and changes no state the
 ;;; owner reads.
@@ -356,11 +358,12 @@ SBCL's SB-UNIX may lack the internal clock symbols."
          (consed (- (sb-ext:get-bytes-consed) bytes))
          (row (or (gethash label *fnn-owner-measure-table*)
                   (setf (gethash label *fnn-owner-measure-table*)
-                        (list 0 0 0 0)))))
+                        (list 0 0 0 0 0)))))
     (incf (first row))
     (incf (second row) held)
     (setf (third row) (max (third row) held))
-    (incf (fourth row) consed)))
+    (incf (fourth row) consed)
+    (setf (fifth row) (max (fifth row) consed))))
 
 (defmacro fnn-owner-measured ((label) &body body)
   (let ((start (gensym "START")) (bytes (gensym "BYTES")))
@@ -375,12 +378,12 @@ SBCL's SB-UNIX may lack the internal clock symbols."
   (when *fnn-owner-measure*
     (maphash
      (lambda (label row)
-       (destructuring-bind (count held most consed) row
+       (destructuring-bind (count held most consed most-consed) row
          (format *error-output*
-                 "~&fn-owner-measure ~(~a~) holds=~d held-us=~d max-us=~d bytes=~d~%"
+                 "~&fn-owner-measure ~(~a~) holds=~d held-us=~d max-us=~d bytes=~d max-bytes=~d~%"
                  label count
                  held most
-                 consed)))
+                 consed most-consed)))
      *fnn-owner-measure-table*)
     (finish-output *error-output*)))
 
@@ -1597,7 +1600,10 @@ nothing.  The caller holds the owner mutex.  Returns the number shed."
                 (handler-case (fnn-owner-gate-check ,g)
                   (serious-condition (,failure)
                     (fnn-owner-gate-fail-locked ,s ,g ,failure)))
-                (fnn-owner-measured (*fnn-owner-measure-label*) ,@body))
+                (fnn-owner-measured ((if (eq *fnn-owner-measure-label* :other)
+                                         ,c
+                                       *fnn-owner-measure-label*))
+                  ,@body))
            ;; Cleanup calls the core too. Fence its failure before releasing
            ;; owner exclusion; gate abort wakes waiters without another pick.
            (handler-case (fnn-owner-gate-leave ,g ,c (fnn-ms-since ,h) ,w)

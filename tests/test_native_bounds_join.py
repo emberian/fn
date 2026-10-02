@@ -227,6 +227,46 @@ class TenMibArticleTests(JoinFixture):
         self.assertTrue(alive, "the owner stopped serving after the 10 MiB articles")
 
 
+class PostHeapUnderMutexTests(JoinFixture):
+    """Sweep S002 (D27): a served POST at a large article's size does not
+    build the article as a cons list (16 octets of heap per octet) under the
+    owner mutex.
+
+    The owner runs with FN_OWNER_MEASURE=1 (host/native/owner.lisp
+    fnn-owner-measured): at stop it prints, per gate class, the holds, the
+    time held and the octets SBCL allocated, in all and in the largest single
+    hold.  One 10 MiB POST; the largest hold of any class must allocate less
+    than one list of the article would (16 x 10 MiB).  Before S002 the
+    served attempt built two (the login gate's and the transit attempt's).
+    An image whose report predates the max-bytes column is judged by its
+    `bytes' total, which bounds every single hold from above.
+    """
+
+    def test_ten_mib_post_allocates_less_than_one_article_list_under_the_mutex(self):
+        created = self.op("init", *INIT_PROFILE_16M, "fn.test")
+        self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
+        owner = self.node.start(image=self.image, env={"FN_OWNER_MEASURE": "1"})
+        try:
+            rows = self.post_and_reread([MIB10])
+        finally:
+            self.node.stop()
+        report = owner.stderr.since(0).decode("utf-8", "replace")
+        table = {}
+        for line in report.splitlines():
+            if line.startswith("fn-owner-measure "):
+                words = line.split()
+                table[words[1]] = {k: int(v) for k, v in
+                                   (w.split("=", 1) for w in words[2:])}
+                print(line, flush=True)
+        self.assertTrue(rows[MIB10][0].startswith("240"), rows)
+        self.assertTrue(rows[MIB10][1], "the 10 MiB POST did not reread identical")
+        self.assertTrue(table, "no fn-owner-measure report on stderr")
+        largest = max(row.get("max-bytes", row["bytes"]) for row in table.values())
+        print("largest hold allocated", largest, "octets;",
+              round(largest / MIB10, 2), "x the article", flush=True)
+        self.assertLess(largest, 16 * MIB10, table)
+
+
 class SpanReferenceTests(JoinFixture):
     """SCN-110: the span read serves what the per-read-list read served.
 
