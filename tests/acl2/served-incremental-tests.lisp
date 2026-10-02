@@ -297,3 +297,82 @@
                                    (fn-nntp-env-closed nil) nil 3 *sit-c*)
           (fn-nntp-list-command (fn-nntp-open-session *sit-state0*) *sit-state0* nil nil))
    :rule-classes nil))
+
+;;; Codex r51 F3: the edge cases, every arm at once.  A catalog whose row 1
+;;; (<b@x>, fn.test 2 and fn.other 1) is withdrawn at version 2, and a state
+;;; with a third, never-posted group.
+
+(defconst *sit-cw* (fn-cat-mark-withdrawn 1 2 2 *sit-c*))
+(defmacro sit-wstate (v)
+  `(fn-make-state '("fn.test" "fn.other" "fn.empty")
+                  (list (cons "fn.test" 4) (cons "fn.other" 2) (cons "fn.empty" 1))
+                  (fn-cat-view-articles ,v *sit-a* *sit-cw*) 1 nil nil))
+(defmacro sit-wat (n) `(fn-nntp-set-cursor (fn-nntp-open-session (sit-wstate 3)) "fn.test" ,n))
+
+;; REACHABLE (every keystone's antecedent holds: fresh, a state, the view):
+;; LIST shows the EMPTY group as 0 1 (RFC 3977 6.1.1.2's preferred empty
+;; form) and the ALL-WITHDRAWN group fn.other as 1 2; NEXT from 1 skips the
+;; withdrawn 2 to 3 and LAST from 3 to 1; the WITHDRAWN CURRENT article 2
+;; answers 420 to STAT and to OVER; OVER <msgid> of the withdrawn <b@x> and
+;; of the ABSENT <zz@x> answer 430.  Each equal to the list model.
+(defthm sit-edges
+  (and (fn-cnx-freshp *sit-cw*) (fn-statep (sit-wstate 3))
+       (fn-scat-list-active-formp nil)
+       (equal (fn-state-articles (sit-wstate 3)) (fn-cat-view-articles 3 *sit-a* *sit-cw*))
+       (equal (len (fn-cat-view-articles 3 *sit-a* *sit-cw*)) 2)
+       (equal (fn-scat-active-lines (sit-wstate 3) '("fn.test" "fn.other" "fn.empty") nil nil 3 *sit-cw*)
+              (list (fn-nntp-string-octets "fn.test 3 1 y") (fn-nntp-string-octets "fn.other 1 2 y")
+                    (fn-nntp-string-octets "fn.empty 0 1 y")))
+       (equal (fn-nntp-list-active-cat (fn-nntp-open-session (sit-wstate 3)) (sit-wstate 3)
+                                       (fn-nntp-env-closed nil) nil 3 *sit-cw*)
+              (fn-nntp-list-command (fn-nntp-open-session (sit-wstate 3)) (sit-wstate 3) nil nil))
+       (equal (fn-nntp-next-or-last-cat (sit-wat 1) (sit-wstate 3) :next 3 *sit-a* *sit-cw*)
+              (fn-nntp-next-or-last (sit-wat 1) (sit-wstate 3) :next *sit-a*))
+       (equal (fn-nntp-session-current
+               (fn-nntp-result-session (fn-nntp-next-or-last-cat (sit-wat 1) (sit-wstate 3) :next 3 *sit-a* *sit-cw*)))
+              3)
+       (equal (fn-nntp-next-or-last-cat (sit-wat 3) (sit-wstate 3) :last 3 *sit-a* *sit-cw*)
+              (fn-nntp-next-or-last (sit-wat 3) (sit-wstate 3) :last *sit-a*))
+       (equal (fn-nntp-session-current
+               (fn-nntp-result-session (fn-nntp-next-or-last-cat (sit-wat 3) (sit-wstate 3) :last 3 *sit-a* *sit-cw*)))
+              1)
+       (equal (fn-nntp-current-retrieval-cat (sit-wat 2) :stat 3 *sit-a* *sit-cw*)
+              (fn-nntp-current-retrieval (sit-wat 2) (sit-wstate 3) :stat *sit-a*))
+       (equal (fn-nntp-current-retrieval-cat (sit-wat 2) :stat 3 *sit-a* *sit-cw*)
+              (fn-nntp-single (sit-wat 2) (fn-proto-text * :no-current)))
+       (equal (fn-nntp-over-current-served-cat (sit-wat 2) *sit-server* 3 *sit-a* *sit-cw*)
+              (fn-nntp-over-current-served-col (sit-wat 2) (sit-wstate 3) *sit-server* *sit-a* *sit-cw*))
+       (equal (fn-nntp-over-current-served-cat (sit-wat 2) *sit-server* 3 *sit-a* *sit-cw*)
+              (fn-nntp-single (sit-wat 2) "420 no current article"))
+       (equal (fn-nntp-over-msgid-served-cat (sit-wat 1) (fn-nntp-string-octets "<b@x>") *sit-server* 3 *sit-a* *sit-cw*)
+              (fn-nntp-over-msgid-served-col (sit-wat 1) (sit-wstate 3) (fn-nntp-string-octets "<b@x>")
+                                             *sit-server* *sit-a* *sit-cw*))
+       (equal (fn-nntp-over-msgid-served-cat (sit-wat 1) (fn-nntp-string-octets "<b@x>") *sit-server* 3 *sit-a* *sit-cw*)
+              (fn-nntp-single (sit-wat 1) "430 no article with that message-id"))
+       (equal (fn-nntp-over-msgid-served-cat (sit-wat 1) (fn-nntp-string-octets "<zz@x>") *sit-server* 3 *sit-a* *sit-cw*)
+              (fn-nntp-over-msgid-served-col (sit-wat 1) (sit-wstate 3) (fn-nntp-string-octets "<zz@x>")
+                                             *sit-server* *sit-a* *sit-cw*))
+       (equal (fn-nntp-over-msgid-served-cat (sit-wat 1) (fn-nntp-string-octets "<zz@x>") *sit-server* 3 *sit-a* *sit-cw*)
+              (fn-nntp-single (sit-wat 1) "430 no article with that message-id")))
+  :rule-classes nil)
+
+;; HYPOTHESIS REMOVAL (fn-cnx-freshp), CORRUPTED STATE (*sit-c-bad* above:
+;; fn.test 1 bound by the unrenderable row 0 and by row 2), for LAST, the
+;; current article and OVER with no argument.  The view equation holds; the
+;; number table names row 0, the list model's walk row 2, and the replies
+;; differ.
+(defmacro sit-bstate (v)
+  `(fn-make-state '("fn.test" "fn.other") (list (cons "fn.test" 4) (cons "fn.other" 2))
+                  (fn-cat-view-articles ,v *sit-a* *sit-c-bad*) 1 nil nil))
+(defmacro sit-bat (n) `(fn-nntp-set-cursor (fn-nntp-open-session (sit-bstate 3)) "fn.test" ,n))
+
+(defthm sit-fresh-hypotheses
+  (and (not (fn-cnx-freshp *sit-c-bad*))
+       (equal (fn-state-articles (sit-bstate 3)) (fn-cat-view-articles 3 *sit-a* *sit-c-bad*))
+       (not (equal (fn-nntp-current-retrieval-cat (sit-bat 1) :stat 3 *sit-a* *sit-c-bad*)
+                   (fn-nntp-current-retrieval (sit-bat 1) (sit-bstate 3) :stat *sit-a*)))
+       (not (equal (fn-nntp-next-or-last-cat (sit-bat 2) (sit-bstate 3) :last 3 *sit-a* *sit-c-bad*)
+                   (fn-nntp-next-or-last (sit-bat 2) (sit-bstate 3) :last *sit-a*)))
+       (not (equal (fn-nntp-over-current-served-cat (sit-bat 1) *sit-server* 3 *sit-a* *sit-c-bad*)
+                   (fn-nntp-over-current-served-col (sit-bat 1) (sit-bstate 3) *sit-server* *sit-a* *sit-c-bad*))))
+  :rule-classes nil)
