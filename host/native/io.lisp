@@ -6022,6 +6022,9 @@ tree root), or stop the build."
     ;; word's :moved (a seal with no commit between the prediction and the
     ;; swap: today only a POST prepare refused after its seal makes one)
     "FN_NATIVE_TEST_RECLAIM_MOVE_FILE"
+    ;; lane arena-forget: a labelled MUTATION witness: the catalog gate
+    ;; answers no before the POST seal (as a held index-writer ticket does)
+    "FN_NATIVE_TEST_CAT_SEAL_REFUSE"
     "FN_NATIVE_PAGE_READ_HOLD"
     "FN_NATIVE_PAGE_IO_HOLD" "FN_NATIVE_PAGE_IO_RESULT"
     "FN_NATIVE_DISK_FREE"

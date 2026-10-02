@@ -2119,6 +2119,15 @@ follows is justified only by this line."
                 ;; The prepare reads the arena only; on acceptance it answers
                 ;; :seal-buffer and the host seals the buffer's payload
                 ;; (host/owner-host.lisp fn-owner-prepare-buffer).
+                ;; The catalog's gate BEFORE the seal: a prepare it would
+                ;; refuse seals nothing (books/catalog-may-seal.lisp; the
+                ;; refusal path below consumes the reservation as before).
+                (when (and (eq prepared :seal-buffer)
+                           (or (fnn-developer-selector "FN_NATIVE_TEST_CAT_SEAL_REFUSE")
+                               (not (eq (fnn-owner-core 'fn-owner-cat-may-seal) t))))
+                  (setq prepared :recovery-required)
+                  (fnn-err "POST seal-gate refused arena=~d"
+                           (first (fnn-call 'fn-arena-count (fnn-live-arena)))))
                 (when (eq prepared :seal-buffer)
                   (fnn-seal-live-buffer)
                   ;; Step 8: the catalog prepares the store's row, which names

@@ -1372,6 +1372,11 @@
 (definterface fn-owner-cat-prepare-sealed
   :class :common-lisp-compliant)
 
+; host/native/owner.lisp asks it before the POST's seal (lane arena-forget).
+(definterface fn-owner-cat-may-seal
+  :class :common-lisp-compliant
+  :keystones (fn-cat-may-seal-is-the-prepare-gate))
+
 (definterface fn-owner-catchup-plans
   :class :common-lisp-compliant)
 

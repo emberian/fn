@@ -25,6 +25,7 @@
 (in-package "ACL2")
 (include-book "../books/owner-report-capture")
 (include-book "../books/index-writer-ticket")
+(include-book "../books/catalog-may-seal")
 (include-book "payload-view-host")
 ; books/owner-fault includes books/owner and adds the host-fault transition
 ; `fn-own-fault'.  The host needs it: `fn-owner-fault' below is the only way
@@ -1879,11 +1880,23 @@
               (value :prepared))
           (value (if (consp pending) (car pending) :fault)))))))
 
+; The pending catalog commit (nil when none).
+(defun fn-owner-cat-pending-now (state)
+  (declare (xargs :stobjs state :guard t))
+  (and (f-boundp-global 'fn-owner-cat-pending state)
+       (f-get-global 'fn-owner-cat-pending state)))
+
+; Asked BEFORE the POST's seal (host/native/owner.lisp fnn-owner-attempt):
+; t when the prepare after the seal can take it (books/catalog-may-seal.lisp).
+(defun fn-owner-cat-may-seal (state)
+  (declare (xargs :stobjs state :guard t))
+  (value (fn-cat-may-seal (fn-owner-index-writer-ticket state)
+                          (fn-owner-cat-pending-now state))))
+
 (defun fn-owner-cat-prepare-sealed (fn-arena fn-cat state)
   (declare (xargs :stobjs (fn-arena fn-cat state) :guard t))
-  (if (or (not (fn-iwt-idlep (fn-owner-index-writer-ticket state)))
-          (and (f-boundp-global 'fn-owner-cat-pending state)
-               (f-get-global 'fn-owner-cat-pending state)))
+  (if (not (fn-cat-may-seal (fn-owner-index-writer-ticket state)
+                            (fn-owner-cat-pending-now state)))
       (value :recovery-required)
     (fn-owner-cat-prepare-sealed-produced fn-arena fn-cat state)))
 
