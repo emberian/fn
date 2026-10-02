@@ -46,7 +46,11 @@ def relative_name(path: Path, root: Path) -> str | None:
 
 
 def in_scope(name: str) -> bool:
-    return name.startswith("planning/") and name.endswith(RAW_LOG_SUFFIXES)
+    # planning/evidence/ is the evidence archive's working directory: ignored
+    # (.gitignore), filed by hash through tools/evidence_store.py, and dropped
+    # from history by the 2026-10-02 rewrite, so nothing there is committed.
+    return (name.startswith("planning/") and not name.startswith("planning/evidence/")
+            and name.endswith(RAW_LOG_SUFFIXES))
 
 
 def tracked_files(root: Path = ROOT) -> list[Path]:

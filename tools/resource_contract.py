@@ -494,6 +494,17 @@ class Standing:
     books: dict[str, dict] = field(default_factory=dict)   # green_check records
 
 
+def record_exists(root: Path, rel: str) -> bool:
+    """A cited record: a file in the tree, or a path the evidence index names."""
+    if (root / rel).exists():
+        return True
+    tools = str(Path(__file__).resolve().parent)
+    if tools not in sys.path:
+        sys.path.insert(0, tools)
+    import evidence_store  # noqa: PLC0415  (beside this file)
+    return evidence_store.exists(root, rel)
+
+
 def standings(root: Path = ROOT, certification: dict | None = None) -> list[Standing]:
     proofs = proof_ids(root)
     out = []
@@ -511,7 +522,10 @@ def standings(root: Path = ROOT, certification: dict | None = None) -> list[Stan
             else:
                 (s.pending if row.landing else s.missing_proofs).append(pid)
         for rel in row.records:
-            if not (root / rel).exists():
+            # A record under planning/evidence lives in the evidence archive
+            # once the history rewrite drops the directory: the committed
+            # index names it (evidence_store.exists reads tree or index).
+            if not record_exists(root, rel):
                 (s.pending if row.landing else s.missing_records).append(rel)
         if certification is not None:
             for book in dict.fromkeys(b for b, _ in row.theorems):
