@@ -938,6 +938,7 @@
     "tests/acl2/post-retain-carried-tests",
     "books/identity-retain-carried",
     "tests/acl2/identity-retain-carried-tests",
+    "tests/acl2/owner-retain-carried-tests",
     "books/store-profile-carried",
     "books/post-admission-keyed",
     "tests/acl2/post-admission-keyed-tests",
@@ -2344,26 +2345,26 @@
     "books/owner-retain-carried"
   ],
   "totals": {
-    "books": 2760,
-    "books_in_root_closure": 2615,
-    "roots": 2340,
-    "theorems": 36994,
-    "functions": 23421,
-    "assert_events": 25786,
-    "must_fails": 2647,
+    "books": 2762,
+    "books_in_root_closure": 2617,
+    "roots": 2341,
+    "theorems": 37021,
+    "functions": 23480,
+    "assert_events": 25829,
+    "must_fails": 2651,
     "prover_refusals": 0,
-    "encapsulates": 213,
+    "encapsulates": 225,
     "guards": {
       "verified": 3911,
-      "declared-off": 3039,
-      "default-guarded": 12931,
-      "default-unguarded": 3540
+      "declared-off": 3041,
+      "default-guarded": 12944,
+      "default-unguarded": 3584
     },
     "suspect_theorems": 1365,
     "export_hygiene_warnings": 402,
     "enabled_projection_warnings": 79,
     "teeth_form_warnings": 282,
-    "include_hygiene_warnings": 3592,
+    "include_hygiene_warnings": 3595,
     "host_names_warnings": 3155,
     "hand_written_record_warnings": 19
   },
@@ -4351,6 +4352,32 @@
       "includes": [
         "store-finalize-carried-check",
         "store-finalize-published"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/assumptions-recovery.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 4,
+      "functions": 7,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 7
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 1,
+      "includes": [
+        "store-checkpoint-open"
       ],
       "system_includes": [],
       "suspects": [],
@@ -17931,18 +17958,18 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 2,
-      "functions": 47,
+      "functions": 68,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 47
+        "default-unguarded": 68
       },
       "verify_guards_events": 0,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 3,
+      "defconsts": 4,
       "defmacros": 3,
       "encapsulates": 1,
       "includes": [],
@@ -33831,11 +33858,11 @@
       "book": "books/owner-retain-carried.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 0,
-      "functions": 0,
+      "theorems": 6,
+      "functions": 2,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 2,
         "default-guarded": 0,
         "default-unguarded": 0
       },
@@ -33847,7 +33874,9 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "assumptions-recovery",
         "def-carried",
+        "owner-cursor-domain",
         "owner-recovery-retain"
       ],
       "system_includes": [],
@@ -61867,22 +61896,23 @@
       "book": "tests/acl2/def-carried-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 28,
-      "functions": 40,
+      "theorems": 39,
+      "functions": 69,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 19,
-        "default-unguarded": 21
+        "default-guarded": 32,
+        "default-unguarded": 37
       },
       "verify_guards_events": 0,
-      "assert_events": 34,
-      "must_fails": 16,
+      "assert_events": 66,
+      "must_fails": 20,
       "prover_refusals": 0,
       "defconsts": 0,
       "defmacros": 1,
-      "encapsulates": 12,
+      "encapsulates": 23,
       "includes": [
+        "../../books/assumptions-durable",
         "../../books/def-carried",
         "../../books/definterface",
         "../../books/payload-kinds",
@@ -70652,6 +70682,32 @@
       "includes": [
         "../../books/owner-results",
         "must-fail-checked"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/owner-retain-carried-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 6,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 11,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 12,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/owner-retain-carried"
       ],
       "system_includes": [],
       "suspects": [],
@@ -95679,6 +95735,7 @@
           "books/owner-recover-ocl.lisp",
           "books/owner-recovery-retain.lisp",
           "books/owner-refresh-indexed.lisp",
+          "books/owner-retain-carried.lisp",
           "books/owner-retention-preparation.lisp",
           "books/owner-retire.lisp",
           "books/owner-served-carried.lisp",
@@ -95734,7 +95791,7 @@
           "tests/acl2/productive-read-message-id-tests.lisp",
           "tests/acl2/served-catalog-chain-tests.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 116 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 117 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-sn-node",
@@ -98576,6 +98633,13 @@
         "line": 41,
         "include": "store-finalize-published",
         "included": "books/store-finalize-published.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/assumptions-recovery.lisp",
+        "line": 44,
+        "include": "store-checkpoint-open",
+        "included": "books/store-checkpoint-open.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -108292,6 +108356,20 @@
         "line": 4,
         "include": "owner-report-capture",
         "included": "books/owner-report-capture.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/owner-retain-carried.lisp",
+        "line": 82,
+        "include": "owner-cursor-domain",
+        "included": "books/owner-cursor-domain.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/owner-retain-carried.lisp",
+        "line": 83,
+        "include": "assumptions-recovery",
+        "included": "books/assumptions-recovery.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
