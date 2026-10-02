@@ -434,7 +434,9 @@ elif [ "$STORE" = import ]; then
   # SEC-006: a store from before the node key files gets its secret once
   # (`run' refuses a store without one and never creates it).
   if [ ! -f "$TARGET/store/keys/node-secret.key" ]; then
-    run clean_env "$FN" --fn store "$TARGET/store" node-secret create
+    # bin/fn is packaging/fn, which execs the image with --fn itself: a
+    # second --fn was the image's "unknown verb --fn" (seen 2026-10-03).
+    run clean_env "$FN" store "$TARGET/store" node-secret create
   fi
   # PKT-579: the copy is a deliberate move onto TARGET's filesystem (and a
   # store older than the filesystem record has none): record where it is
