@@ -770,6 +770,14 @@ class RefusedIsNotUnavailableTests(Sandbox):
             rc, verdict = self.cut_gate("g_fundamentals", {"verify-paths": code}, checklist="y")
             self.assertEqual(rc, code, verdict)
             self.assertIn(f"VERDICT {word} at 05 x", verdict)
+        # An open row beside a refused one: still REFUSED, never RED (r66 F5).
+        (self.root / "checklist.md").write_text(
+            "<!-- fundamentals -->\n| F1 | thing | bar | MET | planning/evidence/x.md |\n"
+            "| F2 | other | bar | OPEN | none |\n<!-- end fundamentals -->\n")
+        git(self.root, "commit", "-q", "-am", "open row")
+        rc, verdict = self.cut_gate("g_fundamentals", {"verify-paths": 4}, checklist="y")
+        self.assertEqual(rc, 4, verdict)
+        self.assertIn("VERDICT REFUSED at 05 x", verdict)
 
     def test_F3_claim_tools_exit_4_on_refused_evidence(self):
         import certified_claims
@@ -1079,6 +1087,38 @@ class R65OutcomesTests(Sandbox):
                 contextlib.redirect_stderr(io.StringIO()):
             entries = chain_schedule.history_entries(history)
             self.assertEqual(chain_schedule.summaries(entries, summary), [None])
+
+
+
+# ===================================================================== r66
+
+
+class R66Tests(Sandbox):
+    def test_F1_an_annotated_tag_of_a_tree_is_walked_as_that_tree(self):
+        import evidence_history
+        init_repo(self.root)
+        self.write("planning/evidence/t.md", b"only in a tagged tree\n")
+        git(self.root, "add", "-A")
+        tree = git(self.root, "write-tree").strip()
+        git(self.root, "rm", "-q", "--cached", "planning/evidence/t.md")
+        (self.root / "planning/evidence/t.md").unlink()
+        self.write("x.txt", b"x\n")
+        commit_all(self.root, "unrelated")
+        git(self.root, "tag", "-a", "-m", "a tree", "treetag", tree)
+        blob = git(self.root, "rev-parse", f"{tree}:planning/evidence/t.md").strip()
+        refs = evidence_history.snapshot_refs(self.root)
+        found = evidence_history.union(evidence_history.rule_blobs(
+            self.root, evidence_history.parse_rules("planning/evidence\n"), refs))
+        self.assertIn(blob, found)
+
+    def test_F2_every_sha_length_pair_is_checked(self):
+        import evidence_history
+        data = b"right length\n"
+        sha = store.store_object(self.archive, data)
+        report = evidence_history.archive_check({(sha, len(data)), (sha, len(data) + 1)},
+                                                str(self.archive))
+        self.assertEqual(report["checked"], 2)
+        self.assertEqual(report["bad"], [sha])
 
 
 if __name__ == "__main__":

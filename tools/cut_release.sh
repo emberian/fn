@@ -261,8 +261,10 @@ g_fundamentals() {
         esac
       fi
     done
-    if [ "$open" -gt 0 ]; then echo "$open of $total fundamentals not met, $refused refused, $uncertain unavailable (blocking)"; exit 1; fi
-    if [ "$refused" -gt 0 ]; then echo "$refused of $total fundamentals REFUSED: evidence bytes do not hash to the index line, $uncertain unavailable (blocking)"; exit 4; fi
+    # Refused evidence outranks an open row: bytes proven wrong are never
+    # reported as a plain RED (r66 F5).
+    if [ "$refused" -gt 0 ]; then echo "$refused of $total fundamentals REFUSED: evidence bytes do not hash to the index line; $open not met, $uncertain unavailable (blocking)"; exit 4; fi
+    if [ "$open" -gt 0 ]; then echo "$open of $total fundamentals not met, $uncertain unavailable (blocking)"; exit 1; fi
     if [ "$uncertain" -gt 0 ]; then echo "$uncertain of $total fundamentals UNAVAILABLE: uncertain, not refused (blocking)"; exit 3; fi
     echo "all $total fundamentals met, each with its evidence at REV"
   }

@@ -90,7 +90,9 @@ def _readable_and_matching(path: Path, sha: str) -> bool:
 def sync_chain(directory: Path, target: Path) -> None:
     """fsync every directory entry from the object's shard up to the archive
     root's parent, on every placement (r65 F3): a name created by an earlier,
-    crashed call is made durable here too, not only one this call made."""
+    crashed call is made durable here too, not only one this call made.  The
+    archive root's own ancestors (hbox: /tank/fn) are assumed durable: they
+    exist before any archive does and no writer here creates them (r66 F6)."""
     walk = target.parent
     root = directory.resolve()
     while True:

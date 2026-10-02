@@ -138,7 +138,13 @@ def load_rules(path: Path) -> list[Rule]:
 class Ref:
     name: str
     sha: str
-    type: str      # commit | tag | tree | blob
+    type: str      # commit | tag | tree | blob | reflog
+    peel: str = ""         # what an annotated tag finally names (else sha)
+    peel_type: str = ""    # its type (else type)
+
+    @property
+    def target(self) -> tuple[str, str]:
+        return (self.peel or self.sha, self.peel_type or self.type)
 
 
 def _git(root: Path, *args: str, data: bytes | None = None) -> bytes:
@@ -156,8 +162,8 @@ def snapshot_refs(root: Path, reflogs: bool = True) -> list[Ref]:
     worktree-private refs and reflog entries in every worktree: the frozen
     set one measurement covers."""
     refs: dict[str, Ref] = {}
-    rows = _git(root, "for-each-ref", "--format=%(objectname) %(objecttype) %(refname)")
-    for row in rows.decode().splitlines():
+    fmt = "--format=%(objectname) %(objecttype) %(refname)"
+    for row in _git(root, "for-each-ref", fmt).decode().splitlines():
         sha, kind, name = row.split(" ", 2)
         refs[name] = Ref(name, sha, kind)
     worktree = None
@@ -166,6 +172,22 @@ def snapshot_refs(root: Path, reflogs: bool = True) -> list[Ref]:
             worktree = row[len("worktree "):]
         elif row.startswith("HEAD ") and worktree is not None:
             refs[f"HEAD {worktree}"] = Ref(f"HEAD {worktree}", row[5:].strip(), "commit")
+            # That worktree's private refs (any object type, trees included).
+            done = subprocess.run([*GIT, "-C", worktree, "for-each-ref", fmt, "refs/worktree",
+                                   "refs/bisect", "refs/rewritten"],
+                                  capture_output=True, check=False)
+            for line in done.stdout.decode().splitlines() if done.returncode == 0 else []:
+                sha, kind, name = line.split(" ", 2)
+                refs[f"{worktree} {name}"] = Ref(f"{worktree} {name}", sha, kind)
+    tags = [ref for ref in refs.values() if ref.type == "tag"]
+    if tags:
+        # Peel every annotated tag to what it finally names: a tag of a tree
+        # or a blob is walked as that tree or blob, never handed to git log.
+        rows = _git(root, "cat-file", "--batch-check=%(objectname) %(objecttype)",
+                    data="".join(f"{ref.sha}^{{}}\n" for ref in tags).encode())
+        for ref, row in zip(tags, rows.decode().splitlines()):
+            peel, kind = row.split()[:2]
+            refs[ref.name] = Ref(ref.name, ref.sha, ref.type, peel, kind)
     if reflogs:
         named = {ref.sha for ref in refs.values()}
         tips = _git(root, "rev-list", "--no-walk", "--all", "--reflog").decode().split()
@@ -193,7 +215,8 @@ def walk(root: Path, refs: list[Ref]):
     """Yield (blob id, path) for every blob version reachable from REFS:
     both sides of every raw diff of every commit against each parent (the
     root commit against the empty tree), and every blob of a tree ref."""
-    commits = sorted({ref.sha for ref in refs if ref.type in ("commit", "tag", "reflog")})
+    commits = sorted({ref.target[0] for ref in refs
+                      if ref.target[1] in ("commit", "reflog")})
     if commits:
         out = _git(root, "log", "--stdin", "--diff-merges=separate", "--root",
                    "--no-renames", "--raw", "-z", "--no-abbrev", "--format=",
@@ -216,8 +239,11 @@ def walk(root: Path, refs: list[Ref]):
                 if oid != ZERO and is_blob_mode(mode):
                     yield oid, path
     for ref in refs:
-        if ref.type == "tree":
-            for entry in _git(root, "ls-tree", "-r", "-z", "--full-tree", ref.sha).split(b"\0"):
+        sha, kind = ref.target
+        if kind == "blob":
+            yield sha, ""      # a ref to a bare blob: no path, matches no rule
+        if kind == "tree":
+            for entry in _git(root, "ls-tree", "-r", "-z", "--full-tree", sha).split(b"\0"):
                 if not entry:
                     continue
                 meta, _, path = entry.partition(b"\t")
@@ -290,13 +316,17 @@ print(json.dumps({'checked': n, 'missing': missing, 'bad': bad}))
 """
 
 
-def archive_check(wanted: dict[str, int], spec: str | None = None) -> dict:
-    """{sha256: bytes} -> {"checked", "missing", "bad"}, measured where the
-    archive is: the canonical object, decompressed, re-hashed, length checked."""
+def archive_check(wanted, spec: str | None = None) -> dict:
+    """{sha256: bytes} or a set of (sha256, bytes) pairs -> {"checked",
+    "missing", "bad"}, measured where the archive is: the canonical object,
+    decompressed, re-hashed, length checked.  Every pair is checked, so an
+    index row that names a hash with the wrong length is refused (r66 F2)."""
+    if isinstance(wanted, dict):
+        wanted = set(wanted.items())
     host, path = evidence_store.split_spec(spec or evidence_store.archive_spec())
     command = ["python3", "-c", CHECK_SCRIPT, path]
     argv = ["ssh", host, " ".join(shlex.quote(part) for part in command)] if host else command
-    lines = "".join(f"{sha} {size}\n" for sha, size in sorted(wanted.items()))
+    lines = "".join(f"{sha} {size}\n" for sha, size in sorted(wanted))
     done = subprocess.run(argv, input=lines, capture_output=True, text=True, check=False)
     try:
         report = json.loads(done.stdout.strip().splitlines()[-1])
@@ -335,8 +365,7 @@ def cmd_complete(args) -> int:
     blobs = union(per_rule)
     hashed = digests(root, blobs)
     # Every dropped blob AND every object the committed index names.
-    wanted = {sha: size for sha, size in hashed.values()}
-    wanted.update({sha: size for sha, size in index.values()})
+    wanted = set(hashed.values()) | set(index.values())
     report = archive_check(wanted)
     failing = set(report["missing"]) | set(report["bad"])
     if args.migrate and failing:
@@ -455,6 +484,13 @@ def cmd_crosscheck(args) -> int:
         print(f"crosscheck: {mirror} exists; give a fresh path", file=sys.stderr)
         return 2
     subprocess.run(["git", "clone", "-q", "--mirror", str(root), str(mirror)], check=True)
+    # Guard: every command below runs with -C the mirror, and the mirror is
+    # its own repository, never the one it was cloned from (r66 F4).
+    common = _git(mirror, "rev-parse", "--path-format=absolute", "--git-common-dir")
+    source = _git(root, "rev-parse", "--path-format=absolute", "--git-common-dir")
+    if Path(common.decode().strip()) != mirror.resolve() or common == source:
+        print(f"crosscheck: {mirror} is not a separate repository; refusing", file=sys.stderr)
+        return 2
     for name in _git(mirror, "for-each-ref", "--format=%(refname)", "refs/codex").decode().split():
         _git(mirror, "update-ref", "-d", name)
     refs = snapshot_refs(mirror, reflogs=False)
