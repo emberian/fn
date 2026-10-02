@@ -44,6 +44,7 @@
 (in-package "ACL2")
 (include-book "arena-reader-pins")
 (include-book "payload-arena")
+(include-book "held-record")
 
 ; -----------------------------------------------------------------------------
 ; 1. The retirement's items and what the release does with them.
@@ -214,3 +215,154 @@
        (implies (fn-arena-p fn-arena)
                 (fn-arena-p (fn-arf-apply-released rel fn-arena))))
   :hints (("Goal" :in-theory (disable fn-arf-apply-released))))
+
+; -----------------------------------------------------------------------------
+; 2. Which handles a rewrite of the history un-names.
+;
+; The reclaim pass holds the captured rows OLD and the rewritten, interned
+; rows NEW, position for position (host/native/owner.lisp fnn-owner-reclaim-
+; pass): a row the rewrite did not change is kept by pointer, a changed row
+; is a record interned at a fresh handle (books/owner-reclaim-pass.lisp
+; fn-orcp-intern-rows).  The handles to retire are the old handles of the
+; changed positions: one walk of two lists the pass already holds, off the
+; owner's mutex, a pointer comparison per unchanged row.
+
+
+; The handle a row names: a held record's payload position, a retained
+; statement's held record's; any other row names none.
+(defun fn-arf-row-handle (row)
+  (declare (xargs :guard t))
+  (cond ((fn-held-p row)
+         (and (natp (fn-record-payload row)) (fn-record-payload row)))
+        ((fn-hstxa-p row)
+         (and (natp (fn-record-payload (fn-hstxa-held row)))
+              (fn-record-payload (fn-hstxa-held row))))
+        (t nil)))
+
+; The handles the rows name, in order (the specification's reading).
+(defun fn-arf-rows-handles (rows)
+  (declare (xargs :guard t))
+  (cond ((atom rows) nil)
+        ((fn-arf-row-handle (car rows))
+         (cons (fn-arf-row-handle (car rows)) (fn-arf-rows-handles (cdr rows))))
+        (t (fn-arf-rows-handles (cdr rows)))))
+
+; The host's call: the old handles of the positions whose row changed.
+; Executes by a loop (the history's rows are store data).
+(defun fn-arf-changed-handles-loop (old new rev)
+  (declare (xargs :guard (true-listp rev)))
+  (cond ((or (atom old) (atom new)) (revappend rev nil))
+        ((or (equal (car old) (car new))
+             (not (fn-arf-row-handle (car old))))
+         (fn-arf-changed-handles-loop (cdr old) (cdr new) rev))
+        (t (fn-arf-changed-handles-loop (cdr old) (cdr new)
+                                        (cons (fn-arf-row-handle (car old)) rev)))))
+
+(defun fn-arf-changed-handles (old new)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (cond ((or (atom old) (atom new)) nil)
+             ((or (equal (car old) (car new))
+                  (not (fn-arf-row-handle (car old))))
+              (fn-arf-changed-handles (cdr old) (cdr new)))
+             (t (cons (fn-arf-row-handle (car old))
+                      (fn-arf-changed-handles (cdr old) (cdr new)))))
+       :exec (fn-arf-changed-handles-loop old new nil)))
+
+(defthm fn-arf-changed-handles-loop-is-changed-handles
+  (equal (fn-arf-changed-handles-loop old new rev)
+         (revappend rev (fn-arf-changed-handles old new)))
+  :hints (("Goal" :in-theory (disable fn-arf-row-handle))))
+
+(verify-guards fn-arf-changed-handles
+  :hints (("Goal" :in-theory (disable fn-arf-row-handle))))
+
+; No element of XS is in YS.
+(defun fn-arf-disjointp (xs ys)
+  (declare (xargs :guard (true-listp ys)))
+  (if (atom xs)
+      t
+    (and (not (member-equal (car xs) ys))
+         (fn-arf-disjointp (cdr xs) ys))))
+
+; NEW is a rewrite of OLD against the handles ALL: at every position the row
+; is OLD's own, or it names no handle of ALL (a fresh handle, or none).
+(defun fn-arf-rewrite-of-p (old new all)
+  (declare (xargs :guard (true-listp all)))
+  (if (atom new)
+      t
+    (and (or (and (consp old) (equal (car old) (car new)))
+             (not (member-equal (fn-arf-row-handle (car new)) all)))
+         (fn-arf-rewrite-of-p (and (consp old) (cdr old)) (cdr new) all))))
+
+(local (in-theory (disable fn-arf-row-handle)))
+
+(local
+ (defthm fn-arf-changed-handles-are-old-handles
+   (implies (member-equal c (fn-arf-changed-handles old new))
+            (member-equal c (fn-arf-rows-handles old)))))
+
+(local
+ (defthm fn-arf-not-old-handle-is-not-changed
+   (implies (not (member-equal c (fn-arf-rows-handles old)))
+            (not (member-equal c (fn-arf-changed-handles old new))))))
+
+(local
+ (defthm fn-arf-rewrite-handle-is-old-or-fresh
+   (implies (and (member-equal x (fn-arf-rows-handles new))
+                 (fn-arf-rewrite-of-p old new all))
+            (or (member-equal x (fn-arf-rows-handles old))
+                (not (member-equal x all))))
+   :rule-classes nil
+   :hints (("Goal" :induct (fn-arf-rewrite-of-p old new all)))))
+
+(local
+ (defthm fn-arf-disjointp-not-member
+   (implies (and (fn-arf-disjointp xs ys) (not (member-equal y xs)))
+            (fn-arf-disjointp xs (cons y ys)))))
+
+(local
+ (defthm fn-arf-rows-handles-non-nil
+   (not (member-equal nil (fn-arf-rows-handles rows)))))
+
+(local
+ (defthm fn-arf-changed-disjoint-from-fresh
+   (implies (and (subsetp-equal (fn-arf-rows-handles old) all)
+                 (not (member-equal y all)))
+            (not (member-equal y (fn-arf-changed-handles old new))))))
+
+; KEYSTONE (PRF-ARF-4).  When the old rows' handles are pairwise distinct and
+; NEW is a rewrite of OLD (every changed row names a handle the old history
+; does not), no row of NEW names a handle the walk answers: the retired
+; handles are exactly un-named.  Host subject: host/native/owner.lisp
+; fnn-owner-reclaim-pass calls fn-arf-changed-handles over the captured and
+; the interned rows.
+(local
+ (defthm fn-arf-changed-handles-are-unnamed-lemma
+   (implies (and (no-duplicatesp-equal (fn-arf-rows-handles old))
+                 (subsetp-equal (fn-arf-rows-handles old) all)
+                 (fn-arf-rewrite-of-p old new all))
+            (fn-arf-disjointp (fn-arf-changed-handles old new)
+                              (fn-arf-rows-handles new)))
+   :hints (("Goal" :induct (fn-arf-rewrite-of-p old new all))
+           ("Subgoal *1/2" :use ((:instance fn-arf-rewrite-handle-is-old-or-fresh
+                                            (x (fn-arf-row-handle (car old)))
+                                            (old (cdr old)) (new (cdr new))))))))
+
+(local
+ (defthm fn-arf-subsetp-of-cons
+   (implies (subsetp-equal x y) (subsetp-equal x (cons a y)))))
+
+(local
+ (defthm fn-arf-subsetp-reflexive
+   (subsetp-equal x x)))
+
+(defthm fn-arf-changed-handles-are-unnamed
+  (implies (and (no-duplicatesp-equal (fn-arf-rows-handles old))
+                (fn-arf-rewrite-of-p old new (fn-arf-rows-handles old)))
+           (fn-arf-disjointp (fn-arf-changed-handles old new)
+                             (fn-arf-rows-handles new)))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-arf-changed-handles-are-unnamed-lemma
+                            (all (fn-arf-rows-handles old))))
+           :in-theory (disable fn-arf-changed-handles-are-unnamed-lemma))))
