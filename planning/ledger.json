@@ -2329,26 +2329,26 @@
     "books/owner-retain-carried"
   ],
   "totals": {
-    "books": 2738,
-    "books_in_root_closure": 2599,
+    "books": 2740,
+    "books_in_root_closure": 2601,
     "roots": 2325,
-    "theorems": 36699,
-    "functions": 23237,
-    "assert_events": 25520,
+    "theorems": 36783,
+    "functions": 23263,
+    "assert_events": 25526,
     "must_fails": 2618,
     "prover_refusals": 0,
-    "encapsulates": 210,
+    "encapsulates": 212,
     "guards": {
-      "verified": 3849,
-      "declared-off": 3016,
-      "default-guarded": 12887,
-      "default-unguarded": 3485
+      "verified": 3853,
+      "declared-off": 3015,
+      "default-guarded": 12899,
+      "default-unguarded": 3496
     },
-    "suspect_theorems": 1362,
+    "suspect_theorems": 1368,
     "export_hygiene_warnings": 402,
     "enabled_projection_warnings": 80,
     "teeth_form_warnings": 279,
-    "include_hygiene_warnings": 3569,
+    "include_hygiene_warnings": 3570,
     "host_names_warnings": 3154,
     "hand_written_record_warnings": 19
   },
@@ -4458,6 +4458,42 @@
         "fn-b3x-node-exec-base",
         "fn-b3x-node-model-base",
         "fn-b3x-node-model-step"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/blake3-string.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 60,
+      "functions": 12,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 9,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 1,
+      "includes": [
+        "blake3"
+      ],
+      "system_includes": [
+        "arithmetic-5/top",
+        "arithmetic/top"
+      ],
+      "suspects": [
+        "fn-b3s-chunk-exec-base",
+        "fn-b3s-chunk-model-base",
+        "fn-b3s-chunk-model-step",
+        "fn-b3s-node-exec-base",
+        "fn-b3s-node-model-base",
+        "fn-b3s-node-model-step"
       ],
       "read_error": null
     },
@@ -27107,15 +27143,15 @@
       "book": "books/msgid-linear-exec.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 265,
-      "functions": 59,
+      "theorems": 271,
+      "functions": 63,
       "guards": {
-        "verified": 1,
+        "verified": 2,
         "declared-off": 3,
-        "default-guarded": 41,
-        "default-unguarded": 14
+        "default-guarded": 42,
+        "default-unguarded": 16
       },
-      "verify_guards_events": 1,
+      "verify_guards_events": 2,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -27124,7 +27160,8 @@
       "encapsulates": 0,
       "includes": [
         "msgid-linear",
-        "msgid-pages-exec"
+        "msgid-pages-exec",
+        "msgid-tag-exec"
       ],
       "system_includes": [
         "arithmetic/top"
@@ -27359,6 +27396,36 @@
       "suspects": [
         "fn-miq-progress-keeps-capture"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/msgid-tag-exec.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 17,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 1,
+      "includes": [
+        "blake3-string",
+        "msgid-pages-exec"
+      ],
+      "system_includes": [
+        "arithmetic-5/top",
+        "arithmetic/top"
+      ],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -37127,15 +37194,15 @@
       "book": "books/peer-transit-indexed.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 5,
-      "functions": 3,
+      "theorems": 6,
+      "functions": 4,
       "guards": {
-        "verified": 0,
-        "declared-off": 2,
+        "verified": 3,
+        "declared-off": 0,
         "default-guarded": 1,
         "default-unguarded": 0
       },
-      "verify_guards_events": 0,
+      "verify_guards_events": 3,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -37144,6 +37211,7 @@
       "encapsulates": 0,
       "includes": [
         "peer-offer-indexed",
+        "peer-transit-authority",
         "post-identity-catalog",
         "post-retain-carried"
       ],
@@ -72143,22 +72211,23 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 2,
+      "functions": 8,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 2
+        "default-unguarded": 8
       },
       "verify_guards_events": 0,
-      "assert_events": 3,
+      "assert_events": 9,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 0,
+      "defconsts": 4,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/peer-transit-indexed",
+        "peer-inbound-tests",
         "post-identity-index-tests"
       ],
       "system_includes": [],
@@ -81150,6 +81219,57 @@
       ]
     },
     {
+      "theorem": "fn-b3s-chunk-exec-base",
+      "book": "books/blake3-string.lisp",
+      "line": 306,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-b3s-chunk and the conclusion is that arm's value"
+      ]
+    },
+    {
+      "theorem": "fn-b3s-chunk-model-base",
+      "book": "books/blake3-string.lisp",
+      "line": 328,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-b3-chunk and the conclusion is that arm's value",
+        "branch-of-definition: the hypothesis negates a branch test of fn-b3-chunk and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-b3s-chunk-model-step",
+      "book": "books/blake3-string.lisp",
+      "line": 338,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-b3-chunk and the conclusion is that arm's value",
+        "branch-of-definition: the hypothesis is a branch test of fn-b3-chunk and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-b3s-node-exec-base",
+      "book": "books/blake3-string.lisp",
+      "line": 428,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-b3s-node and the conclusion is that arm's value"
+      ]
+    },
+    {
+      "theorem": "fn-b3s-node-model-base",
+      "book": "books/blake3-string.lisp",
+      "line": 470,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-b3-node and the conclusion is that arm's value",
+        "branch-of-definition: the hypothesis negates a branch test of fn-b3-node and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-b3s-node-model-step",
+      "book": "books/blake3-string.lisp",
+      "line": 477,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-b3-node and the conclusion is that arm's value"
+      ]
+    },
+    {
       "theorem": "fn-b3x-chunk-exec-base",
       "book": "books/blake3-stobj.lisp",
       "line": 352,
@@ -82680,7 +82800,7 @@
     {
       "theorem": "fn-cp-numbers-of-held",
       "book": "books/catalog-paged.lisp",
-      "line": 1860,
+      "line": 1858,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -82688,7 +82808,7 @@
     {
       "theorem": "fn-cp-withdrawn-of-held",
       "book": "books/catalog-paged.lisp",
-      "line": 1852,
+      "line": 1850,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -84322,7 +84442,7 @@
     {
       "theorem": "fn-mlh-candidates-no-pages",
       "book": "books/msgid-linear-exec.lisp",
-      "line": 1079,
+      "line": 1131,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-mlh-candidates and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-mlh-candidates and the conclusion is that branch's value"
@@ -84331,7 +84451,7 @@
     {
       "theorem": "fn-mlh-flag-part-of-seqw",
       "book": "books/msgid-linear-exec.lisp",
-      "line": 1307,
+      "line": 1359,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)",
         "definition-restated: the conclusion is the body of fn-mlh-flag-part",
@@ -84341,7 +84461,7 @@
     {
       "theorem": "fn-mlh-nth-is-page",
       "book": "books/msgid-linear-exec.lisp",
-      "line": 1968,
+      "line": 2020,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-mpxl-page and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-mpxl-page and the conclusion is that branch's value"
@@ -92270,19 +92390,19 @@
       {
         "theorem": "fn-cp-len-of-set-column",
         "book": "books/catalog-paged.lisp",
-        "line": 574,
+        "line": 572,
         "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
       },
       {
         "theorem": "fn-cp-len-of-adt-set-a",
         "book": "books/catalog-paged.lisp",
-        "line": 579,
+        "line": 577,
         "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
       },
       {
         "theorem": "fn-cp-tree-enc-of-row-t-of",
         "book": "books/catalog-paged.lisp",
-        "line": 745,
+        "line": 743,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -118977,6 +119097,13 @@
         "line": 12,
         "include": "post-identity-index-tests",
         "included": "tests/acl2/post-identity-index-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/peer-transit-indexed-tests.lisp",
+        "line": 13,
+        "include": "peer-inbound-tests",
+        "included": "tests/acl2/peer-inbound-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

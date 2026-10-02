@@ -2498,8 +2498,13 @@
 ; THE FOLD: the table the catalog holds is the fold of the add over its rows
 ; from the set-keyed empty table (books/catalog-logic's correspondence),
 ; the unplaced count its first value; a fold whose every step placed is
-; faithful.  THE STEP IS BOUNDED as books/msgid-pages-exec's fold: a row
-; whose sequence would not leave room in the word is counted unplaced.
+; faithful.  A row whose sequence would not leave room in the word is
+; counted unplaced (books/msgid-pages-exec's bound on the sequence).  This
+; logical fold reads row I by (nth i rows) under a (len rows) test, so
+; EXECUTING it costs O(R^2) over R rows (measured 0.16 / 1.8 / 27.7 s at 8k /
+; 32k / 131k rows); the executed rebuilds (fn-mlh-build-saturatedp,
+; fn-mlh-build-health) run fn-mlh-build-tail below instead, a cursor down the
+; rows, O(1) per row besides the add (fn-mlh-build-tail-is-build-from).
 (defun fn-mlh-build-from (i u rows fn-mlh)
   (declare (xargs :stobjs fn-mlh :verify-guards nil
                   :guard (and (natp i) (natp u) (true-listp rows) (fn-mlh-wfp fn-mlh))
@@ -2861,6 +2866,48 @@
 (verify-guards fn-mlh-build-from
   :hints (("Goal" :in-theory (disable fn-mlh-add fn-mlh-wfp) :do-not-induct t)))
 
+; The fold executed by a cursor: TAIL is (nthcdr i rows), so each step reads
+; its row with CAR and moves with CDR instead of (nth i rows) under (len
+; rows): O(1) per row besides the add, where the fold above is O(R^2) to
+; execute.  Equal to the fold for every value (no hypothesis but I's type).
+(defun fn-mlh-build-tail (i u tail fn-mlh)
+  (declare (xargs :stobjs fn-mlh :verify-guards nil :measure (len tail)
+                  :guard (and (natp i) (natp u) (true-listp tail) (fn-mlh-wfp fn-mlh))))
+  (if (endp tail)
+      (mv u fn-mlh)
+    (if (>= (+ 2 (nfix i)) *fn-mlh-tag-limit*)
+        (fn-mlh-build-tail (1+ (nfix i)) (1+ u) (cdr tail) fn-mlh)
+      (mv-let (r fn-mlh)
+        (fn-mlh-add (fn-mlh-tag (fn-record-msgid (car tail)) (fn-mlh-key-octets fn-mlh))
+                    (nfix i) fn-mlh)
+        (fn-mlh-build-tail (1+ (nfix i)) (if (equal r :placed) u (1+ u)) (cdr tail) fn-mlh)))))
+(verify-guards fn-mlh-build-tail
+  :hints (("Goal" :in-theory (disable fn-mlh-add fn-mlh-wfp) :do-not-induct t)))
+
+(local (defthm fn-mlh-bt-cdr-nthcdr
+  (implies (natp i) (equal (cdr (nthcdr i rows)) (nthcdr (+ 1 i) rows)))
+  :hints (("Goal" :in-theory (enable nthcdr)))))
+(local (defthm fn-mlh-bt-car-nthcdr
+  (implies (natp i) (equal (car (nthcdr i rows)) (nth i rows)))
+  :hints (("Goal" :in-theory (enable nthcdr nth)))))
+(local (defthm fn-mlh-bt-consp-nthcdr
+  (implies (natp i) (iff (consp (nthcdr i rows)) (< i (len rows))))
+  :hints (("Goal" :in-theory (enable nthcdr)))))
+
+; KEYSTONE (representation of the executed fold).
+(defthm fn-mlh-build-tail-is-build-from
+  (implies (natp i)
+           (equal (fn-mlh-build-tail i u (nthcdr i rows) fn-mlh)
+                  (fn-mlh-build-from i u rows fn-mlh)))
+  :hints (("Goal" :induct (fn-mlh-build-from i u rows fn-mlh)
+           :in-theory (disable fn-mlh-add nthcdr nth))))
+
+(defthm fn-mlh-build-tail-from-zero-is-build-from
+  (equal (fn-mlh-build-tail 0 u rows fn-mlh)
+         (fn-mlh-build-from 0 u rows fn-mlh))
+  :hints (("Goal" :use ((:instance fn-mlh-build-tail-is-build-from (i 0)))
+           :in-theory (enable nthcdr))))
+
 (defun fn-mlh-key-same-from (i key fn-mlh)
   (declare (xargs :stobjs fn-mlh :guard (natp i)
                   :measure (nfix (- *fn-mpxt-key-octets* (nfix i)))))
@@ -2898,7 +2945,8 @@
     (mv-let (r fn-mlh)
       (let ((fn-mlh (fn-mlh-set-key key fn-mlh)))
         (mv-let (u fn-mlh)
-          (fn-mlh-build-from 0 0 rows fn-mlh)
+          (mbe :logic (fn-mlh-build-from 0 0 rows fn-mlh)
+               :exec (fn-mlh-build-tail 0 0 rows fn-mlh))
           (declare (ignore u))
           (mv (or (>= (+ 2 (len rows)) *fn-mlh-tag-limit*)
                   (fn-mlh-saturatedp (fn-mlh-tag-of msgid fn-mlh) fn-mlh))
@@ -2914,7 +2962,8 @@
     (mv-let (r fn-mlh)
       (let ((fn-mlh (fn-mlh-set-key key fn-mlh)))
         (mv-let (u fn-mlh)
-          (fn-mlh-build-from 0 0 rows fn-mlh)
+          (mbe :logic (fn-mlh-build-from 0 0 rows fn-mlh)
+               :exec (fn-mlh-build-tail 0 0 rows fn-mlh))
           (mv (list (fn-mlh-pages fn-mlh) (fn-mlh-count fn-mlh) u (fn-mlh-stuck fn-mlh))
               fn-mlh)))
       r)))
