@@ -71,8 +71,8 @@
 (include-book "records-invariants")
 
 (local (in-theory (disable (tau-system))))
-; D26: two included event-shape rules fire on every term and never help here.
-(local (in-theory (disable fn-cne-event-shape fn-cae-event-shape)))
+; (The consumer event-shape rules this book disabled for D26 are no longer in
+; its closure: stage 0's store-events dropped consumer-transaction-dispatch.)
 
 ; The stobjs' logical lists stay as `nth' and `update-nth' terms in every
 ; proof: the old foundation's accessors open to them, and the facts below
