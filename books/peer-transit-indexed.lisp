@@ -24,6 +24,7 @@
 (include-book "peer-offer-indexed")
 (include-book "post-identity-catalog")
 (include-book "post-retain-carried")
+(include-book "peer-transit-authority")
 
 (local (in-theory (disable (tau-system))))
 
@@ -203,4 +204,69 @@
                             fn-node-statep fn-ocl-view-visiblep fn-scj-joinp fn-prc-carryp
                             fn-peer-header-limit-refusal fn-peer-decision)))))
 
-(in-theory (disable fn-peer-decide-transfer-cat fn-peer-decide-transfer-under-cat))
+(verify-guards fn-peer-decide-transfer-cat
+  :hints (("Goal" :use ((:guard-theorem fn-peer-decide-transfer))
+           :in-theory (disable fn-node-statep fn-article-parse fn-peer-intrinsic-refusal-of
+                               fn-peer-relayed-octets fn-af-relayed-article-check))))
+(verify-guards fn-peer-decide-transfer-under-cat)
+
+;; The host's decision with its authority verdict (books/peer-transit-authority
+;; fn-pta-decide, called by host/owner-host.lisp fn-owner-transit-decide): the
+;; byte decision from the indexes, the verdict unchanged.
+(defun fn-pta-decide-cat (index keyring v gen node cfg peer msgid octets clock id
+                                subject limits view carry fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat)
+                  :guard (and (fn-node-statep node) (fn-prin-keyringp keyring)
+                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
+                  :verify-guards nil))
+  (let ((d (fn-peer-decide-transfer-under-cat node cfg peer msgid octets clock id
+                                              subject limits view carry fn-arena fn-cat)))
+    (if (not (equal (fn-peer-decision-kind d) :want))
+        (mv d :none)
+      (let* ((a (fn-stx-parse (fn-peer-relayed-octets cfg peer octets)))
+             (s (if a (fn-stx-statement-of a) nil))
+             (groups (nth 3 (fn-peer-injection-arguments node cfg peer msgid octets
+                                                         0 id subject clock))))
+        (mv d (fn-pta-groups-verdict index keyring v gen groups s))))))
+
+(defthm fn-pta-decide-cat-is-pta-decide
+  (implies (and (fn-node-statep node)
+                (fn-ocl-view-visiblep view)
+                (fn-scj-joinp view fn-arena fn-cat)
+                (fn-prc-carryp carry))
+           (equal (fn-pta-decide-cat index keyring v gen node cfg peer msgid octets clock id
+                                     subject limits view carry fn-arena fn-cat)
+                  (fn-pta-decide index keyring v gen node cfg peer msgid octets clock id
+                                 subject limits)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-pta-decide-cat fn-pta-decide)
+                           (fn-peer-decide-transfer-under-cat fn-peer-decide-transfer-under
+                            fn-node-statep fn-ocl-view-visiblep fn-scj-joinp fn-prc-carryp
+                            fn-stx-parse fn-peer-relayed-octets fn-peer-injection-arguments
+                            fn-pta-groups-verdict fn-peer-decision-kind)))))
+
+(verify-guards fn-pta-decide-cat)
+;; The host's form: the live owner's node, view and catalog (as POST's
+;; fn-pidx-existing-action-cat-of-live-owner), the carry from fn-prc-refresh.
+(defthm fn-pta-decide-cat-of-live-owner
+  (implies (and (fn-ocl-relation oc)
+                (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
+                (fn-prc-carryp carry))
+           (equal (fn-pta-decide-cat index keyring v gen
+                                     (fn-sn-node (fn-own-store (fn-ocfg-owner oc)))
+                                     cfg peer msgid octets clock id subject limits
+                                     (fn-own-view (fn-ocfg-owner oc)) carry fn-arena fn-cat)
+                  (fn-pta-decide index keyring v gen
+                                 (fn-sn-node (fn-own-store (fn-ocfg-owner oc)))
+                                 cfg peer msgid octets clock id subject limits)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-ocl-relation fn-scj-invp)
+                           (fn-ocl-view-historyp fn-ocl-view-visiblep fn-scj-joinp
+                            fn-scj-rows-invp fn-scj-vvp fn-scj-live-okp fn-scj-conns-pinp
+                            fn-pta-decide-cat fn-pta-decide fn-node-statep fn-prc-carryp))
+           :use ((:instance fn-ocl-view-historyp-is-visible (o (fn-ocfg-owner oc)))
+                 (:instance fn-pta-decide-cat-is-pta-decide
+                            (node (fn-sn-node (fn-own-store (fn-ocfg-owner oc))))
+                            (view (fn-own-view (fn-ocfg-owner oc))))))))
+
+(in-theory (disable fn-peer-decide-transfer-cat fn-peer-decide-transfer-under-cat fn-pta-decide-cat))

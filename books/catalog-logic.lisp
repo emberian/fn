@@ -660,7 +660,7 @@
       (let ((seqs (stobj-let ((fn-mlh (fn-cat$c-mpx fn-cat$c)))
                              (seqs)
                              (if (fn-mlh-wfp fn-mlh)
-                                 (fn-mlh-candidates (fn-mlh-tag msgid (fn-mlh-key-octets fn-mlh)) fn-mlh)
+                                 (fn-mlh-candidates (fn-mlh-tag-of msgid fn-mlh) fn-mlh)
                                nil)
                              seqs)))
         (fn-cat$c-confirm msgid seqs fn-cat$c))
@@ -858,7 +858,7 @@
       (stobj-let ((fn-mlh (fn-cat$c-mpx fn-cat$c)))
                  (r fn-mlh)
                  (if (fn-mlh-wfp fn-mlh)
-                     (fn-mlh-add (fn-mlh-tag msgid (fn-mlh-key-octets fn-mlh)) seq fn-mlh)
+                     (fn-mlh-add (fn-mlh-tag-of msgid fn-mlh) seq fn-mlh)
                    (mv :mpx-unplaced fn-mlh))
                  (if (eq r :placed)
                      fn-cat$c

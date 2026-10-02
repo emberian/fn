@@ -66,6 +66,7 @@
 (in-package "ACL2")
 (include-book "msgid-linear")
 (include-book "msgid-pages-exec")
+(include-book "msgid-tag-exec")
 (local (include-book "arithmetic/top" :dir :system))
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
@@ -82,11 +83,22 @@
 
 ; THE KEYED TAG: the first word of the keyed BLAKE3 of the Message-ID
 ; (books/msgid-pages-exec `fn-mpxt-word' of `fn-ns-mac') reduced to 60
-; bits, floored at 1 (0 is the empty slot).
+; bits, floored at 1 (0 is the empty slot).  It EXECUTES consing nothing
+; (books/msgid-tag-exec `fn-mlh-tag-x', KEYSTONE `fn-mlh-tag-x-is-tag'): the
+; string read by index, the key as eight words, the tag from the root's first
+; two output words (lane served-incremental-3; measured, hbox: 2.9 KB per tag
+; at 23 octets before, 0 bytes after).
 (defun fn-mlh-tag (msgid key)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t
+                  :guard-hints (("Goal" :use ((:instance fn-mlh-tag-x-is-tag))
+                                 :in-theory (disable fn-mlh-tag-x-is-tag fn-mpxt-word fn-ns-mac
+                                                     fn-mlh-key-word fn-record-string-octets)))))
   (if (stringp msgid)
-      (max 1 (mod (fn-mpxt-word 8 (fn-ns-mac key (fn-record-string-octets msgid))) *fn-mlh-tag-limit*))
+      (mbe :logic (max 1 (mod (fn-mpxt-word 8 (fn-ns-mac key (fn-record-string-octets msgid))) *fn-mlh-tag-limit*))
+           :exec (fn-mlh-tag-x msgid (fn-mlh-key-word 0 key) (fn-mlh-key-word 1 key)
+                               (fn-mlh-key-word 2 key) (fn-mlh-key-word 3 key)
+                               (fn-mlh-key-word 4 key) (fn-mlh-key-word 5 key)
+                               (fn-mlh-key-word 6 key) (fn-mlh-key-word 7 key)))
     1))
 
 (defthm fn-mlh-tag-posp
@@ -558,6 +570,46 @@
 
 (in-theory (disable fn-mlh-key-octets))
 
+; The key's word J read from the stobj (no key list built), and the tag of a
+; Message-ID under the table's own key: what the catalog's probe and add
+; execute (`fn-mlh-tag-of' is the logical (fn-mlh-tag msgid
+; (fn-mlh-key-octets fn-mlh)), enabled, so every theorem about that term
+; holds of it).
+(local
+ (defun fn-mlh-ind-key (i j)
+   (if (zp j) i (fn-mlh-ind-key (1+ i) (1- j)))))
+
+(local
+ (defthm fn-mlh-nthx-of-key-from
+   (implies (and (natp i) (natp j) (< (+ i j) 32))
+            (equal (fn-b3-nthx j (fn-mlh-key-from i fn-mlh))
+                   (fn-mlh-keyi (+ i j) fn-mlh)))
+   :hints (("Goal" :induct (fn-mlh-ind-key i j)
+            :expand ((fn-mlh-key-from i fn-mlh))
+            :in-theory (enable fn-b3-nthx)))))
+
+(defun fn-mlh-keyi-word (j fn-mlh)
+  (declare (xargs :stobjs fn-mlh :guard (and (natp j) (< j 8))
+                  :guard-hints (("Goal" :in-theory (e/d (fn-mlh-key-octets fn-mlh-key-word-is-le-word)
+                                                        (fn-mlh-key-word fn-mlh-key-from fn-b3-nthx))))))
+  (mbe :logic (fn-mlh-key-word j (fn-mlh-key-octets fn-mlh))
+       :exec (fn-b3-le-word (fn-mlh-keyi (* 4 j) fn-mlh) (fn-mlh-keyi (+ 1 (* 4 j)) fn-mlh)
+                            (fn-mlh-keyi (+ 2 (* 4 j)) fn-mlh) (fn-mlh-keyi (+ 3 (* 4 j)) fn-mlh))))
+
+(defun fn-mlh-tag-of (msgid fn-mlh)
+  (declare (xargs :stobjs fn-mlh
+                  :guard-hints (("Goal" :use ((:instance fn-mlh-tag-x-is-tag (key (fn-mlh-key-octets fn-mlh))))
+                                 :in-theory (e/d (fn-mlh-tag)
+                                                 (fn-mlh-tag-x-is-tag fn-mlh-key-word fn-mpxt-word fn-ns-mac
+                                                  fn-record-string-octets fn-mlh-key-octets))))))
+  (mbe :logic (fn-mlh-tag msgid (fn-mlh-key-octets fn-mlh))
+       :exec (if (stringp msgid)
+                 (fn-mlh-tag-x msgid (fn-mlh-keyi-word 0 fn-mlh) (fn-mlh-keyi-word 1 fn-mlh)
+                               (fn-mlh-keyi-word 2 fn-mlh) (fn-mlh-keyi-word 3 fn-mlh)
+                               (fn-mlh-keyi-word 4 fn-mlh) (fn-mlh-keyi-word 5 fn-mlh)
+                               (fn-mlh-keyi-word 6 fn-mlh) (fn-mlh-keyi-word 7 fn-mlh))
+               1)))
+
 ; --- the page writers against everything else ---
 
 (defthm fn-mlh-word-of-fresh-page
@@ -912,7 +964,7 @@
 ; keyed tag, confirmed against the rows by fn-mpxt-confirm.
 (defun fn-mlh-seqs (msgid rows fn-mlh)
   (declare (xargs :stobjs fn-mlh :guard (and (true-listp rows) (fn-mlh-wfp fn-mlh))))
-  (fn-mpxt-confirm msgid (fn-mlh-candidates (fn-mlh-tag msgid (fn-mlh-key-octets fn-mlh)) fn-mlh) rows))
+  (fn-mpxt-confirm msgid (fn-mlh-candidates (fn-mlh-tag-of msgid fn-mlh) fn-mlh) rows))
 
 ; -----------------------------------------------------------------------------
 ; 4. THE ABSTRACTION: the stobj read as the logical table.  The entries of
@@ -2462,7 +2514,7 @@
     (if (>= (+ 2 (nfix i)) *fn-mlh-tag-limit*)
         (fn-mlh-build-from (1+ (nfix i)) (1+ u) rows fn-mlh)
       (mv-let (r fn-mlh)
-        (fn-mlh-add (fn-mlh-tag (fn-record-msgid (nth (nfix i) rows)) (fn-mlh-key-octets fn-mlh))
+        (fn-mlh-add (fn-mlh-tag-of (fn-record-msgid (nth (nfix i) rows)) fn-mlh)
                     (nfix i) fn-mlh)
         (fn-mlh-build-from (1+ (nfix i)) (if (equal r :placed) u (1+ u)) rows fn-mlh)))))
 
@@ -2897,7 +2949,7 @@
                :exec (fn-mlh-build-tail 0 0 rows fn-mlh))
           (declare (ignore u))
           (mv (or (>= (+ 2 (len rows)) *fn-mlh-tag-limit*)
-                  (fn-mlh-saturatedp (fn-mlh-tag msgid (fn-mlh-key-octets fn-mlh)) fn-mlh))
+                  (fn-mlh-saturatedp (fn-mlh-tag-of msgid fn-mlh) fn-mlh))
               fn-mlh)))
       r)))
 

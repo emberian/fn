@@ -293,6 +293,7 @@
 (include-book "../../books/owner-export-request")
 (include-book "../../books/owner-control-post-reason")
 (include-book "../../books/peer-transit-authority")
+(include-book "../../books/peer-transit-indexed")
 (include-book "../../books/article-subject")
 (include-book "../../books/owner-reclaim-conns")
 (include-book "../../books/owner-reclaim-ready")

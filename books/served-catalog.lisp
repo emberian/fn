@@ -2877,6 +2877,10 @@
                             fn-scol-overview-of fn-nov-okp fn-nov-served-line
                             fn-nntp-multi fn-nntp-single)))))
 
+;; Cost (Codex r51 F1): flat in N, not O(1).  One Message-ID column probe
+;; (the keyed tag consing nothing, books/msgid-tag-exec), then work per ID
+;; (the Message-ID's seq list, reversed and walked to the one visible at V)
+;; and per output line (the group membership walk of the overview line).
 (defun fn-nntp-over-msgid-served-cat (session token server v fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat) :guard (fn-scat-guard)))
   (let ((article (fn-scat-msgid-article (fn-nntp-token-string token) v fn-arena fn-cat)))
@@ -3212,6 +3216,10 @@
                             fn-nntp-decimal-field fn-nntp-summary-high fn-nntp-summary-low
                             fn-nntp-closed-status)))))
 
+;; Cost (Codex r51 F2): flat in N at the TOP view only (fn-scat-top-viewp:
+;; the carried live summaries).  A session pinned at an older view V reads
+;; fn-scv-summary per group: G x D, D the rows appended since its pin
+;; (measured: 1.2 MB and 1.5 ms per LIST at D = 1,000, 10 groups).
 ;; The LIST forms this arm answers: LIST and LIST ACTIVE [wildmat].
 (defun fn-scat-list-active-formp (args)
   (declare (xargs :guard t))

@@ -42,6 +42,8 @@ applies directly, and refuses
 * a declaration whose NAME no book or ACL2-mode host file defines;
 * a dispatched entry that no declaration names (every host-called entry is
   declared);
+* a `:raw-with (:carried NAME)` when any dispatch is undeclared:
+  def-carried's completeness depends on the complete interface table;
 * a generated file that differs from what the forms say;
 
 * any way the raw host could reach a book function other than a quoted
@@ -423,6 +425,7 @@ def tree_theorems(root: Path = ROOT) -> set[str]:
 def findings(decls: list[dict], reading: dict, root: Path = ROOT) -> list[str]:
     out: list[str] = []
     seen: dict[str, str] = {}
+    undeclared = sorted(set(reading["dispatched"]) - {d["name"] for d in decls})
     theorems = tree_theorems(root) if any(d.get("raw_with") for d in decls) else set()
     for d in decls:
         where = "{}:{}".format(d["source"], d["line"])
@@ -439,6 +442,13 @@ def findings(decls: list[dict], reading: dict, root: Path = ROOT) -> list[str]:
         elif d["root"] is None and name not in reading["dispatched"]:
             out.append("{}: {} is declared but the raw host never dispatches it (stale); "
                        "remove the declaration or name its role".format(where, name))
+        if d.get("raw_with_carried") is not None and undeclared:
+            # Generated theorem names alone cannot establish completeness:
+            # an undeclared dispatch may write the carried state without
+            # appearing in the world's fn-interfaces table.
+            out.append("{}: {} :raw-with (:carried {}) cannot rely on def-carried's "
+                       "completeness: requires 0 undeclared dispatches; undeclared entries: {}".format(
+                           where, name, d["raw_with_carried"], ", ".join(undeclared)))
         if d.get("raw_with_carried") is not None and not d.get("raw_with"):
             out.append("{}: {} :raw-with (:carried {}) resolves to no theorems: no def-carried "
                        "row of that name in {}/ names {} among its transitions".format(
@@ -466,7 +476,7 @@ def findings(decls: list[dict], reading: dict, root: Path = ROOT) -> list[str]:
                                "ACL2 caller passing a producer's call may reach it".format(
                                    "dispatches" if kind == "dispatched" else "applies",
                                    f, ", ".join(sorted(reading[kind][f])), row_name))
-    for name in sorted(set(reading["dispatched"]) - set(seen)):
+    for name in undeclared:
         out.append("the raw host dispatches {} ({}) and no definterface declares it".format(
             name, ", ".join(sorted(reading["dispatched"][name]))))
     direct_declared = {d["name"] for d in decls if d["direct"]}
