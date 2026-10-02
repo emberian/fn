@@ -1247,12 +1247,15 @@
 
 (defun fn-cd-raw-entries-problem (name st kind entries w)
   (declare (xargs :mode :program))
-  ; the first failing requirement of KIND over ENTRIES, in order
-  (and (consp entries)
-       (or (fn-cd-raw-entry-problem
-            name st (car entries)
-            (cdr (assoc-eq kind *fn-cd-raw-requirements*)) w)
-           (fn-cd-raw-entries-problem name st kind (cdr entries) w))))
+  ; the first failing requirement of KIND over ENTRIES, in order; a KIND
+  ; the table does not list is a refusal, never "no requirements"
+  (cond ((atom entries) nil)
+        ((null (assoc-eq kind *fn-cd-raw-requirements*))
+         (msg "no raw requirements for the entry kind ~x0" kind))
+        (t (or (fn-cd-raw-entry-problem
+                name st (car entries)
+                (cdr (assoc-eq kind *fn-cd-raw-requirements*)) w)
+               (fn-cd-raw-entries-problem name st kind (cdr entries) w)))))
 
 (defun fn-cd-raw-problem-row (name row fn w)
   (declare (xargs :mode :program))
