@@ -7,9 +7,10 @@ hbox: n1k-2k,n10k-2k,syn100k-2k).  For each store it serves one
 `OVER low-high` of the first group twice, at ACL2's own quantum
 (fn-splan-cursor-window, no override) and at one quantum for the whole range
 (FN_NATIVE_OVER_WINDOW=100000000), under FN_OWNER_MEASURE=1, and prints one
-line per run from the owner's own account of its cursor quanta
-(host/native/owner.lisp, label :over-cursor: holds of the owner mutex, their
-total and longest duration, the octets allocated while held):
+line per run and measure label from the owner's own account of its mutex
+holds (host/native/owner.lisp FN_OWNER_MEASURE; label over-cursor for the
+cursor quanta, other for the rest of the session, the OVER step included;
+holds, their total and longest duration, the octets allocated while held):
 
     OVER-CURSOR-COST store=... rows=N window=acl2|whole seconds=S
         holds=H held-us=T max-us=M bytes=B us-per-hold=... bytes-per-hold=...
@@ -38,7 +39,7 @@ FIXTURES = os.environ.get("FN_OPEN_DEPTH_FIXTURES")
 NAMES = [n for n in os.environ.get("FN_OVER_COST_FIXTURES", "").split(",") if n]
 WHOLE = "100000000"
 OPEN_SECONDS = 3600
-MEASURE = re.compile(rb"fn-owner-measure over-cursor holds=(\d+) held-us=(\d+) max-us=(\d+) bytes=(\d+)")
+MEASURE = re.compile(rb"fn-owner-measure (\S+) holds=(\d+) held-us=(\d+) max-us=(\d+) bytes=(\d+)")
 
 
 @unittest.skipUnless(executable(IMAGE), "an executable FN_NATIVE_DEVELOPER_HOST is required")
@@ -92,23 +93,24 @@ class NativeOverCursorCost(unittest.TestCase):
                 client.close(False)
         finally:
             node.stop(process=owner, grace=OPEN_SECONDS)
-        found = MEASURE.search(owner.stderr.since(0))
-        self.assertIsNotNone(found, owner.stderr.since(0)[-2000:])
-        holds, held, most, consed = (int(g) for g in found.groups())
+        labels = {m.group(1).decode(): tuple(int(g) for g in m.groups()[1:])
+                  for m in MEASURE.finditer(owner.stderr.since(0))}
+        self.assertTrue(labels, owner.stderr.since(0)[-2000:])
         self.assertEqual(len(reply), count)
-        return count, reply, seconds, holds, held, most, consed
+        return count, reply, seconds, labels
 
     def test_cost_by_store_size(self):
         for name in NAMES:
             node = self.node(name)
             replies = []
             for label, window in (("acl2", None), ("whole", WHOLE)):
-                count, reply, seconds, holds, held, most, consed = self.overview(node, window)
+                count, reply, seconds, labels = self.overview(node, window)
                 replies.append(reply)
-                print("OVER-CURSOR-COST store={} rows={} window={} seconds={:.3f} holds={} held-us={} "
-                      "max-us={} bytes={} us-per-hold={:.1f} bytes-per-hold={:.0f}".format(
-                          name, count, label, seconds, holds, held, most, consed,
-                          held / max(holds, 1), consed / max(holds, 1)), flush=True)
+                for tag, (holds, held, most, consed) in sorted(labels.items()):
+                    print("OVER-CURSOR-COST store={} rows={} window={} seconds={:.3f} label={} holds={} "
+                          "held-us={} max-us={} bytes={} us-per-hold={:.1f} bytes-per-hold={:.0f}".format(
+                              name, count, label, seconds, tag, holds, held, most, consed,
+                              held / max(holds, 1), consed / max(holds, 1)), flush=True)
             self.assertEqual(replies[0], replies[1])
 
 
