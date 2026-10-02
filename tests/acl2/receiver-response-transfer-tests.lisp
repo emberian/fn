@@ -72,7 +72,7 @@
  (mv-let (opened openleft fn-index-backing)
  (fn-icr-finish-open 1000000 holder 1 fn-index-backing)
  (declare (ignore openleft))
- (let* ((fn-rx-provider (fn-rxtl-seed-provider fn-rx-provider)) (fn-receiver-turn (update-fn-rxt-receipt '(:receiver-install (:rx-capacity 0 0 4096) 0) fn-receiver-turn)) (fn-page-read-pool (update-fn-prp-mode :served fn-page-read-pool)))
+ (let* ((fn-rx-provider (fn-rxtl-seed-provider fn-rx-provider)) (fn-receiver-turn (update-fn-rxt-receipt '(:receiver-install (:rx-capacity 0 0 4096) 0) fn-receiver-turn)) (fn-page-read-pool (update-fn-prp-mode :served fn-page-read-pool)) (fn-page-read-pool (update-fn-prp-alloc-mode :active fn-page-read-pool)))
  (mv-let (startword ticket fn-receiver-turn fn-page-read-pool)
  (fn-owner-rx-turn-start '(:rx-capacity 0 0 4096) '(256 0 0 0 1) fn-rx-provider fn-receiver-turn fn-page-read-pool)
  (mv-let (copyword start end copyleft fn-rx-provider fn-receiver-turn fn-page-read-pool)
