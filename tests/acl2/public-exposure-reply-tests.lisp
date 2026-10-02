@@ -118,3 +118,45 @@
         (equal (fn-exp-entry-last (fn-exp-find 5 (fn-exp-conns (cdr r)))) 7000)
         (equal (fn-exp-entry-answered (fn-exp-find 5 (fn-exp-conns (cdr r)))) t)
         (equal (fn-exp-fails (cdr r)) nil))))
+
+; -----------------------------------------------------------------------------
+; KEYSTONE fn-exp-idle-keeps-after-progress (lane served-catalog-live; Codex
+; r67 F3): a cursor quantum's progress refreshes the idle deadline.
+;   H  (< (nfix later) (+ (nfix now) (* 1000 (fn-exp-lim-idle lim))))
+; The connection (id 5, registered at 5000, limits idle 600 s / first 60 s)
+; steps an OVER range whose effects are one cursor: the step sends no octet,
+; so the observation records no progress and no answer.
+
+(defconst *pxr-cursor-effects* (list (list :over-cursor (list "fn.test" 1 100000 3 nil t nil))))
+(defconst *pxr-after-over*
+  (cdr (fn-exp-observe-effects *pxr-xs* *pxr-lim* 5 6000 *pxr-cursor-effects* 12 nil nil)))
+
+; The defect, as it was: the cursor step is not an answer; a reply that is
+; still being written 60 s after open is closed by the FIRST-command limit.
+(assert-event (not (fn-exp-entry-answered (fn-exp-find 5 (fn-exp-conns *pxr-after-over*)))))
+(assert-event (equal (car (fn-exp-idle *pxr-after-over* *pxr-lim* 5 65000)) :close))
+
+; POSITIVE: the hypothesis and the conclusion.  A quantum at 64000 is
+; progress: the check at 65000 keeps, and so does every check until the idle
+; limit has passed since the quantum.
+(defconst *pxr-progressed* (fn-exp-progress *pxr-after-over* 5 64000))
+(assert-event (< 65000 (+ 64000 (* 1000 (fn-exp-lim-idle *pxr-lim*)))))
+(assert-event (equal (car (fn-exp-idle *pxr-progressed* *pxr-lim* 5 65000)) :keep))
+(assert-event (equal (car (fn-exp-idle *pxr-progressed* *pxr-lim* 5 663999)) :keep))
+(assert-event (fn-exp-entry-answered (fn-exp-find 5 (fn-exp-conns *pxr-progressed*))))
+
+; HYPOTHESIS REMOVAL: at exactly the idle limit after the quantum the
+; hypothesis fails and so does the conclusion (silence is still closed).
+(assert-event (not (< 664000 (+ 64000 (* 1000 (fn-exp-lim-idle *pxr-lim*))))))
+(assert-event (equal (car (fn-exp-idle *pxr-progressed* *pxr-lim* 5 664000)) :close))
+
+; FRAME (fn-exp-progress-frame): another connection's entry, and an unknown
+; id, are untouched.
+(defconst *pxr-two* (fn-exp-register *pxr-after-over* 6 '(:inet 127 0 0 3) 7000))
+(assert-event (equal (fn-exp-find 6 (fn-exp-conns (fn-exp-progress *pxr-two* 5 64000)))
+                     (fn-exp-find 6 (fn-exp-conns *pxr-two*))))
+(assert-event (equal (fn-exp-progress *pxr-two* 99 64000) *pxr-two*))
+; MUTATION (labelled): progress credited to the wrong connection does not
+; keep this one.
+(assert-event (equal (car (fn-exp-idle (fn-exp-progress *pxr-two* 6 64000) *pxr-lim* 5 65000))
+                     :close))

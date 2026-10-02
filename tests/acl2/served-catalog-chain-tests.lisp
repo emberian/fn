@@ -145,7 +145,57 @@
          ;; the cursor itself: group fn.test, numbers 1..3 (the range 1-3
          ;; clamped to the group's next number), view 3, OVER, status owed
          (equal (car (fn-nntp-result-effects cat))
-                (fn-ovw-cursor-effect (fn-ovw-cursor "fn.test" 1 3 3 nil t)))))
+                (fn-ovw-cursor-effect (fn-ovw-cursor "fn.test" 1 3 3 nil t nil)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-ovw-expand fn-ovw-cursor-effect fn-ovw-cursor-effectp
+                                     fn-ovw-cursor-octets fn-ovw-lines fn-ovw-reply fn-ovw-status
+                                     fn-ovw-empty-text fn-ovw-cursor))))
+
+;; OVER over a range ON A NODE WITH AN XREF SERVER NAME (lane served-catalog-
+;; live, 2026-10-02): the environment a configured node serves under.  The
+;; step answers a CURSOR here too, carrying the name; before this lane
+;; fn-nntp-xref-reply-cat answered this command whole, and the witness above
+;; (env NIL) was the only place the cursor arm was reached.  The complete
+;; hypothesis and conclusion of fn-scr-command-is-command-pinned, and teeth:
+;; the one effect is the cursor with the server field, the pinned reply
+;; carries the Xref field (it is longer than the nameless one), and a cursor
+;; without the name expands to a different reply (labelled mutation).
+(defconst *scct-server* (fn-nntp-string-octets "news.example"))
+(defconst *scct-server-env* (fn-nntp-env-listed nil nil nil (list nil nil *scct-server*)))
+
+(defthm scct-over-range-answers-a-cursor-with-a-server
+  (let* ((arch (scct-arch 3)) (index (scct-index 3))
+         (cat (fn-scr-command *scct-session* arch index nil *scct-server-env*
+                              (scct-tokens "OVER 1-3") 3 *scct-a* *scct-c*))
+         (pinned (fn-nntp-command-pinned *scct-session* arch index nil *scct-server-env*
+                                         (scct-tokens "OVER 1-3") *scct-a*))
+         (nameless (fn-nntp-command-pinned *scct-session* arch index nil nil
+                                           (scct-tokens "OVER 1-3") *scct-a*)))
+    (and (equal (fn-nntp-xref-server *scct-server-env*) *scct-server*)
+         (equal (fn-state-articles arch) (fn-cat-view-articles 3 *scct-a* *scct-c*))
+         (fn-statep arch)
+         (fn-gidx-pin-correspondencep index arch)
+         (fn-midx-correspondencep (fn-gidx-pin-trie index) (fn-state-articles arch))
+         (fn-cnx-freshp *scct-c*)
+         (fn-arena-p *scct-a*)
+         (fn-scol-rows-okp *scct-c* *scct-a*)
+         ;; the conclusion
+         (equal (fn-nntp-result-session cat) (fn-nntp-result-session pinned))
+         (equal (fn-ovw-expand (fn-nntp-result-effects cat) *scct-a* *scct-c*)
+                (fn-ovw-expand (fn-nntp-result-effects pinned) *scct-a* *scct-c*))
+         ;; teeth
+         (equal (fn-nntp-result-effects cat)
+                (list (fn-ovw-cursor-effect
+                       (fn-ovw-cursor "fn.test" 1 3 3 nil t *scct-server*))))
+         (not (equal cat pinned))
+         (equal (take 3 (cadr (car (fn-nntp-result-effects pinned)))) (list 50 50 52))
+         (< (len (cadr (car (fn-nntp-result-effects nameless))))
+            (len (cadr (car (fn-nntp-result-effects pinned)))))
+         ;; MUTATION: the cursor without its server name
+         (not (equal (fn-ovw-expand
+                      (list (fn-ovw-cursor-effect (fn-ovw-cursor "fn.test" 1 3 3 nil t nil)))
+                      *scct-a* *scct-c*)
+                     (fn-nntp-result-effects pinned)))))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-ovw-expand fn-ovw-cursor-effect fn-ovw-cursor-effectp
                                      fn-ovw-cursor-octets fn-ovw-lines fn-ovw-reply fn-ovw-status

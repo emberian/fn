@@ -523,6 +523,12 @@ quantum's reply in the cursor's place (and the cursor that remains)."
                    (fnn-live-stobj 'fn-arena) (fnn-live-stobj 'fn-cat))
        (unless (eq status :ok)
          (fnn-fault "owner returned a malformed cursor in its served reply"))
+       ;; The quantum is progress on the reply: refresh the connection's idle
+       ;; deadline in this same hold (fn-exp-progress; a web or pull consumer
+       ;; has no exposure entry and the call changes nothing).
+       (fnn-owner-advance-clock)
+       (unless (eq (fnn-owner-action 'fn-owner-exposure-progress cid) :ok)
+         (fnn-fault "owner rejected a cursor quantum's progress"))
        rest))
    class))
 

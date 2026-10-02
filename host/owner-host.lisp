@@ -4183,6 +4183,19 @@
          (state (f-put-global 'fn-owner-exposure (cdr r) state)))
     (value (car r))))
 
+; A cursor quantum wrote part of a reply the step did not write (a served
+; OVER/XOVER range): the connection's idle deadline is refreshed
+; (books/public-exposure-reply.lisp fn-exp-progress, keystone
+; fn-exp-idle-keeps-after-progress; Codex r67 F3).  Called by
+; host/native/owner.lisp fnn-owner-cursor-step in the quantum's own hold.
+(defun fn-owner-exposure-progress (id state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((state (f-put-global 'fn-owner-exposure
+                             (fn-exp-progress (fn-owner-exposure-state state) id
+                                              (fn-owner-exposure-now state))
+                             state)))
+    (value :ok)))
+
 (defun fn-owner-exposure-release (id state)
   (declare (xargs :stobjs state :mode :program))
   (let ((state (f-put-global 'fn-owner-exposure

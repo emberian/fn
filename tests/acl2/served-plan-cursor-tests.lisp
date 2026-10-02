@@ -54,7 +54,7 @@
   `(fn-served-reply-octets
     (cdr (fn-nntp-over-range-cat ,session 3 ,token ,legacyp *spct-a* *spct-c*))))
 (defmacro spct-effects (session token legacyp)
-  `(cdr (fn-nntp-over-range-ovw ,session 3 ,token ,legacyp *spct-c*)))
+  `(cdr (fn-nntp-over-range-ovw ,session 3 ,token ,legacyp nil *spct-c*)))
 (defmacro spct-plan (session token legacyp)
   `(fn-splan-of-effects (spct-effects ,session ,token ,legacyp)))
 (defmacro spct-drain (session token legacyp w wl n)
@@ -80,7 +80,7 @@
          (equal (mv-nth 1 (spct-drain s *spct-range* nil 1000 100 2)) old)
          (equal (take 3 old) '(50 50 52))
          (equal (last old) '(10))
-         (equal (len (fn-ovw-lines "fn.test" 1 3 3 *spct-a* *spct-c*)) 3)))
+         (equal (len (fn-ovw-lines "fn.test" 1 3 nil 3 *spct-a* *spct-c*)) 3)))
   :rule-classes nil)
 
 ;; The loop really takes its rounds (the keystone's one hypothesis): after
@@ -175,3 +175,33 @@
          (equal (append (mv-nth 1 r) (fn-splan-cw-remaining (mv-nth 2 r) 1 *spct-a* *spct-c*))
                 (spct-old s *spct-range* nil))))
   :rule-classes nil)
+
+;; THE SERVED ARM (lane served-catalog-live): with an Xref server name -- a
+;; configured node's environment -- the arm's cursor is fresh, the plan okp,
+;; and the loop writes the SERVED unbounded reader's reply
+;; (fn-splan-cw-drain-of-the-arm-is-the-unbounded-reply at a server:
+;; fn-splan-arm-reference is fn-nntp-over-range-served-cat), at two (W, WL)
+;; pairs; that reply is not the nameless one.
+(defconst *spct-server* (fn-record-string-octets "news.example"))
+(defthm spct-served-arm-witness
+  (let* ((s (spct-session "fn.test"))
+         (effects (cdr (fn-nntp-over-range-ovw s 3 *spct-range* nil *spct-server* *spct-c*)))
+         (old (fn-served-reply-octets
+               (cdr (fn-nntp-over-range-served-cat s 3 *spct-range* nil *spct-server*
+                                                   *spct-a* *spct-c*))))
+         (r1 (fn-splan-cw-drain (fn-splan-of-effects effects) 5 1 400 *spct-a* *spct-c*))
+         (r2 (fn-splan-cw-drain (fn-splan-of-effects effects) 1000 100 2 *spct-a* *spct-c*)))
+    (and (natp 3)
+         (fn-splan-fresh-effectsp effects)
+         (fn-splan-cw-okp (fn-splan-of-effects effects))
+         (fn-splan-at-cursorp (fn-splan-of-effects effects))
+         (fn-splan-donep (mv-nth 2 r1))
+         (equal (mv-nth 1 r1) old)
+         (fn-splan-donep (mv-nth 2 r2))
+         (equal (mv-nth 1 r2) old)
+         (equal (fn-splan-arm-reference s 3 *spct-range* nil *spct-server* *spct-a* *spct-c*)
+                (fn-nntp-over-range-served-cat s 3 *spct-range* nil *spct-server*
+                                               *spct-a* *spct-c*))
+         (not (equal old (spct-old s *spct-range* nil)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-splan-arm-reference))))

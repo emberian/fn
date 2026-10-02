@@ -1465,6 +1465,10 @@
   :kinds ((peer-octets fn-cbor-octet-listp))
   :keystones ((fn-olog-socket-connection-line-is-one-line :via fn-olog-socket-connection-line)))
 
+(definterface fn-owner-exposure-progress
+  :class ::program
+  :keystones ((fn-exp-idle-keeps-after-progress :via fn-exp-progress)))
+
 (definterface fn-owner-exposure-release
   :class ::program)
 

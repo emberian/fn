@@ -139,6 +139,48 @@ class NativeOverPinsTests(unittest.TestCase):
                 node.stop(expect=None, grace=300)
         self.assertEqual(replies[0], replies[1])
 
+    def test_a_long_over_refreshes_the_idle_deadline(self):
+        """Codex r67 F3: the cursor step sends no octet, so only the quanta
+        can tell the exposure that the reply is progress.  The connection's
+        last answer (GROUP) is older than the idle limit when the reply
+        drains; the idle check that follows must keep it, and plain silence
+        afterwards must still close it."""
+        node = self.filled("idle-over")
+        node.operator("policy", "set", "exposure-idle-seconds", "3", expect=EXIT.OK)
+        node.operator("policy", "set", "exposure-first-seconds", "3", expect=EXIT.OK)
+        stall = self.root / "over-idle-stall"
+        stall.touch()
+        owner = node.start(timeout=600, env={
+            "FN_NATIVE_OVER_WINDOW": "1",
+            "FN_NATIVE_OVER_TEST_PAUSE_AFTER_QUANTUM": str(stall),
+        })
+        client = Client(node.port, timeout=300, greeting=None)
+        try:
+            self.assertTrue(client.command("GROUP " + GROUP).startswith(b"211 5 "))
+            client.send(b"OVER 1-100\r\n")
+            held = self.owner_lines(owner, re.compile(rb"OVER quantum-held cid="), 1)
+            self.assertEqual(len(held), 1, owner.stderr.since(0)[-3000:])
+            time.sleep(5)                      # past the idle limit since GROUP
+            stall.unlink()
+            self.assertTrue(client.line().startswith(b"224 "))
+            rows = []
+            while True:
+                line = client.line()
+                if line == b".\r\n":
+                    break
+                rows.append(line)
+            self.assertEqual([int(row.split(b"\t", 1)[0]) for row in rows], [1, 2, 3, 4, 5])
+            time.sleep(1.5)                    # at least one idle check after the drain
+            self.assertTrue(client.command("STAT " + msgid("n0")).startswith(b"223 "),
+                            owner.stderr.since(0)[-3000:])
+            # Silence is still closed: nothing sent, the node closes with no line.
+            client.sock.settimeout(30)
+            self.assertEqual(client.sock.recv(1), b"")
+        finally:
+            stall.unlink(missing_ok=True)
+            client.close(False)
+            node.stop(expect=None, grace=300)
+
     def test_service_stop_settles_a_paused_response(self):
         node = self.copy_of(self.recorded_base(), "stop-over")
         stall = self.root / "over-stop-stall"
