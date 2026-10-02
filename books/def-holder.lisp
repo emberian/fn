@@ -15,17 +15,25 @@
 ; entries, and generates what each hand instance wrote:
 ;
 ;   (def-holder NAME
-;     :shape :keyed | :stamped        ; :keyed: holds are counted per KEY (a
+;     :shape :keyed | :identified | :stamped
+;                                     ; :keyed: holds are counted per KEY (a
 ;                                     ; file incarnation, a handle, a slot) and
 ;                                     ; a key is quiet when its count is 0;
-;                                     ; :stamped: holds pin the table's own
-;                                     ; generation (fn-arpn-step: :pin/:unpin,
-;                                     ; retirements stamped and released)
+;                                     ; :identified: each hold carries the
+;                                     ; holder's TOKEN (a read's token, a
+;                                     ; connection id): a duplicate hold and a
+;                                     ; drop by a token not holding are refused
+;                                     ; (fn-hd-ident-step); :stamped: holds pin
+;                                     ; the table's own generation
+;                                     ; (fn-arpn-step: :pin/:unpin, retirements
+;                                     ; stamped and released)
 ;     :key "what one key is"          ; prose, carried in the row
-;     :holders ((KIND :acquire (FN THM :table I :result P :key K :ok OK
+;     :holders ((KIND :acquire (FN THM :table I :result P :key K [:token T] :ok OK
 ;                                  [:when W] [:keeps THM2])
-;                     :release (FN THM :table I :result P :key K :ok OK
+;                     :release (FN THM :table I :result P :key K [:token T] :ok OK
 ;                                  [:when W] [:keeps THM2]))
+;                                     ; :token (over FN's formals) names the
+;                                     ; holder for the :identified shape
 ;               (KIND :host t :acquire FNN :release FNN :in (FNN ...))
 ;               (KIND :root t :in (FNN ...) :status (WORD "why"))
 ;               ...)
@@ -70,10 +78,12 @@
 ;                                    (mv-nth 0 (fn-hd-keyed-step TABLE (list :hold K)))
 ;                                  TABLE)))
 ;   NAME-KIND-release-drops   the same with (list :drop K)
-;   (:stamped: (fn-arpn-step TABLE '(:pin)) and (list :unpin K))
+;   (:identified: (fn-hd-ident-step TABLE (list :hold K T)) / (list :drop K T);
+;    :stamped: (fn-arpn-step TABLE '(:pin)) and (list :unpin K))
 ;   NAME-KIND-acquire-keeps / -release-keeps
 ;                             (implies (and (TABLEP TABLE) G) (TABLEP P[_:=CALL]))
-;                             TABLEP = fn-arpn-pinsp (:keyed) | fn-arpn-okp (:stamped);
+;                             TABLEP = fn-arpn-pinsp (:keyed) | fn-hd-identp
+;                             (:identified) | fn-arpn-okp (:stamped);
 ;                             proved from the -holds/-drops theorem and the
 ;                             generic preservation, nothing else -- or, when
 ;                             the entry declares :when W (one function serves
@@ -546,17 +556,37 @@
            (equal (mv-nth 1 (fn-hd-ident-step table (list :quiet k)))
                   (atom (fn-hd-tokens-of k table)))))
 
+; A run of identified events, and its answers.
+(defun fn-hd-ident-run (table evs)
+  (declare (xargs :guard (and (fn-hd-identp table) (true-listp evs))))
+  (if (atom evs)
+      table
+    (mv-let (table1 answer) (fn-hd-ident-step table (car evs))
+      (declare (ignore answer))
+      (fn-hd-ident-run table1 (cdr evs)))))
+
+(defun fn-hd-ident-run-answers (table evs)
+  (declare (xargs :guard (and (fn-hd-identp table) (true-listp evs))))
+  (if (atom evs)
+      nil
+    (mv-let (table1 answer) (fn-hd-ident-step table (car evs))
+      (cons answer (fn-hd-ident-run-answers table1 (cdr evs))))))
+
+(defthm fn-hd-ident-run-preserves-table
+  (implies (fn-hd-identp table)
+           (fn-hd-identp (fn-hd-ident-run table evs))))
+
 (in-theory (disable fn-hd-ident-row fn-hd-identp fn-hd-tokens-of fn-hd-ident-count
-                    fn-hd-ident-put fn-hd-ident-step))
+                    fn-hd-ident-put fn-hd-ident-step fn-hd-ident-run fn-hd-ident-run-answers))
 
 ; ---------------------------------------------------------------------------
 ; The form.
 
 (defconst *fn-hd-keys* '(:shape :key :holders :effect :complete-by :trace))
 
-(defconst *fn-hd-shapes* '(:keyed :stamped))
+(defconst *fn-hd-shapes* '(:keyed :identified :stamped))
 
-(defconst *fn-hd-entry-keys* '(:table :result :key :ok :when :keeps))
+(defconst *fn-hd-entry-keys* '(:table :result :key :token :ok :when :keeps))
 
 (defun fn-hd-get (key kvs)
   (declare (xargs :mode :program))
@@ -675,21 +705,30 @@
 
 (defun fn-hd-tablep (shape)
   (declare (xargs :mode :program))
-  (if (eq shape :stamped) 'fn-arpn-okp 'fn-arpn-pinsp))
+  (case shape (:stamped 'fn-arpn-okp) (:identified 'fn-hd-identp) (otherwise 'fn-arpn-pinsp)))
 
-(defun fn-hd-event-term (shape verb k)
+(defun fn-hd-event-term (shape verb k tok)
   (declare (xargs :mode :program))
-  ; the translated event term the entry performs: K is a translated term
+  ; the translated event term the entry performs: K and TOK translated terms
   (case shape
     (:stamped (if (eq verb :acquire)
                   (kwote (list :pin))
                 (list 'cons (kwote :unpin) (list 'cons k *nil*))))
+    (:identified (list 'cons (kwote (if (eq verb :acquire) :hold :drop))
+                       (list 'cons k (list 'cons tok *nil*))))
     (otherwise (list 'cons (kwote (if (eq verb :acquire) :hold :drop))
                      (list 'cons k *nil*)))))
 
 (defun fn-hd-step-fn (shape)
   (declare (xargs :mode :program))
-  (if (eq shape :stamped) 'fn-arpn-step 'fn-hd-keyed-step))
+  (case shape (:stamped 'fn-arpn-step) (:identified 'fn-hd-ident-step) (otherwise 'fn-hd-keyed-step)))
+
+(defun fn-hd-preserved-thm (shape)
+  (declare (xargs :mode :program))
+  (case shape
+    (:stamped 'fn-arpn-step-preserves-okp)
+    (:identified 'fn-hd-ident-step-preserves-table)
+    (otherwise 'fn-hd-keyed-step-preserves-table)))
 
 (defun fn-hd-normal-entry (name kind verb shape entry w)
   (declare (xargs :mode :program))
@@ -714,7 +753,8 @@
       (mv-let (bad terms)
         (fn-cd-translate-list (list (fn-hd-get :result opts) (fn-hd-get :ok opts)
                                     (fn-hd-get :key opts)
-                                    (if (assoc-keyword :when opts) (fn-hd-get :when opts) t))
+                                    (if (assoc-keyword :when opts) (fn-hd-get :when opts) t)
+                                    (fn-hd-get :token opts))
                               w)
         (cond
          (bad (mv (msg "~x0: ~x1 does not translate in this world" fn (car bad)) nil))
@@ -734,6 +774,12 @@
           (mv (msg "~x0's :when ~x1 mentions variables that are not its formals ~x2"
                    fn (fn-hd-get :when opts) formals)
               nil))
+         ((not (subsetp-eq (all-vars (car (cddddr terms))) formals))
+          (mv (msg "~x0's :token ~x1 mentions variables that are not its formals ~x2"
+                   fn (fn-hd-get :token opts) formals)
+              nil))
+         ((and (eq shape :identified) (not (assoc-keyword :token opts)))
+          (mv (msg "~x0: the :identified shape needs :token, the holder's identity" fn) nil))
          (t (mv nil (list fn thm
                           :name (packn-pos (list name '- kind '- verb
                                                  (if (eq verb :acquire) '-holds '-drops))
@@ -741,7 +787,7 @@
                           :keeps (packn-pos (list name '- kind '- verb '-keeps) name)
                           :keeps-by (fn-hd-get :keeps opts)
                           :table i :result (car terms) :ok (cadr terms) :key (caddr terms)
-                          :when (cadddr terms)
+                          :when (cadddr terms) :token (car (cddddr terms))
                           :shape shape)))))))))
 
 (defun fn-hd-entry-call (entry w)
@@ -775,7 +821,8 @@
          (table (fn-hd-entry-table entry w))
          (shape (fn-hd-get :shape (cddr entry)))
          (step (list (fn-hd-step-fn shape) table
-                     (fn-hd-event-term shape verb (fn-hd-get :key (cddr entry)))))
+                     (fn-hd-event-term shape verb (fn-hd-get :key (cddr entry))
+                                       (fn-hd-get :token (cddr entry)))))
          (conclusion (list 'equal (fn-hd-entry-result entry w)
                            (list 'if (fn-hd-entry-ok entry w)
                                  (list 'mv-nth (kwote 0) step)
@@ -948,9 +995,7 @@
       nil
     (let* ((verb (caar entries)) (entry (cdar entries)) (opts (cddr entry))
            (shape (fn-hd-get :shape opts))
-           (preserved (if (eq shape :stamped)
-                          'fn-arpn-step-preserves-okp
-                        'fn-hd-keyed-step-preserves-table)))
+           (preserved (fn-hd-preserved-thm shape)))
       (list* `(defthm ,(fn-hd-get :name opts) ,(fn-hd-holds-statement verb entry w)
                 :hints (("Goal" :use ,(cadr entry) :in-theory (theory 'minimal-theory)))
                 :rule-classes nil)
@@ -972,7 +1017,8 @@
                                                      (,(if (eq shape :stamped) 'st 'table)
                                                       ,(fn-hd-entry-table entry w))
                                                      (ev ,(fn-hd-event-term shape verb
-                                                                            (fn-hd-get :key opts))))))
+                                                                            (fn-hd-get :key opts)
+                                                                            (fn-hd-get :token opts))))))
                          :in-theory (theory 'minimal-theory)))
                 :rule-classes nil)
              `(table fn-teeth-owed ',(fn-hd-get :keeps opts)
@@ -1010,7 +1056,7 @@
        ,@(and entries (fn-hd-get :trace row)
               `((defun ,initial ()
                   (declare (xargs :guard t))
-                  ,(if (eq shape :stamped) '(fn-arpn-initial) '(fn-hd-initial)))
+                  ,(case shape (:stamped '(fn-arpn-initial)) (:identified 'nil) (otherwise '(fn-hd-initial))))
                 (defthm ,established (,tablep (,initial))
                   :hints (("Goal" :in-theory (enable ,initial))))
                 (def-carried ,(packn-pos (list name '-table) name)
@@ -1044,7 +1090,7 @@
    ; actuals included)
    (cond ((atom term) nil)
          ((eq (car term) 'quote) nil)
-         ((member-eq (car term) '(fn-hd-keyed-step fn-arpn-step)) t)
+         ((member-eq (car term) '(fn-hd-keyed-step fn-hd-ident-step fn-arpn-step)) t)
          ((consp (car term))
           (or (fn-hd-calls-step (caddr (car term))) (fn-hd-calls-step-lst (cdr term))))
          (t (fn-hd-calls-step-lst (cdr term)))))
@@ -1064,10 +1110,11 @@
   (declare (xargs :mode :program))
   (strip-cars (fn-hd-declared-entries rows)))
 
-; The library's own callers of the keyed step: the run and its answers
+; The library's own callers of a step: the two runs and their answers
 ; (above).  Exact: no other function of this book or of
 ; books/arena-reader-pins.lisp calls a step (fn-arpn-step is the step).
-(defconst *fn-hd-library-callers* '(fn-hd-run fn-hd-run-answers))
+(defconst *fn-hd-library-callers*
+  '(fn-hd-run fn-hd-run-answers fn-hd-ident-run fn-hd-ident-run-answers))
 
 (defun fn-hd-first-undeclared-caller (wrld declared)
   (declare (xargs :mode :program))
