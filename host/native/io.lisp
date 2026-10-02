@@ -6197,7 +6197,13 @@ tree root), or stop the build."
         (and (>= (length argv) 3)
              (string= (first argv) "store")
              (string= (third argv) "post")
-             "store post"))))
+             "store post")
+        ;; sweep S012: the capacity probe commits fixture articles into the
+        ;; store it is given; a production image refuses it at startup.
+        (and (>= (length argv) 3)
+             (string= (first argv) "store")
+             (string= (third argv) "probe")
+             "store probe"))))
 
 (defun fnn-stack-exhaustion-report (next)
   "FN_NATIVE_FAULT_BACKTRACE's report of a control-stack exhaustion, printed
@@ -6776,24 +6782,41 @@ the open proceeds on (:complete, :torn or :repaired)."
 
 (defun fnn-log-quarantine (path fd extent name)
   "Keep the segment's octets [0, EXTENT) as quarantine/NAME beside journal/
-(created O_EXCL, fenced with its directory) before a confirmed repair
-truncates the segment: the dropped entries stay available to the operator."
+before a confirmed repair truncates the segment: the dropped entries stay
+available to the operator.  The copy is written under quarantine/.stage-NAME
+(a stage of the same name left by a process that died mid-copy goes first:
+the writer lock is held, so no live attempt owns it), fenced, then renamed
+onto NAME and the directory fenced, so NAME only ever names a complete copy
+(sweep S040/S124: it was created O_EXCL in place, and a copy cut short left
+a partial NAME every rerun refused with EEXIST).  A NAME already present is
+an earlier attempt's complete copy of this damage (the repair died before
+its truncation was durable): it is kept and nothing is copied; a failure
+before the rename removes the stage."
   (let* ((journal (fnn-log-parent path))
          (dir (fnn-join (fnn-log-parent journal) "quarantine"))
-         (target (fnn-join dir name)))
+         (target (fnn-join dir name))
+         (stage (fnn-join dir (concatenate 'string ".stage-" name))))
     (unless (fnn-lstat dir)
       (fnn-posix () (sb-posix:mkdir dir #o700))
       (fnn-fsync-dir (fnn-log-parent journal)))
-    (let ((out (fnn-open target (logior sb-posix:o-wronly sb-posix:o-creat sb-posix:o-excl
-                                        +fnn-o-nofollow+))))
-      (unwind-protect
-           (let ((at 0))
-             (loop while (< at extent) do
-               (let ((chunk (fnn-log-pread fd at (min 1048576 (- extent at)))))
-                 (fnn-write-range out chunk 0 (length chunk))
-                 (incf at (length chunk))))
-             (fnn-fsync-file out))
-        (fnn-close out)))
+    (unless (fnn-lstat target)
+      (when (fnn-lstat stage) (fnn-unlink stage))
+      (let ((out (fnn-open stage (logior sb-posix:o-wronly sb-posix:o-creat sb-posix:o-excl
+                                         +fnn-o-nofollow+)))
+            (done nil))
+        (unwind-protect
+             (progn
+               (unwind-protect
+                    (let ((at 0))
+                      (loop while (< at extent) do
+                        (let ((chunk (fnn-log-pread fd at (min 1048576 (- extent at)))))
+                          (fnn-write-range out chunk 0 (length chunk))
+                          (incf at (length chunk))))
+                      (fnn-fsync-file out))
+                 (fnn-close out))
+               (fnn-replace stage target)
+               (setq done t))
+          (unless done (ignore-errors (fnn-unlink stage))))))
     (fnn-fsync-dir dir)
     target))
 
@@ -8451,7 +8474,10 @@ segment' (tests/test_native_topic_local.py)."
                  ((string= command "provenance") (need 4) (fnn-command-provenance root (first rest)))
                  ((string= command "probe")
                   (need 4)
-                  (fnn-command-probe root (parse-integer (first rest))
+                  (unless (fnn-developer-image-p)
+                    (error 'fnn-usage-error
+                           :message "store probe is a developer-image verb: it commits fixture articles"))
+                  (fnn-command-probe root (fnn-log-nat-arg (first rest) "probe COUNT")
                                      (cond ((null (second rest)) nil)
                                            ((string= (second rest) "article") t)
                                            (t (error 'fnn-usage-error

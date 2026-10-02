@@ -153,5 +153,36 @@ class LogDamageTests(unittest.TestCase):
         self.assertNotIn(b"log repaired", again.stdout)
 
 
+    def test_a_repair_cut_short_reruns(self):
+        """Sweep S040/S124: a repair whose quarantine copy was cut short (a
+        death mid-copy leaves quarantine/.stage-NAME, never NAME), and one
+        that died after its copy (NAME complete, the tail not yet zeroed),
+        both rerun to the same repaired store; NAME is the whole damaged
+        segment either way.  Before the fix the copy took NAME with O_EXCL
+        in place and every rerun refused with EEXIST."""
+        self.flip(25184)
+        damaged = (self.store / SEGMENT).read_bytes()
+        stop = max(q for q in self.starts if q <= 25184)
+        name = "000001.log.damaged-at-{}".format(stop)
+        quarantine = self.store / "quarantine"
+        for case in ("partial-stage", "complete-name"):
+            with self.subTest(case=case):
+                work = Path(tempfile.mkdtemp(prefix="rerun-", dir=self.dir.name))
+                store = work / "store"
+                shutil.copytree(self.store, store, symlinks=True)
+                (store / "quarantine").mkdir()
+                if case == "partial-stage":
+                    (store / "quarantine" / (".stage-" + name)).write_bytes(damaged[:1000])
+                else:
+                    (store / "quarantine" / name).write_bytes(damaged)
+                result = fz.run_image(self.image, ["store", store, "recover", "--repair",
+                                                   "truncate", "000001.log:{}".format(stop)])
+                self.assertEqual(result.returncode, fz.EXIT_OK, result.stderr[-600:])
+                self.assertEqual((store / "quarantine" / name).read_bytes(), damaged)
+                self.assertEqual(sorted(p.name for p in (store / "quarantine").iterdir()), [name])
+                self.assertIn(b"log repaired at=000001.log:%d" % stop, result.stdout)
+                shutil.rmtree(work, ignore_errors=True)
+        self.assertFalse(quarantine.exists())
+
 if __name__ == "__main__":
     unittest.main()

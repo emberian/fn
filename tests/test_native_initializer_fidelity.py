@@ -267,6 +267,26 @@ class NativeInitializerFidelityTests(unittest.TestCase):
             self.assertIn(b"reason=segment-misaligned", result.stderr)
             self.assertEqual(segment.read_bytes(), before, command)
 
+    def test_production_refuses_the_capacity_probe(self):
+        # Sweep S012: `store ROOT probe COUNT' commits COUNT fixture articles
+        # into the store it names; the production image refuses it at
+        # startup (exit 5) and the store is untouched.  A developer image
+        # takes COUNT as a natural or refuses it as usage, not as a fault.
+        store = self.base / "probe-refused"
+        made = self.invoke(store, "init")
+        self.assertEqual(made.returncode, EXIT_OK, made.stderr)
+        before = {p: p.read_bytes() for p in store.rglob("*") if p.is_file()}
+        refused = run([IMAGE, "--fn", "store", store, "probe", "3"], timeout=None,
+                      env=environment({}))
+        self.assertEqual(refused.returncode, 5, refused.stderr)
+        self.assertIn(b"store probe", refused.stderr)
+        self.assertEqual({p: p.read_bytes() for p in store.rglob("*") if p.is_file()}, before)
+        if executable(DEVELOPER):
+            usage = run([DEVELOPER, "--fn", "store", store, "probe", "3x"], timeout=None,
+                        env=environment({}))
+            self.assertEqual(usage.returncode, 5, usage.stderr)
+            self.assertNotIn(b"internal", usage.stderr)
+
     def test_sigkill_after_the_segment_recovers_in_a_new_process(self):
         # Lane log-2: init's last cut is the fenced segment; the store is
         # complete and a new process recovers it empty.
