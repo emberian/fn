@@ -2329,26 +2329,26 @@
     "books/owner-retain-carried"
   ],
   "totals": {
-    "books": 2740,
-    "books_in_root_closure": 2601,
+    "books": 2747,
+    "books_in_root_closure": 2602,
     "roots": 2325,
-    "theorems": 36783,
-    "functions": 23263,
-    "assert_events": 25526,
+    "theorems": 36872,
+    "functions": 23314,
+    "assert_events": 25607,
     "must_fails": 2618,
     "prover_refusals": 0,
     "encapsulates": 212,
     "guards": {
-      "verified": 3853,
-      "declared-off": 3015,
-      "default-guarded": 12899,
-      "default-unguarded": 3496
+      "verified": 3856,
+      "declared-off": 3016,
+      "default-guarded": 12944,
+      "default-unguarded": 3498
     },
     "suspect_theorems": 1368,
     "export_hygiene_warnings": 402,
     "enabled_projection_warnings": 80,
     "teeth_form_warnings": 279,
-    "include_hygiene_warnings": 3570,
+    "include_hygiene_warnings": 3571,
     "host_names_warnings": 3154,
     "hand_written_record_warnings": 19
   },
@@ -28266,6 +28266,32 @@
       "read_error": null
     },
     {
+      "book": "books/newnews-cursor.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 35,
+      "functions": 27,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 27,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "nntp-responses"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/ninep-dispatch.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -31601,7 +31627,7 @@
       "book": "books/owner-cursor-domain.lisp",
       "in_root_closure": true,
       "is_root": false,
-      "theorems": 28,
+      "theorems": 30,
       "functions": 2,
       "guards": {
         "verified": 0,
@@ -31618,6 +31644,7 @@
       "encapsulates": 0,
       "includes": [
         "consumer-store-invariants",
+        "owner-prepare-deferred-carried",
         "owner-recovery-retain",
         "owner-snapshot-recovery",
         "record-width-producers"
@@ -32076,7 +32103,7 @@
       "book": "books/owner-identity-prepare.lisp",
       "in_root_closure": true,
       "is_root": false,
-      "theorems": 1,
+      "theorems": 2,
       "functions": 1,
       "guards": {
         "verified": 1,
@@ -32092,6 +32119,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "owner-prepare-deferred-carried",
         "owner-prepare-outcome",
         "store-identity-reserve"
       ],
@@ -32976,6 +33004,32 @@
         "fn-opc-conn-id-of-conn-make",
         "fn-opc-prepare-keeps-configured-owner-context"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/owner-prepare-deferred-carried.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 35,
+      "functions": 10,
+      "guards": {
+        "verified": 3,
+        "declared-off": 1,
+        "default-guarded": 6,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 3,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "owner-prepare-outcome"
+      ],
+      "system_includes": [],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -51208,6 +51262,33 @@
       "read_error": null
     },
     {
+      "book": "books/withdrawal-index-carried.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 16,
+      "functions": 12,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 12,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "post-identity-catalog",
+        "post-retain-carried"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/acceptance-payload-ref-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -66622,6 +66703,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/newnews-cursor-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 19,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 13,
+      "defmacros": 2,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/newnews-cursor"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/ninep-fields-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -69666,6 +69773,59 @@
         "arena-lift",
         "held-rows-tests",
         "must-fail-checked"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/owner-prepare-deferred-carried-owner-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 13,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/owner-prepare-deferred-carried",
+        "owner-prepare-served-events-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/owner-prepare-deferred-carried-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 24,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 13,
+      "defmacros": 2,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/owner-prepare-deferred-carried"
       ],
       "system_includes": [],
       "suspects": [],
@@ -80807,6 +80967,32 @@
       "system_includes": [],
       "suspects": [],
       "read_error": null
+    },
+    {
+      "book": "tests/acl2/withdrawal-index-carried-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 25,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 12,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/withdrawal-index-carried"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
     }
   ],
   "suspects": [
@@ -85339,7 +85525,7 @@
     {
       "theorem": "fn-ohr-close-keeps-store",
       "book": "books/owner-host-relation.lisp",
-      "line": 491,
+      "line": 493,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -85347,7 +85533,7 @@
     {
       "theorem": "fn-ohr-fault-keeps-store",
       "book": "books/owner-host-relation.lisp",
-      "line": 481,
+      "line": 483,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -85355,7 +85541,7 @@
     {
       "theorem": "fn-ohr-read-step-preserves-capacity-bound",
       "book": "books/owner-host-relation.lisp",
-      "line": 1498,
+      "line": 1500,
       "reasons": [
         "preserves-no-subject-call: the statement never calls fn-ohr-read-step or a fn-ohr-read-step- transition"
       ]
@@ -85363,7 +85549,7 @@
     {
       "theorem": "fn-ohr-read-step-preserves-carried-relation",
       "book": "books/owner-host-relation.lisp",
-      "line": 1931,
+      "line": 1933,
       "reasons": [
         "preserves-no-subject-call: the statement never calls fn-ohr-read-step or a fn-ohr-read-step- transition"
       ]
@@ -85371,7 +85557,7 @@
     {
       "theorem": "fn-ohr-read-step-preserves-ocl-relation",
       "book": "books/owner-host-relation.lisp",
-      "line": 1912,
+      "line": 1914,
       "reasons": [
         "preserves-no-subject-call: the statement never calls fn-ohr-read-step or a fn-ohr-read-step- transition"
       ]
@@ -85379,7 +85565,7 @@
     {
       "theorem": "fn-ohr-read-step-preserves-ocl-relation-missing",
       "book": "books/owner-host-relation.lisp",
-      "line": 1508,
+      "line": 1510,
       "reasons": [
         "preserves-no-subject-call: the statement never calls fn-ohr-read-step or a fn-ohr-read-step- transition"
       ]
@@ -85387,7 +85573,7 @@
     {
       "theorem": "fn-ohr-read-step-preserves-ocl-relation-removed",
       "book": "books/owner-host-relation.lisp",
-      "line": 1577,
+      "line": 1579,
       "reasons": [
         "preserves-no-subject-call: the statement never calls fn-ohr-read-step or a fn-ohr-read-step- transition"
       ]
@@ -85395,7 +85581,7 @@
     {
       "theorem": "fn-ohr-read-step-preserves-owner-shape",
       "book": "books/owner-host-relation.lisp",
-      "line": 1242,
+      "line": 1244,
       "reasons": [
         "preserves-no-subject-call: the statement never calls fn-ohr-read-step or a fn-ohr-read-step- transition"
       ]
@@ -85403,7 +85589,7 @@
     {
       "theorem": "fn-ohr-with-owner-store",
       "book": "books/owner-host-relation.lisp",
-      "line": 488,
+      "line": 490,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -86658,7 +86844,7 @@
     {
       "theorem": "fn-owner-cursor-store-by-definition",
       "book": "books/owner-cursor-domain.lisp",
-      "line": 54,
+      "line": 81,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -86666,7 +86852,7 @@
     {
       "theorem": "fn-owner-cursor-swapped-store",
       "book": "books/owner-cursor-domain.lisp",
-      "line": 304,
+      "line": 339,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -86690,7 +86876,7 @@
     {
       "theorem": "fn-owner-recovered-install-establishes-cursor",
       "book": "books/owner-cursor-domain.lisp",
-      "line": 286,
+      "line": 321,
       "reasons": [
         "closed-theory-corollary: proved only by fn-owner-cursor-retained-implies-sequence, fn-owner-install-extended-store-effect-by-definition, fn-owner-recovery-establishes-retained-store"
       ]
@@ -86698,7 +86884,7 @@
     {
       "theorem": "fn-owner-recovery-establishes-retained-store",
       "book": "books/owner-cursor-domain.lisp",
-      "line": 227,
+      "line": 262,
       "reasons": [
         "closed-theory-corollary: proved only by fn-owner-cursor-recovered-full-has-retained-fields, fn-owner-recover-from-checkpoint-equals-full-recover"
       ]
@@ -93266,13 +93452,13 @@
       {
         "theorem": "fn-owner-install-extended-store-effect-by-definition",
         "book": "books/owner-cursor-domain.lisp",
-        "line": 273,
+        "line": 308,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-owner-orcp-swap-store-effect-by-definition",
         "book": "books/owner-cursor-domain.lisp",
-        "line": 313,
+        "line": 348,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -94985,6 +95171,7 @@
           "books/owner-open-carried.lisp",
           "books/owner-parse-carried.lisp",
           "books/owner-prepare-correspondence.lisp",
+          "books/owner-prepare-deferred-carried.lisp",
           "books/owner-prepare-outcome.lisp",
           "books/owner-prepare-served-ocl.lisp",
           "books/owner-reader-establishment.lisp",
@@ -95044,7 +95231,7 @@
           "tests/acl2/owner-prepare-served-events-tests.lisp",
           "tests/acl2/owner-reclaim-ready-tests.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 104 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 105 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-own-feeds",
@@ -95119,6 +95306,7 @@
           "books/owner-outcome-pinned.lisp",
           "books/owner-prepare-carried.lisp",
           "books/owner-prepare-correspondence.lisp",
+          "books/owner-prepare-deferred-carried.lisp",
           "books/owner-prepare-outcome.lisp",
           "books/owner-prepare-served-ocl.lisp",
           "books/owner-prepare-served.lisp",
@@ -95186,7 +95374,7 @@
           "tests/acl2/productive-read-message-id-tests.lisp",
           "tests/acl2/served-catalog-chain-tests.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 114 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 115 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-sn-node",
@@ -95218,6 +95406,7 @@
           "books/owner-number-bound.lisp",
           "books/owner-numbering.lisp",
           "books/owner-open-carried.lisp",
+          "books/owner-prepare-deferred-carried.lisp",
           "books/owner-prepare-served-ocl.lisp",
           "books/owner-reclaim-instant.lisp",
           "books/owner-retention-preparation.lisp",
@@ -95260,7 +95449,7 @@
           "books/transit-header-limits.lisp",
           "tests/acl2/catalog-commit-tests.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 66 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 67 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-own-view",
@@ -95451,6 +95640,7 @@
           "books/owner-number-bound.lisp",
           "books/owner-numbering.lisp",
           "books/owner-prepare-carried.lisp",
+          "books/owner-prepare-deferred-carried.lisp",
           "books/owner-prepare-outcome.lisp",
           "books/owner-prepare-served-ocl.lisp",
           "books/owner-reader-read.lisp",
@@ -95514,7 +95704,7 @@
           "tests/acl2/history-columns-store-tests.lisp",
           "tests/acl2/owner-reclaim-ready-tests.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 117 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 118 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-sf-frontier",
@@ -95537,6 +95727,7 @@
           "books/owner-commit-carried.lisp",
           "books/owner-invariants-relation.lisp",
           "books/owner-prepare-carried.lisp",
+          "books/owner-prepare-deferred-carried.lisp",
           "books/owner-prepare-outcome.lisp",
           "books/owner-prepare-served-ocl.lisp",
           "books/owner-snapshot-recovery.lisp",
@@ -95559,7 +95750,7 @@
           "books/store-open-node-bridge.lisp",
           "books/store-prepare-correspondence.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 37 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 38 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-pb-line",
@@ -95862,6 +96053,7 @@
           "books/owner-number-bound.lisp",
           "books/owner-numbering.lisp",
           "books/owner-prepare-carried.lisp",
+          "books/owner-prepare-deferred-carried.lisp",
           "books/owner-prepare-outcome.lisp",
           "books/owner-prepare-served-ocl.lisp",
           "books/owner-reader-read.lisp",
@@ -95925,7 +96117,7 @@
           "tests/acl2/history-columns-store-tests.lisp",
           "tests/acl2/owner-reclaim-ready-tests.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 117 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 118 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-stxk-context-kind",
@@ -107292,21 +107484,21 @@
       },
       {
         "book": "books/owner-host-relation.lisp",
-        "line": 58,
+        "line": 60,
         "include": "owner-identity-served",
         "included": "books/owner-identity-served.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/owner-host-relation.lisp",
-        "line": 62,
+        "line": 64,
         "include": "owner-outcome-pinned",
         "included": "books/owner-outcome-pinned.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/owner-host-relation.lisp",
-        "line": 64,
+        "line": 66,
         "include": "owner-served-bound",
         "included": "books/owner-served-bound.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -118047,6 +118239,13 @@
         "line": 57,
         "include": "arena-lift",
         "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/owner-prepare-deferred-carried-owner-tests.lisp",
+        "line": 6,
+        "include": "owner-prepare-served-events-tests",
+        "included": "tests/acl2/owner-prepare-served-events-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
