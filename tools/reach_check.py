@@ -641,6 +641,7 @@ def theorem_forms(paths) -> dict:
     """name -> (file, form) for every `defthm'/`defthmd', including those
     inside an `encapsulate', `local', `defsection' or `progn' (a top-level
     only scan left such events unresolved, which passed them silently)."""
+    import ledger
     found = {}
     for path in paths:
         try:
@@ -648,6 +649,9 @@ def theorem_forms(paths) -> dict:
         except OSError:
             continue
         rel = str(path.relative_to(ROOT))
+        # Preserve literal theorem spelling for this checker's lexical term
+        # reader (including rationals and escaped symbols). Only generated
+        # events need the shared mirror's printable form.
         for form in forms(text):
             for match in NESTED_DEFTHM.finditer(form):
                 name = match.group(1).lower()
@@ -656,6 +660,13 @@ def theorem_forms(paths) -> dict:
                 inner = forms(form[match.start():])
                 if inner:
                     found[name] = (rel, inner[0])
+        try:
+            parsed = ledger.Reader(text).top_level()
+        except ledger.ReadError:
+            continue
+        for form, _ in ledger.source_events(parsed):
+            if ledger.head(form) in ("defthm", "defthmd") and len(form) >= 3:
+                found.setdefault(str(form[1]), (rel, ledger.source_text(form)))
     return found
 
 
@@ -948,7 +959,9 @@ def structural_result_projection(graph: "Graph", name: str) -> bool:
             return False, False, False
         if term == ["quote", "nil"] or term == ["quote", []]:
             return True, False, True
-        if re.fullmatch(r"c[ad]+r", head) and len(term) == 2:
+        # Only the standard Common Lisp selectors. Longer lookalike names
+        # may be user-defined functions that transform the payload.
+        if re.fullmatch(r"c[ad]{1,4}r", head) and len(term) == 2:
             child = value(term[1], env)
             return child if child[2] else (False, False, False)
         if (head == "if" and len(term) == 4 and shape(term[1], env)

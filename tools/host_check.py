@@ -293,7 +293,15 @@ def world_text() -> str:
 
 
 def world_names(text: str) -> set[str]:
-    return {name.lower() for name in WORLD_DEF.findall(text)} | stobj_world_names()
+    import ledger
+    names = {name.lower() for name in WORLD_DEF.findall(text)} | stobj_world_names()
+    try:
+        for form, _ in ledger.source_events(ledger.Reader(text).top_level(), include_local=False):
+            if ledger.head(form) in ("defun", "defund", "defun-nx", "defmacro") and len(form) > 1:
+                names.add(str(form[1]).lower())
+    except ledger.ReadError:
+        pass  # retain the load check's lexical fallback for raw host reader syntax
+    return names
 
 
 def stobj_world_names() -> set[str]:
@@ -1307,6 +1315,11 @@ def stobj_names(path: Path) -> set[str]:
 
     def visit(form) -> None:
         if not isinstance(form, list) or not form:
+            return
+        expansion = ledger.generated_expansion(form)
+        if expansion is not None:
+            for item in expansion:
+                visit(item)
             return
         head = form[0]
         if head in ("defstobj", "defabsstobj") and len(form) >= 2 and isinstance(form[1], str):

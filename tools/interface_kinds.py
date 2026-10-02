@@ -90,6 +90,11 @@ def read_source(files: list[tuple[str, str]]) -> Source:
 
         def visit(form, line, clique=()):
             name = ledger.head(form)
+            expansion = ledger.generated_expansion(form)
+            if expansion is not None:
+                for item in expansion:
+                    visit(item, line, clique)
+                return
             if name == "mutual-recursion":
                 names = tuple(_s(f[1]) for f in form[1:]
                               if isinstance(f, list) and len(f) > 1)

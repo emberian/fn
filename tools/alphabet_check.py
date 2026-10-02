@@ -70,6 +70,10 @@ def definition(path: pathlib.Path, name: str) -> str:
             inner = reach_check.forms(form[match.start():])
             if inner:
                 return inner[0]
+    import ledger
+    for form, _ in ledger.source_events(ledger.Reader(text).top_level()):
+        if ledger.head(form) in ("defun", "defund", "defconst") and len(form) > 1 and form[1] == name:
+            return ledger.source_text(form)
     raise SystemExit(f"alphabet_check: {path.relative_to(ROOT)} defines no {name}")
 
 

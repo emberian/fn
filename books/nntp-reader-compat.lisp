@@ -479,49 +479,17 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-rcompat-hdr-lines-loop (group numbers articles server fn-arena acc)
-  (declare (xargs :stobjs fn-arena :guard (true-listp acc) :verify-guards nil))
-  (if (consp numbers)
-      (let ((content (fn-rcompat-xref-content server
-                                              (fn-nntp-available-article group
-                                                                         (car numbers)
-                                                                         articles)
-                                              fn-arena)))
-        (if (fn-nntp-hdr-okp content)
-            (fn-rcompat-hdr-lines-loop group
-                                       (cdr numbers)
-                                       articles
-                                       server
-                                       fn-arena
-                                       (cons (fn-nntp-hdr-line (fn-nntp-decimal-field (car numbers))
-                                                               (fn-nntp-hdr-octets content))
-                                             acc))
-          (fn-rcompat-hdr-lines-loop group (cdr numbers) articles server fn-arena acc)))
-    (revappend acc nil)))
+(verify-guards fn-rcompat-xref-value)
+(verify-guards fn-rcompat-xref-content)
 
-(defun fn-rcompat-hdr-lines (group numbers articles server fn-arena)
-  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp numbers)
-           (let ((content (fn-rcompat-xref-content
-                           server (fn-nntp-available-article group (car numbers)
-                                                             articles) fn-arena)))
-             (if (fn-nntp-hdr-okp content)
-                 (cons (fn-nntp-hdr-line (fn-nntp-decimal-field (car numbers))
-                                         (fn-nntp-hdr-octets content))
-                       (fn-rcompat-hdr-lines group (cdr numbers) articles server fn-arena))
-               (fn-rcompat-hdr-lines group (cdr numbers) articles server fn-arena)))
-         nil)
-       :exec (fn-rcompat-hdr-lines-loop group numbers articles server fn-arena nil)))
-
-(local
- (defthm fn-rcompat-hdr-lines-loop-is-revappend
-   (equal (fn-rcompat-hdr-lines-loop group numbers articles server fn-arena acc)
-          (revappend acc (fn-rcompat-hdr-lines group numbers articles server fn-arena)))
-   :hints (("Goal" :induct (fn-rcompat-hdr-lines-loop group numbers articles server fn-arena acc)
-                   :in-theory (union-theories '(fn-rcompat-hdr-lines-loop fn-rcompat-hdr-lines revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
+(def-loop fn-rcompat-hdr-lines (group numbers articles server fn-arena)
+  :shape :map :over numbers :stobjs fn-arena
+  :let ((content (fn-rcompat-xref-content
+                   server (fn-nntp-available-article group (car numbers) articles)
+                   fn-arena)))
+  :keep (fn-nntp-hdr-okp content)
+  :body (fn-nntp-hdr-line (fn-nntp-decimal-field (car numbers))
+                           (fn-nntp-hdr-octets content)))
 
 (defun fn-rcompat-hdr (session archive trie args legacyp server fn-arena)
   ; ARGS is (FIELD) or (FIELD RANGE-OR-MESSAGE-ID); FIELD is Xref.
@@ -704,7 +672,6 @@
 (verify-guards fn-rcompat-newgroups)
 (verify-guards fn-rcompat-active-times)
 (verify-guards fn-rcompat-subscriptions)
-(verify-guards fn-rcompat-xref-value)
 (verify-guards fn-rcompat-served-payload)
 (verify-guards fn-rcompat-served-article)
 (verify-guards fn-rcompat-served-payload-of-bytes
@@ -764,17 +731,7 @@
 (verify-guards fn-rcompat-article-reply
   :hints (("Goal" :use ((:instance fn-rcompat-article-reply-exec-is-the-reply)))))
 (verify-guards fn-rcompat-retrieval)
-(verify-guards fn-rcompat-xref-content)
-(verify-guards fn-rcompat-hdr-lines-loop)
 
-(verify-guards fn-rcompat-hdr-lines
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-rcompat-hdr-lines)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-rcompat-hdr-lines-loop-is-revappend (acc nil))))))
 (verify-guards fn-rcompat-hdr)
 (verify-guards fn-rcompat-reply)
 

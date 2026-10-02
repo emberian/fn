@@ -48,7 +48,7 @@
                     "Subject: cmsg cancel"
                     (concatenate 'string "Control: cancel " target))))
 
-(defconst *hra-tombstone* (append *fn-rcl-magic* (make-list 81 :initial-element 0)))
+(defconst *hra-tombstone* (append *fn-rcl-magic* (make-list 137 :initial-element 0)))
 (defconst *hra-payloads*
   (list (hra-plain "<t@example.invalid>" "fn.mod.a")
         (hra-plain "<o@example.invalid>" "fn.mod.a")

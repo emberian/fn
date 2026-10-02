@@ -137,10 +137,14 @@ valid profile (`fn-bs-profile-validp-codecs-accept`); the classification is
 planning/evidence/community-bounds-2026-09-26.md. The consumer count is the
 profile's `max-consumers` (field 8): the owner's registration
 (`fn-cp-register-within`, books/consumer-position.lisp) refuses
-`:max-consumers` exactly when the table already holds that many, and a raised
-field takes effect at the next open with no migration; replay re-runs the
-registration's validity, not the admission bound, because the profile only
-rises. Open: the group-name bound (field 6) is not yet read on the served
+`:max-consumers` exactly when the table already holds that many. A store
+keeps the profile it was opened under (D34; no migrations, 2026-09-28).
+Replay re-runs the registration's validity, not the admission bound: when
+every register the open's replay applies was one the admission under
+`max-consumers` writes in the state replay has reached, the replayed table
+holds at most `max-consumers` entries (`fn-crb-replay-keeps-the-consumer-bound`,
+books/consumer-replay-bound.lisp, PRF-167). Open: no producer theorem yet
+shows the persisted history satisfies that premise. Open: the group-name bound (field 6) is not yet read on the served
 path and the name width is 256, below the NNTP wire's 460 (PKT-451); a
 peer's configuration rows are now data (STO-023).
 

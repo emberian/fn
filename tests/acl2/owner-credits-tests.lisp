@@ -122,7 +122,7 @@
 (defconst *mcat-queued0*
   (fn-ocfg-with-owner *oast-open*
                       (fn-own-enqueue (fn-ocfg-owner *oast-open*)
-                                      (fn-own-sub-make 0 0 nil :witness))))
+                                      (fn-own-sub-make 0 0 nil :witness nil))))
 ; A complete submission holds its charge, not the reserve (lane
 ; credits-stall): an empty witness article, the records' cells, twice (lane
 ; chunked-body-2: the queue holds it packed, fn-psub-sub-heap).
@@ -229,6 +229,6 @@
 ; The charge of a submission never exceeds the reserve.
 (assert-event (equal (fn-mca-sub-charge (fn-own-sub-make 0 0 nil
                                                          (fn-inj-make-decision :injected nil "m" nil
-                                                                               (make-list 1000000 :initial-element 65)))
+                                                                               (make-list 1000000 :initial-element 65)) nil)
                                         *mcat-r*)
                      *mcat-r*))

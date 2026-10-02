@@ -269,9 +269,8 @@ class FileScan:
         if name == "verify-guards" and len(form) >= 2 and isinstance(form[1], Sym):
             self.verified_events.add(str(form[1]))
             return
-        if name in ("fn-defrecord", "fn-defrecord-export"):
-            expansion = (ledger.defrecord_expansion(form) if name == "fn-defrecord"
-                         else ledger.defrecord_export_expansion(form))
+        expansion = ledger.generated_expansion(form)
+        if expansion is not None:
             for item in expansion:
                 self.record(item, line, in_encapsulate=in_encapsulate, local=local)
             return

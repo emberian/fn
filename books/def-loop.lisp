@@ -40,6 +40,9 @@
 ;   :sum   (NAME XS ...) = (if (consp XS) (+ BODY (NAME (cdr XS) ...)) 0)
 ;          a count or a total; the loop adds onto a number.  Bridge:
 ;          `fn-dl-sum-loop-is-plus'.
+;   :concat (NAME XS ...) appends BODY for each element; the loop
+;           revappends each BODY into ACC, then reverses ACC at the end.
+;           Bridge: `fn-dl-concat-loop-is-revappend'.
 ;   :into  (NAME XS ... ST) = (if (consp XS) (NAME (cdr XS) ... (WRITE BODY ST)) ST)
 ;          the D27 form: each element's value is written into a buffer
 ;          stobj whose logical value is a list (`fn-octets'), and the
@@ -63,6 +66,29 @@
 ; about the loop.  Nothing else is enabled or exported; the library's own
 ; definitions are disabled at the end of this book.
 ;
+; :keep-order :skip-first emits (if KEEP RECUR (cons BODY RECUR));
+; the default :cons-first preserves the original expansion.
+;
+; :map :base TERM emits (if TERM TAIL INNER), preserving every inner
+; option. Its only constraint is (implies (not TERM) (consp XS)); the
+; instance discharges it with the defining equations in minimal-theory.
+; :base excludes :while, including an explicitly supplied :while t.
+;
+; :take :base TERM emits a base-first IF. The shape requires that
+; (not TERM) imply (posp COUNT); each instance discharges that progress
+; condition along with the two defining equations. :base excludes :while.
+;
+; :map :loop-guard G overrides only the loop declaration. It uses the
+; same unconditional library bridge; both guard-verification events still
+; discharge the caller-supplied guard. :default preserves the old form.
+;
+; :map :acc-fix t reverses (true-list-fix ACC), permitting the loop
+; guard to omit true-listp ACC. Its bridge states that same fixed value.
+;
+; :map :stobjs ST (or a list of stobj formals) declares immutable
+; context. It uses the same map library bridge, with those formals fixed.
+; Updaters, including macro-expanded calls, are refused before expansion.
+;
 ; Guards.  `:guard G' is the wrapper's guard (default t); the loop's is
 ; `(and G (true-listp ACC))' (`(acl2-numberp ACC)' for `:sum').  The
 ; wrapper's `verify-guards' runs in `minimal-theory' plus `revappend', the
@@ -83,9 +109,10 @@
 
 ; -----------------------------------------------------------------------------
 ; The library: one constrained shape and one bridge per form.  The
-; constrained functions have no axioms (the local witnesses are trivial),
-; so a functional instance owes only the definitional equations of the two
-; defined functions it substitutes.  The variables are `dl-xs', `dl-acc',
+; element/selector functions have no constraints (their local witnesses
+; are trivial). Base-first shapes additionally require progress, and :into
+; requires the append equation below. An instance owes these constraints
+; plus the defining equations of the two functions it substitutes.  The variables are `dl-xs', `dl-acc',
 ; `dl-n', `dl-st' so that an instance's own formals never clash with them.
 
 ; --- :map
@@ -122,6 +149,83 @@
   (equal (fn-dl-map-loop dl-xs dl-acc) (revappend dl-acc (fn-dl-map dl-xs)))
   :hints (("Goal" :induct (fn-dl-map-loop dl-xs dl-acc))))
 
+; Skip-first uses the same unconstrained predicates, with the keep test
+; interpreted as the skip test. Its single bridge supplies every instance.
+(defun fn-dl-map-skip (dl-xs)
+  (if (and (consp dl-xs) (fn-dl-while dl-xs))
+      (if (fn-dl-stop dl-xs) (fn-dl-stop-value dl-xs)
+        (if (fn-dl-keep dl-xs)
+            (fn-dl-map-skip (cdr dl-xs))
+          (cons (fn-dl-f dl-xs) (fn-dl-map-skip (cdr dl-xs)))))
+    (fn-dl-tail dl-xs)))
+
+(defun fn-dl-map-skip-loop (dl-xs dl-acc)
+  (if (and (consp dl-xs) (fn-dl-while dl-xs))
+      (if (fn-dl-stop dl-xs) (revappend dl-acc (fn-dl-stop-value dl-xs))
+        (if (fn-dl-keep dl-xs)
+            (fn-dl-map-skip-loop (cdr dl-xs) dl-acc)
+          (fn-dl-map-skip-loop (cdr dl-xs) (cons (fn-dl-f dl-xs) dl-acc))))
+    (revappend dl-acc (fn-dl-tail dl-xs))))
+
+(defthm fn-dl-map-skip-loop-is-revappend
+  (equal (fn-dl-map-skip-loop dl-xs dl-acc)
+         (revappend dl-acc (fn-dl-map-skip dl-xs)))
+  :hints (("Goal" :induct (fn-dl-map-skip-loop dl-xs dl-acc))))
+
+; The guard-T accumulator variant fixes only the accumulator at reversal.
+; The model's map is unchanged; a skip-first instance negates its selector
+; in the functional substitution, not in the emitted logic body.
+(defun fn-dl-map-fixed-loop (dl-xs dl-acc)
+  (if (and (consp dl-xs) (fn-dl-while dl-xs))
+      (if (fn-dl-stop dl-xs)
+          (revappend (true-list-fix dl-acc) (fn-dl-stop-value dl-xs))
+        (if (fn-dl-keep dl-xs)
+            (fn-dl-map-fixed-loop (cdr dl-xs) (cons (fn-dl-f dl-xs) dl-acc))
+          (fn-dl-map-fixed-loop (cdr dl-xs) dl-acc)))
+    (revappend (true-list-fix dl-acc) (fn-dl-tail dl-xs))))
+
+(defthm fn-dl-map-fixed-loop-is-revappend
+  (equal (fn-dl-map-fixed-loop dl-xs dl-acc)
+         (revappend (true-list-fix dl-acc) (fn-dl-map dl-xs)))
+  :hints (("Goal" :induct (fn-dl-map-fixed-loop dl-xs dl-acc))))
+
+; --- :map with a base-first predicate. The only base constraint is progress.
+; FIXP selects the existing accumulator convention; it has no constraints.
+; Skip-first instances negate KEEP in the substitution, leaving the emitted
+; branch order intact. All combinations use this one bridge.
+(encapsulate
+  (((fn-dl-mb-base *) => *) ((fn-dl-mb-fixp) => *))
+  (local (defun fn-dl-mb-base (xs) (atom xs)))
+  (local (defun fn-dl-mb-fixp () nil))
+  (defthm fn-dl-mb-base-progress
+    (implies (not (fn-dl-mb-base xs)) (consp xs))))
+
+(defun fn-dl-map-base (dl-xs)
+  (if (fn-dl-mb-base dl-xs)
+      (fn-dl-tail dl-xs)
+    (if (fn-dl-stop dl-xs)
+        (fn-dl-stop-value dl-xs)
+      (if (fn-dl-keep dl-xs)
+          (cons (fn-dl-f dl-xs) (fn-dl-map-base (cdr dl-xs)))
+        (fn-dl-map-base (cdr dl-xs))))))
+
+(defun fn-dl-map-base-loop (dl-xs dl-acc)
+  (if (fn-dl-mb-base dl-xs)
+      (revappend (if (fn-dl-mb-fixp) (true-list-fix dl-acc) dl-acc)
+                 (fn-dl-tail dl-xs))
+    (if (fn-dl-stop dl-xs)
+        (revappend (if (fn-dl-mb-fixp) (true-list-fix dl-acc) dl-acc)
+                   (fn-dl-stop-value dl-xs))
+      (if (fn-dl-keep dl-xs)
+          (fn-dl-map-base-loop (cdr dl-xs) (cons (fn-dl-f dl-xs) dl-acc))
+        (fn-dl-map-base-loop (cdr dl-xs) dl-acc)))))
+
+(defthm fn-dl-map-base-loop-is-revappend
+  (equal (fn-dl-map-base-loop dl-xs dl-acc)
+         (revappend (if (fn-dl-mb-fixp) (true-list-fix dl-acc) dl-acc)
+                    (fn-dl-map-base dl-xs)))
+  :hints (("Goal" :induct (fn-dl-map-base-loop dl-xs dl-acc))))
+
 ; --- :take
 
 (encapsulate
@@ -144,6 +248,39 @@
   (equal (fn-dl-take-loop dl-n dl-xs dl-acc) (revappend dl-acc (fn-dl-take dl-n dl-xs)))
   :hints (("Goal" :induct (fn-dl-take-loop dl-n dl-xs dl-acc))))
 
+; --- :take with a caller's base predicate. Progress is the shape's
+; termination condition, not an assumption about any stored data.
+(encapsulate
+  (((fn-dl-tb-base * *) => *))
+  (local (defun fn-dl-tb-base (n xs) (declare (ignore xs)) (not (posp n))))
+  (defthm fn-dl-tb-base-progress
+    (implies (not (fn-dl-tb-base n xs)) (posp n))))
+
+(defun fn-dl-take-base (dl-n dl-xs)
+  (declare (xargs :measure (nfix dl-n)
+                  :hints (("Goal" :use ((:instance fn-dl-tb-base-progress
+                                                   (n dl-n) (xs dl-xs)))
+                                  :in-theory (enable posp)))))
+  (if (fn-dl-tb-base dl-n dl-xs)
+      (fn-dl-tk-tail dl-n dl-xs)
+    (cons (fn-dl-tk-f dl-n dl-xs)
+          (fn-dl-take-base (- dl-n 1) (cdr dl-xs)))))
+
+(defun fn-dl-take-base-loop (dl-n dl-xs dl-acc)
+  (declare (xargs :measure (nfix dl-n)
+                  :hints (("Goal" :use ((:instance fn-dl-tb-base-progress
+                                                   (n dl-n) (xs dl-xs)))
+                                  :in-theory (enable posp)))))
+  (if (fn-dl-tb-base dl-n dl-xs)
+      (revappend dl-acc (fn-dl-tk-tail dl-n dl-xs))
+    (fn-dl-take-base-loop (- dl-n 1) (cdr dl-xs)
+                         (cons (fn-dl-tk-f dl-n dl-xs) dl-acc))))
+
+(defthm fn-dl-take-base-loop-is-revappend
+  (equal (fn-dl-take-base-loop dl-n dl-xs dl-acc)
+         (revappend dl-acc (fn-dl-take-base dl-n dl-xs)))
+  :hints (("Goal" :induct (fn-dl-take-base-loop dl-n dl-xs dl-acc))))
+
 ; --- :sum
 
 (encapsulate
@@ -160,6 +297,30 @@
   (implies (acl2-numberp dl-acc)
            (equal (fn-dl-sum-loop dl-xs dl-acc) (+ dl-acc (fn-dl-sum dl-xs))))
   :hints (("Goal" :induct (fn-dl-sum-loop dl-xs dl-acc))))
+
+; --- :concat: each element contributes a list, collected in reverse.
+(encapsulate
+  (((fn-dl-cc-f *) => *))
+  (local (defun fn-dl-cc-f (xs) (list (car xs)))))
+
+(defun fn-dl-concat (dl-xs)
+  (if (consp dl-xs)
+      (append (fn-dl-cc-f dl-xs) (fn-dl-concat (cdr dl-xs)))
+    nil))
+
+(defun fn-dl-concat-loop (dl-xs dl-acc)
+  (if (consp dl-xs)
+      (fn-dl-concat-loop (cdr dl-xs) (revappend (fn-dl-cc-f dl-xs) dl-acc))
+    (revappend dl-acc nil)))
+
+(local (defthm fn-dl-revappend-revappend
+         (equal (revappend (revappend a b) c)
+                (revappend b (append a c)))))
+
+(defthm fn-dl-concat-loop-is-revappend
+  (equal (fn-dl-concat-loop dl-xs dl-acc)
+         (revappend dl-acc (fn-dl-concat dl-xs)))
+  :hints (("Goal" :induct (fn-dl-concat-loop dl-xs dl-acc))))
 
 ; --- :into
 
@@ -189,9 +350,16 @@
            (equal (fn-dl-into-loop dl-xs dl-st) (append dl-st (fn-dl-into-map dl-xs))))
   :hints (("Goal" :induct (fn-dl-into-loop dl-xs dl-st))))
 
-(in-theory (disable fn-dl-map fn-dl-map-loop fn-dl-map-loop-is-revappend
+(in-theory (disable fn-dl-mb-base-progress fn-dl-map-base
+                    fn-dl-map-base-loop fn-dl-map-base-loop-is-revappend
+                    fn-dl-map fn-dl-map-loop fn-dl-map-loop-is-revappend
+                    fn-dl-map-fixed-loop fn-dl-map-fixed-loop-is-revappend
+                    fn-dl-map-skip fn-dl-map-skip-loop fn-dl-map-skip-loop-is-revappend
                     fn-dl-take fn-dl-take-loop fn-dl-take-loop-is-revappend
+                    fn-dl-tb-base-progress fn-dl-take-base fn-dl-take-base-loop
+                    fn-dl-take-base-loop-is-revappend
                     fn-dl-sum fn-dl-sum-loop fn-dl-sum-loop-is-plus
+                    fn-dl-concat fn-dl-concat-loop fn-dl-concat-loop-is-revappend
                     fn-dl-into-map fn-dl-into-loop fn-dl-into-loop-is-append))
 
 ; -----------------------------------------------------------------------------
@@ -228,19 +396,57 @@
   (declare (xargs :mode :program))
   (if bindings `(let* ,bindings ,body) body))
 
+; Base-first map proof substitutions may use only some LET bindings (for
+; example KEEP defaults to T). Declarations affect translation checks only;
+; they do not alter the instance's emitted logic or loop bodies.
+(defun fn-dl-map-proof-let (base bindings body)
+  (declare (xargs :mode :program))
+  (if (and base bindings)
+      `(let* ,bindings (declare (ignorable ,@(strip-cars bindings))) ,body)
+    (fn-dl-let bindings body)))
+
 ; TERM with the element variable ELT (if any) standing for `(car XS)'.
 (defun fn-dl-elt (elt xs term)
   (declare (xargs :mode :program))
   (if elt (fn-dl-subst elt `(car ,xs) term) term))
 
+; Check read-only stobj options against the world and the translated terms,
+; so an updater hidden behind a macro is checked too. ACL2 also checks the
+; generated functions' stobj signatures and guard obligations at admission.
+(defun fn-dl-stobjs-knownp (stobjs formals wrld)
+  (declare (xargs :mode :program))
+  (if (endp stobjs) t
+    (and (member-eq (car stobjs) formals)
+         (getpropc (car stobjs) 'stobj nil wrld)
+         (fn-dl-stobjs-knownp (cdr stobjs) formals wrld))))
+
+(defun fn-dl-updaterp (term stobjs wrld)
+  (declare (xargs :mode :program))
+  (cond ((atom term) nil)
+        ((eq (car term) 'quote) nil)
+        (t (or (and (symbolp (car term))
+                    (intersection-eq stobjs (getpropc (car term) 'stobjs-out nil wrld)))
+               (fn-dl-updaterp (car term) stobjs wrld)
+               (fn-dl-updaterp (cdr term) stobjs wrld)))))
+
+(defun fn-dl-readonly-check (name stobjs term state)
+  (declare (xargs :mode :program :stobjs state))
+  (if (null stobjs) (value nil)
+    (er-let* ((translated (translate term t t t 'def-loop (w state) state)))
+      (if (fn-dl-updaterp translated stobjs (w state))
+          (er soft 'def-loop "~x0: :stobjs is read-only; a term returns a declared stobj." name)
+        (value nil)))))
+
 ; -----------------------------------------------------------------------------
 ; The generated events.
 
 (defun fn-dl-map-events (name formals xs elt body while stop stop-value keep tail
-                              let guard guard-hints guard-theory acc loop measure)
+                              let guard guard-hints guard-theory acc loop measure keep-order loop-guard acc-fix stobjs base)
   (declare (xargs :mode :program))
-  (let* ((body (fn-dl-elt elt xs body))
+  (let* ((fixed (if acc-fix `(true-list-fix ,acc) acc))
+         (body (fn-dl-elt elt xs body))
          (while (fn-dl-elt elt xs while))
+         (base (fn-dl-elt elt xs base))
          (stop (fn-dl-elt elt xs stop))
          (stop-value (fn-dl-elt elt xs stop-value))
          (keep (fn-dl-elt elt xs keep))
@@ -252,47 +458,77 @@
          (loop-cons `(,loop ,@next (cons ,body ,acc)))
          (loop-skip `(,loop ,@next ,acc))
          (bridge (fn-dl-name (list loop "-IS-REVAPPEND") name))
-         (logic-inner (if (eq keep t)
+         (logic-inner (if (eq keep-order :skip-first)
+                          `(if ,keep ,rec (cons ,body ,rec))
+                        (if (eq keep t)
                           `(cons ,body ,rec)
-                        `(if ,keep (cons ,body ,rec) ,rec)))
+                        `(if ,keep (cons ,body ,rec) ,rec))))
          (logic-body
-          `(if ,test
-               ,(fn-dl-let let (if stop `(if ,stop ,stop-value ,logic-inner) logic-inner))
-             ,tail))
-         (loop-inner (if (eq keep t)
+          (if base
+              `(if ,base ,tail
+                 ,(fn-dl-let let (if stop `(if ,stop ,stop-value ,logic-inner) logic-inner)))
+            `(if ,test
+                 ,(fn-dl-let let (if stop `(if ,stop ,stop-value ,logic-inner) logic-inner))
+               ,tail)))
+         (loop-inner (if (eq keep-order :skip-first)
+                         `(if ,keep ,loop-skip ,loop-cons)
+                       (if (eq keep t)
                          loop-cons
-                       `(if ,keep ,loop-cons ,loop-skip)))
+                       `(if ,keep ,loop-cons ,loop-skip))))
          (loop-body
-          `(if ,test
-               ,(fn-dl-let let (if stop
-                                   `(if ,stop (revappend ,acc ,stop-value) ,loop-inner)
-                                 loop-inner))
-             (revappend ,acc ,tail))))
+          (if base
+              `(if ,base (revappend ,fixed ,tail)
+                 ,(fn-dl-let let (if stop
+                                     `(if ,stop (revappend ,fixed ,stop-value) ,loop-inner)
+                                   loop-inner)))
+            `(if ,test
+                 ,(fn-dl-let let (if stop
+                                     `(if ,stop (revappend ,fixed ,stop-value) ,loop-inner)
+                                   loop-inner))
+               (revappend ,fixed ,tail)))))
     `((defun ,loop (,@formals ,acc)
-        (declare (xargs :guard ,(fn-dl-and guard `(true-listp ,acc))
+        (declare (xargs :guard ,(if (eq loop-guard :default)
+                                    (if acc-fix guard (fn-dl-and guard `(true-listp ,acc)))
+                                  loop-guard)
                         :verify-guards nil
+                        ,@(and stobjs `(:stobjs ,stobjs))
                         ,@(and measure `(:measure ,measure))))
         ,loop-body)
       (defun ,name ,formals
         (declare (xargs :guard ,guard :verify-guards nil
+                        ,@(and stobjs `(:stobjs ,stobjs))
                         ,@(and measure `(:measure ,measure))))
         (mbe :logic ,logic-body
              :exec (,loop ,@formals nil)))
       (local
        (defthm ,bridge
-         (equal (,loop ,@formals ,acc) (revappend ,acc (,name ,@formals)))
+         (equal (,loop ,@formals ,acc) (revappend ,fixed (,name ,@formals)))
          :hints (("Goal"
                   :use ((:instance
                          (:functional-instance
-                          fn-dl-map-loop-is-revappend
-                          (fn-dl-while (lambda (,xs) ,while))
-                          (fn-dl-stop (lambda (,xs) ,(if stop (fn-dl-let let stop) nil)))
-                          (fn-dl-stop-value (lambda (,xs) ,(if stop (fn-dl-let let stop-value) nil)))
-                          (fn-dl-keep (lambda (,xs) ,(fn-dl-let let keep)))
-                          (fn-dl-f (lambda (,xs) ,(fn-dl-let let body)))
+                          ,(cond (base 'fn-dl-map-base-loop-is-revappend)
+                                 (acc-fix 'fn-dl-map-fixed-loop-is-revappend)
+                                 ((eq keep-order :skip-first) 'fn-dl-map-skip-loop-is-revappend)
+                                 (t 'fn-dl-map-loop-is-revappend))
+                          ,@(if base
+                                `((fn-dl-mb-base (lambda (,xs) ,base))
+                                  (fn-dl-mb-fixp (lambda () ,acc-fix)))
+                              `((fn-dl-while (lambda (,xs) ,while))))
+                          (fn-dl-stop (lambda (,xs) ,(if stop (fn-dl-map-proof-let base let stop) nil)))
+                          (fn-dl-stop-value (lambda (,xs) ,(if stop (fn-dl-map-proof-let base let stop-value) nil)))
+                          (fn-dl-keep (lambda (,xs)
+                                       ,(fn-dl-map-proof-let base let
+                                          (if (and (or base acc-fix) (eq keep-order :skip-first))
+                                              `(not ,keep) keep))))
+                          (fn-dl-f (lambda (,xs) ,(fn-dl-map-proof-let base let body)))
                           (fn-dl-tail (lambda (,xs) ,tail))
-                          (fn-dl-map (lambda (,xs) (,name ,@formals)))
-                          (fn-dl-map-loop (lambda (,xs ,acc) (,loop ,@formals ,acc))))
+                          (,(cond (base 'fn-dl-map-base)
+                                  ((and (not acc-fix) (eq keep-order :skip-first)) 'fn-dl-map-skip)
+                                  (t 'fn-dl-map)) (lambda (,xs) (,name ,@formals)))
+                          (,(cond (base 'fn-dl-map-base-loop)
+                                  (acc-fix 'fn-dl-map-fixed-loop)
+                                  ((eq keep-order :skip-first) 'fn-dl-map-skip-loop)
+                                  (t 'fn-dl-map-loop)) (lambda (,xs ,acc) (,loop ,@formals ,acc))))
                          (dl-xs ,xs) (dl-acc ,acc)))
                   :in-theory (union-theories '(,name ,loop) (theory 'minimal-theory))))))
       (verify-guards ,loop ,@(and guard-hints `(:hints ,guard-hints)))
@@ -350,6 +586,50 @@
       (in-theory (disable ,loop))
       (table fn-generated ',name '(:def-loop :shape :take :loop ,loop :bridge ,bridge)))))
 
+(defun fn-dl-take-base-events (name formals n xs elt body base tail
+                               guard guard-hints guard-theory acc loop measure)
+  (declare (xargs :mode :program))
+  (let* ((body (fn-dl-elt elt xs body))
+         (base (fn-dl-elt elt xs base))
+         (tail (fn-dl-elt elt xs tail))
+         (next (fn-dl-replace (fn-dl-replace formals xs `(cdr ,xs)) n `(- ,n 1)))
+         (bridge (fn-dl-name (list loop "-IS-REVAPPEND") name)))
+    `((defun ,loop (,@formals ,acc)
+        (declare (xargs :guard ,(fn-dl-and guard `(true-listp ,acc))
+                        :verify-guards nil
+                        ,@(and measure `(:measure ,measure))))
+        (if ,base
+            (revappend ,acc ,tail)
+          (,loop ,@next (cons ,body ,acc))))
+      (defun ,name ,formals
+        (declare (xargs :guard ,guard :verify-guards nil
+                        ,@(and measure `(:measure ,measure))))
+        (mbe :logic (if ,base ,tail (cons ,body (,name ,@next)))
+             :exec (,loop ,@formals nil)))
+      (local
+       (defthm ,bridge
+         (equal (,loop ,@formals ,acc) (revappend ,acc (,name ,@formals)))
+         :hints (("Goal"
+                  :use ((:instance
+                         (:functional-instance
+                          fn-dl-take-base-loop-is-revappend
+                          (fn-dl-tb-base (lambda (,n ,xs) ,base))
+                          (fn-dl-tk-f (lambda (,n ,xs) ,body))
+                          (fn-dl-tk-tail (lambda (,n ,xs) ,tail))
+                          (fn-dl-take-base (lambda (,n ,xs) (,name ,@formals)))
+                          (fn-dl-take-base-loop (lambda (,n ,xs ,acc) (,loop ,@formals ,acc))))
+                         (dl-n ,n) (dl-xs ,xs) (dl-acc ,acc)))
+                  :in-theory (union-theories '(,name ,loop) (theory 'minimal-theory))))))
+      (verify-guards ,loop ,@(and guard-hints `(:hints ,guard-hints)))
+      (verify-guards ,name
+        :hints (("Goal"
+                 :use ((:instance ,bridge (,acc nil)))
+                 :in-theory (union-theories '(revappend ,name ,@guard-theory)
+                                            (union-theories (theory 'minimal-theory)
+                                                            (executable-counterpart-theory :here))))))
+      (in-theory (disable ,loop))
+      (table fn-generated ',name '(:def-loop :shape :take :loop ,loop :bridge ,bridge)))))
+
 (defun fn-dl-sum-events (name formals xs elt body guard guard-hints guard-theory acc loop measure)
   (declare (xargs :mode :program))
   (let* ((body (if elt (fn-dl-subst elt `(car ,xs) body) body))
@@ -389,6 +669,45 @@
                                                             (executable-counterpart-theory :here))))))
       (in-theory (disable ,loop))
       (table fn-generated ',name '(:def-loop :shape :sum :loop ,loop :bridge ,bridge)))))
+
+(defun fn-dl-concat-events (name formals xs elt body guard guard-hints guard-theory acc loop measure)
+  (declare (xargs :mode :program))
+  (let* ((body (if elt (fn-dl-subst elt `(car ,xs) body) body))
+         (next (fn-dl-replace formals xs `(cdr ,xs)))
+         (bridge (fn-dl-name (list loop "-IS-REVAPPEND") name)))
+    `((defun ,loop (,@formals ,acc)
+        (declare (xargs :guard ,(fn-dl-and guard `(true-listp ,acc))
+                        :verify-guards nil
+                        ,@(and measure `(:measure ,measure))))
+        (if (consp ,xs)
+            (,loop ,@next (revappend ,body ,acc))
+          (revappend ,acc nil)))
+      (defun ,name ,formals
+        (declare (xargs :guard ,guard :verify-guards nil
+                        ,@(and measure `(:measure ,measure))))
+        (mbe :logic (if (consp ,xs) (append ,body (,name ,@next)) nil)
+             :exec (,loop ,@formals nil)))
+      (local
+       (defthm ,bridge
+         (equal (,loop ,@formals ,acc) (revappend ,acc (,name ,@formals)))
+         :hints (("Goal"
+                  :use ((:instance
+                         (:functional-instance
+                          fn-dl-concat-loop-is-revappend
+                          (fn-dl-cc-f (lambda (,xs) ,body))
+                          (fn-dl-concat (lambda (,xs) (,name ,@formals)))
+                          (fn-dl-concat-loop (lambda (,xs ,acc) (,loop ,@formals ,acc))))
+                         (dl-xs ,xs) (dl-acc ,acc)))
+                  :in-theory (union-theories '(,name ,loop) (theory 'minimal-theory))))))
+      (verify-guards ,loop ,@(and guard-hints `(:hints ,guard-hints)))
+      (verify-guards ,name
+        :hints (("Goal"
+                 :use ((:instance ,bridge (,acc nil)))
+                 :in-theory (union-theories '(revappend ,name ,@guard-theory)
+                                            (union-theories (theory 'minimal-theory)
+                                                            (executable-counterpart-theory :here))))))
+      (in-theory (disable ,loop))
+      (table fn-generated ',name '(:def-loop :shape :concat :loop ,loop :bridge ,bridge)))))
 
 (defun fn-dl-into-events (name formals xs elt body st write write-theory map
                                guard guard-hints measure)
@@ -450,15 +769,16 @@
 
 (defun fn-dl-fn (name formals shape over count elt body while stop stop-value keep tail let
                       guard guard-hints guard-theory measure into write write-theory map
-                      acc loop state)
+                      acc loop keep-order base loop-guard acc-fix stobjs state)
   (declare (xargs :mode :program :stobjs state))
   (let* ((loop (or loop (fn-dl-name (list name "-LOOP") name)))
          (xs (or over (if (eq shape :into) (car (remove1-eq into formals)) (car formals))))
          (n (or count (car formals)))
-         (ctx 'def-loop))
+         (ctx 'def-loop)
+         (stobjs (if (and stobjs (symbolp stobjs)) (list stobjs) stobjs)))
     (cond
-     ((not (member-eq shape '(:map :take :sum :into)))
-      (er soft ctx "~x0: :shape ~x1 is not one of :map, :take, :sum, :into." name shape))
+     ((not (member-eq shape '(:map :take :sum :into :concat)))
+      (er soft ctx "~x0: :shape ~x1 is not one of :map, :take, :sum, :into, :concat." name shape))
      ((not (and (symbol-listp formals) formals))
       (er soft ctx "~x0: the formals must be a non-empty list of symbols." name))
      ((not (member-eq xs formals))
@@ -467,6 +787,26 @@
       (er soft ctx "~x0: :count ~x1 must be a formal other than :over ~x2." name n xs))
      ((member-eq acc formals)
       (er soft ctx "~x0: the accumulator ~x1 is among the formals; rename it with :acc." name acc))
+     ((not (member-eq keep-order '(:cons-first :skip-first)))
+      (er soft ctx "~x0: :keep-order must be :cons-first or :skip-first." name))
+     ((and (not (eq keep-order :cons-first)) (not (eq shape :map)))
+      (er soft ctx "~x0: :keep-order is a :map option." name))
+     ((and base (not (member-eq shape '(:map :take))))
+      (er soft ctx "~x0: :base is a :map or :take option." name))
+     ((and base (not (eq while t)))
+      (er soft ctx "~x0: :base and :while are mutually exclusive." name))
+     ((and (not (eq loop-guard :default)) (not (eq shape :map)))
+      (er soft ctx "~x0: :loop-guard is a :map option." name))
+     ((not (member-eq acc-fix '(nil t)))
+      (er soft ctx "~x0: :acc-fix must be t or nil." name))
+     ((and acc-fix (not (eq shape :map)))
+      (er soft ctx "~x0: :acc-fix is a :map option." name))
+     ((and stobjs (not (eq shape :map)))
+      (er soft ctx "~x0: :stobjs is a read-only :map option." name))
+     ((not (and (symbol-listp stobjs) (no-duplicatesp-eq stobjs)
+                (fn-dl-stobjs-knownp stobjs formals (w state))
+                (not (member-eq xs stobjs))))
+      (er soft ctx "~x0: :stobjs must name distinct stobj formals other than :over." name))
      ((null body)
       (er soft ctx "~x0: :body is required." name))
      ((and stop (not (eq shape :map)))
@@ -484,27 +824,40 @@
      ((and (eq shape :into) (not (and into write map (member-eq into formals))))
       (er soft ctx "~x0: :into needs :into (a stobj formal), :write (its append export) and :map (the list-level map)." name))
      (t
-      (value
+      (er-progn
+       (fn-dl-readonly-check
+        name stobjs
+        (fn-dl-elt elt xs
+          (fn-dl-let let `(list ,body ,while ,stop ,stop-value ,keep ,tail ,base))) state)
+       (value
        `(encapsulate
           ()
           ,@(case shape
               (:map (fn-dl-map-events name formals xs elt body while stop stop-value keep tail
-                                      let guard guard-hints guard-theory acc loop measure))
-              (:take (fn-dl-take-events name formals n xs elt body while tail
-                                        guard guard-hints guard-theory acc loop measure))
+                                      let guard guard-hints guard-theory acc loop measure keep-order loop-guard acc-fix stobjs base))
+              (:take (if base
+                         (fn-dl-take-base-events name formals n xs elt body base tail
+                                                guard guard-hints guard-theory acc loop measure)
+                       (fn-dl-take-events name formals n xs elt body while tail
+                                          guard guard-hints guard-theory acc loop measure)))
               (:sum (fn-dl-sum-events name formals xs elt body guard guard-hints guard-theory
                                       acc loop measure))
+              (:concat (fn-dl-concat-events name formals xs elt body guard guard-hints
+                                           guard-theory acc loop measure))
               (otherwise (fn-dl-into-events name formals xs elt body into write write-theory map
-                                            guard guard-hints measure)))))))))
+                                            guard guard-hints measure))))))))))
 
 (defmacro def-loop (name formals &key
                          (shape ':map)
                          over count elt body
-                         (while 't) stop stop-value (keep 't) (tail 'nil) let
+                         (while 't while-p) stop stop-value (keep 't) (tail 'nil) let
                          (guard 't) guard-hints guard-theory measure
                          into write write-theory map
-                         (acc 'acc) loop)
+                         (acc 'acc) loop (keep-order ':cons-first) (base 'nil base-p) (loop-guard ':default) acc-fix stobjs)
   `(make-event
-    (fn-dl-fn ',name ',formals ',shape ',over ',count ',elt ',body ',while ',stop ',stop-value
+    (fn-dl-fn ',name ',formals ',shape ',over ',count ',elt ',body
+              ',(if (and (eq shape :map) base-p while-p) :explicit-while while) ',stop ',stop-value
               ',keep ',tail ',let ',guard ',guard-hints ',guard-theory ',measure
-              ',into ',write ',write-theory ',map ',acc ',loop state)))
+              ',into ',write ',write-theory ',map ',acc ',loop ',keep-order
+              ',(if (and (not (eq shape :take)) base-p (null base)) '(quote nil) base)
+              ',loop-guard ',acc-fix ',stobjs state)))

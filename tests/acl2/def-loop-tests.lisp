@@ -263,3 +263,273 @@
                      '(:def-loop :shape :map :loop dlt-pairs-loop :bridge dlt-pairs-loop-is-revappend)))
 (assert-event (equal (cdr (assoc-eq 'dlt-write-octets (table-alist 'fn-generated (w state))))
                      '(:def-loop :shape :into :bridge dlt-write-octets-is-append)))
+
+; Gap 1: KEEP may name the skip branch, without moving NOT into the logic.
+(def-loop dlt-skip-ints (xs)
+  :shape :map :keep-order :skip-first :keep (integerp (car xs))
+  :body (car xs))
+(assert-event (equal (dlt-skip-ints '(1 a 2 b)) '(a b)))
+(assert-event (equal (dlt-skip-ints nil) nil))
+(assert-event (equal (dlt-skip-ints '(1 2)) nil))
+(assert-event (equal (dlt-skip-ints-loop '(1 a 2 b) '(z))
+                     (revappend '(z) (dlt-skip-ints '(1 a 2 b)))))
+; @mutation-witness: swapping the meaning of KEEP keeps integers instead.
+(def-loop dlt-keep-ints-mutant (xs)
+  :shape :map :keep (integerp (car xs)) :body (car xs))
+(assert-event (not (equal (dlt-keep-ints-mutant '(1 a))
+                          (dlt-skip-ints '(1 a)))))
+(must-fail-checked
+ (defthm dlt-skip-ints-wrong-branch
+   (equal (dlt-keep-ints-mutant-loop '(1 a) nil)
+          (revappend nil (dlt-skip-ints '(1 a))))))
+(must-fail-checked
+ (def-loop dlt-bad-keep-order (xs) :shape :map :body (car xs)
+   :keep-order :sideways)
+ :unchecked "refused at expansion: :keep-order must be :cons-first or :skip-first")
+(must-fail-checked
+ (def-loop dlt-keep-order-on-sum (xs) :shape :sum :body 1
+   :keep-order :skip-first)
+ :unchecked "refused at expansion: :keep-order is a :map option")
+
+; Gap 5: the base term and base-first branch survive expansion literally.
+(def-loop dlt-take-base (n xs)
+  :shape :take :count n :over xs :body (car xs)
+  :base (or (not (posp n)) (atom xs)) :measure (nfix n))
+(assert-event (equal (dlt-take-base 2 '(a b c)) '(a b)))
+(assert-event (equal (dlt-take-base 9 '(a b)) '(a b)))
+(assert-event (equal (dlt-take-base -1 '(a b)) nil))
+(assert-event (equal (dlt-take-base 2 nil) nil))
+(assert-event (equal (dlt-take-base-loop 2 '(a b c) '(z))
+                     (revappend '(z) (dlt-take-base 2 '(a b c)))))
+; @mutation-witness: stopping at one drops the last requested element.
+(def-loop dlt-take-base-mutant (n xs)
+  :shape :take :count n :over xs :body (car xs)
+  :base (or (not (posp n)) (equal n 1) (atom xs)) :measure (nfix n))
+(assert-event (not (equal (dlt-take-base-mutant 2 '(a b))
+                          (dlt-take-base 2 '(a b)))))
+(must-fail-checked
+ (defthm dlt-take-base-mutant-bridge
+   (equal (dlt-take-base-mutant-loop 2 '(a b) nil)
+          (revappend nil (dlt-take-base 2 '(a b))))))
+(must-fail-checked
+ (def-loop dlt-base-on-sum (xs) :shape :sum :body 1 :base (atom xs))
+ :unchecked "refused at expansion: :base is a :map or :take option")
+(must-fail-checked
+ (def-loop dlt-base-and-while (n xs) :shape :take :count n :over xs
+   :body (car xs) :base (not (posp n)) :while (consp xs))
+ :unchecked "refused at expansion: :base and :while are mutually exclusive")
+
+; Gap 2: one LET binding translates identically to the existing LET* option.
+(def-loop dlt-one-binding (keys table)
+  :shape :map :let ((v (dlt-lookup (car keys) table))) :keep v :body v)
+(assert-event (equal (dlt-one-binding '(a x c) '((a . 1) (c . 3))) '(1 3)))
+(assert-event (equal (dlt-one-binding nil '((a . 1))) nil))
+(assert-event (equal (dlt-one-binding-loop '(a x c) '((a . 1) (c . 3)) '(z))
+                     (revappend '(z) (dlt-one-binding '(a x c) '((a . 1) (c . 3))))))
+; @mutation-witness: pairing the key with the value changes each result.
+(def-loop dlt-one-binding-mutant (keys table)
+  :shape :map :let ((v (dlt-lookup (car keys) table))) :keep v :body (cons (car keys) v))
+(assert-event (not (equal (dlt-one-binding-mutant '(a) '((a . 1)))
+                          (dlt-one-binding '(a) '((a . 1))))))
+(must-fail-checked
+ (defthm dlt-one-binding-mutant-bridge
+   (equal (dlt-one-binding-mutant-loop '(a) '((a . 1)) nil)
+          (revappend nil (dlt-one-binding '(a) '((a . 1)))))))
+(must-fail-checked
+ (def-loop dlt-let-on-sum (xs) :shape :sum :let ((v (car xs))) :body 1)
+ :unchecked "refused at expansion: :let is a :map option")
+
+; Gap 3: an independently written loop guard, with the same map bridge.
+(def-loop dlt-loop-guard (xs k)
+  :shape :map :body k :guard (and (natp k) (true-listp xs))
+  :loop-guard (and (natp k) (true-listp xs) (true-listp acc)))
+(assert-event (equal (dlt-loop-guard '(a b) 7) '(7 7)))
+(assert-event (equal (dlt-loop-guard-loop '(a b) 7 '(z))
+                     (revappend '(z) (dlt-loop-guard '(a b) 7))))
+(assert-event (equal (dlt-loop-guard nil 7) nil))
+; @mutation-witness: dropping the accumulator conjunct leaves REVAPPEND's
+; guard unjustified; ACC = 7 satisfies the mutant guard but not true-listp.
+(defun dlt-loop-guard-mutant (xs k acc)
+  (declare (xargs :guard (and (natp k) (true-listp xs)) :verify-guards nil))
+  (if (consp xs) (dlt-loop-guard-mutant (cdr xs) k (cons k acc))
+    (revappend acc nil)))
+(assert-event (and (natp 7) (true-listp nil) (not (true-listp 7))))
+(must-fail-checked (verify-guards dlt-loop-guard-mutant))
+(must-fail-checked
+ (def-loop dlt-loop-guard-on-sum (xs) :shape :sum :body 1 :loop-guard t)
+ :unchecked "refused at expansion: :loop-guard is a :map option")
+
+; Gap 6: per-element lists are concatenated in input order.
+(def-loop dlt-concat (xs) :shape :concat :body (list (car xs) (car xs)))
+(assert-event (equal (dlt-concat '(a b)) '(a a b b)))
+(assert-event (equal (dlt-concat nil) nil))
+(assert-event (equal (dlt-concat-loop '(a b) '(z y))
+                     (revappend '(z y) (dlt-concat '(a b)))))
+; @mutation-witness: collecting whole lists with CONS nests the output.
+(def-loop dlt-concat-mutant (xs) :shape :map :body (list (car xs) (car xs)))
+(assert-event (not (equal (dlt-concat-mutant '(a)) (dlt-concat '(a)))))
+(must-fail-checked
+ (defthm dlt-concat-mutant-bridge
+   (equal (dlt-concat-mutant-loop '(a) nil) (revappend nil (dlt-concat '(a))))))
+(must-fail-checked
+ (def-loop dlt-concat-keep (xs) :shape :concat :body (list (car xs)) :keep (car xs))
+ :unchecked "refused at expansion: :keep is a :map option")
+
+; Gap 7: guard-T loops accept even an improper accumulator.
+(def-loop dlt-fixed (xs) :shape :map :body (car xs) :acc-fix t)
+(def-loop dlt-fixed-skip (xs) :shape :map :body (car xs) :acc-fix t
+  :keep-order :skip-first :keep (integerp (car xs)))
+(assert-event (equal (dlt-fixed '(a b)) '(a b)))
+(assert-event (equal (dlt-fixed-loop '(a b) '(z . tail))
+                     (revappend (true-list-fix '(z . tail)) (dlt-fixed '(a b)))))
+(assert-event (equal (dlt-fixed-loop nil 7) nil))
+(assert-event (equal (dlt-fixed-skip-loop '(1 a 2 b) '(z . tail)) '(z a b)))
+; @mutation-witness: omitting TRUE-LIST-FIX from the implementation makes
+; REVAPPEND unsafe under guard T; the literal bridge alone cannot verify it.
+(defun dlt-fixed-mutant (xs acc)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp xs) (dlt-fixed-mutant (cdr xs) (cons (car xs) acc))
+    (revappend acc nil)))
+(assert-event (not (true-listp '(z . tail))))
+(must-fail-checked (verify-guards dlt-fixed-mutant))
+(must-fail-checked
+ (def-loop dlt-fixed-bad-option (xs) :body (car xs) :acc-fix :sometimes)
+ :unchecked "refused at expansion: :acc-fix must be t or nil")
+(must-fail-checked
+ (def-loop dlt-fixed-sum (xs) :shape :sum :body 1 :acc-fix t)
+ :unchecked "refused at expansion: :acc-fix is a :map option")
+
+; Gap 4: immutable stobj context is passed through a list traversal.
+(defstobj dlt-context (dlt-value :initially 7))
+(def-loop dlt-read-context (xs dlt-context)
+  :shape :map :stobjs dlt-context :body (cons (car xs) (dlt-value dlt-context)))
+(defun dlt-read-context-run (xs)
+  (declare (xargs :guard t))
+  (with-local-stobj dlt-context
+    (mv-let (out dlt-context)
+      (mv (list (dlt-read-context xs dlt-context)
+                (dlt-read-context-loop xs dlt-context '(z))
+                (dlt-value dlt-context)) dlt-context)
+      out)))
+(assert-event (equal (dlt-read-context-run '(a b))
+                     '(((a . 7) (b . 7)) (z (a . 7) (b . 7)) 7)))
+(assert-event (equal (dlt-read-context-run nil) '(nil (z) 7)))
+; @mutation-witness: substituting 8 for the read value breaks the bridge;
+; the concrete stobj's logical representation is (7).
+(must-fail-checked
+ (defthm dlt-read-context-mutant-bridge
+   (equal (dlt-read-context-loop '(a) '(7) nil) '((a . 8)))))
+(assert-event (thm (not (equal (dlt-read-context-loop '(a) '(7) nil) '((a . 8)))))
+ :stobjs-out :auto)
+(must-fail-checked
+ (def-loop dlt-read-ordinary (xs ordinary) :body (car xs) :stobjs ordinary)
+ :unchecked "refused at expansion: :stobjs must name distinct stobj formals")
+(defmacro dlt-hidden-update (st) `(update-dlt-value 8 ,st))
+(must-fail-checked
+ (def-loop dlt-read-updater (xs dlt-context)
+   :stobjs dlt-context :body (dlt-hidden-update dlt-context))
+ :unchecked "refused at expansion: :stobjs is read-only, including macro-expanded updaters")
+
+; :map :base: base-first stopping, with a nonempty tail and extra context.
+(def-loop dlt-map-base (xs tail)
+  :shape :map :base (or (atom xs) (equal (car xs) :end))
+  :body (car xs) :tail tail)
+(assert-event (equal (dlt-map-base nil '(tail)) '(tail)))
+(assert-event (equal (dlt-map-base '(:end a) '(tail)) '(tail)))
+(assert-event (equal (dlt-map-base '(a b :end c) '(tail)) '(a b tail)))
+(assert-event (equal (dlt-map-base '(a b) '(tail)) '(a b tail)))
+(assert-event
+ (equal (dlt-map-base-loop '(a b :end c) '(tail) '(y x))
+        (revappend '(y x) (dlt-map-base '(a b :end c) '(tail)))))
+(assert-event (equal (dlt-map-base-loop nil '(tail) '(y x)) '(x y tail)))
+(assert-event (equal (dlt-map-base-loop '(:end a) '(tail) '(y x)) '(x y tail)))
+
+; INNER remains the existing map shape: LET, STOP, both KEEP orders,
+; and the accumulator convention compose with the new outer base.
+(def-loop dlt-map-base-filter (xs)
+  :base (or (atom xs) (equal (car xs) :end))
+  :let ((e (car xs))) :keep (integerp e) :body e
+  :stop (equal e :stop) :stop-value (list e) :tail (list :tail))
+(def-loop dlt-map-base-skip (xs)
+  :base (or (atom xs) (equal (car xs) :end))
+  :let ((e (car xs))) :keep-order :skip-first :keep (not (integerp e)) :body e
+  :stop (equal e :stop) :stop-value (list e) :tail (list :tail))
+(def-loop dlt-map-base-fixed (xs)
+  :base (or (atom xs) (equal (car xs) :end))
+  :let ((e (car xs))) :keep (integerp e) :body e :acc-fix t
+  :stop (equal e :stop) :stop-value (list e) :tail (list :tail))
+(def-loop dlt-map-base-skip-fixed (xs)
+  :base (or (atom xs) (equal (car xs) :end))
+  :let ((e (car xs))) :keep-order :skip-first :keep (not (integerp e)) :body e
+  :acc-fix t :stop (equal e :stop) :stop-value (list e) :tail (list :tail))
+(assert-event
+ (and (equal (dlt-map-base-filter '(1 a 2 :end 3)) '(1 2 :tail))
+      (equal (dlt-map-base-skip '(1 a 2 :end 3)) '(1 2 :tail))
+      (equal (dlt-map-base-fixed-loop '(1 a :stop 2) '(z . bad)) '(z 1 :stop))
+      (equal (dlt-map-base-skip-fixed-loop '(1 a :stop 2) '(z . bad)) '(z 1 :stop))
+      (equal (dlt-map-base-fixed-loop '(1 a :end 2) '(z . bad)) '(z 1 :tail))
+      (equal (dlt-map-base-skip-fixed-loop '(1 a :end 2) '(z . bad)) '(z 1 :tail))))
+
+(def-loop dlt-map-base-context (xs dlt-context)
+  :base (or (atom xs) (equal (car xs) (dlt-value dlt-context)))
+  :stobjs dlt-context :body (car xs))
+(defun dlt-map-base-context-run (xs)
+  (declare (xargs :guard t))
+  (with-local-stobj dlt-context
+    (mv-let (out dlt-context)
+      (mv (dlt-map-base-context xs dlt-context) dlt-context)
+      out)))
+(assert-event (equal (dlt-map-base-context-run '(1 7 2)) '(1)))
+
+; MUTATION / @mutation-witness: dropping TAIL at the base loses output,
+; including when the base fires before any element is visited. The executed
+; inequality names the counterexample; proof search failure alone is not it.
+(defun dlt-map-base-drop-tail-loop (xs tail acc)
+  (declare (xargs :guard (true-listp acc)) (irrelevant tail))
+  (if (or (atom xs) (equal (car xs) :end))
+      (revappend acc nil)
+    (dlt-map-base-drop-tail-loop (cdr xs) tail (cons (car xs) acc))))
+(assert-event
+ (not (equal (dlt-map-base-drop-tail-loop '(:end a) '(tail) '(z))
+             (revappend '(z) (dlt-map-base '(:end a) '(tail))))))
+(must-fail-checked
+ (defthm dlt-map-base-drop-tail-bridge
+   (equal (dlt-map-base-drop-tail-loop xs tail acc)
+          (revappend acc (dlt-map-base xs tail)))
+   :hints (("Goal"
+            :use ((:instance
+                   (:functional-instance
+                    fn-dl-map-base-loop-is-revappend
+                    (fn-dl-mb-base (lambda (xs) (or (atom xs) (equal (car xs) :end))))
+                    (fn-dl-mb-fixp (lambda () nil))
+                    (fn-dl-stop (lambda (xs) nil))
+                    (fn-dl-stop-value (lambda (xs) nil))
+                    (fn-dl-keep (lambda (xs) t))
+                    (fn-dl-f (lambda (xs) (car xs)))
+                    (fn-dl-tail (lambda (xs) tail))
+                    (fn-dl-map-base (lambda (xs) (dlt-map-base xs tail)))
+                    (fn-dl-map-base-loop (lambda (xs acc) (dlt-map-base-drop-tail-loop xs tail acc))))
+                   (dl-xs xs) (dl-acc acc)))
+            :in-theory (union-theories '(dlt-map-base dlt-map-base-drop-tail-loop)
+                                       (theory 'minimal-theory))))))
+(must-fail-checked
+ (def-loop dlt-map-base-and-while (xs) :body (car xs)
+   :base (atom xs) :while (consp xs))
+ :unchecked "refused at expansion: :base and :while are mutually exclusive")
+(must-fail-checked
+ (def-loop dlt-map-base-and-while-t (xs) :body (car xs)
+   :base (atom xs) :while t)
+ :unchecked "refused at expansion: explicitly supplied :while t excludes :base too")
+(must-fail-checked
+ (def-loop dlt-base-on-into (xs fn-octets) :shape :into :body (car xs)
+   :base (atom xs) :into fn-octets :write fn-octets-append-octet :map dlt-octets)
+ :unchecked "refused at expansion: :base is a :map or :take option")
+
+; NIL is still a supplied base term, not a way to bypass shape validation.
+(must-fail-checked
+ (def-loop dlt-nil-base-on-sum (xs) :shape :sum :body 1 :base nil)
+ :unchecked "refused at expansion: :base is a :map or :take option, even for NIL")
+(must-fail-checked
+ (def-loop dlt-nil-base-on-into (xs fn-octets) :shape :into :body (car xs)
+   :base nil :into fn-octets :write fn-octets-append-octet :map dlt-octets)
+ :unchecked "refused at expansion: :base is a :map or :take option, even for NIL")

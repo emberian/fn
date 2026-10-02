@@ -459,3 +459,14 @@ outcome words."
            (equal (nth 2 (fn-nsc-client-step chunks n total digest reply))
                   (len (fn-nsc-join (nth 1 (fn-nsc-client-step chunks n total digest reply))))))
   :hints (("Goal" :in-theory (e/d (fn-nsc-client-step) (fn-nls-reply-decode fn-nsc-join)))))
+
+; Q3h (assurance-remainder-4): the host's FNLS entry runs guard-verified
+; (host/native-live-status-host.lisp fn-native-live-status-host-answer calls
+; fn-nsc-answer-report).  Its work per report is the one walk
+; fn-nsc-tally-loop over the Store's articles (books/native-live-status.lisp
+; names the bound and why the figures are computed, not carried).
+(verify-guards fn-nsc-store-tally)
+(verify-guards fn-nsc-reclaim-words)
+(verify-guards fn-nsc-report)
+(verify-guards fn-nsc-live-report)
+(verify-guards fn-nsc-answer-report)

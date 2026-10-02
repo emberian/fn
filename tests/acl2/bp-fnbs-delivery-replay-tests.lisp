@@ -1,5 +1,5 @@
 (in-package "ACL2")
-(include-book "../../books/bp-fnbs-delivery-replay")
+(include-book "../../books/bp-fnbs-family-replay")
 (include-book "bp-app-handoff-tests")
 (include-book "../../books/bp-node-receive-boundary")
 (include-book "must-fail-checked")
@@ -17,19 +17,24 @@
   (list (fn-bpnf-stored-record-name 3 1)
         (fn-bpah-delivery-frame *bpahr-delivered*)))
 (defun bpahr-rows () (list (bpahr-row5) (bpahr-row7)))
+; The node replays kind 5 and kind 7 rows through the family fold
+; (books/bp-fnbs-family-replay, the fold fn-bphp-recover-auto-event runs),
+; under the machine state the live step uses.
+(defun bpahr-replay (rows)
+  (fn-bpnf-family-replay-rows rows (fn-bpnf-base *bpah-state*)))
 
 (assert-event (fn-bpnf-stored-recordp *bpahr-stored*))
 (assert-event (fn-bpah-delivery-recordp *bpahr-delivered*))
-(assert-event (equal (car (fn-bpah-replay-rows (bpahr-rows) 4 1048576)) :ready))
+(assert-event (equal (car (bpahr-replay (bpahr-rows))) :ready))
 (assert-event
- (equal (nth 2 (fn-bpah-replay-rows (bpahr-rows) 4 1048576))
+ (equal (nth 2 (bpahr-replay (bpahr-rows)))
         (list (fn-bpnf-handoff
                '(114 105 100)
                (fn-bpnf-held-key (fn-bpnf-held-principal *bpah-held*)
                                   (fn-bpnf-held-id *bpah-held*))
                :owed))))
 (make-event
- (let* ((replayed (fn-bpah-replay-rows (bpahr-rows) 4 1048576))
+ (let* ((replayed (bpahr-replay (bpahr-rows)))
         (st (fn-bpnf-state (fn-bpnf-base *bpah-state*)
                             (nth 1 replayed) nil (nth 2 replayed)
                             nil nil nil 4 0)))
@@ -44,7 +49,7 @@
        '(assert-event t)
      '(assert-event nil))))
 (make-event
- (let* ((replayed (fn-bpah-replay-rows (bpahr-rows) 4 1048576))
+ (let* ((replayed (bpahr-replay (bpahr-rows)))
         (st (fn-bpnf-state (fn-bpnf-base *bpah-state*)
                             (nth 1 replayed) nil (nth 2 replayed)
                             nil nil nil 4 0))
@@ -54,35 +59,34 @@
        '(assert-event t)
      '(assert-event nil))))
 (assert-event
- (equal (fn-bpn-nth 10 (car (nth 1 (fn-bpah-replay-rows
-                                   (bpahr-rows) 4 1048576))))
+ (equal (fn-bpn-nth 10 (car (nth 1 (bpahr-replay
+                                   (bpahr-rows)))))
         '(:delivered :request-accepted (114 105 100))))
 (assert-event
- (equal (car (fn-bpah-replay-rows (list (bpahr-row7)) 4 1048576)) :fault))
+ (equal (car (bpahr-replay (list (bpahr-row7)))) :fault))
 (assert-event
- (equal (car (fn-bpah-replay-rows
-              (list (bpahr-row5) (bpahr-row7) (bpahr-row7))
-              4 1048576)) :fault))
+ (equal (car (bpahr-replay
+              (list (bpahr-row5) (bpahr-row7) (bpahr-row7)))) :fault))
 (assert-event
- (equal (car (fn-bpah-replay-rows
+ (equal (car (bpahr-replay
               (list (bpahr-row5)
                     (list (fn-bpnf-stored-record-name 3 1)
                           (fn-bpah-delivery-frame
                            (fn-bpah-delivery-record
                             3 1 0 '(1 2 3) :request-accepted '(114)))))
-              4 1048576)) :fault))
+              )) :fault))
 (assert-event
- (equal (car (fn-bpah-replay-rows
+ (equal (car (bpahr-replay
               (list (bpahr-row5)
                     (list (fn-bpnf-stored-record-name 3 1)
                           (fn-bpah-delivery-frame
                            (fn-bpah-delivery-record
                             3 1 0 *bpahr-identity*
                             :receipt-accepted '(114)))))
-              4 1048576)) :fault))
+              )) :fault))
 (must-fail-checked
  (assert-event
-  (equal (car (fn-bpah-replay-rows (list (bpahr-row7)) 4 1048576))
+  (equal (car (bpahr-replay (list (bpahr-row7))))
          :ready)))
 
 ; The same application result is authorized through the host-called step.
@@ -105,9 +109,9 @@
 (assert-event (equal (fn-bpn-nth 3 (fn-bpnf-issued *bpahr-live-result*))
                      :deliver))
 (assert-event (equal (fn-bpnf-handoffs *bpahr-live-durable*)
-                     (nth 2 (fn-bpah-replay-rows (bpahr-rows) 4 1048576))))
+                     (nth 2 (bpahr-replay (bpahr-rows)))))
 (assert-event (equal (fn-bpnf-held-list *bpahr-live-durable*)
-                     (nth 1 (fn-bpah-replay-rows (bpahr-rows) 4 1048576))))
+                     (nth 1 (bpahr-replay (bpahr-rows)))))
 (assert-event
  (equal (fn-bpnf-answer-state
          (fn-bpnf-step *bpahr-live-start*

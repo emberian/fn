@@ -243,7 +243,7 @@
 ;; RECLAMATION: the payload behind handle 1 becomes a tombstone.  The number
 ;; stays shown (LISTGROUP keeps it: RFC 3977 numbers are not reused) and OVER
 ;; skips the row, at the old view and the new, as the fold does.
-(defconst *sct-tomb* (append *fn-rcl-magic* (make-list 81 :initial-element 0)))
+(defconst *sct-tomb* (append *fn-rcl-magic* (make-list 137 :initial-element 0)))
 (defconst *sct-ar* (list *sct-p0* *sct-tomb* *sct-p2*))
 
 (defthm sct-range-reclamation
