@@ -237,9 +237,11 @@
 (defun fn-cv-carryp (carry)
   (fn-cv-okp (fn-cv-car carry) (fn-cv-cdr carry)))
 
+; On an equal list the outer cell is rebuilt on the CURRENT object (c04 4c):
+; a later comparison then meets the same object, never an obsolete equal one.
 (defun fn-cv-refresh (carry ws)
   (if (equal ws (fn-cv-car carry))
-      carry
+      (cons ws (fn-cv-cdr carry))
     (mv-let (found racc)
       (fn-cv-walk ws (fn-cv-car carry) nil)
       (if found
@@ -255,7 +257,8 @@
  (defthm fn-cv-revappend-is-append
    (equal (revappend a c) (append (revappend a nil) c))
    :rule-classes nil
-   :hints (("Goal" :use ((:instance fn-cv-revappend-append (b nil)))))))
+   :hints (("Goal" :use ((:instance fn-cv-revappend-append (b nil)))
+            :in-theory (disable fn-cv-revappend-append)))))
 
 (local
  (defthm fn-cv-build-onto-of-revappend-cons
@@ -281,6 +284,11 @@
                          (:instance fn-cv-revappend-is-append
                                     (a (mv-nth 1 (fn-cv-walk ws old nil))) (c old)))
             :in-theory (disable fn-cv-walk-found)))))
+
+(local
+ (defthm fn-cv-fold-of-nil
+   (equal (fn-cv-fold nil idx) idx)
+   :hints (("Goal" :in-theory (enable fn-cv-fold)))))
 
 (local
  (defthm fn-cv-okp-of-extend-at
