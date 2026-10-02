@@ -1185,23 +1185,23 @@
     (case req
       (:no-hyps
        (and hyps
-            (msg "~x0 declares :hyps ~x1 at ~x2 beyond its guard: the host ~
-                  does not check them, so the carried premise is a claim and ~
-                  backs no raw dispatch" name hyps fn)))
+            (msg "~x0 declares :hyps ~x1 at ~x2 beyond its guard: the host does not ~
+            check them, so the carried premise is a claim and backs no raw ~
+            dispatch" name hyps fn)))
       (:witnessed-reaches
        (mv-let (msg reaches)
          (fn-cd-reaches-statement st entry t w)
          (if msg
              (msg "~x0 establishes its invariant at ~x1 with no witnessed ~
-                   argument: only a row whose every establishing point is ~
-                   shown reachable (a generated NAME-FN-reaches) backs raw ~
-                   dispatch: ~@2" name fn msg)
+                  argument: only a row whose every establishing point is ~
+                  shown reachable (a generated NAME-FN-reaches) backs raw ~
+                  dispatch: ~@2" name fn msg)
            (fn-cd-generated-problem (fn-cd-get :reaches opts) reaches w))))
       (:hyps-iff-produced
        (cond ((and hyps (null produced))
-              (msg "~x0 declares :hyps ~x1 at ~x2 beyond its guard and no ~
-                    producer discharges them: the host does not check them, so ~
-                    the carried premise is a claim and backs no raw dispatch"
+              (msg "~x0 declares :hyps ~x1 at ~x2 beyond its guard and no producer ~
+              discharges them: the host does not check them, so the carried ~
+              premise is a claim and backs no raw dispatch"
                    name hyps fn))
              ((and produced (null hyps))
               (msg "~x0 declares :produced at ~x1 with no :hyps to discharge"
@@ -1212,16 +1212,15 @@
       (:not-an-interface
        (and hyps
             (assoc-eq fn (table-alist 'fn-interfaces w))
-            (msg "~x0 is a host-called entry (fn-interfaces): the host may ~
-                  hand it any ~x1, so its produced premises back no raw ~
-                  dispatch" fn (fn-cd-produced-formal entry))))
+            (msg "~x0 is a host-called entry (fn-interfaces): the host may hand it ~
+              any ~x1, so its produced premises back no raw dispatch" fn (fn-cd-produced-formal entry))))
       (:not-attached
        (and hyps
             (fn-cd-attached-to fn w)
-            (msg "~x0 is attached to ~x1 (defattach, or an abstract stobj's ~
-                  :exec, attach-stobj implementations included): a call ~
-                  through ~x1 runs ~x0 with an argument the caller scan does ~
-                  not see, so its produced premises back no raw dispatch"
+            (msg "~x0 is attached to ~x1 (defattach, or an abstract stobj's :exec, ~
+              attach-stobj implementations included): a call through ~x1 runs ~x0 with an argument the ~
+              caller scan does not see, so its produced premises back no raw ~
+              dispatch"
                  fn (fn-cd-attached-to fn w))))
       (:produced-formal
        (let ((f (fn-cd-produced-formal entry)))
@@ -1234,9 +1233,8 @@
               (bad (and hyps pos
                         (fn-cd-unproduced-call fn pos (strip-cars produced) w))))
          (and bad
-              (msg "~x0 calls ~x1 with ~x2 as ~x3, which is not a call of a ~
-                    declared producer ~&4: the premises ~x5 are not discharged ~
-                    there"
+              (msg "~x0 calls ~x1 with ~x2 as ~x3, which is not a call of a declared ~
+              producer ~&4: the premises ~x5 are not discharged there"
                    (car bad) fn (cadr bad) f (strip-cars produced) hyps))))
       (otherwise (msg "unknown raw requirement ~x0" req)))))
 
