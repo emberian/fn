@@ -1595,6 +1595,9 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/msgid-pages-tests \
 	books/msgid-pages-exec \
 	tests/acl2/msgid-pages-exec-tests \
+	books/blake3-string \
+	books/msgid-tag-exec \
+	tests/acl2/blake3-string-tests \
 	books/msgid-linear \
 	tests/acl2/msgid-linear-tests \
 	books/msgid-linear-exec \

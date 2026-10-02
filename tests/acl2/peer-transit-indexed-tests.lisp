@@ -12,6 +12,7 @@
 (include-book "post-identity-index-tests")
 (include-book "peer-inbound-tests")
 (include-book "../../books/peer-transit-indexed")
+(include-book "served-catalog-join-inv-tests")   ; scji-parts, *scje-oc*: F3 below
 
 (defun ptit-rows-of (i fn-cat)
   (declare (xargs :stobjs fn-cat :mode :program))
@@ -214,3 +215,55 @@
                      '((t t t t) nil nil (:want nil) (:want nil))))
 (assert-event (equal (ptit-node *ptit-orphan-node* "<fresh7@example>")
                      '((nil t t t) nil t (:want nil) (:have :history))))
+
+;; -----------------------------------------------------------------------------
+;; 7. REACHABLE POSITIVE WITNESS of the host's form, fn-pta-decide-cat-of-live-owner
+;; (Codex r62 F3), asserting its LITERAL antecedent: fn-ocl-relation of the
+;; owner configuration, fn-scj-invp's five conjuncts (scji-parts, the bodies of
+;; the defun-nx conjuncts executed: the join, the rows' article map, the raw
+;; list and verdicts, the catalog relation, the connections' pins) and
+;; fn-prc-carryp of the host's carry (fn-prc-refresh over the node's ledger,
+;; as fn-owner-transit-decide makes it); and its conclusion at a held and a
+;; fresh Message-ID.  The owner is served-catalog-join-entry-tests' full open
+;; of the two-article journal (*scje-oc*), the catalog loaded as recovery
+;; loads it (scji-run's load).
+
+(defun ptit-live-run (msgid fn-arena fn-cat)
+  (declare (xargs :mode :program :stobjs (fn-arena fn-cat)))
+  (let* ((oc *scje-oc*)
+         (o (fn-ocfg-owner oc))
+         (node (fn-sn-node (fn-own-store o)))
+         (view (fn-own-view o))
+         (fn-arena (fn-arena-clear fn-arena))
+         (fn-arena (fn-arn-seal-many *scje-payloads* fn-arena))
+         (fn-cat (fn-sca-load-held-rows *scje-srows* (fn-own-view-index view) fn-arena fn-cat))
+         (carry (fn-prc-refresh nil (fn-node-retention node)))
+         (mid (pt-o msgid))
+         (octets (ptit-article msgid)))
+    (mv (list (list (fn-ocl-relation oc)
+                    (take 5 (scji-parts o fn-arena fn-cat))
+                    (fn-prc-carryp carry))
+              (mv-list 2 (fn-pta-decide-cat nil nil nil nil node *pt-cfg* "innA" mid octets nil
+                                            "ob" "s" *ptit-limits* view carry fn-arena fn-cat))
+              (mv-list 2 (fn-pta-decide nil nil nil nil node *pt-cfg* "innA" mid octets nil
+                                        "ob" "s" *ptit-limits*)))
+        fn-arena fn-cat)))
+
+(defun ptit-live (msgid)
+  (declare (xargs :mode :program))
+  (with-local-stobj fn-arena
+    (mv-let (result fn-arena)
+      (with-local-stobj fn-cat
+        (mv-let (result fn-arena fn-cat)
+          (ptit-live-run msgid fn-arena fn-cat)
+          (mv result fn-arena)))
+      result)))
+
+; Each result: ((fn-ocl-relation, fn-scj-invp's five conjuncts, fn-prc-carryp),
+; fn-pta-decide-cat's two values, fn-pta-decide's).
+(assert-event (equal (ptit-live "<two@example>")
+                     '((t (t t t t t) t)
+                       ((:have :history) :none) ((:have :history) :none))))
+(assert-event (equal (ptit-live "<fresh9@example>")
+                     '((t (t t t t t) t)
+                       ((:want nil) :ungoverned) ((:want nil) :ungoverned))))

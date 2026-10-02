@@ -2862,8 +2862,19 @@
           ; served-incremental-5 (audit I1): the history test is one probe of
           ; the catalog's Message-ID column at the owner's view and the
           ; capacity test reads the carried obligation-id trie, as POST
-          ; (fn-prc-refresh; fn-owner-prepare-buffer) -- never a walk of the
-          ; node's articles or of the retention ledger.  Equal to
+          ; (fn-prc-refresh; fn-owner-prepare-buffer) -- not a walk of the
+          ; node's articles or of the retention ledger.  Two costs remain
+          ; (Codex r62 L1/F1):
+          ; - fn-pidx-find-article-cat's fast-branch test (equal ARTS RAW)
+          ;   is O(1) only because the two are the SAME object: fn-own-refresh
+          ;   (books/owner.lisp), the served view's only constructor, stores
+          ;   the node's article list itself as the view's raw list.  Measured
+          ;   at 100k articles: 0.006 us when EQ, 0.038 us for a lagging view
+          ;   (the node one commit ahead); an equal-but-distinct copy would cost
+          ;   3.7 ms per offer, and no host path builds one.
+          ; - the withdrawal test fn-pidx-targetedp walks every withdrawal
+          ;   record (O(W)) per Message-ID until the carried withdrawal tries
+          ;   (books/withdrawal-index-carried.lisp, PRF-1231) are wired.  Equal to
           ; fn-pta-decide (books/peer-transit-indexed.lisp KEYSTONE
           ; fn-pta-decide-cat-of-live-owner: fn-ocl-relation and
           ; fn-scj-invp, the owner's carried relations, and fn-prc-carryp of
