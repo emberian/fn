@@ -44,7 +44,12 @@ applies directly, and refuses
   declared);
 * a `:raw-with (:carried NAME)` when any dispatch is undeclared:
   def-carried's completeness depends on the complete interface table;
-* a generated file that differs from what the forms say.
+* a generated file that differs from what the forms say;
+
+* any way the raw host could reach a book function other than a quoted
+  dispatch (tools/raw_dispatch_rule.py: a book symbol outside a dispatcher's
+  name position, a symbol made at run time, a world or function-cell read,
+  a function position holding a value not traced to a host function).
 
 * a `:raw-with` on an entry not declared :common-lisp-compliant, or naming a
   theorem no book defines (the world check -- every carried guard conjunct
@@ -228,6 +233,14 @@ def carried_rows(root: Path = ROOT) -> dict[str, dict]:
                       if isinstance(e, list) and len(e) >= 2
                       and isinstance(e[0], (str, ledger.Sym)) and isinstance(e[1], (str, ledger.Sym))]
                 for key in ("established", "transitions", "concludes")}
+            # the opens whose argument def-carried says is PRODUCED: the raw
+            # host must never hand them one (books/def-carried.lisp :produced)
+            rows[_sym(form[1])]["produced"] = [
+                _sym(e[0]) for e in (kv.get(":established") or [])
+                if isinstance(e, list) and len(e) >= 2
+                and isinstance(e[0], (str, ledger.Sym))
+                and any(isinstance(x, (str, ledger.Sym)) and _sym(x) == ":produced"
+                        for x in e[2:])]
     return rows
 
 
@@ -451,6 +464,18 @@ def findings(decls: list[dict], reading: dict, root: Path = ROOT) -> list[str]:
                 if theorem not in theorems:
                     out.append("{}: {} :raw-with names {}, which no book defines as a "
                                "non-local theorem".format(where, name, theorem))
+    # def-carried :produced: an open whose premises are discharged only at
+    # its producers' outputs; the raw host (outside the ACL2 world the
+    # caller scan reads) must never call it at all.
+    for row_name, row in sorted(carried_rows(root).items()):
+        for f in row.get("produced", []):
+            for kind in ("dispatched", "direct"):
+                if f in reading[kind]:
+                    out.append("the raw host {} {} ({}), an open whose argument the "
+                               "def-carried row {} says is produced (:produced): only an "
+                               "ACL2 caller passing a producer's call may reach it".format(
+                                   "dispatches" if kind == "dispatched" else "applies",
+                                   f, ", ".join(sorted(reading[kind][f])), row_name))
     for name in undeclared:
         out.append("the raw host dispatches {} ({}) and no definterface declares it".format(
             name, ", ".join(sorted(reading["dispatched"][name]))))
@@ -489,6 +514,12 @@ def main(argv=None) -> int:
         REGISTRY.write_text(render_registry(decls, reading))
         RAW_DECLARATIONS.write_text(render_raw_declarations(decls))
     problems = findings(decls, reading)
+    # the raw host reaches a book function only through the dispatcher
+    # (tools/raw_dispatch_rule.py: r28-F1, by construction)
+    from tools import raw_dispatch_rule
+    rule_problems, covered = raw_dispatch_rule.findings(declared={d["name"] for d in decls})
+    print(raw_dispatch_rule.summary(covered, rule_problems))
+    problems += rule_problems
     if args.check or args.kinds:
         # the image build's :class / :kinds check, estimated from the source
         # (tools/interface_kinds.py, obstructions-8 item 68)

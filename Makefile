@@ -949,6 +949,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/post-retain-carried-tests \
 	books/identity-retain-carried \
 	tests/acl2/identity-retain-carried-tests \
+	tests/acl2/owner-retain-carried-tests \
 	books/store-profile-carried \
 	books/post-admission-keyed \
 	tests/acl2/post-admission-keyed-tests \
