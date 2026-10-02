@@ -259,12 +259,12 @@
   (implies
    (and (fn-record-p
          (fn-record-make sequence txid generation msgid payload groups
-                         obligation-id content-subject release-evidence charge stamp binding))
+                         obligation-id content-subject release-evidence charge stamp))
         (equal schema
                (fn-record-schema-octet
                 (fn-record-make sequence txid generation msgid payload groups
                                 obligation-id content-subject release-evidence
-                                charge stamp binding)))
+                                charge stamp)))
         (equal count (len groups))
         (equal (append (fn-record-uint-encode count) after-count) octets)
         (equal (append (fn-record-encode-groups groups) after-groups) after-count)
@@ -284,9 +284,7 @@
                 after-evidence)
                after-subject)
         (equal (append (fn-record-uint-encode charge)
-                       (fn-record-uint-encode stamp)
-                       (fn-record-item-encode
-                        (cons :bytes (fn-ab-encode binding))))
+                       (fn-record-uint-encode stamp))
                after-evidence)
         (fn-cbor-at-mostp
          (append
@@ -302,7 +300,7 @@
    (equal
     (fn-record-encode-impl
      (fn-record-make sequence txid generation msgid payload groups
-                     obligation-id content-subject release-evidence charge stamp binding))
+                     obligation-id content-subject release-evidence charge stamp))
     (append
      (fn-record-item-encode (cons :bytes *fn-record-magic*))
      (fn-record-uint-encode schema)
@@ -325,7 +323,7 @@
                  fn-record-obligation-id
                  fn-record-content-subject
                  fn-record-release-evidence
-                 fn-record-charge fn-record-stamp fn-record-binding
+                 fn-record-charge fn-record-stamp
                  fn-record-schema-octet)
                 (fn-cbor-encode
                  fn-cbor-at-mostp
@@ -381,10 +379,6 @@
 (defmacro fn-record-tail-after-charge (octets)
   `(fn-record-parse-rest
     (fn-record-read-uint (fn-record-tail-after-evidence ,octets))))
-
-(defmacro fn-record-tail-after-stamp (octets)
-  `(fn-record-parse-rest
-    (fn-record-read-uint (fn-record-tail-after-charge ,octets))))
 
 ; Success of the sequential header decoder gives the success hypotheses needed
 ; by each primitive inverse.  Isolating this control-flow fact keeps ACL2 from
@@ -479,7 +473,7 @@
                                fn-record-read-uint fn-record-uint-encode))))
 
 (defthm fn-record-decode-tail-reencode
-  (implies (and (member-equal schema '(3 4))
+  (implies (and (member-equal schema '(1 2))
             (fn-record-parse-okp
              (fn-record-decode-tail sequence txid generation msgid payload octets))
             (equal schema
@@ -518,12 +512,8 @@
                             (octets (fn-record-tail-after-charge octets)))
                  (:instance fn-record-read-uint-reencode-prefix
                             (octets (fn-record-tail-after-charge octets)))
-                 (:instance fn-record-read-bytes-reencode-prefix
-                            (octets (fn-record-tail-after-stamp octets)))
-                 (:instance fn-ab-encode-of-successful-decode
-                            (w (fn-record-parse-value
-                                (fn-record-read-bytes
-                                 (fn-record-tail-after-stamp octets)))))
+                 (:instance fn-record-read-uint-exact-is-encoding
+                            (y (fn-record-tail-after-charge octets)))
                  (:instance fn-record-read-uint-reencode-prefix
                             (octets octets))
                  (:instance fn-record-read-uint-reencode-prefix
@@ -540,11 +530,6 @@
                (fn-record-parse-value
                 (fn-record-decode-tail sequence txid generation
                                        msgid payload octets))))
-             (binding
-              (fn-record-binding
-               (fn-record-parse-value
-                (fn-record-decode-tail sequence txid generation
-                                       msgid payload octets))))
              (after-count (fn-record-parse-rest (fn-record-read-uint octets)))
              (after-groups (fn-record-parse-rest (fn-record-parse-groups (fn-record-parse-value (fn-record-read-uint octets)) (fn-record-parse-rest (fn-record-read-uint octets)))))
              (after-id (fn-record-parse-rest (fn-record-read-bytes (fn-record-parse-rest (fn-record-parse-groups (fn-record-parse-value (fn-record-read-uint octets)) (fn-record-parse-rest (fn-record-read-uint octets)))))))
@@ -552,7 +537,7 @@
              (after-evidence (fn-record-parse-rest (fn-record-read-bytes (fn-record-parse-rest (fn-record-read-bytes (fn-record-parse-rest (fn-record-read-bytes (fn-record-parse-rest (fn-record-parse-groups (fn-record-parse-value (fn-record-read-uint octets)) (fn-record-parse-rest (fn-record-read-uint octets)))))))))))
              ))
            :in-theory
-           (e/d (fn-record-decode-tail fn-record-stamp fn-record-binding fn-record-make)
+           (e/d (fn-record-decode-tail fn-record-stamp fn-record-make)
                 (fn-record-read-uint-value-is-natural
                  fn-record-read-uint-reencode-prefix
                  fn-record-parse-okp
@@ -575,7 +560,7 @@
                  (:type-prescription true-listp-append))))))
 
 (defthm fn-record-decode-after-header-reencode
-  (implies (and (member-equal schema '(3 4))
+  (implies (and (member-equal schema '(1 2))
             (fn-record-parse-okp (fn-record-decode-after-header octets))
             (equal schema
                    (fn-record-schema-octet
@@ -814,7 +799,7 @@
     (fn-record-parse-okp
      (fn-record-read-uint
       (fn-record-parse-rest (fn-record-read-bytes octets))))
-    (member-equal (fn-record-header-schema octets) '(3 4))
+    (member-equal (fn-record-header-schema octets) '(1 2))
     (fn-record-parse-okp
      (fn-record-decode-after-header
       (fn-record-header-tail octets)))
@@ -1007,8 +992,8 @@
    :hints (("Goal" :in-theory (enable fn-record-groups-validp fn-record-groupsp)))))
 
 (local
- (defthm fn-record-schema-octet-at-most-4
-   (<= (fn-record-schema-octet record) 4)
+ (defthm fn-record-schema-octet-at-most-2
+   (<= (fn-record-schema-octet record) 2)
    :rule-classes :linear
    :hints (("Goal" :in-theory (enable fn-record-schema-octet)))))
 
@@ -1034,19 +1019,10 @@
    :rule-classes :forward-chaining
    :hints (("Goal" :in-theory (enable fn-record-widep fn-record-uint32p)))))
 
-(local
- (defthm fn-record-binding-encoding-length
-   (implies (fn-ab-p binding)
-            (equal (len (fn-record-item-encode
-                         (cons :bytes (fn-ab-encode binding)))) 58))
-   :hints (("Goal" :in-theory (enable fn-record-item-encode
-                                      fn-cbor-encode-bounded
-                                      fn-cbor-valuep-bounded)))))
-
 ; KEYSTONE (the record ceiling at the widths the runtime produces; design
 ; 2026-09-25-bounds section 2.1: the relation a profile's record bound must satisfy
 ; for its article bound).  A record whose integer fields fit u32 encodes
-; within `fn-record-encoded-octets-ceiling', the 1 141-octet overhead a
+; within `fn-record-encoded-octets-ceiling', the 1 083-octet overhead a
 ; profile's R has been checked against since before packet P6: the five
 ; integer heads are narrow, as are the schema octet and the group count.
 (defthm fn-record-impl-encode-narrow-length-bound
@@ -1074,7 +1050,7 @@
 
 ;; The producer ceiling (PRF-126, the width-producers-2 lane).  The ceiling
 ;; above counts every head at 5 octets.  Four of them are shorter in every
-;; record: the schema octet is at most 4 (1 octet), the group count at most
+;; record: the schema octet is at most 2 (1 octet), the group count at most
 ;; 65 535 (3), the Message-ID at most 250 octets (a 2-octet head) and the
 ;; metadata strings and group names at most 256 (3 each), and below 24
 ;; groups the count takes 1 octet.  That is at least 17 octets the narrow
@@ -1141,8 +1117,7 @@
                  (fn-record-uint64p (fn-record-sequence record))
                  (fn-record-uint64p (fn-record-txid record))
                  (fn-record-uint64p (fn-record-generation record))
-                 (fn-record-stampp (fn-record-stamp record))
-                 (fn-ab-p (fn-record-binding record))))
+                 (fn-record-stampp (fn-record-stamp record))))
    :rule-classes nil
    :hints (("Goal" :in-theory (enable fn-record-msgidp fn-record-metadata-bytes-p
                                       fn-record-nonempty-at-mostp
@@ -1169,7 +1144,7 @@
                             fn-record-schema-octet fn-record-uint-encode
                             fn-record-sequence fn-record-txid
                             fn-record-generation fn-record-charge
-                            fn-record-stamp fn-record-binding fn-record-msgid fn-record-payload
+                            fn-record-stamp fn-record-msgid fn-record-payload
                             fn-record-groups fn-record-obligation-id
                             fn-record-content-subject fn-record-release-evidence
                             fn-record-p

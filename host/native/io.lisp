@@ -1083,22 +1083,29 @@ counts it dropped)."
 fn-log-sink-close-wait-seconds.  A writer still blocked on its sink then is
 left running (lines keep being offered and dropped, never waited on) and the
 process exits without it: what it had queued, a wedged sink would lose
-anyway."
+anyway.  Answers the join observation fn-ort-log-close-action reads
+(books/owner-retire-settlement.lisp): :absent when no writer ran, :joined
+when it stopped, :timeout when it is still running.  (It answered NIL until
+stage-0-3, so every owner close was :held and every owner exit 3.)"
   (let ((thread (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
                   (when *fnn-log-writer*
                     (fnn-log-queue-push (list :stop))
                     *fnn-log-writer*))))
-    (when thread
+    (if (null thread)
+        :absent
       (multiple-value-bind (value outcome)
           (sb-thread:join-thread thread
                                  :timeout (fnn-core 'fn-log-sink-close-wait-seconds)
                                  :default :timeout)
         (declare (ignore value))
-        (unless (eq outcome :timeout)
-          (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
-            (setq *fnn-log-writer* nil
-                  *fnn-log-queue-head* nil
-                  *fnn-log-queue-tail* nil)))))))
+        (if (eq outcome :timeout)
+            :timeout
+          (progn
+            (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
+              (setq *fnn-log-writer* nil
+                    *fnn-log-queue-head* nil
+                    *fnn-log-queue-tail* nil))
+            :joined))))))
 
 (defun fnn-log-swap-fd (fd)
   "Install FD as the service log: through the writer's queue while it runs
@@ -2780,18 +2787,33 @@ one falls back to full replay."
 (defun fnn-state-checkpoint-stage (store octets)
   "fnn-state-checkpoint-write's first half: the staged file written and fenced
 (cuts created, written, staged-durable).  A failure is known: the old
-checkpoint stays.  Answers the staged path, for fnn-state-checkpoint-install
+checkpoint stays, and the stage is removed (or, when its unlink fails, left
+to the staging sweep under its .stage- prefix), as
+fnn-publish-filesystem-record does; that includes a publication the
+stopping owner refuses at a batch boundary (fnn-checkpoint-yield), which
+left its stage behind as a staging orphan.  A process death leaves it to
+the sweep.  Answers the staged path, for fnn-state-checkpoint-install
 (Q16's reclaim pass stages off the owner mutex and installs under it)."
   (let ((stage (fnn-join (fnn-staging store)
                          (format nil ".stage-checkpoint-~d-~a" (sb-posix:getpid) (fnn-random-hex 12)))))
-    (handler-case
-        (progn
-          (fnn-write-staged-at store stage octets
-                               :state-checkpoint-created :state-checkpoint-written)
-          (fnn-at store :state-checkpoint-staged-durable)
-          stage)
-      (fnn-os-error (e)
-        (fnn-refuse-io "known failure before the state checkpoint replacement: ~a" e)))))
+    ;; WRITTEN: the stage exists and is this attempt's; a failure before it
+    ;; is cleaned by fnn-write-staged-at itself, which holds the fd (an
+    ;; O_EXCL open that fails, EEXIST included, created nothing to remove).
+    (let ((written nil))
+      (handler-case
+          (progn
+            (fnn-write-staged-at store stage octets
+                                 :state-checkpoint-created :state-checkpoint-written
+                                 :unlink-on-failure t)
+            (setq written t)
+            (fnn-at store :state-checkpoint-staged-durable)
+            stage)
+        (fnn-os-error (e)
+          (when written (ignore-errors (fnn-unlink stage)))
+          (fnn-refuse-io "known failure before the state checkpoint replacement: ~a" e))
+        (fnn-store-io-refusal (e)
+          (when written (ignore-errors (fnn-unlink stage)))
+          (error e))))))
 
 (defun fnn-state-checkpoint-install (store stage)
   "fnn-state-checkpoint-write's second half: the staged file STAGE renamed
@@ -3525,7 +3547,7 @@ open, a record at a time (`fnn-log-history-each')."
     (unwind-protect (progn (fnn-write-all fd contents) (fnn-fsync-file fd))
       (fnn-close fd))))
 
-(defun fnn-write-staged-at (store stage contents created written)
+(defun fnn-write-staged-at (store stage contents created written &key unlink-on-failure)
   "fnn-write-staged with the byte programs' two staging cuts between its calls.
 
 The Store's frontier and record writers call this rather than
@@ -3534,8 +3556,11 @@ fnn-write-staged, so that fn-bs-frontier-program's `frontier-created' and
 `record-written') are `fnn-at' sites: after the O_EXCL create and after
 write_all, before fsync(fd).  An EIO there is a pre-publication failure of
 the same arm as a failing write; SIGKILL leaves a staging file the
-recovery sweep owns."
-  (let ((fd (fnn-open stage (logior sb-posix:o-wronly sb-posix:o-creat sb-posix:o-excl) #o600)))
+recovery sweep owns.  UNLINK-ON-FAILURE: a failure after the O_EXCL create
+removes the stage this call created (best effort; never a name it did not
+create: a failing open unlinks nothing)."
+  (let ((fd (fnn-open stage (logior sb-posix:o-wronly sb-posix:o-creat sb-posix:o-excl) #o600))
+        (done nil))
     (unwind-protect (progn (fnn-at store created)
                            ;; CONTENTS is a byte vector, or a writer the
                            ;; caller hands in (the owner's checkpoint plan,
@@ -3546,8 +3571,11 @@ recovery sweep owns."
                                (funcall contents fd)
                              (fnn-write-all fd contents))
                            (fnn-at store written)
-                           (fnn-fsync-file fd))
-      (fnn-close fd))))
+                           (fnn-fsync-file fd)
+                           (setq done t))
+      (fnn-close fd)
+      (when (and unlink-on-failure (not done))
+        (ignore-errors (fnn-unlink stage))))))
 
 (defun fnn-advance-frontier (store current-txid)
   "The allocator's reservation: the record log's (fnn-log-reserve; the
@@ -3680,6 +3708,10 @@ the records are read after the open by the verbs that need them
     (handler-case
         (let ((before (get-internal-real-time)))
           (fnn-bridge-reset)
+          ;; Stage 0: the page pool's unfunded context, before the first
+          ;; extent registration of the replay (host/native/extent.lisp
+          ;; fnn-extent-pool-open-context).
+          (fnn-extent-pool-open-context)
           (let ((count (fnn-recover store)))
             (setf (fnn-store-open-ms store)
                   (floor (* 1000 (- (get-internal-real-time) before))

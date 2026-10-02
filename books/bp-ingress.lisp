@@ -447,8 +447,7 @@
    (fn-bpi-policy-archive-id policy)
    (fn-bpi-policy-subject policy)
    (fn-bpi-policy-evidence policy)
-   (fn-bpi-policy-charge policy)
-   (fn-ab-for-received :relay-v1 adu)))
+   (fn-bpi-policy-charge policy)))
 (verify-guards fn-bpi-record-for)
 
 ; The policy applies only to a Store state, whose keyring and generation are

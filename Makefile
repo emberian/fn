@@ -70,7 +70,6 @@ ACL2_BOOKS ?= books/defrecord \
 	host/admission-preparation-host \
 	host/history-admission-producer-host \
 	tests/acl2/admission-preparation-intent-tests \
-	books/admission-semantic-node \
 	tests/acl2/admission-preparation-source-capture-tests \
 	tests/acl2/admission-semantic-census-begin-model-tests \
 	tests/acl2/admission-semantic-census-initial-tests \
@@ -202,7 +201,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/payload-window-width-tests \
 	books/receiver-turn-controller \
 	books/snapshot-row-source-grammar \
-	tests/acl2/admission-semantic-node-tests \
 	books/history-semantic-writer-state \
 	tests/acl2/history-semantic-writer-state-tests \
 	books/index-reader-response-issuer \
@@ -222,7 +220,6 @@ ACL2_BOOKS ?= books/defrecord \
 	host/receiver-resource-host \
 	host/receiver-turn-resource-host \
 	tests/acl2/receiver-turn-modern-fresh-tests \
-	tests/acl2/store-binding-stage-routing-tests \
 	books/consumer-account-input \
 	books/consumer-account-adoption-driver \
 	books/consumer-account-adoption-state \
@@ -1395,6 +1392,12 @@ ACL2_BOOKS ?= books/defrecord \
 	books/catalog-entries \
 	books/catalog-refresh \
 	books/catalog-number-index \
+	books/catalog-live-links \
+	tests/acl2/catalog-live-links-tests \
+	books/catalog-wbv-trie \
+	books/catalog-paged \
+	tests/acl2/catalog-paged-tests \
+	books/catalog-paged-attach \
 	books/served-catalog-view \
 	books/served-columns \
 	tests/acl2/served-columns-tests \
@@ -2145,49 +2148,14 @@ ACL2_BOOKS ?= books/defrecord \
 	books/image-world \
 	books/image-world-dtn \
 	books/image-world-store-test \
-    books/acceptance-binding-held-gate \
+	books/image-world-paged \
     books/connection-receiver-source-invariants \
     books/owner-reader-response-domain \
     books/pagestore-digest-block-predicate \
-    books/post-identity-captured \
-    books/post-identity-captured-agent-join \
-    books/post-identity-captured-classification \
-    books/post-identity-captured-digest-block \
-    books/post-identity-captured-groups-refinement \
-    books/post-identity-captured-hash-choice \
-    books/post-identity-captured-hash-domain \
-    books/post-identity-captured-hash-entry \
-    books/post-identity-captured-hash-refinement \
-    books/post-identity-captured-holder \
-    books/post-identity-captured-payload-refinement \
-    books/post-identity-captured-refinement \
-    books/post-identity-captured-source-completion \
-    books/post-identity-captured-source-context \
-    books/post-identity-captured-source-continuation \
-    books/post-identity-captured-source-pair-context \
-    books/post-identity-captured-source-parser-context \
-    books/post-identity-captured-source-trace \
     books/reader-response-disposition \
     books/served-step \
     tests/acl2/connection-receiver-source-tests \
     tests/acl2/owner-reader-response-domain-tests \
-    tests/acl2/post-identity-captured-agent-join-tests \
-    tests/acl2/post-identity-captured-classification-tests \
-    tests/acl2/post-identity-captured-digest-block-tests \
-    tests/acl2/post-identity-captured-groups-refinement-tests \
-    tests/acl2/post-identity-captured-hash-choice-tests \
-    tests/acl2/post-identity-captured-hash-domain-tests \
-    tests/acl2/post-identity-captured-hash-entry-tests \
-    tests/acl2/post-identity-captured-hash-refinement-tests \
-    tests/acl2/post-identity-captured-holder-tests \
-    tests/acl2/post-identity-captured-payload-refinement-tests \
-    tests/acl2/post-identity-captured-refinement-tests \
-    tests/acl2/post-identity-captured-source-completion-tests \
-    tests/acl2/post-identity-captured-source-continuation-tests \
-    tests/acl2/post-identity-captured-source-pair-context-tests \
-    tests/acl2/post-identity-captured-source-parser-context-tests \
-    tests/acl2/post-identity-captured-source-trace-tests \
-    tests/acl2/post-identity-captured-tests \
     tests/acl2/reader-response-disposition-tests \
     tests/acl2/receiver-parser-stage-tests \
     books/bpsec-operation \
@@ -2332,8 +2300,6 @@ ACL2_BOOKS ?= books/defrecord \
     books/index-writer-source-fence \
     tests/acl2/index-writer-source-fence-tests \
     books/catalog-prepare-sealed \
-    books/index-backing-served-producer-carry \
-    tests/acl2/index-backing-served-producer-tests \
     books/index-backing-writer \
     books/owner-node-secret-accessor \
     books/owner-report-owner-accessors \
@@ -2358,10 +2324,7 @@ ACL2_BOOKS ?= books/defrecord \
     books/group-number-source-pending \
     books/allocation-turn-raw-bridge \
     books/store-octet-entry \
-    tests/acl2/index-backing-publication-row-carry-tests \
-    books/index-backing-publication-row-carry \
     books/catalog-prepare \
-    books/index-backing-row-carry \
     books/store-intern-row \
     books/stx-commit-codec \
     books/substrate-committed-transcript \

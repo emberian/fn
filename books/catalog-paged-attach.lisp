@@ -17,8 +17,12 @@
 ; above it -- is then included unchanged: its certificate is the generic's,
 ; and its functions run over the columns.  An image that includes THIS
 ; book before any book that names `fn-cat' holds its rows on the columns;
-; one that does not keeps the old implementation (the SELECTABLE
-; alternative: host/native/build.lisp chooses).
+; one that does not keeps the old implementation.  books/image-world-paged
+; includes it (tools/extract/world.py, right after the arena's attachment);
+; tools/build_native_host.sh selects that umbrella under FN_NATIVE_CATALOG=
+; paged and only for an image named *-paged; the default images, and every
+; published image set, keep the old implementation until the reader natives
+; pass on the paged image.
 ;
 ; What runs at certification time (skipped by include-book): a clear, two
 ; commits of ground held rows, a withdrawal, a redecision and the reads,
@@ -32,10 +36,10 @@
 ; Two ground held rows: a plain article in one group and a crosspost.
 (defconst *cpa-w1*
   (fn-record-make 0 1 0 "<a@x>" (append (fn-record-string-octets "Subject: a") '(13 10 13 10 97 13 10))
-                  '("fn.test") "o" "s" "e" 1 5 (fn-ab-for-received :post-d25 '(97))))
+                  '("fn.test") "o" "s" "e" 1 5))
 (defconst *cpa-w2*
   (fn-record-make 1 2 0 "<b@x>" (append (fn-record-string-octets "Subject: b") '(13 10 13 10 98 13 10))
-                  '("fn.test" "fn.other") "o" "s" "e" 1 6 (fn-ab-for-received :post-d25 '(98))))
+                  '("fn.test" "fn.other") "o" "s" "e" 1 6))
 (defconst *cpa-h1* (fn-held-plain *cpa-w1* 0))
 (defconst *cpa-h2* (fn-held-plain *cpa-w2* 1))
 

@@ -3,8 +3,10 @@ from __future__ import annotations
 
 import contextlib
 import io
+import json
 from pathlib import Path
 import sys
+import subprocess
 import tempfile
 import unittest
 
@@ -27,6 +29,7 @@ class ImageSetTests(unittest.TestCase):
         (build / "lib").mkdir(parents=True)
         (build / "lib" / "libfn-blake3.so").write_bytes(b"lib")
         for file in ("fn-host", "fn-host-developer"):
+            (build / f"{file}.catalog").write_text("old\n")
             (build / f"{file}.core").write_bytes(file.encode() * 10)
             (build / file).write_text(LAUNCHER.format(core=build / f"{file}.core"))
         (build / "fn-host.world-deps").write_text("deps")
@@ -53,8 +56,55 @@ class ImageSetTests(unittest.TestCase):
         launcher = other / "build" / "fn-host-developer"
         self.assertTrue(launcher.is_symlink())
         self.assertEqual(launcher.resolve(), published / "fn-host-developer")
+        for file in ("fn-host", "fn-host-developer"):
+            self.assertEqual((other / "build" / f"{file}.catalog").read_text(), "old\n")
+        # The linked tree can supply affirmative evidence downstream.
+        self.assertEqual(self.quiet(image_set.publish, other, "b" * 40, self.base)[0], 0)
         self.assertTrue((other / "build" / "fn-host.world-deps").is_symlink())
         self.assertEqual((other / "build" / "lib" / "libfn-blake3.so").read_bytes(), b"lib")
+
+    def test_renamed_paged_image_without_record_refuses_publish_and_link(self):
+        build = self.tree / "build"
+        for suffix in ("", ".core"):
+            original = build / f"fn-host{suffix}"
+            paged = build / f"fn-host-paged{suffix}"
+            original.rename(paged)
+            original.symlink_to(paged)
+        (build / "fn-host.catalog").unlink()
+        self.assertEqual(image_set.catalog_of(build, "fn-host"), "unknown")
+        code, err = self.quiet(image_set.publish, self.tree, SHA, self.base)
+        self.assertEqual(code, 1)
+        self.assertIn("production (unknown)", err)
+        self.assertIn("rebuild with tools/build_native_host.sh", err)
+        self.assertFalse((self.base / SHA).exists())
+        # An inert pre-record published set has the same missing evidence.
+        published = self.base / SHA
+        published.mkdir(parents=True)
+        for suffix in ("", ".core"):
+            (published / f"fn-host{suffix}").write_bytes((build / f"fn-host{suffix}").read_bytes())
+        (published / "MANIFEST.json").write_text(json.dumps({"images": {
+            "production": {"launcher": "fn-host", "core": "fn-host.core"}}}))
+        image_set.write_sums(published)
+        code, err = self.quiet(image_set.link, SHA, self.root / "t", ["production"], self.base)
+        self.assertEqual(code, 1)
+        self.assertIn("production (unknown)", err)
+        self.assertIn("rebuild with tools/build_native_host.sh", err)
+        self.assertFalse((self.root / "t" / "build").exists())
+
+    def test_manifest_without_catalog_refuses_even_with_a_sidecar(self):
+        self.assertEqual(self.quiet(image_set.publish, self.tree, SHA, self.base)[0], 0)
+        published = self.base / SHA
+        path = published / "MANIFEST.json"
+        manifest = json.loads(path.read_text())
+        del manifest["images"]["production"]["catalog"]
+        path.write_text(json.dumps(manifest))
+        (published / "fn-host.catalog").write_text("old\n")
+        image_set.write_sums(published)
+        code, err = self.quiet(image_set.link, SHA, self.root / "t", ["production"], self.base)
+        self.assertEqual(code, 1)
+        self.assertIn("production (unknown)", err)
+        self.assertIn("rebuild with tools/build_native_host.sh", err)
+        self.assertFalse((self.root / "t" / "build").exists())
 
     def test_link_refuses_a_missing_image_and_a_damaged_set(self):
         self.quiet(image_set.publish, self.tree, SHA, self.base)
@@ -70,6 +120,157 @@ class ImageSetTests(unittest.TestCase):
         self.assertEqual(self.quiet(image_set.publish, self.tree, "short", self.base)[0], 2)
 
 
+    def test_a_paged_catalog_image_is_never_published_or_linked_as_the_old(self):
+        # Codex r21 F2: the catalog is recorded beside the image
+        # (tools/build_native_host.sh) and in the manifest; a paged core
+        # under the old catalog's name is refused at publish and at link.
+        build = self.tree / "build"
+        (build / "fn-host.catalog").write_text("paged\n")
+        code, err = self.quiet(image_set.publish, self.tree, SHA, self.base)
+        self.assertEqual(code, 1)
+        self.assertIn("production (paged)", err)
+        self.assertFalse((self.base / SHA).exists())
+        (build / "fn-host.catalog").write_text("old\n")
+        self.assertEqual(self.quiet(image_set.publish, self.tree, SHA, self.base)[0], 0)
+        manifest = (self.base / SHA / "MANIFEST.json").read_text()
+        self.assertIn('"catalog": "old"', manifest)
+        # A manifest that records another catalog is not linked.
+        import json
+        path = self.base / SHA / "MANIFEST.json"
+        data = json.loads(manifest)
+        data["images"]["developer"]["catalog"] = "paged"
+        path.write_text(json.dumps(data))
+        image_set.write_sums(self.base / SHA)
+        code, err = self.quiet(image_set.link, SHA, self.root / "t", ["developer"], self.base)
+        self.assertEqual(code, 1)
+        self.assertIn("developer (paged)", err)
+        self.assertEqual(self.quiet(image_set.link, SHA, self.root / "t", ["production"],
+                                    self.base)[0], 0)
+
+
+class BackfillCatalogTests(unittest.TestCase):
+    quiet = ImageSetTests.quiet
+
+    def setUp(self):
+        ImageSetTests.setUp(self)
+        self.repo = self.root / "repo"
+        self.repo.mkdir()
+        self.git("init", "-q")
+        self.git("config", "user.name", "Image fixture")
+        self.git("config", "user.email", "fixture@example.invalid")
+        self.git("-c", "commit.gpgsign=false", "commit", "-qm", "A", "--allow-empty")
+        self.old = self.git("rev-parse", "HEAD")
+        (self.repo / "books").mkdir()
+        (self.repo / "books/catalog-paged.lisp").write_text("; fixture\n")
+        self.git("add", "books/catalog-paged.lisp")
+        self.git("-c", "commit.gpgsign=false", "commit", "-qm", "B")
+        self.paged = self.git("rev-parse", "HEAD")
+
+    def git(self, *args):
+        return subprocess.run(["git", "-C", str(self.repo), *args], check=True,
+                              capture_output=True, text=True).stdout.strip()
+
+    def legacy_set(self, sha):
+        self.assertEqual(self.quiet(image_set.publish, self.tree, sha, self.base)[0], 0)
+        directory = self.base / sha
+        path = directory / "MANIFEST.json"
+        manifest = json.loads(path.read_text())
+        for entry in manifest["images"].values():
+            del entry["catalog"]
+        path.write_text(json.dumps(manifest))
+        image_set.write_sums(directory)
+        return directory
+
+    def snapshot(self, directory):
+        return {str(p.relative_to(directory)): p.read_bytes()
+                for p in directory.rglob("*") if p.is_file()}
+
+    def backfill(self, sha, *extra):
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            code = image_set.main(["backfill-catalog", sha, "--repo",
+                                   str(self.repo / ".git"), "--base", str(self.base), *extra])
+        self.assertEqual(len(out.getvalue().splitlines()), 1)
+        self.assertTrue(out.getvalue().startswith(sha + " "))
+        return code, out.getvalue()
+
+    def assert_refused_untouched(self, sha, directory, reason):
+        before = self.snapshot(directory)
+        code, output = self.backfill(sha)
+        self.assertEqual(code, 1)
+        self.assertIn("refused: " + reason, output)
+        self.assertEqual(self.snapshot(directory), before)
+
+    def test_old_source_backfills_verifies_and_links(self):
+        directory = self.legacy_set(self.old)
+        self.assertEqual(self.quiet(image_set.link, self.old, self.root / "linked",
+                                    ["production"], self.base)[0], 1)
+        code, output = self.backfill(self.old)
+        self.assertEqual(code, 0)
+        self.assertIn("backfilled 2 images", output)
+        manifest = json.loads((directory / "MANIFEST.json").read_text())
+        for entry in manifest["images"].values():
+            self.assertEqual(entry["catalog"], "old")
+            self.assertRegex(entry["catalog_provenance"],
+                             rf"^backfilled: source {self.old} predates books/catalog-paged\.lisp "
+                             r"\(git cat-file, \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\)$")
+        self.assertEqual(image_set.verify(directory), [])
+        self.assertEqual(self.quiet(image_set.link, self.old, self.root / "linked",
+                                    ["production", "developer"], self.base)[0], 0)
+        before = self.snapshot(directory)
+        self.assertIn("nothing to do", self.backfill(self.old)[1])
+        self.assertEqual(self.snapshot(directory), before)
+
+    def test_paged_source_refuses_untouched(self):
+        directory = self.legacy_set(self.paged)
+        self.assert_refused_untouched(self.paged, directory,
+                                     "source contains books/catalog-paged.lisp")
+        self.assertEqual(self.quiet(image_set.link, self.paged, self.root / "linked",
+                                    ["production"], self.base)[0], 1)
+
+    def test_unknown_source_refuses_untouched(self):
+        directory = self.legacy_set("0" * 40)
+        self.assert_refused_untouched("0" * 40, directory, "source is not a known git commit")
+
+    def test_non_commit_source_refuses_untouched(self):
+        sha = self.git("rev-parse", self.paged + "^{tree}")
+        directory = self.legacy_set(sha)
+        self.assert_refused_untouched(sha, directory, "source is not a known git commit")
+
+    def test_sums_mismatch_refuses_untouched(self):
+        directory = self.legacy_set(self.old)
+        (directory / "fn-host.core").write_bytes(b"damaged")
+        self.assert_refused_untouched(self.old, directory, "SHA256SUMS mismatch")
+
+    def test_existing_catalog_entry_is_unchanged(self):
+        directory = self.legacy_set(self.old)
+        path = directory / "MANIFEST.json"
+        manifest = json.loads(path.read_text())
+        entry = manifest["images"]["developer"]
+        entry.update(catalog="paged", catalog_provenance="original evidence")
+        path.write_text(json.dumps(manifest))
+        image_set.write_sums(directory)
+        code, output = self.backfill(self.old)
+        self.assertEqual(code, 0)
+        self.assertIn("backfilled 1 images", output)
+        after = json.loads(path.read_text())
+        self.assertEqual(after["images"]["developer"], entry)
+        self.assertEqual(after["images"]["production"]["catalog"], "old")
+        self.assertEqual(image_set.verify(directory), [])
+
+    def test_dry_run_writes_nothing(self):
+        directory = self.legacy_set(self.old)
+        before = self.snapshot(directory)
+        code, output = self.backfill(self.old, "--dry-run")
+        self.assertEqual(code, 0)
+        self.assertIn("would backfill 2 images", output)
+        self.assertEqual(self.snapshot(directory), before)
+
+    def test_tree_sha_mismatch_refuses_untouched(self):
+        directory = self.legacy_set(self.old)
+        (directory / "TREE_SHA").write_text(self.paged + "\n")
+        image_set.write_sums(directory)
+        self.assert_refused_untouched(self.old, directory, "TREE_SHA does not match SHA")
+
 
 class LinkRunTests(unittest.TestCase):
     """hbox_native --reuse-image: an earlier run's images, with their source."""
@@ -81,6 +282,9 @@ class LinkRunTests(unittest.TestCase):
         (run / "run.log").write_text("#!/bin/sh\n" + log + "== load at start: x\n")
         for name in ("fn-host-developer", "fn-host-developer.core", "fn-host-developer.world-deps"):
             (build / name).write_text(name)
+        (build / "fn-host-developer").write_text(
+            LAUNCHER.format(core=build / "fn-host-developer.core"))
+        (build / "fn-host-developer.catalog").write_text("old\n")
         (build / "lib").mkdir()
         return run
 
@@ -96,6 +300,9 @@ class LinkRunTests(unittest.TestCase):
                 self.assertTrue((build / name).is_symlink(), name)
                 self.assertEqual((build / name).resolve(), (run / "tree/build" / name).resolve())
             self.assertEqual((build / "REUSED_SOURCE").read_text(), "abc123\n")
+            self.assertEqual((build / "fn-host-developer.catalog").read_text(), "old\n")
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(image_set.publish(tree, SHA, Path(directory) / "sets"), 0)
 
     def test_link_run_refuses_a_missing_image_or_an_unknown_source(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -108,6 +315,31 @@ class LinkRunTests(unittest.TestCase):
             with contextlib.redirect_stderr(io.StringIO()) as said:
                 self.assertEqual(image_set.link_run(run, tree, ["developer"]), 1)
             self.assertIn("names no `== source` line", said.getvalue())
+            self.assertFalse((tree / "build" / "fn-host-developer").exists())
+
+    def test_link_run_refuses_renamed_paged_image_without_record(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run = self.run_dir(directory)
+            build = run / "tree" / "build"
+            for suffix in ("", ".core"):
+                paged = build / f"fn-host-paged{suffix}"
+                paged.write_text("inert paged fixture")
+                (build / f"fn-host{suffix}").symlink_to(paged)
+            tree = Path(directory) / "new"
+            with contextlib.redirect_stderr(io.StringIO()) as said:
+                self.assertEqual(image_set.link_run(run, tree, ["production"]), 1)
+            self.assertIn("production (unknown)", said.getvalue())
+            self.assertIn("rebuild with tools/build_native_host.sh", said.getvalue())
+            self.assertFalse((tree / "build").exists())
+
+    def test_link_run_refuses_a_paged_catalog_image(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run = self.run_dir(directory)
+            (run / "tree" / "build" / "fn-host-developer.catalog").write_text("paged\n")
+            tree = Path(directory) / "new"
+            with contextlib.redirect_stderr(io.StringIO()) as said:
+                self.assertEqual(image_set.link_run(run, tree, ["developer"]), 1)
+            self.assertIn("developer (paged)", said.getvalue())
             self.assertFalse((tree / "build" / "fn-host-developer").exists())
 
 

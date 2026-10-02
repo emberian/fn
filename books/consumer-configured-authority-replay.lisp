@@ -1,3 +1,4 @@
+; UNHOOKED stage 0 (2026-10-01): depends on the reverted FNCE consumer-authority event kinds in the wire-event grammar (planning/design-store-representation-2026-10-01.md section 4)
 ; Actual cfg-first recovery continuation. The caller retains the SAME parsed
 ; row, ORIGINALctx decision and prefix history source. This additive boundary
 ; is not yet admitted/guard-verified in the modern Store world. In particular

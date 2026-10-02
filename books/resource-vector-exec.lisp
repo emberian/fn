@@ -17,8 +17,9 @@
 ; section 4): the concrete stobj, its abstraction FN-RL-BANK to the logical
 ; bank, the representation invariant FN-RL-WFP and, per export, a
 ; correspondence theorem.  STATUS, honestly (r06 F3): the exports' guards
-; are declared and NOT verified, and NO correspondence theorem is proved in
-; this book; PRF-1211 stays planned until they are, and the ledger is wired
+; are declared and NOT verified. Fresh installation now has the named
+; fn-rl-install-correspondence theorem below; other exports still have no
+; correspondence theorem. PRF-1211 stays planned, and the ledger is wired
 ; into nothing.  The next version is the TREE of books/resource-vector-tree
 ; (one table, a row's owner a slot, per-row drawn columns for the sub-bank
 ; rows), which is the layout the host needs; this flat twin is kept as the
@@ -278,6 +279,13 @@
            (fn-rl-words-representable-p (cdr words)))
     (null words)))
 
+; The concrete profile has u64 budget words and a u32 slot count.
+; These are representation limits, not logical admission limits (D27).
+(defun fn-rl-profile-representable-p (budget nslots)
+  (declare (xargs :guard t))
+  (and (fn-rl-words-representable-p budget)
+       (unsigned-byte-p 32 nslots)))
+
 (defun fn-rl-store-words-from (i words fn-resource-ledger)
   (declare (xargs :stobjs fn-resource-ledger
                   :guard (and (natp i) (<= (+ i (len words)) 9)
@@ -313,33 +321,536 @@
 ; A ledger installs ONCE (Codex r18 F2: a reinstall that shrank and regrew
 ; the columns would zero the generations, and an old completion token would
 ; settle a new draw -- the ABA back through the representation); and every
-; check precedes every store (r18 F1): the budget's representability, the
-; shapes, and that the baseline and the reserve fit the budget together,
-; which is exactly what fn-rv-install's two charges decide, so neither can
-; refuse after the columns exist.
+; refusal is decided before any store (r18 F1): representability and the
+; logical decision on a two-slot table are checked before mutation. The theorem
+; fn-rl-install-preflight-charges-succeed proves that, on a fresh ledger,
+; neither charge can refuse after the columns exist.
 (defun fn-rl-install (budget baseline reserve nslots fn-resource-ledger)
   (declare (xargs :stobjs fn-resource-ledger :verify-guards nil
                   :guard (and (true-listp budget) (true-listp baseline) (true-listp reserve)
                               (natp nslots))))
   (cond ((not (eql (fn-rl-count fn-resource-ledger) 0))
          (mv :already-installed fn-resource-ledger))
-        ((not (and (fn-rv-vectorp budget) (fn-rv-vectorp baseline) (fn-rv-vectorp reserve)
-                   (<= 2 nslots) (unsigned-byte-p 32 nslots)))
-         (mv :invalid-install fn-resource-ledger))
-        ((not (fn-rl-words-representable-p budget))
+        ((not (fn-rl-profile-representable-p budget nslots))
          (mv :unrepresentable-profile fn-resource-ledger))
-        ((not (fn-rv-below (fn-rv-plus baseline reserve) budget))
-         (mv :resources-unavailable fn-resource-ledger))
+        ((not (and (fn-rv-vectorp budget) (<= 2 nslots)))
+         (mv (car (fn-rv-install budget baseline reserve nslots))
+             fn-resource-ledger))
+        ;; Only slots 0 and 1 determine installation's verdict.  Ask the
+        ;; logical specification on that bounded table before any store.
+        ((not (eq (car (fn-rv-install budget baseline reserve 2)) :installed))
+         (mv (car (fn-rv-install budget baseline reserve 2)) fn-resource-ledger))
         (t (let* ((fn-resource-ledger (fn-rl-resize-all nslots fn-resource-ledger))
                   (fn-resource-ledger (fn-rl-store-words-from 0 budget fn-resource-ledger)))
              (mv-let (w1 g1 fn-resource-ledger)
                (fn-rl-draw 0 baseline fn-resource-ledger)
                (declare (ignore g1))
                (if (not (eq w1 :drawn))
-                   (mv w1 fn-resource-ledger)   ; unreachable: checked above
+                   ; fn-rl-install-preflight-charges-succeed proves this unreachable.
+                   (mv w1 fn-resource-ledger)
                  (mv-let (w2 g2 fn-resource-ledger)
                    (fn-rl-open 1 reserve fn-resource-ledger)
                    (declare (ignore g2))
                    (if (not (eq w2 :opened))
-                       (mv w2 fn-resource-ledger)   ; unreachable: checked above
+                       ; fn-rl-install-preflight-charges-succeed covers both branches.
+                       (mv w2 fn-resource-ledger)
                      (mv :installed fn-resource-ledger)))))))))
+
+; -----------------------------------------------------------------------------
+; Fresh installation correspondence.  FN-RL-INSTALL has no served host caller
+; yet; this is the concrete export's model boundary, not a deployment claim.
+; Freshness constrains only the bank's initial charge and slot columns, plus
+; the stobj type and zero count. Budget, ownership columns, and pool scalars
+; need not be zero: installation overwrites the budget and the abstraction
+; does not inspect the other fields. Thus the whole created stobj need not be
+; an equality hypothesis. Empty bank columns are precisely their created shape.
+(defun fn-rl-freshp (fn-resource-ledger)
+  (declare (xargs :stobjs fn-resource-ledger))
+  (and (fn-resource-ledgerp fn-resource-ledger)
+       (equal (fn-rl-count fn-resource-ledger) 0)
+       (equal (fn-rl-drawn-list fn-resource-ledger) *fn-rv-zero*)
+       (equal (fn-rl-phases-length fn-resource-ledger) 0)
+       (equal (fn-rl-gens-length fn-resource-ledger) 0)
+       (equal (fn-rl-c0-length fn-resource-ledger) 0)
+       (equal (fn-rl-c1-length fn-resource-ledger) 0)
+       (equal (fn-rl-c2-length fn-resource-ledger) 0)
+       (equal (fn-rl-c3-length fn-resource-ledger) 0)
+       (equal (fn-rl-c4-length fn-resource-ledger) 0)
+       (equal (fn-rl-c5-length fn-resource-ledger) 0)
+       (equal (fn-rl-c6-length fn-resource-ledger) 0)
+       (equal (fn-rl-c7-length fn-resource-ledger) 0)
+       (equal (fn-rl-c8-length fn-resource-ledger) 0)))
+
+(defthm fn-rl-created-ledger-is-fresh
+  (fn-rl-freshp (create-fn-resource-ledger))
+  :rule-classes nil)
+
+(encapsulate ()
+ (local (include-book "arithmetic-5/top" :dir :system))
+ ; The decision needs two logical rows, independently of the installed size.
+(local
+ (progn
+(defthm fn-rl-logical-install-word-uses-two-slots
+  (implies (and (natp nslots) (<= 2 nslots))
+           (equal (car (fn-rv-install budget baseline reserve nslots))
+                  (car (fn-rv-install budget baseline reserve 2))))
+  :hints (("Goal"
+           :in-theory
+           (e/d (fn-rv-install fn-rv-draw fn-rv-open fn-rv-charge
+                 fn-rv-slotp fn-rv-slot-count fn-rv-phase fn-rv-gen fn-rv-row)
+                (fn-rv-idle-rows nth update-nth fn-rv-make
+                 fn-rv-budget fn-rv-drawn fn-rv-slots)))))
+ ))
+ (local (in-theory (disable fn-rl-logical-install-word-uses-two-slots)))
+ ; Array reads and the two live rows followed by the untouched idle tail.
+(local
+ (progn
+(defthm fn-rl-nth-member
+  (implies (and (natp i) (< i (len xs)))
+           (member-equal (nth i xs) xs))
+  :hints (("Goal" :induct (nth i xs))))
+(defthm fn-rl-resize-zero-members
+  (implies (member-equal x (resize-list nil n 0))
+           (equal x 0))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :induct (resize-list nil n 0))))
+(defthm fn-rl-len-resize
+  (equal (len (resize-list xs n d)) (nfix n)))
+(defthm fn-rl-nth-resize-zero
+  (implies (and (natp i) (< i (nfix n)))
+           (equal (nth i (resize-list nil n 0)) 0))
+  :hints (("Goal" :use (:instance fn-rl-nth-member
+                                  (xs (resize-list nil n 0)))
+           :in-theory (disable fn-rl-nth-member resize-list nth))))
+(defthm fn-rl-resize-empty
+  (implies (and (equal (len xs) 0) (syntaxp (not (equal xs ''nil))))
+           (equal (resize-list xs n 0) (resize-list nil n 0)))
+  :hints (("Goal" :induct (resize-list xs n 0))))
+(defthm fn-rl-vector-nine-fields
+  (implies (fn-rv-vectorp v)
+    (equal (list (nth 0 v) (nth 1 v) (nth 2 v) (nth 3 v)
+                 (nth 4 v) (nth 5 v) (nth 6 v) (nth 7 v) (nth 8 v))
+           v))
+  :hints (("Goal" :in-theory (e/d (fn-rv-vectorp fn-rv-nats-p) (nth-add1))
+           :expand ((len v)
+                    (len (cdr v))
+                    (len (cdr (cdr v)))
+                    (len (cdr (cdr (cdr v))))
+                    (len (cdr (cdr (cdr (cdr v)))))
+                    (len (cdr (cdr (cdr (cdr (cdr v))))))
+                    (len (cdr (cdr (cdr (cdr (cdr (cdr v)))))))
+                    (len (cdr (cdr (cdr (cdr (cdr (cdr (cdr v))))))))
+                    (len (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr v)))))))))
+                    (len (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr v))))))))))
+                    (:free (xs) (nth 0 xs))
+                    (:free (xs) (nth 1 xs))
+                    (:free (xs) (nth 2 xs))
+                    (:free (xs) (nth 3 xs))
+                    (:free (xs) (nth 4 xs))
+                    (:free (xs) (nth 5 xs))
+                    (:free (xs) (nth 6 xs))
+                    (:free (xs) (nth 7 xs))
+                    (:free (xs) (nth 8 xs))))))
+ ))
+(local
+ (progn
+(defthm fn-rl-installed-column-read
+  (implies (and (equal col (update-nth 1 b (update-nth 0 a (resize-list nil n 0))))
+                (natp i) (< i (nfix n)))
+           (equal (nth i col) (cond ((equal i 0) a) ((equal i 1) b) (t 0))))
+  :hints (("Goal" :in-theory (disable nth update-nth resize-list))))
+ ))
+(local
+ (progn
+(defthm fn-rl-installed-tail-fields
+  (implies (and (natp i) (<= 2 i) (<= i (fn-rl-count ledger))
+                (natp (fn-rl-count ledger))
+                (<= 2 (fn-rl-count ledger))
+                (equal (nth 3 ledger)
+                       (update-nth 1 2 (update-nth 0 1 (resize-list nil (fn-rl-count ledger) 0))))
+                (equal (nth 4 ledger)
+                       (update-nth 1 1 (update-nth 0 1 (resize-list nil (fn-rl-count ledger) 0))))
+                (equal (nth 5 ledger)
+                       (update-nth 1 (nth 0 reserve)
+                                   (update-nth 0 (nth 0 baseline) (resize-list nil (fn-rl-count ledger) 0))))
+                (equal (nth 6 ledger)
+                       (update-nth 1 (nth 1 reserve)
+                                   (update-nth 0 (nth 1 baseline) (resize-list nil (fn-rl-count ledger) 0))))
+                (equal (nth 7 ledger)
+                       (update-nth 1 (nth 2 reserve)
+                                   (update-nth 0 (nth 2 baseline) (resize-list nil (fn-rl-count ledger) 0))))
+                (equal (nth 8 ledger)
+                       (update-nth 1 (nth 3 reserve)
+                                   (update-nth 0 (nth 3 baseline) (resize-list nil (fn-rl-count ledger) 0))))
+                (equal (nth 9 ledger)
+                       (update-nth 1 (nth 4 reserve)
+                                   (update-nth 0 (nth 4 baseline) (resize-list nil (fn-rl-count ledger) 0))))
+                (equal (nth 10 ledger)
+                       (update-nth 1 (nth 5 reserve)
+                                   (update-nth 0 (nth 5 baseline) (resize-list nil (fn-rl-count ledger) 0))))
+                (equal (nth 11 ledger)
+                       (update-nth 1 (nth 6 reserve)
+                                   (update-nth 0 (nth 6 baseline) (resize-list nil (fn-rl-count ledger) 0))))
+                (equal (nth 12 ledger)
+                       (update-nth 1 (nth 7 reserve)
+                                   (update-nth 0 (nth 7 baseline) (resize-list nil (fn-rl-count ledger) 0))))
+                (equal (nth 13 ledger)
+                       (update-nth 1 (nth 8 reserve)
+                                   (update-nth 0 (nth 8 baseline) (resize-list nil (fn-rl-count ledger) 0)))))
+           (equal (fn-rl-rows-from i ledger)
+                  (fn-rv-idle-rows (- (fn-rl-count ledger) i))))
+  :hints (("Goal" :induct (fn-rl-rows-from i ledger)
+           :expand ((fn-rl-rows-from i ledger) (fn-rv-idle-rows (+ (- i) (fn-rl-count ledger))))
+           :in-theory (e/d ((:induction fn-rl-rows-from))
+                           ((:definition fn-rl-rows-from) fn-rv-idle-rows
+                            resize-list nth update-nth fn-rl-count)))))
+
+(defthm fn-rl-installed-row-fields
+  (implies (and (fn-rv-vectorp baseline) (fn-rv-vectorp reserve)
+                (natp (fn-rl-count ledger))
+                (<= 2 (fn-rl-count ledger))
+                (equal (nth 3 ledger)
+                       (update-nth 1 2 (update-nth 0 1 (resize-list nil (fn-rl-count ledger) 0))))
+                (equal (nth 4 ledger)
+                       (update-nth 1 1 (update-nth 0 1 (resize-list nil (fn-rl-count ledger) 0))))
+                (equal (nth 5 ledger)
+                       (update-nth 1 (nth 0 reserve)
+                                   (update-nth 0 (nth 0 baseline) (resize-list nil (fn-rl-count ledger) 0))))
+                (equal (nth 6 ledger)
+                       (update-nth 1 (nth 1 reserve)
+                                   (update-nth 0 (nth 1 baseline) (resize-list nil (fn-rl-count ledger) 0))))
+                (equal (nth 7 ledger)
+                       (update-nth 1 (nth 2 reserve)
+                                   (update-nth 0 (nth 2 baseline) (resize-list nil (fn-rl-count ledger) 0))))
+                (equal (nth 8 ledger)
+                       (update-nth 1 (nth 3 reserve)
+                                   (update-nth 0 (nth 3 baseline) (resize-list nil (fn-rl-count ledger) 0))))
+                (equal (nth 9 ledger)
+                       (update-nth 1 (nth 4 reserve)
+                                   (update-nth 0 (nth 4 baseline) (resize-list nil (fn-rl-count ledger) 0))))
+                (equal (nth 10 ledger)
+                       (update-nth 1 (nth 5 reserve)
+                                   (update-nth 0 (nth 5 baseline) (resize-list nil (fn-rl-count ledger) 0))))
+                (equal (nth 11 ledger)
+                       (update-nth 1 (nth 6 reserve)
+                                   (update-nth 0 (nth 6 baseline) (resize-list nil (fn-rl-count ledger) 0))))
+                (equal (nth 12 ledger)
+                       (update-nth 1 (nth 7 reserve)
+                                   (update-nth 0 (nth 7 baseline) (resize-list nil (fn-rl-count ledger) 0))))
+                (equal (nth 13 ledger)
+                       (update-nth 1 (nth 8 reserve)
+                                   (update-nth 0 (nth 8 baseline) (resize-list nil (fn-rl-count ledger) 0)))))
+           (equal (fn-rl-rows-from 0 ledger)
+                  (cons (list* 1 1 baseline)
+                        (cons (list* 2 1 reserve)
+                              (fn-rv-idle-rows (- (fn-rl-count ledger) 2))))))
+  :hints (("Goal" :use (:instance fn-rl-installed-tail-fields (i 2))
+ :expand ((fn-rl-rows-from 0 ledger)
+                           (fn-rl-rows-from 1 ledger))
+           :in-theory (disable fn-rl-rows-from resize-list nth update-nth fn-rl-count))))
+ ))
+
+ ; Expand the fixed nine coordinates once, then recover arbitrary vectors
+ ; through fn-rl-vector-nine-fields. These are local implementation lemmas.
+(local
+ (progn
+(defthm fn-rl-install-nine-fields
+  (let ((budget (list b0 b1 b2 b3 b4 b5 b6 b7 b8))
+        (baseline (list u0 u1 u2 u3 u4 u5 u6 u7 u8))
+        (reserve (list r0 r1 r2 r3 r4 r5 r6 r7 r8)))
+    (implies (and (fn-rl-freshp ledger)
+                  (natp nslots) (<= 2 nslots)
+                  (fn-rv-vectorp budget) (fn-rv-vectorp baseline)
+                  (fn-rv-vectorp reserve)
+                  (fn-rl-profile-representable-p budget nslots)
+                  (fn-rv-below (fn-rv-plus baseline reserve) budget))
+           (let* ((result (fn-rl-install budget baseline reserve nslots ledger))
+                  (after (mv-nth 1 result)))
+             (and (equal (mv-nth 0 result) :installed)
+                  (equal (fn-rl-count after) nslots)
+                  (equal (fn-rl-budget-list after) budget)
+                  (equal (fn-rl-drawn-list after) (fn-rv-plus baseline reserve))
+                  (equal (nth 3 after)
+                       (update-nth 1 2
+                                   (update-nth 0 1 (resize-list nil nslots 0))))
+                  (equal (nth 4 after)
+                       (update-nth 1 1
+                                   (update-nth 0 1 (resize-list nil nslots 0))))
+                  (equal (nth 5 after)
+                       (update-nth 1 r0
+                                   (update-nth 0 u0 (resize-list nil nslots 0))))
+                  (equal (nth 6 after)
+                       (update-nth 1 r1
+                                   (update-nth 0 u1 (resize-list nil nslots 0))))
+                  (equal (nth 7 after)
+                       (update-nth 1 r2
+                                   (update-nth 0 u2 (resize-list nil nslots 0))))
+                  (equal (nth 8 after)
+                       (update-nth 1 r3
+                                   (update-nth 0 u3 (resize-list nil nslots 0))))
+                  (equal (nth 9 after)
+                       (update-nth 1 r4
+                                   (update-nth 0 u4 (resize-list nil nslots 0))))
+                  (equal (nth 10 after)
+                       (update-nth 1 r5
+                                   (update-nth 0 u5 (resize-list nil nslots 0))))
+                  (equal (nth 11 after)
+                       (update-nth 1 r6
+                                   (update-nth 0 u6 (resize-list nil nslots 0))))
+                  (equal (nth 12 after)
+                       (update-nth 1 r7
+                                   (update-nth 0 u7 (resize-list nil nslots 0))))
+                  (equal (nth 13 after)
+                       (update-nth 1 r8
+                                   (update-nth 0 u8 (resize-list nil nslots 0))))))))
+  :rule-classes nil
+ :hints (("Goal" :in-theory
+          (e/d (fn-rv-install fn-rv-draw fn-rv-open fn-rv-charge
+                fn-rv-slotp fn-rv-slot-count fn-rv-phase fn-rv-gen fn-rv-row
+                fn-rv-vectorp fn-rv-nats-p fn-rv-below fn-rv-plus)
+               (fn-resource-ledgerp fn-rv-idle-rows
+                nth update-nth resize-list fn-rl-rows-from
+                fn-rl-logical-install-word-uses-two-slots)))))
+ ))
+(local
+ (progn
+(defthm fn-rl-install-fields
+  (implies (and (fn-rl-freshp ledger)
+                  (natp nslots) (<= 2 nslots)
+                  (fn-rv-vectorp budget) (fn-rv-vectorp baseline)
+                  (fn-rv-vectorp reserve)
+                  (fn-rl-profile-representable-p budget nslots)
+                  (fn-rv-below (fn-rv-plus baseline reserve) budget))
+           (let* ((result (fn-rl-install budget baseline reserve nslots ledger))
+                  (after (mv-nth 1 result)))
+             (and (equal (mv-nth 0 result) :installed)
+                  (equal (fn-rl-count after) nslots)
+                  (equal (fn-rl-budget-list after) budget)
+                  (equal (fn-rl-drawn-list after) (fn-rv-plus baseline reserve))
+                  (equal (nth 3 after)
+                       (update-nth 1 2
+                                   (update-nth 0 1 (resize-list nil nslots 0))))
+                  (equal (nth 4 after)
+                       (update-nth 1 1
+                                   (update-nth 0 1 (resize-list nil nslots 0))))
+                  (equal (nth 5 after)
+                       (update-nth 1 (nth 0 reserve)
+                                   (update-nth 0 (nth 0 baseline) (resize-list nil nslots 0))))
+                  (equal (nth 6 after)
+                       (update-nth 1 (nth 1 reserve)
+                                   (update-nth 0 (nth 1 baseline) (resize-list nil nslots 0))))
+                  (equal (nth 7 after)
+                       (update-nth 1 (nth 2 reserve)
+                                   (update-nth 0 (nth 2 baseline) (resize-list nil nslots 0))))
+                  (equal (nth 8 after)
+                       (update-nth 1 (nth 3 reserve)
+                                   (update-nth 0 (nth 3 baseline) (resize-list nil nslots 0))))
+                  (equal (nth 9 after)
+                       (update-nth 1 (nth 4 reserve)
+                                   (update-nth 0 (nth 4 baseline) (resize-list nil nslots 0))))
+                  (equal (nth 10 after)
+                       (update-nth 1 (nth 5 reserve)
+                                   (update-nth 0 (nth 5 baseline) (resize-list nil nslots 0))))
+                  (equal (nth 11 after)
+                       (update-nth 1 (nth 6 reserve)
+                                   (update-nth 0 (nth 6 baseline) (resize-list nil nslots 0))))
+                  (equal (nth 12 after)
+                       (update-nth 1 (nth 7 reserve)
+                                   (update-nth 0 (nth 7 baseline) (resize-list nil nslots 0))))
+                  (equal (nth 13 after)
+                       (update-nth 1 (nth 8 reserve)
+                                   (update-nth 0 (nth 8 baseline) (resize-list nil nslots 0)))))))
+  :rule-classes nil
+ :hints (("Goal" :use (:instance fn-rl-install-nine-fields (b0 (nth 0 budget))
+                    (b1 (nth 1 budget))
+                    (b2 (nth 2 budget))
+                    (b3 (nth 3 budget))
+                    (b4 (nth 4 budget))
+                    (b5 (nth 5 budget))
+                    (b6 (nth 6 budget))
+                    (b7 (nth 7 budget))
+                    (b8 (nth 8 budget))
+                    (u0 (nth 0 baseline))
+                    (u1 (nth 1 baseline))
+                    (u2 (nth 2 baseline))
+                    (u3 (nth 3 baseline))
+                    (u4 (nth 4 baseline))
+                    (u5 (nth 5 baseline))
+                    (u6 (nth 6 baseline))
+                    (u7 (nth 7 baseline))
+                    (u8 (nth 8 baseline))
+                    (r0 (nth 0 reserve))
+                    (r1 (nth 1 reserve))
+                    (r2 (nth 2 reserve))
+                    (r3 (nth 3 reserve))
+                    (r4 (nth 4 reserve))
+                    (r5 (nth 5 reserve))
+                    (r6 (nth 6 reserve))
+                    (r7 (nth 7 reserve))
+                    (r8 (nth 8 reserve)))
+ :in-theory (disable fn-rl-install fn-rl-freshp fn-rl-profile-representable-p
+                     fn-rl-count fn-rl-budget-list fn-rl-drawn-list
+                     fn-rv-plus fn-rv-below fn-rv-vectorp nth update-nth))))
+ ))
+(local
+ (progn
+(defthm fn-rl-install-success-bank
+  (implies (and (fn-rl-freshp ledger)
+                (natp nslots) (<= 2 nslots)
+                (fn-rv-vectorp budget) (fn-rv-vectorp baseline)
+                (fn-rv-vectorp reserve)
+                (fn-rl-profile-representable-p budget nslots)
+                (fn-rv-below (fn-rv-plus baseline reserve) budget))
+           (and
+            (equal (mv-nth 0 (fn-rl-install budget baseline reserve nslots ledger))
+                   :installed)
+            (equal (fn-rl-bank (mv-nth 1 (fn-rl-install budget baseline reserve nslots ledger)))
+                   (fn-rv-make budget (fn-rv-plus baseline reserve)
+                               (cons (list* 1 1 baseline)
+                                     (cons (list* 2 1 reserve)
+                                           (fn-rv-idle-rows (- nslots 2))))))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-rl-install-fields
+                 (:instance fn-rl-installed-row-fields
+                            (ledger (mv-nth 1 (fn-rl-install budget baseline reserve nslots ledger)))))
+           :in-theory (e/d (fn-rl-bank)
+                           (fn-rl-install fn-rl-freshp fn-rl-profile-representable-p
+                            fn-rl-count fn-rl-budget-list fn-rl-drawn-list fn-rl-rows-from
+                            fn-rv-make fn-rv-idle-rows fn-rv-plus fn-rv-below
+                            fn-rv-vectorp nth update-nth)))))
+
+(defthm fn-rl-logical-install-success-shape
+  (implies (and (natp nslots) (<= 2 nslots)
+                (fn-rv-vectorp budget) (fn-rv-vectorp baseline)
+                (fn-rv-vectorp reserve)
+                (fn-rv-below (fn-rv-plus baseline reserve) budget))
+           (equal (fn-rv-install budget baseline reserve nslots)
+                  (list :installed
+                        (fn-rv-make budget (fn-rv-plus baseline reserve)
+                                    (cons (list* 1 1 baseline)
+                                          (cons (list* 2 1 reserve)
+                                                (fn-rv-idle-rows (- nslots 2))))))))
+  :hints (("Goal" :expand ((fn-rv-idle-rows nslots)
+                            (fn-rv-idle-rows (+ -1 nslots)))
+           :in-theory
+           (e/d (fn-rv-install fn-rv-draw fn-rv-open fn-rv-charge
+                 fn-rv-slotp fn-rv-slot-count fn-rv-phase fn-rv-gen fn-rv-row)
+                (fn-rv-idle-rows nth fn-rv-make
+                 fn-rv-budget fn-rv-drawn fn-rv-slots)))))
+ ))
+(local
+ (progn
+(defthm fn-rl-logical-install-admits-iff
+  (implies (natp nslots)
+           (equal (equal (car (fn-rv-install budget baseline reserve nslots)) :installed)
+                  (and (fn-rv-vectorp budget) (<= 2 nslots)
+                       (fn-rv-vectorp baseline) (fn-rv-vectorp reserve)
+                       (fn-rv-below (fn-rv-plus baseline reserve) budget))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-rv-install fn-rv-draw fn-rv-open fn-rv-charge
+                 fn-rv-slotp fn-rv-slot-count fn-rv-phase fn-rv-gen fn-rv-row)
+                (fn-rv-idle-rows nth update-nth fn-rv-make
+                 fn-rv-budget fn-rv-drawn fn-rv-slots
+                 fn-rl-logical-install-success-shape
+                 fn-rl-logical-install-word-uses-two-slots)))))
+
+(defthm fn-rl-fresh-count
+  (implies (fn-rl-freshp ledger) (equal (fn-rl-count ledger) 0))
+  :hints (("Goal" :in-theory (disable fn-resource-ledgerp))))
+
+(defthm fn-rl-install-refused-before-store
+  (implies
+   (and (fn-rl-freshp ledger) (natp nslots)
+        (or (not (fn-rl-profile-representable-p budget nslots))
+            (not (equal (car (fn-rv-install budget baseline reserve nslots)) :installed))))
+   (equal (fn-rl-install budget baseline reserve nslots ledger)
+          (list (if (fn-rl-profile-representable-p budget nslots)
+                    (car (fn-rv-install budget baseline reserve nslots))
+                  :unrepresentable-profile)
+                ledger)))
+  :hints (("Goal" :use fn-rl-logical-install-word-uses-two-slots
+ :in-theory
+           (e/d (fn-rl-install)
+                (fn-rl-freshp fn-rl-count fn-rl-profile-representable-p
+                 fn-rl-draw fn-rl-open fn-rl-resize-all fn-rl-store-words-from
+                 fn-rv-install fn-rl-logical-install-admits-iff
+ fn-rl-logical-install-word-uses-two-slots)))))
+ ))
+
+ ; (a) exact word, with ONE named representation exception; (b) complete bank
+ ; abstraction on success; (c) exact input ledger on every refusal.
+(defthm fn-rl-install-correspondence
+  (implies
+   (and (fn-rl-freshp fn-resource-ledger)
+        (true-listp budget) (true-listp baseline) (true-listp reserve)
+        (natp nslots))
+   (let* ((result (fn-rl-install budget baseline reserve nslots fn-resource-ledger))
+          (word (mv-nth 0 result))
+          (after (mv-nth 1 result))
+          (logical (fn-rv-install budget baseline reserve nslots)))
+     (and (equal word
+                 (if (fn-rl-profile-representable-p budget nslots)
+                     (car logical)
+                   :unrepresentable-profile))
+          (implies (equal word :installed)
+                   (equal (fn-rl-bank after) (cadr logical)))
+          (implies (not (equal word :installed))
+                   (equal after fn-resource-ledger)))))
+  :rule-classes nil
+  :hints (("Goal"
+           :cases ((fn-rl-profile-representable-p budget nslots)
+                   (equal (car (fn-rv-install budget baseline reserve nslots)) :installed))
+           :use ((:instance fn-rl-install-success-bank (ledger fn-resource-ledger))
+                 (:instance fn-rl-install-refused-before-store (ledger fn-resource-ledger)))
+           :in-theory (disable fn-rl-install fn-rl-bank fn-rl-freshp
+                               fn-rl-profile-representable-p
+                               fn-rl-logical-install-word-uses-two-slots
+                               fn-rv-install fn-rv-make fn-rv-idle-rows
+                               fn-rv-vectorp fn-rv-plus fn-rv-below))))
+(local
+ (progn
+(defthm fn-rl-charge-never-answers-installed
+  (not (equal (mv-nth 0 (fn-rl-charge slot demand phase ledger)) :installed))
+  :hints (("Goal" :in-theory
+           (e/d (fn-rl-charge)
+                (fn-rl-slotp fn-rl-fits-from fn-rl-charge-from
+                 fn-rv-vectorp update-fn-rl-phasesi update-fn-rl-gensi)))))
+
+
+(defthm fn-rl-charge-word-not-installed
+  (not (equal (car (fn-rl-charge slot demand phase ledger)) :installed))
+  :hints (("Goal" :use fn-rl-charge-never-answers-installed
+           :in-theory (disable fn-rl-charge fn-rl-charge-never-answers-installed))))
+ ))
+
+ ; (d) Both post-mutation error branches are unreachable under the complete
+ ; fresh, representable, logically admitted preflight antecedent.
+(defthm fn-rl-install-preflight-charges-succeed
+  (implies
+   (and (fn-rl-freshp fn-resource-ledger)
+        (true-listp budget) (true-listp baseline) (true-listp reserve)
+        (natp nslots)
+        (fn-rl-profile-representable-p budget nslots)
+        (equal (car (fn-rv-install budget baseline reserve nslots)) :installed))
+   (let* ((resized (fn-rl-resize-all nslots fn-resource-ledger))
+          (stored (fn-rl-store-words-from 0 budget resized))
+          (first (fn-rl-draw 0 baseline stored))
+          (second (fn-rl-open 1 reserve (mv-nth 2 first))))
+     (and (equal (mv-nth 0 first) :drawn)
+          (equal (mv-nth 0 second) :opened))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-rl-logical-install-admits-iff
+                 fn-rl-install-correspondence
+                 fn-rl-logical-install-word-uses-two-slots)
+           :in-theory
+           (e/d (fn-rl-install fn-rl-draw fn-rl-open)
+                (fn-rl-freshp fn-rl-count fn-rl-profile-representable-p
+                 fn-rl-charge fn-rl-resize-all fn-rl-store-words-from
+                 fn-rl-bank fn-rv-install
+                 fn-rl-logical-install-admits-iff
+                 fn-rl-logical-install-success-shape
+                 fn-rl-logical-install-word-uses-two-slots
+                 fn-rl-install-refused-before-store)))))
+)

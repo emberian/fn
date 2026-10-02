@@ -93,8 +93,8 @@
                                               charge key fn-cat)
                        :ok)
                 (equal (fn-record-msgid h) (fn-record-octets-string msgid-octets)))
-           (equal (fn-mpxt-build-unplaced key (append fn-cat (list h)))
-                  (fn-mpxt-build-unplaced key fn-cat)))
+           (equal (fn-mlh-build-unplaced key (append fn-cat (list h)))
+                  (fn-mlh-build-unplaced key fn-cat)))
   :hints (("Goal" :use ((:instance fn-cat-msgid-saturatedp-is-the-outcome
                                    (msgid (fn-record-octets-string msgid-octets)))))))
 
@@ -117,8 +117,8 @@
                                               charge key fn-cat)
                        :mpx-saturated)
                 (equal (fn-record-msgid h) (fn-record-octets-string msgid-octets)))
-           (not (equal (fn-mpxt-build-unplaced key (append fn-cat (list h)))
-                       (fn-mpxt-build-unplaced key fn-cat))))
+           (not (equal (fn-mlh-build-unplaced key (append fn-cat (list h)))
+                       (fn-mlh-build-unplaced key fn-cat))))
   :hints (("Goal" :in-theory (disable fn-pak-post-admission)
            :use ((:instance fn-cat-msgid-saturatedp-is-the-outcome
                             (msgid (fn-record-octets-string msgid-octets)))

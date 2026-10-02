@@ -3,6 +3,66 @@
   "description": "Broad proof targets with incremental certified component evidence. An in-progress target is not fully certified. Paths are repository-relative.",
   "proofs": [
     {
+      "id": "PRF-1225",
+      "title": "The paged catalog's live links: every bound (group . number) entry is live with its true neighbour and every live number is bound, through commit, withdrawal, redecision and clear; a live number's neighbour read is the table probe",
+      "statement": "books/catalog-live-links.lisp + books/catalog-paged.lisp; the subject is the paged catalog's withdrawal and commit executables (fn-cat$p-withdraw-w, fn-cat$p-commit-w), the attached executables of the generic exports fn-cat-withdraw / fn-cat-commit (books/catalog-paged-attach.lisp) called by the served write path (books/owner-batch.lisp, books/index-backing-served-producer-carry.lisp). fn-cpl-okp (every bound key is a live number and its value its NEXT/PREV live neighbour) is kept by the commit's link plan (KEYSTONE fn-cpl-okp-of-commit), the withdrawal's unlink (KEYSTONE fn-cpl-okp-of-withdraw; the r < len c hypothesis proved redundant: fn-cpl-okp-of-withdraw-any-r) and a redecision (fn-cpl-okp-of-redecide). fn-cpl-coverp (every live number is bound) is kept by the same writes (fn-cpl-coverp-of-commit, -of-withdraw, -of-redecide, -of-no-rows). fn-cat$pcorr carries both for both tables; under it the liveness probe IS liveness (KEYSTONE fn-cat$p-livep-is-live: (group . number) bound in NEXT iff live) and a live number's neighbour read is its entry -- bound, a natural, its true neighbour (KEYSTONES fn-cat$p-next-is-probe, fn-cat$p-prev-is-probe); the paged executables have no row scan: the withdrawal's only row reads are its three withdrawal columns and its numbers column (fn-cat$p-withdrawn-of, fn-cat$p-numbers-of; the remainder in the pool is never decoded), every liveness and neighbour question a table probe. Measured (hbox REPL, 10k rows of 2 groups, guards on, loop averages): 2,798 B consed per withdrawal (was 15,031: one full row decode); commit 28,635 B (was 27,127: the numbers walked as a second tree) and +157 B/row retained (the numbers' program). Scope: the logical tables (alists) the stobj's hash tables model; the cost claims are measurements, not theorems. Open: fn-cat-rowsp in fn-cpl-okp-of-withdraw (no counterexample known, weakening not proved). Teeth: tests/acl2/catalog-live-links-tests.lisp (commit-generated tables, positive + okp-removal + natp-r removal + coverage witnesses), tests/acl2/catalog-paged-tests.lisp (probe positive on an executable-built state; Codex r30 F1 corrupted-state: tables erased, the scans answer).",
+      "milestone": "M5",
+      "requirements": [
+        "REP-010",
+        "REP-014"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/catalog-live-links.lisp",
+        "books/catalog-paged.lisp",
+        "tests/acl2/catalog-live-links-tests.lisp",
+        "tests/acl2/catalog-paged-tests.lisp"
+      ],
+      "progress_note": "Lanes paged-catalog-5..7 (Gate C of stage 3, planning/design-store-representation-2026-10-01.md); Codex r27 F1-F3 and r30 F1-F4 folded in. hbox REPL-admitted; certification of the lane head pending."
+    },
+    {
+      "id": "PRF-1226",
+      "title": "The paged catalog's withdrawals-by-version reader answers the old foundation's ascending list for every withdrawal order: a per-version binary trie whose in-order walk allocates only the answer",
+      "statement": "books/catalog-wbv-trie.lisp + books/catalog-paged.lisp; the subject is fn-cpt-list (exec fn-cpt-walk), the executable of fn-cat$p-withdrawn-at, attached to the generic export fn-cat-withdrawn-at (books/catalog-paged-attach.lisp) read by books/served-catalog-view.lisp fn-scv-withdrawn-numbers; its writer fn-cpt-add is called by fn-cat$p-withdraw-w and fn-cat$p-commit-w (the exports fn-cat-withdraw / fn-cat-commit on the served write path). A version's withdrawn rows are a binary trie over row numbers, most significant bit first, leaves counting multiplicity; the writer copies one root-to-leaf path (O(log N) conses, plus one a level of growth), the reader walks high subtree first onto an accumulator (allocation = the answer, recursion depth = the trie depth). KEYSTONE fn-cpt-list-of-add: for a natural s, the trie's ascending list after the add is fn-cpt-insert s of the list before (= fn-cat-insert-asc, fn-cpt-insert-is-insert-asc), so the view's table is the old foundation's exactly (fn-cp-view-of-wbv-push); no distinctness invariant is needed (multiset leaves). Measured (hbox REPL, 10k rows, 9,998 withdrawals at one version, guards on, loop averages of 100 reads): 161,186 B/read for ascending, descending AND scrambled arrival (was 161,186 / 1,029 / 6,084,346 with the sort-on-read reader); withdrawal 15,031-15,058 B (was 14,817: one ~15 KB row decode plus the path); retained 10,006 conses for 9,998 members at depth 14. Scope: the logical tables; costs are measurements, not theorems. Teeth: tests/acl2/catalog-paged-tests.lisp (writer-built buckets in the three orders read through fn-cat$p-withdrawn-at and equal to fn-cat$a-withdrawn-at, the keystone's antecedent and conclusion on the bucket before/after the last withdrawal, natp removal, a labelled walk-order MUTATION).",
+      "milestone": "M5",
+      "requirements": [
+        "REP-010",
+        "REP-014"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/catalog-wbv-trie.lisp",
+        "books/catalog-paged.lisp",
+        "tests/acl2/catalog-paged-tests.lisp"
+      ],
+      "progress_note": "Lanes paged-catalog-6..8 (8: the trie replaced the sort-on-read reader); hbox REPL-admitted; certification of the lane head pending."
+    },
+    {
+      "id": "PRF-1227",
+      "title": "The paged catalog's (group . number)-keyed tables (numbers, live NEXT, live PREV) are dense per-group runs whose every read is the old hash table's lookup: no table of N memberships is rehashed in one commit",
+      "statement": "books/catalog-dense-map.lisp + books/catalog-paged.lisp; the subject is the abstract stobj fn-dmap (exports fn-dmap-get/-put/-rem/-clear, exec fn-dmap$c-*), the fn-cat$p-dm field of the paged catalog, called through fn-cat$p-numbers-get/-put (fn-cat$p-group-number, fn-cat$p-numbers-apply in fn-cat$p-tab-commit) and fn-cat$p-lnext-*/lprev-* (fn-cat$p-link, -unlink, -livep, -next, -prev) by fn-cat$p-commit-w and fn-cat$p-withdraw-w, the executables of the generic exports fn-cat-commit / fn-cat-withdraw / fn-cat-group-number attached by books/catalog-paged-attach.lisp. Representation: page (g . floor((n-1)/256)) holds 256 memberships x 3 lanes of u64 words (value + 1; 0 unbound), found through a (group . page index) table and carrying its owner key; an escape table keyed (lane . key) takes what a cell cannot (non-membership keys, values >= 2^64 - 1): the total-semantics fallback, NOT proved empty (a sequence can reach 2^64 - 1: fn-cat$p-count is unbounded), itself an equal hash table that rehashes as it grows. The logical side is exactly three stobj hash tables (get = cdr of hons-assoc-equal, put = cons, rem = hons-remove-assoc, clear = nil), so the paged catalog's view puts lane 0 at the old foundation's numbers position and every simulation (fn-cat$p-commit-w-sim, -withdraw-w-sim, -clear-w-sim, -table-readers-sim) and obligation is the old one at the view. KEYSTONES fn-dm-get-of-put / fn-dm-get-of-rem / fn-dm-get-of-clear (each write changes exactly its own (lane, key); through fn-dm-slot-inj and the owner check fn-dm-pid-own, with no injectivity invariant on the page table) and the extensional correspondence fn-dm-agree (defun-sk over every lane and key), preserved by every export (fn-dmap-*{correspondence}). Measured (hbox REPL, guards on, sb-ext:get-bytes-consed, fn-cat$p-commit-w of real rows in two groups, worst single commit step): numbers+groups+lives step 604,672 / 2,529,776 / 5,059,488 / 10,118,864 B at 8,191 / 32,767 / 65,535 / 131,071 rows before, 32,752 / 32,752 / 62,256 / 88,512 B after; live links 1,265,056 / 5,059,552 / 10,118,976 / 20,237,728 B before, at most 32,752 B after; fn-dmap alone 32,752 B worst at 1k and 84,032 B at 262,144 memberships (dense groups). NOT flat in general: the page table and page array double in one step, Theta(pages) work, and pages are one per (group . 256-block), so G sparse groups make G pages, never freed on rem (Codex r44 F1); a two-level page directory is the open fix, mean 121 B a membership for three puts. Scope: the logical tables; costs are measurements, not theorems; the groups and live-summary tables (one entry a group) and the Message-ID table are not this target. Teeth: tests/acl2/catalog-dense-map-tests.lisp (executed correspondence over two pages, two groups, the escape, a rebinding, a removal and a clear; lane-removal witnesses for fn-dmap-put/rem{preserved}); tests/acl2/catalog-paged-tests.lisp (links exact over the group's numbers: live entries their neighbours, dead numbers unbound; CORRUPTED states by unbinding).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-027"
+      ],
+      "depends_on": [
+        "PRF-1226"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/catalog-dense-map.lisp",
+        "books/catalog-paged.lisp",
+        "tests/acl2/catalog-dense-map-tests.lisp",
+        "tests/acl2/catalog-paged-tests.lisp"
+      ],
+      "progress_note": "Lane stage-4: certified at the merged head (origin/dev efaf27dd2) hbox run-20261001T193159Z-46e7 (certify-20261001T193215Z-3429821: catalog-paged, catalog-paged-tests, catalog-paged-attach; the dense-map books cached at these bytes); before the merge hbox run-20261001T192035Z-510a (catalog-dense-map, catalog-paged, catalog-paged-tests, catalog-paged-attach 4/0) and run-20261001T192544Z-7fe5 (catalog-dense-map-tests 1/0)."
+    },
+    {
       "id": "PRF-001",
       "title": "Reachable-state invariant preservation",
       "statement": "Every permitted transition preserves a meaningful invariant from valid initial/reachable states.",
@@ -277,7 +337,7 @@
         "fn-record-impl-accepted-input-is-canonical",
         "fn-record-accepted-input-magic",
         "fn-record-accepted-schema-is-the-stamp-kind",
-        "fn-record-schema3-golden-octets-are-the-encoding",
+        "fn-record-schema1-golden-octets-are-the-encoding",
         "fn-bpa-round-trip",
         "fn-bpa-success-is-canonical"
       ],
@@ -3898,7 +3958,7 @@
         "fn-evc-class-by-shape-is-fn-stxe-p",
         "fn-evc-class-by-shape-is-fn-stxk-p",
         "fn-evc-class-by-shape-is-fn-hstxa-p",
-        "fn-evc-class-by-shape-is-fn-cne-eventp",
+        "fn-evc-class-by-shape-is-fn-cpe-eventp",
         "fn-evc-class-by-shape-is-fn-th-topic-eventp",
         "fn-ccar-ocfg-complete-is-ocfg-step-complete",
         "fn-ccar-own-finish-is-own-finish",
@@ -14680,7 +14740,7 @@
         "PRF-038"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-node-host-transfer.lisp",
         "host/bp-node-host.lisp",
@@ -15215,7 +15275,7 @@
       ],
       "progress_note": "2026-09-29 lane paged-history-2: REPL-admitted on persvati with the exec book; certification manifest at the READY sha. The catalog's concrete edit that cites it is the row's next READY.",
       "events": [
-        "fn-mpxt-seqs-is-cat-msgid-seqs",
+        "fn-mlh-seqs-is-cat-msgid-seqs",
         "fn-mpxt-spec-from-is-cat-seqs-for"
       ]
     },
@@ -17432,7 +17492,7 @@
       "progress_note": "2026-09-29 lane paged-history-5: catalog.lisp REPL-admitted end to end on persvati (proof_repl ph5c) and CERTIFIED for real there by the fixture session's --certify-missing (certify_books exit 0; msgid-pages-exec likewise); the fixture loaded 38/38. Landed under the LAND-AND-FIX-FORWARD mode; native served_differential at ea9bf4636 on hbox. Teeth: tests/acl2/msgid-pages-exec-tests mpxe-catalog-witness (fn-cat$a-msgid-seqs on the positive fixture equals the reader's answers); a catalog-level witness (a stobj commit, then fn-cat-msgid-seqs; the refusal firing at a crafted saturated table) is owed by paged-history-6.",
       "events": [
         "fn-cat-msgid-seqs{correspondence-bl}",
-        "fn-mpxt-seqs-is-cat-msgid-seqs",
+        "fn-mlh-seqs-is-cat-msgid-seqs",
         "fn-cat-msgid-saturatedp-is-the-outcome",
         "fn-cat-index-health-is-the-build",
         "fn-cat-clear-keyed-is-nil"
@@ -19514,7 +19574,7 @@
     {
       "id": "PRF-1148",
       "title": "Captured-row resumable SAME authority, exact semantic refinement and shared fuel",
-      "statement": "Planned actual caller boundary for fn-owner-pic-next/confirm/retire called by fnn-owner-attempt, and fn-pic-held-next, fn-pic-next and fn-pic-digest-next composed with the actual selected-read/payload wrappers and sealed incoming holder. Every duplicate/conflict decision must equal fn-rclb-same-articlep plus exact held groups after the mandatory binding gate on the SAME captured row; both inverses share the incoming-derived agent, either inverse failure selects whole-octet comparison, and current RCL2 source/whole digests retain their existing semantics. Provider, arena incarnation/prefix and incoming leases remain valid across resumptions; shared caller fuel bounds every scalar/control action and allocation, with mutating effects and feedback atomic at yield. Full parser inverse, derivation of the carried source/whole choice relation and actual funded host authority composition remain open.",
+      "statement": "Planned actual caller boundary for fn-owner-pic-next/confirm/retire called by fnn-owner-attempt, and fn-pic-held-next, fn-pic-next and fn-pic-digest-next composed with the actual selected-read/payload wrappers and sealed incoming holder. Every duplicate/conflict decision must equal fn-rclb-same-articlep plus exact held groups after the mandatory binding gate on the SAME captured row; both inverses share the incoming-derived agent, either inverse failure selects whole-octet comparison, and current RCL2 source/whole digests retain their existing semantics. Provider, arena incarnation/prefix and incoming leases remain valid across resumptions; shared caller fuel bounds every scalar/control action and allocation, with mutating effects and feedback atomic at yield. Full parser inverse, derivation of the carried source/whole choice relation and actual funded host authority composition remain open. Stage 0 (2026-10-01, D43): the precheck runtime is PARKED in host/native/post-captured-parked.lisp (loaded by no build) and tests/test_native_captured_attempt.py was removed with it; the native evidence returns with the relay-v1 subject binding.",
       "milestone": "M3",
       "requirements": [
         "STO-014",
@@ -19639,7 +19699,6 @@
         "planning/evidence/captured-source-completion-inventory-2026-09-30.json",
         "planning/evidence/manifests/certify-20260930T194035Z-349673.json",
         "host/post-identity-captured-host.lisp",
-        "tests/test_native_captured_attempt.py",
         "planning/evidence/captured-native-caller-2026-09-30.json",
         "planning/evidence/captured-native-caller-2026-09-30.md"
       ],
@@ -20755,8 +20814,8 @@
     },
     {
       "id": "PRF-1219",
-      "title": "The linear-hashing Message-ID table, executable: typed fixnum words (u61: a 60-bit keyed tag, SEQ + 1, the overflow flag in bit 60 of slot 0's seq word), inlined slot accessors, a scan that allocates nothing; the stobj abstracts to the logical table and the word reader is the logical reader of the abstraction; the reader is the catalog's walk under the faithful relation; the writer's membership facts",
-      "statement": "Subjects: books/msgid-linear-exec.lisp (fn-mlh-). THE STOBJ fn-mlh: words (unsigned-byte 61) in 2,048-word pages (slot J: tag word J, seq word 1024 + J holding SEQ + 1 below 2^60; bit 60 of slot 0's seq word the page's OVERFLOW FLAG, fn-mlh-ovf), the root fn-mlh-n / fn-mlh-s beside the page count (fn-mlh-rootp: no pages, or N + S pages with 0 <= S < N), the count, the 32-octet key, the stuck bit; fn-mlh-tag msgid key = the keyed BLAKE3 word of books/msgid-pages-exec reduced mod 2^60, floored at 1 (fn-mlh-tag-below). The slot accessors fn-mlh-tag-at / fn-mlh-seqw / fn-mlh-seq-at / fn-mlh-ovf are defun-inline over the typed array, so every read is a fixnum. THE READER fn-mlh-candidates: the home page (fn-mpxl-addr of the tag under the root) scanned whole by fn-mlh-scan (tail recursive, (unsigned-byte 60) compares, fn-mpxt-ins) and, under the home page's flag, the next page -- at most two pages by construction; fn-mlh-seqs msgid rows = fn-mpxt-confirm over it (the catalog's shape). THE ABSTRACTION fn-mlh-abs: the pages as (flag . entries-in-slot-order) by fn-mlh-pe with the root (fn-mlh-abs-tabp; fn-mlh-page-of-abs-pages); fn-mlh-scan-is-seqs (the scan is fn-mpxl-seqs of the page's entries, via fn-mlh-pe-upto) and THE BRIDGE fn-mlh-candidates-is-cands: the word reader IS fn-mpxl-cands of the abstraction, for every positive tag -- every theorem of books/msgid-linear transfers. KEYSTONE fn-mlh-seqs-is-spec-from: under fn-mlh-faithful (fn-mlh-okp: the logical okp of the abstraction, every seq below the row count; fn-mlh-faithful-from 0: every row's sequence among its keyed tag's candidates) the reader equals fn-mpxt-spec-from 0, by fn-mpxt-confirm-is-the-spec with fn-mlh-candidates-nat-listp / -ascending / -below and fn-mlh-faithful-from-complete. THE WRITER fn-mlh-put: the first empty slot of the home page (fn-mlh-find-empty), else of the next page with the home page's flag set (fn-mlh-set-ovf), else nil with the table unchanged (fn-mlh-put-places-iff-not-saturated against fn-mlh-saturatedp; fn-mlh-put-unplaced-unchanged); fn-mlh-write-slot keeps the flag part of the seq word; the accessors after the writes (fn-mlh-tag-at/seqw/seq-at/ovf-of-write-slot and -of-set-ovf), the entries after the writes (fn-mlh-pe-of-write-slot-other/-above, fn-mlh-seqs-pe-of-write-slot: the seqs of a page gain the seq exactly when the tags agree), and the membership facts fn-mlh-put-finds and fn-mlh-put-keeps-candidate. MEASURED (persvati, proof_repl mlx, sb-ext:get-bytes-consed around 10,000 lookups on 10,000-entry tables, one candidate each): fn-mpxt-candidates 6,364 bytes consed per lookup (7,548 of 10,000 old tags at or above 2^62), fn-mlh-candidates 16 bytes per lookup (the result list's one cons; the scan allocates nothing). NEXT, not yet built (build/coordinator/lanedumps/msgid-linear-hash.md): fn-mlh-put-preserves-faithful, the executable SPLIT (the pre-counted move loops abstracting to fn-mpxl-split-pages), fn-mlh-add (first page, put, count, split at 2 x count >= 1024 x N, :placed / :mpx-saturated) and the fold fn-mlh-build for the catalog's correspondence; the catalog switch itself (after stage 0). Teeth: tests/acl2/msgid-linear-exec-tests (a positive witness on the live stobj, the keyed tag, the flag followed, saturation by name).",
+      "title": "The linear-hashing Message-ID table, executable: typed fixnum words (u61: a 60-bit keyed tag, SEQ + 1, the overflow flag in bit 60 of slot 0's seq word), inlined slot accessors, a scan that allocates nothing; the stobj abstracts to the logical table and the word reader is the logical reader of the abstraction; the reader is the catalog's walk under the faithful relation; the writer, the split (refining fn-mpxl-split), the add (one split per step) and the fold the catalog's correspondence needs",
+      "statement": "Subjects: books/msgid-linear-exec.lisp (fn-mlh-). THE STOBJS: a page fn-mlg is a FIXED array of 2,048 (unsigned-byte 61) words, the table fn-mlh a two-level directory of table pages (fn-mlt, 64 page slots each) grown ONE page at a time (fn-mlh-grow = fn-mlh-fresh-page at the page count: the table page's slot array grown by one, at most 63 pointers copied, the directory 256 wide doubling past its width and widened once at open by fn-mlh-reserve; fn-mlh-word reads a slot never taken as 0; fn-mlh-word-of-put-word / -of-fresh-page / -of-reserve are the read-after-write equations; the hot loops fn-mlh-scan-pg / fn-mlh-find-empty-pg equal fn-mlh-scan / fn-mlh-find-empty) -- no page ever copied and no per-split copy of the page pointers (Codex r42 F1 / r48 F3; one add touches at most five data pages), so a step allocates one page and at most 63 pointers within the reserved width (D27; MEASURED hbox 2026-10-01, 3.67M adds to 8,193 pages: worst add 49,408 B, mean 96 B, vs 114,752 B / 168 B for the one-array predecessor); slot J: tag word J, seq word 1024 + J holding SEQ + 1 below 2^60; bit 60 of slot 0's seq word the page's OVERFLOW FLAG, fn-mlh-ovf), the root fn-mlh-n / fn-mlh-s beside the page count (fn-mlh-rootp: no pages, or N + S pages with 0 <= S < N), the count, the 32-octet key, the stuck bit; fn-mlh-tag msgid key = the keyed BLAKE3 word of books/msgid-pages-exec reduced mod 2^60, floored at 1 (fn-mlh-tag-below). The slot accessors fn-mlh-tag-at / fn-mlh-seqw / fn-mlh-seq-at / fn-mlh-ovf are defun-inline over the typed array, so every read is a fixnum. THE READER fn-mlh-candidates: the home page (fn-mpxl-addr of the tag under the root) scanned whole by fn-mlh-scan (tail recursive, (unsigned-byte 60) compares, fn-mpxt-ins) and, under the home page's flag, the next page -- at most two pages by construction; fn-mlh-seqs msgid rows = fn-mpxt-confirm over it (the catalog's shape). THE ABSTRACTION fn-mlh-abs: the pages as (flag . entries-in-slot-order) by fn-mlh-pe with the root (fn-mlh-abs-tabp; fn-mlh-page-of-abs-pages); fn-mlh-scan-is-seqs (the scan is fn-mpxl-seqs of the page's entries, via fn-mlh-pe-upto) and THE BRIDGE fn-mlh-candidates-is-cands: the word reader IS fn-mpxl-cands of the abstraction, for every positive tag -- every theorem of books/msgid-linear transfers. KEYSTONE fn-mlh-seqs-is-spec-from: under fn-mlh-faithful (fn-mlh-okp: the logical okp of the abstraction, every seq below the row count; fn-mlh-faithful-from 0: every row's sequence among its keyed tag's candidates) the reader equals fn-mpxt-spec-from 0, by fn-mpxt-confirm-is-the-spec with fn-mlh-candidates-nat-listp / -ascending / -below and fn-mlh-faithful-from-complete. THE WRITER fn-mlh-put: the first empty slot of the home page (fn-mlh-find-empty), else of the next page with the home page's flag set (fn-mlh-set-ovf), else nil with the table unchanged (fn-mlh-put-places-iff-not-saturated against fn-mlh-saturatedp; fn-mlh-put-unplaced-unchanged); fn-mlh-write-slot keeps the flag part of the seq word; the accessors after the writes (fn-mlh-tag-at/seqw/seq-at/ovf-of-write-slot and -of-set-ovf), the entries after the writes (fn-mlh-pe-of-write-slot-other/-above, fn-mlh-seqs-pe-of-write-slot: the seqs of a page gain the seq exactly when the tags agree), and the membership facts fn-mlh-put-finds and fn-mlh-put-keeps-candidate. MEASURED (persvati, proof_repl mlx, sb-ext:get-bytes-consed around 10,000 lookups on 10,000-entry tables, one candidate each): fn-mpxt-candidates 6,364 bytes consed per lookup (7,548 of 10,000 old tags at or above 2^62), fn-mlh-candidates 16 bytes per lookup (the result list's one cons; the scan allocates nothing). THE SPLIT (section 7, lane msgid-linear-hash-2): fn-mlh-count-movers (= len of fn-mpxl-movers of the page's entries, fn-mlh-count-movers-is-len) and fn-mlh-move (slot order, each mover written to the new page at a cursor and cleared on its page keeping the flag part; fn-mlh-pe-of-move-source: the page keeps its stayers; fn-mlh-pe-of-move-dest(-whole): the new page receives the movers; fn-mlh-accessors-of-move / -pe-of-move-other / -ovf-of-move: the frame); fn-mlh-split: m = movers of S plus of S + 1, refused unchanged above a page, else grow, move S then S + 1, advance the root. KEYSTONE fn-mlh-abs-of-split: for fn-mlhp, fn-mlh-wfp and a page, fn-mlh-abs of the split is mv-nth 1 of fn-mpxl-split of fn-mlh-abs, taken or refused (fn-mlh-split-taken-iff; by fn-mlh-split-page and list extensionality), hence fn-mlh-split-keeps-candidate and KEYSTONE fn-mlh-split-preserves-faithful from books/msgid-linear. THE ADD (section 8): fn-mlh-put-preserves-faithful (fn-mlh-put-okp, fn-mlh-faithful-from-of-put-append); fn-mlh-add = first page when none, the put, then fn-mlh-settle (count + 1 and, at 2 count >= 1024 N with no split refused, ONE split; a refused split sets stuck): fn-mlh-add-places-iff-not-saturated, fn-mlh-add-saturated-keeps-the-table, KEYSTONE fn-mlh-add-preserves-faithful. THE FOLD fn-mlh-build key rows (defun-nx over fn-mlh-build-from from fn-mlh-set-key of the creator; a row past the word limit counted unplaced): KEYSTONE fn-mlh-build-faithful (no row unplaced: faithful), fn-mlh-build-append (one more row is one more add), fn-mlh-build-nil, fn-mlh-build-append-unplaced-iff (placed exactly when not fn-mlh-saturatedp of the table as it is and the sequence space has room), fn-mlh-clear-is-build-nil / fn-mlh-create-is-build-nil / fn-mlh-set-key-canonical / fn-mlh-key-octets-of-set-key, fn-mlh-build-of-update-nth-same-msgid, and the executable projections fn-mlh-build-saturatedp / fn-mlh-build-health with -is-the-build and fn-mlh-build-saturatedp-is-the-outcome -- the catalog's correspondence's shape, the fn-mpxt2 rebuild gone. MEASURED (hbox, proof_repl, sb-ext:get-bytes-consed around each add of 131,071 distinct Message-IDs, build/mlh2/measure.lisp): the add's WORST single op 31,216 B over [0, 8191), 28,480 B over [8191, 32767), 24,512 B over [32767, 65535), 18,720 B over [65535, 131071) -- flat in N (one page and the pointer array at a split) against the fn-mpxt next-generation rebuild's 22.9 / 91.4 / 183.1 / 366.3 MB at the same counts (stage-4's measurement of the catalog commit); the add's mean ~33 B; the keyed tag itself 2.87 KB mean, 65,520 B worst (BLAKE3, unchanged by this book). NOT YET: the catalog's switch to fn-mlh (books/catalog-logic fn-cat$c-mpx), the natives. Teeth: tests/acl2/msgid-linear-exec-tests (a positive witness on the live stobj, the keyed tag, the flag followed, saturation by name; the fold of 1,100 rows across splits, nothing unplaced, faithful, the reader the walk; the split's refinement on a concrete table (movers on the new page, the abstraction equal to fn-mpxl-split's); the refused split (1,025 movers): refused exactly when the logical split is, the table unchanged; wfp-removal witness on the paged representation; the flat predecessor's fn-mlhp-removal witness no longer separates and none is claimed).",
       "milestone": "M5",
       "requirements": [
         "STO-027"
@@ -20774,7 +20833,7 @@
         "tests/acl2/msgid-linear-exec-tests.lisp",
         "planning/design-store-representation-2026-10-01.md"
       ],
-      "progress_note": "2026-10-01 lane msgid-linear-hash: sections 0-6 REPL-admitted on persvati (proof_repl mlx, every form; books/msgid-linear loaded from source); the allocation measurement run in the same session (build/coordinator/lanedumps/msgid-linear-hash.md records the driver). The split, the add and the fold are the next READY."
+      "progress_note": "2026-10-01 lane msgid-linear-hash: sections 0-6 REPL-admitted on persvati (proof_repl mlx, every form; books/msgid-linear loaded from source); the allocation measurement run in the same session (build/coordinator/lanedumps/msgid-linear-hash.md records the driver). The split, the add and the fold are the next READY. 2026-10-01 lane msgid-linear-hash-2: the representation changed to page stobjs (sections 0-6 reproved), sections 7-8 (split, add, fold) REPL-admitted on hbox (proof_repl mlh2), teeth in mlt2; certification by tools/farm.py."
     },
     {
       "id": "PRF-1212",
@@ -20957,7 +21016,7 @@
     {
       "id": "PRF-1223",
       "title": "OPEN (registered, not resolved): the checkpoint write loops' intra-batch process-death cuts have no model crash point",
-      "statement": "OBLIGATION (lane recovery-refinement-2, 2026-10-01; the Codex review of 2d1b10ed7 F6, confirmed open by r10; AGENTS: every process-death cut is a model crash point). STATUS: registered only. books/byte-store-state-checkpoint-program.lisp fn-bs-scp-program is still one :write-all, tests/campaign/native_cuts.py is unchanged, and the intra-batch SIGKILL points of host/native/io.lisp (fnn-checkpoint-write-steps' per-step kill under fnn-checkpoint-batch-fault; fnn-history-image-write's header, pad and page writes) have no model crash point. To do: split the :write-all into the batch's writes, each a cut (k fn-bs-write steps to the staged inode; fn-bs-step has no :write-at kind, so either add one or run the writes through fn-bs-write), prove every state's crash images recover COMMITTED under the OLD image (the root entry is untouched until the rename; PRF-1216's conclusion), and add the cut rows so native_program_check ties them to io.lisp. PRF-1216 covers the five outer cuts only.",
+      "statement": "OBLIGATION (lane recovery-refinement-2, 2026-10-01; the Codex review of 2d1b10ed7 F6, confirmed open by r10; AGENTS: every process-death cut is a model crash point). STATUS: registered only. books/byte-store-state-checkpoint-program.lisp fn-bs-scp-program is still one :write-all, tests/campaign/native_cuts.py is unchanged, and the intra-batch SIGKILL points of host/native/io.lisp (fnn-checkpoint-write-steps' per-step kill under fnn-checkpoint-batch-fault; fnn-history-image-write's header, pad and page writes) have no model crash point. To do: split the :write-all into the batch's writes, each a cut (k fn-bs-write steps to the staged inode; fn-bs-step has no :write-at kind, so either add one or run the writes through fn-bs-write), prove every state's crash images recover COMMITTED under the OLD image (the root entry is untouched until the rename; PRF-1216's conclusion), and add the cut rows so native_program_check ties them to io.lisp. PRF-1216 covers the five outer cuts only. PROGRESS (fable-deputy-2, 2026-10-01): the split is in the model. books/byte-store-programs.lisp gains the step kind (:write-at dir name offset octets) (fn-bs-stepp, fn-bs-step through fn-bs-write at OFFSET, D1 and D2 treat it as a :write-all); books/byte-store-state-checkpoint-program.lisp defines fn-bs-scp-batched-program (one :write-at per batch at the running offset, each followed by the cut \"state-checkpoint-batch\"; fn-bs-scp-chunksp, fn-bs-scp-octets), its D1-D3 ground checks, and fn-bs-scp-write-at-zero-is-write-all-by-definition (fn-bs-scp-program is the one-batch shape). Teeth: tests/acl2/byte-store-state-checkpoint-program-tests.lisp evaluates every state of a three-batch run under per-state generated, fn-bs-crash-choicesp-checked lose-everything and land-everything vectors (nil versus one :new per touched unit for writes, :drop versus :apply for entries): old or new at all 15 states, the old entry at the 11 states before the rename, and the batches exactly in the durable inode; land-everything also yields all six staged bytes in a crash before file fsync. The labelled offset-0 mutant yields a third content under both vectors; the labelled non-:ok positive-offset mutation witness checks :eio, stopping and the pending/view bytes (1 2 3), and must-fails on the mutant's (3 2). STILL OWED: the keystone fn-bs-scp-batched-program-crash-is-old-or-new at every state (plan: a quiet predicate through the write phase for the old arm, the sequential-splice content of the fenced staged inode for the new arm, fn-bs-run over append as store-import-publication's fn-bs-imp-run-of-append); PRF-1216's conclusion over the batched run in books/recovery-refinement.lisp; the native_cuts.py row for \"state-checkpoint-batch\" tied to fnn-checkpoint-write-steps (host side, after stage 0). Open joins for the batched keystone's host tie (r22): the host writes the history-image region before fnn-checkpoint-write-steps (host/native/io.lisp fnn-history-image-write ~3306, call ~3436), so the chunk mapping must include that prefix; a batch step may issue no write (io.lisp ~3364: nil frames still count a fault step), so chunks must admit empty elements or the refinement must stutter.",
       "milestone": "M5",
       "requirements": [
         "STO-011",
@@ -20969,7 +21028,9 @@
       "assumptions": [],
       "status": "planned",
       "evidence": [
-        "specs/recovery-refinement.md"
+        "books/byte-store-state-checkpoint-program.lisp",
+        "specs/recovery-refinement.md",
+        "tests/acl2/byte-store-state-checkpoint-program-tests.lisp"
       ]
     },
     {

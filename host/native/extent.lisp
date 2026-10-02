@@ -198,6 +198,38 @@ FN_NATIVE_EXTENT_CACHE_TEST_OFF=1 (the matched measurement's cache-off arm)."
   "The extent mutex serializes the pool; never acquire owner from here."
   (apply #'fnn-call name (append arguments (list (fnn-live-page-read-pool)))))
 
+;;; Stage 0 (planning/design-store-representation-2026-10-01.md section 4;
+;;; MODE 2026-10-01 section 3).  The pool stobj starts :uninitialized and
+;;; nothing installed it, so fn-owner-page-file-issue answered
+;;; :read-resources-unavailable and every registration (replay, each log
+;;; commit, every checkpoint) faulted.  Until the funded baseline is
+;;; installed from the profile (section 4, stage 6; route A's M1:
+;;; fn-ncfg-cold-resources -> fn-crv-pool-budget ->
+;;; fn-owner-page-read-install-baseline -> fnn-extent-pool-storage-start ->
+;;; fnn-extent-executor-start, before fnn-open-live-store in
+;;; fnn-owner-install), every store open enters the pool's :offline context
+;;; here (fn-owner-page-read-open-context, host/page-read-host.lisp): ACL2
+;;; still issues every file incarnation (fn-pio-file-issue), registration is
+;;; :unfunded-offline, a miss is read and cached directly
+;;; (fnn-extent-entry-direct's :offline arm) under the realizer's cache bound
+;;; (fn-arx-read-cache-entries), and the served cold line is the 7aad444ce
+;;; per-miss read (fnn-extent-prefetch-direct, host/native/owner.lisp
+;;; fnn-owner-cold-line-direct).  The cold executor, admission and
+;;; settlement stay in this module, entered only once the pool is funded
+;;; (fnn-extent-pool-funded-p).
+(defun fnn-extent-pool-open-context ()
+  "Enter the pool's unfunded context once per process; idempotent."
+  (sb-thread:with-mutex (*fnn-extent-lock*)
+    (let ((mode (first (fnn-core-page-read-pool 'fn-owner-page-read-open-context))))
+      (unless (member mode '(:offline :served))
+        (fnn-fault (format nil "page pool context refused: ~a" mode)))
+      mode)))
+
+(defun fnn-extent-pool-funded-p ()
+  "Whether cold reads go through the funded pool (admission, the executor)."
+  (sb-thread:with-mutex (*fnn-extent-lock*)
+    (eq (first (fnn-core-page-read-pool 'fn-owner-page-read-direct-mode)) :funded-pool)))
+
  ; These macros add no per-job host list construction beyond the dedicated
 ; call itself. Quoted subjects remain visible to the host source inventory.
 (defmacro fnn-core-cold-values (name &rest arguments)
@@ -712,6 +744,59 @@ for the core resource ledger. No timeout or cancellation invokes this."
     (setq *fnn-extent-cache* (nreverse keep))
     (fnn-extent-cache-forget (nreverse drop))))
 
+;;; The entry a cold span needs, read into the cache (a store fault is
+;;; signalled as always: the caller re-signals it in the owner's thread).
+;;; Called OFF the owner mutex, from a thread of its own (the 7aad444ce
+;;; fnn-extent-prefetch; stage 0, see fnn-extent-pool-open-context).  The
+;;; pread runs WITHOUT the realizer's lock, so a stalled disk holds only this
+;;; thread: cached reads on every other connection proceed (the lock is taken
+;;; to find the descriptor, and again to decide the entry -- ACL2's verdict
+;;; uses the realizer's one buffer -- and keep it).  The entry is decided
+;;; against the descriptor's TRAILER (fnn-extent-entry-verdict) and cached
+;;; under that identity, exactly as fnn-extent-entry-direct decides and
+;;; caches it in the pool's :offline context.
+(defun fnn-extent-prefetch-direct (file eoff elen trailer)
+  (let ((fd nil)
+        (octets (make-array (+ elen 32) :element-type '(unsigned-byte 8))))
+    (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+      (when (find-if (lambda (e) (and (eql (first e) file) (eql (second e) eoff)
+                                      (eql (third e) elen) (eql (fourth e) trailer)))
+                     *fnn-extent-cache*)
+        (return-from fnn-extent-prefetch-direct t))
+      (setq fd (gethash file *fnn-extent-fds*))
+      (incf (second *fnn-extent-stats*))
+      (unless fd
+        (incf (third *fnn-extent-stats*))
+        (error 'fnn-extent-fault
+               :message (format nil "arena-extent-read: no durable file ~a is registered" file))))
+    (let ((got (fnn-extent-pread fd octets eoff)))
+      (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+        (unless (= got (+ elen 32))
+          (incf (third *fnn-extent-stats*))
+          (error 'fnn-extent-fault
+                 :message (format nil "arena-extent-read: ~a holds fewer than ~a octets"
+                                  (fnn-extent-where file eoff) (+ elen 32))))
+        (let ((verdict (fnn-extent-entry-verdict octets elen trailer)))
+          (unless (eq verdict :ok)
+            (incf (third *fnn-extent-stats*))
+            (error 'fnn-extent-fault
+                   :message
+                   (case verdict
+                     (:trailer
+                      (format nil "arena-extent-trailer: the entry at ~a is not the extent's: its recorded trailer is not the descriptor's"
+                              (fnn-extent-where file eoff)))
+                     (:digest
+                      (format nil "arena-extent-digest: the entry at ~a does not match its trailer"
+                              (fnn-extent-where file eoff)))
+                     (t
+                      (format nil "arena-extent-verdict: ACL2 answered ~s for the entry at ~a"
+                              verdict (fnn-extent-where file eoff)))))))
+        (multiple-value-bind (cachedp evicted)
+            (fnn-extent-cache-store file eoff elen trailer octets)
+          (declare (ignore cachedp))
+          (fnn-extent-cache-release evicted))
+        t))))
+
 (defun fnn-extent-end-recovery-cache ()
   "Before serving, drop startup-only borrows and every direct/offline cache.
 No recovery activation remains. Retained decoder array highwater is separate."
@@ -1057,6 +1142,28 @@ only observed worker relinquishment allows owner settlement/publication."
 
 (defun acl2_*1*_acl2::fn-pgs-fill-realize (file addr)
   (fn-pgs-fill-realize file addr))
+
+;;; A-PGS-HOST-IO's frame form (books/assumptions-pgs-host-io.lisp
+;;; `fn-pgs-fill-frame', codex-pagefix): page ADDR of FILE into words BASE ..
+;;; BASE+2047 of the pgs-mem array SEL selects.  Until this definition the
+;;; image left the constrained function unattached, so every history-records
+;;; read (store export, fn-store-sco-image-open) faulted on it.  It is the
+;;; constraint's own right-hand side, `fn-pgs-frame-put' of the page's words,
+;;; over the one pread above (a short read or an unknown file refused by name
+;;; there; the guard's selector and range are ACL2's, checked here again so a
+;;; raw caller cannot write outside the range).  Forward (D27): pread straight
+;;; into the selected array's storage at word BASE (sb-sys:vector-sap,
+;;; A-PGS-LE) instead of through the 2048-word list.
+(defun fn-pgs-fill-frame (file addr sel base pgs-mem)
+  (unless (and (member sel '(0 1 2)) (integerp base) (<= 0 base)
+               (<= (+ base 2048) (fn-pgs-frame-len sel pgs-mem)))
+    (error 'fnn-extent-fault
+           :message (format nil "history-page-read: frame ~a at word ~a is outside the page store"
+                            sel base)))
+  (fn-pgs-frame-put sel base (fn-pgs-fill-realize file addr) pgs-mem))
+
+(defun acl2_*1*_acl2::fn-pgs-fill-frame (file addr sel base pgs-mem)
+  (fn-pgs-fill-frame file addr sel base pgs-mem))
 
 ;;; Online disk release (lane online-reclaim-2, row Q16, PRF-930;
 ;;; books/extent-retire.lisp).  A descriptor is no longer held for the

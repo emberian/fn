@@ -64,7 +64,14 @@
 (program)
 (defun drt-find-foundation (events)
   (cond ((atom events) nil)
-        ((eq (car events) 'defstobj) (cadr events))
+        ; the foundation NAME$C (a paged instance also declares its page
+        ; stobjs NAME$PG and NAME$PP before it)
+        ((and (eq (car events) 'defstobj)
+              (symbolp (cadr events))
+              (let ((n (symbol-name (cadr events))))
+                (and (<= 2 (length n))
+                     (equal (subseq n (- (length n) 2) (length n)) "$C"))))
+         (cadr events))
         (t (or (drt-find-foundation (car events))
                (drt-find-foundation (cdr events))))))
 
@@ -107,42 +114,42 @@
 
 (assert-event
  (equal (symbol-package-name
-         (drt-find-foundation (rep-instance-events :drt-package '((id :u64)) nil nil nil nil)))
+         (drt-find-foundation (rep-instance-events :drt-package '((id :u64)) nil nil nil nil nil t)))
         (symbol-package-name :drt-package)))
 (assert-event
  (equal (symbol-package-name
-         (drt-find-foundation (rep-instance-events :drt-package '((id :u64)) t nil nil nil)))
+         (drt-find-foundation (rep-instance-events :drt-package '((id :u64)) t nil nil nil nil t)))
         (symbol-package-name :drt-package)))
 (assert-event
  (equal (symbol-package-name
-         (drt-find-foundation (rep-instance-events :drt-package '((id :u64)) t t nil nil)))
+         (drt-find-foundation (rep-instance-events :drt-package '((id :u64)) t t nil nil nil t)))
         (symbol-package-name :drt-package)))
 
 ; Every clear resize/update stays in the instance's package, with both
 ; kinds of call present (record, scalar and generic).
 (assert-event
  (drt-clear-calls-in-package-p
-  (rep-instance-events :drt-package '((id :u64)) nil nil nil nil)
+  (rep-instance-events :drt-package '((id :u64)) nil nil nil nil nil t)
   (symbol-package-name :drt-package)))
 (assert-event
  (drt-clear-calls-in-package-p
-  (rep-instance-events :drt-package '((id :u64)) t nil nil nil)
+  (rep-instance-events :drt-package '((id :u64)) t nil nil nil nil t)
   (symbol-package-name :drt-package)))
 (assert-event
  (drt-clear-calls-in-package-p
-  (rep-instance-events :drt-package '((id :u64)) t t nil nil)
+  (rep-instance-events :drt-package '((id :u64)) t t nil nil nil t)
   (symbol-package-name :drt-package)))
 (assert-event
  (drt-clear-calls-in-package-p
-  (rep-instance-events 'drt-two '((id :u64)) nil nil nil nil) "ACL2"))
+  (rep-instance-events 'drt-two '((id :u64)) nil nil nil nil nil t) "ACL2"))
 
 ; One spelling in two packages: two instances, two foundations.
 (assert-event
- (not (equal (drt-find-foundation (rep-instance-events :drt-two '((id :u64)) nil nil nil nil))
-             (drt-find-foundation (rep-instance-events 'drt-two '((id :u64)) nil nil nil nil)))))
+ (not (equal (drt-find-foundation (rep-instance-events :drt-two '((id :u64)) nil nil nil nil nil t))
+             (drt-find-foundation (rep-instance-events 'drt-two '((id :u64)) nil nil nil nil nil t)))))
 (assert-event
  (equal (symbol-package-name
-         (drt-find-foundation (rep-instance-events 'drt-two '((id :u64)) nil nil nil nil)))
+         (drt-find-foundation (rep-instance-events 'drt-two '((id :u64)) nil nil nil nil nil t)))
         "ACL2"))
 ; An admitted two-package instance needs a defpkg portcullis, which
 ; tools/certify_books.py does not carry for a test book yet (NEXT).
@@ -197,9 +204,13 @@
 (assert! (equal (drt-pay-run) '((2 (9 9) (4)) 0)))
 
 ; DRT-PAY-COUNT{CORRESPONDENCE}: both hypotheses and its exact conclusion
-; at a reachable one-payload foundation, built from the canonical empty.
+; at a reachable one-payload foundation, built from the creator's image
+; (the paged foundation, lane gate-b-2: one row page of the offset and
+; length columns, one pool page; the fresh page values are the page
+; stobjs' creators, (nil nil) and (nil)).
 (defconst *drt-pay-witness-c*
-  (adt-append-c *drt-pay-schema* '((1 2 3)) (adt-empty-c *drt-pay-schema*)))
+  (adt-pg-append-c *drt-pay-schema* '((1 2 3)) *adt-pg-rows* *adt-pg-octets* '(nil nil) '(nil)
+                   '(nil nil 0 0 0 0)))
 (defconst *drt-pay-witness-a* '((1 2 3)))
 
 (assert-event
@@ -307,6 +318,354 @@
 ; 5. The world rows.
 
 (assert-event (equal (cdr (assoc-eq 'drt-pay (table-alist 'fn-generated (w state))))
-                     '(:def-representation :scalar t :generic nil :implementation drt-pay :invariant nil)))
+                     '(:def-representation :scalar t :generic nil :implementation drt-pay :invariant nil :trees nil :write-once nil :paged t)))
 (assert-event (equal (cdr (assoc-eq 'drt-gen (table-alist 'fn-generated (w state))))
-                     '(:def-representation :scalar t :generic t :implementation drt-gen-cols :invariant nil)))
+                     '(:def-representation :scalar t :generic t :implementation drt-gen-cols :invariant nil :trees nil :write-once nil :paged t)))
+
+; -----------------------------------------------------------------------------
+; 6. A TREE field (books/def-representation-tree.lisp, lane paged-catalog-3):
+;    refused before the writer's library is in the world; then declared,
+;    and NAME-APPEND-T executed: the octets read back are the tree's
+;    program (the list codec's `fn-scc-program'), a tree past the codec's
+;    reach is refused by its guard's recognizer (`adt-tree-okp'), and the
+;    logical value is the append of the encoded record.
+
+(must-fail-checked
+ (def-representation drt-t0 (a :u64) (tr :tree))
+ :unchecked "refused at expansion: a :tree field needs books/def-representation-tree")
+
+(include-book "../../books/def-representation-tree")
+
+(def-representation drt-t1 (a :u64) (m :octets) (tr :tree) (b :bool))
+
+(defconst *drt-tree* '("fn.x" 3 -4 #\a (5 6 7) nil . :k))
+
+(defun drt-t1-witness (drt-t1)
+  (declare (xargs :stobjs drt-t1 :verify-guards nil))
+  (let ((drt-t1 (drt-t1-append-t (list 7 '(1 2) *drt-tree* t) drt-t1)))
+    (mv (list (drt-t1-count drt-t1) (drt-t1-get-a 0 drt-t1) (drt-t1-get-m 0 drt-t1)
+              (drt-t1-get-tr 0 drt-t1) (drt-t1-get-b 0 drt-t1))
+        drt-t1)))
+
+(defun drt-t1-witness-ok ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj drt-t1
+    (mv-let (got drt-t1) (drt-t1-witness drt-t1)
+      (equal got (list 1 7 '(1 2) (fn-scc-program *drt-tree*) t)))))
+
+(assert-event (drt-t1-witness-ok))
+
+; The complete antecedent of the writer's meaning, on the witness's tree,
+; and its conclusion (program then the owed CONS operations).
+(assert-event (and (adt-tree-okp *drt-tree*) (fn-sccb-treep *drt-tree*)
+                   (equal (adt-tree-plen *drt-tree* 0) (len (fn-scc-program *drt-tree*)))))
+; A tree the codec cannot carry (a natural of 2^2040 needs 256 digits) is
+; not `adt-tree-okp', exactly as it is not `fn-sccb-treep'.
+(assert-event (and (not (adt-tree-okp (list (expt 2 2040)))) (not (fn-sccb-treep (list (expt 2 2040))))))
+
+; TEETH of the library keystone adt-tree-push-is-push (Codex r21 F1),
+; evaluated at its literal statement (drt-tpp: each hypothesis, then the
+; conclusion).  Positive, reachable: the witness's tree into a two-octet pool
+; at fill 1, every hypothesis and the conclusion true.  Hypothesis removal,
+; each keeping the other two: a tree the codec cannot carry (fn-sccb-treep
+; false) and a fill that is not a natural; the conclusion fails for both.
+; (natp p) is the generator's constant column count, never a variable.
+(defun drt-tpp (p x c)
+  (declare (xargs :verify-guards nil))
+  (list (natp p) (fn-sccb-treep x) (natp (nth (+ 2 p) c))
+        (equal (adt-pool-cputs p (append (fn-scc-program x) (fn-scc-repeat 0 *fn-scc-op-cons*))
+                               (adt-pool-room p (+ (nth (+ 2 p) c) (adt-tree-plen x 0)) c))
+               (adt-pool-push p (fn-scc-program x) c))))
+(assert-event (equal (with-guard-checking :none (drt-tpp 0 *drt-tree* (list '(5 6) 0 1)))
+                     '(t t t t)))
+(assert-event (equal (with-guard-checking :none (drt-tpp 0 (list (expt 2 2040)) (list '(5 6) 0 1)))
+                     '(t nil t nil)))
+(assert-event (equal (with-guard-checking :none (drt-tpp 0 *drt-tree* (list '(5 6) 0 -1)))
+                     '(t t nil nil)))
+
+; TEETH of the instance's DRT-T1$C-APPEND-T-IS-APPEND, executed on the
+; paged foundation: its antecedents (the tree field adt-tree-okp; the
+; paged correspondence, which every reachable image has) and its
+; conclusion, observed as the WHOLE foundation after append-t and after the
+; plain append of the encoded record from the same cleared image: every
+; entry of every column and of the pool through the flat view's reads (row
+; N of column CI is RGETci, octet I of the pool PGET, below the pages in
+; use), the pages in use of both tables, the count and the fill.  Equal
+; snapshots are equal flat views (`adt-pg-flat') with equal page counts
+; (Codex r23 F4, restated over the paged image).
+(defun drt-t1-arr-loop (i n f drt-t1$c)
+  (declare (xargs :stobjs drt-t1$c :verify-guards nil
+                  :measure (nfix (- (nfix n) (nfix i)))))
+  (if (< (nfix i) (nfix n))
+      (cons (case f
+              (:a (drt-t1$c-rget0 i drt-t1$c))
+              (:moff (drt-t1$c-rget1 i drt-t1$c))
+              (:mlen (drt-t1$c-rget2 i drt-t1$c))
+              (:troff (drt-t1$c-rget3 i drt-t1$c))
+              (:trlen (drt-t1$c-rget4 i drt-t1$c))
+              (:b (drt-t1$c-rget5 i drt-t1$c))
+              (otherwise (drt-t1$c-pget i drt-t1$c)))
+            (drt-t1-arr-loop (+ 1 (nfix i)) n f drt-t1$c))
+    nil))
+
+(defun drt-t1-snap (drt-t1$c)
+  (declare (xargs :stobjs drt-t1$c :verify-guards nil))
+  (let ((rows (* *adt-pg-rows* (drt-t1$c-np drt-t1$c))))
+    (list (drt-t1-arr-loop 0 rows :a drt-t1$c)
+          (drt-t1-arr-loop 0 rows :moff drt-t1$c)
+          (drt-t1-arr-loop 0 rows :mlen drt-t1$c)
+          (drt-t1-arr-loop 0 rows :troff drt-t1$c)
+          (drt-t1-arr-loop 0 rows :trlen drt-t1$c)
+          (drt-t1-arr-loop 0 rows :b drt-t1$c)
+          (drt-t1-arr-loop 0 (* *adt-pg-octets* (drt-t1$c-nq drt-t1$c)) :pool drt-t1$c)
+          (drt-t1$c-np drt-t1$c) (drt-t1$c-nq drt-t1$c)
+          (drt-t1$c-count drt-t1$c) (drt-t1$c-fill drt-t1$c))))
+
+; drt-t1$c-append-t-is-append at its literal statement: antecedents (the
+; tree field's okp asserted on the run's input; the paged correspondence is
+; every reachable image's, here the image after a clear and an append); conclusion the equality of the whole states.  Labelled MUTATION:
+; the plain append of a record differing in one octet of the program gives
+; an unequal whole state.
+(defun drt-t1-is-append-run (drt-t1$c)
+  (declare (xargs :stobjs drt-t1$c :verify-guards nil))
+  (let* ((rec (list 7 '(1 2) *drt-tree* t))
+         (drt-t1$c (drt-t1$c-clear drt-t1$c))
+         (drt-t1$c (drt-t1$c-append (list 1 '(9 9 9) '(4) nil) drt-t1$c))
+         (in-fill (drt-t1$c-fill drt-t1$c))
+         (drt-t1$c (drt-t1$c-append-t rec drt-t1$c))
+         (s1 (drt-t1-snap drt-t1$c))
+         (drt-t1$c (drt-t1$c-clear drt-t1$c))
+         (drt-t1$c (drt-t1$c-append (list 1 '(9 9 9) '(4) nil) drt-t1$c))
+         (drt-t1$c (drt-t1$c-append (drt-t1-tree-enc rec) drt-t1$c))
+         (s2 (drt-t1-snap drt-t1$c))
+         (prog (fn-scc-program *drt-tree*))
+         (drt-t1$c (drt-t1$c-clear drt-t1$c))
+         (drt-t1$c (drt-t1$c-append (list 1 '(9 9 9) '(4) nil) drt-t1$c))
+         (drt-t1$c (drt-t1$c-append (list 7 '(1 2) (cons (logxor 1 (car prog)) (cdr prog)) t)
+                                    drt-t1$c))
+         (s3 (drt-t1-snap drt-t1$c)))
+    (mv (list (adt-tree-okp (caddr rec)) (natp in-fill) (< 0 in-fill) (equal s1 s2) (equal s1 s3))
+        drt-t1$c)))
+
+(defun drt-t1-is-append-ok ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj drt-t1$c
+    (mv-let (got drt-t1$c) (drt-t1-is-append-run drt-t1$c)
+      (equal got '(t t t t nil)))))
+
+(assert-event (drt-t1-is-append-ok))
+
+; The same keystone, DRT-T1$C-APPEND-T-IS-APPEND, over the WHOLE concrete
+; state (Codex r40 F2, r47 F5): the image after one append (reachable:
+; create, append), its correspondence asserted affirmatively, the tree's
+; okp, and the equality of the two whole images -- directories with every
+; slot (the reservation and the unused table-page headers included), the
+; counters, the pool.  Evaluated by the prover on the ground image, both
+; appends read through their unfoldings (named equalities; their stobj-let
+; bodies are non-executable on a constant).  Labelled MUTATION: the
+; append-t image with one more row-directory slot (an extra resize the
+; snapshot above cannot see) is unequal to the plain append's.
+(defthm drt-t1-append-t-whole-state-witness
+  (let ((c (drt-t1$c-append (list 1 '(9 9 9) '(4) nil) (create-drt-t1$c)))
+        (a (list (list 1 '(9 9 9) '(4) nil)))
+        (rec (list 7 '(1 2) *drt-tree* t)))
+    (and (adt-pg-corr *drt-t1-schema* *adt-pg-rows* *adt-pg-octets* c a)
+         (adt-tree-okp (car (cdr (cdr rec))))
+         (equal (drt-t1$c-append-t rec c)
+                (drt-t1$c-append (drt-t1-tree-enc rec) c))
+         (equal (len (nth 0 (drt-t1$c-append-t rec c))) *adt-pg-dir-reserve*)
+         (let ((m (drt-t1$c-append-t rec c)))
+           (not (equal (update-nth 0 (resize-list (nth 0 m) (+ 1 (len (nth 0 m))) '(nil)) m)
+                       (drt-t1$c-append (drt-t1-tree-enc rec) c))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable drt-t1$c-append-t-unfolds drt-t1$c-append-unfolds))))
+
+(defthm drt-t1-append-t-meaning
+  (equal (drt-t1-append-t rec drt-t1)
+         (append drt-t1 (list (list (car rec) (cadr rec) (fn-scc-program (caddr rec)) (cadddr rec)))))
+  :hints (("Goal" :in-theory (enable drt-t1-tree-enc-is-list))))
+
+(assert-event (equal (cdr (assoc-eq 'drt-t1 (table-alist 'fn-generated (w state))))
+                     '(:def-representation :scalar nil :generic nil :implementation drt-t1 :invariant nil
+                       :trees (tr) :write-once nil :paged t)))
+
+; -----------------------------------------------------------------------------
+; 7. WRITE-ONCE (:write-once t, lane paged-catalog-4, Codex r21 F1): no
+;    octets or tree field has a set export, and the generated
+;    NAME$C-FILL-IS-LOAD-OF-* theorems say the pool's fill is `adt-load' of
+;    the logical sequence after every writing export.  Refusals; the absent
+;    exports; an executed positive witness of the keystone's antecedent and
+;    conclusion on the concrete foundation; the hypothesis-removal witness
+;    (the same writes on an instance WITHOUT :write-once: rewriting an
+;    octets field to its own value leaves the logical sequence unchanged and
+;    grows the fill, so fill = load fails -- the bug Codex r21 F1 found in
+;    the paged catalog's withdrawal).
+
+(must-fail-checked
+ (def-representation drt-w0 (a :u64) (m :octets) :write-once t :scalar t)
+ :unchecked "refused at expansion: :write-once is supported without :scalar and :generic")
+(must-fail-checked
+ (def-representation drt-w0 (a :u64) (m :octets) :write-once 3)
+ :unchecked "refused at expansion: :write-once takes t or nil")
+
+(def-representation drt-w1 (a :u64) (m :octets) (tr :tree) :write-once t)
+
+(assert-event (and (function-symbolp 'drt-w1-set-a (w state))
+                   (not (function-symbolp 'drt-w1-set-m (w state)))
+                   (not (function-symbolp 'drt-w1-set-tr (w state)))
+                   (function-symbolp 'drt-w1-get-m (w state))
+                   (function-symbolp 'drt-t1-set-m (w state))))
+
+; The keystone at its literal statement (append-t, the export the catalog's
+; commit executes; over the paged image's flat view, under the paged
+; correspondence): cited by :use, nothing else enabled.
+(defthm drt-w1-fill-is-load-of-append-t-statement
+  (implies (and (drt-w1$corr c a)
+                (adt-fill-is-load *drt-w1-schema* (adt-pg-flat *drt-w1-schema* c) a)
+                (adt-tree-okp (car (cdr (cdr rec)))))
+           (adt-fill-is-load *drt-w1-schema* (adt-pg-flat *drt-w1-schema* (drt-w1$c-append-t rec c))
+                             (drt-w1$a-append-t rec a)))
+  :hints (("Goal" :use drt-w1$c-fill-is-load-of-append-t
+           :in-theory (theory 'minimal-theory))))
+
+; Executed on the foundation: from the empty image (the creator's theorem's
+; antecedent-free case), an append-t, an append and a scalar set; after
+; each the fill equals the load of the logical sequence built beside it.
+(defun drt-w1-run (drt-w1$c)
+  (declare (xargs :stobjs drt-w1$c :verify-guards nil))
+  (let* ((a0 nil)
+         (ok0 (equal (drt-w1$c-fill drt-w1$c) (adt-load *drt-w1-schema* a0)))
+         (r1 (list 7 '(1 2 3) *drt-tree*))
+         (okp1 (adt-tree-okp (caddr r1)))
+         (drt-w1$c (drt-w1$c-append-t r1 drt-w1$c))
+         (a1 (drt-w1$a-append-t r1 a0))
+         (ok1 (and okp1 (equal (drt-w1$c-fill drt-w1$c) (adt-load *drt-w1-schema* a1))))
+         (r2 (list 8 '(9) (fn-scc-program '(1 2))))
+         (drt-w1$c (drt-w1$c-append r2 drt-w1$c))
+         (a2 (drt-w1$a-append r2 a1))
+         (ok2 (equal (drt-w1$c-fill drt-w1$c) (adt-load *drt-w1-schema* a2)))
+         (drt-w1$c (drt-w1$c-set-a 0 99 drt-w1$c))
+         (a3 (drt-w1$a-set-a 0 99 a2))
+         (ok3 (equal (drt-w1$c-fill drt-w1$c) (adt-load *drt-w1-schema* a3))))
+    (mv (list ok0 ok1 ok2 ok3 (drt-w1$c-fill drt-w1$c)
+              (+ 3 (len (fn-scc-program *drt-tree*)) 1 (len (fn-scc-program '(1 2)))))
+        drt-w1$c)))
+
+(defun drt-w1-run-ok ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj drt-w1$c
+    (mv-let (got drt-w1$c) (drt-w1-run drt-w1$c)
+      (and (equal (take 4 got) '(t t t t)) (equal (nth 4 got) (nth 5 got)) (< 0 (nth 4 got))))))
+
+(assert-event (drt-w1-run-ok))
+
+; Labelled MUTATION (a schema mutation, not a hypothesis removal; Codex r23
+; F5): drt-t1 (section 6) is not write-once.  The same
+; append-t, then its octets field set to the value it already holds: the
+; logical sequence is unchanged, the fill grew by the value's length, and
+; the conclusion fill = load fails.
+(defun drt-t1-rewrite (drt-t1$c)
+  (declare (xargs :stobjs drt-t1$c :verify-guards nil))
+  (let* ((r1 (list 7 '(1 2 3) *drt-tree* t))
+         (drt-t1$c (drt-t1$c-append-t r1 drt-t1$c))
+         (a1 (drt-t1$a-append-t r1 nil))
+         (ok1 (equal (drt-t1$c-fill drt-t1$c) (adt-load *drt-t1-schema* a1)))
+         (drt-t1$c (drt-t1$c-set-m 0 '(1 2 3) drt-t1$c))
+         (a2 (drt-t1$a-set-m 0 '(1 2 3) a1)))
+    (mv (list ok1 (equal a2 a1) (equal (drt-t1$c-fill drt-t1$c) (adt-load *drt-t1-schema* a2))
+              (- (drt-t1$c-fill drt-t1$c) (adt-load *drt-t1-schema* a2)))
+        drt-t1$c)))
+
+(defun drt-t1-rewrite-ok ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj drt-t1$c
+    (mv-let (got drt-t1$c) (drt-t1-rewrite drt-t1$c)
+      (equal got (list t t nil 3)))))
+
+(assert-event (drt-t1-rewrite-ok))
+
+; HYPOTHESIS REMOVAL, one hypothesis at a time, of
+; drt-w1$c-fill-is-load-of-append-t at its literal statement.
+; (1) Without (adt-fill-is-load schema (flat c) a), labelled CORRUPTED
+;     STATE (no export reaches it: a write-once image's fill is its load):
+;     one octet put in the pool and no record, a the empty sequence.  The
+;     retained hypotheses hold (the paged correspondence, the tree's okp),
+;     the omitted one fails, and so does the conclusion.  Evaluated by the
+;     prover on the ground image; append-t is read through its unfolding
+;     (DRT-W1$C-APPEND-T-UNFOLDS, a named equality), its stobj-let body
+;     being non-executable on a constant.
+(defthm drt-w1-load-removal-witness
+  (let ((c (drt-w1$c-pool-put 5 (drt-w1$c-poolroom 1 (create-drt-w1$c))))
+        (a nil)
+        (rec (list 7 '(1 2 3) *drt-tree*)))
+    (and (drt-w1$corr c a)
+         (adt-tree-okp (car (cdr (cdr rec))))
+         (not (adt-fill-is-load *drt-w1-schema* (adt-pg-flat *drt-w1-schema* c) a))
+         (not (adt-fill-is-load *drt-w1-schema* (adt-pg-flat *drt-w1-schema* (drt-w1$c-append-t rec c))
+                                (drt-w1$a-append-t rec a)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable drt-w1$c-append-t-unfolds))))
+
+; (2)'s retained correspondence: every cleared image corresponds to the
+; empty sequence.
+(defthm drt-w1-clear-corr
+  (drt-w1$corr (drt-w1$c-clear c) nil)
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable drt-w1$corr))))
+
+; (2) Without (adt-tree-okp TREE): a tree outside the codec's domain (a
+;     natural of 2041 bits).  The retained hypothesis (fill = load, from the
+;     empty image) holds, the omitted one fails, and the conclusion fails
+;     (fill 260, load 261).  Outside its guard the executable cannot be
+;     called, so this runs the definitions -- the theorem's subject -- with
+;     guard checking off.
+(defun drt-w1-okp-removal (tree drt-w1$c)
+  (declare (xargs :stobjs drt-w1$c :verify-guards nil))
+  (let* ((r1 (list 7 '(1 2 3) tree))
+         (drt-w1$c (drt-w1$c-clear drt-w1$c))
+         (hyp-load (equal (drt-w1$c-fill drt-w1$c) (adt-load *drt-w1-schema* nil)))
+         (hyp-okp (adt-tree-okp tree))
+         (drt-w1$c (drt-w1$c-append-t r1 drt-w1$c))
+         (a1 (drt-w1$a-append-t r1 nil)))
+    (mv (list hyp-load hyp-okp (equal (drt-w1$c-fill drt-w1$c) (adt-load *drt-w1-schema* a1)))
+        drt-w1$c)))
+
+(defun drt-w1-okp-removal-ok (tree)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj drt-w1$c
+    (mv-let (got drt-w1$c) (drt-w1-okp-removal tree drt-w1$c)
+      (equal got '(t nil nil)))))
+
+(with-guard-checking-event :none (assert-event (drt-w1-okp-removal-ok (expt 2 2040))))
+
+(assert-event (equal (cdr (assoc-eq 'drt-w1 (table-alist 'fn-generated (w state))))
+                     '(:def-representation :scalar nil :generic nil :implementation drt-w1 :invariant nil
+                       :trees (tr) :write-once t :paged t)))
+
+; -----------------------------------------------------------------------------
+; 8. TWO TREE FIELDS.
+; TWO :tree fields in one declaration (the catalog's aux and nums, lane
+; gate-b-2): each walked into the pool by its own put, the append-t the
+; append of the record with both programs; executed and read back.
+(def-representation drt-t2 (a :u64) (x :tree) (m :octets) (y :tree) :write-once t)
+
+(defun drt-t2-run (drt-t2)
+  (declare (xargs :stobjs drt-t2 :verify-guards nil))
+  (let ((drt-t2 (drt-t2-append-t (list 3 *drt-tree* '(8 9) '(1 (2 . "z"))) drt-t2)))
+    (mv (list (drt-t2-count drt-t2) (drt-t2-get-a 0 drt-t2) (drt-t2-get-x 0 drt-t2)
+              (drt-t2-get-m 0 drt-t2) (drt-t2-get-y 0 drt-t2))
+        drt-t2)))
+
+(defun drt-t2-run-ok ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj drt-t2
+    (mv-let (got drt-t2) (drt-t2-run drt-t2)
+      (equal got (list 1 3 (fn-scc-program *drt-tree*) '(8 9) (fn-scc-program '(1 (2 . "z"))))))))
+
+(assert-event (drt-t2-run-ok))
+
+(defthm drt-t2-append-t-meaning
+  (equal (drt-t2-append-t rec drt-t2)
+         (append drt-t2 (list (list (car rec) (fn-scc-program (cadr rec)) (caddr rec)
+                                    (fn-scc-program (cadddr rec))))))
+  :hints (("Goal" :in-theory (enable drt-t2-tree-enc-is-list))))

@@ -1143,7 +1143,8 @@
                                  (fn-cpe-projection-step s event expected)))
                   (1+ expected)))
   :hints (("Goal" :in-theory (enable fn-cpe-projection-step
-                                      fn-cpe-projection-advance))))
+                                      fn-cpe-projection-advance
+                                      fn-cp-state-carry))))
 
 (defthm fn-csi-second-of-ok-by-definition
   (equal (fn-cp-nth 1 (list :ok x)) x)

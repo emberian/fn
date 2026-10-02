@@ -70,9 +70,9 @@
  (and (equal (fn-pak-post-admission nil *pak-profile* *pak-msgid-octets* 2048 1 3
                                     *pak-key* *pak-rows*)
              :ok)
-      (equal (fn-mpxt-build-unplaced *pak-key* (append *pak-rows* (list *pak-h3*)))
-             (fn-mpxt-build-unplaced *pak-key* *pak-rows*))
-      (equal (fn-mpxt-build-unplaced *pak-key* (append *pak-rows* (list *pak-h3*))) 0)))
+      (equal (fn-mlh-build-unplaced *pak-key* (append *pak-rows* (list *pak-h3*)))
+             (fn-mlh-build-unplaced *pak-key* *pak-rows*))
+      (equal (fn-mlh-build-unplaced *pak-key* (append *pak-rows* (list *pak-h3*))) 0)))
 
 ; fn-pak-post-admission-refused-is-the-boundary-by-definition: every bound's
 ; refusal passes through, whatever the key and the catalog; and the sixth
@@ -154,10 +154,10 @@
    (and (equal (first result) :ok)
         (equal (second result) :ok)
         ; fn-cat-index-health-is-the-build: (pages entries unplaced stuck)
-        (equal health (list (fn-mpxt-pages (fn-mpxt-build *pak-key* *pak-rows*))
-                            (fn-mpxt-count (fn-mpxt-build *pak-key* *pak-rows*))
-                            (fn-mpxt-build-unplaced *pak-key* *pak-rows*)
-                            (fn-mpxt-stuck (fn-mpxt-build *pak-key* *pak-rows*))))
+        (equal health (list (fn-mlh-pages (fn-mlh-build *pak-key* *pak-rows*))
+                            (fn-mlh-count (fn-mlh-build *pak-key* *pak-rows*))
+                            (fn-mlh-build-unplaced *pak-key* *pak-rows*)
+                            (fn-mlh-stuck (fn-mlh-build *pak-key* *pak-rows*))))
         (equal (second health) 3) (equal (third health) 0) (equal (fourth health) 0)
         (fn-sbud-printable-ascii-p (butlast (fourth result) 1))
         (equal (car (last (fourth result))) 10)
@@ -176,6 +176,6 @@
 (must-fail-checked
  (defthm pak-r-indexed-without-the-verdict
    (implies (equal (fn-record-msgid h) (fn-record-octets-string msgid-octets))
-            (equal (fn-mpxt-build-unplaced key (append fn-cat (list h)))
-                   (fn-mpxt-build-unplaced key fn-cat)))
+            (equal (fn-mlh-build-unplaced key (append fn-cat (list h)))
+                   (fn-mlh-build-unplaced key fn-cat)))
    :rule-classes nil))

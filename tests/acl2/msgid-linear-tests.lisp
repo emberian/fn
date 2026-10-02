@@ -44,24 +44,12 @@
 ; Fixtures: the history-columns rows (seq 0 <a@x>, 1 <b@x>, 2 a retention
 ; event, 3 <a@x> again) and the writer.
 
-; The held constructor's arity follows the acceptance-binding field (16
-; formals with it, 15 without: stage 0 of the 2026-10-01 design reverts it);
-; the fixture is built for whichever the world has.
-(make-event
- (if (equal (len (formals 'fn-held-make (w state))) 16)
-     '(defun mpxl-held (seq msgid octets)
-        (declare (xargs :verify-guards nil))
-        (fn-held-make seq (+ 1 seq) 0 msgid seq '("fn.test") "o" "s" "e" 1 5
-                      (fn-hf-make octets 14 2 nil)
-                      (fn-hc-make (fn-stx-make-verdict :unverified nil 0) nil 0)
-                      nil nil
-                      (fn-ab-make :post-d25 (append *fn-ab-subject-head* (make-list 32 :initial-element 0)))))
-   '(defun mpxl-held (seq msgid octets)
-      (declare (xargs :verify-guards nil))
-      (fn-held-make seq (+ 1 seq) 0 msgid seq '("fn.test") "o" "s" "e" 1 5
-                    (fn-hf-make octets 14 2 nil)
-                    (fn-hc-make (fn-stx-make-verdict :unverified nil 0) nil 0)
-                    nil nil))))
+(defun mpxl-held (seq msgid octets)
+  (declare (xargs :verify-guards nil))
+  (fn-held-make seq (+ 1 seq) 0 msgid seq '("fn.test") "o" "s" "e" 1 5
+                (fn-hf-make octets 14 2 nil)
+                (fn-hc-make (fn-stx-make-verdict :unverified nil 0) nil 0)
+                nil nil))
 
 (defconst *mpxl-a* (mpxl-held 0 "<a@x>" 100))
 (defconst *mpxl-b* (mpxl-held 1 "<b@x>" 200))

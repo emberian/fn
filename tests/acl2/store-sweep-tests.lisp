@@ -102,6 +102,7 @@
       (fn-sn-staging-namep (ss-octets ".pack-1-00"))
       (fn-sn-staging-namep (ss-octets ".pack-selection-1-00"))
       (fn-sn-staging-namep (ss-octets ".stage-1-00"))
+      (fn-sn-staging-namep (ss-octets ".retire-2716993-0123456789ab"))
       (not (fn-sn-staging-namep (ss-octets ".allocation")))
       (not (fn-sn-staging-namep (ss-octets "allocation-frontier.json")))
       (not (fn-sn-staging-namep (ss-octets ".incoming-1-00")))))

@@ -4,6 +4,7 @@
     python3 tools/image_set.py publish TREE SHA [--base DIR]
     python3 tools/image_set.py link SHA TREE IMAGE... [--base DIR]
     python3 tools/image_set.py check SHA [--base DIR]
+    python3 tools/image_set.py backfill-catalog SHA --repo GIT_DIR [--base DIR] [--dry-run]
     python3 tools/image_set.py link-run RUN TREE IMAGE...
 
 An image build is the long pole of a native run (~25 min; python-diet-2 and
@@ -53,7 +54,9 @@ import os
 from pathlib import Path
 import re
 import shutil
+import subprocess
 import sys
+import tempfile
 
 BASE = Path("/tank/fn/images")
 IMAGES = {
@@ -81,7 +84,22 @@ def files_of(directory: Path) -> list[Path]:
 
 def write_sums(directory: Path) -> None:
     lines = [f"{sha256(p)}  {p.relative_to(directory)}\n" for p in files_of(directory)]
-    (directory / "SHA256SUMS").write_text("".join(lines))
+    atomic_write(directory / "SHA256SUMS", "".join(lines))
+
+
+def atomic_write(path: Path, text: str) -> None:
+    temporary = None
+    mode = path.stat().st_mode & 0o777 if path.exists() else 0o644
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", dir=path.parent,
+                                         prefix=f".{path.name}.", delete=False) as handle:
+            temporary = Path(handle.name)
+            handle.write(text)
+        temporary.chmod(mode)
+        temporary.replace(path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
 
 
 def verify(directory: Path) -> list[str]:
@@ -97,6 +115,73 @@ def verify(directory: Path) -> list[str]:
     return bad
 
 
+def catalog_of(build: Path, file: str) -> str:
+    """Read the builder's catalog evidence; absent evidence is unknown."""
+    record = build / f"{file}.catalog"
+    if not record.is_file():
+        return "unknown"
+    return record.read_text(encoding="utf-8").strip()
+
+
+def backfill_catalog(sha: str, repo: Path, base: Path = BASE,
+                     dry_run: bool = False) -> int:
+    """Explicitly recover missing catalog records from the source commit."""
+    def refuse(reason: str) -> int:
+        print(f"{sha} refused: {reason}")
+        return 1
+
+    if not SHA.fullmatch(sha):
+        return refuse("not a full commit sha")
+    directory = base / sha
+    try:
+        bad = verify(directory)
+        if bad:
+            return refuse("SHA256SUMS mismatch: " + ", ".join(bad))
+        if (directory / "TREE_SHA").read_text().strip() != sha:
+            return refuse("TREE_SHA does not match SHA")
+        git = ["git", "--git-dir", str(repo), "cat-file"]
+        commit = subprocess.run(git + ["-t", sha], capture_output=True, text=True)
+        if commit.returncode or commit.stdout.strip() != "commit":
+            return refuse("source is not a known git commit")
+        paged = subprocess.run(git + ["-e", f"{sha}:books/catalog-paged.lisp"],
+                               capture_output=True)
+        if paged.returncode == 0:
+            return refuse("source contains books/catalog-paged.lisp")
+        path = directory / "MANIFEST.json"
+        manifest = json.loads(path.read_text())
+        entries = manifest["images"]
+        if not isinstance(entries, dict) or any(not isinstance(entry, dict)
+                                                for entry in entries.values()):
+            return refuse("invalid manifest images")
+        missing = [entry for entry in entries.values() if "catalog" not in entry]
+        if not missing:
+            print(f"{sha} nothing to do")
+            return 0
+        if dry_run:
+            print(f"{sha} would backfill {len(missing)} images with catalog old (dry-run)")
+            return 0
+        now = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        for entry in missing:
+            entry["catalog"] = "old"
+            entry["catalog_provenance"] = (
+                f"backfilled: source {sha} predates books/catalog-paged.lisp "
+                f"(git cat-file, {now})")
+        # Each replacement is atomic; an interruption between the two leaves
+        # mismatched sums, so link continues to fail closed.
+        atomic_write(path, json.dumps(manifest, indent=1) + "\n")
+        write_sums(directory)
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        return refuse(str(error).replace("\n", " "))
+    print(f"{sha} backfilled {len(missing)} images")
+    return 0
+
+
+def wrong_catalog(found: dict[str, str]) -> list[str]:
+    """The images, by name, whose recorded catalog is not the old one: a set
+    and a reused run hold the names the old catalog's images take."""
+    return [f"{name} ({catalog})" for name, catalog in sorted(found.items()) if catalog != "old"]
+
+
 def publish(tree: Path, sha: str, base: Path = BASE) -> int:
     if not SHA.fullmatch(sha):
         print(f"image_set: {sha!r} is not a full commit sha", file=sys.stderr)
@@ -110,6 +195,13 @@ def publish(tree: Path, sha: str, base: Path = BASE) -> int:
              if (build / file).is_file() and (build / f"{file}.core").is_file()}
     if not found:
         print(f"image_set: no image in {build}", file=sys.stderr)
+        return 1
+    catalogs = {name: catalog_of(build, file) for name, file in found.items()}
+    bad = wrong_catalog(catalogs)
+    if bad:
+        print(f"image_set: {build} has images without an affirmative old catalog: {', '.join(bad)}; "
+              "not published; rebuild with tools/build_native_host.sh, which writes FILE.catalog",
+              file=sys.stderr)
         return 1
     partial = base / f"{sha}.partial"
     shutil.rmtree(partial, ignore_errors=True)
@@ -129,7 +221,7 @@ def publish(tree: Path, sha: str, base: Path = BASE) -> int:
         deps = build / f"{file}.world-deps"
         if deps.is_file():
             shutil.copy2(deps, partial / deps.name)
-        images[name] = {"launcher": file, "core": core.name}
+        images[name] = {"launcher": file, "core": core.name, "catalog": catalogs[name]}
     if (build / "lib").is_dir():
         shutil.copytree(build / "lib", partial / "lib")
     (partial / "TREE_SHA").write_text(sha + "\n")
@@ -161,6 +253,13 @@ def link(sha: str, tree: Path, wanted: list[str], base: Path = BASE) -> int:
         print(f"image_set: {directory} fails its SHA256SUMS: {', '.join(bad[:5])}",
               file=sys.stderr)
         return 1
+    bad = wrong_catalog({name: manifest["images"][name].get("catalog", "unknown") for name in wanted})
+    if bad:
+        print(f"image_set: {directory} does not record an old catalog for {', '.join(bad)}; "
+              "not linked; rebuild with tools/build_native_host.sh, which writes FILE.catalog, "
+              "and publish a new image set",
+              file=sys.stderr)
+        return 1
     build = tree / "build"
     build.mkdir(parents=True, exist_ok=True)
     names = ["lib"] if (directory / "lib").is_dir() else []
@@ -170,6 +269,10 @@ def link(sha: str, tree: Path, wanted: list[str], base: Path = BASE) -> int:
         if (directory / f"{file}.world-deps").is_file():
             names.append(f"{file}.world-deps")
     place_links(directory, build, names)
+    for name in wanted:
+        record = build / f"{manifest['images'][name]['launcher']}.catalog"
+        record.unlink(missing_ok=True)
+        record.write_text(manifest["images"][name]["catalog"] + "\n")
     print(f"image_set: linked {', '.join(wanted)} from {directory} into {build}")
     return 0
 
@@ -206,6 +309,13 @@ def link_run(run: Path, tree: Path, wanted: list[str]) -> int:
         print(f"image_set: {directory} has no {', '.join(missing)} image (launcher and "
               "core); that run did not build it", file=sys.stderr)
         return 1
+    catalogs = {name: catalog_of(directory, IMAGES[name]) for name in wanted}
+    bad = wrong_catalog(catalogs)
+    if bad:
+        print(f"image_set: {directory} has images without an affirmative old catalog: {', '.join(bad)}; "
+              "not reused; rebuild with tools/build_native_host.sh, which writes FILE.catalog",
+              file=sys.stderr)
+        return 1
     build = tree / "build"
     build.mkdir(parents=True, exist_ok=True)
     names = ["lib"] if (directory / "lib").is_dir() else []
@@ -215,6 +325,10 @@ def link_run(run: Path, tree: Path, wanted: list[str]) -> int:
         if (directory / f"{file}.world-deps").is_file():
             names.append(f"{file}.world-deps")
     place_links(directory, build, names)
+    for name in wanted:
+        record = build / f"{IMAGES[name]}.catalog"
+        record.unlink(missing_ok=True)
+        record.write_text(catalogs[name] + "\n")
     (build / "REUSED_SOURCE").write_text(found.group(1) + "\n")
     print(f"image_set: linked {', '.join(wanted)} from the run {run} "
           f"(source {found.group(1)}) into {build}")
@@ -233,7 +347,11 @@ def main(argv: list[str] | None = None) -> int:
     two.add_argument("images", nargs="+", choices=sorted(IMAGES))
     three = sub.add_parser("check")
     three.add_argument("sha")
-    for each in (one, two, three):
+    backfill = sub.add_parser("backfill-catalog")
+    backfill.add_argument("sha")
+    backfill.add_argument("--repo", required=True)
+    backfill.add_argument("--dry-run", action="store_true")
+    for each in (one, two, three, backfill):
         each.add_argument("--base", default=str(BASE))
     four = sub.add_parser("link-run")
     four.add_argument("run")
@@ -243,6 +361,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.action == "link-run":
         return link_run(Path(args.run), Path(args.tree).resolve(), args.images)
     base = Path(args.base)
+    if args.action == "backfill-catalog":
+        return backfill_catalog(args.sha, Path(args.repo), base, args.dry_run)
     if args.action == "publish":
         return publish(Path(args.tree).resolve(), args.sha, base)
     if args.action == "link":

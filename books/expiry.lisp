@@ -55,10 +55,21 @@
 ; walk stops there; the body is never read.
 ;; The loop twin (depth_check: one control-stack frame per octet otherwise;
 ;; batch BB fix-forward for lane expiry): the prefix kept in reverse in ACC.
+; The blank line CRLF CRLF at the head of BYTES, named so that def-loop's
+; bridge (in minimal-theory) sees one test: written inline, the loop's
+; definition equation over the open conjunction was not proved
+; (books/expiry certified red at e42c53edb).
+(defun fn-xpy-blank-line-p (bytes)
+  (declare (xargs :guard t))
+  (and (consp bytes) (equal (car bytes) 13)
+       (consp (cdr bytes)) (equal (cadr bytes) 10)
+       (consp (cddr bytes)) (equal (caddr bytes) 13)
+       (consp (cdddr bytes)) (equal (cadddr bytes) 10)))
+
 (def-loop fn-xpy-header-block (bytes)
   :shape :map
   :over bytes
-  :stop (and (equal (car bytes) 13) (consp (cdr bytes)) (equal (cadr bytes) 10) (consp (cddr bytes)) (equal (caddr bytes) 13) (consp (cdddr bytes)) (equal (cadddr bytes) 10))
+  :stop (fn-xpy-blank-line-p bytes)
   :stop-value (list 13 10 13 10)
   :body (car bytes))
 

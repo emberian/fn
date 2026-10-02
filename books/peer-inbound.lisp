@@ -707,7 +707,7 @@
       (let ((a (fn-peer-injection-arguments node cfg peer msgid octets
                                             generation id subject clock)))
         (mv (fn-node-prepare node (nth 0 a) (nth 1 a) h (nth 3 a)
-                             (nth 4 a) (nth 5 a) (nth 6 a) (nth 7 a) (nth 8 a) (fn-ab-for-received :relay-v1 octets))
+                             (nth 4 a) (nth 5 a) (nth 6 a) (nth 7 a) (nth 8 a))
             d))))))
 
 ; THE TRANSIT ENTRY (records-flip): the transfer at the handle the arena

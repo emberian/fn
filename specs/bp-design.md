@@ -1354,7 +1354,7 @@ What the receiver would verify, under a per-peer security policy:
 
 | Policy | `fn-bpn-receive` step 3' (after CRCs, before storing) |
 | --- | --- |
-| `:none` (wave 4) | nothing; a zero-CRC primary block is refused `:block-unintelligible` because no BIB can be checked |
+| `:none` (wave 4) | nothing; a zero-CRC primary block is ACCEPTED (D44: RFC 9171 §4.3.1 permits CRC type 0 on a primary covered by a BIB, and dtn7-rs sends such primaries); a BIB beside it is carried as an opaque extension block and verifies nothing. Admitting a CRC-0 primary with no verified integrity is this LOCAL POLICY, not the RFC's requirement (scenario: tests/acl2/bp-node-crc0-receive-tests) |
 | `:require-bib-primary` | a BIB whose targets include block 0, from the configured security source for that peer, verifies; else delete `:block-unintelligible` (RFC 9172 §3.10's "security operation failed" reason code when registered) |
 | `:require-bib-payload` | the same for block 1 |
 | `:accept-bcb-payload` | a BCB over block 1 is decrypted before delivery only; a bundle that is forwarded keeps its BCB and is never decrypted at a transit node |
@@ -1468,8 +1468,9 @@ is separate, scoped integration evidence.
 computes an HMAC. Current source work includes the bounded ASB/target parser, exact metadata
 completion matching and a receiver-only real crypto primitive. These do not
 install a backing issuer, current policy/key lease or verified admission
-capability. The legacy `fn-bpn-receive-decision` now refuses primary CRC0 as
-`:block-unintelligible` before it can produce a Store receive event, including
-when a structurally present BIB has not been verified. This is the current
-`:none` route, not a prohibition on the RFC's verified BIB-protected CRC0
-case. Changed-source admission and native qualification are still pending.
+capability. Under D44 (stage 0, 2026-10-01) `fn-bpn-receive-decision`
+accepts a CRC0 primary again (the cc14ca24e refusal is reverted); a
+structurally present BIB is carried opaque and verifies nothing, so this
+`:none` route admits CRC0 primaries as a local policy
+(tests/acl2/bp-node-crc0-receive-tests). The verified BIB-protected CRC0
+route is the forward work under an RFC 9172 decision. Changed-source admission and native qualification are still pending.

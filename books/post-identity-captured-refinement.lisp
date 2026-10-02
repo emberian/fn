@@ -1,3 +1,4 @@
+; UNHOOKED stage 0 (2026-10-01): depends on the reverted acceptance-binding field (planning/design-store-representation-2026-10-01.md section 5, D43): the captured-identity chain over the held binding gate is parked (review 2026-10-01 F01: KEEP-PARKED); not in the Makefile check roots or any image world.
 ; Proof-only virtual-message join for the actual captured digest adapter.
 ; Full PRF-1148 remains open: parser inverse and funded host authority are
 ; separate obligations. No list denotation runs in the served controller.

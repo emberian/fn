@@ -696,11 +696,15 @@
  :hints (("Goal" :in-theory (e/d (fn-owner-rx-turn-parser-commit fn-prl-nth)
   (fn-rxt-parser-currentp fn-rrd-step-disposition))))
  :rule-classes nil)
+; Progress is recorded in either parser phase (e3f6720ef: the staged path
+; records progress from the retained result while :parser-installing) and
+; keeps the phase it found.
 (defthm fn-owner-rx-turn-progress-keeps-parser-custody
  (let ((a (fn-owner-rx-turn-parser-progress ticket RC wire step
             fn-rx-provider fn-receiver-turn fn-page-read-pool)))
   (implies (equal (mv-nth 0 a) :parser-progress-recorded)
-   (and (equal (fn-rxt-phase (mv-nth 1 a)) :parser-owned)
+   (and (equal (fn-rxt-phase (mv-nth 1 a)) (fn-rxt-phase fn-receiver-turn))
+        (member-equal (fn-rxt-phase (mv-nth 1 a)) '(:parser-owned :parser-installing))
         (equal (fn-rxt-source (mv-nth 1 a)) (fn-rxt-source fn-receiver-turn))
         (equal (fn-rxt-demand (mv-nth 1 a)) (fn-rxt-demand fn-receiver-turn))
         (equal (fn-prl-nth 7 (fn-rxt-job (mv-nth 1 a))) RC)
