@@ -355,6 +355,9 @@
 (ld "host/anchor-server-host.lisp" :ld-error-action :error)
 (ld "host/reader-host.lisp" :ld-error-action :error)
 (ld "host/owner-host.lisp" :ld-error-action :error)
+;; Stage 5 (lane raw-dispatch-3): the owner's carried relation
+;; (fn-owner-retain-statep) across the host writers converted to :logic.
+(ld "host/owner-retain-host.lisp" :ld-error-action :error)
 ;; Stage 0 (D46, planning/design-store-representation-2026-10-01.md section
 ;; 4): the account-adoption host files (host/account-adoption-host,
 ;; -publication-host, -collection-host, -return-host) are not ld'ed: their
