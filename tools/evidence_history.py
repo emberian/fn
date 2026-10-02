@@ -32,7 +32,7 @@ git history, so "archived" is a measurement, not a report:
 
     python3 tools/evidence_history.py complete --rules FILE
         [--migrate] [--write SUMMARY | --check SUMMARY]
-    python3 tools/evidence_history.py crosscheck --rules FILE --mirror DIR
+    python3 tools/evidence_history.py crosscheck --rules FILE --mirror DIR [--source URL]
 
 exits 0 when every blob is archived and verified, 1 when some are missing,
 4 when some are present but do not verify (refused), 3 when the archive
@@ -490,12 +490,13 @@ def cmd_crosscheck(args) -> int:
     if mirror.exists():
         print(f"crosscheck: {mirror} exists; give a fresh path", file=sys.stderr)
         return 2
-    subprocess.run(["git", "clone", "-q", "--mirror", str(root), str(mirror)], check=True)
+    source = args.source or str(root)
+    subprocess.run(["git", "clone", "-q", "--mirror", source, str(mirror)], check=True)
     # Guard: every command below runs with -C the mirror, and the mirror is
     # its own repository, never the one it was cloned from (r66 F4).
     common = _git(mirror, "rev-parse", "--path-format=absolute", "--git-common-dir")
-    source = _git(root, "rev-parse", "--path-format=absolute", "--git-common-dir")
-    if Path(common.decode().strip()) != mirror.resolve() or common == source:
+    shared = _git(root, "rev-parse", "--path-format=absolute", "--git-common-dir")
+    if Path(common.decode().strip()) != mirror.resolve() or common == shared:
         print(f"crosscheck: {mirror} is not a separate repository; refusing", file=sys.stderr)
         return 2
     for name in _git(mirror, "for-each-ref", "--format=%(refname)", "refs/codex").decode().split():
@@ -556,6 +557,8 @@ def main(argv: list[str] | None = None) -> int:
     one = subs.add_parser("crosscheck", help="filter-repo's real drop set is measured")
     one.add_argument("--rules", required=True)
     one.add_argument("--mirror", required=True, help="a fresh scratch path for the mirror")
+    one.add_argument("--source", help="clone the mirror from here (the rewrite clones "
+                                      "origin; default: this repository)")
     one.set_defaults(func=cmd_crosscheck)
     args = parser.parse_args(argv)
     try:
