@@ -235,7 +235,7 @@
       (fn-nntp-post-step ps archive config observation injection wire-event fn-arena)
     (let ((r (fn-pix-step-pinned
               (fn-post-session-base ps) archive index verdicts
-              (fn-post-reader-env config observation)
+              (fn-post-command-env config observation injection wire-event)
               wire-event fn-arena)))
       (if (fn-post-offeredp (fn-nntp-result-effects r))
           (if (fn-inj-config-allow config)

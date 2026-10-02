@@ -351,7 +351,7 @@
       (fn-nntp-post-step ps archive config observation injection wire-event fn-arena)
     (let ((r (fn-scr-step
               (fn-post-session-base ps) archive index verdicts
-              (fn-post-reader-env config observation)
+              (fn-post-command-env config observation injection wire-event)
               wire-event v fn-arena fn-cat)))
       (if (fn-post-offeredp (fn-nntp-result-effects r))
           (if (fn-inj-config-allow config)
@@ -389,6 +389,21 @@
                               (theory 'minimal-theory)))))
 
 (verify-guards fn-scr-post-step)
+
+; Both the catalog and the restricted/reference post route must obey the
+; same clock law, independent of the archive, session and access view.
+(defthm fn-scr-date-result-independent-of-pinned-observation
+  (equal
+   (fn-scr-post-step ps archive index verdicts config pinned current
+                     '(:command (68 65 84 69)) v fn-arena fn-cat)
+   (fn-scr-post-step ps archive index verdicts config other current
+                     '(:command (68 65 84 69)) v fn-arena fn-cat))
+  :hints (("Goal" :in-theory
+           (e/d (fn-scr-post-step fn-nntp-post-step fn-post-command-env)
+                (fn-scr-step fn-nntp-step fn-post-sessionp
+                 fn-post-session-awaiting fn-post-reader-env fn-post-offeredp))))
+  :rule-classes nil)
+
 
 (defun fn-scr-peer-delegate
     (ps archive index verdicts config observation injection wire-event v fn-arena fn-cat)

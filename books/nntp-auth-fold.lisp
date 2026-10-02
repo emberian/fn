@@ -393,7 +393,8 @@
                  fn-nntp-tokenize fn-nntp-keywordp
                  fn-nntp-command-inputp fn-nntp-single)))))
 
-(defthm fn-auth-fold-post-awaiting-implies-reader-offer
+(local
+ (defthm fn-auth-fold-post-awaiting-implies-current-reader-offer
   (implies
    (and (fn-post-sessionp ps)
         (not (fn-post-session-awaiting ps))
@@ -406,12 +407,12 @@
     (fn-nntp-result-effects
      (fn-nntp-step-pinned
       (fn-post-session-base ps) archive index verdicts
-      (fn-post-reader-env config observation)
+      (fn-post-command-env config observation injection wire-event)
       wire-event fn-arena))))
   :hints (("Goal" :in-theory
            (e/d (fn-nntp-post-step-pinned)
                 (fn-nntp-step-pinned fn-post-offeredp
-                 fn-nntp-post-step)))))
+                 fn-nntp-post-step))))))
 
 (defthm fn-auth-fold-post-step-starts-awaiting-only-on-post
   (implies
@@ -437,9 +438,40 @@
   :hints (("Goal"
            :use ((:instance fn-auth-fold-reader-offer-has-a-post-command-origin
                             (session (fn-post-session-base ps))
-                            (env (fn-post-reader-env config observation))))
+                            (env (fn-post-command-env config observation injection wire-event))))
            :in-theory (disable fn-nntp-post-step-pinned
                                fn-nntp-step-pinned fn-post-offeredp))))
+
+; Preserve the original exported statement: an offer can only come from
+; POST, whose environment is unchanged by the current-clock selection.
+(local
+ (defthm fn-auth-fold-post-command-env-is-pinned
+   (implies (fn-nntp-keywordp
+             (car (fn-nntp-tokenize (cadr wire-event))) "POST")
+            (equal (fn-post-command-env config observation injection wire-event)
+                   (fn-post-reader-env config observation)))
+   :hints (("Goal" :in-theory (enable fn-post-command-env fn-nntp-keywordp)))))
+
+(defthm fn-auth-fold-post-awaiting-implies-reader-offer
+  (implies
+   (and (fn-post-sessionp ps)
+        (not (fn-post-session-awaiting ps))
+        (fn-post-session-awaiting
+         (fn-post-result-session
+          (fn-nntp-post-step-pinned
+           ps archive index verdicts config observation injection
+           wire-event fn-arena))))
+   (fn-post-offeredp
+    (fn-nntp-result-effects
+     (fn-nntp-step-pinned
+      (fn-post-session-base ps) archive index verdicts
+      (fn-post-reader-env config observation)
+      wire-event fn-arena))))
+  :hints (("Goal"
+           :use (fn-auth-fold-post-awaiting-implies-current-reader-offer
+                 fn-auth-fold-post-step-starts-awaiting-only-on-post)
+           :in-theory (disable fn-nntp-post-step-pinned fn-nntp-step-pinned
+                               fn-post-offeredp))))
 
 (defthm fn-auth-fold-peer-command-keeps-reader-session
   (implies (fn-peer-command ps keyword args)

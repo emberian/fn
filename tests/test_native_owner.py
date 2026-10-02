@@ -1,4 +1,5 @@
 """Developer-image owner diagnostic: writable NNTP POST with no Python peer."""
+import datetime
 import os
 import re
 import socket
@@ -495,6 +496,29 @@ class NativeOwnerTests(unittest.TestCase):
                           re.MULTILINE)
         self.assertIsNotNone(found, inspected.stdout[:400])
         return found.group(1)
+
+    def test_date_on_connection_older_than_a_minute_is_current(self):
+        process, port = self.node.start_store_owner(once=False)
+        with Client(port, timeout=30, greeting=(b"200",)) as client:
+            first = client.command(b"DATE")
+            self.assertTrue(first.startswith(b"111 "), first)
+            opened = time.monotonic()
+            # Keep this same connection active so idle policy cannot turn
+            # the clock regression into a reconnect test.
+            while time.monotonic() - opened <= 61:
+                time.sleep(5)
+                self.assertTrue(client.command(b"DATE").startswith(b"111 "))
+            before = time.time()
+            answer = client.command(b"DATE")
+            after = time.time()
+            self.assertTrue(answer.startswith(b"111 "), answer)
+            current = datetime.datetime.strptime(
+                answer.split()[1].decode("ascii"), "%Y%m%d%H%M%S"
+            ).replace(tzinfo=datetime.timezone.utc).timestamp()
+            self.assertNotEqual(first, answer)
+            self.assertGreaterEqual(current, before - 3, answer)
+            self.assertLessEqual(current, after + 3, answer)
+        self.assertIsNone(process.poll(), "the owner stopped mid-run")
 
     def test_each_submission_and_each_connection_take_a_fresh_reading(self):
         # The 915 node's second defect.  Every article of a run carried one

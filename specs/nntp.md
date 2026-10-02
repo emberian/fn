@@ -34,7 +34,7 @@ is the matrix. See [implementation status](../docs/implementation.md).
 | Posting | POST |
 | Overview | OVER, LIST OVERVIEW.FMT |
 | Compatibility behavior | MODE READER, according to the actual advertised mode |
-| Clock and creation facts | DATE and NEWGROUPS consume an explicit `fn-clock-observationp` and a persisted `fn-nntp-group-factp` list; neither is invented by the reader |
+| Clock and creation facts | DATE reports the current observation supplied for this read (RFC 3977 §7.1); NEWGROUPS resolves YY against its current year (§7.3.2). Persisted group-creation facts remain historical. |
 | Header access | HDR, LIST HEADERS |
 | Polling | NEWNEWS (§7.4), under the work budget below |
 | Legacy spellings (RFC 2980) | XOVER (§2.8), XHDR (§2.6), LIST ACTIVE.TIMES (§2.1.3) |
@@ -106,7 +106,7 @@ to the receiving node: fn executes no control message (RFC 5537 §5).
 
 The reader answers DATE and NEWGROUPS only from inputs an owner or
 host supplies. `fn-nntp-step` takes a fourth argument, the reader environment
-`(:fn-nntp-env observation facts)`. `observation` is `books/clock.lisp`'s
+`(:fn-nntp-env observation facts posting listing closed)`. `observation` is `books/clock.lisp`'s
 `fn-clock-observationp`; with `has-wall` false, DATE answers the stated 503
 refusal and a two-digit NEWGROUPS year is refused rather than resolved against a
 guess. `facts` is a list of `(:fn-nntp-group-fact name created-at-dtn-ms
@@ -117,7 +117,16 @@ back-filled from the reader's current clock. On the served path the facts
 are the configuration's (PRF-243, below): each served group's entry keeps
 the stamp of the record that created it, and the reader consumes the shape
 and stores none of its own. The
-POSIX-to-DTN epoch shift is `fn-nntp-unix-dtn-ms` in ACL2, not in the adapter.
+served DATE and NEWGROUPS dispatch selects the current owner reading, carried
+in `fn-served-conn-injection`, on both unrestricted catalog and restricted
+reference routes. The accept-time `fn-served-conn-observation` is not a
+fallback: a missing current observation gives DATE `:no-observation`, and a
+current observation without wall time gives `:no-wall` (both 503). Pinned
+configuration, permissions, listing and creation facts do not change.
+NEWNEWS still uses the pinned observation for its legacy-article horizon;
+its two-digit-year parsing also uses that observation and remains an open
+§7.3.2 correction requiring a separate current-year input.
+The POSIX-to-DTN epoch shift is `fn-nntp-unix-dtn-ms` in ACL2, not in the adapter.
 
 fn's reader has no timezone database. Its local time zone **is** Coordinated
 Universal Time, which RFC 3977 §7.3.2 notes the protocol cannot convey; the

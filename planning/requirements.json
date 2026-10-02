@@ -1505,7 +1505,7 @@
         "specs/nntp-audit.md"
       ],
       "implementation_note": "RFC 3977 section 7.4 uses the existing section 7.3.2 date/time and wildmat parsers. For schema-1 articles it compares the owner’s durable whole-second acceptance stamp; an article without a natural stamp uses the nearest later stamped acceptance, else the pinned reader wall second, else remains visible; no record carries such a stamp since schema 0 was deleted (no migrations: fresh deploys at 6.6.0), and deleting this horizon is open. One command scans the committed list once, reads no article payload octets, emits at most one line per matching candidate and has no parse-budget refusal.",
-      "note": "The DATE-to-NEWNEWS no-miss guarantee across a reader pin and in-flight prepare remains T6 under A-CLOCK."
+      "note": "The DATE-to-NEWNEWS no-miss guarantee across a reader pin and in-flight prepare remains T6 under A-CLOCK. t42 threads the current owner reading to DATE on both served routes; this does not establish T6. NEWNEWS two-digit-year parsing still reads the pinned horizon observation and needs a separate current-year input (RFC 3977 7.3.2/7.4)."
     },
     {
       "id": "NNT-009",
