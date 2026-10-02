@@ -533,8 +533,8 @@
   ("LAST"
    :rfc "RFC 3977 6.1.3" :dispatch :archive
    :parser nil
-   :model (fn-nntp-next-or-last) :cat nil :xref nil
-   :live (("any" fn-nntp-next-or-last))
+   :model (fn-nntp-next-or-last) :cat (fn-nntp-next-or-last-cat) :xref nil
+   :live (("any" fn-nntp-next-or-last-cat))
    :arms (:archive
            ((null args) (fn-nntp-next-or-last session archive :last fn-arena))
            (t (fn-nntp-single session (fn-proto-text "LAST" :syntax))))
@@ -555,8 +555,8 @@
   ("NEXT"
    :rfc "RFC 3977 6.1.4" :dispatch :archive
    :parser nil
-   :model (fn-nntp-next-or-last) :cat nil :xref nil
-   :live (("any" fn-nntp-next-or-last))
+   :model (fn-nntp-next-or-last) :cat (fn-nntp-next-or-last-cat) :xref nil
+   :live (("any" fn-nntp-next-or-last-cat))
    :arms (:archive
            ((null args) (fn-nntp-next-or-last session archive :next fn-arena))
            (t (fn-nntp-single session (fn-proto-text "NEXT" :syntax))))
@@ -655,7 +655,7 @@
    :parser (fn-nntp-number-tokenp fn-nntp-message-id-tokenp)
    :model (fn-nntp-retrieval fn-nntp-msgid-retrieval-indexed fn-nntp-withdrawn-reply)
    :cat (fn-nntp-number-retrieval-cat fn-nntp-msgid-retrieval-cat) :xref nil
-   :live (("withdrawn-number" fn-nntp-number-withdrawn-p-cat) ("withdrawn" fn-nntp-withdrawn-reply) ("msgid" fn-nntp-msgid-retrieval-cat) ("number" fn-nntp-number-retrieval-cat) ("current" fn-nntp-retrieval))
+   :live (("withdrawn-number" fn-nntp-number-withdrawn-p-cat) ("withdrawn" fn-nntp-withdrawn-reply) ("msgid" fn-nntp-msgid-retrieval-cat) ("number" fn-nntp-number-retrieval-cat) ("current" fn-nntp-current-retrieval-cat))
    :arms (:archive
            ((and (consp args) (null (cdr args))
                   (fn-nntp-number-withdrawn-p session archive index (car args)))
@@ -691,7 +691,7 @@
    :parser (fn-nntp-number-tokenp fn-nntp-message-id-tokenp)
    :model (fn-nntp-retrieval fn-nntp-msgid-retrieval-indexed fn-nntp-withdrawn-reply)
    :cat (fn-nntp-number-retrieval-cat fn-nntp-msgid-retrieval-cat) :xref nil
-   :live (("withdrawn-number" fn-nntp-number-withdrawn-p-cat) ("withdrawn" fn-nntp-withdrawn-reply) ("msgid" fn-nntp-msgid-retrieval-cat) ("number" fn-nntp-number-retrieval-cat) ("current" fn-nntp-retrieval))
+   :live (("withdrawn-number" fn-nntp-number-withdrawn-p-cat) ("withdrawn" fn-nntp-withdrawn-reply) ("msgid" fn-nntp-msgid-retrieval-cat) ("number" fn-nntp-number-retrieval-cat) ("current" fn-nntp-current-retrieval-cat))
    :arms (:archive
            ((and (consp args) (null (cdr args))
                   (fn-nntp-number-withdrawn-p session archive index (car args)))
@@ -726,7 +726,7 @@
    :parser (fn-nntp-parse-range fn-nntp-message-id-tokenp)
    :model (fn-nntp-over-response fn-nntp-over-range-indexed)
    :cat (fn-nntp-over-range-cat) :xref (fn-nntp-xref-reply)
-   :live (("range" fn-nntp-over-range-served) ("current" fn-nntp-over-current-served) ("msgid" fn-nntp-over-msgid-served))
+   :live (("range" fn-nntp-over-range-served) ("current" fn-nntp-over-current-served-cat) ("msgid" fn-nntp-over-msgid-served-cat))
    :arms (:archive
            ((fn-nntp-xref-reply session archive index env keyword args fn-arena)
              (fn-nntp-xref-reply session archive index env keyword args fn-arena))
@@ -757,7 +757,7 @@
    :parser (fn-nntp-parse-range)
    :model (fn-nntp-xover-response fn-nntp-over-range-indexed)
    :cat (fn-nntp-over-range-cat) :xref (fn-nntp-xref-reply)
-   :live (("range" fn-nntp-over-range-served) ("current" fn-nntp-over-current-served) ("other" fn-nntp-xover-response))
+   :live (("range" fn-nntp-over-range-served) ("current" fn-nntp-over-current-served-cat) ("other" fn-nntp-xover-response))
    :arms (:archive
            ((fn-nntp-xref-reply session archive index env keyword args fn-arena)
              (fn-nntp-xref-reply session archive index env keyword args fn-arena))
@@ -866,7 +866,7 @@
    :parser (fn-nntp-keyword-tokenp fn-wildmat-parse)
    :model (fn-nntp-list-command fn-gidx-list-counts-command)
    :cat (fn-nntp-list-counts-command-cat) :xref (fn-nntp-xref-reply fn-rcompat-reply)
-   :live (("COUNTS" fn-nntp-list-counts-command-cat) ("OVERVIEW.FMT" fn-nntp-list-overview-fmt-served) ("ACTIVE.TIMES" fn-rcompat-active-times) ("SUBSCRIPTIONS" fn-rcompat-subscriptions) ("other" fn-nntp-list-command))
+   :live (("COUNTS" fn-nntp-list-counts-command-cat) ("OVERVIEW.FMT" fn-nntp-list-overview-fmt-served) ("ACTIVE.TIMES" fn-rcompat-active-times) ("SUBSCRIPTIONS" fn-rcompat-subscriptions) ("active" fn-nntp-list-active-cat) ("other" fn-nntp-list-command))
    :arms (:archive
            ((fn-nntp-xref-reply session archive index env keyword args fn-arena)
              (fn-nntp-xref-reply session archive index env keyword args fn-arena))
