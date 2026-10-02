@@ -320,3 +320,58 @@
  (and (null (fn-lzr-read-refusal-text (fn-lzr-expand *pla-dicts* *plr-z0*)))
       (not (fn-lzr-magicp *plr-r*))
       (null (fn-lzr-read-refusal-text (fn-lzr-expand *pla-dicts* *plr-r*)))))
+
+; -----------------------------------------------------------------------------
+; The host encoder's single-code trees (inspection sweep 2026-10-03 S005,
+; tests/native_deflater_raw.lisp).  224 octets over a 64-symbol alphabet with
+; one 24-octet phrase repeated at distance 44, so the only distance code is
+; 10.  *pla-one-code-old* is the stream the encoder wrote before the fix: it
+; gave codes 0, 1 and 10 length 1, an oversubscribed code, and ACL2's decoder
+; does not take it, so the append refused the candidate (and the host
+; faulted) for this payload every time.  *pla-one-code-new* is the stream
+; after the fix (0 and 10 at length 1): the decoder takes it and the
+; decision frames it.
+
+(defconst *pla-one-code-src*
+  '(92 95 101 48 51 107 51 87 57 67 69 98 84 71 54 72 72 60 106 49 86 87 71
+    94 72 65 85 73 61 56 57 68 99 64 99 53 110 63 95 48 66 83 72 97 99 77 67
+    67 62 87 80 49 57 105 111 80 79 58 100 71 72 60 106 49 86 87 71 94 72 65
+    85 73 61 56 57 68 99 64 99 53 110 63 95 48 83 110 59 98 103 76 82 48 48
+    84 101 53 86 88 100 65 63 52 89 90 106 79 104 49 49 87 89 105 83 86 103
+    59 94 66 75 48 62 83 101 60 105 90 68 59 52 54 52 95 111 100 51 60 84
+    100 88 62 63 68 83 106 71 63 61 101 69 96 97 53 89 83 48 79 53 78 48 97
+    98 84 82 96 77 51 82 90 61 96 87 69 57 111 48 58 98 91 106 111 71 107 50
+    105 82 110 83 78 107 51 66 94 83 68 65 98 75 62 89 106 49 84 58 70 91 88
+    59 50 99 64 80 102 48 86 67 94 90 99 104 108 88 61 78 72))
+
+(defconst *pla-one-code-old*
+  '(117 202 89 146 130 48 20 0 192 43 189 24 176 134 93 182 73 166 28 129 34
+    145 0 90 44 9 168 4 11 238 255 231 9 236 254 237 123 63 3 94 177 176 226
+    84 114 114 164 212 213 168 18 164 163 225 245 207 251 177 18 117 82 230
+    22 244 16 49 58 170 75 28 251 162 64 214 178 23 185 61 145 111 150 109
+    142 124 254 151 0 124 54 171 122 10 3 163 105 117 254 66 72 52 11 171
+    158 78 23 157 193 103 179 187 180 137 99 28 141 126 159 176 203 167 218
+    15 18 166 73 224 205 233 48 154 13 131 220 204 96 148 188 28 46 184 108
+    189 65 164 214 14 182 188 233 157 172 135 165 220 88 182 226 168 99 73
+    40 207 126 163 17 183 127 111 181 115 80 167 226 1 85 220 181 234 245
+    174 189 140 126 0))
+
+(defconst *pla-one-code-new*
+  '(117 202 73 146 130 48 20 0 208 43 253 24 176 154 89 166 78 186 108 129
+    34 145 0 90 12 9 168 4 11 238 191 243 4 190 245 187 247 51 224 21 11 43
+    78 37 39 71 74 93 141 42 65 58 26 94 255 188 31 43 81 39 101 110 65 15
+    17 163 163 186 196 177 47 10 100 45 123 145 219 19 249 118 217 230 200
+    231 127 9 192 103 179 170 167 48 48 154 86 231 47 132 68 179 176 234 233
+    116 209 25 124 54 187 75 155 56 198 209 232 247 9 187 124 170 253 32 97
+    154 4 222 156 14 163 217 48 200 205 12 70 201 203 225 130 203 214 27 68
+    106 237 96 203 155 222 201 122 88 202 141 101 43 142 58 150 132 242 236
+    55 26 113 251 247 86 59 7 117 42 30 80 197 93 171 94 239 218 203 232 7))
+
+(assert-event
+ (and (equal (len *pla-one-code-src*) 224)
+      (equal (fn-pzd-decode nil *pla-one-code-new* 224) (list :ok *pla-one-code-src*))
+      (not (equal (fn-pzd-decode nil *pla-one-code-old* 224) (list :ok *pla-one-code-src*)))
+      (equal (car (fn-lzr-append-decide nil 0 64 *pla-one-code-src* 0 224 *pla-one-code-new*))
+             :framed)
+      (equal (fn-lzr-append-decide nil 0 64 *pla-one-code-src* 0 224 *pla-one-code-old*)
+             (list :refused :lz-candidate))))

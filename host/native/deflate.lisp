@@ -253,14 +253,18 @@ unusable after it)."
 (defun fnn-ldf-huffman-lengths (freq limit)
   (declare (optimize (speed 3) (safety 1) (debug 0)))
   "Code lengths for the symbols FREQ counts, none over LIMIT, at least two
-symbols coded (zlib's rule: a decoder may refuse a one-code tree)."
+symbols coded (zlib's rule: a decoder may refuse a one-code tree).  With
+fewer than two used, exactly two symbols get length 1, a complete code
+(RFC 1951 3.2.2): the used one paired with 0, or with 1 when it is 0;
+none used, 0 and 1."
   (declare (type fnn-ldf-fixv freq) (type (integer 1 15) limit))
   (let* ((n (length freq))
          (lens (make-array n :element-type '(unsigned-byte 8) :initial-element 0))
          (syms (loop for s below n when (plusp (aref freq s)) collect s)))
     (when (< (length syms) 2)
-      (setf syms (sort (remove-duplicates (append syms (list 0 1))) #'<))
-      (dolist (s syms) (setf (aref lens s) 1))
+      (let ((s (if syms (first syms) 1)))
+        (setf (aref lens s) 1
+              (aref lens (if (zerop s) 1 0)) 1))
       (return-from fnn-ldf-huffman-lengths lens))
     (setf syms (sort syms (lambda (a b) (let ((fa (aref freq a)) (fb (aref freq b)))
                                           (or (< fa fb) (and (= fa fb) (< a b)))))))
