@@ -438,8 +438,8 @@ unbounded (&rest or &key)."
     ;; XREDEEM (PRF-164): no connection here waits for a redeem.
     fnn-owner-redeem-quantum
     ;; Row A4 (c): no read here meets a cold payload (see the stub above);
-    ;; stage 0 serves a cold miss by the direct per-miss read.
-    fnn-extent-prefetch-direct
+    ;; the unfunded cold line's issue and settlement (books/page-read-direct.lisp).
+    fnn-extent-issue-direct fnn-extent-direct-settle
     ;; The rest of the cold line (host/native/extent.lisp, reached through
     ;; fnn-owner-cold-issue-locked / -await / -result-locked / -shutdown and
     ;; the pending-extent release): no extent is ever issued here.
