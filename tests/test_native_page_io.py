@@ -134,10 +134,15 @@ class PageIOTests(unittest.TestCase):
                 self.wait_line(owner, rb"PAGE-IO close-held file=" + file_id + rb"$")
                 text = owner.stderr.since(0)
                 self.assertNotRegex(text, rb"PAGE-IO closed file=" + file_id + rb"\r?\n")
-                # The new request reads the reseated payload (the checkpoint's
-                # frame), never through the held descriptor.
+                # The new request's read is issued at the reseated extent (the
+                # checkpoint's frame, another file), never through the held
+                # descriptor; the device holds it too, so it answers 403.
                 stat = new.command("STAT " + msgid("p0"))
-                self.assertTrue(stat.startswith(b"223"), (stat, owner.stderr.since(0)[-3000:]))
+                self.assertTrue(stat.startswith(b"403 article temporarily unavailable"), stat)
+                held = [l for l in page_io_logical_lines(owner.stderr.since(0))
+                        if re.search(rb"PAGE-IO held token=.* file=\d+$", l)]
+                self.assertEqual(len(held), 2, held)
+                self.assertNotEqual(re.search(rb"file=(\d+)$", held[1]).group(1), file_id, held)
                 release.write_bytes(b"release")
                 self.wait_line(owner, rb"PAGE-IO settled token=.* answer=:CANCELLED")
                 self.wait_line(owner, rb"PAGE-IO closed file=" + file_id + rb"$")
@@ -146,6 +151,9 @@ class PageIOTests(unittest.TestCase):
                 # No late 220/body is delivered into this replacement request.
                 self.assertTrue(new.command("DATE").startswith(b"111"))
                 self.assertIsNotNone(new.article(msgid("n0")))
+                # The reclaimed-free retirement served on: p0 reads its octets
+                # through the checkpoint's frame.
+                self.assertIn(b"body of p0", new.article(msgid("p0")) or b"")
                 new.close(False)
                 node.stop(expect=None, grace=300)
 
