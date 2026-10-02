@@ -460,6 +460,10 @@ def cmd_crosscheck(args) -> int:
     refs = snapshot_refs(mirror, reflogs=False)
     ours = set(union(rule_blobs(mirror, load_rules(rules_path), refs)))
     before = blob_ids(mirror)
+    # filter-repo deletes refs/remotes/* in a mirror; what only those refs
+    # reach leaves for that reason, not for a path rule (checked below).
+    before_kept = blob_ids(mirror, "--exclude=refs/remotes/*")
+    names_before = {ref.name for ref in refs}
     home = mirror.parent / (mirror.name + ".home")
     home.mkdir()
     env = {**os.environ, "HOME": str(home), "GIT_CONFIG_NOSYSTEM": "1"}
@@ -467,19 +471,29 @@ def cmd_crosscheck(args) -> int:
                     "filter-repo", "--force", "--invert-paths", "--paths-from-file",
                     str(rules_path)], check=True, env=env, capture_output=True)
     after = blob_ids(mirror)
-    dropped = before - after
+    names_after = {ref.name for ref in snapshot_refs(mirror, reflogs=False)}
+    removed = sorted(names_before - names_after)
+    unexpected = [name for name in removed if not name.startswith("refs/remotes/")]
+    dropped = before_kept - after
     escaped = dropped - ours
-    print(f"crosscheck in {mirror}: {len(before)} blobs before filter-repo, {len(after)} after, "
-          f"{len(dropped)} dropped; the walk's set {len(ours)}; dropped and not in the "
-          f"walk's set: {len(escaped)}; in the walk's set and kept (also at a kept path): "
-          f"{len(ours - dropped)}")
+    remote_only = (before - before_kept) - after - ours
+    print(f"crosscheck in {mirror}: {len(before)} blobs before filter-repo "
+          f"({len(before_kept)} reachable without refs/remotes/*), {len(after)} after; "
+          f"filter-repo removed {len(removed)} refs ({len(unexpected)} outside refs/remotes/*); "
+          f"dropped from the kept refs: {len(dropped)}; the walk's set {len(ours)}; dropped "
+          f"and not in the walk's set: {len(escaped)}; in the walk's set and kept (also at "
+          f"a kept path): {len(ours - dropped)}; reachable only from refs/remotes/*, gone "
+          f"with those refs and matching no rule (not the evidence archive's): "
+          f"{len(remote_only)}")
     for oid in sorted(escaped)[:20]:
         print(f"  DROPPED, NOT MEASURED {oid}")
-    return 1 if escaped else 0
+    for name in unexpected[:20]:
+        print(f"  REF REMOVED OUTSIDE refs/remotes: {name}")
+    return 1 if escaped or unexpected else 0
 
 
-def blob_ids(repo: Path) -> set[str]:
-    rows = _git(repo, "rev-list", "--objects", "--all").decode().splitlines()
+def blob_ids(repo: Path, *exclude: str) -> set[str]:
+    rows = _git(repo, "rev-list", "--objects", *exclude, "--all").decode().splitlines()
     oids = "".join(row.split(" ", 1)[0] + "\n" for row in rows)
     kinds = _git(repo, "cat-file", "--batch-check=%(objectname) %(objecttype)",
                  data=oids.encode()).decode().splitlines()
