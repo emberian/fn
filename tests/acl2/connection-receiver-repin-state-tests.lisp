@@ -4,6 +4,7 @@
 (in-package "ACL2")
 (include-book "../../host/receiver-repin-source-host")
 (include-book "../../books/index-reader-rx-source-completion")
+(include-book "../../books/index-reader-receiver-issuer") ; fn-irq-reserve-receiver-request
 (defun fn-icr-test-setup (children fn-index-backing fn-page-read-pool)
  (declare (xargs :stobjs (fn-index-backing fn-page-read-pool) :guard t))
  (let* ((fn-page-read-pool

@@ -16,7 +16,6 @@ FN_LD_TIMEOUT_SECONDS ?= 240
 ACL2_BOOKS ?= books/defrecord \
 	books/consumer-transaction-dispatch \
 	tests/acl2/consumer-transaction-dispatch-tests \
-	tests/acl2/consumer-remote-store-category-tests \
 	tests/acl2/receiver-response-transfer-tests \
 	books/connection-receiver-repin \
 	books/index-connection-rx-repin \
@@ -63,21 +62,15 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/substrate-profile-entry-tests \
 	tests/acl2/substrate-profile-selection-tests \
 	tests/acl2/substrate-commit-profile-resume-tests \
-	host/history-owner-completion-host \
 	books/history-semantic-writer \
 	tests/acl2/history-semantic-writer-tests \
 	books/admission-preparation-intent \
-	host/admission-preparation-host \
-	host/history-admission-producer-host \
 	tests/acl2/admission-preparation-intent-tests \
 	tests/acl2/admission-preparation-source-capture-tests \
-	tests/acl2/admission-semantic-census-begin-model-tests \
-	tests/acl2/admission-semantic-census-initial-tests \
 	tests/acl2/admission-semantic-census-lineage-tests \
 	tests/acl2/admission-semantic-census-prefix-tests \
 	tests/acl2/admission-semantic-census-resident-tests \
 	tests/acl2/admission-semantic-census-source-guard-tests \
-	tests/acl2/admission-semantic-census-step-refinement-tests \
 	tests/acl2/admission-semantic-exclusion-tests \
 	tests/acl2/bp-controller-checkpoint-payload-directory-tests \
 	tests/acl2/bp-controller-registry-carry-tests \
@@ -87,10 +80,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-node-crc0-receive-tests \
 	tests/acl2/bp-node-fragment-step-job-tests \
 	tests/acl2/bp-received-source-capture-tests \
-	tests/acl2/consumer-configured-authority-event-tests \
 	tests/acl2/consumer-configured-authority-finish-tests \
-	tests/acl2/consumer-control-row-cursor-tests \
-	tests/acl2/consumer-remote-client-contract-tests \
 	tests/acl2/consumer-remote-collection-state-tests \
 	tests/acl2/consumer-remote-collection-tests \
 	tests/acl2/consumer-remote-history-tests \

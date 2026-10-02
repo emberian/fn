@@ -5,6 +5,7 @@
 (include-book "../books/receiver-provider")
 (include-book "../books/page-read-pool-state")
 (include-book "../books/page-read-binding-revision")
+(include-book "../books/page-read-counter-transaction") ; fn-prb-fixed-widthp
 (defun fn-owner-rx-capacity-reserve (instance demand fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool :guard t))
   (if (not (and (eq (fn-prp-mode fn-page-read-pool) :served)
