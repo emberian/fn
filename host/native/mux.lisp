@@ -620,22 +620,26 @@ the same octets are handed to the next step."
                                         (subseq incoming 0 consumed) 10)
            (when (< consumed (length incoming))
              (setf (fnn-mux-conn-zstash conn) (subseq incoming consumed)))))
-        ((fnn-mux-conn-zin conn)
-         ;; Compressed: the input is plaintext ACL2's inflater produced, not
-         ;; a socket read or a TLS record; the suffix is the next step's.
+        ((or (fnn-mux-conn-zin conn) channel)
+         ;; Compressed (the input is plaintext ACL2's inflater produced) or
+         ;; protected (the plaintext of a TLS record): either way the octets
+         ;; are already in hand, never a peek, and the suffix is the next
+         ;; step's input.  A step consumes a prefix when it closes the wire
+         ;; (the suffix is dropped with the connection), when a submission
+         ;; (PKT-600) or an XREDEEM PASS (PRF-164) yields, and when a
+         ;; pipelined line needs a page not in memory (row A4 (c):
+         ;; fnn-owner-chunk-span-no-io answers the warm lines before it, then
+         ;; the cold line alone, served or 403).  No suffix is ever
+         ;; reclassified as a second handshake: STARTTLS on a protected
+         ;; channel is refused below, and ACL2 answers a STARTTLS line there
+         ;; 502.  Only a step that consumed nothing and left the connection
+         ;; open is a broken owner invariant (the same octets cannot
+         ;; progress), as for a plaintext read.
          (when (/= consumed (length incoming))
-           (when (and (zerop consumed) (not closing))
-             (fnn-fault "owner consumed no octets and left the connection open"))
-           (setf (fnn-mux-conn-input conn) (subseq incoming consumed))))
-        (channel
-         ;; Once protected, no transport suffix may be reclassified as a
-         ;; second handshake.  A closing step stops at the octet that closed
-         ;; the wire; an XREDEEM PASS (PRF-164) and an article's submission
-         ;; (PKT-600) leave the rest of this record as the next step's input.
-         (cond ((or closing (= consumed (length incoming))))
-               ((or redeemed submitted)
-                (setf (fnn-mux-conn-input conn) (subseq incoming consumed)))
-               (t (fnn-fault "protected owner read left a TLS suffix"))))
+           (unless closing
+             (when (zerop consumed)
+               (fnn-fault "owner consumed no octets and left the connection open"))
+             (setf (fnn-mux-conn-input conn) (subseq incoming consumed)))))
         ((fnn-owner-service-tls-context service)
          ;; The loop is the sole reader of this socket.  A failed or short
          ;; consume ends this connection; the transition is never replayed.
