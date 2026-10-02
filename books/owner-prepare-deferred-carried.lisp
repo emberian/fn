@@ -30,6 +30,10 @@
 ;     relation fn-snt-relation admits (the premise of the identity keystone);
 ;   * EQUAL to the reference, with no hypothesis, whenever the reference
 ;     stages (the two can differ only where the reference's replay refuses);
+;   * under the CONFIGURED relation fn-cst-relation (the one the host
+;     carries), stage-iff-configured-admits: the carried prepare stages
+;     exactly when the configured replay admits the appended history
+;     (fn-pdc-configured-admitsp; both directions, below);
 ;   * the host-carried owner invariant fn-lgoc-invariantp is preserved by the
 ;     owner entries over them (fn-pdc-ocfg-prepare-*), so the staged state
 ;     satisfies the CONFIGURED relation (fn-cst-relation): the configured
@@ -190,6 +194,214 @@
                                 fn-sf-prepare-record fn-spc-stage-record
                                 fn-pcar-stage-record-is-stage-record)
                               (theory 'minimal-theory)))))
+
+; -----------------------------------------------------------------------------
+; Both directions against the CONFIGURED replay (Codex r54, the coordinator's
+; 2026-10-01 ruling).  Under fn-cst-relation, the relation the host carries,
+; each carried prepare stages EXACTLY when the configured replay admits the
+; appended history: the candidate is well placed and the configured replay
+; of the history with it appended recovers at the frontier
+; (fn-pdc-configured-admitsp).  The reference prepares decide by the
+; UNconfigured replay over the final groups and capacity, which refuses a
+; history the configuration admitted once capacity was lowered after a
+; charge (tests/acl2/owner-prepare-deferred-carried-tests.lisp *pdt-bad-cap*);
+; that refusal is the reference's, not the configured semantics.
+
+(defun fn-pdc-configured-admitsp (s e)
+  (declare (xargs :guard t :verify-guards nil))
+  (let* ((files (fn-sn-files s))
+         (records (fn-sf-records files))
+         (frontier (fn-sf-frontier files)))
+    (and (fn-sf-candidatep e records frontier)
+         (fn-cst-recoverablep (fn-sn-config-history s)
+                              (append records (list e)) frontier))))
+
+(local
+ (defthm fn-pdc-candidate-facts
+   (implies (fn-sf-candidatep e records frontier)
+            (and (fn-store-event-p e)
+                 (equal (fn-store-event-sequence e) (len records))
+                 (equal (fn-store-event-txid e) (+ -1 frontier))
+                 (posp frontier)))
+   :rule-classes nil
+   :hints (("Goal" :use ((:instance fn-psrv-event-txid-natp))
+            :in-theory (enable fn-sf-candidatep)))))
+
+; The core, both directions, under the relation at a reservation, for an
+; event the configured fold serves (no article: fn-cpr-event-servedp).
+(local
+ (defthm fn-pdc-applied-gives-configured-admits
+   (let* ((files (fn-sn-files s))
+          (records (fn-sf-records files))
+          (frontier (fn-sf-frontier files)))
+     (implies (and (fn-cst-relation s)
+                   (equal (fn-sf-phase files) :reserved)
+                   (not (fn-held-p e))
+                   (not (fn-hstxa-p e))
+                   (fn-sf-candidatep e records frontier)
+                   (consp (fn-replay-apply-record (fn-sn-node s) e)))
+              (fn-cst-recoverablep (fn-sn-config-history s)
+                                   (append records (list e)) frontier)))
+   :hints (("Goal"
+            :use ((:instance fn-psrv-reserved-relation-facts)
+                  (:instance fn-pdc-candidate-facts
+                             (records (fn-sf-records (fn-sn-files s)))
+                             (frontier (fn-sf-frontier (fn-sn-files s))))
+                  (:instance fn-sf-state-records-are-true-list (s (fn-sn-files s)))
+                  (:instance fn-cstp-sn-statep-files (st s))
+                  (:instance fn-cstp-replay-append-event
+                             (configs (fn-sn-config-history s))
+                             (events (fn-sf-records (fn-sn-files s)))
+                             (txid (+ -1 (fn-sf-frontier (fn-sn-files s))))
+                             (event e))
+                  (:instance fn-psrv-recoverable-node-statep
+                             (configs (fn-sn-config-history s))
+                             (events (fn-sf-records (fn-sn-files s)))
+                             (frontier (+ -1 (fn-sf-frontier (fn-sn-files s)))))
+                  (:instance fn-replay-apply-record-non-nil-is-node-state
+                             (node (fn-sn-node s)) (record e)))
+            :in-theory '(fn-cpr-event-servedp fn-psrv-successor-of-predecessor posp
+                         (:executable-counterpart equal))))))
+
+(local
+ (defthm fn-pdc-configured-admits-gives-applied
+   (let* ((files (fn-sn-files s))
+          (records (fn-sf-records files))
+          (frontier (fn-sf-frontier files)))
+     (implies (and (fn-cst-relation s)
+                   (equal (fn-sf-phase files) :reserved)
+                   (fn-sf-candidatep e records frontier)
+                   (fn-cst-recoverablep (fn-sn-config-history s)
+                                        (append records (list e)) frontier))
+              (consp (fn-replay-apply-record (fn-sn-node s) e))))
+   :hints (("Goal"
+            :use ((:instance fn-psrv-reserved-relation-facts)
+                  (:instance fn-pdc-candidate-facts
+                             (records (fn-sf-records (fn-sn-files s)))
+                             (frontier (fn-sf-frontier (fn-sn-files s))))
+                  (:instance fn-sf-state-records-are-true-list (s (fn-sn-files s)))
+                  (:instance fn-cstp-sn-statep-files (st s))
+                  (:instance fn-cstp-replay-append-event-fold
+                             (configs (fn-sn-config-history s))
+                             (events (fn-sf-records (fn-sn-files s)))
+                             (txid (+ -1 (fn-sf-frontier (fn-sn-files s))))
+                             (event e))
+                  (:instance fn-cstp-recoverable-facts
+                             (configs (fn-sn-config-history s))
+                             (events (append (fn-sf-records (fn-sn-files s)) (list e)))
+                             (frontier (fn-sf-frontier (fn-sn-files s))))
+                  (:instance fn-cstp-recoverable-facts
+                             (configs (fn-sn-config-history s))
+                             (events (fn-sf-records (fn-sn-files s)))
+                             (frontier (+ -1 (fn-sf-frontier (fn-sn-files s)))))
+                  (:instance fn-cstp-cpr-loop-one-event
+                             (cn (fn-cstp-fold (fn-sn-config-history s)
+                                               (fn-sf-records (fn-sn-files s))))
+                             (event e)
+                             (cs (len (fn-sn-config-history s)))
+                             (es (len (fn-sf-records (fn-sn-files s)))))
+                  (:instance fn-cstp-apply-after-advance-to-its-txid
+                             (node (fn-cnode-node (fn-cstp-fold (fn-sn-config-history s)
+                                                                (fn-sf-records (fn-sn-files s)))))
+                             (event e)))
+            :in-theory '(fn-cpr-apply-event fn-replay-result-kind-of-fn-replay-fault
+                         fn-replay-result-kind-of-fn-replay-ok
+                         fn-cstp-cnode-make-consp
+                         (:type-prescription len) natp (:executable-counterpart fn-cnode-statep)
+                         (:executable-counterpart consp) (:executable-counterpart not)
+                         (:executable-counterpart equal))))))
+
+(defthm fn-pdc-configured-admits-is-applied-node
+  (let* ((files (fn-sn-files s))
+         (records (fn-sf-records files))
+         (frontier (fn-sf-frontier files)))
+    (implies (and (fn-cst-relation s)
+                  (equal (fn-sf-phase files) :reserved)
+                  (not (fn-held-p e))
+                  (not (fn-hstxa-p e)))
+             (iff (fn-pdc-configured-admitsp s e)
+                  (and (fn-sf-candidatep e records frontier)
+                       (consp (fn-replay-apply-record (fn-sn-node s) e))))))
+  :hints (("Goal" :use (fn-pdc-applied-gives-configured-admits
+                        fn-pdc-configured-admits-gives-applied)
+           :in-theory '(fn-pdc-configured-admitsp))))
+
+(local
+ (defthm fn-pdc-retention-event-store-kind
+   (implies (fn-store-retention-event-p event)
+            (and (fn-store-event-p event) (true-listp event)))
+   :hints (("Goal" :in-theory (enable fn-store-event-p fn-store-retention-event-p)))))
+
+(local
+ (defthm fn-pdc-stage-record-phase
+   (implies (equal (fn-sf-phase files) :reserved)
+            (iff (equal (fn-sf-phase (fn-pcar-stage-record files e)) :record-staged)
+                 (fn-sf-candidatep e (fn-sf-records files) (fn-sf-frontier files))))
+   :hints (("Goal" :in-theory (e/d (fn-pcar-stage-record-is-stage-record fn-spc-stage-record)
+                                   (fn-sf-candidatep fn-sf-statep))))))
+
+; KEYSTONES (both directions, configured).  Under the relation the host
+; carries, at a reservation, with the gate's own event-kind and projection
+; tests, each carried prepare stages exactly when the configured replay
+; admits the appended history.
+(defthm fn-pdc-sn-prepare-consumer-stages-iff-configured-admits
+  (implies (and (fn-cst-relation s)
+                (equal (fn-sf-phase (fn-sn-files s)) :reserved)
+                (fn-cpe-eventp e)
+                (eq (car (fn-cpe-projection-step (fn-sn-consumer s) e
+                                                 (fn-sn-identity-next s)))
+                    :ok))
+           (iff (equal (fn-sf-phase (fn-sn-files (fn-pdc-sn-prepare-consumer s e)))
+                       :record-staged)
+                (fn-pdc-configured-admitsp s e)))
+  :hints (("Goal" :use ((:instance fn-pdc-configured-admits-is-applied-node)
+                        (:instance fn-psrv-consumer-event-kinds)
+                        (:instance fn-cstp-relation-is-statep (st s)))
+           :in-theory (e/d (fn-pdc-sn-prepare-consumer
+                            fn-ccar-cpe-projection-step-is-cpe-projection-step)
+                           (fn-pdc-configured-admitsp fn-cst-relation fn-sn-statep fn-pcar-stage-record-is-stage-record
+                            fn-pcar-stage-record fn-sf-candidatep fn-cpe-eventp
+                            fn-replay-apply-record fn-cpe-projection-step
+                            fn-ccar-cpe-projection-step fn-held-p fn-hstxa-p)))))
+
+(defthm fn-pdc-sn-prepare-retention-stages-iff-configured-admits
+  (implies (and (fn-cst-relation s)
+                (equal (fn-sf-phase (fn-sn-files s)) :reserved)
+                (fn-store-retention-event-p e)
+                (eq (car (fn-cpe-projection-step (fn-sn-consumer s) e
+                                                 (fn-sn-identity-next s)))
+                    :ok))
+           (iff (equal (fn-sf-phase (fn-sn-files (fn-pdc-sn-prepare-retention s e)))
+                       :record-staged)
+                (fn-pdc-configured-admitsp s e)))
+  :hints (("Goal" :use ((:instance fn-pdc-configured-admits-is-applied-node)
+                        (:instance fn-psrv-retention-event-kinds)
+                        (:instance fn-pdc-retention-event-store-kind (event e))
+                        (:instance fn-cstp-relation-is-statep (st s)))
+           :in-theory (e/d (fn-pdc-sn-prepare-retention fn-replay-apply-record
+                            fn-ccar-cpe-projection-step-is-cpe-projection-step)
+                           (fn-pdc-configured-admitsp fn-cst-relation fn-sn-statep fn-pcar-stage-record-is-stage-record
+                            fn-pcar-stage-record fn-sf-candidatep
+                            fn-store-retention-event-p fn-replay-apply-retention-event
+                            fn-cpe-projection-step fn-node-prepare fn-node-complete
+                            fn-ccar-cpe-projection-step fn-held-p fn-hstxa-p)))))
+
+(defthm fn-pdc-sn-prepare-topic-stages-iff-configured-admits
+  (implies (and (fn-cst-relation s)
+                (equal (fn-sf-phase (fn-sn-files s)) :reserved)
+                (fn-th-topic-eventp e)
+                (eq (fn-th-at 0 (fn-th-prefix-step (fn-sn-topic s) e)) :ok))
+           (iff (equal (fn-sf-phase (fn-sn-files (fn-pdc-sn-prepare-topic s e)))
+                       :record-staged)
+                (fn-pdc-configured-admitsp s e)))
+  :hints (("Goal" :use ((:instance fn-pdc-configured-admits-is-applied-node)
+                        (:instance fn-psrv-topic-event-kinds)
+                        (:instance fn-cstp-relation-is-statep (st s)))
+           :in-theory (e/d (fn-pdc-sn-prepare-topic)
+                           (fn-pdc-configured-admitsp fn-cst-relation fn-sn-statep fn-pcar-stage-record-is-stage-record
+                            fn-pcar-stage-record fn-sf-candidatep fn-th-topic-eventp
+                            fn-replay-apply-record fn-th-prefix-step fn-th-at
+                            fn-held-p fn-hstxa-p)))))
 
 ; -----------------------------------------------------------------------------
 ; Guards: the reference guard (fn-sn-statep), as the references'.
