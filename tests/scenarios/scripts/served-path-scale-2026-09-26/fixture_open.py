@@ -23,7 +23,7 @@ import time
 
 sys.path.insert(0, os.getcwd())
 sys.path.insert(0, os.path.join(os.getcwd(), "tools"))
-sys.path.insert(0, os.path.join(os.getcwd(), "planning/evidence/pack-chain-open-2026-09-26"))
+sys.path.insert(0, os.path.join(os.getcwd(), "tools/fixture_scripts/pack-chain-open-2026-09-26"))
 import chain_fixture as cf  # noqa: E402
 import msgid_measure as m  # noqa: E402
 

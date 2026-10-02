@@ -78,7 +78,7 @@ stop scale
 
 # 5. stranded-transfer (25), live: a peer that answers 436 to every offer.
 node strand 31503 mission
-python3 $T/planning/evidence/operator-health-2026-09-25/defer_peer.py 31598 > $O/defer-peer.log 2>&1 &
+python3 $T/tests/scenarios/scripts/operator-health-2026-09-25/defer_peer.py 31598 > $O/defer-peer.log 2>&1 &
 DP=$!
 fnop $W/strand/fn.toml peer add sink sink.example 127.0.0.1 31598 - 'local.*' 127.0.0.1 true > $O/peer-add-sink.out 2>&1; say "peer add sink exit=$?"
 start strand

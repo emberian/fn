@@ -3,7 +3,7 @@
 import json, os, shutil, sys, time
 from pathlib import Path
 sys.path.insert(0, os.getcwd()); sys.path.insert(0, os.path.join(os.getcwd(), "tools"))
-sys.path.insert(0, os.path.join(os.getcwd(), "planning/evidence/pack-chain-open-2026-09-26"))
+sys.path.insert(0, os.path.join(os.getcwd(), "tools/fixture_scripts/pack-chain-open-2026-09-26"))
 import chain_fixture as cf, msgid_measure as m
 src, scratch, k = Path(sys.argv[1]), Path(sys.argv[2]), int(sys.argv[3])
 scratch.mkdir(parents=True)
