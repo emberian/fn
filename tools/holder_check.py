@@ -71,7 +71,7 @@ def holders(decl: dict) -> list[dict]:
         if not isinstance(h, list) or not h:
             continue
         kv = ledger.keyword_plist(h[1:])
-        row = {"kind": _sym(h[0]), "in": [_sym(x) for x in (kv.get(":in") or [])]}
+        row = {"kind": _sym(h[0]), "in": [_sym(x) for x in (kv.get(":in") or [])], "form": h}
         if kv.get(":host") is not None and _sym(kv[":host"]) != "nil":
             row.update(sort="host", acquire=_sym(kv.get(":acquire", "")),
                        release=_sym(kv.get(":release", "")))
@@ -188,9 +188,21 @@ def check(root: Path = ROOT, strict: bool = False) -> tuple[list[str], list[str]
                         refusals.append(f"{where}: holder {h['kind']}: :{verb} {name} is called in none of its :in {h['in']}")
             elif h["sort"] == "root":
                 notes.append(f"{where}: root {h['kind']} {h.get('status', '')} in {h['in']}")
-        # the effect's markers inside the row's :in functions, in order
+        # the effect's markers inside the row's :in functions, in order; a
+        # logic holder's host sites are the raw functions that dispatch its
+        # entries (a quoted call of the entry's name)
         eff = effect(decl)
         ins = [f for h in holders(decl) for f in h["in"]]
+        for h in holders(decl):
+            if h["sort"] != "logic":
+                continue
+            entries = [_sym(x[0]) for x in (ledger.keyword_plist(h["form"][1:]).get(":acquire"),
+                                            ledger.keyword_plist(h["form"][1:]).get(":release"))
+                       if isinstance(x, list) and x]
+            for fname, fn_list in fns.items():
+                for fn in fn_list:
+                    if any(c in entries for c, _ in fn.calls) and fname not in ins:
+                        ins.append(fname)
         positions: dict[str, tuple[str, int]] = {}
         for f in ins:
             for fn in fns.get(f, []):

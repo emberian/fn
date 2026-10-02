@@ -534,22 +534,20 @@
 ; second delivery of any completion for the same token to its result is
 ; stale -- or, after an :unheld first delivery (the tables disagree: an
 ; invariant breach the host faults on), :unheld again -- so nothing
-; publishes or releases twice.  (A settled row leaves the issued table; a
-; stale or unheld first delivery returns its inputs, and staleness does not
-; depend on the verdict.)
+; publishes or releases twice.  No hypothesis: the worker gates the second
+; delivery (a committed worker is idle, an uncommitted one unchanged), so a
+; malformed issued table changes nothing here; the statement with
+; (fn-pio-issuedp issued) was proved first, then the weakened one.
 (defthm fn-pio-direct-settle-happens-once
-  (implies (fn-pio-issuedp issued)
-           (let ((row1 (mv-nth 1 (fn-pio-direct-settle token worker verdict issued holds)))
-                 (w1 (mv-nth 2 (fn-pio-direct-settle token worker verdict issued holds)))
-                 (issued1 (mv-nth 3 (fn-pio-direct-settle token worker verdict issued holds)))
-                 (holds1 (mv-nth 4 (fn-pio-direct-settle token worker verdict issued holds))))
-             (declare (ignorable row1))
-             (equal (mv-list 5 (fn-pio-direct-settle token w1 verdict2 issued1 holds1))
-                    (list (if (equal (mv-nth 0 (fn-pio-direct-settle token worker verdict issued holds))
-                                     :unheld)
-                              :unheld
-                            :stale)
-                          (fn-pio-issued-row token issued1) w1 issued1 holds1))))
+  (let ((w1 (mv-nth 2 (fn-pio-direct-settle token worker verdict issued holds)))
+        (issued1 (mv-nth 3 (fn-pio-direct-settle token worker verdict issued holds)))
+        (holds1 (mv-nth 4 (fn-pio-direct-settle token worker verdict issued holds))))
+    (equal (mv-list 5 (fn-pio-direct-settle token w1 verdict2 issued1 holds1))
+           (list (if (equal (mv-nth 0 (fn-pio-direct-settle token worker verdict issued holds))
+                            :unheld)
+                     :unheld
+                   :stale)
+                 (fn-pio-issued-row token issued1) w1 issued1 holds1)))
   :hints (("Goal" :do-not-induct t
            :in-theory (disable fn-hd-ident-step fn-pio-issued-row fn-pio-issued-remove
                                fn-pio-issued-put mv-nth)))

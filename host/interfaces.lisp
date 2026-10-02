@@ -4343,14 +4343,15 @@
   :keystones ((fn-pio-admitted-resource-token-establishes-owned-read :via fn-pio-own-admitted-token)))
 
 ;; books/page-read-ownership.lisp (PRF-1057).
-(definterface fn-pio-cancel
-  :class :common-lisp-compliant)
 (definterface fn-pio-complete
   :class :common-lisp-compliant
   :keystones ((fn-pio-completion-publishes-only-the-issued-identity :via fn-pio-complete)))
-(definterface fn-pio-file-clear-p
-  :class :common-lisp-compliant
-  :keystones ((fn-pio-close-waits-for-every-worker :via fn-pio-file-clear-p)))
+;; The issued table's helpers (books/page-read-direct.lisp; the funded arm's
+;; sites host/native/extent.lisp fnn-extent-issue-read / -complete-read keep
+;; the one table through them; lane def-holder).
+(definterface fn-pio-issued-put :class :common-lisp-compliant)
+(definterface fn-pio-issued-row :class :common-lisp-compliant)
+(definterface fn-pio-issued-remove :class :common-lisp-compliant)
 
 ; host/native/io.lisp dispatches it (lane extent-identity).
 (definterface fn-arx-attach-trailers-buffer
@@ -4722,6 +4723,14 @@
               (fn-pio-direct-settle-observes-every-outcome :via fn-pio-direct-settle)
               (fn-pio-direct-settle-stale-changes-nothing :via fn-pio-direct-settle)
               (fn-pio-direct-settle-happens-once :via fn-pio-direct-settle)))
+;; lane def-holder: the timeout's cancel, the close's one lookup (KEYSTONE
+;; fn-pio-direct-quiet-is-clear: under the carried agreement of the issued and
+;; holds tables it is the walk fnn-extent-close used to run), the tables'
+;; initial (fnn-extent-direct-start).
+(definterface fn-pio-direct-cancel :class :common-lisp-compliant)
+(definterface fn-pio-direct-quiet-p :class :common-lisp-compliant
+  :keystones ((fn-pio-direct-quiet-is-clear :via fn-pio-direct-quiet-p)))
+(definterface fn-pio-direct-initial :class :common-lisp-compliant)
 
 
 

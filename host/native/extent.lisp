@@ -59,20 +59,52 @@
 ;; ((file eoff elen trailer . octets) ...), most recent first: the verified
 ;; entries, each under the descriptor identity it was verified for
 (defvar *fnn-extent-stats* (list 0 0 0))      ; hits, misses (preads), refusals
-(defvar *fnn-extent-issued* (make-hash-table :test #'equal))
-;; guarded-by: *fnn-extent-lock*. Token -> ACL2 ownership row (PRF-1057).
-;; Removed only by actual worker completion, never a request's timeout.
+(defvar *fnn-extent-issued* nil)
+;; guarded-by: *fnn-extent-lock*.  ACL2's issued table (books/page-read-direct.lisp
+;; fn-pio-issuedp: an alist TOKEN -> ownership row, PRF-1057), kept exactly as
+;; ACL2 returns it and written only through its helpers (fn-pio-issued-put /
+;; -remove, fn-pio-direct-admit / -cancel / -settle); at most the worker count
+;; long.  A row is removed only by actual worker completion, never a request's
+;; timeout.
+(defvar *fnn-extent-file-holds* nil)
+;; guarded-by: *fnn-extent-lock*.  ACL2's holds table (def-holder fn-pio-file-holds,
+;; books/page-read-direct.lisp): per file incarnation the tokens of the direct
+;; reads that pin it; fnn-extent-close asks fn-pio-direct-quiet-p of it (one
+;; lookup) instead of walking the issued rows (KEYSTONE
+;; fn-pio-direct-quiet-is-clear).
+
+(defparameter +fnn-holder-cuts+ '("fn-pio-file-holds-decided" "fn-pio-file-holds-released")
+  "Mirror of the generated *fn-pio-file-holds-cuts* (books/def-holder.lisp,
+table fn-holder-cuts; tools/holder_check.py reads the declaration, this list
+is the selector's vocabulary).")
+
+(defun fnn-holder-cut (cut)
+  "A holder release reached CUT (a keyword of a declared holder's *NAME-cuts*,
+books/def-holder.lisp): SIGKILL here when FN_NATIVE_HOLDER_FAULT names it
+(CUT:kill on a developer image).  The effect is process-local: the tables
+are memory, rebuilt at fnn-extent-direct-start."
+  (let ((raw (fnn-developer-selector "FN_NATIVE_HOLDER_FAULT")))
+    (when raw
+      (let ((colon (position #\: raw :from-end t)))
+        (unless (and colon (string= (subseq raw (1+ colon)) "kill")
+                     (member (subseq raw 0 colon) +fnn-holder-cuts+ :test #'string=))
+          (fnn-fault "invalid FN_NATIVE_HOLDER_FAULT (expected CUT:kill)"))
+        (when (string-equal (subseq raw 0 colon) (symbol-name cut))
+          (sb-posix:kill (sb-posix:getpid) sb-unix:sigkill)
+          (fnn-fault "test SIGKILL did not terminate the process"))))))
 
 (defun fnn-extent-pool-storage-start (file-capacity worker-capacity cache-capacity)
   "Install the admitted fixed peak capacities before any live registration.
 ACL2 supplied capacities include cache insertion overlap; table backing is
 permanent baseline, never refunded when an association is removed."
+  (declare (ignorable worker-capacity))
   (sb-thread:with-mutex (*fnn-extent-lock*)
     (unless (and (zerop (hash-table-count *fnn-extent-fds*))
                  (zerop (hash-table-count *fnn-extent-paths*))
                  (zerop (hash-table-count *fnn-extent-incarnations*))
                  (zerop (hash-table-count *fnn-extent-bases*))
-                 (zerop (hash-table-count *fnn-extent-issued*))
+                 (null *fnn-extent-issued*)
+                 (null *fnn-extent-file-holds*)
                  (zerop (hash-table-count *fnn-extent-cache-tokens*))
                  (null *fnn-extent-cache*))
       (fnn-fault "cold pool installation follows physical registration"))
@@ -80,7 +112,8 @@ permanent baseline, never refunded when an association is removed."
           *fnn-extent-paths* (make-hash-table :size file-capacity :rehash-threshold 1.0 :rehash-size 1)
           *fnn-extent-incarnations* (make-hash-table :size file-capacity :rehash-threshold 1.0 :rehash-size 1)
           *fnn-extent-bases* (make-hash-table :size file-capacity :rehash-threshold 1.0 :rehash-size 1)
-          *fnn-extent-issued* (make-hash-table :test #'equal :size worker-capacity :rehash-threshold 1.0 :rehash-size 1)
+          ;; the issued and holds tables are ACL2 values bounded by the worker
+          ;; count (admission needs an idle worker): no backing to size
           *fnn-extent-cache-tokens* (make-hash-table :test #'eq :size cache-capacity :rehash-threshold 1.0 :rehash-size 1))))
 
 (defun fnn-extent-register (path)
@@ -906,27 +939,31 @@ keeps that lease until its last buffer borrow ends. Extent lock held."
         (return-from fnn-extent-issue-read (values nil word)))
       (let ((row (fnn-core 'fn-pio-own-admitted-token token)))
         (unless row (fnn-fault "admitted cold token lacks its owned read"))
-        (setf (gethash token *fnn-extent-issued*) row)
+        ;; the funded arm's row: in the issued table, protected at close by
+        ;; the ledger's close-preview (:read-file-held), not by the holds
+        ;; table (the funded arm is not installed: fn-owner-page-read-direct-mode)
+        (setq *fnn-extent-issued* (fnn-core 'fn-pio-issued-put token row *fnn-extent-issued*))
         (values token :admitted (fnn-extent-executor-acquire token))))))
 
 (defun fnn-extent-cancel-read (token)
-  "Revoke this request's publication right; the worker still owns its fd."
+  "Revoke this request's publication right; the worker still owns its fd,
+the file and (direct arm) its hold: ACL2's fn-pio-direct-cancel."
   (when token
     (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
-      (let ((row (gethash token *fnn-extent-issued*)))
-        (when row
-          (setf (gethash token *fnn-extent-issued*) (fnn-core 'fn-pio-cancel row token))
-          (when (fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD")
-            (fnn-err "PAGE-IO cancelled token=~s" token)))))))
+      (let ((before *fnn-extent-issued*))
+        (setq *fnn-extent-issued* (fnn-core 'fn-pio-direct-cancel token *fnn-extent-issued*))
+        (when (and (not (eq before *fnn-extent-issued*))
+                   (fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD"))
+          (fnn-err "PAGE-IO cancelled token=~s" token))))))
 
 (defun fnn-extent-complete-read (token verdict)
   "ACL2's completion decision, with the extent lock held. Only actual I/O
 settlement calls this. A missing/stale token has no publish or release."
   (destructuring-bind (row answer)
-      (fnn-call 'fn-pio-complete (gethash token *fnn-extent-issued*) token verdict)
+      (fnn-call 'fn-pio-complete (fnn-core 'fn-pio-issued-row token *fnn-extent-issued*)
+                token verdict)
     (unless (eq answer :stale)
-      (setf (gethash token *fnn-extent-issued*) row)
-      (remhash token *fnn-extent-issued*))
+      (setq *fnn-extent-issued* (fnn-core 'fn-pio-issued-remove token *fnn-extent-issued*)))
     (values answer row)))
 
 (defun fnn-extent-prefetch (token)
@@ -983,6 +1020,11 @@ per run, unless the funded pool already started its executor."
     (let ((workers (fnn-core 'fn-pio-direct-workers)))
       (unless (and (integerp workers) (plusp workers))
         (fnn-fault "owner returned a malformed cold worker count"))
+      ;; the two tables start as ACL2's initial (both empty): the effect of
+      ;; a release is process-local and this is its rebuild
+      (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+        (destructuring-bind (issued holds) (fnn-call 'fn-pio-direct-initial)
+          (setq *fnn-extent-issued* issued *fnn-extent-file-holds* holds)))
       (fnn-extent-executor-start workers))))
 
 (defun fnn-extent-issue-direct (cid file eoff elen trailer)
@@ -1000,35 +1042,47 @@ Otherwise (values TOKEN WORD WORKER): WORD :admitted, or ACL2's refusal."
       (error 'fnn-extent-fault
              :message (format nil "arena-extent-read: no durable file ~a is registered" file)))
     (let ((worker (and (not *fnn-cold-stopping*) *fnn-cold-free*)))
-      (destructuring-bind (word next token row worker-row)
+      (destructuring-bind (word next token row worker-row issued holds)
           (fnn-call 'fn-pio-direct-admit *fnn-extent-direct-next* cid file eoff elen trailer
-                    (and worker (fnn-cold-worker-row worker)))
+                    (and worker (fnn-cold-worker-row worker))
+                    *fnn-extent-issued* *fnn-extent-file-holds*)
         (unless (eq word :admitted)
           ;; Every worker busy is ACL2's named refusal; any other word means
-          ;; the host offered a row ACL2 does not recognize as idle and fresh.
+          ;; the host offered a row ACL2 does not recognize as idle and fresh
+          ;; (:hold-refused: a token already held or issued, an invariant
+          ;; breach).
           (unless (eq word :read-resources-unavailable)
             (fnn-fault (format nil "cold worker binding refused: ~a" word)))
           (return-from fnn-extent-issue-direct (values nil word nil)))
-        (setq *fnn-extent-direct-next* next)
-        (setf (gethash token *fnn-extent-issued*) row)
+        (setq *fnn-extent-direct-next* next
+              *fnn-extent-issued* issued
+              *fnn-extent-file-holds* holds)
         (values token :admitted (fnn-extent-executor-enqueue worker worker-row token))))))
 
 (defun fnn-extent-direct-settle (worker token verdict)
   "Owner and extent locks held, WORKER observed returned: ACL2's settlement
 of the issued row and the worker together.  (values ANSWER SETTLED-ROW).
 Anything but :stale removes the row (the file pin) and idles the worker."
-  (destructuring-bind (answer row worker-row)
-      (fnn-call 'fn-pio-direct-settle (gethash token *fnn-extent-issued*)
-                (fnn-cold-worker-row worker) token verdict)
+  (destructuring-bind (answer row worker-row issued holds)
+      (fnn-call 'fn-pio-direct-settle token (fnn-cold-worker-row worker) verdict
+                *fnn-extent-issued* *fnn-extent-file-holds*)
+    (when (eq answer :unheld)
+      ;; the row is issued but no hold carries its token: the tables
+      ;; disagree, never a silent settle
+      (fnn-fault (format nil "issued read ~s is held by no token" token)))
     (unless (eq answer :stale)
-      (remhash token *fnn-extent-issued*)
+      ;; decided (ACL2 answered) ... released (the row gone, the hold
+      ;; dropped, the worker idle): the holder's two cuts, *fn-pio-file-holds-cuts*
+      (fnn-holder-cut :fn-pio-file-holds-decided)
+      (setq *fnn-extent-issued* issued *fnn-extent-file-holds* holds)
       (setf (fnn-cold-worker-row worker) worker-row
             (fnn-cold-worker-token worker) nil
             (fnn-cold-worker-phase worker) :idle)
       (when (and (not *fnn-cold-stopping*)
                  (sb-thread:thread-alive-p (fnn-cold-worker-thread worker)))
         (setf (fnn-cold-worker-next worker) *fnn-cold-free*
-              *fnn-cold-free* worker)))
+              *fnn-cold-free* worker))
+      (fnn-holder-cut :fn-pio-file-holds-released))
     (values answer row)))
 
 ;;; The realizer (A-DURABLE-EXTENT's constrained function), raw and *1*.
@@ -1226,10 +1280,13 @@ Anything but :stale removes the row (the file pin) and idles the worker."
   "Physical retirement: workers keep descriptors; cache credits release on
 actual eviction, descriptor credits only after successful OS close."
   (sb-thread:with-mutex (*fnn-extent-lock*)
-    (let ((closed 0) (keep nil)
-          (rows (loop for row being the hash-values of *fnn-extent-issued* collect row)))
+    (let ((closed 0) (keep nil))
       (dolist (id ids)
-        (if (fnn-core 'fn-pio-file-clear-p id rows)
+        ;; the direct arm's reads: one lookup of the holds table (KEYSTONE
+        ;; fn-pio-direct-quiet-is-clear: under the carried agreement it is the
+        ;; walk of the issued rows this used to run); the funded arm's rows
+        ;; are the ledger's, answered :read-file-held by the close-preview
+        (if (fnn-core 'fn-pio-direct-quiet-p id *fnn-extent-file-holds*)
             (progn
               (fnn-extent-cache-release (fnn-extent-cache-drop-files (list id)))
               (when (and *fnn-extent-lz-last* (eql (first (first *fnn-extent-lz-last*)) id))
