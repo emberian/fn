@@ -1307,6 +1307,23 @@
 (definterface fn-otb-ledger-init
   :class ::common-lisp-compliant)
 
+(definterface fn-oqw-start
+  :class :common-lisp-compliant
+  :keystones (fn-oqw-batch-effect-order))
+
+(definterface fn-oqw-step
+  :class :common-lisp-compliant
+  :keystones (fn-oqw-batch-effect-order fn-oqw-a-failed-effect-ends-the-job))
+
+(definterface fn-oqw-receipt
+  :class :common-lisp-compliant
+  :keystones (fn-oqw-receipt-outcomes-are-distinct))
+
+(definterface fn-oqw-outcome-of-final
+  :class :common-lisp-compliant
+  :keystones (fn-oqw-receipt-outcomes-are-distinct))
+
+
 (definterface fn-own-intent-refusal-word
   :class ::common-lisp-compliant
   :keystones (fn-own-intent-refusal-word-is-a-refusal))

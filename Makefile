@@ -1895,6 +1895,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-stop-drain-tests \
 	books/owner-time-bars \
 	tests/acl2/owner-time-bars-tests \
+	books/owner-queued-work \
+	tests/acl2/owner-queued-work-tests \
+	books/feed-journal-order \
+	tests/acl2/feed-journal-order-tests \
 	tests/acl2/tls-handshake-budget-tests \
 	tests/acl2/tls-proxy-tests \
 	tests/acl2/owner-cold-line-tests \

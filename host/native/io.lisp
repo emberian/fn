@@ -6072,7 +6072,11 @@ tree root), or stop the build."
     ;; The power-loss rig's handshake for `fn log append': after each RECOVERED
     ;; and ACK line, wait for the client's line, so its device mark precedes
     ;; the next batch's writes; tools/power_loss.py log_run.
-    "FN_NATIVE_LOG_RIG_HANDSHAKE"))
+    "FN_NATIVE_LOG_RIG_HANDSHAKE"
+    ;; Lane owner-offlock: a slow (MS per fsync) or stalled (while the file
+    ;; exists) FNFD feed-journal device (host/native/owner.lisp
+    ;; fnn-owner-feed-append-locked).
+    "FN_NATIVE_TEST_FEED_FSYNC_MS" "FN_NATIVE_TEST_FEED_STALL_FILE"))
 
 (defun fnn-developer-selector (name)
   "The value of developer selector NAME on a developer image, else NIL."
@@ -6726,20 +6730,34 @@ next txid (fn-lgc-t-prepare)."
   (fnn-log-with-kernel (log)
     (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-t-prepare (fnn-log-kernel log) record))))
 
-(defun fnn-log-append (log)
-  "P-BATCH's append (fn-lg-append-program): the kernel admits the open batch
-and its chained entries are written at the frontier in one positioned write.
-The batch's staged members go in flight with their places (ACL2's
-fn-arx-list-places over the octets written)."
+(defun fnn-log-append-capture (log)
+  "P-BATCH's append, its decisions (lane owner-offlock): under the kernel
+lock the kernel admits the open batch, its chained entries' octets and
+FRONTIER are ACL2's, the kernel takes the append (fn-lgc-append) and the
+batch's staged members go in flight with their places.  No I/O but the
+realizer's registration of a new segment's file (the first append after a
+rotation).  Returns (FRONTIER . OCTETS) for fnn-log-append's write.  Taken
+under the owner by the seal (fnn-log-seal-capture), so the members a
+START-NEXT takes behind it join the next open batch, never this one."
   (fnn-log-with-kernel (log)
     (let* ((ks (fnn-log-kernel log)) (unit (fnn-log-unit log)) (extent (fnn-log-extent log))
            (frontier (fnn-core 'fn-lgc-frontier ks)))
       (unless (fnn-core 'fn-lgc-append-admitsp ks unit extent)
         (fnn-refuse "the log kernel refuses the append (a batch in flight, fenced, or past the extent)"))
       (let ((octets (fnn-core 'fn-lgc-append-octets ks unit)))
-        (fnn-log-pwrite (fnn-log-fd log) frontier octets)
         (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-append ks unit extent))
-        (fnn-log-members-in-flight log octets frontier unit))))
+        (fnn-log-members-in-flight log octets frontier unit)
+        (cons frontier octets)))))
+
+(defun fnn-log-append (log &optional (captured (fnn-log-append-capture log)))
+  "P-BATCH's append (fn-lg-append-program): the kernel admits the open batch
+(fnn-log-append-capture, or CAPTURED, the seal's capture under the owner)
+and its chained entries are written at the frontier in one positioned
+write, outside the kernel lock and, from the seal, outside the owner mutex
+(the batch job's :append phase, books/owner-queued-work.lisp).  A failed
+write leaves the kernel past the batch; the callers fence it
+(fn-lgc-fence-failed): every member is uncertain."
+  (fnn-log-pwrite (fnn-log-fd log) (car captured) (cdr captured))
   (fnn-log-at :log-written))
 
 (defun fnn-log-members-in-flight (log octets frontier unit)
@@ -7844,23 +7862,37 @@ first (inside a batch quantum the batch closes at the operator's bounds)."
           (t (fnn-fault "the log kernel refused the record (the owner's txid is not the log's next)")))))
     (fnn-fault "the log kernel refused an empty batch's take")))
 
-(defun fnn-log-ensure-extent (log)
-  "books/store-log-extend.lisp fn-lg-extend-program: when the open batch's
-append and one spare unit do not fit the segment (fn-lgc-extension-needed-p),
-grow it to ACL2's target (fn-lgc-extension-target: whole units, past the old
-extent), then one barrier.  Runs at rest (no batch in flight); the octets
-before the old extent are never written, the new ones read zeros, and the
-kernel is unchanged (fn-lgc-extend-program-keeps-the-relation), and the
-append then fits (fn-lgc-sealed-extent-fits-the-batch).  A death at
-log-extended recovers exactly the committed records
-(fn-lg-extension-written-crash-reads-the-committed-records).  The append's
-length is ACL2's arithmetic over the records' lengths (fn-lgc-append-len):
-no octet of the batch is built here."
+(defun fnn-log-extension-decision (log)
+  "fn-lg-extend-program's decision (books/store-log-extend.lisp): (NEXT .
+EXTENT) when the open batch's append and one spare unit do not fit the
+segment (fn-lgc-extension-needed-p), NEXT ACL2's target
+(fn-lgc-extension-target: whole units, past the old EXTENT); NIL when they
+fit.  Taken before the append's capture (the open batch is the one that
+must fit)."
   (let ((ks (fnn-log-kernel log)) (unit (fnn-log-unit log)) (extent (fnn-log-extent log)))
     (when (fnn-core 'fn-lgc-extension-needed-p ks extent unit)
       (let ((next (fnn-nat (fnn-core 'fn-lgc-extension-target ks extent unit))))
         (unless (and (fnn-core 'fn-lg-extent-okp next unit) (> next extent))
           (fnn-fault "ACL2 returned an invalid log extent"))
+        (cons next extent)))))
+
+(defun fnn-log-ensure-extent (log &optional (decided (fnn-log-extension-decision log)))
+  "books/store-log-extend.lisp fn-lg-extend-program: when the open batch's
+append and one spare unit do not fit the segment (DECIDED, fnn-log-
+extension-decision's (NEXT . EXTENT), taken now or by the seal's capture
+under the owner), grow it to NEXT, then one barrier.  Runs at rest (no
+batch in flight; from the seal, in the batch job's :extend phase before its
+append, outside the owner mutex); the octets before the old extent are
+never written, the new ones read zeros, and the kernel is unchanged
+(fn-lgc-extend-program-keeps-the-relation), and the append then fits
+(fn-lgc-sealed-extent-fits-the-batch).  A death at log-extended recovers
+exactly the committed records
+(fn-lg-extension-written-crash-reads-the-committed-records).  The append's
+length is ACL2's arithmetic over the records' lengths (fn-lgc-append-len):
+no octet of the batch is built here."
+  (when decided
+    (let ((next (car decided)) (extent (cdr decided)))
+      (progn
         (fnn-log-preallocate (fnn-log-fd log) next extent)
         (fnn-log-at :log-extended)
         (fnn-log-fdatasync (fnn-log-fd log))
@@ -8012,33 +8044,79 @@ while it runs; :fenced at once when no batch was sealed."
           do (sb-thread:condition-wait (fnn-log-sync-cv log) (fnn-log-lock log)))
     (if (eq (fnn-log-sync-state log) :failed) :failed :fenced)))
 
-(defun fnn-log-seal-open-batch (store)
-  "SEAL: the open batch's append at the frontier (P-BATCH's append, cut
-log-written); the batch is in flight and its barrier is the syncer's
-(fnn-log-sync-sealed-batch).  Returns the number of members sealed (0: the
-sync returns at once)."
+(defun fnn-log-seal-capture (store)
+  "SEAL's decisions, under the owner (lane owner-offlock; r72 item 3): the
+open batch's extension (fnn-log-extension-decision) and append
+(fnn-log-append-capture: the kernel takes the append, the members go in
+flight) are decided, the batch is in flight (SEALED, sync state :syncing)
+and the open batch is reset for the next one.  No log I/O: the extension,
+the append's write (cut log-written) and the barrier (cut log-fenced) are
+the batch job's :extend, :append and :fence phases (fnn-log-sealed-extend,
+fnn-log-sealed-append, fnn-log-sync-sealed-batch), off the owner mutex, in
+that order (books/owner-queued-work.lisp fn-oqw-batch-effect-order).  A
+death between this capture and the write leaves the disk as at the last
+cut (nothing of the batch is written), so it stutters to that cut.
+Returns the PLAN (EXTENSION CAPTURED), or NIL when the batch is empty."
   (let* ((log (fnn-store-log store))
-         (count (fnn-log-count log)))
+         (count (fnn-log-count log))
+         (plan nil))
     (unless (eq (fnn-log-await-sync log) :fenced)
       (fnn-indeterminate "the log's barrier failed; the store needs recovery"))
     (when (plusp count)
       (handler-case
-          (progn
-            (fnn-log-ensure-extent log)
-            (fnn-log-append log)
-            (fnn-at store :log-written))
+          (let ((extension (fnn-log-extension-decision log)))
+            ;; The append is admitted against the extent the job's :extend
+            ;; phase makes durable before the append is written.
+            (when extension (setf (fnn-log-extent log) (car extension)))
+            (setq plan (list extension (fnn-log-append-capture log))))
         ((or fnn-store-indeterminate fnn-store-fault) (e) (error e))
-        (fnn-os-error (e)
-          (fnn-log-with-kernel (log)
-            (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-fence-failed (fnn-log-kernel log))))
-          (fnn-indeterminate "log batch outcome is indeterminate: ~a" e))
         (fnn-store-error (e)
           (fnn-fault "the log kernel refused the batch's append: ~a" e))))
     (fnn-log-with-kernel (log)
       (setf (fnn-log-sealed log) count
             (fnn-log-sync-state log) :syncing))
     (fnn-log-batch-reset log)
-    count))
+    plan))
+
+(defmacro fnn-log-sealed-effect ((log) &body body)
+  "BODY, an effect of the sealed batch run by its job: an OS error is the
+batch's uncertainty (the kernel is fenced: fn-lgc-fence-failed), as the
+seal under the owner classified it."
+  `(handler-case (progn ,@body)
+     ((or fnn-store-indeterminate fnn-store-fault) (e) (error e))
+     (fnn-os-error (e)
+       (fnn-log-with-kernel (,log)
+         (setf (fnn-log-kernel ,log) (fnn-core 'fn-lgc-fence-failed (fnn-log-kernel ,log))))
+       (fnn-indeterminate "log batch outcome is indeterminate: ~a" e))))
+
+(defun fnn-log-sealed-extend (store plan)
+  "The batch job's :extend phase: the extension the seal decided, if any."
+  (let ((log (fnn-store-log store)))
+    (fnn-log-sealed-effect (log)
+      (fnn-log-ensure-extent log (first plan)))))
+
+(defun fnn-log-sealed-append (store plan)
+  "The batch job's :append phase: the captured append's write, cut
+log-written (P-BATCH's append, fn-lg-append-program)."
+  (let ((log (fnn-store-log store)))
+    (when plan
+      (fnn-log-sealed-effect (log)
+        (fnn-log-append log (second plan))
+        (fnn-at store :log-written)))))
+
+(defun fnn-log-sealed-abandon (store)
+  "The batch job ended before its barrier (an intent, the extension or the
+append did not return): the sealed batch is uncertain.  The kernel is
+fenced (fn-lgc-fence-failed), its members are no longer in flight, and the
+sync state is :failed, as a failed barrier leaves it, so every waiter
+(fnn-log-await-sync) and the COMPLETE see the failure."
+  (let ((log (fnn-store-log store)))
+    (sb-thread:with-mutex ((fnn-log-lock log))
+      (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-fence-failed (fnn-log-kernel log))
+            (fnn-log-inflight log) nil
+            (fnn-log-sealed log) 0
+            (fnn-log-sync-state log) :failed)
+      (sb-thread:condition-broadcast (fnn-log-sync-cv log)))))
 
 (defun fnn-log-sync-sealed-batch (store)
   "SYNC (the syncer thread, the owner released): the sealed batch's barrier

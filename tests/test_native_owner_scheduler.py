@@ -70,15 +70,17 @@ class SchedulerSourceTests(unittest.TestCase):
         self.assertIn("'fn-otm-commit-event", owner)
         self.assertIn("'fn-otm-committer-wake", owner)
         self.assertLess(batch.index("(fnn-owner-commit-start-locked service)"),
-                        batch.index("(fnn-owner-start-syncer service gen)"))
-        self.assertLess(batch.index("(fnn-owner-start-syncer service gen)"),
+                        batch.index("(fnn-owner-start-syncer service gen job)"))
+        self.assertLess(batch.index("(fnn-owner-start-syncer service gen job)"),
                         batch.index("(fnn-owner-commit-start-locked service :seal nil)"))
         self.assertLess(batch.index("(sb-thread:join-thread syncer"),
                         batch.index("service :complete members deferred)"))
         self.assertLess(batch.index("service :complete members deferred)"),
-                        batch.index("(fnn-log-seal-open-batch store)"))
-        self.assertEqual(batch.count("(fnn-owner-start-syncer service gen)"), 1)
-        syncer = owner[owner.index("(defun fnn-owner-commit-sync "):owner.index("(defun fnn-owner-commit-complete-locked")]
+                        batch.index("(fnn-log-seal-capture store)"))
+        self.assertEqual(batch.count("(fnn-owner-start-syncer service gen job)"), 1)
+        # Lane owner-offlock: the syncer runs the batch JOB (its phases are
+        # ACL2's, books/owner-queued-work.lisp); the barrier is its :fence.
+        syncer = owner[owner.index("(defun fnn-owner-batch-fence "):owner.index("(defun fnn-owner-batch-effect ")]
         self.assertIn("(fnn-log-sync-sealed-batch ", syncer)
         control = (ROOT / "host" / "native" / "control.lisp").read_text()
         live = control[control.index("(defun fnn-control-live-status-answer "):control.index("(defun fnn-control-handle-client")]
