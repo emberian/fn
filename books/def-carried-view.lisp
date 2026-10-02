@@ -148,20 +148,35 @@
   :hints (("Goal" :induct (fn-cv-walk tail old racc))))
 
 (local
- (defthm fn-cv-append-is-not-its-tail
-   (implies (consp new) (not (equal (append new old) old)))
-   :hints (("Goal" :use ((:instance len-of-append (x new) (y old)))
-            :in-theory (disable len-of-append)))))
+ (defthm fn-cv-len-of-append
+   (equal (len (append x y)) (+ (len x) (len y)))))
+
+; NEW ++ OLD is not a list of OLD's length (so never OLD) while NEW has an
+; element; its first element and its rest, with `append' kept closed.
+(local
+ (defthm fn-cv-append-longer
+   (implies (and (consp new) (equal (len z) (len old)))
+            (not (equal (append new old) z)))
+   :hints (("Goal" :expand ((len new)) :in-theory (disable append)))))
 
 (local
- (defthm len-of-append
-   (equal (len (append x y)) (+ (len x) (len y)))))
+ (defthm fn-cv-consp-of-append
+   (implies (consp new) (consp (append new old)))))
+
+(local
+ (defthm fn-cv-cdr-of-append
+   (implies (consp new) (equal (cdr (append new old)) (append (cdr new) old)))))
+
+(local
+ (defthm fn-cv-append-of-atom
+   (implies (atom new) (equal (append new old) old))))
 
 ; THE VISIT BOUND: the walk over NEW ++ OLD steps exactly (len NEW)
 ; elements, since no earlier tail has OLD's length.
 (defthm fn-cv-walk-steps-of-append
   (equal (fn-cv-walk-steps (append new old) old) (len new))
-  :hints (("Goal" :induct (len new))))
+  :hints (("Goal" :induct (len new)
+           :in-theory (e/d (fn-cv-walk-steps) (append)))))
 
 ; ---------------------------------------------------------------------------
 ; The two invariant kinds, and the refresh over an abstract one.
@@ -180,10 +195,12 @@
 
 (defthm fn-cv-set-okp-of-build-onto-kept
   (implies (fn-cv-set-okp ws idx)
-           (fn-cv-set-okp ws (fn-cv-build-onto ys idx))))
+           (fn-cv-set-okp ws (fn-cv-build-onto ys idx)))
+  :hints (("Goal" :induct (fn-cv-build-onto ys idx))))
 
 (defthm fn-cv-set-okp-of-build-onto
-  (fn-cv-set-okp ys (fn-cv-build-onto ys idx)))
+  (fn-cv-set-okp ys (fn-cv-build-onto ys idx))
+  :hints (("Goal" :induct (fn-cv-build-onto ys idx))))
 
 (defthm fn-cv-set-okp-of-append
   (equal (fn-cv-set-okp (append a b) idx)
@@ -230,34 +247,58 @@
         (cons ws (fn-cv-fold (revappend ws nil) (fn-cv-empty)))))))
 
 (local
- (defthm fn-cv-revappend-revappend
-   (equal (revappend (revappend a b) c) (revappend b (append a c)))))
+ (defthm fn-cv-revappend-append
+   (equal (revappend a (append b c)) (append (revappend a b) c))
+   :hints (("Goal" :induct (revappend a b)))))
 
+(local
+ (defthm fn-cv-revappend-is-append
+   (equal (revappend a c) (append (revappend a nil) c))
+   :rule-classes nil
+   :hints (("Goal" :use ((:instance fn-cv-revappend-append (b nil)))))))
+
+(local
+ (defthm fn-cv-build-onto-of-revappend-cons
+   (equal (fn-cv-build-onto (revappend a (cons e nil)) idx)
+          (fn-cv-build-onto (revappend a nil) (fn-cv-put e idx)))
+   :hints (("Goal" :use ((:instance fn-cv-revappend-is-append (c (cons e nil))))))))
+
+; The executed fold of the reversed prefix is the :logic fold of the prefix.
 (local
  (defthm fn-cv-fold-is-build-onto-of-reverse
    (equal (fn-cv-fold racc idx) (fn-cv-build-onto (revappend racc nil) idx))
-   :hints (("Goal" :use ((:instance fn-cv-fold-of-revappend
-                                    (ys (revappend racc nil)) (racc nil)))
-            :in-theory (disable fn-cv-fold-of-revappend)))))
+   :hints (("Goal" :induct (fn-cv-fold racc idx)))))
 
+(local (in-theory (disable fn-cv-fold-is-build-onto-of-reverse)))
+
+; A found walk splits the list: WS = (the walked prefix) ++ OLD.
 (local
  (defthm fn-cv-found-splits
    (implies (mv-nth 0 (fn-cv-walk ws old nil))
-            (equal (append (revappend (mv-nth 1 (fn-cv-walk ws old nil)) nil) old)
-                   ws))
-   :hints (("Goal" :use ((:instance fn-cv-walk-found (tail ws) (racc nil)))
+            (equal ws (append (revappend (mv-nth 1 (fn-cv-walk ws old nil)) nil) old)))
+   :rule-classes nil
+   :hints (("Goal" :use ((:instance fn-cv-walk-found (tail ws) (racc nil))
+                         (:instance fn-cv-revappend-is-append
+                                    (a (mv-nth 1 (fn-cv-walk ws old nil))) (c old)))
             :in-theory (disable fn-cv-walk-found)))))
+
+(local
+ (defthm fn-cv-okp-of-extend-at
+   (implies (and (fn-cv-okp old idx) (equal ws (append new old)))
+            (fn-cv-okp ws (fn-cv-build-onto new idx)))))
 
 (defthm fn-cv-carryp-of-refresh
   (implies (fn-cv-carryp carry)
            (fn-cv-carryp (fn-cv-refresh carry ws)))
-  :hints (("Goal" :in-theory (disable fn-cv-walk fn-cv-fold fn-cv-build-onto
-                                      revappend-removal)
-           :use ((:instance fn-cv-okp-of-extend
+  :hints (("Goal" :in-theory (disable fn-cv-walk fn-cv-build-onto fn-cv-fold)
+           :use ((:instance fn-cv-found-splits (old (fn-cv-car carry)))
+                 (:instance fn-cv-fold-is-build-onto-of-reverse
+                            (racc (mv-nth 1 (fn-cv-walk ws (fn-cv-car carry) nil)))
+                            (idx (fn-cv-cdr carry)))
+                 (:instance fn-cv-okp-of-extend-at
                             (old (fn-cv-car carry)) (idx (fn-cv-cdr carry))
                             (new (revappend (mv-nth 1 (fn-cv-walk ws (fn-cv-car carry) nil))
-                                            nil)))
-                 (:instance fn-cv-found-splits (old (fn-cv-car carry)))))))
+                                            nil)))))))
 
 (defthm fn-cv-car-of-refresh
   (equal (fn-cv-car (fn-cv-refresh carry ws)) ws))
