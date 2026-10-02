@@ -943,6 +943,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/post-identity-catalog-tests \
 	books/post-prepare-catalog \
 	tests/acl2/post-prepare-catalog-tests \
+	books/peer-transit-indexed \
+	tests/acl2/peer-transit-indexed-tests \
 	books/post-retain-carried \
 	tests/acl2/post-retain-carried-tests \
 	books/identity-retain-carried \
@@ -1430,6 +1432,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/nov-column-window-tests \
 	books/served-catalog \
 	books/served-catalog-chain \
+	books/served-catalog-dispatch \
 	books/served-catalog-owner \
 	books/served-catalog-owner-keyed \
 	books/served-catalog-join-refresh \
@@ -1499,6 +1502,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/catalog-entries-tests \
 	tests/acl2/catalog-refresh-tests \
 	tests/acl2/served-catalog-tests \
+	tests/acl2/served-incremental-tests \
 	tests/acl2/over-window-tests \
 	tests/acl2/served-catalog-view-tests \
 	tests/acl2/served-catalog-chain-tests \
