@@ -2347,16 +2347,16 @@
     "books": 2760,
     "books_in_root_closure": 2615,
     "roots": 2340,
-    "theorems": 36994,
-    "functions": 23421,
-    "assert_events": 25786,
+    "theorems": 36997,
+    "functions": 23430,
+    "assert_events": 25791,
     "must_fails": 2647,
     "prover_refusals": 0,
-    "encapsulates": 213,
+    "encapsulates": 214,
     "guards": {
-      "verified": 3911,
+      "verified": 3912,
       "declared-off": 3039,
-      "default-guarded": 12931,
+      "default-guarded": 12939,
       "default-unguarded": 3540
     },
     "suspect_theorems": 1365,
@@ -41936,15 +41936,15 @@
       "book": "books/retention.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 55,
-      "functions": 45,
+      "theorems": 58,
+      "functions": 49,
       "guards": {
-        "verified": 41,
+        "verified": 42,
         "declared-off": 0,
-        "default-guarded": 4,
+        "default-guarded": 7,
         "default-unguarded": 0
       },
-      "verify_guards_events": 59,
+      "verify_guards_events": 60,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -75529,20 +75529,20 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 0,
+      "functions": 5,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 0,
+        "default-guarded": 5,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 66,
+      "assert_events": 71,
       "must_fails": 1,
       "prover_refusals": 0,
-      "defconsts": 21,
+      "defconsts": 25,
       "defmacros": 0,
-      "encapsulates": 0,
+      "encapsulates": 1,
       "includes": [
         "../../books/retention-invariants",
         "must-fail-checked"
@@ -88412,7 +88412,7 @@
     {
       "theorem": "fn-retain-admission-refusal-is-no-op",
       "book": "books/retention.lisp",
-      "line": 448,
+      "line": 499,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-retain-admit and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis negates a branch test of fn-retain-admit and the conclusion is that branch's value"
@@ -88421,7 +88421,7 @@
     {
       "theorem": "fn-retain-wrong-evidence-does-not-release",
       "book": "books/retention.lisp",
-      "line": 488,
+      "line": 539,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-retain-release and the conclusion is that branch's value"
       ]

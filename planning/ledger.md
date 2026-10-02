@@ -13,16 +13,16 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 2760 |
 | Certification roots in the Makefile | 2340 |
 | Books inside the root closure | 2615 |
-| `defthm` and `defthmd` events | 36994 |
-| `defun` events | 23421 |
-| Functions with verified guards | 3911 |
+| `defthm` and `defthmd` events | 36997 |
+| `defun` events | 23430 |
+| Functions with verified guards | 3912 |
 | Functions declared `:verify-guards nil` and never verified | 3039 |
-| Functions left at the default with an explicit guard | 12931 |
+| Functions left at the default with an explicit guard | 12939 |
 | Functions left at the default with no guard | 3540 |
-| `assert-event` checks | 25786 |
+| `assert-event` checks | 25791 |
 | `must-fail` checks | 2647 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
-| `encapsulate` events | 213 |
+| `encapsulate` events | 214 |
 | Theorems flagged SUSPECT by shape | 1365 |
 | Export-hygiene warnings | 402 |
 | Enabled-projection warnings | 79 |
@@ -1432,7 +1432,7 @@ that `make certify` requests.
 | `books/retention-figures.lisp` | root | 0 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `books/retention-invariants.lisp` | root | 17 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/retention-obligation-view.lisp` | root | 22 | 11 | 0/1/10/0 | 0 | 0 | 0 |
-| `books/retention.lisp` | root | 55 | 45 | 41/0/4/0 | 0 | 0 | 2 |
+| `books/retention.lisp` | root | 58 | 49 | 42/0/7/0 | 0 | 0 | 2 |
 | `books/rev-onto.lisp` | root | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/runtime-acceptance-observation.lisp` | closure | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/runtime-bootstrap-admission.lisp` | closure | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
@@ -2634,7 +2634,7 @@ that `make certify` requests.
 | `tests/acl2/resource-vector-tests.lisp` | root | 13 | 1 | 0/0/0/1 | 46 | 20 | 0 |
 | `tests/acl2/resource-vector-tree-tests.lisp` | root | 5 | 0 | 0/0/0/0 | 15 | 5 | 0 |
 | `tests/acl2/response-plan-pins-tests.lisp` | root | 7 | 0 | 0/0/0/0 | 3 | 0 | 0 |
-| `tests/acl2/retention-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 66 | 1 | 0 |
+| `tests/acl2/retention-tests.lisp` | root | 0 | 5 | 0/0/5/0 | 71 | 1 | 0 |
 | `tests/acl2/runtime-bootstrap-completion-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 2 | 0 | 0 |
 | `tests/acl2/runtime-bootstrap-export-tests.lisp` | root | 4 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/runtime-bootstrap-source-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 0 | 0 |
@@ -3711,8 +3711,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-replay-result-reason-of-fn-replay-fault` | `books/replay.lisp` | 182 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-replay-result-sequence-of-fn-replay-fault` | `books/replay.lisp` | 178 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-replay-result-sequence-of-fn-replay-ok` | `books/replay.lisp` | 167 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-retain-admission-refusal-is-no-op` | `books/retention.lisp` | 448 | arm-of-definition: the hypotheses select one IF/COND arm of fn-retain-admit and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-retain-admit and the conclusion is that branch's value |
-| `fn-retain-wrong-evidence-does-not-release` | `books/retention.lisp` | 488 | branch-of-definition: the hypothesis negates a branch test of fn-retain-release and the conclusion is that branch's value |
+| `fn-retain-admission-refusal-is-no-op` | `books/retention.lisp` | 499 | arm-of-definition: the hypotheses select one IF/COND arm of fn-retain-admit and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-retain-admit and the conclusion is that branch's value |
+| `fn-retain-wrong-evidence-does-not-release` | `books/retention.lisp` | 539 | branch-of-definition: the hypothesis negates a branch test of fn-retain-release and the conclusion is that branch's value |
 | `fn-rfx-refused-reconfigure-is-unchanged-by-definition` | `books/refusal-effect.lisp` | 71 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ocfg-reconfigure and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-ocfg-reconfigure and the conclusion is that branch's value |
 | `fn-rfx-unaffordable-prepare-is-unchanged-by-definition` | `books/refusal-effect.lisp` | 65 | arm-of-definition: the hypotheses select one IF/COND arm of fn-prc-sbud-prepare and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-prc-sbud-prepare and the conclusion is that branch's value |
 | `fn-rfx-unserved-prepare-is-unchanged-by-definition` | `books/refusal-effect.lisp` | 59 | arm-of-definition: the hypotheses select one IF/COND arm of fn-psrv-prepare and the conclusion is that arm's value |
