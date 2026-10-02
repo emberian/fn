@@ -4,19 +4,25 @@ The hold occurs after issue/acquisition and before pread, off both locks.
 Reclaim retires the old file while the original worker remains live; its
 close must wait. Client cancellation does not publish into a new request.
 Late short/error results remain named store faults, not swallowed threads.
+Runs on the unfunded line's issued rows and persistent workers
+(books/page-read-direct.lisp, PRF-1234; lane cold-read-ownership).
 """
 import re
 import time
 import unittest
 
 from tests.native_harness import Client, EXIT, requires, scratch
-from tests.test_native_expiry import DEVELOPER, DeveloperExpiryTests, ExpiryMixin, msgid
+from tests import test_native_expiry as expiry  # module access: no second run of its test classes here
+from tests.test_native_expiry import DEVELOPER, ExpiryMixin, msgid
 
 
 def page_io_logical_lines(data):
     """Collapse pretty-print whitespace only within the exact issued token6."""
     token = re.compile(rb"(PAGE-IO [^\r\n]*token=)\((\d+(?:\s+\d+){5})\)")
-    return token.sub(lambda m: m.group(1) + b"(" + b" ".join(m.group(2).split()) + b")",
+    data = token.sub(lambda m: m.group(1) + b"(" + b" ".join(m.group(2).split()) + b")", data)
+    # A settled fault answer is a two-element list the printer may wrap too.
+    fault = re.compile(rb"(PAGE-IO settled [^\r\n]*answer=)\((:FAULT)\s+(:[A-Z]+)\)")
+    return fault.sub(lambda m: m.group(1) + b"(" + m.group(2) + b" " + m.group(3) + b")",
                      data).splitlines()
 
 
@@ -29,6 +35,13 @@ class PageIOObservationTests(unittest.TestCase):
         self.assertRegex(lines[0], rb"PAGE-IO held token=.* file=3$")
         self.assertRegex(lines[1], rb"PAGE-IO settled token=.* answer=:CANCELLED$")
         self.assertNotRegex(lines[0], rb"answer=:PUBLISH")
+
+    def test_wrapped_fault_answer_is_one_observation(self):
+        text = (b"PAGE-IO settled token=(0 0 1 0 658\n   12345) answer=(:FAULT\n"
+                b"                     :READ)\nowner core/store fault\n")
+        lines = page_io_logical_lines(text)
+        self.assertEqual(lines[0], b"PAGE-IO settled token=(0 0 1 0 658 12345) answer=(:FAULT :READ)")
+        self.assertEqual(lines[1], b"owner core/store fault")
 
     def test_incomplete_token_cannot_join_a_later_event(self):
         text = b"PAGE-IO held token=(1 2 3\nPAGE-IO settled token=(4 5 6) answer=:PUBLISH\n"
@@ -44,29 +57,15 @@ class PageIOTests(unittest.TestCase):
     image = DEVELOPER
     post_all = ExpiryMixin.post_all
     filled = ExpiryMixin.filled
-    reclaim = ExpiryMixin.reclaim
     owner_lines = ExpiryMixin.owner_lines
-    recorded_base = DeveloperExpiryTests.recorded_base
+    node = ExpiryMixin.node
+    copy_of = expiry.DeveloperExpiryTests.copy_of
 
-    # Explicit scenario input, not a default or a full Store productivity claim.
-    cold_resources = {
-        "cold_heap_octets": 67108864,
-        "cold_workers": 2,
-        "cold_descriptors": 64,
-        "cold_read_ids": 100000,
-        "cold_file_ids": 100000,
-    }
-
-    def fund(self, node):
-        node.cold_resources = dict(self.cold_resources)
-        node.write_config()
-        return node
-
-    def node(self, name="node"):
-        return self.fund(ExpiryMixin.node(self, name))
-
-    def copy_of(self, base, name):
-        return self.fund(DeveloperExpiryTests.copy_of(self, base, name))
+    # The unfunded served line (books/page-read-direct.lisp, lane
+    # cold-read-ownership): an operator run refuses a [resources] cold pool
+    # (UNSUPPORTED-PROFILE cold_resources) until stage 6 installs it, so these
+    # nodes run the default profile, whose cold reads hold an issued row and
+    # one of the fixed persistent workers.
 
     def setUp(self):
         self.root = scratch(self, "fn-page-io-")
@@ -106,7 +105,18 @@ class PageIOTests(unittest.TestCase):
         node.stop(expect=None, grace=300)
 
     def test_cancel_retire_and_reuse_keep_the_old_fd_until_actual_completion(self):
-        base = self.recorded_base()
+        # The retirement is an operator compaction while serving: its
+        # publication reseats EVERY handle the dropped log segment named at
+        # the checkpoint's frames, so the segment becomes quiet
+        # (fn-xrt-quiet-files) while the original worker still owns its
+        # descriptor -- the close must wait for the worker's actual return.
+        # (A recorded reclaim cannot retire the file here: the arena keeps a
+        # reclaimed record's handle, and its extent, valid until the next
+        # open -- books/payload-arena.lisp, no delete export -- so a file that
+        # held a reclaimed payload stays named until restart.  That is a
+        # known gap of Q16, filed by lane cold-read-ownership-2, not an
+        # ownership question.)
+        base = self.filled()
         for mode in ("", "stale", "duplicate"):
             with self.subTest(completion=mode or "success"):
                 node = self.copy_of(base, "late-" + (mode or "success"))
@@ -118,12 +128,21 @@ class PageIOTests(unittest.TestCase):
                 # a descriptor from the previous reader generation.
                 new = Client(node.port, timeout=120, greeting=None)
                 self.addCleanup(new.close, False)
-                result = self.reclaim(node, "--recorded")
-                self.assertIn(b"installed", result.stdout, result.stdout + result.stderr)
+                asked = node.operator("store", "compact", timeout=1200, expect=None)
+                self.assertEqual(asked.returncode, EXIT.OK, asked.stdout + asked.stderr)
+                self.wait_line(owner, rb"CHECKPOINT release reseated=[1-9]\d* incomplete=0 ")
                 self.wait_line(owner, rb"PAGE-IO close-held file=" + file_id + rb"$")
                 text = owner.stderr.since(0)
                 self.assertNotRegex(text, rb"PAGE-IO closed file=" + file_id + rb"\r?\n")
-                self.assertTrue(new.command("STAT " + msgid("p0")).startswith(b"430 article reclaimed"))
+                # The new request's read is issued at the reseated extent (the
+                # checkpoint's frame, another file), never through the held
+                # descriptor; the device holds it too, so it answers 403.
+                stat = new.command("STAT " + msgid("p0"))
+                self.assertTrue(stat.startswith(b"403 article temporarily unavailable"), stat)
+                held = [l for l in page_io_logical_lines(owner.stderr.since(0))
+                        if re.search(rb"PAGE-IO held token=.* file=\d+$", l)]
+                self.assertEqual(len(held), 2, held)
+                self.assertNotEqual(re.search(rb"file=(\d+)$", held[1]).group(1), file_id, held)
                 release.write_bytes(b"release")
                 self.wait_line(owner, rb"PAGE-IO settled token=.* answer=:CANCELLED")
                 self.wait_line(owner, rb"PAGE-IO closed file=" + file_id + rb"$")
@@ -132,6 +151,9 @@ class PageIOTests(unittest.TestCase):
                 # No late 220/body is delivered into this replacement request.
                 self.assertTrue(new.command("DATE").startswith(b"111"))
                 self.assertIsNotNone(new.article(msgid("n0")))
+                # The reclaimed-free retirement served on: p0 reads its octets
+                # through the checkpoint's frame.
+                self.assertIn(b"body of p0", new.article(msgid("p0")) or b"")
                 new.close(False)
                 node.stop(expect=None, grace=300)
 

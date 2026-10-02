@@ -4710,6 +4710,19 @@
 (definterface fn-pio-worker-death-step :class :common-lisp-compliant
   :kinds ((deadp booleanp)))
 
+;; books/page-read-direct.lisp (lane cold-read-ownership): the unfunded cold
+;; line's issued rows and bounded persistent workers (host/native/extent.lisp
+;; fnn-extent-direct-start, fnn-extent-issue-direct, fnn-extent-direct-settle).
+(definterface fn-pio-direct-workers :class :common-lisp-compliant)
+(definterface fn-pio-direct-admit :class :common-lisp-compliant
+  :keystones ((fn-pio-direct-admit-binds-an-idle-worker-to-the-issued-identity :via fn-pio-direct-admit)
+              (fn-pio-direct-cancelled-read-still-pins-its-file :via fn-pio-direct-admit)))
+(definterface fn-pio-direct-settle :class :common-lisp-compliant
+  :keystones ((fn-pio-direct-settle-publishes-only-the-issued-identity :via fn-pio-direct-settle)
+              (fn-pio-direct-settle-observes-every-outcome :via fn-pio-direct-settle)
+              (fn-pio-direct-settle-stale-changes-nothing :via fn-pio-direct-settle)
+              (fn-pio-direct-settle-happens-once :via fn-pio-direct-settle)))
+
 
 
 (definterface fn-native-operator-host-result-init-budget

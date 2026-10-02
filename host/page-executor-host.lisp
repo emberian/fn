@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "page-read-host")
 (include-book "../books/page-read-executor")
+(include-book "../books/page-read-direct") ; the unfunded cold line (host/native/extent.lisp)
 
 (defun fn-owner-page-executor-acquire (worker token fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool))

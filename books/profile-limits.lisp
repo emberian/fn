@@ -44,6 +44,8 @@
      "the node's threads that are not I/O loops or control clients")
     (:mux-loops 2 "threads"
      "the I/O loops every served connection is multiplexed on")
+    (:cold-workers 4 "threads"
+     "the persistent workers that read a cold page off the owner mutex while the page pool is unfunded: a stalled read holds one, and a miss past them is refused by name (books/page-read-direct.lisp)")
     (:control-clients 16 "clients"
      "concurrent control-socket clients the owner serves")
     (:thread-runtime-mib 4 "MiB"

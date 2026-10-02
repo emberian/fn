@@ -239,8 +239,8 @@ machine is the least of its physical memory, the cgroup's `memory.max`
 store's next `run` over the store on disk (`fn-heap-status-decide`, the same
 decision as the launcher's probe): `heap=MB MB profile=WORD machine=M MB
 stack=KB KB threads=N`. The thread stacks are added by
-books/heap-reservation.lisp (<!--limit:fixed-threads + mux-loops + control-clients-->30<!--/limit--> threads: <!--limit:fixed-threads-->12<!--/limit--> fixed, <!--limit:mux-loops-->2<!--/limit--> I/O loops, <!--limit:control-clients-->16<!--/limit--> control
-clients; a connection is no thread since connection-multiplexing). The
+books/heap-reservation.lisp (<!--limit:fixed-threads + mux-loops + control-clients + cold-workers-->34<!--/limit--> threads: <!--limit:fixed-threads-->12<!--/limit--> fixed, <!--limit:mux-loops-->2<!--/limit--> I/O loops, <!--limit:control-clients-->16<!--/limit--> control
+clients, <!--limit:cold-workers-->4<!--/limit--> cold-read workers; a connection is no thread since connection-multiplexing). The
 installed launcher ignores the caller's `SBCL_USER_ARGS` and
 `FN_TEST_HEAP_MB`; a checkout's `packaging/fn` takes the tests'
 `FN_TEST_HEAP_MB`. The presets' full-store figures on a 389 MB core:

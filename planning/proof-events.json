@@ -3,6 +3,35 @@
   "schema_version": 1,
   "targets": [
     {
+      "id": "PRF-1234",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pio-direct-admit-binds-an-idle-worker-to-the-issued-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pio-direct-cancelled-read-still-pins-its-file"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pio-direct-settle-publishes-only-the-issued-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pio-direct-settle-observes-every-outcome"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pio-direct-settle-stale-changes-nothing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pio-direct-settle-happens-once"
+        }
+      ]
+    },
+    {
       "id": "PRF-001",
       "events": [
         {

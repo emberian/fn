@@ -26,11 +26,13 @@ latency; the node's answers are stated relative to it
 """
 import json
 import os
+from pathlib import Path
 import re
 import select
 import shutil
 import signal
 import socket
+import subprocess
 import threading
 import time
 import unittest
@@ -46,6 +48,17 @@ DISK_STALLED = re.compile(rb"^disk stalled: barrier (\d+) ms pending deadline-ms
                           rb"slow-episodes=(\d+) stalls=(\d+) posts=try-later members=uncertain$", re.M)
 DISK_OK = re.compile(rb"^disk ok: pending-ms=(\d+) last-barrier-ms=(\d+) max-barrier-ms=(\d+) "
                      rb"deadline-ms=(\d+) stall-ms=(\d+) slow-episodes=(\d+) stalls=(\d+)$", re.M)
+
+
+def thread_count(pid):
+    """Linux: /proc; OpenBSD: ps -H lists each kernel-visible thread."""
+    status = Path("/proc/%d/status" % pid)
+    if status.exists():
+        for row in status.read_text().splitlines():
+            if row.startswith("Threads:"):
+                return int(row.split()[1])
+    return len(subprocess.run(["ps", "-H", "-o", "pid=", "-p", str(pid)],
+                              stdout=subprocess.PIPE, text=True).stdout.split())
 
 
 class SlowDiskSourceTests(unittest.TestCase):
@@ -326,6 +339,72 @@ class SlowDiskNativeTests(unittest.TestCase):
                 self.assertTrue(line.startswith(b"403"), line)
                 self.assertLess(time.monotonic(), deadline, "the page never came back")
                 time.sleep(0.5)
+
+    def test_a_retry_storm_on_a_stalled_disk_keeps_threads_and_reads_bounded(self):
+        """Lane cold-read-ownership (Codex r31 F2; books/page-read-direct.lisp).
+        While the read device stalls, a client retries a cold ARTICLE over
+        and over.  Each retry used to start one more thread with its own
+        buffer and orphan it at the deadline.  Now a read occupies one of
+        ACL2's fixed cold workers (fn-pio-direct-workers) until its pread
+        actually returns: the first retries wait out the dependency deadline
+        (403 temporarily unavailable), and once every worker holds a stalled
+        read the next ones are refused AT ONCE by name (403 cold read
+        resources unavailable) -- no new thread, no new buffer.  The node's
+        thread count does not grow with the retries.  When the device
+        comes back every stalled read settles (cancelled: nothing is
+        published for a request that timed out) and the article reads."""
+        workers = 4  # books/profile-limits.lisp :cold-workers
+        retries = 3 * workers
+        with node_log_on_failure(self.owner):
+            conn, stream = self.connect()
+            self.addCleanup(conn.close)
+            self.send_article(stream, b"storm-a@example.invalid", b"article A")
+            self.assertTrue(stream.readline().startswith(b"240"))
+            conn.close()
+            self.reap(self.owner)
+            readstall = self.root / "readstall"
+            self.addCleanup(lambda: readstall.unlink() if readstall.exists() else None)
+            self.owner = self.start_owner({"FN_NATIVE_TEST_READ_STALL_FILE": str(readstall)})
+            pid = self.owner.pid
+            c1, s1 = self.connect()
+            self.addCleanup(c1.close)
+            before = thread_count(pid)
+            readstall.write_bytes(b"")
+            timed_out, refused, peak = 0, 0, before
+            for _ in range(retries):
+                started = time.monotonic()
+                s1.write(b"ARTICLE <storm-a@example.invalid>\r\n")
+                s1.flush()
+                line = s1.readline()
+                waited = time.monotonic() - started
+                peak = max(peak, thread_count(pid))
+                if line.startswith(b"403 article temporarily unavailable; cold read resources unavailable"):
+                    refused += 1
+                    self.assertLess(waited, 2.0, (line, waited))
+                else:
+                    self.assertTrue(line.startswith(b"403 article temporarily unavailable"), line)
+                    self.assertGreaterEqual(waited, 4.5, waited)
+                    timed_out += 1
+            print("NATIVE-COLD-STORM retries=%d timed-out=%d refused=%d threads=%d->%d"
+                  % (retries, timed_out, refused, before, peak))
+            self.assertEqual(timed_out, workers, (timed_out, refused))
+            self.assertEqual(refused, retries - workers, (timed_out, refused))
+            # A thread per retry would be RETRIES more; allow the owner's own
+            # lazily started threads (fewer than one retry's worth each).
+            self.assertLess(peak - before, workers, (before, peak))
+            readstall.unlink()
+            deadline = time.monotonic() + 30
+            while True:
+                s1.write(b"ARTICLE <storm-a@example.invalid>\r\n")
+                s1.flush()
+                line = s1.readline()
+                if line.startswith(b"220"):
+                    self.assertIn(b"article A", b"".join(iter(lambda: s1.readline(), b".\r\n")))
+                    break
+                self.assertTrue(line.startswith(b"403"), line)
+                self.assertLess(time.monotonic(), deadline, "the page never came back")
+                time.sleep(0.5)
+            self.assertLess(thread_count(pid) - before, workers)
 
     def test_reads_and_control_stay_flat_while_the_disk_stalls_and_posts_are_refused_try_later(self):
         # Slice 2: H far past this test's stall (the posters of a batch
