@@ -42,9 +42,13 @@
 ;                                  ; profile's :at bindings THM mentions, plus its own
 ;     [:lemmas (THM ...)]          ; theorems enabled as rules (a callee's own writer
 ;                                  ; theorem, a conditional install lemma)
-;     [:step (EVENT-TERM THM)]     ; FN goes through STEP at EVENT-TERM, (list :KIND ...)
-;                                  ; over FN's formals: STEP-KIND-preserves-SYM is
-;                                  ; generated first, from THM
+;     [:step (EVENT-TERM THM) | (STEP EVENT-TERM THM)]
+;                                  ; FN goes through the profile's STEP (or the named
+;                                  ; one, whose event formal is its one non-stobj
+;                                  ; formal) at EVENT-TERM, (list :KIND ...) over FN's
+;                                  ; formals: STEP-KIND-preserves-SYM is generated
+;                                  ; first, from THM, or reused when it is already a
+;                                  ; theorem with that very statement
 ;     [:bridges ((PRED THM) ...)]  ; bridges FN's guard adds to the row: THM proves
 ;                                  ; (implies (R x) <PRED's conjunct at x>)
 ;     [:hyps (H ...)]              ; hypotheses beside (R s), each a conjunct of FN's
@@ -517,11 +521,32 @@
   (and (consp event) (eq (car event) 'list) (consp (cdr event))
        (keywordp (cadr event)) (cadr event)))
 
-(defun fn-cw-step-name (profile event fn)
+(defun fn-cw-step-name (pstep profile event fn)
   (declare (xargs :mode :program))
-  (packn-pos (list (car (fn-cd-get :step profile)) '- (symbol-name (fn-cw-step-kind event))
+  (packn-pos (list pstep '- (symbol-name (fn-cw-step-kind event))
                    '-preserves- (fn-cd-get :suffix profile))
              fn))
+
+(defun fn-cw-step-statement (pstep evf event profile w)
+  (declare (xargs :mode :program))
+  ; (implies (R s) (R (STEP ... EVENT ...))), untranslated
+  (let ((r (fn-cd-get :invariant profile))
+        (st (fn-cd-get :state profile)))
+    (mv-let (msg s ret all)
+      (fn-cd-parts st (list pstep 'none) w)
+      (declare (ignore msg all))
+      (list 'implies (list r s)
+            (list r (fn-cw-untranslate-ret (fn-cd-subst ret (list (cons evf event)))))))))
+
+(defun fn-cw-step-reusable (name statement w)
+  (declare (xargs :mode :program))
+  ; :absent, :reusable (a theorem whose formula is STATEMENT translated), or
+  ; :other (a theorem with another formula)
+  (let ((formula (getpropc name 'theorem nil w)))
+    (cond ((null formula) :absent)
+          (t (mv-let (bad terms)
+               (fn-cd-translate-list (list statement) w)
+               (if (and (null bad) (equal (car terms) formula)) :reusable :other))))))
 
 (defun fn-cw-theorem-name (fn kvs profile)
   (declare (xargs :mode :program))
@@ -532,11 +557,60 @@
 (defun fn-cw-covered (kvs profile w)
   (declare (xargs :mode :program))
   ; the functions some :via, :lemmas, :frame or step theorem mentions
-  (union-eq (and (fn-cw-get :step kvs) (list (car (fn-cd-get :step profile))))
+  (union-eq (and (fn-cw-get :step kvs)
+                 (list (if (equal (len (fn-cw-get :step kvs)) 3)
+                           (car (fn-cw-get :step kvs))
+                         (car (fn-cd-get :step profile)))))
             (fn-cw-theorem-fnnames (append (fn-cw-via-names (fn-cw-get :via kvs))
                                            (fn-cw-get :lemmas kvs)
                                            (fn-cd-get :frame profile))
                                    w)))
+
+(defun fn-cw-non-stobj-formals (formals stobjs)
+  (declare (xargs :mode :program))
+  (cond ((atom formals) nil)
+        ((car stobjs) (fn-cw-non-stobj-formals (cdr formals) (cdr stobjs)))
+        (t (cons (car formals) (fn-cw-non-stobj-formals (cdr formals) (cdr stobjs))))))
+
+(defun fn-cw-resolve-step (fn step profile w)
+  (declare (xargs :mode :program))
+  ; (mv MSG STEP-FN EVENT-FORMAL EVENT THM) of a writer's :step, (EVENT THM)
+  ; through the profile's step or (STEP EVENT THM) through a named one
+  (let ((st (fn-cd-get :state profile)))
+    (cond
+     ((null step) (mv nil nil nil nil nil))
+     ((not (and (true-listp step) (member (len step) '(2 3))))
+      (mv (msg "~x0: :step ~x1 is not (EVENT-TERM THM) or (STEP EVENT-TERM THM)" fn step)
+          nil nil nil nil))
+     ((and (equal (len step) 2) (null (fn-cd-get :step profile)))
+      (mv (msg "~x0 declares :step (EVENT-TERM THM) but its profile ~x1 names no step ~
+                transition: say (STEP EVENT-TERM THM)" fn (fn-cd-get :invariant profile))
+          nil nil nil nil))
+     ((equal (len step) 2)
+      (mv nil (car (fn-cd-get :step profile)) (cadr (fn-cd-get :step profile))
+          (car step) (cadr step)))
+     ((not (and (symbolp (car step)) (car step)
+                (not (eq (getpropc (car step) 'formals :none w) :none))
+                (fn-cd-stobj-position st (stobjs-out (car step) w) w)))
+      (mv (msg "~x0: :step names ~x1, which is not a function returning ~x2 in this world"
+               fn (car step) st)
+          nil nil nil nil))
+     (t (let ((evfs (fn-cw-non-stobj-formals (getpropc (car step) 'formals nil w)
+                                            (stobjs-in (car step) w))))
+          (if (and (consp evfs) (null (cdr evfs)))
+              (mv nil (car step) (car evfs) (cadr step) (caddr step))
+            (mv (msg "~x0: :step's ~x1 has ~x2 non-stobj formals ~x3; the event formal ~
+                      is not determined (name it in the profile's :step)"
+                     fn (car step) (len evfs) evfs)
+                nil nil nil nil)))))))
+
+(defun fn-cw-step-event (step)
+  (declare (xargs :mode :program))
+  (if (equal (len step) 3) (cadr step) (car step)))
+
+(defun fn-cw-step-thm (step)
+  (declare (xargs :mode :program))
+  (if (equal (len step) 3) (caddr step) (cadr step)))
 
 (defun fn-cw-problem (fn kvs w)
   (declare (xargs :mode :program))
@@ -587,14 +661,18 @@
       (mv (msg "~x0: :lemmas names ~x1, which is not a theorem in this world"
                fn (car (fn-cw-first-non-theorem lemmas w)))
           nil))
-     ((and step (null (fn-cd-get :step profile)))
-      (mv (msg "~x0 declares :step but its profile ~x1 names no step transition" fn pname) nil))
-     ((and step (not (and (true-listp step) (equal (len step) 2))))
-      (mv (msg "~x0: :step ~x1 is not (EVENT-TERM THM)" fn step) nil))
-     ((and step (not (fn-cw-step-kind (car step))))
-      (mv (msg "~x0: :step's event ~x1 is not a (list :KIND ...) term" fn (car step)) nil))
-     ((and step (fn-cw-first-non-theorem (list (cadr step)) w))
-      (mv (msg "~x0: :step names ~x1, which is not a theorem in this world" fn (cadr step)) nil))
+     ((and step (mv-let (m a b c d) (fn-cw-resolve-step fn step profile w)
+                  (declare (ignore a b c d)) m))
+      (mv (mv-let (m a b c d) (fn-cw-resolve-step fn step profile w)
+            (declare (ignore a b c d)) m)
+          nil))
+     ((and step (not (fn-cw-step-kind (fn-cw-step-event step))))
+      (mv (msg "~x0: :step's event ~x1 is not a (list :KIND ...) term" fn (fn-cw-step-event step))
+          nil))
+     ((and step (fn-cw-first-non-theorem (list (fn-cw-step-thm step)) w))
+      (mv (msg "~x0: :step names ~x1, which is not a theorem in this world"
+               fn (fn-cw-step-thm step))
+          nil))
      ((not (fn-cd-pairsp bridges))
       (mv (msg "~x0: :bridges ~x1 is not ((PRED THM) ...)" fn bridges) nil))
      ((fn-cw-first-non-theorem (strip-cadrs bridges) w)
@@ -614,9 +692,15 @@
       (mv (msg "~x0: ~x1 is already a theorem of this world"
                fn (fn-cw-theorem-name fn kvs profile))
           nil))
-     ((and step (getpropc (fn-cw-step-name profile (car step) fn) 'theorem nil w))
-      (mv (msg "~x0: the step lemma ~x1 is already a theorem of this world"
-               fn (fn-cw-step-name profile (car step) fn))
+     ((and step (mv-let (m pstep evf event thm) (fn-cw-resolve-step fn step profile w)
+                  (declare (ignore m thm))
+                  (eq (fn-cw-step-reusable (fn-cw-step-name pstep profile event fn)
+                                           (fn-cw-step-statement pstep evf event profile w) w)
+                      :other)))
+      (mv (msg "~x0: the step lemma ~x1 is already a theorem of this world with another ~
+                statement" fn (mv-let (m pstep evf event thm) (fn-cw-resolve-step fn step profile w)
+                                (declare (ignore m evf thm))
+                                (fn-cw-step-name pstep profile event fn)))
           nil))
      (t
       (mv-let (msg s ret all)
@@ -625,7 +709,9 @@
         (if msg
             (mv msg nil)
           (mv-let (bade eterms)
-            (fn-cd-translate-list (append (fn-cw-get :hyps kvs) (and step (list (car step)))) w)
+            (fn-cd-translate-list (append (fn-cw-get :hyps kvs)
+                                          (and step (list (fn-cw-step-event step))))
+                                  w)
             (mv-let (refusal uncovered)
               (fn-cw-guard-classes (flatten-ands-in-lit (getpropc fn 'guard *t* w))
                                    fn s r profile bridges w)
@@ -649,7 +735,7 @@
                  ((and step (not (subsetp-eq (all-vars (car eterms))
                                              (getpropc fn 'formals nil w))))
                   (mv (msg "~x0: :step's event ~x1 mentions variables that are not ~x0's ~
-                            formals ~x2" fn (car step) (getpropc fn 'formals nil w))
+                            formals ~x2" fn (fn-cw-step-event step) (getpropc fn 'formals nil w))
                       nil))
                  ((and refusal (eq (car (car refusal)) :argument))
                   (mv (msg "~x0's guard conjunct ~x1 is over ~x2, an argument the host ~
@@ -700,26 +786,28 @@
 
 (defun fn-cw-step-events (fn kvs profile w)
   (declare (xargs :mode :program))
-  ; the lemma that the profile's STEP at the writer's event keeps R
-  (let* ((step (fn-cw-get :step kvs))
-         (r (fn-cd-get :invariant profile))
-         (st (fn-cd-get :state profile))
-         (formal (fn-cd-get :formal profile))
-         (pstep (car (fn-cd-get :step profile)))
-         (evf (cadr (fn-cd-get :step profile)))
-         (name (fn-cw-step-name profile (car step) fn)))
-    (mv-let (msg s ret all)
-      (fn-cd-parts st (list pstep 'none) w)
-      (declare (ignore msg all))
-      `((defthm ,name
-          (implies (,r ,s) (,r ,(fn-cd-subst ret (list (cons evf (car step))))))
-          :hints (("Goal" :in-theory (union-theories
-                                      '(,pstep ,@(fn-cd-get :frame profile)
-                                        ,@(fn-cd-get :theory profile))
-                                      (theory 'minimal-theory))
-                   :use (,@(fn-cw-instances (list (cadr step)) (fn-cd-get :at profile)
-                                            formal s w)
-                         ,(fn-cd-get :bridge profile)))))))))
+  ; (mv NAME EVENTS): the lemma that STEP at the writer's event keeps R, or
+  ; the existing one's name and no event
+  (mv-let (msg pstep evf event thm)
+    (fn-cw-resolve-step fn (fn-cw-get :step kvs) profile w)
+    (declare (ignore msg))
+    (let* ((name (fn-cw-step-name pstep profile event fn))
+           (statement (fn-cw-step-statement pstep evf event profile w))
+           (formal (fn-cd-get :formal profile))
+           (s (mv-let (m s ret all) (fn-cd-parts (fn-cd-get :state profile) (list pstep 'none) w)
+                (declare (ignore m ret all)) s)))
+      (if (eq (fn-cw-step-reusable name statement w) :reusable)
+          (mv name nil)
+        (mv name
+            `((defthm ,name
+                ,statement
+                :hints (("Goal" :in-theory (union-theories
+                                            '(,pstep ,@(fn-cd-get :frame profile)
+                                              ,@(fn-cd-get :theory profile))
+                                            (theory 'minimal-theory))
+                         :use (,@(fn-cw-instances (list thm) (fn-cd-get :at profile)
+                                                  formal s w)
+                               ,(fn-cd-get :bridge profile)))))))))))
 
 (defun fn-cw-events (fn kvs uncovered w)
   (declare (xargs :mode :program))
@@ -737,6 +825,8 @@
     (mv-let (msg s ret all)
       (fn-cd-parts st (list fn 'none) w)
       (declare (ignore msg all))
+      (mv-let (step-name step-events)
+        (if step (fn-cw-step-events fn kvs profile w) (mv nil nil))
       (let ((statement `(implies ,(fn-cw-conj (cons (list r s) (fn-cw-get :hyps kvs)))
                                  (,r ,(fn-cw-untranslate-ret ret)))))
         `(progn
@@ -749,15 +839,14 @@
                                                         ,@(fn-cd-get :guard-theory profile)
                                                         ,@(fn-cw-get :guard-theory kvs))
                                                       (theory 'minimal-theory))))))))
-           ,@(and step (fn-cw-step-events fn kvs profile w))
+           ,@step-events
            (defthm ,name
              ,statement
              :hints ,(if (assoc-keyword :hints kvs)
                          (fn-cw-get :hints kvs)
                        `(("Goal" :in-theory (union-theories
                                              '(,fn ,@opens ,@lemmas
-                                               ,@(and step (list (fn-cw-step-name
-                                                                  profile (car step) fn)))
+                                               ,@(and step (list step-name))
                                                ,@(fn-cd-get :frame profile)
                                                ,@(fn-cd-get :theory profile))
                                              (theory 'minimal-theory))
@@ -778,7 +867,7 @@
                     :claim (((inv (,r ,s))
                              ,@(fn-cw-label-hyps (fn-cw-get :hyps kvs) 1 fn))
                             (,r ,(fn-cw-untranslate-ret ret)))
-                    :subject ,fn)))))))
+                    :subject ,fn))))))))
 
 (defmacro def-carried-writer (fn &rest kvs)
   `(make-event

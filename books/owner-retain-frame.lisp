@@ -8,6 +8,13 @@
 ;     :via (fn-ohr-step-close-preserves-carried-relation
 ;           fn-owner-callback-close-branch-unfolds))
 ;
+; and, through the owner's step transition (a host function, so named at
+; the writer),
+;
+;   (def-owner-writer fn-owner-take
+;     :opens (fn-owner-put-credits)
+;     :step (fn-owner-step (list :take) fn-ohr-step-take-preserves-carried-relation))
+;
 ; in host/owner-retain-host.lisp (which includes this book), where stage 5
 ; wrote the proof by hand (lanedumps/stage-5.md; ten writers, 229 lines).
 ;
@@ -118,7 +125,8 @@
                  fn-owner-bound-of-install-ocfg fn-owner-ocfg-of-install-ocfg
                  fn-owner-retain-carry-of-install-ocfg
                  fn-owner-retain-statep-implies-entry-guard fn-sbud-oc-store)
-  :step (fn-owner-step event)
+  ; no :step here: fn-owner-step is host/owner-host.lisp's, absent from any
+  ; book world; a writer through it says :step (fn-owner-step EVENT THM)
   :row fn-owner-retain-carried
   :suffix retain-state)
 

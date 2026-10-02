@@ -300,6 +300,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/definterface-recognizer-tests \
 	tests/acl2/defevent-tests \
 	tests/acl2/def-carried-tests \
+	books/def-carried-writer \
+	tests/acl2/def-carried-writer-tests \
+	books/owner-retain-frame \
+	tests/acl2/owner-retain-frame-tests \
 	books/acceptance \
 	books/acceptance-invariants \
 	tests/acl2/acceptance-tests \

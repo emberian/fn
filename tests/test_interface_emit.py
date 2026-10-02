@@ -170,6 +170,44 @@ class HostBindingTests(unittest.TestCase):
         rendered = interface_emit.render_raw_declarations([decl])
         self.assertIn(":raw-with (:carried fn-r-carried)", rendered)
 
+    def test_writers_row_is_the_pilot_plus_the_declared_writers(self):
+        # books/def-carried-writer.lisp: the row ACL2 writes from the pilot row
+        # and the writers declared against the profile, mirrored from the same
+        # forms; the shorthand macro's profile is read from its own definition
+        pilot = ("(def-carried fn-r-carried :invariant fn-r-relation\n"
+                 "  :established ((fn-r-open fn-r-open-establishes :hyps ((fn-r-okp e))"
+                 " :produced ((fn-r-make fn-r-make-produces))))\n"
+                 "  :transitions ((fn-r fn-r-carries))\n"
+                 "  :concludes ((fn-r-okp fn-r-statep)))\n"
+                 "(def-carried-profile fn-r-profile :invariant fn-r-relation"
+                 " :installers (fn-r-install) :bridge fn-r-bridge :suffix relation)\n"
+                 "(defmacro def-r-writer (fn &rest kvs)\n"
+                 "  `(def-carried-writer ,fn :profile fn-r-profile ,@kvs))\n")
+        host = ("(def-r-writer fn-s :via (fn-s-keystone))\n"
+                "(def-carried-writer fn-t :profile fn-r-profile :name fn-t-keeps"
+                " :bridges ((fn-r-notedp fn-r-noted-bridge)))\n"
+                "(def-carried-writer fn-u :profile fn-other)\n"
+                "(def-carried-writers-row fn-r-host :profile fn-r-profile :from fn-r-carried)\n")
+        root = tree(SOURCE)
+        (root / "books").mkdir()
+        (root / "books" / "x.lisp").write_text("(in-package \"ACL2\")\n" + pilot)
+        (root / "host" / "r-host.lisp").write_text("(in-package \"ACL2\")\n" + host)
+        rows = interface_emit.carried_rows(root)
+        self.assertEqual(rows["fn-r-host"], {
+            "established": [["fn-r-open", "fn-r-open-establishes"]],
+            "transitions": [["fn-r", "fn-r-carries"], ["fn-s", "fn-s-preserves-relation"],
+                            ["fn-t", "fn-t-keeps"]],
+            "concludes": [["fn-r-okp", "fn-r-statep"], ["fn-r-notedp", "fn-r-noted-bridge"]],
+            "produced": ["fn-r-open"]})
+        # the same resolution the world makes for a :raw-with through the host row
+        self.assertEqual(interface_emit.carried_theorems(rows, "fn-r-host", "fn-s"),
+                         ["fn-r-host-fn-s-carries", "fn-r-host-fn-r-okp-bridge",
+                          "fn-r-host-fn-r-notedp-bridge"])
+        # a row over an undeclared profile or pilot is not synthesized
+        (root / "host" / "r-host.lisp").write_text(
+            "(def-carried-writers-row fn-r-none :profile fn-none :from fn-r-carried)\n")
+        self.assertNotIn("fn-r-none", interface_emit.carried_rows(root))
+
     def test_raw_with_carried_refuses_a_missing_row_or_transition(self):
         found = self.raw_with_problems(
             "(definterface fn-r :class :common-lisp-compliant :raw-with (:carried fn-r-carried))\n")

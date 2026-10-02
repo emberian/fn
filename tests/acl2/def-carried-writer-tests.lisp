@@ -251,6 +251,19 @@
  (equal (getpropc 'cwt-step-bump-preserves-relp 'theorem nil (w state))
         '(implies (cwt-relp cwt-st) (cwt-relp (cwt-step (cons ':bump (cons n 'nil)) cwt-st)))))
 (assert-event (getpropc 'cwt-bump-by-step-preserves-relp 'theorem nil (w state)))
+; a second writer through the same kind, naming the step itself: the step
+; lemma is REUSED (its statement is the regenerated one), not refused
+(defun cwt-bump-twice (n cwt-st)
+  (declare (xargs :stobjs cwt-st :guard (and (natp n) (cwt-relp cwt-st))))
+  (let ((cwt-st (cwt-step (list :bump n) cwt-st)))
+    (cwt-step (list :bump n) cwt-st)))
+(def-carried-writer cwt-bump-twice
+  :profile cwt-profile
+  :step (cwt-step (list :bump n) cwt-step-bump-keeps-corep))
+(assert-event (getpropc 'cwt-bump-twice-preserves-relp 'theorem nil (w state)))
+(assert-event
+ (equal (fn-cd-get :step (cdr (assoc-eq 'cwt-bump-twice (table-alist 'fn-carried-writers (w state)))))
+        '(cwt-step (list :bump n) cwt-step-bump-keeps-corep)))
 
 ; A writer whose guard applies a predicate to the carried state that no
 ; bridge concludes: refused with the bridge to declare; accepted with it
@@ -343,6 +356,9 @@
 (fn-cwt-refused cwt-touch (:profile cwt-profile :opens (cwt-nothing)) "is not a function in this world")
 (fn-cwt-refused cwt-touch (:profile cwt-profile :bridges ((cwt-positivep cwt-nothing))) "is not a theorem in this world")
 (fn-cwt-refused cwt-touch (:profile cwt-profile :step (1 2)) "is not a (list :KIND ...) term")
+(fn-cwt-refused cwt-touch (:profile cwt-profile :step (cwt-okp (list :bump n) cwt-step-bump-keeps-corep))
+                "is not a function returning")
+(fn-cwt-refused cwt-touch (:profile cwt-profile :step (1 2 3 4)) "is not (EVENT-TERM THM) or")
 (fn-cwt-refused cwt-touch (:profile cwt-profile :step ((list :nudge m) cwt-step-bump-keeps-corep))
                 "mentions variables that are not")
 (fn-cwt-refused cwt-touch (:profile cwt-profile :name 7) "is not a symbol")
@@ -360,7 +376,7 @@
 (assert-event
  (equal (strip-cars (fn-cd-get :transitions
                                (cdr (assoc-eq 'cwt-row (table-alist 'fn-carried (w state))))))
-        '(cwt-touch cwt-bump cwt-annotate cwt-bump-by-step cwt-renote cwt-two)))
+        '(cwt-touch cwt-bump cwt-annotate cwt-bump-by-step cwt-bump-twice cwt-renote cwt-two)))
 (assert-event
  (equal (fn-cw-pairs (fn-cd-get :concludes
                                 (cdr (assoc-eq 'cwt-row (table-alist 'fn-carried (w state))))))
