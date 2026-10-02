@@ -15267,7 +15267,7 @@
         "PRF-969"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/catalog.lisp",
         "tests/acl2/msgid-pages-exec-tests.lisp",
