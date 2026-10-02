@@ -105,7 +105,7 @@ class PutAndReadTests(Sandbox):
         self.write(REL, b"new, not yet put\n")
         with self.assertRaises(store.EvidenceMismatch):
             store.read_bytes(self.root, REL)
-        store.put(self.root, [REL])
+        store.put(self.root, [REL], replace=True)
         self.assertEqual(store.locate(self.root, REL), (b"new, not yet put\n", "indexed"))
 
     def test_a_path_named_by_neither_is_absent(self):

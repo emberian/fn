@@ -280,10 +280,16 @@ def write_manifest(run_id: str, text: str, source: str = "",
     body = json.dumps(payload, indent=2, sort_keys=True) + "\n"
     target = root / ARCHIVE_REL / f"{run_id}.json"
     target.parent.mkdir(parents=True, exist_ok=True)
-    if target.exists():
+    rel = target.relative_to(root).as_posix()
+    if evidence_store.exists(root, rel):
         try:
-            existing = json.loads(target.read_text(encoding="utf-8"))
+            # Compare the indexed claim even when a local draft shadows it.
+            entry = evidence_store.read_index(root).get(rel)
+            existing = json.loads(evidence_store.object_bytes(root, entry[0])
+                                  if entry else target.read_bytes())
         except (OSError, ValueError):
+            return "conflict"
+        if not isinstance(existing, dict):
             return "conflict"
         if ({k: v for k, v in existing.items() if k not in ADDED}
                 == {k: v for k, v in payload.items() if k not in ADDED}):
@@ -328,7 +334,7 @@ def archive_run(source: Path, root: Path = ROOT, origin: str = "") -> str:
         return write_manifest(run_id, path.read_text(encoding="utf-8"),
                               origin or f"{socket.gethostname()}:{path.parent}",
                               root)
-    except OSError:
+    except (OSError, evidence_store.EvidenceError):
         return "skipped"
 
 
@@ -456,7 +462,25 @@ def commit_paths(root: Path, paths: list[str]) -> int:
     committed claim never names a manifest a reader cannot fetch.
     """
     try:
-        evidence_store.put(root, paths)
+        for rel in paths:
+            replace = False
+            entry = evidence_store.read_index(root).get(rel)
+            if entry and (root / rel).is_file():
+                data = (root / rel).read_bytes()
+                if (evidence_store.sha256_bytes(data), len(data)) != entry:
+                    try:
+                        old = json.loads(evidence_store.object_bytes(root, entry[0]))
+                        new = json.loads(data)
+                    except ValueError:
+                        old, new = None, None
+                    # Only the established local-to-remote provenance upgrade.
+                    if isinstance(old, dict) and isinstance(new, dict):
+                        expected = dict(old)
+                        expected["archived_from"] = new.get("archived_from")
+                        replace = (new == expected
+                                   and _is_remote(new.get("archived_from", ""))
+                                   and not _is_remote(old.get("archived_from", "")))
+            evidence_store.put(root, [rel], replace=replace)
     except evidence_store.EvidenceError as error:
         print(f"evidence_manifests: not committed, the archive did not confirm "
               f"({evidence_store.outcome(error)}): {error}", file=sys.stderr)
@@ -507,7 +531,7 @@ def cmd_sync(args: argparse.Namespace) -> int:
         body += [f"{run_id} {cites[run_id][0]}" for run_id in missing]
         (ROOT / LOST_REL).parent.mkdir(parents=True, exist_ok=True)
         (ROOT / LOST_REL).write_text("\n".join(body) + "\n", encoding="utf-8")
-        evidence_store.put(ROOT, [LOST_REL])
+        evidence_store.put(ROOT, [LOST_REL], replace=True)
         print(f"recorded {len(missing)} unresolvable run ids in {LOST_REL}")
     print(f"cited run ids {len(cites)}; archived here {len(set(cites) & have)}; "
           f"tracked {len(set(cites) & tracked)}; recovered this run {recovered}; "
