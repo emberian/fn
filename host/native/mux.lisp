@@ -1151,6 +1151,17 @@ operation then observes the error or the end of input)."
            (fnn-mux-flush loop conn)
          (fnn-mux-readable loop conn))))))
 
+(defun fnn-mux-idle-eligible-p (conn)
+  "The idle check may fire for CONN: serving, and holding nothing of a reply
+or a request -- no output queued, no plan (a cursor yield's continuation
+included), no input in hand, no completion awaited, no resume timer."
+  (and (eq (fnn-mux-conn-phase conn) :serving)
+       (null (fnn-mux-conn-out conn))
+       (null (fnn-mux-conn-plan conn))
+       (null (fnn-mux-conn-input conn))
+       (null (fnn-mux-conn-await conn))
+       (null (fnn-mux-conn-resume-at conn))))
+
 (defun fnn-mux-timers (loop now)
   "Run each connection's due timer; answer the ticks to the next one."
   (let ((next nil) (service (fnn-mux-service loop)))
@@ -1187,12 +1198,7 @@ operation then observes the error or the end of input)."
                    (fnn-mux-queue-plan loop conn (fnn-mux-conn-plan conn)
                                        (fnn-mux-conn-after conn))
                  (fnn-mux-work loop conn)))
-              ((and (eq (fnn-mux-conn-phase conn) :serving)
-                    (null (fnn-mux-conn-out conn))
-                    (null (fnn-mux-conn-plan conn))
-                    (null (fnn-mux-conn-input conn))
-                    (null (fnn-mux-conn-await conn))
-                    (null (fnn-mux-conn-resume-at conn))
+              ((and (fnn-mux-idle-eligible-p conn)
                     (due (fnn-mux-conn-idle-at conn)))
                (fnn-mux-idle loop conn))))
           (unless (eq (fnn-mux-conn-phase conn) :done)
@@ -1201,8 +1207,10 @@ operation then observes the error or the end of input)."
               ((:handshake :tls-queued :hs-wait :proxy) (note (fnn-mux-conn-hs-deadline conn)))
               (:draining (note (fnn-mux-conn-drain-deadline conn)))
               (:serving (note (fnn-mux-conn-resume-at conn))
-               (unless (or (fnn-mux-conn-out conn) (fnn-mux-conn-input conn)
-                           (fnn-mux-conn-await conn))
+               ;; The idle deadline is scheduled exactly when it may fire:
+               ;; an expired one the firing arm above declines would make
+               ;; the poll's timeout zero until the resume (r71 F11).
+               (when (fnn-mux-idle-eligible-p conn)
                  (note (fnn-mux-conn-idle-at conn)))))))))
     next))
 
