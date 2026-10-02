@@ -1369,17 +1369,20 @@
       "steps": [
         "Enrol two boundaries with contact rows and a route from the transit destination to the second boundary; hold a transit bundle for that destination and open the outbound session.",
         "Remove the route and open the session again.",
-        "Add the route back and open the session again."
+        "Add the route back and open the session again.",
+        "tests/test_native_bp_forward_session_raw.sh (raw SBCL, the shipped fnn-bpnode-forward-session over recording stubs): a hop that resets after SESS_INIT with nothing to send; the normal path; a reset after a durable attempt; the socket shut failing after the close; the connect failing."
       ],
       "expected": [
         "The bundle is offered on the routed session to the second boundary and settles status=sent; a session to any other boundary offers nothing.",
         "The log carries `BP forwarding no-route destination=... decision=no-route`, no forwarding attempt (kind 8) is written and the bundle stays held.",
-        "The same bundle is forwarded through the routed hop and settles status=sent."
+        "The same bundle is forwarded through the routed hop and settles status=sent.",
+        "Every forward session that drove ACL2's (:session ... t) open drives its (:session ... nil) close exactly once, so serve rotation (fn-bpnrd-serve-rotation-due-p, no open session) is not blocked by a hop reset; a connect that fails drives neither."
       ],
       "evidence": [
         "tests/test_bp_node_native.py",
         "tests/acl2/bp-route-tests.lisp",
-        "planning/evidence/bp-routing-2026-09-25.md"
+        "planning/evidence/bp-routing-2026-09-25.md",
+        "tests/test_native_bp_forward_session_raw.sh"
       ],
       "implementation": {
         "test": "tests.test_bp_node_native",
@@ -6026,11 +6029,13 @@
       ],
       "steps": [
         "tests/test_native_compress.py on the production image: before and after AUTHINFO, COMPRESS DEFLATE, then CAPABILITIES, GROUP, ARTICLE, POST and QUIT through the stream; COMPRESS/STARTTLS/AUTHINFO after 206; COMPRESS with an unknown and a malformed algorithm; compressed octets pipelined behind the COMPRESS line; a 1 MiB run of zeros; a malformed stream.",
-        "tests/test_native_compression.py on the developer image: two twin stores given the same articles, one with `policy set compress-min-octets'; `store ROOT compression'; every article served from both; recover twice; a torn last entry. Then XFN-DICT in CAPABILITIES; XFN-ZARTICLE naming the shipped baseline's digest, and naming another digest; XFN-ZARTICLE with a malformed digest.", "tests/test_native_deflater_raw.sh (raw SBCL, no image): the encoder's code lengths for 0 or 1 used symbols over the 19-, 30- and 286-symbol alphabets, and 30 payloads whose matches use one distance code (0, 1, 9, 10, 11, 29) or none, each stream inflated by Python's zlib."
+        "tests/test_native_compression.py on the developer image: two twin stores given the same articles, one with `policy set compress-min-octets'; `store ROOT compression'; every article served from both; recover twice; a torn last entry. Then XFN-DICT in CAPABILITIES; XFN-ZARTICLE naming the shipped baseline's digest, and naming another digest; XFN-ZARTICLE with a malformed digest.",
+        "tests/test_native_deflater_raw.sh (raw SBCL, no image): the encoder's code lengths for 0 or 1 used symbols over the 19-, 30- and 286-symbol alphabets, and 30 payloads whose matches use one distance code (0, 1, 9, 10, 11, 29) or none, each stream inflated by Python's zlib."
       ],
       "expected": [
         "480 before a login, 206 after; the label withdrawn once active; 502 for a second COMPRESS, STARTTLS and AUTHINFO; 503 unknown, 501 malformed; pipelined octets are the stream's first; the bomb refused (compress-bomb) and the malformed stream (compress-malformed), each closing the connection.",
-        "The compressed store reports every article record compressed and `dictionaries=' the shipped baseline's DICT-ID 2220533217, holds fewer octets, and serves every article octet for octet as its uncompressed twin, after both recovers and the torn tail. XFN-DICT lists the shipped digests; a peer naming the baseline's digest gets 229 with the stored block, escaped in lines of at most 128 octets, which unescaped has the stated stored length and inflates against the baseline dictionary to ARTICLE's octets; a peer naming another digest gets ARTICLE's 220 reply octet for octet; a malformed digest gets 501.", "Every stream the stored-payload encoder writes is a valid RFC 1951 stream: a block whose matches use one distance code (or none) gets a complete two-code tree, and the streams inflate octet for octet under Python's zlib (tests/test_native_deflater_raw.sh); ACL2's decoder frames such a stream and refuses the oversubscribed one the encoder wrote before (tests/acl2/payload-lz-append-tests.lisp)."
+        "The compressed store reports every article record compressed and `dictionaries=' the shipped baseline's DICT-ID 2220533217, holds fewer octets, and serves every article octet for octet as its uncompressed twin, after both recovers and the torn tail. XFN-DICT lists the shipped digests; a peer naming the baseline's digest gets 229 with the stored block, escaped in lines of at most 128 octets, which unescaped has the stated stored length and inflates against the baseline dictionary to ARTICLE's octets; a peer naming another digest gets ARTICLE's 220 reply octet for octet; a malformed digest gets 501.",
+        "Every stream the stored-payload encoder writes is a valid RFC 1951 stream: a block whose matches use one distance code (or none) gets a complete two-code tree, and the streams inflate octet for octet under Python's zlib (tests/test_native_deflater_raw.sh); ACL2's decoder frames such a stream and refuses the oversubscribed one the encoder wrote before (tests/acl2/payload-lz-append-tests.lisp)."
       ]
     },
     {

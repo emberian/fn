@@ -374,9 +374,23 @@ observations back.  Nil when there is nothing to observe."
     (let ((socket nil)
           (sent nil)
           (settled nil)
+          ;; OPENED once on-ready drove ACL2's (:session ... t ...) event,
+          ;; CLOSED once its (:session ... nil ...) close was driven: every
+          ;; path out of a session that opened closes it exactly once
+          ;; (inspection sweep 2026-10-03 S027; fn-bpnrd-serve-rotation-due-p
+          ;; needs no open session).
+          (opened nil)
+          (closed nil)
           (session-id
             (cons (fnn-core 'fn-bpnf-epoch (fnn-bps-state bp))
                   (incf (fnn-bps-next-session bp)))))
+     (flet ((fnn-bpnode-forward-close ()
+              (when (and opened (not closed))
+                (setq closed t)
+                (fnn-bps-drive-effects
+                 bp (fnn-bps-foundation-step
+                     bp (list :session peer session-id nil 1
+                              (fnn-bp-observation wall wall-error)))))))
       (handler-case
           (unwind-protect
                (progn
@@ -417,6 +431,7 @@ observations back.  Nil when there is nothing to observe."
                                     bp (fnn-bpnode-budgeted
                                         (list :session peer session-id t mru obs
                                               (list :via hop announced table)))))
+                               (setq opened t)
                                (when sent
                                  (setf (fnn-tclc-pending connection)
                                        (cons "bp-node-forward" (seventh sent)))
@@ -440,15 +455,13 @@ observations back.  Nil when there is nothing to observe."
                        (fnn-bpnode-forward-result
                         bp sent session-id result wall wall-error)
                        (setq settled t)))
-                   (fnn-bps-drive-effects
-                    bp (fnn-bps-foundation-step
-                        bp (list :session peer session-id nil 1
-                                 (fnn-bp-observation wall wall-error))))))
+                   (fnn-bpnode-forward-close)))
             (when socket (fnn-socket-shut socket)))
         ((or fnn-os-error sb-bsd-sockets:socket-error) (e)
           (cond
             ((not sent)
-             (fnn-out "BP forwarding session unavailable: ~a" e))
+             (fnn-out "BP forwarding session unavailable: ~a" e)
+             (when opened (fnn-bpnode-forward-close)))
             ((eq (fnn-bps-outcome bp) :fenced)
              ;; A publication inside the session was uncertain: that is a
              ;; shared-owner fault, not a connection-local one.
@@ -465,11 +478,8 @@ observations back.  Nil when there is nothing to observe."
                 bp sent session-id
                 (fnn-core 'fn-bpnp-tcpcl-outcome :connection-failed nil)
                 wall wall-error))
-             (fnn-bps-drive-effects
-              bp (fnn-bps-foundation-step
-                  bp (list :session peer session-id nil 1
-                           (fnn-bp-observation wall wall-error))))))))
-      sent))
+             (fnn-bpnode-forward-close)))))
+      sent)))
 
 (defun fnn-bpnode-forward-result (bp sent session-id result wall wall-error)
   (when (eq result :uncertain)
