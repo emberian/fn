@@ -1025,6 +1025,14 @@ def _tails(body):
             if isinstance(clause, list):
                 out += _tails(clause[1:] or clause[:1])
         return out
+    if h == "handler-case" and isinstance(last, list) and len(last) > 1:
+        # The protected form's value, or a clause body's (lane host-lifecycle:
+        # io.lisp fnn-accept-attempt returns the accepted socket from one).
+        out = _tails([last[1]])
+        for clause in last[2:]:
+            if isinstance(clause, list) and len(clause) >= 2:
+                out += _tails(clause[2:])
+        return out
     return [last]
 
 

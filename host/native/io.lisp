@@ -5721,18 +5721,14 @@ intentionally not timed by this function."
 ;;; A listener-level failure (EBADF, EINVAL, ENOTSOCK: the listener was shut
 ;;; or closed) and any other condition stay conditions: the caller classifies
 ;;; them against its own stop and fault state.
-(defun fnn-errno-values (names)
-  (loop for name in names
-        for symbol = (find-symbol name "SB-POSIX")
-        when (and symbol (boundp symbol)) collect (symbol-value symbol)))
-
 (defparameter *fnn-accept-again-errnos*
-  (fnn-errno-values '("EAGAIN" "EWOULDBLOCK" "EINTR" "ECONNABORTED" "ECONNRESET" "EPROTO"
-                      "ENETDOWN" "ENETUNREACH" "EHOSTDOWN" "EHOSTUNREACH" "ENONET"
-                      "ENOPROTOOPT" "EOPNOTSUPP" "ETIMEDOUT" "EPERM")))
+  (list sb-posix:eagain sb-posix:ewouldblock sb-posix:eintr sb-posix:econnaborted
+        sb-posix:econnreset sb-posix:eproto sb-posix:enetdown sb-posix:enetunreach
+        sb-posix:ehostdown sb-posix:ehostunreach #+linux sb-posix:enonet
+        sb-posix:enoprotoopt sb-posix:eopnotsupp sb-posix:etimedout sb-posix:eperm))
 
 (defparameter *fnn-accept-exhausted-errnos*
-  (fnn-errno-values '("EMFILE" "ENFILE" "ENOBUFS" "ENOMEM")))
+  (list sb-posix:emfile sb-posix:enfile sb-posix:enobufs sb-posix:enomem))
 
 (defun fnn-accept-attempt (listener)
   "One accept(2) on LISTENER: a socket, :AGAIN or :EXHAUSTED (above)."
@@ -5751,6 +5747,13 @@ had no descriptor (the queued connection stays the kernel's), else nothing."
   (when (eq outcome :exhausted)
     (sleep seconds)))
 
+(defun fnn-accept-settle (got seconds)
+  "GOT, fnn-accept-attempt's outcome: the socket, or :TIMEOUT after the
+backoff an attempt that took no connection owes."
+  (if (keywordp got)
+      (progn (fnn-accept-backoff got seconds) :timeout)
+    got))
+
 (defun fnn-accept-observe (listener seconds)
   "Return one accepted socket or :TIMEOUT after a bounded readiness wait;
 an attempt that took no connection (fnn-accept-attempt's :AGAIN or
@@ -5759,13 +5762,9 @@ an attempt that took no connection (fnn-accept-attempt's :AGAIN or
 The listener is nonblocking so shutdown(2) need not wake a blocking accept(2)
 on every supported host.  Listener-level socket conditions remain conditions
 for the caller to classify against its own stop and fault state."
-  (let ((fd (fnn-socket-fd listener)))
-    (if (funcall *fnn-fd-waiter* fd :input seconds)
-        (let ((got (fnn-accept-attempt listener)))
-          (if (keywordp got)
-              (progn (fnn-accept-backoff got seconds) :timeout)
-            got))
-      :timeout)))
+  (if (funcall *fnn-fd-waiter* (fnn-socket-fd listener) :input seconds)
+      (fnn-accept-settle (fnn-accept-attempt listener) seconds)
+    :timeout))
 
 ;;; One accepted connection's work, scoped to it (S006): a Store fault and an
 ;;; indeterminate outcome are the process's and are re-signalled (the caller's
