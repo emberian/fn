@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2765 |
-| Certification roots in the Makefile | 2344 |
-| Books inside the root closure | 2620 |
-| `defthm` and `defthmd` events | 37108 |
-| `defun` events | 23533 |
-| Functions with verified guards | 3915 |
-| Functions declared `:verify-guards nil` and never verified | 3040 |
-| Functions left at the default with an explicit guard | 12981 |
+| Books read | 2767 |
+| Certification roots in the Makefile | 2346 |
+| Books inside the root closure | 2622 |
+| `defthm` and `defthmd` events | 37124 |
+| `defun` events | 23549 |
+| Functions with verified guards | 3919 |
+| Functions declared `:verify-guards nil` and never verified | 3041 |
+| Functions left at the default with an explicit guard | 12992 |
 | Functions left at the default with no guard | 3597 |
-| `assert-event` checks | 25914 |
+| `assert-event` checks | 25950 |
 | `must-fail` checks | 2651 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 228 |
@@ -27,8 +27,8 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 402 |
 | Enabled-projection warnings | 79 |
 | Teeth-form warnings | 282 |
-| Include-hygiene warnings | 3597 |
-| Host-names warnings | 3155 |
+| Include-hygiene warnings | 3598 |
+| Host-names warnings | 3157 |
 | Hand-written-record warnings | 19 |
 
 ## Lints
@@ -1189,6 +1189,7 @@ that `make certify` requests.
 | `books/page-read-binding-revision.lisp` | root | 4 | 5 | 0/0/3/2 | 0 | 0 | 0 |
 | `books/page-read-bindings-transaction.lisp` | - | 0 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `books/page-read-counter-transaction.lisp` | root | 0 | 7 | 0/0/7/0 | 0 | 0 | 0 |
+| `books/page-read-direct.lisp` | root | 12 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/page-read-executor.lisp` | root | 11 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/page-read-issue-source-cost.lisp` | root | 13 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/page-read-ledger.lisp` | root | 9 | 16 | 0/0/16/0 | 0 | 0 | 0 |
@@ -1583,7 +1584,7 @@ that `make certify` requests.
 | `books/store-export.lisp` | root | 10 | 21 | 7/0/14/0 | 0 | 0 | 0 |
 | `books/store-files-invariants.lisp` | root | 62 | 4 | 0/1/0/3 | 0 | 0 | 2 |
 | `books/store-files-traces.lisp` | root | 51 | 12 | 0/0/0/12 | 0 | 0 | 0 |
-| `books/store-files.lisp` | root | 48 | 63 | 56/0/7/0 | 0 | 0 | 13 |
+| `books/store-files.lisp` | root | 52 | 67 | 60/0/7/0 | 0 | 0 | 13 |
 | `books/store-finalize-carried-check.lisp` | root | 7 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/store-finalize-incremental.lisp` | root | 49 | 12 | 5/2/5/0 | 0 | 0 | 2 |
 | `books/store-finalize-published.lisp` | root | 12 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -2484,6 +2485,7 @@ that `make certify` requests.
 | `tests/acl2/packed-submission-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 21 | 0 | 0 |
 | `tests/acl2/page-discovery-ledger-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/page-file-lease-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 0 | 0 |
+| `tests/acl2/page-read-direct-tests.lisp` | root | 0 | 6 | 0/1/5/0 | 27 | 0 | 0 |
 | `tests/acl2/page-read-executor-tests.lisp` | root | 0 | 6 | 0/0/6/0 | 14 | 0 | 0 |
 | `tests/acl2/page-read-host-tests.lisp` | root | 0 | 12 | 0/0/0/12 | 5 | 0 | 0 |
 | `tests/acl2/page-read-ledger-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -2718,7 +2720,7 @@ that `make certify` requests.
 | `tests/acl2/store-export-stream-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 9 | 0 | 0 |
 | `tests/acl2/store-export-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 31 | 3 | 0 |
 | `tests/acl2/store-files-exploration-tests.lisp` | root | 0 | 29 | 0/0/0/29 | 60 | 0 | 0 |
-| `tests/acl2/store-files-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 75 | 2 | 0 |
+| `tests/acl2/store-files-teeth-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 84 | 2 | 0 |
 | `tests/acl2/store-files-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 95 | 0 | 0 |
 | `tests/acl2/store-files-traces-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 0 | 0 |
 | `tests/acl2/store-finalize-carried-check-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 5 | 0 | 0 |
@@ -3183,7 +3185,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-hdc-shape-begin-source-end-unfolds` | `books/history-decode-shape.lisp` | 305 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-hdsn-find-mismatched-length-unfolds` | `books/history-symbol-normalize.lisp` | 246 | arm-of-definition: the hypotheses select one IF/COND arm of fn-hdsn-find and the conclusion is that arm's value |
 | `fn-hdsn-find-unfolds` | `books/history-symbol-normalize.lisp` | 258 | definition-restated: the conclusion is the body of fn-hdsn-find |
-| `fn-heap-reserve-decide-keeps-heap-figures-refusals` | `books/heap-reservation.lisp` | 219 | arm-of-definition: the hypotheses select one IF/COND arm of fn-heap-reserve-decide and the conclusion is that arm's value |
+| `fn-heap-reserve-decide-keeps-heap-figures-refusals` | `books/heap-reservation.lisp` | 224 | arm-of-definition: the hypotheses select one IF/COND arm of fn-heap-reserve-decide and the conclusion is that arm's value |
 | `fn-hec-initialize-never-rebinds-issued-page-by-definition` | `books/history-event-page.lisp` | 187 | arm-of-definition: the hypotheses select one IF/COND arm of fn-hec-initialize and the conclusion is that arm's value |
 | `fn-held-accessors-are-the-wire-accessors` | `books/held-record.lisp` | 165 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-held-wire-of-with-context` | `books/catalog-relation.lisp` | 142 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
