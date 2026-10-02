@@ -4802,13 +4802,24 @@ renamed into place, the directory fenced."
         action))))
 
 (defun fnn-owner-wait-workers (service)
-  "Join client workers before closing any shared journal or Store object."
+  "Join client workers before closing any shared journal or Store object.
+A worker leaves the roster as the last act of its own unwind, so an empty
+roster means every one has run all its cleanup.  A worker that ended
+abnormally has ended all the same: the join observes its termination
+(:default, never join-thread-error escaping the stop) and names it."
   (loop
     (let ((workers
             (fnn-with-roster (service)
               (copy-list (fnn-owner-service-workers service)))))
       (when (null workers) (return))
-      (dolist (worker workers) (sb-thread:join-thread worker)))))
+      (dolist (worker workers)
+        (when (eq (sb-thread:join-thread worker :default '%fnn-worker-abnormal)
+                  '%fnn-worker-abnormal)
+          (fnn-err "stopping: worker ~a ended abnormally" (sb-thread:thread-name worker))
+          ;; Its unwind may not have reached the roster: it is joined.
+          (fnn-with-roster (service)
+            (setf (fnn-owner-service-workers service)
+                  (delete worker (fnn-owner-service-workers service) :test #'eq))))))))
 
 ;;; Garbage between collections in the owner process.  SBCL's default
 ;;; trigger is 5% of the dynamic space the launcher reserves (32,000 MB,
@@ -5283,8 +5294,12 @@ reads run as a :control quantum; the thread's registration is the roster's."
                                                          service captured position pin)))
                                                     :name "fn owner checkpoint"))
                                      (unless made (fnn-arena-unpin pin)))))))
-                (setf (fnn-owner-service-publisher service) thread)
-                (push thread (fnn-owner-service-workers service)))))))))))
+                ;; Only a thread that exists takes the slot and joins the
+                ;; roster (r71 F12): a rotation refusal made none, and a NIL
+                ;; worker broke the stop's join.
+                (when thread
+                  (setf (fnn-owner-service-publisher service) thread)
+                  (push thread (fnn-owner-service-workers service))))))))))))
 
 ;;; Row S3b (lane operability-7): `store export DIR' on the running owner
 ;;; (books/owner-export-request.lisp fn-oex-; SCN-210, PRF-988).  The export
