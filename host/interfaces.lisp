@@ -566,6 +566,9 @@
               fn-lzr-append-decide-framed-is-shorter
               fn-lzr-append-decide-framed-expands))
 
+(definterface fn-own-bp-transit-kind-word
+  :class ::common-lisp-compliant)
+
 (definterface fn-lzr-append-plan
   :class ::common-lisp-compliant
   :kinds ((r fn-cbor-octet-listp))

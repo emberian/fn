@@ -1662,6 +1662,23 @@
 ; as the synchronous writer correlation key.  Admission is the current
 ; fn-peer-decide-transfer under the profile's header limits
 ; (fn-peer-decide-transfer-under), not the control/posting policy.
+; The word a BP transit delivery answers for the transfer decision's KIND:
+; a want is submitted (when the owner is idle), a deferral (:defer :staged,
+; :busy, :fenced, :disk-slow, :inflight-limit, :capacity) is :busy -- the
+; word the BP receiver already classes as deferred
+; (books/owner-log.lisp fn-olog-bp-app-class) and TCPCL refuses with No
+; Resources, so the sender retries (books/tcpcl-delivery.lisp
+; fn-tcl-delivery-refuse-reason) -- and anything else is :refused.  Before
+; inspection sweep 2026-10-03 S052 a deferral was :refused and went out as
+; XFER_REFUSE Not Acceptable, which an RFC 9174 sender treats as final.  The
+; host's second gate (host/native/owner.lisp
+; fnn-owner-complete-bp-transit-submission) calls this one too.
+(defun fn-own-bp-transit-kind-word (kind)
+  (declare (xargs :guard t))
+  (cond ((equal kind :want) :submitted)
+        ((equal kind :defer) :busy)
+        (t :refused)))
+
 (defun fn-own-bp-transit-submit-result
     (o cfg peer msgid octets id subject)
   ; The store's node decides the transfer: the owner's store is a store-node
@@ -1671,7 +1688,8 @@
                    (fn-sn-node (fn-own-store o)) cfg peer msgid octets
                    (fn-own-clock o) id subject
                    (fn-own-config-header-limits (fn-own-config o)))))
-    (cond ((not (equal (fn-peer-decision-kind decision) :want)) :refused)
+    (cond ((not (equal (fn-peer-decision-kind decision) :want))
+           (fn-own-bp-transit-kind-word (fn-peer-decision-kind decision)))
           ((or (consp (fn-own-queue o)) (fn-own-inflight o)
                (fn-own-pending o)
                (not (equal (fn-sf-phase (fn-sn-files (fn-own-store o)))
@@ -1680,6 +1698,23 @@
           (t :submitted))))
 (verify-guards fn-own-bp-transit-submit-result
   :hints (("Goal" :in-theory (enable fn-sn-statep))))
+
+; KEYSTONE (S052).  A BP transit delivery whose transfer decision defers
+; answers :busy -- the receiver's deferral, which TCPCL refuses with No
+; Resources -- and never :refused; it answers :refused exactly for a decision
+; that neither wants nor defers.
+(defthm fn-own-bp-transit-submit-result-defers-a-deferral
+  (let ((kind (fn-peer-decision-kind
+               (fn-peer-decide-transfer-under
+                (fn-sn-node (fn-own-store o)) cfg peer msgid octets
+                (fn-own-clock o) id subject
+                (fn-own-config-header-limits (fn-own-config o)))))
+        (result (fn-own-bp-transit-submit-result o cfg peer msgid octets id subject)))
+    (and (implies (equal kind :defer) (equal result :busy))
+         (iff (equal result :refused)
+              (not (member-equal kind '(:want :defer))))))
+  :hints (("Goal" :in-theory (e/d (fn-own-bp-transit-submit-result)
+                                  (fn-peer-decide-transfer-under)))))
 
 (defun fn-own-bp-transit-submit (o cfg peer msgid octets id subject)
   (declare (xargs :guard (fn-sn-statep (fn-own-store o)) :verify-guards nil))

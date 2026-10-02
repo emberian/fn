@@ -30,6 +30,23 @@
          (fn-tcl-delivery-plan *t-delivery-held* 0 '(:refused :identity-conflict)))
         (list (fn-tcl-make-xfer-ack 2 0 3)
               (fn-tcl-make-xfer-refuse *fn-tcl-refuse-not-acceptable* 0))))
+; Inspection sweep 2026-10-03 S024/S052: a transfer offered on a session
+; this node opened to send (it takes no inbound custody), a deferring owner
+; (:busy) and an unusable clock are transient: No Resources, so an RFC 9174
+; sender keeps the bundle and retries; a refusal of the transfer itself
+; stays Not Acceptable.
+(assert-event
+ (and (equal (fn-tcl-delivery-refuse-reason :outbound-session) *fn-tcl-refuse-no-resources*)
+      (equal (fn-tcl-delivery-refuse-reason :busy) *fn-tcl-refuse-no-resources*)
+      (equal (fn-tcl-delivery-refuse-reason :clock-unusable) *fn-tcl-refuse-no-resources*)
+      (equal (fn-tcl-delivery-refuse-reason :refused) *fn-tcl-refuse-not-acceptable*)
+      (equal (fn-tcl-delivery-plan-messages
+              (fn-tcl-delivery-plan *t-delivery-held* 0 '(:refused :outbound-session)))
+             (list (fn-tcl-make-xfer-ack 2 0 3)
+                   (fn-tcl-make-xfer-refuse *fn-tcl-refuse-no-resources* 0)))
+      (equal (fn-tcl-delivery-plan-status
+              (fn-tcl-delivery-plan *t-delivery-held* 0 '(:refused :outbound-session)))
+             :refused)))
 (assert-event
  (null (fn-tcl-delivery-plan-messages
         (fn-tcl-delivery-plan *t-delivery-held* 0 '(:uncertain :persistence)))))

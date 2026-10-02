@@ -3860,7 +3860,10 @@ own result vocabulary."
             (fnn-owner-transit-refused
              (list :refused (fnn-owner-core 'fn-owner-transit-reason)))
             (fnn-owner-action 'fn-owner-bp-transit-outcome :refused)
-            (return-from fnn-owner-complete-bp-transit-submission :refused))
+            ;; ACL2's word for the kind: a deferral is :busy (the sender
+            ;; retries), anything else :refused (S052).
+            (return-from fnn-owner-complete-bp-transit-submission
+              (fnn-core 'fn-own-bp-transit-kind-word kind)))
           (unless (and (equalp stored
                                (fnn-owner-octets-global
                                 'fn-owner-transit-payload))

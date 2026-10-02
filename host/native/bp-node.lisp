@@ -416,6 +416,7 @@ observations back.  Nil when there is nothing to observe."
                            (fnn-tcl-params node-id hop-eid +fnn-tcl-keepalive+
                                            +fnn-tcl-segment-mru+ transfer-mru)
                            "bp-node-forward" (fnn-bps-root bp)
+                           :refuse-inbound t
                            :on-ready
                            (lambda (connection)
                              (let* ((negotiated

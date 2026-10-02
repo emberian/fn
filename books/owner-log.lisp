@@ -558,8 +558,10 @@ decision injects (the outcome line is then fn-olog-control-post-line's)."
   (declare (xargs :guard t))
   (cond ((equal result :accepted) :accepted)
         ((equal result :duplicate) :duplicate)
-        ((member-equal result '(:refused :clock-unusable)) :refused)
-        ((equal result :busy) :deferred)
+        ((equal result :refused) :refused)
+        ; an unusable clock is the node's own transient state, not the
+        ; transfer's (inspection sweep 2026-10-03 S052)
+        ((member-equal result '(:busy :clock-unusable)) :deferred)
         (t :uncertain)))
 
 (defun fn-olog-bp-app-class-word (class)
@@ -750,13 +752,14 @@ decision injects (the outcome line is then fn-olog-control-post-line's)."
                                   (fn-olog-field fn-olog-decimal fn-olog-time)))))
 
 ; KEYSTONE (BP application receiver).  The line says `refused' exactly when
-; the receiver's answer was a refusal -- never for a deferral (busy) or for a
-; word the receiver does not know, which read `deferred' and `uncertain'.
+; the receiver's answer was a refusal -- never for a deferral (a busy or
+; deferring owner, an unusable clock: S052) or for a word the receiver does
+; not know, which read `deferred' and `uncertain'.
 (defthm fn-olog-bp-app-refusal-line-says-refused-iff-refused
   (equal (equal (fn-olog-line-word
                  (fn-olog-bp-app-refusal-line result reason xfer-id))
                 (fn-olog-text "refused"))
-         (if (member-equal result '(:refused :clock-unusable)) t nil))
+         (equal result :refused))
   :hints (("Goal" :in-theory (e/d (fn-olog-bp-app-class-word
                                    fn-olog-class-word fn-olog-text)
                                   (fn-olog-field fn-olog-decimal

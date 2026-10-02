@@ -145,6 +145,7 @@
                             (limits (fn-own-config-header-limits (fn-own-config o)))))
            :in-theory (union-theories
                        '(fn-own-bp-transit-submit-result member-equal
+                         fn-own-bp-transit-kind-word
                          (:executable-counterpart equal))
                        (theory 'minimal-theory)))))
 

@@ -554,7 +554,7 @@ its outcome, which is the refusal to the offering ingress."
                       (conn (fnn-tcl-session
                              (fnn-socket-fd socket) :active params
                              "bp-service" (fnn-bps-root service)
-                             :expect 0
+                             :expect 0 :refuse-inbound t
                              :on-ready
                              (lambda (connection)
                                (let* ((mtu (fnn-core 'fn-tcl-negotiated-transfer-mtu
@@ -599,7 +599,8 @@ its outcome, which is the refusal to the offering ingress."
                                                    (fnn-tcl-session
                                                     (fnn-socket-fd next) :active params
                                                     "bp-service" (fnn-bps-root service)
-                                                    :bundle fragment :expect 0))
+                                                    :bundle fragment :expect 0
+                                                    :refuse-inbound t))
                                                   :uncertain))
                                          (when next (fnn-socket-shut next)))
                                      ((or fnn-os-error sb-bsd-sockets:socket-error) ()
