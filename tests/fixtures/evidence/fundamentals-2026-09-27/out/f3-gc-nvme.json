@@ -1,0 +1,138 @@
+{
+  "label": "nvme",
+  "image": "/tank/fn/scratch/fundamentals-scoreboard/native-fs-33bbfae9c/tree/build/fn-host-developer",
+  "core_sha256": "2c424054413ba3972f97ca931550abfea4bf7c0ee5af9f0f78545a88d3605a17",
+  "filesystem": {
+    "type": "ext2/ext3"
+  },
+  "profile": "scale-1m",
+  "octets": 2048,
+  "seconds": 30,
+  "rows": [
+    {
+      "connections": 1,
+      "seconds": 15.6,
+      "posts": 2000,
+      "post_per_s": 128.207,
+      "latency": {
+        "n": 2000,
+        "p50_ms": 7.068,
+        "p95_ms": 11.85,
+        "p99_ms": 15.727,
+        "max_ms": 34.881
+      },
+      "errors": [],
+      "warmup_posts": 100,
+      "owner_cpu_ms_per_post": 4.055,
+      "box_before": {
+        "utc": "2026-09-27T16:29:17Z",
+        "loadavg": [
+          35.50244140625,
+          28.41552734375,
+          19.06494140625
+        ],
+        "arc_octets": 25470883000
+      },
+      "box_after": {
+        "utc": "2026-09-27T16:29:33Z",
+        "loadavg": [
+          32.43701171875,
+          28.083984375,
+          19.107421875
+        ],
+        "arc_octets": 25548603704
+      }
+    },
+    {
+      "connections": 8,
+      "seconds": 7.789,
+      "posts": 2000,
+      "post_per_s": 256.771,
+      "latency": {
+        "n": 2000,
+        "p50_ms": 29.546,
+        "p95_ms": 45.897,
+        "p99_ms": 54.221,
+        "max_ms": 103.266
+      },
+      "errors": [],
+      "warmup_posts": 100,
+      "owner_cpu_ms_per_post": 3.55,
+      "box_before": {
+        "utc": "2026-09-27T16:29:36Z",
+        "loadavg": [
+          31.44091796875,
+          27.94970703125,
+          19.1123046875
+        ],
+        "arc_octets": 25509500488
+      },
+      "box_after": {
+        "utc": "2026-09-27T16:29:44Z",
+        "loadavg": [
+          31.1650390625,
+          27.95068359375,
+          19.16015625
+        ],
+        "arc_octets": 25661739080
+      }
+    },
+    {
+      "connections": 32,
+      "seconds": 6.958,
+      "posts": 1999,
+      "post_per_s": 287.307,
+      "latency": {
+        "n": 1999,
+        "p50_ms": 106.278,
+        "p95_ms": 158.2,
+        "p99_ms": 180.958,
+        "max_ms": 199.827
+      },
+      "errors": [
+        "SystemExit(\"POST 4321: b''\")"
+      ],
+      "warmup_posts": 100,
+      "owner_cpu_ms_per_post": 3.237,
+      "box_before": {
+        "utc": "2026-09-27T16:29:47Z",
+        "loadavg": [
+          30.4306640625,
+          27.8515625,
+          19.17578125
+        ],
+        "arc_octets": 25699553864
+      },
+      "box_after": {
+        "utc": "2026-09-27T16:29:54Z",
+        "loadavg": [
+          30.07568359375,
+          27.82080078125,
+          19.212890625
+        ],
+        "arc_octets": 25682828960
+      }
+    }
+  ],
+  "fsync": {
+    "open-only": 11,
+    "open-only_trace": "% time     seconds  usecs/call     calls    errors syscall\n------ ----------- ----------- --------- --------- ----------------\n 99.33    0.000590         196         3           fdatasync\n  0.67    0.000004           0         8           fsync\n------ ----------- ----------- --------- --------- ----------------\n100.00    0.000594          54        11           total\n",
+    "window": {
+      "connections": 8,
+      "seconds": 0.425,
+      "posts": 64,
+      "post_per_s": 150.613,
+      "latency": {
+        "n": 64,
+        "p50_ms": 50.455,
+        "p95_ms": 76.869,
+        "p99_ms": 84.57,
+        "max_ms": 91.778
+      },
+      "errors": []
+    },
+    "posts": 30,
+    "posts_trace": "% time     seconds  usecs/call     calls    errors syscall\n------ ----------- ----------- --------- --------- ----------------\n 81.88    0.007318         430        17           fdatasync\n 18.12    0.001620         124        13           fsync\n------ ----------- ----------- --------- --------- ----------------\n100.00    0.008938         297        30           total\n",
+    "per_post": 0.297
+  }
+}

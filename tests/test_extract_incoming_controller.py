@@ -9,7 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools/extract'))
 import cl
-EVIDENCE = ROOT / 'planning/evidence/incoming-controller-extraction-2026-09-30'
+EVIDENCE = ROOT / 'tests/fixtures/evidence/incoming-controller-extraction-2026-09-30'
 ORIGINAL = '/Users/ember/dev/fn/build/lanes/gpt61-extracted-product'
 
 class IncomingControllerExtractionTests(unittest.TestCase):

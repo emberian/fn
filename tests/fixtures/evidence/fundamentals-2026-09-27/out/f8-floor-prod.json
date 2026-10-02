@@ -1,0 +1,161 @@
+{
+ "image": "/tank/fn/scratch/fundamentals-scoreboard/native-fs-33bbfae9c/tree/build/fn-host",
+ "flags": "--profile development --max-transactions 16384 --max-history-octets 8388608 --max-record-octets 196608 --max-groups-per-article 16 --max-open-suffix 128",
+ "posts": 1000,
+ "octets": 2048,
+ "init": "init: profile=small sizing=requested reservation=938 MB budget=8192 MB within-budget=yes\ninitialized /dev/shm/fundamentals-scoreboard/f8/store\naccepted operator init",
+ "figure_line": "heap=672 MB profile=small machine=8192 MB stack=1024 KB threads=30",
+ "build_heap_mb": 672,
+ "start": {
+  "rss_kib": 51976,
+  "hwm_kib": 58160,
+  "pss_kib": 48085,
+  "private_dirty_kib": 17092,
+  "anonymous_kib": 17092
+ },
+ "after_100": {
+  "rss_kib": 67340,
+  "hwm_kib": 67340,
+  "pss_kib": 63724,
+  "private_dirty_kib": 30744,
+  "anonymous_kib": 30744
+ },
+ "after_1000": {
+  "rss_kib": 116872,
+  "hwm_kib": 145600,
+  "pss_kib": 112896,
+  "private_dirty_kib": 79496,
+  "anonymous_kib": 79496
+ },
+ "post_s": 4.18,
+ "end": {
+  "rss_kib": 112924,
+  "hwm_kib": 145600,
+  "pss_kib": 109080,
+  "private_dirty_kib": 75612,
+  "anonymous_kib": 75612
+ },
+ "status_headroom": "headroom transactions-used=1000 transactions-budget=16384 bytes-used=2123000 history-bound=8388608 charge-reserved=2000 charge-capacity=1048576",
+ "status_open": "open=checkpoint:988 suffix=12",
+ "figure_line_after": "heap=1407 MB profile=small machine=8192 MB stack=1024 KB threads=30",
+ "reopen_s": 0.453,
+ "after_reopen": {
+  "rss_kib": 61636,
+  "hwm_kib": 111968,
+  "pss_kib": 57818,
+  "private_dirty_kib": 23928,
+  "anonymous_kib": 23928
+ },
+ "reopen_floor": {
+  "floor_mb": 138,
+  "failed_at_mb": 136,
+  "trials": [
+   [
+    1407,
+    true,
+    "0.46 s b'223 0 <t17-0'"
+   ],
+   [
+    751,
+    true,
+    "0.44 s b'223 0 <t17-0'"
+   ],
+   [
+    423,
+    true,
+    "0.49 s b'223 0 <t17-0'"
+   ],
+   [
+    259,
+    true,
+    "0.48 s b'223 0 <t17-0'"
+   ],
+   [
+    177,
+    true,
+    "0.49 s b'223 0 <t17-0'"
+   ],
+   [
+    136,
+    false,
+    "start: native startup ended before announcement; stdout=b''; stderr="
+   ],
+   [
+    156,
+    true,
+    "0.48 s b'223 0 <t17-0'"
+   ],
+   [
+    146,
+    true,
+    "0.49 s b'223 0 <t17-0'"
+   ],
+   [
+    141,
+    true,
+    "0.49 s b'223 0 <t17-0'"
+   ],
+   [
+    138,
+    true,
+    "0.48 s b'223 0 <t17-0'"
+   ]
+  ]
+ },
+ "reopen_post_floor": {
+  "floor_mb": 138,
+  "failed_at_mb": 136,
+  "trials": [
+   [
+    1407,
+    true,
+    "0.45 s b'223 0 <t17-0'"
+   ],
+   [
+    751,
+    true,
+    "0.45 s b'223 0 <t17-0'"
+   ],
+   [
+    423,
+    true,
+    "0.45 s b'223 0 <t17-0'"
+   ],
+   [
+    259,
+    true,
+    "0.46 s b'223 0 <t17-0'"
+   ],
+   [
+    177,
+    true,
+    "0.48 s b'223 0 <t17-0'"
+   ],
+   [
+    136,
+    false,
+    "start: native startup ended before announcement; stdout=b''; stderr="
+   ],
+   [
+    156,
+    true,
+    "0.48 s b'223 0 <t17-0'"
+   ],
+   [
+    146,
+    true,
+    "0.49 s b'223 0 <t17-0'"
+   ],
+   [
+    141,
+    true,
+    "0.48 s b'223 0 <t17-0'"
+   ],
+   [
+    138,
+    true,
+    "0.47 s b'223 0 <t17-0'"
+   ]
+  ]
+ }
+}

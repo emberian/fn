@@ -1,0 +1,77 @@
+{
+ "actors": [
+  {
+   "kind": "client",
+   "name": "core"
+  }
+ ],
+ "assertions": {
+  "contract-consistent": true
+ },
+ "contract": "typed-window-model",
+ "expected": "consistent",
+ "faults": [],
+ "healing": [
+  "returned",
+  "settled"
+ ],
+ "healing_bound": null,
+ "id": "alternate-worker",
+ "initial": {
+  "recipe": "typed-window-assigned-vector"
+ },
+ "operations": [
+  {
+   "actor": "core",
+   "args": {},
+   "id": "r",
+   "op": "window-return"
+  },
+  {
+   "actor": "core",
+   "args": {},
+   "id": "drop",
+   "op": "window-release"
+  },
+  {
+   "actor": "core",
+   "args": {
+    "request": "next"
+   },
+   "id": "new",
+   "op": "window-admit"
+  },
+  {
+   "actor": "core",
+   "args": {
+    "request": "next",
+    "selector": "wrong-worker"
+   },
+   "id": "worker1",
+   "op": "window-acquire"
+  },
+  {
+   "actor": "core",
+   "args": {
+    "request": "next"
+   },
+   "id": "returned",
+   "op": "window-return"
+  },
+  {
+   "actor": "core",
+   "args": {
+    "request": "next"
+   },
+   "id": "settled",
+   "op": "window-release"
+  }
+ ],
+ "replay": "exact",
+ "requirements": [],
+ "title": "Bind supplied idle worker identity",
+ "version": 2,
+ "witnesses": [
+  "typed-window-settled"
+ ]
+}

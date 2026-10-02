@@ -18,3 +18,6 @@ planning/evidence/manifests/*.json
 
 # Lane scratch (BRIEF-COMMON: never committed)
 /LANEDUMP.md
+
+# The evidence index writers' flock (tools/evidence_store.py index_lock_path)
+/planning/evidence-index.tsv.lock

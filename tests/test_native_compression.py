@@ -202,7 +202,7 @@ class CompressionTests(unittest.TestCase):
 
     def test_zarticle_sends_the_stored_block_to_a_peer_with_the_dictionary(self):
         import zlib
-        evidence = Path(__file__).resolve().parents[1] / "planning/evidence/compress-dict"
+        evidence = Path(__file__).resolve().parents[1] / "tests/fixtures/evidence/compress-dict"
         dictionary = (evidence / "baseline-1.bin").read_bytes()
         import json
         b3 = json.loads((evidence / "baseline-1.json").read_text())["blake3"].encode()

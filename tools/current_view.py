@@ -42,6 +42,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import certified_claims  # noqa: E402
+import evidence_store  # noqa: E402
 import green_check  # noqa: E402
 import ledger  # noqa: E402
 
@@ -149,9 +150,11 @@ class Evidence:
 
 def record_link(root: Path, rel: str, *mentions: str) -> str:
     path = root / rel
-    if not path.is_file():
+    # A record under planning/evidence/ is read by its indexed hash when the
+    # working tree no longer carries it (tools/evidence_store.py).
+    if not evidence_store.exists(root, rel):
         raise ViewError(f"record {rel} is absent")
-    text = path.read_text(encoding="utf-8")
+    text = evidence_store.read_text(root, rel)
     for mention in mentions:
         if mention and mention not in text:
             raise ViewError(f"record {rel} does not mention {mention}")
@@ -414,6 +417,10 @@ def main(argv: list[str] | None = None) -> int:
         return pin_image(args.pin_image)
     try:
         text = build()
+    except evidence_store.EvidenceError as error:
+        print(f"current view: {evidence_store.outcome(error)}: committed evidence cannot "
+              f"be accepted: {error}", file=sys.stderr)
+        return evidence_store.exit_code(error)
     except (ViewError, KeyError) as error:
         print(f"current view: {error}", file=sys.stderr)
         return 1

@@ -13,15 +13,18 @@ from __future__ import annotations
 import contextlib
 import io
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 TOOLS = Path(__file__).resolve().parents[1] / "tools"
 sys.path.insert(0, str(TOOLS))
 import evidence_manifests as archive  # noqa: E402
+import evidence_store as store  # noqa: E402
 
 
 def repository(directory: str) -> Path:
@@ -169,6 +172,32 @@ class CheckTests(unittest.TestCase):
         self.assertEqual(cited - tracked, {OTHER})
 
 
+    def setUp(self):
+        # `add` uploads to the evidence archive: never hbox from a unit test.
+        self._scratch = tempfile.TemporaryDirectory()
+        self.archive_dir = Path(self._scratch.name) / "archive"
+        self._env = mock.patch.dict(os.environ, {
+            "FN_EVIDENCE_ARCHIVE": str(self.archive_dir),
+            "FN_EVIDENCE_CACHE": str(Path(self._scratch.name) / "cache")})
+        self._env.start()
+
+    def tearDown(self):
+        self._env.stop()
+        self._scratch.cleanup()
+
+    def assertCommitted(self, root: Path, run_id: str, staged: list[str]) -> None:
+        """Committing a manifest = its bytes in the archive, its line staged."""
+        self.assertEqual(staged, [store.INDEX_REL])
+        rel = f"planning/evidence/manifests/{run_id}.json"
+        data = (root / rel).read_bytes()
+        sha, size = store.read_index(root)[rel]
+        self.assertEqual((sha, size), (store.sha256_bytes(data), len(data)))
+        self.assertTrue((self.archive_dir / store.object_rel(sha)).is_file())
+        self.assertIn(run_id, archive.tracked_manifests(root))
+        # A reader with no local copy reads the same bytes by hash.
+        (root / rel).unlink()
+        self.assertEqual(store.read_bytes(root, rel), data)
+
     def test_add_files_and_tracks_a_run_without_git_add_f(self):
         # tooling-obstructions: lanes typed `git add -f` for every manifest.
         import argparse
@@ -180,7 +209,7 @@ class CheckTests(unittest.TestCase):
             staged = subprocess.run(["git", "-C", str(root), "diff", "--cached",
                                      "--name-only"], capture_output=True, text=True,
                                     check=True).stdout.split()
-            self.assertEqual(staged, [f"planning/evidence/manifests/{RUN}.json"])
+            self.assertCommitted(root, RUN, staged)
             absent = argparse.Namespace(run_ids=[OTHER], source=[])
             self.assertEqual(archive.cmd_add(absent, root), 1)
             self.assertEqual(archive.cmd_add(argparse.Namespace(run_ids=["x"], source=[]),
@@ -209,7 +238,7 @@ class CheckTests(unittest.TestCase):
             staged = subprocess.run(["git", "-C", str(root), "diff", "--cached",
                                      "--name-only"], capture_output=True, text=True,
                                     check=True).stdout.split()
-            self.assertEqual(staged, [f"planning/evidence/manifests/{RUN}.json"])
+            self.assertCommitted(root, RUN, staged)
             said = io.StringIO()
             with contextlib.redirect_stderr(said):
                 self.assertEqual(archive.cmd_add(

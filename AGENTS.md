@@ -21,9 +21,15 @@ specification for the affected subsystem. How lanes work is
   Change the registry, the specification and the scenario together.
 - Preserve the supplied RFCs and cite their sections; distinguish an RFC
   requirement, a stronger fn guarantee and a local policy.
-- A claim names its coordinate: source revision, proof (a committed
-  manifest), qualified image, deployment. `planning/current.md` keeps the
-  four apart; none implies another.
+- A claim names its coordinate: source revision, proof (a manifest the
+  committed `planning/evidence-index.tsv` names by hash; its bytes are in the
+  evidence archive, `tools/evidence_store.py`), qualified image, deployment.
+  `planning/current.md` keeps the four apart; none implies another.
+- Evidence is filed, not committed: `planning/evidence/<path>` stays the name
+  you cite, `python3 tools/evidence_store.py put <path>` archives the bytes
+  and writes the index line you commit (`evidence_manifests.py add RUN` does
+  it for a certify manifest). Code a tool or test runs lives under `tools/`
+  or `tests/`, never in `planning/evidence/`.
 
 ## Implementation discipline
 

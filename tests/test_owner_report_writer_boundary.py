@@ -11,7 +11,7 @@ class ReportWriter(unittest.TestCase):
         self.run_fixture(('(fn-orc-writer-fault state)', '(fn-orc-writer-leave state)'))
     def run_fixture(self, mutation=None):
         source='\n'.join(f for f in pr.forms((ROOT/'books/owner-report-capture.lisp').read_text()) if f.lower().startswith('(defun '))
-        source+='\n'+(ROOT/'planning/evidence/operation-diagnostics-2026-10-01/writer-hooks/source.lisp').read_text()
+        source+='\n'+(ROOT/'tests/fixtures/evidence/operation-diagnostics-2026-10-01/writer-hooks/source.lisp').read_text()
         if mutation:
             old,new=mutation; self.assertGreater(source.count(old),0); source=source.replace(old,new)
         with tempfile.TemporaryDirectory() as d:

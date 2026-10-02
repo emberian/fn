@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from types import SimpleNamespace
 import tempfile
@@ -102,6 +103,12 @@ class CertifiedClaimsTests(unittest.TestCase):
             "source_digests_sha256": {"books/top.lisp": digest(body)},
             "certificate_digests_sha256": {"books/top": "c" * 64},
         }), encoding="utf-8")
+        # Archived = filed: indexed by hash, bytes in a scratch archive.
+        from tools import evidence_store
+        with mock.patch.dict(os.environ, {
+                "FN_EVIDENCE_ARCHIVE": str(root / "_archive"),
+                "FN_EVIDENCE_CACHE": str(root / "_cache")}):
+            evidence_store.put(root, [relative])
         return relative
 
     def test_citing_is_provenance_green_at_these_bytes_is_the_rule(self):

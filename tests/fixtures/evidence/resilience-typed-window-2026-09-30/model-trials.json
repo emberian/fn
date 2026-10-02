@@ -1,0 +1,146 @@
+[
+  [
+    {
+      "id": "return",
+      "action": "return",
+      "request": "initial",
+      "selector": "exact"
+    },
+    {
+      "id": "release",
+      "action": "release",
+      "request": "initial",
+      "selector": "exact"
+    },
+    {
+      "id": "new",
+      "action": "admit",
+      "request": "next",
+      "selector": "exact"
+    },
+    {
+      "id": "acquire",
+      "action": "acquire",
+      "request": "next",
+      "selector": "exact"
+    },
+    {
+      "id": "old-return",
+      "action": "return",
+      "request": "initial",
+      "selector": "exact"
+    },
+    {
+      "id": "new-return",
+      "action": "return",
+      "request": "next",
+      "selector": "exact"
+    },
+    {
+      "id": "new-release",
+      "action": "release",
+      "request": "next",
+      "selector": "exact"
+    }
+  ],
+  [
+    {
+      "id": "early-release",
+      "action": "release",
+      "request": "initial",
+      "selector": "exact"
+    },
+    {
+      "id": "cancel",
+      "action": "cancel",
+      "request": "initial",
+      "selector": "exact"
+    },
+    {
+      "id": "cancel-again",
+      "action": "cancel",
+      "request": "initial",
+      "selector": "exact"
+    },
+    {
+      "id": "bad-return",
+      "action": "return",
+      "request": "initial",
+      "selector": "wrong-ticket"
+    },
+    {
+      "id": "return",
+      "action": "return",
+      "request": "initial",
+      "selector": "exact"
+    },
+    {
+      "id": "cancel-returned",
+      "action": "cancel",
+      "request": "initial",
+      "selector": "exact"
+    },
+    {
+      "id": "settle",
+      "action": "settle",
+      "request": "initial",
+      "selector": "exact"
+    },
+    {
+      "id": "duplicate",
+      "action": "settle",
+      "request": "initial",
+      "selector": "exact"
+    }
+  ],
+  [
+    {
+      "id": "occupied-admit",
+      "action": "admit",
+      "request": "refused",
+      "selector": "exact"
+    },
+    {
+      "id": "refused-acquire",
+      "action": "acquire",
+      "request": "refused",
+      "selector": "exact"
+    },
+    {
+      "id": "wrong-worker",
+      "action": "cancel",
+      "request": "initial",
+      "selector": "wrong-worker"
+    },
+    {
+      "id": "wrong-offset",
+      "action": "return",
+      "request": "initial",
+      "selector": "wrong-offset"
+    },
+    {
+      "id": "return",
+      "action": "return",
+      "request": "initial",
+      "selector": "exact"
+    },
+    {
+      "id": "cancel-returned",
+      "action": "cancel",
+      "request": "initial",
+      "selector": "exact"
+    },
+    {
+      "id": "normal-release",
+      "action": "release",
+      "request": "initial",
+      "selector": "exact"
+    },
+    {
+      "id": "settle",
+      "action": "settle",
+      "request": "initial",
+      "selector": "exact"
+    }
+  ]
+]

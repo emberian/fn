@@ -1,0 +1,587 @@
+[
+  {
+    "id": "typed-stateful",
+    "title": "Bundle symbolic typed request lifecycle",
+    "contract": "typed-window-model",
+    "initial": {
+      "recipe": "typed-window-assigned-vector"
+    },
+    "actors": [
+      {
+        "name": "core",
+        "kind": "client"
+      }
+    ],
+    "operations": [
+      {
+        "id": "op-0",
+        "actor": "core",
+        "op": "window-cancel",
+        "args": {
+          "request": "initial",
+          "selector": "wrong-ticket"
+        }
+      },
+      {
+        "id": "op-1",
+        "actor": "core",
+        "op": "window-cancel",
+        "args": {
+          "request": "initial",
+          "selector": "exact"
+        }
+      },
+      {
+        "id": "op-2",
+        "actor": "core",
+        "op": "window-cancel",
+        "args": {
+          "request": "initial",
+          "selector": "wrong-ticket"
+        }
+      },
+      {
+        "id": "op-3",
+        "actor": "core",
+        "op": "window-cancel",
+        "args": {
+          "request": "initial",
+          "selector": "wrong-ticket"
+        }
+      },
+      {
+        "id": "op-4",
+        "actor": "core",
+        "op": "window-cancel",
+        "args": {
+          "request": "initial",
+          "selector": "exact"
+        }
+      },
+      {
+        "id": "op-5",
+        "actor": "core",
+        "op": "window-cancel",
+        "args": {
+          "request": "initial",
+          "selector": "exact"
+        }
+      },
+      {
+        "id": "op-6",
+        "actor": "core",
+        "op": "window-return",
+        "args": {
+          "request": "initial",
+          "selector": "exact"
+        }
+      },
+      {
+        "id": "op-7",
+        "actor": "core",
+        "op": "window-settle",
+        "args": {
+          "request": "initial",
+          "selector": "exact"
+        }
+      }
+    ],
+    "faults": [],
+    "healing": [
+      "op-5",
+      "op-6",
+      "op-7"
+    ],
+    "witnesses": [
+      "typed-window-settled"
+    ],
+    "requirements": [],
+    "assertions": {
+      "contract-consistent": true
+    },
+    "replay": "exact",
+    "healing_bound": null,
+    "expected": "consistent",
+    "version": 2
+  },
+  {
+    "id": "typed-stateful",
+    "title": "Bundle symbolic typed request lifecycle",
+    "contract": "typed-window-model",
+    "initial": {
+      "recipe": "typed-window-assigned-vector"
+    },
+    "actors": [
+      {
+        "name": "core",
+        "kind": "client"
+      }
+    ],
+    "operations": [
+      {
+        "id": "op-0",
+        "actor": "core",
+        "op": "window-cancel",
+        "args": {
+          "request": "initial",
+          "selector": "exact"
+        }
+      },
+      {
+        "id": "op-1",
+        "actor": "core",
+        "op": "window-return",
+        "args": {
+          "request": "initial",
+          "selector": "exact"
+        }
+      },
+      {
+        "id": "op-2",
+        "actor": "core",
+        "op": "window-settle",
+        "args": {
+          "request": "initial",
+          "selector": "exact"
+        }
+      }
+    ],
+    "faults": [],
+    "healing": [
+      "op-0",
+      "op-1",
+      "op-2"
+    ],
+    "witnesses": [
+      "typed-window-settled"
+    ],
+    "requirements": [],
+    "assertions": {
+      "contract-consistent": true
+    },
+    "replay": "exact",
+    "healing_bound": null,
+    "expected": "consistent",
+    "version": 2
+  },
+  {
+    "id": "typed-stateful",
+    "title": "Bundle symbolic typed request lifecycle",
+    "contract": "typed-window-model",
+    "initial": {
+      "recipe": "typed-window-assigned-vector"
+    },
+    "actors": [
+      {
+        "name": "core",
+        "kind": "client"
+      }
+    ],
+    "operations": [
+      {
+        "id": "op-0",
+        "actor": "core",
+        "op": "window-admit",
+        "args": {
+          "request": "request-0",
+          "selector": "exact"
+        }
+      },
+      {
+        "id": "op-1",
+        "actor": "core",
+        "op": "window-settle",
+        "args": {
+          "request": "request-0",
+          "selector": "wrong-offset"
+        }
+      },
+      {
+        "id": "op-2",
+        "actor": "core",
+        "op": "window-admit",
+        "args": {
+          "request": "request-1",
+          "selector": "exact"
+        }
+      },
+      {
+        "id": "op-3",
+        "actor": "core",
+        "op": "window-cancel",
+        "args": {
+          "request": "initial",
+          "selector": "wrong-ticket"
+        }
+      },
+      {
+        "id": "op-4",
+        "actor": "core",
+        "op": "window-release",
+        "args": {
+          "request": "initial",
+          "selector": "wrong-offset"
+        }
+      },
+      {
+        "id": "op-5",
+        "actor": "core",
+        "op": "window-cancel",
+        "args": {
+          "request": "initial",
+          "selector": "exact"
+        }
+      },
+      {
+        "id": "op-6",
+        "actor": "core",
+        "op": "window-return",
+        "args": {
+          "request": "initial",
+          "selector": "exact"
+        }
+      },
+      {
+        "id": "op-7",
+        "actor": "core",
+        "op": "window-settle",
+        "args": {
+          "request": "initial",
+          "selector": "exact"
+        }
+      }
+    ],
+    "faults": [],
+    "healing": [
+      "op-5",
+      "op-6",
+      "op-7"
+    ],
+    "witnesses": [
+      "typed-window-settled"
+    ],
+    "requirements": [],
+    "assertions": {
+      "contract-consistent": true
+    },
+    "replay": "exact",
+    "healing_bound": null,
+    "expected": "consistent",
+    "version": 2
+  },
+  {
+    "id": "typed-stateful",
+    "title": "Bundle symbolic typed request lifecycle",
+    "contract": "typed-window-model",
+    "initial": {
+      "recipe": "typed-window-assigned-vector"
+    },
+    "actors": [
+      {
+        "name": "core",
+        "kind": "client"
+      }
+    ],
+    "operations": [
+      {
+        "id": "op-0",
+        "actor": "core",
+        "op": "window-admit",
+        "args": {
+          "request": "request-0",
+          "selector": "exact"
+        }
+      },
+      {
+        "id": "op-1",
+        "actor": "core",
+        "op": "window-admit",
+        "args": {
+          "request": "request-1",
+          "selector": "exact"
+        }
+      },
+      {
+        "id": "op-2",
+        "actor": "core",
+        "op": "window-admit",
+        "args": {
+          "request": "request-2",
+          "selector": "exact"
+        }
+      },
+      {
+        "id": "op-3",
+        "actor": "core",
+        "op": "window-admit",
+        "args": {
+          "request": "request-3",
+          "selector": "exact"
+        }
+      },
+      {
+        "id": "op-4",
+        "actor": "core",
+        "op": "window-admit",
+        "args": {
+          "request": "request-4",
+          "selector": "exact"
+        }
+      },
+      {
+        "id": "op-5",
+        "actor": "core",
+        "op": "window-cancel",
+        "args": {
+          "request": "initial",
+          "selector": "exact"
+        }
+      },
+      {
+        "id": "op-6",
+        "actor": "core",
+        "op": "window-return",
+        "args": {
+          "request": "initial",
+          "selector": "exact"
+        }
+      },
+      {
+        "id": "op-7",
+        "actor": "core",
+        "op": "window-settle",
+        "args": {
+          "request": "initial",
+          "selector": "exact"
+        }
+      }
+    ],
+    "faults": [],
+    "healing": [
+      "op-5",
+      "op-6",
+      "op-7"
+    ],
+    "witnesses": [
+      "typed-window-settled"
+    ],
+    "requirements": [],
+    "assertions": {
+      "contract-consistent": true
+    },
+    "replay": "exact",
+    "healing_bound": null,
+    "expected": "consistent",
+    "version": 2
+  },
+  {
+    "id": "typed-stateful",
+    "title": "Bundle symbolic typed request lifecycle",
+    "contract": "typed-window-model",
+    "initial": {
+      "recipe": "typed-window-assigned-vector"
+    },
+    "actors": [
+      {
+        "name": "core",
+        "kind": "client"
+      }
+    ],
+    "operations": [
+      {
+        "id": "op-0",
+        "actor": "core",
+        "op": "window-return",
+        "args": {
+          "request": "initial",
+          "selector": "exact"
+        }
+      },
+      {
+        "id": "op-1",
+        "actor": "core",
+        "op": "window-return",
+        "args": {
+          "request": "initial",
+          "selector": "wrong-offset"
+        }
+      },
+      {
+        "id": "op-2",
+        "actor": "core",
+        "op": "window-cancel",
+        "args": {
+          "request": "initial",
+          "selector": "wrong-ticket"
+        }
+      },
+      {
+        "id": "op-3",
+        "actor": "core",
+        "op": "window-settle",
+        "args": {
+          "request": "initial",
+          "selector": "wrong-ticket"
+        }
+      },
+      {
+        "id": "op-4",
+        "actor": "core",
+        "op": "window-return",
+        "args": {
+          "request": "initial",
+          "selector": "exact"
+        }
+      },
+      {
+        "id": "op-5",
+        "actor": "core",
+        "op": "window-cancel",
+        "args": {
+          "request": "initial",
+          "selector": "exact"
+        }
+      },
+      {
+        "id": "op-6",
+        "actor": "core",
+        "op": "window-return",
+        "args": {
+          "request": "initial",
+          "selector": "exact"
+        }
+      },
+      {
+        "id": "op-7",
+        "actor": "core",
+        "op": "window-settle",
+        "args": {
+          "request": "initial",
+          "selector": "exact"
+        }
+      }
+    ],
+    "faults": [],
+    "healing": [
+      "op-5",
+      "op-6",
+      "op-7"
+    ],
+    "witnesses": [
+      "typed-window-settled"
+    ],
+    "requirements": [],
+    "assertions": {
+      "contract-consistent": true
+    },
+    "replay": "exact",
+    "healing_bound": null,
+    "expected": "consistent",
+    "version": 2
+  },
+  {
+    "id": "typed-stateful",
+    "title": "Bundle symbolic typed request lifecycle",
+    "contract": "typed-window-model",
+    "initial": {
+      "recipe": "typed-window-assigned-vector"
+    },
+    "actors": [
+      {
+        "name": "core",
+        "kind": "client"
+      }
+    ],
+    "operations": [
+      {
+        "id": "op-0",
+        "actor": "core",
+        "op": "window-release",
+        "args": {
+          "request": "initial",
+          "selector": "exact"
+        }
+      },
+      {
+        "id": "op-1",
+        "actor": "core",
+        "op": "window-return",
+        "args": {
+          "request": "initial",
+          "selector": "wrong-offset"
+        }
+      },
+      {
+        "id": "op-2",
+        "actor": "core",
+        "op": "window-return",
+        "args": {
+          "request": "initial",
+          "selector": "exact"
+        }
+      },
+      {
+        "id": "op-3",
+        "actor": "core",
+        "op": "window-return",
+        "args": {
+          "request": "initial",
+          "selector": "exact"
+        }
+      },
+      {
+        "id": "op-4",
+        "actor": "core",
+        "op": "window-settle",
+        "args": {
+          "request": "initial",
+          "selector": "wrong-offset"
+        }
+      },
+      {
+        "id": "op-5",
+        "actor": "core",
+        "op": "window-cancel",
+        "args": {
+          "request": "initial",
+          "selector": "exact"
+        }
+      },
+      {
+        "id": "op-6",
+        "actor": "core",
+        "op": "window-return",
+        "args": {
+          "request": "initial",
+          "selector": "exact"
+        }
+      },
+      {
+        "id": "op-7",
+        "actor": "core",
+        "op": "window-settle",
+        "args": {
+          "request": "initial",
+          "selector": "exact"
+        }
+      }
+    ],
+    "faults": [],
+    "healing": [
+      "op-5",
+      "op-6",
+      "op-7"
+    ],
+    "witnesses": [
+      "typed-window-settled"
+    ],
+    "requirements": [],
+    "assertions": {
+      "contract-consistent": true
+    },
+    "replay": "exact",
+    "healing_bound": null,
+    "expected": "consistent",
+    "version": 2
+  }
+]

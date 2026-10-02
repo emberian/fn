@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-EVIDENCE = ROOT / 'planning/evidence/extracted-callback-world-2026-09-30'
+EVIDENCE = ROOT / 'tests/fixtures/evidence/extracted-callback-world-2026-09-30'
 sys.path.insert(0, str(ROOT / 'tools'))
 import proof_repl
 

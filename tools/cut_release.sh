@@ -181,8 +181,13 @@ gate() {
   ( $fn ) > "$log" 2>&1
   rc=$?
   last=$(grep -v '^$' "$log" | tail -1 | cut -c1-200)
+  # 3 is uncertain (evidence that could not be fetched) and 4 refused
+  # evidence (bytes that do not hash to their index line), never a plain
+  # RED: each blocks the cut under its own verdict and exit (r61/r65 F3).
   case $rc in
     0) word=GREEN ;;
+    3) word=UNAVAILABLE ;;
+    4) word=REFUSED ;;
     10) word=DRY ;;
     11) word=SKIPPED ;;
     *) word=RED ;;
@@ -191,12 +196,12 @@ gate() {
   echo "$line" >> "$V"
   echo "   $word: $last"
   [ "$word" != SKIPPED ] || SKIPS="$SKIPS $nn"
-  if [ "$word" = RED ]; then
+  if [ "$word" = RED ] || [ "$word" = UNAVAILABLE ] || [ "$word" = REFUSED ]; then
     [ -n "$FIRST_RED" ] || FIRST_RED="$nn $name"
     if [ "$DRY" = no ]; then
-      echo "VERDICT RED at $nn $name (log $log)" >> "$V"
-      echo "cut_release: RED at $nn $name; log $log; verdict $V" >&2
-      exit 1
+      echo "VERDICT $word at $nn $name (log $log)" >> "$V"
+      echo "cut_release: $word at $nn $name; log $log; verdict $V" >&2
+      case $word in UNAVAILABLE) exit 3 ;; REFUSED) exit 4 ;; *) exit 1 ;; esac
     fi
   fi
 }
@@ -232,7 +237,7 @@ g_fundamentals() {
   git show "$REV:$CHECKLIST" > "$OUT/checklist.md" 2>/dev/null || { echo "no $CHECKLIST at $REV"; return 1; }
   rows=$(awk '/<!-- fundamentals -->/{on=1; next} /<!-- end fundamentals -->/{on=0} on && /^\| *F[0-9]+ *\|/' "$OUT/checklist.md")
   [ -n "$rows" ] || { echo "no fundamentals table in $CHECKLIST"; return 1; }
-  open=0 total=0
+  open=0 total=0 uncertain=0 refused=0
   echo "$rows" | {
     while IFS="|" read -r _ id what _bar status evidence _; do
       id=$(echo "$id" | tr -d ' ') status=$(echo "$status" | tr -d ' *')
@@ -240,11 +245,27 @@ g_fundamentals() {
       total=$((total + 1))
       if [ "$status" != MET ]; then
         open=$((open + 1)); echo "$id $status: $(echo "$what" | sed 's/^ *//; s/ *$//')"
-      elif ! git cat-file -e "$REV:$evidence" 2>/dev/null; then
-        open=$((open + 1)); echo "$id MET but its evidence '$evidence' is not in REV"
+      elif git cat-file -e "$REV:$evidence" 2>/dev/null; then
+        :  # tracked at REV: git holds the bytes
+      else
+        # Named by REV's evidence index: the bytes must fetch from the archive
+        # and hash to the index line (a name alone is not evidence; r56 F3).
+        # 1 = not indexed at REV, 3 = indexed but unavailable (uncertain),
+        # 4 = indexed and its bytes do not hash to the line (refused).
+        "$PY" "$ROOT/tools/evidence_store.py" verify-paths --revision "$REV" "$evidence" >/dev/null 2>&1
+        case $? in
+          0) ;;
+          3) uncertain=$((uncertain + 1)); echo "$id MET but its evidence '$evidence' is UNAVAILABLE: indexed at REV, its object did not fetch from the archive" ;;
+          4) refused=$((refused + 1)); echo "$id MET but its evidence '$evidence' is REFUSED: indexed at REV, its bytes do not hash to the index line" ;;
+          *) open=$((open + 1)); echo "$id MET but its evidence '$evidence' is not in REV" ;;
+        esac
       fi
     done
-    if [ "$open" -gt 0 ]; then echo "$open of $total fundamentals not met (blocking)"; exit 1; fi
+    # Refused evidence outranks an open row: bytes proven wrong are never
+    # reported as a plain RED (r66 F5).
+    if [ "$refused" -gt 0 ]; then echo "$refused of $total fundamentals REFUSED: evidence bytes do not hash to the index line; $open not met, $uncertain unavailable (blocking)"; exit 4; fi
+    if [ "$open" -gt 0 ]; then echo "$open of $total fundamentals not met, $uncertain unavailable (blocking)"; exit 1; fi
+    if [ "$uncertain" -gt 0 ]; then echo "$uncertain of $total fundamentals UNAVAILABLE: uncertain, not refused (blocking)"; exit 3; fi
     echo "all $total fundamentals met, each with its evidence at REV"
   }
 }
@@ -277,9 +298,13 @@ g_changelog() {
   fi
 }
 
+# A tool's 3 (UNAVAILABLE) or 4 (REFUSED evidence) passes through unchanged;
+# any other failure is 1 (r65 F4).
+keep34() { case $1 in 3|4) return "$1" ;; *) return 1 ;; esac; }
+
 g_closure() {
-  "$PY" tools/green_check.py --strict --summary || { echo "a book is not green at its digest (green_check --strict)"; return 1; }
-  "$PY" tools/green_check.py --profile default --strict || { echo "the default profile's closure is not green"; return 1; }
+  "$PY" tools/green_check.py --strict --summary || { rc=$?; echo "a book is not green at its digest (green_check --strict, exit $rc)"; keep34 $rc; return; }
+  "$PY" tools/green_check.py --profile default --strict || { rc=$?; echo "the default profile's closure is not green (exit $rc)"; keep34 $rc; return; }
   echo "every book green at its digest; the default profile's closure green"
 }
 

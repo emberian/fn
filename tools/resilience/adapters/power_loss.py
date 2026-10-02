@@ -100,7 +100,14 @@ def _post_of(mid: str, posts: list):
 
 
 def records(path=EVIDENCE) -> list:
-    return [json.loads(line) for line in Path(path).read_text().splitlines() if line.strip()]
+    """The rig's records; the committed default is read from the evidence
+    archive by hash when the working tree does not carry it."""
+    path = Path(path)
+    if path == EVIDENCE and not path.is_file():
+        sys.path.insert(0, str(ROOT / "tools"))
+        import evidence_store  # noqa: PLC0415
+        path = evidence_store.materialize(ROOT, EVIDENCE.relative_to(ROOT).as_posix())
+    return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
 
 
 def attempted(rec: dict) -> int:

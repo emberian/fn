@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 import fundamentals  # noqa: E402
 
-SCOREBOARD = ROOT / "planning" / "evidence" / "fundamentals-2026-09-27" / "out"
+SCOREBOARD = ROOT / "tests" / "fixtures" / "evidence" / "fundamentals-2026-09-27" / "out"
 
 
 def bars(**over):

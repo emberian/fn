@@ -1,0 +1,19 @@
+test_adu_past_the_profile_is_refused_before_custody (tests.test_bp_fragment_node_native.NativeBpFragmentNodeTests.test_adu_past_the_profile_is_refused_before_custody) ... fn: building the bp-ingress bridge image bb2a8154d92e (once per closure digest)
+fn: building the store bridge image 550a028fbd94 (once per closure digest)
+ok
+test_journal_past_its_profile_is_refused_at_open (tests.test_bp_fragment_node_native.NativeBpFragmentNodeTests.test_journal_past_its_profile_is_refused_at_open) ... ok
+test_nonzero_fragment_then_restart_offset_zero_dispatches_once (tests.test_bp_fragment_node_native.NativeBpFragmentNodeTests.test_nonzero_fragment_then_restart_offset_zero_dispatches_once) ... ok
+test_rotation_with_a_family_in_flight_loses_no_fragment (tests.test_bp_fragment_node_native.NativeBpFragmentNodeTests.test_rotation_with_a_family_in_flight_loses_no_fragment) ... ok
+test_seventy_fragments_across_a_kill_reassemble_once (tests.test_bp_fragment_node_native.NativeBpFragmentNodeTests.test_seventy_fragments_across_a_kill_reassemble_once) ... ok
+test_sixty_four_fragments_across_a_kill_reassemble_once (tests.test_bp_fragment_node_native.NativeBpFragmentNodeTests.test_sixty_four_fragments_across_a_kill_reassemble_once) ... ok
+test_ten_mebibyte_article_through_four_kib_fragments (tests.test_bp_fragment_node_native.NativeBpFragmentNodeTests.test_ten_mebibyte_article_through_four_kib_fragments) ... SCN-077 adu-octets=10486094 fragments=2622 author-seconds=21.8
+SCN-077 first-half-seconds=93.2
+SCN-077 second-half-seconds=90.0
+SCN-077 reassembly-and-handoff-seconds=265.1
+ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 671.816s
+
+OK
+FN_TEST_BUDGET_RESULT {"module": "tests.test_bp_fragment_node_native", "tests": 7, "failures": 0, "errors": 0, "skipped": 0, "executed": 7, "skips": [], "timings": [["tests.test_bp_fragment_node_native.NativeBpFragmentNodeTests.test_adu_past_the_profile_is_refused_before_custody", 132.669], ["tests.test_bp_fragment_node_native.NativeBpFragmentNodeTests.test_journal_past_its_profile_is_refused_at_open", 17.478], ["tests.test_bp_fragment_node_native.NativeBpFragmentNodeTests.test_nonzero_fragment_then_restart_offset_zero_dispatches_once", 2.713], ["tests.test_bp_fragment_node_native.NativeBpFragmentNodeTests.test_rotation_with_a_family_in_flight_loses_no_fragment", 5.407], ["tests.test_bp_fragment_node_native.NativeBpFragmentNodeTests.test_seventy_fragments_across_a_kill_reassemble_once", 17.953], ["tests.test_bp_fragment_node_native.NativeBpFragmentNodeTests.test_sixty_four_fragments_across_a_kill_reassemble_once", 13.16], ["tests.test_bp_fragment_node_native.NativeBpFragmentNodeTests.test_ten_mebibyte_article_through_four_kib_fragments", 482.433]]}

@@ -1,0 +1,267 @@
+{
+ "image": "/tank/fn/scratch/sca-join-4/native-f2ax/tree/build/fn-host-developer",
+ "articles": 1000,
+ "commands": {
+  "DATE": {
+   "command": "DATE",
+   "runs": [
+    {
+     "reply": "111 20260927221309",
+     "reply_lines": 0,
+     "windows": 1,
+     "counts": {
+      "fn-scr-view-of": 1,
+      "fn-scr-mid": 9,
+      "fn-cat$c-at": 9
+     }
+    }
+   ],
+   "stable": true
+  },
+  "GROUP": {
+   "command": "GROUP fn.test",
+   "runs": [
+    {
+     "reply": "211 1000 1 1000 fn.test",
+     "reply_lines": 0,
+     "windows": 1,
+     "counts": {
+      "fn-scr-view-of": 1,
+      "fn-scr-mid": 9,
+      "fn-cat$c-group-number": 2000,
+      "fn-cat$c-at": 2009,
+      "fn-cat$c-visible-at": 2000,
+      "fn-cat$c-group-next": 2,
+      "fn-cnx-view-seq": 2000,
+      "fn-cnx-view-range": 2,
+      "fn-scat-range-numbers": 2,
+      "fn-nntp-group-low": 1,
+      "fn-nntp-group-low/len": 1000
+     }
+    },
+    {
+     "reply": "211 1000 1 1000 fn.test",
+     "reply_lines": 0,
+     "windows": 1,
+     "counts": {
+      "fn-scr-view-of": 1,
+      "fn-scr-mid": 9,
+      "fn-cat$c-group-number": 2000,
+      "fn-cat$c-at": 2009,
+      "fn-cat$c-visible-at": 2000,
+      "fn-cat$c-group-next": 2,
+      "fn-cnx-view-seq": 2000,
+      "fn-cnx-view-range": 2,
+      "fn-scat-range-numbers": 2,
+      "fn-nntp-group-low": 1,
+      "fn-nntp-group-low/len": 1000
+     }
+    }
+   ],
+   "stable": true
+  },
+  "LISTGROUP whole": {
+   "command": "LISTGROUP fn.test",
+   "runs": [
+    {
+     "reply": "211 1000 1 1000 fn.test list follows",
+     "reply_lines": 1000,
+     "windows": 1,
+     "counts": {
+      "fn-scr-view-of": 1,
+      "fn-scr-mid": 9,
+      "fn-cat$c-group-number": 3000,
+      "fn-cat$c-at": 3009,
+      "fn-cat$c-visible-at": 3000,
+      "fn-cat$c-group-next": 3,
+      "fn-cnx-view-seq": 3000,
+      "fn-cnx-view-range": 3,
+      "fn-scat-range-numbers": 3,
+      "fn-nntp-group-low": 1,
+      "fn-nntp-group-low/len": 1000
+     }
+    },
+    {
+     "reply": "211 1000 1 1000 fn.test list follows",
+     "reply_lines": 1000,
+     "windows": 1,
+     "counts": {
+      "fn-scr-view-of": 1,
+      "fn-scr-mid": 9,
+      "fn-cat$c-group-number": 3000,
+      "fn-cat$c-at": 3009,
+      "fn-cat$c-visible-at": 3000,
+      "fn-cat$c-group-next": 3,
+      "fn-cnx-view-seq": 3000,
+      "fn-cnx-view-range": 3,
+      "fn-scat-range-numbers": 3,
+      "fn-nntp-group-low": 1,
+      "fn-nntp-group-low/len": 1000
+     }
+    }
+   ],
+   "stable": true
+  },
+  "LISTGROUP 40": {
+   "command": "LISTGROUP fn.test 500-539",
+   "runs": [
+    {
+     "reply": "211 1000 1 1000 fn.test list follows",
+     "reply_lines": 40,
+     "windows": 1,
+     "counts": {
+      "fn-scr-view-of": 1,
+      "fn-scr-mid": 9,
+      "fn-cat$c-group-number": 2040,
+      "fn-cat$c-at": 2049,
+      "fn-cat$c-visible-at": 2040,
+      "fn-cat$c-group-next": 3,
+      "fn-cnx-view-seq": 2040,
+      "fn-cnx-view-range": 3,
+      "fn-scat-range-numbers": 3,
+      "fn-nntp-group-low": 1,
+      "fn-nntp-group-low/len": 1000
+     }
+    },
+    {
+     "reply": "211 1000 1 1000 fn.test list follows",
+     "reply_lines": 40,
+     "windows": 1,
+     "counts": {
+      "fn-scr-view-of": 1,
+      "fn-scr-mid": 9,
+      "fn-cat$c-group-number": 2040,
+      "fn-cat$c-at": 2049,
+      "fn-cat$c-visible-at": 2040,
+      "fn-cat$c-group-next": 3,
+      "fn-cnx-view-seq": 2040,
+      "fn-cnx-view-range": 3,
+      "fn-scat-range-numbers": 3,
+      "fn-nntp-group-low": 1,
+      "fn-nntp-group-low/len": 1000
+     }
+    }
+   ],
+   "stable": true
+  },
+  "ARTICLE number": {
+   "command": "ARTICLE 500",
+   "runs": [
+    {
+     "reply": "220 500 <cs7-000499@example.invalid> article follows",
+     "reply_lines": 33,
+     "windows": 1,
+     "counts": {
+      "fn-scr-view-of": 1,
+      "fn-scr-mid": 9,
+      "fn-cat$c-at": 9,
+      "fn-nntp-find-group-number": 3,
+      "fn-nntp-find-group-number/len": 2000
+     }
+    },
+    {
+     "reply": "220 500 <cs7-000499@example.invalid> article follows",
+     "reply_lines": 33,
+     "windows": 1,
+     "counts": {
+      "fn-scr-view-of": 1,
+      "fn-scr-mid": 9,
+      "fn-cat$c-at": 9,
+      "fn-nntp-find-group-number": 3,
+      "fn-nntp-find-group-number/len": 2000
+     }
+    }
+   ],
+   "stable": true
+  },
+  "ARTICLE msgid": {
+   "command": "ARTICLE <cs7-000499@example.invalid>",
+   "runs": [
+    {
+     "reply": "220 500 <cs7-000499@example.invalid> article follows",
+     "reply_lines": 33,
+     "windows": 1,
+     "counts": {
+      "fn-scr-view-of": 1,
+      "fn-scr-mid": 9,
+      "fn-cat$c-at": 9,
+      "fn-midx-lookup": 2
+     }
+    },
+    {
+     "reply": "220 500 <cs7-000499@example.invalid> article follows",
+     "reply_lines": 33,
+     "windows": 1,
+     "counts": {
+      "fn-scr-view-of": 1,
+      "fn-scr-mid": 9,
+      "fn-cat$c-at": 9,
+      "fn-midx-lookup": 2
+     }
+    }
+   ],
+   "stable": true
+  },
+  "OVER 40": {
+   "command": "OVER 500-539",
+   "runs": [
+    {
+     "reply": "224 overview information follows",
+     "reply_lines": 40,
+     "windows": 1,
+     "counts": {
+      "fn-scr-view-of": 1,
+      "fn-scr-mid": 9,
+      "fn-cat$c-at": 9,
+      "fn-midx-lookup": 40
+     }
+    },
+    {
+     "reply": "224 overview information follows",
+     "reply_lines": 40,
+     "windows": 1,
+     "counts": {
+      "fn-scr-view-of": 1,
+      "fn-scr-mid": 9,
+      "fn-cat$c-at": 9,
+      "fn-midx-lookup": 40
+     }
+    }
+   ],
+   "stable": true
+  },
+  "OVER 1-2000": {
+   "command": "OVER 1-2000",
+   "runs": [
+    {
+     "reply": "224 overview information follows",
+     "reply_lines": 1000,
+     "windows": 1,
+     "counts": {
+      "fn-scr-view-of": 1,
+      "fn-scr-mid": 9,
+      "fn-cat$c-at": 9,
+      "fn-midx-lookup": 1000
+     }
+    },
+    {
+     "reply": "224 overview information follows",
+     "reply_lines": 1000,
+     "windows": 1,
+     "counts": {
+      "fn-scr-view-of": 1,
+      "fn-scr-mid": 9,
+      "fn-cat$c-at": 9,
+      "fn-midx-lookup": 1000
+     }
+    }
+   ],
+   "stable": true
+  }
+ },
+ "load_s": 40.3,
+ "installed": [
+  "lookups counted: fn-scr-view-of fn-scr-mid fn-cat$c-group-number fn-cat$c-msgid-seqs fn-cat$c-at fn-cat$c-visible-at fn-cat$c-group-next fn-cat$c-group-count fn-cnx-view-seq fn-cnx-view-range fn-scat-range-numbers fn-cat-view-last-visible fn-cat-view-last-visible/len fn-cat-row-article fn-midx-lookup fn-find-article fn-find-article/len fn-nntp-find-group-number fn-nntp-find-group-number/len fn-nntp-available-article fn-nntp-available-article/len fn-nntp-group-range-numbers fn-nntp-group-range-numbers/len fn-nntp-group-count fn-nntp-group-count/len fn-nntp-group-low fn-nntp-group-low/len fn-nntp-group-high fn-nntp-group-high/len fn-cat-view-below fn-cat-view-articles fn-cat-view-find fn-cat-view-number-find fn-cat-number-seq fn-cat-seqs-for fn-cnx-walk-range fn-nntp-archive-command fn-nntp-over-range fn-nntp-group-result",
+  "lookups not counted (unbound or a macro):"
+ ]
+}

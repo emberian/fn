@@ -658,8 +658,16 @@ def newest_run(head):
     """The run whose revision is HEAD or HEAD's nearest measured ancestor; the
     newest file of that revision."""
     runs = []
-    for path in sorted(RUNS.glob("*.json")):
-        doc = load_json(path)
+    # The committed runs come from the evidence archive by hash when the
+    # working tree does not carry them (tools/evidence_store.py); a run
+    # fetched here and not yet filed is read from disk, as before.
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import evidence_store  # noqa: PLC0415
+    names = evidence_store.glob(ROOT, RUNS.relative_to(ROOT).as_posix() + "/*.json")
+    evidence_store.prefetch(ROOT, names)
+    for name in names:
+        path = ROOT / name
+        doc = json.loads(evidence_store.read_text(ROOT, name))
         if not isinstance(doc, dict) or doc.get("refused") or not doc.get("revision"):
             continue
         if doc.get("quiet_before", {}).get("threshold_cores") != QUIET_CPU:

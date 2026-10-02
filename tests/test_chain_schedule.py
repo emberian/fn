@@ -136,13 +136,17 @@ class QuietWallTests(unittest.TestCase):
             cached = chain.quiet_walls(["books/x"], history, "persvati", summary)
             self.assertEqual(cached, plain)
             self.assertTrue(summary.is_file())
-            # A second call reads the summary, not the manifests.
-            with mock.patch.object(Path, "read_text", autospec=True,
-                                   side_effect=lambda path, **_: (
-                                       summary.open(encoding="utf-8").read()
-                                       if path == summary else self.fail(f"read {path}"))):
-                self.assertEqual(chain.quiet_walls(["books/x"], history, "persvati", summary),
-                                 plain)
+            # A second call answers from the summary for the bytes it reads
+            # now; a forged entry for other bytes is never used (r61 F9).
+            self.assertEqual(chain.quiet_walls(["books/x"], history, "persvati", summary),
+                             plain)
+            loaded = json.loads(summary.read_text())
+            name = "certify-20260101T000000Z-1.json"
+            loaded["files"][name]["stamp"] = ["sha256", "0" * 64]
+            loaded["files"][name]["summary"]["books"]["books/x"] = [99999.0, None]
+            summary.write_text(json.dumps(loaded))
+            self.assertEqual(chain.quiet_walls(["books/x"], history, "persvati", summary),
+                             plain)
             # An edited manifest is read again.
             self.write(history, "20260101T000000Z", "persvati", {"books/x": 2.0},
                        {"books/x": [1.0, 1.0]})

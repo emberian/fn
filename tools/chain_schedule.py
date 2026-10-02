@@ -42,6 +42,7 @@ from __future__ import annotations
 import argparse
 import collections
 import dataclasses
+import hashlib
 import heapq
 import json
 import math
@@ -60,7 +61,10 @@ HISTORY = ROOT / "planning" / "evidence" / "manifests"
 # (tooling-obstructions, 2026-09-28).  build/ is per tree and ignored; a stale
 # or unreadable summary is rebuilt, never trusted over the file.
 SUMMARY = ROOT / "build" / "wall-summary.json"
-SUMMARY_VERSION = 1
+SUMMARY_VERSION = 2  # 2: keyed by the SHA-256 of the bytes read
+# (manifest name, UNAVAILABLE | REFUSED) for each archived manifest a
+# summaries() call had to skip; scheduling reads it, no claim does.
+UNREADABLE: list[tuple[str, str]] = []
 
 # (knee, slope) of s(L) per box, from `python3 tools/chain_schedule.py fit`
 # on 2026-09-28 over planning/evidence/manifests at 48a736d5e: persvati
@@ -131,8 +135,56 @@ def manifest_summary(manifest: object) -> dict | None:
             "cpus": cpus if isinstance(cpus, int) else None, "books": books}
 
 
-def summaries(paths: list[Path], summary: Path | None) -> list[dict | None]:
-    """Each path's manifest_summary, from the SUMMARY file where it is current."""
+def history_entries(history: Path) -> list[tuple[str, list, object]]:
+    """(name, stamp, read) for every `*certify-*.json` manifest in HISTORY.
+
+    The default history is the evidence archive's manifests: the committed
+    index's (read by hash, stamped by hash, verified on every read;
+    tools/evidence_store.py) plus any filed here and not yet added (stamped
+    by size and mtime).  An indexed name is ALWAYS the index's: a working-tree
+    file at that path is never read as itself (r61 F9).  `read` returns the
+    bytes (an indexed one verified against its line on every read); the
+    stamp only names the entry.  Another directory is read from disk alone.
+    """
+    entries: dict[str, tuple[str, list, object]] = {}
+    default = history.resolve() == HISTORY.resolve()
+    indexed: set[str] = set()
+    if default:
+        import evidence_store  # noqa: PLC0415
+        rel_dir = HISTORY.relative_to(ROOT).as_posix()
+        indexed = {rel.rsplit("/", 1)[-1] for rel in evidence_store.read_index(ROOT)
+                   if rel.startswith(rel_dir + "/")}
+    if history.is_dir():
+        for path in history.glob("*certify-*.json"):
+            if path.name in indexed:
+                continue
+            try:
+                stat = path.stat()
+            except OSError:
+                continue
+            entries[path.name] = (path.name, [stat.st_size, stat.st_mtime_ns],
+                                  lambda path=path: path.read_bytes())
+    if default:
+        index = evidence_store.read_index(ROOT)
+        rel_dir = HISTORY.relative_to(ROOT).as_posix()
+        for rel in evidence_store.glob(ROOT, rel_dir + "/*certify-*.json"):
+            name = rel.rsplit("/", 1)[-1]
+            if name in entries or rel not in index:
+                continue
+            entries[name] = (name, ["sha256", index[rel][0]],
+                             lambda rel=rel: evidence_store.read_bytes(ROOT, rel))
+    return list(entries.values())
+
+
+def summaries(paths: list, summary: Path | None) -> list[dict | None]:
+    """Each entry's manifest_summary, from the SUMMARY file where it is current.
+
+    An entry is `history_entries`' (name, stamp, read); a bare Path is read
+    from disk.  Every entry's bytes are read on every call (an archived one
+    verified against its index line); the SUMMARY file only saves parsing
+    them, keyed by the SHA-256 of the bytes read now, so no cached summary
+    stands in for bytes that were not read, changed, or are gone (r61 F9).
+    The file is this tool's own cache under build/, trusted as build/ is."""
     known: dict = {}
     if summary is not None:
         try:
@@ -141,24 +193,44 @@ def summaries(paths: list[Path], summary: Path | None) -> list[dict | None]:
                 known = loaded.get("files") or {}
         except (OSError, ValueError, AttributeError):
             known = {}
+    import evidence_store  # noqa: PLC0415
     found, fresh, changed = [], {}, False
-    for path in paths:
+    for item in paths:
+        if isinstance(item, Path):
+            try:
+                stat = item.stat()
+            except OSError:
+                found.append(None)
+                continue
+            item = (item.name, [stat.st_size, stat.st_mtime_ns],
+                    lambda path=item: path.read_bytes())
+        name, _, read = item
         try:
-            stat = path.stat()
+            data = read()
         except OSError:
             found.append(None)
             continue
-        stamp = [stat.st_size, stat.st_mtime_ns]
-        entry = known.get(path.name)
+        except evidence_store.EvidenceError as error:
+            # An archived manifest that is unavailable (cold cache,
+            # archive unreachable) or refused (bytes that do not hash to
+            # the index line).  Scheduling cost, not a claim: skip it, say
+            # so, never raise, never cache the miss (r61 F9).
+            UNREADABLE.append((name, evidence_store.outcome(error)))
+            print(f"chain_schedule: skipping {name}: {evidence_store.outcome(error)}: "
+                  f"{error}", file=sys.stderr)
+            found.append(None)
+            continue
+        stamp = ["sha256", hashlib.sha256(data).hexdigest()]
+        entry = known.get(name)
         if isinstance(entry, dict) and entry.get("stamp") == stamp:
             value = entry.get("summary")
         else:
             changed = True
             try:
-                value = manifest_summary(json.loads(path.read_text(encoding="utf-8")))
-            except (OSError, ValueError):
+                value = manifest_summary(json.loads(data))
+            except ValueError:
                 value = None
-        fresh[path.name] = {"stamp": stamp, "summary": value}
+        fresh[name] = {"stamp": stamp, "summary": value}
         found.append(value)
     if summary is not None and (changed or set(fresh) != set(known)):
         try:
@@ -191,8 +263,8 @@ def quiet_walls(books: Iterable[str], history: Path | None = None,
     here = host_name(host)
     mine: dict[str, list[float]] = collections.defaultdict(list)
     anywhere: dict[str, list[float]] = collections.defaultdict(list)
-    paths = sorted(history.glob("*certify-*.json"),
-                   key=lambda p: p.name.split("certify-")[-1]) if history.is_dir() else []
+    paths = sorted(history_entries(history),
+                   key=lambda entry: entry[0].split("certify-")[-1])
     for one in summaries(paths, summary):
         if one is None:
             continue
@@ -386,9 +458,9 @@ def chain_lines(chain: list[str], walls: dict[str, float], factor: float = 1.0,
 def observations(history: Path) -> dict[tuple[str, str], list[tuple[float, float]]]:
     """(box, book) -> [(load per core, wall seconds)] over ordinary runs."""
     data: dict[tuple[str, str], list[tuple[float, float]]] = collections.defaultdict(list)
-    for path in sorted(history.glob("*certify-*.json")):
+    for _name, _stamp, read in sorted(history_entries(history), key=lambda e: e[0]):
         try:
-            manifest = json.loads(path.read_text(encoding="utf-8"))
+            manifest = json.loads(read())
         except (OSError, ValueError):
             continue
         if not isinstance(manifest, dict) or manifest.get("pcert"):

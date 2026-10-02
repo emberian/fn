@@ -1510,7 +1510,7 @@
         "planning/evidence/live-status-2026-09-25.md"
       ],
       "implementation": {
-        "test": "planning/evidence/live-status-2026-09-25/native.sh",
+        "test": "tests/scenarios/scripts/live-status-2026-09-25/native.sh",
         "native": true,
         "log": "planning/evidence/live-status-2026-09-25/summary.txt",
         "record": "planning/evidence/live-status-2026-09-25.md"
@@ -1569,7 +1569,7 @@
         "planning/evidence/path-and-login-2026-09-25.md"
       ],
       "implementation": {
-        "test": "planning/evidence/path-and-login-2026-09-25/pl_probe.py",
+        "test": "tests/scenarios/scripts/path-and-login-2026-09-25/pl_probe.py",
         "native": true,
         "log": "planning/evidence/path-and-login-2026-09-25/tin-wire.log",
         "record": "planning/evidence/path-and-login-2026-09-25.md"
@@ -1598,7 +1598,7 @@
         "planning/evidence/path-and-login-2026-09-25.md"
       ],
       "implementation": {
-        "test": "planning/evidence/path-and-login-2026-09-25/pl_probe.py",
+        "test": "tests/scenarios/scripts/path-and-login-2026-09-25/pl_probe.py",
         "native": true,
         "log": "planning/evidence/path-and-login-2026-09-25/probe-bound.log",
         "record": "planning/evidence/path-and-login-2026-09-25.md"
@@ -2164,7 +2164,7 @@
         "tests/acl2/native-health-tests.lisp"
       ],
       "implementation": {
-        "test": "planning/evidence/operator-health-2026-09-25/native.sh",
+        "test": "tests/scenarios/scripts/operator-health-2026-09-25/native.sh",
         "native": true,
         "log": "planning/evidence/operator-health-2026-09-25/native-out/summary.txt",
         "record": "planning/evidence/operator-health-2026-09-25.md"
@@ -2196,7 +2196,7 @@
         "planning/evidence/width-producers-2-2026-09-26.md"
       ],
       "implementation": {
-        "test": "planning/evidence/width-producers-2-gate-served.sh",
+        "test": "tests/scenarios/scripts/width-producers-2-gate-served.sh",
         "native": true,
         "log": "planning/evidence/width-producers-2-2026-09-26/gate-served.log",
         "record": "planning/evidence/width-producers-2-2026-09-26.md"
@@ -2883,7 +2883,7 @@
         "No POST stalls; the per-POST median grows linearly with N (fn-own-refresh's group-index rebuild, PKT-324 item 1); the profile's dominant term is named, and no term is the profiler's own."
       ],
       "implementation": {
-        "test": "planning/evidence/publish-program-2026-09-26/step1.sh",
+        "test": "tests/scenarios/scripts/publish-program-2026-09-26/step1.sh",
         "cases": [
           "measure.sh",
           "syncs.sh",
@@ -3071,7 +3071,7 @@
         "planning/evidence/served-path-scale-2026-09-26.md"
       ],
       "implementation": {
-        "test": "planning/evidence/served-path-scale-2026-09-26/fixture_open.py",
+        "test": "tests/scenarios/scripts/served-path-scale-2026-09-26/fixture_open.py",
         "native": true,
         "log": "planning/evidence/served-path-scale-2026-09-26/open-img2-5e15ad4c.log",
         "record": "planning/evidence/served-path-scale-2026-09-26.md"
@@ -3397,7 +3397,7 @@
         "planning/evidence/served-path-scale-2026-09-26/continuation/greet.py"
       ],
       "implementation": {
-        "test": "planning/evidence/served-path-scale-2026-09-26/continuation/greet.py",
+        "test": "tests/scenarios/scripts/served-path-scale-2026-09-26/continuation/greet.py",
         "native": true,
         "record": "planning/evidence/served-path-scale-2026-09-26.md",
         "log": "planning/evidence/served-path-scale-2026-09-26/continuation/greet-10k-g1-6e3ccd15.json"
@@ -3460,7 +3460,7 @@
         "planning/evidence/signed-post-linear-2026-09-26/meas/summary.log"
       ],
       "implementation": {
-        "test": "planning/evidence/signed-post-linear-2026-09-26/prof_signed.py",
+        "test": "tools/fixture_scripts/signed-post-linear-2026-09-26/prof_signed.py",
         "native": true,
         "record": "planning/evidence/signed-post-linear-2026-09-26.md",
         "log": "planning/evidence/signed-post-linear-2026-09-26/meas/summary.log"
@@ -3488,7 +3488,7 @@
         "planning/evidence/post-identity-index-2026-09-26/postmeasure.py"
       ],
       "implementation": {
-        "test": "planning/evidence/post-identity-index-2026-09-26/postmeasure.py",
+        "test": "tools/fixture_scripts/post-identity-index-2026-09-26/postmeasure.py",
         "native": true,
         "record": "planning/evidence/post-identity-index-2026-09-26.md",
         "log": "planning/evidence/post-identity-index-2026-09-26/results.json"
@@ -3516,7 +3516,7 @@
         "planning/evidence/over-number-index-2026-09-26/measure.py"
       ],
       "implementation": {
-        "test": "planning/evidence/over-number-index-2026-09-26/measure.py",
+        "test": "tools/fixture_scripts/over-number-index-2026-09-26/measure.py",
         "native": true,
         "record": "planning/evidence/over-number-index-2026-09-26.md",
         "log": "planning/evidence/over-number-index-2026-09-26/after.json"
@@ -3543,7 +3543,7 @@
         "planning/evidence/bp-crc-exec-2026-09-26/bpenc.lisp"
       ],
       "implementation": {
-        "test": "planning/evidence/bp-crc-exec-2026-09-26/bpenc.lisp",
+        "test": "tests/scenarios/scripts/bp-crc-exec-2026-09-26/bpenc.lisp",
         "native": true,
         "record": "planning/evidence/bp-crc-exec-2026-09-26.md",
         "log": "planning/evidence/bp-crc-exec-2026-09-26/bpenc-after-1.out"

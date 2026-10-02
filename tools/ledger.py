@@ -4269,11 +4269,18 @@ def book_report(paths: list[str]) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    import evidence_store  # noqa: PLC0415  (beside this file; tools/ is on sys.path)
     try:
         return _main(argv)
     except AnalysisIncomplete as error:
         print(f"ERROR: analysis-incomplete: {error}", file=sys.stderr)
         return 1
+    except evidence_store.EvidenceError as error:
+        # Uncertain (3) when committed evidence could not be read, refused (4)
+        # when its bytes are there and wrong; never a plain failure (r61 F3).
+        print(f"ERROR: {evidence_store.outcome(error)}: committed evidence cannot be "
+              f"accepted: {error}", file=sys.stderr)
+        return evidence_store.exit_code(error)
 
 
 def _main(argv: list[str] | None = None) -> int:

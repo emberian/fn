@@ -1,0 +1,40 @@
+{
+ "image": "/tank/fn/scratch/fundamentals-scoreboard/native-fs-33bbfae9c/tree/build/fn-host-developer",
+ "fixture": "/dev/shm/fundamentals-scoreboard/f2/fx",
+ "articles": 10000,
+ "client": "bulk",
+ "open_s": 5.42,
+ "settle_s": 2.0,
+ "greeting": {
+  "n": 40,
+  "median_ms": 0.65,
+  "p95_ms": 4.27,
+  "max_ms": 7.94,
+  "owner_cpu_ms_per_op": 0.75
+ },
+ "group_reply": "211 10000 1 10000 fn.test",
+ "article_by_number": {
+  "n": 40,
+  "median_ms": 1.23,
+  "p95_ms": 1.98,
+  "max_ms": 5.63,
+  "owner_cpu_ms_per_op": 1.25
+ },
+ "over_2000": {
+  "n": 5,
+  "median_ms": 386.33,
+  "p95_ms": 432.03,
+  "max_ms": 432.03,
+  "rows": 2000,
+  "owner_cpu_ms_per_op": 390.0
+ },
+ "over_40": {
+  "n": 5,
+  "median_ms": 6.57,
+  "p95_ms": 11.26,
+  "max_ms": 11.26,
+  "rows": 40,
+  "owner_cpu_ms_per_op": 8.0
+ },
+ "rss_kib": 704884
+}

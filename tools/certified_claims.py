@@ -71,17 +71,13 @@ def uncited_books(root: Path, books, tracked_only: bool = True) -> list[str]:
     --recertify run).  `tracked_only` reads the archive's git-tracked
     manifests (a tree with no git reads every archived one).
     """
-    archive = root / evidence_manifests.ARCHIVE_REL
     tracked = evidence_manifests.tracked_manifests(root) if tracked_only else set()
-    paths = sorted(archive.glob("certify-*.json"))
-    if tracked:
-        paths = [path for path in paths if path.stem in tracked]
     passed: dict[str, list[dict]] = {}
-    for path in paths:
-        for manifest in certs.load_manifests(root, path):
-            for book, verdict in (manifest.get("book_results") or {}).items():
-                if verdict == "passed":
-                    passed.setdefault(book, []).append(manifest)
+    for _, manifest in evidence_manifests.load_all_archived(
+            root, tracked_only=bool(tracked)):
+        for book, verdict in (manifest.get("book_results") or {}).items():
+            if verdict == "passed":
+                passed.setdefault(book, []).append(manifest)
     uncited: list[str] = []
     for book in books:
         try:
@@ -113,12 +109,11 @@ def manifest_failures(proofs: list[dict], owners: dict[str, set[str]],
     failures: list[str] = []
     for ident, books in sorted(owners.items()):
         for relative in cited_manifests(rows.get(ident, {})):
-            path = root / relative
-            if not path.is_file():
+            if not evidence_manifests.evidence_store.exists(root, relative):
                 failures.append(f"{ident}: cited manifest {relative} is absent")
                 continue
             try:
-                json.loads(path.read_text(encoding="utf-8"))
+                json.loads(evidence_manifests.evidence_store.read_text(root, relative))
             except (OSError, ValueError) as error:
                 failures.append(f"{ident}: cited manifest {relative} is unreadable: {error}")
         for book in sorted(books):
@@ -260,6 +255,11 @@ def main(argv: list[str] | None = None) -> int:
             print("\n".join(explain(args.explain)))
             return 0
         targets, books, warnings, failures = audit()
+    except evidence_manifests.evidence_store.EvidenceError as error:
+        store = evidence_manifests.evidence_store
+        print(f"certified-claims: {store.outcome(error)}: committed evidence cannot be "
+              f"accepted: {error}")
+        return store.exit_code(error)
     except (OSError, ValueError, KeyError, TypeError,
             green_check.certs.UnreadableBook) as error:
         print(f"certified-claims: evidence unavailable: {error}")

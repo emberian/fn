@@ -26,7 +26,7 @@ class TypedWindowModelTests(unittest.TestCase):
     def test_retained_actual_acl2_trials(self):
         import json
         from pathlib import Path
-        evidence = Path(__file__).resolve().parents[1] / "planning/evidence/resilience-typed-window-2026-09-30"
+        evidence = Path(__file__).resolve().parents[1] / "tests/fixtures/evidence/resilience-typed-window-2026-09-30"
         text = (evidence / "model-trials.log").read_text()
         for i, case in enumerate(json.loads((evidence / "model-trials.json").read_text())):
             self.assertEqual(judge([Step(**s) for s in case], observe(text, i), i).kind, "consistent")
@@ -55,7 +55,7 @@ class TypedWindowModelTests(unittest.TestCase):
         from pathlib import Path
         from tools.resilience.scenario import Scenario, Operation
         from tools.resilience.typed_window_model import judge_scenario
-        evidence = Path(__file__).resolve().parents[1] / "planning/evidence/resilience-typed-window-2026-09-30"
+        evidence = Path(__file__).resolve().parents[1] / "tests/fixtures/evidence/resilience-typed-window-2026-09-30"
         cases = json.loads((evidence / "model-trials.json").read_text())
         text = (evidence / "model-trials.log").read_text()
         for trial, expected in [(0, "consistent"), (2, "no-witness")]:
@@ -72,7 +72,7 @@ class TypedWindowModelTests(unittest.TestCase):
         from pathlib import Path
         from tools.resilience.scenario import Scenario
         from tools.resilience.typed_window_model import judge_scenario
-        evidence = Path(__file__).resolve().parents[1] / "planning/evidence/resilience-typed-window-2026-09-30/stateful"
+        evidence = Path(__file__).resolve().parents[1] / "tests/fixtures/evidence/resilience-typed-window-2026-09-30/stateful"
         text = (evidence / "stateful-trials.log").read_text()
         for i, data in enumerate(json.loads((evidence / "stateful-trials.json").read_text())):
             verdict = judge_scenario(Scenario.from_json(data), observe(text, i), i)

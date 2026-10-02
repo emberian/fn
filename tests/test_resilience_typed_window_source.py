@@ -11,7 +11,7 @@ from tools.resilience.adapters.typed_window_source import SourceBackend, ROOT
 from tools.resilience.typed_window_model import observe, judge_scenario
 from tools.resilience.scenario import Scenario
 
-EVIDENCE = ROOT / "planning/evidence/resilience-typed-window-2026-09-30/backend"
+EVIDENCE = ROOT / "tests/fixtures/evidence/resilience-typed-window-2026-09-30/backend"
 
 
 class TypedSourceBackendTests(unittest.TestCase):
