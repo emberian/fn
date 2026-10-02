@@ -445,7 +445,7 @@ def cmd_add(args: argparse.Namespace, root: Path = ROOT) -> int:
             manifest = candidates[run_id]
             write_manifest(run_id, manifest.read_text(encoding="utf-8"),
                            f"{socket.gethostname()}:{manifest.parent}", root)
-        if not (root / ARCHIVE_REL / f"{run_id}.json").is_file():
+        if not evidence_store.exists(root, f"{ARCHIVE_REL}/{run_id}.json"):
             missing.append(run_id)
     if missing:
         print("evidence_manifests: no manifest on this disk for " + ", ".join(missing)
@@ -480,7 +480,10 @@ def commit_paths(root: Path, paths: list[str]) -> int:
                         replace = (new == expected
                                    and _is_remote(new.get("archived_from", ""))
                                    and not _is_remote(old.get("archived_from", "")))
-            evidence_store.put(root, [rel], replace=replace)
+            if entry and not (root / rel).is_file():
+                evidence_store.read_bytes(root, rel)  # Verify an already filed run.
+            else:
+                evidence_store.put(root, [rel], replace=replace)
     except evidence_store.EvidenceError as error:
         print(f"evidence_manifests: not committed, the archive did not confirm "
               f"({evidence_store.outcome(error)}): {error}", file=sys.stderr)

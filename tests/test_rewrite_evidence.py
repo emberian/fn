@@ -55,3 +55,19 @@ class ImmutableEvidence(Sandbox):
         self.assertNotEqual(archive.commit_paths(self.root, [REL]), 0)
         self.write(REL, b"malformed changed bytes")
         self.assertEqual(archive.commit_paths(self.root, [REL]), store.EXIT_REFUSED)
+
+
+class IndexedAdd(Sandbox):
+    def test_add_on_clone_verifies_without_local_copy(self):
+        subprocess.run(['git', 'init', '-q', str(self.root)], check=True)
+        archive.write_manifest(RUN, '{"status":"passed"}', root=self.root)
+        store.put(self.root, [REL])
+        (self.root / REL).unlink()
+        args = argparse.Namespace(run_ids=[RUN], source=[])
+        with mock.patch.object(store, 'put', side_effect=AssertionError('already filed')):
+            self.assertEqual(archive.cmd_add(args, self.root), 0)
+        self.assertFalse((self.root / REL).exists())
+        # The index row alone is insufficient: losing its object must fail closed.
+        import shutil
+        shutil.rmtree(self.archive)
+        self.assertNotEqual(archive.cmd_add(args, self.root), 0)
