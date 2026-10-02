@@ -53,7 +53,7 @@ PRIOR_ID = "<prior@campaign.invalid>"
 CANDIDATE_ID = "<candidate@campaign.invalid>"
 # One more than the staging observation bound (`*fn-sn-max-staging-observation*'
 # = 64, books/store-sweep.lisp), the count campaign dabebb84 F2 measured.
-ALLOCATION_DEATHS = 65
+STAGING_ORPHANS = 65
 RECOVER_LINE = re.compile(
     rb"recovered transactions=(\d+) articles=(\d+) staging-orphans=(\d+)")
 
@@ -137,16 +137,33 @@ def sha(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def snapshot(store: Path) -> dict:
-    def listing(name):
-        d = store / name
-        return {p.name: sha(p.read_bytes()) for p in sorted(d.iterdir())
-                if p.is_file()} if d.is_dir() else None
-    frontier = store / "allocation-frontier.json"
-    return {"transactions": listing("transactions"),
-            "staging": listing("staging"),
-            "frontier": frontier.read_text("ascii", "replace")
-            if frontier.is_file() else None}
+def snapshot(node) -> dict:
+    """The store as two observations can compare it: the committed history
+    by the image's own scan (`fn log scan-store`: the record count and the
+    last entry's chained trailer, tests/native_log_observation), and the
+    staging directory's files by digest.
+
+    The record log has no transactions/ and no allocation-frontier.json
+    (books/byte-store-log-initializer.lisp); before 2026-10-03 (sweep S059)
+    this listed both, so every "unchanged" compared None to None and a
+    retry that appended a duplicate record compared equal.  A store with no
+    journal/, or a scan that fails, carries `error`: never equal to anything
+    (its value names this snapshot's own failure), so an unobserved store
+    can never read as unchanged."""
+    from tests.native_log_observation import committed_history
+    store = node.store
+    d = store / "staging"
+    staging = ({p.name: sha(p.read_bytes()) for p in sorted(d.iterdir()) if p.is_file()}
+               if d.is_dir() else None)
+    if not (store / "journal").is_dir():
+        return {"error": "no journal/ in {} ({})".format(store, time.monotonic_ns()),
+                "staging": staging}
+    try:
+        history = committed_history(node.image, store, env=node.env(), cwd=node.dir)
+    except AssertionError as error:
+        return {"error": "{} ({})".format(str(error)[-300:], time.monotonic_ns()),
+                "staging": staging}
+    return {"records": history.records, "last": history.last, "staging": staging}
 
 
 class Node:
@@ -293,7 +310,7 @@ def seed(node: Node, prior: Path, out: dict):
     out["seed_owner_ready"] = owner["ready"]
     out["seed_post"] = public(node.post(PRIOR_ID, prior))
     out["seed_owner"] = node.stop_owner(owner)
-    out["seeded"] = snapshot(node.store)
+    out["seeded"] = snapshot(node)
     # The prior's durable bytes, the reference every later reread must equal.
     stored = node.inspect(PRIOR_ID)
     out["seed_inspect_prior"] = {"rc": stored["rc"],
@@ -342,20 +359,20 @@ def reread(node: Node, candidate: bytes, out: dict, injected: bool):
                                     if read[label] is not None else None)}
         if injected:
             out["resubmit"] = public(node.post(CANDIDATE_ID, node.dir.parent / "candidate.art"))
-            out["after_resubmit"] = snapshot(node.store)
+            out["after_resubmit"] = snapshot(node)
     out["reread_owner"] = node.stop_owner(owner)
     if not injected:
         out["resubmit"] = public(node.store_post(CANDIDATE_ID, node.dir.parent / "candidate.art"))
-        out["after_resubmit"] = snapshot(node.store)
+        out["after_resubmit"] = snapshot(node)
 
 
 def settle(node: Node, candidate: Path, out: dict, injected: bool):
     """After a death: the image, recovery, and every reread of both articles."""
-    out["killed"] = snapshot(node.store)
+    out["killed"] = snapshot(node)
     recovered = node.operator("recover")
     out["recover"] = public(recovered)
     out["recover_counts"] = parse_recover(recovered["_out"])
-    out["recovered"] = snapshot(node.store)
+    out["recovered"] = snapshot(node)
     reread(node, candidate.read_bytes(), out, injected)
 
 
@@ -367,7 +384,7 @@ def orphan(node: Node, candidate: Path, out: dict):
     stage = node.store / "staging" / ".stage-1-0123456789ab"
     stage.write_bytes(candidate.read_bytes())
     out["orphan_post"] = {"staged": str(stage.relative_to(node.store))}
-    out["orphaned"] = snapshot(node.store)
+    out["orphaned"] = snapshot(node)
 
 
 def run_cut(image: Path, base: Path, cut, prior: Path, candidate: Path) -> dict:
@@ -474,7 +491,7 @@ def run_faults(dev: Path, prod: Path, base: Path, prior: Path, candidate: Path):
                     time.sleep(0.5)
             row["owner_stopped_itself"] = stopped
             row["client_exited_before_kill"] = client.poll()
-            row["at_stop"] = snapshot(node.store)
+            row["at_stop"] = snapshot(node)
             row["owner"] = node.stop_owner(owner, signal.SIGKILL)
             out, err = client.communicate(timeout=300)
             row["post"] = {"rc": client.returncode, "stdout": out.decode()[-500:],
@@ -511,25 +528,35 @@ def run_faults(dev: Path, prod: Path, base: Path, prior: Path, candidate: Path):
                     row[label + "_owner"] = node.stop_owner(owner)
                 else:
                     row[label] = public(node.store_post(CANDIDATE_ID, payload))
-                row["after_" + label] = snapshot(node.store)
+                row["after_" + label] = snapshot(node)
         finally:
             node.reap()
         rows.append(row)
 
-    # Campaign dabebb84 F2: deaths at `frontier-staged-durable` each leave an
-    # `.allocation-` stage; 65 of them passed the 64-name observation bound and
-    # the store could not be opened.  Since the sweep of 2026-09-22 recovery
-    # removes every orphan in bounded rounds.  Two stores: the next open after
-    # the deaths is `operator CFG recover` in one and a plain `store ROOT post`
-    # in the other; then an owner starts and the candidate is posted.
+    # Campaign dabebb84 F2: more staging orphans than the observation bound
+    # (65 > `*fn-sn-max-staging-observation*' = 64) once left a store that
+    # could not be opened; since the sweep of 2026-09-22 recovery removes
+    # every orphan in bounded rounds.  The per-file route made them by
+    # deaths at `frontier-staged-durable' (an `.allocation-' stage per
+    # death); the record log has no allocator, that cut is gone
+    # (+fnn-post-log-model-cuts+), and a post stages nothing, so the orphans
+    # are planted as `orphan` plants one: the residue a writer that died
+    # after its O_EXCL create leaves under the prefix the sweep owns (sweep
+    # 2026-10-03 S059: the selector was refused and no death happened).
+    # Two stores: the next open is `operator CFG recover` in one and a plain
+    # `store ROOT post` in the other; then an owner starts and the candidate
+    # is posted.
     for opener in ("recover", "store-post"):
         node, row = fresh(dev, "dev-allocation-orphans-{}".format(opener))
         try:
-            row["deaths"] = [public(node.store_post(
-                CANDIDATE_ID, candidate,
-                {"FN_NATIVE_POST_FAULT": "frontier-staged-durable:kill"}))["rc"]
-                for _ in range(ALLOCATION_DEATHS)]
-            row["killed"] = snapshot(node.store)
+            staging = node.store / "staging"
+            staging.mkdir(exist_ok=True)
+            row["planted"] = []
+            for index in range(STAGING_ORPHANS):
+                stage = staging / ".stage-1-{:012x}".format(index)
+                stage.write_bytes(candidate.read_bytes())
+                row["planted"].append(stage.name)
+            row["killed"] = snapshot(node)
             row["status"] = public(node.operator("status"))
             if opener == "recover":
                 recovered = node.operator("recover")
@@ -537,13 +564,13 @@ def run_faults(dev: Path, prod: Path, base: Path, prior: Path, candidate: Path):
                 row["recover_counts"] = parse_recover(recovered["_out"])
             else:
                 row["open_post"] = public(node.store_post(CANDIDATE_ID, candidate))
-            row["opened"] = snapshot(node.store)
+            row["opened"] = snapshot(node)
             owner = node.start_owner()
             row["owner_ready"] = owner["ready"]
             if owner["ready"]:
                 row["post"] = public(node.post(CANDIDATE_ID, candidate))
             row["owner"] = node.stop_owner(owner)
-            row["after"] = snapshot(node.store)
+            row["after"] = snapshot(node)
         finally:
             node.reap()
         rows.append(row)
@@ -554,7 +581,7 @@ def run_faults(dev: Path, prod: Path, base: Path, prior: Path, candidate: Path):
     # `store ROOT post` each meet each selector.
     node, row = fresh(prod, "prod-selectors-refused-at-start")
     try:
-        row["before"] = snapshot(node.store)
+        row["before"] = snapshot(node)
         row["starts"] = []
         for variable in native_cuts.developer_selectors():
             extra = {variable: "x"}
@@ -568,7 +595,7 @@ def run_faults(dev: Path, prod: Path, base: Path, prior: Path, candidate: Path):
             })
         row["store_post_fault_argument"] = public(
             node.store_post(CANDIDATE_ID, candidate, inject="postpublish"))
-        row["after"] = snapshot(node.store)
+        row["after"] = snapshot(node)
         row["unchanged"] = row["after"] == row["before"]
     finally:
         node.reap()

@@ -13,6 +13,25 @@ from unittest import mock
 from tests.campaign import native_block_fault as fault
 
 
+class RetiredScenarioTests(unittest.TestCase):
+    """S060 (sweep 2026-10-03): every native scenario drove the per-file
+    programs and read store/transactions/; on a record-log store each failed
+    right after init, and this file's other tests (identity helpers, with
+    mocks) could not show it.  Until the log-route re-target the campaign
+    refuses by name before it touches a device, so a run cannot be read as
+    evidence."""
+
+    def test_every_scenario_refuses_before_any_device(self):
+        with mock.patch.object(fault, "PrivateExt4",
+                               side_effect=AssertionError("a device was made")):
+            for scenario in fault.SCENARIOS:
+                with self.subTest(scenario=scenario):
+                    with self.assertRaises(fault.Retired) as raised:
+                        fault.campaign(Path("/nonexistent/fn-host-developer"),
+                                       Path("/nonexistent/out"), scenario)
+                    self.assertIn("transactions/", str(raised.exception))
+
+
 class NativeBlockFaultOwnershipTests(unittest.TestCase):
     def setUp(self):
         self.core = "/scratch/fn-host-developer.core"
