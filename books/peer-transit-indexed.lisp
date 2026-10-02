@@ -24,6 +24,7 @@
 (include-book "peer-offer-indexed")
 (include-book "post-identity-catalog")
 (include-book "post-retain-carried")
+(include-book "peer-transit-authority")
 
 (local (in-theory (disable (tau-system))))
 
@@ -203,4 +204,42 @@
                             fn-node-statep fn-ocl-view-visiblep fn-scj-joinp fn-prc-carryp
                             fn-peer-header-limit-refusal fn-peer-decision)))))
 
-(in-theory (disable fn-peer-decide-transfer-cat fn-peer-decide-transfer-under-cat))
+(verify-guards fn-peer-decide-transfer-cat)
+(verify-guards fn-peer-decide-transfer-under-cat)
+
+;; The host's decision with its authority verdict (books/peer-transit-authority
+;; fn-pta-decide, called by host/owner-host.lisp fn-owner-transit-decide): the
+;; byte decision from the indexes, the verdict unchanged.
+(defun fn-pta-decide-cat (index keyring v gen node cfg peer msgid octets clock id
+                                subject limits view carry fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat)
+                  :guard (and (fn-node-statep node) (fn-prin-keyringp keyring)
+                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
+                  :verify-guards nil))
+  (let ((d (fn-peer-decide-transfer-under-cat node cfg peer msgid octets clock id
+                                              subject limits view carry fn-arena fn-cat)))
+    (if (not (equal (fn-peer-decision-kind d) :want))
+        (mv d :none)
+      (let* ((a (fn-stx-parse (fn-peer-relayed-octets cfg peer octets)))
+             (s (if a (fn-stx-statement-of a) nil))
+             (groups (nth 3 (fn-peer-injection-arguments node cfg peer msgid octets
+                                                         0 id subject clock))))
+        (mv d (fn-pta-groups-verdict index keyring v gen groups s))))))
+
+(defthm fn-pta-decide-cat-is-pta-decide
+  (implies (and (fn-node-statep node)
+                (fn-ocl-view-visiblep view)
+                (fn-scj-joinp view fn-arena fn-cat)
+                (fn-prc-carryp carry))
+           (equal (fn-pta-decide-cat index keyring v gen node cfg peer msgid octets clock id
+                                     subject limits view carry fn-arena fn-cat)
+                  (fn-pta-decide index keyring v gen node cfg peer msgid octets clock id
+                                 subject limits)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-pta-decide-cat fn-pta-decide)
+                           (fn-peer-decide-transfer-under-cat fn-peer-decide-transfer-under
+                            fn-node-statep fn-ocl-view-visiblep fn-scj-joinp fn-prc-carryp
+                            fn-stx-parse fn-peer-relayed-octets fn-peer-injection-arguments
+                            fn-pta-groups-verdict fn-peer-decision-kind)))))
+
+(in-theory (disable fn-peer-decide-transfer-cat fn-peer-decide-transfer-under-cat fn-pta-decide-cat))
