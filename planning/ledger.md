@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2767 |
-| Certification roots in the Makefile | 2320 |
-| Books inside the root closure | 2585 |
-| `defthm` and `defthmd` events | 37133 |
-| `defun` events | 23552 |
+| Books read | 2771 |
+| Certification roots in the Makefile | 2324 |
+| Books inside the root closure | 2589 |
+| `defthm` and `defthmd` events | 37148 |
+| `defun` events | 23625 |
 | Functions with verified guards | 3920 |
-| Functions declared `:verify-guards nil` and never verified | 3041 |
-| Functions left at the default with an explicit guard | 12991 |
-| Functions left at the default with no guard | 3600 |
-| `assert-event` checks | 25950 |
-| `must-fail` checks | 2651 |
+| Functions declared `:verify-guards nil` and never verified | 3042 |
+| Functions left at the default with an explicit guard | 13008 |
+| Functions left at the default with no guard | 3655 |
+| `assert-event` checks | 25979 |
+| `must-fail` checks | 2656 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 229 |
-| Theorems flagged SUSPECT by shape | 1371 |
+| Theorems flagged SUSPECT by shape | 1372 |
 | Export-hygiene warnings | 402 |
 | Enabled-projection warnings | 79 |
 | Teeth-form warnings | 282 |
-| Include-hygiene warnings | 3609 |
+| Include-hygiene warnings | 3617 |
 | Host-names warnings | 3152 |
 | Hand-written-record warnings | 19 |
 
@@ -646,6 +646,7 @@ that `make certify` requests.
 | `books/decoded-window-yield-trajectory.lisp` | closure | 8 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/decoded-worker-controller-trajectory.lisp` | closure | 6 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/decoded-worker-controller.lisp` | closure | 0 | 7 | 6/0/1/0 | 0 | 0 | 0 |
+| `books/def-carried-writer.lisp` | root | 0 | 49 | 0/0/0/49 | 0 | 0 | 0 |
 | `books/def-carried.lisp` | root | 2 | 68 | 0/0/0/68 | 0 | 0 | 0 |
 | `books/def-loop.lisp` | root | 13 | 50 | 0/0/0/50 | 0 | 0 | 0 |
 | `books/def-representation-lib.lisp` | root | 16 | 5 | 0/0/5/0 | 0 | 0 | 0 |
@@ -1153,6 +1154,7 @@ that `make certify` requests.
 | `books/owner-resource-line.lisp` | root | 3 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/owner-results.lisp` | root | 23 | 69 | 8/5/55/1 | 0 | 0 | 1 |
 | `books/owner-retain-carried.lisp` | root | 6 | 2 | 0/2/0/0 | 2 | 0 | 0 |
+| `books/owner-retain-frame.lisp` | root | 6 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/owner-retain-state.lisp` | closure | 5 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/owner-retain-transitions.lisp` | closure | 11 | 3 | 0/1/2/0 | 0 | 0 | 0 |
 | `books/owner-retention-preparation.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -2141,6 +2143,7 @@ that `make certify` requests.
 | `tests/acl2/decoded-window-yield-trajectory-tests.lisp` | root | 7 | 3 | 0/0/0/3 | 0 | 0 | 0 |
 | `tests/acl2/decoded-worker-controller-trajectory-tests.lisp` | root | 8 | 10 | 0/0/0/10 | 0 | 0 | 0 |
 | `tests/acl2/def-carried-tests.lisp` | root | 39 | 69 | 0/0/32/37 | 66 | 20 | 0 |
+| `tests/acl2/def-carried-writer-tests.lisp` | root | 9 | 20 | 0/1/13/6 | 20 | 4 | 1 |
 | `tests/acl2/def-loop-tests.lisp` | root | 28 | 63 | 52/2/9/0 | 81 | 35 | 0 |
 | `tests/acl2/def-representation-late-world-tests.lisp` | - | 1 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/def-representation-paged-tests.lisp` | - | 33 | 3 | 0/3/0/0 | 1 | 0 | 0 |
@@ -2462,6 +2465,7 @@ that `make certify` requests.
 | `tests/acl2/owner-resource-line-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 7 | 0 | 0 |
 | `tests/acl2/owner-results-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 49 | 2 | 0 |
 | `tests/acl2/owner-retain-carried-tests.lisp` | root | 6 | 0 | 0/0/0/0 | 11 | 0 | 0 |
+| `tests/acl2/owner-retain-frame-tests.lisp` | root | 0 | 4 | 0/0/4/0 | 9 | 1 | 0 |
 | `tests/acl2/owner-retain-state-tests.lisp` | root | 3 | 4 | 0/0/1/3 | 0 | 0 | 0 |
 | `tests/acl2/owner-retention-preparation-tests.lisp` | root | 0 | 3 | 0/2/0/1 | 5 | 1 | 0 |
 | `tests/acl2/owner-scheduler-tests.lisp` | root | 0 | 2 | 0/1/1/0 | 26 | 4 | 0 |
@@ -2871,6 +2875,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `bpcd-job-key-of-with-status` | `books/bp-node-contact-driver.lisp` | 61 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `bpgap-uncertain-issued-is-inert` | `books/bp-node-machine-gaps.lisp` | 104 | arm-of-definition: the hypotheses select one IF/COND arm of fn-bpnp-step and the conclusion is that arm's value |
 | `bprsend-job-with-status-fields` | `books/bp-node-receipt-send.lisp` | 278 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `cwt-relp-implies-corep` | `tests/acl2/def-carried-writer-tests.lisp` | 88 | recognizer-body-conclusion: the conclusion is the body of the hypothesis cwt-relp |
 | `ewzi-payload-span-outside-scan` | `books/extent-window-compressed-input.lisp` | 137 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ewp-payload-span and the conclusion is that arm's value |
 | `ewzi-scanned-input-same-position` | `books/extent-window-compressed-input.lisp` | 106 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-9p-ge-tree-of-atom` | `books/ninep-group-directory-source.lisp` | 78 | arm-of-definition: the hypotheses select one IF/COND arm of fn-9p-ge-tree and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-9p-ge-tree and the conclusion is that branch's value |

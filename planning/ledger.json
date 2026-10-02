@@ -289,6 +289,10 @@
     "tests/acl2/definterface-recognizer-tests",
     "tests/acl2/defevent-tests",
     "tests/acl2/def-carried-tests",
+    "books/def-carried-writer",
+    "tests/acl2/def-carried-writer-tests",
+    "books/owner-retain-frame",
+    "tests/acl2/owner-retain-frame-tests",
     "books/acceptance",
     "books/acceptance-invariants",
     "tests/acl2/acceptance-tests",
@@ -2324,26 +2328,26 @@
     "books/owner-retain-carried"
   ],
   "totals": {
-    "books": 2767,
-    "books_in_root_closure": 2585,
-    "roots": 2320,
-    "theorems": 37133,
-    "functions": 23552,
-    "assert_events": 25950,
-    "must_fails": 2651,
+    "books": 2771,
+    "books_in_root_closure": 2589,
+    "roots": 2324,
+    "theorems": 37148,
+    "functions": 23625,
+    "assert_events": 25979,
+    "must_fails": 2656,
     "prover_refusals": 0,
     "encapsulates": 229,
     "guards": {
       "verified": 3920,
-      "declared-off": 3041,
-      "default-guarded": 12991,
-      "default-unguarded": 3600
+      "declared-off": 3042,
+      "default-guarded": 13008,
+      "default-unguarded": 3655
     },
-    "suspect_theorems": 1371,
+    "suspect_theorems": 1372,
     "export_hygiene_warnings": 402,
     "enabled_projection_warnings": 79,
     "teeth_form_warnings": 282,
-    "include_hygiene_warnings": 3609,
+    "include_hygiene_warnings": 3617,
     "host_names_warnings": 3152,
     "hand_written_record_warnings": 19
   },
@@ -17963,6 +17967,32 @@
       "includes": [
         "decoded-window-begin",
         "page-window-worker-storage"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/def-carried-writer.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 49,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 49
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 2,
+      "defmacros": 4,
+      "encapsulates": 0,
+      "includes": [
+        "definterface"
       ],
       "system_includes": [],
       "suspects": [],
@@ -33934,6 +33964,34 @@
         "def-carried",
         "owner-cursor-domain",
         "owner-recovery-retain"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/owner-retain-frame.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 6,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 1,
+      "encapsulates": 0,
+      "includes": [
+        "def-carried-writer",
+        "owner-connection-callbacks",
+        "owner-retain-carried"
       ],
       "system_includes": [],
       "suspects": [],
@@ -62035,6 +62093,36 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/def-carried-writer-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 9,
+      "functions": 20,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 13,
+        "default-unguarded": 6
+      },
+      "verify_guards_events": 0,
+      "assert_events": 20,
+      "must_fails": 4,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 2,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/def-carried-writer",
+        "../../books/payload-kinds",
+        "must-fail-checked"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "cwt-relp-implies-corep"
+      ],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/def-loop-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -70820,6 +70908,35 @@
       "encapsulates": 0,
       "includes": [
         "../../books/owner-retain-carried"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/owner-retain-frame-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 4,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 9,
+      "must_fails": 1,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 1,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/owner-host-relation",
+        "../../books/owner-retain-frame",
+        "../../books/payload-kinds",
+        "must-fail-checked"
       ],
       "system_includes": [],
       "suspects": [],
@@ -81644,6 +81761,14 @@
       "line": 278,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "cwt-relp-implies-corep",
+      "book": "tests/acl2/def-carried-writer-tests.lisp",
+      "line": 88,
+      "reasons": [
+        "recognizer-body-conclusion: the conclusion is the body of the hypothesis cwt-relp"
       ]
     },
     {
@@ -101393,6 +101518,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/def-carried-writer.lisp",
+        "line": 141,
+        "include": "definterface",
+        "included": "books/definterface.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/deflate-pool-check.lisp",
         "line": 18,
         "include": "deflate-pool",
@@ -108579,6 +108711,20 @@
         "line": 83,
         "include": "assumptions-recovery",
         "included": "books/assumptions-recovery.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/owner-retain-frame.lisp",
+        "line": 51,
+        "include": "def-carried-writer",
+        "included": "books/def-carried-writer.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/owner-retain-frame.lisp",
+        "line": 53,
+        "include": "owner-connection-callbacks",
+        "included": "books/owner-connection-callbacks.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -115904,6 +116050,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/def-carried-writer-tests.lisp",
+        "line": 26,
+        "include": "../../books/def-carried-writer",
+        "included": "books/def-carried-writer.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/def-carried-writer-tests.lisp",
+        "line": 28,
+        "include": "must-fail-checked",
+        "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/def-loop-tests.lisp",
         "line": 25,
         "include": "must-fail-checked",
@@ -119336,6 +119496,27 @@
       {
         "book": "tests/acl2/owner-results-tests.lisp",
         "line": 9,
+        "include": "must-fail-checked",
+        "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/owner-retain-frame-tests.lisp",
+        "line": 20,
+        "include": "../../books/owner-retain-frame",
+        "included": "books/owner-retain-frame.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/owner-retain-frame-tests.lisp",
+        "line": 21,
+        "include": "../../books/owner-host-relation",
+        "included": "books/owner-host-relation.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/owner-retain-frame-tests.lisp",
+        "line": 23,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
