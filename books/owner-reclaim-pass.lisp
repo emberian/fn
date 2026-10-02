@@ -33,6 +33,7 @@
 ;      death past the install rewrites nothing more.
 (in-package "ACL2")
 (include-book "owner-reclaim")
+(include-book "reclaim-cuts") ; *fn-orcp-cuts*
 (include-book "owner-credits")
 (include-book "owner-checkpoint-open")
 (include-book "replay-identity-index")
@@ -196,23 +197,10 @@
                                       fn-rclp-events))))
 
 ; -----------------------------------------------------------------------------
-; 3. The pass's cuts.
-;
-; The steps in order; each is a point a process death can fall at, and the
-; host names it (FN_NATIVE_RECLAIM_FAULT=<cut>:kill on a developer image).
-;   :captured   the capture under the mutex (the log rotated, the pass the
-;               publication in flight, its credit reserved);
-;   :rewritten  the walk over the captured rows off the mutex;
-;   :staged     the reclaimed checkpoint written and fenced in staging/;
-;   :interned   the tombstoned records interned into the live arena (fresh
-;               handles no row names yet);
-;   :rebuilt    the rebuilt Store, catalog and history columns off the mutex;
-;   :installed  the staged checkpoint renamed into place (the commit point);
-;   :swapped    the owner's state replaced by the rebuilt one;
-;   :released   the covered segments dropped and their blocks given back
-;               (books/extent-retire.lisp).
-(defconst *fn-orcp-cuts*
-  '(:captured :rewritten :staged :interned :rebuilt :installed :swapped :released))
+; 3. The pass's cuts: *fn-orcp-cuts*, books/reclaim-cuts.lisp (a leaf, so a
+; holder declaration can name a cut of the pass: books/handle-holds.lisp).
+; The host names each (FN_NATIVE_RECLAIM_FAULT=<cut>:kill on a developer
+; image).  What a death at each leaves behind:
 
 (defun fn-orcp-cut-outcome (cut)
   (declare (xargs :guard t))

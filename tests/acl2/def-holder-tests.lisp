@@ -236,8 +236,49 @@
 ; The trace theorem (hdt-files-table-run-carries, over def-carried's
 ; defun-nx run) is asserted present above; its functions do not execute.
 
+; A second instance: host and root holders only, a :physical effect ordered
+; after a durable replacement in a keyword cut list (the reclaim pass's
+; shape).
+(defconst *hdt-cuts* '(:staged :installed :swapped :released))
+
+(def-holder hdt-blocks
+  :shape :keyed
+  :key "a toy block"
+  :holders ((janitor :host t :acquire hdt-pin :release hdt-unpin :in (hdt-sweep))
+            (ledger :root t :in (hdt-ledger) :status (:repinned "a toy: rebuilt at every sweep")))
+  :effect (:physical *hdt-cuts* :cut :released :after :installed))
+
+(assert-event
+ (and (equal *hdt-blocks-cuts* '(:installed :released))
+      (equal (cdr (assoc-eq 'hdt-blocks (table-alist 'fn-holder-cuts (w state))))
+             '(:effect (:physical *hdt-cuts* :cut :released :after :installed)
+               :cuts (:installed :released)))
+      ; no logic holder: no generated theorem, no def-carried row
+      (not (getpropc 'hdt-blocks-initial-establishes 'theorem nil (w state)))
+      (not (assoc-eq 'hdt-blocks-table (table-alist 'fn-carried (w state))))))
+
 ; ---------------------------------------------------------------------------
 ; 3. Refusals.
+
+; A :physical effect: the release before the replacement; a cut not in the
+; list; a list that is not a defconst; a root with a status that is not one
+; of the five.
+(must-fail-checked (def-holder hdt-blocks-reversed :shape :keyed :key "k"
+                     :holders ((j :host t :acquire a :release b :in (c)))
+                     :effect (:physical *hdt-cuts* :cut :installed :after :released))
+                   :unchecked "the release must come after the durable replacement")
+(must-fail-checked (def-holder hdt-blocks-no-cut :shape :keyed :key "k"
+                     :holders ((j :host t :acquire a :release b :in (c)))
+                     :effect (:physical *hdt-cuts* :cut :freed :after :installed))
+                   :unchecked "the cut is not in the list")
+(must-fail-checked (def-holder hdt-blocks-no-list :shape :keyed :key "k"
+                     :holders ((j :host t :acquire a :release b :in (c)))
+                     :effect (:physical *hdt-no-such-cuts* :cut :released :after :installed))
+                   :unchecked "the cut list is not a defconst of this world")
+(must-fail-checked (def-holder hdt-bad-root :shape :keyed :key "k"
+                     :holders ((r :root t :in (hdt-ledger) :status (:ignored "x")))
+                     :effect (:process-local "x"))
+                   :unchecked "a root status that is not one of the five")
 
 ; Malformed forms.
 (must-fail-checked (def-holder hdt-bad-shape :shape :counted :key "k" :holders ((r :host t :acquire a :release b :in (c))) :effect (:process-local "x"))

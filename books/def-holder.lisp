@@ -27,11 +27,34 @@
 ;                     :release (FN THM :table I :result P :key K :ok OK
 ;                                  [:when W] [:keeps THM2]))
 ;               (KIND :host t :acquire FNN :release FNN :in (FNN ...))
+;               (KIND :root t :in (FNN ...) :status (WORD "why"))
 ;               ...)
 ;     :effect (:process-local "why the table is process memory")
 ;           | (:durable PROGRAM "cut")
+;           | (:physical CUTS :cut K :after K2)
 ;     [:complete-by "why the holder list is complete"]
 ;     [:trace nil])
+;
+; WHAT THIS BOOK IS, AND IS NOT (consultation c05, 2026-10-03).  def-holder
+; is an ACCOUNTING component: it generates the carried count of holds per
+; key and the theorems about that count.  It authorizes no forget and no
+; close by itself.  A release of the resource is licensed only by the
+; conjunction of (1) the instance's ROOT theorem -- no reachable root names
+; the key: the top history, every connection's view, every captured row
+; list, every continuation, every log member, stated over all of them, never
+; the top alone -- (2) the generated accounting (every holder that pinned
+; before the retirement has ended), (3) physical custody ended (a cold read
+; names a file and a place, not a key; storage is reused only after its
+; last borrower settles), and (4) the durable ordering (the physical effect
+; follows the durable replacement at every cut).  A ROOT holder (:root t)
+; declares one such root with the host functions that keep it and its
+; status: (:repinned "..") it is rebuilt at every retirement, (:pinned "..")
+; it pins a generation before it copies, (:serialized "..") it never
+; outlives the owner's quantum, (:excluded "..") the release is refused
+; while it names the key, (:unwired "..") no served path reaches it yet.  The world's walk (def-holder-check) and tools/holder_check.py over
+; host/native/**/*.lisp are the closure over the declared entries; neither
+; is an escape analysis of every copy of a key: the row says what is
+; declared, and the instance's root theorem says what is proved.
 ;
 ; A LOGIC holder's entries are functions of this world that THREAD the
 ; table: FN's formal I is the table it is handed, P (a term over `_', the
@@ -83,19 +106,38 @@
 ;       every live pin.
 ;
 ; CRASH POINTS.  Between "decided to release" and "released" there is a cut.
-; `def-holder' owns its names: `*NAME-cuts*' = (:NAME-decided :NAME-released)
-; and a row in `fn-holder-cuts' (:effect EFFECT :cuts (...)).  An effect
-; (:process-local "why") says the table is host memory rebuilt empty at the
-; open (NAME-initial), so a death at either cut loses the process and no
-; durable state: the candidate column is "rebuilt".  An effect (:durable
-; PROGRAM "cut") says the release performs a durable step of the byte-model
-; program PROGRAM at that cut, and is refused unless PROGRAM is a function of
-; this world whose body names "cut" (the program's own step list is what
-; tools/native_program_check.py compares with the host).  DEF-ENTRY's
-; per-entry crash-point enumeration READS this table for an entry declared
-; as a holder's release and emits no cut of its own for it (agreed
-; 2026-10-03: generated once, two readers).  tests/campaign/native_cuts.py
-; mirrors the table (HOLDER_CUTS) as it mirrors *fn-orcp-cuts*.
+; `def-holder' owns its names: `*NAME-cuts*' and a row in `fn-holder-cuts'
+; (:effect EFFECT :cuts (...)).  The EFFECT classifies what the release
+; does, because they are not alike (c05):
+;   (:process-local "why")   the table and what it frees are process memory
+;                            rebuilt at the open (NAME-initial); nothing is
+;                            returned to the operating system; cuts
+;                            (:NAME-decided :NAME-released), candidate
+;                            "rebuilt";
+;   (:durable PROGRAM "cut") the release performs a durable step of the
+;                            byte-model program PROGRAM at that cut; refused
+;                            unless PROGRAM is a function of this world whose
+;                            body names "cut" (the step list
+;                            tools/native_program_check.py compares with the
+;                            host); cuts (:NAME-decided :NAME-released);
+;   (:physical CUTS :cut K :after K2)
+;                            the release returns storage (a descriptor
+;                            closed, a file unlinked, blocks given back) at
+;                            cut K of the keyword cut list CUTS, a defconst of
+;                            this world the host mirrors (*fn-orcp-cuts* /
+;                            +fnn-reclaim-cuts+), and K2, the durable
+;                            replacement, precedes K in that list: refused
+;                            otherwise.  Returning blocks is never
+;                            process-local: a death between K2 and K leaves
+;                            the storage held and the replacement durable,
+;                            which recovery tolerates; the reverse order
+;                            would not be.  Cuts (K2 K).
+; A declared cut is a NAME, not a checked host release: tools/holder_check.py
+; refuses a declared release whose :in function does not carry both cuts.
+; DEF-ENTRY's per-entry crash-point enumeration READS this table for an entry
+; declared as a holder's release and emits no cut of its own for it (agreed
+; 2026-10-03: generated once, two readers); the row feeds Astra's two-way
+; cut check (t40) when it lands.
 ;
 ; TEETH.  Every generated theorem is owed teeth: after each `(defthm K ...)'
 ; the row `(table fn-teeth-owed 'K '(:by def-holder :claim CLAIM :subject
@@ -324,19 +366,37 @@
        ; an arm selector needs the instance's own preservation theorem
        (or (not (assoc-keyword :when (cddr x))) (fn-hd-get :keeps (cddr x)))))
 
+; A root's status: :repinned (rebuilt at every retirement), :pinned (it
+; pins a generation before it copies), :serialized (it never outlives the
+; owner's quantum), :excluded (the release is refused while it names the
+; key: a checked clause of the release's precondition), :unwired (no served
+; path reaches it yet).
+(defconst *fn-hd-root-statuses* '(:repinned :pinned :serialized :excluded :unwired))
+
 (defun fn-hd-holder-formp (x)
   (declare (xargs :mode :program))
-  ; (KIND :acquire ENTRY :release ENTRY) | (KIND :host t :acquire FNN :release FNN :in (FNN ...))
+  ; (KIND :acquire ENTRY :release ENTRY)
+  ; | (KIND :host t :acquire FNN :release FNN :in (FNN ...))
+  ; | (KIND :root t :in (FNN ...) :status (WORD "why"))
   (and (true-listp x) (consp x) (symbolp (car x)) (car x)
        (keyword-value-listp (cdr x))
-       (if (fn-hd-get :host (cdr x))
-           (and (null (fn-cd-unknown-keys (cdr x) '(:host :acquire :release :in)))
-                (symbolp (fn-hd-get :acquire (cdr x))) (fn-hd-get :acquire (cdr x))
-                (symbolp (fn-hd-get :release (cdr x))) (fn-hd-get :release (cdr x))
-                (symbol-listp (fn-hd-get :in (cdr x))) (fn-hd-get :in (cdr x)))
+       (cond
+        ((fn-hd-get :host (cdr x))
+         (and (null (fn-cd-unknown-keys (cdr x) '(:host :acquire :release :in)))
+              (symbolp (fn-hd-get :acquire (cdr x))) (fn-hd-get :acquire (cdr x))
+              (symbolp (fn-hd-get :release (cdr x))) (fn-hd-get :release (cdr x))
+              (symbol-listp (fn-hd-get :in (cdr x))) (fn-hd-get :in (cdr x))))
+        ((fn-hd-get :root (cdr x))
+         (and (null (fn-cd-unknown-keys (cdr x) '(:root :in :status)))
+              (symbol-listp (fn-hd-get :in (cdr x))) (fn-hd-get :in (cdr x))
+              (let ((status (fn-hd-get :status (cdr x))))
+                (and (true-listp status) (equal (len status) 2)
+                     (member-eq (car status) *fn-hd-root-statuses*)
+                     (stringp (cadr status)) (< 0 (length (cadr status)))))))
+        (t
          (and (null (fn-cd-unknown-keys (cdr x) '(:acquire :release)))
               (fn-hd-entry-formp (fn-hd-get :acquire (cdr x)))
-              (fn-hd-entry-formp (fn-hd-get :release (cdr x)))))))
+              (fn-hd-entry-formp (fn-hd-get :release (cdr x))))))))
 
 (defun fn-hd-holders-formp (x)
   (declare (xargs :mode :program))
@@ -351,6 +411,9 @@
          (:process-local (and (equal (len x) 2) (stringp (cadr x)) (< 0 (length (cadr x)))))
          (:durable (and (equal (len x) 3) (symbolp (cadr x)) (cadr x)
                         (stringp (caddr x)) (< 0 (length (caddr x)))))
+         (:physical (and (equal (len x) 6) (symbolp (cadr x)) (cadr x)
+                         (eq (caddr x) :cut) (keywordp (cadddr x))
+                         (eq (nth 4 x) :after) (keywordp (nth 5 x))))
          (otherwise nil))))
 
 (defun fn-hd-refusal (name kvs)
@@ -385,11 +448,12 @@
     (:no-key (msg "~x0 has no :key \"what one key is\"." (cadr reason)))
     (:bad-holders (msg ":holders ~x0 is not ((KIND :acquire (FN THM :table I :result P ~
                         :key K :ok OK) :release (...)) | (KIND :host t :acquire FNN ~
-                        :release FNN :in (FNN ...)) ...)." (cadr reason)))
+                        :release FNN :in (FNN ...)) | (KIND :root t :in (FNN ...) :status ~
+                        (~&1 \"why\")) ...)." (cadr reason) *fn-hd-root-statuses*))
     (:no-holders (msg "~x0 declares no holder: a resource nobody holds needs no ~
                        declaration." (cadr reason)))
-    (:bad-effect (msg ":effect ~x0 is not (:process-local \"why\") or (:durable PROGRAM ~
-                       \"cut\")." (cadr reason)))
+    (:bad-effect (msg ":effect ~x0 is not (:process-local \"why\"), (:durable PROGRAM ~
+                       \"cut\") or (:physical CUTS :cut K :after K2)." (cadr reason)))
     (:bad-complete-by (msg ":complete-by ~x0 is not a string." (cadr reason)))
     (:bad-trace (msg ":trace ~x0 is not t or nil." (cadr reason)))
     (:unknown-keyword (msg "unknown keyword(s) ~&0; the keywords are ~&1."
@@ -545,7 +609,7 @@
   (if (atom holders)
       (mv nil nil)
     (let ((kind (caar holders)) (opts (cdar holders)))
-      (if (fn-hd-get :host opts)
+      (if (or (fn-hd-get :host opts) (fn-hd-get :root opts))
           (mv-let (msg rest) (fn-hd-normal-holders name shape (cdr holders) w)
             (mv msg (cons (car holders) rest)))
         (mv-let (msg a) (fn-hd-normal-entry name kind :acquire shape (fn-hd-get :acquire opts) w)
@@ -561,7 +625,8 @@
   (declare (xargs :mode :program))
   ; ((VERB . ENTRY) ...) of the normalized logic holders
   (cond ((atom holders) nil)
-        ((fn-hd-get :host (cdar holders)) (fn-hd-logic-entries (cdr holders)))
+        ((or (fn-hd-get :host (cdar holders)) (fn-hd-get :root (cdar holders)))
+         (fn-hd-logic-entries (cdr holders)))
         (t (list* (cons :acquire (fn-hd-get :acquire (cdar holders)))
                   (cons :release (fn-hd-get :release (cdar holders)))
                   (fn-hd-logic-entries (cdr holders))))))
@@ -589,17 +654,37 @@
 
 (defun fn-hd-effect-problem (effect w)
   (declare (xargs :mode :program))
-  (if (eq (car effect) :durable)
-      (let* ((program (cadr effect))
-             (body (getpropc program 'unnormalized-body :none w)))
-        (cond ((eq body :none)
-               (msg ":durable names ~x0, which is not a function in this world" program))
-              ((not (fn-hd-tree-has-string (caddr effect) body))
-               (msg ":durable names cut ~x0 of ~x1, whose body does not name it: a holder's ~
-                     durable release is a step of a byte-model program, declared there first"
-                    (caddr effect) program))
-              (t nil)))
-    nil))
+  (case (car effect)
+    (:durable
+     (let* ((program (cadr effect))
+            (body (getpropc program 'unnormalized-body :none w)))
+       (cond ((eq body :none)
+              (msg ":durable names ~x0, which is not a function in this world" program))
+             ((not (fn-hd-tree-has-string (caddr effect) body))
+              (msg ":durable names cut ~x0 of ~x1, whose body does not name it: a holder's ~
+                    durable release is a step of a byte-model program, declared there first"
+                   (caddr effect) program))
+             (t nil))))
+    (:physical
+     ; (:physical CUTS :cut K :after K2): CUTS a defconst whose value lists K2
+     ; strictly before K
+     (let* ((cuts (cadr effect)) (k (cadddr effect)) (k2 (nth 5 effect))
+            (val (getpropc cuts 'const :none w))
+            (lst (and (not (eq val :none)) (consp val) (eq (car val) 'quote) (cadr val))))
+       (cond ((eq val :none)
+              (msg ":physical names ~x0, which is not a defconst of this world" cuts))
+             ((not (keyword-listp lst))
+              (msg ":physical names ~x0, whose value is not a list of keyword cuts" cuts))
+             ((not (member-eq k lst))
+              (msg ":physical: cut ~x0 is not in ~x1" k cuts))
+             ((not (member-eq k2 lst))
+              (msg ":physical: the durable replacement ~x0 is not in ~x1" k2 cuts))
+             ((not (< (position-eq k2 lst) (position-eq k lst)))
+              (msg ":physical: the release ~x0 must come after the durable replacement ~x1 in ~
+                    ~x2, else a death between them loses storage the replacement still ~
+                    needs" k k2 cuts))
+             (t nil))))
+    (otherwise nil)))
 
 (defun fn-hd-problem (name row generatedp w)
   (declare (xargs :mode :program))
@@ -633,10 +718,15 @@
                          :complete-by (fn-hd-get :complete-by kvs)
                          :trace (not (and (assoc-keyword :trace kvs)
                                           (null (fn-hd-get :trace kvs))))
-                         :cuts (list (intern-in-package-of-symbol
-                                      (concatenate 'string (symbol-name name) "-DECIDED") :key)
-                                     (intern-in-package-of-symbol
-                                      (concatenate 'string (symbol-name name) "-RELEASED") :key)))))
+                         :cuts (if (eq (car (fn-hd-get :effect kvs)) :physical)
+                                   ; the cut list's own names: the durable
+                                   ; replacement, then the release
+                                   (list (nth 5 (fn-hd-get :effect kvs))
+                                         (cadddr (fn-hd-get :effect kvs)))
+                                 (list (intern-in-package-of-symbol
+                                        (concatenate 'string (symbol-name name) "-DECIDED") :key)
+                                       (intern-in-package-of-symbol
+                                        (concatenate 'string (symbol-name name) "-RELEASED") :key))))))
           (mv (fn-hd-problem name row nil w) row)))))))
 
 ; ---------------------------------------------------------------------------

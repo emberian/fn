@@ -1,49 +1,65 @@
-; fn: who holds a payload handle, and when a released one is named by no row
-; and held by no reader (lane def-holder, 2026-10-03: the payload-handle
-; instance of books/def-holder.lisp; ARENA-FORGET's liveness precondition,
-; books/arena-forget.lisp "GEN: def-holder fn-handle-holds").
+; fn: who holds a payload handle, and what a released one is proved to be
+; (lane def-holder, 2026-10-03: the payload-handle instance of
+; books/def-holder.lisp; ARENA-FORGET's liveness precondition,
+; books/arena-forget.lisp "GEN: def-holder fn-handle-holds"; consultation
+; c05 shaped the relation).
 ;
-; A payload handle (books/payload-arena.lisp) is held across a release of the
-; owner's mutex by exactly these (the inventory from source,
-; build/coordinator/lanedumps/def-holder.md section 1 R1; verified by
-; ARENA-FORGET's own sweep):
+; A payload handle H (books/payload-arena.lisp) may be forgotten only when
+; NO REACHABLE ROOT NAMES IT, physical custody of its storage has ended, and
+; the physical effect follows the durable replacement.  The roots, from the
+; inventory (build/coordinator/lanedumps/def-holder.md sections 1 and 1b):
 ;
-;   - the served history's ROWS, each naming the handle it was interned at
-;     (books/held-record.lisp); a reclaim swap rewrites changed rows at fresh
-;     handles, and the old handles of the changed positions stop being named
-;     (books/arena-forget.lisp fn-arf-changed-handles; KEYSTONE
-;     fn-arf-changed-handles-are-unnamed);
-;   - the off-mutex READERS of the live arena -- a checkpoint publication, an
-;     export, a reclaim dry run, the reclaim pass -- each pinned at the
-;     generation current when it started (host/native/io.lisp fnn-arena-pin
-;     under the mutex; books/arena-reader-pins.lisp);
-;   - a connection's RESPONSE PLAN in flight (one hold per connection id,
-;     books/response-plan-pins.lisp fn-rpin-step, the same generation table).
+;   TOP      the served history's rows: a reclaim swap rewrites changed rows
+;            at fresh handles; the old handles of the changed positions stop
+;            being named (books/arena-forget.lisp fn-arf-changed-handles;
+;            KEYSTONE fn-arf-changed-handles-are-unnamed);
+;   CONNS    every connection's retained view (version, archive, index:
+;            books/owner.lisp:126-163): the swap re-pins every live
+;            connection to the rebuilt view in the same quantum
+;            (books/owner-reclaim-pass.lisp fn-orcp-swapped-owner ->
+;            fn-orcp-repin-conns), so after the swap CONNS names what TOP
+;            names;
+;   READERS  the off-mutex readers of the live arena (a checkpoint
+;            publication, an export, a reclaim dry run, the reclaim pass) and
+;            a connection's response plan in flight (an OVER cursor among
+;            them), each pinned at a generation BEFORE it copied anything
+;            (host/native/io.lisp fnn-arena-pin under the mutex;
+;            books/response-plan-pins.lisp fn-rpin-step, keyed by cid);
+;   LOG      the fenced and in-flight log members (H FILE PLACE OCTETS,
+;            host/native/io.lisp:6316-6323): the swap word does not test
+;            them; the release must refuse while one names a retired handle
+;            (ARENA-FORGET's open clause 4(c));
+;   CUSTODY  a cold read names a PLACE (file, eoff, elen, trailer), not H
+;            (host/native/extent.lisp:830-843); the forget reuses no
+;            storage, and the file closes only once fn-pio-file-clear-p;
+;   OTHER    the BP workflow's own node (host/workflow-host.lisp:19-24,
+;            serialized with its reads), the consumer remote-visible writer's
+;            retained row and the NEWNEWS tail (both unwired), the
+;            whole-arena leases (drivers not in the native image).
 ;
-; Feeds, consumers and BP jobs hold a Message-ID and resolve the handle per
-; call under the mutex: they are not holders.  The two whole-arena leases
-; (books/payload-view-lease.lisp fn-pvl-livep, books/recovery-payload-view.lisp
-; fn-rpv-livep) hold every handle below the count at their acquire; their
-; drivers are not in the native image (host/native/build.lisp), and a forget
-; under a live one is refused by the host before the pins step is asked.
+; Feeds and BP outbound hold a Message-ID and a rendered COPY, not a
+; deferred handle.  The declaration below names every root with its host
+; functions and status; tools/holder_check.py checks the host side.
 ;
-; So holding is the generation table, declared here as a def-holder of the
-; :stamped shape: the four reader kinds are HOST holders (the raw host calls
-; the step; tools/holder_check.py refuses an fnn-arena-pin outside their
-; functions), the response plan is a LOGIC holder (fn-rpin-step threads the
-; table; its two arms are declared with the theorems proved below).
-;
-; KEYSTONE fn-handle-holds-released-handles-are-unnamed-and-unheld: a
-; retirement the pins step's :release answers, whose items are the handles a
-; swap un-named (fn-arf-retire-event of fn-arf-changed-handles), was pending,
-; its stamp is below every reader still pinned (each pinned after the swap,
-; so from the rewritten history), and every one of its handles is named by
-; no row of that history.  Nothing reaches such a handle: the forget
-; (fn-arf-apply-released, ARENA-FORGET) may empty it.
+; What this book PROVES (KEYSTONE
+; fn-handle-holds-released-handles-are-unnamed-and-postdate-every-pin): a
+; retirement the pins step's :release answers, whose items are the handles
+; a swap un-named (fn-arf-retire-event of fn-arf-changed-handles), was
+; pending, its stamp is below every reader still pinned (each pinned after
+; the swap: READERS), its items are exactly those handles, and every one of
+; them is named by no row of the rewritten history (TOP, and CONNS by the
+; repin).  What it does NOT prove: LOG, CUSTODY and OTHER -- those are the
+; row's :excluded, :serialized and :unwired roots, each a clause the host
+; establishes (the swap clause, the file pin, the wiring gate), not a
+; theorem here.  The forget (fn-arf-apply-released, ARENA-FORGET) runs at
+; the reclaim pass's :released cut, after :installed (the durable
+; replacement): effect (:physical *fn-orcp-cuts* :cut :released :after
+; :installed).
 (in-package "ACL2")
 (include-book "def-holder")
 (include-book "arena-forget")       ; fn-arf-retire-event, -changed-handles, the root fact
 (include-book "response-plan-pins") ; fn-rpin-step
+(include-book "reclaim-cuts")       ; *fn-orcp-cuts* (a leaf of owner-reclaim-pass)
 
 ; ---------------------------------------------------------------------------
 ; The response plan's two arms, as the holder relation needs them: on
@@ -74,7 +90,7 @@
 
 (def-holder fn-handle-holds
   :shape :stamped
-  :key "an arena generation: a holder pins the generation current when it takes its handles (under the owner's mutex); the handles a reclaim swap stops naming are retired at the stamp of that moment (fn-arf-retire-event) and released once no pin is at or below it"
+  :key "an arena generation: a holder pins the generation current when it takes its handles (under the owner's mutex); the handles a reclaim swap stops naming are retired at the stamp of that moment (fn-arf-retire-event, in the swap's quantum) and released once no pin is at or below it"
   :holders ((publication :host t :acquire fnn-arena-pin :release fnn-arena-unpin
                          :in (fnn-owner-maybe-publish-quantum fnn-owner-publish-captured))
             (export :host t :acquire fnn-arena-pin :release fnn-arena-unpin
@@ -94,9 +110,26 @@
                        :key (cdr (fn-rpin-owner (cadr event) owners))
                        :ok (equal (mv-nth 2 _) :released)
                        :when (equal (car event) :release)
-                       :keeps fn-rpin-step-keeps-arena-invariant)))
-  :effect (:process-local "the table is *fnn-arena-pins* (host/native/io.lisp), NIL before its first event; a death between :fn-handle-holds-decided (the pins step answered :release) and :fn-handle-holds-released (fn-arf-apply-released ran) loses the process and no durable state: the next open rebuilds the arena from the retained records, which name no retired handle (fn-arf-changed-handles-are-unnamed), with the table at fn-handle-holds-initial")
-  :complete-by "fn-rpin-step is the only function of the world that calls fn-arpn-step (def-holder-check's walk refuses another); the host's own calls are the four fnn-arena-pin sites named above (tools/holder_check.py)")
+                       :keeps fn-rpin-step-keeps-arena-invariant))
+            ; the roots (section 1b of the inventory)
+            (connection-view :root t :in (fnn-owner-reclaim-pass)
+                             :status (:repinned "fn-orcp-swapped-owner re-pins every live connection to the rebuilt view in the swap quantum (fn-orcp-repin-conns): after the swap a connection's archive names what the rewritten history names"))
+            (over-cursor :root t :in (fnn-owner-handle-chunk-read fnn-mux-after)
+                         :status (:pinned "the response hold is acquired before the plan leaves the quantum (host/native/owner.lisp:4545-4549); every later cursor quantum reads under that generation"))
+            (log-member :root t :in (fnn-log-members-in-flight fnn-log-reseat-fenced)
+                        :status (:excluded "a fenced or in-flight member (H FILE PLACE OCTETS) is not tested by the swap word; the release is refused while one names a retired handle (ARENA-FORGET clause 4(c): the swap word, or fn-arx-commit-extent refusing a forgotten handle)"))
+            (cold-read :root t :in (fnn-extent-issue-direct fnn-extent-direct-settle fnn-extent-close)
+                       :status (:excluded "physical custody: a worker holds (file, place), not H; the forget reuses no storage, and the file closes only when fn-pio-file-clear-p (books/page-read-ownership.lisp)"))
+            (bp-workflow-node :root t :in (fnn-bpo-call-with-owner-journal)
+                              :status (:serialized "fn-workflow-state holds the open's node; the request thunk that resolves an article in it runs inside the same serialized region (host/native/bp-obligation.lisp:44-59); a longer-lived image must be refreshed per swap"))
+            (remote-visible-writer :root t :in (fn-owner-remote-collection-step-internal)
+                                   :status (:unwired "the writer retains a row and re-reads its handle (books/consumer-remote-visible-buffer.lisp:85-136); no issuer exists (host/consumer-remote-report-host.lisp:57-58)"))
+            (newnews-tail :root t :in (fn-nnw-response)
+                          :status (:unwired "books/newnews-cursor.lisp:42-46: called by nothing served yet"))
+            (whole-arena-lease :root t :in (fnn-snapshot-payload-view-acquire fnn-snapshot-payload-view-release)
+                               :status (:unwired "fn-pvl-livep / fn-rpv-livep hold every handle below the token's prefix; their drivers are not in host/native/build.lisp; a forget under a live one is refused by the host before the step is asked")))
+  :effect (:physical *fn-orcp-cuts* :cut :released :after :installed)
+  :complete-by "fn-rpin-step is the only function of the world that calls fn-arpn-step (def-holder-check's walk refuses another); the host's own calls are the four fnn-arena-pin sites named above and the roots' :in functions (tools/holder_check.py)")
 
 ; ---------------------------------------------------------------------------
 ; The composed release theorem.
@@ -119,15 +152,19 @@
    (implies (and (fn-arf-disjointp xs ys) (member-equal h xs))
             (not (member-equal h ys)))))
 
-; KEYSTONE.  A released retirement of the handles a swap un-named: it was
-; pending; its stamp S is below every live pin G (every reader still running
-; pinned after the swap: fn-arpn-release-postdates-every-live-pin); its items
-; are exactly those handles; and each is named by no row of the rewritten
-; history NEW (fn-arf-changed-handles-are-unnamed).  Host subject: the owner
-; passes (fn-arf-retire-event (fn-arf-changed-handles old new)) to the pins
-; step in the swap's quantum and hands the step's :release answer to
-; fn-arf-apply-released (ARENA-FORGET, host/native/io.lisp fnn-arena-apply-due).
-(defthm fn-handle-holds-released-handles-are-unnamed-and-unheld
+; KEYSTONE (PRF-1240).  A released retirement of the handles a swap
+; un-named: it was pending; its stamp S is below every live pin G (every
+; reader still running pinned after the swap:
+; fn-arpn-release-postdates-every-live-pin); its items are exactly those
+; handles; and each is named by no row of the rewritten history NEW
+; (fn-arf-changed-handles-are-unnamed) -- TOP, and CONNS by the swap's
+; repin.  Not here: LOG, CUSTODY, OTHER (the row's :excluded, :serialized
+; and :unwired roots).  Host subject: the owner passes
+; (fn-arf-retire-event (fn-arf-changed-handles old new)) to the pins step in
+; the swap's quantum, under the gate, and hands the step's :release answer
+; to fn-arf-apply-released at the :released cut (ARENA-FORGET,
+; host/native/io.lisp fnn-arena-apply-due).
+(defthm fn-handle-holds-released-handles-are-unnamed-and-postdate-every-pin
   (implies (and (fn-arpn-okp st)
                 (member-equal e (mv-nth 1 (fn-arpn-step st '(:release))))
                 (equal (cdr e) (fn-arf-tag (fn-arf-changed-handles old new)))
@@ -159,7 +196,7 @@
 
 ; The debt (GENERATORS' defteeth v1): the claim is the statement above, in
 ; its source shape; the subject is the host's step.
-(table fn-teeth-owed 'fn-handle-holds-released-handles-are-unnamed-and-unheld
+(table fn-teeth-owed 'fn-handle-holds-released-handles-are-unnamed-and-postdate-every-pin
        '(:by handle-holds
          :claim (implies (and (fn-arpn-okp st)
                               (member-equal e (mv-nth 1 (fn-arpn-step st '(:release))))
