@@ -319,7 +319,7 @@
         "PRF-016"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-wire-unstuff-stuff-line",
         "fn-wire-feed-proper-append",
@@ -1532,7 +1532,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "note": "Decision D10-a, lane w11/clock-seam. Keystones fn-own-observe-refusal-names-a-contradiction (books/owner-invariants.lisp) and fn-post-without-a-clock-refuses-with-the-clock-line (books/nntp-post.lisp), with fn-own-observe-outcome-is-one-of-three and fn-own-observe-outcome-decides-the-clock-by-definition named for what they are and cited by :use. Teeth are evaluated in tests/acl2/owner-tests.lisp (the served-path second post on one connection, the same-reading collision, the clock 441 with an empty queue, DATE 503, and one-event recovery) and tests/acl2/nntp-post-tests.lisp (one must-fail per hypothesis). OPEN under this target: two submissions inside one millisecond still share a generated Message-ID, because fn-clock-later-observationp is non-strict; separating them needs the owner to remember the reading it last minted under and is not done here.",
       "events": [
         "fn-own-observe-refusal-names-a-contradiction",
@@ -2443,7 +2443,7 @@
         "PRF-015"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "note": "At this source, green_check finds books/nntp-newnews green at its exact include closure in certify-20260923T232942Z-484654, its test book green in certify-20260924T005919Z-653679, books/nntp-invariants green in certify-20260923T232820Z-480447, and books/nntp-effects green in certify-20260923T232942Z-484654; none has moved dependencies. These are archived certification records, not a current native image qualification. The earlier T2b affected-closure run is certify-20260923T170842Z-2026382; native served-reader validation remains separate.",
       "evidence": [
         "books/nntp-newnews.lisp",
@@ -3107,7 +3107,7 @@
         "PRF-015"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner.lisp",
         "books/owner-invariants.lisp",
@@ -4585,7 +4585,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-pull.lisp",
         "books/scheduler-peers.lisp",
@@ -7157,7 +7157,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-scar-feed-span-is-feed-counted",
         "fn-scar-ocfg-read-span-is-read-tls-prefix",
@@ -8115,7 +8115,7 @@
         "PRF-207"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/served-tls-prefix.lisp",
         "books/served-carried.lisp",
@@ -8529,7 +8529,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/group-access.lisp",
         "books/nntp-auth.lisp",
@@ -11342,7 +11342,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/served.lisp",
         "books/served-tls-prefix.lisp",
@@ -14898,7 +14898,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-inspect-group.lisp",
         "tests/acl2/owner-inspect-group-tests.lisp",
@@ -15643,7 +15643,7 @@
         "PRF-910"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/nntp-compress.lisp",
         "books/nntp-auth.lisp",
@@ -16595,7 +16595,7 @@
       "assumptions": [
         "A-ARENA-STORED"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/nntp-zarticle.lisp",
         "books/assumptions-stored.lisp",
