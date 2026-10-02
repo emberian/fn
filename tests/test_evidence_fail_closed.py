@@ -468,5 +468,432 @@ class MigrationLedgersAccumulateTests(Sandbox):
         self.assertEqual(store.object_bytes(self.root, store.sha256_bytes(b"x\n")), b"x\n")
 
 
+
+# ===================================================================== r61
+# Codex review r61 (11/11 confirmed) blocked the history rewrite.  Each test
+# below reproduces one r61 finding against evidence-out-3 41ec96a81.
+
+
+def commit_all(root: Path, message: str) -> str:
+    git(root, "add", "-A")
+    git(root, "commit", "-q", "--allow-empty", "-m", message)
+    return git(root, "rev-parse", "HEAD").strip()
+
+
+def deflate_corrupt(data: bytes) -> bytes:
+    """A gzip stream whose DEFLATE block type is invalid: zlib.error, not OSError."""
+    body = store.compress(data)
+    return body[:10] + b"\x07" + body[11:]
+
+
+class HistoryWalkTests(Sandbox):
+    """r61 F11: the path-limited `rev-list --objects` walk simplifies history."""
+
+    def merged_away(self) -> tuple[str, str]:
+        """A blob version that lives only on a side branch merged with `-s ours`
+        and then deleted: every simplified walk prunes the side commit."""
+        init_repo(self.root)
+        self.write("planning/evidence/f.md", b"v1\n")
+        commit_all(self.root, "A")
+        main = git(self.root, "symbolic-ref", "--short", "HEAD").strip()
+        git(self.root, "checkout", "-q", "-b", "side")
+        self.write("planning/evidence/f.md", b"v2, only on the side branch\n")
+        commit_all(self.root, "B")
+        lost = git(self.root, "rev-parse", "HEAD:planning/evidence/f.md").strip()
+        git(self.root, "checkout", "-q", main)
+        self.write("other.txt", b"c\n")
+        commit_all(self.root, "C")
+        git(self.root, "merge", "-q", "-s", "ours", "--no-edit", "side")
+        git(self.root, "branch", "-q", "-D", "side")
+        return lost, main
+
+    def test_F11_history_blobs_lists_a_version_simplification_prunes(self):
+        lost, _ = self.merged_away()
+        simplified = git(self.root, "rev-list", "--objects", "--all", "--",
+                         "planning/evidence")
+        self.assertNotIn(lost, simplified)  # the r61 construction holds
+        self.assertIn(lost, store.history_blobs(self.root, ["--all"]))
+
+    def test_F11_history_check_reports_it_missing_and_migrate_archives_it(self):
+        lost, _ = self.merged_away()
+        self.archive.mkdir()
+        out = io.StringIO()
+        with mock.patch.object(store, "ROOT", self.root), contextlib.redirect_stdout(out):
+            self.assertEqual(store.main(["history-check", "--all-refs"]), 1)
+            self.assertEqual(store.main(["migrate-history", "--all-refs"]), 0)
+            self.assertEqual(store.main(["history-check", "--all-refs"]), 0)
+        data = git(self.root, "cat-file", "blob", lost).encode()
+        self.assertEqual(store.object_bytes(self.root, store.sha256_bytes(data)), data)
+
+
+RULES = """planning/evidence
+glob:LANEDUMP*.md
+glob:planning/backlog-*
+regex:^planning/handoff-(?!keep\\.md$)[^/]*$
+planning/swarm-board.md
+"""
+
+
+class RewriteRulesTests(Sandbox):
+    """r61 F7/Q7/F8: every rule of the rewrite list, expanded over all refs."""
+
+    def setUp(self):
+        super().setUp()
+        import evidence_history
+        self.history = evidence_history
+        init_repo(self.root)
+        self.write("planning/evidence/a.md", b"a\n")
+        self.write("LANEDUMP-old.md", b"lane dump\n")
+        self.write("docs/LANEDUMP-kept.md", b"not top level\n")
+        self.write("planning/backlog-1.md", b"backlog v1\n")
+        self.write("planning/handoff-x.md", b"handoff\n")
+        self.write("planning/handoff-keep.md", b"kept handoff\n")
+        self.write("planning/swarm-board.md", b"board\n")
+        self.write("planning/swarm-board.md.bak", b"not the literal\n")
+        commit_all(self.root, "one")
+        self.write("planning/backlog-1.md", b"backlog v2\n")
+        (self.root / "LANEDUMP-old.md").unlink()
+        commit_all(self.root, "two")
+        self.rules_file = self.base / "rules.txt"
+        self.rules_file.write_text(RULES)
+        self.archive.mkdir()
+
+    def run_complete(self, *extra: str) -> tuple[int, str]:
+        out = io.StringIO()
+        with mock.patch.object(store, "ROOT", self.root), \
+                contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
+            code = self.history.main(["complete", "--rules", str(self.rules_file), *extra])
+        return code, out.getvalue()
+
+    def test_F7_rules_match_as_filter_repo_does(self):
+        rules = self.history.load_rules(self.rules_file)
+        snapshot = self.history.snapshot_refs(self.root)
+        per_rule = self.history.rule_blobs(self.root, rules, snapshot)
+        paths = {rule: sorted(set(found.values())) for rule, found in per_rule.items()}
+        self.assertEqual(paths["planning/evidence"], ["planning/evidence/a.md"])
+        self.assertEqual(paths["glob:LANEDUMP*.md"], ["LANEDUMP-old.md"])  # deleted, still history
+        self.assertEqual(len(per_rule["glob:planning/backlog-*"]), 2)       # both versions
+        self.assertEqual(paths["regex:^planning/handoff-(?!keep\\.md$)[^/]*$"],
+                         ["planning/handoff-x.md"])
+        self.assertEqual(paths["planning/swarm-board.md"], ["planning/swarm-board.md"])
+
+    def test_F7_complete_migrates_every_rule_and_verifies_canonically(self):
+        code, out = self.run_complete()
+        self.assertEqual(code, 1, out)           # nothing archived yet
+        summary = self.base / "summary.json"
+        code, out = self.run_complete("--migrate", "--write", str(summary))
+        self.assertEqual(code, 0, out)
+        pinned = json.loads(summary.read_text())
+        self.assertEqual(pinned["missing"], 0)
+        self.assertEqual(pinned["archived_verified"], pinned["blobs"])
+        self.assertEqual(pinned["blobs"], 6)      # a, lanedump, backlog x2, handoff-x, board
+        self.assertEqual(pinned["head"], git(self.root, "rev-parse", "HEAD").strip())
+        self.assertTrue(pinned["refs"])
+        self.assertEqual(pinned["rules"]["glob:planning/backlog-*"]["blobs"], 2)
+        # One object moved to the wrong shard: no longer archived.
+        sha = store.sha256_bytes(b"backlog v1\n")
+        good = self.archive / store.object_rel(sha)
+        wrong = self.archive / "objects" / "zz" / good.name
+        wrong.parent.mkdir(parents=True)
+        os.replace(good, wrong)
+        code, out = self.run_complete()
+        self.assertEqual(code, 1, out)
+        self.assertIn(sha, out)
+        # Corrupt bytes at the canonical name: refused (4), not absent.
+        good.write_bytes(deflate_corrupt(b"backlog v1\n"))
+        code, out = self.run_complete()
+        self.assertEqual(code, 4, out)
+
+    def test_F8_the_committed_completeness_summary_is_pinned_and_complete(self):
+        pinned = json.loads((TOOLS.parent / "planning/evidence-history-completeness.json")
+                            .read_text())
+        self.assertEqual(pinned["missing"], 0)
+        self.assertEqual(pinned["bad"], 0)
+        self.assertEqual(pinned["archived_verified"], pinned["blobs"])
+        self.assertRegex(pinned["head"], r"^[0-9a-f]{40}$")
+        self.assertGreater(len(pinned["refs"]), 100)
+        for rule in (TOOLS.parent / "planning/history-rewrite-paths.txt").read_text().splitlines():
+            if rule and not rule.startswith("#"):
+                self.assertIn(rule, pinned["rules"])
+
+
+class CanonicalShardTests(Sandbox):
+    """r61 F5: verify matched objects by file name, ignoring the shard."""
+
+    def test_F5_verify_archive_refuses_an_object_in_the_wrong_shard(self):
+        data = b"evidence\n"
+        self.write(REL, data)
+        sha, _ = store.put(self.root, [REL])[REL]
+        good = self.archive / store.object_rel(sha)
+        wrong = self.archive / "objects" / "zz" / good.name
+        wrong.parent.mkdir(parents=True)
+        os.replace(good, wrong)
+        out = io.StringIO()
+        with mock.patch.object(store, "ROOT", self.root), \
+                contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
+            self.assertNotEqual(store.main(["verify"]), 0)
+            self.assertNotEqual(store.main(["verify", "--archive"]), 0)
+        self.assertNotIn(sha, store.archive_listing())
+
+
+class DurabilityTests(Sandbox):
+    """r61 F1: barrier failures were swallowed; a present object was not synced."""
+
+    def test_F1_a_failed_directory_fsync_is_an_error(self):
+        import stat as stat_module
+        real = os.fsync
+
+        def fsync(fd):
+            if stat_module.S_ISDIR(os.fstat(fd).st_mode):
+                raise OSError(5, "Input/output error")
+            return real(fd)
+        with mock.patch.object(os, "fsync", side_effect=fsync):
+            with self.assertRaises(store.EvidenceUnavailable):
+                store.store_object(self.archive, b"durable?\n")
+
+    def test_F1_an_already_present_object_is_synced_before_it_is_reported(self):
+        import evidence_ingest
+        data = b"present but maybe unsynced\n"
+        sha = store.sha256_bytes(data)
+        target = self.archive / store.object_rel(sha)
+        target.parent.mkdir(parents=True)
+        target.write_bytes(store.compress(data))
+        synced: list[str] = []
+        real = os.fsync
+
+        def record(fd):
+            import stat as stat_module
+            synced.append("dir" if stat_module.S_ISDIR(os.fstat(fd).st_mode) else "file")
+            return real(fd)
+        with mock.patch.object(os, "fsync", side_effect=record):
+            self.assertEqual(evidence_ingest.place(self.archive, sha, store.compress(data)),
+                             "present")
+        self.assertIn("file", synced)
+        self.assertIn("dir", synced)
+
+    def test_F1_new_shard_directories_are_synced_into_their_parents(self):
+        import evidence_ingest
+        data = b"fresh archive\n"
+        sha = store.sha256_bytes(data)
+        opened: list[str] = []
+        real_open = os.open
+
+        def track(path, flags, *args, **kwargs):
+            opened.append(os.fspath(path))
+            return real_open(path, flags, *args, **kwargs)
+        with mock.patch.object(os, "open", side_effect=track):
+            evidence_ingest.place(self.archive, sha, store.compress(data))
+        # the archive root (holding the new objects/) and objects/ (holding the shard)
+        self.assertIn(str(self.archive), opened)
+        self.assertIn(str(self.archive / "objects"), opened)
+
+
+class RefusedIsNotUnavailableTests(Sandbox):
+    """r61 F3: a proven-bad hash and an absent object had one exception and one exit."""
+
+    def test_F3_mismatch_and_corruption_are_refused_absence_is_unavailable(self):
+        self.assertFalse(issubclass(store.EvidenceMismatch, store.EvidenceUnavailable))
+        self.assertFalse(issubclass(store.EvidenceRefused, store.EvidenceUnavailable))
+        self.write(REL, b"bytes\n")
+        sha, _ = store.put(self.root, [REL])[REL]
+        (self.root / REL).unlink()
+        (self.archive / store.object_rel(sha)).write_bytes(gzip.compress(b"other\n"))
+        with self.assertRaises(store.EvidenceRefused):
+            store.read_bytes(self.root, REL)
+        (self.archive / store.object_rel(sha)).unlink()
+        with self.assertRaises(store.EvidenceUnavailable):
+            store.read_bytes(self.root, REL)
+
+    def test_F3_verify_paths_exits_4_refused_3_unavailable_1_not_indexed(self):
+        present, gone = REL, OLDER
+        self.write(present, b"corrupted later\n")
+        self.write(gone, b"lost later\n")
+        entries = store.put(self.root, [present, gone])
+        for rel in (present, gone):
+            (self.root / rel).unlink()
+        (self.archive / store.object_rel(entries[present][0])).write_bytes(
+            gzip.compress(b"wrong\n"))
+        (self.archive / store.object_rel(entries[gone][0])).unlink()
+        out = io.StringIO()
+        with mock.patch.object(store, "ROOT", self.root), \
+                contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
+            self.assertEqual(store.main(["verify-paths", present]), 4)
+            self.assertEqual(store.main(["verify-paths", gone]), 3)
+            self.assertEqual(store.main(["verify-paths", "planning/evidence/no.md"]), 1)
+
+    def test_F3_the_cut_gate_keeps_unavailable_distinct_from_red(self):
+        text = (TOOLS / "cut_release.sh").read_text()
+        self.assertIn("UNAVAILABLE) ", text)      # a verdict word of its own
+        self.assertIn("exit 3", text)
+
+    def test_F3_claim_tools_exit_4_on_refused_evidence(self):
+        import certified_claims
+        import current_view
+        import green_check
+        boom = store.EvidenceMismatch("x: the working-tree file differs")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
+            with mock.patch.object(green_check, "audit", side_effect=boom):
+                self.assertEqual(green_check.main(["--summary"]), 4)
+            with mock.patch.object(certified_claims, "audit", side_effect=boom):
+                self.assertEqual(certified_claims.main([]), 4)
+            with mock.patch.object(current_view, "build", side_effect=boom):
+                self.assertEqual(current_view.main(["--check"]), 4)
+        self.assertIn("REFUSED", out.getvalue())
+
+
+class DeflateCorruptionTests(Sandbox):
+    """r61 F4: an invalid DEFLATE block raised zlib.error past every handler."""
+
+    def test_F4_a_reader_refuses_invalid_deflate(self):
+        data = b"abc" * 50
+        self.write(REL, data)
+        sha, _ = store.put(self.root, [REL])[REL]
+        (self.root / REL).unlink()
+        (self.archive / store.object_rel(sha)).write_bytes(deflate_corrupt(data))
+        with self.assertRaises(store.EvidenceRefused):
+            store.read_bytes(self.root, REL)
+
+    def test_F4_put_quarantines_and_replaces_an_invalid_deflate_object(self):
+        data = b"abc" * 50
+        sha = store.sha256_bytes(data)
+        target = self.archive / store.object_rel(sha)
+        target.parent.mkdir(parents=True)
+        target.write_bytes(deflate_corrupt(data))
+        self.write(REL, data)
+        store.put(self.root, [REL])
+        self.assertEqual(gzip.decompress(target.read_bytes()), data)
+        self.assertEqual(len(list((self.archive / "quarantine").iterdir())), 1)
+
+    def test_F4_fetch_repairs_an_invalid_deflate_cached_object(self):
+        remote = self.remote()
+        data = b"abc" * 50
+        sha = store.sha256_bytes(data)
+        store.store_object(remote, data)
+        store.write_index(self.root, {REL: (sha, len(data))})
+        bad = self.cache / store.object_rel(sha)
+        bad.parent.mkdir(parents=True)
+        bad.write_bytes(deflate_corrupt(data))
+        with mock.patch.object(store.subprocess, "run", side_effect=self.fake_box(remote)):
+            self.assertEqual(store.read_bytes(self.root, REL), data)
+
+
+class IndexLockTests(Sandbox):
+    """r61 F6: the index lock lived under the (overridable) cache directory."""
+
+    def test_F6_the_lock_is_keyed_on_the_index_not_the_cache(self):
+        first = store.index_lock_path(self.root)
+        with mock.patch.dict(os.environ, {"FN_EVIDENCE_CACHE": str(self.base / "other")}):
+            self.assertEqual(store.index_lock_path(self.root), first)
+        self.assertTrue(first.resolve().is_relative_to(self.root.resolve()))
+
+    def test_F6_writers_with_different_caches_lose_no_rows(self):
+        script = (
+            "import sys; sys.path.insert(0, sys.argv[1]); import evidence_store as s\n"
+            "from pathlib import Path\n"
+            "root = Path(sys.argv[2]); w = sys.argv[3]\n"
+            "for i in range(40):\n"
+            "    s.add_to_index(root, {f'planning/evidence/{w}-{i}.md': ('%064x' % i, i)})\n")
+        procs = [subprocess.Popen([sys.executable, "-c", script, str(TOOLS),
+                                   str(self.root), f"w{n}"],
+                                  env={**os.environ,
+                                       "FN_EVIDENCE_CACHE": str(self.base / f"cache{n}")})
+                 for n in range(4)]
+        for proc in procs:
+            self.assertEqual(proc.wait(), 0)
+        store._INDEX.clear()
+        self.assertEqual(len(store.read_index(self.root)), 160)
+
+
+class LocalShadowTests(Sandbox):
+    """r61 F2: a plain local file answered an indexed citation or link."""
+
+    def shadowed(self) -> str:
+        rel = "planning/evidence/report.md"
+        store.write_index(self.root, {rel: (store.sha256_bytes(b"the filed report\n"), 17)})
+        self.write(rel, b"different, untracked bytes\n")
+        return rel
+
+    def test_F2_cite_check_does_not_accept_a_local_shadow(self):
+        import cite_check
+        rel = self.shadowed()
+        init_repo(self.root)
+        self.write("docs/x.md", f"See `{rel}`.\n".encode())
+        git(self.root, "add", "docs/x.md", store.INDEX_REL)
+        git(self.root, "commit", "-q", "-m", "cite")
+        out = io.StringIO()
+        with mock.patch.object(cite_check, "ROOT", self.root), contextlib.redirect_stdout(out):
+            code = cite_check.main(["--json", "--strict"])
+        report = json.loads(out.getvalue())
+        self.assertIn(rel, {f["token"] for f in report["findings"]})
+        self.assertNotEqual(code, 0)
+
+    def test_F2_check_scaffold_link_does_not_accept_a_local_shadow(self):
+        import check_scaffold
+        rel = self.shadowed()
+        doc = self.root / "docs/x.md"
+        doc.parent.mkdir(parents=True)
+        doc.write_text("x\n")
+        with mock.patch.object(check_scaffold, "ROOT", self.root), \
+                mock.patch.object(check_scaffold, "ERRORS", []), \
+                mock.patch.object(check_scaffold, "UNAVAILABLE", []):
+            check_scaffold.link(f"../{rel}", doc, "docs/x.md")
+            self.assertEqual(len(check_scaffold.ERRORS) + len(check_scaffold.UNAVAILABLE), 1)
+
+
+class SchedulerReadsVerifiedTests(Sandbox):
+    """r61 F9: chain_schedule preferred plain local manifests; a cold cache raised."""
+
+    def manifest(self, wall: float) -> bytes:
+        return json.dumps({"hostname": "hbox", "cpu_count": 16,
+                           "book_wall_seconds": {"books/a": wall}}).encode()
+
+    def patched(self):
+        import chain_schedule
+        history = self.root / "planning/evidence/manifests"
+        return chain_schedule, mock.patch.multiple(chain_schedule, ROOT=self.root,
+                                                   HISTORY=history)
+
+    def test_F9_a_modified_local_indexed_manifest_is_not_read(self):
+        chain_schedule, patch = self.patched()
+        rel = "planning/evidence/manifests/certify-20261002T000000Z-1.json"
+        self.write(rel, self.manifest(10.0))
+        store.put(self.root, [rel])
+        self.write(rel, self.manifest(99999.0))
+        with patch:
+            entries = chain_schedule.history_entries(chain_schedule.HISTORY)
+            values = chain_schedule.summaries(entries, None)
+        self.assertNotIn("99999", json.dumps(values))
+
+    def test_F9_a_cold_cache_unavailable_manifest_does_not_raise(self):
+        chain_schedule, patch = self.patched()
+        rel = "planning/evidence/manifests/certify-20261002T000000Z-1.json"
+        store.write_index(self.root, {rel: ("c" * 64, 10)})
+        with patch, contextlib.redirect_stderr(io.StringIO()):
+            entries = chain_schedule.history_entries(chain_schedule.HISTORY)
+            self.assertEqual(chain_schedule.summaries(entries, None), [None])
+
+
+class ManifestCheckReadsBytesTests(Sandbox):
+    """r61 F10: `evidence_manifests check` counted an indexed NAME as resolvable."""
+
+    def test_F10_check_does_not_count_a_lost_object_resolvable(self):
+        run_id = "certify-20261002T000000Z-1"
+        rel = f"planning/evidence/manifests/{run_id}.json"
+        store.write_index(self.root, {rel: ("d" * 64, 10)})
+        args = argparse.Namespace(strict=False, report_only=False, list_missing=False)
+        out = io.StringIO()
+        with mock.patch.object(evidence_manifests, "ROOT", self.root), \
+                mock.patch.object(evidence_manifests, "cited_run_ids",
+                                  return_value={run_id: ["books/x.lisp"]}), \
+                mock.patch.object(evidence_manifests, "lost_run_ids", return_value={}), \
+                mock.patch.object(evidence_manifests, "local_candidates", return_value={}), \
+                mock.patch.object(evidence_manifests, "git", return_value=""), \
+                contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
+            code = evidence_manifests.cmd_check(args)
+        self.assertIn("cited and resolvable: 0", out.getvalue())
+        self.assertEqual(code, 3)
+
+
 if __name__ == "__main__":
     unittest.main()
