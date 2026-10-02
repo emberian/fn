@@ -23,7 +23,11 @@ set -eu
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 D=$root/tools/deploy_fresh.sh
 PROBE=$root/tools/node_probe.py
-TARBALL=${1:-/tank/fn/scratch/qual-69046a76/friends/release/fn-69046a76798b-linux-x86_64.tar.gz}
+# No default (S140): the 69046a76 friends tarball this defaulted to predates
+# `store STORE node-secret create', so its import could never complete.
+# 2026-10-03 ran green with
+# /tank/fn/scratch/operability-review/release/fn-6.6.0+f286c02041f1-linux-x86_64.tar.gz.
+TARBALL=${1:?usage: sh tests/test_deploy_fresh.sh TARBALL [REV40]}
 if [ -f "$TARBALL.sha256" ]; then TAR_SHA=$(cut -d' ' -f1 "$TARBALL.sha256")
 else TAR_SHA=$(awk -v f="$(basename "$TARBALL")" '$2 == f || $2 == "*" f { print $1 }' "$(dirname "$TARBALL")/SHA256SUMS")
 fi
