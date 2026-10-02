@@ -140,9 +140,17 @@ closed by this worker, preserving the one-closer rule."
            (auth (fnn-owner-core 'fn-owner-feed-auth-policy peer-octets)))
        (unless (member queued '(t nil))
          (fnn-fault "feed core returned malformed queued predicate"))
-       (unless (fnn-octet-list-p host)
+       ;; No NNTP endpoint: ACL2 answers host NIL and port 0 for a peer whose
+       ;; record is gone or has no :nntp transport (host/owner-host.lisp
+       ;; fn-owner-feed-host/-port), e.g. removed by live reconfiguration
+       ;; after this pass refreshed its links.  Nothing to dial: not queued
+       ;; (inspection sweep 2026-10-03 S036; it was a fault that stopped the
+       ;; node).
+       (when (and (null host) (eql port 0))
+         (setq queued nil host nil))
+       (unless (or (null queued) (fnn-octet-list-p host))
          (fnn-fault "feed core returned malformed peer host"))
-       (unless (and (integerp port) (<= 1 port 65535))
+       (unless (or (null queued) (and (integerp port) (<= 1 port 65535)))
          (fnn-fault "feed core returned malformed peer port"))
        (unless (and (integerp backoff) (>= backoff 0))
          (fnn-fault "feed core returned malformed peer backoff"))
@@ -154,9 +162,21 @@ closed by this worker, preserving the one-closer rule."
                         (= (length auth) 3) (stringp (second auth))
                         (member (third auth) '(t nil))))
          (fnn-fault "feed core returned malformed auth policy"))
-       (values queued (fnn-octets-string (fnn-octets host)) port backoff
+       (values queued (and host (fnn-octets-string (fnn-octets host))) port backoff
                (fnn-feed-checked-connect-timeout
                 (fnn-core 'fn-owner-feed-connect-timeout)) security auth)))))
+
+(defun fnn-feed-loss-backoff (service peer-octets)
+  "ACL2's retry base for a link being dropped: the peer record's backoff,
+0 for a peer whose record is gone (fn-owner-feed-backoff-ms).  A loss path
+asks this alone, never the dial plan: the link may belong to a peer that
+live reconfiguration just removed (S036)."
+  (let ((backoff (fnn-owner-transit-serialized
+                  service nil
+                  (lambda () (fnn-owner-core 'fn-owner-feed-backoff-ms peer-octets)))))
+    (unless (and (integerp backoff) (>= backoff 0))
+      (fnn-fault "feed core returned malformed peer backoff"))
+    backoff))
 
 (defun fnn-feed-auth-profile (policy)
   "Read a private regular profile and let ACL2 decode its bounded bytes."
@@ -237,10 +257,21 @@ closed by this worker, preserving the one-closer rule."
         (error condition)))))
 
 (defun fnn-feed-send (link octets)
+  "Write OCTETS (one ACL2 command) in ACL2's quanta (fn-owner-feed-send-quantum):
+each quantum within its seconds, so the bound is the path's progress, not
+the command's size (S035)."
   (setq *fnn-feed-io-phase* :send)
-  (if (fnn-feed-link-tls-channel link)
-      (fnn-tls-send-all (fnn-feed-link-tls-channel link) octets 10)
-    (fnn-send-all (fnn-feed-link-fd link) octets 10)))
+  (let* ((data (fnn-octets octets))
+         (bound (fnn-core 'fn-owner-feed-send-quantum))
+         (quantum (car bound))
+         (seconds (cdr bound)))
+    (unless (and (integerp quantum) (plusp quantum) (integerp seconds) (plusp seconds))
+      (fnn-fault "invalid ACL2 feed send quantum: ~s" bound))
+    (loop for start from 0 below (length data) by quantum
+          do (let ((slice (subseq data start (min (length data) (+ start quantum)))))
+               (if (fnn-feed-link-tls-channel link)
+                   (fnn-tls-send-all (fnn-feed-link-tls-channel link) slice seconds)
+                 (fnn-send-all (fnn-feed-link-fd link) slice seconds))))))
 
 (defun fnn-feed-recv (link limit)
   "A zero-second read: octets, an empty vector at EOF, or :timeout when the
@@ -465,19 +496,16 @@ ACL2 framer."
           (:need-input
            (when eofp
              ;; The drop line (fn-flb-drop-line, reason=lost-eof) names it.
-             (multiple-value-bind (ignored host port backoff timeout security auth)
-                 (fnn-feed-dial-plan service (fnn-feed-link-peer-octets link))
-               (declare (ignore ignored host port timeout security auth))
-               (fnn-feed-drop-link runtime link now backoff :eof)))
+             (fnn-feed-drop-link runtime link now
+                                 (fnn-feed-loss-backoff service (fnn-feed-link-peer-octets link))
+                                 :eof))
            (return))
           ((:closed :invalid :connection-refused :streaming-refused :unsendable)
            ;; The reply step logged ACL2's line naming the peer's answer; the
            ;; drop line names the retry.
-           (multiple-value-bind (ignored host port backoff timeout security auth)
-               (fnn-feed-dial-plan service (fnn-feed-link-peer-octets link))
-             (declare (ignore ignored host port timeout security auth))
-             (fnn-feed-drop-link runtime link now backoff
-                                 (if (eq word :unsendable) :unsendable :peer)))
+           (fnn-feed-drop-link runtime link now
+                               (fnn-feed-loss-backoff service (fnn-feed-link-peer-octets link))
+                               (if (eq word :unsendable) :unsendable :peer))
            (return))
           (:ready
            (fnn-feed-link-became-ready link)
@@ -485,7 +513,12 @@ ACL2 framer."
           (:tls
            (multiple-value-bind (ignored host port backoff timeout security auth)
                (fnn-feed-dial-plan service (fnn-feed-link-peer-octets link))
-             (declare (ignore ignored host port backoff timeout auth))
+             (declare (ignore ignored host port timeout auth))
+             ;; A peer removed or retransported since the dial has no TLS
+             ;; policy now: the link goes, it is not a fault (S036).
+             (unless (equal (car security) :tls)
+               (fnn-feed-drop-link runtime link now backoff :peer)
+               (return))
              (fnn-feed-enable-tls runtime link security))
            (setq input nil))
           ((:starttls :auth-user :auth-pass :mode :send :quiet)
@@ -504,11 +537,10 @@ ACL2 framer."
               (when (> (length command) 0)
                 (fnn-feed-send link command))
               (when (eq word :unsendable)
-                (multiple-value-bind (ignored host port backoff timeout security auth)
-                    (fnn-feed-dial-plan (fnn-feed-runtime-service runtime)
-                                        (fnn-feed-link-peer-octets link))
-                  (declare (ignore ignored host port timeout security auth))
-                  (fnn-feed-drop-link runtime link now backoff :unsendable))
+                (fnn-feed-drop-link runtime link now
+                                    (fnn-feed-loss-backoff (fnn-feed-runtime-service runtime)
+                                                           (fnn-feed-link-peer-octets link))
+                                    :unsendable)
                 (return-from fnn-feed-pump-link nil))))
           (unless (fnn-feed-stoppingp runtime)
             ;; The ACL2-projected limit sizes this buffer before read(2); a
@@ -522,15 +554,21 @@ ACL2 framer."
            fnn-peer-dial-error) (condition)
         (if (fnn-feed-stoppingp runtime)
             (fnn-feed-close-link runtime link)
-          (multiple-value-bind (ignored host port backoff timeout security auth)
-              (fnn-feed-dial-plan (fnn-feed-runtime-service runtime)
-                                  (fnn-feed-link-peer-octets link))
-            (declare (ignore ignored port timeout security auth))
+          (let ((backoff (fnn-feed-loss-backoff (fnn-feed-runtime-service runtime)
+                                                (fnn-feed-link-peer-octets link))))
             ;; PKT-613: a refused STARTTLS handshake (the name, the chain, the
             ;; configured check) is a dial outcome and is logged by name; a
-            ;; later I/O loss on an established link is not a dial.
+            ;; later I/O loss on an established link is not a dial.  The
+            ;; host is ACL2's endpoint, empty for a peer whose record is gone.
             (when (typep condition '(or fnn-tls-handshake-error fnn-peer-dial-error))
-              (fnn-peer-dial-report :feed (fnn-feed-link-peer-octets link) host condition))
+              (fnn-peer-dial-report
+               :feed (fnn-feed-link-peer-octets link)
+               (or (fnn-owner-transit-serialized
+                    (fnn-feed-runtime-service runtime) nil
+                    (lambda () (fnn-owner-core 'fn-owner-feed-host
+                                               (fnn-feed-link-peer-octets link))))
+                   "")
+               condition))
             ;; Every drop names its cause in ACL2's line (defect M3: a TLS
             ;; read error on an established link used to drop it silently).
             (fnn-feed-drop-link runtime link now backoff

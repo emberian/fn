@@ -1487,6 +1487,9 @@
   :class ::program
   :kinds ((peer-octets fn-cbor-octet-listp)))
 
+(definterface fn-owner-feed-send-quantum
+  :class ::common-lisp-compliant)
+
 (definterface fn-owner-feed-connect-timeout
   :class :common-lisp-compliant)
 
