@@ -230,3 +230,88 @@ class LogProgramListingTests(unittest.TestCase):
             native_cuts.log_program_cut_map(self.host.replace(body, moved))
         self.assertIn("fnn-log-ensure-extent", str(caught.exception))
 
+
+
+class LogCutInventoryTests(unittest.TestCase):
+    """Drive the standalone script over source mutations, without editing files."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.host = (ROOT / npc.HOST).read_text()
+        cls.book_path = "books/store-log-segments.lisp"
+        cls.book = (ROOT / cls.book_path).read_text()
+
+    def standalone(self, replacements):
+        import json
+        import subprocess
+        import sys
+        # The child runs the real __main__, including its exit status. Only
+        # read_text is substituted; globbing and the parser still see the tree.
+        script = '''
+import json, runpy, sys
+from pathlib import Path
+replacements = json.load(sys.stdin)
+read_text = Path.read_text
+def read(path, *args, **kwargs):
+    key = str(path.relative_to(Path.cwd())) if path.is_absolute() else str(path)
+    return replacements[key] if key in replacements else read_text(path, *args, **kwargs)
+Path.read_text = read
+sys.argv = ['tools/native_program_check.py']
+runpy.run_path(sys.argv[0], run_name='__main__')
+'''
+        return subprocess.run([sys.executable, "-c", script], cwd=ROOT,
+                              input=json.dumps(replacements), text=True,
+                              capture_output=True, timeout=60)
+
+    def assert_inventory_failure(self, replacements, diagnostic):
+        result = self.standalone(replacements)
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("log cut inventory: FAIL", result.stdout)
+        self.assertIn(diagnostic, result.stdout)
+
+    def test_unknown_cut_in_previously_unlisted_helper_fails(self):
+        path = "host/native/checkpoint.lisp"
+        source = (ROOT / path).read_text()
+        self.assert_inventory_failure({path: source +
+            '\n(defun fnn-unlisted-helper () (fnn-log-at :surprise-cut))\n'},
+            "surprise-cut")
+
+    def test_undeclared_segment_name_fails(self):
+        # Host and model agree on the new name; its declaration does not.
+        self.assert_inventory_failure({
+            npc.HOST: self.host.replace('(fnn-log-at :rotate-created)',
+                                        '(fnn-log-at :rotate-unknown)'),
+            self.book_path: self.book.replace('"rotate-created"', '"rotate-unknown"')},
+            "rotate-unknown")
+
+    def test_declared_model_only_orphan_fails(self):
+        # Supply the model cut and declaration, but no host site.
+        host = self.host.replace('"log-extent-fenced"))',
+                                 '"log-extent-fenced" "log-orphan"))')
+        path = "books/store-log-extend.lisp"
+        book = (ROOT / path).read_text()
+        self.assert_inventory_failure({npc.HOST: host,
+            path: book.replace('(list :cut "log-extent-fenced")',
+                               '(list :cut "log-extent-fenced") (list :cut "log-orphan")')},
+            "log-orphan")
+
+    def test_reordered_segment_steps_fail(self):
+        body = native_cuts.host_function(self.host, "fnn-log-prepare-spare")
+        moved = body.replace(":rotate-created", ":SWAP").replace(
+            ":rotate-fenced", ":rotate-created").replace(":SWAP", ":rotate-fenced")
+        self.assert_inventory_failure({npc.HOST: self.host.replace(body, moved)},
+                                      "fnn-log-prepare-spare")
+
+    def test_dynamic_point_fails(self):
+        self.assert_inventory_failure({npc.HOST: self.host +
+            '\n(defun fnn-unlisted-helper (point) (fnn-log-at point))\n'},
+            "dynamic")
+
+    def test_comments_and_strings_are_not_sites(self):
+        result = self.standalone({npc.HOST: self.host + '''
+; (fnn-log-at :comment-cut)
+#| (fnn-log-at :block-comment-cut) |#
+(defun fnn-document-log-cuts () "(fnn-log-at :string-cut)" nil)
+'''})
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("log cut inventory: PASS (13 cuts; 7 segment cuts)", result.stdout)
