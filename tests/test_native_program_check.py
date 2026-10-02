@@ -308,7 +308,11 @@ runpy.run_path(sys.argv[0], run_name='__main__')
             "dynamic")
 
     def test_comments_and_strings_are_not_sites(self):
-        result = self.standalone({npc.HOST: self.host + '''
+        host = mutate(self.host, "(fnn-log-at :log-written)",
+                      '(progn "(fnn-log-at :string-cut)" ; (fnn-log-at :comment-cut)\n'
+                      '    #| (fnn-log-at :block-comment-cut) |#\n'
+                      '    (fnn-log-at :log-written))', within="fnn-log-append")
+        result = self.standalone({npc.HOST: host + '''
 ; (fnn-log-at :comment-cut)
 #| (fnn-log-at :block-comment-cut) |#
 (defun fnn-document-log-cuts () "(fnn-log-at :string-cut)" nil)

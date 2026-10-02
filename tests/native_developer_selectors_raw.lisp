@@ -224,7 +224,7 @@
               +fnn-state-checkpoint-model-cuts+ fnn-state-checkpoint-test-fault
               +fnn-cli-faults+ +fnn-post-model-cuts+ +fnn-post-log-model-cuts+
               fnn-post-test-fault
-              +fnn-log-model-cuts+ fnn-log-at
+              +fnn-log-model-cuts+ +fnn-log-segment-model-cuts+ fnn-log-at
               fnn-post-entry-fault fnn-command-post fnn-main))
 
 (defun setenv (name value) (sb-posix:setenv name value 1))
@@ -530,12 +530,12 @@
       (check (and (sb-posix:wifexited status) (zerop (sb-posix:wexitstatus status)))
              "matching unknown point and selector fault before SIGKILL")))
   (clear-selectors)
-  (dolist (name (append +fnn-log-model-cuts+
-                       '("rotate-created" "rotate-fenced" "rotate-renamed"
-                         "rotate-headed" "rotate-durable" "drop-unlinked" "drop-durable")))
+  (dolist (name (append +fnn-log-model-cuts+ +fnn-log-segment-model-cuts+))
     (let ((point (intern (string-upcase name) :keyword)))
       (check (null (fnn-log-at point)) (format nil "valid unarmed ~a returns" name))
       (setenv "FN_NATIVE_LOG_FAULT" name)
+      (check (null (fnn-log-at (if (eq point :log-written) :log-fenced :log-written)))
+             (format nil "valid selector ~a leaves other points unarmed" name))
       (let ((pid (sb-posix:fork)))
         (when (zerop pid)
           (fnn-log-at point)

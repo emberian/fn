@@ -6286,6 +6286,11 @@ with its depth, and the rows under it name the path that called it."
     ;; books/store-log-extend.lisp fn-lg-extend-program (fnn-log-ensure-extent).
     "log-extended" "log-extent-fenced"))
 
+;; books/store-log-segments.lisp: spare, rotate, durable and drop programs.
+(defparameter +fnn-log-segment-model-cuts+
+  '("rotate-created" "rotate-fenced" "rotate-renamed" "rotate-headed"
+    "rotate-durable" "drop-unlinked" "drop-durable"))
+
 (defstruct (fnn-log (:constructor %make-fnn-log))
   path fd kernel unit max extent
   ;; The open batch's members and entry octets (fn-lgc-take's COUNT and
@@ -6346,12 +6351,20 @@ with its depth, and the rows under it name the path that called it."
   `(sb-thread:with-recursive-lock ((fnn-log-lock ,log)) ,@body))
 
 (defun fnn-log-at (point)
-  "A developer-image cut: FN_NATIVE_LOG_FAULT=NAME (a +fnn-log-model-cuts+
-name) kills the process at NAME with SIGKILL, so no cleanup runs."
-  (let ((armed (fnn-developer-selector "FN_NATIVE_LOG_FAULT")))
-    (when (and armed (string= armed (string-downcase (symbol-name point))))
-      (sb-posix:kill (sb-posix:getpid) sb-unix:sigkill)
-      (fnn-fault "test SIGKILL did not terminate the process"))))
+  "A developer-image SIGKILL cut in the log or segment model family.
+Reject unknown POINTs even unarmed, and unknown armed selectors before injection."
+  (flet ((known (name)
+           (or (member name +fnn-log-model-cuts+ :test #'string=)
+               (member name +fnn-log-segment-model-cuts+ :test #'string=))))
+    (let ((name (and (keywordp point) (string-downcase (symbol-name point)))))
+      (unless (and name (known name))
+        (fnn-fault "unknown log cut POINT ~s" point))
+      (let ((armed (fnn-developer-selector "FN_NATIVE_LOG_FAULT")))
+        (when (and armed (not (known armed)))
+          (fnn-fault "unknown FN_NATIVE_LOG_FAULT cut ~s" armed))
+        (when (and armed (string= armed name))
+          (sb-posix:kill (sb-posix:getpid) sb-unix:sigkill)
+          (fnn-fault "test SIGKILL did not terminate the process"))))))
 
 (defun fnn-log-pwrite (fd offset octets)
   "The one positioned write of OCTETS at OFFSET: lseek, then write(2) to
