@@ -5472,9 +5472,20 @@ the reply word: :dry-run, or ACL2's refusal."
     (unwind-protect
          (progn
            (fnn-owner-gated (service :control)
-             (setq captured (fnn-owner-core 'fn-owner-orc-capture :dry-run clock
-                                            (fnn-checkpoint-budget-test-override nil)
-                                            free (fnn-checkpoint-revision)))
+             (let ((answer (fnn-owner-core 'fn-owner-orc-capture :dry-run clock
+                                           (fnn-checkpoint-budget-test-override nil)
+                                           free (fnn-checkpoint-revision))))
+               ;; S038: a pass in flight refuses the dry run by name; nothing
+               ;; was captured, so nothing is finished and no pin is taken
+               (when (and (consp answer) (eq (first answer) :refused)
+                          (member (second answer) '(:in-flight :queued)))
+                 ;; DEFERRED-IN-FLIGHT / -QUEUED: refused by name
+                 ;; (fn-owner-orc-request-status; a bare :in-flight would
+                 ;; classify :accepted there)
+                 (fnn-err "RECLAIM dry-run refused: ~(~a~)" (second answer))
+                 (return-from fnn-owner-reclaim-dry-run
+                   (intern (format nil "DEFERRED-~a" (symbol-name (second answer))) :keyword)))
+               (setq captured answer))
              (setq pin (fnn-arena-pin)))
            (unless (and (true-listp captured) (= (length captured) 13))
              (fnn-fault "owner returned a malformed reclaim capture"))
@@ -5664,9 +5675,16 @@ publication).  Answers the reply word."
                  ;; an off-mutex arena reader from here (arena-reader-pins)
                  (setq pin (fnn-arena-pin))))
              (unless captured
-               (unless (and (eq (first answer) :deferred) (integerp (third answer)))
-                 (fnn-fault "owner returned a malformed reclaim capture"))
-               (deferred :credit (format nil "estimate=~d" (third answer)))
+               ;; S038: another pass in flight or queued is refused by name
+               ;; before any credit is reserved (CAPTURED stays nil, so the
+               ;; cleanup never finishes the other pass's slot)
+               (cond ((and (eq (first answer) :deferred)
+                           (member (second answer) '(:in-flight :queued))
+                           (null (third answer)))
+                      (deferred (second answer)))
+                     ((and (eq (first answer) :deferred) (integerp (third answer)))
+                      (deferred :credit (format nil "estimate=~d" (third answer))))
+                     (t (fnn-fault "owner returned a malformed reclaim capture")))
                (return-from pass))
              (unless (and (true-listp captured) (= (length captured) 13))
                (fnn-fault "owner returned a malformed reclaim capture"))
