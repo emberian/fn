@@ -19,7 +19,10 @@ from tests.test_native_expiry import DEVELOPER, ExpiryMixin, msgid
 def page_io_logical_lines(data):
     """Collapse pretty-print whitespace only within the exact issued token6."""
     token = re.compile(rb"(PAGE-IO [^\r\n]*token=)\((\d+(?:\s+\d+){5})\)")
-    return token.sub(lambda m: m.group(1) + b"(" + b" ".join(m.group(2).split()) + b")",
+    data = token.sub(lambda m: m.group(1) + b"(" + b" ".join(m.group(2).split()) + b")", data)
+    # A settled fault answer is a two-element list the printer may wrap too.
+    fault = re.compile(rb"(PAGE-IO settled [^\r\n]*answer=)\((:FAULT)\s+(:[A-Z]+)\)")
+    return fault.sub(lambda m: m.group(1) + b"(" + m.group(2) + b" " + m.group(3) + b")",
                      data).splitlines()
 
 
@@ -32,6 +35,13 @@ class PageIOObservationTests(unittest.TestCase):
         self.assertRegex(lines[0], rb"PAGE-IO held token=.* file=3$")
         self.assertRegex(lines[1], rb"PAGE-IO settled token=.* answer=:CANCELLED$")
         self.assertNotRegex(lines[0], rb"answer=:PUBLISH")
+
+    def test_wrapped_fault_answer_is_one_observation(self):
+        text = (b"PAGE-IO settled token=(0 0 1 0 658\n   12345) answer=(:FAULT\n"
+                b"                     :READ)\nowner core/store fault\n")
+        lines = page_io_logical_lines(text)
+        self.assertEqual(lines[0], b"PAGE-IO settled token=(0 0 1 0 658 12345) answer=(:FAULT :READ)")
+        self.assertEqual(lines[1], b"owner core/store fault")
 
     def test_incomplete_token_cannot_join_a_later_event(self):
         text = b"PAGE-IO held token=(1 2 3\nPAGE-IO settled token=(4 5 6) answer=:PUBLISH\n"
