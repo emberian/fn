@@ -4,7 +4,7 @@
   "coverage": {
     "declared": 1411,
     "declared_and_dispatched": 1377,
-    "guard_verified": 742,
+    "guard_verified": 750,
     "with_keystone": 195,
     "raw_dispatched": 0
   },
@@ -624,7 +624,7 @@
       "name": "fn-owner-control-submit",
       "subsystem": "control",
       "declared_in": "host/interfaces.lisp",
-      "class": "program",
+      "class": "common-lisp-compliant",
       "kinds": [
         [
           "msgid-octets",
@@ -7771,7 +7771,7 @@
       "name": "fn-owner-close",
       "subsystem": "owner",
       "declared_in": "host/interfaces.lisp",
-      "class": "program",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],
@@ -8293,7 +8293,7 @@
       "name": "fn-owner-fault",
       "subsystem": "owner",
       "declared_in": "host/interfaces.lisp",
-      "class": "program",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],
@@ -8857,7 +8857,7 @@
       "name": "fn-owner-install-node-secret",
       "subsystem": "owner",
       "declared_in": "host/interfaces.lisp",
-      "class": "program",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],
@@ -9322,7 +9322,7 @@
       "name": "fn-owner-open",
       "subsystem": "owner",
       "declared_in": "host/interfaces.lisp",
-      "class": "program",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],
@@ -9341,7 +9341,7 @@
       "name": "fn-owner-open-peer",
       "subsystem": "owner",
       "declared_in": "host/interfaces.lisp",
-      "class": "program",
+      "class": "common-lisp-compliant",
       "kinds": [
         [
           "peer-octets",
@@ -9615,7 +9615,7 @@
       "name": "fn-owner-prepare-retention",
       "subsystem": "owner",
       "declared_in": "host/interfaces.lisp",
-      "class": "program",
+      "class": "common-lisp-compliant",
       "kinds": [
         [
           "id-octets",
@@ -25563,7 +25563,7 @@
       "name": "fn-owner-apply-limit-profile",
       "subsystem": "owner",
       "declared_in": "host/interfaces.lisp",
-      "class": "program",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],
