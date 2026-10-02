@@ -8,9 +8,11 @@
 (local (include-book "arithmetic-5/top" :dir :system))
 
 (local (defthm fn-9pm-nats-true-list
- (implies (fn-prs-nats-p x) (true-listp x))))
+ (implies (fn-prs-nats-p x) (true-listp x))
+ :hints (("Goal" :in-theory (enable fn-prs-nats-p)))))
 (local (defthm fn-9pm-vector-true-list
- (implies (fn-prs-vectorp x) (true-listp x))))
+ (implies (fn-prs-vectorp x) (true-listp x))
+ :hints (("Goal" :in-theory (enable fn-prs-vectorp)))))
 
 (defun fn-9p-mount-current-generation (fn-mio$c)
  (declare (xargs :stobjs fn-mio$c :guard t))
