@@ -2787,18 +2787,33 @@ one falls back to full replay."
 (defun fnn-state-checkpoint-stage (store octets)
   "fnn-state-checkpoint-write's first half: the staged file written and fenced
 (cuts created, written, staged-durable).  A failure is known: the old
-checkpoint stays.  Answers the staged path, for fnn-state-checkpoint-install
+checkpoint stays, and the stage is removed (or, when its unlink fails, left
+to the staging sweep under its .stage- prefix), as
+fnn-publish-filesystem-record does; that includes a publication the
+stopping owner refuses at a batch boundary (fnn-checkpoint-yield), which
+left its stage behind as a staging orphan.  A process death leaves it to
+the sweep.  Answers the staged path, for fnn-state-checkpoint-install
 (Q16's reclaim pass stages off the owner mutex and installs under it)."
   (let ((stage (fnn-join (fnn-staging store)
                          (format nil ".stage-checkpoint-~d-~a" (sb-posix:getpid) (fnn-random-hex 12)))))
-    (handler-case
-        (progn
-          (fnn-write-staged-at store stage octets
-                               :state-checkpoint-created :state-checkpoint-written)
-          (fnn-at store :state-checkpoint-staged-durable)
-          stage)
-      (fnn-os-error (e)
-        (fnn-refuse-io "known failure before the state checkpoint replacement: ~a" e)))))
+    ;; WRITTEN: the stage exists and is this attempt's; a failure before it
+    ;; is cleaned by fnn-write-staged-at itself, which holds the fd (an
+    ;; O_EXCL open that fails, EEXIST included, created nothing to remove).
+    (let ((written nil))
+      (handler-case
+          (progn
+            (fnn-write-staged-at store stage octets
+                                 :state-checkpoint-created :state-checkpoint-written
+                                 :unlink-on-failure t)
+            (setq written t)
+            (fnn-at store :state-checkpoint-staged-durable)
+            stage)
+        (fnn-os-error (e)
+          (when written (ignore-errors (fnn-unlink stage)))
+          (fnn-refuse-io "known failure before the state checkpoint replacement: ~a" e))
+        (fnn-store-io-refusal (e)
+          (when written (ignore-errors (fnn-unlink stage)))
+          (error e))))))
 
 (defun fnn-state-checkpoint-install (store stage)
   "fnn-state-checkpoint-write's second half: the staged file STAGE renamed
@@ -3532,7 +3547,7 @@ open, a record at a time (`fnn-log-history-each')."
     (unwind-protect (progn (fnn-write-all fd contents) (fnn-fsync-file fd))
       (fnn-close fd))))
 
-(defun fnn-write-staged-at (store stage contents created written)
+(defun fnn-write-staged-at (store stage contents created written &key unlink-on-failure)
   "fnn-write-staged with the byte programs' two staging cuts between its calls.
 
 The Store's frontier and record writers call this rather than
@@ -3541,8 +3556,11 @@ fnn-write-staged, so that fn-bs-frontier-program's `frontier-created' and
 `record-written') are `fnn-at' sites: after the O_EXCL create and after
 write_all, before fsync(fd).  An EIO there is a pre-publication failure of
 the same arm as a failing write; SIGKILL leaves a staging file the
-recovery sweep owns."
-  (let ((fd (fnn-open stage (logior sb-posix:o-wronly sb-posix:o-creat sb-posix:o-excl) #o600)))
+recovery sweep owns.  UNLINK-ON-FAILURE: a failure after the O_EXCL create
+removes the stage this call created (best effort; never a name it did not
+create: a failing open unlinks nothing)."
+  (let ((fd (fnn-open stage (logior sb-posix:o-wronly sb-posix:o-creat sb-posix:o-excl) #o600))
+        (done nil))
     (unwind-protect (progn (fnn-at store created)
                            ;; CONTENTS is a byte vector, or a writer the
                            ;; caller hands in (the owner's checkpoint plan,
@@ -3553,8 +3571,11 @@ recovery sweep owns."
                                (funcall contents fd)
                              (fnn-write-all fd contents))
                            (fnn-at store written)
-                           (fnn-fsync-file fd))
-      (fnn-close fd))))
+                           (fnn-fsync-file fd)
+                           (setq done t))
+      (fnn-close fd)
+      (when (and unlink-on-failure (not done))
+        (ignore-errors (fnn-unlink stage))))))
 
 (defun fnn-advance-frontier (store current-txid)
   "The allocator's reservation: the record log's (fnn-log-reserve; the
