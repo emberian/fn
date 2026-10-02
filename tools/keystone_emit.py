@@ -41,15 +41,19 @@ with it:
   removals are all reachable, whose mutations are edits and whose bounds
   are derived; everything else is counted debt by class.
 
-* `--write` VALIDATES FULLY FIRST and writes nothing on a finding (other
-  than a stale manifest, which is what it writes); on success it writes the
-  citations, `keystone_subjects` and the manifest.  It never writes
-  planning/teeth-base.json: the runner moves the base at integration.
+* `--write` (the registry: citations and `keystone_subjects`) and
+  `--write-manifest` (the gate's manifest) each VALIDATE FULLY FIRST and
+  write nothing while their own gate has a finding other than the staleness
+  they repair; a finding of the other gate is reported and exits nonzero but
+  does not hold the write hostage (the registry's subject debt is older
+  than the manifest).  Neither writes planning/teeth-base.json: the runner
+  moves the base at integration.  `--write-manifest --bootstrap` writes the
+  FIRST manifest when neither a base nor a manifest exists, never again.
 
     python3 tools/keystone_emit.py            # report; exit 1 on a finding
     python3 tools/keystone_emit.py --check    # the same (make check)
-    python3 tools/keystone_emit.py --write    # after validation: citations,
-                                              # keystone_subjects, the manifest
+    python3 tools/keystone_emit.py --write    # citations, keystone_subjects
+    python3 tools/keystone_emit.py --write-manifest   # the gate's manifest
     python3 tools/keystone_emit.py --write --claim --milestone M4 --title T --lane L
 
 Counts stay generated elsewhere (tools/ledger.py, tools/current_view.py);
@@ -478,9 +482,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--milestone")
     parser.add_argument("--title")
     parser.add_argument("--lane", default=Path.cwd().name)
+    parser.add_argument("--write-manifest", action="store_true",
+                        help="write planning/teeth-obligations.json when the gate's only "
+                             "finding is its staleness")
     parser.add_argument("--bootstrap", action="store_true",
-                        help="with --write: write the FIRST manifest when no base and "
-                             "no manifest exist (never again)")
+                        help="with --write-manifest: write the FIRST manifest when no base "
+                             "and no manifest exist (never again)")
     arguments = parser.parse_args(argv)
 
     keystones = [Keystone(book, line, form) for book, line, form in forms_in()]
@@ -504,24 +511,36 @@ def main(argv: list[str] | None = None) -> int:
                       f"(defkeystone {keystone.name} ...)")
     subject_problems, reached = subject_findings(wellformed)
     problems += subject_problems
-    # Validate fully first: the registry findings without writing, the gate.
+    # Validate fully first, each gate on its own: the registry findings
+    # without writing, then the manifest gate.
     registry_problems = registry_findings(wellformed, False)
+    registry_writable = {p for p in registry_problems
+                         if "does not cite" in p or "run --write" in p}
     gate_problems = gate(False, arguments.bootstrap)
-    writable = {p for p in registry_problems if "does not cite" in p or "run --write" in p}
-    writable |= {p for p in gate_problems if "stale" in p or "is missing; run --write" in p}
+    gate_writable = {p for p in gate_problems if "stale" in p or "is missing; run --write" in p}
     if arguments.bootstrap and not MANIFEST.exists() and not BASE.exists():
-        writable |= {p for p in gate_problems if p.startswith("teeth gate: planning/teeth-base")}
-    problems += [p for p in registry_problems + gate_problems if p not in writable]
+        gate_writable |= {p for p in gate_problems if p.startswith("teeth gate: planning/teeth-base")}
+    registry_blocking = [p for p in registry_problems if p not in registry_writable]
+    gate_blocking = [p for p in gate_problems if p not in gate_writable]
+    problems += registry_blocking + gate_blocking
     if arguments.write:
-        if problems:
-            print(f"keystone_emit: --write refused: {len(problems)} finding(s) to fix first; "
-                  f"nothing written")
+        if problems and (registry_blocking or subject_problems or refused):
+            print(f"keystone_emit: --write refused: {len(registry_blocking) + len(subject_problems) + len(refused)} "
+                  f"registry finding(s) to fix first; nothing written")
         else:
             registry_findings(wellformed, True)
-            gate(True, arguments.bootstrap)
-            print("keystone_emit: wrote the citations, keystone_subjects and the manifest")
+            print("keystone_emit: wrote the citations and keystone_subjects")
     else:
-        problems += sorted(writable)
+        problems += sorted(registry_writable)
+    if arguments.write_manifest:
+        if gate_blocking:
+            print(f"keystone_emit: --write-manifest refused: {len(gate_blocking)} gate "
+                  f"finding(s) to fix first; nothing written")
+        else:
+            gate(True, arguments.bootstrap)
+            print("keystone_emit: wrote planning/teeth-obligations.json")
+    else:
+        problems += sorted(gate_writable)
 
     if not (arguments.check and not problems):
         for keystone in wellformed:
