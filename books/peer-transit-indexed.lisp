@@ -204,7 +204,10 @@
                             fn-node-statep fn-ocl-view-visiblep fn-scj-joinp fn-prc-carryp
                             fn-peer-header-limit-refusal fn-peer-decision)))))
 
-(verify-guards fn-peer-decide-transfer-cat)
+(verify-guards fn-peer-decide-transfer-cat
+  :hints (("Goal" :use ((:guard-theorem fn-peer-decide-transfer))
+           :in-theory (disable fn-node-statep fn-article-parse fn-peer-intrinsic-refusal-of
+                               fn-peer-relayed-octets fn-af-relayed-article-check))))
 (verify-guards fn-peer-decide-transfer-under-cat)
 
 ;; The host's decision with its authority verdict (books/peer-transit-authority
@@ -243,5 +246,27 @@
                             fn-pta-groups-verdict fn-peer-decision-kind)))))
 
 (verify-guards fn-pta-decide-cat)
+;; The host's form: the live owner's node, view and catalog (as POST's
+;; fn-pidx-existing-action-cat-of-live-owner), the carry from fn-prc-refresh.
+(defthm fn-pta-decide-cat-of-live-owner
+  (implies (and (fn-ocl-relation oc)
+                (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
+                (fn-prc-carryp carry))
+           (equal (fn-pta-decide-cat index keyring v gen
+                                     (fn-sn-node (fn-own-store (fn-ocfg-owner oc)))
+                                     cfg peer msgid octets clock id subject limits
+                                     (fn-own-view (fn-ocfg-owner oc)) carry fn-arena fn-cat)
+                  (fn-pta-decide index keyring v gen
+                                 (fn-sn-node (fn-own-store (fn-ocfg-owner oc)))
+                                 cfg peer msgid octets clock id subject limits)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-ocl-relation fn-scj-invp)
+                           (fn-ocl-view-historyp fn-ocl-view-visiblep fn-scj-joinp
+                            fn-scj-rows-invp fn-scj-vvp fn-scj-live-okp fn-scj-conns-pinp
+                            fn-pta-decide-cat fn-pta-decide fn-node-statep fn-prc-carryp))
+           :use ((:instance fn-ocl-view-historyp-is-visible (o (fn-ocfg-owner oc)))
+                 (:instance fn-pta-decide-cat-is-pta-decide
+                            (node (fn-sn-node (fn-own-store (fn-ocfg-owner oc))))
+                            (view (fn-own-view (fn-ocfg-owner oc))))))))
 
 (in-theory (disable fn-peer-decide-transfer-cat fn-peer-decide-transfer-under-cat fn-pta-decide-cat))
