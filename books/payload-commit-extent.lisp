@@ -72,13 +72,18 @@
 (defconst *fn-arx-commit-window* 4096)
 
 ; Where in R handle H's payload opens, searched in the window before R's
-; end; nil when it does not (or does not fit).
+; end; nil when it does not (or does not fit).  An EMPTY payload has no
+; place (lane arena-forget, 2026-10-03): it would open anywhere, and a
+; forgotten handle (books/payload-arena.lisp fn-arena-forget) reads empty, so
+; a fenced member whose record was reclaimed and forgotten before its
+; COMPLETE's reseat would be re-pointed at the log file as a zero-length
+; extent and name the file again.  No record's payload is empty.
 (defun fn-arx-commit-place (h r fn-arena)
   (declare (xargs :stobjs fn-arena
                   :guard (and (natp h) (< h (fn-arena-count fn-arena)) (true-listp r))))
   (let ((plen (fn-arena-payload-len h fn-arena))
         (rlen (len r)))
-    (if (<= plen rlen)
+    (if (and (< 0 plen) (<= plen rlen))
         (let* ((end (- rlen plen))
                (from (nfix (- end *fn-arx-commit-window*))))
           (fn-arx-arena-find h plen (nthcdr from r) from end fn-arena))
@@ -362,3 +367,15 @@
                   fn-arena))
   :hints (("Goal" :induct (fn-arx-commit-reseats members fn-arena)
            :in-theory (disable fn-arx-commit-reseat))))
+
+; The reseat never resurrects (lane arena-forget, PRF-1235): a handle whose
+; payload is empty -- a forgotten one -- has no place in any record, so the
+; COMPLETE's reseat leaves the arena as it is and the handle names no file
+; again.  Host subject: host/native/io.lisp fnn-log-reseat-fenced calls
+; fn-arx-commit-reseats; host/native/owner.lisp fnn-owner-release-extents
+; calls fn-xrt-reseat-checkpoint-frame, each per handle fn-arx-commit-reseat.
+(defthm fn-arx-commit-reseat-leaves-an-empty-handle
+  (implies (equal (fn-arena-payload-len h fn-arena) 0)
+           (equal (fn-arx-commit-reseat h file position r fn-arena) fn-arena))
+  :hints (("Goal" :in-theory (e/d (fn-arx-commit-reseat fn-arx-commit-extent fn-arx-commit-place)
+                                  (fn-arena-payload-len-is-len-nth)))))
