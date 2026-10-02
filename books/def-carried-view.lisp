@@ -129,14 +129,24 @@
   (equal (fn-cv-build-onto (append a b) idx)
          (fn-cv-build-onto a (fn-cv-build-onto b idx))))
 
+; The reversal, guard t (revappend's guard wants a true list).
+(defun fn-cv-rev (x acc)
+  (declare (xargs :guard t))
+  (if (consp x) (fn-cv-rev (cdr x) (cons (car x) acc)) acc))
+
+(defthm fn-cv-rev-is-revappend
+  (equal (fn-cv-rev x acc) (revappend x acc)))
+
 ; The walk to the tail EQUAL to OLD: (mv FOUND RACC), the walked prefix
 ; reversed onto RACC.
 (defun fn-cv-walk (tail old racc)
+  (declare (xargs :guard t))
   (cond ((equal tail old) (mv t racc))
         ((atom tail) (mv nil racc))
         (t (fn-cv-walk (cdr tail) old (cons (car tail) racc)))))
 
 (defun fn-cv-walk-steps (tail old)
+  (declare (xargs :guard t))
   (cond ((equal tail old) 0)
         ((atom tail) 0)
         (t (+ 1 (fn-cv-walk-steps (cdr tail) old)))))
@@ -246,7 +256,7 @@
       (fn-cv-walk ws (fn-cv-car carry) nil)
       (if found
           (cons ws (fn-cv-fold racc (fn-cv-cdr carry)))
-        (cons ws (fn-cv-fold (revappend ws nil) (fn-cv-empty)))))))
+        (cons ws (fn-cv-fold (fn-cv-rev ws nil) (fn-cv-empty)))))))
 
 (local
  (defthm fn-cv-revappend-append
@@ -311,7 +321,7 @@
 (defthm fn-cv-car-of-refresh
   (equal (fn-cv-car (fn-cv-refresh carry ws)) ws))
 
-(in-theory (disable fn-cv-build-onto fn-cv-fold fn-cv-walk fn-cv-walk-steps
+(in-theory (disable fn-cv-rev fn-cv-build-onto fn-cv-fold fn-cv-walk fn-cv-walk-steps
                     fn-cv-set-okp fn-cv-exact-okp fn-cv-carryp fn-cv-refresh))
 
 ; ===========================================================================
@@ -528,17 +538,13 @@
            (,okp ,ws (,build-onto ,ws (,empty)))
            :hints (("Goal" :use ((:instance (:functional-instance fn-cv-set-okp-of-build ,@subst)
                                             (ws ,ws)))
-                    :in-theory (union-theories '(,okp ,build-onto ,put ,empty ,of
-                                                 ,hasp-of-put ,put-has-key
-                                                 fn-cv-car fn-cv-cdr)
+                    :in-theory (union-theories '(,okp ,build-onto ,hasp-of-put ,put-has-key)
                                                (theory 'minimal-theory)))))
          (defthm ,(fn-cv-name name '- idx '-okp-of-extend)
            (implies (,okp old idxs) (,okp (append new old) (,build-onto new idxs)))
            :hints (("Goal" :use ((:instance (:functional-instance fn-cv-set-okp-of-extend ,@subst)
                                             (old old) (new new) (idx idxs)))
-                    :in-theory (union-theories '(,okp ,build-onto ,put ,empty ,of
-                                                 ,hasp-of-put ,put-has-key
-                                                 fn-cv-car fn-cv-cdr)
+                    :in-theory (union-theories '(,okp ,build-onto ,hasp-of-put ,put-has-key)
                                                (theory 'minimal-theory))))))
        (fn-cv-set-index-events name ws (cdr entries) (1+ k) n)))))
 
@@ -625,7 +631,7 @@
          (if (consp racc) (,fold (cdr racc) (,put (car racc) idxs)) idxs))
        (defun ,build (,ws)
          (declare (xargs :guard t))
-         (,fold (revappend ,ws nil) (,empty)))
+         (,fold (fn-cv-rev ,ws nil) (,empty)))
        (defthm ,(fn-cv-name build '-is-build-onto)
          (equal (,build ,ws) (,build-onto ,ws (,empty)))
          :hints (("Goal" :use ((:instance (:functional-instance fn-cv-fold-of-revappend
@@ -635,7 +641,7 @@
                                                                 (fn-cv-build-onto ,build-onto)
                                                                 (fn-cv-fold ,fold))
                                           (ys ,ws) (racc nil) (idx (,empty))))
-                  :in-theory (union-theories '(,build ,build-onto ,fold ,put ,empty)
+                  :in-theory (union-theories '(,build ,build-onto ,fold fn-cv-rev-is-revappend)
                                              (theory 'minimal-theory)))))
        ,@(if setp
              (fn-cv-set-index-events name ws entries 0 n)
@@ -671,7 +677,7 @@
                                                                       (fn-cv-build-onto ,build-onto)
                                                                       (fn-cv-exact-okp ,okp))
                                                 (old old) (new new) (idx idxs)))
-                        :in-theory (union-theories '(,okp ,build-onto ,put ,empty)
+                        :in-theory (union-theories '(,okp ,build-onto)
                                                    (theory 'minimal-theory)))))))
        (defun ,refresh (carry ,ws)
          (declare (xargs :guard t))
@@ -681,7 +687,7 @@
              (fn-cv-walk ,ws (fn-cv-car carry) nil)
              (if found
                  (cons ,ws (,fold racc (fn-cv-cdr carry)))
-               (cons ,ws (,fold (revappend ,ws nil) (,empty)))))))
+               (cons ,ws (,fold (fn-cv-rev ,ws nil) (,empty)))))))
        ; KEYSTONES
        (defthm ,(fn-cv-name carryp '-of-refresh)
          (implies (,carryp carry) (,carryp (,refresh carry ,ws)))
@@ -695,7 +701,7 @@
                                                                 (fn-cv-carryp ,carryp)
                                                                 (fn-cv-refresh ,refresh))
                                           (carry carry) (ws ,ws)))
-                  :in-theory (union-theories '(,carryp ,refresh ,build-onto ,fold ,put ,empty
+                  :in-theory (union-theories '(,carryp ,refresh ,build-onto ,fold
                                                ,okp-of-build ,okp-of-extend)
                                              (theory 'minimal-theory)))))
        (defthm ,(fn-cv-name ws-of '-of-refresh)

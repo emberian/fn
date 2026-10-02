@@ -94,9 +94,11 @@
            (fn-kc-scan (cdr xs) fn-keyset))
     (fn-kc-base xs)))
 
+; An EQUAL rule (an iff would not reach inside the constrained sense).
 (defthm fn-kc-bound-after-fill
-  (iff (consp (hons-assoc-equal k (nth 0 (fn-kc-fill ys fn-keyset))))
-       (or (member-equal k (fn-kc-keys ys))
+  (equal (consp (hons-assoc-equal k (nth 0 (fn-kc-fill ys fn-keyset))))
+         (if (member-equal k (fn-kc-keys ys))
+             t
            (consp (hons-assoc-equal k (nth 0 fn-keyset)))))
   :hints (("Goal" :induct (fn-kc-fill ys fn-keyset)
            :in-theory (disable fn-keyset-tab-put nth))))
@@ -106,6 +108,7 @@
            (equal (fn-kc-scan xs (fn-kc-fill ys fn-keyset))
                   (fn-kc-logic xs ys)))
   :hints (("Goal" :induct (fn-kc-logic xs ys)
+           :expand ((fn-kc-scan xs (fn-kc-fill ys fn-keyset)) (fn-kc-logic xs ys))
            :in-theory (disable fn-kc-fill nth))))
 
 (in-theory (disable fn-kc-keys fn-kc-logic fn-kc-fill fn-kc-scan))
@@ -212,7 +215,7 @@
          (base-term (fn-kc-subst base (list (cons 'xs xs))))
          (policy (or (fn-kc-get :policy kvs) :long))
          (keys (fn-kc-name name '(-keys)))
-         (fill (fn-kc-name name '(-fill)))
+         (filler (fn-kc-name name '(-fill)))
          (scan (fn-kc-name name '(-scan)))
          (ks (fn-kc-name name '(-ks)))
          (walk (fn-kc-name name '(-walk)))
@@ -224,7 +227,7 @@
                   (fn-kc-each (lambda (x) ,(fn-kc-sub each '(x))))
                   (fn-kc-want (lambda (b) ,(fn-kc-want-term present 'b)))
                   (fn-kc-base (lambda (xs) ,(fn-kc-subst base (list (cons 'xs 'xs)))))
-                  (fn-kc-keys ,keys) (fn-kc-logic ,walk) (fn-kc-fill ,fill) (fn-kc-scan ,scan)))
+                  (fn-kc-keys ,keys) (fn-kc-logic ,walk) (fn-kc-fill ,filler) (fn-kc-scan ,scan)))
          (member-is (fn-kc-get :member-is kvs))
          (scan-after-fill (fn-kc-name name '(-scan-after-fill)))
          (ks-is-logic (fn-kc-name name '(-ks-is-logic)))
@@ -242,11 +245,11 @@
                   ,(fn-kc-want-term present member-term)
                   (,walk (cdr ,xs) ,ys))
            ,base-term))
-       (defun ,fill (,ys fn-keyset)
+       (defun ,filler (,ys fn-keyset)
          (declare (xargs :stobjs fn-keyset :guard t))
          (if (consp ,ys)
              (let ((fn-keyset (fn-keyset-tab-put ,(fn-kc-sub ykey (list `(car ,ys))) t fn-keyset)))
-               (,fill (cdr ,ys) fn-keyset))
+               (,filler (cdr ,ys) fn-keyset))
            fn-keyset))
        (defun ,scan (,xs fn-keyset)
          (declare (xargs :stobjs fn-keyset :guard t))
@@ -259,20 +262,20 @@
          (declare (xargs :guard t))
          (with-local-stobj fn-keyset
            (mv-let (ok fn-keyset)
-             (let ((fn-keyset (,fill ,ys fn-keyset)))
+             (let ((fn-keyset (,filler ,ys fn-keyset)))
                (mv (,scan ,xs fn-keyset) fn-keyset))
              ok)))
        ; the bridges, from the library
        (defthm ,scan-after-fill
          (implies (not (consp (nth 0 fn-keyset)))
-                  (equal (,scan ,xs (,fill ,ys fn-keyset)) (,walk ,xs ,ys)))
+                  (equal (,scan ,xs (,filler ,ys fn-keyset)) (,walk ,xs ,ys)))
          :hints (("Goal" :use ((:instance (:functional-instance fn-kc-scan-after-fill ,@subst)
                                           (xs ,xs) (ys ,ys)))
-                  :in-theory (union-theories '(,keys ,walk ,fill ,scan ,@(and member-is (list member-is)))
+                  :in-theory (union-theories '(,keys ,walk ,filler ,scan ,@(and member-is (list member-is)))
                                              (theory 'minimal-theory)))))
        (defthm ,ks-is-logic
          (equal (,ks ,xs ,ys) (,walk ,xs ,ys))
-         :hints (("Goal" :in-theory (e/d (,ks ,scan-after-fill) (,scan ,fill ,walk nth)))))
+         :hints (("Goal" :in-theory (e/d (,ks ,scan-after-fill) (,scan ,filler ,walk nth)))))
        ; NAME: the :logic recursion, the :exec by policy
        (defun ,name (,xs ,ys)
          (declare (xargs :guard t :verify-guards nil))
@@ -297,7 +300,7 @@
               '(:by def-keyset-check :claim (nil (equal (,ks ,xs ,ys) (,walk ,xs ,ys)))))
        (table fn-teeth-owed ',walk-is-logic
               '(:by def-keyset-check :claim (nil (equal (,walk ,xs ,ys) (,name ,xs ,ys)))))
-       (in-theory (disable ,keys ,walk ,fill ,scan ,ks ,ks-is-logic)))))
+       (in-theory (disable ,keys ,walk ,filler ,scan ,ks ,ks-is-logic)))))
 
 (defun fn-kc-world-problem (name kvs w)
   (declare (xargs :mode :program))
