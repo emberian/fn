@@ -29,6 +29,22 @@ class Resolve(unittest.TestCase):
         with self.assertRaisesRegex(commit_map.AmbiguousRevision, 'aaaaaa'):
             commit_map.resolve('aaaaaa', self.root)
 
+    def test_old_abbreviation_colliding_with_a_current_object_is_refused(self):
+        # An abbreviated OLD sha that also names a different object of the
+        # rewritten repository must never resolve silently to either one.
+        other = subprocess.check_output(['git', '-C', str(self.root), 'hash-object', '-w',
+                                         '--stdin'], input=b'other').decode().strip()
+        prefix = self.sha[:10]
+        with open(self.root / 'planning/commit-map-20261002.txt', 'a') as f:
+            f.write(prefix + '0' * 30 + ' ' + other + '\n')
+        with self.assertRaisesRegex(commit_map.AmbiguousRevision, prefix):
+            commit_map.resolve(prefix, self.root)
+        # the full current sha is not a map key prefix: it still resolves to itself
+        self.assertEqual(commit_map.resolve(self.sha, self.root), self.sha)
+
+    def test_map_wins_for_an_old_abbreviation(self):
+        self.assertEqual(commit_map.resolve('b' * 12, self.root), self.sha)
+
     def test_unmapped_refused(self):
         with self.assertRaisesRegex(commit_map.UnmappedRevision, 'cccccc'):
             commit_map.resolve('cccccc', self.root)

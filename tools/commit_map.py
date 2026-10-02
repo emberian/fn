@@ -25,27 +25,42 @@ class UnmappedRevision(RevisionError):
 
 
 def resolve(rev: str, root: Path = ROOT) -> str:
-    """Return an existing object, or the sole old-prefix mapping to one."""
-    found = subprocess.run(['git', '-C', str(root), 'rev-parse', '--verify',
+    """Return the object REV names now, never guessing across the rewrite.
+
+    A hex REV that prefixes an OLD sha in the commit map resolves through the
+    map (the map wins: an old coordinate is what such a citation means); if
+    the same abbreviation also names a DIFFERENT object of the rewritten
+    repository, it is refused as ambiguous, never resolved silently.  A REV
+    the map does not know resolves as an ordinary git revision, else refused.
+    """
+    current = None
+    found = subprocess.run(['git', '-C', str(root), 'rev-parse', '--verify', '--quiet',
                             '--end-of-options', rev + '^{object}'],
                            capture_output=True, text=True)
     if found.returncode == 0:
-        return found.stdout.strip()
+        current = found.stdout.strip()
     matches = []
     if re.fullmatch(r'[0-9a-fA-F]{1,40}', rev):
         try:
             lines = (root / 'planning/commit-map-20261002.txt').read_text().splitlines()
-        except FileNotFoundError as error:
-            raise UnmappedRevision(f'unmapped historical revision: {rev} (no commit map)') from error
+        except FileNotFoundError:
+            lines = []
         for line in lines:
-            old, new = line.split()
-            if old.startswith(rev.lower()):
-                matches.append(new)
+            parts = line.split()
+            if len(parts) == 2 and parts[0].startswith(rev.lower()):
+                matches.append(parts[1])
+    if not matches:
+        if current is None:
+            raise UnmappedRevision(f'unmapped historical revision: {rev}')
+        return current
     if len(matches) > 1:
         raise AmbiguousRevision(f'ambiguous historical revision: {rev}')
-    if len(matches) != 1 or matches[0] == '0' * 40:
-        raise UnmappedRevision(f'unmapped historical revision: {rev}')
     target = matches[0]
+    if target == '0' * 40:
+        raise UnmappedRevision(f'unmapped historical revision: {rev}')
+    if current is not None and current != target:
+        raise AmbiguousRevision(f'ambiguous revision: {rev} is an old sha mapped to {target} '
+                                f'and also names current object {current}')
     if subprocess.run(['git', '-C', str(root), 'cat-file', '-e', target],
                       capture_output=True).returncode:
         raise UnmappedRevision(f'historical revision {rev} maps to missing object {target}')
