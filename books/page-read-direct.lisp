@@ -203,14 +203,17 @@
                   (list :stale row worker)))
   :rule-classes nil)
 
-; KEYSTONE.  Settlement happens once: the second delivery of any completion
-; for the same token is stale, so nothing publishes twice.
+; KEYSTONE.  Settlement happens once: whatever the first delivery did, a
+; second delivery of any completion for the same token to its result is
+; stale, so nothing publishes or releases twice.  (Proved first with the
+; hypothesis that the first delivery was not stale; the weakened statement
+; was then proved, so the hypothesis is gone: a stale first delivery returns
+; its inputs, and staleness does not depend on the verdict.)
 (defthm fn-pio-direct-settle-happens-once
-  (implies (not (equal (mv-nth 0 (fn-pio-direct-settle row worker token verdict)) :stale))
-           (let ((row1 (mv-nth 1 (fn-pio-direct-settle row worker token verdict)))
-                 (w1 (mv-nth 2 (fn-pio-direct-settle row worker token verdict))))
-             (equal (mv-list 3 (fn-pio-direct-settle row1 w1 token verdict2))
-                    (list :stale row1 w1))))
+  (let ((row1 (mv-nth 1 (fn-pio-direct-settle row worker token verdict)))
+        (w1 (mv-nth 2 (fn-pio-direct-settle row worker token verdict))))
+    (equal (mv-list 3 (fn-pio-direct-settle row1 w1 token verdict2))
+           (list :stale row1 w1)))
   :rule-classes nil)
 
 ; KEYSTONE.  The pin outlives the timeout: an admitted read's row, cancelled

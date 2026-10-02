@@ -43,7 +43,7 @@
 (assert! (hbt-conclusion :run *hbt-small* *hbt-core* *hbt-nursery* nil
                          (fn-heap-reserve-init-connections)))
 (assert! (equal (fn-heap-init-reservation-octets *hbt-small* *hbt-core* *hbt-nursery*)
-                1015124992))
+                1036096512))
 (assert! (equal (fn-heap-breakdown :run *hbt-small* *hbt-core* *hbt-nursery* nil
                                    (fn-heap-reserve-init-connections))
                 '((:image-dynamic . 147604131)
@@ -61,8 +61,8 @@
                   (:collector-room . 80355573)
                   (:megabyte-rounding . 981086)
                   (:image-outside-heap . 214012928)
-                  (:thread-stacks . 31457280)
-                  (:thread-runtime . 125829120))))
+                  (:thread-stacks . 35651584)
+                  (:thread-runtime . 142606336))))
 
 ;; The launcher's figure for the empty store (the :init observation): 780 MB
 ;; before lane f8-reservation (the observation was solved from it), 770 MB

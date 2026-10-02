@@ -180,26 +180,36 @@
       (equal (nth 3 *pirdt-wa-returned*) *pirdt-ta*)
       (not (pirdt-unchanged-p *pirdt-rowa* *pirdt-wa-returned* *pirdt-ta* :ok))))
 
-;;; KEYSTONE fn-pio-direct-settle-happens-once.
-; REACHABLE POSITIVE: the duplicate delivery after each first outcome.
+;;; KEYSTONE fn-pio-direct-settle-happens-once (no hypothesis: the weakened
+;;; statement was proved, so there is no hypothesis-removal witness).
+; REACHABLE POSITIVES: the duplicate delivery after each first outcome, and
+; after a stale first delivery (the worker had not returned).
 (defun pirdt-once-p (row worker token verdict verdict2)
   (declare (xargs :guard t))
   (let ((r (pirdt-settle row worker token verdict)))
-    (and (not (equal (nth 0 r) :stale))
-         (equal (pirdt-settle (nth 1 r) (nth 2 r) token verdict2)
-                (list :stale (nth 1 r) (nth 2 r))))))
+    (equal (pirdt-settle (nth 1 r) (nth 2 r) token verdict2)
+           (list :stale (nth 1 r) (nth 2 r)))))
 (assert-event
  (and (pirdt-once-p *pirdt-rowa* *pirdt-wa-returned* *pirdt-ta* :ok :ok)
       (pirdt-once-p *pirdt-rowa-cancelled* *pirdt-wa-returned* *pirdt-ta* :ok :ok)
       (pirdt-once-p *pirdt-rowa-cancelled* *pirdt-wa-returned* *pirdt-ta* :read :ok)
-      (pirdt-once-p *pirdt-rowa* *pirdt-wa-returned* *pirdt-ta* :ok :error)))
-; HYPOTHESIS-REMOVAL: from a stale first delivery (worker still running) the
-; worker's actual return makes the second delivery NOT stale: the
-; conclusion's shape fails there.
+      (pirdt-once-p *pirdt-rowa* *pirdt-wa-returned* *pirdt-ta* :ok :error)
+      (equal (nth 0 (pirdt-settle *pirdt-rowa* *pirdt-wa-returned* *pirdt-ta* :ok)) :publish)
+      (pirdt-once-p *pirdt-rowa-cancelled* *pirdt-wa* *pirdt-ta* :ok :read)
+      (equal (nth 0 (pirdt-settle *pirdt-rowa-cancelled* *pirdt-wa* *pirdt-ta* :ok)) :stale)))
+; INTERVENING-RETURN SCENARIO (not a hypothesis removal: the second call is
+; NOT on the first call's result).  A stale first delivery leaves the read
+; owned; the worker's actual return in between is what lets the next
+; delivery settle -- a timeout or an early delivery never spends the read.
 (assert-event
  (let ((r (pirdt-settle *pirdt-rowa-cancelled* *pirdt-wa* *pirdt-ta* :ok)))
    (and (equal (nth 0 r) :stale)
-        (not (equal (nth 0 (pirdt-settle (nth 1 r) *pirdt-wa-returned* *pirdt-ta* :ok)) :stale)))))
+        (equal (nth 0 (pirdt-settle (nth 1 r) *pirdt-wa-returned* *pirdt-ta* :ok)) :cancelled))))
+; MUTATION: the conclusion fails for a call that is not the duplicate (the
+; first delivery itself is not stale).
+(assert-event
+ (not (equal (pirdt-settle *pirdt-rowa* *pirdt-wa-returned* *pirdt-ta* :ok)
+             (list :stale *pirdt-rowa* *pirdt-wa-returned*))))
 
 ;;; KEYSTONE fn-pio-direct-cancelled-read-still-pins-its-file.
 ; REACHABLE POSITIVE: A, with B's row beside it.
