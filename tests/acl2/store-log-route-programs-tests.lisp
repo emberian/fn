@@ -80,3 +80,63 @@
         (equal (car r) :taken)
         (equal (fn-lgk-batch (cadr r)) (list big))
         (not (slrp-related-run-p (slk-bs-extended) (cadr r) (fn-lg-order-program))))))
+
+; -----------------------------------------------------------------------------
+; fn-lg-open-program-keeps-the-relation-at-every-cut (lane host-model, P10):
+; the WHOLE served open from the crashed store of store-log-kernel-tests (two
+; records, a torn unit, two zero units; nothing pending).  The witness asserts
+; every hypothesis, then the conclusion: the recover program completes (four
+; states, log-recovered related), the open's run is the recover run followed
+; by the suffix from the recovered state, every state from there on is
+; related, and all eleven states are reached (every cut of the program).
+
+(defun slrp-open-hyps (bs genesis)
+  (declare (xargs :guard t :verify-guards nil))
+  (list (posp (fn-bs-unit bs)) (and (assoc-equal 0 (fn-bs-inodes bs)) t)
+        (true-listp (fn-bs-durable-content bs 0))
+        (equal (mod (len (fn-bs-durable-content bs 0)) (fn-bs-unit bs)) 0)
+        (fn-frame-digestp genesis)
+        (fn-assume-log-sole-pending-writer bs 0)
+        (not (fn-bs-ops-for-ino (fn-bs-pending bs) 0))))
+
+(defun slrp-open-conclusion (bs genesis)
+  (declare (xargs :guard t :verify-guards nil))
+  (let* ((ks (fn-lg-recovered-kernel bs 0 genesis (slk-max) 1))
+         (recover (fn-lg-run bs ks (fn-lg-recover-program) nil 0))
+         (recovered (car (last recover)))
+         (run (fn-lg-run bs ks (fn-lg-open-program) nil 0)))
+    (and (equal (len recover) 4)
+         (fn-lgk-relp (car recovered) (cdr recovered) 0 genesis (slk-max))
+         (equal run (append recover
+                            (fn-lg-run (car recovered) (cdr recovered)
+                                       (fn-lg-open-suffix) nil 0)))
+         (fn-lg-all-relp (nthcdr 4 run) 0 genesis (slk-max)))))
+
+; REACHABLE POSITIVE: the complete antecedent and the conclusion; and every
+; one of the program's eleven states (six cuts) is reached.
+(assert-event
+ (let ((bs (slk-store (slk-content) nil)))
+   (and (equal (slrp-open-hyps bs (slk-genesis)) '(t t t t t t t))
+        (slrp-open-conclusion bs (slk-genesis))
+        (equal (len (fn-lg-run bs (fn-lg-recovered-kernel bs 0 (slk-genesis) (slk-max) 1)
+                               (fn-lg-open-program) nil 0))
+               11))))
+
+; HYPOTHESIS REMOVED (the owner's sole-pending-writer obligation, and with it
+; "no operation of the segment pending"): the log's own write pending at the
+; open.  The recover program still runs, and the state it leaves is NOT
+; related, so neither is the suffix.
+(assert-event
+ (let ((bs (slk-store (slk-content) (list (list :write 0 (len (slk-content)) '(1 2 3 4))))))
+   (and (equal (slrp-open-hyps bs (slk-genesis)) '(t t t t t nil nil))
+        (not (slrp-open-conclusion bs (slk-genesis))))))
+
+; HYPOTHESIS REMOVED (the content's length a multiple of the unit): a
+; segment with a dangling octet.  No relation at the recovered state.
+(assert-event
+ (let ((bs (slk-store (append (slk-content) '(0)) nil)))
+   (and (equal (slrp-open-hyps bs (slk-genesis)) '(t t t nil t t t))
+        (not (slrp-open-conclusion bs (slk-genesis))))))
+; The other hypotheses' removals are tests/acl2/store-log-programs-tests.lisp's
+; for fn-lg-recover-program-establishes-the-relation, whose antecedent this
+; theorem carries unchanged.
