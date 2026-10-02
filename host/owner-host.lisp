@@ -78,6 +78,7 @@
 (include-book "../books/article-subject")
 ; Q16: content reclamation on a running owner (fn-orc-).
 (include-book "../books/owner-reclaim")
+(include-book "../books/store-reclaim-owner-holders")
 (include-book "../books/owner-reclaim-conns")
 ;; online-reclaim-5: the swapped owner is :ready after the open's barriers.
 (include-book "../books/owner-reclaim-ready")
@@ -1026,7 +1027,11 @@
                  (and profile (fn-owner-sco-budget override profile))
                  free revision
                  (and (natp stamp) stamp)
-                 (and profile (fn-bs-profile-max-record-octets profile))))))
+                 (and profile (fn-bs-profile-max-record-octets profile))
+                 ; The owner's feed queues, a holder the Store does not
+                 ; carry (books/store-reclaim-owner-holders): read here, on
+                 ; the mutex, with the Store it goes with.
+                 (fn-rcl-owner-feed-holders (fn-owner-core state))))))
 
 ; Off the mutex, pure over the captured values and the arena below the
 ; captured count: the context (the recorded instant's for a reclaim,
@@ -1037,11 +1042,22 @@
 ; decision (fn-rci-decide-stream: KEYSTONE
 ; fn-orc-decision-names-the-rewritten-articles; a dry run's is
 ; fn-lgr-decide-stream at the clock, as offline).
-(defun fn-owner-orc-ctx (mode v s now fn-arena)
+; FEEDS is the capture's feed slot (fn-rcl-owner-feed-holders); the context
+; is the Store's with it in place (KEYSTONES
+; fn-rclp-owner-ctx-never-releases-a-queued-article and
+; -a-forward-pinned-article, books/store-reclaim-owner-holders).
+(defun fn-owner-orc-ctx (mode v s now feeds fn-arena)
   (declare (xargs :stobjs fn-arena :mode :program))
-  (if (eq mode :dry-run)
-      (fn-xpy-ctx (fn-rcl-config-rule v) now s v fn-arena)
-    (fn-xpy-rci-context v s fn-arena)))
+  (fn-rclp-ctx-with-feeds
+   (if (eq mode :dry-run)
+       (fn-xpy-ctx (fn-rcl-config-rule v) now s v fn-arena)
+     (fn-xpy-rci-context v s fn-arena))
+   feeds))
+
+; The pass is done with CTX: its fast alists are freed (fn-rclp-ctx-free).
+(defun fn-owner-orc-ctx-free (ctx)
+  (declare (xargs :guard t))
+  (fn-rclp-ctx-free ctx))
 
 (defun fn-owner-orc-chunk (rows ctx acc fn-arena)
   (declare (xargs :stobjs fn-arena :mode :program))
@@ -4893,21 +4909,30 @@ a dial: the selected peer entry is the owner-feed boundary being opened."
              (entry (fn-own-feed-entry-of peer (fn-own-feeds owner)))
              (feed (fn-own-feed-entry-feed entry))
              (msgid (fn-own-feed-inflight-msgid (fn-feed-queue feed)))
-             (response (fn-own-feed-parse-response line msgid)))
-        (if (null response)
-            (value (fn-ores-feed-port-publication :quiet nil nil nil nil))
+             (response (fn-own-feed-parse-response line msgid))
+             ; The record's bytes by Message-ID, read once and only for a
+             ; reply that sends them (335/238; books/peer-feed
+             ; fn-feed-observe ignores ARTICLE for every other code): its
+             ; handle through the history stobj (R holds: the entry
+             ; fn-owner-feed-reply-chunk refreshed it)
+             ; (fn-apr-feed-article-is-own-feed-article,
+             ; books/acceptance-payload-ref.lisp) read through the arena
+             ; (fn-ofa-feed-article-is-the-feed-article-over-alpha).  Since
+             ; the records flip the row holds a handle; handing it to the
+             ; port sent an empty command (lane feed-fault).
+             (article (and response (fn-ofa-send-codep response)
+                           (fn-ofa-feed-article owner msgid fn-arena fn-hist))))
+        (cond
+         ((null response)
+          (value (fn-ores-feed-port-publication :quiet nil nil nil nil)))
+         ; A 335/238 whose article is a reclaim tombstone: refused by name,
+         ; the port step never runs (books/owner-feed-article.lisp
+         ; fn-ofa-reclaimed-publication-sends-nothing).
+         ((fn-ofa-reclaimed-sendp response article)
+          (value (fn-ofa-reclaimed-publication peer)))
+         (t
           (let ((result (fn-own-feed-port-peer-carried
-                         peer (fn-own-feeds owner) (list :reply response
-                         ; The record's bytes by Message-ID: its handle
-                         ; through the history stobj (R holds: the entry
-                         ; fn-owner-feed-reply-chunk refreshed it)
-                         ; (fn-apr-feed-article-is-own-feed-article,
-                         ; books/acceptance-payload-ref.lisp) read through
-                         ; the arena (fn-ofa-feed-article-is-the-feed-
-                         ; article-over-alpha).  Since the records flip the
-                         ; row holds a handle; handing it to the port sent
-                         ; an empty command (lane feed-fault).
-                         (fn-ofa-feed-article owner msgid fn-arena fn-hist) obs))))
+                         peer (fn-own-feeds owner) (list :reply response article obs))))
             ; The sender's one line for this reply (nil for a 335/238),
             ; books/owner-log.lisp fn-olog-feed-reply-line, is the
             ; publication's log line.
@@ -4921,7 +4946,7 @@ a dial: the selected peer entry is the owner-feed boundary being opened."
               ;; fn-ofa-publication-command-words-have-octets: a :send
               ;; reaches the host only with octets; otherwise :unsendable,
               ;; its line naming the renderer's reason.
-              (value (fn-ofa-publication publication)))))))))
+              (value (fn-ofa-publication publication))))))))))
 
 (defun fn-owner-feed-connection-result-kind (step)
   "Map only a connection-phase refusal away from the feed-port outcome tag.

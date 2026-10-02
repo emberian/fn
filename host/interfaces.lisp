@@ -1821,6 +1821,10 @@
 (definterface fn-owner-workflow-forward-pinnedp
   :class ::program)
 
+; host/native/bp-obligation.lisp dispatches it (lane reclaim-retention).
+(definterface fn-owner-workflow-request-plan
+  :class ::program)
+
 (definterface fn-owner-workflow-store-release
   :class ::program)
 
@@ -4511,6 +4515,11 @@
 ; host/native/owner.lisp dispatches it (lane online-reclaim).
 (definterface fn-owner-orc-ctx
   :class ::program)
+
+; host/native/owner.lisp dispatches it once the pass is done with its
+; context (lane reclaim-retention).
+(definterface fn-owner-orc-ctx-free
+  :class :common-lisp-compliant)
 
 ; host/native/owner.lisp dispatches it (lane online-reclaim).
 (definterface fn-owner-orc-decide

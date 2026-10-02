@@ -92,7 +92,7 @@
 ; conclusion fails with none of them (the releasing rule, no holder).
 ; (1) a BP obligation names the article.
 (defconst *rpt-articles* (fn-state-articles (fn-node-acceptance (fn-sn-node *rpt-s*))))
-(defconst *rpt-bp* (list *rpt-rule* 0 (list nil nil nil (list *rpt-msgid*))
+(defconst *rpt-bp* (list *rpt-rule* 0 (list nil nil nil (list (cons *rpt-msgid* "subject")))
                          nil *rpt-articles* nil (fn-rclp-article-index *rpt-articles*)))
 (assert-event (fn-rcl-some-names-p (fn-rcl-obligations (nth 2 *rpt-bp*)) *rpt-msgid*
                                    (fn-article-memberships *rpt-art*)))
@@ -149,7 +149,7 @@
 (defmacro rpt-o () '(nth (rpt-i) (rpt-events)))
 (defconst *rpt-arts* (fn-state-articles (fn-node-acceptance (fn-sn-node *rpt-s*))))
 (defconst *rpt-h0* (list nil nil nil nil))
-(defconst *rpt-hbp* (list nil nil nil (list *rpt-msgid*)))
+(defconst *rpt-hbp* (list nil nil nil (list (cons *rpt-msgid* "subject"))))
 (defconst *rpt-vds* (list (cons *rpt-msgid* '(:unverified :signature 0))))
 (assert-event (equal (fn-find-article (fn-record-msgid (fn-record-result-record
                                                         (fn-record-decode-exact (rpt-o))))
