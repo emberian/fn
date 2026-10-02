@@ -504,7 +504,17 @@
 
 (encapsulate
  ()
- (local (include-book "std/lists/update-nth" :dir :system))
+ ; Local update-nth algebra (the 2026-09-20 ruling: no community book):
+ ; the two begins set the same fields in different orders.
+ (local (defthm pgs-dcs-update-nth-update-nth-same
+   (equal (update-nth i v (update-nth i w x)) (update-nth i v x))
+   :hints (("Goal" :in-theory (enable update-nth)))))
+ (local (defthm pgs-dcs-update-nth-update-nth-diff
+   (implies (and (natp i) (natp j) (not (equal i j)))
+            (equal (update-nth i v (update-nth j w x))
+                   (update-nth j w (update-nth i v x))))
+   :hints (("Goal" :in-theory (enable update-nth)))
+   :rule-classes ((:rewrite :loop-stopper ((i j))))))
 (defthm pgs-dcs-page-begin-is-byte-begin
   (implies (natp nb)
            (equal (pgs-dcb-begin sel base (* 64 nb) capture lease pgs-digest-state)
