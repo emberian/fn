@@ -79,7 +79,9 @@
 (defun fn-proto-hyp-terms (labelled)
   (declare (xargs :guard t))
   (if (consp labelled)
-      (cons (if (consp (car labelled)) (cadr (car labelled)) nil)
+      (cons (if (and (consp (car labelled)) (consp (cdr (car labelled))))
+                (cadr (car labelled))
+              nil)
             (fn-proto-hyp-terms (cdr labelled)))
     nil))
 
@@ -322,7 +324,7 @@
 ;; The forms' conditions, a partition of the row's argument shapes (the last
 ;; test is t), for the row's case split.
 (defun fn-proto-form-conditions (forms prior)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (true-listp prior)))
   (if (consp forms)
       (cons (fn-proto-form-condition prior (car forms))
             (fn-proto-form-conditions (cdr forms)
