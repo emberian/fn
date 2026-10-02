@@ -5622,7 +5622,7 @@ publication).  Answers the reply word."
          (clock (fnn-store-prepare-observation))
          (answer nil) (captured nil) (pin nil) (position nil) (stage nil) (ident nil)
          (installed nil) (swapped nil) (word :failed) (*fnn-checkpoint-frames* nil)
-         (base nil) (seal-payloads nil)
+         (base nil) (seal-payloads nil) (seal-us 0)
          (image nil)
          (started (get-internal-real-time)))
     (flet ((ms () (round (* 1000 (- (get-internal-real-time) started))
@@ -5740,6 +5740,14 @@ publication).  Answers the reply word."
                    (fnn-reclaim-cut :rebuilt)
                    (dotimes (round +fnn-reclaim-swap-rounds+)
                      (let ((sw (fnn-owner-gated (service :control)
+                                 ;; MUTATION witness (developer image): one
+                                 ;; empty seal the prediction did not see
+                                 (let ((move (fnn-developer-selector
+                                              "FN_NATIVE_TEST_RECLAIM_MOVE_FILE")))
+                                   (when (and move (probe-file move))
+                                     (delete-file move)
+                                     (fnn-call 'fn-arena-seal-list nil (fnn-live-arena))
+                                     (fnn-err "RECLAIM test-moved")))
                                  (let ((w (fnn-core 'fn-orcs-seal-word
                                                     (fnn-owner-core 'fn-owner-orcp-swap-word count frontier s
                                                                     (1- (fnn-arena-reader-count))
@@ -5749,7 +5757,10 @@ publication).  Answers the reply word."
                                    (when (eq w :swap)
                                      ;; the predicted tombstones sealed: their
                                      ;; handles are BASE + i (the seal word)
-                                     (fnn-call 'fn-orcs-seal seal-payloads (fnn-live-arena))
+                                     (let ((t0 (get-internal-real-time)))
+                                       (fnn-call 'fn-orcs-seal seal-payloads (fnn-live-arena))
+                                       (setq seal-us (round (* 1000000 (- (get-internal-real-time) t0))
+                                                            internal-time-units-per-second)))
                                      ;; the commit point, then the swap, in one quantum
                                      ;; (stage 0: the report-writer enter/leave/fault
                                      ;; fences around it dispatched entries of
@@ -5785,8 +5796,11 @@ publication).  Answers the reply word."
                    (let* ((covered (fnn-log-covered-indices store (first position)))
                           (paths (mapcar (lambda (k) (fnn-segment-path-at store k)) covered))
                           (dropped (fnn-log-drop store covered)))
-                     (fnn-err "RECLAIM installed records=~d reclaimed=~d dropped=~d ms=~d"
-                              count (length (second decision)) dropped (ms))
+                     ;; sealed= the tombstones sealed in the swap quantum and
+                     ;; seal-us= that seal's time under the owner mutex
+                     (fnn-err "RECLAIM installed records=~d reclaimed=~d dropped=~d ms=~d sealed=~d seal-us=~d"
+                              count (length (second decision)) dropped (ms)
+                              (length seal-payloads) seal-us)
                      (fnn-owner-release-extents service store *fnn-checkpoint-frames* paths pin))
                    (fnn-reclaim-cut :released)))))
         (when pin (fnn-arena-unpin pin))

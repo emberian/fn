@@ -97,6 +97,33 @@ class NativeOverPinsTests(unittest.TestCase):
             client.close(False)
             node.stop(expect=None, grace=300)
 
+    def test_moved_arena_defers_by_name_and_seals_nothing(self):
+        """MUTATION witness of the seal word's :moved (labelled: the seal is
+        injected by a developer selector; today only a POST prepare refused
+        after its seal moves the arena without a commit).  The pass whose
+        prediction no longer matches the arena defers by name and seals no
+        tombstone; the next pass installs and seals exactly its two."""
+        node = self.copy_of(self.recorded_base(), "moved")
+        move = self.root / "reclaim-move"
+        move.touch()
+        owner = node.start(timeout=600, env={"FN_NATIVE_TEST_RECLAIM_MOVE_FILE": str(move)})
+        try:
+            first = self.reclaim(node, "--recorded", expect=None)
+            self.assertNotIn(b"installed", first.stdout, first.stdout)
+            moved = self.owner_lines(owner, re.compile(rb"RECLAIM test-moved"), 1)
+            self.assertEqual(len(moved), 1, owner.stderr.since(0)[-3000:])
+            pattern = re.compile(rb"RECLAIM deferred reason=moved arena=(\d+)")
+            deferred = self.owner_lines(owner, pattern, 1)
+            self.assertEqual(len(deferred), 1, owner.stderr.since(0)[-3000:])
+            self.assertFalse(move.exists())
+            done = self.reclaim(node, "--recorded", expect=None)
+            self.assertEqual(done.returncode, EXIT.OK, (done.stdout, done.stderr))
+            installed = self.owner_lines(owner, re.compile(rb"RECLAIM installed records=5 reclaimed=2 .* sealed=2 seal-us=\d+"), 1)
+            self.assertEqual(len(installed), 1, owner.stderr.since(0)[-3000:])
+        finally:
+            move.unlink(missing_ok=True)
+            node.stop(expect=None, grace=300)
+
     def test_pipelined_over_drain_preserves_old_reply_then_reclaim_installs(self):
         self.held_response(False)
 

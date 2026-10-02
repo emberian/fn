@@ -6018,6 +6018,10 @@ tree root), or stop the build."
     "FN_NATIVE_STATE_CHECKPOINT_FAULT" "FN_NATIVE_IMPORT_FAULT" "FN_NATIVE_EXPORT_FAULT"
     "FN_NATIVE_CHECKPOINT_BUDGET_TEST" "FN_NATIVE_RECLAIM_FAULT"
     "FN_NATIVE_TEST_RECLAIM_STALL_FILE" "FN_NATIVE_RECLAIM_HOLD"
+    ;; lane arena-forget: a labelled MUTATION witness of the reclaim seal
+    ;; word's :moved (a seal with no commit between the prediction and the
+    ;; swap: today only a POST prepare refused after its seal makes one)
+    "FN_NATIVE_TEST_RECLAIM_MOVE_FILE"
     "FN_NATIVE_PAGE_READ_HOLD"
     "FN_NATIVE_PAGE_IO_HOLD" "FN_NATIVE_PAGE_IO_RESULT"
     "FN_NATIVE_DISK_FREE"
