@@ -402,8 +402,19 @@ def theorem_defined(root: Path, book: str, name: str) -> bool | None:
     path = root / f"{book}.lisp"
     if not path.is_file():
         return None
+    import ledger
+    text = path.read_text(encoding="utf-8")
     pattern = r"^\((?:%s)\s+%s(?=[\s)])" % ("|".join(THEOREM_FORMS), re.escape(name))
-    return re.search(pattern, path.read_text(encoding="utf-8"), re.M) is not None
+    if re.search(pattern, text, re.M) is not None:
+        return True
+    # Preserve the literal citation policy; also resolve generated exports.
+    for form, line in ledger.Reader(text).top_level():
+        expansion = ledger.generated_expansion(form)
+        if expansion is not None:
+            for event, _ in ledger.source_events(((e, line) for e in expansion), include_local=False):
+                if ledger.head(event) in ("defthm", "defthmd") and str(event[1]) == name:
+                    return True
+    return False
 
 
 def proof_ids(root: Path = ROOT) -> dict[str, dict]:

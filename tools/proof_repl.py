@@ -2237,32 +2237,31 @@ DEFUN_HEADS = ("defun", "defund", "defun-inline", "defund-inline")
 def find_definition(name: str, texts: list[str]) -> list | None:
     """NAME's defun: first in TEXTS (the forms being sent, the session's
     book), else the tree's books/ and tests/acl2/ (git grep, then that file)."""
+    ledger = _theory_check()._ledger()
+
     def search(text: str) -> list | None:
         try:
-            read = _theory_check().forms(text)
-        except ValueError:
+            events = ledger.source_events(ledger.Reader(text).top_level())
+            for form, _ in events:
+                if ledger.head(form) in DEFUN_HEADS and len(form) > 1 and form[1] == name:
+                    # Controller analysis uses the theory reader's atom model;
+                    # never send a Python mirror's events to ACL2 for admission.
+                    return _theory_check().forms(ledger.source_text(form))[0]
+        except ledger.ReadError:
             return None
-        stack = list(read)
-        while stack:
-            form = stack.pop(0)
-            if not isinstance(form, list) or not form:
-                continue
-            if form[0] in DEFUN_HEADS and len(form) > 1 and form[1] == name:
-                return form
-            if form[0] in ("mutual-recursion", "local", "encapsulate", "progn"):
-                stack[:0] = form[1:]
         return None
 
     for text in texts:
-        if name in text.lower():
-            found = search(text)
-            if found:
-                return found
-    pattern = r"\(def(un|und)(-inline)?[[:space:]]+" + re.escape(name) + r"([[:space:])]|$)"
+        found = search(text)
+        if found:
+            return found
+    literal = r"def(un|und)(-inline)?[[:space:]]+" + re.escape(name) + r"([[:space:])]|$)"
+    generators = "|".join(re.escape(head) for head in ledger.GENERATOR_EXPANSIONS)
+    pattern = r"\((" + literal + "|(" + generators + r")[[:space:]])"
     listed = subprocess.run(["git", "-C", str(ROOT), "grep", "-l", "-i", "-E", pattern,
                              "--", "books", "tests/acl2"],
                             capture_output=True, text=True, check=False).stdout.split()
-    for relative in listed[:3]:
+    for relative in listed:
         found = search((ROOT / relative).read_text(encoding="utf-8", errors="replace"))
         if found:
             return found

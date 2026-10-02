@@ -717,12 +717,15 @@ def interpreted(world: Path | None = None) -> tuple[list[dict], str]:
     else:
         verified_later: set[str] = set()
         eager: set[str] = set()
-        for relative in callgraph.tree_files():
+        for path, relative in callgraph.tree_files():
             try:
-                text = (ROOT / relative).read_text(encoding="utf-8", errors="replace")
+                text = path.read_text(encoding="utf-8", errors="replace")
             except OSError:
                 continue
             verified_later |= {n.lower() for n in VERIFY_GUARDS.findall(text)}
+            for form, _ in ledger.source_events(ledger.Reader(text).top_level()):
+                if ledger.head(form) == "verify-guards" and len(form) > 1:
+                    verified_later.add(str(form[1]).lower())
             if EAGER_TWO.search(text):
                 eager.add(str(relative))
         source = "source ESTIMATE (no world dump; tools/coverage.py dump writes one)"

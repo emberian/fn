@@ -210,7 +210,7 @@ class Book:
     def __init__(self, path: Path, source: str) -> None:
         self.path = path
         reader = Reader(source)
-        self.forms = reader.top_level()
+        self.forms = list(_ledger.source_events(reader.top_level()))
         self.lines = reader.lines
         self.waivers = waivers_in(source)
 

@@ -181,10 +181,11 @@ def expand(table: dict, source: str) -> str:
 
 
 def defined_functions() -> set[str]:
+    import callgraph
     names = set()
-    pat = re.compile(r"^\s*\((?:defun|defund|defmacro|define)\s+([^\s()]+)", re.M)
-    for p in (ROOT / "books").glob("*.lisp"):
-        names.update(m.group(1).lower() for m in pat.finditer(p.read_text(encoding="utf-8")))
+    for path in (ROOT / "books").glob("*.lisp"):
+        forms = ledger.Reader(path.read_text(encoding="utf-8")).top_level()
+        names.update(d.name for d in callgraph.collect(forms, path.name))
     return names
 
 

@@ -185,6 +185,38 @@ def definitions(text: str) -> list[tuple[str, int, int]]:
             elif frame[3] == 1 and frame[1] is None:
                 frame[1] = bare(value)
             frame[3] += 1
+    # A hunk in a generator changes every emitted definition, including a
+    # loop name never literally spelled in the source. Keep the generator's
+    # exact source span; do not attribute quoted macro templates as events.
+    sys.path.insert(0, str(ROOT / "tools"))
+    import ledger
+
+    class Spans(ledger.Reader):
+        def form(self):
+            self.skip_space()
+            start = self.pos
+            value = super().form()
+            if isinstance(value, list):
+                spans[id(value)] = (self.line(start), self.line(self.pos))
+            return value
+
+    def generated(form):
+        expansion = ledger.generated_expansion(form)
+        if expansion is not None:
+            first, last = spans[id(form)]
+            for event, _ in ledger.source_events((e, first) for e in expansion):
+                if ledger.head(event) in DEFINERS and len(event) > 1:
+                    found.append((str(event[1]), first, last))
+        elif ledger.head(form) in ledger.TRANSPARENT | {"encapsulate", "mutual-recursion"}:
+            for item in form[1:]:
+                generated(item)
+
+    spans = {}
+    try:
+        for form, _ in Spans(text).top_level():
+            generated(form)
+    except ledger.ReadError:
+        pass  # the source locator also accepts incomplete/raw host text
     return found
 
 
