@@ -136,7 +136,8 @@ class PageIOTests(unittest.TestCase):
                 self.assertNotRegex(text, rb"PAGE-IO closed file=" + file_id + rb"\r?\n")
                 # The new request reads the reseated payload (the checkpoint's
                 # frame), never through the held descriptor.
-                self.assertTrue(new.command("STAT " + msgid("p0")).startswith(b"223"))
+                stat = new.command("STAT " + msgid("p0"))
+                self.assertTrue(stat.startswith(b"223"), (stat, owner.stderr.since(0)[-3000:]))
                 release.write_bytes(b"release")
                 self.wait_line(owner, rb"PAGE-IO settled token=.* answer=:CANCELLED")
                 self.wait_line(owner, rb"PAGE-IO closed file=" + file_id + rb"$")
