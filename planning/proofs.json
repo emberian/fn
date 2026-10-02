@@ -21453,14 +21453,8 @@
         "tests/acl2/def-holder-tests.lisp",
         "tools/holder_check.py"
       ],
-      "events": [
-        "fn-hd-drop-of-unheld-is-refused",
-        "fn-hd-run-count-is-holds-less-drops",
-        "fn-hd-quiet-from-empty-means-every-hold-was-dropped",
-        "fn-hd-ident-duplicate-hold-is-refused",
-        "fn-hd-ident-drop-of-absent-token-is-refused"
-      ],
-      "progress_note": "Lane def-holder (Fable 5.1, 2026-10-03). REPL-admitted on hbox (book 68 forms, teeth 74 forms, 0 refused); certification submitted. Inventory, interface and consultation c05: build/coordinator/lanedumps/def-holder.md."
+      "events": [],
+      "progress_note": "Lane def-holder (Fable 5.1, 2026-10-03). Certified on hbox run-20261002T230930Z-4030 (certify-20261002T231000Z-1767432: def-holder, def-holder-tests, reclaim-cuts; no book over 10 s). No events cited yet: the generic steps have no host caller on this branch (reach_check --strict); the keystones are cited with the first host-called instance (the cold read's identified table, lane/def-holder). Inventory, interface and consultation c05: build/coordinator/lanedumps/def-holder.md."
     }
   ]
 }
