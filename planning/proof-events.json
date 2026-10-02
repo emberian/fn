@@ -18560,6 +18560,84 @@
       "pending_subject": "Native compressed driver remains dormant and unreachable-in-composition. Actual selected-prefix cell accumulation and faithful-source compressed digest BEGIN/READ/HASH/new-publication are source-proved, with source-slice binding explicit. Arbitrary canonical decoder/controller iteration, selected dictionary/captured-view authority, full compiled workspace funding and retained native buffer/view/consumer joins remain open; PRF-1131 remains incomplete. Three nonexistent proposed DWCC citations are withheld in protocol-source-closeout-2026-10-01/withheld-events.json; no theorem admission is inferred."
     },
     {
+      "id": "PRF-1209",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rv-step-keeps-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rv-run-keeps-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rv-step-refused-keeps-the-bank"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rv-refusal-keeps-slack"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rv-refused-run-keeps-the-bank"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rv-draw-admits-exactly-within-the-budget"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rv-draw-charges-exactly-the-demand"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rv-settle-once"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rv-step-keeps-the-other-slots"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rv-user-steps-keep-the-reserve"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rv-install-reserves-the-owner-first"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rv-destroy-returns-exactly-the-unsettled-draws"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1210",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rv-prs-vector-is-the-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rv-prs-plus-is-plus"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rv-prs-below-is-below"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rv-prs-gate-is-a-funded-root"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1211",
+      "events": []
+    },
+    {
       "id": "PRF-1212",
       "events": [
         {
@@ -18705,84 +18783,6 @@
           "note": "BRIDGE (existing, books/history-records-disk.lisp): the concrete retry loop, where the frame fill runs, is fn-hrecs-get over the abstract stobj; the frame fill cannot be an export (stobj-attachment-restrictions)."
         }
       ]
-    },
-    {
-      "id": "PRF-1209",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-rv-step-keeps-okp"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-rv-run-keeps-okp"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-rv-step-refused-keeps-the-bank"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-rv-refusal-keeps-slack"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-rv-refused-run-keeps-the-bank"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-rv-draw-admits-exactly-within-the-budget"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-rv-draw-charges-exactly-the-demand"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-rv-settle-once"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-rv-step-keeps-the-other-slots"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-rv-user-steps-keep-the-reserve"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-rv-install-reserves-the-owner-first"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-rv-destroy-returns-exactly-the-unsettled-draws"
-        }
-      ]
-    },
-    {
-      "id": "PRF-1210",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-rv-prs-vector-is-the-prefix"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-rv-prs-plus-is-plus"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-rv-prs-below-is-below"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-rv-prs-gate-is-a-funded-root"
-        }
-      ]
-    },
-    {
-      "id": "PRF-1211",
-      "events": []
     }
   ]
 }

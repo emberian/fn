@@ -71,8 +71,6 @@
 (include-book "records-invariants")
 
 (local (in-theory (disable (tau-system))))
-; (The consumer event-shape rules this book disabled for D26 are no longer in
-; its closure: stage 0's store-events dropped consumer-transaction-dispatch.)
 
 ; The stobjs' logical lists stay as `nth' and `update-nth' terms in every
 ; proof: the old foundation's accessors open to them, and the facts below
@@ -822,7 +820,7 @@
                              (stobj-let ((fn-mlh (fn-cat$c-mpx fn-cat$c)))
                                         (seqs)
                                         (if (fn-mlh-wfp fn-mlh)
-                                            (fn-mlh-candidates (fn-mlh-tag-of msgid fn-mlh) fn-mlh)
+                                            (fn-mlh-candidates (fn-mlh-tag msgid (fn-mlh-key-octets fn-mlh)) fn-mlh)
                                           nil)
                                         seqs)
                            :scan)
