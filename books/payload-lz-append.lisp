@@ -19,7 +19,13 @@
 ;   (:kept :lz-span)        the span is not R's (a host that did not take it
 ;                           from `fn-lzr-append-plan'); R is taken as it is
 ;   (:refused :lz-candidate) the candidate does not decode to the span: the
-;                           host signals a named store fault, nothing is taken
+;                           candidate is refused by name and the record is
+;                           taken as R (`fn-lzr-append-octets'); the host
+;                           prints the refusal line and counts the event.  An
+;                           untrusted encoder's bad block never makes an
+;                           article unstorable (inspection sweep 2026-10-03
+;                           S005: it had faulted the append, and so stopped
+;                           the owner, for every such payload)
 ;
 ; THE PLAN.  `fn-lzr-append-plan MIN R' is the host's one question before it
 ; runs the encoder: the payload span (K . N) of the article record R, when
@@ -162,7 +168,7 @@
 (defun fn-lzr-append-refusal-text (decision)
   (declare (xargs :guard t))
   (if (and (consp decision) (eq (car decision) :refused))
-      "lz-candidate: the DEFLATE encoder's stream does not decode to the record's payload (the encoder is untrusted; nothing was taken)"
+      "lz-candidate: the DEFLATE encoder's stream does not decode to the record's payload (the encoder is untrusted; the record is stored uncompressed)"
     nil))
 
 ; -----------------------------------------------------------------------------
@@ -406,11 +412,12 @@
                                fn-lzr-record-is-not-a-frame fn-record-result-okp))))
 
 ; KEYSTONE (PRF-952).  The refusal line the host prints for an append
-; (host/native/io.lisp, fnn-fault on a refused decision) exists exactly when
-; the encoder's block does not decode to the record's span -- a lying
-; encoder -- over the decision as decided: never for a span the policy
-; rejects, never when the encoder answered :none, never for a frame; a
-; decision without a refusal line is :kept (the log takes R) or :framed.
+; (host/native/io.lisp fnn-log-compress, the named event of a refused
+; candidate) exists exactly when the encoder's block does not decode to the
+; record's span -- a lying encoder -- over the decision as decided: never
+; for a span the policy rejects, never when the encoder answered :none,
+; never for a frame; with the line, the log takes R itself; a decision
+; without a refusal line is :kept (the log takes R) or :framed.
 (defthm fn-lzr-append-refusal-text-refuses-exactly-a-lying-encoder
   (let ((d (fn-lzr-append-decide dict dict-id min r k n candidate)))
     (and (iff (fn-lzr-append-refusal-text d)
@@ -420,7 +427,8 @@
                                (list :ok (take n (nthcdr k r)))))))
          (implies (fn-lzr-append-refusal-text d)
                   (and (stringp (fn-lzr-append-refusal-text d))
-                       (equal d (list :refused :lz-candidate))))
+                       (equal d (list :refused :lz-candidate))
+                       (equal (fn-lzr-append-octets d r) r)))
          (implies (not (fn-lzr-append-refusal-text d))
                   (and (or (eq (car d) :kept) (eq (car d) :framed))
                        (implies (eq (car d) :kept)

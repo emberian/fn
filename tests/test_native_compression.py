@@ -132,6 +132,55 @@ class CompressionTests(unittest.TestCase):
             self.assertGreater(len(self.baseline[m]), 3, m)
             self.assertEqual(got[m], self.baseline[m], m)
 
+    def test_a_refused_candidate_is_stored_uncompressed_and_counted(self):
+        # A lying encoder (developer selector FN_NATIVE_LZ_CANDIDATE_CORRUPT:
+        # the candidate's first octet flipped before ACL2 decides it).  ACL2
+        # refuses each candidate by name and the log takes the record itself
+        # (fn-lzr-append-octets): every post succeeds, prints the refusal
+        # line with this process's count, and nothing is compressed.  Before
+        # inspection sweep 2026-10-03 S005 the refusal was a store fault, so
+        # every such article was unstorable and a served POST stopped the
+        # owner (exit 4).
+        root = Path(tempfile.mkdtemp(prefix="lying-", dir=self.dir.name))
+        store = root / "store"
+        config = root / "fn.toml"
+        config.write_text('[store]\npath = "%s"\n[listener]\nhost = "127.0.0.1"\nport = 1\n'
+                          '[control]\npath = "%s"\n' % (store, root / "c.sock"))
+        init = fz.run_image(self.image, ["store", store, "init", "fn.test"])
+        self.assertEqual(init.returncode, fz.EXIT_OK, init.stderr[-600:])
+        row = fz.run_image(self.image, ["operator", config, "policy", "set",
+                                        "compress-min-octets", str(MIN)])
+        self.assertEqual(row.returncode, fz.EXIT_OK, row.stderr[-600:])
+        file = root / "payload"
+        os.environ["FN_NATIVE_LZ_CANDIDATE_CORRUPT"] = "1"
+        try:
+            for n in range(4):
+                file.write_bytes(payload(n))
+                posted = fz.run_image(self.image, ["store", store, "post", mid(n).decode(), file,
+                                                   "-", "-", "fn.test"])
+                self.assertEqual(posted.returncode, fz.EXIT_OK, posted.stderr[-600:])
+                self.assertIn(b"lz-candidate: the DEFLATE encoder's stream does not decode",
+                              posted.stderr)
+                self.assertIn(b"the record is stored uncompressed", posted.stderr)
+                self.assertIn(b"(lz-candidate refusals this process: 1)", posted.stderr)
+        finally:
+            del os.environ["FN_NATIVE_LZ_CANDIDATE_CORRUPT"]
+        line, fields = self.report(store)
+        self.assertEqual(fields["compress-min-octets"], str(MIN), line)
+        self.assertEqual(fields["compressed-records"], "0", line)
+        self.assertEqual(fields["stored-octets"], fields["uncompressed-octets"], line)
+        got = self.served(store, self.ids[:4])
+        for m in self.ids[:4]:
+            self.assertEqual(got[m], self.baseline[m], m)
+        # Without the selector the same store compresses the next article.
+        file.write_bytes(payload(4))
+        posted = fz.run_image(self.image, ["store", store, "post", mid(4).decode(), file,
+                                           "-", "-", "fn.test"])
+        self.assertEqual(posted.returncode, fz.EXIT_OK, posted.stderr[-600:])
+        self.assertNotIn(b"lz-candidate", posted.stderr)
+        line, fields = self.report(store)
+        self.assertEqual(fields["compressed-records"], "1", line)
+
     def test_recover_twice_serves_the_same_and_the_digest_is_stable(self):
         store = self.copy(self.packed)
         digests = []

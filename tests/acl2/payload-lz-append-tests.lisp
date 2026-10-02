@@ -374,4 +374,11 @@
       (equal (car (fn-lzr-append-decide nil 0 64 *pla-one-code-src* 0 224 *pla-one-code-new*))
              :framed)
       (equal (fn-lzr-append-decide nil 0 64 *pla-one-code-src* 0 224 *pla-one-code-old*)
-             (list :refused :lz-candidate))))
+             (list :refused :lz-candidate))
+      ; a refused candidate: the log takes the record itself, with the line
+      (equal (fn-lzr-append-octets
+              (fn-lzr-append-decide nil 0 64 *pla-one-code-src* 0 224 *pla-one-code-old*)
+              *pla-one-code-src*)
+             *pla-one-code-src*)
+      (stringp (fn-lzr-append-refusal-text
+                (fn-lzr-append-decide nil 0 64 *pla-one-code-src* 0 224 *pla-one-code-old*)))))

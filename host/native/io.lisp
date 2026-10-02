@@ -6072,7 +6072,11 @@ tree root), or stop the build."
     ;; The power-loss rig's handshake for `fn log append': after each RECOVERED
     ;; and ACK line, wait for the client's line, so its device mark precedes
     ;; the next batch's writes; tools/power_loss.py log_run.
-    "FN_NATIVE_LOG_RIG_HANDSHAKE"))
+    "FN_NATIVE_LOG_RIG_HANDSHAKE"
+    ;; A lying encoder: the stored-payload candidate's first octet flipped
+    ;; before ACL2 decides it, so the refusal path (the record stored
+    ;; uncompressed, the event printed) runs; tests/test_native_compression.py.
+    "FN_NATIVE_LZ_CANDIDATE_CORRUPT"))
 
 (defun fnn-developer-selector (name)
   "The value of developer selector NAME on a developer image, else NIL."
@@ -6522,6 +6526,10 @@ offline `store ROOT post'), the store's replayed configuration's
           (t (setf (fnn-log-lz-min log)
                    (fnn-nat (fnn-core-state 'fn-store-compress-min-octets)))))))
 
+;; How many encoder candidates ACL2 refused in this process (the event
+;; fnn-log-compress prints; the record was stored uncompressed).
+(defvar *fnn-log-lz-refusals* (list 0))
+
 (defun fnn-log-compress (store record)
   "RECORD (octets) as the log takes it: ACL2's frame of it, or RECORD."
   (let ((min (fnn-store-compress-min store)))
@@ -6535,6 +6543,12 @@ offline `store ROOT post'), the store's replayed configuration's
                  (dict (fnn-lz-current-dict))
                  (candidate (funcall 'fnn-deflate-candidate (cddr dict) (fnn-octets record) k n
                                      (fnn-core 'fn-lzr-candidate-cap n)))
+                 (candidate (if (and (not (eq candidate :none)) (plusp (length candidate))
+                                     (equal (fnn-developer-selector "FN_NATIVE_LZ_CANDIDATE_CORRUPT") "1"))
+                                (let ((c (copy-seq candidate)))
+                                  (setf (aref c 0) (logxor (aref c 0) #xff))
+                                  c)
+                              candidate))
                  (decision (fnn-core 'fn-lzr-append-decide (second dict) (first dict) min r k n
                                      (if (eq candidate :none) :none
                                        (fnn-octet-list candidate)))))
@@ -6542,8 +6556,18 @@ offline `store ROOT post'), the store's replayed configuration's
               (:framed (setf (fnn-log-lz (fnn-store-log store)) t)
                        (second decision))
               (:kept record)
-              (t (fnn-fault "~a" (or (fnn-core 'fn-lzr-append-refusal-text decision)
-                                     "lz-candidate: ACL2 refused the encoder's block"))))))))))
+              (:refused
+               ;; ACL2 refused the untrusted encoder's block by name; the log
+               ;; takes the record itself (fn-lzr-append-octets: R), and the
+               ;; event is printed with this process's count of them.
+               (let ((line (fnn-core 'fn-lzr-append-refusal-text decision))
+                     (octets (fnn-core 'fn-lzr-append-octets decision r)))
+                 (unless (and (stringp line) (equal octets r))
+                   (fnn-fault "ACL2 returned a malformed append refusal"))
+                 (fnn-err "~a (lz-candidate refusals this process: ~d)" line
+                          (1+ (sb-ext:atomic-incf (car *fnn-log-lz-refusals*))))
+                 record))
+              (t (fnn-fault "ACL2 returned a malformed append decision")))))))))
 
 (defun fnn-log-probe-tail (fd extent unit max st)
   "After the stream's stop ST: ACL2's probe of the rest of the segment

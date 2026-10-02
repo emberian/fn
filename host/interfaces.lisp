@@ -576,6 +576,11 @@
   :class ::common-lisp-compliant
   :keystones (fn-lzr-append-refusal-text-refuses-exactly-a-lying-encoder))
 
+(definterface fn-lzr-append-octets
+  :class ::common-lisp-compliant
+  :keystones (fn-lzr-append-octets-of-decide
+              fn-lzr-append-refusal-text-refuses-exactly-a-lying-encoder))
+
 (definterface fn-lzr-candidate-cap
   :class ::common-lisp-compliant)
 
