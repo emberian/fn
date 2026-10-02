@@ -319,13 +319,52 @@ listed, and the vacuity probes fail. It emits the trace theorem
 re-checked against the statements regenerated from the world. Pilots:
 `books/tcpcl-session-carried.lisp`, `books/owner-retain-carried.lisp`.
 
+A reader's answer carried by an INDEX over a list -- the withdrawal tries,
+the NEWNEWS suffix maxima -- is one `def-carried-view` form
+(`books/def-carried-view.lisp`): the key list, each index as `:set` (a
+complete negative filter: a key absent from the index is absent from the
+list; a reader trusts no positive answer) or `:exact` (the index is the
+fold of the list), its put and empty, and for a `:set` the two facts it
+owes (a put keeps what the index has; a put has its key). It generates the
+carry `(WS IDX ...)`, the recognizer, the refresh (the same list: the cell
+rebased on the current object; a prepended delta: the walk to the carried
+tail and the fold of the prefix; else a rebuild), `NAME-carryp-of-refresh`,
+`NAME-carryp-of-nil`, `NAME-WS-of-refresh` and `NAME-refresh-walks-the-delta`
+(the walk steps exactly the delta; the `equal` at each step is the host's,
+c04 4a), every one a functional instance of the book's library.
+`def-carried-reader` is the negative filter over a `:set` index: the fast
+answer only when the list in hand IS the carried one and the probe is
+negative, else the reference walk, with the equality to the reference from
+the instance's one lemma. Pilots: `books/withdrawal-index-carried.lisp`,
+`books/newnews-cursor.lisp` (the carry half). A per-element membership test
+over two lists -- quadratic `member-equal` in `:logic`, one local hash set
+in `:exec` -- is one `def-keyset-check` form (`books/def-keyset-check.lisp`):
+the sense (`:present` / `:absent`), the keys each side contributes, the
+per-element predicate, the branch policy, and the named correspondence of
+the instance's own membership test to `member-equal` over its keys; the
+fill, the scan, the wrapper, both bridges and the `mbe` are generated.
+
 ## 5. Teeth are concrete witnesses
 
 A keystone ships with a reachable non-degenerate witness and one concrete
 violating value per hypothesis, each an `assert-event` on the negated
-conclusion. A value outside a guard is evaluated under
-`with-guard-checking :none`, which is the point: the `:logic` body is total,
-the `:exec` path is not.
+conclusion. The TEETH CONTRACT (`books/defkeystone.lisp`, v1 after
+consultation c04; `build/coordinator/lanedumps/generators-2.md`) is the
+macro: `(defteeth NAME :claim (((L H) ...) C) ...)` binds the teeth to the
+theorem as the world stores it (the claim is translated and compared), runs
+the positive witness and every bound witness UNDER the guards, runs a
+removal or mutation logically only when its entry says `:logical "why"`
+(recorded in the row and counted as debt), takes mutations as checked edits
+of the claim with a named fault, states cost bounds (`:visits`,
+`:allocation`) with the state that attains them, and emits the
+`fn-teeth` row the obligation manifest (`planning/teeth-obligations.json`,
+`tools/keystone_emit.py`, the protected base `planning/teeth-base.json`)
+holds every registry keystone to. A generator that admits a keystone
+records its debt as `fn-teeth-owed`; `(defteeth-check)` refuses teeth that
+state another claim or omit an owed bound. A value outside a guard is
+evaluated under `with-guard-checking :none` only by that declaration: the
+`:logic` body is total, the `:exec` path is not, and the row says which was
+exercised.
 
 ```lisp
 (assert-event (not (fn-statep *acc-teeth-forged*)))
