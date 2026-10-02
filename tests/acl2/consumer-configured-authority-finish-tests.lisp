@@ -2,7 +2,7 @@
 ; composition prerequisite. Node and identity labels below are fixture inputs.
 (in-package "ACL2")
 (include-book "../../books/consumer-configured-authority-finish")
-(local (include-book "consumer-account-config-commit-tests"))
+(include-book "consumer-account-config-commit-tests") ; its fixtures are used by non-local events
 
 (defconst *caeft-event* '(:consumer-authority 0 1 0 (:authority-begin (65) 0 1 7)))
 (defconst *caeft-produced*

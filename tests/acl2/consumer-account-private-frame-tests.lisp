@@ -1,7 +1,7 @@
 (in-package "ACL2")
 (include-book "../../books/consumer-account-private-frame")
 (include-book "../../books/consumer-account-config-row-carry")
-(local (include-book "consumer-account-config-commit-tests"))
+(include-book "consumer-account-config-commit-tests") ; its fixtures are used by non-local events
 
 (defun fn-acjft-framep (cp one)
  (declare (xargs :guard t))

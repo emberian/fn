@@ -39,5 +39,5 @@
  :hints (("Goal" :in-theory (e/d (fn-ninep-mounted-groups-begin)
                                   (fn-9pm-source-read fn-9pm-groups-begin)))))
 
-(definterface fn-ninep-mounted-source :class :common-lisp-compliant)
-(definterface fn-ninep-mounted-groups-begin :class :common-lisp-compliant)
+(definterface fn-ninep-mounted-source :class :common-lisp-compliant :kinds ((fuel natp)))
+(definterface fn-ninep-mounted-groups-begin :class :common-lisp-compliant :kinds ((fuel natp)))

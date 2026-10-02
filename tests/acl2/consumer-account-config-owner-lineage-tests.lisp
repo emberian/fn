@@ -3,7 +3,7 @@
 ; authority/config/source invariant or a whole durable transaction.
 (in-package "ACL2")
 (include-book "../../books/owner-config")
-(local (include-book "consumer-account-config-commit-tests"))
+(include-book "consumer-account-config-commit-tests") ; its fixtures are used by non-local events
 
 (defconst *acolt-owner*
  (fn-ocfg-make (fn-own-start (fn-sn-initial '("fn.test") 8) 1)

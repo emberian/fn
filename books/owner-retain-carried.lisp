@@ -145,9 +145,9 @@
 ; -----------------------------------------------------------------------------
 ; Transitions: the host-called consumer and topic prepares (books/owner-
 ; cursor-domain.lisp) keep the relation, from the owner keystones
-; fn-pdc-ocfg-prepare-consumer-preserves-invariant (the consumer prepare is
-; the carried fn-pdc-pout-prepare-consumer since PRF-1230) and
-; fn-psrv-prepare-topic-preserves-invariant; the retention carry and the
+; fn-pdc-ocfg-prepare-consumer-preserves-invariant and
+; fn-pdc-psrv-prepare-topic-preserves-invariant (the prepares are the carried
+; fn-pdc-pout-prepare-consumer/-topic since PRF-1230); the retention carry and the
 ; owner binding pass through fn-owner-install-ocfg.
 (defthm fn-owner-prepare-consumer-preserves-retain-state
   (implies (fn-owner-retain-statep state)
@@ -165,10 +165,10 @@
             (mv-nth 2 (fn-owner-prepare-topic event fn-arena state))))
   :hints (("Goal" :in-theory
            '(fn-owner-retain-statep fn-owner-prepare-topic
-             fn-pout-prepare-topic mv-nth nth zp car-cons cdr-cons
+             fn-pdc-pout-prepare-topic mv-nth nth zp car-cons cdr-cons
              fn-owner-bound-of-install-ocfg fn-owner-ocfg-of-install-ocfg
              fn-owner-retain-carry-of-install-ocfg
-             fn-psrv-prepare-topic-preserves-invariant))))
+             fn-pdc-psrv-prepare-topic-preserves-invariant))))
 
 ; -----------------------------------------------------------------------------
 ; The row.  The open's success word is :recovering (:ok): on :fault and on

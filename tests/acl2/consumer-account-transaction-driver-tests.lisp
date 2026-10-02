@@ -1,6 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/consumer-account-transaction-driver")
-(local (include-book "consumer-account-config-commit-tests"))
+(include-book "consumer-account-config-commit-tests") ; its fixtures are used by non-local events
 
 (defconst *catdt-input*
  (mv-let (index im)
