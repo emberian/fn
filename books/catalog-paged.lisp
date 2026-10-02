@@ -417,9 +417,7 @@
 ; rows whole in their cells (the mutation half of each witness).
 (defconst *cp-w1*
   (fn-record-make 0 1 0 "<a@x>" (append (fn-record-string-octets "Subject: a") '(13 10 13 10 97 13 10))
-                  '("fn.test") "o" "s" "e" 1 5
-                  (fn-ab-for-received :post-d25
-                                      (append (fn-record-string-octets "Subject: a") '(13 10 13 10 97 13 10)))))
+                  '("fn.test") "o" "s" "e" 1 5))
 (defconst *cp-h1* (fn-held-with-numbers (fn-held-plain *cp-w1* 0) '(("fn.test" . 1))))
 (defconst *cp-h-badmsgid* (update-nth 3 5 *cp-h1*))
 (defconst *cp-h-bignum* (fn-held-with-numbers *cp-h1* (list (cons "fn.test" (expt 2 3000)))))
