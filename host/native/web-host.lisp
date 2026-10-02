@@ -102,32 +102,20 @@ exposure admission decides (the id, or NIL when it refused)."
     opened))
 
 (defun fnn-web-feed (service cid octets)
-  "Feed OCTETS to CID through the owner's served step; the whole reply, or
-:GONE when the owner no longer knows CID."
+  "Feed OCTETS to CID through the owner's served step (host/native/owner.lisp
+fnn-owner-feed-logical: a POST joins the next batch and is awaited off the
+owner, r71 F5): the whole reply; :GONE when the owner refused the step by
+name (it no longer knows CID, or it is stopping); :UNCERTAIN when a
+submission's outcome has no reply (the batch's barrier failed, or the owner
+stopped before answering it).  A Store fault or an indeterminate outcome is
+the owner's and is re-signalled, never a vanished session (sweep S031)."
   (handler-case
-      (let ((pending (fnn-octets octets)) (reply (fnn-make-octets 0)) (closing nil))
-        (loop while (and (> (length pending) 0) (not closing)) do
-          (let ((results (multiple-value-list
-                          (fnn-owner-handle-chunk service cid pending nil :reader))))
-            (if (eq (first results) :defer)
-                (sleep (/ (min (second results) 1000) 1000))
-              (destructuring-bind (plan close starttls consumed &rest more) results
-                (declare (ignore starttls more))
-                (unwind-protect
-                     (loop
-                       (multiple-value-bind (part rest donep yieldedp)
-                           (fnn-owner-render-next-quantum service cid plan :reader)
-                         (setq reply (concatenate 'fnn-octets reply part))
-                         (when donep (return))
-                         (setq plan rest)
-                         (when yieldedp
-                           (sleep (/ (fnn-core 'fn-splan-cursor-resume-ms) 1000)))))
-                  (fnn-owner-response-unpin service cid))
-                (setq closing close)
-                (when (and (zerop consumed) (not close))
-                  (fnn-fault "owner consumed no octets of a web command"))
-                (setq pending (subseq pending consumed))))))
-        reply)
+      (multiple-value-bind (reply closing uncertain)
+          (fnn-owner-feed-logical service cid octets :reader "web command")
+        (declare (ignore closing))
+        (if uncertain :uncertain reply))
+    (fnn-store-indeterminate (e) (error e))
+    (fnn-store-fault (e) (error e))
     (fnn-store-error () :gone)))
 
 (defun fnn-web-close (service cid)
@@ -220,7 +208,11 @@ exposure admission decides (the id, or NIL when it refused)."
                               (fnn-octet-list (fnn-anchor-csprng-nonce 32))
                               (and (fnn-web-face-tls-context face) t)
                               family address))
-                 (flow nil))
+                 (flow nil)
+                 ;; The owner sessions this request opened and has not
+                 ;; closed: released however the request ends (sweep S030).
+                 (opened nil))
+            (unwind-protect
              (dotimes (i (fnn-core 'fn-web-host-max-events)
                          (fnn-fault "a web request took more events than ACL2 allows"))
                (declare (ignorable i))
@@ -246,21 +238,28 @@ exposure admission decides (the id, or NIL when it refused)."
                                        :reader))))
                    (:open
                     (destructuring-bind (fam addr protected next) (rest action)
-                      (setq flow next
-                            event (list :opened (fnn-web-open service fam addr protected)))))
+                      (let ((cid (fnn-web-open service fam addr protected)))
+                        (when cid (push cid opened))
+                        (setq flow next event (list :opened cid)))))
                    (:send
                     (destructuring-bind (cid start stop next) (rest action)
                       (let ((reply (fnn-web-feed service cid (fnn-web-slice out start stop))))
                         (setq flow next)
-                        (if (eq reply :gone)
-                            (setq event (list :gone))
-                          (progn (fnn-web-fill in reply)
+                        (cond ((eq reply :gone) (setq event (list :gone)))
+                              ;; A submission whose outcome has no reply: the
+                              ;; browser gets none either (the connection
+                              ;; closes), never a page that reads as a
+                              ;; refusal or an acceptance.
+                              ((eq reply :uncertain) (return))
+                              (t (fnn-web-fill in reply)
                                  (setq event (list :reply)))))))
                    (:close
                     (destructuring-bind (cid next) (rest action)
+                      (setq opened (remove cid opened))
                       (fnn-web-close service cid)
                       (setq flow next event (list :closed))))
-                   (otherwise (fnn-fault "ACL2 returned a malformed web action"))))))))))))
+                   (otherwise (fnn-fault "ACL2 returned a malformed web action")))))
+              (dolist (cid opened) (fnn-web-close service cid))))))))))
 
 (defun fnn-web-serve (face socket)
   (let ((fd (fnn-socket-fd socket)) (channel nil))
@@ -270,14 +269,27 @@ exposure admission decides (the id, or NIL when it refused)."
                (when (fnn-web-face-tls-context face)
                  (setq channel (fnn-tls-accept (fnn-web-face-tls-context face) fd 10)))
                (fnn-web-request face socket fd channel))
-           ;; A browser that went away or a handshake that failed ends this
-           ;; connection only; an ACL2 fault is the owner's (it stopped).
-           (fnn-os-error () nil)
-           (sb-bsd-sockets:socket-error () nil)
-           (error (condition)
+           ;; Sweep S030/S066: a browser that went away, a handshake that
+           ;; failed, or a step the owner refused by name (it is stopping)
+           ;; ends this connection only.  An uncertain outcome fences the
+           ;; owner (exit 3) and a Store fault or any other condition -- a
+           ;; malformed ACL2 answer here is one -- stops it as a fault (exit
+           ;; 4): named, from this thread, never an unhandled thread error
+           ;; (which ends the process with code 1, skipping the settlement).
+           ;; The browser gets no reply: no page reads as an outcome.
+           ((or fnn-os-error sb-bsd-sockets:socket-error) () nil)
+           (fnn-store-indeterminate (condition)
+             (fnn-err "web face: owner uncertain; recovery required: ~a" condition)
+             (ignore-errors (fnn-owner-fence-service (fnn-web-face-service face))))
+           (fnn-store-fault (condition)
+             (ignore-errors (fnn-owner-fault-service (fnn-web-face-service face) nil condition)))
+           (fnn-store-error (condition)
+             (fnn-err "web face: ~a" condition))
+           (serious-condition (condition)
              (if (and (find-class 'fnn-tls-error nil) (typep condition 'fnn-tls-error))
                  nil
-               (error condition))))
+               (ignore-errors
+                (fnn-owner-fault-service (fnn-web-face-service face) nil condition)))))
       (when channel (ignore-errors (fnn-tls-close-channel channel)))
       (fnn-socket-shut socket))))
 
@@ -320,10 +332,16 @@ exposure admission decides (the id, or NIL when it refused)."
                                 (let ((socket (fnn-accept-observe listener 1)))
                                   (unless (eq socket :timeout)
                                     (fnn-web-serve face socket))))
-                            (sb-bsd-sockets:socket-error (condition)
+                            ;; A client's event never reaches here
+                            ;; (fnn-accept-observe, fnn-web-serve): this is
+                            ;; the listener's own failure or a defect, the
+                            ;; owner's fault unless it is stopping.
+                            (serious-condition (condition)
                               (unless (or *fnn-sigterm-requested*
                                           (fnn-owner-service-stopping service))
-                                (fnn-err "web face listener: ~a" condition))))
+                                (fnn-err "web face listener: ~a" condition)
+                                (ignore-errors
+                                 (fnn-owner-fault-service service nil condition)))))
                        (fnn-with-roster (service)
                          (setf (fnn-owner-service-workers service)
                                (delete sb-thread:*current-thread*

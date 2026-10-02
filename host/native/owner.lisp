@@ -3040,14 +3040,6 @@ the mux connection waiting for it, or the DONE table until it registers."
     (when target
       (funcall (car target) completion))))
 
-(defun fnn-owner-take-done (service cid)
-  "CID's completion from the DONE table (a logical connection committed in
-its own quantum), removed; :uncertain when there is none."
-  (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
-    (multiple-value-bind (done present) (gethash cid (fnn-owner-service-done service))
-      (remhash cid (fnn-owner-service-done service))
-      (if present done :uncertain))))
-
 (defun fnn-owner-awaiting-sockets (service cid)
   "The socket of CID's waiting connection, as a list (none when it has not
 registered yet)."
@@ -3259,8 +3251,11 @@ members."
 
 (defun fnn-owner-commit-step-action (phase event)
   "ACL2's action for the commit's PHASE and EVENT (fn-ocs-commit-step), for
-the inline commit, which holds no gate phase (only at an idle owner: while a
-batch is in flight the gate admits no class that commits inline)."
+the inline commit, which holds no gate phase (only at an idle owner: its
+callers are the bound submission's :control quantum and the BP transit's
+:transit quantum, and while a batch is in flight the gate admits only
+:inspect, :commit and :reader, fn-ocp-in-flight-admits-only-inspect-commit-
+and-reader; no :reader quantum commits inline since r71 F5)."
   (let ((action (fnn-core 'fn-ocs-commit-step phase event)))
     (unless (member action '(:barrier :complete :stop :none :fault))
       (fnn-fault "owner returned a malformed commit step ~a" action))
@@ -4114,6 +4109,92 @@ CLOSING STARTTLS CONSUMED)."
       (t (fnn-owner-page-read-hold cid (first results))
          (values-list results)))))
 
+;;; A LOGICAL connection's feed (lane host-lifecycle, r71 F5 / sweep S003):
+;;; the web face's browser session (host/native/web-host.lisp, class :reader)
+;;; and the pull feed's transit connection (host/native/pull-service.lisp,
+;;; class :transit), neither with a socket.  The same served step as a mux
+;;; connection's, the same queued commit: a submitted step answers :await and
+;;; this thread waits for the batch's COMPLETE OFF the owner, as an I/O loop's
+;;; connection does (fnn-mux-await), then renders the step's plan with the
+;;; completion.  One shape for both callers (they were two copies of it).
+;;;
+;;; Returns (values REPLY CLOSING UNCERTAIN): the reply's octets; CLOSING when
+;;; the step closed the connection; UNCERTAIN when a submission's completion
+;;; was the bare uncertain one (no reply rendered: the batch's barrier
+;;; failed, or the owner stopped before the member was answered), which the
+;;; caller reports as no reply, never as a refusal or an acceptance.
+
+(defun fnn-owner-await-logical (service cid)
+  "CID's completion, waited for off the owner mutex: the member's rendered
+completion, (:close . OCTETS), or :uncertain.  The callback runs in the
+committer's COMPLETE (owner held, commit-lock released) and takes only this
+wait's own lock.  A stop that answers nobody is :uncertain."
+  (let* ((lock (sb-thread:make-mutex :name "fn logical await"))
+         (ready (sb-thread:make-waitqueue))
+         (cell nil)
+         (early (fnn-owner-await-register
+                 service cid
+                 (lambda (completion)
+                   (sb-thread:with-mutex (lock)
+                     (setq cell (list completion))
+                     (sb-thread:condition-notify ready)))
+                 nil)))
+    (when early (return-from fnn-owner-await-logical early))
+    (sb-thread:with-mutex (lock)
+      (loop until (or cell (fnn-owner-service-stopping service))
+            do (sb-thread:condition-wait ready lock :timeout 1)))
+    (unless cell
+      ;; Stopping and unanswered: withdraw the registration; a completion
+      ;; delivered meanwhile is still taken.
+      (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
+        (remhash cid (fnn-owner-service-awaiting service))))
+    (sb-thread:with-mutex (lock)
+      (if cell (first cell) :uncertain))))
+
+(defun fnn-owner-feed-logical (service cid octets class what)
+  "Feed OCTETS to the logical connection CID as CLASS; WHAT names the caller
+in a fault.  (values REPLY CLOSING UNCERTAIN), above."
+  (let ((pending (fnn-octets octets)) (reply (fnn-make-octets 0))
+        (closing nil) (uncertain nil))
+    (loop while (and (> (length pending) 0) (not closing)) do
+      (let ((results (multiple-value-list
+                      (fnn-owner-handle-chunk service cid pending nil class))))
+        (case (first results)
+          ;; PRF-161's exposure charge (never for a transit connection):
+          ;; wait and feed the same octets.
+          (:defer (sleep (/ (min (second results) 1000) 1000)))
+          (t
+           (let ((plan nil) (consumed nil))
+             (unwind-protect
+                  (progn
+                    (if (eq (first results) :await)
+                        (destructuring-bind (tag step redeem close starttls used) results
+                          (declare (ignore tag starttls))
+                          (setq consumed used closing close)
+                          (let ((completion (fnn-owner-await-logical service cid)))
+                            (cond ((eq completion :uncertain)
+                                   (setq uncertain t closing t))
+                                  (t
+                                   (when (and (consp completion) (eq (car completion) :close))
+                                     (setq completion (cdr completion) closing t))
+                                   (setq plan (fnn-core 'fn-splan-step-plan
+                                                        step completion redeem))))))
+                      (destructuring-bind (step-plan close starttls used &rest more) results
+                        (declare (ignore starttls more))
+                        (setq plan step-plan consumed used closing close)))
+                    (loop while plan do
+                      (multiple-value-bind (part rest donep yieldedp)
+                          (fnn-owner-render-next-quantum service cid plan class)
+                        (setq reply (concatenate 'fnn-octets reply part))
+                        (setq plan (if donep nil rest))
+                        (when (and plan yieldedp)
+                          (sleep (/ (fnn-core 'fn-splan-cursor-resume-ms) 1000))))))
+               (fnn-owner-response-unpin service cid))
+             (when (and (zerop consumed) (not closing))
+               (fnn-fault "owner consumed no octets of a ~a" what))
+             (setq pending (subseq pending consumed)))))))
+    (values reply closing uncertain)))
+
 ;;; Developer image only (the resilience framework's `page-read-outstanding'
 ;;; point, planning/design-resilience-framework-2026-09-29.md section 5):
 ;;; FN_NATIVE_PAGE_READ_HOLD=MIN-OCTETS:RELEASE-FILE holds a served read
@@ -4574,17 +4655,14 @@ EPIPE and the client saw a bare close)."
            ;; for the next commit quantum, which drains it with every other
            ;; queued one and fences the log once; this connection's reply
            ;; is built when its completion arrives (fnn-owner-await-done).
-           ;; A logical connection (the pull feed: no socket) waits for
-           ;; nothing: the queued submissions, its own last, are committed
-           ;; now, in this quantum, and its completion read back.
-           (when (and submitted (fnn-owner-service-batching service) (null socket))
-             (fnn-owner-commit-queued-locked service)
-             (let ((done (fnn-owner-take-done service cid)))
-               (cond ((fnn-octet-list-p done) (setq completion done))
-                     ((and (consp done) (eq (car done) :close))
-                      (setq completion (cdr done) uncertain t))
-                     (t (setq completion nil uncertain t))))
-             (setq submitted nil))
+           ;; A logical connection (the web face's and the pull feed's: no
+           ;; socket) is no exception: it awaits its completion off the
+           ;; owner (fnn-owner-feed-logical).  It used to commit inline here
+           ;; as if the owner were idle, but a :reader quantum is admitted
+           ;; while a batch is in flight (fn-ocp-in-flight-admits-only-
+           ;; inspect-commit-and-reader): that START waited for the other
+           ;; batch's barrier under the owner and ran a second barrier inline
+           ;; (r71 F5, sweep S003).
            (when (and submitted (fnn-owner-service-batching service))
              ;; Lane time-model (PRF-311): while the disk is slow (a barrier
              ;; pending past its deadline at this quantum's recorded time,
