@@ -288,9 +288,18 @@ class Node:
                         break
                     lines.append(line)
             conn.sendall(b"QUIT\r\n")
+        # ARTICLE serves the stored octets behind one leading Xref line the
+        # node generates at serve time (RFC 5537 section 3.5 item 8; the
+        # decision in tools/resilience/adapters/native_cuts.py served_split):
+        # `octets' is what follows it, comparable with `inspect' and the
+        # payload; a second or misplaced Xref stays in it and fails that
+        # comparison.  Before 2026-10-03 the line was compared too, so every
+        # reread read as torn.
+        from tools.resilience.adapters.native_cuts import served_split
+        xref, octets = served_split(undot(lines))
         return {"greeting": greeting.decode("ascii", "replace").strip(),
                 "status": status.decode("ascii", "replace").strip(),
-                "octets": undot(lines)}
+                "octets": octets, "xref": xref}
 
 
 def public(record):
@@ -353,7 +362,7 @@ def reread(node: Node, candidate: bytes, out: dict, injected: bool):
         for label, msgid, want, inj in checks:
             got = node.nntp_article(msgid)
             out["nntp_" + label] = {
-                "status": got["status"],
+                "status": got["status"], "xref": got["xref"],
                 "identical": matches(got["octets"], want, inj),
                 "same_as_inspect": (read[label] == got["octets"]
                                     if read[label] is not None else None)}

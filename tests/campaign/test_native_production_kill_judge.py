@@ -51,6 +51,11 @@ class VerdictTests(unittest.TestCase):
         self.assertEqual(pk.verdict(obs(pk.UNEXPECTED, "430", None), "small"),
                          "unexpected-reply")
 
+    def test_a_malformed_served_xref_fails_even_a_240(self):
+        bad = obs(pk.ACCEPTED, "220", True)
+        bad["reread"]["xref_malformed"] = True
+        self.assertEqual(pk.verdict(bad, "small"), "malformed-xref")
+
     def test_the_client_classifies_a_hang_and_a_5xx_as_unexpected(self):
         self.assertEqual(pk.classify(None), pk.UNEXPECTED)
         self.assertEqual(pk.classify(b"503 program fault\r\n"), pk.UNEXPECTED)

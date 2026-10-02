@@ -180,6 +180,12 @@ class NativeOperatorCampaignTests(unittest.TestCase):
         # and a retry through the same entry is its duplicate.
         self.assertTrue(post["nntp_candidate"]["identical"])
         self.assertTrue(post["nntp_candidate"]["same_as_inspect"])
+        # ARTICLE's one served-time Xref, split off before the comparison.
+        for label in ("nntp_prior", "nntp_candidate"):
+            xref = post[label]["xref"]
+            self.assertIsNotNone(xref, post[label])
+            self.assertFalse(xref["malformed"], xref)
+            self.assertIn(native_operator_campaign.GROUP, xref["locations"])
         self.assertIn("DUPLICATE", post["resubmit"]["stderr"])
         # The duplicate resubmission through the owner appended nothing.
         self.assertEqual(self.observed(post["after_resubmit"]), self.observed(post["recovered"]))

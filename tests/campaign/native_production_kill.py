@@ -383,8 +383,10 @@ class Campaign:
     def reread(self, msgid: str) -> dict:
         got = self.node.nntp_article(msgid)
         payload = Path(self.ledger[msgid]["path"]).read_bytes()
+        xref = got.get("xref")
         return {"status": got["status"], "sha256": sha(got["octets"]) if got["octets"] else None,
                 "octets": len(got["octets"]),
+                "xref_malformed": bool(xref and xref.get("malformed")),
                 "identical": injected_from(got["octets"], payload) if got["octets"] else None}
 
     def resubmit(self, msgid: str) -> dict:
@@ -660,6 +662,8 @@ def verdict(obs: dict, size_class: str = "") -> str:
     rr = obs["reread"]
     present = rr["status"].startswith("220")
     absent = rr["status"].startswith("430")
+    if present and rr.get("xref_malformed"):
+        return "malformed-xref"
     if code == ACCEPTED:
         if present and rr["identical"]:
             return "240-identical"
