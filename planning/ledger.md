@@ -13,9 +13,9 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 2735 |
 | Certification roots in the Makefile | 2365 |
 | Books inside the root closure | 2644 |
-| `defthm` and `defthmd` events | 36668 |
-| `defun` events | 23222 |
-| Functions with verified guards | 3848 |
+| `defthm` and `defthmd` events | 36673 |
+| `defun` events | 23223 |
+| Functions with verified guards | 3849 |
 | Functions declared `:verify-guards nil` and never verified | 3013 |
 | Functions left at the default with an explicit guard | 12879 |
 | Functions left at the default with no guard | 3482 |
@@ -921,7 +921,7 @@ that `make certify` requests.
 | `books/moderation.lisp` | closure | 40 | 25 | 4/0/21/0 | 0 | 0 | 2 |
 | `books/msgid-index-concrete.lisp` | root | 14 | 7 | 1/0/6/0 | 0 | 0 | 0 |
 | `books/msgid-index.lisp` | root | 23 | 15 | 1/0/14/0 | 0 | 0 | 0 |
-| `books/msgid-linear-exec.lisp` | root | 265 | 59 | 1/3/41/14 | 0 | 0 | 3 |
+| `books/msgid-linear-exec.lisp` | root | 270 | 60 | 2/3/41/14 | 0 | 0 | 3 |
 | `books/msgid-linear.lisp` | root | 92 | 28 | 0/0/28/0 | 0 | 0 | 1 |
 | `books/msgid-pages-exec.lisp` | root | 285 | 74 | 2/7/51/14 | 0 | 0 | 2 |
 | `books/msgid-pages.lisp` | root | 44 | 22 | 0/0/20/2 | 0 | 0 | 0 |
