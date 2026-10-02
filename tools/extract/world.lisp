@@ -249,6 +249,7 @@
 (include-book "../../books/store-checkpoint-open")
 (include-book "../../books/statement-recover-stream")
 (include-book "../../books/store-checkpoint-arena-load")
+(include-book "../../books/store-checkpoint-verify")
 (include-book "../../books/store-checkpoint-digest")
 (include-book "../../books/store-finalize-incremental")
 (include-book "../../books/store-checkpoint-arena-writer")
