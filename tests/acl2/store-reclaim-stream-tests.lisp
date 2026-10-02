@@ -26,14 +26,17 @@
 
 ; The fold of the fixture's history is the whole-history quantities: the
 ; count, the rewritten Message-IDs (at least one: the fixture's released
-; article) and the freed octets (positive: the payload became its tombstone).
+; article) and the freed octets.  The freed figure is a signed difference
+; (fn-rclp-freed): the fixture's three articles are each shorter than the one
+; tombstone format (FN-RCL2, 145 octets), so their rewrite GROWS the history
+; by 80 octets -- exact, not positive.
 (assert-event (let ((acc (rst-acc (rst-events))))
                 (and (true-listp (rst-events))
                      (equal (nth 0 acc) (len (rst-events)))
                      (consp (nth 1 acc))
                      (equal (rev (nth 1 acc)) (fn-rclp-rewritten-msgids (rst-events) *rst-ctx*))
                      (equal (nth 2 acc) (fn-rclp-freed (rst-events) *rst-ctx*))
-                     (< 0 (nth 2 acc)))))
+                     (equal (nth 2 acc) -80))))
 
 ; The fold carries three quantities and no history: a long history's fold
 ; is three elements, and its count is the long history's length.
