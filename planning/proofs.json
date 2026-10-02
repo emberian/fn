@@ -21434,6 +21434,35 @@
         "fn-pio-direct-settle-happens-once"
       ],
       "progress_note": "Lane cold-read-ownership (Opus, 2026-10-01): REPL-admitted (6.7 s with dependencies from source) and 44 teeth forms passed on the laptop; certification and natives (test_native_page_io, slow_disk storm) in the lane's LANEDUMP."
+    },
+    {
+      "id": "PRF-1235",
+      "title": "The arena's forget: a handle the served history no longer names is emptied while the owner serves, its file's count falls by one, and only what the generation release answers is forgotten",
+      "statement": "Subject: books/payload-arena.lisp fn-arena-forget (the generic's export; the attached implementation's is books/payload-arena-extent.lisp fn-arena$x-forget) and books/arena-forget.lisp fn-arf-apply-released, fn-arf-retire-event, fn-arf-changed-handles. HOST: NOT WIRED YET (host/native/io.lisp fnn-log-reseat-fenced's release loop and host/native/owner.lisp fnn-owner-reclaim-pass are the call sites; the wiring waits for the root fact below). fn-arena-forget-payload (KEYSTONE): for a natural H the forgotten handle reads the empty payload, every other natural handle keeps its payload, the count is unchanged (no handle is reused) and an arena stays an arena; no existing :logic definition changed. fn-arx-forget-file-count (KEYSTONE): under fn-arena$xcorr, for a handle inside the arena, the count of the file its entry named falls by exactly one and every other file's count is unchanged; with PRF-930's fn-xrt-quiet-files-are-unnamed a dropped file whose handles are all reseated or forgotten goes quiet. fn-arf-apply-released-payload (KEYSTONE): applying the generation step's :release answer (PRF-941) empties exactly the handles tagged (:forget H) in it; a plain handle is a staged page's release. fn-arf-changed-handles-are-unnamed (KEYSTONE): when the old rows' handles are pairwise distinct and the new rows are a rewrite of them (each changed row names no old handle), no new row names a handle the pairwise walk answers. OPEN, not proved: (1) the root fact, that the served history's handles are pairwise distinct and that the reclaim's interned rows are such a rewrite; (2) the liveness theorem composing rows, generation pins and whole-arena leases (DEF-HOLDER's payload-handle instance); (3) a resident payload's octets in the paged child are not returned by the forget. Scope: a read of a forgotten handle answers the empty payload through no realizer and no descriptor; the named refusal on the read path is not built.",
+      "milestone": "M5",
+      "requirements": [
+        "RET-008",
+        "STO-017"
+      ],
+      "depends_on": [
+        "PRF-930",
+        "PRF-941"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/payload-arena.lisp",
+        "books/payload-arena-extent.lisp",
+        "books/arena-forget.lisp",
+        "tests/acl2/arena-forget-tests.lisp"
+      ],
+      "events": [
+        "fn-arena-forget-payload",
+        "fn-arx-forget-file-count",
+        "fn-arf-apply-released-payload",
+        "fn-arf-changed-handles-are-unnamed"
+      ],
+      "progress_note": "Lane arena-forget (Opus 5.5, 2026-10-03). REPL-admitted on hbox (books and teeth); not certified. Design: build/coordinator/decisions/arena-forget-2026-10-03.md, Codex consultation c08."
     }
   ]
 }

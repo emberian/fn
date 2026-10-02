@@ -1,8 +1,8 @@
 ; Teeth for the arena's forget (lane arena-forget, 2026-10-03):
-;   PRF-ARF-1 fn-arena-forget-payload        books/payload-arena.lisp
-;   PRF-ARF-2 fn-arx-forget-file-count       books/payload-arena-extent.lisp
-;   PRF-ARF-3 fn-arf-apply-released-payload  books/arena-forget.lisp
-;   PRF-ARF-4 fn-arf-changed-handles-are-unnamed
+;   PRF-1235 fn-arena-forget-payload        books/payload-arena.lisp
+;   PRF-1235 fn-arx-forget-file-count       books/payload-arena-extent.lisp
+;   PRF-1235 fn-arf-apply-released-payload  books/arena-forget.lisp
+;   PRF-1235 fn-arf-changed-handles-are-unnamed
 ; and the composed runs: a reclaimed handle's forget takes its file's count
 ; to 0 (the file goes quiet); a holder still pinned keeps the forget pending
 ; (MUTATION: forget refused).
@@ -26,7 +26,7 @@
       (eq (symbol-class 'fn-arf-changed-handles (w state)) :common-lisp-compliant)))
 
 ; -----------------------------------------------------------------------------
-; PRF-ARF-1.  Positive, every conjunct with its antecedent at a ground arena.
+; PRF-1235.  Positive, every conjunct with its antecedent at a ground arena.
 (defthm arft-forget-positive
   (let* ((a '((1 2 3) (4 5) (6)))
          (a2 (fn-arena-forget 1 a)))
@@ -150,7 +150,7 @@
 (assert-event (equal (arft-files-run-result) '(2 1 nil 0 t :forgotten :forgotten)))
 
 ; -----------------------------------------------------------------------------
-; PRF-ARF-2.  A reached state: the extent on file 7 at handle 0, a resident
+; PRF-1235.  A reached state: the extent on file 7 at handle 0, a resident
 ; handle 1.
 (defun-nx arft-x2 ()
   (fn-arena$x-seal-list '(1 2)
@@ -275,7 +275,7 @@
                          0)))))))
 
 ; -----------------------------------------------------------------------------
-; PRF-ARF-3 over the pins step (books/arena-reader-pins.lisp), the host's
+; PRF-1235 over the pins step (books/arena-reader-pins.lisp), the host's
 ; sequence.  A reader pins generation 0; the swap retires handle 1 (stamp 0);
 ; a staged page's handle 2 is retired (stamp 1).
 
@@ -346,7 +346,7 @@
                     nil)))))
 
 ; -----------------------------------------------------------------------------
-; PRF-ARF-4.  Three held rows at handles 0, 1, 2; the rewrite replaces the
+; PRF-1235.  Three held rows at handles 0, 1, 2; the rewrite replaces the
 ; middle one by a row at the fresh handle 3.
 
 (defconst *arft-w*

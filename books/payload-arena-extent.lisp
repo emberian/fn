@@ -1569,7 +1569,7 @@
                     (nth k (nth *fn-arena$x-exti* fn-arena$x)))))
   :hints (("Goal" :do-not-induct t)))
 
-; KEYSTONE (PRF-ARF-2).  The forget gives back exactly H's name: the count of
+; KEYSTONE (PRF-1235).  The forget gives back exactly H's name: the count of
 ; the file H's entry named falls by one and every other file's count is
 ; unchanged.  So once every handle that named a dropped file is reseated or
 ; forgotten its count is 0, fn-xrt-quiet-files answers it

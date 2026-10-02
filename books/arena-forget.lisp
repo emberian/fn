@@ -198,7 +198,7 @@
             (fn-arena-p (fn-arf-apply-released rel fn-arena)))
    :hints (("Goal" :induct (fn-arf-apply-released rel fn-arena)))))
 
-; KEYSTONE (PRF-ARF-3).  The release empties exactly the tagged handles of
+; KEYSTONE (PRF-1235).  The release empties exactly the tagged handles of
 ; what the pins step released: such a handle reads the empty payload, every
 ; other handle keeps its payload, the count is unchanged (no handle is
 ; reused) and an arena stays an arena.  Host subject: host/native/io.lisp
@@ -331,7 +331,7 @@
                  (not (member-equal y all)))
             (not (member-equal y (fn-arf-changed-handles old new))))))
 
-; KEYSTONE (PRF-ARF-4).  When the old rows' handles are pairwise distinct and
+; KEYSTONE (PRF-1235).  When the old rows' handles are pairwise distinct and
 ; NEW is a rewrite of OLD (every changed row names a handle the old history
 ; does not), no row of NEW names a handle the walk answers: the retired
 ; handles are exactly un-named.  Host subject: host/native/owner.lisp

@@ -731,7 +731,7 @@
   (equal (fn-arena-release h fn-arena) fn-arena)
   :hints (("Goal" :in-theory (enable fn-arena-release))))
 
-; KEYSTONE (lane arena-forget, PRF-ARF-1) fn-arena-forget-payload: the forget
+; KEYSTONE (lane arena-forget, PRF-1235) fn-arena-forget-payload: the forget
 ; empties handle H and nothing else: H denotes the empty payload, every
 ; other handle keeps its payload, the count is unchanged (so no later seal
 ; reuses H), and an arena stays an arena.  The hypotheses left are the ones
