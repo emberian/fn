@@ -348,23 +348,28 @@ finds the transit principal in that ingress."
                (fnn-accept-loop
                 listener
                 (lambda (socket)
-                  (let* ((session-counter
-                           (sb-thread:with-mutex (sessions-lock)
-                             (incf (car sessions))))
-                         (channel (fnn-bpnode-observed-channel socket))
-                         (*fnn-tcl-deliver*
-                           (lambda (conn xfer-id octets)
-                             (fnn-bpapp-deliver service journal tally node-id
-                                                conn xfer-id octets
-                                                ingress-state session-counter
-                                                channel))))
-                    (unwind-protect
-                         (fnn-tcl-session
-                          (fnn-socket-fd socket) :passive
-                          (fnn-tcl-params node-id peer-eid +fnn-tcl-keepalive+
-                                          +fnn-tcl-segment-mru+ transfer-mru)
-                          "bp-app" journal-root)
-                      (fnn-socket-shut socket))))
+                  ;; A peer that resets or a refused session ends only this
+                  ;; connection (io.lisp fnn-connection-scoped, sweep S006); a
+                  ;; Store fault or an uncertain outcome is the process's.
+                  (unwind-protect
+                       (fnn-connection-scoped
+                           ("bp-app" (lambda (word) (fnn-bp-note tally word)))
+                         (let* ((session-counter
+                                  (sb-thread:with-mutex (sessions-lock)
+                                    (incf (car sessions))))
+                                (channel (fnn-bpnode-observed-channel socket))
+                                (*fnn-tcl-deliver*
+                                  (lambda (conn xfer-id octets)
+                                    (fnn-bpapp-deliver service journal tally node-id
+                                                       conn xfer-id octets
+                                                       ingress-state session-counter
+                                                       channel))))
+                           (fnn-tcl-session
+                            (fnn-socket-fd socket) :passive
+                            (fnn-tcl-params node-id peer-eid +fnn-tcl-keepalive+
+                                            +fnn-tcl-segment-mru+ transfer-mru)
+                            "bp-app" journal-root)))
+                    (fnn-socket-shut socket)))
                 once)
                (fnn-bp-summary tally)
                (fnn-bp-exit-code tally nil))))

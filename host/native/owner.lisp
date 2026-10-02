@@ -5942,10 +5942,17 @@ thread is a worker, so the stop joins it with the clients."
                           (let ((socket (fnn-accept-observe listener 1)))
                             (unless (eq socket :timeout)
                               (fnn-owner-launch-client service socket implicit-tls))))
-                      (sb-bsd-sockets:socket-error (condition)
+                      ;; A client's event is no condition here (fnn-accept-
+                      ;; observe names it and this loop goes on).  What is
+                      ;; left is the listener's own failure or a defect: past
+                      ;; a stop it is the stop; otherwise the node would serve
+                      ;; on with this port dead, so it is the owner's fault,
+                      ;; named, as the control accept loop's is.
+                      (serious-condition (condition)
                         (unless (or *fnn-sigterm-requested*
                                     (fnn-owner-service-stopping service))
-                          (fnn-err "owner TLS listener: ~a" condition))))
+                          (fnn-err "owner ~:[~;TLS ~]listener: ~a" implicit-tls condition)
+                          (ignore-errors (fnn-owner-fault-service service nil condition)))))
                  (fnn-with-roster (service)
                    (setf (fnn-owner-service-workers service)
                          (delete sb-thread:*current-thread*

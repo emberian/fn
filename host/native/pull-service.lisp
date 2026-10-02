@@ -333,6 +333,26 @@ waits its milliseconds and is fed the same octets."
          ;; failing step's fn-pull-session-failure), for the log line.
          (why nil))
     (labels ((enqueue (event) (setq events (append events (list event))))
+             ;; Sweep S007: the owner's refusal of the local transit
+             ;; connection (its connection table full: fn-own-open-peer
+             ;; answers no id) or of a step on it is this round's lost local
+             ;; connection, (:lost :local), never the node's fault.  A Store
+             ;; fault or an uncertain outcome is still the node's.
+             (local-scoped (thunk)
+               (handler-case (funcall thunk)
+                 ((or fnn-store-fault fnn-store-indeterminate) (e) (error e))
+                 (fnn-store-error (e)
+                   (fnn-err "pull: the local transit connection of peer ~a was refused: ~a"
+                            (fnn-pull-peer-string peer) e)
+                   ;; CID, if one was open, stays for the round's own close.
+                   (enqueue (list :lost :local)))))
+             (open-local ()
+               (local-scoped
+                (lambda ()
+                  (multiple-value-bind (opened greeting)
+                      (fnn-pull-local-open service peer)
+                    (setq cid opened)
+                    (enqueue (cons :local (fnn-octet-list greeting)))))))
              (send-remote (octets)
                (if channel
                    (fnn-tls-send-all channel octets 10)
@@ -383,11 +403,7 @@ waits its milliseconds and is fed the same octets."
                           (enqueue (list :lost :tls))))))
                    (:remote (handler-case (send-remote (fnn-octets (cdr effect)))
                               (error () (enqueue (list :lost :send)))))
-                   (:open-local
-                    (multiple-value-bind (opened greeting)
-                        (fnn-pull-local-open service peer)
-                      (setq cid opened)
-                      (enqueue (cons :local (fnn-octet-list greeting)))))
+                   (:open-local (open-local))
                    ;; PRF-165: the peer answered ARTICLE 430; the transit
                    ;; connection is inside an IHAVE it cannot finish.  Close
                    ;; it (the owner discards the unfinished IHAVE) and open a
@@ -399,18 +415,17 @@ waits its milliseconds and is fed the same octets."
                         (fnn-owner-response-unpin service old)
                         (fnn-owner-transit-serialized service nil
                                               (lambda () (fnn-owner-action 'fn-owner-close old)))))
-                    (multiple-value-bind (opened greeting)
-                        (fnn-pull-local-open service peer)
-                      (setq cid opened)
-                      (enqueue (cons :local (fnn-octet-list greeting)))))
+                    (open-local))
                    (:local
-                    (multiple-value-bind (reply closing)
-                        (fnn-pull-local-send service cid (cdr effect))
-                      (when (> (length reply) 0)
-                        (enqueue (cons :local (fnn-octet-list reply))))
-                      (when closing
-                        (setq cid nil)
-                        (enqueue (list :lost :local)))))
+                    (local-scoped
+                     (lambda ()
+                       (multiple-value-bind (reply closing)
+                           (fnn-pull-local-send service cid (cdr effect))
+                         (when (> (length reply) 0)
+                           (enqueue (cons :local (fnn-octet-list reply))))
+                         (when closing
+                           (setq cid nil)
+                           (enqueue (list :lost :local)))))))
                    (:close nil)
                    (t (fnn-fault "unknown pull effect ~s" (car effect))))))
              (advance (event)

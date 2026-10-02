@@ -160,7 +160,10 @@
   (let ((listener (fnn-control-state-listener (fnn-bpnc-control node))))
     (when (and listener
                (fnn-poll-readable (list (fnn-socket-fd listener)) timeout-ms))
-      (fnn-bpnc-handle node (sb-bsd-sockets:socket-accept listener)))))
+      (let ((got (fnn-accept-attempt listener)))
+        (if (keywordp got)
+            (fnn-accept-backoff got 1)
+          (fnn-bpnc-handle node got))))))
 
 (defun fnn-bpnc-wait-input (node fd seconds)
   "Poll BP and control under the caller's unchanged absolute read deadline."
@@ -188,9 +191,14 @@
       (when index
         (let ((plan (fnn-core 'fn-bplc-accept-plan (fnn-bplc-model listeners) index)))
           (unless plan (fnn-fault "ACL2 refused BP acceptance in this listener phase"))
-          (let ((socket (sb-bsd-sockets:socket-accept (nth index live))))
-            (fnn-bplc-step listeners (list :accept-result index :ok))
-            (fnn-out "~a" (fnn-core 'fn-bplc-runtime-line (fnn-bplc-model listeners)))
-            (unwind-protect (funcall handler socket)
-              (fnn-bplc-step listeners '(:session-closed)))))
-        (when once (return))))))
+          ;; An attempt that took no connection (fnn-accept-attempt) is no
+          ;; accept: the model is not stepped and ONCE still waits for one.
+          (let ((socket (fnn-accept-attempt (nth index live))))
+            (if (keywordp socket)
+                (fnn-accept-backoff socket 1)
+              (progn
+                (fnn-bplc-step listeners (list :accept-result index :ok))
+                (fnn-out "~a" (fnn-core 'fn-bplc-runtime-line (fnn-bplc-model listeners)))
+                (unwind-protect (funcall handler socket)
+                  (fnn-bplc-step listeners '(:session-closed)))
+                (when once (return))))))))))
