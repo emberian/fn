@@ -265,6 +265,15 @@ array's size); it decides nothing ACL2 decides."
     (setf (svref st 0) (make-array 0 :element-type '(unsigned-byte 8)))
     st))
 
+(defun fnn-octets-pub-fill (vector)
+  "Make VECTOR's bytes the publication buffer's contents; return the live
+stobj (fnn-octets-fill's boundary, on the publication thread's buffer)."
+  (let* ((st (fnn-live-octets-pub)) (n (length vector)))
+    (fn-octets$c-reserve n st)
+    (replace (the fnn-octets (svref st 0)) vector)
+    (setf (svref st 1) n)
+    st))
+
 (defun fnn-octets-pub-release ()
   "Empty the publication buffer and give its array back after a checkpoint's
 publication (the verb's or the owner's thread): the array grew to the
@@ -2775,16 +2784,19 @@ for fn-bs-scp-program's five cuts."
                       (t (fnn-fault "invalid FN_NATIVE_STATE_CHECKPOINT_FAULT action: ~a" action)))
                 "developer-only native state-checkpoint fault"))))))
 
-(defun fnn-state-checkpoint-write (store octets)
+(defun fnn-state-checkpoint-write (store octets sequence)
   "P-STATE-CHECKPOINT, books fn-bs-scp-program: stage, fence, rename onto
 the checkpoint name, fence the root.  Before the rename a failure is known
 (exit 1): the old checkpoint, or none, stays.  At or after it the outcome is
 uncertain (exit 3): the next open reads the old or the new file, never a
-torn one (fn-bs-scp-program-crash-is-old-or-new), and a corrupt or missing
-one falls back to full replay."
-  (fnn-state-checkpoint-install store (fnn-state-checkpoint-stage store octets)))
+torn one (fn-bs-scp-program-crash-is-old-or-new).  A checkpoint the open
+cannot use is refused by name once the segments it covers are dropped
+(fnn-log-drop): there is no full replay to fall back to
+(fnn-recover-log-from-log-checkpoint).  That is why the staged file is
+read back and verified before its rename (fnn-state-checkpoint-stage, S045)."
+  (fnn-state-checkpoint-install store (fnn-state-checkpoint-stage store octets sequence)))
 
-(defun fnn-state-checkpoint-stage (store octets)
+(defun fnn-state-checkpoint-stage (store octets sequence)
   "fnn-state-checkpoint-write's first half: the staged file written and fenced
 (cuts created, written, staged-durable).  A failure is known: the old
 checkpoint stays, and the stage is removed (or, when its unlink fails, left
@@ -2792,7 +2804,11 @@ to the staging sweep under its .stage- prefix), as
 fnn-publish-filesystem-record does; that includes a publication the
 stopping owner refuses at a batch boundary (fnn-checkpoint-yield), which
 left its stage behind as a staging orphan.  A process death leaves it to
-the sweep.  Answers the staged path, for fnn-state-checkpoint-install
+the sweep.  After the fence the stage is read back from disk and verified
+(fnn-state-checkpoint-verify, S045): a file that does not read back as the
+frames of SEQUENCE is the same known failure, so neither the rename that
+would replace the old checkpoint nor the drop of the segments it covers
+happens over it.  Answers the staged path, for fnn-state-checkpoint-install
 (Q16's reclaim pass stages off the owner mutex and installs under it)."
   (let ((stage (fnn-join (fnn-staging store)
                          (format nil ".stage-checkpoint-~d-~a" (sb-posix:getpid) (fnn-random-hex 12)))))
@@ -2807,6 +2823,11 @@ the sweep.  Answers the staged path, for fnn-state-checkpoint-install
                                  :unlink-on-failure t)
             (setq written t)
             (fnn-at store :state-checkpoint-staged-durable)
+            (fnn-state-checkpoint-test-flip stage)
+            (let ((verdict (fnn-state-checkpoint-verify store stage sequence)))
+              (unless (and (consp verdict) (eq (first verdict) :ok))
+                (fnn-refuse-io "the staged state checkpoint does not read back: ~(~s~)"
+                               verdict)))
             stage)
         (fnn-os-error (e)
           (when written (ignore-errors (fnn-unlink stage)))
@@ -2814,6 +2835,74 @@ the sweep.  Answers the staged path, for fnn-state-checkpoint-install
         (fnn-store-io-refusal (e)
           (when written (ignore-errors (fnn-unlink stage)))
           (error e))))))
+
+(defun fnn-state-checkpoint-test-flip (path)
+  "Developer-only FN_NATIVE_STATE_CHECKPOINT_READBACK_FLIP=OFFSET: one bit of
+the staged file's octet at OFFSET flipped after its fence, so a native sees
+the read-back refuse it (tests.test_native_state_checkpoint)."
+  (let ((raw (fnn-developer-selector "FN_NATIVE_STATE_CHECKPOINT_READBACK_FLIP")))
+    (when raw
+      (let ((offset (ignore-errors (parse-integer raw))))
+        (unless (and (integerp offset) (>= offset 0))
+          (fnn-fault "invalid FN_NATIVE_STATE_CHECKPOINT_READBACK_FLIP (expected a natural)"))
+        (let ((fd (fnn-open path (logior sb-posix:o-rdwr +fnn-o-nofollow+))))
+          (unwind-protect
+               (let ((one (fnn-make-octets 1)))
+                 (sb-posix:lseek fd offset sb-posix:seek-set)
+                 (when (= (fnn-read-fd fd one) 1)
+                   (setf (aref one 0) (logxor 1 (aref one 0)))
+                   (fnn-log-pwrite fd offset one)))
+            (fnn-close fd)))))))
+
+(defun fnn-state-checkpoint-verify (store path sequence)
+  "S045: the staged checkpoint at PATH read back from disk one segment at a
+time and verified by ACL2 (books/store-checkpoint-verify.lisp fn-sccv-step:
+each frame's header, index, count, SEQUENCE and seal over the chain;
+fn-sccv-final: five complete runs and nothing after them; KEYSTONE
+fn-sccv-final-ok-is-runs-ok).  Each segment is admitted against the
+profile's segment and file bounds before it is read (fn-store-sco-segment-
+admit, as the open's plan reads), and only its chunk is in the publication
+buffer: work and allocation per step are one segment's.  The history image
+region at the file's start is skipped as the plan skips it.  Answers
+fn-sccv-final's (:ok SEQUENCE), or (:refused REASON)."
+  (let ((header-octets (fnn-core 'fn-store-sco-segment-header-octets))
+        (trailer-octets (fnn-core 'fn-store-sco-trailer-octets))
+        (profile (fnn-store-config store))
+        (v (fnn-core 'fn-sccv-initial sequence))
+        (total 0) (at-start t)
+        (fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+))))
+    (unwind-protect
+         (loop
+           (let ((first (fnn-make-octets 1)))
+             (when (zerop (fnn-read-fd fd first))
+               (return (fnn-core 'fn-sccv-final v)))
+             (let ((rest (fnn-read-exact-fd fd (1- header-octets))))
+               (unless rest (return (list :refused :truncated)))
+               (let* ((head (concatenate '(vector (unsigned-byte 8)) first rest))
+                      (np (and at-start
+                               (fnn-core 'fn-his-image-header-np (fnn-octet-list head)))))
+                 (setq at-start nil)
+                 (if (integerp np)
+                     (sb-posix:lseek fd (+ header-octets (fnn-core 'fn-his-skip-octets np))
+                                     sb-posix:seek-set)
+                     (let* ((header (fnn-octet-list head))
+                            (admission (fnn-core 'fn-store-sco-segment-admit
+                                                 header total profile)))
+                       (unless (and (consp admission) (eq (first admission) :ok))
+                         (return (list :refused (if (consp admission)
+                                                    (second admission)
+                                                    :malformed))))
+                       (let* ((n (third admission))
+                              (chunk (fnn-read-exact-fd fd n))
+                              (trailer (and chunk (fnn-read-exact-fd fd trailer-octets))))
+                         (unless trailer (return (list :refused :truncated)))
+                         (incf total (second admission))
+                         (setq v (fnn-core 'fn-sccv-step v
+                                           (list header 0 n (fnn-octet-list trailer))
+                                           (fnn-octets-pub-fill chunk)))
+                         (when (and (consp v) (eq (first v) :refused))
+                           (return v)))))))))
+      (fnn-close fd))))
 
 (defun fnn-state-checkpoint-install (store stage)
   "fnn-state-checkpoint-write's second half: the staged file STAGE renamed
@@ -3457,7 +3546,8 @@ it covers are dropped (fnn-log-drop; T8)."
                  (lambda (fd)
                    (fnn-history-image-write fd image)
                    (setq steps (fnn-checkpoint-write-steps fd setup segment sequence
-                                                           profile st arun))))
+                                                           profile st arun)))
+                 sequence)
              (fnn-octets-pub-release))
            (when position
              (handler-case
@@ -6016,6 +6106,9 @@ tree root), or stop the build."
     ;; environment readings the image and the extracted program then share.
     "FN_NATIVE_TEST_CLOCK" "FN_NATIVE_TEST_ENTROPY"
     "FN_NATIVE_STATE_CHECKPOINT_FAULT" "FN_NATIVE_IMPORT_FAULT" "FN_NATIVE_EXPORT_FAULT"
+    ;; S045: one octet of the staged state checkpoint flipped after its
+    ;; fence, before the read-back (fnn-state-checkpoint-stage).
+    "FN_NATIVE_STATE_CHECKPOINT_READBACK_FLIP"
     "FN_NATIVE_CHECKPOINT_BUDGET_TEST" "FN_NATIVE_RECLAIM_FAULT"
     "FN_NATIVE_TEST_RECLAIM_STALL_FILE" "FN_NATIVE_RECLAIM_HOLD"
     "FN_NATIVE_PAGE_READ_HOLD"

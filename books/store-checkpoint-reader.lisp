@@ -642,7 +642,7 @@
 
 ; A 37-octet header list in front of anything parses as itself with the
 ; rest behind it.
-(local
+; Exported for books/store-checkpoint-verify.lisp (its step twin).
  (defthm fn-sccr-parse-header-of-append
    (implies (and (fn-scc-octet-listp header)
                  (equal (len header) *fn-scc-segment-header-octets*))
@@ -655,7 +655,7 @@
                               rest))))
    :hints (("Goal" :do-not-induct t
             :in-theory (e/d (fn-scc-parse-header fn-scc-u64-at)
-                            (fn-scc-le-value))))))
+                            (fn-scc-le-value)))))
 
 (local
  (defthm fn-sccr-parse-header-facts
@@ -700,7 +700,7 @@
                              (y (fn-scc-seal prev header (take l (append chunk trailer))))))
             :in-theory (e/d () (fn-scc-seal fn-sccr-seal-is-digest fn-sccr-unequal-lens))))))
 
-(local
+; Exported for books/store-checkpoint-verify.lisp (its step twin).
  (defthm fn-sccr-open-segment-of-frame
    (implies (and (fn-octets-p fn-octets) (fn-sccr-framep frame fn-octets)
                  (fn-scc-octet-listp prev))
@@ -713,7 +713,7 @@
             :cases ((equal (nth 2 (fn-scc-parse-header (nth 0 frame)))
                            (- (nth 2 frame) (nth 1 frame))))
             :in-theory (e/d (fn-scc-open-segment fn-sccb-frame-octets fn-sccr-open-frame)
-                            (fn-scc-parse-header fn-scc-seal fn-scc-le-value))))))
+                            (fn-scc-parse-header fn-scc-seal fn-scc-le-value)))))
 
 ; What a plan says of its first frame, forward, so that the frame lemma
 ; fires under the induction without the recursive recognizer opening.
@@ -896,5 +896,7 @@
 ;; docs/proof-style.md section 8).  An includer that needs one
 ;; enables it where it is used.
 (in-theory (disable (:definition fn-sccr-plan-segments)
+                    (:rewrite fn-sccr-parse-header-of-append)
+                    (:rewrite fn-sccr-open-segment-of-frame)
                     (:rewrite fn-sccr-cbor-octet-listp-is-scc-octet-listp)
                     (:rewrite fn-sccr-scc-octet-listp-is-cbor-octet-listp)))

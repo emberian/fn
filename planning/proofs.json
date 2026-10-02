@@ -21434,6 +21434,27 @@
         "fn-pio-direct-settle-happens-once"
       ],
       "progress_note": "Lane cold-read-ownership (Opus, 2026-10-01): REPL-admitted (6.7 s with dependencies from source) and 44 teeth forms passed on the laptop; certification and natives (test_native_page_io, slow_disk storm) in the lane's LANEDUMP."
+    },
+    {
+      "id": "PRF-1241",
+      "title": "A staged state checkpoint is read back from disk and verified before its rename, so the drop of the segments it covers never follows a file the open cannot frame",
+      "statement": "books/store-checkpoint-verify.lisp fn-sccv-final-ok-is-runs-ok (one hypothesis): when fn-sccv-final of the fold of fn-sccv-seg-step from (fn-sccv-initial SEQUENCE) over a file's segments is (:ok ...), the segments are exactly *fn-sccv-runs* (five: the arena run and the F, P, E, R tables) consecutive runs, each its first header's count of segments joining under the list codec's fn-scc-join from index 0 with SEQUENCE and the genesis, and nothing after them (fn-sccv-runs-okp). fn-sccv-step-is-seg-step: the buffer step the host calls (fn-sccv-step over a frame (HEADER A B TRAILER) of the octet buffer) is the list step on the frame's octets (fn-sccb-frame-octets). Host: host/native/io.lisp fnn-state-checkpoint-stage calls fnn-state-checkpoint-verify after the staged-durable cut and before fnn-state-checkpoint-install's rename; it reads the stage one admitted segment at a time (fn-store-sco-segment-admit), the chunk alone in the publication buffer, and calls fn-sccv-initial, fn-sccv-step and fn-sccv-final; a refusal is the known failure (fnn-refuse-io, the stage unlinked), so the old checkpoint and every log segment stay (fnn-log-drop runs only after the install). Scope: framing and seals only; the decode of the runs' contents is fn-scka-load-of-written-file's (PRF-083) for every file the writer produces; the history image region before the frames is not verified (its pages are checked at the open's first touch); the read-back may be served by the page cache, so it detects a write-path disagreement and corruption between write and read, not later media loss. Sweep 2026-10-03 S045.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-028",
+        "STO-011"
+      ],
+      "depends_on": [
+        "PRF-083"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": "tests/acl2/store-checkpoint-verify-tests.lisp (the writer's file for the reachable store of store-checkpoint-arena-tests accepted by the host-shaped fold and the list fold, its five runs join; the hypothesis removed: a short file is refused and its runs do not join; labelled mutations: a chunk bit, a header count bit, the last trailer bit, a dropped and a repeated last segment, another sequence, each refused); tests/test_native_state_checkpoint.py (FN_NATIVE_STATE_CHECKPOINT_READBACK_FLIP: the refused publication leaves the old checkpoint and the segments).",
+      "progress_note": "sweep-store, 2026-10-03: REPL-admitted (book and tests).",
+      "events": [
+        "fn-sccv-final-ok-is-runs-ok",
+        "fn-sccv-step-is-seg-step"
+      ]
     }
   ]
 }

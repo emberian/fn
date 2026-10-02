@@ -1094,6 +1094,19 @@
 (definterface fn-store-sco-segment-admit
   :class ::program)
 
+; S045: the staged checkpoint read back before its rename
+; (host/native/io.lisp fnn-state-checkpoint-verify).
+(definterface fn-sccv-initial
+  :class :common-lisp-compliant)
+
+(definterface fn-sccv-step
+  :class :common-lisp-compliant
+  :keystones (fn-sccv-step-is-seg-step))
+
+(definterface fn-sccv-final
+  :class :common-lisp-compliant
+  :keystones (fn-sccv-final-ok-is-runs-ok))
+
 (definterface fn-store-sco-segment-header-octets
   :class ::program)
 

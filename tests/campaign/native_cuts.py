@@ -350,12 +350,16 @@ def verify_state_checkpoint_cut_map() -> None:
     # fnn-state-checkpoint-write is its two halves in order (Q16: the online
     # reclaim pass stages off the owner mutex and installs under it).
     top = host_function(source, "fnn-state-checkpoint-write")
-    if "(fnn-state-checkpoint-install store (fnn-state-checkpoint-stage store octets))" not in top:
+    if "(fnn-state-checkpoint-install store (fnn-state-checkpoint-stage store octets sequence))" not in top:
         raise AssertionError("fnn-state-checkpoint-write is not stage then install")
     write = (host_function(source, "fnn-state-checkpoint-stage")
              + host_function(source, "fnn-state-checkpoint-install"))
     order = [write.index(":state-checkpoint-created :state-checkpoint-written"),
              write.index("(fnn-at store :state-checkpoint-staged-durable)"),
+             # S045: the staged file is read back and verified after its
+             # fence and before the rename that replaces the old checkpoint
+             # (a read: no step of the program, no cut).
+             write.index("(fnn-state-checkpoint-verify store stage sequence)"),
              write.index("(fnn-replace stage (fnn-state-checkpoint-path store))"),
              write.index("(fnn-at store :state-checkpoint-replaced)"),
              write.index("(fnn-fsync-dir (fnn-store-root store))"),

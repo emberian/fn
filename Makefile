@@ -582,6 +582,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-reader-establishment-tests \
 	tests/acl2/store-checkpoint-tables-tests \
 	tests/acl2/store-checkpoint-arena-tests \
+	tests/acl2/store-checkpoint-verify-tests \
 	books/heap-store-figure \
 	books/heap-figure \
 	books/heap-open-nursery \
@@ -1460,6 +1461,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-checkpoint-share \
 	books/store-checkpoint-arena-size-load \
 	books/store-checkpoint-arena-load \
+	books/store-checkpoint-verify \
 	books/store-checkpoint-arena-writer \
 	tests/acl2/octets-stobj-tests \
 	tests/acl2/octet-text-tests \
