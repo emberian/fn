@@ -565,15 +565,12 @@ class Book:
     # The theorem names of must-fails a ``defkeystone`` or ``defteeth``
     # generated beside a ground counterexample (its removal or mutant witness).
     paired_must_fails: set[str] = field(default_factory=set)
-    # Each ``(defteeth NAME ...)`` as (line, form): its visit and allocation
-    # theorems need NAME's statement, which the Tree supplies once every book
-    # is read (``Tree.__init__``), and tools/teeth_check.py expands it whole.
-    teeth_forms: list[tuple[int, list]] = field(default_factory=list)
-    # Keystone names with a ``(table fn-teeth ...)`` row (teeth declared, by
-    # defkeystone or defteeth) and with a ``(table fn-teeth-owed ...)`` row (a
-    # generator's debt): tools/keystone_emit.py holds the two against each other.
-    teeth_declared: set[str] = field(default_factory=set)
-    teeth_owed: set[str] = field(default_factory=set)
+    # Keystone name -> the parsed ``defteeth``/``defkeystone`` spec that
+    # declares its teeth (TEETH CONTRACT v1): tools/keystone_emit.py builds the
+    # obligation manifest from these, and from ``teeth_owed``, the
+    # ``(table fn-teeth-owed 'NAME ROW)`` rows a generator emits (name -> row).
+    teeth_declared: dict[str, dict] = field(default_factory=dict)
+    teeth_owed: dict[str, list] = field(default_factory=dict)
     # (line, reason) for each `must-fail' labelled `; teeth: prover-refusal
     # REASON' in the comment block directly above it: a refusal of proof
     # search, not a necessity witness (PKT-341; see PROVER_REFUSAL).
@@ -1047,11 +1044,13 @@ def defrecord_export_expansion(form: list) -> list:
 # (`fn-dk-refusal`) expands to nothing here: certification is the authority
 # on the refusal, and a guess at a refused form's events would be a lie.
 
-DEFTEETH_KEYS = {":hyps", ":witness", ":breaks", ":mutations", ":corrupt", ":visits",
-                 ":allocation", ":hints"}
-DEFKEYSTONE_KEYS = DEFTEETH_KEYS | {":subject", ":id", ":restates", ":rule-classes",
+DEFTEETH_KEYS = {":claim", ":subject", ":witness", ":witness-lemma", ":breaks",
+                 ":mutations", ":corrupt", ":visits", ":allocation", ":must-fail",
+                 ":hints"}
+DEFKEYSTONE_KEYS = DEFTEETH_KEYS | {":id", ":restates", ":hyps", ":rule-classes",
                                     ":otf-flg"}
 BOUND_SUFFIX = {":visits": "-visits-", ":allocation": "-allocation-"}
+EXEMPTIONS = {":not-applicable", ":deferred"}
 
 
 def _dk_bindingsp(x: object) -> bool:
@@ -1069,15 +1068,55 @@ def _dk_nil(x: object) -> object:
     return [] if isinstance(x, Sym) and str(x) == "nil" else x
 
 
-def _dk_nonep(x: object) -> bool:
-    """``(:none "why")``."""
-    return (isinstance(x, list) and len(x) == 2 and str(x[0]) == ":none"
-            and isinstance(x[1], str) and not isinstance(x[1], Sym) and bool(x[1]))
+def _dk_reasonp(x: object) -> bool:
+    return isinstance(x, str) and not isinstance(x, Sym) and bool(x)
+
+
+def _dk_exemptionp(x: object) -> bool:
+    """``(:not-applicable "why")`` or ``(:deferred "why")``."""
+    return (isinstance(x, list) and len(x) == 2 and str(x[0]) in EXEMPTIONS
+            and _dk_reasonp(x[1]))
+
+
+def _dk_plist(tail: list) -> dict | None:
+    """A keyword-value tail as a dict, or None where it is not one."""
+    if len(tail) % 2 or not all(isinstance(tail[i], Sym) and str(tail[i]).startswith(":")
+                                for i in range(0, len(tail), 2)):
+        return None
+    return keyword_plist(tail)
+
+
+def _dk_entry_opts(tail: list, keys: set[str]) -> dict | None:
+    """A witness entry's options (``:logical "why"``, ``:lemma THM``,
+    ``:fault "intent"``), or None."""
+    opts = _dk_plist(tail)
+    if opts is None or any(key not in keys for key in opts):
+        return None
+    if ":lemma" in opts and not (isinstance(opts[":lemma"], Sym) and str(opts[":lemma"]) != "nil"):
+        return None
+    for key in (":logical", ":fault"):
+        if key in opts and not _dk_reasonp(opts[key]):
+            return None
+    return opts
+
+
+def _dk_claimp(x: object) -> bool:
+    """``(((L1 H1) ... (Ln Hn)) C)`` with distinct labels."""
+    if not (isinstance(x, list) and len(x) == 2 and isinstance(x[0], list)):
+        return False
+    labels = []
+    for pair in x[0]:
+        if not (isinstance(pair, list) and len(pair) == 2 and isinstance(pair[0], Sym)
+                and str(pair[0]) != "nil"):
+            return False
+        labels.append(str(pair[0]))
+    return len(labels) == len(set(labels))
 
 
 def _dk_bound_entries(x: object) -> list | None:
-    """``((LABEL TERM BOUND :attains BINDINGS | :none "why" [:rests-on (A ...)]
-    [:hints H]) ...)`` as a list, or None where `fn-dk-visitsp` refuses."""
+    """``((LABEL V B :attains BINDINGS | :not-attained "why" [:rests-on (A ...)]
+    [:hints H] [:lemma THM]) ...)`` as a list, or None where `fn-dk-boundsp`
+    refuses."""
     x = _dk_nil(x)
     if not isinstance(x, list):
         return None
@@ -1085,21 +1124,17 @@ def _dk_bound_entries(x: object) -> list | None:
         if not (isinstance(entry, list) and len(entry) >= 3 and isinstance(entry[0], Sym)
                 and str(entry[0]) != "nil"):
             return None
-        tail = entry[3:]
-        if len(tail) % 2 or not all(isinstance(tail[i], Sym) and str(tail[i]).startswith(":")
-                                    for i in range(0, len(tail), 2)):
+        opts = _dk_plist(entry[3:])
+        if opts is None or any(key not in {":attains", ":not-attained", ":rests-on",
+                                           ":derived-by", ":hints", ":lemma"} for key in opts):
             return None
-        if any(str(tail[i]) not in {":attains", ":none", ":rests-on", ":hints"}
-               for i in range(0, len(tail), 2)):
+        if ":derived-by" in opts and not isinstance(opts[":derived-by"], Sym):
             return None
-        opts = keyword_plist(tail)
-        if (":attains" in opts) == (":none" in opts):
+        if (":attains" in opts) == (":not-attained" in opts):
             return None
         if ":attains" in opts and not _dk_bindingsp(opts[":attains"]):
             return None
-        if ":none" in opts and not (isinstance(opts[":none"], str)
-                                    and not isinstance(opts[":none"], Sym)
-                                    and opts[":none"]):
+        if ":not-attained" in opts and not _dk_reasonp(opts[":not-attained"]):
             return None
         if not isinstance(_dk_nil(opts.get(":rests-on", [])), list):
             return None
@@ -1108,35 +1143,40 @@ def _dk_bound_entries(x: object) -> list | None:
     return x
 
 
-def _dk_spec_parts(name: Sym, hyps: "list | None", options: dict) -> dict | None:
-    """The teeth half of a defkeystone or defteeth form, or None where
-    `fn-dk-spec-refusal` refuses.  HYPS is None for a defteeth form read
-    without its theorem's statement: the labels are then the :breaks' (one
-    per hypothesis is required, so they number the hypotheses)."""
+def _dk_constantp(x: object) -> bool:
+    if isinstance(x, Sym):
+        return str(x) in ("nil", "t")
+    return head(x) == "quote" and len(x) == 2 and isinstance(x[1], Sym) \
+        and str(x[1]) in ("nil", "t")
+
+
+def _dk_spec_parts(name: Sym, options: dict) -> dict | None:
+    """The parsed parts of a defteeth SPEC (or the SPEC a defkeystone form
+    stands for), or None where `fn-dk-spec-refusal` refuses: the same checks,
+    in the same order.  World-free: the claim is read, never the world."""
+    claim = options.get(":claim")
+    if claim is None or not _dk_claimp(claim):
+        return None
+    labels = [pair[0] for pair in claim[0]]
+    hyps = [pair[1] for pair in claim[0]]
+    concl = claim[1]
     witness = options.get(":witness")
     if not (witness and _dk_bindingsp(witness)):
+        return None
+    if ":witness-lemma" in options and not (isinstance(options[":witness-lemma"], Sym)
+                                           and str(options[":witness-lemma"]) != "nil"):
+        return None
+    subject = options.get(":subject")
+    if ":subject" in options and not (isinstance(subject, Sym) and str(subject) != "nil"):
         return None
     breaks = _dk_nil(options.get(":breaks", []))
     if not isinstance(breaks, list):
         return None
-    if ":hyps" in options:
-        labels = _dk_nil(options[":hyps"])
-    elif hyps is not None:
-        labels = [Sym(f"h{i}") for i in range(1, len(hyps) + 1)]
-    else:
-        labels = [Sym(f"h{i}") for i in range(1, len(breaks) + 1)]
-    wanted = len(hyps) if hyps is not None else len(breaks)
-    if not (isinstance(labels, list) and all(isinstance(x, Sym) for x in labels)
-            and len({str(x) for x in labels}) == len(labels) == wanted):
-        return None
     by_label: dict[str, list] = {}
     for entry in breaks:
-        if not (isinstance(entry, list) and entry and isinstance(entry[0], Sym)
-                and len(entry) in (2, 4) and _dk_bindingsp(entry[1])):
-            return None
-        if len(entry) == 4 and not (str(entry[2]) == ":corrupt"
-                                    and isinstance(entry[3], str)
-                                    and not isinstance(entry[3], Sym) and entry[3]):
+        if not (isinstance(entry, list) and len(entry) >= 2 and isinstance(entry[0], Sym)
+                and str(entry[0]) != "nil" and _dk_bindingsp(entry[1])
+                and _dk_entry_opts(entry[2:], {":logical", ":lemma"}) is not None):
             return None
         if str(entry[0]) in by_label:
             return None
@@ -1148,12 +1188,28 @@ def _dk_spec_parts(name: Sym, hyps: "list | None", options: dict) -> dict | None
     if ":mutations" not in options:
         return None
     mutations = options[":mutations"]
-    mutations_none = _dk_nonep(mutations)
-    mutations = [] if mutations_none else _dk_nil(mutations)
-    if not (isinstance(mutations, list) and all(
-            isinstance(m, list) and len(m) == 3 and isinstance(m[0], Sym)
-            and _dk_bindingsp(m[2]) for m in mutations)):
+    exemption = str(mutations[0]) if _dk_exemptionp(mutations) else None
+    mutations = [] if exemption else _dk_nil(mutations)
+    if not isinstance(mutations, list):
         return None
+    for m in mutations:
+        if not (isinstance(m, list) and len(m) >= 3 and isinstance(m[0], Sym)
+                and str(m[0]) != "nil" and isinstance(m[1], list) and _dk_bindingsp(m[2])
+                and _dk_entry_opts(m[3:], {":fault", ":logical", ":lemma"}) is not None
+                and ":fault" in keyword_plist(m[3:])):
+            return None
+        edit = m[1]
+        if head(edit) == ":conclusion" and len(edit) == 2:
+            if _dk_constantp(edit[1]) or edit[1] == concl:
+                return None
+        elif head(edit) == ":hypothesis" and len(edit) == 3 and isinstance(edit[1], Sym):
+            if str(edit[1]) not in {str(x) for x in labels}:
+                return None
+            if (isinstance(edit[2], Sym) and str(edit[2]) == "t") \
+                    or edit[2] == hyps[[str(x) for x in labels].index(str(edit[1]))]:
+                return None
+        else:
+            return None
     if len({str(m[0]) for m in mutations}) != len(mutations):
         return None
     corrupt = _dk_nil(options.get(":corrupt", []))
@@ -1165,57 +1221,86 @@ def _dk_spec_parts(name: Sym, hyps: "list | None", options: dict) -> dict | None
     allocation = _dk_bound_entries(options.get(":allocation", []))
     if visits is None or allocation is None:
         return None
-    return {"name": name, "hyps": hyps, "labels": labels, "witness": witness,
-            "breaks": by_label, "mutations": mutations, "mutations_none": mutations_none,
-            "corrupt": corrupt, "visits": visits, "allocation": allocation,
-            "options": options}
+    if (visits or allocation) and ":subject" not in options:
+        return None
+    must_fail = options.get(":must-fail", Sym("nil"))
+    if not (isinstance(must_fail, Sym) and str(must_fail) in ("t", "nil")):
+        return None
+    return {"name": name, "claim": claim, "hyps": hyps, "concl": concl, "labels": labels,
+            "witness": witness, "breaks": by_label, "mutations": mutations,
+            "exemption": exemption, "corrupt": corrupt, "visits": visits,
+            "allocation": allocation, "subject": subject,
+            "must_fail": str(must_fail) == "t", "options": options}
 
 
 def defteeth_parts(form: list) -> dict | None:
-    """The parsed parts of a well-formed ``(defteeth NAME . SPEC)``, read
-    WITHOUT the theorem's statement (``hyps`` is None), or None where the
-    Lisp macro would refuse on the spec alone.  Whether NAME is a theorem,
-    and its hypotheses, are the world's to say; tools/teeth_check.py
-    supplies the statement from the tree (``defteeth_expansion``)."""
+    """The parsed parts of a well-formed ``(defteeth NAME . SPEC)``, or None
+    where the Lisp macro would refuse on the SPEC alone (`fn-teeth-refusal`).
+    Whether NAME is a theorem whose formula is the translated claim is the
+    world's to say at certification."""
     if not (len(form) >= 2 and isinstance(form[1], Sym) and str(form[1]) != "nil"):
         return None
-    tail = list(form[2:])
-    if len(tail) % 2 or not all(isinstance(tail[i], Sym) and str(tail[i]).startswith(":")
-                                for i in range(0, len(tail), 2)):
+    options = _dk_plist(list(form[2:]))
+    if options is None or any(key not in DEFTEETH_KEYS for key in options):
         return None
-    if any(str(tail[i]) not in DEFTEETH_KEYS for i in range(0, len(tail), 2)):
-        return None
-    return _dk_spec_parts(form[1], None, keyword_plist(tail))
+    return _dk_spec_parts(form[1], options)
 
 
-def defkeystone_parts(form: list) -> dict | None:
-    """The parsed parts of a well-formed defkeystone form, or None.
-
-    The checks are `fn-dk-refusal`'s, in the same order; None where the
-    Lisp macro would refuse."""
-    if not (len(form) >= 3 and isinstance(form[1], Sym)):
-        return None
-    name, term, tail = form[1], form[2], list(form[3:])
-    if len(tail) % 2 or not all(isinstance(tail[i], Sym) and str(tail[i]).startswith(":")
-                                for i in range(0, len(tail), 2)):
-        return None
-    options = keyword_plist(tail)
-    if any(str(tail[i]) not in DEFKEYSTONE_KEYS for i in range(0, len(tail), 2)):
-        return None
+def defkeystone_claim(name: Sym, term: object, options: dict) -> list | None:
+    """The claim a defkeystone form states, from TERM's source
+    ``implies``/``and`` and its ``:hyps`` labels (`fn-dk-claim-of`); None
+    where the labels do not number the hypotheses."""
     implies = (isinstance(term, list) and len(term) == 3 and head(term) == "implies")
     if implies:
         hyps = term[1][1:] if head(term[1]) == "and" else [term[1]]
         concl = term[2]
     else:
         hyps, concl = [], term
+    if ":hyps" in options:
+        labels = _dk_nil(options[":hyps"])
+        if not (isinstance(labels, list) and all(isinstance(x, Sym) for x in labels)
+                and len({str(x) for x in labels}) == len(labels) == len(hyps)):
+            return None
+    else:
+        labels = [Sym(f"h{i}") for i in range(1, len(hyps) + 1)]
+    return [[[label, hyp] for label, hyp in zip(labels, hyps)], concl]
+
+
+def defkeystone_spec(form: list) -> dict | None:
+    """The defteeth SPEC a well-formed defkeystone form stands for
+    (`fn-dk-spec-of`), as a keyword dict, or None."""
+    if not (len(form) >= 3 and isinstance(form[1], Sym) and str(form[1]) != "nil"):
+        return None
+    options = _dk_plist(list(form[3:]))
+    if options is None or any(key not in DEFKEYSTONE_KEYS for key in options):
+        return None
+    if ":claim" in options:
+        return None
     subject = options.get(":subject")
     if not (isinstance(subject, Sym) and str(subject) != "nil"):
         return None
-    parts = _dk_spec_parts(name, hyps, options)
+    claim = defkeystone_claim(form[1], form[2], options)
+    if claim is None:
+        return None
+    spec = {":claim": claim}
+    spec.update({key: value for key, value in options.items()
+                 if key not in (":id", ":restates", ":hyps", ":rule-classes", ":otf-flg")})
+    return spec
+
+
+def defkeystone_parts(form: list) -> dict | None:
+    """The parsed parts of a well-formed defkeystone form, or None.
+
+    The checks are `fn-dk-refusal`'s; None where the Lisp macro would refuse."""
+    spec = defkeystone_spec(form)
+    if spec is None:
+        return None
+    parts = _dk_spec_parts(form[1], spec)
     if parts is None:
         return None
-    parts.update({"term": term, "concl": concl, "subject": subject,
-                  "id": options.get(":id"), "restates": options.get(":restates")})
+    options = keyword_plist(list(form[3:]))
+    parts.update({"term": form[2], "id": options.get(":id"),
+                  "restates": options.get(":restates"), "form_options": options})
     return parts
 
 
@@ -1260,13 +1345,14 @@ def _dk_quote(x: object) -> list:
 def defkeystone_names(parts: dict) -> dict[str, list[str]]:
     """The theorem names a well-formed form admits and asks to fail: the
     keystone (defkeystone only), its visit and allocation bounds (admitted),
-    the weakened and mutant statements (asked to fail)."""
+    and, under ``:must-fail t``, the weakened and mutant statements."""
     name = str(parts["name"])
+    musts = parts["must_fail"]
     return {"keystone": [name],
             "bounds": [f"{name}{BOUND_SUFFIX[kind]}{entry[0]}"
                        for kind in (":visits", ":allocation") for entry in parts[kind[1:]]],
-            "without": [f"{name}-without-{label}" for label in parts["labels"]],
-            "mutant": [f"{name}-mutant-{m[0]}" for m in parts["mutations"]]}
+            "without": [f"{name}-without-{label}" for label in parts["labels"]] if musts else [],
+            "mutant": [f"{name}-mutant-{m[0]}" for m in parts["mutations"]] if musts else []}
 
 
 def defteeth_names(parts: dict) -> dict[str, list[str]]:
@@ -1277,67 +1363,108 @@ def defteeth_names(parts: dict) -> dict[str, list[str]]:
 
 
 def _dk_bound_rows(entries: list) -> list:
-    """The ``(L TERM BOUND :attains|:none :rests-on (A ...))`` rows of the
-    fn-teeth table entry, as `fn-dk-bound-rows` writes them."""
+    """``(L V B :attains|:not-attained :rests-on (A ...))`` per entry, as
+    `fn-dk-bound-rows` writes them."""
     rows = []
     for entry in entries:
         opts = keyword_plist(entry[3:])
         rows.append([entry[0], entry[1], entry[2],
-                     Sym(":attains") if ":attains" in opts else Sym(":none"),
-                     Sym(":rests-on"), _dk_nil(opts.get(":rests-on", Sym("nil"))) or Sym("nil")])
+                     Sym(":attains") if ":attains" in opts else Sym(":not-attained"),
+                     Sym(":rests-on"), _dk_nil(opts.get(":rests-on", Sym("nil"))) or Sym("nil"),
+                     Sym(":derived-by"), opts.get(":derived-by", Sym("nil"))])
     return rows
 
 
-def teeth_row(parts: dict, by: str) -> list:
-    """``(table fn-teeth 'NAME '(...))`` as `fn-dk-row` writes it."""
-    row = [Sym(":by"), Sym(by), Sym(":hyps"), list(parts["labels"]) or Sym("nil"),
-           Sym(":mutations"),
-           Sym(":none") if parts["mutations_none"] else ([m[0] for m in parts["mutations"]]
-                                                          or Sym("nil")),
+def _dk_witness_kind(opts: dict) -> Sym:
+    if ":lemma" in opts:
+        return Sym(":lemma")
+    if ":logical" in opts:
+        return Sym(":logical")
+    return Sym(":reachable")
+
+
+def teeth_row(parts: dict, by: str, formula: object = None) -> list:
+    """``(table fn-teeth 'NAME ROW)`` as `fn-dk-row` writes it; FORMULA is
+    the world's theorem, nil in this static reading."""
+    removals = [[label, _dk_witness_kind(keyword_plist(parts["breaks"][str(label)][2:]))]
+                for label in parts["labels"]]
+    mutations: object = (Sym(parts["exemption"]) if parts["exemption"]
+                         else [[m[0], m[1][0], keyword_plist(m[3:])[":fault"]]
+                               for m in parts["mutations"]] or Sym("nil"))
+    row = [Sym(":by"), Sym(by), Sym(":claim"), parts["claim"],
+           Sym(":formula"), Sym("nil") if formula is None else formula,
+           Sym(":subject"), parts["subject"] if parts["subject"] is not None else Sym("nil"),
+           Sym(":witness"), Sym(":lemma") if ":witness-lemma" in parts["options"]
+           else Sym(":executable"),
+           Sym(":hyps"), list(parts["labels"]) or Sym("nil"),
+           Sym(":removals"), removals or Sym("nil"),
+           Sym(":mutations"), mutations,
            Sym(":corrupt"), [c[0] for c in parts["corrupt"]] or Sym("nil"),
            Sym(":visits"), _dk_bound_rows(parts["visits"]) or Sym("nil"),
            Sym(":allocation"), _dk_bound_rows(parts["allocation"]) or Sym("nil")]
     return [Sym("table"), Sym("fn-teeth"), _dk_quote(parts["name"]), _dk_quote(row)]
 
 
-def teeth_events(parts: dict, hyps: list, concl: object, by: str) -> list:
+def _dk_witness_event(name: Sym, msg: str, bindings: list, terms: list, opts: dict) -> list:
+    """`fn-dk-witness-event`: the assert-event, logical under :logical, or the
+    lemma check under :lemma."""
+    upper = str(name).upper()
+    claim = _dk_conj(terms)
+    if ":lemma" in opts:
+        return [Sym("fn-dk-lemma-check"), name, opts[":lemma"], bindings, claim, msg]
+    if ":logical" in opts:
+        return [Sym("assert-event"), _dk_logical(_dk_at(bindings, claim)),
+                Sym(":msg"), f"{upper}: {msg} (logical: {opts[':logical']})"]
+    return [Sym("assert-event"), _dk_at(bindings, claim), Sym(":msg"), f"{upper}: {msg}"]
+
+
+def teeth_events(parts: dict, by: str, formula: object = None) -> list:
     """The teeth of a keystone, as `fn-dk-teeth-events` emits them: the
     positive witness, removals, mutants, corrupted states, the bounds, the row."""
-    name, upper = parts["name"], str(parts["name"]).upper()
+    name = parts["name"]
     options, witness = parts["options"], parts["witness"]
+    hyps, concl, labels = parts["hyps"], parts["concl"], parts["labels"]
     hint_args = [Sym(":hints"), options[":hints"]] if ":hints" in options else []
-    events: list = [[Sym("assert-event"),
-                     _dk_conj([_dk_at(witness, h) for h in hyps] + [_dk_at(witness, concl)]),
-                     Sym(":msg"), f"{upper}: witness"]]
-    for index, label in enumerate(parts["labels"]):
+    musts = parts["must_fail"]
+    events: list = [_dk_witness_event(
+        name, "witness", witness, hyps + [concl],
+        {":lemma": options[":witness-lemma"]} if ":witness-lemma" in options else {})]
+    for index, label in enumerate(labels):
         entry = parts["breaks"][str(label)]
         bindings = _dk_override(witness, entry[1])
         retained = hyps[:index] + hyps[index + 1:]
-        why = f" (corrupted state: {entry[3]})" if len(entry) == 4 else ""
-        events.append([Sym("assert-event"),
-                       _dk_logical([Sym("and")]
-                                   + [_dk_at(bindings, h) for h in retained]
-                                   + [[Sym("not"), _dk_at(bindings, hyps[index])],
-                                      [Sym("not"), _dk_at(bindings, concl)]]),
-                       Sym(":msg"), f"{upper}: without {str(label).upper()}{why}"])
-        events.append([Sym("local"), [Sym("must-fail-checked"),
-                                      [Sym("defthm"), Sym(f"{name}-without-{label}"),
-                                       _dk_implies(retained, concl)] + hint_args]])
-    for mutation in parts["mutations"]:
-        bindings = _dk_override(witness, mutation[2])
-        events.append([Sym("assert-event"),
-                       _dk_logical([Sym("not"), _dk_at(bindings, mutation[1])]),
-                       Sym(":msg"), f"{upper}: mutant {str(mutation[0]).upper()}"])
-        events.append([Sym("local"), [Sym("must-fail-checked"),
-                                      [Sym("defthm"), Sym(f"{name}-mutant-{mutation[0]}"),
-                                       mutation[1]] + hint_args]])
+        events.append(_dk_witness_event(
+            name, f"without {str(label).upper()}", bindings,
+            retained + [[Sym("not"), hyps[index]], [Sym("not"), concl]],
+            keyword_plist(entry[2:])))
+        if musts:
+            events.append([Sym("local"), [Sym("must-fail-checked"),
+                                          [Sym("defthm"), Sym(f"{name}-without-{label}"),
+                                           _dk_implies(retained, concl)] + hint_args]])
+    for m in parts["mutations"]:
+        bindings = _dk_override(witness, m[2])
+        edit = m[1]
+        if head(edit) == ":conclusion":
+            terms = hyps + [concl, [Sym("not"), edit[1]]]
+            mutant = _dk_implies(hyps, edit[1])
+        else:
+            at = [str(x) for x in labels].index(str(edit[1]))
+            terms = (hyps[:at] + hyps[at + 1:]
+                     + [edit[2], [Sym("not"), hyps[at]], [Sym("not"), concl]])
+            mutant = _dk_implies(hyps[:at] + [edit[2]] + hyps[at + 1:], concl)
+        events.append(_dk_witness_event(name, f"mutant {str(m[0]).upper()}", bindings,
+                                        terms, keyword_plist(m[3:])))
+        if musts:
+            events.append([Sym("local"), [Sym("must-fail-checked"),
+                                          [Sym("defthm"), Sym(f"{name}-mutant-{m[0]}"),
+                                           mutant] + hint_args]])
     for corrupt in parts["corrupt"]:
         bindings = _dk_override(witness, corrupt[1])
         events.append([Sym("assert-event"),
-                       _dk_logical([Sym("and"),
-                                    [Sym("not"), _dk_at(bindings, _dk_conj(hyps))],
-                                    [Sym("not"), _dk_at(bindings, concl)]]),
-                       Sym(":msg"), f"{upper}: corrupt {str(corrupt[0]).upper()}"])
+                       _dk_logical(_dk_at(bindings, [Sym("and"),
+                                                     [Sym("not"), _dk_conj(hyps)],
+                                                     [Sym("not"), concl]])),
+                       Sym(":msg"), f"{str(name).upper()}: corrupt {str(corrupt[0]).upper()}"])
     for kind in (":visits", ":allocation"):
         for entry in parts[kind[1:]]:
             label, v, bound = entry[0], entry[1], entry[2]
@@ -1346,47 +1473,39 @@ def teeth_events(parts: dict, hyps: list, concl: object, by: str) -> list:
             claim = [Sym("<="), v, bound]
             events.append([Sym("defthm"), Sym(f"{name}{BOUND_SUFFIX[kind]}{label}"),
                            _dk_implies(hyps, claim)] + entry_hints)
-            events.append([Sym("assert-event"),
-                           _dk_conj([_dk_at(witness, h) for h in hyps]
-                                    + [_dk_at(witness, claim)]),
-                           Sym(":msg"), f"{upper}: {kind[1:]} {str(label).upper()}"])
+            events.append(_dk_witness_event(
+                name, f"{kind[1:]} {str(label).upper()}", witness, hyps + [claim],
+                {":lemma": opts[":lemma"]} if ":lemma" in opts else {}))
             if ":attains" in opts:
-                bindings = _dk_override(witness, opts[":attains"])
-                events.append([Sym("assert-event"),
-                               _dk_conj([_dk_at(bindings, h) for h in hyps]
-                                        + [_dk_at(bindings, [Sym("equal"), v, bound])]),
-                               Sym(":msg"), f"{upper}: attains {str(label).upper()}"])
-    events.append(teeth_row(parts, by))
+                events.append(_dk_witness_event(
+                    name, f"attains {str(label).upper()}",
+                    _dk_override(witness, opts[":attains"]),
+                    hyps + [[Sym("equal"), v, bound]], {}))
+    events.append(teeth_row(parts, by, formula))
     return events
 
 
-def defteeth_expansion(form: list, statement: object) -> list:
-    """The events ``(defteeth NAME ...)`` generates for a theorem whose
-    source STATEMENT the caller supplies (the tree's), as the ledger sees
-    them: one ``progn``, or nothing for a form the Lisp macro refuses or a
-    statement whose hypotheses the :breaks do not number."""
+def defteeth_expansion(form: list) -> list:
+    """The events ``(defteeth NAME ...)`` generates, as the ledger sees them:
+    one ``progn`` of the teeth (``:formula nil`` in the row, which the world
+    fills at certification), or nothing for a form the Lisp macro refuses on
+    its spec."""
     parts = defteeth_parts(form)
     if parts is None:
         return []
-    implies = (isinstance(statement, list) and len(statement) == 3
-               and head(statement) == "implies")
-    if implies:
-        hyps = statement[1][1:] if head(statement[1]) == "and" else [statement[1]]
-        concl = statement[2]
-    else:
-        hyps, concl = [], statement
-    if len(hyps) != len(parts["labels"]):
-        return []
-    return [[Sym("progn")] + teeth_events(parts, hyps, concl, "defteeth")]
+    return [[Sym("progn")] + teeth_events(parts, "defteeth")]
 
 
 def defkeystone_expansion(form: list) -> list:
     """The events ``(defkeystone ...)`` generates, as the ledger sees them:
-    one ``progn``, or nothing for a form the Lisp macro refuses."""
+    the defthm, the restates check and the teeth (which the Lisp macro binds
+    to the world in a make-event: ``fn-dk-expand`` emits the make-event, and
+    its expansion is ``teeth_events`` of the spec), in one ``progn``; nothing
+    for a form the Lisp macro refuses."""
     parts = defkeystone_parts(form)
     if parts is None:
         return []
-    name, options = parts["name"], parts["options"]
+    name, options = parts["name"], parts["form_options"]
     upper = str(name).upper()
     hint_args = [Sym(":hints"), options[":hints"]] if ":hints" in options else []
     thm = [Sym("defthm"), name, parts["term"]] + hint_args
@@ -1403,8 +1522,26 @@ def defkeystone_expansion(form: list) -> list:
                         [Sym("getpropc"), _dk_quote(parts["restates"]),
                          _dk_quote(Sym("theorem")), Sym("nil"), world]],
                        Sym(":msg"), f"{upper}: restates"])
-    events += teeth_events(parts, parts["hyps"], parts["concl"], "defkeystone")
+    events += teeth_events(parts, "defkeystone")
     return [[Sym("progn")] + events]
+
+
+def defkeystone_make_event(form: list) -> list | None:
+    """The literal `fn-dk-expand` emits for a defkeystone form: the defthm,
+    the restates check and the ``(make-event (fn-dt-expand 'NAME 'defkeystone
+    'SPEC state))`` that binds the teeth to the world.  For the pinned-literal
+    test; `defkeystone_expansion` is what the tools read."""
+    parts = defkeystone_parts(form)
+    if parts is None:
+        return None
+    expansion = defkeystone_expansion(form)[0]
+    head_events = expansion[1:2 + (parts["restates"] is not None)]
+    spec: list = []
+    for key, value in defkeystone_spec(form).items():
+        spec += [Sym(key), value]
+    return [Sym("progn")] + head_events + [
+        [Sym("make-event"), [Sym("fn-dt-expand"), _dk_quote(parts["name"]),
+                             _dk_quote(Sym("defkeystone")), _dk_quote(spec), Sym("state")]]]
 
 
 GENERATOR_EXPANSIONS = {
@@ -1503,24 +1640,17 @@ def record(book: Book, form: object, line: int, *, local: bool,
             # bare general claim (`teeth_form`).
             names = defkeystone_names(parts)
             book.paired_must_fails |= set(names["without"] + names["mutant"])
+            book.teeth_declared[str(parts["name"])] = parts
     if name == "defteeth":
-        # Its statement is the world's: the paired must-fails and the row are
-        # known from the form alone, the bound theorems once the Tree has
-        # every book's theorems (Tree.__init__).
         parts = defteeth_parts(form)
         if parts is not None and not suppressed:
             names = defteeth_names(parts)
             book.paired_must_fails |= set(names["without"] + names["mutant"])
-            book.teeth_declared.add(str(parts["name"]))
-            book.must_fails += len(names["without"]) + len(names["mutant"])
-            book.teeth_forms.append((line, form))
-        return
-    if name == "table" and len(form) >= 3 and head(form[2]) == "quote" \
-            and isinstance(form[2][1], Sym) and not suppressed:
-        if str(form[1]) == "fn-teeth":
-            book.teeth_declared.add(str(form[2][1]))
-        elif str(form[1]) == "fn-teeth-owed":
-            book.teeth_owed.add(str(form[2][1]))
+            book.teeth_declared[str(parts["name"])] = parts
+    if name == "table" and len(form) >= 4 and head(form[2]) == "quote" \
+            and isinstance(form[2][1], Sym) and head(form[3]) == "quote" and not suppressed:
+        if str(form[1]) == "fn-teeth-owed" and isinstance(form[3][1], list):
+            book.teeth_owed[str(form[2][1])] = form[3][1]
         return
     expansion = generated_expansion(form)
     if expansion is not None:
@@ -1653,26 +1783,6 @@ class Tree:
                     self.functions.setdefault(function.name, function)
             for theorem in book.theorems:
                 self.theorems.setdefault(theorem.name, theorem)
-        # A defteeth form's visit and allocation bounds are theorems of its
-        # book, stated over the hypotheses of a theorem another book admitted:
-        # known only now that every book is read.
-        for book in books.values():
-            for line, form in book.teeth_forms:
-                parts = defteeth_parts(form)
-                source = self.theorems.get(str(form[1])) if parts else None
-                if source is None:
-                    continue
-                for event in defteeth_expansion(form, source.statement):
-                    for item in event[1:]:
-                        if head(item) != "defthm":
-                            continue
-                        options = keyword_plist(item[3:])
-                        theorem = Theorem(name=str(item[1]), book=book.path, line=line,
-                                          statement=item[2], hints=options.get(":hints"),
-                                          rest=list(item[3:]), local=False, disabled=False)
-                        book.theorems.append(theorem)
-                        book.definitions.add(theorem.name)
-                        self.theorems.setdefault(theorem.name, theorem)
         self.closure = root_closure(books, roots)
         # Every theorem's suspect reasons: most of the analysis (~75 s of
         # ~82 s on persvati, 2026-09-28).  A per-book caller (`--book')
@@ -3755,7 +3865,7 @@ _TREE_CACHE: "tuple[str, Tree] | None" = None
 # off; a directory path moves it.
 TREE_CACHE_DIR = Path(__file__).resolve().parents[1] / "build" / "cache" / "ledger-tree"
 TREE_CACHE_ENTRIES = 4
-_TREE_CACHE_FORMAT = b"fn-ledger-tree-cache-3"
+_TREE_CACHE_FORMAT = b"fn-ledger-tree-cache-4"
 
 
 def _tree_cache_dir() -> "Path | None":

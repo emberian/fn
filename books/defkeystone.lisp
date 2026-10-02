@@ -22,11 +22,11 @@
 ;     :breaks ((Li ((VAR VAL) ...) [:logical "why outside the guard domain"]
 ;                  [:lemma THM]) ...)       ; one per Li
 ;     :mutations ((L (:conclusion C2) | (:hypothesis Li H2) ((VAR VAL) ...)
-;                    [:lemma THM]) ...)
+;                    :fault "the fault it models" [:logical "why"] [:lemma THM]) ...)
 ;                | (:not-applicable "why") | (:deferred "why")
 ;     [:corrupt ((L ((VAR VAL) ...)) ...)]
 ;     [:visits ((L V B :attains ((VAR VAL) ...) | :not-attained "why"
-;                  [:rests-on (A ...)] [:hints H]) ...)]
+;                  [:rests-on (A ...)] [:derived-by RECORD] [:hints H]) ...)]
 ;     [:allocation (... the same shape ...)]
 ;     [:must-fail t]                        ; also register the weakened and
 ;                                           ; mutant statements as must-fail-checked
@@ -51,15 +51,20 @@
 ; LOGICAL value (with-guard-checking :none) and the row records the label as
 ; a :logical removal.  Any witness entry may say `:lemma THM' instead: THM is
 ; a theorem of the world whose formula must EQUAL the translated claim
-; instantiated at the entry's bindings (a predicate no evaluator runs is
-; witnessed by a proved ground fact, never pretended executed).
+; instantiated at the entry's bindings: the substitution must be CLOSED
+; (every variable of the claim bound, every value variable-free, no stobj
+; among them; else refused by name), and the row records the mode, since a
+; ground equality proves satisfiability, never guards or reachability (a
+; predicate no evaluator runs is witnessed by a proved ground fact, never
+; pretended executed).
 ;
-; MUTATIONS (c04 1c) are CHECKED EDITS of the claim, never a free term:
-; (:conclusion C2) is the claim with C2 for C (refused when C2 is C, nil or
-; t); (:hypothesis Li H2) has H2 for Hi (refused when H2 is Hi or t).  At the
-; mutation witness every Hi holds, C holds, and the edited part fails ((not
-; C2); for a hypothesis edit, H2 holds and C fails).  `:not-applicable' and
-; `:deferred', each with a reason, are RECORDED and counted; a deferred
+; MUTATIONS (c04 1c) are CHECKED EDITS of the claim, never a free term, each
+; naming the FAULT it models (:fault "..."): (:conclusion C2) is the claim
+; with C2 for C (refused when C2 is C, nil or t); (:hypothesis Li H2) has H2
+; for Hi (refused when H2 is Hi or t).  At the mutation witness: for a
+; conclusion edit every Hi holds, C holds and (not C2); for a hypothesis edit
+; every other Hj holds, H2 holds, (not Hi) and (not C).  `:not-applicable'
+; and `:deferred', each with a reason, are RECORDED and counted; a deferred
 ; mutation is not a tooth.
 ;
 ; BOUNDS (c04 1d).  A :visits or :allocation entry states a cost claim
@@ -67,9 +72,11 @@
 ; with the entry's :hints, evaluated at the witness, and (equal V B) at the
 ; :attains bindings or `:not-attained "why"' recorded: a bound nothing
 ; attains is slack, not a claim.  V is the caller's visit-counting term;
-; this book records it and does not derive it (COST-GATE / DEF-ENTRY tie it
-; to the executed definition).  `:rests-on (A ...)' names the facts the
-; bound rests on.  A bound without :subject is refused.
+; this book records it and does not derive it: `:derived-by RECORD' names
+; the cost-derivation record that ties V to the subject's executed
+; definition (DEF-ENTRY / COST-GATE); a bound without one is recorded
+; :underived and counted as debt, never coverage.  `:rests-on (A ...)' names
+; the facts the bound rests on.  A bound without :subject is refused.
 ;
 ; MUST-FAIL (c04 1f, 6e) is OFF by default: a must-fail is proof-search
 ; exhaustion within a step limit, not a counterexample; the evaluated
@@ -86,10 +93,11 @@
 ; "NAME: corrupt L", "NAME: visits L", "NAME: attains L").
 ;
 ; ROW IDENTITY.  ROW = (:by defteeth|defkeystone :claim CLAIM :formula
-; FORMULA :subject FN :hyps (L...) :removals ((L :reachable|:logical) ...)
-; :mutations ((L :conclusion|:hypothesis) ...) | :not-applicable | :deferred
-; :corrupt (L...) :visits ((L V B :attains|:not-attained :rests-on (A...))
-; ...) :allocation (...)).  FORMULA is the world's theorem at declaration: a
+; FORMULA :subject FN :witness :executable|:lemma :hyps (L...)
+; :removals ((L :reachable|:logical|:lemma) ...)
+; :mutations ((L :conclusion|:hypothesis "fault") ...) | :not-applicable | :deferred
+; :corrupt (L...) :visits ((L V B :attains|:not-attained :rests-on (A...)
+; :derived-by RECORD|nil) ...) :allocation (...)).  FORMULA is the world's theorem at declaration: a
 ; restatement under the same name is a new obligation (defteeth-check sees
 ; the row no longer match the world).  Declared once per name.
 ;
@@ -247,13 +255,16 @@
 
 (defun fn-dk-entry-optsp (opts keys)
   (declare (xargs :mode :program))
-  ; a witness entry's options: among KEYS, :lemma a symbol, :logical a reason
+  ; a witness entry's options: among KEYS, :lemma a symbol, :logical and
+  ; :fault reasons
   (and (keyword-value-listp opts)
        (null (fn-dk-unknown-keys-of opts keys))
        (or (null (assoc-keyword :lemma opts))
            (and (symbolp (fn-dk-get :lemma opts)) (fn-dk-get :lemma opts)))
        (or (null (assoc-keyword :logical opts))
-           (fn-dk-reasonp (fn-dk-get :logical opts)))))
+           (fn-dk-reasonp (fn-dk-get :logical opts)))
+       (or (null (assoc-keyword :fault opts))
+           (fn-dk-reasonp (fn-dk-get :fault opts)))))
 
 (defun fn-dk-break-entryp (x)
   (declare (xargs :mode :program))
@@ -287,12 +298,13 @@
 
 (defun fn-dk-mutation-entryp (x)
   (declare (xargs :mode :program))
-  ; (LABEL EDIT BINDINGS [:logical "why"] [:lemma THM])
+  ; (LABEL EDIT BINDINGS :fault "intent" [:logical "why"] [:lemma THM])
   (and (true-listp x) (<= 3 (len x))
        (symbolp (car x)) (car x)
        (fn-dk-editp (cadr x))
        (fn-dk-bindingsp (caddr x))
-       (fn-dk-entry-optsp (cdddr x) '(:logical :lemma))))
+       (fn-dk-entry-optsp (cdddr x) '(:fault :logical :lemma))
+       (assoc-keyword :fault (cdddr x))))
 
 (defun fn-dk-mutationsp (x)
   (declare (xargs :mode :program))
@@ -323,7 +335,9 @@
   (and (true-listp x) (<= 3 (len x))
        (symbolp (car x)) (car x)
        (keyword-value-listp (cdddr x))
-       (null (fn-dk-unknown-keys-of (cdddr x) '(:attains :not-attained :rests-on :hints :lemma)))
+       (null (fn-dk-unknown-keys-of (cdddr x)
+                                    '(:attains :not-attained :rests-on :derived-by :hints :lemma)))
+       (symbolp (fn-dk-get :derived-by (cdddr x)))
        (let ((attains (assoc-keyword :attains (cdddr x)))
              (none (assoc-keyword :not-attained (cdddr x))))
          (and (or attains none)
@@ -556,13 +570,15 @@
 
 (defun fn-dk-mutant-witness-terms (claim edit)
   (declare (xargs :mode :program))
-  ; every Hi, C, and the failure of the edited part
+  ; a conclusion edit: every Hi, C, (not C2); a hypothesis edit: every other
+  ; Hj, H2, (not Hi), (not C)
   (let ((hyps (fn-dk-claim-hyps claim))
         (concl (fn-dk-claim-concl claim)))
     (if (eq (car edit) :conclusion)
         (append hyps (list concl `(not ,(cadr edit))))
-      (append (fn-dk-without (position-eq (cadr edit) (fn-dk-claim-labels claim)) hyps)
-              (list (caddr edit) `(not ,concl))))))
+      (let ((i (position-eq (cadr edit) (fn-dk-claim-labels claim))))
+        (append (fn-dk-without i hyps)
+                (list (caddr edit) `(not ,(nth i hyps)) `(not ,concl)))))))
 
 (defun fn-dk-mutants (name claim witness mutations hint-args must-fail)
   (declare (xargs :mode :program))
@@ -627,30 +643,35 @@
 
 (defun fn-dk-bound-rows (entries)
   (declare (xargs :mode :program))
-  ; (L V B :attains|:not-attained :rests-on (A ...)) per entry
+  ; (L V B :attains|:not-attained :rests-on (A ...) :derived-by RECORD|nil)
   (if (atom entries)
       nil
     (let ((opts (cdddr (car entries))))
       (cons (list (car (car entries)) (cadr (car entries)) (caddr (car entries))
                   (if (assoc-keyword :attains opts) :attains :not-attained)
-                  :rests-on (fn-dk-get :rests-on opts))
+                  :rests-on (fn-dk-get :rests-on opts)
+                  :derived-by (fn-dk-get :derived-by opts))
             (fn-dk-bound-rows (cdr entries))))))
+
+(defun fn-dk-witness-kind (opts)
+  (declare (xargs :mode :program))
+  (cond ((assoc-keyword :lemma opts) :lemma)
+        ((assoc-keyword :logical opts) :logical)
+        (t :reachable)))
 
 (defun fn-dk-removal-rows (labels breaks)
   (declare (xargs :mode :program))
   (if (atom labels)
       nil
-    (cons (list (car labels)
-                (if (assoc-keyword :logical (cddr (assoc-eq (car labels) breaks)))
-                    :logical
-                  :reachable))
+    (cons (list (car labels) (fn-dk-witness-kind (cddr (assoc-eq (car labels) breaks))))
           (fn-dk-removal-rows (cdr labels) breaks))))
 
 (defun fn-dk-mutation-rows (mutations)
   (declare (xargs :mode :program))
   (if (atom mutations)
       nil
-    (cons (list (car (car mutations)) (car (cadr (car mutations))))
+    (cons (list (car (car mutations)) (car (cadr (car mutations)))
+                (fn-dk-get :fault (cdddr (car mutations))))
           (fn-dk-mutation-rows (cdr mutations)))))
 
 (defun fn-dk-row (name by claim formula kvs)
@@ -663,6 +684,7 @@
               :claim ,claim
               :formula ,formula
               :subject ,(fn-dk-get :subject kvs)
+              :witness ,(if (assoc-keyword :witness-lemma kvs) :lemma :executable)
               :hyps ,(fn-dk-claim-labels claim)
               :removals ,(fn-dk-removal-rows (fn-dk-claim-labels claim) (fn-dk-get :breaks kvs))
               :mutations ,(if (fn-dk-exemptionp mutations)
@@ -740,6 +762,9 @@
     (:lemma-differs (msg "~x0: the witness lemma ~x1 states ~x2, not the instantiated ~
                           claim ~x3." (cadr reason) (caddr reason) (cadddr reason)
                          (car (cddddr reason))))
+    (:lemma-open (msg "~x0: the witness lemma's substitution is not closed: ~x1 ~
+                       (every variable of the claim bound to a variable-free value, ~
+                       none a stobj)." (cadr reason) (caddr reason)))
     (:declared-twice (msg "~x0 already has teeth in this world (table fn-teeth); ~
                            teeth are declared once." (cadr reason)))
     (:unknown-keyword (msg "unknown keyword(s) ~&0; the keywords are ~&1."
@@ -782,15 +807,33 @@
           (fn-dt-bindings-alist (cdr bindings) w)
           (mv bad (acons (car (car bindings)) val rest)))))))
 
+(defun fn-dt-open-value (alist)
+  (declare (xargs :mode :program))
+  ; the first bound variable whose value is not variable-free, or nil
+  (cond ((atom alist) nil)
+        ((all-vars (cdr (car alist))) (car (car alist)))
+        (t (fn-dt-open-value (cdr alist)))))
+
+(defun fn-dt-first-stobj (vars w)
+  (declare (xargs :mode :program))
+  (cond ((atom vars) nil)
+        ((stobjp (car vars) t w) (car vars))
+        (t (fn-dt-first-stobj (cdr vars) w))))
+
 (defun fn-dt-lemma-problem (name lemma bindings claim w)
   (declare (xargs :mode :program))
   ; nil, or the refusal: LEMMA's formula is not CLAIM translated and
-  ; instantiated at BINDINGS
+  ; instantiated at BINDINGS, or the substitution is not closed
   (mv-let (bad term)
     (fn-dt-translate claim w)
     (mv-let (badb alist)
       (fn-dt-bindings-alist bindings w)
       (cond ((or bad badb) (list :bad-term name (car (or bad badb))))
+            ((not (subsetp-eq (all-vars term) (strip-cars alist)))
+             (list :lemma-open name (set-difference-eq (all-vars term) (strip-cars alist))))
+            ((fn-dt-open-value alist) (list :lemma-open name (fn-dt-open-value alist)))
+            ((fn-dt-first-stobj (strip-cars alist) w)
+             (list :lemma-open name (fn-dt-first-stobj (strip-cars alist) w)))
             ((null (getpropc lemma 'theorem nil w)) (list :not-a-theorem lemma))
             ((not (equal (getpropc lemma 'theorem nil w) (fn-dt-subst term alist)))
              (list :lemma-differs name lemma (getpropc lemma 'theorem nil w)
@@ -845,11 +888,18 @@
                          ',(fn-dk-refusal-text reason)))
       (fn-teeth-form name kvs))))
 
+(defun fn-dk-remove-keys (kvs keys)
+  (declare (xargs :mode :program))
+  ; KVS without the pairs whose key is among KEYS
+  (cond ((atom kvs) nil)
+        ((member-eq (car kvs) keys) (fn-dk-remove-keys (cddr kvs) keys))
+        (t (list* (car kvs) (cadr kvs) (fn-dk-remove-keys (cddr kvs) keys)))))
+
 (defun fn-dk-spec-of (name term kvs)
   (declare (xargs :mode :program))
   ; the defteeth SPEC a defkeystone form stands for
   (list* :claim (fn-dk-claim-of name term kvs)
-         (fn-dk-unknown-keys-of kvs '(:id :restates :hyps :rule-classes :otf-flg))))
+         (fn-dk-remove-keys kvs '(:id :restates :hyps :rule-classes :otf-flg))))
 
 (defun fn-dk-expand (form)
   (declare (xargs :mode :program))
