@@ -620,7 +620,7 @@
         (t :uncertain)))
 
 ; Recovery is cold-path validation of the ACL2 byte replay result.  The host
-; obtains that result from fn-bpnf-replay-rows on observed FNBS name/bytes;
+; obtains that result from fn-bpnf-family-replay-rows on observed FNBS name/bytes;
 ; the composition book binds the event argument to that exact call.
 ;
 ; The executable is one pass (lane bp-catalog): the row count and the octet

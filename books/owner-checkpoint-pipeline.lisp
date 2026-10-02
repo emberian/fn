@@ -913,3 +913,21 @@
 (verify-guards fn-ockp-step
   :hints (("Goal" :in-theory (enable fn-ockp-statep fn-sco-at))))
 
+; Q3h (assurance-remainder-4): the logical loop runs guard-verified too.
+; The host loops on fn-ockp-step itself (host/native/io.lisp
+; fnn-command-state-checkpoint); fn-ockp-run is that loop in the logic, the
+; subject of fn-ockp-run-writes-the-file, and its guard is the step's plus a
+; natural FUEL: each :ok step keeps fn-ockp-statep
+; (fn-ockp-step-preserves-statep) and hands fn-sccb-plan-octets a frame list.
+(local
+ (defthm fn-ockp-step-frames-true-list-listp
+   (true-list-listp (mv-nth 1 (fn-ockp-step setup pst b bytes seg s segment-bound file-bound
+                                            fn-octets)))
+   :hints (("Goal" :in-theory (e/d (fn-ockp-step fn-ockp-batch)
+                                   (fn-scc-header fn-scc-seal fn-ockp-cut-frames
+                                    fn-ockp-last-frame fn-ockp-cut fn-ockp-chain-end
+                                    fn-ockp-take fn-ockp-drop fn-sct-rows-program))))))
+
+(verify-guards fn-ockp-run
+  :hints (("Goal" :in-theory (disable fn-ockp-step fn-sccb-plan-octets))))
+

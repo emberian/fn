@@ -521,9 +521,9 @@ keeps."
         (len (fn-own-view-raw view))))
 
 (defun fn-nls-counts-words (seen)
-  (declare (xargs :guard (consp seen)))
-  (append (fn-nls-text "transactions=") (fn-nls-nat (nfix (car seen)))
-          (fn-nls-field "articles" (nfix (cdr seen)))))
+  (declare (xargs :guard t))
+  (append (fn-nls-text "transactions=") (fn-nls-nat (nfix (fn-ag-car seen)))
+          (fn-nls-field "articles" (nfix (fn-ag-cdr seen)))))
 
 (defun fn-nls-report (kind profile s bytes seen cfg pins obs fn-arena)
   "The octets `operator CONFIG KIND' prints.
@@ -1429,3 +1429,28 @@ malformed page."
     :hints (("Goal" :in-theory (disable fn-nls-obligation-line)))))
 (verify-guards fn-nls-retention)
 (verify-guards fn-nls-pins-line)
+
+; Q3h (assurance-remainder-4): the FNLS report runs guard-verified from the
+; host's entry down (host/native-live-status-host.lisp calls
+; books/native-status-columns.lisp fn-nsc-answer-report, which is
+; fn-nh-answer-report under the column relation; the offline command calls
+; fn-nls-offline-report).  The reclaim line's figures depend on the clock
+; observation (a release-after rule is measured at NOW), so they are not a
+; carried quantity: each report computes them, in ONE walk of the Store's
+; articles (fn-nsc-tally-loop on the served path, from the catalog column;
+; NOT payload-free: a GONE article's tomb length reads its payload,
+; fn-rcl-payload-tomb-length -> fn-rcl-payload-bytes in
+; books/store-reclaim-holders.lisp, and a catalog miss falls back to
+; fn-nntp-article-tombstonep in books/served-columns.lisp).  The walk is NOT O(1) per article: each article asks
+; fn-rcl-verdict-heldp (books/store-reclaim.lisp), a walk of the verdict
+; list, so a report costs O(articles x verdicts), quadratic when every
+; article carries a verdict.  Nor is it a D27 work quantum: the walk runs to
+; the end, unyielding, under fnn-owner-serialized (the yielding inspector
+; path, host/native/control.lisp, is unreached: inspector-binding defaults
+; to NIL at host/native/owner.lisp and nothing sets it).  Both are open
+; (Codex r46 F5/F6; the coordinator queued the fix: a keyed verdict set, or
+; a yielding walk).  Nothing on the walk revalidates a carried invariant.
+(verify-guards fn-nls-reclaim-words)
+(verify-guards fn-nls-report)
+(verify-guards fn-nls-offline-report)
+(verify-guards fn-nls-live-report)

@@ -391,7 +391,7 @@
                                   (fn-own-sub-mark sub)
                                   (fn-peer-make-submission
                                    "p" kind (fn-nntp-string-octets *ospt-msgid*)
-                                   *tha-received*))
+                                   *tha-received*) nil)
                  (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
 (defconst *ospt-transit* (ospt-with-transit *ospt-taken* :ihave))
 (assert-event (fn-own-transit-subp (fn-own-inflight *ospt-transit*)))

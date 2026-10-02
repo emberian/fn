@@ -948,7 +948,9 @@ def structural_result_projection(graph: "Graph", name: str) -> bool:
             return False, False, False
         if term == ["quote", "nil"] or term == ["quote", []]:
             return True, False, True
-        if re.fullmatch(r"c[ad]+r", head) and len(term) == 2:
+        # Only the standard Common Lisp selectors. Longer lookalike names
+        # may be user-defined functions that transform the payload.
+        if re.fullmatch(r"c[ad]{1,4}r", head) and len(term) == 2:
             child = value(term[1], env)
             return child if child[2] else (False, False, False)
         if (head == "if" and len(term) == 4 and shape(term[1], env)
