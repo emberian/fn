@@ -41,7 +41,9 @@
          (equal (fn-lpc-at 2 out) pin)))
   :rule-classes nil)
 
-(defconst *lpvcat-tomb* '(0 70 78 45 82 67 76 49 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120 120))
+; The one tombstone format (FN-RCL2, *fn-rcl-tombstone-fixed* = 145 octets;
+; the FN-RCL1 fixture went with the no-migrations decision).
+(defconst *lpvcat-tomb* (append *fn-rcl-magic* (make-list (- *fn-rcl-tombstone-fixed* 8) :initial-element 120)))
 (defthm lpvcat-tomb-actual-tick-positive
   (let* ((arena (list nil *lpvcat-tomb*))
          (h 1) (pin '(:origin 17))
@@ -54,7 +56,7 @@
          (equal (fn-lpc-at 2 out) pin)))
   :rule-classes nil)
 
-(defconst *lpvcat-short-magic* '(0 70 78 45 82 67 76 49))
+(defconst *lpvcat-short-magic* *fn-rcl-magic*)
 (defthm lpvcat-short-magic-actual-tick-positive
   (let* ((arena (list nil *lpvcat-short-magic*))
          (h 1) (pin '(:origin 17))
@@ -118,7 +120,7 @@
   :rule-classes nil)
 
 (defthm lpvcat-feed-prefix-positive
-  (let ((s (fn-lpc-begin 0 89 :pin)) (bytes *lpvcat-tomb*))
+  (let ((s (fn-lpc-begin 0 145 :pin)) (bytes *lpvcat-tomb*))
     (and (natp (fn-lpc-at 3 s))
          (<= 8 (+ (fn-lpc-at 3 s) (len bytes)))
          (iff (fn-lpc-at 7 (fn-lpc-feed bytes s))
@@ -129,7 +131,7 @@
 ; HYPOTHESIS REMOVAL: all other prefix antecedents hold. Nfix restarts a
 ; fractional position at zero, retaining a partial prefix without eight bytes.
 (defthm lpvcat-prefix-without-natural-position
-  (let ((s (fn-lpc-put 3 15/2 (fn-lpc-begin 0 89 :pin))) (bytes '(0)))
+  (let ((s (fn-lpc-put 3 15/2 (fn-lpc-begin 0 145 :pin))) (bytes '(0)))
     (and (not (natp (fn-lpc-at 3 s)))
          (<= 8 (+ (fn-lpc-at 3 s) (len bytes)))
          (not (iff (fn-lpc-at 7 (fn-lpc-feed bytes s))
@@ -140,7 +142,7 @@
 ; HYPOTHESIS REMOVAL: natural position holds, but an unconsumed prefix is
 ; not evidence that the complete eight-byte magic exists in a short source.
 (defthm lpvcat-prefix-without-enough-bytes
-  (let ((s (fn-lpc-begin 0 89 :pin)) (bytes nil))
+  (let ((s (fn-lpc-begin 0 145 :pin)) (bytes nil))
     (and (natp (fn-lpc-at 3 s))
          (not (<= 8 (+ (fn-lpc-at 3 s) (len bytes))))
          (not (iff (fn-lpc-at 7 (fn-lpc-feed bytes s))
@@ -170,7 +172,7 @@
 
 ; MUTATION: replacing the carried magic match would clear the tombstone.
 (assert-event
- (let* ((s (fn-lpc-feed *lpvcat-tomb* (fn-lpc-begin 0 89 :pin)))
+ (let* ((s (fn-lpc-feed *lpvcat-tomb* (fn-lpc-begin 0 145 :pin)))
         (mutated (fn-lpc-put 7 nil s)))
    (and (equal (fn-lpc-nov-value s (list *lpvcat-tomb*)) (fn-hnov-of *lpvcat-tomb*))
         (not (equal (fn-lpc-nov-value mutated (list *lpvcat-tomb*)) (fn-hnov-of *lpvcat-tomb*))))))
