@@ -212,6 +212,7 @@
            (fn-rv-okp (cadr (fn-rv-step bank op))))
   :id "PRF-1209"
   :subject fn-rv-step
+  :mutations (:none "hypothesis removals only")
   :restates fn-rv-step-keeps-okp
   :hyps (okp)
   :witness ((bank *rvt-root4*) (op (list :open 3 *rvt-conn-budget*)))
@@ -224,6 +225,7 @@
            (fn-rv-okp (cadr (fn-rv-run bank ops))))
   :id "PRF-1209"
   :subject fn-rv-run
+  :mutations (:none "hypothesis removals only")
   :restates fn-rv-run-keeps-okp
   :hyps (okp)
   :witness ((bank *rvt-root4*) (ops *rvt-admitted-run*))
@@ -236,6 +238,7 @@
            (equal (cadr (fn-rv-step bank op)) bank))
   :id "PRF-1209"
   :subject fn-rv-step
+  :mutations (:none "hypothesis removals only")
   :restates fn-rv-step-refused-keeps-the-bank
   :hyps (refused)
   :witness ((bank *rvt-root4*) (op (list :draw 1 *rvt-read*)))
@@ -247,6 +250,7 @@
            (equal (fn-rv-slack (cadr (fn-rv-step bank op))) (fn-rv-slack bank)))
   :id "PRF-1209"
   :subject fn-rv-step
+  :mutations (:none "hypothesis removals only")
   :restates fn-rv-refusal-keeps-slack
   :hyps (refused)
   :witness ((bank *rvt-conn1*) (op (list :draw 1 *rvt-past*)))
@@ -258,6 +262,7 @@
            (equal (cadr (fn-rv-run bank ops)) bank))
   :id "PRF-1209"
   :subject fn-rv-run
+  :mutations (:none "hypothesis removals only")
   :restates fn-rv-refused-run-keeps-the-bank
   :hyps (all-refused)
   :witness ((bank *rvt-root4*) (ops *rvt-refused-run*))
@@ -297,6 +302,7 @@
                        (+ 1 (fn-rv-gen slot bank)))))
   :id "PRF-1209"
   :subject fn-rv-draw
+  :mutations (:none "hypothesis removals only")
   :restates fn-rv-draw-charges-exactly-the-demand
   :hyps (drawn)
   :witness ((bank *rvt-conn2*) (slot 0) (demand *rvt-read*))
@@ -335,6 +341,7 @@
                   (equal (cadr (fn-rv-settle again slot token)) again))))
   :id "PRF-1209"
   :subject fn-rv-settle
+  :mutations (:none "hypothesis removals only")
   :restates fn-rv-replayed-completion-is-stale
   :hyps (second-drawn)
   :witness ((bank *rvt-conn*) (slot 0) (d1 *rvt-read*) (ops (list (list :settle 0 1)))
@@ -348,6 +355,7 @@
                   (fn-rv-row j bank)))
   :id "PRF-1209"
   :subject fn-rv-step
+  :mutations (:none "hypothesis removals only")
   :restates fn-rv-step-keeps-the-other-slots
   :hyps (natp other)
   :witness ((j 1) (bank *rvt-conn*) (op (list :draw 0 *rvt-read*)))
@@ -361,6 +369,7 @@
                   (fn-rv-row 1 bank)))
   :id "PRF-1209"
   :subject fn-rv-step
+  :mutations (:none "hypothesis removals only")
   :restates fn-rv-user-steps-keep-the-reserve
   :hyps (a-users-slot)
   :witness ((bank *rvt-root3*) (op (list :open 3 *rvt-conn-budget*)))
@@ -383,6 +392,7 @@
                 (fn-rv-below (fn-rv-plus baseline reserve) budget)))
   :id "PRF-1209"
   :subject fn-rv-install
+  :mutations (:none "hypothesis removals only")
   :restates fn-rv-install-reserves-the-owner-first
   :hyps (installed)
   :witness ((budget *rvt-budget*) (baseline *rvt-baseline*) (reserve *rvt-reserve*) (nslots 8))
@@ -429,6 +439,7 @@
                        0)))
   :id "PRF-1209"
   :subject fn-rv-destroy
+  :mutations (:none "hypothesis removals only")
   :restates fn-rv-destroy-returns-exactly-the-unsettled-draws
   :hyps (okp-bank okp-sub slotp a-sub-bank budget-is-the-demand)
   :witness ((bank *rvt-root2*) (sub *rvt-conn-spent*) (slot 2) (gen 1))

@@ -69,6 +69,7 @@
   (implies (fn-prs-vectorp v)
            (fn-rv-vectorp (fn-rv-of-prs v)))
   :subject fn-rv-of-prs
+  :mutations (:none "hypothesis removals only")
   :restates fn-rv-prs-vector-is-the-prefix
   :hyps (vector)
   :witness ((v *rvrt-b*))
@@ -80,6 +81,7 @@
            (equal (fn-rv-of-prs (fn-prs-plus a b))
                   (fn-rv-plus (fn-rv-of-prs a) (fn-rv-of-prs b))))
   :subject fn-prs-plus
+  :mutations (:none "hypothesis removals only")
   :restates fn-rv-prs-plus-is-plus
   :hyps (a-vector b-vector)
   :witness ((a *rvrt-u*) (b *rvrt-c*))
@@ -98,6 +100,7 @@
            (equal (fn-prs-fundedp budget used rescue charged)
                   (fn-rv-okp (fn-rv-prs-root budget used rescue charged))))
   :subject fn-prs-fundedp
+  :mutations (:none "hypothesis removals only")
   :restates fn-rv-prs-gate-is-a-funded-root
   :hyps (budget-vector used-vector rescue-vector charged-vector)
   :witness ((budget *rvrt-b*) (used *rvrt-u*)

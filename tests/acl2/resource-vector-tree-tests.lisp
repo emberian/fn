@@ -134,6 +134,7 @@
            (fn-rt-okp (cadr (fn-rt-step tree op))))
   :id "PRF-1209"
   :subject fn-rt-step
+  :mutations (:none "hypothesis removals only")
   :restates fn-rt-step-keeps-okp
   :hyps (okp)
   :witness ((tree *rtt-t1*) (op (list (cons 2 1) :draw 0 *rtt-read*)))
@@ -146,6 +147,7 @@
            (fn-rt-okp (cadr (fn-rt-run tree ops))))
   :id "PRF-1209"
   :subject fn-rt-run
+  :mutations (:none "hypothesis removals only")
   :restates fn-rt-run-keeps-okp
   :hyps (okp)
   :witness ((tree *rtt-t7*) (ops *rtt-admitted-run*))
@@ -158,6 +160,7 @@
            (equal (cadr (fn-rt-step tree op)) tree))
   :id "PRF-1209"
   :subject fn-rt-step
+  :mutations (:none "hypothesis removals only")
   :restates fn-rt-step-refused-keeps-the-tree
   :hyps (refused)
   :witness ((tree *rtt-t6*) (op (list (cons 2 1) :settle 1 1)))
@@ -185,6 +188,7 @@
                   (equal (cadr (fn-rt-step later (cons (cons slot gen) step))) later))))
   :id "PRF-1209"
   :subject fn-rt-step
+  :mutations (:none "hypothesis removals only")
   :restates fn-rt-destroy-revokes-the-sub-bank
   :hyps (destroyed)
   :witness ((tree *rtt-t5*) (slot 2) (gen 1)

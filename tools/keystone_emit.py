@@ -22,6 +22,15 @@ step with it:
   printed with the line, found by tools/current_view.py's `host_call`; a
   subject reached only through book functions says so;
 * `:id :test` marks a test of the macro itself, which is skipped;
+* TEETH COVERAGE (the ratchet).  Every registry event (planning/proofs.json
+  `events`) either has GENERATED teeth -- a `(table fn-teeth 'NAME ...)` row
+  the ledger read from a `defkeystone` or `defteeth` form -- or HAND teeth,
+  the comment-convention sections tools/teeth_check.py counts as a floor.
+  tools/teeth_baseline.json holds the hand count and ONLY SHRINKS: `--check`
+  fails when more registry keystones have hand teeth than the baseline says
+  (a new keystone declares its teeth), `--write-baseline` lowers it and
+  refuses to raise it.  A `(table fn-teeth-owed 'NAME ...)` row (a
+  generator's debt) with no fn-teeth row anywhere fails `--check` outright;
 * a form with no :id is a NEW keystone: `--write --claim --milestone M4
   --title "..."` claims a PRF id through tools/next_id.py, adds a planned
   row and prints the `:id` to add to the form (the Lisp source is never
@@ -51,6 +60,7 @@ from ledger import Sym, head  # noqa: E402
 ROOT = Path(__file__).resolve().parents[1]
 PROOFS = ROOT / "planning/proofs.json"
 PROOF_EVENTS = ROOT / "planning/proof-events.json"
+TEETH_BASELINE = ROOT / "tools/teeth_baseline.json"
 CONTAINERS = {"local", "progn", "encapsulate", "with-output", "defsection"}
 
 
@@ -212,6 +222,54 @@ def registry_findings(keystones: list[Keystone], write: bool) -> list[str]:
     return problems
 
 
+def teeth_coverage() -> dict:
+    """Registry keystones by how their teeth are written, and the generators'
+    unmet debts: {"generated": [...], "hand": [...], "unmet": [(name, book)]}."""
+    tree = ledger.load_tree(lazy=True)
+    events = {event["name"] for target in json.loads(
+        PROOFS.read_text(encoding="utf-8"))["proofs"] for event in target.get("events", [])}
+    declared: set[str] = set()
+    owed: dict[str, str] = {}
+    for book in tree.books.values():
+        declared |= book.teeth_declared
+        for name in book.teeth_owed:
+            owed.setdefault(name, book.path)
+    return {"generated": sorted(events & declared),
+            "hand": sorted(events - declared),
+            "unmet": sorted((name, book) for name, book in owed.items()
+                            if name not in declared)}
+
+
+def teeth_findings(write_baseline: bool) -> list[str]:
+    coverage = teeth_coverage()
+    problems = [f"{book}: {name} owes its teeth (table fn-teeth-owed) and no "
+                f"defteeth/defkeystone declares them" for name, book in coverage["unmet"]]
+    hand = len(coverage["hand"])
+    baseline = (json.loads(TEETH_BASELINE.read_text(encoding="utf-8"))["hand_toothed"]
+                if TEETH_BASELINE.exists() else None)
+    if write_baseline:
+        if baseline is not None and hand > baseline:
+            problems.append(f"teeth baseline: {hand} registry keystones have hand teeth, "
+                            f"the baseline is {baseline}; it only shrinks")
+        else:
+            TEETH_BASELINE.write_text(json.dumps({
+                "about": "Registry keystones (planning/proofs.json events) whose teeth "
+                         "are hand-written, not a defkeystone/defteeth row; tools/"
+                         "keystone_emit.py --check refuses a rise, --write-baseline "
+                         "lowers it.",
+                "hand_toothed": hand}, indent=1) + "\n", encoding="utf-8")
+    elif baseline is None:
+        problems.append("tools/teeth_baseline.json is missing; run --write-baseline")
+    elif hand > baseline:
+        problems.append(f"{hand} registry keystones have hand teeth, the baseline is "
+                        f"{baseline}: a new keystone declares its teeth (defteeth NAME "
+                        f"...) in its test book, or lower the count on purpose")
+    print(f"keystone_emit: teeth coverage: {len(coverage['generated'])} registry "
+          f"keystones with generated teeth, {hand} with hand teeth (baseline "
+          f"{baseline}), {len(coverage['unmet'])} unmet debt(s)")
+    return problems
+
+
 def claim(keystone: Keystone, lane: str, milestone: str, title: str) -> str:
     """Claim a PRF id for a new keystone and add its planned row."""
     answer = subprocess.run(
@@ -243,6 +301,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--milestone")
     parser.add_argument("--title")
     parser.add_argument("--lane", default=Path.cwd().name)
+    parser.add_argument("--write-baseline", action="store_true",
+                        help="lower tools/teeth_baseline.json to the hand-toothed count")
     arguments = parser.parse_args(argv)
 
     keystones = [Keystone(book, line, form) for book, line, form in forms_in()]
@@ -267,6 +327,7 @@ def main(argv: list[str] | None = None) -> int:
     subject_problems, reached = subject_findings(wellformed)
     problems += subject_problems
     problems += registry_findings(wellformed, arguments.write)
+    problems += teeth_findings(arguments.write_baseline)
 
     if not (arguments.check and not problems):
         for keystone in wellformed:

@@ -31,11 +31,15 @@ imports the ledger's reader and adds the evaluation the ledger may not do.
     python3 tools/teeth_check.py --summary        # the counts `make check` prints
     python3 tools/teeth_check.py --table          # macro-generated teeth, marked apart
 
-DEFKEYSTONE.  `(defkeystone NAME ...)` (books/defkeystone.lisp) is the one
-macro from another book this tool expands, through the ledger's
-`defkeystone_expansion`: its positive, removal, mutant and corrupted-state
+DEFKEYSTONE, DEFTEETH.  `(defkeystone NAME ...)` and `(defteeth NAME ...)`
+(books/defkeystone.lisp) are the macros from another book this tool expands,
+through the ledger's `defkeystone_expansion` and `defteeth_expansion` (the
+latter from the theorem's statement in the tree, as the Lisp reads it from
+the world): their positive, removal, mutant, corrupted-state and visit-bound
 witnesses are read as the assert-events they expand to, and `--table` lists
-its keystone and its must-fails with MACRO `defkeystone`.
+the keystone, its bounds and its must-fails with the MACRO's name.  A
+`defteeth` form is a structural citation of its keystone, so the section
+convention below is exact for it.
 
 MACRO-GENERATED TEETH.  A book may write its witnesses through a `defmacro`
 that expands to one `defthm` -- `feed-connection-teeth-tests.lisp` admits a
@@ -361,6 +365,12 @@ def read_book(path: Path) -> tuple[list[Assertion], list[str], str | None]:
             for item in ledger.defkeystone_expansion(form):
                 walk(item, line)
             return
+        if name == "defteeth" and isinstance(form, list) and len(form) > 1:
+            source = tree_statements().get(str(form[1]))
+            if source is not None:
+                for item in ledger.defteeth_expansion(form, source):
+                    walk(item, line)
+            return
         if name in TRANSPARENT and isinstance(form, list):
             for item in form[1:]:
                 walk(item, line)
@@ -368,6 +378,20 @@ def read_book(path: Path) -> tuple[list[Assertion], list[str], str | None]:
     for top, (form, line) in enumerate(forms):
         walk(form, line)
     return assertions, constants, None
+
+
+_STATEMENTS: dict[str, object] | None = None
+
+
+def tree_statements() -> dict[str, object]:
+    """Every theorem's source statement, by name, cached: what a `defteeth`
+    form's expansion is stated over."""
+    global _STATEMENTS
+    if _STATEMENTS is None:
+        _STATEMENTS = {theorem.name: theorem.statement
+                       for book in ledger.load_tree(lazy=True).books.values()
+                       for theorem in book.theorems}
+    return _STATEMENTS
 
 
 # --------------------------------------------------------------------------
@@ -538,17 +562,21 @@ def macro_teeth_for_book(path: Path) -> tuple[list[MacroTooth], dict[str, MacroI
         if head(form) == "defmacro":
             continue
         call, wrapped = unwrap_call(form)
-        if head(call) == "defkeystone" and not wrapped:
-            # The one macro from ANOTHER book this reader expands: its
-            # expansion is ledger.defkeystone_expansion, pinned to the Lisp
-            # macro's by tests/acl2/defkeystone-tests.lisp.
-            parts = ledger.defkeystone_parts(call)
+        if head(call) in ("defkeystone", "defteeth") and not wrapped:
+            # The macros from ANOTHER book this reader expands: their
+            # expansions are ledger.defkeystone_expansion / defteeth_expansion,
+            # pinned to the Lisp macro's by tests/acl2/defkeystone-tests.lisp.
+            macro = head(call)
+            parts = (ledger.defkeystone_parts(call) if macro == "defkeystone"
+                     else ledger.defteeth_parts(call))
             if parts is not None:
-                names = ledger.defkeystone_names(parts)
-                teeth.append(MacroTooth(book=book, line=line, macro="defkeystone",
-                                        theorem=names["keystone"][0], kind="witness"))
+                names = (ledger.defkeystone_names(parts) if macro == "defkeystone"
+                         else ledger.defteeth_names(parts))
+                for theorem in names["keystone"] + names["bounds"]:
+                    teeth.append(MacroTooth(book=book, line=line, macro=macro,
+                                            theorem=theorem, kind="witness"))
                 for theorem in names["without"] + names["mutant"]:
-                    teeth.append(MacroTooth(book=book, line=line, macro="defkeystone",
+                    teeth.append(MacroTooth(book=book, line=line, macro=macro,
                                             theorem=theorem, kind="must-fail"))
             continue
         info = macros.get(head(call))
@@ -1307,11 +1335,16 @@ def _sections() -> list:
             PROOFS.read_text(encoding="utf-8"))["proofs"]
             for event in target.get("events", [])}
         token = re.compile(r"\bfn-[a-z0-9-]*[a-z0-9]")
+        declared = re.compile(r"^\(defteeth\s+([a-z0-9!$%&*+./:<=>?@^_~-]+)", re.I)
         found = []
         for path in sorted(TESTS.glob("*.lisp")):
             lines = path.read_text(encoding="utf-8").splitlines()
             marks = []
             for number, text in enumerate(lines, 1):
+                form = declared.match(text)
+                if form and form.group(1).lower() in keystones:
+                    marks.append((number, form.group(1).lower()))
+                    continue
                 if ";" not in text:
                     continue
                 for cited in token.findall(text[text.index(";"):]):
@@ -1321,6 +1354,18 @@ def _sections() -> list:
             found.append((path.relative_to(ROOT).as_posix(), lines, marks))
         _SECTIONS = found
     return _SECTIONS
+
+
+def generated_coverage() -> tuple[int, int]:
+    """(registry keystones with a generated fn-teeth row, with hand teeth)."""
+    tree = ledger.load_tree(lazy=True)
+    events = {event for target in json.loads(
+        PROOFS.read_text(encoding="utf-8"))["proofs"]
+        for event in target.get("events", [])}
+    declared: set[str] = set()
+    for book in tree.books.values():
+        declared |= book.teeth_declared
+    return len(events & declared), len(events - declared)
 
 
 def hypothesis_coverage() -> tuple[int, int]:
@@ -1694,6 +1739,10 @@ def main(argv: list[str] | None = None) -> int:
             print(f"teeth: {total} keystones have two or more hypotheses and a "
                   f"test book names {cited} of them, so one-must-fail-per-"
                   f"hypothesis is unchecked for {total - cited}")
+            generated, hand = generated_coverage()
+            print(f"teeth: {generated} registry keystones have generated teeth "
+                  f"(defkeystone/defteeth rows), {hand} hand teeth; tools/"
+                  f"keystone_emit.py --check holds the hand count to its baseline")
         for check, number in sorted(by_check.items()):
             print(f"teeth: {number} {check}")
         if not by_check:

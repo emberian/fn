@@ -198,6 +198,7 @@
                            (fn-fc-drive st events)))
   :id "PRF-047"
   :subject fn-fc-drive
+  :mutations (:none "hypothesis removals only")
   :restates fn-fc-offers-and-credentials-wait-for-tls-and-login
   :hyps (protected-profile opening-phase)
   :witness ((st *fct-starttls*) (events *fct-full-trace*))
@@ -283,6 +284,7 @@
                   (fn-fc-quiet-obsp (fn-fc-drive (fn-fc-next-state r) events)))))
   :id "PRF-051"
   :subject fn-fc-step
+  :mutations (:none "hypothesis removals only")
   :restates fn-fc-refused-login-closes-without-an-offer
   :hyps (statep phase a-line not-281 not-381)
   :witness ((st *fct-at-pass*) (octets *fct-481*)
@@ -353,6 +355,7 @@
                   (fn-fc-quiet-obsp (fn-fc-drive (fn-fc-next-state r) events)))))
   :id "PRF-047"
   :subject fn-fc-step
+  :mutations (:none "hypothesis removals only")
   :restates fn-fc-starttls-refusal-closes-before-the-credential
   :hyps (statep phase a-line not-382)
   :witness ((st *fct-at-starttls*) (octets *fct-580*)
@@ -409,6 +412,7 @@
                   (append *fn-fc-auth-user-prefix* (fn-fc-user st) '(13 10))))
   :id "PRF-051"
   :subject fn-fc-auth-user-command
+  :mutations (:none "hypothesis removals only")
   :restates fn-fc-auth-user-command-sends-the-configured-name-alone
   :hyps (tokenp true-listp)
   :witness ((st *fct-at-user*))
@@ -426,6 +430,7 @@
                   (append *fn-fc-auth-pass-prefix* (fn-fc-pass st) '(13 10))))
   :id "PRF-051"
   :subject fn-fc-auth-pass-command
+  :mutations (:none "hypothesis removals only")
   :restates fn-fc-auth-pass-command-sends-the-configured-secret-alone
   :hyps (tokenp true-listp)
   :witness ((st *fct-at-pass*))
