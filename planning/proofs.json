@@ -5983,9 +5983,7 @@
         "fn-exp-idle-closes-only-silence",
         "fn-exp-481-scan-counts-the-481-replies",
         "fn-exp-effects-scan-is-the-reply-scan",
-        "fn-exp-observe-effects-is-the-observation-of-the-reply",
-        "fn-exp-idle-keeps-after-progress",
-        "fn-exp-progress-frame"
+        "fn-exp-observe-effects-is-the-observation-of-the-reply"
       ]
     },
     {
@@ -17821,9 +17819,7 @@
         "fn-splan-cw-drain-of-the-arm-is-the-unbounded-reply",
         "fn-nntp-over-range-ovw-emits-a-fresh-cursor",
         "fn-splan-cursor-step-of-okp-is-ok",
-        "fn-ovw-run-of-start-is-cursor-octets",
-        "fn-nntp-over-range-ovw-expands-to-over-range-served-cat",
-        "fn-ovw-run-is-over-range-served-cat"
+        "fn-ovw-run-of-start-is-cursor-octets"
       ]
     },
     {
