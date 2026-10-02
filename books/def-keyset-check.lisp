@@ -17,13 +17,16 @@
 ;     [:ys-key (lambda (y) TERM)]      ; the key a YS element puts (default y)
 ;     [:each (lambda (x) TERM)]        ; a predicate on each XS element (default t)
 ;     [:base (null xs) | t]            ; the value at XS's end (default t)
+;     [:keys FN]                       ; the instance's own map of YS-KEY over
+;                                      ; YS (adopted; default: NAME-keys, generated)
 ;     [:logic-member (lambda (x ys) TERM) :member-is THM]
 ;                                      ; the :logic membership test as the
 ;                                      ; instance states it, and the named
 ;                                      ; correspondence (c04 6a): THM is
 ;                                      ; (equal TERM (if (member-equal XS-KEY[x]
-;                                      ; (NAME-keys ys)) t nil)); default:
-;                                      ; member-equal over NAME-keys itself
+;                                      ; (KEYS ys)) t nil)) over the adopted
+;                                      ; :keys; default: member-equal over
+;                                      ; NAME-keys itself
 ;     [:policy :long | :always | :nonempty])   ; when the :exec takes the set:
 ;                                      ; YS long (fn-ks-longp, the default),
 ;                                      ; always, or XS non-empty (a reopen has
@@ -117,7 +120,7 @@
 ; The generator.
 
 (defconst *fn-kc-keys*
-  '(:sense :xs-key :ys-key :each :base :logic-member :member-is :policy))
+  '(:sense :xs-key :ys-key :each :base :logic-member :member-is :keys :policy))
 
 (defun fn-kc-get (key kvs)
   (declare (xargs :mode :program))
@@ -158,6 +161,8 @@
     (list :bad-member-is name))
    ((and (assoc-keyword :policy kvs) (not (member-eq (fn-kc-get :policy kvs) '(:long :always :nonempty))))
     (list :bad-policy (fn-kc-get :policy kvs)))
+   ((and (assoc-keyword :keys kvs) (not (and (symbolp (fn-kc-get :keys kvs)) (fn-kc-get :keys kvs))))
+    (list :bad-keys (fn-kc-get :keys kvs)))
    ((and (assoc-keyword :base kvs) (not (member-equal (fn-kc-get :base kvs) '(t (null xs)))))
     (list :bad-base (fn-kc-get :base kvs)))
    (t nil)))
@@ -173,6 +178,7 @@
            NAME-keys." (cadr reason)))
     (:bad-policy (msg ":policy ~x0 is not :long, :always or :nonempty." (cadr reason)))
     (:bad-base (msg ":base ~x0 is t or (null xs)." (cadr reason)))
+    (:bad-keys (msg ":keys ~x0 is not a function name." (cadr reason)))
     (:declared-twice (msg "~x0 is already a keyset check of this world." (cadr reason)))
     (:not-a-theorem (msg "~x0: :member-is ~x1 is not a theorem in this world."
                          (cadr reason) (caddr reason)))
@@ -214,7 +220,7 @@
          (base (if (assoc-keyword :base kvs) (fn-kc-get :base kvs) t))
          (base-term (fn-kc-subst base (list (cons 'xs xs))))
          (policy (or (fn-kc-get :policy kvs) :long))
-         (keys (fn-kc-name name '(-keys)))
+         (keys (or (fn-kc-get :keys kvs) (fn-kc-name name '(-keys))))
          (filler (fn-kc-name name '(-fill)))
          (scan (fn-kc-name name '(-scan)))
          (ks (fn-kc-name name '(-ks)))
@@ -233,10 +239,12 @@
          (ks-is-logic (fn-kc-name name '(-ks-is-logic)))
          (walk-is-logic (fn-kc-name name '(-walk-is-logic))))
     `(progn
-       (table fn-keyset-check ',name '(:sense ,(if present :present :absent) :policy ,policy))
-       (defun ,keys (,ys)
-         (declare (xargs :guard t))
-         (if (consp ,ys) (cons ,(fn-kc-sub ykey (list `(car ,ys))) (,keys (cdr ,ys))) nil))
+       (table fn-keyset-check ',name '(:sense ,(if present :present :absent) :policy ,policy
+                                       :keys ,keys))
+       ,@(and (not (fn-kc-get :keys kvs))
+              `((defun ,keys (,ys)
+                  (declare (xargs :guard t))
+                  (if (consp ,ys) (cons ,(fn-kc-sub ykey (list `(car ,ys))) (,keys (cdr ,ys))) nil))))
        ; the direct walk: the :logic body, executable
        (defun ,walk (,xs ,ys)
          (declare (xargs :guard t))
@@ -305,6 +313,8 @@
 (defun fn-kc-world-problem (name kvs w)
   (declare (xargs :mode :program))
   (cond ((assoc-eq name (table-alist 'fn-keyset-check w)) (list :declared-twice name))
+        ((and (fn-kc-get :keys kvs) (eq (getpropc (fn-kc-get :keys kvs) 'formals :none w) :none))
+         (list :bad-keys (fn-kc-get :keys kvs)))
         ((and (fn-kc-get :member-is kvs) (null (getpropc (fn-kc-get :member-is kvs) 'theorem nil w)))
          (list :not-a-theorem name (fn-kc-get :member-is kvs)))
         (t nil)))

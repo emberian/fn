@@ -1,8 +1,9 @@
-; Teeth for books/withdrawal-index-carried.lisp (lane served-incremental-4):
-; the carried withdrawal index a POST's duplicate test and a completion's
-; targets read.  The withdrawal records are the plan's own shape
-; (fn-ctl-withdrawal-make, what fn-ctl-withdrawal-plan makes), and every
-; carry is the host writer's: fn-wix-refresh of nil or of a carry it made.
+; Teeth for books/withdrawal-index-carried.lisp (lane served-incremental-4;
+; declared through def-carried-view by lane generators-2): the carried
+; withdrawal index a POST's duplicate test and a completion's targets read.
+; The withdrawal records are the plan's own shape (fn-ctl-withdrawal-make,
+; what fn-ctl-withdrawal-plan makes), and every carry is the host writer's:
+; fn-wix-refresh of nil or of a carry it made.  The carry is (WS TSET CSET).
 (in-package "ACL2")
 (include-book "../../books/withdrawal-index-carried")
 
@@ -22,19 +23,12 @@
 (assert-event (fn-wix-carryp nil))
 (assert-event (fn-wix-carryp *wit-c0*))
 (assert-event (equal (fn-wix-ws *wit-c0*) *wit-ws0*))
-(assert-event (mv-let (found tset cset)
-                (fn-wix-extend *wit-ws1* *wit-ws0*
-                               (fn-wix-tset *wit-c0*) (fn-wix-cset *wit-c0*))
-                (declare (ignore tset cset))
-                found))
+(assert-event (mv-nth 0 (fn-cv-walk *wit-ws1* *wit-ws0* nil)))
+(assert-event (equal (fn-cv-walk-steps *wit-ws1* *wit-ws0*) 1))
 (assert-event (fn-wix-carryp *wit-c1*))
 (assert-event (equal (fn-wix-ws *wit-c1*) *wit-ws1*))
 (defconst *wit-ws2* (list (fn-ctl-withdrawal-make "<t9@x>" "<c9@x>" "p" :all 0)))
-(assert-event (mv-let (found tset cset)
-                (fn-wix-extend *wit-ws2* *wit-ws1*
-                               (fn-wix-tset *wit-c1*) (fn-wix-cset *wit-c1*))
-                (declare (ignore tset cset))
-                (not found)))
+(assert-event (not (mv-nth 0 (fn-cv-walk *wit-ws2* *wit-ws1* nil))))
 (assert-event (fn-wix-carryp (fn-wix-refresh *wit-c1* *wit-ws2*)))
 ; Hypothesis removal (the only hypothesis): from a carry that is not
 ; complete, the refresh that finds its list as a tail keeps the gap.

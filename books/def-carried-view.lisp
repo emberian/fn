@@ -706,7 +706,7 @@
                                              (theory 'minimal-theory)))))
        (defthm ,(fn-cv-name ws-of '-of-refresh)
          (equal (,ws-of (,refresh carry ,ws)) ,ws)
-         :hints (("Goal" :in-theory (union-theories '(,ws-of ,refresh fn-cv-car)
+         :hints (("Goal" :in-theory (union-theories '(,ws-of ,refresh fn-cv-car car-cons)
                                                     (theory 'minimal-theory)))))
        ; the walk steps exactly the delta (fn-cv-walk-steps counts the
        ; elements the refresh's walk consumes; the equal at each step is
