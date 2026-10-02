@@ -114,6 +114,86 @@
                     (fn-hd-drops-of k evs (fn-hd-run-answers (fn-hd-initial) evs)))))))
 
 ; ---------------------------------------------------------------------------
+; 1b. The identified step (c05): a token per holder.
+
+(defmacro hdt-istep (table ev)
+  `(mv-list 2 (fn-hd-ident-step ,table ,ev)))
+
+; A and B hold file 3; A drops; A drops AGAIN (the duplicate: refused, B's
+; hold stands); B drops; B drops again (late: refused).
+(defconst *hdt-ievs*
+  '((:hold 3 a) (:hold 3 b) (:drop 3 a) (:drop 3 a) (:drop 3 b) (:drop 3 b)))
+
+(defun hdt-irun (table evs)
+  (declare (xargs :guard (and (fn-hd-identp table) (true-listp evs)) :verify-guards nil))
+  (if (atom evs)
+      (list table nil)
+    (mv-let (table1 answer) (fn-hd-ident-step table (car evs))
+      (let ((rest (hdt-irun table1 (cdr evs))))
+        (list (first rest) (cons answer (second rest)))))))
+
+(assert-event (equal (second (hdt-irun nil *hdt-ievs*))
+                     '(:held :held :dropped :refused :dropped :refused)))
+(assert-event (equal (first (hdt-irun nil (take 2 *hdt-ievs*))) '((3 b a))))
+; after A's duplicate drop B still holds: the count-only table would say 0
+(assert-event (equal (first (hdt-irun nil (take 4 *hdt-ievs*))) '((3 b))))
+(assert-event (equal (hdt-istep '((3 b)) '(:count 3)) '(((3 b)) 1)))
+(assert-event (equal (hdt-istep '((3 b)) '(:quiet 3)) '(((3 b)) nil)))
+(assert-event (equal (hdt-istep '((3 b)) '(:quiet 4)) '(((3 b)) t)))
+(assert-event (equal (hdt-istep '((3 b)) '(:hold 3)) '(((3 b)) :refused)))      ; no token
+(assert-event (equal (hdt-istep '((3 b)) '(:hold 3 c d)) '(((3 b)) :refused)))  ; too long
+(assert-event (equal (hdt-istep '((3 b)) '(:count 3 x)) '(((3 b)) :refused)))
+
+;;; KEYSTONE fn-hd-ident-duplicate-hold-is-refused /
+;;; fn-hd-ident-drop-of-absent-token-is-refused.
+; REACHABLE POSITIVES: A holding 3 holds it again (refused); A, having
+; dropped, drops again (refused): complete antecedent and conclusion.
+(assert-event
+ (let ((table '((3 b a))) (k 3) (tok 'a))
+   (and (member-equal tok (fn-hd-tokens-of k table))
+        (equal (hdt-istep table (list :hold k tok)) (list table :refused)))))
+(assert-event
+ (let ((table '((3 b))) (k 3) (tok 'a))
+   (and (not (member-equal tok (fn-hd-tokens-of k table)))
+        (equal (hdt-istep table (list :drop k tok)) (list table :refused)))))
+; HYPOTHESIS-REMOVAL: a token that does not hold may hold (not refused,
+; table changes); a token that holds may drop (not refused).
+(assert-event
+ (let ((table '((3 b))) (k 3) (tok 'a))
+   (and (not (member-equal tok (fn-hd-tokens-of k table)))
+        (not (equal (hdt-istep table (list :hold k tok)) (list table :refused)))
+        (equal (hdt-istep table (list :hold k tok)) '(((3 a b)) :held)))))
+(assert-event
+ (let ((table '((3 b a))) (k 3) (tok 'a))
+   (and (member-equal tok (fn-hd-tokens-of k table))
+        (not (equal (hdt-istep table (list :drop k tok)) (list table :refused)))
+        (equal (hdt-istep table (list :drop k tok)) '(((3 b)) :dropped)))))
+
+;;; KEYSTONE fn-hd-ident-hold-adds-exactly-its-token /
+;;; fn-hd-ident-drop-removes-exactly-its-token: the other key's tokens stand.
+(assert-event
+ (let ((table '((3 b) (5 c))) (k 3) (tok 'a))
+   (and (fn-hd-identp table) (natp k) (not (member-equal tok (fn-hd-tokens-of k table)))
+        (let ((r (hdt-istep table (list :hold k tok))))
+          (and (equal (nth 1 r) :held)
+               (equal (fn-hd-tokens-of 3 (nth 0 r)) (cons tok (fn-hd-tokens-of 3 table)))
+               (equal (fn-hd-tokens-of 5 (nth 0 r)) (fn-hd-tokens-of 5 table)))))))
+(assert-event
+ (let ((table '((3 b a) (5 c))) (k 3) (tok 'b))
+   (and (fn-hd-identp table) (natp k) (member-equal tok (fn-hd-tokens-of k table))
+        (let ((r (hdt-istep table (list :drop k tok))))
+          (and (equal (nth 1 r) :dropped)
+               (equal (fn-hd-tokens-of 3 (nth 0 r)) (remove1-equal tok (fn-hd-tokens-of 3 table)))
+               (equal (fn-hd-tokens-of 5 (nth 0 r)) (fn-hd-tokens-of 5 table)))))))
+; CORRUPTED-STATE (not a table: a duplicated token): a drop removes one of
+; the two and the key still counts the other.
+(assert-event
+ (with-guard-checking :none
+   (let ((table '((3 a a))))
+     (and (not (fn-hd-identp table))
+          (equal (hdt-istep table '(:drop 3 a)) '(((3 a)) :dropped))))))
+
+; ---------------------------------------------------------------------------
 ; 2. A keyed instance: a toy file table threaded by an open and a close.
 
 (defun hdt-open (k table)

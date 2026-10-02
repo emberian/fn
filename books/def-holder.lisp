@@ -222,11 +222,12 @@
                              (+ 1 (fn-arpn-pins-of h table))
                            (fn-arpn-pins-of h table)))))))
 
-(local
- (defthm fn-hd-pins-of-natp
-   (implies (fn-arpn-pinsp table)
-            (natp (fn-arpn-pins-of k table)))
-   :rule-classes :type-prescription))
+; Exported (a certified includer's guard proofs need them: a count is a
+; natural, a run keeps the table).
+(defthm fn-hd-pins-of-natp
+  (implies (fn-arpn-pinsp table)
+           (natp (fn-arpn-pins-of k table)))
+  :rule-classes :type-prescription)
 
 ; A drop of a held key changes exactly its count, by one.
 (defthm fn-hd-drop-counts-exactly-its-key
@@ -283,10 +284,9 @@
          (+ 1 (fn-hd-drops-of k (cdr evs) (cdr answers))))
         (t (fn-hd-drops-of k (cdr evs) (cdr answers)))))
 
-(local
- (defthm fn-hd-run-preserves-table
-   (implies (fn-arpn-pinsp table)
-            (fn-arpn-pinsp (fn-hd-run table evs)))))
+(defthm fn-hd-run-preserves-table
+  (implies (fn-arpn-pinsp table)
+           (fn-arpn-pinsp (fn-hd-run table evs))))
 
 ; A well-formed event is exactly its two elements.
 (local
@@ -338,6 +338,216 @@
                                fn-hd-run-answers fn-hd-keyed-step))))
 
 (in-theory (disable fn-hd-keyed-step fn-hd-initial fn-hd-run fn-hd-run-answers))
+
+; ---------------------------------------------------------------------------
+; The identified step: a token per holder (c05).  A count knows how many
+; hold a key, not who: two holders A and B of K count 2, A drops, and a
+; DUPLICATE drop by A would take B's hold.  The identified table keeps, per
+; key, the tokens of its holders (a cold read's token, a connection's id), so
+; a hold by a token already holding is refused and a drop by a token not
+; holding is refused -- the late or duplicate holder by name -- and the count
+; is the number of tokens.
+;
+; TABLE = ((KEY . TOKENS) ...), KEY a natural, TOKENS a non-empty list with
+; no duplicates; one row per key.  Not ordered: a key is found by assoc (the
+; live keys are bounded by the live holders, a work bound).
+
+; K's row, or nil (guard t: the recognizer below uses it).
+(defun fn-hd-ident-row (k table)
+  (declare (xargs :guard t))
+  (cond ((atom table) nil)
+        ((and (consp (car table)) (equal (caar table) k)) (car table))
+        (t (fn-hd-ident-row k (cdr table)))))
+
+(defun fn-hd-identp (table)
+  (declare (xargs :guard t))
+  (if (atom table)
+      (null table)
+    (and (consp (car table))
+         (natp (caar table))
+         (consp (cdar table))
+         (true-listp (cdar table))
+         (no-duplicatesp-equal (cdar table))
+         (not (fn-hd-ident-row (caar table) (cdr table)))
+         (fn-hd-identp (cdr table)))))
+
+(defun fn-hd-tokens-of (k table)
+  (declare (xargs :guard t))
+  (cdr (fn-hd-ident-row k table)))
+
+(defun fn-hd-ident-count (k table)
+  (declare (xargs :guard (fn-hd-identp table)))
+  (len (fn-hd-tokens-of k table)))
+
+; K's row with TOKENS (dropped when TOKENS is empty), the other rows as they were.
+(defun fn-hd-ident-put (k tokens table)
+  (declare (xargs :guard (and (fn-hd-identp table) (true-listp tokens))))
+  (cond ((atom table) (if (consp tokens) (list (cons k tokens)) nil))
+        ((equal (caar table) k)
+         (if (consp tokens) (cons (cons k tokens) (cdr table)) (cdr table)))
+        (t (cons (car table) (fn-hd-ident-put k tokens (cdr table))))))
+
+; Answers (mv TABLE' ANSWER):
+;   (:hold K TOK)   TOK holds K once more: :held; TOK already holds K: :refused
+;   (:drop K TOK)   TOK's hold of K ends: :dropped; TOK does not hold K: :refused
+;   (:count K)      the holders of K
+;   (:quiet K)      whether nobody holds K
+; Any other event is :refused and TABLE unchanged.
+(defun fn-hd-ident-step (table ev)
+  (declare (xargs :guard (fn-hd-identp table)))
+  (cond
+   ((not (and (consp ev) (consp (cdr ev)) (natp (cadr ev))))
+    (mv table :refused))
+   ((and (member-eq (car ev) '(:hold :drop)) (not (and (consp (cddr ev)) (null (cdddr ev)))))
+    (mv table :refused))
+   ((and (member-eq (car ev) '(:count :quiet)) (not (null (cddr ev))))
+    (mv table :refused))
+   (t
+    (let* ((k (cadr ev)) (tokens (fn-hd-tokens-of k table)))
+      (case (car ev)
+        (:hold (let ((tok (caddr ev)))
+                 (if (member-equal tok tokens)
+                     (mv table :refused)
+                   (mv (fn-hd-ident-put k (cons tok tokens) table) :held))))
+        (:drop (let ((tok (caddr ev)))
+                 (if (member-equal tok tokens)
+                     (mv (fn-hd-ident-put k (remove1-equal tok tokens) table) :dropped)
+                   (mv table :refused))))
+        (:count (mv table (len tokens)))
+        (:quiet (mv table (atom tokens)))
+        (otherwise (mv table :refused)))))))
+
+(local
+ (defthm fn-hd-identp-true-listp
+   (implies (fn-hd-identp table) (true-listp table))
+   :rule-classes :forward-chaining))
+
+(local
+ (defthm fn-hd-tokens-of-shape
+   (implies (fn-hd-identp table)
+            (and (true-listp (fn-hd-tokens-of k table))
+                 (no-duplicatesp-equal (fn-hd-tokens-of k table))))
+   :hints (("Goal" :induct (fn-hd-identp table)))))
+
+(local
+ (defthm fn-hd-row-of-ident-put
+   (implies (fn-hd-identp table)
+            (equal (fn-hd-ident-row h (fn-hd-ident-put k tokens table))
+                   (if (equal h k)
+                       (if (consp tokens) (cons k tokens) nil)
+                     (fn-hd-ident-row h table))))
+   :hints (("Goal" :induct (fn-hd-ident-put k tokens table)))))
+
+; The tokens of H after K's row is put: K's new tokens (none when empty),
+; every other key's as they were.
+(local
+ (defthm fn-hd-tokens-of-ident-put
+   (implies (fn-hd-identp table)
+            (equal (fn-hd-tokens-of h (fn-hd-ident-put k tokens table))
+                   (if (equal h k)
+                       (if (consp tokens) tokens nil)
+                     (fn-hd-tokens-of h table))))
+   :hints (("Goal" :in-theory (e/d (fn-hd-tokens-of) (fn-hd-ident-put fn-hd-ident-row))))))
+
+(local
+ (defthm fn-hd-ident-put-keeps-identp
+   (implies (and (fn-hd-identp table) (natp k) (true-listp tokens)
+                 (no-duplicatesp-equal tokens))
+            (fn-hd-identp (fn-hd-ident-put k tokens table)))
+   :hints (("Goal" :induct (fn-hd-ident-put k tokens table)))))
+
+(local
+ (defthm fn-hd-member-of-remove1
+   (implies (member-equal b (remove1-equal a x))
+            (member-equal b x))))
+
+(local
+ (defthm fn-hd-true-listp-of-remove1
+   (implies (true-listp x)
+            (true-listp (remove1-equal a x)))
+   :rule-classes (:rewrite :type-prescription)))
+
+(local
+ (defthm fn-hd-no-duplicates-of-remove1
+   (implies (no-duplicatesp-equal x)
+            (no-duplicatesp-equal (remove1-equal a x)))
+   :hints (("Goal" :induct (remove1-equal a x)))))
+
+(local
+ (defthm fn-hd-tokens-of-natp-key
+   ; a row found under the recognizer has a natural key: the step's natp
+   ; test is what fn-hd-ident-put needs
+   (implies (and (fn-hd-identp table) (fn-hd-ident-row k table))
+            (natp (caar (list (fn-hd-ident-row k table)))))
+   :rule-classes nil))
+
+(defthm fn-hd-ident-step-preserves-table
+  (implies (fn-hd-identp table)
+           (fn-hd-identp (mv-nth 0 (fn-hd-ident-step table ev))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-hd-ident-put fn-hd-ident-row fn-hd-tokens-of-shape
+                               fn-hd-ident-put-keeps-identp)
+           :use ((:instance fn-hd-tokens-of-shape (k (cadr ev)))
+                 (:instance fn-hd-ident-put-keeps-identp
+                            (k (cadr ev)) (tokens (cons (caddr ev) (fn-hd-tokens-of (cadr ev) table))))
+                 (:instance fn-hd-ident-put-keeps-identp
+                            (k (cadr ev)) (tokens (remove1-equal (caddr ev) (fn-hd-tokens-of (cadr ev) table))))))))
+
+; A hold by a token adds exactly that token to its key: the key's tokens gain
+; TOK, every other key's tokens are unchanged.
+(defthm fn-hd-ident-hold-adds-exactly-its-token
+  (implies (and (fn-hd-identp table) (natp k)
+                (not (member-equal tok (fn-hd-tokens-of k table))))
+           (let ((r (fn-hd-ident-step table (list :hold k tok))))
+             (and (equal (mv-nth 1 r) :held)
+                  (equal (fn-hd-tokens-of h (mv-nth 0 r))
+                         (if (equal h k)
+                             (cons tok (fn-hd-tokens-of k table))
+                           (fn-hd-tokens-of h table))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-hd-ident-put fn-hd-ident-row fn-hd-row-of-ident-put
+                               fn-hd-tokens-of-ident-put)
+           :use ((:instance fn-hd-tokens-of-ident-put (k k)
+                            (tokens (cons tok (fn-hd-tokens-of k table))))))))
+
+; A drop by a holding token removes exactly that token.
+(defthm fn-hd-ident-drop-removes-exactly-its-token
+  (implies (and (fn-hd-identp table) (natp k)
+                (member-equal tok (fn-hd-tokens-of k table)))
+           (let ((r (fn-hd-ident-step table (list :drop k tok))))
+             (and (equal (mv-nth 1 r) :dropped)
+                  (equal (fn-hd-tokens-of h (mv-nth 0 r))
+                         (if (equal h k)
+                             (remove1-equal tok (fn-hd-tokens-of k table))
+                           (fn-hd-tokens-of h table))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-hd-ident-put fn-hd-ident-row fn-hd-row-of-ident-put
+                               fn-hd-tokens-of-ident-put)
+           :use ((:instance fn-hd-tokens-of-ident-put (k k)
+                            (tokens (remove1-equal tok (fn-hd-tokens-of k table))))
+                 (:instance fn-hd-tokens-of-shape)))))
+
+; KEYSTONE (the duplicate and the late holder, by name).  A hold by a token
+; that already holds the key, and a drop by a token that does not, are
+; refused and change nothing: a duplicate drop by A can never take B's hold.
+(defthm fn-hd-ident-duplicate-hold-is-refused
+  (implies (member-equal tok (fn-hd-tokens-of k table))
+           (equal (mv-list 2 (fn-hd-ident-step table (list :hold k tok)))
+                  (list table :refused))))
+
+(defthm fn-hd-ident-drop-of-absent-token-is-refused
+  (implies (not (member-equal tok (fn-hd-tokens-of k table)))
+           (equal (mv-list 2 (fn-hd-ident-step table (list :drop k tok)))
+                  (list table :refused))))
+
+; The count is the tokens: a key is quiet exactly when no token holds it.
+(defthm fn-hd-ident-quiet-is-no-token
+  (implies (natp k)
+           (equal (mv-nth 1 (fn-hd-ident-step table (list :quiet k)))
+                  (atom (fn-hd-tokens-of k table)))))
+
+(in-theory (disable fn-hd-ident-row fn-hd-identp fn-hd-tokens-of fn-hd-ident-count
+                    fn-hd-ident-put fn-hd-ident-step))
 
 ; ---------------------------------------------------------------------------
 ; The form.
