@@ -824,7 +824,7 @@
                              (stobj-let ((fn-mlh (fn-cat$c-mpx fn-cat$c)))
                                         (seqs)
                                         (if (fn-mlh-wfp fn-mlh)
-                                            (fn-mlh-candidates (fn-mlh-tag msgid (fn-mlh-key-octets fn-mlh)) fn-mlh)
+                                            (fn-mlh-candidates (fn-mlh-tag-of msgid fn-mlh) fn-mlh)
                                           nil)
                                         seqs)
                            :scan)
