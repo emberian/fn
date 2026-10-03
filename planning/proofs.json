@@ -22965,7 +22965,11 @@
         "books/decoded-worker-job.lisp",
         "books/decoded-worker-backing.lisp",
         "host/page-decoded-window-host.lisp",
-        "tests/acl2/decoded-worker-reuse-tests.lisp"
+        "tests/acl2/decoded-worker-reuse-tests.lisp",
+        "host/native/extent.lisp",
+        "host/native/extent-decoded.lisp",
+        "tests/native_decoded_worker_raw.lisp",
+        "tests/native_decoded_startup_raw.lisp"
       ],
       "events": [
         "fn-dwj-retired-job-refuses-scalar-publication",
@@ -22978,7 +22982,7 @@
         "planning/evidence/manifests/certify-20261003T160405Z-2295638.json",
         "planning/evidence/decoded-reuse-20261003/result.json"
       ],
-      "progress_note": "Normal incremental hbox ACL2 admission: retirement guards, carry revocation and refusal frame, job backing frame, eager reserve, and no-scalar-publication theorem pass. Five literal acquisition/return/cancellation/corruption/reassignment witnesses pass. Native persistent scratch consumer and actual startup baseline are in flight with Runtime/Operator/Foundations; no matching certification or complete allocator/GC/work claim. Scoped certificate certify-20261003T160405Z-2295638 passed assignment/job/backing/tests at817ac (4 roots;35 cached dependencies,19 without cited manifests here). Stronger publication theorem permits arbitrary query ledger/worker/token and normally admitted in11936steps; its changed bytes require fresh certificate. Native startup/reuse remains pending."
+      "progress_note": "Normal incremental hbox ACL2 admission: retirement guards, carry revocation and refusal frame, job backing frame, eager reserve, and no-scalar-publication theorem pass. Five literal acquisition/return/cancellation/corruption/reassignment witnesses pass. Native persistent scratch consumer and actual startup baseline are in flight with Runtime/Operator/Foundations; no matching certification or complete allocator/GC/work claim. Scoped certificate certify-20261003T160405Z-2295638 passed assignment/job/backing/tests at817ac (4 roots;35 cached dependencies,19 without cited manifests here). Stronger publication theorem permits arbitrary query ledger/worker/token and normally admitted in11936steps; its changed bytes require fresh certificate. Native startup/reuse remains pending. Runtime now reuses baseline storage only after terminal retirement and physical settlement; torn retire/release quarantines without retry. Actual source schedules pass; full current endpoint remains pending."
     },
     {
       "id": "PRF-1299",

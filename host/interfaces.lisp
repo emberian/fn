@@ -5440,3 +5440,11 @@
 (definterface fn-web-host-post-reply-step :class ::program)
 
 (definterface fn-web-host-post-form-step :class ::program)
+
+; Persistent baseline backing: offered only after actual construction.
+(definterface fn-dwj-reserve :class :common-lisp-compliant)
+(definterface fn-owner-page-decoded-job-retire :class :common-lisp-compliant)
+(definterface fn-prstartup-planp :class :common-lisp-compliant)
+(definterface fn-prstartup-decoded-workers :class :common-lisp-compliant)
+(definterface fn-owner-page-read-default-worker-ready :class :common-lisp-compliant)
+(definterface fn-owner-page-read-default-worker-reservedp :class :common-lisp-compliant)

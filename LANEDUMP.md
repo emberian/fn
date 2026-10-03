@@ -3634,3 +3634,21 @@ Normal3root certificate at39d72 is certify-20261003T161139Z-2311907 (174matching
 cached deps/3PASS), archived index; current selector changes have different core
 bytes so no verdict transfer. Unchanged server/helper teeth match. Next owned
 code is Message-ID selection/local membership setup; no native custody edits.
+
+Runtime persistent decoded consumer (2026-10-03)
+-----------------------------------------------
+Root817 retirement/reserve core consumed without algorithm edits. Native executor
+now takes optional admitted plan; actual installed-slot reservation before
+constructor/reserve, real parked thread then :ready acknowledgment before free
+offer. One decoded-storage envelope persists per worker; each run uses current
+token/incarnation and no replacement allocation. Final borrow retires exact
+binding before release, retaining baseline arrays through idle. :retiring and
+:releasing quarantine all torn calls including dead-thread observation, so no
+retry can turn partial settlement into a fresh free slot. Legacy startup has
+no scratch. Actual SBCL startup/refused readiness/constructor+reserve cut/legacy
+and recording repeated run/retirement/release-cut schedules PASS ~0.10s.
+Empirical beb955 hold helper preserved; real fd/thread syscall hold PASS ~0.18s.
+Foundation DATA8 getter API required (revision index preserved internally);
+Operator9244 actual pre-open startup owns caller. History current source union
+reconstruction remains only full-world route; endpoint not run. Optional full
+heap profile stays unpriced; no complete funding/HM/counterpart proof claim.
