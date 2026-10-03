@@ -469,7 +469,7 @@ class Consumer:
                 key, value = key.decode("ascii"), value.decode("ascii")
             except UnicodeError:
                 return None
-            if key in fields:
+            if key in fields or not re.fullmatch(r"[a-z][a-z0-9-]*", key) or any(ord(c) < 32 or ord(c) > 126 for c in value):
                 return None
             fields[key] = value
         if not {"application-id", "operation-id", "kind"} <= fields.keys():
@@ -513,8 +513,8 @@ class Consumer:
             if key == "payload":
                 payload = self.payload_bytes(value)
                 continue
-            if "\r" in key or "\n" in key or ":" in key or "\r" in value or "\n" in value:
-                raise Stop(1, "application metadata contains a line break or invalid key")
+            if not re.fullmatch(r"[a-z][a-z0-9-]*", key) or any(ord(c) < 32 or ord(c) > 126 for c in value):
+                raise Stop(1, "application metadata must contain printable ASCII fields")
             try:
                 metadata.append(("%s: %s" % (key, value)).encode("ascii"))
             except UnicodeError:

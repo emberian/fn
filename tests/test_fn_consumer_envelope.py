@@ -26,7 +26,8 @@ class OpaqueEnvelope(unittest.TestCase):
                     source.replace(b"payload-encoding: base64", b"payload-encoding: unknown"),
                     source.replace(b"kind: report-receipt", b"kind: report-receipt\r\nkind: reply"),
                     source.replace(b"kind: report-receipt", b"kind: unsupported"),
-                    source.replace(b"operation-id: r1", b"operation-id: ")):
+                    source.replace(b"operation-id: r1", b"operation-id: "),
+                    source.replace(b"operation-id: r1", b"operation-id: r1\x00")):
                     self.assertIsNone(self.client.envelope(corrupt))
 
     def test_legacy_saved_artifact_retry_never_reencodes_or_signs(self):
