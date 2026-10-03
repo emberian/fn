@@ -3814,3 +3814,4 @@ Full factory/physical join stays Runtime/History; whole termination/reference,
 owner/renderer guards remain open. Next shared header span/extraction backing
 with Served; frozen READY4/render6 remain unchanged and Integration independently
 composes Qplan ordinary fallback.
+BP held-source control certification followthrough (2026-10-03): exact a745d65ed union, including zero-transfer TCPCL dependency, certifies tcpcl-source-control and its literal teeth in certify-20261003T163429Z-2470673 (5 passed, 0 failed). The indexed manifest names these admitted/guarded definitions and received KEEP state preservation; it does not qualify SCN1131 or the complete native source/framing/custody boundary. Actual compatibility wrapper empty-offer supplied-p discriminator also passes in the scoped recorded-terminal harness. Current-union native entry remains pending History; no cached diagnostic claim transfers.

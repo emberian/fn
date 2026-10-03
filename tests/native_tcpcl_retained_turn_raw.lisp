@@ -211,3 +211,17 @@
  (assert (not (fnn-tclc-bundlep absent)))
  (assert (not (fnn-tclc-pending absent))))
 (format t "PASS actual retained begin distinguishes supplied empty payload from absent offer.~%")
+;;; Compatibility wrapper must preserve supplied-p rather than reintroducing
+;;; an explicit NIL keyword for its omitted argument. Loop terminal recorded.
+(let ((turn (symbol-function 'fnn-tcl-turn)))
+ (unwind-protect
+  (progn
+   (setf (symbol-function 'fnn-tcl-turn) (lambda (conn) (declare (ignore conn)) :done))
+   (let ((empty (fnn-tcl-session 99 :active :params "empty" "/spool" :bundle nil))
+         (absent (fnn-tcl-session 99 :active :params "absent" "/spool")))
+    (assert (fnn-tclc-bundlep empty))
+    (assert (equal (fnn-tclc-pending empty) '("empty")))
+    (assert (not (fnn-tclc-bundlep absent)))
+    (assert (not (fnn-tclc-pending absent)))))
+  (setf (symbol-function 'fnn-tcl-turn) turn)))
+(format t "PASS actual session wrapper carries empty-offer distinction through retained begin.~%")
