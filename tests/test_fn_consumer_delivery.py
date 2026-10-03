@@ -8,8 +8,10 @@ import importlib.util
 import os
 from pathlib import Path
 import sys
+import subprocess
 import tempfile
 import unittest
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 if os.environ.get("FN_CONSUMER_TEST_SOURCE"):
@@ -120,6 +122,41 @@ class DeliveryRecovery(unittest.TestCase):
         self.assertEqual(disposition, "repeat")
         self.assertEqual(self.client.summary()["transitions"], [])
         self.assertEqual(self.client.summary()["pending_ack"], "unsent")
+
+    def test_verifier_failure_retains_delivery_without_ack(self):
+        self.client.config.update(keyring="keyring", principal_hex="receiver")
+        source = (b"From: sender\r\n\r\n" + fn_consumer.APP_MAGIC +
+                  b"\r\napplication-id: fn-e1\r\noperation-id: r1\r\nkind: report-receipt\r\n")
+        event = dict(history="history", incarnation="incarnation", source_id="source",
+                     message_id="<report>", source=source, received=b"exact-received",
+                     sequence=1, verdict_principal="sender", verdict="verified")
+        self.client.project = lambda *args: (event, "projected")
+        for result, code in ((subprocess.CompletedProcess([], 4, b'', b'fault'), 4),
+                             (subprocess.CompletedProcess([], 0, b'invalid-json', b''), 4),
+                             (subprocess.CompletedProcess([], 0, b'[]', b''), 4),
+                             (subprocess.CompletedProcess([], 0, b'{"outcome":"undecided"}', b''), 4),
+                             (subprocess.CompletedProcess([], 0, b'{"outcome":"verified"}', b''), 4),
+                             (subprocess.TimeoutExpired('verifier', 300), 3),
+                             (OSError('cannot start verifier'), 4)):
+            with self.subTest(result=result):
+                self.calls.clear()
+                kwargs = {"side_effect": result} if isinstance(result, Exception) else {"return_value": result}
+                with mock.patch.object(fn_consumer.subprocess, "run", **kwargs):
+                    with self.assertRaises(fn_consumer.Stop) as stopped:
+                        self.client.wake(max_pages=1)
+                self.assertEqual(stopped.exception.code, code)
+                self.assertFalse(any(c[:2] == ("consumer", "ack") for c in self.calls))
+                self.assertEqual(self.client.summary()["pending_delivery"], 1)
+                self.assertEqual(self.client.summary()["transitions"], [])
+
+    def test_explicit_unverified_and_undecided_verdicts_remain_distinct(self):
+        self.client.config.update(keyring="keyring")
+        event = dict(message_id="<report>", received=b"exact-received")
+        for code, outcome in ((1, "unverified"), (3, "undecided")):
+            with self.subTest(outcome=outcome):
+                result = subprocess.CompletedProcess([], code, json.dumps({"outcome": outcome}).encode(), b'')
+                with mock.patch.object(fn_consumer.subprocess, "run", return_value=result):
+                    self.assertEqual(self.client.verify(event)["own"], outcome)
 
 
 if __name__ == "__main__":

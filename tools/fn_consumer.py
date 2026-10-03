@@ -367,15 +367,30 @@ class Consumer:
                           "itself and trusts no author by default")
         article = self.scratch("article")
         article.write_bytes(event["received"])
-        result = subprocess.run(
-            [sys.executable, str(VERIFIER), "check-article", str(article),
-             event["message_id"], "--keyring", keyring],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=300, check=False)
+        try:
+            result = subprocess.run(
+                [sys.executable, str(VERIFIER), "check-article", str(article),
+                 event["message_id"], "--keyring", keyring],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=300, check=False)
+        except subprocess.TimeoutExpired:
+            raise Stop(3, "independent verifier timed out; saved delivery remains pending")
+        except OSError as error:
+            raise Stop(4, "independent verifier could not start: %s" % error)
+        expected = {0: "verified", 1: "unverified", 3: "undecided"}
+        if result.returncode not in expected:
+            raise Stop(4, "independent verifier answered %d: %s" %
+                       (result.returncode, result.stderr.decode("utf-8", "replace")))
         try:
             check = json.loads(result.stdout.decode("utf-8"))
-        except ValueError:
-            check = {"outcome": "undecided",
-                     "reason": "verifier: " + result.stderr.decode("utf-8", "replace")[-500:]}
+        except (ValueError, UnicodeError):
+            raise Stop(4, "independent verifier returned a malformed result")
+        if not isinstance(check, dict) or check.get("outcome") != expected[result.returncode]:
+            raise Stop(4, "independent verifier result disagrees with its exit status")
+        if result.returncode == 0 and not (
+                isinstance(check.get("principal"), str) and
+                isinstance(check.get("source-sha256"), str) and
+                isinstance(check.get("signatures"), dict)):
+            raise Stop(4, "independent verifier omitted verified source evidence")
         detail = check.get("reason") or ""
         if result.returncode == 0 and check.get("outcome") == "verified":
             if check.get("principal") != event["verdict_principal"]:
@@ -386,7 +401,7 @@ class Consumer:
                 return dict(check, own="disagree",
                             detail="the verified authored source is not fn's projection")
             return dict(check, own="verified", detail="")
-        own = {1: "unverified", 3: "undecided"}.get(result.returncode, "undecided")
+        own = {1: "unverified", 3: "undecided"}[result.returncode]
         return dict(check, own=own, detail=detail)
 
     # -- durable state --------------------------------------------------------
