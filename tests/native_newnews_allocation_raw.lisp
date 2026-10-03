@@ -80,4 +80,40 @@
     (format t "native_newnews_allocation: factory-sample groups=~d articles=~d repeats=~d allocated=~d~%"
             group-count article-count iterations (- (sb-ext:get-bytes-consed) before))))))
 
-(format t "native_newnews_allocation_raw: PASS normal actual configured factory and first plan step plus matched factory samples~%")
+
+
+; Actual native window allocator and renderer, followed by actual plan steps.
+(fnout-load-host-forms "host/native/io.lisp"
+ '((deftype fnn-octets) (defun fnn-make-octets)))
+(fnout-load-host-forms "host/native/owner.lisp"
+ '((defun fnn-make-render-buffer) (defun fnn-owner-render-next)))
+(defun fnout-drain-newnews (archive args quantum)
+ (let* ((result (fnn-core 'fn-nntp-newnews-response-stream nil archive nil args nil nil))
+        (plan (fnn-core 'fn-splan-of-effects (cdr result)))
+        (output (make-array 0 :element-type '(unsigned-byte 8) :adjustable t :fill-pointer 0))
+        (steps 0) (cursor-steps 0))
+  (loop until (fnn-core 'fn-splan-donep plan) do
+   (incf steps)
+   (when (> steps 10000) (error "test fixture failed to make progress"))
+   (multiple-value-bind (octets rest donep cursorp) (fnn-owner-render-next plan)
+    (declare (ignore donep))
+    (setf plan rest)
+    (if cursorp
+        (let ((answer (fnn-call 'fn-splan-cursor-step plan quantum nil nil)))
+         (unless (eq (first answer) :ok) (error "actual cursor could not step"))
+         (incf cursor-steps) (setf plan (second answer)))
+      (loop for octet across octets do (vector-push-extend octet output)))))
+  (values output steps cursor-steps)))
+(let* ((a (fn-make-article "<a@x>" '(13 10 13 10 65) '("fn.test") '(("fn.test" . 1)) 1 5))
+       (b (fn-make-article "<b@x>" '(13 10 13 10 66) '("fn.other") '(("fn.other" . 1)) 2 6))
+       (archive (fn-make-state '("fn.g0" "fn.g1" "fn.g2" "fn.test") nil (list b a) 0 nil nil))
+       (args (list (fn-nntp-string-octets "fn.test") (fn-nntp-string-octets "20000101") (fn-nntp-string-octets "000000"))))
+ (multiple-value-bind (tiny tiny-steps tiny-cur) (fnout-drain-newnews archive args 1)
+  (multiple-value-bind (large large-steps large-cur) (fnout-drain-newnews archive args 256)
+   (unless (equalp tiny large) (error "actual tiny/large window drain changed reply"))
+   (let ((reference (fn-served-reply-octets
+                      (cdr (fn-nntp-newnews-response-cat nil archive nil args nil nil)))))
+    (unless (equalp tiny (coerce reference '(vector (unsigned-byte 8))))
+     (error "actual composed window drain differs from original NEWNEWS reply")))
+   (format t "native_newnews_allocation: actual-render-drain octets=~d tiny-steps=~d/~d large-steps=~d/~d~%" (length tiny) tiny-steps tiny-cur large-steps large-cur))))
+(format t "native_newnews_allocation_raw: PASS normal actual configured factory, plan, native window drain and matched factory samples~%")
