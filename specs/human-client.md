@@ -246,9 +246,11 @@ kinds and native partial writes to the existing segment reference.
 
 The cursor is presently a program boundary. Its guard verification and
 refinement to `fn-wr-seq` are planned in PRF-1277; raw equality witnesses do not
-extend the existing web proofs to it. Owner admission, session decisions and
-segment construction still run to completion under the owner lock. A long
-owner operation or page-plan construction can therefore delay event handling;
+extend the existing web proofs to it. Exact captured read/post reply events run on the fixed semantic worker without
+consulting or writing the live session table (PRF-1279, admission pending).
+Stateful owner admission and session decisions still run under the owner lock.
+Reply segment construction remains a full worker operation, and a long
+owner operation can therefore delay stateful event handling;
 this is not a full semantic-event fairness guarantee. The fixed semantic
 worker also serializes operations that need that worker.
 

@@ -350,7 +350,10 @@ counts and emits validated segments outside O through the fixed worker, with
 no full HTML OUT (SCN-1105 raw passes). PRF-1277 remains planned/program mode;
 matching image use and full NNTP input/plan/job funding remain open. Owner
 admission/session decisions/segment construction can still hold the I/O actor.
-Runtime absorbs Web after 08:00; Root/Foundations own the full output funding seam.
+Web remains a separate continuing owner through 10:00 after Ember revised the
+08:00 cap to ten. Exact captured reply plans now build on the fixed worker
+without O/live-table access; source equivalence PRF-1279 awaits admission.
+Root/Foundations own the full output funding seam.
 
 Done: a slow client does not block every web client; POST composes with a
 pipelined native batch; replies stream within accounted limits; faults fence or

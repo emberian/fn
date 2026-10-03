@@ -54,6 +54,7 @@
                               (max 1024 (* 2 (first args)))))
     (fn-web-host-window-end (min (second args) (+ (first args) 4096)))
     (fn-web-host-max-events 16)
+    (fn-web-host-private-reply-p nil)
     (fn-web-host-request-seconds 15)
     (fn-web-host-action-kind (first (first args)))
     (fn-splan-cursor-resume-ms 2)

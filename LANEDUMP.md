@@ -2359,3 +2359,5 @@ and image status remain pending; no deployment action.
 
 Groundwork continues application consumer/E1E2. No app transfer. Lieutenant
 exempt from ten-agent cap per Ember's latest 07:14 correction.
+
+Source assembly: captured Web reply worker64 composed with page cursor; two actual consumed program declarations. Stateful session/admission still owner-bound; PRF1279 admission/cert/image/funding pending.
