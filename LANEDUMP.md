@@ -343,3 +343,18 @@ native-ad8da41-funded-read-cancel-2026-10-03; manifest
 2fcce62aacf0f4ef1c53eae94d3a76b974a0a1677820cd98a7ee4edbebe85a09.
 Next image consumers: matching new held-stop/results, paged attachment/navigation
 and canonical BP undertaking/release/reopen20ec; Integration budgets them.
+
+
+## Combined funded posting/slow-reader consumer, 2026-10-03
+
+Root authorized currentad8 combined expansion; Integration approved one24GiB
+scope, no new image/build. Existing mixed runner now selects replay-plan
+owner_env counterpart/custody tracing and excludes maintenance for this
+question. Actor first/last completion times supplement latency/completion gaps.
+Initial posting owner's final retained stderr feeds Runtime's exact shared
+assert_funded_syncer_custody from3e637bfe3 unchanged; recovery owner receives
+read requests only, so no fabricated job is required there. Both owner exits
+must be clean; complete bytes/local numbers/allaccepted accounting persist
+through restart.7 existing meaningful history corruption/missing promise tests
+and Python compile pass. Paired baseline/slow schedules use sameprofile/seed
+with24seed+24mixedPOST/36reads percase; actual run pending this source push.

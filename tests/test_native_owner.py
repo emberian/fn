@@ -17,6 +17,34 @@ from tests.native_harness import (
 IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
 
 
+def assert_funded_syncer_custody(case, trace):
+    """Consume the exact native producer and dual receipts; no synthetic outcome."""
+    case.assertRegex(trace, rb"(?i)custody: install threads=\d+ stack=\d+ word=:installed")
+    issues = list(re.finditer(
+        rb"custody: issue generation=(\d+) token=(\(:resource :owner 2 \d+\)) word=:drawn",
+        trace, re.IGNORECASE))
+    case.assertTrue(issues, trace[-4000:])
+    receipts = list(re.finditer(
+        rb"custody: receipt kind=:(physical|outcome) operation=(\d+) "
+        rb"token=(\(:resource :owner 2 \d+\)) receipt=([^ ]+) word=:(pending|settled)",
+        trace, re.IGNORECASE))
+    for issue in issues:
+        generation, token = issue.groups()
+        own = [row for row in receipts
+               if row.group(2) == generation and row.group(3).lower() == token.lower()]
+        case.assertEqual([row.group(1).lower() for row in own].count(b"physical"), 1, trace[-4000:])
+        case.assertEqual([row.group(1).lower() for row in own].count(b"outcome"), 1, trace[-4000:])
+        case.assertTrue(all(row.start() > issue.start() for row in own), trace[-4000:])
+        case.assertEqual([row.group(5).lower() for row in own], [b"pending", b"settled"], trace[-4000:])
+        physical = next(row for row in own if row.group(1).lower() == b"physical")
+        outcome = next(row for row in own if row.group(1).lower() == b"outcome")
+        case.assertEqual(physical.group(4).lower(), b":terminal", trace[-4000:])
+        case.assertEqual(outcome.group(4), generation, trace[-4000:])
+    drained = list(re.finditer(
+        rb"custody: drained typed=t retained=nil result=t", trace, re.IGNORECASE))
+    case.assertTrue(drained, trace[-4000:])
+    case.assertGreater(drained[-1].start(), receipts[-1].start(), trace[-4000:])
+
 class NativeOwnerHandlerStructureTests(unittest.TestCase):
     def test_extent_close_uncertainty_fences_before_unlock_and_never_retries(self):
         from tests.campaign.native_cuts import host_function
