@@ -4,6 +4,7 @@
 (defparameter *fnmg-original-cur* (symbol-function 'fn-cur-make))
 (defparameter *fnmg-shared-cur* (symbol-function 'fn-cur-shared-make))
 (defparameter *fnmg-stream-step* (fnmg-function 'fn-nnw-stream-step))
+(defparameter *fnmg-stream-live* (fnmg-function 'fn-nnw-meta-livep))
 (defparameter *fnmg-stream-remaining* (fnmg-function 'fn-nnw-stream-remaining t))
 (defparameter *fnmg-stream-source* (fnmg-function 'fn-nnw-group-source))
 (defparameter *fnmg-stream-start* (fnmg-function 'fn-nnw-stream-scan-cursor))
@@ -22,7 +23,7 @@
 
 (defun fnmg-stream-drain (initial)
   (let ((cur initial))
-    (loop while cur do
+    (loop while (funcall *fnmg-stream-live* cur) do
       (multiple-value-bind (octets next spent phase)
           (funcall *fnmg-stream-step* cur 1 1 nil nil)
         (declare (ignore octets spent phase))
@@ -43,7 +44,7 @@
          (old-start old) (new-start new)
          (expected (funcall *fnmg-stream-remaining* old nil nil))
          (got nil) (steps 0) (visits 0))
-    (loop while old do
+    (loop while (funcall *fnmg-stream-live* old) do
       (assert (equal old new))
       (let ((a (fnmg-with-consumer-route (:legacy)
                  (multiple-value-list (funcall *fnmg-stream-step* old 1 1 nil nil))))
@@ -54,7 +55,10 @@
         (dolist (byte (first a)) (push byte got))
         (incf visits (third a)) (incf steps)
         (setf old (second a) new (second b))))
-    (assert (null new))
+    ;; The shell preserves context even at completion. Its actual live
+    ;; predicate, rather than Lisp NIL, owns completion of this stream.
+    (assert (not (funcall *fnmg-stream-live* new)))
+    (assert (equal old new))
     (assert (equal (nreverse got) expected))
     (format t "~%FN_NEWNEWS_OPT {\"type\":\"case\",\"case_id\":~d,\"input_octets\":~d,\"steps\":~d,\"entry_visits\":~d,\"output_octets\":~d,\"equal_every_step_and_reply\":true,\"allocation_replays\":32}~%"
             id (length text) steps visits (length expected))
