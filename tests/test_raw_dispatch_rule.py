@@ -187,3 +187,26 @@ class Tree(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DirectMacroHeads(unittest.TestCase):
+    def observed(self, source, direct=("fn-open",)):
+        forms = ledger.Reader(PRELUDE + source).top_level()
+        result = rule.scan_sources({"host/native/t.lisp": forms}, set(BOOK), direct)
+        return [s for s in result.sites if s.context == "m"]
+
+    def test_explicit_direct_entry_permits_only_literal_emitted_call_head(self):
+        self.assertTrue(self.observed("(defmacro m (x) `(fn-open ,x))") == [],
+                        "declared direct macro call must follow its actual interface")
+        self.assertTrue(self.observed("(defmacro m (x) `(fn-open ,x))", direct=()))
+
+    def test_direct_declaration_does_not_permit_quoted_data_or_function_values(self):
+        for source in ("(defmacro m (x) `'(fn-open ,x))",
+                       "(defmacro m (x) `(list 'fn-open ,x))",
+                       "(defmacro m (x) `(funcall #'fn-open ,x))"):
+            with self.subTest(source=source):
+                self.assertTrue(any(s.rule == "NAME" for s in self.observed(source)))
+
+    def test_neighboring_undeclared_head_still_refuses(self):
+        found = self.observed("(defmacro m (x) `(progn (fn-open ,x) (fn-step ,x)))")
+        self.assertEqual([(s.rule, s.detail) for s in found], [("NAME", "template head fn-step")])

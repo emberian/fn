@@ -16,7 +16,9 @@ NAME   A book function's symbol occurs -- quoted, `#'', inside quoted data
        or as a backquote template's head -- only as the name argument of a
        dispatcher: a base dispatcher below, or a raw function or macro whose
        parameter reaches a dispatcher's name position (derived, to a
-       fixpoint, from the source; `(apply #'D 'F ...)' counts).
+       fixpoint, from the source; `(apply #'D 'F ...)' counts). A literal
+       emitted call head may also name an explicit definterface :direct entry;
+       this permits the call, never its symbol as data or a function value.
 NAMEVAR A dispatcher's name argument is a quoted literal, unless it is the
        enclosing dispatcher's own name parameter passed through.
 MAKE   No symbol is made or looked up at run time: intern, find-symbol,
@@ -318,6 +320,7 @@ class Defn:
 class Scan:
     book: set
     raw: dict[str, Defn]
+    direct: set = field(default_factory=set)
     sites: list[Site] = field(default_factory=list)
     dispatchers: dict[str, set] = field(default_factory=dict)
     resolving: set = field(default_factory=set)    # (head, position) that resolve
@@ -870,12 +873,15 @@ class Walker:
         # the template's code: dispatcher positions and direct book heads
         self._template_walk(template, env)
 
-    def _template_walk(self, x, env):
+    def _template_walk(self, x, env, quoted=False):
         if not isinstance(x, list) or not x:
             if isinstance(x, Sym) and _strip(str(x)) in self.scan.book:
                 self.site("NAME", "template symbol {}".format(_strip(str(x))), [_strip(str(x))])
             return
         h = _head(x)
+        if h in ("quote", "function") and len(x) == 2:
+            self._template_walk(x[1], env, quoted=True)
+            return
         if h in ("unquote", "unquote-splicing") and len(x) == 2:
             self.code(x[1], env)
             return
@@ -887,10 +893,12 @@ class Walker:
                     self.code(item[1], env)
                 continue
             if _head(item) == "quote":
-                self._template_walk(item[1], env)
+                self._template_walk(item[1], env, quoted=True)
                 continue
-            self._template_walk(item, env)
+            self._template_walk(item, env, quoted=quoted)
         if h and _strip(h) in self.scan.book:
+            if not quoted and _strip(h) in self.scan.direct:
+                return  # The actual declaration permits this literal call head only.
             self.site("NAME", "template head {}".format(_strip(h)), [_strip(h)])
 
     # -- CALL ---------------------------------------------------------------
@@ -1036,9 +1044,9 @@ def _tails(body):
     return [last]
 
 
-def scan_sources(files: dict[str, list], book: set[str]) -> Scan:
+def scan_sources(files: dict[str, list], book: set[str], direct=()) -> Scan:
     defs, tops = _definitions(files)
-    scan = Scan(book=book - set(defs), raw=defs)
+    scan = Scan(book=book - set(defs), raw=defs, direct=set(direct))
     scan.calls, scan.ctor_calls = [], []
     scan.lambda_slot, scan.lamparams, scan.param_calls = {}, set(), {}
     scan.special_writes, scan.slot_writes = [], []
@@ -1199,7 +1207,8 @@ UNDECLARED_CEILING = 148
 def findings(tree=None, declared: set[str] | None = None) -> tuple[list[str], dict]:
     from tools import interface_emit
     tree = tree or ledger.load_tree(lazy=True)
-    scan = scan_sources(raw_sources(tree), book_functions(tree))
+    scan = scan_sources(raw_sources(tree), book_functions(tree),
+                        interface_emit.entry_direct_allowed(ledger.ROOT))
     problems, covered = judge(scan, ALLOW + PENDING, carried_functions())
     # a produced open is never dispatched by any dispatcher (def-carried
     # :produced; interface_emit checks the RAW_DISPATCHERS reading, this the
@@ -1239,7 +1248,9 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
     if args.sites:
         tree = ledger.load_tree(lazy=True)
-        scan = scan_sources(raw_sources(tree), book_functions(tree))
+        from tools import interface_emit
+        scan = scan_sources(raw_sources(tree), book_functions(tree),
+                            interface_emit.entry_direct_allowed(ledger.ROOT))
         for s in scan.sites:
             print("{}\t{}\t{}\t{}\t{}".format(s.rule, s.file, s.context, s.line, s.detail))
         return 0

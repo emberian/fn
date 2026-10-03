@@ -1,0 +1,25 @@
+{
+ "budget": 150,
+ "category": "checker-correctness",
+ "expect-failure": "tests.test_raw_dispatch_rule.DirectMacroHeads.test_explicit_direct_entry_permits_only_literal_emitted_call_head",
+ "failure-message": "False is not true : declared direct macro call must follow its actual interface",
+ "file": "tools/raw_dispatch_rule.py",
+ "harness": "tests/test_raw_dispatch_rule.py",
+ "id": "NIGHT-DIRECT-TEMPLATE",
+ "notes": [
+  "10-03 02:31 claimed: scope=['tools/raw_dispatch_rule.py', 'tests/test_raw_dispatch_rule.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_raw_dispatch_rule.DirectMacroHeads.test_explicit_direct_entry_permits_only_literal_emitted_call_head"
+ ],
+ "owner": "codex-sol-tools",
+ "scope": [
+  "tools/raw_dispatch_rule.py",
+  "tests/test_raw_dispatch_rule.py",
+  "LANEDUMP.md",
+  "planning/evidence-index.tsv"
+ ],
+ "severity": "medium",
+ "source": "runtime-convergence",
+ "state": "in-progress",
+ "test": "python3 -m unittest tests.test_raw_dispatch_rule.DirectMacroHeads.test_explicit_direct_entry_permits_only_literal_emitted_call_head",
+ "title": "Macro template direct calls disagree with explicit interface declarations",
+ "updated": "2026-10-03T06:31:22Z"
+}
