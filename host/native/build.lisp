@@ -26,6 +26,10 @@
 
 ; The fn-wide outcome classes and exit codes host/native/io.lisp reads (PRF-143).
 (include-book "books/outcome-class")
+;; The failure scope of every host boundary: ACL2 classifies a condition that
+;; leaves a boundary (fn-fs-classify) and escalates the service's exit
+;; (fn-fs-stop-exit-escalate); both run in handlers, called directly.
+(include-book "books/failure-scope")
 (include-book "books/replay")
 ; Every codec seam's attachment (books/codec-attach.lisp): the books above
 ; the seams call the constrained encoders and decoders, and this is what makes

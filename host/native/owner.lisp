@@ -1570,8 +1570,28 @@ nothing.  The caller holds the owner mutex.  Returns the number shed."
           (incf n))))
     n))
 
-(defmacro fnn-owner-gated ((service class) &body body)
-  "Run BODY and gate cleanup under owner exclusion; contain gate failures."
+(defvar *fnn-boundary-outcome* nil
+  "What the boundary this thread is inside has decided about its body, bound
+per boundary (fnn-owner-gated): nil while the body runs; :completed when it
+returned; :fenced, :faulted or :refused once ACL2 classified a condition
+that left it (fnn-owner-classify-escape-locked).  A boundary whose unwind
+finds nil was left by something that is no condition -- a throw, a thread
+termination -- an unclassified exit, which is a fault (lane failure-scope
+review M3), installed before the mutex is released.")
+
+(defmacro fnn-owner-gated ((service class &key cid) &body body)
+  "Run BODY as one owner quantum of CLASS, under owner exclusion and inside
+the ONE fence boundary (lane failure-scope, t45; r71 F1, sweep S017/S019/
+S020).  A condition leaving BODY, the gate's check or its cleanup is
+classified by ACL2 from its concrete class and the last durable step the
+quantum completed (books/failure-scope.lisp fn-fs-classify, through
+fnn-owner-shared-action-locked): the fence (exit 3) or the fault (exit 4)
+is installed BEFORE the mutex is released, a known refusal passes to the
+caller unfenced; an exit that is no condition is a fault.  CID names the
+connection the quantum serves (the core's connection-fault transition on a
+fault), or nil.  fnn-owner-serialized adds the stopping refusal: a bare
+quantum is admitted after the fence, so only a cleanup quantum (the fault
+itself, a pass's finish) may be bare."
   (let ((s (gensym "SERVICE")) (g (gensym "GATE"))
         (c (gensym "CLASS")) (w (gensym "WAITED"))
         (h (gensym "HELD")) (failure (gensym "FAILURE")))
@@ -1589,15 +1609,28 @@ nothing.  The caller holds the owner mutex.  Returns the number shed."
                     (fnn-owner-gate-abort ,g ,failure)
                     (sb-thread:with-mutex ((fnn-owner-service-lock ,s))
                       (fnn-owner-gate-fail-locked ,s ,g ,failure)))))
-            (,h (get-internal-real-time)))
+            (,h (get-internal-real-time))
+            (*fnn-boundary-outcome* nil)
+            (*fnn-section-step* nil))
        (sb-thread:with-mutex ((fnn-owner-service-lock ,s))
          (unwind-protect
-              (progn
-                ;; A competing entry may have aborted after our admission.
-                (handler-case (fnn-owner-gate-check ,g)
-                  (serious-condition (,failure)
-                    (fnn-owner-gate-fail-locked ,s ,g ,failure)))
-                (fnn-owner-measured (*fnn-owner-measure-label*) ,@body))
+              (fnn-owner-shared-action-locked
+               ,s ,cid
+               (lambda ()
+                 (multiple-value-prog1
+                     (progn
+                       ;; A competing entry may have aborted after our admission.
+                       (handler-case (fnn-owner-gate-check ,g)
+                         (serious-condition (,failure)
+                           (fnn-owner-gate-fail-locked ,s ,g ,failure)))
+                       (fnn-owner-measured (*fnn-owner-measure-label*) ,@body))
+                   (setq *fnn-boundary-outcome* :completed))))
+           ;; An unwind no condition explains (a throw, a thread termination):
+           ;; a fault, installed while the mutex is still held (review M3);
+           ;; the line after the fence, never before it.
+           (unless *fnn-boundary-outcome*
+             (fnn-owner-stop-service-locked ,s +fnn-exit-fault+)
+             (fnn-err "owner quantum left by an unclassified exit; process stopped"))
            ;; Cleanup calls the core too. Fence its failure before releasing
            ;; owner exclusion; gate abort wakes waiters without another pick.
            (handler-case (fnn-owner-gate-leave ,g ,c (fnn-ms-since ,h) ,w)
@@ -1685,7 +1718,12 @@ nothing.  The caller holds the owner mutex.  Returns the number shed."
       '(:refused :payload-view-instance))))
 
 (defun fnn-owner-stop-service-locked (service exit-code &optional answering)
-  "Fence while the owner mutex is held; the first terminal outcome wins.
+  "Fence while the owner mutex is held.  The first stop installs STOPPING and
+its exit code; a later terminal outcome never lowers the code: ACL2's
+lattice decides it (books/failure-scope.lisp fn-fs-stop-exit-escalate: ok <
+refused < fault < fenced, fn-fs-stop-exit-fence-is-never-masked; sweep S015:
+the graceful stop's 0 used to hide a barrier that failed after it), and the
+dominated outcome is recorded on stderr, never lost.
 
 ANSWERING is the socket of the connection whose own ACL2 reply reported the
 stop, or nil.  It is not shut down here: its worker still owes that reply (the
@@ -1697,14 +1735,23 @@ fence; no semantic action of any worker, that one included, can run after it
 ANSWERING is also remembered in SPARING (PKT-562): a later stop -- the run's
 cleanup stop, which passes no ANSWERING -- spares it too, so it cannot shut
 the socket while that worker is still writing its reply."
-  (let ((first-stop nil))
-    ;; Install the irreversible service fence before any fallible core drain.
-    ;; Lifecycle failure retains debt; it cannot reopen semantic admission.
+  (let ((first-stop nil) (dominated nil))
+    ;; Install the irreversible service fence before any fallible core drain,
+    ;; I/O or log line (review M3c: the fence step cannot fail).  Lifecycle
+    ;; failure retains debt; it cannot reopen semantic admission.
     (fnn-with-roster (service)
-      (unless (fnn-owner-service-stopping service)
+      (if (fnn-owner-service-stopping service)
+          (let* ((current (fnn-owner-service-exit-code service))
+                 (next (fn-fs-stop-exit-escalate current exit-code)))
+            (setf (fnn-owner-service-exit-code service) next)
+            (cond ((not (eql next current)) (setq dominated (list current next)))
+                  ((not (eql exit-code current)) (setq dominated (list exit-code next)))))
         (setf (fnn-owner-service-stopping service) t
               (fnn-owner-service-exit-code service) exit-code
               first-stop t)))
+    ;; After the fence: the dominated outcome, recorded (review Q2a).
+    (when dominated
+      (fnn-err "stopping: exit ~d dominated by exit ~d" (first dominated) (second dominated)))
     (unwind-protect
         (when first-stop (fnn-payload-lifecycle-drain service))
       ;; Signal cleanup even when lifecycle drain raises or escapes.
@@ -1768,13 +1815,44 @@ into the service log's stop line and its own result line, so `health',
       (fnn-owner-stop-service-locked service +fnn-exit-fault+)))
   (fnn-err "owner core/store fault; process stopped: ~a" condition))
 
-(defun fnn-owner-shared-action-locked (service cid thunk)
-  "Run THUNK while the caller holds the owner mutex.
+(defun fnn-owner-classify-escape-locked (service cid condition)
+  "The owner mutex held: ACL2 decides what CONDITION, leaving a quantum, is
+(books/failure-scope.lisp fn-fs-classify over its concrete class and the
+last durable step the quantum completed; the tables are closed, an unlisted
+class is a fault), and the fence is installed before the mutex can be
+released: an uncertain outcome is exit 3; a fault, an OS failure before any
+durable step or any other serious condition is exit 4, with the core's
+connection-fault transition for CID when a connection is named; the known
+refusal class and a usage error pass, scoped to their caller.  Records the
+decision for the boundary's unwind (*fnn-boundary-outcome*); answers the
+kind."
+  (let ((kind (fn-fs-classify (fnn-condition-class condition) *fnn-section-step*)))
+    (case kind
+      (:indeterminate
+       (setq *fnn-boundary-outcome* :fenced)
+       (fnn-owner-stop-service-locked service +fnn-exit-uncertain+)
+       ;; After the fence: the outcome recorded (review Q2a), never lost
+       ;; under a later outcome's line.
+       (fnn-err "owner quantum uncertain; owner fenced: ~a" condition))
+      ((:refusal :usage)
+       (setq *fnn-boundary-outcome* :refused))
+      (t
+       (setq *fnn-boundary-outcome* :faulted)
+       (when (and cid (not (fnn-owner-connection-selected-p service)))
+         (ignore-errors (fnn-owner-action 'fn-owner-fault cid)))
+       (fnn-owner-stop-service-locked service +fnn-exit-fault+)
+       (fnn-err "owner quantum fault; process stopped: ~a" condition)))
+    kind))
 
-Only a known semantic refusal may leave this boundary without first fencing.
-An indeterminate observation is exit 3.  A core/store fault, an unclassified
-OS failure, or any other serious condition is exit 4.  The fence is installed
-before the mutex can be released, so no queued client can mutate afterward."
+(defun fnn-owner-shared-action-locked (service cid thunk)
+  "Run THUNK while the caller holds the owner mutex, inside the fence
+boundary: a condition leaving it is classified by ACL2 and the fence
+installed before the mutex can be released (fnn-owner-classify-escape-
+locked), then re-signalled to the caller; only a known refusal leaves
+without a fence, so no queued client can mutate after an uncertain outcome
+or a fault.  fnn-owner-gated runs every quantum through this; a body calls
+it directly only to classify, under the mutex it already holds, a condition
+it re-signals (the syncer's COMPLETE)."
   (handler-case
       (if (fnn-developer-selector "FN_NATIVE_FAULT_BACKTRACE")
           ;; Developer image only: the stack of a memory fault or any other
@@ -1788,24 +1866,31 @@ before the mutex can be released, so no queued client can mutate afterward."
                                 (sb-debug:print-backtrace :count 80 :stream *error-output*))))))
             (funcall thunk))
         (funcall thunk))
-    (fnn-store-indeterminate (condition)
-      (fnn-owner-stop-service-locked service +fnn-exit-uncertain+)
-      (error condition))
-    (fnn-store-fault (condition)
-      (when (and cid (not (fnn-owner-connection-selected-p service)))
-        (ignore-errors (fnn-owner-action 'fn-owner-fault cid)))
-      (fnn-owner-stop-service-locked service +fnn-exit-fault+)
-      (error condition))
-    ;; FNN-STORE-ERROR is the existing known semantic-refusal class.  It has
-    ;; made no ambiguous persistence observation and remains connection scoped.
-    (fnn-store-error (condition) (error condition))
-    ;; An OS or arbitrary failure inside a semantic/persistence action has no
-    ;; safe connection-only attribution.  Preserve the shared state by stopping.
-    ((or fnn-os-error serious-condition) (condition)
-      (when (and cid (not (fnn-owner-connection-selected-p service)))
-        (ignore-errors (fnn-owner-action 'fn-owner-fault cid)))
-      (fnn-owner-stop-service-locked service +fnn-exit-fault+)
+    ;; GEN: def-section :failure -- one arm: the host names the class, ACL2
+    ;; decides (never a parent-class arm, which would pass an unlisted
+    ;; subclass as a refusal: review M1).
+    (serious-condition (condition)
+      (fnn-owner-classify-escape-locked service cid condition)
       (error condition))))
+
+(defun fnn-owner-thread-escape (service condition label)
+  "A worker thread's top boundary, off the owner mutex (the committer, the
+publisher, the exporter, the publication's release): ACL2 decides the kind
+of CONDITION as a quantum's boundary does (fn-fs-classify).  An uncertain
+outcome installs the fence (exit 3; idempotent and escalating: a quantum
+that raised it has fenced already) and is logged under LABEL; a fault or any
+other serious condition stops the service as a fault (exit 4,
+fnn-owner-fault-service).  A known refusal is answered as its kind for the
+caller to scope.  Answers the kind."
+  ;; GEN: def-actor :failure
+  (let ((kind (fn-fs-classify (fnn-condition-class condition) *fnn-section-step*)))
+    (case kind
+      (:indeterminate
+       (fnn-owner-fence-service service)
+       (fnn-err "~a uncertain; recovery required: ~a" label condition))
+      ((:refusal :usage) nil)
+      (t (fnn-owner-fault-service service nil condition)))
+    kind))
 
 (defun fnn-owner-serialized (service cid thunk &optional (class :control))
   "Run one semantic action, fencing before its mutex can be released.
@@ -1818,10 +1903,11 @@ a peer connection's and for the feeds', the BP node's and its applications'
 socket, and :control (the default) for the control socket's requests and the
 maintenance steps (the checkpoint capture, the publication's done step, the
 log reopen)."
-  (fnn-owner-gated (service class)
+  ;; One boundary: the quantum's own (fnn-owner-gated classifies and fences).
+  (fnn-owner-gated (service class :cid cid)
     (when (fnn-owner-service-stopping service)
       (fnn-refuse "owner service is stopping"))
-    (fnn-owner-shared-action-locked service cid thunk)))
+    (funcall thunk)))
 
 (defun fnn-owner-serialized-with-control-turn
  (service cid callback &optional (class :control) epilogue result-publisher)
@@ -1833,11 +1919,9 @@ No numeric BODY or supplied receipt is accepted."
   (if (not binding) (values :owner-control-unavailable :refused)
    (fnn-with-owner-control-issued-turn (binding slot nonce slots pool)
     (multiple-value-prog1
-     (fnn-owner-gated (service class)
+     (fnn-owner-gated (service class :cid cid)
       (when (fnn-owner-service-stopping service)
        (fnn-refuse "owner service is stopping"))
-      (fnn-owner-shared-action-locked service cid
-       (lambda ()
         (multiple-value-bind (word answer next-slots next-pool next-state)
             (funcall callback slot nonce slots pool)
          (when next-slots
@@ -1851,7 +1935,7 @@ No numeric BODY or supplied receipt is accepted."
          ; Source-specific publication remains inside the owner mutex and
          ; follows retention of every actual returned stobj.
          (if result-publisher (funcall result-publisher word answer)
-           (values word answer))))))
+           (values word answer))))
      ; The actual scheduler cleanup has returned. The caller must already
      ; have relinquished its registered private aliases; NIL here alone is
      ; not a retirement receipt. The static epilogue leaves ATS slots readonly.
@@ -2045,21 +2129,31 @@ follows is justified only by this line."
        (fnn-err "unclassified OS error in a Store attempt; outcome uncertain: ~a" e)
        :uncertain)))
 
-(define-condition fnn-owner-admission-pending (serious-condition)
+;; A pending admission verdict (:yield, :continue, :demand, :unavailable) is
+;; neither a negative lookup nor a completed attempt: the request cannot be
+;; answered now.  Until the retained scheduler's join resolves such an intent
+;; (not activated by this dispatch boundary), it is a REFUSAL of that request,
+;; connection-scoped and named (lane failure-scope, t45; TCB-SHRINK review):
+;; a known refusal class of books/failure-scope.lisp, caught by
+;; fnn-owner-attempt-handlers as :refused.  Before, it was a serious
+;; condition no handler named, and ended the owner with exit 4.
+(define-condition fnn-owner-admission-pending (fnn-store-error)
   ((verdict :initarg :verdict :reader fnn-owner-admission-pending-verdict)))
 
-;; A pending query is not a negative lookup or a completed attempt. The
-;; retained scheduler must catch this before resolving its intent; that
-;; scheduling join is not activated by this dispatch boundary alone.
+(defun fnn-owner-admission-pending (verdict)
+  (error 'fnn-owner-admission-pending :verdict verdict
+         :message (format nil "admission pending (~(~a~)): the request cannot be answered now"
+                          (if (consp verdict) (car verdict) verdict))))
+
 (defun fnn-owner-existing-verdict (verdict)
   (case verdict
     ((:absent :duplicate :conflict :invalid-binding) verdict)
     ((:yield :continue :demand :unavailable)
-     (error 'fnn-owner-admission-pending :verdict verdict))
+     (fnn-owner-admission-pending verdict))
     (:recovery-required (fnn-indeterminate "admission-recovery-required"))
     (otherwise
      (if (and (consp verdict) (eq (car verdict) :yield))
-         (error 'fnn-owner-admission-pending :verdict verdict)
+         (fnn-owner-admission-pending verdict)
        (fnn-fixed-callback-fail 'fn-owner-existing-action-buffer
                                 :invalid-admission-verdict nil)))))
 
@@ -3617,7 +3711,15 @@ leave only in its COMPLETE, after its barrier returned
                                  (fnn-owner-answer-early ledger next)
                                (setq ledger ledger2)
                                (dolist (m (append members tell))
-                                 (fnn-owner-deliver service (first m) :uncertain))))
+                                 (fnn-owner-deliver service (first m) :uncertain)))
+                             ;; The barrier's own :stop (an uncertain
+                             ;; observation) is a recovery event whichever
+                             ;; stop came first: the store is fenced and the
+                             ;; exit escalated to 3 (sweep S015; a fence is
+                             ;; never masked by the graceful stop's 0).
+                             (when (eq step :stop)
+                               (setf (fnn-store-fenced store) t)
+                               (fnn-owner-stop-service-locked service +fnn-exit-uncertain+)))
                             ((eq step :complete)
                              (fnn-owner-commit-complete-locked
                               service :complete members deferred)
@@ -3687,25 +3789,51 @@ queued."
 requested once every I/O loop has finished the pass it was in (the batch is
 every submission ready by then: the design's barrier-paced close, without a
 timer)."
-  (handler-case
-      (loop
-        (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
-          (loop until (or (plusp (fnn-owner-service-queued service))
-                          (fnn-owner-service-stopping service))
-                do (sb-thread:condition-wait (fnn-owner-service-commit-ready service)
-                                             (fnn-owner-service-commit-lock service)))
-          (let ((targets (fnn-owner-loops-snapshot service)))
-            (loop until (or (fnn-owner-service-stopping service)
-                            (fnn-owner-loops-passed-p service targets))
+  (let ((*fnn-section-step* nil))
+    (handler-case
+        (loop
+          (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
+            (loop until (or (plusp (fnn-owner-service-queued service))
+                            (fnn-owner-service-stopping service))
                   do (sb-thread:condition-wait (fnn-owner-service-commit-ready service)
-                                               (fnn-owner-service-commit-lock service)))))
-        (when (fnn-owner-service-stopping service) (return))
-        (fnn-owner-commit-pipeline service))
-    (fnn-store-error ()
-      ;; The service stopped between the wake-up and the gate.
-      nil)
-    (serious-condition (e)
-      (fnn-owner-fault-service service nil e))))
+                                               (fnn-owner-service-commit-lock service)))
+            (let ((targets (fnn-owner-loops-snapshot service)))
+              (loop until (or (fnn-owner-service-stopping service)
+                              (fnn-owner-loops-passed-p service targets))
+                    do (sb-thread:condition-wait (fnn-owner-service-commit-ready service)
+                                                 (fnn-owner-service-commit-lock service)))))
+          (when (fnn-owner-service-stopping service) (return))
+          ;; Developer image only: the native witness of this boundary.
+          (fnn-owner-committer-test-fault)
+          (fnn-owner-commit-pipeline service))
+      ;; GEN: def-actor committer :failure -- one arm; ACL2 decides the kind
+      ;; (fnn-owner-thread-escape): an uncertain outcome fences (exit 3), a
+      ;; fault stops the service (exit 4), never a silent thread death with
+      ;; a batch in flight and the gate admitting no poster (sweep S016,
+      ;; Astra B1: the refusal arm caught both).  The known refusal is the
+      ;; stop's own (fnn-owner-serialized refuses once STOPPING is set); one
+      ;; that escapes the pipeline while the service runs is a defect of the
+      ;; pipeline, contained as a fault.
+      (serious-condition (e)
+        (when (member (fnn-owner-thread-escape service e "committer") '(:refusal :usage))
+          (unless (fnn-owner-service-stopping service)
+            (fnn-owner-fault-service service nil e)))))))
+
+(defvar *fnn-committer-test-fault-raised* nil)
+
+(defun fnn-owner-committer-test-fault ()
+  "Developer image only: FN_NATIVE_COMMITTER_FAULT=fault|indeterminate raises
+that condition on the committer thread, off any owner quantum, once (the
+native witness that the thread's boundary fences or stops the service,
+tests/test_native_fence_boundary.py)."
+  (let ((raw (fnn-developer-selector "FN_NATIVE_COMMITTER_FAULT")))
+    (when (and raw (not *fnn-committer-test-fault-raised*))
+      (setq *fnn-committer-test-fault-raised* t)
+      (cond ((string= raw "fault")
+             (fnn-fault "FN_NATIVE_COMMITTER_FAULT: injected committer fault"))
+            ((string= raw "indeterminate")
+             (fnn-indeterminate "FN_NATIVE_COMMITTER_FAULT: injected uncertain outcome"))
+            (t (fnn-fault "invalid FN_NATIVE_COMMITTER_FAULT (expected fault|indeterminate)"))))))
 
 (defun fnn-owner-start-committer (service)
   "Start the committer on a batching service."
@@ -5016,19 +5144,18 @@ mutex; other faults stop the owner. Neither terminal outcome resumes serving."
                    (fnn-extent-open-count)
                    (cond (*fnn-extent-retired* :named) (*fnn-extent-pending* :pending))
                    named-detail))
-      (fnn-store-indeterminate (e)
-        ;; The pending-close boundary has already fenced under owner exclusion.
-        ;; Also cover uncertainty from registration/discovery. This background
-        ;; publisher has no outer condition handler; finish its cleanup normally
-        ;; with the service's terminal exit 3, never an unhandled thread error.
-        (fnn-owner-fence-service service)
-        (fnn-err "CHECKPOINT release uncertain; recovery required: ~a" e))
-      (fnn-store-fault (e)
-        (fnn-owner-fault-service service nil e))
-      (fnn-store-error (e)
-        (fnn-err "CHECKPOINT release refused (files stay retired): ~a" e))
+      ;; GEN: def-section checkpoint-release :failure -- one arm; ACL2
+      ;; decides the kind (fnn-owner-thread-escape): an uncertain outcome
+      ;; (the pending-close boundary fenced under owner exclusion already;
+      ;; registration or discovery uncertainty here) is the service's exit
+      ;; 3, a fault stops the owner, a known pre-close discovery refusal
+      ;; leaves the files retired or pending for retry.  This background
+      ;; publisher has no outer handler: the cleanup finishes normally,
+      ;; never an unhandled thread error.
       (serious-condition (e)
-        (fnn-owner-fault-service service nil e)))))
+        (when (member (fnn-owner-thread-escape service e "CHECKPOINT release")
+                      '(:refusal :usage))
+          (fnn-err "CHECKPOINT release refused (files stay retired): ~a" e))))))
 
 (defun fnn-owner-publish-captured (service captured &optional position pin)
   "The publication's thread: ACL2's fn-ock-next-checkpoint over the values
@@ -5060,6 +5187,8 @@ the crash keystone) and serving continues."
     (declare (ignore count))
     (let ((started (get-internal-real-time)) (next nil) (durablep nil) (verdict nil)
           (payloads nil) (dropped-paths nil) (image nil)
+          ;; this thread's boundary: the last durable step it completed
+          (*fnn-section-step* nil)
           ;; the payload frames the arena run writes, for the reseat after
           ;; the install (fnn-owner-release-extents)
           (*fnn-checkpoint-frames* nil)
@@ -5143,22 +5272,44 @@ the crash keystone) and serving continues."
                              (fnn-err "CHECKPOINT auto sequence=~d suffix=~d octets=~d steps=~d ms=~d~@[ segment=~d~]~:[~; dropped=~d~]"
                                       sequence suffix octets steps (elapsed)
                                       (first position) position dropped)))
-                       ((or fnn-store-io-refusal fnn-store-indeterminate) (e)
+                       ;; GEN: def-section publication-write :failure
+                       ;; (:refusal :log) -- a Store write refused before any
+                       ;; publication: the old checkpoint stays, serving
+                       ;; continues.  An uncertain outcome (the rename
+                       ;; landed, the directory barrier failed; the journal
+                       ;; fence) or a fault leaves to the thread's boundary
+                       ;; below, which fences (sweep S019: both were logged
+                       ;; here and serving went on).
+                       (fnn-store-io-refusal (e)
                          (fnn-err "CHECKPOINT auto failed sequence=~d: ~a" sequence e)))))
                   (t (fnn-fault "owner returned a malformed checkpoint verdict")))))
+          ;; GEN: def-actor publisher :failure -- one arm; ACL2 decides the
+          ;; kind (fnn-owner-thread-escape): the fence or the fault before
+          ;; the cleanup below; a known refusal is logged, serving continues.
           (serious-condition (e)
-            (fnn-err "CHECKPOINT auto failed: ~a" e))))
+            (when (member (fnn-owner-thread-escape service e "CHECKPOINT auto")
+                          '(:refusal :usage))
+              (fnn-err "CHECKPOINT auto failed: ~a" e)))))
       (unwind-protect
            (progn
            (handler-case
-               (fnn-owner-gated (service :control)
-                 (when next
-                   (let ((done (fnn-owner-core 'fn-owner-sco-publication-done
-                                               next payloads durablep verdict)))
-                     (when (and durablep (not (integerp done)))
-                       (fnn-err "CHECKPOINT auto: owner refused the durable sequence")))))
+               ;; A live quantum: refused once the owner is stopping (the
+               ;; durable checkpoint stands; the next open reads it); its
+               ;; boundary fences or stops before releasing the mutex (t43
+               ;; handler row 234).
+               (fnn-owner-serialized
+                service nil
+                (lambda ()
+                  (when next
+                    (let ((done (fnn-owner-core 'fn-owner-sco-publication-done
+                                                next payloads durablep verdict)))
+                      (when (and durablep (not (integerp done)))
+                        (fnn-err "CHECKPOINT auto: owner refused the durable sequence"))))))
+             ;; GEN: def-section publication-done :failure -- the quantum
+             ;; classified and fenced; the line names the kind.
              (serious-condition (e)
-               (fnn-err "CHECKPOINT auto failed: ~a" e)))
+               (fnn-err "CHECKPOINT auto done ~(~a~): ~a"
+                        (fn-fs-classify (fnn-condition-class e) nil) e)))
           ;; Q16 (b): the dropped files' blocks back while serving.
           (when durablep
             (fnn-owner-release-extents service (fnn-owner-service-store service)
@@ -5229,6 +5380,9 @@ reads run as a :control quantum; the thread's registration is the roster's."
   ;; are handed the same reading.
   (let ((free (fnn-disk-free-octets (fnn-owner-service-store service))))
    (fnn-owner-gated (service :control)
+    ;; The quantum's early answer stays inside its boundary (a return-from
+    ;; across it would be an unclassified exit, review M3).
+    (block quantum
     (unless (or (fnn-owner-service-stopping service)
                 (fnn-with-roster (service) (fnn-owner-service-publisher service)))
       ;; The budget override is nil but on a developer image with
@@ -5248,7 +5402,7 @@ reads run as a :control quantum; the thread's registration is the roster's."
           ;; A failed rotation is a failed publication: logged, serving
           ;; continues.
           (unless (fnn-log-rotation-ready-p (fnn-owner-service-store service))
-            (return-from fnn-owner-maybe-publish-quantum :needs-spare))
+            (return-from quantum :needs-spare))
           (let* ((store (fnn-owner-service-store service))
                  (position (handler-case (fnn-log-rotate store)
                              ((or fnn-store-fault fnn-store-indeterminate) (e) (error e))
@@ -5288,7 +5442,7 @@ reads run as a :control quantum; the thread's registration is the roster's."
                                                     :name "fn owner checkpoint"))
                                      (unless made (fnn-arena-unpin pin)))))))
                 (setf (fnn-owner-service-publisher service) thread)
-                (push thread (fnn-owner-service-workers service)))))))))))
+                (push thread (fnn-owner-service-workers service))))))))))))
 
 ;;; Row S3b (lane operability-7): `store export DIR' on the running owner
 ;;; (books/owner-export-request.lisp fn-oex-; SCN-210, PRF-988).  The export
@@ -5407,7 +5561,10 @@ stops.  Answers the record count written."
 outcome into the exporter slot, the log line.  A failure leaves no MANIFEST
 (KEYSTONE fn-sxd-crash-is-incomplete-or-complete) and serving continues;
 the stop's refusal at a chunk boundary is `owner-stopping'."
-  (let ((started (get-internal-real-time)) (outcome nil))
+  (let ((started (get-internal-real-time)) (outcome nil)
+        ;; this thread's boundary: the last durable step the archive write
+        ;; completed (the MANIFEST's rename is its publication)
+        (*fnn-section-step* nil))
     (unwind-protect
          (destructuring-bind (records count configs frontier) captured
            (handler-case
@@ -5418,12 +5575,32 @@ the stop's refusal at a chunk boundary is `owner-stopping'."
                           dir written (length configs)
                           (round (* 1000 (- (get-internal-real-time) started))
                                  internal-time-units-per-second)))
-             (fnn-store-io-refusal (e)
-               (setq outcome (cons :failed :owner-stopping))
-               (fnn-err "EXPORT failed archive=~a reason=owner-stopping: ~a" dir e))
+             ;; GEN: def-actor exporter :failure :private-job -- one arm; ACL2
+             ;; decides the kind (fn-fs-classify-job): the archive is the
+             ;; job's, outside the store, so an OS failure before its MANIFEST
+             ;; is published is the job's own failure (no MANIFEST, serving
+             ;; continues); after the MANIFEST's rename it is the job's
+             ;; UNCERTAIN outcome (t43 handler row 235: the archive may be
+             ;; complete; the status says so, never `failed'); a known
+             ;; refusal is the stop's; a core or store fault is the
+             ;; service's (exit 4).
              (serious-condition (e)
-               (setq outcome (cons :failed :archive-write))
-               (fnn-err "EXPORT failed archive=~a reason=archive-write: ~a" dir e))))
+               (let ((kind (fn-fs-classify-job (fnn-condition-class e) *fnn-section-step*)))
+                 (case kind
+                   (:indeterminate
+                    (setq outcome (cons :uncertain :archive-publication))
+                    (fnn-err "EXPORT uncertain archive=~a: its MANIFEST may be published; inspect it before use: ~a"
+                             dir e))
+                   ((:refusal :usage)
+                    (setq outcome (cons :failed (if (typep e 'fnn-store-io-refusal)
+                                                    :owner-stopping :refused)))
+                    (fnn-err "EXPORT failed archive=~a reason=~(~a~): ~a" dir (cdr outcome) e))
+                   (:job-failure
+                    (setq outcome (cons :failed :archive-write))
+                    (fnn-err "EXPORT failed archive=~a reason=archive-write: ~a" dir e))
+                   (t
+                    (setq outcome (cons :failed :fault))
+                    (fnn-owner-fault-service service nil e)))))))
       (fnn-with-roster (service)
         (setf (fnn-owner-service-exporter service) nil
               (fnn-owner-service-export-outcome service)
@@ -5667,17 +5844,22 @@ publication).  Answers the reply word."
       (unwind-protect
            (block pass
              (unless (fnn-log-rotation-ready-p store) (fnn-log-prepare-spare store))
-             (fnn-owner-gated (service :control)
-               (setq answer (fnn-owner-core 'fn-owner-orcp-capture :recorded clock
-                                            (fnn-checkpoint-budget-test-override nil)
-                                            free (fnn-checkpoint-revision)))
-               (when (eq (first answer) :captured)
-                 (setq captured (second answer))
-                 (setq position (fnn-log-rotate store))
-                 ;; the history image's binding: the store's node and salt
-                 (setq ident (fnn-owner-core 'fn-store-genesis-ident))
-                 ;; an off-mutex arena reader from here (arena-reader-pins)
-                 (setq pin (fnn-arena-pin))))
+             ;; A live quantum (refused once the owner is stopping; its
+             ;; boundary fences a rotation that is uncertain before the
+             ;; mutex is released: sweep S017 c, S020).
+             (fnn-owner-serialized
+              service nil
+              (lambda ()
+                (setq answer (fnn-owner-core 'fn-owner-orcp-capture :recorded clock
+                                             (fnn-checkpoint-budget-test-override nil)
+                                             free (fnn-checkpoint-revision)))
+                (when (eq (first answer) :captured)
+                  (setq captured (second answer))
+                  (setq position (fnn-log-rotate store))
+                  ;; the history image's binding: the store's node and salt
+                  (setq ident (fnn-owner-core 'fn-store-genesis-ident))
+                  ;; an off-mutex arena reader from here (arena-reader-pins)
+                  (setq pin (fnn-arena-pin)))))
              (unless captured
                (unless (and (eq (first answer) :deferred) (integerp (third answer)))
                  (fnn-fault "owner returned a malformed reclaim capture"))
@@ -5761,7 +5943,17 @@ publication).  Answers the reply word."
                              (fnn-live-arena) cat hist)
                    (fnn-reclaim-cut :rebuilt)
                    (dotimes (round +fnn-reclaim-swap-rounds+)
-                     (let ((sw (fnn-owner-gated (service :control)
+                     ;; ONE live quantum (refused once the owner is stopping:
+                     ;; no install after a fence) inside the fence boundary:
+                     ;; an uncertain install (the rename landed, the root's
+                     ;; barrier failed), a swap fault or a barrier that did
+                     ;; not complete fences or stops the owner BEFORE the
+                     ;; mutex is released, so no later quantum serves the
+                     ;; old state over the new publication (r71 F1, sweep
+                     ;; S017 a); the control reply's `owner fenced' is true.
+                     (let ((sw (fnn-owner-serialized
+                                service nil
+                                (lambda ()
                                  (let ((w (fnn-owner-core 'fn-owner-orcp-swap-word count frontier s
                                                           (1- (fnn-arena-reader-count))
                                                           rebuilt)))
@@ -5785,7 +5977,7 @@ publication).  Answers the reply word."
                                      ;; (fn-orrd-a-post-after-the-swap-is-
                                      ;; taken-as-before).
                                      (fnn-owner-reclaim-barriers store))
-                                   w))))
+                                   w)))))
                        (case sw
                          (:swap (return))
                          (:delta (deferred :delta) (return-from pass))
@@ -5805,16 +5997,30 @@ publication).  Answers the reply word."
                      (fnn-owner-release-extents service store *fnn-checkpoint-frames* paths pin))
                    (fnn-reclaim-cut :released)))))
         (when pin (fnn-arena-unpin pin))
+        ;; Captured and not swapped: the pass is over for the owner (the
+        ;; in-flight mark cleared) FIRST, a cleanup quantum admitted after a
+        ;; fence, so a later `store reclaim' is not answered :in-flight for
+        ;; ever (sweep S017 b: the raise below used to skip it).
+        (when (and captured (not swapped))
+          (fnn-owner-gated (service :control)
+            (fnn-owner-core 'fn-owner-orcp-finish)))
+        ;; A staged, uninstalled checkpoint goes -- unless the owner is
+        ;; fenced: an unlink is a durable effect, refused after a fence
+        ;; (review M4); recovery's staging sweep removes it then.  A failed
+        ;; unlink is recorded, never swallowed.
+        (when (and stage (not installed) (not (fnn-owner-service-stopping service)))
+          (handler-case (fnn-unlink stage)
+            (fnn-os-error (e)
+              (fnn-err "RECLAIM stage ~a not removed (the staging sweep will): ~a" stage e))))
         ;; Installed and not swapped: the durable publication is the new one
         ;; and the served state the old one -- never served on: a recovery
         ;; event (the service stops, the open reads the new publication).
+        ;; The swap quantum's boundary fenced the owner before it released
+        ;; the mutex (r71 F1); the fence is affirmed here (a fence is never
+        ;; masked) and the reply says what is true.
         (when (and installed (not swapped))
-          (fnn-indeterminate "reclaim swap failed after the install: recovery required"))
-        (when (and stage (not installed))
-          (ignore-errors (fnn-unlink stage)))
-        (when (and captured (not swapped))
-          (fnn-owner-gated (service :control)
-            (fnn-owner-core 'fn-owner-orcp-finish)))))
+          (fnn-owner-fence-service service)
+          (fnn-indeterminate "reclaim swap failed after the install: recovery required"))))
     word))
 
 ;;; PKT-101: reopen `[log] path' when ACL2 says a SIGHUP is due

@@ -142,20 +142,39 @@ fn-lgdm-repair-text: a torn tail dropped, a confirmed repair), newest first;
 (defun fnn-os-fail (errno &optional path)
   (error 'fnn-os-error :errno errno :path path))
 
-(defun fnn-exit-code-for (condition)
+(defvar *fnn-section-step* nil
+  "The last namespace-changing primitive the boundary this thread is inside
+completed (fnn-durable-step: a rename or link that landed, an unlink, a
+mkdir), or nil when it completed none.  Every boundary binds it, per thread:
+an owner quantum (host/native/owner.lisp fnn-owner-gated), a worker thread's
+top; a command is one boundary from its start.  ACL2 classifies a condition
+that leaves a boundary from its concrete class AND this step
+(books/failure-scope.lisp fn-fs-classify): an OS error after a durable step
+is the fence, not a fault (lane failure-scope review M2; r72 F6: a rename
+that landed and a directory barrier that failed).")
+
+(defun fnn-durable-step (step)
+  "Record STEP (a keyword naming the primitive) as the last durable step of
+this thread's boundary.  Called by the namespace-changing primitives after
+the syscall returned success; nothing else writes the step."
+  (setq *fnn-section-step* step))
+
+(defun fnn-condition-class (condition)
+  "The observation ACL2 classifies: the concrete class CONDITION was
+signalled with, as its lower-case name.  Never a parent class: a subclass
+the closed tables of books/failure-scope.lisp do not name is a fault, not
+the refusal its parent is (lane failure-scope review M1)."
+  (string-downcase (symbol-name (class-name (class-of condition)))))
+
+(defun fnn-exit-code-for (condition &optional (step *fnn-section-step*))
   "ACL2's code for the condition that ended a command: the host names the
-condition's type (an observation) and books/outcome-class.lisp
-fn-outcome-host-condition-exit-code classifies it (PRF-143,
-fn-outcome-host-condition-fences-iff-indeterminate).  It runs in handlers,
-so it calls the guard-t function directly rather than through fnn-core,
-whose own failure would raise a new condition here."
-  (fn-outcome-host-condition-exit-code
-   (typecase condition
-     (fnn-store-indeterminate :indeterminate)
-     (fnn-store-fault :fault)
-     (fnn-usage-error :usage)
-     (fnn-store-error :refusal)
-     (t :fault))))
+condition's concrete class and the last durable step completed (two
+observations) and books/failure-scope.lisp fn-fs-exit-code classifies them
+(PRF-143, fn-fs-exit-code-is-fenced-iff-indeterminate; the tables are
+closed, so an unlisted class is a fault, never a refusal).  It runs in
+handlers, so it calls the guard-t function directly rather than through
+fnn-core, whose own failure would raise a new condition here."
+  (fn-fs-exit-code (fnn-condition-class condition) step))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Octets, text, hex.
@@ -719,10 +738,18 @@ label; it does not select a policy."
       (fnn-posix (path) (sb-posix:closedir dir)))
     (values (nreverse names) more)))
 
-(defun fnn-link (old new) (fnn-posix (new) (sb-posix:link old new)))
-(defun fnn-replace (old new) (fnn-posix (new) (sb-posix:rename old new)))
-(defun fnn-unlink (path) (fnn-posix (path) (sb-posix:unlink path)))
-(defun fnn-mkdir (path mode) (fnn-posix (path) (sb-posix:mkdir path mode)))
+;; The namespace-changing primitives.  Each records itself as the boundary's
+;; last durable step once the kernel reports success (fnn-durable-step): an
+;; OS error after it is an uncertain outcome, never a fault
+;; (books/failure-scope.lisp; lane failure-scope review M2).
+(defun fnn-link (old new)
+  (prog1 (fnn-posix (new) (sb-posix:link old new)) (fnn-durable-step :linked)))
+(defun fnn-replace (old new)
+  (prog1 (fnn-posix (new) (sb-posix:rename old new)) (fnn-durable-step :replaced)))
+(defun fnn-unlink (path)
+  (prog1 (fnn-posix (path) (sb-posix:unlink path)) (fnn-durable-step :unlinked)))
+(defun fnn-mkdir (path mode)
+  (prog1 (fnn-posix (path) (sb-posix:mkdir path mode)) (fnn-durable-step :made-directory)))
 (defun fnn-chmod (path mode) (fnn-posix (path) (sb-posix:chmod path mode)))
 
 (defun fnn-flock (fd operation)
@@ -3908,8 +3935,25 @@ replaced: refused by name, or with EXISTING :keep (init's re-run) kept."
         (when (eq (fnn-publish-initial-file store path (fnn-node-secret-render entry))
                   :existing)
           (exists))
-        (fnn-fsync-dir dir)
+        (fnn-node-secret-durable dir "node secret creation")
         :published))))
+
+(defun fnn-node-secret-durable (dir what)
+  "The directory barrier that completes a node secret's publication.  From
+the publication (the initial file's, or the rotation's rename) through this
+barrier the outcome of an OS failure is uncertain (r72 F6; lane
+failure-scope): the current key may already be the new epoch while its
+durability is unknown, and the next open reads the old or the new file.
+Never a raw OS fault (exit 4) for what is a fence (exit 3).  Developer image
+only: FN_NATIVE_NODE_SECRET_FAULT=fsync-dir:eio injects the failure."
+  ;; GEN: def-section node-secret-publish :effects (:durable ...) :failure
+  (handler-case
+      (progn
+        (when (equal (fnn-developer-selector "FN_NATIVE_NODE_SECRET_FAULT") "fsync-dir:eio")
+          (fnn-os-fail sb-posix:eio dir))
+        (fnn-fsync-dir dir))
+    (fnn-os-error (e)
+      (fnn-indeterminate "~a outcome is indeterminate: ~a" what e))))
 
 (defun fnn-node-secret-same-file-p (a b)
   (equalp (fnn-read-regular-bounded a +fnn-node-secret-file-bound+)
@@ -3945,7 +3989,7 @@ current one)."
         (fnn-os-error (e)
           (ignore-errors (fnn-unlink stage))
           (fnn-indeterminate "node secret rotation outcome is indeterminate: ~a" e)))
-      (fnn-fsync-dir dir)
+      (fnn-node-secret-durable dir "node secret rotation")
       (fnn-core 'fn-ns-entry-epoch next))))
 
 (defun fnn-command-node-secret (root words)
@@ -4442,7 +4486,7 @@ caller does not know."
   #+linux
   (let ((result (fnn-%import-renameat2 -100 old -100 new 1)))   ; AT_FDCWD, RENAME_NOREPLACE
     (if (>= result 0)
-        nil
+        (progn (fnn-durable-step :replaced) nil)
       (let ((errno (sb-alien:get-errno)))
         (cond ((= errno sb-posix:eexist) :exists)
               ((or (= errno sb-posix:einval) (= errno sb-posix:enosys)) :unsupported)
@@ -4457,7 +4501,7 @@ caller does not know."
   #-linux
   (if (fnn-lstat new)
       :exists
-    (handler-case (progn (sb-posix:rename old new) nil)
+    (handler-case (progn (sb-posix:rename old new) (fnn-durable-step :replaced) nil)
       (sb-posix:syscall-error (e)
         (let ((errno (sb-posix:syscall-errno e)))
           (if (member errno (list sb-posix:eexist sb-posix:enotempty sb-posix:enotdir))
@@ -6022,6 +6066,11 @@ tree root), or stop the build."
     "FN_NATIVE_PAGE_IO_HOLD" "FN_NATIVE_PAGE_IO_RESULT"
     "FN_NATIVE_DISK_FREE"
     "FN_NATIVE_EXTENT_CACHE_TEST_OFF" "FN_NATIVE_EXTENT_CLOSE_FAULT"
+    ;; lane failure-scope (t45): a fault or an uncertain outcome raised on
+    ;; the committer thread off any owner quantum (host/native/owner.lisp
+    ;; fnn-owner-committer-test-fault); an EIO at the directory barrier after
+    ;; a node secret's publication (fnn-node-secret-durable).
+    "FN_NATIVE_COMMITTER_FAULT" "FN_NATIVE_NODE_SECRET_FAULT"
     ;; host/native/digest.lisp: the matched measurement's reference arm.
     "FN_NATIVE_DIGEST_TEST_OFF"
     ;; D40: the executable-counterpart path for every :raw-with entry, so a

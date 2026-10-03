@@ -98,9 +98,11 @@ carrier to observe."
   (fnn-owner-serialized
    service nil
    (lambda ()
+     ;; The quantum's value is the answer; no early return crosses its boundary (lane failure-scope: an unwind no condition explains is a fault).
+     (block issue
      (let ((observed (fnn-pinv-observe received)))
        (unless observed
-         (return-from fnn-pinv-owner-issue
+         (return-from issue
            (fnn-pinv-refused :invite '(:refused :carrier))))
        (let ((plan (apply #'fnn-core 'fn-pinv-host-issue-plan received
                           (append observed
@@ -114,7 +116,7 @@ carrier to observe."
             service
             (lambda (cid)
               (fnn-owner-result 'fn-ores-config-result-p 'fn-pinv-host-owner-reconfigure cid
-                                (second plan))))))))))
+                                (second plan)))))))))))
 
 (defun fnn-pinv-owner-accept (service received)
   "PRF-160: an invitation that names the inviter's address configures the
@@ -123,9 +125,11 @@ fn-pinv-accept-record-plan); the enrolment follows it."
   (fnn-owner-serialized
    service nil
    (lambda ()
+     ;; The quantum's value is the answer; no early return crosses its boundary (lane failure-scope: an unwind no condition explains is a fault).
+     (block accept
      (let ((observed (fnn-pinv-observe received)))
        (unless observed
-         (return-from fnn-pinv-owner-accept
+         (return-from accept
            (fnn-pinv-refused :accept '(:refused :carrier))))
        (let ((plan (fnn-core 'fn-par-host-accept-record-plan received
                               (first observed) (second observed) (third observed)
@@ -136,7 +140,7 @@ fn-pinv-accept-record-plan); the enrolment follows it."
          (case (first plan)
            (:resume
             (fnn-err "peer accept: resumed committed inviter adoption; nothing to configure or enrol")
-            (return-from fnn-pinv-owner-accept :accepted))
+            (return-from accept :accepted))
            (:configure
             (let ((published
                     (fnn-owner-live-reconfigure-locked
@@ -145,7 +149,7 @@ fn-pinv-accept-record-plan); the enrolment follows it."
                        (fnn-owner-result 'fn-ores-config-result-p 'fn-pinv-host-owner-reconfigure-deltas
                                          cid (second plan))))))
               (unless (eq published :accepted)
-                (return-from fnn-pinv-owner-accept published))
+                (return-from accept published))
               ;; The model's crash point between the configuration record and
               ;; the kind-3 record (fn-pinv-accept-record-fold-configures-the-
               ;; inviter); a developer image dies here on request.
@@ -153,7 +157,7 @@ fn-pinv-accept-record-plan); the enrolment follows it."
                 (fnn-err "peer accept: developer stop after the peer record")
                 (sb-ext:exit :code 137 :abort t))))
            (:enrol nil)
-           (t (return-from fnn-pinv-owner-accept
+           (t (return-from accept
                 (fnn-pinv-refused :accept plan)))))
        (destructuring-bind (sequence txid generation)
            (fnn-owner-core 'fn-owner-next-store-coordinates)
@@ -170,7 +174,7 @@ fn-pinv-accept-record-plan); the enrolment follows it."
              (:current
               (fnn-err "peer accept: the inviter's current keys; nothing to enrol")
               :accepted)
-             (t (fnn-pinv-refused :accept step)))))))))
+             (t (fnn-pinv-refused :accept step))))))))))
 
 (defun fnn-pinv-owner-enrol-confirmed (service received observed)
   "The enrolment the configuration now permits: ACL2 asks the invitations
@@ -199,9 +203,11 @@ the enrolment follows it."
   (fnn-owner-serialized
    service nil
    (lambda ()
+     ;; The quantum's value is the answer; no early return crosses its boundary (lane failure-scope: an unwind no condition explains is a fault).
+     (block confirm
      (let ((observed (fnn-pinv-observe received)))
        (unless observed
-         (return-from fnn-pinv-owner-confirm
+         (return-from confirm
            (fnn-pinv-refused :confirm '(:refused :carrier))))
        (let ((plan (apply #'fnn-core 'fn-pinv-host-confirm-record-plan
                           received invitation
@@ -223,7 +229,7 @@ the enrolment follows it."
                        (fnn-owner-result 'fn-ores-config-result-p 'fn-pinv-host-owner-reconfigure-deltas
                                          cid (second plan))))))
               (unless (eq published :accepted)
-                (return-from fnn-pinv-owner-confirm published))
+                (return-from confirm published))
               ;; The model's crash point between the configuration record
               ;; and the kind-3 record (fn-pinv-confirm-record-fold-consumes-
               ;; and-configures); a developer image dies here on request.
@@ -232,7 +238,7 @@ the enrolment follows it."
                 (sb-ext:exit :code 137 :abort t))
               (fnn-pinv-owner-enrol-confirmed service received observed)))
            (:enrol (fnn-pinv-owner-enrol-confirmed service received observed))
-           (t (fnn-pinv-refused :confirm plan))))))))
+           (t (fnn-pinv-refused :confirm plan)))))))))
 
 (defvar *fnn-pinv-next-handler* *fnn-hybrid-control-handler*)
 

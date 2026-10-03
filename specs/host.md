@@ -161,13 +161,34 @@ owner mutex, copies the ACL2-produced 403/close effects and abandons only that
 socket. EOF remains an ordinary close. Store/core conditions and process
 resource exhaustion are never remapped by that envelope.
 
-Conversely, anything unexpected during `fnn-owner-serialized` has crossed the
-shared semantic boundary. Indeterminate persistence installs the exit-3 fence;
-a core/store fault, an unclassified OS failure or any other serious condition
-installs the exit-4 fence before releasing the mutex. Only the existing known
-semantic-refusal class may escape without a global fence. Once either fence is
-set, connection unwind performs no later owner close transition; service
-cleanup wakes and joins all workers before closing journals or the Store.
+Conversely, anything unexpected during an owner quantum has crossed the
+shared semantic boundary. ONE boundary (`fnn-owner-gated`, which every
+quantum and `fnn-owner-serialized` run through) classifies a condition that
+leaves a quantum's body, its gate check or its cleanup, and installs the
+fence before the owner mutex is released; no bare quantum runs outside it.
+The host observes two things and decides nothing: the condition's concrete
+class and the last namespace-changing primitive the boundary completed (a
+rename or link that landed, an unlink, a mkdir). ACL2 decides the kind
+(books/failure-scope.lisp `fn-fs-classify`, closed tables: an unlisted class
+is a fault, never the refusal its parent is): indeterminate persistence
+installs the exit-3 fence; a core/store fault, an OS failure before any
+durable step or any other serious condition installs the exit-4 fence; an OS
+failure after a durable step is the exit-3 fence (the publication's outcome
+is unknown). Only the named known-refusal classes escape without a global
+fence, scoped to their caller. A body left by something that is no condition
+(a throw, a thread termination) is a fault, installed under the mutex. A
+worker thread's top (the committer, the publisher, the exporter, the
+publication's release) classifies the same way (`fnn-owner-thread-escape`);
+a private job's OS failure before it published anything is the job's own
+outcome, after a durable step its uncertain outcome (`fn-fs-classify-job`;
+the export's status says `archive-uncertain`, exit 3). Once a stop is
+installed the service's exit code only escalates, on the lattice ok <
+refused < fault < fenced (`fn-fs-stop-exit-escalate`; a fence is never
+masked, `fn-fs-stop-exit-fence-is-never-masked`), and a dominated outcome is
+recorded on stderr. The fence step itself (STOPPING and the exit code, under
+the roster mutex) performs no I/O and cannot fail. Once either fence is set,
+connection unwind performs no later owner close transition; service cleanup
+wakes and joins all workers before closing journals or the Store.
 
 HST-004: I/O, clocks, cryptographic primitives, and authentication are explicit
 trust-boundary entries. The production integration must not contaminate book

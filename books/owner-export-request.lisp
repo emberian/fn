@@ -23,7 +23,10 @@
 ;
 ; Words.  A request: :requested (accepted); :export-in-flight and
 ; :archive-exists (refused by name, each with what it would take).  A
-; status: :in-flight, :done, :failed, :idle.  The reasoned reply carries one
+; status: :in-flight, :done, :failed, :archive-uncertain (lane failure-scope,
+; t45: the MANIFEST's rename landed and a later barrier failed, so the
+; archive may be complete; the operator inspects it, exit 3), :idle.  The
+; reasoned reply carries one
 ; word (books/native-control-reason.lisp fn-nctrl-reason-word); the client
 ; reads it back (fn-oex-word-of-octets: the reply's octets to the word, or
 ; nil for any other octets, which the client reports as uncertain).
@@ -60,28 +63,43 @@
 
 ; -----------------------------------------------------------------------------
 ; The status: the exporter slot is in flight, or holds the last outcome
-; ((:done . N) or (:failed . REASON)), or nothing since the start.
+; ((:done . N), (:failed . REASON) or (:uncertain . REASON)), or nothing
+; since the start.
 
 (defun fn-oex-status-word (inflightp outcome)
   (declare (xargs :guard t))
   (cond (inflightp :in-flight)
         ((and (consp outcome) (equal (car outcome) :done)) :done)
         ((and (consp outcome) (equal (car outcome) :failed)) :failed)
+        ((and (consp outcome) (equal (car outcome) :uncertain)) :archive-uncertain)
         (t :idle)))
 
 (defun fn-oex-status-status (word)
   (declare (xargs :guard t))
-  (if (equal word :failed) :refused :accepted))
+  (cond ((equal word :failed) :refused)
+        ((equal word :archive-uncertain) :uncertain)
+        (t :accepted)))
 
 (defthm fn-oex-in-flight-is-the-status-while-writing
   (iff (equal (fn-oex-status-word inflightp outcome) :in-flight)
        (and inflightp t)))
 
+; An uncertain archive publication is reported as such (exit 3), never as a
+; failure (exit 1, "no MANIFEST was written") or a success.
+(defthm fn-oex-uncertain-outcome-is-reported-uncertain
+  (implies (and (not inflightp) (consp outcome) (equal (car outcome) :uncertain))
+           (equal (fn-oex-status-status (fn-oex-status-word inflightp outcome))
+                  :uncertain)))
+
+(defthm fn-oex-status-uncertain-only-for-an-uncertain-outcome
+  (iff (equal (fn-oex-status-status (fn-oex-status-word inflightp outcome)) :uncertain)
+       (and (not inflightp) (consp outcome) (equal (car outcome) :uncertain))))
+
 ; -----------------------------------------------------------------------------
 ; The client's reading of a reply's word
 
 (defconst *fn-oex-words*
-  '(:requested :export-in-flight :archive-exists :in-flight :done :failed :idle))
+  '(:requested :export-in-flight :archive-exists :in-flight :done :failed :archive-uncertain :idle))
 
 (defun fn-oex-word-of-octets-loop (octets words)
   (declare (xargs :guard t))
@@ -122,6 +140,10 @@
          (concatenate 'string "export failed archive=" dir
                       ": no MANIFEST was written (the owner's log names the reason: `EXPORT failed reason=...'); what it would take: remove "
                       dir " and request again"))
+        ((equal word :archive-uncertain)
+         (concatenate 'string "export uncertain archive=" dir
+                      ": its MANIFEST may be published while a later barrier failed (the owner's log names it: `EXPORT uncertain'); what it would take: inspect "
+                      dir " (`store import' reads a complete MANIFEST), else remove it and request again"))
         ((equal word :in-flight)
          "export in-flight: the owner is still writing the archive")
         ((equal word :idle)
