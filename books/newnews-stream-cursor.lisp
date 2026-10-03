@@ -64,10 +64,35 @@
                                      fn-nnw-stream-renderp fn-nnw-stream-render
                                      fn-nnw-tail fn-nnw-cursor fn-nnw-at))))
 
+(defthm fn-nnw-stream-output-does-not-visit
+  (implies (fn-nnw-stream-outputp progress)
+           (equal (- (len (fn-nnw-stream-tail progress))
+                     (len (fn-nnw-stream-tail
+                           (mv-nth 1 (fn-nnw-stream-one progress bytes fn-arena fn-cat))))) 0))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-nnw-stream-one fn-nnw-stream-tail
+                                     fn-nnw-stream-outputp fn-nnw-stream-renderp
+                                     fn-nnw-stream-render fn-nnw-tail fn-nnw-at))))
+
+; A normal scan consumes exactly one candidate, even when it does not match.
+; Installing an output renderer retains the following tail, not that candidate.
+(defthm fn-nnw-stream-candidate-progresses
+  (implies (and (not (fn-nnw-stream-outputp progress))
+                (consp (fn-nnw-tail progress)))
+           (equal (len (fn-nnw-stream-tail
+                        (mv-nth 1 (fn-nnw-stream-one progress bytes fn-arena fn-cat))))
+                  (1- (len (fn-nnw-tail progress)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-nnw-stream-one fn-nnw-stream-tail
+                                     fn-nnw-stream-outputp fn-nnw-stream-renderp
+                                     fn-nnw-stream-render fn-nnw-tail fn-nnw-cursor
+                                     fn-nnw-at))))
+
 (def-cursor/output fn-nnw-stream (fn-arena fn-cat)
   :stobjs (fn-arena fn-cat)
   :call (fn-nnw-stream-one progress bytes fn-arena fn-cat)
   :output-phase (fn-nnw-stream-outputp progress)
+  :output-proof fn-nnw-stream-output-does-not-visit
   :visit-proof fn-nnw-stream-one-visits-at-most-one
   :visit-metric (len (fn-nnw-stream-tail progress)))
 
