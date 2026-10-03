@@ -1854,3 +1854,36 @@ class SimpleReport:
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ScopedManifestAndGraphTests(unittest.TestCase):
+    def test_source_normalization_only_hashes_the_query_closure(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = {"source_digests_sha256": {"books/a.lisp": "old-a", "books/b.lisp": "old-b"},
+                        certs.FORM_DIGESTS: {"books/a.lisp": "form-a", "books/b.lisp": "form-b"}}
+            def current(path):
+                self.assertEqual(path.name, "a.lisp", "unrelated form hashes must not be computed")
+                return "new-a", "form-a"
+            with patch.object(certs, "_current_digests", side_effect=current):
+                actual = certs.read_as_current(manifest, root, {"books/a.lisp"})
+            self.assertEqual(actual["source_digests_sha256"],
+                             {"books/a.lisp": "new-a", "books/b.lisp": "old-b"})
+            self.assertEqual(actual["source_digests_sha256_as_recorded"]["books/a.lisp"], "old-a")
+
+    def test_include_facts_match_ledger_without_full_book_analysis(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "top.lisp"
+            source.write_text("""(include-book "dep")
+              (local (include-book "local"))
+              (encapsulate () (include-book "nested"))
+              (include-book "sys" :dir :system)
+              (must-fail (include-book "negative"))
+              (defun fn-data () '(include-book "quoted"))""")
+            expected = certs.ledger.analyze_book(source, "top.lisp").includes
+            with patch.object(certs.ledger, "analyze_book", side_effect=AssertionError("whole book analysis")):
+                self.assertEqual(certs.book_facts(source)[1], expected)
+            self.assertEqual(expected, ["dep", "local", "nested"])

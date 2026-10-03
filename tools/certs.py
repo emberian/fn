@@ -400,10 +400,18 @@ def book_facts(source: Path) -> tuple[str, list[str]]:
     key = (str(source), stat.st_mtime_ns, stat.st_size)
     remembered = _FACTS.get(key)
     if remembered is None:
-        analysis = ledger.analyze_book(source, source.name)
-        if analysis.read_error:
-            raise UnreadableBook(f"{source.name}: {analysis.read_error}")
-        remembered = (content_hash(source), list(analysis.includes))
+        try:
+            forms = ledger.Reader(source.read_text(encoding="utf-8")).top_level()
+        except ledger.ReadError as error:
+            raise UnreadableBook(f"{source.name}: {error}") from None
+        # Closure discovery needs admitted include events, not theorem/hint
+        # analysis. Use the shared source event walker (same suppression and
+        # generator policy), retaining local includes and excluding :dir ones.
+        references = [form[1] for form, _ in ledger.source_events(forms)
+                      if ledger.head(form) == "include-book" and len(form) >= 2
+                      and isinstance(form[1], str)
+                      and ":dir" not in ledger.keyword_plist(form[2:])]
+        remembered = (content_hash(source), references)
         _FACTS[key] = remembered
     return remembered
 
@@ -454,6 +462,24 @@ def _include_targets(base: Path, book: str, source: Path, digest: str,
             remembered.append(target.relative_to(base).with_suffix("").as_posix())
         _EDGES[key] = remembered
     return remembered
+
+
+def include_graph(root: Path, roots: Iterable[str]) -> dict[str, list[str]]:
+    """Discover each rooted local include edge once, using closure's facts."""
+    base = root.resolve()
+    pending = list(roots)
+    graph = {}
+    while pending:
+        name = pending.pop()
+        if name in graph:
+            continue
+        source = base / f"{name}.lisp"
+        if not source.is_file():
+            raise UnreadableBook(f"{name}.lisp: missing")
+        digest, references = book_facts(source)
+        graph[name] = _include_targets(base, name, source, digest, references)
+        pending.extend(graph[name])
+    return graph
 
 
 def closure_listing(books: dict[str, str]) -> list[str]:
@@ -1451,7 +1477,8 @@ def read_meta(directory: Path) -> dict:
 # --------------------------------------------------------------------------
 
 
-def load_manifests(root: Path, path: Path | None = None) -> list[dict]:
+def load_manifests(root: Path, path: Path | None = None,
+                   source_paths: set[str] | None = None) -> list[dict]:
     """One named manifest, or every certification manifest under ``root``."""
     paths = [path] if path is not None else sorted(root.glob(MANIFEST_GLOB))
     loaded: list[dict] = []
@@ -1462,7 +1489,7 @@ def load_manifests(root: Path, path: Path | None = None) -> list[dict]:
             continue
         if isinstance(manifest, dict):
             manifest.setdefault("evidence", str(candidate))
-            loaded.append(read_as_current(manifest, root))
+            loaded.append(read_as_current(manifest, root, source_paths))
     return loaded
 
 
@@ -1534,7 +1561,8 @@ FORM_DIGESTS = "source_form_digests_sha256"
 
 
 def manifest_sources(manifest: dict, root: Path,
-                     field_name: str = "source_digests_sha256") -> dict[str, str]:
+                     field_name: str = "source_digests_sha256",
+                     source_paths: set[str] | None = None) -> dict[str, str]:
     """The manifest's recorded source digests, read against ``root`` today.
 
     A manifest records each closure book's bytes and, since the key moved to
@@ -1554,6 +1582,8 @@ def manifest_sources(manifest: dict, root: Path,
     base = root.resolve()
     current = dict(recorded)
     for path, digest in recorded.items():
+        if source_paths is not None and path not in source_paths:
+            continue  # Outside this query: preserve its recorded digest.
         form = forms.get(path)
         if form is None or not isinstance(digest, str):
             continue
@@ -1584,9 +1614,12 @@ AS_RECORDED = "_as_recorded"
 READ_AS_CURRENT = ("source_digests_sha256", "source_digests_sha256_after")
 
 
-def read_as_current(manifest: dict, root: Path) -> dict:
+def read_as_current(manifest: dict, root: Path,
+                    source_paths: set[str] | None = None) -> dict:
     """``manifest`` with its source digests read against ``root`` (in place).
 
+    Explicit source_paths bounds normalization to a query's complete include
+    closure; outside paths retain recorded bytes. None normalizes every path.
     Every manifest `load_manifests` returns has been through this, so a
     comment-only edit since a run keeps that run's verdict for the book
     everywhere a verdict is read.  A translated field keeps what the run wrote
@@ -1597,7 +1630,7 @@ def read_as_current(manifest: dict, root: Path) -> dict:
     for name in READ_AS_CURRENT:
         if not isinstance(manifest.get(name), dict):
             continue
-        current = manifest_sources(manifest, root, name)
+        current = manifest_sources(manifest, root, name, source_paths)
         original = manifest.get(name + AS_RECORDED, manifest[name])
         if current != original:
             manifest[name + AS_RECORDED] = original

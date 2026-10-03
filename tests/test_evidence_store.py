@@ -207,3 +207,34 @@ class TransitionTests(Sandbox):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CheckoutMemoTests(unittest.TestCase):
+    def test_object_reads_locate_shared_cache_once_and_git_marker_changes_invalidate(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "lane"
+            root.mkdir()
+            marker = root / ".git"
+            marker.write_text("gitdir: first")
+            store._CHECKOUTS.clear()
+            with mock.patch.object(store.subprocess, "run") as git:
+                git.return_value.stdout = str(Path(directory) / "one/.git")
+                self.assertEqual(store.checkout_of(root), Path(directory) / "one")
+                self.assertEqual(store.checkout_of(root), Path(directory) / "one")
+                self.assertEqual(git.call_count, 1)
+                marker.write_text("gitdir: replacement marker")
+                git.return_value.stdout = str(Path(directory) / "two/.git")
+                self.assertEqual(store.checkout_of(root), Path(directory) / "two")
+                self.assertEqual(git.call_count, 2)
+
+    def test_missing_git_marker_is_not_remembered(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            store._CHECKOUTS.clear()
+            with mock.patch.object(store.subprocess, "run") as git:
+                git.return_value.stdout = ""
+                self.assertEqual(store.checkout_of(root), root)
+                (root / ".git").write_text("gitdir: created")
+                git.return_value.stdout = str(root / "shared/.git")
+                self.assertEqual(store.checkout_of(root), root / "shared")
+                self.assertEqual(git.call_count, 2)
