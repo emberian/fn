@@ -350,7 +350,8 @@ def family_scenarios(name: str, cut: str | None = None) -> list:
         return [s for f in FAMILIES for s in family_scenarios(f, cut)]
     if cut is not None:
         if name not in FAMILY_CUTS:
-            return []
+            # Singleton families have no native cut table to preselect.
+            return [s for s in FAMILIES[name]() if s.id.endswith("-" + cut)]
         cuts, build = FAMILY_CUTS[name]
         return [build(c) for c in cuts() if c.name == cut]
     return FAMILIES[name]()
