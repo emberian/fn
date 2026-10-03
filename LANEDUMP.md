@@ -3435,3 +3435,15 @@ archived/indexed. Covers changed four-argument predicate/guards, definition
 helpers and literal assertions, not PRF-1295's proposed composed boundary.
 Previous three-argument certificate2155553 retained/indexed at its own bytes.
 SCN1110/1125/1126 remain unexecuted until current initialized owner exists.
+Runtime current-source continuation: f49a60074 fixes measured REPL parser loss
+of surplus closing parentheses (20 focused tests PASS); 8e67ab540 fixes arena
+hint balance (220 strict forms). History confirms unchanged FilesGetMoveList
+formula now passes in broad P3 world; connected arena replay remains theirs.
+Web root close now refuses pending mailbox/live actors/semantic cleanup debt,
+retains global face, and requires actual secondary listener :closed receipt.
+Listener attempt state prevents torn retry. Real held SBCL thread plus queued
+job/debt/ambiguous close and successful drain schedules pass. Complete compressed
+ARTICLE/Web/reopen selector remains pending History's single current-source
+wrapper; complete output/decoded heap funding and global HM coverage remain open.
+Earlier PRF1288 'planned' prose is superseded by its canonical registry status
+uncertified-at-current-digest; no proof or endpoint completion claim.

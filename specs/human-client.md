@@ -331,3 +331,10 @@ then clears input/output, authored POST state, page state and saved response
 plans before releasing the response's scalar loan and pin. Failed cleanup keeps
 its exact cold-read identity in the debt record. Discard of these references is
 a lifetime receipt; it does not establish a complete physical heap tariff.
+
+The Web root close hook retains the face until its actors have ended, the job
+mailbox is closed and empty, and every retained connection has a terminal
+semantic receipt with no cleanup debt. Listener disposal proceeds independently;
+its actual close receipt must be `:closed`. A failed or torn listener attempt
+retains the face and is never retried. A Web close-hook failure blocks successful
+Store teardown rather than discarding the only record of unfinished custody.
