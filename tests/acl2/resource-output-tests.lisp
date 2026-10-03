@@ -287,3 +287,40 @@
  (let* ((ledger (update-fn-rl-drawni 0 16777217 (mv-nth 1 (fn-rlo-install 1073741824 536870912 nil '(16777216 1048576) 4 (create-fn-resource-ledger))))) (after (mv-nth 1 (fn-rlo-physical nil 0 :timeout ledger))))
   (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (not (fn-rv-okp (fn-rl-bank ledger))) (not (fn-rv-okp (fn-rl-bank after)))))
  :rule-classes nil)
+
+
+(defthm rot-issued-token-live-positive
+ (let* ((ledger (mv-nth 1 (fn-rl-install (fn-rlo-resident-vector 16777216)
+                          (fn-rlo-resident-vector 8192)
+                          (fn-rlo-resident-vector 1048576) 4 (create-fn-resource-ledger))))
+         (ledger (fn-rlo-free-init 2 ledger))
+         (ledger (update-fn-rl-next 2 ledger))
+         (ledger (update-fn-rl-file-limit 1048576 ledger))
+         (ledger (update-fn-rl-mode 2 ledger))
+         (result (fn-rlo-issue 7 11 8 :issued ledger)))
+  (and (fn-resource-ledgerp ledger) (eq (car result) :drawn)
+       (equal (cadr result) '(:resource (:connection 7 11) 2 1))
+       (fn-rlo-livep (cadr result) 8 (mv-nth 2 result)))) :rule-classes nil)
+
+; Corrupted generation: drawn hypothesis retained, typed input omitted.
+(defthm rot-issued-token-live-without-type-corrupted-state
+ (let* ((ledger (mv-nth 1 (fn-rl-install (fn-rlo-resident-vector 16777216)
+                          (fn-rlo-resident-vector 8192)
+                          (fn-rlo-resident-vector 1048576) 4 (create-fn-resource-ledger))))
+         (ledger (fn-rlo-free-init 2 ledger))
+         (ledger (update-fn-rl-next 2 ledger))
+         (ledger (update-fn-rl-file-limit 1048576 ledger))
+         (ledger (update-fn-rl-mode 2 ledger))
+         (ledger (update-fn-rl-gensi 2 -2 ledger))
+         (result (fn-rlo-issue 7 11 8 :issued ledger)))
+  (and (not (fn-resource-ledgerp ledger)) (eq (car result) :drawn)
+       (not (fn-rlo-livep (cadr result) 8 (mv-nth 2 result)))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (disable (:executable-counterpart fn-rl-fits-from))
+                :expand ((:free (x) (hide x))))))
+
+(defthm rot-issued-token-live-without-drawn
+ (let* ((ledger (create-fn-resource-ledger))
+        (result (fn-rlo-issue 7 11 8 :issued ledger)))
+  (and (fn-resource-ledgerp ledger) (not (eq (car result) :drawn))
+       (not (fn-rlo-livep (cadr result) 8 (mv-nth 2 result))))) :rule-classes nil)
