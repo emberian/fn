@@ -1297,10 +1297,6 @@
   :class ::common-lisp-compliant
   :keystones (fn-otb-answer-early-answers-each-untold-member-once))
 
-(definterface fn-otb-complete
-  :class ::common-lisp-compliant
-  :keystones (fn-otb-a-late-completion-is-consumed-once))
-
 (definterface fn-otb-issue
   :class ::common-lisp-compliant)
 
