@@ -2380,9 +2380,10 @@ check-lane:
 	FN_LANE_CHECK=1 FN_LANE_CHECK_DIR=$$(mktemp -d "$${TMPDIR:-/tmp}/fn-lane-check.XXXXXX") $(MAKE) check
 
 # tools/lock_discipline_check.py (rules R1-R10: locks, leases, threads,
-# failure scopes; the whole-system plan's first landing) runs REPORT-ONLY
-# here (--summary, exit 0) until the coordinator agrees its baseline; then
-# the step becomes --check: the enclave strict, the baseline shrink-only.
+# failure scopes; the whole-system plan's first landing) fails closed on a
+# NEW finding (--check; baseline agreed by the coordinator 2026-10-03): the
+# enclave is strict, tools/lock_discipline_baseline.json only shrinks
+# (--write-baseline refuses to raise a row).
 # `make check-fast`: the seconds-to-a-minute checks a two-line registry or
 # docs fix can break, before a full check-lane (lanes asked for it after a
 # two-line registry fix cost a 25-minute round; batch BB, 2026-09-28).  Not a
@@ -2408,7 +2409,7 @@ check-fast:
 	@$(CHECK_STEP) $(PYTHON) tools/test_roots_check.py
 	@$(CHECK_STEP) $(PYTHON) tools/main_last_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_main_last_check
-	@$(CHECK_STEP) $(PYTHON) tools/lock_discipline_check.py --summary
+	@$(CHECK_STEP) $(PYTHON) tools/lock_discipline_check.py --check --summary
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_lock_discipline_check
 	@$(CHECK_EXECUTE)
 
