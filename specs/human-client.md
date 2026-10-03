@@ -234,7 +234,25 @@ cleanup and cold publication cancellation do not imply that an issued physical
 read has ended. The owner's generated actor lifecycle retains the web actor
 through its physical join before shared service close.
 
-This scheduling contract does not yet establish a funding proof for the web
-machine's materialized NNTP reply and HTML buffers. The response windows bound
-socket staging; pre-materialization allocation accounting remains an open output
-contract item. Existing web semantic/refinement proofs keep their stated scope.
+The native page path requests a validated immutable segment plan from
+`fn-wss-page`, then counts and emits it through `fn-web-host-page-step`
+(`books/web-page-cursor.lisp`) outside the owner section. Each step has fixed
+cursor fuel and a window of at most 4096 octets. A short encoded header may
+add the existing bounded RFC 2047 decode; long headers remain span reads.
+Count mode allocates no output list. GET emits the counted page from the same
+retained reply and plan; HEAD counts the page and sends its head alone. It
+never constructs a complete HTML output buffer. SCN-1105 compares all segment
+kinds and native partial writes to the existing segment reference.
+
+The cursor is presently a program boundary. Its guard verification and
+refinement to `fn-wr-seq` are planned in PRF-1277; raw equality witnesses do not
+extend the existing web proofs to it. Owner admission, session decisions and
+segment construction still run to completion under the owner lock. A long
+owner operation or page-plan construction can therefore delay event handling;
+this is not a full semantic-event fairness guarantee. The fixed semantic
+worker also serializes operations that need that worker.
+
+This scheduling contract does not yet establish full allocation funding.
+The NNTP reply backing buffer, page segment spine and text, bounded decoder,
+head/window/cursor and job capture remain the actual tariff frontier. Eliminating
+the complete HTML output buffer does not fund the retained input or plan.

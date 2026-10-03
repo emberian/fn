@@ -5325,3 +5325,6 @@
 (definterface fn-tcrt-action :class :common-lisp-compliant
   :keystones (fn-tcrt-source-custody-excludes-input
               fn-tcrt-ready-write-precedes-source-and-close))
+
+(definterface fn-web-host-page-cursor :class ::program)
+(definterface fn-web-host-page-step :class ::program)

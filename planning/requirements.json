@@ -6648,7 +6648,9 @@
       "specification": "specs/human-client.md#the-nodes-own-web-face",
       "milestone": "M6",
       "status": "specified",
-      "proof_targets": [],
+      "proof_targets": [
+        "PRF-1277"
+      ],
       "verification": [
         "test",
         "integration",
@@ -6660,9 +6662,11 @@
         "tests/native_web_reactor_raw.lisp",
         "tests/test_native_web.py",
         "tests/test_native_host_lifecycle.py",
-        "planning/evidence/web-continuations-2026-10-03.md"
+        "planning/evidence/web-continuations-2026-10-03.md",
+        "books/web-page-cursor.lisp",
+        "tests/native_web_page_cursor_raw.lisp"
       ],
-      "implementation_note": "Source implementation in lane codex-sol-web: fixed I/O actor plus one semantic worker, profile-bounded HTTP slots and job mailbox, per-session semantic-flow lease, exact partial output offsets/windows, shared await/cold consumers. Actual raw continuation fixture passes; assembled-image checks pending. No new semantic proof or qualified image claim. Core NNTP reply/HTML materialization funding and incremental rendering remain open; output windows alone do not bound or fund complete page allocation."
+      "implementation_note": "Source implementation: fixed I/O actor plus one semantic worker, profile-bounded HTTP slots/mailbox and exact per-CID lifetime leases. Native page count/emit now consumes immutable ACL2 segments outside O in bounded windows, with no complete HTML OUT; actual raw mixed-segment/reference and partial-write consumer witness passes. Cursor remains program mode, planned guard/refinement target PRF-1277. Session/plan construction and owner admission still run to completion under O, and one worker can wait on owner admission. Matching image checks and full retained NNTP/plan/job funding remain open; this is not full semantic-event fairness or universal allocation warranty."
     },
     {
       "id": "STO-10005",
