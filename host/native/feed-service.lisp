@@ -44,7 +44,10 @@
 ;;; host carries it and hands it back, and never computes it.
 (defstruct (fnn-feed-link (:constructor %make-fnn-feed-link))
   peer peer-octets socket fd tls-context tls-channel (ready nil) (next-dial 0)
-  (streak 0))
+  (streak 0)
+  phase security dial-auth tls-name deadline
+  output (output-offset 0) output-end output-quantum-end output-quantum
+  (drain nil) (eof nil) (tick-due t))
 
 ;;; What the pump was doing when an I/O condition arrived, so a dropped link
 ;;; names it (fn-flb-drop-line): :read or :send.  Each feed worker binds it
@@ -258,62 +261,71 @@ ACL2 decodes its bounded bytes; only named input/OS refusal is credential loss."
                       (fnn-make-octets 0)))))))
 
 (defun fnn-feed-enable-tls (runtime link security)
+  "Retain authenticated TLS setup; one handshake attempt runs per later turn."
+  (declare (ignore runtime))
   (unless (and (equal (car security) :tls) (= (length security) 4))
     (fnn-fault "TLS transition without a TLS peer policy"))
-  ;; PKT-613 (PRF-231): which check the transport selects is ACL2's
-  ;; (`fn-peer-tls-verification'): the configured name, SNI for a DNS name
-  ;; only, and a pinned anchor file or the system's public roots.
-  (let* ((verification (fnn-core 'fn-peer-tls-verification (third security)
-                                 (fourth security)))
-         (server-name (and (eq (first verification) :verify) (second verification)))
-         (context (progn
-                    (unless server-name
-                      (error 'fnn-peer-dial-error
-                             :outcome (if (eq (second verification) :trust)
-                                          :trust :server-name)))
-                    (fnn-tls-open-client-context (fourth verification)))))
-    ;; Publish ownership before SSL_connect: every failure path can now close
-    ;; the context through the link, including a repeated certificate failure.
-    (setf (fnn-feed-link-tls-context link) context)
-    (handler-case
-        (let ((channel (fnn-tls-connect context (fnn-feed-link-fd link) server-name 10
-                                        :sni (third verification))))
-          (setf (fnn-feed-link-tls-channel link) channel)
-          (multiple-value-bind (word command)
-              (fnn-feed-tls-established-core (fnn-feed-runtime-service runtime) link)
-            (when (> (length command) 0) (fnn-tls-send-all channel command 10))
-            (when (eq word :ready) (fnn-feed-link-became-ready link))))
-      (error (condition)
-        (when (fnn-feed-link-tls-context link)
-          (fnn-tls-close-context (fnn-feed-link-tls-context link))
-          (setf (fnn-feed-link-tls-context link) nil))
-        (error condition)))))
+  (let* ((verification (fnn-core 'fn-peer-tls-verification (third security) (fourth security)))
+         (name (and (eq (first verification) :verify) (second verification))))
+    (unless name
+      (error 'fnn-peer-dial-error :outcome (if (eq (second verification) :trust) :trust :server-name)))
+    (setf (fnn-feed-link-tls-context link) (fnn-tls-open-client-context (fourth verification))
+          (fnn-feed-link-tls-name link) name
+          (fnn-feed-link-tls-channel link)
+          (fnn-tls-client-begin (fnn-feed-link-tls-context link) (fnn-feed-link-fd link)
+                                name :sni (third verification))
+          (fnn-feed-link-phase link) :tls
+          (fnn-feed-link-deadline link)
+          (fnn-core 'fn-prd-deadline (fnn-feed-now) (fnn-core 'fn-owner-feed-connect-timeout)))))
 
 (defun fnn-feed-send (link octets)
-  "Write OCTETS (one ACL2 command) in ACL2's quanta (fn-owner-feed-send-quantum):
-each quantum within its seconds, so the bound is the path's progress, not
-the command's size (S035)."
+  "Retain one journal-authorized command; physical writes yield between peers."
+  (when (fnn-feed-link-output link) (fnn-fault "feed replaced an undrained command"))
+  (when (plusp (length octets))
+    (let ((bound (fnn-core 'fn-owner-feed-send-quantum)) (data (fnn-octets octets)))
+      (unless (and (consp bound) (integerp (car bound)) (plusp (car bound))
+                   (integerp (cdr bound)) (plusp (cdr bound)))
+        (fnn-fault "invalid ACL2 feed send quantum: ~s" bound))
+      (setf (fnn-feed-link-output link) data
+            (fnn-feed-link-output-offset link) 0
+            (fnn-feed-link-output-quantum link) bound
+            (fnn-feed-link-output-quantum-end link)
+            (fnn-core 'fn-prd-write-quantum-end 0 (length data) (car bound))
+            (fnn-feed-link-output-end link)
+            (fnn-core 'fn-prd-write-end 0 (fnn-feed-link-output-quantum-end link))
+            (fnn-feed-link-deadline link) (fnn-core 'fn-prd-deadline (fnn-feed-now) (cdr bound))))))
+
+(defun fnn-feed-write-step (link now)
+  "One physical attempt, retaining the exact buffer/range on TLS WANT."
   (setq *fnn-feed-io-phase* :send)
-  (let* ((data (fnn-octets octets))
-         (bound (fnn-core 'fn-owner-feed-send-quantum))
-         (quantum (car bound))
-         (seconds (cdr bound)))
-    (unless (and (integerp quantum) (plusp quantum) (integerp seconds) (plusp seconds))
-      (fnn-fault "invalid ACL2 feed send quantum: ~s" bound))
-    (loop for start from 0 below (length data) by quantum
-          do (let ((slice (subseq data start (min (length data) (+ start quantum)))))
-               (if (fnn-feed-link-tls-channel link)
-                   (fnn-tls-send-all (fnn-feed-link-tls-channel link) slice seconds)
-                 (fnn-send-all (fnn-feed-link-fd link) slice seconds))))))
+  (let* ((data (fnn-feed-link-output link)) (offset (fnn-feed-link-output-offset link))
+         (end (fnn-feed-link-output-end link))
+         (sent (if (fnn-feed-link-tls-channel link)
+                   (fnn-tls-write-now-range (fnn-feed-link-tls-channel link) data offset end)
+                 (fnn-socket-write-now (fnn-feed-link-fd link) data offset end))))
+    (when (integerp sent)
+      (setq *fnn-feed-active* t)
+      (incf (fnn-feed-link-output-offset link) sent)
+      (let ((offset (fnn-feed-link-output-offset link)))
+        (cond ((= offset (length data))
+               (setf (fnn-feed-link-output link) nil (fnn-feed-link-deadline link) nil))
+              (t
+               (when (= offset (fnn-feed-link-output-quantum-end link))
+                 (let ((bound (fnn-feed-link-output-quantum link)))
+                   (setf (fnn-feed-link-output-quantum-end link)
+                         (fnn-core 'fn-prd-write-quantum-end offset (length data) (car bound))
+                         (fnn-feed-link-deadline link) (fnn-core 'fn-prd-deadline now (cdr bound)))))
+               (when (= offset end)
+                 (setf (fnn-feed-link-output-end link)
+                       (fnn-core 'fn-prd-write-end offset (fnn-feed-link-output-quantum-end link))))))))))
 
 (defun fnn-feed-recv (link limit)
-  "A zero-second read: octets, an empty vector at EOF, or :timeout when the
-socket (or, over TLS, OpenSSL: a record with no application data such as a
-TLS 1.3 NewSessionTicket) has nothing for the feed yet."
+  "One physical read; readiness yields with the ACL2 framer state untouched."
   (setq *fnn-feed-io-phase* :read)
-  (if (fnn-feed-link-tls-channel link)
-      (fnn-tls-read (fnn-feed-link-tls-channel link) 0 limit)
-    (fnn-recv (fnn-feed-link-fd link) 0 limit)))
+  (let ((result (if (fnn-feed-link-tls-channel link)
+                    (fnn-tls-read-now (fnn-feed-link-tls-channel link) limit)
+                  (fnn-socket-read-now (fnn-feed-link-fd link) limit))))
+    (if (member result '(:wait :input :output)) :timeout result)))
 
 (defun fnn-feed-tick (service link now)
   "One ACL2 tick.  Its command, if any, is copied only after FNFD append."
@@ -428,7 +440,12 @@ has made the kernel free to reuse it."
     (when (fnn-feed-link-tls-context link)
       (ignore-errors (fnn-tls-close-context (fnn-feed-link-tls-context link)))
       (setf (fnn-feed-link-tls-context link) nil))
-    (when socket (ignore-errors (fnn-socket-shut socket)))))
+    (when socket (ignore-errors (fnn-socket-shut socket)))
+    (setf (fnn-feed-link-phase link) nil (fnn-feed-link-security link) nil
+          (fnn-feed-link-dial-auth link) nil (fnn-feed-link-tls-name link) nil
+          (fnn-feed-link-deadline link) nil (fnn-feed-link-output link) nil
+          (fnn-feed-link-drain link) nil (fnn-feed-link-eof link) nil
+          (fnn-feed-link-tick-due link) t)))
 
 (defun fnn-feed-link-became-ready (link)
   "The reply machine reported :ready: ACL2 restarts the redial streak."
@@ -462,135 +479,117 @@ streak, and the drop is logged by ACL2's line, whatever its cause."
                                 cause delay))))))
 
 (defun fnn-feed-dial (runtime link now)
-  "Dial an ACL2-projected endpoint when its core queue and delay allow it.
-
-DNS resolution remains FNN-CONNECT's separately documented availability
-boundary.  ACL2 supplies the deadline for the nonblocking TCP completion; once
-established, read/write waits use FNN-RECV/FNN-SEND-ALL.  ACL2 gets a
-connection-phase state before the descriptor is published; a concurrent stop
-therefore makes the worker close its private socket instead of leaking it into
-the shared link table."
-  (when (and (not (fnn-feed-stoppingp runtime))
-             (null (fnn-feed-link-socket link))
+  "Capture an admitted profile before one nonblocking connect attempt.
+DNS/profile/context filesystem work remains a separate availability frontier."
+  (when (and (not (fnn-feed-stoppingp runtime)) (null (fnn-feed-link-socket link))
              (<= (fnn-feed-link-next-dial link) now))
     (multiple-value-bind (queued host port backoff timeout security auth)
-        (fnn-feed-dial-plan (fnn-feed-runtime-service runtime)
-                            (fnn-feed-link-peer-octets link))
+        (fnn-feed-dial-plan (fnn-feed-runtime-service runtime) (fnn-feed-link-peer-octets link))
       (when queued
         (setq *fnn-feed-active* t)
         (let ((socket nil) (published nil))
           (handler-case
-              (multiple-value-bind (user pass allow-clear)
-                  (fnn-feed-auth-profile auth)
-                (setq socket (fnn-peer-connect host port :timeout timeout))
-                (let ((fd (fnn-socket-fd socket)))
-                  (fnn-feed-connect-core (fnn-feed-runtime-service runtime)
-                                         (fnn-feed-link-peer-octets link) fd
-                                         user pass allow-clear)
-                  (setq published (fnn-feed-publish-socket runtime link socket fd))
-                  (when (and published (equal (car security) :tls)
-                             (equal (cadr security) :implicit))
-                    (fnn-feed-enable-tls runtime link security))
-                  (unless published
+              (multiple-value-bind (user pass allow-clear) (fnn-feed-auth-profile auth)
+                (multiple-value-bind (opened word) (fnn-peer-connect-start host port)
+                  (setq socket opened)
+                  (unless (member word '(:connected :pending)) (fnn-fault "invalid connect-start outcome"))
+                  (setq published (fnn-feed-publish-socket runtime link socket (fnn-socket-fd socket)))
+                  (if published
+                      (setf (fnn-feed-link-phase link) (if (eq word :connected) :connected :connect)
+                            (fnn-feed-link-security link) security
+                            (fnn-feed-link-dial-auth link) (list user pass allow-clear)
+                            (fnn-feed-link-deadline link) (fnn-core 'fn-prd-deadline now timeout))
                     (fnn-socket-shut socket))))
             ((or fnn-os-error sb-bsd-sockets:socket-error fnn-tls-error
                  fnn-feed-auth-error fnn-peer-dial-error) (condition)
               (when (and socket (not published)) (fnn-socket-shut socket))
               (fnn-peer-dial-report :feed (fnn-feed-link-peer-octets link) host condition)
-              ;; A failed open has no outgoing bytes, but it is still the
-              ;; named peer-loss observation that advances the ACL2 backoff.
               (unless (fnn-feed-stoppingp runtime)
                 (fnn-feed-drop-link runtime link now backoff
-                                    (typecase condition
-                                      (fnn-feed-auth-error :credential)
-                                      (fnn-tls-error :tls)
-                                      (t :dial)))))))))))
+                                    (typecase condition (fnn-feed-auth-error :credential)
+                                      (fnn-tls-error :tls) (t :dial)))))))))))
+
+(defun fnn-feed-connected-step (runtime link)
+  "Establish ACL2's connection phase after TCP completion, never before it."
+  (destructuring-bind (user pass clear) (fnn-feed-link-dial-auth link)
+    (fnn-feed-connect-core (fnn-feed-runtime-service runtime) (fnn-feed-link-peer-octets link)
+                           (fnn-feed-link-fd link) user pass clear))
+  (setf (fnn-feed-link-dial-auth link) nil (fnn-feed-link-phase link) nil
+        (fnn-feed-link-deadline link) nil)
+  (let ((security (fnn-feed-link-security link)))
+    (when (and (equal (car security) :tls) (equal (cadr security) :implicit))
+      (fnn-feed-enable-tls runtime link security))))
 
 (defun fnn-feed-consume (runtime link octets eofp now)
-  "Drain a received chunk through one ACL2 event at a time.
-
-NIL means ``drain retained suffix'' after the first iteration.  EOFP is kept
-separate, so an EOF cannot discard a complete line already retained by the
-ACL2 framer."
-  (let ((input octets) (service (fnn-feed-runtime-service runtime)))
-    (loop
-      (multiple-value-bind (word command)
-          (fnn-feed-reply-step service link input now)
-        ;; Developer image only: fnn-feed-reply-step has crossed the FNFD
-        ;; append/fsync barrier for :feed-sent. Stop this worker before its
-        ;; TAKETHIS/article bytes reach the protected socket, so a test can
-        ;; kill the process at an unresolved attempt that fn-feed-restart
-        ;; expresses. Production images reject this selector at startup.
-        (when (and (eq word :send)
-                   (string= (or (fnn-developer-selector
-                                 "FN_NATIVE_FEED_TEST_STOP_AFTER_SENT") "")
-                            "1"))
-          (fnn-control-stop-calling-thread))
-        (when (> (length command) 0)
-          (fnn-feed-send link command))
-        (when (fnn-feed-stoppingp runtime) (return))
-        (case word
-          (:need-input
-           (when eofp
-             ;; The drop line (fn-flb-drop-line, reason=lost-eof) names it.
-             (fnn-feed-drop-link runtime link now
-                                 (fnn-feed-loss-backoff service (fnn-feed-link-peer-octets link))
-                                 :eof))
-           (return))
-          ((:closed :invalid :connection-refused :streaming-refused :unsendable)
-           ;; The reply step logged ACL2's line naming the peer's answer; the
-           ;; drop line names the retry.
+  "Consume one ACL2 event; its retained framer suffix resumes on a later turn."
+  (when eofp (setf (fnn-feed-link-eof link) t))
+  (let ((service (fnn-feed-runtime-service runtime)))
+    (multiple-value-bind (word command) (fnn-feed-reply-step service link octets now)
+      (when (and (eq word :send)
+                 (string= (or (fnn-developer-selector "FN_NATIVE_FEED_TEST_STOP_AFTER_SENT") "") "1"))
+        (fnn-control-stop-calling-thread))
+      (when (> (length command) 0) (fnn-feed-send link command))
+      (setf (fnn-feed-link-drain link) (not (eq word :need-input)))
+      (case word
+        (:need-input
+         (setf (fnn-feed-link-tick-due link) t)
+         (when (fnn-feed-link-eof link)
            (fnn-feed-drop-link runtime link now
-                               (fnn-feed-loss-backoff service (fnn-feed-link-peer-octets link))
-                               (if (eq word :unsendable) :unsendable :peer))
-           (return))
-          (:ready
-           (fnn-feed-link-became-ready link)
-           (setq input nil))
-          (:tls
-           (multiple-value-bind (ignored host port backoff timeout security auth)
-               (fnn-feed-dial-plan service (fnn-feed-link-peer-octets link))
-             (declare (ignore ignored host port timeout auth))
-             ;; A peer removed or retransported since the dial has no TLS
-             ;; policy now: the link goes, it is not a fault (S036).
-             (unless (equal (car security) :tls)
-               (fnn-feed-drop-link runtime link now backoff :peer)
-               (return))
-             (fnn-feed-enable-tls runtime link security))
-           (setq input nil))
-          ((:starttls :auth-user :auth-pass :mode :send :quiet)
-           ;; The next call receives the framer's already-retained suffix,
-           ;; not a concatenation constructed in raw Lisp.
-           (setq input nil)))))))
+                               (fnn-feed-loss-backoff service (fnn-feed-link-peer-octets link)) :eof)))
+        ((:closed :invalid :connection-refused :streaming-refused :unsendable)
+         (fnn-feed-drop-link runtime link now
+                             (fnn-feed-loss-backoff service (fnn-feed-link-peer-octets link))
+                             (if (eq word :unsendable) :unsendable :peer)))
+        (:ready (fnn-feed-link-became-ready link))
+        (:tls
+         (multiple-value-bind (ignored host port backoff timeout security auth)
+             (fnn-feed-dial-plan service (fnn-feed-link-peer-octets link))
+           (declare (ignore ignored host port timeout auth))
+           (if (equal (car security) :tls) (fnn-feed-enable-tls runtime link security)
+             (fnn-feed-drop-link runtime link now backoff :peer))))))))
 
 (defun fnn-feed-pump-link (runtime link now)
   (when (and (not (fnn-feed-stoppingp runtime)) (fnn-feed-link-socket link))
     (setq *fnn-feed-io-phase* :read)
     (handler-case
-        (progn
-          (when (fnn-feed-link-ready link)
-            (multiple-value-bind (word command)
-                (fnn-feed-tick (fnn-feed-runtime-service runtime) link now)
-              (when (eq word :offer)
-                (setq *fnn-feed-active* t))
-              (when (> (length command) 0)
-                (fnn-feed-send link command))
-              (when (eq word :unsendable)
-                (fnn-feed-drop-link runtime link now
-                                    (fnn-feed-loss-backoff (fnn-feed-runtime-service runtime)
-                                                           (fnn-feed-link-peer-octets link))
-                                    :unsendable)
-                (return-from fnn-feed-pump-link nil))))
-          (unless (fnn-feed-stoppingp runtime)
-            ;; The ACL2-projected limit sizes this buffer before read(2); a
-            ;; peer cannot make the host allocate a larger coalesced batch.
-            (let ((incoming (fnn-feed-recv link (fnn-feed-runtime-limit runtime))))
-              (unless (eq incoming :timeout)
-                (setq *fnn-feed-active* t))
-              (cond ((eq incoming :timeout) nil)
-                    ((zerop (length incoming))
-                     (fnn-feed-consume runtime link nil t now))
-                    (t (fnn-feed-consume runtime link incoming nil now))))))
+        (let ((action (fnn-core 'fn-prd-feed-action (fnn-feed-link-phase link)
+                                 (not (null (fnn-feed-link-output link))) (fnn-feed-link-drain link)
+                                 (and (fnn-feed-link-ready link) (fnn-feed-link-tick-due link))
+                                 now (fnn-feed-link-deadline link))))
+          (setq *fnn-feed-io-phase*
+                (case action ((:connect :connected) :dial) (:tls :tls) (:write :send) (t :read)))
+          (case action
+            (:timeout (fnn-os-fail sb-posix:etimedout))
+            (:connect
+             (when (eq (fnn-connect-poll (fnn-feed-link-socket link)) :connected)
+               (setf (fnn-feed-link-phase link) :connected)))
+            (:connected (fnn-feed-connected-step runtime link))
+            (:tls
+             (when (eq (fnn-tls-client-step (fnn-feed-link-tls-channel link)
+                                            (fnn-feed-link-tls-name link)) :connected)
+               (setf (fnn-feed-link-phase link) nil (fnn-feed-link-deadline link) nil)
+               (multiple-value-bind (word command)
+                   (fnn-feed-tls-established-core (fnn-feed-runtime-service runtime) link)
+                 (when (> (length command) 0) (fnn-feed-send link command))
+                 (when (eq word :ready) (fnn-feed-link-became-ready link)))))
+            (:write (fnn-feed-write-step link now))
+            (:reply (fnn-feed-consume runtime link nil nil now))
+            (:offer
+             (setf (fnn-feed-link-tick-due link) nil)
+             (multiple-value-bind (word command) (fnn-feed-tick (fnn-feed-runtime-service runtime) link now)
+               (when (eq word :offer) (setq *fnn-feed-active* t))
+               (when (> (length command) 0) (fnn-feed-send link command))
+               (when (eq word :unsendable)
+                 (fnn-feed-drop-link runtime link now
+                                     (fnn-feed-loss-backoff (fnn-feed-runtime-service runtime)
+                                                            (fnn-feed-link-peer-octets link)) :unsendable))))
+            (:read
+             (setf (fnn-feed-link-tick-due link) t)
+             (let ((incoming (fnn-feed-recv link (fnn-core 'fn-prd-read-limit (fnn-feed-runtime-limit runtime)))))
+               (unless (eq incoming :timeout)
+                 (setq *fnn-feed-active* t)
+                 (fnn-feed-consume runtime link incoming (zerop (length incoming)) now))))
+            (t (fnn-fault "unknown feed driver action ~s" action))))
       ((or fnn-os-error sb-bsd-sockets:socket-error fnn-tls-error
            fnn-peer-dial-error) (condition)
         (if (fnn-feed-stoppingp runtime)

@@ -26,3 +26,13 @@
 (assert-event (not (fn-prd-loss-class-ok :read "fnn-store-indeterminate")))
 (assert-event (not (fn-prd-loss-class-ok :read "unknown-io-subclass")))
 (assert-event (fn-prd-loss-class-ok :dial "fnn-peer-dial-error"))
+
+; Push selection retains write before later framer events and offers.
+(assert-event (equal (fn-prd-feed-action nil t t t 9 10) :write))
+(assert-event (equal (fn-prd-feed-action nil t t t 10 10) :timeout))
+(assert-event (equal (fn-prd-feed-action :tls nil t nil 9 10) :tls))
+(assert-event (equal (fn-prd-feed-action nil nil t t 11 nil) :reply))
+(assert-event (equal (fn-prd-feed-action nil nil nil t 11 nil) :offer))
+(assert-event (equal (fn-prd-feed-action nil nil nil nil 11 nil) :read))
+(assert-event (equal (fn-prd-write-quantum-end 65500 100000 65536) 100000))
+(assert-event (equal (fn-prd-write-end 512 (fn-prd-write-quantum-end 0 2000 600)) 600))
