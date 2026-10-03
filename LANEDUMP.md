@@ -4013,3 +4013,17 @@ fault and raw throw classified afterstop; named stopped-listener socket error
 remains ordinary shutdown, live socket/store/unknown faults escalate. Actual
 shared classifier+actor with physical SBCL thread fixture PASS0.23s over
 recording accept/tick effects. No complete native interpreter/charging claim.
+
+## Root arena recovery custody — 2026-10-03
+
+Own source branch codex/root-arena-recovery-custody-20261003. Depends on
+Exits db2e4c87a (local cherry-pick461b80813). Global handed-out arena release
+custody was omitted from the runtime lifecycle decision: an offline callback
+escape could leave a quiescent phase that still allowed destructive reset.
+Additive fn-pvl-runtime-return-step requires :closed for reset/start/recover/
+joined and is called by the actual native lifecycle adapter. Existing stobj
+layouts and fn-pvl-runtime-step are unchanged. PRF1308 tracks full correspondence;
+wrapper facts are component obligations, not a blanket native theorem.
+Actual callback/reset regression PASS and old adapter fails the new refusal
+assertion. Full certificate pending. Original payload lifecycle fixture's stale
+syncer extraction is independently repaired by Runtime9570639ce.

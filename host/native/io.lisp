@@ -1723,7 +1723,8 @@ and any previous selected checkpoint before initializing the epoch."
 
 (defun fnn-payload-lifecycle-answer (event &optional owned joined)
   "Lifecycle mutex held; ACL2 alone decides the phase transition."
-  (fnn-core 'fn-pvl-runtime-step *fnn-payload-lifecycle-phase* event owned joined))
+  (fnn-core 'fn-pvl-runtime-return-step *fnn-payload-lifecycle-phase*
+            event owned joined (fnn-arena-return-observation nil)))
 
 (defun fnn-payload-startup-reset ()
   "Only startup/recovery may clear. Refuse serving/draining before STATE use."
