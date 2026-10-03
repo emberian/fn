@@ -8,6 +8,18 @@ extend the selected v0 gate, define a server API, or add proof events. It
 specifies the experiment to implement after the T10 authorship/verdict and
 A1–A3 BP joins have their own evidence.
 
+The continuing application implementation is `tools/fn_consumer.py`, with
+SQLite provenance inbox, unique application operations, immutable signed
+outbox and explicit native poll/ACK. Current source retains the exact returned
+report/cursor before interpretation, stops without ACK on projection faults,
+and reuses a saved submission without reopening signing keys. Client journal
+and delivery fixtures pass; the new saved-delivery/restart image case exposed
+an article-only native publication gate at consumer bootstrap, before any
+application transition. That gate now consumes the existing all-record
+preservation boundary; matching native execution is pending. The full
+legacy-relay/BP/media composition described below remains its own experiment,
+not implied by this local application profile.
+
 ## E1: one immutable exchange
 
 Agent A authors article **R**, a versioned dregg report with its application

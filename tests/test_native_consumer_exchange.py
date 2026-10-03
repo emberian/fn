@@ -550,6 +550,40 @@ class NativeConsumerExchangeTests(unittest.TestCase):
             path.write_text(json.dumps(payload, indent=1, sort_keys=True, default=str),
                             encoding="utf-8")
 
+    def test_saved_submission_retries_after_restart_without_signing_keys(self):
+        """An unanswered post retains its whole artifact across both owners.
+
+        Removed signing inputs cannot force a replacement artifact. A changed
+        payload under the same application operation is explicitly refused.
+        """
+        self.start_node(log=False, bootstrap=False)
+        a = self.agent("agent-a", 0xA1, 1)
+        self.consumer(a, "report", "r1", "immutable-retry", cut="after-post",
+                      expected=97)
+        cfg = json.loads(a.read_text())
+        artifact_query = ("SELECT source,ed_sig,ml_sig,principal,ed_public,"
+                          "ml_public_pem,keyring_generation,context FROM submissions")
+        with sqlite3.connect(cfg["db"]) as db:
+            saved = db.execute(artifact_query).fetchone()
+            self.assertEqual(db.execute("SELECT state FROM attempts").fetchall(),
+                             [("in-flight",)])
+        self.stop_owner(self.owner)
+        self.owner = self.start_owner()
+        for key_path in cfg["keys"].values():
+            Path(key_path).unlink()
+        self.consumer(a, "report", "r1", "immutable-retry")
+        settled = self.summary(a)
+        self.assertEqual(settled["outbox"][0]["state"], "stored")
+        self.assertEqual(settled["outbox"][0]["attempts"], 2)
+        with sqlite3.connect(cfg["db"]) as db:
+            self.assertEqual(db.execute(artifact_query).fetchone(), saved)
+            self.assertEqual(db.execute("SELECT state,exit FROM attempts ORDER BY id").fetchall(),
+                             [("unanswered", None), ("answered", 0)])
+        self.consumer(a, "report", "r1", "changed-payload", expected=1)
+        with sqlite3.connect(cfg["db"]) as db:
+            self.assertEqual(db.execute(artifact_query).fetchone(), saved)
+            self.assertEqual(db.execute("SELECT count(*) FROM attempts").fetchone(), (2,))
+
     def test_identical_signed_resend_answers_duplicate(self):
         """D25 on the local control route: a byte-identical resend of an
         accepted signed article is "already stored here" (exit 0), which is
