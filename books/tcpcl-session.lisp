@@ -922,11 +922,19 @@
           (list (list :send-refused ref :ids-exhausted)
                 (fn-tcl-send-event (fn-tcl-make-sess-term 0 *fn-tcl-term-resource-exhaustion*)))
           nil))
-        (t (fn-tcl-pump
-            (fn-tcl-with-outbound s (fn-tcl-make-outbound (fn-tcl-session-next-xfer-id s) ref
-                                                          octets (len octets) 0 0)
-                                  (+ 1 (fn-tcl-session-next-xfer-id s)))
-            now))))
+        (t
+         (let* ((id (fn-tcl-session-next-xfer-id s))
+                (next (fn-tcl-with-outbound s (fn-tcl-make-outbound id ref octets (len octets) 0 0)
+                                             (+ 1 id))))
+           ; RFC9174 section5.2.1 carries an unsigned Data length, including
+           ; zero. Pump's sent=total means done, so the empty START|END must
+           ; be emitted here once, retaining outbound custody for its ACK.
+           (if (endp octets)
+               (fn-tcl-make-result
+                (fn-tcl-next next (fn-tcl-session-phase next) (fn-tcl-session-inbound next)
+                             (fn-tcl-session-outbound next) (fn-tcl-session-term next) now)
+                (list (fn-tcl-send-event (fn-tcl-make-xfer-segment 3 id nil nil))) nil)
+             (fn-tcl-pump next now))))))
 
 ; -----------------------------------------------------------------------------
 ; Keepalive and idle timeout (sections 5.1.1, 6.2) as clock observations.
