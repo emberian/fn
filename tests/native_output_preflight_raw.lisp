@@ -18,7 +18,8 @@
 (load-deployed-forms "host/owner-host.lisp" '((defun fn-owner-output-tariff-preview)))
 (load-deployed-forms "host/native/owner.lisp"
  '((defun fnn-owner-response-identity-locked) (defun fnn-owner-output-begin-locked)
-   (defun fnn-owner-output-prefix-locked) (defun fnn-owner-chunk-span-no-io)))
+   (defun fnn-owner-output-prefix-locked) (defun fnn-owner-chunk-span-no-io)
+   (defun fnn-owner-handle-chunk-read)))
 (defvar *preflight-lease-call* (symbol-function 'fnn-call))
 (defvar *preflight-preview* '(:preview 3 :newnews (actual-recorded-tokens)))
 (defvar *preflight-injected-tariff* nil)
@@ -33,14 +34,21 @@
 (defun fnn-core (subject &rest args)
   (case subject
     ((fn-ocap-at fn-ocap-admit-preview) (apply (symbol-function subject) args))
+    ((fn-ort-intake-action fn-otm-admit-post) :admit)
     (fn-rlo-capacity 1048576) ; recording typed installed projection
     (fn-rlo-drainedp (null (test-output-ledger-token (car args))))
     (otherwise (error "unexpected pure preflight subject ~s" subject))))
 (defun fnn-owner-core (subject &rest args)
-  (check (eq subject 'fn-owner-output-tariff-preview) "actual tariff producer subject")
-  (push :tariff *preflight-events*)
-  (or *preflight-injected-tariff*
-      (nth-value 1 (apply #'fn-owner-output-tariff-preview (append args (list nil))))))
+  (case subject
+    (fn-owner-exposure-charge :proceed)
+    (fn-owner-catalog-capture-context
+     (push :capture *preflight-events*) (list :root :view :archive :index :config :auth))
+    (fn-owner-output-tariff-preview
+     (push :tariff *preflight-events*)
+     (or *preflight-injected-tariff*
+         (nth-value 1 (apply #'fn-owner-output-tariff-preview (append args (list nil))))))
+    (otherwise (error "unexpected actual reader subject ~s" subject))))
+
 (defun fnn-core-buffer-state (subject &rest args)
   (case subject
     (fn-owner-output-preview
@@ -74,6 +82,26 @@
          "returned issuance survives rejected reader")
   (fnn-owner-output-close s (fnn-mux-conn-output-grant conn) :discarded)
   (check (fnn-owner-output-drained-p s) "affirmative no-child operation closure settles known draw"))
+(defun fnn-owner-serialized (service cid thunk &optional class)
+  (declare (ignore cid class)) ; recording semantic gate, actual physical O
+  (sb-thread:with-mutex ((fnn-owner-service-lock service)) (funcall thunk)))
+(defun fnn-owner-advance-clock () (push :clock *preflight-events*))
+(defun fnn-owner-gate-sched-value (service) (declare (ignore service)) :sched)
+(defun fnn-owner-read-buffer-fill (service incoming)
+  (declare (ignore service incoming))
+  (check (fnn-response-capture-grant *fnn-response-capture*)
+         "actual reader has returned issued lease before input filling")
+  (push :fill *preflight-events*))
+(let* ((s (lease-service)) (*fnn-response-capture* (preflight-holder))
+       (*preflight-events* nil) (*preflight-injected-tariff* nil) (condition nil))
+  (setf (fnn-owner-service-lock s) (sb-thread:make-mutex :name "actual preflight O"))
+  (handler-case (fnn-owner-handle-chunk-read s 7 #(1 2 3 4 5 6 7 8) nil :reader)
+    (simple-error (c) (setq condition c)))
+  (check (and condition (search "accounted output command refused" (format nil "~a" condition)))
+         "actual reader body stops specifically at unpriced admission")
+  (check (equal (reverse *preflight-events*) '(:clock :fill :capture :preview :tariff))
+         "actual reader issues before fill, captures before preview, never enters factory")
+  (fnn-owner-output-close s (fnn-response-capture-grant *fnn-response-capture*) :discarded))
 ;; Injected positive price only checks the consumer prefix/retry mechanics;
 ;; it is NOT a produced full footprint or supported runtime profile.
 (let* ((s (lease-service)) (*fnn-response-capture* (preflight-holder))
