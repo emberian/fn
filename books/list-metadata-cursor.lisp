@@ -1,10 +1,11 @@
 ; LIST ACTIVE/COUNTS keeps captured group/next/config references and advances
 ; matcher, next-watermark lookup, number probes and status entries separately.
-; Row construction is still a whole-row allocation: profile/string/integer and
-; catalog lookup tariffs plus captured-column stability remain explicit debt.
+; Row strings and decimal digits advance through a retained renderer. Integer
+; width, status comparisons, catalog tariffs and snapshot stability remain debt.
 (in-package "ACL2")
 (include-book "group-summary-cursor")
 (include-book "wildmat-cursor")
+(include-book "list-row-cursor")
 (include-book "def-cursor")
 (include-book "protocol-table")
 
@@ -55,6 +56,7 @@
          (filteredp (fn-cur-at 5 env))
          (v (nfix (fn-cur-at 6 env))))
     (cond
+     ((not progress) (mv nil nil))
      ((eq phase :group)
       (if (consp groups)
           (mv nil (fn-lst-progress env (if filteredp :match :next) (cdr groups)
@@ -93,8 +95,13 @@
                           summary calls)))
           (mv nil (fn-lst-progress env :row groups group (if moderated "m" "y") summary calls)))))
      ((eq phase :row)
-      (mv (fn-nntp-stuff-lines (list (fn-lst-line group summary countsp detail)))
-          (fn-lst-progress env :group groups nil nil nil calls)))
+      (mv nil (fn-lst-progress env :render groups group
+                              (fn-lsr-start group summary countsp detail) nil calls)))
+     ((eq phase :render)
+      (mv-let (octets next) (fn-lsr-one detail)
+        (mv octets (if next
+                       (fn-lst-progress env :render groups group next nil calls)
+                     (fn-lst-progress env :group groups nil nil nil calls)))))
      (t (mv '(46 13 10) nil)))))
 
 (local
