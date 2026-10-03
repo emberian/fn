@@ -8302,9 +8302,10 @@
       "evidence": [
         "books/catalog-root-incarnation.lisp",
         "host/owner-host.lisp",
-        "host/native/owner.lisp"
+        "host/native/owner.lisp",
+        "tests/native_catalog_root_install_raw.lisp"
       ],
-      "execution_scope": "Source connected, verification and actual native fault/capture scenario pending."
+      "execution_scope": "Pure source admission and actual native installer order with recording ACL2 boundary passed; program-global/refinement, matching native image and paired cache consumer pending."
     }
   ]
 }

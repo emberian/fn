@@ -21779,9 +21779,10 @@
         "books/catalog-root-incarnation.lisp",
         "tests/acl2/catalog-root-incarnation-tests.lisp",
         "host/owner-host.lisp",
-        "host/native/owner.lisp"
+        "host/native/owner.lisp",
+        "tests/native_catalog_root_install_raw.lisp"
       ],
-      "progress_note": "Coherent reserve-before-binding source connected to actual native catalog installer; source pushed before verification per current instruction. Pure theorems/teeth, program-global bridge, matching certification/native fault schedule and paired cache consumption pending. Tokens are private to one owner/image lifetime, not persisted or compared across processes."
+      "progress_note": "Source connected to actual native catalog installer and handed off before verification. Pure book six forms source-admitted in warm hbox world (831 steps, 0.00 ACL2 seconds); four finite literal teeth pass. Actual native installer recording-boundary fixture verifies reservation precedes pointer binding, interrupted reservation/retry uses distinct supplied tokens, history install does not reserve, absent catalog refuses before reservation. This recording fixture does not prove the program-global/native bridge. Matching certificates, real owner-state fault schedule and paired cache consumption remain pending; private tokens never cross owner/image lifetimes."
     }
   ]
 }
