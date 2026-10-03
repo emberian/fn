@@ -32,6 +32,7 @@
 (include-book "../../books/owner-time-model")
 (include-book "../../books/clock-reading")
 (include-book "../../books/owner-time-journal")
+(include-book "../../books/owner-time-journal-stream")
 (include-book "../../books/owner-time-admission")
 (include-book "../../books/owner-article-slots")
 (include-book "../../books/owner-credits")

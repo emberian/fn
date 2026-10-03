@@ -811,14 +811,17 @@
 (definterface fn-otm-init
   :class ::common-lisp-compliant)
 
-(definterface fn-otm-journal-exit
+(definterface fn-otjs-init
+  :class ::common-lisp-compliant)
+(definterface fn-otjs-consume
   :class ::common-lisp-compliant
-  :kinds ((octets fn-cbor-octet-listp)))
-
-(definterface fn-otm-journal-report
-  :class ::common-lisp-compliant
-  :kinds ((octets fn-cbor-octet-listp))
-  :keystones (fn-otm-journal-report-of-a-run))
+  :keystones (fn-otjs-consume-of-append fn-otjs-consume-fields-bounded))
+(definterface fn-otjs-read-count
+  :class ::common-lisp-compliant)
+(definterface fn-otjs-report
+  :class ::common-lisp-compliant)
+(definterface fn-otjs-exit
+  :class ::common-lisp-compliant)
 
 (definterface fn-otm-jw-after
   :class ::common-lisp-compliant)

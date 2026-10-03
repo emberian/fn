@@ -2168,3 +2168,20 @@ Source assembly response lease: Runtime851998516 plus root26b84f908 composed on 
   Corrected evidence sol-access-ssc-cleanup-final-2026-10-03.md explicitly
   retracts the earlier mistaken 17-test PASS line and retains its failed log.
   Matching saved-image pair/recovery qualification remains Integration-owned.
+## Sol operator: decision journal incremental consumer (2026-10-03)
+
+Root's S011 stream fold and descriptor consumer completed with actual-source
+2.24MB/35window discriminator, captured-prefix/partial-read schedules and all
+error-close branches. Actual prior body passes2240000octets at once and fails
+the window assertion. Finite full-model15cases/every split and literal chunk/
+field bound/omission/guard checks pass in root-journal-stream warm hbox session;
+19of19 named source events match after resync. No oldPRF322operatortransfer: the
+generator/reference retains its proof; quantified new report/exit bridge is
+OPEN under PRF1275. At most8completed fields; arbitrary initial natural widths
+remain exact, so no constant entire-parser heap claim. SCN1104 source archive
+operator-journal-stream-2026-10-03-v2.json5355098c... and complete REPL logbe5018...
+indexed. Four matching developer-image tests prepared in
+tests.test_native_journal_stream.NativeJournalStreamTests. Source before
+normal2-root cert/image; Integration owns imports/capacity. Access may take
+general refinement after immutable source lands; current active root warm
+world /tank/fn/gates/codex-journal-stream-repl, 60min idle.

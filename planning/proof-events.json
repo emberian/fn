@@ -19270,6 +19270,19 @@
           "name": "fn-tcrt-ready-write-precedes-source-and-close"
         }
       ]
+    },
+    {
+      "id": "PRF-1275",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-otjs-consume-of-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otjs-consume-fields-bounded"
+        }
+      ]
     }
   ]
 }
