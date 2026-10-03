@@ -6658,7 +6658,8 @@
       "status": "specified",
       "proof_targets": [
         "PRF-1277",
-        "PRF-1279"
+        "PRF-1279",
+        "PRF-1282"
       ],
       "verification": [
         "test",
@@ -6675,9 +6676,11 @@
         "books/web-page-cursor.lisp",
         "tests/native_web_page_cursor_raw.lisp",
         "planning/evidence/web-page-cursor-2026-10-03.md",
-        "tests/acl2/web-private-reply-tests.lisp"
+        "tests/acl2/web-private-reply-tests.lisp",
+        "books/web-article-stream.lisp",
+        "tests/native_web_article_stream_raw.lisp"
       ],
-      "implementation_note": "Source implementation: fixed I/O actor plus one semantic worker, profile-bounded HTTP slots/mailbox and exact per-CID lifetime leases. Native page count/emit now consumes immutable ACL2 segments outside O in bounded windows, with no complete HTML OUT; actual raw mixed-segment/reference and partial-write consumer witness passes. Cursor remains program mode, planned guard/refinement target PRF-1277. Session/plan construction and owner admission still run to completion under O, and one worker can wait on owner admission. Matching image checks and full retained NNTP/plan/job funding remain open; this is not full semantic-event fairness or universal allocation warranty. Captured read/post reply planning now runs on the fixed worker without live-table access or O; stateful events remain serialized. PRF-1279 equivalence theorem source awaits matching admission, and plan construction remains a full worker operation."
+      "implementation_note": "Source implementation: fixed I/O actor plus one semantic worker, profile-bounded HTTP slots/mailbox and exact per-CID lifetime leases. Native page count/emit now consumes immutable ACL2 segments outside O in bounded windows, with no complete HTML OUT; actual raw mixed-segment/reference and partial-write consumer witness passes. Cursor remains program mode, planned guard/refinement target PRF-1277. Session/plan construction and owner admission still run to completion under O, and one worker can wait on owner admission. Matching image checks and full retained NNTP/plan/job funding remain open; this is not full semantic-event fairness or universal allocation warranty. Captured read/post reply planning now runs on the fixed worker without live-table access or O; stateful events remain serialized. PRF-1279 equivalence theorem source awaits matching admission, and plan construction remains a full worker operation. ARTICLE replies now scan into fixed metadata and virtual spans, then replay persistent NNTP plans for bounded page windows instead of retaining the entire NNTP article in IN. Final response pin spans both HTML passes and HTTP drain. PRF-1282 program refinement and matching image/funding remain open; LIST/OVER collectors still materialize replies."
     },
     {
       "id": "STO-10005",

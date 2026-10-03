@@ -5366,3 +5366,11 @@
 (definterface fn-ocap-admit-preview :class :common-lisp-compliant)
 (definterface fn-ocap-at :class :common-lisp-compliant)
 (definterface fn-rlo-capacity :class :common-lisp-compliant)
+
+(definterface fn-web-host-article-p :class ::program)
+(definterface fn-web-host-article-start :class ::program)
+(definterface fn-web-host-article-scan :class ::program)
+(definterface fn-web-host-article-page :class ::program)
+(definterface fn-web-host-window-page-step :class ::program)
+(definterface fn-web-host-replay-slice :class ::program)
+(definterface fn-web-host-replay-forward-p :class ::program)

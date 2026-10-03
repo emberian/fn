@@ -48,6 +48,9 @@
   cold cold-word (line-since nil) (resume-at 0)
   wire (wire-at 0) (body-at 0) (body-end 0)
   page-segs page-cursor page-response (pagep nil) (page-count 0) (page-done nil)
+  article-scan captured-plans replay-plans replay-plan replay-need replay-return
+  replay-tail replay-tail-base replay-use-tail
+  (replay-at 0) (window-base 0)
   (cleanup-attempts nil))
 
 (defvar *fnn-web-face* nil)
@@ -234,6 +237,7 @@ exposure admission decides (the id, or NIL when it refused)."
                    (ecase (fnn-web-job-kind job)
                      (:feed (fnn-web-feed-step face conn))
                      (:render (fnn-web-render-step face conn))
+                     (:replay (fnn-web-replay-step face conn))
                      (:cold (fnn-web-cold-step face conn))
                      ((:page-count :page-emit) (fnn-web-page-step face conn))
                      (:private-reply (fnn-web-private-reply face conn))))
@@ -353,6 +357,9 @@ exposure admission decides (the id, or NIL when it refused)."
   (let ((service (fnn-web-face-service face)))
     (case (fnn-core 'fn-web-host-action-kind action)
       (:respond (destructuring-bind (code fields bodyp &optional page-kind segs) (rest action)
+                  (when (fnn-web-conn-article-scan conn)
+                    (fnn-web-fill (fnn-web-conn-in conn) (fnn-make-octets 0))
+                    (setf (fnn-web-conn-window-base conn) 0))
                   (if (eq page-kind :page-plan)
                       (setf (fnn-web-conn-pagep conn) t
                             (fnn-web-conn-page-segs conn) segs
@@ -374,6 +381,10 @@ exposure admission decides (the id, or NIL when it refused)."
                (setf (fnn-web-conn-cid conn) cid (fnn-web-conn-cmd-at conn) start
                      (fnn-web-conn-cmd-end conn) end (fnn-web-conn-flow conn) next
                      (fnn-web-conn-phase conn) :feed)
+               (setf (fnn-web-conn-article-scan conn)
+                     (and (fnn-core 'fn-web-host-article-p next)
+                          (fnn-core 'fn-web-host-article-start next))
+                     (fnn-web-conn-captured-plans conn) nil)
                (fnn-web-fill (fnn-web-conn-in conn) (fnn-make-octets 0))))
       (:close (destructuring-bind (cid next) (rest action)
                 (fnn-web-cleanup face conn (list :close cid)
@@ -416,7 +427,11 @@ exposure admission decides (the id, or NIL when it refused)."
          (pending (fnn-web-conn-pending conn)))
     (unless pending
       (when (= (fnn-web-conn-cmd-at conn) (fnn-web-conn-cmd-end conn))
-        (setf (fnn-web-conn-phase conn) :event (fnn-web-conn-event conn) '(:reply))
+        (if (fnn-web-conn-article-scan conn)
+            (fnn-web-apply-action face conn
+              (fnn-core 'fn-web-host-article-page (fnn-web-face-config face)
+                        (fnn-web-conn-flow conn) (fnn-web-conn-article-scan conn)))
+          (setf (fnn-web-conn-phase conn) :event (fnn-web-conn-event conn) '(:reply)))
         (return-from fnn-web-feed-step nil))
       (let ((end (fnn-core 'fn-web-host-window-end (fnn-web-conn-cmd-at conn)
                            (fnn-web-conn-cmd-end conn))))
@@ -447,6 +462,8 @@ exposure admission decides (the id, or NIL when it refused)."
                (declare (ignore more))
                (when starttls (fnn-fault "web logical connection requested a transport change"))
                (setq plan step-plan used consumed closing close)
+               (when (fnn-web-conn-article-scan conn)
+                 (push plan (fnn-web-conn-captured-plans conn)))
                (setf (fnn-web-conn-plan conn) plan (fnn-web-conn-phase conn) :render)))
            (unless (and (integerp used) (<= 0 used (length pending))
                         (or (> used 0) closing))
@@ -472,7 +489,9 @@ exposure admission decides (the id, or NIL when it refused)."
             (destructuring-bind (step redeem) (fnn-web-conn-await conn)
               (setf (fnn-web-conn-plan conn) (fnn-core 'fn-splan-step-plan step completion redeem)
                     (fnn-web-conn-phase conn) :render
-                    (fnn-web-conn-await conn) nil))))))))
+                    (fnn-web-conn-await conn) nil)
+              (when (fnn-web-conn-article-scan conn)
+                (push (fnn-web-conn-plan conn) (fnn-web-conn-captured-plans conn))))))))))
 
 (defun fnn-web-render-step (face conn)
   (let ((service (fnn-web-face-service face)) (cid (fnn-web-conn-cid conn))
@@ -481,16 +500,28 @@ exposure admission decides (the id, or NIL when it refused)."
         (multiple-value-bind (part rest donep yieldedp issued-read)
             (fnn-owner-render-next-quantum service cid plan :reader)
           (cond (issued-read (fnn-web-cold-start conn issued-read :render))
-                (t (fnn-web-append (fnn-web-conn-in conn) part)
+                (t (if (fnn-web-conn-article-scan conn)
+                       (progn
+                         (fnn-web-fill (fnn-web-conn-in conn) part)
+                         (setf (fnn-web-conn-article-scan conn)
+                               (fnn-core 'fn-web-host-article-scan
+                                         (fnn-web-conn-article-scan conn) (fnn-web-conn-in conn))))
+                     (fnn-web-append (fnn-web-conn-in conn) part))
                    (setf (fnn-web-conn-plan conn) (if donep nil rest))
                    (when (and (not donep) yieldedp)
                      (setf (fnn-web-conn-resume-at conn)
                            (fnn-mux-ms-ticks (fnn-core 'fn-splan-cursor-resume-ms)))))))
       (progn
-        (fnn-owner-response-unpin service cid)
+        ;; The final article plan remains pinned through both HTML passes
+        ;; and the final socket suffix. Earlier GROUP plans are immutable
+        ;; status lists, and settle before the next command acquires its pin.
+        (unless (and (fnn-web-conn-article-scan conn)
+                     (or (fnn-web-conn-closing conn)
+                         (= (fnn-web-conn-cmd-at conn) (fnn-web-conn-cmd-end conn))))
+          (fnn-owner-response-unpin service cid))
         (if (fnn-web-conn-closing conn)
-            (setf (fnn-web-conn-phase conn) :event (fnn-web-conn-event conn) '(:reply)
-                  (fnn-web-conn-pending conn) nil
+            (setf (fnn-web-conn-phase conn) (if (fnn-web-conn-article-scan conn) :feed :event)
+                  (fnn-web-conn-event conn) '(:reply) (fnn-web-conn-pending conn) nil
                   (fnn-web-conn-cmd-at conn) (fnn-web-conn-cmd-end conn))
           (setf (fnn-web-conn-phase conn) :feed))))))
 
@@ -500,7 +531,7 @@ exposure admission decides (the id, or NIL when it refused)."
         (fnn-owner-cold-poll (fnn-web-face-service face) read (fnn-web-conn-line-since conn) issued)
       (cond ((and (consp word) (eq (first word) :wait))
              (setf (fnn-web-conn-resume-at conn) (fnn-mux-ms-ticks (min (second word) 2))))
-            ((and (eq mode :render) (not (eq word :serve)))
+            ((and (member mode '(:render :replay)) (not (eq word :serve)))
              ;; No substitute reply or fabricated terminator after a partial
              ;; semantic reply. The browser receives no HTTP outcome.
              (fnn-web-finish face conn))
@@ -508,15 +539,73 @@ exposure admission decides (the id, or NIL when it refused)."
                      (fnn-web-conn-cold-word conn)
                      (and (eq mode :feed) (list word since now limit (fnn-web-conn-line-since conn)))))))))
 
+(defun fnn-web-replay-start (conn need return-phase)
+  (let ((forward (and (fnn-web-conn-replay-tail conn)
+                      (fnn-core 'fn-web-host-replay-forward-p need
+                                (fnn-web-conn-replay-tail-base conn) (fnn-web-conn-replay-at conn)))))
+    (unless forward
+      (setf (fnn-web-conn-replay-plans conn) (reverse (fnn-web-conn-captured-plans conn))
+            (fnn-web-conn-replay-plan conn) nil (fnn-web-conn-replay-at conn) 0
+            (fnn-web-conn-replay-tail conn) nil))
+    (setf (fnn-web-conn-replay-use-tail conn) forward
+          (fnn-web-conn-replay-need conn) need
+          (fnn-web-conn-replay-return conn) return-phase
+          (fnn-web-conn-window-base conn) (car need) (fnn-web-conn-phase conn) :replay)
+    (fnn-web-fill (fnn-web-conn-in conn) (fnn-make-octets 0))))
+
+(defun fnn-web-replay-part (conn part base)
+  (destructuring-bind (start end next complete)
+      (fnn-core 'fn-web-host-replay-slice base (length part) (fnn-web-conn-replay-need conn))
+    (when (< start end)
+      (fnn-web-append (fnn-web-conn-in conn) (subseq part start end)))
+    (when complete
+      (setf (fnn-web-conn-phase conn) (fnn-web-conn-replay-return conn)
+            (fnn-web-conn-replay-need conn) nil))
+    next))
+
+(defun fnn-web-replay-step (face conn)
+  ;; One retained tail prevents a monotone body from rescanning its prefix
+  ;; at every window boundary. Backward header/link seeks restart the same
+  ;; immutable plan, without rerunning a semantic command.
+  (when (fnn-web-conn-replay-use-tail conn)
+    (setf (fnn-web-conn-replay-use-tail conn) nil)
+    (fnn-web-replay-part conn (fnn-web-conn-replay-tail conn) (fnn-web-conn-replay-tail-base conn))
+    (return-from fnn-web-replay-step nil))
+  (unless (fnn-web-conn-replay-plan conn)
+    (let ((plans (fnn-web-conn-replay-plans conn)))
+      (unless plans (fnn-fault "captured web reply ended before its requested span"))
+      (setf (fnn-web-conn-replay-plan conn) (car plans)
+            (fnn-web-conn-replay-plans conn) (cdr plans))
+      (unless (fnn-web-conn-replay-plan conn) (return-from fnn-web-replay-step nil))))
+  (multiple-value-bind (part rest done yielded read)
+      (fnn-owner-render-next-quantum (fnn-web-face-service face) (fnn-web-conn-cid conn)
+                                   (fnn-web-conn-replay-plan conn) :reader)
+    (cond (read (fnn-web-cold-start conn read :replay))
+          (t
+           (let ((base (fnn-web-conn-replay-at conn)))
+             (setf (fnn-web-conn-replay-tail conn) part (fnn-web-conn-replay-tail-base conn) base
+                   (fnn-web-conn-replay-at conn) (fnn-web-replay-part conn part base)
+                   (fnn-web-conn-replay-plan conn) (unless done rest)))
+           (when (and yielded (not done))
+             (setf (fnn-web-conn-resume-at conn)
+                   (fnn-mux-ms-ticks (fnn-core 'fn-splan-cursor-resume-ms))))))))
+
 (defun fnn-web-page-step (face conn)
   ;; The retained reply and immutable segment plan belong to this exact
   ;; job; neither is read under O or copied into a whole HTML buffer.
   (let ((emitp (eq (fnn-web-conn-phase conn) :page-emit)))
-    (destructuring-bind (octets next count done)
-        (fnn-call 'fn-web-host-page-step (fnn-web-conn-page-cursor conn)
-                  (fnn-web-conn-page-count conn) emitp (fnn-web-conn-in conn))
+    (destructuring-bind (octets next count done &optional need)
+        (if (fnn-web-conn-article-scan conn)
+            (fnn-call 'fn-web-host-window-page-step (fnn-web-conn-page-cursor conn)
+                      (fnn-web-conn-window-base conn) (fnn-web-conn-page-count conn)
+                      emitp (fnn-web-conn-in conn))
+          (fnn-call 'fn-web-host-page-step (fnn-web-conn-page-cursor conn)
+                    (fnn-web-conn-page-count conn) emitp (fnn-web-conn-in conn)))
       (setf (fnn-web-conn-page-cursor conn) next
             (fnn-web-conn-page-count conn) count)
+      (when (and need (null octets))
+        (fnn-web-replay-start conn need (if emitp :page-emit :page-count))
+        (return-from fnn-web-page-step nil))
       (if emitp
           (progn
             (setf (fnn-web-conn-page-done conn) done)
@@ -583,6 +672,7 @@ exposure admission decides (the id, or NIL when it refused)."
                (:feed (when (fnn-web-feed-owned-p face conn) (fnn-web-job-submit face conn :feed)))
                (:await (fnn-web-await-step face conn))
                (:render (fnn-web-job-submit face conn :render))
+               (:replay (fnn-web-job-submit face conn :replay))
                ((:page-count :page-emit) (fnn-web-job-submit face conn (fnn-web-conn-phase conn)))
                (:cold (fnn-web-job-submit face conn :cold))
                (:handshake (when ready (fnn-web-handshake-ready conn)))
