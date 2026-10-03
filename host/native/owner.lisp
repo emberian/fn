@@ -5483,7 +5483,7 @@ before exact settlement releases a charge. Owner->extent serializes it."
     (return-from fnn-owner-cold-result-locked (fnn-owner-cold-read-outcome read)))
   (let ((token (fnn-owner-cold-read-token read))
         (condition nil) (answer :stale) (settled-io nil) (cachedp nil) (evicted nil))
-    (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+    (fnn-with-observed-mutex (*fnn-extent-lock* :extent :wait-p t)
       (multiple-value-setq (answer settled-io cachedp evicted condition)
         (fnn-owner-cold-transfer-result-locked read))
       ;; The helper's vector-bearing activation is gone. Only a charged
@@ -5519,7 +5519,7 @@ before exact settlement releases a charge. Owner->extent serializes it."
 (defun fnn-owner-cold-ready-p (read)
   "Owner held. Observe relinquishment without lending the result to a caller."
   (let ((worker (fnn-owner-cold-read-worker read)))
-    (sb-thread:with-mutex (*fnn-extent-lock*)
+    (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
       (and worker (fnn-extent-executor-observe-returned worker)))))
 
 (defun fnn-owner-cold-settle-locked (service read)
