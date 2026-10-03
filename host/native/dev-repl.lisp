@@ -62,9 +62,16 @@ never enter O. *FNN-DEV-SERVICE* names this owner; nested owner entry is invalid
                (if (fnn-dev-output-truncated out)
                    (format nil "~%[output truncated]~%") ""))))
 
-(defun fnn-dev-admit (forms)
+(defun fnn-dev-admit (forms &key (step-limit 200000))
  "Admit ordinary ACL2 events. A controlled LD refusal reports failure without
-throwing across the owner fence; earlier successful events remain admitted."
+throwing across the owner fence; earlier successful events remain admitted.
+STEP-LIMIT bounds prover steps per submitted form, not wall time or arbitrary
+Lisp execution. NIL explicitly uses the world's ordinary prover allowance."
+ (unless (or (null step-limit)
+             (and (integerp step-limit) (<= 0 step-limit *default-step-limit*)))
+  (setf *fnn-dev-admission-failed* t)
+  (format *error-output* "Invalid ACL2 prover step limit: ~s~%" step-limit)
+  (return-from fnn-dev-admit (values :refused :invalid-step-limit)))
  (let ((state *the-live-state*)
        (old-output (get *standard-co* *open-output-channel-key*)))
   ;; ACL2 channels retain stream objects, not the current *STANDARD-OUTPUT*
@@ -74,7 +81,12 @@ throwing across the owner fence; earlier successful events remain admitted."
    (progn
     (setf (get *standard-co* *open-output-channel-key*) *standard-output*)
     (multiple-value-bind (erp reason new-state)
-     (ld-fn (list (cons 'standard-oi forms)
+     (ld-fn (list (cons 'standard-oi
+                       (if step-limit
+                           (mapcar (lambda (form)
+                                     (list 'with-prover-step-limit step-limit form))
+                                   forms)
+                         forms))
                   (cons 'standard-co *standard-co*)
                   (cons 'proofs-co *standard-co*)
                   (cons 'ld-prompt nil) (cons 'ld-error-action :return))

@@ -1328,6 +1328,13 @@ Definitions survive connections. `:load PATH` loads a source file on the server;
 `:acl2 FORM` submits an ordinary ACL2 event to the live logical world, where the
 loaded world's metadata must support admission. A refused event reports failure;
 earlier successful events in that batch remain admitted. `PROGN` batches Lisp forms.
+Admission allows 200,000 prover steps per submitted form by default. Use
+`repl --prover-steps N` to change the allowance for interactive `:acl2` commands,
+or `(fnn-dev-admit '((defthm ...)) :step-limit N)` in Lisp. Exhaustion reports a
+controlled refusal and keeps the world available for the next command; it does
+not change the world's ordinary prover allowance. `:step-limit nil` explicitly
+uses that ordinary allowance. This limits ACL2 proof search, not elapsed time,
+arbitrary Lisp evaluation, source loading, or all event computation.
 `--eval '(+ 20 22)'` is the noninteractive form. The existing `fn acl2 session`
 starts a separate process; this socket attaches to an already running owner.
 
