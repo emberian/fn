@@ -402,6 +402,27 @@
             :completed)
       (mv st :stale))))
 
+; A stored worker result is distinct from a physical device request. A
+; cache hit or pre-read launch failure has no IO-BEGIN. A condition becomes
+; a literal verdict only at the owner's actual classification boundary,
+; which may follow physical return. Both producers hold E and name the
+; same still-issued worker token. This event never releases its custody.
+(defun fn-hmc-do-job-result (st ev)
+  (declare (xargs :guard t))
+  (let* ((tid (fn-hmc-arg 1 ev)) (token (fn-hmc-arg 2 ev))
+         (verdict (fn-hmc-arg 3 ev)) (rows (fn-hmc-rows st))
+         (w (fn-hmc-worker-of token (fn-hmc-workers st)))
+         (row (fn-hmc-row-of token rows)) (results (fn-hmc-results st)))
+    (if (and (fn-hmc-holds-p tid :extent (fn-hmc-locks st))
+             w row (not (fn-hmc-row-settledp row))
+             (member-eq (fn-hmc-worker-phase w) '(:running :returned))
+             (member-eq verdict '(:ok :read :short :error :trailer :digest))
+             (alistp results) (not (assoc-equal token results)))
+        (mv (fn-hmc-with st :reqs (fn-hmc-reqs-remove token (fn-hmc-reqs st))
+                         :results (cons (cons token verdict) results))
+            :completed)
+      (mv st :refused))))
+
 (defun fn-hmc-do-crash (st)
   (declare (xargs :guard t))
   (mv (fn-hmc-make nil nil nil (fn-arpn-initial) nil nil nil nil nil
@@ -446,9 +467,9 @@
 (defun fn-hmc-do-return (st ev)
   (declare (xargs :guard t))
   (let* ((tid (fn-hmc-arg 1 ev)) (token (fn-hmc-arg 2 ev))
-         (locks (fn-hmc-locks st)) (workers (fn-hmc-workers st)) (results (fn-hmc-results st))
+         (locks (fn-hmc-locks st)) (workers (fn-hmc-workers st))
          (w (fn-hmc-worker-of token workers)))
-    (if (and (fn-hmc-holds-p tid :extent locks) w (alistp results) (assoc-equal token results))
+    (if (and (fn-hmc-holds-p tid :extent locks) w)
         (mv-let (word w1) (fn-pxe-return w token)
           (if (equal word :returned)
               (mv (fn-hmc-with st :workers (fn-hmc-workers-put w1 workers)) :returned)
@@ -623,6 +644,7 @@
       (:io-complete (fn-hmc-do-io-complete st ev))
       (:crash (fn-hmc-do-crash st))
       (:issue (fn-hmc-do-issue st ev))
+      (:job-result (fn-hmc-do-job-result st ev))
       (:cancel (fn-hmc-do-cancel st ev))
       (:return (fn-hmc-do-return st ev))
       (:settle (fn-hmc-do-settle st ev))
@@ -856,6 +878,12 @@
     (:label :io-complete :layer "P" :assumption "A-PRIM-PREAD" :enabled "fn-hmc-req-of"
      :sites ((:function "fnn-extent-executor-loop" :file "host/native/extent.lisp"
               :primitive nil :core nil :locks_held ("E") :requires_before nil :capability nil)))
+    (:label :job-result :layer "C" :enabled "fn-hmc-do-job-result"
+     :sites ((:function "fnn-extent-executor-job" :file "host/native/extent.lisp"
+              :primitive nil :core nil :locks_held ("E") :requires_before nil :capability nil)
+             (:function "fnn-owner-cold-transfer-result-locked" :file "host/native/owner.lisp"
+              :primitive nil :core "fn-pio-direct-settle" :locks_held ("O" "E")
+              :requires_before nil :capability nil)))
     (:label :crash :layer "P" :assumption "A-CRASH-IMAGE" :enabled nil :sites nil)
     (:label :issue :layer "C" :enabled "fn-pio-direct-admit"
      :sites ((:function "fnn-extent-issue-direct" :file "host/native/extent.lisp"
@@ -937,4 +965,3 @@
               :primitive "fnn-close" :core "fn-pio-direct-quiet-p" :locks_held ("O" "E")
               :requires_before ("fn-pio-direct-quiet-p" "fn-owner-page-read-close-preview")
               :capability nil)))))
-

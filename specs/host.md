@@ -126,6 +126,17 @@ observed behavior; PRF-1254 remains the all-schedule preservation target, and
 native realization requires a matched image run. This direct model does not
 claim to cover the typed funded read pool.
 
+The direct worker's physical `:return` is independent of result classification.
+An actual stored literal or the owner's later condition classification emits
+`(:job-result TID TOKEN VERDICT)` while that actor holds the extent mutex;
+the worker is found by its issued token, independently of the classifying
+actor's identity. A cache hit or a pre-read launch failure need not have an
+I/O request. This result event retains custody, and settlement still requires
+both actual worker return and the literal result. `:io-complete` remains the
+device-request event. A condition is never converted into a model verdict by
+the observer or replay harness. These additional ordering witnesses extend
+SCN-1082; they do not establish complete native trace coverage.
+
 Q10d: each accepted NNTP socket's service-log connection line carries exactly
 one `client-address` field projected by ACL2 from the supplied fixed-width
 family/address observation. This is the kernel transport source on direct
