@@ -159,3 +159,18 @@ Scoped evidence advisory Kimi source-only process timed out180s without final;
 no tool invocation appears in captured reasoning. Advisory is incomplete, not
 approval. Leads checked next: orphan-book conservative gate behavior; include
 reader parity; linked-worktree commondir locator invalidation.
+
+NIGHT-FROZEN-CACHE source `19decc5f8`: frozen/non-Git source roots now memoize
+cache location while all ancestor .git marker states hold; later init is
+visible. Linked-worktree admin/commondir and Git environment redirects also
+invalidate. Every object hash is still checked on every read. Ten cache/read
+tests pass0.028s. 2861 frozen locator lookups0.506s with one mocked Git call
+is a bounded locator measurement, not whole acquire timing. Intended repeated
+lookup assertion red/base and green/head archived
+`planning/evidence/repair/NIGHT-FROZEN-CACHE-7afcec3a37d24f189416788fab379b8e.json`,
+sha256 `70227420c7bae5fba3f0d27b1d083e14e8c520948608d431f20d96c8d6d0f8ce`.
+No changes to running frozen37 candidate. Kimi's incomplete include-reader
+semantic-read-error concern is rebutted: old analyze_book.read_error catches
+only Reader.ReadError; both use identical literal include/:dir policy.
+Orphan-book gate refusal already has a durable test. Commondir invalidation
+lead was actionable and is included in this slice.
