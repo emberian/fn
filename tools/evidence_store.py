@@ -147,20 +147,52 @@ def local_archive(spec: str | None = None) -> Path | None:
 _CHECKOUTS: dict[tuple, Path] = {}
 
 
-def checkout_of(root: Path) -> Path:
-    """The shared checkout, remembered while this root's .git marker holds.
+def _locator_state(root: Path) -> tuple:
+    """Git discovery markers, including absent ancestor markers and commondir.
 
-    This only locates the cache; every evidence object still verifies on read.
-    A changed/replaced marker requires a new Git lookup. Missing markers are
-    not remembered (a later git init must be visible).
+    Remembering an absent marker is safe only while every ancestor still lacks
+    one. Linked worktrees also depend on their admin directory's commondir.
     """
-    try:
-        marker = (root / ".git").stat()
-        key = (str(root.absolute()), marker.st_dev, marker.st_ino,
-               marker.st_mtime_ns, marker.st_size)
-    except OSError:
-        key = None
-    if key is not None and key in _CHECKOUTS:
+    def signature(path):
+        try:
+            stat = path.stat()
+            return (str(path), stat.st_dev, stat.st_ino, stat.st_mtime_ns,
+                    stat.st_ctime_ns, stat.st_size)
+        except OSError:
+            return (str(path), None)
+
+    directory = root.resolve()
+    state = [str(directory)]
+    for ancestor in (directory, *directory.parents):
+        marker = ancestor / ".git"
+        stamp = signature(marker)
+        state.append(stamp)
+        if stamp[1] is None:
+            continue
+        gitdir = marker
+        if marker.is_file():
+            try:
+                pointer = marker.read_text().strip()
+                if pointer.startswith("gitdir: "):
+                    gitdir = (ancestor / pointer[8:]).resolve()
+            except (OSError, UnicodeError):
+                pass
+        state.extend((signature(gitdir), signature(gitdir / "commondir")))
+        break
+    # Git discovery can be explicitly redirected by the calling environment.
+    state.append(tuple(sorted((key, value) for key, value in os.environ.items()
+                              if key.startswith("GIT_"))))
+    return tuple(state)
+
+
+def checkout_of(root: Path) -> Path:
+    """Locate the cache once while Git discovery state remains unchanged.
+
+    Missing ancestor markers are checked on every lookup, so later git init
+    is visible. Only the location is memoized; objects still verify on read.
+    """
+    key = _locator_state(root)
+    if key in _CHECKOUTS:
         return _CHECKOUTS[key]
     try:
         common = subprocess.run(
@@ -170,8 +202,7 @@ def checkout_of(root: Path) -> Path:
     except OSError:
         common = ""
     checkout = Path(common).parent if common and Path(common).name == ".git" else root
-    if key is not None:
-        _CHECKOUTS[key] = checkout
+    _CHECKOUTS[key] = checkout
     return checkout
 
 
