@@ -4429,6 +4429,11 @@
 
 ;; books/limits-live.lisp
 
+; The live limit/profile/pool join in host/native/admin.lisp.
+(definterface fn-lim-apply-row :class :common-lisp-compliant)
+(definterface fn-lim-protected-growth :class :common-lisp-compliant)
+(definterface fn-lim-pool-decision :class :common-lisp-compliant)
+
 ; host/native/admin.lisp dispatches it (lane limits-live).
 (definterface fn-lim-decide
   :class :common-lisp-compliant)
@@ -5580,3 +5585,5 @@
 
 ; Single-candidate continuation; producer guard/refinement is PRF1309.
 (definterface fn-bpsg-acquire-turn :class :common-lisp-compliant)
+
+(definterface fn-lim-article-decision :class :common-lisp-compliant)

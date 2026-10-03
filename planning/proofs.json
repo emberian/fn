@@ -15135,7 +15135,7 @@
         "books/limits-live.lisp",
         "tests/acl2/limits-live-tests.lisp"
       ],
-      "progress_note": "Lanes limits-live (book), limits-live-3 (teeth, registry) 2026-09-29, row S1.",
+      "progress_note": "Lanes limits-live (book), limits-live-3 (teeth, registry) 2026-09-29, row S1. Horse consistency 2026-10-03: limit candidate must preserve fn-cvec-roomp over committed count, bytes and completion debt (both live/offline adapters); changed theorem statements and teeth await current-source admission/certification. Live pool growth preview/install and fixed runtime GC protection are separately pending composition evidence.",
       "events": [
         "fn-lim-effective-of-append-record",
         "fn-lim-apply-deltas-of-the-verb",
@@ -16405,7 +16405,7 @@
         "tests/acl2/limits-live-tests.lisp",
         "tests/test_native_limits_live.py"
       ],
-      "progress_note": "Lane limits-live-6 2026-09-29, row S1."
+      "progress_note": "Lane limits-live-6 2026-09-29, row S1. Horse consistency 2026-10-03: limit candidate must preserve fn-cvec-roomp over committed count, bytes and completion debt (both live/offline adapters); changed theorem statements and teeth await current-source admission/certification. Live pool growth preview/install and fixed runtime GC protection are separately pending composition evidence."
     },
     {
       "id": "PRF-976",
