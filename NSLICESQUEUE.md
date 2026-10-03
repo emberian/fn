@@ -136,7 +136,15 @@ to the same implementation. Anchors: [RESOURCE-OPERATIONS](planning/repair/items
 
 ### Resource accounting across operations
 
-**Next — Foundations owns the accounting direction; consumer owners assemble.**
+**Connected partial accounting source — Foundations; Operator/Bounds/Consistency assemble.**
+Independent peer flight/work rows now have an explicit binary operator allowance
+and a whole-native-machine startup recheck. DEFAULT protects the actual fixed
+process collector trigger, and backing extensions account for trigger growth.
+Live Store growth transfers only spare pool resident authority under the sealed
+owner/extent publication join, preserving every issued row and ready marker.
+Whole-current nonempty startup, protected recovery workspace transfer, init/run
+affordability and complete physical/native allocation tariffs remain open.
+Scoped source/guard/fixture evidence does not close those consumer obligations.
 Extend the consumed worker ledger to user subbanks, owner/maintenance reserves,
 refusal costs, retained outputs and other allocating entry points. Install each
 funding producer before enabling its admission gate; use actual profile capacity

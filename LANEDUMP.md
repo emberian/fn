@@ -4480,3 +4480,13 @@ private owner-carrier migration. No credit estimate reduction or bounded whole
 checkpoint latency follows from row/page yielding. Root activation custody,
 Entries staged list-seal and Exits rotation/retirement/close custody repairs must
 be loaded through the coherent latest normal/native source layer before use.
+Foundations yielded after current connected joins per Root. Own solrlocover was
+gracefully stopped through proof_repl; PID28084/28086 no longer owned/live. Raw
+source/proof/failed attempts retained under build/proof-repl/solrlocover and
+archived snapshot repl.log.gz SHA b983e4dff7626e8e66076717edafe46b5b50cee8dedcf11e4c08afeb46594cc8.
+Checks receipt SHA7db1f3b673c3b52459fb8c524689cd92f7021aa64fc8ba0dc55474e195b57218
+names69b50 source and exact selected admission scope. No other owned process.
+Final source/API69b50 sent Integration/Operator/Consistency; source push is
+Integration's responsibility. Bounds bank helper source guards passed before
+stop. Recovery partition/full physical tariff/native current endpoint remain
+queued; no closure claim transferred from helper/guard/scoped tests.
