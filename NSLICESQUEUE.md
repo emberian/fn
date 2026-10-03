@@ -118,7 +118,7 @@ its fixture. Anchors: [HOST-COORDINATION](planning/repair/items/HOST-COORDINATIO
 
 ### Output allocation and funding
 
-**Paused accounting/selector owners — Foundations + Served; Runtime consumes the current producer.** Connect indexed serialization, incremental
+**Active accounting/selector owners — Foundations + Served; Runtime consumes the current producer.** Connect indexed serialization, incremental
 selection and output custody to a real connection/operation funding producer.
 The first actual producer/serializer probe charges a per-CID generational draw
 before serialization and retains worker output until both output completion and
@@ -413,7 +413,7 @@ close the correct scope. Anchors: [S003](planning/repair/items/S003.json),
 
 ### Operator commands and trustworthy diagnostics
 
-**Active — Operator owns pre-open DEFAULT partial pool startup and startup-failure custody; Foundations owns its numerical producer and Runtime its persistent executor. Access retains the earlier retire, diagnostic, init and journal continuation.**
+**Operator’s pre-open DEFAULT partial pool startup and startup-failure custody source batch is complete; its nonempty native endpoint remains pending the current world. Foundations owns the numerical producer and Runtime its persistent executor. Access retains the earlier retire, diagnostic, init and journal continuation.**
 The new native startup consumer installs an admitted plan before Store open,
 and joins orphan workers before releasing run authority. SCN-1130's actual
 source ordering, refusal/fault and escaping-join cases pass; coherent physical

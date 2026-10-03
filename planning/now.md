@@ -34,6 +34,8 @@ pool has ten fields. Current decoded-job/controller/window methods and P3
 semantics still require deliberate assembly; old cached execution does not
 establish those joins. History owns one fresh initialization, with Integration
 supporting the shared runner and the other owners continuing their consumers.
+Operator and Empirical have completed their current source batches and await
+the connected endpoint; their domains and remaining criteria stay assigned.
 The formerly absent DEFAULT read-pool startup caller is now wired in source:
 Operator owns the native pre-open consumer, Foundations the numerical plan and
 installer, and Runtime the persistent executor/storage lifecycle. Composed
