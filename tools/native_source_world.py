@@ -108,6 +108,7 @@ def generate(source: Path, caches: list[Path], output: Path, limit=25.0, revisio
         'source': str(source),
         'source_revision': revision or subprocess.check_output(['git', '-C', str(source), 'rev-parse', 'HEAD'], text=True).strip() if revision or (source / '.git').exists() else None,
         'source_sha256': fingerprints,
+        'repository_sha256': {name + '.lisp': fingerprints[name] for name in sorted(loaded)},
         'repository_books': sorted(name + '.lisp' for name in loaded),
         'logical_prefix': str(output.resolve()), 'cache_roots': [str(p) for p in caches],
         'inputs_sha256': inputs, 'output_sha256': hashlib.sha256(output.read_bytes()).hexdigest(),
