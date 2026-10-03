@@ -3445,3 +3445,12 @@ Repeated stop does not cancel :issuing/:binding-fault/:retiring/:releasing
 quarantine; explicit cancellation/death observation cannot re-enter those
 semantic boundaries. Real joined SBCL thread schedules and actual shutdown
 empty-queue/debt gate PASS; no full current physical endpoint claim.
+
+Decoded early cancellation follow-through: permission, fd/incarnation capture,
+alias publication and assignment now share E. Already cancelled dispatch
+returns NIL without claiming baseline scratch. Real SBCL contender schedule
+proves assign still holds E before cancellation and begin runs off E; torn
+assign retains :calling alias. Native executor-drained-p exposes empty retained
+roster under E for Operator startup cleanup, not a typed settlement receipt.
+Current startup/worker recording semantic fixtures pass; full physical compressed
+ARTICLE/Web/reopen remains pending History's current initialized source world.

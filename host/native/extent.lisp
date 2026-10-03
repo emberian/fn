@@ -700,6 +700,12 @@ Retain every unsettled or torn slot as independent terminal-debt custody."
   (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
     (fnn-extent-executor-discard-idle-locked)))
 
+(defun fnn-extent-executor-drained-p ()
+  "Physical retained-custody observation, not a typed settlement receipt.
+A joined thread or normal stop return alone cannot discharge roster debt."
+  (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
+    (null *fnn-cold-workers*)))
+
 (defun fnn-extent-executor-stop ()
   "Stop clients first. Join every worker before closing any shared file.
 No cancellation, timeout or thread termination releases a job or baseline."
