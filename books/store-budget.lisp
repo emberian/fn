@@ -12,19 +12,22 @@
 ; value; no host constant and no host count enters it.
 ;
 ; Why the budget is fixed at init.  The profile bounds the work of opening the
-; store BEFORE any configuration record is replayed: the transaction
-; namespace is enumerated with the budget as its readdir bound
-; (host/native/io.lisp `fnn-transaction-files') and the aggregate replay input
-; is the profile's max_history_octets.  A configuration record lives
+; store BEFORE any configuration record is replayed: the profile is the
+; sealed config the host reads before any log bound applies
+; (host/native/io.lisp `fnn-metadata-config-decode'), the history's own
+; readdir bound is a sealed field of it, and the aggregate replay input is
+; the profile's max_history_octets.  A configuration record lives
 ; inside that bounded input, so it cannot raise the bound that admits it.
 ; Changing the budget is therefore an offline step (a re-init, or a profile
 ; upgrade that replaces the one metadata file while no owner runs), never a
 ; served event; `fn-ocl-publish' does not carry it.  The retention charge
 ; capacity, by contrast, IS a configuration record (`operator capacity').
 ;
-; Who decides.  `fn-sbud-prepare' (books/owner-store-budget.lisp) is the function `fn-owner-prepare'
-; (host/owner-host.lisp) installs for an article: at or over the budget it
-; returns the configured owner unchanged, below it it is `fn-opc-prepare'.
+; Who decides.  `fn-pcar-sbud-prepare' (books/owner-prepare-carried.lisp, the
+; O(1)-count form of `fn-sbud-prepare' in books/owner-store-budget.lisp) is
+; what `fn-owner-prepare' (host/owner-host.lisp) installs for an article: at or
+; over the budget it returns the configured owner unchanged, below it it is
+; the owner's prepare.
 ; The count it compares is the committed record list of the file kernel the
 ; owner already carries, `fn-sbud-used', never the host's counter.
 (in-package "ACL2")
