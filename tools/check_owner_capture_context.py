@@ -34,12 +34,29 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('session')
     parser.add_argument('--source-tree', type=Path, default=Path('.'))
+    parser.add_argument('--fixture', type=Path, help='exact supplied fixture file')
+    parser.add_argument('--profile', choices=('reader-context', 'output-preview'),
+                        default='reader-context')
     args = parser.parse_args()
-    output = Path('build/runtime-tests/owner-capture-context')
+    output = Path('build/runtime-tests') / ('owner-capture-context'
+        if args.profile == 'reader-context' else 'owner-output-preview')
     output.mkdir(parents=True, exist_ok=True)
     selected = []
     provenance = []
-    for relative, names in SELECTED.items():
+    selection = SELECTED if args.profile == 'reader-context' else {
+        'books/owner-state-accessors.lisp': ['fn-owner-ocfg', 'fn-owner-core'],
+        'host/owner-host.lisp': ['fn-owner-output-preview', 'fn-owner-output-tariff-preview'],
+    }
+    if args.profile == 'output-preview':
+        relative = 'books/output-command-admission.lisp'
+        for form in proof_repl.forms((args.source_tree / relative).read_text()):
+            head, name = proof_repl.head_and_name(form)
+            if head in ('in-package', 'include-book', 'local'):
+                continue
+            selected.append(form)
+            provenance.append({'path': relative, 'name': name,
+                'sha256': hashlib.sha256(form.encode()).hexdigest()})
+    for relative, names in selection.items():
         path = args.source_tree / relative
         text = path.read_text()
         definitions = {proof_repl.head_and_name(form)[1]: form
@@ -50,16 +67,21 @@ def main():
             selected.append(form)
             provenance.append({'path': relative, 'name': name,
                 'sha256': hashlib.sha256(form.encode()).hexdigest()})
-    fixture = Path('tests/owner_capture_context_fixture.lisp').read_text()
+    fixture_path = 'tests/owner_capture_context_fixture.lisp' if args.profile == 'reader-context' \
+        else 'tests/owner_output_preview_fixture.lisp'
+    fixture_file = args.fixture or args.source_tree / fixture_path
+    fixture = fixture_file.read_text()
     source = output / 'selected-source.lisp'
     source.write_text('(in-package "ACL2")\n' + '\n\n'.join(selected) + '\n' + fixture)
     (output / 'source.json').write_text(json.dumps({
+        'profile': args.profile,
         'source_tree': str(args.source_tree.resolve()),
         'source_revision': subprocess.check_output(['git', '-C', str(args.source_tree),
             'rev-parse', 'HEAD'], text=True).strip(),
         'definitions': provenance,
+        'fixture_path': str(fixture_file.resolve()),
         'fixture_sha256': hashlib.sha256(fixture.encode()).hexdigest(),
-        'scope': 'actual selected program constructor; no full owner or image qualification'
+        'scope': 'actual selected program boundary; no full owner, priced profile or image qualification'
     }, indent=2) + '\n')
     result = subprocess.run([sys.executable, 'tools/proof_repl.py', 'send-file',
         args.session, str(source)], text=True, stdout=subprocess.PIPE,
