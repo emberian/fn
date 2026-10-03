@@ -128,6 +128,26 @@ not wait for completion of the actor/cursor/resource frameworks.
 | Verifier and checker | Current unittest harness transplanted unchanged to base/head -> structured assertion observations; host graph -> stable source identities | Exact base assertion fails/head same IDs pass; shifted callback line numbers preserve debt rather than hiding new paths; Tools owns checker/fixture consumers and historical implementation routing | NIGHT-VERIFY 19 fixtures+archived witness source integrated; selector fixture READY, lock identity repair under narrow verification |
 | Candidate assembly | Reviewed source -> Integration's immutable assembled candidate -> actual loaded host world and native modules | Host-prefix normal/DTN, real NEWNEWS/cold/publication and syncer custody scenario; Integration owns builds and source/evidence coordinates | dev `4479f2acf` contains source+tools+cost+served; next runtime/temporary trusted dispatch slice under assembly. No new image green or deployment claim |
 
+The current coherent source queue (refresh the state, do not create another
+tracker):
+
+| Slice / grouped obligations | Producer -> consumer; assembler | Shared prerequisite | Next discriminating check | Source state / actual blocker |
+|---|---|---|---|---|
+| Frozen first candidate | Captured capabilities and physical actors -> real native service; Integration | Exact declared loaded world and normal/DTN host guards | sol1 host-prefix, then saved images and affected native modules | `37f501197` launched; unchanged bytes, subsequent READYs next wave. No new native verdict yet |
+| Direct HM boundary (HM02, PRF-1254, SCN-1082) | Actual direct read entries -> machine and literal realization checker -> empirical trace; Integration assembles, Groundwork/Tools/Empirical own consumers | Same direct dependency bytes, primitive observation scope; funded pool excluded | Actual shared-label cancellation/late-return image trace and clean cancel-preservation proof | Machine `830c23c9c` certified, literal reader `85ef7725d` READY; next wave. Main proof red remains owned by Groundwork |
+| Funded syncer custody (resource exec and PRF-1252) | Actual mux capacity hold -> typed owner ledger -> syncer draw/physical/outcome; Foundations assembles Runtime and resource helper | Private creator/exec applicability, opaque token plus independent operation generation; two receipts before refund | Actual constructor/install/draw and timeout/late terminal/outcome through native caller | Producer `fb277f4d0`/declarations `c144b33b9` READY; Runtime native fixture refutes generic creator route. Foundations owns explicit private allocation bridge; helper owns exec proofs |
+| Command rows into switch (DC03 -> DC02) | Seven frozen table rows -> `fn-proto-archive-command-cat`; Served assembles helper | Stable session/archive/index/verdict/env/view/arena/catalog inputs, pinned-view policy | Actual generated switch same replies/navigation/withdrawal and clean narrow certificate | Helper `f76dbfd6c` plus evidence `c39a0de75` accepted by Served; assembly active. Full helper report regeneration is not a prerequisite |
+| Metadata cursor and output custody (GEN-CURSOR) | One-candidate metadata step -> plan continuation -> mux drain; Served assembles Foundations projection | Exact wire residual; bounded initialization/working bytes; admitted connection draw precedes materialization | Actual plan caller emits same reply across byte/visit suspension | Cursor source WIP, local residual bounds admitted; Served owns plan proof, Foundations owns pre-materialization funding. Capture/completed-view and allocation debt explicit |
+| Actual empirical scenarios (SCN-1083) | Qualified image -> mixed posts/readers/checkpoint/reclaim and restart; Empirical owns, Integration assembles/runs | Exact image/host/profile and seeded trace, four outcomes distinct | Model-backed direct custody trace, then matched current-image smoke | Historical paired source `147c8f2a0` READY;48 exact records recover, reclaim refuses credit. Current-image run waits Integration image; bounded reclaim follow-through remains Groundwork storage scope |
+| Short feedback tooling | Changed books -> scoped exact hash/evidence audit; Tools owns, Integration assembles | Full final audit remains available; source normalization limited to audited paths | Same scoped verdict with unrelated moved books retained outside gate | Implementation active; existing logs show168/173s post-ACL2 overhead. No new agents or broad performance audit |
+
+An assembler consumes READY promptly or names the concrete blocked-on owner in
+this table/LANEDUMP. A helper can prepare a disjoint continuation while waiting;
+it retains responsibility for consumer failures. Shared reports/evidence may
+follow source integration with explicit pending status. One owner runs each
+expensive check and reuses matching evidence; no new incoming READY moves the
+frozen candidate.
+
 Temporary raw-dispatch trust is a native realization facility with explicit owed
 writers, not an `encapsulate` theorem assumption. The seven entries' actual
 loaded-world guard bridges and matched raw/counterpart POST must pass before an
