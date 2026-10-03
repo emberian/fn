@@ -25,6 +25,7 @@
 (include-book "../books/bp-handoff-report")
 (include-book "../books/tcpcl-delivery-invariants")
 (include-book "../books/resource-syncer")
+(include-book "../books/response-identity")
 
 ; A private owner syncer ledger is installed only after the parent's real
 ; startup :hold.  This is thread resident/worker custody, not full resource
@@ -44,6 +45,9 @@
 (definterface fn-ros-physical :class :common-lisp-compliant)
 (definterface fn-ros-outcome :class :common-lisp-compliant)
 (definterface fn-ros-drainedp :class :common-lisp-compliant)
+
+(definterface fn-rid-connection :class :common-lisp-compliant)
+(definterface fn-rid-response :class :common-lisp-compliant)
 
 ; Guarded private output methods preserve typed representation. Complete
 ; free-chain/bank correspondence and allocation tariff remain PRF-1259; no gate.

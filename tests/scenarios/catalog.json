@@ -8355,6 +8355,34 @@
         "books/output-reservation.lisp"
       ],
       "execution_scope": "Actual native transport/install/caller bodies with recorded ACL2 funding/method boundaries. Exact new helper and three normal declarations source-admitted in Foundations actual loaded output world; typed producer fixture independent. No configured live activation/full tariff/image claim."
+    },
+    {
+      "id": "SCN-1102",
+      "title": "ACL2 lifetime identities precede response rendering and survive cursor resumption",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-047"
+      ],
+      "steps": [
+        "Reserve connection and response serials using the actual ACL2 producer.",
+        "Invoke actual native identity helpers and mux queue-plan with a retained cursor, then resume the same cursor.",
+        "Exhaust the response serial and attempt another render factory entry."
+      ],
+      "expected": [
+        "Connection generation differs for separate admitted lifetimes even with the same CID; response identity carries the exact connection generation.",
+        "Identity exists before factory entry, and resumption retains the same operation identity without another reservation.",
+        "Exhaustion retains the final serial and refuses before materialization; no wrap."
+      ],
+      "implementation": {
+        "test": "tests/test_native_response_identity_raw.sh"
+      },
+      "evidence": [
+        "books/response-identity.lisp",
+        "tests/acl2/response-identity-tests.lisp",
+        "tests/native_response_identity_raw.lisp"
+      ],
+      "execution_scope": "Actual pure producer, native helpers and queue-plan with recording owner admission and factory boundaries. Source guards/theorems and 12 ACL2 assertions admitted; no matching certificate/image/full output lifetime gate claim."
     }
   ]
 }

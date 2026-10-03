@@ -384,3 +384,16 @@ staged until actual issue and full allocation/custody coverage are connected.
 A response lease must retain its PLAN/selector/renderer continuation and all
 output/socket suffixes until operation completion and no future publisher,
 plus actual issued dependency termination; clearing OUT alone settles none.
+
+The response identity producer is `fn-rid-connection`/`fn-rid-response` in
+`books/response-identity.lisp`. The service retains two ACL2 serials under O;
+actual mux admission first retains admitted CID for cleanup, then captures
+`(:connection CID CIDGEN)`. Before the first response render factory, mux
+reserves `(:response CID CIDGEN OPGEN)`; cursor/cold resumption keeps that exact
+object. Both counters refuse at the u64 maximum, without wrap. Response
+identity retirement follows the existing all-windows/suffix terminal path.
+This capture seam is not a grant or a settlement: the future response lease
+consumer must consume the identity before retirement and retain custody until
+all continuation/output/dependency/no-future-publication obligations hold.
+SCN-1102 covers actual pure producer/native helper/pre-render control flow;
+full output activation and cost/refinement remain PRF-1259.
