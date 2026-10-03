@@ -560,8 +560,9 @@ acceptance (the owner is stopping or fenced then)."
              (fnn-owner-cold-poll service read line-since since)
            (cond
              ((consp word)
-              (setf (fnn-pull-flight-resume-at flight)
-                    (fnn-core 'fn-prd-resume-at now (second word))))
+              (when (eq kind :cursor)
+                (setf (fnn-pull-flight-resume-at flight)
+                      (fnn-core 'fn-prd-resume-at now (second word)))))
              ((eq kind :cursor)
               ;; A rendered response resumes its exact plan, never the input
               ;; decoder. Keep the read for cleanup if polling refuses/faults.

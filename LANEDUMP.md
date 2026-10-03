@@ -1667,3 +1667,13 @@ No proof/image or actual peer scenario claim.
 
 ## Source assembly cold retained-pull consumer fixforward (2026-10-03)
 b138de482 composes actual fifth-value render/read tagged cursor, keeps first response clock across retry; pollserve resumes exact render, refusal retains read for cleanup. Source first per Ember, producer focused new fixture underway/no prior green transfer; primary actual tuple/cleanup review and first narrow selector follow.
+The focused cursor fixture loads the actual whole pull adapter and records
+only its owner I/O leaves. It checks repeated cold misses with the exact
+plan and first clock, ACL2 WAIT without duplicate render, readiness returning
+to render rather than input, ordered complete output, and both deadline
+refusal and stopping core fault retaining the read until all-release cleanup.
+The actual named I/O-refusal condition is loaded from io.lisp. Cursor WAIT
+scheduling is restricted to this new tag, preserving the existing input
+continuation's poll semantics. All six peer-round source tests PASS2.508s
+(including actual kernel trickling/fairness and prior all-release fault test).
+No raw leaf fixture substitutes for matching saved-image peer composition.
