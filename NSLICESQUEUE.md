@@ -42,14 +42,14 @@ that their recorded state is current at every later revision.
 
 ## Worker consolidation at 08:00 America/New_York
 
-Ember caps running subagents at eight, excluding the root coordinator, from
+Ember caps running subagents at ten, excluding the root coordinator, from
 08:00 on 2026-10-03; the 10:00 capability mission continues. Handoffs preserve
 current source, warm-session coordinates, concrete consumers and pending claims.
 The continuing owners are Integration (including source assembly), Runtime
-(including Web/HM), Served (including matcher/catalog availability), Foundations,
+(including HM), Served (including matcher/catalog availability), Foundations,
 History (including carrier/pages/checkpoint), BP transport (including Tools/fair
-rounds), Access (including Operator and the drafted S011 journal consumer), and
-Empirical. Root absorbs Groundwork coordination. Helpers complete their current
+rounds), Access (including Operator and the drafted S011 journal consumer), Empirical, Web as a separate implementation owner, and Groundwork for the
+actual application-consumer/E1–E2 boundary. Root absorbs detailed coordination. Helpers complete their current
 coherent packet or transfer it before stopping; a passive assignment does not
 count as active work. No Luna wave resumes. These are ownership transfers, not
 capability completion claims.
@@ -431,8 +431,8 @@ Anchors: [empirical matrix](planning/empirical-workloads.md),
 
 ### Sleeping-agent exchange
 
-**Selected follow-on experiment — coordinator owns dispatch; not an implicit
-extension of the core release gate.** Implement the chosen consumer-owned durable
+**Active — Groundwork owns actual application-consumer/E1–E2 implementation;
+not an implicit extension of the core release gate.** Implement the chosen consumer-owned durable
 inbox/outbox exchange between separately administered stores: report while the
 peer sleeps, verify exact source after delivery, commit processing and reply,
 then acknowledge the consumer cursor.

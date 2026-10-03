@@ -13,7 +13,7 @@ Sol now owns the owner carrier; the four Luna sweep helpers are stopped.
 Astra owns checkpoint publication/read-back, the page helper carried catalog
 availability. History owns native history/root and effective reclaim; Operator owns retire/diagnostic/init consumers, with S012 source integrated. Access, Web and BP transport now have continuing Sol owners.
 The plan names the current sessions without treating a paused or completed
-session as running. From 08:00 America/New_York today, the [capability queue](../NSLICESQUEUE.md#worker-consolidation-at-0800-americanew_york) consolidates to eight running subagents; root absorbs Groundwork coordination without discarding pending implementation. Composition and representation
+session as running. From 08:00 America/New_York today, the [capability queue](../NSLICESQUEUE.md#worker-consolidation-at-0800-americanew_york) consolidates to ten running subagents; Web remains a separate owner, Groundwork owns application-consumer/E1–E2 implementation, and root absorbs detailed coordination without discarding pending implementation. Composition and representation
 contracts remain with the groundwork deputy while the wider roster is a target. New lanes wait for a
 useful independent need and coordinator agreement. The initial orientation
 snapshot is recorded in the plan; `8d17b09dd` integrated that planning/ledger
