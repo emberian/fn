@@ -2760,6 +2760,13 @@ finite-progress proofs remain owed. Upstream authorization/config setup,
 integer width, metadata and outer render allocation need actual tariffs and
 incremental representation. Emitted B alone is not a whole-producer bound. The completed LIST-view policy remains PRF1237 debt.
 
+The retained Xref membership iterator checks only its current scalar pair and
+lookup coordinates, including string lengths and positive supported numbers.
+Its executable guard is T and malformed retained comparison state advances
+without an unsafe string access. Any reported PAIR is a nonempty string with a
+positive supported article number. Complete Xref token/reference and renderer
+state preservation remain separate from this scalar guard/output property.
+
 
 ### Retained arbitrary header backing (PRF-1304, SCN-1135)
 
