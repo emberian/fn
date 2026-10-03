@@ -150,8 +150,7 @@
              (effects
               (if ok
                   (list (list :article-cursor
-                         (fn-ast-ready scan kind number article (fn-ast-at 4 capture)
-                           (and (fn-ast-at 4 capture) (fn-xref-pairs article)))))
+                         (fn-ast-ready-memberships scan kind number article (fn-ast-at 4 capture))))
                 (fn-nntp-result-effects
                  (fn-nntp-single session
                   (cond ((not (fn-nntp-article-idp article)) "503 stored article identifier unavailable")

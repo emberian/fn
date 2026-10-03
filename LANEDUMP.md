@@ -2535,3 +2535,13 @@ fn-ast-render-window-byte-bound universally admitted in narrow warm world;
 component bound is not complete owner refinement/certification. Remaining
 metadata Xref setup and selection work, full factory/physical execution,
 renderer guards and complete original-response/owner invariants remain owned.
+
+ARTICLE lazy Xref source: READY captures raw immutable membership spine rather
+than fn-xref-pairs' complete filtered list. Every transition validates one
+word character, skips one row or compares one first-match group character,
+preserving old duplicate/invalid-word filtering. Whole filtered Xref list is
+never allocated. Actual core126337 and owner/native127690 aggregate checks
+pass including5000-character group and windows1/3/4096; 34core forms now
+admitted in warm0.08s and universal byte-window bound remains admitted.
+Initial article selection/authorization-cache setup bounds remain continuing
+work; universal Xref equivalence, renderer guards and owner refinement open.
