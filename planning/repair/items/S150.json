@@ -1,0 +1,15 @@
+{
+ "category": "proof-owed",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "host/owner-host.lisp",
+ "id": "S150",
+ "locus": "store-books",
+ "notes": [],
+ "owner": "burndown-1",
+ "severity": "low",
+ "source": "burndown-1",
+ "state": "open",
+ "title": "host/owner-host.lisp fn-owner-recover-rows, -from-checkpoint, -extended-arena have no host caller (retired Python bridge); books cite them (catalog-entries, owner-host-relation, specs/owner.md): retire together with those claims",
+ "updated": "2026-10-03T03:04:59Z"
+}
