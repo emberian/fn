@@ -2680,7 +2680,9 @@ original archive subject. The adapter takes the raw pin/index and constructs
 no second available index. Complete command guards and source-loaded
 command/event/owner-credit fixtures pass; the selective owner refinement,
 carried snapshot completeness/stability, PROGRAM route guards and physical
-cost coverage remain owed. LIST still constructs its full upstream reply.
+cost coverage remain owed. The new LIST ACTIVE/COUNTS source producer is
+incremental; upstream authorization/config preparation and other LIST variants
+remain whole-input work/allocation frontiers.
 
 ### Composite local withdrawal outcomes (S083)
 
@@ -2755,8 +2757,10 @@ and hypothesis-removal witnesses. Status lookup borrows its group string and
 configuration tails, entering one entry or comparing one indexed character per
 call. It preserves the existing plain-closed precedence over moderated entries;
 guards, fixed envelope and terminal stability are source-admitted, with exact
-old-status and character-progress witnesses. The full query/status residual and
-finite-progress proofs remain owed. Upstream authorization/config setup,
+old-status and character-progress witnesses. A disabled logical natural potential
+strictly decreases on every unsettled status step, including no-output misses;
+it is never scanned at production initialization. Full query/status value
+residual and combined controller finite progress remain owed. Upstream authorization/config setup,
 integer width, metadata and outer render allocation need actual tariffs and
 incremental representation. Emitted B alone is not a whole-producer bound. The completed LIST-view policy remains PRF1237 debt.
 

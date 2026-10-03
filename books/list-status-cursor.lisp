@@ -83,4 +83,50 @@
   :hints (("Goal" :in-theory (union-theories
                               '(fn-lss-donep fn-lss-one) (theory 'minimal-theory)))))
 
-(in-theory (disable fn-lss-make fn-lss-start fn-lss-one fn-lss-donep fn-lss-status))
+; Logical work potential; never scanned or computed by the served controller.
+; An entry activation pays for its characters and settlement, so failed matches
+; and empty configuration tails make progress without an emitted byte.
+(defun-nx fn-lss-remaining-work (cur)
+  (let* ((tail (fn-cur-at 0 cur))
+         (group (fn-cur-at 1 cur))
+         (phase (fn-cur-at 3 cur))
+         (offset (nfix (fn-cur-at 5 cur)))
+         (chars (if (stringp group) (length group) 0))
+         (future (* (len tail) (+ 2 chars))))
+    (cond ((eq phase :done) 0)
+          ((eq phase :entry) (+ 1 future))
+          ((eq phase :match) (+ 2 future (nfix (- chars offset))))
+          (t 1))))
+
+(local
+ (defthm fn-lss-constructor-fields
+   (and (equal (fn-cur-at 0 (fn-lss-make tl g m ph cand at closed st)) tl)
+        (equal (fn-cur-at 1 (fn-lss-make tl g m ph cand at closed st)) g)
+        (equal (fn-cur-at 3 (fn-lss-make tl g m ph cand at closed st)) ph)
+        (equal (fn-cur-at 5 (fn-lss-make tl g m ph cand at closed st)) at))
+   :hints (("Goal" :in-theory
+            (union-theories '(fn-cur-at fn-lss-make car-cons cdr-cons zp nfix natp)
+                            (theory 'minimal-theory))))))
+
+(defthm fn-lss-remaining-work-natp
+  (natp (fn-lss-remaining-work cur))
+  :rule-classes (:rewrite :type-prescription)
+  :hints (("Goal" :in-theory (union-theories
+            '(fn-lss-remaining-work nfix natp length (:type-prescription len))
+            (theory 'minimal-theory)))))
+
+(defthm fn-lss-one-progress
+  (implies (posp (fn-lss-remaining-work cur))
+           (< (fn-lss-remaining-work (fn-lss-one cur))
+              (fn-lss-remaining-work cur)))
+  :hints (("Goal" :in-theory
+           (union-theories '(fn-lss-remaining-work fn-lss-one
+                             fn-lss-constructor-fields nfix natp posp len length
+                             distributivity associativity-of-+ commutativity-of-+
+                             commutativity-2-of-+ commutativity-of-*
+                             (:type-prescription len) (:type-prescription length)
+                             (:type-prescription nfix))
+                           (theory 'minimal-theory)))))
+
+(in-theory (disable fn-lss-make fn-lss-start fn-lss-one fn-lss-donep fn-lss-status
+                    fn-lss-remaining-work))
