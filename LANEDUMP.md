@@ -1329,3 +1329,17 @@ conn-ids,work. Timeout is not a physical receipt or settlement.
 
 Open owned family: S025/S026/S068/S146; historical S006 already source-repaired
 by connection scoping (4e409 ancestor), no duplicate implementation.
+
+S026 consumer source, 2026-10-03: actual service holds arrival/job/limit/key,
+one fn-bpfj-step per turn. Receive callback only raises rescan after durable
+custody; :family-ready never recursively sweeps. Completed stale/refused
+family yields another candidate on another turn (tried keys, cleared by new
+custody/family replacement). TCPCL hooks run after ACK on every input/timeout,
+zero-poll retained work; pending received-source hook excluded. Idle listener
+and once-after-close control/service/yield turns continue jobs. Reopen resets
+all fragment continuation fields. Actual raw service test passes3quanta,
+no callback sweep, exact carry/proposal, stale rejection; actual TCPCL/accept
+test passes flush order, keepalive/input progress, EOF, once drain. Source
+Assembly primary review requested; matching existing fragment guards/job-test
+certification and native image pending Integration convergence. Scan/encode
+cost and full BP funded retained-session fairness remain open.

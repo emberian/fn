@@ -110,15 +110,12 @@
 ;;; failure is not a refusal: it is uncertain, and the caller never acks.
 
 (defvar *fnn-tcl-progress* nil
-  "When non-nil, a function (conn) the session calls at the first quiet read
-timeout (at most max(1, keepalive/4) seconds, fnn-tcl-read-timeout) after it
-released the final ACK of an accepted transfer (ACL2's
-fn-tcl-delivery-plan-progress-p) while the peer keeps the session open: the
-receiving node's delivery of the custody it acknowledged (PKT-873,
-books/tcpcl-delivery-invariants.lisp fn-tcl-acknowledged-custody-is-
-progressed-in-its-turn).  Before it, a node delivered only after the session
-ended, and a peer that keeps its session open with keepalives held the
-acknowledged custody undelivered for as long as the node ran.")
+  "One service scheduling turn after the session has flushed its held ACKs.
+Invoked at each input/timeout turn, including keepalives; the hook must retain
+unfinished jobs and return after one quantum.")
+(defvar *fnn-tcl-work-pending* nil
+  "Optional (conn)->boolean wakeup hint for already retained service work.
+While true the session polls input without waiting, and still yields each turn.")
 
 (defvar *fnn-tcl-deliver* nil
   "When non-nil, a function (conn xfer-id octets) that takes custody of one
@@ -518,21 +515,14 @@ failure rather than a refusal."
          (fnn-tcl-source-input-turn conn nil (fnn-tcl-now))
          (sb-thread:thread-yield))
         (t
-      (let* ((timeout (fnn-tcl-read-timeout conn))
+      (let* ((timeout (if (and *fnn-tcl-work-pending*
+                                (funcall *fnn-tcl-work-pending* conn))
+                           0 (fnn-tcl-read-timeout conn)))
              (incoming (fnn-recv fd timeout))
              (wake (fnn-tcl-now)))
         (cond
           ((eq incoming :timeout)
-           (fnn-tcl-apply conn (fnn-core 'fn-tcl-host-tick (fnn-tclc-session conn) wake))
-           ;; PKT-873: the peer kept the session open and quiet for a whole
-           ;; read timeout after an acknowledged custody: that custody goes to
-           ;; progress now, inside the session.  A peer that ends the session
-           ;; after the ACK (bp send, bp-service run) never reaches here and
-           ;; the node's between-sessions pass delivers it as before.
-           (when (and (fnn-tclc-progress conn) *fnn-tcl-progress*
-                      (not (fnn-tclc-closing conn)))
-             (setf (fnn-tclc-progress conn) nil)
-             (funcall *fnn-tcl-progress* conn)))
+           (fnn-tcl-apply conn (fnn-core 'fn-tcl-host-tick (fnn-tclc-session conn) wake)))
           ((zerop (length incoming))
            (fnn-tcl-apply conn (fnn-core 'fn-tcl-host-tcp-closed (fnn-tclc-session conn)))
            (return))
@@ -547,6 +537,13 @@ failure rather than a refusal."
                  (fnn-tcl-apply conn triple "event"))))
            (unless (fnn-tclc-source-pending conn)
              (fnn-tcl-apply conn (fnn-core 'fn-tcl-host-tick (fnn-tclc-session conn) wake)))))
+        ;; Delivery settlement has flushed its ACK before this boundary.
+        ;; Keepalive input cannot suppress already retained reassembly work.
+        (when (and *fnn-tcl-progress* (not (fnn-tclc-closing conn))
+                   (not (fnn-tclc-source-pending conn)))
+          (setf (fnn-tclc-progress conn) nil)
+          (funcall *fnn-tcl-progress* conn)
+          (sb-thread:thread-yield))
         (when (and on-ready (not ready-called)
                    (eq (fnn-core 'fn-tcl-host-phase
                                  (fnn-tclc-session conn)) :established))
