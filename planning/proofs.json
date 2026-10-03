@@ -23205,9 +23205,11 @@
         "books/payload-view-lease.lisp",
         "tests/acl2/payload-view-lease-tests.lisp",
         "host/native/io.lisp",
-        "tests/native_payload_return_source.lisp"
+        "tests/native_payload_return_source.lisp",
+        "planning/evidence/arena-return-reset-20261003/result.json",
+        "planning/evidence/manifests/certify-20261003T174041Z-2716643.json"
       ],
-      "progress_note": "Actual source callback/reset composition passes for physical mutation followed by condition or nonlocal escape and for handed-out work not yet attempted; successful return permits reset. The same new fixture fails with the prior native lifecycle adapter. Matching normal certificate pending; no whole-owner execution claim."
+      "progress_note": "Actual release callback/reset composition passes condition, nonlocal escape, unattempted handoff and successful-return cases; preceding native adapter fails the same reset refusal assertion. Normal two-root certificate certify-20261003T174041Z-2716643 passes (2/0, one cached snapshot-source-token dependency without a manifest cited here). Wider custody/model and whole-owner recovery correspondence remain planned; no native endpoint, image or deployment claim."
     }
   ]
 }

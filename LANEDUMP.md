@@ -3985,3 +3985,9 @@ wrapper facts are component obligations, not a blanket native theorem.
 Actual callback/reset regression PASS and old adapter fails the new refusal
 assertion. Full certificate pending. Original payload lifecycle fixture's stale
 syncer extraction is independently repaired by Runtime9570639ce.
+
+Matching two-root normal certificate certify-20261003T174041Z-2716643 PASS
+(2/0; one cached snapshot-source-token dependency uncited here). Source fixture
+and old-adapter counterexample archived under arena-return-reset-20261003;
+result hash7640d1117488b66a304e8ac2f6ba40eb213f5c438b914d782baccce567fd31f6.
+No root computation remains for this packet. Broader PRF1308 stays planned.
