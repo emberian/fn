@@ -72,3 +72,27 @@
  physical: "resource-operation timeout retains draw; completion needs terminal receipt, reusable retained<=held with zero spent, exact token generations; closing principal requires no live subordinate draw. Logical reference is not physical runtime receipt proof"
  outcome: "no new executable transition counterexample established; record field validators and whole bank/tree primitive graph remain separate continuing reads"
 }
+^"decoded_reuse_core_crosslink"{
+ owner: "Root"
+ source_revision: "3bb289698"
+ @tests: ~"../../../tests/acl2/decoded-worker-reuse-execution-tests.lisp"
+ evidence: "planning/evidence/decoded-reuse-20261003/repeated-execution.json"
+ scope: "same with-local-stobj job executes251A,1Z,corruptsource refusal,cancelledX,2BC using exact core assign/begin/one/read/return/byte/retire/release/settle; simulated archive I/O observations; retired scalar getters deny and successor exact bytes pass"
+ residual: "actual host execution remains separate; Runtime executor-stop lost-roster custody repair independent"
+}
+^"tls_reader_reset"{
+ source_revision: "fbcd9f17a"
+ @source: ~"../../../books/nntp-auth.lisp"
+ @scenario: ~"../../../tests/acl2/nntp-auth-tests.lisp"
+ @raw: ~"../../../tests/native_starttls_cursor_raw.lisp"
+ counterexample: "anonymous real GROUP selects fn.letters/current; STARTTLS hold then successful fn-auth-tls-established retained both; STAT used pre-TLS cursor. RFC4642 section2.2.2 requires discarding group/article while preserving MODE READER effects"
+ repair: "fn-auth-tls-reader-base resets nested reader group/current and POST awaiting; successful TLS receipt uses helper; compression owed receipt preserves base unchanged"
+ checks: "actual extracted executable definitions raw SBCL fixture PASS reset/preserved MODE+peer and compression cursor; renamed helper admitted and guard verified in Tools private historical ad8 warm world. Reachable GROUP/STARTTLS/receipt/STAT412 ACL2 scenario added, admission pending"
+ residual: "local helper consistency lemma and changed receipt consistency/root certification open; three bounded200k proof attempts exceeded budget; minimal-theory followup not yet executed. No TLS socket or full-current claim"
+}
+^"redeem_outcome_refutation"{
+ @source: ~"../../../books/nntp-auth.lisp"
+ @native: ~"../../../host/native/owner.lisp"
+ inspected: "full SASL/authinfo/xredeem/starttls/auth-step and native owner-account-redeem/reconfigure publication"
+ outcome: "abstract redeem reply maps every non-bound to482, but actual owner injects only accepted/refused durable outcomes; indeterminate reconfigure fences and escapes. No reachable uncertain→482 defect established"
+}
