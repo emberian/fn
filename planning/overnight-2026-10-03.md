@@ -45,11 +45,16 @@ to one immutable candidate and never transfers a verdict to changed bytes.
 
 ## Execution roster and ownership
 
-Prepared roster, not a claim that workers have been launched. Start around ten
-active sessions including the coordinator: eight Sol owners and one Astra owner.
-Adjust width for actual independent work and machine/review capacity. There is
-no Luna pilot or model promotion ceremony. Astra takes the hard composition work
-and shared contract review; Sol owns substantial design and implementation too.
+The first groundwork wave is active: Integration, Runtime coordination, Served
+commands, Generators and accounting, and Tools and harvest have GPT-6.1-Sol
+deputies (the name is deputy, with no extra implementation lanes underneath). A
+GPT-6.1-Sol groundwork deputy owns detailed cross-lane coordination, composition
+and representation contracts alongside the strategic coordinator. Corrected:
+these are active workers, not a prepared launch. The wider roster below remains
+a target; composition, storage, representation and transport owners have not
+been launched separately. Start additional lanes only for useful independent
+work after agreement with the coordinator. Sol lays the integrated foundation
+first; Astra composition remains a later option rather than an active claim.
 
 | Owner | Model | Continuing responsibility |
 |---|---|---|
@@ -64,8 +69,15 @@ and shared contract review; Sol owns substantial design and implementation too.
 | Transport and operations | GPT-6.1-Sol | NNTP feeds, pull, BP/ION/TCPCL, authentication/configuration/operator repairs and bounded peer work |
 | Tools and harvest | GPT-6.1-Sol | Repair/checker correctness and speed; mine useful historical implementations into current subsystem owners' work |
 
-Existing ledger owner names remain historical workstream labels until dispatch;
-this table assigns successor responsibility, not fictional active claims. The
+Active worker sessions are `deputy_integration`, `deputy_runtime`,
+`deputy_served`, `deputy_foundations`, `deputy_tools` and `deputy_groundwork`.
+The groundwork deputy routes routine findings and READY source directly to peers
+and Integration; only consequential decisions and user outcomes reach the
+strategic coordinator. Integration alone pushes dev and coordinates expensive
+builds. All workers use isolated trees under `build/lanes/`.
+
+Existing ledger owner names remain historical workstream labels; the table
+assigns continuing responsibility without asserting every future lane is active. The
 coverage is: composition -> Composition; wrapper/failure-scope/host-lifecycle/
 owner-offlock/host-deputy -> Runtime; served-catalog-live/def-command/liaison ->
 Served; arena-forget/def-holder/reclaim-retention/sweep-store -> Storage;
