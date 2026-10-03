@@ -373,11 +373,17 @@
 ; rendering resumes. Every payload below is a shared semantic value, not a
 ; rebuilt archive/index. Native code retains this opaque value alongside the
 ; actual arena/catalog custody; this alone is not a physical root pin.
+; Use the SAME effective owner as fn-orr-read-span: while a batch is in
+; flight its held durable reader view replaces the working view. The
+; connection's pre-command pin and that effective live view are distinct;
+; a command which repins must also retain its actual resulting plan/pin.
 (defun fn-owner-catalog-capture-context (id state)
   (declare (xargs :stobjs state :mode :program))
   (if (not (boundp-global 'fn-owner state))
       (mv :owner-not-installed nil state)
-    (let* ((owner (fn-owner-core state))
+    (let* ((owner (fn-ocfg-owner
+                   (fn-ocfg-at-reader-view (fn-owner-ocfg state)
+                                          (fn-owner-reader-views state))))
            (conn (fn-own-find-conn id (fn-own-conns owner))))
       (if (not conn)
           (mv :unknown-connection nil state)
