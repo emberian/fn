@@ -282,6 +282,35 @@
             :in-theory (e/d (fn-bpnf-zero-family-keys)
                             (fn-bpnf-fragment-candidatep
                              fn-bpnf-fragment-family-key))))))
+;; The S008 coverage gate fn-bpfj-candidate calls (BM10): its helpers' guards.
+;; The rows it sums are the anchor's active set, every row of which is held.
+(local
+ (defthm fn-bpfjg-rows-payload-octets-natp
+   (implies (natp acc) (natp (fn-bpfj-rows-payload-octets rows acc)))
+   :rule-classes :type-prescription))
+(verify-guards fn-bpfj-rows-payload-octets
+  :hints (("Goal" :in-theory (enable fn-bpnf-all-heldp))))
+(local
+ (defthm fn-bpfjg-active-set-rows-all-heldp
+   (fn-bpnf-all-heldp (fn-bpnf-active-set-rows held anchor))
+   :hints (("Goal" :induct (fn-bpnf-active-set-rows held anchor)
+            :in-theory (union-theories
+                        '(fn-bpnf-all-heldp fn-bpnf-active-set-rows
+                          fn-bpnf-same-fragment-family-p fn-bpnf-active-fragmentp
+                          car-cons cdr-cons atom)
+                        (theory 'minimal-theory))))))
+(local
+ (defthm fn-bpfjg-active-set-all-heldp
+   (fn-bpnf-all-heldp (fn-bpnf-active-set st anchor))
+   :hints (("Goal" :in-theory (union-theories
+                               '(fn-bpfjg-active-set-rows-all-heldp
+                                 fn-bpnf-active-set fn-bpnf-all-heldp atom)
+                               (theory 'minimal-theory))))))
+(verify-guards fn-bpfj-family-coveredp
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories
+                       '(fn-bpnfg-candidate-primary fn-bpfjg-active-set-all-heldp)
+                       (theory 'minimal-theory)))))
 (verify-guards fn-bpfj-candidate
   :hints (("Goal" :do-not-induct t
            :in-theory (union-theories
