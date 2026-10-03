@@ -5,6 +5,8 @@ after deeper source/design reading and ember's correction: Sol for implementatio
 Astra for composition, continuing subsystem ownership through integration and use.
 After compaction or takeover, follow the plan’s [reorientation routine](overnight-2026-10-03.md#reorientation-after-compaction-or-takeover), including actual user and assistant exchanges, revision-aware reading of complete needed files, and retained reading conclusions.
 Read it with [the repair ledger](repair/STATUS.md) and [the contributor guide](../CONTRIBUTORS.md).
+The [next implementation slices](../NSLICESQUEUE.md) preserve the remaining
+capability work, dependencies, ownership gaps and concrete completion criteria.
 The groundwork wave is active: nine GPT-6.1-Sol workers and the strategic
 coordinator. Five subsystem deputies and the groundwork deputy are joined by
 empirical scenarios, typed-ledger execution proofs and command-table rows, each
