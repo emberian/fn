@@ -5848,10 +5848,12 @@ call performs one zero-time poll; it never spins after an EAGAIN race."
                  nil)
                 (t (return (subseq buffer 0 count)))))))))
 
-(defun fnn-transport-write-now (fd channel data offset)
-  "One nonblocking transport attempt, shared by NNTP and HTTP continuations."
-  (if channel (fnn-tls-write-now channel data offset)
-    (let* ((remaining (- (length data) offset))
+(defun fnn-transport-write-now (fd channel data offset &optional (end (length data)))
+  "One nonblocking transport attempt over the valid retained range."
+  (unless (and (integerp offset) (integerp end) (<= 0 offset end (length data)))
+    (fnn-fault "invalid transport write range"))
+  (if channel (fnn-tls-write-now-range channel data offset end)
+    (let* ((remaining (- end offset))
            (progress (fnn-write-progress
                       (lambda () (funcall *fnn-write-syscall* fd data offset remaining))
                       remaining "socket" nil t)))

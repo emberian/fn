@@ -116,7 +116,7 @@
   ;; Exact identity/effect/section receipts, retained through terminal cleanup.
   (cleanup-receipts nil) (cleanup-phase nil)
   input
-  out (out-at 0) out-deadline out-op after
+  out (out-at 0) out-end out-deadline out-op after
   want resume-at idle-at hs-deadline drain-deadline
   greeting done
   ;; The service class this connection's quanta are admitted as (:reader, or
@@ -239,7 +239,9 @@ ACL2 lets one served step read (fnn-mux-read-buffer)."
 (defun fnn-mux-write-now (conn)
   "One write of the queued reply from its offset, through the shared leaf."
   (fnn-transport-write-now (fnn-mux-conn-fd conn) (fnn-mux-conn-channel conn)
-                        (fnn-mux-conn-out conn) (fnn-mux-conn-out-at conn)))
+                        (fnn-mux-conn-out conn) (fnn-mux-conn-out-at conn)
+                        (or (fnn-mux-conn-out-end conn)
+                            (length (fnn-mux-conn-out conn)))))
 
 (defun fnn-mux-wake-locked (loop)
   "LOOP's LOCK held: one octet to the wake pipe, unless the loop has closed
@@ -350,7 +352,8 @@ failed effects remain discoverable while independent physical cleanup runs."
             (fnn-mux-conn-phase conn) :done)
       ;; These references are no longer publishable by this loop. This is
       ;; not yet an output-pool discard receipt for an issued dependency.
-      (setf (fnn-mux-conn-out conn) nil (fnn-mux-conn-plan conn) nil
+      (setf (fnn-mux-conn-out conn) nil
+            (fnn-mux-conn-out-end conn) nil (fnn-mux-conn-plan conn) nil
             (fnn-mux-conn-input conn) nil (fnn-mux-conn-greeting conn) nil
             (fnn-mux-conn-zstash conn) nil
             (fnn-mux-conn-response-capture conn) nil)
@@ -507,7 +510,18 @@ ending the connection with fnn-mux-finish."
 ;;; greeting included.  A reply is written as before; the issuer gate
 ;;; returns with its producer, as a rowed operation (section 4, M4).
 
-(defun fnn-mux-queue (loop conn octets op after)
+(defun fnn-mux-output-window (conn octets end)
+  "Retain the valid prefix; compression consumes an exact-length input."
+  (let* ((end (or end (length octets)))
+         (out (if (fnn-mux-conn-zout conn)
+                  (fnn-mux-z-out conn (if (= end (length octets)) octets
+                                       (subseq octets 0 end)))
+                octets)))
+    (setf (fnn-mux-conn-out conn) out
+          (fnn-mux-conn-out-end conn) (if (fnn-mux-conn-zout conn) (length out) end)
+          (fnn-mux-conn-out-at conn) 0)))
+
+(defun fnn-mux-queue (loop conn octets op after &optional end)
   "Queue the one reply OCTETS (a greeting, a rendered window); AFTER (nil,
 :close or :starttls) runs when the socket has taken it and no window of the
 plan remains."
@@ -515,9 +529,8 @@ plan remains."
     ;; The named non-semantic scope (and its private test injection) of the
     ;; worker's send, fnn-owner-connection-call's.
     (fnn-owner-connection-call service op (lambda () nil))
-    (setf (fnn-mux-conn-out conn) (fnn-mux-z-out conn (fnn-octets octets))
-          (fnn-mux-conn-out-at conn) 0
-          (fnn-mux-conn-out-op conn) op
+    (fnn-mux-output-window conn (fnn-octets octets) end)
+    (setf (fnn-mux-conn-out-op conn) op
           (fnn-mux-conn-out-deadline conn) (fnn-mux-ticks +fnn-mux-send-seconds+)
           (fnn-mux-conn-after conn) after
           (fnn-mux-conn-want conn) nil)
@@ -528,7 +541,7 @@ plan remains."
 (lane join-f2-13, PRF-1020: a served OVER/XOVER range; fnn-owner-cursor-step
 under the owner mutex, at most one quantum per mutex hold; sparse ranges
 can take several empty quanta before a write): (values OCTETS PLAN-REST
-DONEP YIELDP COLD-READ)."
+DONEP YIELDP COLD-READ END)."
   (unless (fnn-mux-conn-output-grant conn)
     (setf (fnn-mux-conn-output-grant conn)
           (fnn-owner-output-issue (fnn-mux-service loop)
@@ -537,7 +550,7 @@ DONEP YIELDP COLD-READ)."
   (let ((*fnn-output-grant* (fnn-mux-conn-output-grant conn)))
     (fnn-owner-render-next-quantum (fnn-mux-service loop) (fnn-mux-conn-cid conn) plan
                                    (fnn-mux-conn-class conn)
-                                   (and (fnn-mux-conn-zout conn) t))))
+                                   (and (fnn-mux-conn-zout conn) t) t)))
 
 (defun fnn-mux-plan-yield (loop conn plan after &optional empty-progressp)
   "Retain the cursor's exact continuation and ownership until its
@@ -554,6 +567,7 @@ positive ACL2 scheduling delay expires.  AFTER belongs to the whole reply."
           (fnn-mux-conn-drained-late conn) t
           (fnn-mux-conn-after conn) after
           (fnn-mux-conn-out conn) nil
+          (fnn-mux-conn-out-end conn) nil
           (fnn-mux-conn-out-at conn) 0
           (fnn-mux-conn-out-deadline conn) nil
           (fnn-mux-conn-want conn) nil
@@ -574,6 +588,7 @@ worker retains physical custody until its existing return/settlement."
           (fnn-mux-conn-cold conn)
           (list read (fnn-mux-conn-cursor-cold-since conn) since :cursor)
           (fnn-mux-conn-out conn) nil
+          (fnn-mux-conn-out-end conn) nil
           (fnn-mux-conn-out-at conn) 0
           (fnn-mux-conn-out-deadline conn) nil
           (fnn-mux-conn-want conn) nil
@@ -594,12 +609,13 @@ whole reply; a plan with nothing to write runs AFTER at once."
           (fnn-owner-response-identity
            (fnn-mux-service loop) (fnn-mux-conn-connection-identity conn)
            (fnn-mux-conn-class conn))))
-  (multiple-value-bind (octets rest donep yieldedp cold-read)
+  (multiple-value-bind (octets rest donep yieldedp cold-read end)
       (fnn-mux-render-next loop conn plan)
     (setf (fnn-mux-conn-plan conn) (if donep nil rest))
     (cond (cold-read (fnn-mux-plan-cold loop conn rest after cold-read))
           (yieldedp (fnn-mux-plan-yield loop conn rest after t))
-          ((> (length octets) 0) (fnn-mux-queue loop conn octets :send-reply after))
+          ((> (or end (length octets)) 0)
+           (fnn-mux-queue loop conn octets :send-reply after end))
           (t (fnn-mux-after loop conn after)))))
 
 (defun fnn-mux-flush (loop conn)
@@ -608,7 +624,8 @@ window (off the owner mutex) and go on; with nothing left, run AFTER."
   (let ((service (fnn-mux-service loop)))
     (loop
       (loop while (and (fnn-mux-conn-out conn)
-                       (< (fnn-mux-conn-out-at conn) (length (fnn-mux-conn-out conn))))
+                       (< (fnn-mux-conn-out-at conn)
+                          (or (fnn-mux-conn-out-end conn) (length (fnn-mux-conn-out conn)))))
             do (let ((progress (fnn-owner-connection-call
                                 service (fnn-mux-conn-out-op conn)
                                 (lambda () (fnn-mux-write-now conn)))))
@@ -628,7 +645,7 @@ window (off the owner mutex) and go on; with nothing left, run AFTER."
           (fnn-mux-plan-yield loop conn plan (fnn-mux-conn-after conn))
           (return-from fnn-mux-flush nil))
         (if plan
-            (multiple-value-bind (octets rest donep yieldedp cold-read)
+            (multiple-value-bind (octets rest donep yieldedp cold-read end)
                 (fnn-mux-render-next loop conn plan)
               (when cold-read
                 (fnn-mux-plan-cold loop conn rest (fnn-mux-conn-after conn) cold-read)
@@ -636,12 +653,12 @@ window (off the owner mutex) and go on; with nothing left, run AFTER."
               (when yieldedp
                 (fnn-mux-plan-yield loop conn rest (fnn-mux-conn-after conn) t)
                 (return-from fnn-mux-flush nil))
+              (fnn-mux-output-window conn octets end)
               (setf (fnn-mux-conn-plan conn) (if donep nil rest)
-                    (fnn-mux-conn-out conn) (fnn-mux-z-out conn octets)
-                    (fnn-mux-conn-out-at conn) 0
                     (fnn-mux-conn-out-deadline conn) (fnn-mux-ticks +fnn-mux-send-seconds+)))
           (let ((after (fnn-mux-conn-after conn)))
-            (setf (fnn-mux-conn-out conn) nil (fnn-mux-conn-after conn) nil
+            (setf (fnn-mux-conn-out conn) nil
+                  (fnn-mux-conn-out-end conn) nil (fnn-mux-conn-after conn) nil
                   (fnn-mux-conn-out-deadline conn) nil)
             (fnn-mux-after loop conn after)
             (return-from fnn-mux-flush nil)))))))
@@ -1597,7 +1614,8 @@ the stop spared, fnn-owner-stop-service-locked), then end every connection."
         (when (and (fnn-mux-conn-out conn) (fnn-mux-conn-fd conn))
           (ignore-errors
             (fnn-owner-send (fnn-mux-conn-fd conn) (fnn-mux-conn-channel conn)
-                            (subseq (fnn-mux-conn-out conn) (fnn-mux-conn-out-at conn))
+                            (subseq (fnn-mux-conn-out conn) (fnn-mux-conn-out-at conn)
+                                    (fnn-mux-conn-out-end conn))
                             (fnn-seconds-to-deadline deadline))))
         (fnn-mux-finish loop conn)))
     (sb-thread:with-mutex ((fnn-mux-loop-lock loop))
