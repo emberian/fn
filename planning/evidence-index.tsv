@@ -10858,6 +10858,7 @@ a75ad842b6931d79271aa80bbe6b98388fd472e5e2e147ed2c34a69471b181d8 25827 planning/
 c602af7c35e08ec09f868ef57cbfc5639d121ce4aad3a8b5a29ec2c317cb863b 26539 planning/evidence/runtime-image-2026-09-26/prod-ri.txt
 196d46b17d70ce2cb4d8185e82112f50a36413424e01327bddb3e776568fa45a 26259 planning/evidence/runtime-image-2026-09-26/rel-ri.txt
 5187c4fbb7d515f930264c4811dc4082505ff7969dcf9338c7626f3927af88df 868 planning/evidence/runtime-observation-2026-10-03/coordinate.json
+c01980fbe2cd0bbc357df8a1e74ad4847b42c24d092e47496d368640b951c6a0 1844 planning/evidence/runtime-observation-2026-10-03/hm-replay.log
 3eb02f986be7d0fd88bf6c3e36a666e46e242ce1114b6e9d84f7b59a922789c9 497 planning/evidence/runtime-observation-2026-10-03/native.log
 a438170e7a594a285dd0dfa07079461e6f7f8521eb2b3aab7af882b8eb00c4f9 1648 planning/evidence/runtime-observation-2026-10-03/observed-hm.lsp
 0e729c1e8403b4c550875b30389ac1ff174fbf4e428433a39956b1c3faf51b89 1477 planning/evidence/runtime-operation-installed-source-2026-10-01/README.md
