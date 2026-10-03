@@ -134,3 +134,8 @@ selection should keep first discriminating fixture verdict separate. No
 trusted archive-only duration was measured. Next X17 concrete question: preserve
 successful source-world prefix when a dependency refuses, avoiding Served's
 reported 125 ACL2-second/33.6M-step replay; inspect supported resync/preload first.
+
+## Next source wave while sol1 is immutable
+- HM830c23c9c merged47476090f: actual9arg directadmit/7outputs and5arg settle/5outputs, descriptorholds through cancellation/return untilsettlement. Machine+finite schedules certified11/0; legacyall-schedule cancel invariant remainsred (no transfer).
+- Tools literalreader85ef7725d merged626666d05;39checker fixtures pass0.075s.23literalrows emitted directly from includedbooks/host-model-machine.lisp hash65df8d6c8e0d234cf98cd9df26782ba74bf8d92d926e5ed2069b9cdc1d6d8b90. Actualgraph/site validation remainsnextsource-check debt; nofullchecker replay performed.
+- Runtime scopedfixture3ded+e71 merged6330e0969/4f9420055: real nestedio extraction precedes remainingunreachedstubs. Actor/inbox/postcreate/nooptermination/committer raw schedules PASS; committer unusederr dependencies warn, actualerrpath notclaimedcovered.

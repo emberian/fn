@@ -1,10 +1,10 @@
 {
  "comment": "generated literal model table; host sites are checked syntactically, not a refinement proof",
  "source": {
-  "file": "books/host-model.lisp",
+  "file": "books/host-model-machine.lisp",
   "constant": "*fn-hmc-realization*",
-  "line": 804,
-  "sha256": "1e4a48c54af4c3e26ada58bebd0edfaed65c99db5379f56a9a297f1b4b087937"
+  "line": 827,
+  "sha256": "65df8d6c8e0d234cf98cd9df26782ba74bf8d92d926e5ed2069b9cdc1d6d8b90"
  },
  "rows": [
   {
@@ -179,22 +179,6 @@
       "acquire": "fnn-extent-issue-direct",
       "release_site": "fnn-extent-direct-settle"
      }
-    },
-    {
-     "function": "fnn-extent-issue-read",
-     "file": "host/native/extent.lisp",
-     "primitive": null,
-     "core": "fn-owner-page-read-admit",
-     "locks_held": [
-      "O",
-      "E"
-     ],
-     "requires_before": [],
-     "capability": {
-      "kind": "issued-row",
-      "acquire": "fnn-extent-issue-read",
-      "release_site": "fnn-extent-complete-read"
-     }
     }
    ]
   },
@@ -202,14 +186,14 @@
    "label": ":cancel",
    "layer": "C",
    "enabled": [
-    "fn-pio-cancel"
+    "fn-pio-direct-cancel"
    ],
    "sites": [
     {
      "function": "fnn-extent-cancel-read",
      "file": "host/native/extent.lisp",
      "primitive": null,
-     "core": "fn-pio-cancel",
+     "core": "fn-pio-direct-cancel",
      "locks_held": [
       "E"
      ],
@@ -250,18 +234,6 @@
      "file": "host/native/extent.lisp",
      "primitive": null,
      "core": "fn-pio-direct-settle",
-     "locks_held": [
-      "O",
-      "E"
-     ],
-     "requires_before": [],
-     "capability": null
-    },
-    {
-     "function": "fnn-extent-complete-read",
-     "file": "host/native/extent.lisp",
-     "primitive": null,
-     "core": "fn-pio-complete",
      "locks_held": [
       "O",
       "E"
@@ -543,20 +515,20 @@
    "label": ":close",
    "layer": "C",
    "enabled": [
-    "fn-pio-file-clear-p"
+    "fn-pio-direct-quiet-p"
    ],
    "sites": [
     {
      "function": "fnn-extent-close",
      "file": "host/native/extent.lisp",
      "primitive": "fnn-close",
-     "core": "fn-pio-file-clear-p",
+     "core": "fn-pio-direct-quiet-p",
      "locks_held": [
       "O",
       "E"
      ],
      "requires_before": [
-      "fn-pio-file-clear-p",
+      "fn-pio-direct-quiet-p",
       "fn-owner-page-read-close-preview"
      ],
      "capability": null
