@@ -6723,6 +6723,26 @@
         "planning/evidence/operator-init-resume-2026-10-03-v2.json"
       ],
       "note": "Actual init checks requested profile against sealed configuration and exact generation-one changes under the writer lock before resume publication. Stamps and later limit history are not initial intent. Warm source admission and actual-source regression passed; normal certification and matching image remain pending."
+    },
+    {
+      "id": "HST-048",
+      "title": "DEFAULT page-read startup prepays selected persistent backing before Store open and validates same-pool worker readiness",
+      "specification": "specs/resource-vector.md#default-page-read-startup-hst-048",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-1301"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/page-read-startup.lisp",
+        "tests/acl2/page-read-startup-tests.lisp",
+        "tests/acl2/page-read-startup-host-tests.lisp"
+      ],
+      "implementation_note": "Actual runtime captures derive a partial DEFAULT fixed-storage allowance. Five table constructors, guard cache, selected reusable decoder backing and native worker reservation precede Store open. Captured headroom and OS descriptor allowance bound registration capacity without imposing a stored-data ceiling. DATA8 preserves existing revision and tracks reserved worker count/readiness; native constructor and eager reserve must finish before readiness/free-roster publication. SCN-1130 owns actual native ordering and orphan cleanup. Complete collector/controller/source-graph, recovery transient and work coverage remains open; explicit complete cold policies refuse. Source guard checks for two composed heap wrapper leaves and changed decoded acquire remain pending the actual coherent dependency world."
     }
   ]
 }

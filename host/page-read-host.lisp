@@ -465,3 +465,73 @@
                     fn-page-read-pool)
                 fn-page-read-pool))))
  :hints (("Goal" :in-theory (enable fn-owner-incoming-copy-next))))
+
+
+(include-book "../books/page-read-startup")
+
+; DEFAULT allowance is distinct from DATA6 binding revision and complete allocation installation.
+; Bits start clear; actual native startup confirms each constructor/reserve
+; before publishing that physical slot to the reusable free roster.
+(defun fn-owner-page-read-install-default (plan fn-page-read-pool)
+ (declare (xargs :stobjs fn-page-read-pool :guard t))
+ (if (not (fn-prstartup-planp plan)) (mv :invalid-default-pool-plan fn-page-read-pool)
+  (mv-let (word fn-page-read-pool)
+   (fn-owner-page-read-install-baseline
+     (fn-prstartup-nth 1 plan) (fn-prstartup-nth 2 plan)
+     (fn-prstartup-nth 3 plan) (fn-prstartup-nth 4 plan)
+     (fn-prstartup-nth 5 plan) fn-page-read-pool)
+   (if (not (eq word :installed)) (mv word fn-page-read-pool)
+    (let ((fn-page-read-pool
+      (update-fn-prp-data
+        (list (fn-prl-nth 0 (fn-prp-data fn-page-read-pool))
+              (fn-prl-nth 1 (fn-prp-data fn-page-read-pool))
+              (fn-prl-nth 2 (fn-prp-data fn-page-read-pool))
+              (fn-prl-nth 3 (fn-prp-data fn-page-read-pool))
+              (fn-prl-nth 4 (fn-prp-data fn-page-read-pool))
+              0 (list :default-reusable-decoded 0) (fn-prstartup-nth 6 plan)) fn-page-read-pool)))
+      (mv :installed fn-page-read-pool))))))
+
+(defun fn-owner-page-read-default-worker-reservedp (slot fn-page-read-pool)
+ (declare (xargs :stobjs fn-page-read-pool :guard t))
+ (let* ((data (fn-prp-data fn-page-read-pool))
+        (marker (fn-prl-nth 6 data)) (count (fn-prl-nth 7 data)))
+  (and (eq (fn-owner-page-read-direct-mode fn-page-read-pool) :funded-pool)
+       (true-listp data) (equal (len data) 8)
+       (true-listp marker) (equal (len marker) 2)
+       (eq (fn-prl-nth 0 marker) :default-reusable-decoded)
+       (natp (fn-prl-nth 1 marker)) (posp count)
+       (natp slot) (< slot count))))
+
+(defun fn-owner-page-read-default-worker-ready (slot fn-page-read-pool)
+ (declare (xargs :stobjs fn-page-read-pool :guard t))
+ (let* ((data (fn-prp-data fn-page-read-pool))
+        (marker (fn-prl-nth 6 data))
+        (mask (fn-prl-nth 1 marker)))
+  (if (not (fn-owner-page-read-default-worker-reservedp slot fn-page-read-pool))
+      (mv :default-worker-not-reserved fn-page-read-pool)
+    (if (logbitp slot mask) (mv :already-ready fn-page-read-pool)
+      (let ((fn-page-read-pool
+        (update-fn-prp-data
+          (update-nth 6 (list :default-reusable-decoded (logior mask (ash 1 slot))) data)
+           fn-page-read-pool)))
+       (mv :ready fn-page-read-pool))))))
+
+(defun fn-owner-page-read-default-worker-readyp (worker fn-page-read-pool)
+ (declare (xargs :stobjs fn-page-read-pool :guard t))
+ (let* ((data (fn-prp-data fn-page-read-pool))
+        (marker (fn-prl-nth 6 data))
+        (mask (fn-prl-nth 1 marker)) (slot (fn-prl-nth 0 worker)))
+  (and (eq (fn-owner-page-read-direct-mode fn-page-read-pool) :funded-pool)
+       (fn-owner-page-read-default-worker-reservedp slot fn-page-read-pool)
+       (natp mask) (logbitp slot mask))))
+
+(defun fn-owner-page-read-default-installedp (fn-page-read-pool)
+ (declare (xargs :stobjs fn-page-read-pool :guard t))
+ (fn-owner-page-read-default-worker-reservedp 0 fn-page-read-pool))
+
+; A reservation is not permission to recreate already initialized backing.
+(defun fn-owner-page-read-default-worker-constructionp (slot fn-page-read-pool)
+ (declare (xargs :stobjs fn-page-read-pool :guard t))
+ (and (fn-owner-page-read-default-worker-reservedp slot fn-page-read-pool)
+      (not (logbitp slot
+             (fn-prl-nth 1 (fn-prl-nth 6 (fn-prp-data fn-page-read-pool)))))))

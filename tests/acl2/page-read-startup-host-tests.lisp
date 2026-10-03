@@ -1,0 +1,53 @@
+(in-package "ACL2")
+(include-book "../../host/page-read-host")
+(include-book "../../books/page-read-binding-revision")
+(include-book "std/testing/assert-bang" :dir :system)
+
+(defconst *prst-host-plan*
+ (fn-prstartup-plan 536870912 67108864 268435456 "/tmp/store" 4 1048576 4194304 8 256))
+
+(defun prst-host-run (fn-page-read-pool)
+ (declare (xargs :mode :program :stobjs fn-page-read-pool))
+ (mv-let (invalid fn-page-read-pool)
+  (fn-owner-page-read-install-default nil fn-page-read-pool)
+  (let ((untouched (not (fn-prp-data fn-page-read-pool))))
+   (mv-let (installed fn-page-read-pool)
+    (fn-owner-page-read-install-default *prst-host-plan* fn-page-read-pool)
+    (let ((reserved (and (fn-owner-page-read-default-worker-reservedp 0 fn-page-read-pool)
+                         (fn-owner-page-read-default-worker-reservedp 3 fn-page-read-pool)
+                         (not (fn-owner-page-read-default-worker-reservedp 4 fn-page-read-pool))
+                         (fn-owner-page-read-default-worker-constructionp 0 fn-page-read-pool)))
+          (initially-unready (not (fn-owner-page-read-default-worker-readyp '(0 nil :idle nil) fn-page-read-pool))))
+     (mv-let (ready fn-page-read-pool)
+      (fn-owner-page-read-default-worker-ready 0 fn-page-read-pool)
+      (mv-let (duplicate fn-page-read-pool)
+       (fn-owner-page-read-default-worker-ready 0 fn-page-read-pool)
+       (mv-let (outside fn-page-read-pool)
+        (fn-owner-page-read-default-worker-ready 4 fn-page-read-pool)
+        (let* ((data (fn-prp-data fn-page-read-pool))
+               (fn-page-read-pool (fn-owner-page-read-keep-ledger
+                                   (fn-owner-page-read-ledger fn-page-read-pool) fn-page-read-pool))
+               (kept (equal data (fn-prp-data fn-page-read-pool)))
+               (revision-data (fn-prb-data6 (fn-prl-nth 0 data) data 9))
+               (revision-kept (and (equal (fn-prb-data-revision revision-data) 9)
+                                  (equal (fn-prp-metadata-tail 6 revision-data)
+                                         (fn-prp-metadata-tail 6 data)))))
+         (mv-let (reinstall fn-page-read-pool)
+          (fn-owner-page-read-install-default *prst-host-plan* fn-page-read-pool)
+          (mv (list invalid untouched installed reserved initially-unready ready duplicate outside
+                    kept revision-kept reinstall
+                    (fn-owner-page-read-default-worker-readyp '(0 nil :idle nil) fn-page-read-pool)
+                    (not (fn-owner-page-read-default-worker-readyp '(1 nil :idle nil) fn-page-read-pool))
+                    (fn-owner-page-read-binding-revision fn-page-read-pool)
+                    (len (fn-prp-data fn-page-read-pool))
+                    (not (fn-owner-page-read-default-worker-constructionp 0 fn-page-read-pool))
+                    (fn-owner-page-read-default-worker-constructionp 1 fn-page-read-pool))
+              fn-page-read-pool)))))))))))
+
+(defun prst-host-exec ()
+ (declare (xargs :mode :program))
+ (with-local-stobj fn-page-read-pool
+  (mv-let (result fn-page-read-pool) (prst-host-run fn-page-read-pool) result)))
+(assert! (equal (prst-host-exec)
+ '(:invalid-default-pool-plan t :installed t t :ready :already-ready
+   :default-worker-not-reserved t t :already-installed t t 0 8 t t)))
