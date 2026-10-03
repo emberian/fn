@@ -1599,3 +1599,13 @@ semantics. This is admission accounting; native allocator fidelity remains
 within the host assumptions. Source guards/invariants and the actual host
 outcome-injection fixture are present; exact certification and image evidence
 are recorded separately in the proof and repair registries.
+
+### Capacity changes and existing completion promises
+
+The implemented `policy set` decision carries committed transaction count,
+charged history octets, and outstanding forward completion debt. A candidate
+profile must satisfy `fn-cvec-roomp`: space for each owed release and one
+maintenance release survives in both transaction and history capacities.
+A change below this reservation is refused as `completion-reserve`, including
+when it is recorded for the next restart. Live and offline adapters derive the
+debt from the same committed history; reconfiguration does not forgive it.

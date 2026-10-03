@@ -302,12 +302,13 @@
       (fn-lim-effective sealed records))))
 
 ;; Row S1: the offline store's use a limit decision reads, (TRANSACTIONS
-;; HISTORY-OCTETS) of the replayed Store (store-budget.lisp fn-sbud-used,
+;; HISTORY-OCTETS COMPLETION-DEBT) of the replayed Store (store-budget.lisp fn-sbud-used,
 ;; fn-sbud-bytes-used), for `policy set' with no owner running.
 (defun fn-store-lim-use (state)
   (declare (xargs :stobjs state :mode :program))
   (let ((sn (f-get-global 'fn-store-sn state)))
-    (value (list (fn-sbud-used sn) (fn-sbud-bytes-used sn)))))
+    (value (list (fn-sbud-used sn) (fn-sbud-bytes-used sn)
+                 (fn-cvec-record-debt (fn-sf-records (fn-sn-files sn)))))))
 
 (defun fn-store-cfg-native-admin-authorize
     (octet-records frontier config-octet-records record-octets lock-owned observed-name-octets
