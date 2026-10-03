@@ -3788,7 +3788,7 @@ No whole-NNTP or full-family boundedness claim from this output cursor alone.
   idle owner threads present; no retainedheap/GC/funding activation claim.
   Evidence99a9ae2ae3428231c6867eaf90a7d938ca66f96d5e5530c449a0b4c5d4c15d6e
   at planning/evidence/tools/incremental-decoded-allocation-20261003.json.
-* LIVE own retained developer owner2260356, exec62229:
+* Previously live retained developer owner2260356, exec62229 (now stopped):
   /tank/fn/scratch/codex-tools-incremental-fa5ff31735/owner/dev.sock.
   Driver JSON eval/file input; quit gracefully stops only this private owner.
   Historical ad8+Root bounded/reload-safe overlays are hash-bound in its own
@@ -4192,3 +4192,55 @@ Controller/framer/hash draft files and tests are preserved in this lane. Framer1
 Operator owns build include of peer-catchup-spool-resources and raw catchup-spool load before startup call; source constructor/accessor packet sent. Full controller representation/invariant proof, codec partition proofs and complete native cells/frame graph/GC/TLS tariff remain explicitly open. No fabricated coefficient, no borrowed output/syncer/storage slack.
 
 All owned ACL2 sessions stopped, including hash hbox session horse-bounds-spool-hash. No live spool workers, fixture sockets or owned pending subprocesses. Foundation's shared solrlocover is not ours. Original Foundation commits are upstream dependencies; local duplicates2625dcf17/6b297f00c must not be cherry-picked.
+* Owner2260356 later stopped exit4 after malformed raw LOAD during the Horse
+  source loan; exec62229 reaped it and its socket was removed. No restart. Its
+  files/logs remain in the private remote directory and build/incremental-owner.
+  This supersedes the earlier healthy-owner entries.
+
+2026-10-03 convergence / developer source reader repair (Sol6.1):
+
+* READY094050d7d+b96664bb6 sent Integration: explicit shared native file loader,
+  per-event bounded admit-file and client :load/:acl2-file. Private standard
+  readtable plus reader-eval NIL prevents inherited ACL2 #. hard abort. Only
+  OPEN/READ failures are caught; evaluated errors/file-errors/throws escape
+  normally. Attempted/completed prefix is explicit and never rolled back.
+  Adoption baseline1fa9a6c32 must NOT be cherry-picked onto existing module.
+* Actual root-decoded-execution helper regression PASS .01ACL2s/3steps: missing,
+  malformed first, EOF, #., native/ACL2 partial prefix, controlled false theorem
+  refusal, later event not run, later successful admission. Three new ordinary
+  scalar diagnostic definitions retained. No old core/stobj/hooks overwritten.
+  Evidence9ac78da01f381bfae708197090dc40adb9c64860414cc8fccfa2a326d5e2ded8
+  at planning/evidence/tools/incremental-dev-file-refusal-20261003.json.
+* Composed socket driver tests/dev_file_refusal_native.py attaches to an existing
+  owner only, never starts a world/owner/Store; private new --scratch fixtures
+  and results persist. NOT RUN: no current healthy initialized native owner.
+  History's full current entry still has about490 logical scopes outstanding.
+  Existing dev_repl_native.py deliberately faulting phase remains the actual
+  fence check; the loader helper escape fixture does not replace it.
+* Root-owned root-decoded-execution remains healthy: /tank/fn/gates/
+  codex-root-decoded-execution on hbox, local remote.json at
+  /Users/ember/dev/fn/build/lanes/codex-resource-completion/build/proof-repl/
+  root-decoded-execution/remote.json. Use control from that local tree with
+  send --no-sync. Last Tools health raw NIL/LD-OKP :DEFAULT/tag NIL and ordinary
+  after-refusal31 verified. Nested native LD left LP; reentered the SAME world,
+  no initialization. Served then admitted final status progress44345steps and
+  returned custody directly Root. No Tools command/background process pending.
+* Root world scope: ordinary35deps + current4d DWJ, later additive root hroot
+  PROGRAM diagnostics, Served missing-only status scalars/new FnLSS and Tools
+  diagnostic loader funcs. Native diagnostic tag history is explicit; this
+  is NOT current whole-union qualification or a generic resource-ledger world.
+* Protected-window consumer63bdd37c8 earlier PASS: authenticated protected128
+  bytes/read160/selected61, corrupt prefix and wrong commitment refused;32
+  replays process allocation523504->425808. Evidencec9fa9290e813b652c8adaa4cfcc
+  895b6855d3c73709012005389cde385894651 at planning/evidence/tools/
+  incremental-protected-window-allocation-20261003.json. No nativeFD/funding claim.
+* Source-first8c3cc856e sent Integration: share pure EWP issued identity once
+  during read completion. NEW guard/equality and actual DWJ comparison PENDING.
+  Fully staged (UNSENT) additive prototypes in build/dwj-trace/events.lisp: actual
+  shared capture helper/macro, new-name EWZ action, EWS bound and EWP completion
+  with unconditional equality. Remote same file under own scratch exists.
+  User convergence interrupted before launch; no new proof or full consumer
+  run. Finish this in the healthy Root world later, not another cold closure.
+* Current owned scope remains tools/developer/tracing/runtime allocation. Full
+  DWJ/native physical/GC tariff and live socket composition are explicit pending
+  consumer assurances, not discharged by leaf process-counter observations.

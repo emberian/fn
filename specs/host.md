@@ -2010,3 +2010,23 @@ still carry across it. An older compiled hook without parent-sink provenance
 reports a null parent until reloaded. The actual restart/nonlocal lifetime and
 destination-lock checks are filed in
 `planning/evidence/tools/incremental-trace-lifecycle-20261003.json`.
+
+### Trusted developer source files
+
+The developer client's `:load PATH` uses `fnn-dev-load`; `:acl2-file PATH`
+uses `fnn-dev-admit-file` with the selected per-event prover-step limit. Paths
+refer to trusted source on the server. Both readers use a private standard
+Lisp readtable with reader evaluation disabled. They catch only file-open and
+source-reading errors: evaluation and storage faults still cross the owner's
+normal fault boundary. Raw Lisp `load` remains available as an explicit
+developer facility, with its ordinary fault semantics.
+
+A file refusal reports attempted and completed top-level forms. Zero attempted
+forms returns `:refused`; an attempted prefix returns `:partial`, including
+an event whose internals might already have run before ACL2 refused it. Earlier
+evaluated or admitted forms remain; the loader provides no rollback. A reader
+refusal or controlled ACL2 refusal stops that file and marks the developer
+reply failed. A later request may continue from the retained prefix. The warm
+actual admission/reader checks are filed in
+`planning/evidence/tools/incremental-dev-file-refusal-20261003.json`; live owner
+socket composition is a separate consumer check.
