@@ -9762,6 +9762,33 @@
         "planning/evidence/operator-default-heap-source-2026-10-03.json"
       ],
       "execution_scope": "Actual native heap/profile/status bodies and actual selected ACL2 reservation/layout arithmetic. Base heap figure, config/machine capture and explicit output extension are deliberate seams; no complete allocation, expanded init/reopen theorem, nonempty recovery, saved-image or deployment qualification."
+    },
+    {
+      "id": "SCN-1137",
+      "title": "BP served argv supplies actual Store and concurrency profile to launcher reservation",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-020"
+      ],
+      "steps": [
+        "Call actual guarded BP command projection and actual fnn-heap-command-profile for bp-node serve and bp-app receive.",
+        "Probe missing arguments, zero/overflow/malformed connection values and offline dispatch.",
+        "Compose seventh normalized root input with Operator DEFAULT operation reservation extension after public source integration."
+      ],
+      "expected": [
+        "The exact argv Store is physically normalized once, observed for its actual profile and passed with :run and owner allowance1 or the ACL2 parsed app allowance.",
+        "Malformed served argv refuses before any Store profile observation; offline dispatch acquires no DEFAULT served pool.",
+        "The independently captured DEFAULT launcher reservation uses the same normalized root and supported concurrency before cold/output allocation."
+      ],
+      "implementation": {
+        "test": "tests/test_native_bp_heap_source.py"
+      },
+      "evidence": [
+        "tests/native_bp_heap_source.lisp",
+        "tests/acl2/bp-heap-command-tests.lisp"
+      ],
+      "execution_scope": "Actual ACL2 projection/grammar and actual native heap profile consumer with recorded profile observation pass. Complete DEFAULT reservation extension, actual launcher/resource execution and current native BP joins remain pending."
     }
   ]
 }

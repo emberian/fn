@@ -504,3 +504,10 @@ witness; a legitimate closed phase refutes removal of the sole phase hypothesis.
 Normal universal proofs and teeth pass; certificate pending. Native private
 source roots/END ACK/physical aliases and complete semantic decoder/publication
 bounds remain separate open obligations, exercised by prepared SCN1131.
+
+Received-source receiver alpha is tracked at distinct PRF1305. It equates the
+complete segmented receiver result to the original receiver under the sole
+proper decoded data hypothesis; the production consumer never executes the
+proof-only concatenating abstraction. PRF1292 is the independent owner operation
+readout and is not this theorem's coordinate. Historical evidence bytes retain
+their original source coordinate; current union certification is refreshed.

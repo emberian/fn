@@ -3948,3 +3948,14 @@ roots submitted; native/private root/framing/full decoder correspondence remain
 open. Main node budget capture moved inside its protected body, actual failure
 fixture proves FNBS release before any Store constructor. Entries owns resume
 cleanup independently.
+
+BP launcher profile continuation PRF1306/SCN1137: guarded ACL2 served argv
+projection now supplies exact Store/concurrency profile and seventh absolute
+root to actual heap-command-profile. Named invalid served commands refuse
+before Store observation;20char u64 grammar bounds materialization, no stored
+cap. Warm guards+11 literals pass; actual ACL2 producer/native heap consumer
+fixture plus served startup fixture2PASS0.117s. Operator owns DEFAULT reservation
+extension composition next; no blanket tariff/native claim. Runtime startup
+now normalizes its captured root identically. Distinct PRF1305 restores existing
+received-source alpha registry and corrects PRF1300 dependency without overwriting
+owner-operation PRF1292; current certificate refresh pending.

@@ -23030,7 +23030,7 @@
       ],
       "depends_on": [
         "PRF-1291",
-        "PRF-1292",
+        "PRF-1305",
         "PRF-1294"
       ],
       "assumptions": [],
@@ -23143,6 +23143,53 @@
         "host/native/tcpcl.lisp"
       ],
       "progress_note": "Normal warm hbox admission: universal parser/session identity311steps and composed custody/reception4513steps, plus complete reachable positive and phase-hypothesis-removal literals PASS. Exact two-root certificate pending; no native or whole-host correspondence claim."
+    },
+    {
+      "id": "PRF-1305",
+      "title": "Actual received-source segmented receiver refines the original receive result",
+      "statement": "The actual transferring segment consumer fn-tcl-step-source calls fn-tcl-recv-segment-source. Under the sole proper decoded segment-data hypothesis, fn-tcl-source-result-alpha maps its complete result, session, all events and unconsumed input to the original fn-tcl-recv-segment result. The proof-only alpha concatenates reverse source segments only to describe the boundary; production source creation/continuation retains references and does not call it. Reachable open/contact/session-init/complete segment witness checks the entire theorem; an explicitly corrupted improper-data witness checks failed hypothesis and failed complete equality. This is receiver representation correspondence, not whole source-driver, native alias/END ACK, socket/Store persistence or cost correspondence.",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006"
+      ],
+      "depends_on": [
+        "PRF-1291"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "events": [
+        "fn-tcl-source-recv-segment-boundary"
+      ],
+      "evidence": [
+        "books/tcpcl-received-source-refinement.lisp",
+        "tests/acl2/tcpcl-received-source-refinement-tests.lisp",
+        "books/tcpcl-received-source.lisp",
+        "host/native/tcpcl.lisp",
+        "planning/evidence/manifests/certify-20261003T124620Z-1862293.json"
+      ],
+      "progress_note": "Restores a distinct claimed registry coordinate for the already implemented/proved actual receiver abstraction; PRF1292 belongs to owner-operation readout and is preserved. Earlier exact alpha/guard source certificate remains its own archived coordinate; a current source union certificate is being refreshed before any current certification claim."
+    },
+    {
+      "id": "PRF-1306",
+      "title": "BP served argv profile reaches the actual launcher DEFAULT reservation",
+      "statement": "Actual fnn-heap-command-profile consumes guarded fn-bph-command-plan to project bp-node serve and bp-app receive Store root and owner connections, naming malformed served arguments as refusal before Store profile observation. Actual absolute root is propagated as the seventh reservation input; Operator fn-prstartup-extend-operation-reservation owns DEFAULT backing after cold extension and before output. Node Store serialization allowance1 and app existing max-connections are distinct from the BP TCPCL session bank. Bounded positive u64 grammar is checked before character materialization. Full launcher/default budget correspondence and all TCPCL/semantic decoder/GC tariffs remain open; simple selector/range helpers are not cited keystones.",
+      "milestone": "M4",
+      "requirements": [
+        "HST-008",
+        "STO-020"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "events": [],
+      "evidence": [
+        "books/bp-heap-command.lisp",
+        "tests/acl2/bp-heap-command-tests.lisp",
+        "host/native/heap.lisp",
+        "host/native/bp-service.lisp",
+        "tests/native_bp_heap_source.lisp"
+      ],
+      "progress_note": "Normal guards and transparent scalar/selector facts admitted6527steps;11 grammar/projection literals PASS. Actual projection plus actual heap profile consumer recorded-profile harness PASS, complete DEFAULT extension composition follows Operator source intake. No blanket resource or current native claim."
     }
   ]
 }

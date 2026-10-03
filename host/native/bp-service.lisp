@@ -1414,6 +1414,7 @@ signals with SERVICE still holding its locks; its owner releases them."
 (defstruct fnn-bp-served-owner-custody claimed started stopped)
 
 (defun fnn-bp-served-owner-start (custody root max-connections)
+  (let ((root (fnn-absolute root)))
   (fnn-owner-claim-run-authority *fnn-owner-caller-reservation*)
   (setf (fnn-bp-served-owner-custody-claimed custody) t)
   (fnn-owner-page-read-startup
@@ -1423,7 +1424,7 @@ signals with SERVICE still holding its locks; its owner releases them."
     ;; Retain the actual Store even if retiring recovery-only borrows escapes.
     (fnn-owner-retain-run-authority service)
     (fnn-extent-end-recovery-cache)
-    service))
+    service)))
 
 (defun fnn-bp-served-owner-stop (custody service)
   (when (fnn-bp-served-owner-custody-claimed custody)
