@@ -235,10 +235,15 @@ class DeveloperExpiryTests(ExpiryMixin, unittest.TestCase):
                 self.assertEqual(status.returncode, EXIT.OK, (point, status.stderr[-600:]))
                 # The instant was recorded before the rewrite: --recorded
                 # completes it (or, from the install on, finds nothing left).
+                # Never a fresh reclaim in its place (sweep 2026-10-03 S131:
+                # a refused, uncertain or faulting --recorded fell back to a
+                # new instant, which expires the same p0/p1 and passed).
                 done = self.reclaim(copy, "--recorded", expect=None)
-                if done.returncode != EXIT.OK:
-                    done = self.reclaim(copy)
-                self.assertEqual(done.returncode, EXIT.OK, (point, done.stderr[-600:]))
+                self.assertEqual(done.returncode, EXIT.OK,
+                                 (point, done.stdout[-600:], done.stderr[-600:]))
+                installed = point in ("replaced", "durable")
+                self.assertEqual(b"reclaimed=0 " in done.stdout, installed,
+                                 (point, done.stdout[-600:]))
                 replies = self.served(copy, ["STAT %s" % msgid("p0"), "STAT %s" % msgid("p1"),
                                              "STAT %s" % msgid("n0"), "STAT %s" % msgid("x0")])
                 self.assertTrue(replies[0].startswith(b"430 article reclaimed"), (point, replies))

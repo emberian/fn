@@ -190,6 +190,12 @@ class OpenDepthTests(unittest.TestCase):
 
     def open_and_serve(self, name, mode, node):
         self.deaths = []
+        # Commands the live owner answered with no reply line: a closed
+        # connection (other than QUIT's), a read error or timeout, or a first
+        # line that is not a three-digit reply.  Before 2026-10-03 (sweep
+        # S133) only owner deaths were asserted, so a command that never
+        # answered at depth passed.
+        self.drops = []
         owner, listening, opened = self.start_owner(node)
         self.state = {"owner": owner}
         print("OPEN-DEPTH {} {} seconds={:.1f} {}".format(
@@ -201,6 +207,9 @@ class OpenDepthTests(unittest.TestCase):
                     self.control_reports(name, mode, node)
                 self.assertEqual([(t, e) for t, e, _ in self.deaths], [],
                                  "commands or reports that stopped the owner at {} ({})".format(
+                                     name, mode))
+                self.assertEqual(self.drops, [],
+                                 "commands the live owner did not answer at {} ({})".format(
                                      name, mode))
             else:
                 with node.session(timeout=600, greeting=None) as client:
@@ -252,6 +261,8 @@ class OpenDepthTests(unittest.TestCase):
                 print("OPEN-DEPTH {} {} SERVED {} connection error {}".format(name, mode, text, e),
                       flush=True)
             seconds = time.monotonic() - started
+            if first is not None and not first[:3].isdigit():
+                self.drops.append((text, "not a reply: {!r}".format(first[:40])))
             if first is not None:
                 print("OPEN-DEPTH {} {} SERVED {} {} lines={} seconds={:.1f}".format(
                     name, mode, text, first.strip().decode("utf-8", "replace")[:80], lines,
@@ -264,7 +275,10 @@ class OpenDepthTests(unittest.TestCase):
                 pass
             client.close(quit=False)
             if proc.poll() is None:
-                # The connection closed and the owner lives (QUIT): reconnect.
+                # The connection closed and the owner lives: QUIT's own close,
+                # or a drop, which is recorded.  Reconnect either way.
+                if text != "QUIT":
+                    self.drops.append((text, "closed with no reply, owner alive"))
                 print("OPEN-DEPTH {} {} SERVED {} (closed) seconds={:.1f}".format(
                     name, mode, text, seconds), flush=True)
             else:

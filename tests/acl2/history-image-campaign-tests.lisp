@@ -179,10 +179,11 @@
 ; The late completion is refused by name (every in-file root is transaction
 ; 1 of its own page store, so the page's entry -- its address and digest in
 ; the new root -- is what tells the checkpoints apart), and never taken for
-; damage; or, where the new root names the same page with the same digest,
-; the fill is that page.
-(assert-event (or (equal (car (nth 6 *hict-run*)) :refused)
-                  (equal (nth 6 *hict-run*) :ok)))
+; damage.  *hict-run* is a ground constant: this campaign reaches the
+; refusal (:refused :stale-page 7, read in a session 2026-10-03), so that is
+; pinned; the disjunction that also took :ok could not fail (sweep S137).
+(assert-event (and (equal (car (nth 6 *hict-run*)) :refused)
+                   (equal (cadr (nth 6 *hict-run*)) :stale-page)))
 (assert-event (not (and (consp (nth 6 *hict-run*)) (eq (car (nth 6 *hict-run*)) :page-damaged))))
 (assert-event (equal (nth 7 *hict-run*) (list :ok (nth 44 *hict-h1*))))     ; the new history answers
 

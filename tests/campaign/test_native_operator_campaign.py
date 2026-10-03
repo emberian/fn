@@ -215,7 +215,9 @@ class NativeOperatorCampaignTests(unittest.TestCase):
         def conflict(entry, result):
             self.assertEqual(result["rc"], 1, result)
             if entry == "operator":
-                self.assertIn("REFUSED", result["stderr"])
+                # `refused operator post CONFLICT' (the outcome class, then
+                # the reason by name).
+                self.assertIn("refused operator post CONFLICT", result["stderr"])
             else:
                 self.assertIn("conflicting immutable Message-ID", result["stderr"])
 

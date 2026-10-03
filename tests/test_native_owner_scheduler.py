@@ -302,7 +302,6 @@ class SchedulerNativeTests(unittest.TestCase):
               % (len(latencies), max(latencies), sorted(latencies)[len(latencies) // 2],
                  rows["control"], rows["reader"]))
 
-    @unittest.skipUnless(executable(DEVELOPER), "no developer image at %s" % DEVELOPER)
     def group_count(self, stream):
         stream.write(b"GROUP fn.test\r\n")
         stream.flush()
@@ -324,6 +323,7 @@ class SchedulerNativeTests(unittest.TestCase):
                      + stuffed(body) + b".\r\n")
         stream.flush()
 
+    @unittest.skipUnless(executable(DEVELOPER), "no developer image at %s" % DEVELOPER)
     def test_status_and_readers_are_answered_while_a_batch_barrier_is_in_flight(self):
         # PKT-688 (4) slice 2 and PKT-828 (books/owner-commit-steps.lisp,
         # books/owner-reader-view.lisp).  The developer selector holds the
@@ -383,6 +383,7 @@ class SchedulerNativeTests(unittest.TestCase):
         bound, rows = self.sched()
         self.assertEqual(sorted(rows), ["control", "poster", "reader", "transit"])
 
+    @unittest.skipUnless(executable(DEVELOPER), "no developer image at %s" % DEVELOPER)
     def test_the_next_batch_is_prepared_while_the_previous_one_syncs(self):
         # PKT-828 (books/owner-commit-pipeline.lisp START-NEXT,
         # books/owner-reader-view.lisp).  Barrier held 4 s.  POST A's batch
@@ -529,6 +530,7 @@ class SchedulerNativeTests(unittest.TestCase):
         # The posters were never starved in turn: POSTs kept being accepted.
         self.assertGreater(after, 0)
 
+    @unittest.skipUnless(executable(DEVELOPER), "no developer image at %s" % DEVELOPER)
     def test_a_redeem_during_a_barrier_waits_for_the_complete_without_holding_the_owner(self):
         # PKT-828 open item 2 (books/owner-reader-read.lisp).  An XREDEEM PASS
         # publishes a configuration record: its reply (281) promises the
@@ -633,6 +635,7 @@ class SchedulerNativeTests(unittest.TestCase):
         stream.flush()
         return stream.readline()
 
+    @unittest.skipUnless(executable(DEVELOPER), "no developer image at %s" % DEVELOPER)
     def test_a_hostile_peer_racing_a_durable_completion_gets_no_second_copy(self):
         # Row A2 (composed boundary under a hostile peer; lane composed-owner-5).
         # A POST's batch is held at its barrier (4 s) while a configured peer
@@ -736,6 +739,7 @@ class SchedulerNativeTests(unittest.TestCase):
             return status, None
         return status, self.multiline(stream)
 
+    @unittest.skipUnless(executable(DEVELOPER), "no developer image at %s" % DEVELOPER)
     def test_the_a6_campaign_keeps_accepted_history_through_one_integrated_scenario(self):
         # Row A6, GPT-6's integrated campaign (planning/review-2026-09-28-gpt6.md),
         # in ONE scenario on the developer image: every completion delayed at

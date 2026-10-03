@@ -158,11 +158,25 @@ class NodeOperatorRows(unittest.TestCase):
             self.skipTest("the uncertain outcome is a developer-image cut: {}".format(DEVELOPER))
         self.node.start(image=DEVELOPER, env={"FN_NATIVE_CONTROL_FAULT": "postpublish"})
         unsure = "<outcome-unsure@example.invalid>"
-        self.node.post(unsure, article(unsure, groups=GROUP), group=GROUP,
+        unsure_text = article(unsure, groups=GROUP)
+        self.node.post(unsure, unsure_text, group=GROUP,
                        image=DEVELOPER, expect=EXIT.UNCERTAIN)
         self.node.exited(EXIT.UNCERTAIN)
         recovered = self.node.operator("recover", expect=EXIT.OK)
         self.assertIn(b"recovered transactions=", recovered.stdout)
+        # What recovery resolved (sweep 2026-10-03 S135: only the line was
+        # checked): postpublish fires at log-fenced, after the batch's
+        # barrier, so the record is durable and the article is present; an
+        # identical resubmission is the idempotent duplicate and adds nothing.
+        self.node.start()
+        with self.node.session() as client:
+            self.assertTrue(client.command("STAT {}".format(unsure).encode())
+                            .startswith(b"223"))
+            count = client.command(b"GROUP " + GROUP.encode()).split()[1]
+        self.node.post(unsure, unsure_text, group=GROUP, expect=EXIT.OK)
+        with self.node.session() as client:
+            self.assertEqual(client.command(b"GROUP " + GROUP.encode()).split()[1], count)
+        self.node.stop(EXIT.OK)
 
     def test_group_capacity_peer_identity_and_principal_administration(self):
         """V0-GROUP-CREATE, -SERVED, -RETIRE, -UNKNOWN; V0-CAP-SET; V0-PEER-ADD,
