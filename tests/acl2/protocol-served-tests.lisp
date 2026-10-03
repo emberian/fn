@@ -337,6 +337,95 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-scol-okp))))
 
+;; Discovery forms retain the pinned environment: creation facts, listing
+;; descriptions/MOTD/subscriptions and closed-group status.  The configured
+;; server selects the existing compatibility prelude; a server-free environment
+;; also exercises the reference fallback.  DATE stays on its already-generated
+;; session route, so its witness calls the actual command layer.
+(defconst *pst-discovery-clock*
+  (fn-clock-observation 0 (fn-nntp-civil-dtn-ms 2026 10 3 0 0 0) 0 t))
+(defconst *pst-discovery-facts*
+  (list (fn-nntp-group-fact "fn.test" (fn-nntp-civil-dtn-ms 2026 10 2 0 0 0) *pst-discovery-clock*)
+        (fn-nntp-group-fact "fn.other" (fn-nntp-civil-dtn-ms 2026 9 30 0 0 0) *pst-discovery-clock*)
+        (fn-nntp-group-fact "fn.none" (fn-nntp-civil-dtn-ms 2026 10 2 0 0 0) *pst-discovery-clock*)))
+(defconst *pst-discovery-listing*
+  (list (list (cons "fn.test" (fn-nntp-string-octets "test group")))
+        (list (fn-nntp-string-octets "hello readers"))
+        (fn-nntp-string-octets "news.example.invalid") nil nil '("fn.other" "fn.none")))
+(defconst *pst-discovery-env-x*
+  (fn-nntp-env-full *pst-discovery-clock* *pst-discovery-facts* nil
+                    *pst-discovery-listing* (list (fn-nntp-string-octets "fn.other"))))
+(defconst *pst-discovery-env-0*
+  (fn-nntp-env-full *pst-discovery-clock* *pst-discovery-facts* nil nil nil))
+(defconst *pst-discovery-lines*
+  '("LIST" "LIST ACTIVE" "LIST ACTIVE fn.*" "LIST COUNTS" "LIST COUNTS fn.test"
+    "LIST OVERVIEW.FMT" "LIST ACTIVE.TIMES" "LIST SUBSCRIPTIONS" "LIST NEWSGROUPS"
+    "LIST MOTD" "LIST UNKNOWN" "LIST ACTIVE a b"
+    "NEWGROUPS 20261001 000000 GMT" "NEWGROUPS 20261001 000000"
+    "NEWGROUPS 261001 000000 GMT" "NEWGROUPS" "NEWGROUPS 20261001 000000 BAD"))
+
+(defun pst-served-at-session (session env line arch index fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
+  (fn-scr-command session arch index nil env
+                   (fn-nntp-tokenize (fn-nntp-string-octets line)) 3 fn-arena fn-cat))
+
+(defthm pst-discovery-positive
+  (let ((arch (pst-arch 3)) (index (pst-index 3)))
+    (and (equal (fn-state-articles arch) (fn-cat-view-articles 3 *pst-a* *pst-c*))
+         (fn-statep arch)
+         (fn-gidx-pin-correspondencep index arch)
+         (fn-midx-correspondencep (fn-gidx-pin-trie index) (fn-state-articles arch))
+         (fn-cnx-freshp *pst-c*)
+         (fn-scol-okp *pst-a* *pst-c*)
+         (fn-nntp-envp *pst-discovery-env-x*)
+         (fn-nntp-envp *pst-discovery-env-0*)
+         (pst-agree-all *pst-discovery-env-x* *pst-discovery-lines* arch index *pst-a* *pst-c*)
+         (pst-agree-all *pst-discovery-env-0* *pst-discovery-lines* arch index *pst-a* *pst-c*)
+         (pst-reaches-at-session *pst-session* *pst-discovery-env-x* "LIST"
+                                 arch index *pst-a* *pst-c*)
+         (pst-reaches-at-session *pst-session* *pst-discovery-env-x* "LIST COUNTS"
+                                 arch index *pst-a* *pst-c*)
+         (pst-reaches-at-session *pst-session* *pst-discovery-env-x* "LIST OVERVIEW.FMT"
+                                 arch index *pst-a* *pst-c*)
+         (pst-reaches-at-session *pst-session* *pst-discovery-env-x* "LIST ACTIVE.TIMES"
+                                 arch index *pst-a* *pst-c*)
+         (pst-reaches-at-session *pst-session* *pst-discovery-env-x* "LIST MOTD"
+                                 arch index *pst-a* *pst-c*)
+         (pst-reaches-at-session *pst-session* *pst-discovery-env-x*
+                                 "NEWGROUPS 20261001 000000 GMT" arch index *pst-a* *pst-c*)
+         (equal (pst-result-code (pst-command-at-session *pst-session* *pst-discovery-env-x*
+                                   "LIST COUNTS" arch index *pst-a* *pst-c*)) '(50 49 53))
+         (equal (pst-result-code (pst-command-at-session *pst-session* *pst-discovery-env-x*
+                                   "NEWGROUPS 20261001 000000 GMT" arch index *pst-a* *pst-c*)) '(50 51 49))
+         (equal (fn-rcompat-newgroups-names (fn-nntp-civil-dtn-ms 2026 10 1 0 0 0)
+                                           (fn-state-groups arch) *pst-discovery-env-x*) '("fn.test"))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-scol-okp))))
+
+;; DATE's complete session-route reply: the row's :arms generated into the
+;; command layer answer the supplied wall observation, and reject extra arguments.
+;; A catalog-only DATE form would instead be unreachable :stat retrieval.
+(defthm pst-date-session-route-positive
+  (let ((arch (pst-arch 3)) (index (pst-index 3)))
+    (and (equal (fn-proto-plist-get :dispatch (cdr (fn-proto-row "DATE" *fn-proto-table*))) :session)
+         (not (fn-proto-row-forms (fn-proto-row "DATE" *fn-proto-served-table*)))
+         (fn-nntp-envp *pst-discovery-env-x*)
+         (equal (pst-served-at-session *pst-session* *pst-discovery-env-x* "DATE"
+                                       arch index *pst-a* *pst-c*)
+                (fn-nntp-date-response *pst-session* *pst-discovery-env-x*))
+         (equal (pst-served-at-session *pst-session* *pst-discovery-env-x* "DATE"
+                                       arch index *pst-a* *pst-c*)
+                (fn-pix-command-pinned *pst-session* arch index nil *pst-discovery-env-x*
+                                       (pst-tokens "DATE") *pst-a*))
+         (equal (fn-nntp-result-effects (pst-served-at-session *pst-session* *pst-discovery-env-x*
+                                         "DATE" arch index *pst-a* *pst-c*))
+                (list (fn-nntp-reply-effect (fn-nntp-crlf (fn-nntp-string-octets "111 20261003000000")))))
+         (equal (pst-result-code (pst-served-at-session *pst-session* *pst-discovery-env-x*
+                                   "DATE x" arch index *pst-a* *pst-c*)) '(53 48 49))
+         (equal (pst-result-code (pst-served-at-session *pst-session* *pst-env-0*
+                                   "DATE" arch index *pst-a* *pst-c*)) '(53 48 51))))
+  :rule-classes nil)
+
 ;; (2) Removal witnesses.
 ;; view-articles, reachable: the pinned archive served at view 2 (the third
 ;; row invisible) answers XPAT (a declared row) differently from the pinned

@@ -653,8 +653,7 @@ waivers. Final six schedule command re-run after exact fixture block update.
 
 Aggregate over dev90a151a42: Runtime122904439/d529ef773 and Tools88a116a90/1d550edff/0c7dc0ea8/e3b6eee46. Reviewed actual feed dial/pull preflight and owner held/off-owner frames classification. Credential descriptors open nonblocking/no-follow, regular/private/size checks precede bounded read and ACL2 decode, and admission precedes TCP. Unknown/store/core faults propagate; primary faults survive close failure; stopping workers use the shared owner boundary. Frames signal typed outcomes to their existing held or thread boundary; irreversible fault fencing directly acquires owner exclusion. Source merge touches no unrelated owner functions. Only cumulative LANEDUMP conflicted, retaining prior and incoming content. Nine producer source/test paths match, fixture Python compiles, four evidence objects verify, diff check clean. Existing actual-source raw schedules reused; no duplicate proof/build/image run. First runnable selector: tests/test_native_frames_boundary_raw.sh, then tests.test_native_feed_credential.CredentialAdmissionTests.test_exact_read_and_core_faults_propagate_while_stopping. Integration owns pending peer-host/feed-link-backoff certificates, loaded-world/source graph regeneration and matching image.
 S110 FNPL/FNCU append classification, codex-sol-tools
-====================================================
-Actual fnn-pull-journal-append now seals/validates/converts and runs the
+=============================================Actual fnn-pull-journal-append now seals/validates/converts and runs the
 before-write selector before attempted publication. Definite prewrite faults
 retain their class. Attempted write/barrier failures remain indeterminate
 even when descriptor cleanup also fails; actual ACL2 journal phase decides
@@ -720,3 +719,41 @@ source changed, so no independent certification/full image was launched.
 ## Source assembly persistence/custody follow-through — GPT-6.1-Sol
 
 Over reviewed433b73dd7: S110099d28d94/31c79cb07/c3585ba3a, Astra53dd02bca/ec2dbfce0, Runtime observationsd4cb69168/b86933fba. Preserved their primary source reviews; inspected actual journal append boundaries and material owner overlap. Prewrite envelope/phase faults retain class; write/fsync attempts remain uncertain across close failure; postbarrier faults stay definite. Pipeline unwind retains the actual-result consumer before completion starts, while torn completion is not retried; outer committer actor escape reaches the failure boundary. Observation hooks use the existing actor reservation and private finite rows, reserve release before unlock and complete after unlock; unavailable records carry no HM verdict. Owner hunks apply cleanly beside irreversible fault/typed frames changes. Six exact producer fixtures match; JSON and Python compile; six new evidence objects verify. Only cumulative LANEDUMP conflict, all content retained. No duplicate raw/proof/image experiments. Combined selectors owed at assembled bytes: tests/test_native_syncer_pipeline_escape_raw.sh, tests/test_native_committer_actor_raw.sh, tests/test_native_observation_raw.sh and tests.test_native_pull_append.PullAppendBoundaryTests (discover actual class in file). Existing raw/HM receipts do not establish whole-image or realization assurance; Integration retains loaded-world/graph and matching-image checks.
+## DC03 discovery continuation (2026-10-03)
+
+Merged Served985be0c14 in isolated tree (767fbf3a7), preserving both lane records
+and Served's NEWNEWS cursor reachability predicate. LIST now declares Xref,
+COUNTS, compatibility, active and other forms; NEWGROUPS declares compatibility
+and other forms. Existing pinned semantics and PRF-1237 completed-view debt remain
+explicit. No new formal, helper export, behavior, or NEWNEWS/OVER/HDR/XPAT edit.
+
+DATE finding agreed with Served: it is already a :dispatch :session declaration
+in protocol-table, whose :arms generate fn-nntp-session-command. The archive
+reference has no DATE arm and falls through to STAT retrieval. A DATE catalog
+form would be unreachable in composition, so none was added. New DATE teeth
+assert the actual session route's entire 111 reply, equality to fn-nntp-date-response
+and the restricted command route, plus syntax/missing-clock refusals.
+
+Narrow live verdict (hbox dc03-discovery): protocol-served #12–51 40/40,
+1.93 ACL2 seconds / 500,442 steps; generated form/row event 1.51 s / 479,519;
+all guards pass. Kept that warm world for teeth: loaded only the exact existing
+fn-scr-command source event and three fn-pix command/retrieval definitions needed
+by the command-layer witness (no source twins or full TLS/span replay);
+fn-scr-command guards 918 steps. Complete teeth #5–68 64/64, 0.12 s / 1,854 steps.
+New discovery positive (188 steps) asserts full boundary hypotheses and conclusion
+with valid configured creation/listing facts, both server contexts and both routes;
+DATE session positive 120 steps. Prefix setup alone was 128.77 s / 36,354,221 steps.
+
+protocol_emit --check passes 34 rows/304 replies with unchanged 10 policy debts;
+docs_check --write passes and regenerates the served spec table. No new IDs.
+No repeat full-report pipeline, certificate, image or deployment claim. Integration
+owns generated registry/ledger assembly and coordinated certification; Served owns
+remaining HDR/XHDR declarations and hand-fallthrough removal. Bounded NEWNEWS
+selector follow-through is a separately assigned next seam, not changed here.
+
+Evidence is archived/indexed under planning/evidence/dc03-discovery-20261003:
+command-repl.log.gz and checks.json, including current subject/consumer file hashes.
+
+## Source assembly DC03 discovery forms — GPT-6.1-Sol
+
+Reviewed d8a0af2f3 LIST five-form and NEWGROUPS two-form table additions consumed by actual fn-scr-command -> fn-proto-archive-command-cat. Ordered xref/counts/compatibility/active/reference fallback mirrors existing dispatcher; helper witnesses assert archive/catalog/index/env invariants, reachable discovery and exact result codes. DATE remains actual generated session route, with literal111/501/503 replies. Prior emitter40forms/guards1.93s500442steps and64-event literalteeth0.12s1854steps reused; two changed source/fixture paths exact producer match, no extra replay. Completed-discovery view and whole-reply allocation debts retained. Only cumulative LANEDUMP conflict; source and spec hunk exact. Integration owns generated command/report world and matching native consumer checks.
