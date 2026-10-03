@@ -1865,9 +1865,13 @@ reads the archive a chunk of records at a time, the MANIFEST a piece at each
 chunk's place, in two passes: the first decides with nothing written, the
 second appends the records to the staged log; for every chunking the
 decision is the whole archive's (PRF-369,
-`fn-sxi-stream-plan-is-the-import-plan`), and a second pass that decides
-otherwise (the archive changed under the import) is refused by name
-(`archive-changed`) before anything is published.
+`fn-sxi-stream-plan-is-the-import-plan`). Each pass checks its record chunks
+against the MANIFEST it reads. A different second-pass record count or final
+profile/frontier/configuration verdict is refused by name (`archive-changed`)
+before anything is published. This comparison does not bind every record byte
+across passes: a different self-consistent archive with the same head and count
+can pass it. The ordinary open admits the actual staged second-pass history;
+the two-pass check is not an atomic snapshot of a mutable archive.
 `store import DIR [--FIELD N ...]` builds a new store of this format from
 an archive of this format (an archive whose profile this format does not
 decode is refused, `reason=profile store-format`; none is translated),

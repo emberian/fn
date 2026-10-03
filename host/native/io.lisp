@@ -5030,8 +5030,10 @@ work and allocation per step are one chunk's.  An accepted plan is written
 into ROOT.import-XXXX as init writes its files, and pass two runs the same
 steps inside the staged publication, appending each chunk's records (the
 step's own) to the stage's log; a pass
-two that does not decide what pass one decided (fn-sxi-same-verdict: the
-archive changed under the import) is refused by name before the open.  The
+two whose record count or final profile/frontier/configuration verdict
+differs from pass one (fn-sxi-same-verdict) is refused by name before the
+open.  Each pass checks its records against its MANIFEST; the comparison
+is not a byte snapshot of the record history across the two passes.  The
 ordinary open (full replay, marker catch-up) admits the stage and it is
 published by a no-replace rename onto ROOT, then ROOT's parent fenced:
 books/store-import-publication.lisp fn-bs-imp-program, step for step, with
