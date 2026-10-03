@@ -21,8 +21,8 @@
 ; all four worker receipt scalars. FN-RL-DRAW-CORRESPONDENCE and
 ; FN-RL-SETTLE-CORRESPONDENCE connect the actual exports to the logical
 ; bank, including words, normalized draw tokens, effects, and exact refusal
-; state. Fresh install has FN-RL-INSTALL-CORRESPONDENCE. Install/store-words
-; guards remain bootstrap obligations until their separate verification.
+; state. Fresh install has FN-RL-INSTALL-CORRESPONDENCE; installation and
+; word-store guards are verified using local resize and mutation facts.
 ; This consumed flat-ledger boundary does not implement the full resource
 ; tree or refund protocol of books/resource-vector-tree.
 ;
@@ -364,8 +364,8 @@
                      (mv :installed fn-resource-ledger)))))))))
 
 ; -----------------------------------------------------------------------------
-; Fresh installation correspondence.  FN-RL-INSTALL has no served host caller
-; yet; this is the concrete export's model boundary, not a deployment claim.
+; Fresh installation correspondence for the concrete bootstrap export.
+; This model boundary does not imply image qualification or deployment.
 ; Freshness constrains only the bank's initial charge and slot columns, plus
 ; the stobj type and zero count. Budget, ownership columns, and pool scalars
 ; need not be zero: installation overwrites the budget and the abstraction
@@ -1713,4 +1713,75 @@
   (equal (mv-nth 1 (fn-rl-settle slot gen ledger)) ledger))
  :hints (("Goal" :in-theory (e/d (fn-rl-settle)
    (fn-rl-release-from fn-rl-slotp fn-rl-gensi fn-rl-phasesi update-fn-rl-phasesi)))))
+
+; Bootstrap guard follow-through for the actual syncer producer. The
+; resize and word-store facts are local; served installation carries the
+; representation through the guarded draw/open exports without unfolding
+; or reconstructing a complete bank.
+(local (defthm fn-rl-resize-list-length (equal (len (resize-list xs n v)) (nfix n)) :hints (("Goal" :induct (resize-list xs n v) :in-theory (enable resize-list)))))
+
+(local (defthm fn-rl-resize-keeps-wfp (implies (natp n) (fn-rl-wfp (fn-rl-resize-all n ledger))) :hints (("Goal" :in-theory (enable fn-rl-resize-all fn-rl-wfp)))))
+
+(local (defthm fn-rl-budget-update-preserves-wfp (equal (fn-rl-wfp (update-fn-rl-budgeti i v ledger)) (fn-rl-wfp ledger)) :hints (("Goal" :in-theory (e/d (fn-rl-wfp update-nth-array) (update-nth))))))
+
+(local (defthm fn-rl-store-words-keeps-wfp (equal (fn-rl-wfp (fn-rl-store-words-from i words ledger)) (fn-rl-wfp ledger)) :hints (("Goal" :induct (fn-rl-store-words-from i words ledger) :in-theory (e/d (fn-rl-store-words-from) (fn-rl-wfp update-fn-rl-budgeti))))))
+
+(local (defmacro fn-rl-resize-proof-fact (field)
+ (let* ((base (symbol-name field))
+        (pred (intern-in-package-of-symbol (concatenate 'string base "P") field))
+        (fact (intern-in-package-of-symbol (concatenate 'string base "-RESIZE-TYPE") field)))
+  `(defthm ,fact
+    (implies (,pred xs) (,pred (resize-list xs n 0)))
+    :hints (("Goal" :induct (resize-list xs n 0)
+             :in-theory (enable resize-list ,pred)))))))
+
+(local (fn-rl-resize-proof-fact fn-rl-phases))
+
+(local (fn-rl-resize-proof-fact fn-rl-gens))
+
+(local (fn-rl-resize-proof-fact fn-rl-c0))
+
+(local (fn-rl-resize-proof-fact fn-rl-c1))
+
+(local (fn-rl-resize-proof-fact fn-rl-c2))
+
+(local (fn-rl-resize-proof-fact fn-rl-c3))
+
+(local (fn-rl-resize-proof-fact fn-rl-c4))
+
+(local (fn-rl-resize-proof-fact fn-rl-c5))
+
+(local (fn-rl-resize-proof-fact fn-rl-c6))
+
+(local (fn-rl-resize-proof-fact fn-rl-c7))
+
+(local (fn-rl-resize-proof-fact fn-rl-c8))
+
+(local (fn-rl-resize-proof-fact fn-rl-ids))
+
+(local (fn-rl-resize-proof-fact fn-rl-cids))
+
+(local (fn-rl-resize-proof-fact fn-rl-files))
+
+(local (fn-rl-resize-proof-fact fn-rl-eoffs))
+
+(local (fn-rl-resize-proof-fact fn-rl-elens))
+
+(local (fn-rl-resize-proof-fact fn-rl-trailers))
+
+(local (defthm fn-rl-resize-keeps-type (implies (and (fn-resource-ledgerp ledger) (unsigned-byte-p 32 n)) (fn-resource-ledgerp (fn-rl-resize-all n ledger))) :hints (("Goal" :in-theory (e/d (fn-rl-resize-all fn-resource-ledgerp unsigned-byte-p) (resize-list fn-rl-phasesp fn-rl-gensp fn-rl-c0p fn-rl-c1p fn-rl-c2p fn-rl-c3p fn-rl-c4p fn-rl-c5p fn-rl-c6p fn-rl-c7p fn-rl-c8p fn-rl-idsp fn-rl-cidsp fn-rl-filesp fn-rl-eoffsp fn-rl-elensp fn-rl-trailersp fn-rl-worker-physicalp fn-rl-worker-outcomep))))))
+
+(local (defthm fn-rl-store-words-from-keeps-type
+ (implies (and (fn-resource-ledgerp ledger) (natp i)
+               (<= (+ i (len words)) 9) (fn-rl-words-representable-p words))
+  (fn-resource-ledgerp (fn-rl-store-words-from i words ledger)))
+ :hints (("Goal" :induct (fn-rl-store-words-from i words ledger)
+  :in-theory (e/d (fn-rl-store-words-from fn-rl-words-representable-p)
+   (fn-resource-ledgerp update-fn-rl-budgeti fn-rl-budget-length))))))
+
+(verify-guards fn-rl-store-words-from
+ :hints (("Goal" :in-theory (e/d (fn-rl-words-representable-p)
+    (fn-resource-ledgerp update-fn-rl-budgeti fn-rl-budget-length)))))
+
+(verify-guards fn-rl-install :hints (("Goal" :in-theory (e/d (fn-rl-profile-representable-p fn-rv-vectorp) (fn-resource-ledgerp fn-rl-wfp fn-rl-draw fn-rl-charge fn-rl-open fn-rl-resize-all fn-rl-store-words-from)))))
 )
