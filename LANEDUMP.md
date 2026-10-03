@@ -4267,3 +4267,28 @@ relabeling. Actual compressed endpoint/factory/custody join stays Runtime +
 History's initializer; Served owns HDR/XPAT consumer, Operator owns non-ARTICLE
 operator items. No endpoint available and no waiting/image claim. All selected
 source/logs remain under this tree and named evidence archive; no files deleted.
+Final convergence handoff (BP): source f65b6d1ec prefix probes and
+c644dadeb native allocator yield/drain plus8c5103092 guarded interfaces/arena
+cleanup are ready. Root fd29a250b must supply acquire-turn and corrected
+process-lifetime conn-id budget before current execution. Prefix source
+receipt archived bp-prefix-probe-source-2026-10-03.json; farm
+run-20261003T180243Z-a337/certify-20261003T180302Z-2794821 PASSED4/0,
+archived/indexed; both affected roots plus two exact dependencies certified.
+Owned warm bp-prefix-dec and bp-input-probe gracefully stopped; no owned
+source-native BP process exists. History's current world has no entry yet.
+SCN1110/1125/1126/1127/1128/1131 remain explicitly unexecuted; drive them through
+Integration's sealed current source manifest with FN_NATIVE_SOURCE_EXECUTIONS,
+not old ad8 cached diagnostic core, with distinct Store roots.
+Remaining domain engineering: complete bounded primary/semantic decode/CRC/
+canonical encoding and Store publication continuations; captured RAM scalar
+authority rather than fabricated cold extent; complete working/GC/decoder/
+source graph tariffs and launcher/default-bank reservation correspondence;
+BP app receive still compatibility blocking session without retained private
+bank; full fragment/reassembly/forward/receipt durability/restart composition
+and final physical/source/ACK correspondence remain open. Existing bounded
+framing/copy, serializer turns, retained scheduler and local proofs do not
+close these claims. Matching current native process never ran.
+
+BP prefix certificate2794821 PASSED4/0 archived/indexed; actual source cost
+receipt scoped to item availability and complete decoder results. Current
+native endpoint and whole semantic decode/publication remain unexecuted/open.

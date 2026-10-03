@@ -810,3 +810,15 @@ bounded bytes reader guards PASS4806steps. Actual-body matched4-byte item plus
 with4 prefix visits. Affected two-root certificate submitted; full primary
 prefix extraction, semantic decode/CRC/canonical/publication continuation and
 current source-native multi-peer/RQ remain open. No arbitrary ceiling added.
+
+BP convergence: allocator consumer and prefix availability cost source ready;
+current shared source-world entry not available, so native multi-peer/RQ/drain
+durability remains UNEXECUTED. Warm proof worlds stopped, no owned native
+process. Full remaining decode/integrity/publication/RAM authority/app retained
+session/tariff and custody composition obligations remain in BP LANEDUMP; no
+closure claim from source fixtures. Continue via sealed current manifest, not
+old ad8 diagnostic cache.
+
+BP prefix certificate2794821 PASSED4/0 archived/indexed; actual source cost
+receipt scoped to item availability and complete decoder results. Current
+native endpoint and whole semantic decode/publication remain unexecuted/open.
