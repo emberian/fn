@@ -6568,7 +6568,9 @@
       ],
       "evidence": [
         "books/resource-syncer.lisp",
-        "tests/acl2/resource-syncer-tests.lisp"
+        "tests/acl2/resource-syncer-tests.lisp",
+        "books/resource-operation.lisp",
+        "tests/acl2/resource-operation-tests.lisp"
       ],
       "implementation_note": "Initial concrete producer is the owner syncer worker/resident projection, installed inside the existing qualified startup :hold section before issue. A token carries ledger draw generation separately from operation generation. Both the actual actor terminal/no-actor-created receipt and matching consumed operation outcome are required. Broader user tariffs, allocation/refusal work, subtree/refund correspondence and complete actor census remain open.",
       "note": "Logical definitions and executable scenario assertions are source-admitted only; native consumer, preservation and guard evidence are not completion claims."
