@@ -10,14 +10,15 @@
  "line": "1482",
  "locus": "served-books",
  "notes": [
-  "10-02 23:24 escalate: books/nntp-auth.lisp is high fan-in; fix changes fn-auth-starttls and capability lines and needs keystone re-proof plus reachable/hypothesis-removal witnesses under ACL2 certification, not a 60-line host fix"
+  "10-02 23:24 escalate: books/nntp-auth.lisp is high fan-in; fix changes fn-auth-starttls and capability lines and needs keystone re-proof plus reachable/hypothesis-removal witnesses under ACL2 certification, not a 60-line host fix",
+  "2026-10-03: PRF-1266/PKT-896 implements successful-authentication STARTTLS prohibition, complete-session preservation and peer-aware capability omission; obsolete positive 382/reset expectations replaced with reachable pre-login TLS witnesses. Scoped proof and image scenarios pending."
  ],
- "owner": "sweep-ops",
+ "owner": "sol-access",
  "reviewer": "fn-auth-starttls (books/nntp-auth.lisp:1482-1520) has one 502 arm, for tlsp (:1496-1498), and never tests fn-auth-session-subject. fn-auth-starttls-lines (:875-879) takes no subject, so STARTTLS is still advertised after a successful AUTHINFO. Plaintext AUTHINFO USER/PASS succeeds on any listener that is not protected-only (the 483 arm at :1330-1334 is protected-only). The sequence AUTHINFO 281, then STARTTLS, therefore gets 382, which breaks RFC 4642 2.1/2.2.1 (502 is required). The 382 arm clears the subject and the principal peer. Severity is low: it is a protocol conformance bug, and an attacker able to inject STARTTLS into a plaintext session already controls that session.",
  "scenario": "On a listener without protected-only, a client authenticates with AUTHINFO USER/PASS (281), and CAPABILITIES still lists STARTTLS. The client issues STARTTLS and gets 382 instead of 502. The session subject and pending login are cleared, and any principal-bound peer role is dropped (fn-auth-clear-principal-peer). After the handshake the client is unauthenticated with no error reported, and on a requires-auth node its next GROUP gets 480. An active attacker who can inject 'STARTTLS' can force the downgrade or reset, and the code the RFC prescribes for refusing is never produced.",
  "severity": "low",
  "source": "sweep-2026-10-03",
- "state": "open",
+ "state": "in-progress",
  "title": "STARTTLS after successful authentication is answered 382 (and still advertised) instead of 502, silently dropping the authenticated identity",
  "updated": "2026-10-03T03:24:21Z"
 }

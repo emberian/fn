@@ -149,7 +149,7 @@ import subprocess
 import sys
 import tempfile
 import time
-from typing import Iterable
+from typing import Callable, Iterable
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -368,7 +368,8 @@ def valid_looking(cert: Path) -> bool:
     if not cert.is_file() or cert.stat().st_size == 0:
         return False
     try:
-        head = cert.read_bytes()[:4096]
+        with cert.open("rb") as stream:
+            head = stream.read(4096)
     except OSError:  # pragma: no cover - unreadable file
         return False
     # ACL2 8.7 writes certificates with its compact serializer: the file
@@ -545,7 +546,9 @@ def closure_key(root: Path, name: str,
     return hashlib.sha256(text.encode("utf-8")).hexdigest(), listing
 
 
-def book_entries(root: Path, cache: Path, name: str) -> list[tuple[Path, dict]]:
+def book_entries(root: Path, cache: Path, name: str,
+                 metadata_filter: Callable[[dict], bool] | None = None
+                 ) -> list[tuple[Path, dict]]:
     """Every usable entry for NAME at ROOT's sources, in every world a
     certificate of it may have been made in (`cert_images.worlds`): plain
     first, then each certification image the image rule allows for it now.
@@ -553,7 +556,7 @@ def book_entries(root: Path, cache: Path, name: str) -> list[tuple[Path, dict]]:
     found: list[tuple[Path, dict]] = []
     for world in cert_images.worlds(root.resolve(), name):
         key, _ = closure_key(root, name, world)
-        found.extend(cached_entries(cache, key))
+        found.extend(cached_entries(cache, key, metadata_filter))
     return found
 
 
@@ -837,8 +840,14 @@ def date_after_source(cert: Path) -> None:
         return
 
 
-def cached_entries(cache: Path, key: str) -> list[tuple[Path, dict]]:
+def cached_entries(cache: Path, key: str,
+                   metadata_filter: Callable[[dict], bool] | None = None
+                   ) -> list[tuple[Path, dict]]:
     """Every usable entry for one closure key, with its metadata.
+
+    Filter metadata under the entry lock before hashing large payloads. This
+    only rejects candidates; every retained candidate still passes the full
+    integrity check, and installation revalidates under its own lock.
 
     An entry with no recorded ``origin_root`` predates this rule.  It is kept
     and reported, but never chosen: it cannot be classified, and installing an
@@ -855,6 +864,8 @@ def cached_entries(cache: Path, key: str) -> list[tuple[Path, dict]]:
             continue
         with entry_lock(directory, exclusive=False):
             meta = read_meta(directory)
+            if metadata_filter is not None and not metadata_filter(meta):
+                continue
             if entry_matches_meta(directory, meta):
                 found.append((directory, meta))
     return found
@@ -992,8 +1003,13 @@ def artifact_sets(root: Path, cache: Path, roots: Iterable[str],
     grouped: dict[tuple[str, str], ArtifactSet] = {}
     # toolchain identity -> book -> every usable entry, for the composed set.
     pooled: dict[str, tuple[dict, dict[str, list[tuple[Path, dict]]]]] = {}
+    def eligible(meta: dict) -> bool:
+        return (usable_origin(meta, target)
+                and (not toolchain_identity
+                     or meta.get("toolchain_identity") == toolchain_identity))
+
     for name in required:
-        for directory, meta in book_entries(root, cache, name):
+        for directory, meta in book_entries(root, cache, name, eligible):
             if not usable_origin(meta, target):
                 continue
             if not compiled_here(directory, meta, root / f"{name}.lisp"):
@@ -1404,10 +1420,13 @@ def install_partial(root: Path, cache: Path, roots: Iterable[str],
     report.books = len(required)
     report.toolchain_identity = toolchain_identity
     options: dict[str, list[tuple[Path, dict]]] = {}
+
+    def eligible(meta: dict) -> bool:
+        return (usable_origin(meta, target)
+                and meta.get("toolchain_identity") == toolchain_identity)
+
     for name in sorted(required):
-        usable = [(directory, meta) for directory, meta in book_entries(root, cache, name)
-                  if usable_origin(meta, target)
-                  and meta.get("toolchain_identity") == toolchain_identity]
+        usable = book_entries(root, cache, name, eligible)
         compiled = [entry for entry in usable
                     if compiled_here(entry[0], entry[1], root / f"{name}.lisp")]
         if usable and not compiled and name not in recertify:

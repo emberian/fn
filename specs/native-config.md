@@ -146,3 +146,107 @@ exact boundary. Success still requires a fresh regular report; an unchanged
 prior report or no report produces uncertainty. Invalid clock/request inputs
 and unknown observations produce a fault with `reason=invalid-observation`;
 they cannot produce a stopped/report decision or a deadline-expiry claim.
+
+### Operator diagnostic outcomes
+
+The heap launcher's operator profile observation may fall back to an absent
+profile only for a condition ACL2's closed failure classifier names as a
+refusal. A failed core call, corrupt durable profile, uncertain outcome or
+unlisted condition propagates before any accepting `heap=` line is printed.
+This applies to the nested store-profile reader as well as the operator plan,
+initializer profile resolution and resource-policy projections. A genuinely
+absent store still has no profile; the command subsequently reports its own
+refusal under the no-store reservation.
+
+The initial-group encoder's named `:bad` result is a refusal. A malformed
+result, or disagreement between the host and core's frame header/trailer
+widths, is a fault. These checks preserve HST-008/HST-009's shared outcome
+classes; they do not manufacture a policy refusal from an image defect.
+
+## Resumable developer init (STO-10005)
+
+`store ROOT init` may resume interrupted initialization. Under its exclusive
+writer lock, it supplies the requested decoded profile, the immutable sealed
+profile and exact generation-one record bytes to ACL2's
+`fn-nir-resume-decision`. The recorded initial change list must match the
+requested initial groups. A new clock stamp and later configuration/limit
+changes do not change that initial intent. Profile or group mismatch is a
+named refusal before resume directory creation, staged publication, genesis
+work or node-secret creation. Initial root/lock acquisition precedes this
+check. Corrupt generation-one evidence faults; missing generation one when
+configuration history exists faults. Absence with no history is the legal
+interrupted-before-publication case.
+
+The keystones prove compatibility across independent clock stamps and named
+refusal of distinct initial changes under exact decode premises; literal
+real-codec witnesses include each premise removal.
+The actual host fixture discriminates prior init's silent success on profile
+mismatch. This does not add a streaming history loader or prove physical init
+syscall order: the existing bounded history observation and init publication
+program retain their separate contracts. Operator init's staged-publication
+verb retains its existing path refusal.
+### Explicit output resources in the canonical rendering
+
+The optional pair `resources.output_heap_octets` and
+`resources.output_quantum_heap_octets` is rendered in the same resources table
+as cold resources. Both values survive whole-config and individual-key
+`operator show`; loading the rendering preserves the complete normalized
+record, including absence of either resource policy. The renderable invariant
+carries the loader's output-policy predicate: two positive u64 naturals, with
+total heap at least twice the quantum heap. Parsing and rendering this pair
+does not enable its pending operational consumer or change the operator's
+`output_resources` refusal. Existing round-trip and accepted-load keystones
+cover these fields; output-only and combined cold/output fixtures discriminate
+the representation boundary.
+
+Relative-path normalization also preserves both resource policies before
+rendering the resolved configuration for `fn-native-operator-run-at`. It
+cannot turn an explicit unsupported output policy into an absent default;
+the actual operator still receives the policy and refuses it by name.
+
+## Current operation observation
+
+`fn operator CONFIG operation` selects the existing authenticated local status
+transport, report kind 14. ACL2 reads the canonical pending admission and writer
+state under the owner gate, renders fixed scalar fields within the status-page
+octet budget, and retains the normal immutable report buffer for paging. It
+never serializes the borrowed operation/source graph, walks the Store, issues
+an allocation token or changes custody. Oversized scalar rendering produces an
+explicit unavailable/budget report rather than partial fields. An offline query
+reports owner-not-running without opening or replaying the Store. Held charges
+are the pending operation's five-dimensional resource vector, not total live
+heap or proof of complete physical accounting. SCN-1120 exercises the literal
+source route; PRF-1292 retains the pending guard/size-proof obligations.
+
+
+## Trusted development attachment
+
+`FN_NATIVE_DEV_REPL` is a developer-only selector naming an absolute Unix socket
+path. Production selector validation refuses it before owner startup. The
+opted-in owner installs one local evaluator worker with same-UID authentication,
+0600 socket mode, one request at a time, bounded UTF-8 input and captured output,
+and inode/device-checked cleanup. It never removes a pre-existing path.
+Developer forms are explicitly trusted code, separate from all Store, NNTP, BP
+and operator wire grammars. They run through the owner serialization/fence
+boundary; this facility does not promise semantic invariants after arbitrary
+code edits or forceful cancellation of evaluation. `SCN-1121` exercises the
+actual socket evaluator and production selector, with named owner/I/O adapters;
+A separate real ACL2 worker-thread check covers successful/refused/subsequent
+admissions and bounded channel capture; full native owner composition remains
+a separate execution check. There is no new proof or image qualification claim.
+
+
+## Local reply observation budget
+
+When the local control client has no explicit reply wait, ACL2 selects
+`10 + ceiling(serialized-request-octets / 65536)` seconds. This is a local
+observation policy (ten seconds of grace plus one second per 64 KiB), not a
+minimum-throughput guarantee or an acceptance decision. It scales with the
+complete submitted frame without adding an article-size ceiling. An explicit
+consumer wait overrides this default. Socket input/output deadlines and reply
+frame bounds retain their separate meanings. After any submitted octet, expiry
+or an undecodable/missing reply still yields uncertain; only the owner's decoded
+reply reports its durable result. The client does not retry on timeout.
+SCN-1123 covers the actual client exchange/read loop under a virtual delayed
+socket. The 10 MiB end-to-end scenario now requires accepted plus exact readback;
+its matching native execution remains part of S132 closure.

@@ -248,6 +248,25 @@ attempts a process finds on opening belong to a dead process (PKT-351).
 The lock, the resend and the correlation are the client's own bookkeeping
 under this contract; fn decides none of them.
 
+The client durably retains each poll's exact cursor and report before
+interpreting it. A native projection fault or uncertain answer stops the wake
+without acknowledging; restart reuses those saved bytes instead of replacing
+them with a newer poll. A projection refusal can be handled as non-application
+evidence only after the native report decoder affirmatively identifies an
+article or withdrawal. A refused or failed report decoder leaves the delivery
+pending. Inbox handling and marking that delivery handled share the transaction
+which records the next ACK; saved report bytes remain available as evidence.
+The `after-poll` consumer process-death cut tests this custody boundary. This
+client journal does not add an fn article pin or exactly-once external effects.
+The report command reuses an existing operation's immutable artifact without
+opening current signing keys; a different payload under that operation ID is
+refused without a new attempt. Its completion code follows the journal:
+unresolved submissions are uncertain (3), definitive refusals are refused (1),
+and known stored submissions are successful (0). Report completion names that
+requested application operation; wake completion covers its entire outbox. The
+summary retains each operation's own outcome independently. A refused retry cannot turn an
+earlier unanswered attempt into a refusal or a successful command.
+
 ## Two nodes
 
 The exchange also runs across two fn nodes peered over NNTP. Agent A's
@@ -970,3 +989,15 @@ and encoder-to-client fixtures have source evidence; the logical per-item semant
 decoder is not a qualified bounded physical decoder. Actual high reader inputs,
 current CP/carries association, genuine report BODY/representation/extent and
 native completion/publication remain open, with original endpoint scenarios intact.
+
+### Local consumer publication safety gate
+
+The actual `fn-owner-io` observation gate uses the all-record safety predicate
+`fn-psrv-io-safep`, and admits the composite log reservation/order steps.
+PRF-290's existing `fn-psrv-rcon-io-preserves-invariant` and
+`fn-psrv-log-order-preserves-invariant` cover consumer, retention, identity and
+topic candidates as well as articles. Requiring a held article at log order
+incorrectly fenced a consumer bootstrap after its record had been persisted.
+Unknown observations still return `:unsafe-observation` without changing owner
+state. The source predicate regression is separate from the pending matching
+native bootstrap/register/ACK and application restart evidence.

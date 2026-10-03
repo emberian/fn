@@ -2083,26 +2083,30 @@
 ; witness is tests/acl2/accounts-wire-tests.lisp's *awt-wait*).
 (local (must-fail-checked (aut-k10 aut-k10-without-s3 (s1 s2 s4))))
 
-; The witness: the bound connection sends STARTTLS.  382, handshaking, and
-; the role, the subject and the cached name are gone.
+; RFC 4642 section 2.2.1 refuses the bound authenticated connection.
 (assert-event (equal (in-arena-aut-role-reply *aut-arena* (aut-bound) "STARTTLS")
-                     (append (aut-single "382 continue with TLS negotiation")
-                             (list (fn-auth-starttls-effect)))))
-(assert-event (fn-auth-session-handshakingp (in-arena-aut-role-after *aut-arena* (aut-bound) "STARTTLS")))
-(assert-event (null (fn-auth-session-peer (in-arena-aut-role-after *aut-arena* (aut-bound) "STARTTLS"))))
-(assert-event (null (fn-auth-session-subject (in-arena-aut-role-after *aut-arena* (aut-bound) "STARTTLS"))))
-(assert-event (null (fn-auth-session-pending (in-arena-aut-role-after *aut-arena* (aut-bound) "STARTTLS"))))
-; Separating: a source-address peer keeps its role across the same command,
-; so the theorem distinguishes the two origins and does not merely clear.
-(assert-event (fn-auth-session-handshakingp (in-arena-aut-role-after *aut-arena* *aut-src* "STARTTLS")))
-(assert-event (equal (fn-auth-session-peer (in-arena-aut-role-after *aut-arena* *aut-src* "STARTTLS"))
-                     "transit"))
-(assert-event (not (fn-auth-principal-rolep *aut-src*)))
-; And out the other side: the handshake re-entry leaves a TLS reader, which
-; a fresh login over TLS binds again.
+                     (aut-single "502 already authenticated")))
+(assert-event (equal (in-arena-aut-role-after *aut-arena* (aut-bound) "STARTTLS")
+                     (aut-bound)))
+; Reachable positive witness for K10: an unauthenticated source peer starts
+; TLS and retains its independently configured role.  Check every hypothesis
+; and the complete conclusion of the literal keystone together.
+(assert-event
+ (let* ((as *aut-src*)
+        (next (in-arena-aut-role-after *aut-arena* as "STARTTLS")))
+   (and (not (fn-auth-session-handshakingp as))
+        (fn-auth-session-handshakingp next)
+        (not (fn-auth-redeem-waitp next))
+        (not (fn-zc-owedp (fn-auth-session-compress next)))
+        (null (fn-auth-session-subject next))
+        (null (fn-auth-session-pending next))
+        (not (fn-auth-principal-rolep next))
+        (equal (fn-auth-session-peer next)
+               (if (fn-auth-principal-rolep as) nil (fn-auth-session-peer as))))))
+; The established unauthenticated reader may authenticate over TLS.
 (defmacro aut-after-tls ()
   '(fn-post-result-session
-    (in-arena-fn-auth-step *aut-arena* (in-arena-aut-role-after *aut-arena* (aut-bound) "STARTTLS") *aut-node-archive*
+    (in-arena-fn-auth-step *aut-arena* (in-arena-aut-role-after *aut-arena* *aut-r-one* "STARTTLS") *aut-node-archive*
                   *aut-config* *aut-obs* *aut-obs* (list :tls-established))))
 (assert-event (equal (fn-auth-session-tlsp (aut-after-tls)) t))
 (assert-event (null (fn-auth-session-peer (aut-after-tls))))
@@ -2222,16 +2226,20 @@
         (equal (fn-auth-session-subject s) *aut-principal*))))
 (local (must-fail-checked (aut-k10b aut-k10b-without-r2 (r1 r3 r4))))
 
-; R3 dropped (reachable): the TLS handshake is the other hold.  The bound
-; connection's STARTTLS is handshaking, not a redemption hold, owes no
-; layer, and its principal-derived role is gone ("principal-peer" -> nil).
+ ; R3 dropped (corrupted state): a principal-derived peer role with its
+; subject removed. This pairing is not reached by an authenticated served
+; STARTTLS command after S120. The session recognizer alone permits it:
+; STARTTLS clears its principal role, unlike a redemption hold.
+(defmacro aut-principal-without-subject ()
+  '(aut-mk (fn-auth-session-base (aut-bound)) *aut-role-policy* nil nil nil nil))
 (assert-event
- (let ((s (in-arena-aut-role-after *aut-arena* (aut-bound) "STARTTLS")))
-   (and (not (fn-auth-session-handshakingp (aut-bound)))
+ (let ((s (in-arena-aut-role-after *aut-arena* (aut-principal-without-subject) "STARTTLS")))
+   (and (fn-auth-sessionp (aut-principal-without-subject))
+        (not (fn-auth-session-handshakingp (aut-principal-without-subject)))
         (fn-auth-session-handshakingp s)
         (not (fn-auth-redeem-waitp s))
         (not (fn-zc-owedp (fn-auth-session-compress s)))
-        (equal (fn-auth-session-peer (aut-bound)) "principal-peer")
+        (equal (fn-auth-session-peer (aut-principal-without-subject)) "principal-peer")
         (null (fn-auth-session-peer s)))))
 (local (must-fail-checked (aut-k10b aut-k10b-without-r3 (r1 r2 r4))))
 
@@ -3287,3 +3295,52 @@
    (not (member-equal (fn-nntp-string-octets "STARTTLS")
                       (fn-zc-capability-lines lines zs mayp)))
    :rule-classes nil))
+
+; PRF-1266 / PKT-896: STARTTLS is prohibited after successful login.
+; Each literal theorem's antecedent and complete conclusion are witnessed.
+(defmacro aut-tls-auth-conclusion (as args)
+  `(let ((r (fn-auth-starttls ,as ,args)))
+     (and (equal (fn-post-result-session r) ,as)
+          (equal (fn-post-result-effects r) (aut-single "502 already authenticated"))
+          (null (fn-post-result-submission r)))))
+(assert-event (and (fn-auth-sessionp (aut-bound))
+                   (fn-auth-session-subject (aut-bound))
+                   (null nil) (not (fn-auth-session-tlsp (aut-bound)))
+                   (aut-tls-auth-conclusion (aut-bound) nil)))
+(assert-event
+ (and (fn-auth-session-subject (aut-bound))
+      (not (member-equal (fn-nntp-string-octets "STARTTLS")
+                         (fn-auth-capability-lines-for-peer
+                          (fn-auth-session-config (aut-bound))
+                          (fn-auth-session-subject (aut-bound))
+                          (fn-auth-session-tlsp (aut-bound)) t *aut-peer-record* nil)))))
+; H1 removed: retain nil arguments and no TLS; an unauthenticated session
+; produces 382/handshake and changes state, failing the complete conclusion.
+(assert-event (and (null nil) (not (fn-auth-session-tlsp *aut-s-req*))
+                   (not (fn-auth-session-subject *aut-s-req*))
+                   (not (aut-tls-auth-conclusion *aut-s-req* nil))))
+; H2 removed: retain authenticated subject and no TLS; arguments give 501.
+(assert-event (and (fn-auth-session-subject (aut-bound))
+                   (not (fn-auth-session-tlsp (aut-bound)))
+                   (not (null '((120))))
+                   (not (aut-tls-auth-conclusion (aut-bound) '((120))))))
+; H3 removed: retain authenticated subject and nil arguments; active TLS
+; gives its specific 502 line rather than the authenticated line.
+(defmacro aut-bound-tls ()
+  '(fn-auth-make-session (fn-auth-session-base (aut-bound))
+                        (fn-auth-session-config (aut-bound))
+                        (fn-auth-session-pending (aut-bound))
+                        (fn-auth-session-subject (aut-bound)) t nil
+                        (fn-auth-session-compress (aut-bound))
+                        (fn-auth-session-ctx (aut-bound))
+                        (fn-auth-session-failures (aut-bound))))
+(assert-event (and (fn-auth-session-subject (aut-bound-tls)) (null nil)
+                   (fn-auth-session-tlsp (aut-bound-tls))
+                   (not (aut-tls-auth-conclusion (aut-bound-tls) nil))))
+; Capability's sole hypothesis removed: no authenticated subject, and the
+; very same configured peer connection advertises STARTTLS before login.
+(assert-event (and (null (fn-auth-session-subject *aut-src*))
+                   (member-equal (fn-nntp-string-octets "STARTTLS")
+                                 (fn-auth-capability-lines-for-peer
+                                  (fn-auth-session-config *aut-src*) nil nil t
+                                  *aut-peer-record* nil))))

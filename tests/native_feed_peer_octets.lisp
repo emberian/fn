@@ -7,6 +7,12 @@
 (defun f-get-global (name state) (declare (ignore name state)) nil)
 (load "tests/native_io_prelude.lisp")
 (load "host/native/io.lisp")
+;; Load the actual generated actor declaration macro; this representation
+;; fixture never starts an actor and does not replace its lifecycle semantics.
+(with-open-file (stream "host/native/owner.lisp")
+  (loop for form = (read stream nil :eof) until (eq form :eof)
+        when (and (consp form) (eq (car form) 'defmacro) (eq (cadr form) 'def-actor))
+          do (eval form)))
 (load "host/native/feed-service.lisp")
 
 (defun fnn-owner-transit-serialized (service cid thunk)

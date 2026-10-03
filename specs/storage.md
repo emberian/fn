@@ -2102,3 +2102,52 @@ include closures. New caller PROGRAM translation/guards, installed costs
 and original input factory, universal parser/consumer inverse, producer
 authority, lifetime/funding and changed native image qualification remain
 open. PRF-1148 stays planned with no completion events.
+
+### Private history relocation continuation (SCN-1101)
+
+`fn-hpr-begin` captures the requested region, capacity and placement without
+mutating the private page store. `fn-hpr-step` checks one resident page, copies
+or zeros one 16 KiB page, writes the thirteen header words, or marks one page.
+A cold table/page verdict preserves both concrete and cursor for verified cache
+completion and retry. Successful yields decrease `fn-hpr-rank`.
+
+`fn-hpr-grow-image` is an explicit prepaid operation outside this bounded tick
+claim: the existing flat arrays still resize in proportion to the image.
+`fn-hpr-placement` returns `(starts np)` only in `:done`. The completion potential
+preserves every concrete array and agrees with existing `fn-hp-x-relocate` on
+its successful domain, including dirty flags and the zeroed old region.
+
+The cursor and scratch store have exclusive publisher custody until done or
+abandonment. In particular, zeroing makes the old placement unreadable before
+the new header is installed; this API does not permit concurrent readers on
+that scratch store. It is intended for History's fresh private image builder.
+It does not bound whole-event encoding, flat backing growth, or commit work,
+and supplies no physical persistence or root-release receipt.
+
+The finite composition `fn-hpr-run` uses fuel strictly greater than
+`fn-hpr-rank` and cannot return a fuel refusal at that allowance. A successful
+run from the original header-ready cursor has the exact concrete and returned
+placement of successful `fn-hp-x-relocate` (`fn-hpr-run-is-old-relocation`).
+`fn-hpr-run-done-is-target` separately identifies the completed concrete without
+assuming the old operation's verdict. Native code schedules the underlying
+steps and prepaid growth independently; the finite runner is a composition
+reference, not a bounded host scheduling call. Resident construction must still
+establish that the run actually returns `:done`; these conditional refinement
+theorems do not manufacture readiness or mask a need/refusal.
+### Incremental checkpoint image construction
+
+The native checkpoint publishers build the existing P3 history image one
+event at a time on a private scratch instance. A drained suffix accepts an
+append, flushes it into pages and clears the consumed slot. The suffix array
+retains at most sixteen pointer slots, regardless of history length; this is
+not a limit on stored events. A pending suffix refuses before another append.
+The completed image count must agree with the captured source count before
+the binding is formed. The immutable snapshot stays owned through staged
+page readback and is returned on every exit (S045).
+
+This is a local implementation guarantee, not an RFC requirement or a claim
+that checkpoint/reclaim is bounded in total resident memory or work per turn.
+Row encoding, page relocation, flat page-array growth, commit plans and fresh
+Store/catalog/node representations still impose proportional work/allocation.
+The reclaim reservation remains the actual full-copy estimate until those
+allocations are removed.

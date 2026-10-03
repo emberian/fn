@@ -21,6 +21,45 @@ reconciliation onto dev. Runtime qualification and deployment remain separate
 from source integration. Integrate directly onto dev during
 stabilization. Build/load and selected dynamic checks answer concrete changed-consumer questions; full qualification is for a scoped operational claim or convergence. Reuse matching artifacts while development continues.
 
+
+## Usage-limit stop — 2026-10-03 10:18 America/New_York
+
+Source intake is preserved on public dev; Integration’s writer is
+`build/lanes/codex-sol-integrate`. All continuing ownership remains in
+[NSLICESQUEUE](../NSLICESQUEUE.md) and each owner’s final LANEDUMP entry.
+This stop is requested by ember’s usage limit, not a completion claim.
+
+The initialized source process at
+`/tank/fn/scratch/codex-source-native-consumer/app-native` passed four actual
+application scenarios (delivery/projection failure/restart, key-free immutable
+retry, two-node cuts, and revoked resend resolved by Store observation). Its
+execution coordinate is the ad8 normal world plus gate336 and exact cde raw
+repairs with current application source; it is not the current whole kernel.
+Root’s actual live-owner developer REPL admission/refusal/stop/fence checks
+passed on that coordinate. The current Store/P3/reader/decoded/Web/BP union
+still needs one coherent execution world: early arena/P3 attachment order and
+the current eleven-field pool must be retained; an old ten-field pool cannot
+be silently substituted. Root owns that bootstrap frontier. No image run is
+required before source execution.
+
+The finite closeout repaired Web’s actual POST action-classifier mismatch: the
+same scoped socket case now passes account/POST/read/remove (16.702s, one test,
+zero skips), with the original red retained. Its current whole-world execution
+and concurrent/TLS coverage remain open. Runtime enqueue can signal
+after typed assignment but before read/dependency attachment (capture before
+wake is owed); ARTICLE normal/native renderer arities still differ in the
+old-cache prototype; BP multi-peer SCN1110 and current P3 live reclaim remain
+unexecuted. Complete tariffs, original-response refinements, guards, proofs
+and all remaining domain work continue from their owner records.
+
+Generated ledger regeneration exposed unresolved curated-event mappings,
+missing/stale event names and suspect corollaries; it did not pass the ledger
+check. Changed History/cursor/include closures invalidate earlier certificate
+claims where the generated registry says so. Current reader capability rows
+explicitly mark the new ARTICLE/available caller bridge pending; historical
+qualified images/deployments do not establish that bridge. Source, normal
+certificates, actual source execution and packaging remain separate.
+
 The earlier page below is retained as historical scope, not a current roster,
 release instruction, source coordinate or deployment observation.
 

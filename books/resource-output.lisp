@@ -30,7 +30,12 @@
 
 (defun fn-rlo-install (dynamic store-need cold policy slots fn-resource-ledger)
   (declare (xargs :stobjs fn-resource-ledger :guard t :verify-guards nil))
-  (if (not (fn-rl-wfp fn-resource-ledger))
+  ; A zero-count ledger with padded, previously populated slot arrays is not
+  ; a fresh bank. Reject it before resizing can preserve an active hidden row.
+  ; Keep the established already-installed refusal for positive counts.
+  (if (not (and (fn-rl-wfp fn-resource-ledger)
+                (or (not (equal (fn-rl-count fn-resource-ledger) 0))
+                    (fn-rl-freshp fn-resource-ledger))))
       (mv :invalid-output-install-state fn-resource-ledger)
     (let ((grant (fn-orv-startup-grant dynamic store-need cold policy slots)))
     (if (not (eq (car grant) :hold)) (mv (cadr grant) fn-resource-ledger)
@@ -55,6 +60,18 @@
   (and (fn-rl-wfp fn-resource-ledger) (equal (fn-rl-mode fn-resource-ledger) 2)
        (posp (fn-rl-file-limit fn-resource-ledger))
        (<= 3 (fn-rl-count fn-resource-ledger))))
+
+; Read the installed private ledger rather than mutable service configuration.
+; Zero means this instance cannot authorize a response lease.
+(defun fn-rlo-capacity (fn-resource-ledger)
+  (declare (xargs :stobjs fn-resource-ledger :guard t))
+  (if (fn-rlo-ready-p fn-resource-ledger)
+      (fn-rl-file-limit fn-resource-ledger)
+    0))
+
+(defthm fn-rlo-capacity-unfolds
+  (equal (fn-rlo-capacity ledger)
+         (if (fn-rlo-ready-p ledger) (fn-rl-file-limit ledger) 0)))
 
 (defun fn-rlo-token (cid connection-gen slot draw-gen)
   (declare (xargs :guard t))
@@ -123,9 +140,13 @@
     (mv-let (word fn-resource-ledger)
       (fn-rl-settle slot (fn-rl-gensi slot fn-resource-ledger) fn-resource-ledger)
       (if (not (eq word :settled)) (mv word fn-resource-ledger)
-        (let* ((fn-resource-ledger (update-fn-rl-idsi slot (fn-rl-next fn-resource-ledger) fn-resource-ledger))
-               (fn-resource-ledger (update-fn-rl-next slot fn-resource-ledger)))
-          (mv :settled fn-resource-ledger))))))
+        ; An exhausted generation cannot be issued again. Retire this idle
+        ; row instead of blocking every reusable row behind it at the head.
+        (if (not (< (fn-rl-gensi slot fn-resource-ledger) *fn-rl-word-max*))
+            (mv :settled fn-resource-ledger)
+          (let* ((fn-resource-ledger (update-fn-rl-idsi slot (fn-rl-next fn-resource-ledger) fn-resource-ledger))
+                 (fn-resource-ledger (update-fn-rl-next slot fn-resource-ledger)))
+            (mv :settled fn-resource-ledger)))))))
 
 (defun fn-rlo-output (token operation-gen receipt fn-resource-ledger)
   (declare (xargs :stobjs fn-resource-ledger :guard t :verify-guards nil))
@@ -446,10 +467,23 @@
 
         fn-rl-draw-keeps-representation fn-rl-idsi-type fn-rl-idsi-nat)))))
 
+(local (defthm fn-rlo-gens-list-read-nat
+ (implies (and (fn-rl-gensp xs) (natp i) (< i (len xs))) (natp (nth i xs)))
+ :hints (("Goal" :induct (nth i xs) :in-theory (enable fn-rl-gensp)))))
+
+(local (defthm fn-rlo-gens-reader-nat
+ (implies (and (fn-resource-ledgerp ledger) (natp i) (< i (fn-rl-gens-length ledger)))
+          (natp (fn-rl-gensi i ledger)))
+ :hints (("Goal" :in-theory (e/d (fn-resource-ledgerp fn-rl-gensi fn-rl-gens-length)
+                                (fn-rl-gensp nth))))))
+
+
 (verify-guards fn-rlo-settle-ready
  :hints (("Goal"
  :use ((:instance fn-rl-settle-keeps-representation
-         (ledger fn-resource-ledger) (gen (fn-rl-gensi slot fn-resource-ledger))))
+         (ledger fn-resource-ledger) (gen (fn-rl-gensi slot fn-resource-ledger)))
+       (:instance fn-rlo-gens-reader-nat (i slot)
+         (ledger (mv-nth 1 (fn-rl-settle slot (fn-rl-gensi slot fn-resource-ledger) fn-resource-ledger)))))
  :in-theory (e/d (fn-rl-wfp unsigned-byte-p)
        (fn-resource-ledgerp fn-rl-settle update-fn-rl-idsi fn-rl-next fn-rl-count fn-rl-settle-keeps-representation)))))
 
@@ -504,6 +538,71 @@
  :hints (("Goal" :in-theory (e/d (fn-rlo-physical fn-rlo-livep fn-rlo-ready-p fn-rlo-tokenp)
   (fn-resource-ledgerp fn-rl-wfp fn-rlo-settle-ready update-fn-rl-trailersi
    fn-rl-ids-length fn-rl-elens-length fn-rl-trailers-length fn-rl-count fn-rl-phasesi fn-rl-gensi fn-rl-cidsi fn-rl-filesi fn-rl-eoffsi)))))
+; A successful issuer result is usable by the actual receipt consumers.
+; This does not establish free-chain completeness or physical receipt truth.
+(local (include-book "std/lists/update-nth" :dir :system))
+(local (defthm fn-rlo-drawn-header-and-generation
+ (implies (and (natp slot)
+               (eq (mv-nth 0 (fn-rl-draw slot demand ledger)) :drawn))
+  (let ((after (mv-nth 2 (fn-rl-draw slot demand ledger))))
+   (and (equal (fn-rl-count after) (fn-rl-count ledger))
+        (equal (fn-rl-mode after) (fn-rl-mode ledger))
+        (equal (fn-rl-file-limit after) (fn-rl-file-limit ledger))
+        (equal (fn-rl-phasesi slot after) 1)
+        (equal (fn-rl-gensi slot after)
+               (mv-nth 1 (fn-rl-draw slot demand ledger))))))
+ :hints (("Goal" :in-theory
+  (e/d (fn-rl-draw fn-rl-charge fn-rl-count fn-rl-mode fn-rl-file-limit
+        fn-rl-phasesi fn-rl-gensi)
+       (nth update-nth fn-rl-charge-from
+        fn-resource-ledgerp fn-rl-wfp fn-rl-draw-keeps-okp))))))
+
+(local (defthm fn-rlo-gens-length-bound
+ (implies (fn-rl-wfp ledger) (<= (fn-rl-count ledger) (fn-rl-gens-length ledger)))
+ :rule-classes :linear
+ :hints (("Goal" :in-theory (enable fn-rl-wfp)))))
+
+(local (defthm fn-rlo-drawn-generation-is-natural
+ (implies (and (natp (fn-rl-gensi slot ledger))
+               (eq (mv-nth 0 (fn-rl-draw slot demand ledger)) :drawn))
+          (natp (mv-nth 1 (fn-rl-draw slot demand ledger))))
+ :hints (("Goal" :in-theory (e/d (fn-rl-draw fn-rl-charge)
+   (fn-rl-gensi fn-rl-charge-from nth update-nth))))))
+
+(local (defthm fn-rlo-drawn-input-is-shaped
+ (implies (eq (mv-nth 0 (fn-rlo-issue cid connection-gen operation-gen dependency ledger)) :drawn)
+          (fn-rl-wfp ledger))
+ :hints (("Goal" :in-theory (e/d (fn-rlo-issue fn-rlo-ready-p)
+   (fn-rl-wfp fn-rl-draw nth update-nth))))))
+
+(local (defthm fn-rlo-draw-keeps-header-nth
+ (implies (and (natp field) (or (equal field 2) (<= 14 field)))
+  (equal (nth field (mv-nth 2 (fn-rl-draw slot demand ledger))) (nth field ledger)))
+ :hints (("Goal" :in-theory
+  (e/d (fn-rl-draw fn-rl-charge) (nth update-nth fn-rl-charge-from))))))
+
+
+(defthm fn-rlo-issued-token-is-live
+ (implies (and (fn-resource-ledgerp ledger)
+               (eq (mv-nth 0 (fn-rlo-issue cid connection-gen operation-gen dependency ledger)) :drawn))
+  (fn-rlo-livep (mv-nth 1 (fn-rlo-issue cid connection-gen operation-gen dependency ledger))
+               operation-gen
+               (mv-nth 2 (fn-rlo-issue cid connection-gen operation-gen dependency ledger))))
+ :hints (("Goal"
+  :use ((:instance fn-rlo-drawn-input-is-shaped)
+        (:instance fn-rlo-issue-keeps-representation)
+        (:instance fn-rlo-next-nat)
+        (:instance fn-rlo-gens-length-bound)
+        (:instance fn-rlo-drawn-generation-is-natural
+          (slot (fn-rl-next ledger))
+          (demand (fn-rlo-resident-vector (fn-rl-file-limit ledger))))
+        (:instance fn-rlo-gens-reader-nat (i (fn-rl-next ledger)))
+        (:instance fn-rlo-drawn-header-and-generation
+          (slot (fn-rl-next ledger))
+          (demand (fn-rlo-resident-vector (fn-rl-file-limit ledger)))))
+  :in-theory (e/d (fn-rlo-issue fn-rlo-livep fn-rlo-token fn-rlo-tokenp fn-rlo-ready-p)
+                 (fn-resource-ledgerp fn-rl-wfp fn-rl-draw fn-rl-charge-from nth update-nth)))))
+
 )
 
 ; The custody metadata columns are outside the bank projection. The actual
@@ -684,4 +783,72 @@
  :in-theory (disable fn-resource-ledgerp fn-rl-wfp fn-rv-okp fn-rl-bank
    fn-rlo-physical fn-rlo-livep fn-rl-settle fn-rl-gensi fn-rl-elensi
    fn-rl-settle-keeps-okp))))
+)
+
+; Receipt replay cannot push the same released row onto the free chain twice.
+; This is a local custody property, not free-chain completeness or receipt authenticity.
+(encapsulate ()
+(local (include-book "std/lists/update-nth" :dir :system))
+(local (defthm fn-rlo-settled-row-is-idle
+ (implies (and (natp slot)
+               (eq (mv-nth 0 (fn-rlo-settle-ready slot ledger)) :settled))
+          (equal (fn-rl-phasesi slot (mv-nth 1 (fn-rlo-settle-ready slot ledger))) 0))
+ :hints (("Goal" :in-theory (e/d (fn-rlo-settle-ready fn-rl-settle fn-rl-phasesi)
+   (fn-rl-release-from nth update-nth))))))
+(defthm fn-rlo-output-settled-token-is-not-live
+ (implies (eq (mv-nth 0 (fn-rlo-output token op receipt ledger)) :settled)
+  (not (fn-rlo-livep token op (mv-nth 1 (fn-rlo-output token op receipt ledger)))))
+ :hints (("Goal" :use ((:instance fn-rlo-settled-row-is-idle
+    (slot (caddr token)) (ledger (update-fn-rl-elensi (caddr token) 1 ledger))))
+   :in-theory (e/d (fn-rlo-output fn-rlo-livep fn-rlo-tokenp)
+      (fn-rlo-ready-p fn-rlo-settle-ready fn-rl-phasesi update-fn-rl-elensi)))))
+(defthm fn-rlo-physical-settled-token-is-not-live
+ (implies (eq (mv-nth 0 (fn-rlo-physical token op receipt ledger)) :settled)
+  (not (fn-rlo-livep token op (mv-nth 1 (fn-rlo-physical token op receipt ledger)))))
+ :hints (("Goal" :use ((:instance fn-rlo-settled-row-is-idle
+    (slot (caddr token)) (ledger (update-fn-rl-trailersi (caddr token) 1 ledger))))
+   :in-theory (e/d (fn-rlo-physical fn-rlo-livep fn-rlo-tokenp)
+      (fn-rlo-ready-p fn-rlo-settle-ready fn-rl-phasesi update-fn-rl-trailersi)))))
+(defthm fn-rlo-output-settles-once
+ (implies (eq (mv-nth 0 (fn-rlo-output token op receipt ledger)) :settled)
+  (let ((after (mv-nth 1 (fn-rlo-output token op receipt ledger))))
+   (and (equal (fn-rlo-output token op again after) (list :stale after))
+        (equal (fn-rlo-physical token op physical after) (list :stale after)))))
+ :hints (("Goal" :use fn-rlo-output-settled-token-is-not-live
+  :in-theory (e/d (fn-rlo-output fn-rlo-physical)
+   (fn-rlo-livep fn-rlo-settle-ready update-fn-rl-elensi update-fn-rl-trailersi)))))
+(defthm fn-rlo-physical-settles-once
+ (implies (eq (mv-nth 0 (fn-rlo-physical token op receipt ledger)) :settled)
+  (let ((after (mv-nth 1 (fn-rlo-physical token op receipt ledger))))
+   (and (equal (fn-rlo-output token op output after) (list :stale after))
+        (equal (fn-rlo-physical token op again after) (list :stale after)))))
+ :hints (("Goal" :use fn-rlo-physical-settled-token-is-not-live
+  :in-theory (e/d (fn-rlo-output fn-rlo-physical)
+   (fn-rlo-livep fn-rlo-settle-ready update-fn-rl-elensi update-fn-rl-trailersi)))))
+
+)
+
+; Exhaustion retires a row without blocking the remaining free chain.
+(encapsulate ()
+(local (include-book "std/lists/update-nth" :dir :system))
+(local (defthm fn-rlo-release-preserves-generation-and-head-fields
+ (implies (member-equal field '(4 20))
+  (equal (nth field (fn-rl-release-from i slot mask ledger)) (nth field ledger)))
+ :hints (("Goal" :induct (fn-rl-release-from i slot mask ledger)
+  :in-theory (e/d (fn-rl-release-from fn-rl-update-ci) (nth update-nth))))))
+(local (defthm fn-rlo-base-settlement-frames-generation-and-head
+ (let ((after (mv-nth 1 (fn-rl-settle slot gen ledger))))
+  (and (equal (fn-rl-gensi slot after) (fn-rl-gensi slot ledger))
+       (equal (fn-rl-next after) (fn-rl-next ledger))))
+ :hints (("Goal" :in-theory (e/d (fn-rl-settle fn-rl-gensi fn-rl-next)
+   (fn-rl-release-from nth update-nth))))))
+(defthm fn-rlo-exhausted-settlement-keeps-free-head
+ (implies (<= *fn-rl-word-max* (fn-rl-gensi slot ledger))
+  (let ((after (mv-nth 1 (fn-rlo-settle-ready slot ledger))))
+   (and (equal (fn-rl-next after) (fn-rl-next ledger))
+        (equal (fn-rl-gensi slot after) (fn-rl-gensi slot ledger)))))
+ :hints (("Goal" :use ((:instance fn-rlo-base-settlement-frames-generation-and-head
+    (gen (fn-rl-gensi slot ledger))))
+  :in-theory (e/d (fn-rlo-settle-ready)
+   (fn-rl-settle fn-rl-gensi fn-rl-next update-fn-rl-next update-fn-rl-idsi)))))
 )

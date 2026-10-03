@@ -490,3 +490,27 @@
 (assert-event (null (fn-auth-session-peer *mdt-carol-session*)))
 (assert-event (not (fn-nntp-session-projected (fn-auth-reader-session *mdt-carol-session*))))
 (assert-event (member-equal "fn.queue" (mdt-view-groups *mdt-carol-session*)))
+
+; D48: a source-identified transit peer has the anonymous reader rule,
+; including queue privacy. No authentication is required to reproduce S121.
+(defconst *mdt-source-record*
+  (fn-cfg-peer-make "transit" "transit.example.invalid" '(:nntp "127.0.0.1" 119)
+                    '("fn.*" 32768 16) '("fn.*" t 256 1000)
+                    '(:source-address "127.0.0.1")))
+(defconst *mdt-source-cfg*
+  (fn-config-replay 0 510
+    (list (fn-cfg-record-make 0 0 1
+      (append *fn-cfg-default-change* (list (fn-cfg-set-peer-delta *mdt-source-record*)))
+      *fn-cfg-default-stamp*))))
+(defconst *mdt-source-node* (fn-node-initial-state '("fn.test" "fn.mod" "fn.queue") 1048576))
+(defconst *mdt-as-source*
+  (fn-auth-open-session *mdt-state* "transit" *mdt-source-node* *mdt-source-cfg* *mdt-acfg* nil))
+(assert-event (fn-auth-sessionp *mdt-as-source*))
+(assert-event (equal (fn-auth-session-peer *mdt-as-source*) "transit"))
+(assert-event
+ (and (fn-mod-queue-hiddenp (fn-gac-text-octets "fn.queue")
+                            (fn-inj-config-closed *mdt-cfg*) (fn-auth-access-login *mdt-as-source*))
+      (fn-nntp-session-projected (fn-auth-reader-session *mdt-as-source*))
+      (not (member-equal "fn.queue" (mdt-view-groups *mdt-as-source*)))
+      (not (fn-auth-arts-name-groupp "fn.queue" (mdt-view-arts *mdt-as-source*)))))
+(assert-event (member-equal "fn.test" (mdt-view-groups *mdt-as-source*)))

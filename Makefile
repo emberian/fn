@@ -336,6 +336,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/wildmat-parser-invariants \
 	books/wildmat-matcher-invariants \
 	books/wildmat-work \
+	books/wildmat-cursor \
+	tests/acl2/wildmat-cursor-tests \
+	books/wildmat-live \
+	tests/acl2/wildmat-live-tests \
 	tests/acl2/wildmat-parser-invariants-tests \
 	tests/acl2/wildmat-tests \
 	tests/acl2/wildmat-teeth-tests \
@@ -437,6 +441,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/native-config-paths \
 	tests/acl2/native-config-paths-tests \
 	books/native-retire \
+	books/native-init-resume \
+	tests/acl2/native-init-resume-tests \
 	tests/acl2/native-retire-observation-tests \
 	books/owner-retire \
 	tests/acl2/native-retire-tests \
@@ -614,6 +620,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/output-reservation-tests \
 	books/resource-output \
 	tests/acl2/resource-output-tests \
+	books/resource-output-chain \
+	tests/acl2/resource-output-chain-tests \
 	books/heap-breakdown \
 	tests/acl2/heap-breakdown-tests \
 	books/memory-credits \
@@ -812,6 +820,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/arena-forget-columns \
 	books/owner-reclaim-seal \
 	books/catalog-may-seal \
+	books/catalog-root-incarnation \
+	tests/acl2/catalog-root-incarnation-tests \
 	tests/acl2/owner-reclaim-seal-tests \
 	books/handle-holds \
 	books/owner-reclaim-instant \
@@ -971,6 +981,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/page-read-ledger \
 	books/page-discovery-ledger \
 	books/cold-read-layout \
+	books/decoded-worker-backing \
+	tests/acl2/decoded-worker-backing-tests \
 	books/cold-guard-bootstrap \
 	tests/acl2/cold-guard-bootstrap-tests \
 	tests/acl2/page-discovery-ledger-tests \
@@ -1511,6 +1523,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/octet-text-tests \
 	tests/acl2/hostile-reader-archive \
 	tests/acl2/octets-bulk-tests \
+	tests/acl2/string-line-fill-tests \
+	tests/acl2/served-plan-line-buffer-tests \
 	tests/acl2/payload-arena-tests \
 	tests/acl2/payload-arena-paged-tests \
 	tests/acl2/payload-arena-extent-tests \
@@ -1529,6 +1543,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/catalog-entries-tests \
 	tests/acl2/catalog-refresh-tests \
 	tests/acl2/served-catalog-tests \
+	tests/acl2/served-catalog-raw-availability-tests tests/acl2/served-catalog-load-identity-tests \
 	tests/acl2/served-incremental-tests \
 	tests/acl2/over-window-tests \
 	tests/acl2/served-catalog-view-tests \
@@ -1917,11 +1932,29 @@ ACL2_BOOKS ?= books/defrecord \
 	books/newnews-metadata-cursor \
 	tests/acl2/newnews-metadata-cursor-tests \
 	books/newnews-candidate-selector \
+	books/newnews-matching-selector \
+	tests/acl2/newnews-matching-selector-tests \
 	tests/acl2/newnews-candidate-selector-tests \
+	books/catalog-available-readers \
+	books/group-summary-cursor \
+	books/list-metadata-cursor \
+	tests/acl2/group-summary-cursor-tests \
+	books/served-availability \
+	books/served-available-commands \
+	books/served-available-read \
+	tests/acl2/catalog-availability-tests \
+	tests/acl2/catalog-available-readers-tests \
+	tests/acl2/served-available-commands-tests \
+	tests/acl2/served-available-read-tests \
+	books/def-cursor-batch \
 	books/newnews-stream-cursor \
 	tests/acl2/newnews-stream-cursor-tests \
 	tests/acl2/served-plan-newnews-tests \
 	books/served-plan-cursor \
+	books/output-command-admission \
+	tests/acl2/output-command-admission-tests \
+	books/string-line-fill \
+	books/served-plan-line-buffer \
 	tests/acl2/served-plan-cursor-tests \
 	books/owner-scheduler \
 	tests/acl2/owner-scheduler-tests \
@@ -1943,6 +1976,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/clock-unit \
 	books/owner-time-model \
 	books/owner-time-journal \
+	books/owner-time-journal-stream \
+	tests/acl2/owner-time-journal-stream-tests \
 	books/owner-time-admission \
 	tests/acl2/owner-time-model-tests \
 	tests/acl2/owner-time-space-tests \
@@ -2192,6 +2227,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/history-pages-grow-cap \
 	books/history-pages-grow-append \
 	books/history-pages-relocate \
+	books/history-pages-relocate-step \
+	books/history-pages-relocate-run \
+	tests/acl2/history-pages-relocate-step-tests \
 	tests/acl2/history-pages-relocate-tests \
 	books/history-pages-append-grown \
 	books/history-pages-grow-then-append \
@@ -2212,6 +2250,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/history-image-binding \
 	books/history-image-fold \
 	books/history-image-snapshot \
+	books/history-image-build-rows \
+	books/history-image-builder \
+	tests/acl2/history-image-build-rows-tests \
+	tests/acl2/history-image-builder-tests \
 	tests/acl2/history-image-binding-tests \
 	tests/acl2/history-image-campaign-tests \
 	books/image-world \

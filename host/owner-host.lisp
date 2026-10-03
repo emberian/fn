@@ -28,6 +28,7 @@
 (include-book "../books/owner-report-capture")
 (include-book "../books/index-writer-ticket")
 (include-book "../books/catalog-may-seal")
+(include-book "../books/catalog-root-incarnation")
 (include-book "payload-view-host")
 ; books/owner-fault includes books/owner and adds the host-fault transition
 ; `fn-own-fault'.  The host needs it: `fn-owner-fault' below is the only way
@@ -266,6 +267,9 @@
 ;; Lane credits (B5, PRF-380): the memory credits the served read, the
 ;; commit's steps and the close move (fn-mca-read-span over fn-oas-read-span).
 (include-book "../books/owner-credits")
+; Selective available source reader: no legacy raw theorem is transferred.
+(include-book "../books/served-available-read")
+(include-book "../books/article-stream-owner")
 ; lane health-truth-journal (PKT-872, PRF-360): the journal writer never keeps a torn line.
 (include-book "../books/owner-time-journal-writer")
 ; lane time-bars (PRF-384): the committer's ledger of the request in flight
@@ -277,6 +281,7 @@
 ; dependency deadline answered 403, the session unchanged.
 (include-book "../books/owner-cold-line")
 (include-book "../books/owner-resource-line")
+(include-book "../books/output-command-admission")
 ; lane composed-owner-5 (PRF-941, row A6): the arena readers' generation
 ; pins (host/native/io.lisp fnn-arena-pins-step).
 (include-book "../books/arena-reader-pins")
@@ -344,6 +349,60 @@
 ;; owner's invariant it equals fn-olau-authorize over the carried history and
 ;; the names on disk).  Called from host/native/admin.lisp
 ;; fnn-admin-authorize-owner.  Neither writes any global.
+; Private allocation identity. The actual native catalog installer reserves
+; before publishing a replacement pointer. The counter is never reset by open,
+; reclaim or failed publication; the owner carrier migration must move both
+; globals together. STATE lifetime bounds the identity namespace.
+(defun fn-owner-catalog-root-reserve (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((next (if (boundp-global 'fn-owner-catalog-root-counter state)
+                  (f-get-global 'fn-owner-catalog-root-counter state) 0)))
+    (mv-let (token next1) (fn-cri-reserve next)
+      (if (not token)
+          (mv :corrupt-catalog-root-counter nil state)
+        (let* ((state (f-put-global 'fn-owner-catalog-root-counter next1 state))
+               (state (f-put-global 'fn-owner-catalog-root-incarnation token state)))
+          (mv nil token state))))))
+
+(defun fn-owner-catalog-root-current (state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (boundp-global 'fn-owner-catalog-root-incarnation state)
+      (let ((token (f-get-global 'fn-owner-catalog-root-incarnation state)))
+        (if (fn-cri-tokenp token)
+            (mv nil token state)
+          (mv :corrupt-catalog-root-incarnation nil state)))
+    ; The initially installed catalog has no exposed capture key yet.
+    (fn-owner-catalog-root-reserve state)))
+
+; Capture at the actual reader/plan-construction section, never lazily when
+; rendering resumes. Every payload below is a shared semantic value, not a
+; rebuilt archive/index. Native code retains this opaque value alongside the
+; actual arena/catalog custody; this alone is not a physical root pin.
+; Use the SAME effective owner as fn-orr-read-span: while a batch is in
+; flight its held durable reader view replaces the working view. The
+; connection's pre-command pin and that effective live view are distinct;
+; a command which repins must also retain its actual resulting plan/pin.
+(defun fn-owner-catalog-capture-context (id state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (not (boundp-global 'fn-owner state))
+      (mv :owner-not-installed nil state)
+    (let* ((owner (fn-ocfg-owner
+                   (fn-ocfg-at-reader-view (fn-owner-ocfg state)
+                                          (fn-owner-reader-views state))))
+           (conn (fn-own-find-conn id (fn-own-conns owner))))
+      (if (not conn)
+          (mv :unknown-connection nil state)
+        (mv-let (erp root state) (fn-owner-catalog-root-current state)
+          (if erp (mv erp nil state)
+            (let* ((sc (fn-own-tls-served-conn owner conn))
+                   (config (fn-served-conn-config sc)))
+              (mv nil
+                  (list root (fn-own-view owner)
+                        (fn-served-conn-archive sc)
+                        (fn-served-conn-pinned-index sc) config
+                        (fn-auth-access-read (fn-served-conn-session sc) config))
+                  state))))))))
+
 (defun fn-owner-cfg-next-name (state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-olau-next-name (fn-owner-ocfg state))))
@@ -1340,6 +1399,19 @@
   (and (boundp-global 'fn-owner-connection-held state)
        (f-get-global 'fn-owner-connection-held state)))
 
+; PRF-1268: the handshake model carries the exact still-owned admissions.
+; The charge is rebased only after durable publication or settled release.
+(defun fn-owner-connection-held-refresh (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((held (fn-owner-connection-held state))
+         (handshakes (if (boundp-global 'fn-owner-handshakes state)
+                         (f-get-global 'fn-owner-handshakes state)
+                       (fn-hsb-initial)))
+         (current (fn-cbud-live-held (fn-cfg-value (fn-owner-config state))
+                                     (len (fn-hsb-flight handshakes)) held))
+         (state (f-put-global 'fn-owner-connection-held current state)))
+    state))
+
 (defun fn-owner-reconfigure-deltas (id deltas fn-arena state)
   (declare (xargs :stobjs (state fn-arena) :mode :program))
   (let* ((oc (fn-owner-ocfg state))
@@ -1353,10 +1425,9 @@
     ;; which every live caller's recognizer accepts.
     (if memory
         (value (fn-ores-config-refused memory))
-      (let ((state (f-put-global 'fn-owner-connection-held
-                                 (fn-cbud-deltas-held v gen stamp deltas held)
-                                 state)))
-        (fn-owner-reconfigure-deltas-admitted id deltas fn-arena state)))))
+      ;; A candidate is not a live generation.  Admission/staging can still
+      ;; refuse, and no connection may allocate under the candidate yet.
+      (fn-owner-reconfigure-deltas-admitted id deltas fn-arena state))))
 
 ; PKT-643: the restricted views prepared for read-restricted sessions
 ; (books/group-access-cache.lisp), nil before the first read.
@@ -1538,7 +1609,10 @@
     (mv-let (verdict next)
       (fn-oclc-publish (fn-owner-ocfg state) generation
                        (fn-owner-served-post-bound state))
-      (let ((state (fn-owner-install-ocfg next state)))
+      (let* ((state (fn-owner-install-ocfg next state))
+             (state (if (equal verdict :durable)
+                        (fn-owner-connection-held-refresh state)
+                      state)))
         (value verdict)))))
 
 
@@ -1589,26 +1663,17 @@
 ;; On a store the member's reservation and its place in the log are
 ;; the two composite steps of books/owner-log-route.lisp (fn-olr-ocfg-reserve,
 ;; fn-olr-ocfg-order: the file route's success sequences, by definition).
-;; The observations whose step keeps the configured owner's carried relation
-;; (books/owner-log-ocl.lisp): the reservation, the order of a staged article
-;; (fn-lgoc-log-order-preserves-invariant needs fn-lgoc-article-stagedp), and
-;; every file step fn-lgoc-io-safep names (fn-lgoc-rcon-io-preserves-
-;; invariant).  The entry DECIDES it (stage 5, the io-safep gap: the
-;; preservation theorem is false for an unsafe observation, and a guard
-;; conjunct over the host's arguments is one no carried relation can
-;; establish, so D40 would refuse the entry): an unsafe observation is
-;; answered :unsafe-observation and the owner is not stepped.  O(1) in the
-;; store: a phase test and fn-held-p of the one staged candidate.  The native
-;; host reports only :recovery-barrier here (host/native/owner.lisp
-;; fnn-owner-observe), a reservation step, which is safe.
-(verify-guards fn-lgoc-io-safep)
-(verify-guards fn-lgoc-article-stagedp)
+;; The served preservation boundary includes consumer, retention, identity
+;; and topic candidates, not only held articles.  The actual entry consumes
+;; fn-psrv-log-order-preserves-invariant and
+;; fn-psrv-rcon-io-preserves-invariant (owner-prepare-served-ocl).  An unknown
+;; observation remains :unsafe-observation without stepping the owner.
 (defun fn-owner-io-safep (st operation result)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t) (ignore st result))
   (case operation
     (:log-reserve t)
-    (:log-order (fn-lgoc-article-stagedp st))
-    (t (fn-lgoc-io-safep st operation result))))
+    (:log-order t)
+    (t (fn-psrv-io-safep operation))))
 
 (defun fn-owner-io (operation result state)
   (declare (xargs :stobjs state :guard (and (boundp-global 'fn-owner state)
@@ -4193,7 +4258,8 @@
   (let ((state (f-put-global 'fn-owner-handshakes
                              (fn-hsb-done (fn-owner-handshake-state state) id)
                              state)))
-    (value :ok)))
+    (let ((state (fn-owner-connection-held-refresh state)))
+      (value :ok))))
 
 ;; A socket that waited for a slot left without a decision (its deadline,
 ;; its peer's close, the service's stop).
@@ -4358,6 +4424,28 @@
 ; fn-owner-exposure-observe.
 ; Pure current evaluation. SAME owner gate covers evaluation, parser stage,
 ; STATE install and parser finish. No STATE write precedes retaining ACTUAL RC.
+(defun fn-asto-mca-read-span (credits oc views id start end cache sched slots reserve fn-octets fn-arena fn-cat)
+ (declare (xargs :stobjs (fn-octets fn-arena fn-cat) :mode :program))
+ (let* ((readerOC (fn-ocfg-at-reader-view oc views))
+        (w (fn-asto-first-event readerOC id start end fn-octets))
+        (stop (if w (fn-wsp-next w) end))
+        (capture (and w (fn-asto-capture readerOC id w cache fn-arena))))
+  (if (not capture)
+      (fn-av-mca-read-span credits oc views id start stop cache sched slots reserve fn-octets fn-arena fn-cat)
+    (let* ((result (fn-asto-captured-result oc capture (- stop start)))
+           (charge (fn-mcr-resize credits (fn-mca-conn-key id)
+                     (fn-mca-need (fn-own-tls-result-owner result) id reserve))))
+      (if (eq (car charge) :ok) (cons result (cadr charge))
+        (cons (fn-mca-shut-read oc id start stop) credits))))))
+
+(defun fn-owner-article-ready-plan-step (id plan quantum fn-arena state)
+ (declare (xargs :stobjs (fn-arena state) :mode :program))
+ (let ((before (fn-owner-ocfg state)))
+  (mv-let (word after next) (fn-asto-ready-plan-step before id plan quantum fn-arena)
+   (let ((state (if (and (eq word :ready) (not (equal before after)))
+                    (fn-owner-install-ocfg after state) state)))
+    (value (list word next))))))
+
 (defun fn-owner-chunk-span-evaluate (id start end sched fn-octets fn-arena fn-cat state)
  (declare (xargs :stobjs (fn-octets fn-arena fn-cat state) :mode :program))
  (let ((owner (fn-owner-core state)))
@@ -4367,6 +4455,10 @@
                    (<= end (fn-octets-len fn-octets))))
          (mv :bad-range nil nil state))
         (t
+        ;; Available metadata uses a distinct source reader; its selective
+        ;; owner refinement/guards are owed. Raw identity and chronology stay
+        ;; on the actual selected archive/index, including authorized views.
+        ;; Legacy equations below describe the preserved raw route only.
         ;; PKT-828: at the reader view while the committer holds a capture,
         ;; the working view put back after it (books/owner-reader-read.lisp
         ;; fn-orr-read-span; with no capture it is fn-scr-ocfg-read-span).
@@ -4400,7 +4492,7 @@
         ;; the chain equation's fn-gacc-okp.  Memory: one entry per read rule
         ;; text in use (measure at convergence).
          (let* ((cache (fn-scr-prepare-access (fn-owner-access-cache state) owner id))
-                (RC (fn-mca-read-span
+                (RC (fn-asto-mca-read-span
                       (fn-owner-credits state)
                       (fn-owner-ocfg state) (fn-owner-reader-views state)
                       id start end cache sched (fn-owner-article-slots state)
@@ -5410,3 +5502,26 @@ existing port only after fn-fc has made this connection ready."
 
 ; Serialized indexed reader completion follows its actual owner STATE subjects.
 (include-book "index-reader-request-host")
+
+; Pre-factory classifier under the SAME admitted O section as read evaluation.
+; It previews the first wire event without installing wire/owner/STATE changes.
+; Caller must hold its setup lease before this scan, then supply the actual
+; ACL2 footprint descriptor and evaluate only the accepted prefix NEXT.
+(defun fn-owner-output-preview (id start end fn-octets state)
+  (declare (xargs :stobjs (fn-octets state) :mode :program))
+  (let* ((owner (fn-owner-core state))
+         (conn (fn-own-find-conn id (fn-own-conns owner)))
+         (wire (and conn (fn-own-conn-wire conn))))
+    (cond ((not conn) (value :unknown))
+          ((not (and (natp start) (natp end) (<= start end)
+                     (<= end (fn-octets-len fn-octets))))
+           (value :bad-range))
+          ((not (fn-wire-fast-statep wire)) (value :invalid-wire))
+          (t (value (fn-ocap-preview wire start end fn-octets))))))
+
+; Explicit producer frontier. A derived logical graph count alone is not a
+; complete physical allocation/collector/root-custody tariff. All families
+; remain unpriced until the actual producer supplies that coverage.
+(defun fn-owner-output-tariff-preview (id preview state)
+  (declare (xargs :stobjs state :mode :program) (ignore id))
+  (value (fn-ocap-unpriced-tariff preview)))

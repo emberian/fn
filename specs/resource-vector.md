@@ -407,3 +407,196 @@ staged until actual issue and full allocation/custody coverage are connected.
 A response lease must retain its PLAN/selector/renderer continuation and all
 output/socket suffixes until operation completion and no future publisher,
 plus actual issued dependency termination; clearing OUT alone settles none.
+
+The response identity producer is `fn-rid-connection`/`fn-rid-response` in
+`books/response-identity.lisp`. The service retains two ACL2 serials under O;
+actual mux admission first retains admitted CID for cleanup, then captures
+`(:connection CID CIDGEN)`. Before the first response render factory, mux
+reserves `(:response CID CIDGEN OPGEN)`; cursor/cold resumption keeps that exact
+object. Both counters refuse at the u64 maximum, without wrap. Response
+identity retirement follows the existing all-windows/suffix terminal path.
+This capture seam is not a grant or a settlement: the future response lease
+consumer must consume the identity before retirement and retain custody until
+all continuation/output/dependency/no-future-publication obligations hold.
+SCN-1102 covers actual pure producer/native helper/pre-render control flow;
+full output activation and cost/refinement remain PRF-1259.
+
+The actual owner cold-result transfer and readiness observation now use the
+shared observed E mutex seam. The transfer has no hidden condition-wait: its
+actual acquire surrounds retained-condition classification and exact settle,
+and release is reserved before physical unlock/completed afterward. The
+finite fixture observes acquire, literal `:job-result`, release while preserving
+the original condition. Remaining O/P/hidden-wait sites keep complete PageIO
+comparison unavailable.
+
+The staged native renderer consumer retains one `fnn-output-grant` across the
+whole response. `fnn-mux-render-next` draws before its first factory and binds
+that grant across the existing owner renderer; the returned fifth cold-read
+value is unchanged. Actual cold issuance attaches its exact read under O.
+Actual worker return is observed under E before slot recycling, then the read
+transfer activation must end before its pending dependency reference drops.
+The grant retains only pending children and an ever-issued physical observation,
+not the response's completed dependency history. A completed child cannot
+authorize physical completion while later factories may still issue children.
+
+Whole response drain/discard closes future factory authority and clears the
+owned reusable render buffer. Physical custody completes only after all
+attached children have returned and their transfer ended; no-child applies
+only to an operation that issued no child, including literal warm-hit captures.
+Issue and each receipt publish their native calling stage before mutation.
+Raw/condition escape retains unresolved custody and prevents another semantic
+step on that receipt. The root close requires both typed pool drain and an
+empty native grant roster. SCN-1107 checks actual native control flow with
+recording typed boundaries and actual held children; configured activation,
+complete retained graph/allocator tariff and interpreter correspondence remain
+open. Declaration of a live caller is not those claims.
+
+## Logical constructor cost dimension (PRF-1274)
+
+`def-cost :conses BOUND :cons-unaccounted (CALLEES ...)` derives a logical
+cons constructor twin from the same executed translated body as visit cost.
+It preserves independent unknown leaves and reconstructs multiple-value
+bindings. Quoted objects are borrowed; fresh conses and copied list spines
+are charged. Concrete stobj operations remain unknown without a representation
+contract. The actual string renderer's derived count is bounded by its source
+recurrence and by `8*nfix(bytes)+2`. This supplies a per-turn constructor bound;
+it does not price retained state, native integer/vector allocation, physical
+bytes, collector copying or custody of borrowed archive references.
+
+### Direct immutable line windows (PRF-1281, SCN-1109)
+
+NEWNEWS line emission can fill the response's private octet buffer directly.
+The actual fn-splan-line-window checks the retained phase, excludes outstanding
+dependencies and pending octets, and preserves the captured context/following
+cursor. fnn-owner-render-next calls it outside the owner mutex because this
+phase reads only the immutable captured string. Scalar loop registers replace
+per-byte cursor and output-list construction; a new continuation is constructed
+at the window boundary. Other cursor phases retain their serialized consumer.
+
+Buffer reuse requires the previous borrowed output to be consumed before another
+render. The mux opts into a borrowed capacity vector plus explicit valid END;
+partial socket/TLS writes retain that range and never transmit spare capacity.
+The sixth render-quantum value carries END while the fifth remains COLD-READ.
+Default non-mux callers retain exact-length vectors. Compression still receives
+an exact prefix (copying a short window). Full response termination still controls
+settlement. Compression copies, continuation/matcher allocation, pinned roots, register widths
+and GC are separate resource obligations; this optimization does not activate an
+unsupported output profile or establish complete physical heap coverage.
+
+## Pre-factory output command admission (PRF-1278)
+
+The owner previews its current wire and exact input range with the existing
+`fn-wire-scan`, without executing any command factory or changing STATE.
+`fn-ocap-preview` returns `(:preview NEXT FAMILY TOKENS)` for the first event;
+standard NNTP families, extensions, malformed commands, partial input and
+article mode remain distinct. `fn-ocap-admit-preview` requires an actual
+ACL2 footprint descriptor `(:tariff FAMILY OCTETS)` matching that family and
+fitting captured capacity. The descriptor comes from the selected implemented
+footprint producer; operator annotations cannot manufacture one.
+
+The response generation and actual lease must be retained before preview,
+since scanning/tokenization also allocate. The native owner then evaluates
+only the accepted `NEXT` prefix and retains every suffix byte for a later
+operation, so a second unpriced command cannot enter its factory under the
+first command's tariff. Unknown families refuse in accounted mode. Absence
+of output accounting policy keeps the existing explicitly partial path.
+The logical admission theorem does not prove physical footprint, collector
+behavior, refusal workspace funding or native issue/settlement authenticity.
+
+The pre-factory caller reads `fn-rlo-capacity` from its installed private
+ledger (ready instance: the captured `FILE-LIMIT`; otherwise zero). It does
+not reread a mutable service policy to decide an existing lease's capacity.
+Until an actual command footprint producer exists, `fn-ocap-unpriced-tariff`
+produces an explicit `(:unpriced FAMILY)` and accounted admission refuses
+before the command factory; this is not a priced NEWNEWS descriptor.
+
+The actual admitted native reader now calls `fnn-owner-output-begin-locked`
+before buffer filling, then `fnn-owner-output-prefix-locked` before the chunk
+factory. The holder is discoverable on the mux connection before reader entry;
+known returned issuance survives a later refusal, while torn issuance retains
+its unresolved native envelope without retry. Capacity comes from the actual
+installed private ledger. `fn-owner-output-tariff-preview` currently delegates
+`fn-ocap-unpriced-tariff`: every incomplete family remains explicitly unpriced,
+and this source does not activate an optional supported profile. The accepted
+`NEXT` alone reaches the span helper; cold fallback validates the line end
+before dispatch against that same prefix. Every remaining input suffix stays
+with the connection for a later response operation. SCN-1111 uses actual
+helper/admission bodies, with recording wire/typed boundaries; its positive
+tariff is injected to discriminate prefix consumption and is not a produced
+physical footprint. Allocator/collector, setup workspace, root/version custody
+and complete native realization remain open.
+## Retained matcher extent (PRF-1261)
+
+The NEWNEWS matcher continuation has a carried proof-only extent invariant,
+not a served whole-state scan. `fn-wml-start-retainedp`,
+`fn-wml-one-retainedp` and `fn-wml-step-retainedp` connect the actual matcher
+entries to that invariant. With natural decoded-name bound N and a carried
+retained state, `fn-wml-retained-owned-bound` bounds control/rows plus shared
+decoded target by `38+6P+6M+11N`; borrowed parsed-pattern tree cells are
+exactly `3P+M` under the parsed-pattern-list premise and charged once by their
+owner. P counts parsed patterns and M their token items. This maximum logical
+region extent is separate from cumulative per-step constructor charges and
+from native aliasing, physical heap bytes, integer widths, allocator/collector
+behavior, retained source pins and outer controller/mux storage. Those terms
+remain required in the actual selected output tariff before accounted
+command admission can hold.
+
+`fn-rlo-issued-token-is-live` connects an actual successful issue to its
+receipt consumers: with typed input and actual `:drawn` result, the returned
+token is live against the returned ledger and the same operation generation.
+Accepted issue itself establishes input shape; that redundant external
+hypothesis is absent. Negative-generation corruption and uninstalled refusal
+supply separate removal witnesses. This property does not establish free-chain
+completeness or authorize a physical receipt.
+
+Actual `fn-rlo-output` and `fn-rlo-physical` settlement invalidate the token
+against the resulting ledger (`fn-rlo-output-settled-token-is-not-live`,
+`fn-rlo-physical-settled-token-is-not-live`). The only premise is their actual
+`:settled` result. Replaying either receipt with that token returns `:stale`
+and preserves the ledger, so it cannot push the same released row onto the
+free chain twice. Literal settled-result positives and removal witnesses
+exercise both receipt orderings. Complete free-chain membership and the
+physical producer's receipt authenticity remain separate obligations.
+
+A settled output row at the final u64 generation is retired; settlement
+preserves the previous free head and never resets its generation
+(`fn-rlo-exhausted-settlement-keeps-free-head`). Other idle rows remain
+issuable in the generic typed protocol. The two receipt orderings have
+logical and normal-counterpart native fixtures. These are protocol witnesses:
+the current fresh native service also exhausts its independent global
+response serial by such a max-draw history, so the subsequent issue witness
+is not claimed as reachable served progress. Physical heap funding is
+unchanged.
+
+The actual private decoded worker has a separately named partial backing
+projection, `fn-dwb-fixed-storage-vector`: `(86928 0 0 1 1)` in the existing
+five-component page-read ledger, with `fn-dwb-coverage` explicitly returning
+`:partial-fixed-storage`. The selected `fn-crl-array-octets` model counts the
+eight-field job, twelve-field carry, sixteen-field digest plus sixty-four
+frame pointers, twenty decoder registers, 16384 requested-window octets, and
+four two-field octet wrappers. Native constructor observation shows the two
+single-array stobjs are direct vectors; the projection conservatively retains
+two 32-octet logical parent allowances that native lowering elides. Its selected
+backing model before those allowances is 86864 octets. It includes their
+four original empty arrays and exact reserved buffers of 64, 65536, 3494 and
+64 octets. It does not price pointed-to integers/conses, controller and token
+graphs, borrowed sources, registry slots, constructor transients or GC.
+Same-pool draw precedes construction; this partial projection cannot authorize
+the configured complete-profile issuer. Actual constructor dimension checks
+and the physical allocator boundary remain separate from this arithmetic.
+
+Actual output issue and both settling receipt consumers preserve an exact
+terminating free-chain witness (`fn-rlo-issued-chain-is-tail`,
+`fn-rlo-output-settled-chain`, `fn-rlo-physical-settled-chain`). A successful
+issue consumes its head; settlement pushes the reusable row once or preserves
+the old chain when that generation is exhausted. The proof-only witness checks
+idle phases, reusable natural generations, in-range row identities and exact
+links without adding a served scan. Successful actual installation establishes this chain for every user row
+from2 through slots-1 (`fn-rlo-install-establishes-free-chain`); its only
+premise is the actual `:installed` result. A zero-count input must be genuinely
+fresh: padded arrays with old phases/generations are refused before mutation,
+even when typed and shape-valid. Positive-count repeat installation keeps
+its existing `:already-installed` refusal. Coverage of every reusable idle
+row after arbitrary histories remains owed; the issue/settlement boundaries
+assume the prior chain is valid and the actual method reports `:drawn` or
+`:settled`.

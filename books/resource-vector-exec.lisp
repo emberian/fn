@@ -860,6 +860,35 @@
                  fn-rl-logical-install-success-shape
                  fn-rl-logical-install-word-uses-two-slots
                  fn-rl-install-refused-before-store)))))
+
+(local
+ (defthm fn-rl-installed-input-domain
+  (implies (eq (car (fn-rl-install budget baseline reserve nslots ledger)) :installed)
+           (and (natp nslots) (true-listp budget) (true-listp baseline) (true-listp reserve)))
+  :hints (("Goal"
+   :use ((:instance fn-rl-logical-install-admits-iff (nslots 2))
+         (:instance fn-rl-logical-install-admits-iff))
+   :in-theory (e/d (fn-rl-install fn-rl-profile-representable-p fn-rl-draw fn-rl-open fn-rl-charge
+      fn-rv-vectorp unsigned-byte-p integer-range-p)
+    (fn-rl-freshp fn-rl-count fn-rv-install fn-rv-nats-p fn-rl-resize-all fn-rl-store-words-from
+     fn-rl-slotp fn-rl-fits-from fn-rl-charge-from fn-rl-gensi fn-rl-phasesi
+     update-fn-rl-gensi update-fn-rl-phasesi fn-rl-words-representable-p
+     nth update-nth))))))
+(defthm fn-rl-install-free-columns
+ (implies (and (fn-rl-freshp ledger)
+               (eq (car (fn-rl-install budget baseline reserve nslots ledger)) :installed))
+  (let ((after (mv-nth 1 (fn-rl-install budget baseline reserve nslots ledger))))
+   (and (natp nslots) (equal (fn-rl-count after) nslots)
+    (equal (nth 3 after) (update-nth 1 2 (update-nth 0 1 (resize-list nil nslots 0))))
+    (equal (nth 4 after) (update-nth 1 1 (update-nth 0 1 (resize-list nil nslots 0)))))))
+ :rule-classes nil
+ :hints (("Goal" :use (fn-rl-installed-input-domain fn-rl-install-fields
+     (:instance fn-rl-install-correspondence (fn-resource-ledger ledger))
+     fn-rl-logical-install-admits-iff)
+  :in-theory (disable fn-rl-installed-input-domain fn-rl-install fn-rl-freshp fn-rl-profile-representable-p
+   fn-rv-install fn-rv-vectorp fn-rv-plus fn-rv-below
+   fn-rl-count fn-rl-bank resize-list nth update-nth))))
+
 )
 
 ; -----------------------------------------------------------------------------

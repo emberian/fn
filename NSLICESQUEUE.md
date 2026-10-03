@@ -23,6 +23,11 @@ that their recorded state is current at every later revision.
   continuation is identified; **queued** means implementation ownership still
   needs dispatch. A coordinating owner is not an assertion that another agent
   is running. Check actual agent state and explicitly resume a completed agent.
+- Owners continue through their entire capability areas and the outstanding
+  backlog. A landed commit, completed slice or passing check triggers the next
+  useful connected change without waiting for assignment. Root retains the full
+  scope; the lieutenant clears dependencies and integration flow, rather than
+  selecting a smaller finishable subset.
 - Dependencies below name the interface or evidence needed for a particular
   consumer. They do not serialize entire initiatives. Source reading, disjoint
   implementation and fixture preparation can proceed alongside them.
@@ -36,20 +41,54 @@ that their recorded state is current at every later revision.
   code as needed; review, focused checks, certification and reports follow
   asynchronously. Fix forward and retain pending proof/image status. This queue
   adds no review, report, certification or image gate before source push.
+- Each coherent packet names its actual runnable consumer, minimum kernel
+  dependencies and next owner. An unresolved component proof is a separate
+  workitem from an enabled capability; do not call an unpriced profile funded.
+- Route the first candidate failure to one precise leaf owner immediately.
+  Use scoped coherent loaded-world checks and actual source-loaded host consumers
+  as primary integration feedback while capability work continues. Fresh
+  source-loaded processes can exercise restart and recovery. Record exact loaded
+  source/interface identities and never mix obsolete stobj layouts. Saved-image
+  production is not a development dependency; eventual packaging/startup
+  qualification retains its own coordinate. Use historical images only for
+  their valid baseline scope.
+  Reuse an exact published artifact set instead of repeating acquisition or
+  checks; do not wait for a whole subsystem or repeat unchanged polls.
 - Keep completed slices here with their receipts; update the remaining work in
   place. Split a slice when it has independently useful consumers. The list is
   an initial coverage map, not a claim that all remaining defects are enumerated.
+
+## Worker consolidation at 08:00 America/New_York
+
+Ember's latest request explicitly resumes Sol Tools for fully incremental
+tracing work in the REPL: ten implementation deputies again, excluding root
+and the convergence lieutenant. The full backlog mission continues. Handoffs preserve
+current source, warm-session coordinates, concrete consumers and pending claims.
+The continuing owners are Integration (including source assembly), Runtime
+(including HM), Served (including matcher/catalog availability), Foundations,
+History (including carrier/pages/checkpoint), BP transport (including the completed
+Tools fair-round packet), Access (including Operator and the S011 journal consumer),
+Tools for continuing incremental tracing-driven implementation, Web, and
+Groundwork for the actual application-consumer/E1–E2 boundary. The prior Tools
+probe handoff is retained; its explicit resumption advances actual connected
+code in retained worlds rather than another finite report packet. Empirical completed its archive
+and watch handoff; Integration owns the pending candidate watch. Helpers complete their current
+coherent packet or transfer it before stopping; a passive assignment does not
+count as active work. No Luna wave resumes. These are ownership transfers, not
+capability completion claims.
+The convergence lieutenant is explicitly excluded from this implementation cap
+and owns routine coordination; Groundwork remains the application consumer owner.
 
 ## Dispatch next
 
 | Slice | Current position | Coordination / implementation | Next useful result |
 | --- | --- | --- | --- |
-| [Safe completion and actor rollout](#safe-completion-and-actor-rollout) | Active | Runtime + Astra source tracer; Groundwork coordinates | Escapes preserve actual outcomes, fence the service when required, and settle custody through the real consumer |
+| [Safe completion and actor rollout](#safe-completion-and-actor-rollout) | Active | Runtime; completed source-tracer packets retained | Escapes preserve actual outcomes, fence the service when required, and settle custody through the real consumer |
 | [Output allocation and funding](#output-allocation-and-funding) | Active | Foundations + Served | Actual bounded serializer/selector allocation is funded before creation |
-| [Paged catalog in the service](#paged-catalog-in-the-service) | Active, execution dependency | Groundwork + paged-store helper; Integration schedules | Existing paged attachment serves POST/read/navigation/withdrawal/reopen |
-| [Reclaim and physical release](#reclaim-and-physical-release) | Active bounded builder and publication work | History + Astra; Groundwork coordinates | Remove observed whole-history-copy credit obstruction and release resources safely |
-| [Fair feed and pull rounds](#fair-feed-and-pull-rounds) | Active repairs; broader continuation next | Tools/transport + Runtime | Credential fixes and phase outcomes compose with bounded rounds and queue progress |
-| [Runtime/model correspondence](#runtimemodel-correspondence) | Active | Groundwork + Runtime + Empirical | Real ordered lock/pin/I/O labels drive the same model transitions |
+| [Paged catalog in the service](#paged-catalog-in-the-service) | Active, execution dependency | Served; completed paged-store packet retained; Integration schedules | Existing paged attachment serves POST/read/navigation/withdrawal/reopen |
+| [Reclaim and physical release](#reclaim-and-physical-release) | Active bounded builder and publication work | History; completed Astra relocation packet retained | Remove observed whole-history-copy credit obstruction and release resources safely |
+| [Fair feed and pull rounds](#fair-feed-and-pull-rounds) | Active repairs; broader continuation next | BP transport + Runtime | Credential fixes and phase outcomes compose with bounded rounds and queue progress |
+| [Runtime/model correspondence](#runtimemodel-correspondence) | Active | Runtime + consumer owners; Integration schedules evidence | Real ordered lock/pin/I/O labels drive the same model transitions |
 
 The repaired candidate `1a946582c` produced a developer image on 2026-10-03,
 and its actual raw/counterpart POST, duplicate and readback check passed.
@@ -61,7 +100,7 @@ runtime checks. Image construction itself is no longer the first open result.
 
 ### Safe completion and actor rollout
 
-**Active — Runtime and Astra source tracer; Groundwork coordinates.** Finish
+**Active — Runtime; completed source-tracer packets retained.** Finish
 post-launch completion custody, committer escape fencing and shutdown; then
 carry the generated lifecycle through publisher, reclaim, feed, cold-I/O,
 mux and web families. Physical return and consumed operation outcome remain
@@ -109,8 +148,9 @@ Anchors: [RESOURCE-OPERATIONS](planning/repair/items/RESOURCE-OPERATIONS.json),
 
 ### Owner carrier and removal of whole-state revalidation
 
-**Active implementation — former proof Sol owns the first POST writer family;
-Groundwork coordinates.**
+**Active continuation — History owns the carrier and native authority consumer.
+The completed proof packet is retained; the stopped export helper handed its
+source and warm world back to History.**
 Resume the existing carrier transformation safely, using current signatures and
 actual native dispatch. Complete the POST bridge and the named owner-writer
 preservation obligations, then carry the invariant through other live writers.
@@ -143,6 +183,18 @@ Anchors: [GEN-CURSOR](planning/repair/items/GEN-CURSOR.json),
 
 ### Finish streaming and restricted command families
 
+Access owns the continuing shared ARTICLE/HEAD/BODY producer and its NNTP/Web
+consumers. Retained numeric/current/withdrawn selection, framing preflight and
+lazy Xref now yield in bounded steps; READY commits selection once and replays
+without authority changes. Source fixtures and exact normal source admission
+pass. Complete actual parsed factory/socket/physical decoded-window/Web browser
+composition, initial authorization/Message-ID/server setup bounds, guards and
+universal owner/reference refinement remain open (PRF-1286, SCN-1116). The
+retained source-execution process/inputs and precise mixed ABI frontier are in
+LANEDUMP; no certificate, current image or full funded operation follows from
+those checks. Access also continues absorbed operator/journal obligations; Root
+S132 full-native observation still needs an adequate funded supported profile.
+
 **Next — Served.** Carry the shared cursor/dependency machinery through OVER,
 HDR/XHDR, XPAT, LISTGROUP and the restricted route. Complete table-generated
 dispatch, preserving current session and access semantics; remove the remaining
@@ -158,12 +210,13 @@ sessions use the same bounded implementation. Anchors:
 
 ### Paged catalog in the service
 
-**Active — Groundwork + paged-store helper; Integration owns runtime capacity.**
+**Active — Served owns the concrete command consumer; Integration owns runtime capacity.
+The paged-store helper has completed its source handoff.**
 Use the existing paged catalog attachment and image route. Resolve the actual
 creator/attachment question and run the prepared generic service scenario;
 failure to acquire compatible certificates is not evidence of an attachment bug.
 The actual cached attachment/creator and live/fresh generic probes passed; the
-distinct paged executable consumer remains with Integration and Empirical.
+distinct paged executable consumer remains with Integration and the selected consumer owner.
 
 Done: socket POST, GROUP, NEXT/LAST, exact retrieval, withdrawal, missing-article
 replies and reopen work through the paged consumer with its representation
@@ -173,8 +226,8 @@ page-backed state. Anchors: [STORE-PAGES](planning/repair/items/STORE-PAGES.json
 
 ### Dense groups, overview and reclaim-aware navigation
 
-**Active availability implementation — paged-store helper, Groundwork assembles
-with Served.** Connect dense group-number and overview
+**Active availability implementation — Served owns the adapter and carried relation;
+the paged-store helper source is complete.** Connect dense group-number and overview
 representations to actual GROUP/LISTGROUP/LIST/OVER and navigation consumers.
 Complete available-article counts and movement past reclaimed articles.
 
@@ -187,7 +240,8 @@ Anchors: [STORE-PAGES](planning/repair/items/STORE-PAGES.json),
 
 ### Page-backed history and node roots
 
-**Active — History implements; Groundwork coordinates representation, Astra owns publication safety.** Extend
+**Active — History owns native authority, roots and builder; Astra completed the
+page relocation continuation and handed its packet to History.** Extend
 the existing page representation to history and node roots, with actual open,
 tail replay, checkpoint and retained-view consumers. The first connected packet replaces the three publication callers’ whole suffix construction with a bounded append/flush builder; it does not yet establish effective reclaim. Keep progress and
 allocation bounded per step without truncating admitted data.
@@ -198,9 +252,16 @@ roots survive replay and restart. Work can proceed beside carrier migration
 where interfaces are independent. Anchors: [STORE-PAGES](planning/repair/items/STORE-PAGES.json),
 [S147](planning/repair/items/S147.json), [store design](planning/design-store-representation-2026-10-01.md).
 
+The private builder continuation now separates page readiness/copy/zero/header/mark
+ticks from explicit flat-array growth (`history-pages-relocate-step`, SCN-1101).
+Completed concrete equality and finite progress are component obligations;
+flat-array resize, whole-event encoding, commit work and native root attachment
+remain open and must not be described as bounded by a row yield.
+
 ### Reclaim and physical release
 
-**Active — History owns native bounded history/root and reclaim consumers; Astra owns publication/read-back/swap/reopen safety. Groundwork coordinates their representation and custody contract.**
+**Active — History owns native authority, bounded history/root, publication and
+reclaim consumers; Runtime owns physical custody. Completed Astra packets remain inputs.**
 Replace the observed whole-history-copy allocation with a bounded captured
 page/history path, using real funding. Compose retention roots, holder/name
 counts, caches, reader views, pending/fenced work and durable BP obligations.
@@ -216,7 +277,8 @@ Anchors: [X04](planning/repair/items/X04.json), [S038](planning/repair/items/S03
 
 ### Checkpoint, recovery and bounded store utilities
 
-**Active — Astra owns staged history-image readback (S045); Groundwork coordinates storage.**
+**Active — History owns staged history-image readback and storage continuation;
+Access owns the operator journal. Astra is complete and is not an active owner.**
 Group the existing repairs by actual log/checkpoint/import/journal path:
 publication/read-back before dropping covered data, interrupted repair recovery,
 txid/lineage preservation, bounded header/tail processing, and descriptor lifetime.
@@ -234,10 +296,10 @@ have accurate outcomes and bounded allocation. Anchors:
 
 ### Fair feed and pull rounds
 
-**Active continuation — Tools/transport + Runtime.** Credential, durable journal
+**Active continuation — BP transport + Runtime.** Credential, durable journal
 phase, fragment uncertainty and removed-peer cache/schedule source batches are
-consumed. Tools now owns the actual resumable pull/catch-up round context and
-ACL2 selection; Runtime retains feed actor/idle ownership. Finish queue-head
+consumed. Tools handed the resumable pull/catch-up round context and ACL2
+selection to BP transport; Runtime retains feed actor/idle ownership. Finish queue-head
 progress, bounded rounds, streaming large transfers and captured peer config.
 Connect phase-aware durable journal outcomes and close removed-peer resources.
 
@@ -251,8 +313,8 @@ fault remain distinct. Anchors: [S035](planning/repair/items/S035.json),
 
 ### BP custody, retained work and restart
 
-**Active — Groundwork owns the canonical Store producer; Tools owns transport
-boundaries; Empirical owns the real scenario.** Current source tracing found
+**Active — BP transport owns the canonical producer and transport boundaries;
+Groundwork owns application composition; Integration schedules the prepared real scenario.** Current source tracing found
 that the record-log route never invoked the identity-grant producer required by
 retention preparation. Source `7c6d135f3` and reviewed outcome validation restore
 that connection; actual current-image undertaking/release/reopen remains the
@@ -270,7 +332,9 @@ tombstones are never transported as payload. Anchors:
 
 ### Bounded BP/TCPCL scheduling and reassembly
 
-**Active — BP transport owns continuing TCPCL sessions/reassembly; Tools owns fair pull/catch-up rounds.**
+**Active — BP transport owns continuing TCPCL sessions/reassembly and the
+completed Tools fair pull/catch-up packet.**
+
 Source now connects funded incoming/outgoing retained node sessions, asynchronous
 forwarding/receipt continuation and same-token fragment socket rearm. Raw actual
 consumer discrimination passes a live first peer, second acceptance and every
@@ -288,7 +352,8 @@ Anchors: [S006](planning/repair/items/S006.json), [S025](planning/repair/items/S
 
 ### ION and external transport outcomes
 
-**Active — BP transport owns actual ION route/lifetime/outcome continuation; Empirical prepares matching native receipt consumers.**
+**Active — BP transport owns actual ION route/lifetime/outcome continuation;
+Integration schedules the prepared native receipt consumers.**
 Finish explicit-route submission, representable lifetime validation and durable
 observation binding using the existing ION integration. Preserve refusal before
 attempt, uncertain attempted work and acceptance through reopen.
@@ -315,10 +380,27 @@ update charges and retained historical context consistently. Anchors:
 
 ### Concurrent web service
 
-**Active — Web owns concurrent service through Runtime actor/submission and Foundations output contracts.** Connect
-the web face to the same actor, submission, output and failure machinery rather
-than inline blocking service. Preserve session cleanup and distinguish store
+**Active — deputy_web (GPT-6.1 Sol), Runtime owns shared interfaces.** The
+source packet 934b416cb and lifetime followups through 8e37db4f2 connect a bounded
+HTTP I/O actor plus one fixed semantic worker to generated actor lifecycle,
+shared commit await/cold consumers and per-CID flow leases. The assembled
+consumer raw fixture passes exact partial windows and cancellation custody,
+including a held whole-disposal receipt. Matching web/POST native-image cases
+are pending Integration. Full NNTP/HTML materialization funding and incremental
+core rendering remain open; bounded socket windows alone do not complete that
+contract (WEB-006, SCN-1099). Preserve session cleanup and distinguish store
 faults, uncertainty, refusal and disappearance.
+
+Web source through the sole semantic-disposal receipt is integrated; raw held
+cleanup and repeated finish schedules pass. Page cursor source 0d04c4a59 now
+counts and emits validated segments outside O through the fixed worker, with
+no full HTML OUT (SCN-1105 raw passes). PRF-1277 remains planned/program mode;
+matching image use and full NNTP input/plan/job funding remain open. Owner
+admission/session decisions/segment construction can still hold the I/O actor.
+Web remains a separate continuing owner through 10:00 after Ember revised the
+08:00 cap to ten. Exact captured reply plans now build on the fixed worker
+without O/live-table access; source equivalence PRF-1279 awaits admission.
+Root/Foundations own the full output funding seam.
 
 Done: a slow client does not block every web client; POST composes with a
 pipelined native batch; replies stream within accounted limits; faults fence or
@@ -346,7 +428,7 @@ do not manufacture success. Anchors: [S012](planning/repair/items/S012.json),
 
 ### Runtime/model correspondence
 
-**Active — Groundwork + Runtime + Empirical.** Connect actual ordered section,
+**Active — Runtime + consumer owners; Integration schedules evidence.** Connect actual ordered section,
 pin, I/O, physical-return and settlement observations to the executable host
 model. Cancel, pin/capture/drain and physical-return preservation have matching
 certificates. Complete issue/settle preservation and the all-schedules argument;
@@ -360,7 +442,8 @@ Anchors: [HM02](planning/repair/items/HM02.json),
 
 ### Carried reads, crash cuts and historical evidence
 
-**Next — Groundwork coordinates with actual subsystem owners.** Finish carried
+**Next — Runtime, History and Access own their actual subsystem consumers;
+the convergence lieutenant coordinates seams.** Finish carried
 read statements under pinned/historical configuration and connect crash theorems
 to the actual open/recovery program. Keep identity, exact authored bytes,
 acceptance-time provenance and durable outcomes connected through the affected
@@ -385,11 +468,22 @@ remaining consumers stay visible. Anchors:
 [GEN-KEYSET](planning/repair/items/GEN-KEYSET.json),
 [GEN-TEETH](planning/repair/items/GEN-TEETH.json), [DE-R2](planning/repair/items/DE-R2.json).
 
+### Shared structured tracing and allocation feedback
+
+**Active — Tools owns the shared mechanism; Runtime and face owners connect actual phases.**
+Use one span macro for parent/scope identity, lifetime, timing, outcome, unwind
+cleanup and multiple values. Disabled tracing stays cheap; allocation tracing is
+opt-in and states its measured scope. Reuse existing actor/operation machinery
+rather than a different logging recipe per lane. The next usable consumer is a
+real owner/mux scenario whose trace and analysis expose phase cost and allocation.
+Metrics do not supply an allocation tariff or prove physical funding.
+
 ### Proof simplification, tooling and historical implementations
 
 **Broad sweep paused — four Luna helpers stopped; validated packets retained,
 unfinished experiments parked. The Sol now implements the owner carrier slice.**
-Tools and the source assembler retain their existing responsibilities. Deliver related proof
+Tools now implements shared structured tracing; source assembly is absorbed by
+Integration after the helper’s completed handoff. Deliver related proof
 simplifications in warm batches. Preserve statements and semantics; benchmark
 representative or uncertain changes, not every cleanup. Keep corpus coverage
 and tested/untested scope durable. Continue targeted checker repairs and harvest
@@ -405,7 +499,9 @@ and archived coverage checkpoint are in the proof deputy's integration batch.
 
 ### Combined empirical behavior and operational convergence
 
-**Active and recurring — Empirical + Integration, with consumer owners.** Run
+**Active and recurring — Integration, with actual consumer owners. Empirical
+completed the failed-candidate archive and handed off the watch; explicitly resume
+a focused empirical task when a matching executable is ready.** Run
 selected matching-image workloads for funded POST/stop, cold/slow readers,
 maintenance, crash recovery and peer interruption as their slices land. Then
 combine them and measure supported-profile scale, fairness and resource use.
@@ -420,8 +516,8 @@ Anchors: [empirical matrix](planning/empirical-workloads.md),
 
 ### Sleeping-agent exchange
 
-**Selected follow-on experiment — coordinator owns dispatch; not an implicit
-extension of the core release gate.** Implement the chosen consumer-owned durable
+**Active — Groundwork owns the existing native/CLI consumer and durable client
+inbox/outbox; Integration schedules the matching executable.** Implement the chosen consumer-owned durable
 inbox/outbox exchange between separately administered stores: report while the
 peer sleeps, verify exact source after delivery, commit processing and reply,
 then acknowledge the consumer cursor.
@@ -432,6 +528,38 @@ application's correlation/conflict semantics; external effects are not claimed
 exactly-once merely because a message was accepted.
 Anchor: [E1/E2 experiment contract](planning/experiments/e1-e2-agent-exchange.md).
 
+
+### Web ARTICLE collector continuation — GPT-6.1 Sol active
+
+Source packet: virtual metadata scan/replay page source (PRF-1283, SCN-1113),
+actual native consumer, final pin through count/emit/socket suffix and cold
+replay. Raw reference/IN-bound/pin witnesses pass; program refinement and image
+pending. LIST/OVER collector removal continues; qualified Web tariff/repeated
+read/working/job funding coordinated with Root/Foundations/Runtime. No borrowed
+native output grant or universal allocation claim.
+
+
+Web OVER follow-on (PRF-1284 planned, SCN-1114): the actual native shared
+stream/replay provider scans the existing100-number OVER request into at most
+100 rows of four virtual spans. Number/subject/From/date text is read from the
+same capture for count/emit, in the reference's newest-first order. Long fields
+are not copied into the row metadata. A101st generated row fails the invariant
+instead of returning truncated data. Raw exact-reference, generic native
+cold/count/partial-write/IN-bound/final-pin witnesses pass. Source programs still
+await guard/refinement and matching image; repeated backward seeks and physical
+reads require qualified Web funding. LIST ACTIVE remains the full collector to
+remove next; no blanket output grant or complete fairness/warranty claim.
+
+
+Web LIST dynamic row source (PRF-1285 planned, SCN-1115): all three large read
+routes now share captured-plan replay; LIST retains nine scanner entries and
+one generated row segment plan, independent of group count. Actual native
+empty/one/1003-group exact reference/cold/count/window/pin raw PASS. Source
+program/refinement/profile arithmetic/image pending. Original NNTP ARTICLE
+payload/block, LIST complete reply and some OVER full NOV/projection replies
+remain upstream materialization frontiers. Served owns LIST producer; Root
+owns shared payload/section producer; Web owns these connected consumers and
+qualified consumer tariff coordination. No full producer funding claim.
 BP-TRANSPORT S068 continuation (2026-10-03): production concrete framing cursor
 and actual retained :read/:buffer consumer source ready; PRF1289 local4096-copy
 quantum and codec composition fixtures. Full-frame conversion/decode, initial
@@ -444,3 +572,69 @@ actual constructor/callback stale-generation and publication-cut cases pass.
 Public SAMEPRS provider/source issuer remains separate; final semantic decode,
 source-driver guards/refinement and complete GC/work tariff stay open. Fresh
 source-loaded SCN1110 composition requested; saved images are off critical path.
+
+
+Captured POST/remove BEGIN (PRF-1290 planned, SCN-1119) now looks up/touches
+its session and handles expiry in the owner section, then returns a core-selected
+private-begin action for the existing fixed semantic worker. That worker runs
+the exact same-site/session/CSRF gate and authored POST/cancel preparation
+outside O. Source equivalence/witness admission and matching image remain
+pending; raw classifier/held-worker scheduling passes with a healthy owner
+event progressing. Body preparation still runs to completion on one worker;
+full body/working/capture allocation is unpriced, and stateful owner admission
+can still delay events. No second worker or full fairness warranty.
+
+
+Web private source checkpoint49dc6fa5e: complete web-session-keystones fresh
+ACL2 source replay admits, plus full existing123-form session witness range and
+private reply/POST/remove positive and predicate-removal witnesses pass.
+Evidence planning/evidence/web-private-source-2026-10-03.md archives final
+source hashes, clean world log and earlier proof/refusal repair log. This is
+source admission; no certification/composed native browser/funding claim.
+Missing-session POST/remove stays immediate refusal; captured body preparation
+remains one full private worker operation. Integration owns coherent source
+launcher; Web drives actual endpoint once that execution route is available.
+
+
+Streaming Web command and await plans enter a fixed-worker `:ready` phase before
+replay capture. `fnn-owner-ready-plan-step` resolves one shared ARTICLE framing
+preflight quantum; yielded/raw and cold continuations are retained without
+publication. Only READY stores the immutable original plan for both HTML passes.
+No preflight/selection scan is replayed during count or emit. The consumer pairs
+with Access source e7624ab8a/e41b22c21 and Served a3bd4513f; its raw adversarial
+owner adapter checks cold/yield/READY capture custody, not producer semantics.
+Actual composed source execution and complete Web tariff remain pending.
+
+
+Shared ARTICLE producer/native Web composition: Access2a0f46790 byte-window
+entry now supplies exact-W parts, with immutable pending dot fragments. The
+actual shared producer bodies plus native Web scan/replay/count/write consumer
+pass5,000 dot-leading lines, cold replay, partial drain and exact HTML/count/pin
+receipt. The old work-only producer fails this same fixture with5,408 output
+bytes for W4,096. Recording arena/owner/cold/I/O seams remain; full native
+source-loaded browser execution and qualified Web funding are not established.
+
+
+The host-reached ARTICLE/OVER/LIST program functions and Web window wrappers
+now admit and execute in the same actual ACL2 source stobj world as the private
+reply/gate functions. tests/acl2/web-stream-consumer-source-tests.lisp compares
+complete reference page plans with virtual scan/count/emit under chunk1/2/7/4096
+fixtures. Guard/refinement and complete endpoint/funding qualification remain
+open; concrete-fill invariant-risk warnings are retained in the source receipt.
+
+
+### Operator/developer remaining scope at the 2026-10-03 usage pause
+
+S132 still needs full native large-post acceptance and exact readback under an
+adequately funded supported profile; root's 10 MiB and 16 MiB scratch attempts
+refused oversize and unaffordable respectively, not timeout. Narrow policy and
+exchange tests pass. S083 still needs composed native moderation coverage and
+authority/generation-race closure; the published row authorizes a cause, not an
+already completed target withdrawal.
+
+The developer REPL now has actual native-owner admission/refusal/cleanup/fence
+coverage on its named cache coordinate. Admission itself needs a bounded prover
+step/time facility and a tested recovery path: a client timeout currently leaves
+an in-progress proof occupying the serialized owner. Broad command access does
+not establish complete internal observability or allocation accounting. Preserve
+source/proof/cache/image distinctions when completing these domains.

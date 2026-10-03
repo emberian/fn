@@ -3230,3 +3230,28 @@ while a healthy pull and catch-up complete, then reads the released body back
 exactly. Source/raw scheduling evidence does not qualify a saved image.
 
 The stable-sweep visit property does not establish a whole-turn work or allocation bound. The current worker rebuilds the active key list and filters the remaining suffix for each selection; scheduling work therefore grows with the admitted peer set and may be quadratic over a sweep. A retained scheduler cursor/cost boundary and funded continuation tariff remain open. The feed chunk bound applies to each read/write attempt.
+
+Push-feed retained turns (S067, implementation in progress): the actual
+feed worker now captures TCP completion and authenticated TLS state, holds
+one journal-authorized output with its unwritten suffix, and consumes one
+ACL2-framed reply event per peer turn. The shared peer-round driver chooses
+connect/handshake/write/reply/offer/read order. A physical write attempts
+at most its ACL2 512-octet range, retaining the same range on TLS WANT. The
+existing feed 65536-octet/10-second progress deadline spans smaller yields;
+a short successful prefix does not reset that deadline. EOF remains held
+until the ACL2 framer reports need-input, preserving complete coalesced
+replies. Journal publication still precedes copied output. Socket/TLS
+readiness yields; it neither accepts delivery nor discards pending state.
+
+Synchronous DNS, credential/trust filesystem access, owner/journal storage
+latency and full-command copying remain availability/work frontiers. The
+complete command may contain a whole article; its retained representation
+has no newly proved allocation tariff or grant. No existing syncer/output
+lease is claimed to cover it. Source tests and matching native qualification
+are separate from proof of bounded complete scheduler cost.
+
+SCN-1106's native selector first captures a real pending implicit-TLS peer,
+then adds a healthy peer and compares its complete article with locally
+served bytes before the original handshake deadline. It is prepared for a
+matching image, not an executed qualification. Its ordering excludes an
+initial healthy-first configuration from masquerading as concurrent progress.

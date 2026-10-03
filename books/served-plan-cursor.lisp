@@ -149,7 +149,7 @@
           (let ((cur (car (cdr (car rest)))))
             (if (fn-nnw-meta-effectp (car rest))
                 (mv-let (octets next calls state)
-                  (fn-nnw-stream-step cur w w fn-arena fn-cat)
+                  (fn-nnw-stream-batch cur w w fn-arena fn-cat)
                   (declare (ignore calls state))
                   (mv :ok (cons (fn-nntp-reply-effect octets)
                                 (if (fn-nnw-meta-livep next)
@@ -274,7 +274,8 @@
                                       wl fn-arena fn-cat)
                   (fn-splan-cw-octets rest wl fn-arena fn-cat)))
   :hints (("Goal" :induct (fn-splan-rest-cursor-step rest wl fn-arena fn-cat)
-           :in-theory (disable fn-ovw-step fn-ovw-cursorp fn-ovw-run fn-nnw-meta-livep)
+           :in-theory (disable fn-ovw-step fn-ovw-cursorp fn-ovw-run fn-nnw-meta-livep
+                               fn-nnw-stream-batch)
            :expand ((fn-ovw-run (car (cdr (car rest))) wl fn-arena fn-cat)))))
 
 (defthm fn-splan-cursor-step-keeps-cw-remaining
@@ -524,7 +525,7 @@
            (and (equal (mv-nth 0 (fn-splan-rest-cursor-step rest wl fn-arena fn-cat)) :ok)
                 (fn-splan-cw-rest-okp (mv-nth 1 (fn-splan-rest-cursor-step rest wl fn-arena fn-cat)))))
   :hints (("Goal" :induct (fn-splan-rest-cursor-step rest wl fn-arena fn-cat)
-           :in-theory (disable fn-ovw-step fn-ovw-cursorp fn-cur-pending))))
+           :in-theory (disable fn-ovw-step fn-ovw-cursorp fn-cur-pending fn-nnw-stream-batch))))
 
 (defthm fn-splan-cursor-step-of-okp-is-ok
   (implies (fn-splan-cw-okp p)

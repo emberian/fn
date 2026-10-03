@@ -360,12 +360,10 @@
     (fn-post-result-session
      (fn-auth-authinfo (au-duplicate-user)
                        (list (fn-nntp-string-octets "PASS") *au-secret*)))))))
-; STARTTLS resets authentication and the role derived from it.
+; RFC 4642 section 2.2.1: an authenticated principal cannot upgrade.
 (assert-event
- (null
-  (fn-peer-session-peer
-   (fn-auth-session-base
-    (fn-post-result-session (fn-auth-starttls (au-principal-authed) nil))))))
+ (equal (fn-post-result-session (fn-auth-starttls (au-principal-authed) nil))
+        (au-principal-authed)))
 ; protected-only refuses before any role can be derived.
 (assert-event
  (null
@@ -549,9 +547,11 @@
 (assert-event (null (fn-auth-session-pending
                      (fn-post-result-session
                       (in-arena-au-step *sr-arena* *au-after-user* "STARTTLS")))))
-(assert-event (null (fn-auth-session-subject
-                     (fn-post-result-session
-                      (in-arena-au-step *sr-arena* (au-authed) "STARTTLS")))))
+(assert-event (equal (fn-post-result-session
+                      (in-arena-au-step *sr-arena* (au-authed) "STARTTLS"))
+                     (au-authed)))
+(assert-event (equal (in-arena-au-reply *sr-arena* (au-authed) "STARTTLS")
+                     (au-single "502 already authenticated")))
 
 ; Section 2.2.2: once a TLS layer is active STARTTLS is not a valid command.
 ; 502, never 480 or 483, and no second handshake effect.
@@ -601,17 +601,17 @@
         (au-block "101 capability list follows"
                   (append *au-reader-lines* '("AUTHINFO USER SASL" "SASL PLAIN")))))
 ; Authenticated: AUTHINFO USER gone, POST present because this principal may
-; post, STARTTLS still offered because this connection is not yet protected,
+; post; STARTTLS is unavailable after authentication (RFC 4642 section 2.1),
 ; and COMPRESS DEFLATE (RFC 8054) now that a login has been made.
 (assert-event
  (equal (in-arena-au-reply *sr-arena* (au-authed) "CAPABILITIES")
         (au-block "101 capability list follows"
-                  (append *au-reader-lines-posting* '("STARTTLS" "COMPRESS DEFLATE" "XFN-DICT 845aa5e18680ef219a9b0f0d0b959cd8886d5eabc12236aae19f301aed9de75e")))))
+                  (append *au-reader-lines-posting* '("COMPRESS DEFLATE" "XFN-DICT 845aa5e18680ef219a9b0f0d0b959cd8886d5eabc12236aae19f301aed9de75e")))))
 ; Authenticated as the read-only principal: no POST label.
 (assert-event
  (equal (in-arena-au-reply *sr-arena* (au-authed-ro) "CAPABILITIES")
         (au-block "101 capability list follows"
-                  (append *au-reader-lines* '("STARTTLS" "COMPRESS DEFLATE" "XFN-DICT 845aa5e18680ef219a9b0f0d0b959cd8886d5eabc12236aae19f301aed9de75e")))))
+                  (append *au-reader-lines* '("COMPRESS DEFLATE" "XFN-DICT 845aa5e18680ef219a9b0f0d0b959cd8886d5eabc12236aae19f301aed9de75e")))))
 ; No certificate and nothing required: the reader's own block, unchanged
 ; from before this book existed.
 (assert-event

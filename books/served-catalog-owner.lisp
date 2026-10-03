@@ -63,6 +63,7 @@
 (include-book "catalog-entries")
 (include-book "catalog-refresh")
 (include-book "store-intern")
+(include-book "catalog-availability-refinement")
 (include-book "history-fold-refinement")   ; fn-row-composite-okp: what the intern makes of a row
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
@@ -395,63 +396,7 @@
                  (:instance fn-arena-seal-count (xs (fn-octets-list fn-octets))))
            :do-not-induct t)))
 
-; E over the rows.  The guard's domain: every row of the catalog's shape is
-; a held record (the store's history is store events: fn-sf-record-valuesp,
-; which implies it: fn-sca-held-rowsp-of-record-values).  The body dispatches
-; on the digest-free shape fn-cat-rowp and never executes fn-held-p.
-; A composite row (a signed article's atomic acceptance) by its shape: the
-; held row inside it is a catalog row.  The loader dispatches on shapes and
-; never executes fn-held-p or fn-hstxa-p (their delta checks digest).
-(defun fn-sca-composite-shapep (r)
-  (declare (xargs :guard t))
-  (and (consp r) (eq (car r) :hstxa) (fn-cat-rowp (fn-hstxa-held r))))
-
-(defun fn-sca-held-rowsp (rows)
-  (declare (xargs :guard t))
-  (if (consp rows)
-      (and (or (not (fn-cat-rowp (car rows))) (fn-held-p (car rows)))
-           (or (not (fn-sca-composite-shapep (car rows)))
-               (fn-held-p (fn-hstxa-held (car rows))))
-           (fn-sca-held-rowsp (cdr rows)))
-    t))
-
-; One row: an article row (by the digest-free shape) committed, visible when
-; the view shows its Message-ID, else withdrawn at its own index as
-; fn-cat-load-row-hidden commits it; a composite row's held article row
-; committed the same way (a signed article: signed-post's red, the catalog
-; had skipped it); any other event skipped.
-(defun fn-sca-load-held-row (r view-index fn-cat)
-  (declare (xargs :stobjs fn-cat
-                  :guard (and (or (not (fn-cat-rowp r)) (fn-held-p r))
-                              (or (not (fn-sca-composite-shapep r))
-                                  (fn-held-p (fn-hstxa-held r))))
-                  :guard-hints (("Goal" :in-theory (e/d (fn-held-withdrawnp) (fn-held-p))
-                                 :use ((:instance fn-held-p-of-fn-held-with-withdrawn
-                                                  (h r) (w (cons (fn-cat-count fn-cat) 0)))
-                                       (:instance fn-held-p-of-fn-held-with-withdrawn
-                                                  (h (fn-hstxa-held r))
-                                                  (w (cons (fn-cat-count fn-cat) 0))))))))
-  (let ((h (cond ((fn-cat-rowp r) r)
-                 ((fn-sca-composite-shapep r) (fn-hstxa-held r))
-                 (t nil))))
-    (if h
-        (if (fn-midx-lookup (fn-record-msgid h) view-index)
-            (fn-cat-commit h fn-cat)
-          (fn-cat-commit (fn-held-with-withdrawn h (cons (fn-cat-count fn-cat) 0)) fn-cat))
-      fn-cat)))
-
-(defun fn-sca-load-held-rows-from (rows view-index fn-cat)
-  (declare (xargs :stobjs fn-cat :guard (fn-sca-held-rowsp rows)))
-  (if (consp rows)
-      (let ((fn-cat (fn-sca-load-held-row (car rows) view-index fn-cat)))
-        (fn-sca-load-held-rows-from (cdr rows) view-index fn-cat))
-    fn-cat))
-
-(defun fn-sca-load-held-rows (rows view-index fn-arena fn-cat)
-  (declare (xargs :stobjs (fn-arena fn-cat) :guard (fn-sca-held-rowsp rows))
-           (ignorable fn-arena))
-  (let ((fn-cat (fn-cat-clear fn-cat)))
-    (fn-sca-load-held-rows-from rows view-index fn-cat)))
+; Held-row loader definitions are shared with the narrow availability boundary.
 
 ; The kinds by shape: a held-shaped value (a catalog row) and a wire record's
 ; shape are no other event.
@@ -709,6 +654,102 @@
           ("Subgoal *1/1" :use ((:instance fn-sca-handles-of-cons)
                                 (:instance fn-sca-load-step (r (car rows)))))))
 
+
+; Classification changes cached facts, never handles or materialized wire.
+; Follow the actual available fold rather than the retained raw proof helper.
+(local (defthm fn-sca-prepare-availability-keeps-handle-in
+  (equal (fn-row-handle-inp (fn-cat-prepare-row-availability h fn-arena) fn-arena)
+         (fn-row-handle-inp h fn-arena))
+  :hints (("Goal" :in-theory (enable fn-row-handle-inp)))))
+
+(local (defthm fn-sca-prepare-availability-keeps-held-wire-of
+  (equal (fn-held-wire-of (fn-cat-prepare-row-availability h fn-arena) fn-arena)
+         (fn-held-wire-of h fn-arena))
+  :hints (("Goal" :in-theory (enable fn-held-wire-of)))))
+
+(local (defthm fn-sca-prepare-availability-keeps-row-wire
+  (implies (fn-held-p h)
+           (equal (fn-row-wire-of (fn-cat-prepare-row-availability h fn-arena) fn-arena)
+                  (fn-row-wire-of h fn-arena)))
+  :hints (("Goal" :in-theory (enable fn-row-wire-of)))))
+
+(local (defthm fn-sca-available-held-step-keeps-relation
+  (implies (and (fn-cat-history-relation records fn-arena fn-cat)
+                (fn-held-p h) (fn-row-handle-inp h fn-arena)
+                (fn-record-p (fn-row-wire-of h fn-arena)))
+           (fn-cat-history-relation
+            (append records (list (fn-row-wire-of h fn-arena))) fn-arena
+            (fn-sca-load-held-row (fn-cat-prepare-row-availability h fn-arena)
+                                 view-index fn-cat)))
+  :hints (("Goal" :use ((:instance fn-sca-commit-row-keeps-relation
+                                 (row (fn-cat-prepare-row-availability h fn-arena))))
+           :in-theory (e/d (fn-sca-load-held-row)
+                           (fn-cat-history-relation fn-cat-prepare-row-availability
+                            fn-cat-commit-is-append fn-held-p fn-cat-rowp
+                            fn-row-handle-inp fn-row-wire-of fn-held-wire-of))))))
+
+(local (defthm fn-sca-available-load-step
+   (implies (and (fn-cat-history-relation history fn-arena fn-cat)
+                 (fn-store-event-p r)
+                 (or (not (fn-held-p r)) (fn-row-handle-inp r fn-arena))
+                 (or (fn-held-p r) (not (fn-hstxa-p r))
+                     (fn-row-handle-inp (fn-hstxa-held r) fn-arena))
+                 (fn-row-composite-okp r fn-arena))
+            (fn-cat-history-relation
+             (append history (list (fn-cat-history-article r fn-arena))) fn-arena
+             (fn-sca-load-held-available-row r view-index fn-arena fn-cat)))
+   :hints (("Goal" :cases ((fn-held-p r) (fn-hstxa-p r))
+            :in-theory (union-theories '(fn-sca-relation-of-non-article fn-sca-load-held-available-row
+                                         fn-sca-load-held-row fn-cat-history-article fn-row-composite-okp
+                                         (:executable-counterpart fn-cat-rowp)
+                                         (:executable-counterpart fn-hstxa-p)
+                                         (:executable-counterpart fn-held-p)
+                                         (:executable-counterpart fn-store-event-p)
+                                         (:executable-counterpart fn-sca-composite-shapep))
+                                       (theory 'minimal-theory))
+            :use ((:instance fn-sca-store-event-rowp-is-held (x r))
+                  (:instance fn-sca-composite-shape-is-composite (x r))
+                  (:instance fn-sca-composite-is-shaped (x r))
+                  (:instance fn-sca-composite-is-not-cat-row (x r))
+                  (:instance fn-sca-composite-is-not-held (x r))
+                  (:instance fn-sca-composite-held-is-held (x r))
+                  (:instance fn-sca-other-event-wire-not-record (x r))
+                  (:instance fn-held-p-implies-cat-rowp (x r))
+                  (:instance fn-sca-available-held-step-keeps-relation (records history) (h r))
+                  (:instance fn-sca-available-held-step-keeps-relation (records history)
+                             (h (fn-hstxa-held r))))))))
+
+(local (defun fn-sca-held-available-ind (rows history view-index fn-arena fn-cat)
+   (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil)
+            (irrelevant history))
+   (if (consp rows)
+       (let ((fn-cat (fn-sca-load-held-available-row (car rows) view-index fn-arena fn-cat)))
+         (fn-sca-held-available-ind (cdr rows)
+                          (append history (list (fn-cat-history-article (car rows) fn-arena)))
+                          view-index fn-arena fn-cat))
+     fn-cat)))
+
+(defthm fn-sca-load-held-available-from-keeps-relation
+  (implies (and (fn-cat-history-relation history fn-arena fn-cat)
+                (fn-sf-record-valuesp rows)
+                (fn-rows-handles-inp rows fn-arena)
+                (fn-rows-composites-okp rows fn-arena))
+           (fn-cat-history-relation (append history (fn-cat-history-articles rows fn-arena)) fn-arena
+                                    (fn-sca-load-held-available-from rows view-index fn-arena fn-cat)))
+  :hints (("Goal" :induct (fn-sca-held-available-ind rows history view-index fn-arena fn-cat)
+           :expand ((fn-sca-load-held-available-from rows view-index fn-arena fn-cat)
+                    (fn-cat-history-articles rows fn-arena)
+                    (fn-sf-record-valuesp rows)
+                    (fn-rows-composites-okp rows fn-arena))
+           :in-theory (union-theories '(fn-sca-append-assoc fn-sca-relation-of-append-atom
+                                        car-cons cdr-cons binary-append
+                                        (:induction fn-sca-held-available-ind))
+                                      (theory 'minimal-theory)))
+          ("Subgoal *1/2" :expand ((fn-cat-history-articles rows fn-arena)
+                                   (fn-sca-load-held-available-from rows view-index fn-arena fn-cat)))
+          ("Subgoal *1/1" :use ((:instance fn-sca-handles-of-cons)
+                                (:instance fn-sca-available-load-step (r (car rows)))))))
+
 ; KEYSTONE (E after the flip, with the signed articles): committing the
 ; store's rows from the cleared catalog establishes R over the rows'
 ; ARTICLES (fn-cat-history-articles: a held row and a composite row's held
@@ -725,10 +766,10 @@
                 (fn-rows-composites-okp rows fn-arena))
            (fn-cat-history-relation (fn-cat-history-articles rows fn-arena) fn-arena
                                     (fn-sca-load-held-rows rows view-index fn-arena fn-cat)))
-  :hints (("Goal" :use ((:instance fn-sca-load-held-rows-from-keeps-relation
+  :hints (("Goal" :use ((:instance fn-sca-load-held-available-from-keeps-relation
                                    (history nil) (fn-cat nil)))
            :in-theory (e/d (fn-sca-load-held-rows fn-cat-history-relation)
-                           (fn-sca-load-held-rows-from-keeps-relation fn-sca-load-held-rows-from
+                           (fn-sca-load-held-available-from-keeps-relation fn-sca-load-held-available-from
                             fn-cat-history-articles fn-sf-record-valuesp fn-rows-handles-inp
                             fn-rows-composites-okp)))))
 
@@ -1233,16 +1274,6 @@
 ; faithful across the owner's steps and the opens is the same obligation as
 ; the join's establishment (books/served-catalog-join.lisp), still OPEN.
 
-(defun fn-scol-history-okp (rows fn-arena)
-  (declare (xargs :stobjs fn-arena :verify-guards nil))
-  (if (consp rows)
-      (and (or (not (fn-cat-rowp (car rows)))
-               (fn-scol-row-okp (car rows) fn-arena))
-           (or (not (fn-sca-composite-shapep (car rows)))
-               (fn-scol-row-okp (fn-hstxa-held (car rows)) fn-arena))
-           (fn-scol-history-okp (cdr rows) fn-arena))
-    t))
-
 (local (defthm fn-scol-okp-of-load-held-row
    (implies (and (fn-scol-okp fn-arena fn-cat)
                  (or (not (fn-cat-rowp r)) (fn-scol-row-okp r fn-arena))
@@ -1266,10 +1297,10 @@
   (implies (and (fn-arena-p fn-arena)
                 (fn-scol-history-okp rows fn-arena))
            (fn-scol-okp fn-arena (fn-sca-load-held-rows rows view-index fn-arena fn-cat)))
-  :hints (("Goal" :in-theory (e/d (fn-sca-load-held-rows)
-                                  (fn-sca-load-held-rows-from fn-scol-okp-of-load-held-rows-from))
-           :use ((:instance fn-scol-okp-of-load-held-rows-from (fn-cat nil))
-                 (:instance fn-scol-okp-of-clear)))))
+  :hints (("Goal" :use ((:instance fn-sca-load-held-rows-establishes-byte-facts))
+           :in-theory (disable fn-scol-okp fn-scol-history-okp
+                               fn-sca-load-held-rows
+                               fn-sca-load-held-rows-establishes-byte-facts))))
 
 ; T1: the store's intern at a handle denoting the record's payload.
 (defthm fn-scol-row-okp-of-intern-row-at
