@@ -1541,3 +1541,16 @@ round tests PASS1.989s before mutex follow-through; final result below.
 ## Source assembly: retained pull/catch-up controller (2026-10-03)
 Inputs51c5c4f2e,7dc04be92,632a3533d,30561eb2f,f85112fce; S112 prerequisite already integrated. Actual worker consumes ACL2 sweep/select/action while retaining TCP/TLS ranges, input suffix, cold/await/render continuations. Source review caught cold-abandon failure skipping later local releases; Tools f851 now invalidates callback identity under the same runtime mutex and independently attempts cold/await/unpin/CID releases while preserving first serious condition. Exact base local refusal class remains distinct from core/indeterminate/subclass faults. Before that followthrough, current-source four worker/kernel composition tests PASS1.990s archived7e470956; existing final five producer schedules PASS2.016s reused, no duplicate experiments. Both same-harness archived witnesses bda0fe45/6e940186 verified; all claims/checks PASS.
 CuratedPRF1260 now names the actual called sweep keystone, remains planned pending guard/admission/certificate. Deterministic world umbrellas regenerated; their output/syncer additions already exist on current dev. Whole-tree interface emitter correctly refused on laptop; Integration must regenerate candidate interfaces/ledger/current on buildbox. Narrow first selector: python3 -m unittest tests.test_native_peer_round_driver.PeerRoundDriverTests.test_failed_local_release_attempts_all_custody_cleanup; whole actual adapter+kernel fixture five schedules is tests.test_native_peer_round_driver. Cert roots books/peer-round-driver +tests/acl2/peer-round-driver-tests, plus normal host interface loaded world. Matching-image consumer tests.test_native_peer_pull.NativePeerPullTests.test_trickling_body_retained_while_other_pull_and_catchup_complete remains prepared/unrun. DNS/push fairness/whole-round completion/full-step work and allocation/retained context tariff remain open: current active mapping and repeated suffix filtering may be quadratic per stable sweep; 512 only bounds one physical read/write attempt.
+
+## Canonical BP undertaking fixture preparation, 2026-10-03
+
+Existing native undertaking/status-reopen and carry fixture setups now reuse
+`tests.bp_producer.post_articles` on the same immutable default developer
+image: real POST340/240, producer stops, core inspect supplies actual stored
+source bytes before FNWF/BP owns Store. No raw minimal store-post shortcut,
+no independent identity/request semantics or arbitrary grant. Native boundary
+shape check and Python compile pass; actual undertaking/reopen remains pending
+Integration budget/matching image. Groundwork authorized this consumer prep;
+new BP transport deputy owns wider TCPCL/ION continuation, this lane supplies
+actual replay/scenario execution. Existing two-peer application receipt adapter
+remains the release/reopen consumer; historical retention refusal stays filed.
