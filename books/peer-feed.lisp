@@ -991,16 +991,28 @@
           f (fn-feed-queue-requeue (fn-feed-queue f) msgid now))
          (+ now delay)))))
 
+; The in-flight entry (`fn-feedp' allows at most one), or nil.
+(defun fn-feed-inflight-entry (xs)
+  (declare (xargs :guard t))
+  (if (atom xs)
+      nil
+    (if (fn-feed-state-inflightp (fn-feed-entry-state (car xs)))
+        (car xs)
+      (fn-feed-inflight-entry (cdr xs)))))
+
 ; 400 or any code outside the map: the connection is lost.  Every in-flight
-; entry returns to :queued with one more attempt; nothing is dropped and the
-; connection is forgotten so that the next selection waits for a reopen.
-(defun fn-feed-lost (f obs)
+; entry returns to :queued with one more attempt and the connection is
+; forgotten so that the next selection waits for a reopen.  The delay grows
+; with the in-flight entry's attempts, as a 431/436 retry's does.
+(defun fn-feed-lost-requeue (f obs)
   (declare (xargs :guard t))
   (if (not (fn-feedp f))
       f
-      (let* ((now (nfix (fn-clock-monotonic obs)))
+      (let* ((entry (fn-feed-inflight-entry (fn-feed-queue f)))
+             (attempts (if entry (nfix (fn-feed-entry-attempts entry)) 0))
+             (now (nfix (fn-clock-monotonic obs)))
              (delay (fn-feed-backoff-delay
-                     (fn-feed-backoff-base (fn-feed-limits-of f)) 0)))
+                     (fn-feed-backoff-base (fn-feed-limits-of f)) attempts)))
         (fn-feed-with-backoff
          (fn-feed-with-conn
           (fn-feed-with-queue-preserving-counts
@@ -1030,6 +1042,21 @@
        (<= (nfix (fn-feed-retry-bound (fn-feed-limits-of f)))
            (nfix (fn-feed-entry-attempts
                   (fn-feed-find msgid (fn-feed-queue f)))))))
+
+; A loss: the requeue above, and then the retry bound, the same bound a
+; 431/436 retry meets (inspection sweep 2026-10-03 S053).  An entry whose
+; offer keeps dropping the connection (a peer-side limit, a malformed or huge
+; article, a peer bug) is given up with :retry-bound once its attempts reach
+; it, so it no longer heads the peer's FIFO forever.  Its journal is the
+; :feed-lost record (the requeue) and then a :feed-drop record
+; (books/feed-events.lisp fn-feed-lost-records).
+(defun fn-feed-lost (f obs)
+  (declare (xargs :guard t))
+  (let ((entry (and (fn-feedp f) (fn-feed-inflight-entry (fn-feed-queue f))))
+        (g (fn-feed-lost-requeue f obs)))
+    (if (and entry (fn-feed-retry-exhaustedp g (fn-feed-entry-msgid entry)))
+        (fn-feed-give-up g (fn-feed-entry-msgid entry) :retry-bound)
+      g)))
 
 ; -----------------------------------------------------------------------------
 ; The response and the code map (specs/peering.md sec. 3.2)
@@ -1409,8 +1436,11 @@
              ((equal kind :feed-retry)
               (fn-feed-back-off f msgid
                 (fn-clock-observation (fn-feed-record-nat 4 values) 0 0 nil)))
+             ; The loss's requeue; a give-up at the retry bound that the loss
+             ; reached is its own :feed-drop record (fn-feed-lost-records),
+             ; so nothing is dropped without one.
              ((equal kind :feed-lost)
-              (fn-feed-lost f
+              (fn-feed-lost-requeue f
                 (fn-clock-observation (fn-feed-record-nat 1 values) 0 0 nil)))
              ((equal kind :feed-drop)
               (fn-feed-give-up f msgid (fn-frame-item 2 values)))

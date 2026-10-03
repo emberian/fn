@@ -99,14 +99,16 @@
           f (fn-feed-queue-requeue (fn-feed-queue f) msgid now))
          (+ now delay)))))
 
-(defun fn-fcv-raw-lost (f obs)
+(defun fn-fcv-raw-lost-requeue (f obs)
   (declare (xargs :guard (and (fn-feedp f) (fn-feed-count-relationp f))
                   :verify-guards nil))
   (if (not t)
       f
-      (let* ((now (nfix (fn-clock-monotonic obs)))
+      (let* ((entry (fn-feed-inflight-entry (fn-feed-queue f)))
+             (attempts (if entry (nfix (fn-feed-entry-attempts entry)) 0))
+             (now (nfix (fn-clock-monotonic obs)))
              (delay (fn-feed-backoff-delay
-                     (fn-feed-backoff-base (fn-feed-limits-of f)) 0)))
+                     (fn-feed-backoff-base (fn-feed-limits-of f)) attempts)))
         (fn-feed-with-backoff
          (fn-feed-with-conn
           (fn-feed-with-queue-preserving-counts
@@ -127,6 +129,15 @@
        (fn-feed-undelivered f)
        (+ (nfix (fn-feed-retry-dropped f))
           (fn-fct-retry-drop-bit (fn-feed-dropped reason))))))
+
+(defun fn-fcv-raw-lost (f obs)
+  (declare (xargs :guard (and (fn-feedp f) (fn-feed-count-relationp f))
+                  :verify-guards nil))
+  (let ((entry (fn-feed-inflight-entry (fn-feed-queue f)))
+        (g (fn-fcv-raw-lost-requeue f obs)))
+    (if (and entry (fn-feed-retry-exhaustedp g (fn-feed-entry-msgid entry)))
+        (fn-fcv-raw-give-up g (fn-feed-entry-msgid entry) :retry-bound)
+      g)))
 
 (defun fn-fcv-raw-observe (f response article obs)
   (declare (xargs :guard (and (fn-feedp f) (fn-feed-count-relationp f))
@@ -188,10 +199,19 @@
 (defun fn-fcv-raw-lost-records (f obs)
   (declare (xargs :guard (and (fn-feedp f) (fn-feed-count-relationp f))
                   :verify-guards nil))
-  (if t
-      (list (fn-feed-journal-entry :feed-lost
-              (list (fn-feed-peer f) (nfix (fn-clock-monotonic obs)))))
-    nil))
+  (let* ((entry (fn-feed-inflight-entry (fn-feed-queue f)))
+         (g (fn-fcv-raw-lost-requeue f obs)))
+    (cons (fn-feed-journal-entry :feed-lost
+            (list (fn-feed-peer f) (nfix (fn-clock-monotonic obs))))
+          (if (and entry
+                   (fn-feed-retry-exhaustedp g (fn-feed-entry-msgid entry))
+                   (not (fn-feed-droppedp
+                         (fn-feed-state-of (fn-feed-entry-msgid entry)
+                                           (fn-feed-queue g)))))
+              (list (fn-feed-journal-entry :feed-drop
+                      (list (fn-feed-peer f) (fn-feed-entry-msgid entry)
+                            :retry-bound)))
+            nil))))
 
 (defun fn-fcv-raw-observe-records (f response obs)
   (declare (xargs :guard (and (fn-feedp f) (fn-feed-count-relationp f))
@@ -329,20 +349,31 @@
                 (fn-feedp fn-fcv-raw-enqueue fn-fcv-raw-selection fn-fcv-raw-offer fn-fcv-raw-send fn-fcv-raw-done fn-fcv-raw-lost fn-fcv-raw-give-up fn-fcv-raw-observe fn-fcv-raw-restart fn-fcv-raw-tick-step fn-fcv-raw-enqueue-records fn-fcv-raw-tick-records fn-fcv-raw-lost-records fn-fcv-raw-observe-records fn-fcv-raw-restart-records fn-fcv-raw-live-next fn-fcv-raw-live-records fn-fcv-raw-live-effects fn-fcv-raw-live-port-step))))))
 
 (local
- (defthm fn-fcv-raw-lost-is-reference
-  (implies (and (fn-feedp f) (fn-feed-count-relationp f))
-           (equal (fn-fcv-raw-lost f obs) (fn-feed-lost f obs)))
-  :hints (("Goal" :in-theory
-           (e/d (fn-fcv-raw-lost fn-feed-lost)
-                (fn-feedp fn-fcv-raw-enqueue fn-fcv-raw-selection fn-fcv-raw-offer fn-fcv-raw-send fn-fcv-raw-done fn-fcv-raw-back-off fn-fcv-raw-give-up fn-fcv-raw-observe fn-fcv-raw-restart fn-fcv-raw-tick-step fn-fcv-raw-enqueue-records fn-fcv-raw-tick-records fn-fcv-raw-lost-records fn-fcv-raw-observe-records fn-fcv-raw-restart-records fn-fcv-raw-live-next fn-fcv-raw-live-records fn-fcv-raw-live-effects fn-fcv-raw-live-port-step))))))
-
-(local
  (defthm fn-fcv-raw-give-up-is-reference
   (implies (and (fn-feedp f) (fn-feed-count-relationp f))
            (equal (fn-fcv-raw-give-up f msgid reason) (fn-feed-give-up f msgid reason)))
   :hints (("Goal" :in-theory
            (e/d (fn-fcv-raw-give-up fn-feed-give-up)
                 (fn-feedp fn-fcv-raw-enqueue fn-fcv-raw-selection fn-fcv-raw-offer fn-fcv-raw-send fn-fcv-raw-done fn-fcv-raw-back-off fn-fcv-raw-lost fn-fcv-raw-observe fn-fcv-raw-restart fn-fcv-raw-tick-step fn-fcv-raw-enqueue-records fn-fcv-raw-tick-records fn-fcv-raw-lost-records fn-fcv-raw-observe-records fn-fcv-raw-restart-records fn-fcv-raw-live-next fn-fcv-raw-live-records fn-fcv-raw-live-effects fn-fcv-raw-live-port-step))))))
+
+(local
+ (defthm fn-fcv-raw-lost-requeue-is-reference
+  (implies (and (fn-feedp f) (fn-feed-count-relationp f))
+           (equal (fn-fcv-raw-lost-requeue f obs) (fn-feed-lost-requeue f obs)))
+  :hints (("Goal" :in-theory (e/d (fn-fcv-raw-lost-requeue fn-feed-lost-requeue)
+                                  (fn-feedp fn-feed-with-backoff fn-feed-with-conn
+                                   fn-feed-with-queue-preserving-counts
+                                   fn-feed-queue-requeue-inflight fn-feed-backoff-delay
+                                   fn-feed-inflight-entry))))))
+
+(local
+ (defthm fn-fcv-raw-lost-is-reference
+  (implies (and (fn-feedp f) (fn-feed-count-relationp f))
+           (equal (fn-fcv-raw-lost f obs) (fn-feed-lost f obs)))
+  :hints (("Goal" :in-theory (e/d (fn-fcv-raw-lost fn-feed-lost)
+                                  (fn-feedp fn-fcv-raw-lost-requeue fn-feed-lost-requeue
+                                   fn-fcv-raw-give-up fn-feed-give-up
+                                   fn-feed-retry-exhaustedp fn-feed-inflight-entry))))))
 
 (local
  (defthm fn-fcv-raw-observe-is-reference
@@ -388,9 +419,10 @@
  (defthm fn-fcv-raw-lost-records-is-reference
   (implies (and (fn-feedp f) (fn-feed-count-relationp f))
            (equal (fn-fcv-raw-lost-records f obs) (fn-feed-lost-records f obs)))
-  :hints (("Goal" :in-theory
-           (e/d (fn-fcv-raw-lost-records fn-feed-lost-records)
-                (fn-feedp fn-fcv-raw-enqueue fn-fcv-raw-selection fn-fcv-raw-offer fn-fcv-raw-send fn-fcv-raw-done fn-fcv-raw-back-off fn-fcv-raw-lost fn-fcv-raw-give-up fn-fcv-raw-observe fn-fcv-raw-restart fn-fcv-raw-tick-step fn-fcv-raw-enqueue-records fn-fcv-raw-tick-records fn-fcv-raw-observe-records fn-fcv-raw-restart-records fn-fcv-raw-live-next fn-fcv-raw-live-records fn-fcv-raw-live-effects fn-fcv-raw-live-port-step))))))
+  :hints (("Goal" :in-theory (e/d (fn-fcv-raw-lost-records fn-feed-lost-records)
+                                  (fn-feedp fn-fcv-raw-lost-requeue fn-feed-lost-requeue
+                                   fn-feed-retry-exhaustedp fn-feed-inflight-entry
+                                   fn-feed-state-of fn-feed-droppedp))))))
 
 (local
  (defthm fn-fcv-raw-observe-records-is-reference
@@ -469,14 +501,21 @@
 (verify-guards fn-fcv-raw-send)
 (verify-guards fn-fcv-raw-done)
 (verify-guards fn-fcv-raw-back-off)
-(verify-guards fn-fcv-raw-lost)
+(verify-guards fn-fcv-raw-lost-requeue)
 (verify-guards fn-fcv-raw-give-up)
+(verify-guards fn-fcv-raw-lost
+  :hints (("Goal" :in-theory (disable fn-fcv-raw-lost-requeue fn-feed-lost-requeue
+                                      fn-feedp fn-feed-count-relationp
+                                      fn-feed-retry-exhaustedp fn-feed-inflight-entry))))
 (verify-guards fn-fcv-raw-observe)
 (verify-guards fn-fcv-raw-restart)
 (verify-guards fn-fcv-raw-tick-step)
 (verify-guards fn-fcv-raw-enqueue-records)
 (verify-guards fn-fcv-raw-tick-records)
-(verify-guards fn-fcv-raw-lost-records)
+(verify-guards fn-fcv-raw-lost-records
+  :hints (("Goal" :in-theory (disable fn-fcv-raw-lost-requeue fn-feed-lost-requeue
+                                      fn-feedp fn-feed-count-relationp
+                                      fn-feed-retry-exhaustedp fn-feed-inflight-entry))))
 (verify-guards fn-fcv-raw-observe-records)
 (verify-guards fn-fcv-raw-restart-records)
 (verify-guards fn-fcv-raw-live-next)
