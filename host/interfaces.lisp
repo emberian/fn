@@ -1436,8 +1436,7 @@
   :keystones (fn-oqw-receipt-outcomes-are-distinct))
 
 (definterface fn-oqw-outcome-of-final
-  :class :common-lisp-compliant
-  :keystones (fn-oqw-receipt-outcomes-are-distinct))
+  :class :common-lisp-compliant)
 
 
 (definterface fn-own-intent-refusal-word
