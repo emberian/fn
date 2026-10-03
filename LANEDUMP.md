@@ -618,3 +618,23 @@ loop extraction. Only this new credential fixture's derived trap block was
 generated with current nested-reader source; no unrelated fixture rewrite.
 Trap functions remain executable failures for unexpected paths, not coverage
 waivers. Final six schedule command re-run after exact fixture block update.
+
+S110 FNPL/FNCU append classification, codex-sol-tools
+====================================================
+Actual fnn-pull-journal-append now seals/validates/converts and runs the
+before-write selector before attempted publication. Definite prewrite faults
+retain their class. Attempted write/barrier failures remain indeterminate
+even when descriptor cleanup also fails; actual ACL2 journal phase decides
+uncertainty. After the barrier returns, classification/cut faults retain
+their class with durable cursor bytes present. Both pull and catch-up consume
+the same function. Runtime owns the analogous FNFD owner append path.
+
+First command: python3 -m unittest tests.test_native_pull_append
+Six schedules pass1.748s before scoped trap generation; final rerun below.
+Kernel write/fsync/close effects are real. Envelopes are scripted answers,
+not a codec/image claim; actual ACL2 phase step and host append/phase/close
+and selector functions execute. Known assertion marker is the only defect
+failure; reader/import/tool errors remain infrastructure. Only this new raw
+fixture's derived trap block generated, four unexpected-path traps remain.
+Same-harness S110 prewrite assertion evidence follows source commit; no
+full suite, image build or ACL2 closure started by this lane.

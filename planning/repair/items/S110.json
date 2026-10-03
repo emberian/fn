@@ -1,23 +1,38 @@
 {
  "acceptance": "wrapper:class-plus-step",
+ "budget": 450,
  "category": "error-handling",
  "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "DISSOLVES-IN",
  "evidence": "pull-service.lisp:229-252: (handler-case (let* ((envelope (fnn-core ... cursor))) (unless (fnn-octet-list-p envelope) (fnn-fault \"owner refused ~a envelope\" ...)) (fnn-pull-test-cut \"before-write\" kind) ... (fnn-write-all ...)) (error (e) ... (fnn-owner-feed-close journal) (fnn-indeterminate \"~a append uncertain: ~a (~a)\" ...)))",
+ "expect-failure": "tests.test_native_pull_append.PullAppendBoundaryTests.test_prewrite_envelope_fault_retains_class",
  "exposure": "conditional",
+ "failure-message": "pre-write envelope fault must retain its class",
  "file": "host/native/pull-service.lisp",
  "fix": "Narrow the handler to the region from fnn-owner-feed-phase :append through the fsync. Let failures before the write keep their own class.",
+ "harness": "tests/test_native_pull_append.py,tests/native_pull_append_raw.lisp",
  "id": "S110",
  "line": "247",
  "locus": "peer-services",
- "notes": [],
- "owner": "sweep-peer",
+ "notes": [
+  "10-03 04:21 claimed: scope=['host/native/pull-service.lisp', 'specs/peering.md', 'tests/native_pull_append_raw.lisp', 'tests/test_native_pull_append.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_native_pull_append.PullAppendBoundaryTests.test_prewrite_envelope_fault_retains_class"
+ ],
+ "owner": "codex-sol-tools",
  "reviewer": "pull-service.lisp:229-252: the (error (e) ...) arm wraps the non-octet-envelope fnn-fault (237-238) and everything before fnn-write-all, and turns all of them into fnn-indeterminate. fnn-pull-worker-guarded (552-554) then fences the node (exit 3) where a pre-write failure is a definite fault (exit 4). This misclassifies the outcome, but it is conservative, and it is reachable only through an ACL2 contract break or the developer cut selector.",
  "scenario": "ACL2 returns a non-octet envelope, or the developer selector is malformed (fnn-pull-test-cut faults). Nothing has been written. The handler still converts the fault into fnn-store-indeterminate, and fnn-pull-worker-guarded fences the node with 'recovery required' (exit 3) instead of reporting a definite fault (exit 4). AGENTS.md requires uncertain, refused and faulted outcomes to stay distinct.",
+ "scope": [
+  "host/native/pull-service.lisp",
+  "specs/peering.md",
+  "tests/native_pull_append_raw.lisp",
+  "tests/test_native_pull_append.py",
+  "LANEDUMP.md",
+  "planning/evidence-index.tsv"
+ ],
  "severity": "low",
  "slice": "wrapper",
  "source": "sweep-2026-10-03",
- "state": "open",
+ "state": "in-progress",
+ "test": "python3 -m unittest tests.test_native_pull_append.PullAppendBoundaryTests.test_prewrite_envelope_fault_retains_class",
  "title": "FNPL/FNCU append reports a pre-write envelope refusal or fault as indeterminate (exit 3)",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T08:21:07Z"
 }

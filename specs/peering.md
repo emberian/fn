@@ -269,7 +269,11 @@ cursor's first instant (one day before the owner's wall reading, local
 policy) is journaled before the round dials, no step changes the cursor,
 and the close journals exactly the cursor it moves to, so recovery after a
 crash anywhere in a round asks the dead round's NEWNEWS again
-(`fn-pull-recovery-asks-the-dead-rounds-newnews`). The schedule is
+(`fn-pull-recovery-asks-the-dead-rounds-newnews`). Envelope/core and selector
+faults before a write retain their class. Once the write is attempted, a
+write/barrier failure is uncertain and requires recovery, including when its
+close also fails; a fault after the barrier remains a fault with the durable
+cursor still present. The schedule is
 `fn-sched-pull-*` in books/scheduler-peers.lisp.
 
 NNT-018: A NEWNEWS pull feed advances past a round only when every listed Message-ID drew 235, 435 or 437 from the local node
