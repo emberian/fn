@@ -1940,5 +1940,7 @@ Full NNTP IN backing, segment spine/text construction, bounded decoder/working
 allocation and fixed mailbox/job capture funding remain open. Session/event
 owner admission and plan construction still run to completion under O, and one
 worker can wait on admission; no full semantic-event fairness claim. Root and
-Foundations own funding; Runtime absorbs Web at 08:00. Source assembly owns one
+Foundations own funding; Ember revised the 08:00 cap to ten; Web continues separately through 10:00. Source assembly owns one
 material review; Integration owns affected roots/interface/image convergence.
+
+Private reply seam: exact core eligibility for captured groups/group/article/post/remove (:reply), fixed semantic worker, no O/live table. PRF-1279 source equivalence theorem/witnesses await admission. New full NNTP collector streaming is next; Root/Foundations/Runtime continue funding and physical lease.

@@ -235,7 +235,8 @@ exposure admission decides (the id, or NIL when it refused)."
                      (:feed (fnn-web-feed-step face conn))
                      (:render (fnn-web-render-step face conn))
                      (:cold (fnn-web-cold-step face conn))
-                     ((:page-count :page-emit) (fnn-web-page-step face conn))))
+                     ((:page-count :page-emit) (fnn-web-page-step face conn))
+                     (:private-reply (fnn-web-private-reply face conn))))
                (serious-condition (condition)
                  (unwind-protect
                      (fnn-owner-thread-escape (fnn-web-face-service face) condition "web semantic job")
@@ -337,6 +338,19 @@ exposure admission decides (the id, or NIL when it refused)."
                    (lambda () (fnn-call 'fn-web-host-step (fnn-web-face-config face)
                      (fnn-web-conn-flow conn) (fnn-web-conn-event conn)
                      (fnn-web-conn-in conn) (fnn-web-conn-out conn) *the-live-state*)) :reader))))
+    (fnn-web-apply-action face conn action)))
+
+(defun fnn-web-private-reply (face conn)
+  (when (>= (fnn-web-conn-events conn) (fnn-core 'fn-web-host-max-events))
+    (fnn-fault "web flow exceeded its event allowance"))
+  (incf (fnn-web-conn-events conn))
+  (fnn-web-apply-action face conn
+    (first (fnn-call 'fn-web-host-private-reply-step (fnn-web-face-config face)
+                    (fnn-web-conn-flow conn) (fnn-web-conn-event conn)
+                    (fnn-web-conn-in conn) (fnn-web-conn-out conn)))))
+
+(defun fnn-web-apply-action (face conn action)
+  (let ((service (fnn-web-face-service face)))
     (case (fnn-core 'fn-web-host-action-kind action)
       (:respond (destructuring-bind (code fields bodyp &optional page-kind segs) (rest action)
                   (if (eq page-kind :page-plan)
@@ -562,7 +576,10 @@ exposure admission decides (the id, or NIL when it refused)."
             ((< (fnn-now) (fnn-web-conn-resume-at conn)) nil)
             (t
              (case (fnn-web-conn-phase conn)
-               (:event (fnn-web-event face conn))
+               (:event (if (fnn-core 'fn-web-host-private-reply-p
+                                    (fnn-web-conn-flow conn) (fnn-web-conn-event conn))
+                           (fnn-web-job-submit face conn :private-reply)
+                         (fnn-web-event face conn)))
                (:feed (when (fnn-web-feed-owned-p face conn) (fnn-web-job-submit face conn :feed)))
                (:await (fnn-web-await-step face conn))
                (:render (fnn-web-job-submit face conn :render))
@@ -595,8 +612,9 @@ exposure admission decides (the id, or NIL when it refused)."
 (defun fnn-web-iterate (face)
   ;; Each live record receives one semantic or readiness quantum per pass.
   ;; Socket readiness and asynchronous completions do not block this actor.
-  ;; Event/session owner admission and segment construction still run to
-  ;; completion under O; this is not a full semantic-event fairness claim.
+  ;; Stateful event/session owner admission still runs under O. Captured
+  ;; reply plan construction is private worker work, but is not yet a
+  ;; bounded semantic quantum; this is not full semantic-event fairness.
   (dolist (conn (fnn-web-face-conns face)) (fnn-web-advance face conn))
   (setf (fnn-web-face-conns face)
         (remove-if (lambda (conn) (and (fnn-web-conn-closedp conn) (fnn-web-conn-semantic-ended conn)

@@ -1922,3 +1922,21 @@
      (t (fn-wss-trouble 500 (fn-wrq-oct "Error") (fn-wrq-oct "Something went wrong here.")
                         ctx config sessions fn-web-in fn-web-out)))))
 
+
+
+; Reply handlers for the already captured read/post flow do not consult the
+; live session table. The core selects this private worker boundary; BEGIN,
+; authentication, expiry and disappearance remain the stateful boundary.
+(defun fn-web-private-reply-p (flow event)
+  (declare (xargs :guard t))
+  (and (equal event '(:reply))
+       (member (fn-wss-f-route flow) '(:groups :group :article :post :remove)) t))
+
+(defun fn-web-private-reply-step (config flow event fn-web-in fn-web-out)
+  (declare (xargs :stobjs (fn-web-in fn-web-out) :guard t))
+  (if (fn-web-private-reply-p flow event)
+      (mv-let (action sessions fn-web-out)
+        (fn-web-step config nil flow event fn-web-in fn-web-out)
+        (declare (ignore sessions))
+        (mv action fn-web-out))
+    (mv nil fn-web-out)))

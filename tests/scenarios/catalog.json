@@ -8824,6 +8824,30 @@
         "planning/evidence/web-page-cursor-2026-10-03.md"
       ],
       "note": "Actual source/raw witness only; program-mode cursor guard/refinement and matching image remain open (PRF-1277)."
+    },
+    {
+      "id": "SCN-1108",
+      "title": "Captured read/post reply planning uses fixed semantic worker without owner lock or live-table mutation",
+      "milestone": "M6",
+      "status": "specified",
+      "requirements": [
+        "WEB-006"
+      ],
+      "steps": [
+        "Reach authenticated GROUP/OVER flow through existing web request tests, compare actual live-table and private-reply action/output with the same immutable input.",
+        "Remove private-reply eligibility using a reached parsed authenticated BEGIN; check exact predicate failure, changed table and unequal action/output.",
+        "Run native core classifier and queued private-reply job with owner admission forbidden in recording adapter."
+      ],
+      "expected": [
+        "Private action/output equals table step and table is preserved under exact eligibility.",
+        "BEGIN/auth/gone/expiry are ineligible; no table-free stateful transition.",
+        "Actual fixed worker completes private reply while no owner section runs."
+      ],
+      "evidence": [
+        "tests/acl2/web-private-reply-tests.lisp",
+        "tests/native_web_page_cursor_raw.lisp"
+      ],
+      "note": "Native raw source consumer passes; source theorem/witness admission and matching image pending (PRF-1279)."
     }
   ]
 }
