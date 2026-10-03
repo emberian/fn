@@ -1,8 +1,9 @@
 # Now — 2026-10-03 convergence
 
 The implementation and source-tracing wave has ended. All domain owners yielded;
-Source merge and generated metadata are converged. No current
-initializer, proof REPL or native owner process remains running. The complete
+Source merge and generated metadata are converged. All deputies remain stopped.
+Root resumed one managed logical REPL on hbox for the active goal; no native
+owner is running. The complete
 remaining work stays in [NSLICESQUEUE](../NSLICESQUEUE.md),
 [the repair ledger](repair/STATUS.md), and the requirements/proof registries.
 Contributor setup is [CONTRIBUTING](../CONTRIBUTING.md). Source, ordinary
@@ -19,6 +20,18 @@ capture and checks peer-bank, snapshot and executor custody before settlement.
 SCN-1134 passes 31 selected source cases, including both actual listener entry
 failure paths; prior source fails the new bank-retention assertion. Whole-current
 native execution and complete funding remain open.
+
+Root's `root-current-union-continuation` session at hbox
+`/tank/fn/scratch/history-current-union-5a3d81` has admitted five further scopes
+through `books/owner-store-budget`. `books/owner-prepare-carried` refused at
+`fn-pcar-sbud-prepare-preserves-owner-relation`: its parent
+`fn-opc-prepare-preserves-owner-relation` is already among the 94 deferred
+assurance events. The attempted encapsulate rolled back; no new omission was
+added. There are 30 source-byte differences from the frozen recipe, including
+changed logical definitions; current native loading requires explicit source
+reconciliation, not merely adding missing functions. Full drift and actual
+admission evidence: [resume receipt](evidence/current-union-resume-20261003/result.json).
+The saved checkpoint below is unchanged; this newer prefix is in the live REPL.
 
 **There is no current whole-system native endpoint.** History's tested saved
 checkpoint is `/tank/fn/scratch/history-current-union-5a3d81/build/current-owner-storage-retained`

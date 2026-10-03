@@ -71,7 +71,11 @@ identify continuation owners, not running agents or automatic resumption.
 
 History's final tested saved checkpoint stops after the byte-store scanner:
 logical EOF/native entry false, 94 named assurance omissions, 489 scopes remain;
-no initializer is live. See [now](planning/now.md) for exact recipe, checkpoint,
+Root has since resumed one managed logical REPL and admitted five further
+scopes through owner-store-budget. Carried prepare stopped on an already-deferred
+parent relation theorem; no additional assurance omission was made. The 30
+source-byte differences include changed definitions, so source reconciliation
+precedes current native use. See [now](planning/now.md) for exact recipe, checkpoint,
 missing additive method cohort and model-state reset required on resume. The
 current pool has ten fields; the earlier eleven-field claim counted :inline.
 Source startup is connected for owner-run, but whole-current execution remains
