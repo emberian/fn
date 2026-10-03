@@ -40,7 +40,8 @@ its full core-selected cold descriptor while the captured owner is held."
 
 (defun fnn-extent-decoded-window-run (worker token)
   "Same worker/token/pool; actual retained ACL2 controller selects each step.
-The issuer must draw its complete constructor allowance before this entry."
+The issuer draws its declared fixed-storage projection before this entry;
+allocator/GC and pointed-to controller graphs remain outside that partial scope."
   (let* ((activation (make-fnn-decoded-activation))
          (fd nil) (incarnation nil))
     (setf (fnn-cold-worker-decoded worker) activation)
