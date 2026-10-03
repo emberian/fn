@@ -147,7 +147,8 @@ class CertifiedClaimsTests(unittest.TestCase):
             self.assertEqual(certified_claims.manifest_failures(
                 self.proofs, {"PRF-TEST": {"books/top"}}, root), [])
             # A cited manifest that attempted but failed the book does not count.
-            self.write_manifest(root, "certify-20260901T010000Z-1", body,
+            # Evidence paths are immutable; the later failure is a new run.
+            self.write_manifest(root, "certify-20260901T020000Z-2", body,
                                 result="failed")
             failures = certified_claims.manifest_failures(
                 self.proofs, {"PRF-TEST": {"books/top"}}, root)
