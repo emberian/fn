@@ -15,6 +15,20 @@
                 (fnn-developer-selector "FN_APP_JOURNAL_TEST_FAIL") ""))))
     (when (string= chosen point) (fnn-os-fail sb-posix:eio path))))
 
+(defvar *fnn-immutable-close-debts* nil
+  "Exact #(FD STAGE FINAL OPERATION PUBLICATION CONDITION) return debts.")
+
+(defun fnn-immutable-close-observation ()
+  (if *fnn-immutable-close-debts* :uncertain :closed))
+
+(defun fnn-immutable-close-handle (fd stage final operation publication)
+  "The caller consumed its owning FD slot; retain ambiguity, never retry."
+  (handler-case (fnn-close fd)
+    (serious-condition (condition)
+      (push (vector fd stage final operation publication condition)
+            *fnn-immutable-close-debts*)
+      (error condition))))
+
 (defun fnn-immutable-publish-effect
   (publication stage final final-directory octets
                &key cleanup-directory observer operation-label fault-observer registered-step)
@@ -23,12 +37,19 @@ come from the caller's ACL2 allocation/admission machine after it establishes
 exclusive authority and absence of that machine's exact final name.  Those are
 trusted caller observations rather than protection from hostile raw Lisp.  The
 executor does not assert the premise itself and returns fn-jpub's classification."
+  (unless (eq (fnn-immutable-close-observation) :closed)
+    (fnn-indeterminate "prior immutable staging descriptor return remains unobserved"))
   (unless (and (eq (fnn-core 'fn-jpub-host-authorized-initialp publication) t)
                (eq (fnn-core 'fn-jpub-host-action publication) :stage))
     (fnn-fault "immutable publication lacks ACL2 authorization"))
   (let ((publication publication)
-        (fd nil))
-    (labels ((advance (event)
+        (fd nil) (close-debt nil))
+    (labels ((close-handle (handle)
+               (handler-case
+                   (fnn-immutable-close-handle handle stage final operation-label publication)
+                 (serious-condition (condition)
+                   (setq close-debt t) (error condition))))
+             (advance (event)
                (setq publication
                      (if registered-step
                          (funcall registered-step publication event)
@@ -61,8 +82,8 @@ executor does not assert the premise itself and returns fn-jpub's classification
                          (fnn-os-error () nil))))
                  (advance (if ok ok-event error-event))
                  (when (and ok point) (observed point)))))
-      (unwind-protect
-           (loop until (eq (fnn-core 'fn-jpub-host-terminalp publication) t) do
+      (fnn-unwind-cleanups
+           ((loop until (eq (fnn-core 'fn-jpub-host-terminalp publication) t) do
              (case (fnn-core 'fn-jpub-host-action publication)
                (:stage
                 (observe '(:stage-result :ok) '(:stage-result :error) nil
@@ -85,7 +106,7 @@ executor does not assert the premise itself and returns fn-jpub's classification
                            ; failing close may already have released it.
                            (let ((handle fd))
                              (setq fd nil)
-                             (fnn-close handle)))))
+                             (close-handle handle)))))
                (:begin-link (advance '(:link-begin)))
                (:link
                 (let ((event
@@ -107,8 +128,13 @@ executor does not assert the premise itself and returns fn-jpub's classification
                            (fault-observed :directory-barrier final)
                            (fnn-fsync-dir final-directory))))
                (otherwise
-                (fnn-fault "ACL2 returned no immutable publication action"))))
-        (when fd (ignore-errors (fnn-close fd)))
+                (fnn-fault "ACL2 returned no immutable publication action")))))
+        (when fd
+          (let ((handle fd))
+            (setq fd nil)
+            (handler-case (close-handle handle)
+              (serious-condition (condition)
+                (fnn-indeterminate "immutable staging descriptor return unobserved: ~a" condition)))))
         ; Cleanup is after the authority barrier and cannot change its result.
         ; Reopen sweeps a surviving stage; this best-effort barrier merely
         ; prevents clean runs from accumulating names after a process death.
@@ -122,4 +148,6 @@ executor does not assert the premise itself and returns fn-jpub's classification
             (fnn-immutable-test-fault "cleanup" cleanup-directory
                                       operation-label)
             (fnn-fsync-dir cleanup-directory)))))
+    (when close-debt
+      (fnn-indeterminate "immutable staging descriptor return unobserved; custody held"))
     (fnn-core 'fn-jpub-host-outcome publication)))
