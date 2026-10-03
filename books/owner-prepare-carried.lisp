@@ -320,8 +320,11 @@
   (implies (fn-own-relation (fn-ocfg-owner oc))
            (fn-own-relation (fn-ocfg-owner
                              (fn-pcar-sbud-prepare oc record budget))))
-  :hints (("Goal" :in-theory (e/d (fn-sbud-prepare)
-                                  (fn-opc-prepare fn-own-relation
-                                   fn-sbud-admitp fn-sbud-used)))))
+  :hints (("Goal" :use fn-opc-prepare-preserves-owner-relation
+           :in-theory (e/d (fn-sbud-prepare)
+                           (fn-opc-prepare fn-own-relation
+                            fn-sbud-admitp fn-sbud-used
+                            fn-opc-prepare-equals-owner-event-under-relation
+                            fn-opc-prepare-preserves-owner-relation)))))
 
 (in-theory (disable fn-pcar-sbud-prepare))
