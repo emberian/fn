@@ -8218,20 +8218,31 @@ the caller joins any partial executor before relinquishing run authority."
     (fnn-indeterminate "cold startup: prior arena return remains unobserved"))
   (let* ((profile (fnn-heap-store-profile root))
          (core (fnn-heap-image-observation))
-         (plan (fnn-core 'fn-prstartup-default-plan
+         (peer (fnn-peer-flight-profile root))
+         (plan (fnn-core 'fn-prstartup-default-plan-with-peer
                          (sb-ext:dynamic-space-size) (cdr core) profile core
                          (fnn-gc-nursery-octets) cold-resources output-resources
                          max-connections root (fnn-core 'fn-pio-direct-workers)
                          (fnn-extent-cache-limit)
                          ;; OS observation, not a profile/data ceiling. Linux
                          ;; numbers NOFILE7; Darwin and the BSDs number it8.
-                         (fnn-heap-rlimit #+linux 7 #-linux 8))))
+                         (fnn-heap-rlimit #+linux 7 #-linux 8) peer))
+         (peer-grant
+           (when peer
+             (fnn-core 'fn-prstartup-peer-native-grant
+                       (sb-ext:dynamic-space-size) profile core (fnn-gc-nursery-octets)
+                       output-resources max-connections plan peer (fnn-heap-observations)))))
     (case (fnn-core 'fn-prstartup-status plan)
       (:admitted
        (unless (fnn-core 'fn-prstartup-planp plan)
          (fnn-fault "cold startup returned a malformed admitted plan")))
       (:refused (fnn-refuse "~a" (fnn-core 'fn-prstartup-refusal-line plan)))
       (otherwise (fnn-fault "cold startup returned a malformed decision")))
+    (when peer
+      (case (first peer-grant)
+        (:hold nil)
+        (:refused (fnn-refuse "~a" (fnn-core 'fn-prstartup-peer-native-refusal-line peer-grant)))
+        (otherwise (fnn-fault "peer startup returned a malformed grant"))))
     (let ((word (first (fnn-core-page-read-pool 'fn-owner-page-read-install-default plan))))
       (unless (eq word :installed)
         (if (eq (fnn-core 'fn-prstartup-install-status word) :refused)
@@ -8244,7 +8255,20 @@ the caller joins any partial executor before relinquishing run authority."
      (fnn-core 'fn-prstartup-cache-capacity plan))
     (fnn-cold-guard-cache-prepare plan)
     (fnn-extent-executor-start (fnn-core 'fn-prstartup-decoded-workers plan) plan)
-    plan))
+    (values plan (second peer-grant))))
+
+(defun fnn-owner-peer-flight-startup (service capture)
+  "Publish constructor custody in SERVICE before the private bank mutates."
+  (when capture
+    (destructuring-bind (dynamic protected policy stack runtime) capture
+      (fnn-peer-flight-bank-install
+       dynamic protected policy stack runtime
+       (lambda (bank)
+         (setf (fnn-owner-service-peer-flight-bank service) bank)
+         (push (lambda (actual)
+                 (fnn-peer-flight-bank-close (fnn-owner-service-peer-flight-bank actual)))
+               (fnn-owner-service-close-hooks service))))))
+  service)
 
 (defun fnn-owner-run (root port once max-connections
                       &optional fault address (family :inet) tls-context
@@ -8261,7 +8285,7 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
         (equal (sb-ext:posix-getenv "FN_OWNER_MEASURE") "1"))
   (let ((service nil) (listener nil) (tls-listener nil) (more-listeners nil)
         (log-close-action nil) (run-authority-claimed nil)
-        (page-read-started nil)
+        (page-read-started nil) (peer-capture nil)
         (old-active *fnn-sigterm-owner-active*)
         (old-requested *fnn-sigterm-requested*)
         (old-wakeup-fd *fnn-sigterm-wakeup-fd*))
@@ -8282,15 +8306,19 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                   ;; before recovery registers its first physical file. The
                   ;; callback retains startup custody even when a constructor
                   ;; escapes before any service object exists.
-                  (fnn-owner-page-read-startup
-                   root max-connections cold-resources output-resources
-                   (lambda () (setq page-read-started t)))
+                  (multiple-value-bind (plan capture)
+                      (fnn-owner-page-read-startup
+                       root max-connections cold-resources output-resources
+                       (lambda () (setq page-read-started t)))
+                    (declare (ignore plan))
+                    (setq peer-capture capture))
                   (setq service (fnn-owner-install root max-connections fault))
                   (setf (fnn-owner-service-cold-resources service) cold-resources
                         (fnn-owner-service-output-resources service) output-resources
                         (fnn-owner-service-output-slots service)
                         (fnn-core 'fn-orv-startup-slots max-connections))
                   (fnn-owner-retain-run-authority service)
+                  (fnn-owner-peer-flight-startup service peer-capture)
                   ;; Before any client/module starts, retire startup-only
                   ;; cache borrows; absent policy never gets a warm bypass.
                   (fnn-extent-end-recovery-cache)
@@ -8470,6 +8498,11 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                                      '("syncer operation or physical custody remains"))
                                    (unless (fnn-owner-output-drained-p service)
                                      '("output operation or physical dependency remains"))
+                                   (unless (fnn-owner-snapshot-jobs-drained-p service)
+                                     '("snapshot job or pin custody remains"))
+                                   (unless (fnn-peer-flight-bank-drained
+                                            (fnn-owner-service-peer-flight-bank service))
+                                     '("peer flight operation or physical custody remains"))
                                    (unless (fnn-extent-executor-drained-p)
                                      '("cold executor custody remains"))
                                    (unless (fnn-mux-drained-p service)
@@ -8490,6 +8523,9 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                                  (fnn-owner-syncer-drained-p service)
                                  (fnn-owner-output-drained-p service)
                                  (fnn-extent-executor-drained-p)
+                                 (fnn-owner-snapshot-jobs-drained-p service)
+                                 (fnn-peer-flight-bank-drained
+                                  (fnn-owner-service-peer-flight-bank service))
                                  (null (fnn-with-roster (service)
                                          (fnn-owner-service-workers service)))
                                  (null (fnn-owner-service-cold-head service))

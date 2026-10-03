@@ -40,6 +40,9 @@
 ; The fn-wide outcome classes and exit codes host/native/io.lisp reads (PRF-143).
 (include-book "books/outcome-class")
 (include-book "books/failure-scope")
+(include-book "books/peer-flight-profile")
+(include-book "books/peer-flight-startup")
+(include-book "books/peer-catchup-spool-resources")
 (include-book "books/committer-actor")
 (include-book "books/replay")
 ; The hybrid-store constructors that call the injecting agent; the raw
@@ -383,6 +386,7 @@
         ; file's fnn-with-owner-control-issued-turn: without it the DTN image
         ; compiled that function as a call to an undefined function.
         (load "host/native/owner-control-turn.lisp")
+        (load "host/native/catchup-spool.lisp")
         (load "host/native/owner.lisp")
         (load "host/native/history-root.lisp")
         (load "host/native/receiver-parser-turn.lisp")

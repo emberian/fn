@@ -830,3 +830,10 @@ old ad8 diagnostic cache.
 BP prefix certificate2794821 PASSED4/0 archived/indexed; actual source cost
 receipt scoped to item availability and complete decoder results. Current
 native endpoint and whole semantic decode/publication remain unexecuted/open.
+
+Operator convergence: independent inert peer authority capture and retained
+service-bank startup/cleanup are source-wired; snapshot/peer debt prevents
+terminal Store success. Current physical command checks await History's
+same-process native endpoint and Integration composition. Selected source
+fixtures are distinct from normal certification/image and full catchup flight
+activation. No Operator proof/build/live-owner process is left for takeover.

@@ -9638,7 +9638,8 @@
         "Run the prior owner body against the same startup/recovery fixture.",
         "Observe final settlement when installation retained its actual Store carrier but never returned SERVICE.",
         "Observe a normally joined executor whose retained constructor/decoder roster still contains physical custody using the actual locked drained predicate.",
-        "Compose the actual global arena return observation with preconstructor startup and orphan cleanup, including prior callback debt with no Store carrier."
+        "Compose the actual global arena return observation with preconstructor startup and orphan cleanup, including prior callback debt with no Store carrier.",
+        "Execute actual pre-open peer protection/native grant projection, retained service-bank constructor/error/raw-throw/install-cut cases, and the actual owner-run terminal conjunction with snapshot and peer debt."
       ],
       "expected": [
         "Pool installation, fixed table allocation, guard preparation and executor startup precede Store open. Named refusals allocate no tables or workers; malformed model decisions fault.",
@@ -9646,7 +9647,8 @@
         "Prior source fails the startup predicate at Store open because no pool or workers were installed.",
         "Retained startup Store is closed rather than reported absent; close failure fences it and retains authority. Prior actual settlement performs zero closes.",
         "Joined-but-retained executor custody leaves startup and run authority held; prior actual cleanup falsely releases it.",
-        "Prior arena callback debt reports uncertainty before plan/table/worker construction and retains run authority even when all executor threads have drained; callbacks never retry."
+        "Prior arena callback debt reports uncertainty before plan/table/worker construction and retains run authority even when all executor threads have drained; callbacks never retry.",
+        "Named peer native refusal occurs before pool constructors; accepted exact funding capture survives to the retained service. Constructor error/raw throw/install refusal keep the bank and prevent a joined close. A released snapshot pin without terminal join, or joined pin cleanup debt, prevents terminal Store settlement."
       ],
       "implementation": {
         "test": "tests/test_native_owner_pool_startup_source.py"
@@ -9771,13 +9773,17 @@
         "Execute actual heap profile, command and reservation bodies with actual ACL2 DEFAULT arithmetic and explicit machine/config/base/output observations.",
         "Check normalized root and actual worker/cache arguments, cold/default/output ordering, run extension, offline/init/explicit-policy scopes and prior refusal preservation.",
         "Check exact machine fit versus one octet less, next-run status and prior actual heap consumer.",
-        "Execute actual STATUS and HEALTH bodies, generic configuration projections and actual output reservation arithmetic for DEFAULT/output and explicit cold/output captures."
+        "Execute actual STATUS and HEALTH bodies, generic configuration projections and actual output reservation arithmetic for DEFAULT/output and explicit cold/output captures.",
+        "Execute the actual inert peer policy codec and native capture over real absent, valid52-byte, malformed, oversized, FIFO and symlink files; observe read-fault descriptor close.",
+        "Execute the actual heap command projection with independent policy and its selected heap/thread extension."
       ],
       "expected": [
         "DEFAULT run increases the chosen256MB fixture to257MB; the unchanged prior consumer prints256MB and fails the accepting reservation assertion.",
         "The exact machine boundary accepts; one octet less refuses. DEFAULT status prints the same extended reservation from one image/machine capture.",
         "Offline/init and explicit cold-policy cases retain their existing figure; faults remain distinct in SCN-1098.",
-        "Both diagnostics preserve configured output: selected base256MB +DEFAULT1MB +output16MB prints273MB; explicit cold case passes exact cold descriptor and output contributes16MB. Prior actual STATUS drops the policies and prints257MB."
+        "Both diagnostics preserve configured output: selected base256MB +DEFAULT1MB +output16MB prints273MB; explicit cold case passes exact cold descriptor and output contributes16MB. Prior actual STATUS drops the policies and prints257MB.",
+        "Only absence produces no peer grant. Malformed files refuse, nonregular/symlink/read faults remain faults; bounded capture never invokes the Lisp reader.",
+        "The launcher carries the exact peer policy as its eighth value, and the independent selected heap/thread backing contributes before output allocation."
       ],
       "implementation": {
         "test": "tests/test_native_heap_default_source.py"

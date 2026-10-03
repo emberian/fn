@@ -32,7 +32,7 @@
  '(fn-ncfg-nth *fn-ncfg-max-u64* fn-native-config-output-resources-wfp))
 (selected-source "books/cold-read-reservation.lisp" '(fn-crv-nth))
 (selected-source "books/output-reservation.lisp" '(fn-orv-policy-p fn-orv-extend-reservation))
-(selected-source "books/heap-store-figure.lisp" '(fn-heap-core-file))
+(selected-source "books/heap-store-figure.lisp" '(fn-heap-core-file *fn-heap-nursery-least-octets* fn-heap-nursery-trigger fn-heap-with-nursery fn-heap-grow-runtime-dynamic))
 (selected-source "books/heap-reservation.lisp"
  '(*fn-heap-thread-runtime-octets* fn-heap-reservation-octets))
 (selected-source (or (fourth sb-ext:*posix-argv*) "books/page-read-startup.lisp")
@@ -70,6 +70,8 @@
      (push (cons :cold args) *calls*) (first args))
     ((fn-prstartup-extend-operation-reservation fn-prstartup-extend-default-reservation)
      (push (cons :default args) *calls*) (apply (symbol-function entry) args))
+    (fn-pfr-extend-operation-reservation
+     (push (cons :peer args) *calls*) (first args))
     (fn-orv-extend-reservation
      (push (cons :output args) *calls*) (apply (symbol-function entry) args))
     (fn-heap-reserve-report-line (format nil "~s" (first args)))
@@ -85,10 +87,10 @@
 (multiple-value-bind (code line calls cores machines) (heap-command)
   (assert (= code 0))
   (assert (equal line "(:HEAP 257 :SMALL 8192 1024 16)"))
-  (assert (equal (mapcar #'car calls) '(:cold :default :output)))
+  (assert (equal (mapcar #'car calls) '(:cold :default :peer :output)))
   (assert (equal (subseq (cdr (second calls)) 1 6)
                  '(:run nil "/absolute/fixture" 4 8)))
-  (assert (equal (second (cdr (third calls))) nil))
+  (assert (equal (second (cdr (fourth calls))) nil))
   (assert (= cores machines 1)))
 ; No selected backing extension for init/offline/help, or explicit cold.
 (dolist (action '(:init :status :compact nil))

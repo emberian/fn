@@ -4490,3 +4490,22 @@ Final source/API69b50 sent Integration/Operator/Consistency; source push is
 Integration's responsibility. Bounds bank helper source guards passed before
 stop. Recovery partition/full physical tariff/native current endpoint remain
 queued; no closure claim transferred from helper/guard/scoped tests.
+
+
+### Operator convergence — explicit peer capture and terminal cohorts
+
+Closing native peer launcher/pre-open/service-bank packet with Foundation69b50cc84,
+Bounds1ef9b68b2 plus Operator a121c93a4, and Runtime2c7eb115f. Exact policy file
+is carried as eighth heap projection; pre-open returns exact funding capture
+as second value; bank retained before ledger mutation. Snapshot and bank
+observations gate actual terminal close. Source fixtures exercise real files,
+17 startup cases, constructor error/raw throw/install refusal and actual close
+conjunction. No independent initializer, ACL2 world, owner, worker or build
+process remains owned by Operator. Parent requested convergence, no adjacent work.
+
+Unfinished physical driver: History current same-process native initializer
+then Integration's immutable endpoint; do not start another world. S012/S072/
+S074/S090/S138/S151 and journal physical prepared fixtures remain source/proof
+versus current-image obligations, not completion claims. No live deployment.
+Protected recovery partition, expanded init/reopen and complete tariff remain
+open. Bounds catchup controller draft is preserved but activation unwired.

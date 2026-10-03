@@ -30,6 +30,9 @@
 ;; leaves a boundary (fn-fs-classify) and escalates the service's exit
 ;; (fn-fs-stop-exit-escalate); both run in handlers, called directly.
 (include-book "books/failure-scope")
+(include-book "books/peer-flight-profile")
+(include-book "books/peer-flight-startup")
+(include-book "books/peer-catchup-spool-resources")
 (include-book "books/committer-actor")
 (include-book "books/replay")
 ; Every codec seam's attachment (books/codec-attach.lisp): the books above
@@ -532,6 +535,7 @@
         ; The writable NNTP owner.  It registers the `owner' verb and calls
         ; only host/owner-host.lisp wrappers for protocol and state decisions.
         (load "host/native/owner-control-turn.lisp")
+        (load "host/native/catchup-spool.lisp")
         (load "host/native/owner.lisp")
         (load "host/native/history-root.lisp")
         (load "host/native/receiver-parser-turn.lisp")

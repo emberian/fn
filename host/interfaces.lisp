@@ -5587,3 +5587,16 @@
 (definterface fn-bpsg-acquire-turn :class :common-lisp-compliant)
 
 (definterface fn-lim-article-decision :class :common-lisp-compliant)
+
+; Independent inert peer policy and launcher projection.
+(definterface fn-pfp-file-name :class :common-lisp-compliant)
+(definterface fn-pfp-read-bound :class :common-lisp-compliant)
+(definterface fn-pfp-read :class :common-lisp-compliant)
+(definterface fn-pfp-refusal-line :class :common-lisp-compliant)
+(definterface fn-pfr-policy-p :class :common-lisp-compliant)
+(definterface fn-pfr-extend-operation-reservation :class :common-lisp-compliant)
+(definterface fn-pfr-operation-observes-p :class :common-lisp-compliant)
+
+(definterface fn-prstartup-default-plan-with-peer :class :common-lisp-compliant)
+(definterface fn-prstartup-peer-native-grant :class :common-lisp-compliant)
+(definterface fn-prstartup-peer-native-refusal-line :class :common-lisp-compliant)
