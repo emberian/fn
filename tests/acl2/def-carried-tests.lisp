@@ -609,6 +609,50 @@
                                         :raw-with (:carried fn-cdt-wrepaired))
                                       (w state))))))))))
 
+; Liaison r72 (on c1d69fb6a): a guard conjunct a boot-strap primitive heads
+; over the carried stobj, (< (r72-n st) 100), is not exempt from the bridge
+; rule (only a fail-loud primitive such as boundp-global is): with no bridge
+; concluding it, :raw-with (:carried ...) is refused for that conjunct.
+(encapsulate ()
+ (local
+  (encapsulate ()
+   (defstobj r72-st (r72-n :type (integer 0 *) :initially 0))
+   (defun r72-r (r72-st) (declare (xargs :stobjs r72-st)) (< 0 (r72-n r72-st)))
+   (defun r72-open (r72-st) (declare (xargs :stobjs r72-st)) (update-r72-n 1 r72-st))
+   (defun r72-step (r72-st)
+     (declare (xargs :stobjs r72-st :guard (and (r72-r r72-st) (< (r72-n r72-st) 100))))
+     (update-r72-n 1 r72-st))
+   (defthm r72-open-r (r72-r (r72-open r72-st)))
+   (defthm r72-step-r (implies (r72-r r72-st) (r72-r (r72-step r72-st))))
+   (definterface r72-open :class :common-lisp-compliant)
+   (definterface r72-step :class :common-lisp-compliant)
+   (def-carried r72-carried
+     :invariant r72-r
+     :established ((r72-open r72-open-r :witness ((create-r72-st))))
+     :transitions ((r72-step r72-step-r))
+     :trace nil)
+   (assert-event (null (fn-cd-raw-problem 'r72-carried 'r72-step (w state))))
+   ; as fn-di-raw-with-problem reads the guard: kind checks and the stobj's
+   ; own recognizer out (the host and the discipline hold those), then only
+   ; a fail-loud primitive's conjunct out; the < conjunct stays and is uncovered
+   (assert-event
+    (equal (fn-cd-uncovered-conjunct 'r72-carried 'r72-step
+                                     (fn-di-defined-conjuncts
+                                      (fn-di-invariant-conjuncts
+                                       (fn-di-conjuncts (getpropc 'r72-step 'guard *t* (w state)))
+                                       '(r72-st) '(r72-st) (fn-di-guard-kinds (w state)) (w state))
+                                      (w state))
+                                     (w state))
+           '(< (r72-n r72-st) '100)))
+   (assert-event
+    (search "nor a conjunct of a"
+            (car (fn-di-raw-with-problem
+                  'r72-step '(:class :common-lisp-compliant :raw-with (:carried r72-carried))
+                  (w state)))))
+   (must-fail-checked
+    (definterface r72-step :class :common-lisp-compliant :raw-with (:carried r72-carried))
+    :unchecked "the < conjunct over the carried stobj has no bridge"))))
+
 ; r14-F1: a bridge theorem about the repaired result.  The generated bridge
 ; is about the SAME state, (implies (r14-r x) (r14-p x)), false, refused by
 ; name; without a bridge, raw dispatch is refused for the uncovered conjunct.

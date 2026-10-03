@@ -321,9 +321,13 @@
     (cond
      ((fn-di-kind-checks (list c) formals stobjs (fn-di-guard-kinds w)) :skipped)
      ((fn-di-stobj-recognizer-conjunctp c formals stobjs w) :skipped)
-     ((or (null head) (getpropc head 'predefined nil w)) :skipped)
+     ; a conjunct over a host-passed argument is refused whatever its head:
+     ; (< n 100) is as unprovable by preservation as (fn-okp n) (liaison r72
+     ; on c1d69fb6a); only a conjunct over stobjs alone may be skipped for
+     ; a fail-loud primitive head
      ((fn-di-non-stobj-vars vars formals stobjs)
       (cons :argument (car (fn-di-non-stobj-vars vars formals stobjs))))
+     ((or (null head) (member-eq head *fn-di-fail-loud-primitives*)) :skipped)
      ((equal c (list r s)) :skipped)
      ((not (member-eq s vars)) :uncovered)
      ((and (equal vars (list s)) (member-eq head (fn-cw-bridge-heads profile bridges w)))

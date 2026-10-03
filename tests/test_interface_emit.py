@@ -207,6 +207,17 @@ class HostBindingTests(unittest.TestCase):
         (root / "host" / "r-host.lisp").write_text(
             "(def-carried-writers-row fn-r-none :profile fn-none :from fn-r-carried)\n")
         self.assertNotIn("fn-r-none", interface_emit.carried_rows(root))
+        # a writer declared twice, or two bridges for one predicate, is refused
+        # (ACL2 refuses both; the mirror never keeps one quietly)
+        (root / "host" / "r-host.lisp").write_text(
+            "(def-r-writer fn-s)\n(def-carried-writer fn-s :profile fn-r-profile)\n")
+        with self.assertRaises(ValueError):
+            interface_emit.carried_rows(root)
+        (root / "host" / "r-host.lisp").write_text(
+            "(def-r-writer fn-s :bridges ((fn-r-okp fn-other-bridge)))\n"
+            "(def-carried-writers-row fn-r-host :profile fn-r-profile :from fn-r-carried)\n")
+        with self.assertRaises(ValueError):
+            interface_emit.carried_rows(root)
 
     def test_raw_with_carried_refuses_a_missing_row_or_transition(self):
         found = self.raw_with_problems(
