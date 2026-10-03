@@ -2090,6 +2090,16 @@
   :class ::common-lisp-compliant
   :keystones (fn-splan-window-size-is-positive-until-done))
 
+; Shared ARTICLE/HEAD/BODY plans consumed by native NNTP and Web. Predicates
+; have guard T. The retained renderer still uses its logical counterpart:
+; complete renderer source guards and host/reference refinement remain owed.
+(definterface fn-asto-plan-articlep :class :common-lisp-compliant)
+(definterface fn-asto-plan-cursorp :class :common-lisp-compliant)
+(definterface fn-asto-preflight-planp :class :common-lisp-compliant)
+(definterface fn-asto-plan-render-window
+  :class :ideal
+  :keystones ((fn-ast-render-window-byte-bound :via fn-ast-render-window)))
+
 (definterface fn-splan-cursor-step
   :class ::common-lisp-compliant
   :kinds ((w natp))
@@ -4623,6 +4633,11 @@
 ;; books/payload-extent-read.lisp
 
 (definterface fn-owner-chunk-span :class :program)
+
+; One retained preflight quantum, with selection installed once on READY;
+; replay consumes the immutable render plan without repeating authority.
+; PROGRAM owner installation and complete guard/refinement bridge are open.
+(definterface fn-owner-article-ready-plan-step :class :program)
 (definterface fn-owner-unavailable-line-at :class :program)
 (definterface fn-store-sco-decode :class :program)
 (definterface fn-store-sco-decode-finish :class :program)

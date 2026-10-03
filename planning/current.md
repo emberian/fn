@@ -57,7 +57,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 **protected channel.** A gated command before login is answered 480 and changes nothing, AUTHINFO on a clear connection under `protected_only` is 483, and POST needs the principal's posting flag.
 
 - Host-called subject: `fn-asto-mca-read-span` at host/owner-host.lisp:4496, caller bridge pending: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved., equated by `fn-scar-auth-step-pinned-is-auth-step-pinned` (books/served-carried.lisp:192).
-- Keystone: `fn-served-dispatch-of-a-gated-command-is-480-and-changes-nothing` (books/nntp-auth-invariants.lisp:612; PRF-031 (uncertified-at-current-digest)); certified at the current source and closure by `certify-20261003T102734Z-1462490` (earliest archived).
+- Keystone: `fn-served-dispatch-of-a-gated-command-is-480-and-changes-nothing` (books/nntp-auth-invariants.lisp:612; PRF-031 (uncertified-at-current-digest)); no archived manifest certifies the current closure; `certify-20260929T022113Z-1604071` passed this source of `books/nntp-auth-invariants.lisp`, and since then `books/article-header-census.lisp`, `books/article-line-bound.lisp`, `books/article-properties.lisp` and 85 more changed.
 - Tested: no: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
 - Deployed: no: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
 - Latest positive result: matrix AUTH-GATED-A/B 480 before login, AUTH-LOGIN 281, AUTH-WRONG 481, every TLS/AUTHINFO transit row; auth 4/4, starttls 2/2, protected_peering 5/5 ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).
@@ -248,7 +248,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **resumable developer init compatibility.** A resumed init keeps the sealed profile and generation-one group changes; mismatched requested intent is refused before resume publication, while invalid initial evidence faults.
 
-- Host-called subject: `fn-nir-resume-decision` at host/native/io.lisp:2527.
+- Host-called subject: `fn-nir-resume-decision` at host/native/io.lisp:2560.
 - Keystone: `fn-nir-resume-admits-identical-initial-contract-across-stamps` (books/native-init-resume.lisp:42; PRF-1270 (uncertified-at-current-digest)); no archived manifest records `books/native-init-resume.lisp` passed at its current source.
 - Tested: no matching image; source proof experiments are recorded separately below.
 - Deployed: no: the node runs default, this needs development.
@@ -261,7 +261,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 **STARTTLS after authentication.** An authenticated connection advertises no STARTTLS and a valid clear-channel STARTTLS answers 502 with the full authenticated session unchanged.
 
 - Host-called subject: `fn-asto-mca-read-span` at host/owner-host.lisp:4496, caller bridge pending: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
-- Keystone: `fn-auth-starttls-after-authentication-is-refused-without-reset` (books/nntp-auth.lisp:3446; PRF-1266 (certified)); certified at the current source and closure by `certify-20261003T102734Z-1462490` (earliest archived).
+- Keystone: `fn-auth-starttls-after-authentication-is-refused-without-reset` (books/nntp-auth.lisp:3476; PRF-1266 (certified)); no archived manifest records `books/nntp-auth.lisp` passed at its current source.
 - Tested: no: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
 - Deployed: no: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
 - Latest positive result: Auth source and role books plus auth/SASL teeth certified at exact source digests in certify-20261003T102734Z-1462490 and certify-20261003T104044Z-1503690; actual saved-image selected-session scenario added.
@@ -273,7 +273,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 **peer reader access.** A peer-role reader command uses its login or anonymous pinned READ/POST rule; a projected nonempty rule excludes unreadable groups and article memberships, and queue privacy covers source peers.
 
 - Host-called subject: `fn-asto-mca-read-span` at host/owner-host.lisp:4496, caller bridge pending: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
-- Keystone: `fn-auth-view-excludes-unreadable-groups-on-any-connection` (books/nntp-auth.lisp:4051; PRF-1269 (certified)); certified at the current source and closure by `certify-20261003T102734Z-1462490` (earliest archived).
+- Keystone: `fn-auth-view-excludes-unreadable-groups-on-any-connection` (books/nntp-auth.lisp:4081; PRF-1269 (certified)); no archived manifest records `books/nntp-auth.lisp` passed at its current source.
 - Tested: no: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
 - Deployed: no: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
 - Latest positive result: Auth and source-peer queue tests certified in certify-20261003T102734Z-1462490; actual USER/PASS principal promotion and reader/transit composition certified in certify-20261003T103156Z-1476136; saved-image source-peer scenario added.
@@ -285,7 +285,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 **published handshake charges.** Durable publication and settled handshake exits charge max(published TLS limit,still-owned admissions); refused proposals do not change the held charge.
 
 - Host-called subject: `fn-owner-connection-held-refresh` at host/owner-host.lisp:1615.
-- Keystone: `fn-cbud-live-held-charges-current-and-active` (books/connection-budget.lisp:800; PRF-1268 (uncertified-at-current-digest)); no archived manifest certifies the current closure; `certify-20261003T104044Z-1503690` passed this source of `books/connection-budget.lisp`, and since then `books/history-columns-foundation.lisp`, `books/history-columns-logic.lisp`, `books/history-columns.lisp` and 1 more changed.
+- Keystone: `fn-cbud-live-held-charges-current-and-active` (books/connection-budget.lisp:800; PRF-1268 (uncertified-at-current-digest)); no archived manifest certifies the current closure; `certify-20261003T104044Z-1503690` passed this source of `books/connection-budget.lisp`, and since then `books/history-columns-foundation.lisp`, `books/history-columns-logic.lisp`, `books/history-columns.lisp` and 2 more changed.
 - Tested: no matching image; source proof experiments are recorded separately below.
 - Deployed: no: node image `a3553e6b`; changed since it: `books/connection-budget.lisp`, `host/owner-host.lisp`.
 - Latest positive result: Connection-budget and exact teeth certified in certify-20261003T104044Z-1503690; actual host adapter outcome-injection fixture PASS, archived sol-access-native-faults-2026-10-03.
@@ -296,7 +296,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **incremental decision journal replay.** The journal command reads a captured regular-file prefix in ACL2 windows of at most64KiB and folds complete entries without retaining them; arbitrary input yields exactly the reference report and exit verdict, independent of chunk boundaries.
 
-- Host-called subject: `fn-otjs-report` at host/native/io.lisp:3899.
+- Host-called subject: `fn-otjs-report` at host/native/io.lisp:3934.
 - Keystone: `fn-otjs-report-refines-journal-report` (books/owner-time-journal-stream.lisp:522; PRF-1275 (certified)); certified at the current source and closure by `certify-20261003T112822Z-1637229` (earliest archived).
 - Tested: no matching image; source proof experiments are recorded separately below.
 - Deployed: no: the node runs default, this needs development.

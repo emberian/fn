@@ -3984,3 +3984,14 @@ manifest match. Universal arbitrary-name reference and full owner/physical scope
 remain open. Warm access-header-query /tank/fn/gates/codex-access-header-query-repl
 retained; tests resync had undone later bounds events, now reloaded header then
 query bounds and tests in order, all pass. No second full initializer or image.
+
+Access current dispatch roster: declared actual fn-asto-plan-articlep,
+fn-asto-plan-cursorp and fn-asto-preflight-planp as guard-verified common entries,
+fn-owner-article-ready-plan-step as PROGRAM, and fn-asto-plan-render-window as
+its actual :ideal class with byte-bound keystone via fn-ast-render-window.
+Native common/raw renderer guard and complete reference bridge remain owed;
+no false class upgrade to bypass the current-world check. Integration owns
+Qplan fallback composition. Shared header bounds immutablec1f6 normal selected
+3root cert PASS certify-20261003T173231Z-2697440 (20matching cache dependencies,
+9uncited historical cache dependencies explicitly retained as provenance debt).
+Manifest archived/indexed; no book over10s and no image/physical transfer.
