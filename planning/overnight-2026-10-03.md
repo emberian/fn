@@ -47,16 +47,24 @@ to one immutable candidate and never transfers a verdict to changed bytes.
 
 A summary is a locator, not sufficient reorientation. Recover the actual
 top-level user **and assistant** exchanges with `cv prompts 01a0fe41`, then
-`cv show 01a0fe41 --around N --context K`. Useful prompts are317 (ambition),362
-(team/design),640 (correction to serial/preservation advice),830 (Sol deputies),
-967 (context deputy),1009 (integration/shipping),1037 (skeptical external reviews),
-1058 (empirical/helpers),1189/1245/1256 (speed/batching),1273 (trajectory) and1312
-(recovery). Read surrounding responses and latest corrections, advancing beyond
-long tool stretches through the assistant final response. In particular,
-around640/context5 and around1273/context8 carry corrections; range1295..1307
-contains the complete promised trajectory/capability answer before compaction.
-Use `cv show --help` for range syntax. Do not count repeated forked history as
-independent evidence or commit transcript dumps/personal context.
+`cv show 01a0fe41 --around N --context K`. Useful prompts are 317 (ambition),
+362 (team/design), 640 (correction to serial/preservation advice), 830 (Sol
+deputies), 967 (context deputy), 1009 (integration/shipping), 1037 (skeptical
+external reviews), 1058 (empirical/helpers), 1189/1245/1256 (speed/batching),
+1273 (trajectory) and 1312 (recovery). Read surrounding responses and latest
+corrections, advancing beyond long tool stretches through the assistant final
+response. These three verified windows include the correction, subsequent
+batching discussion and complete promised trajectory/capability answer:
+
+```sh
+cv show 01a0fe41 --around 640 --context 5
+cv show 01a0fe41 --around 1273 --context 8
+cv show 01a0fe41 --range 1295..1307
+```
+
+If output truncates, continue at the range printed by `cv`. Do not count
+repeated forked history as independent evidence or commit transcript dumps or
+personal context.
 
 Before substantive decisions, read the complete needed governing files:
 `docs/README.md`, `docs/architecture.md`, `planning/decisions.md`, this active
