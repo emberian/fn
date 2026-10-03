@@ -6635,6 +6635,28 @@
         "planning/evidence/operator-retire-observation-2026-10-03-v2.json"
       ],
       "note": "Actual source host consumes the ACL2 observation decision; expiry after requested drain plus60s reports uncertainty without owner/custody effects. Warm REPL admission and actual-source positive/prior-source timeout recorded; normal certification and matching image remain pending. No physical process-stop deadline is claimed."
+    },
+    {
+      "id": "WEB-006",
+      "title": "Bounded concurrent HTTP continuations preserve session command/reply pairing and operation custody",
+      "specification": "specs/human-client.md#the-nodes-own-web-face",
+      "milestone": "M6",
+      "status": "specified",
+      "proof_targets": [],
+      "verification": [
+        "test",
+        "integration",
+        "scenario"
+      ],
+      "evidence": [
+        "host/native/web-host.lisp",
+        "host/web-host.lisp",
+        "tests/native_web_reactor_raw.lisp",
+        "tests/test_native_web.py",
+        "tests/test_native_host_lifecycle.py",
+        "planning/evidence/web-continuations-2026-10-03.md"
+      ],
+      "implementation_note": "Source implementation in lane codex-sol-web: fixed I/O actor plus one semantic worker, profile-bounded HTTP slots and job mailbox, per-session semantic-flow lease, exact partial output offsets/windows, shared await/cold consumers. Actual raw continuation fixture passes; assembled-image checks pending. No new semantic proof or qualified image claim. Core NNTP reply/HTML materialization funding and incremental rendering remain open; output windows alone do not bound or fund complete page allocation."
     }
   ]
 }

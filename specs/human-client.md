@@ -188,8 +188,9 @@ table (a token drawn from the OS CSPRNG, the connection, the login, a CSRF
 token, the last use) is node-local and never logged; no password is kept.
 
 Local policy, not an RFC requirement: one request per connection
-(`Connection: close`), one connection served at a time by the face's
-thread, a request completed within 15 seconds, the idle life of a session
+(`Connection: close`), one registered I/O actor multiplexing at most `[web] max_sessions` HTTP
+connections (connections beyond those slots remain in the kernel backlog),
+a request completed within 15 seconds, the idle life of a session
 (`[web] idle_seconds`, 12 hours) and the number kept (`[web]
 max_sessions`, 64; each holds one owner connection).
 
@@ -217,3 +218,23 @@ left as it is), and the node reads it when it starts
 same machine (`share/fn/caddy/fn-web.caddy`), or the node itself with
 `tls = true`. The release's `clients/` carries no service (HST-029). The
 threat model is docs/operator-internals.md, "The friends' web reader".
+
+WEB-006: The web I/O actor retains each request's socket, private octet buffers, event flow,
+partial output offset and logical reader continuation. A stalled TLS handshake,
+partial head/body, queued POST completion or cold payload read yields to other
+connections; no connection creates a thread. One fixed semantic worker executes
+owner chunk/render/cold operations that can wait for publication or scheduler
+admission, through a mailbox of at most one operation per admitted HTTP record.
+Cancellation retains the exact request/CID/plan until that activation returns,
+independently of disposing its transport. Requests sharing a browser session
+serialize their semantic flows on its one owner connection. Completed HTTP pages
+are sent in windows with the exact Content-Length; a deadline, cancellation or
+uncertain submission closes without an accepted/refused HTTP outcome. Socket
+cleanup and cold publication cancellation do not imply that an issued physical
+read has ended. The owner's generated actor lifecycle retains the web actor
+through its physical join before shared service close.
+
+This scheduling contract does not yet establish a funding proof for the web
+machine's materialized NNTP reply and HTML buffers. The response windows bound
+socket staging; pre-materialization allocation accounting remains an open output
+contract item. Existing web semantic/refinement proofs keep their stated scope.

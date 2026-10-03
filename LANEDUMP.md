@@ -1760,3 +1760,5 @@ abandonment through the existing all-release cleanup.
 Source form parse/diff PASS. Source sent before broader verification per
 current coordination; focused actual pull fixture follows separately.
 No proof/image or actual peer scenario claim.
+## Source assembly immediate HTTP reactor (2026-10-03)
+934b416cb composed with cold fifth return; actual io leaf collision with retained pull FD/DATA/OFFSET/END fnn-socket-write-now resolved by renaming new HTTP/NNTP FD/CHANNEL/DATA/OFFSET leaf fnn-transport-write-now plus two callers. Six missing program dispatcher declarations added for actual HTTP wrappers. Source ships before verification; primary cancellation/session lease/cold lifetime and actual changed constructor/leaf fixture checks follow, matching nativeWeb/LogicalFeed pending. Full reply/HTML materialization/funding still open.

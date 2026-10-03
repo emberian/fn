@@ -419,6 +419,13 @@ class LogicalFeedTests(unittest.TestCase):
             poster.start()
             time.sleep(1)
             self.assertTrue(poster.is_alive(), "the post was answered before its barrier")
+            # HTTP itself remains available while its POST receipt awaits
+            # the committer; an operator-only probe misses a blocked face.
+            web_started = time.monotonic()
+            web_status, _, web_body, _, _ = Browser(self.web_port).request("GET", "/health")
+            self.assertEqual((web_status, web_body), (200, "ready\n"))
+            self.assertLess(time.monotonic() - web_started, 1.5,
+                            "web actor waited on its POST completion")
             waited, health = self.timed_health()
             self.assertLess(waited, baseline + 1.5,
                             "the owner held its mutex for a web post's barrier")

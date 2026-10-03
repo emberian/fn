@@ -5750,6 +5750,15 @@ call performs one zero-time poll; it never spins after an EAGAIN race."
                  nil)
                 (t (return (subseq buffer 0 count)))))))))
 
+(defun fnn-transport-write-now (fd channel data offset)
+  "One nonblocking transport attempt, shared by NNTP and HTTP continuations."
+  (if channel (fnn-tls-write-now channel data offset)
+    (let* ((remaining (- (length data) offset))
+           (progress (fnn-write-progress
+                      (lambda () (funcall *fnn-write-syscall* fd data offset remaining))
+                      remaining "socket" nil t)))
+      (if (eq progress :would-block) :output progress))))
+
 (defun fnn-send-all (fd octets seconds)
   "Write OCTETS with one deadline for readiness waits and EINTR retries.
 

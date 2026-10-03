@@ -235,19 +235,9 @@ ACL2 lets one served step read (fnn-mux-read-buffer)."
           (t (fnn-mux-read-plain fd buffer)))))
 
 (defun fnn-mux-write-now (conn)
-  "One write of the queued reply from its offset: the octets written, or the
-direction to wait for."
-  (let ((channel (fnn-mux-conn-channel conn))
-        (data (fnn-mux-conn-out conn))
-        (offset (fnn-mux-conn-out-at conn)))
-    (if channel
-        (fnn-tls-write-now channel data offset)
-      (let* ((remaining (- (length data) offset))
-             (progress (fnn-write-progress
-                        (lambda () (funcall *fnn-write-syscall*
-                                            (fnn-mux-conn-fd conn) data offset remaining))
-                        remaining "socket" nil t)))
-        (if (eq progress :would-block) :output progress)))))
+  "One write of the queued reply from its offset, through the shared leaf."
+  (fnn-transport-write-now (fnn-mux-conn-fd conn) (fnn-mux-conn-channel conn)
+                        (fnn-mux-conn-out conn) (fnn-mux-conn-out-at conn)))
 
 (defun fnn-mux-wake-locked (loop)
   "LOOP's LOCK held: one octet to the wake pipe, unless the loop has closed
