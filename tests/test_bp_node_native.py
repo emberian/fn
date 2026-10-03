@@ -46,7 +46,8 @@ class NativeBpNodeTests(unittest.TestCase):
         if self._testMethodName in (
                 "test_disconnected_delivery_restarts_and_releases_only_matching_obligation",
                 "test_keepalive_peer_does_not_block_second_canonical_request",
-                "test_silent_contact_expires_without_stopping_canonical_delivery"):
+                "test_silent_contact_expires_without_stopping_canonical_delivery",
+                "test_stalled_session_init_expires_beside_canonical_delivery"):
             self.image_source = assert_same_native_source(self, PRODUCER, IMAGE)
         self.tmp = scratch(self, "fn-bp-node-a3-")
         self.relay = ByteRelay()
@@ -279,6 +280,36 @@ class NativeBpNodeTests(unittest.TestCase):
         receiver.output_until(b"peer Contact Header timeout", timeout=75)
         silent.settimeout(10)
         self.assertEqual(silent.recv(1), b"", "expired contact must actually close")
+        self.assertIsNone(receiver.poll(), receiver.diagnostics())
+        receiver.stop(grace=5)
+        self.assertEqual(self.receiver_articles(), 1)
+        restarted = self.dispatch_receiver()
+        self.assertEqual(restarted.returncode, EXIT.OK, restarted.stderr)
+        self.assertEqual(self.receiver_articles(), 1)
+
+    def test_stalled_session_init_expires_beside_canonical_delivery(self):
+        """SCN-1127: ACL2-authored Contact Header, no peer SESS_INIT."""
+        with Acl2Session(IMAGE) as bridge:
+            header = bytes(acl2_octets(bridge.call(
+                "(fn-tcl-encode (fn-tcl-make-contact 4 0))")))
+        receiver, port = self.start_node(True, once=False)
+        stalled = socket.create_connection(("127.0.0.1", port), timeout=10)
+        self.addCleanup(stalled.close)
+        stalled.sendall(header)
+        # Drain the passive entity's header before testing actual final EOF.
+        reply = b""
+        while len(reply) < len(header):
+            chunk = stalled.recv(len(header) - len(reply))
+            self.assertTrue(chunk, "peer closed before replying Contact Header")
+            reply += chunk
+        self.assertEqual(reply, header)
+        sent = self.send_request(port, "beside-stalled-session-init", timeout=30)
+        self.assertEqual(sent.returncode, EXIT.OK, sent.stderr)
+        delivered = receiver.output_until(b"BP node delivery request-accepted", timeout=45)
+        self.assertIn(b"BP application handoff durable", delivered)
+        receiver.output_until(b"peer SESS_INIT timeout", timeout=75)
+        stalled.settimeout(10)
+        self.assertEqual(stalled.recv(1), b"", "expired setup must actually close")
         self.assertIsNone(receiver.poll(), receiver.diagnostics())
         receiver.stop(grace=5)
         self.assertEqual(self.receiver_articles(), 1)

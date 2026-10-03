@@ -9494,6 +9494,32 @@
       ],
       "note": "Actual retained-controller raw fixture PASS; real-time native selector test_silent_contact_expires_without_stopping_canonical_delivery prepared but UNEXECUTED. Stalled SESS_INIT and complete handshake/session admission scheduling remain open.",
       "notes": " Ordinary live peer teardown now consumes ACL2 context-abort plan before physical close; fenced source and unobserved closure remain held (PRF-1296). Actual native execution remains pending."
+    },
+    {
+      "id": "SCN-1127",
+      "title": "Stalled SESS_INIT expires beside a canonical durable request",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-006"
+      ],
+      "steps": [
+        "ACL2 authors Contact Header, actual TCP peer sends it and receives passive header but sends no SESS_INIT.",
+        "A second canonical NNTP-produced request crosses retained node into Store/FNRJ while setup peer is retained.",
+        "Actual sixty-second local setup deadline produces physical EOF; node stays live.",
+        "Stop/reopen and dispatch receiving Store, observing exactly one article."
+      ],
+      "expected": [
+        "Contact completion does not permit indefinite SESS_INIT slot retention.",
+        "Partial SESS_INIT input cannot renew deadline; finite captured framing may finish without fresh input.",
+        "Timer cannot manufacture physical return or release source/END ACK custody."
+      ],
+      "evidence": [
+        "tests/test_bp_node_native.py",
+        "tests/native_tcpcl_retained_turn_raw.lisp",
+        "books/tcpcl-retained-turn.lisp"
+      ],
+      "note": "Source/raw composed matrix PASS; native selector test_stalled_session_init_expires_beside_canonical_delivery UNEXECUTED until current initialized source world. Local policy, not an RFC fixed SESS_INIT timeout requirement."
     }
   ]
 }

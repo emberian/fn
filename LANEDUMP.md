@@ -3470,3 +3470,21 @@ transferred to this new packet. Root discovered no actual default funded pool
 installer caller: fresh normal owner remains offline today, so compressed
 endpoint still needs Root's real pre-open partial baseline producer in addition
 to History initialization. No wrapper/test synthetic pool installation.
+
+SESS_INIT reception followthrough (PRF-1297, SCN-1127): entering messaging
+captures one ACL2 sixty-second local deadline; further partial input does not
+renew it. Already captured finite framing/materialization finishes before an
+expiration decision; established sessions clear the setup deadline. Actual
+retained driver consumes timeout as TCP-closed, never physical return or custody
+settlement. RFC9174§4.6 requires negotiation before transfer; the sixty-second
+SESS_INIT bound is fn local policy, distinct from §4.1 Contact Header requirement
+and §5.1.1 negotiated idle behavior. Actual raw driver/source-control/custody
+composition PASS; real two-peer durable request + setup expiry + reopen selector
+prepared UNEXECUTED. Early announced-EID/channel admission and concurrent control
+input during held-source work remain next connected work.
+
+Ordinary abort source26c4d6ce7 exact profile+teeth certificate
+certify-20261003T154249Z-2241830 PASSED2/0 archived/indexed. Composed raw
+source/control/custody matrix PASS, proposed PRF1296 host boundary remains open.
+SESS_INIT source guards normally admitted;25 literal assertions PASS; phase
+lemma rule-classes NIL fixes illegal rewrite-variable refusal. No native claim.

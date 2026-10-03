@@ -58,7 +58,7 @@
  (unless (fnn-tclc-source-pending conn) (fnn-tcl-flush conn)))
 (defun fnn-core (name &rest args)
  (case name
-  ((fn-tcim-turn fn-tcf-at fn-tcf-begin fn-tcf-contactp fn-tcf-byte fn-tcf-span fn-tcrt-action fn-tcrt-write-end fn-tcrt-read-limit fn-tcrt-write-deadline fn-tcrt-contact-deadline fn-tcrt-contact-timeout-p) (apply name args))
+  ((fn-tcim-turn fn-tcf-at fn-tcf-begin fn-tcf-contactp fn-tcf-byte fn-tcf-span fn-tcrt-action fn-tcrt-write-end fn-tcrt-read-limit fn-tcrt-write-deadline fn-tcrt-contact-deadline fn-tcrt-contact-timeout-p fn-tcrt-init-deadline fn-tcrt-init-timeout-p) (apply name args))
   (fn-tclsctl-turn (list (first args) nil))
   (fn-tcl-max-message 200000)
   (fn-tcl-host-segment-mru 100000)
@@ -177,3 +177,27 @@
  (assert (not (fnn-tclc-broken conn)))
  (assert (not (member :read *calls*))))
 (format t "PASS captured Contact Header finishes bounded decode afterdeadline without another read.~%")
+
+;;; The post-Contact Header SESS_INIT clock is captured once, independent of
+;;; negotiated idle and write windows. Partial/irrelevant input cannot renew it.
+(let ((conn (make-fnn-tcl-conn :retained t :session :messaging))
+      (*now* 100) (*incoming* :wait) (*calls* nil))
+ (fnn-tcl-turn conn)
+ (assert (= (fnn-tclc-init-deadline conn) 60100))
+ (let ((*now* 60099))
+  (fnn-tcl-turn conn)
+  (assert (= (fnn-tclc-init-deadline conn) 60100))
+  (assert (not (fnn-tclc-broken conn))))
+ (let ((*now* 60100) (*calls* nil))
+  (assert (eq (fnn-tcl-turn conn) :done))
+  (assert (null *calls*)) (assert (fnn-tclc-broken conn))))
+(let ((conn (make-fnn-tcl-conn :retained t :session :messaging
+             :init-deadline 60100 :source-more t :input-vector #(100 116 110 33 4 0)))
+      (*now* 60100) (*calls* nil))
+ (loop repeat 4 do (fnn-tcl-turn conn))
+ (assert (eq (fnn-tclc-session conn) :established))
+ (assert (not (fnn-tclc-broken conn)))
+ (assert (not (member :read *calls*)))
+ (fnn-tcl-turn conn)
+ (assert (null (fnn-tclc-init-deadline conn))))
+(format t "PASS actual SESS_INIT fixed reception deadline: partial progress never renews, retained input finishes, established custody excluded.~%")
