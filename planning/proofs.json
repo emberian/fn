@@ -8477,7 +8477,7 @@
         "PRF-097"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "planning/evidence/manifests/certify-20260928T163441Z-33654.json",
         "books/peer-host.lisp",
@@ -12386,8 +12386,8 @@
         "fn-rcompat-hdr-cat-is-hdr",
         "fn-nntp-number-withdrawn-p-cat-is-archive",
         "fn-nntp-archive-command-cat-is-pinned",
-        "fn-scat-group-summary-is-pass",
-        "fn-scat-group-low-is-pass",
+        "fn-scat-group-summary-is-archive",
+        "fn-scat-group-low-is-archive",
         "fn-scr-repin-is-served-repin",
         "fn-scr-dispatch-is-scar-dispatch"
       ],
@@ -12512,7 +12512,7 @@
         "fn-scol-okp-of-seal-list",
         "fn-scol-okp-of-faithful-reseat",
         "fn-scol-okp-of-intern-list",
-        "fn-scol-okp-of-load-held-rows",
+        "fn-sca-load-held-rows-establishes-byte-facts",
         "fn-scol-row-okp-of-intern-row-at",
         "fn-scol-okp-of-sca-finish"
       ]
@@ -16348,7 +16348,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-set.lisp",
         "books/native-admin-peer.lisp",
@@ -22260,7 +22260,9 @@
       "assumptions": [],
       "status": "certified",
       "events": [
-        "fn-tcrt-write-range-is-bounded"
+        "fn-tcrt-write-range-is-bounded",
+        "fn-tcrt-source-custody-excludes-input",
+        "fn-tcrt-ready-write-precedes-source-and-close"
       ],
       "evidence": [
         "books/tcpcl-retained-turn.lisp",
@@ -22896,7 +22898,6 @@
       ],
       "assumptions": [],
       "status": "planned",
-      "events": [],
       "evidence": [
         "books/tcpcl-retained-turn.lisp",
         "tests/acl2/tcpcl-retained-turn-tests.lisp",
@@ -22919,7 +22920,6 @@
       ],
       "assumptions": [],
       "status": "planned",
-      "events": [],
       "evidence": [
         "books/bp-session-profile.lisp",
         "tests/acl2/bp-session-profile-tests.lisp",
@@ -22942,7 +22942,6 @@
       ],
       "assumptions": [],
       "status": "planned",
-      "events": [],
       "evidence": [
         "books/tcpcl-retained-turn.lisp",
         "tests/acl2/tcpcl-retained-turn-tests.lisp",
@@ -22965,7 +22964,7 @@
         "PRF-1288"
       ],
       "assumptions": [],
-      "status": "planned",
+      "status": "uncertified-at-current-digest",
       "files": [
         "books/decoded-worker-assignment.lisp",
         "books/decoded-worker-job.lisp",
@@ -23010,7 +23009,6 @@
       ],
       "assumptions": [],
       "status": "planned",
-      "events": [],
       "evidence": [
         "books/bp-channel-ingress.lisp",
         "tests/acl2/bp-channel-ingress-tests.lisp",
@@ -23036,7 +23034,6 @@
       ],
       "assumptions": [],
       "status": "planned",
-      "events": [],
       "evidence": [
         "books/tcpcl-source-control.lisp",
         "tests/acl2/tcpcl-source-control-tests.lisp",
@@ -23058,7 +23055,7 @@
         "PRF-1298"
       ],
       "assumptions": [],
-      "status": "planned",
+      "status": "uncertified-at-current-digest",
       "files": [
         "books/page-read-startup.lisp",
         "books/page-read-pool-state.lisp",
