@@ -500,6 +500,36 @@ acceptance (the owner is stopping or fenced then)."
         (push (cons key cursor) (fnn-pull-runtime-cu-cursors runtime))
         (values journal cursor)))))
 
+(defun fnn-pull-prune-journals (runtime plans &optional (kind :pull))
+  "Retire descriptor custody only for peers ACL2's current plans no longer name."
+  (let* ((catchup (eq kind :catch-up))
+         (journals (if catchup (fnn-pull-runtime-cu-journals runtime)
+                     (fnn-pull-runtime-journals runtime)))
+         (retired (make-hash-table :test #'equal))
+         (keep nil) (close nil))
+    (dolist (entry journals)
+      (if (fnn-core 'fn-pull-plan-for
+                    (fnn-octet-list (fnn-string-octets (car entry))) plans)
+          (push entry keep)
+        (progn
+          (setf (gethash (car entry) retired) t)
+          (push (cdr entry) close))))
+    (flet ((live-cursor (entry) (not (gethash (car entry) retired))))
+      (if catchup
+          (setf (fnn-pull-runtime-cu-journals runtime) (nreverse keep)
+                (fnn-pull-runtime-cu-cursors runtime)
+                (remove-if-not #'live-cursor (fnn-pull-runtime-cu-cursors runtime)))
+        (setf (fnn-pull-runtime-journals runtime) (nreverse keep)
+              (fnn-pull-runtime-cursors runtime)
+              (remove-if-not #'live-cursor (fnn-pull-runtime-cursors runtime)))))
+    ;; Drop retired cache entries before close: a close fault never leaves
+    ;; a cached nil descriptor available to a later round.
+    (let ((failure nil))
+      (dolist (journal close)
+        (handler-case (fnn-owner-feed-close journal)
+          (serious-condition (condition) (unless failure (setq failure condition)))))
+      (when failure (error failure)))))
+
 ;;; PRF-325: one due catch-up round, scheduled exactly as a pull
 ;;; (fn-pull-schedule and fn-sched-pull-* over the catch-up plans, which are
 ;;; pull plans with the catch-up interval) but on its own table.
@@ -508,6 +538,7 @@ acceptance (the owner is stopping or fenced then)."
          (plans (fnn-owner-transit-serialized
                  service nil (lambda () (fnn-owner-core 'fn-owner-catchup-plans))))
          (now (fnn-pull-monotonic)))
+    (fnn-pull-prune-journals runtime plans :catch-up)
     (setf (fnn-pull-runtime-cu-schedule runtime)
           (fnn-core 'fn-pull-schedule plans now (fnn-pull-runtime-cu-schedule runtime)))
     (let ((peer (fnn-core 'fn-sched-pull-due (fnn-pull-runtime-cu-schedule runtime) now)))
@@ -531,6 +562,7 @@ acceptance (the owner is stopping or fenced then)."
            (let* ((plans (fnn-owner-transit-serialized
                           service nil (lambda () (fnn-owner-core 'fn-owner-pull-plans))))
                   (now (fnn-pull-monotonic)))
+             (fnn-pull-prune-journals runtime plans)
              (setf (fnn-pull-runtime-schedule runtime)
                    (fnn-core 'fn-pull-schedule plans now (fnn-pull-runtime-schedule runtime)))
              (let ((peer (fnn-core 'fn-sched-pull-due (fnn-pull-runtime-schedule runtime) now)))
