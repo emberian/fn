@@ -1819,3 +1819,5 @@ developer-image tests prepared in tests/test_native_init_resume.py. Existing
 fidelity resume-cut consumer updated because sealed config is no longer
 needlessly staged on normal resume. Normal cert/image remain Integration-owned.
 No deployment, paged startup or physical init refinement claim.
+
+- Native carrier ABI support is dormant until atomic threading: actual wrappers accept fn-owner-st in declared trailing order and read only its live user-stobj binding. One hbox recording-world raw dispatch test PASS (2.292s), including missing/replaced/removed binding and legacy ABI. Indexed receipt owner-carrier-native-dispatch-20261003.json; no semantic or image claim. Runtime confirmed io dispatch seam disjoint.
