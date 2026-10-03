@@ -9803,6 +9803,15 @@
         {
           "kind": "theorem",
           "name": "fn-lgob-three-barriers-keep-the-imported-store"
+        },
+        {
+          "name": "fn-lg-run-of-append-when-complete"
+        },
+        {
+          "name": "fn-lg-full-length-run-ending-in-a-cut-is-complete"
+        },
+        {
+          "name": "fn-lg-open-program-keeps-the-relation-at-every-cut"
         }
       ]
     },

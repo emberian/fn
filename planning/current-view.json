@@ -230,7 +230,7 @@
       },
       "profile": "default",
       "latest": "a resend at a later second is answered duplicate where the image before D25 answered conflict ([d25-dup-conflict](evidence/d25-dup-conflict-2026-09-24.md)).",
-      "obstruction": "no two-node matrix or operator campaign on an image with D25; a poster Date equal to fn's rendering of the injection second is outside the invariance theorems; D25's provenance question (review §D25) is open.",
+      "obstruction": "no two-node matrix or operator campaign on an image with D25; a poster Date equal to fn's rendering of the injection second is outside the invariance theorems; D25's provenance question (review \u00a7D25) is open.",
       "next": "the shared qualification of an image carrying D25, with the transit duplicate rows and K1's died-present resubmissions answered duplicate."
     },
     {
@@ -331,21 +331,21 @@
     {
       "id": "P10",
       "name": "every cut is a model crash point",
-      "contract": "Every recovery cut coordinate, from every crash image of a related state, reopens to a kernel related to the recovered model state.",
+      "contract": "Every process-death cut of the served open program after the log is recovered (log-recovered, recover-replayed and the three recovery barriers), from the recovered kernel of a related byte store, is a related state, and the owner the open installs carries the invariant.",
       "host": {
         "function": "fn-ock-recover-extended",
         "file": "host/owner-host.lisp"
       },
-      "bridge": "fn-bs-host-reopened-kernel-is-the-recovered-kernel",
-      "keystone": "fn-bs-recover-program-keeps-relation-at-every-cut",
+      "bridge": "fn-lgoc-recover-installs-invariant",
+      "keystone": "fn-lg-open-program-keeps-the-relation-at-every-cut",
       "tested": {
         "image": "69046a76",
         "profile": "developer twin for the cuts, production refuses selectors (qual-69046a76: deployable as the release the node is reinstalled from, D34; the modules per its record's sidecar section)"
       },
       "profile": "default",
-      "latest": "the committed-history marker is fn-bs-marker-program in the byte crash model between the record and the finish (lane p10-marker-model); the cut table is 30; the differential and the served differential pass at every cut on a branch developer image ([p10-marker-model](evidence/p10-marker-model-2026-09-25.md)). At marker-replaced every crash image of the pending-rename state is a crash image of the rename dropped or landed, both related (fn-bs-k0-marker-replaced-cut-relation, lane k0-marker-replaced). Since owner-checkpoint-open (merge 69fa464a) the owner opens through fn-ock-recover-extended (host/owner-host.lisp fn-owner-recover-extended); fn-ock-finalize-of-extended-capture equates its Store open from the extended capture with fn-cpo-open-observed over the whole history, the open the bridge is stated over, and fn-owner-recover-from-checkpoint-equals-full-recover equates the installed owner.",
-      "obstruction": "none at the five marker cuts; the marker program's error arms (every OS error in fnn-mark-committed is uncertain) are named open in books/byte-store-k0-marker.lisp.",
-      "next": "`fn-bs-program-step-preserves-relation`, the general per-step K0, certified."
+      "latest": "the served open is fnn-recover-log (host/native/io.lisp), whose program is fn-lg-open-program (books/store-log-route-programs.lisp): six cuts, log-truncated and log-recovered (LOG_CUTS in tests/campaign/native_cuts.py), then recover-replayed and the three recover-barrier sites (RECOVERY_CUTS). fn-lg-open-program-keeps-the-relation-at-every-cut (lane host-model, 2026-10-03) composes fn-lg-recover-program-establishes-the-relation with fn-lg-open-suffix-keeps-the-relation over the whole program: the recover program completes with log-recovered related and every state of the suffix is related. The former keystone fn-bs-recover-program-keeps-relation-at-every-cut (books/byte-store-k0-recovery.lisp) is over the per-file recovery program, unreachable since the record log is the one format (books/byte-store-programs.lisp P-RECOVER: every store an image opens is format 9); the marker program it cited (fn-bs-marker-program) has no source in the tree. Since owner-checkpoint-open the owner opens through fn-ock-recover-extended (host/owner-host.lisp fn-owner-recover-extended), and fn-lgoc-recover-installs-invariant (books/owner-log-ocl.lisp) says the owner it installs carries fn-lgoc-invariantp.",
+      "obstruction": "three coordinates are outside the keystone, each named in the book: log-truncated (the tail write before its fence, not related by the recover theorem); recovery-stage-unlinked (RECOVERY_CUTS' fifth row, fn-bs-recover-stage-cleanup-program's cut, run after this program); and fnn-log-complete-rotation (host/native/io.lisp), which a writable open runs before the program with no cut and no model step (Codex r72 F1; lane SWEEP-STORE's fix). The per-file K0 family stays as the byte model's record, marked unreachable-in-composition in PRF-041. The host's syscall order against fn-lg-open-program is checked by native_cuts.verify_* as source text, not proved.",
+      "next": "a model step and cut for fnn-log-complete-rotation (with SWEEP-STORE's fix), the log-truncated state related, and recovery-stage-unlinked composed as the follows program, so one theorem covers every coordinate of the open; then the HM's crash label (lane host-model) as the cut's coordinate instead of a hand-mirrored name."
     },
     {
       "id": "P11",
