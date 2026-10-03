@@ -10755,6 +10755,7 @@ bfceb84f04e127e30143ed2779bb903e98deb85ef3a020043f5eb540feb85c7f 1131 planning/e
 8844b05e4e8d6c8e4dd4417394d05003bf3c8dd0502bdbd3c2c78fa52f215ef0 93 planning/evidence/resilience-typed-window-2026-09-30/worker-binding/trial-0000/send.stderr
 2047a9c29251c7854aa894bf91f4adbd0fa118d4f65b8e123a8e7153d4e26a01 2855 planning/evidence/resilience-typed-window-2026-09-30/worker-binding/trial-0000/send.stdout
 5efe8c1a07e6792fd31f1f54b55d2690d6283bf74aa0e34019cce79dd1dfa50c 653 planning/evidence/resilience-typed-window-2026-09-30/worker-binding/trial-0000/verdict.json
+4e60717ac4de8f4f19ccc2b44133f58e238dbdb574d3bd3b279a9e0155ce1dce 3651 planning/evidence/resource-vector-exec-20261003-final-repl.json
 b4b1e6a25ea7a7042eb122ed0f3f6e17c1408a8b323309815c45c0f86597e80b 2398 planning/evidence/resource-vector-exec-20261003-repl.json
 f3d67aadbca8cfa84c0dbf05aec4a88e062619c1040724699341c87b22cb6c6d 2726 planning/evidence/retain-disjoint-2026-10-02.md
 ca637419eb0c5b5e01b2a58350bebbeff5cf2d5078783175729f564e2bc1a721 3043 planning/evidence/retention-prepare-guard-2026-09-24.md
