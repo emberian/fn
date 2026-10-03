@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "exposure": "live",
+ "file": "host/owner-host.lisp",
+ "id": "PGO-REFUSE-ABORT",
+ "notes": [],
+ "owner": "post-guard-off",
+ "severity": "high",
+ "source": "post-guard-off",
+ "state": "open",
+ "title": "fn-owner-refuse-reservation, fn-owner-known-abort and fn-owner-finish still evaluate fn-sn-statep (whole Store) per call: every refused or aborted POST/identity/consumer/topic event costs O(store); no host-subject preservation theorem of fn-owner-retain-statep yet (model keystones exist: fn-lgoc-refuse-reservation-preserves-invariant, fn-psrv-known-abort-preserves-invariant); prove as def-owner-writer, list in fn-owner-served-carried, then :raw-with",
+ "updated": "2026-10-03T04:02:41Z"
+}
