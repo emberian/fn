@@ -1348,3 +1348,10 @@ Inputs are limited to 65,536 UTF-8 bytes and captured output to 65,536 character
 with an explicit truncation marker. Reader evaluation (`#.`) is disabled.
 Production startup refuses this selector; ordinary protocol data never enters
 this evaluator.
+
+
+Large local submissions receive a reply observation budget that grows with the
+submitted frame: ten seconds plus one second per 64 KiB (rounded up). If the
+owner still has not replied when that budget expires, the result is uncertain;
+it does not mean the submission failed. Check the durable result before
+resubmitting. Explicit consumer wait intervals keep their existing semantics.

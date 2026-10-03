@@ -2853,3 +2853,11 @@ reply/gate functions. tests/acl2/web-stream-consumer-source-tests.lisp compares
 complete reference page plans with virtual scan/count/emit under chunk1/2/7/4096
 fixtures. Guard/refinement and complete endpoint/funding qualification remain
 open; concrete-fill invariant-risk warnings are retained in the source receipt.
+
+
+Root operator-observation/S132: actual client uses ACL2-owned reply wait
+10+ceil(serialized-request-octets/65536), preserves explicitwaits/framebounds/
+uncertain transport outcomes. tests/test_control_observation.py PASS0.036s;
+normal warm root-control-observation (hbox) guardverified and4boundaryassertsPASS.
+Largepost native test nowstrict EXIT_OK plus exactreadback. S132 staysopen until
+matching fullowner scenario; no machine-throughput/durability guarantee fromtime.
