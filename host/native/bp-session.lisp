@@ -140,7 +140,8 @@
            (setq accepted t)
            (setf (fnn-bplc-model listeners)
                  (fnn-core 'fn-bpsched-listener-step (fnn-bplc-model listeners)
-                   (list :retained-accepted (fnn-core 'fn-bpsg-key (fnn-bpsg-row grant)))))
+                   (list :retained-accepted (fnn-core 'fn-bpsg-key (fnn-bpsg-row grant)) plan)))
+           (fnn-out "~a" (fnn-core 'fn-bplc-runtime-line (fnn-bplc-model listeners)))
            (funcall begin grant socket)))))))))
    ;; Direct-index slot rotation avoids rebuilding/scanning the active roster.
    (let ((grant (aref (fnn-bpsb-slots bank) slot)))

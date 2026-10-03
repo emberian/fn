@@ -8718,9 +8718,18 @@
         "tests/native_bp_session_bank_raw.lisp",
         "tests/native_tcpcl_retained_turn_raw.lisp",
         "host/native/bp-session.lisp",
-        "host/native/bp-node.lisp"
+        "host/native/bp-node.lisp",
+        "tests/test_bp_node_native.py",
+        "tests/acl2/bp-session-generations-tests.lisp"
       ],
-      "note": "Actual source raw scheduler/custody discrimination passes; canonical two-peer DTN image scenario and comprehensive physical-cut/restart qualification pending."
+      "note": "Actual source raw scheduler/custody discrimination passes; canonical two-peer DTN image scenario and comprehensive physical-cut/restart qualification pending. Native selector now prepared using actual image tcpcl send with no payload/EXPECT1, canonical same-source producer and receiver Store reopen; execution pending matching image.",
+      "implementation": {
+        "test": "tests.test_bp_node_native",
+        "cases": [
+          "NativeBpNodeTests.test_keepalive_peer_does_not_block_second_canonical_request"
+        ],
+        "native": true
+      }
     }
   ]
 }

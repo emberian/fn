@@ -22,16 +22,26 @@
 (defun fn-bpsched-remove (key xs)
  (declare (xargs :guard t))
  (if (consp xs)
-  (if (equal key (car xs)) (fn-bpsched-remove key (cdr xs))
+  (if (equal key (fn-ag-car (car xs))) (fn-bpsched-remove key (cdr xs))
    (cons (car xs) (fn-bpsched-remove key (cdr xs)))) nil))
+(defun fn-bpsched-session-view (rows)
+ (declare (xargs :guard t))
+ (and (consp rows)
+      (list :accept (fn-ncfg-nth 1 (car rows)) (fn-ncfg-nth 2 (car rows)) rows)))
 (defun fn-bpsched-listener-step (st event)
  (declare (xargs :guard t))
- (case (fn-ag-car event)
-  (:retained-accepted
-   (fn-bplc-with-session st (cons (fn-ncfg-nth 1 event) (fn-bplc-session st))))
-  (:retained-closed
-   (fn-bplc-with-session st (fn-bpsched-remove (fn-ncfg-nth 1 event) (fn-bplc-session st))))
-  (otherwise (fn-bplc-step st event))))
+ (let ((rows (fn-ncfg-nth 3 (fn-bplc-session st))))
+  (case (fn-ag-car event)
+   (:retained-accepted
+    (let ((plan (fn-ncfg-nth 2 event)))
+     (fn-bplc-with-session st
+      (fn-bpsched-session-view
+       (fn-ag-append rows (list (list (fn-ncfg-nth 1 event)
+                          (fn-ncfg-nth 1 plan) (fn-ncfg-nth 2 plan))))))))
+   (:retained-closed
+    (fn-bplc-with-session st
+     (fn-bpsched-session-view (fn-bpsched-remove (fn-ncfg-nth 1 event) rows))))
+   (otherwise (fn-bplc-step st event)))))
 (defun fn-bpsched-service (phase)
  (declare (xargs :guard t))
  (nth (mod (nfix phase) 8) '(:fragment :dispatch :expiry :outbox :forward :receipt :report :rotation)))

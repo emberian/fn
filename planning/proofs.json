@@ -22126,9 +22126,10 @@
         "planning/evidence/bp-retained-node-2026-10-03.md",
         "planning/evidence/manifests/certify-20261003T114543Z-1687865.json",
         "tests/native_bp_root_cleanup_raw.lisp",
-        "planning/evidence/bp-retained-node-2026-10-03-final.md"
+        "planning/evidence/bp-retained-node-2026-10-03-final.md",
+        "tests/acl2/bp-session-generations-tests.lisp"
       ],
-      "progress_note": "Final exact four-root manifest certify-20261003T114543Z-1687865 PASSED4/0, archived/indexed. All component guards verified. Actual raw bank/loop passes physical-alone custody, ambiguous close no refund/retry, all independent grant cleanup, same-token fragment rearm, live first peer plus second acceptance and all eight service phases. Actual command root-cleanup fixture verifies all six cleanup faults cannot replace original body fault and held source custody prevents Store/FNBS root release while preserving process-owned authority. Matching DTN image SCN1110/application-receipt/reopen and complete allocator/GC/work/actor and scheduler/cut refinement remain open."
+      "progress_note": "Final exact four-root manifest certify-20261003T114543Z-1687865 PASSED4/0, archived/indexed. All component guards verified. Actual raw bank/loop passes physical-alone custody, ambiguous close no refund/retry, all independent grant cleanup, same-token fragment rearm, live first peer plus second acceptance and all eight service phases. Actual command root-cleanup fixture verifies all six cleanup faults cannot replace original body fault and held source custody prevents Store/FNBS root release while preserving process-owned authority. Matching DTN image SCN1110/application-receipt/reopen and complete allocator/GC/work/actor and scheduler/cut refinement remain open. Listener generation compatibility followthrough retains each acceptance plan and projects the oldest active generation through the existing ACL2 runtime line; targeted successor certificate pending (old4rootcertificate not transferred to changed scheduler)."
     }
   ]
 }
