@@ -71,3 +71,8 @@ class CredentialAdmissionTests(unittest.TestCase):
     def test_exact_read_and_core_faults_propagate_while_stopping(self):
         with tempfile.TemporaryDirectory() as directory:
             self.run_schedule("faults", self.profile(Path(directory)), "read fault retains exact class")
+
+    def test_cleanup_os_error_preserves_primary_core_fault(self):
+        with tempfile.TemporaryDirectory() as directory:
+            self.run_schedule("cleanup-fault", self.profile(Path(directory)),
+                              "cleanup OS error must preserve primary store fault")
