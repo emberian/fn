@@ -1,11 +1,14 @@
 # Now — 2026-10-03
 
-The active dispatch plan is [the Codex overnight plan](overnight-2026-10-03.md).
+The active plan is [the development workstreams](overnight-2026-10-03.md), revised
+after deeper source/design reading and ember's correction: Sol for implementation,
+Astra for composition, continuing subsystem ownership through integration and use.
 Read it with [the repair ledger](repair/STATUS.md) and [the contributor guide](../CONTRIBUTORS.md).
-Remote dev was verified at `9af0cd1a9`; the current image run builds `4671ace0f`.
-It has passed its requested image-root certification and is still building;
-no current-head native verdict or new deployment is claimed. The plan records
-unmerged source, evidence coordinates, model roles and the first execution packets.
+The roster is prepared, not launched. The initial orientation snapshot is recorded
+in the plan; `8d17b09dd` integrated that planning/ledger reconciliation onto dev.
+Re-read build status at dispatch. No new runtime qualification or deployment is
+claimed by this documentation revision. Integrate directly onto dev during
+stabilization; qualify immutable candidates alongside continuing development.
 
 The earlier page below is retained as historical scope, not a current roster,
 release instruction, source coordinate or deployment observation.

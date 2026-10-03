@@ -66,7 +66,7 @@ None of this is hidden: each item is in the ledger with its evidence and owner.
 ## 4. How the work is organized
 
 The current model roles, dispatch order and behavior-first operating contract are
-in [the overnight plan](planning/overnight-2026-10-03.md). Earlier role names below
+in [the development workstreams](planning/overnight-2026-10-03.md). Earlier role names below
 describe the previous team, not additional agents to launch.
 
 ### Roles
@@ -80,24 +80,24 @@ describe the previous team, not additional agents to launch.
 ### The repair ledger: the single list of open work
 `planning/repair/repair.py`, one JSON file per item under `planning/repair/items/`.
 Every finding from every source (inspections, reviews, check-lane, measurements) is an item with an owner
-and a state: `open`, `in-progress`, `ready` (merged into `origin/next`), `landed` (on `origin/dev`),
+and a state: `open`, `in-progress`, `ready` (historically merged into `origin/next`), `landed` (on `origin/dev`),
 `refuted`, `duplicate`, `deferred`. `repair.py list --owner LANE --open`; `repair.py report` writes `STATUS.md`.
 Items are also tagged by exposure (live today / conditional / latent), locus (the subsystem), and
 disposition: LOCAL (fix where it is), DISSOLVES-IN a rebuild slice (the finding becomes that slice's
 acceptance test), or BRIDGE (live today, so a small fix now that the slice later supersedes).
 New findings go into the ledger, not only into a message. Each lane holds at most two items in flight.
 
-### The merge train: `origin/next`
-The runner merges review-cleared work into `origin/next`; fast checks run once per batch.
-A breaking merge is repaired forward, with the affected candidate or claim held until repaired. When `next` passes the fast checks
-and one native and image run, `dev` fast-forwards to it and an image set is published. Base new work on
-`origin/next`.
+### Integration during dev stabilization
+The integrator merges reviewed source directly into `origin/dev`, following ember's late October 3
+instruction. Base new work on current dev. `next`, if maintained as a mirror, is not an image gate.
+Repair forward, record exact proof/native debt, and qualify one immutable candidate while development
+continues. Source integration and image qualification have separate verdicts.
 
 ### Each check runs once
 A lane: REPL admission, a certify of the books it changed (`tools/farm.py`, cached by content), and natives
 only for modules its host change affects, with a red-before and green-after run for the defect. A reviewer
 reads the diff and the evidence and does not re-run. The runner: fast checks on the train and one native
-and image run per promotion. Evidence (run ids, manifests) is reused when the bytes match.
+and image run per converged candidate. Evidence (run ids, manifests) is reused when the bytes match.
 (`planning/landing-pipeline.md`)
 
 ### What makes a claim
@@ -143,9 +143,10 @@ handoff file.
 ## 5. Contributing a change
 
 1. Pick an item from the ledger (or add one), set it `in-progress`.
-2. Branch from `origin/next` into a worktree under `build/lanes/<name>`; never stash, reset or check out the
+2. Branch from current `origin/dev` into a worktree under `build/lanes/<name>`; never stash, reset or check out the
    shared checkout.
 3. Write the failing test or witness first; fix; prove and certify what you changed; run the natives your
    host change affects.
 4. Send a READY: the sha, the ledger ids, the evidence (run ids, manifests), what you did not run.
-5. After review, the runner merges it into `next`; when `next` reaches `dev`, the item is `landed`.
+5. After review, the integrator merges it into `dev`; the item is source-`landed`, with outstanding
+   proof/native work still tracked explicitly.

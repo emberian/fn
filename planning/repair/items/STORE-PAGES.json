@@ -1,0 +1,13 @@
+{
+ "category": "initiative",
+ "file": "planning/design-store-representation-2026-10-01.md",
+ "id": "STORE-PAGES",
+ "note": "Codex 2026-10-03: Start from existing catalog-paged attachment and paged image route. Establish current actual image behavior, refinement/guard and matched cost evidence; advance dense number/overview pools and history/node roots, bounded open/checkpoint, then the remaining index/recovery design. This is an umbrella for the unfinished initiative, not a claim all design stages remain unimplemented.",
+ "notes": [],
+ "owner": "representation",
+ "severity": "medium",
+ "source": "planning/design-store-representation-2026-10-01.md",
+ "state": "open",
+ "title": "Connect the paged representation through served catalog, dense groups, history and node roots",
+ "updated": "2026-10-03T05:40:16Z"
+}

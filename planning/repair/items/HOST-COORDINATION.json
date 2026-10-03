@@ -1,0 +1,13 @@
+{
+ "category": "initiative",
+ "file": "planning/design/tcb-shrink-2026-10-03.md",
+ "id": "HOST-COORDINATION",
+ "note": "Codex 2026-10-03: Reuse wrapper, owner-queued-work and fn-hx drivers; committer first, then mux, cold, lifecycle, reclaim/log/services and pure decisions. Shared action/receipt vocabulary with HM. Private actor work proceeds alongside carrier migration; actual shared-state/raw/catch safety precedes runtime installation. Track WR01/NIGHT-ACTOR-JOIN/HM02 and offlock defects as constituent work, not duplicate completion receipts.",
+ "notes": [],
+ "owner": "runtime-coordination",
+ "severity": "medium",
+ "source": "planning/design/tcb-shrink-2026-10-03.md",
+ "state": "open",
+ "title": "Complete ACL2 actor coordination across the host families, beyond the section wrapper",
+ "updated": "2026-10-03T05:40:16Z"
+}

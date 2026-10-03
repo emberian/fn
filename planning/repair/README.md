@@ -13,7 +13,7 @@ quoted `evidence`, the failure `scenario`, the proposed `fix` and the `reviewer`
 4. `repair.py verify ID --base <the commit you started from>`: refuses changes outside the scope, the forbidden zones
    (`forbidden.txt`), diffs over the budget (60 lines unless the item sets `budget`), a missing item id in the commit
    messages, or a test that does not fail at the base and pass at the head. Fix or escalate until it exits 0.
-5. `repair.py set ID note="READY <sha>"`; the runner sets `ready` on merging into origin/next and `landed` on dev.
+5. `repair.py set ID note="READY <sha>"`; during dev stabilization the integrator merges directly onto dev and records `landed` with its source receipt. The earlier `ready`-on-next state remains historical. Record outstanding native/proof work separately; source landing is not completion of that work.
 
 ## Current verification limitation (NIGHT-VERIFY)
 

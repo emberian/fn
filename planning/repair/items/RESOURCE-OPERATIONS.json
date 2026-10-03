@@ -1,0 +1,13 @@
+{
+ "category": "initiative",
+ "file": "specs/resource-vector.md",
+ "id": "RESOURCE-OPERATIONS",
+ "note": "Codex 2026-10-03: Existing logical vector/tree and partial typed executable are foundations. Complete executable correspondence/guards; converge def-cost/def-entry/definterface :operation, tariff/principal, reserve and bank producers, charge-before-effect and token settlement. Account refusal transient work and retained results; cancelled I/O retains custody until physical return. Roll out across intended consumers; no gate before its producer.",
+ "notes": [],
+ "owner": "generators-accounting",
+ "severity": "medium",
+ "source": "specs/resource-vector.md",
+ "state": "open",
+ "title": "Connect resource-vector accounting to allocating operations, producers and physical settlement",
+ "updated": "2026-10-03T05:40:16Z"
+}

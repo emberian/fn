@@ -18,34 +18,39 @@ nearly the same tree at the same time.
 | review | reviewer reads diff + evidence; runs a check ONLY if the lane did not, or the claim depends on something unmeasured | - | - |
 | fast checks (interface, host_check, ledger, reach, build_lists, secrets) | runner, once per batch at the merge head | tree | - |
 | core native modules + image set | runner, once per batch, on the images that become the published set | merge-head source sha | lanes base on the published set; no lane rebuilds images it does not change |
-| whole-tree certify | runner, background, per pushed head | content cache | - |
+| assurance catch-up | runner, once at convergence under X13 | content cache and named candidate | later matching claims |
 
 Consequences:
 - The liaison no longer re-runs natives or certifies; it reads evidence and attacks the claim.
-- A lane whose change touches no host bytes runs NO natives (books and tools are covered by certify + tests).
+- Native needs follow the executable image and called tools, not only host text: a changed image book closure can require native checks too.
 - A lane that changes host bytes runs only the modules its change affects, plus the defect's red/green test.
 - The runner batches host-changing READYs so one image build serves several lanes.
 - Evidence must be trustworthy for reuse: SWEEP-GATES' S055 (check_steps cached a PASS taken after a
   timeout) and S009 (green_check passing uncertified books) are prerequisites, so they are priority there.
 
 ## Closing out
-A lane finishes its current item to LANDED before starting the next; READYs go out per item, not in big batches
-at the end; a lane with more than two unlanded READY-able items stops starting new ones.
+Lanes own continuing workstreams and send complete slices as they become ready. Start with at most two
+unlanded slices per lane; work on independent preparation while a check runs rather than waiting idle
+for a qualification image. Finish integration and consumer wiring before calling a workstream done.
 
-## MERGE TRAIN (2026-10-03, ember: "do we have a branch with everything that is ready?")
-- origin/next is the integration branch. The runner merges each review-cleared READY into next as it arrives.
-- Ledger states: `ready` = merged into origin/next; `landed` = on origin/dev. A lane's own branch being done is
-  `in-progress` until the runner merges it.
-- Fast checks run once per integration batch. A red pass stays visible and is fixed forward; it blocks the affected candidate/claim without reverting work or freezing unrelated lanes.
-- next fast-forwards to dev when its tip passes fast checks AND the batch native/image run; the image set is published then.
-- Lanes base new work on origin/next (it has everyone's merged fixes hours before dev).
+## Integration during stabilization
+
+Ember's late October 3 instruction in [the prior plan](plan-2026-10-03.md#update-at-the-end-of-the-session-2026-10-03-late)
+supersedes the earlier next-to-dev qualification gate. One integrator merges
+reviewed source directly onto dev. New lanes branch from current dev; next, if
+maintained, is an integration mirror rather than a required staging gate.
+`landed` records source on dev; historical `ready` entries recorded next.
+
+Fast checks run once per integration batch. Fix forward; a failure blocks its
+affected candidate/claim without freezing unrelated lanes. Qualify one immutable
+candidate at convergence while the next wave runs. An image verdict never
+transfers to changed source.
 
 ## Current operating contract
 
-[The overnight plan](overnight-2026-10-03.md) supplies the current roster,
-resource budget and source coordinates. Behavior-first work may land with exact
-`proof-owed` ledger entries; whole-tree certification does not gate source merges.
+[The development workstreams](overnight-2026-10-03.md) supplies the current roster,
+shared contracts and source snapshot. Behavior-first work may land with exact
+`category=proof-owed` entries; whole-tree certification does not gate source merges.
 Image/native claims still require matching evidence, including when image book
-closures change without host Lisp edits. One integrator owns next/dev. Do not
-transfer an image verdict to a different source label or call a suite with known
-failed modules green. A source-landed ledger item is not proof/native completion.
+closures change without host Lisp edits. Do not call a suite with known failures
+green. A source-landed ledger item is not proof/native completion.

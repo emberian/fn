@@ -1,0 +1,13 @@
+{
+ "category": "initiative",
+ "file": "planning/design/branch-archaeology-2026-10-03.md",
+ "id": "HARVEST-WORK",
+ "note": "Codex 2026-10-03: Begin with the 13 historical mine-now branches, rechecking current applicability: atomic init, stranded journal/barrier/control/reclaim, raw trap with Representation and served incremental work with Served. Record each disposition and exact outstanding consumer/check. Continue the remaining useful inventory. Source ancestry or preserving a branch alone is not completion; do not delete other sessions files or remote branches.",
+ "notes": [],
+ "owner": "tools-harvest",
+ "severity": "medium",
+ "source": "planning/design/branch-archaeology-2026-10-03.md",
+ "state": "open",
+ "title": "Integrate useful historical implementations and connect their current consumers",
+ "updated": "2026-10-03T05:40:16Z"
+}
