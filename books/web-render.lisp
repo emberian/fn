@@ -757,21 +757,13 @@
           (fn-wrq-true name-url) (list (fn-wm "'>")) (fn-wrq-true name-text)
           (list (fn-wm "</a>"))
           (if readonly (list (fn-wm " <span class='dim'>(read only)</span>")) nil)
-          (list (fn-wm "</td></tr>")) (fn-wrq-true rest)))
+          (list (fn-wm "</td></tr>")) rest))
 
 (defun fn-wr-group-rows-step (x rest)
   (declare (xargs :guard t))
-  (let ((row x))
-    (append (list (fn-wm "<tr><td class='num'>")
-                  (fn-wr-txt (fn-wrq-nth 1 row))
-                  (fn-wm "</td><td><a class='title' href='/g?name=")
-                  (fn-wr-url (fn-wrq-nth 0 row))
-                  (fn-wm "'>")
-                  (fn-wr-txt (fn-wrq-nth 0 row))
-                  (fn-wm "</a>"))
-            (if (fn-wrq-nth 2 row) (list (fn-wm " <span class='dim'>(read only)</span>")) nil)
-            (list (fn-wm "</td></tr>"))
-            rest)))
+  (fn-wr-group-row-segments (list (fn-wr-txt (fn-wrq-nth 0 x)))
+                            (list (fn-wr-url (fn-wrq-nth 0 x)))
+                            (fn-wrq-nth 1 x) (fn-wrq-nth 2 x) rest))
 
 (defun fn-wr-group-rows-loop (rev acc)
   (declare (xargs :guard t))
@@ -802,7 +794,7 @@
          (fn-wr-group-rows-loop zs (fn-wr-group-rows rows)))
   :hints (("Goal" :induct (fn-ag-rev-onto rows zs)
                   :in-theory (union-theories
-                              '(fn-wr-group-rows-loop fn-wr-group-rows fn-wr-group-rows-step fn-ag-rev-onto
+                              '(fn-wr-group-rows-loop fn-wr-group-rows fn-wr-group-rows-step fn-wr-group-row-segments fn-wrq-true fn-ag-rev-onto
                                 car-cons cdr-cons)
                               (union-theories (theory 'minimal-theory)
                                               (executable-counterpart-theory :here))))))
@@ -840,29 +832,16 @@
           (list (fn-wm "'>")) (fn-wr-wspan-or subject (fn-wt "(no subject)"))
           (list (fn-wm "</a></td><td class='from'>")) (fn-wr-wspan from)
           (list (fn-wm "</td><td class='date'>")) (fn-wr-span date)
-          (list (fn-wm "</td></tr>")) (fn-wrq-true rest)))
+          (list (fn-wm "</td></tr>")) rest))
 
 (defun fn-wr-over-rows-loop (group rev acc)
   (declare (xargs :guard t :verify-guards nil))
   (if (consp rev)
-      (fn-wr-over-rows-loop group
-                            (cdr rev)
-                            (let ((row (car rev)))
-                              (append (list (fn-wm "<tr><td class='num'>")
-                                            (fn-wr-txt (fn-wrq-nth 0 row))
-                                            (fn-wm "</td><td class='subj'><a class='title' href='/a?g=")
-                                            (fn-wr-url group)
-                                            (fn-wm "&amp;n=")
-                                            (fn-wr-url (fn-wrq-nth 0 row))
-                                            (fn-wm "'>"))
-                                      (fn-wr-wspan-or (fn-wrq-nth 1 row)
-                                                      (fn-wt "(no subject)"))
-                                      (list (fn-wm "</a></td><td class='from'>"))
-                                      (fn-wr-wspan (fn-wrq-nth 2 row))
-                                      (list (fn-wm "</td><td class='date'>"))
-                                      (fn-wr-span (fn-wrq-nth 3 row))
-                                      (list (fn-wm "</td></tr>"))
-                                      acc)))
+      (let ((row (car rev)))
+        (fn-wr-over-rows-loop group (cdr rev)
+          (fn-wr-over-row-segments group
+            (list (fn-wr-txt (fn-wrq-nth 0 row))) (list (fn-wr-url (fn-wrq-nth 0 row)))
+            (fn-wrq-nth 1 row) (fn-wrq-nth 2 row) (fn-wrq-nth 3 row) acc)))
     acc))
 
 (defun fn-wr-over-rows (group rows)
@@ -892,7 +871,7 @@
    (equal (fn-wr-over-rows-loop group (fn-ag-rev-onto rows zs) nil)
           (fn-wr-over-rows-loop group zs (fn-wr-over-rows group rows)))
    :hints (("Goal" :induct (fn-ag-rev-onto rows zs)
-                   :in-theory (union-theories '(fn-wr-over-rows-loop fn-wr-over-rows fn-ag-rev-onto
+                   :in-theory (union-theories '(fn-wr-over-rows-loop fn-wr-over-rows fn-wr-over-row-segments fn-wrq-true fn-ag-rev-onto
                                                 car-cons cdr-cons)
                                               (theory 'minimal-theory))))))
 
