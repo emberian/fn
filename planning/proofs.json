@@ -22127,9 +22127,11 @@
         "planning/evidence/manifests/certify-20261003T114543Z-1687865.json",
         "tests/native_bp_root_cleanup_raw.lisp",
         "planning/evidence/bp-retained-node-2026-10-03-final.md",
-        "tests/acl2/bp-session-generations-tests.lisp"
+        "tests/acl2/bp-session-generations-tests.lisp",
+        "planning/evidence/manifests/certify-20261003T120605Z-1742261.json",
+        "planning/evidence/bp-retained-node-followthrough-2026-10-03.md"
       ],
-      "progress_note": "Final exact four-root manifest certify-20261003T114543Z-1687865 PASSED4/0, archived/indexed. All component guards verified. Actual raw bank/loop passes physical-alone custody, ambiguous close no refund/retry, all independent grant cleanup, same-token fragment rearm, live first peer plus second acceptance and all eight service phases. Actual command root-cleanup fixture verifies all six cleanup faults cannot replace original body fault and held source custody prevents Store/FNBS root release while preserving process-owned authority. Matching DTN image SCN1110/application-receipt/reopen and complete allocator/GC/work/actor and scheduler/cut refinement remain open. Listener generation compatibility followthrough retains each acceptance plan and projects the oldest active generation through the existing ACL2 runtime line; targeted successor certificate pending (old4rootcertificate not transferred to changed scheduler)."
+      "progress_note": "Final exact four-root manifest certify-20261003T114543Z-1687865 PASSED4/0, archived/indexed. All component guards verified. Actual raw bank/loop passes physical-alone custody, ambiguous close no refund/retry, all independent grant cleanup, same-token fragment rearm, live first peer plus second acceptance and all eight service phases. Actual command root-cleanup fixture verifies all six cleanup faults cannot replace original body fault and held source custody prevents Store/FNBS root release while preserving process-owned authority. Matching DTN image SCN1110/application-receipt/reopen and complete allocator/GC/work/actor and scheduler/cut refinement remain open. Listener generation compatibility followthrough retains each acceptance plan and projects the oldest active generation through the existing ACL2 runtime line; exact successor scheduler+generation fixture certificate certify-20261003T120605Z-1742261 PASSED2/0 (old4rootcertificate not transferred to changed scheduler). Actual slot loop consumes terminal result once while source dependency holds its grant;12-turn witness passes without refund. SCN1110 real two-native-peer selector prepared, matching image execution owed."
     }
   ]
 }
