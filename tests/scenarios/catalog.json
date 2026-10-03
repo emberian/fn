@@ -1139,7 +1139,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -8245,9 +8245,36 @@
       "evidence": [
         "books/host-model-machine.lisp",
         "tests/acl2/host-model-tests.lisp",
-        "planning/evidence/manifests/certify-20261003T062320Z-3305.json"
+        "planning/evidence/manifests/certify-20261003T062320Z-3305.json",
+        "planning/evidence/manifests/certify-20261003T080416Z-85944.json"
       ],
       "execution_scope": "ACL2 actual direct host-called subjects within concurrent reference schedules; native bridge and funded-pool extension remain owed."
+    },
+    {
+      "id": "SCN-1086",
+      "title": "Actual reclaim prediction returns intern rows and arena effect only under its no-bad premise",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-017"
+      ],
+      "steps": [
+        "Build retained and record rows over a nonempty arena; execute actual prediction and sealing and compare the complete intern result.",
+        "Insert :bad after a valid record; affirm the omitted no-bad premise fails and complete result/effect equality fails."
+      ],
+      "expected": [
+        "The full result agrees on reachable valid rows.",
+        "Partial interning before refusal distinguishes the no-bad omission; an immediate :bad alone is not a counterexample.",
+        "These teeth do not establish native reclamation progress or bounded memory funding."
+      ],
+      "implementation": {
+        "test": "tests/acl2/owner-reclaim-seal-tests.lisp"
+      },
+      "evidence": [
+        "host/owner-host.lisp",
+        "tests/acl2/owner-reclaim-seal-tests.lisp"
+      ],
+      "execution_scope": "Literal ACL2 boundary subjects; host theorem qualified by actual LD, new teeth matching qualification pending."
     }
   ]
 }
