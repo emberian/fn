@@ -445,3 +445,42 @@
                                     fn-wr-octets-only)
                                    (fn-wss-begin fn-wss-f-route fn-wss-car
                                     fn-whl-word)))))
+
+
+; Private reply planning uses the captured flow, not the live table. Leaving
+; SESSIONS alone would not by itself establish action/output independence.
+(defthm fn-wss-k-reads-ignore-session-table
+  (and
+   (equal (mv-nth 0 (fn-wss-k-groups sessions flow event config fn-web-in fn-web-out))
+          (mv-nth 0 (fn-wss-k-groups nil flow event config fn-web-in fn-web-out)))
+   (equal (mv-nth 2 (fn-wss-k-groups sessions flow event config fn-web-in fn-web-out))
+          (mv-nth 2 (fn-wss-k-groups nil flow event config fn-web-in fn-web-out)))
+   (equal (mv-nth 0 (fn-wss-k-group sessions flow event config fn-web-in fn-web-out))
+          (mv-nth 0 (fn-wss-k-group nil flow event config fn-web-in fn-web-out)))
+   (equal (mv-nth 2 (fn-wss-k-group sessions flow event config fn-web-in fn-web-out))
+          (mv-nth 2 (fn-wss-k-group nil flow event config fn-web-in fn-web-out)))
+   (equal (mv-nth 0 (fn-wss-k-article sessions flow event config fn-web-in fn-web-out))
+          (mv-nth 0 (fn-wss-k-article nil flow event config fn-web-in fn-web-out)))
+   (equal (mv-nth 2 (fn-wss-k-article sessions flow event config fn-web-in fn-web-out))
+          (mv-nth 2 (fn-wss-k-article nil flow event config fn-web-in fn-web-out)))
+   (equal (mv-nth 0 (fn-wss-k-submit sessions flow event config fn-web-in fn-web-out))
+          (mv-nth 0 (fn-wss-k-submit nil flow event config fn-web-in fn-web-out)))
+   (equal (mv-nth 2 (fn-wss-k-submit sessions flow event config fn-web-in fn-web-out))
+          (mv-nth 2 (fn-wss-k-submit nil flow event config fn-web-in fn-web-out))))
+  :hints (("Goal" :in-theory (e/d (fn-wss-k-groups fn-wss-k-group fn-wss-k-article
+                                    fn-wss-k-submit fn-wss-trouble fn-wss-send-session)
+                                   (fn-wss-page fn-wss-outcome fn-wss-reply
+                                    fn-wss-status-fields fn-ot-decimal-octets fn-ot-decimal-parse
+                                    fn-wss-reply-code fn-wss-flow)))))
+
+(defthm fn-web-private-reply-is-table-step
+  (implies (fn-web-private-reply-p flow event)
+           (and
+            (equal (mv-nth 0 (fn-web-private-reply-step config flow event fn-web-in fn-web-out))
+                   (mv-nth 0 (fn-web-step config sessions flow event fn-web-in fn-web-out)))
+            (equal (mv-nth 1 (fn-web-private-reply-step config flow event fn-web-in fn-web-out))
+                   (mv-nth 2 (fn-web-step config sessions flow event fn-web-in fn-web-out)))
+            (equal (mv-nth 1 (fn-web-step config sessions flow event fn-web-in fn-web-out)) sessions)))
+  :hints (("Goal" :in-theory (e/d (fn-web-private-reply-step fn-web-private-reply-p fn-web-step)
+                                   (fn-wss-k-groups fn-wss-k-group fn-wss-k-article fn-wss-k-submit
+                                    fn-wss-begin fn-wss-trouble fn-wss-k-signin fn-wss-k-redeem)))))

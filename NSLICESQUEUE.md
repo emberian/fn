@@ -315,6 +315,17 @@ core rendering remain open; bounded socket windows alone do not complete that
 contract (WEB-006, SCN-1099). Preserve session cleanup and distinguish store
 faults, uncertainty, refusal and disappearance.
 
+Web source through the sole semantic-disposal receipt is integrated; raw held
+cleanup and repeated finish schedules pass. Page cursor source 0d04c4a59 now
+counts and emits validated segments outside O through the fixed worker, with
+no full HTML OUT (SCN-1105 raw passes). PRF-1277 remains planned/program mode;
+matching image use and full NNTP input/plan/job funding remain open. Owner
+admission/session decisions/segment construction can still hold the I/O actor.
+Web remains a separate continuing owner through 10:00 after Ember revised the
+08:00 cap to ten. Exact captured reply plans now build on the fixed worker
+without O/live-table access; source equivalence PRF-1279 awaits admission.
+Root/Foundations own the full output funding seam.
+
 Done: a slow client does not block every web client; POST composes with a
 pipelined native batch; replies stream within accounted limits; faults fence or
 close the correct scope. Anchors: [S003](planning/repair/items/S003.json),

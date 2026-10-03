@@ -5328,3 +5328,6 @@
 
 (definterface fn-web-host-page-cursor :class ::program)
 (definterface fn-web-host-page-step :class ::program)
+
+(definterface fn-web-host-private-reply-p :class ::program)
+(definterface fn-web-host-private-reply-step :class ::program)

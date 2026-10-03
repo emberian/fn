@@ -151,3 +151,12 @@
 (defun fn-web-host-page-step (cursor count emitp fn-web-in)
   (declare (xargs :mode :program :stobjs fn-web-in))
   (fn-wpc-step cursor count emitp fn-web-in))
+
+(defun fn-web-host-private-reply-p (flow event)
+  (declare (xargs :mode :program))
+  (fn-web-private-reply-p flow event))
+
+(defun fn-web-host-private-reply-step (config flow event fn-web-in fn-web-out)
+  (declare (xargs :mode :program :stobjs (fn-web-in fn-web-out)))
+  (fn-web-private-reply-step (append (take 6 config) (list :page-plan))
+                            flow event fn-web-in fn-web-out))
