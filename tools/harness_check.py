@@ -1722,8 +1722,51 @@ def with_stub_block(text: str, block: str | None) -> str:
     return stripped[:at] + "\n" + block + stripped[at:]
 
 
+def harness_fixture_sources(root: Path, relative: str, text: str) -> dict[str, str]:
+    """Follow literal test-fixture loads without running the reader/evaluator.
+
+    Common Lisp LOAD paths here are relative to the repository working dir.
+    Cycles, missing fixture files and escapes refuse rather than imply coverage.
+    Derived trap blocks are excluded from the hand/extraction inventory.
+    """
+    from tools import ledger
+    sources = {}
+    active = set()
+    root = root.resolve()
+
+    def visit(relative, text):
+        if relative in active:
+            raise ValueError(f"fixture load cycle at {relative}")
+        if relative in sources:
+            return
+        active.add(relative)
+        hand, _ = split_stub_block(text)
+        sources[relative] = hand
+        forms = ledger.Reader(hand).top_level()
+        for form, _line in ledger.source_events(forms):
+            if ledger.head(form) != "load" or len(form) < 2 or type(form[1]) is not str:
+                continue
+            target = (root / form[1]).resolve()
+            if not target.is_relative_to(root):
+                raise ValueError(f"fixture load escapes repository: {relative} -> {form[1]}")
+            nested = target.relative_to(root).as_posix()
+            if not nested.startswith("tests/"):
+                continue
+            if nested in active:
+                raise ValueError(f"fixture load cycle at {nested}")
+            try:
+                nested_text = target.read_text(encoding="utf-8")
+            except (OSError, UnicodeError) as error:
+                raise ValueError(f"fixture load unreadable: {relative} -> {nested}: {error}") from None
+            visit(nested, nested_text)
+        active.remove(relative)
+
+    visit(relative, text)
+    return sources
+
+
 def harness_scan(relative: str, text: str, rawdefs: dict, bodies: dict,
-                 origins: dict) -> dict | None:
+                 origins: dict, fixture_sources: dict[str, str] | None = None) -> dict | None:
     """One harness: its stale hand stubs, the calls it leaves unresolved,
     and its derived block (expected and current).  None when the harness
     extracts nothing (or loads whole host files)."""
@@ -1739,9 +1782,11 @@ def harness_scan(relative: str, text: str, rawdefs: dict, bodies: dict,
         # the closure (batch AY: its *unreached* all went unreached).
         return None
     hand, current = split_stub_block(text)
-    forms = ledger.Reader(hand).top_level()
-    stubs, _ = raw_definitions({relative: forms})
-    mentioned = {m.lower() for m in re.findall(r"\b(fnn-[A-Za-z0-9*+%-]+)", hand)}
+    sources = fixture_sources or {relative: hand}
+    forms = {path: ledger.Reader(source).top_level() for path, source in sources.items()}
+    stubs, _ = raw_definitions(forms)
+    mentioned = {m.lower() for source in sources.values()
+                 for m in re.findall(r"\b(fnn-[A-Za-z0-9*+%-]+)", source)}
     extracted = {name for name in mentioned if name in bodies and name not in stubs}
     if not extracted:
         return None
@@ -1812,7 +1857,8 @@ def harness_scans(root: Path) -> list[tuple[Path, str, str, dict]]:
     for path in sorted((root / "tests").glob("*.lisp")):
         relative = path.relative_to(root).as_posix()
         text = path.read_text(encoding="utf-8")
-        scan = harness_scan(relative, text, rawdefs, bodies, origins)
+        fixtures = harness_fixture_sources(root, relative, text)
+        scan = harness_scan(relative, text, rawdefs, bodies, origins, fixtures)
         if scan is not None:
             out.append((path, relative, text, scan))
     return out

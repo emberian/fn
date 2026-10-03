@@ -1,0 +1,25 @@
+{
+ "budget": 220,
+ "category": "tests",
+ "expect-failure": "tests.test_harness_check.NestedFixtureTests.test_existing_scan_api_preserves_real_nested_extraction",
+ "failure-message": "False is not true : real function extracted by nested fixture must not be overwritten",
+ "file": "tools/harness_check.py",
+ "harness": "tests/test_harness_check.py",
+ "id": "NIGHT-NESTED-FIXTURE",
+ "notes": [
+  "10-03 03:13 claimed: scope=['tools/harness_check.py', 'tests/test_harness_check.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_harness_check.NestedFixtureTests.test_existing_scan_api_preserves_real_nested_extraction"
+ ],
+ "owner": "codex-sol-tools",
+ "scope": [
+  "tools/harness_check.py",
+  "tests/test_harness_check.py",
+  "LANEDUMP.md",
+  "planning/evidence-index.tsv"
+ ],
+ "severity": "medium",
+ "source": "integration-3ded-stub-overwrite",
+ "state": "in-progress",
+ "test": "python3 -m unittest tests.test_harness_check.NestedFixtureTests.test_existing_scan_api_preserves_real_nested_extraction",
+ "title": "Derived stub generator ignores literal nested fixture extraction",
+ "updated": "2026-10-03T07:13:27Z"
+}
