@@ -49,3 +49,22 @@
 (defthm fn-tcrt-established-contact-is-never-expired-by-definition
  (not (fn-tcrt-contact-timeout-p :established now deadline buffered))
  :rule-classes nil)
+
+; Local session setup policy. RFC9174 section4.6 precedes ready-to-transfer;
+; section5.1.1's negotiated idle interval does not yet exist in :messaging.
+; Capture this deadline once on entering messaging; partial input never renews.
+(defun fn-tcrt-init-deadline (phase now prior)
+ (declare (xargs :guard t))
+ (and (equal phase :messaging)
+      (if (natp prior) prior (+ (nfix now) 60000))))
+(defun fn-tcrt-init-timeout-p (phase now deadline buffered)
+ (declare (xargs :guard t))
+ (and (not buffered) (equal phase :messaging)
+      (natp now) (natp deadline) (<= deadline now) t))
+(defthm fn-tcrt-init-deadline-does-not-renew
+ (implies (and (equal phase :messaging) (natp prior))
+  (equal (fn-tcrt-init-deadline phase now prior) prior)))
+(defthm fn-tcrt-init-timeout-excludes-established
+ (implies (fn-tcrt-init-timeout-p phase now deadline buffered)
+  (equal phase :messaging))
+ :rule-classes nil)

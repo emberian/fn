@@ -674,3 +674,15 @@ refinement claim. This fixes normal shutdown of a live accepted peer, which
 otherwise stranded the bank despite its disabled continuation. SCN1110/1125/1126
 remain actual source-process consumers to execute on the current initialized
 world. Matching profile/teeth certification pending.
+
+SESS_INIT reception followthrough (PRF-1297, SCN-1127): entering messaging
+captures one ACL2 sixty-second local deadline; further partial input does not
+renew it. Already captured finite framing/materialization finishes before an
+expiration decision; established sessions clear the setup deadline. Actual
+retained driver consumes timeout as TCP-closed, never physical return or custody
+settlement. RFC9174§4.6 requires negotiation before transfer; the sixty-second
+SESS_INIT bound is fn local policy, distinct from §4.1 Contact Header requirement
+and §5.1.1 negotiated idle behavior. Actual raw driver/source-control/custody
+composition PASS; real two-peer durable request + setup expiry + reopen selector
+prepared UNEXECUTED. Early announced-EID/channel admission and concurrent control
+input during held-source work remain next connected work.

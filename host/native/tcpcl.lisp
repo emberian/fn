@@ -79,7 +79,7 @@
   ;; Private concrete octet buffer, one incomplete frame only. The incoming
   ;; socket vector survives cursor turns; no list carry is appended/reparsed.
   input-buffer input-cursor input-vector (input-offset 0)
-  input-materialize-end input-materialize-probe input-octets contact-deadline)
+  input-materialize-end input-materialize-probe input-octets contact-deadline init-deadline)
 
 ;;; ---------------------------------------------------------------------------
 ;;; The clock.  One monotonic reading per wakeup, in milliseconds, handed to
@@ -643,6 +643,15 @@ and faults without following or deleting anything."
 The caller keeps this connection and its socket until actual physical close."
   (when (fnn-tclc-finished conn) (return-from fnn-tcl-turn :done))
   (let* ((now (fnn-tcl-now))
+         (phase (fnn-core 'fn-tcl-host-phase (fnn-tclc-session conn)))
+         (init-watch (setf (fnn-tclc-init-deadline conn)
+                       (fnn-core 'fn-tcrt-init-deadline phase now
+                                 (fnn-tclc-init-deadline conn))))
+         (init-timeout
+          (when (fnn-core 'fn-tcrt-init-timeout-p phase now init-watch
+                          (fnn-tclc-source-more conn))
+           (fnn-tcl-log conn "event" "peer SESS_INIT timeout")
+           (fnn-tcl-turn-lost conn)))
          (contact-timeout
           (when (fnn-core 'fn-tcrt-contact-timeout-p
                   (fnn-core 'fn-tcl-host-phase (fnn-tclc-session conn))
@@ -670,7 +679,7 @@ The caller keeps this connection and its socket until actual physical close."
                   (fnn-core 'fn-tcl-host-phase (fnn-tclc-session conn))
                   now (fnn-tclc-tx-deadline conn)))
          (result :work))
-    (declare (ignore ignored contact-timeout))
+    (declare (ignore ignored contact-timeout init-timeout))
     (case action
         (:done (setf (fnn-tclc-finished conn) t) (setq result :done))
         (:lost (fnn-tcl-turn-lost conn))

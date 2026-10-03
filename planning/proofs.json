@@ -22912,7 +22912,31 @@
         "host/native/bp-session.lisp",
         "tests/native_bp_session_bank_raw.lisp"
       ],
-      "progress_note": "2026-10-03 actual controller/core-leaf raw matrix PASS for ordinary versus fenced context and observed versus unobserved physical close. Source/control composition and exact affected-root certification pending; full host no-future-publication/custody refinement remains proposed."
+      "progress_note": "2026-10-03 actual controller/core-leaf raw matrix PASS for ordinary versus fenced context and observed versus unobserved physical close. Source/control composition and exact affected-root certification pending; full host no-future-publication/custody refinement remains proposed. Source/control/custody actual raw composition PASS. Exact profile+teeth certify-20261003T154249Z-2241830 PASSED2/0 archived/indexed; covers definitions/guards/direct helper/literals, not proposed composed host boundary."
+    },
+    {
+      "id": "PRF-1297",
+      "title": "Retained setup deadline cannot be renewed by partial SESS_INIT input",
+      "statement": "fn-tcrt-init-deadline captures once on entering messaging and preserves an existing natural deadline despite later time/input. fn-tcrt-init-timeout-p excludes established sessions and already retained framing input. Actual fnn-tcl-turn consumes both before a new physical attempt; timeout is ordinary protocol loss, with separate physical close/context custody receipts. Full host caller correspondence remains open. Sixty-second SESS_INIT reception is fn local policy supplementing RFC9174 section4.6, distinct from the Contact Header SHALL timeout and negotiated section5.1.1 idle behavior.",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006"
+      ],
+      "depends_on": [
+        "PRF-1273",
+        "PRF-1295"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "events": [],
+      "evidence": [
+        "books/tcpcl-retained-turn.lisp",
+        "tests/acl2/tcpcl-retained-turn-tests.lisp",
+        "host/native/tcpcl.lisp",
+        "tests/native_tcpcl_retained_turn_raw.lisp",
+        "tests/test_bp_node_native.py"
+      ],
+      "progress_note": "Actual retained driver and composed source/custody raw fixtures PASS fixed deadline, retained input continuation, no physical-close inference. Native SCN-1127 prepared/unexecuted; matching logical guards/certification pending. Constructor nonrenewal and timeout phase lemmas have literals, not a composed native proof. Warm normal admission/guards and25 literal assertions PASS; nonrenewal80 steps, phase lemma55 with rule-classes NIL after illegal variable rewrite fixed forward. Exact affected roots pending."
     }
   ]
 }
