@@ -267,3 +267,29 @@ open a two-record image with a consumed frontier gap, run refusal, known
 abort, publication with acknowledgement, an uncertain link, crash and recovery,
 then acknowledge a record, die at the `final-link` cut, and reopen on both
 admissible images; each keystone has one refuting witness per hypothesis.
+
+
+## Resident history generation and native reclamation consumer
+
+The canonical `fn-hist` attachment keeps its dense all-event ordinal semantics.
+Its P3 foundation owns a resident immutable image prefix and an ordinary append
+tail; Message-ID buckets contain ordinals. The live root builder reads exact
+served events, including sealed arena handles, rather than checkpoint-canonical
+events. A candidate becomes installed only when its captured ACL2 source
+incarnation, frontier and count still agree inside the owner gate.
+
+An issued history pin binds an allocation generation, immutable captured count
+and frontier to the physical root. Replacement preserves held generations.
+Reset refuses while an issued root is held. Reclaim's actual walk reads that
+captured prefix in chunks, funds decoding before page reads, releases each
+chunk's decode grant after dropping its decoded rows, and returns the root pin
+before attempting its own swap. Credit refusal preserves the installed root.
+
+`tests/native_history_root_raw.lisp` runs the actual native installer and reclaim
+walk against recorded ACL2 producer seams: same-count replacement, catch-up
+append, held old-generation reads, poisoned fallback records, and decode-before-
+allocation ordering. These fixtures test host composition; the page codec and
+abstract exports have separate ACL2 obligations (PRF-1280). Initial root building,
+flat-array growth and the logical Store/catalog reclaim rebuild still perform
+proportional work. Their memory reservation is unchanged. Bounded open and
+effective bounded reclamation are continuing implementation obligations.

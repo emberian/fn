@@ -46,6 +46,7 @@
 ;; the held record reaches the arena, so nearly every book below does: it
 ;; comes right after the codec and record attachments, before any of them.
 (include-book "books/payload-arena-attach")
+(include-book "books/history-paged-attach")
 (include-book "books/store-config")
 (include-book "books/identity")
 (include-book "books/hybrid-store-injected")
@@ -362,6 +363,7 @@
 (ld "host/anchor-server-host.lisp" :ld-error-action :error)
 (ld "host/reader-host.lisp" :ld-error-action :error)
 (ld "host/owner-host.lisp" :ld-error-action :error)
+(ld "host/history-root-host.lisp" :ld-error-action :error)
 ;; Stage 5 (lane raw-dispatch-3): the owner's carried relation
 ;; (fn-owner-retain-statep) across the host writers converted to :logic.
 (ld "host/owner-retain-host.lisp" :ld-error-action :error)
@@ -524,6 +526,7 @@
         ; only host/owner-host.lisp wrappers for protocol and state decisions.
         (load "host/native/owner-control-turn.lisp")
         (load "host/native/owner.lisp")
+        (load "host/native/history-root.lisp")
         (load "host/native/receiver-parser-turn.lisp")
         ; Its connections on a fixed set of I/O loops (PKT-605).
         (load "host/native/mux.lisp")

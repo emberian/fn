@@ -10,15 +10,16 @@ images and native page stop/grow fixtures pass. New certificate/image pending.
 Encoding, flat-array growth, full commit plan and full logical reclaim rebuild
 remain proportional; reclaim estimate unchanged.
 
-P3 authority wave: logical/foundation split9ed9891bf permits attachment before
-fn-hist generic. Guarded new books/history-paged.lisp owns resident fn-hrecs$c
-prefix, exact arbitrary-event append tail and ordinal-only MID buckets. Resident
-read/count and prefix-unchanged append proofs admitted; helper Proof Engineering
-owns five-export abstract attachment obligations from this exact prefix. History
-owns constant-time swap-stobjs adoption, bound allocation generation/pins and
-actual owner/native install. PRF-1280 claimed. No installed root/open/reclaim
-claim until those consumers connect; root retention must hold actual memory
-credit through pin return, distinct from temporary publication reservation.
+P3 authority wave now connects canonical attachment, exact served-event root
+building, constant-time nested stobj adoption, ACL2 generation/frontier activation,
+prepaid retained-root/read custody and the actual native reclaim walk. The five
+abstract exports admitted in the retained hbox world; private adoption/index/read
+guards and physical preservation admitted there. Native control-flow fixture
+passes with recorded ACL2 producer seams. Fresh source-loaded canonical attachment
+started in history-paged-live; existing paid history-row-step world remains live.
+PRF-1280 records the current scope. Full adoption/index correspondence and tariff
+bounds remain open; no complete root proof or qualified image claim. Canonical
+Store/rebuild remains whole logical lists, so orcp estimate is unchanged.
 Carrier handoff f69a4c846/25186bd8b remains source-ready, no atomic migration.
 
 Previous lane material inherited from the integrated tree follows unchanged.

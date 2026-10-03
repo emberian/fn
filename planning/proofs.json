@@ -3,6 +3,30 @@
   "description": "Broad proof targets with incremental certified component evidence. An in-progress target is not fully certified. Paths are repository-relative.",
   "proofs": [
     {
+      "id": "PRF-1280",
+      "title": "Canonical P3 history exports and installed generation-pinned native history consumer",
+      "statement": "The attached fn-hist-paged exports count, at, Message-ID lookup, append and clear preserve the logical all-event sequence through the resident P3 prefix and ordinary append tail. fn-hist$p-read-is-history-row identifies the private checked reader used by fnn-owner-history-root-at; fn-hist$p-append-keeps-wfp and fn-hist$p-index-next-keeps-wfp carry private physical well-formedness without served whole-root validation. Native installation builds from exact served events, separately from checkpoint-canonical handles, and activates only at an unchanged ACL2 source incarnation/frontier. Issued generation pins retain the old physical root and prepaid decode custody through the actual fnn-owner-reclaim-walk. Full adoption/index correspondence, root credit tariff bounds, bounded open and removal of the proportional logical Store/reclaim rebuild remain obligations.",
+      "milestone": "M5",
+      "requirements": [
+        "REP-010"
+      ],
+      "depends_on": [
+        "PRF-1265"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/history-paged.lisp",
+        "books/history-paged-adopt.lisp",
+        "books/history-pages-resident.lisp",
+        "books/history-root-credit.lisp",
+        "host/history-root-host.lisp",
+        "host/native/history-root.lisp",
+        "tests/native_history_root_raw.lisp"
+      ],
+      "progress_note": "Five-export abstract stobj and physical adoption/index/read guards admitted in retained hbox world. Actual native installer/reclaim walk fixture passes with recorded ACL2 producer doubles; this is control-flow evidence, not codec or complete installed correspondence proof. Fresh canonical source loading and exact affected-root certification pending. Saved images are off the current feedback path."
+    },
+    {
       "id": "PRF-1265",
       "title": "Native incremental history image rows preserve all-event history with a 16-slot consumed suffix envelope",
       "statement": "The actual native publisher fnn-history-image-build now calls fn-his-row-begin/step/grow through fnn-history-image-row-run. fn-his-row-begin-appends-history establishes the appended all-event history before private page mutation; fn-his-row-relocate-step-keeps-completion preserves the exact nested concrete completion target across page ticks and identifies the completed outer root. The original fn-his-build-row refinement and 16-slot envelope remain certified reference composition. Native scratch custody, exact finish count, staged readback and cancellation are retained. Encoding the event, flat-array growth and image commit remain proportional; no overall latency or bounded reclaim conclusion follows.",

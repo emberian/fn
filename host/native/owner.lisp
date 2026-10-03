@@ -1443,6 +1443,7 @@ one ring, so the table's key and the served boundary's are one source."
                      ;; batches by the committer thread.
                      :batching (fnn-store-logp store)
                      :stopping nil))
+              (fnn-owner-history-root-maintain service)
               (progn
                 (setf (fnn-owner-service-feeds service)
                       (fnn-owner-feed-open-all service configured))
@@ -6533,6 +6534,8 @@ the crash keystone) and serving continues."
   ;; The slot: the next publication may start now (the pin and the nursery
   ;; are back).
   (fnn-owner-publisher-release service)
+  (unless (fnn-owner-service-stopping service)
+    (fnn-owner-history-root-maintain service))
   ;; PKT-583 (b): the publication finished; decide again from the newest
   ;; committed frontier now, not at the next accept (a load's tail has
   ;; none), so a coalesced request is served as soon as it can be and a
@@ -6868,21 +6871,29 @@ the stop's refusal at a chunk boundary is `owner-stopping'."
   "Rows rewritten and folded per ACL2 call while a reclaim pass walks the
 captured history (a work quantum per call, never a bound on the store).")
 
-(defun fnn-owner-reclaim-walk (records ctx rewrite arena)
+(defun fnn-owner-reclaim-walk (records ctx rewrite arena &optional service history-source)
   "The pass over the captured RECORDS in chunks of +fnn-reclaim-chunk-rows+
 (fn-owner-orc-chunk: fn-orc-chunk, whose rewrite is the offline rewrite and
 whose fold is the offline fold, fn-orc-rewrite-rows-of-append and
 fn-orc-fold-of-append joining the chunks).  Answers (values ACC REWRITTEN),
 REWRITTEN the rewritten rows in order when REWRITE, else nil."
-  (let ((acc (fnn-core 'fn-owner-orc-init)) (out nil) (rest records))
-    (loop while rest do
-      (let ((chunk (loop repeat +fnn-reclaim-chunk-rows+ while rest collect (pop rest))))
+  (let ((acc (fnn-core 'fn-owner-orc-init)) (out nil) (rest records) (ordinal 0))
+    (loop while (if history-source (< ordinal (fourth (first history-source))) rest) do
+      (let ((chunk
+              (if history-source
+                  (loop repeat +fnn-reclaim-chunk-rows+
+                        while (< ordinal (fourth (first history-source)))
+                        collect (prog1 (fnn-owner-history-root-at service history-source ordinal)
+                                  (incf ordinal)))
+                (loop repeat +fnn-reclaim-chunk-rows+ while rest collect (pop rest)))))
         (let ((r (fnn-core 'fn-owner-orc-chunk chunk ctx acc arena)))
           (unless (and (consp r) (= (length r) 2) (listp (first r))
                        (= (length (first r)) (length chunk)))
             (fnn-fault "owner returned a malformed reclaim chunk"))
           (setq acc (second r))
-          (when rewrite (push (first r) out)))))
+          (when rewrite (push (first r) out))
+          (setq chunk nil)
+          (when history-source (fnn-owner-history-root-chunk-return service history-source)))))
     (values acc (and rewrite (let ((all nil))
                                (dolist (c out all) (setq all (nconc c all))))))))
 
@@ -6898,7 +6909,7 @@ The arena is read below the captured count only, and the pass is counted
 as an off-mutex arena reader while it runs (no staged page is released
 under it: its arena-reader pin, books/arena-reader-pins.lisp).  Answers
 the reply word: :dry-run, or ACL2's refusal."
-  (let ((clock (fnn-store-prepare-observation)) (captured nil) (pin nil) (deferred nil) (arena nil))
+  (let ((clock (fnn-store-prepare-observation)) (captured nil) (pin nil) (history-source nil) (deferred nil) (arena nil))
     (unwind-protect
          (progn
            (fnn-owner-gated (service :control)
@@ -6918,7 +6929,8 @@ the reply word: :dry-run, or ACL2's refusal."
                    (setq deferred (second answer))
                  (setq captured answer
                        arena (fnn-live-arena)
-                       pin (fnn-arena-pin)))))
+                       pin (fnn-arena-pin)
+                       history-source (fnn-history-root-pin-held)))))
            (when deferred
              (fnn-err "RECLAIM dry-run refused: ~(~a~)" deferred)
              (return-from fnn-owner-reclaim-dry-run
@@ -6934,8 +6946,11 @@ the reply word: :dry-run, or ACL2's refusal."
                ;; the context's hash tables freed whatever the walk does
                (unwind-protect
                     (setq classes (fnn-core 'fn-owner-orc-classes ctx arena)
-                          acc (fnn-owner-reclaim-walk records ctx nil arena))
-                 (fnn-core 'fn-owner-orc-ctx-free ctx))
+                          acc (fnn-owner-reclaim-walk records ctx nil arena service history-source))
+                 (fnn-core 'fn-owner-orc-ctx-free ctx)
+                 (when history-source
+                   (fnn-owner-history-root-unpin service history-source)
+                   (setq history-source nil)))
              (let* ((decision (fnn-core 'fn-owner-orc-decide :dry-run profile v s now acc
                                         arena))
                     (expired (if (and (listp classes) (= (length classes) 6)
@@ -6961,6 +6976,7 @@ the reply word: :dry-run, or ACL2's refusal."
                       (fnn-err "RECLAIM would-reclaim ~a"
                                (if (stringp m) m (fnn-fault "malformed msgid")))))
                   :dry-run))))))
+      (when history-source (fnn-owner-history-root-unpin service history-source))
       (when pin (fnn-arena-unpin pin))
       (when captured
         (fnn-owner-gated (service :control)
@@ -7038,6 +7054,9 @@ by evaluating the form (CREATOR), once per pass."
 pointer and the live state's binding)."
   (let ((cell (assoc name (user-stobj-alist *the-live-state*))))
     (unless cell (fnn-fault "the ~(~a~) stobj is not in this image" name))
+    (when (eq name 'fn-hist)
+      (unless (eq (fnn-owner-core 'fn-owner-hroot-detach) :detached)
+        (fnn-fault "history replacement incarnation refused")))
     (setf (cdr cell) value)
     (ecase name
       (fn-cat (setq *fnn-cat* value))
@@ -7080,7 +7099,7 @@ the install is a recovery event (the service stops; the open reads the new
 publication).  Answers the reply word."
   (let* ((store (fnn-owner-service-store service))
          (clock (fnn-store-prepare-observation))
-         (answer nil) (captured nil) (pin nil) (position nil) (stage nil) (ident nil)
+         (answer nil) (captured nil) (pin nil) (history-source nil) (position nil) (stage nil) (ident nil)
          (installed nil) (swapped nil) (word :failed) (*fnn-checkpoint-frames* nil)
          (base nil) (seal-payloads nil) (seal-us 0) (arena nil) (column-key nil) (column-salt nil)
          (image nil)
@@ -7116,7 +7135,8 @@ publication).  Answers the reply word."
                   (setq arena (fnn-live-arena)
                         column-key (fnn-owner-core 'fn-owner-orcp-key)
                         column-salt (fnn-owner-core 'fn-owner-orcp-salt)
-                        pin (fnn-arena-pin)))))
+                        pin (fnn-arena-pin)
+                        history-source (fnn-history-root-pin-held)))))
              (unless captured
                ;; S038: another pass in flight or queued is refused by name
                ;; before any credit is reserved (CAPTURED stays nil, so the
@@ -7141,8 +7161,11 @@ publication).  Answers the reply word."
                  ;; the context freed right after the walk (orc-decide does
                  ;; not read it), also when the walk faults
                  (unwind-protect
-                      (multiple-value-setq (acc rows) (fnn-owner-reclaim-walk records ctx t arena))
-                   (fnn-core 'fn-owner-orc-ctx-free ctx))
+                      (multiple-value-setq (acc rows) (fnn-owner-reclaim-walk records ctx t arena service history-source))
+                   (fnn-core 'fn-owner-orc-ctx-free ctx)
+                 (when history-source
+                   (fnn-owner-history-root-unpin service history-source)
+                   (setq history-source nil)))
                  (setq decision (fnn-core 'fn-owner-orc-decide :recorded profile v s nil acc
                                           arena))
                  (fnn-reclaim-cut :rewritten)
@@ -7301,6 +7324,7 @@ publication).  Answers the reply word."
                               (length seal-payloads) seal-us)
                      (fnn-owner-release-extents service store *fnn-checkpoint-frames* paths pin arena))
                    (fnn-reclaim-cut :released))))))
+        (when history-source (fnn-owner-history-root-unpin service history-source))
         (when pin (fnn-arena-unpin pin))
         ;; Captured and not swapped: the pass is over for the owner (the
         ;; in-flight mark cleared) FIRST, a cleanup quantum admitted after a
@@ -7326,6 +7350,8 @@ publication).  Answers the reply word."
         (when (and installed (not swapped))
           (fnn-owner-fence-service service)
           (fnn-indeterminate "reclaim swap failed after the install: recovery required"))))
+    (when (and swapped (not (fnn-owner-service-stopping service)))
+      (fnn-owner-history-root-maintain service))
     word))
 
 ;;; PKT-101: reopen `[log] path' when ACL2 says a SIGHUP is due
