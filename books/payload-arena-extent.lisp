@@ -558,8 +558,10 @@
            (equal (nth i (fn-arx-files-move old new fn-arena$x))
                   (nth i fn-arena$x)))
   :hints (("Goal" :in-theory
-           (e/d (fn-arx-files-move fn-arx-files-dec fn-arx-files-inc)
-                (nth update-nth adt-nth-0 adt-nth-1+)))))
+           (set-difference-equal
+            (e/d (fn-arx-files-move fn-arx-files-dec fn-arx-files-inc)
+                 (nth update-nth))
+            '((:rewrite adt-nth-0) (:rewrite adt-nth-1+))))))
 
 (defthm fn-arx-files-move-inner
   (equal (car (fn-arx-files-move old new fn-arena$x))
@@ -793,7 +795,8 @@
   (implies (and (fn-arena$xp fn-arena$x) (natp h))
            (fn-arena$xp (fn-arx-mark h e fn-arena$x)))
   :hints (("Goal" :do-not-induct t
-           :in-theory (disable nth adt-nth-0 adt-nth-1+))))
+           :in-theory (set-difference-equal (disable nth)
+                                '((:rewrite adt-nth-0) (:rewrite adt-nth-1+))))))
 
 (local
  (defthm fn-arx-nth-len-append
@@ -806,7 +809,8 @@
            (equal (nth *fn-arena$x-stagei* (fn-arx-mark h e fn-arena$x))
                   (nth *fn-arena$x-stagei* fn-arena$x)))
   :hints (("Goal" :do-not-induct t
-           :in-theory (disable nth adt-nth-0 adt-nth-1+))))
+           :in-theory (set-difference-equal (disable nth)
+                                '((:rewrite adt-nth-0) (:rewrite adt-nth-1+))))))
 
 ;; The file count's agreement, kept by the mark.
 (defthm fn-arx-tally-of-update-nth
@@ -860,7 +864,8 @@
                    (fn-arx-entry-file e)
                    (nth *fn-arena$x-filesi* fn-arena$x))))
   :hints (("Goal" :do-not-induct t
-           :in-theory (disable nth adt-nth-0 adt-nth-1+))))
+           :in-theory (set-difference-equal (disable nth)
+                                '((:rewrite adt-nth-0) (:rewrite adt-nth-1+))))))
 
 (defthm fn-arx-files-get-of-move-list
   (implies (and (natp f) (true-listp fs))
@@ -996,6 +1001,11 @@
 ;; The stage write: the other fields untouched, slots other than H untouched,
 ;; slot H's payload the buffer's octets.
 (local
+ (defthm fn-arx-car-update-nth-zero
+   (equal (car (update-nth 0 v l)) v)
+   :hints (("Goal" :in-theory (enable update-nth)))))
+
+(local
  (defthm fn-arx-page-bytesp-of-copy
    (implies (and (fn-arena-page-bytesp (car fn-arena-page))
                  (fn-octets-p fn-octets)
@@ -1004,10 +1014,13 @@
             (fn-arena-page-bytesp (car (fn-arx-page-copy j n a fn-octets fn-arena-page))))
    :hints (("Goal" :induct (fn-arx-page-copy j n a fn-octets fn-arena-page)
              :in-theory
-            (e/d (fn-oct-get-is-nth fn-oct-octets-p-is-octet-listp
-                  (:rewrite fn-oct-nth-of-octet-listp-is-octet . 1)
-                  fn-oct-bufp-of-update-nth unsigned-byte-p)
-                 (update-nth adt-nth-0 adt-nth-1+))))))
+            (set-difference-equal
+             (e/d (fn-oct-get-is-nth fn-oct-octets-p-is-octet-listp
+                   (:rewrite fn-oct-nth-of-octet-listp-is-octet . 1)
+                   fn-oct-bufp-of-update-nth unsigned-byte-p
+                   fn-arx-car-update-nth-zero len-update-nth)
+                  (update-nth))
+             '((:rewrite adt-nth-0) (:rewrite adt-nth-1+)))))))
 
 (local
  (defthm fn-arx-bytesp-of-resize
@@ -1023,10 +1036,13 @@
             (fn-arena-pagep (fn-arx-page-copy j n a fn-octets p)))
    :hints (("Goal" :induct (fn-arx-page-copy j n a fn-octets p)
              :in-theory
-            (e/d (fn-oct-get-is-nth fn-oct-octets-p-is-octet-listp
-                  (:rewrite fn-oct-nth-of-octet-listp-is-octet . 1)
-                  fn-oct-bufp-of-update-nth unsigned-byte-p)
-                 (update-nth adt-nth-0 adt-nth-1+))))))
+            (set-difference-equal
+             (e/d (fn-oct-get-is-nth fn-oct-octets-p-is-octet-listp
+                   (:rewrite fn-oct-nth-of-octet-listp-is-octet . 1)
+                   fn-oct-bufp-of-update-nth unsigned-byte-p
+                   fn-arx-car-update-nth-zero len-update-nth)
+                  (update-nth))
+             '((:rewrite adt-nth-0) (:rewrite adt-nth-1+)))))))
 
 (local
  (defthm fn-arx-pagep-of-resized
@@ -1148,7 +1164,9 @@
 
 ;; The generic ADT aliases otherwise reopen NTH after it was closed above.
 ;; Keep the abstract export obligations at the same field boundary.
-(local (in-theory (disable adt-nth-0 adt-nth-1+)))
+(local (in-theory
+        (set-difference-equal (current-theory :here)
+                              '((:rewrite adt-nth-0) (:rewrite adt-nth-1+)))))
 
 ; -----------------------------------------------------------------------------
 ; The obligations, each as `defabsstobj-missing-events' states it.
