@@ -1410,7 +1410,7 @@ signals with SERVICE still holding its locks; its owner releases them."
 ;;; under the owner, for a verb that holds no owner of its own.
 (defun fnn-bps-read-route-table (store-root)
   (let ((owner (fnn-owner-install store-root 1)))
-    (unwind-protect (fnn-owner-core 'fn-owner-bp-route-table)
+    (fnn-unwind-cleanups ((fnn-owner-core 'fn-owner-bp-route-table))
       (fnn-owner-feed-close-all owner)
       (fnn-store-close (fnn-owner-service-store owner)))))
 
