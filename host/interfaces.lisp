@@ -5573,7 +5573,7 @@
 (definterface fn-prstartup-extend-operation-reservation :class :common-lisp-compliant)
 
 ; Actual bounded BP heap projection and stopping-aware log admission consumers.
-(definterface fn-bph-command-plan :class :common-lisp-compliant)
+(definterface fn-bph-command-plan :class :common-lisp-compliant :kinds ((argv true-listp)))
 (definterface fn-bph-refusal-line :class :common-lisp-compliant)
 (definterface fn-log-sink-offer-live :class :common-lisp-compliant)
 ; STATUS/HEALTH project the accepted configuration, never run-only NIL fields.

@@ -9826,7 +9826,9 @@
         "test": "tests/test_native_bp_prefix_probe_source.py"
       },
       "evidence": [
-        "tests/native_bp_prefix_probe_source.lisp"
+        "tests/native_bp_prefix_probe_source.lisp",
+        "planning/evidence/bp-prefix-probe-source-2026-10-03.json",
+        "planning/evidence/manifests/certify-20261003T180302Z-2794821.json"
       ],
       "execution_scope": "Actual trusted repository function bodies with Common Lisp shims and two MBE choices; normal ACL2 guards prove branch equivalence. No native endpoint, full semantic decode quantum or GC tariff claim."
     }
