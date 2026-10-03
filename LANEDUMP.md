@@ -960,7 +960,6 @@ POST240/stored-source evidence stopped at retention refusal, not peer recovery.
 First matching-image selector: python3 -m tools.resilience.adapters.bp_node
 --image DEVELOPER --producer-image MATCHING_DEFAULT --variant lose-completion.
 Replay after actual retention repair remains Integration's source/image task.
-=======
 Final source replay uses one encapsulate, dropping locals:30forms,2.14 ACL2 s,
 1,513,918 steps.15 test forms652 steps: sparse misses, actual first successful
 decision, excluded wildcard, first-zero duplicate, overflow number, invalid ID,
@@ -1252,3 +1251,39 @@ Ember stopped Luna waves; no survey resumes or measurements. First four proof ro
 - 0f39cfa59 optional output config→launcher extension and private typed custody producer composed independently; Runtimee426 same patch not separately imported. Existing numerical23checks,126configregressions,16typedtraces and actual normal-counterpart renderer+real-worker custody probe reused. Exact resource-vector-exec836b6f digest matches receipt; current generic declaration carried-assumption checks are disjoint from these normal counterparts. No proof/native replay.
 - Spec append retained actual syncer unwind semantics; heading corrected to requirement anchor. PRF1259 three numerical source keystones added to curated map so later regeneration retains producer events. HST047/PRF1259 claim checkPASS; output objectsed2aa/5c384 verified.
 - Explicit policy stays operator-unsupported, absence partial. Ideal install/issue guards, metadata/freechain/bank preservation, bookkeeping/refinement/fulltariff, consumeractivation and matchingcert/image remain owed. Necessary roots output-reservation, resource-output, native-config/operator and corresponding tests; first exact producer discriminator tests/test_native_output_custody_raw.sh after matching scoped prerequisites, Integration schedules.
+=======
+Native raw transport composition passed using deployed io/owner forms from
+those dependencies plus this extent macro and a real SBCL thread/mutex;
+no fn semantic decisions are mocked. Eight image-free transport checks pass.
+The actual normal held-read image selector now consumes post-cleanup NATIVE-HM,
+checks complete collector prefix plus direct labels, and explicitly reports
+full PageIO comparison unavailable. COMPLETE is never full physical coverage.
+Matching image execution remains pending Integration's next source batch;
+1a946 current image excludes this packet. Full replay still owes actual wait,
+pin and remaining owner edges, literal condition boundary and exact dependency
+coordinates. No mux/owner/io edits in this lane.
+
+
+## Current image results filed, 2026-10-03
+
+Image1a946582c/core6f5bf888, immutable earlier catalog, sequential isolated
+24GiB scope: baseline mixed4.198s total (0.314s mixed phase),24concurrent posts
+accepted/36exact reads/all48acknowledged hashes and numbers after reopen.
+Actual checkpoint/reseating observed; quiet reclaim still credit-refused
+estimate16,680,640. Current sparse4.829s, ten exact four-ID discovery blocks,
+eight exact reads/four competing accepted POSTs, offline expiry/reclaim2accepted,
+26retained+2tombstones after reopen; live reclaim credit-refused8,098,624.
+Report coordinates native-mixed-1a946582c-2026-10-03 and
+native-sparse-1a946582c-2026-10-03 in archived evidence. This image excludes
+later funding/cursor/extent hooks; no performance improvement or whole-image
+qualification inference. Exact config/input hashes and sampler errors retained.
+Mixed used copied native_cuts2e2; sparse updated to10e bytes before execution;
+manifest input hashes govern, supplied driver revision is not whole-tree identity.
+
+Observer b4f03503c + follow-up0d0eee69a exclude both staged window/PWZ tokens
+from direct return labels. Eight transport checks + exact deployed raw macro/
+collector SBCL thread/mutex composition0.099s passed; five evidence objects
+native-extent-observer-b4f03503c-2026-10-03. Actual held-success image pending
+next Integration assembly. No active native runs; current repaired BP or normal
+held-read next when Integration supplies matching image/scope. Curves still held
+until existing fixture152da/native-n7 compatibility is actually established.
