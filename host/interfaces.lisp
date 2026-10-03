@@ -5281,13 +5281,11 @@
 ; Numerical admission proof and selected layout refinement are separate.
 (definterface fn-prstartup-default-plan :class :common-lisp-compliant)
 (definterface fn-prstartup-status :class :common-lisp-compliant)
-(definterface fn-prstartup-planp :class :common-lisp-compliant)
 (definterface fn-prstartup-refusal-line :class :common-lisp-compliant)
 (definterface fn-prstartup-install-status :class :common-lisp-compliant)
 (definterface fn-prstartup-install-refusal-line :class :common-lisp-compliant)
 (definterface fn-prstartup-file-capacity :class :common-lisp-compliant)
 (definterface fn-prstartup-cache-capacity :class :common-lisp-compliant)
-(definterface fn-prstartup-decoded-workers :class :common-lisp-compliant)
 (definterface fn-owner-page-read-install-default :class :common-lisp-compliant)
 
 ; Exact logical view declarations imported from producer 57b70ff2b.

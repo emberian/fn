@@ -1086,6 +1086,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-forward-live-tests \
 	books/bp-forward-image \
 	tests/acl2/bp-forward-image-tests \
+	tests/acl2/tcpcl-source-control-refinement-tests \
+	tests/acl2/tcpcl-received-source-refinement-tests \
 	books/tcpcl-retained-turn \
 	tests/acl2/tcpcl-retained-turn-tests \
 	books/bp-node-budget-input \

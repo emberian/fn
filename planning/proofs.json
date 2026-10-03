@@ -1788,7 +1788,7 @@
         "PRF-031"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "note": "Lane w11/auth-live, decided by measurement and not by inspection. fn-served-open-peer pinned the literal (fn-auth-open-config) while fn-served-open pinned the operator's, and the owner resolves a connection to a peer by SOURCE ADDRESS alone, so on a box where a configured peer is reachable on loopback every client was opened without the operator's policy: AUTHINFO PASS answered 481 with the secret just written, CAPABILITIES carried no AUTHINFO line and POST was never gated. Both theorems are FALSE of that definition. The live before/after is planning/evidence/auth-live-2026-09-21.md and the boundary test is tests/test_auth.py ServedCredentialTests, which starts the node with `bin/fn run` over an fn.toml and writes the peer record, because no test that starts tools/run_owner.py directly can reach this. The greeting half is a second defect the same measurement found: fn-served-greeting read the injection configuration alone, so a connection under [auth] required = true greeted 200 and then answered POST 480, where section 5.1.2's MUST is 201. It takes the opened session now. Lane t7/auth-teeth, 2026-09-22: teeth in tests/acl2/nntp-auth-teeth-tests.lisp. Neither greeting theorem nor either pinning theorem has a hypothesis, so the teeth are the values that separate the two sides together with a must-fail on the statement the definition satisfied BEFORE the 2026-09-21 measurement: that the greeting is 200 exactly when the injection configuration allows posting, and that the peer open pins (fn-auth-open-config). fn-served-open-greeting-agrees-with-the-post-label stays uncited: the statement above names it a corollary and a local unfold, so its evidence is the witnesses on both sides of its iff, not a registry event. fn-auth-step-preserves-the-config is new in this lane and was asked for by name in the header of books/nntp-auth-invariants.lisp as the first of the three facts OB-AUTH-FOLD waits on.",
       "evidence": [
         "planning/evidence/native-auth-runtime-2026-09-21/README.md",
@@ -2510,7 +2510,7 @@
         "PRF-015"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "note": "At this source, green_check finds books/nntp-newnews green at its exact include closure in certify-20260923T232942Z-484654, its test book green in certify-20260924T005919Z-653679, books/nntp-invariants green in certify-20260923T232820Z-480447, and books/nntp-effects green in certify-20260923T232942Z-484654; none has moved dependencies. These are archived certification records, not a current native image qualification. The earlier T2b affected-closure run is certify-20260923T170842Z-2026382; native served-reader validation remains separate.",
       "evidence": [
         "books/nntp-newnews.lisp",
@@ -7183,7 +7183,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-primary.lisp",
         "tests/acl2/bp-primary-tests.lisp",
@@ -9170,7 +9170,7 @@
         "PRF-190"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-bpp-crc16-scan-table-is-scan"
       ],
@@ -11425,7 +11425,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/served.lisp",
         "books/served-tls-prefix.lisp",
@@ -15727,7 +15727,7 @@
         "PRF-910"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/nntp-compress.lisp",
         "books/nntp-auth.lisp",
@@ -16740,7 +16740,7 @@
         "PRF-049"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/nntp-auth.lisp",
         "books/nntp-auth-roles.lisp",
@@ -17896,7 +17896,7 @@
     {
       "id": "PRF-1057",
       "title": "Issued cold page reads retain identity and worker ownership through cancellation and late completion",
-      "statement": "Host/native/extent.lisp fnn-extent-complete-read calls fn-pio-complete. Publication requires its exact immutable token (process-local read ID, original CID, file incarnation ID, offset, length, expected trailer), phase issued and successful full commitment check, and settles once. fn-pio-cancel retains token and unsettled ownership even after deadline/client loss. fnn-extent-close calls fn-pio-file-clear-p over carried valid ownership rows: every issued/cancelled worker naming a retired file prevents close independently of the arena-reader generation gate. Duplicate/stale completions cannot publish or settle twice. Host OS/thread/mutex/table fidelity is A-HOST; observed worker death and join (or definite failed launch) is required before settlement. Incarnation allocator fn-pio-file-issue derives process-local identities and successive admitted allocations are distinct; a failed open spends its name and invalid carried counter refuses rather than resetting. No funded read-pool admission or memory bound is claimed; the unfunded served line\u2019s bounded persistent workers are PRF-1234. The operator-funded local file namespace can exhaust before open without wrapping or refunding a spent name; admitted resource-pool tokens establish the identical owned read row and use the ledger\u2019s single counter. These are partial algebra/lifetime subjects; supported profile installation, retained runtime storage and legacy large-frame streaming remain open.",
+      "statement": "Host/native/extent.lisp fnn-extent-complete-read calls fn-pio-complete. Publication requires its exact immutable token (process-local read ID, original CID, file incarnation ID, offset, length, expected trailer), phase issued and successful full commitment check, and settles once. fn-pio-cancel retains token and unsettled ownership even after deadline/client loss. fnn-extent-close calls fn-pio-file-clear-p over carried valid ownership rows: every issued/cancelled worker naming a retired file prevents close independently of the arena-reader generation gate. Duplicate/stale completions cannot publish or settle twice. Host OS/thread/mutex/table fidelity is A-HOST; observed worker death and join (or definite failed launch) is required before settlement. Incarnation allocator fn-pio-file-issue derives process-local identities and successive admitted allocations are distinct; a failed open spends its name and invalid carried counter refuses rather than resetting. No funded read-pool admission or memory bound is claimed; the unfunded served line’s bounded persistent workers are PRF-1234. The operator-funded local file namespace can exhaust before open without wrapping or refunding a spent name; admitted resource-pool tokens establish the identical owned read row and use the ledger’s single counter. These are partial algebra/lifetime subjects; supported profile installation, retained runtime storage and legacy large-frame streaming remain open.",
       "milestone": "M5",
       "requirements": [
         "STO-017"
@@ -18772,7 +18772,7 @@
         "planning/evidence/history-decoded-record-cursor-source-2026-09-30.json",
         "planning/evidence/history-symbol-normalize-row-union-2026-09-30.json"
       ],
-      "progress_note": "Resident include-order checkpoint292129ade passed cached row\u2192scalar\u2192record proper-local. Borrowed raw span begin/tick/supply guard verification, exact wire residual/invariant, string/octet abstraction to existing codec and productive-work/request split admitted in protected source replay. Tests cover exact payload streams, opcode6zero\u2192NIL, quantum resume, wrong/replayed position refusal, all five supply-refinement removals and nine initial-span removals. The initial u64 sum premise has no practical removal witness; semantic span-domain and supply-progress literal teeth remain partial. No host caller, certification/native/image or full producer claim. Full target planned: decoded tree opaque-collapse, symbol normalizer, outer epoch/pass/pin/serial authority, general tree progress, padded placement/profile bridge, controller funding and qualification. Span begin individual u64 checks precede addition; fresh contextual record123forms23.97s/4243305steps and97tests .17s/5529steps pass in hrcnil2 with valid-format refinement unchanged. NIL-tail probe begin/tick/supply guards, initialization, preservation, terminal nullness through fn-hdc-abstract, productive progress and capture/lease identity passed proper-local hrcnil2 after cached row:26sourceforms .91s/147873steps and32testforms .03s/747steps. Four supply and five progress removals plus five initial removals pass; initial u64 sum and abstraction-domain teeth remain partial. The repaired normalizer22f contextual union also passed hrcnil2 after cached row, record008 and NIL32:53sourceforms9.86s1459180steps and26testforms .05s489steps; exact evidence history-symbol-normalize-row-union-2026-09-30.json. This closes only that library source-order refusal; full cold controller and physical/host composition remain open."
+      "progress_note": "Resident include-order checkpoint292129ade passed cached row→scalar→record proper-local. Borrowed raw span begin/tick/supply guard verification, exact wire residual/invariant, string/octet abstraction to existing codec and productive-work/request split admitted in protected source replay. Tests cover exact payload streams, opcode6zero→NIL, quantum resume, wrong/replayed position refusal, all five supply-refinement removals and nine initial-span removals. The initial u64 sum premise has no practical removal witness; semantic span-domain and supply-progress literal teeth remain partial. No host caller, certification/native/image or full producer claim. Full target planned: decoded tree opaque-collapse, symbol normalizer, outer epoch/pass/pin/serial authority, general tree progress, padded placement/profile bridge, controller funding and qualification. Span begin individual u64 checks precede addition; fresh contextual record123forms23.97s/4243305steps and97tests .17s/5529steps pass in hrcnil2 with valid-format refinement unchanged. NIL-tail probe begin/tick/supply guards, initialization, preservation, terminal nullness through fn-hdc-abstract, productive progress and capture/lease identity passed proper-local hrcnil2 after cached row:26sourceforms .91s/147873steps and32testforms .03s/747steps. Four supply and five progress removals plus five initial removals pass; initial u64 sum and abstraction-domain teeth remain partial. The repaired normalizer22f contextual union also passed hrcnil2 after cached row, record008 and NIL32:53sourceforms9.86s1459180steps and26testforms .05s489steps; exact evidence history-symbol-normalize-row-union-2026-09-30.json. This closes only that library source-order refusal; full cold controller and physical/host composition remain open."
     },
     {
       "id": "PRF-1094",
@@ -19252,7 +19252,7 @@
         "tests/acl2/bpsec-received-window-tests.lisp",
         "planning/evidence/bpsec-received-window-source-2026-09-30.json"
       ],
-      "progress_note": "Source-only proper-local admission at exact w28 fced dependency coordinate; six component bounds/suffix events admitted after a repaired corrupted-cursor guard failure and proof hints. No normal manifest, immutable runtime provider, full refinement or native security gate. Added actual ASB complete cursor/consumed-prefix/suffix quantum-composition source; fresh proper-local14fixtureforms23.40s7930504steps (includes four new source dependencies), all literal outcomes and guard-world audit pass. Full window/provider/grammar refinement remains open. Fixed exact34-field cursor spine established/preserved by actual start/drive/step; final fresh12fixtureforms23.33s6971684steps includes4proper-local dependencies, guard-world+five literal scenarios pass. Ghost predicate never served; mutable grammar/span/provider invariants remain open. First mutable grammar-control field invariant established/preserved by actual start/drive/step, final fresh13forms24.40s7372339steps includes4proper-local dependencies; guard-world+six literal scenarios pass. Complete remaining mutable grammar/span/provider invariants remain open. Actual ASB drive/step preserve readonly source fields and advance offset by exactly consumed prefix under the numeric offset premise. Fresh 14 forms, 19.37 s, 7,414,473 steps including four proper-local source dependencies; guard-world and seven literal scenarios pass. Provider byte equality, pinned lifetime and remaining full grammar/span/window refinement remain open. Natural source-range invariant established by start and preserved by actual drive/step; fresh 19 forms, 15.66 s, 7,450,078 steps including four proper-local dependencies. Complete range witnesses and each omitted start coordinate pass; full grammar/span/provider refinement remains open. Actual CBOR-head active profile and supported-major/uint64 READY result established/preserved; nested head field invariant composes through actual ASB start/drive/step. Fresh 26 forms, 21.96 s, 11,268,241 steps including five proper-local source dependencies; literal uint64/partial/refused/unsupported/parser witnesses and guard audit pass. Remaining grammar/span/window/provider/native gate remains open. Tracked operator metadata charge established/preserved by actual ASB start/drive/step; fresh 16 forms, 10.44 s, 6,934,622 steps including four proper-local source dependencies. Literal cap 8 parses, cap 7 refuses with charge 6, cap 0 refuses with charge 0, and a 2^40 cap is preserved. This is tracked-charge preservation, not physical allocation/cost or provider/grammar refinement. Actual ASB composite body context (representable source extent, scalar source range, nested typed head, retained body descriptor in the same source) established/preserved by start/drive/step. Fresh 23 forms, 12.84 s, 8,506,204 steps including seven proper-local source dependencies; complete BIB/BCB byte-window witnesses, each omitted start hypothesis and corrupted body descriptor pass. Covers current retained body, not all accumulated value lists, full grammar/every-window refinement or physical provider bytes/lifetime. Saved metadata tree/list span bounds compose with current body/head/source range through actual start/drive/step. Fresh 39 forms, 25.93 s, 9,096,530 steps includes eight proper-local source dependencies; literal BIB/BCB/wrapped-key/multi-target and each saved-field mutation pass. Covers metadata extent, not complete grammar/every-window alpha, physical provider bytes/lifetime or actual security admission. Actual ASB terminal parsed implies DONE at exactly declared source end, established/preserved by start/drive/step. Fresh 20 forms, 15.28 s, 6,940,319 steps includes four proper-local source dependencies; reachable literal parsed, short-window resume, declared truncation/trailing refusal and stage/offset corrupted-state witnesses pass. Structural completion only; full grammar/alpha/provider/native security gate remain open. Actual ASB target/pending uint64 typing and active duplicate/reversal scratch typing compose with nested typed head and fixed34 representation spine through actual start/drive/step. Fresh23forms11.34s8149266steps includes7proper-local dependencies; literal ordered uint64-maximum targets, duplicate/nonuint refusal, windows and each corrupted-state omission pass. Remaining grammar/count/uniqueness/every-window alpha, provider and native security gate remain open. Literal bounded-window differential fixture fresh23forms10.56s7300088steps with3proper-local own deps checks every cut/quanta1,7,64 for BIB/BCB parsed, refused and unsupported, full decoded values/raw retention/offset/suffix. Same-ID changed-octet witness demonstrates missing provider relation explicitly. Tests do not establish quantified every-window refinement or physical provider/native crypto authority. Actual internal FnBprxSegmentWindow output now has a concrete array abstraction boundary: successful frozen/current/range read equals exact segment slice, length=count<=64 and valid parser window shape. Fresh17forms20.43s6837179steps includes5proper-local dependencies; actual local-stobj writes/freeze/bounded read\u2192FnBpsAsbStep fixture and8ground omission teeth pass. Real registered backing/original held/block source pin, installed multi-segment/native caller and crypto/current authority remain open.",
+      "progress_note": "Source-only proper-local admission at exact w28 fced dependency coordinate; six component bounds/suffix events admitted after a repaired corrupted-cursor guard failure and proof hints. No normal manifest, immutable runtime provider, full refinement or native security gate. Added actual ASB complete cursor/consumed-prefix/suffix quantum-composition source; fresh proper-local14fixtureforms23.40s7930504steps (includes four new source dependencies), all literal outcomes and guard-world audit pass. Full window/provider/grammar refinement remains open. Fixed exact34-field cursor spine established/preserved by actual start/drive/step; final fresh12fixtureforms23.33s6971684steps includes4proper-local dependencies, guard-world+five literal scenarios pass. Ghost predicate never served; mutable grammar/span/provider invariants remain open. First mutable grammar-control field invariant established/preserved by actual start/drive/step, final fresh13forms24.40s7372339steps includes4proper-local dependencies; guard-world+six literal scenarios pass. Complete remaining mutable grammar/span/provider invariants remain open. Actual ASB drive/step preserve readonly source fields and advance offset by exactly consumed prefix under the numeric offset premise. Fresh 14 forms, 19.37 s, 7,414,473 steps including four proper-local source dependencies; guard-world and seven literal scenarios pass. Provider byte equality, pinned lifetime and remaining full grammar/span/window refinement remain open. Natural source-range invariant established by start and preserved by actual drive/step; fresh 19 forms, 15.66 s, 7,450,078 steps including four proper-local dependencies. Complete range witnesses and each omitted start coordinate pass; full grammar/span/provider refinement remains open. Actual CBOR-head active profile and supported-major/uint64 READY result established/preserved; nested head field invariant composes through actual ASB start/drive/step. Fresh 26 forms, 21.96 s, 11,268,241 steps including five proper-local source dependencies; literal uint64/partial/refused/unsupported/parser witnesses and guard audit pass. Remaining grammar/span/window/provider/native gate remains open. Tracked operator metadata charge established/preserved by actual ASB start/drive/step; fresh 16 forms, 10.44 s, 6,934,622 steps including four proper-local source dependencies. Literal cap 8 parses, cap 7 refuses with charge 6, cap 0 refuses with charge 0, and a 2^40 cap is preserved. This is tracked-charge preservation, not physical allocation/cost or provider/grammar refinement. Actual ASB composite body context (representable source extent, scalar source range, nested typed head, retained body descriptor in the same source) established/preserved by start/drive/step. Fresh 23 forms, 12.84 s, 8,506,204 steps including seven proper-local source dependencies; complete BIB/BCB byte-window witnesses, each omitted start hypothesis and corrupted body descriptor pass. Covers current retained body, not all accumulated value lists, full grammar/every-window refinement or physical provider bytes/lifetime. Saved metadata tree/list span bounds compose with current body/head/source range through actual start/drive/step. Fresh 39 forms, 25.93 s, 9,096,530 steps includes eight proper-local source dependencies; literal BIB/BCB/wrapped-key/multi-target and each saved-field mutation pass. Covers metadata extent, not complete grammar/every-window alpha, physical provider bytes/lifetime or actual security admission. Actual ASB terminal parsed implies DONE at exactly declared source end, established/preserved by start/drive/step. Fresh 20 forms, 15.28 s, 6,940,319 steps includes four proper-local source dependencies; reachable literal parsed, short-window resume, declared truncation/trailing refusal and stage/offset corrupted-state witnesses pass. Structural completion only; full grammar/alpha/provider/native security gate remain open. Actual ASB target/pending uint64 typing and active duplicate/reversal scratch typing compose with nested typed head and fixed34 representation spine through actual start/drive/step. Fresh23forms11.34s8149266steps includes7proper-local dependencies; literal ordered uint64-maximum targets, duplicate/nonuint refusal, windows and each corrupted-state omission pass. Remaining grammar/count/uniqueness/every-window alpha, provider and native security gate remain open. Literal bounded-window differential fixture fresh23forms10.56s7300088steps with3proper-local own deps checks every cut/quanta1,7,64 for BIB/BCB parsed, refused and unsupported, full decoded values/raw retention/offset/suffix. Same-ID changed-octet witness demonstrates missing provider relation explicitly. Tests do not establish quantified every-window refinement or physical provider/native crypto authority. Actual internal FnBprxSegmentWindow output now has a concrete array abstraction boundary: successful frozen/current/range read equals exact segment slice, length=count<=64 and valid parser window shape. Fresh17forms20.43s6837179steps includes5proper-local dependencies; actual local-stobj writes/freeze/bounded read→FnBpsAsbStep fixture and8ground omission teeth pass. Real registered backing/original held/block source pin, installed multi-segment/native caller and crypto/current authority remain open.",
       "events": [
         "fn-bps-head-drive-consumes-at-most-quantum",
         "fn-bps-head-drive-consumes-at-most-window",
@@ -19389,7 +19389,7 @@
         "tests/acl2/post-identity-source-cursor-source-complete-tests.lisp",
         "planning/evidence/post-identity-source-cursor/source-complete-proper-local.json"
       ],
-      "progress_note": "Protected proper-local pc26 eleven-source replay passed57.51 ACL2 seconds /28,441,177steps,9 rootforms. Actual agent begin\u2192paid completion returns no-source or legal natural S<=E<=N incoming span, exact fn-pb-path-agent denotation. Certified c2ea invariant bytes preserved by unchanged source-lineage factoring. v1-v2 source-index inverse/token/lease/funding/native composition OPEN; no normalcert/image/fullmission claim. Protected proper-local pc22 ten-source replay passed60.01 ACL2 seconds /28,118,362steps,9 loaded rootforms. Whole Lock-Key/Path-first/block-fallback incoming agent span equals actual fn-pb-path-agent with exact retained Message-ID, plus paid runtime completion. Complete literal teeth including extent removal. Span bounds, v1-v2 source-index, token/lease/funding/native composition OPEN. Runtime57f unchanged. Protected proper-local pc21 nine-source replay passed64.46 ACL2 seconds /26,518,914steps,6 loaded rootforms; extent-removal additional82steps. Exact incoming/held Cancel-Lock-Key skip equals fn-pbb-skip-at plus paid cursor trace. Whole Path/block precedence, v1-v2 inverse, token/lease/funding/native composition OPEN. Runtime57f unchanged. Protected proper-local pc20 eight-source replay passed81.04 ACL2 seconds /24,101,816steps,8 loaded rootforms. Full optional block agent span equals actual fn-pb-block-agent and paid cursor trace, with all optional fields/Info-only/malformed/short-stamp/wrong-msgid literal witnesses and extent removal. Whole Lock-Key/Path precedence agent and v1-v2 inverse remain OPEN. Protected proper-local pc18 seven-source replay passed39.12 ACL2 seconds /22,025,731 steps,6 loaded root forms. Injection-Info agent span equals actual fn-pb-info-line-agent and exact paid trace; plain/parameter/malformed/empty prefix literal witnesses and extent removal pass. Protected proper-local pc17 six-source replay passed45.39 ACL2 seconds /21,369,461 steps,4 testbody forms. Actual retained Message-ID comparison matches fn-record-string-octets and current Message-ID line strip with exact paid runtime trace; full literal reachable positive/malformed/source-extent-removal teeth pass. Leading uppercase Path and v3 unsplice component evidence retained. Full block agent/Lock-Key/v1-v2/source-index inverse and demand/funding/lease/native join OPEN; no certificate/image/completion claim. Runtime57f unchanged. Protected proper-local pc29 twelve-source leaves +seven rootforms passed75.78s/32,909,064steps. Exact captured31 Date wrapper matches current buffer strip and actual paid trace, including complete incoming/held/malformed/EOF and capture-bound removal. Full source-index/native mission remain OPEN. Fresh pc32 twelve confined source leaves +eight rootforms passed71.39s/30,404,211steps after explicit full-paid context hint. Info continuation/source metadata frame and strengthened literals pass. Full source-index/native mission OPEN. Fresh pc34 fourteen proper-local leaves +13 loaded rootforms passed82.05s/37,434,523steps; full after-Stamp v1/v2 semantic inverse and paid trace,12 complete branch literals. Additional semantic capture-bound removal110steps; paid-trace hypothesis minimality remains open. Runtime57f/c2ea invariant unchanged. Full source-index/native/resource mission OPEN. Protected proper-local pc35 fifteen-source Stamp geometry replay passed133.43s/37,483,008steps,6 complete positive literals; capture-equality removal65steps. Exact short clamped-date reference/runtime bridge and carried capture bounds established. Full after-path/source-index/native/resource mission OPEN; runtime/c2ea unchanged. Protected proper-local pc36 sixteen-source replay passed162.07s/38,167,049steps,14 complete positives; extent-hypothesis removal84steps. Full after-Path semantic inverse and actual paid cursor trace now joined across Info-only/bad-Stamp/good-Stamp v1/v2. Leading Path/skip/v3 full source-index/native/resource mission OPEN; runtime/c2ea unchanged. Fresh proper-local pc38 eighteen-source replay108.79s/39,404,969steps joins generated leading Path exact strip/flag and paid trace; seven prefix positives, skip/natural-position removal and two recipe flag positives pass. Full source-index begin/result/native/resource remains open; runtime/c2ea unchanged."
+      "progress_note": "Protected proper-local pc26 eleven-source replay passed57.51 ACL2 seconds /28,441,177steps,9 rootforms. Actual agent begin→paid completion returns no-source or legal natural S<=E<=N incoming span, exact fn-pb-path-agent denotation. Certified c2ea invariant bytes preserved by unchanged source-lineage factoring. v1-v2 source-index inverse/token/lease/funding/native composition OPEN; no normalcert/image/fullmission claim. Protected proper-local pc22 ten-source replay passed60.01 ACL2 seconds /28,118,362steps,9 loaded rootforms. Whole Lock-Key/Path-first/block-fallback incoming agent span equals actual fn-pb-path-agent with exact retained Message-ID, plus paid runtime completion. Complete literal teeth including extent removal. Span bounds, v1-v2 source-index, token/lease/funding/native composition OPEN. Runtime57f unchanged. Protected proper-local pc21 nine-source replay passed64.46 ACL2 seconds /26,518,914steps,6 loaded rootforms; extent-removal additional82steps. Exact incoming/held Cancel-Lock-Key skip equals fn-pbb-skip-at plus paid cursor trace. Whole Path/block precedence, v1-v2 inverse, token/lease/funding/native composition OPEN. Runtime57f unchanged. Protected proper-local pc20 eight-source replay passed81.04 ACL2 seconds /24,101,816steps,8 loaded rootforms. Full optional block agent span equals actual fn-pb-block-agent and paid cursor trace, with all optional fields/Info-only/malformed/short-stamp/wrong-msgid literal witnesses and extent removal. Whole Lock-Key/Path precedence agent and v1-v2 inverse remain OPEN. Protected proper-local pc18 seven-source replay passed39.12 ACL2 seconds /22,025,731 steps,6 loaded root forms. Injection-Info agent span equals actual fn-pb-info-line-agent and exact paid trace; plain/parameter/malformed/empty prefix literal witnesses and extent removal pass. Protected proper-local pc17 six-source replay passed45.39 ACL2 seconds /21,369,461 steps,4 testbody forms. Actual retained Message-ID comparison matches fn-record-string-octets and current Message-ID line strip with exact paid runtime trace; full literal reachable positive/malformed/source-extent-removal teeth pass. Leading uppercase Path and v3 unsplice component evidence retained. Full block agent/Lock-Key/v1-v2/source-index inverse and demand/funding/lease/native join OPEN; no certificate/image/completion claim. Runtime57f unchanged. Protected proper-local pc29 twelve-source leaves +seven rootforms passed75.78s/32,909,064steps. Exact captured31 Date wrapper matches current buffer strip and actual paid trace, including complete incoming/held/malformed/EOF and capture-bound removal. Full source-index/native mission remain OPEN. Fresh pc32 twelve confined source leaves +eight rootforms passed71.39s/30,404,211steps after explicit full-paid context hint. Info continuation/source metadata frame and strengthened literals pass. Full source-index/native mission OPEN. Fresh pc34 fourteen proper-local leaves +13 loaded rootforms passed82.05s/37,434,523steps; full after-Stamp v1/v2 semantic inverse and paid trace,12 complete branch literals. Additional semantic capture-bound removal110steps; paid-trace hypothesis minimality remains open. Runtime57f/c2ea invariant unchanged. Full source-index/native/resource mission OPEN. Protected proper-local pc35 fifteen-source Stamp geometry replay passed133.43s/37,483,008steps,6 complete positive literals; capture-equality removal65steps. Exact short clamped-date reference/runtime bridge and carried capture bounds established. Full after-path/source-index/native/resource mission OPEN; runtime/c2ea unchanged. Protected proper-local pc36 sixteen-source replay passed162.07s/38,167,049steps,14 complete positives; extent-hypothesis removal84steps. Full after-Path semantic inverse and actual paid cursor trace now joined across Info-only/bad-Stamp/good-Stamp v1/v2. Leading Path/skip/v3 full source-index/native/resource mission OPEN; runtime/c2ea unchanged. Fresh proper-local pc38 eighteen-source replay108.79s/39,404,969steps joins generated leading Path exact strip/flag and paid trace; seven prefix positives, skip/natural-position removal and two recipe flag positives pass. Full source-index begin/result/native/resource remains open; runtime/c2ea unchanged."
     },
     {
       "id": "PRF-1140",
@@ -20367,7 +20367,7 @@
         "planning/evidence/manifests/certify-20261001T043222Z-2066724.json",
         "planning/evidence/account-config-posting-relation-2026-10-01/observer-coordinate.json"
       ],
-      "progress_note": "Final normal certification passed both changed books with 60 matching cached dependencies; all 62 source hashes match. Fourteen literal assertions cover reachable complete premises/conclusions, every retained hypothesis removal, nonempty actual access/moderation observers and the original signing-change\u2192Prepared path. Corrupted states are separately labeled. No host activation, group-liveness or whole posting/view-reuse claim. Current integrated source differs at ten parents and two bounded-lookup prerequisites are pending subject alignment; archived final normal certification stays at its exact frozen coordinate. Current certification/host composition is not granted."
+      "progress_note": "Final normal certification passed both changed books with 60 matching cached dependencies; all 62 source hashes match. Fourteen literal assertions cover reachable complete premises/conclusions, every retained hypothesis removal, nonempty actual access/moderation observers and the original signing-change→Prepared path. Corrupted states are separately labeled. No host activation, group-liveness or whole posting/view-reuse claim. Current integrated source differs at ten parents and two bounded-lookup prerequisites are pending subject alignment; archived final normal certification stays at its exact frozen coordinate. Current certification/host composition is not granted."
     },
     {
       "id": "PRF-1198",
@@ -22286,7 +22286,7 @@
         "PRF-031"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-auth-starttls-after-authentication-is-refused-without-reset",
         "fn-auth-starttls-is-not-advertised-once-authenticated-on-any-connection"
@@ -22312,7 +22312,7 @@
         "PRF-228"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-auth-view-excludes-unreadable-groups-on-any-connection"
       ],
@@ -23156,7 +23156,7 @@
         "PRF-1300"
       ],
       "assumptions": [],
-      "status": "planned",
+      "status": "certified",
       "events": [
         "fn-tclsctl-source-drive-keepalive-refines-session",
         "fn-tclsctl-source-drive-keepalive-preserves-custody-and-reception"
@@ -23206,7 +23206,6 @@
       "depends_on": [],
       "assumptions": [],
       "status": "planned",
-      "events": [],
       "evidence": [
         "books/bp-heap-command.lisp",
         "tests/acl2/bp-heap-command-tests.lisp",
@@ -23229,7 +23228,7 @@
         "PRF-1211"
       ],
       "assumptions": [],
-      "status": "planned",
+      "status": "uncertified-at-current-digest",
       "files": [
         "books/peer-flight-reservation.lisp",
         "tests/acl2/peer-flight-reservation-tests.lisp",
@@ -23262,7 +23261,6 @@
       "depends_on": [],
       "assumptions": [],
       "status": "planned",
-      "events": [],
       "evidence": [
         "books/payload-view-lease.lisp",
         "tests/acl2/payload-view-lease-tests.lisp",
@@ -23284,7 +23282,6 @@
       "depends_on": [],
       "assumptions": [],
       "status": "planned",
-      "events": [],
       "evidence": [
         "books/resource-bp-session.lisp",
         "tests/acl2/bp-session-turn-tests.lisp",
@@ -23306,7 +23303,7 @@
         "PRF-1301"
       ],
       "assumptions": [],
-      "status": "planned",
+      "status": "uncertified-at-current-digest",
       "files": [
         "books/page-read-budget-growth.lisp",
         "host/page-read-host.lisp",

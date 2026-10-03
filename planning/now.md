@@ -1,7 +1,7 @@
 # Now — 2026-10-03 convergence
 
 The implementation and source-tracing wave has ended. All domain owners yielded;
-Integration is finishing the source merge and generated metadata. No current
+Source merge and generated metadata are converged. No current
 initializer, proof REPL or native owner process remains running. The complete
 remaining work stays in [NSLICESQUEUE](../NSLICESQUEUE.md),
 [the repair ledger](repair/STATUS.md), and the requirements/proof registries.
@@ -36,7 +36,8 @@ the current declaration has ten fields. Emitted host files are not execution.
 The retained catchup worker/bank is source-preserved but the actual catchup
 consumer remains **unwired**; materialized catchup is still defective. Bounds'
 draft controller/framer/hash strand `0373a76c1` remains unmerged and unadmitted.
-Served's untracked `books/list-query-reference.lisp` and row-reference models
+Served's untracked `books/list-query-reference.lisp` and
+`books/list-row-progress.lisp` models
 remain WIP. Current compressed ARTICLE/Web/restart/cancel and BP multi-peer,
 signed R/Q, fairness and reopen selectors are prepared but unexecuted. Nonempty
 bounded storage/reclaim, whole-state carrier migration, complete allocation/GC/
@@ -227,3 +228,16 @@ work: [how we work](how-we-work.md).
 [requirements](requirements.json), [proofs](proofs.json),
 [the release checklist](release-v6.6.0.md), and the docs index
 [docs/README.md](../docs/README.md).
+
+## Closing checks
+
+Five composed source unittest methods and the snapshot actor suite pass;
+`python3 tools/host_check.py --read` finds no reader failures. The diagnostic
+fixture now includes collector-trigger growth in its literal output totals.
+`python3 tools/ledger.py --check` initially found only two missing BP refinement
+root paths; their actual existing test roots are now in Makefile. Source/interface
+regeneration is distinct from admission. `python3 tools/interface_emit.py --check`
+(on hbox) still reports undeclared consumers, stale declarations, class/kind and
+carried-completeness gaps, plus evaluator/reader audit sites. Those findings were
+not waived or used to claim a whole-current executable world. The final generated
+current view and ledger preserve source/certificate/qualification distinctions.

@@ -60,8 +60,8 @@ that their recorded state is current at every later revision.
 
 ## Converged source wave — 2026-10-03
 
-All thirteen implementation/source-tracing lanes have yielded; Integration
-finishes the final merge and metadata. Stable domain ownership remains
+Implementation and source-tracing owners have yielded. Source intake is
+converged; the generated view records its distinct evidence coordinates. Stable domain ownership remains
 Integration (assembly/planning), History (storage/P3/reclaim), Runtime
 (ARTICLE/Web/decoded/lifecycle), BP (transport/application joins), Foundations
 (accounting/banks/tariffs), Served (queries/serializers), Access (ARTICLE/header),
