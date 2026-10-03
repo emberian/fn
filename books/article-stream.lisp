@@ -237,12 +237,12 @@
   (list :xref-source remaining all phase pair at lookup compare))
 
 (defun fn-ast-xref-one (it)
-  (declare (xargs :verify-guards nil))
+  (declare (xargs :guard t))
   (let* ((remaining (fn-ast-at 1 it)) (all (fn-ast-at 2 it))
          (phase (fn-ast-at 3 it)) (pair (fn-ast-at 4 it))
          (at (nfix (fn-ast-at 5 it))) (lookup (fn-ast-at 6 it))
          (compare (nfix (fn-ast-at 7 it)))
-         (skip (fn-ast-xref-state (cdr remaining) all :next nil 0 nil 0)))
+         (skip (fn-ast-xref-state (fn-cbor-ag-cdr remaining) all :next nil 0 nil 0)))
     (cond
      ((eq phase :next)
       (if (atom remaining) (mv :end nil it)
@@ -251,8 +251,12 @@
                    (< 0 (length (car candidate)))
                    (integerp (cdr candidate)) (< 0 (cdr candidate))
                    (<= (cdr candidate) *fn-nntp-max-article-number*))
-              (mv :wait nil (fn-ast-xref-state remaining all :word candidate 0 nil 0))
+            (mv :wait nil (fn-ast-xref-state remaining all :word candidate 0 nil 0))
             (mv :wait nil skip)))))
+     ((not (and (consp pair) (stringp (car pair)) (< 0 (length (car pair)))
+                (integerp (cdr pair)) (< 0 (cdr pair))
+                (<= (cdr pair) *fn-nntp-max-article-number*)))
+      (mv :wait nil skip))
      ((eq phase :word)
       (if (>= at (length (car pair)))
           (mv :wait nil (fn-ast-xref-state remaining all :lookup pair 0 all 0))
@@ -267,12 +271,25 @@
                    (equal (length (car row)) (length (car pair))))
               (mv :wait nil (fn-ast-xref-state remaining all :compare pair 0 lookup 0))
             (mv :wait nil (fn-ast-xref-state remaining all :lookup pair 0 (cdr lookup) 0))))))
+     ((not (and (eq phase :compare) (consp lookup) (consp (car lookup))
+                (stringp (car (car lookup)))
+                (equal (length (car pair)) (length (car (car lookup))))))
+      (mv :wait nil skip))
      (t
       (if (>= compare (length (car pair)))
           (mv (if (equal (cdr (car lookup)) (cdr pair)) :pair :wait) pair skip)
         (if (equal (char (car pair) compare) (char (car (car lookup)) compare))
             (mv :wait nil (fn-ast-xref-state remaining all :compare pair 0 lookup (+ 1 compare)))
           (mv :wait nil (fn-ast-xref-state remaining all :lookup pair 0 (cdr lookup) 0))))))))
+
+(defthm fn-ast-xref-one-pair-is-numbered
+  (implies (eq (mv-nth 0 (fn-ast-xref-one it)) :pair)
+           (let ((pair (mv-nth 1 (fn-ast-xref-one it))))
+             (and (consp pair) (stringp (car pair)) (< 0 (length (car pair)))
+                  (integerp (cdr pair)) (< 0 (cdr pair))
+                  (<= (cdr pair) *fn-nntp-max-article-number*))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-ast-xref-one) (fn-ast-at fn-ast-xref-state)))))
 
 ; Server validity is checked before any Xref bytes are published. Retain the
 ; original octet spine and consume one octet per transition; malformed/improper

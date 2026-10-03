@@ -190,4 +190,8 @@
         (loop until (fn-ast-select-donep it) do (setf it (fn-ast-select-step it 1)))
         (source-check (eq (fn-ast-at 5 it) article))
         (source-check (= (fn-ast-at 3 it) (if group (fn-nntp-article-number group article) 0)))))))
+(dolist (it (list (fn-ast-xref-state 77 nil :word 9 0 nil 0)
+                 (fn-ast-xref-state nil nil :compare '("fn.a" . 1) 0 77 0)
+                 (fn-ast-xref-state nil nil :compare '("fn.a" . 0) 0 '(("fn.a" . 0)) 0)))
+  (source-check (eq (fn-ast-xref-one it) :wait)))
 (format t "article stream actual-source PASS checks=~d~%" *checks*)

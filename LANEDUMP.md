@@ -3575,3 +3575,13 @@ guard-verified proof-only list observation. Literal positive/source/fuelmutation
 and READ hypothesis-removal teeth warm PASS; actual source237138 checks PASS.
 Full arbitrary-name old-parser/value correspondence still open, no physical
 guard/funding/endpoint transfer. Source before selected query+test recertification.
+
+Header continuation exactedf04 normal2root PASS certify-20261003T174709Z-2734662,
+21matching dependencies/9explicituncited historical provenance debt, archived.
+Current ARTICLE Xref iterator now guardT total with scalar word/pair/lookup-row
+checks, no whole-membership revalidation. Guard10578steps; any returnedPAIR has
+nonempty string and positive supported article number239649steps. Reachable
+positive + disposition-hypothesis removal and separate corrupted-state literal
+teeth pass. Actual all-section/window/Xref old-reference source184483 checks pass;
+full renderer/owner guards remain open and actual dispatch stays :ideal. No raw
+guard bypass introduced. Native physical join remains Runtime/History.

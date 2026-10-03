@@ -2735,6 +2735,13 @@ one server octet per transition, then publishes Xref only if the whole
 nonempty proper list is printable ASCII (RFC5536 section3.2.14 permits a
 colon in this path identity). Invalid candidates omit Xref as before.
 
+The retained Xref membership iterator checks only its current scalar pair and
+lookup coordinates, including string lengths and positive supported numbers.
+Its executable guard is T and malformed retained comparison state advances
+without an unsafe string access. Any reported PAIR is a nonempty string with a
+positive supported article number. Complete Xref token/reference and renderer
+state preservation remain separate from this scalar guard/output property.
+
 
 ### Retained arbitrary header backing (PRF-1304, SCN-1135)
 

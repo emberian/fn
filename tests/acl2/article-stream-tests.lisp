@@ -63,3 +63,39 @@
                (fn-ast-select-step start (+ (nfix 1) (nfix 2))))
         (not (equal (fn-ast-select-step (fn-ast-select-step start 1) 2)
                     (fn-ast-select-step start 4))))))
+
+(defun astq-xref-result (it fuel)
+  (declare (xargs :measure (nfix fuel) :verify-guards nil))
+  (mv-let (word pair next) (fn-ast-xref-one it)
+    (if (or (zp fuel) (not (eq word :wait))) (list word pair next)
+      (astq-xref-result next (- fuel 1)))))
+
+; Reachable positive: the actual iterator validates the word and first
+; matching membership before reporting its numbered pair.
+(assert-event
+ (let* ((members '(("fn.a" . 1) ("fn.other" . 3)))
+        (result (astq-xref-result (fn-ast-xref-state members members :next nil 0 nil 0) 512))
+        (pair (cadr result)))
+   (and (eq (car result) :pair)
+        (consp pair) (stringp (car pair)) (< 0 (length (car pair)))
+        (integerp (cdr pair)) (< 0 (cdr pair))
+        (<= (cdr pair) *fn-nntp-max-article-number*)
+        (equal pair '("fn.a" . 1)))))
+
+; Remove the disposition hypothesis: the guard is T, and an actual exhausted
+; iterator reports END with no pair, falsifying the numbered-pair conclusion.
+(assert-event
+ (mv-let (word pair next) (fn-ast-xref-one (fn-ast-xref-state nil nil :next nil 0 nil 0))
+   (declare (ignore next))
+   (and (eq word :end) (not (eq word :pair)) (not (consp pair)))))
+
+; Separate corrupted retained-state totality witnesses, no array or string
+; access is attempted using a malformed word/pair or lookup row.
+(assert-event
+ (and (equal (car (astq-xref-result
+                       (fn-ast-xref-state 77 nil :word 9 0 nil 0) 0)) :wait)
+      (equal (car (astq-xref-result
+                       (fn-ast-xref-state nil nil :compare '("fn.a" . 1) 0 77 0) 0)) :wait)
+      (equal (car (astq-xref-result
+                       (fn-ast-xref-state nil nil :compare '("fn.a" . 0) 0
+                                          '(("fn.a" . 0)) 0) 0)) :wait)))
