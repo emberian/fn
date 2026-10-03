@@ -2584,3 +2584,17 @@ terminal; no producer cancellation/refund is manufactured.
   whole DWJ state/storage is absent from this historical cache. General live
   readout and trace consumer improvements remain owned. No full qualification
   or decoder allocation tariff follows from these selected leaf observations.
+
+* Trace lifecycle fix765a1e410: restarting inside an active span previously
+  emitted false/self parent1. Macro now carries parent-sink provenance, with
+  null for old compiled unknown ancestry. Actual six-value nested restart
+  fixture reproduced red then passed after narrow native overlay.
+* Readout fix5a435d754: actual report destination proved sink mutex held during
+  output. Shared bounded completed-row snapshot moves report I/O and hotspot
+  aggregation outside lock; active rows/counts/sink preservation PASS, existing
+  hotspot fixture PASS after same-owner overlay. Evidencef66c36a1... at
+  planning/evidence/tools/incremental-trace-lifecycle-20261003.json.
+* Owner2260356 currently healthy, temporarily loaned exclusively to Served for
+  11staged LIST-row events. No Tools sends while loan active. Runtime confirms
+  full current DWJ normal/storage runner not yet available; no duplicate cold
+  loader. Next tracing consumer work can proceed when that producer is ready.

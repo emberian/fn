@@ -1984,7 +1984,9 @@ from the same sink without dumping every recorded span. It groups phase and
 counter scope separately, reports dropped/incomplete intervals and does not
 consume the sink. Allocation-enabled groups rank by mean sampled allocation;
 timing-only groups rank separately by mean duration. Formatting takes place
-outside the collector mutex. This readout helps find late expensive phases
+outside the collector mutex. Chronological reports use the same completed-row
+snapshot, so destination I/O does not hold the mutex while workers finish
+spans. This readout helps find late expensive phases
 before a chronological report reaches the developer reply limit.
 
 The incremental decoded-decision probe uses actual guarded compiled core
@@ -1999,3 +2001,10 @@ are recorded in
 `planning/evidence/tools/incremental-decoded-allocation-20261003.json`.
 This selected initialized-source result does not qualify the current whole
 worker, its GC tariff, retained heap or native buffer lifecycle.
+
+Span parent IDs belong to one collection. Restarting tracing within an active
+span begins a fresh root in the new sink; semantic operation identity may
+still carry across it. An older compiled hook without parent-sink provenance
+reports a null parent until reloaded. The actual restart/nonlocal lifetime and
+destination-lock checks are filed in
+`planning/evidence/tools/incremental-trace-lifecycle-20261003.json`.
