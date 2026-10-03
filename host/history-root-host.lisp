@@ -167,7 +167,7 @@
              (state (if generation (fn-owner-hroot-put generation
                             (list :retired (cadr row) (caddr row)) state) state))
              (state (f-put-global 'fn-owner-history-root-current nil state)))
-        (value :detached)))))
+        (value (list :detached generation))))))
 
 ; A pinned old tail must remain funded after its formerly shared Store is
 ; replaced. Reserve that retention before publishing a source handle.

@@ -15,8 +15,12 @@ building, constant-time nested stobj adoption, ACL2 generation/frontier activati
 prepaid retained-root/read custody and the actual native reclaim walk. The five
 abstract exports admitted in the retained hbox world; private adoption/index/read
 guards and physical preservation admitted there. Native control-flow fixture
-passes with recorded ACL2 producer seams. Fresh source-loaded canonical attachment
-started in history-paged-live; existing paid history-row-step world remains live.
+passes with recorded ACL2 producer seams. Fresh canonical history-paged-canonical source replay now passes with local
+events dropped; actual attach-stobj table binds fn-hist to fn-hist-paged.
+Guard-verified canonical load/MID/append/clear fixture and private mixed-event
+5000-character page build/adopt/index/tail fixture pass. Replacement now retires
+unheld generations immediately after changing the live pointer. Both paid
+history-row-step and fresh history-paged-canonical worlds remain live.
 PRF-1280 records the current scope. Full adoption/index correspondence and tariff
 bounds remain open; no complete root proof or qualified image claim. Canonical
 Store/rebuild remains whole logical lists, so orcp estimate is unchanged.
