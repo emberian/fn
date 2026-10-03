@@ -1637,15 +1637,19 @@
                                 (fn-wrq-oct "We couldn't tell whether the server took it. Look at the group before sending it again.")
                                 ctx config sessions fn-web-in fn-web-out))))
       (otherwise
-       (if (equal code 430)
+       (cond ((equal code 430)
            (mv-let (a fn-web-out)
              (fn-wss-outcome 200 :ok (fn-wrq-oct "Removed")
                              (fn-wrq-oct "Your post has been removed from this server.")
                              nil group ctx config fn-web-in fn-web-out)
-             (mv a sessions fn-web-out))
-         (fn-wss-trouble 200 (fn-wrq-oct "Still there")
+             (mv a sessions fn-web-out)))
+         ((equal code 223)
+          (fn-wss-trouble 200 (fn-wrq-oct "Still there")
                          (fn-wrq-oct "The server took the removal but still shows the post.")
-                         ctx config sessions fn-web-in fn-web-out))))))
+                         ctx config sessions fn-web-in fn-web-out))
+         (t (fn-wss-trouble 503 (fn-wrq-oct "Not sure")
+                          (fn-wrq-oct "The server took the removal, but we couldn't check whether the post is still here. Look at the group before trying again.")
+                          ctx config sessions fn-web-in fn-web-out)))))))
 
 (in-theory (disable fn-wss-k-groups fn-wss-k-group fn-wss-k-article fn-wss-k-submit
                     fn-wss-k-signin fn-wss-k-redeem fn-wss-m-signin fn-wss-m-redeem))

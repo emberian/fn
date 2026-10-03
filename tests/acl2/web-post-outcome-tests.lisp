@@ -40,3 +40,19 @@
        (equal (mv-nth 1 result) nil)))
  :rule-classes nil
  :hints (("Goal" :in-theory (enable fn-wss-k-submit))))
+
+(defun-nx web-remove-check-fixture (line)
+ (let* ((input (fn-octets-from-list (append (fn-wrq-chars-octets (coerce line 'list)) '(13 10)) (create-fn-octets)))
+        (output (create-fn-octets))
+        (flow (fn-wss-flow :remove :check nil nil))
+        (config (fn-web-config nil nil nil 60 2)))
+  (fn-wss-k-submit nil flow '(:reply) config input output)))
+
+(defthm web-remove-check-positive-negative-and-unknown
+ (and (equal (cadr (mv-nth 0 (web-remove-check-fixture "223 1 <a@example>"))) 200)
+      (equal (cadr (mv-nth 0 (web-remove-check-fixture "430 no such article"))) 200)
+      (equal (cadr (mv-nth 0 (web-remove-check-fixture (fn-proto-text "(connection)" :fault)))) 503)
+      (equal (cadr (mv-nth 0 (web-remove-check-fixture "480 authentication required"))) 503)
+      (equal (cadr (mv-nth 0 (web-remove-check-fixture "bad reply"))) 503))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (enable fn-wss-k-submit))))

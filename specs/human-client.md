@@ -173,7 +173,9 @@ After article submission, the browser preserves the core's outcome distinction.
 The owner's exact uncertain 441 reply and internal 403 fault produce a
 503 uncertainty page advising inspection before another submission; ordinary
 441 posting refusal remains definite refusal. A numeric 4xx class alone cannot
-settle the article's durable outcome.
+settle the article's durable outcome. Removal verification distinguishes STAT223
+(article present), STAT430 (article absent), and every other response (check
+uncertain); a failed check never says the article is still present.
 
 A browser session is bound to a logical reader connection of the owner,
 opened through the owner's own exposure admission for the browser's address
