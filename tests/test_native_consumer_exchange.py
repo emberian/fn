@@ -249,6 +249,12 @@ class NativeConsumerExchangeTests(unittest.TestCase):
         received_payload = self.root / "received-report.payload"
         self.consumer(b, "payload", "r1", str(received_payload))
         self.assertEqual(received_payload.read_bytes(), payload)
+        inspected = json.loads(self.consumer(b, "inspect", "r1", "--bytes").stdout)
+        self.assertEqual(inspected["operations"]["rows"][0]["result"], "replied")
+        self.assertEqual(inspected["related_artifacts"]["rows"][0]["operation_id"], "reply-r1")
+        exported_snapshot = self.root / "receiver-state.json"
+        self.consumer(b, "export", str(exported_snapshot))
+        self.assertEqual(json.loads(exported_snapshot.read_text())["tables"]["operations"]["rows"][0]["operation_id"], "reply-r1")
         evidence = os.environ.get("FN_CONSUMER_EXCHANGE_EVIDENCE")
         if evidence:
             # Preserve only consumer-owned/public source artifacts; no key
