@@ -960,7 +960,6 @@ POST240/stored-source evidence stopped at retention refusal, not peer recovery.
 First matching-image selector: python3 -m tools.resilience.adapters.bp_node
 --image DEVELOPER --producer-image MATCHING_DEFAULT --variant lose-completion.
 Replay after actual retention repair remains Integration's source/image task.
-=======
 Final source replay uses one encapsulate, dropping locals:30forms,2.14 ACL2 s,
 1,513,918 steps.15 test forms652 steps: sparse misses, actual first successful
 decision, excluded wildcard, first-zero duplicate, overflow number, invalid ID,
@@ -989,3 +988,27 @@ pass. Scoped strict theory/book-order and diff checks pass. Evidence archived
 and indexed at planning/evidence/dc03-serializer-clean-20261003/{checks.json,repl.log.gz}.
 No certificate claim here: Integration reuses241passed artifacts and retries
 the exact five failed roots on its next repaired candidate.
+S112 removed-peer journal custody, codex-sol-tools
+Actual pull worker/catch-up tick prune cached journals only when the existing
+ACL2 fn-pull-plan-for says the peer has no current plan. Cached cursors drop
+with descriptor custody; returning cursor-for goes through its existing
+open/replay path. Both kinds share one private pruning function. A close
+fault attempts every retired descriptor before escaping; cache removal
+precedes close so a nil descriptor cannot be reused by a later round.
+
+Necessary adjacent ACL2 schedule fix: fn-pull-schedule previously only added
+plans and retained removed peer entries indefinitely, so a retired first-due
+peer could block/fault every later round. New tail-recursive live filter
+uses actual plan-for, then existing configure preserves live next/busy state
+and updates interval. Returning peers admit fresh due state. No new operator
+cap, parallel worker, deadline policy or host plan semantics.
+
+First command: python3 -m unittest tests.test_native_pull_journal_registry
+Three fd/cursor schedules pass0.861s after scoped generated trap inventory
+(one unexpected-round trap). Standalone actual ACL2 schedule case added.
+Actual worker/tick/cursor-for, schedule functions and kernel descriptors/close
+run; new-open/replay leaf records invocation, not a codec or saved-image
+claim. Assertion observed during loop BEFORE ordinary worker exit cleanup,
+so old final cleanup cannot falsely make removal look repaired. ACL2 finite
+assertions added to existing peer-pull tests; book/test certification pending
+next combined Integration cut, no standalone cert/image launched here.

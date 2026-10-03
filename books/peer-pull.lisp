@@ -2051,16 +2051,6 @@
 (defun fn-pull-plan-auth (p) (declare (xargs :guard t)) (fn-pull-at 6 p))
 (defun fn-pull-plan-bound (p) (declare (xargs :guard t)) (fn-pull-at 7 p))
 
-; The schedule the owner holds, reconfigured from the live plans at NOW.
-(defun fn-pull-schedule (plans now tbl)
-  (declare (xargs :guard t))
-  (if (consp plans)
-      (fn-pull-schedule (cdr plans) now
-                        (fn-sched-pull-configure
-                         (fn-pull-plan-peer (car plans))
-                         (fn-pull-plan-interval (car plans)) now tbl))
-    tbl))
-
 (defun fn-pull-plan-for (peer plans)
   (declare (xargs :guard t))
   (if (consp plans)
@@ -2068,6 +2058,34 @@
           (car plans)
         (fn-pull-plan-for peer (cdr plans)))
     nil))
+
+; Keep only peers the current ACL2 plans name. Tail recursion preserves
+; table order without growing the host stack with the operator's peer count.
+(defun fn-pull-schedule-live-loop (plans tbl acc)
+  (declare (xargs :guard t))
+  (if (consp tbl)
+      (fn-pull-schedule-live-loop
+       plans (cdr tbl)
+       (if (and (consp (car tbl)) (fn-pull-plan-for (car (car tbl)) plans))
+           (cons (car tbl) acc)
+         acc))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-pull-schedule-configure (plans now tbl)
+  (declare (xargs :guard t))
+  (if (consp plans)
+      (fn-pull-schedule-configure (cdr plans) now
+                        (fn-sched-pull-configure
+                         (fn-pull-plan-peer (car plans))
+                         (fn-pull-plan-interval (car plans)) now tbl))
+    tbl))
+
+; Reconfigure only current peers: a retired peer cannot remain first-due
+; forever and prevent a later configured peer from getting its round.
+(defun fn-pull-schedule (plans now tbl)
+  (declare (xargs :guard t))
+  (fn-pull-schedule-configure plans now
+                            (fn-pull-schedule-live-loop plans tbl nil)))
 
 ; -----------------------------------------------------------------------------
 ; The host's entry points that return one value (the native bridge takes the
