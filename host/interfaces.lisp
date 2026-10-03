@@ -4401,6 +4401,11 @@
 (definterface fn-otb-dependency-step
   :class ::common-lisp-compliant)
 
+; host/native/owner.lisp fnn-owner-cold-await dispatches it (lane served-live:
+; a re-run line's deadline from its first miss).
+(definterface fn-otb-line-dependency-step
+  :class :common-lisp-compliant)
+
 ;; books/payload-arena-extent-logic.lisp
 
 ; host/native/extent.lisp dispatches it (lane compress-5 (NNT-055)).
