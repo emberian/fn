@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2811 |
+| Books read | 2812 |
 | Certification roots in the Makefile | 2366 |
-| Books inside the root closure | 2638 |
-| `defthm` and `defthmd` events | 37738 |
-| `defun` events | 24284 |
+| Books inside the root closure | 2639 |
+| `defthm` and `defthmd` events | 37744 |
+| `defun` events | 24292 |
 | Functions with verified guards | 3934 |
 | Functions declared `:verify-guards nil` and never verified | 3105 |
-| Functions left at the default with an explicit guard | 13396 |
+| Functions left at the default with an explicit guard | 13404 |
 | Functions left at the default with no guard | 3849 |
-| `assert-event` checks | 26356 |
+| `assert-event` checks | 26357 |
 | `must-fail` checks | 2656 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 235 |
@@ -28,7 +28,7 @@ stale. Counts describe artifacts, not coverage; see
 | Enabled-projection warnings | 79 |
 | Teeth-form warnings | 292 |
 | Include-hygiene warnings | 3679 |
-| Host-names warnings | 3183 |
+| Host-names warnings | 3184 |
 | Hand-written-record warnings | 19 |
 
 ## Lints
@@ -475,6 +475,7 @@ that `make certify` requests.
 | `books/cold-read-layout.lisp` | root | 0 | 8 | 0/0/8/0 | 0 | 0 | 0 |
 | `books/cold-read-reservation.lisp` | root | 3 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/cold-read-window.lisp` | closure | 3 | 14 | 0/0/14/0 | 0 | 0 | 0 |
+| `books/committer-actor.lisp` | closure | 6 | 8 | 0/0/8/0 | 1 | 0 | 0 |
 | `books/config-carried-candidate.lisp` | root | 13 | 4 | 3/1/0/0 | 0 | 0 | 0 |
 | `books/config-carried-open.lisp` | root | 13 | 5 | 2/0/3/0 | 0 | 0 | 0 |
 | `books/config-crash-replay.lisp` | root | 18 | 1 | 0/1/0/0 | 0 | 0 | 0 |
