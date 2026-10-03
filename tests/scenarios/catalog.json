@@ -9029,6 +9029,38 @@
         "host/native/owner.lisp"
       ],
       "execution_scope": "Actual normal counterparts/private stobj on explicitly frozen dependency sources with source-loaded new renderer; no generic model, matching certificate/image or whole-response heap bound claim."
+    },
+    {
+      "id": "SCN-1111",
+      "title": "Pre-factory output draw refuses unpriced commands and confines accepted prefix",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-047"
+      ],
+      "steps": [
+        "Publish response holder before admitted reader entry, reserve independent ACL2 operation identity and issue private lease before input fill/preview.",
+        "Call actual explicit unpriced program tariff producer and ACL2 admission.",
+        "Inject a positive tariff only in the recording fixture to discriminate accepted NEXT and cold retry; attempt a fallback beyond accepted prefix.",
+        "Preserve known issuance after refused reader and settle only whole operation discard/no-child."
+      ],
+      "expected": [
+        "Unknown complete tariff is explicitly refused before any command factory; optional output policy remains unsupported.",
+        "Returned issuance stays discoverable for terminal cleanup; torn issuance remains retained without retry.",
+        "Accepted prefix reaches actual span helper unchanged; a second command suffix never enters this factory, including cold fallback.",
+        "Absent output accounting follows the explicitly partial existing path."
+      ],
+      "implementation": {
+        "test": "tests/test_native_output_preflight_raw.sh"
+      },
+      "evidence": [
+        "tests/native_output_preflight_raw.lisp",
+        "host/native/owner.lisp",
+        "host/native/mux.lisp",
+        "host/owner-host.lisp",
+        "books/output-command-admission.lisp"
+      ],
+      "execution_scope": "Actual native begin/prefix/span/cleanup handoff, actual ACL2 unpriced program producer and admission definitions. Wire preview/typed projection are recording boundaries; positive complete tariff is injected only for prefix refutation and is unreachable with current unpriced producer. No supported profile, whole native driver realization, full physical tariff or matching image claim."
     }
   ]
 }

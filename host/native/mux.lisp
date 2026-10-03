@@ -340,6 +340,16 @@ Physical calls record only their literal return, never descriptor closure."
         (fnn-mux-cleanup-debt loop conn receipt)))
     receipt))
 
+(defun fnn-mux-capture-output-grant (conn)
+  "Copy known returned issuance even when the reader/factory escaped."
+  (let ((capture (fnn-mux-conn-response-capture conn)))
+    (when capture
+      (when (fnn-response-capture-identity capture)
+        (setf (fnn-mux-conn-response-identity conn) (fnn-response-capture-identity capture)))
+      (when (fnn-response-capture-grant capture)
+        (setf (fnn-mux-conn-output-grant conn) (fnn-response-capture-grant capture)))))
+  nil)
+
 (defun fnn-mux-finish (loop conn)
   "Terminal scheduling and once-only cleanup. DONE is not a release receipt;
 failed effects remain discoverable while independent physical cleanup runs."
@@ -350,6 +360,7 @@ failed effects remain discoverable while independent physical cleanup runs."
           (was (fnn-mux-conn-phase conn)))
       (setf (fnn-mux-conn-cleanup-phase conn) was
             (fnn-mux-conn-phase conn) :done)
+      (fnn-mux-capture-output-grant conn)
       ;; These references are no longer publishable by this loop. This is
       ;; not yet an output-pool discard receipt for an issued dependency.
       (setf (fnn-mux-conn-out conn) nil
@@ -791,8 +802,10 @@ the same octets are handed to the next step."
          (word (fnn-mux-conn-cold-word conn))
          ;; Publish before entering the fallible semantic boundary. A
          ;; later pre-factory draw can retain its receipt here on escape.
-         (capture (setf (fnn-mux-conn-response-capture conn)
-                        (%make-fnn-response-capture)))
+         (capture (or (fnn-mux-conn-response-capture conn)
+                      (setf (fnn-mux-conn-response-capture conn)
+                            (%make-fnn-response-capture
+                             :connection (fnn-mux-conn-connection-identity conn)))))
          (results (multiple-value-list
                    ;; A peer read uses the owner's current ACL2 class.
                    (let ((peerp (eq (fnn-mux-conn-class conn) :transit))
@@ -805,6 +818,7 @@ the same octets are handed to the next step."
                                                         (fnn-owner-peer-read-class service)
                                                       (fnn-mux-conn-class conn))
                                                     peerp w line-since since now limit))))))
+    (fnn-mux-capture-output-grant conn)
     ;; The page is read off this loop; the input and first clock stay held.
     (when (eq (first results) :cold)
       (setf (fnn-mux-conn-cold conn)
