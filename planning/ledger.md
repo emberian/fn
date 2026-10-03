@@ -13,14 +13,14 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 2826 |
 | Certification roots in the Makefile | 2367 |
 | Books inside the root closure | 2645 |
-| `defthm` and `defthmd` events | 38001 |
-| `defun` events | 24367 |
+| `defthm` and `defthmd` events | 38018 |
+| `defun` events | 24374 |
 | Functions with verified guards | 3955 |
-| Functions declared `:verify-guards nil` and never verified | 3116 |
-| Functions left at the default with an explicit guard | 13437 |
+| Functions declared `:verify-guards nil` and never verified | 3117 |
+| Functions left at the default with an explicit guard | 13443 |
 | Functions left at the default with no guard | 3859 |
-| `assert-event` checks | 26394 |
-| `must-fail` checks | 2658 |
+| `assert-event` checks | 26402 |
+| `must-fail` checks | 2661 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 243 |
 | Theorems flagged SUSPECT by shape | 1391 |
@@ -28,7 +28,7 @@ stale. Counts describe artifacts, not coverage; see
 | Enabled-projection warnings | 79 |
 | Teeth-form warnings | 292 |
 | Include-hygiene warnings | 3695 |
-| Host-names warnings | 3194 |
+| Host-names warnings | 3198 |
 | Hand-written-record warnings | 19 |
 
 ## Lints
@@ -826,7 +826,7 @@ that `make certify` requests.
 | `books/history-wire.lisp` | closure | 3 | 1 | 0/0/1/0 | 0 | 0 | 2 |
 | `books/hmac-sha256.lisp` | root | 28 | 16 | 0/0/16/0 | 0 | 0 | 1 |
 | `books/host-model-machine.lisp` | root | 2 | 96 | 0/0/95/1 | 0 | 0 | 0 |
-| `books/host-model.lisp` | root | 142 | 3 | 0/0/3/0 | 0 | 0 | 1 |
+| `books/host-model.lisp` | root | 145 | 3 | 0/0/3/0 | 0 | 0 | 1 |
 | `books/hybrid-carrier.lisp` | root | 21 | 35 | 4/0/31/0 | 0 | 0 | 1 |
 | `books/hybrid-lifecycle-store-invariants.lisp` | root | 23 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/hybrid-lifecycle.lisp` | root | 8 | 11 | 2/0/9/0 | 0 | 0 | 2 |
@@ -983,7 +983,7 @@ that `make certify` requests.
 | `books/newnews-cursor-shape.lisp` | closure | 0 | 8 | 0/0/8/0 | 0 | 0 | 0 |
 | `books/newnews-cursor.lisp` | closure | 33 | 23 | 0/0/23/0 | 0 | 0 | 0 |
 | `books/newnews-metadata-cursor.lisp` | closure | 19 | 12 | 5/3/4/0 | 0 | 0 | 0 |
-| `books/newnews-stream-cursor.lisp` | closure | 13 | 9 | 1/2/6/0 | 0 | 0 | 0 |
+| `books/newnews-stream-cursor.lisp` | closure | 15 | 9 | 1/2/6/0 | 0 | 0 | 0 |
 | `books/ninep-dispatch.lisp` | root | 1 | 4 | 1/0/3/0 | 0 | 0 | 0 |
 | `books/ninep-fields.lisp` | closure | 11 | 8 | 1/0/7/0 | 0 | 0 | 0 |
 | `books/ninep-group-buckets.lisp` | closure | 2 | 3 | 0/0/3/0 | 0 | 0 | 0 |
@@ -1132,7 +1132,7 @@ that `make certify` requests.
 | `books/owner-log-ocl.lisp` | root | 35 | 3 | 0/3/0/0 | 0 | 0 | 2 |
 | `books/owner-log-reopen.lisp` | root | 1 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/owner-log-route.lisp` | root | 4 | 5 | 0/0/5/0 | 0 | 0 | 0 |
-| `books/owner-log.lisp` | root | 31 | 48 | 2/0/46/0 | 0 | 0 | 2 |
+| `books/owner-log.lisp` | root | 32 | 48 | 2/0/46/0 | 0 | 0 | 2 |
 | `books/owner-maintenance-request.lisp` | closure | 6 | 19 | 0/4/15/0 | 0 | 0 | 1 |
 | `books/owner-node-secret-accessor.lisp` | root | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/owner-number-bound-join.lisp` | root | 86 | 1 | 0/0/0/1 | 0 | 0 | 5 |
@@ -1695,7 +1695,7 @@ that `make certify` requests.
 | `books/store-tree-codec-program-guards.lisp` | closure | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/store-tree-codec.lisp` | closure | 41 | 30 | 4/6/20/0 | 0 | 0 | 0 |
 | `books/store-tree-size.lisp` | closure | 12 | 11 | 0/2/9/0 | 0 | 0 | 0 |
-| `books/string-line-cursor.lisp` | closure | 27 | 7 | 1/1/5/0 | 0 | 0 | 1 |
+| `books/string-line-cursor.lisp` | closure | 33 | 10 | 1/1/8/0 | 0 | 0 | 1 |
 | `books/stx-accept-records.lisp` | root | 16 | 22 | 10/0/12/0 | 0 | 0 | 0 |
 | `books/stx-authority.lisp` | root | 3 | 3 | 0/0/3/0 | 0 | 0 | 2 |
 | `books/stx-carrier.lisp` | root | 56 | 31 | 8/0/23/0 | 0 | 0 | 0 |
@@ -2179,8 +2179,8 @@ that `make certify` requests.
 | `tests/acl2/def-carried-tests.lisp` | root | 42 | 74 | 0/0/34/40 | 84 | 22 | 0 |
 | `tests/acl2/def-carried-view-tests.lisp` | root | 43 | 53 | 0/0/53/0 | 61 | 1 | 0 |
 | `tests/acl2/def-carried-writer-tests.lisp` | root | 9 | 20 | 0/1/13/6 | 21 | 5 | 1 |
-| `tests/acl2/def-cost-tests.lisp` | root | 0 | 15 | 0/3/10/2 | 20 | 2 | 0 |
-| `tests/acl2/def-cursor-tests.lisp` | - | 2 | 1 | 0/0/1/0 | 3 | 2 | 0 |
+| `tests/acl2/def-cost-tests.lisp` | root | 0 | 17 | 0/3/12/2 | 24 | 3 | 0 |
+| `tests/acl2/def-cursor-tests.lisp` | - | 4 | 2 | 0/0/2/0 | 4 | 4 | 0 |
 | `tests/acl2/def-holder-tests.lisp` | root | 4 | 6 | 0/0/6/0 | 40 | 19 | 0 |
 | `tests/acl2/def-keyset-check-tests.lisp` | root | 7 | 15 | 2/0/13/0 | 21 | 1 | 0 |
 | `tests/acl2/def-loop-tests.lisp` | root | 28 | 63 | 52/2/9/0 | 81 | 35 | 0 |
@@ -2219,7 +2219,7 @@ that `make certify` requests.
 | `tests/acl2/feed-filename-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 0 | 0 |
 | `tests/acl2/feed-journal-order-tests.lisp` | root | 0 | 4 | 0/3/1/0 | 14 | 0 | 0 |
 | `tests/acl2/feed-journal-tests.lisp` | root | 0 | 3 | 0/2/0/1 | 23 | 2 | 0 |
-| `tests/acl2/feed-link-backoff-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 15 | 0 | 0 |
+| `tests/acl2/feed-link-backoff-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 16 | 0 | 0 |
 | `tests/acl2/feed-pause-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 17 | 0 | 0 |
 | `tests/acl2/feed-port-replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 1 | 0 |
 | `tests/acl2/feed-restart-domain-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 0 | 0 |
@@ -2374,7 +2374,7 @@ that `make certify` requests.
 | `tests/acl2/native-status-columns-tests.lisp` | root | 1 | 9 | 0/9/0/0 | 10 | 5 | 0 |
 | `tests/acl2/newnews-cursor-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 23 | 0 | 0 |
 | `tests/acl2/newnews-metadata-cursor-tests.lisp` | - | 2 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `tests/acl2/newnews-stream-cursor-tests.lisp` | - | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `tests/acl2/newnews-stream-cursor-tests.lisp` | - | 4 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/ninep-fields-tests.lisp` | root | 6 | 6 | 0/0/0/6 | 0 | 0 | 0 |
 | `tests/acl2/ninep-group-buckets-tests.lisp` | root | 4 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/ninep-group-directory-source-tests.lisp` | root | 3 | 2 | 0/0/0/2 | 0 | 0 | 0 |
@@ -2575,7 +2575,7 @@ that `make certify` requests.
 | `tests/acl2/peer-catchup-tests.lisp` | root | 1 | 8 | 0/1/0/7 | 44 | 9 | 0 |
 | `tests/acl2/peer-feed-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 152 | 0 | 0 |
 | `tests/acl2/peer-guard-carried-tests.lisp` | root | 0 | 8 | 0/7/0/1 | 42 | 7 | 0 |
-| `tests/acl2/peer-host-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 83 | 9 | 0 |
+| `tests/acl2/peer-host-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 85 | 9 | 0 |
 | `tests/acl2/peer-inbound-tests.lisp` | root | 0 | 11 | 0/2/0/9 | 276 | 5 | 0 |
 | `tests/acl2/peer-invite-administrator-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 2 | 0 | 0 |
 | `tests/acl2/peer-invite-replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
@@ -2642,7 +2642,7 @@ that `make certify` requests.
 | `tests/acl2/protocol-codes-hra-tests.lisp` | root | 0 | 2 | 0/2/0/0 | 1 | 0 | 0 |
 | `tests/acl2/protocol-codes-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 4 | 2 | 0 |
 | `tests/acl2/protocol-dispatch-tests.lisp` | root | 0 | 11 | 0/9/1/1 | 18 | 0 | 0 |
-| `tests/acl2/protocol-served-tests.lisp` | root | 11 | 21 | 0/19/0/2 | 1 | 2 | 0 |
+| `tests/acl2/protocol-served-tests.lisp` | root | 13 | 22 | 0/20/0/2 | 1 | 2 | 0 |
 | `tests/acl2/protocol-text-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 129 | 1 | 0 |
 | `tests/acl2/provenance-inspect-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 0 | 0 |
 | `tests/acl2/provenance-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 103 | 0 | 0 |
@@ -2986,7 +2986,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-b3x-node-model-step` | `books/blake3-stobj.lisp` | 454 | arm-of-definition: the hypotheses select one IF/COND arm of fn-b3-node and the conclusion is that arm's value |
 | `fn-bch-framedp-facts` | `books/body-chunks.lisp` | 691 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-bch-framedp |
 | `fn-bchs-slice-empty` | `books/body-chunks-span.lisp` | 41 | arm-of-definition: the hypotheses select one IF/COND arm of fn-bchs-slice and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-bchs-slice and the conclusion is that branch's value |
-| `fn-bp-effect-for-pending-attempt-unfolds` | `books/bp-workflow-invariants.lisp` | 890 | arm-of-definition: the hypotheses select one IF/COND arm of fn-bp-effect-for-pending and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-bp-effect-for-pending and the conclusion is that branch's value |
+| `fn-bp-effect-for-pending-attempt-unfolds` | `books/bp-workflow-invariants.lisp` | 911 | arm-of-definition: the hypotheses select one IF/COND arm of fn-bp-effect-for-pending and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-bp-effect-for-pending and the conclusion is that branch's value |
 | `fn-bp-fenced-complete-is-no-op` | `books/bp-workflow-transport-invariants.lisp` | 254 | arm-of-definition: the hypotheses select one IF/COND arm of fn-bp-complete and the conclusion is that arm's value |
 | `fn-bp-unchecked-receipt-is-no-op` | `books/bp-workflow-transport-invariants.lisp` | 250 | arm-of-definition: constant arguments select one IF/COND arm of fn-bp-prepare-receipt and the conclusion is that arm's value |
 | `fn-bpah-unsigned-gate-is-trust` | `books/bp-release-authority.lisp` | 321 | arm-of-definition: the hypotheses select one IF/COND arm of fn-bpah-receipt-gatep and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-bpah-receipt-gatep and the conclusion is that branch's value |

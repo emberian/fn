@@ -5,7 +5,7 @@
     "declared": 1460,
     "declared_and_dispatched": 1408,
     "guard_verified": 799,
-    "with_keystone": 227,
+    "with_keystone": 225,
     "raw_dispatched": 8
   },
   "raw_dispatched": [
@@ -8103,11 +8103,7 @@
       "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
-      "keystones": [
-        {
-          "theorem": "fn-oqw-receipt-outcomes-are-distinct"
-        }
-      ],
+      "keystones": [],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -8536,11 +8532,7 @@
       "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
-      "keystones": [
-        {
-          "theorem": "fn-cat-may-seal-is-the-prepare-gate"
-        }
-      ],
+      "keystones": [],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -27090,7 +27082,7 @@
       "exempt": {},
       "keystones": [
         {
-          "theorem": "fn-orcs-seal-is-the-intern"
+          "theorem": "fn-orcs-predict-seal-refines-intern"
         }
       ],
       "extraction": null,

@@ -824,3 +824,26 @@ Result: 14 forms, 0 refusals; 299,388 total steps / 0.71 s ACL2 time. The helper
 ## Source assembly coherent proof patterns — GPT-6.1-Sol
 
 Source packet532f1eda2/a3a07b98e (CBOR),6e443d1af/e788b1c8d (BP),fdb4e3e7a (checkpoint),db2a0071b (owner log), plus774a7c607 evidence index only. Preserved Sol proof deputy primary whole-source AST review and existing warm admission evidence. Inspected pattern scope: explicit bound/preservation facts prevent repeated unfolding, checkpoint codec theory narrows to the local fact needing it, owner first-word proof uses one LOCAL join lemma. Four final book byte sequences exact producer match; original statements/guards/rule classes/executable definitions remain fixed, no source hunk conflict. Cumulative LANEDUMP conflict retains producer receipts and prior content. Existing CBOR archive verified; remaining packet archival/certification pending under Sol deputy/Integration, no fresh per-proof experiments. Scoped changed roots: books/cbor-invariants, books/bp-workflow-invariants, books/store-checkpoint-tables, books/owner-log; actual BP binding-core consumer was source admitted and may be included in combined root packet. No speed claim for checkpoint or neighboring simplification patches; no certificate/image claim.
+
+## Matching next-source certification and reports, 2026-10-03 08:44 UTC
+
+Reviewed source aggregate dcaaba23d landed as715a8778f; actual pipeline
+escape, torn no-retry, committer, observation, and six journal boundary
+checks pass. Discovery aggregate2a81 landed5d2626619. Actual typed
+abandonment extension5d2 landeddbf890a93; six schedules pass through
+registered creator, normal semantic counterparts, real fn-oqw, typed bank.
+Local ARM64 loads farm compiled files incompatibly and falls back to source;
+this is a native source witness, not matching certification on the laptop.
+Hint aggregatea091 landed e1ad0d875 after its primary Sol review, with
+unchanged non-hint forms. NSLICESQUEUE landed321bd7246.
+
+Frozen321 matching farm run20261003T083836Z-34d3 /
+certify20261003T083937Z-1180317 selects19 affected roots covering
+credential transport, four proof simplification books and consumers, and
+served dispatch/cursor consumers. Two jobs under one12GiB swarm scope.
+371 dependency books:125 matching cached,246 uncached. No lane closure or
+second image build. Report regeneration at321 succeeds:1460 declared,
+1408 dispatched,0 raw rule findings.234 prior certified rows become
+uncertified-at-current-digest, predominantly232 rows affected by CBOR
+leaf hint fanout; matching batch is outstanding. Generated projections
+are accurate, not a green source verdict.
