@@ -19056,6 +19056,19 @@
           "name": "fn-rlo-physical-keeps-representation"
         }
       ]
+    },
+    {
+      "id": "PRF-1278",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ocap-held-prefix-has-matching-funded-tariff"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocap-preview-keeps-input-prefix-bounds"
+        }
+      ]
     }
   ]
 }

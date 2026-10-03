@@ -277,6 +277,7 @@
 ; dependency deadline answered 403, the session unchanged.
 (include-book "../books/owner-cold-line")
 (include-book "../books/owner-resource-line")
+(include-book "../books/output-command-admission")
 ; lane composed-owner-5 (PRF-941, row A6): the arena readers' generation
 ; pins (host/native/io.lisp fnn-arena-pins-step).
 (include-book "../books/arena-reader-pins")
@@ -5462,3 +5463,19 @@ existing port only after fn-fc has made this connection ready."
 
 ; Serialized indexed reader completion follows its actual owner STATE subjects.
 (include-book "index-reader-request-host")
+
+; Pre-factory classifier under the SAME admitted O section as read evaluation.
+; It previews the first wire event without installing wire/owner/STATE changes.
+; Caller must hold its setup lease before this scan, then supply the actual
+; ACL2 footprint descriptor and evaluate only the accepted prefix NEXT.
+(defun fn-owner-output-preview (id start end fn-octets state)
+  (declare (xargs :stobjs (fn-octets state) :mode :program))
+  (let* ((owner (fn-owner-core state))
+         (conn (fn-own-find-conn id (fn-own-conns owner)))
+         (wire (and conn (fn-own-conn-wire conn))))
+    (cond ((not conn) (value :unknown))
+          ((not (and (natp start) (natp end) (<= start end)
+                     (<= end (fn-octets-len fn-octets))))
+           (value :bad-range))
+          ((not (fn-wire-fast-statep wire)) (value :invalid-wire))
+          (t (value (fn-ocap-preview wire start end fn-octets))))))

@@ -427,3 +427,32 @@ empty native grant roster. SCN-1107 checks actual native control flow with
 recording typed boundaries and actual held children; configured activation,
 complete retained graph/allocator tariff and interpreter correspondence remain
 open. Declaration of a live caller is not those claims.
+`def-cost :conses BOUND :cons-unaccounted (CALLEES ...)` derives a logical
+cons constructor twin from the same executed translated body as visit cost.
+It preserves independent unknown leaves and reconstructs multiple-value
+bindings. Quoted objects are borrowed; fresh conses and copied list spines
+are charged. Concrete stobj operations remain unknown without a representation
+contract. The actual string renderer's derived count is bounded by its source
+recurrence and by `8*nfix(bytes)+2`. This supplies a per-turn constructor bound;
+it does not price retained state, native integer/vector allocation, physical
+bytes, collector copying or custody of borrowed archive references.
+
+## Pre-factory output command admission (PRF-1278)
+
+The owner previews its current wire and exact input range with the existing
+`fn-wire-scan`, without executing any command factory or changing STATE.
+`fn-ocap-preview` returns `(:preview NEXT FAMILY TOKENS)` for the first event;
+standard NNTP families, extensions, malformed commands, partial input and
+article mode remain distinct. `fn-ocap-admit-preview` requires an actual
+ACL2 footprint descriptor `(:tariff FAMILY OCTETS)` matching that family and
+fitting captured capacity. The descriptor comes from the selected implemented
+footprint producer; operator annotations cannot manufacture one.
+
+The response generation and actual lease must be retained before preview,
+since scanning/tokenization also allocate. The native owner then evaluates
+only the accepted `NEXT` prefix and retains every suffix byte for a later
+operation, so a second unpriced command cannot enter its factory under the
+first command's tariff. Unknown families refuse in accounted mode. Absence
+of output accounting policy keeps the existing explicitly partial path.
+The logical admission theorem does not prove physical footprint, collector
+behavior, refusal workspace funding or native issue/settlement authenticity.
