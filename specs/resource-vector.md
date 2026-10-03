@@ -443,3 +443,12 @@ Accepted issue itself establishes input shape; that redundant external
 hypothesis is absent. Negative-generation corruption and uninstalled refusal
 supply separate removal witnesses. This property does not establish free-chain
 completeness or authorize a physical receipt.
+
+Actual `fn-rlo-output` and `fn-rlo-physical` settlement invalidate the token
+against the resulting ledger (`fn-rlo-output-settled-token-is-not-live`,
+`fn-rlo-physical-settled-token-is-not-live`). The only premise is their actual
+`:settled` result. Replaying either receipt with that token returns `:stale`
+and preserves the ledger, so it cannot push the same released row onto the
+free chain twice. Literal settled-result positives and removal witnesses
+exercise both receipt orderings. Complete free-chain membership and the
+physical producer's receipt authenticity remain separate obligations.
