@@ -987,6 +987,16 @@ uncertain, as it does everywhere else."
              (fnn-bpnc-accept-loop
               control listener
               (lambda (socket &aux (profile-started (get-internal-real-time)))
+                ;; Sweep S006: a peer that resets its TCP connection (or is
+                ;; gone before its channel is observed) and a refused session
+                ;; end only this connection, ACL2's :uncertain or :refused
+                ;; session word (io.lisp fnn-connection-scoped); a Store
+                ;; fault or an uncertain publication is still the node's.
+                (unwind-protect
+                 (fnn-connection-scoped
+                     ("bp-node" (lambda (word)
+                                  (setq session-word
+                                        (fnn-core 'fn-bprc-session-evidence word nil))))
                 (let* ((session-counter
                          (incf (fnn-bps-next-session bp)))
                        (observed-channel
@@ -1026,7 +1036,6 @@ uncertain, as it does everywhere else."
                            (fnn-bpnode-dispatch-pending
                             bp owner receipt-root workflow-root destination policy
                             issuer node-id peer-id))))
-                  (unwind-protect
                        (let ((conn
                                (fnn-tcl-session
                                 (fnn-socket-fd socket) :passive
@@ -1042,8 +1051,8 @@ uncertain, as it does everywhere else."
                                  +fnn-tcl-segment-mru+ transfer-mru)
                                 "bp-node" (fnn-bps-root bp))))
                          (fnn-tcl-summary conn)
-                         (setq session-word (fnn-bp-session-word conn)))
-                    (fnn-socket-shut socket)))
+                         (setq session-word (fnn-bp-session-word conn)))))
+                 (fnn-socket-shut socket))
                 ;; This is after the TCPCL transfer disposition.  The final
                 ;; XFER_ACK speaks only for durable kind-5 custody; application
                 ;; Store/FNRJ/FNWF commitment follows in a separate cut.

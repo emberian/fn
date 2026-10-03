@@ -429,8 +429,6 @@ unbounded (&rest or &key)."
   '(;; Implicit TLS and STARTTLS: no scenario negotiates TLS.
     fnn-tls-accept-begin fnn-tls-accept-step fnn-tls-channel-of fnn-%ssl-free
     fnn-tls-exporter
-    ;; The pull feed's own-quantum commit (a logical connection has no socket).
-    fnn-owner-commit-queued-locked
     ;; The slow disk sheds the queued POSTs (every admission here is :admit).
     fnn-owner-shed-queued-locked
     ;; A submission drained in its own quantum (these scenarios batch).

@@ -761,45 +761,38 @@ admitted and ACL2 refuses every inbound bundle at the receive boundary."
                   (fnn-accept-loop
                    listener
                    (lambda (socket)
-                     (let* ((fd (fnn-socket-fd socket))
-                            (session-counter
-                              (incf (fnn-bps-next-session service)))
-                            (channel (and owner
-                                          (fnn-bpnode-observed-channel socket)))
-                            (*fnn-tcl-deliver*
-                              (lambda (conn xfer-id octets)
-                                (fnn-bp-deliver-node
-                                 service conn session-counter xfer-id octets
-                                 owner channel))))
-                       (unwind-protect
-                            (handler-case
-                                (let ((conn (fnn-tcl-session
-                                             fd :passive
-                                             (fnn-tcl-params node-id peer-eid
-                                                             +fnn-tcl-keepalive+
-                                                             +fnn-tcl-segment-mru+
-                                                             transfer-mru)
-                                             "passive" journal-root :bundle reply)))
-                                  (fnn-tcl-summary conn)
-                                  (setq code (fnn-bp-exit-code tally conn)))
-                              ; A journal ambiguity or core fault is an owner
-                              ; outcome, not a connection-local verdict.  Let
-                              ; it escape the accept loop so unwind-protect
-                              ; closes the listener and no later socket can
-                              ; mutate this journal in the same process.
-                              (fnn-store-indeterminate (e) (error e))
-                              (fnn-store-fault (e) (error e))
-                              (fnn-store-error (e)
-                                (fnn-err "bp: ~a" e)
-                                (fnn-bp-note tally :refused)
-                                (setq code (fnn-bp-exit-code tally nil)))
-                              ;; The accepted connection was lost: connection-
-                              ;; local (ACL2's :uncertain).
-                              ((or fnn-os-error sb-bsd-sockets:socket-error) (e)
-                                (fnn-err "bp: ~a" e)
-                                (fnn-bp-note tally :uncertain)
-                                (setq code (fnn-bp-exit-code tally nil))))
-                         (fnn-socket-shut socket))))
+                     ;; A journal ambiguity or core fault is an owner outcome,
+                     ;; not a connection-local verdict: it escapes the accept
+                     ;; loop so unwind-protect closes the listener and no later
+                     ;; socket can mutate this journal in the same process.  A
+                     ;; refusal or a lost connection -- in the session or in
+                     ;; observing the channel of a peer already gone -- is
+                     ;; this connection's (io.lisp fnn-connection-scoped).
+                     (unwind-protect
+                          (fnn-connection-scoped
+                              ("bp" (lambda (word)
+                                      (fnn-bp-note tally word)
+                                      (setq code (fnn-bp-exit-code tally nil))))
+                            (let* ((fd (fnn-socket-fd socket))
+                                   (session-counter
+                                     (incf (fnn-bps-next-session service)))
+                                   (channel (and owner
+                                                 (fnn-bpnode-observed-channel socket)))
+                                   (*fnn-tcl-deliver*
+                                     (lambda (conn xfer-id octets)
+                                       (fnn-bp-deliver-node
+                                        service conn session-counter xfer-id octets
+                                        owner channel)))
+                                   (conn (fnn-tcl-session
+                                          fd :passive
+                                          (fnn-tcl-params node-id peer-eid
+                                                          +fnn-tcl-keepalive+
+                                                          +fnn-tcl-segment-mru+
+                                                          transfer-mru)
+                                          "passive" journal-root :bundle reply)))
+                              (fnn-tcl-summary conn)
+                              (setq code (fnn-bp-exit-code tally conn))))
+                       (fnn-socket-shut socket)))
                    once)
                   (fnn-bp-summary tally)
                   code)

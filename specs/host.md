@@ -1449,7 +1449,25 @@ decision is a call through `fnn-owner-serialized`, one at a time. What
 changed is who waits. host/native/mux.lisp runs `+fnn-mux-loops+` (2)
 threads, each polling (poll(2), Linux and OpenBSD alike) the connections it
 owns and a wake pipe; the accept threads hand each accepted socket to a loop
-instead of starting a thread for it. A connection is a record: the input the
+instead of starting a thread for it.
+
+The sockets accepted and not yet begun by a loop are bounded by the loops
+(lane host-lifecycle, r71 F13): an accept thread reserves a loop's one
+pending slot (`fnn-mux-reserve`: no reservation held, its inbox empty, the
+loop open) before it calls accept(2), and the adoption fills exactly that
+slot, so at most `+fnn-mux-loops+` sockets are pending at once, whatever the
+loops are doing. While every slot is busy no socket is accepted. HOST FACT
+(named, not decided here): the connections then wait in the kernel's listen
+queue of the listener, `+fnn-owner-listen-backlog+` (128) as requested of
+listen(2) and capped by the OS (Linux `net.core.somaxconn`, OpenBSD
+`kern.somaxconn`); past it the kernel refuses or drops the connection.  This
+only schedules: whether a connection is served is still ACL2's admission
+when its loop begins it (`fn-exp-open`, `fn-owner-handshake-admit`,
+books/connection-budget.lisp's capacity), unchanged. One accept(2) attempt
+is `fnn-accept-attempt` (host/native/io.lisp): a socket, `:again` (nothing
+queued, a peer that reset before the accept, a per-connection network
+error) or `:exhausted` (no descriptor: the connection stays queued and the
+accept thread backs off one tick); none of them ends a listener or the node. A connection is a record: the input the
 next step is handed (one read, or the suffix a step left; the read size is
 ACL2's per step since lane input-loop-2, 2026-09-27: `fn-cbud-step-read-octets`,
 books/connection-budget.lisp, installed by `fnn-owner-refresh-read-octets`

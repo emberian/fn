@@ -131,6 +131,13 @@
   ;; The I/O loops that serve every reader and transit connection
   ;; (host/native/mux.lisp), and the round-robin cursor over them.
   (mux nil) (mux-next 0)
+  ;; r71 F13: the accepted sockets not yet taken by a loop are bounded by the
+  ;; loops: an accept thread takes a socket from the kernel only into a
+  ;; loop's free slot (no reservation, empty inbox), reserved under
+  ;; MUX-SLOT-LOCK (host/native/mux.lisp fnn-mux-reserve); MUX-SLOT-FREE is
+  ;; signalled when a loop takes its inbox or a reservation is given back.
+  (mux-slot-lock (sb-thread:make-mutex :name "fn mux slots"))
+  (mux-slot-free (sb-thread:make-waitqueue :name "fn mux slot free"))
   (start-hooks nil) (stop-hooks nil) (close-hooks nil)
   ;; Private executable-test injection.  Production instances leave this NIL;
   ;; the value names a real connection envelope, not a second fault decision.
@@ -3040,14 +3047,6 @@ the mux connection waiting for it, or the DONE table until it registers."
     (when target
       (funcall (car target) completion))))
 
-(defun fnn-owner-take-done (service cid)
-  "CID's completion from the DONE table (a logical connection committed in
-its own quantum), removed; :uncertain when there is none."
-  (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
-    (multiple-value-bind (done present) (gethash cid (fnn-owner-service-done service))
-      (remhash cid (fnn-owner-service-done service))
-      (if present done :uncertain))))
-
 (defun fnn-owner-awaiting-sockets (service cid)
   "The socket of CID's waiting connection, as a list (none when it has not
 registered yet)."
@@ -3259,8 +3258,11 @@ members."
 
 (defun fnn-owner-commit-step-action (phase event)
   "ACL2's action for the commit's PHASE and EVENT (fn-ocs-commit-step), for
-the inline commit, which holds no gate phase (only at an idle owner: while a
-batch is in flight the gate admits no class that commits inline)."
+the inline commit, which holds no gate phase (only at an idle owner: its
+callers are the bound submission's :control quantum and the BP transit's
+:transit quantum, and while a batch is in flight the gate admits only
+:inspect, :commit and :reader, fn-ocp-in-flight-admits-only-inspect-commit-
+and-reader; no :reader quantum commits inline since r71 F5)."
   (let ((action (fnn-core 'fn-ocs-commit-step phase event)))
     (unless (member action '(:barrier :complete :stop :none :fault))
       (fnn-fault "owner returned a malformed commit step ~a" action))
@@ -4114,6 +4116,115 @@ CLOSING STARTTLS CONSUMED)."
       (t (fnn-owner-page-read-hold cid (first results))
          (values-list results)))))
 
+;;; A LOGICAL connection's feed (lane host-lifecycle, r71 F5 / sweep S003):
+;;; the web face's browser session (host/native/web-host.lisp, class :reader)
+;;; and the pull feed's transit connection (host/native/pull-service.lisp,
+;;; class :transit), neither with a socket.  The same served step as a mux
+;;; connection's, the same queued commit: a submitted step answers :await and
+;;; this thread waits for the batch's COMPLETE OFF the owner, as an I/O loop's
+;;; connection does (fnn-mux-await), then renders the step's plan with the
+;;; completion.  One shape for both callers (they were two copies of it).
+;;;
+;;; Returns (values REPLY CLOSING UNCERTAIN): the reply's octets; CLOSING when
+;;; the step closed the connection; UNCERTAIN when a submission's completion
+;;; was the bare uncertain one (no reply rendered: the batch's barrier
+;;; failed, or the owner stopped before the member was answered), or when
+;;; the caller's DEADLINE passed first (sweep S032: the web face's request
+;;; window, fn-web-host-request-seconds; a submission still pending then may
+;;; yet be stored) -- the caller reports it as no reply, never as a refusal
+;;; or an acceptance.  The reply is joined once from its rendered windows
+;;; (it was concatenated per window: quadratic in the windows, S032).
+
+(defun fnn-owner-join-octets (parts)
+  "One octet vector of PARTS, in order, copied once."
+  (let ((out (fnn-make-octets (loop for part in parts sum (length part))))
+        (at 0))
+    (dolist (part parts out)
+      (replace out part :start1 at)
+      (incf at (length part)))))
+
+(defun fnn-owner-past-p (deadline)
+  "DEADLINE (internal real time, or nil for none) has passed."
+  (and deadline (>= (fnn-now) deadline)))
+
+(defun fnn-owner-await-logical (service cid &optional deadline)
+  "CID's completion, waited for off the owner mutex: the member's rendered
+completion, (:close . OCTETS), or :uncertain.  The callback runs in the
+committer's COMPLETE (owner held, commit-lock released) and takes only this
+wait's own lock.  A stop that answers nobody, or DEADLINE passing first, is
+:uncertain."
+  (let* ((lock (sb-thread:make-mutex :name "fn logical await"))
+         (ready (sb-thread:make-waitqueue))
+         (cell nil)
+         (early (fnn-owner-await-register
+                 service cid
+                 (lambda (completion)
+                   (sb-thread:with-mutex (lock)
+                     (setq cell (list completion))
+                     (sb-thread:condition-notify ready)))
+                 nil)))
+    (when early (return-from fnn-owner-await-logical early))
+    (sb-thread:with-mutex (lock)
+      (loop until (or cell (fnn-owner-service-stopping service) (fnn-owner-past-p deadline))
+            do (sb-thread:condition-wait ready lock :timeout 1)))
+    (unless cell
+      ;; Stopping or past the deadline, unanswered: withdraw the
+      ;; registration; a completion delivered meanwhile is still taken.
+      (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
+        (remhash cid (fnn-owner-service-awaiting service))))
+    (sb-thread:with-mutex (lock)
+      (if cell (first cell) :uncertain))))
+
+(defun fnn-owner-feed-logical (service cid octets class what &optional deadline)
+  "Feed OCTETS to the logical connection CID as CLASS; WHAT names the caller
+in a fault; DEADLINE (internal real time) bounds the whole feed.
+(values REPLY CLOSING UNCERTAIN), above."
+  (let ((pending (fnn-octets octets)) (parts nil)
+        (closing nil) (uncertain nil))
+    (loop while (and (> (length pending) 0) (not closing)) do
+     (if (fnn-owner-past-p deadline)
+         (setq uncertain t closing t)
+      (let ((results (multiple-value-list
+                      (fnn-owner-handle-chunk service cid pending nil class))))
+        (case (first results)
+          ;; PRF-161's exposure charge (never for a transit connection):
+          ;; wait and feed the same octets.
+          (:defer (sleep (/ (min (second results) 1000) 1000)))
+          (t
+           (let ((plan nil) (consumed nil))
+             (unwind-protect
+                  (progn
+                    (if (eq (first results) :await)
+                        (destructuring-bind (tag step redeem close starttls used) results
+                          (declare (ignore tag starttls))
+                          (setq consumed used closing close)
+                          (let ((completion (fnn-owner-await-logical service cid deadline)))
+                            (cond ((eq completion :uncertain)
+                                   (setq uncertain t closing t))
+                                  (t
+                                   (when (and (consp completion) (eq (car completion) :close))
+                                     (setq completion (cdr completion) closing t))
+                                   (setq plan (fnn-core 'fn-splan-step-plan
+                                                        step completion redeem))))))
+                      (destructuring-bind (step-plan close starttls used &rest more) results
+                        (declare (ignore starttls more))
+                        (setq plan step-plan consumed used closing close)))
+                    (loop while plan do
+                      (when (fnn-owner-past-p deadline)
+                        (setq uncertain t closing t plan nil)
+                        (return))
+                      (multiple-value-bind (part rest donep yieldedp)
+                          (fnn-owner-render-next-quantum service cid plan class)
+                        (push part parts)
+                        (setq plan (if donep nil rest))
+                        (when (and plan yieldedp)
+                          (sleep (/ (fnn-core 'fn-splan-cursor-resume-ms) 1000))))))
+               (fnn-owner-response-unpin service cid))
+             (when (and (zerop consumed) (not closing))
+               (fnn-fault "owner consumed no octets of a ~a" what))
+             (setq pending (subseq pending consumed))))))))
+    (values (fnn-owner-join-octets (nreverse parts)) closing uncertain)))
+
 ;;; Developer image only (the resilience framework's `page-read-outstanding'
 ;;; point, planning/design-resilience-framework-2026-09-29.md section 5):
 ;;; FN_NATIVE_PAGE_READ_HOLD=MIN-OCTETS:RELEASE-FILE holds a served read
@@ -4574,17 +4685,14 @@ EPIPE and the client saw a bare close)."
            ;; for the next commit quantum, which drains it with every other
            ;; queued one and fences the log once; this connection's reply
            ;; is built when its completion arrives (fnn-owner-await-done).
-           ;; A logical connection (the pull feed: no socket) waits for
-           ;; nothing: the queued submissions, its own last, are committed
-           ;; now, in this quantum, and its completion read back.
-           (when (and submitted (fnn-owner-service-batching service) (null socket))
-             (fnn-owner-commit-queued-locked service)
-             (let ((done (fnn-owner-take-done service cid)))
-               (cond ((fnn-octet-list-p done) (setq completion done))
-                     ((and (consp done) (eq (car done) :close))
-                      (setq completion (cdr done) uncertain t))
-                     (t (setq completion nil uncertain t))))
-             (setq submitted nil))
+           ;; A logical connection (the web face's and the pull feed's: no
+           ;; socket) is no exception: it awaits its completion off the
+           ;; owner (fnn-owner-feed-logical).  It used to commit inline here
+           ;; as if the owner were idle, but a :reader quantum is admitted
+           ;; while a batch is in flight (fn-ocp-in-flight-admits-only-
+           ;; inspect-commit-and-reader): that START waited for the other
+           ;; batch's barrier under the owner and ran a second barrier inline
+           ;; (r71 F5, sweep S003).
            (when (and submitted (fnn-owner-service-batching service))
              ;; Lane time-model (PRF-311): while the disk is slow (a barrier
              ;; pending past its deadline at this quantum's recorded time,
@@ -4678,12 +4786,30 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
 ;;; runtime regions for the connection's whole life (PKT-605).  Everything
 ;;; the worker did, in its order and under its handlers, is the loop's
 ;;; connection record now.
-(defun fnn-owner-launch-client (service socket &optional implicit-tls)
-  "Register the socket with a loop before it can enter the owner core; while
-the node retires (row S9), refuse it by name instead."
+(defun fnn-owner-launch-client (service socket &optional implicit-tls reserved)
+  "Register the socket with a loop before it can enter the owner core (the
+slot RESERVED for it, fnn-mux-reserve); while the node retires (row S9),
+refuse it by name instead, giving the slot back."
   (if (fnn-owner-service-retire service)
-      (fnn-owner-retire-refuse socket implicit-tls)
-    (fnn-mux-adopt service socket implicit-tls)))
+      (unwind-protect (fnn-owner-retire-refuse socket implicit-tls)
+        (when reserved (fnn-mux-unreserve service reserved)))
+    (fnn-mux-adopt service socket implicit-tls nil reserved)))
+
+(defun fnn-owner-accept-one (service listener seconds &optional implicit-tls)
+  "At most one connection from LISTENER into a loop's free slot (r71 F13,
+host/native/mux.lisp fnn-mux-reserve): wait SECONDS for one to be queued;
+then reserve a slot (at most SECONDS more; none free: the connection stays
+in the kernel's queue for the next call); then one accept(2)
+(fnn-accept-attempt: an attempt that takes no connection gives the slot
+back and backs off as it names)."
+  (when (fnn-accept-ready-p listener seconds)
+    (let ((slot (fnn-mux-reserve service seconds)))
+      (when slot
+        (let ((got (fnn-accept-attempt listener)))
+          (if (keywordp got)
+              (progn (fnn-mux-unreserve service slot)
+                     (fnn-accept-backoff got seconds))
+            (fnn-owner-launch-client service got implicit-tls slot)))))))
 
 ;;; Row S9: while the node retires every new connection is refused by name
 ;;; (books/native-retire.lisp): on a plain listener RFC 3977's 502 greeting,
@@ -4802,13 +4928,24 @@ renamed into place, the directory fenced."
         action))))
 
 (defun fnn-owner-wait-workers (service)
-  "Join client workers before closing any shared journal or Store object."
+  "Join client workers before closing any shared journal or Store object.
+A worker leaves the roster as the last act of its own unwind, so an empty
+roster means every one has run all its cleanup.  A worker that ended
+abnormally has ended all the same: the join observes its termination
+(:default, never join-thread-error escaping the stop) and names it."
   (loop
     (let ((workers
             (fnn-with-roster (service)
               (copy-list (fnn-owner-service-workers service)))))
       (when (null workers) (return))
-      (dolist (worker workers) (sb-thread:join-thread worker)))))
+      (dolist (worker workers)
+        (when (eq (sb-thread:join-thread worker :default '%fnn-worker-abnormal)
+                  '%fnn-worker-abnormal)
+          (fnn-err "stopping: worker ~a ended abnormally" (sb-thread:thread-name worker))
+          ;; Its unwind may not have reached the roster: it is joined.
+          (fnn-with-roster (service)
+            (setf (fnn-owner-service-workers service)
+                  (delete worker (fnn-owner-service-workers service) :test #'eq))))))))
 
 ;;; Garbage between collections in the owner process.  SBCL's default
 ;;; trigger is 5% of the dynamic space the launcher reserves (32,000 MB,
@@ -5011,6 +5148,20 @@ or pending (closed by a later release) and serving continues."
       (serious-condition (e)
         (fnn-err "CHECKPOINT release failed (files stay retired): ~a" e)))))
 
+;;; Developer image only (lane host-lifecycle, r71 F10): FN_NATIVE_WORKER_
+;;; TAIL_HOLD=RELEASE-FILE holds the checkpoint publisher and the exporter at
+;;; the tail of their work -- the publication finished (or the export's
+;;; outcome is published) and the arena generation is still pinned -- until
+;;; the file exists, printing `WORKER-TAIL held worker=NAME'.  A scenario
+;;; stops the owner there: the stop must join the held worker before it
+;;; settles the Store.
+(defun fnn-owner-worker-tail-hold (name)
+  (let ((release (fnn-developer-selector "FN_NATIVE_WORKER_TAIL_HOLD")))
+    (when (and release (plusp (length release)) (not (probe-file release)))
+      (fnn-err "WORKER-TAIL held worker=~a" name)
+      (loop until (probe-file release) do (sleep 0.05))
+      (fnn-err "WORKER-TAIL released worker=~a" name))))
+
 (defun fnn-owner-publish-captured (service captured &optional position pin)
   "The publication's thread: ACL2's fn-ock-next-checkpoint over the values
 captured under the owner mutex (NEXT, the capture of the history at the
@@ -5026,6 +5177,14 @@ through fn-bs-scp-program's staged file before the next), all outside the
 mutex; then fn-owner-sco-publication-done under it.  A failed write leaves
 the old checkpoint (or, at and after the rename, the old or the new one:
 the crash keystone) and serving continues."
+  ;; r71 F10 (sweep S018): this thread stays in the worker roster through
+  ;; every action it takes -- the publication, its unpin, the nursery, the
+  ;; next decision -- and leaves it as the last act of its unwind, so the
+  ;; stop's join (fnn-owner-wait-workers) never sees `all joined' while it
+  ;; runs.  The publisher SLOT (one publication at a time) is released once
+  ;; the pin and the nursery are back, before the next decision.
+  (unwind-protect
+       (progn
   ;; The publication allocates in proportion to the history: the open's
   ;; trigger while it runs, the service trigger again when it ends.
   (setf (sb-ext:bytes-consed-between-gcs) (fnn-gc-nursery-octets))
@@ -5144,13 +5303,13 @@ the crash keystone) and serving continues."
           (when durablep
             (fnn-owner-release-extents service (fnn-owner-service-store service)
                                        *fnn-checkpoint-frames* dropped-paths pin)))
-        (fnn-with-roster (service)
-          (setf (fnn-owner-service-publisher service) nil
-                (fnn-owner-service-workers service)
-                (delete sb-thread:*current-thread*
-                        (fnn-owner-service-workers service) :test #'eq))))))
+        nil)))
+    (fnn-owner-worker-tail-hold "publisher")
     (when pin (fnn-arena-unpin pin))
     (fnn-owner-service-nursery))
+  ;; The slot: the next publication may start now (the pin and the nursery
+  ;; are back).
+  (fnn-owner-publisher-release service)
   ;; PKT-583 (b): the publication finished; decide again from the newest
   ;; committed frontier now, not at the next accept (a load's tail has
   ;; none), so a coalesced request is served as soon as it can be and a
@@ -5158,8 +5317,34 @@ the crash keystone) and serving continues."
   ;; fnn-owner-maybe-publish takes the mutex itself and refuses while
   ;; stopping; at most one publication is in flight (fn-ock-one-
   ;; publication-in-flight).  After the service trigger is back, so a
-  ;; publication it starts sets its own.
-  (fnn-owner-maybe-publish service))
+  ;; publication it starts sets its own.  A stopping owner decides nothing
+  ;; more.  This thread's own failure here is classified, never an
+  ;; unhandled thread error (which ends the process with code 1 under
+  ;; --disable-debugger, skipping the stop's settlement).
+  (unless (fnn-owner-service-stopping service)
+    (handler-case (fnn-owner-maybe-publish service)
+      (fnn-store-indeterminate (e)
+        (fnn-err "CHECKPOINT auto uncertain; the store needs recovery: ~a" e)
+        (ignore-errors (fnn-owner-fence-service service)))
+      (fnn-store-fault (e)
+        (ignore-errors (fnn-owner-fault-service service nil e)))
+      (fnn-store-error (e)
+        (fnn-err "CHECKPOINT auto failed: ~a" e))
+      (serious-condition (e)
+        (ignore-errors (fnn-owner-fault-service service nil e))))))
+    ;; Last: the slot if a failure skipped its release, then the roster.
+    (fnn-owner-publisher-release service)
+    (fnn-with-roster (service)
+      (setf (fnn-owner-service-workers service)
+            (delete sb-thread:*current-thread*
+                    (fnn-owner-service-workers service) :test #'eq)))))
+
+(defun fnn-owner-publisher-release (service)
+  "Clear the publisher slot when it is this thread's (a later publication
+may already hold it)."
+  (fnn-with-roster (service)
+    (when (eq (fnn-owner-service-publisher service) sb-thread:*current-thread*)
+      (setf (fnn-owner-service-publisher service) nil))))
 
 (defun fnn-owner-maybe-publish (service)
   "One publication decision (fnn-owner-maybe-publish-quantum), and when it
@@ -5268,8 +5453,12 @@ reads run as a :control quantum; the thread's registration is the roster's."
                                                          service captured position pin)))
                                                     :name "fn owner checkpoint"))
                                      (unless made (fnn-arena-unpin pin)))))))
-                (setf (fnn-owner-service-publisher service) thread)
-                (push thread (fnn-owner-service-workers service)))))))))))
+                ;; Only a thread that exists takes the slot and joins the
+                ;; roster (r71 F12): a rotation refusal made none, and a NIL
+                ;; worker broke the stop's join.
+                (when thread
+                  (setf (fnn-owner-service-publisher service) thread)
+                  (push thread (fnn-owner-service-workers service))))))))))))
 
 ;;; Row S3b (lane operability-7): `store export DIR' on the running owner
 ;;; (books/owner-export-request.lisp fn-oex-; SCN-210, PRF-988).  The export
@@ -5405,14 +5594,21 @@ the stop's refusal at a chunk boundary is `owner-stopping'."
              (serious-condition (e)
                (setq outcome (cons :failed :archive-write))
                (fnn-err "EXPORT failed archive=~a reason=archive-write: ~a" dir e))))
-      (fnn-with-roster (service)
-        (setf (fnn-owner-service-exporter service) nil
-              (fnn-owner-service-export-outcome service)
-              (or outcome (cons :failed :archive-write))
-              (fnn-owner-service-workers service)
-              (delete sb-thread:*current-thread*
-                      (fnn-owner-service-workers service) :test #'eq)))
-      (fnn-arena-unpin pin))))
+      ;; r71 F10: the outcome and the exporter slot first (the request's
+      ;; answer), the unpin, and only then this thread leaves the roster,
+      ;; the last act of its unwind: the stop joins it through its unpin.
+      (unwind-protect
+           (progn
+             (fnn-with-roster (service)
+               (setf (fnn-owner-service-exporter service) nil
+                     (fnn-owner-service-export-outcome service)
+                     (or outcome (cons :failed :archive-write))))
+             (fnn-owner-worker-tail-hold "exporter")
+             (fnn-arena-unpin pin))
+        (fnn-with-roster (service)
+          (setf (fnn-owner-service-workers service)
+                (delete sb-thread:*current-thread*
+                        (fnn-owner-service-workers service) :test #'eq)))))))
 
 ;;; Q16 (lane online-reclaim): `store reclaim --dry-run' on the running
 ;;; owner (books/owner-reclaim.lisp; host/owner-host.lisp fn-owner-orc-*).
@@ -5939,13 +6135,18 @@ thread is a worker, so the stop joins it with the clients."
                           (when (or *fnn-sigterm-requested*
                                     (fnn-owner-service-stopping service))
                             (return))
-                          (let ((socket (fnn-accept-observe listener 1)))
-                            (unless (eq socket :timeout)
-                              (fnn-owner-launch-client service socket implicit-tls))))
-                      (sb-bsd-sockets:socket-error (condition)
+                          (fnn-owner-accept-one service listener 1 implicit-tls))
+                      ;; A client's event is no condition here (fnn-accept-
+                      ;; observe names it and this loop goes on).  What is
+                      ;; left is the listener's own failure or a defect: past
+                      ;; a stop it is the stop; otherwise the node would serve
+                      ;; on with this port dead, so it is the owner's fault,
+                      ;; named, as the control accept loop's is.
+                      (serious-condition (condition)
                         (unless (or *fnn-sigterm-requested*
                                     (fnn-owner-service-stopping service))
-                          (fnn-err "owner TLS listener: ~a" condition))))
+                          (fnn-err "owner ~:[~;TLS ~]listener: ~a" implicit-tls condition)
+                          (ignore-errors (fnn-owner-fault-service service nil condition)))))
                  (fnn-with-roster (service)
                    (setf (fnn-owner-service-workers service)
                          (delete sb-thread:*current-thread*
@@ -5965,13 +6166,13 @@ thread is a worker, so the stop joins it with the clients."
               (fnn-owner-service-stopping service))
       (return))
     (handler-case
-        (let ((socket (fnn-accept-observe listener 1)))
-          (unless (eq socket :timeout)
-            (if once
-                (progn
+        (progn
+          (if once
+              (let ((socket (fnn-accept-observe listener 1)))
+                (unless (eq socket :timeout)
                   (fnn-mux-serve-once service socket)
-                  (return))
-              (fnn-owner-launch-client service socket)))
+                  (return)))
+            (fnn-owner-accept-one service listener 1))
           ;; Before the next accept: the owner's checkpoint publication,
           ;; and a log reopen a SIGHUP asked for (PKT-101).
           (fnn-owner-cold-reap service)

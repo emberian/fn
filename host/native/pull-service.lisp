@@ -268,34 +268,16 @@
 
 (defun fnn-pull-local-send (service cid octets)
   "Feed OCTETS to the logical connection; return (values reply closing).
-The step answers a render plan (HST-023); it is rendered into REPLY here,
-off the owner mutex, window by window as the I/O loop writes one to a
-socket (fnn-owner-render-next).  A deferred step (the exposure charge,
-PRF-161: never for a logical connection, which has no exposure record)
-waits its milliseconds and is fed the same octets."
-  (let ((pending (fnn-octets octets)) (reply (fnn-make-octets 0)) (closing nil))
-    (loop while (and (> (length pending) 0) (not closing)) do
-      (let ((results (multiple-value-list
-                      (fnn-owner-handle-chunk service cid pending nil :transit))))
-        (if (eq (first results) :defer)
-            (sleep (/ (min (second results) 1000) 1000))
-          (destructuring-bind (plan close starttls consumed &rest more) results
-            (declare (ignore starttls more))
-            (unwind-protect
-                 (loop
-                   (multiple-value-bind (octets rest donep yieldedp)
-                       (fnn-owner-render-next-quantum service cid plan :transit)
-                     (setq reply (concatenate 'fnn-octets reply octets))
-                     (when donep (return))
-                     (setq plan rest)
-                     (when yieldedp
-                       (sleep (/ (fnn-core 'fn-splan-cursor-resume-ms) 1000)))))
-              (fnn-owner-response-unpin service cid))
-            (setq closing close)
-            (when (and (zerop consumed) (not close))
-              (fnn-fault "owner consumed no octets of a pull transit write"))
-            (setq pending (subseq pending consumed))))))
-    (values reply closing)))
+The owner's logical feed (host/native/owner.lisp fnn-owner-feed-logical):
+the served step's plan rendered here, off the owner mutex, and an
+article's submission awaited off it through the batch it joins (r71 F5:
+no inline commit).  A completion with no rendered reply (the batch's
+barrier failed or the owner stopped) closes the transit connection, the
+round's lost local connection: uncertain, never a refusal or an
+acceptance (the owner is stopping or fenced then)."
+  (multiple-value-bind (reply closing uncertain)
+      (fnn-owner-feed-logical service cid octets :transit "pull transit write")
+    (values reply (or closing uncertain))))
 
 ;;; The credential profile ACL2 names for PLAN (`fn-pull-plan-profile-path':
 ;;; nil for a plan without a credential and for a refused plan), read and
@@ -333,6 +315,26 @@ waits its milliseconds and is fed the same octets."
          ;; failing step's fn-pull-session-failure), for the log line.
          (why nil))
     (labels ((enqueue (event) (setq events (append events (list event))))
+             ;; Sweep S007: the owner's refusal of the local transit
+             ;; connection (its connection table full: fn-own-open-peer
+             ;; answers no id) or of a step on it is this round's lost local
+             ;; connection, (:lost :local), never the node's fault.  A Store
+             ;; fault or an uncertain outcome is still the node's.
+             (local-scoped (thunk)
+               (handler-case (funcall thunk)
+                 ((or fnn-store-fault fnn-store-indeterminate) (e) (error e))
+                 (fnn-store-error (e)
+                   (fnn-err "pull: the local transit connection of peer ~a was refused: ~a"
+                            (fnn-pull-peer-string peer) e)
+                   ;; CID, if one was open, stays for the round's own close.
+                   (enqueue (list :lost :local)))))
+             (open-local ()
+               (local-scoped
+                (lambda ()
+                  (multiple-value-bind (opened greeting)
+                      (fnn-pull-local-open service peer)
+                    (setq cid opened)
+                    (enqueue (cons :local (fnn-octet-list greeting)))))))
              (send-remote (octets)
                (if channel
                    (fnn-tls-send-all channel octets 10)
@@ -383,11 +385,7 @@ waits its milliseconds and is fed the same octets."
                           (enqueue (list :lost :tls))))))
                    (:remote (handler-case (send-remote (fnn-octets (cdr effect)))
                               (error () (enqueue (list :lost :send)))))
-                   (:open-local
-                    (multiple-value-bind (opened greeting)
-                        (fnn-pull-local-open service peer)
-                      (setq cid opened)
-                      (enqueue (cons :local (fnn-octet-list greeting)))))
+                   (:open-local (open-local))
                    ;; PRF-165: the peer answered ARTICLE 430; the transit
                    ;; connection is inside an IHAVE it cannot finish.  Close
                    ;; it (the owner discards the unfinished IHAVE) and open a
@@ -399,18 +397,17 @@ waits its milliseconds and is fed the same octets."
                         (fnn-owner-response-unpin service old)
                         (fnn-owner-transit-serialized service nil
                                               (lambda () (fnn-owner-action 'fn-owner-close old)))))
-                    (multiple-value-bind (opened greeting)
-                        (fnn-pull-local-open service peer)
-                      (setq cid opened)
-                      (enqueue (cons :local (fnn-octet-list greeting)))))
+                    (open-local))
                    (:local
-                    (multiple-value-bind (reply closing)
-                        (fnn-pull-local-send service cid (cdr effect))
-                      (when (> (length reply) 0)
-                        (enqueue (cons :local (fnn-octet-list reply))))
-                      (when closing
-                        (setq cid nil)
-                        (enqueue (list :lost :local)))))
+                    (local-scoped
+                     (lambda ()
+                       (multiple-value-bind (reply closing)
+                           (fnn-pull-local-send service cid (cdr effect))
+                         (when (> (length reply) 0)
+                           (enqueue (cons :local (fnn-octet-list reply))))
+                         (when closing
+                           (setq cid nil)
+                           (enqueue (list :lost :local)))))))
                    (:close nil)
                    (t (fnn-fault "unknown pull effect ~s" (car effect))))))
              (advance (event)

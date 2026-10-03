@@ -5708,22 +5708,99 @@ intentionally not timed by this function."
                             (fnn-octet-list host))
                           (fnn-peer-dial-outcome condition))))
 
+;;; One accept(2), the only one in the host (lane host-lifecycle; Astra r71,
+;;; inspection sweep S001/S004).  What one attempt can meet is a named
+;;; outcome, never a condition that ends the loop asking:
+;;;   a socket     -- a connection, the caller's to serve and close;
+;;;   :AGAIN       -- no connection this attempt: nothing queued after a
+;;;                   readiness wake (SBCL's socket-accept answers NIL on
+;;;                   EAGAIN and EINTR), a peer that reset before the accept
+;;;                   (ECONNABORTED on the BSDs and Darwin), or a network error
+;;;                   accept(2) passes through for the one connection (Linux
+;;;                   accept(2): treat as EAGAIN);
+;;;   :EXHAUSTED   -- the process or system had no descriptor or buffer for
+;;;                   the queued connection (EMFILE ENFILE ENOBUFS ENOMEM): it
+;;;                   stays in the kernel's queue, the caller backs off.
+;;; A listener-level failure (EBADF, EINVAL, ENOTSOCK: the listener was shut
+;;; or closed) and any other condition stay conditions: the caller classifies
+;;; them against its own stop and fault state.
+(defparameter *fnn-accept-again-errnos*
+  (list sb-posix:eagain sb-posix:ewouldblock sb-posix:eintr sb-posix:econnaborted
+        sb-posix:econnreset sb-posix:eproto sb-posix:enetdown sb-posix:enetunreach
+        sb-posix:ehostdown sb-posix:ehostunreach #+linux sb-posix:enonet
+        sb-posix:enoprotoopt sb-posix:eopnotsupp sb-posix:etimedout sb-posix:eperm))
+
+(defparameter *fnn-accept-exhausted-errnos*
+  (list sb-posix:emfile sb-posix:enfile sb-posix:enobufs sb-posix:enomem))
+
+(defun fnn-accept-attempt (listener)
+  "One accept(2) on LISTENER: a socket, :AGAIN or :EXHAUSTED (above)."
+  (handler-case (or (sb-bsd-sockets:socket-accept listener) :again)
+    (sb-bsd-sockets:socket-error (condition)
+      (let ((errno (sb-bsd-sockets::socket-error-errno condition)))
+        (cond ((member errno *fnn-accept-again-errnos*) :again)
+              ((member errno *fnn-accept-exhausted-errnos*)
+               (fnn-err "accept: no descriptor for a queued connection (~a); backing off" condition)
+               :exhausted)
+              (t (error condition)))))))
+
+(defun fnn-accept-backoff (outcome seconds)
+  "After an attempt that took no connection: wait SECONDS when the process
+had no descriptor (the queued connection stays the kernel's), else nothing."
+  (when (eq outcome :exhausted)
+    (sleep seconds)))
+
+(defun fnn-accept-settle (got seconds)
+  "GOT, fnn-accept-attempt's outcome: the socket, or :TIMEOUT after the
+backoff an attempt that took no connection owes."
+  (if (keywordp got)
+      (progn (fnn-accept-backoff got seconds) :timeout)
+    got))
+
+(defun fnn-accept-ready-p (listener seconds)
+  "LISTENER has a connection queued (or an error to report) within SECONDS."
+  (funcall *fnn-fd-waiter* (fnn-socket-fd listener) :input seconds))
+
 (defun fnn-accept-observe (listener seconds)
-  "Return one accepted socket or :TIMEOUT after a bounded readiness wait.
+  "Return one accepted socket or :TIMEOUT after a bounded readiness wait;
+an attempt that took no connection (fnn-accept-attempt's :AGAIN or
+:EXHAUSTED, the latter after backing off SECONDS) is a :TIMEOUT too.
 
 The listener is nonblocking so shutdown(2) need not wake a blocking accept(2)
-on every supported host.  Socket and syscall conditions remain conditions for
-the caller to classify against its own stop and fault state."
-  (let ((fd (fnn-socket-fd listener)))
-    (if (funcall *fnn-fd-waiter* fd :input seconds)
-        (sb-bsd-sockets:socket-accept listener)
-      :timeout)))
+on every supported host.  Listener-level socket conditions remain conditions
+for the caller to classify against its own stop and fault state."
+  (if (fnn-accept-ready-p listener seconds)
+      (fnn-accept-settle (fnn-accept-attempt listener) seconds)
+    :timeout))
+
+;;; One accepted connection's work, scoped to it (S006): a Store fault and an
+;;; indeterminate outcome are the process's and are re-signalled (the caller's
+;;; unwind closes the listener and nothing later mutates the same journal);
+;;; a known refusal (fnn-store-error) and a lost connection (fnn-os-error,
+;;; socket-error: the peer reset, timed out or went away) end only this
+;;; connection: logged under LABEL, and ON-OUTCOME is called with :REFUSED or
+;;; :UNCERTAIN, the session words ACL2's run class counts (fn-bprc-note).
+(defmacro fnn-connection-scoped ((label on-outcome) &body body)
+  (let ((e (gensym "E")))
+    `(handler-case (progn ,@body)
+       (fnn-store-indeterminate (,e) (error ,e))
+       (fnn-store-fault (,e) (error ,e))
+       (fnn-store-error (,e)
+         (fnn-err "~a: ~a" ,label ,e)
+         (funcall ,on-outcome :refused))
+       ((or fnn-os-error sb-bsd-sockets:socket-error) (,e)
+         (fnn-err "~a: ~a" ,label ,e)
+         (funcall ,on-outcome :uncertain)))))
 
 (defun fnn-accept-loop (listener handler &optional once)
-  "Run HANDLER on each accepted connection; HANDLER owns and closes its socket."
+  "Run HANDLER on each accepted connection; HANDLER owns and closes its socket.
+With ONCE, return after the first connection (an attempt that took none does
+not count)."
   (loop
-    (funcall handler (sb-bsd-sockets:socket-accept listener))
-    (when once (return))))
+    (let ((got (fnn-accept-observe listener 1)))
+      (unless (eq got :timeout)
+        (funcall handler got)
+        (when once (return))))))
 
 ;;; Several listeners, one serialized loop (specs/bp-node-machine.md 9.1).
 ;;; poll(2) says which listeners have a connection waiting; the first ready
@@ -5768,8 +5845,11 @@ time; HANDLER owns and closes its socket.  With ONCE, return after one."
     (loop
       (let ((index (fnn-poll-readable fds 1000)))
         (when index
-          (funcall handler (sb-bsd-sockets:socket-accept (nth index listeners)))
-          (when once (return)))))))
+          (let ((got (fnn-accept-attempt (nth index listeners))))
+            (if (keywordp got)
+                (fnn-accept-backoff got 1)
+              (progn (funcall handler got)
+                     (when once (return))))))))))
 
 (defun fnn-serve-client (socket)
   "Serve one connection; a broken peer cannot end the listener.  A core
@@ -6022,6 +6102,10 @@ tree root), or stop the build."
     "FN_NATIVE_CHECKPOINT_BUDGET_TEST" "FN_NATIVE_RECLAIM_FAULT"
     "FN_NATIVE_TEST_RECLAIM_STALL_FILE" "FN_NATIVE_RECLAIM_HOLD"
     "FN_NATIVE_PAGE_READ_HOLD"
+    ;; lane host-lifecycle: lifecycle windows held open for the natives
+    ;; (host/native/owner.lisp fnn-owner-worker-tail-hold, host/native/mux.lisp
+    ;; fnn-mux-adopt-hold).
+    "FN_NATIVE_WORKER_TAIL_HOLD" "FN_NATIVE_ADOPT_HOLD"
     "FN_NATIVE_PAGE_IO_HOLD" "FN_NATIVE_PAGE_IO_RESULT"
     "FN_NATIVE_DISK_FREE"
     "FN_NATIVE_EXTENT_CACHE_TEST_OFF"

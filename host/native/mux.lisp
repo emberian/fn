@@ -85,6 +85,14 @@
   ;; wait for a batch's completion or still owe their client its reply (under
   ;; LOCK); a graceful stop's drain reads it (fnn-mux-unsent).
   (unsent 0)
+  ;; r71 F9 / sweep S021: set under LOCK when the stopping loop takes its
+  ;; last inbox; from then nothing is pushed to INBOX or ARRIVED and the wake
+  ;; pipe is not written (it is closed under LOCK, after this is set).
+  (closed nil)
+  ;; r71 F13: an accept thread holds this loop's one pending-accept slot
+  ;; (under the service's MUX-SLOT-LOCK) from before its accept(2) until the
+  ;; socket is in INBOX or given back (fnn-mux-reserve).
+  (reserved nil)
   ;; The loop's one read buffer, of the served read size ACL2 decided
   ;; (fnn-mux-read-buffer): a read allocates only the octets it returns.
   (buffer nil))
@@ -221,11 +229,19 @@ direction to wait for."
                         remaining "socket" nil t)))
         (if (eq progress :would-block) :output progress)))))
 
+(defun fnn-mux-wake-locked (loop)
+  "LOOP's LOCK held: one octet to the wake pipe, unless the loop has closed
+(its descriptors are closed under LOCK after CLOSED is set, so a write here
+never reaches a number the kernel may have reused)."
+  (unless (fnn-mux-loop-closed loop)
+    (let ((one (fnn-make-octets 1)))
+      (ignore-errors
+        (sb-sys:with-pinned-objects (one)
+          (sb-unix:unix-write (fnn-mux-loop-wake-write loop) one 0 1))))))
+
 (defun fnn-mux-wake (loop)
-  (let ((one (fnn-make-octets 1)))
-    (ignore-errors
-      (sb-sys:with-pinned-objects (one)
-        (sb-unix:unix-write (fnn-mux-loop-wake-write loop) one 0 1)))))
+  (sb-thread:with-mutex ((fnn-mux-loop-lock loop))
+    (fnn-mux-wake-locked loop)))
 
 (defun fnn-mux-drain-wake (loop)
   (let ((buffer (fnn-make-octets 64)))
@@ -400,15 +416,17 @@ DONEP)."
                                  (fnn-mux-conn-class conn)
                                  (and (fnn-mux-conn-zout conn) t)))
 
-(defun fnn-mux-plan-yield (conn plan after &optional empty-progressp)
+(defun fnn-mux-plan-yield (loop conn plan after &optional empty-progressp)
   "Retain the cursor's exact continuation and ownership until its
 positive ACL2 scheduling delay expires.  AFTER belongs to the whole reply."
   (let ((ms (fnn-core 'fn-splan-cursor-resume-ms)))
     (unless (and (integerp ms) (> ms 0))
       (fnn-fault "owner returned a malformed cursor resume delay"))
     (when (fnn-developer-selector "FN_NATIVE_OVER_WINDOW")
-      (fnn-err "OVER ~a cid=~d" (if empty-progressp "empty-yield" "cursor-yield")
-               (fnn-mux-conn-cid conn)))
+      ;; PASSES: the loop's completed passes (lane host-lifecycle: an
+      ;; ineligible idle deadline made a yield's wait a busy poll, r71 F11).
+      (fnn-err "OVER ~a cid=~d passes=~d" (if empty-progressp "empty-yield" "cursor-yield")
+               (fnn-mux-conn-cid conn) (fnn-mux-loop-passes loop)))
     (setf (fnn-mux-conn-plan conn) plan
           (fnn-mux-conn-after conn) after
           (fnn-mux-conn-out conn) nil
@@ -426,7 +444,7 @@ whole reply; a plan with nothing to write runs AFTER at once."
   (multiple-value-bind (octets rest donep yieldedp)
       (fnn-mux-render-next loop conn plan)
     (setf (fnn-mux-conn-plan conn) (if donep nil rest))
-    (cond (yieldedp (fnn-mux-plan-yield conn rest after t))
+    (cond (yieldedp (fnn-mux-plan-yield loop conn rest after t))
           ((> (length octets) 0) (fnn-mux-queue loop conn octets :send-reply after))
           (t (fnn-mux-after loop conn after)))))
 
@@ -452,13 +470,13 @@ window (off the owner mutex) and go on; with nothing left, run AFTER."
         ;; cursor quantum into this same I/O event, even when the socket
         ;; could accept every window immediately.  Timers re-feed it.
         (when (and plan (fnn-core 'fn-splan-at-cursorp plan))
-          (fnn-mux-plan-yield conn plan (fnn-mux-conn-after conn))
+          (fnn-mux-plan-yield loop conn plan (fnn-mux-conn-after conn))
           (return-from fnn-mux-flush nil))
         (if plan
             (multiple-value-bind (octets rest donep yieldedp)
                 (fnn-mux-render-next loop conn plan)
               (when yieldedp
-                (fnn-mux-plan-yield conn rest (fnn-mux-conn-after conn) t)
+                (fnn-mux-plan-yield loop conn rest (fnn-mux-conn-after conn) t)
                 (return-from fnn-mux-flush nil))
               (setf (fnn-mux-conn-plan conn) (if donep nil rest)
                     (fnn-mux-conn-out conn) (fnn-mux-z-out conn octets)
@@ -679,9 +697,12 @@ the same octets are handed to the next step."
     (let ((early (fnn-owner-await-register
                   service (fnn-mux-conn-cid conn)
                   (lambda (completion)
+                    ;; A closed loop has finished CONN already: nothing to
+                    ;; hand it.
                     (sb-thread:with-mutex ((fnn-mux-loop-lock loop))
-                      (push (cons conn completion) (fnn-mux-loop-arrived loop)))
-                    (fnn-mux-wake loop))
+                      (unless (fnn-mux-loop-closed loop)
+                        (push (cons conn completion) (fnn-mux-loop-arrived loop))
+                        (fnn-mux-wake-locked loop))))
                   (fnn-mux-conn-socket conn))))
       (when early
         (fnn-mux-await-done loop conn early)))))
@@ -1134,6 +1155,17 @@ operation then observes the error or the end of input)."
            (fnn-mux-flush loop conn)
          (fnn-mux-readable loop conn))))))
 
+(defun fnn-mux-idle-eligible-p (conn)
+  "The idle check may fire for CONN: serving, and holding nothing of a reply
+or a request -- no output queued, no plan (a cursor yield's continuation
+included), no input in hand, no completion awaited, no resume timer."
+  (and (eq (fnn-mux-conn-phase conn) :serving)
+       (null (fnn-mux-conn-out conn))
+       (null (fnn-mux-conn-plan conn))
+       (null (fnn-mux-conn-input conn))
+       (null (fnn-mux-conn-await conn))
+       (null (fnn-mux-conn-resume-at conn))))
+
 (defun fnn-mux-timers (loop now)
   "Run each connection's due timer; answer the ticks to the next one."
   (let ((next nil) (service (fnn-mux-service loop)))
@@ -1170,12 +1202,7 @@ operation then observes the error or the end of input)."
                    (fnn-mux-queue-plan loop conn (fnn-mux-conn-plan conn)
                                        (fnn-mux-conn-after conn))
                  (fnn-mux-work loop conn)))
-              ((and (eq (fnn-mux-conn-phase conn) :serving)
-                    (null (fnn-mux-conn-out conn))
-                    (null (fnn-mux-conn-plan conn))
-                    (null (fnn-mux-conn-input conn))
-                    (null (fnn-mux-conn-await conn))
-                    (null (fnn-mux-conn-resume-at conn))
+              ((and (fnn-mux-idle-eligible-p conn)
                     (due (fnn-mux-conn-idle-at conn)))
                (fnn-mux-idle loop conn))))
           (unless (eq (fnn-mux-conn-phase conn) :done)
@@ -1184,8 +1211,10 @@ operation then observes the error or the end of input)."
               ((:handshake :tls-queued :hs-wait :proxy) (note (fnn-mux-conn-hs-deadline conn)))
               (:draining (note (fnn-mux-conn-drain-deadline conn)))
               (:serving (note (fnn-mux-conn-resume-at conn))
-               (unless (or (fnn-mux-conn-out conn) (fnn-mux-conn-input conn)
-                           (fnn-mux-conn-await conn))
+               ;; The idle deadline is scheduled exactly when it may fire:
+               ;; an expired one the firing arm above declines would make
+               ;; the poll's timeout zero until the resume (r71 F11).
+               (when (fnn-mux-idle-eligible-p conn)
                  (note (fnn-mux-conn-idle-at conn)))))))))
     next))
 
@@ -1193,6 +1222,9 @@ operation then observes the error or the end of input)."
   (let ((new (sb-thread:with-mutex ((fnn-mux-loop-lock loop))
                (prog1 (nreverse (fnn-mux-loop-inbox loop))
                  (setf (fnn-mux-loop-inbox loop) nil)))))
+    ;; The slot is free again: an accept thread waiting for one may take the
+    ;; next socket from the kernel's queue (fnn-mux-reserve).
+    (when new (fnn-mux-slot-signal (fnn-mux-service loop)))
     (dolist (conn new)
       (push conn (fnn-mux-loop-conns loop))
       (fnn-mux-guarded (loop conn)
@@ -1313,8 +1345,11 @@ including the completions a batch's COMPLETE handed this loop before the stop
 (the connections whose replies report an uncertain outcome are the sockets
 the stop spared, fnn-owner-stop-service-locked), then end every connection."
   (let ((service (fnn-mux-service loop)))
+    ;; The last inbox: CLOSED is set in the same hold, so an adopter that
+    ;; comes later settles its own socket (fnn-mux-adopt).
     (sb-thread:with-mutex ((fnn-mux-loop-lock loop))
-      (setf (fnn-mux-loop-conns loop)
+      (setf (fnn-mux-loop-closed loop) t
+            (fnn-mux-loop-conns loop)
             (append (fnn-mux-loop-inbox loop) (fnn-mux-loop-conns loop))
             (fnn-mux-loop-inbox loop) nil))
     ;; A batch's COMPLETE that stops the service (books/owner-commit-steps.lisp
@@ -1334,8 +1369,9 @@ the stop spared, fnn-owner-stop-service-locked), then end every connection."
                             (subseq (fnn-mux-conn-out conn) (fnn-mux-conn-out-at conn))
                             (fnn-seconds-to-deadline deadline))))
         (fnn-mux-finish loop conn)))
-    (ignore-errors (sb-posix:close (fnn-mux-loop-wake-read loop)))
-    (ignore-errors (sb-posix:close (fnn-mux-loop-wake-write loop)))
+    (sb-thread:with-mutex ((fnn-mux-loop-lock loop))
+      (ignore-errors (sb-posix:close (fnn-mux-loop-wake-read loop)))
+      (ignore-errors (sb-posix:close (fnn-mux-loop-wake-write loop))))
     service))
 
 (defun fnn-mux-run (loop)
@@ -1379,9 +1415,79 @@ the stop spared, fnn-owner-stop-service-locked), then end every connection."
             (setf (fnn-mux-loop-thread loop) thread)
             (push thread (fnn-owner-service-workers service))))))))
 
-(defun fnn-mux-adopt (service socket &optional implicit-tls done)
-  "Hand SOCKET to a loop (round-robin).  Registered as a client first, so a
-stop shuts it down whichever thread holds it."
+;;; r71 F13: the sockets accepted and not yet taken by a loop are bounded by
+;;; the loops, at most one each: an accept thread reserves a loop's free slot
+;;; (no reservation held, inbox empty, loop open) BEFORE it takes a socket
+;;; from the kernel, and the adoption fills exactly that slot.  While every
+;;; slot is busy -- every loop stalled in a step -- no socket is accepted:
+;;; connections wait in the kernel's listen queue (+fnn-owner-listen-backlog+,
+;;; the OS's admission, never a count this host keeps), and past it the
+;;; kernel refuses them.  This schedules only: whether a connection is
+;;; served is ACL2's admission when the loop begins it (fn-exp-open,
+;;; fn-owner-handshake-admit), unchanged.
+
+(defun fnn-mux-slot-signal (service)
+  (sb-thread:with-mutex ((fnn-owner-service-mux-slot-lock service))
+    (sb-thread:condition-broadcast (fnn-owner-service-mux-slot-free service))))
+
+(defun fnn-mux-slot-free-p (loop)
+  "Slot lock held: LOOP can take one more accepted socket."
+  (and (not (fnn-mux-loop-reserved loop))
+       (sb-thread:with-mutex ((fnn-mux-loop-lock loop))
+         (and (null (fnn-mux-loop-inbox loop))
+              (not (fnn-mux-loop-closed loop))))))
+
+(defun fnn-mux-reserve (service seconds)
+  "A loop whose pending-accept slot is now this caller's, round-robin from
+the service's cursor, waiting at most SECONDS for one; NIL when none came
+free (or the service is stopping).  Give it back with fnn-mux-unreserve
+when no socket fills it."
+  (let ((deadline (fnn-mux-ticks seconds))
+        (loops (fnn-owner-service-mux service)))
+    (sb-thread:with-mutex ((fnn-owner-service-mux-slot-lock service))
+      (loop
+        (when (or (null loops) (fnn-owner-service-stopping service))
+          (return nil))
+        (let* ((n (length loops))
+               (start (fnn-owner-service-mux-next service))
+               (loop (loop for k from 0 below n
+                           for candidate = (nth (mod (+ start k) n) loops)
+                           when (fnn-mux-slot-free-p candidate) return candidate)))
+          (when loop
+            (setf (fnn-mux-loop-reserved loop) t)
+            (incf (fnn-owner-service-mux-next service))
+            (return loop)))
+        (let ((left (fnn-seconds-to-deadline deadline)))
+          (when (<= left 0) (return nil))
+          ;; Timed out: SBCL may return without the mutex held, so leave
+          ;; touching nothing it protects (as the committer's wait does).
+          (unless (sb-thread:condition-wait (fnn-owner-service-mux-slot-free service)
+                                            (fnn-owner-service-mux-slot-lock service)
+                                            :timeout left)
+            (return nil)))))))
+
+(defun fnn-mux-unreserve (service loop)
+  (sb-thread:with-mutex ((fnn-owner-service-mux-slot-lock service))
+    (setf (fnn-mux-loop-reserved loop) nil)
+    (sb-thread:condition-broadcast (fnn-owner-service-mux-slot-free service))))
+
+;;; Developer image only (lane host-lifecycle, r71 F9): FN_NATIVE_ADOPT_HOLD=
+;;; RELEASE-FILE holds an implicit-TLS socket's adoption (a further accept
+;;; thread's, never the main accept loop's) after its registration as a
+;;; client and before a loop takes it, printing `ADOPT held', until the file
+;;; exists.  A scenario stops the owner there.
+(defun fnn-mux-adopt-hold (implicit-tls)
+  (let ((release (and implicit-tls (fnn-developer-selector "FN_NATIVE_ADOPT_HOLD"))))
+    (when (and release (plusp (length release)) (not (probe-file release)))
+      (fnn-err "ADOPT held")
+      (loop until (probe-file release) do (sleep 0.05))
+      (fnn-err "ADOPT released"))))
+
+(defun fnn-mux-adopt (service socket &optional implicit-tls done reserved)
+  "Hand SOCKET to a loop: RESERVED, the loop whose slot the accept thread
+reserved before taking it (fnn-mux-reserve), or round-robin (the `once'
+client).  Registered as a client first, so a stop shuts it down whichever
+thread holds it."
   (let ((loop nil))
     (fnn-with-roster (service)
       (if (or (fnn-owner-service-stopping service)
@@ -1390,16 +1496,46 @@ stop shuts it down whichever thread holds it."
                  (when done (sb-thread:signal-semaphore done)))
         (let ((loops (fnn-owner-service-mux service)))
           (push socket (fnn-owner-service-clients service))
-          (setq loop (nth (mod (fnn-owner-service-mux-next service) (length loops))
-                          loops))
-          (incf (fnn-owner-service-mux-next service)))))
+          (if reserved
+              (setq loop reserved)
+            (progn
+              (setq loop (nth (mod (fnn-owner-service-mux-next service) (length loops))
+                              loops))
+              (incf (fnn-owner-service-mux-next service)))))))
+    ;; The slot is filled below (or the socket settled); the reservation
+    ;; ends here either way.  The loop's inbox now holds it until taken.
+    (when reserved
+      (unwind-protect (when loop (fnn-mux-adopt-place service loop socket implicit-tls done))
+        (fnn-mux-unreserve service reserved))
+      (return-from fnn-mux-adopt loop))
     (when loop
-      (sb-thread:with-mutex ((fnn-mux-loop-lock loop))
-        (push (%make-fnn-mux-conn :socket socket :implicit-tls implicit-tls
-                                  :done done)
-              (fnn-mux-loop-inbox loop)))
-      (fnn-mux-wake loop))
+      (setq loop (fnn-mux-adopt-place service loop socket implicit-tls done)))
     loop))
+
+(defun fnn-mux-adopt-place (service loop socket implicit-tls done)
+  "Put the registered SOCKET in LOOP's inbox; LOOP, or NIL when the loop had
+closed and the socket was settled here."
+  (fnn-mux-adopt-hold implicit-tls)
+  ;; r71 F9: the push and the loop's closed state are read in one hold of
+  ;; its LOCK.  A loop that took its last inbox (a stop came between the
+  ;; registration and here) owns nothing more: this adopter settles the
+  ;; socket itself, as the stopping branch of fnn-mux-adopt does, and leaves
+  ;; the client roster.
+  (if (sb-thread:with-mutex ((fnn-mux-loop-lock loop))
+        (unless (fnn-mux-loop-closed loop)
+          (push (%make-fnn-mux-conn :socket socket :implicit-tls implicit-tls
+                                    :done done)
+                (fnn-mux-loop-inbox loop))
+          (fnn-mux-wake-locked loop)
+          t))
+      loop
+    (progn
+      (fnn-with-roster (service)
+        (setf (fnn-owner-service-clients service)
+              (delete socket (fnn-owner-service-clients service) :test #'eq)))
+      (ignore-errors (fnn-socket-shut socket))
+      (when done (sb-thread:signal-semaphore done))
+      nil)))
 
 (defun fnn-mux-serve-once (service socket)
   "`once': serve this one client on a loop and return when it is done, or at
