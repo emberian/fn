@@ -336,6 +336,16 @@ Physical calls record only their literal return, never descriptor closure."
         (fnn-mux-cleanup-debt loop conn receipt)))
     receipt))
 
+(defun fnn-mux-capture-output-grant (conn)
+  "Copy known returned issuance even when the reader/factory escaped."
+  (let ((capture (fnn-mux-conn-response-capture conn)))
+    (when capture
+      (when (fnn-response-capture-identity capture)
+        (setf (fnn-mux-conn-response-identity conn) (fnn-response-capture-identity capture)))
+      (when (fnn-response-capture-grant capture)
+        (setf (fnn-mux-conn-output-grant conn) (fnn-response-capture-grant capture)))))
+  nil)
+
 (defun fnn-mux-finish (loop conn)
   "Terminal scheduling and once-only cleanup. DONE is not a release receipt;
 failed effects remain discoverable while independent physical cleanup runs."
@@ -346,6 +356,7 @@ failed effects remain discoverable while independent physical cleanup runs."
           (was (fnn-mux-conn-phase conn)))
       (setf (fnn-mux-conn-cleanup-phase conn) was
             (fnn-mux-conn-phase conn) :done)
+      (fnn-mux-capture-output-grant conn)
       ;; These references are no longer publishable by this loop. This is
       ;; not yet an output-pool discard receipt for an issued dependency.
       (setf (fnn-mux-conn-out conn) nil (fnn-mux-conn-plan conn) nil
@@ -733,8 +744,10 @@ the same octets are handed to the next step."
          (channel (fnn-mux-conn-channel conn))
          ;; Publish before entering the fallible semantic boundary. A
          ;; later pre-factory draw can retain its receipt here on escape.
-         (capture (setf (fnn-mux-conn-response-capture conn)
-                        (%make-fnn-response-capture)))
+         (capture (or (fnn-mux-conn-response-capture conn)
+                      (setf (fnn-mux-conn-response-capture conn)
+                            (%make-fnn-response-capture
+                             :connection (fnn-mux-conn-connection-identity conn)))))
          (results (multiple-value-list
                    ;; PKT-858: a peer connection's read enters as ACL2's
                    ;; class for it (fnn-owner-peer-read-class: :reader while
@@ -748,6 +761,7 @@ the same octets are handed to the next step."
                                                  (fnn-owner-peer-read-class service)
                                                (fnn-mux-conn-class conn))
                                              peerp)))))
+    (fnn-mux-capture-output-grant conn)
     ;; Lane commit-onto-log: the step queued its submission for the
     ;; next commit quantum.  The rest is the submitted step's handling, with
     ;; the plan built when the completion arrives (fnn-mux-await-done).

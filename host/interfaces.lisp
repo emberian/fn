@@ -5225,3 +5225,11 @@
 (definterface fn-owner-catalog-root-reserve :class :program)
 
 (definterface fn-owner-catalog-capture-context :class :program)
+
+; Actual admitted pre-factory output consumer. Incomplete tariffs refuse.
+(definterface fn-owner-output-preview :class :program)
+(definterface fn-owner-output-tariff-preview :class :program)
+(definterface fn-ocap-admit-preview :class :common-lisp-compliant)
+(definterface fn-ocap-at :class :common-lisp-compliant)
+(definterface fn-ocap-unpriced-tariff :class :common-lisp-compliant)
+(definterface fn-rlo-capacity :class :common-lisp-compliant)

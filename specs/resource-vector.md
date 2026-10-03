@@ -463,3 +463,19 @@ not reread a mutable service policy to decide an existing lease's capacity.
 Until an actual command footprint producer exists, `fn-ocap-unpriced-tariff`
 produces an explicit `(:unpriced FAMILY)` and accounted admission refuses
 before the command factory; this is not a priced NEWNEWS descriptor.
+
+The actual admitted native reader now calls `fnn-owner-output-begin-locked`
+before buffer filling, then `fnn-owner-output-prefix-locked` before the chunk
+factory. The holder is discoverable on the mux connection before reader entry;
+known returned issuance survives a later refusal, while torn issuance retains
+its unresolved native envelope without retry. Capacity comes from the actual
+installed private ledger. `fn-owner-output-tariff-preview` currently delegates
+`fn-ocap-unpriced-tariff`: every incomplete family remains explicitly unpriced,
+and this source does not activate an optional supported profile. The accepted
+`NEXT` alone reaches the span helper; cold fallback validates the line end
+before dispatch against that same prefix. Every remaining input suffix stays
+with the connection for a later response operation. SCN-1111 uses actual
+helper/admission bodies, with recording wire/typed boundaries; its positive
+tariff is injected to discriminate prefix consumption and is not a produced
+physical footprint. Allocator/collector, setup workspace, root/version custody
+and complete native realization remain open.
