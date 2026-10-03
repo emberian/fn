@@ -2383,3 +2383,41 @@ Groundwork/Runtime/Lieutenant/Integration haveactualfailure; no repeat before
 concrete diagnosis. Fixturecleanupremovedtemporaryscratch; rejectedrecordbytes
 werenotprinted and remainunavailable. Futureownedpublicevidencehook cannot
 retroactivelysupply thisrecord. No privatekey/whole-scratch archive.
+
+## Sol tools: shared native spans and allocation observations
+
+Source-first `1badd2d43` adds the native `fnn-trace-span` macro, bounded sink,
+JSON lines and `tools/native_trace.py` hotspot/compare command. First actual
+consumers are owner sections and mux input/render. Numeric CID and available
+ACL2 response/connection generations are recorded separately from diagnostic
+span IDs; parent links preserve nesting. Root END/renderer leaves and Runtime
+response funding/preflight helpers were not rewritten.
+
+Followthrough separates `FN_TRACE=1` clock-only spans from allocation opt-in;
+legacy `FN_OWNER_MEASURE` remains independent and report-compatible. Macro
+preserves multiple values, original conditions and throws, including failure
+of diagnostic startup/cleanup. Capacity, sampling, overflow and incomplete
+rows are explicit. Disabled shared macro takes one flag test; compatibility
+owner hook takes two cheap diagnostic flag tests, evaluating no identities or
+clocks. Four tests PASS0.431s, actual section fixture PASS, source read/compile/
+diff checks PASS. The actual mux render caller retains all five return values
+and records exact response generations over a recorded owner leaf.
+
+Installed SBCL2.6.8 source inspection found allocator histogram instrumentation,
+but no verified portable always-on per-thread counter for the served toolchains.
+Opt-in allocation scopes are process-wide inclusive or caller-asserted isolated
+process. A real concurrent-thread fixture shows the calling span includes the
+other thread's allocations; the report ranks that phase and never calls it
+per-thread allocation. Disabled100000-call/plain loops both observed0 bytes at
+SBCL allocation-region granularity: an observation, not an allocation proof.
+Counters are cumulative allocation, not retained heap, peak residency or GC
+volume. Overlapping/nested totals are explicitly inclusive.
+
+Root authorized wrapping the existing actual NEWNEWS matched renderer loops;
+that source probe now emits the same structured spans, with trace bookkeeping
+outside the original allocation interval and formatting outside both. Root's
+extra borrowed-short-window fixture is preserved. The native counterpart probe
+has not been rerun here; Integration/root can reuse its actual warm world.
+No new image, proof, thread-counter, full-path tariff or performance claim.
+Transport continuation remains with BPTransport; warm include batchf3b42 is
+already handed Integration. This implementation uses the existing Sol slot.

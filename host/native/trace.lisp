@@ -79,24 +79,29 @@ is INTERNAL-TIME-UNITS-PER-SECOND, not a promised microsecond clock."
   "Preserve all values and exits; measure one shared span lifetime. Off:
 one special-variable test, no identity evaluation, clock read or thunk."
   (let ((state (gensym "STATE")) (row (gensym "ROW"))
-        (start (gensym "START")) (bytes (gensym "BYTES")) (outcome (gensym "OUTCOME")))
+        (start (gensym "START")) (bytes (gensym "BYTES")) (ready (gensym "READY"))
+        (outcome (gensym "OUTCOME")))
     `(if *fnn-trace-state*
          (let* ((,state *fnn-trace-state*)
                 (,row (ignore-errors (fnn-trace-begin ,state ,phase ,cid ,operation ,connection-generation))))
            (if ,row
-               (let* ((*fnn-trace-parent* (fnn-trace-row-id ,row))
-                      (*fnn-trace-operation* (fnn-trace-row-operation ,row))
-                      (*fnn-trace-connection-generation* (fnn-trace-row-connection-generation ,row))
-                      (,start (fnn-trace-now))
-                      (,bytes (and (fnn-trace-state-allocation ,state) (sb-ext:get-bytes-consed)))
-                      (,outcome :nonlocal-exit))
-                 (unwind-protect
-                      (handler-bind ((serious-condition (lambda (condition)
-                                                          (declare (ignore condition))
-                                                          (setf ,outcome :condition))))
-                        (multiple-value-prog1 (progn ,@body) (setf ,outcome :returned)))
-                   ;; A diagnostic failure must not replace a primary exit.
-                   (ignore-errors (fnn-trace-finish ,state ,row ,start ,bytes ,outcome))))
+               (multiple-value-bind (,start ,bytes ,ready)
+                   (ignore-errors
+                     (values (fnn-trace-now)
+                             (and (fnn-trace-state-allocation ,state) (sb-ext:get-bytes-consed)) t))
+                 (if ,ready
+                     (let* ((*fnn-trace-parent* (fnn-trace-row-id ,row))
+                            (*fnn-trace-operation* (fnn-trace-row-operation ,row))
+                            (*fnn-trace-connection-generation* (fnn-trace-row-connection-generation ,row))
+                            (,outcome :nonlocal-exit))
+                       (unwind-protect
+                            (handler-bind ((serious-condition (lambda (condition)
+                                                                (declare (ignore condition))
+                                                                (setf ,outcome :condition))))
+                              (multiple-value-prog1 (progn ,@body) (setf ,outcome :returned)))
+                         ;; A diagnostic failure must not replace a primary exit.
+                         (ignore-errors (fnn-trace-finish ,state ,row ,start ,bytes ,outcome))))
+                   (progn ,@body)))
              (progn ,@body)))
        (progn ,@body))))
 
@@ -119,8 +124,11 @@ No condition strings, objects, thread names, peer addresses or payloads."
                       (or (fnn-trace-row-bytes row) "null")
                       (or (fnn-trace-row-allocation-scope row) :disabled)
                       (fnn-trace-row-outcome row)))))
-        (format stream "~&FN_TRACE {\"type\":\"summary\",\"attempts\":~d,\"recorded\":~d,\"dropped\":~d,\"sample_every\":~d,\"clock_ticks_per_second\":~d}~%"
+        (format stream "~&FN_TRACE {\"type\":\"summary\",\"attempts\":~d,\"recorded\":~d,\"dropped\":~d,\"incomplete\":~d,\"sample_every\":~d,\"clock_ticks_per_second\":~d}~%"
                 (fnn-trace-state-attempts state) (fnn-trace-state-next state)
-                (fnn-trace-state-dropped state) (fnn-trace-state-sample-every state)
+                (fnn-trace-state-dropped state)
+                (count :active (fnn-trace-state-rows state) :key
+                       (lambda (row) (and row (fnn-trace-row-outcome row))))
+                (fnn-trace-state-sample-every state)
                 internal-time-units-per-second))
       (finish-output stream))))

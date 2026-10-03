@@ -507,7 +507,7 @@ as at 7aad444ce."
 ;;; *fnn-owner-measure-label*: :control inside a control request (an
 ;;; operator post), :feed-flush for the flush's own cost (nested in a hold),
 ;;; otherwise the gate class the hold was admitted as (:commit for the
-;;; committer's quanta, which run every served POST's attempt).  Off, it costs one special-variable test
+;;; committer's quanta, which run every served POST's attempt).  Off, it costs the two diagnostic special-variable tests
 ;;; per hold.  The totals go to stderr when the owner stops
 ;;; (fnn-owner-measure-report).  It decides nothing and changes no state the
 ;;; owner reads.
@@ -532,16 +532,19 @@ as at 7aad444ce."
     (incf (fourth row) consed)
     (setf (fifth row) (max (fifth row) consed))))
 
-(defmacro fnn-owner-measured ((label &optional cid operation connection-generation) &body body)
+(defmacro fnn-owner-measured ((label &optional cid (operation '*fnn-trace-operation*)
+                                    (connection-generation '*fnn-trace-connection-generation*)) &body body)
   (let ((start (gensym "START")) (bytes (gensym "BYTES")) (phase (gensym "PHASE")))
-    `(if *fnn-owner-measure*
+    `(if (or *fnn-owner-measure* *fnn-trace-state*)
          (let ((,phase ,label))
            (fnn-trace-span (,phase :cid ,cid :operation ,operation
                            :connection-generation ,connection-generation)
-             (let ((,start (fnn-owner-measure-now))
-                   (,bytes (sb-ext:get-bytes-consed)))
-               (unwind-protect (progn ,@body)
-                 (fnn-owner-measure-note ,phase ,start ,bytes)))))
+             (if *fnn-owner-measure*
+                 (let ((,start (fnn-owner-measure-now))
+                       (,bytes (sb-ext:get-bytes-consed)))
+                   (unwind-protect (progn ,@body)
+                     (fnn-owner-measure-note ,phase ,start ,bytes)))
+               (progn ,@body))))
        (progn ,@body))))
 
 (defun fnn-owner-measure-report ()
@@ -7890,7 +7893,7 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
   (setf (sb-ext:bytes-consed-between-gcs) (fnn-gc-nursery-octets))
   (fnn-trace-configure)
   (setq *fnn-owner-measure*
-        (or *fnn-trace-state* (equal (sb-ext:posix-getenv "FN_OWNER_MEASURE") "1")))
+        (equal (sb-ext:posix-getenv "FN_OWNER_MEASURE") "1"))
   (let ((service nil) (listener nil) (tls-listener nil) (more-listeners nil)
         (log-close-action nil) (run-authority-claimed nil)
         (old-active *fnn-sigterm-owner-active*)
