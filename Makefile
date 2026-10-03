@@ -300,6 +300,9 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/definterface-recognizer-tests \
 	tests/acl2/defevent-tests \
 	tests/acl2/def-carried-tests \
+	books/def-holder \
+	tests/acl2/def-holder-tests \
+	books/reclaim-cuts \
 	books/acceptance \
 	books/acceptance-invariants \
 	tests/acl2/acceptance-tests \
@@ -2597,6 +2600,7 @@ check:
 # A retained payload is a HANDLE (books/payload-kinds.lisp); every definition
 # that reads one declares which kind it takes (lane entry-guards, 2026-09-27).
 	@$(CHECK_STEP) $(PYTHON) tools/payload_kind_check.py
+	@$(CHECK_STEP) $(PYTHON) tools/holder_check.py
 # Every node thread runs on a 1,024 KiB control stack, and a non-tail
 # recursion costs a frame per step: LIST ACTIVE and GROUP stopped the owner
 # past ~30,000 articles in fn-nntp-group-low (PKT-877), the open in
@@ -2866,7 +2870,7 @@ TOOLING_TEST_MODULES = tests.test_certify_runner tests.test_acl2_wrapper \
 	    tests.test_test_budget tests.test_acl2_launchers tests.test_scenario_implementation tests.test_docs_check tests.test_post_docs \
 	    tests.test_farm tests.test_merge_registry tests.test_next_id tests.test_host_check_load tests.test_wait_for tests.test_native_harness tests.test_native_program_check \
 	    tests.test_hbox_native tests.test_acl2_slots tests.test_build_native_host tests.test_spec_cite_check tests.test_ascii_check tests.test_runpath_check tests.test_changelog tests.test_release_sequence tests.test_cut_release tests.test_fundamentals tests.test_check_steps tests.test_cert_cache_sync \
-	    tests.test_extract_gate tests.test_cert_images tests.test_coverage tests.test_resource_contract tests.test_premise_audit tests.test_alphabet_check
+	    tests.test_extract_gate tests.test_cert_images tests.test_coverage tests.test_resource_contract tests.test_premise_audit tests.test_alphabet_check tests.test_holder_check
 tooling-test:
 	$(PYTHON) tools/test_budget.py $(TOOLING_TEST_MODULES)
 

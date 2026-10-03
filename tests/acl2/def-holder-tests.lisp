@@ -1,0 +1,429 @@
+; Teeth for books/def-holder.lisp (lane def-holder).
+;
+;   1. The keyed generic: reachable positives with the complete antecedent
+;      and conclusion of each keystone, one removal per hypothesis (the
+;      conclusion fails), corrupted-state witnesses labelled.
+;   2. A keyed instance (a toy file table threaded by two entries): every
+;      generated name present with its regenerated statement (def-holder-check),
+;      the row, the cuts, the teeth-owed rows, the def-carried trace, and
+;      the generated statements evaluated on a run.
+;   3. Refusals, each asserted exactly: malformed forms; a world refusal
+;      (a theorem about another term proves no generated statement); a
+;      :durable effect whose program does not name the cut; a redeclared
+;      name; an undeclared caller of the step refused by def-holder-check.
+;
+; must-fail-checked (tests/acl2/must-fail-checked.lisp): a macro refusal is
+; a translation-time refusal, so :unchecked names why.
+(in-package "ACL2")
+(include-book "../../books/def-holder")
+(include-book "must-fail-checked")
+
+; ---------------------------------------------------------------------------
+; 1. The keyed generic.
+
+; A macro, not a function: a FUNCTION that calls the step is what
+; def-holder-check refuses (section 3), so the evaluated checks call it
+; inline.
+(defmacro hdt-step (table ev)
+  `(mv-list 2 (fn-hd-keyed-step ,table ,ev)))
+
+; A run: file 3 held twice, file 5 once, 3 dropped once, 5 dropped, 5 dropped
+; again (late: refused), 3 dropped, 3 dropped again (late: refused).
+(defconst *hdt-evs*
+  '((:hold 3) (:hold 5) (:hold 3) (:drop 3) (:drop 5) (:drop 5) (:drop 3) (:drop 3)))
+
+(assert-event (equal (fn-hd-run-answers (fn-hd-initial) *hdt-evs*)
+                     '(:held :held :held :dropped :dropped :refused :dropped :refused)))
+(assert-event (equal (fn-hd-run (fn-hd-initial) *hdt-evs*) nil))
+(assert-event (equal (fn-hd-run (fn-hd-initial) (take 3 *hdt-evs*)) '((3 . 2) (5 . 1))))
+(assert-event (equal (hdt-step '((3 . 2) (5 . 1)) '(:count 3)) '(((3 . 2) (5 . 1)) 2)))
+(assert-event (equal (hdt-step '((3 . 2) (5 . 1)) '(:quiet 3)) '(((3 . 2) (5 . 1)) nil)))
+(assert-event (equal (hdt-step '((3 . 2) (5 . 1)) '(:quiet 4)) '(((3 . 2) (5 . 1)) t)))
+(assert-event (equal (hdt-step '((3 . 2)) '(:hold -1)) '(((3 . 2)) :refused)))
+(assert-event (equal (hdt-step '((3 . 2)) '(:frob 3)) '(((3 . 2)) :refused)))
+
+;;; KEYSTONE fn-hd-drop-of-unheld-is-refused.
+; REACHABLE POSITIVE: the late drop of 5 after its only hold was dropped
+; (the run's sixth event), complete antecedent and conclusion.
+(assert-event
+ (let ((table (fn-hd-run (fn-hd-initial) (take 5 *hdt-evs*))) (k 5))
+   (and (not (and (natp k) (fn-arpn-held-p k table)))
+        (equal (hdt-step table (list :drop k)) (list table :refused)))))
+; also: a non-natural key, and the empty table
+(assert-event (equal (hdt-step '((3 . 1)) '(:drop :three)) '(((3 . 1)) :refused)))
+(assert-event (equal (hdt-step (fn-hd-initial) '(:drop 3)) '(nil :refused)))
+; HYPOTHESIS-REMOVAL: 3 is held: the drop is not refused (the conclusion
+; fails: the answer is :dropped and the table changes).
+(assert-event
+ (let ((table '((3 . 2) (5 . 1))) (k 3))
+   (and (natp k) (fn-arpn-held-p k table)
+        (not (equal (hdt-step table (list :drop k)) (list table :refused)))
+        (equal (hdt-step table (list :drop k)) '(((3 . 1) (5 . 1)) :dropped)))))
+
+;;; KEYSTONE fn-hd-run-count-is-holds-less-drops.
+; REACHABLE POSITIVES: every key of the run, and a key never held, from the
+; empty table and from a table that already holds.
+(defun hdt-accounts-p (table k evs)
+  (declare (xargs :guard (and (fn-arpn-pinsp table) (natp k) (true-listp evs))))
+  (equal (fn-arpn-pins-of k (fn-hd-run table evs))
+         (+ (fn-arpn-pins-of k table)
+            (fn-hd-holds-of k evs)
+            (- (fn-hd-drops-of k evs (fn-hd-run-answers table evs))))))
+(assert-event (and (hdt-accounts-p (fn-hd-initial) 3 *hdt-evs*)
+                   (hdt-accounts-p (fn-hd-initial) 5 *hdt-evs*)
+                   (hdt-accounts-p (fn-hd-initial) 4 *hdt-evs*)
+                   (hdt-accounts-p '((3 . 1)) 3 *hdt-evs*)
+                   (hdt-accounts-p '((3 . 1)) 3 (take 4 *hdt-evs*))
+                   (equal (fn-hd-holds-of 3 *hdt-evs*) 2)
+                   (equal (fn-hd-drops-of 3 *hdt-evs* (fn-hd-run-answers (fn-hd-initial) *hdt-evs*)) 2)
+                   (equal (fn-hd-drops-of 5 *hdt-evs* (fn-hd-run-answers (fn-hd-initial) *hdt-evs*)) 1)))
+; HYPOTHESIS-REMOVAL (natp k): a non-natural key's holds are counted by
+; fn-hd-holds-of but refused by the step: the conclusion fails.
+(assert-event
+ (let ((k :three) (evs '((:hold :three))))
+   (and (not (natp k))
+        (equal (fn-hd-holds-of k evs) 1)
+        (equal (fn-arpn-pins-of k (fn-hd-run (fn-hd-initial) evs)) 0)
+        (not (equal (fn-arpn-pins-of k (fn-hd-run (fn-hd-initial) evs))
+                    (+ (fn-arpn-pins-of k (fn-hd-initial))
+                       (fn-hd-holds-of k evs)
+                       (- (fn-hd-drops-of k evs (fn-hd-run-answers (fn-hd-initial) evs)))))))))
+; CORRUPTED-STATE (not a table): a descending, duplicated table miscounts
+; the key it names twice: the conclusion fails (evaluated with guards off:
+; the table violates every guard, which is the point).
+(assert-event
+ (with-guard-checking :none
+   (let ((table '((5 . 1) (3 . 1) (3 . 1))) (k 3) (evs '((:hold 3))))
+     (and (not (fn-arpn-pinsp table))
+          (not (hdt-accounts-p table k evs))))))
+
+;;; KEYSTONE fn-hd-quiet-from-empty-means-every-hold-was-dropped.
+; REACHABLE POSITIVE: the run ends quiet at 3 and at 5; holds = drops.
+(assert-event
+ (let ((k 3) (evs *hdt-evs*))
+   (and (natp k)
+        (equal (fn-arpn-pins-of k (fn-hd-run (fn-hd-initial) evs)) 0)
+        (equal (fn-hd-holds-of k evs)
+               (fn-hd-drops-of k evs (fn-hd-run-answers (fn-hd-initial) evs))))))
+; HYPOTHESIS-REMOVAL (quiet): after three events 3 is held twice: holds 2,
+; drops 0; the conclusion fails.
+(assert-event
+ (let ((k 3) (evs (take 3 *hdt-evs*)))
+   (and (not (equal (fn-arpn-pins-of k (fn-hd-run (fn-hd-initial) evs)) 0))
+        (not (equal (fn-hd-holds-of k evs)
+                    (fn-hd-drops-of k evs (fn-hd-run-answers (fn-hd-initial) evs)))))))
+
+; ---------------------------------------------------------------------------
+; 1b. The identified step (c05): a token per holder.
+
+(defmacro hdt-istep (table ev)
+  `(mv-list 2 (fn-hd-ident-step ,table ,ev)))
+
+; A and B hold file 3; A drops; A drops AGAIN (the duplicate: refused, B's
+; hold stands); B drops; B drops again (late: refused).
+(defconst *hdt-ievs*
+  '((:hold 3 a) (:hold 3 b) (:drop 3 a) (:drop 3 a) (:drop 3 b) (:drop 3 b)))
+
+(defun hdt-irun (table evs)
+  (declare (xargs :guard (and (fn-hd-identp table) (true-listp evs)) :verify-guards nil))
+  (if (atom evs)
+      (list table nil)
+    (mv-let (table1 answer) (fn-hd-ident-step table (car evs))
+      (let ((rest (hdt-irun table1 (cdr evs))))
+        (list (first rest) (cons answer (second rest)))))))
+
+(assert-event (equal (second (hdt-irun nil *hdt-ievs*))
+                     '(:held :held :dropped :refused :dropped :refused)))
+(assert-event (equal (first (hdt-irun nil (take 2 *hdt-ievs*))) '((3 b a))))
+; after A's duplicate drop B still holds: the count-only table would say 0
+(assert-event (equal (first (hdt-irun nil (take 4 *hdt-ievs*))) '((3 b))))
+(assert-event (equal (hdt-istep '((3 b)) '(:count 3)) '(((3 b)) 1)))
+(assert-event (equal (hdt-istep '((3 b)) '(:quiet 3)) '(((3 b)) nil)))
+(assert-event (equal (hdt-istep '((3 b)) '(:quiet 4)) '(((3 b)) t)))
+(assert-event (equal (hdt-istep '((3 b)) '(:hold 3)) '(((3 b)) :refused)))      ; no token
+(assert-event (equal (hdt-istep '((3 b)) '(:hold 3 c d)) '(((3 b)) :refused)))  ; too long
+(assert-event (equal (hdt-istep '((3 b)) '(:count 3 x)) '(((3 b)) :refused)))
+
+;;; KEYSTONE fn-hd-ident-duplicate-hold-is-refused /
+;;; fn-hd-ident-drop-of-absent-token-is-refused.
+; REACHABLE POSITIVES: A holding 3 holds it again (refused); A, having
+; dropped, drops again (refused): complete antecedent and conclusion.
+(assert-event
+ (let ((table '((3 b a))) (k 3) (tok 'a))
+   (and (member-equal tok (fn-hd-tokens-of k table))
+        (equal (hdt-istep table (list :hold k tok)) (list table :refused)))))
+(assert-event
+ (let ((table '((3 b))) (k 3) (tok 'a))
+   (and (not (member-equal tok (fn-hd-tokens-of k table)))
+        (equal (hdt-istep table (list :drop k tok)) (list table :refused)))))
+; HYPOTHESIS-REMOVAL: a token that does not hold may hold (not refused,
+; table changes); a token that holds may drop (not refused).
+(assert-event
+ (let ((table '((3 b))) (k 3) (tok 'a))
+   (and (not (member-equal tok (fn-hd-tokens-of k table)))
+        (not (equal (hdt-istep table (list :hold k tok)) (list table :refused)))
+        (equal (hdt-istep table (list :hold k tok)) '(((3 a b)) :held)))))
+(assert-event
+ (let ((table '((3 b a))) (k 3) (tok 'a))
+   (and (member-equal tok (fn-hd-tokens-of k table))
+        (not (equal (hdt-istep table (list :drop k tok)) (list table :refused)))
+        (equal (hdt-istep table (list :drop k tok)) '(((3 b)) :dropped)))))
+
+;;; KEYSTONE fn-hd-ident-hold-adds-exactly-its-token /
+;;; fn-hd-ident-drop-removes-exactly-its-token: the other key's tokens stand.
+(assert-event
+ (let ((table '((3 b) (5 c))) (k 3) (tok 'a))
+   (and (fn-hd-identp table) (natp k) (not (member-equal tok (fn-hd-tokens-of k table)))
+        (let ((r (hdt-istep table (list :hold k tok))))
+          (and (equal (nth 1 r) :held)
+               (equal (fn-hd-tokens-of 3 (nth 0 r)) (cons tok (fn-hd-tokens-of 3 table)))
+               (equal (fn-hd-tokens-of 5 (nth 0 r)) (fn-hd-tokens-of 5 table)))))))
+(assert-event
+ (let ((table '((3 b a) (5 c))) (k 3) (tok 'b))
+   (and (fn-hd-identp table) (natp k) (member-equal tok (fn-hd-tokens-of k table))
+        (let ((r (hdt-istep table (list :drop k tok))))
+          (and (equal (nth 1 r) :dropped)
+               (equal (fn-hd-tokens-of 3 (nth 0 r)) (remove1-equal tok (fn-hd-tokens-of 3 table)))
+               (equal (fn-hd-tokens-of 5 (nth 0 r)) (fn-hd-tokens-of 5 table)))))))
+; CORRUPTED-STATE (not a table: a duplicated token): a drop removes one of
+; the two and the key still counts the other.
+(assert-event
+ (with-guard-checking :none
+   (let ((table '((3 a a))))
+     (and (not (fn-hd-identp table))
+          (equal (hdt-istep table '(:drop 3 a)) '(((3 a)) :dropped))))))
+
+; ---------------------------------------------------------------------------
+; 2. A keyed instance: a toy file table threaded by an open and a close.
+
+(defun hdt-open (k table)
+  (declare (xargs :guard (fn-arpn-pinsp table)))
+  (if (natp k)
+      (mv-let (table1 answer) (fn-hd-keyed-step table (list :hold k))
+        (mv answer table1))
+    (mv :refused table)))
+
+(defun hdt-close (k table)
+  (declare (xargs :guard (fn-arpn-pinsp table)))
+  (if (natp k)
+      (mv-let (table1 answer) (fn-hd-keyed-step table (list :drop k))
+        (mv answer table1))
+    (mv :refused table)))
+
+(defthm hdt-open-holds
+  (implies (fn-arpn-pinsp table)
+           (equal (mv-nth 1 (hdt-open k table))
+                  (if (equal (mv-nth 0 (hdt-open k table)) :held)
+                      (mv-nth 0 (fn-hd-keyed-step table (list :hold k)))
+                    table)))
+  :hints (("Goal" :in-theory (disable fn-hd-keyed-step)
+           :use ((:instance fn-hd-hold-counts-exactly-its-key (h k))))))
+
+(defthm hdt-close-drops
+  (implies (fn-arpn-pinsp table)
+           (equal (mv-nth 1 (hdt-close k table))
+                  (if (equal (mv-nth 0 (hdt-close k table)) :dropped)
+                      (mv-nth 0 (fn-hd-keyed-step table (list :drop k)))
+                    table)))
+  :hints (("Goal" :in-theory (disable fn-hd-keyed-step)
+           :use ((:instance fn-hd-drop-counts-exactly-its-key (h k))
+                 (:instance fn-hd-drop-of-unheld-is-refused)))))
+
+(defun hdt-program ()
+  (declare (xargs :guard t))
+  (list (list :cut "hdt-unlinked")))
+
+(def-holder hdt-files
+  :shape :keyed
+  :key "a toy file incarnation"
+  :holders ((reader :acquire (hdt-open hdt-open-holds :table 1 :result (mv-nth 1 _)
+                              :key k :ok (equal (mv-nth 0 _) :held))
+                    :release (hdt-close hdt-close-drops :table 1 :result (mv-nth 1 _)
+                              :key k :ok (equal (mv-nth 0 _) :dropped))))
+  :effect (:durable hdt-program "hdt-unlinked")
+  :complete-by "a toy: hdt-open and hdt-close are its only entries")
+
+; Every generated name is a theorem; the row, the cuts and the owed teeth.
+(assert-event
+ (and (getpropc 'hdt-files-reader-acquire-holds 'theorem nil (w state))
+      (getpropc 'hdt-files-reader-release-drops 'theorem nil (w state))
+      (getpropc 'hdt-files-reader-acquire-keeps 'theorem nil (w state))
+      (getpropc 'hdt-files-reader-release-keeps 'theorem nil (w state))
+      (getpropc 'hdt-files-initial-establishes 'theorem nil (w state))
+      (getpropc 'hdt-files-table-hdt-open-carries 'theorem nil (w state))
+      (getpropc 'hdt-files-table-hdt-close-carries 'theorem nil (w state))
+      (getpropc 'hdt-files-table-run-carries 'theorem nil (w state))
+      (equal *hdt-files-cuts* '(:hdt-files-decided :hdt-files-released))
+      (equal (cdr (assoc-eq 'hdt-files (table-alist 'fn-holder-cuts (w state))))
+             '(:effect (:durable hdt-program "hdt-unlinked")
+               :cuts (:hdt-files-decided :hdt-files-released)))
+      (assoc-eq 'hdt-files-reader-acquire-holds (table-alist 'fn-teeth-owed (w state)))
+      (assoc-eq 'hdt-files-reader-release-drops (table-alist 'fn-teeth-owed (w state)))
+      (assoc-eq 'hdt-files-reader-acquire-keeps (table-alist 'fn-teeth-owed (w state)))
+      ; the owed row's claim is the statement in source shape, its subject the entry
+      (equal (cdr (assoc-eq 'hdt-files-reader-release-drops (table-alist 'fn-teeth-owed (w state))))
+             '(:by def-holder
+               :claim (implies (and (fn-arpn-pinsp table))
+                               (equal (mv-nth '1 (hdt-close k table))
+                                      (if (equal (mv-nth '0 (hdt-close k table)) ':dropped)
+                                          (mv-nth '0 (fn-hd-keyed-step table (cons ':drop (cons k 'nil))))
+                                        table)))
+               :subject hdt-close))
+      (assoc-eq 'hdt-files-table (table-alist 'fn-carried (w state)))
+      (equal (fn-hd-get :shape (cdr (assoc-eq 'hdt-files (table-alist 'fn-holder (w state)))))
+             :keyed)))
+
+; The generated statements, pinned literally (what the host-side reader of
+; the row may rely on; a drift here is a drift of the generator).
+(assert-event
+ (equal (getpropc 'hdt-files-reader-acquire-holds 'theorem nil (w state))
+        '(implies (fn-arpn-pinsp table)
+                  (equal (mv-nth '1 (hdt-open k table))
+                         (if (equal (mv-nth '0 (hdt-open k table)) ':held)
+                             (mv-nth '0 (fn-hd-keyed-step table (cons ':hold (cons k 'nil))))
+                           table)))))
+(assert-event
+ (equal (getpropc 'hdt-files-reader-release-keeps 'theorem nil (w state))
+        '(implies (if (fn-arpn-pinsp table) (fn-arpn-pinsp table) 'nil)
+                  (fn-arpn-pinsp (mv-nth '1 (hdt-close k table))))))
+
+(def-holder-check hdt-files)
+
+;;; The generated -holds/-drops theorems, evaluated on a run (owed teeth;
+;;; converted to defteeth when GENERATORS lands it).
+; REACHABLE POSITIVES: an open on the empty table and on a table that holds;
+; a close of a held and of an unheld (late) key.
+(defmacro hdt-open-as-generated-p (k table)
+  `(equal (mv-nth 1 (mv-list 2 (hdt-open ,k ,table)))
+          (if (equal (mv-nth 0 (mv-list 2 (hdt-open ,k ,table))) :held)
+              (mv-nth 0 (mv-list 2 (fn-hd-keyed-step ,table (list :hold ,k))))
+            ,table)))
+(defmacro hdt-close-as-generated-p (k table)
+  `(equal (mv-nth 1 (mv-list 2 (hdt-close ,k ,table)))
+          (if (equal (mv-nth 0 (mv-list 2 (hdt-close ,k ,table))) :dropped)
+              (mv-nth 0 (mv-list 2 (fn-hd-keyed-step ,table (list :drop ,k))))
+            ,table)))
+(assert-event
+ (and (hdt-open-as-generated-p 7 nil)
+      (equal (mv-list 2 (hdt-open 7 nil)) '(:held ((7 . 1))))
+      (hdt-open-as-generated-p 7 '((7 . 1)))
+      (hdt-open-as-generated-p :seven '((7 . 1)))
+      (equal (mv-list 2 (hdt-open :seven '((7 . 1)))) '(:refused ((7 . 1))))
+      (hdt-close-as-generated-p 7 '((7 . 1)))
+      (equal (mv-list 2 (hdt-close 7 '((7 . 1)))) '(:dropped nil))
+      (hdt-close-as-generated-p 7 nil)
+      (equal (mv-list 2 (hdt-close 7 nil)) '(:refused nil))))
+; The trace theorem (hdt-files-table-run-carries, over def-carried's
+; defun-nx run) is asserted present above; its functions do not execute.
+
+; A second instance: host and root holders only, a :physical effect ordered
+; after a durable replacement in a keyword cut list (the reclaim pass's
+; shape).
+(defconst *hdt-cuts* '(:staged :installed :swapped :released))
+
+(def-holder hdt-blocks
+  :shape :keyed
+  :key "a toy block"
+  :holders ((janitor :host t :acquire hdt-pin :release hdt-unpin :in (hdt-sweep))
+            (ledger :root t :in (hdt-ledger) :status (:repinned "a toy: rebuilt at every sweep")))
+  :effect (:physical *hdt-cuts* :cut :released :after :installed))
+
+(assert-event
+ (and (equal *hdt-blocks-cuts* '(:installed :released))
+      (equal (cdr (assoc-eq 'hdt-blocks (table-alist 'fn-holder-cuts (w state))))
+             '(:effect (:physical *hdt-cuts* :cut :released :after :installed)
+               :cuts (:installed :released)))
+      ; no logic holder: no generated theorem, no def-carried row
+      (not (getpropc 'hdt-blocks-initial-establishes 'theorem nil (w state)))
+      (not (assoc-eq 'hdt-blocks-table (table-alist 'fn-carried (w state))))))
+
+; ---------------------------------------------------------------------------
+; 3. Refusals.
+
+; A :physical effect: the release before the replacement; a cut not in the
+; list; a list that is not a defconst; a root with a status that is not one
+; of the five.
+(must-fail-checked (def-holder hdt-blocks-reversed :shape :keyed :key "k"
+                     :holders ((j :host t :acquire a :release b :in (c)))
+                     :effect (:physical *hdt-cuts* :cut :installed :after :released))
+                   :unchecked "the release must come after the durable replacement")
+(must-fail-checked (def-holder hdt-blocks-no-cut :shape :keyed :key "k"
+                     :holders ((j :host t :acquire a :release b :in (c)))
+                     :effect (:physical *hdt-cuts* :cut :freed :after :installed))
+                   :unchecked "the cut is not in the list")
+(must-fail-checked (def-holder hdt-blocks-no-list :shape :keyed :key "k"
+                     :holders ((j :host t :acquire a :release b :in (c)))
+                     :effect (:physical *hdt-no-such-cuts* :cut :released :after :installed))
+                   :unchecked "the cut list is not a defconst of this world")
+(must-fail-checked (def-holder hdt-bad-root :shape :keyed :key "k"
+                     :holders ((r :root t :in (hdt-ledger) :status (:ignored "x")))
+                     :effect (:process-local "x"))
+                   :unchecked "a root status that is not one of the five")
+
+; Malformed forms.
+(must-fail-checked (def-holder hdt-bad-shape :shape :counted :key "k" :holders ((r :host t :acquire a :release b :in (c))) :effect (:process-local "x"))
+                   :unchecked "the shape is not one of the two")
+(must-fail-checked (def-holder hdt-no-holders :shape :keyed :key "k" :holders () :effect (:process-local "x"))
+                   :unchecked "a resource nobody holds")
+(must-fail-checked (def-holder hdt-bad-effect :shape :keyed :key "k" :holders ((r :host t :acquire a :release b :in (c))) :effect (:later "x"))
+                   :unchecked "the effect is neither process-local nor durable")
+(must-fail-checked (def-holder hdt-no-key :shape :keyed :holders ((r :host t :acquire a :release b :in (c))) :effect (:process-local "x"))
+                   :unchecked "no :key prose")
+(must-fail-checked (def-holder hdt-when-without-keeps :shape :keyed :key "k"
+                     :holders ((r :acquire (hdt-open hdt-open-holds :table 1 :result (mv-nth 1 _) :key k :ok t :when (natp k))
+                                  :release (hdt-close hdt-close-drops :table 1 :result (mv-nth 1 _) :key k :ok t)))
+                     :effect (:process-local "x") :complete-by "x")
+                   :unchecked "an arm selector without the instance's own preservation theorem")
+(must-fail-checked (def-holder hdt-unknown :shape :keyed :key "k" :holders ((r :host t :acquire a :release b :in (c))) :effect (:process-local "x") :lease x)
+                   :unchecked "an unknown keyword")
+
+; World refusals.
+; A theorem about another term proves no generated statement: the declared
+; THM is hdt-close-drops for the OPEN entry.
+(must-fail-checked (def-holder hdt-wrong-theorem :shape :keyed :key "k"
+                     :holders ((r :acquire (hdt-open hdt-close-drops :table 1 :result (mv-nth 1 _) :key k :ok (equal (mv-nth 0 _) :held))
+                                  :release (hdt-close hdt-close-drops :table 1 :result (mv-nth 1 _) :key k :ok (equal (mv-nth 0 _) :dropped))))
+                     :effect (:process-local "x") :complete-by "x")
+                   :unchecked "the generated acquire-holds statement is not proved from a theorem about the close")
+; A :durable effect whose program does not name the cut.
+(must-fail-checked (def-holder hdt-wrong-cut :shape :keyed :key "k"
+                     :holders ((r :acquire (hdt-open hdt-open-holds :table 1 :result (mv-nth 1 _) :key k :ok (equal (mv-nth 0 _) :held))
+                                  :release (hdt-close hdt-close-drops :table 1 :result (mv-nth 1 _) :key k :ok (equal (mv-nth 0 _) :dropped))))
+                     :effect (:durable hdt-program "hdt-renamed") :complete-by "x")
+                   :unchecked "the program names no such cut")
+; A :durable effect naming a program that is not a function.
+(must-fail-checked (def-holder hdt-no-program :shape :keyed :key "k"
+                     :holders ((r :acquire (hdt-open hdt-open-holds :table 1 :result (mv-nth 1 _) :key k :ok (equal (mv-nth 0 _) :held))
+                                  :release (hdt-close hdt-close-drops :table 1 :result (mv-nth 1 _) :key k :ok (equal (mv-nth 0 _) :dropped))))
+                     :effect (:durable hdt-no-such-program "hdt-unlinked") :complete-by "x")
+                   :unchecked "the program is not a function of this world")
+; A logic holder over a value table with no :complete-by.
+(must-fail-checked (def-holder hdt-incomplete :shape :keyed :key "k"
+                     :holders ((r :acquire (hdt-open hdt-open-holds :table 1 :result (mv-nth 1 _) :key k :ok (equal (mv-nth 0 _) :held))
+                                  :release (hdt-close hdt-close-drops :table 1 :result (mv-nth 1 _) :key k :ok (equal (mv-nth 0 _) :dropped))))
+                     :effect (:process-local "x"))
+                   :unchecked "a value table's holder list must say why it is complete")
+; A :table position that is not a formal; a :key over a non-formal.
+(must-fail-checked (def-holder hdt-bad-table :shape :keyed :key "k"
+                     :holders ((r :acquire (hdt-open hdt-open-holds :table 4 :result (mv-nth 1 _) :key k :ok (equal (mv-nth 0 _) :held))
+                                  :release (hdt-close hdt-close-drops :table 1 :result (mv-nth 1 _) :key k :ok (equal (mv-nth 0 _) :dropped))))
+                     :effect (:process-local "x") :complete-by "x")
+                   :unchecked ":table 4 is no formal of a two-formal function")
+(must-fail-checked (def-holder hdt-bad-key :shape :keyed :key "k"
+                     :holders ((r :acquire (hdt-open hdt-open-holds :table 1 :result (mv-nth 1 _) :key other :ok (equal (mv-nth 0 _) :held))
+                                  :release (hdt-close hdt-close-drops :table 1 :result (mv-nth 1 _) :key k :ok (equal (mv-nth 0 _) :dropped))))
+                     :effect (:process-local "x") :complete-by "x")
+                   :unchecked "the key mentions a variable that is not a formal")
+; A redeclared name.
+(must-fail-checked (def-holder hdt-files :shape :keyed :key "k" :holders ((r :host t :acquire a :release b :in (c))) :effect (:process-local "x"))
+                   :unchecked "hdt-files is already declared")
+; An undeclared caller of the step: a function that holds without being a
+; declared entry of any row is refused by def-holder-check (the progn is
+; atomic: the world keeps neither).
+(must-fail-checked (progn (defun hdt-rogue (k table)
+                            (declare (xargs :guard (fn-arpn-pinsp table)))
+                            (mv-nth 0 (fn-hd-keyed-step table (list :hold k))))
+                          (def-holder-check hdt-files))
+                   :unchecked "hdt-rogue calls the step and is no declared entry")
+; After the refusal the check still passes: nothing rogue stayed.
+(def-holder-check hdt-files)
