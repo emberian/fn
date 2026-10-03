@@ -1660,26 +1660,17 @@
 ;; On a store the member's reservation and its place in the log are
 ;; the two composite steps of books/owner-log-route.lisp (fn-olr-ocfg-reserve,
 ;; fn-olr-ocfg-order: the file route's success sequences, by definition).
-;; The observations whose step keeps the configured owner's carried relation
-;; (books/owner-log-ocl.lisp): the reservation, the order of a staged article
-;; (fn-lgoc-log-order-preserves-invariant needs fn-lgoc-article-stagedp), and
-;; every file step fn-lgoc-io-safep names (fn-lgoc-rcon-io-preserves-
-;; invariant).  The entry DECIDES it (stage 5, the io-safep gap: the
-;; preservation theorem is false for an unsafe observation, and a guard
-;; conjunct over the host's arguments is one no carried relation can
-;; establish, so D40 would refuse the entry): an unsafe observation is
-;; answered :unsafe-observation and the owner is not stepped.  O(1) in the
-;; store: a phase test and fn-held-p of the one staged candidate.  The native
-;; host reports only :recovery-barrier here (host/native/owner.lisp
-;; fnn-owner-observe), a reservation step, which is safe.
-(verify-guards fn-lgoc-io-safep)
-(verify-guards fn-lgoc-article-stagedp)
+;; The served preservation boundary includes consumer, retention, identity
+;; and topic candidates, not only held articles.  The actual entry consumes
+;; fn-psrv-log-order-preserves-invariant and
+;; fn-psrv-rcon-io-preserves-invariant (owner-prepare-served-ocl).  An unknown
+;; observation remains :unsafe-observation without stepping the owner.
 (defun fn-owner-io-safep (st operation result)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t) (ignore st result))
   (case operation
     (:log-reserve t)
-    (:log-order (fn-lgoc-article-stagedp st))
-    (t (fn-lgoc-io-safep st operation result))))
+    (:log-order t)
+    (t (fn-psrv-io-safep operation))))
 
 (defun fn-owner-io (operation result state)
   (declare (xargs :stobjs state :guard (and (boundp-global 'fn-owner state)
