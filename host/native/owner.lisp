@@ -1318,6 +1318,14 @@ directories because one encoded label can be a prefix of a longer label.
               (t (fnn-fault "conflicting FNFD namespace entry: ~a" path))))))
     (nreverse peers))))
 
+(defun fnn-owner-feed-close-entries (entries)
+  "Attempt every journal close and return the first cleanup condition."
+  (let ((failure nil))
+    (dolist (entry entries)
+      (handler-case (fnn-owner-feed-close (cdr entry))
+        (serious-condition (condition) (unless failure (setq failure condition)))))
+    failure))
+
 (defun fnn-owner-feed-open-all (service configured)
   ;; The order is the configured peers, then the historical journals by name:
   ;; never the directory's listing order, which differs between filesystems
@@ -1334,13 +1342,15 @@ directories because one encoded label can be a prefix of a longer label.
             (push (cons peer (fnn-owner-feed-open store peer)) opened))
           (nreverse opened))
       (error (e)
-        (dolist (entry opened) (fnn-owner-feed-close (cdr entry)))
+        (fnn-owner-feed-close-entries opened)
         (error e)))))
 
 (defun fnn-owner-feed-close-all (service)
-  (dolist (entry (fnn-owner-service-feeds service))
-    (fnn-owner-feed-close (cdr entry)))
-  (setf (fnn-owner-service-feeds service) nil))
+  (let ((failure (fnn-owner-feed-close-entries (fnn-owner-service-feeds service))))
+    ;; Each descriptor's custody was consumed by FEED-CLOSE before close(2).
+    ;; A failed close must not strand later journals or leave stale cache rows.
+    (setf (fnn-owner-service-feeds service) nil)
+    (when failure (error failure))))
 
 (defun fnn-owner-feed-open-missing (service configured)
   "Install journals for newly configured feeds before they can enqueue.
@@ -1361,7 +1371,7 @@ obligations may still name a peer removed from the current configuration."
           (setf (fnn-owner-service-feeds service)
                 (append current (nreverse opened))))
       (error (e)
-        (dolist (entry opened) (fnn-owner-feed-close (cdr entry)))
+        (fnn-owner-feed-close-entries opened)
         (error e)))))
 
 (defun fnn-owner-feed-refresh-configuration (service)
