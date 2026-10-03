@@ -2895,3 +2895,11 @@ then calls ACL2 private-source abort-plan. Current-generation copy/convert/publi
 publishing or foreign/stale source stays held. Raw actual teardown matrix PASS
 with both affirmative and ambiguous physical close; no ACK or refund on uncertain
 close. New source constructor/control teeth cert pending. No durable rollback.
+
+
+Root operator-observation/S132: actual client uses ACL2-owned reply wait
+10+ceil(serialized-request-octets/65536), preserves explicitwaits/framebounds/
+uncertain transport outcomes. tests/test_control_observation.py PASS0.036s;
+normal warm root-control-observation (hbox) guardverified and4boundaryassertsPASS.
+Largepost native test nowstrict EXIT_OK plus exactreadback. S132 staysopen until
+matching fullowner scenario; no machine-throughput/durability guarantee fromtime.

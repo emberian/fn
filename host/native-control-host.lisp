@@ -1,6 +1,7 @@
 ; ACL2-facing boundary for the native local-control transport.
 (in-package "ACL2")
 (include-book "../books/native-control")
+(include-book "../books/control-observation")
 ;; host-decisions-2 packet B: the control launch decision (fn-ncla-).
 (include-book "../books/native-control-launch")
 (include-book "../books/native-control-reason")
@@ -13,6 +14,10 @@
 (include-book "../books/topic-history-local-control")
 (include-book "../books/native-live-buffer")
 (include-book "../books/native-control-kinds")
+
+(defun fn-native-control-host-reply-seconds (request-octets)
+  (declare (xargs :mode :program :guard (natp request-octets)))
+  (fn-nco-reply-seconds request-octets))
 
 (defun fn-native-control-host-topic-request-encode (operation sequence quota)
   (declare (xargs :mode :program))

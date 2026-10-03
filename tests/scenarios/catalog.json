@@ -9352,6 +9352,28 @@
         "test": "tests/test_dev_repl.py"
       },
       "execution_scope": "Socket/source fixture and real ACL2 worker-thread admission/refusal/channel capture; actual full native owner composition pending."
+    },
+    {
+      "id": "SCN-1123",
+      "title": "Local client waits according to submission size without inventing acceptance",
+      "requirements": [
+        "HST-008"
+      ],
+      "setup": "Actual ACL2 observation policy and raw control exchange/read loop, with named virtual socket/clock and octet-vector adapters.",
+      "steps": [
+        "Return a complete reply after thirteen seconds for a ten MiB frame.",
+        "Apply explicit short and long wait overrides.",
+        "Expire the scaled budget and inject connection/write failures."
+      ],
+      "expected": [
+        "Large frame gets 170 seconds and complete reply; small default gets eleven seconds.",
+        "Explicit waits retain their exact durations.",
+        "No timeout implies accepted; before submission is refused and after submission uncertain."
+      ],
+      "implementation": {
+        "test": "tests/test_control_observation.py"
+      },
+      "execution_scope": "Actual source consumer and normal ACL2 guard/boundary checks; matching full-owner ten MiB scenario pending."
     }
   ]
 }
