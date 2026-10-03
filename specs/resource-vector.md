@@ -609,3 +609,30 @@ retains a discoverable read/token even if the physical child runs. Ordinary
 no-token refusal removes the reservation; an escaped draw or binding preserves
 it and is never retried as a fresh issue. This is native custody ordering,
 not a proof of a complete decoded tariff or interpreter realization.
+
+
+### Independent peer flight pool (HST-049)
+
+Catchup spool flights use a distinct private typed bank. The operator policy
+captures heap octets, spool disk octets, maximum flights, maximum workers,
+spool allowance per flight and total metered work. Absence creates no grant.
+Each flight has separate lifetime and work rows, selected by ACL2. Actual
+`fn-rl-draw` precedes private buffer, spool and worker constructors. Lifetime
+demand includes the selected direct 512/64/512 byte arrays, digest register
+and fixed frame array backing, native stack/runtime, two descriptors, one
+worker and a spent read identity. Work quanta draw their actual core-selected
+work demand on the companion row; settlement retains spent work. Exhaustion
+refuses before cursor mutation and cannot silently truncate an accepted batch.
+
+The independent launcher contribution adds the policy heap and worker threads
+with whole-machine validation. Startup checks the actual dynamic capture and
+protected other banks. DEFAULT must protect this peer heap rather than consume
+it as spare headroom. No output, syncer or page-pool slack grants peer authority.
+
+This initial producer is explicitly `:partial-fixed-storage`: native flight/
+request/completion/mutex cells, owned controller/hash frame payload graphs,
+transient octet lists and garbage, TLS, integer widths and collector behavior
+still require the concrete consumer representation. The flight lease survives
+peer ACK, local response, timeout and cancellation. Settlement requires actual
+worker return/join, physical socket closure, spool cleanup and no future
+publication or owner-close callback custody. Bounds owns the real spool driver.

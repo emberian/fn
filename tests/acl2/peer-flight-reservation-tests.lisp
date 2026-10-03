@@ -1,0 +1,78 @@
+(in-package "ACL2")
+(include-book "../../books/peer-flight-reservation")
+(include-book "std/testing/assert-bang" :dir :system)
+(defconst *pfr-policy* '(32768 65536 2 1 32768 20))
+(assert-event (and (fn-pfr-policy-p *pfr-policy*)
+                  (equal (fn-pfr-slots 2) 6)
+                  (equal (fn-pfr-flight-slot 0) 2)
+                  (equal (fn-pfr-work-slot 0) 3)
+                  (equal (fn-pfr-flight-slot 1) 4)
+                  (equal (fn-pfr-work-slot 1) 5)
+                  (equal (fn-pfr-scope) :partial-fixed-storage)))
+(assert-event (and (not (fn-pfr-policy-p '(32768 65536 2 3 32768 20)))
+                  (not (fn-pfr-policy-p '(1 65536 2 1 32768 20)))
+                  (not (fn-pfr-policy-p '(32768 1 2 1 32768 20)))
+                  (not (fn-pfr-work-demand -1))))
+(defconst *pfr-base* '(:heap 256 "custom" 8192 1024 20))
+(defconst *pfr-launch* (fn-pfr-extend-reservation *pfr-base* *pfr-policy* 100 '(8589934592)))
+(assert-event
+ (and *pfr-policy* (equal (fn-pfr-at 0 *pfr-launch*) :heap)
+      (equal (fn-pfr-at 1 *pfr-launch*) 257)
+      (equal (fn-pfr-at 5 *pfr-launch*) 21)
+      (<= (fn-heap-reservation-octets (fn-pfr-at 1 *pfr-launch*) 100
+             (fn-pfr-at 4 *pfr-launch*) (fn-pfr-at 5 *pfr-launch*))
+          (fn-heap-machine-octets '(8589934592)))))
+; Retain each other antecedent, remove one, affirmatively fail conclusion.
+(assert-event
+ (let ((d (fn-pfr-extend-reservation *pfr-base* nil 100 nil)))
+  (and (not nil) (equal (fn-pfr-at 0 d) :heap)
+       (not (<= (fn-heap-reservation-octets (fn-pfr-at 1 d) 100
+                   (fn-pfr-at 4 d) (fn-pfr-at 5 d)) (fn-heap-machine-octets nil))))))
+(assert-event
+ (let ((d (fn-pfr-extend-reservation *pfr-base* *pfr-policy* 100 nil)))
+  (and *pfr-policy* (not (equal (fn-pfr-at 0 d) :heap))
+       (not (<= (fn-heap-reservation-octets (fn-pfr-at 1 d) 100
+                   (fn-pfr-at 4 d) (fn-pfr-at 5 d)) (fn-heap-machine-octets nil))))))
+
+(defun pfr-funded-test-run (fn-resource-ledger)
+ (declare (xargs :mode :program :stobjs fn-resource-ledger))
+ (mv-let (word fn-resource-ledger)
+  (fn-pfr-install-funded 65536 32768 *pfr-policy* 1024 2048 fn-resource-ledger)
+  (mv-let (flight gen fn-resource-ledger)
+   (fn-rl-draw (fn-pfr-flight-slot 0) (fn-pfr-flight-demand *pfr-policy* 1024 2048) fn-resource-ledger)
+   (mv-let (second ignored fn-resource-ledger)
+    (fn-rl-draw (fn-pfr-flight-slot 1) (fn-pfr-flight-demand *pfr-policy* 1024 2048) fn-resource-ledger)
+    (declare (ignore ignored))
+    (mv-let (work wgen fn-resource-ledger)
+     (fn-rl-draw (fn-pfr-work-slot 0) (fn-pfr-work-demand 10) fn-resource-ledger)
+     (mv-let (worked fn-resource-ledger)
+      (fn-rl-settle (fn-pfr-work-slot 0) wgen fn-resource-ledger)
+      (let ((before (fn-rl-bank fn-resource-ledger)))
+       (mv-let (exhausted ignored fn-resource-ledger)
+        (fn-rl-draw (fn-pfr-work-slot 0) (fn-pfr-work-demand 11) fn-resource-ledger)
+        (declare (ignore ignored))
+        (let ((unchanged (equal before (fn-rl-bank fn-resource-ledger))))
+         (mv-let (terminal fn-resource-ledger)
+          (fn-rl-settle (fn-pfr-flight-slot 0) gen fn-resource-ledger)
+          (mv-let (stale fn-resource-ledger)
+           (fn-rl-settle (fn-pfr-flight-slot 0) gen fn-resource-ledger)
+           (mv (list word flight second work worked exhausted unchanged terminal stale
+                     (fn-rl-drawni 1 fn-resource-ledger)
+                     (fn-rl-drawni 3 fn-resource-ledger)
+                     (fn-rl-drawni 4 fn-resource-ledger)
+                     (fn-rl-drawni 8 fn-resource-ledger))
+               fn-resource-ledger))))))))))))
+(defun pfr-funded-test-exec ()
+ (declare (xargs :mode :program))
+ (with-local-stobj fn-resource-ledger
+  (mv-let (result fn-resource-ledger) (pfr-funded-test-run fn-resource-ledger) result)))
+(assert! (equal (pfr-funded-test-exec)
+ '(:installed :drawn :resources-unavailable :drawn :settled
+   :resources-unavailable t :settled :stale 0 0 1 10)))
+
+(assert-event
+ (and (equal (fn-pfr-at 0 (fn-pfr-startup-grant 65536 32768 *pfr-policy*)) :hold)
+      (<= (+ (nfix 32768) (nfix (fn-pfr-at 0 *pfr-policy*))) (nfix 65536))))
+(assert-event
+ (and (not (equal (fn-pfr-at 0 (fn-pfr-startup-grant 1 0 *pfr-policy*)) :hold))
+      (not (<= (+ (nfix 0) (nfix (fn-pfr-at 0 *pfr-policy*))) (nfix 1)))))

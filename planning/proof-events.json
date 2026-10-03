@@ -19417,6 +19417,20 @@
           "name": "fn-durable-realize-lz-octet-is-decoded-nth"
         }
       ]
+    },
+    {
+      "id": "PRF-1307",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pfr-accepted-launch-fits-machine"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pfr-held-startup-fits-capture"
+        }
+      ],
+      "pending_subject": "Bounds retained spool driver is implementing direct fn-rl-draw/settle consumer; Operator launcher/profile capture extension not yet composed."
     }
   ]
 }
