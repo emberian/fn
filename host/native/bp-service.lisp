@@ -516,6 +516,20 @@ its outcome, which is the refusal to the offering ingress."
 (defun fnn-bps-route-segment-mru (route) (sixth route))
 (defun fnn-bps-route-transfer-mru (route) (seventh route))
 
+(defmacro fnn-bps-with-send-socket ((socket) &body body)
+  "Release send custody without replacing the condition escaping the session."
+  (let ((primary (gensym "PRIMARY")))
+    `(let ((,primary nil))
+       (unwind-protect
+            (handler-case (progn ,@body)
+              (serious-condition (condition)
+                (setq ,primary condition)
+                (error condition)))
+         (when ,socket
+           (handler-case (fnn-socket-shut ,socket)
+             (serious-condition (cleanup)
+               (error (or ,primary cleanup)))))))))
+
 (defun fnn-bps-send-effect-next (service effect)
   (let* ((route (second effect))
          (key (fourth effect))
@@ -527,10 +541,11 @@ its outcome, which is the refusal to the offering ingress."
          (attempt (fnn-core 'fn-bpnj-attempt-token (fnn-bps-state service) key))
          (socket nil)
          (fragments nil)
+         (transfer-index 1)
          (plan-refused nil)
          (outcome :uncertain))
     (handler-case
-        (unwind-protect
+        (fnn-bps-with-send-socket (socket)
              (progn
                ; Test-only exact core/adapter fault.  It is inside the same
                ; handler as real send-path failures so the regression proves
@@ -587,10 +602,11 @@ its outcome, which is the refusal to the offering ingress."
                  (loop for fragment in fragments
                        for index from 2
                        while (eq outcome :accepted)
-                       do (let* ((next nil)
+                       do (setq transfer-index index)
+                          (let* ((next nil)
                                  (transfer
                                    (handler-case
-                                       (unwind-protect
+                                       (fnn-bps-with-send-socket (next)
                                             (progn
                                               (setq next (fnn-tcl-connect
                                                           (fnn-bps-route-host route)
@@ -601,19 +617,24 @@ its outcome, which is the refusal to the offering ingress."
                                                     "bp-service" (fnn-bps-root service)
                                                     :bundle fragment :expect 0
                                                     :refuse-inbound t))
-                                                  :uncertain))
-                                         (when next (fnn-socket-shut next)))
+                                                  :uncertain)))
                                      ((or fnn-os-error sb-bsd-sockets:socket-error) ()
                                        (if next :uncertain :failed)))))
                             (setq outcome (fnn-core 'fn-bpfs-fragment-outcome index transfer))
-                            (fnn-out "BP fragment ~d transfer ~(~a~)" index outcome)))))
-          (when socket (fnn-socket-shut socket)))
-      (fnn-store-fault (e) (error e))
-      ((or fnn-os-error sb-bsd-sockets:socket-error fnn-store-error) ()
+                            (fnn-out "BP fragment ~d transfer ~(~a~)" index outcome))))))
+      (fnn-store-error (e)
+        ;; Only the exact named refusal used by the session adapter is a
+        ;; transport observation. Store uncertainty/faults and unknown
+        ;; subclasses retain their condition for the owner's boundary.
+        (unless (eq (type-of e) 'fnn-store-error) (error e))
+        (setq outcome (fnn-core 'fn-bpfs-fragment-outcome transfer-index
+                                (if socket :uncertain :failed))))
+      ((or fnn-os-error sb-bsd-sockets:socket-error) ()
         ;; A connect that never produced a socket sent no octet: the
         ;; transfer certainly did not happen (:failed, requeued by ACL2).
         ;; Any failure after the connection exists stays :uncertain.
-        (setq outcome (if socket :uncertain :failed))))
+        (setq outcome (fnn-core 'fn-bpfs-fragment-outcome transfer-index
+                                (if socket :uncertain :failed)))))
     ;; The outcome word is an observation; ACL2 names the run's evidence
     ;; from the durable :requeued record's reason (the :forward-refused
     ;; effect, fn-bpnrc-job-result-class-is-the-transport-class).

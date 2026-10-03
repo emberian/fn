@@ -651,3 +651,25 @@ Archived planning/evidence/repair/S110-e20e6254e71e4151b41907b94d897130.json
 sha256f26785cea305d06c3faed1083ac8e47d6b7519ad598dece5fd6894738204fe3e.
 Receipt-only commit does not change source coordinate. S110 remains
 in-progress pending combined consumer boundary; no whole-owner/image claim.
+
+S097 BP send observation boundary, codex-sol-tools
+================================================
+fnn-bps-send-effect-next preserves every Store condition except the exact
+base named session refusal; indeterminate/core and unknown subclasses
+escape to the owner boundary without publishing a transport job result.
+The actual transfer index survives clearing the first socket; outer named
+refusal/OS results use ACL2 fn-bpfs-fragment-outcome, so a later failure
+after an accepted fragment remains uncertain. Both socket custody scopes
+use one private generated cleanup envelope preserving the escaping primary
+condition. No retention/allocator/source producer changes (Groundwork owns).
+
+First command: python3 -m unittest tests.test_native_bp_send_boundary
+Eight focused schedules pass1.490s before final scoped inventory rerun.
+Actual send function/macro/structures and ACL2 fragment normalization run;
+transport/session/plan answers recorded, not a real TCPCL/qualified image
+claim. Whole/fragment success, first-connect failed, later-connect uncertain,
+later named refusal uncertain, indeterminate first/later and cleanup faults,
+unknown Store subclass and core fault are distinguished. Known assertion
+marker alone yields defect red; other raw failures remain infrastructure.
+Scoped new fixture inventory has zero stale/unresolved calls. No broad
+qualification or historical BP retry started.

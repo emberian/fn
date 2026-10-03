@@ -1,23 +1,38 @@
 {
  "acceptance": "wrapper:closed-classification",
+ "budget": 450,
  "category": "error-handling",
  "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "DISSOLVES-IN",
  "evidence": "bp-service.lisp:610-615 `(fnn-store-fault (e) (error e)) ((or fnn-os-error sb-bsd-sockets:socket-error fnn-store-error) () (setq outcome (if socket :uncertain :failed)))`. fnn-store-indeterminate is a subtype of fnn-store-error (io.lisp:92), so it lands in the transport branch. Also, line 582 `(setq socket nil)` runs before the fragment loop (587-608), whose inner handler catches only os and socket errors. The comment at 584-586 says \"after the first fragment has gone a connect that sent nothing is :uncertain, never :failed\".",
+ "expect-failure": "tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_indeterminate_keeps_exact_class",
  "exposure": "conditional",
+ "failure-message": "ambiguous Store publication must retain its exact class",
  "file": "host/native/bp-service.lisp",
  "fix": "Add an explicit `(fnn-store-indeterminate (e) (error e))` arm before the fnn-store-error arm. Track \"any octet sent\" with its own flag set before the fragment loop, rather than reusing `socket`.",
+ "harness": "tests/test_native_bp_send_boundary.py,tests/native_bp_send_boundary_raw.lisp",
  "id": "S097",
  "line": "610",
  "locus": "peer-services",
- "notes": [],
- "owner": "sweep-peer",
+ "notes": [
+  "10-03 04:33 claimed: scope=['host/native/bp-service.lisp', 'specs/bp-node-machine.md', 'tests/native_bp_send_boundary_raw.lisp', 'tests/test_native_bp_send_boundary.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_indeterminate_keeps_exact_class"
+ ],
+ "owner": "codex-sol-tools",
  "reviewer": "bp-service.lisp:610-615: fnn-store-fault is re-signalled, but fnn-store-indeterminate (a subtype of fnn-store-error, io.lisp:92) is caught by the transport branch and becomes :uncertain/:failed. The only realistic indeterminate source inside this session is finding 2's stray inbound staging (tcpcl.lisp:273), so (a) needs a misbehaving peer plus EIO, and it fences a file nothing reads. (b) is real: socket is set to nil at line 582 before the fragment loop. The inner handler (606-607) catches only os and socket errors, so a store-error in fragment session 2 or later reaches the outer handler. That handler sets :failed and skips fn-bpfs-fragment-outcome, the function that turns a later fragment's :failed into :uncertain (books/bp-fragment-send.lisp:1308-1310). The trigger for (b) is narrow, because params are unchanged across fragment sessions.",
  "scenario": "(a) During the send session the peer offers a transfer. fnn-tcl-stage's barrier fails and raises fnn-indeterminate. That becomes the transport outcome :uncertain, the machine requeues the job and keeps publishing, and the ambiguous persistence failure is lost. (b) The first fragment is accepted, then fragment 2's session raises any fnn-store-error (for example `tcpcl: the session machine refused these parameters`, or the indeterminate above). socket is already nil, so outcome becomes :failed (\"certainly did not happen\") for a job whose first fragment was delivered.",
+ "scope": [
+  "host/native/bp-service.lisp",
+  "specs/bp-node-machine.md",
+  "tests/native_bp_send_boundary_raw.lisp",
+  "tests/test_native_bp_send_boundary.py",
+  "LANEDUMP.md",
+  "planning/evidence-index.tsv"
+ ],
  "severity": "low",
  "slice": "wrapper",
  "source": "sweep-2026-10-03",
- "state": "open",
+ "state": "in-progress",
+ "test": "python3 -m unittest tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_indeterminate_keeps_exact_class",
  "title": "bp-service send path reports an indeterminate publication as transport :uncertain/:failed, and reports :failed after fragments were sent",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T08:33:05Z"
 }
