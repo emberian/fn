@@ -9636,6 +9636,33 @@
         "planning/evidence/operator-pool-startup-source-2026-10-03-v2.json"
       ],
       "execution_scope": "Actual native function bodies with observed physical constructors and deliberate core startup results; actual service-settlement ACL2 functions. Numerical producer proof, actual allocator/worker composition and matching image are separate coordinates."
+    },
+    {
+      "id": "SCN-1133",
+      "title": "Failed-open and rollback physical close debt retain owner startup authority through terminal settlement",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-020"
+      ],
+      "steps": [
+        "Compose actual failed-open cleanup, owner-install retained carrier, sticky Store-close debt and final Store settlement with physical call observations.",
+        "Exercise failure before open returns, failure after open returns, and definitely closed rollback.",
+        "Execute prior actual final settlement against the same retained Store debt."
+      ],
+      "expected": [
+        "Uncertain close debt preserves primary initialization failure and the actual Store carrier; terminal settlement is held and makes no physical close retry.",
+        "Definite rollback close permits authority release.",
+        "Prior settlement answers joined despite retained physical close debt and fails the expected held assertion."
+      ],
+      "implementation": {
+        "test": "tests/test_native_owner_startup_custody_source.py"
+      },
+      "evidence": [
+        "tests/native_owner_startup_custody_source.lisp",
+        "planning/evidence/operator-startup-custody-composition-2026-10-03.json"
+      ],
+      "execution_scope": "Actual owner-install, failed-open close helper, Store-close debt, retained authority and terminal settlement bodies; actual ACL2 service settlement decisions. Open provider and physical close/unlock/unlink calls are recorded observations, not live filesystem durability or saved-image qualification."
     }
   ]
 }

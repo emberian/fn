@@ -134,6 +134,11 @@ does not admit an explicit complete cold policy or establish a complete
 allocation tariff. Exhaustion is a resource refusal, never truncation of stored
 history. Startup joins a partial executor even when recovery fails before a
 service exists; an escaping physical join retains run authority (SCN-1130).
+If failed open or initialization cannot definitely close its Store, the
+existing service authority retains that actual Store. Final settlement consults
+the retained carrier even when installation never returned a service. A sticky
+physical close failure stays uncertain and is not retried as a fresh close;
+only a definite rollback close permits authority release (SCN-1133).
 
 The file-incarnation namespace is distinct from the read namespace. The
 operator limits each independently, with no wrapped identity reuse; the

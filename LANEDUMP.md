@@ -3707,3 +3707,15 @@ No ACL2 changes/proof claims. Coherent native source reload needed for added Sto
 Durable shared knowledge: /Users/ember/dev/fn/.spw/audits/exits/index.spw and traces.md. Full definitions inspected for Pull/catch-up publication, service fence, NNTP close/credits, mux terminal debt, Web job-return cleanup, BP session custody/ACK, immutable publication. Workbench roots/select/tree observed at651b535b5171.
 
 Remaining inspection scope: full cancellation/refund dispatch leaves, consumer remote wait/ACK boundaries, checkpoint terminal failure composition and wider command cleanup (many direct unwind Store close consumers still preserve neither body condition nor recorded command receipt). Immutable post-authority stage cleanup must preserve accepted classification; any fd physical debt must be recorded separately. Startup baseline repairs and actor/executor terminal changes owned by current Deputies, not reopened.
+
+Operator/Horse EX03 actual-source composition: privately composed Horse01e4,
+1200 andfe5 with Operator1e9; the new SCN-1133 executes actual owner-install,
+failed-open close helper, sticky Store-close debt and final settlement. All
+three cases pass: pre-return physical close error, post-return initialization
+rollback error, and definite rollback close. Old actual terminal settlement
+refutes the held assertion by answering joined despite close debt. Physical
+open/close/unlock/unlink observations are recorded seams, not live durability.
+Evidenceba2eef197b9ced3fa5988c2be9f79450395d0f7cf9069f0aa2f2cdaf41d54fdb and
+red/greenlog906b57e1296ce8dea60de8940f4c20f8effcf2850ab6802e52bc410d281a9d03 indexed.
+The final test/evidence packet is additive; Integration must not reimport the
+private cherry-picks of Horse source it already owns.
