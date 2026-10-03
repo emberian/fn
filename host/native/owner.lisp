@@ -1469,6 +1469,13 @@ abstract-stobj exports; shared-state work enters declared owner sections."
 (def-actor fnn-owner-spawn-syncer :thread-name "fn owner syncer" :roster t)
 (def-actor fnn-owner-spawn-committer :thread-name "fn owner committer" :roster nil)
 
+(defun fnn-owner-actor-for-custody (service retained)
+  "Find the native reservation retaining RETAINED, including a failed start.
+The reference remains discoverable until an affirmative physical receipt."
+  (fnn-with-roster (service)
+    (find-if (lambda (actor) (member retained (fnn-owner-actor-custody actor) :test #'eq))
+             (fnn-owner-service-actors service))))
+
 (defun fnn-owner-actor-join (service worker &key timeout)
   "Return physical-ended-p and one (:joined ID KIND CUSTODY) receipt. On a
 failed/timed-out join fault the service and retain registration and custody."
@@ -2240,10 +2247,12 @@ into the service log's stop line and its own result line, so `health',
           (ignore-errors
            (format nil "owner core/store fault; process stopped: ~a" condition))))
   (fnn-owner-gated (service :control)
-    (unless (fnn-owner-service-stopping service)
-      (when (and cid (not (fnn-owner-connection-selected-p service)))
-        (ignore-errors (fnn-owner-action 'fn-owner-fault cid)))
-      (fnn-owner-stop-service-locked service +fnn-exit-fault+)))
+    (when (and cid (not (fnn-owner-service-stopping service))
+               (not (fnn-owner-connection-selected-p service)))
+      (ignore-errors (fnn-owner-action 'fn-owner-fault cid)))
+    ;; A later cleanup fault must still reach ACL2's monotone stop lattice.
+    ;; Already stopping prevents semantic mutation, never escalation.
+    (fnn-owner-stop-service-locked service +fnn-exit-fault+))
   (fnn-err "owner core/store fault; process stopped: ~a" condition))
 
 (defun fnn-owner-classify-escape-locked (service cid condition)
@@ -7739,7 +7748,6 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                    fault nil :inet nil connection-fault-operation)))
 
 (fnn-register-developer-verb "owner" #'fnn-command-owner)
-
 
 
 
