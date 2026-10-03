@@ -377,6 +377,9 @@
 ; flight its held durable reader view replaces the working view. The
 ; connection's pre-command pin and that effective live view are distinct;
 ; a command which repins must also retain its actual resulting plan/pin.
+; A span may contain authentication or several command events. These
+; connection fields describe its starting context, not a replacement for
+; the actual command's ACL2 authorization and selected pin.
 (defun fn-owner-catalog-capture-context (id state)
   (declare (xargs :stobjs state :mode :program))
   (if (not (boundp-global 'fn-owner state))
