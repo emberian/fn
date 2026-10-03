@@ -45,6 +45,14 @@
 (definterface fn-ros-outcome :class :common-lisp-compliant)
 (definterface fn-ros-drainedp :class :common-lisp-compliant)
 
+; Partial resident/output custody seam. Install/issue mutation guards and the
+; complete allocation tariff remain PRF-1259; this is not an operation gate.
+(definterface fn-rlo-install :class :ideal)
+(definterface fn-rlo-issue :class :ideal)
+(definterface fn-rlo-output :class :common-lisp-compliant)
+(definterface fn-rlo-physical :class :common-lisp-compliant)
+(definterface fn-rlo-drainedp :class :common-lisp-compliant)
+
 ; -----------------------------------------------------------------------------
 ; The extraction roots: the functions the extracted served program's driver
 ; calls (tools/extract/build.sh ROOTS, in that order).
@@ -3537,6 +3545,11 @@
   :keystones (fn-crv-accepted-launch-fits-observed-machine
               fn-crv-accepted-launch-funds-pool-dynamic-allowance))
 
+(definterface fn-orv-extend-reservation
+  :class :common-lisp-compliant
+  :keystones (fn-orv-accepted-launch-fits-observed-machine
+              fn-orv-accepted-launch-funds-output-dynamic-allowance))
+
 (definterface fn-heap-reserve-report-line
   :class ::common-lisp-compliant)
 
@@ -3835,6 +3848,9 @@
 
 (definterface fn-native-operator-host-result-run-cold-resources
   :class ::program)
+
+(definterface fn-native-operator-host-result-run-output-resources
+  :class :program)
 
 (definterface fn-native-operator-host-result-run-implicit-tls-port
   :class ::program)

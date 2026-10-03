@@ -6577,6 +6577,26 @@
       ],
       "implementation_note": "Initial concrete producer is the owner syncer worker/resident projection, installed inside the existing qualified startup :hold section before issue. A token carries ledger draw generation separately from operation generation. Both the actual actor terminal/no-actor-created receipt and matching consumed operation outcome are required. Broader user tariffs, allocation/refusal work, subtree/refund correspondence and complete actor census remain open. Post-launch committer unwind retains an actual-result consumer until physical return; a started/torn consumption is not retried. The committer actor outer escape callback stops the service after raw ACL2 throws.",
       "note": "Logical definitions and executable scenario assertions are source-admitted only; native consumer, preservation and guard evidence are not completion claims."
+    },
+    {
+      "id": "HST-047",
+      "title": "A shared output heap pool is funded before materialization and connection generations retain each window draw until output and physical custody end",
+      "specification": "specs/resource-vector.md#shared-output-pool-hst-047",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-1259"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/output-reservation.lisp",
+        "books/resource-output.lisp",
+        "tests/acl2/output-reservation-tests.lisp"
+      ],
+      "implementation_note": "Explicit pool extends the composed store/thread/cold launcher allowance. Startup captures actual dynamic space and separately names store and cold terms, funds bookkeeping and one maintenance lease, and requires one user quantum affordable. Per-CID and connection generation window custody is scoped to the actual NEWNEWS producer. Full matcher/initialization/outer-plan/mux allocation refinement, refusal work and owner R>=W remain open."
     }
   ]
 }

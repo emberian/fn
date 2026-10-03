@@ -19077,6 +19077,23 @@
           "name": "fn-nnw-select-zero-remaining-settles"
         }
       ]
+    },
+    {
+      "id": "PRF-1259",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-orv-accepted-launch-fits-observed-machine"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orv-accepted-launch-funds-output-dynamic-allowance"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orv-startup-hold-protects-owner-and-one-quantum"
+        }
+      ]
     }
   ]
 }
