@@ -33,7 +33,7 @@
   :raw-guarded (0 nil (fn-resource-ledger)))
 (definterface fn-ros-install-syncer :class :ideal)
 (definterface fn-ros-issue
-  :class :ideal
+  :class :common-lisp-compliant
   :operation (:stage :projection :funding fn-ros-install-syncer
               :tariff fn-ros-worker-vector :draw fn-rl-draw
               :principal :owner :slot 2
@@ -41,9 +41,9 @@
               :retention :physical-and-operation
               :coverage (:resident :workers)
               :unaccounted (fn-rl-wfp fn-rl-draw mv-nth)))
-(definterface fn-ros-physical :class :ideal)
-(definterface fn-ros-outcome :class :ideal)
-(definterface fn-ros-drainedp :class :ideal)
+(definterface fn-ros-physical :class :common-lisp-compliant)
+(definterface fn-ros-outcome :class :common-lisp-compliant)
+(definterface fn-ros-drainedp :class :common-lisp-compliant)
 
 ; -----------------------------------------------------------------------------
 ; The extraction roots: the functions the extracted served program's driver

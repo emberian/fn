@@ -21732,7 +21732,7 @@
         "tests/acl2/resource-operation-tests.lisp"
       ],
       "events": [],
-      "progress_note": "Source definitions and 11 typed-ledger scenario forms admitted in laptop solsync; no certificate, guards, preservation theorem, physical runtime correspondence or full resource/cost coverage claim yet. Executable draw/settle refinement work stays PRF-1211; receipt producer boundary remains here."
+      "progress_note": "Source definitions and 11 typed-ledger scenario forms admitted in laptop solsync; no certificate, guards, preservation theorem, physical runtime correspondence or full resource/cost coverage claim yet. Executable draw/settle refinement work stays PRF-1211; receipt producer boundary remains here. Actual issue, physical, outcome, live and drained guards now source-admitted using helper draw/settle representation exports; issue/receipt preservation plus nine complete positive/type-removal/shape-removal witnesses admitted. Bootstrap install guards and full bank/native physical correspondence remain owed. Matching certification pending assembly."
     }
   ]
 }
