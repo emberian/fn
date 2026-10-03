@@ -99,6 +99,33 @@ reclaim/release; Representation for carrier signatures/dispatch. Agree on the
 specific function boundary before concurrent edits. This does not serialize
 whole subsystems because they share owner.lisp.
 
+## Active consumer closure (groundwork wave, 2026-10-03)
+
+These records describe the current executed boundary and the next acceptance
+scenario; declarations and unused libraries do not close an initiative. Each
+implementation owner follows its wiring, displaced-path removal and failures
+through dev. Before starting another independent slice/lane, reduce orphaned READY
+or integration-blocked work; useful preparation may continue beside a running
+check. Integration owns the first combined candidate and its scoped host-prefix,
+image and native checks. That candidate proceeds with runnable slices and does
+not wait for completion of the actor/cursor/resource frameworks.
+
+| Initiative | Actual producer and host consumer | First acceptance and continuing owner | Dependency owner / present evidence |
+|---|---|---|---|
+| Physical actor lifecycle | `fnn-owner-spawn-syncer` -> `fnn-owner-start-syncer` -> pipeline parent `fnn-owner-actor-join`; actual captured job is retained custody | Stop with held batch cleanup, failed/timed-out join and post-create latch failure retain the child/job until physical end; Runtime wires families and removes hand registration/failure recipes | Runtime model scoped certificate and native SBCL schedules; source READY `3bda776c6` to Integration, combined image pending |
+| Owner worker accounting | Existing capacity input at `fnn-mux-budget-install` -> typed `fn-rl` owner worker account -> Runtime syncer draw and join/completion consumer | One worker draw before spawn remains held until physical join AND operation settlement, returns reusable projection exactly once; Foundations owns concrete producer/correspondence, Runtime wiring | Foundations/Runtime; producer implementation underway. Runtime resource enforcement remains **unconnected**. Flat owner accounting does not claim user subbanks/refunds or full rescue funding. Historical fixed12 'two spare' is stale: committer/syncer already consume them |
+| Served metadata and continuation | `fn-nntp-newnews-response-cat` -> `fn-scr-command` -> owner handle chunk -> mux reply drain | `native_newnews_wildmat` with 1,000 articles and second reader, cold dependency deadline, maintenance alongside acceptance; Served owns command/cursor wiring and removes displaced response paths | Source merged `79850a877`, capture/reader/protocol checks passed; combined native verdict pending. Foundations supplies funded retention producer; bounded visits/output common cursor is still being connected |
+| Publication capability | Arena plus generation pin captured in owner quantum -> `fnn-owner-publish-captured` -> checkpoint walk/write/release | Publication while accepts/readers proceed uses captured capability without off-section protected getters; Served carries capture through reclaim/export, Runtime later converts actor lifecycle | Publication actual graph+mutation checks passed at source merge; reclaim/export getter paths remain debt, no whole-operation owner lock remedy |
+| Host schedule composition | Actual `fn-pio-direct-admit/cancel/settle/quiet-p` outputs -> `fn-hmc-*` direct labels carrying holder effects | Cancellation, retirement, late physical return, fd/CID/worker reuse and stale receipts through same direct subjects; Groundwork owns machine, proof continuation and native label linkage | Obsolete old admit/settle arities repaired locally; executable witnesses in progress. All-schedules and actual HM/native realization remain owed. Funded sites require distinct transitions |
+| Verifier and checker | Current unittest harness transplanted unchanged to base/head -> structured assertion observations; host graph -> stable source identities | Exact base assertion fails/head same IDs pass; shifted callback line numbers preserve debt rather than hiding new paths; Tools owns checker/fixture consumers and historical implementation routing | NIGHT-VERIFY 19 fixtures+archived witness source integrated; selector fixture READY, lock identity repair under narrow verification |
+| Candidate assembly | Reviewed source -> Integration's immutable assembled candidate -> actual loaded host world and native modules | Host-prefix normal/DTN, real NEWNEWS/cold/publication and syncer custody scenario; Integration owns builds and source/evidence coordinates | dev `4479f2acf` contains source+tools+cost+served; next runtime/temporary trusted dispatch slice under assembly. No new image green or deployment claim |
+
+Temporary raw-dispatch trust is a native realization facility with explicit owed
+writers, not an `encapsulate` theorem assumption. The seven entries' actual
+loaded-world guard bridges and matched raw/counterpart POST must pass before an
+execution claim. The carrier migration owns eliminating that exception; source
+integration does not retire its debt.
+
 ## Work that starts together
 
 ### Integrate the existing work and keep dev usable
