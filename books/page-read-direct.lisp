@@ -374,6 +374,48 @@
 
 (local (in-theory (enable fn-pio-direct-settle fn-pio-complete fn-pxe-commit-direct)))
 
+; The admitted branch, once: when the admit answers :admitted, every value
+; it returns in terms of the callees' (so the keystones below open nothing
+; of the admit itself).
+(local
+ (defthm fn-pird-admitted-shape
+   (implies (equal (mv-nth 0 (fn-pio-direct-admit next cid file eoff elen trailer worker issued holds))
+                   :admitted)
+            (let* ((n (if (null next) 0 next))
+                   (token (list n cid file eoff elen trailer))
+                   (row (list n cid file eoff elen trailer :issued)))
+              (and (natp n) (natp cid) (posp file) (natp eoff) (natp elen) (natp trailer)
+                   worker
+                   (equal (mv-nth 0 (fn-pxe-assign worker token)) :assigned)
+                   (equal (mv-nth 1 (fn-hd-ident-step holds (list :hold file token))) :held)
+                   (not (fn-pio-issued-row token issued))
+                   (equal (mv-nth 1 (fn-pio-direct-admit next cid file eoff elen trailer worker issued holds))
+                          (+ 1 n))
+                   (equal (mv-nth 2 (fn-pio-direct-admit next cid file eoff elen trailer worker issued holds))
+                          token)
+                   (equal (mv-nth 3 (fn-pio-direct-admit next cid file eoff elen trailer worker issued holds))
+                          row)
+                   (equal (mv-nth 4 (fn-pio-direct-admit next cid file eoff elen trailer worker issued holds))
+                          (mv-nth 1 (fn-pxe-assign worker token)))
+                   (equal (mv-nth 5 (fn-pio-direct-admit next cid file eoff elen trailer worker issued holds))
+                          (fn-pio-issued-put token row issued))
+                   (equal (mv-nth 6 (fn-pio-direct-admit next cid file eoff elen trailer worker issued holds))
+                          (mv-nth 0 (fn-hd-ident-step holds (list :hold file token)))))))
+   :hints (("Goal" :in-theory (e/d (fn-pio-direct-admit fn-pio-issue fn-pio-token)
+                                   (fn-hd-ident-step fn-pxe-assign fn-pio-issued-row
+                                    fn-pio-issued-put))))
+   :rule-classes nil))
+
+; The row the admit issues is a row with that token.
+(local
+ (defthm fn-pird-issued-row-shape
+   (implies (and (natp n) (natp cid) (posp file) (natp eoff) (natp elen) (natp trailer))
+            (and (fn-pio-rowp (list n cid file eoff elen trailer :issued))
+                 (fn-pio-rowp (list n cid file eoff elen trailer :cancelled))
+                 (equal (fn-pio-token (list n cid file eoff elen trailer :issued))
+                        (list n cid file eoff elen trailer))))
+   :hints (("Goal" :in-theory (enable fn-pio-rowp fn-pio-token)))))
+
 ; KEYSTONE.  Admission binds an idle worker to exactly the issued identity:
 ; the token names the request, the file incarnation and the whole extent;
 ; the row is :issued for that token and is the issued table's row at that
@@ -401,11 +443,14 @@
                   (equal (nth 2 w1) :running) (equal (nth 3 w1) token)
                   (equal (mv-nth 1 (fn-pio-direct-admit next cid file eoff elen trailer worker issued holds))
                          (+ 1 n)))))
-  :hints (("Goal" :in-theory (e/d (fn-pio-direct-admit fn-pio-issue fn-pio-token fn-pio-rowp
-                                   fn-pxe-assign fn-pxe-rowp)
-                                  (fn-hd-ident-step fn-hd-ident-hold-adds-exactly-its-token
-                                   fn-hd-ident-duplicate-hold-is-refused))
-           :use ((:instance fn-hd-ident-hold-adds-exactly-its-token
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-pxe-assign fn-pxe-rowp fn-pird-issued-row-of-put)
+                           (fn-pio-direct-admit fn-hd-ident-step fn-pio-issued-row fn-pio-issued-put
+                            fn-hd-ident-hold-adds-exactly-its-token
+                            fn-hd-ident-duplicate-hold-is-refused fn-pio-rowp fn-pio-token mv-nth))
+           :use ((:instance fn-pird-admitted-shape)
+                 (:instance fn-pird-issued-row-shape (n (if (null next) 0 next)))
+                 (:instance fn-hd-ident-hold-adds-exactly-its-token
                             (table holds) (k file) (h file)
                             (tok (list (if (null next) 0 next) cid file eoff elen trailer)))
                  (:instance fn-hd-ident-duplicate-hold-is-refused
@@ -567,12 +612,14 @@
                   (not (fn-pio-file-clear-p file (fn-pio-issued-rows (fn-pio-direct-cancel token issued1))))
                   (not (fn-pio-direct-quiet-p file holds1)))))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-pio-direct-admit fn-pio-direct-cancel fn-pio-direct-quiet-p
-                            fn-pio-issue fn-pio-token fn-pio-rowp fn-pio-cancel fn-pxe-assign)
-                           (fn-hd-ident-step fn-hd-ident-hold-adds-exactly-its-token
-                            fn-pio-issued-row fn-pio-issued-put fn-pio-issued-rows
-                            fn-pio-file-clear-p fn-pird-named-row-not-clear mv-nth))
-           :use ((:instance fn-hd-ident-hold-adds-exactly-its-token
+           :in-theory (e/d (fn-pio-direct-cancel fn-pio-direct-quiet-p fn-pio-cancel
+                            fn-pird-issued-row-of-put)
+                           (fn-pio-direct-admit fn-hd-ident-step fn-hd-ident-hold-adds-exactly-its-token
+                            fn-pio-issued-row fn-pio-issued-put fn-pio-issued-rows fn-pio-rowp
+                            fn-pio-token fn-pio-file-clear-p fn-pird-named-row-not-clear mv-nth))
+           :use ((:instance fn-pird-admitted-shape)
+                 (:instance fn-pird-issued-row-shape (n (if (null next) 0 next)))
+                 (:instance fn-hd-ident-hold-adds-exactly-its-token
                             (table holds) (k file) (h file)
                             (tok (list (if (null next) 0 next) cid file eoff elen trailer)))
                  (:instance fn-pird-named-row-not-clear
