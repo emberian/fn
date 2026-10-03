@@ -409,13 +409,13 @@
                                    fn-ovw-cursor-effect fn-nntp-make-result fn-nntp-reply-effect)
                                   (fn-nntp-parse-range fn-cat-group-next fn-ovw-status)))))
 
-(defthm fn-nntp-newnews-response-cursor-emits-a-fresh-cursor
+(defthm fn-nntp-newnews-response-stream-emits-a-fresh-cursor
   (fn-splan-fresh-effectsp
-   (cdr (fn-nntp-newnews-response-cursor session archive env args fn-arena fn-cat)))
+   (cdr (fn-nntp-newnews-response-stream session archive env args fn-arena fn-cat)))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-nntp-newnews-response-cursor fn-nnw-meta-effect
+           :in-theory (e/d (fn-nntp-newnews-response-stream fn-nnw-meta-effect
                              fn-nnw-meta-effectp fn-nnw-meta-initialp fn-nnw-stream-outputp
-                             fn-nnw-stream-renderp fn-nnw-cursor
+                             fn-nnw-stream-renderp fn-nnw-stream-scan-cursor
                              fn-nntp-make-result fn-nntp-reply-effect fn-nntp-single)
                             (fn-nntp-newgroups-date-parse fn-nntp-newgroups-time-parse
                              fn-wildmat-parse fn-nntp-civil-dtn-ms
