@@ -2062,6 +2062,10 @@ route's point and the record log's, lane commit-onto-log)."
           ((eq (fnn-store-fault-class store) :fnn-test-kill)
            (sb-posix:kill (sb-posix:getpid) sb-unix:sigkill)
            (fnn-fault "test SIGKILL did not terminate the process"))
+          ;; Developer-only (fnn-post-test-fault's stop): the process stops
+          ;; itself at the cut; a SIGCONT resumes it past the cut unchanged.
+          ((eq (fnn-store-fault-class store) :fnn-test-stop)
+           (sb-posix:kill (sb-posix:getpid) sb-unix:sigstop))
           ;; A test-only setup action.  fnn-config-record-names invokes this
           ;; immediately before its real fnn-list-directory call, so that call
           ;; itself returns EACCES.  A handler that turned its error into NIL
@@ -4945,7 +4949,8 @@ books/store-init-log-publication.lisp)."
   '(:record-completing :finish-consumed :finish-durable :log-written :log-fenced))
 
 (defun fnn-post-test-fault ()
-  "Developer-only FN_NATIVE_POST_FAULT=MODEL-CUT:eio|kill selector, or
+  "Developer-only FN_NATIVE_POST_FAULT=MODEL-CUT:eio|kill selector (or
+log-written|log-fenced:stop, the process stopped there), or
 record-prepublish:refuse (a known refusal before the record's first write).
 
 The point is one of fnn-advance-frontier/fnn-publish/fnn-finish's actual
@@ -4970,9 +4975,16 @@ observes a genuine new-process image."
           (unless (or (member point +fnn-post-model-cuts+)
                       (member point +fnn-post-log-model-cuts+))
             (fnn-fault "unknown FN_NATIVE_POST_FAULT cut: ~a" label))
+          ;; stop: SIGSTOP at a log cut, so the block-fault campaign
+          ;; (tests/campaign/native_block_fault.py) can change the device
+          ;; under a process paused exactly there, then continue or kill it.
+          (when (and (string= action "stop")
+                     (not (member point '(:log-written :log-fenced))))
+            (fnn-fault "FN_NATIVE_POST_FAULT stop is only at log-written or log-fenced"))
           (list point
                 (cond ((string= action "eio") 'fnn-os-error)
                       ((string= action "kill") :fnn-test-kill)
+                      ((string= action "stop") :fnn-test-stop)
                       (t (fnn-fault
                           "invalid FN_NATIVE_POST_FAULT action: ~a" action)))
                 "developer-only native post fault"))))))
