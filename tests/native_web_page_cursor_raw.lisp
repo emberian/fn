@@ -99,6 +99,36 @@
               (fnn-web-page-step face conn))
             (assert (<= (length (fnn-web-conn-wire conn)) 4096))
             (assert (zerop (fnn-web-len (fnn-web-conn-out conn)))))
-          (assert (equal (wire-for 31) (append '(72 69 65 68) reference))))
+          (assert (equal (wire-for 31) (append '(72 69 65 68) reference)))
+          ;; HEAD counts identically, but does not issue an emit job.
+          (let ((head (fixture-conn 32 :page-count)))
+            (setf (fnn-web-conn-in head) in (fnn-web-conn-pagep head) t
+                  (fnn-web-conn-page-segs head) segs
+                  (fnn-web-conn-page-cursor head) (fn-wpc-cursor segs)
+                  (fnn-web-conn-page-response head) '(200 nil nil))
+            (loop while (eq (fnn-web-conn-phase head) :page-count) do (fnn-web-page-step face head))
+            (assert (= observed-length (length reference)))
+            (loop until (fnn-web-conn-closedp head) do (fnn-web-write-ready face head))
+            (assert (equal (wire-for 32) '(72 69 65 68)))
+            (assert (zerop (fnn-web-conn-page-count head))))
+          ;; A queued page activation retains its input/plan until the
+          ;; cancelled job physically returns; it emits no late page.
+          (let* ((cancel (fixture-conn 33 :page-count))
+                 (cancel-face (%make-fnn-web-face :service :service :wake-closed t
+                                                 :conns (list cancel))))
+            (setf (fnn-web-conn-in cancel) in (fnn-web-conn-pagep cancel) t
+                  (fnn-web-conn-page-segs cancel) segs
+                  (fnn-web-conn-page-cursor cancel) (fn-wpc-cursor segs)
+                  (fnn-web-conn-page-response cancel) '(200 nil t))
+            (assert (fnn-web-job-submit cancel-face cancel :page-count))
+            (fnn-web-finish cancel-face cancel)
+            (assert (not (fnn-web-conn-semantic-ended cancel)))
+            (assert (eq (fnn-web-conn-page-segs cancel) segs))
+            (setf (fnn-web-face-jobs-closed cancel-face) t)
+            (let ((worker (sb-thread:make-thread (lambda () (fnn-web-semantic-body cancel-face)))))
+              (sb-thread:join-thread worker))
+            (assert (fnn-web-conn-semantic-ended cancel))
+            (assert (fnn-web-job-returned (fnn-web-conn-job cancel)))
+            (assert (null (wire-for 33)))))
         (setf (symbol-function 'fnn-call) saved-call (symbol-function 'fnn-core) saved-core)))))
 (format t "NATIVE WEB PAGE CURSOR RAW PASS: exact mixed segments/count/windows; no HTML OUT~%")

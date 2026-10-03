@@ -8809,16 +8809,19 @@
       "steps": [
         "Construct mixed markup/text/URL/span/dot-stuffed/encoded-header segments over a retained input, including a header beyond the decoder quantum.",
         "Count and emit the same plan using fuel 1, 2, 7 and 4096; compare all emitted octets and count with fn-wr-seq.",
-        "Run actual fnn-web-page-step and write-ready through 137-byte partial writes; retain zero-length HTML OUT throughout."
+        "Run actual fnn-web-page-step and write-ready through 137-byte partial writes; retain zero-length HTML OUT throughout.",
+        "Count HEAD without emitting its body; cancel a queued page job before the worker activation and observe its terminal cleanup receipt."
       ],
       "expected": [
         "Every partition gives exactly the reference page and counted Content-Length; count mode returns no output list.",
         "Each emitted window is at most its fuel; the long decoded-header fallback is exact.",
-        "Native output is exactly the response head followed by reference bytes while no complete HTML output is materialized."
+        "Native output is exactly the response head followed by reference bytes while no complete HTML output is materialized.",
+        "HEAD reports the same length with no body; cancellation retains input/plan through worker return and publishes no late page."
       ],
       "evidence": [
         "tests/native_web_page_cursor_raw.lisp",
-        "tests/test_native_web_page_cursor_raw.sh"
+        "tests/test_native_web_page_cursor_raw.sh",
+        "planning/evidence/web-page-cursor-2026-10-03.md"
       ],
       "note": "Actual source/raw witness only; program-mode cursor guard/refinement and matching image remain open (PRF-1277)."
     }
