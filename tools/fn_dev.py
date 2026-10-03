@@ -6,6 +6,11 @@ import socket
 import subprocess
 import sys
 
+try:
+    import readline  # in-memory editing/history; no persistent command log
+except ImportError:
+    pass
+
 MAX_CODE = 65536
 MAX_REPLY = 4 * 65536 + 1024
 
@@ -48,11 +53,20 @@ def repl(args):
             if line in (':quit', ':exit'):
                 return 0
             if line == ':help':
-                print(':operation, :threads, :apropos TEXT, :load PATH, :acl2 FORM, :trace on|timing|report|off, :quit\n'
+                print(':operation, :threads, :apropos TEXT, :describe FORM, :load PATH, :acl2 FORM,\n:paste, :trace on|timing|report|off, :quit\n'
                       'Enter one Common Lisp form, or PROGN for a batch.\n'
                       '*fnn-dev-service* is the current owner; fnn-core calls the core.\n'
                       'Reader evaluation (#.) is disabled. :load names a path on the server.')
                 continue
+            if line == ':paste':
+                print('Paste one form or PROGN; finish with :end on its own line.')
+                lines = []
+                while True:
+                    part = input('... ')
+                    if part == ':end':
+                        break
+                    lines.append(part)
+                line = '\n'.join(lines)
             if line == ':operation':
                 line = '(princ (fn-record-octets-string (fn-native-operation-host-report *the-live-state*)))'
             elif line == ':threads':
@@ -65,6 +79,8 @@ def repl(args):
                 line = '(fnn-trace-report *standard-output*)'
             elif line == ':trace off':
                 line = '(setf *fnn-trace-state* nil)'
+            elif line.startswith(':describe '):
+                line = '(describe ' + line[10:] + ')'
             elif line.startswith(':apropos '):
                 line = '(apropos ' + lisp_string(line[9:]) + ')'
             elif line.startswith(':load '):

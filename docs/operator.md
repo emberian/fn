@@ -1322,10 +1322,12 @@ with `FN_NATIVE_DEV_REPL=/absolute/private/directory/fn-dev.sock`, then attach:
 python3 tools/fn_dev.py repl --socket /absolute/private/directory/fn-dev.sock
 ```
 
-Use `:operation`, `:threads`, `:apropos NAME`, or ordinary Common Lisp forms.
+Use `:operation`, `:threads`, `:apropos NAME`, `:describe FORM`, or ordinary
+Common Lisp forms. `:paste` accepts multiline input ending with `:end`.
 Definitions survive connections. `:load PATH` loads a source file on the server;
 `:acl2 FORM` submits an ordinary ACL2 event to the live logical world, where the
-loaded world's metadata must support admission. `PROGN` batches Lisp forms.
+loaded world's metadata must support admission. A refused event reports failure;
+earlier successful events in that batch remain admitted. `PROGN` batches Lisp forms.
 `--eval '(+ 20 22)'` is the noninteractive form. The existing `fn acl2 session`
 starts a separate process; this socket attaches to an already running owner.
 

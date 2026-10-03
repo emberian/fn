@@ -9277,7 +9277,7 @@
       "implementation": {
         "test": "tests/test_dev_repl.py"
       },
-      "execution_scope": "Socket/source fixture only: actual full native owner composition and ACL2 LD admission pending."
+      "execution_scope": "Socket/source fixture and real ACL2 worker-thread admission/refusal/channel capture; actual full native owner composition pending."
     }
   ]
 }
