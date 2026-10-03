@@ -39,7 +39,8 @@
 
 (defun fnn-dev-read-form (text)
  "Read one explicitly submitted developer form; reader evaluation is disabled."
- (let ((*read-eval* nil) (*package* (find-package "ACL2"))
+ (let ((*read-eval* nil) (*readtable* (copy-readtable nil))
+       (*package* (find-package "ACL2"))
        (end (gensym "EOF")))
   (multiple-value-bind (form offset) (read-from-string text nil end)
    (when (eq form end) (error "No form supplied"))
@@ -129,13 +130,16 @@ normal fencing. Earlier evaluated/admitted forms are never rolled back."
     (file-error (condition)
      (return-from fnn-dev-load-file (refuse :open-error condition))))
    (unwind-protect
-    (let ((*read-eval* nil) (*package* (find-package "ACL2"))
+    (let ((*read-eval* nil) (*readtable* (copy-readtable nil))
+          (*package* (find-package "ACL2"))
           (*load-pathname* (pathname path)) (*load-truename* (pathname stream))
           (end (gensym "EOF")))
      (loop
       (let ((form
              (handler-case (read stream nil end)
               (reader-error (condition)
+               (return-from fnn-dev-load-file (refuse :reader-error condition)))
+              (end-of-file (condition)
                (return-from fnn-dev-load-file (refuse :reader-error condition)))
               (stream-error (condition)
                (return-from fnn-dev-load-file (refuse :read-error condition))))))
