@@ -6,12 +6,13 @@
  "locus": "generators",
  "note": "after GEN-CARRIED-VIEW lands; DEF-COMMAND owns the :quantum column, progress effect and off-lock rule",
  "notes": [
-  "2026-10-03 Astra decision: metadata NEWNEWS is first served instance. Visits and bytes separately bounded; preserve response residual and snapshot. Fewer than eight rows is not termination: shared cache eviction and multiple entries per article require saved progress or owned dependencies. HDR/XPAT follow as cold-data instance."
+  "2026-10-03 Astra decision: metadata NEWNEWS is first served instance. Visits and bytes separately bounded; preserve response residual and snapshot. Fewer than eight rows is not termination: shared cache eviction and multiple entries per article require saved progress or owned dependencies. HDR/XPAT follow as cold-data instance.",
+  "GPT-6.1-Sol owns continuing consumers. Concrete source seam fn-nnw-step(cur,q,arena)->(lines,next), fn-ovw-step(cur,w,arena,cat)->(octets,next), fn-splan-cursor-step(plan,w,arena,cat)->(status,plan). Separate snapshot, scan progress, buffered output, operation generation and physical custody; visits and bytes separately bounded. In implementation after metadata NEWNEWS bridge."
  ],
- "owner": "generators",
+ "owner": "codex-sol-served",
  "severity": "medium",
  "source": "served-catalog-live-finding",
- "state": "open",
+ "state": "in-progress",
  "title": "def-cursor: the resumable-continuation generator (step, run = reference, per-quantum VISIT bound, residual, progress); instances fn-nnw and OVER's fn-ovw",
- "updated": "2026-10-03T05:14:09Z"
+ "updated": "2026-10-03T06:00:00Z"
 }
