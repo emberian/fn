@@ -1679,19 +1679,36 @@ finds nil was left by something that is no condition -- a throw, a thread
 termination -- an unclassified exit, which is a fault (lane failure-scope
 review M3), installed before the mutex is released.")
 
-(defmacro fnn-owner-gated ((service class &key cid) &body body)
-  "Run BODY as one owner quantum of CLASS, under owner exclusion and inside
-the ONE fence boundary (lane failure-scope, t45; r71 F1, sweep S017/S019/
-S020).  A condition leaving BODY, the gate's check or its cleanup is
-classified by ACL2 from its concrete class and the last durable step the
-quantum completed (books/failure-scope.lisp fn-fs-classify, through
-fnn-owner-shared-action-locked): the fence (exit 3) or the fault (exit 4)
-is installed BEFORE the mutex is released, a known refusal passes to the
-caller unfenced; an exit that is no condition is a fault.  CID names the
-connection the quantum serves (the core's connection-fault transition on a
-fault), or nil.  fnn-owner-serialized adds the stopping refusal: a bare
-quantum is admitted after the fence, so only a cleanup quantum (the fault
-itself, a pass's finish) may be bare."
+(defmacro fnn-section-envelope ((service class &key cid classes name admission)
+                                &body body)
+  "GEN: the ONE host envelope of an owner section (lane WRAPPER, rebuild step
+0).  def-section emits it from a declaration; nothing else writes it but
+the two transitional forms below.  It orders the section's steps and
+installs what ACL2 decided, and decides nothing itself:
+  1. the class the entry runs as is one its section declared
+     (books/failure-scope.lisp fn-fs-section-class-ok; an undeclared class is
+     a fault of the host) -- then the gate's check and admission, a failure
+     of which fences the service before the owner mutex is taken;
+  2. under the owner mutex, inside the ONE fence boundary
+     (fnn-owner-shared-action-locked: a condition leaving the body, the
+     gate's recheck or the admission is classified by ACL2 from its concrete
+     class and the last durable step, fn-fs-classify / fn-fs-section-action,
+     and the fence (exit 3) or the fault (exit 4) is installed BEFORE the
+     mutex is released; a known refusal passes to the caller unfenced):
+     the gate's recheck, then the admission (fn-fs-section-admit: a :live
+     section is refused once the service is stopping, a (:cleanup PURPOSE)
+     section runs after the fence), then BODY;
+  3. the unwind (fn-fs-unwind): an exit that is neither the body's return
+     nor a classified condition -- a throw, a thread termination -- is a
+     fault, installed while the mutex is still held (review M3), the line
+     after the fence;
+  4. the gate's leave, whose failure fences before the mutex is released.
+CLASSES and NAME are evaluated (CLASSES nil skips step 1's declaration
+check: the transitional forms).  ADMISSION is the admission step's form:
+fn-fs-section-admit's stopping refusal for a :live entry, nil for the
+cleanup entry (whose declarations ACL2 admits after the fence), so that the
+cleanup expansion has no stopping refusal at all.  Expanded twice:
+fnn-section-run and fnn-section-run-cleanup."
   (let ((s (gensym "SERVICE")) (g (gensym "GATE"))
         (c (gensym "CLASS")) (w (gensym "WAITED"))
         (h (gensym "HELD")) (failure (gensym "FAILURE")))
@@ -1700,6 +1717,9 @@ itself, a pass's finish) may be bare."
             (,c ,class)
             (,w (handler-case
                     (progn
+                      (when (and ,classes (not (fn-fs-section-class-ok ,classes ,c)))
+                        (fnn-fault "section ~(~a~) entered as the undeclared class ~s"
+                                   ,name ,c))
                       (fnn-owner-gate-check ,g)
                       ;; Keep filesystem observation outside owner exclusion.
                       (fnn-owner-space-preobserve ,s)
@@ -1723,6 +1743,7 @@ itself, a pass's finish) may be bare."
                        (handler-case (fnn-owner-gate-check ,g)
                          (serious-condition (,failure)
                            (fnn-owner-gate-fail-locked ,s ,g ,failure)))
+                       ,admission
                        (fnn-owner-measured ((if (eq *fnn-owner-measure-label* :other)
                                                  ,c
                                                *fnn-owner-measure-label*))
@@ -1731,7 +1752,9 @@ itself, a pass's finish) may be bare."
            ;; An unwind no condition explains (a throw, a thread termination):
            ;; a fault, installed while the mutex is still held (review M3);
            ;; the line after the fence, never before it.
-           (unless *fnn-boundary-outcome*
+           (when (eq (fn-fs-unwind (eq *fnn-boundary-outcome* :completed)
+                                   *fnn-boundary-outcome*)
+                     :fault)
              (fnn-owner-stop-service-locked ,s +fnn-exit-fault+)
              (fnn-err "owner quantum left by an unclassified exit; process stopped"))
            ;; Cleanup calls the core too. Fence its failure before releasing
@@ -1739,6 +1762,98 @@ itself, a pass's finish) may be bare."
            (handler-case (fnn-owner-gate-leave ,g ,c (fnn-ms-since ,h) ,w)
              (serious-condition (,failure)
                (fnn-owner-gate-fail-locked ,s ,g ,failure))))))))
+
+(defun fnn-section-run (service class cid admits classes name thunk)
+  "A :live section's entry (ADMITS :live): THUNK through the one envelope,
+refused once the service is stopping.  CLASSES nil skips the declaration
+check (the transitional forms)."
+  (fnn-section-envelope
+      (service class :cid cid :classes classes :name name
+       :admission (when (eq (fn-fs-section-admit admits (fnn-owner-service-stopping service))
+                            :refuse)
+                    (fnn-refuse "owner service is stopping")))
+    (funcall thunk)))
+
+(defun fnn-section-run-cleanup (service class cid admits classes name thunk)
+  "A (:cleanup PURPOSE) section's entry, and the transitional bare quantum
+(ADMITS nil): THUNK through the one envelope, admitted after the fence.
+The same envelope as fnn-section-run; two entries only so that an entry
+which can never be refused for stopping is one the analysis can see."
+  (declare (ignore admits))
+  (fnn-section-envelope (service class :cid cid :classes classes :name name)
+    (funcall thunk)))
+
+(defmacro fnn-owner-gated ((service class &key cid) &body body)
+  "Transitional: BODY as one bare owner quantum of CLASS (no stopping
+refusal), through the one envelope.  Deleted when the last site is a
+declared (:cleanup PURPOSE) or :live section (def-section)."
+  `(fnn-section-run-cleanup ,service ,class ,cid nil nil nil (lambda () ,@body)))
+
+;;; ---------------------------------------------------------------------------
+;;; def-section: the declared owner section (lane WRAPPER, rebuild step 0;
+;;; planning/handoff-2026-10-03/failure-scope.md).  One declaration per kind
+;;; of quantum: who runs it (ACTORS), the gate classes it enters as
+;;; (CLASSES; the first is the default), and what it admits once the
+;;; service is stopping (ADMITS: :live, or (:cleanup PURPOSE) for one of
+;;; ACL2's closed post-fence purposes).  ACL2 accepts the declaration when
+;;; the image loads (fn-fs-section-declp; a refused one stops the build)
+;;; and decides every failure, admission and unwind of the generated entry
+;;; (fnn-section-envelope).  The generated entry is
+;;; (NAME SERVICE CID THUNK &optional CLASS): THUNK runs as the section's
+;;; body.  tools/lock_discipline_check.py reads the declarations
+;;; (*fnn-sections* is the same table at run time).
+
+(defvar *fnn-sections* nil
+  "The declared sections, (NAME ACTORS CLASSES ADMITS) each, in load order.")
+
+(defun fnn-section-declare (name actors classes admits)
+  "Record NAME's declaration once ACL2 accepts it; a refused declaration
+stops the load (the image is not built)."
+  (unless (fn-fs-section-declp actors classes admits)
+    (error "def-section ~(~a~): ACL2 refuses the declaration ~s (books/failure-scope.lisp fn-fs-section-declp)"
+           name (list actors classes admits)))
+  (setq *fnn-sections*
+        (append (remove name *fnn-sections* :key #'first)
+                (list (list name actors classes admits))))
+  name)
+
+(defmacro def-section (name &key actors classes admits (doc ""))
+  `(progn
+     (fnn-section-declare ',name ',actors ',classes ',admits)
+     (defun ,name (service cid thunk &optional (class ,(first classes)))
+       ,doc
+       (,(if (eq admits :live) 'fnn-section-run 'fnn-section-run-cleanup)
+        service class cid ',admits ',classes ',name thunk))))
+
+(def-section fnn-quantum-control
+  :actors (:control :command)
+  :classes (:control :inspect :poster)
+  :admits :live
+  :doc "A quantum of a request on the local control socket (or of the
+startup command that installs the same configuration): the control verbs,
+their inspections (:inspect) and a submission (:poster).")
+
+(def-section fnn-quantum-command
+  :actors (:command)
+  :classes (:transit :control)
+  :admits :live
+  :doc "A quantum of a one-shot command on the owner it opened for itself
+(the BP obligation commands): no connection, no socket.")
+
+(def-section fnn-quantum-bp
+  :actors (:bp)
+  :classes (:transit :control)
+  :admits :live
+  :doc "A quantum of the BP node: an application's delivery or receipt
+(:transit) and its control requests' reconfiguration (:control).")
+
+(def-section fnn-quantum-connection
+  :actors (:mux :web)
+  :classes (:reader :transit :control)
+  :admits :live
+  :doc "A quantum of a client connection served by an I/O loop or the web
+face: :reader for a reader's steps, :transit for a peer's, :control for a
+connection's account ingress.")
 
 (defstruct (fnn-snapshot-payload-view (:constructor fnn-make-snapshot-payload-view (token arena)))
   token arena)
@@ -2028,11 +2143,9 @@ a peer connection's and for the feeds', the BP node's and its applications'
 socket, and :control (the default) for the control socket's requests and the
 maintenance steps (the checkpoint capture, the publication's done step, the
 log reopen)."
-  ;; One boundary: the quantum's own (fnn-owner-gated classifies and fences).
-  (fnn-owner-gated (service class :cid cid)
-    (when (fnn-owner-service-stopping service)
-      (fnn-refuse "owner service is stopping"))
-    (funcall thunk)))
+  ;; Transitional: the one envelope, :live (fn-fs-section-admit refuses
+  ;; once stopping).  Deleted when its last caller is a declared section.
+  (fnn-section-run service class cid :live nil 'fnn-owner-serialized thunk))
 
 (defun fnn-owner-serialized-with-control-turn
  (service cid callback &optional (class :control) epilogue result-publisher)
@@ -2044,9 +2157,9 @@ No numeric BODY or supplied receipt is accepted."
   (if (not binding) (values :owner-control-unavailable :refused)
    (fnn-with-owner-control-issued-turn (binding slot nonce slots pool)
     (multiple-value-prog1
-     (fnn-owner-gated (service class :cid cid)
-      (when (fnn-owner-service-stopping service)
-       (fnn-refuse "owner service is stopping"))
+     (fnn-section-run
+      service class cid :live nil 'fnn-owner-serialized-with-control-turn
+      (lambda ()
         (multiple-value-bind (word answer next-slots next-pool next-state)
             (funcall callback slot nonce slots pool)
          (when next-slots
@@ -2060,7 +2173,7 @@ No numeric BODY or supplied receipt is accepted."
          ; Source-specific publication remains inside the owner mutex and
          ; follows retention of every actual returned stobj.
          (if result-publisher (funcall result-publisher word answer)
-           (values word answer))))
+           (values word answer)))))
      ; The actual scheduler cleanup has returned. The caller must already
      ; have relinquished its registered private aliases; NIL here alone is
      ; not a retirement receipt. The static epilogue leaves ATS slots readonly.
@@ -6201,7 +6314,7 @@ The arena is read below the captured count only, and the pass is counted
 as an off-mutex arena reader while it runs (no staged page is released
 under it: its arena-reader pin, books/arena-reader-pins.lisp).  Answers
 the reply word: :dry-run, or ACL2's refusal."
-  (let ((clock (fnn-store-prepare-observation)) (captured nil) (pin nil))
+  (let ((clock (fnn-store-prepare-observation)) (captured nil) (pin nil) (deferred nil))
     (unwind-protect
          (progn
            (fnn-owner-gated (service :control)
@@ -6209,17 +6322,22 @@ the reply word: :dry-run, or ACL2's refusal."
                                            (fnn-checkpoint-budget-test-override nil)
                                            free (fnn-checkpoint-revision))))
                ;; S038: a pass in flight refuses the dry run by name; nothing
-               ;; was captured, so nothing is finished and no pin is taken
-               (when (and (consp answer) (eq (first answer) :refused)
-                          (member (second answer) '(:in-flight :queued)))
-                 ;; DEFERRED-IN-FLIGHT / -QUEUED: refused by name
-                 ;; (fn-owner-orc-request-status; a bare :in-flight would
-                 ;; classify :accepted there)
-                 (fnn-err "RECLAIM dry-run refused: ~(~a~)" (second answer))
-                 (return-from fnn-owner-reclaim-dry-run
-                   (intern (format nil "DEFERRED-~a" (symbol-name (second answer))) :keyword)))
-               (setq captured answer))
-             (setq pin (fnn-arena-pin)))
+               ;; was captured, so nothing is finished and no pin is taken.
+               ;; The answer leaves the quantum as its value, never by a
+               ;; return-from across it (an unwind no condition explains is
+               ;; the boundary's fault, review M3: it stopped the node).
+               (if (and (consp answer) (eq (first answer) :refused)
+                        (member (second answer) '(:in-flight :queued)))
+                   ;; DEFERRED-IN-FLIGHT / -QUEUED: refused by name
+                   ;; (fn-owner-orc-request-status; a bare :in-flight would
+                   ;; classify :accepted there)
+                   (setq deferred (second answer))
+                 (setq captured answer
+                       pin (fnn-arena-pin)))))
+           (when deferred
+             (fnn-err "RECLAIM dry-run refused: ~(~a~)" deferred)
+             (return-from fnn-owner-reclaim-dry-run
+               (intern (format nil "DEFERRED-~a" (symbol-name deferred)) :keyword)))
            (unless (and (true-listp captured) (= (length captured) 13))
              (fnn-fault "owner returned a malformed reclaim capture"))
            (destructuring-bind (records count v s profile configs frontier budget free revision

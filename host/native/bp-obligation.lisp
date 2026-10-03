@@ -41,7 +41,7 @@
            ;; its Store publications' model cuts are exercised as a POST's.
            (setq service (fnn-owner-install store-root 1
                                             (and writable (fnn-post-entry-fault nil))))
-           (fnn-owner-transit-serialized
+           (fnn-quantum-command
             service nil
             (lambda ()
               (setq journal

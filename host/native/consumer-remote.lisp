@@ -51,20 +51,22 @@ operation yet; this transport is not activated from bootstrap."
 (defun fnn-remote-ingress (service channel request g)
   "Actual current-account ingress under the same serialized owner span.
 No cached authentication result is used by a WAIT wake."
-  (fnn-owner-serialized service nil
+  (fnn-quantum-connection service nil
     (lambda () (fnn-owner-core 'fn-owner-remote-ingress request
-      (and (fnn-tls-channel-p channel) (fnn-tls-channel-pointer channel) t) g))))
+      (and (fnn-tls-channel-p channel) (fnn-tls-channel-pointer channel) t) g))
+    :control))
 
 (defun fnn-remote-installed-entry (service kind count prefix body)
   "Read the genuine current common source under owner then extent.
 The current installer has no positive native remote entry. COUNT, PREFIX and
 BODY cannot grant authority, and BODY is never invoked while unavailable."
   (declare (ignore count prefix body))
-  (fnn-owner-serialized service nil
+  (fnn-quantum-connection service nil
    (lambda ()
     (sb-thread:with-mutex (*fnn-extent-lock*)
      (fnn-owner-core 'fn-owner-remote-operation-preflight kind
-                     (fnn-live-page-read-pool))))))
+                     (fnn-live-page-read-pool))))
+   :control))
 
 (defun fnn-remote-receive-installed (service channel g seconds)
   "The concrete caller of the installed-source path, before allocation/I/O."

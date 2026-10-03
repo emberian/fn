@@ -88,7 +88,7 @@ its reason class, which ACL2 already returned; the host classifies nothing."
                   (result nil)
                   (receipt nil))
              (multiple-value-setq (result receipt)
-               (fnn-owner-transit-serialized
+               (fnn-quantum-bp
                 owner nil
                 (lambda ()
                   ;; Config can change after preflight and before this lock.
@@ -162,7 +162,7 @@ observations back.  Nil when there is nothing to observe."
     (unless (eq (fnn-owner-core 'fn-owner-bp-receipt-gatep view obs) t)
       (return-from receipt
         (values :receipt-refused (fnn-bpnode-receipt-detail view obs))))
-    (fnn-owner-transit-serialized
+    (fnn-quantum-bp
      owner nil
      (lambda ()
      ;; The quantum's value is the answer; no early return crosses its boundary (lane failure-scope: an unwind no condition explains is a fault).

@@ -269,6 +269,26 @@
   :keystones (fn-fs-stop-exit-fence-is-never-masked fn-fs-stop-exit-escalate-is-monotone
               fn-fs-stop-exit-ok-is-the-bottom)
   :direct "runs under the roster mutex inside the fence (fnn-owner-stop-service-locked), which must not fail")
+;; The declared owner sections (lane WRAPPER: def-section, host/native/
+;; owner.lisp): ACL2 accepts a declaration at load and decides each entry's
+;; class, admission and unwind inside the one envelope, called directly (the
+;; envelope's gate and fence paths run in handlers).
+(definterface fn-fs-section-declp
+  :class :common-lisp-compliant
+  :keystones (fn-fs-section-declp-refuses-an-unlisted-cleanup-purpose)
+  :direct "runs at load in fnn-section-declare, before fnn-call's dispatcher serves")
+(definterface fn-fs-section-class-ok
+  :class :common-lisp-compliant
+  :keystones (fn-fs-section-class-ok-only-for-a-declared-class)
+  :direct "runs inside the envelope's gate handler (fnn-section-envelope), where a dispatcher's own fault would recurse")
+(definterface fn-fs-section-admit
+  :class :common-lisp-compliant
+  :keystones (fn-fs-a-live-section-is-refused-once-stopping fn-fs-section-admit-runs-before-the-stop)
+  :direct "runs under the owner mutex inside the fence boundary (fnn-section-run)")
+(definterface fn-fs-unwind
+  :class :common-lisp-compliant
+  :keystones (fn-fs-unwind-faults-an-unexplained-exit)
+  :direct "runs in the envelope's unwind under the owner mutex, which must not fail")
 
 ; ======================================================================; Every other entry the raw host dispatches through fnn-call, by subsystem
 ; (tools/interface_emit.py SUBSYSTEMS).  Class and kinds are the image
