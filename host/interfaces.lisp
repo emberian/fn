@@ -5117,4 +5117,4 @@
 (definterface fn-owner-catalog-root-reserve :class :program)
 (definterface fn-owner-catalog-root-current :class :program)
 
-(definterface fn-owner-catalog-capture-context :class :program)
+; Capture declaration lands with Runtime’s actual pre-plan native caller.
