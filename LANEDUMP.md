@@ -1611,3 +1611,24 @@ fixtures consume actual observed-mutex/section source and check the owner
 callback, unknown inner lock, real NIL lock and E->O inversion. All43 lock
 checker tests PASS0.527s. No proof, full-tree lock qualification or image
 claim; Integration owns composition with Runtime's declared private locks.
+Existing native undertaking/status-reopen and carry fixture setups now reuse
+`tests.bp_producer.post_articles` on the same immutable default developer
+image: real POST340/240, producer stops, core inspect supplies actual stored
+source bytes before FNWF/BP owns Store. No raw minimal store-post shortcut,
+no independent identity/request semantics or arbitrary grant. Native boundary
+shape check and Python compile pass; actual undertaking/reopen remains pending
+Integration budget/matching image. Groundwork authorized this consumer prep;
+new BP transport deputy owns wider TCPCL/ION continuation, this lane supplies
+actual replay/scenario execution. Existing two-peer application receipt adapter
+remains the release/reopen consumer; historical retention refusal stays filed.
+
+
+## Complete read replies across completion and reopen, 2026-10-03
+
+Normal held success and cancellation/retirement/stale/duplicate fixtures now
+capture complete actual native ARTICLE replies before the schedule and require
+exact bytes during continued service and after a fresh owner opens the same
+store. No Python reconstruction of injection or article semantics; the baseline
+is the native reply. Clean stop is affirmative EXIT.OK. Python compile passes;
+actual native execution remains pending a matching fixture/image selection.
+Existing ad8da41 sol2g image build is immutable and still watched read-only.
