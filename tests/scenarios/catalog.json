@@ -8370,6 +8370,31 @@
         "tests/native_syncer_typed_raw.lisp"
       ],
       "execution_scope": "Deployed native bodies and actual fn-oqw/actor decisions under SBCL, plus six actual typed-ledger abandonment schedules through validated creator allocation and semantic counterparts in scoped ACL2. I/O/fence are recording boundaries. No new theorem or saved-image/shutdown qualification."
+    },
+    {
+      "id": "SCN-1088",
+      "title": "Logical timed waits and abandoned reply routes preserve completion lifetime",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-031",
+        "HST-046"
+      ],
+      "steps": [
+        "Run the actual logical await with a producer delayed past its first one-second SBCL condition wait.",
+        "Expire another caller before delivery, then deliver its real eventual completion; preserve the independent physical grant.",
+        "Exercise an already-selected callback, a raw nonlocal wait exit, and the actual mux terminal close consumer."
+      ],
+      "expected": [
+        "Each predicate and subsequent wait owns its mutex; timed wake does not become service fault.",
+        "Abandoned delivery consumes its marker instead of accumulating an unreachable DONE result or retaining the caller callback.",
+        "An already-selected callback creates no orphan marker; mux close discards its eventual reply route. No path reports physical termination or settles the operation merely because the caller left."
+      ],
+      "evidence": [
+        "tests/test_native_await_lifetime_raw.sh",
+        "tests/native_await_lifetime_raw.lisp"
+      ],
+      "execution_scope": "Actual deployed native wait/mailbox/mux-finish bodies with real SBCL threads, mutexes and condition timeout; recording socket/owner cleanup boundaries. Saved-image/runtime qualification remains Integration work."
     }
   ]
 }

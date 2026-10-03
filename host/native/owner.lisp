@@ -3812,7 +3812,9 @@ the mux connection waiting for it, or the DONE table until it registers."
       (if target
           (remhash cid (fnn-owner-service-awaiting service))
         (setf (gethash cid (fnn-owner-service-done service)) completion)))
-    (when target
+    ;; An abandoned caller still names the one outstanding delivery, but no
+    ;; longer owns a callback/socket or future reply. Consume its marker.
+    (when (consp target)
       (funcall (car target) completion))))
 
 (defun fnn-owner-awaiting-sockets (service cid)
@@ -3820,7 +3822,15 @@ the mux connection waiting for it, or the DONE table until it registers."
 registered yet)."
   (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
     (let ((target (gethash cid (fnn-owner-service-awaiting service))))
-      (and target (cdr target) (list (cdr target))))))
+      (and (consp target) (cdr target) (list (cdr target))))))
+
+(defun fnn-owner-await-abandon (service cid)
+  "Close only this caller's reply route. Preserve an outstanding-delivery
+marker until its result arrives; never manufacture physical termination."
+  (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
+    (remhash cid (fnn-owner-service-done service))
+    (when (gethash cid (fnn-owner-service-awaiting service))
+      (setf (gethash cid (fnn-owner-service-awaiting service)) :abandoned))))
 
 (defun fnn-owner-await-register (service cid deliver socket)
   "CID's connection (SOCKET) waits for its completion: DELIVER is called with
@@ -5182,16 +5192,21 @@ wait's own lock.  A stop that answers nobody, or DEADLINE passing first, is
                      (sb-thread:condition-notify ready)))
                  nil)))
     (when early (return-from fnn-owner-await-logical early))
-    (sb-thread:with-mutex (lock)
-      (loop until (or cell (fnn-owner-service-stopping service) (fnn-owner-past-p deadline))
-            do (sb-thread:condition-wait ready lock :timeout 1)))
-    (unless cell
-      ;; Stopping or past the deadline, unanswered: withdraw the
-      ;; registration; a completion delivered meanwhile is still taken.
-      (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
-        (remhash cid (fnn-owner-service-awaiting service))))
-    (sb-thread:with-mutex (lock)
-      (if cell (first cell) :uncertain))))
+    (unwind-protect
+         (progn
+           ;; SBCL returns a timed-out wait without LOCK held. Reacquire for
+           ;; every observation and wait; never loop inside the old hold.
+           (loop
+             (sb-thread:with-mutex (lock)
+               (when (or cell (fnn-owner-service-stopping service)
+                         (fnn-owner-past-p deadline))
+                 (return))
+               (sb-thread:condition-wait ready lock :timeout 1)))
+           (sb-thread:with-mutex (lock)
+             (if cell (first cell) :uncertain)))
+      ;; Covers deadlines, stops and nonlocal exits. A callback already
+      ;; selected by DELIVER owns its private cell and needs no new marker.
+      (fnn-owner-await-abandon service cid))))
 
 (defun fnn-owner-feed-logical (service cid octets class what &optional deadline)
   "Feed OCTETS to the logical connection CID as CLASS; WHAT names the caller
