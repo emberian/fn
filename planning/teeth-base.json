@@ -1,0 +1,5 @@
+{
+ "about": "The protected base of the teeth gate (tools/keystone_emit.py): an externally selected immutable revision whose planning/teeth-obligations.json the check compares against. The runner moves it at integration; nothing else writes it; a missing base fails closed.",
+ "revision": "4e5a4b8bb3d8284b687aac4f6aab4a3a4abb099f",
+ "set_by": "lane generators-2, the bootstrap manifest (2026-10-03)"
+}

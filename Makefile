@@ -302,14 +302,15 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/def-carried-tests \
 	books/def-holder \
 	tests/acl2/def-holder-tests \
-<<<<<<< ours
 	books/reclaim-cuts \
 	books/def-carried-writer \
 	tests/acl2/def-carried-writer-tests \
 	books/owner-retain-frame \
 	tests/acl2/owner-retain-frame-tests \
-=======
->>>>>>> theirs
+	books/def-carried-view \
+	tests/acl2/def-carried-view-tests \
+	books/def-keyset-check \
+	tests/acl2/def-keyset-check-tests \
 	books/acceptance \
 	books/acceptance-invariants \
 	tests/acl2/acceptance-tests \
@@ -793,15 +794,11 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/extent-retire-tests \
 	books/arena-forget \
 	tests/acl2/arena-forget-tests \
-<<<<<<< ours
 	books/arena-forget-columns \
 	books/owner-reclaim-seal \
 	books/catalog-may-seal \
 	tests/acl2/owner-reclaim-seal-tests \
-=======
-	books/reclaim-cuts \
 	books/handle-holds \
->>>>>>> theirs
 	books/owner-reclaim-instant \
 	tests/acl2/owner-reclaim-instant-tests \
 	books/store-log-route-phases \
@@ -2375,8 +2372,6 @@ ACL2_BOOKS ?= books/defrecord \
 THEORY_STRICT_BOOKS ?= books/store-events books/replay books/replay-invariants \
 	books/store-files books/store-files-invariants books/store-files-traces \
 	books/store-node books/store-node-invariants-base books/store-node-invariants \
-	books/store-node-traces-prepare \
-	books/store-node-traces \
 	books/store-node-resolution books/store-observed books/store-observed-traces \
 	books/store-prepare-correspondence books/config-records books/node-config \
 	books/checkpoint books/checkpoint-compaction books/checkpoint-publish \

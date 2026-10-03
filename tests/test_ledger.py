@@ -1374,6 +1374,68 @@ class LintReportingTests(unittest.TestCase):
                       ledger.ledger_markdown(ledger_data))
 
 
+class GeneratorMirrorTests(unittest.TestCase):
+    """The ledger's static mirrors of def-carried-view, def-carried-reader
+    and def-keyset-check (books/def-carried-view.lisp, def-keyset-check.lisp)
+    name every theorem the Lisp generators admit on the fixture books, so a
+    registry citation of a generated keystone resolves without evaluating."""
+
+    ROOT = Path(__file__).resolve().parents[1]
+
+    def generated(self, book: str, kind: str) -> dict[str, list[str]]:
+        forms = ledger.read_forms((self.ROOT / book).read_text(encoding="utf-8"))
+        found: dict[str, list[str]] = {}
+        for form in forms:
+            if ledger.head(form) != kind:
+                continue
+            expansion = ledger.generated_expansion(form)
+            self.assertIsNotNone(expansion, form[:2])
+            found[str(form[1])] = [str(e[1]) for e in expansion
+                                   if ledger.head(e) in ("defthm", "defun")]
+        return found
+
+    def test_carried_view_names_on_the_fixture_and_the_pilot(self):
+        views = self.generated("tests/acl2/def-carried-view-tests.lisp", "def-carried-view")
+        self.assertEqual(set(views), {"cvt", "cvx", "cvs"})
+        for thm in ("cvs-fresh", "cvs-stamp", "cvs-stampedp", "cvs-list-carryp", "cvs-carryp",
+                    "cvs-refresh-stamped", "cvs-carryp-of-refresh-stamped",
+                    "cvs-list-carryp-of-refresh", "cvs-stampedp-of-refresh-stamped"):
+            self.assertIn(thm, views["cvs"])
+        readers = self.generated("tests/acl2/def-carried-view-tests.lisp", "def-carried-reader")
+        self.assertEqual(readers["cvs-targetedp-fast"],
+                         ["cvs-targetedp-fast", "cvs-targetedp-fast-is-cvt-targetedp"])
+        for thm in ("cvt-carryp-of-refresh", "cvt-ws-of-refresh", "cvt-carryp-of-nil",
+                    "cvt-refresh-walks-the-delta", "cvt-tset-okp-of-extend", "cvt-cset-hasp-of-put"):
+            self.assertIn(thm, views["cvt"])
+        self.assertIn("cvx-carryp-of-nil", views["cvx"])
+        self.assertNotIn("cvx-tset-okp", views["cvx"])
+        wix = self.generated("books/withdrawal-index-carried.lisp", "def-carried-view")["fn-wix"]
+        for thm in ("fn-wix-carryp-of-refresh", "fn-wix-carryp-of-nil", "fn-wix-ws-of-refresh",
+                    "fn-wix-refresh", "fn-wix-ws", "fn-wix-tset", "fn-wix-cset"):
+            self.assertIn(thm, wix)
+        readers = self.generated("books/withdrawal-index-carried.lisp", "def-carried-reader")
+        self.assertEqual(readers["fn-wix-targetedp"],
+                         ["fn-wix-targetedp", "fn-wix-targetedp-is-pidx-targetedp"])
+        self.assertEqual(readers["fn-wix-targets-of"],
+                         ["fn-wix-targets-of", "fn-wix-targets-of-is-sca-targets-of"])
+
+    def test_keyset_check_names_on_the_fixture(self):
+        checks = self.generated("tests/acl2/def-keyset-check-tests.lisp", "def-keyset-check")
+        self.assertIn("kct-disjointp-keys", checks["kct-disjointp"])
+        for thm in ("kct-disjointp-ks-is-logic", "kct-disjointp-walk-is-logic", "kct-disjointp"):
+            self.assertIn(thm, checks["kct-disjointp"])
+        # an adopted :keys function is not regenerated
+        self.assertNotIn("kct-success-listp-keys", checks["kct-success-listp"])
+        self.assertIn("kct-success-listp-ks-is-logic", checks["kct-success-listp"])
+        # a refused shape expands to nothing
+        self.assertEqual(ledger.generated_expansion(ledger.read_forms(
+            "(def-keyset-check k (xs ys) :sense :sometimes)")[0]), [])
+        self.assertEqual(ledger.generated_expansion(ledger.read_forms(
+            "(def-carried-view v :key ws :indexes ((i :kind :exact :put (lambda (e idx) idx) :empty nil)"
+            " (j :kind :set :put (lambda (e idx) idx) :empty nil :key-fn (lambda (e) e)"
+            " :hasp (lambda (k idx) t))))")[0]), [])
+
+
 class DefkeystoneExpansionTests(unittest.TestCase):
     """`defkeystone` (books/defkeystone.lisp) is a macro from another book;
     the ledger expands it itself, never by evaluating.
@@ -1393,8 +1455,22 @@ class DefkeystoneExpansionTests(unittest.TestCase):
     def test_expansion_equals_the_literal_the_lisp_macro_is_pinned_to(self):
         constants, _forms = self.constants()
         sample = constants["*fn-dkt-sample*"][1]
-        expected = constants["*fn-dkt-sample-expansion*"][1]
-        self.assertEqual(ledger.defkeystone_expansion(sample), [expected])
+        # fn-dk-expand: the defthm, the restates check, the world-binding make-event
+        self.assertEqual(ledger.defkeystone_make_event(sample),
+                         constants["*fn-dkt-sample-expansion*"][1])
+        # fn-dk-spec-of: the defteeth spec the form stands for
+        spec = ledger.defkeystone_spec(sample)
+        flat: list = []
+        for key, value in spec.items():
+            flat += [ledger.Sym(key), value]
+        self.assertEqual(flat, constants["*fn-dkt-sample-spec*"][1])
+        # fn-dk-teeth-events: the teeth, :formula nil as the static side reads them
+        parts = ledger.defkeystone_parts(sample)
+        self.assertEqual(ledger.teeth_events(parts, "defkeystone"),
+                         constants["*fn-dkt-sample-teeth*"][1])
+        # and the tools' reading is the defthm + restates + those teeth
+        expansion = ledger.defkeystone_expansion(sample)[0]
+        self.assertEqual(expansion[3:], constants["*fn-dkt-sample-teeth*"][1])
 
     def test_the_sample_is_the_form_the_book_admits(self):
         constants, forms = self.constants()
@@ -1408,12 +1484,21 @@ class DefkeystoneExpansionTests(unittest.TestCase):
         self.assertIn("fn-dkt-add-adds", names)
         # the weakened theorems are asked to FAIL, so they are not theorems
         self.assertNotIn("fn-dkt-add-adds-without-natp", names)
+        # must-fail is opt-in (:must-fail t): only fn-dkt-add-adds-again's
+        # weakened and mutant statements are registered and paired
         self.assertEqual(book.paired_must_fails,
-                         {"fn-dkt-add-adds-without-natp",
-                          "fn-dkt-add-adds-without-small",
-                          "fn-dkt-add-adds-mutant-strict"})
-        # three generated must-fails, three literal ones around refused forms
-        self.assertEqual(book.must_fails, 6)
+                         {"fn-dkt-add-adds-again-without-natp",
+                          "fn-dkt-add-adds-again-without-small",
+                          "fn-dkt-add-adds-again-mutant-weaker"})
+        # three generated must-fails, eight literal ones around refused forms
+        self.assertEqual(book.must_fails, 11)
+        # a defteeth's bound is a theorem of its book, from the claim
+        self.assertIn("fn-dkt-add-adds-source-visits-steps", names)
+        # a restating defkeystone declares the teeth of the REGISTRY keystone
+        # it restates (fn-dkt-add-adds-source), as the defteeth does
+        self.assertEqual(set(book.teeth_declared),
+                         {"fn-dkt-add-adds-source", "fn-dkt-add-adds-again"})
+        self.assertEqual(set(book.teeth_owed), {"fn-dkt-add-adds-source"})
 
     def test_a_form_the_macro_refuses_expands_to_nothing(self):
         refused = ledger.read_forms(
@@ -1427,10 +1512,54 @@ class DefkeystoneExpansionTests(unittest.TestCase):
             "(defkeystone k (r x) :subject r :witness ((x 1)))")[0]
         self.assertEqual(ledger.defkeystone_expansion(no_teeth), [])
 
+    def test_defteeth_expands_from_its_claim(self):
+        form = ledger.read_forms(
+            '(defteeth k :claim (((p (p x)) (q (q x))) (r x)) :subject r'
+            ' :witness ((x 1)) :breaks ((p ((x 2))) (q ((x 3)) :logical "outside"))'
+            ' :mutations ((m (:hypothesis q (s x)) ((x 4)) :fault "s for q"))'
+            ' :visits ((steps x 9 :attains ((x 9)))))')[0]
+        events = ledger.defteeth_expansion(form)
+        self.assertEqual(len(events), 1)
+        heads = [ledger.head(item) for item in events[0][1:]]
+        self.assertEqual(heads, ["assert-event", "assert-event", "assert-event",
+                                 "assert-event", "defthm", "assert-event",
+                                 "assert-event", "table"])
+        self.assertEqual(str(events[0][5][1]), "k-visits-steps")
+        # the hypothesis mutation asserts the other hypothesis, the edited one,
+        # not the original and not the conclusion
+        mutant = events[0][4][1]
+        self.assertEqual([ledger.source_text(term[3]) for term in mutant[1:]],
+                         ["(p x)", "(s x)", "(not (q x))", "(not (r x))"])
+        # a claim with no hypotheses is written (nil C)
+        bare = ledger.read_forms(
+            '(defteeth k :claim (nil (r x)) :witness ((x 1)) :breaks nil'
+            ' :mutations (:not-applicable "x"))')[0]
+        self.assertIsNotNone(ledger.defteeth_parts(bare))
+        self.assertEqual(ledger.defteeth_parts(bare)["labels"], [])
+        # the row: witness mode, removal kinds, the fault, the underived bound
+        row = events[0][8][3][1]
+        self.assertEqual(ledger.source_text(row),
+                         "(:by defteeth :claim (((p (p x)) (q (q x))) (r x)) :formula nil"
+                         " :subject r :witness :executable :hyps (p q)"
+                         " :removals ((p :reachable) (q :logical))"
+                         ' :mutations ((m :hypothesis "s for q")) :corrupt nil'
+                         " :visits ((steps x 9 :attains :rests-on nil :derived-by nil))"
+                         " :allocation nil)")
+        parts = ledger.defteeth_parts(form)
+        self.assertEqual(ledger.defteeth_names(parts)["bounds"], ["k-visits-steps"])
+        self.assertEqual(ledger.defteeth_names(parts)["without"], [])
+        # refused on the spec: no claim, a free-term mutation, a bound without a subject
+        for text in ['(defteeth k :witness ((x 1)) :breaks nil :mutations (:deferred "x"))',
+                     '(defteeth k :claim (nil (r x)) :witness ((x 1)) :breaks nil'
+                     ' :mutations ((m nil ((x 1)) :fault "x")))',
+                     '(defteeth k :claim (nil (r x)) :witness ((x 1)) :breaks nil'
+                     ' :mutations (:deferred "x") :visits ((v x 1 :attains ((x 1)))))']:
+            self.assertIsNone(ledger.defteeth_parts(ledger.read_forms(text)[0]), text)
+
     def test_generated_must_fails_are_not_bare_general_claims(self):
         source = ('(in-package "ACL2")\n'
                   '(defkeystone k (implies (and (p x) (q x)) (r x)) :subject r'
-                  ' :hyps (p q) :witness ((x 1))'
+                  ' :hyps (p q) :witness ((x 1)) :mutations (:none "test")'
                   ' :breaks ((p ((x 2))) (q ((x 3)))))\n'
                   '(must-fail-checked (defthm bare (r x)))\n')
         tree = tree_from({"tests/acl2/k.lisp": source})

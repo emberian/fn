@@ -4,6 +4,8 @@
 ; threshold and one is not natural (it takes the next newer stamp).
 (in-package "ACL2")
 (include-book "../../books/newnews-cursor")
+(include-book "../../books/defkeystone")
+(include-book "must-fail-checked")
 
 (defun nct-arts (i n acc)
   (declare (xargs :measure (nfix (- (nfix n) (nfix i)))))
@@ -26,8 +28,8 @@
 (assert-event (fn-nnw-carryp nil))
 (assert-event (fn-nnw-carryp *nct-c*))
 (defconst *nct-new* (fn-make-article "<new@x>" nil '("g") (list (cons "g" 21)) t 86500))
-(assert-event (mv-let (found acc) (fn-nnw-collect (cons *nct-new* *nct-arts*) *nct-arts* nil)
-                (declare (ignore acc)) found))
+(assert-event (nth 0 (mv-list 2 (fn-cv-walk (cons *nct-new* *nct-arts*) *nct-arts* nil))))
+(assert-event (equal (fn-cv-walk-steps (cons *nct-new* *nct-arts*) *nct-arts*) 1))
 (assert-event (fn-nnw-carryp (fn-nnw-refresh *nct-c* (cons *nct-new* *nct-arts*))))
 ; Hypothesis removal: a carry that is not exact stays inexact on a delta.
 (defconst *nct-bad* (cons *nct-arts* (make-list 20 :initial-element 0)))
@@ -108,3 +110,17 @@
 (assert-event (and (not (fn-nnw-carryp *nct-low-c*))
                    (not (equal (fn-nnw-response nil *nct-archive* *nct-env* *nct-args-o* *nct-low-c* 4 fn-arena)
                                (fn-nntp-newnews-response nil *nct-archive* *nct-env* *nct-args-o* fn-arena)))))
+
+; -----------------------------------------------------------------------------
+; The generated keystone's teeth (TEETH CONTRACT v1), what the declaration owes.
+
+(defteeth fn-nnw-carryp-of-refresh
+  :claim (((carried (fn-nnw-carryp carry))) (fn-nnw-carryp (fn-nnw-refresh carry arts)))
+  :subject fn-nnw-refresh
+  :witness ((carry *nct-c*) (arts (cons *nct-new* *nct-arts*)))
+  :breaks ((carried ((carry *nct-bad*))))
+  :mutations ((old-maxes (:conclusion (fn-nnw-carryp (cons arts (cdr carry))))
+                         ((carry *nct-c*) (arts (cons *nct-new* *nct-arts*)))
+                         :fault "a refresh that installs the new list over the old maxima")))
+
+(defteeth-check)

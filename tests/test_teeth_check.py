@@ -385,29 +385,38 @@ class MacroTeeth(unittest.TestCase):
         teeth, macros = teeth_check.macro_teeth_for_book(path)
         must_fails = [t for t in teeth if t.kind == "must-fail"]
         witnesses = [t for t in teeth if t.kind == "witness"]
-        self.assertEqual(len(must_fails), 16)
+        # contract v1: the evaluated witnesses are the teeth; the weakened
+        # statements are registered as must-fails only under :must-fail t
+        self.assertEqual(len(must_fails), 0)
         self.assertEqual(len(witnesses), 6)
         self.assertEqual({t.macro for t in teeth}, {"defkeystone"})
         self.assertEqual(macros, {})
-        self.assertIn("fct-gate-without-protected-profile",
-                      {t.theorem for t in must_fails})
+        self.assertIn("fct-gate", {t.theorem for t in witnesses})
 
     def test_defkeystone_teeth_and_witnesses_are_read_from_the_expansion(self):
+        # TEETH CONTRACT v1: a removal outside the guard domain says :logical,
+        # a mutation is a checked edit with its fault, and the must-fail
+        # registration is opt-in (:must-fail t)
         source = '''(in-package "ACL2")
 (defkeystone k (implies (and (p x) (q x)) (r x)) :subject r
-  :hyps (p q) :witness ((x 1)) :breaks ((p ((x 2))) (q ((x 3)) :corrupt "why"))
-  :mutations ((m (r (+ 1 x)) ((x 4)))))
+  :hyps (p q) :witness ((x 1)) :breaks ((p ((x 2))) (q ((x 3)) :logical "why"))
+  :mutations ((m (:conclusion (r (+ 1 x))) ((x 4)) :fault "off by one")))
 '''
         teeth, macros = self.teeth(source)
-        self.assertEqual({(t.kind, t.theorem) for t in teeth},
-                         {("witness", "k"), ("must-fail", "k-without-p"),
-                          ("must-fail", "k-without-q"), ("must-fail", "k-mutant-m")})
+        self.assertEqual({(t.kind, t.theorem) for t in teeth}, {("witness", "k")})
         path = _Fake(ROOT / "tests/acl2/k-tests.lisp", source)
         assertions, _constants, error = teeth_check.read_book(path)
         self.assertIsNone(error)
-        # positive, two removals, one mutant; each a conjunction of claims
+        # positive, two removals, one mutant (every hypothesis, the conclusion
+        # and the edited conclusion's failure); each a conjunction of claims
         self.assertEqual(len(assertions), 4)
-        self.assertEqual([len(a.claims) for a in assertions], [3, 3, 3, 1])
+        self.assertEqual([len(a.claims) for a in assertions], [3, 3, 3, 4])
+        # with :must-fail t the weakened and mutant statements are registered
+        teeth, _macros = self.teeth(source.replace(':fault "off by one")))',
+                                                   ':fault "off by one")) :must-fail t)'))
+        self.assertEqual({(t.kind, t.theorem) for t in teeth},
+                         {("witness", "k"), ("must-fail", "k-without-p"),
+                          ("must-fail", "k-without-q"), ("must-fail", "k-mutant-m")})
 
     def test_the_summary_reports_the_macro_teeth_line(self):
         # `--summary` is what `make check` runs; the macro-teeth line must
@@ -416,7 +425,9 @@ class MacroTeeth(unittest.TestCase):
             {"tests/acl2/feed-connection-teeth-tests.lisp":
              teeth_check.macro_teeth_for_book(
                  ROOT / "tests/acl2/feed-connection-teeth-tests.lisp")[0]})
-        self.assertEqual(totals["must_fails"], 16)
+        # the six keystones' witnesses; their must-fails are opt-in (contract v1)
+        self.assertEqual(totals["must_fails"], 0)
+        self.assertEqual(totals["witnesses"], 6)
         self.assertEqual(totals["macros"], 1)
 
 

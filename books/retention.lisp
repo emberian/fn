@@ -14,57 +14,32 @@
 
 (in-package "ACL2")
 (include-book "acceptance-alloc")
+(include-book "def-keyset-check")
 (include-book "defrecord")
 (include-book "provenance")
 
-; Fill the release ids once, then look up each pin id.  The local keyset
-; cannot escape this call; the theorem covers its complete Boolean result.
-(defun fn-retain-ks-none-boundp (xs fn-keyset)
-  (declare (xargs :stobjs fn-keyset :guard t))
-  (if (consp xs)
-      (and (not (fn-keyset-tab-boundp (car xs) fn-keyset))
-           (fn-retain-ks-none-boundp (cdr xs) fn-keyset))
-    t))
+; No pin id among the release ids: quadratic in :logic, one local keyset in
+; :exec past eight release ids (books/def-keyset-check.lisp; the walk below
+; the threshold).
+(def-keyset-check fn-retain-ks-disjointp (xs ys) :sense :absent)
 
-(defthm fn-retain-ks-none-boundp-after-fill
-  (implies (not (consp (nth 0 fn-keyset)))
-           (equal (fn-retain-ks-none-boundp xs (fn-ks-fill ys fn-keyset))
-                  (not (intersection-equal xs ys))))
-  :hints (("Goal" :induct (fn-retain-ks-none-boundp xs fn-keyset)
-           :in-theory (disable fn-ks-fill nth))))
-
-(defun fn-retain-ks-disjointp (xs ys)
-  (declare (xargs :guard t))
-  (with-local-stobj fn-keyset
-    (mv-let (ok fn-keyset)
-      (let ((fn-keyset (fn-ks-fill ys fn-keyset)))
-        (mv (fn-retain-ks-none-boundp xs fn-keyset) fn-keyset))
-      ok)))
+(local
+ (defthm fn-retain-ks-keys-member
+   (iff (member-equal x (fn-retain-ks-disjointp-keys ys)) (member-equal x ys))
+   :hints (("Goal" :in-theory (enable fn-retain-ks-disjointp-keys)))))
 
 (defthm fn-retain-ks-disjointp-is-disjoint
   (equal (fn-retain-ks-disjointp xs ys)
-         (not (intersection-equal xs ys))))
-
-(defun fn-retain-ids-disjoint-walkp (xs ys)
-  (declare (xargs :guard (and (true-listp xs) (true-listp ys))))
-  (if (consp xs)
-      (and (not (member-equal (car xs) ys))
-           (fn-retain-ids-disjoint-walkp (cdr xs) ys))
-    t))
-
-(defthm fn-retain-ids-disjoint-walkp-is-disjoint
-  (equal (fn-retain-ids-disjoint-walkp xs ys)
-         (not (intersection-equal xs ys))))
+         (not (intersection-equal xs ys)))
+  :hints (("Goal" :induct (fn-retain-ks-disjointp xs ys)
+           :in-theory (enable fn-retain-ks-disjointp intersection-equal))))
 
 ; Keep this nonrecursive wrapper enabled: opening the record recognizer
-; must expose exactly its original intersection-equal conjunct.  A short
-; release list bounds each direct lookup; longer lists use the hash set.
+; must expose exactly its original intersection-equal conjunct.
 (defun fn-retain-ids-disjointp (xs ys)
   (declare (xargs :guard (and (true-listp xs) (true-listp ys))))
   (mbe :logic (not (intersection-equal xs ys))
-       :exec (if (fn-ks-longp ys)
-                 (fn-retain-ks-disjointp xs ys)
-               (fn-retain-ids-disjoint-walkp xs ys))))
+       :exec (fn-retain-ks-disjointp xs ys)))
 
 (verify-guards fn-retain-ids-disjointp)
 

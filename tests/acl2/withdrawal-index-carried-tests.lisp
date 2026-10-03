@@ -1,10 +1,13 @@
-; Teeth for books/withdrawal-index-carried.lisp (lane served-incremental-4):
-; the carried withdrawal index a POST's duplicate test and a completion's
-; targets read.  The withdrawal records are the plan's own shape
-; (fn-ctl-withdrawal-make, what fn-ctl-withdrawal-plan makes), and every
-; carry is the host writer's: fn-wix-refresh of nil or of a carry it made.
+; Teeth for books/withdrawal-index-carried.lisp (lane served-incremental-4;
+; declared through def-carried-view by lane generators-2): the carried
+; withdrawal index a POST's duplicate test and a completion's targets read.
+; The withdrawal records are the plan's own shape (fn-ctl-withdrawal-make,
+; what fn-ctl-withdrawal-plan makes), and every carry is the host writer's:
+; fn-wix-refresh of nil or of a carry it made.  The carry is (WS TSET CSET).
 (in-package "ACL2")
 (include-book "../../books/withdrawal-index-carried")
+(include-book "../../books/defkeystone")
+(include-book "must-fail-checked")
 
 (defconst *wit-ws0*
   (list (fn-ctl-withdrawal-make "<t1@x>" "<c1@x>" "p" :all 0)
@@ -22,19 +25,12 @@
 (assert-event (fn-wix-carryp nil))
 (assert-event (fn-wix-carryp *wit-c0*))
 (assert-event (equal (fn-wix-ws *wit-c0*) *wit-ws0*))
-(assert-event (mv-let (found tset cset)
-                (fn-wix-extend *wit-ws1* *wit-ws0*
-                               (fn-wix-tset *wit-c0*) (fn-wix-cset *wit-c0*))
-                (declare (ignore tset cset))
-                found))
+(assert-event (nth 0 (mv-list 2 (fn-cv-walk *wit-ws1* *wit-ws0* nil))))
+(assert-event (equal (fn-cv-walk-steps *wit-ws1* *wit-ws0*) 1))
 (assert-event (fn-wix-carryp *wit-c1*))
 (assert-event (equal (fn-wix-ws *wit-c1*) *wit-ws1*))
 (defconst *wit-ws2* (list (fn-ctl-withdrawal-make "<t9@x>" "<c9@x>" "p" :all 0)))
-(assert-event (mv-let (found tset cset)
-                (fn-wix-extend *wit-ws2* *wit-ws1*
-                               (fn-wix-tset *wit-c1*) (fn-wix-cset *wit-c1*))
-                (declare (ignore tset cset))
-                (not found)))
+(assert-event (not (nth 0 (mv-list 2 (fn-cv-walk *wit-ws2* *wit-ws1* nil)))))
 (assert-event (fn-wix-carryp (fn-wix-refresh *wit-c1* *wit-ws2*)))
 ; Hypothesis removal (the only hypothesis): from a carry that is not
 ; complete, the refresh that finds its list as a tail keeps the gap.
@@ -129,3 +125,42 @@
                                                  fn-arena fn-cat)
                      (fn-pidx-existing-action-cat "<n@x>" fn-octets nil nil
                                                   fn-arena fn-cat)))
+
+; -----------------------------------------------------------------------------
+; The generated keystones' teeth (TEETH CONTRACT v1): what the declarations owe
+; (table fn-teeth-owed), stated with the same claims, and checked.
+
+(defteeth fn-wix-carryp-of-refresh
+  :claim (((carried (fn-wix-carryp carry))) (fn-wix-carryp (fn-wix-refresh carry ws)))
+  :subject fn-wix-refresh
+  :witness ((carry *wit-c0*) (ws *wit-ws1*))
+  :breaks ((carried ((carry *wit-bad0*))))
+  :mutations ((old-tries (:conclusion (fn-wix-carryp (cons ws (cdr carry))))
+                         ((carry *wit-c0*) (ws *wit-ws1*))
+                         :fault "a refresh that installs the new list over the old tries")))
+
+(defteeth fn-wix-targetedp-is-pidx-targetedp
+  :claim (((carried (fn-wix-carryp carry)))
+          (equal (fn-wix-targetedp msgid ws carry) (fn-pidx-targetedp msgid ws)))
+  :subject fn-wix-targetedp
+  :witness ((msgid "<n@x>") (ws *wit-ws0*) (carry *wit-c0*))
+  :breaks ((carried ((msgid "<t1@x>") (carry *wit-bad0*))))
+  :mutations ((positive-trusted (:conclusion (equal (fn-wix-targetedp msgid ws carry)
+                                                    (fn-rit-hasp msgid 0 (fn-wix-tset carry))))
+                                ((msgid "<n@x>") (ws *wit-ws0*)
+                                 (carry (fn-wix-refresh nil (cons (fn-ctl-withdrawal-make "<n@x>" "<c9@x>" "p" :all 0)
+                                                                  *wit-ws0*))))
+                                :fault "a reader that trusts a positive probe")))
+
+(defteeth fn-wix-targets-of-is-sca-targets-of
+  :claim (((carried (fn-wix-carryp carry)))
+          (equal (fn-wix-targets-of cause ws carry) (fn-sca-targets-of cause ws)))
+  :subject fn-wix-targets-of
+  :witness ((cause "<c1@x>") (ws *wit-ws1*) (carry *wit-c1*))
+  :breaks ((carried ((cause "<c2@x>") (ws *wit-ws0*) (carry *wit-bad0*))))
+  :mutations ((positive-trusted (:conclusion (equal (fn-wix-targets-of cause ws carry)
+                                                    (if (fn-rit-hasp cause 0 (fn-wix-cset carry)) t nil)))
+                                ((cause "<c1@x>") (ws *wit-ws1*) (carry *wit-c1*))
+                                :fault "a reader that answers the probe's bit for the targets")))
+
+(defteeth-check)

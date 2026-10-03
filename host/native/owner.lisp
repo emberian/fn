@@ -5462,11 +5462,6 @@ snapshot cleanup callers. A stopped owner never retries an ambiguous fd."
        (setq *fnn-extent-pending* (nreverse keep))
        closed))))
 
-(defun fnn-owner-release-pending-extents (service)
-  "Actual worker completion retries pending closes after dropping extent lock."
-  (fnn-owner-gated (service :control)
-    (fnn-owner-release-pending-extents-locked service)))
-
 (defun fnn-snapshot-source-root-acquire (service base-handle maintenance-lease)
   "Caller holds SERVICE's owner mutex while capturing BASE-HANDLE. Acquire
 one exact checkpoint incarnation before releasing that mutex. The controller

@@ -44,29 +44,26 @@
 (defconst *lst-bad* '(0 0 0 0 5))
 (defconst *lst-over* '(500 3 0 0 3))
 
-(defkeystone lst-offer-preserves
-  (implies (fn-log-sink-okp s bound)
-           (fn-log-sink-okp (cadr (fn-log-sink-offer s len bound)) bound))
+(defkeystone lst-offer-preserves (implies (fn-log-sink-okp s bound) (fn-log-sink-okp (cadr (fn-log-sink-offer s len bound)) bound))
   :subject fn-log-sink-offer
+  :mutations (:deferred "no false neighbour named yet")
   :id "PRF-187"
   :restates fn-log-sink-offer-preserves-okp
   :hyps (okp)
   :witness ((s (cadr *lst-o2*)) (len 40) (bound *lst-b*))
-  :breaks ((okp ((s *lst-bad*) (len 1))))
+  :breaks ((okp ((s *lst-bad*) (len 1)) :logical "pre-contract witness, evaluated logically"))
   :rule-classes nil)
 
-(defkeystone lst-take-preserves
-  (implies (fn-log-sink-okp s bound)
-           (fn-log-sink-okp (fn-log-sink-take s len outcome) bound))
+(defkeystone lst-take-preserves (implies (fn-log-sink-okp s bound) (fn-log-sink-okp (fn-log-sink-take s len outcome) bound))
   :subject fn-log-sink-take
+  :mutations (:deferred "no false neighbour named yet")
   :id "PRF-187"
   :restates fn-log-sink-take-preserves-okp
   :hyps (okp)
   :witness ((s (cadr *lst-o3*)) (len 40) (outcome :written) (bound *lst-b*))
-  :breaks ((okp ((s *lst-over*) (len 0))))
+  :breaks ((okp ((s *lst-over*) (len 0)) :logical "pre-contract witness, evaluated logically"))
   :rule-classes nil)
 
-; fn-log-sink-offer-drops-only-past-the-bound (no hypothesis): both sides.
 (assert-event (and (equal (car *lst-o3*) :drop)
                    (posp (fn-log-sink-pending-lines (cadr *lst-o2*)))
                    (< *lst-b* (+ (fn-log-sink-pending-octets (cadr *lst-o2*)) 40))))
@@ -84,18 +81,14 @@
 ;; fn-log-sink-drop-counts: its witness is the third line's drop, and
 ;; without the :drop hypothesis a queued line (the second) leaves the dropped
 ;; count alone.
-(defkeystone lst-drop-counts
-  (implies (equal (car (fn-log-sink-offer s len bound)) :drop)
-           (let ((s2 (cadr (fn-log-sink-offer s len bound))))
-             (and (equal (fn-log-sink-dropped s2) (+ 1 (fn-log-sink-dropped s)))
-                  (equal (fn-log-sink-pending-lines s2) (fn-log-sink-pending-lines s))
-                  (equal (fn-log-sink-pending-octets s2) (fn-log-sink-pending-octets s)))))
+(defkeystone lst-drop-counts (implies (equal (car (fn-log-sink-offer s len bound)) :drop) (let ((s2 (cadr (fn-log-sink-offer s len bound)))) (and (equal (fn-log-sink-dropped s2) (+ 1 (fn-log-sink-dropped s))) (equal (fn-log-sink-pending-lines s2) (fn-log-sink-pending-lines s)) (equal (fn-log-sink-pending-octets s2) (fn-log-sink-pending-octets s)))))
   :subject fn-log-sink-offer
+  :mutations (:deferred "no false neighbour named yet")
   :id "PRF-187"
   :restates fn-log-sink-drop-counts
   :hyps (drop)
   :witness ((s (cadr *lst-o2*)) (len 40) (bound *lst-b*))
-  :breaks ((drop ((s (cadr *lst-o1*)))))
-  ; the book leaves fn-log-sink-offer disabled; the source keystone is the proof
+  :breaks ((drop ((s (cadr *lst-o1*))) :logical "pre-contract witness, evaluated logically"))
   :hints (("Goal" :use fn-log-sink-drop-counts))
   :rule-classes nil)
+

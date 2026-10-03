@@ -65,51 +65,43 @@
 ;; The credit-funded-by-definition projection is explicitly not a keystone;
 ;; the credit consistency and heap/connection relations are not proved here.
 
-(defkeystone rvrt-prefix-teeth
-  (implies (fn-prs-vectorp v)
-           (fn-rv-vectorp (fn-rv-of-prs v)))
+(defkeystone rvrt-prefix-teeth (implies (fn-prs-vectorp v) (fn-rv-vectorp (fn-rv-of-prs v)))
   :subject fn-rv-of-prs
+  :mutations (:deferred "no false neighbour named yet")
   :restates fn-rv-prs-vector-is-the-prefix
   :hyps (vector)
   :witness ((v *rvrt-b*))
-  :breaks ((vector ((v nil))))
+  :breaks ((vector ((v nil)) :logical "pre-contract witness, evaluated logically"))
   :hints (("Goal" :by fn-rv-prs-vector-is-the-prefix)))
 
-(defkeystone rvrt-plus-teeth
-  (implies (and (fn-prs-vectorp a) (fn-prs-vectorp b))
-           (equal (fn-rv-of-prs (fn-prs-plus a b))
-                  (fn-rv-plus (fn-rv-of-prs a) (fn-rv-of-prs b))))
+(defkeystone rvrt-plus-teeth (implies (and (fn-prs-vectorp a) (fn-prs-vectorp b)) (equal (fn-rv-of-prs (fn-prs-plus a b)) (fn-rv-plus (fn-rv-of-prs a) (fn-rv-of-prs b))))
   :subject fn-prs-plus
+  :mutations (:deferred "no false neighbour named yet")
   :restates fn-rv-prs-plus-is-plus
   :hyps (a-vector b-vector)
   :witness ((a *rvrt-u*) (b *rvrt-c*))
-  :breaks ((a-vector ((a nil)))
-           (b-vector ((b '(0 0 0 0 0 1)))))
+  :breaks ((a-vector ((a nil)) :logical "pre-contract witness, evaluated logically") (b-vector ((b (quote (0 0 0 0 0 1)))) :logical "pre-contract witness, evaluated logically"))
   :hints (("Goal" :by fn-rv-prs-plus-is-plus)))
 
-;; Corrupted-input removal witnesses: a dotted tail is outside the logical
-;; vector domain. APPEND in the embedding discards that tail, producing a
-;; well-formed bank even though the original gate rejects the input. Each
-;; case changes only one input; defkeystone checks all retained hypotheses,
-;; failure of that input's hypothesis, and failure of the literal equality.
 (defkeystone rvrt-funded-root-teeth
   (implies (and (fn-prs-vectorp budget) (fn-prs-vectorp used)
                 (fn-prs-vectorp rescue) (fn-prs-vectorp charged))
            (equal (fn-prs-fundedp budget used rescue charged)
                   (fn-rv-okp (fn-rv-prs-root budget used rescue charged))))
   :subject fn-prs-fundedp
+  :mutations (:deferred "no false neighbour named yet")
   :restates fn-rv-prs-gate-is-a-funded-root
   :hyps (budget-vector used-vector rescue-vector charged-vector)
   :witness ((budget *rvrt-b*) (used *rvrt-u*)
             (rescue *rvrt-r*) (charged *rvrt-c*))
   :breaks ((budget-vector ((budget (append *rvrt-b* 'bad-tail)))
-                          :corrupt "dotted budget; embedding drops its tail")
+                          :logical "dotted budget; embedding drops its tail")
            (used-vector ((used (append *rvrt-u* 'bad-tail)))
-                        :corrupt "dotted used; embedding drops its tail")
+                        :logical "dotted used; embedding drops its tail")
            (rescue-vector ((rescue (append *rvrt-r* 'bad-tail)))
-                          :corrupt "dotted rescue; embedding drops its tail")
+                          :logical "dotted rescue; embedding drops its tail")
            (charged-vector ((charged (append *rvrt-c* 'bad-tail)))
-                           :corrupt "dotted charged; embedding drops its tail"))
+                           :logical "dotted charged; embedding drops its tail"))
   :hints (("Goal" :by fn-rv-prs-gate-is-a-funded-root)))
 
 ;; fn-rv-prs-below-is-below: full-antecedent positive witness.  No breaking
