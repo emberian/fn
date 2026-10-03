@@ -268,3 +268,17 @@ instead of :io-complete: cache/no-pread outcomes never fabricate a device event.
 Runtime owns condition conversion, Groundwork new machine digest/session.
 Implicit wait/P/other O edges and exact model/image dependency alignment remain
 owed; collector COMPLETE never asserts full physical coverage.
+
+
+## Canonical BP undertaking fixture preparation, 2026-10-03
+
+Existing native undertaking/status-reopen and carry fixture setups now reuse
+`tests.bp_producer.post_articles` on the same immutable default developer
+image: real POST340/240, producer stops, core inspect supplies actual stored
+source bytes before FNWF/BP owns Store. No raw minimal store-post shortcut,
+no independent identity/request semantics or arbitrary grant. Native boundary
+shape check and Python compile pass; actual undertaking/reopen remains pending
+Integration budget/matching image. Groundwork authorized this consumer prep;
+new BP transport deputy owns wider TCPCL/ION continuation, this lane supplies
+actual replay/scenario execution. Existing two-peer application receipt adapter
+remains the release/reopen consumer; historical retention refusal stays filed.
