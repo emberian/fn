@@ -3,7 +3,7 @@
 The active plan is [the development workstreams](overnight-2026-10-03.md), revised
 after deeper source/design reading and ember's correction: Sol for implementation,
 Astra for composition, continuing subsystem ownership through integration and use.
-After compaction or takeover, follow the plan’s [reorientation routine](overnight-2026-10-03.md#reorientation-after-compaction-or-takeover), including actual user and assistant exchanges and complete needed governing files.
+After compaction or takeover, follow the plan’s [reorientation routine](overnight-2026-10-03.md#reorientation-after-compaction-or-takeover), including actual user and assistant exchanges, revision-aware reading of complete needed files, and retained reading conclusions.
 Read it with [the repair ledger](repair/STATUS.md) and [the contributor guide](../CONTRIBUTORS.md).
 The groundwork wave is active: nine GPT-6.1-Sol workers and the strategic
 coordinator. Five subsystem deputies and the groundwork deputy are joined by
@@ -14,7 +14,7 @@ useful independent need and coordinator agreement. The initial orientation
 snapshot is recorded in the plan; `8d17b09dd` integrated that planning/ledger
 reconciliation onto dev. Runtime qualification and deployment remain separate
 from source integration. Integrate directly onto dev during
-stabilization; qualify immutable candidates alongside continuing development.
+stabilization. Build/load and selected dynamic checks answer concrete changed-consumer questions; full qualification is for a scoped operational claim or convergence. Reuse matching artifacts while development continues.
 
 The earlier page below is retained as historical scope, not a current roster,
 release instruction, source coordinate or deployment observation.
