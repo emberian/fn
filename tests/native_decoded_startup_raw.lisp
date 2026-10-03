@@ -2,6 +2,44 @@
 ;;; are recording boundaries; this is not a pool accounting proof.
 (load "tests/native_decoded_worker_raw.lisp")
 (in-package "ACL2")
+
+;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
+(define-condition harness-stub-reached (serious-condition)
+  ((name :initarg :name :reader harness-stub-reached-name)
+   (source :initarg :source :reader harness-stub-reached-source))
+  (:report (lambda (c s)
+             (format s "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it"
+                     (harness-stub-reached-name c) (harness-stub-reached-source c)))))
+(defun harness-stub-reached (name source)
+  (format *error-output* "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it~%"
+          name source)
+  (finish-output *error-output*)
+  (error 'harness-stub-reached :name name :source source))
+(defun fnn-concat (&rest strings)
+  (declare (ignorable strings))
+  (harness-stub-reached 'fnn-concat "host/native/io.lisp"))
+(defun fnn-emit (stream text)
+  (declare (ignorable stream text))
+  (harness-stub-reached 'fnn-emit "host/native/io.lisp"))
+(defun fnn-extent-executor-actual-return (worker)
+  (declare (ignorable worker))
+  (harness-stub-reached 'fnn-extent-executor-actual-return "host/native/extent.lisp"))
+(defun fnn-extent-executor-job (worker)
+  (declare (ignorable worker))
+  (harness-stub-reached 'fnn-extent-executor-job "host/native/extent.lisp"))
+(defun fnn-extent-page-observation (control &rest args)
+  (declare (ignorable control args))
+  (harness-stub-reached 'fnn-extent-page-observation "host/native/extent.lisp"))
+(defun fnn-log-offer (destination octets)
+  (declare (ignorable destination octets))
+  (harness-stub-reached 'fnn-log-offer "host/native/io.lisp"))
+(defun fnn-native-observation-unavailable (reason)
+  (declare (ignorable reason))
+  (harness-stub-reached 'fnn-native-observation-unavailable "host/native/owner.lisp"))
+(defun fnn-string-octets (string)
+  (declare (ignorable string))
+  (harness-stub-reached 'fnn-string-octets "host/native/io.lisp"))
+;;; ---- derived stubs: END ----
 (load-deployed-forms "host/native/io.lisp"
  '((defvar *fnn-native-observer*) (defvar *fnn-native-actor-identity*) (defvar *fnn-native-wait-release*)
    (defmacro fnn-with-observed-mutex) (defun fnn-observed-condition-wait)))
@@ -27,17 +65,17 @@
   (create-fn-decoded-job
    (setq *startup-retained* (first *fnn-cold-workers*))
    (when (eq *startup-cut* :creator) (error "constructor cut"))
-   *decoded-job*)
+   (copy-seq *decoded-job*))
   (fn-dwj-reserve
-   (assert (eq (first args) *decoded-job*))
+   (assert (vectorp (first args)))
    (when (eq *startup-cut* :reserve) (error "reserve cut"))
-   *decoded-job*)
+   (first args))
   (otherwise (error "unexpected startup core ~s" subject))))
 (defun fnn-cold-call (subject &rest args)
  (declare (ignore args))
  (push subject *startup-events*)
  (case subject
-  (fn-owner-page-read-default-worker-reservedp (list (not (eq *startup-cut* :reservation))))
+  (fn-owner-page-read-default-worker-constructionp (list (not (member *startup-cut* '(:reservation :already-ready)))))
   (fn-owner-page-read-default-worker-ready
    (assert (fnn-cold-worker-thread (first *fnn-cold-workers*)))
    (assert (not (eq *fnn-cold-free* (first *fnn-cold-workers*))))
@@ -54,6 +92,8 @@
    (fnn-extent-executor-start 2 :admitted-plan)
    (assert (= 2 (length *fnn-cold-workers*)))
    (assert *fnn-cold-free*)
+   (assert (not (eq (fnn-decoded-activation-job (fnn-cold-worker-decoded-storage (first *fnn-cold-workers*)))
+                    (fnn-decoded-activation-job (fnn-cold-worker-decoded-storage (second *fnn-cold-workers*))))))
    (dolist (worker *fnn-cold-workers*)
     (assert (eq :idle (fnn-cold-worker-phase worker)))
     (assert (sb-thread:thread-alive-p (fnn-cold-worker-thread worker)))
@@ -112,3 +152,25 @@
  (assert (handler-case (progn (fnn-extent-executor-start 2 :admitted-plan) nil) (error () t)))
  (assert (not (member 'create-fn-decoded-job *startup-events*)))
  (assert (null *fnn-cold-workers*)))
+
+;; Both normal and cancelled last-borrow consumers preserve the persistent
+;; backing while clearing per-operation references after literal retirement.
+(dolist (release '(fnn-extent-window-release fnn-extent-window-settle-cancelled))
+ (let* ((*decoded-job* (vector :scratch)) (*terminal-order* nil)
+        (activation (make-fnn-decoded-activation :job *decoded-job* :stage :idle))
+        (thread (sb-thread:make-thread (lambda () nil)))
+        (worker (%make-fnn-cold-worker :row :row :token :token :phase :returned :thread thread
+                                      :decoded activation :decoded-storage activation :result activation)))
+  (sb-thread:join-thread thread)
+  (assert (eq :released (funcall release worker :token)))
+  (assert (eq :idle (fnn-cold-worker-phase worker)))
+  (assert (eq activation (fnn-cold-worker-decoded-storage worker)))
+  (assert (and (null (fnn-cold-worker-decoded worker)) (null (fnn-cold-worker-result worker))
+               (null (fnn-cold-worker-token worker))))
+  (assert (equal *terminal-order* '(fn-owner-page-decoded-job-retire)))))
+(format t "native_decoded_startup_raw: PASS normal/cancelled last borrow preserves idle backing~%")
+
+;; An already-constructed slot cannot spend the baseline a second time.
+(let ((*startup-cut* :already-ready) (*startup-events* nil))
+ (assert (handler-case (progn (fnn-extent-executor-start 2 :admitted-plan) nil) (error () t)))
+ (assert (not (member 'create-fn-decoded-job *startup-events*))))

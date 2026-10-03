@@ -656,7 +656,7 @@ Legacy direct startup has no decoded scratch and cannot borrow this grant."
           (when plan
             (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
               (unless (first (fnn-core-cold-pool
-                               'fn-owner-page-read-default-worker-reservedp slot))
+                               'fn-owner-page-read-default-worker-constructionp slot))
                 (fnn-fault "decoded backing lacks its installed slot reservation")))
             (fnn-extent-decoded-storage-start worker))
           (setf (fnn-cold-worker-thread worker)
@@ -667,7 +667,8 @@ Legacy direct startup has no decoded scratch and cannot borrow this grant."
             (when plan
               (unless (eq (first (fnn-core-cold-pool
                                    'fn-owner-page-read-default-worker-ready slot)) :ready)
-                (fnn-fault "cold worker backing was not acknowledged")))
+                (fnn-fault "cold worker backing was not acknowledged"))
+              (fnn-err "DECODED-WINDOW storage-ready slot=~s scope=:persistent-partial-fixed-storage" slot))
             (setf (fnn-cold-worker-phase worker) :idle
                   (fnn-cold-worker-next worker) *fnn-cold-free*
                   *fnn-cold-free* worker))))
