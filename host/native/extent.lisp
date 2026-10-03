@@ -504,9 +504,10 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
     (when (and (fnn-cold-worker-decoded worker)
                (eq (fnn-decoded-activation-stage (fnn-cold-worker-decoded worker)) :calling))
       (fnn-fault "decoded torn semantic step retains its cold debit"))
-    (setf (fnn-cold-worker-decoded worker) nil)
-    (setf (fnn-cold-worker-result worker) nil)
-    (destructuring-bind (word row &rest ignored)
+    (let ((scope (fnn-cold-worker-scope worker)))
+      (setf (fnn-cold-worker-decoded worker) nil)
+      (setf (fnn-cold-worker-result worker) nil)
+      (destructuring-bind (word row &rest ignored)
         (fnn-core-cold-pool 'fn-owner-page-window-executor-release
                                 (fnn-cold-worker-row worker) token)
       (declare (ignore ignored))
@@ -519,7 +520,11 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
                  (sb-thread:thread-alive-p (fnn-cold-worker-thread worker)))
         (setf (fnn-cold-worker-next worker) *fnn-cold-free*
               *fnn-cold-free* worker))
-      word)))
+        ;; This is the literal returned semantic release after actual
+        ;; physical return and last scalar borrow, not a close inference.
+        (when scope
+          (fnn-err "DECODED-WINDOW release token=~s scope=~s word=~s" token scope word))
+        word))))
 
 ; Staged cancellation never refunds, never terminates a thread, and never
 ; borrows its output. Extent mutex serializes revocation with scalar reads.
@@ -543,9 +548,10 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
     (when (and (fnn-cold-worker-decoded worker)
                (eq (fnn-decoded-activation-stage (fnn-cold-worker-decoded worker)) :calling))
       (fnn-fault "decoded torn semantic step retains its cancelled debit"))
-    (setf (fnn-cold-worker-decoded worker) nil)
-    (setf (fnn-cold-worker-result worker) nil)
-    (destructuring-bind (word row &rest ignored)
+    (let ((scope (fnn-cold-worker-scope worker)))
+      (setf (fnn-cold-worker-decoded worker) nil)
+      (setf (fnn-cold-worker-result worker) nil)
+      (destructuring-bind (word row &rest ignored)
         (fnn-core-cold-pool 'fn-owner-page-window-executor-settle-cancelled
                                 (fnn-cold-worker-row worker) token)
       (declare (ignore ignored))
@@ -558,7 +564,9 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
                  (sb-thread:thread-alive-p (fnn-cold-worker-thread worker)))
         (setf (fnn-cold-worker-next worker) *fnn-cold-free*
               *fnn-cold-free* worker))
-      word)))
+        (when scope
+          (fnn-err "DECODED-WINDOW release token=~s scope=~s word=~s" token scope word))
+        word))))
 
 (declaim (notinline fnn-extent-executor-job))
 (defun fnn-extent-executor-job (worker)
