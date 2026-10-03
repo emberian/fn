@@ -921,3 +921,18 @@ claim check passes, source/spec/scenario composition has no code conflict.
 Reuse same-harness timed wait, late result, callback/raw unwind/mux schedules.
 First runnable selector tests/test_native_await_lifetime_raw.sh; matching
 image and wider mux finish cleanup are distinct remaining obligations.
+
+
+## Sol source assembly — matching BP producer/trace fixture
+
+READY independent fixture inputs 3716a9926 -> fa9e9ef19 -> 5afc1e275.
+Same published source checked before mutation; actual native NNTP POST and
+ACL2 stored-source inspection feed subject/ADU/FNWF construction. Literal
+ASCII Message-ID travels through argv rather than Python bytes repr. Native
+exit observations remain distinct in transfer trace. No production code or
+model decision changes. Exact producer bytes and Python/diff checks pass;
+three focused resilience BP control tests pass in assembled source. Historical
+POST240/stored-source evidence stopped at retention refusal, not peer recovery.
+First matching-image selector: python3 -m tools.resilience.adapters.bp_node
+--image DEVELOPER --producer-image MATCHING_DEFAULT --variant lose-completion.
+Replay after actual retention repair remains Integration's source/image task.
