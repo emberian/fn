@@ -163,10 +163,11 @@
                        (integerp response-octets) (< 0 response-octets)
                        (realp timeout) (< 0 timeout))
             (return-from fnn-anchor-acquire '(:fault :profile)))
-          (let ((key (fnn-crypto-octets pinned-key nonce-octets
-                                         "pinned anchor key")))
-            (when (/= (length key) nonce-octets)
-              (return-from fnn-anchor-acquire '(:fault :pinned-key)))
+          ;; The key's width is ACL2's decision (fn-anchor-wire-parse-response
+          ;; refuses a key that is not *fn-anchor-key-octets* wide, and
+          ;; fn-anchor-server-find-selected-key-width proves the manifest's
+          ;; are); the host does not compare it with the nonce width.
+          (let ((key (fnn-octets pinned-key)))
             (let* ((nonce (fnn-anchor-csprng-nonce nonce-octets))
                  (request (fnn-anchor-request nonce request-octets))
                  (packet

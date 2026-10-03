@@ -70,5 +70,13 @@ class TlsOversizeSan(unittest.TestCase):
         self.assertIn("(list 0)", m.group(0))
 
 
+class AnchorKeyWidth(unittest.TestCase):
+    def test_host_does_not_compare_key_width_with_nonce_width(self):
+        # S095: the key width is ACL2's decision (the parser refuses a wrong one).
+        text = (ROOT / "host/native/anchor.lisp").read_text()
+        self.assertNotIn("(/= (length key) nonce-octets)", text)
+        self.assertNotIn("'(:fault :pinned-key)", text)
+
+
 if __name__ == "__main__":
     unittest.main()
