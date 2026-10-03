@@ -242,5 +242,19 @@
       (assert (fnn-web-conn-semantic-ended old))
       (assert (fnn-web-feed-owned-p face next)))
     (setf (symbol-function 'fnn-owner-action) saved)))
+;;; A continuation selected during this pass must run again immediately,
+;;; rather than paying the idle socket poll before submitting its next job.
+(let ((saved (symbol-function 'fnn-web-advance)))
+  (unwind-protect
+      (dolist (phase '(:private-begin :replay))
+        (let* ((conn (fixture-conn 61 :event))
+               (face (%make-fnn-web-face :service :service :capacity 1
+                                         :listener 100 :wake-closed t :conns (list conn))))
+          (setf (symbol-function 'fnn-web-advance)
+                (lambda (face conn &optional ready)
+                  (declare (ignore face ready)) (setf (fnn-web-conn-phase conn) phase)))
+          (fnn-web-iterate face)
+          (assert (zerop *poll-timeout*))))
+    (setf (symbol-function 'fnn-web-advance) saved)))
 (assert (null *faults*))
 (format t "native web continuation raw: PASS exact windows, slow+healthy+POST, mailbox, cold resume, session lease, once cleanup~%")
