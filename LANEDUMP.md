@@ -679,3 +679,16 @@ corrected: withdrawal stamps count and visibility uses <=, context redecision
 keeps availability facts; no new MVCC needed for that alleged drift. Actual
 completed discovery/pinned authority correspondence remains PRF1237.
 Untracked list-query-reference remains disabled model WIP outside this packet.
+
+## Owner read-independence proof repair
+
+Unchanged Fn-ocfg-read-step-without-selection-depends-only-on-its-connection-
+and-clock now proves through a LOCAL effects-only read projection and minimal
+constructor/core-field theory. This removes irrelevant owner update/boundedness
+branch expansion rather than changing the public statement or executable route.
+History's paid current retained world admits proper encapsulate .01ACL2s/6729
+steps, locals discarded; public theorem4878steps. Original2M refusal and two
+controlled200k hints are preserved. History also admitted the unchanged direct
+successor .04s/1530steps and removed both initializer assurance deferrals.
+Receipt planning/evidence/owner-read-independence-20261003/checks.json; existing
+owner-served-invariants literal witnesses unchanged. No current-image/cert claim.
