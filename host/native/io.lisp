@@ -4101,8 +4101,13 @@ current one)."
                                         (sb-posix:getpid) (fnn-random-hex 8))))
            (fd (fnn-open stage (logior sb-posix:o-wronly sb-posix:o-creat sb-posix:o-excl)
                          #o600)))
-      (unwind-protect (progn (fnn-write-all fd octets) (fnn-fsync-file fd))
-        (fnn-close fd))
+      ;; A failed write or fsync leaves partial key material in keys/, which
+      ;; nothing sweeps (S073): remove the stage before the error leaves.
+      (let ((written nil))
+        (unwind-protect (progn (fnn-write-all fd octets) (fnn-fsync-file fd)
+                               (setq written t))
+          (fnn-close fd)
+          (unless written (ignore-errors (fnn-unlink stage)))))
       (handler-case (fnn-replace stage path)
         (fnn-os-error (e)
           (ignore-errors (fnn-unlink stage))

@@ -87,5 +87,19 @@ class TlsSscFail(unittest.TestCase):
         self.assertNotIn("(first (fnn-tls-error-stack))", m.group(0))
 
 
+class PartialSecretFiles(unittest.TestCase):
+    def test_rotation_stage_removed_when_write_or_fsync_fails(self):
+        # S073
+        text = (ROOT / "host/native/io.lisp").read_text()
+        m = re.search(r"\(defun fnn-node-secret-rotate .*?\n\n", text, re.S)
+        self.assertRegex(m.group(0), r"unless written \(ignore-errors \(fnn-unlink stage\)\)")
+
+    def test_write_new_unlinks_partial_file_on_failure(self):
+        # S119
+        text = (ROOT / "host/store-write-host.lisp").read_text()
+        m = re.search(r"\(defun fn-xw-write-new .*?\n\n", text, re.S)
+        self.assertIn("(fn-hx-unlink path)", m.group(0))
+
+
 if __name__ == "__main__":
     unittest.main()
