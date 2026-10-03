@@ -1046,3 +1046,13 @@ rate refusal or truncation. The retained per-peer context/buffer/descriptor
 projection is not funded by NNTP output or syncer grants. S067's push-feed
 fairness remains open. No extra worker threads or shared owner/mux edits.
 Source witness filing follows the coherent source handoff separately.
+
+
+Same immutable harness S054/S106 witness filed:
+`planning/evidence/repair/S054-2c4cd248a09b4542a02348d81dc7f778.json`,
+SHA256 `bda0fe45789751e6cc31e3b18eb81344f8fae195d472458e85be47e0d4011ff3`.
+Base cddce7087 returned the exact intended single AssertionError in0.766s;
+head51c5c4f2e executes the identical designated ID successfully in0.827s,
+no infrastructure/errors/skips. Scope/budget checks pass (1382 changedlines).
+The raw fixture does not execute real protocol codecs or durable barriers;
+certification and prepared actual-node body scenario remain pending.

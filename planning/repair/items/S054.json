@@ -1,12 +1,17 @@
 {
  "acceptance": "services:round-deadline",
+ "allow_forbidden": true,
+ "budget": 2400,
  "category": "performance",
  "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "BRIDGE",
  "evidence": "host/native/pull-service.lisp:433-442: `(loop until (or (fnn-core ... 'fn-pull-session-done-p session) (fnn-pull-stoppingp runtime)) do ... (let ((incoming (receive))) ...))` where receive uses `+fnn-pull-read-seconds+` (60, :40) per read. fnn-pull-worker (:525-548) runs fnn-pull-round for one peer at a time, then fnn-catchup-tick, on the single 'fn pull feed' thread. The round has no overall deadline or byte budget.",
+ "expect-failure": "tests.test_native_peer_round_driver.PeerRoundDriverTests.test_trickling_pull_cannot_starve_healthy_pull_and_catchup",
  "exposure": "live",
+ "failure-message": "healthy pull and catch-up must progress while slow pull retains partial state",
  "file": "host/native/pull-service.lisp",
  "fix": "Give each round a deadline and a byte/event budget decided in ACL2 (a round past it fails and holds the cursor), or run rounds per peer on separate bounded workers so one peer cannot hold the scheduler.",
+ "harness": "tests/test_native_peer_round_driver.py,tests/native_peer_round_driver_raw.lisp",
  "id": "S054",
  "line": "433",
  "locus": "peer-services",
@@ -17,12 +22,6 @@
  "owner": "codex-sol-transport-rounds",
  "reviewer": "host/native/pull-service.lisp:433-442: the round loop ends only when the session is done or on stop. receive (:422-430) uses +fnn-pull-read-seconds+ (60, :40) per read, and there is no overall round deadline or byte budget anywhere in pull-service.lisp, peer-pull.lisp or peer-pull-session.lisp. fnn-pull-worker (:525-548) runs fnn-pull-round for one due peer at a time, then fnn-catchup-tick (:500-520), which runs its round synchronously on the same thread. A peer that sends at least one octet every 60 s (or lists endlessly in :list, which compounds finding 1) holds the single worker, so every other pull and catch-up round stalls. The pull peers are operator-configured, which caps the severity at medium.",
  "scenario": "A pulled peer that trickles one octet every 59 seconds (a slow link or a deliberate slow-loris), or streams an endless ARTICLE body in :forward, keeps its round alive indefinitely. No other pull peer's NEWNEWS round and no catch-up round runs meanwhile, so their cursors stall and their articles are not pulled. The schedule's per-peer interval is meaningless while the worker is held.",
- "severity": "medium",
- "slice": "services",
- "source": "sweep-2026-10-03",
- "state": "in-progress",
- "title": "One pull worker serves every peer serially with only a per-read timeout, so one slow peer starves all pull and catch-up rounds",
- "updated": "2026-10-03T02:30:23Z",
  "scope": [
   "books/peer-round-driver.lisp",
   "host/native/pull-service.lisp",
@@ -42,10 +41,109 @@
   "planning/evidence-index.tsv",
   "tests/native_pull_journal_registry_raw.lisp"
  ],
- "budget": 2400,
- "allow_forbidden": true,
+ "severity": "medium",
+ "slice": "services",
+ "source": "sweep-2026-10-03",
+ "state": "in-progress",
  "test": "python3 -m unittest tests.test_native_peer_round_driver.PeerRoundDriverTests.test_trickling_pull_cannot_starve_healthy_pull_and_catchup",
- "harness": "tests/test_native_peer_round_driver.py,tests/native_peer_round_driver_raw.lisp",
- "expect-failure": "tests.test_native_peer_round_driver.PeerRoundDriverTests.test_trickling_pull_cannot_starve_healthy_pull_and_catchup",
- "failure-message": "healthy pull and catch-up must progress while slow pull retains partial state"
+ "title": "One pull worker serves every peer serially with only a per-read timeout, so one slow peer starves all pull and catch-up rounds",
+ "updated": "2026-10-03T09:52:16Z",
+ "verify": {
+  "base": "cddce708708291f67828e80e0de54e44d44c0d41",
+  "base_observation": {
+   "result": {
+    "assertions": [
+     {
+      "message": "healthy pull and catch-up must progress while slow pull retains partial state",
+      "test": "tests.test_native_peer_round_driver.PeerRoundDriverTests.test_trickling_pull_cannot_starve_healthy_pull_and_catchup",
+      "type": "AssertionError"
+     }
+    ],
+    "errors": [],
+    "executed": [
+     "tests.test_native_peer_round_driver.PeerRoundDriverTests.test_trickling_pull_cannot_starve_healthy_pull_and_catchup"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_native_peer_round_driver.py": "c290f50e44e1315eca1c7b0495377e6711d867fb91065273d6b256b97540b4c3"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 1,
+   "revision": "cddce708708291f67828e80e0de54e44d44c0d41",
+   "stderr": "test_trickling_pull_cannot_starve_healthy_pull_and_catchup (tests.test_native_peer_round_driver.PeerRoundDriverTests.test_trickling_pull_cannot_starve_healthy_pull_and_catchup) ... FAIL\n\n======================================================================\nFAIL: test_trickling_pull_cannot_starve_healthy_pull_and_catchup (tests.test_native_peer_round_driver.PeerRoundDriverTests.test_trickling_pull_cannot_starve_healthy_pull_and_catchup)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-vh4s8351/wt/tests/test_native_peer_round_driver.py\", line 19, in test_trickling_pull_cannot_starve_healthy_pull_and_catchup\n    self.schedule(\"trickle\", \"healthy pull and catch-up must progress while slow pull retains partial state\")\n    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-vh4s8351/wt/tests/test_native_peer_round_driver.py\", line 13, in schedule\n    self.fail(message)\n    ~~~~~~~~~^^^^^^^^^\nAssertionError: healthy pull and catch-up must progress while slow pull retains partial state\n\n----------------------------------------------------------------------\nRan 1 test in 0.766s\n\nFAILED (failures=1)\n",
+   "stdout": ""
+  },
+  "changed_files": [
+   "LANEDUMP.md",
+   "Makefile",
+   "books/peer-round-driver.lisp",
+   "host/interfaces.lisp",
+   "host/native/build.lisp",
+   "host/native/io.lisp",
+   "host/native/pull-service.lisp",
+   "host/native/tls.lisp",
+   "planning/proofs.json",
+   "planning/repair/items/S054.json",
+   "planning/repair/items/S067.json",
+   "planning/repair/items/S106.json",
+   "specs/peering.md",
+   "tests/acl2/peer-round-driver-tests.lisp",
+   "tests/native_peer_round_driver_raw.lisp",
+   "tests/native_pull_journal_registry_raw.lisp",
+   "tests/scenarios/catalog.json",
+   "tests/test_native_peer_pull.py",
+   "tests/test_native_peer_round_driver.py"
+  ],
+  "diff_lines": 1382,
+  "evidence": {
+   "bytes": 4952,
+   "path": "planning/evidence/repair/S054-2c4cd248a09b4542a02348d81dc7f778.json",
+   "sha256": "bda0fe45789751e6cc31e3b18eb81344f8fae195d472458e85be47e0d4011ff3"
+  },
+  "evidence_outcome": "archived",
+  "expected_failure": {
+   "message": "healthy pull and catch-up must progress while slow pull retains partial state",
+   "test": "tests.test_native_peer_round_driver.PeerRoundDriverTests.test_trickling_pull_cannot_starve_healthy_pull_and_catchup"
+  },
+  "green_at_head": true,
+  "harness": {
+   "tests/native_peer_round_driver_raw.lisp": "7f0f2faf97b0235548f7cb2d69069525118e4afa23194039443af5e50e630e89",
+   "tests/test_native_peer_round_driver.py": "c290f50e44e1315eca1c7b0495377e6711d867fb91065273d6b256b97540b4c3"
+  },
+  "head": "51c5c4f2e912f96338685ce3d6b75c65a85eb0a1",
+  "head_observation": {
+   "result": {
+    "assertions": [],
+    "errors": [],
+    "executed": [
+     "tests.test_native_peer_round_driver.PeerRoundDriverTests.test_trickling_pull_cannot_starve_healthy_pull_and_catchup"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_native_peer_round_driver.py": "c290f50e44e1315eca1c7b0495377e6711d867fb91065273d6b256b97540b4c3"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 0,
+   "revision": "51c5c4f2e912f96338685ce3d6b75c65a85eb0a1",
+   "stderr": "test_trickling_pull_cannot_starve_healthy_pull_and_catchup (tests.test_native_peer_round_driver.PeerRoundDriverTests.test_trickling_pull_cannot_starve_healthy_pull_and_catchup) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.827s\n\nOK\n",
+   "stdout": ""
+  },
+  "interpreter": "/opt/homebrew/bin/python3",
+  "ok": true,
+  "problems": [],
+  "red_at_base": true,
+  "runner_sha256": "ffc7d9542fbfe2d4e23f03f31dd170f32ef1a8529d41ebbccc36f18c52946106",
+  "same_tests": true,
+  "semantic_ok": true,
+  "test": "python3 -m unittest tests.test_native_peer_round_driver.PeerRoundDriverTests.test_trickling_pull_cannot_starve_healthy_pull_and_catchup",
+  "timeout": 1800.0
+ }
 }
