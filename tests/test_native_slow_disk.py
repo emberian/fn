@@ -75,7 +75,7 @@ class SlowDiskSourceTests(unittest.TestCase):
         self.assertIn("(fnn-owner-disk-event service :clock)", pipeline)
         self.assertIn("(fnn-owner-disk-wait-ms service)", pipeline)
         self.assertIn(":timeout (/ ms 1000)", pipeline)
-        self.assertLess(pipeline.index("(fnn-owner-start-syncer service gen)"),
+        self.assertLess(pipeline.index("(fnn-owner-start-syncer service gen job)"),
                         pipeline.index("(fnn-owner-disk-event service :issue limits)"))
         # Slice 2: past H every member is told uncertain, once per barrier,
         # and the queued POSTs are shed; the told members are not answered
@@ -87,7 +87,7 @@ class SlowDiskSourceTests(unittest.TestCase):
         # completion answers; the syncer carries its generation.
         self.assertIn("(fnn-core 'fn-otb-issue ledger)", pipeline)
         self.assertIn("(fnn-owner-answer-early ledger (append members next))", pipeline)
-        self.assertIn("(fnn-owner-complete-generation ledger rgen members)", pipeline)
+        self.assertIn("(fnn-owner-complete-generation ledger rgen final members)", pipeline)
         self.assertNotIn("fnn-owner-unreleased", owner)
         event = owner[owner.index("(defun fnn-owner-disk-event "):owner.index("(defun fnn-owner-journal-note")]
         self.assertIn("'fn-otm-disk-step", event)

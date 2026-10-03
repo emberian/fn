@@ -357,6 +357,7 @@
 (include-book "owner-stop-drain")
 (include-book "owner-time-journal-writer")
 (include-book "owner-time-bars")
+(include-book "owner-queued-work")
 (include-book "owner-cold-line")
 (include-book "owner-resource-line")
 (include-book "arena-reader-pins")

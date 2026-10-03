@@ -270,6 +270,7 @@
 ; (its generation, the connections told before its late completion), a
 ; read's page-dependency outcome, the restart's clock domain.
 (include-book "../books/owner-time-bars")
+(include-book "../books/owner-queued-work")
 ; lane composed-owner-3 (PRF-933, row A4 (c)): a cold line past its
 ; dependency deadline answered 403, the session unchanged.
 (include-book "../books/owner-cold-line")
@@ -1381,7 +1382,7 @@
 ; Defined under the same host-called name in books/owner-recovery-retain.lisp.
 
 ;; The commit's steps (host/native/owner.lisp): the batch appended
-;; (fnn-log-seal-open-batch), its COMPLETE after the barrier, a START that
+;; (fnn-log-seal-capture; its write is the batch job's), its COMPLETE after the barrier, a START that
 ;; sealed nothing or a synchronous write, and the stop.
 (defun fn-owner-credits-seal (state)
   (declare (xargs :stobjs state :mode :program))

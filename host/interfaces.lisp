@@ -1350,15 +1350,28 @@
   :class ::common-lisp-compliant
   :keystones (fn-otb-answer-early-answers-each-untold-member-once))
 
-(definterface fn-otb-complete
-  :class ::common-lisp-compliant
-  :keystones (fn-otb-a-late-completion-is-consumed-once))
-
 (definterface fn-otb-issue
   :class ::common-lisp-compliant)
 
 (definterface fn-otb-ledger-init
   :class ::common-lisp-compliant)
+
+(definterface fn-oqw-start
+  :class :common-lisp-compliant
+  :keystones (fn-oqw-batch-effect-order))
+
+(definterface fn-oqw-step
+  :class :common-lisp-compliant
+  :keystones (fn-oqw-batch-effect-order fn-oqw-a-failed-effect-ends-the-job))
+
+(definterface fn-oqw-receipt
+  :class :common-lisp-compliant
+  :keystones (fn-oqw-receipt-outcomes-are-distinct))
+
+(definterface fn-oqw-outcome-of-final
+  :class :common-lisp-compliant
+  :keystones (fn-oqw-receipt-outcomes-are-distinct))
+
 
 (definterface fn-own-intent-refusal-word
   :class ::common-lisp-compliant

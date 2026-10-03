@@ -826,8 +826,10 @@ def verify_post_log_cut_map() -> None:
         if "(fnn-at store :{})".format(name) not in finish:
             raise AssertionError("fnn-finish lacks the {} cut".format(name))
     # The pipelined commit (lane log-2): SEAL is P-BATCH's append and its
-    # cut, SYNC its barrier and cut, in the log's own functions.
-    for name, (call, cut) in (("fnn-log-seal-open-batch", POST_LOG_HOST[0]),
+    # cut, SYNC its barrier and cut, in the log's own functions; since lane
+    # owner-offlock both are phases of the batch job, off the owner mutex
+    # (the seal's capture under it decides the append).
+    for name, (call, cut) in (("fnn-log-sealed-append", POST_LOG_HOST[0]),
                               ("fnn-log-sync-sealed-batch", POST_LOG_HOST[1])):
         body = host_function(source, name)
         if not (0 <= body.find(call) < body.find(cut)):
@@ -838,8 +840,22 @@ def verify_post_log_cut_map() -> None:
     # collects the syncer's word before COMPLETE, and seals the next batch
     # only after the replies of the batch in flight.
     start = host_function(owner, "fnn-owner-commit-start-locked")
-    if not (0 <= start.find("(fnn-owner-drain-one ") < start.find("(fnn-log-seal-open-batch ")):
+    if not (0 <= start.find("(fnn-owner-drain-one ") < start.find("(fnn-log-seal-capture ")):
         raise AssertionError("START does not drain its members before the seal")
+    # The batch job (books/owner-queued-work.lisp fn-oqw-phases :batch): its
+    # phases in the book's order, each executed by the effect that names it.
+    book = (ROOT / "books/owner-queued-work.lisp").read_text()
+    if "((equal kind :batch) '(:intents :extend :append :fence :resolutions))" not in book:
+        raise AssertionError("the batch job's phases are not intents, extend, append, fence, resolutions")
+    effect = host_function(owner, "fnn-owner-batch-effect")
+    for phase, call in ((":intents", "(fnn-owner-job-items service (fnn-owner-job-intents job))"),
+                        (":extend", "(fnn-log-sealed-extend store plan)"),
+                        (":append", "(fnn-log-sealed-append store plan)"),
+                        (":fence", "(fnn-owner-batch-fence service)"),
+                        (":resolutions", "(fnn-owner-job-resolutions job)")):
+        at = effect.find("(" + phase + " ")
+        if not (0 <= at < effect.find(call, at)):
+            raise AssertionError("fnn-owner-batch-effect: {} does not run {}".format(phase, call))
     complete = host_function(owner, "fnn-owner-commit-complete-locked")
     # Each member's reply goes out through fnn-owner-commit-release-member
     # (lane log-2), which delivers; the acknowledgement precedes the last
@@ -852,7 +868,7 @@ def verify_post_log_cut_map() -> None:
         raise AssertionError("COMPLETE does not acknowledge before it delivers")
     quantum = host_function(owner, "fnn-owner-commit-queued-locked")
     order = [quantum.find(x) for x in ("(fnn-owner-commit-start-locked ",
-                                       "(fnn-owner-commit-sync ",
+                                       "(fnn-owner-batch-job ",
                                        "(fnn-owner-commit-complete-locked ")]
     if not (0 <= order[0] < order[1] < order[2]):
         raise AssertionError("the inline commit quantum's order is not START, SYNC, COMPLETE")
@@ -864,7 +880,7 @@ def verify_post_log_cut_map() -> None:
     order = [pipeline.find("(fnn-owner-start-syncer "),
              pipeline.find("(sb-thread:join-thread syncer"),
              complete_at.start() if complete_at else -1,
-             pipeline.find("(fnn-log-seal-open-batch store)")]
+             pipeline.find("(fnn-log-seal-capture store)")]
     if not (0 <= order[0] < order[1] < order[2] < order[3]):
         raise AssertionError("the committer's order is not SYNC, collect, COMPLETE, seal the next batch")
     for cut in POST_LOG_CUTS[3:]:
