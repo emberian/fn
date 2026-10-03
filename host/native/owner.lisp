@@ -1643,6 +1643,14 @@ failed/timed-out join fault the service and retain registration and custody."
 (defstruct (fnn-syncer-grant (:constructor %make-fnn-syncer-grant))
   token operation job result physical completion)
 
+(defun fnn-owner-custody-trace (control &rest observations)
+  "Existing developer pipeline selector: literal producer/receipt values only.
+A diagnostic failure does not alter custody, classification or settlement."
+  (handler-case
+      (when (fnn-developer-selector "FN_NATIVE_OWNER_TEST_PIPELINE_TRACE")
+        (apply #'fnn-err control observations))
+    (serious-condition () nil)))
+
 (defun fnn-owner-syncer-install (service threads stack)
   "Called only inside the actual startup :hold producer's owner section."
   (sb-thread:with-mutex ((fnn-owner-service-syncer-ledger-lock service))
@@ -1652,7 +1660,9 @@ failed/timed-out join fault the service and retain registration and custody."
       (destructuring-bind (word returned)
           (fnn-call 'fn-ros-install-syncer threads stack ledger)
         (setf (fnn-owner-service-syncer-ledger service) returned)
-        (unless (eq word :installed) (fnn-fault "syncer funding refused ~a" word))))))
+        (unless (eq word :installed) (fnn-fault "syncer funding refused ~a" word))
+        (fnn-owner-custody-trace "custody: install threads=~s stack=~s word=~s" threads stack word))))
+  nil)
 
 (defun fnn-owner-syncer-issue (service generation job)
   "Draw from the qualified syncer projection before any child is created."
@@ -1665,6 +1675,8 @@ failed/timed-out join fault the service and retain registration and custody."
         (unless (eq word :drawn) (fnn-fault "syncer funding issue refused ~a" word))
         (setf (fnn-syncer-grant-token grant) token)
         (push grant (fnn-owner-service-syncer-grants service))
+        (fnn-owner-custody-trace "custody: issue generation=~s token=~s word=~s"
+                                 generation token word)
         grant))))
 
 (defun fnn-owner-syncer-receipt (service grant subject receipt)
@@ -1695,6 +1707,9 @@ ledger. Retain returned storage before classification. No possibly torn retry."
                 (delete grant (fnn-owner-service-syncer-grants service) :test #'eq)))))
     ;; Completion is pure private fn-oqw control, then a separate ledger
     ;; receipt. It takes this same private mutex, never the actor roster.
+    (fnn-owner-custody-trace
+      "custody: receipt kind=~s operation=~s token=~s receipt=~s word=~s"
+      subject (fnn-syncer-grant-operation grant) (fnn-syncer-grant-token grant) receipt answer)
     (when completion (funcall completion))
     answer))
 
@@ -1734,10 +1749,15 @@ consumption. A physical receipt alone cannot discharge the captured job."
 (defun fnn-owner-syncer-drained-p (service)
   "Shutdown observation: typed draw is idle and no captured native grant
 remains. No operation or physical receipt is manufactured by this check."
-  (sb-thread:with-mutex ((fnn-owner-service-syncer-ledger-lock service))
-    (and (null (fnn-owner-service-syncer-grants service))
-         (or (null (fnn-owner-service-syncer-ledger service))
-             (fnn-core 'fn-ros-drainedp (fnn-owner-service-syncer-ledger service))))))
+  (multiple-value-bind (drained typed retained)
+      (sb-thread:with-mutex ((fnn-owner-service-syncer-ledger-lock service))
+        (let* ((ledger (fnn-owner-service-syncer-ledger service))
+               (typed (and ledger (fnn-core 'fn-ros-drainedp ledger)))
+               (retained (and (fnn-owner-service-syncer-grants service) t)))
+          (values (and (null retained) (or (null ledger) typed)) typed retained)))
+    (fnn-owner-custody-trace "custody: drained typed=~s retained=~s result=~s"
+                             typed retained drained)
+    drained))
 
 (defun fnn-owner-gate-abort-locked (gate condition)
   "Caller holds the gate mutex; retain accounting and the first failure."

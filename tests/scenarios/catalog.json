@@ -8398,6 +8398,32 @@
         "tests/native_await_lifetime_raw.lisp"
       ],
       "execution_scope": "Actual deployed native wait/mailbox/mux-finish bodies with real SBCL threads, mutexes and condition timeout; recording socket/owner cleanup boundaries. Saved-image/runtime qualification remains Integration work."
+    },
+    {
+      "id": "SCN-1089",
+      "title": "Qualified mux hold funds syncer before POST and drains both receipts before stop",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-046"
+      ],
+      "steps": [
+        "Start a real store owner through mux startup :hold with semantic counterpart dispatch and custody diagnostics enabled.",
+        "POST an article, consume its durable acceptance, then QUIT and stop the owner.",
+        "Observe one issued draw and distinct terminal physical and matching operation receipts; restart and retrieve the accepted article."
+      ],
+      "expected": [
+        "Startup installs the qualified worker projection before issue; each token remains pending until both independent receipts and settles once.",
+        "Stop succeeds only with typed custody drained and no retained native grant; restart returns the accepted article."
+      ],
+      "implementation": {
+        "test": "tests/test_native_owner.py:NativeOwnerTests.test_funded_syncer_from_mux_hold_post_and_stop"
+      },
+      "evidence": [
+        "tests/test_native_owner.py",
+        "tests/native_syncer_typed_raw.lisp"
+      ],
+      "execution_scope": "Matching saved-image selector prepared; image execution pending Integration. Local actual-method/raw schedules pass, including diagnostic failure without custody mutation."
     }
   ]
 }

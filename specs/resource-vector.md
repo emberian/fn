@@ -340,6 +340,11 @@ committer actor also invokes the service failure boundary when a raw escape
 bypasses its inner condition handler. SCN-1087 exercises the native consumers;
 these schedules do not establish a new image or host-refinement theorem.
 
+SCN-1089 supplies the matching-image consumer: actual mux startup `:hold`,
+POST acceptance, independent literal custody receipts, clean stop and
+restart retrieval. The selector is prepared; image execution is pending.
+Optional diagnostics cannot change custody if formatting or output fails.
+
 ## Shared output pool (HST-047)
 
 The output pool is an explicit heap allowance beyond the composed store,

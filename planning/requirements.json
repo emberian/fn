@@ -6573,9 +6573,11 @@
         "books/resource-operation.lisp",
         "tests/acl2/resource-operation-tests.lisp",
         "tests/native_syncer_pipeline_escape_raw.lisp",
-        "tests/native_committer_actor_raw.lisp"
+        "tests/native_committer_actor_raw.lisp",
+        "tests/native_syncer_typed_raw.lisp",
+        "tests/test_native_owner.py"
       ],
-      "implementation_note": "Initial concrete producer is the owner syncer worker/resident projection, installed inside the existing qualified startup :hold section before issue. A token carries ledger draw generation separately from operation generation. Both the actual actor terminal/no-actor-created receipt and matching consumed operation outcome are required. Broader user tariffs, allocation/refusal work, subtree/refund correspondence and complete actor census remain open. Post-launch committer unwind retains an actual-result consumer until physical return; a started/torn consumption is not retried. The committer actor outer escape callback stops the service after raw ACL2 throws.",
+      "implementation_note": "Initial concrete producer is the owner syncer worker/resident projection, installed inside the existing qualified startup :hold section before issue. A token carries ledger draw generation separately from operation generation. Both the actual actor terminal/no-actor-created receipt and matching consumed operation outcome are required. Broader user tariffs, allocation/refusal work, subtree/refund correspondence and complete actor census remain open. Post-launch committer unwind retains an actual-result consumer until physical return; a started/torn consumption is not retried. The committer actor outer escape callback stops the service after raw ACL2 throws. SCN-1089 exercises actual mux hold, POST, independent custody receipts, clean stop and restart in a matching image; its selector is prepared and image execution remains pending.",
       "note": "Logical definitions and executable scenario assertions are source-admitted only; native consumer, preservation and guard evidence are not completion claims."
     },
     {
