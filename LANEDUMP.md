@@ -2425,3 +2425,15 @@ and other actor physical tariff, S068 concrete frame carry/borrow remain owed.
   public round-trip and loader-renderable statements preserved; warm65of65
   forms pass. New output-only + combined-policy full-antecedent/conclusion
   fixtures and refusal checks prepared. Normal exact-root cert remains owed.
+
+- S121 existing source-peer native selector now composes actual live READ
+  revocation/restoration with warm old and fresh reader sockets, selected
+  group/list view and Message-ID availability; independent transit CHECK
+  remains admitted throughout. No cache/delegate code edits. Syntax passes;
+  matching-image result remains open.
+
+- Actual operator consumer continuation: fn-ncpath-resolve-config now retains
+  outputfield30 as well as coldfield29 before rendering/reloading at run-at.
+  This prevents relative-path resolution erasing explicit output policy and
+  bypassing the current output_resources refusal. PRF1021 public octet-consumer
+  theorem unchanged; output-only/combined-policy full witnesses prepared.
