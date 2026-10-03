@@ -341,6 +341,38 @@ class Realization(unittest.TestCase):
 
 
 class Baseline(unittest.TestCase):
+    def test_comment_and_blank_line_shifts_preserve_callback_keys(self):
+        source = "(defun fnn-start () (push (lambda () (fnn-live-arena)) *hooks*))"
+        before = run(source, ["R1"])
+        after = run("; inserted comment\n\n" + source.replace("(lambda", "\n; callback comment\n(lambda"), ["R1"])
+        self.assertTrue(before)
+        self.assertTrue([f.baseline_key() for f in before] == [f.baseline_key() for f in after],
+                        "callback identities must survive comments and blank lines")
+        self.assertNotEqual([f.line for f in before], [f.line for f in after])
+
+    def test_identical_callbacks_on_one_line_are_distinct_and_new_one_is_new(self):
+        one = "(defun fnn-start () (push (lambda () (fnn-live-arena)) *hooks*))"
+        two = "(defun fnn-start () (push (lambda () (fnn-live-arena)) *hooks*) (push (lambda () (fnn-live-arena)) *hooks*))"
+        before, after = run(one, ["R1"]), run(two, ["R1"])
+        self.assertEqual(len(before), 1)
+        self.assertEqual(len(after), 2)
+        self.assertEqual(len({f.baseline_key() for f in after}), 2)
+        baseline = {f.baseline_key(): {"count": f.weight} for f in before}
+        self.assertEqual(len(ldc.judge(after, baseline, set())["new"]), 1)
+
+    def test_migration_preserves_counts_and_refuses_ambiguous_callbacks(self):
+        from lock_baseline_migrate import migrate_keys
+        old = "lambda@host/native/x.lisp:10"
+        new = "lambda@host/native/x.lisp:fnn-start#lambda1"
+        data = {"findings": [{"key": "R1|" + old + "|O:fnn-live-arena", "count": 3}]}
+        migrated = migrate_keys(data, {old: {new}}, "revision", "digest")
+        self.assertEqual(migrated["findings"][0]["count"], 3)
+        self.assertIn(new, migrated["findings"][0]["key"])
+        self.assertIn(old, data["findings"][0]["key"])
+        for candidates in (set(), {new, new + "other"}):
+            with self.assertRaises(ValueError):
+                migrate_keys(data, {old: candidates}, "revision", "digest")
+
     def test_the_baseline_only_shrinks_and_the_enclave_is_strict(self):
         f = ldc.Finding("R3", "violation", "fn-a", "x.lisp", 1, "m", "naked:p")
         g = ldc.Finding("R2", "violation", "fn-b", "x.lisp", 2, "m", "O:leaf", weight=3)

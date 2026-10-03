@@ -122,7 +122,7 @@ RULES = ("R1", "R1b", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10")
 class Node(list):
     """A read list that remembers the line it starts on."""
 
-    __slots__ = ("line",)
+    __slots__ = ("line", "identity")
 
 
 class SpanReader(ledger.Reader):
@@ -269,6 +269,29 @@ def lambda_params(lst) -> list[str]:
     return out
 
 
+def identify_nodes(form, owner):
+    """Lexical IDs survive formatting; distinct same-line lambdas stay distinct.
+
+    Inserting/removing a lambda within a function can change its ordinals and is
+    reviewed as a source change. Never alias unrelated callbacks by body text.
+    """
+    nodes = lambdas = 0
+    stack = [form]
+    while stack:
+        item = stack.pop()
+        if not isinstance(item, list):
+            continue
+        nodes += 1
+        if head(item) == "lambda":
+            lambdas += 1
+            identity = f"{owner}#lambda{lambdas}"
+        else:
+            identity = f"{owner}#form{nodes}"
+        if isinstance(item, Node):
+            item.identity = identity
+        stack.extend(reversed(item))
+
+
 def collect_tree(root: Path, files: list[str] | None = None) -> Tree:
     tree = Tree(root=root)
     loaded = loaded_native_files(root)
@@ -298,6 +321,7 @@ def visit_top(tree: Tree, form, line: int, rel: str, lines: list[str]) -> None:
         return
     if h in ("defun", "defmacro") and len(form) >= 3 and isinstance(form[1], Sym):
         name = str(form[1])
+        identify_nodes(form, name)
         if name.startswith("acl2_*1*_acl2::"):
             tree.raw_replaced.add(name.split("::", 1)[1])
             return
@@ -727,6 +751,8 @@ class Analyzer:
                     return Sym("#:opaque")
                 out = Node()
                 out.line = getattr(form, "line", 0)
+                out.identity = (getattr(form, "identity", self.cur.name) + "::" + d.name
+                                + "::" + getattr(t, "identity", "template"))
                 for item in t:
                     if isinstance(item, list) and head(item) == "unquote-splicing" and len(item) == 2:
                         name = sym(item[1])
@@ -1069,7 +1095,7 @@ class Analyzer:
             rid = self.spawn_lambda(fn, line, (creator.name, line, tname), env)
             self.ev("thread", rid, line, ctx, tname)
         elif isinstance(fn, list) and head(fn) == "function" and sym(fn[1]) in self.tree.defs:
-            rid = "thread:" + sym(fn[1]) + "@" + creator.path + ":" + str(line)
+            rid = "thread:" + sym(fn[1]) + "@" + creator.path + ":" + getattr(form, "identity", creator.name)
             if self.recording:
                 lam = Def(rid, creator.path, line, [], [Node([fn[1]])], "lambda", "", creator.loaded)
                 lam.body[0].line = line
@@ -1082,7 +1108,10 @@ class Analyzer:
         return EMPTY_SIG
 
     def spawn_lambda(self, lam, line, thread_of, env):
-        rid = "lambda@" + self.cur.path + ":" + str(line_of(lam, line))
+        identity = getattr(lam, "identity", None)
+        if identity is None:
+            raise ValueError(f"lambda lacks a lexical identity at {self.cur.path}:{line_of(lam, line)}")
+        rid = "lambda@" + self.cur.path + ":" + identity
         if not self.recording:
             return rid
         d = Def(rid, self.cur.path, line_of(lam, line), lam[1] if len(lam) > 1 else [], list(lam[2:]),

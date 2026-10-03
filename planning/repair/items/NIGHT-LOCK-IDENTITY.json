@@ -1,0 +1,29 @@
+{
+ "budget": "350",
+ "category": "checker-correctness",
+ "expect-failure": "tests.test_lock_discipline_check.Baseline.test_comment_and_blank_line_shifts_preserve_callback_keys",
+ "failure-message": "False is not true : callback identities must survive comments and blank lines",
+ "file": "tools/lock_discipline_check.py",
+ "harness": "tests/test_lock_discipline_check.py",
+ "id": "NIGHT-LOCK-IDENTITY",
+ "notes": [
+  "10-03 02:11 claimed: scope=['tools/lock_discipline_check.py', 'tools/lock_baseline_migrate.py', 'tools/lock_discipline_baseline.json', 'tests/test_lock_discipline_check.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_lock_discipline_check.Baseline.test_comment_and_blank_line_shifts_preserve_callback_keys",
+  "Baseline identity migration only: exact source046aa740f baseline bytes verified;374 rows, weight1609 preserved without --initial or added rows. 31 scoped tests pass. Served comparison at unchanged runtime bytes has412 findings before/after; new18->13, stale16->11. Remaining moved-site or actual new debt preserved.",
+  "10-03 02:15 Source-only Grok advisory attempted with allowlist empty, tools/web/subagents explicitly forbidden, empty temporary cwd and minimal diff. CLI repeatedly initializes configured MCP and produced no review response after several minutes; stopped own process. This unavailable advisory does not certify or block the source change. No model tool invocation observed."
+ ],
+ "owner": "codex-sol-tools",
+ "scope": [
+  "tools/lock_discipline_check.py",
+  "tools/lock_baseline_migrate.py",
+  "tools/lock_discipline_baseline.json",
+  "tests/test_lock_discipline_check.py",
+  "LANEDUMP.md",
+  "planning/evidence-index.tsv"
+ ],
+ "severity": "medium",
+ "source": "served-convergence",
+ "state": "in-progress",
+ "test": "python3 -m unittest tests.test_lock_discipline_check.Baseline.test_comment_and_blank_line_shifts_preserve_callback_keys",
+ "title": "Callback lock finding identities change under source line shifts",
+ "updated": "2026-10-03T06:15:58Z"
+}
