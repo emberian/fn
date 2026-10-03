@@ -19023,6 +19023,31 @@
           "name": "fn-cmt-stop-observation-never-enters-a-pipeline"
         }
       ]
+    },
+    {
+      "id": "PRF-1256",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nnw-stream-step-residual"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nnw-stream-candidate-progresses"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nnw-stream-one-visits-at-most-one"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nnw-stream-output-does-not-visit"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sl-step-residual"
+        }
+      ]
     }
   ]
 }

@@ -57,3 +57,31 @@
  (def-cursor fn-cur-wrong-proof ()
    :call (fn-cur-test-one progress)
    :visit-proof fn-cur-unrelated :visit-metric (len progress)))
+
+; An output phase must prove its actual call preserves candidate progress.
+(defun fn-cur-test-output-one (progress)
+  (declare (xargs :guard t))
+  (mv '(65) progress))
+(defthm fn-cur-test-output-visits
+  (<= (- (len progress) (len (mv-nth 1 (fn-cur-test-output-one progress)))) 1))
+(defthm fn-cur-test-output-no-visits
+  (implies t
+           (equal (- (len progress) (len (mv-nth 1 (fn-cur-test-output-one progress)))) 0)))
+(must-fail
+ (def-cursor/output fn-cur-output-without-proof ()
+   :call (fn-cur-test-output-one progress) :output-phase t
+   :visit-proof fn-cur-test-output-visits :visit-metric (len progress)))
+(must-fail
+ (def-cursor/output fn-cur-output-wrong-proof ()
+   :call (fn-cur-test-output-one progress) :output-phase t :output-proof fn-cur-unrelated
+   :visit-proof fn-cur-test-output-visits :visit-metric (len progress)))
+(def-cursor/output fn-cur-output ()
+  :call (fn-cur-test-output-one progress) :output-phase t
+  :output-proof fn-cur-test-output-no-visits
+  :visit-proof fn-cur-test-output-visits :visit-metric (len progress))
+(assert-event
+ (let* ((cur (fn-cur-make '(:view root-a) '(a b) nil nil))
+        (step (mv-list 4 (fn-cur-output-step cur 0 1))))
+   (and (equal (car step) '(65)) (equal (nth 2 step) 0)
+        (equal (fn-cur-progress (nth 1 step)) '(a b))
+        (equal (nth 3 step) :output))))

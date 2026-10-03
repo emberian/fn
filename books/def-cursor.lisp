@@ -59,7 +59,7 @@
             (value '(value-triple :cursor-visit-proof-matches))
           (er soft 'def-cursor "~x0 does not prove this consumer's literal one-candidate metric: ~x1" name statement))))))
 
-(defmacro def-cursor/output (name formals &key call stobjs visit-proof visit-metric output-phase)
+(defmacro def-cursor/output (name formals &key call stobjs visit-proof visit-metric output-phase output-proof)
   (let ((step (intern-in-package-of-symbol
                (concatenate 'string (symbol-name name) "-STEP") name))
         (byte-bound (intern-in-package-of-symbol
@@ -68,7 +68,8 @@
                      (concatenate 'string (symbol-name name) "-STEP-CALL-BOUND") name)))
     (if (or (not (symbolp name)) (not (true-listp formals))
             (not (consp call)) (not (symbolp visit-proof)) (not visit-proof)
-            (not (consp visit-metric)))
+            (not (consp visit-metric))
+            (and output-phase (or (not (symbolp output-proof)) (not output-proof))))
         '(assert-event nil :msg "def-cursor requires a call and named one-candidate visit proof")
       `(progn
          (make-event
@@ -77,6 +78,15 @@
            '(<= (- ,visit-metric
                    ,(subst `(mv-nth 1 ,call) 'progress visit-metric)) 1)
            state))
+         ,@(if output-phase
+               `((make-event
+                  (fn-cur-visit-proof-event
+                   ',output-proof
+                   '(implies ,output-phase
+                             (equal (- ,visit-metric
+                                       ,(subst `(mv-nth 1 ,call) 'progress visit-metric)) 0))
+                   state)))
+             nil)
          (defun ,step (cur visits bytes ,@formals)
            (declare (xargs :guard (and (natp visits) (natp bytes))
                            ,@(if stobjs `(:stobjs ,stobjs) nil)
@@ -109,7 +119,7 @@
            :hints (("Goal" :in-theory (e/d (,step) (fn-cur-split)))))
          (table fn-cursor ',name
                 '(:step ,step :call ,call :visit-proof ,visit-proof :visit-metric ,visit-metric
-                  :output-phase ,output-phase
+                  :output-phase ,output-phase :output-proof ,output-proof
                   :context-preserved t :output-residual fn-cur-split-residual
                   :byte-bound fn-cur-split-byte-bound
                   :working-bound :consumer-owed :dependency-settlement :operation-owned))))))
