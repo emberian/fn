@@ -530,3 +530,10 @@ torn private step, retirement or settlement quarantines the worker; it cannot
 be offered again or replaced with an allocation outside the baseline. Complete
 allocator/GC/controller graph pricing and the current-source ARTICLE/Web
 endpoint remain separate open obligations.
+
+Executor stop joins physical threads, then discards only idle slots with no
+operation token, result, current decoded activation or torn scratch step. It
+retains all other slots independently of response publication queues. Owner
+shutdown performs exact settlement before final roster disposal; any remaining
+slot prevents successful shared Store teardown. Repeated stop, cancel or dead
+thread observation cannot retry a torn issuer, reset or settlement.

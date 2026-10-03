@@ -3848,3 +3848,13 @@ remain open. Offline dispatch/checkpoint/route-table paths unchanged.
 
 
 Horse Bounds reclaim decision allocation repair READY: fnn-log-reclaim-steps folds first, rewrites only for :reclaim before instant/clear. Actual reclaim still retains complete rewritten history. Disjoint from Exits outer cleanup83e657c2d. tests.test_native_reclaim_decision_source passes actual host function with supplied core/I/O decisions; checks no-op/refused/dry rewrite absence and accepted replay order. host_check --read passes. No changed ACL2 definitions or theorem claim.
+
+Stop custody repair: physical executor joins no longer erase the only global
+roster reference before owner settlement. Clean idle slots can be discarded;
+issued/torn constructor/reset/settlement/result slots remain discoverable.
+Owner cold shutdown prunes after exact read settlement and refuses Store
+teardown if independent roster debt remains, even with an empty read queue.
+Repeated stop does not cancel :issuing/:binding-fault/:retiring/:releasing
+quarantine; explicit cancellation/death observation cannot re-enter those
+semantic boundaries. Real joined SBCL thread schedules and actual shutdown
+empty-queue/debt gate PASS; no full current physical endpoint claim.
