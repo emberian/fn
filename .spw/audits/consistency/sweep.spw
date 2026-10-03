@@ -130,3 +130,17 @@
  checks: "changedLisprawreaderPASS,gitdiffcheckPASS. AddedACL2 exactT100/101 refusal,T102completevectorpositive,H20millionrefusal plusprecisereleasebytespositive; warmworlddependencies unavailable, fixture/admission pending, no certclaim"
  residual: "appliedprofile increase versus startup permanentbaseline/spare funding next; no change tolivegrantidentityorforgiveness"
 }
+
+^"live_profile_pool_and_article_join"{
+ source_revision: "efcb40089; dependency af63a8d4a -> ff6c02479"
+ @native: ~"../../../host/native/admin.lisp"
+ @decision: ~"../../../books/limits-live.lisp"
+ @pool: ~"../../../host/page-read-host.lisp"
+ @credits: ~"../../../books/owner-credits.lisp"
+ @holds: ~"../../../books/connection-budget.lisp"
+ @fixture: ~"../../../tests/native_limit_pool_raw.lisp"
+ counterexample: "dynamic-space fit alone lets larger Store protection overlap installed DEFAULT pool authority; pool draws occur outside owner under extent mutex. Separately new A reaches posting limit while fn-owner-connection-budget captured credit-reserve and connection-held article once at startup"
+ repair: "positive ACL2 runtime-protected growth preflights installed DATA8 pool and holds owner then extent mutex through durable publication and exact shrink; charged rows, permanent baseline and readiness survive. Busy/unsupported pool becomes durable at-restart. Any changed A becomes at-restart preserving old funded profile until credit/connection holds can rebase without losing old bodies"
+ checks: "actual native adapter extracted from efcb source PASS with observed publication and competing issuer; issuer blocked through preview/publish/carry/pool/profile. Refused/uncertain publication never applies pool/profile. IO observations only, not physical Store or ACL2 admission. Pure article and pool fixtures added pending ACL2 admission"
+ residual: "Foundation DEFAULT actual-nursery producer migration and launcher trigger resolving must compose before claiming complete physical funding. fn-mca-initial and connection-held live A rebase remains open; component peaks and existing OPS/cache/drawn must survive, no reset or refund on lowering. No whole-world certificate or deployment"
+}
