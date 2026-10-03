@@ -1,4 +1,5 @@
 {
+ "budget": "60",
  "category": "check-lane",
  "detail": "planning/repair/sources/check-lane-reds-355a5c843.md",
  "disposition": "LOCAL",
@@ -7,11 +8,22 @@
  "id": "CL12",
  "line": "",
  "locus": "gates-tests-packaging",
- "notes": [],
+ "notes": [
+  "10-03 00:48 claimed: scope=['books/catalog-paged.lisp', 'books/consumer-remote-visible-buffer.lisp', 'books/nntp-zarticle.lisp', 'books/number-durability-handles.lisp', 'books/query-payload-scalar.lisp', 'books/store-node-correspondence.lisp'] test=python3 tools/payload_kind_check.py"
+ ],
  "owner": "sweep-gates",
+ "scope": [
+  "books/catalog-paged.lisp",
+  "books/consumer-remote-visible-buffer.lisp",
+  "books/nntp-zarticle.lisp",
+  "books/number-durability-handles.lisp",
+  "books/query-payload-scalar.lisp",
+  "books/store-node-correspondence.lisp"
+ ],
  "severity": "medium",
  "source": "check-lane-355a5c843",
- "state": "open",
+ "state": "in-progress",
+ "test": "python3 tools/payload_kind_check.py",
  "title": "check-lane red: payload_kind_check",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T04:48:23Z"
 }
