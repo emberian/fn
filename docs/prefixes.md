@@ -122,6 +122,8 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-sys-` | (planned, `system`) | The composed system F_node × F_dtn: a finite map from endpoint id to node states plus one channel, and the end-to-end release theorem of section 5.4. No book yet |
 | `fn-index-host-` | `host/index-host.lisp` | Trusted adapter that opens the index cache at a recovered generation and asks it; holds no enumeration logic |
 | `fn-wildmat-` | `wildmat`, `wildmat-utf8-invariants`, `wildmat-parser-invariants`, `wildmat-matcher-invariants` | UTF-8 decoding, wildmat grammar parsing, dynamic-programming matcher |
+| `fn-wmc-` | `wildmat-cursor` | Resumable wildcard worker tasks, continuation frames, exact matcher residual and per-microstep logical demand |
+| `fn-nnm-` | `newnews-matching-selector` | Retained NEWNEWS group/member selector and wildcard matcher continuation |
 | `fn-wm-` | `wildmat-matcher-invariants`, `wildmat-work` | Reference matcher and costed matcher shadow |
 | `fn-article-` | `article`, `article-invariants`, `article-properties` | Bounded header/body article parser with exact source preservation |
 | `fn-aw-` | `article-work-primitives`, `article-work-scanners`, `article-work`, `article-work-budget`, `article-public-work`, `article-public-bound` | Instrumented article parser shadow, value correspondence and work bounds |
