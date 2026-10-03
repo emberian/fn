@@ -631,7 +631,8 @@ class NativeTwoNodeConsumerExchangeTests(unittest.TestCase):
                                  (want["message_id"], want["source_sha256"], want["source_sha256"],
                                   want["signatures_sha256"], "verified", "verified"), (name, where, row))
         self.assertEqual((self.articles(a), self.articles(b)), (2, 2))
-        self.witness("signed-report-reply-bp", dict(source=self.execution_source, hops=hops))
+        self.witness("signed-report-reply-bp", dict(source=self.execution_source,
+            execution_bindings=json.loads(os.environ.get("FN_NATIVE_SOURCE_EXECUTIONS", "null")), hops=hops))
         self.stop(a)
         self.stop(b)
 

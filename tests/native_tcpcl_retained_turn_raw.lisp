@@ -166,3 +166,14 @@
  (assert (equal (fnn-tclc-held conn) '(:end-ack)))
  (assert (equal (fnn-tclc-source-root conn) '(:exact-root))))
 (format t "PASS actual retained Contact Header timeout: boundary timing/no syscall, established source/END ACK unaffected.~%")
+
+;;; Bytes physically received before the deadline may finish their bounded
+;;; framing/materialization turns after it. No new read extends the deadline.
+(let ((conn (make-fnn-tcl-conn :retained t :session :contact
+             :contact-deadline 60100 :source-more t :input-vector #(100 116 110 33 4 0)))
+      (*now* 60100) (*calls* nil))
+ (loop repeat 4 do (fnn-tcl-turn conn))
+ (assert (eq (fnn-tclc-session conn) :established))
+ (assert (not (fnn-tclc-broken conn)))
+ (assert (not (member :read *calls*))))
+(format t "PASS captured Contact Header finishes bounded decode afterdeadline without another read.~%")

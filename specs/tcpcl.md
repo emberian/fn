@@ -439,7 +439,9 @@ servicing and whole semantic decode latency remain open.
 
 
 The retained TCPCL context captures an ACL260-second Contact Header reception
-policy at socket/session begin. Partial header bytes do not reset it. On
+policy at socket/session begin. Partial header bytes do not reset it. Already captured input finishes its
+bounded framing/materialization turns before expiration can select another
+read; bytes captured before deadline may complete validation after it. On
 expiry in `:tcp-connected`/`:contact`, the next turn applies TCP-closed without
 another read/write; the outer socket owner still requires actual physical close
 and no-future-publication context release before settling its bank token.

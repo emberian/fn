@@ -646,7 +646,8 @@ The caller keeps this connection and its socket until actual physical close."
          (contact-timeout
           (when (fnn-core 'fn-tcrt-contact-timeout-p
                   (fnn-core 'fn-tcl-host-phase (fnn-tclc-session conn))
-                  now (fnn-tclc-contact-deadline conn))
+                  now (fnn-tclc-contact-deadline conn)
+                  (fnn-tclc-source-more conn))
            (fnn-tcl-log conn "event" "peer Contact Header timeout")
            ;; Protocol loss ends this continuation. The caller still owns the
            ;; socket/context until its independent physical/logical receipts.

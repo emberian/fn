@@ -3415,3 +3415,16 @@ PLANNED for the proposed composed host/custody boundary. Exact certification
 pending. SCN-1126 real-time silent contact plus canonical request/reopen prepared,
 UNEXECUTED. SESS_INIT stall/admission and whole semantic decoder latency remain
 open; sixty seconds is contact reception policy, never a stored-data ceiling.
+
+Contact followthrough preserves input already physically captured before the
+deadline: new core timeout predicate takes BUFFERED as its fourth argument and
+allows that finite framing/materialization continuation to finish; no fresh
+read can extend reception deadline. Raw actual six-byte header continues into
+established phase after deadline without a read; source-control/custody matrix
+still PASS. Normal four-argument guard admission and15 literal assertions PASS;
+definition helpers87/44 steps with rule-classes NIL. Earlier three-argument
+certify-20261003T151752Z-2155553 PASSED2/0 at different bytes; final exact roots
+will be filed separately. A warm resync encountered expected old-arity refusal
+then helper rewrite-variable refusal; explicit resync and rule-classes NIL
+repaired both. No skip-proofs or redefinition trust used. R/Q witness now records
+its explicit execution bindings in addition to the selected source revision.
