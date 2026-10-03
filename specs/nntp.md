@@ -2054,6 +2054,18 @@ Web and pull worker threads yield after empty progress too. This bounds
 cursor chaining per I/O event; it preserves the existing complete-residual
 contract and introduces no new bytes into a response.
 
+A cursor's cold miss returns its exact uncommitted plan and issued read from
+`fnn-owner-render-next-quantum` as a fifth value. The mux retains both and
+polls `fnn-owner-cold-poll` through its timer; it does not await the page on
+the shared I/O loop. A returned read resumes the retained plan without
+stepping incoming input. A dependency deadline or resource refusal terminates
+the incomplete body without adding a reply line or final dot. The first miss
+clock persists across repeated misses of this plan. Cancellation revokes
+publication; the existing actor return/settlement still owns physical cleanup.
+This scheduling repair does not prove cache-independent consumption: a retry
+may still lose a shared cached extent before resumption, and multi-entry
+quantum progress needs retained consumption custody or smaller semantic state.
+
 The cursor carries the node's Xref server name when the environment has
 one (`fn-nntp-xref-server`), and its rows are then the served rows (the Xref
 field, the overview column): `fn-nntp-over-range-ovw-expands-to-over-range-

@@ -234,3 +234,34 @@ Selector receipt path fixed to indexed selector-repl.log.gz (also assembly fix).
 Open: completed discovery/pin-first fallback, restricted streaming, cold read
 suspension and all composed work/heap/physical custody claims unchanged. Matcher
 helper owns only resumable wildmat library; I consume it after source READY.
+
+## Cursor cold reads poll on mux, 2026-10-03 Sol
+
+Source next: fnn-owner-cursor-step attempts exactly one pure quantum and returns
+(plan-rest,NIL) warm or (original-plan,issued-read) cold. No cold-await/replay loop
+on mux. fnn-owner-render-next-quantum now returns5values OCTETS REST DONE YIELD
+COLD-READ; cold means zero output/exact original plan/nil done+yield. All local
+consumers updated: mux queue/flush store (READ FIRST-MISS ISSUED-SINCE :cursor),
+timer cold-check resumes the same plan, never incoming input. First miss persists
+across cache-churn retries. Refusal terminates the body, no new line/final dot.
+READ-first retains existing finish abandon contract; physical return/settlement
+unchanged. Runtime approved disjoint ownership and will compose output hooks.
+
+Legacy fnn-owner-feed-logical is another actual5th-value caller: it retains its
+plan/first miss while awaiting on its private worker, preserving exceptions and
+response unpin. Its whole reply parts accumulator remains unfunded streaming debt;
+Web owns bounded replacement. Web received exact prospective5value signature.
+
+Actual extracted native Lisp bodies + mocked ACL2/I/O discriminate warm/cold,
+no mux await, wait, repeated miss with same firstclock, exact resumed bytes/action,
+no input replay, both refusal words, old line tuple, private logical await and
+once-only unpin. tests.test_cursor_cold_poll1pass0.115s; three-file reader balance
+passes; scoped cursor lock check has no findings/new/stale. This is source control
+flow, not ACL2 semantics/cache progress/qualified native image. Existing native
+OVER pin test's cold-quantum log preserved; Integration may run its focused cold
+quantum case at next matching image. Evidence indexed cursor-cold-poll-20261003.
+
+Still open: cache eviction between return/resume, multi-entry replay progress,
+funded consumption custody, output/collector tariffs and bounded web logical feed.
+No <8 quantum workaround or inference from cache warmth. Matcher source admission
+progresses independently and will be consumed after immutable READY.
