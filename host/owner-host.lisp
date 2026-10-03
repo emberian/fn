@@ -369,6 +369,29 @@
     ; The initially installed catalog has no exposed capture key yet.
     (fn-owner-catalog-root-reserve state)))
 
+; Capture at the actual reader/plan-construction section, never lazily when
+; rendering resumes. Every payload below is a shared semantic value, not a
+; rebuilt archive/index. Native code retains this opaque value alongside the
+; actual arena/catalog custody; this alone is not a physical root pin.
+(defun fn-owner-catalog-capture-context (id state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (not (boundp-global 'fn-owner state))
+      (mv :owner-not-installed nil state)
+    (let* ((owner (fn-owner-core state))
+           (conn (fn-own-find-conn id (fn-own-conns owner))))
+      (if (not conn)
+          (mv :unknown-connection nil state)
+        (mv-let (erp root state) (fn-owner-catalog-root-current state)
+          (if erp (mv erp nil state)
+            (let* ((sc (fn-own-tls-served-conn owner conn))
+                   (config (fn-served-conn-config sc)))
+              (mv nil
+                  (list root (fn-own-view owner)
+                        (fn-served-conn-archive sc)
+                        (fn-served-conn-pinned-index sc) config
+                        (fn-auth-access-read (fn-served-conn-session sc) config))
+                  state))))))))
+
 (defun fn-owner-cfg-next-name (state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-olau-next-name (fn-owner-ocfg state))))
