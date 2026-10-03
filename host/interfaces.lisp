@@ -45,13 +45,13 @@
 (definterface fn-ros-outcome :class :common-lisp-compliant)
 (definterface fn-ros-drainedp :class :common-lisp-compliant)
 
-; Partial resident/output custody seam. Install/issue mutation guards and the
-; complete allocation tariff remain PRF-1259; this is not an operation gate.
+; Guarded private output methods preserve typed representation. Complete
+; free-chain/bank correspondence and allocation tariff remain PRF-1259; no gate.
 (definterface fn-heap-figure-octets :class :common-lisp-compliant)
 (definterface fn-orv-startup-slots :class :common-lisp-compliant)
 (definterface fn-orv-startup-grant :class :common-lisp-compliant)
-(definterface fn-rlo-install :class :ideal)
-(definterface fn-rlo-issue :class :ideal)
+(definterface fn-rlo-install :class :common-lisp-compliant)
+(definterface fn-rlo-issue :class :common-lisp-compliant)
 (definterface fn-rlo-output :class :common-lisp-compliant)
 (definterface fn-rlo-physical :class :common-lisp-compliant)
 (definterface fn-rlo-drainedp :class :common-lisp-compliant)

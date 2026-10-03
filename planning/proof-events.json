@@ -19023,6 +19023,39 @@
           "name": "fn-cmt-stop-observation-never-enters-a-pipeline"
         }
       ]
+    },
+    {
+      "id": "PRF-1259",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-orv-accepted-launch-fits-observed-machine"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orv-accepted-launch-funds-output-dynamic-allowance"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orv-startup-hold-protects-owner-and-one-quantum"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rlo-install-keeps-representation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rlo-issue-keeps-representation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rlo-output-keeps-representation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rlo-physical-keeps-representation"
+        }
+      ]
     }
   ]
 }

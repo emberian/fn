@@ -366,8 +366,10 @@ The first native fixture draws before actual `fn-sl-step` rendering through
 normal semantic counterparts and retains a second window through a real
 worker join. It is a discrimination test of funding and custody, not complete
 NEWNEWS allocation coverage. Initial matcher/metadata work, integer widths,
-outer plan/mux copies, concrete allocator margins and guard/representation
-closure of output install/issue remain PRF-1259 work. No accounted operation
+outer plan/mux copies, concrete allocator margins and free-row/bank
+correspondence remain PRF-1259 work. The actual install/issue/output/physical
+methods preserve typed representation and fixed column shape; their mutation
+guards are verified in the source proof world. No accounted operation
 gate may be inferred from the serializer's logical cons bound or this pool.
 
 SCN-1097 connects the same accepted cold/output projections through operator,

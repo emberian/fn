@@ -113,3 +113,82 @@
    (if (and (eq word :settled) (fn-rlo-drainedp fn-resource-ledger))
        (mv nil '(value-triple :reverse-order-settles) state fn-resource-ledger)
      (mv t nil state fn-resource-ledger))))
+
+; Literal typed-result keystone teeth. Corrupted-state removals deliberately
+; refuse without repairing input; these do not claim free-chain/bank validity.
+
+(defthm rot-install-keeps-representation-witness
+ (let* ((ledger (create-fn-resource-ledger)) (result (fn-rlo-install 1073741824 536870912 nil '(16777216 1048576) 4 ledger)) (after (mv-nth 1 result)))
+  (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger)
+       (eq (car result) :installed)
+       (fn-resource-ledgerp after) (fn-rl-wfp after)))
+ :rule-classes nil)
+
+(defthm rot-install-representation-without-type-corrupted-state-witness
+ (let* ((ledger (update-fn-rl-worker-physical 2 (create-fn-resource-ledger))) (after (mv-nth 1 (fn-rlo-install 0 0 nil nil 4 ledger))))
+  (and (not (fn-resource-ledgerp ledger)) (fn-rl-wfp ledger)
+       (not (and (fn-resource-ledgerp after) (fn-rl-wfp after)))))
+ :rule-classes nil)
+
+(defthm rot-install-representation-without-shape-corrupted-state-witness
+ (let* ((ledger (update-fn-rl-count 1 (create-fn-resource-ledger))) (after (mv-nth 1 (fn-rlo-install 0 0 nil nil 4 ledger))))
+  (and (fn-resource-ledgerp ledger) (not (fn-rl-wfp ledger))
+       (not (and (fn-resource-ledgerp after) (fn-rl-wfp after)))))
+ :rule-classes nil)
+
+(defthm rot-issue-keeps-representation-witness
+ (let* ((ledger (mv-nth 1 (fn-rlo-install 1073741824 536870912 nil '(16777216 1048576) 4 (create-fn-resource-ledger)))) (result (fn-rlo-issue 7 11 8 :issued ledger)) (after (mv-nth 2 result)))
+  (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger)
+       (eq (car result) :drawn)
+       (fn-resource-ledgerp after) (fn-rl-wfp after)))
+ :rule-classes nil)
+
+(defthm rot-issue-representation-without-type-corrupted-state-witness
+ (let* ((ledger (update-fn-rl-worker-physical 2 (create-fn-resource-ledger))) (after (mv-nth 2 (fn-rlo-issue -1 0 0 :none ledger))))
+  (and (not (fn-resource-ledgerp ledger)) (fn-rl-wfp ledger)
+       (not (and (fn-resource-ledgerp after) (fn-rl-wfp after)))))
+ :rule-classes nil)
+
+(defthm rot-issue-representation-without-shape-corrupted-state-witness
+ (let* ((ledger (update-fn-rl-count 1 (create-fn-resource-ledger))) (after (mv-nth 2 (fn-rlo-issue -1 0 0 :none ledger))))
+  (and (fn-resource-ledgerp ledger) (not (fn-rl-wfp ledger))
+       (not (and (fn-resource-ledgerp after) (fn-rl-wfp after)))))
+ :rule-classes nil)
+
+(defthm rot-output-keeps-representation-witness
+ (let* ((ledger (mv-nth 2 (fn-rlo-issue 7 11 8 :issued (mv-nth 1 (fn-rlo-install 1073741824 536870912 nil '(16777216 1048576) 4 (create-fn-resource-ledger)))))) (result (fn-rlo-output '(:resource (:connection 7 11) 2 1) 8 :discarded ledger)) (after (mv-nth 1 result)))
+  (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger)
+       (eq (car result) :pending)
+       (fn-resource-ledgerp after) (fn-rl-wfp after)))
+ :rule-classes nil)
+
+(defthm rot-output-representation-without-type-corrupted-state-witness
+ (let* ((ledger (update-fn-rl-worker-physical 2 (create-fn-resource-ledger))) (after (mv-nth 1 (fn-rlo-output nil 0 :discarded ledger))))
+  (and (not (fn-resource-ledgerp ledger)) (fn-rl-wfp ledger)
+       (not (and (fn-resource-ledgerp after) (fn-rl-wfp after)))))
+ :rule-classes nil)
+
+(defthm rot-output-representation-without-shape-corrupted-state-witness
+ (let* ((ledger (update-fn-rl-count 1 (create-fn-resource-ledger))) (after (mv-nth 1 (fn-rlo-output nil 0 :discarded ledger))))
+  (and (fn-resource-ledgerp ledger) (not (fn-rl-wfp ledger))
+       (not (and (fn-resource-ledgerp after) (fn-rl-wfp after)))))
+ :rule-classes nil)
+
+(defthm rot-physical-keeps-representation-witness
+ (let* ((ledger (mv-nth 1 (fn-rlo-output '(:resource (:connection 7 11) 2 1) 8 :discarded (mv-nth 2 (fn-rlo-issue 7 11 8 :issued (mv-nth 1 (fn-rlo-install 1073741824 536870912 nil '(16777216 1048576) 4 (create-fn-resource-ledger)))))))) (result (fn-rlo-physical '(:resource (:connection 7 11) 2 1) 8 :terminal ledger)) (after (mv-nth 1 result)))
+  (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger)
+       (eq (car result) :settled)
+       (fn-resource-ledgerp after) (fn-rl-wfp after)))
+ :rule-classes nil)
+
+(defthm rot-physical-representation-without-type-corrupted-state-witness
+ (let* ((ledger (update-fn-rl-worker-physical 2 (create-fn-resource-ledger))) (after (mv-nth 1 (fn-rlo-physical nil 0 :terminal ledger))))
+  (and (not (fn-resource-ledgerp ledger)) (fn-rl-wfp ledger)
+       (not (and (fn-resource-ledgerp after) (fn-rl-wfp after)))))
+ :rule-classes nil)
+
+(defthm rot-physical-representation-without-shape-corrupted-state-witness
+ (let* ((ledger (update-fn-rl-count 1 (create-fn-resource-ledger))) (after (mv-nth 1 (fn-rlo-physical nil 0 :terminal ledger))))
+  (and (fn-resource-ledgerp ledger) (not (fn-rl-wfp ledger))
+       (not (and (fn-resource-ledgerp after) (fn-rl-wfp after)))))
+ :rule-classes nil)
