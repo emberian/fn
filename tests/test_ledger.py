@@ -1520,8 +1520,14 @@ class DefkeystoneExpansionTests(unittest.TestCase):
         # the hypothesis mutation asserts the other hypothesis, the edited one,
         # not the original and not the conclusion
         mutant = events[0][4][1]
-        self.assertEqual(ledger.source_text(mutant[3]),
-                         "(and (p x) (s x) (not (q x)) (not (r x)))")
+        self.assertEqual([ledger.source_text(term[3]) for term in mutant[1:]],
+                         ["(p x)", "(s x)", "(not (q x))", "(not (r x))"])
+        # a claim with no hypotheses is written (nil C)
+        bare = ledger.read_forms(
+            '(defteeth k :claim (nil (r x)) :witness ((x 1)) :breaks nil'
+            ' :mutations (:not-applicable "x"))')[0]
+        self.assertIsNotNone(ledger.defteeth_parts(bare))
+        self.assertEqual(ledger.defteeth_parts(bare)["labels"], [])
         # the row: witness mode, removal kinds, the fault, the underived bound
         row = events[0][8][3][1]
         self.assertEqual(ledger.source_text(row),

@@ -4,6 +4,8 @@
 ; threshold and one is not natural (it takes the next newer stamp).
 (in-package "ACL2")
 (include-book "../../books/newnews-cursor")
+(include-book "../../books/defkeystone")
+(include-book "must-fail-checked")
 
 (defun nct-arts (i n acc)
   (declare (xargs :measure (nfix (- (nfix n) (nfix i)))))
@@ -108,3 +110,17 @@
 (assert-event (and (not (fn-nnw-carryp *nct-low-c*))
                    (not (equal (fn-nnw-response nil *nct-archive* *nct-env* *nct-args-o* *nct-low-c* 4 fn-arena)
                                (fn-nntp-newnews-response nil *nct-archive* *nct-env* *nct-args-o* fn-arena)))))
+
+; -----------------------------------------------------------------------------
+; The generated keystone's teeth (TEETH CONTRACT v1), what the declaration owes.
+
+(defteeth fn-nnw-carryp-of-refresh
+  :claim (((carried (fn-nnw-carryp carry))) (fn-nnw-carryp (fn-nnw-refresh carry arts)))
+  :subject fn-nnw-refresh
+  :witness ((carry *nct-c*) (arts (cons *nct-new* *nct-arts*)))
+  :breaks ((carried ((carry *nct-bad*))))
+  :mutations ((old-maxes (:conclusion (fn-nnw-carryp (cons arts (cdr carry))))
+                         ((carry *nct-c*) (arts (cons *nct-new* *nct-arts*)))
+                         :fault "a refresh that installs the new list over the old maxima")))
+
+(defteeth-check)

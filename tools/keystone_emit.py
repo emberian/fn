@@ -395,6 +395,9 @@ def manifest_findings(current: dict[str, dict], base: dict | None, why: str,
         if entry["class"] == "generated" and entry.get("owed_met") is False:
             problems.append(f"teeth gate: {name}'s teeth do not state what {entry.get('owed_by')} "
                             f"owes (claim, subject or a bound differs)")
+        if entry.get("owed_by") and entry["class"] != "generated":
+            problems.append(f"teeth gate: {name} is owed by {entry['owed_by']} ({entry['owed_in']}) "
+                            f"and no defteeth declares it")
     for name, entry in sorted(current.items()):
         if entry["class"] == "generated" and entry.get("owed_met") is False \
                 and name not in base_entries:

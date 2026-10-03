@@ -1102,10 +1102,10 @@ def _dk_entry_opts(tail: list, keys: set[str]) -> dict | None:
 
 def _dk_claimp(x: object) -> bool:
     """``(((L1 H1) ... (Ln Hn)) C)`` with distinct labels."""
-    if not (isinstance(x, list) and len(x) == 2 and isinstance(x[0], list)):
+    if not (isinstance(x, list) and len(x) == 2 and isinstance(_dk_nil(x[0]), list)):
         return False
     labels = []
-    for pair in x[0]:
+    for pair in _dk_nil(x[0]):
         if not (isinstance(pair, list) and len(pair) == 2 and isinstance(pair[0], Sym)
                 and str(pair[0]) != "nil"):
             return False
@@ -1157,8 +1157,8 @@ def _dk_spec_parts(name: Sym, options: dict) -> dict | None:
     claim = options.get(":claim")
     if claim is None or not _dk_claimp(claim):
         return None
-    labels = [pair[0] for pair in claim[0]]
-    hyps = [pair[1] for pair in claim[0]]
+    labels = [pair[0] for pair in _dk_nil(claim[0])]
+    hyps = [pair[1] for pair in _dk_nil(claim[0])]
     concl = claim[1]
     witness = options.get(":witness")
     if not (witness and _dk_bindingsp(witness)):
