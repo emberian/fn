@@ -26,6 +26,27 @@ def page_io_logical_lines(data):
                      data).splitlines()
 
 
+def page_io_primitive_trace(data, token):
+    """Locate literal observations for one token; no settlement oracle.
+
+    Missing/malformed observations refuse this trace comparison. The
+    diagnostic queue can drop lines, so absence does not establish that a
+    primitive operation failed to occur.
+    """
+    lines = page_io_logical_lines(data)
+    token_text = b"(" + b" ".join(str(n).encode("ascii") for n in token) + b")"
+    observations = {}
+    for kind in (b"direct-admit", b"fd-capture", b"job-result", b"physical-return", b"direct-settle"):
+        prefix = b"PAGE-IO observed " + kind + b" token=" + token_text + b" "
+        matches = [(index, line) for index, line in enumerate(lines) if line.startswith(prefix)]
+        # Duplicate/stale settlement injections intentionally add events;
+        # the first literal settlement is the original owner's handoff.
+        if not matches:
+            raise ValueError("missing primitive observation: " + kind.decode("ascii"))
+        observations[kind.decode("ascii")] = matches[0]
+    return observations
+
+
 class PageIOObservationTests(unittest.TestCase):
     def test_wrapped_exact_token_keeps_held_and_settlement_events_distinct(self):
         text = (b"PAGE-IO held token=(1 2 3\n  4 5 99999999999999999999) file=3\n"
@@ -50,6 +71,19 @@ class PageIOObservationTests(unittest.TestCase):
     def test_wrong_shape_is_preserved_as_an_unmatched_observation(self):
         text = b"PAGE-IO held token=(1 2 3\n 4 5) file=3\n"
         self.assertEqual(page_io_logical_lines(text), text.splitlines())
+
+    def test_primitive_trace_cannot_substitute_another_token(self):
+        kinds = (b"direct-admit", b"fd-capture", b"job-result", b"physical-return", b"direct-settle")
+        data = b"\n".join(b"PAGE-IO observed " + k + b" token=(0 1 2 3 4 5) value=:OK" for k in kinds)
+        self.assertEqual(len(page_io_primitive_trace(data, (0, 1, 2, 3, 4, 5))), 5)
+        with self.assertRaisesRegex(ValueError, "missing primitive"):
+            page_io_primitive_trace(data, (1, 1, 2, 3, 4, 5))
+
+    def test_a_missing_return_cannot_be_reconstructed_from_settlement(self):
+        data = b"\n".join(b"PAGE-IO observed " + k + b" token=(0 1 2 3 4 5) value=:OK"
+                            for k in (b"direct-admit", b"fd-capture", b"job-result", b"direct-settle"))
+        with self.assertRaisesRegex(ValueError, "physical-return"):
+            page_io_primitive_trace(data, (0, 1, 2, 3, 4, 5))
 
 
 @requires(DEVELOPER)
@@ -94,6 +128,31 @@ class PageIOTests(unittest.TestCase):
         file_id = re.search(rb"file=(\d+)", line).group(1)
         return owner, client, release, file_id
 
+    def assert_primitive_handoff(self, owner, file_id, verdict, answer):
+        """Check actual fd binding and job/owner boundary observations.
+
+        The certified HM comparison additionally needs actual lock/pin
+        observations and matching model/native dependencies; this finite
+        chronology assertion does not claim that comparison or a proof.
+        """
+        lines = page_io_logical_lines(owner.stderr.since(0))
+        held = next(line for line in lines if re.search(rb"PAGE-IO held token=.* file=" + file_id + rb"$", line))
+        token = tuple(int(n) for n in re.search(rb"token=\(([^)]+)\)", held).group(1).split())
+        trace = page_io_primitive_trace(owner.stderr.since(0), token)
+        positions = [trace[kind][0] for kind in
+                     ("direct-admit", "fd-capture", "job-result", "physical-return", "direct-settle")]
+        self.assertEqual(positions, sorted(positions), trace)
+        capture = re.search(rb" file=(\d+) fd=(\d+)$", trace["fd-capture"][1])
+        self.assertIsNotNone(capture, trace)
+        self.assertEqual(capture.group(1), file_id)
+        bound = [(i, line) for i, line in enumerate(lines)
+                 if re.search(rb"PAGE-IO observed fd-open file=" + file_id + rb" fd=" + capture.group(2) +
+                              rb" dev=\d+ ino=\d+$", line)]
+        self.assertEqual(len(bound), 1, lines)
+        self.assertLess(bound[0][0], trace["fd-capture"][0])
+        self.assertTrue(trace["direct-settle"][1].endswith(b" verdict=" + verdict + b" answer=" + answer), trace)
+        return trace
+
     def test_matching_success_publishes_and_advances_the_original_request(self):
         node = self.filled()
         owner, client, release, _file = self.held(node)
@@ -101,6 +160,7 @@ class PageIOTests(unittest.TestCase):
         self.assertTrue(client.line().startswith(b"220"))
         self.assertIn(b"body of p0", client.block())
         self.wait_line(owner, rb"PAGE-IO settled token=.* answer=:PUBLISH")
+        self.assert_primitive_handoff(owner, _file, b":OK", b":PUBLISH")
         self.assertTrue(client.command("DATE").startswith(b"111"))
         node.stop(expect=None, grace=300)
 
@@ -146,6 +206,11 @@ class PageIOTests(unittest.TestCase):
                 release.write_bytes(b"release")
                 self.wait_line(owner, rb"PAGE-IO settled token=.* answer=:CANCELLED")
                 self.wait_line(owner, rb"PAGE-IO closed file=" + file_id + rb"$")
+                trace = self.assert_primitive_handoff(owner, file_id, b":OK", b":CANCELLED")
+                lines = page_io_logical_lines(owner.stderr.since(0))
+                close = next(i for i, line in enumerate(lines)
+                             if re.search(rb"PAGE-IO observed fd-close file=" + file_id + rb" fd=\d+$", line))
+                self.assertLess(trace["direct-settle"][0], close, lines)
                 if mode:
                     self.wait_line(owner, ("PAGE-IO %s answer=:STALE" % mode).encode("ascii"))
                 # No late 220/body is delivered into this replacement request.
@@ -205,6 +270,8 @@ class PageIOTests(unittest.TestCase):
                 release.write_bytes(b"release")
                 self.wait_line(owner, rb"PAGE-IO settled token=.* answer=\(:FAULT :(READ|ERROR)\)")
                 node.exited(EXIT.FAULT, timeout=120, process=owner)
+                verdict = b":READ" if mode == "short" else b":ERROR"
+                self.assert_primitive_handoff(owner, _file, verdict, b"(:FAULT " + verdict + b")")
                 text = owner.stderr.since(0)
                 self.assertIn(b"arena-extent-read", text)
                 if mode == "runtime-error":

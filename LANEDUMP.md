@@ -100,3 +100,30 @@ under concurrent work is Served's next command consumer. No additional scarce
 run started while archiving; ask Integration to budget selected1k→100k curves.
 Kimi tools[]/subagents[] isolated review partial output then180s timeout,
 not a completed review; useful verified metric clarifications queued.
+
+## Follow-up source slice, 2026-10-03
+
+Developer-only `FN_NATIVE_PAGE_IO_HOLD` observations now record actual
+file/fd/dev/inode installation, direct admission (previous counter and full
+worker row), fd capture, read count with explicit injection flag, stored job
+condition/literal verdict, actual job activation return, owner direct-settle
+verdict/answer, and successful fd close. No private vector is printed and no
+Python cancellation/settlement semantics are introduced. Existing native
+PageIO success, cancel/retire/late-return, and late fault scenarios consume the
+observations; source observers refuse missing return events or substituted
+tokens. Integration must execute these on the next developer image: source
+checks are not native execution. Full certified HM replay remains unavailable
+until actual lock/pin observations and model/native dependency hashes align.
+Groundwork is told native short verdict is literal `:READ`, not `:SHORT`.
+
+Mixed runner follow-up splits resource samples by PID, timestamps sampler
+errors and lifecycle durations, records UTC run bounds, names the phase-rate
+metric explicitly, and adds `--check-run` for sealed promise-history checks.
+Offline checking preserves the recorded incomplete maintenance verdict; it
+reports promise history only. Both historical journals rechecked successfully.
+These new instrumentation bytes have not been transferred onto the historical
+image result's exact executed input hash.
+
+Checks: 13 image-free PageIO/history tests pass; host shape check reports zero
+findings (raw native files excluded); extent's 111 top-level forms balance
+under the source tokenizer. Narrow actual-image run pending Integration.

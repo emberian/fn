@@ -1,5 +1,4 @@
 """Empirical promise-history teeth; these do not run or model a native node."""
-import copy
 from pathlib import Path
 import tempfile
 import unittest
