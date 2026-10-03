@@ -417,9 +417,16 @@ return the index the bytes begin at."
             (or (cdr (assoc 'fn-hist (user-stobj-alist *the-live-state*)))
                 (fnn-fault "the history stobj is not in this image")))))
 
+(defun fnn-live-owner-st ()
+  ;; Resolve the authoritative live binding, never an independently cached
+  ;; owner copy. Until the caller-threading migration installs this stobj,
+  ;; an entry requiring it refuses rather than borrowing the old globals.
+  (or (cdr (assoc 'fn-owner-st (user-stobj-alist *the-live-state*)))
+      (fnn-fault "the owner carrier stobj is not in this image")))
+
 (defun fnn-trailing-kind (name)
   "The names of NAME's live stobjs just before its trailing state, in order:
-the longest run of fn-arena, fn-cat and fn-hist there (NIL for none)."
+the longest run of fn-arena, fn-cat, fn-hist and fn-owner-st there (NIL for none)."
   (multiple-value-bind (known found) (gethash name *fnn-trailing-stobjs*)
     (if found
         known
@@ -428,7 +435,7 @@ the longest run of fn-arena, fn-cat and fn-hist there (NIL for none)."
                   (run nil))
               (when (eq (car ins) 'state)
                 (loop for sym in (cdr ins)
-                      while (member sym '(fn-arena fn-cat fn-hist))
+                      while (member sym '(fn-arena fn-cat fn-hist fn-owner-st))
                       do (push sym run)))
               run)))))
 
@@ -436,7 +443,8 @@ the longest run of fn-arena, fn-cat and fn-hist there (NIL for none)."
   (ecase sym
     (fn-arena (fnn-live-arena))
     (fn-cat (fnn-live-cat))
-    (fn-hist (fnn-live-hist))))
+    (fn-hist (fnn-live-hist))
+    (fn-owner-st (fnn-live-owner-st))))
 
 (defun fnn-arena-then-state (name)
   "The trailing stobj arguments of the state-returning entry NAME."
