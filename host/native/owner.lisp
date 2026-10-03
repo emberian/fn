@@ -1737,11 +1737,12 @@ This installs only the explicit output projection, not a full allocation gate."
 ; CONTEXT is a pre-command semantic snapshot; resulting plans may repin.
 (defvar *fnn-response-capture* nil)
 (defstruct (fnn-response-capture (:constructor %make-fnn-response-capture))
-  context arena catalog)
+  context arena catalog connection identity grant)
 
 (defun fnn-owner-capture-reader-context (cid)
   "Owner held: capture the same effective view before any chunk factory."
-  (when *fnn-response-capture*
+  (when (and *fnn-response-capture*
+             (null (fnn-response-capture-context *fnn-response-capture*)))
     (let ((context (fnn-owner-core 'fn-owner-catalog-capture-context cid)))
       (setf (fnn-response-capture-context *fnn-response-capture*) context
             (fnn-response-capture-arena *fnn-response-capture*) (fnn-live-arena)
@@ -1775,6 +1776,33 @@ This installs only the explicit output projection, not a full allocation gate."
               (fnn-refuse "output lease refused ~s" word))
             (setf (fnn-output-grant-stage grant) :active)
             grant))))))
+
+(defun fnn-owner-output-begin-locked (service cid)
+  "Owner held. Retain operation identity and draw before setup/preview."
+  (when (fnn-owner-service-output-ledger service)
+    (unless *fnn-response-capture*
+      (fnn-refuse "accounted output requires registered response custody for ~s" cid))
+    (unless (fnn-response-capture-grant *fnn-response-capture*)
+      (setf (fnn-response-capture-identity *fnn-response-capture*)
+            (fnn-owner-response-identity-locked
+             service (fnn-response-capture-connection *fnn-response-capture*)))
+      (setf (fnn-response-capture-grant *fnn-response-capture*)
+            (fnn-owner-output-issue service
+              (fnn-response-capture-identity *fnn-response-capture*)
+              *fnn-response-capture*)))))
+
+(defun fnn-owner-output-prefix-locked (service cid incoming)
+  "ACL2's funded first event prefix; absent policy is explicitly partial."
+  (if (null (fnn-owner-service-output-ledger service)) (length incoming)
+    (let* ((preview (fnn-core-buffer-state 'fn-owner-output-preview cid 0 (length incoming)))
+           (tariff (fnn-owner-core 'fn-owner-output-tariff-preview cid preview))
+           (capacity
+            (sb-thread:with-mutex ((fnn-owner-service-output-ledger-lock service))
+              (fnn-core 'fn-rlo-capacity (fnn-owner-service-output-ledger service))))
+           (admission (fnn-core 'fn-ocap-admit-preview preview tariff capacity)))
+      (unless (eq (fnn-core 'fn-ocap-at 0 admission) :hold)
+        (fnn-refuse "accounted output command refused ~s" admission))
+      (fnn-core 'fn-ocap-at 1 admission))))
 
 (defun fnn-owner-output-dependency (service grant read)
   "Owner held before a newly issued cold read escapes its capture quantum."
@@ -5547,23 +5575,25 @@ in a fault; DEADLINE (internal real time) bounds the whole feed.
 ;;; (:fnn-extent-cold FILE EOFF ELEN TRAILER).  The per-line re-run happens
 ;;; only after a cold abort: a warm span runs once, as before. Cache-off
 ;;; still enters admission; it cannot select unfunded synchronous I/O.
-(defun fnn-owner-chunk-span-no-io (cid incoming sched)
+(defun fnn-owner-chunk-span-no-io (cid incoming sched &optional (end (length incoming)))
   (flet ((try (end)
            (catch 'fnn-extent-cold
              (let ((*fnn-extent-no-io* t))
                (list :warm (fnn-core-buffer-state 'fn-owner-chunk-span cid 0 end sched))))))
     (if (not (fnn-extent-no-io-usable-p))
-        (fnn-core-buffer-state 'fn-owner-chunk-span cid 0 (length incoming) sched)
-      (let ((whole (try (length incoming))))
+        (fnn-core-buffer-state 'fn-owner-chunk-span cid 0 end sched)
+      (let ((whole (try end)))
         (if (eq (car whole) :warm)
             (second whole)
-          (let* ((line-end (first (fnn-call 'fn-oct-line-end 0 (fnn-live-octets))))
-                 (first-line (try line-end)))
-            (unless (and (integerp line-end) (< 0 line-end) (<= line-end (length incoming)))
+          (let ((line-end (first (fnn-call 'fn-oct-line-end 0 (fnn-live-octets)))))
+            ;; Validate before entering the fallback factory, including the
+            ;; accepted ACL2 prefix. No unpriced suffix enters this retry.
+            (unless (and (integerp line-end) (< 0 line-end) (<= line-end end))
               (fnn-fault "owner returned a malformed line end"))
-            (if (eq (car first-line) :warm)
-                (second first-line)
-              (cons :fnn-extent-cold first-line))))))))
+            (let ((first-line (try line-end)))
+              (if (eq (car first-line) :warm)
+                  (second first-line)
+                (cons :fnn-extent-cold first-line)))))))))
 
 ;;; The cold line's page, read OFF the owner mutex by its persistent worker
 ;;; (fnn-extent-prefetch: its pread holds no lock), waited for at most ACL2's
@@ -5611,7 +5641,9 @@ cold-read-ownership, Codex r31 F1/F2).  A refusal is ACL2's word."
         (apply (if directp #'fnn-extent-issue-direct #'fnn-extent-issue-read) cid entry)
       (if (and word (not (eq word :admitted))) word
         (fnn-owner-output-dependency
-         service *fnn-output-grant*
+         service (or *fnn-output-grant*
+                     (and *fnn-response-capture*
+                          (fnn-response-capture-grant *fnn-response-capture*)))
          (fnn-owner-cold-enqueue-locked
           service (%make-fnn-owner-cold-read :token token :worker worker
                                              :directp (and token directp))))))))
@@ -6031,11 +6063,13 @@ EPIPE and the client saw a bare close)."
        ;; mutex (fnn-owner-attempt).  The reply is NOT rendered into it: the
        ;; step's typed result carries the effects, the plan the caller
        ;; renders off the mutex.
+       (fnn-owner-output-begin-locked service cid)
        (fnn-owner-read-buffer-fill service incoming)
        ;; Shared values and actual stobj references are captured under the
        ;; same O admission as the factory; rendering never re-reads a root.
        (fnn-owner-capture-reader-context cid)
-       (let ((step (fnn-owner-chunk-span-no-io cid incoming sched)))
+       (let ((step (fnn-owner-chunk-span-no-io
+                    cid incoming sched (fnn-owner-output-prefix-locked service cid incoming))))
          ;; Row A4 (c): the first line needs a page not in memory; its read
          ;; happens off the mutex (fnn-owner-handle-chunk, fnn-owner-cold-line).
          (when (and (consp step) (eq (car step) :fnn-extent-cold))

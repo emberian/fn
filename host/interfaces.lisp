@@ -5354,3 +5354,11 @@
 (definterface fn-tcrt-action :class :common-lisp-compliant
   :keystones (fn-tcrt-source-custody-excludes-input
               fn-tcrt-ready-write-precedes-source-and-close))
+
+; Actual admitted pre-factory output consumer. Incomplete tariffs refuse.
+(definterface fn-owner-output-preview :class :program)
+(definterface fn-owner-output-tariff-preview :class :program)
+(definterface fn-ocap-admit-preview :class :common-lisp-compliant)
+(definterface fn-ocap-at :class :common-lisp-compliant)
+(definterface fn-ocap-unpriced-tariff :class :common-lisp-compliant)
+(definterface fn-rlo-capacity :class :common-lisp-compliant)

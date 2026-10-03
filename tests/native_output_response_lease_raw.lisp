@@ -37,7 +37,7 @@
 (load-deployed-forms "host/native/mux.lisp"
  '((defstruct (fnn-mux-loop (:constructor %make-fnn-mux-loop)))
    (defstruct (fnn-mux-conn (:constructor %make-fnn-mux-conn)))
-   (defun fnn-mux-render-next) (defun fnn-mux-step)))
+   (defun fnn-mux-render-next) (defun fnn-mux-capture-output-grant) (defun fnn-mux-step)))
 (defvar *lease-calls* nil)
 (defvar *torn-kind* nil)
 (defstruct test-output-ledger token opgen output physical)

@@ -5482,3 +5482,10 @@ existing port only after fn-fc has made this connection ready."
            (value :bad-range))
           ((not (fn-wire-fast-statep wire)) (value :invalid-wire))
           (t (value (fn-ocap-preview wire start end fn-octets))))))
+
+; Explicit producer frontier. A derived logical graph count alone is not a
+; complete physical allocation/collector/root-custody tariff. All families
+; remain unpriced until the actual producer supplies that coverage.
+(defun fn-owner-output-tariff-preview (id preview state)
+  (declare (xargs :stobjs state :mode :program) (ignore id))
+  (value (fn-ocap-unpriced-tariff preview)))
