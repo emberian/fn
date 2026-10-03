@@ -1867,3 +1867,25 @@ private commit-to-be-built state, not persisted table entries available for
 an uncommitted new-page eviction; History notified for its residency invariant.
 
 Source assembly: availability40ca+770+494 composed for immediate source publication; actual loader classifies missing availability facts once while preserving raw identity. Owner fanout/dispatcher/paged replay and matching certification remain pending.
+## Source assembly immediate HTTP reactor (2026-10-03)
+934b416cb composed with cold fifth return; actual io leaf collision with retained pull FD/DATA/OFFSET/END fnn-socket-write-now resolved by renaming new HTTP/NNTP FD/CHANNEL/DATA/OFFSET leaf fnn-transport-write-now plus two callers. Six missing program dispatcher declarations added for actual HTTP wrappers. Source ships before verification; primary cancellation/session lease/cold lifetime and actual changed constructor/leaf fixture checks follow, matching nativeWeb/LogicalFeed pending. Full reply/HTML materialization/funding still open.
+
+## Sol fair push: consumed retained link turns
+
+Source from83bedb63e: actual feed dial captures admitted credentials before
+one nonblocking TCP start, retains completion before core open, and drives
+authenticated TLS begin/step on later turns. Existing ACL2 feed reply and
+FNFD publication semantics are unchanged; consume handles one reply event,
+retains EOF/framer drain and yields. Send retains one exact copied command
+and offset/range instead of waiting for all bytes. The shared ACL2 driver
+orders each link's connect/TLS/write/reply/offer/read action. Stable TLS
+retry range and unwritten suffix survive readiness; physical512 range stays
+inside existing65536/10s progress window, with deadline reset only once that
+window drains. Each current worker sweep visits all links; Runtime's actor/
+idle-wait hooks and BP consumer are disjoint.
+
+Source forms/diff pass; source sent before focused verification. No proof/
+image claim. DNS, trust/profile/durable filesystem latency, whole-command
+copying/tariff and total scheduler-cost bound remain open. The generic output
+and syncer leases are not reused. Planned source fixtures will exercise slow
+write/TCP/TLS plus healthy peer and exact retained reply/EOF ordering.

@@ -78,3 +78,21 @@
                              "fnn-tls-unavailable" "fnn-tls-config-error"
                              "fnn-tls-handshake-error" "fnn-tls-verify-error"
                              "fnn-tls-io-error")) t nil)))
+
+; Push links retain one output and the ACL2 framer's suffix. This action
+; selection orders physical work without copying the feed reply machine.
+(defun fn-prd-feed-action (phase outputp drainp offerp now deadline)
+  (declare (xargs :guard t))
+  (cond ((or phase outputp)
+         (if (and (natp deadline) (<= deadline (nfix now)))
+             :timeout
+           (cond (phase phase) (t :write))))
+        (drainp :reply)
+        (offerp :offer)
+        (t :read)))
+
+; Preserve the feed's existing per-quantum deadline while smaller physical
+; write attempts yield to other peers. Successful prefixes never reset it.
+(defun fn-prd-write-quantum-end (offset total quantum)
+  (declare (xargs :guard t))
+  (min (nfix total) (+ (nfix offset) (nfix quantum))))
