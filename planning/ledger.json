@@ -1780,6 +1780,9 @@
     "books/protocol-dispatch",
     "tests/acl2/protocol-codes-tests",
     "tests/acl2/protocol-dispatch-tests",
+    "books/protocol-served-table",
+    "books/protocol-served",
+    "tests/acl2/protocol-served-tests",
     "tests/acl2/protocol-codes-hra-tests",
     "tests/acl2/protocol-text-tests",
     "tests/acl2/control-tests",
@@ -2324,26 +2327,26 @@
     "books/owner-retain-carried"
   ],
   "totals": {
-    "books": 2767,
-    "books_in_root_closure": 2585,
-    "roots": 2320,
-    "theorems": 37133,
-    "functions": 23552,
-    "assert_events": 25950,
-    "must_fails": 2651,
+    "books": 2770,
+    "books_in_root_closure": 2588,
+    "roots": 2323,
+    "theorems": 37152,
+    "functions": 23617,
+    "assert_events": 25952,
+    "must_fails": 2653,
     "prover_refusals": 0,
     "encapsulates": 229,
     "guards": {
       "verified": 3920,
-      "declared-off": 3041,
-      "default-guarded": 12991,
-      "default-unguarded": 3600
+      "declared-off": 3061,
+      "default-guarded": 13034,
+      "default-unguarded": 3602
     },
-    "suspect_theorems": 1371,
-    "export_hygiene_warnings": 402,
+    "suspect_theorems": 1373,
+    "export_hygiene_warnings": 404,
     "enabled_projection_warnings": 79,
-    "teeth_form_warnings": 282,
-    "include_hygiene_warnings": 3609,
+    "teeth_form_warnings": 284,
+    "include_hygiene_warnings": 3613,
     "host_names_warnings": 3152,
     "hand_written_record_warnings": 19
   },
@@ -39359,6 +39362,64 @@
       "read_error": null
     },
     {
+      "book": "books/protocol-served-table.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 27,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 27,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 6,
+      "defmacros": 1,
+      "encapsulates": 0,
+      "includes": [
+        "protocol-table"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/protocol-served.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 10,
+      "functions": 21,
+      "guards": {
+        "verified": 0,
+        "declared-off": 5,
+        "default-guarded": 16,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 1,
+      "assert_events": 1,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 4,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "nntp-help",
+        "protocol-served-table",
+        "served",
+        "served-catalog-dispatch"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-proto-built-trie-corresponds",
+        "fn-proto-pin-trie-is-built"
+      ],
+      "read_error": null
+    },
+    {
       "book": "books/protocol-table.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -74348,6 +74409,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/protocol-served-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 9,
+      "functions": 17,
+      "guards": {
+        "verified": 0,
+        "declared-off": 15,
+        "default-guarded": 0,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 1,
+      "must_fails": 2,
+      "prover_refusals": 0,
+      "defconsts": 12,
+      "defmacros": 3,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/protocol-served",
+        "../../books/served-catalog-chain",
+        "must-fail-checked"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/protocol-text-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -88023,6 +88112,14 @@
       ]
     },
     {
+      "theorem": "fn-proto-built-trie-corresponds",
+      "book": "books/protocol-served.lisp",
+      "line": 173,
+      "reasons": [
+        "reflexive-conclusion: a conjunct is (equal X X)"
+      ]
+    },
+    {
       "theorem": "fn-proto-crlf-is-append",
       "book": "books/protocol-builders.lisp",
       "line": 105,
@@ -88038,6 +88135,14 @@
       "line": 101,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-proto-pin-trie-is-built",
+      "book": "books/protocol-served.lisp",
+      "line": 166,
+      "reasons": [
+        "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-midx-correspondencep"
       ]
     },
     {
@@ -94439,6 +94544,18 @@
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
+        "theorem": "fn-proto-advance-eventp-is-served-advance-eventp",
+        "book": "books/protocol-served.lisp",
+        "line": 475,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-proto-archive-keywordp-is-nntp-archive-keywordp",
+        "book": "books/protocol-served.lisp",
+        "line": 496,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
         "theorem": "fn-rii-sf-statep-is-sf-statep",
         "book": "books/replay-identity-index.lisp",
         "line": 1059,
@@ -98018,6 +98135,18 @@
         "check": "pct-false-no-row-offers",
         "book": "tests/acl2/protocol-codes-tests.lisp",
         "line": 276,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "fn-proto-archive-command-cat-is-pinned-without-view-articles",
+        "book": "tests/acl2/protocol-served-tests.lisp",
+        "line": 257,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "fn-proto-archive-command-cat-is-pinned-without-pin-correspondence",
+        "book": "tests/acl2/protocol-served-tests.lisp",
+        "line": 298,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -109160,6 +109289,20 @@
         "line": 20,
         "include": "protocol-codes",
         "included": "books/protocol-codes.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/protocol-served-table.lisp",
+        "line": 88,
+        "include": "protocol-table",
+        "included": "books/protocol-table.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/protocol-served.lisp",
+        "line": 60,
+        "include": "protocol-served-table",
+        "included": "books/protocol-served-table.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -120619,6 +120762,20 @@
         "line": 17,
         "include": "../../books/protocol-dispatch",
         "included": "books/protocol-dispatch.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/protocol-served-tests.lisp",
+        "line": 45,
+        "include": "../../books/protocol-served",
+        "included": "books/protocol-served.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/protocol-served-tests.lisp",
+        "line": 47,
+        "include": "must-fail-checked",
+        "included": "tests/acl2/must-fail-checked.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

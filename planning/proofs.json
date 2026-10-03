@@ -21449,7 +21449,7 @@
         "PRF-346"
       ],
       "assumptions": [],
-      "status": "planned",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/protocol-table.lisp",
         "books/protocol-served.lisp",
@@ -21464,7 +21464,7 @@
         "fn-proto-advance-eventp-is-served-advance-eventp",
         "fn-proto-archive-keywordp-is-nntp-archive-keywordp"
       ],
-      "progress_note": "Lane def-command (Fable, 2026-10-03): REPL-admitted on hbox (the four declared rows' form cases 76.6k prover steps, the case split 1.8k, guards); certification in the READY."
+      "progress_note": "Lane def-command (Fable, 2026-10-03): certified on hbox, run-20261002T232211Z-f0bd, manifest certify-20261002T232442Z-2105883 (books/protocol-served-table, books/protocol-served, tests/acl2/protocol-served-tests: 3/0); books/protocol-table.lisp is byte-identical to origin/dev (its certificates and the 753 roots' stand). REPL: the four declared rows' form cases 77.5k prover steps, the case split 1.8k, the view-site keystones 0.7k; teeth 44/44 forms (the two both-route reachability forms with books/served-catalog-chain included). The served path is unchanged at this READY (nothing calls the generated dispatcher until the switch)."
     },
     {
       "id": "PRF-1237",
@@ -21486,7 +21486,6 @@
         "books/protocol-table.lisp",
         "tools/view_policy_debt.json"
       ],
-      "events": [],
       "progress_note": "Registered by lane def-command (2026-10-03) as the registry row the :view-decided column names (c07 G2: a decided view is debt, never the displayed executed rule)."
     },
     {
@@ -21507,7 +21506,6 @@
         "books/protocol-table.lisp",
         "tools/view_policy_debt.json"
       ],
-      "events": [],
       "progress_note": "Registered by lane def-command (2026-10-03) as the registry row the :decided column names."
     }
   ]

@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2767 |
-| Certification roots in the Makefile | 2320 |
-| Books inside the root closure | 2585 |
-| `defthm` and `defthmd` events | 37133 |
-| `defun` events | 23552 |
+| Books read | 2770 |
+| Certification roots in the Makefile | 2323 |
+| Books inside the root closure | 2588 |
+| `defthm` and `defthmd` events | 37152 |
+| `defun` events | 23617 |
 | Functions with verified guards | 3920 |
-| Functions declared `:verify-guards nil` and never verified | 3041 |
-| Functions left at the default with an explicit guard | 12991 |
-| Functions left at the default with no guard | 3600 |
-| `assert-event` checks | 25950 |
-| `must-fail` checks | 2651 |
+| Functions declared `:verify-guards nil` and never verified | 3061 |
+| Functions left at the default with an explicit guard | 13034 |
+| Functions left at the default with no guard | 3602 |
+| `assert-event` checks | 25952 |
+| `must-fail` checks | 2653 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 229 |
-| Theorems flagged SUSPECT by shape | 1371 |
-| Export-hygiene warnings | 402 |
+| Theorems flagged SUSPECT by shape | 1373 |
+| Export-hygiene warnings | 404 |
 | Enabled-projection warnings | 79 |
-| Teeth-form warnings | 282 |
-| Include-hygiene warnings | 3609 |
+| Teeth-form warnings | 284 |
+| Include-hygiene warnings | 3613 |
 | Host-names warnings | 3152 |
 | Hand-written-record warnings | 19 |
 
@@ -1340,6 +1340,8 @@ that `make certify` requests.
 | `books/protocol-codes.lisp` | root | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/protocol-dispatch.lisp` | root | 3 | 5 | 0/1/4/0 | 0 | 0 | 0 |
 | `books/protocol-framing.lisp` | root | 3 | 4 | 0/1/3/0 | 0 | 0 | 0 |
+| `books/protocol-served-table.lisp` | root | 0 | 27 | 0/0/27/0 | 0 | 0 | 0 |
+| `books/protocol-served.lisp` | root | 10 | 21 | 0/5/16/0 | 1 | 0 | 2 |
 | `books/protocol-table.lisp` | root | 0 | 31 | 0/0/31/0 | 0 | 0 | 0 |
 | `books/provenance-codec.lisp` | root | 27 | 25 | 1/0/24/0 | 0 | 0 | 1 |
 | `books/provenance-inspect.lisp` | root | 2 | 3 | 0/3/0/0 | 0 | 0 | 0 |
@@ -2591,6 +2593,7 @@ that `make certify` requests.
 | `tests/acl2/protocol-codes-hra-tests.lisp` | root | 0 | 2 | 0/2/0/0 | 1 | 0 | 0 |
 | `tests/acl2/protocol-codes-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 4 | 2 | 0 |
 | `tests/acl2/protocol-dispatch-tests.lisp` | root | 0 | 11 | 0/9/1/1 | 18 | 0 | 0 |
+| `tests/acl2/protocol-served-tests.lisp` | root | 9 | 17 | 0/15/0/2 | 1 | 2 | 0 |
 | `tests/acl2/protocol-text-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 129 | 1 | 0 |
 | `tests/acl2/provenance-inspect-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 0 | 0 |
 | `tests/acl2/provenance-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 103 | 0 | 0 |
@@ -3648,8 +3651,10 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-prin-state-key-of-fn-prin-make-state` | `books/principal.lisp` | 271 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-prin-state-next-of-fn-prin-make-state` | `books/principal.lisp` | 277 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-prof-refused-record-of-a-non-message-id` | `books/peer-refused-offers.lisp` | 155 | arm-of-definition: the hypotheses select one IF/COND arm of fn-peer-refused-record and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-peer-refused-record and the conclusion is that branch's value |
+| `fn-proto-built-trie-corresponds` | `books/protocol-served.lisp` | 173 | reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-proto-crlf-is-append` | `books/protocol-builders.lisp` | 105 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-nntp-crlf; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-proto-effects-of-make-result` | `books/protocol-builders.lisp` | 101 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-proto-pin-trie-is-built` | `books/protocol-served.lisp` | 166 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-midx-correspondencep |
 | `fn-prov-kind-of-a-recognized-value` | `books/provenance.lisp` | 273 | arm-of-definition: the hypotheses select one IF/COND arm of fn-prov-kind and the conclusion is that arm's value |
 | `fn-prov-transit-kindp-forward` | `books/provenance.lisp` | 61 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-prov-transit-kindp |
 | `fn-prov-wire-of-a-string-is-itself-by-definition` | `books/provenance-codec.lisp` | 563 | arm-of-definition: the hypotheses select one IF/COND arm of fn-prov-wire and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-prov-wire and the conclusion is that branch's value |
