@@ -12370,6 +12370,8 @@ a6697943ae43d9c77ede2611e901a63b36f73795524102ee9df10973dfa136a3 1130 planning/e
 d505373f000f2eea08af5664ad9486a04e895bcae51203056e350b28bae47944 2105 planning/evidence/w7-product-source-integration-2026-09-30/report.json
 cd0272cdd04ef7e436f9f43cdd78b44ade33197577a4bd34925470a642e35683 4070 planning/evidence/w9-digest-2026-09-20/identity_differential.py
 5a1b4dc1df047e111a19ac32dadec1426ea97cdcf75b6cb0a1b7a731c2aeb26a 19391 planning/evidence/wave-realignment-2026-09-19.md
+ae6e5f2c1baa90080e9b90a48886fe6d3463e3141144510fe5c7d52a9525b810 12421 planning/evidence/web-article-producer-legacy-red-2026-10-03.log
+d9872ddaaf2b016141227dea118935e4d53658963a96694ba994f0d5d932d2bf 546 planning/evidence/web-article-producer-window-2026-10-03.log
 e61b95f44ff6f69bb3516e4f643e825a3659d84cb37dd8e1a0b4094b23e334d9 3339 planning/evidence/web-continuations-2026-10-03.md
 e589a410807bf2bb9b57ffa4ad1295b4c95b8448cd5875db9cdec4baf60f1204 118 planning/evidence/web-continuations-2026-10-03/raw.log
 7ce6746e3160f4b421ac51484f9f36f4484ec567f011621fcfa3dd36bdf8238f 7814 planning/evidence/web-native-2-2026-09-28.md
@@ -12383,6 +12385,9 @@ d3b4837f3f33739b3f22cdf6de2c503507e12b986ac796b928e68fd06f08b346 34827 planning/
 ad0ec62569201b51be204100b051b16bf0dede73375893a2cdae2667b61d8b0e 1727 planning/evidence/web-native-2026-09-28/native-w4c.log
 08d1a289e30a774441800e73a47a42f61712461e0adcc8f6b169d2486130e4b6 2113 planning/evidence/web-page-cursor-2026-10-03.md
 035595628d82e7e9e1530cb980096933869e8494e5c5f1b44df5fb9a6e1a7ae0 199 planning/evidence/web-page-cursor-2026-10-03/raw.log
+70a75e37a1830e938e00d243a40dea10eb59df681011b40b22fb762f5ee99b08 3040 planning/evidence/web-post-and-producer-source-2026-10-03.md
+cabba2207b560e0ad6e5650ad0b14b150330ff90713b8824e165a0677ff34f0b 570 planning/evidence/web-post-native-2026-10-03.log
+0f5ec103d022ee6f41be0fc020b4b8cae21db77b950a151dd4a2090f002775d0 43650 planning/evidence/web-post-source-2026-10-03.log
 5f2aa1eac2795060578f2079f01c346ba1ca1813791dea307e70a80c67f6dc29 3678020 planning/evidence/web-private-clean-2026-10-03.log
 531713d690a5b7c73b08edf9ff34cec5f93551392ecb0e1e54a345ab7a168846 3677069 planning/evidence/web-private-repair-2026-10-03.log
 3be6e94cc2e931e9d958e4b3e4d7a5ed11e842ebe9ac20dd99f5a1f046a58c47 2517 planning/evidence/web-private-source-2026-10-03.md

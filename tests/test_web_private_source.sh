@@ -2,7 +2,7 @@
 # Source admission/witnesses, not certification or a native browser result.
 set -eu
 cd "$(dirname "$0")/.."
-session="web-private-source-$(date +%Y%m%dT%H%M%S)-$$"
+session="wp-$(date +%s)"
 trap 'python3 tools/proof_repl.py stop "$session" >/dev/null 2>&1' 0
 python3 tools/proof_repl.py start "$session" books/web-session-keystones \
     --host "${FN_WEB_SOURCE_HOST:-laptop}" --ld-missing --limit 30 --load-limit 30

@@ -22264,7 +22264,7 @@
     {
       "id": "PRF-1290",
       "title": "Captured POST/remove gate on fixed worker gives the exact live-table gate action and output",
-      "statement": "Subject fn-web-private-begin-step, called by fn-web-host-private-begin-step and native fnn-web-private-begin on the existing fixed semantic worker. Under exact fn-web-private-begin-p (core-generated row is in fn-web-routes and names post/remove), fn-web-private-begin-is-captured-gate equates private action/output to fn-wss-gate with the live table, and the gate preserves that table. BEGIN alone finds/touches the session and closes expired sessions under the owner section; the deferred gate still checks same-site/session/CSRF using that immutable captured context. Full form parsing and authored POST/cancel construction leave O. Source theorems/positive and predicate-removal witnesses admit in a fresh ACL2 source world; raw scheduling adapter does not prove form semantics or complete worker fairness.",
+      "statement": "Subject fn-web-private-begin-step, used by the compatibility/refusal fallback under fn-wpf-private-begin/fn-wpf-finish and native fnn-web-private-begin; successful resumable POST is the separate planned PRF-1293 subject on the existing fixed semantic worker. Under exact fn-web-private-begin-p (core-generated row is in fn-web-routes and names post/remove), fn-web-private-begin-is-captured-gate equates private action/output to fn-wss-gate with the live table, and the gate preserves that table. BEGIN alone finds/touches the session and closes expired sessions under the owner section; the deferred gate still checks same-site/session/CSRF using that immutable captured context. Full form parsing and authored POST/cancel construction leave O. Source theorems/positive and predicate-removal witnesses admit in a fresh ACL2 source world; raw scheduling adapter does not prove form semantics or complete worker fairness.",
       "milestone": "M6",
       "requirements": [
         "WEB-006"
@@ -22308,8 +22308,10 @@
         "host/web-host.lisp",
         "host/native/web-host.lisp",
         "tests/native_web_post_stream_raw.lisp",
-        "tests/acl2/web-post-stream-tests.lisp"
-      ]
+        "tests/acl2/web-post-stream-tests.lisp",
+        "planning/evidence/web-post-and-producer-source-2026-10-03.md"
+      ],
+      "progress_note": "Fresh coherent ACL2 source runner admits current programs+actual host wrappers and all read-route/POST exact-reference execution witnesses, including10,003-byte Subject and UTF8 crossing45 atW1/7/4096. Native source form/body partial-feed fixtures pass. Concrete fill invariant-risk; planned guard/refinement/resource proof and actual fullnode endpoint remain open."
     }
   ]
 }

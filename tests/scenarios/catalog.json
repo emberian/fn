@@ -8977,7 +8977,8 @@
       ],
       "evidence": [
         "tests/native_web_post_stream_raw.lisp",
-        "tests/acl2/web-post-stream-tests.lisp"
+        "tests/acl2/web-post-stream-tests.lisp",
+        "planning/evidence/web-post-and-producer-source-2026-10-03.md"
       ],
       "note": "Actual source programs admit and exact valid/badCSRF/remove/UTF8/duplicate and long subject tests pass, with concrete fill invariant-risk. Native4096 form turns and partial117 feed pass. Full retained request/subject and refused form path, profile-dependent fixed prefix construction and qualified funding remain open."
     }
