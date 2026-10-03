@@ -642,6 +642,16 @@ and faults without following or deleting anything."
 The caller keeps this connection and its socket until actual physical close."
   (when (fnn-tclc-finished conn) (return-from fnn-tcl-turn :done))
   (let* ((now (fnn-tcl-now))
+         (control (and (fnn-tclc-source-pending conn)
+          (fnn-core 'fn-tclsctl-turn (fnn-tclc-session conn) now
+                    (or (fnn-tclc-tx-data conn) (fnn-tclc-tx-messages conn)))))
+         (ignored (when control
+          ;; Only ACL2's independent KEEPALIVE may bypass custody-held END ACK.
+          ;; Existing output owns the physical attempt; source work resumes on
+          ;; its next slot. No reception clock or held ACK is changed.
+          (setf (fnn-tclc-session conn) (first control)
+                (fnn-tclc-tx-messages conn)
+                 (nconc (fnn-tclc-tx-messages conn) (second control)))))
          (action (fnn-core 'fn-tcrt-action
                   (fnn-tclc-source-pending conn) (fnn-tclc-source-more conn)
                   (and (fnn-tclc-tx-data conn) t) (and (fnn-tclc-tx-messages conn) t)
@@ -650,6 +660,7 @@ The caller keeps this connection and its socket until actual physical close."
                   (fnn-core 'fn-tcl-host-phase (fnn-tclc-session conn))
                   now (fnn-tclc-tx-deadline conn)))
          (result :work))
+    (declare (ignore ignored))
     (case action
         (:done (setf (fnn-tclc-finished conn) t) (setq result :done))
         (:lost (fnn-tcl-turn-lost conn))

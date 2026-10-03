@@ -8724,7 +8724,8 @@
         "tests/native_tcpcl_frame_cursor_raw.lisp",
         "tests/native_bp_received_source_raw.lisp",
         "tests/acl2/tcpcl-frame-cursor-tests.lisp",
-        "tests/acl2/bp-session-received-source-tests.lisp"
+        "tests/acl2/bp-session-received-source-tests.lisp",
+        "tests/native_tcpcl_source_control_raw.lisp"
       ],
       "note": "Actual source raw scheduler/custody discrimination passes; canonical two-peer DTN image scenario and comprehensive physical-cut/restart qualification pending. Native selector now prepared using actual image tcpcl send with no payload/EXPECT1, canonical same-source producer and receiver Store reopen; execution pending matching image. S068 now prepares actual concrete input framing and private received operation under incoming grant; whole-frame decode remains open. Source-loaded actual ACL2/native process is the integration target, saved image is optional; raw predicates/consumer pass do not imply that result.",
       "implementation": {

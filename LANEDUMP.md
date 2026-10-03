@@ -1861,3 +1861,11 @@ then calls ACL2 private-source abort-plan. Current-generation copy/convert/publi
 publishing or foreign/stale source stays held. Raw actual teardown matrix PASS
 with both affirmative and ambiguous physical close; no ACK or refund on uncertain
 close. New source constructor/control teeth cert pending. No durable rollback.
+
+Connected source control PRF1294: actual fnn-tcl-turn calls ACL2 fn-tclsctl-turn
+while received source owns END ACK/input. Independent KEEPALIVE goes through
+existing retained encode/write; one outstanding output suppresses duplicates.
+No ACK or reception-clock update, source resumes afterward. Actual driver +real
+control-function/raw physical recording fixture PASS. Book no-ACK/reception
+boundaries and cheap invariant scoped exact farm pending. Concurrent incoming
+control parsing/full decoder latency still open.

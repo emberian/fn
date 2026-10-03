@@ -69,8 +69,8 @@
  (let ((end 4099))
   (and (natp end) (natp (fn-tcim-start end)) (<= (fn-tcim-start end) end)
        (<= (- end (fn-tcim-start end)) 4096))))
-(with-guard-checking :none
- (assert-event
+(assert-event
+ (with-guard-checking :none
   (let ((end -1))
    (and (not (natp end))
         (not (and (natp (fn-tcim-start end)) (<= (fn-tcim-start end) end)
