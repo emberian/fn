@@ -1512,8 +1512,10 @@ reopen predicate, writer-lock observation and observed final namespace."
     ; state or repeated call.
     (if (and (equal (fn-sf-phase before-files) :completing)
              (equal (fn-sf-phase after-files) :ready)
-             (equal (len (fn-sf-successes after-files))
-                    (1+ (len (fn-sf-successes before-files)))))
+             ; S118: the counts, O(1) (fn-sl-count-is-len), not two copies of
+             ; the whole history.
+             (equal (fn-sl-count (fn-sf-successes-field after-files))
+                    (1+ (fn-sl-count (fn-sf-successes-field before-files)))))
         (let ((state (f-put-global 'fn-store-sn next state))) (value :durable))
       (value :fault))))
 
