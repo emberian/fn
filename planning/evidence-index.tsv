@@ -3338,6 +3338,7 @@ d542f3603b2138574cc593f7e0d4a20b463659230a5f365eaa395021c88890d2 94473 planning/
 0ab5bec7ef5ac134dd90dec65e8e3ec998ee3182ece203d7a964ea21807cef0d 113160 planning/evidence/integration-sol1-2026-10-03/host-prefix-failed.log
 89b37ec3815a6e49929114e15973ebe36c6029416e75ecba5ac12c12e7a8db8e 1259352 planning/evidence/integration-sol1-2026-10-03/host-prefix-repaired-declaration-failed.log
 a449401ef76f3a7be51a28d01122704389b6abbe0766a2577f6f864885af6f5b 795406 planning/evidence/integration-sol1-2026-10-03/host-prefix-repaired-dtn-passed.log
+13a3be8f23e14edcfd06ea4d21a9fb9a2374a42d08211935dce366fd21191deb 1259920 planning/evidence/integration-sol1-2026-10-03/host-prefix-step-fixed-outcome-citation-failed.log
 6e3944eb7b6426104f8f8b639cd3e50d364d770dc205fe829274a2b0f2fd5af5 2199 planning/evidence/integration-sol1-2026-10-03/run.log
 74f6b7cd7e77adba9dd56f6f545506a161e519c7905e4a73562adec9268eb48f 11793 planning/evidence/integration-sol1-2026-10-03/source-receipt.json
 038302fdbd80927145b6ea6b6b3bf7fd3e233365c620c2aac1f62d0b35c069b8 7062 planning/evidence/integration-sol1-2026-10-03/static-regen.log
