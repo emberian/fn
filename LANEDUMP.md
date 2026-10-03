@@ -1421,3 +1421,16 @@ Groundwork. No new architecture or durable-acceptance semantics claimed.
 - Astra16e1491a1: actual3publication callers retain snapshot through ACL2 exactheader/page readback; unwritten zero pages checked too, one16KiBkernelread perpage. Successful staging releases snapshot BEFOREinstall/swap can reopenpublisher slot; failure/deferred/rawexit inner scope returns snapshot before outerowner pin/slot cleanup. Eleven changed actualproducer/consumer forms structurally exact16e, book/tests exactbytes.
 - Existing6actualfile schedules and transplanted baseline used/zeropage corruption+deferredrelease intended failures reused; archive995f4714 verified. SCN1094claimPASS; Pythoncompile/diffchecksPASS. No repeat experiment/proof/image. Sourceguard/certificate for history-image-snapshot and exactstorelog→historyimagebinding/fold dependencies remainpending; by-definition page equality is not cited askeystone.
 - Actualnewinterfaces declarations retained, generatedinterfaces/current conflicts omitted: they included stale globalcoverage/unrelatedP9qualification and must regenerate atIntegration. Exact savedimage selector tests.test_native_state_checkpoint.StateCheckpointCutTests.test_staged_history_page_corruption_keeps_checkpoint_and_log; nativecheckpoint/recovery after coveredsegmentsdrop and fullphysical snapshotrefinement remainowed. Newhistoryowner informedAstra currentS045scope+S114next toagreeoverlap.
+
+## Sol tools: sent includes acquire compatible artifact sets
+
+Resource Exec's warm msgid-linear-exec include initially reused a merely
+valid-looking foreign .cert and ACL2 refused its full-book-name alists.
+Explicit supported install_closure(include_self=True), artifact set
+43b54e261fb03462ff66c8407965a35738f4fcfc2b7d52b0632dd12fb22cf6a3,
+installed87/missing0; the same warm include then passed0.46s. Preparation
+now runs that exact compatible-set acquisition for every repository include,
+including an existing plausible certificate. It deduplicates the same target
+within one command; system includes are untouched. No source/certification
+fallback or source/object/alist relaxation. Five SessionIncludeTests PASS
+0.014s, compile/diff checks PASS; no actual ACL2 or reload launched here.
