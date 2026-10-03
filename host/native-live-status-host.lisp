@@ -18,18 +18,34 @@
 ; lane obligations-paged: `obligations' page by page with a version token
 ; (books/native-live-pages.lisp).
 (include-book "../books/native-live-pages")
+(include-book "../books/owner-operation-report")
+
+(defun fn-native-operation-host-offline ()
+ (declare (xargs :mode :program))
+ (fn-record-string-octets "operation observation=unavailable reason=owner-not-running
+"))
+
+(defun fn-native-operation-host-report (state)
+ (declare (xargs :stobjs state :mode :program))
+ (mv-let (word octets) (fn-owner-operation-report *fn-nls-chunk-octets* state)
+  (if (eq word :rendered) octets
+   (fn-record-string-octets
+    "operation observation=unavailable reason=response-budget-unavailable
+"))))
 
 (defun fn-native-live-status-host-offline (kind profile obs fn-arena state)
   ; `status', `pins', `obligations' and `peer list' with no owner running:
   ; the Store and configuration this process replayed, no connection.
   (declare (xargs :stobjs (fn-arena state) :mode :program))
+  (if (equal kind :operation)
+      (fn-native-operation-host-offline)
   (if (fn-cev-report-kindp kind)
       ;; PKT-209: the records decided as recovery decides them.
       (fn-cev-offline-report kind (f-get-global 'fn-store-sn state))
     (fn-nls-offline-report kind profile
                            (f-get-global 'fn-store-sn state)
                            (f-get-global 'fn-store-cfg state)
-                           obs fn-arena)))
+                           obs fn-arena))))
 
 (defun fn-native-live-status-host-answer (request cached obs min log-sink sched fn-arena fn-cat state)
   ; The running owner's page for one FNLS request, under its mutex
@@ -54,6 +70,12 @@
      ;; whole-report exchange refuses it by name (fn-nlp-pagedp).
      ((fn-nlp-pagedp (cadr decoded))
       (list (fn-nls-reply-encode :refused 0 nil *fn-nlp-refusal-paged*) cached))
+     ((equal (cadr decoded) :operation)
+      (let* ((offset (caddr decoded))
+             (stored (fn-nls-cached-buffer :operation offset cached))
+             (buffer (or stored (fn-nls-buffer (fn-native-operation-host-report state)))))
+       (list (fn-nls-page buffer offset)
+             (if stored cached (fn-nls-cache-put :operation buffer cached)))))
      (t
       (let* ((kind (cadr decoded))
              (offset (caddr decoded))

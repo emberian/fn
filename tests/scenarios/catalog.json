@@ -1153,7 +1153,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -8319,7 +8319,7 @@
         "Run tests/acl2/newnews-metadata-cursor-tests.lisp: unmatched first article advances with empty output, matching final article retains its output after scan completion; compare emitted prefix plus remaining with original response.",
         "Run actual native NEWNEWS wildcard workload with more candidates than shared cache slots; compare complete Message-ID reply while a second connection remains responsive.",
         "Run newnews-stream-cursor-tests and actual served-plan-newnews-tests: indexed line wider than byte quantum drains without candidate visits, sparse selection retains final renderer, tiny/large plan outputs equal.",
-        "Run actual configured factory→plan witness with eleven captured configured groups, sparse first article, selector retained through one-call/one-byte quanta, and complete equality to original catalog reply.",
+        "Run actual configured factory\u2192plan witness with eleven captured configured groups, sparse first article, selector retained through one-call/one-byte quanta, and complete equality to original catalog reply.",
         "Run tests.test_cursor_cold_poll against actual extracted native cursor/mux bodies: cold attempt returns unchanged plan+issued read, pending yields to timer, repeated miss retains first clock, returned page resumes plan rather than input, refusal adds no body line. This is mocked-I/O source flow, not matching native image custody.",
         "Retain a wildcard continuation after the first valid equal membership; resume one decoder/DP microstep per controller call, with exact phase demand, zero group/member visits and residual equality. Excluded groups continue to the following selector; an invalid first duplicate never starts the matcher."
       ],
@@ -9187,7 +9187,7 @@
         "Compare complete GROUP, LISTGROUP, NEXT, LAST, LIST ACTIVE and LIST COUNTS helper results with the captured logical available archive; verify raw number2 and Message-ID remain retained."
       ],
       "expected": [
-        "Sparse metadata navigation moves1→34 and34→1 while enumerating only1/34; complete responses equal the bytes reference.",
+        "Sparse metadata navigation moves1\u219234 and34\u21921 while enumerating only1/34; complete responses equal the bytes reference.",
         "Empty availability preserves NEXT/LAST cursor on421/422 and produces empty GROUP0,35,34; retained identity lookup remains.",
         "Fixture is source live-stobj command-helper acceptance, not production owner/capture proof or native reclaim qualification. LIST still has a whole-reply producer frontier."
       ],
@@ -9228,6 +9228,33 @@
         "host/native/extent-decoded.lisp"
       ],
       "execution_scope": "Actual source branches/dispatch; full decoder, physical returned-worker borrow and arena storage field are recording boundaries. No complete decoded allocator/controller/issuer activation, profile, certificate or image claim."
+    },
+    {
+      "id": "SCN-1120",
+      "title": "Operation readout reports actual retained admission without scanning Store",
+      "requirements": [
+        "HST-008"
+      ],
+      "setup": "Actual scalar functions, writer gate, operator command selector and live-status host answer bodies; fixture STATE and framing/digest adapters.",
+      "steps": [
+        "Query a live retained article admission, then fence its writer.",
+        "Read next page after clearing owner admission, then start a fresh query.",
+        "Query absent/malformed admission and a scalar larger than the response budget.",
+        "Select operation CLI action and its report kind."
+      ],
+      "expected": [
+        "Report binds actual nonce, kind, phase, epoch, txid and held charges, with no borrowed graph or invented allocation total.",
+        "Fenced writer reports recovery-required; cached page retains captured text, fresh query reports absence.",
+        "Oversized scalar refuses whole report; unavailable state is explicit.",
+        "Actual operation route bypasses general Store-report walker."
+      ],
+      "implementation": {
+        "test": "tests/test_owner_operation_report.py"
+      },
+      "evidence": [
+        "tests/fixtures/owner_operation_report.lisp"
+      ],
+      "execution_scope": "Ordinary Lisp selected literal source; STATE map and framing/digest are explicit fixture adapters, not full native process or proof evidence."
     }
   ]
 }

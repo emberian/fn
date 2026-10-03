@@ -763,6 +763,9 @@ nothing answers and nothing holds the lock."
                +fnn-exit-ok+)
       (case (fnn-core 'fn-native-live-status-host-route socket-present answer)
         (:offline
+         (when (eq kind :operation)
+           (fnn-write-report (fnn-core 'fn-native-operation-host-offline))
+           (return-from fnn-operator-status-once +fnn-exit-ok+))
          ;; friend-path-2: say first, in ACL2's words, that the node is not
          ;; running and how its last run ended; then the store's facts.
          (when (and result (eq kind :status)
@@ -784,6 +787,12 @@ nothing answers and nothing holds the lock."
            code))
         (:refused +fnn-exit-refused+)
         (t +fnn-exit-uncertain+)))))
+
+(defun fnn-operator-execute-operation (result)
+  "A bounded owner observation; a stopped owner needs no store replay."
+  (let ((root (fnn-core 'fn-native-operator-host-result-store-root result))
+        (path (fnn-core 'fn-native-operator-host-result-status-control-path-octets result)))
+    (fnn-operator-status-once root (and path (fnn-octets path)) :operation result)))
 
 (defun fnn-operator-execute-status (result)
   "One report, or with `--watch N' one every N seconds until interrupted."
@@ -1155,6 +1164,7 @@ answer that is neither the report nor a refusal (the transport) is uncertain."
           (:tls-self-signed (fnn-operator-execute-tls-self-signed result))
           (:init (fnn-operator-execute-init result))
           (:status (fnn-operator-execute-status result))
+          (:operation (fnn-operator-execute-operation result))
           (:health (fnn-operator-execute-health result))
           ((:recover :compact :checkpoint :export :export-status :import :bless-snapshot
             :reclaim :reclaim-dry-run :reclaim-recorded :rebind-filesystem)

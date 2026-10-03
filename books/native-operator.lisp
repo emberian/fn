@@ -825,7 +825,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 
 (defun fn-nop-help-subjectp (subject)
   (declare (xargs :guard t))
-  (member-equal subject '("help" "init" "run" "post" "show" "mission" "status" "health" "pins" "obligations" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "control" "principal" "keys" "tls" "retention" "account" "motd" "moderation" "article" "consumer" "carry" "retire")))
+  (member-equal subject '("help" "init" "run" "post" "show" "mission" "status" "operation" "health" "pins" "obligations" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "control" "principal" "keys" "tls" "retention" "account" "motd" "moderation" "article" "consumer" "carry" "retire")))
 
 (defun fn-nop-help-text (subject)
   "Bounded operator help output, selected only from ACL2-normalized subjects."
@@ -841,6 +841,8 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
          "usage: fn operator CONFIG post --message-id ID --payload PATH --group GROUP [--group GROUP]")
         ((equal subject "status")
          "usage: fn operator CONFIG status [--watch SECONDS] (asks the running owner over its control socket; offline, reads the store)")
+        ((equal subject "operation")
+         "usage: fn operator CONFIG operation (current owner admission identity, phase, wait/fault reason and held charges; offline reports unavailable)")
         ((equal subject "health")
          "usage: fn operator CONFIG health (eight states, one line each: fenced, exhausted, unqualified-profile, space-pressure, no-route, stranded-transfer, unavailable-peer, receipt-debt; exit 20 to 27 names the first held, 19 some unobserved, 0 all clear)")
         ((equal subject "pins")
@@ -885,7 +887,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ((equal subject "retire")
          "usage: fn operator CONFIG retire [--drain SECONDS] (the running node refuses new connections, stops pulling, lets its feeds drain for at most SECONDS (0 without --drain; at most 86400), prints per peer what stays undelivered and the obligation ledger, takes a final checkpoint and stops; what stays is released only by carry drop WORK --abandon on the stopped store)")
         ((equal subject "help") "usage: fn operator CONFIG help [COMMAND]")
-        (t "usage: fn operator CONFIG {help|init|run|post|show|mission|status|health|pins|obligations|recover|store|group|capacity|retention|peer|bp-boundary|bp-route|policy|control|principal|keys|tls|account|motd|consumer|carry|retire} (fn operator CONFIG help COMMAND for one command's words; fn --version for the release and its source revision)")))
+        (t "usage: fn operator CONFIG {help|init|run|post|show|mission|status|operation|health|pins|obligations|recover|store|group|capacity|retention|peer|bp-boundary|bp-route|policy|control|principal|keys|tls|account|motd|consumer|carry|retire} (fn operator CONFIG help COMMAND for one command's words; fn --version for the release and its source revision)")))
 
 ;; PRF-097: the peering verbs (specs/peering.md section 9).  Their words are
 ;; values and absolute paths; what the documents say, and whether they are
@@ -1189,6 +1191,10 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
                                          (fn-nop-watch-seconds
                                           (fn-ncfg-second rest)))))
                    (t (fn-nop-usage :unexpected-arguments "status" config rest))))
+            ((equal command "operation")
+             (if (null rest)
+                 (fn-nop-result :accepted :plan "operation" config (list :operation))
+               (fn-nop-usage :unexpected-arguments "operation" config rest)))
             ((equal command "health")
              (if (null rest)
                  (fn-nop-result :accepted :plan "health" config (list :health))
@@ -2148,6 +2154,7 @@ when that store already exists is `fn-native-operator-init-outcome'."
           ((equal (fn-native-operator-result-command result) "run") :run)
           ((equal (fn-native-operator-result-command result) "post") :post)
           ((equal (fn-native-operator-result-command result) "status") :status)
+          ((equal (fn-native-operator-result-command result) "operation") :operation)
           ((equal (fn-native-operator-result-command result) "pins") :status)
           ((equal (fn-native-operator-result-command result) "health") :health)
           ((equal (fn-native-operator-result-command result) "obligations") :status)
@@ -2921,7 +2928,7 @@ when that store already exists is `fn-native-operator-init-outcome'."
   (declare (xargs :guard t))
   (and (equal (fn-native-operator-result-status result) :accepted)
        (or (member-equal (fn-native-operator-result-command result)
-                         '("status" "health" "pins" "obligations"))
+                         '("status" "operation" "health" "pins" "obligations"))
            ;; PKT-209: `control log', `control evidence MSGID'.
            (and (member-equal (fn-native-operator-result-command result)
                               '("control" "moderation"))
@@ -3129,7 +3136,7 @@ when that store already exists is `fn-native-operator-init-outcome'."
 ; the open, which recovers or refuses it.
 
 (defconst *fn-nop-store-actions*
-  '(:run :post :status :health :recover :compact :checkpoint :reclaim
+  '(:run :post :status :operation :health :recover :compact :checkpoint :reclaim
     :reclaim-dry-run :reclaim-recorded :export :export-status :admin :inspect
     :inspect-group
     :peering :principal :keys :tls :carry))

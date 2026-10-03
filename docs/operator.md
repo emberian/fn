@@ -165,6 +165,14 @@ This shows how many articles the store holds and how much room is left
 (`headroom`). It works while the node runs, and while it is stopped.
 `status --watch 60` repeats every 60 seconds.
 
+`fn operator CONFIG operation` reports the current canonical owner operation:
+its admission nonce, kind, phase, writer wait/fault reason, epoch, transaction
+identity and five held resource charges. It reads the retained operation directly
+without scanning articles or replaying the store. An absent or stopped owner
+reports unavailable. These charges describe that operation; they are not a
+measurement of total process memory.
+
+
 While the node runs, the node itself answers. While it is stopped, `status`
 reads only the newest checkpoint's header and the sizes of the journal's
 files, so it is quick at any size and it does not replay the log:

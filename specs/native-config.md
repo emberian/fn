@@ -203,3 +203,17 @@ Relative-path normalization also preserves both resource policies before
 rendering the resolved configuration for `fn-native-operator-run-at`. It
 cannot turn an explicit unsupported output policy into an absent default;
 the actual operator still receives the policy and refuses it by name.
+
+## Current operation observation
+
+`fn operator CONFIG operation` selects the existing authenticated local status
+transport, report kind 14. ACL2 reads the canonical pending admission and writer
+state under the owner gate, renders fixed scalar fields within the status-page
+octet budget, and retains the normal immutable report buffer for paging. It
+never serializes the borrowed operation/source graph, walks the Store, issues
+an allocation token or changes custody. Oversized scalar rendering produces an
+explicit unavailable/budget report rather than partial fields. An offline query
+reports owner-not-running without opening or replaying the Store. Held charges
+are the pending operation's five-dimensional resource vector, not total live
+heap or proof of complete physical accounting. SCN-1120 exercises the literal
+source route; PRF-1292 retains the pending guard/size-proof obligations.
