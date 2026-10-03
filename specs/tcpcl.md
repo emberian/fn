@@ -398,3 +398,18 @@ SAMEPRS provider or authorize another operation family. Its complete buffer
 allocation and final logical conversion/BP decode retain their unbounded time
 costs. Source-driver guards and the universal source-step refinement still
 require certification; the existing proposed refinement is not evidence.
+
+`fn-bpsched-work-credit` gives actual bounded source, input-buffer and output
+progress one slot sweep without an artificial sleep at each empty slot. Idle
+reads and local polling retain the existing wait. This preserves one slot and
+one local service per loop; it neither settles custody nor establishes a total
+latency bound. The actual raw16384-byte source fixture runs all eight services
+with zero artificial sleeps, and an idle node still waits.
+
+The now-live received-source driver has guard closure. Its receiver boundary
+`fn-tcl-source-recv-segment-boundary` requires only proper decoded data and
+relates the retained chain event, session and outputs to the original receiver
+under concatenation abstraction. Source-step/native materialization composition
+and the concrete framing cursor's universal codec refinement remain separate
+proof obligations. Matching certificates, not warm admissions, establish proof
+coordinates.

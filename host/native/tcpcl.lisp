@@ -156,12 +156,14 @@ host byte count or complete-source scan occurs. Old callback remains separate.")
            :connection conn :cause condition)))
 
 (defvar *fnn-tcl-source-start* nil
-  "Qualified registered source entry (conn id reversed-segments count).
-Returns (:source-yield token) or a durable delivery disposition. Initially
-NIL: no constructor, source issuer, policy or operation authority installed.")
+  "Received-transfer constructor (conn id reversed-segments count).
+The passive BP node installs a private operation under its actual incoming
+session grant. Other consumers remain NIL; public SAMEPRS source issuing is
+separate. Retain chain/END ACK on (:source-yield token), until definite custody.")
 (defvar *fnn-tcl-source-turn* nil
-  "Qualified token-only continuation (conn token). One bounded action per
-call; retains source and END ACK on yield. Never receives an authority row.")
+  "Received-transfer continuation (conn token), one bounded cursor action.
+Its installer owns the exact operation grant; callback presence or END ACK
+never creates authority. Source and final ACK remain held across yield.")
 
 (defun fnn-tcl-deliver-transfer (conn xfer-id octets)
   (cond
@@ -490,7 +492,7 @@ and faults without following or deleting anything."
            (fnn-fault "TCPCL registered source runtime unavailable"))
          (when (fnn-tclc-source-pending conn)
            (fnn-fault "TCPCL source continuation already owns END ACK"))
-         ;; Persist native borrow before callback escape; registry owns authority.
+         ;; Persist native borrow before callback escape; installer owns authority.
          (setf (fnn-tclc-source-pending conn) t
                (fnn-tclc-source-id conn) (second event)
                (fnn-tclc-source-root conn) (third event)
@@ -670,7 +672,7 @@ The caller keeps this connection and its socket until actual physical close."
               (unless (fnn-tclc-source-pending conn)
                 (fnn-tcl-apply conn (fnn-core 'fn-tcl-host-tick (fnn-tclc-session conn) now)))))))
         (otherwise (fnn-fault "TCPCL retained turn action unavailable")))
-    result))
+    (values result action)))
 
 (defun fnn-tcl-session (fd role params tag spool &key bundle trace (expect 0) on-ready refuse-inbound)
   "Compatibility consumer of the retained session driver."

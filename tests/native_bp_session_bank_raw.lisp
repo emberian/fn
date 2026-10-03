@@ -17,7 +17,7 @@
  (loop for form = (read stream nil :eof) until (eq form :eof) do
   (when (and (consp form) (eq (first form) 'defun)
              (member (second form) '(fn-bpsched-service fn-bpsched-next fn-bpsched-next-slot
-                       fn-bpsched-listener-index fn-bpsched-deadline fn-bpsched-timeout-p)))
+                       fn-bpsched-listener-index fn-bpsched-deadline fn-bpsched-timeout-p fn-bpsched-work-credit fn-bpsched-idle-p)))
    (eval (cons 'defun (cons (second form) (cons (third form)
     (remove-if (lambda (x) (and (consp x) (eq (car x) 'declare))) (cdddr form)))))))))
 (define-condition fnn-peer-dial-error (error) ())
@@ -37,7 +37,8 @@
 (defun fnn-core (name &rest args)
  (case name
   ((fn-bpsg-step fn-bpsg-release-ready fn-bpsg-key fn-bpsched-service fn-bpsched-next
-     fn-bpsched-next-slot fn-bpsched-listener-index fn-bpsched-deadline fn-bpsched-timeout-p)
+     fn-bpsched-next-slot fn-bpsched-listener-index fn-bpsched-deadline fn-bpsched-timeout-p
+     fn-bpsched-work-credit fn-bpsched-idle-p)
    (apply name args))
   (fn-bpsched-accept-plan '(:accept 1 9))
   (fn-bpsched-listener-step (first args))

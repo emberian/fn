@@ -1,5 +1,5 @@
 ; Proof-only abstraction. Full concatenation appears ONLY here, never in the
-; source producer/driver. This proposed boundary is not admitted evidence.
+; source producer/driver. The exact certificate determines admission evidence.
 (in-package "ACL2")
 (include-book "tcpcl-received-source")
 (set-verify-guards-eagerness 0)
@@ -17,16 +17,16 @@
  (fn-tcl-make-result (fn-tcl-result-session result)
   (fn-tcl-source-events-alpha (fn-tcl-result-events result))
   (fn-tcl-result-unconsumed result)))
-; Actual native source driver calls FN-TCL-STEP-SOURCE. The antecedent is the
-; maintained valid session/message domain; acceptance and funding are separate.
-(defthm fn-tcl-source-step-refines-session-step
- (implies (and (fn-tcl-sessionp s)
-               (fn-tcl-messagep m (fn-tcl-segment-mru s))
-               (fn-clock-timep now))
-  (equal (fn-tcl-source-result-alpha (fn-tcl-step-source s m now))
-         (fn-tcl-step s m now)))
- :hints (("Goal" :in-theory (enable fn-tcl-step-source fn-tcl-step
-                  fn-tcl-recv-segment-source fn-tcl-recv-segment
-                  fn-tcl-complete-source fn-tcl-complete
-                  fn-tcl-source-result-alpha fn-tcl-source-events-alpha
-                  fn-tcl-settle))))
+; Actual FN-TCL-STEP-SOURCE calls this receiver for transferring segments.
+; The only representation hypothesis is proper decoded data. No whole-state
+; predicate is needed for this algebraic boundary; malformed data is a separate
+; corrupted-state witness, never sanitized into durable acceptance.
+(defthm fn-tcl-source-recv-segment-boundary
+ (implies (true-listp (fn-tcl-xfer-segment-data m))
+  (equal (fn-tcl-source-result-alpha (fn-tcl-recv-segment-source s m now))
+         (fn-tcl-recv-segment s m now)))
+ :hints (("Goal" :in-theory
+  (enable fn-tcl-recv-segment-source fn-tcl-recv-segment
+          fn-tcl-complete-source fn-tcl-complete fn-tcl-source-result-alpha
+          fn-tcl-source-events-alpha fn-tcl-refuse fn-tcl-stage
+          fn-tcl-broken-stream fn-tcl-send-event))))

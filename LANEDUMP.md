@@ -2788,3 +2788,10 @@ The request factory isolates one ACL2 wire event. A retained ARTICLE preflight i
 Core warm: capture/source/scan guards admitted and work bounds admitted. Actual-source5128 checks pass full section output, Xref, dot/CRLF boundaries, arbitrary-width decimal setup and immutable replay at differing quanta. Renderer guards/universal byte and owner completion refinements remain open. Full owner warm dependency start refused44 exact dependencies; coordinating Integration reuse, no broad certification requested.
 
 Next: execute actual retained owner/native source path, consume Served available producer, implement lazy metadata setup and complete all original-dispatch frontiers (including completed-view Message-ID fallback), pair Web ready phase, consume Runtime physical window adapter and fault cases. Existing full-body references remain specifications; no actual retrieved payload should materialize on supported path. Current selected-capture source still has unbounded metadata selection/Xref-pair setup; this is explicit remaining work, not bounded-family completion. Stale configuration/capture currently fences as fault; recoverable policy-context behavior needs semantic decision/tests. No certificate/image/deployment claim.
+Continuing source followthrough: newly live receiver guards warm-admitted;
+actual source receiver boundary weakened/proved with sole proper-data hypothesis,
+reachable handshake positive and corrupted-data removal fixtures prepared.
+Final certs underway. ACL2 bounded work credit removes manufactured1ms sleeps
+between empty slots during real source/buffer/output work; actual16384-byte
+source/all8-service raw fixture has0 sleeps, idle9/10turns still waits. Whole
+semantic decode, long-source keepalive/input and full GC/work cost remain open.

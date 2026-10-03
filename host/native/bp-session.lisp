@@ -117,8 +117,10 @@
 
 (defun fnn-bp-session-loop (bank control listeners begin once service pending)
  "One writer: one installed listener attempt, one retained slot, one local turn."
- (let ((slot 2) (phase 0) (accepted nil) (once-tail nil) (listener-index 0))
+ (let ((slot 2) (phase 0) (accepted nil) (once-tail nil) (listener-index 0)
+       (work-credit 0) turn-status turn-action)
   (loop
+   (setq turn-status nil turn-action nil)
    (when control (fnn-bpnc-pump control))
    (let* ((live (fnn-bplc-live listeners))
           (index (and (consp live) (not (and once accepted))
@@ -146,7 +148,8 @@
    ;; Direct-index slot rotation avoids rebuilding/scanning the active roster.
    (let ((grant (aref (fnn-bpsb-slots bank) slot)))
     (when (and grant (fnn-bpsg-turn grant))
-     (when (eq (funcall (fnn-bpsg-turn grant)) :done)
+     (multiple-value-setq (turn-status turn-action) (funcall (fnn-bpsg-turn grant)))
+     (when (eq turn-status :done)
       (let ((key (fnn-core 'fn-bpsg-key (fnn-bpsg-row grant)))
             (incoming (eq (fourth (fnn-bpsg-row grant)) :incoming)))
        (let* ((finish (fnn-bpsg-finish grant))
@@ -170,8 +173,12 @@
    (when (and once accepted once-tail (zerop once-tail)
               (zerop (hash-table-count (fnn-bpsb-held bank)))
               (not (funcall pending))) (return))
+   (setq work-credit (fnn-core 'fn-bpsched-work-credit turn-status turn-action
+                              work-credit (length (fnn-bpsb-slots bank))))
    (sb-thread:thread-yield)
-   (sleep 0.001))))
+   (when (fnn-core 'fn-bpsched-idle-p work-credit) (fnn-bp-session-idle-wait)))))
+
+(defun fnn-bp-session-idle-wait () (sleep 0.001))
 
 (defun fnn-bp-session-start (bank host port params tag spool ready finish &optional supplied)
  "An outgoing context with a retained connect/handshake/session continuation."
@@ -210,12 +217,11 @@
              :retain (lambda (conn) (setf (fnn-bpsg-conn grant) conn)))
             (setq phase :session) :work)
            (:session
-            (let* ((*fnn-tcl-progress* nil)
-                   (conn (fnn-bpsg-conn grant))
-                   (result (fnn-tcl-turn conn)))
-             (when (eq result :done)
-              (setf (fnn-bpsg-result grant) (or (fnn-tclc-outcome conn) :uncertain)))
-             result))
+            (let* ((*fnn-tcl-progress* nil) (conn (fnn-bpsg-conn grant)))
+             (multiple-value-bind (result action) (fnn-tcl-turn conn)
+              (when (eq result :done)
+               (setf (fnn-bpsg-result grant) (or (fnn-tclc-outcome conn) :uncertain)))
+              (values result action))))
            (otherwise (fnn-fault "BP retained connect phase unavailable"))))))
    grant)))
 

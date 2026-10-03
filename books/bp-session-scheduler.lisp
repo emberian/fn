@@ -65,3 +65,13 @@
  (if (consp plan)
   (if (member-equal (fn-ag-car (car plan)) busy)
    (fn-bpsched-forward-entry (cdr plan) busy) (car plan)) nil))
+
+; A completed bounded input/source/output action prepays one slot sweep without
+; an artificial sleep at every empty slot. Idle/local polling does not do so.
+; This is scheduling cadence, not a resource return or overall latency bound.
+(defun fn-bpsched-work-credit (status action previous slots)
+ (declare (xargs :guard t))
+ (if (and (eq status :work) (member-eq action '(:source :buffer :encode :write)))
+  (nfix slots) (if (zp (nfix previous)) 0 (1- (nfix previous)))))
+(defun fn-bpsched-idle-p (credit)
+ (declare (xargs :guard t)) (zp (nfix credit)))

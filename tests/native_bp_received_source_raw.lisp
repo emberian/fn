@@ -26,6 +26,7 @@
 (defvar *flushes* 0)
 (defvar *publications* 0)
 (defun fnn-tcl-flush (conn) (declare (ignore conn)) (incf *flushes*))
+(defvar *bank-recording-core* (symbol-function 'fnn-core))
 (defun fnn-core (name &rest args)
  (case name
   ((fn-bpsrx-start fn-bpsrx-turn fn-bpsrx-authorizedp fn-tsc-at fn-bpsg-step fn-bpsg-release-ready) (apply name args))
@@ -36,7 +37,7 @@
   (fn-tcl-delivery-plan-messages nil)
   (fn-tcl-delivery-plan-progress-p t)
   (fn-tcl-delivery-plan-detail nil)
-  (otherwise (error "Unexpected received core ~s" name))))
+  (otherwise (apply *bank-recording-core* name args))))
 (defun source-case (cut)
  (let* ((bank (test-bank)) (conn (make-fnn-tcl-conn))
         (grant (test-grant bank 2 :incoming :socket conn))
@@ -79,3 +80,37 @@
 (source-case :generation)
 (source-case :publication)
 (format t "PASS actual incoming grant -> bounded received source -> one durable callback/END ACK; stale generation and publication cut retain/fence exact borrow.~%")
+
+;;; Actual loop cadence: a private source action keeps one bounded slot sweep
+;;; awake, while every local service and independent slot still rotates.
+(defvar *idle-waits* 0)
+(defun fnn-bp-session-idle-wait () (incf *idle-waits*))
+(let* ((bank (test-bank)) (conn (make-fnn-tcl-conn))
+       (grant (test-grant bank 2 :incoming :socket conn))
+       (root (list (make-list 16384 :initial-element 65)))
+       (*accepted* 2) (*idle-waits* 0) (*flushes* 0) (services nil) (turns 0)
+       (*fnn-tcl-source-start* (lambda (c id chain count)
+        (fnn-bp-session-source-start grant c id chain count 16384)))
+       (*fnn-tcl-source-turn* (lambda (c token) (fnn-bp-session-source-turn grant c token)))
+       (*fnn-tcl-deliver* (lambda (c id bytes)
+        (declare (ignore c id)) (assert (= (length bytes) 16384)) '(:accepted nil))))
+ (fnn-tcl-act conn (list '(:send (:xfer-ack 3 7 16384))
+                        (list :bundle-segments-received 7 root 16384)))
+ (setf (fnn-bpsg-turn grant)
+  (lambda () (incf turns) (fnn-tcl-source-tick conn)
+   (if (fnn-tclc-source-pending conn) (values :work :source)
+    (progn (setf (fnn-tclc-finished conn) t) (values :done :source)))))
+ (catch 'finished
+  (fnn-bp-session-loop bank nil :listeners (lambda (&rest xs) (declare (ignore xs))) nil
+   (lambda (action) (pushnew action services)
+    (when (zerop (hash-table-count (fnn-bpsb-held bank))) (throw 'finished t)))
+   (lambda () nil)))
+ (assert (> turns 256)) (assert (= (length services) 8))
+ (assert (zerop *idle-waits*)) (assert (= *flushes* 1)))
+(let ((bank (test-bank)) (*accepted* 2) (*idle-waits* 0) (services 0))
+ (catch 'finished
+  (fnn-bp-session-loop bank nil :listeners (lambda (&rest xs) (declare (ignore xs))) nil
+   (lambda (action) (declare (ignore action))
+    (incf services) (when (= services 10) (throw 'finished t))) (lambda () nil)))
+ (assert (= *idle-waits* 9)))
+(format t "PASS actual node cadence: 16384-byte private source/all8 services with zero artificial sleeps; idle node retains waits.~%")

@@ -22694,7 +22694,7 @@
     {
       "id": "PRF-1291",
       "title": "Actual incoming BP grant authorizes a retained private received-transfer operation",
-      "statement": "Native fnn-bp-session-source-start calls fn-bpsrx-start with the actual incoming session grant row, maintained transfer count and configured transfer MRU. fnn-bp-session-source-turn calls fn-bpsrx-turn and fn-bpsrx-authorizedp against the same actual grant generation, retains original segment chain and final END ACK across bounded fn-tsc-turn64 materialization, and calls existing durable delivery once. Changed incarnation or publication escape fences exact source debt without ACK or refund. This private operation does not issue public SAMEPRS providers. Source-step/session refinement, full semantic decode, complete GC/layout tariff and image/source-process composition remain outstanding.",
+      "statement": "Native fnn-bp-session-source-start calls fn-bpsrx-start with the actual incoming session grant row, maintained transfer count and configured transfer MRU. fnn-bp-session-source-turn calls fn-bpsrx-turn and fn-bpsrx-authorizedp against the same actual grant generation, retains original segment chain and final END ACK across bounded fn-tsc-turn64 materialization, and calls existing durable delivery once. Changed incarnation or publication escape fences exact source debt without ACK or refund. This private operation does not issue public SAMEPRS providers. Source-step/session refinement, full semantic decode, complete GC/layout tariff and image/source-process composition remain outstanding. The actual source receiver representation boundary fn-tcl-source-recv-segment-boundary assumes only true-listp of decoded segment data and equates source events under concatenation abstraction with the existing receiver, including outputs and resulting session. This does not prove the entire native cursor/materialization/publication composition.",
       "milestone": "M4",
       "requirements": [
         "REP-006"
@@ -22710,9 +22710,15 @@
         "tests/acl2/bp-session-received-source-tests.lisp",
         "host/native/bp-session.lisp",
         "host/native/bp-node.lisp",
-        "tests/native_bp_received_source_raw.lisp"
+        "tests/native_bp_received_source_raw.lisp",
+        "books/tcpcl-received-source.lisp",
+        "books/tcpcl-received-source-refinement.lisp",
+        "tests/acl2/tcpcl-received-source-refinement-tests.lisp"
       ],
-      "progress_note": "2026-10-03 source-first: actual passive node turn installs private constructor/resume callbacks; generic TCPCL spool remains separate. Raw actual caller1000-byte chain copies at most64 cursor actions per turn then one callback/ACK; stale generation and publication cut retain/fence exact borrow, no retry. Exact constructor guards/fixture farm pending; existing received-source driver guard/refinement certification remains owed."
+      "progress_note": "2026-10-03 source-first: actual passive node turn installs private constructor/resume callbacks; generic TCPCL spool remains separate. Raw actual caller1000-byte chain copies at most64 cursor actions per turn then one callback/ACK; stale generation and publication cut retain/fence exact borrow, no retry. Exact constructor guards/fixture farm pending; existing received-source driver guard/refinement certification remains owed. Warm actual source driver guards admitted; receiver branch boundary weakened from whole-state/message assumptions to the sole proper-data hypothesis and proved19961steps. Reachable handshake positive and corrupted-data hypothesis-removal fixtures prepared; exact source/guard/refinement certificates pending. ACL2 work credit removes per-empty-slot sleeps during real bounded source/buffer/output actions; raw16384-byte source/all8 services has zero artificial sleeps, idle node keeps waits.",
+      "events": [
+        "fn-tcl-source-recv-segment-boundary"
+      ]
     },
     {
       "id": "PRF-1290",
