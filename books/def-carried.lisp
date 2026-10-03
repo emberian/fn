@@ -819,6 +819,14 @@
          (fn-cd-stale-owed (cdr owed) st w))
         (t (car owed))))
 
+(defun fn-cd-all-stale-owed (owed st w)
+  (declare (xargs :mode :program))
+  ; every owed name that is no function returning ST in this world
+  (cond ((atom owed) nil)
+        ((fn-cd-stale-owed (list (car owed)) st w)
+         (cons (car owed) (fn-cd-all-stale-owed (cdr owed) st w)))
+        (t (fn-cd-all-stale-owed (cdr owed) st w))))
+
 (defun fn-cd-invariant-problem (r w)
   (declare (xargs :mode :program))
   (let ((formals (getpropc r 'formals :none w)))
@@ -869,16 +877,21 @@
            (car (intersection-eq owed listed)) (car incomplete) name))
      ((and st (fn-cd-stale-owed owed st w))
       (msg "~x0 is owed under ~x1 by ~x2 but is no function returning the ~
-            carried state ~x3 in this world: a stale owed name; remove it"
-           (fn-cd-stale-owed owed st w) (car incomplete) name st))
+            carried state ~x3 in this world: a stale owed name; remove it.  ~
+            Every stale owed name: ~x4"
+           (fn-cd-stale-owed owed st w) (car incomplete) name st
+           (fn-cd-all-stale-owed owed st w)))
      (unlisted
       (msg "host-called entry ~x0 (fn-interfaces) returns the carried state ~
             ~x1 and is neither a transition nor an establishing point of ~x2~@3: ~
-            its preservation theorem is owed"
+            its preservation theorem is owed.  Every such entry: ~x4"
            unlisted st name
            (if incomplete
                (msg ", nor owed under ~x0" (car incomplete))
-             "")))
+             "")
+           (set-difference-eq
+            (fn-cd-returning-entries (table-alist 'fn-interfaces w) st w)
+            (append listed owed))))
      (t nil))))
 
 (defun fn-cd-normal-entries (name suffix st entries w)
