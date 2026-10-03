@@ -71,18 +71,25 @@ set, exact record, candidate replay/open result and generated final name."
       (fnn-refuse "ACL2 refused administrative publication: ~a"
                   (fnn-core 'fn-native-admin-host-publication-reason result)))))
 
-(defun fnn-admin-authorize-owner (store config-records record observed-names)
-  "A live owner's authorization: ACL2's fn-owner-cfg-native-admin-authorize
-from the owner's carried state (books/config-owner-live-authorize.lisp
-fn-olau-authorize, PKT-837), equal to the decision fnn-admin-authorize asks
-over a history it reads (fn-olau-authorize-is-the-replayed-authorization)."
-  (let ((result (fnn-owner-core
-                 'fn-owner-cfg-native-admin-authorize
-                 (mapcar #'fnn-octet-list config-records) (fnn-octet-list record)
-                 (fnn-admin-lock-observation store)
-                 (mapcar (lambda (name) (fnn-octet-list (fnn-string-octets name)))
-                         observed-names)
-                 (fnn-store-config store))))
+(defun fnn-admin-authorize-owner (store record)
+  "A live owner's authorization: ACL2's
+fn-owner-cfg-native-admin-authorize-carried over the owner's carried
+configuration history (books/config-owner-live-authorize-carried.lisp,
+sweep S033), equal to fn-olau-authorize over that history and the names on
+disk (fn-olau-authorize-carried-is-the-observed-authorization), itself the
+decision fnn-admin-authorize asks over a history it reads
+(fn-olau-authorize-is-the-replayed-authorization).  The host reads no
+history: it observes one name, the next generation's, which ACL2 names."
+  (let* ((next (fnn-owner-core 'fn-owner-cfg-next-name))
+         (occupied (and (stringp next)
+                        (fnn-lstat (fnn-join (fnn-config-dir store) next))
+                        t))
+         (result (fnn-owner-core
+                  'fn-owner-cfg-native-admin-authorize-carried
+                  (fnn-octet-list record)
+                  (fnn-admin-lock-observation store)
+                  occupied
+                  (fnn-store-config store))))
     (if (eq (fnn-core 'fn-native-admin-host-publication-status result) :accepted)
         result
       (fnn-refuse "ACL2 refused administrative publication: ~a"
@@ -255,13 +262,11 @@ Answers :accepted once the record is durable and the owner installed it, or
         ;; publication or a fault is not a refusal: the owner keeps the
         ;; stage, the store is fenced, and recovery decides.
         (handler-case
-            (let* ((observation (fnn-config-record-observation store))
-                   (config-records (fnn-config-records-from-observation observation))
-                   (authorization
-                     ;; Over the state the owner carries (PKT-837, dev's
-                     ;; PKT-840): no Store record read, no history replayed.
-                     (fnn-admin-authorize-owner store config-records record
-                                                (mapcar #'car observation))))
+            (let ((authorization
+                    ;; Over the state the owner carries (PKT-837, dev's
+                    ;; PKT-840; sweep S033): no Store record read, no
+                    ;; configuration record read, one name observed.
+                    (fnn-admin-authorize-owner store record)))
               (fnn-admin-publish store record authorization))
           (fnn-store-error (e)
             (when (eq (type-of e) 'fnn-store-error)
@@ -463,10 +468,16 @@ every :set-limit row (ACL2's fn-store-lim-effective over the records)."
     (fnn-core 'fn-store-lim-effective (fnn-store-sealed-config store)
               (mapcar #'fnn-octet-list (mapcar #'cdr observation)))))
 
-(defun fnn-lim-decision (store plan values use run-mb core observations)
+(defun fnn-lim-decision (store plan values use run-mb core observations
+                         &optional (history nil history-p))
+  "ACL2's limit decision.  HISTORY is the heap history observation
+(fnn-heap-history-observation over VALUES); a live caller takes it off the
+owner mutex and passes it (sweep S033), the offline one lets it be taken
+here."
   (fnn-core 'fn-lim-decide (fnn-lim-plan-field plan) (fnn-lim-plan-n plan)
             values use run-mb core +fnn-gc-nursery-octets+ observations
-            (fnn-heap-history-observation (fnn-store-root store) values)))
+            (if history-p history
+              (fnn-heap-history-observation (fnn-store-root store) values))))
 
 (defun fnn-lim-reason (decision)
   (fnn-core 'fn-lim-decision-reason decision))
@@ -487,7 +498,20 @@ ordinary live reconfiguration, and on :applied served at once."
          ;; The machine and image observations, off the mutex.
          (core (fnn-heap-image-observation))
          (observations (fnn-heap-observations))
-         (run-mb (floor (sb-ext:dynamic-space-size) 1048576)))
+         (run-mb (floor (sb-ext:dynamic-space-size) 1048576))
+         ;; Sweep S033: the history observation walks the journal directory,
+         ;; so it is taken off the mutex too, over the profile the owner
+         ;; carries (read in a quantum of its own); the deciding quantum
+         ;; uses it only while that carry is unchanged, and observes again
+         ;; when a concurrent limit change moved it.
+         (seen nil) (history nil))
+    (loop
+     (let ((carry (fnn-owner-serialized
+                   service nil (lambda () (fnn-owner-core 'fn-owner-limit-carried)))))
+       (when (and seen (equal (car carry) seen)) (return))
+       (setq seen (car carry)
+             history (and seen (fnn-heap-history-observation
+                                (fnn-store-root store) seen)))))
     (fnn-owner-serialized
      service nil
      (lambda ()
@@ -503,7 +527,11 @@ ordinary live reconfiguration, and on :applied served at once."
               (d (progn
                    (unless (and (consp carry) values funded)
                      (fnn-fault "owner carries no limit profile"))
-                   (fnn-lim-decision store plan values use run-mb core observations)))
+                   (fnn-lim-decision store plan values use run-mb core observations
+                                     (if (equal values seen)
+                                         history
+                                       (fnn-heap-history-observation
+                                        (fnn-store-root store) values)))))
               (line (fnn-lim-line plan d store values funded)))
          (fnn-err "LIMIT ~a" line)
          (if (not (eq (fnn-core 'fn-lim-decision-status d) :accepted))

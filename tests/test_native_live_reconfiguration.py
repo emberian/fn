@@ -322,3 +322,82 @@ class LiveReconfigurationImageTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+GENERATIONS = 500
+
+
+@requires(IMAGE)
+class LiveReconfigurationCostTests(unittest.TestCase):
+    """Sweep S033: a live reconfiguration reads no configuration history
+    under the owner mutex.  Before it, fnn-owner-live-reconfigure-locked
+    listed the configuration directory and read and decoded every record
+    file while it held the mutex, so its hold grew with the history.  The
+    authorization now uses the owner's carried history and observes one name
+    (the next generation's file).
+
+    Measured with FN_OWNER_MEASURE=1 (the owner's per-class hold report at
+    stop): the control holds of 20 `group create's at about 500
+    generations against 20 on a fresh store.  The witness of correctness
+    at the same depth: an occupied next name is refused by name (:occupied)
+    and leaves the history unchanged."""
+
+    def setUp(self):
+        self.node = Node(self, IMAGE)
+        self.root, self.store = self.node.root, self.node.store_path
+        created = self.node.operator("init", "--max-config-generations", "2048", "fn.test")
+        self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
+
+    def creates(self, prefix, count):
+        for i in range(count):
+            made = self.node.operator("group", "create", "{}.{}".format(prefix, i))
+            self.assertEqual(made.returncode, EXIT_OK, made.stderr.decode())
+
+    def measured(self, prefix, count):
+        owner = self.node.start(env={"FN_OWNER_MEASURE": "1"})
+        self.creates(prefix, count)
+        self.node.stop(process=owner)
+        rows = {}
+        for line in owner.stderr.since(0).decode("utf-8", "replace").splitlines():
+            if line.startswith("fn-owner-measure "):
+                words = line.split()
+                rows[words[1]] = {k: int(v) for k, v in
+                                  (w.split("=", 1) for w in words[2:])}
+                print("S033", prefix, line, flush=True)
+        self.assertIn("control", rows, rows)
+        return rows["control"]
+
+    def config_files(self):
+        return sorted(p.name for p in (self.store / "config").iterdir())
+
+    def test_reconfiguration_hold_does_not_grow_with_the_history(self):
+        shallow = self.measured("fn.shallow", 20)
+        owner = self.node.start()
+        self.creates("fn.depth", GENERATIONS)
+        self.node.stop(process=owner)
+        deep = self.measured("fn.deep", 20)
+        depth = len(self.config_files())
+        print("S033 generations={} shallow control held-us={} max-us={} holds={}; "
+              "deep held-us={} max-us={} holds={}".format(
+                  depth, shallow["held-us"], shallow["max-us"], shallow["holds"],
+                  deep["held-us"], deep["max-us"], deep["holds"]), flush=True)
+        self.assertGreaterEqual(depth, GENERATIONS)
+        # Per hold, at 25 times the history, within 3x (the run's noise):
+        # a hold that read the history grew with it.
+        self.assertLess(deep["held-us"] / deep["holds"],
+                        3 * shallow["held-us"] / shallow["holds"] + 2000,
+                        (shallow, deep))
+
+        # The occupied next name, at depth: refused by name, nothing written.
+        owner = self.node.start()
+        before = self.config_files()
+        nxt = "{:08d}.cfg".format(
+            max(int(n[:8]) for n in before if n.endswith(".cfg")) + 1)
+        (self.store / "config" / nxt).write_bytes(b"")
+        refused = self.node.operator("group", "create", "fn.occupied")
+        self.assertEqual(refused.returncode, EXIT_REFUSED, refused.stderr.decode())
+        self.assertIn(b"occupied", refused.stdout + refused.stderr)
+        self.assertEqual(self.config_files(), sorted(before + [nxt]))
+        self.assertIsNone(owner.poll(), "the refusal stopped the owner")
+        (self.store / "config" / nxt).unlink()
+        self.node.stop(process=owner)

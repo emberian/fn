@@ -462,7 +462,6 @@
   "fn-owner-bp-source-decision-line": "bp: a :program host entry the K2 2b burn-down makes :logic + guard-verified by subsystem (baselined 2026-09-29, lane depth-debt-3; host/bp-native-app-host.lisp)",
   "fn-owner-bp-tcpcl-ingress": "bp: a :program host entry the K2 2b burn-down makes :logic + guard-verified by subsystem (baselined 2026-09-29, lane depth-debt-3; host/bp-native-app-host.lisp)",
   "fn-owner-bp-transit-outcome": "owner: a :program host entry the K2 2b burn-down makes :logic + guard-verified by subsystem (baselined 2026-09-29, lane depth-debt-3; host/owner-host.lisp)",
-  "fn-owner-cfg-native-admin-authorize": "owner: a :program host entry the K2 2b burn-down makes :logic + guard-verified by subsystem (baselined 2026-09-29, lane depth-debt-3; host/owner-host.lisp)",
   "fn-owner-chunk-span": "owner: a :program host entry the K2 2b burn-down makes :logic + guard-verified by subsystem (baselined 2026-09-29, lane depth-debt-3; host/owner-host.lisp)",
   "fn-owner-close": "owner: a :program host entry the K2 2b burn-down makes :logic + guard-verified by subsystem (baselined 2026-09-29, lane depth-debt-3; host/owner-host.lisp)",
   "fn-owner-config-served": "owner: a :program host entry the K2 2b burn-down makes :logic + guard-verified by subsystem (baselined 2026-09-29, lane depth-debt-3; host/owner-host.lisp)",

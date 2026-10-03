@@ -1375,9 +1375,14 @@
 (definterface fn-owner-catchup-plans
   :class :common-lisp-compliant)
 
-(definterface fn-owner-cfg-native-admin-authorize
-  :class ::program
-  :kinds ((config-octet-records fn-octet-list-listp) (record-octets fn-cbor-octet-listp) (observed-name-octets fn-octet-list-listp)))
+(definterface fn-owner-cfg-native-admin-authorize-carried
+  :class :common-lisp-compliant
+  :kinds ((record-octets fn-cbor-octet-listp))
+  :keystones ((fn-olau-authorize-carried-is-the-observed-authorization
+               :via fn-olau-authorize-carried)))
+
+(definterface fn-owner-cfg-next-name
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-checkpoint-clone-phase
   :class :common-lisp-compliant

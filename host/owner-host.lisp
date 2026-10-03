@@ -96,7 +96,7 @@
 (include-book "../books/config-owner-publish")
 ; PRF-274: the live completion from the owner's carried node (fn-oclc-publish).
 (include-book "../books/config-owner-carried")
-(include-book "../books/config-owner-live-authorize")
+(include-book "../books/config-owner-live-authorize-carried")
 (include-book "../books/owner-tls-prefix")
 (include-book "../books/owner-config-observe")
 (include-book "../books/owner-served-carried")
@@ -327,22 +327,33 @@
 ;; the replaying decision it replaced (KEYSTONE
 ;; fn-olau-authorize-is-the-replayed-authorization).  Called from
 ;; host/native/admin.lisp fnn-admin-authorize-owner, after
-;; fn-owner-reconfigure-authorizedp (PRF-287) answered for the staged record.
-(defun fn-owner-cfg-native-admin-authorize
-    (config-octet-records record-octets lock-owned observed-name-octets profile state)
-  (declare (xargs :stobjs state :mode :program
-                  :guard (and (fn-cbor-octet-listp record-octets)
-                              (fn-octet-list-listp config-octet-records)
-                              (fn-octet-list-listp observed-name-octets))))
-  (let* ((config-records (fn-store-cfg-decode-records config-octet-records))
-         (parsed (fn-cfg-decode-exact record-octets))
-         (names (fn-store-octet-lists->strings observed-name-octets)))
+;; fn-owner-reconfigure-authorizedp (PRF-287) answered for the staged record,
+;; through the wrapper below, over the carried history.
+;; Sweep S033: the same authorization over the owner's carried configuration
+;; history, with no history read: the host observes only whether the next
+;; generation's file (fn-owner-cfg-next-name, from the carried
+;; configuration) already exists, and passes that as OCCUPIED
+;; (books/config-owner-live-authorize-carried.lisp fn-olau-authorize-carried;
+;; KEYSTONE fn-olau-authorize-carried-is-the-observed-authorization: under the
+;; owner's invariant it equals fn-olau-authorize over the carried history and
+;; the names on disk).  Called from host/native/admin.lisp
+;; fnn-admin-authorize-owner.  Neither writes any global.
+(defun fn-owner-cfg-next-name (state)
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
+  (value (fn-olau-next-name (fn-owner-ocfg state))))
+
+(defun fn-owner-cfg-native-admin-authorize-carried
+    (record-octets lock-owned occupied profile state)
+  (declare (xargs :stobjs state
+                  :guard (and (boundp-global 'fn-owner state)
+                              (fn-cbor-octet-listp record-octets))))
+  (let ((parsed (fn-cfg-decode-exact record-octets)))
     (value
-     (if (or (equal config-records :bad) (null config-records)
-             (equal names :bad) (not (fn-record-parse-okp parsed)))
+     (if (not (fn-record-parse-okp parsed))
          (fn-native-admin-publication-result :refused :decode nil nil nil)
-       (fn-olau-authorize (fn-owner-ocfg state) config-records
-                          (fn-record-parse-value parsed) lock-owned names profile)))))
+       (fn-olau-authorize-carried (fn-owner-ocfg state)
+                                  (fn-record-parse-value parsed)
+                                  lock-owned (and occupied t) profile)))))
 
 (defun fn-owner-clock-observation (state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
