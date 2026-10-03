@@ -1,0 +1,24 @@
+# Consistency audit: source-backed obligations, not a correctness proof
+#>fn_consistency_index
+^"provenance"{
+ consumer_revision: "9df4a3a4e"
+ compared_integration_revision: "3f39e6df9"
+ workbench_revision: "651b535"
+ corpus_exclusion: ".spw/_workbench/**"
+ @ninep: ~"./ninep.spw"
+ @tcpcl: ~"./tcpcl.spw"
+ @web: ~"./web.spw"
+ @consumer: ~"./consumer.spw"
+ @sweep: ~"./sweep.spw"
+ @machines: ~"../../machines.spw"
+}
+^"coverage"{
+ detailed: ["9P session, transport, mount reserve/pin/return", "owner commit phase and stop drain", "TCPCL segment, ACK, refusal, termination, outbound pump", "peer pull preamble-to-round composition"]
+ remaining: ["NNTP authentication/post/reader full leaves", "BP receiver workflow/fragment/checkpoint full leaves", "decoded worker assignment/lifecycle full leaves", "history/reclaim and publication full leaves", "consumer account/key adoption", "extent bank/allocator full leaves"]
+ evidence_scope: "Inspection only unless individual record identifies executed check. No major family is declared complete."
+}
+^"recipes"{
+ commands: ["npm --prefix .spw/_workbench run spw -- roots", "npm --prefix .spw/_workbench run spw -- select .spw/index.spw --selector navigable --summary", "npm --prefix .spw/_workbench run spw -- select .spw/audits/consistency/ninep.spw --selector navigable --summary"]
+ observed: "roots reports consumer .spw and separate infrastructure @workbench; navigable returns path and reference rows with source line positions"
+ friction: "Referenced machines.spw can temporarily be absent while another horse writes the shared scaffold; missing file must remain explicit rather than inferred coverage."
+}
