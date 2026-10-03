@@ -2488,3 +2488,15 @@ The snapshot now hashes trace.lisp along with every existing subject/harness;
 post-run source hashes were rechecked. Root runtime tree was not changed.
 Actual mux fixture now asserts all SIX results, retaining END alongside COLD.
 Four focused tests after that followthrough PASS0.429s. No image rebuild.
+
+
+08:15 final composition:811cc7b1a acceptance generation/renderer + real native
+SCN1110 selector; f333d9cc0 one consumed completion under held source dependency;
+c43978f7b actual12-turn witness. Scheduler+generation test successor certificate
+certify-20261003T120605Z-1742261 PASSED2/0 indexed, all own REPLs stopped.
+No further code edits before matching image consumer. Integration/Assembly have
+allsource; Empirical exact selector NativeBpNodeTests.test_keepalive_peer_does_not_block_second_canonical_request.
+Root owns NEWNEWS tariff; Tools final fair push93e/8df/879 and COLD pullb138/deb
+receipts remain inherited intact, native SCN1106 execution delegated to the same
+convergence image. Important pending BP source borrow is conservatively held at
+terminal; no producer cancellation/refund is manufactured.
