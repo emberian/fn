@@ -21872,12 +21872,14 @@
         "host/owner-host.lisp",
         "host/interfaces.lisp",
         "books/owner-reclaim-seal.lisp",
-        "tests/acl2/owner-reclaim-seal-tests.lisp"
+        "tests/acl2/owner-reclaim-seal-tests.lisp",
+        "planning/evidence/reclaim-boundary-2026-10-03/repl.log",
+        "planning/evidence/reclaim-boundary-2026-10-03/result.json"
       ],
       "events": [
         "fn-orcs-predict-seal-refines-intern"
       ],
-      "progress_note": "Boundary admitted in scoped actual book world at362steps/<0.01s and actual normal/DTN host prefixes at frozen1a946582c passed. New literal full-output/effect positive and no-bad omission teeth are being admitted; status remains planned pending their matching qualification. Host files are LD-loaded, not certified."
+      "progress_note": "Actual normal/DTN host prefixes at frozen1a946582c passed. Full output/effect positive and no-bad omission teeth admitted31/33steps; all19 existing/new test forms admitted in scoped cached world. Matching changed-teeth root certification pending; host files are LD-loaded, not certified. No whole reclaim/custody/allocation claim."
     }
   ]
 }

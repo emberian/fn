@@ -9900,6 +9900,8 @@ be0edaf71d7243242268c98a4d76259d96f60b413e871a2db75a6463cfcbd59d 11591 planning/
 9c5eb1676be80dad62fe4d95ae05495c42924f02059122edb7dbc02fb4c4140a 2327 planning/evidence/receiver-response-status-repair-2026-09-30/retention-theorem.log
 c8f97ca2a54dfc01a697d59e9b6550904b73fa12872ee06371e1e1593143c03f 2163 planning/evidence/receiver-response-status-repair-2026-09-30/setup.lisp
 c5cbe2d751aa720e3154bf1b5865943a0582f8767659f19597e38c42d371fa09 1039 planning/evidence/receiver-turn-modern-fresh-source-20260930/manifest.json
+3d2c0503f6fc05867d6279878f76f69a1933c89b7fcc53422de49eed94481159 55482 planning/evidence/reclaim-boundary-2026-10-03/repl.log
+5e289ab52f9e9b17800d79e79e4b4fa58c773d44170f47ed3adb5f9953a1a548 459 planning/evidence/reclaim-boundary-2026-10-03/result.json
 9ea47440a682543de958ee27d622e7b3074e40fbf16e20baefc8d010ed6bb047 9552 planning/evidence/reclaim-d13-2026-09-25.md
 3d67b31f2f6ce9977b216be562944a481d55e1d5293085ffd9e0183db417ac51 1738 planning/evidence/reclaim-dry-run-a8-2026-09-29.md
 e30ed0b1e3b966fcf204b25991510894466b1dfffadc622dff1da1011ebab4a5 22317 planning/evidence/reclaim-host-2026-09-25.md
