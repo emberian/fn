@@ -141,3 +141,12 @@ The native lifecycle adapter supplies that physical observation to
 `fn-pvl-runtime-return-step`; ordinary borrow and drain transitions remain
 available. This covers global arena-return custody; per-log reseat failures
 remain on the Store close carrier and prevent its joined settlement.
+
+The pull/catch-up runtime is installed once before its registered worker can
+start. Failed/timed-out join retains the runtime and journals/flights; a
+post-create start failure recovers the actual actor's thread. Worker unwind
+records terminal cleanup separately from physical completion. A failed cleanup
+retains its primary condition and runtime, while a nonlocal cleanup exit
+retains the once-only calling stage. Close refuses both debts and never retries
+those release steps. A definite no-child start can remove the unused runtime.
+These receipts do not establish full transport custody or a resource refund.

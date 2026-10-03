@@ -4100,3 +4100,16 @@ fixture passes nine helper outcomes plus command failures. Depends on shared
 fnn-arena-return-observation physical seam; current native joins remain pending.
 Exact four-root2674541 certificate refresh certifies PRF1305 receiver boundary;
 PRF1306 full launcher reservation correspondence remains planned.
+Runtime pull/catch-up actor follow-through (2026-10-03)
+----------------------------------------------------
+Actual pull worker start/close now share registered actor reservation/latch and
+physical join; the runtime table is published atomically before spawn. Failed
+join retains the live runtime, post-create failure recovers thread custody,
+no-child removes only its own unused table entry. Actual worker unwind records
+cleanup stage/debt before release, preserving primary failure and preventing
+close from erasing failed/torn cleanup after a physical join. Real SBCL thread
+schedules over recording journal/transport leaves PASS~0.23s including held
+cleanup, late uncertainty/fault/raw throw, sibling close, no-child, parked
+post-create compensation and after-release failure. Complete transport custody
+(especially aliases cleared by existing flight cleanup), charging and native
+interpreter correspondence remain open; no physical endpoint verdict yet.
