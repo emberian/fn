@@ -304,7 +304,7 @@ FN_NATIVE_EXTENT_CACHE_TEST_OFF=1 (the matched measurement's cache-off arm)."
   `(fnn-cold-call ,name ,@arguments (fnn-live-page-read-pool)))
 
 (defstruct (fnn-cold-worker (:constructor %make-fnn-cold-worker))
-  row thread token result phase next
+  row thread token result phase next decoded
   (ready (sb-thread:make-waitqueue :name "fn cold job")))
 
 ;; Allocated only after the installed baseline covers every persistent
@@ -415,6 +415,9 @@ FN_NATIVE_EXTENT_CACHE_TEST_OFF=1 (the matched measurement's cache-off arm)."
 (declaim (notinline fnn-extent-window-outcome))
 (defun fnn-extent-window-outcome (worker token)
   "Scalar-only terminal disposition; integrity failure is never a new miss."
+  (when (fn-pwz-tokenp token)
+    (return-from fnn-extent-window-outcome
+      (fnn-extent-decoded-window-outcome worker token)))
   (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
     (unless (fnn-extent-executor-observe-returned worker)
       (return-from fnn-extent-window-outcome :pending))
@@ -496,6 +499,10 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
                            (fnn-core-cold-single 'fn-owner-page-read-ledger (fnn-live-page-read-pool))
                            (fnn-cold-worker-row worker) token :returned))
       (return-from fnn-extent-window-release :stale-job))
+    (when (and (fnn-cold-worker-decoded worker)
+               (eq (fnn-decoded-activation-stage (fnn-cold-worker-decoded worker)) :calling))
+      (fnn-fault "decoded torn semantic step retains its cold debit"))
+    (setf (fnn-cold-worker-decoded worker) nil)
     (setf (fnn-cold-worker-result worker) nil)
     (destructuring-bind (word row &rest ignored)
         (fnn-core-cold-pool 'fn-owner-page-window-executor-release
@@ -530,6 +537,10 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
                            (fnn-core-cold-single 'fn-owner-page-read-ledger (fnn-live-page-read-pool))
                            (fnn-cold-worker-row worker) token :cancelled-returned))
       (return-from fnn-extent-window-settle-cancelled :stale-job))
+    (when (and (fnn-cold-worker-decoded worker)
+               (eq (fnn-decoded-activation-stage (fnn-cold-worker-decoded worker)) :calling))
+      (fnn-fault "decoded torn semantic step retains its cancelled debit"))
+    (setf (fnn-cold-worker-decoded worker) nil)
     (setf (fnn-cold-worker-result worker) nil)
     (destructuring-bind (word row &rest ignored)
         (fnn-core-cold-pool 'fn-owner-page-window-executor-settle-cancelled
@@ -556,8 +567,7 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
                      (fnn-err "PAGE-IO dispatch-failed token=~s worker=retained buffer=none" token)
                      (error 'fnn-extent-fault :message "arena-extent-read: injected job dispatch error"))
                  (cond ((fn-pwz-tokenp token)
-                        (fnn-core-cold-single 'fn-owner-page-window-decoded-refusal)
-                        (fnn-fault "decoded executor funding is not installed"))
+                        (fnn-extent-decoded-window-run worker token))
                        ((fnn-extent-window-p token)
                         (fnn-extent-window-run worker token))
                        (t (fnn-extent-prefetch token))))
@@ -669,6 +679,9 @@ No cancellation, timeout or thread termination releases a job or baseline."
 (defun fnn-extent-issue-window (descriptor)
   "Staged only: core ticket, demand, typed lease and exact slot in one call.
 The served caller must await complete demand/allocator and descriptor joins."
+  (when (eq (fnn-core 'fn-owner-page-decoded-window-price-status descriptor)
+            :unpriced-decoded-window)
+    (return-from fnn-extent-issue-window (values nil :unpriced-decoded-window nil)))
   (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
     (let ((worker *fnn-cold-free*))
       (unless (and worker (not *fnn-cold-stopping*))

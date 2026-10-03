@@ -5414,3 +5414,17 @@
 (definterface fn-hist$p-candidate-word :class ::common-lisp-compliant :kinds ((expected-count natp))
  :raw-with (fn-hist$pcorr-implies-wfp fn-hist$p-count-natp))
 (definterface fn-owner-orcp-load-catalog :class :program)
+; PRF-1288: actual private decoded activation and SAME-pool scalar borrow.
+; Complete decoded constructor/GC tariff remains explicitly unpriced.
+(definterface create-fn-decoded-job :class :common-lisp-compliant
+  :raw-guarded (0 nil (fn-decoded-job)))
+(definterface fn-dwj-begin :class :common-lisp-compliant)
+(definterface fn-dwj-one :class :common-lisp-compliant)
+(definterface fn-dwj-read-observation :class :common-lisp-compliant)
+(definterface fn-owner-page-decoded-job-assign :class :common-lisp-compliant)
+(definterface fn-owner-page-decoded-job-outcome :class :common-lisp-compliant)
+(definterface fn-owner-page-decoded-job-byte-at :class :common-lisp-compliant)
+(definterface fn-pwz-cold-descriptor :class :common-lisp-compliant)
+(definterface fn-pwz-nth :class :common-lisp-compliant :kinds ((index natp)))
+(definterface fn-owner-page-decoded-window-price-status :class :common-lisp-compliant)
+(definterface fn-oct-nth :class :common-lisp-compliant)
