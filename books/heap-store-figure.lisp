@@ -848,6 +848,27 @@
          (fn-heap-nursery-trigger d nursery))
   :hints (("Goal" :in-theory (enable fn-heap-nursery-trigger))))
 
+; The runtime capture is the actual fixed-process trigger, not the nursery
+; cap used to solve the launcher's least dynamic-space equation.
+(defun fn-heap-runtime-protected-octets (profile core nursery)
+ (declare (xargs :guard t))
+ (+ (fn-heap-store-base-octets profile core nil)
+    (* 2 (max *fn-heap-nursery-least-octets* (nfix nursery)))))
+
+; Adding backing can raise the launcher's trigger. Re-solve that room rather
+; than spending it as the child bank's headroom. Preserve any prior surplus.
+(defun fn-heap-grow-runtime-dynamic (dynamic extra nursery-cap)
+ (declare (xargs :guard t))
+ (let* ((d (nfix dynamic)) (extra (nfix extra))
+        (backing (nfix (- d (* 2 (fn-heap-nursery-trigger d nursery-cap))))))
+  (max (+ d extra) (fn-heap-with-nursery (+ backing extra) nursery-cap))))
+(defthm fn-heap-grow-runtime-dynamic-covers-addition
+ (<= (+ (nfix dynamic) (nfix extra))
+     (fn-heap-grow-runtime-dynamic dynamic extra nursery-cap))
+ :rule-classes :linear
+ :hints (("Goal" :in-theory (e/d (fn-heap-grow-runtime-dynamic)
+                                (fn-heap-with-nursery fn-heap-nursery-trigger)))))
+
 ; THE FIGURE, in octets.
 (defun fn-heap-store-figure-octets (profile core nursery observed)
   (declare (xargs :guard t))

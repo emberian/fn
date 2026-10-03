@@ -11,6 +11,7 @@
 (include-book "../books/incoming-buffer-carrier")
 (include-book "../books/page-read-pool-state")
 (include-book "../books/page-read-binding-revision")
+(include-book "../books/page-read-budget-growth")
 
  ; A served recovery is selected explicitly before Store open. Opening an
 ; offline Store supplies a separate context; absence alone grants no I/O.
@@ -535,3 +536,22 @@
  (and (fn-owner-page-read-default-worker-reservedp slot fn-page-read-pool)
       (not (logbitp slot
              (fn-prl-nth 1 (fn-prl-nth 6 (fn-prp-data fn-page-read-pool)))))))
+
+; Actual live limit publication holds owner->extent through preview and apply.
+; Permanent backing, outstanding rows and readiness metadata are untouched.
+(defun fn-owner-page-read-protected-growth-preview (amount fn-page-read-pool)
+ (declare (xargs :stobjs fn-page-read-pool :guard t))
+ (if (not (fn-owner-page-read-default-installedp fn-page-read-pool)) :at-restart
+   (mv-let (word ledger)
+    (fn-prl-resident-shrink amount (fn-owner-page-read-ledger fn-page-read-pool))
+    (declare (ignore ledger))
+    (if (eq word :protected-growth-admitted) :affordable :at-restart))))
+(defun fn-owner-page-read-protected-growth (amount fn-page-read-pool)
+ (declare (xargs :stobjs fn-page-read-pool :guard t))
+ (if (not (fn-owner-page-read-default-installedp fn-page-read-pool))
+     (mv :at-restart fn-page-read-pool)
+   (mv-let (word ledger)
+    (fn-prl-resident-shrink amount (fn-owner-page-read-ledger fn-page-read-pool))
+    (if (not (eq word :protected-growth-admitted)) (mv :at-restart fn-page-read-pool)
+      (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
+       (mv word fn-page-read-pool))))))

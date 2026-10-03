@@ -23127,6 +23127,33 @@
         "tests/acl2/peer-flight-startup-tests.lisp"
       ],
       "progress_note": "Selected source definitions/guards and both numerical keystones pass in retained actual bank/heap world. Literal machine-fit/startup teeth and fresh private local-stobj flight/work exhaustion/settlement fixture pass. Profile codec, protected DEFAULT composition and actual Bounds worker custody are in progress. No certificate/native complete funding claim. Updated actual source guards pass for signed-off_t quota, real two buffer wrappers/empty backing, inert 52-byte codec and DEFAULT peer protection. Four codec adversarial/boundary witnesses and composed disjoint heap fixture pass. Generic codec round-trip and general DEFAULT partition theorem remain owed; actual native profile capture/worker consumer are being composed."
+    },
+    {
+      "id": "PRF-1310",
+      "title": "Monotonic DEFAULT pool reduction preserves issued custody and funding",
+      "statement": "fn-prl-resident-shrink transfers only uncharged resident budget to protected Store growth. Outstanding charged vectors, generations, bindings and baseline are unchanged; an initially funded ledger remains funded. Actual host preview/apply must run under the owner-to-extent mutex across publication. Native boundary refinement and whole physical pricing remain separate.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-048"
+      ],
+      "depends_on": [
+        "PRF-1301"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "files": [
+        "books/page-read-budget-growth.lisp",
+        "host/page-read-host.lisp",
+        "tests/acl2/page-read-budget-growth-tests.lisp"
+      ],
+      "events": [
+        "fn-prl-resident-shrink-preserves-custody",
+        "fn-prl-resident-shrink-keeps-funding"
+      ],
+      "evidence": [
+        "tests/acl2/page-read-budget-growth-tests.lisp"
+      ],
+      "progress_note": "Source guards and two logical keystones admitted in retained world. Positive/refusal/corrupted-funding witnesses pass. Host boundary theorem and actual sealed native consumer composition remain pending; no certification claim."
     }
   ]
 }
