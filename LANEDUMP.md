@@ -301,3 +301,15 @@ image result's exact executed input hash.
 Checks: 13 image-free PageIO/history tests pass; host shape check reports zero
 findings (raw native files excluded); extent's 111 top-level forms balance
 under the source tokenizer. Narrow actual-image run pending Integration.
+
+S141 residual source `bfa00dac6`: build_lists_check now refuses repeated
+literal ld/include-book directives within each build script before closure
+deduplication hides them. Path aliases/options do not evade it; system
+namespaces remain separate, shared included-book dependencies stay allowed,
+quoted/comment/macro-body mentions do not count. Seven scoped tests pass
+0.025s; actual default/DTN lists zero findings (41/29 ld closure). Existing
+cfc0980c4 script cleanup preserved. Intended duplicate assertion red/base
+and green/head archived
+`planning/evidence/repair/S141-20d56b6e8f544518b2865742149af33e.json`,
+sha256 `9cbce3906368ee3dec9db92ae4e4ded65fef8b515d1482522a9e70274672b30c`.
+No image build run.

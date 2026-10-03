@@ -32,5 +32,86 @@
  "state": "in-progress",
  "test": "python3 -m unittest tests.test_build_lists_check.DuplicateLoadTests.test_findings_refuse_duplicate_ld_before_set_closure_hides_it",
  "title": "host/page-read-host.lisp is ld'ed twice in both the production and the DTN build scripts",
- "updated": "2026-10-03T07:08:34Z"
+ "updated": "2026-10-03T07:08:38Z",
+ "verify": {
+  "base": "bf8582b775b0aa9330b53cc8c96911d6a72ed645",
+  "base_observation": {
+   "result": {
+    "assertions": [
+     {
+      "message": "False is not true : duplicate literal load must be refused",
+      "test": "tests.test_build_lists_check.DuplicateLoadTests.test_findings_refuse_duplicate_ld_before_set_closure_hides_it",
+      "type": "AssertionError"
+     }
+    ],
+    "errors": [],
+    "executed": [
+     "tests.test_build_lists_check.DuplicateLoadTests.test_findings_refuse_duplicate_ld_before_set_closure_hides_it"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_build_lists_check.py": "07684fec4eabc41ebfab45ddb9ed0103fb408f8aa162d550fa47a4e0f4e6dc87"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 1,
+   "revision": "bf8582b775b0aa9330b53cc8c96911d6a72ed645",
+   "stderr": "test_findings_refuse_duplicate_ld_before_set_closure_hides_it (tests.test_build_lists_check.DuplicateLoadTests.test_findings_refuse_duplicate_ld_before_set_closure_hides_it) ... FAIL\n\n======================================================================\nFAIL: test_findings_refuse_duplicate_ld_before_set_closure_hides_it (tests.test_build_lists_check.DuplicateLoadTests.test_findings_refuse_duplicate_ld_before_set_closure_hides_it)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-pkf2gxjs/wt/tests/test_build_lists_check.py\", line 267, in test_findings_refuse_duplicate_ld_before_set_closure_hides_it\n    self.assertTrue(any(row.startswith(\"duplicate-load:\") for row in found),\n    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                    \"duplicate literal load must be refused\")\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: False is not true : duplicate literal load must be refused\n\n----------------------------------------------------------------------\nRan 1 test in 0.003s\n\nFAILED (failures=1)\n",
+   "stdout": ""
+  },
+  "changed_files": [
+   "planning/repair/items/S141.json",
+   "tests/test_build_lists_check.py",
+   "tools/build_lists_check.py"
+  ],
+  "diff_lines": 91,
+  "evidence": {
+   "bytes": 4062,
+   "path": "planning/evidence/repair/S141-20d56b6e8f544518b2865742149af33e.json",
+   "sha256": "9cbce3906368ee3dec9db92ae4e4ded65fef8b515d1482522a9e70274672b30c"
+  },
+  "evidence_outcome": "archived",
+  "expected_failure": {
+   "message": "False is not true : duplicate literal load must be refused",
+   "test": "tests.test_build_lists_check.DuplicateLoadTests.test_findings_refuse_duplicate_ld_before_set_closure_hides_it"
+  },
+  "green_at_head": true,
+  "harness": {
+   "tests/test_build_lists_check.py": "07684fec4eabc41ebfab45ddb9ed0103fb408f8aa162d550fa47a4e0f4e6dc87"
+  },
+  "head": "bfa00dac63f7c1d76fd6d16bfbd5582639831354",
+  "head_observation": {
+   "result": {
+    "assertions": [],
+    "errors": [],
+    "executed": [
+     "tests.test_build_lists_check.DuplicateLoadTests.test_findings_refuse_duplicate_ld_before_set_closure_hides_it"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_build_lists_check.py": "07684fec4eabc41ebfab45ddb9ed0103fb408f8aa162d550fa47a4e0f4e6dc87"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 0,
+   "revision": "bfa00dac63f7c1d76fd6d16bfbd5582639831354",
+   "stderr": "test_findings_refuse_duplicate_ld_before_set_closure_hides_it (tests.test_build_lists_check.DuplicateLoadTests.test_findings_refuse_duplicate_ld_before_set_closure_hides_it) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.002s\n\nOK\n",
+   "stdout": ""
+  },
+  "interpreter": "/opt/homebrew/bin/python3",
+  "ok": true,
+  "problems": [],
+  "red_at_base": true,
+  "runner_sha256": "ffc7d9542fbfe2d4e23f03f31dd170f32ef1a8529d41ebbccc36f18c52946106",
+  "same_tests": true,
+  "semantic_ok": true,
+  "test": "python3 -m unittest tests.test_build_lists_check.DuplicateLoadTests.test_findings_refuse_duplicate_ld_before_set_closure_hides_it",
+  "timeout": 1800.0
+ }
 }
