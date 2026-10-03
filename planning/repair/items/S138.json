@@ -10,9 +10,10 @@
  "line": "354",
  "locus": "gates-tests-packaging",
  "notes": [
-  "10-02 23:04 fixed; ran tests.test_native_build_scripts (image build not run)"
+  "10-02 23:04 fixed; ran tests.test_native_build_scripts (image build not run)",
+  "Operator ownership resumed from Access on2026-10-03; existing source/proof records retained. Matching current native command execution remains distinct; no duplicate source repair or transferred image qualification."
  ],
- "owner": "sweep-gates",
+ "owner": "codex-operator-heap-default",
  "reviewer": "host/native/build-dtn.lisp:354-365 calls fnn-crypto-startup, the TLS, digest, hsig and deflate inits bare, without wrapping them in fnn-native-startup. host/native/build.lisp:481-490 does wrap them, and io.lisp:8636-8641 maps the error to 'refused start' with exit 5. The io.lisp comment at :8629-8635 records what happens unwrapped: the error reaches the --disable-debugger hook, ACL2's loop catches it, and the process prints a prompt and waits on stdin (native-subsets 47bdb9a4 failure 5). That is a hang, which is worse than the exit 1 the finding describes. The DTN image is a non-deployment fallback (build-dtn.lisp:8-13), which caps the severity.",
  "scenario": "A DTN image (fn-host-dtn, which build-dtn.lisp's header names a fallback and which cut gate 09 builds) is started on a host where the bundled libsodium, the system libssl 3 or libfn-blake3 does not load or fails its vector check. The error escapes fn-native-entry before fnn-open-streams. Under --disable-debugger SBCL prints a backtrace and exits 1, which outcome-class maps to :refused, a 'known refusal with a stable reason'. Alternatively ACL2's LP prints its own abort, depending on the handler in effect. A supervisor or test sees a refusal code with no 'refused start' line, rather than the usage/fault outcome the production image gives for the same failure.",
  "severity": "low",

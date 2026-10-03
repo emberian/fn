@@ -7,9 +7,10 @@
  "locus": "operator-verbs",
  "notes": [
   "10-02 23:24 escalate: proof-owed, needs an ACL2-named drain/stop deadline in books/native-retire + owner-retire before the host loop can poll it; no host-only fix",
-  "2026-10-03 codex-operator-retire: host connected to ACL2 requested-drain+60s observation policy. Live/held expiry is uncertain and changes no owner/custody state; malformed observations fault distinctly. One-second polling retained. Exact source SBCL positive and prior-source timeout archived; warm hbox function guards/theorems/all16teeth admitted. Native-retire/test normal certification and matching image remain Integration work, not a physical stop claim. PKT-895 PRF-1263 SCN-1095."
+  "2026-10-03 codex-operator-retire: host connected to ACL2 requested-drain+60s observation policy. Live/held expiry is uncertain and changes no owner/custody state; malformed observations fault distinctly. One-second polling retained. Exact source SBCL positive and prior-source timeout archived; warm hbox function guards/theorems/all16teeth admitted. Native-retire/test normal certification and matching image remain Integration work, not a physical stop claim. PKT-895 PRF-1263 SCN-1095.",
+  "Operator ownership resumed from Access on2026-10-03; existing source/proof records retained. Matching current native command execution remains distinct; no duplicate source repair or transferred image qualification."
  ],
- "owner": "codex-operator-retire",
+ "owner": "codex-operator-heap-default",
  "severity": "low",
  "source": "burndown-1",
  "state": "in-progress",
