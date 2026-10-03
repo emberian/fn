@@ -22063,13 +22063,14 @@
       "evidence": [
         "books/owner-time-journal-stream.lisp",
         "tests/acl2/owner-time-journal-stream-tests.lisp",
-        "planning/evidence/operator-journal-stream-2026-10-03-v2.json"
+        "planning/evidence/operator-journal-stream-2026-10-03-v2.json",
+        "planning/evidence/manifests/certify-20261003T110141Z-1558540.json"
       ],
       "events": [
         "fn-otjs-consume-of-append",
         "fn-otjs-consume-fields-bounded"
       ],
-      "progress_note": "Matching source warm resync19forms/.57ACL2s/319168steps;19of19 named events match. Full-model finite15cases/every split plus literal bound/chunk/guard checks pass. Normal clean certification and matching image remain owed; active general report/exit refinement is separate. Arbitrary initial natural widths remain exact; this is not a constant whole-parser heap bound."
+      "progress_note": "Matching source warm resync19forms/.57ACL2s/319168steps;19of19 named events match. Full-model finite15cases/every split plus literal bound/chunk/guard checks pass. Normal clean certification and matching image remain owed; active general report/exit refinement is separate. Arbitrary initial natural widths remain exact; this is not a constant whole-parser heap bound. Immutable9e75078bb normal two-root certification passed (10matching dependencies installed, jobs2/imagesoff) under certify-20261003T110141Z-1558540, archived8565349cd4361076ca0ac7cb240d889751ac8b9d2ae6d67a26d3eba54faaa9e4. Access subsequently changed source for the quantified bridge; no verdict transfers to those bytes. Current generalized refinement and matching image remain open."
     }
   ]
 }

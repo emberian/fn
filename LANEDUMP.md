@@ -1762,3 +1762,12 @@ tests.test_native_journal_stream.NativeJournalStreamTests. Source before
 normal2-root cert/image; Integration owns imports/capacity. Access may take
 general refinement after immutable source lands; current active root warm
 world /tank/fn/gates/codex-journal-stream-repl, 60min idle.
+
+Journal immutable9e75078bb normal cert passed both roots at
+certify-20261003T110141Z-1558540 (10matching cached dependencies installed,
+jobs2/imagesoff), manifest8565349c... archived/indexed. All12source digests
+match immutableGit source. Access has since added general-bridge proof forms;
+those changed bytes are not this verdict. Warm root-journal-stream belongs
+to Access; no image/deployment. Current-view generation hits the base's
+missing historic operator.lisp pin, Integration handles after retire
+metadata converges; no historical hash invented.
