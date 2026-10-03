@@ -1,8 +1,11 @@
 {
  "category": "claim-gap",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "tools/image_set.py:185-227: publish(tree, sha) checks only that `SHA.fullmatch(sha)` and that the target is absent, copies `tree/build`'s images, then writes `(partial / \"TREE_SHA\").write_text(sha + \"\\n\")` and `manifest = {\"sha\": sha, ...}`. Nothing reads `git -C TREE rev-parse HEAD`, checks for a clean tree, or reads a source record the image build wrote. link() (:261-) later trusts BASE/SHA as \"the images built from SHA\" and verifies only SHA256SUMS, which publish wrote over the same bytes. That compares the set with itself.",
  "exposure": "latent",
  "file": "tools/image_set.py",
+ "fix": "Have build_native_host.sh record the source commit and a dirty flag beside each image, the way it already records FILE.catalog. publish should refuse unless every image's recorded source equals SHA and the tree was clean. Alternatively, publish should at least require `git -C TREE rev-parse HEAD == SHA` and an empty `git status --porcelain` for host/, books/ and tools/.",
  "id": "S057",
  "line": "227",
  "locus": "gates-tests-packaging",
@@ -10,6 +13,8 @@
   "10-02 22:29 merged into next e6b827d21"
  ],
  "owner": "sweep-gates",
+ "reviewer": "publish (image_set.py:185-234) checks only SHA syntax, that the target is absent, and the catalogs. It then writes TREE_SHA and manifest.sha from the caller's argument. There is no `git rev-parse HEAD`, no clean-tree check, and no source record from the build. By contrast, link_run (:288+) does verify the run log's '== source commit' line (SOURCE_LINE), so the provenance pattern exists but is missing here. link() (:237-) verifies SHA256SUMS that publish wrote over the same bytes, so the check is self-referential. publish is invoked manually by the operator or coordinator (no script caller found), so a mislabeled set needs an operator mistake, but nothing would catch it.",
+ "scenario": "The batch runner builds images in TREE at head H1, then merges or fast-forwards TREE to H2 (or a lane leaves an uncommitted host edit in TREE), then calls `image_set.py publish TREE H2`. The set is published as H2 with H1-era (or dirty) images. `hbox_native.sh --image-set H2` links them and verifies sums, and the native matrix for H2 runs against images that do not contain H2's host or books. This is the 'carrying is not authority' failure the provenance tests were meant to rule out.",
  "severity": "medium",
  "sha": "e6b827d21",
  "source": "sweep-2026-10-03",

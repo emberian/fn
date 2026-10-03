@@ -1,7 +1,7 @@
 {
  "acceptance": "carrier:globals-to-stobj",
  "category": "check-lane",
- "detail": "host/recovery-source-host.lisp writes 3 owner globals (fn-owner-recovery-source, -next-ticket, -sized-pending) not in the baseline. STAGE-5B's carrier move needs to know.",
+ "detail": "planning/repair/sources/check-lane-reds-355a5c843.md",
  "disposition": "DISSOLVES-IN",
  "exposure": "latent",
  "file": "",

@@ -1,9 +1,12 @@
 {
  "acceptance": "wrapper:closed-classification",
  "category": "fail-open",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "DISSOLVES-IN",
+ "evidence": "tcpcl.lisp:635-643 `(fnn-store-indeterminate (e) ... (setq code +fnn-exit-uncertain+)) (fnn-store-error (e) (fnn-err \"tcpcl: ~a\" e) (setq code +fnn-exit-refused+)) ...` sits inside the fnn-accept-loop handler. io.lisp:77 `(define-condition fnn-store-fault (fnn-store-error) ())`, so every fnn-fault is caught as a refusal. Neither branch leaves the loop (io.lisp:5721-5723 loops until ONCE). The file header says: \"a bundle whose staging barrier did not complete is uncertain, its acknowledgement is never released, the session is terminated and the process exits 3.\" bp.lisp:785-791 shows the intended pattern: re-signal indeterminate and fault.",
  "exposure": "conditional",
  "file": "host/native/tcpcl.lisp",
+ "fix": "Re-signal fnn-store-indeterminate and fnn-store-fault out of the accept loop, as bp receive does, and give only plain fnn-store-error the refused code.",
  "id": "S023",
  "line": "635",
  "locus": "peer-services",
@@ -12,6 +15,8 @@
   "10-02 22:33 t45 lane/codex-fence-boundary 8e8041218: structure tests 15/15 local, program check PASS; natives NOT green yet (the 6ea819b75 run aborted at interfaces-check before the regen commit; relaunch at 8e8041218); farm run-20261003T022549Z-f421 certified the books before the last comment-only change"
  ],
  "owner": "failure-scope",
+ "reviewer": "fnn-tcl-stage (tcpcl.lisp:264-274) turns an fsync/rename os-error into fnn-indeterminate. fnn-tcl-act re-signals it (tcpcl.lisp:396-403), so it leaves fnn-tcl-session. The listen handler (tcpcl.lisp:635-643) catches it, only sets code to 3, and fnn-accept-loop (io.lisp:5721-5723) goes on accepting when ONCE=0. The next session's (setq code (fnn-tcl-exit-code conn)) overwrites that 3, so the process may not exit 3 at all. fnn-store-fault is a subclass of fnn-store-error (io.lisp:77), so faults map to +fnn-exit-refused+. This contradicts the file header (tcpcl.lisp:22-25) and the re-signal pattern in bp.lisp:785-791. Severity is limited because tcpcl listen is the lab/interop verb, not the served node.",
+ "scenario": "1) `tcpcl listen PORT 0 ...`: fnn-tcl-stage's fnn-fsync-dir fails (EIO), which raises fnn-indeterminate. The handler sets code 3 and the loop accepts the next peer, which stages and renames more files into the same spool after an ambiguous persistence failure. The process never exits 3. 2) With ONCE=1, an internal fault (for example `TCPCL delivery result did not match held final ACK` or an invalid spool plan) exits with the refused code. A fault looks like an ordinary refusal.",
  "severity": "medium",
  "sha": "8e8041218",
  "slice": "wrapper",

@@ -1,8 +1,11 @@
 {
  "category": "claim-gap",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "tests/acl2/history-image-campaign-tests.lisp:179-185 comment `The late completion is refused by name` then `(assert-event (or (equal (car (nth 6 *hict-run*)) :refused) (equal (nth 6 *hict-run*) :ok)))`; tests/acl2/history-knowledge-tests.lisp:95 `(assert-event (or (null *hk-n-other*) (equal ...)))`; :248-249 `(assert-event (or (equal *hk-post-before* *node-committed*) (consp (fn-node-stage *hk-post-before*))))` which restates the stronger :210-212",
  "exposure": "latent",
  "file": "tests/acl2/history-image-campaign-tests.lisp",
+ "fix": "Pin the actual value of each ground constant (:refused, or :ok if the same-digest case is the one reached, with the comment saying which), and delete the duplicate disjunctions at history-knowledge-tests.lisp:248-249.",
  "id": "S137",
  "line": "184",
  "locus": "gates-tests-packaging",
@@ -10,6 +13,8 @@
   "10-02 22:29 merged into next e6b827d21"
  ],
  "owner": "sweep-gates",
+ "reviewer": "history-image-campaign-tests.lisp:172 binds *hict-run* as a ground constant, and :184-185 accepts either :refused or :ok, so a regression from refusal to :ok still certifies (the comment itself allows both). history-knowledge-tests.lisp:94-99 accepts null or bound for a ground *hk-n-other*. :248-249 restates :210-212 in weaker form and cannot fail while those hold. These are weak teeth, not wrong ones.",
+ "scenario": "*hict-run* is a ground constant, so it has exactly one value. If the stale-fill refusal regressed to accepting the late completion as :ok, the book still certifies, although the comment says the refusal is the property under test. Likewise *hk-n-other* may silently change between refused and bound. The :248-249 disjunctions can never fail while :210-212 hold, so they are dead.",
  "severity": "low",
  "sha": "e6b827d21",
  "source": "sweep-2026-10-03",

@@ -1,6 +1,7 @@
 {
  "acceptance": "cold-line:visit-bound",
  "category": "claim-gap",
+ "detail": "planning/repair/sources/astra-r71-owner-mux.md (## F14)",
  "disposition": "DISSOLVES-IN",
  "exposure": "conditional",
  "file": "host/native/owner.lisp",

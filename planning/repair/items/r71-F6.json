@@ -1,6 +1,7 @@
 {
  "acceptance": "committer:feed-off-owner",
  "category": "bug",
+ "detail": "planning/repair/sources/astra-r71-owner-mux.md (## F6)",
  "disposition": "BRIDGE",
  "exposure": "live",
  "file": "host/native/owner.lisp",

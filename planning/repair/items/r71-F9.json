@@ -1,6 +1,7 @@
 {
  "acceptance": "wrapper:admit-or-close",
  "category": "bug",
+ "detail": "planning/repair/sources/astra-r71-owner-mux.md (## F9)",
  "disposition": "BRIDGE",
  "exposure": "conditional",
  "file": "host/native/mux.lisp",

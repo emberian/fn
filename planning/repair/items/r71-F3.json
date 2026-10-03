@@ -1,6 +1,7 @@
 {
  "acceptance": "mux:no-cold-await",
  "category": "bug",
+ "detail": "planning/repair/sources/astra-r71-owner-mux.md (## F3)",
  "disposition": "BRIDGE",
  "exposure": "live",
  "file": "host/native/mux.lisp",

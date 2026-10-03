@@ -1,6 +1,6 @@
 {
  "category": "check-lane",
- "detail": "list_codec_check: 93 host-called octet-list codec sites in 14 files (baseline 92)",
+ "detail": "planning/repair/sources/check-lane-reds-355a5c843.md",
  "disposition": "LOCAL",
  "exposure": "latent",
  "file": "",

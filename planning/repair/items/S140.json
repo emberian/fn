@@ -1,8 +1,11 @@
 {
  "category": "other",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "tools/deploy_fresh.sh:57-60\nOLD_NODE=/tank/fn/node\nTARBALL=/tank/fn/scratch/qual-69046a76/friends/release/fn-69046a76798b-linux-x86_64.tar.gz\nTAR_SHA=1a2a61e997c086c333760cf27b2e3b1eaf0fa0101aa54dda95abbc3b9e174003\nEXPECT_REV=69046a76798b8be6169eeed5a66cc46fbe399e51",
  "exposure": "conditional",
  "file": "tools/deploy_fresh.sh",
+ "fix": "Remove the defaults for TARBALL, TAR_SHA and EXPECT_REV and refuse in --go mode unless all three are given, as is already done for --go/--dry-run and TARGET.",
  "id": "S140",
  "line": "58",
  "locus": "gates-tests-packaging",
@@ -10,6 +13,8 @@
   "10-02 22:29 merged into next e6b827d21"
  ],
  "owner": "sweep-gates",
+ "reviewer": "tools/deploy_fresh.sh:57-60 hardcodes TARBALL from /tank/fn/scratch/qual-69046a76/friends/..., with TAR_SHA and EXPECT_REV pinned to 69046a76. :304-307 checks only that the digest matches the default. A run with --go and no --tarball would retire OLD_NODE (:323-340) and deploy that old friends-layout build. It still needs an explicit --go and TARGET, and the retire is a rename, not a delete, so this is a footgun rather than silent damage.",
+ "scenario": "An operator or agent runs `deploy_fresh.sh --go auto` and forgets --tarball/--sha256/--expect-rev. The digest check passes because the default sha matches the default file, so the script retires the live node and deploys revision 69046a76 from a scratch qualification directory. That build is a friends-layout tarball, which release-tarball.sh's --frozen form labels 'ungated ... not a release'. The node is moved backward to an old, ungated revision without anyone asking for it. A cleanup of /tank/fn/scratch makes the default fail instead, but with a misleading 'no tarball' message.",
  "severity": "low",
  "sha": "e6b827d21",
  "source": "sweep-2026-10-03",

@@ -1,6 +1,7 @@
 {
  "acceptance": "lifecycle:bounded-mailbox",
  "category": "bug",
+ "detail": "planning/repair/sources/astra-r72-io-extent.md (## F7)",
  "disposition": "DISSOLVES-IN",
  "exposure": "conditional",
  "file": "host/native/io.lisp",

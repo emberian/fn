@@ -1,9 +1,12 @@
 {
  "acceptance": "wrapper:exit-escalation",
  "category": "fail-open",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "DISSOLVES-IN",
+ "evidence": "owner.lisp:1703-1707 `(fnn-with-roster (service) (unless (fnn-owner-service-stopping service) (setf (fnn-owner-service-stopping service) t (fnn-owner-service-exit-code service) exit-code first-stop t)))`. A later call with +fnn-exit-uncertain+ (fnn-owner-fence-service:1751, shared-action-locked:1792, commit-complete :stop:3244) leaves exit-code as it was. The syncer's COMPLETE (owner.lisp:3611-3620) checks `(fnn-owner-service-stopping service)` before `step`, so after a stop even a :stop (failed-barrier) step skips fnn-owner-commit-complete-locked :stop and so never sets `(fnn-store-fenced store) t`.",
  "exposure": "conditional",
  "file": "host/native/owner.lisp",
+ "fix": "Make exit-code escalation monotone rather than first-wins: under the roster mutex, raise the code to the more severe of current and new (ok < uncertain/fault), even when stopping is already set. In the syncer's stopping branch, still classify the barrier step and fence the store and escalate on :stop.",
  "id": "S015",
  "line": "1704",
  "locus": "lifecycle",
@@ -12,6 +15,8 @@
   "10-02 22:33 t45 lane/codex-fence-boundary 8e8041218: structure tests 15/15 local, program check PASS; natives NOT green yet (the 6ea819b75 run aborted at interfaces-check before the regen commit; relaunch at 8e8041218); farm run-20261003T022549Z-f421 certified the books before the last comment-only change"
  ],
  "owner": "failure-scope",
+ "reviewer": "On SIGTERM, fnn-owner-run calls fnn-owner-drain-service and then fnn-owner-stop-service with +fnn-exit-ok+ (6196-6199). The drain can return :stop after the release, while a batch is still in its barrier (6044-6047; the syncer's release at 3484-3488). Then stopping=t and exit-code=0, and the first-stop-wins guard (1703-1707) makes every later uncertain stop a no-op. In the syncer's COMPLETE (3611-3620) the stopping branch is taken before step is examined, so a failed barrier only delivers :uncertain. It neither calls commit-complete-locked :stop nor changes the exit code. A re-signalled condition goes through shared-action-locked, whose stop-service-locked is also a no-op. fnn-store-close (io.lisp:2452) normally succeeds, so settlement can be :joined, and the run returns exit-code 0. The members were already told uncertain at the release, so no client is misled, but the process exit code does not say that recovery is needed.",
+ "scenario": "SIGTERM arrives. fnn-owner-drain-service decides :stop once the release grace passes while a sealed batch is still in its barrier on a stalled disk, and fnn-owner-stop-service sets exit-code +fnn-exit-ok+. The barrier then fails. The syncer sees stopping, tells the members :uncertain and does not fence. Any fence-service or uncertain stop that follows is a no-op because stopping is already set. The run returns fn-ort-log-close-exit of exit code 0 unless the Store-close settlement happens to observe something. The service manager sees a clean exit after an indeterminate batch, which breaks 'uncertain, refused and accepted stay distinct ... exit codes included'.",
  "severity": "medium",
  "sha": "8e8041218",
  "slice": "wrapper",

@@ -1,9 +1,12 @@
 {
  "acceptance": "bp:step-bound",
  "category": "performance",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "DISSOLVES-IN",
+ "evidence": "host/native/bp-service.lisp:1053-1055: `(job (fnn-core 'fn-bpfj-start state anchor))) (loop until (eq (fnn-core 'fn-bpfj-finishedp job) t) do (setq job (fnn-core 'fn-bpfj-step job +fnn-bps-fragment-quantum+)))`; this runs from fnn-bps-fragment-progress at host/native/bp-service.lisp:1117-1118 `(when (eq (first result) :accepted) (fnn-bps-fragment-progress service))`, i.e. after EVERY accepted bundle. The sweep walks positions 0..total-1 where total is the peer-declared `fn-bpp-total-adu-length` (books/bp-node-fragment-family.lisp:140-143) and conses one cell per position (fn-bpfw-sweep-acc). books/bp-fragment-sweep.lisp:19-23 and books/bp-node-fragment-family.lisp:133 claim the work is \"linear in the octets received\" / \"linear in the octets the family holds\".",
  "exposure": "conditional",
  "file": "host/native/bp-service.lisp",
+ "fix": "Carry a per-family coverage count (octets covered, or a sorted extent set) and start a reassembly job only when coverage reaches total. Bound total by the octets the family holds before sweeping (refuse or wait when sum(len) < total). Make the host yield between fn-bpfj-step quanta instead of looping to completion. Correct the 'linear in octets received' comments, or make them true.",
  "id": "S008",
  "line": "1054",
  "locus": "peer-services",
@@ -11,6 +14,8 @@
   "10-02 22:33 WIP unverified: coverage gate on candidates; REPL not finished; S026 not started"
  ],
  "owner": "sweep-peer",
+ "reviewer": "host/native/bp-service.lisp:1117-1118 calls fnn-bps-fragment-progress after every :accepted receive. It loops over fn-bpfj-next-candidate (books/bp-node-fragment-step.lisp:915-922). fn-bpfj-candidate (:885-913) offers every live family that holds an offset-zero row and is not in TRIED, and it caches nothing between passes. For each candidate, :1053-1055 runs fn-bpfj-step to completion in the same call, so the quantum bounds nothing. fn-bpfj-start (books/bp-node-fragment-job.lisp:66-73) takes the peer-declared fn-bpp-total-adu-length as N. fn-bpfr-step (bp-fragment-resume.lisp:48-59) and fn-bpfw-sweep-acc (bp-fragment-sweep.lisp:502-511) visit every position 0..total-1 and cons one cell per position, gaps included. The work is therefore O(declared total) per family per accepted bundle, which contradicts the 'linear in octets received' header at bp-fragment-sweep.lisp:19-23. Both the hostile case (many 1-octet offset-zero families, each declaring a large total) and the benign case (re-sweeping a large family on each fragment arrival, quadratic overall) follow from the code. A :missing plan issues no effects, so the loop moves on to the next family, as described.",
+ "scenario": "The work is linear in the DECLARED total, not in material received, and it is repeated per arrival. (a) Hostile: a trusted-boundary sender delivers N one-octet offset-zero fragments of N distinct families, each declaring total = the profile's ADU octets (up to 2^24). Each is a :missing family that issues nothing, so every later accepted bundle re-runs N full 16M-position sweeps (N x 16M conses, ~256 MB transient each) inside the receive path. (b) Benign: a 10 MiB ADU in 4 KiB fragments arrives as 2,560 bundles; each arrival re-sweeps the full 10M-position canvas, about 2.6e10 position steps in total. That is the 2.7e10 figure the sweep book says it removed. The quantum bounds nothing because the host loops to completion within one call, with no yield.",
  "severity": "high",
  "sha": "5536e2f08",
  "slice": "bp",

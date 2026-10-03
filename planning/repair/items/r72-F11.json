@@ -1,5 +1,6 @@
 {
  "category": "nit",
+ "detail": "planning/repair/sources/astra-r72-io-extent.md (## F11)",
  "disposition": "LOCAL",
  "exposure": "latent",
  "file": "host/native/io.lisp",

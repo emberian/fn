@@ -1,6 +1,6 @@
 {
  "category": "check-lane",
- "detail": "defined twice: fnn-snapshot-job-source: host/native/snapshot-producer.lisp:7 and host/native/snapshot-producer.lisp:7",
+ "detail": "planning/repair/sources/check-lane-reds-355a5c843.md",
  "disposition": "LOCAL",
  "exposure": "latent",
  "file": "",

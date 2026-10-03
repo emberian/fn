@@ -1,8 +1,11 @@
 {
  "category": "error-handling",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "tools/deploy_fresh.sh:408-410\nif [ -d \"$TARGET/store\" ]; then say \"  skip: $TARGET/store present\"\nelif [ \"$STORE\" = import ]; then\n  run cp -a \"$RETIRED/store\" \"$TARGET/store\"\nand the fresh branch :424-431 runs init and then enrols each credentials.txt login, all inside the same skipped elif. The header (line 18) promises each step is 'skipped when its postcondition already holds'.",
  "exposure": "conditional",
  "file": "tools/deploy_fresh.sh",
+ "fix": "Stage the store as $TARGET/store.partial-$STAMP and rename it into place only after cp -a, the socket drop, node-secret and rebind all succeed. Record enrolment per login, for example a marker written after each set-password, and check every credentials.txt login instead of using the directory as the postcondition.",
  "id": "S064",
  "line": "408",
  "locus": "gates-tests-packaging",
@@ -10,6 +13,8 @@
   "10-02 22:29 merged into next e6b827d21"
  ],
  "owner": "sweep-gates",
+ "reviewer": "tools/deploy_fresh.sh:310-319 supports resume: OLD_NODE absent and a retired node names TARGET gives 'resuming'. At :408, the presence of $TARGET/store alone skips the import cp -a, node-secret create and rebind-filesystem (:410-421). It also skips the fresh init and the set-password enrolment loop (:424-431). A die inside the piped while (:428) ends the script under set -e. A partial copy or a partial enrolment is therefore taken as complete on re-run, which contradicts the header at :18. The probe at :245 uses only the first login. A truncated store may still be refused at open by its own integrity checks, which limits the import case.",
+ "scenario": "(a) --store import: cp -a fails partway (ENOSPC, or Ctrl-C). set -e stops the script with a partial $TARGET/store. The documented re-run (resume via the retired manifest) sees the directory, skips the copy, node-secret create and rebind-filesystem, and starts the node on a truncated copy of the store. (b) --store fresh: init succeeds, then set-password for the second login fails (die inside the pipeline). On re-run the store is present, so enrolment is skipped. verify_up probes only the first login (line 245), which was enrolled, so the script prints DEPLOY DONE while the other logins cannot authenticate.",
  "severity": "medium",
  "sha": "e6b827d21",
  "source": "sweep-2026-10-03",

@@ -1,9 +1,12 @@
 {
  "acceptance": "wrapper:fence-before-unlock",
  "category": "fail-open",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "DISSOLVES-IN",
+ "evidence": "host/native/owner.lisp:5127-5131\n                       ((or fnn-store-io-refusal fnn-store-indeterminate) (e)\n                         (fnn-err \"CHECKPOINT auto failed sequence=~d: ~a\" sequence e)))))\n                  (t (fnn-fault \"owner returned a malformed checkpoint verdict\")))))\n          (serious-condition (e)\n            (fnn-err \"CHECKPOINT auto failed: ~a\" e))))\nand 5011-5012 in fnn-owner-release-extents: `(serious-condition (e) (fnn-err \"CHECKPOINT release failed (files stay retired): ~a\" e))`. The block wraps fnn-log-make-durable (journal-directory fence), fnn-state-checkpoint-write (rename plus directory fsync, which raises fnn-indeterminate per io.lisp:2829-2830), fnn-log-drop, and the arena-mutating fn-xrt-reseat-checkpoint-frame (4971) inside a bare fnn-owner-gated.",
  "exposure": "conditional",
  "file": "host/native/owner.lisp",
+ "fix": "Narrow both handlers to the named refusals (fnn-store-io-refusal, the stop's yield refusal). Re-signal fnn-store-indeterminate and fnn-store-fault into a fenced owner quantum (fnn-owner-fault-service, or a stop at exit 3), and run the arena reseat through fnn-owner-shared-action-locked so a fault mid-reseat fences.",
  "id": "S019",
  "line": "5127",
  "locus": "reclaim-publication",
@@ -12,6 +15,8 @@
   "10-02 22:33 t45 lane/codex-fence-boundary 8e8041218: structure tests 15/15 local, program check PASS; natives NOT green yet (the 6ea819b75 run aborted at interfaces-check before the regen commit; relaunch at 8e8041218); farm run-20261003T022549Z-f421 certified the books before the last comment-only change"
  ],
  "owner": "failure-scope",
+ "reviewer": "owner.lisp:5127-5131: fnn-store-indeterminate from fnn-log-make-durable or fnn-state-checkpoint-write is logged as 'CHECKPOINT auto failed', and the serious-condition clause absorbs any fault, so serving continues with no fence. The reseat fault in fnn-owner-release-extents is swallowed the same way at 5011-5012. Partly mitigated: the checkpoint is derived state, durablep stays nil so nothing is dropped, and dir-pending stays set (io.lisp fnn-log-make-durable), so the commit path's first fence retries the journal/ fsync. That retry after an EIO can report success on Linux (fsync error consumed), so a later acknowledgement may rest on a directory entry that is not durable. This violates the rule that an ambiguous persistence failure is a recovery event.",
+ "scenario": "The journal directory fsync in fnn-log-make-durable returns EIO, or the checkpoint rename lands and its directory fsync fails. Both are fnn-store-indeterminate, which AGENTS.md calls a recovery event. Here they are logged as 'CHECKPOINT auto failed' and the owner keeps accepting POSTs on a filesystem whose last fsync was lost. A digest mismatch while reseating a just-written frame (fnn-extent-fault, a store fault that must be exit 4) or an fnn-fault from a malformed ACL2 answer is swallowed the same way, possibly after some frames were reseated in the live arena and others were not.",
  "severity": "medium",
  "sha": "8e8041218",
  "slice": "wrapper",

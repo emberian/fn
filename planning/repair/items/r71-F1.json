@@ -1,6 +1,7 @@
 {
  "acceptance": "wrapper:fence-before-unlock",
  "category": "bug",
+ "detail": "planning/repair/sources/astra-r71-owner-mux.md (## F1)",
  "disposition": "DISSOLVES-IN",
  "exposure": "conditional",
  "file": "host/native/owner.lisp",

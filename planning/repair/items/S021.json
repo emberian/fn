@@ -1,9 +1,12 @@
 {
  "acceptance": "wrapper:admit-or-close",
  "category": "resource-leak",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "BRIDGE",
+ "evidence": "mux.lisp:1333-1334 `(ignore-errors (sb-posix:close (fnn-mux-loop-wake-read loop))) (ignore-errors (sb-posix:close (fnn-mux-loop-wake-write loop)))`; mux.lisp:224-228 fnn-mux-wake `(sb-unix:unix-write (fnn-mux-loop-wake-write loop) one 0 1)` with no check that the loop is alive; mux.lisp:677-680 the await callback `(push (cons conn completion) (fnn-mux-loop-arrived loop)) ... (fnn-mux-wake loop)`; mux.lisp:1382-1397 fnn-mux-adopt checks `stopping` under the roster lock, releases it, then pushes to the inbox and calls fnn-mux-wake. Nothing removes a finished conn's entry from fnn-owner-service-awaiting (owner.lisp:3036-3038 deliver and 3065 register are the only writers).",
  "exposure": "conditional",
  "file": "host/native/mux.lisp",
+ "fix": "Give each loop a `closed` flag that is set under its LOCK before the pipe fds are closed. Have fnn-mux-wake and the await callback check that flag under LOCK and drop the write once it is set. In fnn-mux-adopt, push to the inbox under the loop lock only while the loop is not closed; otherwise shut the socket and signal DONE as the stopping branch already does. Remove the awaiting entry in fnn-mux-finish, or make deliver ignore cids whose conn is :done.",
  "id": "S021",
  "line": "1333",
  "locus": "connections",
@@ -11,6 +14,8 @@
   "10-02 22:32 coded on lane/host-lifecycle 4e409a9d6 (handed to runner); see lanedumps/host-lifecycle.md for verification"
  ],
  "owner": "host-lifecycle",
+ "reviewer": "Both halves hold. (a) STOPPING is set under the roster lock (owner.lisp:1704-1707), and fnn-mux-run returns as soon as it sees it (mux.lisp:1349-1350). It then runs fnn-mux-stop-loop, which closes both wake fds (mux.lisp:1333-1334). The committer's barrier still finishes afterwards: COMPLETE's stopping arm calls fnn-owner-deliver ... :uncertain for every member (owner.lisp:3611-3620). Deliver finds the awaiting entry, because fnn-mux-finish never removes it (only owner.lisp:3036-3038 and 3065 write that table), and runs the callback. The callback pushes onto ARRIVED and calls fnn-mux-wake, which writes to the old fd number with nothing checking it (mux.lisp:224-228, 677-680). fnn-owner-loops-snapshot (owner.lisp:3667-3669) also wakes every loop unconditionally after the committer's first wait, even once stopping is set. (b) fnn-mux-adopt checks stopping and pushes onto clients under the roster lock, then releases it and only then pushes onto the inbox under the loop lock and wakes (mux.lisp:1382-1397). A stop that lands in that gap lets stop-loop take an empty inbox (mux.lisp:1312-1315) and close the pipes. The conn is then orphaned: it is never finished or closed and its done semaphore is never signalled; it only gets the stopper's shutdown(2). The timing window is narrow, and an orphaned fd during a stop matters less because the process is exiting. A stray 0x00 written into a reused fd (a file or socket opened during stop or checkpoint) is the real hazard.",
+ "scenario": "(a) A fault on any loop sets STOPPING while a batch is in flight. Every loop leaves fnn-mux-run, runs fnn-mux-stop-loop, finishes its conns and closes both pipe fds. The syncer then completes the barrier, COMPLETE calls fnn-owner-deliver for a member whose awaiting entry was never removed, and the callback writes one 0x00 octet to the old wake-write fd number. By then that number may belong to a file or socket opened during the stop (the stop drain, a checkpoint publish, a feed socket). (b) The accept thread's fnn-mux-adopt sees stopping=nil and releases the roster lock. The stopper sets STOPPING, the loop runs stop-loop, which takes an empty inbox and closes the pipes. Adopt then pushes the conn into the dead loop's inbox and writes to the closed fd. That conn is never finished, so its socket is only shut down and never closed, and its exposure entry is never released.",
  "severity": "medium",
  "sha": "4e409a9d6",
  "slice": "wrapper",

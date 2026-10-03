@@ -1,6 +1,7 @@
 {
  "acceptance": "verbs:windowed-read",
  "category": "claim-gap",
+ "detail": "planning/repair/sources/astra-r72-io-extent.md (## F10)",
  "disposition": "DISSOLVES-IN",
  "exposure": "conditional",
  "file": "host/native/io.lisp",

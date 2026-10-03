@@ -1,9 +1,12 @@
 {
  "acceptance": "wrapper:fence-before-unlock",
  "category": "error-handling",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "DISSOLVES-IN",
+ "evidence": "host/native/owner.lisp:3704-3708\n    (fnn-store-error ()\n      ;; The service stopped between the wake-up and the gate.\n      nil)\n    (serious-condition (e)\n      (fnn-owner-fault-service service nil e))\nio.lisp:77 `(define-condition fnn-store-fault (fnn-store-error) ())`, io.lisp:92 `(define-condition fnn-store-indeterminate (fnn-store-error) ())`, io.lisp:136 fnn-fault signals fnn-store-fault. Several faults in the pipeline are raised outside any fenced quantum, e.g. owner.lisp:3387-3388 `(unless (eq verdict :apply) (fnn-fault \"owner refused the barrier's completion ...\"))` (called at 3589, outside any gate), 3399-3402 (stall releases, called at 3528 off the mutex), 3461-3462 (fn-otb-issue), and 3656 (commit-event in the gated cleanup, outside shared-action-locked).",
  "exposure": "conditional",
  "file": "host/native/owner.lisp",
+ "fix": "Put clauses for fnn-store-indeterminate and fnn-store-fault ahead of the fnn-store-error clause and route both to fnn-owner-fault-service, or a fence at exit 3 for indeterminate. Keep the silent return only for the refusal the gate signals when STOPPING is already set, and check (fnn-owner-service-stopping service) before treating it as benign.",
  "id": "S016",
  "line": "3704",
  "locus": "committer",
@@ -12,6 +15,8 @@
   "10-02 22:33 t45 lane/codex-fence-boundary 8e8041218: structure tests 15/15 local, program check PASS; natives NOT green yet (the 6ea819b75 run aborted at interfaces-check before the regen commit; relaunch at 8e8041218); farm run-20261003T022549Z-f421 certified the books before the last comment-only change"
  ],
  "owner": "failure-scope",
+ "reviewer": "io.lisp:77,92: fnn-store-fault and fnn-store-indeterminate are both subclasses of fnn-store-error, so the first clause at owner.lisp:3704 catches them. Faults raised inside fnn-owner-shared-action-locked (1771-1802) have already fenced the owner before they reach this handler, so those are harmless. Several faults in fnn-owner-commit-pipeline are raised outside it and are not fenced: fn-otb-issue at 3461-3462; fnn-owner-disk-event's :fault or malformed-word faults at 1462-1466 (called at 3471, 3504, 3507 and 3537); fnn-owner-commit-wake at 3333; fnn-owner-stall-release at 3528; fnn-owner-complete-generation at 3589, which runs before the COMPLETE gate. In those cases the committer returns nil, nothing stops the service, and the syncer and the in-flight phase are never collected. The COMPLETE's unwind-protect only covers faults raised after its gate. All of the triggers are ACL2 verdicts the host treats as defects (malformed or :fault), so this needs a core defect to happen. The containment for exactly that case is broken, though.",
+ "scenario": "Any fnn-fault on these paths (a malformed ledger verdict, malformed stall releases, a :fault disk or commit event) is a subclass of fnn-store-error. The first handler-case clause catches it, so the committer returns nil. fnn-owner-fault-service never runs: no stop, no exit 4, and no 'owner core/store fault' line. The batch stays in flight in ACL2's scheduler, so the gate keeps admitting only :inspect, :commit and :reader. Every poster, control and transit quantum waits forever, nothing commits again, and the node looks alive. The handler meant for a refusal also absorbs the two conditions that must fence (exit 3 and exit 4).",
  "severity": "medium",
  "sha": "8e8041218",
  "slice": "wrapper",

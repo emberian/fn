@@ -1,6 +1,6 @@
 {
  "category": "check-lane",
- "detail": "FAIL: test_the_tree_is_clean (tests.test_host_loaded_check.HostLoadedTests.test_the_tree_is_clean)",
+ "detail": "planning/repair/sources/check-lane-reds-355a5c843.md",
  "disposition": "LOCAL",
  "exposure": "latent",
  "file": "",

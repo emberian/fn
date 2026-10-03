@@ -1,6 +1,6 @@
 {
  "category": "check-lane",
- "detail": "tests.test_native_account_adoption_transport exits 5 under the source check (the account-adoption host chain is unwired by stage 0 / D46; the module may need to skip by name or be parked with its producer).",
+ "detail": "planning/repair/sources/check-lane-reds-355a5c843.md",
  "disposition": "LOCAL",
  "exposure": "latent",
  "file": "",

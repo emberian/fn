@@ -1,8 +1,11 @@
 {
  "category": "dead-code",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "tools/native_program_check.py:842-848 `for c in ALL_CUTS: for p in (c.program, c.follows): if p and p not in out and p in PROGRAM_HOSTS: out.append(p)`. That filter makes :852-855 `if fn is None: return ProgramResult(..., \"FAIL\", mismatches=[\"no host function declared for this program\"])` unreachable. ALL_CUTS names fn-lg-extend-program, fn-lg-recover-program and fn-ks-cut, which are neither in PROGRAM_HOSTS nor among LOG_ROUTE_ARMS' programs (tests/campaign/native_cuts.py:980-986). The docstring says \"For each byte-model program the native cut table names ... find the host function\".",
  "exposure": "latent",
  "file": "tools/native_program_check.py",
+ "fix": "Iterate every program ALL_CUTS names. A program in none of PROGRAM_HOSTS, LOG_ROUTE_ARMS' programs or an explicit 'checked by <verifier>' table should get the existing FAIL row. If verify_log_cut_map and its siblings cover the extend and recover programs, call them from main() and list them in that table.",
  "id": "S128",
  "line": "846",
  "locus": "gates-tests-packaging",
@@ -10,6 +13,8 @@
   "10-02 22:29 merged into next e6b827d21"
  ],
  "owner": "sweep-gates",
+ "reviewer": "programs_named (native_program_check.py:841-847) filters with `p in PROGRAM_HOSTS`, and PROGRAM_HOSTS (:75-78) has only two entries. That filter makes check_program's `fn is None` FAIL arm (:850-853) dead. A newly added unmapped program would pass silently. However, the finding overstates the current gap. fn-ks-cut IS checked by main through verify_statement_cut_map (:1010-1020). fn-lg-recover/extend have host mappings in native_cuts.LOG_PROGRAM_HOSTS (native_cuts.py:156-162), whose ordering is verified by verify_log_cut_map in tests/test_native_cut_map.py. verify_native_cut_map (native_cuts.py:321-340) only checks that cut names exist in the model program. It does not check that each program has a host mapping, so the future-lane hole is real but latent.",
+ "scenario": "A lane adds a new process-death cut program to ALL_CUTS (or a new log program) and does not map it in PROGRAM_HOSTS or LOG_ROUTE_ARMS. native_program_check reports `result: PASS (0 mismatches over 2 programs)` and the log-route line PASS, never mentioning the unmapped program. 'Every process-death cut is a model crash point (native_program_check)' is then claimed for a program this tool never compared. Today the extend and recover programs depend entirely on separate verifiers in native_cuts.py that main() does not call.",
  "severity": "low",
  "sha": "e6b827d21",
  "source": "sweep-2026-10-03",

@@ -1,8 +1,11 @@
 {
  "category": "fail-open",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "tests/campaign/native_production_kill.py:80-90 `if reply is None: return UNEXPECTED ... return UNEXPECTED` and :652 `if code in (UNCERTAIN, UNEXPECTED):` leading to the passing verdicts `died-present-identical` / `died-absent`; judge accepts `if v not in (\"240-identical\", \"died-absent\", \"died-present-identical\", \"refused\")`",
  "exposure": "latent",
  "file": "tests/campaign/native_production_kill.py",
+ "fix": "Treat UNEXPECTED as its own verdict (`unexpected-reply`) and fail the judge on it. Record whether the owner was already dead when the client gave up, so a timeout against a live owner is reported as a hang.",
  "id": "S129",
  "line": "652",
  "locus": "gates-tests-packaging",
@@ -10,6 +13,8 @@
   "10-02 22:29 merged into next e6b827d21"
  ],
  "owner": "sweep-gates",
+ "reviewer": "classify (:80-89) maps both no-reply/timeout and any non-240/441 reply to UNEXPECTED, and verdict() at :652 treats UNEXPECTED exactly like UNCERTAIN, giving the passing verdicts died-present-identical/died-absent. A 5xx or 403 to a POST therefore passes once reread/resubmit agree. The judge only records reply text per exit code (:733-737); it never fails on an unexpected reply. The hung-owner part is weaker: every iteration SIGKILLs the owner on a schedule, so a hang usually ends as EOF -> UNCERTAIN anyway.",
+ "scenario": "The owner stops answering a POST without dying, for example a wedged committer. The client's 60 s readline returns None, which classify() turns into UNEXPECTED. After the SIGKILL and restart the article rereads present and identical (or absent, and the resubmission is accepted), so the row is judged `died-present-identical`/`died-absent` and counts as a pass. The same happens to a reply such as `500 internal error` or `403` to the article: an unexpected outcome is merged into uncertain, which the project rules say must stay distinct.",
  "severity": "low",
  "sha": "e6b827d21",
  "source": "sweep-2026-10-03",

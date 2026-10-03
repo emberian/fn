@@ -1,6 +1,6 @@
 {
  "category": "check-lane",
- "detail": "tests/acl2/feed-connection-teeth-tests.lisp:269: fct-refused-login -> PRF-051 fn-fc-refused-login-closes-without-an-offer; subject fn-fc-step (host/owner-host.l",
+ "detail": "planning/repair/sources/check-lane-reds-355a5c843.md",
  "disposition": "LOCAL",
  "exposure": "latent",
  "file": "",

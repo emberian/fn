@@ -1,6 +1,6 @@
 {
  "category": "check-lane",
- "detail": "payload-kind: 12 findings; definitions reading payload 63, accepted sites 36, wire definitions 11, handle definitions 7, handle sinks 28",
+ "detail": "planning/repair/sources/check-lane-reds-355a5c843.md",
  "disposition": "LOCAL",
  "exposure": "latent",
  "file": "",

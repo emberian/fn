@@ -1,5 +1,6 @@
 {
  "category": "nit",
+ "detail": "planning/repair/sources/astra-r71-owner-mux.md (## F16)",
  "disposition": "LOCAL",
  "exposure": "latent",
  "file": "host/native/owner.lisp",

@@ -1,9 +1,12 @@
 {
  "acceptance": "wrapper:connection-scoped",
  "category": "correctness",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "DISSOLVES-IN",
+ "evidence": "bp-node.lisp:415-419: on-ready drives `(list :session peer session-id t mru obs ...)` (session open). The normal path closes it at 443-446 `(list :session peer session-id nil 1 ...)`, but the handler at 450-451 `((not sent) (fnn-out \"BP forwarding session unavailable: ~a\" e))` returns without driving the close. Only the `t` branch (468-471) drives it.",
  "exposure": "conditional",
  "file": "host/native/bp-node.lisp",
+ "fix": "Whenever the on-ready open was driven, drive the `:session ... nil` close event in the handler (and in an unwind-protect), regardless of `sent`.",
  "id": "S027",
  "line": "450",
  "locus": "peer-services",
@@ -12,6 +15,8 @@
   "10-02 22:33 sent to runner in 5536e2f08; raw witness passes"
  ],
  "owner": "sweep-peer",
+ "reviewer": "bp-node.lisp:415-419: on-ready drives (:session peer session-id t ...) once the session is established. The close (:session ... nil 1) is driven only on the normal path (443-446) or in the handler's t branch (465-471). The (not sent) branch (450-451) only prints. A peer reset after SESS_INIT, when the open issued no send, leaves the session in the machine. fn-bpnrd-serve-rotation-due-p (books/bp-node-rotation-due.lisp:233-241) requires (null (fn-bpnp-sessions st)), so serve rotation is blocked until restart and the journal keeps growing. Reaching this needs the hop to reset during a forward session with nothing to send.",
+ "scenario": "The hop completes SESS_INIT (the ACL2 :session open is driven) and the open answers no cl-send, or the peer resets before the effect fires. fnn-recv then raises ECONNRESET. The machine keeps session-id open. Serve rotation requires \"no outbound session\" at a safe point (comment at 588-589), so a stale open session can block fn-bpnrd-serve-rotation-due-p, and the per-peer session state is left inconsistent until restart.",
  "severity": "medium",
  "sha": "f48cf6e12",
  "slice": "wrapper",

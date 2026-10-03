@@ -1,6 +1,7 @@
 {
  "acceptance": "mux:timer-eligibility",
  "category": "bug",
+ "detail": "planning/repair/sources/astra-r71-owner-mux.md (## F11)",
  "disposition": "BRIDGE",
  "exposure": "live",
  "file": "host/native/mux.lisp",

@@ -1,8 +1,11 @@
 {
  "category": "correctness",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "packaging/freeze-native-image.sh:41-42\n  lz4=$build/lib/libfn-lz4.so\n  [ -s \"$lz4\" ] || { echo \"freeze-native-image: missing $lz4 (tools/build_lz4.sh)\" >&2; exit 4; }\nand :80 cp -L \"$lz4\" \"$out/lib/libfn-lz4.so\"; packaging/install-native.sh:52,59,86-93,181 require and copy it the same way; tools/extract/core.sh:80 exports FN_LZ4_LIBRARY=$LIB/libfn-lz4.so. tools/build_lz4.sh was deleted in 7cf1972e2 ('LZ4 retirement'), no host/native/lz4.lisp exists, and tools/build_native_host.sh:104-129 builds only mldsa65, deflate and blake3 into build/lib.",
  "exposure": "latent",
  "file": "packaging/freeze-native-image.sh",
+ "fix": "Remove the lz4 requirement and copy from freeze-native-image.sh, install-native.sh (both branches and the inventory line) and tools/extract/core.sh/build.sh, with the same change that retired LZ4. If LZ4 is coming back, restore its build script and have build_native_host.sh build it. Fix the stale '(tools/build_lz4.sh)' reference in build_deflate.sh:10 too.",
  "id": "S062",
  "line": "41",
  "locus": "gates-tests-packaging",
@@ -10,6 +13,8 @@
   "10-02 22:29 merged into next e6b827d21"
  ],
  "owner": "sweep-gates",
+ "reviewer": "packaging/freeze-native-image.sh:41-42 requires build/lib/libfn-lz4.so and copies it at :80. tools/build_lz4.sh and host/native/lz4.lisp are both gone (git log: 7cf1972e2 LZ4 retirement). tools/build_native_host.sh:104-129 builds only mldsa65, deflate and blake3. release-tarball.sh:203-212 builds from a fresh git archive, and served/lib is a symlink to TREE/build/lib (tools/extract/core.sh:97), so freeze exits 4 on a clean tree. tools/extract/build.sh:66-69 also hard-requires libfn-lz4.so, and install-native.sh:87-93 does the same. A long-lived tree with a stale .so would bundle that untracked binary instead. The failure is loud and it blocks releases.",
+ "scenario": "release-tarball.sh (first form) unpacks a fresh git archive, so build/lib holds only the three libraries build_native_host.sh makes. Step 3's freeze (release-tarball.sh:211) exits 4 with 'missing ... libfn-lz4.so (tools/build_lz4.sh)', naming a script that no longer exists, so no Linux or OpenBSD release can be cut from a clean tree. In a long-lived tree where an old build/lib/libfn-lz4.so survives, the freeze succeeds instead. It then bundles that stale, untracked binary into libexec/fn/lib and hashes it into SHA256SUMS and native-artifacts.txt as part of the release, although it was not built from REV's source.",
  "severity": "medium",
  "sha": "e6b827d21",
  "source": "sweep-2026-10-03",

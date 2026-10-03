@@ -1,8 +1,11 @@
 {
  "category": "error-handling",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "peer-invite.lisp:384-390\n(code (fnn-pinv-status-code (fnn-pinv-send control-path :issue signed)))\n;; The invitation is recorded before it exists anywhere else.\n(when (= code +fnn-exit-ok+)\n  (fnn-pinv-write-new out signed)\nfnn-pinv-write-new (46-51): with-open-file :if-exists :error, finish-output only (no fsync, no directory fsync).",
  "exposure": "conditional",
  "file": "host/native/peer-invite.lisp",
+ "fix": "Check OUT is absent, and create it O_EXCL (empty) before sending :issue. Write and fsync it, and fsync its directory, after the owner accepts. On a write failure after acceptance, report the nonce so the row can be revoked.",
  "id": "S105",
  "line": "388",
  "locus": "operator-verbs",
@@ -10,6 +13,8 @@
   "10-02 22:22 OUT reserved O_EXCL before the owner records; fsync+dir fsync; friends_feed asserts"
  ],
  "owner": "sweep-ops",
+ "reviewer": "peer-invite.lisp:384-390 sends :issue to the owner, which records the invitation durably, before fnn-pinv-write-new (46-51) opens OUT with :if-exists :error. Nothing checks earlier whether OUT exists or is writable (no lstat or probe in fnn-pinv-invite). An existing or unwritable OUT therefore fails after the row is recorded and the signed document is lost. A retry draws a new nonce and records another orphan row. fnn-pinv-write-new only calls finish-output, with no fsync of the file or the directory. The record-first order is intentional per the comment, but a pre-check of OUT is missing. The impact is limited to orphan unconsumed invitation rows.",
+ "scenario": "OUT already exists (a re-run with the same path) or is unwritable. The owner has durably published the invitation row, then with-open-file signals, and fnn-pinv-execute reports a fault (exit 4). The signed document is lost, a live unconsumed invitation row is left that nobody can present, and the operator's retry draws a new nonce, which adds another orphan row. On a crash after 'invitation ... out=' is printed, OUT can also vanish because it was never fsynced.",
  "severity": "low",
  "sha": "8acfdeba7",
  "source": "sweep-2026-10-03",

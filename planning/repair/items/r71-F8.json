@@ -1,6 +1,7 @@
 {
  "acceptance": "lifecycle:reap-off-section",
  "category": "bug",
+ "detail": "planning/repair/sources/astra-r71-owner-mux.md (## F8)",
  "disposition": "BRIDGE",
  "exposure": "live",
  "file": "host/native/owner.lisp",

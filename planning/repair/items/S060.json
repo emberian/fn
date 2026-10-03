@@ -1,8 +1,11 @@
 {
  "category": "dead-code",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "tests/campaign/native_block_fault.py:369 `return {p.name: sha(p) for p in (store / \"transactions\").iterdir() if p.is_file()}`; :409 `prior = transaction_files(store)`; :416 `cut = (\"frontier-attempted\" if scenario == \"frontier-dir-eio\" else \"record-attempted\")`; :418 `report[\"model_program\"] = (\"fn-bs-frontier-program\" ... else \"fn-bs-record-program\")`. test_native_crash_model.py:43 says `The per-file POST programs (fn-bs-frontier-program, fn-bs-record-program ...) are not reachable on a format-9 store`",
  "exposure": "latent",
  "file": "tests/campaign/native_block_fault.py",
+ "fix": "Re-target the scenarios to the log route's cuts (log-written / log-fenced via FN_NATIVE_POST_FAULT, or recordbarrier). Expect EIO on the journal segment's fence and on journal/'s directory fsync, and observe the history through native_log_observation.",
  "id": "S060",
  "line": "369",
  "locus": "gates-tests-packaging",
@@ -10,6 +13,8 @@
   "10-02 22:29 merged into next e6b827d21"
  ],
  "owner": "sweep-gates",
+ "reviewer": "native_block_fault.py:368-369 transaction_files iterates store/transactions, which a log store does not have (io.lisp:4017 'No allocator file and no transactions/'), so :409 raises right after init/post. It also arms FN_NATIVE_POST_FAULT=record-attempted:stop. io.lisp:4836-4877 accepts only the cuts in +fnn-post-model-cuts+ / +fnn-post-log-model-cuts+ (record-attempted is in neither) and only the eio|kill actions, so the selector would fault anyway. The campaign is dead on the shipped format.",
+ "scenario": "Every scenario (record-dir-eio, frontier-dir-eio, record-dir-sigkill, record-cut-snapshot) raises FileNotFoundError at line 409 right after `store init`, because a log store has no transactions/. FN_NATIVE_POST_FAULT=record-attempted:stop is not in +fnn-post-model-cuts+ either. So the only device-level EIO and SIGKILL evidence for directory barriers cannot run on the shipped format. The only test of the module (test_native_block_fault_ownership.py) checks pid-ownership helpers with mocks, so nothing shows the campaign is dead.",
  "severity": "medium",
  "sha": "e6b827d21",
  "source": "sweep-2026-10-03",

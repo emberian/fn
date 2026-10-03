@@ -1,8 +1,11 @@
 {
  "category": "claim-gap",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "tests/test_native_crash_model.py:166-174 comment `postpublish arms log-fenced (the record durable, the answer uncertain)` with `cases = ((\"postpublish\", 3), (\"recordbarrier\", 3))`, then :188 `self.assert_cut_history(inject, \"either\", before, after)`. host/native/io.lisp:4829-4831 `after the batch's barrier (the record durable) ... (cons \"postpublish\" (list :log-fenced 'fnn-store-indeterminate ...`; native_cuts POST_LOG_CUTS gives log-fenced candidate \"present\"",
  "exposure": "latent",
  "file": "tests/test_native_crash_model.py",
+ "fix": "Expect `present` for postpublish (log-fenced) and `either` only for recordbarrier (log-written), matching the POST_LOG_CUTS candidate column.",
  "id": "S130",
  "line": "188",
  "locus": "gates-tests-packaging",
@@ -10,6 +13,8 @@
   "10-02 22:29 merged into next e6b827d21"
  ],
  "owner": "sweep-gates",
+ "reviewer": "test_native_crash_model.py:166-190 asserts 'either' for postpublish, although io.lisp:4828-4831 arms it at :log-fenced ('the record durable') and native_cuts POST_LOG_CUTS:202 gives log-fenced the candidate 'present'. A regression that loses the record on the injected-indeterminate path would pass. The kill at log-fenced is still checked as 'present' by test_all_native_post_log_process_death_cuts via the adapter, so only the injected-error path is weak.",
+ "scenario": "A regression makes the postpublish injection fire before the fence (or makes the log-fenced cut lose the batch). The post exits 3 with the history unchanged, `either` accepts len(prior), and `recover` keeps it. The test passes although an uncertain answer for an already-durable record has become a lost record, the exact property the comment claims.",
  "severity": "low",
  "sha": "e6b827d21",
  "source": "sweep-2026-10-03",

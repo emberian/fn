@@ -1,8 +1,11 @@
 {
  "category": "claim-gap",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "tests/campaign/native_production_kill.py:246 `state = {\"transactions\": names(\"transactions\"), \"staging\": names(\"staging\"), \"frontier\": frontier.read_text(...) if frontier.is_file() else None}`; :362 `rec[\"new_transactions\"] = len(after[\"new_transactions\"])`; :658 `ok = sub.get(\"code\") != ACCEPTED and sub.get(\"new_transactions\") == 0`; :666 `ok = (sub.get(\"code\") == ACCEPTED and after.get(\"identical\") and sub.get(\"new_transactions\") == 1)`; :799 `if it[\"death\"].get(\"lost_transactions\"):`. Contrast books/byte-store-log-initializer.lisp:9 `no transactions/ and no allocation-frontier.json (a format-9 store reads neither)`",
  "exposure": "latent",
  "file": "tests/campaign/native_production_kill.py",
+ "fix": "Observe the record log instead of transactions/: the committed history through tests/native_log_observation.committed_history (what test_native_crash_model uses), counting records before and after each resubmission. A missing journal/ should be a judge failure, not an empty set.",
  "id": "S058",
  "line": "246",
  "locus": "gates-tests-packaging",
@@ -10,6 +13,8 @@
   "10-02 22:29 merged into next e6b827d21"
  ],
  "owner": "sweep-gates",
+ "reviewer": "tests/campaign/native_production_kill.py:239-252 store_state reads store/transactions and allocation-frontier.json. host/native/io.lisp:4017 and 4594 plus books/byte-store-log-initializer.lisp:9 say a log store has neither, so new_transactions is always {} and lost_transactions always []. verdict() at :658/:666 then makes every died-absent row fail (it requires new_transactions == 1), and a duplicate appended on resubmit of a present article goes unseen. The lost_transactions check at :799 is dead. The campaign is still cited as evidence at tools/deploy_gate.py:588 and tests/README.md:81.",
+ "scenario": "On any format-9/10 store, names(\"transactions\") is None and allocation-frontier.json is absent, so new_transactions is always {} and lost_transactions always []. (1) Every POST killed before its commit lands as died-absent, and its resubmission is accepted. new_transactions is still 0, not 1, so the verdict becomes `died-absent-resubmit-failed` and the campaign is red regardless of behaviour. (2) For a killed POST that survived, the check that the resubmission wrote nothing (`new_transactions == 0`) always holds. A resubmission that appended a second record to the log is reported as `died-present-identical`. (3) `transactions lost at death` and store_phase (`untouched`/`frontier-advanced`) never fire. tools/deploy_gate.py:588 and tests/README.md:81 still cite this module as the enumerated-cut evidence.",
  "severity": "medium",
  "sha": "e6b827d21",
  "source": "sweep-2026-10-03",
