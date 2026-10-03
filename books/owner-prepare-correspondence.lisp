@@ -82,20 +82,42 @@
 
 ; The fast transition carries the same owner/store relation used to license
 ; the next prepare.  No relation test occurs in fn-opc-prepare.
+; Prove this transition from its own store preservation and field frame.
+; It need not depend on the entire owner event machine's preservation proof.
+(local
+ (defthm fn-opc-owner-prepare-preserves-relation-direct
+   (implies (fn-own-relation o)
+            (fn-own-relation (fn-opc-owner-prepare o record)))
+   :hints (("Goal"
+     :use ((:instance fn-spc-prepare-preserves-relation (s (fn-own-store o)))
+           (:instance fn-own-refresh-preserves-relation
+             (o (fn-own-make
+                 (fn-spc-prepare (fn-own-store o) record)
+                 (fn-own-view o) (fn-own-conns o)
+                 (fn-own-next-id o) (fn-own-max-conns o)
+                 (fn-own-pending o) (fn-own-ledger-field o)
+                 (fn-own-clock o) (fn-own-facts o)
+                 (fn-own-config o) (fn-own-queue o)
+                 (fn-own-inflight o) (fn-own-feeds o)
+                 (fn-own-node-secret o) (fn-own-refused o)))))
+     :in-theory
+     (e/d (fn-opc-owner-prepare fn-own-relation
+                              fn-spc-prepare fn-spc-stage-record)
+          (fn-opc-owner-prepare-equals-owner-store-step-under-relation
+           fn-spc-prepare-equals-specification-under-relation
+           fn-own-refresh fn-snt-relation fn-sn-statep
+           fn-sn-record-bindsp fn-sf-candidatep fn-sn-prepare-node))))))
+
 (defthm fn-opc-prepare-preserves-owner-relation
   (implies (fn-own-relation (fn-ocfg-owner oc))
            (fn-own-relation (fn-ocfg-owner
                              (fn-opc-prepare oc record))))
   :hints (("Goal"
-           :use (fn-opc-prepare-equals-owner-event-under-relation
-                 (:instance fn-own-step-preserves-relation
-                            (o (fn-ocfg-owner oc))
-                            (event (list :store (list :prepare record)))))
-           :in-theory
-           (e/d (fn-ocfg-step fn-ocfg-pass)
-                (fn-opc-prepare fn-own-step fn-own-relation
-                 fn-opc-prepare-equals-owner-event-under-relation
-                 fn-own-step-preserves-relation)))))
+    :use ((:instance fn-opc-owner-prepare-preserves-relation-direct
+                      (o (fn-ocfg-owner oc))))
+    :in-theory (e/d (fn-opc-prepare)
+                    (fn-own-relation fn-opc-owner-prepare
+                     fn-opc-prepare-equals-owner-event-under-relation)))))
 
 ; Every configured-owner event the native host can issue carries the same
 ; owner relation.  The configuration wrapper sometimes handles connection
