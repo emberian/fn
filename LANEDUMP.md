@@ -1869,3 +1869,11 @@ No ACK or reception-clock update, source resumes afterward. Actual driver +real
 control-function/raw physical recording fixture PASS. Book no-ACK/reception
 boundaries and cheap invariant scoped exact farm pending. Concurrent incoming
 control parsing/full decoder latency still open.
+
+Live census before10am: be75 source+actual scoped controller/core-leaf receipts
+ready/pushed; full source-loaded SCN1110 not run here yet. Lieutenant confirms
+Groundwork initialized launcher works; exact invocation requested so this owner
+can execute canonical keepalive+second request in private Store paths directly.
+Full ownership remains decoder/CRC/publication/GC cost, concurrent input control,
+registered SAMEPRS issuer, full scheduler/custody crash refinement, canonical
+signed R/Q/reopen and actual ION adapter outcomes. No saved-image gate.
