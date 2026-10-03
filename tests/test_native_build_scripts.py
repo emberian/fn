@@ -52,5 +52,13 @@ class IoLispLeftovers(unittest.TestCase):
         self.assertNotIn("five recovery barriers", self.io)
 
 
+class LfJoinedSweepIsGone(unittest.TestCase):
+    def test_lf_joined_staging_sweep_removed(self):
+        # S117: no caller remained after the native sweep took the structured round.
+        text = (ROOT / "host/store-node-host.lisp").read_text()
+        self.assertNotIn("(defun fn-store-sn-sweep-staging", text)
+        self.assertNotIn("(defun fn-store-sn-join-octet-names", text)
+
+
 if __name__ == "__main__":
     unittest.main()

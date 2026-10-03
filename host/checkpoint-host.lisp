@@ -1,7 +1,10 @@
-; Checkpoint bridge: the host marshals octets; ACL2 captures, encodes, decodes,
-; validates and restores.  Python computes only the SHA-256 trailer (A-CRYPTO)
-; and slices the suffix by the sequence ACL2 returned; ACL2 revalidates that
-; suffix in fn-checkpoint-restore.
+; Checkpoint host entries: the host marshals octets; ACL2 captures, encodes,
+; decodes, validates and restores.  The host computes only the SHA-256 trailer
+; (A-CRYPTO) and slices the suffix by the sequence ACL2 returned; ACL2
+; revalidates that suffix in fn-checkpoint-restore.  The generation-capture
+; entries (fn-store-checkpoint-protected, -differential) have no caller in the
+; native images since the Python Acl2Store bridge was retired (S117); specs/
+; checkpoint.md still cites them, so they stay until that claim is retired.
 (in-package "ACL2")
 (include-book "../books/checkpoint-publish")
 (include-book "../books/checkpoint-auxiliary")
@@ -61,7 +64,7 @@
 ; The allocation domain is the live node's, read with the same accessor the
 ; rest of the store host uses (fn-store-sn-domain).  `*fn-store-groups*' was
 ; deleted with the compiled group table in 4ba5599; these three sites still
-; named it, so every Acl2Store bridge failed to load this file.
+; named it, so the retired Acl2Store bridge failed to load this file.
 ;
 ; Under the records flip the capture replays ROWS (the decoded events
 ; interned into a local arena, books/store-intern.lisp fn-intern-events), and
