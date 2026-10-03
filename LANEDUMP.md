@@ -1127,3 +1127,100 @@ Python/JSON/diff checks and five receipt objects verify; no repeated builds,
 proofs, allocation measurements or raw experiments. First image-free selector
 sbcl --script tests/native_extent_observer_raw.lisp; acceptance with new image
 tests.test_native_page_io.PageIOTests.test_matching_success_publishes_and_advances_the_original_request.
+## NEWNEWS configured candidate selector (2026-10-03)
+
+PRF-1257 claimed for this helper. New book/tests only: fixed10-cell selector
+retains pattern/configured-group/article/membership references, active group,
+phase, group/member offsets and final boolean receipt. start builds no filtered
+group list. one inspects at most one configured group OR one membership entry;
+first equal membership ends that group's scan even for invalid/zero numbers.
+Wildcard match waits for a positive valid local number and renderable article ID.
+
+Exact start candidate equality, unconditional step-value preservation, decided
+value equality, state preservation and combined offset/entry-charge relation
+admitted. Remaining model strictly decreases under posp alone; zero remaining
+settles to a decision, receipt retains value. Logical len/filter/residual models
+are disabled and never called by start/one. Entry visits assert no byte/matcher
+allocation tariff. Existing wildmat-work facts remain a future matcher bridge.
+
+Final source replay uses one encapsulate, dropping locals:30forms,2.14 ACL2 s,
+1,513,918 steps.15 test forms652 steps: sparse misses, actual first successful
+decision, excluded wildcard, first-zero duplicate, overflow number, invalid ID,
+empty settlement and offset-invariant hypothesis removal. Guards verified.
+Strict scoped theory/book-order check and diff check pass. Test-root check
+requires new selector test in Makefile ACL2_BOOKS; inherited cursor/plan tests
+also lack entries at this base. Served owns consumer/controller integration,
+registry/spec/scenario and root wiring with Integration. No certificate/native
+or composed served claim yet. Evidence archived/indexed under
+planning/evidence/dc03-selector-20261003/{checks.json,selector-repl.log.gz}.
+
+## Clean serializer proof repair (2026-10-03)
+
+Integration frozen321 certification refused FN-SL-LOOP-RESIDUAL: the warm
+catalog world had supplied accumulator algebra absent in the clean book.
+Three new LOCAL facts establish append/revappend normalization, accumulator
+length and true-list output. Existing executable functions and public theorem
+statements unchanged. Clean replay also exposed/fixed the next byte-bound gap.
+
+Fresh hbox dc03-serializer-clean loaded nntp-session from matching certificates
+and def-cursor from source inside encapsulate, no catalog events. Replayed the
+entire assembled serializer (7636b9078 book hash c7e9fddc plus this local patch,
+composed hash9a3b2c7d) from fn-sl-make inside one encapsulate:49forms,0.33ACL2s,
+94,114steps; local events dropped. Residual/byte/list/shape/cell proofs and guards
+pass. Scoped strict theory/book-order and diff checks pass. Evidence archived
+and indexed at planning/evidence/dc03-serializer-clean-20261003/{checks.json,repl.log.gz}.
+No certificate claim here: Integration reuses241passed artifacts and retries
+the exact five failed roots on its next repaired candidate.
+
+
+## Configured NEWNEWS selector consumer, 2026-10-03 GPT-6.1-Sol
+
+SOURCE READY: helper selector14ce3e9ec is consumed by the actual NEWNEWS
+factory and plan. Factory `fn-nntp-newnews-response-stream(session, archive,
+env, args, fn-arena, fn-cat)` retains fixed context/source/scan envelopes,
+parsed patterns and original configured-group/article references. No selected
+list or membership copy. Distinct `:newnews-configured` tag preserves legacy
+total semantics. `:select` holds selector10/current scan6 across one group or
+membership unit; first equal membership decides even if invalid. Output keeps
+string/offset/stuffing state, visits zero candidates, and never renders the
+whole line before budgeting. Existing opaque dependency/context fields stay.
+
+Actual generated NEWNEWS row, hand dispatcher and plan now call this producer.
+Constructor/refinement0.25 ACL2s/56023steps, catalog tail3.69s/787250,
+hand dispatcher4.33s/890073, generated rows+guards1.78s/499732,
+plan1.89s/708065. Actual factory11-group sparse tiny/large drain witness
+252steps; stream phase progress and two hypothesis removals (corrupted capture
+labelled)438steps. Selection progress0.06s/24644. These are source admissions
+in a retained source catalog world, not certificates or matching image.
+Full raw log (including refused probes/prefixes) archived/indexed:
+selector-composition-repl.log.gz90b0e2ad... and checks343d6c30... under
+planning/evidence/served-cursor-20261003. Enabled residual unfolding caused
+three60s proof loops; fixed-size constructor bridge proves0.02s/1020steps and
+closed models keep composition small. No theory escape.
+
+PRF1257 helper claim kept; coordinator next_id check with both lanes passes.
+PRF1256 now cites actual selection-progress, not unreachable legacy normal
+article-tail decrease. Spec/scenario/curated events and Makefile roots wired.
+protocol_emit check34rows304replies passes; debt10 unchanged. Scoped strict
+book order/theory, diffcheck and root registration pass (40known unrelated red).
+
+Separate serializer clean-world repair668bf268b imported as47a9606c3, only
+threeLOCAL accumulator facts, unchanged body/public theorems. Integration
+owns five-root cert retry and global registry/current-view regeneration.
+
+Open: wildcard/name comparisons, composed allocation/collector/mux tariff,
+actual pre-step output draw/custody producer, decided completed discovery view,
+restricted NEWNEWS and cold OVER/HDR/XPAT consumers. Legacy missing-facts
+metadata tombstone fallback still reads cold payload and is not qualified as
+bounded off-owner settlement. Foundations owns output grants and Runtime owns
+physical mux discard/return; logical close/cancel cannot settle physical holds.
+
+## Sol source assembly: configured NEWNEWS controller (2026-10-03)
+
+- Inputs 14ce3e9ec + 8f6fa63a2; prior601 renderer/plan and d8 discovery already dev. Actual generated producer -> retained configured group/member selector -> stream -> served-plan composition remains producer-exact; only declaration cost metadata and confirmed receipt filename corrected.
+- Retain new PRF1257 and reachable PRF1256 select-progress curated row. Registry event conflict resolved by generation, not source choice; global ledger/current reports remain Integration-owned. Makefile entries unique; claims checked under both original lanes; all four indexed selector/composition objects verified.
+- Existing source admissions and literal configured sparse/first-membership/hypothesis-removal witnesses reused. No ACL2/cert/image replay. Next scoped roots: selector + stream + catalog/dispatch/protocol table + served-plan-cursor and their selector/stream/served-plan-newnews tests. Matching certification/developer image, matcher/name comparison, composed heap/funding/custody, completed view and cold common consumers remain owed.
+
+## Sol source assembly: exact cached-only REPL (2026-10-03)
+
+- c4449490b composed clean; tools/tests bytes exact producer. Tools primary semantic review accepted; 31 focused cached/remote/source-refusal regressions already PASS, reused without duplicate test or ACL2 session. Flag rejects contradictory modes before host/direct entry and suppresses ancestry-only source fallback; exact cache/alist checks and real misses remain refusal. No certificate/data/evidence cache changes. Ordinary tool integration; no proof certification gate.
