@@ -111,7 +111,9 @@
 (defun fnn-bp-config (&rest args) (declare (ignore args)) :config)
 (defun fnn-bps-open-node (&rest args) (declare (ignore args)) :bp)
 (defun fnn-bps-release (bp) (assert (eq bp :bp)) (push :fnbs-release *events*))
-(defun fnn-bpnode-read-budgets (&rest args) (declare (ignore args)) nil)
+(defun fnn-bpnode-read-budgets (&rest args)
+ (declare (ignore args))
+ (when (eq *mode* :budget-error) (error 'fixture-stop)) nil)
 (defun fnn-bp-journal-dir (root) root)
 (defun fnn-tcl-spool-acquire (&rest args) (declare (ignore args)) :spool)
 (defun fnn-tcl-spool-release (lock) (assert (eq lock :spool)) (push :spool-release *events*))
@@ -133,4 +135,10 @@
    (assert (eql (and *fnn-owner-retained-service* t) (eq mode :join-error)))
    (when (eq mode :join-error) (assert (not (member :store-close *events*))))
    (assert (member (if (eq command :node) :fnbs-release :spool-release) *events*)))))
+(let ((*mode* :budget-error) (*events* nil))
+ (handler-case
+  (fnn-command-bp-node 0 nil "/fnbs" "/store" "/receipts" "/workflow"
+   "node" "peer" "dest" "policy" "issuer" "host" 4556 1000 2 16 32768 nil 0 nil)
+  (fixture-stop () nil))
+ (assert (equal *events* '(:fnbs-release))))
 (format t "PASS actual BP served owner pre-open and teardown custody~%")

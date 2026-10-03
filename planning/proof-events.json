@@ -19428,6 +19428,19 @@
         }
       ],
       "pending_subject": "fnn-owner-page-read-startup consumes fn-prstartup-default-plan which calls fn-prstartup-plan; composed wrapper/source replay pending."
+    },
+    {
+      "id": "PRF-1303",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-tclsctl-source-drive-keepalive-refines-session"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tclsctl-source-drive-keepalive-preserves-custody-and-reception"
+        }
+      ]
     }
   ]
 }

@@ -1100,11 +1100,11 @@ uncertain, as it does everywhere else."
          (listener nil)
          (session-word nil)
          (primary-condition nil))
-    (setq *fnn-bpnode-budgets* (fnn-bpnode-read-budgets journal-root))
     (unwind-protect
          (handler-bind ((serious-condition (lambda (condition)
                            (unless primary-condition (setq primary-condition condition)))))
          (progn
+           (setq *fnn-bpnode-budgets* (fnn-bpnode-read-budgets journal-root))
            (setq owner
                  (if listen-port
                      (fnn-bp-served-owner-start owner-custody store-root 1)
