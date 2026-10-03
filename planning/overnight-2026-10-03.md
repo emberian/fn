@@ -43,6 +43,30 @@ authorizes direct integration onto dev while stabilizing it. Source integration
 does not wait behind the old next-to-dev image gate. Qualification still belongs
 to one immutable candidate and never transfers a verdict to changed bytes.
 
+## Reorientation after compaction or takeover
+
+A summary is a locator, not sufficient reorientation. Recover the actual
+top-level user **and assistant** exchanges with `cv prompts 01a0fe41`, then
+`cv show 01a0fe41 --around N --context K`. Useful prompts are317 (ambition),362
+(team/design),640 (correction to serial/preservation advice),830 (Sol deputies),
+967 (context deputy),1009 (integration/shipping),1037 (skeptical external reviews),
+1058 (empirical/helpers),1189/1245/1256 (speed/batching),1273 (trajectory) and1312
+(recovery). Read surrounding responses and latest corrections, advancing beyond
+long tool stretches through the assistant final response. In particular,
+around640/context5 and around1273/context8 carry corrections; range1295..1307
+contains the complete promised trajectory/capability answer before compaction.
+Use `cv show --help` for range syntax. Do not count repeated forked history as
+independent evidence or commit transcript dumps/personal context.
+
+Before substantive decisions, read the complete needed governing files:
+`docs/README.md`, `docs/architecture.md`, `planning/decisions.md`, this active
+plan, `planning/now.md`, `planning/current.md`, and applicable complete subsystem
+designs/specifications. If output truncates, read the remaining chunks. Confirm
+live ownership and the frozen candidate with Groundwork and Integration;
+authoritative `origin/dev` may differ from the protected, untouched shared
+checkout. Agent summaries/reports are leads to source and conversations, not
+reading substitutes. This is a working routine, not an installed runtime hook.
+
 ## Execution roster and ownership
 
 The first groundwork wave is active: Integration, Runtime coordination, Served
