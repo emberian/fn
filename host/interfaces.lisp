@@ -290,6 +290,29 @@
   :keystones (fn-fs-unwind-faults-an-unexplained-exit)
   :direct "runs in the envelope's unwind under the owner mutex, which must not fail")
 
+;; Physical lifecycle: these guard-t decisions run in the boundary itself.
+(definterface fn-fs-actor-exit-kind
+  :class :common-lisp-compliant
+  :keystones (fn-fs-actor-early-exit-survives-spawn-publication)
+  :direct "fnn-owner-actor-run classifies its final unwind without recursing through dispatcher faults")
+(definterface fn-fs-actor-step
+  :class :common-lisp-compliant
+  :keystones (fn-fs-actor-only-physical-end-or-failed-spawn-deregisters
+              fn-fs-actor-failed-join-retains-custody)
+  :direct "native actor start/run/join advances the guard-t physical lifecycle while holding roster exclusion")
+(definterface fn-fs-actor-join-action
+  :class :common-lisp-compliant
+  :keystones (fn-fs-actor-failed-join-retains-custody)
+  :direct "fnn-owner-actor-join classifies physical termination separately from fault escalation")
+(definterface fn-fs-actor-receipt
+  :class :common-lisp-compliant
+  :keystones (fn-fs-actor-failed-join-produces-no-receipt
+              fn-fs-actor-receipt-carries-the-recorded-exit)
+  :direct "fnn-owner-actor-join emits only the lifecycle receipt after physical termination")
+(definterface fn-fs-inbox-admit
+  :class :common-lisp-compliant
+  :direct "fnn-mux-adopt-place decides admission under the same inbox lock as closure")
+
 ; ======================================================================; Every other entry the raw host dispatches through fnn-call, by subsystem
 ; (tools/interface_emit.py SUBSYSTEMS).  Class and kinds are the image
 ; world's; a keystone is a cited theorem (planning/proofs.json) whose
