@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "host/native-admin-host.lisp",
+ "id": "PGO-OWED-NATIVE-ADMIN-HOST",
+ "notes": [],
+ "owner": "post-guard-off",
+ "severity": "medium",
+ "slice": "carrier",
+ "source": "post-guard-off",
+ "state": "open",
+ "title": "A-OWNER-INVARIANT-CARRIED owes: 8 state writer(s) defined in host/native-admin-host.lisp have no preservation theorem of fn-owner-retain-statep; each is listed in host/owner-served-carried.lisp :incomplete. Prove (def-owner-writer / the carrier move) and move it to :transitions: fn-acct-host-owner-redeem-log-line fn-acct-host-owner-redeem-stage fn-acct-host-owner-redeem-waitingp fn-acct-host-owner-redeem-word fn-native-admin-host-apply fn-native-admin-host-owner-reconfigure fn-native-admin-host-query-report fn-owner-account-outcome",
+ "updated": "2026-10-03T04:15:32Z"
+}

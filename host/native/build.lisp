@@ -30,6 +30,7 @@
 ;; leaves a boundary (fn-fs-classify) and escalates the service's exit
 ;; (fn-fs-stop-exit-escalate); both run in handlers, called directly.
 (include-book "books/failure-scope")
+(include-book "books/committer-actor")
 (include-book "books/replay")
 ; Every codec seam's attachment (books/codec-attach.lisp): the books above
 ; the seams call the constrained encoders and decoders, and this is what makes
@@ -45,10 +46,12 @@
 ;; the held record reaches the arena, so nearly every book below does: it
 ;; comes right after the codec and record attachments, before any of them.
 (include-book "books/payload-arena-attach")
+(include-book "books/history-paged-attach")
 (include-book "books/store-config")
 (include-book "books/identity")
 (include-book "books/hybrid-store-injected")
 (include-book "books/peer-authored-accept")
+(include-book "books/peer-round-driver")
 (include-book "books/login-binding")
 ;; PRF-161: host/owner-host.lisp calls the fn-exp- exposure subjects.
 (include-book "books/public-exposure")
@@ -64,6 +67,7 @@
 ;; continuation of a served OVER/XOVER range (fnn-owner-cursor-step calls
 ;; fn-splan-cursor-step; fnn-owner-render-next asks fn-splan-at-cursorp).
 (include-book "books/served-plan-cursor")
+(include-book "books/served-plan-line-buffer")
 (include-book "books/response-plan-pins")
 (include-book "books/owner-scheduler")
 (include-book "books/owner-commit-class")
@@ -86,6 +90,7 @@
 ;; Lane time-model-2: the decision journal (fn-otm-disk-step, fn-otm-note-step,
 ;; fn-otm-start-line) and the 440 at the POST command (fn-otm-read-span).
 (include-book "books/owner-time-journal")
+(include-book "books/owner-time-journal-stream")
 (include-book "books/owner-time-admission")
 ;; Lane zero-copy-commit: fn-oas-read-span (the articles in flight).
 (include-book "books/owner-article-slots")
@@ -244,6 +249,7 @@
 ; into this saved image's ACL2 world.
 (include-book "books/bp-node-machine-guards")
 (include-book "books/bp-node-fragment-guards")
+(include-book "books/bp-session-scheduler")
 (include-book "books/bp-fragment-send")
 (include-book "books/bp-node-receive-boundary")
 (include-book "books/bp-fnbs-replay")
@@ -326,6 +332,7 @@
 (ld "host/page-file-lease-host.lisp" :ld-error-action :error)
 (ld "host/page-window-lease-host.lisp" :ld-error-action :error)
 (ld "host/page-window-executor-host.lisp" :ld-error-action :error)
+(ld "host/page-decoded-window-host.lisp" :ld-error-action :error)
 ;; The octet buffer's checkpoint writers (rep-wave-d-2; the frames' octets):
 ;; host/native/io.lisp fnn-plan-write-all writes fn-sccb-plan-octets per step.
 (include-book "books/store-checkpoint-buffer")
@@ -361,6 +368,7 @@
 (ld "host/anchor-server-host.lisp" :ld-error-action :error)
 (ld "host/reader-host.lisp" :ld-error-action :error)
 (ld "host/owner-host.lisp" :ld-error-action :error)
+(ld "host/history-root-host.lisp" :ld-error-action :error)
 ;; Stage 5 (lane raw-dispatch-3): the owner's carried relation
 ;; (fn-owner-retain-statep) across the host writers converted to :logic.
 (ld "host/owner-retain-host.lisp" :ld-error-action :error)
@@ -403,6 +411,11 @@
 (ld "host/bp-node-host.lisp" :ld-error-action :error)
 (ld "host/bp-node-machine-host.lisp" :ld-error-action :error)
 (ld "host/bp-receive-evidence-host.lisp" :ld-error-action :error)
+; The owner's carried relation over its proved writers, the rest owed under
+; A-OWNER-INVARIANT-CARRIED (lane post-guard-off): after every ACL2-mode host
+; file (each owed writer must be a function of this world) and before the
+; declarations whose :raw-with names its row.
+(ld "host/owner-served-carried.lisp" :ld-error-action :error)
 ; The host-called entries, declared (books/definterface.lisp): after every
 ; ACL2-mode host file, so each declaration is checked against this world
 ; (class, the entry guard's kinds, keystones); a refuted one stops the build.
@@ -439,6 +452,7 @@
         (fnn-install-raw-dispatch)
         ; The payload arena's extent realizer (A-DURABLE-EXTENT; PRF-281).
         (load "host/native/extent.lisp")
+        (load "host/native/extent-decoded.lisp")
         ; DEFLATE (lib/libfn-deflate, vendored zlib; untrusted: ACL2's
         ; inflater checks every stream it reads): the COMPRESS layer's
         ; outbound compressor (RFC 8054), the stored payloads' SBCL encoder, and
@@ -518,6 +532,7 @@
         ; only host/owner-host.lisp wrappers for protocol and state decisions.
         (load "host/native/owner-control-turn.lisp")
         (load "host/native/owner.lisp")
+        (load "host/native/history-root.lisp")
         (load "host/native/receiver-parser-turn.lisp")
         ; Its connections on a fixed set of I/O loops (PKT-605).
         (load "host/native/mux.lisp")
@@ -574,9 +589,11 @@
         (load "host/native/bp-obligation.lisp")
         (load "host/native/bp-listener-control.lisp")
         (load "host/native/bp-control.lisp")
+        (load "host/native/bp-session.lisp")
         (load "host/native/bp-node.lisp")
         ; `acl2 session': developer images only (the test fixtures' ACL2).
         (load "host/native/acl2-session.lisp")
+        (load "host/native/dev-repl.lisp")
         ; Native anchor acquisition and its real primitive facility.  The
         ; anchor command calls fnn-crypto-startup in the restarted image, so
         ; it never trusts the serialized FFI readiness state.

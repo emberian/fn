@@ -142,6 +142,55 @@ fn-lgdm-repair-text: a torn tail dropped, a confirmed repair), newest first;
 (defun fnn-os-fail (errno &optional path)
   (error 'fnn-os-error :errno errno :path path))
 
+;;; Shared observation-only primitive declaration precedes extent compilation.
+;;; Its collector/runtime functions are installed by owner before workers run.
+(defvar *fnn-native-observer* nil)
+(defvar *fnn-native-actor-identity* nil)
+(defvar *fnn-native-wait-release* nil)
+
+(defmacro fnn-with-observed-mutex ((lock label &rest options) &body body)
+  "Literal measured lock label and unchanged SBCL mutex options. Acquire
+observed after physical lock; release reserves under it, completes after unlock."
+  (let ((mutex (gensym "MUTEX")) (name (gensym "LOCK-LABEL"))
+        (row (gensym "RELEASE")))
+    `(let ((,mutex ,lock) (,name ,label) (,row nil)
+            (*fnn-native-wait-release* nil))
+       (unwind-protect
+            (sb-thread:with-mutex (,mutex ,@options)
+              (when *fnn-native-observer*
+                (fnn-native-observe (list :acquire *fnn-native-actor-identity* ,name)))
+              (unwind-protect (progn ,@body)
+                (when *fnn-native-observer*
+                  (cond ((sb-thread:holding-mutex-p ,mutex)
+                         (setq ,row (fnn-native-observation-reserve
+                                     (list :release *fnn-native-actor-identity* ,name) nil)))
+                        ((not *fnn-native-wait-release*)
+                         (fnn-native-observation-unavailable :unobserved-unlock))))))
+         (when ,row (fnn-native-observation-complete ,row))))))
+
+
+(defun fnn-observed-condition-wait (queue mutex label &key timeout)
+  "Unchanged physical wait. Reserve release while held; confirm it only on
+normal wait return, then record reacquisition only if this thread owns MUTEX.
+A timeout can return unlocked; the surrounding observed mutex must not invent
+another release. An escaping wait makes comparison unavailable."
+  (if (null *fnn-native-observer*)
+      (sb-thread:condition-wait queue mutex :timeout timeout)
+    (let ((row (fnn-native-observation-reserve
+                (list :release *fnn-native-actor-identity* label) nil))
+          (returned nil))
+      (setq *fnn-native-wait-release* t)
+      (unwind-protect
+           (multiple-value-prog1 (sb-thread:condition-wait queue mutex :timeout timeout)
+             (setq returned t)
+             (when row (fnn-native-observation-complete row))
+             (when (sb-thread:holding-mutex-p mutex)
+               (setq *fnn-native-wait-release* nil)
+               (fnn-native-observe (list :acquire *fnn-native-actor-identity* label))))
+        (unless returned
+          (fnn-native-observation-unavailable :wait-observation-escaped))))))
+
+
 (defvar *fnn-section-step* nil
   "The publication the boundary this thread is inside has landed and not yet
 fenced: :replaced or :linked once a rename or link returned success
@@ -395,9 +444,16 @@ return the index the bytes begin at."
             (or (cdr (assoc 'fn-hist (user-stobj-alist *the-live-state*)))
                 (fnn-fault "the history stobj is not in this image")))))
 
+(defun fnn-live-owner-st ()
+  ;; Resolve the authoritative live binding, never an independently cached
+  ;; owner copy. Until the caller-threading migration installs this stobj,
+  ;; an entry requiring it refuses rather than borrowing the old globals.
+  (or (cdr (assoc 'fn-owner-st (user-stobj-alist *the-live-state*)))
+      (fnn-fault "the owner carrier stobj is not in this image")))
+
 (defun fnn-trailing-kind (name)
   "The names of NAME's live stobjs just before its trailing state, in order:
-the longest run of fn-arena, fn-cat and fn-hist there (NIL for none)."
+the longest run of fn-arena, fn-cat, fn-hist and fn-owner-st there (NIL for none)."
   (multiple-value-bind (known found) (gethash name *fnn-trailing-stobjs*)
     (if found
         known
@@ -406,7 +462,7 @@ the longest run of fn-arena, fn-cat and fn-hist there (NIL for none)."
                   (run nil))
               (when (eq (car ins) 'state)
                 (loop for sym in (cdr ins)
-                      while (member sym '(fn-arena fn-cat fn-hist))
+                      while (member sym '(fn-arena fn-cat fn-hist fn-owner-st))
                       do (push sym run)))
               run)))))
 
@@ -414,7 +470,8 @@ the longest run of fn-arena, fn-cat and fn-hist there (NIL for none)."
   (ecase sym
     (fn-arena (fnn-live-arena))
     (fn-cat (fnn-live-cat))
-    (fn-hist (fnn-live-hist))))
+    (fn-hist (fnn-live-hist))
+    (fn-owner-st (fnn-live-owner-st))))
 
 (defun fnn-arena-then-state (name)
   "The trailing stobj arguments of the state-returning entry NAME."
@@ -1245,6 +1302,10 @@ offered to the writer while the owner runs (PKT-508), else written here."
 (defvar *fnn-raw-dispatch* (make-hash-table :test 'eq)
   "entry name -> its raw (guard-verified, compiled) function symbol")
 
+(defvar *fnn-startup-creators* (make-hash-table :test 'eq)
+  "Validated registered zero-input stobj creators; allocation has no executable
+counterpart. The image installer fills this once before any worker exists.")
+
 (defvar *fnn-dispatch-counterpart* nil
   "T when the developer selector keeps the executable-counterpart path.")
 
@@ -1253,6 +1314,7 @@ offered to the writer while the owner runs (PKT-508), else written here."
 the :raw-with and :raw-guarded entries, checked against the world; the count."
   (let ((wrld (w *the-live-state*)))
     (clrhash *fnn-raw-dispatch*)
+    (clrhash *fnn-startup-creators*)
     (dolist (entry (table-alist 'fn-interfaces wrld))
       (let ((name (car entry))
             (theorems (cadr (assoc-keyword :raw-with (cdr entry))))
@@ -1285,6 +1347,10 @@ the :raw-with and :raw-guarded entries, checked against the world; the count."
             (when (and guarded (not (compiled-function-p (symbol-function raw))))
               (error "fnn-install-raw-dispatch: ~a has no compiled guarded callback" name))
             (setf (gethash name *fnn-raw-dispatch*) raw)
+            ;; ACL2's loaded-world predicate limits this to the exact creator
+            ;; role and validated compiled target, never semantic methods.
+            (when (fn-di-raw-creatorp name (cdr entry) wrld)
+              (setf (gethash name *fnn-startup-creators*) raw))
             (when report
               (format t "~&FN_RAW_DISPATCH ~(~a~) ~(~a~) invariant-risk=~a with=~(~a~)~%"
                       name (symbol-class name wrld)
@@ -1295,8 +1361,10 @@ the :raw-with and :raw-guarded entries, checked against the world; the count."
 (defun fnn-dispatch-function (name)
   "The function fnn-call applies for NAME: its raw definition when NAME is
 raw-dispatched and the counterpart selector is off, else its executable
-counterpart."
-  (or (and (not *fnn-dispatch-counterpart*)
+counterpart. Registered startup creators retain validated allocation routes;
+ACL2 refuses their counterparts, independent of semantic method selection."
+  (or (gethash name *fnn-startup-creators*)
+      (and (not *fnn-dispatch-counterpart*)
            (gethash name *fnn-raw-dispatch*))
       (fnn-counterpart name)))
 
@@ -1860,6 +1928,10 @@ the payload to seal as (:seal OCTETS); the host seals exactly those octets
 ;; completion subject a second time.
 (defvar *fnn-observe-callback* #'fnn-bridge-io)
 (defvar *fnn-finish-callback* #'fnn-bridge-finish)
+;; A composed owner supplies ACL2's release-debt-aware identity gate.  The
+;; standalone Store has no workflow continuation and uses its codec successor.
+;; Declare this special: owner bindings must reach the nested log allocator.
+(defvar *fnn-identity-reservation-callback* nil)
 ; Developer fault cut, dynamically scoped to one canonical Store publication.
 ; NIL in normal operation.  The cut runs after the final link and before its
 ; directory barrier, so an injected EIO is an uncertain publication.
@@ -1902,8 +1974,10 @@ name contains (`fn-store-cfg-join-names', host/store-node-host.lisp)."
                            (mapcar (lambda (n) (fnn-octet-list (fnn-string-octets n))) names)
                            (fnn-monotonic-ms)
                            wall has-wall))))
-    (when (or (keywordp value) (not (fnn-octet-list-p value)))
+    (when (eq value :bad)
       (fnn-refuse "refused initial group table"))
+    (unless (fnn-octet-list-p value)
+      (fnn-fault "ACL2 returned a malformed initial group table"))
     (fnn-octets value)))
 
 (defun fnn-bridge-lookup-found-p (msgid)
@@ -1927,9 +2001,9 @@ name contains (`fn-store-cfg-join-names', host/store-node-host.lisp)."
           ;; The two slice constants the store host still holds, checked
           ;; against the ACL2 grammar at session open as frame_bridge does.
           (unless (= (cdr (assoc :trailer table)) 32)
-            (fnn-refuse "host store trailer is 32 but the model says ~d" (cdr (assoc :trailer table))))
+            (fnn-fault "host store trailer is 32 but the model says ~d" (cdr (assoc :trailer table))))
           (unless (= (cdr (assoc :header table)) 10)
-            (fnn-refuse "host store header is 10 but the model says ~d" (cdr (assoc :header table))))
+            (fnn-fault "host store header is 10 but the model says ~d" (cdr (assoc :header table))))
           (setq *fnn-constants* table)))))
 
 (defun fnn-constant (name) (cdr (assoc name (fnn-constants))))
@@ -2272,14 +2346,25 @@ kernel may have issued the namespace operation even when it reports failure."
   (let* ((stage (fnn-join (fnn-staging store)
                           (format nil ".init-~d-~a" (sb-posix:getpid) (fnn-random-hex 12))))
          (fd (fnn-open stage (logior sb-posix:o-wronly sb-posix:o-creat sb-posix:o-excl) #o600)))
-    (when initializer-prefix (fnn-init-cut store (fnn-concat initializer-prefix "created")))
-    (unwind-protect (progn (fnn-write-all fd contents)
-                           (when initializer-prefix
-                             (fnn-init-cut store (fnn-concat initializer-prefix "written")))
-                           (fnn-fsync-file fd)
-                           (when initializer-prefix
-                             (fnn-init-cut store (fnn-concat initializer-prefix "file-fenced"))))
-      (fnn-close fd))
+    ;; Cover the write phase as well as the later link phase.  A failed
+    ;; write/fsync (or close) never leaves this owned candidate behind.
+    (let ((written nil) (primary nil))
+      (unwind-protect
+           (handler-case (progn
+             (when initializer-prefix
+               (fnn-init-cut store (fnn-concat initializer-prefix "created")))
+             (fnn-write-all fd contents)
+             (when initializer-prefix
+               (fnn-init-cut store (fnn-concat initializer-prefix "written")))
+             (fnn-fsync-file fd)
+             (when initializer-prefix
+               (fnn-init-cut store (fnn-concat initializer-prefix "file-fenced")))
+             (setq written t))
+             (error (e) (setq primary e)))
+        (handler-case (fnn-close fd)
+          (error (e) (unless primary (setq primary e))))
+        (when (or primary (not written)) (ignore-errors (fnn-unlink stage))))
+      (when primary (error primary)))
     (unwind-protect
          ;; Catch EEXIST only from link(2).  Directory fencing and the test
          ;; seam below retain their own error/cut origin.
@@ -2413,13 +2498,31 @@ store; anything else is left to the ordinary open."
                   (fnn-core 'fn-store-lim-effective sealed
                             (mapcar #'fnn-octet-list (mapcar #'cdr observation))))))))))
 
+(defun fnn-initialize-resume-check (store groups requested-profile &optional history)
+  "ACL2 compares requested init with the sealed profile and exact generation one."
+  (let* ((path (fnn-config-record-path store 1))
+         (present (fnn-lstat path))
+         (record (when present
+                   (fnn-check-regular path)
+                   (fnn-octet-list (fnn-read-regular-bounded path +fnn-config-record-bytes+))))
+         (decision (fnn-core 'fn-nir-resume-decision
+                              requested-profile (fnn-store-sealed-config store)
+                              (fnn-octet-list (fnn-bridge-config-initial groups)) record history)))
+    (cond ((equal decision '(:accepted :resume)) t)
+          ((and (consp decision) (eq (first decision) :refused))
+           (fnn-refuse "~a" (fnn-core 'fn-nir-resume-line decision)))
+          ((and (consp decision) (eq (first decision) :fault))
+           (fnn-fault "~a" (fnn-core 'fn-nir-resume-line decision)))
+          (t (fnn-fault "ACL2 returned a malformed init resume decision")))))
+
 (defun fnn-initialize (store &optional (groups +fnn-default-groups+) (profile :development))
   ;; One durable configuration record at generation 1, built and admitted by
   ;; the core from the operator's group names.  The program is ACL2's:
   ;; books/byte-store-log-initializer.lisp fn-bsi-log-init-program (journal/
   ;; and the segment; every profile is on the record log, fn-store-profile-logp).
-  (let ((logp (fnn-core 'fn-store-profile-logp
-                        (fnn-metadata-config-decode (fnn-metadata-config-frame profile)))))
+  (let* ((requested-profile (fnn-metadata-config-decode (fnn-metadata-config-frame profile)))
+         (logp (fnn-core 'fn-store-profile-logp requested-profile))
+         (existing-profile nil))
     (unless logp
       (fnn-fault "the init profile is not a record-log profile"))
     (fnn-safe-directory (fnn-store-root store) t store
@@ -2429,6 +2532,16 @@ store; anything else is left to the ordinary open."
       (unwind-protect
            (progn
              (fnn-init-cut store "init-lock-created")
+             ;; Inspect an existing store before any staged publication or
+             ;; missing subdirectory is created. Compatible interrupted init
+             ;; remains legal; an incompatible request never reaches resume.
+             (setf existing-profile (fnn-lstat (fnn-config-path store)))
+             (when existing-profile
+               (fnn-load-config store)
+               (fnn-initialize-resume-check
+                store groups requested-profile
+                (when (fnn-lstat (fnn-config-dir store))
+                  (fnn-config-record-names store nil t))))
              (fnn-safe-directory (fnn-staging store) t store
                                  "init-staging-mkdir" "init-staging-parent-fenced")
              (fnn-safe-directory (fnn-config-dir store) t store
@@ -2436,11 +2549,18 @@ store; anything else is left to the ordinary open."
              (fnn-safe-directory (fnn-journal-dir store) t store
                                  "init-journal-mkdir" "init-journal-parent-fenced")
              (let ((config (fnn-metadata-config-frame profile)))
-               (if (eq (fnn-publish-initial-file store (fnn-config-path store) config "init-config-")
+               (unless existing-profile
+                (if (eq (fnn-publish-initial-file store (fnn-config-path store) config "init-config-")
                        :published)
-                   (setf (fnn-store-config store) (fnn-metadata-config-decode config))
-                   (fnn-load-config store)))
-             (when (null (fnn-config-record-names store :init-config-records-first-enumerate t))
+                   (setf (fnn-store-config store) requested-profile
+                         (fnn-store-sealed-config store) requested-profile)
+                   (progn
+                     (fnn-load-config store)
+                     (fnn-initialize-resume-check store groups requested-profile)))))
+             (let ((history (fnn-config-record-names store :init-config-records-first-enumerate t)))
+              (if history
+                 (fnn-initialize-resume-check store groups requested-profile history)
+               (progn
                (when (eq (fnn-publish-initial-file store (fnn-config-record-path store 1)
                                                 (fnn-bridge-config-initial groups) "init-history-")
                          :existing)
@@ -2449,7 +2569,7 @@ store; anything else is left to the ordinary open."
                  ;; recovery instead of silently accepting a racing history.
                  (fnn-indeterminate "configuration history appeared during initialization"))
                (fnn-fsync-dir (fnn-config-dir store))
-               (fnn-init-cut store "init-config-history-fenced"))
+               (fnn-init-cut store "init-config-history-fenced"))))
              ;; Format 10: the genesis at position 0 (books/store-genesis.lisp),
              ;; then fn-bsi-log-segment-steps.
              (fnn-log-init-genesis store)
@@ -2839,7 +2959,7 @@ for fn-bs-scp-program's five cuts."
                       (t (fnn-fault "invalid FN_NATIVE_STATE_CHECKPOINT_FAULT action: ~a" action)))
                 "developer-only native state-checkpoint fault"))))))
 
-(defun fnn-state-checkpoint-write (store octets sequence)
+(defun fnn-state-checkpoint-write (store octets sequence &optional image)
   "P-STATE-CHECKPOINT, books fn-bs-scp-program: stage, fence, rename onto
 the checkpoint name, fence the root.  Before the rename a failure is known
 (exit 1): the old checkpoint, or none, stays.  At or after it the outcome is
@@ -2849,9 +2969,9 @@ cannot use is refused by name once the segments it covers are dropped
 (fnn-log-drop): there is no full replay to fall back to
 (fnn-recover-log-from-log-checkpoint).  That is why the staged file is
 read back and verified before its rename (fnn-state-checkpoint-stage, S045)."
-  (fnn-state-checkpoint-install store (fnn-state-checkpoint-stage store octets sequence)))
+  (fnn-state-checkpoint-install store (fnn-state-checkpoint-stage store octets sequence image)))
 
-(defun fnn-state-checkpoint-stage (store octets sequence)
+(defun fnn-state-checkpoint-stage (store octets sequence &optional image)
   "fnn-state-checkpoint-write's first half: the staged file written and fenced
 (cuts created, written, staged-durable).  A failure is known: the old
 checkpoint stays, and the stage is removed (or, when its unlink fails, left
@@ -2879,10 +2999,13 @@ happens over it.  Answers the staged path, for fnn-state-checkpoint-install
             (setq written t)
             (fnn-at store :state-checkpoint-staged-durable)
             (fnn-state-checkpoint-test-flip stage)
-            (let ((verdict (fnn-state-checkpoint-verify store stage sequence)))
+            (let ((verdict (fnn-state-checkpoint-verify store stage sequence image)))
               (unless (and (consp verdict) (eq (first verdict) :ok))
                 (fnn-refuse-io "the staged state checkpoint does not read back: ~(~s~)"
                                verdict)))
+            ;; The verified stage no longer reads the writer. Release before
+            ;; install/swap can let another publisher use the shared snapshot.
+            (fnn-history-image-release)
             stage)
         (fnn-os-error (e)
           (when written (ignore-errors (fnn-unlink stage)))
@@ -2909,7 +3032,32 @@ the read-back refuse it (tests.test_native_state_checkpoint)."
                    (fnn-log-pwrite fd offset one)))
             (fnn-close fd)))))))
 
-(defun fnn-state-checkpoint-verify (store path sequence)
+(defvar *fnn-checkpoint-image-custody* nil)
+
+(defun fnn-history-image-readback (fd image header)
+  "Compare the staged image with its retained writer snapshot, one page at
+a time. ACL2 checks the exact header and page encoding; no image is adopted."
+  (unless (and image
+               (fnn-core 'fn-his-readback-header-p header (first image)))
+    (return-from fnn-history-image-readback (list :refused :history-image-header)))
+  (unless *fnn-checkpoint-image-custody*
+    (fnn-fault "history image readback has no retained writer snapshot"))
+  (let ((by-addr (make-hash-table)))
+    (dolist (write (second image))
+      (setf (gethash (first write) by-addr) (rest write)))
+    (fnn-posix () (sb-posix:lseek fd (fnn-core 'fn-his-base-octets) sb-posix:seek-set))
+    (dotimes (addr (first image))
+      (fnn-checkpoint-yield "image-readback" addr)
+      (let ((page (fnn-read-exact-fd fd 16384)))
+        (unless page
+          (return-from fnn-history-image-readback (list :refused :truncated)))
+        (let ((verdict (fnn-core 'fn-his-readback-page (gethash addr by-addr)
+                                 (fnn-octet-list page) *fnn-checkpoint-image-custody*)))
+          (unless (eq verdict :ok)
+            (return-from fnn-history-image-readback verdict)))))
+    :ok))
+
+(defun fnn-state-checkpoint-verify (store path sequence &optional image)
   "S045: the staged checkpoint at PATH read back from disk one segment at a
 time and verified by ACL2 (books/store-checkpoint-verify.lisp fn-sccv-step:
 each frame's header, index, count, SEQUENCE and seal over the chain;
@@ -2917,8 +3065,9 @@ fn-sccv-final: five complete runs and nothing after them; KEYSTONE
 fn-sccv-final-ok-is-runs-ok).  Each segment is admitted against the
 profile's segment and file bounds before it is read (fn-store-sco-segment-
 admit, as the open's plan reads), and only its chunk is in the publication
-buffer: work and allocation per step are one segment's.  The history image
-region at the file's start is skipped as the plan skips it.  Answers
+buffer: work and allocation per step are one segment's. The history image
+is read back against its retained writer snapshot, one 16 KiB page at a time,
+before the framed runs. Answers
 fn-sccv-final's (:ok SEQUENCE), or (:refused REASON)."
   (let ((header-octets (fnn-core 'fn-store-sco-segment-header-octets))
         (trailer-octets (fnn-core 'fn-store-sco-trailer-octets))
@@ -2928,18 +3077,22 @@ fn-sccv-final's (:ok SEQUENCE), or (:refused REASON)."
         (fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+))))
     (unwind-protect
          (loop
+           (fnn-checkpoint-yield "readback" total)
            (let ((first (fnn-make-octets 1)))
              (when (zerop (fnn-read-fd fd first))
                (return (fnn-core 'fn-sccv-final v)))
              (let ((rest (fnn-read-exact-fd fd (1- header-octets))))
                (unless rest (return (list :refused :truncated)))
                (let* ((head (concatenate '(vector (unsigned-byte 8)) first rest))
+                      (firstp at-start)
                       (np (and at-start
                                (fnn-core 'fn-his-image-header-np (fnn-octet-list head)))))
                  (setq at-start nil)
+                 (when (and firstp image (not (integerp np)))
+                   (return (list :refused :history-image-header)))
                  (if (integerp np)
-                     (sb-posix:lseek fd (+ header-octets (fnn-core 'fn-his-skip-octets np))
-                                     sb-posix:seek-set)
+                     (let ((verdict (fnn-history-image-readback fd image (fnn-octet-list head))))
+                       (unless (eq verdict :ok) (return verdict)))
                      (let* ((header (fnn-octet-list head))
                             (admission (fnn-core 'fn-store-sco-segment-admit
                                                  header total profile)))
@@ -3359,13 +3512,13 @@ which the process is killed, or NIL."
       (fnn-refuse-io "the owner is stopping: the checkpoint publication ends before ~a batch ~d; the old checkpoint stays"
                      where count))))
 
-(defun fnn-checkpoint-walk (records)
+(defun fnn-checkpoint-walk (records arena)
   "The walk of the owner's captured RECORDS: each canonical payload's length
 and source (books/store-checkpoint-arena-writer.lisp fn-scka-srcs-n), a
 bounded number of rows per call (+fnn-checkpoint-batch-rows+; the calls are
 one walk: fn-scka-srcs-n-compose).  READS the arena.  The last state,
 (ROWS' LACC SACC), ROWS' empty."
-  (let ((walk (list records nil nil)) (arena (fnn-live-arena)))
+  (let ((walk (list records nil nil)))
     (loop
       (when (atom (first walk)) (return walk))
       (fnn-checkpoint-yield "walk" (length (second walk)))
@@ -3380,7 +3533,7 @@ frames written, newest first, each (EOFF ELEN HANDLES) -- the entry's file
 offset (the frame start less 32), its protected prefix's length, and the
 step's handles (fn-xrt-step-handles).  :off for the offline verbs.")
 
-(defun fnn-checkpoint-write-arena-steps (fd arun sequence segment-bound file-bound st fault)
+(defun fnn-checkpoint-write-arena-steps (fd arun sequence segment-bound file-bound st fault arena)
   "Write the arena run's frames to FD step by step (fn-scka-write-step: step 0
 the head, each later step one batch of whole canonical payloads read through
 the arena, framed and admitted by the reader's rule); the number of steps.
@@ -3390,7 +3543,7 @@ capture.  KEYSTONE fn-scka-write-run-is-run-segments
 are the arena run the load reads.  The step READS the arena and updates only
 the publication buffer ST."
   (destructuring-bind (n count state) arun
-    (let ((steps 0) (arena (fnn-live-arena)))
+    (let ((steps 0))
       (loop
         (when (fnn-core 'fn-scka-write-donep state count) (return steps))
         (fnn-checkpoint-yield "arena" steps)
@@ -3438,11 +3591,40 @@ the publication buffer ST."
 
 (defvar *fnn-live-hrecs* nil)
 
+(defun fnn-history-image-release ()
+  "Return this publisher's snapshot before its publication slot can reopen."
+  (when *fnn-checkpoint-image-custody*
+    (let ((snapshot *fnn-checkpoint-image-custody*))
+      (setq *fnn-checkpoint-image-custody* nil)
+      (fnn-call 'fn-his-release snapshot))))
+
+(defmacro fnn-with-history-image (&body body)
+  "One publisher owns its snapshot through staging/readback and every exit."
+  `(let ((*fnn-checkpoint-image-custody* nil))
+     (unwind-protect (progn ,@body)
+       (fnn-history-image-release))))
+
 (defun fnn-live-hrecs ()
   (or *fnn-live-hrecs*
       (setq *fnn-live-hrecs*
             (or (cdr (assoc 'fn-hrecs$c (user-stobj-alist *the-live-state*)))
                 (fnn-fault "the history image stobj is not in this image")))))
+
+(defun fnn-history-image-row-run (ev ordinal)
+  "Append EV to this publisher's private scratch; yield between page ticks.
+Growth is explicit and remains within the publication's prepaid image budget."
+  (let ((answer (fnn-call 'fn-his-row-begin ev *fnn-checkpoint-image-custody*)))
+    (loop
+      (destructuring-bind (verdict cursor &rest ignored) answer
+        (declare (ignore ignored))
+        (when (eq verdict :done) (return t))
+        (let ((grow (and (consp verdict) (eq (car verdict) :grow-image))))
+          (unless (or (eq verdict :yield) grow)
+            (fnn-refuse-io "history image row refused by name: ~a" verdict))
+          (fnn-checkpoint-yield "history-pages" ordinal)
+          (sb-thread:thread-yield)
+          (setq answer (fnn-call (if grow 'fn-his-row-grow 'fn-his-row-step)
+                                cursor *fnn-checkpoint-image-custody*)))))))
 
 (defun fnn-history-image-build (records node salt position)
   "The image of RECORDS for a publication whose log POSITION is (K TRAIL):
@@ -3450,14 +3632,26 @@ the publication buffer ST."
 WRITES); with no position, (values POSITION NIL): no binding, no image."
   (if (null position)
       (values position nil)
-      (let ((answer (fnn-call 'fn-his-snapshot records salt (fnn-live-hrecs))))
+      (let ((answer
+              (progn
+                (setq *fnn-checkpoint-image-custody* (fnn-core 'create-fn-hrecs$c))
+                (fnn-call 'fn-his-build-begin salt *fnn-checkpoint-image-custody*)
+                (loop for ev in records
+                      for ordinal from 0 do
+                        (when (fnn-core 'fn-his-build-yieldp ordinal)
+                          (fnn-checkpoint-yield "history" ordinal)
+                          (sb-thread:thread-yield))
+                        (fnn-history-image-row-run ev ordinal))
+                (fnn-call 'fn-his-build-finish
+                          (fnn-core 'fn-his-build-source-count records)
+                          *fnn-checkpoint-image-custody*))))
         (unless (and (consp answer) (>= (length answer) 3))
           (fnn-fault "ACL2 returned a malformed history image"))
-        (destructuring-bind (verdict rec writes &rest ignored) answer
+        (destructuring-bind (verdict rec writes count &rest ignored) answer
           (declare (ignore ignored))
           (unless (eq verdict :ok)
             (fnn-refuse-io "history image refused by name: ~a" verdict))
-          (let ((binding (fnn-core 'fn-his-binding node salt (length records) (second position) rec))
+          (let ((binding (fnn-core 'fn-his-binding node salt count (second position) rec))
                 (np (fnn-core 'fn-his-np writes 0)))
             (unless (and (integerp np) (> np 0))
               (fnn-fault "ACL2 returned a malformed history image page count"))
@@ -3488,7 +3682,7 @@ take for the image region."
           (let ((w (gethash addr by-addr)))
             (if (null w)
                 (fnn-write-range fd zeros 0 16384)
-                (let ((words (fnn-core 'fn-his-words (first w) (second w) (fnn-live-hrecs))))
+                (let ((words (fnn-core 'fn-his-words (first w) (second w) *fnn-checkpoint-image-custody*)))
                   (unless (and (listp words) (= (length words) 2048))
                     (fnn-fault "ACL2 returned a malformed history image page"))
                   (let ((i 0))
@@ -3497,10 +3691,11 @@ take for the image region."
                         (setf (aref page (+ i b)) (ldb (byte 8 (* 8 b)) x)))
                       (incf i 8)))
                   (fnn-write-range fd page 0 16384)))))
-        ;; the image's words are not kept past the write
-        (fnn-call 'fn-his-release (fnn-live-hrecs))))))
+        ;; The enclosing publication retains the snapshot through the staged
+        ;; readback, then releases it on success, refusal or nonlocal exit.
+        nil))))
 
-(defun fnn-checkpoint-write-steps (fd setup segment sequence profile st arun)
+(defun fnn-checkpoint-write-steps (fd setup segment sequence profile st arun arena)
   "Write the file's frames to FD step by step: the arena run ARUN first
 (fnn-checkpoint-write-arena-steps), then the four tables (fn-ockp-step); the
 number of steps."
@@ -3508,7 +3703,7 @@ number of steps."
          (file-bound (fnn-core 'fn-store-sco-file-read-bound profile))
          (fault (fnn-checkpoint-batch-fault))
          (steps (fnn-checkpoint-write-arena-steps fd arun sequence segment-bound
-                                                  file-bound st fault))
+                                                  file-bound st fault arena))
          (state (fnn-core 'fn-ockp-initial-state (second setup) st)))
     (loop
       (when (fnn-core 'fn-ockp-donep state) (return steps))
@@ -3547,6 +3742,7 @@ publication buffer, one step's rows at a time.  On a store the log
 is rotated first (fnn-log-rotate: the checkpoint's F row names the new
 segment and its genesis), and once the checkpoint is installed the segments
 it covers are dropped (fnn-log-drop; T8)."
+  (fnn-with-history-image
   (let* ((profile (fnn-store-config store))
          ;; the writer's segment: ACL2's choice under the record bound
          ;; (fn-ockp-segment-octets: the smaller of R and a quarter of
@@ -3601,8 +3797,8 @@ it covers are dropped (fnn-log-drop; T8)."
                  (lambda (fd)
                    (fnn-history-image-write fd image)
                    (setq steps (fnn-checkpoint-write-steps fd setup segment sequence
-                                                           profile st arun)))
-                 sequence)
+                                                           profile st arun (fnn-live-arena))))
+                 sequence image)
              (fnn-octets-pub-release))
            (when position
              (handler-case
@@ -3614,8 +3810,7 @@ it covers are dropped (fnn-log-drop; T8)."
                                       (second verdict))
                    steps (first position) position dropped
                    (fnn-open-report store))))
-        (t (fnn-fault "ACL2 returned a malformed checkpoint verdict"))))))
-
+        (t (fnn-fault "ACL2 returned a malformed checkpoint verdict")))))))
 (defun fnn-command-store-digest (root)
   "`store ROOT digest': open the store read-only as `status' does (the shared
 lock, so a running owner refuses this) and print ACL2's digest of the state
@@ -3635,26 +3830,37 @@ them across processes, copies, checkpoint and full replay, and boxes."
       (fnn-store-close store))))
 
 (defun fnn-command-store-journal (root)
-  "`store ROOT journal' (lane time-model-2, HST-028): read the decision
-journal STORE/decisions/decisions.fnj back and print ACL2's one-line replay
-(books/owner-time-journal.lisp fn-otm-journal-report: entries, segments,
-whole/torn/malformed, and agrees or the first gap, divergence or malformed
-entry).  It opens no store (a running owner keeps its journal open for
-append; a torn last line is one the writer had not finished).  Exit 0 when
-the replay agrees, 1 otherwise."
+  "Replay the captured prefix of decisions.fnj through ACL2's incremental
+parser and replay fold. Keep one input window and the unfinished fields,
+never the whole file or prior entries. The owner may continue appending."
   (let ((path (fnn-join (fnn-join root "decisions") "decisions.fnj")))
-    (unless (probe-file path)
+    (unless (fnn-check-regular path)
       (fnn-refuse "no decision journal at ~a" path))
-    (let* ((octets (with-open-file (in path :element-type '(unsigned-byte 8))
-                     (let ((v (make-array (file-length in) :element-type '(unsigned-byte 8))))
-                       (read-sequence v in)
-                       (coerce v 'list))))
-           (report (fnn-core 'fn-otm-journal-report octets)))
-      (fnn-write-report report)
-      (let ((exit (fnn-core 'fn-otm-journal-exit octets)))
-        (unless (member exit '(0 1))
-          (fnn-fault "ACL2 returned a malformed journal verdict"))
-        exit))))
+    ;; NONBLOCK prevents an adversarial regular-file -> FIFO replacement
+    ;; between lstat and open from blocking before fstat can reject it.
+    (let ((fd (fnn-open path (logior sb-posix:o-rdonly sb-posix:o-nonblock
+                                   +fnn-o-nofollow+))))
+      (unwind-protect
+           (let ((info (fnn-fstat fd)) (st (fnn-core 'fn-otjs-init)))
+             (unless (fnn-regular-p info)
+               (fnn-fault "refusing non-regular decision journal: ~a" path))
+             (let ((remaining (sb-posix:stat-size info)))
+               (loop while (plusp remaining) do
+                 (let* ((want (fnn-nat (fnn-core 'fn-otjs-read-count remaining)))
+                        (buffer (fnn-make-octets want))
+                        (got (fnn-read-fd fd buffer)))
+                   (when (zerop got)
+                     (fnn-refuse "decision journal shortened during replay: ~a" path))
+                   (setq st (fnn-core 'fn-otjs-consume
+                                      (fnn-octet-list (if (= got want) buffer
+                                                         (subseq buffer 0 got))) st))
+                   (decf remaining got))))
+             (fnn-write-report (fnn-core 'fn-otjs-report st))
+             (let ((exit (fnn-core 'fn-otjs-exit st)))
+               (unless (member exit '(0 1))
+                 (fnn-fault "ACL2 returned a malformed journal verdict"))
+               exit))
+        (fnn-close fd)))))
 
 (defun fnn-command-state-checkpoint (root)
   "`store checkpoint': open the store as `recover' does (the exclusive writer
@@ -3722,12 +3928,12 @@ create: a failing open unlinks nothing)."
       (when (and unlink-on-failure (not done))
         (ignore-errors (fnn-unlink stage))))))
 
-(defun fnn-advance-frontier (store current-txid)
+(defun fnn-advance-frontier (store current-txid &optional operation)
   "The allocator's reservation: the record log's (fnn-log-reserve; the
 frontier is derived from the log, design 2026-09-27 section 3.3)."
   (unless (fnn-store-logp store)
     (fnn-fault "a store that is not on the record log opened"))
-  (fnn-log-reserve store current-txid))
+  (fnn-log-reserve store current-txid operation))
 
 (defun fnn-publish (store sequence record)
   "The record's publication: the record log's P-BATCH (fnn-log-publish)."
@@ -4097,17 +4303,22 @@ current one)."
     (let* ((next (fnn-core 'fn-ns-rotate-entry current (fnn-node-secret-identity identity)
                            (fnn-node-secret-fresh-root)))
            (octets (fnn-node-secret-render next))
-           (stage (fnn-join dir (format nil ".node-secret-~d-~a.stage"
+           (stage (fnn-join (fnn-staging store) (format nil ".init-node-secret-~d-~a.stage"
                                         (sb-posix:getpid) (fnn-random-hex 8))))
            (fd (fnn-open stage (logior sb-posix:o-wronly sb-posix:o-creat sb-posix:o-excl)
                          #o600)))
-      ;; A failed write or fsync leaves partial key material in keys/, which
-      ;; nothing sweeps (S073): remove the stage before the error leaves.
-      (let ((written nil))
-        (unwind-protect (progn (fnn-write-all fd octets) (fnn-fsync-file fd)
-                               (setq written t))
-          (fnn-close fd)
-          (unless written (ignore-errors (fnn-unlink stage)))))
+      ;; This owned candidate is in the recovery-swept .init- namespace.
+      ;; Ordinary write/fsync/close failures remove it before returning.
+      (let ((written nil) (primary nil))
+        (unwind-protect
+             (handler-case
+                 (progn (fnn-write-all fd octets) (fnn-fsync-file fd)
+                        (setq written t))
+               (error (e) (setq primary e)))
+          (handler-case (fnn-close fd)
+            (error (e) (unless primary (setq primary e))))
+          (when (or primary (not written)) (ignore-errors (fnn-unlink stage))))
+        (when primary (error primary)))
       (handler-case (fnn-replace stage path)
         (fnn-os-error (e)
           (ignore-errors (fnn-unlink stage))
@@ -5487,6 +5698,9 @@ the Store and the served projection judge them like any posted article."
 payloads, close, reopen, and report both timings as JSON on stdout.  With
 ARTICLEP (`probe N article') each payload is a well-formed article of the
 same size (fnn-probe-article), so the served reader can frame it."
+  (unless (fnn-developer-image-p)
+    (error 'fnn-usage-error
+           :message "store probe is available only in the developer image"))
   (let* ((started (get-internal-real-time))
          (store (make-fnn-store root :writable t))
          (payload nil))
@@ -5661,6 +5875,17 @@ call performs one zero-time poll; it never spins after an EAGAIN race."
                  nil)
                 (t (return (subseq buffer 0 count)))))))))
 
+(defun fnn-transport-write-now (fd channel data offset &optional (end (length data)))
+  "One nonblocking transport attempt over the valid retained range."
+  (unless (and (integerp offset) (integerp end) (<= 0 offset end (length data)))
+    (fnn-fault "invalid transport write range"))
+  (if channel (fnn-tls-write-now-range channel data offset end)
+    (let* ((remaining (- end offset))
+           (progress (fnn-write-progress
+                      (lambda () (funcall *fnn-write-syscall* fd data offset remaining))
+                      remaining "socket" nil t)))
+      (if (eq progress :would-block) :output progress))))
+
 (defun fnn-send-all (fd octets seconds)
   "Write OCTETS with one deadline for readiness waits and EINTR retries.
 
@@ -5721,8 +5946,11 @@ close a descriptor that another worker has cached and the kernel may reuse."
   nil)
 
 (defun fnn-socket-shut (socket)
-  (ignore-errors (sb-bsd-sockets:socket-close socket))
-  nil)
+  "Preserve the existing NIL primary result; expose the actual close receipt
+and condition separately. A swallowed close error is not physical closure."
+  (handler-case
+      (progn (sb-bsd-sockets:socket-close socket) (values nil :closed nil))
+    (serious-condition (condition) (values nil :unobserved condition))))
 
 (defun fnn-socket-class (family)
   (if (eq family :inet6) 'sb-bsd-sockets:inet6-socket 'sb-bsd-sockets:inet-socket))
@@ -5858,6 +6086,69 @@ intentionally not timed by this function."
                     port :timeout timeout))
       (:refused (error 'fnn-peer-dial-error :outcome :host-syntax))
       (otherwise (fnn-fault "ACL2 returned a malformed peer dial target")))))
+
+;;; Retained outbound driver custody: one syscall/readiness attempt, no
+;;; private wait loop. A pending socket remains owned by its round context.
+(defun fnn-connect-start (address port &key (family :inet))
+  (let ((socket (make-instance (fnn-socket-class family) :type :stream :protocol :tcp))
+        (retained nil))
+    (unwind-protect
+         (progn
+           (fnn-socket-fd socket)
+           (let ((word (handler-case (funcall *fnn-connect-attempt* socket address port)
+                         (sb-bsd-sockets:socket-error (condition)
+                           (fnn-os-fail (sb-bsd-sockets::socket-error-errno condition))))))
+             (unless (member word '(:connected :pending))
+               (fnn-fault "connect boundary returned an invalid status"))
+             (setq retained t)
+             (values socket word)))
+      (unless retained (fnn-socket-shut socket)))))
+
+(defun fnn-connect-poll (socket)
+  (if (not (funcall *fnn-fd-waiter* (fnn-socket-fd socket) :output 0))
+      :wait
+    (let ((errno (funcall *fnn-socket-pending-error* socket)))
+      (cond ((zerop errno) :connected)
+            ((or (= errno sb-posix:einprogress) (= errno sb-posix:ealready)) :wait)
+            (t (fnn-os-fail errno))))))
+
+(defun fnn-peer-connect-start (host port)
+  "ACL2's literal/resolve/refuse target; pending TCP retains its socket.
+Synchronous DNS remains a named availability frontier outside TCP polling."
+  (let* ((octets (if (stringp host) (map 'list #'char-code host) (fnn-octet-list host)))
+         (target (fnn-core 'fn-peer-dial-target octets)))
+    (case (and (consp target) (first target))
+      (:address
+       (fnn-connect-start (coerce (second target) '(simple-array (unsigned-byte 8) (*))) port))
+      (:resolve
+       (fnn-connect-start (fnn-peer-resolve-ipv4 (map 'string #'code-char (second target))) port))
+      (:refused (error 'fnn-peer-dial-error :outcome :host-syntax))
+      (otherwise (fnn-fault "ACL2 returned a malformed peer dial target")))))
+
+(defun fnn-socket-read-now (fd limit)
+  "One nonblocking read attempt: octets/EOF or :wait on EINTR/EAGAIN."
+  (unless (and (integerp limit) (<= 1 limit +fnn-max-read+))
+    (fnn-fault "invalid socket read quantum"))
+  (let ((buffer (fnn-make-octets limit)))
+    (multiple-value-bind (count errno) (funcall *fnn-read-syscall* fd buffer)
+      (cond ((and (null count) (or (fnn-eintr-p errno) (fnn-would-block-p errno))) :wait)
+            ((null count) (fnn-os-fail errno))
+            ((not (and (integerp count) (<= 0 count limit)))
+             (fnn-fault "socket read made invalid progress"))
+            (t (subseq buffer 0 count))))))
+
+(defun fnn-socket-write-now (fd data offset end)
+  "One nonblocking write attempt; the caller retains every unwritten octet."
+  (unless (and (integerp offset) (integerp end) (<= 0 offset) (< offset end)
+               (<= end (length data)))
+    (fnn-fault "invalid socket write quantum"))
+  (multiple-value-bind (count errno)
+      (funcall *fnn-write-syscall* fd data offset (- end offset))
+    (cond ((and (null count) (or (fnn-eintr-p errno) (fnn-would-block-p errno))) :wait)
+          ((null count) (fnn-os-fail errno))
+          ((not (and (integerp count) (< 0 count) (<= count (- end offset))))
+           (fnn-fault "socket write made invalid progress"))
+          (t count))))
 
 (defun fnn-peer-dial-outcome (condition)
   "The host's classification of a failed peer dial: an observation for ACL2's line."
@@ -6245,7 +6536,7 @@ tree root), or stop the build."
 ;;; and no refusal can arrive in the middle of a request as an outcome it is
 ;;; not (review of the dabebb84 campaign, F4 to F6).
 (defparameter +fnn-developer-selectors+
-  '("FN_NATIVE_INIT_FAULT" "FN_NATIVE_RECOVERY_FAULT" "FN_NATIVE_POST_FAULT"
+  '("FN_NATIVE_DEV_REPL" "FN_NATIVE_INIT_FAULT" "FN_NATIVE_RECOVERY_FAULT" "FN_NATIVE_POST_FAULT"
     ;; lane join-f2-13: the OVER/XOVER cursor quantum (numbers per hold of
     ;; the owner mutex) for the natives; ACL2's fn-splan-cursor-window
     ;; decides the value (books/served-plan-cursor.lisp).
@@ -8190,7 +8481,7 @@ does, and records how the log holds the history (fnn-store-log-history) for
     (setf (fnn-store-fenced store) nil)
     count))
 
-(defun fnn-log-reserve (store current-txid)
+(defun fnn-log-reserve (store current-txid &optional operation)
   "The member's reservation on the log route (fn-olr-ocfg-reserve through
 the observe callback): the frontier is the log's derived one."
   (fnn-require-writer store)
@@ -8198,10 +8489,19 @@ the observe callback): the frontier is the log's derived one."
   (unless (eql current-txid (fnn-store-frontier store))
     (setf (fnn-store-fenced store) t)
     (fnn-fault "ACL2 allocator and the log's frontier disagree"))
-  (let ((next (fnn-metadata-frontier-next current-txid))
+  (let ((next (if *fnn-identity-reservation-callback*
+                  (funcall *fnn-identity-reservation-callback* operation)
+                (fnn-metadata-frontier-next current-txid)))
         (log (fnn-store-log store)))
-    (when (null next)
-      (fnn-refuse "finite transaction-ID domain exhausted"))
+    ;; The gate runs before any kernel, owner reservation or frontier effect.
+    ;; Its purpose and protected release debt are decided in ACL2, including
+    ;; the exact retention event capability later consumed by preparation.
+    (when (or (and (null *fnn-identity-reservation-callback*) (null next))
+              (member next '(:identity-exhausted :operation-refused
+                             :identity-reserve :unaffordable)))
+      (fnn-refuse "Store transaction identity reservation refused (~a)" next))
+    (unless (and (integerp next) (>= next 0))
+      (fnn-fault "ACL2 returned malformed transaction identity reservation"))
     (fnn-log-with-kernel (log)
       (setf (fnn-log-kernel log)
             (fnn-core 'fn-lgc-consume-to (fnn-log-kernel log) current-txid)

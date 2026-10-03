@@ -7,11 +7,34 @@
  "id": "CL10",
  "line": "",
  "locus": "gates-tests-packaging",
- "notes": [],
+ "notes": [
+  "10-03 00:34 claimed: scope=['tests/test_cost_obligations.py', 'tests/test_null_witness_lint.py'] test=python3 tools/harness_check.py --lint acl2-arity --quiet",
+  "10-03 00:37 READY 6e7daa0ff",
+  "Codex integration 2026-10-03: source merged in 8cf37a368; base acl2-arity has 11 exact fixture arity findings, integration 0; fixture unit tests pass"
+ ],
  "owner": "sweep-gates",
+ "scope": [
+  "tests/test_cost_obligations.py",
+  "tests/test_null_witness_lint.py"
+ ],
  "severity": "medium",
+ "sha": "6e7daa0ff91888e61e2129da82a67bbefe5b11ec",
  "source": "check-lane-355a5c843",
- "state": "open",
+ "state": "landed",
+ "test": "python3 tools/harness_check.py --lint acl2-arity --quiet",
  "title": "check-lane red: harness_check",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T05:56:01Z",
+ "verify": {
+  "base": "c46f3ecf1f630a3746992f19a969a327a987d8d4",
+  "changed_files": [
+   "tests/test_cost_obligations.py",
+   "tests/test_null_witness_lint.py"
+  ],
+  "diff_lines": 30,
+  "green_at_head": true,
+  "head": "6e7daa0ff91888e61e2129da82a67bbefe5b11ec",
+  "ok": true,
+  "problems": [],
+  "red_at_base": true
+ }
 }

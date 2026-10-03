@@ -1,14 +1,80 @@
 # Now — 2026-10-03
 
-The active plan is [the development workstreams](overnight-2026-10-03.md), revised
-after deeper source/design reading and ember's correction: Sol for implementation,
-Astra for composition, continuing subsystem ownership through integration and use.
-Read it with [the repair ledger](repair/STATUS.md) and [the contributor guide](../CONTRIBUTORS.md).
-The roster is prepared, not launched. The initial orientation snapshot is recorded
-in the plan; `8d17b09dd` integrated that planning/ledger reconciliation onto dev.
-Re-read build status at dispatch. No new runtime qualification or deployment is
-claimed by this documentation revision. Integrate directly onto dev during
-stabilization; qualify immutable candidates alongside continuing development.
+Ember authorized substantial remaining engineering across four continuing Sol
+owners after the usage-limit stop: Integration owns
+source assembly and shared execution, History owns storage and the early P3
+bootstrap, Runtime owns reader/Web/decoded execution, and BP owns transport and
+application joins. Root coordinates; no other deputies or automation resumed.
+Root also takes resource accounting/funding. These owners continue missing
+behavior, defects, integration, invariants/guards/proofs and assurance across
+their full domains, rather than stopping at one scenario or a tidying batch.
+The continuing domains and open acceptance criteria are in
+[NSLICESQUEUE](../NSLICESQUEUE.md), [the repair ledger](repair/STATUS.md), and the
+[development workstreams](overnight-2026-10-03.md). Contributor setup is in
+[CONTRIBUTING](../CONTRIBUTING.md); source integration, ordinary admission,
+certification, qualified packaging and deployment remain separate.
+
+The immediate shared dependency is one coherent current source-loaded owner
+world with early arena/P3 attachment before generic history and current
+reader/decoded/native interfaces. History is admitting the generated current logical input in the retained
+canonical P3 world; owner entry has not yet been reached. Required payload
+arena framing/representation facts are the current replay obstruction. The
+shared source generator can explicitly defer named unrelated DEFTHMs while
+retaining definitions and required guard/correspondence obligations, recording
+those books as unproved. No such deferral has yet established owner execution. The earlier alleged eleven-versus-ten-field read-pool
+incompatibility was a counting mistake: `:inline` is an option, and the current
+pool has ten fields. Current decoded-job/controller/window methods and P3
+semantics still require deliberate assembly; old cached execution does not
+establish those joins. History owns one fresh initialization, with Integration
+supporting the shared runner and the other owners continuing their consumers.
+
+## Usage-limit stop — 2026-10-03 10:18 America/New_York
+
+Source intake is preserved on public dev; Integration’s writer is
+`build/lanes/codex-sol-integrate`. All continuing ownership remains in
+[NSLICESQUEUE](../NSLICESQUEUE.md) and each owner’s final LANEDUMP entry.
+This stop is requested by ember’s usage limit, not a completion claim.
+
+The initialized source process at
+`/tank/fn/scratch/codex-source-native-consumer/app-native` passed four actual
+application scenarios (delivery/projection failure/restart, key-free immutable
+retry, two-node cuts, and revoked resend resolved by Store observation). Its
+execution coordinate is the ad8 normal world plus gate336 and exact cde raw
+repairs with current application source; it is not the current whole kernel.
+Root’s actual live-owner developer REPL admission/refusal/stop/fence checks
+passed on that coordinate. The current Store/P3/reader/decoded/Web/BP union
+still needs one coherent execution world: early arena/P3 attachment order and
+current source interfaces must be retained. The earlier claimed eleven-versus-
+ten-field pool difference was false (`:inline` was counted as a field); current
+and cached declarations each have ten fields. Missing decoded methods and
+attachment semantics remain real assembly gaps. Root owned that frontier at the pause; History owns its resumed initialization. No image run is
+required before source execution.
+
+The finite closeout repaired Web’s actual POST action-classifier mismatch: the
+same scoped socket case now passes account/POST/read/remove (16.702s, one test,
+zero skips), with the original red retained. Its current whole-world execution
+and concurrent/TLS coverage remain open. Runtime now attaches owner read, reservation, exact token and dependency
+before physical wake, including failed binding; actual waiter/error schedules
+pass. Complete physical ARTICLE execution still remains open. ARTICLE
+normal/native renderer arities still differ in the
+old-cache prototype; BP multi-peer SCN1110 and current P3 live reclaim remain
+unexecuted. The shared host/raw source emitter validates exact logical book identities
+and retains current load order. Fresh entry now requires strict nested LD
+:RETURN and a successful EOF verdict before native entry; actual good/invalid
+minimal-prefix checks pass, with later markers absent on refusal. This control
+check does not establish full current-world admission. S132 strict ten MiB
+NNTP/operator acceptance and readback pass on the named initialized-source
+cache under the supported 128 MiB history profile; current-union qualification
+remains separate. Complete tariffs, original-response refinements, guards, proofs
+and all remaining domain work continue from their owner records.
+
+Generated ledger regeneration exposed unresolved curated-event mappings,
+missing/stale event names and suspect corollaries; it did not pass the ledger
+check. Changed History/cursor/include closures invalidate earlier certificate
+claims where the generated registry says so. Current reader capability rows
+explicitly mark the new ARTICLE/available caller bridge pending; historical
+qualified images/deployments do not establish that bridge. Source, normal
+certificates, actual source execution and packaging remain separate.
 
 The earlier page below is retained as historical scope, not a current roster,
 release instruction, source coordinate or deployment observation.

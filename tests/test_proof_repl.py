@@ -92,6 +92,17 @@ class ReaderTests(unittest.TestCase):
                           '(defthm t1 (equal "a ) b" "a ) b") :hints (("Goal")))',
                           "(local (defthm t2 t))"])
 
+    def test_surplus_close_refuses_the_entire_source_before_sending(self):
+        # A completed theorem followed by ')' previously lost that token,
+        # yielding an admitted prefix for a malformed source file.
+        for source in ("(defthm witness t))", ") (defthm later t)",
+                       "(defthm witness t)\n; balanced prefix\n)"):
+            with self.subTest(source=source):
+                with self.assertRaisesRegex(ValueError, "unmatched closing parenthesis"):
+                    proof_repl.forms(source)
+                with self.assertRaises(ValueError):
+                    proof_repl.commands(source)
+
     def test_head_and_name_sees_through_local_and_names_only_events(self):
         self.assertEqual(proof_repl.head_and_name("(defthm foo t)"), ("defthm", "foo"))
         self.assertEqual(proof_repl.head_and_name("(local (defthm Foo t))"), ("defthm", "foo"))
@@ -718,8 +729,10 @@ class RemoteTests(unittest.TestCase):
                 name = next(one for one in graph if one != book)
                 key = proof_repl.certs.closure_key(proof_repl.ROOT, name)[0]
                 with mock.patch.object(proof_repl.certs, "cached_entries",
-                                       lambda c, k: [(c, {"toolchain_identity": "t"})]
-                                       if k == key else []):
+                                       lambda c, k, metadata_filter=None:
+                                       [(c, {"toolchain_identity": "t"})]
+                                       if k == key and (metadata_filter is None
+                                          or metadata_filter({"toolchain_identity": "t"})) else []):
                     self.assertEqual(proof_repl.local_cache_gap(book, cache, "t"),
                                      (wanted - 1, wanted))
                     self.assertEqual(proof_repl.local_cache_gap(book, cache, "other"),
@@ -2220,22 +2233,23 @@ class SessionIncludeTests(unittest.TestCase):
                     contextlib.redirect_stdout(io.StringIO()) as out:
                 forms, ready = proof_repl.prepare_includes(
                     "s", ['(include-book "tests/acl2/fixture-tests")', "(+ 1 2)"],
-                    acquire=lambda book: acquired.append(book) or (True, "installed", []))
+                    acquire=lambda books: acquired.extend(books) or (True, "installed", []))
                 self.assertTrue(ready)
                 self.assertEqual(forms, ['(include-book "../tests/acl2/fixture-tests")',
                                          "(+ 1 2)"])
                 self.assertEqual(acquired, ["tests/acl2/fixture-tests"])
                 self.assertIn("made relative to the session's directory books/",
                               out.getvalue())
-                # A certified include is sent as it is, nothing acquired.
+                # A plausible certificate may belong to another dependency
+                # set: even this include must acquire matching artifacts.
                 (root / "tests/acl2/fixture-tests.cert").write_text(
                     '(IN-PACKAGE "ACL2")\n:BEGIN-PORTCULLIS-CMDS\n')
                 acquired.clear()
                 with mock.patch.object(proof_repl.certs, "valid_looking", lambda p: True):
                     proof_repl.prepare_includes(
                         "s", ['(include-book "../tests/acl2/fixture-tests")'],
-                        acquire=lambda book: acquired.append(book))
-                self.assertEqual(acquired, [])
+                        acquire=lambda books: acquired.extend(books) or (True, "compatible set", []))
+                self.assertEqual(acquired, ["tests/acl2/fixture-tests"])
                 # One that cannot be acquired is not sent: send answers 1.
                 with mock.patch.object(proof_repl, "install_closure",
                                        lambda *a, **k: (False, "no certificate", [])), \
@@ -2245,6 +2259,32 @@ class SessionIncludeTests(unittest.TestCase):
                         name="s", form='(include-book "tests/acl2/fixture-tests")',
                         limit=None, full=False, allow_undo=False))
                 self.assertEqual((code, sent), (1, []))
+
+    def test_looking_valid_foreign_certificate_still_refuses_without_exact_set(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.tree(directory)
+            (root / "books/near.cert").write_text('(IN-PACKAGE "ACL2")\n:BEGIN-PORTCULLIS-CMDS\n')
+            acquire = mock.Mock(return_value=(False, "incompatible alists", []))
+            with mock.patch.object(proof_repl, "ROOT", root), \
+                    mock.patch.object(proof_repl, "read_state", return_value={"book": "books/model"}), \
+                    mock.patch.object(proof_repl.certs, "valid_looking", return_value=True), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                _forms, ready = proof_repl.prepare_includes("s", ['(include-book "near")'], acquire=acquire)
+            self.assertFalse(ready)
+            acquire.assert_called_once_with(["books/near"])
+
+    def test_duplicate_include_acquires_one_exact_set_per_command(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.tree(directory)
+            acquire = mock.Mock(return_value=(True, "compatible alists", []))
+            with mock.patch.object(proof_repl, "ROOT", root), \
+                    mock.patch.object(proof_repl, "read_state", return_value={"book": "books/model"}), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                forms, ready = proof_repl.prepare_includes(
+                    "s", ['(include-book "near")', '(local (include-book "near"))'], acquire=acquire)
+            self.assertTrue(ready)
+            self.assertEqual(len(forms), 2)
+            acquire.assert_called_once_with(["books/near"])
 
     def test_sent_include_cache_miss_does_not_certify_or_send_any_form(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -2264,7 +2304,86 @@ class SessionIncludeTests(unittest.TestCase):
             self.assertEqual(acquire.call_args.args[:3],
                              ("tests/acl2/fixture-tests", (), None))
             self.assertTrue(acquire.call_args.kwargs["include_self"])
+            self.assertEqual(acquire.call_args.kwargs["include_books"], [])
             ask.assert_not_called()
+
+    def test_distinct_and_repeated_roots_acquire_one_union_before_send(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.tree(directory)
+            original = ['(include-book "near")',
+                        '(include-book "std/lists/top" :dir :system)',
+                        '(include-book "tests/acl2/fixture-tests")',
+                        '(local (include-book "near"))']
+            with mock.patch.object(proof_repl, "ROOT", root), \
+                    mock.patch.object(proof_repl, "read_state", return_value={"book": "books/model"}), \
+                    mock.patch.object(proof_repl, "install_closure", return_value=(True, "union", [])) as acquire, \
+                    contextlib.redirect_stdout(io.StringIO()):
+                forms, ready = proof_repl.prepare_includes("s", original)
+            self.assertTrue(ready)
+            self.assertEqual(forms[1], original[1])
+            self.assertEqual(forms[2], '(include-book "../tests/acl2/fixture-tests")')
+            acquire.assert_called_once()
+            self.assertEqual(acquire.call_args.args[:3], ("books/near", (), None))
+            self.assertEqual(acquire.call_args.kwargs,
+                             {"include_self": True, "include_books": ["tests/acl2/fixture-tests"]})
+
+    def test_system_only_command_does_not_acquire_repository_artifacts(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.tree(directory)
+            original = ['(+ 1 2)', '(include-book "std/lists/top" :dir :system)']
+            with mock.patch.object(proof_repl, "ROOT", root), \
+                    mock.patch.object(proof_repl, "read_state", return_value={"book": "books/model"}), \
+                    mock.patch.object(proof_repl, "install_closure") as acquire:
+                self.assertEqual(proof_repl.prepare_includes("s", original), (original, True))
+            acquire.assert_not_called()
+
+    def test_union_graph_reads_shared_dependency_once(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.tree(directory)
+            (root / "books/near.lisp").write_text('(include-book "model")')
+            with mock.patch.object(proof_repl.certs, "book_facts",
+                                   wraps=proof_repl.certs.book_facts) as facts:
+                graph = proof_repl.include_graph(root, "books/near", ["tests/acl2/fixture-tests"])
+            self.assertEqual(set(graph), {"books/near", "books/model", "tests/acl2/fixture-tests"})
+            self.assertEqual(facts.call_count, 3)
+
+    def test_union_installer_uses_real_set_selection_and_rejects_incompatible_alists(self):
+        # Certificate fixtures are not real ACL2 output: only the pair probe
+        # is recorded. Closure hashes, publication, selection and install are real.
+        for compatible in (True, False):
+            with self.subTest(compatible=compatible), tempfile.TemporaryDirectory() as directory:
+                names = ["books/base", "books/mid", "tests/acl2/mid-tests"]
+                source = worktree(directory + "/source", certified=names)
+                target = worktree(directory + "/target")
+                cache = pathlib.Path(directory) / "cache"
+                proof_repl.certs.publish(source, cache,
+                                         [manifest_for(source, names, write=False)], names,
+                                         origin_kind="run")
+                fingerprint = SimpleNamespace(qualified=True, reason="",
+                    identity=proof_repl.certs.stable_identity(TEST_COMPATIBILITY))
+                with mock.patch.object(proof_repl, "ROOT", target), \
+                        mock.patch.dict(os.environ, {"FN_ACL2": "/fixture/acl2"}), \
+                        mock.patch.object(proof_repl.certs, "cache_directory", return_value=cache), \
+                        mock.patch.object(proof_repl.acl2_toolchain, "fingerprint", return_value=fingerprint), \
+                        mock.patch.object(proof_repl.acl2_slots, "slot", side_effect=lambda label: nullcontext()), \
+                        mock.patch.object(proof_repl.certs.cert_alists, "acl2_certificate_pairs",
+                            side_effect=lambda paths, pairs, acl2, root:
+                                {pair: (True, compatible) for pair in pairs}), \
+                        mock.patch.object(proof_repl.certs, "artifact_sets", wraps=proof_repl.certs.artifact_sets) as scans, \
+                        mock.patch.object(proof_repl.subprocess, "run") as certify:
+                    ok, detail, from_source = proof_repl.install_closure(
+                        "books/mid", include_self=True, include_books=["tests/acl2/mid-tests"])
+                self.assertEqual(ok, compatible, detail)
+                self.assertEqual(from_source, [])
+                certify.assert_not_called()
+                if compatible:
+                    self.assertEqual(scans.call_count, 1)
+                    for name in names:
+                        self.assertEqual((target / (name + ".cert")).read_bytes(),
+                                         (source / (name + ".cert")).read_bytes())
+                else:
+                    self.assertIn("REFUSED", detail)
+                    self.assertFalse((target / "tests/acl2/mid-tests.cert").exists())
 
 
 class PartialLoadTests(unittest.TestCase):
@@ -2864,6 +2983,66 @@ class ChangedDependencyTests(unittest.TestCase):
 
 
 
+class CachedOnlyTests(unittest.TestCase):
+    def test_conflicting_modes_refuse_before_host_selection_or_session_start(self):
+        for option in (("--ld", "books/base"), ("--source-deps",),
+                       ("--source-deps", "books/base"), ("--ld-missing",),
+                       ("--certify-missing",), ("--ld-leak",),
+                       ("--keep-source-prefix",)):
+            with self.subTest(option=option), \
+                    mock.patch.object(proof_repl, "resolve_auto_host") as resolve, \
+                    mock.patch.object(proof_repl, "run_remote") as remote, \
+                    mock.patch.object(proof_repl, "_start") as start, \
+                    contextlib.redirect_stderr(io.StringIO()) as error:
+                self.assertEqual(proof_repl.main(
+                    ["start", "cached", "books/example", "--host", "auto",
+                     "--cached-only", *option]), 2)
+                resolve.assert_not_called()
+                remote.assert_not_called()
+                start.assert_not_called()
+                self.assertIn("--cached-only cannot combine", error.getvalue())
+
+    def test_remote_changed_dependency_does_not_force_source_loading(self):
+        args = SimpleNamespace(command="start", name="cached", lane="l", remote_tree=None,
+                               host="hbox", book="books/example", ld=[], cached_only=True,
+                               source_deps=None, ld_missing=False, certify_missing=False,
+                               no_sync=False, acl2=None)
+        seen = []
+        with mock.patch.object(proof_repl, "box_settings",
+                               lambda host: {"acl2": "acl2", "cache": "/c"}), \
+                mock.patch.object(proof_repl, "refuse_or_wait_for_lease", lambda *a: None), \
+                mock.patch.object(proof_repl, "own_remote_tree", lambda a, h, l, t: t), \
+                mock.patch.object(proof_repl, "remember_host", lambda *a: None), \
+                mock.patch.object(proof_repl, "sync_files", return_value=[]), \
+                mock.patch.object(proof_repl, "sync_to", lambda *a: 0.0), \
+                mock.patch.object(proof_repl, "changed_dependencies",
+                                  return_value=["books/base"]) as changed, \
+                mock.patch.object(proof_repl.subprocess, "run",
+                                  lambda command, **kw: seen.append(command)
+                                  or SimpleNamespace(returncode=0)), \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(proof_repl.run_remote(args,
+                ["start", "cached", "books/example", "--host", "hbox", "--cached-only"]), 0)
+        changed.assert_not_called()
+        self.assertIn("--cached-only", seen[-1][-1])
+        self.assertNotIn("--ld", seen[-1][-1])
+
+    def test_exact_cache_miss_refuses_without_source_or_certification_fallback(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            sessions = pathlib.Path(tmp)
+            fd = os.open(sessions / "lock", os.O_CREAT | os.O_RDWR, 0o600)
+            args = SimpleNamespace(name="cached", book="books/example", cached_only=True)
+            with mock.patch.object(proof_repl, "SESSIONS", sessions), \
+                    mock.patch.object(proof_repl, "open_session_lock", return_value=fd), \
+                    mock.patch.object(proof_repl, "install_closure",
+                                      return_value=(False, "exact cache miss", [])) as install, \
+                    mock.patch.object(proof_repl.subprocess, "Popen") as launch, \
+                    contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(proof_repl.start(args), 1)
+            self.assertEqual(install.call_args.args[1:3], ([], None))
+            launch.assert_not_called()
+
+
 class AttachmentOrderTests(unittest.TestCase):
     def test_event_detection_preserves_code_data_and_signatures(self):
         for text in ('(attach-stobj generic concrete)',
@@ -2953,3 +3132,77 @@ class AttachmentOrderTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SourcePrefixTests(unittest.TestCase):
+    def args(self, **over):
+        args = dict(name="warm", keep_source_prefix=True, ld_local=True, certify_missing=False)
+        args.update(over)
+        return argparse.Namespace(**args)
+
+    def state(self, **over):
+        state = dict(name="warm", book="books/target", keep_source_prefix=True,
+                     ready=True, ld_local=True, failed_dependency="books/dep",
+                     dependency_error="ACL2 refusal", ld_loaded={"books/base": "encapsulated"})
+        state.update(over)
+        return state
+
+    def test_live_encapsulated_dependency_prefix_survives_refusal_without_green_status(self):
+        with mock.patch.object(proof_repl, "_start", return_value=proof_repl.SOURCE_DEPS_FAILED), \
+                mock.patch.object(proof_repl, "read_state", return_value=self.state()), \
+                mock.patch.object(proof_repl, "stop") as stop, \
+                contextlib.redirect_stdout(io.StringIO()):
+            code = proof_repl.start(self.args())
+        self.assertTrue(not stop.called, "live encapsulated dependency prefix must remain available")
+        self.assertEqual(code, proof_repl.SOURCE_DEPS_FAILED)
+        line, partial = proof_repl.load_verdict(self.state())
+        self.assertTrue(partial)
+        self.assertIn("LIVE PARTIAL DEPENDENCY", line)
+        self.assertIn("none of books/target's forms", line)
+        self.assertIn("exit 75", line)
+
+    def test_dead_timed_out_or_leaked_states_are_not_retained(self):
+        for changed in ({"ready": False}, {"load_timed_out": True}, {"ld_local": False},
+                        {"keep_source_prefix": False}):
+            with self.subTest(changed=changed), \
+                    mock.patch.object(proof_repl, "_start", return_value=proof_repl.SOURCE_DEPS_FAILED), \
+                    mock.patch.object(proof_repl, "read_state", return_value=self.state(**changed)), \
+                    mock.patch.object(proof_repl, "stop") as stop, \
+                    contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(proof_repl.start(self.args()), proof_repl.SOURCE_DEPS_FAILED)
+                stop.assert_called_once()
+
+    def test_leak_or_certification_retry_request_refuses_before_launch(self):
+        for changed in ({"ld_local": False}, {"certify_missing": True}):
+            with self.subTest(changed=changed), mock.patch.object(proof_repl, "_start") as launch, \
+                    contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(proof_repl.start(self.args(**changed)), 2)
+                launch.assert_not_called()
+
+    def test_start_forwards_prefix_option_to_locked_server_and_retains_status75(self):
+        with tempfile.TemporaryDirectory() as directory:
+            sessions = pathlib.Path(directory)
+            (sessions / "warm").mkdir()
+            commands = []
+            def server(command, **kwargs):
+                commands.append((command, kwargs))
+                (sessions / "warm/state.json").write_text(json.dumps(self.state()))
+                (sessions / "warm/sock").write_text("")
+            args = self.args(book="books/target", upto=None, through=None, limit=60.0,
+                             load_timeout=5.0, lane=None, idle_seconds=60, ld=["books/dep"],
+                             ld_missing=False, source_deps=None, certify_jobs=4, load_limit=None)
+            with mock.patch.object(proof_repl, "SESSIONS", sessions), \
+                    mock.patch.object(proof_repl, "session_dir", lambda n: sessions / n), \
+                    mock.patch.object(proof_repl, "open_session_lock", lambda *a: os.open(os.devnull, os.O_RDONLY)), \
+                    mock.patch.object(proof_repl, "install_closure", return_value=(True, "prefix", ["books/base", "books/dep"])), \
+                    mock.patch.object(proof_repl.subprocess, "Popen", side_effect=server), \
+                    mock.patch.object(proof_repl, "status", return_value=0), \
+                    mock.patch.object(proof_repl, "stop") as stop, \
+                    contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(proof_repl.start(args), proof_repl.SOURCE_DEPS_FAILED)
+                stop.assert_not_called()
+            command, kwargs = commands[0]
+            self.assertIn("--keep-source-prefix", command)
+            self.assertIn("--ld-local", command)
+            self.assertIn("--lock-fd", command)
+            self.assertTrue(kwargs["pass_fds"])

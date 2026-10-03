@@ -1,0 +1,18 @@
+{
+ "acceptance": "tests.test_native_reclaim_in_flight (native) + NativeOwnerHandlerStructureTests escape walk",
+ "category": "failure-scope",
+ "disposition": "LOCAL",
+ "evidence": "host/native/owner.lisp fnn-owner-reclaim-dry-run (dev 2e72d3482): (return-from fnn-owner-reclaim-dry-run ...) inside (fnn-owner-gated (service :control) ...) when fn-owner-orc-capture answers (:refused :in-flight|:queued); fnn-owner-gated's unwind-protect finds *fnn-boundary-outcome* nil and calls fnn-owner-stop-service-locked +fnn-exit-fault+. Found by NativeOwnerHandlerStructureTests' boundary-escape walk once the test's earlier assertion was repaired.",
+ "exposure": "live",
+ "file": "host/native/owner.lisp",
+ "fix": "the deferral leaves the quantum as its value; the return-from runs after the quantum",
+ "id": "WR01",
+ "locus": "reclaim-publication",
+ "notes": [],
+ "owner": "wrapper",
+ "severity": "high",
+ "source": "WRAPPER",
+ "state": "open",
+ "title": "fnn-owner-reclaim-dry-run leaves its gated quantum by return-from when a pass is in flight: the boundary's unwind guard (review M3) classifies it as an unclassified exit and stops the node as a FAULT",
+ "updated": "2026-10-03T04:07:33Z"
+}

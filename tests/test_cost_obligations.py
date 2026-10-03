@@ -45,7 +45,7 @@ class CostObligationsTests(unittest.TestCase):
             {"x.lisp": "(def-cost fn-a :visits (+ 1 n) :sizes ((n (len octets))))\n"
                        "(def-cost fn-z)\n"},
             {"cost-host.lisp": "(def-cost fn-b :visits (+ 2 n) :sizes ((n (len octets)))"
-                               " :unaccounted (fn-served-step))\n"})
+                               " :unaccounted (fn-example-step))\n"})
         doc = cost_obligations.build(root)
         rows = {r["name"]: r for r in doc["entries"]}
         self.assertEqual(set(rows), {"fn-a", "fn-b", "fn-c", "fn-d"})   # fn-e is not dispatched
@@ -53,7 +53,7 @@ class CostObligationsTests(unittest.TestCase):
         self.assertEqual(rows["fn-a"]["theorem"], "fn-a-visits-bound")
         self.assertEqual(rows["fn-a"]["sizes"], ["n"])
         self.assertEqual(rows["fn-b"]["claim"], "partial")
-        self.assertEqual(rows["fn-b"]["unaccounted"], ["fn-served-step"])
+        self.assertEqual(rows["fn-b"]["unaccounted"], ["fn-example-step"])
         self.assertEqual(rows["fn-b"]["declared_in"], "host/cost-host.lisp")
         self.assertEqual(rows["fn-c"]["claim"], "none")
         self.assertEqual(doc["counts"], {"proved": 1, "partial": 1, "derived": 0, "none": 2})

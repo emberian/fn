@@ -59,8 +59,8 @@
     (error "unexpected core call ~s" name))
   (push :trust *calls*)
   *trusted*)
-(defun fnn-owner-serialized (owner cid thunk &optional class)
-  (declare (ignore owner cid class))
+(defun fnn-section-run (owner class cid admits classes name thunk)
+  (declare (ignore owner class cid admits classes name))
   ;; An admin changed the current owner config after outer preflight.
   (setq *trusted* nil)
   (push :lock *calls*)
@@ -111,10 +111,17 @@
 ;; The global the request entry clears and the refusal line reads is the
 ;; owner's own (mission-signed-2), not a stand-in.
 (load-shipped "host/native/owner.lisp" '(defvar) '(*fnn-owner-transit-detail*))
-;; The request entry takes the owner through the :transit class wrapper
-;; (fnn-owner-transit-serialized, the shipped body) since the owner's
-;; quantum classes; the stubbed fnn-owner-serialized above is the lock.
-(load-shipped "host/native/owner.lisp" '(defun) '(fnn-owner-transit-serialized))
+;; The request entry takes the owner through the BP node's declared section
+;; (def-section fnn-quantum-bp, the shipped declaration and generator); the
+;; stubbed fnn-section-run above is the lock.  ACL2's acceptance of the
+;; declaration (books/failure-scope.lisp fn-fs-section-declp) is not in a
+;; raw image: the stand-in accepts it.
+(defun fn-fs-section-declp (actors classes admits)
+  (declare (ignore actors classes admits)) t)
+(load-shipped "host/native/owner.lisp" '(defvar) '(*fnn-sections*))
+(load-shipped "host/native/owner.lisp" '(defun) '(fnn-section-declare))
+(load-shipped "host/native/owner.lisp" '(defmacro) '(def-section))
+(load-shipped "host/native/owner.lisp" '(def-section) '(fnn-quantum-bp))
 ;; fnn-bpnode-request-result is the deployed wrapper; since mission-signed-2
 ;; the decision is fnn-bpnode-request-result-1 and a refusal prints ACL2's
 ;; line through fnn-bpnode-refusal-line: all three are the shipped bodies.

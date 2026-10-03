@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "../books/bp-workflow-constructors")
 (include-book "../books/bp-ion-workflow")
+(include-book "../books/bp-ion-lifetime")
 (include-book "../books/bp-request-plan")
 (include-book "../books/bp-payload-gate")
 ; PKT-869: the operator's carry control and its journal's frame.
@@ -284,6 +285,14 @@
 ;; Through the payload gate (books/bp-payload-gate.lisp
 ;; fn-bppg-ion-gates-send-only-pinned-live-payload): the canonical node is the
 ;; opened Store's, so an FNWF-local undertaking does not admit an attempt.
+; The host must call this before publishing retry/attempt/route records.
+; An unrepresentable lifetime is a pre-attempt refusal, never uncertainty.
+(defun fn-workflow-ion-helper-seconds (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-bpit-helper-seconds
+          (fn-bp-config-lifetime
+           (fn-bp-state-config (f-get-global 'fn-workflow-state state))))))
+
 (defun fn-workflow-ion-attempt-plan
     (txid tx-generation work-id attempt-id fn-arena state)
   (declare (xargs :stobjs (fn-arena state) :mode :program))

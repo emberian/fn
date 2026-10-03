@@ -12,6 +12,7 @@
 
 (in-package "ACL2")
 (include-book "../books/node-config")
+(include-book "../books/native-init-resume")
 ; `fn-native-admin-some-group-name-reservedp': RFC 5536 s3.1.4 reserved names.
 (include-book "../books/native-admin")
 ;

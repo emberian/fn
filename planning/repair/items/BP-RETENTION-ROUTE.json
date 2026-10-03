@@ -1,0 +1,13 @@
+{
+ "category": "repair",
+ "id": "BP-RETENTION-ROUTE",
+ "title": "Canonical BP retention event must reach the actual log identity gate before reservation",
+ "state": "in-progress",
+ "owner": "deputy_groundwork",
+ "source": "actual current source and historical native preflight",
+ "severity": "high",
+ "exposure": "live",
+ "file": "host/native/owner.lisp",
+ "note": "Current log route binds no effective identity callback and never invokes the one-shot grant producer; retention preparation therefore refuses. Source7c6d135f3 restores dynamic callback and canonical operation transport through advance-frontier/log-reserve. Reviewed aggregate56f97b4d3 is with Integration. Extracted source routing fixture passes, logical grant predicate remains existing authority; matching native undertaking/release/reopen plus ordinary POST pending. Historical45 preflight reporta3b59cff9 remains a historical refusal, not a current execution claim.",
+ "updated": "2026-10-03T08:40:00Z"
+}

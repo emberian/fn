@@ -90,7 +90,12 @@ lock file names its holder).  `start` loads from-source books (`--ld`,
 `--source-deps`, `--ld-missing`) inside one encapsulate so their local
 events stay local -- the default since obstructions-5 item 32
 (store-log-extend's local lemmas turned global form by form); `--ld-leak`
-loads form by form, which names the refused event.  `--host BOX`
+loads form by form, which names the refused event. `--keep-source-prefix`
+retains a live encapsulated prefix after a dependency refusal (exit 75 stays a
+refusal, never certification). Repair that dependency with `send-range NAME
+BOOK --ld-local`, then send the remaining dependencies in their original order;
+status keeps the original failed-dependency marker. Form-by-form --ld-leak or
+timed-out worlds cannot use this option. `--host BOX`
 (hbox, persvati) runs a command in the lane's tree on that box with the
 box's own ACL2 and cache after syncing tools/ and the book's closure; on a
 box itself FN_ACL2 and FN_CERT_CACHE default to that box's.  Before that
@@ -314,6 +319,9 @@ def spans(text: str) -> list[tuple[int, int]]:
         if kind in ("comment", "block"):
             continue
         if depth == 0:
+            if kind == "close":
+                raise ValueError("unmatched closing parenthesis at line "
+                                 + str(text.count("\n", 0, match.start()) + 1))
             if kind == "quote":
                 pending_quote = match.start() if pending_quote is None else pending_quote
                 continue
@@ -555,10 +563,10 @@ def attachment_source_refusal(graph: dict[str, list[str]], order: list[str]) -> 
 
 # --- a book's local include graph ------------------------------------------------
 
-def include_graph(root: Path, book: str) -> dict[str, list[str]]:
-    """Each book of BOOK's local closure -> the books it includes directly."""
+def include_graph(root: Path, book: str, include_books=()) -> dict[str, list[str]]:
+    """The union of the named local closures -> their direct includes."""
     graph: dict[str, list[str]] = {}
-    pending = [book]
+    pending = [book, *include_books]
     base = root.resolve()
     while pending:
         name = pending.pop()
@@ -1340,7 +1348,7 @@ def serve(name: str, book: str, upto: str | None, through: str | None,
           limit: float, load_timeout: float, lock_fd: int,
           lane: str | None = None, idle_seconds: float | None = None,
           ld: list[str] | None = None, ld_local: bool = False,
-          load_limit: float | None = None) -> int:
+          load_limit: float | None = None, keep_source_prefix: bool = False) -> int:
     if idle_seconds is None:
         idle_seconds = default_idle_seconds()
     directory = session_dir(name)
@@ -1355,7 +1363,7 @@ def serve(name: str, book: str, upto: str | None, through: str | None,
              "lane": lane, "idle_seconds": idle_seconds, "started_at": now,
              "last_active": now, "acl2_pgid": None, "ended": None,
              "upto": upto, "through": through, "ld": ld, "ld_loaded": {},
-             "ld_local": ld_local,
+             "ld_local": ld_local, "keep_source_prefix": keep_source_prefix,
              "load_limit": limit if load_limit is None else load_limit}
     # SIGTERM (reap's fallback) unwinds through the finally below, which
     # kills the owned ACL2 group; without this it would outlive the server.
@@ -1662,7 +1670,7 @@ def fixes(missing: list[str], jobs: int) -> list[str]:
 
 
 def runner_closure(book: str, graph: dict[str, list[str]], include_self: bool,
-                   cache: Path, identity: str, acl2: Path):
+                   cache: Path, identity: str, acl2: Path, include_books=()):
     """The certify runner's own install of BOOK's dependencies, or None if short.
 
     `start --certify-missing` ran `certify_books.py --incremental`, whose
@@ -1672,7 +1680,7 @@ def runner_closure(book: str, graph: dict[str, list[str]], include_self: bool,
     installed is the one it certifies against, so when install-partial covers
     every dependency, compiled, the session takes it.
     """
-    roots = [book] if include_self else sorted(graph.get(book, ()))
+    roots = ([book] if include_self else sorted(graph.get(book, ()))) + list(include_books)
     if not roots:
         return None
     with acl2_slots.slot(f"proof-repl cache {book}"):
@@ -1682,7 +1690,7 @@ def runner_closure(book: str, graph: dict[str, list[str]], include_self: bool,
 
 def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
                     log: Path | None = None,
-                    include_self: bool = False) -> tuple[bool, str, list[str]]:
+                    include_self: bool = False, include_books=()) -> tuple[bool, str, list[str]]:
     """Acquire the dependencies under the same ACL2 used by the REPL child.
 
     Answers (acquired, what to print, the books to load from source in
@@ -1694,10 +1702,13 @@ def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
     to do with what is still missing: "ld" loads it from source, "certify"
     certifies it with `certify_books.py --incremental` and tries again, and
     None refuses with the diagnosis.  INCLUDE_SELF acquires BOOK's own
-    certificate too (a book a live session is about to include).
+    certificate too (a book a live session is about to include). INCLUDE_BOOKS
+    adds other literal includes to the same compatible acquisition; those
+    roots and their dependencies require certificates as well.
     """
+    include_books = tuple(include_books)
     try:
-        graph = include_graph(ROOT, book)
+        graph = include_graph(ROOT, book, include_books)
     except (OSError, certs.UnreadableBook, ValueError) as error:
         return False, f"proof-repl: cannot read {book}'s closure: {error}", []
     wanted = [normalize_book(name) for name in ld]
@@ -1734,7 +1745,7 @@ def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
         # The alist probe starts ACL2 directly. Hold the same machine-wide
         # slot that the subsequent interactive wrapper will take.
         with acl2_slots.slot(f"proof-repl cache {book}"):
-            if from_source:
+            if from_source or include_books:
                 # What stays is closed under includes: a book that includes a
                 # from-source book is itself from source.
                 return certs.install_artifact_set(
@@ -1770,7 +1781,7 @@ def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
             if (report is not None and report.artifact_set is None
                     and done.returncode == 0 and not from_source):
                 per_book = runner_closure(book, graph, include_self, cache,
-                                          fingerprint.identity, acl2)
+                                          fingerprint.identity, acl2, include_books)
                 if per_book is not None:
                     printed.append(
                         "proof-repl: install-set found no one compatible set after the "
@@ -1817,14 +1828,52 @@ def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
 
 
 # `_start`'s answer when a dependency loaded from source failed. `start`
-# stops the failed session; only an explicit certification request may retry.
+# normally stops the failed session. --keep-source-prefix retains a live,
+# encapsulated dependency prefix for exploration; neither is certification.
 SOURCE_DEPS_FAILED = 75
+
+
+def reject_cached_only_conflicts(args) -> bool:
+    """A cached-only dependency world never falls back to source or a build."""
+    if not getattr(args, "cached_only", False):
+        return False
+    conflicts = []
+    for field, option in (("ld", "--ld"), ("ld_missing", "--ld-missing"),
+                          ("certify_missing", "--certify-missing"),
+                          ("keep_source_prefix", "--keep-source-prefix")):
+        if getattr(args, field, False):
+            conflicts.append(option)
+    if getattr(args, "source_deps", None) is not None:
+        conflicts.append("--source-deps")
+    if not getattr(args, "ld_local", True):
+        conflicts.append("--ld-leak")
+    if conflicts:
+        print("proof-repl: --cached-only cannot combine with " + ", ".join(conflicts),
+              file=sys.stderr)
+        return True
+    return False
 
 
 def start(args) -> int:
     """Start a session without turning a source refusal into an implicit build."""
+    if reject_cached_only_conflicts(args):
+        return 2
+    keep = getattr(args, "keep_source_prefix", False)
+    if keep and (not getattr(args, "ld_local", True) or getattr(args, "certify_missing", False)):
+        print("proof-repl: --keep-source-prefix requires encapsulated --ld-local "
+              "source loading; choose it separately from --certify-missing")
+        return 2
     code = _start(args)
     if code != SOURCE_DEPS_FAILED:
+        return code
+    state = (read_state(args.name) or {}) if keep else {}
+    if (keep and state.get("keep_source_prefix") and state.get("ready")
+            and state.get("ld_local") and state.get("failed_dependency")
+            and not state.get("load_timed_out")):
+        print("proof-repl: retained the live encapsulated dependency prefix; "
+              "the requested book is not loaded and no certification launched. "
+              "Repair the dependency with send-range --ld-local, then load the "
+              "remaining dependencies in order. Status retains the source refusal.")
         return code
     with contextlib.suppress(SystemExit):
         stop(args)
@@ -1893,6 +1942,8 @@ def _start(args) -> int:
                 command += ["--ld", one]
             if getattr(args, "ld_local", False):
                 command += ["--ld-local"]
+            if getattr(args, "keep_source_prefix", False):
+                command += ["--keep-source-prefix"]
             subprocess.Popen(command, stdout=log, stderr=log, cwd=ROOT,
                              start_new_session=True, pass_fds=(lock_fd,))
         deadline = time.monotonic() + args.load_timeout * (3 + 2 * len(from_source)) + 60
@@ -1949,6 +2000,14 @@ def load_verdict(state: dict) -> tuple[str, bool]:
     loaded = len(state.get("loaded") or [])
     stopped = state.get("stopped_at")
     if state.get("failed_dependency"):
+        if (state.get("keep_source_prefix") and state.get("ready")
+                and state.get("ld_local") and not state.get("load_timed_out")):
+            return (f"proof-repl {name}: LIVE PARTIAL DEPENDENCY -- "
+                    f"{state['failed_dependency']} refused at {stopped or '?'}: "
+                    f"{state.get('dependency_error')}; retained "
+                    f"{len(state.get('ld_loaded') or {})} encapsulated dependencies, "
+                    f"none of {book}'s forms were sent; source exploration only, "
+                    f"exit {SOURCE_DEPS_FAILED}", True)
         return (f"proof-repl {name}: NOT LIVE -- the dependency {state['failed_dependency']} "
                 f"failed to load from source at {stopped or '?'}: "
                 f"{state.get('dependency_error')}; none of {book}'s forms were sent. "
@@ -2488,32 +2547,36 @@ def prepare_includes(name: str, several: list[str], acquire=None) -> tuple[list[
     """The forms to send, each repository include made relative to the
     session's directory, and whether every included book is certified.
 
-    A sent include of a book with no certificate here (a tests/acl2 book is
-    rarely in a books/ session's closure) is acquired from matching cached
-    evidence first. A miss is refused, never implicitly certified; choose
-    certification explicitly or send the intended source forms instead.
+    All repository includes acquire one exact compatible cached artifact
+    set for their union first. A certificate prefix alone does not establish
+    matching source or dependency alists. A miss is refused, never implicitly certified;
+    choose certification explicitly or send the intended source forms instead.
     """
     directory = session_directory(name)
     if directory is None:
         return several, True
-    acquire = acquire or (lambda book: install_closure(
-        book, (), None, 4, SESSIONS / f"{name}.include.log", include_self=True))
     prepared = []
+    targets = []
     for one in several:
         rewritten, target = rooted_include(one, directory)
         if rewritten != one:
             print(f"proof-repl: include path made relative to the session's directory "
                   f"{directory.relative_to(ROOT).as_posix() if directory.is_relative_to(ROOT) else directory}/: "
                   f"{rewritten.strip()}")
-        if (target is not None and (ROOT / f"{target}.lisp").is_file()
-                and not certs.valid_looking(ROOT / f"{target}.cert")):
-            acquired, detail, _ = acquire(target)
-            print(detail)
-            if not acquired:
-                print(f"proof-repl: not sending the include of {target}: no certificate "
-                      "could be acquired for it")
-                return several, False
+        if (target is not None and target not in targets
+                and (ROOT / f"{target}.lisp").is_file()):
+            targets.append(target)
         prepared.append(rewritten)
+    if targets:
+        acquire = acquire or (lambda books: install_closure(
+            books[0], (), None, 4, SESSIONS / f"{name}.include.log",
+            include_self=True, include_books=books[1:]))
+        acquired, detail, _ = acquire(targets)
+        print(detail)
+        if not acquired:
+            print("proof-repl: not sending the includes: no compatible certificate "
+                  "set could be acquired for " + ", ".join(targets))
+            return several, False
     return prepared, True
 
 
@@ -3869,6 +3932,8 @@ def changed_dependencies(book: str, named=(), base_ref: str = "origin/dev") -> l
 
 def run_remote(args, argv: list[str]) -> int:
     """This command, on args.host, in the lane's tree there, after syncing what it reads."""
+    if reject_cached_only_conflicts(args):
+        return 2
     host = args.host
     lane, tree = remote_lane_and_tree(args, host)
     forwarded = strip_remote_options(argv)
@@ -3885,7 +3950,7 @@ def run_remote(args, argv: list[str]) -> int:
         source_deps = getattr(args, "source_deps", None)
         if source_deps and source_deps != "*":
             books += [normalize_book(one.strip()) for one in source_deps.split(",") if one.strip()]
-        if not (source_deps == "*" or getattr(args, "ld_missing", False)
+        if not (getattr(args, "cached_only", False) or source_deps == "*" or getattr(args, "ld_missing", False)
                 or getattr(args, "certify_missing", False)):
             changed = changed_dependencies(args.book, books[1:])
             if changed:
@@ -4081,6 +4146,11 @@ def main(argv: list[str] | None = None) -> int:
                    help="a book the session's book INCLUDES (not the book itself): load it "
                         "from source, not from a certificate (repeatable); the closure's "
                         "books that include it follow")
+    p.add_argument("--cached-only", action="store_true",
+                   help="require exact cached dependency certificates; refuse misses "
+                        "without source loading or certification, including dependencies "
+                        "changed since this branch's merge base (the target still loads "
+                        "from source)")
     p.add_argument("--ld-missing", action="store_true",
                    help="load every dependency the cache lacks from source")
     p.add_argument("--source-deps", nargs="?", const="*", default=None, metavar="A,B",
@@ -4095,6 +4165,9 @@ def main(argv: list[str] | None = None) -> int:
                    help="(the default) load each from-source dependency inside one "
                         "(encapsulate () ...), so its local lemmas stay local as a certified "
                         "include keeps them")
+    p.add_argument("--keep-source-prefix", action="store_true",
+                   help="retain a live encapsulated dependency prefix after a source "
+                        "refusal (exit 75); source exploration, not a loaded book or certification")
     p.add_argument("--ld-leak", dest="ld_local", action="store_false",
                    help="load from-source dependencies form by form instead: their LOCAL "
                         "lemmas become session rules, but a refusal names its event")
@@ -4113,9 +4186,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--ld", action="append", default=[])
     p.add_argument("--ld-local", action="store_true")
     p.add_argument("--load-limit", type=float, default=None)
+    p.add_argument("--keep-source-prefix", action="store_true")
     p.set_defaults(run=lambda a: serve(a.name, a.book, a.upto, a.through, a.limit,
                                        a.load_timeout, a.lock_fd, a.lane, a.idle_seconds,
-                                       a.ld, a.ld_local, a.load_limit))
+                                       a.ld, a.ld_local, a.load_limit, a.keep_source_prefix))
     p = sub.add_parser("send", help="forms (one or several); `-` reads them from stdin")
     p.add_argument("name")
     p.add_argument("form")
@@ -4279,6 +4353,8 @@ def main(argv: list[str] | None = None) -> int:
     elif lead:
         argv = lead
     args = parser.parse_args(argv)
+    if reject_cached_only_conflicts(args):
+        return 2
     if args.command in ("start", "probe") and getattr(args, "book", None) \
             and args.book.endswith(".lisp"):
         # `start NAME books/X.lisp` reached the box as books/X.lisp.lisp

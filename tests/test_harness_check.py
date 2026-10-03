@@ -16,6 +16,7 @@ import sys
 import tempfile
 import textwrap
 import unittest
+from unittest import mock
 from pathlib import Path
 from unittest.mock import patch
 
@@ -757,3 +758,115 @@ class DerivedStubTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RawMacroTemplateTests(unittest.TestCase):
+    def calls(self, source):
+        from tools import ledger
+        calls = []
+        for form, _ in ledger.Reader(source).top_level():
+            harness_check.raw_applications(form, calls)
+        return calls
+
+    def test_section_envelope_literal_core_calls_are_inventory(self):
+        calls = self.calls("""(defmacro envelope (s classes c &body body)
+          `(let ((gate (fnn-gate ,s)))
+             (when (fn-fs-section-class-ok ,classes ,c)
+               (fnn-section ,s ,@body))
+             (fn-fs-unwind ,c nil)))""")
+        self.assertTrue(("fn-fs-section-class-ok", 2) in calls,
+                        "literal macro core calls must be inventoried")
+        self.assertIn(("fn-fs-unwind", 2), calls)
+        self.assertIn(("fnn-section", None), calls)
+        self.assertIn(("fnn-gate", 1), calls)
+
+    def test_interpolated_heads_and_quoted_data_are_not_calls(self):
+        calls = self.calls("""(defmacro envelope (name x)
+          `(progn (,name ,x) '(fn-data ,x) (fn-live ,(fn-expand x))
+                  (fnn-call ',name ,x) (fnn-call 'fn-known ,x)))""")
+        self.assertIn(("fn-live", 1), calls)
+        self.assertIn(("fn-expand", 1), calls)
+        self.assertIn(("'fn-known", 1), calls)
+        self.assertFalse(any(name in {"name", "fn-data", "'name"}
+                             for name, _ in calls), calls)
+
+    def test_normal_backquote_is_data_and_nested_template_is_opaque(self):
+        calls = self.calls("""(defun data (x) `(fn-data ,(fn-active x)))
+          (defmacro nested (x) `(list `(fn-inner ,(fn-inner-expand x))))""")
+        self.assertIn(("fn-active", 1), calls)
+        self.assertFalse(any(name in {"fn-data", "fn-inner", "fn-inner-expand"}
+                             for name, _ in calls), calls)
+
+    def test_local_function_shadowing_and_macrolet_templates(self):
+        calls = self.calls("""(macrolet ((m (x) `(flet ((fn-local (y) y))
+                                            (fn-local ,x) (fn-real ,x))))
+                              (m 1))""")
+        self.assertIn(("fn-real", 1), calls)
+        self.assertFalse(any(name == "fn-local" for name, _ in calls), calls)
+
+    def test_splices_do_not_invent_an_arity_but_fixed_template_calls_check(self):
+        found = RawArityTests().scan("""(defun fnn-target (a b) a)
+          (defmacro uncertain (&body body) `(fnn-target ,@body))
+          (defmacro wrong (x) `(fnn-target ,x))""")
+        self.assertEqual(len(found), 1, found)
+        self.assertIn("called with 1 argument", found[0]["problem"])
+
+
+class NestedFixtureTests(unittest.TestCase):
+    HOST = """(defun fnn-top (x) (fnn-real x) (fnn-missing x))
+(defun fnn-real (x) x)
+(defun fnn-missing (x) x)
+"""
+
+    def sources(self):
+        from tools import ledger
+        return {"host/native/example.lisp": ledger.Reader(self.HOST).top_level()}
+
+    def test_existing_scan_api_preserves_real_nested_extraction(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); (root / "tests").mkdir()
+            (root / "tests/parent.lisp").write_text('(load "tests/child.lisp")\n; extract fnn-top\n')
+            (root / "tests/child.lisp").write_text(
+                '(load-deployed-forms "host/native/example.lisp" \'((defun fnn-real)))\n')
+            with mock.patch.object(harness_check, "raw_host_sources", return_value=self.sources()):
+                rows = harness_check.harness_scans(root)
+            parent = next(scan for _, name, _, scan in rows if name == "tests/parent.lisp")
+            self.assertTrue("fnn-real" not in parent["unresolved"],
+                            "real function extracted by nested fixture must not be overwritten")
+            self.assertEqual(set(parent["unresolved"]), {"fnn-missing"})
+            self.assertNotIn("(defun fnn-real", parent["expected"])
+
+    def test_nested_hand_stub_arity_is_checked(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); (root / "tests").mkdir()
+            (root / "tests/parent.lisp").write_text('(load "tests/child.lisp")\n; extract fnn-top\n')
+            (root / "tests/child.lisp").write_text('(defun fnn-real () nil)')
+            with mock.patch.object(harness_check, "raw_host_sources", return_value=self.sources()):
+                rows = harness_check.harness_scans(root)
+            parent = next(scan for _, name, _, scan in rows if name == "tests/parent.lisp")
+            self.assertEqual([r["callee"] for r in parent["stale"]], ["fnn-real"])
+
+    def test_quoted_and_dynamic_load_mentions_are_not_followed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            text = '(defun loader () (load "tests/missing.lisp"))\n\'(load "tests/missing.lisp")\n(load variable)'
+            self.assertEqual(harness_check.harness_fixture_sources(root, "tests/root.lisp", text),
+                             {"tests/root.lisp": text})
+
+    def test_nested_cycle_missing_file_and_escape_refuse(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); (root / "tests").mkdir()
+            (root / "tests/child.lisp").write_text('(load "tests/root.lisp")')
+            for text, message in (('(load "tests/child.lisp")', "cycle"),
+                                  ('(load "tests/missing.lisp")', "unreadable"),
+                                  ('(load "../outside.lisp")', "escapes")):
+                with self.subTest(text=text), self.assertRaisesRegex(ValueError, message):
+                    harness_check.harness_fixture_sources(root, "tests/root.lisp", text)
+
+    def test_nested_generated_trap_is_not_treated_as_a_real_hand_definition(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); (root / "tests").mkdir()
+            block = harness_check.derived_stub_block({"fnn-missing": (["x"], "host/native/example.lisp")})
+            (root / "tests/child.lisp").write_text(block)
+            sources = harness_check.harness_fixture_sources(root, "tests/root.lisp", '(load "tests/child.lisp")')
+            self.assertNotIn("fnn-missing", sources["tests/child.lisp"])

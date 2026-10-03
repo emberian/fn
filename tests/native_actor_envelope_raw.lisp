@@ -1,0 +1,238 @@
+;;; Physical schedules over the deployed model and native actor envelope.
+;;; This is SBCL integration evidence, not an ACL2/runtime refinement proof.
+(load "tests/native_section_envelope_raw.lisp")
+(in-package "ACL2")
+
+;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
+(define-condition harness-stub-reached (serious-condition)
+  ((name :initarg :name :reader harness-stub-reached-name)
+   (source :initarg :source :reader harness-stub-reached-source))
+  (:report (lambda (c s)
+             (format s "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it"
+                     (harness-stub-reached-name c) (harness-stub-reached-source c)))))
+(defun harness-stub-reached (name source)
+  (format *error-output* "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it~%"
+          name source)
+  (finish-output *error-output*)
+  (error 'harness-stub-reached :name name :source source))
+(defun fnn-owner-syncer-physical (service grant receipt)
+  (declare (ignorable service grant receipt))
+  (harness-stub-reached 'fnn-owner-syncer-physical "host/native/owner.lisp"))
+;;; ---- derived stubs: END ----
+(load-deployed-forms "host/native/io.lisp"
+ '((defun fnn-condition-class) (defun fnn-fault)))
+
+(defparameter +fnn-exit-ok+ :ok)
+(load-deployed-forms "books/failure-scope.lisp"
+ '((defconst *fn-fs-exit-kinds*) (defun fn-fs-exit-kindp)
+   (defun fn-fs-actor-exit-kind) (defun fn-fs-actor-step)
+   (defun fn-fs-actor-registered-p) (defun fn-fs-actor-receipt)
+   (defun fn-fs-actor-join-action) (defun fn-fs-inbox-admit)))
+(load-deployed-forms "host/native/owner.lisp"
+ '((defstruct (fnn-owner-service (:constructor %make-fnn-owner-service)))
+   (defstruct (fnn-owner-actor (:constructor %make-fnn-owner-actor)))
+   (defmacro fnn-with-roster) (defvar *fnn-actor-thread-maker*)
+   (defvar *fnn-actor-thread-joiner*) (defvar *fnn-actor-start-signal*)
+   (defvar *fnn-actor-thread-terminator*) (defun fnn-owner-actor-run)
+   (defun fnn-owner-actor-start) (defmacro def-actor)
+   (def-actor fnn-owner-spawn-syncer) (def-actor fnn-owner-spawn-committer)
+   (defun fnn-owner-actor-join) (defun fnn-owner-start-syncer)))
+(defvar *join-faults* nil)
+(defun fnn-owner-fault-service (service cid condition)
+  (declare (ignore cid))
+  (setf (fnn-owner-service-stopping service) t)
+  (push condition *join-faults*))
+(defun registered (service actor)
+  (fnn-with-roster (service)
+    (and (member actor (fnn-owner-service-actors service))
+         (fn-fs-actor-registered-p (fnn-owner-actor-state actor)))))
+(defun wait-label (semaphore)
+  (check (sb-thread:wait-on-semaphore semaphore :timeout 2) "schedule label reached"))
+
+;; Failed/timed-out join with a live child retains physical and resource custody.
+(let* ((s (%make-fnn-owner-service)) (hold (sb-thread:make-semaphore :count 0))
+       (started (sb-thread:make-semaphore :count 0))
+       (custody '((:resource (:root . nil) 4 7))))
+  (multiple-value-bind (worker actor)
+      (fnn-owner-spawn-syncer s custody
+       (lambda () (sb-thread:signal-semaphore started) (wait-label hold)))
+    (wait-label started)
+    (let ((*fnn-actor-thread-joiner* (lambda (&rest args) (declare (ignore args))
+                                    (error "failed join while still live"))))
+      (check (not (fnn-owner-actor-join s worker)) "failed join is not completion"))
+    (check (and (registered s actor) (sb-thread:thread-alive-p worker)
+                (equal (fnn-owner-actor-custody actor) custody)
+                (null (fn-fs-actor-receipt (fnn-owner-actor-state actor))) *join-faults*)
+           "failed join retains live worker, resources, and produces no receipt")
+    (check (not (fnn-owner-actor-join s worker :timeout 0.001))
+           "timed-out join is not completion")
+    (check (registered s actor) "timeout retains registration")
+    (sb-thread:signal-semaphore hold)
+    (multiple-value-bind (ended receipt) (fnn-owner-actor-join s worker)
+      (check (and ended (equal (cddr receipt) (list :ok custody)))
+             "physical join hands custody to parent exactly once"))
+    (multiple-value-bind (ended receipt) (fnn-owner-actor-join s worker)
+      (check (and ended (null receipt)) "duplicate join gives no second receipt"))))
+
+;; Spawn's child is physically live before MAKE-THREAD returns; the latch
+;; forbids semantic work until its object and reservation are published.
+(let* ((s (%make-fnn-owner-service)) (ran nil)
+       (*fnn-actor-thread-maker*
+         (lambda (thunk &rest args)
+           (check (= 1 (length (fnn-owner-service-actors s))) "identity reserved before spawn")
+           (let ((worker (apply #'sb-thread:make-thread thunk args)))
+             (sb-thread:thread-yield)
+             (check (not ran) "start latch holds early child")
+             worker))))
+  (multiple-value-bind (worker actor)
+      (fnn-owner-spawn-syncer s nil (lambda () (setq ran t)))
+    (check (fnn-owner-actor-join s worker) "early-exit child is joinable")
+    (check (and ran (eq (fn-fs-actor-receipt (fnn-owner-actor-state actor)) :ok))
+           "early exit retained by reserved identity")))
+
+;; A failed primitive spawn observes no child and discharges only reservation.
+(let* ((s (%make-fnn-owner-service))
+       (*fnn-actor-thread-maker* (lambda (&rest args) (declare (ignore args)) (error "no thread"))))
+  (check (handler-case (progn (fnn-owner-spawn-syncer s nil (lambda () (error "must not run"))) nil)
+           (error () t)) "failed spawn propagates")
+  (check (and (null (fnn-owner-service-actors s)) (null (fnn-owner-service-workers s)))
+         "failed spawn has no orphan registration"))
+
+;; Stop while terminal cleanup holds: operation return does not settle actor.
+(let* ((s (%make-fnn-owner-service)) (cleanup (sb-thread:make-semaphore :count 0))
+       (release (sb-thread:make-semaphore :count 0)))
+  (multiple-value-bind (worker actor)
+      (fnn-owner-spawn-syncer s '((:resource (:root . nil) 3 8))
+       (lambda ()
+         (unwind-protect (fnn-indeterminate "uncertain completion")
+           (sb-thread:signal-semaphore cleanup) (wait-label release))))
+    (wait-label cleanup)
+    (setf (fnn-owner-service-stopping s) t)
+    (check (and (registered s actor) (null (fn-fs-actor-receipt (fnn-owner-actor-state actor))))
+           "held cleanup during stop retains resources")
+    (sb-thread:signal-semaphore release)
+    (multiple-value-bind (ended receipt) (fnn-owner-actor-join s worker)
+      (check (and ended (eq (third receipt) :indeterminate))
+             "physical return preserves uncertainty during stop"))))
+
+;; A raw ACL2 hard-error throw is caught once and never re-steps its body.
+(let ((s (%make-fnn-owner-service)) (steps 0))
+  (let ((worker (fnn-owner-spawn-syncer s nil
+                 (lambda () (incf steps) (throw 'raw-ev-fncall :torn)))))
+    (multiple-value-bind (ended receipt) (fnn-owner-actor-join s worker)
+      (check (and ended (eq (third receipt) :fault) (= steps 1))
+             "raw ACL2 throw faults actor once"))))
+
+;; The actual syncer operation emits result before physical lifecycle join;
+;; the lifecycle holds its captured job and never self-removes its roster.
+
+;; This physical-only fixture leaves funding to the separate typed custody
+;; consumer test; its mock records no funded-resource claim.
+(defun fnn-owner-syncer-issue (service gen job) (declare (ignore service gen job)) nil)
+(defun fnn-owner-batch-job (service job) (declare (ignore service job)) (values :done nil))
+(let ((s (%make-fnn-owner-service)))
+  (multiple-value-bind (worker result) (fnn-owner-start-syncer s 17 :captured-job)
+    (multiple-value-bind (ended receipt) (fnn-owner-actor-join s worker)
+      (check (and ended receipt (equal (car result) '(17 :done))
+                  (null (fnn-owner-service-workers s)))
+             "syncer operation and lifecycle receipts remain distinct"))))
+
+;; Early/stale model events: exit during reservation is kept; duplicate exit
+;; cannot change first terminal outcome, and failed join never gives a receipt.
+(let ((st (fn-fs-actor-step :spawning '(:exit :indeterminate))))
+  (check (equal (fn-fs-actor-step st '(:spawned t)) st) "early exit retained")
+  (check (equal (fn-fs-actor-step st '(:exit :ok)) st) "stale exit changes no outcome"))
+(format t "native_actor_envelope_raw: PASS~%")
+
+;; Execute the served inbox offer in both lock-serialized orders. Closed
+;; admission returns ownership to the adopter, closes once and signals DONE.
+(load-deployed-forms "host/native/mux.lisp"
+ '((defstruct (fnn-mux-loop (:constructor %make-fnn-mux-loop)))
+   (defstruct (fnn-mux-conn (:constructor %make-fnn-mux-conn)))
+   (defun fnn-mux-adopt-place)))
+(defun fnn-mux-adopt-hold (implicit-tls) (declare (ignore implicit-tls)) nil)
+(defvar *inbox-closes* nil)
+(defun fnn-socket-shut (socket) (push socket *inbox-closes*))
+(defun fnn-mux-wake-locked (loop)
+  (check (sb-thread:holding-mutex-p (fnn-mux-loop-lock loop)) "offer owns inbox lock")
+  t)
+(let* ((s (%make-fnn-owner-service :clients '(:socket)))
+       (loop (%make-fnn-mux-loop :closed t))
+       (done (sb-thread:make-semaphore :count 0)))
+  (check (null (fnn-mux-adopt-place s loop :socket nil done)) "closed inbox refuses offer")
+  (check (and (null (fnn-mux-loop-inbox loop))
+              (null (fnn-owner-service-clients s))
+              (equal *inbox-closes* '(:socket))
+              (sb-thread:wait-on-semaphore done :timeout 0.01))
+         "closed offer retains and settles socket exactly once"))
+(let* ((s (%make-fnn-owner-service :clients '(:other)))
+       (loop (%make-fnn-mux-loop)))
+  (check (eq (fnn-mux-adopt-place s loop :other nil nil) loop) "live inbox admits offer")
+  (check (and (= 1 (length (fnn-mux-loop-inbox loop)))
+              (equal (fnn-owner-service-clients s) '(:other))
+              (equal *inbox-closes* '(:socket)))
+         "admitted socket custody transfers to inbox without premature close"))
+(format t "native_actor_inbox_raw: PASS~%")
+
+;; Failure after creation must never masquerade as a no-child spawn failure.
+;; Force both latch publication and compensation to fail, leaving a parked
+;; physical child whose identity/custody remain reachable for shutdown.
+(let* ((s (%make-fnn-owner-service)) (steps 0) (parked nil)
+       (*fnn-actor-start-signal*
+         (lambda (latch)
+           (declare (ignore latch))
+           (setq parked (first (fnn-owner-service-actors s)))
+           (check (and (registered s parked) (fnn-owner-actor-thread parked))
+                  "post-create failure sees reserved physical identity")
+           (error "latch primitive failed")))
+       (*fnn-actor-thread-terminator*
+         (lambda (worker) (declare (ignore worker)) (error "termination primitive failed"))))
+  (check (handler-case
+             (progn (fnn-owner-spawn-syncer s '((:resource (:root . nil) 8 2))
+                      (lambda () (incf steps))) nil)
+           (error () t)) "post-create failure propagates")
+  (check (and (registered s parked)
+              (sb-thread:thread-alive-p (fnn-owner-actor-thread parked))
+              (equal (fnn-owner-actor-custody parked) '((:resource (:root . nil) 8 2)))
+              (null (fn-fs-actor-receipt (fnn-owner-actor-state parked)))
+              (zerop steps) (fnn-owner-service-stopping s))
+         "failed compensation retains live parked child and custody")
+  (sb-thread:terminate-thread (fnn-owner-actor-thread parked))
+  (multiple-value-bind (ended receipt) (fnn-owner-actor-join s (fnn-owner-actor-thread parked))
+    (check (and ended (eq (third receipt) :fault) (zerop steps))
+           "physical compensating join settles parked child once")))
+(format t "native_actor_post_create_failure_raw: PASS~%")
+
+;; A terminator that returns without ending the child cannot block the parent
+;; forever in compensation, and does not discharge the parked actor.
+(let* ((s (%make-fnn-owner-service)) (entered nil)
+       (*fnn-actor-start-signal* (lambda (&rest args) (declare (ignore args))
+                                 (error "latch failed/no-op terminate")))
+       (*fnn-actor-thread-terminator* (lambda (&rest args) (declare (ignore args)) nil)))
+  (check (handler-case (progn (fnn-owner-spawn-syncer s '(:held)
+                               (lambda () (setf entered t))) nil)
+           (error () t)) "no-op termination compensation returns fault")
+  (let* ((actor (first (fnn-owner-service-actors s)))
+         (worker (fnn-owner-actor-thread actor)))
+    (check (and actor worker (registered s actor) (sb-thread:thread-alive-p worker)
+                (not entered) (equal (fnn-owner-actor-custody actor) '(:held)))
+           "no-op terminator retains parked physical actor and custody")
+    (sb-thread:terminate-thread worker)
+    (check (fnn-owner-actor-join s worker) "eventual termination is independently joined")))
+(format t "native_actor_noop_termination_raw: PASS~%")
+
+;; A failed join primitive can still have an independently ended child.
+;; Preserve fault escalation AND consume its physical receipt exactly once.
+(let ((s (%make-fnn-owner-service)) (callbacks 0))
+  (let ((worker (fnn-owner-spawn-syncer s nil (lambda () nil) nil
+                  (lambda (physical) (check (eq physical :terminal) "physical termination callback")
+                    (incf callbacks)))))
+    (sb-thread:join-thread worker)
+    (let ((*fnn-actor-thread-joiner* (lambda (&rest args) (declare (ignore args))
+                                    (error "join failed after physical end"))))
+      (multiple-value-bind (ended receipt) (fnn-owner-actor-join s worker)
+        (check (and ended receipt (fnn-owner-service-stopping s) (= callbacks 1))
+               "failed primitive retains fault while settling observed physical end")))
+    (fnn-owner-actor-join s worker)
+    (check (= callbacks 1) "physical callback emitted only once despite failed primitive")))
+(format t "native_actor_ended_join_error_raw: PASS~%")

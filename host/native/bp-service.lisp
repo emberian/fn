@@ -23,6 +23,11 @@
   ;; fnn-bps-fragment-effects), so its kind-18 :persist-result carries the
   ;; same finished job; nil when no proposal is in flight.
   (fragment-job nil)
+  ;; Volatile reassembly continuation (ARRIVAL JOB LIMIT FAMILY-KEY). Custody is already
+  ;; kind-5 durable before this starts; its loss on process death loses work
+  ;; only. Each service turn walks one fn-bpfj-step quantum. RESCAN is a
+  ;; scheduling hint raised by new custody or durable family replacement.
+  (fragment-pending nil) (fragment-rescan t) (fragment-tried nil)
   ;; Routing of queued base jobs (books/bp-node-contact-driver.lisp): nil
   ;; when the verb has no Store (the job keeps the address it was queued
   ;; with), else (:table TABLE), ACL2's route table (fn-bprt-table).
@@ -516,7 +521,26 @@ its outcome, which is the refusal to the offering ingress."
 (defun fnn-bps-route-segment-mru (route) (sixth route))
 (defun fnn-bps-route-transfer-mru (route) (seventh route))
 
+(defmacro fnn-bps-with-send-socket ((socket) &body body)
+  "Release send custody without replacing the condition escaping the session."
+  (let ((primary (gensym "PRIMARY")))
+    `(let ((,primary nil))
+       (unwind-protect
+            (handler-case (progn ,@body)
+              (serious-condition (condition)
+                (setq ,primary condition)
+                (error condition)))
+         (when ,socket
+           (handler-case (fnn-socket-shut ,socket)
+             (serious-condition (cleanup)
+               (error (or ,primary cleanup)))))))))
+
+(defvar *fnn-bps-retained-send* nil
+  "Installed BP node retained sender; receives one durable send effect.")
 (defun fnn-bps-send-effect-next (service effect)
+  (when *fnn-bps-retained-send*
+    (funcall *fnn-bps-retained-send* service effect)
+    (return-from fnn-bps-send-effect-next nil))
   (let* ((route (second effect))
          (key (fourth effect))
          (wire (fifth effect))
@@ -527,10 +551,11 @@ its outcome, which is the refusal to the offering ingress."
          (attempt (fnn-core 'fn-bpnj-attempt-token (fnn-bps-state service) key))
          (socket nil)
          (fragments nil)
+         (transfer-index 1)
          (plan-refused nil)
          (outcome :uncertain))
     (handler-case
-        (unwind-protect
+        (fnn-bps-with-send-socket (socket)
              (progn
                ; Test-only exact core/adapter fault.  It is inside the same
                ; handler as real send-path failures so the regression proves
@@ -587,10 +612,11 @@ its outcome, which is the refusal to the offering ingress."
                  (loop for fragment in fragments
                        for index from 2
                        while (eq outcome :accepted)
-                       do (let* ((next nil)
+                       do (setq transfer-index index)
+                          (let* ((next nil)
                                  (transfer
                                    (handler-case
-                                       (unwind-protect
+                                       (fnn-bps-with-send-socket (next)
                                             (progn
                                               (setq next (fnn-tcl-connect
                                                           (fnn-bps-route-host route)
@@ -601,19 +627,24 @@ its outcome, which is the refusal to the offering ingress."
                                                     "bp-service" (fnn-bps-root service)
                                                     :bundle fragment :expect 0
                                                     :refuse-inbound t))
-                                                  :uncertain))
-                                         (when next (fnn-socket-shut next)))
+                                                  :uncertain)))
                                      ((or fnn-os-error sb-bsd-sockets:socket-error) ()
                                        (if next :uncertain :failed)))))
                             (setq outcome (fnn-core 'fn-bpfs-fragment-outcome index transfer))
-                            (fnn-out "BP fragment ~d transfer ~(~a~)" index outcome)))))
-          (when socket (fnn-socket-shut socket)))
-      (fnn-store-fault (e) (error e))
-      ((or fnn-os-error sb-bsd-sockets:socket-error fnn-store-error) ()
+                            (fnn-out "BP fragment ~d transfer ~(~a~)" index outcome))))))
+      (fnn-store-error (e)
+        ;; Only the exact named refusal used by the session adapter is a
+        ;; transport observation. Store uncertainty/faults and unknown
+        ;; subclasses retain their condition for the owner's boundary.
+        (unless (eq (type-of e) 'fnn-store-error) (error e))
+        (setq outcome (fnn-core 'fn-bpfs-fragment-outcome transfer-index
+                                (if socket :uncertain :failed))))
+      ((or fnn-os-error sb-bsd-sockets:socket-error) ()
         ;; A connect that never produced a socket sent no octet: the
         ;; transfer certainly did not happen (:failed, requeued by ACL2).
         ;; Any failure after the connection exists stays :uncertain.
-        (setq outcome (if socket :uncertain :failed))))
+        (setq outcome (fnn-core 'fn-bpfs-fragment-outcome transfer-index
+                                (if socket :uncertain :failed)))))
     ;; The outcome word is an observation; ACL2 names the run's evidence
     ;; from the durable :requeued record's reason (the :forward-refused
     ;; effect, fn-bpnrc-job-result-class-is-the-transport-class).
@@ -700,7 +731,10 @@ are driven next, before the effects after this one (depth first)."
                        (list :persist-result epoch operation-id outcome)))))))
       (:family-ready
        (fnn-out "BP fragment family durable")
-       (setq next (fnn-bps-fragment-effects service)))
+       ;; Another family is next turn's work, never recursive work before
+       ;; this transfer's ACK or inside the publication effect driver.
+       (setf (fnn-bps-fragment-rescan service) t
+             (fnn-bps-fragment-tried service) nil))
       (:family-answer
        (case (second effect)
          (:refused (fnn-out "BP fragment family publication refused"))
@@ -893,8 +927,8 @@ are driven next, before the effects after this one (depth first)."
 
 ;; Executes by a loop (lane depth-debt, PRF-919): an effect's answer used to be
 ;; driven by a nested call, one control-stack frame per publication in the
-;; chain, and :family-ready re-entered through fnn-bps-fragment-progress once
-;; per ready fragment family, so the depth grew with the held fragments.  The
+;; chain. Family reassembly itself now advances only on explicit scheduling
+;; turns; :family-ready marks another family for a later turn. The
 ;; order is the recursion's: an effect's answer is driven completely before
 ;; the next effect of its list (a stack of the lists still to finish).
 (defun fnn-bps-drive-effects (service effects)
@@ -1023,48 +1057,60 @@ octet is ACL2's."
 scheduling step, whatever the family holds.")
 
 (defun fnn-bps-fragment-effects (service)
-  ;; Q4a increment B.  ACL2's fn-bpfj-next-candidate names a live family
-  ;; with an offset-zero source and reassembles nothing; the host starts that
-  ;; family's reassembly job (fn-bpfj-start), steps it a bounded quantum at a
-  ;; time (fn-bpfj-step) until fn-bpfj-finishedp, and offers the finished job
-  ;; with the profile's held octets to the :family step.  Its plan reads
-  ;; the image out of the job and refuses an image past the limit by name
-  ;; (fn-bpfj-plan-refuses-past-the-limit-by-name); a stale job plans as
-  ;; (:stale :job), which issues nothing.  A family whose proposal issues
-  ;; nothing is tried once per pass; the first proposal's effects are the
-  ;; answer (the drive loop persists it, and each durable :family-ready
-  ;; retires at least one fragment and asks here again); a
-  ;; refusal/uncertainty does not loop.  The job the proposal read is left
-  ;; in the service for its kind-18 :persist-result.
-  (let ((tried nil)
-        (limit (fnn-core 'fn-bpnpf-held-octets (fnn-bps-profile service))))
-    (loop
-      (let* ((tally (fnn-bps-tally service))
-             (observation (fnn-bp-observation
-                           (fnn-bp-tally-wall tally)
-                           (fnn-bp-tally-wall-error tally)))
-             (candidate (fnn-core 'fn-bpfj-next-candidate
-                                  (fnn-bps-state service) observation tried)))
+  "One resumable reassembly quantum and at most one family proposal.
+The final :family event still asks ACL2 to reject a stale job; the host never
+installs its reassembled image. A process death restarts from durable rows."
+  (let* ((tally (fnn-bps-tally service))
+         (observation (fnn-bp-observation
+                       (fnn-bp-tally-wall tally)
+                       (fnn-bp-tally-wall-error tally)))
+         (carried (fnn-bps-fragment-pending service)))
+    (unless carried
+      (unless (fnn-bps-fragment-rescan service)
+        (return-from fnn-bps-fragment-effects nil))
+      (setf (fnn-bps-fragment-rescan service) nil)
+      (let ((candidate (fnn-core 'fn-bpfj-next-candidate
+                                 (fnn-bps-state service) observation
+                                 (fnn-bps-fragment-tried service))))
         (unless (and (consp candidate) (eq (first candidate) :ready))
-          (return nil))
+          (return-from fnn-bps-fragment-effects nil))
         (let* ((state (fnn-bps-state service))
-               (anchor-arrival (second candidate))
-               (anchor (fnn-core 'fn-bpnf-find-arrival anchor-arrival
+               (arrival (second candidate))
+               (anchor (fnn-core 'fn-bpnf-find-arrival arrival
                                  (fnn-core 'fn-bpnf-held-list state)))
-               (job (fnn-core 'fn-bpfj-start state anchor)))
-          (loop until (eq (fnn-core 'fn-bpfj-finishedp job) t)
-                do (setq job (fnn-core 'fn-bpfj-step job +fnn-bps-fragment-quantum+)))
-          (push (third candidate) tried)
-          (let ((effects (fnn-bps-foundation-step
-                          service (list :family anchor-arrival observation
-                                        job limit))))
-            (when effects
-              (setf (fnn-bps-fragment-job service) (cons job limit))
-              (return effects))))))))
+               (job (fnn-core 'fn-bpfj-start state anchor))
+               (limit (fnn-core 'fn-bpnpf-held-octets
+                                (fnn-bps-profile service))))
+          (setq carried (list arrival job limit (third candidate))))))
+    (let* ((arrival (first carried))
+           (job (second carried))
+           (limit (third carried))
+           (family-key (fourth carried)))
+      (unless (eq (fnn-core 'fn-bpfj-finishedp job) t)
+        (setq job (fnn-core 'fn-bpfj-step job +fnn-bps-fragment-quantum+)))
+      (if (eq (fnn-core 'fn-bpfj-finishedp job) t)
+          (progn
+            (setf (fnn-bps-fragment-pending service) nil)
+            (let ((effects (fnn-bps-foundation-step
+                            service (list :family arrival observation job limit))))
+              (push family-key (fnn-bps-fragment-tried service))
+              (if effects
+                  (setf (fnn-bps-fragment-job service) (cons job limit))
+                ;; Refused/stale families cannot hide the next ready one.
+                ;; Try that candidate in another turn, never in this one.
+                (setf (fnn-bps-fragment-rescan service) t))
+              effects))
+        (progn
+          (setf (fnn-bps-fragment-pending service) (list arrival job limit family-key))
+          nil)))))
 
 (defun fnn-bps-fragment-progress (service)
   (fnn-bps-drive-effects service (fnn-bps-fragment-effects service))
   service)
+
+(defun fnn-bps-fragment-work-p (service)
+  "Only a wakeup hint; ACL2 decides whether a family is enabled."
+  (or (fnn-bps-fragment-pending service) (fnn-bps-fragment-rescan service)))
 
 (defun fnn-bps-receive (service admission wire)
   "Return the ACL2-selected TCPCL disposition after kind-5 custody settles.
@@ -1116,7 +1162,10 @@ by name (books/bp-node-profile-admission)."
         (setq effects (fnn-bps-settle-conflict service (car effects))))
       (let ((result (fnn-core 'fn-bpnf-callback-result effects ingress path)))
         (when (eq (first result) :accepted)
-          (fnn-bps-fragment-progress service))
+          ;; The callback returns the durable custody disposition now. The
+          ;; service advances reassembly only after TCPCL flushes that ACK.
+          (setf (fnn-bps-fragment-rescan service) t
+                (fnn-bps-fragment-tried service) nil))
         (when (eq (first result) :uncertain)
           (fnn-bps-note service :fenced))
         (when (eq (first result) :refused)
@@ -1347,6 +1396,10 @@ signals with SERVICE still holding its locks; its owner releases them."
           (fnn-bps-recovery-event service) (fnn-bps-recovery-event fresh)
           (fnn-bps-profile service) (fnn-bps-profile fresh)
           (fnn-bps-node-profile service) (fnn-bps-node-profile fresh)
+          (fnn-bps-fragment-job service) (fnn-bps-fragment-job fresh)
+          (fnn-bps-fragment-pending service) (fnn-bps-fragment-pending fresh)
+          (fnn-bps-fragment-rescan service) (fnn-bps-fragment-rescan fresh)
+          (fnn-bps-fragment-tried service) (fnn-bps-fragment-tried fresh)
           (fnn-bps-cursors service) nil
           (fnn-bps-transfer service) nil
           (fnn-bps-expected service) nil)

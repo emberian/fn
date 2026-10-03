@@ -89,6 +89,8 @@
   ;; last inbox; from then nothing is pushed to INBOX or ARRIVED and the wake
   ;; pipe is not written (it is closed under LOCK, after this is set).
   (closed nil)
+  ;; Failed once-only cleanup receipts remain reachable after scheduling removal.
+  (cleanup-debts nil)
   ;; r71 F13: an accept thread holds this loop's one pending-accept slot
   ;; (under the service's MUX-SLOT-LOCK) from before its accept(2) until the
   ;; socket is in INBOX or given back (fnn-mux-reserve).
@@ -99,6 +101,8 @@
 
 (defstruct (fnn-mux-conn (:constructor %make-fnn-mux-conn))
   socket fd implicit-tls channel ssl cid opened-cid
+  ;; Exact ACL2 lifetime identities; response retained across all cursor windows.
+  connection-identity response-identity output-grant response-capture
   ;; :new :proxy :tls-queued :handshake :hs-wait :serving :draining :done
   (phase :new)
   ;; PRF-986 item 4 (books/tls-proxy.lisp): a trusted proxy's connection
@@ -109,14 +113,19 @@
   ;; The handshake ACL2 admitted (fn-owner-handshake-admit's id) until its
   ;; end is reported (fn-owner-handshake-done).
   (hs-id nil)
+  ;; Exact identity/effect/section receipts, retained through terminal cleanup.
+  (cleanup-receipts nil) (cleanup-phase nil)
   input
-  out (out-at 0) out-deadline out-op after
+  out (out-at 0) out-end out-deadline out-op after
   want resume-at idle-at hs-deadline drain-deadline
   greeting done
   ;; The service class this connection's quanta are admitted as (:reader, or
   ;; :transit when ACL2 named a peer at open) and the render plan whose
   ;; windows the loop is writing (nil between replies).
   (class :reader) plan
+  ;; First dependency miss of this retained response, across cursor retries.
+  ;; A new plan resets it before its first render; it is not a physical hold.
+  (cursor-cold-since nil)
   ;; T once the reply in flight waited on the socket or yielded at a cursor:
   ;; its drain outlasted the step, so its end is output progress
   ;; (fnn-mux-after, fn-exp-progress).  NIL between replies.
@@ -134,7 +143,16 @@
   ;; is installed.
   (zin nil) (zout nil) (zstash nil)
   ;; Original output storage and issued window identity remain retained.
-  (wire-runtime nil))
+  (wire-runtime nil)
+  ;; r71 F7: (READ LINE-SINCE SINCE) while the step's cold page is read off
+  ;; this loop (host/native/owner.lisp fnn-owner-cold-poll), the input kept;
+  ;; then (WORD SINCE NOW LIMIT LINE-SINCE), the word the step runs again
+  ;; with (fnn-owner-handle-chunk-step).
+  (cold nil) (cold-word nil))
+
+;;; How often a loop asks whether a connection's cold page came (r71 F7):
+;;; the read's worker has no way to wake the loop, so the loop looks.
+(defconstant +fnn-mux-cold-poll-ms+ 2)
 
 (defun fnn-mux-ticks (seconds)
   (+ (fnn-now) (round (* seconds internal-time-units-per-second))))
@@ -219,19 +237,11 @@ ACL2 lets one served step read (fnn-mux-read-buffer)."
           (t (fnn-mux-read-plain fd buffer)))))
 
 (defun fnn-mux-write-now (conn)
-  "One write of the queued reply from its offset: the octets written, or the
-direction to wait for."
-  (let ((channel (fnn-mux-conn-channel conn))
-        (data (fnn-mux-conn-out conn))
-        (offset (fnn-mux-conn-out-at conn)))
-    (if channel
-        (fnn-tls-write-now channel data offset)
-      (let* ((remaining (- (length data) offset))
-             (progress (fnn-write-progress
-                        (lambda () (funcall *fnn-write-syscall*
-                                            (fnn-mux-conn-fd conn) data offset remaining))
-                        remaining "socket" nil t)))
-        (if (eq progress :would-block) :output progress)))))
+  "One write of the queued reply from its offset, through the shared leaf."
+  (fnn-transport-write-now (fnn-mux-conn-fd conn) (fnn-mux-conn-channel conn)
+                        (fnn-mux-conn-out conn) (fnn-mux-conn-out-at conn)
+                        (or (fnn-mux-conn-out-end conn)
+                            (length (fnn-mux-conn-out conn)))))
 
 (defun fnn-mux-wake-locked (loop)
   "LOOP's LOCK held: one octet to the wake pipe, unless the loop has closed
@@ -281,57 +291,178 @@ header asserted (books/tls-proxy.lisp), else the kernel's peer."
         (values (car source) (cdr source))
       (fnn-owner-socket-address (fnn-mux-service loop) (fnn-mux-conn-socket conn)))))
 
+(defstruct (fnn-mux-cleanup-receipt (:constructor %make-fnn-mux-cleanup-receipt))
+  key (stage :scheduled) value (section-returned nil) condition)
+
+(defun fnn-mux-cleanup-debt (loop conn receipt)
+  "Retain the exact receipt and connection; diagnostics cannot hide the debt."
+  (pushnew (cons conn receipt) (fnn-mux-loop-cleanup-debts loop)
+           :test (lambda (a b) (eq (cdr a) (cdr b))))
+  nil)
+
+(defun fnn-mux-cleanup-attempt (loop conn key thunk expected sectionp)
+  "Call KEY once. The literal effect return precedes the separate section
+return; a gate-leave failure cannot erase an observed effect or permit retry.
+Physical calls record only their literal return, never descriptor closure."
+  (let ((existing (assoc key (fnn-mux-conn-cleanup-receipts conn) :test #'equal)))
+    (when existing (return-from fnn-mux-cleanup-attempt (cdr existing))))
+  (let ((receipt (%make-fnn-mux-cleanup-receipt :key key))
+        (returned nil) (service (fnn-mux-service loop)))
+    (push (cons key receipt) (fnn-mux-conn-cleanup-receipts conn))
+    (unwind-protect
+         (handler-case
+             (progn
+               (catch 'raw-ev-fncall
+                 (flet ((call ()
+                          (setf (fnn-mux-cleanup-receipt-stage receipt) :calling)
+                          (let ((word (funcall thunk)))
+                            (setf (fnn-mux-cleanup-receipt-value receipt) word
+                                  (fnn-mux-cleanup-receipt-stage receipt) :returned)
+                            (when (and expected (not (eq word expected)))
+                              (fnn-fault "mux cleanup ~s returned ~s" key word))
+                            word)))
+                   (if sectionp
+                       (fnn-quantum-mux-finish service nil #'call
+                                               (fnn-mux-conn-class conn))
+                     (call)))
+                 (setq returned t))
+               (unless returned (fnn-fault "mux cleanup ~s escaped ACL2" key))
+               (setf (fnn-mux-cleanup-receipt-section-returned receipt) t))
+           (serious-condition (condition)
+             ;; The section already classified its boundary. Physical and
+             ;; outer escapes use the same off-owner classifier; a failure
+             ;; of its diagnostic cannot remove the retained cleanup debt.
+             (setf (fnn-mux-cleanup-receipt-condition receipt) condition)
+             (handler-case
+                 (fnn-owner-thread-escape service condition "mux cleanup")
+               (serious-condition () nil))))
+      (unless (fnn-mux-cleanup-receipt-section-returned receipt)
+        (fnn-mux-cleanup-debt loop conn receipt)))
+    receipt))
+
+(defun fnn-mux-capture-output-grant (conn)
+  "Copy known returned issuance even when the reader/factory escaped."
+  (let ((capture (fnn-mux-conn-response-capture conn)))
+    (when capture
+      (when (fnn-response-capture-identity capture)
+        (setf (fnn-mux-conn-response-identity conn) (fnn-response-capture-identity capture)))
+      (when (fnn-response-capture-grant capture)
+        (setf (fnn-mux-conn-output-grant conn) (fnn-response-capture-grant capture)))))
+  nil)
+
 (defun fnn-mux-finish (loop conn)
-  "The worker's unwind: the owner close (CID), the exposure release (the id
-fn-exp-open registered, kept even when a fault path cleared CID; PRF-161),
-the TLS session, then the socket.  Idempotent."
+  "Terminal scheduling and once-only cleanup. DONE is not a release receipt;
+failed effects remain discoverable while independent physical cleanup runs."
   (unless (eq (fnn-mux-conn-phase conn) :done)
     (let ((service (fnn-mux-service loop))
           (cid (fnn-mux-conn-cid conn))
           (opened-cid (fnn-mux-conn-opened-cid conn))
-          (was (fnn-mux-conn-phase conn)))
-      (setf (fnn-mux-conn-phase conn) :done)
-      (fnn-owner-response-unpin service (or cid opened-cid))
-      (when (fnn-mux-conn-ssl conn)
-        (ignore-errors (fnn-%ssl-free (fnn-mux-conn-ssl conn)))
-        (setf (fnn-mux-conn-ssl conn) nil))
-      (when (fnn-mux-conn-hs-id conn)
-        (fnn-mux-handshake-release loop conn))
-      (when (member was '(:tls-queued :hs-wait))
-        (ignore-errors
-          (fnn-owner-serialized
-           service nil (lambda () (fnn-owner-core 'fn-owner-handshake-leave)) :reader)))
-      (setf (fnn-mux-loop-waiting loop)
-            (delete conn (fnn-mux-loop-waiting loop) :test #'eq)
-            (fnn-mux-loop-queued loop)
-            (delete conn (fnn-mux-loop-queued loop) :test #'eq))
-      (when cid
-        (ignore-errors
-          (fnn-owner-serialized
-           service cid (lambda () (fnn-owner-action 'fn-owner-close cid))
-           (fnn-mux-conn-class conn))))
-      (when opened-cid
-        (ignore-errors
-          (fnn-owner-serialized
-           service nil
-           (lambda () (fnn-owner-action 'fn-owner-exposure-release opened-cid))
-           (fnn-mux-conn-class conn))))
-      (when (fnn-mux-conn-channel conn)
-        (ignore-errors (fnn-tls-close-channel (fnn-mux-conn-channel conn))))
-      (when (fnn-mux-conn-zout conn)
-        (ignore-errors (fnn-zout-free (fnn-mux-conn-zout conn)))
-        (setf (fnn-mux-conn-zout conn) nil))
-      (fnn-socket-shut (fnn-mux-conn-socket conn))
-      (setf (fnn-mux-loop-conns loop)
-            (delete conn (fnn-mux-loop-conns loop) :test #'eq))
-      (ignore-errors
-        (fnn-with-roster (service)
-          (setf (fnn-owner-service-clients service)
-                (delete (fnn-mux-conn-socket conn)
-                        (fnn-owner-service-clients service) :test #'eq))))
-      (when (fnn-mux-conn-done conn)
-        (sb-thread:signal-semaphore (fnn-mux-conn-done conn)))
-      (fnn-mux-start-waiting-handshake loop))))
+          (was (fnn-mux-conn-phase conn))
+          (capture (fnn-mux-conn-response-capture conn)))
+      (setf (fnn-mux-conn-cleanup-phase conn) was
+            (fnn-mux-conn-phase conn) :done)
+      (fnn-mux-capture-output-grant conn)
+      ;; These references are no longer publishable by this loop. This is
+      ;; not yet an output-pool discard receipt for an issued dependency.
+      (setf (fnn-mux-conn-out conn) nil
+            (fnn-mux-conn-out-end conn) nil (fnn-mux-conn-plan conn) nil
+            (fnn-mux-conn-input conn) nil (fnn-mux-conn-greeting conn) nil
+            (fnn-mux-conn-zstash conn) nil
+            (fnn-mux-conn-response-capture conn) nil)
+      (unwind-protect
+           (progn
+             (when (fnn-mux-conn-await conn)
+               (fnn-mux-cleanup-attempt
+                loop conn :await-abandon
+                (lambda () (fnn-owner-await-abandon service (or cid opened-cid))) nil nil)
+               (setf (fnn-mux-conn-await conn) nil))
+             ;; Revoking this connection's publication right is separate
+             ;; from the extent worker's eventual physical completion.
+             (when (fnn-mux-conn-cold conn)
+               (let* ((read (first (fnn-mux-conn-cold conn)))
+                      (receipt
+                       (fnn-mux-cleanup-attempt
+                        loop conn (list :cold-abandon read)
+                        (lambda () (fnn-owner-cold-abandon read)) nil nil)))
+                 (when (fnn-mux-cleanup-receipt-section-returned receipt)
+                   (setf (fnn-mux-conn-cold conn) nil))))
+             ;; Await abandonment completed or retained a terminal cleanup
+             ;; debt; no live renderer in this single loop can publish again.
+             (fnn-mux-cleanup-attempt
+              loop conn (list :response-window capture)
+              (lambda () (fnn-owner-response-window-close service capture)) :window-closed nil)
+             (fnn-mux-cleanup-attempt
+              loop conn :output-discard
+              (lambda () (fnn-owner-output-close service (fnn-mux-conn-output-grant conn) :discarded))
+              nil nil)
+             (fnn-mux-cleanup-attempt
+              loop conn :response-unpin
+              (lambda () (fnn-owner-response-unpin service (or cid opened-cid))) nil nil)
+             (when (fnn-mux-conn-hs-id conn) (fnn-mux-handshake-release loop conn))
+             (when (member was '(:tls-queued :hs-wait))
+               (fnn-mux-cleanup-attempt
+                loop conn :handshake-leave
+                (lambda () (fnn-owner-core 'fn-owner-handshake-leave)) :ok t))
+             (when cid
+               (fnn-mux-cleanup-attempt
+                loop conn (list :owner-close cid)
+                (lambda () (fnn-owner-action 'fn-owner-close cid)) :closed t))
+             (when opened-cid
+               (fnn-mux-cleanup-attempt
+                loop conn (list :exposure-release opened-cid)
+                (lambda () (fnn-owner-action 'fn-owner-exposure-release opened-cid)) :released t)))
+        ;; A semantic failure cannot skip independent physical disposal.
+        (when (fnn-mux-conn-ssl conn)
+          (fnn-mux-cleanup-attempt loop conn :ssl-free
+            (lambda () (fnn-%ssl-free (fnn-mux-conn-ssl conn))) nil nil)
+          (setf (fnn-mux-conn-ssl conn) nil))
+        (when (fnn-mux-conn-channel conn)
+          (fnn-mux-cleanup-attempt loop conn :tls-channel
+            (lambda () (fnn-tls-close-channel (fnn-mux-conn-channel conn))) nil nil)
+          (setf (fnn-mux-conn-channel conn) nil))
+        (when (fnn-mux-conn-zout conn)
+          (fnn-mux-cleanup-attempt loop conn :zout-free
+            (lambda () (fnn-zout-free (fnn-mux-conn-zout conn))) nil nil)
+          (setf (fnn-mux-conn-zout conn) nil))
+        (fnn-mux-cleanup-attempt loop conn :socket-shut
+          (lambda ()
+            (multiple-value-bind (ignored receipt condition)
+                (fnn-socket-shut (fnn-mux-conn-socket conn))
+              (declare (ignore ignored))
+              (unless (eq receipt :closed)
+                (if condition (error condition)
+                  (fnn-fault "socket close returned no physical receipt")))
+              receipt)) :closed nil)
+        (setf (fnn-mux-loop-waiting loop)
+              (delete conn (fnn-mux-loop-waiting loop) :test #'eq)
+              (fnn-mux-loop-queued loop)
+              (delete conn (fnn-mux-loop-queued loop) :test #'eq)
+              (fnn-mux-loop-conns loop)
+              (delete conn (fnn-mux-loop-conns loop) :test #'eq))
+        (fnn-mux-cleanup-attempt loop conn :client-roster
+          (lambda ()
+            (fnn-with-roster (service)
+              (setf (fnn-owner-service-clients service)
+                    (delete (fnn-mux-conn-socket conn)
+                            (fnn-owner-service-clients service) :test #'eq)))) nil nil)
+        (when (fnn-mux-conn-done conn)
+          (fnn-mux-cleanup-attempt loop conn :done-signal
+            (lambda () (sb-thread:signal-semaphore (fnn-mux-conn-done conn))) nil nil)))
+      (unless (fnn-owner-service-stopping service)
+        (fnn-mux-start-waiting-handshake loop)))))
+
+(defun fnn-mux-drained-p (service)
+  "Root teardown requires physical loop return and no retained cleanup debt.
+A literal socket-shut return is not a descriptor-close/accounting proof."
+  (every (lambda (loop)
+           (let ((thread (fnn-mux-loop-thread loop)))
+             (and (or (null thread) (not (sb-thread:thread-alive-p thread)))
+                  (fnn-mux-loop-closed loop)
+                  (null (fnn-mux-loop-inbox loop))
+                  (null (fnn-mux-loop-arrived loop))
+                  (null (fnn-mux-loop-conns loop))
+                  (null (fnn-mux-loop-cleanup-debts loop)))))
+         (fnn-owner-service-mux service)))
 
 (defmacro fnn-mux-guarded ((loop conn) &body body)
   "The worker's handlers (fnn-owner-serve-client before this file), each
@@ -394,7 +525,18 @@ ending the connection with fnn-mux-finish."
 ;;; greeting included.  A reply is written as before; the issuer gate
 ;;; returns with its producer, as a rowed operation (section 4, M4).
 
-(defun fnn-mux-queue (loop conn octets op after)
+(defun fnn-mux-output-window (conn octets end)
+  "Retain the valid prefix; compression consumes an exact-length input."
+  (let* ((end (or end (length octets)))
+         (out (if (fnn-mux-conn-zout conn)
+                  (fnn-mux-z-out conn (if (= end (length octets)) octets
+                                       (subseq octets 0 end)))
+                octets)))
+    (setf (fnn-mux-conn-out conn) out
+          (fnn-mux-conn-out-end conn) (if (fnn-mux-conn-zout conn) (length out) end)
+          (fnn-mux-conn-out-at conn) 0)))
+
+(defun fnn-mux-queue (loop conn octets op after &optional end)
   "Queue the one reply OCTETS (a greeting, a rendered window); AFTER (nil,
 :close or :starttls) runs when the socket has taken it and no window of the
 plan remains."
@@ -402,9 +544,8 @@ plan remains."
     ;; The named non-semantic scope (and its private test injection) of the
     ;; worker's send, fnn-owner-connection-call's.
     (fnn-owner-connection-call service op (lambda () nil))
-    (setf (fnn-mux-conn-out conn) (fnn-mux-z-out conn (fnn-octets octets))
-          (fnn-mux-conn-out-at conn) 0
-          (fnn-mux-conn-out-op conn) op
+    (fnn-mux-output-window conn (fnn-octets octets) end)
+    (setf (fnn-mux-conn-out-op conn) op
           (fnn-mux-conn-out-deadline conn) (fnn-mux-ticks +fnn-mux-send-seconds+)
           (fnn-mux-conn-after conn) after
           (fnn-mux-conn-want conn) nil)
@@ -415,10 +556,20 @@ plan remains."
 (lane join-f2-13, PRF-1020: a served OVER/XOVER range; fnn-owner-cursor-step
 under the owner mutex, at most one quantum per mutex hold; sparse ranges
 can take several empty quanta before a write): (values OCTETS PLAN-REST
-DONEP)."
-  (fnn-owner-render-next-quantum (fnn-mux-service loop) (fnn-mux-conn-cid conn) plan
-                                 (fnn-mux-conn-class conn)
-                                 (and (fnn-mux-conn-zout conn) t)))
+DONEP YIELDP COLD-READ END)."
+  (unless (fnn-mux-conn-output-grant conn)
+    (setf (fnn-mux-conn-output-grant conn)
+          (fnn-owner-output-issue (fnn-mux-service loop)
+                                  (fnn-mux-conn-response-identity conn)
+                                  (fnn-mux-conn-response-capture conn))))
+  (let ((*fnn-output-grant* (fnn-mux-conn-output-grant conn))
+        (*fnn-response-capture* (fnn-mux-conn-response-capture conn)))
+    (fnn-owner-measured (:mux-render (fnn-mux-conn-cid conn)
+                         (fourth (fnn-mux-conn-response-identity conn))
+                         (third (fnn-mux-conn-response-identity conn)))
+      (fnn-owner-render-next-quantum (fnn-mux-service loop) (fnn-mux-conn-cid conn) plan
+                                     (fnn-mux-conn-class conn)
+                                     (and (fnn-mux-conn-zout conn) t) t))))
 
 (defun fnn-mux-plan-yield (loop conn plan after &optional empty-progressp)
   "Retain the cursor's exact continuation and ownership until its
@@ -435,22 +586,55 @@ positive ACL2 scheduling delay expires.  AFTER belongs to the whole reply."
           (fnn-mux-conn-drained-late conn) t
           (fnn-mux-conn-after conn) after
           (fnn-mux-conn-out conn) nil
+          (fnn-mux-conn-out-end conn) nil
           (fnn-mux-conn-out-at conn) 0
           (fnn-mux-conn-out-deadline conn) nil
           (fnn-mux-conn-want conn) nil
           (fnn-mux-conn-resume-at conn)
           (+ (fnn-now) (round (* ms internal-time-units-per-second) 1000)))))
 
+(defun fnn-mux-plan-cold (loop conn plan after read)
+  "Suspend this response on its exact issued READ; no socket body or input
+step advances. READ stays first so finish revokes publication once, while the
+worker retains physical custody until its existing return/settlement."
+  (declare (ignore loop))
+  (let ((since (fnn-owner-monotonic-ms)))
+    (unless (fnn-mux-conn-cursor-cold-since conn)
+      (setf (fnn-mux-conn-cursor-cold-since conn) since))
+    (setf (fnn-mux-conn-plan conn) plan
+          (fnn-mux-conn-after conn) after
+          (fnn-mux-conn-drained-late conn) t
+          (fnn-mux-conn-cold conn)
+          (list read (fnn-mux-conn-cursor-cold-since conn) since :cursor)
+          (fnn-mux-conn-out conn) nil
+          (fnn-mux-conn-out-end conn) nil
+          (fnn-mux-conn-out-at conn) 0
+          (fnn-mux-conn-out-deadline conn) nil
+          (fnn-mux-conn-want conn) nil
+          (fnn-mux-conn-resume-at conn)
+          (+ (fnn-now) (round (* +fnn-mux-cold-poll-ms+ internal-time-units-per-second) 1000)))
+    (when (fnn-developer-selector "FN_NATIVE_OVER_WINDOW")
+      (fnn-err "OVER cold-yield cid=~d" (fnn-mux-conn-cid conn)))))
+
 (defun fnn-mux-queue-plan (loop conn plan after)
   "Write the step's render PLAN a window at a time (HST-023): the first
 window now, each next one when the socket took the last (fnn-mux-flush).
 The connection holds one window and the plan's continuation, never the
 whole reply; a plan with nothing to write runs AFTER at once."
-  (multiple-value-bind (octets rest donep yieldedp)
+  (unless (fnn-mux-conn-plan conn)
+    (setf (fnn-mux-conn-cursor-cold-since conn) nil))
+  (unless (fnn-mux-conn-response-identity conn)
+    (setf (fnn-mux-conn-response-identity conn)
+          (fnn-owner-response-identity
+           (fnn-mux-service loop) (fnn-mux-conn-connection-identity conn)
+           (fnn-mux-conn-class conn))))
+  (multiple-value-bind (octets rest donep yieldedp cold-read end)
       (fnn-mux-render-next loop conn plan)
     (setf (fnn-mux-conn-plan conn) (if donep nil rest))
-    (cond (yieldedp (fnn-mux-plan-yield loop conn rest after t))
-          ((> (length octets) 0) (fnn-mux-queue loop conn octets :send-reply after))
+    (cond (cold-read (fnn-mux-plan-cold loop conn rest after cold-read))
+          (yieldedp (fnn-mux-plan-yield loop conn rest after t))
+          ((> (or end (length octets)) 0)
+           (fnn-mux-queue loop conn octets :send-reply after end))
           (t (fnn-mux-after loop conn after)))))
 
 (defun fnn-mux-flush (loop conn)
@@ -459,7 +643,8 @@ window (off the owner mutex) and go on; with nothing left, run AFTER."
   (let ((service (fnn-mux-service loop)))
     (loop
       (loop while (and (fnn-mux-conn-out conn)
-                       (< (fnn-mux-conn-out-at conn) (length (fnn-mux-conn-out conn))))
+                       (< (fnn-mux-conn-out-at conn)
+                          (or (fnn-mux-conn-out-end conn) (length (fnn-mux-conn-out conn)))))
             do (let ((progress (fnn-owner-connection-call
                                 service (fnn-mux-conn-out-op conn)
                                 (lambda () (fnn-mux-write-now conn)))))
@@ -475,21 +660,24 @@ window (off the owner mutex) and go on; with nothing left, run AFTER."
         ;; A completed output window must not chain another semantic
         ;; cursor quantum into this same I/O event, even when the socket
         ;; could accept every window immediately.  Timers re-feed it.
-        (when (and plan (fnn-core 'fn-splan-at-cursorp plan))
+        (when (and plan (fnn-core 'fn-asto-plan-cursorp plan))
           (fnn-mux-plan-yield loop conn plan (fnn-mux-conn-after conn))
           (return-from fnn-mux-flush nil))
         (if plan
-            (multiple-value-bind (octets rest donep yieldedp)
+            (multiple-value-bind (octets rest donep yieldedp cold-read end)
                 (fnn-mux-render-next loop conn plan)
+              (when cold-read
+                (fnn-mux-plan-cold loop conn rest (fnn-mux-conn-after conn) cold-read)
+                (return-from fnn-mux-flush nil))
               (when yieldedp
                 (fnn-mux-plan-yield loop conn rest (fnn-mux-conn-after conn) t)
                 (return-from fnn-mux-flush nil))
+              (fnn-mux-output-window conn octets end)
               (setf (fnn-mux-conn-plan conn) (if donep nil rest)
-                    (fnn-mux-conn-out conn) (fnn-mux-z-out conn octets)
-                    (fnn-mux-conn-out-at conn) 0
                     (fnn-mux-conn-out-deadline conn) (fnn-mux-ticks +fnn-mux-send-seconds+)))
           (let ((after (fnn-mux-conn-after conn)))
-            (setf (fnn-mux-conn-out conn) nil (fnn-mux-conn-after conn) nil
+            (setf (fnn-mux-conn-out conn) nil
+                  (fnn-mux-conn-out-end conn) nil (fnn-mux-conn-after conn) nil
                   (fnn-mux-conn-out-deadline conn) nil)
             (fnn-mux-after loop conn after)
             (return-from fnn-mux-flush nil)))))))
@@ -526,6 +714,7 @@ contract, without blocking the loop)."
 (defun fnn-mux-after (loop conn after)
   ;; All windows, including a partial socket write's pending suffix, have
   ;; drained.  A replacement catalog is now safe for this connection.
+  (fnn-owner-response-window-close (fnn-mux-service loop) (fnn-mux-conn-response-capture conn))
   (fnn-owner-response-unpin (fnn-mux-service loop) (fnn-mux-conn-cid conn))
   ;; Output progress (Codex r67 F3, Astra c07): a reply whose drain outlasted
   ;; its step -- it waited on the socket or yielded at a cursor -- ends now,
@@ -539,6 +728,13 @@ contract, without blocking the loop)."
     (setf (fnn-mux-conn-drained-late conn) nil)
     (fnn-owner-exposure-progress (fnn-mux-service loop) (fnn-mux-conn-cid conn) :reader))
   (setf (fnn-mux-conn-drained-late conn) nil)
+  (fnn-owner-output-close (fnn-mux-service loop) (fnn-mux-conn-output-grant conn) :drained)
+  (setf (fnn-mux-conn-output-grant conn) nil)
+  ;; This is response terminal, including the continuation and socket suffix.
+  ;; The whole-output receipt above precedes identity retirement; pending
+  ;; physical dependencies retain their own native grant and original capture.
+  (setf (fnn-mux-conn-response-identity conn) nil
+        (fnn-mux-conn-response-capture conn) nil)
   (case after
     (:close (fnn-mux-begin-drain loop conn))
     (:starttls (fnn-mux-request-handshake loop conn))
@@ -612,18 +808,34 @@ the same octets are handed to the next step."
   (let* ((service (fnn-mux-service loop))
          (incoming (fnn-mux-conn-input conn))
          (channel (fnn-mux-conn-channel conn))
+         (word (fnn-mux-conn-cold-word conn))
+         ;; Publish before entering the fallible semantic boundary. A
+         ;; later pre-factory draw can retain its receipt here on escape.
+         (capture (or (fnn-mux-conn-response-capture conn)
+                      (setf (fnn-mux-conn-response-capture conn)
+                            (%make-fnn-response-capture
+                             :connection (fnn-mux-conn-connection-identity conn)))))
          (results (multiple-value-list
-                   ;; PKT-858: a peer connection's read enters as ACL2's
-                   ;; class for it (fnn-owner-peer-read-class: :reader while
-                   ;; the disk sheds, so IHAVE/CHECK are answered 436/431
-                   ;; at once instead of waiting for the barrier).
-                   (let ((peerp (eq (fnn-mux-conn-class conn) :transit)))
-                     (fnn-owner-handle-chunk service (fnn-mux-conn-cid conn) incoming
-                                             (fnn-mux-conn-socket conn)
-                                             (if peerp
-                                                 (fnn-owner-peer-read-class service)
-                                               (fnn-mux-conn-class conn))
-                                             peerp)))))
+                   ;; A peer read uses the owner's current ACL2 class.
+                   (let ((peerp (eq (fnn-mux-conn-class conn) :transit))
+                         (*fnn-response-capture* capture))
+                     (setf (fnn-mux-conn-cold-word conn) nil)
+                     (destructuring-bind (&optional w since now limit line-since) word
+                       (fnn-owner-measured (:mux-input (fnn-mux-conn-cid conn))
+                         (fnn-owner-handle-chunk-step service (fnn-mux-conn-cid conn) incoming
+                                                      (fnn-mux-conn-socket conn)
+                                                      (if peerp
+                                                          (fnn-owner-peer-read-class service)
+                                                        (fnn-mux-conn-class conn))
+                                                      peerp w line-since since now limit)))))))
+    (fnn-mux-capture-output-grant conn)
+    ;; The page is read off this loop; the input and first clock stay held.
+    (when (eq (first results) :cold)
+      (setf (fnn-mux-conn-cold conn)
+            (list (second results) (fifth word) (fnn-owner-monotonic-ms))
+            (fnn-mux-conn-resume-at conn)
+            (+ (fnn-now) (round (* +fnn-mux-cold-poll-ms+ internal-time-units-per-second) 1000)))
+      (return-from fnn-mux-step nil))
     ;; Lane commit-onto-log: the step queued its submission for the
     ;; next commit quantum.  The rest is the submitted step's handling, with
     ;; the plan built when the completion arrives (fnn-mux-await-done).
@@ -705,6 +917,34 @@ the same octets are handed to the next step."
         (if (and (consp plan) (eq (first plan) :await))
             (fnn-mux-await loop conn (second plan) (third plan) after)
           (fnn-mux-queue-plan loop conn plan after))))))
+
+(defun fnn-mux-cold-check (loop conn)
+  "Poll the retained line or response dependency, never awaiting the page.
+A response resumes its exact plan; refusal terminates the incomplete body."
+  (destructuring-bind (read line-since since &optional kind) (fnn-mux-conn-cold conn)
+    (multiple-value-bind (word since now limit)
+        (fnn-owner-cold-poll (fnn-mux-service loop) read line-since since)
+      (if (consp word)
+          (setf (fnn-mux-conn-resume-at conn)
+                (+ (fnn-now) (round (* (min (second word) +fnn-mux-cold-poll-ms+)
+                                       internal-time-units-per-second)
+                                    1000)))
+        (progn
+          (setf (fnn-mux-conn-cold conn) nil)
+          (if (eq kind :cursor)
+              (if (eq word :serve)
+                  (progn
+                    (when (fnn-developer-selector "FN_NATIVE_OVER_WINDOW")
+                      (fnn-err "OVER cold-quantum cid=~d" (fnn-mux-conn-cid conn)))
+                    (fnn-mux-queue-plan loop conn (fnn-mux-conn-plan conn)
+                                        (fnn-mux-conn-after conn)))
+                (error 'fnn-store-io-refusal
+                       :message (format nil "cursor quantum: payload read ~(~a~); the reply is terminated"
+                                        word)))
+            (progn
+              (setf (fnn-mux-conn-cold-word conn)
+                    (list word since now limit (or line-since since)))
+              (fnn-mux-work loop conn))))))))
 
 (defun fnn-mux-await (loop conn step redeem after)
   "CONN waits for its submission's completion from the next commit quantum
@@ -829,14 +1069,15 @@ work: (values VERDICT X DEADLINE-MS LINE), fn-owner-handshake-admit's."
         (values (first answer) (second answer) (third answer) (fourth answer))))))
 
 (defun fnn-mux-handshake-release (loop conn)
-  "The admitted handshake of CONN ended (completed, failed, timed out, closed)."
+  "Retain the exact admitted ID until effect AND cleanup section return."
   (let ((id (fnn-mux-conn-hs-id conn)))
-    (setf (fnn-mux-conn-hs-id conn) nil)
-    (ignore-errors
-      (fnn-owner-serialized
-       (fnn-mux-service loop) nil
-       (lambda () (fnn-owner-core 'fn-owner-handshake-done id))
-       :reader))))
+    (when id
+      (let ((receipt
+              (fnn-mux-cleanup-attempt
+               loop conn (list :handshake-done id)
+               (lambda () (fnn-owner-core 'fn-owner-handshake-done id)) :ok t)))
+        (when (fnn-mux-cleanup-receipt-section-returned receipt)
+          (setf (fnn-mux-conn-hs-id conn) nil))))))
 
 (defun fnn-mux-handshake-refused (loop conn line)
   "ACL2 refused CONN's handshake: its line in the service log, then the close."
@@ -853,7 +1094,12 @@ slot (QUEUEDP when it already waited), or it is refused and closed.  Answers
 whether it is still waiting."
   (multiple-value-bind (verdict x ms line) (fnn-mux-handshake-ask loop conn queuedp)
     (ecase verdict
-      (:admit (setf (fnn-mux-conn-hs-id conn) x)
+      (:admit
+              ;; ACL2 already removed a queued admission from WAITING.  Do
+              ;; this before SSL_new/SSL_set_fd can fail: cleanup must release
+              ;; only the admitted identity, never report a second queue leave.
+              (setf (fnn-mux-conn-phase conn) :new
+                    (fnn-mux-conn-hs-id conn) x)
               (when queuedp
                 (setf (fnn-mux-loop-waiting loop)
                       (delete conn (fnn-mux-loop-waiting loop) :test #'eq)))
@@ -1104,6 +1350,12 @@ is the deadline of the handshake ACL2 already admitted (implicit TLS)."
                       ;; The greeting before the context's step replaces
                       ;; fn-owner-output (it emits no reply).
                       (greeting (fnn-owner-octets-global 'fn-owner-output)))
+                 (when (integerp opened)
+                   ;; Retain cleanup identity before generation step can refuse.
+                   (setf (fnn-mux-conn-cid conn) opened
+                         (fnn-mux-conn-opened-cid conn) opened
+                         (fnn-mux-conn-connection-identity conn)
+                         (fnn-owner-connection-identity-locked service opened)))
                  (when opened (fnn-owner-log))
                  (when (and seed (integerp opened))
                    (fnn-owner-sasl-context opened seed nil))
@@ -1216,10 +1468,12 @@ included), no input in hand, no completion awaited, no resume timer."
               ((and (eq (fnn-mux-conn-phase conn) :serving)
                     (due (fnn-mux-conn-resume-at conn)))
                (setf (fnn-mux-conn-resume-at conn) nil)
-               (if (fnn-mux-conn-plan conn)
+               (cond
+                 ((fnn-mux-conn-cold conn) (fnn-mux-cold-check loop conn))
+                 ((fnn-mux-conn-plan conn)
                    (fnn-mux-queue-plan loop conn (fnn-mux-conn-plan conn)
-                                       (fnn-mux-conn-after conn))
-                 (fnn-mux-work loop conn)))
+                                       (fnn-mux-conn-after conn)))
+                 (t (fnn-mux-work loop conn))))
               ((and (fnn-mux-idle-eligible-p conn)
                     (due (fnn-mux-conn-idle-at conn)))
                (fnn-mux-idle loop conn))))
@@ -1384,7 +1638,8 @@ the stop spared, fnn-owner-stop-service-locked), then end every connection."
         (when (and (fnn-mux-conn-out conn) (fnn-mux-conn-fd conn))
           (ignore-errors
             (fnn-owner-send (fnn-mux-conn-fd conn) (fnn-mux-conn-channel conn)
-                            (subseq (fnn-mux-conn-out conn) (fnn-mux-conn-out-at conn))
+                            (subseq (fnn-mux-conn-out conn) (fnn-mux-conn-out-at conn)
+                                    (fnn-mux-conn-out-end conn))
                             (fnn-seconds-to-deadline deadline))))
         (fnn-mux-finish loop conn)))
     (sb-thread:with-mutex ((fnn-mux-loop-lock loop))
@@ -1409,11 +1664,11 @@ the stop spared, fnn-owner-stop-service-locked), then end every connection."
              ;; defect of the loop itself, which serves every connection it
              ;; holds: the whole service stops (exit 4).
              (fnn-owner-fault-service service nil e)))
-      (fnn-mux-stop-loop loop)
-      (fnn-with-roster (service)
-        (setf (fnn-owner-service-workers service)
-              (delete sb-thread:*current-thread*
-                      (fnn-owner-service-workers service) :test #'eq))))))
+      (unwind-protect (fnn-mux-stop-loop loop)
+        (fnn-with-roster (service)
+          (setf (fnn-owner-service-workers service)
+                (delete sb-thread:*current-thread*
+                        (fnn-owner-service-workers service) :test #'eq)))))))
 
 (defun fnn-mux-start (service)
   "Start the loops; each is a worker, so the stop joins it."
@@ -1428,8 +1683,9 @@ the stop spared, fnn-owner-stop-service-locked), then end every connection."
                                                   :wake-read r :wake-write w)))))
         (setf (fnn-owner-service-mux service) loops)
         (dolist (loop loops)
-          (let ((thread (sb-thread:make-thread (lambda () (fnn-mux-run loop))
-                                               :name "fn owner io")))
+          (let ((thread (sb-thread:make-thread
+                         (fnn-native-observed-thread-thunk (lambda () (fnn-mux-run loop)))
+                         :name "fn owner io")))
             (setf (fnn-mux-loop-thread loop) thread)
             (push thread (fnn-owner-service-workers service))))))))
 
@@ -1540,7 +1796,7 @@ closed and the socket was settled here."
   ;; socket itself, as the stopping branch of fnn-mux-adopt does, and leaves
   ;; the client roster.
   (if (sb-thread:with-mutex ((fnn-mux-loop-lock loop))
-        (unless (fnn-mux-loop-closed loop)
+        (when (eq (fn-fs-inbox-admit (fnn-mux-loop-closed loop)) :admitted)
           (push (%make-fnn-mux-conn :socket socket :implicit-tls implicit-tls
                                     :done done)
                 (fnn-mux-loop-inbox loop))
@@ -1604,15 +1860,25 @@ the run's (exit 1), named on stderr and in the service log."
            (fnn-owner-serialized
             service nil
             (lambda ()
-              (fnn-owner-core 'fn-owner-connection-budget
+              (let* ((threads (fnn-mux-thread-count service))
+                     (stack (fnn-mux-thread-stack-octets))
+                     (word (fnn-owner-core 'fn-owner-connection-budget
                               (fnn-heap-machine-octets)
                               (sb-ext:dynamic-space-size)
                               (fnn-heap-core-octets)
-                              (fnn-mux-thread-count service)
-                              (fnn-mux-thread-stack-octets)
+                              threads stack
                               +fnn-gc-nursery-octets+
                               (fnn-store-config store)
-                              (and tls-context t)))))
+                              (and tls-context t))))
+                (when (eq word :hold)
+                  (fnn-owner-syncer-install service threads stack)
+                  ;; Store figure is captured before both allowance extensions.
+                  ;; ACL2 validates dynamic >= store + exact cold + output pool.
+                  (fnn-owner-output-install
+                   service (sb-ext:dynamic-space-size)
+                   (fnn-core 'fn-heap-figure-octets (fnn-store-config store)
+                             (fnn-heap-core-octets) +fnn-gc-nursery-octets+)))
+                word))))
          (line (fnn-global 'fn-owner-connection-budget-line)))
     (unless (and (member decision '(:hold :refused)) (fnn-octet-list-p line))
       (fnn-fault "owner returned a malformed connection budget"))

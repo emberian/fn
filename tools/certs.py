@@ -149,7 +149,7 @@ import subprocess
 import sys
 import tempfile
 import time
-from typing import Iterable
+from typing import Callable, Iterable
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -368,7 +368,8 @@ def valid_looking(cert: Path) -> bool:
     if not cert.is_file() or cert.stat().st_size == 0:
         return False
     try:
-        head = cert.read_bytes()[:4096]
+        with cert.open("rb") as stream:
+            head = stream.read(4096)
     except OSError:  # pragma: no cover - unreadable file
         return False
     # ACL2 8.7 writes certificates with its compact serializer: the file
@@ -400,10 +401,18 @@ def book_facts(source: Path) -> tuple[str, list[str]]:
     key = (str(source), stat.st_mtime_ns, stat.st_size)
     remembered = _FACTS.get(key)
     if remembered is None:
-        analysis = ledger.analyze_book(source, source.name)
-        if analysis.read_error:
-            raise UnreadableBook(f"{source.name}: {analysis.read_error}")
-        remembered = (content_hash(source), list(analysis.includes))
+        try:
+            forms = ledger.Reader(source.read_text(encoding="utf-8")).top_level()
+        except ledger.ReadError as error:
+            raise UnreadableBook(f"{source.name}: {error}") from None
+        # Closure discovery needs admitted include events, not theorem/hint
+        # analysis. Use the shared source event walker (same suppression and
+        # generator policy), retaining local includes and excluding :dir ones.
+        references = [form[1] for form, _ in ledger.source_events(forms)
+                      if ledger.head(form) == "include-book" and len(form) >= 2
+                      and isinstance(form[1], str)
+                      and ":dir" not in ledger.keyword_plist(form[2:])]
+        remembered = (content_hash(source), references)
         _FACTS[key] = remembered
     return remembered
 
@@ -454,6 +463,24 @@ def _include_targets(base: Path, book: str, source: Path, digest: str,
             remembered.append(target.relative_to(base).with_suffix("").as_posix())
         _EDGES[key] = remembered
     return remembered
+
+
+def include_graph(root: Path, roots: Iterable[str]) -> dict[str, list[str]]:
+    """Discover each rooted local include edge once, using closure's facts."""
+    base = root.resolve()
+    pending = list(roots)
+    graph = {}
+    while pending:
+        name = pending.pop()
+        if name in graph:
+            continue
+        source = base / f"{name}.lisp"
+        if not source.is_file():
+            raise UnreadableBook(f"{name}.lisp: missing")
+        digest, references = book_facts(source)
+        graph[name] = _include_targets(base, name, source, digest, references)
+        pending.extend(graph[name])
+    return graph
 
 
 def closure_listing(books: dict[str, str]) -> list[str]:
@@ -519,7 +546,9 @@ def closure_key(root: Path, name: str,
     return hashlib.sha256(text.encode("utf-8")).hexdigest(), listing
 
 
-def book_entries(root: Path, cache: Path, name: str) -> list[tuple[Path, dict]]:
+def book_entries(root: Path, cache: Path, name: str,
+                 metadata_filter: Callable[[dict], bool] | None = None
+                 ) -> list[tuple[Path, dict]]:
     """Every usable entry for NAME at ROOT's sources, in every world a
     certificate of it may have been made in (`cert_images.worlds`): plain
     first, then each certification image the image rule allows for it now.
@@ -527,7 +556,7 @@ def book_entries(root: Path, cache: Path, name: str) -> list[tuple[Path, dict]]:
     found: list[tuple[Path, dict]] = []
     for world in cert_images.worlds(root.resolve(), name):
         key, _ = closure_key(root, name, world)
-        found.extend(cached_entries(cache, key))
+        found.extend(cached_entries(cache, key, metadata_filter))
     return found
 
 
@@ -811,8 +840,14 @@ def date_after_source(cert: Path) -> None:
         return
 
 
-def cached_entries(cache: Path, key: str) -> list[tuple[Path, dict]]:
+def cached_entries(cache: Path, key: str,
+                   metadata_filter: Callable[[dict], bool] | None = None
+                   ) -> list[tuple[Path, dict]]:
     """Every usable entry for one closure key, with its metadata.
+
+    Filter metadata under the entry lock before hashing large payloads. This
+    only rejects candidates; every retained candidate still passes the full
+    integrity check, and installation revalidates under its own lock.
 
     An entry with no recorded ``origin_root`` predates this rule.  It is kept
     and reported, but never chosen: it cannot be classified, and installing an
@@ -829,6 +864,8 @@ def cached_entries(cache: Path, key: str) -> list[tuple[Path, dict]]:
             continue
         with entry_lock(directory, exclusive=False):
             meta = read_meta(directory)
+            if metadata_filter is not None and not metadata_filter(meta):
+                continue
             if entry_matches_meta(directory, meta):
                 found.append((directory, meta))
     return found
@@ -966,8 +1003,13 @@ def artifact_sets(root: Path, cache: Path, roots: Iterable[str],
     grouped: dict[tuple[str, str], ArtifactSet] = {}
     # toolchain identity -> book -> every usable entry, for the composed set.
     pooled: dict[str, tuple[dict, dict[str, list[tuple[Path, dict]]]]] = {}
+    def eligible(meta: dict) -> bool:
+        return (usable_origin(meta, target)
+                and (not toolchain_identity
+                     or meta.get("toolchain_identity") == toolchain_identity))
+
     for name in required:
-        for directory, meta in book_entries(root, cache, name):
+        for directory, meta in book_entries(root, cache, name, eligible):
             if not usable_origin(meta, target):
                 continue
             if not compiled_here(directory, meta, root / f"{name}.lisp"):
@@ -1378,10 +1420,13 @@ def install_partial(root: Path, cache: Path, roots: Iterable[str],
     report.books = len(required)
     report.toolchain_identity = toolchain_identity
     options: dict[str, list[tuple[Path, dict]]] = {}
+
+    def eligible(meta: dict) -> bool:
+        return (usable_origin(meta, target)
+                and meta.get("toolchain_identity") == toolchain_identity)
+
     for name in sorted(required):
-        usable = [(directory, meta) for directory, meta in book_entries(root, cache, name)
-                  if usable_origin(meta, target)
-                  and meta.get("toolchain_identity") == toolchain_identity]
+        usable = book_entries(root, cache, name, eligible)
         compiled = [entry for entry in usable
                     if compiled_here(entry[0], entry[1], root / f"{name}.lisp")]
         if usable and not compiled and name not in recertify:
@@ -1451,7 +1496,8 @@ def read_meta(directory: Path) -> dict:
 # --------------------------------------------------------------------------
 
 
-def load_manifests(root: Path, path: Path | None = None) -> list[dict]:
+def load_manifests(root: Path, path: Path | None = None,
+                   source_paths: set[str] | None = None) -> list[dict]:
     """One named manifest, or every certification manifest under ``root``."""
     paths = [path] if path is not None else sorted(root.glob(MANIFEST_GLOB))
     loaded: list[dict] = []
@@ -1462,7 +1508,7 @@ def load_manifests(root: Path, path: Path | None = None) -> list[dict]:
             continue
         if isinstance(manifest, dict):
             manifest.setdefault("evidence", str(candidate))
-            loaded.append(read_as_current(manifest, root))
+            loaded.append(read_as_current(manifest, root, source_paths))
     return loaded
 
 
@@ -1534,7 +1580,8 @@ FORM_DIGESTS = "source_form_digests_sha256"
 
 
 def manifest_sources(manifest: dict, root: Path,
-                     field_name: str = "source_digests_sha256") -> dict[str, str]:
+                     field_name: str = "source_digests_sha256",
+                     source_paths: set[str] | None = None) -> dict[str, str]:
     """The manifest's recorded source digests, read against ``root`` today.
 
     A manifest records each closure book's bytes and, since the key moved to
@@ -1554,6 +1601,8 @@ def manifest_sources(manifest: dict, root: Path,
     base = root.resolve()
     current = dict(recorded)
     for path, digest in recorded.items():
+        if source_paths is not None and path not in source_paths:
+            continue  # Outside this query: preserve its recorded digest.
         form = forms.get(path)
         if form is None or not isinstance(digest, str):
             continue
@@ -1584,9 +1633,12 @@ AS_RECORDED = "_as_recorded"
 READ_AS_CURRENT = ("source_digests_sha256", "source_digests_sha256_after")
 
 
-def read_as_current(manifest: dict, root: Path) -> dict:
+def read_as_current(manifest: dict, root: Path,
+                    source_paths: set[str] | None = None) -> dict:
     """``manifest`` with its source digests read against ``root`` (in place).
 
+    Explicit source_paths bounds normalization to a query's complete include
+    closure; outside paths retain recorded bytes. None normalizes every path.
     Every manifest `load_manifests` returns has been through this, so a
     comment-only edit since a run keeps that run's verdict for the book
     everywhere a verdict is read.  A translated field keeps what the run wrote
@@ -1597,7 +1649,7 @@ def read_as_current(manifest: dict, root: Path) -> dict:
     for name in READ_AS_CURRENT:
         if not isinstance(manifest.get(name), dict):
             continue
-        current = manifest_sources(manifest, root, name)
+        current = manifest_sources(manifest, root, name, source_paths)
         original = manifest.get(name + AS_RECORDED, manifest[name])
         if current != original:
             manifest[name + AS_RECORDED] = original

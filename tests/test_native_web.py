@@ -19,10 +19,11 @@ import http.client
 import re
 import socket
 import ssl
+import time
 import unittest
 from urllib.parse import urlencode
 
-from tests.native_harness import EXIT, Node, class_case, free_port, native_image, requires
+from tests.native_harness import EXIT, Client, Node, class_case, client_context, free_port, keep_diagnostics, native_image, requires
 
 IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
 PASSWORD = "wren-secret-9"
@@ -135,6 +136,94 @@ class FaceCases:
         status, _, _, headers, _ = b.request("POST", "/health", {})
         self.assertEqual(status, 405)
         self.assertEqual(headers["Allow"], "GET, HEAD")
+
+    def test_stalled_socket_does_not_block_health_reader_or_account_post(self):
+        # The old inline accept worker waits its complete request/handshake
+        # deadline before it can serve any of these healthy connections.
+        slow = socket.create_connection(("127.0.0.1", self.web_port), timeout=10)
+        try:
+            if not self.TLS:
+                slow.sendall(b"GET /heal")
+            time.sleep(0.1)
+            started = time.monotonic()
+            b = self.browser()
+            status, _, body, _, _ = b.request("GET", "/health")
+            self.assertEqual((status, body), (200, "ready\n"))
+            status, _, page, _, _ = b.request("GET", "/signin")
+            self.assertEqual(status, 200)
+            self.assertIn("Make your account", page)
+            status, where, page, _, _ = self.make_account(
+                b, "parallel_tls" if self.TLS else "parallel_plain")
+            self.assertEqual((status, where), (303, "/"), page)
+            self.assertLess(time.monotonic() - started, 8,
+                            "stalled socket held the HTTP actor")
+            self.assertIsNone(self.node.process.poll())
+        finally:
+            slow.close()
+
+    def test_compressed_article_uses_physical_windows_through_web_and_restart(self):
+        # This selector requires the current physical decoded producer. The
+        # ordinary compression report proves the stored form independently.
+        keep_diagnostics(self, lambda: [self.node])
+        user = "decode_tls" if self.TLS else "decode_plain"
+        b = self.browser()
+        status, where, page, _, _ = self.make_account(b, user)
+        self.assertEqual((status, where), (303, "/"), page)
+        self.node.operator("policy", "set", "compress-min-octets", "64", expect=EXIT.OK)
+        _, _, page, _, _ = b.request("GET", "/")
+        line = "decoded window <&> exact retained body " + "abcdefghijklmno" * 4
+        body = "\r\n".join([line] * 256)
+        status, _, page, _, _ = b.request("POST", "/post", {
+            "csrf": b.form_value(page, "csrf"), "g": "local.general",
+            "subject": "Physical decoded response", "body": body})
+        self.assertEqual(status, 200, page)
+        self.assertIn("Posted!", page)
+        status, _, page, _, _ = b.request("GET", "/g?name=local.general")
+        self.assertEqual(status, 200, page)
+        number = re.search(r"href='/a\?g=local.general&amp;n=(\d+)'>Physical decoded response", page).group(1)
+
+        def article_bytes():
+            with Client(self.tls_port, implicit_tls=client_context(), timeout=120) as client:
+                self.assertTrue(client.command("AUTHINFO USER " + user).startswith(b"381 "))
+                self.assertTrue(client.command("AUTHINFO PASS " + PASSWORD).startswith(b"281 "))
+                self.assertTrue(client.command("GROUP local.general").startswith(b"211 "))
+                status, data = client.multiline("ARTICLE " + number)
+                self.assertTrue(status.startswith(b"220 "), status)
+                return data
+
+        baseline = article_bytes()
+        self.assertIn(body.encode("ascii"), baseline)
+        status, _, page, _, _ = b.request("GET", "/a?g=local.general&n=" + number)
+        self.assertEqual(status, 200, page)
+        self.assertEqual(page.count(html.escape(line, quote=False)), 256)
+        first = self.node.process
+        self.node.stop(expect=EXIT.OK)
+        report = self.node.store("compression", expect=EXIT.OK)
+        match = re.search(rb"compressed-records=(\d+)", report.stdout)
+        self.assertIsNotNone(match, report.stdout)
+        self.assertGreater(int(match.group(1)), 0, report.stdout)
+        self.node.start()
+        # Restart also drops the old browser's process-local session.
+        b = self.browser()
+        _, _, page, _, _ = b.request("GET", "/signin")
+        status, where, page, _, _ = b.request("POST", "/signin", {
+            "pre": b.form_value(page, "pre"), "next": "/", "user": user, "password": PASSWORD})
+        self.assertEqual((status, where), (303, "/"), page)
+        status, _, page, _, _ = b.request("GET", "/a?g=local.general&n=" + number)
+        self.assertEqual(status, 200, page)
+        self.assertEqual(page.count(html.escape(line, quote=False)), 256)
+        self.assertEqual(article_bytes(), baseline)
+        second = self.node.process
+        self.node.stop(expect=EXIT.OK)
+        for process in (first, second):
+            trace = process.stderr.since(0)
+            issued = trace.count(b"DECODED-WINDOW issue ")
+            self.assertGreater(issued, 0, process.diagnostics())
+            self.assertEqual(trace.count(b"DECODED-WINDOW physical "), issued, trace[-8192:])
+            self.assertEqual(trace.count(b"DECODED-WINDOW release "), issued, trace[-8192:])
+            self.assertIn(b":PARTIAL-FIXED-STORAGE", trace)
+            self.assertIn(b"word=:RELEASED", trace)
+        self.node.start()  # Keep the class's other existing browser cases usable.
 
     def test_1_a_friend_makes_an_account_reads_posts_and_removes(self):
         b = self.browser()

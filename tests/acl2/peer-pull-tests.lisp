@@ -416,3 +416,12 @@
 (assert-event (equal (fn-pull-log-line *pp-u2*)
                      (append (fn-record-string-octets "pull peer=innA round=done cursor=advanced unavailable=1 dropped=")
                              *pp-a*)))
+
+; S112: removed peers never remain due; live timing/busy state is retained.
+(defconst *pp-live-plans* '(((66) nil nil nil 5000)))
+(defconst *pp-old-schedule* '(((65) 1 1000 nil) ((66) 9000 1000 t)))
+(assert-event (equal (fn-pull-schedule *pp-live-plans* 10000 *pp-old-schedule*)
+                     '(((66) 9000 5000 t))))
+(assert-event (equal (fn-pull-schedule nil 10000 *pp-old-schedule*) nil))
+(assert-event (equal (fn-pull-schedule *pp-live-plans* 10000 nil)
+                     '(((66) 10000 5000 nil))))

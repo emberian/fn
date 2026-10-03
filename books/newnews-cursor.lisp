@@ -51,6 +51,7 @@
 (in-package "ACL2")
 (include-book "nntp-responses")
 (include-book "def-carried-view")
+(include-book "newnews-cursor-shape")
 
 (local (in-theory (disable (tau-system))))
 (local (in-theory (enable fn-nntp-newnews-scan)))
@@ -140,22 +141,7 @@
 ; -----------------------------------------------------------------------------
 ; 4. The cursor.
 
-(defun fn-nnw-cursor (groups threshold tail maxes horizon)
-  (declare (xargs :guard t))
-  (list :newnews groups threshold tail maxes horizon))
-(defun fn-nnw-cursorp (cur)
-  (declare (xargs :guard t))
-  (and (true-listp cur) (equal (len cur) 6) (eq (car cur) :newnews)))
-(defun fn-nnw-at (n x)
-  (declare (xargs :guard t :measure (nfix n)))
-  (if (consp x)
-      (if (zp (nfix n)) (car x) (fn-nnw-at (1- (nfix n)) (cdr x)))
-    nil))
-(defun fn-nnw-groups (cur) (declare (xargs :guard t)) (fn-nnw-at 1 cur))
-(defun fn-nnw-threshold (cur) (declare (xargs :guard t)) (fn-nnw-at 2 cur))
-(defun fn-nnw-tail (cur) (declare (xargs :guard t)) (fn-nnw-at 3 cur))
-(defun fn-nnw-maxes-of (cur) (declare (xargs :guard t)) (fn-nnw-at 4 cur))
-(defun fn-nnw-horizon (cur) (declare (xargs :guard t)) (fn-nnw-at 5 cur))
+; Cursor constructors/accessors shared with the served metadata consumer.
 
 ; MAXES is nil (no index) or exact.
 (defun fn-nnw-maxes-okp (tail maxes)

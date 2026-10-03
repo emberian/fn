@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/consumer-remote-operation-source.lisp",
+ "id": "PGO-OWED-CONSUMER-REMOTE-OPERATIO",
+ "notes": [],
+ "owner": "post-guard-off",
+ "severity": "medium",
+ "slice": "carrier",
+ "source": "post-guard-off",
+ "state": "open",
+ "title": "A-OWNER-INVARIANT-CARRIED owes: 1 state writer(s) defined in books/consumer-remote-operation-source.lisp have no preservation theorem of fn-owner-retain-statep; each is listed in host/owner-served-carried.lisp :incomplete. Prove (def-owner-writer / the carrier move) and move it to :transitions: fn-owner-remote-operation-preflight",
+ "updated": "2026-10-03T04:15:32Z"
+}

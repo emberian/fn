@@ -6,6 +6,9 @@
 (in-package "ACL2")
 (include-book "../books/web-session-keystones")
 (include-book "../books/web-config")
+(include-book "../books/web-page-cursor")
+(include-book "../books/web-reply-stream")
+(include-book "../books/web-post-stream")
 
 (defun fn-web-host-plan (config-octets listener-port tls-port certp)
   (declare (xargs :mode :program :guard (fn-cbor-octet-listp config-octets)))
@@ -52,7 +55,7 @@
                       (f-get-global 'fn-web-sessions state)
                     nil)))
     (mv-let (action sessions fn-web-out)
-      (fn-web-step config sessions flow event fn-web-in fn-web-out)
+      (fn-web-step (append (take 6 config) (list :page-plan :private-begin)) sessions flow event fn-web-in fn-web-out)
       (let ((state (f-put-global 'fn-web-sessions sessions state)))
         (mv action fn-web-out state)))))
 
@@ -95,10 +98,128 @@
 ; Host observations whose meaning ACL2 decides.
 (defun fn-web-host-action-kind (action)
   (declare (xargs :mode :program))
-  (and (consp action) (member (car action) '(:respond :open :send :close)) (car action)))
+  (and (consp action)
+       (member (car action) '(:respond :open :send :close :health :private-begin
+                             :post-form :post-command :post-stream))
+       (car action)))
 
 ; Q10d: observe only the fixed scheduler/disk and checkpoint values, no
 ; whole-state walk. Called under the existing owner mutex by the web face.
 (defun fn-web-host-health-observe (sched state)
   (declare (xargs :mode :program :stobjs state))
   (fn-whl-observe sched (fn-owner-sco-deferred state)))
+
+; Scheduling ceilings are the configured supported profile and a work window,
+; never a truncation of a stored article. The HTTP actor consumes these exact
+; core decisions before allocating/reading or slicing a continuation.
+(defun fn-web-host-connection-limit (config)
+  (declare (xargs :mode :program))
+  (fn-wss-cfg-max config))
+
+(defun fn-web-host-request-end (end request)
+  (declare (xargs :mode :program))
+  (+ (nfix end) (fn-web-req-clen request)))
+
+(defun fn-web-host-window-end (start end)
+  (declare (xargs :mode :program))
+  (min (nfix end) (+ (nfix start) 4096)))
+
+(defun fn-web-host-read-size (used limits end request)
+  (declare (xargs :mode :program))
+  (min 4096 (nfix (- (if request (fn-web-host-request-end end request)
+                       (fn-wrq-limits-head limits)) (nfix used)))))
+
+(defun fn-web-host-event-cid (config flow event state)
+  (declare (xargs :mode :program :stobjs state))
+  (if (or (equal (fn-wss-car event) :begin) (equal (fn-wss-f-route flow) :expire))
+      (let* ((begin (if (equal (fn-wss-car event) :begin) event (fn-wss-f-data flow)))
+             (request (fn-wrq-nth 1 begin)) (now (nfix (fn-wrq-nth 4 begin)))
+             (sessions (if (boundp-global 'fn-web-sessions state) (f-get-global 'fn-web-sessions state) nil))
+             (expired (fn-wss-expired sessions now (fn-wss-cfg-idle config)))
+             (token (fn-web-cookie-get (fn-wrq-oct "fnr_session") (fn-web-req-cookie request)))
+             (session (if (consp expired) (car expired)
+                        (and (fn-wss-tokenp token) (fn-wss-find token sessions now (fn-wss-cfg-idle config))))))
+        (and session (fn-wss-s-cid session)))
+    nil))
+
+(defun fn-web-host-reserve-size (need capacity)
+  (declare (xargs :mode :program))
+  (if (<= (nfix need) (nfix capacity)) (nfix capacity)
+    (max 1024 (* 2 (nfix need)))))
+
+; Count and emit use the same immutable segment cursor outside the owner
+; section. IN remains the exact retained NNTP reply through the HTTP body.
+(defun fn-web-host-page-cursor (segs)
+  (declare (xargs :mode :program))
+  (fn-wpc-cursor segs))
+
+(defun fn-web-host-page-step (cursor count emitp fn-web-in)
+  (declare (xargs :mode :program :stobjs fn-web-in))
+  (fn-wpc-step cursor count emitp fn-web-in))
+
+(defun fn-web-host-private-reply-p (flow event)
+  (declare (xargs :mode :program))
+  (fn-web-private-reply-p flow event))
+
+(defun fn-web-host-private-reply-step (config flow event fn-web-in fn-web-out)
+  (declare (xargs :mode :program :stobjs (fn-web-in fn-web-out)))
+  (fn-web-private-reply-step (append (take 6 config) (list :page-plan :private-begin))
+                            flow event fn-web-in fn-web-out))
+
+; Virtual ARTICLE source: scan only one rendered window, then replay the
+; retained logical plans for the exact spans requested by the page cursor.
+(defun fn-web-host-article-p (flow)
+  (declare (xargs :mode :program))
+  (equal (fn-wss-f-route flow) :article))
+(defun fn-web-host-article-start (flow)
+  (declare (xargs :mode :program))
+  (fn-was-start (fn-wss-s-login (fn-wss-c-session (fn-wss-f-ctx flow)))))
+(defun fn-web-host-article-scan (scan fn-web-in)
+  (declare (xargs :mode :program :stobjs fn-web-in))
+  (fn-was-scan 0 (fn-octets-len fn-web-in) scan fn-web-in))
+(defun fn-web-host-article-page (config flow scan)
+  (declare (xargs :mode :program))
+  (fn-was-page config flow scan))
+(defun fn-web-host-window-page-step (cursor base count emitp fn-web-in)
+  (declare (xargs :mode :program :stobjs fn-web-in))
+  (fn-wpc-window-drive 4096 cursor base count emitp nil fn-web-in))
+(defun fn-web-host-replay-slice (at length need)
+  (declare (xargs :mode :program))
+  (let ((s (max (nfix at) (nfix (car need))))
+        (e (min (+ (nfix at) (nfix length)) (nfix (cdr need)))))
+    (list (max 0 (- s (nfix at))) (max 0 (- e (nfix at)))
+          (+ (nfix at) (nfix length)) (>= (+ (nfix at) (nfix length)) (nfix (cdr need))))))
+
+(defun fn-web-host-replay-forward-p (need base end)
+  (declare (xargs :mode :program))
+  (and (<= (nfix base) (nfix (car need))) (<= (nfix (car need)) (nfix end))))
+
+(defun fn-web-host-stream-p (flow) (declare (xargs :mode :program)) (fn-wrs-p flow))
+(defun fn-web-host-stream-start (flow) (declare (xargs :mode :program)) (fn-wrs-start flow))
+(defun fn-web-host-stream-scan (scan fn-web-in)
+  (declare (xargs :mode :program :stobjs fn-web-in)) (fn-wrs-scan scan fn-web-in))
+(defun fn-web-host-stream-page (config flow scan)
+  (declare (xargs :mode :program)) (fn-wrs-page config flow scan))
+
+(defun fn-web-host-private-begin-step (config action fn-web-in fn-web-out)
+  (declare (xargs :mode :program :stobjs (fn-web-in fn-web-out)))
+  (fn-wpf-private-begin (append (take 6 config) (list :page-plan :private-begin))
+                             action fn-web-in fn-web-out))
+
+(defun fn-web-host-post-window (cursor fn-web-in fn-web-out)
+  (declare (xargs :mode :program :stobjs (fn-web-in fn-web-out)))
+  (mv-let (bytes next done) (fn-wps-window 4096 cursor nil fn-web-in)
+    (let* ((fn-web-out (fn-octets-clear fn-web-out))
+           (fn-web-out (fn-octets-append-list bytes fn-web-out)))
+      (mv next done fn-web-out))))
+(defun fn-web-host-post-reply-step (config flow event cursor fn-web-in fn-web-out)
+  (declare (xargs :mode :program :stobjs (fn-web-in fn-web-out)))
+  (fn-wps-private-reply (append (take 6 config) (list :page-plan :private-begin))
+                        flow event cursor fn-web-in fn-web-out))
+
+(defun fn-web-host-post-form-step (config prep fn-web-in fn-web-out)
+  (declare (xargs :mode :program :stobjs (fn-web-in fn-web-out)))
+  (mv-let (next done) (fn-wpf-drive 4096 prep fn-web-in)
+    (if done (fn-wpf-finish (append (take 6 config) (list :page-plan :private-begin))
+                           next fn-web-in fn-web-out)
+      (mv (list :post-form next) fn-web-out))))

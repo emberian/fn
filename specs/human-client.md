@@ -188,8 +188,9 @@ table (a token drawn from the OS CSPRNG, the connection, the login, a CSRF
 token, the last use) is node-local and never logged; no password is kept.
 
 Local policy, not an RFC requirement: one request per connection
-(`Connection: close`), one connection served at a time by the face's
-thread, a request completed within 15 seconds, the idle life of a session
+(`Connection: close`), one registered I/O actor multiplexing at most `[web] max_sessions` HTTP
+connections (connections beyond those slots remain in the kernel backlog),
+a request completed within 15 seconds, the idle life of a session
 (`[web] idle_seconds`, 12 hours) and the number kept (`[web]
 max_sessions`, 64; each holds one owner connection).
 
@@ -217,3 +218,123 @@ left as it is), and the node reads it when it starts
 same machine (`share/fn/caddy/fn-web.caddy`), or the node itself with
 `tls = true`. The release's `clients/` carries no service (HST-029). The
 threat model is docs/operator-internals.md, "The friends' web reader".
+
+WEB-006: The web I/O actor retains each request's socket, private octet buffers, event flow,
+partial output offset and logical reader continuation. A stalled TLS handshake,
+partial head/body, queued POST completion or cold payload read yields to other
+connections; no connection creates a thread. One fixed semantic worker executes
+owner chunk/render/cold operations that can wait for publication or scheduler
+admission, through a mailbox of at most one operation per admitted HTTP record.
+Cancellation retains the exact request/CID/plan until that activation returns,
+independently of disposing its transport. Requests sharing a browser session
+serialize their semantic flows on its one owner connection. Completed HTTP pages
+are sent in windows with the exact Content-Length; a deadline, cancellation or
+uncertain submission closes without an accepted/refused HTTP outcome. Socket
+cleanup and cold publication cancellation do not imply that an issued physical
+read has ended. The owner's generated actor lifecycle retains the web actor
+through its physical join before shared service close.
+
+The native page path requests a validated immutable segment plan from
+`fn-wss-page`, then counts and emits it through `fn-web-host-page-step`
+(`books/web-page-cursor.lisp`) outside the owner section. Each step has fixed
+cursor fuel and a window of at most 4096 octets. A short encoded header may
+add the existing bounded RFC 2047 decode; long headers remain span reads.
+Count mode allocates no output list. GET emits the counted page from the same
+retained reply and plan; HEAD counts the page and sends its head alone. It
+never constructs a complete HTML output buffer. SCN-1105 compares all segment
+kinds and native partial writes to the existing segment reference.
+
+The cursor is presently a program boundary. Its guard verification and
+refinement to `fn-wr-seq` are planned in PRF-1277; raw equality witnesses do not
+extend the existing web proofs to it. Exact captured read/post reply events run on the fixed semantic worker without
+consulting or writing the live session table (PRF-1279, admission pending).
+Stateful owner admission and session decisions still run under the owner lock.
+Reply segment construction remains a full worker operation, and a long
+owner operation can therefore delay stateful event handling;
+this is not a full semantic-event fairness guarantee. The fixed semantic
+worker also serializes operations that need that worker.
+
+This scheduling contract does not yet establish full allocation funding.
+The NNTP reply backing buffer, page segment spine and text, bounded decoder,
+head/window/cursor and job capture remain the actual tariff frontier. Eliminating
+the complete HTML output buffer does not fund the retained input or plan.
+
+
+The native ARTICLE/OVER/LIST paths scan rendered NNTP windows into virtual
+metadata (`books/web-reply-stream.lisp`) and replay the captured persistent
+plan for the source windows requested by the page cursor. ARTICLE keeps five
+header spans/body offsets and bounded ownership metadata; OVER keeps at most
+its existing100 requested number rows as spans; LIST keeps only status/block
+offsets and creates one row plan while traversing the source. Long source fields
+are not copied into row metadata, and group count does not grow Web's retained
+row plan. Count and emit use the same capture. A saved renderer tail resumes
+monotone spans; backward field/link seeks restart it without another command.
+The final response pin survives both HTML passes and the HTTP suffix or actual
+semantic disposal; preliminary GROUP status pins settle before the next command.
+Cold replay retains the exact plan and deadline. SCN-1113/1114/1115 compare exact
+reference HTML and the connected native window/pin consumer. These program
+boundaries await guard/refinement and matching image (PRF-1283/1284/1285).
+
+This removes Web's additional full NNTP input and row-list collectors. The
+original NNTP ARTICLE producer still realizes payload and complete section
+block, LIST ACTIVE still realizes its complete reply, and some OVER paths
+realize full NOV/projection replies before capture. Those upstream producers,
+the supported numeric representation, working cursor/decoder/renderer vectors,
+repeated physical reads and mailbox captures require a qualified complete
+tariff. Native output grants do not cover Web implicitly. Stateful owner
+admission can still delay the fixed worker/network event flow.
+
+
+Captured POST/remove BEGIN (PRF-1290 planned, SCN-1119) now looks up/touches
+its session and handles expiry in the owner section, then returns a core-selected
+private-begin action for the existing fixed semantic worker. That worker runs
+the exact same-site/session/CSRF gate and authored POST/cancel preparation
+outside O. Missing-session requests keep their immediate refusal. PRF-1279/1290
+equivalences and reached witnesses admit in a fresh ACL2 source world
+(`planning/evidence/web-private-source-2026-10-03.md`); certification and
+composed native/browser execution remain pending. Raw classifier/held-worker
+scheduling passes with a healthy owner event progressing. Body preparation still runs to completion on one worker;
+full body/working/capture allocation is unpriced, and stateful owner admission
+can still delay events. No second worker or full fairness warranty.
+
+
+Streaming Web command and await plans enter a fixed-worker `:ready` phase before
+replay capture. `fnn-owner-ready-plan-step` resolves one shared ARTICLE framing
+preflight quantum; yielded/raw and cold continuations are retained without
+publication. Only READY stores the immutable original plan for both HTML passes.
+No preflight/selection scan is replayed during count or emit. The consumer pairs
+with Access source e7624ab8a/e41b22c21 and Served a3bd4513f; its raw adversarial
+owner adapter checks cold/yield/READY capture custody, not producer semantics.
+Actual composed source execution and complete Web tariff remain pending.
+
+
+Shared ARTICLE producer/native Web composition: Access2a0f46790 byte-window
+entry now supplies exact-W parts, with immutable pending dot fragments. The
+actual shared producer bodies plus native Web scan/replay/count/write consumer
+pass5,000 dot-leading lines, cold replay, partial drain and exact HTML/count/pin
+receipt. The old work-only producer fails this same fixture with5,408 output
+bytes for W4,096. Recording arena/owner/cold/I/O seams remain; full native
+source-loaded browser execution and qualified Web funding are not established.
+
+
+The host-reached ARTICLE/OVER/LIST program functions and Web window wrappers
+now admit and execute in the same actual ACL2 source stobj world as the private
+reply/gate functions. tests/acl2/web-stream-consumer-source-tests.lisp compares
+complete reference page plans with virtual scan/count/emit under chunk1/2/7/4096
+fixtures. Guard/refinement and complete endpoint/funding qualification remain
+open; concrete-fill invariant-risk warnings are retained in the source receipt.
+
+A closed HTTP continuation cannot submit another semantic job. Terminal disposal
+requires the exact outstanding job's return; cancellation alone leaves its
+captured POST, response and replay references live. The sole disposal activation
+then clears input/output, authored POST state, page state and saved response
+plans before releasing the response's scalar loan and pin. Failed cleanup keeps
+its exact cold-read identity in the debt record. Discard of these references is
+a lifetime receipt; it does not establish a complete physical heap tariff.
+
+The Web root close hook retains the face until its actors have ended, the job
+mailbox is closed and empty, and every retained connection has a terminal
+semantic receipt with no cleanup debt. Listener disposal proceeds independently;
+its actual close receipt must be `:closed`. A failed or torn listener attempt
+retains the face and is never retried. A Web close-hook failure blocks successful
+Store teardown rather than discarding the only record of unfinished custody.

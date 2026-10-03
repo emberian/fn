@@ -1,0 +1,106 @@
+{
+ "budget": 200,
+ "category": "checker-correctness",
+ "expect-failure": "tests.test_native_program_check.StatementRouteTests.test_named_filled_helper_route_keeps_every_kind_four_commit_fenced",
+ "failure-message": "statement checker must follow the actual filled-buffer route: fnn-owner-attempt-transit: 0 kind-4 commits, 0 through fnn-owner-statement-committed",
+ "file": "tests/campaign/native_cuts.py",
+ "harness": "tests/test_native_program_check.py",
+ "id": "NIGHT-STATEMENT-ROUTE",
+ "notes": [
+  "10-03 02:17 claimed: scope=['tests/campaign/native_cuts.py', 'tests/test_native_program_check.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_native_program_check.StatementRouteTests.test_named_filled_helper_route_keeps_every_kind_four_commit_fenced"
+ ],
+ "owner": "codex-sol-tools",
+ "scope": [
+  "tests/campaign/native_cuts.py",
+  "tests/test_native_program_check.py",
+  "LANEDUMP.md",
+  "planning/evidence-index.tsv"
+ ],
+ "severity": "medium",
+ "source": "runtime-convergence",
+ "state": "in-progress",
+ "test": "python3 -m unittest tests.test_native_program_check.StatementRouteTests.test_named_filled_helper_route_keeps_every_kind_four_commit_fenced",
+ "title": "Statement cut checker ignores the filled-buffer implementation called by transit",
+ "updated": "2026-10-03T06:17:47Z",
+ "verify": {
+  "base": "449088ab234c59d7d316f3322d96b51ce531f77c",
+  "base_observation": {
+   "result": {
+    "assertions": [
+     {
+      "message": "statement checker must follow the actual filled-buffer route: fnn-owner-attempt-transit: 0 kind-4 commits, 0 through fnn-owner-statement-committed",
+      "test": "tests.test_native_program_check.StatementRouteTests.test_named_filled_helper_route_keeps_every_kind_four_commit_fenced",
+      "type": "AssertionError"
+     }
+    ],
+    "errors": [],
+    "executed": [
+     "tests.test_native_program_check.StatementRouteTests.test_named_filled_helper_route_keeps_every_kind_four_commit_fenced"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_native_program_check.py": "5334209698186c9f8d16cc67925e12e0b467b7a00cf0258a26bce54724f63afc"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 1,
+   "revision": "449088ab234c59d7d316f3322d96b51ce531f77c",
+   "stderr": "test_named_filled_helper_route_keeps_every_kind_four_commit_fenced (tests.test_native_program_check.StatementRouteTests.test_named_filled_helper_route_keeps_every_kind_four_commit_fenced) ... FAIL\n\n======================================================================\nFAIL: test_named_filled_helper_route_keeps_every_kind_four_commit_fenced (tests.test_native_program_check.StatementRouteTests.test_named_filled_helper_route_keeps_every_kind_four_commit_fenced)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-ruvgwju2/wt/tests/test_native_program_check.py\", line 103, in test_named_filled_helper_route_keeps_every_kind_four_commit_fenced\n    native_cuts.verify_statement_cut_map()\n    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-ruvgwju2/wt/tests/campaign/native_cuts.py\", line 1084, in verify_statement_cut_map\n    raise AssertionError(\"fnn-owner-attempt-transit: {} kind-4 commits, {} through \"\n                         \"fnn-owner-statement-committed\".format(commits, wrapped))\nAssertionError: fnn-owner-attempt-transit: 0 kind-4 commits, 0 through fnn-owner-statement-committed\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-ruvgwju2/wt/tests/test_native_program_check.py\", line 105, in test_named_filled_helper_route_keeps_every_kind_four_commit_fenced\n    self.fail(\"statement checker must follow the actual filled-buffer route: \" + str(error))\n    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: statement checker must follow the actual filled-buffer route: fnn-owner-attempt-transit: 0 kind-4 commits, 0 through fnn-owner-statement-committed\n\n----------------------------------------------------------------------\nRan 1 test in 0.002s\n\nFAILED (failures=1)\n",
+   "stdout": ""
+  },
+  "changed_files": [
+   "planning/repair/items/NIGHT-STATEMENT-ROUTE.json",
+   "tests/campaign/native_cuts.py",
+   "tests/test_native_program_check.py"
+  ],
+  "diff_lines": 89,
+  "evidence": {
+   "bytes": 5206,
+   "path": "planning/evidence/repair/NIGHT-STATEMENT-ROUTE-6b4f5cd5ab7740cc98e45c29ddcc467b.json",
+   "sha256": "e0b932d497810bff79d5a31a9fa4c1c2c161d8f3fd383863f725f2acfe2974a3"
+  },
+  "evidence_outcome": "archived",
+  "expected_failure": {
+   "message": "statement checker must follow the actual filled-buffer route: fnn-owner-attempt-transit: 0 kind-4 commits, 0 through fnn-owner-statement-committed",
+   "test": "tests.test_native_program_check.StatementRouteTests.test_named_filled_helper_route_keeps_every_kind_four_commit_fenced"
+  },
+  "green_at_head": true,
+  "harness": {
+   "tests/test_native_program_check.py": "5334209698186c9f8d16cc67925e12e0b467b7a00cf0258a26bce54724f63afc"
+  },
+  "head": "0200b0f4a83ecaf5a1a263cf8486b7904c8487e0",
+  "head_observation": {
+   "result": {
+    "assertions": [],
+    "errors": [],
+    "executed": [
+     "tests.test_native_program_check.StatementRouteTests.test_named_filled_helper_route_keeps_every_kind_four_commit_fenced"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_native_program_check.py": "5334209698186c9f8d16cc67925e12e0b467b7a00cf0258a26bce54724f63afc"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 0,
+   "revision": "0200b0f4a83ecaf5a1a263cf8486b7904c8487e0",
+   "stderr": "test_named_filled_helper_route_keeps_every_kind_four_commit_fenced (tests.test_native_program_check.StatementRouteTests.test_named_filled_helper_route_keeps_every_kind_four_commit_fenced) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.062s\n\nOK\n",
+   "stdout": ""
+  },
+  "interpreter": "/opt/homebrew/bin/python3",
+  "ok": true,
+  "problems": [],
+  "red_at_base": true,
+  "runner_sha256": "ffc7d9542fbfe2d4e23f03f31dd170f32ef1a8529d41ebbccc36f18c52946106",
+  "same_tests": true,
+  "semantic_ok": true,
+  "test": "python3 -m unittest tests.test_native_program_check.StatementRouteTests.test_named_filled_helper_route_keeps_every_kind_four_commit_fenced",
+  "timeout": 1800.0
+ }
+}

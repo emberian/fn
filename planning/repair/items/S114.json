@@ -10,9 +10,10 @@
  "line": "5122",
  "locus": "store-books",
  "notes": [
-  "10-02 23:22 escalate: fix lives in host/owner-host.lisp (forbidden zone)"
+  "10-02 23:22 escalate: fix lives in host/owner-host.lisp (forbidden zone)",
+  "2026-10-03 Astra: source repaired fn-owner-orcp-capture to take trailing fn-hist and call actual fn-owner-record-octets before fn-orcp-reserve; both return branches preserve updated stobj/state. Native metadata-driven trailing-stobj dispatcher supplies history without a hardcoded caller list. Actual sync/carried-byte-advance/credit-resize and native value dispatch fixture covers admitted/refused/missing/out-of-range cache with recording Store/array/row-cost boundaries; old source fails intended unfunded-admission assertion. Matching normal loaded host/image execution pending. Full-history rebuild memory remains separately open; no budget bypass."
  ],
- "owner": "sweep-ops",
+ "owner": "astra-source-trace",
  "reviewer": "fn-owner-orcp-capture (owner-host.lisp:5122-5125) reads the raw 'fn-owner-record-octets (K . SUM) cache. It does not call fn-owner-record-octets (1116-1126), which runs fn-hist-sync and extends the cache over the records committed since. The cache advances only through the limit-use, prepare (1781, 1952) and similar entries, so it lags the commits since the last such call. The comment at 5114-5116 names fn-owner-record-octets, which the code does not do. The reservation can therefore be smaller than the history requires. The unbound case is mostly moot, because install sets the global (owner-host.lisp:560). Severity is low: the estimate is already a heuristic multiplier, and the lag is usually small.",
  "scenario": "The cache only advances when something calls fn-owner-record-octets: a POST prepare, a publication verdict, or a limit use. A POST's prepare queries it before the POST's own record commits, so the cache always lags at least the last committed batch. After a burst of consumer or identity commits, or bulk transit relays that go through other entries, the lag is larger. A reclaim then reserves credit for fewer octets than the history holds. fn-orcp-reserve admits a rebuild whose real allocation exceeds the reservation, and the credit ledger's 'never over-committed' property (fn-mca-read-span-keeps-funded) no longer covers the pass. When no profile was installed, the global is unbound, octets is 0, and the reserve is the minimum.",
  "severity": "low",

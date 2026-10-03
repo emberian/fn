@@ -1,5 +1,8 @@
 """Source-level rules on the native image build scripts (burn-down S141, S138)."""
 import re
+import os
+import shutil
+import subprocess
 import unittest
 from collections import Counter
 from pathlib import Path
@@ -87,12 +90,21 @@ class TlsSscFail(unittest.TestCase):
         self.assertNotIn("(first (fnn-tls-error-stack))", m.group(0))
 
 
+def _raw_fixture(case, name):
+    sbcl = os.environ.get("FN_SBCL") or shutil.which("sbcl")
+    if not sbcl:
+        raise unittest.SkipTest("SBCL is required for actual native file fault fixtures")
+    result = subprocess.run([sbcl, "--script", str(ROOT / "tests" / name)],
+                            cwd=ROOT, stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT, timeout=30)
+    case.assertEqual(result.returncode, 0, result.stdout.decode("utf-8", "replace"))
+
+
 class PartialSecretFiles(unittest.TestCase):
     def test_rotation_stage_removed_when_write_or_fsync_fails(self):
-        # S073
-        text = (ROOT / "host/native/io.lisp").read_text()
-        m = re.search(r"\(defun fnn-node-secret-rotate .*?\n\n", text, re.S)
-        self.assertRegex(m.group(0), r"unless written \(ignore-errors \(fnn-unlink stage\)\)")
+        # S073/S119: actual syscall-fault paths include close and cleanup
+        # precedence, rather than one particular spelling of the unwind.
+        _raw_fixture(self, "native_io_progress.lisp")
 
     def test_write_new_unlinks_partial_file_on_failure(self):
         # S119
@@ -103,10 +115,8 @@ class PartialSecretFiles(unittest.TestCase):
 
 class SelfSignedPartialFiles(unittest.TestCase):
     def test_ssc_write_new_unlinks_what_it_created_on_failure(self):
-        # S093
-        text = (ROOT / "host/native/tls.lisp").read_text()
-        m = re.search(r"\(defun fnn-tls-ssc-write-new .*?\n\n", text, re.S)
-        self.assertIn("(unless written (ignore-errors (sb-posix:unlink path)))", m.group(0))
+        # S093: real descriptors and file creation, including close failure.
+        _raw_fixture(self, "native_tls_selfsigned_failure_raw.lisp")
 
 
 class RetireReport(unittest.TestCase):

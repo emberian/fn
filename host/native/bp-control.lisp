@@ -87,7 +87,7 @@
     (let ((owner (fnn-bpnc-owner node)) (plan (second grant)))
       (if (eq (fnn-owner-disk-admit owner) :shed)
           :busy
-        (fnn-owner-serialized
+        (fnn-quantum-bp
          owner nil
          (lambda ()
            (multiple-value-bind (word reason)
@@ -182,12 +182,15 @@
                 ((eql index 1) (fnn-bpnc-pump node))
                 (t (return nil))))))))
 
-(defun fnn-bpnc-accept-loop (node listeners handler once)
+(defun fnn-bpnc-accept-loop (node listeners handler once &key progress pending)
   "One writer: accept only the ACL2 installed listener generation."
   (loop
     (when node (fnn-bpnc-pump node))
+    (when progress (funcall progress) (sb-thread:thread-yield))
     (let* ((live (fnn-bplc-live listeners))
-           (index (fnn-poll-readable (mapcar #'fnn-socket-fd live) 100)))
+           (index (fnn-poll-readable
+                   (mapcar #'fnn-socket-fd live)
+                   (if (and pending (funcall pending)) 0 100))))
       (when index
         (let ((plan (fnn-core 'fn-bplc-accept-plan (fnn-bplc-model listeners) index)))
           (unless plan (fnn-fault "ACL2 refused BP acceptance in this listener phase"))
@@ -201,4 +204,12 @@
                 (fnn-out "~a" (fnn-core 'fn-bplc-runtime-line (fnn-bplc-model listeners)))
                 (unwind-protect (funcall handler socket)
                   (fnn-bplc-step listeners '(:session-closed)))
-                (when once (return))))))))))
+                (when once
+                  ;; Diagnostic one-contact mode completes retained local
+                  ;; work after the socket closes. Each iteration is still a
+                  ;; separate turn, with control and scheduler yield.
+                  (loop while (and pending (funcall pending)) do
+                    (when node (fnn-bpnc-pump node))
+                    (when progress (funcall progress))
+                    (sb-thread:thread-yield))
+                  (return))))))))))

@@ -39,6 +39,7 @@
 (in-package "ACL2")
 (include-book "payload-arena-paged")
 (include-book "payload-arena-extent-logic")
+(include-book "payload-lz-scalar-realizer")
 
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
@@ -448,8 +449,8 @@
     (cond ((fn-arn-extentp e)
            (fn-durable-realize-octet (nth 0 e) (nth 1 e) (nth 2 e) (nth 3 e) (nth 4 e) (nth 5 e) i))
           ((fn-arn-lz-extentp e)
-           (fn-oct-nth i (fn-durable-realize-lz (nth 0 e) (nth 1 e) (nth 2 e) (nth 3 e) (nth 4 e)
-                                                (nth 5 e) (nth 6 e) (nth 7 e))))
+           (fn-durable-realize-lz-octet (nth 0 e) (nth 1 e) (nth 2 e) (nth 3 e) (nth 4 e)
+                                       (nth 5 e) (nth 6 e) (nth 7 e) i))
           ((eq e :staged) (fn-arx-stage-get h i fn-arena$x))
           ((eq e :forgotten) 0)
           (t (stobj-let ((fn-arena-paged (fn-arena$x-inner fn-arena$x)))
@@ -555,7 +556,10 @@
 (defthm fn-arx-files-move-other-fields
   (implies (not (equal i *fn-arena$x-filesi*))
            (equal (nth i (fn-arx-files-move old new fn-arena$x))
-                  (nth i fn-arena$x))))
+                  (nth i fn-arena$x)))
+  :hints (("Goal" :in-theory
+           (e/d (fn-arx-files-move fn-arx-files-dec fn-arx-files-inc)
+                (nth update-nth adt-nth-0 adt-nth-1+)))))
 
 (defthm fn-arx-files-move-inner
   (equal (car (fn-arx-files-move old new fn-arena$x))
@@ -788,7 +792,8 @@
 (defthm fn-arx-mark-recognizer
   (implies (and (fn-arena$xp fn-arena$x) (natp h))
            (fn-arena$xp (fn-arx-mark h e fn-arena$x)))
-  :hints (("Goal" :do-not-induct t)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable nth adt-nth-0 adt-nth-1+))))
 
 (local
  (defthm fn-arx-nth-len-append
@@ -800,7 +805,8 @@
   (implies (natp h)
            (equal (nth *fn-arena$x-stagei* (fn-arx-mark h e fn-arena$x))
                   (nth *fn-arena$x-stagei* fn-arena$x)))
-  :hints (("Goal" :do-not-induct t)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable nth adt-nth-0 adt-nth-1+))))
 
 ;; The file count's agreement, kept by the mark.
 (defthm fn-arx-tally-of-update-nth
@@ -853,7 +859,8 @@
                                           (max 64 (* 2 h)) 0))))
                    (fn-arx-entry-file e)
                    (nth *fn-arena$x-filesi* fn-arena$x))))
-  :hints (("Goal" :do-not-induct t)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable nth adt-nth-0 adt-nth-1+))))
 
 (defthm fn-arx-files-get-of-move-list
   (implies (and (natp f) (true-listp fs))
@@ -861,7 +868,16 @@
                   (+ (- (fn-arx-files-get f fs)
                         (if (and (equal old f) (< 0 (fn-arx-files-get f fs))) 1 0))
                      (if (equal new f) 1 0))))
-  :hints (("Goal" :in-theory (enable fn-arx-files-get))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory
+           (union-theories
+            (theory 'minimal-theory)
+            '(fn-arx-files-get fn-arx-move-list nfix natp max fix not synp
+              nth-update-nth len-update-nth true-listp-update-nth
+              fn-arx-nth-resize-list-all fn-arx-nth-past-len
+              (:type-prescription len) (:type-prescription update-nth)
+              associativity-of-+ commutativity-of-+ commutativity-2-of-+
+              fold-consts-in-+ unicity-of-0)))))
 
 (defthm fn-arx-files-agree-of-resize
   (implies (and (fn-arx-files-agree ext fs) (<= (len ext) (nfix n)))
@@ -987,13 +1003,17 @@
                  (<= (nfix n) (len (car fn-arena-page))))
             (fn-arena-page-bytesp (car (fn-arx-page-copy j n a fn-octets fn-arena-page))))
    :hints (("Goal" :induct (fn-arx-page-copy j n a fn-octets fn-arena-page)
-            :in-theory (enable update-nth fn-oct-get-is-nth)))))
+             :in-theory
+            (e/d (fn-oct-get-is-nth fn-oct-octets-p-is-octet-listp
+                  (:rewrite fn-oct-nth-of-octet-listp-is-octet . 1)
+                  fn-oct-bufp-of-update-nth unsigned-byte-p)
+                 (update-nth adt-nth-0 adt-nth-1+))))))
 
 (local
  (defthm fn-arx-bytesp-of-resize
    (implies (fn-arena-page-bytesp l)
             (fn-arena-page-bytesp (resize-list l m 0)))
-   :hints (("Goal" :in-theory (enable resize-list)))))
+   :hints (("Goal" :in-theory (e/d (fn-oct-bufp-of-resize-list) (resize-list))))))
 
 (local
  (defthm fn-arx-pagep-of-copy
@@ -1002,7 +1022,11 @@
                  (<= (nfix n) (len (car p))))
             (fn-arena-pagep (fn-arx-page-copy j n a fn-octets p)))
    :hints (("Goal" :induct (fn-arx-page-copy j n a fn-octets p)
-            :in-theory (enable update-nth fn-oct-get-is-nth)))))
+             :in-theory
+            (e/d (fn-oct-get-is-nth fn-oct-octets-p-is-octet-listp
+                  (:rewrite fn-oct-nth-of-octet-listp-is-octet . 1)
+                  fn-oct-bufp-of-update-nth unsigned-byte-p)
+                 (update-nth adt-nth-0 adt-nth-1+))))))
 
 (local
  (defthm fn-arx-pagep-of-resized
@@ -1121,6 +1145,10 @@
 (in-theory (disable fn-arx-mark fn-arx-stage-grow fn-arx-stage-write fn-arx-stage-len
                     fn-arx-stage-get fn-arx-stage-payload
                     fn-arena$xp nth update-nth fn-arn-extentp fn-arn-lz-extentp fn-arx-view))
+
+;; The generic ADT aliases otherwise reopen NTH after it was closed above.
+;; Keep the abstract export obligations at the same field boundary.
+(local (in-theory (disable adt-nth-0 adt-nth-1+)))
 
 ; -----------------------------------------------------------------------------
 ; The obligations, each as `defabsstobj-missing-events' states it.

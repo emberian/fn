@@ -496,7 +496,7 @@ keeps."
           (fn-nls-connection-lines pins)))
 
 (defconst *fn-nls-kinds* (quote (:status :pins :peers :obligations :control :health :accounts
-                                  :consumers)))
+                                  :consumers :operation)))
 
 ;; PKT-885: the report's `transactions=' and `articles=' counts are SEEN, a
 ;; pair (TRANSACTIONS . ARTICLES) of the view the report is rendered at, not
@@ -709,14 +709,15 @@ flight, which the host puts in place)."
         ; 13: after the frame-kind-3 codes (books/control-evidence.lisp
         ; fn-cev-kind-code 8..12, including obligation-subject), so no code
         ; names two reports in the shared FNLS allocation table.
-        ((equal kind :consumers) 13) (t 0)))
+        ((equal kind :consumers) 13) ((equal kind :operation) 14) (t 0)))
 
 (defun fn-nls-code-kind (code)
   (declare (xargs :guard t))
   (cond ((equal code 1) :status) ((equal code 2) :pins)
         ((equal code 3) :peers) ((equal code 4) :obligations)
         ((equal code 5) :control) ((equal code 6) :health)
-        ((equal code 7) :accounts) ((equal code 13) :consumers) (t nil)))
+        ((equal code 7) :accounts) ((equal code 13) :consumers)
+        ((equal code 14) :operation) (t nil)))
 
 (local (in-theory (enable (tau-system)))) ; tau-cost: this form needs tau
 (defun fn-nls-seal (kind payload)

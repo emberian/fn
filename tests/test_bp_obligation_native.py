@@ -4,7 +4,8 @@ import time
 import unittest
 
 from tests.native_harness import (
-    EXIT, ROOT, environment, free_port, native_image, requires, run, scratch, start)
+    EXIT, ROOT, article, environment, free_port, native_image, requires, run, scratch, start)
+from tests.bp_producer import post_articles
 
 IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
 
@@ -24,16 +25,14 @@ class NativeBpObligationTests(unittest.TestCase):
         self.journal = self.tmp / "workflow"
         self.payload = self.tmp / "article"
         self.msgid = "<native-obligation@example.invalid>"
-        self.payload.write_text(
-            f"Message-ID: {self.msgid}\r\nNewsgroups: fn.test\r\n\r\nbody\r\n",
-            encoding="ascii",
-        )
+        submitted = article(self.msgid, subject="native obligation", body=b"body\r\n")
         self.assertEqual(self.invoke("store", self.store, "init", "fn.test").returncode, EXIT.OK)
-        posted = self.invoke(
-            "store", self.store, "post", self.msgid, self.payload,
-            "-", "-", "fn.test",
-        )
-        self.assertEqual(posted.returncode, EXIT.OK, posted.stderr)
+        # The same immutable default image durably accepts the source through
+        # NNTP and supplies its stored bytes through the core's inspect entry.
+        # BP owns Store only after this real producer has stopped.
+        stored = post_articles(self, IMAGE, self.store,
+                               [(self.msgid.encode("ascii"), submitted)])
+        self.payload.write_bytes(stored[self.msgid.encode("ascii")])
         initialized = self.invoke(
             "app-journal", "workflow-init", self.store, self.journal,
             "dtn://fn-a/", "dtn://fn-b/", "policy-a", "authority-a",
@@ -216,12 +215,13 @@ class NativeBpCarryVerbTests(unittest.TestCase):
         self.config.write_text('[store]\npath = "{}"\n'.format(self.store), encoding="ascii")
         payload = self.tmp / "article"
         self.msgid = "<native-carry@example.invalid>"
-        payload.write_text(
-            f"Message-ID: {self.msgid}\r\nNewsgroups: fn.test\r\n\r\nbody\r\n",
-            encoding="ascii")
-        for args in (("store", self.store, "init", "fn.test"),
-                     ("store", self.store, "post", self.msgid, payload, "-", "-", "fn.test"),
-                     ("app-journal", "workflow-init", self.store, self.journal,
+        initialized = self.invoke("store", self.store, "init", "fn.test")
+        self.assertEqual(initialized.returncode, EXIT.OK, initialized.stderr)
+        stored = post_articles(self, IMAGE, self.store,
+                               [(self.msgid.encode("ascii"),
+                                 article(self.msgid, subject="native carry", body=b"body\r\n"))])
+        payload.write_bytes(stored[self.msgid.encode("ascii")])
+        for args in (("app-journal", "workflow-init", self.store, self.journal,
                       "dtn://fn-a/", "dtn://fn-b/", "policy-a", "authority-a",
                       "3600000", "incarnation-a", "authorization-a"),
                      ("app-journal", "workflow-enqueue", self.store, self.journal,

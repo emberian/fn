@@ -9,6 +9,7 @@
 ; particular, wrapping an arbitrary OVER/HDR row does not bound its payload
 ; allocation or make a multi-entry cold read terminate.
 (in-package "ACL2")
+(include-book "immutable-list")
 
 (defun fn-cur-split (xs n)
   (declare (xargs :guard (natp n)))
@@ -41,7 +42,8 @@
 (defun fn-cur-dependency (cur) (declare (xargs :guard t)) (fn-cur-at 3 cur))
 (defun fn-cur-make (context progress pending dependency)
   (declare (xargs :guard t))
-  (list context progress pending dependency))
+  (mbe :logic (list context progress pending dependency)
+       :exec (fn-list/immutable context progress pending dependency)))
 
 ; :step is an existing consumer entry of shape (mv OCTETS PROGRESS'). The
 ; declared :call binds PROGRESS and the extra formals. One call visits at

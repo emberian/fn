@@ -1,0 +1,18 @@
+{
+ "category": "bug",
+ "disposition": "SLICE",
+ "exposure": "live",
+ "file": "books/served-catalog.lisp",
+ "id": "sl-cold-line-quanta",
+ "locus": "cold-line",
+ "notes": [
+  "GPT-6.1-Sol: deadline containment imported; bounded continuation implementation remains open. No native or whole-command termination claim."
+ ],
+ "owner": "codex-sol-served",
+ "severity": "high",
+ "slice": "cold-line",
+ "source": "served-live",
+ "state": "in-progress",
+ "title": "Real fix for sl-cold-line-deadline: HDR/XHDR/XPAT of a non-overview header over a range (and any other served line whose payload reads are unbounded) must run in cursor quanta whose payload reads fit the realizer cache with margin (as OVER's fn-splan-cursor-step does), or answer from carried facts; until then the per-line deadline answers them 403 after read-dependency-ms. Also state the contract in ACL2: every served step's distinct payload reads are bounded below fn-arx-read-cache-entries",
+ "updated": "2026-10-03T06:00:00Z"
+}

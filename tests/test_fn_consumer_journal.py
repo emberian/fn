@@ -22,6 +22,7 @@ import unittest
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 import fn_consumer  # noqa: E402
+CONSUMER_SOURCE = Path(os.environ.get("FN_CONSUMER_TEST_SOURCE", ROOT / "tools" / "fn_consumer.py"))
 
 FAKE = r'''#!/usr/bin/env python3
 import hashlib, json, os, sys, time
@@ -116,7 +117,7 @@ class JournalAgainstAStandIn(unittest.TestCase):
         env.pop("FN_CONSUMER_CUT", None)
         if cut:
             env["FN_CONSUMER_CUT"] = cut
-        result = subprocess.run([sys.executable, str(ROOT / "tools" / "fn_consumer.py"),
+        result = subprocess.run([sys.executable, str(CONSUMER_SOURCE),
                                  str(self.config), *words], env=env,
                                 capture_output=True, timeout=120, check=False)
         return result
@@ -143,18 +144,59 @@ class JournalAgainstAStandIn(unittest.TestCase):
         # with the process, then the retry refused.
         self.queue(0, 1)
         self.assertEqual(self.run_consumer("report", "r1", "x", cut="after-post").returncode, 97)
-        self.assertEqual(self.run_consumer("report", "r1", "x").returncode, 0)
+        self.assertEqual(self.run_consumer("report", "r1", "x").returncode, 3)
         [entry] = self.outbox()
         self.assertEqual(entry["state"], "uncertain")
         self.assertEqual([(j["purpose"], j["state"], j["exit"]) for j in entry["journal"]],
                          [("submit", "unanswered", None), ("reconcile", "answered", 1)])
         # No blind third attempt while nothing new is known.
-        self.assertEqual(self.run_consumer("report", "r1", "x").returncode, 0)
+        self.assertEqual(self.run_consumer("report", "r1", "x").returncode, 3)
         self.assertEqual(len(self.seen()), 2)
         # Teeth: without the unanswered attempt, the same refusal is terminal.
         self.queue(1)
-        self.assertEqual(self.run_consumer("report", "r9", "y").returncode, 0)
+        self.assertEqual(self.run_consumer("report", "r9", "y").returncode, 1)
         self.assertEqual([o["state"] for o in self.outbox()], ["uncertain", "refused"])
+
+    def test_a_definitive_refusal_is_not_success_at_the_cli(self):
+        self.queue(1)
+        self.assertEqual(self.run_consumer("report", "r1", "x").returncode, 1)
+        self.assertEqual(self.outbox()[0]["state"], "refused")
+
+    def test_retry_uses_saved_artifact_without_reopening_current_keys(self):
+        self.queue(0, 0)
+        self.assertEqual(self.run_consumer("report", "r1", "x", cut="after-post").returncode, 97)
+        for path in self.keys.values():
+            Path(path).unlink(missing_ok=True)
+        self.assertEqual(self.run_consumer("report", "r1", "x").returncode, 0)
+        self.assertEqual(self.outbox()[0]["state"], "stored")
+        first, retry = self.seen()
+        self.assertEqual(first, retry)
+
+    def test_payload_file_retry_preserves_binary_artifact_after_key_removal(self):
+        payload = self.root / "payload.bin"
+        payload.write_bytes(b"\x00\xff\r\nkind: reply\r\noperation-id: injected\n")
+        self.queue(0, 0)
+        self.assertEqual(self.run_consumer("report", "r1", "--payload-file", str(payload), cut="after-post").returncode, 97)
+        for path in self.keys.values():
+            Path(path).unlink(missing_ok=True)
+        self.assertEqual(self.run_consumer("report", "r1", "--payload-file", str(payload)).returncode, 0)
+        first, retry = self.seen()
+        self.assertEqual(first, retry)
+        exported = self.root / "exported.bin"
+        self.assertEqual(self.run_consumer("payload", "r1", str(exported)).returncode, 0)
+        self.assertEqual(exported.read_bytes(), payload.read_bytes())
+        self.assertEqual(self.run_consumer("payload", "r1", str(exported)).returncode, 1)
+        self.assertEqual(exported.read_bytes(), payload.read_bytes())
+        payload.write_bytes(b"changed")
+        self.assertEqual(self.run_consumer("report", "r1", "--payload-file", str(payload)).returncode, 1)
+        self.assertEqual(len(self.seen()), 2)
+
+    def test_reusing_operation_for_changed_payload_refuses_without_publication(self):
+        self.assertEqual(self.run_consumer("report", "r1", "x").returncode, 0)
+        first = self.outbox()[0]
+        self.assertEqual(self.run_consumer("report", "r1", "changed").returncode, 1)
+        self.assertEqual(self.outbox()[0], first)
+        self.assertEqual(len(self.seen()), 1)
 
     def test_death_inside_the_answer_transaction_rolls_back_to_unanswered(self):
         self.queue(0, 0)
@@ -176,8 +218,8 @@ class JournalAgainstAStandIn(unittest.TestCase):
         data = json.loads(self.config.read_text())
         data["generation"] = "7"
         self.config.write_text(json.dumps(data))
-        # A second report of the same operation signs afresh (randomized) and
-        # the fresh signatures are discarded: the operation keeps its artifact.
+        # A second report of the same operation never signs again or opens
+        # the rotated keys: the operation keeps its original artifact.
         self.assertEqual(self.run_consumer("report", "r1", "x").returncode, 0)
         first, second = self.seen()
         self.assertEqual(first, second)

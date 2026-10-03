@@ -384,7 +384,12 @@
 (defun fnn-workflow-ion-submit
     (journal txid tx-generation work-id attempt-id bp-destination own-bp-eid
              helper observation-directory)
-  (let* ((directory (fnn-workflow-ion-private-directory observation-directory))
+  (let* ((seconds (fnn-core-state 'fn-workflow-ion-helper-seconds))
+         ;; Admission precedes all journal publication and helper launch.
+         (directory (progn
+                      (unless seconds
+                        (fnn-refuse "ION lifetime not exactly representable by helper"))
+                      (fnn-workflow-ion-private-directory observation-directory)))
          (plan (fnn-core-state 'fn-workflow-ion-attempt-plan
                                txid tx-generation work-id attempt-id))
          (retry (first plan))
@@ -395,8 +400,7 @@
       (fnn-refuse "ACL2 refused ION attempt reason=~(~a~)" attempt))
     (unless (and (consp attempt) (eq (first attempt) :attempt))
       (fnn-refuse "ACL2 refused ION attempt"))
-    (let ((generation (sixth attempt))
-          (lifetime (tenth attempt)))
+    (let ((generation (sixth attempt)))
       ;; A restart-observed attempt is retried by the journaled policy
       ;; decision first, so the next open replays the new attempt
       ;; (fn-bprq-ion-attempt-plan).
@@ -435,7 +439,7 @@
           (unwind-protect
                (let ((exit (fnn-workflow-ion-run-helper
                             helper (seventh route) (sixth route) (fifth route)
-                            request lifetime observation)))
+                            request seconds observation)))
                  (cond
                   ((eql exit 1) (fnn-refuse "ION helper refused before send"))
                   ((eql exit 5) (fnn-fault "ION helper rejected invocation"))

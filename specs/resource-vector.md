@@ -330,8 +330,22 @@ and `fn-ros-outcome-keeps-representation` preserve both typed recognition and
 them. Bootstrap install guards and the general bank/native boundary remain
 owed. These source admissions are not matching certificates.
 
+HST-046 also covers the lifetime of the operation consumer. After successful
+launch, every committer unwind before consumption retains a continuation over
+that operation's ledger and actual result cell. A later physical return consumes
+that result; an already-observed return consumes it during unwind. This includes
+raw nonlocal ACL2 escapes as well as conditions. A consumption that has started
+may have torn, so cleanup never retries it or manufactures settlement. The outer
+committer actor also invokes the service failure boundary when a raw escape
+bypasses its inner condition handler. SCN-1087 exercises the native consumers;
+these schedules do not establish a new image or host-refinement theorem.
 
-## Shared output allocation pool (HST-047)
+SCN-1089 supplies the matching-image consumer: actual mux startup `:hold`,
+POST acceptance, independent literal custody receipts, clean stop and
+restart retrieval. The selector is prepared; image execution is pending.
+Optional diagnostics cannot change custody if formatting or output fails.
+
+## Shared output pool (HST-047)
 
 The output pool is an explicit heap allowance beyond the composed store,
 thread and cold-resource launch reservation. `resources.output_heap_octets`
@@ -381,6 +395,62 @@ methods preserve typed representation and fixed column shape; their mutation
 guards are verified in the source proof world. No accounted operation
 gate may be inferred from the serializer's logical cons bound or this pool.
 
+SCN-1097 connects the same accepted cold/output projections through operator,
+control and normalized owner entry to service fields. Actual mux startup
+`:hold` invokes output installation; `fn-orv-startup-grant` must accept
+captured dynamic space, exact pre-extension store figure, cold descriptor,
+output policy and ACL2 row count before private allocation.
+`fn-orv-startup-slots` adds the bank's two protected rows to the admitted
+connection count; it never clamps an unrepresentable profile. Row count is
+metadata capacity, not a heap grant for whole replies. Explicit policy stays
+staged until actual issue and full allocation/custody coverage are connected.
+A response lease must retain its PLAN/selector/renderer continuation and all
+output/socket suffixes until operation completion and no future publisher,
+plus actual issued dependency termination; clearing OUT alone settles none.
+
+The response identity producer is `fn-rid-connection`/`fn-rid-response` in
+`books/response-identity.lisp`. The service retains two ACL2 serials under O;
+actual mux admission first retains admitted CID for cleanup, then captures
+`(:connection CID CIDGEN)`. Before the first response render factory, mux
+reserves `(:response CID CIDGEN OPGEN)`; cursor/cold resumption keeps that exact
+object. Both counters refuse at the u64 maximum, without wrap. Response
+identity retirement follows the existing all-windows/suffix terminal path.
+This capture seam is not a grant or a settlement: the future response lease
+consumer must consume the identity before retirement and retain custody until
+all continuation/output/dependency/no-future-publication obligations hold.
+SCN-1102 covers actual pure producer/native helper/pre-render control flow;
+full output activation and cost/refinement remain PRF-1259.
+
+The actual owner cold-result transfer and readiness observation now use the
+shared observed E mutex seam. The transfer has no hidden condition-wait: its
+actual acquire surrounds retained-condition classification and exact settle,
+and release is reserved before physical unlock/completed afterward. The
+finite fixture observes acquire, literal `:job-result`, release while preserving
+the original condition. Remaining O/P/hidden-wait sites keep complete PageIO
+comparison unavailable.
+
+The staged native renderer consumer retains one `fnn-output-grant` across the
+whole response. `fnn-mux-render-next` draws before its first factory and binds
+that grant across the existing owner renderer; the returned fifth cold-read
+value is unchanged. Actual cold issuance attaches its exact read under O.
+Actual worker return is observed under E before slot recycling, then the read
+transfer activation must end before its pending dependency reference drops.
+The grant retains only pending children and an ever-issued physical observation,
+not the response's completed dependency history. A completed child cannot
+authorize physical completion while later factories may still issue children.
+
+Whole response drain/discard closes future factory authority and clears the
+owned reusable render buffer. Physical custody completes only after all
+attached children have returned and their transfer ended; no-child applies
+only to an operation that issued no child, including literal warm-hit captures.
+Issue and each receipt publish their native calling stage before mutation.
+Raw/condition escape retains unresolved custody and prevents another semantic
+step on that receipt. The root close requires both typed pool drain and an
+empty native grant roster. SCN-1107 checks actual native control flow with
+recording typed boundaries and actual held children; configured activation,
+complete retained graph/allocator tariff and interpreter correspondence remain
+open. Declaration of a live caller is not those claims.
+
 ## Logical constructor cost dimension (PRF-1274)
 
 `def-cost :conses BOUND :cons-unaccounted (CALLEES ...)` derives a logical
@@ -392,6 +462,26 @@ contract. The actual string renderer's derived count is bounded by its source
 recurrence and by `8*nfix(bytes)+2`. This supplies a per-turn constructor bound;
 it does not price retained state, native integer/vector allocation, physical
 bytes, collector copying or custody of borrowed archive references.
+
+### Direct immutable line windows (PRF-1281, SCN-1109)
+
+NEWNEWS line emission can fill the response's private octet buffer directly.
+The actual fn-splan-line-window checks the retained phase, excludes outstanding
+dependencies and pending octets, and preserves the captured context/following
+cursor. fnn-owner-render-next calls it outside the owner mutex because this
+phase reads only the immutable captured string. Scalar loop registers replace
+per-byte cursor and output-list construction; a new continuation is constructed
+at the window boundary. Other cursor phases retain their serialized consumer.
+
+Buffer reuse requires the previous borrowed output to be consumed before another
+render. The mux opts into a borrowed capacity vector plus explicit valid END;
+partial socket/TLS writes retain that range and never transmit spare capacity.
+The sixth render-quantum value carries END while the fifth remains COLD-READ.
+Default non-mux callers retain exact-length vectors. Compression still receives
+an exact prefix (copying a short window). Full response termination still controls
+settlement. Compression copies, continuation/matcher allocation, pinned roots, register widths
+and GC are separate resource obligations; this optimization does not activate an
+unsupported output profile or establish complete physical heap coverage.
 
 ## Pre-factory output command admission (PRF-1278)
 
@@ -420,6 +510,21 @@ Until an actual command footprint producer exists, `fn-ocap-unpriced-tariff`
 produces an explicit `(:unpriced FAMILY)` and accounted admission refuses
 before the command factory; this is not a priced NEWNEWS descriptor.
 
+The actual admitted native reader now calls `fnn-owner-output-begin-locked`
+before buffer filling, then `fnn-owner-output-prefix-locked` before the chunk
+factory. The holder is discoverable on the mux connection before reader entry;
+known returned issuance survives a later refusal, while torn issuance retains
+its unresolved native envelope without retry. Capacity comes from the actual
+installed private ledger. `fn-owner-output-tariff-preview` currently delegates
+`fn-ocap-unpriced-tariff`: every incomplete family remains explicitly unpriced,
+and this source does not activate an optional supported profile. The accepted
+`NEXT` alone reaches the span helper; cold fallback validates the line end
+before dispatch against that same prefix. Every remaining input suffix stays
+with the connection for a later response operation. SCN-1111 uses actual
+helper/admission bodies, with recording wire/typed boundaries; its positive
+tariff is injected to discriminate prefix consumption and is not a produced
+physical footprint. Allocator/collector, setup workspace, root/version custody
+and complete native realization remain open.
 ## Retained matcher extent (PRF-1261)
 
 The NEWNEWS matcher continuation has a carried proof-only extent invariant,
@@ -495,3 +600,21 @@ its existing `:already-installed` refusal. Coverage of every reusable idle
 row after arbitrary histories remains owed; the issue/settlement boundaries
 assume the prior chain is valid and the actual method reports `:drawn` or
 `:settled`.
+
+The native decoded issuer reserves its worker before the semantic draw and
+publishes that reservation to the retained response read. After an assigned
+result, it installs the exact token and response dependency before setting the
+worker runnable or notifying its waitqueue. A notification failure therefore
+retains a discoverable read/token even if the physical child runs. Ordinary
+no-token refusal removes the reservation; an escaped draw or binding preserves
+it and is never retried as a fresh issue. This is native custody ordering,
+not a proof of a complete decoded tariff or interpreter realization.
+
+The shared native condition-wait observation reserves the release record while
+E is owned and completes it only after the actual primitive returns. It emits
+reacquisition only when the returning thread owns the mutex. A timeout returning
+unlocked has no fabricated reacquisition or second release; an escaping wait or
+unobserved unlock invalidates comparison. The executor loop and timed executor
+wait consume this seam. Finite actual SBCL contention/timeout schedules check
+producer order; remaining O/P coverage, packet/model replay and global schedule
+preservation remain open, independently of decoded storage funding.

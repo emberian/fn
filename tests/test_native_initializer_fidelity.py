@@ -107,18 +107,17 @@ class NativeInitializerFidelityTests(unittest.TestCase):
         self.assertEqual(recovered.returncode, EXIT_OK, recovered.stderr)
         self.assertIn(b"recovered transactions=0 articles=0", recovered.stdout)
 
-    def test_existing_valid_init_takes_actual_eexist_links_then_reopens(self):
+    def test_existing_valid_init_checks_intent_then_reopens(self):
         store = self.base / "existing"
         self.assertEqual(self.invoke(store, "init").returncode, EXIT_OK)
-        # config.json and allocation-frontier.json are immutable link targets.
-        # The second init stages/fences a candidate, receives real EEXIST at
-        # both links, and retains the existing bytes for the later recover.
+        # The second init checks the sealed profile and original groups
+        # before resuming; immutable configuration bytes stay unchanged.
         repeated = self.invoke(store, "init")
         self.assertEqual(repeated.returncode, EXIT_OK, repeated.stderr)
         recovered = self.invoke(store, "recover")
         self.assertEqual(recovered.returncode, EXIT_OK, recovered.stderr)
 
-    def test_history_fenced_process_death_retries_through_config_eexist(self):
+    def test_history_fenced_process_death_retries_after_intent_check(self):
         store = self.base / "history-retry"
         killed = self.invoke(store, "init", "init-config-history-fenced:kill")
         self.assertEqual(killed.returncode, -9, killed.stderr)
@@ -129,11 +128,12 @@ class NativeInitializerFidelityTests(unittest.TestCase):
         self.assertEqual(retried.returncode, EXIT_OK, retried.stderr)
         self.assertEqual(self.invoke(store, "recover").returncode, EXIT_OK)
 
-    def test_sigkill_after_actual_config_eexist_leaves_existing_store_openable(self):
+    def test_sigkill_at_resume_lock_leaves_existing_store_openable(self):
         store = self.base / "eexist-cut"
         self.assertEqual(self.invoke(store, "init").returncode, EXIT_OK)
-        # The model cut is inside the EEXIST handler, after fnn-link returned.
-        killed = self.invoke(store, "init", "init-config-link-eexist:kill")
+        # Resume skips re-publication of the sealed profile. Kill after the
+        # exclusive lock is acquired, before its compatibility check.
+        killed = self.invoke(store, "init", "init-lock-created:kill")
         self.assertEqual(killed.returncode, -9, killed.stderr)
         recovered = self.invoke(store, "recover")
         self.assertEqual(recovered.returncode, EXIT_OK, recovered.stderr)

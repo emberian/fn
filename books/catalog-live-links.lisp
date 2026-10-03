@@ -190,6 +190,12 @@
 ; The live summary over the list: the committed row and a withdrawal.
 
 (local
+ (defthm fn-cpl-availability-of-assign
+   (equal (fn-cat-row-availablep (fn-cat-assign h c))
+          (fn-cat-row-availablep h))
+   :hints (("Goal" :in-theory (e/d (fn-cat-assign) (fn-held-with-numbers))))))
+
+(local
  (defthm fn-cpl-withdrawn-of-assign
    (equal (fn-held-withdrawn (fn-cat-assign h c)) (fn-held-withdrawn h))
    :hints (("Goal" :in-theory (enable fn-cat-assign fn-held-with-numbers)))))
@@ -249,9 +255,8 @@
    (implies (and (fn-cat-rowsp c) (member-equal g (fn-record-groups h))
                  (equal n (+ 1 (fn-cat-group-high g c))))
             (equal (fn-cat-live-numberp g n (append c (list (fn-cat-assign h c))))
-                   (and (null (fn-held-withdrawn h))
-                        (<= n *fn-nntp-max-article-number*)
-                        (fn-scat-msgid-idp (fn-record-msgid h)))))
+                   (and (fn-cat-live-candidatep h)
+                        (<= n *fn-nntp-max-article-number*))))
    :hints (("Goal" :in-theory (e/d (fn-cat-live-numberp fn-cat-live-rowp)
                                    (fn-cat-assign fn-cat-rowsp fn-held-number-in fn-scat-msgid-idp
                                     nth fn-cat-number-seq len fn-cat-group-high))))))
@@ -943,7 +948,7 @@
     (and (true-listp e) (equal (len e) 3)
          (member-equal g (fn-record-groups h))
          (equal n (+ 1 (fn-cat-group-high g c)))
-         (null (fn-held-withdrawn h)) (fn-scat-msgid-idp (fn-record-msgid h))
+         (fn-cat-live-candidatep h)
          (<= n *fn-nntp-max-article-number*)
          (equal hi (fn-cat-live-last g (fn-cat-group-high g c) c)))))
 
@@ -955,17 +960,17 @@
 
 (defthm fn-cpl-cplan-okp-of-cplan-gen
   (implies (and (subsetp-equal groups (fn-record-groups h))
-                (equal livep (and (null (fn-held-withdrawn h)) (fn-scat-msgid-idp (fn-record-msgid h)))))
+                (equal livep (fn-cat-live-candidatep h)))
            (fn-cpl-cplan-okp (fn-cpl-cplan groups livep c) h c))
   :hints (("Goal" :in-theory (disable fn-cat-live-last fn-scat-msgid-idp))))
 
 (defthm fn-cpl-cplan-okp-of-cplan
   (fn-cpl-cplan-okp (fn-cpl-cplan (fn-record-groups h)
-                                  (and (null (fn-held-withdrawn h)) (fn-scat-msgid-idp (fn-record-msgid h)))
+                                  (fn-cat-live-candidatep h)
                                   c)
                     h c)
   :hints (("Goal" :use ((:instance fn-cpl-cplan-okp-of-cplan-gen (groups (fn-record-groups h))
-                                   (livep (and (null (fn-held-withdrawn h)) (fn-scat-msgid-idp (fn-record-msgid h))))))
+                                   (livep (fn-cat-live-candidatep h))))
            :in-theory (disable fn-cpl-cplan-okp-of-cplan-gen fn-cpl-cplan fn-cpl-cplan-okp))))
 
 (defthm fn-cpl-centry-new-live
@@ -1028,7 +1033,7 @@
                 (not (fn-cpl-goodp dir x v (append c (list (fn-cat-assign h c))))))
            (and dir
                 (fn-cpl-cbad x (fn-cpl-cplan (fn-record-groups h)
-                                             (and (null (fn-held-withdrawn h)) (fn-scat-msgid-idp (fn-record-msgid h)))
+                                             (fn-cat-live-candidatep h)
                                              c))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
@@ -1048,7 +1053,7 @@
                  (:instance fn-cpl-last-from-gap (g (car x)) (j (cdr x)) (m (fn-cat-group-high (car x) c))
                             (top (fn-cat-group-high (car x) c)))
                  (:instance fn-cpl-cbad-of-cplan (g (car x)) (groups (fn-record-groups h))
-                            (livep (and (null (fn-held-withdrawn h)) (fn-scat-msgid-idp (fn-record-msgid h)))))))))
+                            (livep (fn-cat-live-candidatep h)))))))
 
 (defun-sk fn-cpl-cinv (dir tab plan c c2)
   (forall x (implies (consp (hons-assoc-equal x tab))
@@ -1062,27 +1067,27 @@
   (implies (and (fn-cat-rowsp c) (fn-cpl-okp dir tab c))
            (fn-cpl-cinv dir tab
                         (fn-cpl-cplan (fn-record-groups h)
-                                      (and (null (fn-held-withdrawn h)) (fn-scat-msgid-idp (fn-record-msgid h)))
+                                      (fn-cat-live-candidatep h)
                                       c)
                         c (append c (list (fn-cat-assign h c)))))
   :hints (("Goal" :in-theory (union-theories '(fn-cpl-cinv) (theory 'minimal-theory))
            :use ((:instance fn-cpl-cchanged-is-bad
                             (x (fn-cpl-cinv-witness dir tab
                                                     (fn-cpl-cplan (fn-record-groups h)
-                                                                  (and (null (fn-held-withdrawn h)) (fn-scat-msgid-idp (fn-record-msgid h)))
+                                                                  (fn-cat-live-candidatep h)
                                                                   c)
                                                     c (append c (list (fn-cat-assign h c)))))
                             (v (cdr (hons-assoc-equal
                                      (fn-cpl-cinv-witness dir tab
                                                           (fn-cpl-cplan (fn-record-groups h)
-                                                                        (and (null (fn-held-withdrawn h)) (fn-scat-msgid-idp (fn-record-msgid h)))
+                                                                        (fn-cat-live-candidatep h)
                                                                         c)
                                                           c (append c (list (fn-cat-assign h c))))
                                      tab))))
                  (:instance fn-cpl-okp-necc
                             (x (fn-cpl-cinv-witness dir tab
                                                     (fn-cpl-cplan (fn-record-groups h)
-                                                                  (and (null (fn-held-withdrawn h)) (fn-scat-msgid-idp (fn-record-msgid h)))
+                                                                  (fn-cat-live-candidatep h)
                                                                   c)
                                                     c (append c (list (fn-cat-assign h c))))))))))
 
@@ -1159,15 +1164,14 @@
   (implies (and (fn-cat-rowsp c) (fn-cpl-okp dir tab c))
            (fn-cpl-okp dir
                        (fn-cpl-link dir (fn-cpl-cplan (fn-record-groups h)
-                                                      (and (null (fn-held-withdrawn h))
-                                                           (fn-scat-msgid-idp (fn-record-msgid h)))
+                                                      (fn-cat-live-candidatep h)
                                                       c)
                                     tab)
                        (append c (list (fn-cat-assign h c)))))
   :hints (("Goal" :in-theory (union-theories '() (theory 'minimal-theory))
            :use ((:instance fn-cpl-link-okp
                             (plan (fn-cpl-cplan (fn-record-groups h)
-                                                (and (null (fn-held-withdrawn h)) (fn-scat-msgid-idp (fn-record-msgid h)))
+                                                (fn-cat-live-candidatep h)
                                                 c)))
                  fn-cpl-cinv-init
                  fn-cpl-cplan-okp-of-cplan))))
@@ -1178,9 +1182,10 @@
 (defthm fn-cpl-live-rowp-with-context
   (equal (fn-cat-live-rowp g k (fn-held-with-context h ctx))
          (fn-cat-live-rowp g k h))
-  :hints (("Goal" :in-theory (e/d (fn-cat-live-rowp) (fn-scat-msgid-idp))
-           :use ((:instance fn-cpl-number-in-same-keys (h1 (fn-held-with-context h ctx)) (h2 h))))
-          (and stable-under-simplificationp '(:in-theory (e/d (fn-held-with-context) (fn-scat-msgid-idp))))))
+  :hints (("Goal" :in-theory (e/d (fn-cat-live-rowp)
+                                  (fn-scat-msgid-idp fn-held-with-context))
+           :use ((:instance fn-cpl-number-in-same-keys
+                            (h1 (fn-held-with-context h ctx)) (h2 h))))))
 
 (defthm fn-cpl-live-recontext
   (implies (and (natp r) (< r (len c)))
@@ -1299,8 +1304,7 @@
   (implies (and (fn-cat-rowsp c) (fn-cpl-coverp tab c) (consp x)
                 (fn-cat-live-numberp (car x) (cdr x) (append c (list (fn-cat-assign h c)))))
            (consp (hons-assoc-equal x (fn-cpl-link dir (fn-cpl-cplan (fn-record-groups h)
-                                                                     (and (null (fn-held-withdrawn h))
-                                                                          (fn-scat-msgid-idp (fn-record-msgid h)))
+                                                                     (fn-cat-live-candidatep h)
                                                                      c)
                                                    tab))))
   :hints (("Goal" :do-not-induct t
@@ -1316,8 +1320,7 @@
 (defthm fn-cpl-coverp-of-commit
   (implies (and (fn-cat-rowsp c) (fn-cpl-coverp tab c))
            (fn-cpl-coverp (fn-cpl-link dir (fn-cpl-cplan (fn-record-groups h)
-                                                         (and (null (fn-held-withdrawn h))
-                                                              (fn-scat-msgid-idp (fn-record-msgid h)))
+                                                         (fn-cat-live-candidatep h)
                                                          c)
                                        tab)
                           (append c (list (fn-cat-assign h c)))))
@@ -1326,8 +1329,7 @@
            :use ((:instance fn-cpl-covered-after-commit
                             (x (fn-cpl-coverp-witness
                                 (fn-cpl-link dir (fn-cpl-cplan (fn-record-groups h)
-                                                               (and (null (fn-held-withdrawn h))
-                                                                    (fn-scat-msgid-idp (fn-record-msgid h)))
+                                                               (fn-cat-live-candidatep h)
                                                                c)
                                              tab)
                                 (append c (list (fn-cat-assign h c))))))))))

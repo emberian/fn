@@ -206,6 +206,7 @@
 (defun fn-cp-smallp (v)
   (declare (xargs :guard t))
   (and (natp v) (< v *fn-cp-sent*)))
+(fn-payload-kind fn-cp-smallp :handle "tests the value as a natural below the sentinel: the held payload handle is carried by its column")
 
 ; A u64 field (fn-record-uint64p on a well-formed row); anything else is
 ; clamped so that every column value is typed whatever the row.
@@ -219,6 +220,7 @@
     (not (and (fn-cp-smallp (fn-held-payload h))
               (or (null w)
                   (and (consp w) (fn-cp-smallp (car w)) (fn-cp-smallp (cdr w))))))))
+(fn-payload-kind fn-cp-escapedp :handle "tests the held payload only with fn-cp-smallp")
 
 ; The remainder: what the columns do not carry, as one tree (the numbers
 ; are a tree of their own, the `nums' column).
@@ -228,6 +230,7 @@
         (fn-held-release-evidence h) (fn-held-facts h) (fn-held-context h)
         nil   ; D43: the binding's slot, empty while the field is reverted
         (if (fn-cp-escapedp h) (list (fn-held-payload h) (fn-held-withdrawn h)) nil)))
+(fn-payload-kind fn-cp-tree-of :handle "returns the held payload handle in the escaped remainder")
 
 (defthm fn-scc-octet-listp-is-adt-octetsp
   (equal (fn-scc-octet-listp x) (adt-octetsp x))
@@ -264,6 +267,7 @@
           (fn-cp-escapedp h)
           (if (fn-sccb-treep tree) (fn-scc-program tree) nil)
           (if (fn-sccb-treep (fn-held-numbers h)) (fn-scc-program (fn-held-numbers h)) nil))))
+(fn-payload-kind fn-cp-row-of :handle "returns the held payload handle, or 0, in its column")
 
 ; A row the columns carry exactly: a catalog row (fn-cat-rowp) whose
 ; remainder and whose numbers are trees; every other row is kept whole in
@@ -737,6 +741,7 @@
           (fn-cp-escapedp h)
           tree
           nums)))
+(fn-payload-kind fn-cp-row-t-of :handle "returns the held payload handle, or 0, in its column")
 
 (defthm fn-cp-tree-enc-of-row-t-of
   (implies (and (fn-sccb-treep (fn-cp-tree-of h)) (fn-sccb-treep (fn-held-numbers h)))
@@ -1098,7 +1103,7 @@
          (lplan (stobj-let ((fn-cat$c (fn-cat$p-tab fn-cat$p)))
                            (lp)
                            (fn-cat$c-live-plan (fn-record-groups h)
-                                               (and (null x) (fn-scat-msgid-idp (fn-record-msgid h)))
+                                               (fn-cat-live-candidatep h)
                                                fn-cat$c)
                            lp))
          (hz (stobj-let ((fn-cat$c (fn-cat$p-tab fn-cat$p)))
@@ -1111,7 +1116,7 @@
                           plan))
          (row (fn-held-with-numbers h (fn-cat-plan-numbers plan)))
          (cplan (fn-cat$p-cplan (fn-record-groups h)
-                                (and (null x) (fn-scat-msgid-idp (fn-record-msgid h)))
+                                (fn-cat-live-candidatep h)
                                 fn-cat$p))
          (fn-cat$p (fn-cat$p-tab-index-add (fn-record-msgid h) seq fn-cat$p))
          (fn-cat$p (fn-cat$p-append-row row fn-cat$p))
@@ -2625,14 +2630,12 @@
  (defthm fn-cp-links-of-commit-w
     (and (equal (nth 1 (nth 2 (fn-cat$p-commit-w h fn-cat$p)))
                 (fn-cpl-link t (fn-cat$p-cplan (fn-record-groups h)
-                                               (and (null (fn-held-withdrawn h))
-                                                    (fn-scat-msgid-idp (fn-record-msgid h)))
+                                               (fn-cat-live-candidatep h)
                                                fn-cat$p)
                              (nth 1 (nth 2 fn-cat$p))))
          (equal (nth 2 (nth 2 (fn-cat$p-commit-w h fn-cat$p)))
                 (fn-cpl-link nil (fn-cat$p-cplan (fn-record-groups h)
-                                                 (and (null (fn-held-withdrawn h))
-                                                      (fn-scat-msgid-idp (fn-record-msgid h)))
+                                                 (fn-cat-live-candidatep h)
                                                  fn-cat$p)
                              (nth 2 (nth 2 fn-cat$p)))))
     :hints (("Goal" :in-theory (e/d (fn-cat$p-commit-w)
@@ -2674,8 +2677,7 @@
  (defthm fn-cp-okp-of-a-commit
    (implies (and (fn-cat-rowsp c) (fn-cpl-okp dir tab c))
             (fn-cpl-okp dir (fn-cpl-link dir (fn-cpl-cplan (fn-record-groups h)
-                                                           (and (null (fn-held-withdrawn h))
-                                                                (fn-scat-msgid-idp (fn-record-msgid h)))
+                                                           (fn-cat-live-candidatep h)
                                                            c)
                                          tab)
                         (fn-cat$a-commit h c)))
@@ -2698,8 +2700,7 @@
  (defthm fn-cp-cover-of-a-commit
    (implies (and (fn-cat-rowsp c) (fn-cpl-coverp tab c))
             (fn-cpl-coverp (fn-cpl-link dir (fn-cpl-cplan (fn-record-groups h)
-                                                          (and (null (fn-held-withdrawn h))
-                                                               (fn-scat-msgid-idp (fn-record-msgid h)))
+                                                          (fn-cat-live-candidatep h)
                                                           c)
                                         tab)
                            (fn-cat$a-commit h c)))
@@ -3016,7 +3017,7 @@
                  (:instance fn-cp-corr-facts (fn-cat$a fn-cat-paged))
                  (:instance fn-cp-corr-okp (fn-cat$a fn-cat-paged))
                  (:instance fn-cp-cplan-sim (fn-cat$a fn-cat-paged) (groups (fn-record-groups h))
-                            (livep (and (null (fn-held-withdrawn h)) (fn-scat-msgid-idp (fn-record-msgid h)))))
+                            (livep (fn-cat-live-candidatep h)))
                  (:instance fn-cp-okp-of-a-commit (dir t) (tab (nth 1 (nth 2 fn-cat$p))) (c fn-cat-paged))
                  (:instance fn-cp-okp-of-a-commit (dir nil) (tab (nth 2 (nth 2 fn-cat$p))) (c fn-cat-paged))
                  (:instance fn-cp-cover-of-a-commit (dir t) (tab (nth 1 (nth 2 fn-cat$p))) (c fn-cat-paged))

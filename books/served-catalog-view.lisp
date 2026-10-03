@@ -58,6 +58,7 @@
   (let ((s (fn-cat-group-number group k fn-cat)))
     (and (natp s) (< s (fn-cat-count fn-cat))
          (fn-cat-visible-at s (nfix v) fn-cat)
+         (fn-cat-row-availablep (fn-cat-at s fn-cat))
          (posp k) (<= k *fn-nntp-max-article-number*)
          (fn-scat-msgid-idp (fn-record-msgid (fn-cat-at s fn-cat)))
          t)))

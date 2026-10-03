@@ -156,6 +156,18 @@
    "match": [
     "*fnn-tls-reload-mutex*"
    ]
+  },
+  "XSYNCER": {
+   "match": [
+    "(fnn-owner-service-syncer-ledger-lock)"
+   ],
+   "why": "Private typed syncer ledger/grants. Startup takes O then this leaf; runtime receipt drops it before completion callback, classification or owner entry."
+  },
+  "XOUTPUT": {
+   "match": [
+    "(fnn-owner-service-output-ledger-lock)"
+   ],
+   "why": "Private typed output projection. Startup O precedes this leaf; semantic methods operate only private ledger, no live STATE/arena and no callback to O while held."
   }
  },
  "lock_order": {
@@ -177,7 +189,9 @@
    "XPULL",
    "J",
    "XTLSRELOAD",
-   "XTLSCTX"
+   "XTLSCTX",
+   "XSYNCER",
+   "XOUTPUT"
   ],
   "C": [
    "G",
@@ -200,6 +214,7 @@
    "J"
   ],
   "E": [
+   "XOUTPUT",
    "Q",
    "XPZD",
    "J"
@@ -229,6 +244,7 @@
  },
  "direct_owner_sites": [
   "fnn-owner-stop-service",
+  "fnn-owner-fault-service",
   "fnn-owner-cold-shutdown",
   "fnn-snapshot-source-root-release",
   "fnn-owner-run"
@@ -257,11 +273,17 @@
   "fnn-with-runtime-participants-bootstrap",
   "fnn-with-world-key-printing",
   "fnn-connection-scoped",
-  "fnn-log-sealed-effect"
+  "fnn-log-sealed-effect",
+  "fnn-section-envelope",
+  "fnn-with-observed-owner",
+  "fnn-native-with-observation",
+  "fnn-with-observed-mutex"
  ],
  "gated_macros": {
-  "fnn-owner-gated": {
-   "class_position": 1
+  "fnn-section-envelope": {
+   "class_position": 1,
+   "fenced": true,
+   "why": "the one envelope (def-section): its own template runs the body inside fnn-owner-shared-action-locked (tests.test_native_owner NativeOwnerHandlerStructureTests)"
   }
  },
  "fence_boundaries": [

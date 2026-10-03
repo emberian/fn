@@ -165,6 +165,14 @@ This shows how many articles the store holds and how much room is left
 (`headroom`). It works while the node runs, and while it is stopped.
 `status --watch 60` repeats every 60 seconds.
 
+`fn operator CONFIG operation` reports the current canonical owner operation:
+its admission nonce, kind, phase, writer wait/fault reason, epoch, transaction
+identity and five held resource charges. It reads the retained operation directly
+without scanning articles or replaying the store. An absent or stopped owner
+reports unavailable. These charges describe that operation; they are not a
+measurement of total process memory.
+
+
 While the node runs, the node itself answers. While it is stopped, `status`
 reads only the newest checkpoint's header and the sizes of the journal's
 files, so it is quick at any size and it does not replay the log:
@@ -853,6 +861,11 @@ stopped node is refused (`retire refused reason=not-running`): nothing
 drains there. If the node stops without writing its report, `retire` says
 `retire uncertain reason=no-report` and exits 3; its log says why.
 
+The command waits for the drain window plus 60 seconds. If the owner still
+holds the store, it says `retire uncertain reason=observation-deadline` and
+exits 3. Retirement continues in the owner; check `status` and its log before
+using the stopped store. The deadline does not release any obligation.
+
 ### New releases
 
 A new release is installed beside the one that runs, and the node is
@@ -1289,3 +1302,72 @@ with `policy set max-transactions N` (and `max-history-octets`,
 - `pins`, `obligations`: what the store is holding, and why.
 - `retire [--drain SECONDS]`: drain the feeds, report, checkpoint and stop a node that goes away for good ([Retire the node](#retire-the-node)).
 - `run`: what the service runs.
+
+
+### Interactive development and live inspection
+
+`python3 tools/fn_dev.py shell --executable /path/to/fn --config fn.toml`
+provides an interactive prompt for the complete operator command set. Enter
+`help` or `help VERB`; arguments use shell-style quoting without invoking a
+shell. `operation`, `pins`, `obligations`, `status`, and the existing Store,
+history, peer and configuration commands retain their ordinary semantics.
+Application evidence has its own client: `tools/fn_consumer.py` exposes status,
+operation inspection, paged table queries, evidence export and exact payload
+export (see that tool's help).
+
+A developer node can also expose its **actual running Lisp world**. Start it
+with `FN_NATIVE_DEV_REPL=/absolute/private/directory/fn-dev.sock`, then attach:
+
+```sh
+python3 tools/fn_dev.py repl --socket /absolute/private/directory/fn-dev.sock
+```
+
+Use `:operation`, `:threads`, `:apropos NAME`, `:describe FORM`, or ordinary
+Common Lisp forms. `:paste` accepts multiline input ending with `:end`.
+Definitions survive connections. `:load PATH` loads a source file on the server;
+`:acl2 FORM` submits an ordinary ACL2 event to the live logical world, where the
+loaded world's metadata must support admission. A refused event reports failure;
+earlier successful events in that batch remain admitted. `PROGN` batches Lisp forms.
+Admission allows 200,000 prover steps per submitted form by default. Use
+`repl --prover-steps N` to change the allowance for interactive `:acl2` commands,
+or `(fnn-dev-admit '((defthm ...)) :step-limit N)` in Lisp. Exhaustion reports a
+controlled refusal and keeps the world available for the next command; it does
+not change the world's ordinary prover allowance. `:step-limit nil` explicitly
+uses that ordinary allowance. This limits ACL2 proof search, not elapsed time,
+arbitrary Lisp evaluation, source loading, or all event computation.
+`--eval '(+ 20 22)'` is the noninteractive form. The existing `fn acl2 session`
+starts a separate process; this socket attaches to an already running owner.
+
+`:trace on` starts bounded structured timing plus **process-wide allocation**
+sampling; `:trace timing` records only timing. Run work, use `:trace report`,
+then `:trace off`. Allocation deltas include concurrent threads and nested
+spans; they do not measure retained heap. An active report may show incomplete
+spans. Output truncation and trace-buffer drops are reported separately.
+
+This is an explicit trusted debugger, enabled only on a developer process.
+The socket is mode 0600 and verifies the connecting UID; existing paths are
+never replaced. Forms execute serially inside the owner boundary, with
+`*fnn-dev-service*` bound to that owner. They can change code and state: do not
+nest owner entry or assume arbitrary edits preserve invariants. Evaluation
+errors follow the owner's normal fault/fence rules. A long-running form holds
+the owner; closing the client or its observation timeout does not cancel it.
+Inputs are limited to 65,536 UTF-8 bytes and captured output to 65,536 characters,
+with an explicit truncation marker. Reader evaluation (`#.`) is disabled.
+Production startup refuses this selector; ordinary protocol data never enters
+this evaluator.
+
+
+Large local submissions receive a reply observation budget that grows with the
+submitted frame: ten seconds plus one second per 64 KiB (rounded up). If the
+owner still has not replied when that budget expires, the result is uncertain;
+it does not mean the submission failed. Check the durable result before
+resubmitting. Explicit consumer wait intervals keep their existing semantics.
+
+
+A withdrawal request can publish its authorization row even if its subsequent
+cause article cannot be posted. `UNCERTAIN withdrawal-authorized-cause-refused`
+reports that partial result: authorization was published, and the cause was
+refused. The authorization row alone does not withdraw the target; withdrawal
+requires a cause article. Related `withdrawal-authorized-cause-*` reasons
+identify clock, profile, conflict, uncertainty and fault outcomes. Inspect the
+authorization and cause before retrying; the reply does not imply rollback.

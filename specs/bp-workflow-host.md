@@ -262,3 +262,14 @@ call the same store-parametric functions while holding its service lock, but
 the composed workflow-to-owner acceptance callback is still an integration
 join.  The path does not yet replace the Python BP carrier command or add a
 second Store owner.
+
+The ION native adapter asks `fn-workflow-ion-helper-seconds` before publishing
+any retry, attempt, outcome or route. `fn-bpit-helper-seconds` converts the
+RFC 9171 §4.3.1 lifetime in milliseconds to exactly equal whole seconds in
+the pinned helper's range (1 through INT_MAX/1000, presently 2147483). A
+fractional second or unsupported magnitude is refused before publication or
+helper launch; stored workflow lifetimes retain their own representation.
+The helper receives ACL2's seconds, preserving the configured lifetime
+without rounding. A launched helper with no durably bound observation remains
+uncertain across reopen; this is independent of the application receipt and
+canonical Store retention pin.

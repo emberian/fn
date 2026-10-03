@@ -18,7 +18,7 @@ from tests.native_harness import (
     requires, run, scratch, start)
 from tests.test_bp_contact_relay_native import ByteRelay
 from tests.bp_producer import post_articles
-from tests.native_image_provenance import assert_same_published_source
+from tests.native_image_provenance import assert_same_native_source
 
 # specs/host.md "BP run classes" (books/bp-run-class.lisp, PRF-131): a
 # connection lost after it existed is EXIT.INTERRUPTED (connection-local:
@@ -43,9 +43,11 @@ PRODUCER = native_image("FN_NATIVE_HOST")
 @requires(IMAGE, PRODUCER)
 class NativeBpNodeTests(unittest.TestCase):
     def setUp(self):
-        if self._testMethodName == (
-                "test_disconnected_delivery_restarts_and_releases_only_matching_obligation"):
-            self.image_source = assert_same_published_source(self, PRODUCER, IMAGE)
+        if self._testMethodName in (
+                "test_disconnected_delivery_restarts_and_releases_only_matching_obligation",
+                "test_keepalive_peer_does_not_block_second_canonical_request",
+                "test_silent_contact_expires_without_stopping_canonical_delivery"):
+            self.image_source = assert_same_native_source(self, PRODUCER, IMAGE)
         self.tmp = scratch(self, "fn-bp-node-a3-")
         self.relay = ByteRelay()
         self.addCleanup(self.relay.close)
@@ -165,12 +167,12 @@ class NativeBpNodeTests(unittest.TestCase):
         line = process.announcement(b"BP NODE LISTENING ", timeout=45)
         return process, int(line.rsplit(b" ", 1)[1])
 
-    def send_request(self, port, work, *, lifetime=3600000):
+    def send_request(self, port, work, *, lifetime=3600000, timeout=120):
         return self.invoke(
             "bp-service", "run", "127.0.0.1", port,
             self.request_path, self.sender_journal,
             "dtn://sender/", "dtn://receiver/", work, work + "-attempt", 0,
-            lifetime, 2, 32, 1048576, 0, 0,
+            lifetime, 2, 32, 1048576, 0, 0, timeout=timeout,
         )
 
     def tick_receiver(self):
@@ -238,6 +240,51 @@ class NativeBpNodeTests(unittest.TestCase):
             path = self.tmp / "unrouted-transit.bundle"
             path.write_bytes(acl2_octets(bridge.call(form)))
             return path
+
+    def test_keepalive_peer_does_not_block_second_canonical_request(self):
+        """SCN1110: both peers run the real image's ACL2 TCPCL consumer."""
+        receiver, port = self.start_node(True, once=False)
+        keepalive = start(
+            [IMAGE, "--fn", "tcpcl", "send", "127.0.0.1", str(port), "-",
+             str(self.tmp / "keepalive-spool"), "dtn://sender/", "dtn://receiver/",
+             "1", "65536", "1048576", "1"], cwd=ROOT, env=environment())
+        self.addCleanup(keepalive.stop, 5)
+        self.wait_for_output(keepalive, b":SESSION-UP", timeout=45)
+        self.assertIsNone(keepalive.poll(), keepalive.diagnostics())
+        sent = self.send_request(port, "after-live-keepalive", timeout=30)
+        self.assertEqual(sent.returncode, EXIT.OK, sent.stderr)
+        delivered = self.wait_for_output(
+            receiver, b"BP node delivery request-accepted", timeout=45)
+        self.assertIn(b"BP application handoff durable", delivered)
+        self.assertIsNone(keepalive.poll(), keepalive.diagnostics())
+        self.assertIsNone(receiver.poll(), receiver.diagnostics())
+        # Reopen observes exactly the one application delivery; a TCPCL ACK
+        # alone is not the Store/FNRJ/application evidence asserted here.
+        keepalive.stop(grace=5)
+        receiver.stop(grace=5)
+        self.assertEqual(self.receiver_articles(), 1)
+        restarted = self.dispatch_receiver()
+        self.assertEqual(restarted.returncode, EXIT.OK, restarted.stderr)
+        self.assertEqual(self.receiver_articles(), 1)
+
+    def test_silent_contact_expires_without_stopping_canonical_delivery(self):
+        """SCN-1126: real RFC9174 contact timeout, no synthetic clock advance."""
+        receiver, port = self.start_node(True, once=False)
+        silent = socket.create_connection(("127.0.0.1", port), timeout=10)
+        self.addCleanup(silent.close)
+        sent = self.send_request(port, "beside-silent-contact", timeout=30)
+        self.assertEqual(sent.returncode, EXIT.OK, sent.stderr)
+        delivered = receiver.output_until(b"BP node delivery request-accepted", timeout=45)
+        self.assertIn(b"BP application handoff durable", delivered)
+        receiver.output_until(b"peer Contact Header timeout", timeout=75)
+        silent.settimeout(10)
+        self.assertEqual(silent.recv(1), b"", "expired contact must actually close")
+        self.assertIsNone(receiver.poll(), receiver.diagnostics())
+        receiver.stop(grace=5)
+        self.assertEqual(self.receiver_articles(), 1)
+        restarted = self.dispatch_receiver()
+        self.assertEqual(restarted.returncode, EXIT.OK, restarted.stderr)
+        self.assertEqual(self.receiver_articles(), 1)
 
     def test_older_unrouted_transit_does_not_block_younger_local_request(self):
         receiver, port = self.start_node(True, once=False)

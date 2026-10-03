@@ -1,17 +1,20 @@
 {
- "acceptance": "Failed/timed-out join with live child; child exits before spawn returns; failed spawn; held final cleanup; duplicate receipt; uncertain completion during stop. Both observation and ownership are checked.",
- "category": "codex-orientation",
- "detail": "On lane/wrapper 4e0e11c78 fn-fs-actor-step turns (:joined nil) into joined/fault and registered-p becomes nil. Retain registration until observed physical termination, escalating fault separately. Reserve identity before spawn or use a start latch so early child exit is retained.",
- "disposition": "LOCAL",
- "exposure": "latent",
- "file": "books/failure-scope.lisp",
- "id": "NIGHT-ACTOR-JOIN",
- "locus": "lifecycle",
- "notes": [],
- "owner": "host-deputy",
- "severity": "high",
- "source": "planning/overnight-2026-10-03.md",
- "state": "open",
- "title": "Prototype actor join failure discharges a potentially live worker registration",
- "updated": "2026-10-03T05:14:09Z"
+  "acceptance": "Failed/timed-out join with live child; child exits before spawn returns; failed spawn; held final cleanup; duplicate receipt; uncertain completion during stop. Both observation and ownership are checked.",
+  "category": "codex-orientation",
+  "detail": "On lane/wrapper 4e0e11c78 fn-fs-actor-step turns (:joined nil) into joined/fault and registered-p becomes nil. Retain registration until observed physical termination, escalating fault separately. Reserve identity before spawn or use a start latch so early child exit is retained.",
+  "disposition": "LOCAL",
+  "exposure": "latent",
+  "file": "books/failure-scope.lisp",
+  "id": "NIGHT-ACTOR-JOIN",
+  "locus": "lifecycle",
+  "notes": [
+    "Runtime GPT-6.1-Sol source3bda776c6: reservation-before-spawn/start latch; failed join preserves registration, custody and no receipt; child exit separate from physical join; actual syncer/committer starters and pipeline/shutdown joins connected. Post-create latch and failed compensation retain parked child for later physical join. Scoped final failure-scope certificate certify-20261003T060135Z-58068 archived/indexed (0.30s220208steps); deployed-body raw SBCL actor/inbox/postcreate schedules pass. Full image/native matrix is Integration candidate work, no qualification transfer. Funded owner worker producer follows with Foundations; this receipt does not claim user-bank funding or complete committer conversion.",
+    "Runtime Kimi advisory candidate verified with real parked child/no-op terminator: compensation now observes join nonblocking (:timeout0), retains reservation/custody and returns fault; later independent shutdown join ends child. Physical object monotone reference published before fallible roster/state/latch work while child remains latched. Raw lifecycle and committer schedules pass; no general atomic make-thread/interruption theorem claimed."
+  ],
+  "owner": "codex-sol-runtime",
+  "severity": "high",
+  "source": "planning/overnight-2026-10-03.md",
+  "state": "ready",
+  "title": "Prototype actor join failure discharges a potentially live worker registration",
+  "updated": "2026-10-03T06:10:18.862704+00:00"
 }

@@ -53,12 +53,14 @@ image has included already defines.
 from __future__ import annotations
 
 import os
+
 import re
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
+import ledger  # noqa: E402
 DEFAULT_BUILD = "host/native/build.lisp"
 DTN_BUILD = "host/native/build-dtn.lisp"
 
@@ -197,6 +199,35 @@ def ld_closure(root: Path, build_text: str) -> list[str]:
     return seen
 
 
+def duplicate_load_findings(text: str, loader: str) -> list[str]:
+    """Repeated literal directives in one build script, not include closures.
+
+    Distinct books may share dependencies. That does not repeat a directive in
+    the script. Quoted data and definition/macro bodies are not load events.
+    """
+    try:
+        forms = ledger.Reader(text).top_level()
+    except ledger.ReadError as error:
+        return [f"duplicate-load: {loader}: unreadable load list: {error}"]
+    seen = {}
+    out = []
+    for form, line in ledger.source_events(forms):
+        kind = ledger.head(form)
+        if kind not in ("ld", "include-book") or len(form) < 2:
+            continue
+        if type(form[1]) is not str:
+            continue
+        target = os.path.normpath(form[1])
+        namespace = ledger.keyword_plist(form[2:]).get(":dir") if kind == "include-book" else None
+        key = (kind, target, repr(namespace))
+        if key in seen:
+            out.append(f"duplicate-load: {loader}:{line}: {kind} {target} "
+                       f"repeats directive at line {seen[key]}")
+        else:
+            seen[key] = line
+    return out
+
+
 def findings(root: Path = ROOT, default_text: str | None = None,
              dtn_text: str | None = None,
              omitted: dict[str, tuple[str, dict[str, str]]] | None = None,
@@ -206,7 +237,8 @@ def findings(root: Path = ROOT, default_text: str | None = None,
     omitted = DTN_OMITTED if omitted is None else omitted
     default = ld_closure(root, default_text)
     dtn = ld_closure(root, dtn_text)
-    out: list[str] = []
+    out = (duplicate_load_findings(default_text, DEFAULT_BUILD)
+           + duplicate_load_findings(dtn_text, DTN_BUILD))
     for path in default:
         if path not in dtn and path not in omitted:
             out.append(f"omitted: {path} is loaded by {DEFAULT_BUILD} and not by "

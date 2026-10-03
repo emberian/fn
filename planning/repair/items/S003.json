@@ -11,7 +11,8 @@
  "line": "4580",
  "locus": "committer",
  "notes": [
-  "10-02 22:32 coded on lane/host-lifecycle 4e409a9d6 (handed to runner); see lanedumps/host-lifecycle.md for verification"
+  "10-02 22:32 coded on lane/host-lifecycle 4e409a9d6 (handed to runner); see lanedumps/host-lifecycle.md for verification",
+  "10-03 06:36 2026-10-03 web source934/8e37 now directly consumes shared handle-chunk-step and await-register mailbox rather than private blocking feed-logical; POST awaits asynchronously without inline commit. Added HTTP health probe to existing stalled-POST native fixture. Runtime owns shared pipeline; actual pipelined native batch scenario still required."
  ],
  "owner": "host-lifecycle",
  "reviewer": "web-host.lisp:111 feeds a browser session as (fnn-owner-handle-chunk service cid pending nil :reader): socket is nil and the class is :reader. web-request.lisp:1038 routes POST /post to fn-wss-post, and the header says it shares the NNTP POST path. books/owner-commit-pipeline.lisp:279 proves the gate admits :reader while a batch is in flight. So owner.lisp:4580 calls fnn-owner-commit-queued-locked, which hard-codes :idle (3260-3264, 3278). That calls fnn-owner-commit-start-locked with :seal t (3069), which zeroes queued and drains it. fnn-log-seal-open-batch (io.lisp:8015) then calls fnn-log-await-sync, which waits on the syncer's in-flight barrier while holding the owner mutex. It then seals whatever START-NEXT left in the open batch together with the new drain, and runs a second barrier inline. This bypasses the pipeline's phase and ledger accounting and the stall shedding (the :shed check at 4597 comes after this branch), and it can hold the owner mutex for a stalled fdatasync. It needs only a web POST that lands while an NNTP batch is in flight.",
@@ -22,5 +23,5 @@
  "source": "sweep-2026-10-03",
  "state": "in-progress",
  "title": "A web-face POST commits inline from a :reader quantum while a pipelined batch is in flight",
- "updated": "2026-10-03T02:32:57Z"
+ "updated": "2026-10-03T10:36:03Z"
 }

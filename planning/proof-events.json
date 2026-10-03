@@ -19158,6 +19158,265 @@
           "name": "fn-wml-borrowed-pattern-cells"
         }
       ]
+    },
+    {
+      "id": "PRF-1255",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cmt-step-state-is-valid"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cmt-pipeline-requires-its-captured-passes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cmt-wrong-snapshot-ticket-faults"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cmt-stop-observation-never-enters-a-pipeline"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1256",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nnw-stream-batch-residual"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nnw-stream-step-residual"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nnw-stream-select-progresses"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nnw-stream-one-visits-at-most-one"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nnw-stream-output-does-not-visit"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sl-step-residual"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1257",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nnm-start-value"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nnm-one-preserves-value"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nnm-one-decided-value"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nnm-one-progress"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nnm-entry-visits-at-most-one"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nnm-engine-cons-at-most-demand"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1258",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-orcs-predict-seal-refines-intern"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1260",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-prd-sweep-visits-all-admitted-rounds"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1254",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hmc-do-return-preserves-invp",
+          "note": "Partial concurrent-reference invariant: physical return alone preserves the full invariant; issue/settle/all-schedules and native realization remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hmc-do-job-result-keeps-invp",
+          "note": "Partial concurrent-reference invariant: an independently classified literal worker result preserves the full invariant, including classification after physical return. This is not the all-schedules or native realization theorem."
+        }
+      ]
+    },
+    {
+      "id": "PRF-1267",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpit-helper-seconds-preserves-lifetime"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1263",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nret-observation-expiry-is-uncertain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nret-observation-report-requires-stopped"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1271",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnb-installed-backoff-refuses-another-backoff"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnb-installed-retries-refuses-another-retries"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnb-input-past-read-bound-is-refused"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1265",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-his-build-row-refines-history-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-his-build-row-bounds-suffix-capacity"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1270",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nir-resume-admits-identical-initial-contract-across-stamps"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nir-resume-refuses-distinct-initial-changes"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1273",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-tcrt-write-range-is-bounded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcrt-source-custody-excludes-input"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcrt-ready-write-precedes-source-and-close"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1266",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-auth-starttls-after-authentication-is-refused-without-reset"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-starttls-is-not-advertised-once-authenticated-on-any-connection"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1268",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cbud-live-held-charges-current-and-active"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbud-live-held-releases-only-unneeded-slots"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1269",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-auth-view-excludes-unreadable-groups-on-any-connection"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1275",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-otjs-consume-of-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otjs-consume-fields-bounded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otjs-report-refines-journal-report"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otjs-exit-refines-journal-exit"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1288",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-durable-realize-lz-octet-is-decoded-nth"
+        }
+      ]
     }
   ]
 }

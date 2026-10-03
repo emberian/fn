@@ -165,6 +165,28 @@
  (defthm fn-sl-append-assoc
    (equal (append (append x y) z) (append x (append y z)))))
 
+; Normalize the reversed output accumulator before using the one-byte
+; residual. Keep this fact in this book: a warm caller's append theory must
+; not supply a rule that the renderer's clean certification world lacks.
+(local
+ (defthm fn-sl-append-revappend
+   (equal (append (revappend acc suffix) rest)
+          (revappend acc (append suffix rest)))
+   :hints (("Goal" :induct (revappend acc suffix)
+            :in-theory (enable revappend)))))
+
+(local
+ (defthm fn-sl-len-revappend
+   (equal (len (revappend acc suffix)) (+ (len acc) (len suffix)))
+   :hints (("Goal" :induct (revappend acc suffix)
+            :in-theory (enable revappend)))))
+
+(local
+ (defthm fn-sl-revappend-output-list
+   (implies (true-listp suffix) (true-listp (revappend acc suffix)))
+   :hints (("Goal" :induct (revappend acc suffix)
+            :in-theory (enable revappend)))))
+
 (defthm fn-sl-loop-residual
   (equal (append (mv-nth 0 (fn-sl-loop cur bytes acc))
                           (fn-sl-remaining (mv-nth 1 (fn-sl-loop cur bytes acc))))

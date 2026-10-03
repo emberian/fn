@@ -12,15 +12,21 @@ States: open -> in-progress -> ready -> landed  (or: refuted | duplicate | defer
   repair.py lanes                                prints lane -> agent id (for direct messages)
 
 Guardrails for a fix (used by burn-down lanes; see planning/repair/README.md):
-  repair.py claim ID --files GLOB[,GLOB...] [--test "CMD"] [--native MODULE[,MODULE]] [--budget N] [--owner LANE]
+  repair.py claim ID --files GLOB[,GLOB...] --test "python3 -m unittest NAME..."
+      --harness 'tests/test_x.py,...' --expect-failure TEST.ID --failure-message 'exact assertion message'
+      [--native MODULE[,MODULE]] [--budget N] [--owner LANE] [--timeout SECONDS]
+      For prose only, replace the test options with --doc-only 'reason'.
       Declares what the fix may touch and the test that must go from failing to passing; sets in-progress.
   repair.py verify ID --base REV [--head REV]
       Checks, and records in the item: every changed file is inside the claimed scope; no forbidden zone
       (planning/repair/forbidden.txt) is touched unless the item has allow_forbidden; the diff is within the
-      budget (default 60 changed lines); a commit in BASE..HEAD names the item id; and, when a test is claimed,
-      the test FAILS at BASE and PASSES at HEAD (run in throwaway worktrees). Exit 0 only if all hold.
+      budget (default 60 changed lines); a commit in BASE..HEAD names the item id; and the same head regression
+      has precisely the named assertion failure at BASE and no failures/errors/skips at HEAD. Full observations
+      are archived and indexed before success. Exit 0 only if all hold.
 """
 import json, os, sys, time, glob, collections, fnmatch, subprocess, tempfile, shutil
+import hashlib, shlex, signal, uuid
+from pathlib import Path
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 ITEMS = os.path.join(ROOT, "items")
@@ -83,7 +89,7 @@ def main(argv):
         for d in all_items():
             if f.get("open") and d["state"] in ("landed", "refuted", "duplicate"):
                 continue
-            if any(k in d and d[k] != v for k, v in f.items() if k != "open"):
+            if any(d.get(k) != v for k, v in f.items() if k != "open"):
                 continue
             print(f"{d['id']:10} {d['state']:11} {d.get('severity',''):6} {d.get('owner',''):20} {d.get('file','')}:{d.get('line','')}  {d['title'][:90]}")
     elif cmd == "show":
@@ -152,9 +158,14 @@ def claim(rest):
     if "files" not in o:
         sys.exit("claim needs --files (the globs the fix may touch)")
     d["scope"] = [g.strip() for g in o["files"].split(",") if g.strip()]
-    for k in ("test", "native", "owner"):
+    for k in ("test", "native", "owner", "harness", "expect-failure", "failure-message", "doc-only", "timeout"):
         if k in o:
             d[k] = o[k]
+    if "doc-only" in o:
+        for k in ("test", "harness", "expect-failure", "failure-message"):
+            d.pop(k, None)
+    elif "test" in o:
+        d.pop("doc-only", None)
     if "budget" in o:
         d["budget"] = int(o["budget"])
     d["state"] = "in-progress"
@@ -175,23 +186,113 @@ def forbidden_globs():
     p = os.path.join(ROOT, "forbidden.txt")
     if not os.path.exists(p):
         return []
-    return [l.split("#")[0].strip() for l in open(p) if l.split("#")[0].strip()]
+    return [l.split("#")[0].strip() for l in Path(p).read_text().splitlines() if l.split("#")[0].strip()]
 
 
 def match(path_, globs):
     return any(fnmatch.fnmatch(path_, g) for g in globs)
 
 
-def run_test_at(rev, cmd, root):
+def regression(d, head, root):
+    """Read immutable head harness bytes; never transplant product code."""
+    args = shlex.split(d.get("test", ""))
+    if len(args) < 4 or args[1:3] != ["-m", "unittest"]:
+        raise ValueError("test must be `python3 -m unittest NAME...` (no shell commands)")
+    names = args[3:]
+    if any(n.startswith("-") or not n for n in names):
+        raise ValueError("name unittest modules/classes/tests explicitly; discovery/options are unsupported")
+    interpreter = shutil.which(args[0])
+    if not interpreter:
+        raise ValueError("test interpreter unavailable: " + args[0])
+    if not d.get("expect-failure") or not d.get("failure-message"):
+        raise ValueError("test needs --expect-failure TEST.ID and --failure-message 'exact assertion message'")
+    patterns = [g.strip() for g in d.get("harness", "").split(",") if g.strip()]
+    if not patterns:
+        raise ValueError("test needs --harness 'tests/test_x.py,...' to run identical regression bytes")
+    files = {}
+    rows = git("ls-tree", "-r", head, cwd=root).splitlines()
+    for pattern in patterns:
+        matched = []
+        for row in rows:
+            meta, filename = row.split("\t", 1)
+            if not fnmatch.fnmatch(filename, pattern):
+                continue
+            if not filename.startswith("tests/") or meta.split()[0] not in ("100644", "100755"):
+                raise ValueError("harness must contain regular tracked tests/ files: " + filename)
+            matched.append(filename)
+            files[filename] = subprocess.run(["git", "show", f"{head}:{filename}"], cwd=root,
+                                              capture_output=True, check=True).stdout
+        if not matched:
+            raise ValueError("harness pattern has no tracked head files: " + pattern)
+    timeout = float(d.get("timeout", 1800))
+    if not 0 < timeout <= 1800:
+        raise ValueError("timeout must be greater than zero and at most 1800 seconds")
+    return interpreter, names, files, timeout
+
+
+def run_test_at(rev, spec, root):
     tmp = tempfile.mkdtemp(prefix="repair-verify-")
     wt = os.path.join(tmp, "wt")
+    observation = {"revision": rev}
     try:
         git("worktree", "add", "--detach", "-q", wt, rev, cwd=root)
-        r = subprocess.run(["bash", "-c", cmd], cwd=wt, capture_output=True, text=True, timeout=1800)
-        return r.returncode, (r.stdout + r.stderr)[-2000:]
+        interpreter, names, files, timeout = spec
+        for filename, data in files.items():
+            target = Path(wt) / filename
+            # Refuse a symlink ancestor from either revision before writing.
+            if any((Path(wt) / part).is_symlink() for part in
+                   [Path(filename), *Path(filename).parents]):
+                raise ValueError("symlink in harness destination: " + filename)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(data)
+        runner = Path(tmp) / "runner.py"
+        runner.write_bytes((Path(ROOT).parents[1] / "tools/repair_unittest.py").read_bytes())
+        report = Path(tmp) / "result.json"
+        p = subprocess.Popen([interpreter, str(runner), str(report), *names], cwd=wt,
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                             text=True, start_new_session=True)
+        try:
+            stdout, stderr = p.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            os.killpg(p.pid, signal.SIGKILL)
+            stdout, stderr = p.communicate()
+            observation["infrastructure"] = "timeout"
+        observation.update(returncode=p.returncode, stdout=stdout, stderr=stderr)
+        if report.exists() and not observation.get("infrastructure"):
+            observation["result"] = json.loads(report.read_text())
+        else:
+            observation.setdefault("infrastructure", "runner did not produce a result")
+    except (OSError, ValueError, subprocess.SubprocessError) as e:
+        observation["infrastructure"] = str(e)
     finally:
         subprocess.run(["git", "worktree", "remove", "--force", wt], cwd=root, capture_output=True)
         shutil.rmtree(tmp, ignore_errors=True)
+    return observation
+
+
+def usable(observation):
+    r = observation.get("result", {})
+    return (not observation.get("infrastructure") and r.get("tests_run", 0) > 0
+            and not any(r.get(k) for k in ("errors", "skips", "expected_failures", "unexpected_successes"))
+            and len(r.get("executed", [])) == r.get("tests_run"))
+
+
+def prose_path(filename):
+    return ((filename.startswith("docs/") or filename.startswith("planning/"))
+            and Path(filename).suffix.lower() in (".md", ".rst")) or (
+                filename.startswith("docs/") and filename.endswith(".txt")) or filename in (
+                "README.md", "AGENTS.md", "CONTRIBUTORS.md", "CONTRIBUTING.md", "LANEDUMP.md")
+
+
+def archive_result(root, i, result):
+    sys.path.insert(0, str(Path(ROOT).parents[1] / "tools"))
+    import evidence_store
+    rel = f"planning/evidence/repair/{i}-{uuid.uuid4().hex}.json"
+    target = Path(root) / rel
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(result, indent=1) + "\n")
+    entries = evidence_store.put(Path(root), [rel])
+    return {"path": rel, "sha256": entries[rel][0], "bytes": entries[rel][1]}
 
 
 def verify(rest):
@@ -205,7 +306,7 @@ def verify(rest):
     if not scope:
         problems.append("no claimed scope: run `repair.py claim ID --files ...` first")
         scope = []
-    changed = [f for f in git("diff", "--name-only", f"{base}..{head}", cwd=root).split() if f]
+    changed = [f for f in git("diff", "--name-only", "-z", f"{base}..{head}", cwd=root).split("\0") if f]
     outside = [f for f in changed if not match(f, scope + ALWAYS_ALLOWED)]
     if outside:
         problems.append("files outside the claimed scope: " + ", ".join(outside))
@@ -215,7 +316,10 @@ def verify(rest):
     lines = 0
     for row in git("diff", "--numstat", f"{base}..{head}", cwd=root).splitlines():
         a, b, f = row.split("\t", 2)
-        if match(f, ALWAYS_ALLOWED) or a == "-":
+        if match(f, ALWAYS_ALLOWED):
+            continue
+        if a == "-":
+            problems.append("binary diff cannot satisfy the repair line budget: " + f)
             continue
         lines += int(a) + int(b)
     budget = int(d.get("budget", DEFAULT_BUDGET))
@@ -226,16 +330,58 @@ def verify(rest):
         problems.append(f"no commit in {base}..{head} names {i}")
     result = {"base": git("rev-parse", base, cwd=root).strip(), "head": git("rev-parse", head, cwd=root).strip(),
               "changed_files": changed, "diff_lines": lines}
-    if d.get("test"):
-        rb, ob = run_test_at(result["base"], d["test"], root)
-        rh, oh = run_test_at(result["head"], d["test"], root)
-        result.update(red_at_base=(rb != 0), green_at_head=(rh == 0))
-        if rb == 0:
-            problems.append("the claimed test PASSES at the base: it does not show the defect")
-        if rh != 0:
-            problems.append("the claimed test FAILS at the head:\n" + oh)
+    if d.get("doc-only"):
+        prose = [f for f in changed if not match(f, ALWAYS_ALLOWED)]
+        mode_changes = git("diff", "--summary", f"{base}..{head}", cwd=root)
+        modes = [row.split()[0] for rev in (result["base"], result["head"])
+                 for row in git("ls-tree", "-r", rev, "--", *prose, cwd=root).splitlines()] if prose else []
+        if d.get("test") or not prose or any(not prose_path(f) for f in prose) or any(m != "100644" for m in modes) or "mode change" in mode_changes:
+            problems.append("doc-only exemption requires exclusively prose changes and no test")
+        result["doc_only"] = d["doc-only"]
+    elif not d.get("test"):
+        problems.append("no regression test: claim a test or an explicit --doc-only 'reason'")
+    elif not problems:
+        try:
+            spec = regression(d, result["head"], root)
+        except (ValueError, OSError, subprocess.SubprocessError) as e:
+            problems.append(str(e))
+        else:
+            result["test"] = d["test"]
+            result["interpreter"] = spec[0]
+            result["timeout"] = spec[3]
+            result["harness"] = {f: hashlib.sha256(data).hexdigest() for f, data in spec[2].items()}
+            result["runner_sha256"] = hashlib.sha256((Path(ROOT).parents[1] / "tools/repair_unittest.py").read_bytes()).hexdigest()
+            result["expected_failure"] = {"test": d["expect-failure"], "message": d["failure-message"]}
+            rb = result["base_observation"] = run_test_at(result["base"], spec, root)
+            rh = result["head_observation"] = run_test_at(result["head"], spec, root)
+            failures = rb.get("result", {}).get("assertions", [])
+            red = (usable(rb) and rb.get("returncode") == 1 and len(failures) == 1
+                   and failures[0]["test"] == d["expect-failure"]
+                   and failures[0]["message"] == d["failure-message"])
+            green = usable(rh) and rh.get("returncode") == 0 and not rh["result"]["assertions"]
+            same = rb.get("result", {}).get("executed") == rh.get("result", {}).get("executed")
+            sources = rh.get("result", {}).get("sources", {})
+            if not sources or any(result["harness"].get(f) != digest for f, digest in sources.items()):
+                problems.append("every executed test source must be declared in --harness")
+            if rb.get("result", {}).get("sources") != sources:
+                problems.append("base/head test sources differ")
+            result.update(red_at_base=red, green_at_head=green, same_tests=same)
+            if not red:
+                problems.append("base did not produce exactly the intended assertion failure (errors/skips/timeout are not defect red)")
+            if not green:
+                problems.append("head did not run the regression cleanly (no errors, failures or skips permitted)")
+            if not same or d["expect-failure"] not in rh.get("result", {}).get("executed", []):
+                problems.append("base/head must execute the same tests, including the expected failing test")
     result["problems"] = problems
-    result["ok"] = not problems
+    result["semantic_ok"] = not problems
+    result["ok"] = result["semantic_ok"]
+    try:
+        result["evidence"] = archive_result(root, i, result)
+        result["evidence_outcome"] = "archived"
+    except Exception as e:
+        problems.append("verification evidence could not be archived: " + str(e))
+        result["evidence_outcome"] = "unavailable"
+        result["ok"] = False
     d["verify"] = result
     save(d)
     print(json.dumps(result, indent=1))

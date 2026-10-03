@@ -35,46 +35,9 @@
   "fn-record-schema-0-bytes-decode-as-legacy": "retired name kept as history: specs/acceptance-stamp.md's status note names the schema-0 forms D3 (small-rows-2-d3) deleted; no migrations, fresh deploys at 6.6.0",
   "fn-sn-prepare-refuses-a-legacy-record": "retired name kept as history: specs/acceptance-stamp.md's status note names the schema-0 forms D3 (small-rows-2-d3) deleted; no migrations, fresh deploys at 6.6.0",
   "fn-teeth-owed": "an ACL2 table, not a definition: `(table fn-teeth-owed ...)` rows written by the keystone generators (books/def-cost.lisp, books/protocol-served.lisp)",
-  "fn-proto-archive-command-cat": "defined by the backquoted defun the served-catalog generator in books/protocol-served.lisp emits (its `(defun fn-proto-archive-command-cat ,*fn-proto-cat-formals* ...)` form), which the macro-definition reader does not expand"
+  "fn-proto-archive-command-cat": "defined by the backquoted defun the served-catalog generator in books/protocol-served.lisp emits (its `(defun fn-proto-archive-command-cat ,*fn-proto-cat-formals* ...)` form), which the macro-definition reader does not expand",
+  "fn-store-sco-open": "a STATE global's name, not a definition: host/owner-host.lisp's fn-owner-recover-from-store-open reads it with f-get-global (specs/failures.md A-RECOVERED-OPEN)",
+  "fn-bs-view-is-an-admissible-image": "an OPEN obligation named as open, not a definition: specs/crash-model-v2.md states the theorem, books/byte-store-invariants.lisp records it as OPEN (recorded, not weakened), and specs/recovery-refinement.md cites it as open"
  },
- "stale": {
-  "BM08 dev-serves 2026-10-03 (post-merge citation drift; ledger BM08)": {
-   "fn-bs-view-is-an-admissible-image": [
-    "specs/recovery-refinement.md"
-   ],
-   "fn-copod-evaluate-material-operators-fit": [
-    "specs/allocation-turns.md"
-   ],
-   "fn-copsc-prepare": [
-    "specs/allocation-turns.md"
-   ],
-   "fn-copsc-start": [
-    "specs/allocation-turns.md"
-   ],
-   "fn-coptc-fault": [
-    "specs/allocation-turns.md"
-   ],
-   "fn-coptc-finish": [
-    "specs/allocation-turns.md"
-   ],
-   "fn-icrc-reserve": [
-    "specs/allocation-turns.md"
-   ],
-   "fn-owner-read": [
-    "specs/productive-contract.md"
-   ],
-   "fn-proto-served-columns-okp": [
-    "specs/nntp.md"
-   ],
-   "fn-store-sco-open": [
-    "specs/failures.md"
-   ],
-   "fnn-owner-cold-line-direct": [
-    "docs/resource-contract.md"
-   ],
-   "fnn-extent-prefetch-direct": [
-    "docs/resource-contract.md"
-   ]
-  }
- }
+ "stale": {}
 }

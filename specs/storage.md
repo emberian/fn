@@ -789,7 +789,19 @@ STO-026: The state checkpoint is four tables (schema 3), each a run of
 FNSC segments, holding every payload once, written by one resumable
 pipeline in bounded batches through the publication buffer and read back
 as the capture; a file of another schema is refused by name and the
-journal replays.
+journal replays while the covered journal is retained. Once covered segments
+have been dropped, a missing or corrupt checkpoint is refused by name.
+
+Before replacing the checkpoint or dropping any covered segments, all three
+publishers (offline, automatic owner, and reclaim) read the staged file back.
+The history image's exact header and each 16 KiB physical page are compared
+by ACL2 against the writer's retained snapshot, including unwritten zero pages;
+then the five framed runs pass their chain verifier. Each page/segment boundary
+observes the owner stop fence before reading the next unit. The snapshot is returned
+before install/swap can admit another publisher and on every earlier exit.
+This detects disagreement between writing and readback; page-cache readback
+is not a guarantee against later media loss. Whole-history snapshot allocation
+remains a separate representation obligation (the bounded-history queue).
 
 - **The tables** (lane checkpoint-pipeline, 2026-09-26; D33, D34;
   books/store-checkpoint-tables.lisp). F: one row `(3 S FRONTIER
@@ -1523,6 +1535,12 @@ install leaves the old publication, from it the new
 verdict lands: a pass under continuous posting defers (`delta`). `store
 reclaim` without `--recorded` (which records the instant first) stays
 `offline-only` on a running owner.
+The reservation's history-octet census first synchronizes the history columns
+with committed rows and advances the carried `(count . octets)` cache through
+`fn-owner-record-octets`. A stale raw cache is never used as the current census.
+A credit refusal captures no reclaim pass and leaves the credit ledger intact;
+the synchronized census remains available for the next attempt. This correct
+census does not remove the current rebuild's proportional history allocation.
 
 What becomes available again, precisely: the payload octets of each
 reclaimed record, on disk when the covered segments are dropped, and in the
@@ -2084,3 +2102,52 @@ include closures. New caller PROGRAM translation/guards, installed costs
 and original input factory, universal parser/consumer inverse, producer
 authority, lifetime/funding and changed native image qualification remain
 open. PRF-1148 stays planned with no completion events.
+
+### Private history relocation continuation (SCN-1101)
+
+`fn-hpr-begin` captures the requested region, capacity and placement without
+mutating the private page store. `fn-hpr-step` checks one resident page, copies
+or zeros one 16 KiB page, writes the thirteen header words, or marks one page.
+A cold table/page verdict preserves both concrete and cursor for verified cache
+completion and retry. Successful yields decrease `fn-hpr-rank`.
+
+`fn-hpr-grow-image` is an explicit prepaid operation outside this bounded tick
+claim: the existing flat arrays still resize in proportion to the image.
+`fn-hpr-placement` returns `(starts np)` only in `:done`. The completion potential
+preserves every concrete array and agrees with existing `fn-hp-x-relocate` on
+its successful domain, including dirty flags and the zeroed old region.
+
+The cursor and scratch store have exclusive publisher custody until done or
+abandonment. In particular, zeroing makes the old placement unreadable before
+the new header is installed; this API does not permit concurrent readers on
+that scratch store. It is intended for History's fresh private image builder.
+It does not bound whole-event encoding, flat backing growth, or commit work,
+and supplies no physical persistence or root-release receipt.
+
+The finite composition `fn-hpr-run` uses fuel strictly greater than
+`fn-hpr-rank` and cannot return a fuel refusal at that allowance. A successful
+run from the original header-ready cursor has the exact concrete and returned
+placement of successful `fn-hp-x-relocate` (`fn-hpr-run-is-old-relocation`).
+`fn-hpr-run-done-is-target` separately identifies the completed concrete without
+assuming the old operation's verdict. Native code schedules the underlying
+steps and prepaid growth independently; the finite runner is a composition
+reference, not a bounded host scheduling call. Resident construction must still
+establish that the run actually returns `:done`; these conditional refinement
+theorems do not manufacture readiness or mask a need/refusal.
+### Incremental checkpoint image construction
+
+The native checkpoint publishers build the existing P3 history image one
+event at a time on a private scratch instance. A drained suffix accepts an
+append, flushes it into pages and clears the consumed slot. The suffix array
+retains at most sixteen pointer slots, regardless of history length; this is
+not a limit on stored events. A pending suffix refuses before another append.
+The completed image count must agree with the captured source count before
+the binding is formed. The immutable snapshot stays owned through staged
+page readback and is returned on every exit (S045).
+
+This is a local implementation guarantee, not an RFC requirement or a claim
+that checkpoint/reclaim is bounded in total resident memory or work per turn.
+Row encoding, page relocation, flat page-array growth, commit plans and fresh
+Store/catalog/node representations still impose proportional work/allocation.
+The reclaim reservation remains the actual full-copy estimate until those
+allocations are removed.

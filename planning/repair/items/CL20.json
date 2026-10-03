@@ -7,11 +7,15 @@
  "id": "CL20",
  "line": "",
  "locus": "gates-tests-packaging",
- "notes": [],
+ "notes": [
+  "10-03 00:32 READY c46f3ecf1 (covered by BM08: spec_cite_check --strict green with 0 stale)",
+  "Codex integration 2026-10-03: source merged in 8cf37a368; BM08 repairs same 12 stale citations; integration strict spec-cite and test_spec_cite_check pass"
+ ],
  "owner": "sweep-gates",
  "severity": "medium",
+ "sha": "c46f3ecf1f630a3746992f19a969a327a987d8d4",
  "source": "check-lane-355a5c843",
- "state": "open",
+ "state": "landed",
  "title": "check-lane red: spec_cite_check",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T05:56:01Z"
 }
