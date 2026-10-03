@@ -335,3 +335,115 @@
 (in-theory (disable fn-wml-task-room fn-wml-frame-room fn-wml-frame-value fn-wml-frames-room
                     fn-wml-core-room fn-wml-core-cells fn-wml-room fn-wml-live-cells
                     fn-wml-livep fn-wml-coveredp fn-wml-utf8-budget))
+
+; All core target references point into one decoded target region. The metric
+; takes maximum referenced suffix extent, not a sum charging each alias.
+; UTF8/reverse charge both growing/split target spines before sharing begins.
+(defun fn-wml-task-target (task)
+ (let ((tag (fn-wmc-at 0 task)))
+  (cond ((eq tag :reverse) (+ (len (fn-wmc-at 2 task)) (len (fn-wmc-at 3 task))))
+        ((member-eq tag '(:match :right :pattern :row)) (len (fn-wmc-at 2 task)))
+        ((member-eq tag '(:initial :false :star :character :star-aux :char-aux)) (len (fn-wmc-at 1 task)))
+        (t 0))))
+(defun fn-wml-frame-target (frame)
+ (if (member-eq (fn-wmc-at 0 frame) '(:right :initial-pattern :row-step))
+     (len (fn-wmc-at 2 frame)) 0))
+(defun fn-wml-frames-target (frames)
+ (if (consp frames) (max (fn-wml-frame-target (car frames)) (fn-wml-frames-target (cdr frames))) 0))
+(defun fn-wml-core-target (s)
+ (max (fn-wml-task-target (fn-wmc-at 0 s)) (fn-wml-frames-target (fn-wmc-at 1 s))))
+(defun fn-wml-target (s)
+ (if (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :utf8)
+     (fn-wml-utf8-budget (fn-wmc-at 0 s)) (fn-wml-core-target s)))
+(local (defthm fn-wml-frames-target-cons
+ (equal (fn-wml-frames-target (cons frame frames))
+        (max (fn-wml-frame-target frame) (fn-wml-frames-target frames)))))
+(local (defthm fn-wml-frames-target-car
+ (<= (fn-wml-frame-target (car frames)) (fn-wml-frames-target frames)) :rule-classes :linear))
+(local (defthm fn-wml-frames-target-cdr
+ (<= (fn-wml-frames-target (cdr frames)) (fn-wml-frames-target frames)) :rule-classes :linear))
+(local (defthm fn-wml-frames-target-open
+ (implies (consp frames)
+  (equal (fn-wml-frames-target frames)
+         (max (fn-wml-frame-target (car frames)) (fn-wml-frames-target (cdr frames)))))
+ :hints (("Goal" :expand ((fn-wml-frames-target frames))))))
+(defthm fn-wml-core-one-target
+ (implies (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :decode))
+          (<= (fn-wml-core-target (fn-wmc-core-one s)) (fn-wml-core-target s)))
+ :hints (("Goal" :in-theory (e/d (fn-wmc-core-one fn-wml-core-target fn-wml-task-target fn-wml-frame-target)
+                                  (fn-wml-frames-target)))))
+(defthm fn-wml-utf8-one-target
+ (implies (and (fn-wmc-shapedp s) (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :utf8))
+          (<= (fn-wml-target (fn-wmc-utf8-one s)) (fn-wml-target s)))
+ :hints (("Goal" :use ((:instance fn-wml-next-width-positive
+                                 (xs (fn-wmc-window (fn-wmc-at 2 (fn-wmc-at 0 s))
+                                                    (nfix (fn-wmc-at 3 (fn-wmc-at 0 s))) 4))))
+          :in-theory (e/d (fn-wml-target fn-wml-core-target fn-wml-task-target fn-wml-utf8-budget
+                            fn-wmc-utf8-one fn-wmc-shapedp fn-wmc-core-shapedp fn-wmc-framesp)
+                           (fn-wml-next-width-positive fn-wmc-window fn-wildmat-utf8-next fn-wildmat-result-okp
+                            fn-wildmat-result-value fn-wildmat-utf8-rest)))))
+(defthm fn-wml-one-target
+ (implies (fn-wml-livep s) (<= (fn-wml-target (fn-wmc-one s)) (fn-wml-target s)))
+ :hints (("Goal" :use (fn-wml-core-one-target fn-wml-utf8-one-target fn-wml-core-next-tags)
+          :in-theory (e/d (fn-wml-livep fn-wml-target fn-wmc-one)
+                           (fn-wml-core-target fn-wmc-utf8-one fn-wmc-core-one fn-wmc-at fn-wmc-shapedp
+                            fn-wml-core-one-target fn-wml-utf8-one-target fn-wml-core-next-tags)))))
+(defthm fn-wml-start-target
+ (<= (fn-wml-target (fn-wmc-start patterns group)) (if (stringp group) (length group) 0))
+ :hints (("Goal" :in-theory (enable fn-wml-target fn-wml-core-target fn-wml-task-target
+                                    fn-wml-utf8-budget fn-wmc-start fn-wmc-start-codepoints))))
+(defun fn-wml-retainedp (s patterns tokens octets)
+ (and (fn-wml-coveredp s patterns tokens octets) (<= (fn-wml-target s) (nfix octets))))
+(defun fn-wml-owned-capacity (patterns tokens octets)
+ (declare (xargs :guard (and (natp patterns) (natp tokens) (natp octets))))
+ (+ (fn-wml-capacity patterns tokens octets) octets))
+(defthm fn-wml-start-retainedp
+ (implies (fn-wildmat-pattern-listp patterns)
+  (fn-wml-retainedp (fn-wmc-start patterns group) (len patterns) (fn-wm-total-items patterns)
+                     (if (stringp group) (length group) 0)))
+ :hints (("Goal" :use (fn-wml-start-coveredp fn-wml-start-target)
+          :in-theory (e/d (fn-wml-retainedp) (fn-wml-coveredp fn-wml-target fn-wmc-start
+                                             fn-wml-start-coveredp fn-wml-start-target)))))
+(defthm fn-wml-one-retainedp
+ (implies (fn-wml-retainedp s patterns tokens octets)
+          (fn-wml-retainedp (fn-wmc-one s) patterns tokens octets))
+ :hints (("Goal" :use (fn-wml-one-coveredp fn-wml-one-target)
+          :in-theory (e/d (fn-wml-retainedp fn-wml-coveredp)
+                           (fn-wml-livep fn-wml-room fn-wml-capacity fn-wml-target fn-wmc-one
+                            fn-wml-one-coveredp fn-wml-one-target)))))
+(defthm fn-wml-step-retainedp
+ (implies (fn-wml-retainedp s patterns tokens octets)
+          (fn-wml-retainedp (fn-wmc-step s work grant) patterns tokens octets))
+ :hints (("Goal" :in-theory (e/d (fn-wmc-step) (fn-wml-retainedp fn-wmc-one fn-wmc-acceptedp)))))
+(defthm fn-wml-retained-owned-bound
+ (implies (and (natp octets) (fn-wml-retainedp s patterns tokens octets))
+          (<= (+ (fn-wml-live-cells s) (fn-wml-target s)) (fn-wml-owned-capacity patterns tokens octets)))
+ :hints (("Goal" :use fn-wml-covered-live-bound
+          :in-theory (e/d (fn-wml-retainedp fn-wml-owned-capacity)
+                           (fn-wml-coveredp fn-wml-target fn-wml-live-cells fn-wml-capacity
+                            fn-wml-covered-live-bound)))))
+(verify-guards fn-wml-owned-capacity)
+(in-theory (disable fn-wml-task-target fn-wml-frame-target fn-wml-frames-target fn-wml-core-target
+                    fn-wml-target fn-wml-retainedp))
+
+; Input parsed graph is borrowed, counted once by its owner (not per frame).
+(defun fn-wml-tree-cells (x)
+ (if (consp x) (+ 1 (fn-wml-tree-cells (car x)) (fn-wml-tree-cells (cdr x))) 0))
+(local (defthm fn-wml-scalar-item-cells
+ (implies (fn-wildmat-text-itemp item) (equal (fn-wml-tree-cells item) 0))
+ :hints (("Goal" :in-theory (enable fn-wildmat-text-itemp fn-wildmat-text-exactp)))))
+(local (defthm fn-wml-scalar-items-cells
+ (implies (fn-wildmat-text-items-p items) (equal (fn-wml-tree-cells items) (len items)))
+ :hints (("Goal" :induct (fn-wildmat-text-items-p items)
+          :in-theory (e/d (fn-wildmat-text-items-p) (fn-wildmat-text-itemp))))))
+(local (defthm fn-wml-pattern-record-cells
+ (implies (fn-wildmat-patternp pattern)
+          (equal (fn-wml-tree-cells pattern) (+ 2 (len (fn-wildmat-pattern-items pattern)))))
+ :hints (("Goal" :in-theory (enable fn-wildmat-patternp fn-wildmat-pattern-sign fn-wildmat-pattern-items true-listp len)))))
+(defthm fn-wml-borrowed-pattern-cells
+ (implies (fn-wildmat-pattern-listp patterns)
+          (equal (fn-wml-tree-cells patterns) (+ (* 3 (len patterns)) (fn-wm-total-items patterns))))
+ :hints (("Goal" :induct (fn-wildmat-pattern-listp patterns)
+          :in-theory (e/d (fn-wildmat-pattern-listp fn-wm-total-items)
+                           (fn-wildmat-patternp fn-wildmat-pattern-items)))))
+(in-theory (disable fn-wml-tree-cells))

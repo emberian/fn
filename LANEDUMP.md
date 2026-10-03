@@ -276,3 +276,18 @@ work. Shared target region N is NOT yet part of the proved live projection:
 additive target-extent carry/proof is next. Candidate owned graph bound with
 that region38+6P+6M+11N; do not claim it proved from this first handoff.
 New literal live tests/source full replay/evidence pending at handoff.
+
+Target-region carry extension complete: fn-wml-target takes the maximum
+referenced decoded suffix extent, UTF8remaining+acc and reverse split extents.
+fn-wml-start/one/step-retainedp preserve target<=N and live control/row capacity;
+fn-wml-retained-owned-bound proves live projection+target extent<=
+fn-wml-owned-capacity(P,M,N)=38+6P+6M+11N for natural N. This is the named
+logical owned-region model, not an ACL2 pointer-identity/native-byte theorem.
+Borrowed parsed graph exact3P+M proved by fn-wml-borrowed-pattern-cells under
+parsed pattern-list shape. UTF8/core target monotonicity admitted; capacity and
+owned-capacity numeric guards verified. Fourteen source test forms all pass:
+actual suspension/UTF8,9-frame/61-cell overlap, parsed omission counterexample,
+N-naturalness and carried-profile removal counterexamples. Whole clean newbook
+replay/evidence filing is next; no production matcher/consumer modifications.
+Root owns physical alias/borrowed-root mapping, simultaneous call roots,
+transient/collector/native byte/integer/profile/lease accounting and cold probe.
