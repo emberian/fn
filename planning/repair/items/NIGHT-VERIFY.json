@@ -13,7 +13,8 @@
  "locus": "gates-tests-packaging",
  "notes": [
   "10-03 01:52 claimed: scope=['planning/repair/repair.py', 'planning/repair/README.md', 'tools/repair_unittest.py', 'tests/test_repair_verify.py', 'planning/evidence-index.tsv', 'LANEDUMP.md'] test=python3 -m unittest tests.test_repair_verify",
-  "10-03 01:59 claimed: scope=['planning/repair/repair.py', 'planning/repair/README.md', 'tools/repair_unittest.py', 'tests/test_repair_verify.py', 'planning/evidence-index.tsv', 'LANEDUMP.md'] test=python3 -m unittest tests.test_repair_verify.RepairVerifyTests.test_missing_selected_module_cannot_use_an_unrelated_harness"
+  "10-03 01:59 claimed: scope=['planning/repair/repair.py', 'planning/repair/README.md', 'tools/repair_unittest.py', 'tests/test_repair_verify.py', 'planning/evidence-index.tsv', 'LANEDUMP.md'] test=python3 -m unittest tests.test_repair_verify.RepairVerifyTests.test_missing_selected_module_cannot_use_an_unrelated_harness",
+  "10-03 02:00 codex-sol-tools: source 9d17e3356; 19 disposable-history verifier tests pass; self-witness at base 30529279e gives the named AssertionError True is not false, same harness passes at head. Archived planning/evidence/repair/NIGHT-VERIFY-f596713e338f4e709b90452bac5c0eca.json sha256 1b5470639501e5f97826475ffa773026f10ec26974886a948508c26a93c29ad9. No image or ACL2 change."
  ],
  "owner": "codex-sol-tools",
  "scope": [
@@ -29,5 +30,88 @@
  "state": "in-progress",
  "test": "python3 -m unittest tests.test_repair_verify.RepairVerifyTests.test_missing_selected_module_cannot_use_an_unrelated_harness",
  "title": "Repair verifier accepts missing tests/infrastructure failures as defect witnesses",
- "updated": "2026-10-03T05:59:05Z"
+ "updated": "2026-10-03T06:00:16Z",
+ "verify": {
+  "base": "30529279e70f9985df3d555a6a49189739482c6b",
+  "base_observation": {
+   "result": {
+    "assertions": [
+     {
+      "message": "True is not false",
+      "test": "tests.test_repair_verify.RepairVerifyTests.test_missing_selected_module_cannot_use_an_unrelated_harness",
+      "type": "AssertionError"
+     }
+    ],
+    "errors": [],
+    "executed": [
+     "tests.test_repair_verify.RepairVerifyTests.test_missing_selected_module_cannot_use_an_unrelated_harness"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_repair_verify.py": "35d0ed6bc4f9869013aa0c870ece62e08c72a789d6d2fdc5eb3b58833dfc78a2"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 1,
+   "revision": "30529279e70f9985df3d555a6a49189739482c6b",
+   "stderr": "test_missing_selected_module_cannot_use_an_unrelated_harness (tests.test_repair_verify.RepairVerifyTests.test_missing_selected_module_cannot_use_an_unrelated_harness) ... FAIL\n\n======================================================================\nFAIL: test_missing_selected_module_cannot_use_an_unrelated_harness (tests.test_repair_verify.RepairVerifyTests.test_missing_selected_module_cannot_use_an_unrelated_harness)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-43kix_a_/wt/tests/test_repair_verify.py\", line 108, in test_missing_selected_module_cannot_use_an_unrelated_harness\n    self.assertFalse(r[\"red_at_base\"])\n    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^\nAssertionError: True is not false\n\n----------------------------------------------------------------------\nRan 1 test in 0.894s\n\nFAILED (failures=1)\n",
+   "stdout": ""
+  },
+  "changed_files": [
+   "planning/repair/README.md",
+   "planning/repair/items/NIGHT-VERIFY.json",
+   "planning/repair/repair.py",
+   "tests/test_repair_verify.py",
+   "tools/repair_unittest.py"
+  ],
+  "diff_lines": 502,
+  "evidence": {
+   "bytes": 3732,
+   "path": "planning/evidence/repair/NIGHT-VERIFY-f596713e338f4e709b90452bac5c0eca.json",
+   "sha256": "1b5470639501e5f97826475ffa773026f10ec26974886a948508c26a93c29ad9"
+  },
+  "evidence_outcome": "archived",
+  "expected_failure": {
+   "message": "True is not false",
+   "test": "tests.test_repair_verify.RepairVerifyTests.test_missing_selected_module_cannot_use_an_unrelated_harness"
+  },
+  "green_at_head": true,
+  "harness": {
+   "tests/test_repair_verify.py": "35d0ed6bc4f9869013aa0c870ece62e08c72a789d6d2fdc5eb3b58833dfc78a2"
+  },
+  "head": "9d17e3356b42fe58f9b23ed85b0f4894d62c69a4",
+  "head_observation": {
+   "result": {
+    "assertions": [],
+    "errors": [],
+    "executed": [
+     "tests.test_repair_verify.RepairVerifyTests.test_missing_selected_module_cannot_use_an_unrelated_harness"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_repair_verify.py": "35d0ed6bc4f9869013aa0c870ece62e08c72a789d6d2fdc5eb3b58833dfc78a2"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 0,
+   "revision": "9d17e3356b42fe58f9b23ed85b0f4894d62c69a4",
+   "stderr": "test_missing_selected_module_cannot_use_an_unrelated_harness (tests.test_repair_verify.RepairVerifyTests.test_missing_selected_module_cannot_use_an_unrelated_harness) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 1.196s\n\nOK\n",
+   "stdout": ""
+  },
+  "interpreter": "/opt/homebrew/bin/python3",
+  "ok": true,
+  "problems": [],
+  "red_at_base": true,
+  "runner_sha256": "ffc7d9542fbfe2d4e23f03f31dd170f32ef1a8529d41ebbccc36f18c52946106",
+  "same_tests": true,
+  "semantic_ok": true,
+  "test": "python3 -m unittest tests.test_repair_verify.RepairVerifyTests.test_missing_selected_module_cannot_use_an_unrelated_harness",
+  "timeout": 1800.0
+ }
 }
