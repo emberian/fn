@@ -34,6 +34,24 @@
                      (list :status :refused *ncrt-unknown-group*)))
 (assert-event (equal (fn-native-control-reply-detail :refused *ncrt-unknown-group*)
                      *ncrt-unknown-group*))
+; Partial durable success and owner faults must retain their named reason.
+; Each witness checks the literal keystone antecedent and both conclusions.
+(defun ncrt-named-nonacceptance-witness (status reason)
+  (let* ((word (fn-nctrl-reason-word reason))
+         (step (fn-native-control-reasoned-client-step
+                (fn-native-control-reasoned-reply-read
+                 (fn-native-control-reasoned-reply-encode status reason)))))
+    (and (member-equal status *fn-nctrl-statuses*) reason
+         (member-equal (fn-native-control-status-class status)
+                       '(:refused :uncertain :fault))
+         (equal step (list :status status word))
+         (equal (fn-native-control-reply-detail (cadr step) (caddr step)) word))))
+(assert-event
+ (ncrt-named-nonacceptance-witness :uncertain :withdrawal-authorized-cause-refused))
+(assert-event
+ (ncrt-named-nonacceptance-witness :fault :withdrawal-authorized-cause-fault))
+(assert-event (null (fn-native-control-reply-detail :uncertain (fn-nctrl-reason-word nil))))
+(assert-event (null (fn-native-control-reply-detail :fault (fn-nctrl-reason-word nil))))
 ; A named refusal keeps its status and carries the decision's word.
 (assert-event (equal (fn-native-control-reasoned-client-step
                       (fn-native-control-reasoned-reply-read
@@ -56,11 +74,11 @@
           (list :status status (fn-nctrl-reason-word reason)))
    :hints (("Goal" :in-theory (disable member-equal)))
    :rule-classes nil))
-; Hypothesis (a refusal class): an acceptance prints no reason.
+; Hypothesis (a nonacceptance class): an acceptance prints no reason.
 (assert-event (member-equal :accepted *fn-nctrl-statuses*))
 (assert-event (null (fn-native-control-reply-detail :accepted *ncrt-unknown-group*)))
 (must-fail-checked
- (defthm ncrt-detail-without-refusal
+ (defthm ncrt-detail-without-nonacceptance
    (implies (and (member-equal status *fn-nctrl-statuses*) reason)
             (equal (fn-native-control-reply-detail status (fn-nctrl-reason-word reason))
                    (fn-nctrl-reason-word reason)))
