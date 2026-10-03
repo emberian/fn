@@ -1865,3 +1865,8 @@ Native consumption remains with History; no image/deployment or resident-open
 claim transferred. pgs-x-grow-image's new verified table flags represent the
 private commit-to-be-built state, not persisted table entries available for
 an uncommitted new-page eviction; History notified for its residency invariant.
+
+Owner carrier current continuation — GPT-6.1-Sol, 2026-10-03
+- Preserved prior tree clean at25186bd8b; current source tree365657213. Actual owner-post cached-only refused before ACL2 for14 base roots+51 dependents; exact hashes/repro in owner-carrier-current-20261003.json. Integration owns narrow dependency/target certification; no retry/source closure.
+- Catalog counter/incarnation now included in loaded-world authority closure; actual program fixture passed. Threader refuses their access until explicit private unset/corrupt semantics are supplied;12tool tests pass. No production migration.
+- Two writer definitions defer guard verification to existing def-carried-writer scoped ordinary verify-guards; original formals/bodies/guard unchanged. Target remains unadmitted. All experimental sessions released. History absorbs authority migration under8am cap; normal owner snapshot and finish prefix/reload producer still owed.
