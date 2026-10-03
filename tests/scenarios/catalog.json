@@ -8310,22 +8310,29 @@
         "Compare complete GROUP, LISTGROUP, NEXT, LAST, LIST ACTIVE and LIST COUNTS helper results with the captured logical available archive; verify raw number2 and Message-ID remain retained.",
         "Run ten command/parsed-event comparisons per sparse/empty fixture, retaining raw retrieval subjects.",
         "Read complete GROUP wire bytes through actual fn-av-mca-read-span over a constructed auth reader/indexed pin and funded credit ledger.",
-        "Advance fixed captured-view summary one numbered metadata probe at a time; verify eight calls leave26 of34 candidates, then complete sparse/prefix/tail/empty results."
+        "Advance fixed captured-view summary one numbered metadata probe at a time; verify eight calls leave26 of34 candidates, then complete sparse/prefix/tail/empty results.",
+        "Run actual retained LIST ACTIVE/COUNTS query windows at quanta1/256; compare original empty-catalog replies, incremental row/status output and no-output character/entry progress."
       ],
       "expected": [
         "Sparse metadata navigation moves1\u219234 and34\u21921 while enumerating only1/34; complete responses equal the bytes reference.",
         "Empty availability preserves NEXT/LAST cursor on421/422 and produces empty GROUP0,35,34; retained identity lookup remains.",
-        "Fixture is source live-stobj command-helper acceptance, not production owner/capture proof or native reclaim qualification. LIST still has a whole-reply producer frontier."
+        "Source live-stobj command-helper acceptance remains distinct from production owner/capture proof or native reclaim qualification. Incremental row/status production does not establish full family funding or captured authority."
       ],
       "evidence": [
         "tests/acl2/served-available-commands-tests.lisp",
         "tests/acl2/served-available-read-tests.lisp",
         "planning/evidence/served-available-owner-20261003/checks.json",
         "tests/acl2/group-summary-cursor-tests.lisp",
-        "planning/evidence/group-summary-cursor-20261003/checks.json"
+        "planning/evidence/group-summary-cursor-20261003/checks.json",
+        "tests/acl2/served-query-plan-tests.lisp",
+        "tests/acl2/list-row-cursor-tests.lisp",
+        "tests/acl2/list-status-cursor-tests.lisp",
+        "planning/evidence/list-row-stream-20261003/checks.json",
+        "planning/evidence/list-status-stream-20261003/checks.json",
+        "planning/evidence/list-status-progress-20261003/checks-final.json"
       ],
       "execution_scope": "Actual source-loaded guarded command book plus PROGRAM event/owner-credit endpoints; twenty command/event comparisons and two full owner GROUP endpoints pass. No saved image/certificate or selective owner invariant transfer.",
-      "notes": "LIST retains a whole-reply producer frontier; PROGRAM guards, selective owner proof/captured stability and physical tariffs remain open."
+      "notes": "LIST ACTIVE/COUNTS source dispatcher/query-plan/row/status producer is connected. Full query residual/finite progress, current sparse owner composition, completed discovery authority, upstream config setup, PROGRAM guards/refinement and physical tariffs remain open."
     }
   ]
 }

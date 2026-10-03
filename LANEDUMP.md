@@ -692,3 +692,51 @@ controlled200k hints are preserved. History also admitted the unchanged direct
 successor .04s/1530steps and removed both initializer assurance deferrals.
 Receipt planning/evidence/owner-read-independence-20261003/checks.json; existing
 owner-served-invariants literal witnesses unchanged. No current-image/cert claim.
+
+## Convergence checkpoint: status finite progress and full Served remainder
+
+Fn-lss-remaining-work is disabled logical reference only. The public one-progress
+keystone needs only positive remaining work and proves strict natural decrease
+for every actual entry/character/no-match transition; no output/cache premise.
+Five-form proper encap .06ACL2s/44345steps in Root DWJ, LOCAL fields discarded.
+Two arithmetic-only refused theories (.03s/12915steps and .02s/14928steps)
+preserved; final narrowly added distribution/commutation/type facts. Literal
+entry/character positive and reachable six-step terminal premise-removal tests
+pass .03ACL2s/718steps, in tests/acl2/list-status-cursor-tests and staged in
+build/list-status-progress-teeth.lisp; terminal :EOF/DONE72, healthy returned.
+Logical source receipt planning/evidence/list-status-progress-20261003/checks-final.json.
+
+World returned healthy to Root after known :EOF terminal; no owned process or
+active send. Control /Users/ember/dev/fn/build/lanes/codex-resource-completion,
+session root-decoded-execution, remote /tank/fn/gates/codex-root-decoded-execution.
+Root/Tools coordinate future sends. Do not restart expired/dead NNTP worlds.
+Current owner startup and integrated scoped normal checks remain History/Integration.
+
+Current ready chain: f8b query interface declarations;0f97 actual status/controller;
+2cba proof-only owner read frame. Integration sole public writer. Current source
+new row/status producer behavior is guarded; full current sparse dispatcher/owner
+composition and selective PROGRAM guards/refinement remain pending. PRF1287 is
+planned/events[]: no old raw or Splan theorem transfers.
+
+Owned remaining queue, not a narrower destination:
+* LIST exact row/status/full reply residual, combined finite progress and actual
+  query window boundary with captured authority and keptp mutation frames.
+* Completed durable discovery vs pinned authority (PRF1237), authorization/
+  moderation upfront whole-group config setup and restricted selective fallback.
+* Remaining standard LIST/NEWGROUPS producer variants, HDR/XHDR/XPAT over Access
+  borrowed FnLHQ field spans/NSW normalization, and incremental OVER NOV rows.
+* Every actual family factory/serializer physical allocation/work/integer-profile
+  tariff and response output lease/cold-generation custody with Foundations/Runtime.
+* Generic/paged count/navigation and actual current source owner route composition;
+  full selected-route guarantees/refinement/guards, registry/spec/scenario closure.
+
+Preserved untracked model WIP: books/list-query-reference lacks new render/status
+residual branches and has no admissions; books/list-row-progress is a proposed
+finite potential, lacks constructor-field bridge/proof and is not in Makefile.
+Neither enters the source packet or claims completion. No new family work after
+Root/user convergence request. Resume these actual producer boundaries from this
+tree rather than treating a component or source packet as the full capability.
+
+Final status progress receipt includes exact cumulative source segments and all3
+teeth; stale last-output diagnostic was excluded. Owner direct successor receipt
+is checks-successor.json, supplementing unchanged initial proof receipt.
