@@ -2039,3 +2039,12 @@ admit in web-private-clean; raw dense5000-dot/percent/CR reference atW1/2/7/4096
 and actual117-byte feeds PASS. Program only; form/header/subject/fullIN and
 qualified working funding remain open. Runtime owns response capture slot
 binding and sole-terminal close; do not overlap those additions.
+
+POST continuation follow-through: actual :post-form worker phase traverses
+first-occurrence spans once and resumes decoding/reversal/ASCII selection.
+Successful Subject emits directly or existing45-byte UTF8/base64 RFC2047
+chunks (pending<=75). Real ACL2 complete-wire oracle passes10003-byte subject,
+UTF8 crossing45, normalizedCR/LF, first duplicates; native form turns+healthy
+event+no requestcopy and body partialfeeds pass. Legacy refusal page/form
+path and retainedHTTPIN/decodedsubject remain unpriced, fixed prefix depends
+on captured profile. No universal bounded semantic-step/funding claim.

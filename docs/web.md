@@ -203,3 +203,14 @@ subject/header construction still materialize before this cursor, and
 complete HTTP input/working/output pricing and guard/refinement proofs are
 open. This is source/program execution, not an image or physical resource
 warranty.
+
+The successful POST path now also traverses form fields once in resumable
+steps, retaining fixed first-occurrence spans. Field decoding and reversal
+resume; ASCII selection scans the captured subject incrementally. Headers
+emit that subject directly or use the existing 45-octet UTF-8 encoded-word
+splitter (RFC 2047 §2) with a bounded 75-byte pending fragment. The complete
+subject and authored header are no longer constructed in OUT. Original
+HTTP input and decoded subject remain captured, the fixed From/Newsgroups
+prefix depends on the admitted login/operator profile, and invalid-form
+refusal still uses the legacy full page construction. These remaining
+allocation frontiers prevent a complete Web funding claim.
