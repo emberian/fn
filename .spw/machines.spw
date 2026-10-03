@@ -1,0 +1,122 @@
+# fn state machine map
+# Catalogue is a navigation starting point, not a completeness or proof claim.
+^"coordinate"{ source_revision: "3f39e6df98b3d87881e43200bba9334e47e1af4b" workbench_revision: "651b535b5171" }
+^"process"{
+ @source: ~"../host/native/io.lisp"
+ symbols: "fnn-main / fnn-dispatch"
+ transitions: "startup > dispatch > exit"
+ boundary: "dispatch opcode registry / ACL2 guard state / exit classifier"
+ coverage: "catalogued; full leaf trace pending"
+}
+^"operator"{
+ @source: ~"../host/native/operator.lisp"
+ symbols: "fnn-command-operator / fnn-operator-run-at"
+ transitions: "preflight > config parse > plan > mission > outcome"
+ boundary: "bounded config observation / ACL2-normalized run plan / physical execution"
+ coverage: "catalogued; full leaf trace pending"
+}
+^"owner"{
+ @source: ~"../host/native/owner.lisp"
+ symbols: "fnn-owner-run / fnn-owner-run-normalized"
+ transitions: "claim > recover > install > listen > drain > join > settle"
+ boundary: "single serialized semantic owner / actor custody / durable uncertainty fence"
+ coverage: "catalogued; full leaf trace pending"
+}
+^"nntp"{
+ @source: ~"../host/native/mux.lisp"
+ symbols: "fnn-mux-start"
+ transitions: "arrival > admission > framing > command > response drain or cancellation"
+ boundary: "session authorization and catalog capture / output custody"
+ coverage: "catalogued; full leaf trace pending"
+}
+^"storage"{
+ @source: ~"../host/native/io.lisp"
+ symbols: "fnn-command-post / fnn-command-recover / fnn-command-store-import"
+ transitions: "open > recover > reserve > append > barrier > publish"
+ boundary: "persisted acceptance / indeterminate writes / immutable snapshot"
+ coverage: "catalogued; full leaf trace pending"
+}
+^"cold-read"{
+ @source: ~"../host/native/extent.lisp"
+ symbols: "fnn-extent-direct-start"
+ transitions: "issue > execute > physical return > classify > settle"
+ boundary: "descriptor holders / generations / decoded worker and backing custody"
+ coverage: "catalogued; full leaf trace pending"
+}
+^"resource"{
+ @source: ~"../host/native/runtime-bootstrap.lisp"
+ symbols: "runtime construction and startup installer"
+ transitions: "profile validate > reserve > install > allocate > retire"
+ boundary: "operator-supported profile / logical accounting / concrete allocations"
+ coverage: "catalogued; full leaf trace pending"
+ @bounds: ~"./audits/bounds/index.spw"
+}
+^"bp-node"{
+ @source: ~"../host/native/bp-node.lisp"
+ symbols: "fnn-command-bp-node / fnn-bpnode-forward-start"
+ transitions: "journal replay > stage > source > forward > evidence > release"
+ boundary: "portable identities / attempt identity / local durable retention"
+ coverage: "catalogued; full leaf trace pending"
+}
+^"tcpcl"{
+ @source: ~"../host/native/tcpcl.lisp"
+ symbols: "fnn-command-tcpcl-listen / fnn-command-tcpcl-send"
+ transitions: "contact > receive windows > retained source > ACK > termination"
+ boundary: "transport ACK distinct from durable acceptance / source custody"
+ coverage: "catalogued; full leaf trace pending"
+}
+^"workflow"{
+ @source: ~"../host/native/workflow.lisp"
+ symbols: "fnn-command-workflow-enqueue / fnn-command-receipt-complete"
+ transitions: "enqueue > undertake > transport > receipt > replay"
+ boundary: "delivery undertaking distinct from application processing"
+ coverage: "catalogued; full leaf trace pending"
+ @bounds: ~"./audits/bounds/index.spw"
+}
+^"consumer"{
+ @source: ~"../host/native/consumer-local.lisp"
+ symbols: "fnn-command-consumer-local / fnn-command-consumer-article"
+ transitions: "capture history view > project > cursor > application acknowledgment"
+ boundary: "immutable report identity / durable application inbox and outbox"
+ coverage: "catalogued; full leaf trace pending"
+ @bounds: ~"./audits/bounds/index.spw"
+}
+^"web"{
+ @source: ~"../host/native/web-host.lisp"
+ symbols: "fnn-web-start / fnn-web-run-hooks"
+ transitions: "HTTP frame > parse > auth > NNTP core > render > output"
+ boundary: "ACL2 rendering and authorization / response leases"
+ coverage: "catalogued; full leaf trace pending"
+}
+^"ninep"{
+ @source: ~"../host/native/ninep.lisp"
+ symbols: "fnn-ninep-start"
+ transitions: "accept > session > fid > reader projection > close"
+ boundary: "filesystem view identity distinct from durable objects"
+ coverage: "catalogued; full leaf trace pending"
+}
+^"identity"{
+ @source: ~"../host/native/signature-command.lisp"
+ symbols: "fnn-command-hybrid-sign / fnn-command-hybrid-verify-source"
+ transitions: "source capture > subject > sign or verify > carrier"
+ boundary: "exact authored source / crypto primitives trusted boundary"
+ coverage: "catalogued; full leaf trace pending"
+}
+^"anchor"{
+ @source: ~"../host/native/anchor.lisp"
+ symbols: "fnn-command-anchor"
+ transitions: "nonce > acquire > verify > persist"
+ boundary: "freshness evidence distinct from wall-clock authority"
+ coverage: "catalogued; full leaf trace pending"
+}
+^"redeem"{
+ @source: ~"../host/native/io.lisp"
+ symbols: "fnn-command-redeem / fn-redeem-step / fn-redeem-lost"
+ transitions: "connect > greeting > TLS > code > password > outcome"
+ boundary: "partial password send may cause durable account creation; uncertainty begins before send"
+ coverage: "catalogued; full leaf trace pending"
+ @bounds: ~"./audits/bounds/index.spw"
+}
+^"cross-axis"{ @entries: ~"./audits/entries/index.spw" @exits: ~"./audits/exits/index.spw" @consistency: ~"./audits/consistency/" @bounds: ~"./audits/bounds/index.spw" }
+
+^"boundary-map"{ @interactions: ~"./boundaries.spw" }

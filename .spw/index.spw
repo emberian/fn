@@ -1,0 +1,22 @@
+# Index
+#
+#>spw_index
+#:index
+
+^"roots"{
+  @readme: ~"./README.md"
+  @mount: ~"./mount.spw"
+  @workspace: ~"./workspace.spw"
+  @boundaries: ~"./boundaries.spw"
+  @machines: ~"./machines.spw"
+  @entries: ~"./audits/entries/index.spw"
+  @exits: ~"./audits/exits/index.spw"
+  @consistency: ~"./audits/consistency/"
+  @bounds: ~"./audits/bounds/index.spw"
+}
+
+^"dispatch"{
+  readme: @readme
+  mount: @mount
+  workspace: @workspace
+}

@@ -1,0 +1,22 @@
+# Entry coverage
+
+Coordinate: 3f39e6df98b3d87881e43200bba9334e47e1af4b code worktree; map initial shared scan9df4a3a4e6ebd22574f1ca49471d806ad5159d7c.
+
+Breadth: process dispatch and registered CLI verbs inventoried; owner lifecycle full definition read; redeem client and logical reply/lost classifiers full definitions read. Map covers NNTP, BP, store, resource custody, consumer/application, identity, anchor, Web, 9p, operator. This is not every leaf read.
+
+Owner boundaries: run authority is claimed before Store install; direct workers and lifecycle are started before serving; control/module startup hooks precede NNTP listen; SIGTERM sets monotonic flag/raw shutdown; cleanup joins physical actors, checks output/cold/mux/syncer debt, settles logs/journal/Store, then retires authority. Local source callers and downstream logical subjects still require full reading; neighboring owners are repairing startup installer.
+
+Redeem: connection loss before password yields unreachable; after password yields uncertain; success only password-stage281. Host advances stage after password send, introducing false unreachable on send exception; fix/test in entries finding E001.
+
+Explicit gaps: leaf closure of all registered CLI verbs; all NNTP and Web command branches; all BP/controller/retention transitions; resource admission and runtime pool construction; persistence recovery/compaction edges; consumer history/cursor composition; ninep and identity/anchor internals; full executable-to-logical refinement. Adjacent audit axes may provide evidence for these, but map status is not upgraded from agent assertions alone.
+
+
+Additional complete host bodies read: consumer-local.lisp, consumer-remote.lisp, signature-command.lisp, topic-local.lisp, ninep.lisp, anchor.lisp, operator-control-client.lisp, packaging/fn. Logical executable definitions read: consumer-poll-projection.lisp; consumer-local-control CLI grammar/secret normalization; consumer-reason request/client/CLI retry definitions; consumer-wait-codec request/CLI definitions; anchor-replace complete machine. Their downstream crypto/codec/Store leaf closures remain explicit gaps.
+
+Consumer: poll/report then cursor writes use O_EXCL; conflicting same paths are refused by logical CLI grammar, alias paths fail at physical exclusive create. Output fault does not establish durable ack; mutating accepted response followed by convenience output failure is uncertain. Retry bootstrap is limited by fn-ncr-cli-after to register refused unbootstrapped/legacy-no-reason; uncertain never retried. Remote consumer public startup lacks installed typed operation and refuses before suffix allocation. 9p startup likewise explicitly unavailable; internal driver does not establish public service capability.
+
+Anchor: rename issue is recorded before physical replacement; staged failures are known failure, any replace-result failure or directory-barrier failure fences uncertain. Recovery barriers establish file+directory observations before held state. Crypto/DNS/UDP observations remain trusted physical effects. DNS timeout and complete primitive representation/refinement need neighboring bounds/consistency inspection.
+
+Installed entry: packaging/fn chooses installed siblinglibexec/fn unconditionally; checkout override applies only without installedlibexec; heap-probe then exec same image. specs/host.md opening paragraph falsely named missing repositorybin/fn Python owner; repaired to actual entry without claiming image/deployment qualification.
+
+Redeem/TLS transport closure: complete client context/begin/step/connect/read/send/close definitions and actual plaintext send/recv/connect/deadline helpers read. Partial socket writes advance physical offsets; blocking adapters use absolute deadlines; DNS intentionally precedes TCP connect deadline. Client source error-queue precondition repairedE004. DLL loading, full FFIs/primitive realization, peer-host parsing leaves and all TLS reload/concurrent context lifetime paths still need their own exact scope.
