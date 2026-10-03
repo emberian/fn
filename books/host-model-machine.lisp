@@ -43,7 +43,7 @@
 ;                                                    the incarnation bound then
 ;     (:io-complete KEY VERDICT)                      the device: any time, any
 ;                                                    order, after a cancel;
-;                                                    VERDICT :ok :short :error
+;                                                    VERDICT :ok :read :error
 ;                                                    :trailer :digest
 ;     (:crash)                                        ends the run (T1(c) is
 ;                                                    the recovery's)
@@ -395,7 +395,7 @@
   (let ((key (fn-hmc-arg 1 ev)) (verdict (fn-hmc-arg 2 ev))
         (reqs (fn-hmc-reqs st)) (results (fn-hmc-results st)))
     (if (and (fn-hmc-req-of key reqs)
-             (member-eq verdict '(:ok :short :error :trailer :digest))
+             (member-eq verdict '(:ok :read :short :error :trailer :digest))
              (alistp results))
         (mv (fn-hmc-with st :reqs (fn-hmc-reqs-remove key reqs)
                          :results (cons (cons key verdict) results))

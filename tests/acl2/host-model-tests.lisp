@@ -110,3 +110,14 @@
 ; Unfunded direct labels do not pretend to cover the typed funded pool.
 (assert-event
  (equal (fn-hmc-answer *hmct-issued* '(:funded-issue 2 7 1 0 10 7)) :refused))
+
+; The actual native short-read producer stores literal :READ. There is no
+; host/Python translation to a different model error vocabulary.
+(assert-event
+ (let* ((returned (fn-hmc-run *hmct-cancelled*
+                    '((:io-complete (0 7 1 0 10 7) :read)
+                      (:return 2 (0 7 1 0 10 7)))))
+        (settled (fn-hmc-next-state returned '(:settle 2 (0 7 1 0 10 7)))))
+   (and (equal (fn-hmc-answer returned '(:settle 2 (0 7 1 0 10 7))) '(:fault :read))
+        (fn-hmc-invp returned) (fn-hmc-invp settled)
+        (null (fn-hmc-holds settled)))))
