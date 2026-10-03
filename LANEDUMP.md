@@ -1295,3 +1295,21 @@ until existing fixture152da/native-n7 compatibility is actually established.
 - Runtimeea8f14b82 composed with current actor/await/observer/cold slots. New actual finish section, exact handshake identity and literal effect vs section-return receipts retained; independent close continues, scheduling removal retains debt, rootStore requires physically ended mux loops and empty inbox/conns/arrived/debt. Socket helper preserves NIL primary with separate failed/closed receipt.
 - Material overlap: current cold-abandon preserved under once-only key containing exact READ; whole returned callback alone clears connection cold slot, fault retains read/key/debt. Runtime primary ownership confirmed; cancellation never implies dependency physical completion or output discard.
 - New narrow actual current cold helper/token recording boundary success+fault and real socket composition passed; mux cleanup scriptPASS and actual await scriptPASS (rerun only after regenerated affected derived stub). SCN1091 claimPASS. Indexed composition receiptv2 preserves initial placeholder-socket failed fixture attempt and prior receipt hash. No global harness rewrite, proof/image/build or repeated producer experiments. Matching native shutdown/image and full refinement/allocation/custody remain owed.
+
+
+## Sol tools: generated raw stobj dependencies (2026-10-03)
+
+The DTN preflight refused `create-fn-resource-ledger` because its generated
+raw declaration referenced a stobj absent from the DTN world. Emission now
+derives every literal input/output stobj ABI dependency from the unique
+source `defstobj`/`defabsstobj` book and emits it once before declarations.
+Missing or ambiguous definitions refuse emission; state is built in. There
+is no constructor allowlist or world availability filter. Actual source
+has one raw-guarded creator requiring `books/resource-vector-exec`; the
+seven other raw routes are the existing carried owner wrapper entries,
+whose DTN exclusion remains explicit by source host scope.
+
+Nine DeclarationTests PASS in 0.010s; compile and diff checks PASS. Raw
+declaration file regenerated. No ACL2, umbrella, host-books, image or whole
+check run here; Integration owns exact child-candidate umbrella/interface/
+host-books preflight and image qualification.
