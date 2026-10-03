@@ -59,6 +59,7 @@
 ;; the held record reaches the arena, so nearly every book below does: it
 ;; comes right after the codec and record attachments, before any of them.
 (include-book "books/payload-arena-attach")
+(include-book "books/history-paged-attach")
 (include-book "books/store-config")
 (include-book "books/identity")
 (include-book "books/article-fields")
@@ -273,6 +274,7 @@
 (ld "host/workflow-host.lisp" :ld-error-action :error)
 (ld "host/bp-receipt-journal-host.lisp" :ld-error-action :error)
 (ld "host/bp-release-owner-host.lisp" :ld-error-action :error)
+(ld "host/history-root-host.lisp" :ld-error-action :error)
 (ld "host/journal-publish-host.lisp" :ld-error-action :error)
 (ld "host/bp-native-app-host.lisp" :ld-error-action :error)
 ; The ACL2 side of the TCPCLv4 host: every protocol value the convergence
@@ -381,6 +383,7 @@
         ; compiled that function as a call to an undefined function.
         (load "host/native/owner-control-turn.lisp")
         (load "host/native/owner.lisp")
+        (load "host/native/history-root.lisp")
         (load "host/native/receiver-parser-turn.lisp")
         ; Its connections on a fixed set of I/O loops (PKT-605).
         (load "host/native/mux.lisp")

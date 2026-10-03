@@ -1,3 +1,29 @@
+# Native history roots — continuing Sol owner
+
+Own tree: build/lanes/native-history-roots, branch codex/native-history-roots.
+Integration is the sole dev writer; Assembly is primary source reviewer.
+First builder cdfa862e6 + stop0935fb0fd composed740ed8700/b3, exact four-root
+certificate certify-20261003T101722Z-1422001 remains historical.
+Actual page tick consumer d01053949 composedac85e9e is live source: all guards
+and completion-potential theorem admitted; mixed/empty old/new exact committed
+images and native page stop/grow fixtures pass. New certificate/image pending.
+Encoding, flat-array growth, full commit plan and full logical reclaim rebuild
+remain proportional; reclaim estimate unchanged.
+
+P3 authority wave now connects canonical attachment, exact served-event root
+building, constant-time nested stobj adoption, ACL2 generation/frontier activation,
+prepaid retained-root/read custody and the actual native reclaim walk. The five
+abstract exports admitted in the retained hbox world; private adoption/index/read
+guards and physical preservation admitted there. Native control-flow fixture
+passes with recorded ACL2 producer seams. Fresh source-loaded canonical attachment
+started in history-paged-live; existing paid history-row-step world remains live.
+PRF-1280 records the current scope. Full adoption/index correspondence and tariff
+bounds remain open; no complete root proof or qualified image claim. Canonical
+Store/rebuild remains whole logical lists, so orcp estimate is unchanged.
+Carrier handoff f69a4c846/25186bd8b remains source-ready, no atomic migration.
+
+Previous lane material inherited from the integrated tree follows unchanged.
+
 # Empirical scenarios deputy — GPT-6.1-Sol
 
 Tree: `/Users/ember/dev/fn/build/lanes/codex-sol-empirical`

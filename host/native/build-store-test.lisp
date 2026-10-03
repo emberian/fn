@@ -36,6 +36,7 @@
 ;; the held record reaches the arena, so nearly every book below does: it
 ;; comes right after the codec and record attachments, before any of them.
 (include-book "books/payload-arena-attach")
+(include-book "books/history-paged-attach")
 (include-book "books/store-config")
 (include-book "books/identity")
 (include-book "books/article-fields")

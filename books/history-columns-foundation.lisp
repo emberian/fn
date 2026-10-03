@@ -220,7 +220,9 @@
                                          (cdr (hons-assoc-equal h (nth 2 c)))))
                            (nth 2 c)))
                  (nth 2 c))))
-   :hints (("Goal" :in-theory (e/d (fn-hist-open) (fn-hist$c-grow nth update-nth fn-hist-key-msgid fn-hist-hash))))))
+   :hints (("Goal" :use ((:instance fn-hist-grow-fields (fn-hist$c c)))
+            :in-theory (e/d (fn-hist-open) (fn-hist$c-grow nth update-nth fn-hist-key-msgid fn-hist-hash
+                                         adt-nth-0 adt-nth-1+ adt-car-of-update-nth adt-cdr-of-update-nth))))))
 
 (local (in-theory (disable fn-hist$c-append)))
 
@@ -647,3 +649,82 @@
 ; -----------------------------------------------------------------------------
 ; The history.
 
+
+(local
+ (defun-nx fn-hist-model-build-induct (events h c)
+   (if (consp events)
+       (fn-hist-model-build-induct (cdr events) (append h (list (car events)))
+                                  (fn-hist$c-append (car events) c))
+     (list h c))))
+
+(local
+ (defthm fn-hist-build-preserves-correspondence
+   (implies (and (fn-hist$corr c h) (fn-hist$ap h) (true-listp events))
+            (fn-hist$corr (fn-hist-build events c) (append h events)))
+   :hints (("Goal" :induct (fn-hist-model-build-induct events h c)
+            :in-theory (e/d (fn-hist-build fn-hist$ap fn-hist$a-append)
+                            (fn-hist$corr fn-hist$c-append)))
+           ("Subgoal *1/1" :use ((:instance fn-hist-append{correspondence}
+                                             (fn-hist$c c) (fn-hist h) (ev (car events))))))))
+
+(local
+ (defthm fn-hist-empty-establishes-correspondence
+   (implies (unsigned-byte-p 32 salt) (fn-hist$corr (fn-hist$c-empty salt) nil))
+   :hints (("Goal" :in-theory (enable fn-hist$corr fn-hist$c-empty fn-hist$cp
+                                      fn-hist$c-rowsp fn-hist-build)))))
+
+; Shared fold boundary for alternate physical history implementations. The
+; index is shared by ordinals while its events may reside in another backing.
+(defthm fn-hist-fold-establishes-correspondence
+  (implies (and (true-listp h) (unsigned-byte-p 32 salt))
+           (fn-hist$corr (fn-hist-build h (fn-hist$c-empty salt)) h))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-hist$ap)
+                                  (fn-hist$corr fn-hist$c-empty fn-hist-build))
+           :use ((:instance fn-hist-build-preserves-correspondence
+                            (events h) (h nil) (c (fn-hist$c-empty salt)))))))
+
+(local
+ (defthm fn-hist-build-bucket-below
+   (implies (and (natp (nth 1 c))
+                 (fn-hist-below-p (fn-hist$c-bucket key c) (nth 1 c)))
+            (fn-hist-below-p (fn-hist$c-bucket key (fn-hist-build events c))
+                             (+ (nth 1 c) (len events))))
+   :hints (("Goal" :induct (fn-hist-build events c)
+            :in-theory (e/d (fn-hist-build)
+                            (fn-hist$c-bucket fn-hist$c-append fn-hist-hash
+                             fn-hist-key-msgid nth update-nth))))))
+
+(defthm fn-hist-fold-table-facts
+  (let ((c (fn-hist-build h (fn-hist$c-empty salt))))
+    (implies (and (true-listp h) (unsigned-byte-p 32 salt))
+      (and (equal (nth 1 c) (len h))
+           (<= (len h) (len (nth 0 c)))
+           (equal (nth 3 c) salt)
+           (fn-hist-below-p (fn-hist$c-bucket key c) (len h))
+           (implies (and (natp seq) (< seq (len h)))
+                    (equal (nth seq (nth 0 c)) (nth seq h))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-hist$c-empty fn-hist-build fn-hist$c-bucket nth)
+           :use ((:instance fn-hist-build-bucket-below
+                            (events h) (c (fn-hist$c-empty salt)))
+                 (:instance fn-hist-room-of-build
+                            (a h) (s salt)
+                            (c (fn-hist-build h (fn-hist$c-empty salt))))
+                 (:instance fn-hist-at-of-build
+                            (a h) (s salt)
+                            (c (fn-hist-build h (fn-hist$c-empty salt))))))))
+
+(defthm fn-hist-fold-mids-of-append
+ (let* ((c (fn-hist-build h (fn-hist$c-empty salt)))
+        (m (fn-hist-key-msgid ev)))
+  (implies (and (true-listp h) (unsigned-byte-p 32 salt))
+   (equal (nth 2 (fn-hist-build (append h (list ev)) (fn-hist$c-empty salt)))
+          (if (stringp m)
+              (let ((key (fn-hist-hash m salt)))
+               (cons (cons key (cons (len h) (cdr (hons-assoc-equal key (nth 2 c)))))
+                     (nth 2 c)))
+            (nth 2 c)))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (disable fn-hist-build fn-hist$c-append fn-hist$c-empty
+                                      nth fn-hist-key-msgid fn-hist-hash))))

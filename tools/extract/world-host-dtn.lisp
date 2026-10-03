@@ -29,6 +29,7 @@
 (ld "../../host/workflow-host.lisp" :ld-error-action :error)
 (ld "../../host/bp-receipt-journal-host.lisp" :ld-error-action :error)
 (ld "../../host/bp-release-owner-host.lisp" :ld-error-action :error)
+(ld "../../host/history-root-host.lisp" :ld-error-action :error)
 (ld "../../host/journal-publish-host.lisp" :ld-error-action :error)
 (ld "../../host/bp-native-app-host.lisp" :ld-error-action :error)
 (ld "../../host/tcpcl-host.lisp" :ld-error-action :error)
