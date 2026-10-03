@@ -9,6 +9,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import proof_repl
 from proof_repl import encapsulated, forms, head_and_name
 
 BOOKS = [
@@ -25,6 +26,8 @@ def quote(path: Path) -> str:
 
 def generate(source: Path, dependencies: Path, world: Path, output: Path) -> None:
     source = source.resolve(); dependencies = dependencies.resolve(); world = world.resolve()
+    # Include normalization is relative to the selected actual source tree.
+    proof_repl.ROOT = source
     hashes = {}
     def text(path):
         hashes[str(path)] = hashlib.sha256(path.read_bytes()).hexdigest()
