@@ -244,6 +244,11 @@ Inspect a running client without making native calls or reconciling attempts:
 - `fn_consumer.py CONFIG export OUTPUT` saves all public database evidence in one
   consistent JSON snapshot, including exact BLOB hex. It refuses an existing
   output file and does not read private signing keys.
+- `fn_consumer.py CONFIG artifact OPERATION_ID DIRECTORY` exports the saved
+  authored source, both signatures and both public keys as separate exact files,
+  with the original keyring generation, context and outcome in `manifest.json`.
+  The directory must be new. The manifest appears last; a failed export may
+  leave an incomplete directory. Export never signs or retries the artifact.
 
 These read-only commands can run while a consumer holds its processing lock;
 SQLite provides their snapshot. They do not turn in-flight attempts into answered
