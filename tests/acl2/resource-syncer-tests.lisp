@@ -98,10 +98,72 @@
        (mv nil '(value-triple :reverse-order-settles-once) state fn-resource-ledger)
      (mv t nil state fn-resource-ledger))))
 
+; Literal preservation teeth: actual functions, full hypotheses/conclusions.
+(defthm rost-issue-representation-witness
+ (let* ((ledger (mv-nth 1 (fn-ros-install-syncer 80 1048576 (create-fn-resource-ledger)))) (result (fn-ros-issue 7 ledger)) (after (mv-nth 2 result)))
+  (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger)
+       (equal (mv-nth 0 result) :drawn)
+       (fn-resource-ledgerp after) (fn-rl-wfp after)))
+ :rule-classes nil)
+(defthm rost-issue-without-type-corrupted-state-witness
+ (let* ((ledger (update-nth 0 nil (create-fn-resource-ledger))) (after (mv-nth 2 (fn-ros-issue 7 ledger))))
+  (and (not (fn-resource-ledgerp ledger)) (fn-rl-wfp ledger)
+       (not (and (fn-resource-ledgerp after) (fn-rl-wfp after)))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (e/d (fn-ros-issue fn-ros-livep fn-rl-wfp)
+                                ((:executable-counterpart fn-ros-issue))))))
+(defthm rost-issue-without-shape-corrupted-state-witness
+ (let* ((ledger (update-fn-rl-count 1 (create-fn-resource-ledger))) (after (mv-nth 2 (fn-ros-issue 7 ledger))))
+  (and (fn-resource-ledgerp ledger) (not (fn-rl-wfp ledger))
+       (not (and (fn-resource-ledgerp after) (fn-rl-wfp after)))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (e/d (fn-ros-issue fn-ros-livep fn-rl-wfp)
+                                ((:executable-counterpart fn-ros-issue))))))
+(defthm rost-physical-representation-witness
+ (let* ((ledger (mv-nth 2 (fn-ros-issue 7 (mv-nth 1 (fn-ros-install-syncer 80 1048576 (create-fn-resource-ledger)))))) (result (fn-ros-physical '(:resource :owner 2 1) :terminal ledger)) (after (mv-nth 1 result)))
+  (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger)
+       (equal (mv-nth 0 result) :pending)
+       (fn-resource-ledgerp after) (fn-rl-wfp after)))
+ :rule-classes nil)
+(defthm rost-physical-without-type-corrupted-state-witness
+ (let* ((ledger (update-nth 0 nil (create-fn-resource-ledger))) (after (mv-nth 1 (fn-ros-physical '(:resource :owner 2 1) :terminal ledger))))
+  (and (not (fn-resource-ledgerp ledger)) (fn-rl-wfp ledger)
+       (not (and (fn-resource-ledgerp after) (fn-rl-wfp after)))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (e/d (fn-ros-physical fn-ros-livep fn-rl-wfp)
+                                ((:executable-counterpart fn-ros-physical))))))
+(defthm rost-physical-without-shape-corrupted-state-witness
+ (let* ((ledger (update-fn-rl-count 1 (create-fn-resource-ledger))) (after (mv-nth 1 (fn-ros-physical '(:resource :owner 2 1) :terminal ledger))))
+  (and (fn-resource-ledgerp ledger) (not (fn-rl-wfp ledger))
+       (not (and (fn-resource-ledgerp after) (fn-rl-wfp after)))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (e/d (fn-ros-physical fn-ros-livep fn-rl-wfp)
+                                ((:executable-counterpart fn-ros-physical))))))
+(defthm rost-outcome-representation-witness
+ (let* ((ledger (mv-nth 2 (fn-ros-issue 7 (mv-nth 1 (fn-ros-install-syncer 80 1048576 (create-fn-resource-ledger)))))) (result (fn-ros-outcome '(:resource :owner 2 1) 7 ledger)) (after (mv-nth 1 result)))
+  (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger)
+       (equal (mv-nth 0 result) :pending)
+       (fn-resource-ledgerp after) (fn-rl-wfp after)))
+ :rule-classes nil)
+(defthm rost-outcome-without-type-corrupted-state-witness
+ (let* ((ledger (update-nth 0 nil (create-fn-resource-ledger))) (after (mv-nth 1 (fn-ros-outcome '(:resource :owner 2 1) 7 ledger))))
+  (and (not (fn-resource-ledgerp ledger)) (fn-rl-wfp ledger)
+       (not (and (fn-resource-ledgerp after) (fn-rl-wfp after)))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (e/d (fn-ros-outcome fn-ros-livep fn-rl-wfp)
+                                ((:executable-counterpart fn-ros-outcome))))))
+(defthm rost-outcome-without-shape-corrupted-state-witness
+ (let* ((ledger (update-fn-rl-count 1 (create-fn-resource-ledger))) (after (mv-nth 1 (fn-ros-outcome '(:resource :owner 2 1) 7 ledger))))
+  (and (fn-resource-ledgerp ledger) (not (fn-rl-wfp ledger))
+       (not (and (fn-resource-ledgerp after) (fn-rl-wfp after)))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (e/d (fn-ros-outcome fn-ros-livep fn-rl-wfp)
+                                ((:executable-counterpart fn-ros-outcome))))))
+
 ; The declaration checks the actual entry's one cost row and draw arguments.
 ; Projection remains partial and cannot turn on full admission accounting.
 (include-book "../../books/def-cost")
-(definterface fn-ros-issue :class :ideal
+(definterface fn-ros-issue :class :common-lisp-compliant
   :operation (:stage :projection :funding fn-ros-install-syncer
               :tariff fn-ros-worker-vector :draw fn-rl-draw :principal :owner
               :slot 2 :physical fn-ros-physical :outcome fn-ros-outcome
@@ -116,37 +178,37 @@
 
 ; Refused: hidden unknown.
 (encapsulate ()
- (local (definterface fn-ros-issue :class :ideal
+ (local (definterface fn-ros-issue :class :common-lisp-compliant
           :operation (:stage :projection :funding fn-ros-install-syncer :tariff fn-ros-worker-vector :draw fn-rl-draw :principal :owner :slot 2 :physical fn-ros-physical :outcome fn-ros-outcome :retention :physical-and-operation :coverage (:resident :workers) :unaccounted (fn-rl-draw))))
  (local (assert-event (fn-cost-operation-problem 'fn-ros-issue (w state)))))
 
 ; Refused: wrong slot.
 (encapsulate ()
- (local (definterface fn-ros-issue :class :ideal
+ (local (definterface fn-ros-issue :class :common-lisp-compliant
           :operation (:stage :projection :funding fn-ros-install-syncer :tariff fn-ros-worker-vector :draw fn-rl-draw :principal :owner :slot 1 :physical fn-ros-physical :outcome fn-ros-outcome :retention :physical-and-operation :coverage (:resident :workers) :unaccounted (fn-rl-wfp fn-rl-draw mv-nth))))
  (local (assert-event (fn-cost-operation-problem 'fn-ros-issue (w state)))))
 
 ; Refused: wrong tariff.
 (encapsulate ()
- (local (definterface fn-ros-issue :class :ideal
+ (local (definterface fn-ros-issue :class :common-lisp-compliant
           :operation (:stage :projection :funding fn-ros-install-syncer :tariff fn-ros-token :draw fn-rl-draw :principal :owner :slot 2 :physical fn-ros-physical :outcome fn-ros-outcome :retention :physical-and-operation :coverage (:resident :workers) :unaccounted (fn-rl-wfp fn-rl-draw mv-nth))))
  (local (assert-event (fn-cost-operation-problem 'fn-ros-issue (w state)))))
 
 ; Refused: unfunded metadata.
 (encapsulate ()
- (local (definterface fn-ros-issue :class :ideal
+ (local (definterface fn-ros-issue :class :common-lisp-compliant
           :operation (:stage :projection :funding fn-ros-missing-producer :tariff fn-ros-worker-vector :draw fn-rl-draw :principal :owner :slot 2 :physical fn-ros-physical :outcome fn-ros-outcome :retention :physical-and-operation :coverage (:resident :workers) :unaccounted (fn-rl-wfp fn-rl-draw mv-nth))))
  (local (assert-event (fn-cost-operation-problem 'fn-ros-issue (w state)))))
 
 ; Refused: full accounting annotation.
 (encapsulate ()
- (local (definterface fn-ros-issue :class :ideal
+ (local (definterface fn-ros-issue :class :common-lisp-compliant
           :operation (:stage :accounted :funding fn-ros-install-syncer :tariff fn-ros-worker-vector :draw fn-rl-draw :principal :owner :slot 2 :physical fn-ros-physical :outcome fn-ros-outcome :retention :physical-and-operation :coverage (:resident :workers) :unaccounted (fn-rl-wfp fn-rl-draw mv-nth))))
  (local (assert-event (fn-cost-operation-problem 'fn-ros-issue (w state)))))
 
 ; Refused: unknown dimension.
 (encapsulate ()
- (local (definterface fn-ros-issue :class :ideal
+ (local (definterface fn-ros-issue :class :common-lisp-compliant
           :operation (:stage :projection :funding fn-ros-install-syncer :tariff fn-ros-worker-vector :draw fn-rl-draw :principal :owner :slot 2 :physical fn-ros-physical :outcome fn-ros-outcome :retention :physical-and-operation :coverage (:resident :invented) :unaccounted (fn-rl-wfp fn-rl-draw mv-nth))))
  (local (assert-event (fn-cost-operation-problem 'fn-ros-issue (w state)))))
 
