@@ -1349,3 +1349,31 @@ helper owns only resumable wildmat library; I consume it after source READY.
 
 - Servede81af211d composed atop776 configuredcontroller: ordered HDR compatibility/verified/control/enrollment/ordinary and XHDR compatibility/ordinary forms; actual generated archive fallback now direct pinned reference, declaration coverage assertion refuses missing archive rows. Hand catalog body retained migration proof reference only. Primary Served source admissions/guards/literal full boundary and both-route teeth reused; no third semantic review or replay.
 - Only material overlap is NEWNEWS cost metadata: retained boundedcontrolcalls/atmostoneentryperselectorcall and corrected selector receipt filename, added legacycoldmetadata debt. Spec served table regenerated only from actual row metadata. SCN1093 claimPASS; indexedc898/124675 producer receipts verified. Next scoped roots books/protocol-served-table +books/protocol-served +tests/acl2/protocol-served-tests; actual served-catalog-chain consumer included by integration certificate packet. Completedview/pin-firstMessage-ID/restrictedstreaming/coldcustody/allocation and matchingcert/image remainowed.
+## Astra source trace — S045 staged history image readback (2026-10-03)
+
+Base 71b691823, coordinated disjoint from catalog availability and Runtime mux.
+Confirmed residual: common stage verifier skipped FNSI image pages while reopen
+requires them; used/zero-page corruption passed frame verification and replaced
+the old checkpoint. Shared snapshot custody now spans write/readback in all three
+publishers; ACL2 compares exact header/page encoding, one 16 KiB page per read.
+Release occurs before install/swap can reopen the publisher slot; lexical unwind
+also covers deferral and raw escapes before outer publication cleanup.
+
+`python3 -m unittest tests.test_native_checkpoint_image_readback`: six schedules
+PASS; baseline 71b691823 fails intended page/zero-page corruption and deferred
+snapshot-release assertions. Real kernel files and codec; recording snapshot
+storage/framed-run seams. Composed image test added to native state checkpoint
+suite, not yet run. Evidence: planning/evidence/astra-checkpoint-readback-2026-10-03.json
+(archive/index, source hashes and trace map). Existing S045 stays open pending
+matching certification/image consumer; SCN-1094/STO-011/spec updated together.
+Cached-only proof_repl attempts refused before creating session: hbox needs exact
+store-log plus history-image-binding/fold; Integration schedules affected root,
+no broad closure or new image started here. S114 authoritative octets capture is
+next confirmed connected item; whole-history representation redesign stays with
+Groundwork. No new architecture or durable-acceptance semantics claimed.
+
+## Sol source assembly: retained checkpoint image readback (2026-10-03)
+
+- Astra16e1491a1: actual3publication callers retain snapshot through ACL2 exactheader/page readback; unwritten zero pages checked too, one16KiBkernelread perpage. Successful staging releases snapshot BEFOREinstall/swap can reopenpublisher slot; failure/deferred/rawexit inner scope returns snapshot before outerowner pin/slot cleanup. Eleven changed actualproducer/consumer forms structurally exact16e, book/tests exactbytes.
+- Existing6actualfile schedules and transplanted baseline used/zeropage corruption+deferredrelease intended failures reused; archive995f4714 verified. SCN1094claimPASS; Pythoncompile/diffchecksPASS. No repeat experiment/proof/image. Sourceguard/certificate for history-image-snapshot and exactstorelog→historyimagebinding/fold dependencies remainpending; by-definition page equality is not cited askeystone.
+- Actualnewinterfaces declarations retained, generatedinterfaces/current conflicts omitted: they included stale globalcoverage/unrelatedP9qualification and must regenerate atIntegration. Exact savedimage selector tests.test_native_state_checkpoint.StateCheckpointCutTests.test_staged_history_page_corruption_keeps_checkpoint_and_log; nativecheckpoint/recovery after coveredsegmentsdrop and fullphysical snapshotrefinement remainowed. Newhistoryowner informedAstra currentS045scope+S114next toagreeoverlap.

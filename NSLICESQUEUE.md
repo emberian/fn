@@ -208,7 +208,7 @@ Anchors: [X04](planning/repair/items/X04.json), [S038](planning/repair/items/S03
 
 ### Checkpoint, recovery and bounded store utilities
 
-**Queued — Groundwork coordinates storage; specific batches to dispatch.**
+**Active — Astra owns staged history-image readback (S045); Groundwork coordinates storage.**
 Group the existing repairs by actual log/checkpoint/import/journal path:
 publication/read-back before dropping covered data, interrupted repair recovery,
 txid/lineage preservation, bounded header/tail processing, and descriptor lifetime.

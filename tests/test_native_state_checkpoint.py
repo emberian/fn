@@ -701,6 +701,25 @@ class StateCheckpointCutTests(StateCheckpointFixture):
         self.assertEqual(retried.returncode, EXIT_OK, retried.stderr.decode())
         self.assertEqual(self.open_line(), "open=checkpoint:5 suffix=0")
 
+    def test_staged_history_page_corruption_keeps_checkpoint_and_log(self):
+        """S045: framed-run seals do not cover the preceding history pages."""
+        self.init_with_checkpoint_at_three("store")
+        old = self.digest()
+        expected = self.observation()
+        segments = {p.name for p in (self.store / "journal").iterdir()}
+        refused = self.checkpoint("store", env={
+            "FN_NATIVE_STATE_CHECKPOINT_READBACK_FLIP": str(2 * 16384 + 100)})
+        self.assertEqual(refused.returncode, EXIT_REFUSED, refused.stderr.decode())
+        self.assertIn(b"does not read back", refused.stderr)
+        self.assertEqual(self.digest(), old)
+        self.assertEqual(list((self.store / "staging").iterdir()), [])
+        self.assertLessEqual(segments, {p.name for p in (self.store / "journal").iterdir()})
+        self.assertEqual(self.open_line(), "open=checkpoint:3 suffix=2")
+        self.assertEqual(self.observation(), expected)
+        retried = self.checkpoint("store")
+        self.assertEqual(retried.returncode, EXIT_OK, retried.stderr.decode())
+        self.assertEqual(self.open_line(), "open=checkpoint:5 suffix=0")
+
     def test_a_killed_owner_reopens_from_the_checkpoint_without_replay(self):
         """Records flip (checkpoint-arena-2): the checkpoint carries the arena,
         so after the serving owner dies (SIGKILL) the next open reads the

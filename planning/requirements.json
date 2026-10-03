@@ -2231,7 +2231,9 @@
         "books/store-checkpoint-codec.lisp",
         "books/byte-store-state-checkpoint-program.lisp",
         "tests/test_native_state_checkpoint.py",
-        "planning/evidence/bounds-p3-2026-09-25.md"
+        "planning/evidence/bounds-p3-2026-09-25.md",
+        "tests/test_native_checkpoint_image_readback.py",
+        "tests/native_checkpoint_image_readback_raw.lisp"
       ],
       "implementation_note": "The checkpoint holds the record list and every replay fold's accumulator (exact state, removes nothing, so D13 is not a precondition). fn-sco-select serves it only when its segment chain verifies, it covers no more records than are committed, and the suffix is at most the profile's max-open-suffix K; otherwise open=full-replay with the reason (absent, corrupt, ahead-of-history, suffix-exceeds-k). The owner's serve path (fnn-owner-install) still replays in full."
     },

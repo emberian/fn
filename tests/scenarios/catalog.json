@@ -8487,6 +8487,27 @@
         "planning/evidence/dc02-switch-20261003/checks.json",
         "planning/evidence/dc02-switch-20261003/command-repl.log.gz"
       ]
+    },
+    {
+      "id": "SCN-1094",
+      "title": "Staged checkpoint history image readback retains old checkpoint and publisher snapshot custody",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-011",
+        "STO-026"
+      ],
+      "steps": [
+        "Write a valid FNSI image and five framed runs through the actual stage/install functions; valid bytes install once.",
+        "Corrupt a used page or unwritten zero page after fsync; refuse before rename, retain the old checkpoint and release the private writer snapshot.",
+        "Reject a damaged header; release on raw nonlocal exit and prewrite deferral; successful stage returns snapshot before publication admission can reopen."
+      ],
+      "evidence": [
+        "tests/test_native_checkpoint_image_readback.py",
+        "tests/native_checkpoint_image_readback_raw.lisp",
+        "tests/test_native_state_checkpoint.py"
+      ],
+      "implementation_note": "Actual raw host stage/readback/install, ACL2 header/page codec and kernel files exercised with recorded snapshot storage and framed-run verifier boundaries. Matching saved-image scenario and certification pending; no image/deployment claim."
     }
   ]
 }
