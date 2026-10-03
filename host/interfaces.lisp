@@ -4349,7 +4349,11 @@
   :class ::common-lisp-compliant
   :kinds ((salt natp)))
 
-(definterface fn-his-build-row
+(definterface fn-his-row-begin
+  :class ::common-lisp-compliant)
+(definterface fn-his-row-step
+  :class ::common-lisp-compliant)
+(definterface fn-his-row-grow
   :class ::common-lisp-compliant)
 
 (definterface fn-his-build-finish

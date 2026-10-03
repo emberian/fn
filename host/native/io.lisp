@@ -3525,6 +3525,22 @@ the publication buffer ST."
             (or (cdr (assoc 'fn-hrecs$c (user-stobj-alist *the-live-state*)))
                 (fnn-fault "the history image stobj is not in this image")))))
 
+(defun fnn-history-image-row-run (ev ordinal)
+  "Append EV to this publisher's private scratch; yield between page ticks.
+Growth is explicit and remains within the publication's prepaid image budget."
+  (let ((answer (fnn-call 'fn-his-row-begin ev *fnn-checkpoint-image-custody*)))
+    (loop
+      (destructuring-bind (verdict cursor &rest ignored) answer
+        (declare (ignore ignored))
+        (when (eq verdict :done) (return t))
+        (let ((grow (and (consp verdict) (eq (car verdict) :grow-image))))
+          (unless (or (eq verdict :yield) grow)
+            (fnn-refuse-io "history image row refused by name: ~a" verdict))
+          (fnn-checkpoint-yield "history-pages" ordinal)
+          (sb-thread:thread-yield)
+          (setq answer (fnn-call (if grow 'fn-his-row-grow 'fn-his-row-step)
+                                cursor *fnn-checkpoint-image-custody*)))))))
+
 (defun fnn-history-image-build (records node salt position)
   "The image of RECORDS for a publication whose log POSITION is (K TRAIL):
 (values POSITION' IMAGE), POSITION' = (K TRAIL BINDING) and IMAGE = (NP
@@ -3540,11 +3556,7 @@ WRITES); with no position, (values POSITION NIL): no binding, no image."
                         (when (fnn-core 'fn-his-build-yieldp ordinal)
                           (fnn-checkpoint-yield "history" ordinal)
                           (sb-thread:thread-yield))
-                        (let ((verdict (first (fnn-call 'fn-his-build-row
-                                                       ev *fnn-checkpoint-image-custody*))))
-                          (unless (eq verdict :ok)
-                            (fnn-refuse-io "history image row refused by name: ~a"
-                                           verdict))))
+                        (fnn-history-image-row-run ev ordinal))
                 (fnn-call 'fn-his-build-finish
                           (fnn-core 'fn-his-build-source-count records)
                           *fnn-checkpoint-image-custody*))))
