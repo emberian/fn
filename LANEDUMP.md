@@ -640,3 +640,14 @@ replace status whole-name conversion with indexed matching, current actual
 owner/dispatcher sparse fixtures, remaining LIST/HDR/XPAT/OVER family producers.
 Access freezes borrowed header spans in legacy-header-query; field normalization
 is Fn-nsw-step with same pin/COLD custody. No new agent or startup world.
+
+## Query-plan host entry declarations
+
+Five actually consumed Fn-qplan entries now declared in host/interfaces.lisp:
+at-cursorp/donep/window-size guard T; window/cursor-step guard NATP W and actual
+stobjs. Classes common-lisp-compliant match the unchanged facade's source
+admissions. No old Splan keystone is cited; full query residual/progress is
+PRF1287 debt. Existing books/served-query-plan Makefile+owner-host include is
+the native root; no extracted-driver root fabricated. Static declaration
+inventory5/twoNATP gates/no oldkeystones and whitespace check pass; world/table
+admission/global projections belong integrated current candidate.
