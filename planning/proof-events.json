@@ -18916,6 +18916,32 @@
           "name": "fn-brlc-open-ok-implies-decoded"
         }
       ]
+    },
+    {
+      "id": "PRF-1245",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-oqw-batch-effect-order"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oqw-a-failed-effect-ends-the-job"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oqw-receipt-outcomes-are-distinct"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1246",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-fjo-an-intent-moved-past-another-resolution-replays-alike"
+        }
+      ]
     }
   ]
 }

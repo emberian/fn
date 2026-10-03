@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2767 |
-| Certification roots in the Makefile | 2320 |
-| Books inside the root closure | 2585 |
-| `defthm` and `defthmd` events | 37133 |
-| `defun` events | 23552 |
+| Books read | 2771 |
+| Certification roots in the Makefile | 2324 |
+| Books inside the root closure | 2589 |
+| `defthm` and `defthmd` events | 37144 |
+| `defun` events | 23569 |
 | Functions with verified guards | 3920 |
-| Functions declared `:verify-guards nil` and never verified | 3041 |
-| Functions left at the default with an explicit guard | 12991 |
-| Functions left at the default with no guard | 3600 |
-| `assert-event` checks | 25950 |
+| Functions declared `:verify-guards nil` and never verified | 3044 |
+| Functions left at the default with an explicit guard | 13003 |
+| Functions left at the default with no guard | 3602 |
+| `assert-event` checks | 25996 |
 | `must-fail` checks | 2651 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 229 |
@@ -27,8 +27,8 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 402 |
 | Enabled-projection warnings | 79 |
 | Teeth-form warnings | 282 |
-| Include-hygiene warnings | 3609 |
-| Host-names warnings | 3152 |
+| Include-hygiene warnings | 3610 |
+| Host-names warnings | 3155 |
 | Hand-written-record warnings | 19 |
 
 ## Lints
@@ -687,6 +687,7 @@ that `make certify` requests.
 | `books/feed-correspondence.lisp` | root | 27 | 1 | 0/0/0/1 | 0 | 0 | 1 |
 | `books/feed-events.lisp` | root | 0 | 19 | 0/0/19/0 | 0 | 0 | 0 |
 | `books/feed-filename.lisp` | root | 2 | 21 | 0/0/21/0 | 0 | 0 | 0 |
+| `books/feed-journal-order.lisp` | root | 6 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/feed-journal.lisp` | root | 3 | 6 | 2/0/4/0 | 0 | 0 | 0 |
 | `books/feed-link-backoff.lisp` | root | 7 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/feed-live-carried.lisp` | closure | 22 | 21 | 21/0/0/0 | 0 | 0 | 0 |
@@ -1130,6 +1131,7 @@ that `make certify` requests.
 | `books/owner-prepare-outcome.lisp` | root | 22 | 13 | 8/0/5/0 | 0 | 0 | 0 |
 | `books/owner-prepare-served-ocl.lisp` | root | 50 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/owner-prepare-served.lisp` | root | 4 | 8 | 0/0/8/0 | 0 | 0 | 3 |
+| `books/owner-queued-work.lisp` | root | 5 | 10 | 0/0/10/0 | 0 | 0 | 0 |
 | `books/owner-read-result.lisp` | closure | 0 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/owner-reader-establishment.lisp` | closure | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/owner-reader-read.lisp` | root | 24 | 13 | 0/0/13/0 | 0 | 0 | 4 |
@@ -2175,6 +2177,7 @@ that `make certify` requests.
 | `tests/acl2/feed-connection-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 65 | 1 | 0 |
 | `tests/acl2/feed-correspondence-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 2 | 0 |
 | `tests/acl2/feed-filename-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 0 | 0 |
+| `tests/acl2/feed-journal-order-tests.lisp` | root | 0 | 4 | 0/3/1/0 | 14 | 0 | 0 |
 | `tests/acl2/feed-journal-tests.lisp` | root | 0 | 3 | 0/2/0/1 | 23 | 2 | 0 |
 | `tests/acl2/feed-link-backoff-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 15 | 0 | 0 |
 | `tests/acl2/feed-pause-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 17 | 0 | 0 |
@@ -2446,6 +2449,7 @@ that `make certify` requests.
 | `tests/acl2/owner-prepare-served-abort-tests.lisp` | root | 0 | 6 | 0/1/0/5 | 1 | 0 | 0 |
 | `tests/acl2/owner-prepare-served-events-tests.lisp` | root | 5 | 5 | 0/1/0/4 | 58 | 0 | 0 |
 | `tests/acl2/owner-prepare-served-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 70 | 0 | 0 |
+| `tests/acl2/owner-queued-work-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 32 | 0 | 0 |
 | `tests/acl2/owner-reader-establishment-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 2 | 1 | 0 |
 | `tests/acl2/owner-reader-read-tests.lisp` | root | 1 | 17 | 0/8/0/9 | 40 | 2 | 0 |
 | `tests/acl2/owner-reader-response-domain-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 3 | 0 | 0 |

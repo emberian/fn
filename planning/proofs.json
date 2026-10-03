@@ -21479,8 +21479,7 @@
         "tests/acl2/feed-journal-order-tests.lisp"
       ],
       "events": [
-        "fn-fjo-an-intent-moved-past-another-resolution-replays-alike",
-        "fn-fjo-intent-commutes-with-another-resolution"
+        "fn-fjo-an-intent-moved-past-another-resolution-replays-alike"
       ],
       "progress_note": "Lane owner-offlock (Opus 5.5, 2026-10-03). REPL-admitted on persvati (9.7k steps). Teeth: tests/acl2/feed-journal-order-tests.lisp (prefix fjot-): THE OLD-ORDER REPLAY TEST, two journals built by fn-own-feed-intent-records / fn-own-feed-resolution-records (batch N members 1 2, N+1 members 3 4, an earlier and a later intent) in both orders: both fn-feed-journalp, equal unresolved intents (4) and equal feeds (2 queued); a reached positive of the keystone; one removal per hypothesis (same key: the intent fold differs; I a commit: the feed queue order differs; R an intent: the intent fold differs)."
     }
