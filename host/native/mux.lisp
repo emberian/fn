@@ -91,6 +91,8 @@
   (closed nil)
   ;; Failed once-only cleanup receipts remain reachable after scheduling removal.
   (cleanup-debts nil)
+  ;; Once-only wake descriptor closure; uncertain close is terminal debt.
+  (wake-receipts nil)
   ;; r71 F13: an accept thread holds this loop's one pending-accept slot
   ;; (under the service's MUX-SLOT-LOCK) from before its accept(2) until the
   ;; socket is in INBOX or given back (fnn-mux-reserve).
@@ -461,7 +463,9 @@ A literal socket-shut return is not a descriptor-close/accounting proof."
                   (null (fnn-mux-loop-inbox loop))
                   (null (fnn-mux-loop-arrived loop))
                   (null (fnn-mux-loop-conns loop))
-                  (null (fnn-mux-loop-cleanup-debts loop)))))
+                  (null (fnn-mux-loop-cleanup-debts loop))
+                  (null (fnn-mux-loop-wake-read loop))
+                  (null (fnn-mux-loop-wake-write loop)))))
          (fnn-owner-service-mux service)))
 
 (defmacro fnn-mux-guarded ((loop conn) &body body)
@@ -1611,6 +1615,40 @@ queued); nothing otherwise."
       (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
         (sb-thread:condition-broadcast (fnn-owner-service-commit-ready service))))))
 
+(defun fnn-mux-close-wake (loop)
+  "Close each owned wake descriptor once, independently. EIO/EINTR retains
+its descriptor and calling receipt; physical uncertainty never permits retry."
+  (let ((service (fnn-mux-service loop)) (conditions nil))
+    (sb-thread:with-mutex ((fnn-mux-loop-lock loop))
+      (dolist (slot '(:read :write))
+        (let ((fd (if (eq slot :read) (fnn-mux-loop-wake-read loop)
+                    (fnn-mux-loop-wake-write loop))))
+          (when (and fd (not (assoc slot (fnn-mux-loop-wake-receipts loop))))
+            (let ((receipt (%make-fnn-mux-cleanup-receipt :key (list :wake slot fd))))
+              (push (cons slot receipt) (fnn-mux-loop-wake-receipts loop))
+              (handler-case
+                  (progn
+                    (setf (fnn-mux-cleanup-receipt-stage receipt) :calling)
+                    (let ((answer (sb-posix:close fd)))
+                      (setf (fnn-mux-cleanup-receipt-stage receipt) :returned
+                            (fnn-mux-cleanup-receipt-value receipt) answer)
+                      (unless (eql answer 0) (fnn-fault "mux wake close returned ~s" answer))
+                      (if (eq slot :read) (setf (fnn-mux-loop-wake-read loop) nil)
+                        (setf (fnn-mux-loop-wake-write loop) nil))
+                      (setf (fnn-mux-cleanup-receipt-section-returned receipt) t)))
+                (serious-condition (condition)
+                  (setf (fnn-mux-cleanup-receipt-condition receipt) condition)
+                  (push condition conditions)
+                  (fnn-mux-cleanup-debt loop nil receipt))))))))
+    ;; Fault escalation outside inbox exclusion, after both closes attempted.
+    ;; A diagnostic escape leaves every receipt discoverable on the loop.
+    (dolist (condition (nreverse conditions))
+      (handler-case (fnn-owner-thread-escape service condition "mux wake close")
+        (serious-condition () nil)))
+    nil))
+
+(def-actor fnn-mux-spawn :thread-name "fn owner io" :roster t)
+
 (defun fnn-mux-stop-loop (loop)
   "The service is stopping: deliver what a connection still has queued,
 including the completions a batch's COMPLETE handed this loop before the stop
@@ -1630,7 +1668,9 @@ the stop spared, fnn-owner-stop-service-locked), then end every connection."
     ;; and only then stops.  The loop may see the stop before it takes them:
     ;; build and queue them here, so the uncertain reply reaches the wire
     ;; below instead of a bare close (test_native_owner's two-client case).
-    (fnn-mux-take-arrived loop)
+    (unwind-protect
+        (progn
+          (fnn-mux-take-arrived loop)
     ;; One deadline for all of them, as the workers' sends ran in parallel
     ;; under one 10 s each: a stop never waits longer on its loops' output.
     (let ((deadline (fnn-mux-ticks +fnn-mux-send-seconds+)))
@@ -1641,10 +1681,8 @@ the stop spared, fnn-owner-stop-service-locked), then end every connection."
                             (subseq (fnn-mux-conn-out conn) (fnn-mux-conn-out-at conn)
                                     (fnn-mux-conn-out-end conn))
                             (fnn-seconds-to-deadline deadline))))
-        (fnn-mux-finish loop conn)))
-    (sb-thread:with-mutex ((fnn-mux-loop-lock loop))
-      (ignore-errors (sb-posix:close (fnn-mux-loop-wake-read loop)))
-      (ignore-errors (sb-posix:close (fnn-mux-loop-wake-write loop))))
+        (fnn-mux-finish loop conn))))
+      (fnn-mux-close-wake loop))
     service))
 
 (defun fnn-mux-run (loop)
@@ -1664,30 +1702,48 @@ the stop spared, fnn-owner-stop-service-locked), then end every connection."
              ;; defect of the loop itself, which serves every connection it
              ;; holds: the whole service stops (exit 4).
              (fnn-owner-fault-service service nil e)))
-      (unwind-protect (fnn-mux-stop-loop loop)
-        (fnn-with-roster (service)
-          (setf (fnn-owner-service-workers service)
-                (delete sb-thread:*current-thread*
-                        (fnn-owner-service-workers service) :test #'eq)))))))
+      ;; Registered actor custody survives its cleanup until physical join.
+      (fnn-mux-stop-loop loop))))
 
 (defun fnn-mux-start (service)
-  "Start the loops; each is a worker, so the stop joins it."
-  (fnn-with-roster (service)
-    (unless (fnn-owner-service-mux service)
-      (let ((loops
-              (loop repeat +fnn-mux-loops+
-                    collect (multiple-value-bind (r w) (sb-posix:pipe)
-                              (fnn-set-nonblocking r)
-                              (fnn-set-nonblocking w)
-                              (%make-fnn-mux-loop :service service
-                                                  :wake-read r :wake-write w)))))
-        (setf (fnn-owner-service-mux service) loops)
+  "Publish all loop custody before I/O. Each registered actor starts only
+after its wake descriptors are captured; failed setup retains every debt."
+  (let ((loops nil))
+    (fnn-with-roster (service)
+      (when (fnn-owner-service-mux service) (return-from fnn-mux-start nil))
+      (setq loops (loop repeat +fnn-mux-loops+ collect (%make-fnn-mux-loop :service service)))
+      (setf (fnn-owner-service-mux service) loops))
+    (handler-case
         (dolist (loop loops)
-          (let ((thread (sb-thread:make-thread
-                         (fnn-native-observed-thread-thunk (lambda () (fnn-mux-run loop)))
-                         :name "fn owner io")))
-            (setf (fnn-mux-loop-thread loop) thread)
-            (push thread (fnn-owner-service-workers service))))))))
+          (multiple-value-bind (read write) (sb-posix:pipe)
+            (setf (fnn-mux-loop-wake-read loop) read
+                  (fnn-mux-loop-wake-write loop) write)
+            (fnn-set-nonblocking read)
+            (fnn-set-nonblocking write))
+          (setf (fnn-mux-loop-thread loop)
+                (fnn-mux-spawn service (list loop)
+                  (lambda () (fnn-mux-run loop))
+                  (lambda (condition)
+                    (fnn-owner-thread-escape service condition "mux actor")))))
+      (serious-condition (primary)
+        (unwind-protect
+             (handler-case (fnn-owner-thread-escape service primary "mux startup")
+               (serious-condition () nil))
+          (dolist (loop loops)
+            ;; The starter may throw after creating a latched child. Its
+            ;; registration, not the missing returned value, identifies it.
+            (let* ((actor (fnn-owner-actor-for-custody service loop))
+                   (thread (or (fnn-mux-loop-thread loop)
+                               (and actor (fnn-owner-actor-thread actor)))))
+              (when thread (setf (fnn-mux-loop-thread loop) thread))
+              (unless (and thread (sb-thread:thread-alive-p thread))
+                (handler-case (fnn-mux-stop-loop loop)
+                  (serious-condition () nil)))))
+          ;; Existing started loops own their cleanup; wake them without
+          ;; treating notification or the failure as a physical join.
+          (dolist (loop loops)
+            (handler-case (fnn-mux-wake loop) (serious-condition () nil))))
+        (error primary)))))
 
 ;;; r71 F13: the sockets accepted and not yet taken by a loop are bounded by
 ;;; the loops, at most one each: an accept thread reserves a loop's free slot

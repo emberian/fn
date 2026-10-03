@@ -3454,3 +3454,15 @@ assign retains :calling alias. Native executor-drained-p exposes empty retained
 roster under E for Operator startup cleanup, not a typed settlement receipt.
 Current startup/worker recording semantic fixtures pass; full physical compressed
 ARTICLE/Web/reopen remains pending History's current initialized source world.
+
+Mux lifecycle continuation: loop objects published before pipe setup, starters
+now generated def-actor, worker roster retained until physical join. Failed
+setup closes unstarted loops; post-create failure recovers the actual actor
+thread before deciding whether pipe cleanup is safe. Once-only read/write wake
+close receipts retain ambiguous failures, close siblings independently and
+block root drain until descriptors/debts are gone. Real SBCL threads/pipe
+syscalls/setup+maker/latch/no-op terminator/raw throw/close failure schedules
+PASS (~0.25s). Existing mux connection cleanup PASS; await fixture selected
+actual capture/output-close helpers to repair its prior stale extraction.
+Full current source owner still awaiting History initializer; no physical
+endpoint or complete funding/HM claim transferred from these schedules.
