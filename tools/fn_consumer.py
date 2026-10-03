@@ -474,6 +474,8 @@ class Consumer:
             fields[key] = value
         if not {"application-id", "operation-id", "kind"} <= fields.keys():
             return None
+        if not fields["application-id"] or not fields["operation-id"] or fields["kind"] not in ("report-receipt", "reply"):
+            return None
         if magic == APP_MAGIC_V2:
             if fields.get("payload-encoding") != "base64" or "payload" in fields:
                 return None

@@ -24,7 +24,9 @@ class OpaqueEnvelope(unittest.TestCase):
                 self.assertTrue(all(len(line) <= 76 for line in source.split(b"\r\n\r\n", 2)[2].split(b"\r\n")))
                 for corrupt in (source + b"kind: reply\r\n", source.replace(b"payload-length: " + str(len(payload)).encode(), b"payload-length: 999"),
                     source.replace(b"payload-encoding: base64", b"payload-encoding: unknown"),
-                    source.replace(b"kind: report-receipt", b"kind: report-receipt\r\nkind: reply")):
+                    source.replace(b"kind: report-receipt", b"kind: report-receipt\r\nkind: reply"),
+                    source.replace(b"kind: report-receipt", b"kind: unsupported"),
+                    source.replace(b"operation-id: r1", b"operation-id: ")):
                     self.assertIsNone(self.client.envelope(corrupt))
 
     def test_legacy_saved_artifact_retry_never_reencodes_or_signs(self):
