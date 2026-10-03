@@ -242,3 +242,75 @@
          (equal (mv-nth 0 first) :drawn)
          (equal (mv-nth 0 second) :opened)))
   :rule-classes nil)
+
+; General representation/receipt preservation teeth. Removals below name
+; corrupted states and affirm every retained hypothesis and failed conclusion.
+(defthm rxt-draw-representation-and-receipts-witness
+ (let* ((ledger (update-fn-rl-worker-outcome 0 (update-fn-rl-worker-physical 1 (update-fn-rl-worker-operation 13 (update-fn-rl-worker-resident 7 (mv-nth 1 (fn-rl-install (list 10 0 0 1 1 0 0 0 5) *fn-rv-zero* *fn-rv-zero* 3 (create-fn-resource-ledger))))))))
+        (result (fn-rl-draw 2 (list 2 0 0 1 1 0 0 0 3) ledger))
+        (after (mv-nth 2 result)))
+  (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger)
+       (equal (mv-nth 0 result) :drawn) (equal (mv-nth 1 result) 1)
+       (fn-resource-ledgerp after) (fn-rl-wfp after)
+       (equal (fn-rl-worker-resident after) (fn-rl-worker-resident ledger))
+       (equal (fn-rl-worker-operation after) (fn-rl-worker-operation ledger))
+       (equal (fn-rl-worker-physical after) (fn-rl-worker-physical ledger))
+       (equal (fn-rl-worker-outcome after) (fn-rl-worker-outcome ledger))))
+ :rule-classes nil)
+
+(defthm rxt-settle-representation-and-receipts-witness
+ (let* ((before (update-fn-rl-worker-outcome 0 (update-fn-rl-worker-physical 1 (update-fn-rl-worker-operation 13 (update-fn-rl-worker-resident 7 (mv-nth 1 (fn-rl-install (list 10 0 0 1 1 0 0 0 5) *fn-rv-zero* *fn-rv-zero* 3 (create-fn-resource-ledger))))))))
+        (ledger (mv-nth 2 (fn-rl-draw 2 (list 2 0 0 1 1 0 0 0 3) before)))
+        (result (fn-rl-settle 2 1 ledger))
+        (after (mv-nth 1 result)))
+  (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger)
+       (equal (mv-nth 0 result) :settled)
+       (fn-resource-ledgerp after) (fn-rl-wfp after)
+       (equal (fn-rl-worker-resident after) (fn-rl-worker-resident ledger))
+       (equal (fn-rl-worker-operation after) (fn-rl-worker-operation ledger))
+       (equal (fn-rl-worker-physical after) (fn-rl-worker-physical ledger))
+       (equal (fn-rl-worker-outcome after) (fn-rl-worker-outcome ledger))))
+ :rule-classes nil)
+
+(defthm rxt-draw-representation-without-type-corrupted-state-witness
+ (let* ((ledger (update-nth 0 nil (create-fn-resource-ledger))) (after (mv-nth 2 (fn-rl-draw 0 nil ledger))))
+  (and (and (not (fn-resource-ledgerp ledger)) (fn-rl-wfp ledger))
+       (not (and (fn-resource-ledgerp after) (fn-rl-wfp after)))))
+ :rule-classes nil)
+
+(defthm rxt-draw-representation-without-shape-corrupted-state-witness
+ (let* ((ledger (update-fn-rl-count 1 (create-fn-resource-ledger))) (after (mv-nth 2 (fn-rl-draw 0 nil ledger))))
+  (and (and (fn-resource-ledgerp ledger) (not (fn-rl-wfp ledger)))
+       (not (and (fn-resource-ledgerp after) (fn-rl-wfp after)))))
+ :rule-classes nil)
+
+(defthm rxt-settle-representation-without-type-corrupted-state-witness
+ (let* ((ledger (update-nth 0 nil (create-fn-resource-ledger))) (after (mv-nth 1 (fn-rl-settle 0 1 ledger))))
+  (and (and (not (fn-resource-ledgerp ledger)) (fn-rl-wfp ledger))
+       (not (and (fn-resource-ledgerp after) (fn-rl-wfp after)))))
+ :rule-classes nil)
+
+(defthm rxt-settle-representation-without-shape-corrupted-state-witness
+ (let* ((ledger (update-fn-rl-count 1 (create-fn-resource-ledger))) (after (mv-nth 1 (fn-rl-settle 0 1 ledger))))
+  (and (and (fn-resource-ledgerp ledger) (not (fn-rl-wfp ledger)))
+       (not (and (fn-resource-ledgerp after) (fn-rl-wfp after)))))
+ :rule-classes nil)
+
+(defthm rxt-noncanonical-demand-refused-witness
+ (let* ((ledger (update-fn-rl-worker-outcome 0 (update-fn-rl-worker-physical 1 (update-fn-rl-worker-operation 13 (update-fn-rl-worker-resident 7 (mv-nth 1 (fn-rl-install (list 10 0 0 1 1 0 0 0 5) *fn-rv-zero* *fn-rv-zero* 3 (create-fn-resource-ledger))))))))
+        (result (fn-rl-draw 2 '(2 . 3) ledger)))
+  (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger)
+       (not (true-listp '(2 . 3)))
+       (equal (mv-nth 0 result) :invalid-draw)
+       (equal (mv-nth 1 result) 0) (equal (mv-nth 2 result) ledger)
+       (fn-resource-ledgerp (mv-nth 2 result)) (fn-rl-wfp (mv-nth 2 result))))
+ :rule-classes nil)
+
+(defthm rxt-exhausted-generation-refused-witness
+ (let* ((ledger (update-fn-rl-gensi 2 *fn-rl-word-max* (update-fn-rl-worker-outcome 0 (update-fn-rl-worker-physical 1 (update-fn-rl-worker-operation 13 (update-fn-rl-worker-resident 7 (mv-nth 1 (fn-rl-install (list 10 0 0 1 1 0 0 0 5) *fn-rv-zero* *fn-rv-zero* 3 (create-fn-resource-ledger)))))))))
+        (result (fn-rl-draw 2 (list 2 0 0 1 1 0 0 0 3) ledger)))
+  (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger)
+       (equal (mv-nth 0 result) :slot-exhausted)
+       (equal (mv-nth 1 result) 0) (equal (mv-nth 2 result) ledger)
+       (equal (fn-rl-gensi 2 (mv-nth 2 result)) *fn-rl-word-max*)))
+ :rule-classes nil)
