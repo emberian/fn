@@ -357,6 +357,35 @@ class Consumer:
                 "tables": {table: self.db.execute("SELECT count(*) FROM " + table).fetchone()[0] for table in INSPECTION_TABLES if table in tables},
                 "meta": self.inspect_rows("meta"), "application_state": self.inspect_rows("app_state")}
 
+    def export_artifact(self, operation_id, directory):
+        """Export the saved public submission, including its exact signatures.
+
+        No signing input or native process is opened. The manifest is written
+        last; an I/O fault leaves a visibly incomplete directory and exits 4.
+        """
+        row = self.db.execute("SELECT id,message_id,source,ed_sig,ml_sig,principal,ed_public,ml_public_pem,keyring_generation,context FROM submissions WHERE application_id=? AND operation_id=?", (self.config["application_id"], operation_id)).fetchone()
+        if row is None:
+            raise Stop(1, "operation has no saved submission artifact")
+        files = dict(zip(("source.eml", "ed.sig", "ml.sig", "ed.public", "ml.public.pem"), (row[2], row[3], row[4], row[6], row[7])))
+        if not all(isinstance(data, bytes) for data in files.values()):
+            raise Stop(4, "saved submission has malformed public artifact bytes")
+        manifest = {"format": "fn-consumer-public-artifact-1", "application_id": self.config["application_id"],
+                    "operation_id": operation_id, "submission_id": row[0], "message_id": row[1],
+                    "principal": row[5], "keyring_generation": row[8], "context": json.loads(row[9]),
+                    "files": {name: {"octets": len(data), "sha256": digest(data)} for name, data in files.items()},
+                    "outcome": submission_state(*self.journal(row[0]))}
+        try:
+            directory.mkdir(mode=0o700)
+        except FileExistsError:
+            raise Stop(1, "artifact output already exists")
+        for name, data in files.items():
+            with (directory / name).open("xb") as output:
+                output.write(data)
+        with (directory / "manifest.json").open("x", encoding="utf-8") as output:
+            json.dump(manifest, output, sort_keys=True, indent=2)
+            output.write("\n")
+        return manifest
+
     # -- native calls --------------------------------------------------------
     def native(self, *words):
         try:
@@ -1095,6 +1124,9 @@ def build_parser():
     query.add_argument("--bytes", action="store_true")
     export = sub.add_parser("export", help="export a consistent public client-state snapshot")
     export.add_argument("output", type=Path)
+    artifact = sub.add_parser("artifact", help="export an immutable public source/signature/key bundle")
+    artifact.add_argument("operation_id")
+    artifact.add_argument("output", type=Path)
     return parser
 
 
@@ -1104,7 +1136,7 @@ def main(argv=None):
     if args.command == "report" and (args.payload is None) == (args.payload_file is None):
         parser.error("report needs exactly one PAYLOAD or --payload-file")
     try:
-        consumer = Consumer(args.config, read_only=args.command in ("payload", "status", "inspect", "query", "export"))
+        consumer = Consumer(args.config, read_only=args.command in ("payload", "status", "inspect", "query", "export", "artifact"))
     except Stop as stop:
         sys.stderr.write("consumer stopped: %s\n" % stop)
         return stop.code
@@ -1150,6 +1182,9 @@ def main(argv=None):
             except FileExistsError:
                 raise Stop(1, "payload output already exists")
             return 0
+        elif args.command == "artifact":
+            print(json.dumps(consumer.export_artifact(args.operation_id, args.output), sort_keys=True))
+            return 0
         summary = consumer.summary()
         print(json.dumps(summary, sort_keys=True))
         if args.command != "summary":
@@ -1170,7 +1205,7 @@ def main(argv=None):
         if consumer.db.in_transaction:
             consumer.db.execute("ROLLBACK")
         sys.stderr.write("consumer stopped: %s\n" % stop)
-        if args.command not in ("payload", "status", "inspect", "query", "export"):
+        if args.command not in ("payload", "status", "inspect", "query", "export", "artifact"):
             print(json.dumps(consumer.summary(), sort_keys=True))
         return stop.code
     except (ValueError, KeyError, OSError, sqlite3.Error) as fault:

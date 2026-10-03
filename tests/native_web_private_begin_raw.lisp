@@ -6,6 +6,9 @@
 (load-page-forms "books/web-session.lisp"
  '(fn-wss-car fn-web-private-begin-row-p fn-web-private-begin-p fn-web-private-begin-step))
 (load-page-forms "host/web-host.lisp" '(fn-web-host-private-begin-step))
+; This fixture records the outer private gate, not the new body producer.
+(defun fn-wpf-private-begin (config action in out)
+  (fn-web-private-begin-step config action in out))
 (defvar *private-begin-held* nil)
 (defvar *private-begin-release* nil)
 (defun fn-wss-gate (row session sessions ctx config in out)
@@ -20,7 +23,7 @@
 (let* ((row (find :post *fn-web-routes* :key #'fn-web-row-name))
        (action (list :private-begin row :captured-session :captured-context))
        (conn (fixture-conn 51 :event 44)) (healthy (fixture-conn 52 :event))
-       (face (%make-fnn-web-face :service :service :wake-closed t :conns (list conn healthy)))
+       (face (%make-fnn-web-face :service *fixture-service* :wake-closed t :conns (list conn healthy)))
        (saved-call (symbol-function 'fnn-call)) (saved-owner (symbol-function 'fnn-owner-serialized))
        (main-thread sb-thread:*current-thread*) (worker nil))
   (assert (fn-web-private-begin-p action))

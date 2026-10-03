@@ -44,3 +44,34 @@
       (fn-test-tcf-message (fn-tcl-make-sess-init 10 65536 1048576 '(100 116 110 58) nil) nil)
       (fn-test-tcf-message (fn-tcl-make-xfer-segment 3 7 nil '(1 2 3 4)) nil)
       (fn-test-tcf-message (fn-tcl-make-xfer-segment 0 7 nil '(1 2 3 4)) nil)))
+
+
+(include-book "../../books/tcpcl-input-materialize")
+(defun fn-test-tcim-window (fn-octets)
+ (declare (xargs :stobjs fn-octets :verify-guards nil))
+ (let* ((xs (append (make-list 4096 :initial-element 17) '(18 19 20)))
+        (fn-octets (fn-octets-from-list xs fn-octets))
+        (r (fn-tcim-turn 4099 '(21 22) fn-octets))
+        (v (and (equal r (list (fn-tcim-start 4099)
+                     (append (fn-oct-slice-list (fn-tcim-start 4099) 4099 fn-octets) '(21 22))))
+                (equal (car r) 3) (equal (len (cadr r)) 4098)
+                (equal (fn-tcim-turn (car r) (cadr r) fn-octets)
+                       (list 0 (append xs '(21 22)))))))
+  (mv v fn-octets)))
+; Unconditional boundary positive, using the actual private concrete buffer
+; operation over two windows. There is no removable boundary hypothesis.
+(defun fn-test-tcim-window-value ()
+ (with-local-stobj fn-octets
+  (mv-let (v fn-octets) (fn-test-tcim-window fn-octets) v)))
+(assert-event (fn-test-tcim-window-value))
+; Scalar-quantum literal positive and sole hypothesis-removal witness.
+(assert-event
+ (let ((end 4099))
+  (and (natp end) (natp (fn-tcim-start end)) (<= (fn-tcim-start end) end)
+       (<= (- end (fn-tcim-start end)) 4096))))
+(assert-event
+ (with-guard-checking :none
+  (let ((end -1))
+   (and (not (natp end))
+        (not (and (natp (fn-tcim-start end)) (<= (fn-tcim-start end) end)
+                  (<= (- end (fn-tcim-start end)) 4096)))))))

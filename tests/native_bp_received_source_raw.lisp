@@ -29,7 +29,8 @@
 (defvar *bank-recording-core* (symbol-function 'fnn-core))
 (defun fnn-core (name &rest args)
  (case name
-  ((fn-bpsrx-start fn-bpsrx-turn fn-bpsrx-authorizedp fn-tsc-at fn-bpsg-step fn-bpsg-release-ready) (apply name args))
+  ((fn-tcim-turn fn-bpsrx-start fn-bpsrx-turn fn-bpsrx-authorizedp fn-bpsrx-abort-plan fn-tsc-at fn-bpsg-step fn-bpsg-release-ready) (apply name args))
+  (fn-tclsctl-turn (list (first args) nil))
   (fn-tcl-source-result-action (if (eq (caar args) :source-yield) :retain :settle))
   (fn-tcl-source-result-token (cadar args))
   (fn-tcl-delivery-plan (third args))
@@ -114,3 +115,33 @@
     (incf services) (when (= services 10) (throw 'finished t))) (lambda () nil)))
  (assert (= *idle-waits* 9)))
 (format t "PASS actual node cadence: 16384-byte private source/all8 services with zero artificial sleeps; idle node retains waits.~%")
+
+;;; Actual teardown: only the known pre-publication private operation may be
+;;; retired. Independent physical close controls return; publication entry and
+;;; unknown providers keep their root/Store authority held.
+(dolist (phase '(:copy :convert :publish :publishing :foreign))
+ (dolist (physical '(:closed :unobserved))
+  (let* ((bank (test-bank)) (conn (make-fnn-tcl-conn))
+         (grant (test-grant bank 2 :incoming :socket conn))
+         (root '((65 66))) (*close-receipt* physical) (*flushes* 0)
+         (job (second (fnn-bp-session-source-start grant conn 7 root 2 2)))
+         (private (member phase '(:copy :convert :publish))))
+   (setf (fnn-tclc-source-pending conn) t (fnn-tclc-source-root conn) root
+         (fnn-tclc-source-held conn) '(:end-ack) (fnn-tclc-held conn) '(:end-ack)
+         (fnn-tclc-source-token conn) (if (eq phase :foreign) :foreign job)
+         (fnn-bpsg-turn grant) (lambda () (error "retired turn ran"))
+         (fnn-bpsg-finish grant) (lambda (&rest xs) (declare (ignore xs)) (error "retired finish ran")))
+   (setf (fnn-bpsrx-phase job) phase)
+   (fnn-bp-session-abort-all bank nil)
+   (assert (null (fnn-bpsg-turn grant))) (assert (null (fnn-bpsg-finish grant)))
+   (assert (zerop *flushes*))
+   (if private
+    (progn
+     (assert (null (fnn-tclc-source-root conn))) (assert (null (fnn-tclc-source-token conn)))
+     (assert (null (fnn-tclc-source-held conn))) (assert (null (fnn-bpsg-conn grant)))
+     (assert (fifth (fnn-bpsg-row grant)))
+     (assert (eq (not (null (gethash grant (fnn-bpsb-held bank)))) (eq physical :unobserved))))
+    (progn
+     (assert (eq (fnn-tclc-source-root conn) root)) (assert (fnn-tclc-source-token conn))
+     (assert (gethash grant (fnn-bpsb-held bank))) (assert (not (fifth (fnn-bpsg-row grant)))))))))
+(format t "PASS private pre-publication retirement: copy/convert/publish drop aliases without ACK; publishing/foreign remain held; ambiguous physical close never returns grant.~%")

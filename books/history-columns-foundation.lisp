@@ -50,6 +50,17 @@
 (include-book "history-columns-logic")
 (local (include-book "arithmetic/top" :dir :system))
 (local (in-theory (disable (tau-system))))
+; Keep positional column terms stable when loaded after a codec's ADT
+; vocabulary. These optional surrounding rules are absent in the standalone
+; dependency world; the local event disables only rules actually present.
+(local
+ (make-event
+  (value
+   (list 'in-theory
+    (cons 'disable
+     (append (and (getpropc 'adt-nth-0 'theorem nil (w state)) '(adt-nth-0))
+             (and (getpropc 'adt-nth-1+ 'theorem nil (w state)) '(adt-nth-1+))))))))
+
 
 ; The foundation: the columns.
 
@@ -202,7 +213,10 @@
    (implies (natp i)
             (equal (nth i (resize-list l k nil))
                    (if (< i (nfix k)) (nth i l) nil)))
-   :hints (("Goal" :in-theory (disable resize-list)
+   :hints (("Goal" :in-theory (union-theories
+             '(fn-hist-resize-induct fn-hist-resize-list-open nth nfix natp posp zp
+               not car-cons cdr-cons fold-consts-in-+)
+             (theory 'minimal-theory))
             :induct (fn-hist-resize-induct i l k)))))
 
 (local (in-theory (disable fn-hist-resize-list-open)))
@@ -221,8 +235,10 @@
                            (nth 2 c)))
                  (nth 2 c))))
    :hints (("Goal" :use ((:instance fn-hist-grow-fields (fn-hist$c c)))
-            :in-theory (e/d (fn-hist-open) (fn-hist$c-grow nth update-nth fn-hist-key-msgid fn-hist-hash
-))))))
+             :in-theory (union-theories
+              '(fn-hist-open fn-hist$c-append nth-update-nth car-cons cdr-cons
+                fold-consts-in-+ nfix natp zp)
+              (theory 'minimal-theory))))))
 
 (local (in-theory (disable fn-hist$c-append)))
 
@@ -280,6 +296,14 @@
             (equal (nth (nth 1 c) (nth 0 (fn-hist$c-append x c))) x))))
 
 (local
+ (defthm fn-hist-nth-cons-natural
+  (implies (natp i)
+   (equal (nth i (cons x xs))
+          (if (zp i) x (nth (- i 1) xs))))
+  :hints (("Goal" :in-theory (union-theories
+             '(nth nfix natp zp car-cons cdr-cons) (theory 'minimal-theory))))))
+
+(local
  (defthm fn-hist-build-rows
    (implies (and (natp i) (natp (nth 1 c))
                  (< i (+ (nth 1 c) (len events))))
@@ -287,7 +311,8 @@
                    (if (< i (nth 1 c))
                        (nth i (nth 0 c))
                      (nth (- i (nth 1 c)) events))))
-   :hints (("Goal" :in-theory (enable fn-hist-build)
+   :hints (("Goal" :in-theory (e/d (fn-hist-build fn-hist-nth-cons-natural)
+                             (fn-hist$c-grow fn-hist$c-append nth update-nth))
             :induct (fn-hist-build events c)))))
 
 (local
@@ -389,7 +414,10 @@
    :hints (("Goal" :in-theory (e/d (fn-hist-open)
                                    (nth update-nth fn-hist-collect-acc
                                     fn-hist-collect-append-acc fn-held-p
-                                    fn-cei-event-article))))))
+                                    fn-cei-event-article fn-hist$c-grow (:definition fn-hist$c-collect)))
+            :induct (fn-hist$c-collect m s acc c)
+            :expand ((fn-hist$c-collect m s acc c)
+                     (fn-hist$c-collect m s acc (fn-hist$c-append x c)))))))
 
 (defun fn-hist$c-bucket (h c)
   (declare (xargs :guard t :verify-guards nil))

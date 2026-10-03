@@ -9092,7 +9092,8 @@
         "tests/native_tcpcl_frame_cursor_raw.lisp",
         "tests/native_bp_received_source_raw.lisp",
         "tests/acl2/tcpcl-frame-cursor-tests.lisp",
-        "tests/acl2/bp-session-received-source-tests.lisp"
+        "tests/acl2/bp-session-received-source-tests.lisp",
+        "tests/native_tcpcl_source_control_raw.lisp"
       ],
       "note": "Actual source raw scheduler/custody discrimination passes; canonical two-peer DTN image scenario and comprehensive physical-cut/restart qualification pending. Native selector now prepared using actual image tcpcl send with no payload/EXPECT1, canonical same-source producer and receiver Store reopen; execution pending matching image. S068 now prepares actual concrete input framing and private received operation under incoming grant; whole-frame decode remains open. Source-loaded actual ACL2/native process is the integration target, saved image is optional; raw predicates/consumer pass do not imply that result.",
       "implementation": {
@@ -9129,9 +9130,10 @@
         "tests/native_web_article_stream_raw.lisp",
         "planning/evidence/web-stream-consumers-2026-10-03.md",
         "tests/native_web_reactor_raw.lisp",
-        "tests/native_web_article_producer_raw.lisp"
+        "tests/native_web_article_producer_raw.lisp",
+        "tests/acl2/web-stream-consumer-source-tests.lisp"
       ],
-      "note": "Raw actual-source consumer passes. PRF-1283 guard/refinement, matching native image and Web allocation/repeated-read tariff remain pending. Actual shared ARTICLE byte-window/native Web composition passes with recording arena/owner/cold/I/O seams; old work-only producer returns5408 bytes for W4096 and fails the same assertion. This is not composed browser execution."
+      "note": "Raw actual-source consumer passes. PRF-1283 guard/refinement, matching native image and Web allocation/repeated-read tariff remain pending. Actual shared ARTICLE byte-window/native Web composition passes with recording arena/owner/cold/I/O seams; old work-only producer returns5408 bytes for W4096 and fails the same assertion. This is not composed browser execution. Actual ACL2 program/window/host wrapper source admission and exact legacy page-plan/count/emit witnesses pass in one coherent stobj world; guard/refinement and complete native endpoint qualification remain open."
     },
     {
       "id": "SCN-1114",
@@ -9153,9 +9155,10 @@
       ],
       "evidence": [
         "tests/native_web_over_stream_raw.lisp",
-        "planning/evidence/web-stream-consumers-2026-10-03.md"
+        "planning/evidence/web-stream-consumers-2026-10-03.md",
+        "tests/acl2/web-stream-consumer-source-tests.lisp"
       ],
-      "note": "Actual raw consumer passes; program refinement, qualified image and Web repeated-read tariff pending."
+      "note": "Actual raw consumer passes; program refinement, qualified image and Web repeated-read tariff pending. Actual ACL2 program/window/host wrapper source admission and exact legacy page-plan/count/emit witnesses pass in one coherent stobj world; guard/refinement and complete native endpoint qualification remain open."
     },
     {
       "id": "SCN-1115",
@@ -9177,9 +9180,10 @@
       ],
       "evidence": [
         "tests/native_web_list_stream_raw.lisp",
-        "planning/evidence/web-stream-consumers-2026-10-03.md"
+        "planning/evidence/web-stream-consumers-2026-10-03.md",
+        "tests/acl2/web-stream-consumer-source-tests.lisp"
       ],
-      "note": "Actual raw source consumer passes. Original NNTP LIST producer still materializes its captured reply; source programs/arithmetic profile/refinement and matching image/funding are pending."
+      "note": "Actual raw source consumer passes. Original NNTP LIST producer still materializes its captured reply; source programs/arithmetic profile/refinement and matching image/funding are pending. Actual ACL2 program/window/host wrapper source admission and exact legacy page-plan/count/emit witnesses pass in one coherent stobj world; guard/refinement and complete native endpoint qualification remain open."
     },
     {
       "id": "SCN-1117",
@@ -9195,7 +9199,10 @@
       "steps": [
         "Seal all34 fixture payloads through actual fn-cat-intern-list, commit through generic fn-cat-commit, then capture the raw archive from visible held records.",
         "Choose sparse survivors1/34 and empty availability, assert raw and available statep plus exact stored facts/arena bytes correspondence.",
-        "Compare complete GROUP, LISTGROUP, NEXT, LAST, LIST ACTIVE and LIST COUNTS helper results with the captured logical available archive; verify raw number2 and Message-ID remain retained."
+        "Compare complete GROUP, LISTGROUP, NEXT, LAST, LIST ACTIVE and LIST COUNTS helper results with the captured logical available archive; verify raw number2 and Message-ID remain retained.",
+        "Run ten command/parsed-event comparisons per sparse/empty fixture, retaining raw retrieval subjects.",
+        "Read complete GROUP wire bytes through actual fn-av-mca-read-span over a constructed auth reader/indexed pin and funded credit ledger.",
+        "Advance fixed captured-view summary one numbered metadata probe at a time; verify eight calls leave26 of34 candidates, then complete sparse/prefix/tail/empty results."
       ],
       "expected": [
         "Sparse metadata navigation moves1→34 and34→1 while enumerating only1/34; complete responses equal the bytes reference.",
@@ -9203,10 +9210,14 @@
         "Fixture is source live-stobj command-helper acceptance, not production owner/capture proof or native reclaim qualification. LIST still has a whole-reply producer frontier."
       ],
       "evidence": [
-        "tests/acl2/served-available-commands-tests.lisp"
+        "tests/acl2/served-available-commands-tests.lisp",
+        "tests/acl2/served-available-read-tests.lisp",
+        "planning/evidence/served-available-owner-20261003/checks.json",
+        "tests/acl2/group-summary-cursor-tests.lisp",
+        "planning/evidence/group-summary-cursor-20261003/checks.json"
       ],
-      "execution_scope": "Actual arena-intern and generic catalog writer with guarded specialized formatter/navigation exports; source fixtures pass. Generated dispatcher and owner route propagation/proof/image remain pending.",
-      "notes": " Actual owner PROGRAM source route consumes the selective dispatcher through fn-av-mca-read-span; full owner/native fixture and selective refinement remain pending."
+      "execution_scope": "Actual source-loaded guarded command book plus PROGRAM event/owner-credit endpoints; twenty command/event comparisons and two full owner GROUP endpoints pass. No saved image/certificate or selective owner invariant transfer.",
+      "notes": "LIST retains a whole-reply producer frontier; PROGRAM guards, selective owner proof/captured stability and physical tariffs remain open."
     },
     {
       "id": "SCN-1118",
@@ -9317,9 +9328,13 @@
         "test": "tests/native_article_stream_source.lisp"
       },
       "evidence": [
-        "tests/native_article_stream_source.lisp"
+        "tests/native_article_stream_source.lisp",
+        "tests/native_article_ready_source.lisp",
+        "planning/evidence/article-stream-source-20261003.log",
+        "planning/evidence/article-stream-source-20261003-selection.log",
+        "planning/evidence/article-source-cache-admission-20261003.log"
       ],
-      "execution_scope": "Actual shared core function bodies over the list arena model pass5128 finite checks. Owner/native cold and Web consumer execution remain pending; not physical-window or universal refinement evidence."
+      "execution_scope": "Actual shared core function bodies69488 finite checks; actual owner completion, PROGRAM wrapper and native READY/render helpers execute with recorded list-arena, owner-state installation and cold I/O seams (70841 aggregate checks). Selection commits once after complete framing; replay does not install again; RAW and READY cold continuations are retained by identity; exact503/423/430 refusals and unchanged reader selection; global generation change under unchanged per-connection pin is allowed. Web actual source stress fbcae3cd0 has independent recorded consumer evidence. Full actual parsed factory and physical decoded-window/browser execution, guard proofs and universal owner/reference boundary remain pending. Subsequent lazy Xref captures original membership spine, filters one word/lookup character per transition, preserves duplicate and invalid-word reference behavior; source126337 core/127690 aggregate owner-native checks pass5000-character group cases, windows1/3/4096. Changed core34forms and component bounds warm admitted0.08s. Full initial selection/setup and owner/Xref boundary proofs remain open. Resumable numeric/current selection and withdrawn lookup now pass126385 core/127949 aggregate checks including absent420/423 and withdrawn423, with unchanged selection until READY. Actual parsed factory and physical runtime remain pending. Exact selected definitions and PROGRAM factory/READY wrappers normally admitted in fresh ad8+gate336 cached source world, then raw native helpers reached CLI entry; ordinary renderer ABI mismatch remains explicit. No parsed factory, socket or physical decoded execution claim."
     },
     {
       "id": "SCN-1121",
@@ -9340,9 +9355,81 @@
         "Unauthorized connections do not evaluate; owned socket is removed after shutdown."
       ],
       "implementation": {
-        "test": "tests/test_dev_repl.py"
+        "test": "tests/test_dev_repl.py",
+        "native_test": "tests/dev_repl_native.py"
       },
-      "execution_scope": "Socket/source fixture only: actual full native owner composition and ACL2 LD admission pending."
+      "execution_scope": "Actual socket fixtures plus real native owner admission/refusal continuation, normal shutdown and fault-fence exit4/socket cleanup. Native coordinate: ad8 source cache +gate336+cde lexical fixes +177b21dfb dev REPL/trace overlays; not whole current dev qualification."
+    },
+    {
+      "id": "SCN-1123",
+      "title": "Local client waits according to submission size without inventing acceptance",
+      "requirements": [
+        "HST-008"
+      ],
+      "setup": "Actual ACL2 observation policy and raw control exchange/read loop, with named virtual socket/clock and octet-vector adapters.",
+      "steps": [
+        "Return a complete reply after thirteen seconds for a ten MiB frame.",
+        "Apply explicit short and long wait overrides.",
+        "Expire the scaled budget and inject connection/write failures."
+      ],
+      "expected": [
+        "Large frame gets 170 seconds and complete reply; small default gets eleven seconds.",
+        "Explicit waits retain their exact durations.",
+        "No timeout implies accepted; before submission is refused and after submission uncertain."
+      ],
+      "implementation": {
+        "test": "tests/test_control_observation.py"
+      },
+      "execution_scope": "Actual source consumer and normal ACL2 guard/boundary checks; matching full-owner ten MiB scenario pending."
+    },
+    {
+      "id": "SCN-1124",
+      "title": "Withdrawal authorization remains visible when cause submission fails",
+      "requirements": [
+        "HST-008"
+      ],
+      "setup": "Literal native moderation dispatcher, ACL2 combined outcome and wrapper; named publication/submission adapters record actual call order and completed publication.",
+      "steps": [
+        "Publish withdrawal authorization, then return each cause outcome.",
+        "Refuse before publication and check no cause submission.",
+        "Execute already-authorized plan and malformed cause results."
+      ],
+      "expected": [
+        "Incomplete cause never reports bare refusal of the whole action; reason explicitly names published withdrawal authorization.",
+        "Cause fault remains fault and successful/duplicate cause remains successful.",
+        "Admin refusal does not submit; malformed cause is fault."
+      ],
+      "implementation": {
+        "test": "tests/test_moderation_outcome.py"
+      },
+      "execution_scope": "Actual source dispatcher and normal ACL2 guard/admission; complete native durability/transport and concurrent authority scenario pending."
+    },
+    {
+      "id": "SCN-1122",
+      "title": "Authored POST body windows retain source and await340 before feeding",
+      "milestone": "M6",
+      "status": "specified",
+      "requirements": [
+        "WEB-006"
+      ],
+      "steps": [
+        "Compare encoded body cursor against fn-wss-emit-body plus dot terminator at quanta1/2/7/4096, including CR/LF, percent errors and5000 dot lines.",
+        "Run actual native prepare/feed under partial117-byte consumed results; retain the original request source across every step.",
+        "Check core valid/bad-CSRF BEGIN and340/refusal continuation against the prior session machine.",
+        "Traverse10003 skipped field bytes and first duplicates incrementally; compare10003-byte subject plus UTF8 encoded-word boundary atW1/7/4096 to exact prior authored wire."
+      ],
+      "expected": [
+        "Every window bounded, exact complete body and framing.",
+        "No whole authored body in OUT; no source replacement or lost partial input.",
+        "Only340 activates body; refusal/uncertain semantics preserved."
+      ],
+      "evidence": [
+        "tests/native_web_post_stream_raw.lisp",
+        "tests/acl2/web-post-stream-tests.lisp",
+        "planning/evidence/web-post-and-producer-source-2026-10-03.md",
+        "planning/evidence/web-post-browser-red-2026-10-03.md"
+      ],
+      "note": "Actual source programs admit and exact valid/badCSRF/remove/UTF8/duplicate and long subject tests pass, with concrete fill invariant-risk. Native4096 form turns and partial117 feed pass. Full retained request/subject and refused form path, profile-dependent fixed prefix construction and qualified funding remain open. Actual selected fullbrowser replay is RED: account/read precede firstPOST RemoteDisconnected and subsequent listener loss; rootinherits native diagnostic capture/current-union repair. Positiveprogram/raw assertions do not override this actualfailure."
     }
   ]
 }

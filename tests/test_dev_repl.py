@@ -6,6 +6,7 @@ import subprocess
 import tempfile
 import unittest
 import sys
+import socket
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT/'tools'))
 import fn_dev
@@ -43,6 +44,10 @@ class DeveloperRepl(unittest.TestCase):
                     self.assertEqual(fn_dev.evaluate(sock, '*dev-test-value*', 3)[1].strip(), '17')
                     ok, text = fn_dev.evaluate(sock, '(values 1 2 3)', 3)
                     self.assertTrue(ok); self.assertEqual(text.splitlines(), ['1', '2', '3'])
+                    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as invalid:
+                        invalid.settimeout(3); invalid.connect(str(sock))
+                        invalid.sendall(b'\xff'); invalid.shutdown(socket.SHUT_WR)
+                        self.assertEqual(invalid.recv(128), b'')
                     self.assertFalse(fn_dev.evaluate(sock, '#.(error "reader eval")', 3)[0])
                     self.assertFalse(fn_dev.evaluate(sock, '(+ 1 2) (+ 3 4)', 3)[0])
                     self.assertTrue(fn_dev.evaluate(sock, '(+ 1 2)', 3)[0])
@@ -68,6 +73,24 @@ class DeveloperRepl(unittest.TestCase):
                     if process.poll() is None:
                         process.terminate(); process.wait(timeout=5)
                     process.stdin.close(); process.stdout.close()
+
+    @unittest.skipUnless(os.environ.get('FN_DEV_REPL_ACL2') == '1', 'opt-in real ACL2 execution')
+    def test_actual_acl2_admission_and_refusal(self):
+        with tempfile.TemporaryDirectory() as directory:
+            d = Path(directory)
+            source = (ROOT/'host/native/dev-repl.lisp').read_text().split('(defun fnn-dev-repl-loop')[0]
+            events = d/'events.lisp'
+            events.write_text((ROOT/'host/native/trace.lisp').read_text() + '\n' + source + '\n'
+                              + (ROOT/'tests/fixtures/dev_repl_acl2.lisp').read_text())
+            driver = (':q\n(setf sb-ext:*invoke-debugger-hook* '
+                      '(lambda (condition hook) (declare (ignore hook)) '
+                      '(format *error-output* "~a" condition) (sb-ext:exit :code 1)))\n'
+                      '(load ' + fn_dev.lisp_string(str(events)) + ')\n(sb-ext:exit :code 0)\n')
+            result = subprocess.run([sys.executable, str(ROOT/'tools/acl2'), '--timeout', '60'],
+                                    input=driver, text=True, capture_output=True, timeout=75)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn('DEV-REPL-ACTUAL-LD-PASS', result.stdout)
+            self.assertNotIn('debugger invoked', result.stdout + result.stderr)
 
     def test_client_refuses_oversized_code_before_connect(self):
         with self.assertRaises(ValueError):

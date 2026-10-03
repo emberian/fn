@@ -19144,6 +19144,22 @@
         {
           "kind": "theorem",
           "name": "fn-rlo-exhausted-settlement-keeps-free-head"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rlo-issued-chain-is-tail"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rlo-output-settled-chain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rlo-physical-settled-chain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rlo-install-establishes-free-chain"
         }
       ]
     },

@@ -45,6 +45,57 @@
   (declare (xargs :guard t))
   (list source source nil t 0 nil nil))
 
+(defun fn-ast-refused-preflight (source)
+  (declare (xargs :guard t))
+  (list (fn-ast-source-left source 0) source nil t 0 nil t))
+
+; Numeric/current selection retains the archive spine and compares one group
+; character per transition. The first membership for a group decides its
+; number, exactly as fn-nntp-membership-number; later duplicates never win.
+(defun fn-ast-select-state (mode group number remaining article members row at phase)
+  (declare (xargs :guard t))
+  (list :article-select mode group number remaining article members row at phase))
+
+(defun fn-ast-select-donep (it)
+  (declare (xargs :guard t))
+  (member-eq (fn-ast-at 9 it) '(:selected :missing)))
+
+(defun fn-ast-select-one (it)
+  (declare (xargs :verify-guards nil))
+  (let* ((mode (fn-ast-at 1 it)) (group (fn-ast-at 2 it)) (number (fn-ast-at 3 it))
+         (remaining (fn-ast-at 4 it)) (article (fn-ast-at 5 it))
+         (members (fn-ast-at 6 it)) (row (fn-ast-at 7 it))
+         (at (nfix (fn-ast-at 8 it))) (phase (fn-ast-at 9 it))
+         (next (fn-ast-select-state mode group number (cdr remaining) nil nil nil 0 :next)))
+    (cond
+     ((fn-ast-select-donep it) it)
+     ((eq phase :next)
+      (if (atom remaining)
+          (fn-ast-select-state mode group number nil nil nil nil 0 :missing)
+        (fn-ast-select-state mode group number remaining (car remaining)
+                             (fn-article-memberships (car remaining)) nil 0 :members)))
+     ((eq phase :members)
+      (if (atom members) next
+        (let ((candidate (car members)))
+          (if (and (consp candidate) (stringp (car candidate))
+                   (equal (length group) (length (car candidate))))
+              (fn-ast-select-state mode group number remaining article members candidate 0 :compare)
+            (fn-ast-select-state mode group number remaining article (cdr members) nil 0 :members)))))
+     (t
+      (if (>= at (length group))
+          (if (and (equal number (cdr row))
+                   (or (not (eq mode :current)) (fn-nntp-article-idp article)))
+              (fn-ast-select-state mode group number remaining article members row at :selected)
+            next)
+        (if (equal (char group at) (char (car row) at))
+            (fn-ast-select-state mode group number remaining article members row (+ 1 at) :compare)
+          (fn-ast-select-state mode group number remaining article (cdr members) nil 0 :members)))))))
+
+(defun fn-ast-select-step (it fuel)
+  (declare (xargs :verify-guards nil :measure (nfix fuel)))
+  (if (or (zp fuel) (fn-ast-select-donep it)) it
+    (fn-ast-select-step (fn-ast-select-one it) (- fuel 1))))
+
 (defun fn-ast-separator-next (matched byte)
   (declare (xargs :guard t))
   (cond ((equal matched 0) (if (equal byte 13) 1 0))
@@ -115,6 +166,61 @@
     (list :initial (fn-ast-initial-pieces kind number article) 0
           (and (not (eq kind :body)) pairs) source t server)))
 
+; Xref filtering retains the original membership spine. Word validation and
+; the reference's first matching group lookup each advance one character or
+; one membership per transition, including duplicate/corrupted memberships.
+; Iterator = (:xref-source remaining all phase pair position lookup compare).
+(defun fn-ast-xref-state (remaining all phase pair at lookup compare)
+  (declare (xargs :guard t))
+  (list :xref-source remaining all phase pair at lookup compare))
+
+(defun fn-ast-xref-one (it)
+  (declare (xargs :verify-guards nil))
+  (let* ((remaining (fn-ast-at 1 it)) (all (fn-ast-at 2 it))
+         (phase (fn-ast-at 3 it)) (pair (fn-ast-at 4 it))
+         (at (nfix (fn-ast-at 5 it))) (lookup (fn-ast-at 6 it))
+         (compare (nfix (fn-ast-at 7 it)))
+         (skip (fn-ast-xref-state (cdr remaining) all :next nil 0 nil 0)))
+    (cond
+     ((eq phase :next)
+      (if (atom remaining) (mv :end nil it)
+        (let ((candidate (car remaining)))
+          (if (and (consp candidate) (stringp (car candidate))
+                   (< 0 (length (car candidate)))
+                   (integerp (cdr candidate)) (< 0 (cdr candidate))
+                   (<= (cdr candidate) *fn-nntp-max-article-number*))
+              (mv :wait nil (fn-ast-xref-state remaining all :word candidate 0 nil 0))
+            (mv :wait nil skip)))))
+     ((eq phase :word)
+      (if (>= at (length (car pair)))
+          (mv :wait nil (fn-ast-xref-state remaining all :lookup pair 0 all 0))
+        (if (let ((byte (char-code (char (car pair) at))))
+              (and (<= 33 byte) (<= byte 126) (not (equal byte 58))))
+            (mv :wait nil (fn-ast-xref-state remaining all :word pair (+ 1 at) nil 0))
+          (mv :wait nil skip))))
+     ((eq phase :lookup)
+      (if (atom lookup) (mv :wait nil skip)
+        (let ((row (car lookup)))
+          (if (and (consp row) (stringp (car row))
+                   (equal (length (car row)) (length (car pair))))
+              (mv :wait nil (fn-ast-xref-state remaining all :compare pair 0 lookup 0))
+            (mv :wait nil (fn-ast-xref-state remaining all :lookup pair 0 (cdr lookup) 0))))))
+     (t
+      (if (>= compare (length (car pair)))
+          (mv (if (equal (cdr (car lookup)) (cdr pair)) :pair :wait) pair skip)
+        (if (equal (char (car pair) compare) (char (car (car lookup)) compare))
+            (mv :wait nil (fn-ast-xref-state remaining all :compare pair 0 lookup (+ 1 compare)))
+          (mv :wait nil (fn-ast-xref-state remaining all :lookup pair 0 (cdr lookup) 0))))))))
+
+(defun fn-ast-ready-memberships (scan kind number article server)
+  (declare (xargs :verify-guards nil))
+  (let ((cur (fn-ast-ready scan kind number article server nil)))
+    (list (fn-ast-at 0 cur) (fn-ast-at 1 cur) (fn-ast-at 2 cur)
+          (and server (not (eq kind :body)) (fn-nntp-article-idp article)
+               (fn-ast-xref-state (fn-article-memberships article)
+                                  (fn-article-memberships article) :next nil 0 nil 0))
+          (fn-ast-at 4 cur) (fn-ast-at 5 cur) (fn-ast-at 6 cur))))
+
 ; Each transition spends one unit, even when numerical setup or a phase
 ; transition produces no bytes. The payload branch emits at most two octets
 ; (a leading dot is doubled); it never scans for the end of a line.
@@ -127,10 +233,24 @@
       (mv-let (out next at) (fn-npw-one pieces pos fn-arena)
         (mv out (list phase next at (fn-ast-at 3 cur) (fn-ast-at 4 cur) (fn-ast-at 5 cur) (fn-ast-at 6 cur)))))
      ((eq phase :initial)
-      (if (consp (fn-ast-at 3 cur))
+      (if (eq (fn-ast-at 0 (fn-ast-at 3 cur)) :xref-source)
+          (mv nil (list :xref-seek-first nil 0 (fn-ast-at 3 cur) (fn-ast-at 4 cur) t (fn-ast-at 6 cur)))
+       (if (consp (fn-ast-at 3 cur))
           (mv nil (list :xref (list "Xref: " (fn-ast-at 6 cur)) 0
                         (fn-ast-at 3 cur) (fn-ast-at 4 cur) t nil))
-        (mv nil (list :payload nil 0 nil (fn-ast-at 4 cur) t nil))))
+        (mv nil (list :payload nil 0 nil (fn-ast-at 4 cur) t nil)))))
+     ((member-eq phase '(:xref-seek-first :xref-seek))
+      (mv-let (word pair next) (fn-ast-xref-one (fn-ast-at 3 cur))
+        (cond
+         ((eq word :pair)
+          (mv nil (list :xref-seek
+                    (append (and (eq phase :xref-seek-first) (list "Xref: " (fn-ast-at 6 cur)))
+                            (list " " (car pair) ":" (list :decimal (nfix (cdr pair)) nil)))
+                    0 next (fn-ast-at 4 cur) t nil)))
+         ((eq word :end)
+          (mv nil (list :payload (and (eq phase :xref-seek) (list '(13 10)))
+                        0 nil (fn-ast-at 4 cur) t nil)))
+         (t (mv nil (list phase nil 0 next (fn-ast-at 4 cur) t (fn-ast-at 6 cur)))))))
      ((eq phase :xref)
       (if (consp (fn-ast-at 3 cur))
           (let ((pair (car (fn-ast-at 3 cur))))
@@ -194,6 +314,25 @@
   (fn-ast-render-window-aux (fn-ast-window-cur window)
                             (fn-ast-window-pending window)
                             (nfix fuel) (nfix octets) nil fn-arena))
+
+(defthm fn-ast-render-window-acc-bound
+  (<= (len (mv-nth 0 (fn-ast-render-window-aux cur pending fuel left acc fn-arena)))
+      (+ (len acc) (nfix left)))
+  :rule-classes :linear
+  :hints (("Goal" :induct (fn-ast-render-window-aux cur pending fuel left acc fn-arena)
+                  :in-theory (disable fn-ast-render-one))))
+
+(defthm fn-ast-render-window-byte-bound
+  (<= (len (mv-nth 0 (fn-ast-render-window window fuel octets fn-arena)))
+      (nfix octets))
+  :rule-classes :linear
+  :hints (("Goal"
+           :use ((:instance fn-ast-render-window-acc-bound
+                            (cur (fn-ast-window-cur window))
+                            (pending (fn-ast-window-pending window))
+                            (fuel (nfix fuel)) (left (nfix octets)) (acc nil)))
+           :in-theory (disable fn-ast-render-window-aux
+                               fn-ast-window-cur fn-ast-window-pending))))
 
 (defthm fn-ast-scan-work-bounded
   (<= (mv-nth 1 (fn-ast-scan-step scan fuel fn-arena)) (nfix fuel))

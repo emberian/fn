@@ -8,6 +8,7 @@
 (include-book "../books/web-config")
 (include-book "../books/web-page-cursor")
 (include-book "../books/web-reply-stream")
+(include-book "../books/web-post-stream")
 
 (defun fn-web-host-plan (config-octets listener-port tls-port certp)
   (declare (xargs :mode :program :guard (fn-cbor-octet-listp config-octets)))
@@ -97,7 +98,10 @@
 ; Host observations whose meaning ACL2 decides.
 (defun fn-web-host-action-kind (action)
   (declare (xargs :mode :program))
-  (and (consp action) (member (car action) '(:respond :open :send :close :health :private-begin)) (car action)))
+  (and (consp action)
+       (member (car action) '(:respond :open :send :close :health :private-begin
+                             :post-form :post-command :post-stream))
+       (car action)))
 
 ; Q10d: observe only the fixed scheduler/disk and checkpoint values, no
 ; whole-state walk. Called under the existing owner mutex by the web face.
@@ -199,5 +203,23 @@
 
 (defun fn-web-host-private-begin-step (config action fn-web-in fn-web-out)
   (declare (xargs :mode :program :stobjs (fn-web-in fn-web-out)))
-  (fn-web-private-begin-step (append (take 6 config) (list :page-plan :private-begin))
+  (fn-wpf-private-begin (append (take 6 config) (list :page-plan :private-begin))
                              action fn-web-in fn-web-out))
+
+(defun fn-web-host-post-window (cursor fn-web-in fn-web-out)
+  (declare (xargs :mode :program :stobjs (fn-web-in fn-web-out)))
+  (mv-let (bytes next done) (fn-wps-window 4096 cursor nil fn-web-in)
+    (let* ((fn-web-out (fn-octets-clear fn-web-out))
+           (fn-web-out (fn-octets-append-list bytes fn-web-out)))
+      (mv next done fn-web-out))))
+(defun fn-web-host-post-reply-step (config flow event cursor fn-web-in fn-web-out)
+  (declare (xargs :mode :program :stobjs (fn-web-in fn-web-out)))
+  (fn-wps-private-reply (append (take 6 config) (list :page-plan :private-begin))
+                        flow event cursor fn-web-in fn-web-out))
+
+(defun fn-web-host-post-form-step (config prep fn-web-in fn-web-out)
+  (declare (xargs :mode :program :stobjs (fn-web-in fn-web-out)))
+  (mv-let (next done) (fn-wpf-drive 4096 prep fn-web-in)
+    (if done (fn-wpf-finish (append (take 6 config) (list :page-plan :private-begin))
+                           next fn-web-in fn-web-out)
+      (mv (list :post-form next) fn-web-out))))

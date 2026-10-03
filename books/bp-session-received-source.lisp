@@ -34,3 +34,13 @@
   (list :uncertain job nil 0)
   (mv-let (word next bytes used) (fn-tsc-turn job 64)
    (list word next bytes used))))
+
+; The one-writer host disables the continuation before this pre-publication
+; retirement. Publication entry changes the phase first; it is never retired
+; by a timeout or by the existence of a physical socket receipt.
+(defun fn-bpsrx-abort-plan (key row cursor phase)
+ (declare (xargs :guard t))
+ (if (and (fn-bpsrx-authorizedp key row cursor)
+          (member-eq phase '(:copy :convert :publish)))
+  (list :retire-private-source :pre-publication)
+  (list :retain-private-source :publication-or-authority)))

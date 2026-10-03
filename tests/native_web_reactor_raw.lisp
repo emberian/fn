@@ -47,6 +47,35 @@
   (when (< (length (svref st 0)) n)
     (let ((new (fnn-make-octets n))) (replace new (svref st 0)) (setf (svref st 0) new))) st)
 (defun fnn-octet-list-p (xs) (every (lambda (x) (typep x '(unsigned-byte 8))) xs))
+(declaim (special +fnn-exit-ok+))
+(defun fixture-load-response-runtime ()
+  ;; Load the production constructor, dynamic variable and terminal closer.
+  ;; Cold physical dependencies are exercised by their own Runtime fixture;
+  ;; this Web fixture never issues a scalar read into WINDOW-READ.
+  (with-open-file (stream (or (sb-ext:posix-getenv "FN_WEB_OWNER_SOURCE") "host/native/owner.lisp"))
+    (loop for f = (read stream nil :eof) until (eq f :eof) do
+      (when (and (consp f)
+                 (or (and (eq (car f) 'defstruct)
+                          (member (if (consp (second f)) (caadr f) (second f))
+                                  '(fnn-owner-service fnn-response-capture)))
+                     (and (eq (car f) 'defvar) (eq (second f) '*fnn-response-capture*))
+                     (and (eq (car f) 'defun) (eq (second f) 'fnn-owner-response-window-close))))
+        (eval f)))))
+(fixture-load-response-runtime)
+(defvar *fixture-service*
+  (%make-fnn-owner-service :lock (sb-thread:make-mutex :name "Web fixture owner") :exit-code 0))
+;; Dispatch emitted actions through the actual ACL2 host classifier. Returning
+;; CAR here hid missing continuation tags in the composed native reactor.
+(with-open-file (stream "host/web-host.lisp")
+  (loop for form = (read stream nil :eof) until (eq form :eof) do
+    (when (and (consp form) (eq (car form) 'defun)
+               (eq (second form) 'fn-web-host-action-kind))
+      (eval (append (subseq form 0 3)
+                    (remove-if (lambda (body) (and (consp body) (eq (car body) 'declare)))
+                               (cdddr form)))))))
+(assert (null (fn-web-host-action-kind nil)))
+(assert (null (fn-web-host-action-kind '(:unknown))))
+
 (defun fnn-core (name &rest args)
   (case name
     (fn-web-host-head '(72 69 65 68))
@@ -56,7 +85,7 @@
     (fn-web-host-max-events 16)
     (fn-web-host-private-reply-p nil)
     (fn-web-host-request-seconds 15)
-    (fn-web-host-action-kind (first (first args)))
+    (fn-web-host-action-kind (fn-web-host-action-kind (first args)))
     (fn-splan-cursor-resume-ms 2)
     (fn-splan-step-plan (second args))
     (t (error "unexpected core ~s ~s" name args))))
@@ -70,7 +99,6 @@
     (t (error "unexpected call ~s" name))))
 (defun fnn-owner-serialized (service cid thunk &optional class)
   (declare (ignore service cid class)) (funcall thunk))
-(defun fnn-owner-service-stopping (service) (declare (ignore service)) nil)
 (defun fnn-owner-thread-escape (service condition label)
   (declare (ignore service label)) (push condition *faults*))
 (defun fnn-owner-response-unpin (service cid) (declare (ignore service)) (push cid *released*))
@@ -105,7 +133,7 @@
 (defun wire-for (fd)
   (loop for (socket bytes) in (reverse *written*) when (= socket fd) append bytes))
 ;;; Window/partial offset: exact bytes, no whole HTTP body copy.
-(let* ((conn (fixture-conn 1 :event)) (face (%make-fnn-web-face :service :service))
+(let* ((conn (fixture-conn 1 :event)) (face (%make-fnn-web-face :service *fixture-service*))
        (body (fnn-make-octets 10003)))
   (dotimes (i (length body)) (setf (aref body i) (mod i 256)))
   (fnn-web-fill (fnn-web-conn-out conn) body)
@@ -123,7 +151,7 @@
 ;;; Stalled input, awaiting POST and healthy rendering coexist in one actor.
 (let* ((slow (fixture-conn 2 :head)) (post (fixture-conn 3 :feed 7))
        (healthy (fixture-conn 4 :event))
-       (face (%make-fnn-web-face :service :service :capacity 3 :conns (list slow post healthy))))
+       (face (%make-fnn-web-face :service *fixture-service* :capacity 3 :conns (list slow post healthy))))
   (fnn-web-fill (fnn-web-conn-out post) (fnn-octets '(80 79 83 84)))
   (setf (fnn-web-conn-cmd-end post) 4)
   (fnn-web-feed-step face post)
@@ -148,7 +176,7 @@
   (fnn-web-await-publish face post :late)
   (assert (null (fnn-web-conn-completion post))))
 ;;; Cold render retains exact plan/pin; wait makes no progress, serve resumes.
-(let* ((conn (fixture-conn 5 :render 8)) (face (%make-fnn-web-face :service :service))
+(let* ((conn (fixture-conn 5 :render 8)) (face (%make-fnn-web-face :service *fixture-service*))
        (plan (list :original-plan)))
   (setf (fnn-web-conn-plan conn) plan)
   (let ((*render-cold* t)) (fnn-web-render-step face conn))
@@ -170,7 +198,7 @@
   (assert (fnn-web-feed-owned-p face two)))
 ;;; Actual fixed worker: a blocked owner operation does not block the reactor.
 (let* ((post (fixture-conn 10 :feed 11)) (healthy (fixture-conn 12 :event))
-       (face (%make-fnn-web-face :service :service :capacity 2 :conns (list post healthy)
+       (face (%make-fnn-web-face :service *fixture-service* :capacity 2 :conns (list post healthy)
                                  :wake-closed t))
        (entered (sb-thread:make-semaphore)) (release (sb-thread:make-semaphore))
        (saved (symbol-function 'fnn-owner-handle-chunk-step)) (worker nil))
@@ -208,7 +236,7 @@
 ;;; Cleanup has a receipt separate from worker activation return. A paused
 ;;; cancelled CID release cannot disappear from capacity/lease ownership.
 (let* ((old (fixture-conn 20 :feed 21)) (next (fixture-conn 22 :feed 21))
-       (face (%make-fnn-web-face :service :service :capacity 2 :listener 100
+       (face (%make-fnn-web-face :service *fixture-service* :capacity 2 :listener 100
                                  :conns (list old next) :wake-closed t))
        (entered (sb-thread:make-semaphore)) (release (sb-thread:make-semaphore))
        (saved (symbol-function 'fnn-owner-action)) (worker nil))
@@ -248,7 +276,7 @@
   (unwind-protect
       (dolist (phase '(:private-begin :ready :replay))
         (let* ((conn (fixture-conn 61 :event))
-               (face (%make-fnn-web-face :service :service :capacity 1
+               (face (%make-fnn-web-face :service *fixture-service* :capacity 1
                                          :listener 100 :wake-closed t :conns (list conn))))
           (setf (symbol-function 'fnn-web-advance)
                 (lambda (face conn &optional ready)
@@ -264,7 +292,7 @@
   (declare (ignore service cid plan class))
   (values-list (pop *ready-results*)))
 (let* ((conn (fixture-conn 62 :feed 91))
-       (face (%make-fnn-web-face :service :service))
+       (face (%make-fnn-web-face :service *fixture-service*))
        (raw (list :raw-scan)) (tail (list :scan-tail)) (ready (list :immutable-ready)))
   (setf (fnn-web-conn-reply-scan conn) :scan)
   (fnn-web-plan-begin conn raw)

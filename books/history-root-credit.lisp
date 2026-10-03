@@ -106,8 +106,8 @@
  :hints (("Goal" :in-theory (e/d (fn-hroot-retain-demand fn-hrc-count fn-hrc-wfp)
                             (fn-hroot-memory-octets fn-hrecs$cp fn-hrc-fields fn-hrc-updaters)))))
 (verify-guards fn-hroot-grow-demand
- :hints (("Goal" :in-theory (e/d (fn-hrc-wfp)
- (fn-hrc-fields fn-hrc-updaters fn-hrecs$cp fn-hpr-final-placement fn-hpr-cursorp fn-hroot-memory-octets fn-hroot-tree-octets)))))
+ :hints (("Goal" :in-theory (e/d (fn-hrc-wfp fn-hpr-final-placement fn-hpr-cursorp)
+ (fn-hrc-fields fn-hrc-updaters fn-hrecs$cp fn-hroot-memory-octets fn-hroot-tree-octets)))))
 (verify-guards fn-hroot-read-demand
  :hints (("Goal" :in-theory (e/d (fn-hist$p-wfp fn-hrc-wfp fn-hp-starts-okp)
  (fn-hist$p-root-ready fn-hrc-fields fn-hrc-updaters fn-hrecs$cp fn-hist$pp fn-hp-x-cell)))))

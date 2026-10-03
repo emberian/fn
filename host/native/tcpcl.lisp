@@ -78,7 +78,8 @@
   (ready-called nil) (finished nil)
   ;; Private concrete octet buffer, one incomplete frame only. The incoming
   ;; socket vector survives cursor turns; no list carry is appended/reparsed.
-  input-buffer input-cursor input-vector (input-offset 0))
+  input-buffer input-cursor input-vector (input-offset 0)
+  input-materialize-end input-materialize-probe input-octets)
 
 ;;; ---------------------------------------------------------------------------
 ;;; The clock.  One monotonic reading per wakeup, in milliseconds, handed to
@@ -358,24 +359,47 @@ and faults without following or deleting anything."
         (fnn-core 'fn-tcl-host-phase (fnn-tclc-session conn)))))))
 
 (defun fnn-tcl-input-decode (conn now probe)
-  (let* ((buffer (fnn-tclc-input-buffer conn))
-         ;; Existing decoder/publication still consumes a complete logical
-         ;; frame once. Full-frame conversion/decode is the remaining frontier.
-         (octets (fnn-octet-list
-                   (subseq (svref buffer 0) 0 (svref buffer 1)))))
-    (unless (and probe (fnn-core 'fn-tcl-host-input-probe (fnn-tclc-session conn) octets))
-      (let ((triple (fnn-core
-                     (if *fnn-tcl-source-start* 'fn-tcl-host-source-drive 'fn-tcl-host-drive)
-                     (fnn-tclc-session conn) octets now)))
-        (setf (fnn-tclc-carry conn) (third triple))
-        (fnn-tcl-apply conn triple "event")
-        (setf (svref buffer 1) 0 (fnn-tclc-input-cursor conn) nil)))))
+  ;; Mark the exact immutable frame/prefix before any bounded extraction.
+  ;; A list is materialized only once, in4096-byte descending windows.
+  (declare (ignore now))
+  (setf (fnn-tclc-input-materialize-end conn) (svref (fnn-tclc-input-buffer conn) 1)
+        (fnn-tclc-input-materialize-probe conn) probe (fnn-tclc-input-octets conn) nil))
+
+(defun fnn-tcl-input-materialize-turn (conn now)
+  (let ((end (fnn-tclc-input-materialize-end conn)))
+    (if (plusp end)
+      (let ((answer (fnn-core 'fn-tcim-turn end (fnn-tclc-input-octets conn)
+                             (fnn-tclc-input-buffer conn))))
+        (setf (fnn-tclc-input-materialize-end conn) (first answer)
+              (fnn-tclc-input-octets conn) (second answer)))
+      (let ((octets (fnn-tclc-input-octets conn)))
+        ;; The existing semantic decoder/publication still consumes one full
+        ;; logical frame. No whole vector copy or conversion precedes it.
+        (unless (and (fnn-tclc-input-materialize-probe conn)
+                     (fnn-core 'fn-tcl-host-input-probe (fnn-tclc-session conn) octets))
+          (let ((triple (fnn-core
+                        (if *fnn-tcl-source-start* 'fn-tcl-host-source-drive 'fn-tcl-host-drive)
+                        (fnn-tclc-session conn) octets now)))
+            (setf (fnn-tclc-carry conn) (third triple))
+            (fnn-tcl-apply conn triple "event")
+            (setf (svref (fnn-tclc-input-buffer conn) 1) 0
+                  (fnn-tclc-input-cursor conn) nil)))
+        (setf (fnn-tclc-input-materialize-end conn) nil
+              (fnn-tclc-input-materialize-probe conn) nil (fnn-tclc-input-octets conn) nil)))
+    (setf (fnn-tclc-source-more conn)
+          (or (not (null (fnn-tclc-input-materialize-end conn)))
+              (and (fnn-tclc-input-vector conn) t)))))
 
 (defun fnn-tcl-input-turn (conn incoming now)
   "One scalar framing action and at most4096 byte copies. Retain unread input."
+  (when (and incoming (not (null (fnn-tclc-input-materialize-end conn))))
+    (fnn-fault "TCPCL frame materialization owns input"))
   (when incoming
     (when (fnn-tclc-input-vector conn) (fnn-fault "TCPCL input vector still borrowed"))
     (setf (fnn-tclc-input-vector conn) incoming (fnn-tclc-input-offset conn) 0))
+  (when (not (null (fnn-tclc-input-materialize-end conn)))
+    (fnn-tcl-input-materialize-turn conn now)
+    (return-from fnn-tcl-input-turn nil))
   (fnn-tcl-input-initialize conn)
   (let* ((vector (fnn-tclc-input-vector conn))
          (offset (fnn-tclc-input-offset conn))
@@ -398,7 +422,8 @@ and faults without following or deleting anything."
       (:decode (fnn-tcl-input-decode conn now nil))
       (:probe (fnn-tcl-input-decode conn now t)))
     (setf (fnn-tclc-source-more conn)
-      (or (and (fnn-tclc-input-vector conn) t)
+      (or (not (null (fnn-tclc-input-materialize-end conn)))
+          (and (fnn-tclc-input-vector conn) t)
           (member (first (fnn-tclc-input-cursor conn)) '(:complete :probe))
           ;; Zero-length skips must advance without another socket read.
           (and (fnn-tclc-input-cursor conn)
@@ -617,6 +642,16 @@ and faults without following or deleting anything."
 The caller keeps this connection and its socket until actual physical close."
   (when (fnn-tclc-finished conn) (return-from fnn-tcl-turn :done))
   (let* ((now (fnn-tcl-now))
+         (control (and (fnn-tclc-source-pending conn)
+          (fnn-core 'fn-tclsctl-turn (fnn-tclc-session conn) now
+                    (or (fnn-tclc-tx-data conn) (fnn-tclc-tx-messages conn)))))
+         (ignored (when control
+          ;; Only ACL2's independent KEEPALIVE may bypass custody-held END ACK.
+          ;; Existing output owns the physical attempt; source work resumes on
+          ;; its next slot. No reception clock or held ACK is changed.
+          (setf (fnn-tclc-session conn) (first control)
+                (fnn-tclc-tx-messages conn)
+                 (nconc (fnn-tclc-tx-messages conn) (second control)))))
          (action (fnn-core 'fn-tcrt-action
                   (fnn-tclc-source-pending conn) (fnn-tclc-source-more conn)
                   (and (fnn-tclc-tx-data conn) t) (and (fnn-tclc-tx-messages conn) t)
@@ -625,6 +660,7 @@ The caller keeps this connection and its socket until actual physical close."
                   (fnn-core 'fn-tcl-host-phase (fnn-tclc-session conn))
                   now (fnn-tclc-tx-deadline conn)))
          (result :work))
+    (declare (ignore ignored))
     (case action
         (:done (setf (fnn-tclc-finished conn) t) (setq result :done))
         (:lost (fnn-tcl-turn-lost conn))

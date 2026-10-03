@@ -183,6 +183,18 @@ Anchors: [GEN-CURSOR](planning/repair/items/GEN-CURSOR.json),
 
 ### Finish streaming and restricted command families
 
+Access owns the continuing shared ARTICLE/HEAD/BODY producer and its NNTP/Web
+consumers. Retained numeric/current/withdrawn selection, framing preflight and
+lazy Xref now yield in bounded steps; READY commits selection once and replays
+without authority changes. Source fixtures and exact normal source admission
+pass. Complete actual parsed factory/socket/physical decoded-window/Web browser
+composition, initial authorization/Message-ID/server setup bounds, guards and
+universal owner/reference refinement remain open (PRF-1286, SCN-1116). The
+retained source-execution process/inputs and precise mixed ABI frontier are in
+LANEDUMP; no certificate, current image or full funded operation follows from
+those checks. Access also continues absorbed operator/journal obligations; Root
+S132 full-native observation still needs an adequate funded supported profile.
+
 **Next — Served.** Carry the shared cursor/dependency machinery through OVER,
 HDR/XHDR, XPAT, LISTGROUP and the restricted route. Complete table-generated
 dispatch, preserving current session and access semantics; remove the remaining
@@ -601,3 +613,28 @@ pass5,000 dot-leading lines, cold replay, partial drain and exact HTML/count/pin
 receipt. The old work-only producer fails this same fixture with5,408 output
 bytes for W4,096. Recording arena/owner/cold/I/O seams remain; full native
 source-loaded browser execution and qualified Web funding are not established.
+
+
+The host-reached ARTICLE/OVER/LIST program functions and Web window wrappers
+now admit and execute in the same actual ACL2 source stobj world as the private
+reply/gate functions. tests/acl2/web-stream-consumer-source-tests.lisp compares
+complete reference page plans with virtual scan/count/emit under chunk1/2/7/4096
+fixtures. Guard/refinement and complete endpoint/funding qualification remain
+open; concrete-fill invariant-risk warnings are retained in the source receipt.
+
+
+### Operator/developer remaining scope at the 2026-10-03 usage pause
+
+S132 still needs full native large-post acceptance and exact readback under an
+adequately funded supported profile; root's 10 MiB and 16 MiB scratch attempts
+refused oversize and unaffordable respectively, not timeout. Narrow policy and
+exchange tests pass. S083 still needs composed native moderation coverage and
+authority/generation-race closure; the published row authorizes a cause, not an
+already completed target withdrawal.
+
+The developer REPL now has actual native-owner admission/refusal/cleanup/fence
+coverage on its named cache coordinate. Admission itself needs a bounded prover
+step/time facility and a tested recovery path: a client timeout currently leaves
+an in-progress proof occupying the serialized owner. Broad command access does
+not establish complete internal observability or allocation accounting. Preserve
+source/proof/cache/image distinctions when completing these domains.

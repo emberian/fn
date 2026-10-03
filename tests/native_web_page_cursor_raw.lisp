@@ -72,7 +72,7 @@
         (declare (ignore rounds)) (assert (null out)) (assert (= count (length reference)))))
     ;; The actual native count/emit caller never materializes HTML in OUT.
     (let* ((conn (fixture-conn 31 :page-count))
-           (face (%make-fnn-web-face :service :service :conns (list conn)))
+           (face (%make-fnn-web-face :service *fixture-service* :conns (list conn)))
            (saved-call (symbol-function 'fnn-call)) (saved-core (symbol-function 'fnn-core))
            (observed-length nil))
       (setf (fnn-web-conn-in conn) in (fnn-web-conn-pagep conn) t
@@ -114,7 +114,7 @@
           ;; A queued page activation retains its input/plan until the
           ;; cancelled job physically returns; it emits no late page.
           (let* ((cancel (fixture-conn 33 :page-count))
-                 (cancel-face (%make-fnn-web-face :service :service :wake-closed t
+                 (cancel-face (%make-fnn-web-face :service *fixture-service* :wake-closed t
                                                  :conns (list cancel))))
             (setf (fnn-web-conn-in cancel) in (fnn-web-conn-pagep cancel) t
                   (fnn-web-conn-page-segs cancel) segs
@@ -143,7 +143,7 @@
 (dolist (route '(:signin :redeem :expire :health :signout))
   (assert (not (fn-web-host-private-reply-p (list route) '(:reply)))))
 (let* ((reply (fixture-conn 34 :event 44))
-       (face (%make-fnn-web-face :service :service :wake-closed t :conns (list reply)))
+       (face (%make-fnn-web-face :service *fixture-service* :wake-closed t :conns (list reply)))
        (saved-core (symbol-function 'fnn-core)) (saved-call (symbol-function 'fnn-call))
        (saved-owner (symbol-function 'fnn-owner-serialized)))
   (setf (fnn-web-conn-flow reply) '(:groups :list nil nil)

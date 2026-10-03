@@ -2642,3 +2642,69 @@ The first parsed event bounds consumption so following pipelined commands
 wait for completion. Physical compressed/plain window custody, metadata
 setup bounds and the complete owner/reference refinement remain open; the
 source does not establish a funded operation or a qualified image.
+Recovery and reclaim may complete legacy availability facts from the same captured
+arena. This changes derived facts, while preserving the article identity, payload
+handle, group memberships, stamp, assigned numbers, sequence and withdrawal
+history used by the catalog/view join. The recovery proof uses these preserved
+projections; it does not assert that the complete classified catalog equals the
+older raw loader result. The actual legacy-row fixture exercises both loaders,
+checks the differing facts and preserved metadata, and reads back the exact wire.
+
+
+### Selective available owner route (PRF-1287, SCN-1117)
+
+The source owner reader calls the generated available command route through
+`fn-av-mca-read-span` (an ARTICLE preflight wrapper may delegate to it).
+GROUP, LISTGROUP, NEXT, LAST and LIST ACTIVE/COUNTS use availability metadata
+from the actual captured catalog; raw retrieval and NEWNEWS retain their
+original archive subject. The adapter takes the raw pin/index and constructs
+no second available index. Complete command guards and source-loaded
+command/event/owner-credit fixtures pass; the selective owner refinement,
+carried snapshot completeness/stability, PROGRAM route guards and physical
+cost coverage remain owed. LIST still constructs its full upstream reply.
+
+### Composite local withdrawal outcomes (S083)
+
+Local moderation withdrawal publishes an authorization row and submits the
+cause article as separate owner actions. The configuration row authorizes that
+cause to withdraw the target; the row alone does not withdraw it. Once
+publication succeeds (or the plan finds that authorization already present),
+a cause refusal cannot imply that the entire request had no effect.
+`fn-mwo-after-authorization` composes the second outcome: accepted/duplicate
+retain success; a fault remains fault; incomplete causes use the existing
+uncertain status with an explicit `withdrawal-authorized-cause-*` reason.
+For example, `UNCERTAIN withdrawal-authorized-cause-refused` names the persisted
+authorization and the refused cause without claiming the target was withdrawn.
+It requests reconciliation, not rollback or blind retry. No new wire status is
+introduced.
+
+These actions are not atomic. Current-authority and configuration-generation
+changes between planning and execution remain a separate review obligation;
+the initial plan is not a lease. SCN-1124 executes the actual native dispatcher
+with recorded publication/submission adapters and checks success, refusal,
+uncertain, fault, malformed results and refusal before publication. Full native
+disk/transport composition remains a separate scenario.
+
+The pending bounded LIST producer uses `fn-gsc-one` over a fixed captured
+group high/next/version and scalar count/low/last. One accepted step probes
+one numbered availability entry; exhaustion yields while retaining these
+scalars. The disabled remaining-range model has unconditional one-step
+residual preservation and equals the summary at settlement. This component
+does not establish the full LIST producer, snapshot frames or heap tariff.
+
+
+Retained article selection now yields while walking captured numeric/current
+archive rows and per-row memberships; first matching membership determines the
+number as in the original reader. A missing numeric selection searches captured
+withdrawn rows with the same bounded cursor before choosing the existing423
+reply. Xref filtering also retains raw memberships and validates/compares one
+character per transition. Message-ID setup and initial authorization/server
+configuration setup still need their complete bounded implementation/refinement.
+
+The source-only `list-metadata-cursor` component retains group/next/config
+references and advances total wildmat matching, watermark lookup, numbered
+summary probes and status entries in separate controller calls. Its guarded
+step bounds emitted bytes and controller calls; one row still constructs its
+complete group/decimal fields. The available dispatcher and render plan have
+not yet consumed this tag, and full response residual/finite progress, captured
+column frames, composed witnesses and physical funding remain open.

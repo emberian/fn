@@ -573,11 +573,30 @@ projection, `fn-dwb-fixed-storage-vector`: `(86928 0 0 1 1)` in the existing
 five-component page-read ledger, with `fn-dwb-coverage` explicitly returning
 `:partial-fixed-storage`. The selected `fn-crl-array-octets` model counts the
 eight-field job, twelve-field carry, sixteen-field digest plus sixty-four
-frame pointers, one-field decoder plus twenty registers, one-field requested
-window plus 16384 octets, and four two-field octet wrappers. It includes their
+frame pointers, twenty decoder registers, 16384 requested-window octets, and
+four two-field octet wrappers. Native constructor observation shows the two
+single-array stobjs are direct vectors; the projection conservatively retains
+two 32-octet logical parent allowances that native lowering elides. Its selected
+backing model before those allowances is 86864 octets. It includes their
 four original empty arrays and exact reserved buffers of 64, 65536, 3494 and
 64 octets. It does not price pointed-to integers/conses, controller and token
 graphs, borrowed sources, registry slots, constructor transients or GC.
 Same-pool draw precedes construction; this partial projection cannot authorize
 the configured complete-profile issuer. Actual constructor dimension checks
 and the physical allocator boundary remain separate from this arithmetic.
+
+Actual output issue and both settling receipt consumers preserve an exact
+terminating free-chain witness (`fn-rlo-issued-chain-is-tail`,
+`fn-rlo-output-settled-chain`, `fn-rlo-physical-settled-chain`). A successful
+issue consumes its head; settlement pushes the reusable row once or preserves
+the old chain when that generation is exhausted. The proof-only witness checks
+idle phases, reusable natural generations, in-range row identities and exact
+links without adding a served scan. Successful actual installation establishes this chain for every user row
+from2 through slots-1 (`fn-rlo-install-establishes-free-chain`); its only
+premise is the actual `:installed` result. A zero-count input must be genuinely
+fresh: padded arrays with old phases/generations are refused before mutation,
+even when typed and shape-valid. Positive-count repeat installation keeps
+its existing `:already-installed` refusal. Coverage of every reusable idle
+row after arbitrary histories remains owed; the issue/settlement boundaries
+assume the prior chain is valid and the actual method reports `:drawn` or
+`:settled`.

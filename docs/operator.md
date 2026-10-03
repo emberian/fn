@@ -1322,10 +1322,12 @@ with `FN_NATIVE_DEV_REPL=/absolute/private/directory/fn-dev.sock`, then attach:
 python3 tools/fn_dev.py repl --socket /absolute/private/directory/fn-dev.sock
 ```
 
-Use `:operation`, `:threads`, `:apropos NAME`, or ordinary Common Lisp forms.
+Use `:operation`, `:threads`, `:apropos NAME`, `:describe FORM`, or ordinary
+Common Lisp forms. `:paste` accepts multiline input ending with `:end`.
 Definitions survive connections. `:load PATH` loads a source file on the server;
 `:acl2 FORM` submits an ordinary ACL2 event to the live logical world, where the
-loaded world's metadata must support admission. `PROGN` batches Lisp forms.
+loaded world's metadata must support admission. A refused event reports failure;
+earlier successful events in that batch remain admitted. `PROGN` batches Lisp forms.
 `--eval '(+ 20 22)'` is the noninteractive form. The existing `fn acl2 session`
 starts a separate process; this socket attaches to an already running owner.
 
@@ -1346,3 +1348,19 @@ Inputs are limited to 65,536 UTF-8 bytes and captured output to 65,536 character
 with an explicit truncation marker. Reader evaluation (`#.`) is disabled.
 Production startup refuses this selector; ordinary protocol data never enters
 this evaluator.
+
+
+Large local submissions receive a reply observation budget that grows with the
+submitted frame: ten seconds plus one second per 64 KiB (rounded up). If the
+owner still has not replied when that budget expires, the result is uncertain;
+it does not mean the submission failed. Check the durable result before
+resubmitting. Explicit consumer wait intervals keep their existing semantics.
+
+
+A withdrawal request can publish its authorization row even if its subsequent
+cause article cannot be posted. `UNCERTAIN withdrawal-authorized-cause-refused`
+reports that partial result: authorization was published, and the cause was
+refused. The authorization row alone does not withdraw the target; withdrawal
+requires a cause article. Related `withdrawal-authorized-cause-*` reasons
+identify clock, profile, conflict, uncertainty and fault outcomes. Inspect the
+authorization and cause before retrying; the reply does not imply rollback.

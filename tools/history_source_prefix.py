@@ -9,6 +9,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import proof_repl
 from proof_repl import encapsulated, forms, head_and_name
 
 BOOKS = [
@@ -25,6 +26,8 @@ def quote(path: Path) -> str:
 
 def generate(source: Path, dependencies: Path, world: Path, output: Path) -> None:
     source = source.resolve(); dependencies = dependencies.resolve(); world = world.resolve()
+    # Include normalization is relative to the selected actual source tree.
+    proof_repl.ROOT = source
     hashes = {}
     def text(path):
         hashes[str(path)] = hashlib.sha256(path.read_bytes()).hexdigest()
@@ -36,8 +39,9 @@ def generate(source: Path, dependencies: Path, world: Path, output: Path) -> Non
     result.append('(set-cbd ' + quote(source / 'books')[:-1] + '/")')
     # These exact compatible cached dependencies were also used by the fresh
     # canonical source session. They do not introduce generic fn-hist.
-    for book in ('consumer-event-index', 'history-records', 'memory-credits'):
+    for book in ('consumer-event-index', 'history-records'):
         result.append('(include-book ' + quote(dependencies / 'books' / book) + ')')
+    result.append('(include-book ' + quote(world / 'books/memory-credits') + ')')
     skip = {'books/' + book for book in BOOKS}
     skip.update({'books/consumer-event-index', 'books/history-records',
                  'books/history-pages-placed', 'books/history-pages-relocate',
@@ -62,6 +66,8 @@ def generate(source: Path, dependencies: Path, world: Path, output: Path) -> Non
     normal = []
     path = source / 'host/history-root-host.lisp'
     normal.extend(f for f in forms(text(path)) if head_and_name(f)[0] == 'defun')
+    path = source / 'host/owner-host.lisp'
+    normal.extend(f for f in forms(text(path)) if head_and_name(f)[1] == 'fn-owner-orcp-capture')
     path = source / 'books/history-capture-state.lisp'
     normal.extend(f for f in forms(text(path)) if head_and_name(f)[1] in
                   ('fn-history-root-roster-heldp', 'fn-owner-history-reset-status'))

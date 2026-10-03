@@ -224,3 +224,69 @@ without re-signing. Article/profile acceptance remains the native core's decisio
 base64 overhead is included in the submitted article. Local codec and SQLite
 retry checks establish client behavior; matching native report/reply and restart
 execution remains separately required.
+
+
+## Executed application consumer, 2026-10-03
+
+The current client has a durable cursor/report inbox, immutable signed outbox,
+independent verification and explicit refusal/uncertainty/fault outcomes. Its
+`status`, `inspect`, `query` and `export` commands take read-only SQLite snapshots
+while a consumer is live; `payload` exports exact committed bytes. New e1/2
+payloads are opaque bytes, and saved v1 artifacts remain unchanged on retry.
+
+Four actual native cases passed using the initialized normal source world
+(ad8da41fc, ordinary admitted gate336, exact native lexical-exit repair cde78):
+binary report/reply across projection failure and owner restart (21.645s), saved
+signed retry without signing inputs (11.919s), two nodes with feed, repeated
+NEWNEWS observation, duplicate refusal, restart mid-poll and six ownership cuts
+(47.653s), and revoked-author resend refusal settled separately from prior
+acceptance by observation (31.109s). All had zero skips. The execution checkpoint
+contains no opened Store/owner; every invocation and restart starts a fresh
+process. This is a finite source-execution coordinate, not image qualification
+or an exactly-once external-effects claim. The public SQLite artifacts, cursor,
+report, source/runtime hashes and results are indexed under
+`planning/evidence/native-consumer-source-20261003/manifest.json`.
+
+The next connected consumer is the same immutable R/Q over existing BP request,
+durable custody, Store/FNRJ dispatch and return-receipt paths. BPTransport owns
+the new private grant/turn source execution; Groundwork owns the application
+fixture. Current history root replacement and captured-view rebasing also need
+their actual consumer composition; the old kernel case does not establish them.
+
+
+## Remaining application domain at usage-limit stop
+
+Groundwork remains the application/consumer implementation owner. The four
+executed cases above establish their exact source coordinate only. The client
+now also provides `artifact OPERATION_ID NEW_DIRECTORY`: a read-only export of
+the original source, both signatures, both public keys and a final hash/identity
+manifest, without signing inputs or native calls. Five SQLite checks and export
+of the retained real native signed report passed; this additive command did not
+require repeating the four unchanged native scenarios.
+
+The remaining domain includes:
+
+- Immutable R/Q over BP/disconnected custody, Store/FNRJ application dispatch,
+  return receipt, sender release and application correlation. BPTransport owns
+  the transport/grant implementation; the application fixture is unfinished.
+- Authenticated remote durable multigroup consumers (CNS-011), definition and
+  publication producers, bounded cursor/commit/ack endpoints and restart.
+- Current History/P3 root replacement, availability and captured-view rebasing,
+  preserving dense history authority while distinguishing physical incarnation;
+  old-source executions do not establish these new compositions.
+- Bound local clients and account/auth reconfiguration: wrong principal, secret,
+  query or incarnation refusal, held publication and cursor rebase, coordinated
+  with Access, Runtime and History.
+- Matching caller invariants, guards, construction/preservation, witnesses and
+  cost/resource bounds for the complete consumer family. Existing registry
+  obligations remain open where actual current composition is not established.
+- Received-source export and longer-lived inbox/outbox use beyond the finite
+  fixtures, including receipt/provenance queries. The existing public snapshot
+  and exact authored artifact exports already work.
+
+External application effects are not claimed exactly once. Key succession,
+confidentiality and cross-silo receipt authority remain separate design work.
+The initialized execution cache is reusable before any Store/owner exists;
+normal admission is still required for new logical definitions and attachments.
+Preserving a failed final initializer leaf in a live repair loop remains tooling
+work, rather than a completed consumer capability.

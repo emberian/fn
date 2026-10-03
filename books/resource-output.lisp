@@ -30,7 +30,12 @@
 
 (defun fn-rlo-install (dynamic store-need cold policy slots fn-resource-ledger)
   (declare (xargs :stobjs fn-resource-ledger :guard t :verify-guards nil))
-  (if (not (fn-rl-wfp fn-resource-ledger))
+  ; A zero-count ledger with padded, previously populated slot arrays is not
+  ; a fresh bank. Reject it before resizing can preserve an active hidden row.
+  ; Keep the established already-installed refusal for positive counts.
+  (if (not (and (fn-rl-wfp fn-resource-ledger)
+                (or (not (equal (fn-rl-count fn-resource-ledger) 0))
+                    (fn-rl-freshp fn-resource-ledger))))
       (mv :invalid-output-install-state fn-resource-ledger)
     (let ((grant (fn-orv-startup-grant dynamic store-need cold policy slots)))
     (if (not (eq (car grant) :hold)) (mv (cadr grant) fn-resource-ledger)

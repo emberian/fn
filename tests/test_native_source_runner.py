@@ -54,10 +54,12 @@ class SourceRunnerTests(unittest.TestCase):
             (root / 'host/native/build.lisp').write_text('(defttag :fn-native-host)\n:q\n(save-exec "image")')
             event = root / 'host/owner-host.lisp'
             event.write_text('(defun gate (x) x)')
+            (root / 'core').write_bytes(b'generic core')
+            (root / 'sbcl').write_bytes(b'pinned executable')
             args = types.SimpleNamespace(world_root=str(root), source_root=str(root),
                 output=str(root/'entry'), build='host/native/build.lisp',
                 event=['host/owner-host.lisp:gate'], world_revision='a'*40,
-                source_revision='b'*40, sbcl='/bin/false', core='/tmp/core',
+                source_revision='b'*40, sbcl=str(root/'sbcl'), core=str(root/'core'),
                 profile='developer', before_world=[],events_file=[],raw_after=[])
             manifest = runner.prepare(args)
             event.write_text('(defun gate (x) nil)')

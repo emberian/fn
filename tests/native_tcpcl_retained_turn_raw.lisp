@@ -17,13 +17,15 @@
 (defvar *fnn-tcl-progress* nil)
 (defvar *fnn-tcl-source-start* nil)
 (defun fnn-core (&rest args) (declare (ignore args)))
-(dolist (path '("books/tcpcl-retained-turn.lisp" "books/tcpcl-frame-cursor.lisp"))
+(dolist (path '("books/tcpcl-retained-turn.lisp" "books/tcpcl-frame-cursor.lisp" "books/tcpcl-input-materialize.lisp"))
 (with-open-file (stream path)
  (loop for form = (read stream nil :eof) until (eq form :eof) do
   (when (and (consp form) (eq (first form) 'defun))
    (eval (cons 'defun (cons (second form) (cons (third form)
     (remove-if (lambda (x) (and (consp x) (eq (car x) 'declare))) (cdddr form)))))))))
 )
+(defun fn-octets-len (st) (svref st 1))
+(defun fn-octets-get (i st) (aref (svref st 0) i))
 (defun create-fn-octets$c () (vector (make-array 0 :element-type '(unsigned-byte 8)) 0))
 (defun fn-octets$c-reserve (n st) (setf (svref st 0) (make-array n :element-type '(unsigned-byte 8))) st)
 (with-open-file (stream "host/native/tcpcl.lisp")
@@ -32,7 +34,7 @@
     (or (and (eq (first form) 'defstruct) (eq (car (second form)) 'fnn-tcl-conn))
         (and (eq (first form) 'defun)
           (member (second form) '(fnn-tcl-flush fnn-tcl-drop fnn-tcl-pump-out fnn-tcl-offer
-            fnn-tcl-input-initialize fnn-tcl-input-decode fnn-tcl-input-turn fnn-tcl-physical-attempt fnn-tcl-begin fnn-tcl-turn-lost fnn-tcl-turn-local fnn-tcl-turn fnn-tcl-session)))))
+            fnn-tcl-input-initialize fnn-tcl-input-decode fnn-tcl-input-materialize-turn fnn-tcl-input-turn fnn-tcl-physical-attempt fnn-tcl-begin fnn-tcl-turn-lost fnn-tcl-turn-local fnn-tcl-turn fnn-tcl-session)))))
    (eval form))))
 (defvar *fnn-tcl-progress* nil)
 (defvar *fnn-tcl-source-start* nil)
@@ -56,7 +58,8 @@
  (unless (fnn-tclc-source-pending conn) (fnn-tcl-flush conn)))
 (defun fnn-core (name &rest args)
  (case name
-  ((fn-tcf-at fn-tcf-begin fn-tcf-contactp fn-tcf-byte fn-tcf-span fn-tcrt-action fn-tcrt-write-end fn-tcrt-read-limit fn-tcrt-write-deadline) (apply name args))
+  ((fn-tcim-turn fn-tcf-at fn-tcf-begin fn-tcf-contactp fn-tcf-byte fn-tcf-span fn-tcrt-action fn-tcrt-write-end fn-tcrt-read-limit fn-tcrt-write-deadline) (apply name args))
+  (fn-tclsctl-turn (list (first args) nil))
   (fn-tcl-max-message 200000)
   (fn-tcl-host-segment-mru 100000)
   (fn-tcl-host-input-probe t)
@@ -98,7 +101,7 @@
  (setq *calls* nil *writes* nil *incoming* #(42))
  (fnn-tcl-turn conn) ; read creates released ACK
  (assert (equal *calls* '(:read)))
- (fnn-tcl-turn conn) ; complete frame enters decoder once
+ (loop while (fnn-tclc-source-more conn) do (fnn-tcl-turn conn)) ; bounded conversion then one decode
  (let ((*fnn-tcl-progress* (lambda (c) (declare (ignore c))
                             (assert (equal (reverse *writes*) '(7 8)))
                             (push :progress *calls*))))

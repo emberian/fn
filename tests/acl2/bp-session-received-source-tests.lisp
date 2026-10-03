@@ -23,3 +23,17 @@
       (not (fn-bpsrx-authorizedp (cadr *bpsrx-plan*) '(:bp-session-grant 2 17 :incoming nil t)
                                  (cadddr *bpsrx-plan*)))
       (equal (fn-bpsrx-start *bpsrx-row* 7 1001 1000 nil) '(:refused :private-source-count))))
+
+; Actual authority/phase discrimination; this is a constructor/control fixture,
+; not a theorem about physical close, publication or collector completion.
+(assert-event
+ (and (equal (fn-bpsrx-abort-plan (cadr *bpsrx-plan*) *bpsrx-row*
+                   (cadddr *bpsrx-plan*) :copy) '(:retire-private-source :pre-publication))
+      (equal (fn-bpsrx-abort-plan (cadr *bpsrx-plan*) *bpsrx-row*
+                   (cadddr *bpsrx-plan*) :convert) '(:retire-private-source :pre-publication))
+      (equal (fn-bpsrx-abort-plan (cadr *bpsrx-plan*) *bpsrx-row*
+                   (cadddr *bpsrx-plan*) :publish) '(:retire-private-source :pre-publication))
+      (equal (car (fn-bpsrx-abort-plan (cadr *bpsrx-plan*) *bpsrx-row*
+                   (cadddr *bpsrx-plan*) :publishing)) :retain-private-source)
+      (equal (car (fn-bpsrx-abort-plan (cadr *bpsrx-plan*)
+                    (fn-bpsg-row 2 18 :incoming) (cadddr *bpsrx-plan*) :copy)) :retain-private-source)))

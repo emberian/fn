@@ -5431,3 +5431,9 @@
 
 (definterface fn-owner-page-decoded-window-acquire-projected :class :common-lisp-compliant)
 (definterface fn-owner-page-window-discovery-kind :class :common-lisp-compliant)
+
+
+(definterface fn-web-host-post-window :class ::program)
+(definterface fn-web-host-post-reply-step :class ::program)
+
+(definterface fn-web-host-post-form-step :class ::program)

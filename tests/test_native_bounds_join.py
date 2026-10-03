@@ -210,11 +210,9 @@ class TenMibArticleTests(JoinFixture):
                              "--group", "fn.test")
             print("operator post", posted.returncode, posted.stdout.decode().strip(),
                   posted.stderr.decode().strip(), flush=True)
-            # The control client's reply deadline is a fixed 10 s
-            # (host/native/control.lisp +fnn-control-io-seconds+, PKT-871):
-            # a 10 MiB submission outlasts it, so the client reports
-            # UNCERTAIN (exit 3) while the owner completes the commit.  The
-            # article is then read back from the store, the durable fact.
+            # S132: the default client observation budget grows with the
+            # submitted frame. Successful durable publication must also be
+            # reported as accepted here; uncertain is not a passing substitute.
             reread = False
             for _ in range(60):
                 if owner.poll() is not None:
@@ -228,7 +226,7 @@ class TenMibArticleTests(JoinFixture):
             self.node.stop()
         self.assertTrue(rows[MIB10][0].startswith("240"), rows)
         self.assertTrue(rows[MIB10][1], "the 10 MiB NNTP POST did not reread identical")
-        self.assertIn(posted.returncode, (EXIT_OK, EXIT_UNCERTAIN), posted.stderr.decode())
+        self.assertEqual(posted.returncode, EXIT_OK, posted.stderr.decode())
         self.assertTrue(reread, "the 10 MiB operator post did not reread identical")
         self.assertTrue(alive, "the owner stopped serving after the 10 MiB articles")
 

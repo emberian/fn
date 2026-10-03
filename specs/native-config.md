@@ -231,5 +231,22 @@ and operator wire grammars. They run through the owner serialization/fence
 boundary; this facility does not promise semantic invariants after arbitrary
 code edits or forceful cancellation of evaluation. `SCN-1121` exercises the
 actual socket evaluator and production selector, with named owner/I/O adapters;
-full native owner composition and ordinary ACL2 event admission remain separate
-execution checks. There is no new proof or image qualification claim.
+A separate real ACL2 worker-thread check covers successful/refused/subsequent
+admissions and bounded channel capture; full native owner composition remains
+a separate execution check. There is no new proof or image qualification claim.
+
+
+## Local reply observation budget
+
+When the local control client has no explicit reply wait, ACL2 selects
+`10 + ceiling(serialized-request-octets / 65536)` seconds. This is a local
+observation policy (ten seconds of grace plus one second per 64 KiB), not a
+minimum-throughput guarantee or an acceptance decision. It scales with the
+complete submitted frame without adding an article-size ceiling. An explicit
+consumer wait overrides this default. Socket input/output deadlines and reply
+frame bounds retain their separate meanings. After any submitted octet, expiry
+or an undecodable/missing reply still yields uncertain; only the owner's decoded
+reply reports its durable result. The client does not retry on timeout.
+SCN-1123 covers the actual client exchange/read loop under a virtual delayed
+socket. The 10 MiB end-to-end scenario now requires accepted plus exact readback;
+its matching native execution remains part of S132 closure.
