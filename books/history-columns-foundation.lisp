@@ -50,6 +50,17 @@
 (include-book "history-columns-logic")
 (local (include-book "arithmetic/top" :dir :system))
 (local (in-theory (disable (tau-system))))
+; Keep positional column terms stable when loaded after a codec's ADT
+; vocabulary. These optional surrounding rules are absent in the standalone
+; dependency world; the local event disables only rules actually present.
+(local
+ (make-event
+  (value
+   (list 'in-theory
+    (cons 'disable
+     (append (and (getpropc 'adt-nth-0 'theorem nil (w state)) '(adt-nth-0))
+             (and (getpropc 'adt-nth-1+ 'theorem nil (w state)) '(adt-nth-1+))))))))
+
 
 ; The foundation: the columns.
 
