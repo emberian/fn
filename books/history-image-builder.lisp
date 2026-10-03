@@ -1,6 +1,7 @@
 ; The native incremental history builder, composed with the existing commit.
 (in-package "ACL2")
 (include-book "history-image-build-rows")
+(include-book "history-image-row-step")
 (include-book "history-image-snapshot")
 
 (defun fn-his-build-source-count (records)
