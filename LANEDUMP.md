@@ -3525,3 +3525,19 @@ Access73a0 core+teeth normal cert PASS certify-20261003T165500Z-2590721,
 2selected roots/38matchingcacheddeps. Manifest archived+index committed.
 No owner/physical endpoint claim; underlying historical cache citations have
 uncited provenance debt, not silently upgraded to a whole closure verdict.
+
+Access shared arbitrary header backing PRF1304/SCN1135: new legacy-header-query
+uses generic name parameter in existing legacy-parser-cursor, preserves old
+public ABI/five-name NOV. Query begin/tick/verdict/field/ready APIs frozen to
+Served, borrowed span=(handle,start,length,pin), no copied field. Tick2values
+NEXT/USED; NSW normalization existing5values; COLD caller retains exact raw state.
+All41legacy events/14query events warm admitted, guards and work/source/ready
+preservation (1004/9312/18087steps). Actual source236658 query checks against old
+FnNntpHdrContent pass, long10000 folded value, W1/3/4096, mixedcase/duplicate/absent,
+later malformed header/body/oversize RFCline/NUL, cold parser +normalization.
+Literal actual arena guard/source/work/reference teeth +pin mutation warm pass.
+Actual HDR/XHDR/XPAT dispatch/owner join remains Served; full arbitrary-name
+parser/span/reference and physical resource proof remain open. Runtime/History
+confirmed legacy book disjoint, no native custody or pool edits. Operator accepts
+back S072/S074/S090/S138/S151/S012; no Access operator WIP. Source-before-cert;
+selected3roots legacycursor/query/tests next, not broad legacy closure.

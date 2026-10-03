@@ -187,11 +187,16 @@ consumers. Retained numeric/current/withdrawn selection, framing preflight and
 lazy Xref now yield in bounded steps; READY commits selection once and replays
 without authority changes. Source fixtures and exact normal source admission
 pass. Complete actual parsed factory/socket/physical decoded-window/Web browser
-composition, initial authorization/Message-ID/server setup bounds, guards and
+composition, initial authorization setup bounds, renderer/owner guards and
 universal owner/reference refinement remain open (PRF-1286, SCN-1116). The
 retained source-execution process/inputs and precise mixed ABI frontier are in
 LANEDUMP; no certificate, current image or full funded operation follows from
-those checks. Access also continues absorbed operator/journal obligations; Root
+those checks. Numeric/current/Message-ID selector guards and exact fuel split now
+normal-certify at73a0; direct server capture boundary certifies at39d72. These
+component certificates do not certify the whole owner/physical path. Access owns
+shared arbitrary HDR/XPAT span backing (PRF-1304/SCN-1135); Served owns the actual
+command consumer. Operator resumes non-ARTICLE operator work; Access keeps the
+general journal bridge. Root
 S132 strict native ten MiB acceptance/readback now passes on the named initialized-source cache with its supported 128 MiB history profile; whole current-kernel/funding qualification remains separate.
 
 **Next — Served.** Carry the shared cursor/dependency machinery through OVER,

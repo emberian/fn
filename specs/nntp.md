@@ -2734,3 +2734,24 @@ group/status configurations merely to read that field. Rendering validates
 one server octet per transition, then publishes Xref only if the whole
 nonempty proper list is printable ASCII (RFC5536 section3.2.14 permits a
 colon in this path identity). Invalid candidates omit Xref as before.
+
+
+### Retained arbitrary header backing (PRF-1304, SCN-1135)
+
+HDR/XHDR and XPAT share the existing article header grammar. The query interface
+`fn-lhq-begin(handle,length,pin,field)` retains the captured payload and normalizes
+only the field token from the bounded NNTP request. `fn-lhq-tick(cursor,fuel,arena)`
+returns a continuation and USED scalar reads; complete syntax validation precedes
+`:valid`. `fn-lhq-field` then returns the first matching `(handle,start,length,pin)`
+span, or NIL for a valid absent field. An invalid article is distinguished by
+`fn-lhq-verdict`, never inferred from an empty value. The span keeps physical fold
+bytes and removes only the first unfolded space. Existing `fn-nsw-step` removes
+fold CRLF and scrubs TAB/CR/LF/NUL according to RFC3977 8.3.2; arbitrary field values
+are never flattened by this producer. A cold scalar read leaves the caller's raw
+query/normalizer coordinates unchanged, under the same origin pin.
+
+The original five-name NOV parser entry keeps its ABI and projection through a
+shared name-parameterized header machine. Component guards, bounded work/source
+preservation and literal/reference source cases pass; Served's actual HDR/XPAT
+consumer and the universal arbitrary-name parser/span correspondence remain open.
+This is no complete physical allocation or qualified endpoint claim.

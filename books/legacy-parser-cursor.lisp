@@ -91,7 +91,7 @@
                    (fn-article-vcharp byte))
               :fold-visible (fn-lpc-at 10 s)))))
 
-(defun fn-lpc-header-byte (s byte pos h pin)
+(defun fn-lpc-header-byte-names (s byte pos h pin names)
   (declare (xargs :guard (natp pos)))
   (let ((phase (fn-lpc-at 0 s)))
     (cond
@@ -129,7 +129,7 @@
         (if (and (fn-article-ftextp byte)
                  (or (not (fn-lpc-at 2 s)) (fn-lpc-at 3 s)))
             (list :name 1 t nil 0 0 nil
-                  (fn-lpc-name-step *fn-lpc-names* byte)
+                  (fn-lpc-name-step names byte)
                   (fn-lpc-close-fields s h pin) nil :plain)
           (fn-lpc-header-bad s))))
      ((eq phase :name)
@@ -146,6 +146,11 @@
         (fn-lpc-header-bad s)))
      ((eq phase :value) (fn-lpc-value-byte s byte pos))
      (t (fn-lpc-header-bad s)))))
+
+; Keep the existing NOV subject and its five-name projection unchanged.
+(defun fn-lpc-header-byte (s byte pos h pin)
+  (declare (xargs :guard (natp pos)))
+  (fn-lpc-header-byte-names s byte pos h pin *fn-lpc-names*))
 
 ; Separate facts scan: fn-hf-body-lines-of finds the FIRST CRLFCRLF even
 ; when the article parser has rejected its headers. The body count rejects
@@ -177,18 +182,22 @@
           (fn-lpc-header-bad (fn-lpc-header-begin)))
         0 '(:line 0) t))
 
-(defun fn-lpc-byte (s byte)
+(defun fn-lpc-byte-names (s byte names)
   (declare (xargs :guard t))
   (let* ((pos (nfix (fn-lpc-at 3 s)))
          (matched (fn-lpc-at 5 s)))
     (list (fn-lpc-at 0 s) (fn-lpc-at 1 s) (fn-lpc-at 2 s) (+ 1 pos)
-          (fn-lpc-header-byte (fn-lpc-at 4 s) byte pos
-                              (fn-lpc-at 0 s) (fn-lpc-at 2 s))
+          (fn-lpc-header-byte-names (fn-lpc-at 4 s) byte pos
+                              (fn-lpc-at 0 s) (fn-lpc-at 2 s) names)
           (fn-lpc-split-byte matched byte)
           (if (equal matched 4) (fn-lpc-body-byte (fn-lpc-at 6 s) byte)
             (fn-lpc-at 6 s))
           (and (fn-lpc-at 7 s)
                (or (<= 8 pos) (equal byte (fn-lpc-at pos *fn-rcl-magic*)))))))
+
+(defun fn-lpc-byte (s byte)
+  (declare (xargs :guard t))
+  (fn-lpc-byte-names s byte *fn-lpc-names*))
 
 (defun fn-lpc-verdict (s)
   (declare (xargs :guard t))
@@ -222,6 +231,19 @@
        (equal (fn-lpc-at 1 s)
               (fn-arena-payload-len (fn-lpc-at 0 s) fn-arena))))
 
+; The generalized name projection changes only the header machine. These
+; source coordinates are independent of the requested names and retained pin.
+(defthm fn-lpc-byte-names-keeps-source
+  (and (equal (fn-lpc-at 0 (fn-lpc-byte-names s byte names)) (fn-lpc-at 0 s))
+       (equal (fn-lpc-at 1 (fn-lpc-byte-names s byte names)) (fn-lpc-at 1 s))
+       (equal (fn-lpc-at 2 (fn-lpc-byte-names s byte names)) (fn-lpc-at 2 s))
+       (equal (fn-lpc-at 3 (fn-lpc-byte-names s byte names))
+              (+ 1 (nfix (fn-lpc-at 3 s)))))
+  :hints (("Goal" :in-theory (union-theories
+            '(fn-lpc-byte-names fn-lpc-at fn-ag-car fn-ag-cdr car-cons cdr-cons)
+            (union-theories (theory 'minimal-theory)
+                            (executable-counterpart-theory :here))))))
+
 (defthm fn-lpc-byte-keeps-source
   (and (equal (fn-lpc-at 0 (fn-lpc-byte s byte)) (fn-lpc-at 0 s))
        (equal (fn-lpc-at 1 (fn-lpc-byte s byte)) (fn-lpc-at 1 s))
@@ -229,7 +251,7 @@
        (equal (fn-lpc-at 3 (fn-lpc-byte s byte))
               (+ 1 (nfix (fn-lpc-at 3 s)))))
   :hints (("Goal" :in-theory (union-theories
-            '(fn-lpc-byte fn-lpc-at fn-ag-car fn-ag-cdr car-cons cdr-cons)
+            '(fn-lpc-byte fn-lpc-byte-names fn-lpc-at fn-ag-car fn-ag-cdr car-cons cdr-cons)
             (union-theories (theory 'minimal-theory)
                             (executable-counterpart-theory :here))))))
 
