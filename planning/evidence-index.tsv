@@ -12641,6 +12641,9 @@ cd0272cdd04ef7e436f9f43cdd78b44ade33197577a4bd34925470a642e35683 4070 planning/e
 fbc88ad7399e8da0741f76683119f319dba8c987baa168cfad01552c3a887445 2132 planning/evidence/web-continuations-2026-10-03-lifetime.md
 ae6e5f2c1baa90080e9b90a48886fe6d3463e3141144510fe5c7d52a9525b810 12421 planning/evidence/web-article-producer-legacy-red-2026-10-03.log
 d9872ddaaf2b016141227dea118935e4d53658963a96694ba994f0d5d932d2bf 546 planning/evidence/web-article-producer-window-2026-10-03.log
+557601702c8b87ded783bcc76fe7eaa33e8e0c2f23192b3ef0a95d64e632dc77 1164 planning/evidence/web-browser-capture-red-2026-10-03.log
+f7576a1a4c43f65de556f525cfd2c0cd0f2942e4c3f270fa813b8564b30cf9b3 7934 planning/evidence/web-browser-class-red-2026-10-03.log
+3f3be66da0b49112f04bd21ef04ca5e05b01b09124212ed68ed0aae774d690c1 1336 planning/evidence/web-browser-post-red-2026-10-03.log
 e61b95f44ff6f69bb3516e4f643e825a3659d84cb37dd8e1a0b4094b23e334d9 3339 planning/evidence/web-continuations-2026-10-03.md
 982c8fd983ce53401660818db547b9ce1c648d6d81c0489b00ee7ac3f161684b 12450 planning/evidence/web-continuations-2026-10-03/before-record-removal.log
 85d949add4c2494f557440faf64ea5ed3c985e9913358659b973ee9ae3a46060 10302 planning/evidence/web-continuations-2026-10-03/before-second-observer.log
@@ -12658,6 +12661,7 @@ ad0ec62569201b51be204100b051b16bf0dede73375893a2cdae2667b61d8b0e 1727 planning/e
 08d1a289e30a774441800e73a47a42f61712461e0adcc8f6b169d2486130e4b6 2113 planning/evidence/web-page-cursor-2026-10-03.md
 035595628d82e7e9e1530cb980096933869e8494e5c5f1b44df5fb9a6e1a7ae0 199 planning/evidence/web-page-cursor-2026-10-03/raw.log
 70a75e37a1830e938e00d243a40dea10eb59df681011b40b22fb762f5ee99b08 3040 planning/evidence/web-post-and-producer-source-2026-10-03.md
+a622f304f286f43a1637490c9a827b300ccc0d489093d9476c6c38b55d4bffe1 2984 planning/evidence/web-post-browser-red-2026-10-03.md
 cabba2207b560e0ad6e5650ad0b14b150330ff90713b8824e165a0677ff34f0b 570 planning/evidence/web-post-native-2026-10-03.log
 0f5ec103d022ee6f41be0fc020b4b8cae21db77b950a151dd4a2090f002775d0 43650 planning/evidence/web-post-source-2026-10-03.log
 5f2aa1eac2795060578f2079f01c346ba1ca1813791dea307e70a80c67f6dc29 3678020 planning/evidence/web-private-clean-2026-10-03.log
