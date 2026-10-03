@@ -561,6 +561,7 @@
                  (:instance fn-cbor-u32-from-bounds (xs xs)))
            :in-theory (e/d (fn-cbor-u64-from)
                            (fn-cbor-u32-from-bounds fn-cbor-u32-from
+                            fn-cbor-u32-from-upper-bound
                             fn-cbor-at-leastp-is-length-lower-bound)))))
 
 (defthm fn-cbor-decode-prechecked-wide-uint-domain
