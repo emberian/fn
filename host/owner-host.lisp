@@ -1954,6 +1954,17 @@
   (value (fn-cat-may-seal (fn-owner-index-writer-ticket state)
                           (fn-owner-cat-pending-now state))))
 
+; Literal host-wrapper boundary; not a prepare-transition keystone.
+(defthm fn-owner-cat-may-seal-refines-cat-by-definition
+  (equal (fn-owner-cat-may-seal state)
+         (mv nil
+             (fn-cat-may-seal (fn-owner-index-writer-ticket state)
+                              (fn-owner-cat-pending-now state))
+             state))
+  :hints (("Goal" :in-theory (e/d (fn-owner-cat-may-seal)
+                                 (fn-cat-may-seal fn-owner-index-writer-ticket
+                                  fn-owner-cat-pending-now)))))
+
 (defun fn-owner-cat-prepare-sealed (fn-arena fn-cat state)
   (declare (xargs :stobjs (fn-arena fn-cat state) :guard t))
   (if (not (fn-cat-may-seal (fn-owner-index-writer-ticket state)
@@ -5306,6 +5317,24 @@ existing port only after fn-fc has made this connection ready."
                        (fn-own-max-conns (fn-owner-core state)))))))))
 
 ; The rewritten rows' tombstoned records are no longer interned before the
+; PRF-1258: the subject is the host-called prediction, including both its
+; returned row column and the arena effects of sealing its payload column.
+; The loop's guard proof already connects the MBE execution to this logic.
+(defthm fn-orcs-predict-seal-refines-intern
+  (implies (not (fn-orcs-has-bad rows))
+           (equal (fn-orcp-intern-rows rows keyring generation fn-arena)
+                  (mv (car (fn-orcs-predict rows keyring generation
+                                           (fn-arena-count fn-arena)))
+                      (fn-orcs-seal
+                       (cadr (fn-orcs-predict rows keyring generation
+                                             (fn-arena-count fn-arena)))
+                       fn-arena))))
+  :hints (("Goal"
+           :use ((:instance fn-orcs-seal-is-the-intern))
+           :in-theory (e/d (fn-orcs-predict)
+                           (fn-orcs-seal-is-the-intern fn-orcp-intern-rows
+                            fn-orcs-seal fn-orcs-predict-rows fn-orcs-payloads)))))
+
 ; swap: fn-orcs-predict (off the mutex) and fn-orcs-seal (in the swap
 ; quantum), books/owner-reclaim-seal.lisp.
 ;; Q16 (lane online-reclaim-6): the reclaim's instant recorded LIVE, the twin
