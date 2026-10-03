@@ -449,21 +449,84 @@
       (fn-sf-next-lower (cdr records) (1+ (fn-store-event-txid (car records))))
     lower))
 
+; The record list's validation classifies each record ONCE (X05 interim,
+; lane sf-records, 2026-10-03).  The logical walk below asks fn-store-event-p
+; and then each of the sequence, txid (three times, and once more as the next
+; lower bound) and generation readers, and every one of those dispatches over
+; the event kinds again -- fn-held-p, a whole held-record recognizer, about
+; six times per record.  fn-sf-event-fields dispatches once and answers the
+; recognizer's verdict and the three readings; the :exec walk uses it.  The
+; logical definitions are unchanged: fn-sf-event-fields-are-the-readers and
+; fn-sf-record-list-walkp-is-record-listp equate them before the guards are
+; verified (below).  Still a walk of the whole log per evaluation (O(n)): the
+; cure for that is D40 raw dispatch over the carried relation (stage 5).
+(defun fn-sf-event-fields (x)
+  ; (mv OK SEQUENCE TXID GENERATION), the dispatch of fn-store-event-p and
+  ; the fn-store-event- readers, in their order, done once.
+  (declare (xargs :guard t :verify-guards nil))
+  (cond ((fn-held-p x)
+         (mv t (fn-record-sequence x) (fn-record-txid x) (fn-record-generation x)))
+        ((fn-store-retention-event-p x)
+         (mv t (fn-store-event-nth 2 x) (fn-store-event-nth 3 x)
+             (fn-store-event-nth 4 x)))
+        ((fn-stxe-p x)
+         (mv t (fn-stxe-sequence x) (fn-stxe-txid x) (fn-stxe-generation x)))
+        ((fn-stxk-p x)
+         (mv t (fn-stxk-sequence x) (fn-stxk-txid x) (fn-stxk-generation x)))
+        ((fn-hstxa-p x)
+         (let ((a (fn-hstxa-stxa x)))
+           (mv t (fn-stxa-sequence a) (fn-stxa-txid a) (fn-stxa-generation a))))
+        ((fn-cpe-eventp x)
+         (mv t (fn-cpe-sequence x) (fn-cpe-txid x) (fn-cpe-generation x)))
+        ((fn-th-topic-eventp x)
+         (mv t (fn-th-at 1 x) (fn-th-at 2 x) (fn-th-at 3 x)))
+        (t (mv nil nil nil nil))))
+
+(defthm fn-sf-event-fields-are-the-readers
+  (and (iff (mv-nth 0 (fn-sf-event-fields x)) (fn-store-event-p x))
+       (iff (car (fn-sf-event-fields x)) (fn-store-event-p x))
+       (equal (mv-nth 1 (fn-sf-event-fields x)) (fn-store-event-sequence x))
+       (equal (mv-nth 2 (fn-sf-event-fields x)) (fn-store-event-txid x))
+       (equal (mv-nth 3 (fn-sf-event-fields x)) (fn-store-event-generation x)))
+  :hints (("Goal" :in-theory '(fn-sf-event-fields fn-store-event-p
+                               fn-store-event-sequence fn-store-event-txid
+                               fn-store-event-generation mv-nth nth zp
+                               car-cons cdr-cons (:executable-counterpart zp)
+                               (:executable-counterpart binary-+)
+                               (:executable-counterpart unary--)))))
+
+(defun fn-sf-record-list-walkp (records sequence lower frontier)
+  (declare (xargs :guard (and (natp sequence) (natp lower) (natp frontier))
+                  :verify-guards nil))
+  (if (consp records)
+      (mv-let (ok seq txid gen)
+        (fn-sf-event-fields (car records))
+        (and ok
+             (equal seq sequence)
+             (<= lower txid)
+             (< txid frontier)
+             (equal gen txid)
+             (fn-sf-record-list-walkp (cdr records) (1+ sequence) (1+ txid)
+                                      frontier)))
+    (null records)))
+
 ; Sequence numbers are contiguous.  Acceptance txids are strictly increasing,
 ; may have gaps, and are all below the durable allocator frontier.
 (defun fn-sf-record-listp (records sequence lower frontier)
   (declare (xargs :guard (and (natp sequence) (natp lower) (natp frontier))
                   :verify-guards nil))
-  (if (consp records)
-      (let ((record (car records)))
-        (and (fn-store-event-p record)
-             (equal (fn-store-event-sequence record) sequence)
-             (<= lower (fn-store-event-txid record))
-             (< (fn-store-event-txid record) frontier)
-             (equal (fn-store-event-generation record) (fn-store-event-txid record))
-             (fn-sf-record-listp (cdr records) (1+ sequence)
-                                 (1+ (fn-store-event-txid record)) frontier)))
-    (null records)))
+  (mbe :logic
+       (if (consp records)
+           (let ((record (car records)))
+             (and (fn-store-event-p record)
+                  (equal (fn-store-event-sequence record) sequence)
+                  (<= lower (fn-store-event-txid record))
+                  (< (fn-store-event-txid record) frontier)
+                  (equal (fn-store-event-generation record) (fn-store-event-txid record))
+                  (fn-sf-record-listp (cdr records) (1+ sequence)
+                                      (1+ (fn-store-event-txid record)) frontier)))
+         (null records))
+       :exec (fn-sf-record-list-walkp records sequence lower frontier)))
 
 (local (in-theory (enable (tau-system)))) ; tau-cost: this form needs tau
 (defun fn-sf-candidatep (record records frontier)
@@ -1159,6 +1222,16 @@
 (verify-guards fn-sf-record-pair)
 (verify-guards fn-sf-record-valuesp)
 (verify-guards fn-sf-next-lower)
+(defthm fn-sf-record-list-walkp-is-record-listp
+  (equal (fn-sf-record-list-walkp records sequence lower frontier)
+         (fn-sf-record-listp records sequence lower frontier))
+  :hints (("Goal" :in-theory (e/d (fn-sf-record-list-walkp fn-sf-record-listp)
+                                  (fn-sf-event-fields fn-store-event-p
+                                   fn-store-event-sequence fn-store-event-txid
+                                   fn-store-event-generation)))))
+(verify-guards fn-sf-event-fields)
+(verify-guards fn-sf-record-list-walkp
+  :hints (("Goal" :in-theory (disable fn-sf-event-fields))))
 (verify-guards fn-sf-record-listp)
 (local (in-theory (enable (tau-system)))) ; tau-cost: this form needs tau
 (verify-guards fn-sf-candidatep
