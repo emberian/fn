@@ -1803,6 +1803,9 @@ raw tests cover this local consumer with stubbed batch I/O; a qualified image
 POST/stop scenario remains the acceptance check for the actual capacity and
 durable persistence path. Constructor metadata, gate/refusal work and the
 full resource vector remain cost obligations.
+The shutdown consumer additionally requires the typed syncer draw to be idle
+and the native captured-grant registry empty before advancing log/Store
+settlement. Its observation manufactures neither kind of completion receipt.
 
 Outbound feed lifetime also uses the shared actor starter and physical join.
 The module runtime remains native custody of the actor reservation, including

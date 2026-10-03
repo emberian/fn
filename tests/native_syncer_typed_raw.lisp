@@ -31,7 +31,18 @@
    (defun fnn-owner-syncer-install) (defun fnn-owner-syncer-issue)
    (defun fnn-owner-syncer-receipt) (defun fnn-owner-syncer-abort) (defun fnn-owner-syncer-physical)
    (defun fnn-owner-syncer-outcome) (defun fnn-owner-members-named)
-   (defun fnn-owner-complete-generation)))
+   (defun fnn-owner-complete-generation) (defun fnn-owner-syncer-drained-p)))
+
+;; Shutdown needs both typed idleness and discarded native custody. A ledger
+;; with no active draw alone cannot discharge a retained captured object.
+(let ((s (%make-fnn-owner-service)))
+  (check (fnn-owner-syncer-drained-p s) "startup with no issued grant has no syncer debt")
+  (fnn-owner-syncer-install s 12 1048576)
+  (check (fnn-owner-syncer-drained-p s) "installed idle projection can drain")
+  (setf (fnn-owner-service-syncer-grants s) (list (%make-fnn-syncer-grant :job :retained)))
+  (check (not (fnn-owner-syncer-drained-p s)) "idle typed ledger cannot discard native custody")
+  (setf (fnn-owner-service-syncer-grants s) nil)
+  (check (fnn-owner-syncer-drained-p s) "actual native discard permits idle observation"))
 
 ;; Actual typed producer issue is held through consumed outcome + failed live
 ;; join. Terminal physical join settles and removes native grant only once.
@@ -49,19 +60,19 @@
       (wait-label cleanup)
       (check (eq (fnn-owner-syncer-outcome s grant 7) :pending)
              "actual outcome without physical receipt retains draw")
-      (check (not (fnn-core 'fn-ros-drainedp (fnn-owner-service-syncer-ledger s)))
+      (check (not (fnn-owner-syncer-drained-p s))
              "actual typed draw still held")
       (check (not (fnn-owner-actor-join s worker :timeout 0)) "actual live timed-out join")
       (check (and (registered s actor) (member grant (fnn-owner-service-syncer-grants s))
-                  (not (fnn-core 'fn-ros-drainedp (fnn-owner-service-syncer-ledger s))))
+                  (not (fnn-owner-syncer-drained-p s)))
              "actual live join cannot settle typed or native custody")
       (sb-thread:signal-semaphore release)
       (check (fnn-owner-actor-join s worker) "actual terminal physical join")
       (check (and (null (fnn-owner-service-syncer-grants s))
-                  (fnn-core 'fn-ros-drainedp (fnn-owner-service-syncer-ledger s)))
+                  (fnn-owner-syncer-drained-p s))
              "actual typed ledger settles both receipts")
       (check (fnn-owner-actor-join s worker) "duplicate actual join")
-      (check (fnn-core 'fn-ros-drainedp (fnn-owner-service-syncer-ledger s))
+      (check (fnn-owner-syncer-drained-p s)
              "duplicate observation leaves drained ledger"))))
 
 ;; Actual no-child maker failure records only physical receipt, then the
@@ -74,7 +85,7 @@
                                  (lambda (physical) (fnn-owner-syncer-physical s grant physical))) nil)
              (error () t)) "actual maker failure")
     (check (and (null (fnn-owner-service-actors s))
-                (not (fnn-core 'fn-ros-drainedp (fnn-owner-service-syncer-ledger s))))
+                (not (fnn-owner-syncer-drained-p s)))
            "actual no-child receipt retains consumed-outcome debt")
     (check (eq (fnn-owner-syncer-outcome s grant 8) :settled) "actual no-child plus outcome settles"))
   (let ((next (fnn-owner-syncer-issue s 9 :next-job)))
@@ -94,7 +105,7 @@
     (check (eq issued :issued) "actual operation identity issued")
     (let ((*fnn-actor-thread-maker*
             (lambda (thunk &rest args)
-              (check (not (fnn-core 'fn-ros-drainedp (fnn-owner-service-syncer-ledger s)))
+              (check (not (fnn-owner-syncer-drained-p s))
                      "actual start-syncer funded before primitive spawn")
               (apply #'sb-thread:make-thread thunk args))))
       (multiple-value-bind (worker result actor grant) (fnn-owner-start-syncer s gen :actual-job)
@@ -143,6 +154,6 @@
       (let ((actor (first (fnn-owner-service-actors s))))
         (when actor (fnn-owner-actor-join s (fnn-owner-actor-thread actor))))
       (check (and (equal seen '(:fenced)) (null (fnn-owner-service-syncer-grants s))
-                  (fnn-core 'fn-ros-drainedp (fnn-owner-service-syncer-ledger s)))
+                  (fnn-owner-syncer-drained-p s))
              "reported completed operation preserved through failed starter physical return"))))
 (format t "native_syncer_typed_producer_raw: PASS actual start-syncer/fn-oqw/after-release consumer~%")
