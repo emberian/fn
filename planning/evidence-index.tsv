@@ -8033,6 +8033,8 @@ bbe5e852ea8b9e99fe5ea77fe6e85c75a6cb29803884e79dbfd9a99f1a030875 1943 planning/e
 c047cb426ec360370dcf25f79654399f06fcd21b0f8eaf11263f089a95b7108f 2681 planning/evidence/operator-daily/native-control.log
 1d8921c262692a7956d0c77a45f2e50578e33d59c9189bb22d8c81f5632ef80d 6137 planning/evidence/operator-daily/native-operator-verdicts.log
 e220ac06ec4fca656183d65c46fcad1560fdd16207f6ecef6c0a2b77740e3984 7299 planning/evidence/operator-default-heap-prior-2026-10-03.log
+7a551c8cecfb4041a95bc5f7167620a3c823a3632347fc3a150425f3787dcdcf 2884 planning/evidence/operator-default-heap-source-2026-10-03-v2.json
+3b8fb00e48057cc10e1b0f14942da24b238f6eeb468bcbc6fddff6de8ac5e900 1944 planning/evidence/operator-default-heap-source-2026-10-03-v2.log
 0f64ab42ab34182dd6d7af329813eed36821bdbdd57cfcd852c58de4f8dffab0 2585 planning/evidence/operator-default-heap-source-2026-10-03.json
 1db1b845ad2f5f6008548b24949e56b0fd18c574cf788cac7300fed6c9519f51 1990 planning/evidence/operator-default-heap-source-2026-10-03.log
 636e6c604785889467dbcade4878885b7de53f3e7b7dc1d3ce0b9c3d745da63e 3891 planning/evidence/operator-diagnostics-classification-2026-10-03.json
@@ -8089,6 +8091,10 @@ b7ffa215cd5cc180dd28339264907114856d3f4cf0342db22d21cbf964216907 103 planning/ev
 75f2d817f9c3ed0fcc43c80db329dfd538cb2e2e7e3d392b29b9cbb76346d9cd 6409 planning/evidence/operator-health-2026-09-25/native.sh
 2f6fa9dd5e14801178ef4a73ac0d063dbdb65ab7a756c19c8bf88c154f0868c6 102 planning/evidence/operator-heap-custody-composed-2026-10-03.log
 4a92d99e7cd6346ddf1243598de782fa0d706b505bd3969c4bdec58331ed4f80 51 planning/evidence/operator-heap-custody-read-2026-10-03.log
+f27771f166b13f5ac18b65bfd3daaa9dea4e0d0e97752b91c765334244767248 7401 planning/evidence/operator-heap-diagnostic-policy-prior-2026-10-03.log
+89f0ad685233a78da5e93e1418e007eefdd796d5fd0d57f672d97a6529c747ff 1986 planning/evidence/operator-heap-diagnostic-policy-source-2026-10-03.log
+e54f5c305780487589cf16a5db5ccff0e0dcf897089003ab614d0106958458e0 103 planning/evidence/operator-heap-policy-composed-2026-10-03.log
+4a92d99e7cd6346ddf1243598de782fa0d706b505bd3969c4bdec58331ed4f80 51 planning/evidence/operator-heap-policy-read-2026-10-03.log
 ba660f7ad9f3f4886c1f345b415af6f2b2631a6daa3febf4568ae35e2a188ba9 5098 planning/evidence/operator-init-resume-2026-10-03-v2.json
 66037dc2d50dc38399e483eba8dec466caa56aaf5017022fd0c75e94dc8ec0c2 4655 planning/evidence/operator-init-resume-2026-10-03.json
 4adb9e9c31bc93ed31ecf7a3036db3c25c1b65019105c8f27b53bab0884325cd 4583 planning/evidence/operator-init-resume-final-repl-2026-10-03.log.gz
