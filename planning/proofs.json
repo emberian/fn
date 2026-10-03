@@ -23124,7 +23124,7 @@
         "PRF-1291"
       ],
       "assumptions": [],
-      "status": "planned",
+      "status": "certified",
       "events": [
         "fn-tcl-source-recv-segment-boundary"
       ],
@@ -23133,9 +23133,10 @@
         "tests/acl2/tcpcl-received-source-refinement-tests.lisp",
         "books/tcpcl-received-source.lisp",
         "host/native/tcpcl.lisp",
-        "planning/evidence/manifests/certify-20261003T124653Z-1860852.json"
+        "planning/evidence/manifests/certify-20261003T124653Z-1860852.json",
+        "planning/evidence/manifests/certify-20261003T172353Z-2674541.json"
       ],
-      "progress_note": "Restores a distinct claimed registry coordinate for the already implemented/proved actual receiver abstraction; PRF1292 belongs to owner-operation readout and is preserved. Earlier exact alpha/guard source certificate remains its own archived coordinate; a current source union certificate is being refreshed before any current certification claim."
+      "progress_note": "Restores a distinct claimed registry coordinate for the already implemented/proved actual receiver abstraction; PRF1292 belongs to owner-operation readout and is preserved. Earlier exact alpha/guard source certificate remains its own archived coordinate; a current source union certificate is being refreshed before any current certification claim. Current four-root certificate certify-20261003T172353Z-2674541 PASSED4/0 includes exact receiver/teeth plus launcher producer definitions/guards. Receiver representation boundary only; no native/publication/cost claim."
     },
     {
       "id": "PRF-1306",
@@ -23155,9 +23156,10 @@
         "tests/acl2/bp-heap-command-tests.lisp",
         "host/native/heap.lisp",
         "host/native/bp-service.lisp",
-        "tests/native_bp_heap_source.lisp"
+        "tests/native_bp_heap_source.lisp",
+        "planning/evidence/manifests/certify-20261003T172353Z-2674541.json"
       ],
-      "progress_note": "Normal guards and transparent scalar/selector facts admitted6527steps;11 grammar/projection literals PASS. Actual projection plus actual heap profile consumer recorded-profile harness PASS, complete DEFAULT extension composition follows Operator source intake. No blanket resource or current native claim."
+      "progress_note": "Normal guards and transparent scalar/selector facts admitted6527steps;11 grammar/projection literals PASS. Actual projection plus actual heap profile consumer recorded-profile harness PASS, complete DEFAULT extension composition follows Operator source intake. No blanket resource or current native claim. Current producer definitions/guards and literal tests certified in2674541; full reservation correspondence remains planned, no selector corollary promoted."
     }
   ]
 }

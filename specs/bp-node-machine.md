@@ -5194,3 +5194,10 @@ reservation input. DEFAULT backing composes after cold reservation and before
 output, through the shared Operator producer. Runtime BP startup uses that same
 absolute root before Store open. Node private TCPCL session grant and BP-app's
 still-unconnected session bank remain separate obligations.
+
+The served BP Store owner also observes the shared arena return authority after
+its executor join. A join alone does not erase a prior release-callback debt:
+`fnn-arena-return-observation` must report `:closed` before marking the served
+owner stopped, including failed constructors with no Store carrier. Uncertain
+physical return retains the exact owner authority. This is a cleanup guarantee;
+the complete BP decoder/collector tariff remains open.

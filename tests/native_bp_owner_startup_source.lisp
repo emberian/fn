@@ -45,7 +45,7 @@
  (setf *pool* t)
  (funcall retain)
  (push :pool-retained *events*)
- (when (eq *mode* :constructor-error) (error 'fixture-stop))
+ (when (member *mode* '(:constructor-error :constructor-arena-debt)) (error 'fixture-stop))
  (setf *workers* t)
  (push :workers *events*))
 (defun fnn-owner-install (root connections)
@@ -62,6 +62,9 @@
  (push :executor-join *events*)
  (when (eq *mode* :join-error) (error 'fixture-stop))
  (setf *workers* nil))
+(defun fnn-arena-return-observation (log)
+ (assert (null log))
+ (if (member *mode* '(:arena-debt :constructor-arena-debt)) :uncertain :closed))
 (defun fnn-owner-cold-shutdown (service)
  (assert (eq (fnn-owner-service-store service) *store*))
  (fnn-extent-executor-stop))
@@ -100,6 +103,8 @@
 (helper-case :join-error '(:preflight :pool-retained :workers :store-open :executor-join) t)
 (helper-case :close-error '(:preflight :pool-retained :workers :store-open :recovery-end :executor-join :store-close) t)
 (helper-case :root-debt '(:preflight :pool-retained :workers :store-open :recovery-end :executor-join) t)
+(helper-case :arena-debt '(:preflight :pool-retained :workers :store-open :recovery-end :executor-join) t)
+(helper-case :constructor-arena-debt '(:preflight :pool-retained :executor-join) t)
 
 ;;; Call the production commands, not a reconstructed entry recipe. Refusal
 ;;; before owner return must still stop the partial pool and preserve authority

@@ -9679,13 +9679,15 @@
         "Execute actual BP served-owner startup/stop/settlement helpers using actual ACL2 service authority decisions and recorded physical constructors.",
         "Execute actual bp-node serve and bp-app receive entry functions through partial-constructor failure, failed recovery and escaping worker join.",
         "Observe independent BP root debt and uncertain Store-close before attempting a fresh owner claim.",
-        "Fail the main node budget read after FNBS acquisition, before any Store or resource constructor."
+        "Fail the main node budget read after FNBS acquisition, before any Store or resource constructor.",
+        "After an observed executor join, inject retained arena callback-return debt both with a Store carrier and after a failed constructor without one."
       ],
       "expected": [
         "Independent run authority and captured DEFAULT pool installation precede Store open; the private BP session bank supplies no decoded worker grant.",
         "Partial constructors and failed-installation Store carriers remain discoverable until actual worker return; no close or authority settlement follows an escaping join.",
         "Unresolved BP publication/physical root cleanup holds owner authority even after worker return; Store-close uncertainty fences the Store and blocks a second claim.",
-        "FNBS is released under the protected budget-read failure; no owner pool or Store is materialized."
+        "FNBS is released under the protected budget-read failure; no owner pool or Store is materialized.",
+        "Only :closed arena return permits stopped/settled ownership; uncertain callback custody retains authority and refuses Store close in both paths."
       ],
       "implementation": {
         "test": "tests/test_native_bp_owner_startup_source.py"
