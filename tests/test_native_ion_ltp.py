@@ -14,7 +14,9 @@ import time
 import unittest
 
 from tests.native_harness import EXIT, environment, native_image, requires, run, start
-from tests.test_native_ion_workflow import NativeIonWorkflowTests
+# The module, not the class: a TestCase imported by name is collected again
+# here and its tests run twice under this module's name.
+from tests import test_native_ion_workflow as workflow
 
 IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
 
@@ -24,11 +26,11 @@ IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
 class NativeIonLtpTests(unittest.TestCase):
     # RFC 9171 milliseconds; ACL2 projects exactly 60 helper seconds.
     lifetime = "60000"
-    setUp = NativeIonWorkflowTests.setUp
-    invoke = NativeIonWorkflowTests.invoke
-    submit = NativeIonWorkflowTests.submit
-    status = NativeIonWorkflowTests.status
-    assert_outstanding = NativeIonWorkflowTests.assert_outstanding
+    setUp = workflow.NativeIonWorkflowTests.setUp
+    invoke = workflow.NativeIonWorkflowTests.invoke
+    submit = workflow.NativeIonWorkflowTests.submit
+    status = workflow.NativeIonWorkflowTests.status
+    assert_outstanding = workflow.NativeIonWorkflowTests.assert_outstanding
 
     def test_real_send_binding_and_committed_application_receipt_return(self):
         lab = Path(os.environ["FN_ION_LAB_RUN"])
