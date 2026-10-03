@@ -1939,8 +1939,10 @@ name contains (`fn-store-cfg-join-names', host/store-node-host.lisp)."
                            (mapcar (lambda (n) (fnn-octet-list (fnn-string-octets n))) names)
                            (fnn-monotonic-ms)
                            wall has-wall))))
-    (when (or (keywordp value) (not (fnn-octet-list-p value)))
+    (when (eq value :bad)
       (fnn-refuse "refused initial group table"))
+    (unless (fnn-octet-list-p value)
+      (fnn-fault "ACL2 returned a malformed initial group table"))
     (fnn-octets value)))
 
 (defun fnn-bridge-lookup-found-p (msgid)
@@ -1964,9 +1966,9 @@ name contains (`fn-store-cfg-join-names', host/store-node-host.lisp)."
           ;; The two slice constants the store host still holds, checked
           ;; against the ACL2 grammar at session open as frame_bridge does.
           (unless (= (cdr (assoc :trailer table)) 32)
-            (fnn-refuse "host store trailer is 32 but the model says ~d" (cdr (assoc :trailer table))))
+            (fnn-fault "host store trailer is 32 but the model says ~d" (cdr (assoc :trailer table))))
           (unless (= (cdr (assoc :header table)) 10)
-            (fnn-refuse "host store header is 10 but the model says ~d" (cdr (assoc :header table))))
+            (fnn-fault "host store header is 10 but the model says ~d" (cdr (assoc :header table))))
           (setq *fnn-constants* table)))))
 
 (defun fnn-constant (name) (cdr (assoc name (fnn-constants))))
@@ -2450,13 +2452,31 @@ store; anything else is left to the ordinary open."
                   (fnn-core 'fn-store-lim-effective sealed
                             (mapcar #'fnn-octet-list (mapcar #'cdr observation))))))))))
 
+(defun fnn-initialize-resume-check (store groups requested-profile &optional history)
+  "ACL2 compares requested init with the sealed profile and exact generation one."
+  (let* ((path (fnn-config-record-path store 1))
+         (present (fnn-lstat path))
+         (record (when present
+                   (fnn-check-regular path)
+                   (fnn-octet-list (fnn-read-regular-bounded path +fnn-config-record-bytes+))))
+         (decision (fnn-core 'fn-nir-resume-decision
+                              requested-profile (fnn-store-sealed-config store)
+                              (fnn-octet-list (fnn-bridge-config-initial groups)) record history)))
+    (cond ((equal decision '(:accepted :resume)) t)
+          ((and (consp decision) (eq (first decision) :refused))
+           (fnn-refuse "~a" (fnn-core 'fn-nir-resume-line decision)))
+          ((and (consp decision) (eq (first decision) :fault))
+           (fnn-fault "~a" (fnn-core 'fn-nir-resume-line decision)))
+          (t (fnn-fault "ACL2 returned a malformed init resume decision")))))
+
 (defun fnn-initialize (store &optional (groups +fnn-default-groups+) (profile :development))
   ;; One durable configuration record at generation 1, built and admitted by
   ;; the core from the operator's group names.  The program is ACL2's:
   ;; books/byte-store-log-initializer.lisp fn-bsi-log-init-program (journal/
   ;; and the segment; every profile is on the record log, fn-store-profile-logp).
-  (let ((logp (fnn-core 'fn-store-profile-logp
-                        (fnn-metadata-config-decode (fnn-metadata-config-frame profile)))))
+  (let* ((requested-profile (fnn-metadata-config-decode (fnn-metadata-config-frame profile)))
+         (logp (fnn-core 'fn-store-profile-logp requested-profile))
+         (existing-profile nil))
     (unless logp
       (fnn-fault "the init profile is not a record-log profile"))
     (fnn-safe-directory (fnn-store-root store) t store
@@ -2466,6 +2486,16 @@ store; anything else is left to the ordinary open."
       (unwind-protect
            (progn
              (fnn-init-cut store "init-lock-created")
+             ;; Inspect an existing store before any staged publication or
+             ;; missing subdirectory is created. Compatible interrupted init
+             ;; remains legal; an incompatible request never reaches resume.
+             (setf existing-profile (fnn-lstat (fnn-config-path store)))
+             (when existing-profile
+               (fnn-load-config store)
+               (fnn-initialize-resume-check
+                store groups requested-profile
+                (when (fnn-lstat (fnn-config-dir store))
+                  (fnn-config-record-names store nil t))))
              (fnn-safe-directory (fnn-staging store) t store
                                  "init-staging-mkdir" "init-staging-parent-fenced")
              (fnn-safe-directory (fnn-config-dir store) t store
@@ -2473,11 +2503,18 @@ store; anything else is left to the ordinary open."
              (fnn-safe-directory (fnn-journal-dir store) t store
                                  "init-journal-mkdir" "init-journal-parent-fenced")
              (let ((config (fnn-metadata-config-frame profile)))
-               (if (eq (fnn-publish-initial-file store (fnn-config-path store) config "init-config-")
+               (unless existing-profile
+                (if (eq (fnn-publish-initial-file store (fnn-config-path store) config "init-config-")
                        :published)
-                   (setf (fnn-store-config store) (fnn-metadata-config-decode config))
-                   (fnn-load-config store)))
-             (when (null (fnn-config-record-names store :init-config-records-first-enumerate t))
+                   (setf (fnn-store-config store) requested-profile
+                         (fnn-store-sealed-config store) requested-profile)
+                   (progn
+                     (fnn-load-config store)
+                     (fnn-initialize-resume-check store groups requested-profile)))))
+             (let ((history (fnn-config-record-names store :init-config-records-first-enumerate t)))
+              (if history
+                 (fnn-initialize-resume-check store groups requested-profile history)
+               (progn
                (when (eq (fnn-publish-initial-file store (fnn-config-record-path store 1)
                                                 (fnn-bridge-config-initial groups) "init-history-")
                          :existing)
@@ -2486,7 +2523,7 @@ store; anything else is left to the ordinary open."
                  ;; recovery instead of silently accepting a racing history.
                  (fnn-indeterminate "configuration history appeared during initialization"))
                (fnn-fsync-dir (fnn-config-dir store))
-               (fnn-init-cut store "init-config-history-fenced"))
+               (fnn-init-cut store "init-config-history-fenced"))))
              ;; Format 10: the genesis at position 0 (books/store-genesis.lisp),
              ;; then fn-bsi-log-segment-steps.
              (fnn-log-init-genesis store)

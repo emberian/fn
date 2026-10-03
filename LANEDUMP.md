@@ -1803,3 +1803,19 @@ receipt/collector bytes were dropped by test_budget and stay unavailable. Future
 matching selection should name a scratch diagnostic directory; no semantic
 classification, source injection or second oracle. Python compile passes; native
 keeper execution remains pending matching source selection.
+## Sol operator capability: resumable init (2026-10-03)
+
+S072 delegated engineering decision implemented: requested profile vs sealed
+profile and exact generation-one DELTAS, stamps/later overlays ignored. ACL2
+owns compatibility/refusal/fault before resume mutation; interrupted-before-gen1
+remains legal. Corrupt/missing required initial evidence faults. New declared
+common entries fn-nir-resume-decision/line are loaded through config-host.
+PRF1270 accepting9852steps/refusing12813steps and21literal/guard checks admitted on hbox over14
+matching cached dependencies. Actual initializer/outer command fixture passes9
+cases; prior actual source wrongly returns0 instead of refusal1. Source record
+operator-init-resume-2026-10-03-v2.json and full refused/final REPL log archived.
+Scoped roots native-init-resume and native-init-resume-tests; four matching
+developer-image tests prepared in tests/test_native_init_resume.py. Existing
+fidelity resume-cut consumer updated because sealed config is no longer
+needlessly staged on normal resume. Normal cert/image remain Integration-owned.
+No deployment, paged startup or physical init refinement claim.

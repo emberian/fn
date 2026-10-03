@@ -120,15 +120,20 @@
 (defun fnn-heap-image-observation ()
   (cons (fnn-heap-core-octets) (sb-kernel:dynamic-usage)))
 
+(defun fnn-heap-profile-refusal (condition)
+  "Only ACL2's known refusal class permits an absent profile result."
+  (if (eql (fnn-exit-code-for condition) +fnn-exit-refused+)
+      nil
+    (error condition)))
+
 (defun fnn-heap-store-profile (root)
   "The profile ROOT's store was saved with, or NIL when there is no store
-there or its config.json does not decode (the command itself then reports
-that)."
+there or ACL2 names a refusal. Corruption and internal faults propagate."
   (handler-case
       (let ((store (make-fnn-store root)))
         (and (fnn-lstat (fnn-config-path store))
              (progn (fnn-load-config store) (fnn-store-config store))))
-    (error () nil)))
+    (fnn-store-error (condition) (fnn-heap-profile-refusal condition))))
 
 (defun fnn-heap-print-store-line (root)
   "The `heap=' line `status' and `health' print after their report: the
@@ -311,7 +316,10 @@ fn-native-operator-result-init-budget / -init-sizing, row Q10b)."
                                                            profile)))))
                (fnn-core 'fn-native-operator-host-result-run-cold-resources result)
                (fnn-core 'fn-native-operator-host-result-run-output-resources result))))))
-    (error () nil)))
+    (fnn-store-error (condition)
+      ;; A named semantic refusal has no profile; a broken core, ambiguous
+      ;; persistence outcome or host error cannot become a no-store budget.
+      (fnn-heap-profile-refusal condition))))
 
 (defun fnn-heap-command-profile (argv)
   "The command's store profile (or NIL), the client connections its run

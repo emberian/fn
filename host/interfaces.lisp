@@ -5046,6 +5046,13 @@
 (definterface fn-nret-no-report-line
   :class :common-lisp-compliant)
 
+(definterface fn-nir-resume-decision
+  :class :common-lisp-compliant
+  :keystones (fn-nir-resume-admits-identical-initial-contract-across-stamps
+              fn-nir-resume-refuses-distinct-initial-changes))
+(definterface fn-nir-resume-line
+  :class :common-lisp-compliant)
+
 (definterface fn-nret-not-running-line
   :class :common-lisp-compliant)
 
