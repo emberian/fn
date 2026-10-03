@@ -74,11 +74,44 @@
 ; pointer comparison when they are the same object (the host's refresh
 ; stores the list it indexed), a host fact a cost claim names (:rests-on).
 ;
+; STAMPS (c04 4c, def-entry round two: an EQUAL of two stamped operands is
+; one visit).  A view declared `:stamp' carries, beside its list, the
+; identity the owner gives that list -- an epoch and generation, or a view
+; version -- under a declared relation:
+;
+;   (def-carried-view NAME :key WS :indexes (...)
+;     :stamp (:stamped (lambda (stamp ws) TERM)   ; "WS is the list stamped STAMP"
+;             :determines THM))                   ; (implies (and STAMPED[s a] STAMPED[s b])
+;                                                 ;          (equal a b))
+;
+; generates, beside the list view's names, NAME-stamp (the carried stamp;
+; the carry is ((STAMP . WS) IDX ...)), NAME-stampedp (the carried pair is
+; stamped), NAME-refresh-stamped CARRY STAMP WS: when STAMP equals the
+; carried stamp the carry is rebased on the current pair in O(1) -- the
+; indexes are kept, since equal stamps name equal lists by :determines --
+; else the list refresh (the walk, the fold or the rebuild) under the new
+; stamp; and NAME-carryp-of-refresh-stamped, (implies (and (NAME-carryp c)
+; (NAME-stampedp c) STAMPED[stamp ws]) (NAME-carryp (NAME-refresh-stamped c
+; stamp ws))), NAME-stampedp-of-refresh-stamped, NAME-stamp-of-refresh-stamped.
+; A reader over a stamped view says `:stamp S' (a formal): its fast arm
+; tests (equal S (NAME-stamp C)) -- one visit -- never the lists, and its
+; keystone adds the hypotheses (NAME-stampedp C) and STAMPED[S WS].  What
+; the relation STAMPED means, and that the owner maintains it across
+; recovery, reclaim, reconfiguration and withdrawal (so a stamp is never
+; reused for another list: no ABA), is the owner's theorem, named by
+; :determines and by the host's preservation rows (STAGE-5B); this book
+; makes the reader's cost a stamp comparison on that premise, never on a
+; host fact about EQUAL.  The walk of a delta refresh still compares lists
+; (the counted visits); a lineage stamp that bounds the delta without a
+; comparison is a later option.
+;
 ; Refused at expansion, each by name: a malformed form; an index kind other
 ; than :set or :exact; a :set index without :key-fn, :put, :hasp; a lambda
-; of the wrong arity; a repeated index name; a reader whose :carry or
-; :list is not a formal, whose :probe names no :set index of NAME, or whose
-; :fast mentions its list; a NAME not declared; a :by that is not a theorem.
+; of the wrong arity; a repeated index name; a :stamp without :stamped and
+; :determines; a reader whose :carry or :list is not a formal, whose :probe
+; names no :set index of NAME, whose :stamp is given for an unstamped view
+; or missing for a stamped one; a NAME not declared; a :by (or :determines)
+; that is not a theorem.
 
 (in-package "ACL2")
 
@@ -335,7 +368,8 @@
 ; :lemmas prove (a put keeps what the index has; a put has its key), stated
 ; here as NAME-IDX-hasp-of-put and NAME-IDX-put-has-key before the instance.
 
-(defconst *fn-cv-keys* '(:key :indexes :build))
+(defconst *fn-cv-keys* '(:key :indexes :build :stamp))
+(defconst *fn-cv-stamp-keys* '(:stamped :determines))
 (defconst *fn-cv-index-keys* '(:kind :key-fn :put :hasp :empty :lemmas))
 
 (defun fn-cv-get (key kvs)
@@ -408,6 +442,13 @@
      ((and (assoc-keyword :build kvs)
            (not (and (symbolp (fn-cv-get :build kvs)) (fn-cv-get :build kvs))))
       (list :bad-build (fn-cv-get :build kvs)))
+     ((and (assoc-keyword :stamp kvs)
+           (let ((st (fn-cv-get :stamp kvs)))
+             (not (and (keyword-value-listp st)
+                       (null (fn-cv-unknown-keys st *fn-cv-stamp-keys*))
+                       (fn-cv-lambdap (fn-cv-get :stamped st) 2)
+                       (symbolp (fn-cv-get :determines st)) (fn-cv-get :determines st)))))
+      (list :bad-stamp name))
      (t nil))))
 
 (defun fn-cv-refusal-text (reason)
@@ -428,6 +469,8 @@
     (:mixed-kinds (msg "~x0 mixes :set and :exact indexes; a view is one kind (c04 3b)."
                        (cadr reason)))
     (:duplicate-index (msg "index names repeat: ~x0." (cadr reason)))
+    (:bad-stamp (msg "~x0: :stamp is (:stamped (lambda (stamp ws) TERM) :determines THM)."
+                     (cadr reason)))
     (:declared-twice (msg "~x0 is already a carried view of this world." (cadr reason)))
     (:not-a-theorem (msg "~x0 names ~x1 in :lemmas, which is not a theorem in this world."
                          (cadr reason) (caddr reason)))
@@ -596,6 +639,61 @@
            (fn-cv-name name '- (car (car entries)) '-of)
            (fn-cv-index-accessors name (cdr entries)))))
 
+(defun fn-cv-stamp-events (name kvs ws-of carryp lcarryp refresh)
+  (declare (xargs :mode :program))
+  ; a stamped view: the carry's key is (STAMP . WS); the list view's
+  ; functions read WS through NAME-WS (the cdr of the key), so the stamped
+  ; carry is the list carry with its key stamped
+  (let ((stamp (fn-cv-get :stamp kvs)))
+    (and stamp
+         (let* ((stamped (fn-cv-get :stamped stamp))
+                (determines (fn-cv-get :determines stamp))
+                (stamp-of (fn-cv-name name '-stamp))
+                (stampedp (fn-cv-name name '-stampedp))
+                (refresh-s (fn-cv-name name '-refresh-stamped))
+                (fresh (fn-cv-name name '-fresh))
+                (stamped-s-ws `(,fresh stamp ws))
+                (claim `(((carried (,carryp carry)) (stamped (,stampedp carry))
+                          (fresh ,stamped-s-ws))
+                         (,carryp (,refresh-s carry stamp ws)))))
+           `(; the relation, in one place: NAME-fresh STAMP WS
+             (defun ,fresh (stamp ws) (declare (xargs :guard t)) ,(fn-cv-sub stamped '(stamp ws)))
+             (defun ,stamp-of (carry) (declare (xargs :guard t)) (fn-cv-car (fn-cv-car carry)))
+             (defun ,stampedp (carry)
+               (declare (xargs :guard t))
+               (,fresh (,stamp-of carry) (,ws-of carry)))
+             (defun ,refresh-s (carry stamp ws)
+               (declare (xargs :guard t :normalize nil))
+               (if (equal stamp (,stamp-of carry))
+                   (cons (cons stamp ws) (fn-cv-cdr carry))
+                 (let ((r (,refresh (cons (,ws-of carry) (fn-cv-cdr carry)) ws)))
+                   (cons (cons stamp ws) (fn-cv-cdr r)))))
+             (defthm ,(fn-cv-name carryp '-of-refresh-stamped)
+               (implies (and (,carryp carry) (,stampedp carry) ,stamped-s-ws)
+                        (,carryp (,refresh-s carry stamp ws)))
+               :hints (("Goal"
+                        :use ((:instance ,determines (s stamp) (a ws) (b (,ws-of carry)))
+                              (:instance ,(fn-cv-name lcarryp '-of-refresh)
+                                         (carry (cons (,ws-of carry) (fn-cv-cdr carry)))))
+                        :in-theory (union-theories
+                                    '(,refresh-s ,stampedp ,stamp-of ,ws-of ,carryp ,fresh
+                                      fn-cv-car fn-cv-cdr car-cons cdr-cons)
+                                    (theory 'minimal-theory)))))
+             (defthm ,(fn-cv-name stampedp '-of-refresh-stamped)
+               (implies ,stamped-s-ws (,stampedp (,refresh-s carry stamp ws)))
+               :hints (("Goal" :in-theory (union-theories
+                                           '(,refresh-s ,stampedp ,stamp-of ,ws-of
+                                             fn-cv-car fn-cv-cdr car-cons cdr-cons)
+                                           (theory 'minimal-theory)))))
+             (defthm ,(fn-cv-name stamp-of '-of-refresh-stamped)
+               (equal (,stamp-of (,refresh-s carry stamp ws)) stamp)
+               :hints (("Goal" :in-theory (union-theories
+                                           '(,refresh-s ,stamp-of fn-cv-car car-cons)
+                                           (theory 'minimal-theory)))))
+             (table fn-teeth-owed ',(fn-cv-name carryp '-of-refresh-stamped)
+                    '(:by def-carried-view :claim ,claim))
+             (in-theory (disable ,fresh ,stamp-of ,stampedp ,refresh-s)))))))
+
 (defun fn-cv-events (name kvs)
   (declare (xargs :mode :program))
   (let* ((ws (fn-cv-get :key kvs))
@@ -609,20 +707,26 @@
          (fold (fn-cv-name name '-fold))
          (build (or (fn-cv-get :build kvs) (fn-cv-name name '-build)))
          (okp (fn-cv-name name '-okp))
+         (stamped (fn-cv-get :stamp kvs))
+         ; a stamped view's list theorems are over the LIST layout (WS . IDXS),
+         ; named NAME-list-carryp; NAME-carryp is the stamped layout's
          (carryp (fn-cv-name name '-carryp))
+         (lcarryp (if stamped (fn-cv-name name '-list-carryp) carryp))
          (refresh (fn-cv-name name '-refresh))
          (okp-of-build (fn-cv-name name '-okp-of-build))
          (okp-of-extend (fn-cv-name name '-okp-of-extend))
          (empty-term (fn-cv-tuple (fn-cv-empty-terms entries) n))
          (index-names (strip-cars entries))
-         (claim-refresh `(((carried (,carryp carry))) (,carryp (,refresh carry ,ws)))))
+         (claim-refresh `(((carried (,lcarryp carry))) (,lcarryp (,refresh carry ,ws)))))
     `(progn
        (table fn-carried-view ',name
               '(:key ,ws :indexes ,index-names :kind ,(if setp :set :exact)
                 :carryp ,carryp :refresh ,refresh :build ,build
-                :declared ,entries))
-       ; the carry: (WS . IDX) or (WS IDX1 ... IDXn)
-       (defun ,ws-of (carry) (declare (xargs :guard t)) (fn-cv-car carry))
+                :stamp ,stamped :declared ,entries))
+       ; the carry: (WS . IDX) or (WS IDX1 ... IDXn); stamped: ((STAMP . WS) ...)
+       (defun ,ws-of (carry)
+         (declare (xargs :guard t))
+         ,(if stamped '(fn-cv-cdr (fn-cv-car carry)) '(fn-cv-car carry)))
        (defun ,put (e idxs)
          (declare (xargs :guard t))
          ,(fn-cv-tuple (fn-cv-put-terms entries 'e 'idxs 0 n) n))
@@ -659,9 +763,13 @@
           `(defun ,okp (,ws idxs)
              (declare (xargs :guard t :normalize nil))
              (equal idxs (,build-onto ,ws (,empty)))))
-       (defun ,carryp (carry)
+       (defun ,lcarryp (carry)
          (declare (xargs :guard t))
          (,okp (fn-cv-car carry) (fn-cv-cdr carry)))
+       ,@(and stamped
+              `((defun ,carryp (carry)
+                  (declare (xargs :guard t))
+                  (,lcarryp (cons (,ws-of carry) (fn-cv-cdr carry))))))
        ,@(if setp
              `((defthm ,okp-of-build
                  (,okp ,ws (,build-onto ,ws (,empty)))
@@ -695,8 +803,8 @@
                  (cons ,ws (,fold racc (fn-cv-cdr carry)))
                (cons ,ws (,fold (fn-cv-rev ,ws nil) (,empty)))))))
        ; KEYSTONES
-       (defthm ,(fn-cv-name carryp '-of-refresh)
-         (implies (,carryp carry) (,carryp (,refresh carry ,ws)))
+       (defthm ,(fn-cv-name lcarryp '-of-refresh)
+         (implies (,lcarryp carry) (,lcarryp (,refresh carry ,ws)))
          :hints (("Goal" :use ((:instance (:functional-instance fn-cv-carryp-of-refresh
                                                                 (fn-cv-put ,put) (fn-cv-empty ,empty)
                                                                 (fn-cv-hasp (lambda (k idx) t))
@@ -704,16 +812,17 @@
                                                                 (fn-cv-build-onto ,build-onto)
                                                                 (fn-cv-fold ,fold)
                                                                 (fn-cv-okp ,okp)
-                                                                (fn-cv-carryp ,carryp)
+                                                                (fn-cv-carryp ,lcarryp)
                                                                 (fn-cv-refresh ,refresh))
                                           (carry carry) (ws ,ws)))
-                  :in-theory (union-theories '(,carryp ,refresh ,build-onto ,fold
+                  :in-theory (union-theories '(,lcarryp ,refresh ,build-onto ,fold
                                                ,okp-of-build ,okp-of-extend)
                                              (theory 'minimal-theory)))))
-       (defthm ,(fn-cv-name ws-of '-of-refresh)
-         (equal (,ws-of (,refresh carry ,ws)) ,ws)
-         :hints (("Goal" :in-theory (union-theories '(,ws-of ,refresh fn-cv-car car-cons)
-                                                    (theory 'minimal-theory)))))
+       ,@(and (not stamped)
+              `((defthm ,(fn-cv-name ws-of '-of-refresh)
+                  (equal (,ws-of (,refresh carry ,ws)) ,ws)
+                  :hints (("Goal" :in-theory (union-theories '(,ws-of ,refresh fn-cv-car car-cons)
+                                                             (theory 'minimal-theory)))))))
        ; the walk steps exactly the delta (fn-cv-walk-steps counts the
        ; elements the refresh's walk consumes; the equal at each step is
        ; the host's, c04 4a)
@@ -724,19 +833,23 @@
        ,@(and (or setp (and (equal n 1) (null (car (fn-cv-empty-terms entries)))))
               `((defthm ,(fn-cv-name carryp '-of-nil)
                   (,carryp nil)
-                  :hints (("Goal" :in-theory (enable ,carryp ,okp ,build-onto ,put ,empty
+                  :hints (("Goal" :in-theory (enable ,carryp ,lcarryp ,ws-of ,okp ,build-onto ,put ,empty
                                                      fn-cv-car fn-cv-cdr
                                                      ,@(and setp (strip-cars (fn-cv-okp-pairs name entries)))))))))
-       (table fn-teeth-owed ',(fn-cv-name carryp '-of-refresh)
+       (table fn-teeth-owed ',(fn-cv-name lcarryp '-of-refresh)
               '(:by def-carried-view :claim ,claim-refresh))
-       (in-theory (disable ,ws-of ,put ,empty ,build-onto ,fold ,build ,okp ,carryp ,refresh
+       ,@(fn-cv-stamp-events name kvs ws-of carryp lcarryp refresh)
+       (in-theory (disable ,ws-of ,put ,empty ,build-onto ,fold ,build ,okp ,carryp ,lcarryp ,refresh
                            ,(fn-cv-name build '-is-build-onto)
                            ,@(fn-cv-index-accessors name entries))))))
 
 (defun fn-cv-first-non-theorem (names w)
   (declare (xargs :mode :program))
+  ; :lemmas are runes to enable: a theorem or a function's definition
   (cond ((atom names) nil)
-        ((getpropc (car names) 'theorem nil w) (fn-cv-first-non-theorem (cdr names) w))
+        ((or (getpropc (car names) 'theorem nil w)
+             (not (eq (getpropc (car names) 'formals :none w) :none)))
+         (fn-cv-first-non-theorem (cdr names) w))
         (t (car names))))
 
 (defun fn-cv-all-lemmas (entries)
@@ -748,6 +861,9 @@
 (defun fn-cv-world-problem (name kvs w)
   (declare (xargs :mode :program))
   (cond ((assoc-eq name (table-alist 'fn-carried-view w)) (list :declared-twice name))
+        ((and (fn-cv-get :stamp kvs)
+              (null (getpropc (fn-cv-get :determines (fn-cv-get :stamp kvs)) 'theorem nil w)))
+         (list :not-a-theorem name (fn-cv-get :determines (fn-cv-get :stamp kvs))))
         ((fn-cv-first-non-theorem (fn-cv-all-lemmas (fn-cv-get :indexes kvs)) w)
          (list :not-a-theorem name
                (fn-cv-first-non-theorem (fn-cv-all-lemmas (fn-cv-get :indexes kvs)) w)))
@@ -779,7 +895,7 @@
 ;     [:name R-is-REF] [:guard G] [:stobjs (ST ...)])
 
 (defconst *fn-cv-reader-keys*
-  '(:of :carry :list :when :probe :fast :reference :by :name :guard :stobjs))
+  '(:of :carry :list :stamp :when :probe :fast :reference :by :name :guard :stobjs))
 
 (defun fn-cv-reader-refusal (r formals kvs)
   (declare (xargs :mode :program))
@@ -792,6 +908,8 @@
    ((not (and (symbolp (fn-cv-get :of kvs)) (fn-cv-get :of kvs))) (list :no-view r))
    ((not (member-eq (fn-cv-get :carry kvs) formals)) (list :carry-not-a-formal r))
    ((not (member-eq (fn-cv-get :list kvs) formals)) (list :list-not-a-formal r))
+   ((and (assoc-keyword :stamp kvs) (not (member-eq (fn-cv-get :stamp kvs) formals)))
+    (list :stamp-not-a-formal r))
    ((not (and (true-listp (fn-cv-get :probe kvs)) (equal (len (fn-cv-get :probe kvs)) 2)
               (symbolp (car (fn-cv-get :probe kvs)))))
     (list :bad-probe r))
@@ -806,6 +924,9 @@
     (:no-view (msg "~x0: :of names no carried view." (cadr reason)))
     (:carry-not-a-formal (msg "~x0: :carry is not one of its formals." (cadr reason)))
     (:list-not-a-formal (msg "~x0: :list is not one of its formals." (cadr reason)))
+    (:stamp-not-a-formal (msg "~x0: :stamp is not one of its formals." (cadr reason)))
+    (:stamp-mismatch (msg "~x0: ~x1 is ~s2; a reader says :stamp exactly when its view is stamped."
+                          (cadr reason) (caddr reason) (cadddr reason)))
     (:bad-probe (msg "~x0: :probe is not (IDX KEY-TERM)." (cadr reason)))
     (:no-fast (msg "~x0 has no :fast answer." (cadr reason)))
     (:no-reference (msg "~x0 has no :reference walk." (cadr reason)))
@@ -827,6 +948,8 @@
           ((not (eq (fn-cv-get :kind row) :set)) (list :not-a-set-view r view))
           ((not (member-eq (car (fn-cv-get :probe kvs)) (fn-cv-get :indexes row)))
            (list :no-such-index r view (car (fn-cv-get :probe kvs))))
+          ((not (eq (and (fn-cv-get :stamp row) t) (and (assoc-keyword :stamp kvs) t)))
+           (list :stamp-mismatch r view (if (fn-cv-get :stamp row) "stamped" "not stamped")))
           ((null (getpropc (fn-cv-get :by kvs) 'theorem nil w))
            (list :not-a-theorem r (fn-cv-get :by kvs)))
           (t nil))))
@@ -856,18 +979,35 @@
          (fast (fn-cv-get :fast kvs))
          (reference (fn-cv-get :reference kvs))
          (thm (or (fn-cv-get :name kvs) (fn-cv-name r '-is- (car reference))))
-         (claim `(((carried (,carryp ,c))) (equal (,r ,@formals) ,reference))))
+         (stamp (fn-cv-get :stamp row))
+         (s (fn-cv-get :stamp kvs))
+         (stamp-of (fn-cv-name view '-stamp))
+         (stampedp (fn-cv-name view '-stampedp))
+         (lcarryp (fn-cv-name view '-list-carryp))
+         ; a stamped reader's fast test is the stamp's (one visit); its
+         ; keystone adds the carry's and the operand's stamped premises
+         (fresh (and stamp `(,(fn-cv-name view '-fresh) ,s ,ws)))
+         (hyps (if stamp
+                   `((carried (,carryp ,c)) (stamped (,stampedp ,c)) (fresh ,fresh))
+                 `((carried (,carryp ,c)))))
+         (claim `(,hyps (equal (,r ,@formals) ,reference))))
     `(progn
        (defun ,r ,formals
          (declare (xargs :guard ,(if (assoc-keyword :guard kvs) (fn-cv-get :guard kvs) t)
                          ,@(and (fn-cv-get :stobjs kvs) `(:stobjs ,(fn-cv-get :stobjs kvs)))))
-         (if (and ,pre (equal ,ws (,ws-of ,c)) (not ,probe))
+         (if (and ,pre ,(if stamp `(equal ,s (,stamp-of ,c)) `(equal ,ws (,ws-of ,c))) (not ,probe))
              ,fast
            ,reference))
        (defthm ,thm
-         (implies (,carryp ,c) (equal (,r ,@formals) ,reference))
-         :hints (("Goal" :use ((:instance ,(fn-cv-get :by kvs) (ws (,ws-of ,c)) (idxs (fn-cv-cdr ,c))))
-                  :in-theory (e/d (,r ,carryp ,okp ,ws-of fn-cv-car) (,idx-okp)))))
+         (implies (and ,@(strip-cadrs hyps)) (equal (,r ,@formals) ,reference))
+         :hints (("Goal" :use ((:instance ,(fn-cv-get :by kvs) (ws (,ws-of ,c)) (idxs (fn-cv-cdr ,c)))
+                               ,@(and stamp
+                                      `((:instance ,(fn-cv-get :determines stamp)
+                                                   (s ,s) (a ,ws) (b (,ws-of ,c))))))
+                  :in-theory (e/d (,r ,carryp ,okp ,ws-of fn-cv-car
+                                   ,@(and stamp `(,lcarryp ,stampedp ,stamp-of ,(fn-cv-name view '-fresh)
+                                                  fn-cv-cdr car-cons cdr-cons)))
+                                  (,idx-okp)))))
        (table fn-teeth-owed ',thm '(:by def-carried-reader :claim ,claim))
        (in-theory (disable ,r)))))
 

@@ -1396,7 +1396,14 @@ class GeneratorMirrorTests(unittest.TestCase):
 
     def test_carried_view_names_on_the_fixture_and_the_pilot(self):
         views = self.generated("tests/acl2/def-carried-view-tests.lisp", "def-carried-view")
-        self.assertEqual(set(views), {"cvt", "cvx"})
+        self.assertEqual(set(views), {"cvt", "cvx", "cvs"})
+        for thm in ("cvs-fresh", "cvs-stamp", "cvs-stampedp", "cvs-list-carryp", "cvs-carryp",
+                    "cvs-refresh-stamped", "cvs-carryp-of-refresh-stamped",
+                    "cvs-list-carryp-of-refresh", "cvs-stampedp-of-refresh-stamped"):
+            self.assertIn(thm, views["cvs"])
+        readers = self.generated("tests/acl2/def-carried-view-tests.lisp", "def-carried-reader")
+        self.assertEqual(readers["cvs-targetedp-fast"],
+                         ["cvs-targetedp-fast", "cvs-targetedp-fast-is-cvt-targetedp"])
         for thm in ("cvt-carryp-of-refresh", "cvt-ws-of-refresh", "cvt-carryp-of-nil",
                     "cvt-refresh-walks-the-delta", "cvt-tset-okp-of-extend", "cvt-cset-hasp-of-put"):
             self.assertIn(thm, views["cvt"])

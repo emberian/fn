@@ -1610,8 +1610,16 @@ def def_carried_view_parts(form: list) -> dict | None:
     if not (len(form) >= 2 and isinstance(form[1], Sym) and str(form[1]) != "nil"):
         return None
     options = _dk_plist(list(form[2:]))
-    if options is None or any(key not in {":key", ":indexes", ":build"} for key in options):
+    if options is None or any(key not in {":key", ":indexes", ":build", ":stamp"} for key in options):
         return None
+    stamp = None
+    if ":stamp" in options:
+        stamp_opts = _dk_plist(list(options[":stamp"])) if isinstance(options[":stamp"], list) else None
+        if (stamp_opts is None or set(stamp_opts) != {":stamped", ":determines"}
+                or _gen_lambda(stamp_opts[":stamped"], 2) is None
+                or not isinstance(stamp_opts[":determines"], Sym)):
+            return None
+        stamp = stamp_opts
     key = options.get(":key")
     indexes = options.get(":indexes")
     if not (isinstance(key, Sym) and str(key) != "nil" and isinstance(indexes, list) and indexes):
@@ -1642,7 +1650,7 @@ def def_carried_view_parts(form: list) -> dict | None:
     if len(kinds) != 1 or len({str(e["name"]) for e in entries}) != len(entries):
         return None
     return {"name": form[1], "key": key, "indexes": entries, "set": kinds == {":set"},
-            "build": options.get(":build")}
+            "build": options.get(":build"), "stamp": stamp}
 
 
 def def_carried_view_expansion(form: list) -> list:
@@ -1657,13 +1665,16 @@ def def_carried_view_expansion(form: list) -> list:
     build_onto, fold = _gen_sym(name, "-build-onto"), _gen_sym(name, "-fold")
     build = parts["build"] if parts["build"] is not None else _gen_sym(name, "-build")
     okp, carryp, refresh = _gen_sym(name, "-okp"), _gen_sym(name, "-carryp"), _gen_sym(name, "-refresh")
+    stamp = parts["stamp"]
+    lcarryp = _gen_sym(name, "-list-carryp") if stamp else carryp
     carry, idxs, e = Sym("carry"), Sym("idxs"), Sym("e")
     put_terms = [_gen_sub(entry["put"], [e, _gen_component(k, n, idxs)])
                  for k, entry in enumerate(entries)]
     empty_terms = [entry["empty"] for entry in entries]
     tuple_ = (lambda terms: terms[0] if n == 1 else [Sym("list")] + terms)
     events: list = [
-        _gen_defun(ws_of, [carry], [Sym("fn-cv-car"), carry]),
+        _gen_defun(ws_of, [carry], [Sym("fn-cv-cdr"), [Sym("fn-cv-car"), carry]] if stamp
+                   else [Sym("fn-cv-car"), carry]),
         _gen_defun(put, [e, idxs], tuple_(put_terms)),
         _gen_defun(empty, [], tuple_(empty_terms)),
         _gen_defun(build_onto, [Sym("ys"), idxs],
@@ -1712,7 +1723,10 @@ def def_carried_view_expansion(form: list) -> list:
         events.append(_gen_defun(okp, [ws, idxs], [Sym("and")] + conjuncts))
     else:
         events.append(_gen_defun(okp, [ws, idxs], [Sym("equal"), idxs, [build_onto, ws, [empty]]]))
-    events.append(_gen_defun(carryp, [carry], [okp, [Sym("fn-cv-car"), carry], [Sym("fn-cv-cdr"), carry]]))
+    events.append(_gen_defun(lcarryp, [carry], [okp, [Sym("fn-cv-car"), carry], [Sym("fn-cv-cdr"), carry]]))
+    if stamp:
+        events.append(_gen_defun(carryp, [carry],
+                                 [lcarryp, [Sym("cons"), [ws_of, carry], [Sym("fn-cv-cdr"), carry]]]))
     events.append([Sym("defthm"), _gen_sym(name, "-okp-of-build"), [okp, ws, [build_onto, ws, [empty]]]])
     events.append([Sym("defthm"), _gen_sym(name, "-okp-of-extend"),
                    [Sym("implies"), [okp, Sym("old"), idxs],
@@ -1726,19 +1740,45 @@ def def_carried_view_expansion(form: list) -> list:
           [Sym("if"), Sym("found"),
            [Sym("cons"), ws, [fold, Sym("racc"), [Sym("fn-cv-cdr"), carry]]],
            [Sym("cons"), ws, [fold, [Sym("fn-cv-rev"), ws, Sym("nil")], [empty]]]]]]))
-    events.append([Sym("defthm"), _gen_sym(carryp, "-of-refresh"),
-                   [Sym("implies"), [carryp, carry], [carryp, [refresh, carry, ws]]]])
-    events.append([Sym("defthm"), _gen_sym(ws_of, "-of-refresh"),
-                   [Sym("equal"), [ws_of, [refresh, carry, ws]], ws]])
+    events.append([Sym("defthm"), _gen_sym(lcarryp, "-of-refresh"),
+                   [Sym("implies"), [lcarryp, carry], [lcarryp, [refresh, carry, ws]]]])
+    if not stamp:
+        events.append([Sym("defthm"), _gen_sym(ws_of, "-of-refresh"),
+                       [Sym("equal"), [ws_of, [refresh, carry, ws]], ws]])
     events.append([Sym("defthm"), _gen_sym(refresh, "-walks-the-delta"),
                    [Sym("equal"),
                     [Sym("fn-cv-walk-steps"), [Sym("append"), Sym("new"), [ws_of, carry]], [ws_of, carry]],
                     [Sym("len"), Sym("new")]]])
     if setp or (n == 1 and isinstance(empty_terms[0], Sym) and str(empty_terms[0]) == "nil"):
         events.append([Sym("defthm"), _gen_sym(carryp, "-of-nil"), [carryp, Sym("nil")]])
-    events.append([Sym("table"), Sym("fn-teeth-owed"), _dk_quote(_gen_sym(carryp, "-of-refresh")),
+    events.append([Sym("table"), Sym("fn-teeth-owed"), _dk_quote(_gen_sym(lcarryp, "-of-refresh")),
                    _dk_quote([Sym(":by"), Sym("def-carried-view"), Sym(":claim"),
-                              [[[Sym("carried"), [carryp, carry]]], [carryp, [refresh, carry, ws]]]])])
+                              [[[Sym("carried"), [lcarryp, carry]]], [lcarryp, [refresh, carry, ws]]]])])
+    if stamp:
+        st, s_ = Sym("stamp"), Sym("ws")
+        stamp_of, stampedp = _gen_sym(name, "-stamp"), _gen_sym(name, "-stampedp")
+        refresh_s, fresh_fn = _gen_sym(name, "-refresh-stamped"), _gen_sym(name, "-fresh")
+        fresh = [fresh_fn, st, ws]
+        events.append(_gen_defun(fresh_fn, [st, ws], _gen_sub(stamp[":stamped"], [st, ws])))
+        events.append(_gen_defun(stamp_of, [carry], [Sym("fn-cv-car"), [Sym("fn-cv-car"), carry]]))
+        events.append(_gen_defun(stampedp, [carry], [fresh_fn, [stamp_of, carry], [ws_of, carry]]))
+        events.append(_gen_defun(
+            refresh_s, [carry, st, ws],
+            [Sym("if"), [Sym("equal"), st, [stamp_of, carry]],
+             [Sym("cons"), [Sym("cons"), st, ws], [Sym("fn-cv-cdr"), carry]],
+             [Sym("let"), [[Sym("r"), [refresh, [Sym("cons"), [ws_of, carry], [Sym("fn-cv-cdr"), carry]], ws]]],
+              [Sym("cons"), [Sym("cons"), st, ws], [Sym("fn-cv-cdr"), Sym("r")]]]]))
+        hyps = [[carryp, carry], [stampedp, carry], fresh]
+        events.append([Sym("defthm"), _gen_sym(carryp, "-of-refresh-stamped"),
+                       [Sym("implies"), [Sym("and")] + hyps, [carryp, [refresh_s, carry, st, ws]]]])
+        events.append([Sym("defthm"), _gen_sym(stampedp, "-of-refresh-stamped"),
+                       [Sym("implies"), fresh, [stampedp, [refresh_s, carry, st, ws]]]])
+        events.append([Sym("defthm"), _gen_sym(stamp_of, "-of-refresh-stamped"),
+                       [Sym("equal"), [stamp_of, [refresh_s, carry, st, ws]], st]])
+        events.append([Sym("table"), Sym("fn-teeth-owed"), _dk_quote(_gen_sym(carryp, "-of-refresh-stamped")),
+                       _dk_quote([Sym(":by"), Sym("def-carried-view"), Sym(":claim"),
+                                  [[[Sym("carried"), hyps[0]], [Sym("stamped"), hyps[1]], [Sym("fresh"), fresh]],
+                                   [carryp, [refresh_s, carry, st, ws]]]])])
     return events
 
 
@@ -1747,7 +1787,7 @@ def def_carried_reader_expansion(form: list) -> list:
         return []
     r, formals = form[1], list(form[2])
     options = _dk_plist(list(form[3:]))
-    wanted = {":of", ":carry", ":list", ":when", ":probe", ":fast", ":reference", ":by",
+    wanted = {":of", ":carry", ":list", ":stamp", ":when", ":probe", ":fast", ":reference", ":by",
               ":name", ":guard", ":stobjs"}
     if options is None or any(key not in wanted for key in options):
         return []
@@ -1765,16 +1805,27 @@ def def_carried_reader_expansion(form: list) -> list:
     # resolve statically: the reader body keeps the probe as the view's
     # NAME-IDX accessor applied to the key, a faithful shape for the hygiene
     # checks (the exact hasp term is the world's)
+    # the view's stamp relation is the world's; the mirror states a stamped
+    # reader's premises through the view's NAME-stampedp and a NAME-fresh
+    # placeholder over the stamp and the list (the exact relation is read
+    # at certification)
+    s_ = options.get(":stamp")
+    fast_test = ([Sym("equal"), s_, [_gen_sym(view, "-stamp"), c]] if s_ is not None
+                 else [Sym("equal"), ws, [_gen_sym(view, "-", Sym("key")), c]])
     body = [Sym("if"),
-            [Sym("and"), options.get(":when", Sym("t")),
-             [Sym("equal"), ws, [_gen_sym(view, "-", Sym("key")), c]],
+            [Sym("and"), options.get(":when", Sym("t")), fast_test,
              [Sym("not"), [_gen_sym(view, "-", probe[0], "-probe"), probe[1], c]]],
             options[":fast"], reference]
+    hyps = [[Sym("carried"), [carryp, c]]]
+    if s_ is not None:
+        hyps += [[Sym("stamped"), [_gen_sym(view, "-stampedp"), c]],
+                 [Sym("fresh"), [_gen_sym(view, "-fresh"), s_, ws]]]
     return [_gen_defun(r, formals, body, options.get(":guard", Sym("t")), options.get(":stobjs")),
-            [Sym("defthm"), thm, [Sym("implies"), [carryp, c], [Sym("equal"), [r] + formals, reference]]],
+            [Sym("defthm"), thm, [Sym("implies"), [Sym("and")] + [h[1] for h in hyps],
+                                  [Sym("equal"), [r] + formals, reference]]],
             [Sym("table"), Sym("fn-teeth-owed"), _dk_quote(thm),
              _dk_quote([Sym(":by"), Sym("def-carried-reader"), Sym(":claim"),
-                        [[[Sym("carried"), [carryp, c]]], [Sym("equal"), [r] + formals, reference]]])],
+                        [hyps, [Sym("equal"), [r] + formals, reference]]])],
             [Sym("in-theory"), [Sym("disable"), r]]]
 
 

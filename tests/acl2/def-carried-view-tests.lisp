@@ -152,7 +152,97 @@
 (defteeth-check)
 
 ; ---------------------------------------------------------------------------
-; 4. Refusals.
+; 4. A STAMPED view: the same two sets, keyed by a stamp under a fixture
+; relation "WS is the list stamped STAMP" (a table from stamps to lists,
+; the owner's view history stands in for it); equal stamps name equal lists
+; (cvs-stamp-determines), so the reader's fast test is the stamp's.
+
+(defconst *cvs-history* (list (cons 0 *cvt-ws0*) (cons 1 *cvt-ws1*) (cons 2 *cvt-ws2*)))
+(defun cvs-stamped (stamp ws)
+  (declare (xargs :guard t))
+  (let ((row (assoc-equal stamp *cvs-history*)))
+    (and row (equal ws (cdr row)))))
+(defthm cvs-stamp-determines
+  (implies (and (cvs-stamped s a) (cvs-stamped s b)) (equal a b))
+  :rule-classes nil)
+
+(def-carried-view cvs
+  :key ws
+  :stamp (:stamped (lambda (stamp ws) (cvs-stamped stamp ws)) :determines cvs-stamp-determines)
+  :indexes ((tset :kind :set
+                  :key-fn (lambda (e) (cvt-key (cvt-target e)))
+                  :put (lambda (e idx) (cvt-add (cvt-target e) idx))
+                  :hasp (lambda (k idx) (cvt-has k idx))
+                  :empty nil
+                  :lemmas (cvt-has-of-add cvt-add-has-it))))
+
+(defconst *cvs-c0* (cvs-refresh-stamped nil 0 *cvt-ws0*))
+(assert-event (and (cvs-carryp *cvs-c0*) (cvs-stampedp *cvs-c0*)
+                   (equal (cvs-stamp *cvs-c0*) 0) (equal (cvs-ws *cvs-c0*) *cvt-ws0*)
+                   (equal (cvs-tset *cvs-c0*) '("t1" "t2" "t3"))))
+; the same stamp: rebased in O(1), the index kept
+(assert-event (equal (cvs-refresh-stamped *cvs-c0* 0 *cvt-ws0*) *cvs-c0*))
+; a new stamp over a prepended list: the delta walk
+(defconst *cvs-c1* (cvs-refresh-stamped *cvs-c0* 1 *cvt-ws1*))
+(assert-event (and (cvs-carryp *cvs-c1*) (cvs-stampedp *cvs-c1*) (equal (cvs-stamp *cvs-c1*) 1)
+                   (equal (cvs-tset *cvs-c1*) '("t4" "t1" "t2" "t3"))))
+; a new stamp over an unrelated list: rebuilt
+(assert-event (and (cvs-carryp (cvs-refresh-stamped *cvs-c1* 2 *cvt-ws2*))
+                   (equal (cvs-tset (cvs-refresh-stamped *cvs-c1* 2 *cvt-ws2*)) '("t9"))))
+(assert-event (cvs-carryp nil))
+
+(def-carried-reader cvs-targetedp-fast (x stamp ws carry)
+  :of cvs :carry carry :list ws :stamp stamp
+  :when (stringp x)
+  :probe (tset x)
+  :fast nil
+  :reference (cvt-targetedp x ws)
+  :by cvt-absent-target-is-untargeted)
+
+; the fast arm needs only the stamp comparison; a stale stamp walks
+(assert-event (equal (cvs-targetedp-fast "n" 0 *cvt-ws0* *cvs-c0*) nil))
+(assert-event (equal (cvs-targetedp-fast "t2" 0 *cvt-ws0* *cvs-c0*) t))
+(assert-event (equal (cvs-targetedp-fast "t4" 1 *cvt-ws1* *cvs-c0*) t))
+
+(defteeth cvs-list-carryp-of-refresh
+  :claim (((carried (cvs-list-carryp carry))) (cvs-list-carryp (cvs-refresh carry ws)))
+  :subject cvs-refresh
+  :witness ((carry (cons *cvt-ws0* (cvs-tset *cvs-c0*))) (ws *cvt-ws1*))
+  :breaks ((carried ((carry (cons *cvt-ws0* nil)))))
+  :mutations ((old-index (:conclusion (cvs-list-carryp (cons ws (cdr carry))))
+                         ((carry (cons *cvt-ws0* (cvs-tset *cvs-c0*))) (ws *cvt-ws1*))
+                         :fault "a refresh that installs the new list over the old index")))
+
+(defteeth cvs-carryp-of-refresh-stamped
+  :claim (((carried (cvs-carryp carry)) (stamped (cvs-stampedp carry)) (fresh (cvs-fresh stamp ws)))
+          (cvs-carryp (cvs-refresh-stamped carry stamp ws)))
+  :subject cvs-refresh-stamped
+  :witness ((carry *cvs-c0*) (stamp 1) (ws *cvt-ws1*))
+  :breaks ((carried ((carry (cons (cons 0 *cvt-ws0*) nil))))
+           (stamped ((carry (cons (cons 0 *cvt-ws2*) (cvs-tset *cvs-c0*))) (stamp 0) (ws *cvt-ws0*)))
+           (fresh ((stamp 0) (ws *cvt-ws2*))))
+  :mutations ((stamp-ignored (:conclusion (cvs-carryp (cons (cons stamp ws) (cdr carry))))
+                             ((carry *cvs-c0*) (stamp 1) (ws *cvt-ws1*))
+                             :fault "a refresh that keeps the old index under a new stamp")))
+
+(defteeth cvs-targetedp-fast-is-cvt-targetedp
+  :claim (((carried (cvs-carryp carry)) (stamped (cvs-stampedp carry)) (fresh (cvs-fresh stamp ws)))
+          (equal (cvs-targetedp-fast x stamp ws carry) (cvt-targetedp x ws)))
+  :subject cvs-targetedp-fast
+  :witness ((x "n") (stamp 0) (ws *cvt-ws0*) (carry *cvs-c0*))
+  :breaks ((carried ((x "t1") (carry (cons (cons 0 *cvt-ws0*) nil))))
+           (stamped ((x "t4") (stamp 0) (ws *cvt-ws1*) (carry (cons (cons 0 *cvt-ws1*) (cvs-tset *cvs-c0*)))))
+           (fresh ((x "t4") (stamp 0) (ws *cvt-ws1*))))
+  :mutations ((positive-trusted (:conclusion (equal (cvs-targetedp-fast x stamp ws carry)
+                                                    (cvt-has x (cvs-tset carry))))
+                                ((x "n") (stamp 0) (ws *cvt-ws0*)
+                                 (carry (cons (cons 0 *cvt-ws0*) '("n" "t1" "t2" "t3"))))
+                                :fault "a reader that trusts a positive probe")))
+
+(defteeth-check)
+
+; ---------------------------------------------------------------------------
+; 5. Refusals.
 
 (assert-event (equal (fn-cv-refusal 'v '(:indexes ((i :kind :set)))) '(:no-key v)))
 (assert-event (equal (fn-cv-refusal 'v '(:key ws)) '(:no-indexes v)))
@@ -181,3 +271,14 @@
 (must-fail-checked
  (def-carried-view cvt :key ws :indexes ((i :kind :exact :put (lambda (e idx) idx) :empty nil)))
  :unchecked "refused by name at expansion (:declared-twice), before any event")
+(assert-event (equal (fn-cv-refusal 'v '(:key ws :stamp (:stamped x)
+                                          :indexes ((i :kind :exact :put (lambda (e idx) idx) :empty nil))))
+                     '(:bad-stamp v)))
+(assert-event (equal (fn-cv-reader-world-problem 'r '(:of cvs :carry carry :list ws :probe (tset x) :fast nil
+                                                      :reference (cvt-targetedp x ws) :by car-cons)
+                                                 (w state))
+                     '(:stamp-mismatch r cvs "stamped")))
+(assert-event (equal (fn-cv-reader-world-problem 'r '(:of cvt :carry carry :list ws :stamp s :probe (tset x) :fast nil
+                                                      :reference (cvt-targetedp x ws) :by car-cons)
+                                                 (w state))
+                     '(:stamp-mismatch r cvt "not stamped")))
