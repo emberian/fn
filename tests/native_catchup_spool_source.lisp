@@ -37,7 +37,7 @@
     (sleep 0.001))
   (error "join timed out"))
 (let* ((path (format nil "/tmp/fn-csp-source-~d" (sb-posix:getpid)))
-       (worker (fnn-csp-worker-start path '(7 11))))
+       (worker (fnn-csp-worker-start path '(7 11) (lambda (worker) (declare (ignore worker))))))
   (unwind-protect
        (progn
          (fnn-csp-worker-submit worker :open 0 0)
@@ -65,7 +65,7 @@
   (unwind-protect
        (progn
          (with-open-file (out path :direction :output :if-exists :error) (write-string "owned elsewhere" out))
-         (setq worker (fnn-csp-worker-start path '(9 13)))
+         (setq worker (fnn-csp-worker-start path '(9 13) (lambda (holder) (setq worker holder))))
          (fnn-csp-worker-submit worker :open 0 0)
          (multiple-value-bind (status count condition) (take-wait worker)
            (declare (ignore count)) (assert (eq status :error)) (assert condition))
@@ -86,7 +86,7 @@
                    (setq entered t) (sb-thread:condition-broadcast changed)
                    (loop until release do (sb-thread:condition-wait changed gate)))
                  (values :ok 0)))
-         (setq worker (fnn-csp-worker-start nil '(8 12)))
+         (setq worker (fnn-csp-worker-start nil '(8 12) (lambda (holder) (setq worker holder))))
          (fnn-csp-worker-submit worker :open 0 0)
          (sb-thread:with-mutex (gate)
            (loop until entered do (sb-thread:condition-wait changed gate)))

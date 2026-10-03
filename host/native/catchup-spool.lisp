@@ -85,6 +85,7 @@
   ;; No reusable credit is minted here. The caller retains the exact ledger
   ;; slot/generation through buffer borrowing, local acceptance and cleanup.
   (unless lease (fnn-fault "catchup worker has no independently issued lease"))
+  (unless retain (fnn-fault "catchup worker has no physical custody callback"))
   (let* ((input (fnn-make-octets 512))
          (digest-input (fn-octets$c-reserve 64 (create-fn-octets$c)))
          (replay-input (fn-octets$c-reserve 512 (create-fn-octets$c)))
@@ -95,7 +96,7 @@
                   :lock (sb-thread:make-mutex :name "fn catchup spool")
                   :changed (sb-thread:make-waitqueue :name "fn catchup spool"))))
     ;; Publish physical custody before thread creation can escape.
-    (when retain (funcall retain worker))
+    (funcall retain worker)
     (setf (fnn-csp-worker-thread worker)
           (sb-thread:make-thread (lambda () (fnn-csp-worker-loop worker))
                                  :name "fn catchup spool"))

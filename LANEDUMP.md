@@ -3379,3 +3379,13 @@ Shared .spw/audits/bounds contains candidate scan and six source findings. Catch
 
 
 Horse Bounds reclaim decision allocation repair READY: fnn-log-reclaim-steps folds first, rewrites only for :reclaim before instant/clear. Actual reclaim still retains complete rewritten history. Disjoint from Exits outer cleanup83e657c2d. tests.test_native_reclaim_decision_source passes actual host function with supplied core/I/O decisions; checks no-op/refused/dry rewrite absence and accepted replay order. host_check --read passes. No changed ACL2 definitions or theorem claim.
+
+## Bounds convergence, 2026-10-03
+
+Worker/bank source ea6bcb1b4 installs only captured independent Foundation peer authority. Mandatory retained bank callback precedes ledger mutation; mandatory worker callback precedes thread creation. Exact live lease holders remain discoverable; no terminal settlement without physical, semantic and socket receipts. Native real-thread/file fixture and host reader pass; Foundation candidate/idle source guards pass. These are source evidence, not full physical funding or certification.
+
+Controller/framer/hash draft files and tests are preserved in this lane. Framer10 and controller8 source assertions pass; actual64-byte hash cursor matches BLAKE3 at0/1/63/64/65/1023/1024/1025/16385. Controller work-unit leaves appended after source admission have not been independently admitted. No actual retained pull-flight consumer is activated. Needed: draw before cursor journal/body allocation; retain flight/worker before constructor; spool open/write/read/hash fair continuations; local-window completion; terminal join/socket/callback observation before settle. Compose Runtime fe06a1d52 without clearing its cleanup debt. Legacy whole-batch catchup and materialized IHAVE remain defects until that consumer lands.
+
+Operator owns build include of peer-catchup-spool-resources and raw catchup-spool load before startup call; source constructor/accessor packet sent. Full controller representation/invariant proof, codec partition proofs and complete native cells/frame graph/GC/TLS tariff remain explicitly open. No fabricated coefficient, no borrowed output/syncer/storage slack.
+
+All owned ACL2 sessions stopped, including hash hbox session horse-bounds-spool-hash. No live spool workers, fixture sockets or owned pending subprocesses. Foundation's shared solrlocover is not ours. Original Foundation commits are upstream dependencies; local duplicates2625dcf17/6b297f00c must not be cherry-picked.
