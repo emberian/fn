@@ -17,7 +17,7 @@
    (defun fnn-mux-output-window) (defun fnn-mux-write-now)
    (defun fnn-mux-flush) (defun fnn-mux-z-out)))
 (defvar *fnn-write-syscall* nil)
-(load-range-forms "host/native/io.lisp" '((defun fnn-transport-write-now)))
+(load-range-forms "host/native/io.lisp" '((deftype fnn-octets) (defun fnn-make-octets) (defun fnn-transport-write-now)))
 (defparameter +fnn-mux-send-seconds+ 10)
 (defvar *range-writes* nil)
 (defvar *range-block* nil)
