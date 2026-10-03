@@ -3249,3 +3249,9 @@ complete command may contain a whole article; its retained representation
 has no newly proved allocation tariff or grant. No existing syncer/output
 lease is claimed to cover it. Source tests and matching native qualification
 are separate from proof of bounded complete scheduler cost.
+
+SCN-1106's native selector first captures a real pending implicit-TLS peer,
+then adds a healthy peer and compares its complete article with locally
+served bytes before the original handshake deadline. It is prepared for a
+matching image, not an executed qualification. Its ordering excludes an
+initial healthy-first configuration from masquerading as concurrent progress.

@@ -2142,7 +2142,7 @@ loss/backoff, terminal close and output-order checks. Credential admitted
 profile fixture retains decoded octets until the later connected turn.
 Peer-octet fixture's inherited missing def-actor source macro was repaired
 without an actor stub and passes; actual feed actor raw schedule passes.
-Derived traps regenerated only for the affected credential extraction.
+Derived traps checked for the affected credential extraction; no change.
 No saved-image/proof claim; Integration/continuing BPTransport own those.
 Current source submitted promptly per user push-before-verify direction; owner history/column establishment proof hints still target the old raw fold and need availability-fold refinement. Available reader archive/selected protocol effects and full paged representation closure remain pending. Paged commit now uses the same classified live candidate; its warm replay awaits Integration’s exact unchanged tree/tree-walk macro certificate repair run-20261003T101749Z-4e31. Keep solcatavailabilityfarm at /tank/fn/gates/codex-sol-resource-exec-paged-probe healthy; no duplicate image/cert/closure. New proof PRF-1262 remains planned, SCN-1092 specified with partial scope, no native image or completed reclaim warranty.
 
@@ -2312,3 +2312,11 @@ no secondverdict rule. Samehost archived-run replay matches390passed/43failed,
 firstprimaryserved-catalog, process0 but missingfreshmarker/cert+ACL2error.
 Running/multiwave/missingmetadata remains pending. No ACL2 run/candidatechange.
 Nextwatch uses this exact existingpredicate beforefinalmanifest to route sooner.
+
+SCN-1106 is claimed and prepared as the exact native selector
+tests.test_native_peering.NativePeeringTests.test_pending_tls_feed_does_not_starve_new_healthy_peer.
+It captures a real silent implicit-TLS socket before adding the healthy peer,
+then requires exact healthy article bytes before the original handshake
+deadline. Source setup/code compile/claim checks pass; no image execution.
+Source receipt planning/evidence/repair/S067-fair-push-source-8df99c90a.json
+records the11-test scoped verdict and exact subject/harness byte hashes.
