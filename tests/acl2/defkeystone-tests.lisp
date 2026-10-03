@@ -116,10 +116,10 @@
                                state))))
 
 (defconst *fn-dkt-sample-teeth*
-  '((assert-event (let* ((x 3) (y 4)) (declare (ignorable x y)) (and (natp x) (< x 10) (<= (fix y) (fn-dkt-add x y)))) :msg "FN-DKT-ADD-ADDS: witness")
-    (assert-event (let* ((x -1) (y 4)) (declare (ignorable x y)) (and (< x 10) (not (natp x)) (not (<= (fix y) (fn-dkt-add x y))))) :msg "FN-DKT-ADD-ADDS: without NATP")
-    (assert-event (with-guard-checking :none (let* ((x 10) (y 4)) (declare (ignorable x y)) (and (natp x) (not (< x 10)) (not (<= (fix y) (fn-dkt-add x y)))))) :msg "FN-DKT-ADD-ADDS: without SMALL (logical: a label test, not a claim)")
-    (assert-event (let* ((x 0) (y 4)) (declare (ignorable x y)) (and (natp x) (< x 10) (<= (fix y) (fn-dkt-add x y)) (not (< (fix y) (fn-dkt-add x y))))) :msg "FN-DKT-ADD-ADDS: mutant STRICT")
+  '((assert-event (and (let* ((x 3) (y 4)) (declare (ignorable x y)) (natp x)) (let* ((x 3) (y 4)) (declare (ignorable x y)) (< x 10)) (let* ((x 3) (y 4)) (declare (ignorable x y)) (<= (fix y) (fn-dkt-add x y)))) :msg "FN-DKT-ADD-ADDS: witness")
+    (assert-event (and (let* ((x -1) (y 4)) (declare (ignorable x y)) (< x 10)) (let* ((x -1) (y 4)) (declare (ignorable x y)) (not (natp x))) (let* ((x -1) (y 4)) (declare (ignorable x y)) (not (<= (fix y) (fn-dkt-add x y))))) :msg "FN-DKT-ADD-ADDS: without NATP")
+    (assert-event (with-guard-checking :none (and (let* ((x 10) (y 4)) (declare (ignorable x y)) (natp x)) (let* ((x 10) (y 4)) (declare (ignorable x y)) (not (< x 10))) (let* ((x 10) (y 4)) (declare (ignorable x y)) (not (<= (fix y) (fn-dkt-add x y)))))) :msg "FN-DKT-ADD-ADDS: without SMALL (logical: a label test, not a claim)")
+    (assert-event (and (let* ((x 0) (y 4)) (declare (ignorable x y)) (natp x)) (let* ((x 0) (y 4)) (declare (ignorable x y)) (< x 10)) (let* ((x 0) (y 4)) (declare (ignorable x y)) (<= (fix y) (fn-dkt-add x y))) (let* ((x 0) (y 4)) (declare (ignorable x y)) (not (< (fix y) (fn-dkt-add x y))))) :msg "FN-DKT-ADD-ADDS: mutant STRICT")
     (assert-event (with-guard-checking :none (let* ((x 'a) (y 4)) (declare (ignorable x y)) (and (not (and (natp x) (< x 10))) (not (<= (fix y) (fn-dkt-add x y)))))) :msg "FN-DKT-ADD-ADDS: corrupt NOT-A-NUMBER")
     (table fn-teeth 'fn-dkt-add-adds
            '(:by defkeystone

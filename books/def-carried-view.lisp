@@ -443,12 +443,16 @@
 (defmacro fn-cv-name (name &rest parts)
   `(fn-cv-name-fn ,name (list ,@parts)))
 
+; A lambda's body may bind with `let': the substitution descends into a
+; binding list (a cons in car position) and leaves only a function symbol
+; in car position alone.
 (mutual-recursion
  (defun fn-dt-subst-cv (term alist)
    (declare (xargs :mode :program))
    (cond ((atom term) (let ((b (assoc-eq term alist))) (if b (cdr b) term)))
          ((eq (car term) 'quote) term)
-         (t (cons (car term) (fn-dt-subst-cv-lst (cdr term) alist)))))
+         ((symbolp (car term)) (cons (car term) (fn-dt-subst-cv-lst (cdr term) alist)))
+         (t (fn-dt-subst-cv-lst term alist))))
  (defun fn-dt-subst-cv-lst (terms alist)
    (declare (xargs :mode :program))
    (if (atom terms) nil

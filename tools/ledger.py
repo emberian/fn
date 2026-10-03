@@ -1409,13 +1409,13 @@ def _dk_witness_event(name: Sym, msg: str, bindings: list, terms: list, opts: di
     """`fn-dk-witness-event`: the assert-event, logical under :logical, or the
     lemma check under :lemma."""
     upper = str(name).upper()
-    claim = _dk_conj(terms)
+    claim = _dk_conj([_dk_at(bindings, term) for term in terms])
     if ":lemma" in opts:
-        return [Sym("fn-dk-lemma-check"), name, opts[":lemma"], bindings, claim, msg]
+        return [Sym("fn-dk-lemma-check"), name, opts[":lemma"], bindings, _dk_conj(terms), msg]
     if ":logical" in opts:
-        return [Sym("assert-event"), _dk_logical(_dk_at(bindings, claim)),
+        return [Sym("assert-event"), _dk_logical(claim),
                 Sym(":msg"), f"{upper}: {msg} (logical: {opts[':logical']})"]
-    return [Sym("assert-event"), _dk_at(bindings, claim), Sym(":msg"), f"{upper}: {msg}"]
+    return [Sym("assert-event"), claim, Sym(":msg"), f"{upper}: {msg}"]
 
 
 def teeth_events(parts: dict, by: str, formula: object = None) -> list:

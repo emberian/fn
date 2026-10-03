@@ -197,7 +197,8 @@
    (declare (xargs :mode :program))
    (cond ((atom term) (let ((b (assoc-eq term alist))) (if b (cdr b) term)))
          ((eq (car term) 'quote) term)
-         (t (cons (car term) (fn-kc-subst-lst (cdr term) alist)))))
+         ((symbolp (car term)) (cons (car term) (fn-kc-subst-lst (cdr term) alist)))
+         (t (fn-kc-subst-lst term alist))))
  (defun fn-kc-subst-lst (terms alist)
    (declare (xargs :mode :program))
    (if (atom terms) nil

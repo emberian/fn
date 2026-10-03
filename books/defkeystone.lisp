@@ -527,15 +527,17 @@
   (declare (xargs :mode :program))
   ; the assert-event of TERMS at BINDINGS, logical under :logical, or the
   ; lemma check under :lemma (fn-dk-lemma-check, resolved in the world)
-  (let ((claim (fn-dk-conj terms))
+  ; each conjunct at the bindings on its own, so tools/teeth_check.py probes
+  ; every claim's value apart
+  (let ((claim (fn-dk-conj (fn-dk-all-at bindings terms)))
         (lemma (fn-dk-get :lemma opts)))
-    (cond (lemma `(fn-dk-lemma-check ,name ,lemma ,bindings ,claim ,msg))
+    (cond (lemma `(fn-dk-lemma-check ,name ,lemma ,bindings ,(fn-dk-conj terms) ,msg))
           ((assoc-keyword :logical opts)
-           `(assert-event (with-guard-checking :none ,(fn-dk-at bindings claim))
+           `(assert-event (with-guard-checking :none ,claim)
                           :msg ,(fn-dk-label-msg
                                  name (concatenate 'string msg " (logical: "
                                                    (fn-dk-get :logical opts) ")"))))
-          (t `(assert-event ,(fn-dk-at bindings claim) :msg ,(fn-dk-label-msg name msg))))))
+          (t `(assert-event ,claim :msg ,(fn-dk-label-msg name msg))))))
 
 (defun fn-dk-removals (name i labels hyps concl witness breaks hint-args must-fail)
   (declare (xargs :mode :program))

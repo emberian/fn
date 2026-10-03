@@ -93,6 +93,15 @@
    (equal (fn-nnw-top (fn-nnw-build-onto zs nil)) (fn-nnw-smax zs))
    :hints (("Goal" :in-theory (enable fn-nnw-build-onto fn-nnw-put)))))
 
+; The carry read the cursor's way: the index is the maxima of the carried
+; list.
+(defthm fn-nnw-carryp-is-maxes
+  (equal (fn-nnw-carryp carry)
+         (equal (fn-nnw-index carry) (fn-nnw-maxes (fn-nnw-arts carry))))
+  :hints (("Goal" :in-theory (enable fn-nnw-carryp fn-nnw-okp fn-nnw-arts fn-nnw-index
+                                     fn-nnw-index-of fn-nnw-maxes-is-build-onto
+                                     fn-nnw-empty fn-cv-car fn-cv-cdr))))
+
 (defthm fn-nnw-maxes-unfolds
   (equal (fn-nnw-maxes arts)
          (if (consp arts)
@@ -365,9 +374,7 @@
 (defthm fn-nnw-start-okp
   (implies (fn-nnw-carryp carry)
            (fn-nnw-cursor-okp (fn-nnw-start groups threshold arts horizon carry)))
-  :hints (("Goal" :in-theory (enable fn-nnw-carryp fn-nnw-okp fn-nnw-arts fn-nnw-index
-                                     fn-nnw-index-of fn-cv-car fn-cv-cdr
-                                     fn-nnw-maxes-is-build-onto))))
+  :hints (("Goal" :in-theory (enable fn-nnw-carryp-is-maxes))))
 
 ; fn-nntp-newnews-response with the run of the started cursor in the scan's
 ; place (QUANTUM is the reply's quantum; a host that serves the cursor in
@@ -417,9 +424,7 @@
                                    (maxes (if (equal arts (fn-nnw-arts carry))
                                               (fn-nnw-index carry)
                                             nil))))
-           :in-theory (e/d (fn-nnw-start fn-nnw-carryp fn-nnw-okp fn-nnw-arts fn-nnw-index
-                            fn-nnw-index-of fn-cv-car fn-cv-cdr fn-nnw-maxes-is-build-onto
-                            fn-nnw-maxes-okp)
+           :in-theory (e/d (fn-nnw-start fn-nnw-carryp-is-maxes fn-nnw-maxes-okp)
                            (fn-nnw-run fn-nnw-run-is-newnews-scan fn-nnw-run-is-owes
                             fn-nnw-cursor fn-nntp-newnews-scan fn-nnw-maxes)))))
 
