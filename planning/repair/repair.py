@@ -10,8 +10,17 @@ States: open -> in-progress -> ready -> landed  (or: refuted | duplicate | defer
   repair.py add ID title=... file=... severity=... owner=... source=... [key=value ...]
   repair.py report                               writes planning/repair/STATUS.md
   repair.py lanes                                prints lane -> agent id (for direct messages)
+
+Guardrails for a fix (used by burn-down lanes; see planning/repair/README.md):
+  repair.py claim ID --files GLOB[,GLOB...] [--test "CMD"] [--native MODULE[,MODULE]] [--budget N] [--owner LANE]
+      Declares what the fix may touch and the test that must go from failing to passing; sets in-progress.
+  repair.py verify ID --base REV [--head REV]
+      Checks, and records in the item: every changed file is inside the claimed scope; no forbidden zone
+      (planning/repair/forbidden.txt) is touched unless the item has allow_forbidden; the diff is within the
+      budget (default 60 changed lines); a commit in BASE..HEAD names the item id; and, when a test is claimed,
+      the test FAILS at BASE and PASSES at HEAD (run in throwaway worktrees). Exit 0 only if all hold.
 """
-import json, os, sys, time, glob, collections
+import json, os, sys, time, glob, collections, fnmatch, subprocess, tempfile, shutil
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 ITEMS = os.path.join(ROOT, "items")
@@ -114,11 +123,123 @@ def main(argv):
         with open(os.path.join(ROOT, "STATUS.md"), "w") as f:
             f.write("\n".join(lines) + "\n")
         print("\n".join(lines[:16]))
+    elif cmd == "claim":
+        claim(rest)
+    elif cmd == "verify":
+        sys.exit(verify(rest))
     elif cmd == "lanes":
         p = os.path.join(ROOT, "lanes.json")  # local, untracked: lane -> agent id for the current swarm
         print(open(p).read() if os.path.exists(p) else "no lanes.json (it is local to a coordinator session)")
     else:
         print(__doc__)
+
+
+DEFAULT_BUDGET = 60
+ALWAYS_ALLOWED = ["planning/repair/items/*.json", "planning/repair/STATUS.md"]
+
+
+def opts(args):
+    o, it = {}, iter(args)
+    for a in it:
+        if a.startswith("--"):
+            o[a[2:]] = next(it)
+    return o
+
+
+def claim(rest):
+    i, o = rest[0], opts(rest[1:])
+    d = load(i)
+    if "files" not in o:
+        sys.exit("claim needs --files (the globs the fix may touch)")
+    d["scope"] = [g.strip() for g in o["files"].split(",") if g.strip()]
+    for k in ("test", "native", "owner"):
+        if k in o:
+            d[k] = o[k]
+    if "budget" in o:
+        d["budget"] = int(o["budget"])
+    d["state"] = "in-progress"
+    d.setdefault("notes", []).append(time.strftime("%m-%d %H:%M ") + f"claimed: scope={d['scope']} test={d.get('test','-')}")
+    save(d)
+    print(f"{i} claimed: scope {d['scope']}, test {d.get('test','(none)')}, budget {d.get('budget', DEFAULT_BUDGET)}")
+
+
+def git(*args, cwd=None):
+    return subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True, check=True).stdout
+
+
+def repo_root():
+    return git("rev-parse", "--show-toplevel").strip()
+
+
+def forbidden_globs():
+    p = os.path.join(ROOT, "forbidden.txt")
+    if not os.path.exists(p):
+        return []
+    return [l.split("#")[0].strip() for l in open(p) if l.split("#")[0].strip()]
+
+
+def match(path_, globs):
+    return any(fnmatch.fnmatch(path_, g) for g in globs)
+
+
+def run_test_at(rev, cmd, root):
+    tmp = tempfile.mkdtemp(prefix="repair-verify-")
+    wt = os.path.join(tmp, "wt")
+    try:
+        git("worktree", "add", "--detach", "-q", wt, rev, cwd=root)
+        r = subprocess.run(["bash", "-c", cmd], cwd=wt, capture_output=True, text=True, timeout=1800)
+        return r.returncode, (r.stdout + r.stderr)[-2000:]
+    finally:
+        subprocess.run(["git", "worktree", "remove", "--force", wt], cwd=root, capture_output=True)
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def verify(rest):
+    i, o = rest[0], opts(rest[1:])
+    d = load(i)
+    if "base" not in o:
+        sys.exit("verify needs --base REV (the commit the fix started from)")
+    root, base, head = repo_root(), o["base"], o.get("head", "HEAD")
+    problems = []
+    scope = d.get("scope")
+    if not scope:
+        problems.append("no claimed scope: run `repair.py claim ID --files ...` first")
+        scope = []
+    changed = [f for f in git("diff", "--name-only", f"{base}..{head}", cwd=root).split() if f]
+    outside = [f for f in changed if not match(f, scope + ALWAYS_ALLOWED)]
+    if outside:
+        problems.append("files outside the claimed scope: " + ", ".join(outside))
+    forbidden = [f for f in changed if match(f, forbidden_globs())]
+    if forbidden and not d.get("allow_forbidden"):
+        problems.append("forbidden zone touched (escalate instead): " + ", ".join(forbidden))
+    lines = 0
+    for row in git("diff", "--numstat", f"{base}..{head}", cwd=root).splitlines():
+        a, b, f = row.split("\t", 2)
+        if match(f, ALWAYS_ALLOWED) or a == "-":
+            continue
+        lines += int(a) + int(b)
+    budget = int(d.get("budget", DEFAULT_BUDGET))
+    if lines > budget:
+        problems.append(f"diff is {lines} changed lines, over the budget of {budget}: escalate the item")
+    msgs = git("log", "--format=%B", f"{base}..{head}", cwd=root)
+    if i not in msgs:
+        problems.append(f"no commit in {base}..{head} names {i}")
+    result = {"base": git("rev-parse", base, cwd=root).strip(), "head": git("rev-parse", head, cwd=root).strip(),
+              "changed_files": changed, "diff_lines": lines}
+    if d.get("test"):
+        rb, ob = run_test_at(result["base"], d["test"], root)
+        rh, oh = run_test_at(result["head"], d["test"], root)
+        result.update(red_at_base=(rb != 0), green_at_head=(rh == 0))
+        if rb == 0:
+            problems.append("the claimed test PASSES at the base: it does not show the defect")
+        if rh != 0:
+            problems.append("the claimed test FAILS at the head:\n" + oh)
+    result["problems"] = problems
+    result["ok"] = not problems
+    d["verify"] = result
+    save(d)
+    print(json.dumps(result, indent=1))
+    return 0 if not problems else 1
 
 
 if __name__ == "__main__":

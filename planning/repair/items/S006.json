@@ -1,9 +1,12 @@
 {
  "acceptance": "wrapper:connection-scoped",
  "category": "error-handling",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "BRIDGE",
+ "evidence": "bp-node.lisp:1029-1046 `(unwind-protect (let ((conn (fnn-tcl-session (fnn-socket-fd socket) :passive ...))) (fnn-tcl-summary conn) (setq session-word ...)) (fnn-socket-shut socket))` has no handler-case. fnn-recv -> fnn-read-fd (io.lisp:607) `((null count) (fnn-os-fail errno))` signals fnn-os-error on ECONNRESET, and fnn-bpnode-observed-channel (bp-node.lisp:7-10) calls sb-bsd-sockets:socket-peername, which signals socket-error on a socket that is already reset. fnn-bpnc-accept-loop (bp-control.lisp:194) only has `(unwind-protect (funcall handler socket) ...)`, and fnn-bp-verb only catches fnn-store-indeterminate. Compare bp.lisp:798-801, where `bp receive` maps the same errors to a connection-local :uncertain and keeps going. The same gap exists in bp-app.lisp:361-367 (`(unwind-protect (fnn-tcl-session ...) (fnn-socket-shut socket))`).",
  "exposure": "conditional",
  "file": "host/native/bp-node.lisp",
+ "fix": "In the per-session lambda, wrap the session the way `bp receive` does: re-signal fnn-store-indeterminate and fnn-store-fault, note fnn-os-error and socket-error as the connection's :uncertain session word, and continue the loop. Do the same in bp-app's handler.",
  "id": "S006",
  "line": "1029",
  "locus": "peer-services",
@@ -11,6 +14,8 @@
   "10-02 22:32 coded on lane/host-lifecycle 4e409a9d6 (handed to runner); see lanedumps/host-lifecycle.md for verification"
  ],
  "owner": "host-lifecycle",
+ "reviewer": "bp-node.lisp:1029-1046: the per-session unwind-protect around fnn-tcl-session has no handler-case. fnn-bpnode-observed-channel (bp-node.lisp:5-17) calls socket-peername before the session starts. fnn-tcl-session (tcpcl.lisp:482-553) calls fnn-recv, and fnn-read-fd (io.lisp:607) signals fnn-os-error on a failed read. Nothing inside fnn-tcl-session catches it: only fnn-tcl-flush catches errors, and only on the send side (tcpcl.lisp:286-297). fnn-bpnc-accept-loop (bp-control.lisp:192-207) uses only unwind-protect, and fnn-bp-verb (bp.lisp:110-120) catches only fnn-store-indeterminate. So one RST ends the serve process. A store-error refusal raised in the session also escapes this way. bp receive handles the same errors per connection (bp.lisp:775-803). bp-app.lisp:361-367 has the same gap, and fnn-accept-loop (io.lisp:5719) has no handler either.",
+ "scenario": "An unauthenticated client connects to the node's BP/TCPCL listener and sends RST (or a SESS_INIT followed by RST). fnn-recv signals fnn-os-error ECONNRESET. It unwinds through fnn-bpnc-accept-loop and fnn-command-bp-node, which closes the listeners, Store and FNBS locks, and the serve process exits. One packet takes down the node, including its forwarding and receipt passes. It is repeatable as often as the node is restarted. The same applies to `bp-app receive` with ONCE=0.",
  "severity": "high",
  "sha": "4e409a9d6",
  "slice": "wrapper",

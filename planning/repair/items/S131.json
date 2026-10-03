@@ -1,8 +1,11 @@
 {
  "category": "claim-gap",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "tests/test_native_expiry.py:222 `def test_a_death_mid_expiry_completes_the_same_expiry(self):` ... :237-241 `done = self.reclaim(copy, \"--recorded\", expect=None)\n                if done.returncode != EXIT.OK:\n                    done = self.reclaim(copy)\n                self.assertEqual(done.returncode, EXIT.OK, ...)`",
  "exposure": "latent",
  "file": "tests/test_native_expiry.py",
+ "fix": "Split by cut. Before `replaced`, require `--recorded` to exit OK. From `replaced` on, require the specific 'nothing left' outcome. Never fall back to an unrecorded reclaim inside this test.",
  "id": "S131",
  "line": "239",
  "locus": "gates-tests-packaging",
@@ -10,6 +13,8 @@
   "10-02 22:29 merged into next e6b827d21"
  ],
  "owner": "sweep-gates",
+ "reviewer": "tests/test_native_expiry.py:237-241: when --recorded returns anything other than OK, the test falls back to a plain reclaim, so at the created/written/staged-durable cuts a refused, uncertain or faulting --recorded is masked. purge 30 expires the same p0/p1 at a fresh instant, so the 'same expiry' property is never distinguished. Partial coverage elsewhere: recorded_base plus test_a_recorded_reclaim_installs... (:277) requires --recorded to install after the 'created' cut on a serving node.",
+ "scenario": "`store reclaim --recorded` regresses at the created/written/staged-durable cuts, before the install, where the comment says it must complete the recorded instant. It refuses, or exits 3 (uncertain), or faults. The test then runs a plain `store reclaim`, which picks a new instant, reclaims p0/p1, and passes. Uncertain and refused are both silently replaced by a retry, and the 'same expiry' property is never checked.",
  "severity": "low",
  "sha": "e6b827d21",
  "source": "sweep-2026-10-03",

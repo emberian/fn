@@ -1,16 +1,45 @@
 {
  "category": "resource-leak",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "checkpoint.lisp:453-463 `(fnn-mkdir stage #o700) (fnn-write-staged ...) ... (fnn-clone-copy-tree source-real stage 0 max-depth max-entries max-bytes path-bound)` runs before checkpoint.lisp:255-258 `#-linux ... (fnn-refuse \"clone publication requires no-replace renameat2\")`. No unwind-protect removes `stage` on any refusal or fault (byte, entry or depth bound exceeded, destination appeared, copy error).",
  "exposure": "conditional",
  "file": "host/native/checkpoint.lisp",
+ "fix": "Check publication support (the platform and a RENAME_NOREPLACE probe) before mkdir. Wrap the copy in an unwind-protect that removes the stage tree on a definite refusal or fault, keeping it only when the publication outcome is indeterminate.",
  "id": "S086",
  "line": "453",
  "locus": "operator-verbs",
- "notes": [],
+ "native": "checkpoint",
+ "notes": [
+  "10-02 23:23 claimed: scope=['host/native/checkpoint.lisp', 'tests/test_clone_stage_cleanup.py'] test=python3 -m unittest tests.test_clone_stage_cleanup",
+  "10-02 23:24 READY 23c834adb028c0e1a7f837fcb55516da37399d72",
+  "10-02 23:25 burndown-2 e5726bf86 merged onto dev; verify ok"
+ ],
  "owner": "host-lifecycle",
+ "reviewer": "checkpoint.lisp:453-463 creates the stage directory, writes the fence and copies the whole tree before fnn-clone-publish-no-replace. Off Linux that function unconditionally refuses (checkpoint.lisp:255-258). No unwind-protect or handler removes stage on any refusal or fault: copy bounds, destination appeared, or publish. No code elsewhere references the .fn-clone- prefix (grep finds only checkpoint.lisp:438), and clone-resume takes only DESTINATION. Each failed attempt on OpenBSD/Darwin therefore leaves a full copy. It is an operator-invoked verb and the refusal is visible.",
+ "scenario": "On the OpenBSD friend node or on Darwin, `checkpoint clone SRC DST` copies up to fn-store-checkpoint-clone-max-bytes into `.fn-clone-<pid>-<hex>` and is then refused, leaving a full copy beside the store. Each retry leaves another. On Linux, a copy refused for exceeding the byte bound leaves its partial stage behind the same way. There is no verb that finds or removes these stage directories.",
+ "scope": [
+  "host/native/checkpoint.lisp",
+  "tests/test_clone_stage_cleanup.py"
+ ],
  "severity": "low",
+ "sha": "742475fe1",
  "source": "sweep-2026-10-03",
- "state": "open",
+ "state": "landed",
+ "test": "python3 -m unittest tests.test_clone_stage_cleanup",
  "title": "Clone copies the whole store before learning publication is impossible off Linux, and a failed clone never removes its stage directory",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T03:25:31Z",
+ "verify": {
+  "base": "78eaf5a10235a6ee0dfd8d29ca89a6f2cbd286a3",
+  "changed_files": [
+   "host/native/checkpoint.lisp",
+   "tests/test_clone_stage_cleanup.py"
+  ],
+  "diff_lines": 45,
+  "green_at_head": true,
+  "head": "23c834adb028c0e1a7f837fcb55516da37399d72",
+  "ok": true,
+  "problems": [],
+  "red_at_base": true
+ }
 }

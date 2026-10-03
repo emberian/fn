@@ -369,7 +369,6 @@
 ;; interfaces) does not certify, and no loaded line calls their entries since
 ;; the auth start hook returned to 7aad444ce (host/native/auth.lisp).  They
 ;; return with the account-adoption producer (D46 "Completion (forward)").
-(ld "host/page-read-host.lisp" :ld-error-action :error)
 (ld "host/consumer-remote-host.lisp" :ld-error-action :error)
 (ld "host/native-config-host.lisp" :ld-error-action :error)
 (ld "host/native-auth-host.lisp" :ld-error-action :error)

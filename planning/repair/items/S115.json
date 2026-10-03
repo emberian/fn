@@ -1,16 +1,24 @@
 {
  "category": "dead-code",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "host/owner-host.lisp:3 `; tools/run_owner.py drives one owner per store through these entry points.` Also 472 ('The two recoveries below are the Python bridge's (tools/run_owner.py)'), 189-190 (tools/bridge_image.py OWNER_FORMS) and 4531 ('tools/run_owner.py calls this'). Neither tools/run_owner.py nor tools/bridge_image.py exists. Grepping host/, tools/ and tests/ finds no caller of fn-owner-recover-extended-arena (477), fn-owner-recover-rows (493), fn-owner-recover-from-checkpoint (508), fn-owner-prepare (1760), fn-owner-legacy-control-submit (2545, a line-for-line copy of fn-owner-control-submit 2522), fn-owner-article-count (3705, an O(N) `len` of the article list) or fn-owner-existing-action (3725).",
  "exposure": "latent",
  "file": "host/owner-host.lisp",
+ "fix": "Delete the dead entries: the three bridge recoveries, list fn-owner-prepare, legacy-control-submit, article-count and existing-action. Rewrite the file header and the 4531 comment to name the native host callers (host/native/owner.lisp) instead of the retired bridge.",
  "id": "S115",
  "line": "3",
  "locus": "store-books",
- "notes": [],
+ "notes": [
+  "10-02 23:05 comments fixed (dead entries not removed: books cite them, see S150); comment-only, no test"
+ ],
  "owner": "sweep-ops",
+ "reviewer": "tools/run_owner.py and tools/bridge_image.py do not exist, so the header and comments at owner-host.lisp:3, 472, 189-190 and 4531 are stale. fn-owner-prepare (1760), fn-owner-legacy-control-submit, fn-owner-article-count, fn-owner-recover-rows, fn-owner-recover-extended-arena and fn-owner-recover-from-checkpoint have no live caller in host/native, tools or tests. Only comments and the build.lisp:149 note mention them. Drift is confirmed: fn-owner-prepare calls fn-pout-prepare-article (around 1835) and never sets fn-owner-cat-candidate, while the buffer twin calls fn-ppc-pout-prepare-article-cat and sets the candidate (around 2011-2040). One correction: fn-owner-existing-action is live, called from host/native/hybrid-control.lisp:182. This is dead and misleading code, not a runtime fault.",
+ "scenario": "fn-owner-prepare (1760-1859) is a ~100-line copy of fn-owner-prepare-buffer that has already diverged. It calls fn-pout-prepare-article rather than the catalog variant fn-ppc-pout-prepare-article-cat, and it never sets fn-owner-cat-candidate. Any revival or test of it (the comments still present it as the list entry the buffer twin equals) would stage a row the catalog never prepares, and the next fn-owner-cat-prepare-sealed answers :fault. The dead recoveries load a throwaway local fn-cat (with-local-stobj), so a caller that used them would install an owner whose catalog is empty. Readers trust these comments as the description of the live path.",
  "severity": "low",
+ "sha": "733b376c9",
  "source": "sweep-2026-10-03",
- "state": "open",
+ "state": "in-progress",
  "title": "Header and comments claim a Python bridge that no longer exists; its entry points are dead and have drifted from the live twins",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T03:05:03Z"
 }

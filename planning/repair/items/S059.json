@@ -1,8 +1,11 @@
 {
  "category": "dead-code",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "tests/campaign/test_native_operator_campaign.py:142 `\"--out\", str(out), \"--only\", \"record-attempted\",` then :146 `post = cuts[\"record-attempted\"][\"served\"]`. native_cuts.ALL_CUTS = POST_CUTS + RECOVERY_CUTS has no record-attempted (POST_CUTS: frontier-reserved, record-completing, finish-consumed, finish-durable), and main filters with `if args.only and cut.name not in args.only: continue` (native_operator_campaign.py:615). The snapshot at native_operator_campaign.py:146 is `return {\"transactions\": listing(\"transactions\"), \"staging\": ..., \"frontier\": ...}`, compared at test:204 `self.assertEqual(retry[\"after_again\"], retry[\"after_first\"])` and test:210 `self.assertTrue(refused[\"unchanged\"])`",
  "exposure": "latent",
  "file": "tests/campaign/test_native_operator_campaign.py",
+ "fix": "Point --only at a POST_LOG_CUTS cut. Make snapshot() hash the journal/ segments (or the image's committed history) instead of transactions/ and allocation-frontier.json, and fail when journal/ is missing so an unchanged result can't come from comparing None to None.",
  "id": "S059",
  "line": "142",
  "locus": "gates-tests-packaging",
@@ -10,6 +13,8 @@
   "10-02 22:29 merged into next e6b827d21"
  ],
  "owner": "sweep-gates",
+ "reviewer": "native_cuts.py:41-61: ALL_CUTS has no record-attempted, and native_operator_campaign.py:615 filters by name, so the test's cuts[\"record-attempted\"] at test_native_operator_campaign.py:146 raises KeyError. Its snapshot at native_operator_campaign.py:140-149 lists transactions/ and allocation-frontier.json, both absent on a log store, so after_again == after_first only really compares staging/. recover_counts[\"transactions\"] == 2 tracks the retired per-file layout.",
+ "scenario": "On hbox with FN_NATIVE_IMAGES set, the only place it isn't skipped, the driver runs just recovery-stage-unlinked, and line 146 raises KeyError. The test can never pass, and it is skipped everywhere else, so it gives no signal. Fixing the cut name is not enough: the D25 cross-entry retry rows and the production-refusal `unchanged` row compare snapshots whose transactions and frontier are None on a log store. A retry that appended a duplicate record to journal/ would still compare equal; only staging/ is really checked. The same goes for `recover_counts[\"transactions\"] == 2`, which still tracks the per-file count.",
  "severity": "medium",
  "sha": "e6b827d21",
  "source": "sweep-2026-10-03",

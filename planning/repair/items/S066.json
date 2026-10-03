@@ -1,9 +1,12 @@
 {
  "acceptance": "wrapper:actor-top-boundary",
  "category": "error-handling",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "DISSOLVES-IN",
+ "evidence": "host/native/web-host.lisp:104-131 (fnn-web-feed)\n  (handler-case\n      (let ...\n                (when (and (zerop consumed) (not close))\n                  (fnn-fault \"owner consumed no octets of a web command\"))\n        ...)\n    (fnn-store-error () :gone)))\n\nweb-host.lisp:272-280 (fnn-web-serve)\n           ;; A browser that went away or a handshake that failed ends this\n           ;; connection only; an ACL2 fault is the owner's (it stopped).\n           (fnn-os-error () nil)\n           (sb-bsd-sockets:socket-error () nil)\n           (error (condition)\n             (if (and (find-class 'fnn-tls-error nil) (typep condition 'fnn-tls-error))\n                 nil\n               (error condition))))\n\nweb-host.lisp:240-241  (fnn-fault \"a web request took more events than ACL2 allows\")\nio.lisp:77,92: fnn-store-fault and fnn-store-indeterminate are subclasses of fnn-store-error.",
  "exposure": "conditional",
  "file": "host/native/web-host.lisp",
+ "fix": "In fnn-web-feed, catch only the semantic refusal that means 'connection unknown'. Let fnn-store-indeterminate and fnn-store-fault propagate, and give the ACL2 web session an :uncertain event. Wrap the accept loop the way fnn-mux-guarded does: send store-fault and serious-condition to fnn-owner-fault-service, and send indeterminate to fnn-owner-fence-service.",
  "id": "S066",
  "line": "131",
  "locus": "connections",
@@ -11,6 +14,8 @@
   "10-02 22:32 coded on lane/host-lifecycle 4e409a9d6 (handed to runner); see lanedumps/host-lifecycle.md for verification"
  ],
  "owner": "host-lifecycle",
+ "reviewer": "(1) fnn-web-feed (web-host.lisp:104-131) catches fnn-store-error, which is the parent of fnn-store-fault and fnn-store-indeterminate (io.lisp:74-92), and returns :gone. books/web-session.lisp:1895-1902 turns :gone into a redirect to /signin that drops the session, so an uncertain outcome is shown as session-lost. The owner itself does fence: fnn-owner-shared-action-locked (owner.lisp) stops the service before re-signalling. So the 'keeps running' part holds only for host-side faults outside fnn-owner-serialized, such as line 128 and the render path; those are swallowed and the node keeps running. (2) fnn-web-serve re-signals any non-socket, non-TLS error (lines 276-279). The thread's handler-case catches only socket-error (line 323). Host faults outside serialized calls (lines 155, 169, 195, 203, 225, 263) escape the thread, and so does the fnn-refuse 'owner service is stopping' from fnn-web-open during a stop race. None of these reach fnn-owner-fault-service. The image runs with --disable-debugger (build.lisp:622), so an unhandled error there leaves the 3/4 exit-code discipline. Most of the fault triggers need malformed ACL2 output. The uncertain-shown-as-gone and stop-race paths are reachable.",
+ "scenario": "(1) fnn-web-feed catches fnn-store-error, and that class includes fnn-store-fault and fnn-store-indeterminate. Suppose a web POST's drain is uncertain, so the shared action stops the owner and re-signals indeterminate. The ACL2 session is told (:gone), which is the 'owner forgot CID' event. The browser therefore gets the session-lost page instead of an uncertain 'do not repost' answer, and the user reposts. A host-side fnn-fault in this function never reaches the owner at all: 'consumed no octets' and malformed render windows are converted to :gone and the node keeps running on a broken invariant. (2) In fnn-web-request, a host fault such as the event-budget exhaustion at line 240, a malformed head, frame or action, or the peer-address check is re-signalled by fnn-web-serve. The accept thread catches only socket-error (line 323). The error therefore leaves the thread without fnn-owner-fault-service: either the web thread dies and the listener keeps accepting into a backlog nobody serves, or SBCL's --disable-debugger exit path ends the process with code 1, skipping the fence and the 3/4 exit codes. The comment says 'an ACL2 fault is the owner's (it stopped)', but nothing on this path stops the owner.",
  "severity": "medium",
  "sha": "4e409a9d6",
  "slice": "wrapper",

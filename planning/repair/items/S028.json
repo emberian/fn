@@ -1,9 +1,12 @@
 {
  "acceptance": "wrapper:exit-escalation",
  "category": "error-handling",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "DISSOLVES-IN",
+ "evidence": "control.lisp:386-390\n(fnn-os-error (condition)\n  (fnn-err \"control request refused (os-error): ~a\" condition)\n  (list :reason :refused\n        (fnn-core 'fn-native-control-host-refusal-reason :os-error)))\nwhile owner.lisp:1801-1806 (fnn-owner-shared-action-locked, wrapped around every fnn-owner-serialized thunk):\n((or fnn-os-error serious-condition) (condition)\n  ...\n  (fnn-owner-stop-service-locked service +fnn-exit-fault+)\n  (error condition))",
  "exposure": "conditional",
  "file": "host/native/control.lisp",
+ "fix": "Tell apart an os-error or socket-error raised before any owner work (frame read: a real refusal) from one that propagated out of fnn-owner-serialized. For example, have fnn-owner-shared-action-locked wrap non-store conditions in an fnn-store-fault after it stops the service, or check (fnn-owner-service-stopping service) in these clauses and answer :fault.",
  "id": "S028",
  "line": "386",
  "locus": "operator-verbs",
@@ -11,6 +14,8 @@
   "8acfdeba7"
  ],
  "owner": "sweep-ops",
+ "reviewer": "fnn-os-error is a plain error, not a subclass of fnn-store-error (io.lisp:124). fnn-config-record-observation (io.lisp:2121-2144) calls fnn-check-regular and fnn-read-regular-bounded (io.lisp:639, which opens through fnn-open and so raises fnn-os-error) inside the handler-case at admin.lisp:258. That handler catches only fnn-store-error. The os-error therefore reaches fnn-owner-shared-action-locked (owner.lisp:1801-1806), which stops the owner with +fnn-exit-fault+ and re-raises. control.lisp:386-390 then answers (:reason :refused :os-error), so the operator is told REFUSED for a node that has stopped as a FAULT. The comment at control.lisp:369-371 lists only indeterminate and fault as the cases that fence the owner. A socket-error raised inside a serialized thunk takes the same route.",
+ "scenario": "A live admin request (`peer add`, `account ...`, a POST via control) reaches fnn-owner-live-reconfigure-locked, and fnn-config-record-observation -> fnn-read-regular-bounded fails with EMFILE or EIO, which raises fnn-os-error. The owner wrapper stops the service with exit 4 and re-raises. The control worker's os-error clause then sends the operator REFUSED plus the reason os-error, which is exit 1 and means nothing happened, try again. In fact the node has stopped as a fault. The comment at 369-371 says only indeterminate and fault fence the owner, so it misses this path. A sb-bsd-sockets:socket-error signalled inside a serialized thunk takes the same route.",
  "severity": "medium",
  "slice": "wrapper",
  "source": "sweep-2026-10-03",

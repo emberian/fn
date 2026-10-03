@@ -1,16 +1,23 @@
 {
  "category": "resource-leak",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "host/store-write-host.lisp:819-824\n  (let* ((w (fn-xw-sys (fn-hx-pwrite-zeros h offset count)))\n         (w (if (fn-xw-okp w) (fn-xw-log-at \"log-truncated\") w))\n         (w (if (fn-xw-okp w) (fn-xw-sys (fn-hx-fdatasync h)) w))\n         ...)\n    (if (not (fn-xw-okp w))\n        (mv w store replay fn-octets-lg fn-arena)\nBoth earlier failure paths do `(prog2$ (fn-hx-close h) ...)` (lines 812 and 817). This one returns without closing h, and h is not yet in :log, so fn-xw-close cannot reach it either.",
  "exposure": "latent",
  "file": "host/store-write-host.lisp",
+ "fix": "Close h on this path too. Map an :os from the zero write or its barrier to fn-xw-indeterminate (\"log tail truncation outcome is indeterminate\"), as fn-xw-fence and fn-xw-commit-open-batch do for their writes.",
  "id": "S116",
  "line": "823",
  "locus": "store-books",
- "notes": [],
+ "notes": [
+  "10-02 23:24 already fixed at this base: host/store-write-host.lisp fn-xw-log-recover closes h on the zero/fdatasync failure path (sweep S116 comment); reviewer also found the leak harmless and the indeterminate claim not a hazard"
+ ],
  "owner": "sweep-store",
+ "reviewer": "host/store-write-host.lisp:819-824: when the pwrite-zeros or fdatasync fails, the code returns w without (fn-hx-close h), unlike the paths at 812 and 817, and h is not yet in :log. The leak is real but harmless: `store ROOT recover` is a one-shot process, and the native fnn-log-recover (io.lisp:6705-6720) also leaves the fd open on these errors and reports them as an OS failure through fnn-os-fail. Reporting it as :os rather than :indeterminate loses nothing. The open fails, nothing else is mutated, and re-running recover re-zeroes the same tail [F, extent), which is idempotent and already dropped or quarantined. So the 'misclassified half-zeroed segment' part of the claim is not a real hazard.",
+ "scenario": "During `store ROOT recover`, pwrite of the zeroed tail fails partway (ENOSPC or EIO) or the fdatasync fails. The O_RDWR descriptor on the active segment stays open, and fn-xw-recover passes the result up as `(:os ...)`. The segment's tail has been partly overwritten with unknown durability, but the outcome reaches the caller as an ordinary OS failure, not as :indeterminate like the other post-mutation failures in this file.",
  "severity": "low",
  "source": "sweep-2026-10-03",
- "state": "open",
+ "state": "refuted",
  "title": "fn-xw-log-recover leaks the read-write segment handle when the tail zeroing or its barrier fails, and reports the half-zeroed segment as a plain OS error",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T03:24:54Z"
 }

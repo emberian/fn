@@ -1,6 +1,6 @@
 {
  "category": "check-lane",
- "detail": "M4 heap-open-nursery, M7 connection-budget, M9 cold-read-reservation, W3 owner-served-bound, W10 public-exposure, W11 consumer-wait: \"RED at its digest\" from certify-20261001T100041Z-2748639. NB the whole-tree run at 4aa332295 (certify-20261002T215642Z-961794) INSTALLED all six from the hbox cache a",
+ "detail": "planning/repair/sources/check-lane-reds-355a5c843.md",
  "disposition": "LOCAL",
  "exposure": "latent",
  "file": "",

@@ -1,16 +1,23 @@
 {
  "category": "architecture",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "host/owner-host.lisp:1874: `(fn-cat-prepare-sealed (car cand) (cdr cand) nil nil nil fn-arena fn-cat)` always passes pending = nil. The pending decision is made in host code at :1882-1885: `(if (or (not (fn-iwt-idlep ...)) (and (f-boundp-global 'fn-owner-cat-pending state) (f-get-global 'fn-owner-cat-pending state))) (value :recovery-required) ...)`. books/catalog-prepare-sealed.lisp:8: `(cond (pending (list :pending)) ...)` is therefore dead.",
  "exposure": "latent",
  "file": "host/owner-host.lisp",
+ "fix": "Pass the actual fn-owner-cat-pending value (and the writer-ticket idleness) into fn-cat-prepare-sealed and let it return the refusal word. Delete the host-side test, or make it a thin forwarding of the book's answer.",
  "id": "S123",
  "line": "1874",
  "locus": "store-books",
- "notes": [],
+ "notes": [
+  "10-02 23:22 escalate: fix lives in host/owner-host.lisp (forbidden zone)"
+ ],
  "owner": "sweep-ops",
+ "reviewer": "host/owner-host.lisp:1874 calls (fn-cat-prepare-sealed (car cand) (cdr cand) nil nil nil ...) with pending always nil. Every other caller (served-catalog-join-host-columns.lisp:184, 214, 231; index-backing-served-producer-carry.lisp:20) also passes nil, so the (pending (list :pending)) arm in books/catalog-prepare-sealed.lisp:8 is dead from every caller. The already-pending decision, combined with fn-iwt-idlep, is made in host code (owner-host.lisp:1883-1887) and answers :recovery-required, a word the book never defines. Today's behaviour is correct because the host check runs first, so this is a one-owner (AGENTS.md) conformance issue plus a dead arm, not a live bug. Also, the comment at :1863 names the book as served-catalog-owner.lisp, but the function lives in catalog-prepare-sealed.lisp.",
+ "scenario": "If the host-side test changes or a new caller skips it (for example a second prepare path), the ACL2 function will prepare a second pending row over an existing one, because the guard that is supposed to refuse ':pending' never sees the real state. The word the host returns (:recovery-required) and the word the book defines (:pending) already disagree. This breaks the AGENTS.md rule that ACL2 owns every decision and the host only performs I/O.",
  "severity": "low",
  "source": "sweep-2026-10-03",
  "state": "open",
  "title": "fn-cat-prepare-sealed's `pending` refusal is unreachable from the host; the host decides 'already pending' itself",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T03:22:28Z"
 }

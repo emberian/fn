@@ -370,8 +370,11 @@ configured server context and never a protected client session."
 (defconstant +fnn-tls-nid-subject-alt-name+ 85)
 ;; A certificate's times and its subjectAltName extension are a few dozen
 ;; to a few thousand octets; this is a work bound on one copy, far above
-;; any certificate a CA issues, and a larger one is reported absent (so ACL2
-;; refuses it by name) rather than copied.
+;; any certificate a CA issues, and a larger one is not copied: its
+;; validity times are reported absent (ACL2 refuses :validity-malformed) and a
+;; subjectAltName extension that cannot be copied is reported as the one octet
+;; 0, which is no DER SEQUENCE, so ACL2 refuses :names-malformed.  Absent is
+;; reserved for a certificate with no such extension (no names).
 (defconstant +fnn-tls-max-fact-octets+ 65536)
 
 (defun fnn-tls-asn1-octets (string)
@@ -397,8 +400,9 @@ this copies three of its fields and decides nothing."
                         leaf +fnn-tls-nid-subject-alt-name+ -1))
              (extension (and (>= location 0) (fnn-%x509-get-ext leaf location)))
              (san (and extension (not (fnn-tls-null-pointer-p extension))
-                       (fnn-tls-asn1-octets
-                        (fnn-%x509-extension-get-data extension)))))
+                       (or (fnn-tls-asn1-octets
+                            (fnn-%x509-extension-get-data extension))
+                           (list 0)))))
         (values (fnn-tls-asn1-octets (fnn-%x509-get0-not-before leaf))
                 (fnn-tls-asn1-octets (fnn-%x509-get0-not-after leaf))
                 san)))))
@@ -958,7 +962,7 @@ the caller to replay the already-applied ACL2 transition."
 
 (defun fnn-tls-ssc-fail (what)
   (error 'fnn-tls-unavailable
-         :detail (format nil "~a failed~@[: ~a~]" what (first (fnn-tls-error-stack)))))
+         :detail (format nil "~a failed~@[: ~a~]" what (fnn-tls-error-stack))))
 
 (defun fnn-tls-ssc-generate-key ()
   "A fresh P-256 key (EVP_PKEY *); the caller frees it."
@@ -1029,10 +1033,16 @@ OCTETS and fsync."
   (let ((fd (fnn-open path (logior sb-posix:o-wronly sb-posix:o-creat sb-posix:o-excl
                                    +fnn-o-nofollow+)
                       mode)))
-    (unwind-protect
-         (progn (fnn-write-all fd (fnn-octets octets))
-                (fnn-fsync-file fd))
-      (fnn-close fd))))
+    ;; The file this call created is removed when its write or fsync fails:
+    ;; a partial key or certificate would make the next run refuse the paths
+    ;; as existing (S093).
+    (let ((written nil))
+      (unwind-protect
+           (progn (fnn-write-all fd (fnn-octets octets))
+                  (fnn-fsync-file fd)
+                  (setq written t))
+        (fnn-close fd)
+        (unless written (ignore-errors (sb-posix:unlink path)))))))
 
 (defun fnn-tls-self-signed-write (names days cert-path key-path)
   "Make the pair ACL2 decides for NAMES and DAYS and write it at CERT-PATH

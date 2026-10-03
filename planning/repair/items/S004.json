@@ -1,9 +1,12 @@
 {
  "acceptance": "wrapper:accept-outcome-table",
  "category": "error-handling",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "BRIDGE",
+ "evidence": "host/native/owner.lisp:5982-5985\n      (sb-bsd-sockets:socket-error (condition)\n        (unless (or *fnn-sigterm-requested*\n                    (fnn-owner-service-stopping service))\n          (error condition))))))\nand 5937-5948 in fnn-owner-start-tls-accept: the handler-case wraps the entire `(loop ...)`, so one socket-error logs `owner TLS listener: ~a` and leaves the loop. fnn-accept-observe (io.lisp:5715-5716) is `(if (funcall *fnn-fd-waiter* fd :input seconds) (sb-bsd-sockets:socket-accept listener) :timeout)`.",
  "exposure": "live",
  "file": "host/native/owner.lisp",
+ "fix": "Treat per-connection accept failures (ECONNABORTED, EINTR, EAGAIN/NIL, EPROTO) as 'no connection this tick' inside the loop body. Re-raise only listener-level failures, and keep the handler inside the loop in the TLS and extra accept threads. Ignore a NIL from socket-accept.",
  "id": "S004",
  "line": "5982",
  "locus": "lifecycle",
@@ -11,6 +14,8 @@
   "10-02 22:22 of S001 (same fix: fnn-accept-attempt; READY together)"
  ],
  "owner": "host-lifecycle",
+ "reviewer": "owner.lisp:5982-5985: in fnn-owner-accept, any socket-error that arrives while the service is not stopping is re-raised. That unwinds fnn-owner-run (6195), and its cleanup stops the node. fnn-accept-observe (io.lisp:5715-5716) calls socket-accept with no errno classification. Linux accept(2) is documented to pass through pending network errors (EPROTO, EHOSTUNREACH, ENETUNREACH and others), Darwin and BSD return ECONNABORTED, and EMFILE/ENFILE under a connection flood is also a socket-error. In fnn-owner-start-tls-accept (5937-5948) the handler-case wraps the whole loop, so one error permanently ends that listener's thread. Separately, SBCL's socket-accept returns NIL on EAGAIN/EINTR, and NIL is not checked before fnn-owner-launch-client and fnn-mux-adopt (4681-4686, mux.lisp:1378), which push it into the client roster.",
+ "scenario": "A remote client completes the handshake and sends a RST before the owner accepts. On Darwin and OpenBSD (the laptop and the friend node), accept(2) then fails with ECONNABORTED, which SBCL raises as a socket-error. On the main listener fnn-owner-accept re-raises it, fnn-owner-run unwinds, and the whole node stops, so anyone can stop it with a SYN, ACK, RST. On the TLS listener or any additional address, the accept thread logs one line and exits while the node keeps running with that port dead. Separately, socket-accept on the nonblocking listener can return NIL (would-block after the readiness wake), and NIL goes straight to fnn-owner-launch-client and fnn-mux-adopt.",
  "severity": "high",
  "slice": "wrapper",
  "source": "sweep-2026-10-03",

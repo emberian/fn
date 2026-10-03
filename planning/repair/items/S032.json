@@ -1,9 +1,12 @@
 {
  "acceptance": "services:windowed-reply",
  "category": "performance",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "BRIDGE",
+ "evidence": "web-host.lisp:120 (setq reply (concatenate 'fnn-octets reply part)) runs once per render quantum. web-host.lisp:112-113 (if (eq (first results) :defer) (sleep (/ (min (second results) 1000) 1000)) loops with no deadline. The header (27-28) claims \"the whole request within fn-web-host-request-seconds\", but the deadline built at 209 is passed only to fnn-web-read-request.",
  "exposure": "live",
  "file": "host/native/web-host.lisp",
+ "fix": "Stream each quantum to the socket as it is rendered, which ACL2 already frames per quantum, or collect the parts and join them once. Carry the request deadline into fnn-web-feed and stop, closing the session, when it expires.",
  "id": "S032",
  "line": "120",
  "locus": "connections",
@@ -11,6 +14,8 @@
   "10-02 22:32 coded on lane/host-lifecycle 4e409a9d6 (handed to runner); see lanedumps/host-lifecycle.md for verification"
  ],
  "owner": "host-lifecycle",
+ "reviewer": "web-host.lisp:120 concatenates the whole accumulated reply once per render quantum, which is O(N*Q) copying, and the full reply is held in memory before fnn-web-fill. The :defer loop (112-113) and the yield sleeps (124-125) have no deadline; the deadline built at 209 goes only to fnn-web-read-request. The accept loop (web-host.lisp:318-323) serves one connection at a time in the single 'fn web face' thread, so one slow or repeatedly deferred request blocks every other browser.",
+ "scenario": "A browser asks for a large article or a long group listing. Each render quantum copies the whole accumulated reply again, so a reply of N octets in Q quanta costs O(N*Q) copying, and the full reply sits in memory before any byte is written (D27: bound work, not data). One face thread serves every connection, so a single such request, or a session the owner keeps deferring (login pacing, gate pressure), stalls the whole web face past the advertised request window with no timeout.",
  "severity": "medium",
  "sha": "4e409a9d6",
  "slice": "services",

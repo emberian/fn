@@ -1,6 +1,6 @@
 {
  "category": "check-lane",
- "detail": "bare tests/acl2/bp-native-app-replay-bridge-tests.lisp:40: must-fail: its body's translation is not checked; use must-fail-checked (tools/must_fail_check.py --c",
+ "detail": "planning/repair/sources/check-lane-reds-355a5c843.md",
  "disposition": "LOCAL",
  "exposure": "latent",
  "file": "",

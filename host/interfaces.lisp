@@ -3864,9 +3864,6 @@
 (definterface fn-workflow-release-record
   :class ::program)
 
-(definterface fn-workflow-request-plan
-  :class ::program)
-
 (definterface fn-workflow-take-submit
   :class ::program)
 
@@ -4672,7 +4669,7 @@
 ; reclaim seals nothing).
 (definterface fn-orcs-predict
   :class ::common-lisp-compliant
-  :kinds ((keyring fn-prin-keyringp) (generation natp) (h natp))
+  :kinds ((generation natp) (h natp))
   :keystones (fn-orcs-seal-is-the-intern))
 
 (definterface fn-orcs-seal

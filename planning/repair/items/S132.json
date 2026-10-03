@@ -1,16 +1,23 @@
 {
  "category": "claim-gap",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "tests/test_native_bounds_join.py:208-212 comment `The control client's reply deadline is a fixed 10 s (host/native/control.lisp +fnn-control-io-seconds+, PKT-871): a 10 MiB submission outlasts it, so the client reports UNCERTAIN (exit 3)` and :225 `self.assertIn(posted.returncode, (EXIT_OK, EXIT_UNCERTAIN), posted.stderr.decode())`; host/native/control-transport.lisp:6 `(defconstant +fnn-control-io-seconds+ 10)`",
  "exposure": "latent",
  "file": "tests/test_native_bounds_join.py",
+ "fix": "Size the control reply deadline from the submission (or let the owner send progress), then require EXIT_OK here. Until that lands, keep this as an open registry item with an expected-failure marker rather than a passing alternative.",
  "id": "S132",
  "line": "225",
  "locus": "gates-tests-packaging",
- "notes": [],
+ "notes": [
+  "10-02 23:24 escalate: product limitation (fixed 10 s +fnn-control-io-seconds+), fix is sizing the reply deadline from the submission in control.lisp/ACL2; test is an honest record. Needs design, not a 60-line fix"
+ ],
  "owner": "sweep-gates",
+ "reviewer": "control-transport.lisp:6 sets +fnn-control-io-seconds+ to 10, a fixed value. It is used for the reply send (control.lisp:126) and for the consumer deadline (control.lisp:708-713, which adds time only for waits). So the test at test_native_bounds_join.py:225 really does accept exit 3 for a large operator post that committed. The reporting is honest (uncertain, not wrong), so this is a product limitation the test faithfully records, not a test defect. It belongs as a design item (a time ceiling on the accepted/uncertain boundary), not as a correctness bug.",
+ "scenario": "An operator posting any article whose commit takes over 10 s (large article, slow disk, busy owner) always gets exit 3 'uncertain' for a post that succeeded. The test accepts this as passing behaviour and treats it as settled, instead of flagging a fixed-time ceiling on the uncertain/accepted boundary (D27: bound work, not data). It also means the test cannot tell 'committed and reported accepted' from 'reply lost'.",
  "severity": "low",
  "source": "sweep-2026-10-03",
  "state": "open",
  "title": "The 10 MiB operator post is allowed to come back UNCERTAIN, codifying a fixed 10 s control deadline",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T03:24:26Z"
 }

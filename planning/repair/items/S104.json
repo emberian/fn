@@ -1,8 +1,11 @@
 {
  "category": "correctness",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "operator.lisp:452-461\n(livep (and control-path live (funcall (fnn-olo-socket-present live) control-path)))\n...\n(if livep (values (funcall (fnn-olo-admin live) control-path argv :live)) (fnn-admin-execute root plan))\npeer-invite.lisp:475-479 is the same: (funcall (fnn-olo-socket-present live) control-path) ... (funcall (fnn-olo-admin live) control-path argv :live). Every other admin verb uses fnn-olo-admin-observe (operator.lisp:385-388), which lets ACL2 decide :live/:stale/:held and removes a stale node.",
  "exposure": "conditional",
  "file": "host/native/operator.lisp",
+ "fix": "Route both through (fnn-olo-admin-observe live root control-path-list nil) and the same :live/:held/offline dispatch fnn-operator-execute-admin uses.",
  "id": "S104",
  "line": "452",
  "locus": "operator-verbs",
@@ -10,6 +13,8 @@
   "10-02 22:22 fnn-operator-apply-admin: one liveness dispatch for every mutating admin verb"
  ],
  "owner": "sweep-ops",
+ "reviewer": "operator.lisp:452-461 (account invite) and peer-invite.lisp:475-477 (peer login) choose the live path from fnn-olo-socket-present alone. They never call fnn-olo-admin-observe, which lets ACL2 decide :live/:stale/:held and removes a stale node (operator.lisp:385-388, control-transport.lisp:66-84). After a crash leaves the socket node behind, fnn-operator-live-admin (operator-control-client.lisp:38) tries fnn-control-admin, the connect fails, and the verb returns non-ok. The offline arm is never taken until another verb or an owner start clears the node. operator.lisp:714 and 798 use the same pattern.",
+ "scenario": "The owner crashes and leaves its socket node behind. `account invite` sees a socket and sends to it. The connect fails, so the invite is refused or uncertain and never takes the offline arm, even though no owner holds the lock. Every retry fails the same way until some other verb happens to remove the stale node. If the result is uncertain, the invitation code is never printed. `peer login` fails the same way after it has already rewritten FILE (see the previous finding).",
  "severity": "low",
  "sha": "8acfdeba7",
  "source": "sweep-2026-10-03",

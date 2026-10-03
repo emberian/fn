@@ -1,5 +1,6 @@
 {
  "category": "claim-gap",
+ "detail": "planning/repair/sources/astra-r72-io-extent.md (## F5)",
  "disposition": "LOCAL",
  "exposure": "conditional",
  "file": "host/native/io.lisp",

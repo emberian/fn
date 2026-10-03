@@ -1,6 +1,7 @@
 {
  "acceptance": "cold-line:lease-per-read",
  "category": "bug",
+ "detail": "planning/repair/sources/astra-r71-owner-mux.md (## F4)",
  "disposition": "DISSOLVES-IN",
  "exposure": "conditional",
  "file": "host/native/owner.lisp",

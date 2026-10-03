@@ -1,9 +1,12 @@
 {
  "acceptance": "committer:no-inline-reader",
  "category": "locking",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "BRIDGE",
+ "evidence": "host/native/owner.lisp:4580-4581\n           (when (and submitted (fnn-owner-service-batching service) (null socket))\n             (fnn-owner-commit-queued-locked service)\nfnn-owner-commit-step-action (3260-3264) hard-codes the :idle phase: \"for the inline commit, which holds no gate phase (only at an idle owner: while a batch is in flight the gate admits no class that commits inline)\". But books/owner-commit-pipeline.lisp:279 `fn-ocp-in-flight-admits-only-inspect-commit-and-reader` admits :reader in flight, and web-host.lisp:111 feeds a browser session as `(fnn-owner-handle-chunk service cid pending nil :reader)`. Its header says it has \"the same POST path as an NNTP reader\".",
  "exposure": "conditional",
  "file": "host/native/owner.lisp",
+ "fix": "Do not commit inline from a quantum that can be admitted while a batch is in flight. Have logical (socketless) reader connections queue and await like socket connections, or have ACL2 name the class and phase that permit an inline commit and check it here. Apply the shed admission before any inline commit.",
  "id": "S003",
  "line": "4580",
  "locus": "committer",
@@ -11,6 +14,8 @@
   "10-02 22:32 coded on lane/host-lifecycle 4e409a9d6 (handed to runner); see lanedumps/host-lifecycle.md for verification"
  ],
  "owner": "host-lifecycle",
+ "reviewer": "web-host.lisp:111 feeds a browser session as (fnn-owner-handle-chunk service cid pending nil :reader): socket is nil and the class is :reader. web-request.lisp:1038 routes POST /post to fn-wss-post, and the header says it shares the NNTP POST path. books/owner-commit-pipeline.lisp:279 proves the gate admits :reader while a batch is in flight. So owner.lisp:4580 calls fnn-owner-commit-queued-locked, which hard-codes :idle (3260-3264, 3278). That calls fnn-owner-commit-start-locked with :seal t (3069), which zeroes queued and drains it. fnn-log-seal-open-batch (io.lisp:8015) then calls fnn-log-await-sync, which waits on the syncer's in-flight barrier while holding the owner mutex. It then seals whatever START-NEXT left in the open batch together with the new drain, and runs a second barrier inline. This bypasses the pipeline's phase and ledger accounting and the stall shedding (the :shed check at 4597 comes after this branch), and it can hold the owner mutex for a stalled fdatasync. It needs only a web POST that lands while an NNTP batch is in flight.",
+ "scenario": "An NNTP client's POST is in a sealed batch whose barrier is running in the syncer thread. A browser posts through the web face. Its :reader quantum is admitted in flight, the span marks the article submitted, socket is nil, and the code calls fnn-owner-commit-queued-locked. That runs START as if the owner were idle: it drains other connections' queued members (possibly the ones START-NEXT already moved into the open batch), seals a second batch (fnn-log-seal-open-batch) and runs a second SYNC barrier inline, under the owner mutex, concurrently with the syncer. The likely outcomes are a log-kernel fault (exit 4, node down) or replies released outside the pipeline's COMPLETE ordering. The inline branch also runs before the `(eq admit :shed)` check at 4597, so under a stalled disk this fdatasync holds the owner mutex and freezes the node, which shedding exists to prevent.",
  "severity": "high",
  "sha": "4e409a9d6",
  "slice": "committer",

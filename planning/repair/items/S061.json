@@ -1,8 +1,11 @@
 {
  "category": "fail-open",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "packaging/install.sh:134-140\n  answer=$(\"$1/bin/fn\" operator \"$config\" status 2>&1)\n  rc=$?\n  ...\n  case $answer in *reason=store-format*) return 1 ;; esac\n  [ \"$rc\" -eq 0 ] || echo \"install: status answered $rc (see above); the store is not a format refusal, so this continues\"\n  return 0",
  "exposure": "conditional",
  "file": "packaging/install.sh",
+ "fix": "Have ask() continue only on rc 0 or on the stopped-node exit that status documents for a healthy stopped store (18 not-running). Treat every other code as a refusal, so the store is not switched and the node restarts on the release it ran. Name the class (refused, fenced, fault) in the message.",
  "id": "S061",
  "line": "134",
  "locus": "gates-tests-packaging",
@@ -10,6 +13,8 @@
   "10-02 22:29 merged into next e6b827d21"
  ],
  "owner": "sweep-gates",
+ "reviewer": "packaging/install.sh:131-141: ask() returns 1 only when the output contains reason=store-format. Any other non-zero rc (packaging/fn:104-106 heap-probe fault, exit 4; fenced exit 3; usage 5) prints a 'this continues' note and returns 0. Callers at :268-277 (upgrade), :294-302 (rollback) and :327 (install) then switch_to, render_service, start_node and health_wait. health_wait exits 4 after 180 s and never restores previous. That breaks the header's promise at :42-44 that a refusal puts nothing in place. Treating rc != 0 as continue is deliberate (the message says so), but a fault or fence from the next release is still allowed to switch current.",
+ "scenario": "An operator runs --upgrade to a release whose image cannot run on this machine. For example, the heap probe faults (packaging/fn:104 'fault heap-probe-did-not-run', exit 4), libssl 3 is missing, or the store answers exit 3 (fenced: recover before further mutation). ask() prints the rc and returns 0. switch_to then points current at the new release, render_service installs its unit and start_node runs. health_wait then times out after 180 s and exits 4. The node is left down on a release that already said it could not open the store, and nothing switches it back. This breaks the header's promise (lines 42-44) that 'a refusal puts nothing in place'. The same applies to --rollback (line 294) and to a first install over an existing fn.toml (line 327). Uncertain (3), fault (4) and usage (5) all end up in the accepted path.",
  "severity": "medium",
  "sha": "e6b827d21",
  "source": "sweep-2026-10-03",

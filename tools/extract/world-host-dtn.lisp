@@ -18,7 +18,6 @@
 (ld "../../host/checkpoint-host.lisp" :ld-error-action :error)
 (ld "../../host/config-host.lisp" :ld-error-action :error)
 (ld "../../host/native-admin-host.lisp" :ld-error-action :error)
-(ld "../../host/page-read-host.lisp" :ld-error-action :error)
 (ld "../../host/native-control-host.lisp" :ld-error-action :error)
 (ld "../../host/native-config-host.lisp" :ld-error-action :error)
 (ld "../../host/native-auth-host.lisp" :ld-error-action :error)

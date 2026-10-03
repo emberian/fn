@@ -1,9 +1,12 @@
 {
  "acceptance": "wrapper:receipt-join",
  "category": "resource-leak",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "BRIDGE",
+ "evidence": "host/native/owner.lisp:5147-5162\n        (fnn-with-roster (service)\n          (setf (fnn-owner-service-publisher service) nil\n                (fnn-owner-service-workers service)\n                (delete sb-thread:*current-thread* ...))))))\n    (when pin (fnn-arena-unpin pin))\n    (fnn-owner-service-nursery))\n  ...\n  (fnn-owner-maybe-publish service))\nfnn-owner-maybe-publish (5171-5179) does statvfs, runs a gated quantum that can fnn-log-rotate, runs fnn-log-prepare-spare (creates, preallocates and fences a file in staging/), and re-raises fault and indeterminate with `(error e)`. fnn-owner-wait-workers (4804-4811) is documented as 'Join client workers before closing any shared journal or Store object'.",
  "exposure": "conditional",
  "file": "host/native/owner.lisp",
+ "fix": "Keep the thread in the roster until it truly finishes: do the follow-up publish decision before the roster removal, inside the same handler. Or post the re-decision to the accept loop with a flag instead of running it on the departing thread, and move the unpin before deregistration.",
  "id": "S018",
  "line": "5162",
  "locus": "reclaim-publication",
@@ -11,6 +14,8 @@
   "10-02 22:32 coded on lane/host-lifecycle 4e409a9d6 (handed to runner); see lanedumps/host-lifecycle.md for verification"
  ],
  "owner": "host-lifecycle",
+ "reviewer": "owner.lisp:5147-5162: the publisher removes itself from workers and then still runs fnn-arena-unpin, the nursery and fnn-owner-maybe-publish. maybe-publish (5171-5179) does statvfs, a gated quantum and, on :needs-spare, fnn-log-prepare-spare (staging I/O). fnn-owner-wait-workers (4804-4811) therefore no longer waits for this work. The new-publisher half is mostly refuted: the quantum checks STOPPING (5212-5214), and a publisher it creates is pushed into workers under the same roster lock. The prepare-spare race with store close and the late unpin are still real. maybe-publish re-raises fault and indeterminate (5176) with no handler on this thread. The image is built with --disable-debugger (build.lisp:622), so that kills the process with exit 1, skipping the fence and settlement, even without a SIGTERM.",
+ "scenario": "SIGTERM arrives while a publication finishes. The publisher deregisters, so fnn-owner-wait-workers sees an empty roster and cleanup goes on to fnn-owner-store-settlement and closes the Store. Meanwhile the thread, now invisible to cleanup, is inside fnn-log-prepare-spare writing into the store's staging/ directory, or racing the gate. If its first quantum ran before STOPPING was set, it can also push a new publisher into workers after wait-workers returned, which turns a clean exit into 'workers remain' and an uncertain exit. Any error it raises (re-raised at 5176, or a gate failure) is unhandled in a non-main thread. Under --disable-debugger that exits the process with code 1, skipping the fence and settlement. fnn-owner-export-captured (5408-5415) likewise unpins the arena after deregistering.",
  "severity": "medium",
  "sha": "4e409a9d6",
  "slice": "wrapper",

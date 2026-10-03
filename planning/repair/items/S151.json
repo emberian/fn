@@ -1,0 +1,17 @@
+{
+ "category": "proof-owed",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "host/native/operator.lisp",
+ "id": "S151",
+ "locus": "operator-verbs",
+ "notes": [
+  "10-02 23:24 escalate: proof-owed, needs an ACL2-named drain/stop deadline in books/native-retire + owner-retire before the host loop can poll it; no host-only fix"
+ ],
+ "owner": "burndown-1",
+ "severity": "low",
+ "source": "burndown-1",
+ "state": "open",
+ "title": "retire waits with no bound in the host loop; ACL2 should name the deadline (drain window + stop deadline) and the host poll against it",
+ "updated": "2026-10-03T03:24:31Z"
+}

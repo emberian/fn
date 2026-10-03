@@ -1,6 +1,7 @@
 {
  "acceptance": "wrapper:class-plus-step",
  "category": "bug",
+ "detail": "planning/repair/sources/astra-r72-io-extent.md (## F6)",
  "disposition": "DISSOLVES-IN",
  "exposure": "conditional",
  "file": "host/native/io.lisp",

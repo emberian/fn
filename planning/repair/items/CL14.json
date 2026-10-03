@@ -1,7 +1,7 @@
 {
  "acceptance": "mux:no-recursion",
  "category": "check-lane",
- "detail": "raw_depth_check: fnn-mux-request-handshake (host/native/mux.lisp:807): a non-tail recursion in the raw host code (calls fnn-mux-handshake-refused fnn-mux-start-",
+ "detail": "planning/repair/sources/check-lane-reds-355a5c843.md",
  "disposition": "DISSOLVES-IN",
  "exposure": "latent",
  "file": "",

@@ -1,16 +1,45 @@
 {
  "category": "security",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "host/native/control.lisp:309-325: the topic and consumer verbs check (fnn-control-peer-is-owner-p socket).\ncontrol.lisp:350-367: :request (operator post), :admin (fnn-owner-live-admin-serialized: config mutation, retire, reclaim, compaction) and :moderation dispatch with no ownership check.\n\nhost/native/control-transport.lisp:91-99 (fnn-control-listen)\n          (sb-bsd-sockets:socket-bind listener path)\n          (sb-bsd-sockets:socket-listen listener 16)\n          ...\n          (fnn-set-nonblocking (fnn-socket-fd listener))\n          (fnn-chmod path #o600)\n(no umask is set anywhere in host/native)",
  "exposure": "conditional",
  "file": "host/native/control.lisp",
+ "fix": "Apply the same fnn-control-peer-is-owner-p gate to request, admin, moderation, hybrid and live status before dispatch, and refuse with ACL2's named reason. Create the socket with a restrictive umask (or bind inside a 0700 directory) so no window exists, instead of chmod after listen.",
  "id": "S143",
  "line": "350",
  "locus": "operator-verbs",
- "notes": [],
+ "native": "control",
+ "notes": [
+  "10-02 23:23 claimed: scope=['host/native/control-transport.lisp', 'tests/test_control_listen_umask.py'] test=python3 -m unittest tests.test_control_listen_umask",
+  "10-02 23:23 READY 0787039345196cbc735f7faa731065f4f8167054 (umask half only; peer-UID gating on other arms not added: docs make 0600 the gate)",
+  "10-02 23:25 burndown-2 e5726bf86 merged onto dev; verify ok"
+ ],
  "owner": "sweep-ops",
+ "reviewer": "control-transport.lisp:88-99 binds and listens, then calls chmod #o600, and no umask is set anywhere in host/. The window is real. However, the shipped systemd unit (packaging/fn-native.service.in) sets no UMask, so the default 0022 leaves the socket without group or other write permission, and connect(2) needs write permission. The default path is <store>/control.sock, under a service-owned node directory. Exploiting the window needs a non-default umask such as 002 plus membership in the service group. The 'backwards' claim mischaracterizes the design. docs/operator-internals.md:1436-1439 makes file mode 0600 the gate for every verb. The UID check on topic and consumer binds ACL2's separate local-principal identity (control-transport.lisp:139-146); it is not a weaker gate on the other verbs. What remains is defense in depth, not a reachable default exploit.",
+ "scenario": "The control path is operator-configured. Between bind/listen and the chmod, the socket node has the process umask's mode, for example 0775 under umask 002. A same-group local user who connects in that window has the connection queued in the listen backlog, and it is accepted later. Because only the file mode guards the mutating verbs, that user can then inject operator posts, change the live configuration, retire the store or run reclaim. The check is also backwards: the least dangerous verbs (topic, consumer) are UID-authenticated and the most dangerous (admin, retire) are not. Any later mode or ownership change on the socket, or a deployment where the path is in a shared directory, has no second line of defence.",
+ "scope": [
+  "host/native/control-transport.lisp",
+  "tests/test_control_listen_umask.py"
+ ],
  "severity": "low",
+ "sha": "742475fe1",
  "source": "sweep-2026-10-03",
- "state": "open",
+ "state": "landed",
+ "test": "python3 -m unittest tests.test_control_listen_umask",
  "title": "Control socket: operator post, live admin, retire/reclaim and moderation do no peer-UID check and rely on a chmod made after listen()",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T03:25:31Z",
+ "verify": {
+  "base": "1dd766a9d783931be5daab14b6ee9b74e7b72812",
+  "changed_files": [
+   "host/native/control-transport.lisp",
+   "tests/test_control_listen_umask.py"
+  ],
+  "diff_lines": 30,
+  "green_at_head": true,
+  "head": "0787039345196cbc735f7faa731065f4f8167054",
+  "ok": true,
+  "problems": [],
+  "red_at_base": true
+ }
 }

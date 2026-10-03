@@ -1,16 +1,24 @@
 {
  "category": "dead-code",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "host/checkpoint-host.lisp:1-4 \"Python computes only the SHA-256 trailer ... ACL2 revalidates that suffix in fn-checkpoint-restore\"; fn-store-checkpoint-protected (72), -selection-protected/-decode (90-97), -namespace-plan (145), -next-generation (155), -decode (252), -restore (269), -differential (293) and -auxiliary-differential (304) have no caller in host/native, tools or tests (git grep). host/store-node-host.lisp:1695 fn-store-sn-sweep-staging (LF-joined; the comment at 1701-1704 says an LF in a name would split it into two removals) and host/store-host.lisp:110-113 / store-node-host.lisp:1319 fn-store-txn-observation-* name tools/run_store.py and tools/frame_bridge.py as their callers, and neither file exists any more.",
  "exposure": "latent",
  "file": "host/checkpoint-host.lisp",
+ "fix": "Delete the generation-checkpoint wrappers, fn-store-sn-sweep-staging and fn-store-sn-join-octet-names, and the txn-observation wrappers, along with their interface/coverage rows. Keep only what host/native/checkpoint.lisp calls (rollover, clone-fence, reclaim). Correct the file headers that describe the Python bridge.",
  "id": "S117",
  "line": "72",
  "locus": "store-books",
- "notes": [],
+ "notes": [
+  "10-02 23:06 LF sweep removed (test added); checkpoint entries kept: specs/checkpoint.md cites them, comment records it"
+ ],
  "owner": "sweep-store",
+ "reviewer": "git grep finds no caller in host/native, tools or tests (including quoted 'fnn-core symbol forms) for fn-store-checkpoint-decode, -restore, -differential, -protected, -namespace-plan or -next-generation (host/checkpoint-host.lisp), fn-store-sn-sweep-staging (store-node-host.lisp:1695), or fn-store-txn-observation-octets/-selected (store-node-host.lisp:1319, store-host.lisp:114). They are still ld'ed by host/native/build.lisp:346. Their comments name callers that no longer exist (Python, run_store.py, frame_bridge.py). fn-store-checkpoint-decode (checkpoint-host.lisp:252-263) does leave 'fn-store-checkpoint stale after a failed decode, and -restore (269) reads it, but this only matters if a caller is revived. I could not confirm the claim that the registries credit them: these names do not appear in planning/*.json or tools; tools/coverage.py computes coverage dynamically. So this is dead code with misleading comments and no reachable defect.",
+ "scenario": "These functions are still `ld`ed into the image (host/native/build.lisp:346) and appear in the interface and coverage registries as host-called entries. Coverage and ledger counts therefore credit subjects no host calls. fn-store-checkpoint-decode writes the 'fn-store-checkpoint global and fn-store-checkpoint-restore reads it with no clear on a failed decode, so a stale checkpoint would be restored. The LF-joined sweep can turn one staging name into two unlink targets. Any revived caller inherits both hazards, under comments that describe a Python host that is gone.",
  "severity": "low",
+ "sha": "68ff759ef",
  "source": "sweep-2026-10-03",
- "state": "open",
+ "state": "in-progress",
  "title": "The generation-checkpoint bridge and the LF-joined staging sweep are dead entries whose stated callers no longer exist",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T03:06:27Z"
 }

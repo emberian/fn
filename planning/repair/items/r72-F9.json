@@ -1,5 +1,6 @@
 {
  "category": "bug",
+ "detail": "planning/repair/sources/astra-r72-io-extent.md (## F9)",
  "disposition": "LOCAL",
  "exposure": "live",
  "file": "host/native/io.lisp",

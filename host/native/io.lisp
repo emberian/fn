@@ -4101,8 +4101,13 @@ current one)."
                                         (sb-posix:getpid) (fnn-random-hex 8))))
            (fd (fnn-open stage (logior sb-posix:o-wronly sb-posix:o-creat sb-posix:o-excl)
                          #o600)))
-      (unwind-protect (progn (fnn-write-all fd octets) (fnn-fsync-file fd))
-        (fnn-close fd))
+      ;; A failed write or fsync leaves partial key material in keys/, which
+      ;; nothing sweeps (S073): remove the stage before the error leaves.
+      (let ((written nil))
+        (unwind-protect (progn (fnn-write-all fd octets) (fnn-fsync-file fd)
+                               (setq written t))
+          (fnn-close fd)
+          (unless written (ignore-errors (fnn-unlink stage)))))
       (handler-case (fnn-replace stage path)
         (fnn-os-error (e)
           (ignore-errors (fnn-unlink stage))
@@ -4726,8 +4731,6 @@ by fn-bs-imp-classify."
          (fnn-refuse "import refused reason=publication-uncertain stage=~a: run recover on ~a, then remove ~a"
                      leftover root-path leftover))
         (t (fnn-fault "ACL2 classified a present staged directory as absent")))))
-  (when (fnn-lstat root)
-    (fnn-refuse "import refused reason=store-exists"))
   (when (fnn-lstat root)
     (fnn-refuse "import refused reason=store-exists"))
   (multiple-value-bind (plan count) (fnn-import-pass dir request nil)
@@ -6004,19 +6007,6 @@ after TIMEOUT-MS milliseconds or an interrupted wait."
                             (logior (aref buf (+ (* 8 i) 6))
                                     (ash (aref buf (+ (* 8 i) 7)) 8)))
                 return i)))))
-
-(defun fnn-accept-any-loop (listeners handler &optional once)
-  "Run HANDLER on each connection accepted from any of LISTENERS, one at a
-time; HANDLER owns and closes its socket.  With ONCE, return after one."
-  (let ((fds (mapcar #'fnn-socket-fd listeners)))
-    (loop
-      (let ((index (fnn-poll-readable fds 1000)))
-        (when index
-          (let ((got (fnn-accept-attempt (nth index listeners))))
-            (if (keywordp got)
-                (fnn-accept-backoff got 1)
-              (progn (funcall handler got)
-                     (when once (return))))))))))
 
 (defun fnn-serve-client (socket)
   "Serve one connection; a broken peer cannot end the listener.  A core
@@ -8021,7 +8011,7 @@ log-truncated and log-recovered), the frontier derived (fn-store-log-next-txid
 over the scanned records, floored at the checkpoint's), then the replay: over
 the checkpoint when its F row names a position, else the per-file open's
 choice (fnn-recover-log-from-state-checkpoint or the full replay); then the
-five recovery barriers the per-file open runs, and a writable open finishes
+three recovery barriers the per-file open runs, and a writable open finishes
 an interrupted drop.  Answers the history's record COUNT, as `fnn-recover'
 does, and records how the log holds the history (fnn-store-log-history) for
 `fnn-log-history-records'."

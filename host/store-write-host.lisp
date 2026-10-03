@@ -1781,7 +1781,11 @@
     (if (fn-xw-errp o) (fn-xw-os o)
       (let* ((w (fn-xw-sys (fn-hx-write-all (cadr o) octets)))
              (w (if (fn-xw-okp w) (fn-xw-sys (fn-hx-fsync (cadr o))) w))
-             (c (fn-xw-sys (fn-hx-close (cadr o)))))
+             (c (fn-xw-sys (fn-hx-close (cadr o))))
+             ; A failed write or fsync leaves partial key material at PATH
+             ; and nothing sweeps it (S119): remove it before the error leaves.
+             (u (if (fn-xw-okp w) nil (fn-hx-unlink path))))
+        (declare (ignore u))
         (if (fn-xw-okp w) c w)))))
 
 (defun fn-xw-publish-initial-file (store final octets)

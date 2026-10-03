@@ -1,8 +1,11 @@
 {
  "category": "correctness",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "tests/test_native_owner_scheduler.py:305-306 `@unittest.skipUnless(executable(DEVELOPER), \"no developer image at %s\" % DEVELOPER)\n    def group_count(self, stream):`; tests at :327, :386, :532, :636, :739 start `image=DEVELOPER` with no gate; :710 and :800 start the production owner and call group_count (:713, :803)",
  "exposure": "latent",
  "file": "tests/test_native_owner_scheduler.py",
+ "fix": "Move the decorator to test_status_and_readers_are_answered_while_a_batch_barrier_is_in_flight and add it to the other DEVELOPER tests. Leave group_count undecorated.",
  "id": "S134",
  "line": "305",
  "locus": "gates-tests-packaging",
@@ -10,6 +13,8 @@
   "10-02 22:29 merged into next e6b827d21"
  ],
  "owner": "sweep-gates",
+ "reviewer": "test_native_owner_scheduler.py:305-306 puts skipUnless(DEVELOPER) on the helper group_count, while the tests at :327, :386, :532, :636 and :739 start image=DEVELOPER with no gate (only :447 is gated). Without the developer image they error instead of skipping. The finding is wrong about :710 and :800: those are restarts inside the developer tests (:636 and :739), not production-image tests.",
+ "scenario": "Without a developer image: the five barrier tests try to launch a missing DEVELOPER path and error instead of skipping. The production-image tests at :710/:800 start an owner and then raise SkipTest inside group_count partway through, so production-only behaviour is reported as skipped for a reason unrelated to it. With the developer image present the misplacement is invisible.",
  "severity": "low",
  "sha": "e6b827d21",
  "source": "sweep-2026-10-03",

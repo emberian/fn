@@ -1972,9 +1972,27 @@ it re-signals (the syncer's COMPLETE)."
     ;; GEN: def-section :failure -- one arm: the host names the class, ACL2
     ;; decides (never a parent-class arm, which would pass an unlisted
     ;; subclass as a refusal: review M1).
+    ;; The caller sees ACL2's kind (sweep S028): a refusal or usage error
+    ;; goes on as itself; a fence or a fault that is not already of its
+    ;; host class goes on as an fnn-store-indeterminate / fnn-store-fault
+    ;; naming it.  Re-raised as itself, an fnn-os-error or a socket error
+    ;; read to the control worker as a refusal raised before any owner work,
+    ;; and the operator was told REFUSED (exit 1: nothing happened) by a
+    ;; stopped or fenced node.  The handed-on class classifies to the same
+    ;; kind, so an enclosing boundary decides the same.
     (serious-condition (condition)
-      (fnn-owner-classify-escape-locked service cid condition)
-      (error condition))))
+      (case (fnn-owner-classify-escape-locked service cid condition)
+        ((:refusal :usage) (error condition))
+        (:indeterminate
+         (if (typep condition 'fnn-store-indeterminate)
+             (error condition)
+           (error 'fnn-store-indeterminate
+                  :message (format nil "owner fenced; outcome uncertain: ~a" condition))))
+        (t
+         (if (typep condition 'fnn-store-fault)
+             (error condition)
+           (error 'fnn-store-fault
+                  :message (format nil "owner stopped as a fault: ~a" condition))))))))
 
 (defun fnn-owner-thread-escape (service condition label &optional jobp)
   "A worker thread's top boundary, off the owner mutex (the committer, the
@@ -6515,9 +6533,26 @@ publication).  Answers the reply word."
                      (let ((sw (fnn-owner-serialized
                                 service nil
                                 (lambda ()
-                                 (let ((w (fnn-owner-core 'fn-owner-orcp-swap-word count frontier s
-                                                          (1- (fnn-arena-reader-count))
-                                                          rebuilt)))
+                                 ;; MUTATION witness (developer image): one
+                                 ;; empty seal the prediction did not see
+                                 (let ((move (fnn-developer-selector
+                                              "FN_NATIVE_TEST_RECLAIM_MOVE_FILE")))
+                                   (when (and move (probe-file move))
+                                     (delete-file move)
+                                     (fnn-call 'fn-arena-seal-list nil (fnn-live-arena))
+                                     (fnn-err "RECLAIM test-moved")))
+                                 ;; The seal word: :swap only when the live
+                                 ;; arena's count is still BASE, so the
+                                 ;; predicted handles BASE + i are the ones
+                                 ;; the seal interns; otherwise :moved and
+                                 ;; nothing is sealed (books/owner-reclaim-
+                                 ;; seal.lisp fn-orcs-seal-word).
+                                 (let ((w (fnn-core 'fn-orcs-seal-word
+                                                    (fnn-owner-core 'fn-owner-orcp-swap-word count frontier s
+                                                                    (1- (fnn-arena-reader-count))
+                                                                    rebuilt)
+                                                    (first (fnn-call 'fn-arena-count (fnn-live-arena)))
+                                                    base)))
                                    (when (eq w :swap)
                                      ;; the predicted tombstones sealed: their
                                      ;; handles are BASE + i (the seal word)

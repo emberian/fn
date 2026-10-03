@@ -1,16 +1,23 @@
 {
  "category": "claim-gap",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "host/owner-host.lisp:5122-5125: `(carried (and (boundp-global 'fn-owner-record-octets state) (f-get-global 'fn-owner-record-octets state))) (octets (if (and (consp carried) (natp (cdr carried))) (cdr carried) 0)) (r (fn-orcp-reserve (fn-owner-credits state) octets))`. The comment at 5114-5116 says the estimate is 'of the committed record octets the owner carries, fn-owner-record-octets'. fn-owner-record-octets (1116-1126) is the entry that syncs fn-hist and advances the (K . SUM) cache. Here the raw global is read and the count K is never compared with fn-sf-records-count.",
  "exposure": "conditional",
  "file": "host/owner-host.lisp",
+ "fix": "Take fn-hist in fn-owner-orcp-capture and call fn-owner-record-octets (sync, then fn-hist-bytes-carried) so the estimate is over the current committed records. If that cannot be done, refuse by name when the cache's K differs from fn-sf-records-count.",
  "id": "S114",
  "line": "5122",
  "locus": "store-books",
- "notes": [],
+ "notes": [
+  "10-02 23:22 escalate: fix lives in host/owner-host.lisp (forbidden zone)"
+ ],
  "owner": "sweep-ops",
+ "reviewer": "fn-owner-orcp-capture (owner-host.lisp:5122-5125) reads the raw 'fn-owner-record-octets (K . SUM) cache. It does not call fn-owner-record-octets (1116-1126), which runs fn-hist-sync and extends the cache over the records committed since. The cache advances only through the limit-use, prepare (1781, 1952) and similar entries, so it lags the commits since the last such call. The comment at 5114-5116 names fn-owner-record-octets, which the code does not do. The reservation can therefore be smaller than the history requires. The unbound case is mostly moot, because install sets the global (owner-host.lisp:560). Severity is low: the estimate is already a heuristic multiplier, and the lag is usually small.",
+ "scenario": "The cache only advances when something calls fn-owner-record-octets: a POST prepare, a publication verdict, or a limit use. A POST's prepare queries it before the POST's own record commits, so the cache always lags at least the last committed batch. After a burst of consumer or identity commits, or bulk transit relays that go through other entries, the lag is larger. A reclaim then reserves credit for fewer octets than the history holds. fn-orcp-reserve admits a rebuild whose real allocation exceeds the reservation, and the credit ledger's 'never over-committed' property (fn-mca-read-span-keeps-funded) no longer covers the pass. When no profile was installed, the global is unbound, octets is 0, and the reserve is the minimum.",
  "severity": "low",
  "source": "sweep-2026-10-03",
  "state": "open",
  "title": "Reclaim credit estimate reads the unsynced record-octets cache, not the carried figure the comment names",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T03:22:28Z"
 }

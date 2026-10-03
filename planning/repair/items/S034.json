@@ -1,8 +1,11 @@
 {
  "category": "correctness",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "peer-invite.lisp:461-474\n(fnn-pinv-write-private file (second decision))\n(fnn-out \"login peer=~a file=~a\" name file)\n(let* ((argv (fnn-core 'fn-pset-login-argv name file))\n       (plan (fnn-core 'fn-native-admin-host-plan argv))\n  ...\n  (unless (fnn-admin-plan-acceptedp plan)\n    (fnn-refuse \"peer login: ACL2 refused `peer set ~a --login': ~a\" ...))",
  "exposure": "conditional",
  "file": "host/native/peer-invite.lisp",
+ "fix": "Compute and check the plan, which is pure and needs only NAME and FILE, before writing anything. Write through the shared staged publisher (O_EXCL stage, fsync, rename, directory fsync) and unlink the stage on failure.",
  "id": "S034",
  "line": "461",
  "locus": "operator-verbs",
@@ -10,6 +13,8 @@
   "8acfdeba7"
  ],
  "owner": "sweep-ops",
+ "reviewer": "peer-invite.lisp:458 calls fnn-pinv-write-private, which renames the new credentials over FILE, before the peer-set plan is built and checked (461-469) and before the live owner answers (470-474). If ACL2 refuses the plan or the owner refuses, the command exits refused, but FILE has already been replaced. If FILE was an existing peer's login file, that peer's next dial uses the new secret. In fnn-pinv-write-private (around 440-450), a short write raises fnn-refuse inside the unwind-protect, which only closes the fd, so the tmp file is left behind. There is also no directory fsync after the rename.",
+ "scenario": "`peer login NAME LOGIN FILE`, where FILE is the login file a configured peer already uses, and the plan is refused (for example NAME is not a configured peer, or the path is refused by the grammar). The file has already been renamed over with the new credentials, so the existing peer's next dial uses a password the remote side does not have. The command exits refused, which tells the operator nothing changed. fnn-pinv-write-private also leaves path.tmp-PID behind on a short write (no unlink) and does not fsync the directory after the rename.",
  "severity": "medium",
  "source": "sweep-2026-10-03",
  "state": "ready",

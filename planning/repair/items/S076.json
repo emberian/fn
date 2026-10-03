@@ -1,16 +1,23 @@
 {
  "category": "correctness",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "io.lisp:8131-8132\n  (let ((genesis (if log-position (second log-position) chain))\n        (base (if (eq status :ok) (fnn-nat s) 0)))\nThe open (fnn-recover-log, 7653-7656) instead goes through fnn-log-lineage-genesis, which for K>=2 answers `(fnn-core 'fn-lgl-head-prev head max)`. books/store-log-lineage.lisp:101-108 shows G is the head's own trailer (`(equal (fn-lgl-head-trailer octets) g)`) and :87-91 shows fn-lgl-head-prev is the closed segment's last trailer, the value the head entry chains from. fnn-log-rotate (7394, 7401) sets the log's genesis to the closed segment's last and returns the head trailer as G. Separately, base adds the checkpoint's S whenever status is :ok, even when no F row narrows the plan, so the scan still covers every segment from 1.",
  "exposure": "conditional",
  "file": "host/native/io.lisp",
+ "fix": "Derive the scan's starting chain with the open's own decision, (fnn-log-lineage-genesis store K G chain), so foreign-lineage and segment-head-damaged are refused here too. Add S to base only when log-position is set, matching fnn-recover-log-from-state-checkpoint's count (S plus the suffix).",
  "id": "S076",
  "line": "8131",
  "locus": "operator-verbs",
- "notes": [],
+ "notes": [
+  "10-02 23:22 escalate: fix lives in host/native/io.lisp (forbidden zone)"
+ ],
  "owner": "sweep-store",
+ "reviewer": "First half confirmed. scan-store sets genesis to (second log-position) (io.lisp:8131). In store-node-host.lisp:659-662 that value is G, the F row's slot 2. fnn-log-rotate returns (next (fn-lgc-last kernel-after-rotate)), the head's own trailer (io.lisp:7396-7408), and books/store-log-lineage.lisp:98-108 checks that G equals fn-lgl-head-trailer. The open instead starts segment K from fn-lgl-head-prev (io.lisp:7457), because the head entry chains from the closed segment's last trailer. Streaming K from G therefore stops at the head entry, which validates under another predecessor, and fnn-log-stream-segment's verdict refuses it as log-chain-broken (6597-6601). This happens on any store whose checkpoint names a K>=2, which every host checkpoint writer produces (owner.lisp:5234, 5657; io.lisp:3414). Every rotating writer produces one, so the verb breaks on any checkpointed store. The scan-store verb is a read-only rig diagnostic, so severity is low. The second half (records= counting S twice when the checkpoint has no log position) is real in the code (8132), but it depends on a checkpoint whose F row log slot is NIL. The codec allows that (books/store-checkpoint-tables.lisp:374-376), but none of the current host writers produces it.",
+ "scenario": "After any checkpoint that rotated, the F row is (K>=2, G). The rig's `fn log scan-store ROOT` streams segment K from G, but the head entry at offset 0 validates only under head-prev. The stream stops at an entry that validates under another predecessor and refuses with log-chain-broken on a healthy store, while the real open succeeds. The doc says this verb reports \"the history's count as the open answers it\", and it does not on any store after `store compact` or a rotating checkpoint. Also, for a state checkpoint without a log position, records= is S plus every record, so the covered prefix is counted twice.",
  "severity": "low",
  "source": "sweep-2026-10-03",
  "state": "open",
  "title": "`log scan-store` streams segment K>=2 from the F row's G (the head's trailer), not the head's predecessor, and skips the lineage check",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T03:22:28Z"
 }

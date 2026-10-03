@@ -1,8 +1,11 @@
 {
  "category": "performance",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "control.lisp:276-278 comment: \"No list of the frame is built.\" control.lisp:308-309 ((and *fnn-hybrid-control-handler* (funcall *fnn-hybrid-control-handler* service frame))), which comes before the PRF-311 shed at 345-349. Chain (load order tls-reload -> login-bindings -> keys -> peer-invite -> hybrid-control): tls-reload.lisp:107 (fnn-octet-list frame); login-bindings.lisp:45 (fnn-octet-list frame); keys.lisp:66 (fnn-octet-list frame); peer-invite.lisp:240 (octets (and (typep frame 'fnn-octets) (fnn-octet-list frame))) then up to 3 decodes; hybrid-control.lisp:194 (fnn-octet-list frame) then 5 decodes.",
  "exposure": "live",
  "file": "host/native/control.lisp",
+ "fix": "Have ACL2's single in-place decode (fn-native-control-host-decode-frame) classify the hybrid, peer, keys, tls and bindings kinds too, and dispatch to their handlers from the decoded tag. Apply the shed after decode to every mutating kind, the hybrid ones included.",
  "id": "S029",
  "line": "308",
  "locus": "operator-verbs",
@@ -11,6 +14,8 @@
   "10-02 22:32 merge-all; natives pending"
  ],
  "owner": "sweep-ops",
+ "reviewer": "The load order is build.lisp:526-543 (hybrid-control, peer-invite, keys, login-bindings, tls-reload), so tls-reload is the outermost handler. Each handler calls (fnn-octet-list frame) unconditionally whenever frame is fnn-octets: tls-reload.lisp:107, login-bindings.lisp:45, keys.lisp:66, peer-invite.lisp:240 (followed by up to 3 decodes) and hybrid-control.lisp:194 (followed by 5 decodes, all run before the cond). control.lisp:308 runs the chain for every frame, including operator posts, before the PRF-311 :busy shed at control.lisp:345-349. That contradicts the 'No list of the frame is built' comment at 276-278. Peer invite, accept and confirm, keys redecide, tls reload and hybrid author/enroll/revoke are mutating requests answered by the chain, so they are never shed as BUSY while the disk is stalled.",
+ "scenario": "An operator `post` of an article near the profile bound (the control read bound is derived from the article bound) is turned into a cons list five separate times, about 16 bytes of cons per octet each time, and is run through about 11 ACL2 decoders before it reaches the request arm. That contradicts the D27 comment and costs O(article) allocation several times over. Because the chain runs before the disk-admit shed, mutating requests served by it are never answered BUSY while the disk is stalled: peer invite/accept/confirm (live reconfiguration), keys redecide, tls reload and hybrid `author` (an article submission). Instead they queue on the owner gate that the stalled barrier holds, against the PRF-311 comment at 338-344.",
  "severity": "medium",
  "sha": "15c695ceb",
  "source": "sweep-2026-10-03",

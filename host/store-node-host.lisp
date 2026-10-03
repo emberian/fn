@@ -1512,8 +1512,10 @@ reopen predicate, writer-lock observation and observed final namespace."
     ; state or repeated call.
     (if (and (equal (fn-sf-phase before-files) :completing)
              (equal (fn-sf-phase after-files) :ready)
-             (equal (len (fn-sf-successes after-files))
-                    (1+ (len (fn-sf-successes before-files)))))
+             ; S118: the counts, O(1) (fn-sl-count-is-len), not two copies of
+             ; the whole history.
+             (equal (fn-sl-count (fn-sf-successes-field after-files))
+                    (1+ (fn-sl-count (fn-sf-successes-field before-files)))))
         (let ((state (f-put-global 'fn-store-sn next state))) (value :durable))
       (value :fault))))
 
@@ -1680,30 +1682,11 @@ reopen predicate, writer-lock observation and observed final namespace."
   (value (len (fn-stx-index-bindings
                (fn-sn-index (f-get-global 'fn-store-sn state))))))
 
-; The staging sweep (books/store-sweep.lisp).  Python enumerates the staging
+; The staging sweep (books/store-sweep.lisp): the host enumerates the staging
 ; directory and names what the live process still holds; which of those names
-; may be unlinked is the book's decision, never Python's.  The answer is the
-; removal names joined by LF, as fn-store-cfg-join-names joins group names.
-; The names here are already octet lists (a staging file name is not a group
-; name, so fn-store-cfg-join-names, which encodes strings, does not apply).
-(defun fn-store-sn-join-octet-names (names)
-  (declare (xargs :mode :program))
-  (if (consp names)
-      (append (car names)
-              (if (consp (cdr names))
-                  (cons 10 (fn-store-sn-join-octet-names (cdr names)))
-                nil))
-    nil))
-
-(defun fn-store-sn-sweep-staging (observed held state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-store-sn-join-octet-names
-          (car (fn-sn-sweep-staging (f-get-global 'fn-store-sn state)
-                                    observed held)))))
-
-; Native recovery consumes the structured result directly.  Unlike the older
-; LF-joined adapter for Python, it cannot confuse an observed filename that
-; contains LF with two distinct names.  The subject is fn-sn-sweep-round:
+; may be unlinked is the book's decision, never the host's.
+; Native recovery consumes the structured result directly (names are octet
+; lists, so a filename containing LF is never confused with two names).  The subject is fn-sn-sweep-round:
 ; one bounded observation, whether the directory held more, and the answer
 ; (:done|:again|:refused removals) that decides the host's next round
 ; (host/native/io.lisp, fnn-sweep-staging).

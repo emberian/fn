@@ -1,8 +1,11 @@
 {
  "category": "fail-open",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "tools/green_check.py:353-357 `names = subprocess.run([\"git\", \"diff\", \"--name-only\", base, \"--\", \"books\", \"tests/acl2\"], ...)` and `return sorted(name[:-5] for name in names if name.endswith(\".lisp\"))`. Books do include host files: books/image-world-dtn.lisp:158 `(include-book \"../host/page-read-host\")` and five admission-semantic-census-*-refinement books include ../host/admission-semantic-census-host. certs.closure follows those edges, and dependents() (:361-379) itself notes that \"Host include files contribute dependency bytes\".",
  "exposure": "latent",
  "file": "tools/green_check.py",
+ "fix": "Diff every path that can appear in any audited book's closure (in practice, add host/ or use the closure's own key set), and add `git ls-files --others --exclude-standard -- books tests/acl2 host`. Then compute dependents over every changed closure member, not only those under books/ and tests/acl2.",
  "id": "S056",
  "line": "355",
  "locus": "gates-tests-packaging",
@@ -11,6 +14,8 @@
   "10-02 22:29 merged into next e6b827d21"
  ],
  "owner": "sweep-gates",
+ "reviewer": "changed_books (green_check.py:346-357) diffs only `books` and `tests/acl2` against the merge base. host/*.lisp edits are therefore invisible, even though books include them: books/admission-semantic-census-*-refinement.lisp:2-7 include ../host/admission-semantic-census-host, and image-world-dtn includes ../host/page-read-host. dependents() (:361-379) only searches for closures reaching `wanted`, so an empty changed list yields not_green==[] and exit 0. `git diff <base>` without --untracked does not list new untracked files, which contradicts the docstring's claim that the working tree is judged. The gate is the documented merge gate (green_check.py:21, how-we-work.md). Under the land-and-fix-forward mode its weight is reduced, but the false green is real.",
+ "scenario": "A lane edits host/page-read-host.lisp only. changed_books returns [], dependents() is computed over an empty `wanted`, and the gate prints \"no book or test book differs from the merge base\" with not_green == []. `--changed-since dev --strict` exits 0, although image-world-dtn's include closure changed and nothing has certified it. In a second case, a lane creates books/x.lisp without `git add`. `git diff <base>` does not list untracked files, so the new book escapes the gate, even though the docstring says the working tree is what is judged.",
  "severity": "medium",
  "sha": "e6b827d21",
  "source": "sweep-2026-10-03",

@@ -1,9 +1,12 @@
 {
  "acceptance": "wrapper:closed-classification",
  "category": "error-handling",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "DISSOLVES-IN",
+ "evidence": "web-host.lisp:107-131 (handler-case (let ((pending ...)) ...) (fnn-store-error () :gone)). io.lisp:77,92: fnn-store-fault and fnn-store-indeterminate are subclasses of fnn-store-error. fnn-fault at web-host.lisp:128 (\"owner consumed no octets of a web command\") is inside the same handler-case.",
  "exposure": "conditional",
  "file": "host/native/web-host.lisp",
+ "fix": "Catch only the condition that means 'the owner no longer knows CID' (a named refusal) as :gone. Pass fnn-store-indeterminate and fnn-store-fault to ACL2 as distinct events (for example (:uncertain) or (:fault)) so the page says so, or re-raise them.",
  "id": "S031",
  "line": "131",
  "locus": "connections",
@@ -11,6 +14,8 @@
   "10-02 22:32 coded on lane/host-lifecycle 4e409a9d6 (handed to runner); see lanedumps/host-lifecycle.md for verification"
  ],
  "owner": "host-lifecycle",
+ "reviewer": "web-host.lisp:131 has (fnn-store-error () :gone), and fnn-store-fault and fnn-store-indeterminate are subclasses of fnn-store-error (io.lisp:77, 92). An indeterminate outcome from fnn-owner-handle-chunk (the owner fences with exit 3 in owner.lisp:1791) is shown to the browser as session-gone, not as uncertain. The fnn-fault at web-host.lisp:128 ('owner consumed no octets') is raised outside any owner-serialized call, so this handler swallows it: the owner is never stopped and the fault becomes :gone while the node keeps serving. This breaks the rule that uncertain, refused and accepted stay distinct.",
+ "scenario": "A browser POST is fed through fnn-owner-handle-chunk and the store's publication is ambiguous. fnn-store-indeterminate propagates (the owner fences with exit 3). The web face reports :gone and ACL2 renders the session-gone page, so the user is not told the outcome is uncertain and may repost. A host fault in the feed (line 128) is likewise rendered as a vanished session instead of a fault. This violates the rule that uncertain, refused and accepted stay distinct at every boundary.",
  "severity": "medium",
  "sha": "4e409a9d6",
  "slice": "wrapper",
