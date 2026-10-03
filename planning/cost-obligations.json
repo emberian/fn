@@ -29,11 +29,15 @@
  },
  "undispatched_declarations": [
   "create-fn-resource-ledger",
+  "fn-cur-at",
   "fn-ros-drainedp",
   "fn-ros-install-syncer",
   "fn-ros-issue",
   "fn-ros-outcome",
-  "fn-ros-physical"
+  "fn-ros-physical",
+  "fn-sl-loop",
+  "fn-sl-one",
+  "fn-sl-step"
  ],
  "entries": [
   {
@@ -14031,5 +14035,51 @@
    "theorem": null,
    "declared_in": null
   }
- ]
+ ],
+ "cons_declarations": {
+  "fn-cur-at": {
+   "claim": "derived",
+   "bound": null,
+   "unaccounted": [
+    "i",
+    "l",
+    "n"
+   ],
+   "theorem": null,
+   "declared_in": "books/string-line-cursor-cost.lisp"
+  },
+  "fn-sl-loop": {
+   "claim": "derived",
+   "bound": null,
+   "unaccounted": [
+    "i",
+    "l",
+    "n"
+   ],
+   "theorem": null,
+   "declared_in": "books/string-line-cursor-cost.lisp"
+  },
+  "fn-sl-one": {
+   "claim": "partial",
+   "bound": "6",
+   "unaccounted": [
+    "i",
+    "l",
+    "n"
+   ],
+   "theorem": "fn-sl-one-conses-bound",
+   "declared_in": "books/string-line-cursor-cost.lisp"
+  },
+  "fn-sl-step": {
+   "claim": "partial",
+   "bound": "(+ (* 8 n) 2)",
+   "unaccounted": [
+    "i",
+    "l",
+    "n"
+   ],
+   "theorem": "fn-sl-step-conses-bound",
+   "declared_in": "books/string-line-cursor-cost.lisp"
+  }
+ }
 }

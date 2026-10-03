@@ -19051,6 +19051,19 @@
           "name": "fn-rlo-physical-bank-correspondence"
         }
       ]
+    },
+    {
+      "id": "PRF-1274",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sl-step-derived-conses-within-source-count"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sl-step-derived-conses-bound"
+        }
+      ]
     }
   ]
 }

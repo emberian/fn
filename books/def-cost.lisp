@@ -9,6 +9,8 @@
 ;     [:visits BOUND :sizes ((S TERM) ...)]  ; BOUND over the size names S; TERM over
 ;                                            ; NAME's formals (a request size, a profile
 ;                                            ; field, a carried list's length)
+;     [:conses BOUND :cons-unaccounted (F ...) :cons-hints H]
+;                                         ; optional logical cons dimension, same body
 ;     [:unaccounted (F ...)]                 ; the callees the derivation cannot cost:
 ;                                            ; checked EQUAL to the derived set
 ;     [:hints H] [:measure-hints H])         ; the bound's and the twin's admission hints
@@ -75,8 +77,16 @@
 ; the size names and constants; :unaccounted not the derived set; a served
 ; guard over a whole-state size; a row declared twice; a twin name taken.
 ;
-; What is NOT derived here (v1): allocation (the row records :allocation
-; :deferred), the attachment a constrained function runs (unaccounted), the
+; With :conses or :cons-unaccounted, the same engine also generates
+; NAME-conses/NAME-route-conses and an optional bound in the SAME cost row.
+; Quoted constants are borrowed, CONS costs one, copied list spines cost
+; their length. MV-LET value bindings explicitly collect multiple values.
+; Unknown leaves propagate independently for each dimension; a visit-only
+; row never supplies a cons allocation contract. Stobj native allocations
+; remain unknown. These are logical constructors, not physical bytes, peak
+; residency, integer allocation, collector copying or native vector storage.
+;
+; What is NOT derived here: the physical heap tariff, the attachment a constrained function runs (unaccounted), the
 ; cost of a kind check that is not in the contract table (unaccounted).  The
 ; contract table is the trusted base: one row per primitive with its reason;
 ; tools/cost_obligations.py emits it to planning/cost-contracts.json and
@@ -93,6 +103,14 @@
   (local (defun fn-cost-unaccounted (f args) (declare (ignore f args)) 0))
   (defthm fn-cost-unaccounted-natp
     (natp (fn-cost-unaccounted f args))
+    :rule-classes :type-prescription))
+
+(encapsulate
+  (((fn-cost-unaccounted-conses * *) => *))
+  (local (defun fn-cost-unaccounted-conses (f args)
+           (declare (ignore f args)) 0))
+  (defthm fn-cost-unaccounted-conses-natp
+    (natp (fn-cost-unaccounted-conses f args))
     :rule-classes :type-prescription))
 
 ; ---------------------------------------------------------------------------
@@ -156,7 +174,53 @@
 
 (defconst *fn-cost-fuel* 60)
 
-(defconst *fn-cost-keys* '(:visits :sizes :unaccounted :hints :measure-hints))
+; Logical cons constructors only: neither a byte tariff nor retained heap.
+; Constants borrow their representation. Arithmetic/character primitives may
+; allocate other native objects; those allocations are outside this dimension.
+(defconst *fn-cost-cons-contracts*
+  '((cons 1 "one fresh logical cons")
+    (car 0 "borrowed cell read") (cdr 0 "borrowed cell read")
+    (consp 0 "test") (atom 0 "test") (null 0 "test") (not 0 "test")
+    (eq 0 "comparison") (eql 0 "comparison") (equal 0 "comparison")
+    (zp 0 "test") (natp 0 "test") (integerp 0 "test")
+    (symbolp 0 "test") (stringp 0 "test") (keywordp 0 "test")
+    (booleanp 0 "test") (characterp 0 "test") (true-listp 0 "read-only walk")
+    (len 0 "read-only walk") (length 0 "read-only length")
+    (binary-+ 0 "non-cons arithmetic") (binary-* 0 "non-cons arithmetic")
+    (unary-- 0 "non-cons arithmetic") (< 0 "comparison")
+    (floor 0 "non-cons arithmetic") (mod 0 "non-cons arithmetic")
+    (nfix 0 "test") (ifix 0 "test")
+    (nth 0 "borrowed cell read") (nthcdr 0 "borrowed tail")
+    (mv-nth 0 "borrowed multiple-value component")
+    (member-equal 0 "borrowed tail") (assoc-equal 0 "borrowed pair")
+    (take (nfix a1) "one fresh cell per requested position")
+    (append (len a1) "copies the first spine")
+    (binary-append (len a1) "copies the first spine")
+    (revappend (len a1) "copies the first spine")
+    (char 0 "indexed character read; no list conversion executes")
+    (code-char 0 "character lookup") (char-code 0 "character lookup")))
+
+(defconst *fn-cost-keys*
+  '(:visits :sizes :unaccounted :hints :measure-hints
+    :conses :cons-unaccounted :cons-hints))
+
+(defun fn-cost-dimension-key (key dimension)
+  (declare (xargs :mode :program))
+  (if (eq dimension :conses)
+      (case key (:visits :conses) (:unaccounted :cons-unaccounted)
+            (:hints :cons-hints) (otherwise key))
+    key))
+
+(defun fn-cost-unknown-name (dimension)
+  (declare (xargs :mode :program))
+  (if (eq dimension :conses) 'fn-cost-unaccounted-conses 'fn-cost-unaccounted))
+
+(defun fn-cost-dimension-name (fn part dimension)
+  (declare (xargs :mode :program))
+  (packn-pos (append (list fn)
+                    (and (eq part :route) (list '-route))
+                    (list (if (eq dimension :conses) '-conses '-visits))
+                    (and (eq part :bound) (list '-bound))) fn))
 
 ; ---------------------------------------------------------------------------
 ; Term plumbing (:program).
@@ -247,57 +311,63 @@
     (if (atom fs) body (cons (list 'lambda fs body) as))))
 
 (mutual-recursion
- (defun fn-cost-term (term self stack fuel w)
+ (defun fn-cost-term-dimension (term self stack fuel w dimension)
    (declare (xargs :mode :program))
    (cond
     ((or (atom term) (eq (car term) 'quote)) (mv ''0 nil))
     ((consp (car term))
      ; ((lambda (v ...) body) a ...): the actuals, then the body bound the same way
-     (mv-let (acost aun) (fn-cost-terms (cdr term) self stack fuel w)
-       (mv-let (bcost bun) (fn-cost-term (car (last (car term))) self stack fuel w)
+     (mv-let (acost aun) (fn-cost-terms-dimension (cdr term) self stack fuel w dimension)
+       (mv-let (bcost bun) (fn-cost-term-dimension (car (last (car term))) self stack fuel w dimension)
          (mv (fn-cost-plus acost
                            (fn-cost-bind-body (cadr (car term)) (cdr term) bcost))
              (union-eq aun bun)))))
     ((eq (car term) 'if)
-     (mv-let (tcost tun) (fn-cost-term (cadr term) self stack fuel w)
-       (mv-let (acost aun) (fn-cost-term (caddr term) self stack fuel w)
-         (mv-let (bcost bun) (fn-cost-term (cadddr term) self stack fuel w)
+     (mv-let (tcost tun) (fn-cost-term-dimension (cadr term) self stack fuel w dimension)
+       (mv-let (acost aun) (fn-cost-term-dimension (caddr term) self stack fuel w dimension)
+         (mv-let (bcost bun) (fn-cost-term-dimension (cadddr term) self stack fuel w dimension)
            (mv (fn-cost-plus tcost (if (and (equal acost ''0) (equal bcost ''0))
                                        ''0
                                      (list 'if (cadr term) acost bcost)))
                (union-eq tun (union-eq aun bun)))))))
     ((eq (car term) 'return-last)
      (if (equal (cadr term) ''mbe1-raw)
-         (fn-cost-term (caddr term) self stack fuel w)   ; the :exec arm runs
-       (fn-cost-terms (cddr term) self stack fuel w)))
-    (t (mv-let (acost aun) (fn-cost-terms (cdr term) self stack fuel w)
-         (mv-let (ccost cun) (fn-cost-call (car term) (cdr term) self stack fuel w)
+         (fn-cost-term-dimension (caddr term) self stack fuel w dimension)   ; the :exec arm runs
+       (fn-cost-terms-dimension (cddr term) self stack fuel w dimension)))
+    (t (mv-let (acost aun) (fn-cost-terms-dimension (cdr term) self stack fuel w dimension)
+         (mv-let (ccost cun) (fn-cost-call-dimension (car term) (cdr term) self stack fuel w dimension)
            (mv (fn-cost-plus acost ccost) (union-eq aun cun)))))))
- (defun fn-cost-terms (terms self stack fuel w)
+ (defun fn-cost-terms-dimension (terms self stack fuel w dimension)
    (declare (xargs :mode :program))
    (if (atom terms)
        (mv ''0 nil)
-     (mv-let (c u) (fn-cost-term (car terms) self stack fuel w)
-       (mv-let (cs us) (fn-cost-terms (cdr terms) self stack fuel w)
+     (mv-let (c u) (fn-cost-term-dimension (car terms) self stack fuel w dimension)
+       (mv-let (cs us) (fn-cost-terms-dimension (cdr terms) self stack fuel w dimension)
          (mv (fn-cost-plus c cs) (union-eq u us))))))
- (defun fn-cost-call (fn actuals self stack fuel w)
+ (defun fn-cost-call-dimension (fn actuals self stack fuel w dimension)
    (declare (xargs :mode :program))
    ; the contract of FN on ACTUALS
-   (let ((row (assoc-eq fn *fn-cost-contracts*))
+   (let ((row (assoc-eq fn (if (eq dimension :conses) *fn-cost-cons-contracts* *fn-cost-contracts*)))
          (body (getpropc fn 'unnormalized-body nil w)))
      (cond
       (row (mv (fn-cost-contract-term row actuals) nil))
-      ((getpropc fn 'stobj-function nil w)
+      ((and (not (eq dimension :conses)) (getpropc fn 'stobj-function nil w))
        ; a concrete stobj's accessor, updater, length or recognizer: one
        ; array or field operation in raw Lisp, whatever its logical body
        ; (an array length is (len (nth i st)) in the logic, O(1) executed)
        (mv ''1 nil))
-      ((eq fn self) (mv (cons (fn-cost-twin-name fn) actuals) nil))
-      ((assoc-eq fn (table-alist 'fn-cost w))
+      ((getpropc fn 'stobj-function nil w)
+       ; Its native allocation is not its logical list implementation.
+       ; Resizes/creators/updaters need an explicit representation contract.
+       (mv (list (fn-cost-unknown-name dimension) (kwote fn) (cons 'list actuals)) (list fn)))
+      ((eq fn self) (mv (cons (fn-cost-dimension-name fn :body dimension) actuals) nil))
+      ((and (assoc-eq fn (table-alist 'fn-cost w))
+            (or (not (eq dimension :conses))
+                (fn-cost-get :cons-twin (cdr (assoc-eq fn (table-alist 'fn-cost w))))))
        ; A twin is callable even when its derivation is partial.  Its row's
        ; unknown leaves remain unknown in every caller, not just here.
-       (mv (cons (fn-cost-twin-name fn) actuals)
-           (fn-cost-get :unaccounted
+       (mv (cons (fn-cost-dimension-name fn :body dimension) actuals)
+           (fn-cost-get (fn-cost-dimension-key :unaccounted dimension)
                         (cdr (assoc-eq fn (table-alist 'fn-cost w))))))
       ((and body
             (not (eq (symbol-class fn w) :program))
@@ -307,11 +377,22 @@
             (< (fn-cost-nodes body) *fn-cost-inline-nodes*)
             (not (zp fuel)))
        ; inlined: the callee's derived cost with the actuals for its formals
-       (mv-let (c u) (fn-cost-term body self (cons fn stack) (1- fuel) w)
+       (mv-let (c u) (fn-cost-term-dimension body self (cons fn stack) (1- fuel) w dimension)
          (if u
-             (mv (list 'fn-cost-unaccounted (kwote fn) (cons 'list actuals)) (list fn))
+             (mv (list (fn-cost-unknown-name dimension) (kwote fn) (cons 'list actuals)) (list fn))
            (mv (fn-cd-subst c (pairlis$ (getpropc fn 'formals nil w) actuals)) nil))))
-      (t (mv (list 'fn-cost-unaccounted (kwote fn) (cons 'list actuals)) (list fn)))))))
+      (t (mv (list (fn-cost-unknown-name dimension) (kwote fn) (cons 'list actuals)) (list fn)))))))
+
+
+(defun fn-cost-term (term self stack fuel w)
+  (declare (xargs :mode :program))
+  (fn-cost-term-dimension term self stack fuel w :visits))
+(defun fn-cost-terms (terms self stack fuel w)
+  (declare (xargs :mode :program))
+  (fn-cost-terms-dimension terms self stack fuel w :visits))
+(defun fn-cost-call (fn actuals self stack fuel w)
+  (declare (xargs :mode :program))
+  (fn-cost-call-dimension fn actuals self stack fuel w :visits))
 
 (mutual-recursion
  (defun fn-cost-mentions (term fns)
@@ -365,7 +446,7 @@
     (mv (fn-cost-kind-conjuncts conjuncts formals stobjs kinds)
         (fn-cost-other-conjuncts conjuncts formals stobjs kinds w))))
 
-(defun fn-cost-derive (fn w)
+(defun fn-cost-derive-dimension (fn w dimension)
   (declare (xargs :mode :program))
   ; (mv MSG ROUTE ROUTE-COST BODY-COST UNACCOUNTED): what the host evaluates
   ; before the body on the entry's route (kinds; the rest of the guard when
@@ -373,9 +454,9 @@
   (let ((route (fn-cost-route fn w)))
     (mv-let (kinds rest)
       (fn-cost-guard-parts fn w)
-      (mv-let (kcost kun) (fn-cost-terms (if (eq route :internal) nil kinds) fn nil *fn-cost-fuel* w)
-        (mv-let (rcost run) (fn-cost-terms (if (eq route :served) rest nil) fn nil *fn-cost-fuel* w)
-          (mv-let (bcost bun) (fn-cost-term (getpropc fn 'unnormalized-body nil w) fn nil *fn-cost-fuel* w)
+      (mv-let (kcost kun) (fn-cost-terms-dimension (if (eq route :internal) nil kinds) fn nil *fn-cost-fuel* w dimension)
+        (mv-let (rcost run) (fn-cost-terms-dimension (if (eq route :served) rest nil) fn nil *fn-cost-fuel* w dimension)
+          (mv-let (bcost bun) (fn-cost-term-dimension (getpropc fn 'unnormalized-body nil w) fn nil *fn-cost-fuel* w dimension)
             (let ((size (and (eq route :served)
                              (fn-cost-mentions rcost *fn-cost-whole-state-sizes*))))
               (if size
@@ -388,6 +469,10 @@
                       route nil nil nil)
                 (mv nil route (fn-cost-plus kcost rcost) bcost
                     (union-eq kun (union-eq run bun)))))))))))
+
+(defun fn-cost-derive (fn w)
+  (declare (xargs :mode :program))
+  (fn-cost-derive-dimension fn w :visits))
 
 ; ---------------------------------------------------------------------------
 ; The events.
@@ -424,7 +509,7 @@
    (declare (xargs :mode :program))
    ; every (fn-cost-unaccounted ...) subterm, each once
    (cond ((or (atom term) (eq (car term) 'quote)) nil)
-         ((eq (car term) 'fn-cost-unaccounted) (list term))
+         ((member-eq (car term) '(fn-cost-unaccounted fn-cost-unaccounted-conses)) (list term))
          ((consp (car term))
           (union-equal (fn-cost-unaccounted-terms (car (last (car term))))
                        (fn-cost-unaccounted-terms-lst (cdr term))))
@@ -436,11 +521,11 @@
      (union-equal (fn-cost-unaccounted-terms (car terms))
                   (fn-cost-unaccounted-terms-lst (cdr terms))))))
 
-(defun fn-cost-problem (fn kvs w)
+(defun fn-cost-problem-dimension (fn kvs w dimension)
   (declare (xargs :mode :program))
   ; (mv MSG ROUTE (ROUTE-COST . BODY-COST) UNACCOUNTED SIZES BOUND)
   (let ((sizes (fn-cost-get :sizes kvs))
-        (bound (fn-cost-get :visits kvs)))
+        (bound (fn-cost-get (fn-cost-dimension-key :visits dimension) kvs)))
     (cond
      ((not (and (symbolp fn) fn)) (mv (msg "~x0 is not a function name" fn) nil nil nil nil nil))
      ((not (keyword-value-listp kvs)) (mv (msg "~x0: options are not a keyword list" fn) nil nil nil nil nil))
@@ -454,19 +539,21 @@
       (mv (msg "~x0 is :program mode: its body is not a term the world holds; convert it ~
                 to :logic first" fn)
           nil nil nil nil nil))
-     ((assoc-eq fn (table-alist 'fn-cost w))
+     ((and (assoc-eq fn (table-alist 'fn-cost w))
+            (or (not (eq dimension :conses))
+                (fn-cost-get :cons-twin (cdr (assoc-eq fn (table-alist 'fn-cost w))))))
       (mv (msg "~x0 already has a cost row; a row is declared once" fn) nil nil nil nil nil))
-     ((or (getpropc (fn-cost-twin-name fn) 'formals nil w)
-          (getpropc (fn-cost-route-name fn) 'formals nil w))
+     ((or (getpropc (fn-cost-dimension-name fn :body dimension) 'formals nil w)
+          (getpropc (fn-cost-dimension-name fn :route dimension) 'formals nil w))
       (mv (msg "~x0: ~x1 or ~x2 is already a function of this world"
-               fn (fn-cost-twin-name fn) (fn-cost-route-name fn))
+               fn (fn-cost-dimension-name fn :body dimension) (fn-cost-dimension-name fn :route dimension))
           nil nil nil nil nil))
      ((not (fn-cost-sizesp sizes))
       (mv (msg "~x0: :sizes ~x1 is not ((S TERM) ...)" fn sizes) nil nil nil nil nil))
-     ((and (assoc-keyword :visits kvs) (null bound))
+     ((and (assoc-keyword (fn-cost-dimension-key :visits dimension) kvs) (null bound))
       (mv (msg "~x0: :visits names no bound" fn) nil nil nil nil nil))
-     ((not (true-listp (fn-cost-get :unaccounted kvs)))
-      (mv (msg "~x0: :unaccounted ~x1 is not a list" fn (fn-cost-get :unaccounted kvs))
+     ((not (true-listp (fn-cost-get (fn-cost-dimension-key :unaccounted dimension) kvs)))
+      (mv (msg "~x0: :unaccounted ~x1 is not a list" fn (fn-cost-get (fn-cost-dimension-key :unaccounted dimension) kvs))
           nil nil nil nil nil))
      (t
       (mv-let (bad sterms)
@@ -492,36 +579,60 @@
                   nil nil nil nil nil))
              (t
               (mv-let (msg route rcost bcost unaccounted)
-                (fn-cost-derive fn w)
+                (fn-cost-derive-dimension fn w dimension)
                 (cond
                  (msg (mv msg nil nil nil nil nil))
-                 ((not (and (subsetp-eq unaccounted (fn-cost-get :unaccounted kvs))
-                            (subsetp-eq (fn-cost-get :unaccounted kvs) unaccounted)))
+                 ((not (and (subsetp-eq unaccounted (fn-cost-get (fn-cost-dimension-key :unaccounted dimension) kvs))
+                            (subsetp-eq (fn-cost-get (fn-cost-dimension-key :unaccounted dimension) kvs) unaccounted)))
                   (mv (msg "~x0: the derivation leaves ~&1 unaccounted (no contract, no ~
                             cost row, not inlinable); the declaration says ~x2.  Declare ~
                             exactly the derived list: a bound is partial over it"
-                           fn unaccounted (fn-cost-get :unaccounted kvs))
+                           fn unaccounted (fn-cost-get (fn-cost-dimension-key :unaccounted dimension) kvs))
                       nil nil nil nil nil))
                  (t (mv nil route (cons rcost bcost) unaccounted
                         (pairlis$ (strip-cars sizes) (pairlis$ sterms nil))
                         (and bound (car bterms))))))))))))))))
+
+(defun fn-cost-problem (fn kvs w)
+  (declare (xargs :mode :program))
+  (fn-cost-problem-dimension fn kvs w :visits))
 
 (defun fn-cost-sizes-alist (sizes)
   (declare (xargs :mode :program))
   ; ((S . TERM) ...) from the normalized ((S (TERM)) ...)
   (if (atom sizes) nil (cons (cons (caar sizes) (car (cdar sizes))) (fn-cost-sizes-alist (cdr sizes)))))
 
-(defun fn-cost-events (fn kvs route cost unaccounted sizes bound w)
+(mutual-recursion
+ (defun fn-cost-value-term (term w)
+   (declare (xargs :mode :program))
+   ; Translated MV-LET binds the complete MV list as a lambda actual.
+   ; Reconstructed source must explicitly collect that list: ACL2 refuses
+   ; an ordinary value-context call to a multiple-value function.
+   (cond ((or (atom term) (eq (car term) 'quote)) term)
+         ((consp (car term))
+          (cons (list 'lambda (cadr (car term))
+                      (fn-cost-value-term (car (last (car term))) w))
+                (fn-cost-value-terms (cdr term) w)))
+         (t (let* ((call (cons (car term) (fn-cost-value-terms (cdr term) w)))
+                   (outs (getpropc (car term) 'stobjs-out nil w)))
+              (if (< 1 (len outs)) (list 'mv-list (len outs) call) call)))))
+ (defun fn-cost-value-terms (terms w)
+   (declare (xargs :mode :program))
+   (if (atom terms) nil
+     (cons (fn-cost-value-term (car terms) w)
+           (fn-cost-value-terms (cdr terms) w)))))
+
+(defun fn-cost-events-dimension (fn kvs route cost unaccounted sizes bound w dimension)
   (declare (xargs :mode :program))
   ; COST = (ROUTE-COST . BODY-COST): NAME-visits is the body's twin (recurring
   ; as the body does); NAME-route-visits adds what the host evaluates once at
   ; the entry, so a kind check is never counted per recursive call
   (let* ((alist (fn-cost-stobj-alist fn w))
          (formals (fn-cost-rename (getpropc fn 'formals nil w) alist))
-         (twin (fn-cost-twin-name fn))
-         (rtwin (fn-cost-route-name fn))
-         (rcost (fn-cd-subst (car cost) alist))
-         (bcost (fn-cd-subst (cdr cost) alist))
+         (twin (fn-cost-dimension-name fn :body dimension))
+         (rtwin (fn-cost-dimension-name fn :route dimension))
+         (rcost (fn-cost-value-term (fn-cd-subst (car cost) alist) w))
+         (bcost (fn-cost-value-term (fn-cd-subst (cdr cost) alist) w))
          (recursive (fn-cost-recursivep fn w))
          (j (getpropc fn 'justification nil w))
          (measure (and recursive j (fn-cd-subst (access justification j :measure) alist)))
@@ -533,7 +644,7 @@
                                              us))))
          (stobjs (strip-cars alist))
          (def (if stobjs 'defun-nx 'defun))
-         (name (fn-cost-bound-name fn)))
+         (name (fn-cost-dimension-name fn :bound dimension)))
     `(progn
        (,def ,twin ,formals
         (declare ,@(and formals `((ignorable ,@formals)))
@@ -551,30 +662,50 @@
                   ,(if (equal guard *t*)
                        `(<= (,rtwin ,@formals) ,bound-term)
                      `(implies ,guard (<= (,rtwin ,@formals) ,bound-term)))
-                  :hints ,(if (assoc-keyword :hints kvs)
-                              (fn-cost-get :hints kvs)
+                  :hints ,(if (assoc-keyword (fn-cost-dimension-key :hints dimension) kvs)
+                              (fn-cost-get (fn-cost-dimension-key :hints dimension) kvs)
                             `(("Goal" :in-theory (enable ,twin ,rtwin)
                                ,@(and recursive (list :induct (cons twin formals)))))))))
        (table fn-cost ',fn
-              '(:route ,route :twin ,twin :route-twin ,rtwin
-                :route-cost ,(car cost) :body-cost ,(cdr cost) :unaccounted ,unaccounted
-                :sizes ,(fn-cost-sizes-alist sizes) :bound ,bound
-                :theorem ,(and bound name) :allocation :deferred))
+              ',(if (eq dimension :conses)
+                    (append `(:cons-twin ,twin :cons-route-twin ,rtwin
+                              :cons-route-cost ,(car cost) :cons-body-cost ,(cdr cost)
+                              :cons-unaccounted ,unaccounted :cons-bound ,bound
+                              :cons-theorem ,(and bound name) :allocation :logical-conses)
+                            (cdr (assoc-eq fn (table-alist 'fn-cost w))))
+                  `(:route ,route :twin ,twin :route-twin ,rtwin
+                    :route-cost ,(car cost) :body-cost ,(cdr cost) :unaccounted ,unaccounted
+                    :sizes ,(fn-cost-sizes-alist sizes) :bound ,bound
+                    :theorem ,(and bound name) :allocation :deferred)))
        ,@(and bound
               `((table fn-teeth-owed ',name
                        '(:by def-cost
                          :claim (,(if (equal guard *t*) nil `((g ,guard)))
                                  (<= (,rtwin ,@formals) ,bound-term))
                          :subject ,fn
-                         :visits ((route (,rtwin ,@formals) ,bound-term)))))))))
+                         ,(if (eq dimension :conses) :conses :visits)
+                         ((route (,rtwin ,@formals) ,bound-term)))))))))
+
+(defun fn-cost-events (fn kvs route cost unaccounted sizes bound w)
+  (declare (xargs :mode :program))
+  (fn-cost-events-dimension fn kvs route cost unaccounted sizes bound w :visits))
 
 (defmacro def-cost (fn &rest kvs)
-  `(make-event
-    (mv-let (problem route cost unaccounted sizes bound)
-      (fn-cost-problem ',fn ',kvs (w state))
-      (if problem
-          (er soft 'def-cost "~x0: ~@1" ',fn problem)
-        (value (fn-cost-events ',fn ',kvs route cost unaccounted sizes bound (w state)))))))
+  `(progn
+     (make-event
+      (mv-let (problem route cost unaccounted sizes bound)
+        (fn-cost-problem ',fn ',kvs (w state))
+        (if problem
+            (er soft 'def-cost "~x0: ~@1" ',fn problem)
+          (value (fn-cost-events ',fn ',kvs route cost unaccounted sizes bound (w state))))))
+     ,@(and (or (assoc-keyword :conses kvs) (assoc-keyword :cons-unaccounted kvs))
+            `((make-event
+               (mv-let (problem route cost unaccounted sizes bound)
+                 (fn-cost-problem-dimension ',fn ',kvs (w state) :conses)
+                 (if problem
+                     (er soft 'def-cost "~x0 logical conses: ~@1" ',fn problem)
+                   (value (fn-cost-events-dimension ',fn ',kvs route cost unaccounted
+                                                     sizes bound (w state) :conses)))))))))
 
 ; Re-derive in the current world and compare with the row: a changed body,
 ; guard or interface declaration refuses.
@@ -598,7 +729,18 @@
                            (subsetp-eq (fn-cost-get :unaccounted row) unaccounted)))
                  (er soft 'def-cost-check "~x0: the unaccounted callees are now ~x1; the row says ~x2"
                      ',fn unaccounted (fn-cost-get :unaccounted row)))
-                (t (value '(value-triple ',fn)))))))))
+                (t
+                 (if (not (fn-cost-get :cons-twin row))
+                     (value '(value-triple ',fn))
+                   (mv-let (cmsg croute crc cbc cun)
+                     (fn-cost-derive-dimension ',fn (w state) :conses)
+                     (if (and (null cmsg) (eq croute route)
+                              (equal crc (fn-cost-get :cons-route-cost row))
+                              (equal cbc (fn-cost-get :cons-body-cost row))
+                              (subsetp-eq cun (fn-cost-get :cons-unaccounted row))
+                              (subsetp-eq (fn-cost-get :cons-unaccounted row) cun))
+                         (value '(value-triple ',fn))
+                       (er soft 'def-cost-check "~x0: logical cons derivation changed" ',fn)))))))))))
 
 ; The operation validator runs after costs exist, so the entry route was
 ; read from its final interface declaration.  It consumes the one existing

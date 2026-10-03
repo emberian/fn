@@ -21770,6 +21770,31 @@
         "fn-rlo-physical-bank-correspondence"
       ],
       "progress_note": "Numerical launch/startup properties and actual typed output methods source-admitted. Install/issue/output/physical preserve typed recognizer plus shape with only typed+shape input; all mutation guards admit through proof-local field recipes and the typed bank boundary. Twelve literal accepted-branch and corrupted-state type/shape removal witnesses accompany the four public preservation exports. An upfront fixed shape check safely refuses malformed typed install state. Sixteen actual live-stobj receipt/free-row trace cases and normal-counterpart native producer/serializer/real-worker join probe remain discriminating consumers. Free-row protocol/bank correspondence, concrete bookkeeping and whole-plan allocation refinement, actual Runtime mux activation and matching output certification/image verdict remain owed. Explicit config remains unsupported; absence partial. Fresh full proper-local resource-output replay admits21.07ACL2s/4,694,217steps (proof packet1,127,718), then fresh16 live traces+12 literal teeth pass28/0 in0.18s/39,682steps. Matching changed-source normal native fixture passes; archived output-custody-20261003-guards.json names exact scope and hashes. Actual install/draw/output/physical bank correspondence now admits in a separate proof-local package1.06s/71,540steps: metadata fields never affect bank, accepted issue matches typed draw, each output/physical receipt matches typed settlement exactly iff its independent counterpart receipt is present. Twelve literal bank boundary positives/accepted-word removals plus6 supporting OKP positives/corrupted-bank removals admit. Supporting typed+wfp OKP exports are not independent cited keystones. Free-chain validity and heap tariff remain open; this does not prove environmental receipts."
+    },
+    {
+      "id": "PRF-1274",
+      "title": "Translated executable logical cons allocation for the emitted string cursor",
+      "statement": "The same def-cost translated-body engine derives logical cons constructors independently of visits and propagates each dimension's unresolved leaves. Actual fn-sl-loop/fn-sl-step constructors are bounded by the existing source recurrence; fn-sl-step <=8*nfix(bytes)+2. Host fnn-owner-render-next calls fn-splan-window which consumes this renderer. No physical bytes, retained graph, native integer/vector allocation or collector guarantee follows.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-047"
+      ],
+      "depends_on": [
+        "PRF-1259"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "events": [
+        "fn-sl-step-derived-conses-within-source-count",
+        "fn-sl-step-derived-conses-bound"
+      ],
+      "evidence": [
+        "books/def-cost.lisp",
+        "books/string-line-cursor-cost.lisp",
+        "tests/acl2/def-cost-tests.lisp",
+        "tests/acl2/string-line-cursor-cost-tests.lisp"
+      ],
+      "progress_note": "Fresh laptop proper-local def-cost source load53forms admits0.36ACL2s/500steps; existing+new generator regressions110forms pass0.37s/1150steps. Exact selected actual renderer definitions9forms admit0.03s/11332steps, followed by final proof-local consumer package0.07s/7190steps and five literal unconditional bound/bridge positives plus labeled mutation witness. Full included consumer-book certification and final image-world check pending; selected source replay is not a certificate. CHAR/LENGTH/MV-NTH visit costs remain unknown independently of the closed logical cons dimension."
     }
   ]
 }

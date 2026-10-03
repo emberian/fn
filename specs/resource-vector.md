@@ -380,3 +380,15 @@ refine the existing typed bank operations; metadata does not alter accounting. T
 methods preserve typed representation and fixed column shape; their mutation
 guards are verified in the source proof world. No accounted operation
 gate may be inferred from the serializer's logical cons bound or this pool.
+
+## Logical constructor cost dimension (PRF-1274)
+
+`def-cost :conses BOUND :cons-unaccounted (CALLEES ...)` derives a logical
+cons constructor twin from the same executed translated body as visit cost.
+It preserves independent unknown leaves and reconstructs multiple-value
+bindings. Quoted objects are borrowed; fresh conses and copied list spines
+are charged. Concrete stobj operations remain unknown without a representation
+contract. The actual string renderer's derived count is bounded by its source
+recurrence and by `8*nfix(bytes)+2`. This supplies a per-turn constructor bound;
+it does not price retained state, native integer/vector allocation, physical
+bytes, collector copying or custody of borrowed archive references.
