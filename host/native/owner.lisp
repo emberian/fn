@@ -2244,6 +2244,13 @@ their inspections (:inspect) and a submission (:poster).")
 face: :reader for a reader's steps, :transit for a peer's, :control for a
 connection's account ingress.")
 
+(def-section fnn-quantum-mux-finish
+  :actors (:mux)
+  :classes (:reader :transit :control)
+  :admits (:cleanup :finish)
+  :doc "Once-only connection cleanup after stop; a torn or rejected entry
+retains its receipt debt rather than being retried.")
+
 (defstruct (fnn-snapshot-payload-view (:constructor fnn-make-snapshot-payload-view (token arena)))
   token arena)
 
@@ -7811,6 +7818,8 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                                      '("a cold read is outstanding"))
                                    (unless (fnn-owner-syncer-drained-p service)
                                      '("syncer operation or physical custody remains"))
+                                   (unless (fnn-mux-drained-p service)
+                                     '("mux loop or terminal cleanup debt remains"))
                                    (unless (every (lambda (slot)
                                                     (let ((worker (fnn-cold-worker-thread slot)))
                                                       (or (null worker)
@@ -7823,6 +7832,7 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                         (when open
                           (fnn-err "stopping: the close is not joined: ~{~a~^; ~}" open)))
                       (when (and modules-joined
+                                 (fnn-mux-drained-p service)
                                  (fnn-owner-syncer-drained-p service)
                                  (null (fnn-with-roster (service)
                                          (fnn-owner-service-workers service)))

@@ -21766,7 +21766,8 @@
         "fn-cmt-pipeline-requires-its-captured-passes",
         "fn-cmt-wrong-snapshot-ticket-faults",
         "fn-cmt-stop-observation-never-enters-a-pipeline"
-      ]
+      ],
+      "progress_note": " SCN-1091 adds actual once-only mux finish section and distinct effect/section debt receipts; native interpreter/refinement, all cleanup cut composition and matching-image acceptance remain owed. Finite raw schedules do not close this target."
     },
     {
       "id": "PRF-1254",

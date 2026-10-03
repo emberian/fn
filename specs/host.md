@@ -1851,3 +1851,27 @@ kernel, owner reservation and frontier effects. Standalone Store reservations
 retain the existing codec successor route. The source routing fixture
 `tests/native_retention_identity_route_raw.lisp` checks these calls and order;
 a matching native BP undertake/release/reopen scenario remains required.
+
+## Once-only mux cleanup receipts (SCN-1091)
+
+The actual `fnn-mux-finish` terminal scheduling state is distinct from release.
+Its four semantic cleanup subjects are handshake-done (exact admitted ID),
+handshake-leave, owner-close and exposure-release. Each uses the declared
+`fnn-quantum-mux-finish` cleanup section once. A native receipt records
+scheduled, calling and the literal returned value, then independently records
+section return. A gate-leave failure preserves an already-returned effect;
+a rejected or torn call retains debt and is never retried. The earlier phase
+and identities remain reachable with the debt after scheduling removal.
+
+Output references are cleared before unpin. This alone does not establish
+output-pool discard or absence of a future publisher for an issued dependency.
+Independent socket cleanup still runs after semantic failure. The existing
+socket helper retains its NIL primary value and exposes a separate actual
+`:closed` or `:unobserved` receipt and condition. Root Store settlement requires
+physical mux loop return, empty connection/inbox/arrival lists and no cleanup
+debt. Socket close cannot settle an output grant by itself.
+
+SCN-1091 checks these actual native boundaries with real exclusion and physical
+threads/socket close, recording semantic primitives and a raw callback cut.
+Full native refinement, output custody composition and matching-image shutdown
+remain open under HOST-COORDINATION and PRF-1255/PRF-1259.

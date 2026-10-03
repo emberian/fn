@@ -108,9 +108,20 @@
 
 ;; The actual mux terminal consumer closes its pending reply route too.
 (load-deployed-forms "host/native/mux.lisp"
- '((defun fnn-mux-service) (defun fnn-mux-finish)))
+ '((defstruct (fnn-mux-cleanup-receipt (:constructor %make-fnn-mux-cleanup-receipt)))
+   (defun fnn-mux-service) (defun fnn-mux-cleanup-debt)
+   (defun fnn-mux-cleanup-attempt) (defun fnn-mux-finish)))
 (defun fnn-owner-response-unpin (&rest args) (declare (ignore args)) nil)
-(defun fnn-owner-serialized (&rest args) (declare (ignore args)) nil)
+;; Recording cleanup boundaries; real cleanup envelope/failure witnesses are
+;; in native_mux_cleanup_raw. This fixture owns the reply-abandon consumer.
+(defun fnn-quantum-mux-finish (service cid thunk &optional class)
+  (declare (ignore service cid class)) (funcall thunk))
+(defun fnn-owner-thread-escape (&rest args) (declare (ignore args)) nil)
+(defun fnn-owner-action (name &rest args)
+  (declare (ignore args))
+  (case name (fn-owner-close :closed) (fn-owner-exposure-release :released)
+             (otherwise (error "unexpected await cleanup subject ~s" name))))
+(defun fnn-socket-shut (socket) (declare (ignore socket)) (values nil :closed nil))
 (defun fnn-mux-start-waiting-handshake (&rest args) (declare (ignore args)) nil)
 (let* ((s (%make-fnn-owner-service :clients '(:closing-socket)))
        (loop (%make-fnn-mux-loop :service s))
