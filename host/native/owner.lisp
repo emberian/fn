@@ -5013,6 +5013,73 @@ LINE-SINCE; ACL2's line deadline (fn-otb-line-dependency-step) answers
       (:unavailable (fnn-owner-unavailable-line service cid incoming since now limit class))
       (otherwise (fnn-owner-resource-unavailable-line service cid incoming word class)))))
 
+;;; r71 F7 (lane served-live): an I/O loop never waits for a cold page.
+;;; fnn-owner-handle-chunk awaits the page on the calling thread
+;;; (fnn-owner-cold-line), which on a mux loop held every connection the
+;;; loop serves for up to the dependency deadline.  The loop instead takes
+;;; the step's issued read (fnn-owner-handle-chunk-step answers (values
+;;; :cold READ)), keeps it on the connection with the instants it needs, and
+;;; returns to its poll; a timer asks fnn-owner-cold-poll, which never
+;;; blocks, for ACL2's dependency word (fn-otb-line-dependency-step, then
+;;; fn-otb-dependency-step) and settles the read when the page came.  Then
+;;; the step runs again (fnn-owner-handle-chunk-step with the word), warm,
+;;; or answers the line unavailable.  The settlement is still a :control
+;;; quantum (fnn-owner-cold-settle): behind a barrier in flight it waits for
+;;; that batch, but no longer for the page.
+(defun fnn-owner-handle-chunk-step (service cid incoming socket class peerp
+                                    &optional word line-since since now limit)
+  "fnn-owner-handle-chunk for an I/O loop: (values :cold READ) when the read
+went cold, else fnn-owner-handle-chunk's values.  WORD is the line's word
+from fnn-owner-cold-poll: nil (a first run, or :serve: the page came and was
+settled), :unavailable (ACL2's 403 with SINCE NOW LIMIT), or a resource
+refusal keyword.  LINE-SINCE: the instant of the line's first miss."
+  (cond ((eq word :unavailable)
+         (fnn-owner-unavailable-line service cid incoming since now limit class))
+        ((and word (not (eq word :serve)))
+         (fnn-owner-resource-unavailable-line service cid incoming word class))
+        (t
+         (let ((results (multiple-value-list
+                         (fnn-owner-handle-chunk-read service cid incoming socket class peerp))))
+           (if (eq (first results) :fnn-extent-cold)
+               (values :cold (third results))
+             (fnn-owner-chunk-results service cid incoming socket class peerp
+                                      results line-since))))))
+
+(defun fnn-owner-cold-poll (service read line-since since)
+  "Never waits for the page.  (values WORD SINCE NOW LIMIT): :serve (the page
+came and READ is settled), :unavailable (ACL2's deadline passed, the read's
+publication revoked), (:wait MS), or READ itself when it is a refusal word."
+  (when (keywordp read) (return-from fnn-owner-cold-poll (values read since since nil)))
+  (let* ((now (fnn-owner-monotonic-ms)) (limit nil)
+         (token (fnn-owner-cold-read-token read))
+         (worker (fnn-owner-cold-read-worker read))
+         (done (or (null token)
+                   (fnn-owner-cold-read-settledp read)
+                   (fnn-extent-executor-returned-p worker)))
+         (decision (if (and line-since
+                            (eq (fnn-core 'fn-otb-line-dependency-step line-since now limit)
+                                :unavailable))
+                       :line-unavailable
+                     (fnn-core 'fn-otb-dependency-step since now limit done))))
+    (cond ((eq decision :serve)
+           (let ((got (fnn-owner-cold-settle service read)))
+             (when (typep got 'serious-condition) (error got)))
+           (fnn-extent-cancel-read token)
+           (values :serve since now limit))
+          ((member decision '(:unavailable :line-unavailable))
+           (fnn-extent-cancel-read token)
+           (values :unavailable (if (eq decision :line-unavailable) line-since since) now limit))
+          ((and (consp decision) (eq (car decision) :wait)
+                (integerp (second decision)) (plusp (second decision)))
+           (values decision since now limit))
+          (t (fnn-fault "owner returned a malformed dependency step")))))
+
+(defun fnn-owner-cold-abandon (read)
+  "The connection waiting for READ is gone: revoke its publication right;
+the worker keeps its descriptor and the reap settles the row."
+  (unless (keywordp read)
+    (fnn-extent-cancel-read (fnn-owner-cold-read-token read))))
+
 ;;; ACL2's answer to the cold line past its deadline (host/owner-host.lisp
 ;;; fn-owner-unavailable-line-at over fn-ocln-unavailable-span), under the
 ;;; owner mutex; the values are fnn-owner-handle-chunk-read's.
