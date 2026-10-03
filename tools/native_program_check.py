@@ -839,11 +839,28 @@ def declared_model_cuts(host: str) -> set:
     return names
 
 
+def checked_elsewhere() -> dict[str, str]:
+    """Programs the cut table names that main() checks by another verifier,
+    each with its name; every other named program must be in PROGRAM_HOSTS."""
+    from tests.campaign.native_cuts import (LOG_PROGRAM_HOSTS, LOG_ROUTE_ARMS,
+                                            STATEMENT_CUTS)
+    out = {program: "verify_log_route_arms"
+           for _, (_, programs) in LOG_ROUTE_ARMS.items() for program, _ in programs}
+    out.update({program: "verify_log_cut_map" for program in LOG_PROGRAM_HOSTS})
+    out.update({cut.program: "verify_statement_cut_map" for cut in STATEMENT_CUTS})
+    return out
+
+
 def programs_named() -> list[str]:
+    """Every program the cut table names that no other verifier checks.  A
+    program in neither PROGRAM_HOSTS nor checked_elsewhere() is listed too,
+    so check_program reports it FAIL (sweep 2026-10-03 S128: the filter
+    `p in PROGRAM_HOSTS' dropped it, and its FAIL arm could never run)."""
+    elsewhere = checked_elsewhere()
     out = []
     for c in ALL_CUTS:
         for p in (c.program, c.follows):
-            if p and p not in out and p in PROGRAM_HOSTS:
+            if p and p not in out and p not in elsewhere:
                 out.append(p)
     return out
 
@@ -1007,6 +1024,15 @@ def main(argv=None) -> int:
     for problem in arms:
         print("log route mismatch: " + problem)
     print("log route arms: {} ({} arms)".format("FAIL" if arms else "PASS", len(LOG_ROUTE_ARMS)))
+    # The log programs' host functions (LOG_PROGRAM_HOSTS: append, fence,
+    # recover, extend), which checked_elsewhere() leaves to this verifier.
+    from tests.campaign.native_cuts import verify_log_cut_map
+    try:
+        verify_log_cut_map()
+        print("log cut map: PASS")
+    except AssertionError as error:
+        arms.append(str(error))
+        print("log cut map: FAIL: {}".format(error))
     # Lane ack-before-barrier: the key-statement route's cut follows the
     # statement's barrier, and every line naming a record its COMPLETE.
     from tests.campaign.native_cuts import STATEMENT_CUTS, verify_statement_cut_map

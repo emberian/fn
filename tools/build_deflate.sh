@@ -7,7 +7,7 @@
 #
 # Portable C99: Linux, OpenBSD (clang), macOS.  CC and CFLAGS are honoured.
 # The image loads it from the lib/ directory beside its core
-# (host/native/deflate.lisp), as it loads libfn-lz4 (tools/build_lz4.sh).
+# (host/native/deflate.lisp), as it loads libfn-mldsa65 and libfn-blake3.
 # Z_SOLO leaves out the gzip file layer (the allocator is fn-deflate.c's).
 # -fvisibility=hidden hides every zlib symbol but the fn_deflate_* entries, so no
 # other libz in the process can interpose on it and no caller reaches zlib.

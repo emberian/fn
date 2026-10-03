@@ -1,5 +1,11 @@
 # Disposable native transaction-directory EIO campaign
 
+**Retired until the log-route re-target (sweep 2026-10-03 S060).**  The
+native cases below drive the per-file programs and read `store/transactions/`,
+which a record-log store does not have; `native_block_fault.py` refuses them
+by name and exits 2.  The `--probe` step still runs.  See
+`tests/campaign/native_block_fault.py` RETIRED for what the re-target needs.
+
 This opt-in hbox campaign creates an ext4 filesystem on a new tmpfs-backed
 loop device and a unique device-mapper mapping. It injects `error_writes`
 only into that mapping after the native post's final transaction link and

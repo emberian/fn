@@ -140,11 +140,31 @@ openssl_hint() {
 }
 LOG="${FN_NATIVE_LOG:-build/native-host-build.log}"
 mkdir -p build
-rm -f "$IMAGE" "$IMAGE.core" "$IMAGE.world-deps" "$IMAGE.catalog"
-if ! FN_NATIVE_PROFILE="$PROFILE" FN_NATIVE_IMAGE="$IMAGE" FN_NATIVE_WORLD="$WORLD" \
+rm -f "$IMAGE" "$IMAGE.core" "$IMAGE.world-deps" "$IMAGE.catalog" "$IMAGE.source"
+# The image's source identity, read before the build and written beside the
+# image after it ($IMAGE.source): tools/image_set.py publish labels a set
+# SHA only when every image records `commit SHA` (S057/S063, sweep
+# 2026-10-03).  A tree that is its own git checkout answers for itself:
+# `commit HEAD` when nothing tracked or untracked differs, `worktree
+# HEAD+dirty` otherwise.  A tree that is not (tools/hbox_native.sh's run
+# tree, a `git archive` or rsync) takes FN_NATIVE_SOURCE, the `== source`
+# identity its shipper names; with neither it is `unknown`.
+if [ "$(git rev-parse --show-toplevel 2>/dev/null)" = "$(pwd -P)" ] \
+        && SOURCE_HEAD=$(git rev-parse HEAD 2>/dev/null); then
+    if [ -z "$(git status --porcelain --untracked-files=normal 2>/dev/null)" ]; then
+        SOURCE_RECORD="commit $SOURCE_HEAD"
+    else
+        SOURCE_RECORD="worktree $SOURCE_HEAD+dirty"
+    fi
+else
+    SOURCE_RECORD=${FN_NATIVE_SOURCE:-unknown}
+fi
+rc=0
+FN_NATIVE_PROFILE="$PROFILE" FN_NATIVE_IMAGE="$IMAGE" FN_NATIVE_WORLD="$WORLD" \
      ACL2_CUSTOMIZATION=NONE ACL2_SYSTEM_BOOKS= env -u ACL2_SYSTEM_BOOKS \
-     "$ACL2" < "$RUN_BUILD" > "$LOG" 2>&1; then
-    echo "build_native_host: acl2 exited with status $?; see $LOG" >&2
+     "$ACL2" < "$RUN_BUILD" > "$LOG" 2>&1 || rc=$?
+if [ "$rc" -ne 0 ]; then
+    echo "build_native_host: acl2 exited with status $rc; see $LOG" >&2
     openssl_hint
     exit 1
 fi
@@ -279,4 +299,5 @@ else
     echo "build_native_host: $BUILD prints no stack figure; the launcher keeps ACL2's 64 MiB (not a served image)" >&2
 fi
 echo "$CATALOG" > "$IMAGE.catalog"
-echo "built $IMAGE profile=$PROFILE world=$WORLD catalog=$CATALOG ($(du -h "$IMAGE.core" | cut -f1) core)"
+echo "$SOURCE_RECORD" > "$IMAGE.source"
+echo "built $IMAGE profile=$PROFILE world=$WORLD catalog=$CATALOG source=$SOURCE_RECORD ($(du -h "$IMAGE.core" | cut -f1) core)"

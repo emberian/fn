@@ -105,16 +105,16 @@ def reread(node: Node, payload: bytes, out: dict, repost=True):
                                     if read[label] is not None else None)}
         if repost:
             out["repost"] = nntp_post(node, payload)
-            out["after_repost"] = snapshot(node.store)
+            out["after_repost"] = snapshot(node)
     out["reread_owner"] = node.stop_owner(owner)
 
 
 def settle(node: Node, payload: bytes, out: dict, repost=True):
-    out["killed"] = snapshot(node.store)
+    out["killed"] = snapshot(node)
     recovered = node.operator("recover")
     out["recover"] = public(recovered)
     out["recover_counts"] = parse_recover(recovered["_out"])
-    out["recovered"] = snapshot(node.store)
+    out["recovered"] = snapshot(node)
     reread(node, payload, out, repost)
 
 

@@ -116,6 +116,39 @@ class GraphTests(unittest.TestCase):
         self.assertNotIn("fn-q-make", defs)
 
 
+class UnresolvedEventTests(unittest.TestCase):
+    """S126 (sweep 2026-10-03): `--strict` never judged an event it could not
+    resolve, nor a book it could not read.  A cited definition is now its own
+    subject; any other unresolvable event fails `--strict` unless the
+    baseline's `unresolved` table gives it a disposition."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.graph = reach_check.Graph()
+
+    def audit(self, events):
+        rows = [{"id": "PRF-TEST", "events": events}]
+        with patch.object(reach_check, "load_rows", return_value=rows):
+            return reach_check.audit(self.graph)
+
+    def test_a_cited_definition_is_its_own_subject(self):
+        findings, hosted, unresolved = self.audit(["fn-own-read", "fn-transfer-add-chunk"])
+        self.assertEqual(hosted, 1)
+        self.assertEqual([f.key() for f in findings], ["PRF-TEST:fn-transfer-add-chunk"])
+        self.assertEqual(unresolved, [])
+
+    def test_an_unknown_event_is_unresolved_and_fails_without_a_disposition(self):
+        _, _, unresolved = self.audit(["fn-no-such-event-anywhere"])
+        self.assertEqual(unresolved, [("PRF-TEST", "fn-no-such-event-anywhere",
+                                       "no such defthm here")])
+        self.assertEqual(reach_check.unresolved_failures(unresolved, {}),
+                         ["PRF-TEST:fn-no-such-event-anywhere (no such defthm here)"])
+        placeholder = {"PRF-TEST:fn-no-such-event-anywhere": "x " + reach_check.PLACEHOLDER}
+        self.assertEqual(len(reach_check.unresolved_failures(unresolved, placeholder)), 1)
+        triaged = {"PRF-TEST:fn-no-such-event-anywhere": "SPEC: a test fixture"}
+        self.assertEqual(reach_check.unresolved_failures(unresolved, triaged), [])
+
+
 class SubjectRuleTests(unittest.TestCase):
     """The subject is the function the host calls (AGENTS.md; keystone audit
     2026-09-27).  Each test is one of the ways an event used to pass on the

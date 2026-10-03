@@ -90,9 +90,11 @@
 (assert-event (and (equal (fn-record-content-subject *sn-row*) "sn-content")
                    (not (equal (fn-record-content-subject *sn-row*) (fn-record-msgid *sn-row*)))))
 ; Provenance: the same record replayed under a different policy (other
-; groups, other capacity) is either refused or bound with the same evidence.
+; groups, other capacity) is bound with the same evidence.  The constant is
+; ground and this policy binds it (sweep 2026-10-03 S137: the disjunct that
+; also accepted a refusal could not fail).
 (defconst *hk-n-other* (fn-replay-apply-record (fn-sn-node (fn-sn-initial *sn-groups* 3)) *sn-row*))
-(assert-event (or (null *hk-n-other*)
+(assert-event (and *hk-n-other*
                   (equal (fn-retain-obligation-evidence
                           (fn-retain-find-id (fn-record-obligation-id *sn-row*)
                                              (fn-retain-pins (fn-node-retention *hk-n-other*))))
@@ -242,11 +244,10 @@
 ; -----------------------------------------------------------------------------
 ; 4. Refusal footprints.
 
-; The capacity refusal above is the identity (fn-hkn-refused-prepare-is-the-
-; identity-by-definition, first disjunct); the admitted POST has a stage
-; (second disjunct).
-(assert-event (or (equal *hk-post-before* *node-committed*) (consp (fn-node-stage *hk-post-before*))))
-(assert-event (or (equal *hk-post-after* *hk-rel*) (consp (fn-node-stage *hk-post-after*))))
+; The capacity refusal above is the identity and the admitted POST has a
+; stage: asserted exactly above (*hk-post-before*, *hk-post-after*); the two
+; disjunctions that restated them could not fail while those hold (sweep
+; 2026-10-03 S137) and are gone.
 ; An unmatched completion is the identity.
 (assert-event (not (fn-node-pending-matchesp *node-committed* 5 9)))
 (assert-event (equal (fn-node-complete *node-committed* 5 9 :durable) *node-committed*))

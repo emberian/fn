@@ -15,21 +15,35 @@ reply, and takes the group's number map (GROUP, HDR Message-ID) before the
 kill and after the restart.  At the end it stops the owner, rereads every
 article by `inspect` and by a restarted owner's ARTICLE, and stops it again.
 
-Kill instants: a calibration phase POSTs each size class unkilled and polls
-the store directories to time the owner's visible phases (a stage file, the
-new transaction, the stage removed, the reply).  The schedule then draws
-delays, measured from the instant the client sent the article's terminating
-line, in three bands per size: `early` (before the transaction appears),
-`window` (from just before the transaction appears to just after the
-reply: the durable-completion window, sampled most densely) and `late`
-(after the reply), plus `mid-article` deaths with part of the article sent.
-Concurrent kills hold two clients with bodies sent, release both
-terminators, and kill after the second.
+The store is the record log (format 9/10: journal/, no transactions/ and
+no allocation-frontier.json; books/byte-store-log-initializer.lisp).  Its
+committed history is observed through the image's own read-only scan,
+`fn log scan-store STORE` (tests/native_log_observation.committed_history:
+the record count and the last entry's chained trailer), never by listing
+files: before 2026-10-03 (sweep S058) this driver listed transactions/ and
+the frontier, which a log store does not have, so it crashed at its first
+calibration and its judge could only fail or pass unchecked.  A store with no
+journal/, or a scan that fails, is recorded as an observation error and the
+judge fails on it.
+
+Kill instants: a calibration phase POSTs each size class unkilled and times
+the reply.  The log's segment is preallocated, so no file grows when a
+record lands and there is no cheap visible phase to poll; the durable point
+is estimated at 0.7 of the reply time.  The schedule then draws delays,
+measured from the instant the client sent the article's terminating line,
+in three bands per size: `early` (before 0.9 of that estimate), `window`
+(from there to just after the reply: the durable-completion window, sampled
+most densely) and `late` (after the reply), plus `mid-article` deaths with
+part of the article sent.  Concurrent kills hold two clients with bodies
+sent, release both terminators, and kill after the second.
 
 The client (`client` subcommand) exits 0 on `240`, 1 on any other `441`, 3
 on `441 ... uncertain` or a connection that ended with no reply, and 4 on
-anything else.  The driver judges nothing; the `judge` subcommand computes
-every verdict from the JSON record.
+anything else (a reply that is neither, or no reply within its deadline
+while the connection stayed open: a hang).  The driver judges nothing; the
+`judge` subcommand computes every verdict from the JSON record, and an
+unexpected reply is its own failing verdict, never merged into uncertain
+(sweep S129).
 
 Run on hbox with the frozen image directory:
 
@@ -60,6 +74,7 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT))
 from tests.campaign.native_operator_campaign import (  # noqa: E402
     GROUP, Node, injected_from, public, sha)
+from tests.native_log_observation import committed_history  # noqa: E402
 
 ACCEPTED, REFUSED, UNCERTAIN, UNEXPECTED = 0, 1, 3, 4
 # Payload octets per size class.  fn-own-body-limit is 32768
@@ -236,21 +251,38 @@ def make_article(message_id: str, size_class: str, seq: int) -> bytes:
     return (head + "".join(body)).encode("ascii")
 
 
-def store_state(store: Path, pre: dict | None = None) -> dict:
+def store_state(node: Node, pre: dict | None = None) -> dict:
+    """The committed history (records, last trailer) by the image's own scan,
+    and the staging listing.  `error` when there is no journal/ or the scan
+    fails: an unobserved store is a judge failure, never an empty set.
+
+    Against `pre`: `new_records` (how many records were committed since) and
+    `history_lost` (fewer records, or as many with another last trailer: a
+    committed record is gone)."""
+    store = node.store
+
     def names(d):
         try:
             return sorted(os.listdir(store / d))
         except FileNotFoundError:
             return None
-    frontier = store / "allocation-frontier.json"
-    state = {"transactions": names("transactions"), "staging": names("staging"),
-             "frontier": frontier.read_text("ascii", "replace") if frontier.is_file() else None}
+    state: dict = {"staging": names("staging")}
+    if names("journal") is None:
+        state["error"] = "no journal/ in {}: not a record-log store".format(store)
+    else:
+        try:
+            history = committed_history(node.image, store, env=node.env(), cwd=node.dir)
+            state["records"], state["last"] = history.records, history.last
+        except AssertionError as error:
+            state["error"] = str(error)[-400:]
     if pre is not None:
-        new = sorted(set(state["transactions"] or []) - set(pre["transactions"] or []))
-        state["new_transactions"] = {n: sha((store / "transactions" / n).read_bytes())
-                                     for n in new}
-        state["lost_transactions"] = sorted(set(pre["transactions"] or []) -
-                                            set(state["transactions"] or []))
+        if "records" in state and "records" in pre:
+            state["new_records"] = state["records"] - pre["records"]
+            state["history_lost"] = (state["records"] < pre["records"] or (
+                state["records"] == pre["records"] and state["last"] != pre["last"]))
+        else:
+            state["new_records"] = None
+            state["error"] = state.get("error") or "the history before was not observed"
     return state
 
 
@@ -351,22 +383,26 @@ class Campaign:
     def reread(self, msgid: str) -> dict:
         got = self.node.nntp_article(msgid)
         payload = Path(self.ledger[msgid]["path"]).read_bytes()
+        xref = got.get("xref")
         return {"status": got["status"], "sha256": sha(got["octets"]) if got["octets"] else None,
                 "octets": len(got["octets"]),
+                "xref_malformed": bool(xref and xref.get("malformed")),
                 "identical": injected_from(got["octets"], payload) if got["octets"] else None}
 
     def resubmit(self, msgid: str) -> dict:
-        before = store_state(self.node.store)
+        before = store_state(self.node)
         rec = post_once(self.node.port, Path(self.ledger[msgid]["path"]))
-        after = store_state(self.node.store, before)
-        rec["new_transactions"] = len(after["new_transactions"])
+        after = store_state(self.node, before)
+        rec["new_records"] = after["new_records"]
+        if "error" in after:
+            rec["observation_error"] = after["error"]
         return rec
 
     def settle(self, msgid: str, post: dict, iteration: int) -> dict:
         """After the restart: ARTICLE, and a resubmission for a death without reply."""
         obs = {"msgid": msgid, "iteration": iteration, "post": post,
                "reread": self.reread(msgid)}
-        if post.get("code") in (UNCERTAIN, UNEXPECTED):
+        if post.get("code") == UNCERTAIN:
             obs["resubmit"] = self.resubmit(msgid)
             obs["reread_after_resubmit"] = self.reread(msgid)
         self.ledger[msgid]["events"].append(obs)
@@ -378,38 +414,22 @@ class Campaign:
 
     # Calibration ----------------------------------------------------------
     def calibrate(self, rounds=3):
-        """Unkilled POSTs per size class, polling the store to time phases."""
+        """Unkilled POSTs per size class: the reply time, and the records each
+        committed (one for an accepted article, none for a refused one)."""
         for _ in range(rounds):
             for size_class in (*NORMAL, "over"):
                 msgid, path = self.new_post(size_class)
-                pre = store_state(self.node.store)
-                proc = spawn_client(self.node.port, path)
-                sent = wait_line(proc, b"SENT ")
-                t0 = float(sent.split()[1]) if sent else time.perf_counter()
+                pre = store_state(self.node)
+                rec = post_once(self.node.port, path)
                 seen = {}
-                while proc.poll() is None:
-                    now = time.perf_counter()
-                    st = store_state(self.node.store)
-                    kinds = {n.split("-")[0] + "-" for n in st["staging"] or []}
-                    for kind in kinds:
-                        seen.setdefault(kind + "seen", (now - t0) * 1000)
-                    for key in [k for k in seen if k.endswith("-seen")]:
-                        if key[:-4] not in kinds:
-                            seen.setdefault(key[:-4] + "gone", (now - t0) * 1000)
-                    if st["staging"] and "stage" not in seen:
-                        seen["stage"] = (now - t0) * 1000
-                    if st["frontier"] != pre["frontier"] and "frontier" not in seen:
-                        seen["frontier"] = (now - t0) * 1000
-                    if len(st["transactions"]) > len(pre["transactions"]) and "txn" not in seen:
-                        seen["txn"] = (now - t0) * 1000
-                    if "stage" in seen and not st["staging"] and "stage_cleared" not in seen:
-                        seen["stage_cleared"] = (now - t0) * 1000
-                rec = reap_client(proc)
                 if "t_reply" in rec and "t_sent" in rec:
                     seen["reply"] = (rec["t_reply"] - rec["t_sent"]) * 1000
+                after = store_state(self.node, pre)
                 self.result["calibration"].append(
                     {"msgid": msgid, "size_class": size_class, "code": rec.get("code"),
-                     "reply": rec.get("reply"), "phases_ms": seen})
+                     "reply": rec.get("reply"), "phases_ms": seen,
+                     "new_records": after.get("new_records"),
+                     "observation_error": after.get("error")})
                 self.ledger[msgid]["events"].append(
                     {"msgid": msgid, "iteration": "calibration", "post": rec,
                      "reread": self.reread(msgid)})
@@ -435,7 +455,7 @@ class Campaign:
         def band_delay(size_class, band):
             m = med[size_class]
             reply = m.get("reply", 100.0)
-            txn = m.get("txn", reply * 0.7)
+            txn = reply * 0.7  # the durable point, estimated (module docstring)
             if band == "early":
                 return rng.uniform(0.0, 0.9 * txn)
             if band == "window":
@@ -483,7 +503,7 @@ class Campaign:
 
     # One iteration ----------------------------------------------------------
     def iterate(self, index: int, item: dict) -> dict:
-        if len(store_state(self.node.store)["transactions"]) >= self.rotate_at:
+        if store_state(self.node).get("records", self.rotate_at) >= self.rotate_at:
             self.close_store()
             self.open_store()
         it = {"index": index, "item": item, "stream": [],
@@ -492,7 +512,7 @@ class Campaign:
             msgid, rec = self.stream_post(size_class)
             it["stream"].append({"msgid": msgid, "post": rec})
         it["map_before"] = number_map(self.node.port)
-        pre = store_state(self.node.store)
+        pre = store_state(self.node)
         it["pre"] = pre
         victims = [self.new_post(s) for s in item["sizes"]]
         it["victims"] = [m for m, _ in victims]
@@ -541,7 +561,7 @@ class Campaign:
         it["posts"] = posts
         it["owner"] = self.node.stop_owner(self.owner, signal.SIGKILL)
         it["owner_log_tail"] = owner_log(self.node, self.owner)[-8:]
-        it["death"] = store_state(self.node.store, pre)
+        it["death"] = store_state(self.node, pre)
         it["inspect_before_restart"] = {}
         for msgid in it["victims"]:
             got = self.node.inspect(msgid)
@@ -550,7 +570,7 @@ class Campaign:
                 "rc": got["rc"], "sha256": sha(got["_out"]) if got["_out"] else None,
                 "identical": injected_from(got["_out"], payload) if got["_out"] else None,
                 "stderr": got["stderr"][-300:]}
-        it["after_inspect"] = store_state(self.node.store)
+        it["after_inspect"] = store_state(self.node, it["death"])
         it["restart"] = self.start_owner()
         if not it["restart"]["ready"]:
             return it
@@ -617,16 +637,15 @@ def load(path):
 
 
 def store_phase(pre: dict, death: dict) -> str:
+    if "error" in death or death.get("new_records") is None:
+        return "unobserved"
     staging = death.get("staging") or []
     kinds = sorted({n.split("-")[0] + "-" if "-" in n else n for n in staging})
-    new = len(death.get("new_transactions") or {})
     tag = "+".join(kinds) if kinds else "no-stage"
-    if new:
-        return "linked({}),{}".format(new, tag)
+    if death["new_records"]:
+        return "committed(+{}),{}".format(death["new_records"], tag)
     if kinds:
         return "staged,{}".format(tag)
-    if death.get("frontier") != pre.get("frontier"):
-        return "frontier-advanced"
     return "untouched"
 
 
@@ -643,28 +662,35 @@ def verdict(obs: dict, size_class: str = "") -> str:
     rr = obs["reread"]
     present = rr["status"].startswith("220")
     absent = rr["status"].startswith("430")
+    if present and rr.get("xref_malformed"):
+        return "malformed-xref"
     if code == ACCEPTED:
         if present and rr["identical"]:
             return "240-identical"
         return "lost-240" if absent else "torn"
     if code == REFUSED:
         return "refused" if absent else "refused-but-present"
-    if code in (UNCERTAIN, UNEXPECTED):
+    if code == UNEXPECTED:
+        # Neither 240 nor 441 nor a closed connection: a 5xx, a 403, or no
+        # reply at all while the connection stayed open (a hang).  Not an
+        # uncertain answer (S129): its own verdict, and a failure.
+        return "unexpected-reply"
+    if code == UNCERTAIN:
         sub = obs.get("resubmit", {})
         after = obs.get("reread_after_resubmit", {})
         if present and not rr["identical"]:
             return "torn"
         if present:
-            ok = sub.get("code") != ACCEPTED and sub.get("new_transactions") == 0
+            ok = sub.get("code") != ACCEPTED and sub.get("new_records") == 0
             return "died-present-identical" if ok else "died-present-resubmit-accepted"
         if absent and size_class == "over":
             # Over fn-own-body-limit: the resubmission must be refused as
             # not received, and nothing may be stored.
-            ok = sub.get("code") == REFUSED and sub.get("new_transactions") == 0
+            ok = sub.get("code") == REFUSED and sub.get("new_records") == 0
             return "died-absent" if ok else "died-absent-resubmit-failed"
         if absent:
             ok = (sub.get("code") == ACCEPTED and after.get("identical")
-                  and sub.get("new_transactions") == 1)
+                  and sub.get("new_records") == 1)
             return "died-absent" if ok else "died-absent-resubmit-failed"
         return "reread-failed"
     return "unexpected-code"
@@ -754,6 +780,12 @@ def judge(paths: list[str]) -> int:
                 accepted.add(c["msgid"])
             elif v != "refused":
                 failures.append("calibration {} {}".format(c["msgid"], v))
+            # An unkilled POST commits exactly one record when accepted and
+            # none when refused, by the log's own count.
+            want = 1 if v == "240-identical" else 0
+            if c.get("observation_error") or c.get("new_records") != want:
+                failures.append("calibration {} {}: {} new records, wanted {} ({})".format(
+                    c["msgid"], v, c.get("new_records"), want, c.get("observation_error")))
         for it in rec["iterations"]:
             where = "iteration {}".format(it["index"])
             if it.get("store", 0) != current["store"]:
@@ -783,7 +815,7 @@ def judge(paths: list[str]) -> int:
                     failures.append("{} {}: {}; post reply {!r}; reread {}; resubmit {}".format(
                         where, obs["msgid"], v, obs["post"].get("reply"), obs["reread"],
                         {k: obs.get("resubmit", {}).get(k) for k in ("rc", "reply",
-                                                                   "new_transactions")}))
+                                                                   "new_records")}))
                 if obs in it.get("settled", []):
                     verdicts.append(v)
                     key = (it["item"]["kind"], v)
@@ -796,11 +828,17 @@ def judge(paths: list[str]) -> int:
                                         "ARTICLE {} sha {}".format(
                                             where, obs["msgid"], ins.get("rc"), ins.get("sha256"),
                                             obs["reread"]["status"], obs["reread"]["sha256"]))
-            if it["death"].get("lost_transactions"):
-                failures.append("{}: transactions lost at death {}".format(
-                    where, it["death"]["lost_transactions"]))
-            if it["after_inspect"]["transactions"] != it["death"]["transactions"] or \
-                    it["after_inspect"]["staging"] != it["death"]["staging"]:
+            for name in ("pre", "death", "after_inspect"):
+                if "error" in it[name]:
+                    failures.append("{}: the store was not observed ({}): {}".format(
+                        where, name, it[name]["error"]))
+            if it["death"].get("history_lost"):
+                failures.append("{}: committed history lost at death: {} -> {}".format(
+                    where, (it["pre"].get("records"), it["pre"].get("last")),
+                    (it["death"].get("records"), it["death"].get("last"))))
+            if it["after_inspect"].get("new_records") != 0 or \
+                    it["after_inspect"].get("history_lost") or \
+                    it["after_inspect"].get("staging") != it["death"].get("staging"):
                 failures.append("{}: inspect changed the store".format(where))
             check_map(it.get("map_after", {}), where + " after restart")
             sp = store_phase(it["pre"], it["death"])

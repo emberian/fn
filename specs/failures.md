@@ -111,6 +111,14 @@ link. It is an error-handling profile only: it does not qualify hbox's ZFS,
 physical power loss, write-cache behavior, completed-barrier survival, torn
 writes, or A-DURABILITY/A-WRITE-ISOLATION for a deployed node.
 
+RETIRED until the log-route re-target (sweep 2026-10-03 S060): the four
+native cases below drive the per-file programs and read
+`store/transactions/`, which a record-log store (format 9/10) does not have,
+and `FN_NATIVE_POST_FAULT` has no `stop` action since the per-file route
+went; the campaign refuses by name (`--probe` still runs).  The re-target
+stops at `log-written`/`log-fenced` and expects EIO from the journal
+segment's fence.  What follows describes the per-file profile as it ran.
+
 The opt-in `tests/campaign/native_block_fault.py` successor profile uses only
 new tmpfs backing files, positively identified loop devices, and a private
 ext4 mapper on hbox.  It has four distinct cases: `frontier-dir-eio` stops at

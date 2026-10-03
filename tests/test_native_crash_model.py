@@ -118,8 +118,13 @@ if IMAGE_AVAILABLE:
             names = tuple(cut.name for cut in native_cuts.POST_LOG_CUTS)
             self.assertEqual(names, ("record-completing", "finish-consumed", "finish-durable",
                                      "log-written", "log-fenced"))
+            selected = os.environ.get("FN_NATIVE_LOWLEVEL_CUT")
+            # A selector that names no cut ran nothing and passed (sweep
+            # 2026-10-03 S136): it is refused by name.
+            self.assertTrue(not selected or selected in names,
+                            "FN_NATIVE_LOWLEVEL_CUT={} names no POST_LOG_CUTS cut ({})".format(
+                                selected, ", ".join(names)))
             for cut in native_cuts.POST_LOG_CUTS:
-                selected = os.environ.get("FN_NATIVE_LOWLEVEL_CUT")
                 if selected and cut.name != selected:
                     continue
                 with self.subTest(cut=cut.name):
@@ -171,8 +176,16 @@ if IMAGE_AVAILABLE:
             # write (uncertain).  prepublish and frontierbarrier name steps of
             # the per-file programs (the record stage, the frontier file) the
             # log route does not run; they are retired with them.
-            cases = (("postpublish", 3), ("recordbarrier", 3))
-            for inject, expected in cases:
+            # The candidate at each: postpublish fires at log-fenced, after
+            # the batch's barrier, so the record is present (POST_LOG_CUTS'
+            # log-fenced column); recordbarrier at log-written, either (sweep
+            # 2026-10-03 S130: postpublish accepted `either', so a lost
+            # durable record passed).
+            candidates = {cut.name: cut.candidate for cut in native_cuts.POST_LOG_CUTS}
+            cases = (("postpublish", 3, candidates["log-fenced"]),
+                     ("recordbarrier", 3, candidates["log-written"]))
+            self.assertEqual([c for _, _, c in cases], ["present", "either"])
+            for inject, expected, candidate_fate in cases:
                 with self.subTest(inject=inject), tempfile.TemporaryDirectory(
                         prefix="fn-native-eio-") as tmp:
                     root = Path(tmp); store = root / "store"
@@ -185,7 +198,7 @@ if IMAGE_AVAILABLE:
                     self.invoke(store, "post", "<candidate-eio@example.invalid>",
                                 candidate, "-", inject, "fn.letters", expected=expected)
                     after = self.history(store)
-                    self.assert_cut_history(inject, "either", before, after)
+                    self.assert_cut_history(inject, candidate_fate, before, after)
                     self.invoke(store, "recover")
                     self.assertEqual(self.history(store), after)
 

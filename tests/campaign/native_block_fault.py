@@ -18,6 +18,7 @@ import re
 import signal
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 import uuid
@@ -375,11 +376,35 @@ def native(image, store, *args, env=None):
 
 SCENARIOS = ("record-dir-eio", "frontier-dir-eio", "record-dir-sigkill",
              "record-cut-snapshot")
+# Every native scenario is unwired (sweep 2026-10-03 S060), its code kept
+# for the re-target.  They stop the per-file programs (fn-bs-frontier-program,
+# fn-bs-record-program) at FN_NATIVE_POST_FAULT=record-attempted|frontier-
+# attempted:stop and read store/transactions/ and allocation-frontier.json:
+# a record-log store (format 9/10) has neither file, both cuts are outside
+# +fnn-post-log-model-cuts+, and the selector's `stop' action went with the
+# per-file route (dfbd56678, PKT-838), so each scenario failed right after
+# `store init' and nothing showed the campaign was dead.  The re-target is to
+# the log route's commit: stop at log-written (the batch's append, before
+# its fence) and log-fenced, switch the mapper to error_writes, and expect
+# EIO from the journal segment's fence and journal/'s directory fsync,
+# observing the history through tests/native_log_observation.  It needs a
+# `stop' action for FN_NATIVE_POST_FAULT at those cuts (host/native/io.lisp
+# fnn-post-test-fault), queued with the coordinator; until it lands the
+# campaign refuses by this name.  The device probe (--probe) is unaffected.
+RETIRED = ("native_block_fault: the native scenarios are retired until the log-route "
+           "re-target (sweep 2026-10-03 S060): they drive the per-file programs and read "
+           "store/transactions/, which a record-log store does not have, and "
+           "FN_NATIVE_POST_FAULT has no stop action; --probe still runs")
+
+
+class Retired(RuntimeError):
+    """The campaign's scenarios cannot run on the shipped store format."""
 
 
 def campaign(image, out, scenario="record-dir-eio"):
     if scenario not in SCENARIOS:
         raise ValueError("unknown private block scenario: " + scenario)
+    raise Retired(RETIRED)
     if not image.is_file() or not os.access(image, os.X_OK):
         raise RuntimeError("developer native image missing")
     if not (image.name.endswith("developer") and Path(str(image) + ".core").is_file()):
@@ -642,7 +667,11 @@ def main():
     else:
         if not args.image:
             ap.error("--image is required for the native campaign")
-        report = campaign(args.image.resolve(), args.out.resolve(), args.scenario)
+        try:
+            report = campaign(args.image.resolve(), args.out.resolve(), args.scenario)
+        except Retired as retired:
+            print(retired, file=sys.stderr)
+            raise SystemExit(2)
     print(json.dumps(report, sort_keys=True))
 
 

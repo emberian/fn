@@ -454,6 +454,10 @@ finish() {
     exit \$1
 }
 echo "== source $SOURCE"
+# The images' source record (tools/build_native_host.sh writes it beside each
+# image; tools/image_set.py publish requires \`commit SHA\`): this tree is a
+# shipped copy, not a git checkout, so the shipper names it.
+FN_NATIVE_SOURCE="$SOURCE"; export FN_NATIVE_SOURCE
 echo "== load at start: \$(uptime)"
 # The toolchain SBCL (tools/farm.py HOSTS) first on PATH and as FN_SBCL:
 # hbox's system /usr/bin/sbcl is 2.2.9, and a test running \`sbcl\` by name

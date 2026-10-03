@@ -30,6 +30,7 @@ class ImageSetTests(unittest.TestCase):
         (build / "lib" / "libfn-blake3.so").write_bytes(b"lib")
         for file in ("fn-host", "fn-host-developer"):
             (build / f"{file}.catalog").write_text("old\n")
+            (build / f"{file}.source").write_text(f"commit {SHA}\n")
             (build / f"{file}.core").write_bytes(file.encode() * 10)
             (build / file).write_text(LAUNCHER.format(core=build / f"{file}.core"))
         (build / "fn-host.world-deps").write_text("deps")
@@ -58,10 +59,58 @@ class ImageSetTests(unittest.TestCase):
         self.assertEqual(launcher.resolve(), published / "fn-host-developer")
         for file in ("fn-host", "fn-host-developer"):
             self.assertEqual((other / "build" / f"{file}.catalog").read_text(), "old\n")
-        # The linked tree can supply affirmative evidence downstream.
-        self.assertEqual(self.quiet(image_set.publish, other, "b" * 40, self.base)[0], 0)
         self.assertTrue((other / "build" / "fn-host.world-deps").is_symlink())
         self.assertEqual((other / "build" / "lib" / "libfn-blake3.so").read_bytes(), b"lib")
+        # S063: a linked tree is NOT its own build; publishing it under a new
+        # sha would relabel SHA's cores (this assertion used to expect 0).
+        code, err = self.quiet(image_set.publish, other, "b" * 40, self.base)
+        self.assertEqual(code, 1)
+        self.assertIn("holds images it did not build", err)
+        self.assertIn("fn-host.core is a symlink", err)
+        self.assertFalse((self.base / ("b" * 40)).exists())
+
+    def test_publish_requires_every_image_to_record_the_named_commit(self):
+        """S057: the label is the build's own source record, not the caller's
+        argument.  A tree built at one head and published as another, a
+        dirty tree, and a build with no record are each refused by name."""
+        build = self.tree / "build"
+        other = "c" * 40
+        code, err = self.quiet(image_set.publish, self.tree, other, self.base)
+        self.assertEqual(code, 1)
+        self.assertIn(f"do not record source commit {other}", err)
+        self.assertIn(f"production (commit {SHA})", err)
+        (build / "fn-host.source").write_text(f"worktree {SHA}+dirty\n")
+        code, err = self.quiet(image_set.publish, self.tree, SHA, self.base)
+        self.assertEqual(code, 1)
+        self.assertIn(f"production (worktree {SHA}+dirty)", err)
+        self.assertNotIn("developer (", err)
+        (build / "fn-host.source").unlink()
+        code, err = self.quiet(image_set.publish, self.tree, SHA, self.base)
+        self.assertEqual(code, 1)
+        self.assertIn("production (unknown)", err)
+        self.assertFalse((self.base / SHA).exists())
+        (build / "fn-host.source").write_text(f"commit {SHA}\n")
+        self.assertEqual(self.quiet(image_set.publish, self.tree, SHA, self.base)[0], 0)
+        manifest = json.loads((self.base / SHA / "MANIFEST.json").read_text())
+        self.assertEqual(manifest["images"]["production"]["source"], f"commit {SHA}")
+
+    def test_publish_refuses_a_tree_that_reused_another_runs_images(self):
+        (self.tree / "build" / "REUSED_SOURCE").write_text("commit " + "d" * 40 + "\n")
+        code, err = self.quiet(image_set.publish, self.tree, SHA, self.base)
+        self.assertEqual(code, 1)
+        self.assertIn("REUSED_SOURCE", err)
+        self.assertFalse((self.base / SHA).exists())
+
+    def test_link_refuses_a_manifest_recording_another_source(self):
+        self.assertEqual(self.quiet(image_set.publish, self.tree, SHA, self.base)[0], 0)
+        path = self.base / SHA / "MANIFEST.json"
+        data = json.loads(path.read_text())
+        data["images"]["production"]["source"] = "commit " + "e" * 40
+        path.write_text(json.dumps(data))
+        image_set.write_sums(self.base / SHA)
+        code, err = self.quiet(image_set.link, SHA, self.root / "t", ["production"], self.base)
+        self.assertEqual(code, 1)
+        self.assertIn("records another source for production", err)
 
     def test_renamed_paged_image_without_record_refuses_publish_and_link(self):
         build = self.tree / "build"
@@ -171,12 +220,15 @@ class BackfillCatalogTests(unittest.TestCase):
                               capture_output=True, text=True).stdout.strip()
 
     def legacy_set(self, sha):
+        for file in ("fn-host", "fn-host-developer"):
+            (self.tree / "build" / f"{file}.source").write_text(f"commit {sha}\n")
         self.assertEqual(self.quiet(image_set.publish, self.tree, sha, self.base)[0], 0)
         directory = self.base / sha
         path = directory / "MANIFEST.json"
         manifest = json.loads(path.read_text())
         for entry in manifest["images"].values():
             del entry["catalog"]
+            del entry["source"]  # a set published before either record
         path.write_text(json.dumps(manifest))
         image_set.write_sums(directory)
         return directory
@@ -301,8 +353,11 @@ class LinkRunTests(unittest.TestCase):
                 self.assertEqual((build / name).resolve(), (run / "tree/build" / name).resolve())
             self.assertEqual((build / "REUSED_SOURCE").read_text(), "abc123\n")
             self.assertEqual((build / "fn-host-developer.catalog").read_text(), "old\n")
-            with contextlib.redirect_stdout(io.StringIO()):
-                self.assertEqual(image_set.publish(tree, SHA, Path(directory) / "sets"), 0)
+            # S063: a tree whose images were linked from a run is not
+            # published under any sha (this assertion used to expect 0).
+            with contextlib.redirect_stderr(io.StringIO()) as said:
+                self.assertEqual(image_set.publish(tree, SHA, Path(directory) / "sets"), 1)
+            self.assertIn("REUSED_SOURCE", said.getvalue())
 
     def test_link_run_refuses_a_missing_image_or_an_unknown_source(self):
         with tempfile.TemporaryDirectory() as directory:

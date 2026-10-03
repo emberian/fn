@@ -39,7 +39,11 @@
 #              to expect, install it beside the current release, stop the
 #              node, ask the next release whether it opens the store, switch
 #              current to it (previous keeps the one before), render the
-#              unit from it, start the node and wait for `health'.  A
+#              unit from it, start the node and wait for `health' to answer
+#              exit 0 (a held state such as space-pressure is reported and
+#              exits 4 after 180 s).  Only a stopped report (status exit 0)
+#              is a yes: a format refusal, a fault (the heap probe, a
+#              library), a fence or any other answer is a refusal, and a
 #              refusal puts nothing in place: the node starts again on the
 #              release it ran.
 #   --rollback run from PREFIX/current/install.sh: the switch back to
@@ -129,15 +133,36 @@ release_name() {  # $1: a release; sets name=VERSION+REV from `fn VERSION (REV)'
   name=$2+$rev
 }
 ask() {  # $1: a release.  Its own verdict on the node's store (the node stopped).
+  # Only an answer of 0 (the stopped report: it opened the store) lets the
+  # switch go on (S061, sweep 2026-10-03).  Anything else is the release
+  # saying it cannot run this node here, and sets $refusal by class: the
+  # format refusal by name, else the outcome class of its exit (1 refused,
+  # 3 uncertain, 4 fault: a heap probe that never ran, a library that does
+  # not load; 5 usage) or the code itself.
   echo "== asking $1/bin/fn whether it opens the store of $config"
   set +e
   answer=$("$1/bin/fn" operator "$config" status 2>&1)
   rc=$?
   set -e
   printf '%s\n' "$answer" | sed 's/^/   /'
-  case $answer in *reason=store-format*) return 1 ;; esac
-  [ "$rc" -eq 0 ] || echo "install: status answered $rc (see above); the store is not a format refusal, so this continues"
-  return 0
+  refusal=
+  case $answer in *reason=store-format*) refusal=store-format; return 1 ;; esac
+  [ "$rc" -eq 0 ] && return 0
+  case $rc in
+    1) refusal="refused (status exit 1)" ;;
+    3) refusal="uncertain (status exit 3: fenced or not answered; recover before anything else)" ;;
+    4) refusal="fault (status exit 4: the release cannot run here)" ;;
+    5) refusal="usage (status exit 5)" ;;
+    *) refusal="status exit $rc" ;;
+  esac
+  return 1
+}
+refused_by() {  # $1: the release's name.  What its refusal means, for the message.
+  if [ "$refusal" = store-format ]; then
+    echo "$1 refuses that store's format (there are no migrations)"
+  else
+    echo "$1 did not open that store: $refusal (see its answer above)"
+  fi
 }
 install_beside() {  # $1: the unpacked release, $2: its name -> PREFIX/releases/NAME, staged then renamed
   stage=$prefix/releases/.$2.new
@@ -182,6 +207,20 @@ start_node() {
   echo "== starting the node"
   if [ "$system" = OpenBSD ]; then rcctl start fn; else systemctl start fn; fi
 }
+health_class() {  # $1: health's first line -> ok | wait | held
+  # The code is two digits (books/native-health.lisp fn-nh-header).
+  # ok only for exit=00 (every state clear).  wait while the node is coming
+  # up: nothing answers (empty, 18 not-running), 20 fenced (reason=
+  # starting), 19 a state still unobserved.  held: it answered with a state
+  # (21 exhausted, 22 unqualified-profile, 23 space-pressure, ... 28 disk;
+  # books/native-health.lisp): up, and not healthy (S139).
+  case $1 in
+    "health exit=00 "*) echo ok ;;
+    ""|"health exit=18"*|"health exit=19"*|"health exit=20"*) echo wait ;;
+    "health exit="*) echo held ;;
+    *) echo wait ;;
+  esac
+}
 health_wait() {  # the node on PREFIX/current answers `health'; the interval since the stop
   if [ "$service" = no ]; then
     echo "== start the node through $prefix/current/bin/fn, as the unit does: $prefix/current/bin/fn operator $config run"
@@ -192,16 +231,19 @@ health_wait() {  # the node on PREFIX/current answers `health'; the interval sin
     set +e
     line=$("$prefix/current/bin/fn" operator "$config" health 2>/dev/null | head -n 1)
     set -e
-    case $line in
-      "health exit="*" state=not-running"*|"health exit="*" state=fenced"*|"health exit=19"*|"") ;;
-      "health exit="*)
+    case $(health_class "$line") in
+      ok)
         away=$(( $(date +%s) - stopped_at ))
         echo "$line"
         echo "the node answered on $(readlink "$prefix/current") after $away s away${gap:+ (expected about $gap s)}"
         return 0 ;;
     esac
     [ "$(date +%s)" -lt "$deadline" ] || {
-      echo "install: the node did not answer health within 180 s of its start (last: '${line:-nothing}'); see $prefix/current/bin/fn operator $config health and the service log" >&2
+      if [ "$(health_class "$line")" = held ]; then
+        echo "install: the node runs on $(readlink "$prefix/current") and answers health, but not healthy within 180 s: '$line'; nothing switched back (the state is the node's, not the release's): $prefix/current/bin/fn operator $config health names what it would take" >&2
+      else
+        echo "install: the node did not answer health within 180 s of its start (last: '${line:-nothing}'); see $prefix/current/bin/fn operator $config health and the service log" >&2
+      fi
       exit 4; }
     sleep 1
   done
@@ -268,7 +310,11 @@ if [ "$mode" = upgrade ]; then
   if ! ask "$prefix/releases/$name"; then
     rm -rf "$prefix/releases/$name"
     start_node
-    echo "install: $name refuses that store's format (there are no migrations); nothing switched, $prefix/releases/$name removed, the node runs on as before: redeploy fresh (stop the node, move $node aside, install, init)" >&2
+    if [ "$refusal" = store-format ]; then
+      echo "install: $(refused_by "$name"); nothing switched, $prefix/releases/$name removed, the node runs on as before: redeploy fresh (stop the node, move $node aside, install, init)" >&2
+    else
+      echo "install: $(refused_by "$name"); nothing switched, $prefix/releases/$name removed, the node runs on as before" >&2
+    fi
     exit 4
   fi
   switch_to "releases/$name" "$running"
@@ -293,7 +339,11 @@ if [ "$mode" = rollback ]; then
   stop_node
   if ! ask "$prefix/$before"; then
     start_node
-    echo "install: $name ($before) refuses that store's format: the store moved on since it ran (there are no migrations); nothing switched, the node runs on $running: redeploy fresh under $name if you must (stop the node, move $node aside, install, init)" >&2
+    if [ "$refusal" = store-format ]; then
+      echo "install: $name ($before) refuses that store's format: the store moved on since it ran (there are no migrations); nothing switched, the node runs on $running: redeploy fresh under $name if you must (stop the node, move $node aside, install, init)" >&2
+    else
+      echo "install: $(refused_by "$name ($before)"); nothing switched, the node runs on $running" >&2
+    fi
     exit 4
   fi
   switch_to "$before" "$running"
@@ -325,7 +375,11 @@ fi
 if [ -f "$config" ] && [ "$installed_here" = no ]; then
   echo "== $config exists: asking this release whether it opens that node's store"
   if ! ask "$here"; then
-    echo "install: this release refuses that store's format (there are no migrations): redeploy fresh: move the node directory aside, install, then init" >&2
+    if [ "$refusal" = store-format ]; then
+      echo "install: this release refuses that store's format (there are no migrations): redeploy fresh: move the node directory aside, install, then init" >&2
+    else
+      echo "install: $(refused_by "this release"); nothing installed" >&2
+    fi
     exit 4
   fi
 fi

@@ -8,16 +8,18 @@ import shlex
 import unittest
 
 from tests.native_harness import EXIT, environment, native_image, requires, run
-from tests.test_native_ion_workflow import NativeIonWorkflowTests
+# The module, not the class: a TestCase imported by name is collected again
+# here and its tests run twice under this module's name.
+from tests import test_native_ion_workflow as workflow
 
 IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
 
 
 @requires(IMAGE)
 class NativeIonReceiptRecoveryTests(unittest.TestCase):
-    setUp = NativeIonWorkflowTests.setUp
-    submit = NativeIonWorkflowTests.submit
-    status = NativeIonWorkflowTests.status
+    setUp = workflow.NativeIonWorkflowTests.setUp
+    submit = workflow.NativeIonWorkflowTests.submit
+    status = workflow.NativeIonWorkflowTests.status
 
     def invoke(self, *args, extra=None):
         return run([IMAGE, "--fn", *args], env=environment(extra),

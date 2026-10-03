@@ -134,24 +134,42 @@ class NativeOperatorCampaignTests(unittest.TestCase):
             raise unittest.SkipTest(
                 "the control stop row reads /proc/<pid>/stat: Linux is required")
 
+    def observed(self, snap):
+        """A snapshot the image's own log scan made (no `error`): only those
+        compare, so "unchanged" can never be None against None (S059)."""
+        self.assertNotIn("error", snap, snap)
+        self.assertIsInstance(snap.get("records"), int, snap)
+        return snap
+
     def test_served_owner_cuts_stop_and_production_refusals(self):
+        # record-completing: a POST cut both entries reach (native_cuts
+        # POST_CUTS, and POST_LOG_ONE_CANDIDATE for the control socket's
+        # batch of one), the record present at it; record-attempted went with
+        # the per-file layout and --only of a name ALL_CUTS lacks ran nothing.
+        cut_name = "record-completing"
+        self.assertIn(cut_name, [cut.name for cut in native_cuts.ALL_CUTS])
+        self.assertEqual(native_cuts.POST_LOG_ONE_CANDIDATE[cut_name], "present")
         with tempfile.TemporaryDirectory(prefix="fn-native-campaign-") as tmp:
             out = Path(tmp) / "campaign.json"
             native_operator_campaign.main([
                 "--images", str(IMAGES), "--work", str(Path(tmp) / "work"),
-                "--out", str(out), "--only", "record-attempted",
+                "--out", str(out), "--only", cut_name,
                 "--only", "recovery-stage-unlinked"])
             result = json.loads(out.read_text())
         cuts = {row["cut"]: row for row in result["cuts"]}
-        post = cuts["record-attempted"]["served"]
+        self.assertEqual(set(cuts), {cut_name, "recovery-stage-unlinked"})
+        post = cuts[cut_name]["served"]
         self.assertEqual(post["owner"]["rc"], KILLED, post["owner"])
         self.assertTrue(post["recover"]["rc"] == 0, post["recover"])
         self.assertTrue(post["inspect_candidate"]["identical"])
-        self.assertEqual(post["recover_counts"]["transactions"], 2)
+        self.assertIsNotNone(post["recover_counts"], post["recover"])
+        # The log's own count: the seeded prior's records and the candidate's one.
+        seeded = self.observed(post["seeded"])
+        self.assertEqual(self.observed(post["recovered"])["records"], seeded["records"] + 1)
         recovery = cuts["recovery-stage-unlinked"]["served"]
         self.assertFalse(recovery["owner_ready"])
         self.assertEqual(recovery["owner"]["rc"], KILLED, recovery["owner"])
-        self.assertEqual(recovery["killed"]["staging"], {})
+        self.assertEqual(self.observed(recovery["killed"])["staging"], {})
         faults = {row["name"]: row for row in result["faults"]}
         for repetition in range(5):
             stop = faults["dev-control-test-stop-kill-{}".format(repetition)]
@@ -162,17 +180,27 @@ class NativeOperatorCampaignTests(unittest.TestCase):
         # and a retry through the same entry is its duplicate.
         self.assertTrue(post["nntp_candidate"]["identical"])
         self.assertTrue(post["nntp_candidate"]["same_as_inspect"])
+        # ARTICLE's one served-time Xref, split off before the comparison.
+        for label in ("nntp_prior", "nntp_candidate"):
+            xref = post[label]["xref"]
+            self.assertIsNotNone(xref, post[label])
+            self.assertFalse(xref["malformed"], xref)
+            self.assertIn(native_operator_campaign.GROUP, xref["locations"])
         self.assertIn("DUPLICATE", post["resubmit"]["stderr"])
-        cut = cuts["record-attempted"]["cut_run"]
+        # The duplicate resubmission through the owner appended nothing.
+        self.assertEqual(self.observed(post["after_resubmit"]), self.observed(post["recovered"]))
+        cut = cuts[cut_name]["cut_run"]
         self.assertTrue(cut["inspect_candidate"]["identical"])
         self.assertEqual((cut["resubmit"]["rc"], cut["resubmit"]["stdout"]), (0, "duplicate\n"))
-        self.assertEqual(cut["after_resubmit"]["transactions"], cut["recovered"]["transactions"])
+        self.assertEqual(self.observed(cut["after_resubmit"]), self.observed(cut["recovered"]))
         # Campaign dabebb84 F2: after the deaths the store opens and the
         # orphans are gone.
         orphans = faults["dev-allocation-orphans-recover"]
-        self.assertEqual(set(orphans["deaths"]), {KILLED})
+        self.assertEqual(len(orphans["planted"]), native_operator_campaign.STAGING_ORPHANS)
+        self.assertEqual(len(self.observed(orphans["killed"])["staging"]),
+                         native_operator_campaign.STAGING_ORPHANS)
         self.assertEqual(orphans["recover"]["rc"], 0, orphans["recover"])
-        self.assertEqual(orphans["opened"]["staging"], {})
+        self.assertEqual(self.observed(orphans["opened"])["staging"], {})
         self.assertIn("ACCEPTED", orphans["post"]["stderr"])
         # D25 with the injection inverse: one payload again through the same
         # entry is its duplicate (exit 0, no new transaction: transactions,
@@ -187,7 +215,9 @@ class NativeOperatorCampaignTests(unittest.TestCase):
         def conflict(entry, result):
             self.assertEqual(result["rc"], 1, result)
             if entry == "operator":
-                self.assertIn("REFUSED", result["stderr"])
+                # `refused operator post CONFLICT' (the outcome class, then
+                # the reason by name).
+                self.assertIn("refused operator post CONFLICT", result["stderr"])
             else:
                 self.assertIn("conflicting immutable Message-ID", result["stderr"])
 
@@ -201,12 +231,14 @@ class NativeOperatorCampaignTests(unittest.TestCase):
                     self.assertIn("DUPLICATE", retry["again"]["stderr"])
                 else:
                     self.assertEqual(retry["again"]["stdout"], "duplicate\n")
-                self.assertEqual(retry["after_again"], retry["after_first"])
+                self.assertEqual(self.observed(retry["after_again"]),
+                                 self.observed(retry["after_first"]))
                 conflict(second, retry["second"])
-                self.assertEqual(retry["after_second"], retry["after_first"])
+                self.assertEqual(self.observed(retry["after_second"]), retry["after_first"])
                 conflict(first, retry["changed"])
-                self.assertEqual(retry["after_changed"], retry["after_first"])
+                self.assertEqual(self.observed(retry["after_changed"]), retry["after_first"])
         refused = faults["prod-selectors-refused-at-start"]
+        self.observed(refused["before"])
         self.assertTrue(refused["unchanged"])
         self.assertEqual(len(refused["starts"]), len(native_cuts.developer_selectors()))
         for start in refused["starts"]:
