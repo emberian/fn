@@ -252,3 +252,33 @@ operation draws on its connection's sub-bank, opened at accept and
 destroyed at close (the destroy returns exactly what the connection had
 not spent and revokes its tokens). Nothing of this is wired into a served
 path by this lane (MODE 2026-10-01 section 3: no gate before its producer).
+
+## Physical operation custody (HST-046)
+
+A draw's debit remains held until its physical actor has terminated and its
+matching operation outcome has been consumed. The resource generation and
+operation generation are distinct: replay of either must refuse unchanged.
+An observed timeout or failed join leaves custody pending. A spawn refusal
+may use an affirmative `:no-actor-created` receipt; an unwind after actor
+creation requires the actual terminal join. A connection drains its issued
+custody before `fn-rt-destroy`; revocation alone cannot release resources an
+issued I/O still physically holds. Retained output additionally requires its
+own release or durable funded transfer.
+
+The first concrete slice is `books/resource-syncer.lisp`. Runtime installs
+`fn-ros-install-syncer(qualified-threads, observed-stack, ledger)` in the
+existing startup `:hold` producer, then calls `fn-ros-issue(operation-gen,
+ledger)` before spawning the syncer. Its token is
+`(:resource :owner 2 DRAW-GENERATION)`. `fn-ros-physical(token, receipt,
+ledger)` and `fn-ros-outcome(token, operation-gen, ledger)` independently
+record their receipts; only both authorize `fn-rl-settle`. Tests assert
+operation-first and physical-first completion, busy issue, timeout, stale
+draw and wrong operation generation.
+
+This is an owner projection of one already-funded syncer worker and its
+observed stack plus profile runtime bytes. The parent retains its baseline
+and maintenance reserve; historical spare-thread guesses do not fund rescue.
+Captured batch buffers retain their existing memory credits. Setup/refusal
+work belongs to the parent startup/runtime baseline. Full tariff allocation,
+work, descriptors, user principal, supported actor census, guards and boundary
+proofs remain obligations; this slice does not claim them. PRF-1252 is planned.
