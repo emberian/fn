@@ -21820,6 +21820,26 @@
         "fn-nnw-meta-one-visits-at-most-one"
       ],
       "progress_note": "GPT-6.1-Sol 2026-10-03: consumer core, residual, guard checks and literal sparse/final-output teeth admitted in narrow hbox REPL; not a certificate or native image qualification. Plan/dispatcher composition proof replay pending. Generated declaration selects cursor response; plan continuation signature unchanged. Current view policy remains pinned pending decided completed discovery capture; initialization selector and renderer working allocation remain unbounded debt. Exact def-cursor visit formula and actual core call are translated/world-checked against named theorem; missing and wrong-statement theorem declarations are refused. Fresh shell tests12 forms admitted0.11 ACL2s/12,434steps; metadata declaration literal formula validated in hbox world. Mixed incremental metadata REPL and fresh shell logs archived/indexed; full composition still pending. Composed served-plan exact residual, expanded-reply and retained-buffer invariant proofs now admitted in the warm catalog source world, with actual plan drain equality at byte/visit budgets 1 and 256. Existing OVER plan teeth also pass. Hand dispatcher replay 2.02 ACL2 s / 862,947 steps; actual generated dispatcher replay 1.75 ACL2 s / 451,950 steps, guards included. Chain/owner composition replay still pending (served-span dependency absent in this world). These are source REPL admissions, not certificates/image qualification; allocation/custody/view debts unchanged."
+    },
+    {
+      "id": "PRF-1252",
+      "title": "Resource operation custody requires physical termination and matching operation completion before release",
+      "statement": "Host-called fn-ros-install-syncer, fn-ros-issue, fn-ros-physical, fn-ros-outcome and fn-ros-drainedp in books/resource-syncer.lisp must preserve typed ledger invariants, account for the declared owner worker/resident projection before spawn, and settle only the matching draw generation after both physical and operation receipts. Timeout/failed join/stale draw or operation generation keep custody. Connection teardown drains outstanding custody before destroy. Full user-bank tariffs and retained-output refund need additional consumers and correspondence.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-046"
+      ],
+      "depends_on": [
+        "PRF-1211"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/resource-syncer.lisp",
+        "tests/acl2/resource-syncer-tests.lisp"
+      ],
+      "events": [],
+      "progress_note": "Source definitions and 11 typed-ledger scenario forms admitted in laptop solsync; no certificate, guards, preservation theorem, physical runtime correspondence or full resource/cost coverage claim yet. Executable draw/settle refinement work stays PRF-1211; receipt producer boundary remains here."
     }
   ]
 }
