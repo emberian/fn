@@ -23248,6 +23248,25 @@
         "planning/evidence/manifests/certify-20261003T174041Z-2716643.json"
       ],
       "progress_note": "Actual release callback/reset composition passes condition, nonlocal escape, unattempted handoff and successful-return cases; preceding native adapter fails the same reset refusal assertion. Normal two-root certificate certify-20261003T174041Z-2716643 passes (2/0, one cached snapshot-source-token dependency without a manifest cited here). Wider custody/model and whole-owner recovery correspondence remain planned; no native endpoint, image or deployment claim."
+    },
+    {
+      "id": "PRF-1309",
+      "title": "BP session admission yields after one candidate and preserves reusable capacity",
+      "statement": "Actual fn-bpsg-acquire-turn examines one direct-index candidate per scheduling turn. Occupied candidates return bp-session-yield and exact unchanged typed ledger, retaining a cursor within the class range; a zero-sized class alone returns capacity without search. Selected free-slot draw includes full word, generation-bearing row, next position, abstract logical bank effect and refusal identity via fn-rl-draw-correspondence. Installation separates concurrent descriptor allowance from the process-lifetime unsigned64 spent connection identity allowance, so settling sessions permits slot reuse without refunding identities. Complete literal hypothesis teeth, allocator fairness/composed native scheduling and full profile funding remain separate obligations.",
+      "milestone": "M4",
+      "requirements": [
+        "HST-008"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "events": [],
+      "evidence": [
+        "books/resource-bp-session.lisp",
+        "tests/acl2/bp-session-turn-tests.lisp",
+        "host/native/bp-session.lisp"
+      ],
+      "progress_note": "New acquire-turn guards and yield/representation/logical-bank correspondence admitted in Foundations retained solrlocover. Actual with-local-stobj sequence exposes old N lifetime connection ceiling and passes with budget repair; installer uniquely renamed in shared loan to avoid redefining existing event. Exact unchanged source certification and native consumer composition pending; BP owns c644dadeb consumer."
     }
   ]
 }

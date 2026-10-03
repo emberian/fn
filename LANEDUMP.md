@@ -4116,3 +4116,20 @@ interpreter correspondence remain open; no physical endpoint verdict yet.
 Horse Exits continued source sweep, 2026-10-03: checkpoint83e, application0a67, rotation70cd, log92d, arena db2+a7, BP lock e880 source cohorts sent sole writer. Nine actual-definition fixtures PASS at a7c0843d7; archive planning/evidence/horse-exits-2026-10-03/continued-source-cleanup.json records scope/adapters/warnings. No guard/cert or whole-image claim; new actual log admission core subject tracked by Integration. Shared .spw/audits/exits expanded EX05–10 and no infrastructure files modified. Root owns private reset protections, Operator startup/settlement, BP outer root retirement, Entries constructor/admin/TCPCL acquisition, Runtime mux/executor debt.
 
 Horse Exits terminal publication follow-through: f178 profile issued-rename uncertainty,2c8 nine offline command primary-preserving cleanup,7f84 immutable precommit descriptor debt and Store gate for Entries publication-lock observer334468449. Actual full source/journal core fixtures PASS at7f84; archive terminal-publication-source.json records named adapters/scope, no proof or whole-image claim. Shared audit EX13 resolves Bounds B006 source defect while qualification remains explicit.
+
+## Root BP admission continuation — 2026-10-03
+
+PRF1309, branch codex/root-bp-session-turn-20261003. One-candidate acquire-turn
+API returns word/row/next/ledger; BP c644dadeb owns actual bank+once/drain
+consumer. fn-rl-wfp was misreported as a whole-ledger scan: it is17constant
+column-length checks. The actual free-slot search was linear and is replaced
+on this native route with yielding single probes. Typed execution also exposed
+an actual lifetime ceiling: N concurrent slots funded only N spent conn-ids.
+Budget now separates N descriptor holds from the full typed64-bit identity
+allowance; settlement still never refunds spent identity.
+New API guards, yield identity, representation and logical-bank correspondence
+normal-admitted in retained Foundation solrlocover (~1.3ACL2s). Two real
+with-local-stobj scenarios pass after repair; original install produces
+resources-unavailable after4draws/one return. Installer/test helpers renamed
+only in shared normal loan to avoid undo; exact source cert pending. No new
+full world, no deployment or complete resource/whole-loop claim.

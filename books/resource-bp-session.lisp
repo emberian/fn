@@ -6,6 +6,12 @@
 (defun fn-bpsg-vector (resident slots)
  (declare (xargs :guard t))
  (list (nfix resident) 0 (nfix slots) 0 0 0 0 (nfix slots) 0))
+; Concurrent descriptors are reusable. Connection identities are spent, so
+; a concurrent slot allowance must not become a lifetime connection ceiling.
+; The typed bank represents this separate process-lifetime counter as a u64.
+(defun fn-bpsg-budget-vector (resident slots)
+ (declare (xargs :guard t))
+ (list (nfix resident) 0 (nfix slots) 0 0 0 0 *fn-rl-word-max* 0))
 (defun fn-bpsg-install (grant fn-resource-ledger)
  (declare (xargs :stobjs fn-resource-ledger :guard t :verify-guards nil))
  (if (not (and (true-listp grant) (equal (len grant) 7)
@@ -13,7 +19,7 @@
                (natp (third grant)) (natp (fourth grant))
                (natp (fifth grant)) (natp (sixth grant))))
   (mv :invalid-bp-session-grant fn-resource-ledger)
-  (fn-rl-install (fn-bpsg-vector (second grant) (+ (fifth grant) (sixth grant)))
+  (fn-rl-install (fn-bpsg-budget-vector (second grant) (+ (fifth grant) (sixth grant)))
                  (fn-bpsg-vector (third grant) 0) *fn-rv-zero*
                  (+ 2 (fifth grant) (sixth grant)) fn-resource-ledger)))
 (defun fn-bpsg-free-slot (slot end fn-resource-ledger)
@@ -52,3 +58,82 @@
 (verify-guards fn-bpsg-free-slot :hints (("Goal" :in-theory (enable fn-rl-wfp))))
 (verify-guards fn-bpsg-acquire :hints (("Goal" :in-theory (enable fn-rl-wfp))))
 (verify-guards fn-bpsg-return)
+
+; One candidate per scheduling turn, not a scan over the operator's entire
+; slot allowance. The cursor is a position, never authority; every call checks
+; the current slot phase and uses the ordinary generation-bearing draw.
+(defun fn-bpsg-acquire-turn (grant class cursor fn-resource-ledger)
+ (declare (xargs :stobjs fn-resource-ledger :guard t :verify-guards nil))
+ (if (not (and (fn-rl-wfp fn-resource-ledger) (true-listp grant)
+               (equal (len grant) 7) (equal (first grant) :hold)
+               (natp (fourth grant)) (natp (fifth grant)) (natp (sixth grant))
+               (equal (fn-rl-count fn-resource-ledger) (+ 2 (fifth grant) (sixth grant)))
+               (member-equal class '(:incoming :outgoing))))
+  (mv :invalid-bp-session-grant nil nil fn-resource-ledger)
+  (let* ((start (if (equal class :incoming) 2 (+ 2 (fifth grant))))
+         (end (if (equal class :incoming) (+ 2 (fifth grant))
+                (+ 2 (fifth grant) (sixth grant))))
+         (slot (if (and (natp cursor) (<= start cursor) (< cursor end)) cursor start))
+         (next (if (< (+ 1 slot) end) (+ 1 slot) start)))
+   (if (equal start end)
+    (mv :bp-session-capacity nil start fn-resource-ledger)
+    (if (not (equal (fn-rl-phasesi slot fn-resource-ledger) 0))
+     (mv :bp-session-yield nil next fn-resource-ledger)
+     (mv-let (word gen fn-resource-ledger)
+      (fn-rl-draw slot (fn-bpsg-vector (fourth grant) 1) fn-resource-ledger)
+      (mv word (and (equal word :drawn) (fn-bpsg-row slot gen class))
+          next fn-resource-ledger)))))))
+(verify-guards fn-bpsg-acquire-turn
+ :hints (("Goal" :in-theory (enable fn-rl-wfp))))
+(defthm fn-bpsg-acquire-turn-yield-keeps-ledger
+ (implies (equal (mv-nth 0 (fn-bpsg-acquire-turn grant class cursor ledger))
+                 :bp-session-yield)
+          (and (equal (mv-nth 1 (fn-bpsg-acquire-turn grant class cursor ledger)) nil)
+               (equal (mv-nth 3 (fn-bpsg-acquire-turn grant class cursor ledger)) ledger)))
+ :hints (("Goal" :in-theory (e/d (fn-bpsg-acquire-turn)
+                                (fn-rl-draw fn-rl-wfp fn-rl-phasesi)))))
+(defthm fn-bpsg-acquire-turn-keeps-representation
+ (implies (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger))
+  (and (fn-resource-ledgerp
+         (mv-nth 3 (fn-bpsg-acquire-turn grant class cursor ledger)))
+       (fn-rl-wfp (mv-nth 3 (fn-bpsg-acquire-turn grant class cursor ledger)))))
+ :hints (("Goal" :in-theory (e/d (fn-bpsg-acquire-turn)
+                  (fn-rl-draw fn-rl-wfp fn-rl-phasesi fn-resource-ledgerp)))))
+; The executed candidate draw, including generation exhaustion and complete
+; bank effect, is the existing logical resource-bank operation. Search yields
+; above do not charge or manufacture a failed full-capacity observation.
+(defthm fn-bpsg-acquire-turn-selected-draw-correspondence
+ (implies
+  (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger)
+       (true-listp grant) (equal (len grant) 7) (equal (first grant) :hold)
+       (natp (fourth grant)) (natp (fifth grant)) (natp (sixth grant))
+       (equal (fn-rl-count ledger) (+ 2 (fifth grant) (sixth grant)))
+       (member-equal class '(:incoming :outgoing))
+       (natp cursor)
+       (<= (if (equal class :incoming) 2 (+ 2 (fifth grant))) cursor)
+       (< cursor (if (equal class :incoming) (+ 2 (fifth grant))
+                    (+ 2 (fifth grant) (sixth grant))))
+       (equal (fn-rl-phasesi cursor ledger) 0))
+  (let* ((bank (fn-rl-bank ledger))
+         (logical (fn-rv-draw bank cursor (fn-bpsg-vector (fourth grant) 1)))
+         (word (if (and (equal (car logical) :drawn)
+                        (<= *fn-rl-word-max* (fn-rv-gen cursor bank)))
+                   :slot-exhausted (car logical)))
+         (end (if (equal class :incoming) (+ 2 (fifth grant))
+                 (+ 2 (fifth grant) (sixth grant))))
+         (start (if (equal class :incoming) 2 (+ 2 (fifth grant))))
+         (result (fn-bpsg-acquire-turn grant class cursor ledger)))
+   (and (equal (mv-nth 0 result) word)
+        (equal (mv-nth 1 result)
+               (and (equal word :drawn) (fn-bpsg-row cursor (caddr logical) class)))
+        (equal (mv-nth 2 result) (if (< (+ 1 cursor) end) (+ 1 cursor) start))
+        (equal (fn-rl-bank (mv-nth 3 result))
+               (if (equal word :drawn) (cadr logical) bank))
+        (implies (not (equal word :drawn)) (equal (mv-nth 3 result) ledger)))))
+ :rule-classes nil
+ :hints (("Goal"
+  :use (:instance fn-rl-draw-correspondence
+         (slot cursor) (demand (fn-bpsg-vector (fourth grant) 1)))
+  :in-theory (e/d (fn-bpsg-acquire-turn)
+                 (fn-rl-draw fn-rl-bank fn-rv-draw fn-rv-gen fn-rl-wfp
+                  fn-resource-ledgerp fn-rl-phasesi fn-bpsg-row fn-bpsg-vector)))))

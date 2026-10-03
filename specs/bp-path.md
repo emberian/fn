@@ -284,3 +284,20 @@ evidence for its frozen source set, not evidence that these new tasks are done.
 - [DTN7 implementation](https://github.com/dtn7/dtn7-rs) and
   [ION implementation](https://github.com/nasa-jpl/ION-DTN): candidate existing
   BPA integrations; exact revision/configuration and actual behavior need tests.
+
+### Retained session allocation turns
+
+A BP session bank distinguishes its concurrent context/descriptor allowance
+from spent process-lifetime connection identities. Settling an exact slot and
+generation returns reusable memory and descriptors, not spent identities.
+The identity budget is the existing typed unsigned-64-bit domain; exhausting
+that domain remains an explicit refusal and never wraps or recycles an ID.
+Concurrent capacity therefore does not impose the same numeric lifetime limit
+on successive connections.
+
+Admission probes one candidate slot per scheduler turn. Occupied candidates
+yield with a saved class-specific cursor; they do not assert that the whole
+bank is full. Incoming and outgoing searches retain separate positions and
+wrap within their configured ranges. Native retry and once-mode drain must
+keep owed outgoing work pending across search yields. No socket or retained
+context is constructed before the exact generation-bearing draw succeeds.
