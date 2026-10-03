@@ -729,8 +729,10 @@ class RemoteTests(unittest.TestCase):
                 name = next(one for one in graph if one != book)
                 key = proof_repl.certs.closure_key(proof_repl.ROOT, name)[0]
                 with mock.patch.object(proof_repl.certs, "cached_entries",
-                                       lambda c, k: [(c, {"toolchain_identity": "t"})]
-                                       if k == key else []):
+                                       lambda c, k, metadata_filter=None:
+                                       [(c, {"toolchain_identity": "t"})]
+                                       if k == key and (metadata_filter is None
+                                          or metadata_filter({"toolchain_identity": "t"})) else []):
                     self.assertEqual(proof_repl.local_cache_gap(book, cache, "t"),
                                      (wanted - 1, wanted))
                     self.assertEqual(proof_repl.local_cache_gap(book, cache, "other"),
