@@ -1942,6 +1942,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/catalog-availability-tests \
 	tests/acl2/catalog-available-readers-tests \
 	tests/acl2/served-available-commands-tests \
+	tests/acl2/served-available-read-tests \
 	books/def-cursor-batch \
 	books/newnews-stream-cursor \
 	tests/acl2/newnews-stream-cursor-tests \

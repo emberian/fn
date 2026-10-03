@@ -2649,3 +2649,16 @@ history used by the catalog/view join. The recovery proof uses these preserved
 projections; it does not assert that the complete classified catalog equals the
 older raw loader result. The actual legacy-row fixture exercises both loaders,
 checks the differing facts and preserved metadata, and reads back the exact wire.
+
+
+### Selective available owner route (PRF-1287, SCN-1117)
+
+The source owner reader calls the generated available command route through
+`fn-av-mca-read-span` (an ARTICLE preflight wrapper may delegate to it).
+GROUP, LISTGROUP, NEXT, LAST and LIST ACTIVE/COUNTS use availability metadata
+from the actual captured catalog; raw retrieval and NEWNEWS retain their
+original archive subject. The adapter takes the raw pin/index and constructs
+no second available index. Complete command guards and source-loaded
+command/event/owner-credit fixtures pass; the selective owner refinement,
+carried snapshot completeness/stability, PROGRAM route guards and physical
+cost coverage remain owed. LIST still constructs its full upstream reply.
