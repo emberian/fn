@@ -91,6 +91,30 @@ class HostSourceTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'differs from admitted source'):
                 host.generate(root, world, root / 'build/changed-build.lisp')
 
+    def test_local_only_cached_input_is_retained_and_hash_bound(self):
+        import hashlib
+        with tempfile.TemporaryDirectory() as directory:
+            root, world = self.setup_tree(directory)
+            private = root / 'books/private.lisp'
+            private.write_text('(defthm proof-only (equal x x))')
+            for suffix in ('.cert', '.port'):
+                private.with_suffix(suffix).write_text('inventory fixture, not ACL2 evidence')
+            data = json.loads(world.read_text())
+            data['repository_books'].append('books/private.lisp')
+            data['exported_books'] = ['books/image-world.lisp', 'books/model.lisp']
+            data['repository_sha256'] = {'books/private.lisp': hashlib.sha256(private.read_bytes()).hexdigest()}
+            data['inputs_sha256'] = {str(private.with_suffix(s)): hashlib.sha256(private.with_suffix(s).read_bytes()).hexdigest()
+                                     for s in ('.lisp', '.cert', '.port')}
+            world.write_text(json.dumps(data))
+            with (root / 'host/inner.lisp').open('a') as stream:
+                stream.write('\n(local (include-book "../books/private"))')
+            output = root / 'build/source-build.lisp'
+            host.generate(root, world, output)
+            self.assertIn('(local\n(include-book ' + json.dumps(str(private.with_suffix(''))) + ')', output.read_text())
+            private.with_suffix('.cert').write_text('changed')
+            with self.assertRaisesRegex(ValueError, 'local proof input changed'):
+                host.generate(root, world, output)
+
 
 if __name__ == '__main__':
     unittest.main()
