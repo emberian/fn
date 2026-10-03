@@ -326,7 +326,8 @@ close the correct scope. Anchors: [S003](planning/repair/items/S003.json),
 
 ### Operator commands and trustworthy diagnostics
 
-**Queued — Tools coordinates; batches need explicit implementers.** Finish
+**Active S012 probe/selector batch — strategic coordinator in
+`codex-operator-boundaries`; Tools coordinates later operator batches.** Finish
 bounded retire/drain, accurate heap/profile/startup diagnostics, safe fixture
 separation, command outcome classes and interrupted administrative operations.
 Explain retained resources and pending obligations using real state.
@@ -384,8 +385,9 @@ remaining consumers stay visible. Anchors:
 
 ### Proof simplification, tooling and historical implementations
 
-**Parallel supporting work — Sol proof deputy + four Lunas; Tools and source
-assembler handle their existing responsibilities.** Deliver related proof
+**Broad sweep paused — four Luna helpers stopped; validated packets retained,
+unfinished experiments parked. The Sol now implements the owner carrier slice.**
+Tools and the source assembler retain their existing responsibilities. Deliver related proof
 simplifications in warm batches. Preserve statements and semantics; benchmark
 representative or uncertain changes, not every cleanup. Keep corpus coverage
 and tested/untested scope durable. Continue targeted checker repairs and harvest
