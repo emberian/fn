@@ -928,6 +928,15 @@ earlier run's reading (`fn-otb-a-restart-forgets-the-previous-clock-domain`);
 the push feed's restart forgets the previous process's back-off deadline
 (`fn-feed-restart-forgets-the-previous-clock-domain`). Scenario SCN-202.
 
+The logical caller's request deadline may end its wait for a reply without
+cancelling the issued operation. Native waiting reacquires its mutex after each
+condition-wait timeout. Abandonment replaces a still-registered reply callback
+with an outstanding-delivery marker; actual late delivery consumes that marker
+without storing an unreachable result. If delivery already selected the callback,
+its private cell may finish independently and no marker is fabricated. Mux close
+uses the same reply-route abandonment. Neither route refunds operation resources
+or asserts physical termination (HST-046; SCN-1088).
+
 ### The owner submission path
 
 Served POST, inbound transit and a running owner's control `POST` all enter

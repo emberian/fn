@@ -639,3 +639,31 @@ counterparts. Final raw form 0.21 s; no new certification/image. Full transcript
 archived as planning/evidence/astra-syncer-typed-abandon-20261003.log. Script now
 requires the final abandonment sentinel so an earlier producer pass cannot hide
 a later fixture failure. Source SCN-1087 updated to this stronger tested scope.
+
+## Astra source trace — AWAIT-COMPLETION-LIFETIME (2026-10-03)
+
+Following the syncer reply into both caller consumers exposed two connected
+normal/failure-path defects: the actual logical wait reused its mutex after a
+one-second SBCL timed wait released it, and deadline withdrawal made eventual
+delivery look like a not-yet-registered caller, retaining its result in DONE
+forever. Same head harness over baseline 5d2ef8c85 refutes each exact assertion.
+
+The wait now reacquires per observation and uses unwind cleanup. Abandonment
+replaces a registered reply callback with an outstanding-delivery marker; the
+real result consumes it. A callback already selected by delivery creates no
+new marker. The actual mux-finish uses the same helper only for its pending
+await, clearing its reply continuation without claiming I/O termination. No
+resource/physical outcome is synthesized. Read the entire deliver/register/
+logical wait/feed-logical/mux-await/await-done/take-arrived/finish chain and the
+shutdown loop closed-flag behavior before changing these consumers.
+
+Actual real-thread timeout, expired late delivery, already-selected callback,
+raw wait escape and mux-finish schedules pass. Exact harness stub/reach declarations
+pass for all four Astra fixtures; host read, ID claims and diff checks pass.
+HST-031/spec and SCN-1088 updated. Full evidence archive:
+planning/evidence/astra-await-completion-lifetime-20261003.json,
+922b8a59da41b8c8bdab8307e96861c70e98dcdc0c21fe0640ee3bbd12183f5a.
+No books changed and no new image or deployment claim. Runtime owns wider mux
+cleanup; Groundwork owns retention reservation. Matching saved-image acceptance
+belongs to Integration. Pre-maker exceptional allocation and broader typed output
+custody remain outside these checked branches, not claimed repaired.
