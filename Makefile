@@ -792,6 +792,9 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/expiry-tests \
 	books/owner-reclaim \
 	tests/acl2/owner-reclaim-tests \
+	books/served-date-current \
+	tests/acl2/served-date-current-tests \
+	tests/acl2/served-date-catalog-tests \
 	books/extent-retire \
 	tests/acl2/extent-retire-tests \
 	books/arena-forget \

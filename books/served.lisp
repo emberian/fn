@@ -174,8 +174,9 @@
 ; observation here (books/owner.lisp, fn-own-read), because RFC 5537
 ; section 3.4 makes Injection-Date the time of injection and a generated
 ; Message-ID is derived from the same reading.  `observation` above is the
-; reading pinned at accept and is the reader environment; the two are
-; deliberately distinct fields.
+; reading pinned at accept, used for the legacy NEWNEWS horizon. DATE and
+; NEWGROUPS year parsing use this current reading; the two fields remain
+; deliberately distinct.
 (defun fn-served-conn-injection (x)
   (declare (xargs :guard t))
   (mbe :logic (car (cdr (cdr (cdr (cdr (cdr x))))))

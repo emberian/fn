@@ -22,8 +22,10 @@ Run: FN_NATIVE_HOST=<production launcher> FN_NATIVE_DEVELOPER_HOST=<developer
 launcher> python3 -m unittest -v tests.test_native_group_access
 """
 
+import datetime
 import os
 import re
+import time
 import unittest
 
 from tests.native_harness import ROOT, Client, Node, article, client_context, native_image
@@ -146,6 +148,27 @@ class NativeGroupAccessTests(unittest.TestCase):
 
         for phase in ("live", "restart"):
             bob = self.login(node, "bob")
+            if phase == "live":
+                # Exercise both the unrestricted catalog and restricted
+                # carried-reference DATE paths on the same aged sockets.
+                readers = (("unrestricted", alice), ("restricted", bob))
+                initial = {name: self.line(stream, "DATE") for name, stream in readers}
+                started = time.monotonic()
+                while time.monotonic() - started <= 61:
+                    time.sleep(5)
+                    for name, stream in readers:
+                        self.assertTrue(self.line(stream, "DATE").startswith("111 "), name)
+                for name, stream in readers:
+                    before = time.time()
+                    answer = self.line(stream, "DATE")
+                    after = time.time()
+                    self.assertTrue(answer.startswith("111 "), (name, answer))
+                    stamp = datetime.datetime.strptime(
+                        answer.split()[1], "%Y%m%d%H%M%S"
+                    ).replace(tzinfo=datetime.timezone.utc).timestamp()
+                    self.assertNotEqual(initial[name], answer, name)
+                    self.assertGreaterEqual(stamp, before - 3, (name, answer))
+                    self.assertLessEqual(stamp, after + 3, (name, answer))
             for command in ("LIST ACTIVE", "LIST NEWSGROUPS", "LIST COUNTS"):
                 groups = self.listed(bob, command)
                 self.assertNotIn("fn.private.x", groups, (phase, command))

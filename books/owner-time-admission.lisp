@@ -243,7 +243,7 @@
                 (fn-post-offeredp
                  (fn-nntp-result-effects
                   (fn-scr-step (fn-post-session-base ps) archive index verdicts
-                               (fn-post-reader-env config observation)
+                               (fn-post-command-env config observation injection wire-event)
                                wire-event v fn-arena fn-cat))))
            (equal (fn-post-result-effects
                    (fn-scr-post-step ps archive index verdicts config observation injection

@@ -1583,7 +1583,7 @@
     {
       "id": "PRF-033",
       "title": "A clock the host contradicts is dropped, and the refusal is not an article verdict",
-      "statement": "fn-own-observe answers exactly one of :observed, :refused and :invalid, and the host reports that word rather than inferring one from a state comparison. On a related owner a :refused reading names a host contradiction -- the monotonic counter went backwards, has-wall changed, or a widened error bound moved the earliest admissible true time back -- and never merely a reading that did not move, because a reading equal to the one held is admitted. A refusal leaves the owner with no clock, and with no usable injection reading fn-nntp-post-step emits no submission and answers `441 posting failed; this server has no usable clock reading', which is a different constant from every article verdict the step can give.",
+      "statement": "fn-own-observe answers exactly one of :observed, :refused and :invalid, and the host reports that word rather than inferring one from a state comparison. On a related owner a :refused reading names a host contradiction -- the monotonic counter went backwards, has-wall changed, or a widened error bound moved the earliest admissible true time back -- and never merely a reading that did not move, because a reading equal to the one held is admitted. A refusal leaves the owner with no clock, and with no usable injection reading fn-nntp-post-step emits no submission and answers `441 posting failed; this server has no usable clock reading', which is a different constant from every article verdict the step can give. DATE additionally uses the supplied current reading: fn-served-step-date-any-session-ignores-pinned-reading equates the effects of the host-called fn-served-step over an exact DATE CRLF at a clean command boundary for arbitrary session/archive/config/index fields and two arbitrary accept-time observations; fn-served-step-date-uses-current-reading gives the exact current-clock response on a reachable fresh reader, including missing/no-wall refusals. The current observation is an input, not a proof of clock accuracy or host freshness.",
       "milestone": "M3",
       "requirements": [
         "FLR-004",
@@ -1593,16 +1593,23 @@
       "depends_on": [],
       "assumptions": [],
       "status": "uncertified-at-current-digest",
-      "note": "Decision D10-a, lane w11/clock-seam. Keystones fn-own-observe-refusal-names-a-contradiction (books/owner-invariants.lisp) and fn-post-without-a-clock-refuses-with-the-clock-line (books/nntp-post.lisp), with fn-own-observe-outcome-is-one-of-three and fn-own-observe-outcome-decides-the-clock-by-definition named for what they are and cited by :use. Teeth are evaluated in tests/acl2/owner-tests.lisp (the served-path second post on one connection, the same-reading collision, the clock 441 with an empty queue, DATE 503, and one-event recovery) and tests/acl2/nntp-post-tests.lisp (one must-fail per hypothesis). OPEN under this target: two submissions inside one millisecond still share a generated Message-ID, because fn-clock-later-observationp is non-strict; separating them needs the owner to remember the reading it last minted under and is not done here.",
+      "note": "Decision D10-a, lane w11/clock-seam. Keystones fn-own-observe-refusal-names-a-contradiction (books/owner-invariants.lisp) and fn-post-without-a-clock-refuses-with-the-clock-line (books/nntp-post.lisp), with fn-own-observe-outcome-is-one-of-three and fn-own-observe-outcome-decides-the-clock-by-definition named for what they are and cited by :use. Teeth are evaluated in tests/acl2/owner-tests.lisp (the served-path second post on one connection, the same-reading collision, the clock 441 with an empty queue, DATE 503, and one-event recovery) and tests/acl2/nntp-post-tests.lisp (one must-fail per hypothesis). OPEN under this target: two submissions inside one millisecond still share a generated Message-ID, because fn-clock-later-observationp is non-strict; separating them needs the owner to remember the reading it last minted under and is not done here. t42 (current DATE): the served post dispatchers and unrestricted catalog dispatcher select the current owner-supplied injection observation for DATE and NEWGROUPS year parsing. The prior DATE-503 witness did not establish this on an already-open connection. See books/served-date-current.lisp and tests/acl2/served-date-current-tests.lisp for the served-step clock-independence witness scope; native same-connection >61-second regression is tests/test_native_owner.py::NativeOwnerTests::test_date_on_connection_older_than_a_minute_is_current. Certification and native execution of these changed bytes are pending liaison validation. NEWNEWS two-digit-year parsing still shares its pinned horizon input and remains open; no no-miss claim is added.",
       "events": [
         "fn-own-observe-refusal-names-a-contradiction",
-        "fn-post-without-a-clock-refuses-with-the-clock-line"
+        "fn-post-without-a-clock-refuses-with-the-clock-line",
+        "fn-served-step-date-any-session-ignores-pinned-reading",
+        "fn-served-step-date-uses-current-reading"
       ],
       "evidence": [
         "planning/evidence/manifests/certify-20260926T064807Z-632722.json",
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
         "planning/evidence/manifests/certify-20260926T092407Z-1115236.json",
-        "planning/evidence/manifests/certify-20260926T102113Z-288651.json"
+        "planning/evidence/manifests/certify-20260926T102113Z-288651.json",
+        "books/served-date-current.lisp",
+        "tests/acl2/served-date-current-tests.lisp",
+        "tests/acl2/served-date-catalog-tests.lisp",
+        "tests/test_native_owner.py",
+        "tests/test_native_group_access.py"
       ]
     },
     {

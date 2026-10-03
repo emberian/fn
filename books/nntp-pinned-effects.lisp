@@ -491,7 +491,7 @@
   :hints (("Goal"
            :use ((:instance fn-nntp-step-pinned-effects-well-formed
                             (session (fn-post-session-base ps))
-                            (env (fn-post-reader-env config observation))))
+                            (env (fn-post-command-env config observation injection wire-event))))
            :in-theory
            (e/d (fn-nntp-post-step-pinned fn-post-session-consistentp
                   fn-post-single fn-nntp-effectsp fn-post-refusal-line)

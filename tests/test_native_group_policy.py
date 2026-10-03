@@ -35,7 +35,7 @@ class GroupPolicySourceTests(unittest.TestCase):
         start = post.index("(defun fn-nntp-post-step ")
         body = post[start:post.index("(defun", start + 10)]
         self.assertIn("(fn-post-gated-decision", body)
-        self.assertIn("(fn-post-reader-env config observation)", body)
+        self.assertIn("(fn-post-command-env config observation injection wire-event)", body)
         start = post.index("(defun fn-post-gated-decision")
         gated = post[start:post.index("(defthm", start)]
         self.assertLess(gated.index("(fn-inj-decide"), gated.index("(fn-gst-post-gate"))

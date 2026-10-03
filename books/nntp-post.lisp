@@ -378,8 +378,8 @@
       (car (cddddr listing))
     nil))
 
-; The reader environment of the served step: the connection's pinned clock
-; observation, the served groups' creation facts (PKT-665, PRF-243: the
+; The reader environment: its caller selects the clock observation; the
+; served groups' creation facts (PKT-665, PRF-243: the
 ; listing's fifth element), the posting bit, the reader listing (PRF-195)
 ; and the closed groups (O2, PRF-196), all from the connection's pinned
 ; configuration.
@@ -431,6 +431,36 @@
                                      fn-nntp-env-full
                                      fn-nntp-env-closed))))
 
+; DATE reports now (RFC 3977 7.1); NEWGROUPS resolves YY against the
+; current year (7.3.2).  Keep the historical reader observation for NEWNEWS:
+; it also supplies that command's legacy-article horizon (NNT-008).
+; The owner supplies INJECTION anew on every read, including nil after a
+; clock contradiction.  Never fall back to the accept-time reading.
+(defun fn-post-command-env (config observation injection wire-event)
+  (declare (xargs :guard t))
+  (let* ((line (fn-ag-car (fn-ag-cdr wire-event)))
+         (keyword (fn-ag-car (fn-nntp-tokenize line))))
+    (fn-post-reader-env
+     config
+     (if (and (equal (fn-ag-car wire-event) :command)
+              (or (fn-nntp-keywordp keyword "DATE")
+                  (fn-nntp-keywordp keyword "NEWGROUPS")))
+         injection
+       observation))))
+
+(in-theory (disable fn-post-command-env))
+
+; Preserve proof clients that instantiate the old environment for an
+; ordinary command without unfolding the clock selector everywhere.
+(defthm fn-post-command-env-ordinary-unfolds
+  (implies
+   (and (not (fn-nntp-keywordp (car (fn-nntp-tokenize (cadr wire-event))) "DATE"))
+        (not (fn-nntp-keywordp (car (fn-nntp-tokenize (cadr wire-event))) "NEWGROUPS")))
+   (equal (fn-post-command-env config observation injection wire-event)
+          (fn-post-reader-env config observation)))
+  :hints (("Goal" :in-theory (enable fn-post-command-env))))
+
+
 (defun fn-nntp-post-step (ps archive config observation injection wire-event fn-arena)
   (declare (xargs :stobjs fn-arena :guard t))
   (if (not (fn-post-sessionp ps))
@@ -471,16 +501,13 @@
                                 (fn-proto-text "POST" :not-received)))
            nil))
       ; The reader environment is built here, where the dispatcher is called:
-      ; the connection's pinned clock observation and the persisted
-      ; group-creation facts.  The served tree persists no creation facts yet
-      ; (planning/lanes/HANDOFF-w3-reader-profile.md, proposal 3), so the fact
-      ; list is empty and NEWGROUPS reports no group rather than an invented
-      ; creation date.
+      ; the command's clock and the configuration's persisted group-creation
+      ; facts. DATE/NEWGROUPS use the current injection reading.
       ; O2: the environment carries the configuration's closed groups
       ; (books/group-status.lisp), so LIST ACTIVE's status field is the
       ; POST gate's list, and the reader listing (PRF-195) with it.
       (let ((r (fn-nntp-step (fn-post-session-base ps) archive
-                             (fn-post-reader-env config observation)
+                             (fn-post-command-env config observation injection wire-event)
                              wire-event fn-arena)))
         (if (fn-post-offeredp (fn-nntp-result-effects r))
             (if (fn-inj-config-allow config)
@@ -687,12 +714,12 @@
   :hints (("Goal"
            :use ((:instance fn-nntp-step-preserves-consistent-session
                             (session (fn-post-session-base ps))
-                            (env (fn-post-reader-env config observation)))
+                            (env (fn-post-command-env config observation injection wire-event)))
                  (:instance fn-nntp-consistent-session-is-session
                             (session (fn-nntp-result-session
                                       (fn-nntp-step (fn-post-session-base ps)
                                                     archive
-                                                    (fn-post-reader-env config observation)
+                                                    (fn-post-command-env config observation injection wire-event)
                                                     wire-event fn-arena))))
                  (:instance fn-nntp-consistent-session-is-session
                             (session (fn-post-session-base ps))))
@@ -712,7 +739,7 @@
   :hints (("Goal"
            :use ((:instance fn-nntp-step-effects-well-formed
                             (session (fn-post-session-base ps))
-                            (env (fn-post-reader-env config observation))))
+                            (env (fn-post-command-env config observation injection wire-event))))
            :in-theory (e/d (fn-post-single fn-nntp-effectsp
                             fn-post-refusal-line)
                            (fn-nntp-step-effects-well-formed
@@ -1096,7 +1123,7 @@
       (fn-nntp-post-step ps archive config observation injection wire-event fn-arena)
     (let ((r (fn-nntp-step-pinned
               (fn-post-session-base ps) archive index verdicts
-              (fn-post-reader-env config observation)
+              (fn-post-command-env config observation injection wire-event)
               wire-event fn-arena)))
       (if (fn-post-offeredp (fn-nntp-result-effects r))
           (if (fn-inj-config-allow config)
@@ -1132,5 +1159,20 @@
                              (fn-nntp-result-session
                               (fn-nntp-step-pinned
                                (fn-post-session-base ps) archive index verdicts
-                               (fn-post-reader-env config observation)
+                               (fn-post-command-env config observation injection wire-event)
                                wire-event fn-arena))))))))
+
+; With an exact DATE command the entire post result ignores the accept-time
+; observation, for every session/configuration (including refusal states).
+; No clock-validity hypothesis hides the current-clock refusal cases.
+(defthm fn-post-date-result-independent-of-pinned-observation
+  (equal
+   (fn-nntp-post-step-pinned ps archive index verdicts config pinned current
+                             '(:command (68 65 84 69)) fn-arena)
+   (fn-nntp-post-step-pinned ps archive index verdicts config other current
+                             '(:command (68 65 84 69)) fn-arena))
+  :hints (("Goal" :in-theory
+           (e/d (fn-nntp-post-step-pinned fn-nntp-post-step fn-post-command-env)
+                (fn-nntp-step fn-nntp-step-pinned fn-post-sessionp
+                 fn-post-session-awaiting fn-post-reader-env fn-post-offeredp))))
+  :rule-classes nil)
