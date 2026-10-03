@@ -358,3 +358,21 @@ must be clean; complete bytes/local numbers/allaccepted accounting persist
 through restart.7 existing meaningful history corruption/missing promise tests
 and Python compile pass. Paired baseline/slow schedules use sameprofile/seed
 with24seed+24mixedPOST/36reads percase; actual run pending this source push.
+
+
+## Combined actual funded pair completed, 2026-10-03
+
+Source2aeac1c44 pushed before execution; one approved24GiB scope, ad8/core14ab00
+pairedseed19/profile unchanged, no explicit maintenance. Bothpassed with48
+accepted/36exactreads/all48identicalservedhash+localnumbersreopen, cleanowners.
+All3writers8and3readers12completed. Retained actual custody initialownerbytes
+passed Runtime shared3e helper: baseline36issue/physical/outcome rows,slow41
+each, matchingtoken/opgen+finaldrain. Count difference is nativebatchschedule,
+neverarticlecount. Rawtraces and both191event sealedjournals retained/checkPASS.
+Baseline/slow mixedphase.877/1.762s; sampledRSS568.6/569.5MiB,FD23both,
+39/50samples0errors. Onefinitepair/descriptivepercentiles, no sustainedthroughput
+or fairness guarantee; slowlineconsumption not physicalPageIOhold/backpressure.
+46objects archived native-funded-mixed-ad8da41-2026-10-03; report
+e7bd2dba1adf4a6887ccf0424d1813e97605f768484c9534cb734bfff80e1757, manifest
+296f394f63f8c78856d98dd952974ab51c0ced8634ecc2d43819a924f5bc8c4a.
+NewJOB-RESULT/HM/heldSIGTERM/0cf and maintenance remainoutsideimageclaim.
