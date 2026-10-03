@@ -8249,6 +8249,38 @@
         "planning/evidence/manifests/certify-20261003T062320Z-3305.json"
       ],
       "execution_scope": "ACL2 actual direct host-called subjects within concurrent reference schedules; native bridge and funded-pool extension remain owed."
+    },
+    {
+      "id": "SCN-1083",
+      "title": "Native mixed posting reading maintenance and exact reopen",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "OBJ-002",
+        "OBJ-005",
+        "STO-002",
+        "HST-002",
+        "NNT-005"
+      ],
+      "steps": [
+        "Initialize two isolated scratch stores on the same image and explicit profile; seed identical articles.",
+        "Release concurrent POST writers and warm, fresh TCP and slow ARTICLE readers alongside live checkpoint and reclaim requests.",
+        "Observe actor progress, every client reply class, latency samples and owner/store resource peaks; retain the complete realized event trace.",
+        "Check every acknowledged source and unique local number, perform quiet maintenance, reopen, and compare exact served bytes and Message-ID to number mappings."
+      ],
+      "expected": [
+        "Accepted, refused, uncertain and fault observations remain separate.",
+        "Every acknowledged article and its local number survives maintenance and reopen unchanged.",
+        "The experiment reports finite observed progress and resource samples without inferring bounds or proof.",
+        "Paired runs share image/profile/seed; replay preserves requests/barriers while actual concurrent interleaving remains recorded."
+      ],
+      "evidence": [
+        "tools/native_mixed_workload.py",
+        "planning/empirical-workloads.md",
+        "tests/test_native_mixed_history.py",
+        "planning/evidence/native-mixed-45e05c7f-2026-10-03/report.md"
+      ],
+      "execution_scope": "Historical real-image paired smoke45e05c7f: both48 acknowledged articles preserve exact served hashes and local numbers after checkpoint/restart, all36 mixed reads match and24 mixed posts accept. Quiet live reclaim refuses by name deferred-credit in both, so maintenance progress remains incomplete. No current-image qualification, deployment, cold filesystem cache or socket-backpressure claim."
     }
   ]
 }

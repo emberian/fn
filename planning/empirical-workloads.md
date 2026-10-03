@@ -1,0 +1,40 @@
+# Native empirical workloads
+
+Owner: Codex GPT-6.1-Sol empirical deputy, 2026-10-03. Technical contracts
+belong to Groundwork; Integration schedules images and expensive runs. This
+matrix describes finite experiments, not proof or deployment qualification.
+
+| Workload | Real consumer / oracle | Measurements and discriminating checks | State |
+| --- | --- | --- | --- |
+| Mixed POST, warm/fresh TCP/slow ARTICLE, live checkpoint/reclaim, reopen | `tools/native_mixed_workload.py`; native `Client`, injected-source comparison, actual `STAT` numbers | Paired same image/profile/seed, actor latencies and progress, sampled owner RSS/HWM/FD/store peaks; exact source preservation and exact served bytes/numbers across restart; four outcome classes | SCN-1083: historical45e05c7f paired correctness passed, quiet reclaim credit-refused; current image pending |
+| Reclaim capture before independent OVER response ownership | `tools/resilience/adapters/reclaim_hold.py`; actual hold/settle/defer/install markers, client bytes | Existing native response ownership boundary; observed hold prevents swap, settlement permits progress; physical sector release unclaimed | Ready existing consumer, image run scheduled after mixed smoke |
+| Issued read cancellation, file retirement, delayed completion | `tools/resilience/adapters/page_io.py`; image-owned token/answer labels and client bytes | Held token cancelled, late answer discarded, old file closes only after settlement; productive retained read; CID reuse requires its own witness | Existing adapter; Groundwork updating physical-return/owner-settlement contract |
+| Actual actor child creation and failed joins | `tests/native_actor_envelope_raw.sh`; real SBCL threads and native envelope hooks | Timeout/failed join retains child, cleanup cannot run under live borrow, duplicate return cannot refill, post-create failure retains parked child | Runtime source ready; combined-image consumer pending |
+| Funded syncer interruption/recovery | Native syncer job + typed `fn-ros-install-syncer`/physical join | Retain exactly the captured job through interruption and pending join; funding and operation settlement are separate observations | Foundations producer and Runtime wiring underway; no full user-bank enforcement claim |
+| Sparse NEWNEWS over >8 rows and tombstones under competing work | Actual served metadata scan/cursor plus complete client reply | Complete sparse match set and no tombstoned payload I/O; separate metadata progress from payload reads | Served bounded cursor WIP; first image need not wait |
+| Peer interruption and recovery | Existing native BP node/contact adapters, ACL2-generated bundle/request bytes | Pre-connect failure versus post-connect uncertainty; durable held work survives restart; only exact application receipt releases custody | Requires coordinated DTN image and actual current contract |
+| Crash schedules for post/recovery/checkpoint | `tools/resilience/adapters/native_cuts.py`; actual image cuts and scan | Preserve every previously acknowledged article, classify lost replies separately, check exact bytes/memberships after repeat recovery | Existing log-based families; retired per-file mock families excluded |
+| 1k→100k curves | Existing `tools/scale_curve.py`, `fixtures.py`, ACL2 `synth_log_store.py` | Matched profile/heap/cache/host conditions; post, read, maintenance, open and resource curves; no 1M execution | After smoke and image convergence, Integration budgets selected probes |
+
+The mixed runner writes `plan.json`, sealed `journal.jsonl`, `summary.json`,
+`manifest.json`, and owner diagnostic streams outside the store. A plan fixes
+per-actor requests and phase barriers; the event journal captures the realized
+OS concurrency. Replaying the plan does not promise identical interleaving.
+Fresh TCP is labelled cold connection, never cold filesystem cache. Delayed
+line consumption is a slow client, never evidence that a kernel write blocked.
+Baseline and perturbation use separately initialized scratch stores; neither
+touches a live node or a registered fixture in place.
+
+Manifest image launcher/core/runtime digests and supplied image-source revision
+are distinct from harness-source revision and input hashes. Diagnostics cannot
+establish durable promises: accepted client replies and recovered exact content
+do that for the observed schedule. Checkpoint log markers establish that the
+requested maintenance actually ran, not its durability by themselves. Store
+allocation and descriptor peaks are sampled at 100 ms, owner process only;
+shorter spikes and separate control-client processes are outside that measure.
+Null metrics are unavailable, never zero. Percentiles are descriptive for the
+sample count, not distribution or latency guarantees.
+
+Archive completed run bytes under a named `planning/evidence/` coordinate with
+`tools/evidence_store.py put`; commit the resulting index lines, not logs. Keep
+this matrix and SCN-1083 scope aligned when execution exposes missing consumers.
