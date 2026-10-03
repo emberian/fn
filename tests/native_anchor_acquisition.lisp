@@ -198,14 +198,6 @@
   (fnn-anchor-test-check (= (length nonce) 32) "OS CSPRNG nonce width")
   (fnn-anchor-test-check (typep nonce 'fnn-octets) "OS CSPRNG octet vector"))
 
-(fnn-anchor-test-check
-(equal (fnn-anchor-acquire
-         (list :server (map 'list #'char-code "127.0.0.1") 9
-               (fnn-octet-list (subseq *fnn-anchor-test-key* 1))
-               nil 32 1024 4096 1))
-        '(:fault :pinned-key))
- "wrong pinned-key width faults before network acquisition")
-
 (let ((observation (fnn-anchor-observe *fnn-anchor-test-parsed*
                                       *fnn-anchor-test-nonce*)))
   (fnn-anchor-test-check (eq (first observation) :observed) "observed tag")

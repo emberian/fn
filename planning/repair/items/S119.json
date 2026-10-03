@@ -9,13 +9,16 @@
  "id": "S119",
  "line": "1742",
  "locus": "operator-verbs",
- "notes": [],
+ "notes": [
+  "10-02 23:08 fixed (error-path unlink); source-level test only, no fault injection run; crash-time leftovers still unswept"
+ ],
  "owner": "sweep-store",
  "reviewer": "store-write-host.lisp:1742-1750 fn-xw-write-new returns the write or fsync error without unlinking the O_EXCL stage. fn-xw-secret-rotate (around 1845-1848) unlinks the stage only when the rename fails. So a failed write or fsync leaves keys/.node-secret-<pid>-<hex>.stage holding part of the fresh root, under a new random name on every retry. Nothing in host, books or tools sweeps keys/ for .stage names; the staging sweeps cover staging/. The native rotate (io.lisp:3938-3946) closes in unwind-protect but likewise never unlinks after a write or fsync failure. The file is a leftover of secret material plus disk litter, but it is never used as authority.",
  "scenario": "`store ROOT node-secret rotate` fails with ENOSPC or EIO partway through writing the new root, or at its fsync. keys/.node-secret-<pid>-<hex>.stage is left holding a prefix of the fresh secret root. The staging sweep covers staging/, not keys/, so nothing ever removes it. Each failed retry leaves another file under a fresh random name.",
  "severity": "low",
+ "sha": "d5cdc34cd",
  "source": "sweep-2026-10-03",
- "state": "open",
+ "state": "in-progress",
  "title": "Node-secret staging files with partial key material are left behind when a write or fsync fails",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T03:08:25Z"
 }

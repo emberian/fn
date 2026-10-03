@@ -9,13 +9,16 @@
  "id": "S103",
  "line": "594",
  "locus": "operator-verbs",
- "notes": [],
+ "notes": [
+  "10-02 23:09 partial: stale/non-regular report fixed (inode+mtime differ from pre-request); the UNBOUNDED wait is not: the bound must come from ACL2's drain window/deadline (needs an ACL2 accessor for the retire deadline) -> S151"
+ ],
  "owner": "sweep-ops",
  "reviewer": "operator.lisp:594-596 loops with (sleep 1) for as long as admin-observe answers :live or :held, with no bound. A hung owner holding the lock (:held), or a supervisor that restarts the node within a second, means retire never returns. The owner's report unlink (owner.lisp:4731-4732) swallows every syscall-error, not only ENOENT. probe-file and with-open-file (operator.lisp:599-602) follow symlinks and allocate file-length bytes with no bound, unlike fnn-read-regular-bounded. The stale-report case needs an unlink failure other than ENOENT in the owner's own root followed by a crash, which is unlikely. The unbounded wait is the most realistic problem.",
  "scenario": "(a) Under a supervisor with Restart=always, the node is restarted within the 1 s poll. Liveness stays :live forever and `retire` never returns. The same happens with a hung owner that holds the lock (:held), and the 'no report is uncertain' line is never reached. (b) The owner's unlink of the earlier retire-report.txt fails with something other than ENOENT (EACCES, EIO), and every errno is swallowed. The owner then dies before writing a new report. The operator prints the previous retire's report and exits 0. (c) probe-file and with-open-file follow symlinks and allocate file-length with no bound, unlike every other store read (fnn-read-regular-bounded).",
  "severity": "low",
+ "sha": "a385ae8cb",
  "source": "sweep-2026-10-03",
- "state": "open",
+ "state": "in-progress",
  "title": "`retire` waits with no bound and may print a stale or non-regular report as success",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T03:09:08Z"
 }

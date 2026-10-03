@@ -9,13 +9,16 @@
  "id": "S078",
  "line": "4567",
  "locus": "store-books",
- "notes": [],
+ "notes": [
+  "10-02 23:05 fixed; ran tests.test_native_build_scripts (3 new red->green); io.lisp not recompiled"
+ ],
  "owner": "sweep-store",
  "reviewer": "All three points are confirmed, and none is a runtime failure. The store-exists check appears twice in a row (io.lisp:4567-4570). fnn-accept-any-loop (5761-5769) has no callers in host/, tests/ or tools/. It and fnn-accept-loop (5719-5723) would also pass a NIL accept result to HANDLER, though bp-control.lisp:163 and :191 follow the same raw socket-accept pattern and those are live. fnn-recover-log's docstring says \"the five recovery barriers\" (7609-7610), but fnn-store-recovery-barriers returns three thunks and cites *fn-sf-recovery-barrier-count* 3 (7217-7229).",
  "scenario": "No runtime failure from the duplicate check. The dead accept loop is a hazard for whoever revives it (the NIL accept described in the first finding). The docstring's barrier count disagrees with the code and with the three-barrier theorem it cites, which misleads a reader auditing crash cuts.",
  "severity": "low",
+ "sha": "d1f408dee",
  "source": "sweep-2026-10-03",
- "state": "open",
+ "state": "in-progress",
  "title": "Duplicated store-exists check in import, dead fnn-accept-any-loop, and a docstring that says five recovery barriers where the code has three",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T03:05:53Z"
 }

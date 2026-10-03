@@ -9,13 +9,16 @@
  "id": "S094",
  "line": "383",
  "locus": "operator-verbs",
- "notes": [],
+ "notes": [
+  "10-02 23:06 fixed (sentinel list 0 -> ACL2 :names-malformed); source-level test only, no live TLS run"
+ ],
  "owner": "sweep-peer",
  "reviewer": "The tls.lisp:371-374 comment says an oversize SAN is 'reported absent (so ACL2 refuses it by name)'. fnn-tls-asn1-octets (383-386) returns NIL for count > 65536 or a null data pointer. fn-tlsr-san-names (books/tls-reload.lisp:307) maps NIL to no names, not :malformed, and the start decide (around line 460) only refuses :malformed. So a SAN over 64 KiB is accepted with an empty name set, and the comment does not match the code. Reaching this needs an operator-supplied certificate with a SAN extension over 64 KiB, which is practically never seen.",
  "scenario": "A certificate whose SAN extension is over 64 KiB, or whose ASN1 data pointer is NULL, gives san=NIL, which is exactly the 'no SAN' observation. `run` accepts it with an empty name set and the served line reports no names. A later reload then has an empty served-name set, so its names-dropped check protects nothing. 'Unreadable' and 'absent' are collapsed into one outcome, which contradicts the comment.",
  "severity": "low",
+ "sha": "a55d6deb4",
  "source": "sweep-2026-10-03",
- "state": "open",
+ "state": "in-progress",
  "title": "Comment says an oversize subjectAltName is refused by name, but absent is read as 'no names' and accepted",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T03:06:56Z"
 }

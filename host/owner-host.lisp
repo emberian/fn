@@ -1,6 +1,8 @@
-; Experimental owner bridge: :program wrappers over the proved fn-own machine.
+; Owner host entries: :program wrappers over the proved fn-own machine.
 ;
-; tools/run_owner.py drives one owner per store through these entry points.
+; The native images (host/native/owner.lisp, io.lisp) drive one owner per
+; store through these entry points.  (The Python owner bridge,
+; tools/run_owner.py, is gone.)
 ; Every wrapper is one proved owner transition: fn-own-step, fn-opc-prepare,
 ; or fn-own-read (the served port: one
 ; socket read is one fn-served-step over the connection's pinned archive,
@@ -189,8 +191,7 @@
 (include-book "../books/owner-served-bound")
 (include-book "../books/topic-history-local-proposals")
 ;; This file names what it calls, so every loader gets the same world: the
-;; native images (host/native/build.lisp) and the Python owner bridge
-;; (tools/bridge_image.py OWNER_FORMS), which boots from this file alone.
+;; native images (host/native/build.lisp, build-dtn.lisp).
 ;; fn-owner-io calls fn-rcon-ocfg-io; fn-owner-prepare-buffer reads the
 ;; fn-octets buffer and calls fn-pidx-existing-action, whose comparison is
 ;; books/store-reclaim-buffer's fn-rclb-same-articlep (D13, STO-014).
@@ -450,8 +451,8 @@
 
 (defun fn-owner-recover-extended (extended config-records frontier max-conns fn-arena fn-cat fn-hist state)
   (declare (xargs :stobjs (fn-arena fn-cat fn-hist state) :mode :program))
-  ; The retired bridge's recoveries load a local catalog that serves nothing:
-  ; the zero entry's key.
+  ; The recoveries through fn-owner-recover-extended-arena load a local
+  ; catalog that serves nothing: the zero entry's key.
   ; Refuse before any recovery load, canonical reset or source mutation.
   (if (not (eq (fn-owner-history-reset-status state) :history-reset-clear))
       (mv nil :history-source-held fn-arena fn-cat fn-hist state)
@@ -485,9 +486,9 @@
          (fn-ock-install (cadr opened) (caddr opened) max-conns)
          (car opened) (fn-mpxt-key-of-entry entry) fn-arena fn-cat fn-hist state))))))
 
-; The two recoveries below are the Python bridge's (tools/run_owner.py), whose
-; served path was the retired fn-owner-chunk over the view's lists and reads no catalog:
-; the catalog the install loads is a local one, dropped; the arena is the
+; The recoveries below were the retired Python bridge's (tools/run_owner.py,
+; now gone); no loaded host line calls them (S115 follow-up).  The catalog the
+; install loads is a local one, dropped; the arena is the
 ; live one the open interned into (the native owner recovers through
 ; fn-owner-recover-from-store-open over the live stobjs).
 (defun fn-owner-recover-extended-arena (extended config-records frontier max-conns fn-arena fn-hist state)
@@ -499,10 +500,10 @@
       (mv erp val fn-arena fn-hist state))))
 
 ;; The records flip: both opens intern the decoded journal into the arena
-;; first, so the extended capture is over ROWS.  The bridge (tools/run_owner.py
-;; recover) decodes with fn-store-sn-recover-records, empties the arena and
-;; interns with the guard-verified fn-intern-events at top level, then calls
-;; this entry over the rows and the live arena (the install reads it; the
+;; first, so the extended capture is over ROWS.  The retired bridge
+;; (tools/run_owner.py recover, gone) decoded with fn-store-sn-recover-records,
+;; emptied the arena and interned with the guard-verified fn-intern-events at
+;; top level, then called this entry over the rows and the live arena (the install reads it; the
 ;; catalog it loads is a local one, fn-owner-recover-extended-arena).  The
 ;; native owner installs from the Store open instead
 ;; (fn-owner-recover-from-store-open).  (mv nil KEYWORD fn-arena state).

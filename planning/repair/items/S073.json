@@ -9,13 +9,16 @@
  "id": "S073",
  "line": "3940",
  "locus": "operator-verbs",
- "notes": [],
+ "notes": [
+  "10-02 23:08 fixed (error-path unlink); source-level test only, no fault injection run; crash-time leftovers still unswept"
+ ],
  "owner": "sweep-store",
  "reviewer": "fnn-node-secret-rotate (io.lisp:3938-3943) creates .node-secret-PID-HEX.stage in the keys directory. If fnn-write-all or fnn-fsync-file fails, the unwind-protect only closes the fd, and the unlink at io.lisp:3946 runs only when the replace fails. fnn-sweep-staging (io.lisp:2291) enumerates staging/, not keys/, so a partial file of new secret material (mode 0600) stays behind. It needs ENOSPC or EIO during an operator rotate.",
  "scenario": "During `store ROOT node-secret rotate`, the write fails (ENOSPC or EIO) or the fsync fails. The fd is closed but the half-written stage, which holds part of the new epoch's root secret, stays in STORE/keys/. The staging sweep only enumerates STORE/staging, so nothing ever collects it. Repeated failures pile up files of secret material under random names, and they would leave the node in any backup of keys/. node-secret create stages under staging/ and is swept; rotate is not.",
  "severity": "low",
+ "sha": "d5cdc34cd",
  "source": "sweep-2026-10-03",
- "state": "open",
+ "state": "in-progress",
  "title": "A failed node-secret rotation leaves a partial secret file in keys/, which no sweep removes",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T03:08:25Z"
 }
