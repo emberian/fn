@@ -191,3 +191,26 @@ current schedule executing sequentially under approved24Gscope; nohook/funding
 claim because image excludes these later sources. Evidence filing follows.
 Runtime d4/0fa observer activation/source ready; generic E seam requested
 before extent collection/executorwrapping. FullPageIO remains unavailable.
+
+
+## Extent observer consumer, 2026-10-03
+
+Dependency packet Runtime d4cb69168/0fa276f82 + shared early io seam
+8b777bf9f/e60d9f0d2/09c7e72a3 (assembled 983f199/ad0f1666f). This lane
+owns extent only: actual executor thunk captures native identity; direct
+fd-open/issue/io-begin/literal io-complete/cancel/physical-return/settle/close
+inputs enter the bounded collector. Observer arguments are unevaluated when
+absent. Forty finite E mutex regions observe actual acquire/release; the two
+condition-wait regions are deliberately unobserved. Conditions and unexpected
+worker death are not converted or reordered into literal :error completion.
+
+Native raw transport composition passed using deployed io/owner forms from
+those dependencies plus this extent macro and a real SBCL thread/mutex;
+no fn semantic decisions are mocked. Eight image-free transport checks pass.
+The actual normal held-read image selector now consumes post-cleanup NATIVE-HM,
+checks complete collector prefix plus direct labels, and explicitly reports
+full PageIO comparison unavailable. COMPLETE is never full physical coverage.
+Matching image execution remains pending Integration's next source batch;
+1a946 current image excludes this packet. Full replay still owes actual wait,
+pin and remaining owner edges, literal condition boundary and exact dependency
+coordinates. No mux/owner/io edits in this lane.

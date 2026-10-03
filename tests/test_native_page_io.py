@@ -59,6 +59,21 @@ def page_io_issue_arguments(admission):
     return tuple(int(value) for value in match.groups())
 
 
+def page_io_native_collection(data):
+    """Transport collector status plus opaque bytes, without reading Lisp.
+
+    COMPLETE describes the collected prefix only. The missing physical wait,
+    pin and other owner edges prevent full PageIO model comparison regardless
+    of collector status. Actual model replay also requires matching digests.
+    """
+    match = re.search(rb"NATIVE-HM \((:COMPLETE|:PENDING|:UNAVAILABLE)\s", data)
+    if not match:
+        raise ValueError("missing native collector readout")
+    return {"collector_status": match.group(1).decode("ascii"),
+            "opaque_readout": data[match.start():],
+            "full_comparison": "unavailable"}
+
+
 class PageIOObservationTests(unittest.TestCase):
     def test_wrapped_exact_token_keeps_held_and_settlement_events_distinct(self):
         text = (b"PAGE-IO held token=(1 2 3\n  4 5 99999999999999999999) file=3\n"
@@ -103,6 +118,14 @@ class PageIOObservationTests(unittest.TestCase):
             page_io_issue_arguments(token_only)
         literal = token_only + b" cid=7 inc=8 eoff=9 elen=10 trailer=99999999999999999999"
         self.assertEqual(page_io_issue_arguments(literal), (7, 8, 9, 10, 99999999999999999999))
+
+
+    def test_complete_collector_is_not_full_physical_model_coverage(self):
+        collection = page_io_native_collection(b"NATIVE-HM (:COMPLETE NIL ((:ACQUIRE \"ACTOR-1\" :EXTENT)))\n")
+        self.assertEqual(collection["collector_status"], ":COMPLETE")
+        self.assertEqual(collection["full_comparison"], "unavailable")
+        with self.assertRaisesRegex(ValueError, "missing native collector"):
+            page_io_native_collection(b"PAGE-IO settled token=(0 1 2 3 4 5) answer=:PUBLISH\n")
 
 
 @requires(DEVELOPER)
@@ -184,6 +207,11 @@ class PageIOTests(unittest.TestCase):
         self.assert_primitive_handoff(owner, _file, b":OK", b":PUBLISH")
         self.assertTrue(client.command("DATE").startswith(b"111"))
         node.stop(expect=None, grace=300)
+        collection = page_io_native_collection(owner.stderr.since(0))
+        self.assertEqual(collection["collector_status"], ":COMPLETE", collection)
+        for label in (b":FD-OPEN", b":ISSUE", b":IO-BEGIN", b":IO-COMPLETE", b":RETURN", b":SETTLE", b":EXTENT"):
+            self.assertIn(label, collection["opaque_readout"])
+        self.assertEqual(collection["full_comparison"], "unavailable")
 
     def test_cancel_retire_and_reuse_keep_the_old_fd_until_actual_completion(self):
         # The retirement is an operator compaction while serving: its
