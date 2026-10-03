@@ -2365,3 +2365,21 @@ Journal general parser/report/exit refinement source composed; exact new-source 
 
 Assembly current 07:40: reader context301 +currentcallee fixture288, Webaba, Historysplit4d4, journaled5a, application89f, directline+admissionff256/world755 delivered Integration. Both isolated trees preserve source; no dev push/build ours.
 Reader-context fixture b092 uses18 actual selected definitions in warm ownerworld: held/working/connection pin distinction, root/index/config/read and refusedcorruptroot/unknownconn PASS. This closes scopedconstructor question only; no fullowner invariant/nativephysicalaffinity/image claim.
+
+## Application consumer native bootstrap obstruction, 2026-10-03
+
+One Integration-approved24GiB case appfc6d85335/kernelad8/core14ab00 failed
+1.562s0skips at native consumer bootstrap EXIT.UNCERTAIN3, ownerfenced
+`ACL2 rejected the record's place in the log`. BEFORE agents/report/savedpoll/
+projectionfault/ownerrestart question; no claim of pendingSQLite/recoveryPASS.
+Seven unchanged interface blobs independentlychecked; composedbootstrapproducer
+compatibility stillowed. Exact16logs/source/ABIhash objects archived
+native-consumer-fc6-ad8-2026-10-03, manifest
+759e50e6341c90fd7ed11d53d28f1ca7f4fcd899c59c9854bb1019f5d993787d.
+
+Initial invocation raced unfinished sourceshipment (norunnerfile/notestloaded),
+thatsetupresult preserved; sameauthorizedcase executedonce after shipment.
+Groundwork/Runtime/Lieutenant/Integration haveactualfailure; no repeat before
+concrete diagnosis. Fixturecleanupremovedtemporaryscratch; rejectedrecordbytes
+werenotprinted and remainunavailable. Futureownedpublicevidencehook cannot
+retroactivelysupply thisrecord. No privatekey/whole-scratch archive.
