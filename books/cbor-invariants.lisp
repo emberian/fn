@@ -620,6 +620,7 @@
            :in-theory (e/d (fn-cbor-u64-bytes fn-cbor-u64-from)
                            (fn-cbor-u64-split-of-halves fn-cbor-u32-from-bounds
                             fn-cbor-u32-to-from-octets
+                            fn-cbor-u32-from-upper-bound
                             fn-cbor-u32-from fn-cbor-u32-bytes floor mod
                             fn-cbor-at-leastp-is-length-lower-bound)))))
 
