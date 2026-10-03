@@ -748,7 +748,8 @@ class Analyzer:
     def expand(self, form, d: Def):
         """Substitute FORM's arguments into D's backquote template.  Nothing is
         evaluated: an unquote of a macro parameter becomes the argument form, any
-        other unquote an opaque symbol."""
+        other unquote a distinct opaque symbol.  Repeated references to the same
+        macro-local symbol keep one identity; no expression is evaluated."""
         binding: dict = {}
 
         def bind(pattern, value):
@@ -802,13 +803,26 @@ class Analyzer:
         if template is None:
             return None
 
+        opaque_symbols = {}
+        expansion_id = (getattr(form, "identity", self.cur.name) + "::" + d.name)
+
+        def opaque(expr):
+            # Local gensym variables are opaque, but distinct variables must
+            # not alias: a later NIL bookkeeping binding is not the mutex.
+            # Computed unquotes remain unknown; never interpret macro code.
+            key = ("symbol", str(expr)) if isinstance(expr, Sym) else (
+                "expression", getattr(expr, "identity", render(expr)))
+            if key not in opaque_symbols:
+                opaque_symbols[key] = Sym("#:opaque:" + expansion_id + ":" + str(len(opaque_symbols)))
+            return opaque_symbols[key]
+
         def sub(t):
             if isinstance(t, list):
                 h = head(t)
                 if h == "unquote" and len(t) == 2:
                     if isinstance(t[1], Sym) and str(t[1]) in binding and binding[str(t[1])][0] == "one":
                         return binding[str(t[1])][1]
-                    return Sym("#:opaque")
+                    return opaque(t[1])
                 out = Node()
                 out.line = getattr(form, "line", 0)
                 out.identity = (getattr(form, "identity", self.cur.name) + "::" + d.name

@@ -1582,3 +1582,32 @@ citations point at final receipt. Source c922036e8 unchanged by this correction.
 
 ## Source assembly cold cursor push-before-verify (2026-10-03)
 c922036e8+30bd8ab95 source composed clean above current literal JOB-RESULT/mux cleanup; fifth-return exact plan/read and first clock preserved in mux/private legacy feed. Known actual consumer delta: retained pull f2 renderer ignores fifth value; Served/Tools notified to fix forward tagged cursor-read polling before new matching native claim. Source shipping now per Ember; primary full caller/EOF/cleanup review follows, no cert/image claim.
+Resource Exec's warm msgid-linear-exec include initially reused a merely
+valid-looking foreign .cert and ACL2 refused its full-book-name alists.
+Explicit supported install_closure(include_self=True), artifact set
+43b54e261fb03462ff66c8407965a35738f4fcfc2b7d52b0632dd12fb22cf6a3,
+installed87/missing0; the same warm include then passed0.46s. Preparation
+now runs that exact compatible-set acquisition for every repository include,
+including an existing plausible certificate. It deduplicates the same target
+within one command; system includes are untouched. No source/certification
+fallback or source/object/alist relaxation. Five SessionIncludeTests PASS
+0.014s, compile/diff checks PASS; no actual ACL2 or reload launched here.
+
+## Sol tools: distinct opaque macro temporaries
+
+The literal macro expander used one opaque symbol for every non-parameter
+unquote. In the actual observed-mutex template, RELEASE's NIL initializer
+overwrote MUTEX's alias, falsely replacing the generated owner lock with
+?nil. Expansion now gives distinct macro-local symbols stable identities
+within each lexical expansion. Repeated references retain the same identity;
+computed unquotes remain opaque, with no evaluation.
+
+Exact Runtime source52cbaaf623904478d4862c4700c03150e22dd848, three-file
+io/owner/mux syntactic analysis with its actual contracts and no ACL2 reach:
+old expander0.369s reports ?nil->XSYNCER and ?nil->XOUTPUT; repaired
+expander0.393s reports no R5 rows and observes O->XSYNCER/O->XOUTPUT.
+All actual lock edges remain; no baseline or contract change. Four new
+fixtures consume actual observed-mutex/section source and check the owner
+callback, unknown inner lock, real NIL lock and E->O inversion. All43 lock
+checker tests PASS0.527s. No proof, full-tree lock qualification or image
+claim; Integration owns composition with Runtime's declared private locks.
