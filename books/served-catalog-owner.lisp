@@ -63,7 +63,7 @@
 (include-book "catalog-entries")
 (include-book "catalog-refresh")
 (include-book "store-intern")
-(include-book "catalog-availability-owner-load")
+(include-book "catalog-availability-refinement")
 (include-book "history-fold-refinement")   ; fn-row-composite-okp: what the intern makes of a row
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
@@ -1178,16 +1178,6 @@
 ; faithful across the owner's steps and the opens is the same obligation as
 ; the join's establishment (books/served-catalog-join.lisp), still OPEN.
 
-(defun fn-scol-history-okp (rows fn-arena)
-  (declare (xargs :stobjs fn-arena :verify-guards nil))
-  (if (consp rows)
-      (and (or (not (fn-cat-rowp (car rows)))
-               (fn-scol-row-okp (car rows) fn-arena))
-           (or (not (fn-sca-composite-shapep (car rows)))
-               (fn-scol-row-okp (fn-hstxa-held (car rows)) fn-arena))
-           (fn-scol-history-okp (cdr rows) fn-arena))
-    t))
-
 (local (defthm fn-scol-okp-of-load-held-row
    (implies (and (fn-scol-okp fn-arena fn-cat)
                  (or (not (fn-cat-rowp r)) (fn-scol-row-okp r fn-arena))
@@ -1211,10 +1201,8 @@
   (implies (and (fn-arena-p fn-arena)
                 (fn-scol-history-okp rows fn-arena))
            (fn-scol-okp fn-arena (fn-sca-load-held-rows rows view-index fn-arena fn-cat)))
-  :hints (("Goal" :in-theory (e/d (fn-sca-load-held-rows)
-                                  (fn-sca-load-held-rows-from fn-scol-okp-of-load-held-rows-from))
-           :use ((:instance fn-scol-okp-of-load-held-rows-from (fn-cat nil))
-                 (:instance fn-scol-okp-of-clear)))))
+  :hints (("Goal" :use ((:instance fn-sca-load-held-rows-establishes-byte-facts))
+           :in-theory (disable fn-scol-okp fn-scol-history-okp fn-sca-load-held-rows))))
 
 ; T1: the store's intern at a handle denoting the record's payload.
 (defthm fn-scol-row-okp-of-intern-row-at
