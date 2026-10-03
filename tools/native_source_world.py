@@ -18,6 +18,7 @@ from proof_repl import encapsulated, forms, head_and_name
 EARLY = ('books/codec-attach', 'books/records-attach-concrete',
          'books/payload-arena-attach', 'books/history-paged')
 ATTACH = 'books/history-paged-attach'
+ARENA_ATTACH = 'books/payload-arena-attach'
 
 
 def selected_defthms(text, deferred, removed):
@@ -101,6 +102,29 @@ def generate(source: Path, caches: list[Path], output: Path, limit=25.0,
             visit('books/history-paged')
             events.append(actual[2])
             visit('books/history-columns')
+            loaded.add(name)
+            coordinate.append({'book': name, 'kind': 'ordered-attachment'})
+            return
+        if name == ARENA_ATTACH:
+            # Source admission must preserve the implementation/attach/generic
+            # order too. A dependency-first walk introduces the generic early.
+            path = source / (name + '.lisp')
+            actual = forms(path.read_text())
+            expected = ['(in-package "ACL2")', '(include-book "payload-arena-extent")',
+                        '(attach-stobj fn-arena fn-arena-extent)',
+                        '(include-book "payload-arena")', '(include-book "catalog-record")']
+            if actual[:5] != expected:
+                raise ValueError('arena attachment order changed; inspect actual source before emitting')
+            remember(path)
+            visit('books/payload-arena-extent')
+            events.append(actual[2])
+            visit('books/payload-arena')
+            visit('books/catalog-record')
+            hoisted, body = encapsulated('\n'.join([actual[0], *actual[5:]]),
+                                        path.parent, set(graph), limit or None)
+            events.extend(hoisted)
+            events.append('(value-triple (cw "FN_SOURCE_BOOK ' + name + '~%"))')
+            if body: events.append(bounded_body(body, steps))
             loaded.add(name)
             coordinate.append({'book': name, 'kind': 'ordered-attachment'})
             return
