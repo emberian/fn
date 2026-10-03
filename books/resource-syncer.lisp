@@ -84,7 +84,9 @@
                  (mv :drawn (fn-ros-token gen) fn-resource-ledger)))))))
 
 (defun fn-ros-settle-ready (fn-resource-ledger)
-  (declare (xargs :stobjs fn-resource-ledger :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-resource-ledger :verify-guards nil
+                  :guard (and (fn-rl-wfp fn-resource-ledger)
+                              (< 2 (fn-rl-count fn-resource-ledger)))))
   (if (and (equal (fn-rl-worker-physical fn-resource-ledger) 1)
            (equal (fn-rl-worker-outcome fn-resource-ledger) 1))
       (fn-rl-settle 2 (fn-rl-gensi 2 fn-resource-ledger) fn-resource-ledger)
@@ -115,6 +117,87 @@
   (and (fn-rl-wfp fn-resource-ledger)
        (equal (fn-rl-count fn-resource-ledger) 3)
        (equal (fn-rl-phasesi 2 fn-resource-ledger) 0)))
+
+; The real owner issue/receipt entries have bounded stobj guards. Bootstrap
+; install guards and the native physical-receipt boundary remain separate.
+(verify-guards fn-ros-livep
+ :hints (("Goal" :in-theory (enable fn-ros-tokenp fn-rl-wfp))))
+(verify-guards fn-ros-issue
+ :hints (("Goal" :in-theory (disable fn-rl-draw fn-rl-wfp))))
+(verify-guards fn-ros-settle-ready
+ :hints (("Goal" :in-theory (enable fn-rl-wfp))))
+(verify-guards fn-ros-physical
+ :hints (("Goal" :in-theory (enable fn-ros-livep fn-rl-wfp))))
+(verify-guards fn-ros-outcome
+ :hints (("Goal" :in-theory (enable fn-ros-livep fn-rl-wfp))))
+(verify-guards fn-ros-drainedp
+ :hints (("Goal" :in-theory (enable fn-rl-wfp))))
+
+(encapsulate ()
+(local
+ (defthm fn-ros-operation-update-keeps-wfp
+  (equal (fn-rl-wfp (update-fn-rl-worker-operation v ledger)) (fn-rl-wfp ledger))
+  :hints (("Goal" :in-theory (enable fn-rl-wfp)))))
+(local
+ (defthm fn-ros-operation-update-keeps-type
+  (implies (and (fn-resource-ledgerp ledger) (unsigned-byte-p 64 v))
+           (fn-resource-ledgerp (update-fn-rl-worker-operation v ledger)))
+  :hints (("Goal" :in-theory (enable fn-resource-ledgerp unsigned-byte-p)))))
+(local
+ (defthm fn-ros-physical-update-keeps-wfp
+  (equal (fn-rl-wfp (update-fn-rl-worker-physical v ledger)) (fn-rl-wfp ledger))
+  :hints (("Goal" :in-theory (enable fn-rl-wfp)))))
+(local
+ (defthm fn-ros-physical-update-keeps-type
+  (implies (and (fn-resource-ledgerp ledger) (unsigned-byte-p 1 v))
+           (fn-resource-ledgerp (update-fn-rl-worker-physical v ledger)))
+  :hints (("Goal" :in-theory (enable fn-resource-ledgerp unsigned-byte-p)))))
+(local
+ (defthm fn-ros-outcome-update-keeps-wfp
+  (equal (fn-rl-wfp (update-fn-rl-worker-outcome v ledger)) (fn-rl-wfp ledger))
+  :hints (("Goal" :in-theory (enable fn-rl-wfp)))))
+(local
+ (defthm fn-ros-outcome-update-keeps-type
+  (implies (and (fn-resource-ledgerp ledger) (unsigned-byte-p 1 v))
+           (fn-resource-ledgerp (update-fn-rl-worker-outcome v ledger)))
+  :hints (("Goal" :in-theory (enable fn-resource-ledgerp unsigned-byte-p)))))
+
+(defthm fn-ros-issue-keeps-representation
+ (implies (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger))
+  (and (fn-resource-ledgerp (mv-nth 2 (fn-ros-issue operation-gen ledger)))
+       (fn-rl-wfp (mv-nth 2 (fn-ros-issue operation-gen ledger)))))
+ :hints (("Goal" :in-theory
+   (e/d (fn-ros-issue unsigned-byte-p)
+        (fn-rl-draw fn-rl-wfp fn-resource-ledgerp
+         update-fn-rl-worker-operation update-fn-rl-worker-physical update-fn-rl-worker-outcome)))))
+(defthm fn-ros-settle-ready-keeps-representation
+ (implies (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger))
+  (and (fn-resource-ledgerp (mv-nth 1 (fn-ros-settle-ready ledger)))
+       (fn-rl-wfp (mv-nth 1 (fn-ros-settle-ready ledger)))))
+ :hints (("Goal" :in-theory (e/d (fn-ros-settle-ready)
+                               (fn-rl-settle fn-rl-wfp fn-resource-ledgerp)))))
+(defthm fn-ros-physical-keeps-representation
+ (implies (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger))
+  (and (fn-resource-ledgerp (mv-nth 1 (fn-ros-physical token receipt ledger)))
+       (fn-rl-wfp (mv-nth 1 (fn-ros-physical token receipt ledger)))))
+ :hints (("Goal" :in-theory (e/d (fn-ros-physical)
+              (fn-ros-settle-ready fn-rl-wfp fn-resource-ledgerp update-fn-rl-worker-physical)))))
+(defthm fn-ros-outcome-keeps-representation
+ (implies (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger))
+  (and (fn-resource-ledgerp (mv-nth 1 (fn-ros-outcome token operation-gen ledger)))
+       (fn-rl-wfp (mv-nth 1 (fn-ros-outcome token operation-gen ledger)))))
+ :hints (("Goal" :in-theory (e/d (fn-ros-outcome)
+              (fn-ros-settle-ready fn-rl-wfp fn-resource-ledgerp update-fn-rl-worker-outcome)))))
+)
+
+(defthm fn-ros-timeout-keeps-custody-by-definition
+ (implies (not (member-eq receipt '(:terminal :no-actor-created)))
+          (equal (mv-nth 1 (fn-ros-physical token receipt ledger)) ledger))
+ :hints (("Goal" :in-theory (enable fn-ros-physical))))
+(defthm fn-ros-unmatched-outcome-keeps-custody-by-definition
+ (implies (not (equal operation-gen (fn-rl-worker-operation ledger)))
+          (equal (mv-nth 1 (fn-ros-outcome token operation-gen ledger)) ledger))
+ :hints (("Goal" :in-theory (enable fn-ros-outcome))))
 
 (in-theory (disable fn-ros-worker-vector fn-ros-install fn-ros-install-syncer fn-ros-token fn-ros-tokenp
                     fn-ros-livep fn-ros-issue fn-ros-settle-ready

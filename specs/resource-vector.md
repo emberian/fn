@@ -315,3 +315,12 @@ claim this exception. Startup preserves this narrow allocation route even
 in developer counterpart mode; install, issue and receipt methods remain
 on their normal selected routes. This is a concrete allocation bridge, not
 an accounting theorem or an exemption from funding the created object.
+
+The actual syncer issue, physical/outcome receipt and drain observers now
+have source-admitted guards. The internal settle helper requires the carried
+constant-size shape invariant and slot 2 to exist. Source-admitted
+`fn-ros-issue-keeps-representation`, `fn-ros-physical-keeps-representation`
+and `fn-ros-outcome-keeps-representation` preserve both typed recognition and
+`fn-rl-wfp`; literal positive and each hypothesis-removal witness accompany
+them. Bootstrap install guards and the general bank/native boundary remain
+owed. These source admissions are not matching certificates.
