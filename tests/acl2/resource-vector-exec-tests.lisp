@@ -549,3 +549,38 @@
  (let* ((ledger (mv-nth 2 (fn-rl-draw 2 (list 2 0 0 1 1 0 0 0 3) (mv-nth 1 (fn-rl-install (list 10 0 0 1 1 0 0 0 5) *fn-rv-zero* *fn-rv-zero* 3 (create-fn-resource-ledger)))))) (result (fn-rl-settle 2 1 ledger)))
   (and (equal (mv-nth 0 result) :settled) (not (equal (mv-nth 1 result) ledger))))
  :rule-classes nil)
+
+; Bootstrap representation teeth, over all logical arguments of the export.
+(defthm rxt-install-keeps-representation-witness
+ (let* ((ledger (create-fn-resource-ledger))
+        (result (fn-rl-install (list 10 0 0 1 1 0 0 0 5)
+                              *fn-rv-zero* *fn-rv-zero* 3 ledger))
+        (after (mv-nth 1 result)))
+  (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger)
+       (equal (mv-nth 0 result) :installed)
+       (fn-resource-ledgerp after) (fn-rl-wfp after)))
+ :rule-classes nil)
+
+(defthm rxt-install-keeps-representation-noncanonical-profile-witness
+ (let* ((ledger (create-fn-resource-ledger))
+        (result (fn-rl-install '(2 . 3) nil nil 'invalid ledger))
+        (after (mv-nth 1 result)))
+  (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger)
+       (not (true-listp '(2 . 3))) (not (natp 'invalid))
+       (equal (mv-nth 0 result) :unrepresentable-profile)
+       (equal after ledger) (fn-resource-ledgerp after) (fn-rl-wfp after)))
+ :rule-classes nil)
+
+(defthm rxt-install-representation-without-type-corrupted-state-witness
+ (let* ((ledger (update-nth 0 nil (create-fn-resource-ledger)))
+        (after (mv-nth 1 (fn-rl-install nil nil nil 0 ledger))))
+  (and (not (fn-resource-ledgerp ledger)) (fn-rl-wfp ledger)
+       (not (and (fn-resource-ledgerp after) (fn-rl-wfp after)))))
+ :rule-classes nil)
+
+(defthm rxt-install-representation-without-shape-corrupted-state-witness
+ (let* ((ledger (update-fn-rl-count 1 (create-fn-resource-ledger)))
+        (after (mv-nth 1 (fn-rl-install nil nil nil 0 ledger))))
+  (and (fn-resource-ledgerp ledger) (not (fn-rl-wfp ledger))
+       (not (and (fn-resource-ledgerp after) (fn-rl-wfp after)))))
+ :rule-classes nil)
