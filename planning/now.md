@@ -4,10 +4,11 @@ The active plan is [the development workstreams](overnight-2026-10-03.md), revis
 after deeper source/design reading and ember's correction: Sol for implementation,
 Astra for composition, continuing subsystem ownership through integration and use.
 Read it with [the repair ledger](repair/STATUS.md) and [the contributor guide](../CONTRIBUTORS.md).
-The first groundwork wave is active: five GPT-6.1-Sol subsystem deputies, a
-GPT-6.1-Sol groundwork deputy coordinating their interfaces and integration, and
-the strategic coordinator. Composition and representation are covered by the
-groundwork deputy while the wider roster remains a target. New lanes wait for a
+The groundwork wave is active: nine GPT-6.1-Sol workers and the strategic
+coordinator. Five subsystem deputies and the groundwork deputy are joined by
+empirical scenarios, typed-ledger execution proofs and command-table rows, each
+feeding an existing consumer and assembler. Composition and representation
+contracts remain with the groundwork deputy while the wider roster is a target. New lanes wait for a
 useful independent need and coordinator agreement. The initial orientation
 snapshot is recorded in the plan; `8d17b09dd` integrated that planning/ledger
 reconciliation onto dev. Runtime qualification and deployment remain separate
