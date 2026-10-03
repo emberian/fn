@@ -20,6 +20,12 @@
            (e/d (fn-scol-row-okp fn-cat-prepare-row-availability)
                 (fn-held-with-facts fn-held-facts-of fn-hf-nov)))))
 
+(defthm fn-cat-prepare-row-availability-keeps-rowp
+  (implies (fn-cat-rowp h)
+           (fn-cat-rowp (fn-cat-prepare-row-availability h fn-arena)))
+  :hints (("Goal" :in-theory
+           (enable fn-cat-rowp fn-cat-prepare-row-availability fn-held-with-facts))))
+
 (local (defthm fn-sca-classified-row-keeps-byte-facts
   (implies (and (fn-scol-okp fn-arena fn-cat)
                 (fn-cat-rowp r) (fn-scol-row-okp r fn-arena))
