@@ -135,9 +135,9 @@ mutex; no conditions, thread names, addresses or payloads are serialized."
     (when state
       (multiple-value-bind (rows attempts recorded dropped incomplete sample-every)
           (fnn-trace-snapshot state)
-      (dotimes (i recorded)
-        (let ((row (aref rows i)))
-          (when row
+        (dotimes (i recorded)
+          (let ((row (aref rows i)))
+            (when row
               (format stream
                       "~&FN_TRACE {\"type\":\"span\",\"span_id\":~d,\"parent_id\":~a,\"connection_id\":~a,\"operation_id\":~a,\"connection_generation\":~a,\"phase\":\"~(~a~)\",\"start_us\":~d,\"duration_us\":~d,\"allocated_bytes\":~a,\"allocation_scope\":\"~(~a~)\",\"outcome\":\"~(~a~)\"}~%"
                       (fnn-trace-row-id row) (or (fnn-trace-row-parent row) "null")
@@ -148,9 +148,9 @@ mutex; no conditions, thread names, addresses or payloads are serialized."
                       (or (fnn-trace-row-bytes row) "null")
                       (or (fnn-trace-row-allocation-scope row) :disabled)
                       (fnn-trace-row-outcome row)))))
-      (format stream "~&FN_TRACE {\"type\":\"summary\",\"attempts\":~d,\"recorded\":~d,\"dropped\":~d,\"incomplete\":~d,\"sample_every\":~d,\"clock_ticks_per_second\":~d}~%"
-              attempts recorded dropped incomplete sample-every internal-time-units-per-second)
-      (finish-output stream)))))
+        (format stream "~&FN_TRACE {\"type\":\"summary\",\"attempts\":~d,\"recorded\":~d,\"dropped\":~d,\"incomplete\":~d,\"sample_every\":~d,\"clock_ticks_per_second\":~d}~%"
+                attempts recorded dropped incomplete sample-every internal-time-units-per-second)
+        (finish-output stream)))))
 
 (defun fnn-trace-hotspots (&optional (stream *error-output*) (limit 10))
   "Rank the existing bounded sink without dumping every chronological row.

@@ -3815,3 +3815,17 @@ owner/renderer guards remain open. Next shared header span/extraction backing
 with Served; frozen READY4/render6 remain unchanged and Integration independently
 composes Qplan ordinary fallback.
 BP held-source control certification followthrough (2026-10-03): exact a745d65ed union, including zero-transfer TCPCL dependency, certifies tcpcl-source-control and its literal teeth in certify-20261003T163429Z-2470673 (5 passed, 0 failed). The indexed manifest names these admitted/guarded definitions and received KEEP state preservation; it does not qualify SCN1131 or the complete native source/framing/custody boundary. Actual compatibility wrapper empty-offer supplied-p discriminator also passes in the scoped recorded-terminal harness. Current-union native entry remains pending History; no cached diagnostic claim transfers.
+
+* Trace lifecycle fix765a1e410: restarting inside an active span previously
+  emitted false/self parent1. Macro now carries parent-sink provenance, with
+  null for old compiled unknown ancestry. Actual six-value nested restart
+  fixture reproduced red then passed after narrow native overlay.
+* Readout fix5a435d754: actual report destination proved sink mutex held during
+  output. Shared bounded completed-row snapshot moves report I/O and hotspot
+  aggregation outside lock; active rows/counts/sink preservation PASS, existing
+  hotspot fixture PASS after same-owner overlay. Evidencef66c36a1... at
+  planning/evidence/tools/incremental-trace-lifecycle-20261003.json.
+* Owner2260356 currently healthy, temporarily loaned exclusively to Served for
+  11staged LIST-row events. No Tools sends while loan active. Runtime confirms
+  full current DWJ normal/storage runner not yet available; no duplicate cold
+  loader. Next tracing consumer work can proceed when that producer is ready.
