@@ -18,6 +18,23 @@ def image_lines(out):
 
 
 class HboxNativeDryRunTests(unittest.TestCase):
+    def test_default_prefix_does_not_require_unrequested_dtn_certificates(self):
+        answer = dry("--box", "hbox", "HEAD", "tests.test_native_owner")
+        self.assertEqual(answer.returncode, 0, answer.stderr)
+        checks = [line for line in answer.stdout.splitlines() if line.startswith("step host-ld")]
+        self.assertEqual(len(checks), 1)
+        self.assertIn("host_translate_check.py --build host/native/build.lisp", checks[0])
+
+    def test_dtn_prefix_is_checked_after_its_artifacts_are_acquired(self):
+        answer = dry("--box", "hbox", "--images", "developer,dtn-developer", "HEAD",
+                     "tests.test_native_owner")
+        self.assertEqual(answer.returncode, 0, answer.stderr)
+        checks = [line for line in answer.stdout.splitlines() if line.startswith("step host-ld")]
+        self.assertEqual(len(checks), 2)
+        self.assertIn("host_translate_check.py --build host/native/build-dtn.lisp", checks[1])
+        self.assertLess(answer.stdout.index("step validate-dtn"),
+                        answer.stdout.index("step host-ld-dtn"))
+
     def test_static_preflight_receipts_and_historical_fallback(self):
         import tempfile
         answer = dry("--box", "hbox", "HEAD", "tests.test_native_owner")
