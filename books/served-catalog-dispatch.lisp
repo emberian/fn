@@ -172,8 +172,7 @@
 
 ;; The by-number line of the pinned dispatcher reaches fn-nntp-number-retrieval
 ;; through the fallthrough (fn-nntp-archive-command, fn-nntp-retrieval).
-(local
- (defthm fn-scat-pinned-number-line-is-number-retrieval
+(defthm fn-scat-pinned-number-line-is-number-retrieval
    (implies (and (or (fn-nntp-keywordp keyword "ARTICLE")
                      (fn-nntp-keywordp keyword "HEAD")
                      (fn-nntp-keywordp keyword "BODY")
@@ -191,7 +190,7 @@
    :hints (("Goal" :in-theory (e/d (fn-nntp-archive-command fn-nntp-retrieval)
                                    (fn-nntp-number-retrieval fn-nntp-msgid-retrieval
                                     fn-nntp-current-retrieval fn-nntp-number-tokenp
-                                    fn-nntp-message-id-tokenp fn-nntp-upcase-keyword))))))
+                                    fn-nntp-message-id-tokenp fn-nntp-upcase-keyword)))))
 
 ;; The three pinned bucket arms are the archive folds under the pin's
 ;; correspondence (books/nntp-list-counts.lisp, group-bucket-invariants.lisp,
@@ -219,8 +218,7 @@
 ;; for every state (books/group-bucket-invariants.lisp and
 ;; books/nntp-list-counts.lisp state them under fn-nntp-projectionp, of which
 ;; their proofs read only fn-statep and string group names).
-(local
- (defthm fn-scat-built-listgroup-is-fold
+(defthm fn-scat-built-listgroup-is-fold
    (implies (fn-statep archive)
             (equal (fn-gidx-listgroup-command
                     session archive (fn-gidx-build (fn-state-articles archive)) args)
@@ -241,7 +239,7 @@
             (e/d (fn-gidx-listgroup-command fn-nntp-listgroup-command
                    fn-nntp-token-string)
                  (fn-gidx-listgroup-result fn-nntp-listgroup-result
-                  fn-nntp-parse-range fn-nntp-printable-tokenp))))))
+                  fn-nntp-parse-range fn-nntp-printable-tokenp)))))
 
 (local
  (defthm fn-scat-gidx-counts-lines-of-build
@@ -258,8 +256,7 @@
            ("Subgoal *1/1" :use ((:instance fn-gidx-group-summary-of-build
                                   (group (car groups))))))))
 
-(local
- (defthm fn-scat-gidx-list-counts-is-fold
+(defthm fn-scat-gidx-list-counts-is-fold
    (implies (and (fn-statep archive)
                  (equal buckets (fn-gidx-build (fn-state-articles archive))))
             (equal (fn-gidx-list-counts-command session archive buckets closed args)
@@ -270,7 +267,7 @@
                             (fn-gidx-build fn-statep
                              fn-gidx-counts-lines fn-nntp-counts-lines
                              fn-nntp-filter-groups-by-wildmat
-                             fn-wildmat-parse fn-nntp-multi fn-nntp-single))))))
+                             fn-wildmat-parse fn-nntp-multi fn-nntp-single)))))
 
 (local
  (defthm fn-scat-statep-article-listp
