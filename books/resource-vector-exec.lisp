@@ -16,14 +16,15 @@
 ; what `def-representation' generates once it lands (MODE 2026-10-01
 ; section 4): the concrete stobj, its abstraction FN-RL-BANK to the logical
 ; bank, the representation invariant FN-RL-WFP and, per export, a
-; correspondence theorem. Draw, open and settle and their mutable loops
-; now have verified guards and representation preservation. Fresh install
-; has fn-rl-install-correspondence; install/store-words guards and the
-; general draw/settle bank correspondence remain separate obligations. PRF-1211 stays planned, and the ledger is wired
-; into nothing.  The next version is the TREE of books/resource-vector-tree
-; (one table, a row's owner a slot, per-row drawn columns for the sub-bank
-; rows), which is the layout the host needs; this flat twin is kept as the
-; measured shape of the columns, not as a claim.
+; correspondence theorem. Draw/open/settle and their mutable loops have
+; verified guards; draw/settle preserve the concrete representation and
+; all four worker receipt scalars. FN-RL-DRAW-CORRESPONDENCE and
+; FN-RL-SETTLE-CORRESPONDENCE connect the actual exports to the logical
+; bank, including words, normalized draw tokens, effects, and exact refusal
+; state. Fresh install has FN-RL-INSTALL-CORRESPONDENCE. Install/store-words
+; guards remain bootstrap obligations until their separate verification.
+; This consumed flat-ledger boundary does not implement the full resource
+; tree or refund protocol of books/resource-vector-tree.
 ;
 ; THE REPRESENTATION DOMAIN (r06 F4, D27): a budget word is a u64.  A
 ; profile whose budget does not fit is REFUSED by fn-rl-install
@@ -1234,4 +1235,482 @@
        (equal (fn-rl-worker-outcome after) (fn-rl-worker-outcome ledger))))
  :hints (("Goal" :in-theory (e/d (fn-rl-settle)
                  (fn-rl-release-from fn-rl-gensi fn-rl-phasesi nth update-nth)))))
+
+; Bank projection and flat-row effects stay proof-local. The public boundary
+; compares the actual exported functions with the logical bank, including
+; token normalization on every refusal. The logical model has unbounded
+; generations; a logically successful draw at u64 max instead refuses with
+; :slot-exhausted and preserves the exact concrete ledger.
+(local (defthm fn-rl-list-9-fields
+ (implies (and (true-listp v) (equal (len v) 9))
+          (equal (list (nth 0 v) (nth 1 v) (nth 2 v) (nth 3 v) (nth 4 v) (nth 5 v) (nth 6 v) (nth 7 v) (nth 8 v)) v))
+ :hints (("Goal" :in-theory (disable nth-add1)
+          :expand ((len v) (len (cdr v)) (len (cdr (cdr v))) (len (cdr (cdr (cdr v)))) (len (cdr (cdr (cdr (cdr v))))) (len (cdr (cdr (cdr (cdr (cdr v)))))) (len (cdr (cdr (cdr (cdr (cdr (cdr v))))))) (len (cdr (cdr (cdr (cdr (cdr (cdr (cdr v)))))))) (len (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr v))))))))) (len (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr v)))))))))) (:free (xs) (nth 0 xs)) (:free (xs) (nth 1 xs)) (:free (xs) (nth 2 xs)) (:free (xs) (nth 3 xs)) (:free (xs) (nth 4 xs)) (:free (xs) (nth 5 xs)) (:free (xs) (nth 6 xs)) (:free (xs) (nth 7 xs)) (:free (xs) (nth 8 xs)))))))
+
+(local (defthm fn-rl-list-11-fields
+ (implies (and (true-listp v) (equal (len v) 11))
+          (equal (list (nth 0 v) (nth 1 v) (nth 2 v) (nth 3 v) (nth 4 v) (nth 5 v) (nth 6 v) (nth 7 v) (nth 8 v) (nth 9 v) (nth 10 v)) v))
+ :hints (("Goal" :in-theory (disable nth-add1)
+          :expand ((len v) (len (cdr v)) (len (cdr (cdr v))) (len (cdr (cdr (cdr v)))) (len (cdr (cdr (cdr (cdr v))))) (len (cdr (cdr (cdr (cdr (cdr v)))))) (len (cdr (cdr (cdr (cdr (cdr (cdr v))))))) (len (cdr (cdr (cdr (cdr (cdr (cdr (cdr v)))))))) (len (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr v))))))))) (len (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr v)))))))))) (len (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr v))))))))))) (len (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr v)))))))))))) (:free (xs) (nth 0 xs)) (:free (xs) (nth 1 xs)) (:free (xs) (nth 2 xs)) (:free (xs) (nth 3 xs)) (:free (xs) (nth 4 xs)) (:free (xs) (nth 5 xs)) (:free (xs) (nth 6 xs)) (:free (xs) (nth 7 xs)) (:free (xs) (nth 8 xs)) (:free (xs) (nth 9 xs)) (:free (xs) (nth 10 xs)))))))
+
+(local (defthm fn-rl-update-nth-cons (equal (update-nth j v (cons a xs)) (if (zp j) (cons v xs) (cons a (update-nth (- j 1) v xs)))) :hints (("Goal" :expand ((update-nth j v (cons a xs)))))))
+
+(local (defun fn-rl-nth-row-ind (i j) (if (zp j) i (fn-rl-nth-row-ind (+ 1 i) (- j 1)))))
+
+(local (defun fn-rl-proof-row-write (slot row ledger)
+ (let* ((ledger (update-nth 3 (update-nth slot (nth 0 row) (nth 3 ledger)) ledger))
+         (ledger (update-nth 4 (update-nth slot (nth 1 row) (nth 4 ledger)) ledger))
+         (ledger (update-nth 5 (update-nth slot (nth 2 row) (nth 5 ledger)) ledger))
+         (ledger (update-nth 6 (update-nth slot (nth 3 row) (nth 6 ledger)) ledger))
+         (ledger (update-nth 7 (update-nth slot (nth 4 row) (nth 7 ledger)) ledger))
+         (ledger (update-nth 8 (update-nth slot (nth 5 row) (nth 8 ledger)) ledger))
+         (ledger (update-nth 9 (update-nth slot (nth 6 row) (nth 9 ledger)) ledger))
+         (ledger (update-nth 10 (update-nth slot (nth 7 row) (nth 10 ledger)) ledger))
+         (ledger (update-nth 11 (update-nth slot (nth 8 row) (nth 11 ledger)) ledger))
+         (ledger (update-nth 12 (update-nth slot (nth 9 row) (nth 12 ledger)) ledger))
+         (ledger (update-nth 13 (update-nth slot (nth 10 row) (nth 13 ledger)) ledger))) ledger)))
+
+(local (defthm fn-rl-proof-row-write-field
+ (implies (natp f)
+  (equal (nth f (fn-rl-proof-row-write slot row ledger))
+         (if (and (<= 3 f) (< f 14))
+           (update-nth slot (nth (- f 3) row) (nth f ledger))
+           (nth f ledger))))
+ :hints (("Goal" :in-theory (e/d (fn-rl-proof-row-write) (nth update-nth))))))
+
+(local (defthm fn-rl-proof-row-write-row-read
+ (implies (and (natp j) (natp slot) (true-listp row) (equal (len row) 11))
+  (equal (list* (fn-rl-phasesi j (fn-rl-proof-row-write slot row ledger))
+                 (fn-rl-gensi j (fn-rl-proof-row-write slot row ledger))
+                 (fn-rl-demand-list j (fn-rl-proof-row-write slot row ledger)))
+         (if (equal j slot) row
+          (list* (fn-rl-phasesi j ledger) (fn-rl-gensi j ledger) (fn-rl-demand-list j ledger)))))
+ :hints (("Goal" :in-theory (e/d (fn-rl-demand-list) (fn-rl-proof-row-write nth update-nth))))))
+
+(local (defthm fn-rl-proof-row-write-rows
+ (implies (and (natp i) (natp slot) (< slot (fn-rl-count ledger))
+               (natp (fn-rl-count ledger)) (true-listp row) (equal (len row) 11))
+  (equal (fn-rl-rows-from i (fn-rl-proof-row-write slot row ledger))
+         (if (< slot i) (fn-rl-rows-from i ledger)
+           (update-nth (- slot i) row (fn-rl-rows-from i ledger)))))
+ :hints (("Goal" :induct (fn-rl-rows-from i ledger)
+   :expand ((update-nth (- slot i) row (fn-rl-rows-from i ledger)))
+   :in-theory (e/d (fn-rl-rows-from fn-rl-count)
+       (fn-rl-proof-row-write fn-rl-demand-list fn-rl-phasesi fn-rl-gensi nth update-nth))))))
+
+(local (include-book "std/lists/update-nth" :dir :system))
+
+(local (defthm fn-rl-rows-from-length
+ (implies (and (natp i) (natp (fn-rl-count ledger)))
+  (equal (len (fn-rl-rows-from i ledger)) (nfix (- (fn-rl-count ledger) i))))
+ :hints (("Goal" :induct (fn-rl-rows-from i ledger) :in-theory (enable fn-rl-rows-from)))))
+
+(local (defthm fn-rl-rows-from-nth
+ (implies (and (natp i) (natp j) (natp (fn-rl-count ledger)) (< (+ i j) (fn-rl-count ledger)))
+  (equal (nth j (fn-rl-rows-from i ledger))
+         (list* (fn-rl-phasesi (+ i j) ledger) (fn-rl-gensi (+ i j) ledger)
+                (fn-rl-demand-list (+ i j) ledger))))
+ :hints (("Goal" :induct (fn-rl-nth-row-ind i j) :expand ((fn-rl-rows-from i ledger)) :in-theory (e/d (fn-rl-rows-from) (fn-rl-count fn-rl-demand-list fn-rl-phasesi fn-rl-gensi nth-add1))))))
+
+(local (defthm fn-rl-count-nat
+ (implies (fn-resource-ledgerp ledger) (natp (fn-rl-count ledger)))
+ :hints (("Goal" :in-theory (e/d (fn-resource-ledgerp fn-rl-count fn-rl-countp)
+  (fn-rl-budgetp fn-rl-drawnp fn-rl-phasesp fn-rl-gensp fn-rl-c0p fn-rl-c1p
+   fn-rl-c2p fn-rl-c3p fn-rl-c4p fn-rl-c5p fn-rl-c6p fn-rl-c7p fn-rl-c8p))))))
+
+(local (defthm fn-rl-drawnp-nats
+ (implies (fn-rl-drawnp xs) (fn-rv-nats-p xs))
+ :hints (("Goal" :induct (fn-rl-drawnp xs) :in-theory (enable fn-rl-drawnp fn-rv-nats-p)))))
+
+(local (defthm fn-rl-budgetp-nats
+ (implies (fn-rl-budgetp xs) (fn-rv-nats-p xs))
+ :hints (("Goal" :induct (fn-rl-budgetp xs) :in-theory (enable fn-rl-budgetp fn-rv-nats-p)))))
+
+(local (defthm fn-rl-drawn-list-is-field
+ (implies (fn-resource-ledgerp ledger)
+  (equal (fn-rl-drawn-list ledger) (nth 1 ledger)))
+ :hints (("Goal" :use (:instance fn-rl-list-9-fields (v (nth 1 ledger)))
+  :in-theory (e/d (fn-resource-ledgerp fn-rl-drawn-list)
+    (fn-rl-drawnp fn-rl-list-9-fields nth update-nth))))))
+
+(local (defthm fn-rl-budget-list-is-field
+ (implies (fn-resource-ledgerp ledger)
+  (equal (fn-rl-budget-list ledger) (nth 0 ledger)))
+ :hints (("Goal" :use (:instance fn-rl-list-9-fields (v (nth 0 ledger)))
+  :in-theory (e/d (fn-resource-ledgerp fn-rl-budget-list)
+    (fn-rl-budgetp fn-rl-list-9-fields nth update-nth))))))
+
+(local (defthm fn-rl-bank-vectors
+ (implies (fn-resource-ledgerp ledger)
+  (and (fn-rv-vectorp (fn-rl-drawn-list ledger)) (fn-rv-vectorp (fn-rl-budget-list ledger))))
+ :hints (("Goal" :in-theory (e/d (fn-rv-vectorp fn-resource-ledgerp)
+  (fn-rl-drawnp fn-rl-budgetp fn-rl-drawn-list fn-rl-budget-list nth))))))
+
+(local (defthm fn-rl-drawni-nfix
+ (implies (and (fn-resource-ledgerp ledger) (natp i) (< i 9))
+  (equal (nfix (fn-rl-drawni i ledger)) (fn-rl-drawni i ledger)))
+ :hints (("Goal" :use fn-rl-drawni-nat :in-theory (disable fn-rl-drawni-nat fn-rl-drawni fn-rl-drawn-length)))))
+
+(local (defthm fn-rl-charge-nine-unfolds
+ (implies (equal (nth 1 ledger) (list x0 x1 x2 x3 x4 x5 x6 x7 x8))
+ (let* ((demand (list a0 a1 a2 a3 a4 a5 a6 a7 a8))
+        (after (update-fn-rl-gensi slot gen
+                  (update-fn-rl-phasesi slot phase (fn-rl-charge-from 0 slot demand ledger)))))
+  (equal after
+   (fn-rl-proof-row-write slot (list* phase gen (list (nfix a0) (nfix a1) (nfix a2) (nfix a3) (nfix a4) (nfix a5) (nfix a6) (nfix a7) (nfix a8)))
+    (update-nth 1
+      (list (+ x0 (nfix a0)) (+ x1 (nfix a1)) (+ x2 (nfix a2)) (+ x3 (nfix a3)) (+ x4 (nfix a4)) (+ x5 (nfix a5)) (+ x6 (nfix a6)) (+ x7 (nfix a7)) (+ x8 (nfix a8))) ledger)))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (e/d (fn-rl-charge-from fn-rl-update-ci fn-rl-proof-row-write)
+   (nth update-nth fn-rl-update-nth-cons nfix default-plus-1 default-plus-2))))))
+
+(local (defthm fn-rl-charge-effects
+ (implies (and (fn-resource-ledgerp ledger) (fn-rv-vectorp demand))
+  (equal (update-fn-rl-gensi slot gen
+          (update-fn-rl-phasesi slot phase (fn-rl-charge-from 0 slot demand ledger)))
+         (fn-rl-proof-row-write slot (list* phase gen demand)
+           (update-nth 1 (fn-rv-plus (fn-rl-drawn-list ledger) demand) ledger))))
+ :rule-classes nil
+ :hints (("Goal"
+  :use ((:instance fn-rl-list-9-fields (v demand)) fn-rl-drawn-list-is-field
+        (:instance fn-rl-charge-nine-unfolds (a0 (nth 0 demand)) (x0 (fn-rl-drawni 0 ledger)) (a1 (nth 1 demand)) (x1 (fn-rl-drawni 1 ledger)) (a2 (nth 2 demand)) (x2 (fn-rl-drawni 2 ledger)) (a3 (nth 3 demand)) (x3 (fn-rl-drawni 3 ledger)) (a4 (nth 4 demand)) (x4 (fn-rl-drawni 4 ledger)) (a5 (nth 5 demand)) (x5 (fn-rl-drawni 5 ledger)) (a6 (nth 6 demand)) (x6 (fn-rl-drawni 6 ledger)) (a7 (nth 7 demand)) (x7 (fn-rl-drawni 7 ledger)) (a8 (nth 8 demand)) (x8 (fn-rl-drawni 8 ledger))) )
+  :in-theory (e/d (fn-rv-plus fn-rl-drawn-list)
+   (fn-rl-charge-from fn-rl-proof-row-write update-fn-rl-gensi update-fn-rl-phasesi
+    fn-rl-list-9-fields fn-rl-drawn-list-is-field fn-rl-drawni-nat fn-rl-drawni nfix
+    nth update-nth fn-rl-update-nth-cons fn-rv-nats-p fn-rv-vectorp default-plus-1 default-plus-2))))))
+
+(local (defthm fn-rl-rows-from-drawn-update
+ (equal (fn-rl-rows-from i (update-nth 1 v ledger)) (fn-rl-rows-from i ledger))
+ :hints (("Goal" :induct (fn-rl-rows-from i ledger)
+  :in-theory (e/d (fn-rl-rows-from fn-rl-demand-list) (nth update-nth))))))
+
+(local (defthm fn-rl-bank-row-write
+ (implies (and (fn-resource-ledgerp ledger) (natp slot) (< slot (fn-rl-count ledger))
+               (true-listp row) (equal (len row) 11) (fn-rv-vectorp drawn))
+  (equal (fn-rl-bank (fn-rl-proof-row-write slot row (update-nth 1 drawn ledger)))
+         (fn-rv-make (fn-rl-budget-list ledger) drawn
+            (update-nth slot row (fn-rl-rows-from 0 ledger)))))
+ :hints (("Goal"
+  :use ((:instance fn-rl-proof-row-write-rows (i 0) (ledger (update-nth 1 drawn ledger)))
+        (:instance fn-rl-list-9-fields (v drawn)) fn-rl-count-nat)
+  :in-theory (e/d (fn-rl-bank fn-rl-budget-list fn-rl-drawn-list fn-rl-count)
+    (fn-rl-rows-from fn-rl-proof-row-write fn-rl-proof-row-write-rows fn-rl-list-9-fields
+     fn-rl-budget-list-is-field fn-rl-drawn-list-is-field fn-rl-count-nat
+     nth update-nth fn-rv-make fn-rv-vectorp))))))
+
+(local (defthm fn-rl-charge-bank-effects
+ (implies (and (fn-resource-ledgerp ledger) (fn-rl-slotp slot ledger) (fn-rv-vectorp demand))
+  (equal (fn-rl-bank (update-fn-rl-gensi slot gen
+          (update-fn-rl-phasesi slot phase (fn-rl-charge-from 0 slot demand ledger))))
+         (fn-rv-make (fn-rl-budget-list ledger) (fn-rv-plus (fn-rl-drawn-list ledger) demand)
+                    (update-nth slot (list* phase gen demand) (fn-rl-rows-from 0 ledger)))))
+ :hints (("Goal" :use (fn-rl-charge-effects fn-rl-bank-vectors
+    (:instance fn-rl-bank-row-write (row (list* phase gen demand))
+       (drawn (fn-rv-plus (fn-rl-drawn-list ledger) demand))))
+  :in-theory (e/d (fn-rl-slotp)
+    (fn-rl-bank-row-write fn-rl-bank-vectors fn-rl-bank fn-rl-proof-row-write fn-rl-charge-from
+     update-fn-rl-phasesi update-fn-rl-gensi fn-rl-drawn-list fn-rl-budget-list
+     fn-rv-plus fn-rv-vectorp fn-rv-make fn-rl-rows-from nth update-nth))))))
+
+(local (defthm fn-rl-release-nine-unfolds
+ (implies (equal (nth 1 ledger) (list x0 x1 x2 x3 x4 x5 x6 x7 x8))
+  (equal (update-fn-rl-gensi slot gen
+           (update-fn-rl-phasesi slot phase (fn-rl-release-from 0 slot *fn-rv-reusable-mask* ledger)))
+    (fn-rl-proof-row-write slot (list* phase gen *fn-rv-zero*)
+     (update-nth 1 (list (nfix (- x0 (fn-rl-c0i slot ledger))) (nfix (- x1 (fn-rl-c1i slot ledger))) (nfix (- x2 (fn-rl-c2i slot ledger))) (nfix (- x3 (fn-rl-c3i slot ledger))) (nfix (- x4 0)) (nfix (- x5 0)) (nfix (- x6 0)) (nfix (- x7 0)) (nfix (- x8 0))) ledger))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (e/d (fn-rl-release-from fn-rl-ci fn-rl-update-ci fn-rl-proof-row-write)
+  (nth update-nth fn-rl-update-nth-cons nfix default-plus-1 default-plus-2 default-minus))))))
+
+(local (defthm fn-rl-c0i-nfix
+ (implies (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (fn-rl-slotp slot ledger))
+   (equal (nfix (fn-rl-c0i slot ledger)) (fn-rl-c0i slot ledger)))
+ :hints (("Goal" :use (:instance fn-rl-c0i-nat (i slot))
+  :in-theory (e/d (fn-rl-wfp fn-rl-slotp) (fn-rl-c0i fn-rl-c0i-nat))))))
+
+(local (defthm fn-rl-c1i-nfix
+ (implies (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (fn-rl-slotp slot ledger))
+   (equal (nfix (fn-rl-c1i slot ledger)) (fn-rl-c1i slot ledger)))
+ :hints (("Goal" :use (:instance fn-rl-c1i-nat (i slot))
+  :in-theory (e/d (fn-rl-wfp fn-rl-slotp) (fn-rl-c1i fn-rl-c1i-nat))))))
+
+(local (defthm fn-rl-c2i-nfix
+ (implies (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (fn-rl-slotp slot ledger))
+   (equal (nfix (fn-rl-c2i slot ledger)) (fn-rl-c2i slot ledger)))
+ :hints (("Goal" :use (:instance fn-rl-c2i-nat (i slot))
+  :in-theory (e/d (fn-rl-wfp fn-rl-slotp) (fn-rl-c2i fn-rl-c2i-nat))))))
+
+(local (defthm fn-rl-c3i-nfix
+ (implies (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (fn-rl-slotp slot ledger))
+   (equal (nfix (fn-rl-c3i slot ledger)) (fn-rl-c3i slot ledger)))
+ :hints (("Goal" :use (:instance fn-rl-c3i-nat (i slot))
+  :in-theory (e/d (fn-rl-wfp fn-rl-slotp) (fn-rl-c3i fn-rl-c3i-nat))))))
+
+(local (defthm fn-rl-release-effects
+ (implies (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (fn-rl-slotp slot ledger))
+  (equal (update-fn-rl-gensi slot gen
+          (update-fn-rl-phasesi slot phase (fn-rl-release-from 0 slot *fn-rv-reusable-mask* ledger)))
+    (fn-rl-proof-row-write slot (list* phase gen *fn-rv-zero*)
+      (update-nth 1 (fn-rv-monus (fn-rl-drawn-list ledger)
+                    (fn-rv-reusable (fn-rl-demand-list slot ledger))) ledger))))
+ :rule-classes nil
+ :hints (("Goal" :use (fn-rl-drawn-list-is-field (:instance fn-rl-release-nine-unfolds (x0 (fn-rl-drawni 0 ledger)) (x1 (fn-rl-drawni 1 ledger)) (x2 (fn-rl-drawni 2 ledger)) (x3 (fn-rl-drawni 3 ledger)) (x4 (fn-rl-drawni 4 ledger)) (x5 (fn-rl-drawni 5 ledger)) (x6 (fn-rl-drawni 6 ledger)) (x7 (fn-rl-drawni 7 ledger)) (x8 (fn-rl-drawni 8 ledger))))
+ :in-theory (e/d (fn-rv-monus fn-rv-reusable fn-rv-keep fn-rl-drawn-list fn-rl-demand-list)
+  (fn-rl-release-from fn-rl-proof-row-write update-fn-rl-gensi update-fn-rl-phasesi
+   fn-rl-drawn-list-is-field fn-rl-drawni fn-rl-c0i fn-rl-c1i fn-rl-c2i fn-rl-c3i
+   nth update-nth fn-rl-update-nth-cons fn-rl-wfp fn-rl-slotp nfix
+   default-plus-1 default-plus-2 default-minus))))))
+
+(local (defthm fn-rl-gens-update-noop
+ (implies (and (fn-resource-ledgerp ledger) (natp slot) (< slot (fn-rl-gens-length ledger)))
+  (equal (update-fn-rl-gensi slot (fn-rl-gensi slot ledger) ledger) ledger))
+ :hints (("Goal" :in-theory (e/d (fn-resource-ledgerp fn-rl-gens-length fn-rl-gensi update-fn-rl-gensi)
+   (fn-rl-budgetp fn-rl-drawnp fn-rl-phasesp fn-rl-gensp fn-rl-c0p fn-rl-c1p fn-rl-c2p
+    fn-rl-c3p fn-rl-c4p fn-rl-c5p fn-rl-c6p fn-rl-c7p fn-rl-c8p nth update-nth))))))
+
+(local (defthm fn-rl-settle-keeps-slotp
+ (equal (fn-rl-slotp s (mv-nth 1 (fn-rl-settle slot gen ledger))) (fn-rl-slotp s ledger))
+ :hints (("Goal" :in-theory (e/d (fn-rl-settle fn-rl-slotp fn-rl-count)
+     (fn-rl-release-from fn-rl-gensi fn-rl-phasesi nth update-nth))))))
+
+(local (defthm fn-rl-settle-keeps-gensi
+ (equal (fn-rl-gensi s (mv-nth 1 (fn-rl-settle slot gen ledger))) (fn-rl-gensi s ledger))
+ :hints (("Goal" :in-theory (e/d (fn-rl-settle fn-rl-gensi)
+     (fn-rl-release-from fn-rl-phasesi nth update-nth))))))
+
+(local (defthm fn-rl-slot-c0-nat
+ (implies (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (fn-rl-slotp slot ledger))
+  (natp (fn-rl-c0i slot ledger)))
+ :rule-classes (:rewrite :type-prescription)
+ :hints (("Goal" :use (:instance fn-rl-c0i-nat (i slot))
+  :in-theory (e/d (fn-rl-wfp fn-rl-slotp)
+      (fn-rl-c0i fn-rl-c0i-nat))))))
+
+(local (defthm fn-rl-slot-c1-nat
+ (implies (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (fn-rl-slotp slot ledger))
+  (natp (fn-rl-c1i slot ledger)))
+ :rule-classes (:rewrite :type-prescription)
+ :hints (("Goal" :use (:instance fn-rl-c1i-nat (i slot))
+  :in-theory (e/d (fn-rl-wfp fn-rl-slotp)
+      (fn-rl-c1i fn-rl-c1i-nat))))))
+
+(local (defthm fn-rl-slot-c2-nat
+ (implies (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (fn-rl-slotp slot ledger))
+  (natp (fn-rl-c2i slot ledger)))
+ :rule-classes (:rewrite :type-prescription)
+ :hints (("Goal" :use (:instance fn-rl-c2i-nat (i slot))
+  :in-theory (e/d (fn-rl-wfp fn-rl-slotp)
+      (fn-rl-c2i fn-rl-c2i-nat))))))
+
+(local (defthm fn-rl-slot-c3-nat
+ (implies (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (fn-rl-slotp slot ledger))
+  (natp (fn-rl-c3i slot ledger)))
+ :rule-classes (:rewrite :type-prescription)
+ :hints (("Goal" :use (:instance fn-rl-c3i-nat (i slot))
+  :in-theory (e/d (fn-rl-wfp fn-rl-slotp)
+      (fn-rl-c3i fn-rl-c3i-nat))))))
+
+(local (defthm fn-rl-slot-c4-nat
+ (implies (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (fn-rl-slotp slot ledger))
+  (natp (fn-rl-c4i slot ledger)))
+ :rule-classes (:rewrite :type-prescription)
+ :hints (("Goal" :use (:instance fn-rl-c4i-nat (i slot))
+  :in-theory (e/d (fn-rl-wfp fn-rl-slotp)
+      (fn-rl-c4i fn-rl-c4i-nat))))))
+
+(local (defthm fn-rl-slot-c5-nat
+ (implies (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (fn-rl-slotp slot ledger))
+  (natp (fn-rl-c5i slot ledger)))
+ :rule-classes (:rewrite :type-prescription)
+ :hints (("Goal" :use (:instance fn-rl-c5i-nat (i slot))
+  :in-theory (e/d (fn-rl-wfp fn-rl-slotp)
+      (fn-rl-c5i fn-rl-c5i-nat))))))
+
+(local (defthm fn-rl-slot-c6-nat
+ (implies (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (fn-rl-slotp slot ledger))
+  (natp (fn-rl-c6i slot ledger)))
+ :rule-classes (:rewrite :type-prescription)
+ :hints (("Goal" :use (:instance fn-rl-c6i-nat (i slot))
+  :in-theory (e/d (fn-rl-wfp fn-rl-slotp)
+      (fn-rl-c6i fn-rl-c6i-nat))))))
+
+(local (defthm fn-rl-slot-c7-nat
+ (implies (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (fn-rl-slotp slot ledger))
+  (natp (fn-rl-c7i slot ledger)))
+ :rule-classes (:rewrite :type-prescription)
+ :hints (("Goal" :use (:instance fn-rl-c7i-nat (i slot))
+  :in-theory (e/d (fn-rl-wfp fn-rl-slotp)
+      (fn-rl-c7i fn-rl-c7i-nat))))))
+
+(local (defthm fn-rl-slot-c8-nat
+ (implies (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (fn-rl-slotp slot ledger))
+  (natp (fn-rl-c8i slot ledger)))
+ :rule-classes (:rewrite :type-prescription)
+ :hints (("Goal" :use (:instance fn-rl-c8i-nat (i slot))
+  :in-theory (e/d (fn-rl-wfp fn-rl-slotp)
+      (fn-rl-c8i fn-rl-c8i-nat))))))
+
+(local (defthm fn-rl-demand-list-vectorp
+ (implies (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (fn-rl-slotp slot ledger))
+  (fn-rv-vectorp (fn-rl-demand-list slot ledger)))
+ :hints (("Goal" :in-theory (e/d (fn-rl-demand-list fn-rv-vectorp fn-rv-nats-p)
+  (fn-rl-wfp fn-rl-slotp fn-rl-c0i fn-rl-c1i fn-rl-c2i fn-rl-c3i fn-rl-c4i
+   fn-rl-c5i fn-rl-c6i fn-rl-c7i fn-rl-c8i))))))
+
+(local (defthm fn-rl-settle-gens-noop
+ (implies (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (fn-rl-slotp slot ledger))
+  (equal (update-fn-rl-gensi slot (fn-rl-gensi slot ledger) (mv-nth 1 (fn-rl-settle slot gen ledger)))
+         (mv-nth 1 (fn-rl-settle slot gen ledger))))
+ :hints (("Goal" :use ((:instance fn-rl-slot-bounds (ledger (mv-nth 1 (fn-rl-settle slot gen ledger))))
+          (:instance fn-rl-gens-update-noop (ledger (mv-nth 1 (fn-rl-settle slot gen ledger)))))
+  :in-theory (disable fn-rl-gens-update-noop fn-rl-slot-bounds fn-rl-settle fn-rl-wfp fn-rl-slotp fn-resource-ledgerp
+   update-fn-rl-gensi fn-rl-gensi fn-rl-gens-length fn-rl-phases-length)))))
+
+(local (defthm fn-rl-settle-bank-effects
+ (implies (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (fn-rl-slotp slot ledger)
+               (equal (fn-rl-phasesi slot ledger) 1) (equal (fn-rl-gensi slot ledger) gen))
+  (equal (fn-rl-bank (mv-nth 1 (fn-rl-settle slot gen ledger)))
+   (fn-rv-make (fn-rl-budget-list ledger)
+     (fn-rv-monus (fn-rl-drawn-list ledger) (fn-rv-reusable (fn-rl-demand-list slot ledger)))
+     (update-nth slot (fn-rv-idle-row (fn-rl-gensi slot ledger)) (fn-rl-rows-from 0 ledger)))))
+ :hints (("Goal"
+  :use ((:instance fn-rl-release-effects (phase 0) (gen (fn-rl-gensi slot ledger)))
+        fn-rl-settle-gens-noop fn-rl-bank-vectors
+        (:instance fn-rl-bank-row-write (row (fn-rv-idle-row (fn-rl-gensi slot ledger)))
+         (drawn (fn-rv-monus (fn-rl-drawn-list ledger) (fn-rv-reusable (fn-rl-demand-list slot ledger))))))
+ :in-theory (e/d (fn-rl-settle fn-rv-idle-row fn-rl-slotp)
+  (fn-rl-settle-gens-noop fn-rl-bank-row-write fn-rl-bank-vectors fn-rl-bank fn-rl-wfp
+   fn-rl-release-from fn-rl-proof-row-write fn-rl-rows-from fn-rl-gensi fn-rl-phasesi
+   fn-rl-budget-list fn-rl-drawn-list fn-rl-demand-list fn-rv-monus fn-rv-reusable fn-rv-make
+   fn-rv-vectorp update-fn-rl-phasesi update-fn-rl-gensi nth update-nth))))))
+
+(local (defthm fn-rl-drawni-sum-nfix
+ (implies (and (fn-resource-ledgerp ledger) (natp i) (< i 9))
+  (equal (nfix (+ (fn-rl-drawni i ledger) (nfix d))) (+ (fn-rl-drawni i ledger) (nfix d))))
+ :hints (("Goal" :use fn-rl-drawni-nat :in-theory (disable fn-rl-drawni-nat fn-rl-drawni fn-rl-drawn-length)))))
+
+(local (defthm fn-rl-drawni-sum-nfix-left
+ (implies (and (fn-resource-ledgerp ledger) (natp i) (< i 9))
+  (equal (nfix (+ (nfix d) (fn-rl-drawni i ledger))) (+ (nfix d) (fn-rl-drawni i ledger))))
+ :hints (("Goal" :use fn-rl-drawni-sum-nfix
+ :in-theory (disable fn-rl-drawni-sum-nfix fn-rl-drawni nfix default-plus-1 default-plus-2)))))
+
+(local (defthm fn-rl-budgeti-nfix
+ (implies (and (fn-resource-ledgerp ledger) (natp i) (< i 9))
+  (equal (nfix (fn-rl-budgeti i ledger)) (fn-rl-budgeti i ledger)))
+ :hints (("Goal" :use fn-rl-budgeti-nat
+   :in-theory (disable fn-rl-budgeti fn-rl-budgeti-nat fn-rl-budget-length)))))
+
+(local (defthm fn-rl-fits-nine-unfolds
+ (implies (fn-resource-ledgerp ledger)
+  (equal (fn-rl-fits-from 0 (list a0 a1 a2 a3 a4 a5 a6 a7 a8) ledger)
+   (fn-rv-below (fn-rv-plus (fn-rl-drawn-list ledger) (list a0 a1 a2 a3 a4 a5 a6 a7 a8)) (fn-rl-budget-list ledger))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (e/d (fn-rl-fits-from fn-rv-plus fn-rv-below fn-rl-drawn-list fn-rl-budget-list)
+  (fn-rl-drawn-list-is-field fn-rl-budget-list-is-field fn-rl-drawni fn-rl-budgeti
+    nth update-nth nfix default-plus-1 default-plus-2 default-less-than-1 default-less-than-2))))))
+
+(local (defthm fn-rl-fits-correspondence
+ (implies (and (fn-resource-ledgerp ledger) (fn-rv-vectorp demand))
+  (equal (fn-rl-fits-from 0 demand ledger)
+         (fn-rv-below (fn-rv-plus (fn-rl-drawn-list ledger) demand) (fn-rl-budget-list ledger))))
+ :hints (("Goal" :use ((:instance fn-rl-list-9-fields (v demand))
+  (:instance fn-rl-fits-nine-unfolds (a0 (nth 0 demand)) (a1 (nth 1 demand)) (a2 (nth 2 demand)) (a3 (nth 3 demand)) (a4 (nth 4 demand)) (a5 (nth 5 demand)) (a6 (nth 6 demand)) (a7 (nth 7 demand)) (a8 (nth 8 demand))))
+ :in-theory (disable fn-rl-fits-from fn-rv-plus fn-rv-below fn-rl-drawn-list fn-rl-budget-list
+  fn-rl-list-9-fields fn-rl-drawn-list-is-field fn-rl-budget-list-is-field nth update-nth)))))
+
+(local (defthm fn-rl-slotp-correspondence
+ (implies (fn-resource-ledgerp ledger)
+  (equal (fn-rv-slotp slot (fn-rl-bank ledger)) (fn-rl-slotp slot ledger)))
+ :hints (("Goal" :in-theory (e/d (fn-rv-slotp fn-rv-slot-count fn-rl-slotp fn-rl-bank)
+  (fn-rv-make fn-rl-count fn-rl-rows-from fn-rl-drawn-list fn-rl-budget-list))))))
+
+(local (defthm fn-rl-bank-slot-fields
+ (implies (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (fn-rl-slotp slot ledger))
+  (and (equal (fn-rv-phase slot (fn-rl-bank ledger)) (fn-rl-phasesi slot ledger))
+       (equal (fn-rv-gen slot (fn-rl-bank ledger)) (fn-rl-gensi slot ledger))
+       (equal (fn-rv-demand slot (fn-rl-bank ledger)) (fn-rl-demand-list slot ledger))))
+ :hints (("Goal" :use (fn-rl-slot-bounds
+  (:instance fn-rl-phasesi-nat (i slot)) (:instance fn-rl-gensi-nat (i slot)))
+  :in-theory (e/d (fn-rv-phase fn-rv-gen fn-rv-demand fn-rv-row fn-rl-bank fn-rl-slotp)
+   (fn-rl-slot-bounds fn-rl-phasesi-nat fn-rl-gensi-nat fn-rl-wfp fn-rl-phasesi fn-rl-gensi
+    fn-rl-count fn-rl-rows-from fn-rl-drawn-list fn-rl-budget-list fn-rl-demand-list
+    fn-rv-make nth update-nth))))))
+
+(local (defthm fn-rl-bank-fields
+ (and (equal (fn-rv-budget (fn-rl-bank ledger)) (fn-rl-budget-list ledger))
+      (equal (fn-rv-drawn (fn-rl-bank ledger)) (fn-rl-drawn-list ledger))
+      (equal (fn-rv-slots (fn-rl-bank ledger)) (fn-rl-rows-from 0 ledger)))
+ :hints (("Goal" :in-theory (e/d (fn-rl-bank)
+       (fn-rv-make fn-rl-rows-from fn-rl-budget-list fn-rl-drawn-list))))))
+
+(defthm fn-rl-draw-correspondence
+ (implies (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger))
+  (let* ((bank (fn-rl-bank ledger))
+         (logical (fn-rv-draw bank slot demand))
+         (result (fn-rl-draw slot demand ledger))
+         (word (mv-nth 0 result)) (token (mv-nth 1 result)) (after (mv-nth 2 result)))
+   (and (equal word
+          (if (and (equal (car logical) :drawn)
+                   (<= *fn-rl-word-max* (fn-rv-gen slot bank)))
+              :slot-exhausted (car logical)))
+        (equal token (if (equal word :drawn) (caddr logical) 0))
+        (equal (fn-rl-bank after) (if (equal word :drawn) (cadr logical) bank))
+        (implies (not (equal word :drawn)) (equal after ledger)))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (e/d (fn-rl-draw fn-rl-charge fn-rv-draw fn-rv-charge)
+    (fn-rl-bank fn-rl-budget-list fn-rl-drawn-list fn-rl-rows-from fn-rl-charge-from
+     fn-rl-wfp fn-rl-slotp fn-resource-ledgerp fn-rl-fits-from fn-rl-phasesi fn-rl-gensi
+     fn-rv-slotp fn-rv-phase fn-rv-gen fn-rv-budget fn-rv-drawn fn-rv-slots
+     fn-rv-make fn-rv-plus fn-rv-below fn-rv-vectorp
+     update-fn-rl-phasesi update-fn-rl-gensi nth update-nth)))))
+
+(defthm fn-rl-settle-correspondence
+ (implies (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger))
+  (let* ((bank (fn-rl-bank ledger))
+         (logical (fn-rv-settle bank slot gen))
+         (result (fn-rl-settle slot gen ledger))
+         (word (mv-nth 0 result)) (after (mv-nth 1 result)))
+   (and (equal word (car logical))
+        (equal (fn-rl-bank after) (cadr logical))
+        (implies (not (equal word :settled)) (equal after ledger)))))
+ :rule-classes nil
+ :hints (("Goal" :use fn-rl-settle-bank-effects :in-theory (e/d (fn-rl-settle fn-rv-settle fn-rv-drawnp)
+  (fn-rl-settle-bank-effects fn-rl-bank fn-rl-wfp fn-rl-slotp fn-resource-ledgerp fn-rl-release-from
+   fn-rl-phasesi fn-rl-gensi fn-rl-demand-list fn-rl-rows-from fn-rl-budget-list fn-rl-drawn-list
+   fn-rv-slotp fn-rv-phase fn-rv-gen fn-rv-demand fn-rv-budget fn-rv-drawn fn-rv-slots
+   fn-rv-make fn-rv-monus fn-rv-reusable fn-rv-idle-row update-fn-rl-phasesi nth update-nth)))))
+
+; Invariant-transfer corollaries use the named boundary and logical keystones.
+; Their representation premises match the guarded consumer; necessity of
+; those premises for an okp-only theorem is not claimed.
+(defthm fn-rl-draw-keeps-okp
+ (implies (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (fn-rv-okp (fn-rl-bank ledger)))
+  (fn-rv-okp (fn-rl-bank (mv-nth 2 (fn-rl-draw slot demand ledger)))))
+ :hints (("Goal" :use (fn-rl-draw-correspondence
+   (:instance fn-rv-charge-keeps-okp (bank (fn-rl-bank ledger)) (phase 1)))
+  :in-theory (e/d (fn-rv-draw)
+   (fn-rl-draw fn-rl-bank fn-rl-wfp fn-resource-ledgerp fn-rv-okp fn-rv-charge
+    fn-rv-gen fn-rl-budget-list fn-rl-drawn-list fn-rl-rows-from)))))
+
+(defthm fn-rl-settle-keeps-okp
+ (implies (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (fn-rv-okp (fn-rl-bank ledger)))
+  (fn-rv-okp (fn-rl-bank (mv-nth 1 (fn-rl-settle slot gen ledger)))))
+ :hints (("Goal" :use (fn-rl-settle-correspondence
+    (:instance fn-rv-settle-keeps-okp (bank (fn-rl-bank ledger))))
+  :in-theory (disable fn-rl-settle fn-rl-bank fn-rl-wfp fn-resource-ledgerp fn-rv-okp fn-rv-settle
+    fn-rl-budget-list fn-rl-drawn-list fn-rl-rows-from))))
+
+(defthm fn-rl-draw-refusal-preserves-ledger
+ (implies (not (equal (mv-nth 0 (fn-rl-draw slot demand ledger)) :drawn))
+  (equal (mv-nth 2 (fn-rl-draw slot demand ledger)) ledger))
+ :hints (("Goal" :in-theory (e/d (fn-rl-draw fn-rl-charge)
+   (fn-rl-charge-from fn-rl-fits-from fn-rl-slotp fn-rv-vectorp fn-rl-gensi fn-rl-phasesi
+    update-fn-rl-phasesi update-fn-rl-gensi)))))
+
+(defthm fn-rl-settle-refusal-preserves-ledger
+ (implies (not (equal (mv-nth 0 (fn-rl-settle slot gen ledger)) :settled))
+  (equal (mv-nth 1 (fn-rl-settle slot gen ledger)) ledger))
+ :hints (("Goal" :in-theory (e/d (fn-rl-settle)
+   (fn-rl-release-from fn-rl-slotp fn-rl-gensi fn-rl-phasesi update-fn-rl-phasesi)))))
 )
