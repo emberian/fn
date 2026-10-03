@@ -398,7 +398,7 @@
                  (:instance fn-proto-pin-buckets-are-built)))
            ("range" :test (and (fn-gidx-pinp index) (consp args) (null (cdr args))
                                (fn-nntp-range-okp (fn-nntp-parse-range (car args))))
-            :cat (fn-nntp-over-range-ovw session v (car args) (fn-nntp-keywordp keyword "XOVER") fn-cat)
+            :cat (fn-nntp-over-range-ovw session v (car args) (fn-nntp-keywordp keyword "XOVER") nil fn-cat)
             :view :pinned :effect :none
             :by ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
                  (:instance fn-nntp-xref-reply-col-is-xref-reply)
@@ -441,7 +441,7 @@
                  (:instance fn-proto-statep-article-listp)
                  (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-proto-pin-buckets-are-built))))
-   :cost (:unrestricted "a range with no Xref server named: one cursor quantum of W numbers per scheduling step (books/served-plan-cursor.lisp); with one (the served environment always names one): the column arm, whole (fn-nntp-over-range-served-cat)"
+   :cost (:unrestricted "one cursor quantum of W numbers per scheduling step (books/served-plan-cursor.lisp), including the configured Xref server captured by the cursor; retained output bytes are not yet separately bounded"
           :restricted "the reference walk over the projected pinned archive (fn-nntp-over-range-indexed, no cursor)")
    :teeth ("OVER 1-3" "OVER 2" "OVER 2-" "OVER 9-10" "OVER" "OVER <a@x>" "OVER 1-3 x"))
   ("XOVER"
@@ -456,7 +456,7 @@
                  (:instance fn-proto-pin-buckets-are-built)))
            ("range" :test (and (fn-gidx-pinp index) (consp args) (null (cdr args))
                                (fn-nntp-range-okp (fn-nntp-parse-range (car args))))
-            :cat (fn-nntp-over-range-ovw session v (car args) (fn-nntp-keywordp keyword "XOVER") fn-cat)
+            :cat (fn-nntp-over-range-ovw session v (car args) (fn-nntp-keywordp keyword "XOVER") nil fn-cat)
             :view :pinned :effect :none
             :by ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
                  (:instance fn-nntp-xref-reply-col-is-xref-reply)
@@ -499,7 +499,7 @@
                  (:instance fn-proto-statep-article-listp)
                  (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-proto-pin-buckets-are-built))))
-   :cost (:unrestricted "a range with no Xref server named: one cursor quantum of W numbers per scheduling step (books/served-plan-cursor.lisp); with one (the served environment always names one): the column arm, whole (fn-nntp-over-range-served-cat)"
+   :cost (:unrestricted "one cursor quantum of W numbers per scheduling step (books/served-plan-cursor.lisp), including the configured Xref server captured by the cursor; retained output bytes are not yet separately bounded"
           :restricted "the reference walk over the projected pinned archive (fn-nntp-over-range-indexed, no cursor)")
    :teeth ("XOVER 1-3" "XOVER 2" "XOVER 2-" "XOVER 9-10" "XOVER" "XOVER <a@x>" "XOVER 1-3 x"))
   ("HDR"
@@ -520,7 +520,14 @@
   ("NEWGROUPS"
    :view :pinned :view-decided (:completed "PRF-1237") :effect :none :view-rfc "NNT-042 by silence today (the pinned creation facts filtered to the pinned groups); decided c07 B: the completed discovery snapshot; RFC 3977 7.3")
   ("NEWNEWS"
-   :view :pinned :view-decided (:completed "PRF-1237") :effect :none :view-rfc "NNT-042 by silence today (the pinned articles, one whole walk per call); decided c07 C: one completed discovery snapshot captured at the first quantum and held across quanta; RFC 3977 7.4")
+   :view :pinned :view-decided (:completed "PRF-1237") :effect :none :view-rfc "NNT-042 by silence today (the pinned articles, one whole metadata walk per call); decided c07 C: one completed discovery snapshot captured at the first quantum and held across quanta; RFC 3977 7.4"
+   :forms (("any" :test t
+            :cat (fn-nntp-newnews-response-cat session archive env args fn-arena fn-cat)
+            :view :pinned :effect :none
+            :by ((:instance fn-nntp-newnews-response-cat-is-newnews-response))))
+   :cost (:unrestricted "one whole metadata scan and whole response allocation; catalog tombstone column avoids payload I/O; bounded cursor continuation remains GEN-CURSOR debt"
+          :restricted "the reference whole pinned archive walk, including payload tombstone reads")
+   :teeth ("NEWNEWS * 20261001 000000 GMT" "NEWNEWS fn.* 20261001 000000 GMT" "NEWNEWS fn.* 20261001 000000" "NEWNEWS"))
   ("DATE"
    :view :none :effect :none :view-rfc "RFC 3977 7.1; no article view. DEFECT (c07): answers the clock observation pinned at accept (fn-nntp-env-observation; books/served.lisp fn-served-conn-observation), not the current reading; fixed separately")
   ("POST"

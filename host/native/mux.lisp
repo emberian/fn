@@ -134,7 +134,16 @@
   ;; is installed.
   (zin nil) (zout nil) (zstash nil)
   ;; Original output storage and issued window identity remain retained.
-  (wire-runtime nil))
+  (wire-runtime nil)
+  ;; r71 F7: (READ LINE-SINCE SINCE) while the step's cold page is read off
+  ;; this loop (host/native/owner.lisp fnn-owner-cold-poll), the input kept;
+  ;; then (WORD SINCE NOW LIMIT LINE-SINCE), the word the step runs again
+  ;; with (fnn-owner-handle-chunk-step).
+  (cold nil) (cold-word nil))
+
+;;; How often a loop asks whether a connection's cold page came (r71 F7):
+;;; the read's worker has no way to wake the loop, so the loop looks.
+(defconstant +fnn-mux-cold-poll-ms+ 2)
 
 (defun fnn-mux-ticks (seconds)
   (+ (fnn-now) (round (* seconds internal-time-units-per-second))))
@@ -291,6 +300,10 @@ the TLS session, then the socket.  Idempotent."
           (opened-cid (fnn-mux-conn-opened-cid conn))
           (was (fnn-mux-conn-phase conn)))
       (setf (fnn-mux-conn-phase conn) :done)
+      ;; r71 F7: a page still owed is no longer this connection's to publish.
+      (when (fnn-mux-conn-cold conn)
+        (ignore-errors (fnn-owner-cold-abandon (first (fnn-mux-conn-cold conn))))
+        (setf (fnn-mux-conn-cold conn) nil))
       (fnn-owner-response-unpin service (or cid opened-cid))
       (when (fnn-mux-conn-ssl conn)
         (ignore-errors (fnn-%ssl-free (fnn-mux-conn-ssl conn)))
@@ -612,18 +625,29 @@ the same octets are handed to the next step."
   (let* ((service (fnn-mux-service loop))
          (incoming (fnn-mux-conn-input conn))
          (channel (fnn-mux-conn-channel conn))
+         (word (fnn-mux-conn-cold-word conn))
          (results (multiple-value-list
                    ;; PKT-858: a peer connection's read enters as ACL2's
                    ;; class for it (fnn-owner-peer-read-class: :reader while
                    ;; the disk sheds, so IHAVE/CHECK are answered 436/431
                    ;; at once instead of waiting for the barrier).
                    (let ((peerp (eq (fnn-mux-conn-class conn) :transit)))
-                     (fnn-owner-handle-chunk service (fnn-mux-conn-cid conn) incoming
-                                             (fnn-mux-conn-socket conn)
-                                             (if peerp
-                                                 (fnn-owner-peer-read-class service)
-                                               (fnn-mux-conn-class conn))
-                                             peerp)))))
+                     (setf (fnn-mux-conn-cold-word conn) nil)
+                     (destructuring-bind (&optional w since now limit line-since) word
+                       (fnn-owner-handle-chunk-step service (fnn-mux-conn-cid conn) incoming
+                                                    (fnn-mux-conn-socket conn)
+                                                    (if peerp
+                                                        (fnn-owner-peer-read-class service)
+                                                      (fnn-mux-conn-class conn))
+                                                    peerp w line-since since now limit))))))
+    ;; r71 F7: the page is read off this loop; the input stays in hand and
+    ;; the timer asks for it (fnn-mux-cold-check).
+    (when (eq (first results) :cold)
+      (setf (fnn-mux-conn-cold conn)
+            (list (second results) (fifth word) (fnn-owner-monotonic-ms))
+            (fnn-mux-conn-resume-at conn)
+            (+ (fnn-now) (round (* +fnn-mux-cold-poll-ms+ internal-time-units-per-second) 1000)))
+      (return-from fnn-mux-step nil))
     ;; Lane commit-onto-log: the step queued its submission for the
     ;; next commit quantum.  The rest is the submitted step's handling, with
     ;; the plan built when the completion arrives (fnn-mux-await-done).
@@ -705,6 +729,23 @@ the same octets are handed to the next step."
         (if (and (consp plan) (eq (first plan) :await))
             (fnn-mux-await loop conn (second plan) (third plan) after)
           (fnn-mux-queue-plan loop conn plan after))))))
+
+(defun fnn-mux-cold-check (loop conn)
+  "CONN's cold page: still owed (look again soon, never past ACL2's
+deadline), or the word the step runs again with."
+  (destructuring-bind (read line-since since) (fnn-mux-conn-cold conn)
+    (multiple-value-bind (word since now limit)
+        (fnn-owner-cold-poll (fnn-mux-service loop) read line-since since)
+      (if (consp word)
+          (setf (fnn-mux-conn-resume-at conn)
+                (+ (fnn-now) (round (* (min (second word) +fnn-mux-cold-poll-ms+)
+                                       internal-time-units-per-second)
+                                    1000)))
+        (progn
+          (setf (fnn-mux-conn-cold conn) nil
+                (fnn-mux-conn-cold-word conn)
+                (list word since now limit (or line-since since)))
+          (fnn-mux-work loop conn))))))
 
 (defun fnn-mux-await (loop conn step redeem after)
   "CONN waits for its submission's completion from the next commit quantum
@@ -1216,10 +1257,12 @@ included), no input in hand, no completion awaited, no resume timer."
               ((and (eq (fnn-mux-conn-phase conn) :serving)
                     (due (fnn-mux-conn-resume-at conn)))
                (setf (fnn-mux-conn-resume-at conn) nil)
-               (if (fnn-mux-conn-plan conn)
+               (cond
+                 ((fnn-mux-conn-cold conn) (fnn-mux-cold-check loop conn))
+                 ((fnn-mux-conn-plan conn)
                    (fnn-mux-queue-plan loop conn (fnn-mux-conn-plan conn)
-                                       (fnn-mux-conn-after conn))
-                 (fnn-mux-work loop conn)))
+                                       (fnn-mux-conn-after conn)))
+                 (t (fnn-mux-work loop conn))))
               ((and (fnn-mux-idle-eligible-p conn)
                     (due (fnn-mux-conn-idle-at conn)))
                (fnn-mux-idle loop conn))))

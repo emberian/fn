@@ -3359,13 +3359,13 @@ which the process is killed, or NIL."
       (fnn-refuse-io "the owner is stopping: the checkpoint publication ends before ~a batch ~d; the old checkpoint stays"
                      where count))))
 
-(defun fnn-checkpoint-walk (records)
+(defun fnn-checkpoint-walk (records arena)
   "The walk of the owner's captured RECORDS: each canonical payload's length
 and source (books/store-checkpoint-arena-writer.lisp fn-scka-srcs-n), a
 bounded number of rows per call (+fnn-checkpoint-batch-rows+; the calls are
 one walk: fn-scka-srcs-n-compose).  READS the arena.  The last state,
 (ROWS' LACC SACC), ROWS' empty."
-  (let ((walk (list records nil nil)) (arena (fnn-live-arena)))
+  (let ((walk (list records nil nil)))
     (loop
       (when (atom (first walk)) (return walk))
       (fnn-checkpoint-yield "walk" (length (second walk)))
@@ -3380,7 +3380,7 @@ frames written, newest first, each (EOFF ELEN HANDLES) -- the entry's file
 offset (the frame start less 32), its protected prefix's length, and the
 step's handles (fn-xrt-step-handles).  :off for the offline verbs.")
 
-(defun fnn-checkpoint-write-arena-steps (fd arun sequence segment-bound file-bound st fault)
+(defun fnn-checkpoint-write-arena-steps (fd arun sequence segment-bound file-bound st fault arena)
   "Write the arena run's frames to FD step by step (fn-scka-write-step: step 0
 the head, each later step one batch of whole canonical payloads read through
 the arena, framed and admitted by the reader's rule); the number of steps.
@@ -3390,7 +3390,7 @@ capture.  KEYSTONE fn-scka-write-run-is-run-segments
 are the arena run the load reads.  The step READS the arena and updates only
 the publication buffer ST."
   (destructuring-bind (n count state) arun
-    (let ((steps 0) (arena (fnn-live-arena)))
+    (let ((steps 0))
       (loop
         (when (fnn-core 'fn-scka-write-donep state count) (return steps))
         (fnn-checkpoint-yield "arena" steps)
@@ -3500,7 +3500,7 @@ take for the image region."
         ;; the image's words are not kept past the write
         (fnn-call 'fn-his-release (fnn-live-hrecs))))))
 
-(defun fnn-checkpoint-write-steps (fd setup segment sequence profile st arun)
+(defun fnn-checkpoint-write-steps (fd setup segment sequence profile st arun arena)
   "Write the file's frames to FD step by step: the arena run ARUN first
 (fnn-checkpoint-write-arena-steps), then the four tables (fn-ockp-step); the
 number of steps."
@@ -3508,7 +3508,7 @@ number of steps."
          (file-bound (fnn-core 'fn-store-sco-file-read-bound profile))
          (fault (fnn-checkpoint-batch-fault))
          (steps (fnn-checkpoint-write-arena-steps fd arun sequence segment-bound
-                                                  file-bound st fault))
+                                                  file-bound st fault arena))
          (state (fnn-core 'fn-ockp-initial-state (second setup) st)))
     (loop
       (when (fnn-core 'fn-ockp-donep state) (return steps))
@@ -3601,7 +3601,7 @@ it covers are dropped (fnn-log-drop; T8)."
                  (lambda (fd)
                    (fnn-history-image-write fd image)
                    (setq steps (fnn-checkpoint-write-steps fd setup segment sequence
-                                                           profile st arun)))
+                                                           profile st arun (fnn-live-arena))))
                  sequence)
              (fnn-octets-pub-release))
            (when position

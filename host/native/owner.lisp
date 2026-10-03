@@ -4555,26 +4555,33 @@ the read's effects, as when both ran in one quantum.  The values are
 fnn-owner-handle-chunk-read's: (values PLAN CLOSING STARTTLS CONSUMED
 REDEEMED SUBMITTED), (values :defer MS), or (values :await STEP REDEEM
 CLOSING STARTTLS CONSUMED)."
-  (let ((results (multiple-value-list
-                  (fnn-owner-handle-chunk-read service cid incoming socket class peerp))))
-    (case (first results)
-      (:redeem
-       (destructuring-bind (tag step completion closing starttls consumed submitted) results
-         (declare (ignore tag))
-         (let ((redeem (fnn-owner-redeem-quantum service cid)))
-           (values (fnn-core 'fn-splan-step-plan step completion redeem)
-                   closing starttls consumed (and redeem t) submitted))))
-      (:await
-       (destructuring-bind (tag step waiting closing starttls consumed) results
-         (declare (ignore tag))
-         (values :await step (and waiting (fnn-owner-redeem-quantum service cid))
-                 closing starttls consumed)))
-      (:fnn-extent-cold
-       (fnn-owner-cold-line service cid incoming socket class peerp
-                            (second results) (third results)))
-      (:defer (values-list results))
-      (t (fnn-owner-page-read-hold cid (first results))
-         (values-list results)))))
+  (fnn-owner-chunk-results service cid incoming socket class peerp
+                           (multiple-value-list
+                            (fnn-owner-handle-chunk-read service cid incoming socket class peerp))
+                           nil))
+
+(defun fnn-owner-chunk-results (service cid incoming socket class peerp results cold-since)
+  "fnn-owner-handle-chunk's answer for a read's RESULTS.  COLD-SINCE: when
+this read is a re-run of a line that went cold, the instant of the line's
+FIRST miss (fnn-owner-cold-line)."
+  (case (first results)
+    (:redeem
+     (destructuring-bind (tag step completion closing starttls consumed submitted) results
+       (declare (ignore tag))
+       (let ((redeem (fnn-owner-redeem-quantum service cid)))
+         (values (fnn-core 'fn-splan-step-plan step completion redeem)
+                 closing starttls consumed (and redeem t) submitted))))
+    (:await
+     (destructuring-bind (tag step waiting closing starttls consumed) results
+       (declare (ignore tag))
+       (values :await step (and waiting (fnn-owner-redeem-quantum service cid))
+               closing starttls consumed)))
+    (:fnn-extent-cold
+     (fnn-owner-cold-line service cid incoming socket class peerp
+                          (second results) (third results) cold-since))
+    (:defer (values-list results))
+    (t (fnn-owner-page-read-hold cid (first results))
+       (values-list results))))
 
 ;;; A LOGICAL connection's feed (lane host-lifecycle, r71 F5 / sweep S003):
 ;;; the web face's browser session (host/native/web-host.lisp, class :reader)
@@ -4899,7 +4906,12 @@ before exact settlement releases a charge. Owner->extent serializes it."
       condition)))
 
 (defun fnn-owner-cold-reap (service)
-  "One bounded round-robin quantum; no scan of all live or completed reads."
+  "One bounded round-robin quantum; no scan of all live or completed reads.
+An empty queue enters no section (r71 F8): the head is one slot, read
+without the owner mutex; a stale NIL defers the reap one tick, a stale read
+enters the section, which reads the head again under the mutex."
+  (unless (fnn-owner-service-cold-head service)
+    (return-from fnn-owner-cold-reap nil))
   (handler-case
       (dotimes (i (fnn-core 'fn-pio-reap-work))
         (declare (ignorable i))
@@ -4934,23 +4946,33 @@ before exact settlement releases a charge. Owner->extent serializes it."
         (serious-condition (condition)
           (unless (fnn-owner-cold-read-settledp read) (error condition)))))))
 
-(defun fnn-owner-cold-await (service read)
+(defun fnn-owner-cold-await (service read &optional line-since)
   "Await an already-captured read off owner lock. Return the core dependency
 word and its clock observations; the caller retains its logical cursor/pin.
-A refusal or timeout never authorizes releasing the physical I/O lease."
+A refusal or timeout never authorizes releasing the physical I/O lease.
+LINE-SINCE: this read is a re-run line's, whose first miss was at
+LINE-SINCE; ACL2's line deadline (fn-otb-line-dependency-step) answers
+:unavailable once it has passed, even for a page that came."
   (when (keywordp read) (return-from fnn-owner-cold-await (values read 0 0 nil)))
   (let* ((since (fnn-owner-monotonic-ms)) (limit nil)
          (token (fnn-owner-cold-read-token read))
          (worker (fnn-owner-cold-read-worker read)))
     (unless token
       (fnn-owner-cold-settle service read)
+      (when (and line-since
+                 (eq (fnn-core 'fn-otb-line-dependency-step line-since since limit) :unavailable))
+        (return-from fnn-owner-cold-await (values :unavailable line-since since limit)))
       (return-from fnn-owner-cold-await (values :serve since since limit)))
     (unwind-protect
          (loop
            (let* ((now (fnn-owner-monotonic-ms))
                   (done (or (fnn-owner-cold-read-settledp read)
                             (fnn-extent-executor-returned-p worker)))
-                  (decision (fnn-core 'fn-otb-dependency-step since now limit done)))
+                  (decision (if (and line-since
+                                     (eq (fnn-core 'fn-otb-line-dependency-step line-since now limit)
+                                         :unavailable))
+                                :line-unavailable
+                              (fnn-core 'fn-otb-dependency-step since now limit done))))
              (cond ((eq decision :serve)
                     (let ((got (fnn-owner-cold-settle service read)))
                       (when (typep got 'serious-condition) (error got)))
@@ -4958,19 +4980,105 @@ A refusal or timeout never authorizes releasing the physical I/O lease."
                    ((eq decision :unavailable)
                     (fnn-extent-cancel-read token)
                     (return (values :unavailable since now limit)))
+                   ((eq decision :line-unavailable)
+                    (fnn-extent-cancel-read token)
+                    (return (values :unavailable line-since now limit)))
                    ((and (consp decision) (eq (car decision) :wait)
                          (integerp (second decision)) (plusp (second decision)))
                     (fnn-extent-executor-wait worker (/ (second decision) 1000)))
                    (t (fnn-fault "owner returned a malformed dependency step")))))
       (fnn-extent-cancel-read token))))
 
-(defun fnn-owner-cold-line (service cid incoming socket class peerp entry read)
+;;; ONE deadline per LINE (lane served-live, cg-newnews-hang): a warm re-run
+;;; that misses again awaits its next entry under ACL2's line deadline
+;;; measured from the line's FIRST miss (COLD-SINCE;
+;;; books/owner-time-bars.lisp fn-otb-line-dependency-step), not only a
+;;; fresh per-page one.  The realizer keeps fn-arx-read-cache-entries
+;;; entries; a line that reads more payloads than that evicts its own
+;;; earlier entries on every re-run and never runs warm, so with a deadline
+;;; per await it re-ran forever under the owner (NEWNEWS, HDR of a
+;;; non-overview field over a range).  Now such
+;;; a line is answered by ACL2's unavailable line (403) once
+;;; read-dependency-ms has passed since its first miss.
+(defun fnn-owner-cold-line (service cid incoming socket class peerp entry read
+                            &optional cold-since)
   (declare (ignore entry))
-  (multiple-value-bind (word since now limit) (fnn-owner-cold-await service read)
+  (multiple-value-bind (word since now limit) (fnn-owner-cold-await service read cold-since)
     (case word
-      (:serve (fnn-owner-handle-chunk service cid incoming socket class peerp))
+      (:serve (fnn-owner-chunk-results
+               service cid incoming socket class peerp
+               (multiple-value-list
+                (fnn-owner-handle-chunk-read service cid incoming socket class peerp))
+               (or cold-since since)))
       (:unavailable (fnn-owner-unavailable-line service cid incoming since now limit class))
       (otherwise (fnn-owner-resource-unavailable-line service cid incoming word class)))))
+
+;;; r71 F7 (lane served-live): an I/O loop never waits for a cold page.
+;;; fnn-owner-handle-chunk awaits the page on the calling thread
+;;; (fnn-owner-cold-line), which on a mux loop held every connection the
+;;; loop serves for up to the dependency deadline.  The loop instead takes
+;;; the step's issued read (fnn-owner-handle-chunk-step answers (values
+;;; :cold READ)), keeps it on the connection with the instants it needs, and
+;;; returns to its poll; a timer asks fnn-owner-cold-poll, which never
+;;; blocks, for ACL2's dependency word (fn-otb-line-dependency-step, then
+;;; fn-otb-dependency-step) and settles the read when the page came.  Then
+;;; the step runs again (fnn-owner-handle-chunk-step with the word), warm,
+;;; or answers the line unavailable.  The settlement is still a :control
+;;; quantum (fnn-owner-cold-settle): behind a barrier in flight it waits for
+;;; that batch, but no longer for the page.
+(defun fnn-owner-handle-chunk-step (service cid incoming socket class peerp
+                                    &optional word line-since since now limit)
+  "fnn-owner-handle-chunk for an I/O loop: (values :cold READ) when the read
+went cold, else fnn-owner-handle-chunk's values.  WORD is the line's word
+from fnn-owner-cold-poll: nil (a first run, or :serve: the page came and was
+settled), :unavailable (ACL2's 403 with SINCE NOW LIMIT), or a resource
+refusal keyword.  LINE-SINCE: the instant of the line's first miss."
+  (cond ((eq word :unavailable)
+         (fnn-owner-unavailable-line service cid incoming since now limit class))
+        ((and word (not (eq word :serve)))
+         (fnn-owner-resource-unavailable-line service cid incoming word class))
+        (t
+         (let ((results (multiple-value-list
+                         (fnn-owner-handle-chunk-read service cid incoming socket class peerp))))
+           (if (eq (first results) :fnn-extent-cold)
+               (values :cold (third results))
+             (fnn-owner-chunk-results service cid incoming socket class peerp
+                                      results line-since))))))
+
+(defun fnn-owner-cold-poll (service read line-since since)
+  "Never waits for the page.  (values WORD SINCE NOW LIMIT): :serve (the page
+came and READ is settled), :unavailable (ACL2's deadline passed, the read's
+publication revoked), (:wait MS), or READ itself when it is a refusal word."
+  (when (keywordp read) (return-from fnn-owner-cold-poll (values read since since nil)))
+  (let* ((now (fnn-owner-monotonic-ms)) (limit nil)
+         (token (fnn-owner-cold-read-token read))
+         (worker (fnn-owner-cold-read-worker read))
+         (done (or (null token)
+                   (fnn-owner-cold-read-settledp read)
+                   (fnn-extent-executor-returned-p worker)))
+         (decision (if (and line-since
+                            (eq (fnn-core 'fn-otb-line-dependency-step line-since now limit)
+                                :unavailable))
+                       :line-unavailable
+                     (fnn-core 'fn-otb-dependency-step since now limit done))))
+    (cond ((eq decision :serve)
+           (let ((got (fnn-owner-cold-settle service read)))
+             (when (typep got 'serious-condition) (error got)))
+           (fnn-extent-cancel-read token)
+           (values :serve since now limit))
+          ((member decision '(:unavailable :line-unavailable))
+           (fnn-extent-cancel-read token)
+           (values :unavailable (if (eq decision :line-unavailable) line-since since) now limit))
+          ((and (consp decision) (eq (car decision) :wait)
+                (integerp (second decision)) (plusp (second decision)))
+           (values decision since now limit))
+          (t (fnn-fault "owner returned a malformed dependency step")))))
+
+(defun fnn-owner-cold-abandon (read)
+  "The connection waiting for READ is gone: revoke its publication right;
+the worker keeps its descriptor and the reap settles the row."
+  (unless (keywordp read)
+    (fnn-extent-cancel-read (fnn-owner-cold-read-token read))))
 
 ;;; ACL2's answer to the cold line past its deadline (host/owner-host.lisp
 ;;; fn-owner-unavailable-line-at over fn-ocln-unavailable-span), under the
@@ -5538,7 +5646,7 @@ LEASE denotes the controller's maintenance admission, not a refund right."
   (sb-thread:with-mutex (*fnn-extent-lock*)
     (fnn-extent-discovery-release token)))
 
-(defun fnn-owner-release-extents (service store frames dropped-paths pin)
+(defun fnn-owner-release-extents (service store frames dropped-paths pin arena)
   "Give the disk blocks of the files a durable checkpoint publication dropped
 back while serving (row Q16, PRF-930, books/extent-retire.lisp): register
 the installed checkpoint with the extent realizer; per payload frame the
@@ -5556,8 +5664,8 @@ this thread's own pin) is closed.  Runs on a thread that is itself an
 off-mutex arena reader pinned at PIN. Known pre-close discovery refusals
 leave files retired/pending for retry. Ambiguous close fences under the owner
 mutex; other faults stop the owner. Neither terminal outcome resumes serving."
-  (let ((arena (fnn-live-arena)) (new-id nil) (reseated 0) (incomplete 0) (closed 0)
-        (named-detail nil))
+  (let ((new-id nil) (reseated 0) (incomplete 0) (closed 0)
+        (named-detail nil) (retired-count 0) (held-kind nil))
     (handler-case
         (progn
           (setq new-id (fnn-extent-register (fnn-state-checkpoint-path store)))
@@ -5625,13 +5733,18 @@ mutex; other faults stop the owner. Neither terminal outcome resumes serving."
                 (setq named-detail
                       (loop for id in *fnn-extent-retired*
                             collect (list id (first (fnn-call 'fn-arx-file-count id arena))
-                                          (if (member id members) 1 0)))))))
+                                          (if (member id members) 1 0)))))
+              (setq retired-count
+                    (+ (length *fnn-extent-retired*)
+                       (reduce #'+ *fnn-extent-pending*
+                               :key (lambda (e) (length (cdr e)))))
+                    held-kind (cond (*fnn-extent-retired* :named)
+                                    (*fnn-extent-pending* :pending)))))
           (fnn-err "CHECKPOINT release reseated=~d incomplete=~d closed=~d retired=~d open=~d~@[ held=~(~a~)~]~@[ named=~{~{~d:~d:~d~}~^,~}~]"
                    reseated incomplete closed
-                   (+ (length *fnn-extent-retired*)
-                      (reduce #'+ *fnn-extent-pending* :key (lambda (e) (length (cdr e)))))
+                   retired-count
                    (fnn-extent-open-count)
-                   (cond (*fnn-extent-retired* :named) (*fnn-extent-pending* :pending))
+                   held-kind
                    named-detail))
       ;; GEN: def-section checkpoint-release :failure -- one arm; ACL2
       ;; decides the kind (fnn-owner-thread-escape): an uncertain outcome
@@ -5660,7 +5773,7 @@ mutex; other faults stop the owner. Neither terminal outcome resumes serving."
       (loop until (probe-file release) do (sleep 0.05))
       (fnn-err "WORKER-TAIL released worker=~a" name))))
 
-(defun fnn-owner-publish-captured (service captured &optional position pin)
+(defun fnn-owner-publish-captured (service captured arena &optional position pin)
   "The publication's thread: ACL2's fn-ock-next-checkpoint over the values
 captured under the owner mutex (NEXT, the capture of the history at the
 capture point: fn-ock-next-checkpoint-is-the-capture), then fn-ockp-setup
@@ -5689,7 +5802,8 @@ the crash keystone) and serving continues."
   ;; It reads the live arena outside the owner's mutex: no staged page
   ;; retired while it runs is released until it ends (host/native/io.lisp
   ;; fnn-log-reseat-fenced, books/arena-reader-pins.lisp).  Its caller
-  ;; pinned the generation PIN under the mutex, before this thread existed
+  ;; captured ARENA and pinned the generation PIN under the mutex before
+  ;; this thread existed: the worker never resolves shared live state.
   ;; (fnn-owner-maybe-publish); it is unpinned below.
   (unwind-protect
   (destructuring-bind (base configs records record-octets count suffix budget frontier free revision
@@ -5723,7 +5837,7 @@ the crash keystone) and serving continues."
               ;; (fn-owner-sco-setup-of): fn-owner-sco-prepare in two halves.
               (destructuring-bind (setup prepared-next n arun)
                   (let ((prepared (fnn-core 'fn-owner-sco-next base base-payloads configs records
-                                            (fnn-checkpoint-walk records) segment (fnn-live-arena))))
+                                            (fnn-checkpoint-walk records arena) segment arena)))
                     (multiple-value-bind (position2 image2)
                         (if prepared
                             (fnn-history-image-build (fnn-core 'fn-sco-records (first prepared))
@@ -5765,7 +5879,7 @@ the crash keystone) and serving continues."
                                    (fnn-history-image-write fd image)
                                    (setq steps (fnn-checkpoint-write-steps
                                                 fd setup segment sequence (fnn-store-config store)
-                                                (fnn-live-octets-pub) arun)))
+                                                (fnn-live-octets-pub) arun arena)))
                                  sequence)
                              ;; the buffer's array back (PKT-PRS-2)
                              (fnn-octets-pub-release))
@@ -5829,7 +5943,7 @@ the crash keystone) and serving continues."
           ;; Q16 (b): the dropped files' blocks back while serving.
           (when durablep
             (fnn-owner-release-extents service (fnn-owner-service-store service)
-                                       *fnn-checkpoint-frames* dropped-paths pin)))
+                                       *fnn-checkpoint-frames* dropped-paths pin arena)))
         nil)))
     (fnn-owner-worker-tail-hold "publisher")
     (when pin (fnn-arena-unpin pin))
@@ -5967,7 +6081,8 @@ reads run as a :control quantum; the thread's registration is the roster's."
             ;; never made unpins here.
             (fnn-with-roster (service)
               (let ((thread (and (not (eq position :failed))
-                                 (let ((made nil) (pin (fnn-arena-pin)))
+                                 (let ((made nil) (pin (fnn-arena-pin))
+                                       (arena (fnn-live-arena)))
                                    (unwind-protect
                                         (setq made (sb-thread:make-thread
                                                     (lambda ()
@@ -5980,7 +6095,7 @@ reads run as a :control quantum; the thread's registration is the roster's."
                                                                   (fnn-owner-service-stopping
                                                                    service)))))
                                                         (fnn-owner-publish-captured
-                                                         service captured position pin)))
+                                                         service captured arena position pin)))
                                                     :name "fn owner checkpoint"))
                                      (unless made (fnn-arena-unpin pin)))))))
                 ;; Only a thread that exists takes the slot and joins the
@@ -6457,7 +6572,7 @@ publication).  Answers the reply word."
                    ;; binding into the F row's position, then the setup
                    (destructuring-bind (setup next n arun)
                        (let ((prepared (fnn-core 'fn-owner-sco-next nil nil configs rows
-                                                 (fnn-checkpoint-walk rows) segment
+                                                 (fnn-checkpoint-walk rows (fnn-live-arena)) segment
                                                  (fnn-live-arena))))
                          (multiple-value-bind (position2 image2)
                              (if prepared
@@ -6484,7 +6599,7 @@ publication).  Answers the reply word."
                                          (fnn-history-image-write fd image)
                                          (fnn-checkpoint-write-steps
                                           fd setup segment (length rows) (fnn-store-config store)
-                                          (fnn-live-octets-pub) arun))
+                                          (fnn-live-octets-pub) arun (fnn-live-arena)))
                                        (length rows)))
                        (fnn-octets-pub-release))))
                  (fnn-reclaim-cut :staged)
@@ -6594,7 +6709,7 @@ publication).  Answers the reply word."
                      (fnn-err "RECLAIM installed records=~d reclaimed=~d dropped=~d ms=~d sealed=~d seal-us=~d"
                               count (length (second decision)) dropped (ms)
                               (length seal-payloads) seal-us)
-                     (fnn-owner-release-extents service store *fnn-checkpoint-frames* paths pin))
+                     (fnn-owner-release-extents service store *fnn-checkpoint-frames* paths pin (fnn-live-arena)))
                    (fnn-reclaim-cut :released)))))
         (when pin (fnn-arena-unpin pin))
         ;; Captured and not swapped: the pass is over for the owner (the
@@ -6784,12 +6899,57 @@ thread is a worker, so the stop joins it with the clients."
       (push thread (fnn-owner-service-workers service))
       thread)))
 
+(defun fnn-owner-maintenance-tick (service)
+  "The owner's maintenance between accepts: settle returned cold reads, the
+checkpoint publication, a log reopen a SIGHUP asked for (PKT-101) and a
+retiring node's drain step (row S9, host/native/admin.lisp)."
+  (fnn-owner-cold-reap service)
+  (fnn-owner-maybe-publish service)
+  (fnn-owner-maybe-reopen-log service)
+  (fnn-owner-maybe-retire service))
+
+;;; r71 F8 (lane served-live): the primary accept loop ran the maintenance
+;;; quanta itself, each waiting at the owner's scheduling gate (:control or
+;;; :inspect), so behind a stalled barrier the loop could not return to its
+;;; SIGTERM check or accept: the "consumed within one second" below was
+;;; false for the composed loop.  The maintenance runs on this worker
+;;; instead, once a second, until the stop or a SIGTERM (as the accept loop
+;;; it left); the stop joins it with the other workers.  A fault in it is the
+;;; owner's, named, as an accept worker's is.
+(defun fnn-owner-start-maintenance (service)
+  (fnn-with-roster (service)
+    (let ((thread
+            (sb-thread:make-thread
+             (lambda ()
+               (unwind-protect
+                    (handler-case
+                        (loop
+                          (when (or *fnn-sigterm-requested*
+                                    (fnn-owner-service-stopping service))
+                            (return))
+                          (fnn-owner-maintenance-tick service)
+                          (sleep 1))
+                      (serious-condition (condition)
+                        (unless (or *fnn-sigterm-requested*
+                                    (fnn-owner-service-stopping service))
+                          (fnn-err "owner maintenance: ~a" condition)
+                          (ignore-errors (fnn-owner-fault-service service nil condition)))))
+                 (fnn-with-roster (service)
+                   (setf (fnn-owner-service-workers service)
+                         (delete sb-thread:*current-thread*
+                                 (fnn-owner-service-workers service) :test #'eq)))))
+             :name "fn owner maintenance")))
+      (push thread (fnn-owner-service-workers service))
+      thread)))
+
 (defun fnn-owner-accept (service listener once)
   ;; Darwin does not reliably wake a blocking accept(2) when another context
   ;; calls shutdown(2) on the listener.  Keep accept itself nonblocking and
   ;; let the ordinary owner thread poll readiness so a signal request is
   ;; consumed within one second even when the raw shutdown is only advisory.
   ;; The signal handler still performs no allocation, locking, or core call.
+  ;; No gate is entered here: the maintenance has its own worker (r71 F8).
+  (unless once (fnn-owner-start-maintenance service))
   (loop
     (when (or *fnn-sigterm-requested*
               (fnn-owner-service-stopping service))
@@ -6802,13 +6962,10 @@ thread is a worker, so the stop joins it with the clients."
                   (fnn-mux-serve-once service socket)
                   (return)))
             (fnn-owner-accept-one service listener 1))
-          ;; Before the next accept: the owner's checkpoint publication,
-          ;; and a log reopen a SIGHUP asked for (PKT-101).
-          (fnn-owner-cold-reap service)
-          (fnn-owner-maybe-publish service)
-          (fnn-owner-maybe-reopen-log service)
-          ;; Row S9: a retiring node's drain step (host/native/admin.lisp).
-          (fnn-owner-maybe-retire service))
+          ;; The serving loop's maintenance runs on its own thread
+          ;; (fnn-owner-start-maintenance, r71 F8); a one-connection run
+          ;; keeps it here, between its polls.
+          (when once (fnn-owner-maintenance-tick service)))
       (sb-bsd-sockets:socket-error (condition)
         (unless (or *fnn-sigterm-requested*
                     (fnn-owner-service-stopping service))
