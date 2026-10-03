@@ -2708,3 +2708,12 @@ step bounds emitted bytes and controller calls; one row still constructs its
 complete group/decimal fields. The available dispatcher and render plan have
 not yet consumed this tag, and full response residual/finite progress, captured
 column frames, composed witnesses and physical funding remain open.
+
+The retained article producer captures the raw Xref server from the pinned
+listing. `fn-asto-server-candidate-is-original-server` equates it, after the
+existing server predicate, with the original moderation/access/command
+environment for every input. It therefore need not build complete projected
+group/status configurations merely to read that field. Rendering validates
+one server octet per transition, then publishes Xref only if the whole
+nonempty proper list is printable ASCII (RFC5536 section3.2.14 permits a
+colon in this path identity). Invalid candidates omit Xref as before.

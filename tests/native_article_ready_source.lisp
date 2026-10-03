@@ -53,6 +53,7 @@
 (source-load-defuns "books/article-arena-reads.lisp" '(fn-nntp-arena-prefixp fn-nntp-article-tombstonep))
 (source-load-defuns "books/served-plan-shape.lisp" '(fn-splan-cur fn-splan-rest fn-splan-cursor-effectp fn-srb-effect-octets))
 (source-load-defuns "books/served-plan.lisp" '(fn-splan-rest-donep))
+(source-load-defuns "books/article-stream-server.lisp")
 (source-load-defuns "books/article-stream-owner.lisp")
 (defmacro value (x) `(values nil ,x state))
 (defvar *fixture-state*)
@@ -85,7 +86,11 @@
 (defun fnn-fault (format &rest args) (apply #'error format args))
 (source-load-defuns "host/native/io.lisp" '(fnn-make-octets fnn-octets))
 (deftype fnn-octets () '(simple-array (unsigned-byte 8) (*)))
-(source-load-defuns "host/native/owner.lisp" '(fnn-owner-ready-plan-step fnn-owner-render-next-quantum))
+; This recorded seam has no physical response capture; execute the actual
+; activation wrapper in its uncaptured branch, without a decoded-pool claim.
+(defvar *fnn-response-capture* nil)
+(source-load-defuns "host/native/owner.lisp"
+  '(fnn-owner-window-activation fnn-owner-ready-plan-step fnn-owner-render-next-quantum))
 (defun fixture-reader (oc)
   (fn-peer-reader-session (fn-auth-session-base (fn-own-conn-session
     (fn-own-find-conn 7 (fn-own-conns (fn-ocfg-owner oc)))))))

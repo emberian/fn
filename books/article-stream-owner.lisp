@@ -2,6 +2,7 @@
 ; privacy, framing and selected-session commit remain ACL2 decisions.
 (in-package "ACL2")
 (include-book "article-stream")
+(include-book "article-stream-server")
 (include-book "owner-credits")
 (include-book "served-plan")
 
@@ -106,10 +107,8 @@
         (if (not (and selection
                      (equal (fn-nntp-session-openp (fn-peer-reader-session ps)) t)
                      (fn-nntp-session-projected (fn-peer-reader-session ps)))) nil
-          (let* ((env (fn-post-command-env
-                        (fn-auth-view-config as (fn-auth-moderation-config as config) archive)
-                        (fn-served-conn-observation sc) (fn-served-conn-injection sc) event))
-                 (server (and (not (eq kind :body)) (fn-nntp-xref-server env)))
+          (let* ((server (and (not (eq kind :body))
+                              (fn-asto-server-candidate config)))
                  (expected (fn-asto-with-wire-session conn (fn-wsp-state w)
                                                      (fn-own-conn-session conn))))
             (list expected ps selection kind server

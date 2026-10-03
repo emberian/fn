@@ -3470,3 +3470,29 @@ transferred to this new packet. Root discovered no actual default funded pool
 installer caller: fresh normal owner remains offline today, so compressed
 endpoint still needs Root's real pre-open partial baseline producer in addition
 to History initialization. No wrapper/test synthetic pool installation.
+
+Access resumed from dev e5ec40043 in own tree build/lanes/codex-sol-access-resume,
+branch codex/access-resume-20261003. Scope: full shared ARTICLE/HEAD/BODY
+logical producer/owner semantics, selection/setup, guards and reference/owner
+bridge, plus continuing auth/TLS/config and absorbed operator/journal queue.
+Runtime owns physical decoded/custody/Web/current compressed endpoint; History
+current source bootstrap/storage; Root default pool installer/scratch retirement.
+No edits to those native seams. READY4/render6 interfaces unchanged.
+
+First connected simplification: pinned Xref server candidate directly captured
+without building complete moderation/access group/status projections. New
+article-stream-server book universally equates candidate after existing server
+predicate to original projected command environment (729steps; unconditional
+moderation listing lemma139); literal moderator status-change, mutation and
+improper-server teeth pass. Candidate guard verified. Core cursor retains raw
+server spine, validates one octet per transition BEFORE Xref publication; invalid
+server omits Xref. Current actual source184344 core/185908 aggregate PASS with
+5000-octet valid/invalid server, dot/section/window1/3/4096, READY commit/replay/cold.
+Fixture now executes current Runtime window-activation in uncaptured branch;
+no physical decoded grant/custody claim. Warm access-article-resume40core forms
+and existing universal byte bound admitted using38 exact cached dependencies;
+access-article-server6book forms+7teeth forms admitted using170exact cached deps.
+Full owner cached-only preflight refuses89 current dependency mismatches,7primary
+roots; no broad source replay/certification or waiting for image. Next narrow
+certification: article-stream, article-stream-server, article-stream-server-tests;
+whole owner/refinement, selector/renderer guards and MsgID/setup remain active.
