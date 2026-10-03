@@ -535,6 +535,10 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
                                 (fnn-cold-worker-row worker) token)
       (declare (ignore ignored))
       (when (eq word :cancelled) (setf (fnn-cold-worker-row worker) row))
+      (when (fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD")
+        (when (fn-pwz-tokenp token)
+          (let ((*print-pretty* nil))
+            (fnn-err "DECODED-WINDOW cancel token=~s word=~s" token word))))
       word)))
 
 (defun fnn-extent-window-settle-cancelled (worker token)

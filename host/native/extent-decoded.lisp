@@ -38,6 +38,22 @@ its full core-selected cold descriptor while the captured owner is held."
          (setf (fnn-decoded-activation-stage ,saved) :idle)
          ,answer))))
 
+(defun fnn-extent-decoded-window-pread (fd input token effect)
+  "Delay only an already selected physical read, off owner/extent exclusion.
+The developer hold retains the actual pending effect/private activation; it
+does not issue, revoke or settle work. No private bytes enter diagnostics."
+  (let ((hold (fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD")))
+    (when (and hold (plusp (length hold)) (not (probe-file hold)))
+      (let ((*print-pretty* nil))
+        (fnn-err "DECODED-WINDOW held token=~s file=~d fd=~d offset=~d count=~d"
+                 token (second effect) fd (fifth effect) (sixth effect)))
+      (loop until (probe-file hold) do (sleep 0.05)))
+    (let ((status (fnn-extent-window-pread fd input (fifth effect) (sixth effect))))
+      (when hold
+        (let ((*print-pretty* nil))
+          (fnn-err "DECODED-WINDOW read-return token=~s status=~s" token status)))
+      status)))
+
 (defun fnn-extent-decoded-window-run (worker token)
   "Same worker/token/pool; actual retained ACL2 controller selects each step.
 The issuer draws its declared fixed-storage projection before this entry;
@@ -85,8 +101,8 @@ allocator/GC and pointed-to controller graphs remain outside that partial scope.
            ;; Only this core-selected effect authorizes the physical write
            ;; into the fixed private child. That alias dies with this call.
            (let* ((read-effect (fourth effect))
-                  (status (fnn-extent-window-pread
-                            fd (svref job 1) (fifth read-effect) (sixth read-effect))))
+                  (status (fnn-extent-decoded-window-pread
+                            fd (svref job 1) token read-effect)))
              (destructuring-bind (answer next)
                  (fnn-decoded-semantic (activation)
                    (fnn-call 'fn-dwj-read-observation token (third effect) status job))
