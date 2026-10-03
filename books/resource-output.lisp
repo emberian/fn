@@ -771,3 +771,46 @@
    fn-rlo-physical fn-rlo-livep fn-rl-settle fn-rl-gensi fn-rl-elensi
    fn-rl-settle-keeps-okp))))
 )
+
+; Receipt replay cannot push the same released row onto the free chain twice.
+; This is a local custody property, not free-chain completeness or receipt authenticity.
+(encapsulate ()
+(local (include-book "std/lists/update-nth" :dir :system))
+(local (defthm fn-rlo-settled-row-is-idle
+ (implies (and (natp slot)
+               (eq (mv-nth 0 (fn-rlo-settle-ready slot ledger)) :settled))
+          (equal (fn-rl-phasesi slot (mv-nth 1 (fn-rlo-settle-ready slot ledger))) 0))
+ :hints (("Goal" :in-theory (e/d (fn-rlo-settle-ready fn-rl-settle fn-rl-phasesi)
+   (fn-rl-release-from nth update-nth))))))
+(defthm fn-rlo-output-settled-token-is-not-live
+ (implies (eq (mv-nth 0 (fn-rlo-output token op receipt ledger)) :settled)
+  (not (fn-rlo-livep token op (mv-nth 1 (fn-rlo-output token op receipt ledger)))))
+ :hints (("Goal" :use ((:instance fn-rlo-settled-row-is-idle
+    (slot (caddr token)) (ledger (update-fn-rl-elensi (caddr token) 1 ledger))))
+   :in-theory (e/d (fn-rlo-output fn-rlo-livep fn-rlo-tokenp)
+      (fn-rlo-ready-p fn-rlo-settle-ready fn-rl-phasesi update-fn-rl-elensi)))))
+(defthm fn-rlo-physical-settled-token-is-not-live
+ (implies (eq (mv-nth 0 (fn-rlo-physical token op receipt ledger)) :settled)
+  (not (fn-rlo-livep token op (mv-nth 1 (fn-rlo-physical token op receipt ledger)))))
+ :hints (("Goal" :use ((:instance fn-rlo-settled-row-is-idle
+    (slot (caddr token)) (ledger (update-fn-rl-trailersi (caddr token) 1 ledger))))
+   :in-theory (e/d (fn-rlo-physical fn-rlo-livep fn-rlo-tokenp)
+      (fn-rlo-ready-p fn-rlo-settle-ready fn-rl-phasesi update-fn-rl-trailersi)))))
+(defthm fn-rlo-output-settles-once
+ (implies (eq (mv-nth 0 (fn-rlo-output token op receipt ledger)) :settled)
+  (let ((after (mv-nth 1 (fn-rlo-output token op receipt ledger))))
+   (and (equal (fn-rlo-output token op again after) (list :stale after))
+        (equal (fn-rlo-physical token op physical after) (list :stale after)))))
+ :hints (("Goal" :use fn-rlo-output-settled-token-is-not-live
+  :in-theory (e/d (fn-rlo-output fn-rlo-physical)
+   (fn-rlo-livep fn-rlo-settle-ready update-fn-rl-elensi update-fn-rl-trailersi)))))
+(defthm fn-rlo-physical-settles-once
+ (implies (eq (mv-nth 0 (fn-rlo-physical token op receipt ledger)) :settled)
+  (let ((after (mv-nth 1 (fn-rlo-physical token op receipt ledger))))
+   (and (equal (fn-rlo-output token op output after) (list :stale after))
+        (equal (fn-rlo-physical token op again after) (list :stale after)))))
+ :hints (("Goal" :use fn-rlo-physical-settled-token-is-not-live
+  :in-theory (e/d (fn-rlo-output fn-rlo-physical)
+   (fn-rlo-livep fn-rlo-settle-ready update-fn-rl-elensi update-fn-rl-trailersi)))))
+
+)
