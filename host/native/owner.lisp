@@ -5761,6 +5761,7 @@ publication).  Answers the reply word."
                    (destructuring-bind (predicted payloads)
                        (fnn-core 'fn-orcs-predict rows keyring generation base)
                      (setq rows predicted seal-payloads payloads)))
+                 (when (eq rows :bad) (deferred :unencodable) (return-from pass))
                  (fnn-reclaim-cut :interned)
                  (let* ((rebuilt (fnn-core 'fn-owner-orcp-rebuild rows configs frontier
                                            (third answer)))

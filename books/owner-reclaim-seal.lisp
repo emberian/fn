@@ -83,13 +83,17 @@
         (t (fn-orcs-predict-loop (cdr rows) keyring generation h
                                  (cons (car rows) racc) pacc))))
 
-; The host's call, off the owner mutex: (list ROWS PAYLOADS).
+; The host's call, off the owner mutex: (list ROWS PAYLOADS), or (list :bad
+; nil) when a row is the intern's refusal word itself (the intern answered
+; :bad then; the host defers :unencodable, as before).
 (defun fn-orcs-predict (rows keyring generation h)
   (declare (xargs :guard (and (fn-prin-keyringp keyring) (natp generation) (natp h))
                   :verify-guards nil))
-  (mbe :logic (list (fn-orcs-predict-rows rows keyring generation h)
-                    (fn-orcs-payloads rows))
-       :exec (fn-orcs-predict-loop rows keyring generation h nil nil)))
+  (if (member-equal :bad rows)
+      (list :bad nil)
+    (mbe :logic (list (fn-orcs-predict-rows rows keyring generation h)
+                      (fn-orcs-payloads rows))
+         :exec (fn-orcs-predict-loop rows keyring generation h nil nil))))
 
 (defthm fn-orcs-predict-loop-is-predict
   (equal (fn-orcs-predict-loop rows keyring generation h racc pacc)
@@ -129,10 +133,13 @@
             (fn-cbor-octet-listp (fn-record-payload w)))
    :hints (("Goal" :in-theory (enable fn-record-p fn-record-payloadp)))))
 
+; KEYSTONE.  The hypothesis is the predict's own test (a row that IS the
+; word :bad makes the intern answer :bad).
 (defthm fn-orcs-seal-is-the-intern
+  (implies (not (member-equal :bad rows))
   (equal (fn-orcp-intern-rows rows keyring generation fn-arena)
          (mv (fn-orcs-predict-rows rows keyring generation (fn-arena-count fn-arena))
-             (fn-orcs-seal (fn-orcs-payloads rows) fn-arena)))
+             (fn-orcs-seal (fn-orcs-payloads rows) fn-arena))))
   :hints (("Goal" :induct (fn-orcp-intern-rows rows keyring generation fn-arena)
            :in-theory (e/d (fn-intern-event) (fn-arena-seal-list-is-append
                                               fn-arena-count-is-len)))))

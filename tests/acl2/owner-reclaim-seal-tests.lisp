@@ -1,6 +1,6 @@
 ; Teeth for books/owner-reclaim-seal.lisp (lane arena-forget): the reclaim
 ; pass predicts its tombstones and seals them only in the swap quantum.
-;   fn-orcs-seal-is-the-intern       (no hypothesis: :mutations below)
+;   fn-orcs-seal-is-the-intern       (one hypothesis: no row is :bad)
 ;   fn-orcs-seal-word-swap-means-base
 
 (in-package "ACL2")
@@ -27,6 +27,7 @@
 ; rows, and the seal is the intern's arena (ground, both sides executed).
 (defthm orcst-predict-is-intern-positive
   (and (equal (fn-arena-count *orcst-arena*) 2)
+       (not (member-equal :bad *orcst-rows*))
        (equal (mv-nth 0 (fn-orcp-intern-rows *orcst-rows* nil 0 *orcst-arena*))
               (first (fn-orcs-predict *orcst-rows* nil 0 2)))
        (equal (mv-nth 1 (fn-orcp-intern-rows *orcst-rows* nil 0 *orcst-arena*))
@@ -46,8 +47,9 @@
 (local
  (must-fail-checked
   (defthm orcst-predict-at-any-base
-    (equal (mv-nth 0 (fn-orcp-intern-rows rows keyring generation fn-arena))
-           (fn-orcs-predict-rows rows keyring generation h)))))
+    (implies (not (member-equal :bad rows))
+             (equal (mv-nth 0 (fn-orcp-intern-rows rows keyring generation fn-arena))
+                    (fn-orcs-predict-rows rows keyring generation h))))))
 
 ; fn-orcs-seal-word-swap-means-base.  Positive.
 (defthm orcst-seal-word-positive
@@ -67,3 +69,19 @@
   (defthm orcst-seal-word-without-base
     (implies (equal word :swap)
              (equal (fn-orcs-seal-word word count base) :swap)))))
+
+; Without the hypothesis: a row that is the word :bad makes the intern
+; refuse, the prediction not.
+(defthm orcst-without-no-bad
+  (and (member-equal :bad '(:bad))
+       (equal (mv-nth 0 (fn-orcp-intern-rows '(:bad) nil 0 *orcst-arena*)) :bad)
+       (equal (fn-orcs-predict-rows '(:bad) nil 0 2) '(:bad))
+       (equal (first (fn-orcs-predict '(:bad) nil 0 2)) :bad))
+  :rule-classes nil)
+
+(local
+ (must-fail-checked
+  (defthm orcst-intern-without-no-bad
+    (equal (fn-orcp-intern-rows rows keyring generation fn-arena)
+           (mv (fn-orcs-predict-rows rows keyring generation (fn-arena-count fn-arena))
+               (fn-orcs-seal (fn-orcs-payloads rows) fn-arena))))))
