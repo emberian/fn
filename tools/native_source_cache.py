@@ -15,7 +15,7 @@ import native_source_runner as runner
 ENTRY = '(progn! (set-raw-mode t) (fn-native-entry state))'
 
 
-def prepare(manifest, output):
+def prepare(manifest, output, logical_prefix=None):
     data = json.loads(manifest.read_text())
     for path, expected in data['sha256'].items():
         if runner.digest(Path(path)) != expected:
@@ -26,16 +26,27 @@ def prepare(manifest, output):
     output.parent.mkdir(parents=True, exist_ok=True)
     if output.exists() or Path(str(output) + '.core').exists():
         raise ValueError('execution cache output already exists; prepare a fresh coordinate')
-    original = Path(data['bootstrap']).read_text()
-    if original.count(ENTRY) != 1 or not original.rstrip().endswith(ENTRY):
-        raise ValueError('expected one terminal source entry, before any Store/owner')
+    if logical_prefix is not None:
+        logical_prefix = logical_prefix.resolve()
+        original = logical_prefix.read_text()
+        if ENTRY in original:
+            raise ValueError('logical checkpoint prefix must not enter native owner')
+        data['sha256'][str(logical_prefix)] = runner.digest(logical_prefix)
+        data['logical_prefix'] = str(logical_prefix)
+        data['checkpoint_mode'] = 'logical-repl'
+    else:
+        original = Path(data['bootstrap']).read_text()
+        if original.count(ENTRY) != 1 or not original.rstrip().endswith(ENTRY):
+            raise ValueError('expected one terminal source entry, before any Store/owner')
+        data['checkpoint_mode'] = 'native-entry'
     events = output.with_suffix('.checkpoint.events.lisp')
     events.write_text(original.replace(ENTRY, ''))
     # The outer LP can continue after a refused event. Admit the complete
     # ordered prefix in one nested LD that stops on its first failure, and
     # authorize the outside-LP checkpoint only on a successful EOF verdict.
     checkpoint = runner.strict_driver(events)
-    after = '(progn (unless (acl2::f-get-global \'acl2::fn-source-bootstrap-ready acl2::*the-live-state*) (error "Source bootstrap did not complete; checkpoint refused")) (acl2::save-exec ' + runner.literal(str(output)) + ' "internal source execution cache" :return-from-lp \'(acl2::fn-native-entry acl2::state) :inert-args t :host-lisp-args "--noinform" :toplevel-args "--disable-debugger"))'
+    return_from_lp = '(acl2::lp)' if logical_prefix is not None else '(acl2::fn-native-entry acl2::state)'
+    after = '(progn (unless (acl2::f-get-global \'acl2::fn-source-bootstrap-ready acl2::*the-live-state*) (error "Source bootstrap did not complete; checkpoint refused")) (acl2::save-exec ' + runner.literal(str(output)) + ' "internal source execution cache" :return-from-lp \'' + return_from_lp + ' :inert-args t :host-lisp-args "--noinform" :toplevel-args "--disable-debugger"))'
     bootstrap = output.with_suffix('.checkpoint.lisp')
     bootstrap.write_text(checkpoint)
     data['bootstrap'] = str(bootstrap)
@@ -44,7 +55,9 @@ def prepare(manifest, output):
     data['checkpoint_events'] = str(events)
     data['cache_output'] = str(output)
     data['after_acl2_loop'] = after
-    data['kind'] = 'initialized source execution cache; no Store/owner, certification or qualification claim'
+    data['kind'] = ('ordinary logical REPL checkpoint; no host/native installation or qualification claim'
+                    if logical_prefix is not None else
+                    'initialized source execution cache; no Store/owner, certification or qualification claim')
     target = output.with_suffix('.checkpoint.json')
     target.write_text(json.dumps(data, indent=2) + '\n')
     return target
@@ -52,6 +65,8 @@ def prepare(manifest, output):
 
 def seal(manifest, raw_overlays=(), logical_files=()):
     data = json.loads(manifest.read_text())
+    if data.get('checkpoint_mode') == 'logical-repl' and raw_overlays:
+        raise ValueError('logical checkpoint cannot seal native raw overlays')
     output = Path(data['cache_output'])
     core = Path(str(output) + '.core')
     if not output.is_file() or not core.is_file():
@@ -96,6 +111,8 @@ def execute(manifest, argv):
             raise ValueError('initialized source input changed: ' + path)
     if sys.platform == 'darwin':
         raise ValueError('source execution cache requires the governed hbox route')
+    if data.get('checkpoint_mode') == 'logical-repl' and argv:
+        raise ValueError('logical checkpoint resumes ACL2 LP; native argv require a native-entry checkpoint')
     if argv[:1] == ['--fn']:
         argv = argv[1:]
     os.chdir(data['world_root'])
@@ -113,7 +130,9 @@ def execute(manifest, argv):
                *logical,
                *[word for path in data.get('raw_overlays', ())
                  for word in ('--eval', '(load ' + runner.literal(path) + ')')],
-               '--eval', '(acl2::sbcl-restart)', '--end-toplevel-options', '--fn', *argv]
+               '--eval', '(acl2::sbcl-restart)',
+               *([] if data.get('checkpoint_mode') == 'logical-repl' else
+                 ['--end-toplevel-options', '--fn', *argv])]
     os.execve(command[0], command, env)
 
 
@@ -142,13 +161,13 @@ def initialize(manifest):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='command', required=True)
-    p = sub.add_parser('prepare'); p.add_argument('manifest', type=Path); p.add_argument('output', type=Path)
+    p = sub.add_parser('prepare'); p.add_argument('manifest', type=Path); p.add_argument('output', type=Path); p.add_argument('--logical-prefix', type=Path)
     p = sub.add_parser('seal'); p.add_argument('manifest', type=Path); p.add_argument('--raw-overlay', action='append', type=Path, default=[]); p.add_argument('--logical-file', action='append', type=Path, default=[])
     p = sub.add_parser('initialize'); p.add_argument('manifest', type=Path)
     p = sub.add_parser('run'); p.add_argument('manifest', type=Path); p.add_argument('argv', nargs=argparse.REMAINDER)
     args = parser.parse_args()
     try:
-        if args.command == 'prepare': print(prepare(args.manifest, args.output))
+        if args.command == 'prepare': print(prepare(args.manifest, args.output, args.logical_prefix))
         elif args.command == 'seal': print(seal(args.manifest, args.raw_overlay, args.logical_file))
         elif args.command == 'initialize': initialize(args.manifest)
         else: execute(args.manifest, args.argv[1:] if args.argv[:1] == ['--'] else args.argv)
