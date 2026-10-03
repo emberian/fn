@@ -29,3 +29,6 @@ class PeerRoundDriverTests(unittest.TestCase):
 
     def test_failed_local_release_attempts_all_custody_cleanup(self):
         self.schedule("cleanup")
+
+    def test_cursor_cold_read_preserves_render_plan_clock_and_cleanup(self):
+        self.schedule("cursor", "cursor read must be retained before another render")
