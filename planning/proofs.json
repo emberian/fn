@@ -22260,9 +22260,7 @@
       "assumptions": [],
       "status": "certified",
       "events": [
-        "fn-tcrt-write-range-is-bounded",
-        "fn-tcrt-source-custody-excludes-input",
-        "fn-tcrt-ready-write-precedes-source-and-close"
+        "fn-tcrt-write-range-is-bounded"
       ],
       "evidence": [
         "books/tcpcl-retained-turn.lisp",

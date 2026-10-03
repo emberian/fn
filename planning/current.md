@@ -248,7 +248,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **resumable developer init compatibility.** A resumed init keeps the sealed profile and generation-one group changes; mismatched requested intent is refused before resume publication, while invalid initial evidence faults.
 
-- Host-called subject: `fn-nir-resume-decision` at host/native/io.lisp:2526.
+- Host-called subject: `fn-nir-resume-decision` at host/native/io.lisp:2527.
 - Keystone: `fn-nir-resume-admits-identical-initial-contract-across-stamps` (books/native-init-resume.lisp:42; PRF-1270 (uncertified-at-current-digest)); no archived manifest records `books/native-init-resume.lisp` passed at its current source.
 - Tested: no matching image; source proof experiments are recorded separately below.
 - Deployed: no: the node runs default, this needs development.
@@ -296,7 +296,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **incremental decision journal replay.** The journal command reads a captured regular-file prefix in ACL2 windows of at most64KiB and folds complete entries without retaining them; arbitrary input yields exactly the reference report and exit verdict, independent of chunk boundaries.
 
-- Host-called subject: `fn-otjs-report` at host/native/io.lisp:3896.
+- Host-called subject: `fn-otjs-report` at host/native/io.lisp:3899.
 - Keystone: `fn-otjs-report-refines-journal-report` (books/owner-time-journal-stream.lisp:522; PRF-1275 (certified)); certified at the current source and closure by `certify-20261003T112822Z-1637229` (earliest archived).
 - Tested: no matching image; source proof experiments are recorded separately below.
 - Deployed: no: the node runs default, this needs development.
@@ -326,7 +326,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 - Deployed: no: the node runs default, this needs dtn.
 - Latest positive result: Actual retained source/control/framing/root-cleanup fixtures PASS on be75fde27; archive planning/evidence/bp-source-continuations/be75-native-components.json. Exact window guards/slice boundary and receiver refinement roots certify-20261003T134842Z-1987626 PASSED3/0 archived/indexed. Initialized-source producer matching has8 discriminating checks PASS; this is fixture provenance, not a native transfer result.
 - Remaining obstruction: Whole semantic decoder/CRC/publication and allocator/GC latency remain unbounded; universal framing-to-codec and full native source/publication composition remain unproved.
-- Next positive gate: Execute SCN1110 canonical second request while first keepalive peer remains live on current initialized source; then SCN-1125 immutable signed R/Q plus returned receipt/pin release/reopen and SCN-1126 real-time silent Contact Header deadline.
+- Next positive gate: Run current source-loaded SCN1110 canonical competing-peer request; then SCN1125 signed R/Q and returned receipt/pin release/reopen. Admit the current deadline/early-admission logical methods before their raw consumers; initialized source matching remains distinct from qualification.
 
 ### bp-source-control
 
@@ -336,6 +336,6 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 - Keystone: `fn-tclsctl-never-releases-ack` (books/tcpcl-source-control.lisp:17; in no registry row); certified at the current source and closure by `certify-20261003T163429Z-2470673` (earliest archived).
 - Tested: no matching image; source proof experiments are recorded separately below.
 - Deployed: no: the node runs default, this needs dtn.
-- Latest positive result: Actual native retained turn plus actual ACL2 control function PASS: physical wait retains output/no duplicate, KEEPALIVE alone writes, root/END ACK remain held and bounded source resumes. certify-20261003T134436Z-1978092 PASSED3/0.
-- Remaining obstruction: Concurrent incoming control servicing and total source/decoder/GC latency remain open; this is neither reception evidence nor transfer acceptance.
+- Latest positive result: Actual retained source/control/framing/root-cleanup fixtures pass; source-control plus literal teeth normal certification certify-20261003T163429Z-2470673 passed5/0. The current source alternates bounded source work with control read/framing, parks next transfer in the same fixed vector, and discards broken-socket ACK before terminal settlement. BP listener/application DEFAULT startup is wired before Store recovery; actual composed startup/custody fixtures pass.
+- Remaining obstruction: Current whole owner execution, canonical multi-peer transfer and immutable application R/Q remain unexecuted. Recording fixtures and source-control certificates do not establish physical publication, allocation/GC tariff, or complete decoder/framing refinement.
 - Next positive gate: Same fresh-source canonical multi-peer native execution and slow-source control fixture.

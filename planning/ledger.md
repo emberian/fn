@@ -13,7 +13,7 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 2957 |
 | Certification roots in the Makefile | 2448 |
 | Books inside the root closure | 2760 |
-| `defthm` and `defthmd` events | 38880 |
+| `defthm` and `defthmd` events | 38881 |
 | `defun` events | 25136 |
 | Functions with verified guards | 4025 |
 | Functions declared `:verify-guards nil` and never verified | 3192 |
@@ -1745,7 +1745,7 @@ that `make certify` requests.
 | `books/store-reclaim-owner-holders.lisp` | closure | 12 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/store-reclaim-pack.lisp` | root | 33 | 16 | 0/12/4/0 | 0 | 0 | 3 |
 | `books/store-reclaim-stream.lisp` | root | 13 | 4 | 0/3/1/0 | 0 | 0 | 3 |
-| `books/store-reclaim.lisp` | root | 39 | 40 | 1/5/34/0 | 0 | 0 | 0 |
+| `books/store-reclaim.lisp` | root | 40 | 40 | 1/5/34/0 | 0 | 0 | 0 |
 | `books/store-records-field.lisp` | root | 15 | 10 | 0/0/10/0 | 0 | 0 | 0 |
 | `books/store-recover-stream.lisp` | root | 25 | 16 | 1/6/9/0 | 0 | 0 | 1 |
 | `books/store-replay-bound.lisp` | root | 8 | 5 | 0/0/5/0 | 0 | 0 | 0 |
