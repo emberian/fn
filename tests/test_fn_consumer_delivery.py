@@ -158,6 +158,20 @@ class DeliveryRecovery(unittest.TestCase):
                 with mock.patch.object(fn_consumer.subprocess, "run", return_value=result):
                     self.assertEqual(self.client.verify(event)["own"], outcome)
 
+    def test_signing_refusal_uncertainty_and_fault_publish_no_operation(self):
+        self.client.config.update(application_id="fn-e1", group="fn.test",
+                                  **{"from": "sender@example.invalid"},
+                                  keys={key: "unused" for key in (
+                                      "principal", "ed_public", "ed_secret", "ml_public", "ml_private")})
+        for code in (1, 3, 4):
+            with self.subTest(code=code):
+                self.client.native = lambda *words: (code, b'', b'signing diagnostic')
+                with self.assertRaises(fn_consumer.Stop) as stopped:
+                    self.client.originate("r1", "payload")
+                self.assertEqual(stopped.exception.code, code)
+                self.assertEqual(self.client.db.execute("SELECT count(*) FROM operations").fetchone(), (0,))
+                self.assertEqual(self.client.db.execute("SELECT count(*) FROM submissions").fetchone(), (0,))
+
 
 if __name__ == "__main__":
     unittest.main()
