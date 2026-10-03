@@ -260,7 +260,8 @@
   "fnn-connection-scoped",
   "fnn-log-sealed-effect",
   "fnn-section-envelope",
-  "fnn-with-observed-owner"
+  "fnn-with-observed-owner",
+  "fnn-native-with-observation"
  ],
  "gated_macros": {
   "fnn-section-envelope": {

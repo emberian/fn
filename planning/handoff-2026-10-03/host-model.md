@@ -217,3 +217,15 @@ transcript and machine/packet hashes are filed under
 `planning/evidence/runtime-observation-2026-10-03/`. This first packet checks
 finite O-only behavior. It does not qualify the image or missing PageIO/pins
 primitive sites, and leaves PRF-1254 planned.
+
+The next actual-image consumer activation is in `fnn-owner-run` before
+`fnn-owner-install`, gated by the existing developer-only
+`FN_NATIVE_PAGE_IO_HOLD` selector. It creates an explicit 4096-row observation
+profile and binds a physical reservation in the current main thread. Actual
+mux startup captures a fresh identity through the shared observed child thunk.
+After owner unwind the bounded stderr readout is
+`NATIVE-HM (STATUS REASON EVENTS)`. Activation allocation/readout failures do
+not classify the service; failed activation reports comparison unavailable.
+Native scope tests preserve startup values and supplied inactive context.
+Actual image/PageIO composition remains pending; unknown plain threads still
+invalidate comparison rather than receiving inferred identities.
