@@ -9305,9 +9305,12 @@ of standard input; at most 512 octets (the XREDEEM PASS line's bound)."
                           (send (format nil "XREDEEM ~a ~a" code login))
                           (setq stage :code))
                          (:send-password
+                          ;; The write may have reached the server even when
+                          ;; its local completion raises. Account creation is
+                          ;; already possible: loss from here is uncertain.
+                          (setq stage :password)
                           (send (format nil "XREDEEM PASS ~a"
-                                        (map 'string #'code-char password)))
-                          (setq stage :password))
+                                        (map 'string #'code-char password))))
                          ((:uncertain :unreachable) (return (finish step)))
                          (t (ignore-errors (send "QUIT"))
                             (return (finish step))))))))
