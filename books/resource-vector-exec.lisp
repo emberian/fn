@@ -71,6 +71,12 @@
   (fn-rl-fd-bookkeeping :type (unsigned-byte 64) :initially 0)
   (fn-rl-file-limit :type (unsigned-byte 64) :initially 0)
   (fn-rl-mode :type (unsigned-byte 8) :initially 0)
+  ;; Owner syncer custody: physical join and consumed operation outcome are
+  ;; independent receipts.  These scalar fields do not change FN-RL-BANK.
+  (fn-rl-worker-resident :type (unsigned-byte 64) :initially 0)
+  (fn-rl-worker-operation :type (unsigned-byte 64) :initially 0)
+  (fn-rl-worker-physical :type bit :initially 0)
+  (fn-rl-worker-outcome :type bit :initially 0)
   :inline t)
 
 ; -----------------------------------------------------------------------------
