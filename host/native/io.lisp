@@ -1039,6 +1039,22 @@ entropy is a host fault.  WIDTH is ACL2's."
 ;; when no writer runs.
 (defvar *fnn-log-sink* nil)
 (defvar *fnn-log-writer* nil)
+(defvar *fnn-log-writer-stopping* nil)
+(defvar *fnn-log-close-debts* nil
+  "Consumed descriptor identities with unobserved physical return; never retried.")
+
+(defun fnn-log-close-debt-observation ()
+  (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
+    (if *fnn-log-close-debts* :uncertain :closed)))
+
+(defun fnn-log-physical-close (fd kind)
+  "Caller consumed its fd slot. Record exact physical debt without retry."
+  (handler-case (progn (fnn-close fd) :closed)
+    (serious-condition (condition)
+      (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
+        (push (list kind fd condition) *fnn-log-close-debts*))
+      (ignore-errors (fnn-err "log descriptor return unobserved (~a): ~a" kind condition))
+      :uncertain)))
 ;; PKT-872: the sink dropped a journal entry and no journal entry has been
 ;; queued since.  Read and written under the queue mutex only.
 (defvar *fnn-journal-dropped* nil)
@@ -1063,8 +1079,9 @@ entropy is a host fault.  WIDTH is ACL2's."
 otherwise T, the line queued or dropped as ACL2 decided."
   (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
     (when *fnn-log-writer*
-      (let ((answer (fnn-core 'fn-log-sink-offer *fnn-log-sink* (length octets)
-                              (fnn-core 'fn-log-sink-pending-bound))))
+      (let ((answer (fnn-core 'fn-log-sink-offer-live *fnn-log-sink* (length octets)
+                              (fnn-core 'fn-log-sink-pending-bound)
+                              *fnn-log-writer-stopping*)))
         (unless (and (consp answer) (member (first answer) '(:queue :drop)))
           (fnn-fault "ACL2 returned a malformed log sink decision"))
         (fnn-log-sink-accept (second answer) "an offer")
@@ -1175,7 +1192,7 @@ counts it dropped)."
          ;; Only this thread writes the descriptor while it runs.
          (let ((old *fnn-owner-log-fd*))
            (setq *fnn-owner-log-fd* (cdr item))
-           (when old (ignore-errors (fnn-close old)))))
+           (when old (fnn-log-physical-close old :swap-old))))
         (t
          (let ((outcome (fnn-log-write-item (car item) (cdr item))))
            (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
@@ -1186,7 +1203,10 @@ counts it dropped)."
 (defun fnn-log-writer-start ()
   "Start the owner's log writer with ACL2's empty sink (fn-log-sink-init)."
   (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
+    (unless (eq (fnn-log-close-debt-observation) :closed)
+      (fnn-indeterminate "prior log descriptor custody remains unobserved"))
     (unless *fnn-log-writer*
+      (setq *fnn-log-writer-stopping* nil)
       (fnn-log-sink-accept (fnn-core 'fn-log-sink-init) "init")
       (setq *fnn-log-queue-head* nil
             *fnn-log-queue-tail* nil
@@ -1201,14 +1221,17 @@ left running (lines keep being offered and dropped, never waited on) and the
 process exits without it: what it had queued, a wedged sink would lose
 anyway.  Answers the join observation fn-ort-log-close-action reads
 (books/owner-retire-settlement.lisp): :absent when no writer ran, :joined
-when it stopped, :timeout when it is still running.  (It answered NIL until
+when it stopped, :timeout when it is still running, and :uncertain when
+a consumed log descriptor has unobserved physical return.  (It answered NIL until
 stage-0-3, so every owner close was :held and every owner exit 3.)"
   (let ((thread (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
                   (when *fnn-log-writer*
-                    (fnn-log-queue-push (list :stop))
+                    (unless *fnn-log-writer-stopping*
+                      (setq *fnn-log-writer-stopping* t)
+                      (fnn-log-queue-push (list :stop)))
                     *fnn-log-writer*))))
     (if (null thread)
-        :absent
+        (if (eq (fnn-log-close-debt-observation) :closed) :absent :uncertain)
       (multiple-value-bind (value outcome)
           (sb-thread:join-thread thread
                                  :timeout (fnn-core 'fn-log-sink-close-wait-seconds)
@@ -1221,19 +1244,29 @@ stage-0-3, so every owner close was :held and every owner exit 3.)"
               (setq *fnn-log-writer* nil
                     *fnn-log-queue-head* nil
                     *fnn-log-queue-tail* nil))
-            :joined))))))
+            (if (eq (fnn-log-close-debt-observation) :closed) :joined :uncertain)))))))
 
 (defun fnn-log-swap-fd (fd)
-  "Install FD as the service log: through the writer's queue while it runs
-(in order after the lines before it), else under the log mutex."
-  (unless (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
-            (when *fnn-log-writer*
-              (fnn-log-queue-push (cons :swap fd))
-              t))
-    (sb-thread:with-recursive-lock (*fnn-owner-log-mutex*)
-      (let ((old *fnn-owner-log-fd*))
-        (setq *fnn-owner-log-fd* fd)
-        (when old (ignore-errors (fnn-close old)))))))
+  "Transfer FD into the live writer queue or caller slot; consume rejected FD.
+Admission closes before STOP is queued, so no swap can be abandoned after it."
+  (let ((action
+          (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
+            (cond ((or *fnn-log-close-debts*
+                       (and *fnn-log-writer* *fnn-log-writer-stopping*)) :refused)
+                  (*fnn-log-writer* (fnn-log-queue-push (cons :swap fd)) :queued)
+                  (t :direct)))))
+    (case action
+      (:queued :queued)
+      (:refused
+       (fnn-log-physical-close fd :rejected-swap)
+       (fnn-indeterminate "log swap refused while terminal custody is held"))
+      (:direct
+       (sb-thread:with-recursive-lock (*fnn-owner-log-mutex*)
+         (let ((old *fnn-owner-log-fd*))
+           (setq *fnn-owner-log-fd* fd)
+           (when (and old (not (eq (fnn-log-physical-close old :swap-old) :closed)))
+             (fnn-indeterminate "old service log descriptor custody remains held"))))
+       :installed))))
 
 (defun fnn-journal-line (line)
   "Offer one ACL2-rendered decision-journal entry LINE (its LF included,
