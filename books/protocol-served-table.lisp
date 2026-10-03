@@ -846,12 +846,12 @@
    :view :pinned :view-decided (:completed "PRF-1237") :effect :none :view-rfc "NNT-042 by silence today (the pinned article root retained across one-candidate quanta); decided c07 C: one completed discovery snapshot captured at the first quantum and held across quanta; RFC 3977 7.4"
    :quantum (:cursor fn-nnw-meta-effectp)
    :forms (("any" :test t
-            :cat (fn-nntp-newnews-response-cursor session archive env args fn-arena fn-cat)
+            :cat (fn-nntp-newnews-response-stream session archive env args fn-arena fn-cat)
             :view :pinned :effect :none
-            :by ((:instance fn-nntp-newnews-response-cursor-expands-to-cat)
-                 (:instance fn-nntp-newnews-response-cursor-keeps-session)
+            :by ((:instance fn-nntp-newnews-response-stream-expands-to-cat)
+                 (:instance fn-nntp-newnews-response-stream-keeps-session)
                  (:instance fn-nntp-newnews-response-cat-is-newnews-response))))
-   :cost (:unrestricted "one metadata candidate per quantum and at most W emitted bytes; retained suffix avoids rescanning and catalog tombstone column avoids payload I/O; initial group selection, renderer working allocation, resource custody and completed-view capture remain GEN-CURSOR debt"
+   :cost (:unrestricted "bounded control calls per quantum and at most W emitted bytes; configured selection retains group/member references and inspects at most one entry per selector call; retained suffix avoids rescanning and catalog tombstone column avoids payload I/O; matcher/name comparison, composed heap tariff, resource custody and completed-view capture remain GEN-CURSOR debt"
           :restricted "the reference whole pinned archive walk, including payload tombstone reads")
    :teeth ("NEWNEWS * 20261001 000000 GMT" "NEWNEWS fn.* 20261001 000000 GMT" "NEWNEWS fn.* 20261001 000000" "NEWNEWS"))
   ("DATE"

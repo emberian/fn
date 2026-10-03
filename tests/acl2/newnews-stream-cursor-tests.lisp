@@ -56,3 +56,52 @@
                 (1- (len (fn-nnw-tail progress))))
          (<= (- (len (fn-nnw-stream-tail progress))
                 (len (fn-nnw-stream-tail next))) 1))))
+
+(defconst *nnsct-patterns* (fn-wildmat-result-value
+                          (fn-wildmat-parse (fn-nntp-string-octets "fn.*"))))
+(defconst *nnsct-select-progress*
+  (fn-nnw-stream-select
+   (fn-nnw-select-start *nnsct-patterns* '("fn.test") *nnmt-a*)
+   (fn-nnw-stream-scan-cursor
+    (fn-nnw-group-source *nnsct-patterns* '("fn.test")) 0 (list *nnmt-a*) 7 t)))
+
+(defthm nnsct-literal-selector-progress
+  (let ((next (mv-nth 1 (fn-nnw-stream-one *nnsct-select-progress* 1 nil nil))))
+    (and (fn-nnw-stream-selectp *nnsct-select-progress*)
+         (posp (fn-nnw-select-remaining (fn-cur-at 1 *nnsct-select-progress*)))
+         (fn-nnw-stream-progress-okp *nnsct-select-progress*)
+         (fn-nnw-stream-selectp next)
+         (< (fn-nnw-select-remaining (fn-cur-at 1 next))
+            (fn-nnw-select-remaining (fn-cur-at 1 *nnsct-select-progress*)))
+         (equal (fn-nnw-stream-tail next) (fn-nnw-stream-tail *nnsct-select-progress*)))))
+
+; Removing positive remaining: an empty but valid selector settles. It
+; cannot supply a strict decrease below zero.
+(defthm nnsct-selector-progress-needs-positive-remaining
+  (let* ((progress (fn-nnw-stream-select
+                    (fn-nnw-select-start *nnsct-patterns* nil *nnmt-a*)
+                    (fn-cur-at 2 *nnsct-select-progress*)))
+         (next (mv-nth 1 (fn-nnw-stream-one progress 1 nil nil))))
+    (and (fn-nnw-stream-selectp progress)
+         (not (posp (fn-nnw-select-remaining (fn-cur-at 1 progress))))
+         (not (< (if (fn-nnw-stream-selectp next)
+                     (fn-nnw-select-remaining (fn-cur-at 1 next)) 0)
+                 (fn-nnw-select-remaining (fn-cur-at 1 progress)))))))
+
+; Corrupted capture, hypothesis removal: the group-source field is a
+; selector record with a short old article, while the actual candidate has
+; more memberships. Starting that new selection may grow its remainder;
+; only a retained selection phase supplies the strict-decrease theorem.
+(defconst *nnsct-many-memberships*
+  (fn-make-article "<many@x>" '(13 10 13 10 65) '("fn.test")
+                   '(("fn.a" . 1) ("fn.b" . 1) ("fn.c" . 1) ("fn.test" . 2)) 1 5))
+(defthm nnsct-selector-progress-needs-selection-phase
+  (let* ((progress (fn-nnw-stream-scan-cursor
+                    (fn-nnw-select-start *nnsct-patterns* '("fn.test") *nnmt-a*)
+                    0 (list *nnsct-many-memberships*) 7 t))
+         (next (mv-nth 1 (fn-nnw-stream-one progress 1 nil nil))))
+    (and (not (fn-nnw-stream-selectp progress))
+         (posp (fn-nnw-select-remaining (fn-cur-at 1 progress)))
+         (fn-nnw-stream-selectp next)
+         (not (< (fn-nnw-select-remaining (fn-cur-at 1 next))
+                 (fn-nnw-select-remaining (fn-cur-at 1 progress)))))))

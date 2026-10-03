@@ -19033,7 +19033,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-nnw-stream-candidate-progresses"
+          "name": "fn-nnw-stream-select-progresses"
         },
         {
           "kind": "theorem",
@@ -19046,6 +19046,35 @@
         {
           "kind": "theorem",
           "name": "fn-sl-step-residual"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1257",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nnw-select-start-value"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nnw-select-one-preserves-value"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nnw-select-one-decided-value"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nnw-select-one-progress"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nnw-select-one-entry-charge"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nnw-select-zero-remaining-settles"
         }
       ]
     }
