@@ -417,3 +417,12 @@ under concatenation abstraction. Source-step/native materialization composition
 and the concrete framing cursor's universal codec refinement remain separate
 proof obligations. Matching certificates, not warm admissions, establish proof
 coordinates.
+
+The single writer disables a grant's continuation before operator teardown.
+`fn-bpsrx-abort-plan` permits retirement only for an authorized private source
+in `:copy`, `:convert` or `:publish` (before publication entry). Native teardown
+drops its root, buffer, held ACK and future-output aliases before the logical
+context receipt. `:publishing`, a foreign provider or changed generation retains
+source and Store authority. Physical close is attempted independently; an
+unobserved close keeps the grant held even after logical retirement. This is
+pre-publication cancellation, not rollback of durable or uncertain acceptance.
