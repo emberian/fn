@@ -105,3 +105,14 @@
  obligations: "idle→draw/subbank increments generation, settle/refund exactphase+generation, refund only reusable held, destroy uses actual subordinate spent rather than caller claim; tree substeps only draw/settle/refund, stale parent generation denies successor access"
  scope: "logical reference no served path; naked bank destroy caller-supplied spent is deliberately trusted accounting input, tree reads it from owned substate. No concrete new invariant violation found; typed ledger physical custody remains a separate subject"
 }
+^"anchor_publication_sweep"{
+ source_revision: "aa1ad2191"
+ @machine: ~"../../../books/anchor-replace.lisp"
+ @native: ~"../../../host/native/anchor.lisp"
+ @bridge: ~"../../../host/anchor-host.lisp"
+ @decision: ~"../../../books/anchor.lisp"
+ inspected: "full replacement start/recover/action/step/outcome and actual native acquisition/parse/primitive observation/recovery/load/publication/decision/CLI; bridge full definitions; accept/verified/window/pinned/newer/observed advance+restore decisions"
+ obligations: "exclusive writer spans held load/acquire/decision/publication; stage durable before replace-issued; every failure after issued becomes uncertain; directory barrier alone creates durable; restart file+directory barriers before decoding held final; host signature/one-nonce observations distinct, ACL2 decides window/pin/nonoverlap"
+ outcome: "no new publication/acceptance inconsistency established. Finite fd waits share deadline but blocking DNS may precede waits; Bounds notified exact source, no total-deadline claim"
+ residual: "wire parser full leaves, record codec full leaves, incarnation restore native caller composition remain continuing reads"
+}
