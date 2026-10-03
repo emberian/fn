@@ -19448,6 +19448,19 @@
           "note": "Every actual non-reusable result leaves the carry unchanged. This is not permission to refund physical custody."
         }
       ]
+    },
+    {
+      "id": "PRF-1303",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-tclsctl-source-drive-keepalive-refines-session"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tclsctl-source-drive-keepalive-preserves-custody-and-reception"
+        }
+      ]
     }
   ]
 }

@@ -23119,6 +23119,30 @@
         "planning/evidence/header-query-warm-20261003.log"
       ],
       "progress_note": "41 shared legacy parser events admitted after generic-name refactor with existing guards/statements unchanged. All14 query events/guards admitted (tick guard1547steps, work1004/source9312/ready18087). Literal actual arena positive/fold/firstmatch/absent/invalid-header work/source/ready/reference teeth and pin mutation pass. Source236658 query checks compare actual old fn-nntp-hdr-content across W1/3/4096,10000-octet folded value, repeated names, malformed later field,999-octet line, bodyNUL/CRLF, mixed-case target, and recorded cold scalar reads in parser/normalizer. Captured span contains original fold bytes, normalization removes only first unfoldedSP/CRLF and scrubsTAB as before. Recorded list-arena/cold seams, no actual full owner/physical funding claim. Complete Served consumer and arbitrary-name universal reference proof remain open."
+    },
+    {
+      "id": "PRF-1303",
+      "title": "Actual one-frame TCPCL source parser preserves control reception and inbound custody",
+      "statement": "Host fnn-tcl-input-materialize-turn calls guard-verified fn-tcl-host-source-drive. Under the sole transferring-phase hypothesis, a concrete KEEP frame followed by REST returns exactly the original fn-tcl-step KEEP transition, including complete events, REST unchanged and :stepped. The composed actual source driver preserves its inbound record and sets last-rx to the actual NOW observation. Positive witness reaches a partial inbound transfer through real open/contact/session-init/start transitions, retains a next-transfer prefix and checks complete conclusions; legitimate closed-state hypothesis removal fails both conclusions. This parser/session boundary does not establish native private-root alias/END ACK custody, framing refinement, full decoder/publication cost or native liveness.",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006"
+      ],
+      "depends_on": [
+        "PRF-1300"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "events": [
+        "fn-tclsctl-source-drive-keepalive-refines-session",
+        "fn-tclsctl-source-drive-keepalive-preserves-custody-and-reception"
+      ],
+      "evidence": [
+        "books/tcpcl-source-control-refinement.lisp",
+        "tests/acl2/tcpcl-source-control-refinement-tests.lisp",
+        "host/native/tcpcl.lisp"
+      ],
+      "progress_note": "Normal warm hbox admission: universal parser/session identity311steps and composed custody/reception4513steps, plus complete reachable positive and phase-hypothesis-removal literals PASS. Exact two-root certificate pending; no native or whole-host correspondence claim."
     }
   ]
 }
