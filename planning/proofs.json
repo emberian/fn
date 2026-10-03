@@ -22259,6 +22259,33 @@
         "planning/evidence/web-stream-consumers-2026-10-03.md"
       ],
       "progress_note": "Actual source programs and connected native empty/one/1003-group exact reference, fixed scanner/plan, IN-window and final-pin raw witnesses pass. Guard/refinement/profile arithmetic qualification and matching image pending; original LIST reply is still materialized by NNTP before this consumer."
+    },
+    {
+      "id": "PRF-1290",
+      "title": "Captured POST/remove gate on fixed worker gives the exact live-table gate action and output",
+      "statement": "Subject fn-web-private-begin-step, called by fn-web-host-private-begin-step and native fnn-web-private-begin on the existing fixed semantic worker. Under exact fn-web-private-begin-p (core-generated row is in fn-web-routes and names post/remove), fn-web-private-begin-is-captured-gate equates private action/output to fn-wss-gate with the live table, and the gate preserves that table. BEGIN alone finds/touches the session and closes expired sessions under the owner section; the deferred gate still checks same-site/session/CSRF using that immutable captured context. Full form parsing and authored POST/cancel construction leave O. Source theorems/positive and predicate-removal witnesses await admission; raw scheduling adapter does not prove form semantics or complete worker fairness.",
+      "milestone": "M6",
+      "requirements": [
+        "WEB-006"
+      ],
+      "depends_on": [
+        "PRF-1279",
+        "PRF-339"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "events": [
+        "fn-web-private-begin-is-captured-gate"
+      ],
+      "evidence": [
+        "books/web-session.lisp",
+        "books/web-session-keystones.lisp",
+        "host/web-host.lisp",
+        "host/native/web-host.lisp",
+        "tests/acl2/web-private-begin-tests.lisp",
+        "tests/native_web_private_begin_raw.lisp"
+      ],
+      "progress_note": "Connected source capture/action/fixed-worker consumer. Raw exact classifier/private wrapper with a held gate adapter allows healthy owner event, and the worker never enters O; form/body equivalence witness and theorem admission plus matching image are pending. Form construction remains a full worker operation and its full allocation tariff is unpriced."
     }
   ]
 }

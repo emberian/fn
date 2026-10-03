@@ -43,7 +43,7 @@
 (defstruct (fnn-web-conn (:constructor %make-fnn-web-conn))
   socket fd ssl channel in out deadline job (closedp nil) (semantic-ended nil) (semantic-disposal :idle)
   (phase :head) (want :input) (from 0) request end
-  flow event (events 0) (opened nil) (answered nil)
+  flow event private-begin (events 0) (opened nil) (answered nil)
   cid leased (cmd-at 0) (cmd-end 0) pending plan closing await completion
   cold cold-word (line-since nil) (resume-at 0)
   wire (wire-at 0) (body-at 0) (body-end 0)
@@ -240,7 +240,8 @@ exposure admission decides (the id, or NIL when it refused)."
                      (:replay (fnn-web-replay-step face conn))
                      (:cold (fnn-web-cold-step face conn))
                      ((:page-count :page-emit) (fnn-web-page-step face conn))
-                     (:private-reply (fnn-web-private-reply face conn))))
+                     (:private-reply (fnn-web-private-reply face conn))
+                     (:private-begin (fnn-web-private-begin face conn))))
                (serious-condition (condition)
                  (unwind-protect
                      (fnn-owner-thread-escape (fnn-web-face-service face) condition "web semantic job")
@@ -353,9 +354,21 @@ exposure admission decides (the id, or NIL when it refused)."
                     (fnn-web-conn-flow conn) (fnn-web-conn-event conn)
                     (fnn-web-conn-in conn) (fnn-web-conn-out conn)))))
 
+(defun fnn-web-private-begin (face conn)
+  (when (>= (fnn-web-conn-events conn) (fnn-core 'fn-web-host-max-events))
+    (fnn-fault "web flow exceeded its event allowance"))
+  (incf (fnn-web-conn-events conn))
+  (let ((action (first (fnn-call 'fn-web-host-private-begin-step (fnn-web-face-config face)
+                               (fnn-web-conn-private-begin conn)
+                               (fnn-web-conn-in conn) (fnn-web-conn-out conn)))))
+    (setf (fnn-web-conn-private-begin conn) nil)
+    (fnn-web-apply-action face conn action)))
+
 (defun fnn-web-apply-action (face conn action)
   (let ((service (fnn-web-face-service face)))
     (case (fnn-core 'fn-web-host-action-kind action)
+      (:private-begin (setf (fnn-web-conn-private-begin conn) action
+                            (fnn-web-conn-phase conn) :private-begin))
       (:respond (destructuring-bind (code fields bodyp &optional page-kind segs) (rest action)
                   (when (fnn-web-conn-reply-scan conn)
                     (fnn-web-fill (fnn-web-conn-in conn) (fnn-make-octets 0))
@@ -669,6 +682,7 @@ exposure admission decides (the id, or NIL when it refused)."
                                     (fnn-web-conn-flow conn) (fnn-web-conn-event conn))
                            (fnn-web-job-submit face conn :private-reply)
                          (fnn-web-event face conn)))
+               (:private-begin (fnn-web-job-submit face conn :private-begin))
                (:feed (when (fnn-web-feed-owned-p face conn) (fnn-web-job-submit face conn :feed)))
                (:await (fnn-web-await-step face conn))
                (:render (fnn-web-job-submit face conn :render))

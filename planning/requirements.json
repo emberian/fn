@@ -6652,7 +6652,8 @@
         "PRF-1279",
         "PRF-1283",
         "PRF-1284",
-        "PRF-1285"
+        "PRF-1285",
+        "PRF-1290"
       ],
       "verification": [
         "test",
@@ -6676,9 +6677,11 @@
         "tests/native_web_over_stream_raw.lisp",
         "books/web-list-stream.lisp",
         "tests/native_web_list_stream_raw.lisp",
-        "planning/evidence/web-stream-consumers-2026-10-03.md"
+        "planning/evidence/web-stream-consumers-2026-10-03.md",
+        "tests/acl2/web-private-begin-tests.lisp",
+        "tests/native_web_private_begin_raw.lisp"
       ],
-      "implementation_note": "Actual source: fixed I/O actor plus one semantic worker, profile-bounded HTTP slots/mailbox and exact per-CID lifetime leases. Captured read/post reply planning runs outside O; stateful events still use owner admission. HTML is counted and emitted in bounded windows with no complete HTML OUT. Shared capture/replay eliminates Web full IN/row copies for ARTICLE, OVER and LIST: fixed article metadata, at most the existing100 requested OVER rows as virtual spans, dynamic one-row LIST plans independent of group count. Final response pin spans scan/count/replay/emit and HTTP suffix or physical semantic cleanup. Exact raw native/reference/cold/partial-write witnesses pass. Programs/refinement/profile arithmetic and matching image remain pending. Original NNTP ARTICLE payload/block, LIST complete reply and some OVER NOV/projection outputs still materialize before capture; complete supported-profile working/capture/mailbox/repeated-read funding remains open. This is not universal allocation warranty or full semantic-event fairness."
+      "implementation_note": "Actual source: fixed I/O actor plus one semantic worker, profile-bounded HTTP slots/mailbox and exact per-CID lifetime leases. Captured read/post reply planning runs outside O; stateful events still use owner admission. HTML is counted and emitted in bounded windows with no complete HTML OUT. Shared capture/replay eliminates Web full IN/row copies for ARTICLE, OVER and LIST: fixed article metadata, at most the existing100 requested OVER rows as virtual spans, dynamic one-row LIST plans independent of group count. Final response pin spans scan/count/replay/emit and HTTP suffix or physical semantic cleanup. Exact raw native/reference/cold/partial-write witnesses pass. Programs/refinement/profile arithmetic and matching image remain pending. Original NNTP ARTICLE payload/block, LIST complete reply and some OVER NOV/projection outputs still materialize before capture; complete supported-profile working/capture/mailbox/repeated-read funding remains open. This is not universal allocation warranty or full semantic-event fairness. POST/remove BEGIN now captures/touches session under O and returns an ACL2-selected private-begin action; the existing fixed worker executes the same-site/session/CSRF gate and authored-body construction outside O. PRF-1290 source equivalence and image pending; a long body operation still occupies that worker and remains unpriced."
     }
   ]
 }

@@ -5339,3 +5339,4 @@
 (definterface fn-web-host-stream-start :class ::program)
 (definterface fn-web-host-stream-scan :class ::program)
 (definterface fn-web-host-stream-page :class ::program)
+(definterface fn-web-host-private-begin-step :class ::program)

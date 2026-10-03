@@ -1982,3 +1982,14 @@ payload/block, LIST complete reply and some OVER full NOV/projection replies
 remain upstream materialization frontiers. Served owns LIST producer; Root
 owns shared payload/section producer; Web owns these connected consumers and
 qualified consumer tariff coordination. No full producer funding claim.
+
+
+Captured POST/remove BEGIN (PRF-1290 planned, SCN-1119) now looks up/touches
+its session and handles expiry in the owner section, then returns a core-selected
+private-begin action for the existing fixed semantic worker. That worker runs
+the exact same-site/session/CSRF gate and authored POST/cancel preparation
+outside O. Source equivalence/witness admission and matching image remain
+pending; raw classifier/held-worker scheduling passes with a healthy owner
+event progressing. Body preparation still runs to completion on one worker;
+full body/working/capture allocation is unpriced, and stateful owner admission
+can still delay events. No second worker or full fairness warranty.

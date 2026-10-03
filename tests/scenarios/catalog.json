@@ -8920,6 +8920,30 @@
         "planning/evidence/web-stream-consumers-2026-10-03.md"
       ],
       "note": "Actual raw source consumer passes. Original NNTP LIST producer still materializes its captured reply; source programs/arithmetic profile/refinement and matching image/funding are pending."
+    },
+    {
+      "id": "SCN-1119",
+      "title": "Captured private POST/remove begin runs its gate on the fixed worker outside O",
+      "milestone": "M6",
+      "status": "specified",
+      "requirements": [
+        "WEB-006"
+      ],
+      "steps": [
+        "Compare reached valid POST, bad-CSRF and remove BEGIN against prior live-table gate/action/output after the same session touch.",
+        "Run actual core classifier/private wrapper and native action/worker dispatch with a held gate adapter; forbid owner admission on worker thread.",
+        "While private gate is held, perform an actual healthy network actor owner event; remove the predicate on a reached old send action."
+      ],
+      "expected": [
+        "Same action/output and touched session table; CSRF/refusal semantics preserved.",
+        "Heavy gate/body preparation is outside O, and healthy owner event progresses during the held private gate.",
+        "Only actual POST/remove table rows are eligible; failed predicate witnesses fail the claimed gate equality."
+      ],
+      "evidence": [
+        "tests/acl2/web-private-begin-tests.lisp",
+        "tests/native_web_private_begin_raw.lisp"
+      ],
+      "note": "Raw scheduling/classifier adapter passes; actual ACL2 equivalence witnesses and matching image pending. No full form producer heap/fairness claim."
     }
   ]
 }
