@@ -133,6 +133,7 @@
 (include-book "../../books/bp-node-machine-codec")
 (include-book "../../books/bp-node-machine-guards")
 (include-book "../../books/bp-node-fragment-guards")
+(include-book "../../books/bp-session-scheduler")
 (include-book "../../books/bp-fragment-send")
 (include-book "../../books/bp-node-receive-boundary")
 (include-book "../../books/bp-fnbs-replay")

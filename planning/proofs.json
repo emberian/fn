@@ -22451,6 +22451,36 @@
         "tests/native_output_preflight_raw.lisp"
       ],
       "progress_note": "Fresh laptop full source13forms admits4.08ACL2s/936154steps including six source-loaded dependencies in proper local encapsulates; actual input-stobj first-event pipeline and independent unpriced/mismatched/unaffordable families plus literal weakened-prefix hypothesis-removal teeth pass13/0. Program owner wrapper/native consumer integration and certificate pending. Prefix theorem weakened to only natural START and START<=END after proving fast-wire/type/end/storage premises redundant for the logical range property; executable guards remain unchanged. Actual admitted mux reader now reserves response identity and draws before buffer filling/preview; installed private ledger capacity is read under its own lock. Explicit program tariff delegates ACL2 unpriced producer, so incomplete coverage refuses before factory. Accepted NEXT is passed to actual span helper; cold fallback validates prefix before retry. Published holder retains known returned issuance on later refusal/fault, so finish can consume whole operation discard. SCN1111 actual helpers/decision bodies pass0.27s with recording wire/typed boundaries and injected positive tariff only to refute suffix escape; current producer has no priced family and optional profile remains unsupported. Program admission, whole driver refinement, runtime allocator/GC/root coverage and qualified image remain owed. Capacity/accessor source guards and live zero/installed-Q ledger cases also passed in the source-only25ee package; full changed resource-output certification is still pending."
+    },
+    {
+      "id": "PRF-1276",
+      "title": "Explicit BP session projection and two-receipt private grant custody",
+      "statement": "Native fnn-bp-session-install calls fn-bpsp-startup over the bounded ACL2 session profile, actual dynamic-space size, captured Store heap figure, held BP projection and captured wire span. The host-called producer returning :hold certifies that its named baseline plus session allowance fits dynamic space and that the allowance covers the private table and all configured incoming/outgoing context projections. Native observe calls fn-bpsg-step: physical close alone cannot settle an unreleased context. Typed fn-bpsg-install/acquire/return use fn-rl-install/draw/settle on a private BP ledger and generation tokens; retained incoming/outgoing consumers reserve before accept/connect/context construction and require both context terminal/no future publication and affirmative physical termination for settlement. Scope is a staged resident/descriptor/conn-ID projection, not complete allocator/GC/work/DNS/decode/other-actor funding refinement or a whole scheduler liveness proof.",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006"
+      ],
+      "depends_on": [
+        "PRF-1273"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "events": [
+        "fn-bpsp-startup-hold-protects-baseline-and-all-contexts",
+        "fn-bpsg-physical-alone-cannot-settle-context"
+      ],
+      "evidence": [
+        "books/bp-session-profile.lisp",
+        "books/resource-bp-session.lisp",
+        "books/bp-session-scheduler.lisp",
+        "host/native/bp-session.lisp",
+        "host/native/bp-node.lisp",
+        "tests/acl2/bp-session-profile-tests.lisp",
+        "tests/native_bp_session_bank_raw.lisp",
+        "planning/evidence/manifests/certify-20261003T113645Z-1660138.json",
+        "planning/evidence/bp-retained-node-2026-10-03.md"
+      ],
+      "progress_note": "Warm hbox source admission verified every new guard (98,006 prover steps). Four-root farm run113540-b22f PASSED4/0 before final additive captured-wire-span helper; final exact source recertification and native DTN image pending. Actual raw bank/loop passes physical-alone custody, ambiguous close no refund/retry, same-token fragment rearm, live first peer plus second acceptance and all eight service phases. No full funding or native-image fairness claim."
     }
   ]
 }

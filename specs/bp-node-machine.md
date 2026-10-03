@@ -5095,3 +5095,42 @@ caller until completion: concurrent BP acceptance, forwarding/receipt turns
 and explicit supported-profile session grants remain S025 obligations.
 Legacy logical parsing/carry and whole-message encoding retain their cost
 and refinement scope; S068 is not discharged by a bounded socket attempt.
+
+
+### Retained physical session consumer (2026-10-03, S025, PRF-1276)
+
+The single writer now multiplexes retained TCPCL sessions in `bp-node serve`:
+`fnn-bp-session-loop` attempts one ready installed listener, advances one direct
+indexed context and services one of eight ACL2-selected classes per loop.
+Reassembly, dispatch, expiry, outbox queueing, forwarding, receipt sends, report
+queueing and rotation run independently of a peer closing its session. This
+supersedes the native between-session scheduling limitation described above;
+the existing protocol and durable kind-5/kind-8/kind-9 decisions remain ACL2-owned.
+RFC9174 section4 transport acknowledgment remains distinct from application
+commitment and its durable returned receipt.
+
+The operator's separate `bp-session-profile` is strict bounded ASCII text:
+`inbound N`, `outbound N`, optional `resident N`, and `outbound-ms N`, one per LF
+line, no duplicate key. Absent rows default to 2 incoming, 1 outgoing, derived
+resident projection and 30000ms outbound deadline. Counts are representable
+slot counts; zero in one class is allowed, but their total is positive.
+`bp-node session-profile JOURNAL NODE-ID INBOUND OUTBOUND [RESIDENT|- [OUTBOUND-MS]]`
+uses the ACL2 encoder and publishes it under the existing journal lifecycle lock.
+
+Startup captures Store heap profile, BP held profile, actual runtime dynamic
+space and the supported transfer/bundle span. ACL2 refuses an unrepresentable
+or insufficient session partition. A private typed ledger reserves the named
+resident/descriptor/connection-ID projection before accept/connect/context
+construction. Generation tokens identify exact reservations; an unfinished
+fragment operation retains its token across successive physical connections.
+Only affirmative socket termination and no remaining context/publication/source
+borrow together permit settlement. An ambiguous close is attempted once and
+holds custody; a timeout is an operation observation, never physical return.
+
+Scope remains partial: the named layout projection does not establish complete
+semantic-decode/collector/work/DNS/filesystem/other-actor cost refinement. Legacy
+list framing/carry and whole message encoding remain S068 frontiers; quantum
+4096 bounds physical socket ranges, not every local computation. Native
+source-matched multi-peer/application-receipt/reopen qualification and whole
+scheduler/refinement theorems remain owed. No stored transfer is truncated when
+a scheduling quantum ends.
