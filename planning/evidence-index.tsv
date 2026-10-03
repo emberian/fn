@@ -8005,6 +8005,8 @@ fe86febc0a5bdcd231b879094349d651b7610bf5784de4e20c049ee3ccac7bec 7849 planning/e
 39ed1229eb4e4ccbca6e7ffa503aa344c08b5c3b10fe9734bcefa223fc94acf2 1606 planning/evidence/page-read-resource-shapes-2026-09-29.lisp
 c36ec58ff46d77c52cd99671a54796a357485024e30fec5cf1583d82511a2323 3318 planning/evidence/page-read-resource-shapes-2026-09-29.md
 66977e4ad0bb5e4169c06c03ab90a4ceb62ecec172b9a6862e88983192359ada 3196 planning/evidence/page-read-resource-shapes-2026-09-29.txt
+44296f386c69020e1f8d2036de9b7f0daef9398ae21ec4ad7194e410287bc163 15353 planning/evidence/page-window-lease-2026-10-03/repl.log
+35d78619a4b23be4f3eba707b24dea31a5c6ed815318d9ad11470cfffc872bd8 421 planning/evidence/page-window-lease-2026-10-03/result.json
 afd705e1a9ca15d24cff79720713c59132ae19bd927781d8c236c4d4adb10628 8012 planning/evidence/paged-resource-pool/layout-hbox-sbcl-2.6.8.log
 c8f93123c1eaa984bd707ac2644f4fc0f622d13504e96f3718354f165ffac1ed 1662 planning/evidence/paged-resource-pool/layout-source-2026-09-30.md
 e540b00df16b8ab5dec03f74654374d243ddbe8b6bb2086df6684c77de630d9d 1534 planning/evidence/paged-resource-pool/measure-layout.lisp
