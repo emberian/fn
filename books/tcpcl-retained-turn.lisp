@@ -1,0 +1,33 @@
+; Scheduling of retained TCPCL work, independent of protocol decisions.
+; A quantum bounds one physical attempt; it is not a stored-data limit.
+(in-package "ACL2")
+(defun fn-tcrt-read-limit () (declare (xargs :guard t)) 4096)
+(defun fn-tcrt-write-end (offset total)
+ (declare (xargs :guard t))
+ (min (nfix total) (+ (nfix offset) (fn-tcrt-read-limit))))
+(defun fn-tcrt-write-deadline (now)
+ (declare (xargs :guard t)) (+ (nfix now) 30000))
+(defun fn-tcrt-action (source-pending source-more writep messagesp input-due pump closing phase now deadline)
+ (declare (xargs :guard t))
+ (cond
+  (writep (if (and (natp deadline) (<= deadline (nfix now))) :lost :write))
+  (messagesp :encode)
+  (closing :done)
+  ((equal phase :closed) :done)
+  (source-pending :source)
+  (source-more :buffer)
+  (input-due :read)
+  (pump :pump)
+  (t :local)))
+(defthm fn-tcrt-write-range-is-bounded
+ (implies (and (natp offset) (integerp total) (<= offset total))
+  (and (<= offset (fn-tcrt-write-end offset total))
+       (<= (fn-tcrt-write-end offset total) total)
+       (<= (- (fn-tcrt-write-end offset total) offset) (fn-tcrt-read-limit)))))
+(defthm fn-tcrt-source-custody-excludes-input
+ (implies (and source-pending (not writep) (not messagesp)
+               (not closing) (not (equal phase :closed)))
+  (equal (fn-tcrt-action source-pending source-more writep messagesp input-due pump closing phase now deadline) :source)))
+(defthm fn-tcrt-ready-write-precedes-source-and-close
+ (implies (and writep (not (and (natp deadline) (<= deadline (nfix now)))))
+  (equal (fn-tcrt-action source-pending source-more writep messagesp input-due pump closing phase now deadline) :write)))

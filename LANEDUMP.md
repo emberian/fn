@@ -1771,3 +1771,16 @@ current coordination; focused actual pull fixture follows separately.
 No proof/image or actual peer scenario claim.
 ## Source assembly immediate HTTP reactor (2026-10-03)
 934b416cb composed with cold fifth return; actual io leaf collision with retained pull FD/DATA/OFFSET/END fnn-socket-write-now resolved by renaming new HTTP/NNTP FD/CHANNEL/DATA/OFFSET leaf fnn-transport-write-now plus two callers. Six missing program dispatcher declarations added for actual HTTP wrappers. Source ships before verification; primary cancellation/session lease/cold lifetime and actual changed constructor/leaf fixture checks follow, matching nativeWeb/LogicalFeed pending. Full reply/HTML materialization/funding still open.
+
+BP-TRANSPORT retained driver 2026-10-03: generic fnn-tcl-session now consumes
+fnn-tcl-begin/turn, one socket attempt/range<=4096 per turn, exact encoded
+vector/offset retained, ordered released output distinct from custody ACK.
+Input/pump alternate; physical ACK write finishes before application hook.
+Source borrow excludes input; EOF/deadline protocol loss preserves caller's
+physical close debt. Transport handler encloses socket primitive only, so
+publication/core faults escape. Actual raw driver+old once drain+forward
+close selectors PASS; scalar guarded book+literal teeth hbox manifest
+certify-20261003T104100Z-1504853 PASSED2/0, harvest in progress. Primary source
+review Assembly. S025 node mux stillnext; Foundations owns explicit profile
+count/demand producer, cannot borrow syncer/output grants. S068 carry/source
+activation and whole-session refinement remain open.
