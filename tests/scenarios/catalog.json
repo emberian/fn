@@ -9404,9 +9404,10 @@
         "Admin refusal does not submit; malformed cause is fault."
       ],
       "implementation": {
-        "test": "tests/test_moderation_outcome.py"
+        "test": "tests/test_moderation_outcome.py",
+        "native_test": "tests/test_native_moderation_outcome.py"
       },
-      "execution_scope": "Actual source dispatcher and normal ACL2 guard/admission; complete native durability/transport and concurrent authority scenario pending."
+      "execution_scope": "Actual source dispatcher, normal ACL2 formatter book49forms/7425steps and65literal teeth pass. Actual native partial publication/restart/retry PASS1test/0skips/10.444s: durable authorization, named uncertainty/exit3 on known cause refusal, healthy owner and target readable, row preserved after restart, retry accepted and target withdrawn. Indexed native-moderation-outcome evidence binds historical ad8 initialized cache plus exact current formatter/consumer overlay, not whole current union. Concurrent authority/generation interactions remain an investigation item, not an established defect or atomicity guarantee."
     },
     {
       "id": "SCN-1122",

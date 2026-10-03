@@ -324,9 +324,9 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 - Keystone: `fn-tcim-turn-boundary` (books/tcpcl-input-materialize.lisp:41; in no registry row); certified at the current source and closure by `certify-20261003T133032Z-1944927` (earliest archived).
 - Tested: no matching image; source proof experiments are recorded separately below.
 - Deployed: no: the node runs default, this needs dtn.
-- Latest positive result: Actual retained source/control/framing/root-cleanup fixtures PASS on be75fde27; archive planning/evidence/bp-source-continuations/be75-native-components.json. Narrow window guards and unconditional slice boundary passed; final manifest indexing pending.
+- Latest positive result: Actual retained source/control/framing/root-cleanup fixtures PASS on be75fde27; archive planning/evidence/bp-source-continuations/be75-native-components.json. Exact window guards/slice boundary and receiver refinement roots certify-20261003T134842Z-1987626 PASSED3/0 archived/indexed. Initialized-source producer matching has8 discriminating checks PASS; this is fixture provenance, not a native transfer result.
 - Remaining obstruction: Whole semantic decoder/CRC/publication and allocator/GC latency remain unbounded; universal framing-to-codec and full native source/publication composition remain unproved.
-- Next positive gate: Fresh initialized matching-source SCN1110 canonical second request while first keepalive peer remains live, then same-source immutable signed R/Q delivery/reopen.
+- Next positive gate: Execute SCN1110 canonical second request while first keepalive peer remains live on current initialized source; then SCN-1125 immutable signed R/Q plus returned receipt/pin release/reopen and SCN-1126 real-time silent Contact Header deadline.
 
 ### bp-source-control
 

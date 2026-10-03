@@ -629,8 +629,11 @@ readback: one test, zero skips, 28.443s, supported 128 MiB history/16 MiB
 article/64 transactions. The named ad8 initialized cache plus ordinary observer
 overlay is the execution coordinate; whole current-kernel/funding qualification
 and completion under every overloaded deadline remain open. Earlier scratch
-refusals were oversize or underfunded, not timeouts. S083 still needs composed
-native partial-publication coverage. Current authority/generation interactions
+refusals were oversize or underfunded, not timeouts. S083 actual partial-publication/restart/retry now passes: one test, zero skips,
+10.444s on the named historical cache plus current formatter/consumer overlay.
+The CLI preserves named uncertainty, durable authorization survives restart,
+and accepted retry withdraws the target. Whole current-union qualification
+remains separate. Current authority/generation interactions
 remain an investigation item, not an established security defect or an inferred
 atomicity requirement: the trusted local control route does not use login for
 withdrawal, and the published row authorizes a cause rather than completing
