@@ -331,6 +331,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/wildmat-parser-invariants \
 	books/wildmat-matcher-invariants \
 	books/wildmat-work \
+	books/wildmat-live \
+	tests/acl2/wildmat-live-tests \
 	tests/acl2/wildmat-parser-invariants-tests \
 	tests/acl2/wildmat-tests \
 	tests/acl2/wildmat-teeth-tests \

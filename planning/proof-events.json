@@ -19077,6 +19077,55 @@
           "name": "fn-ocap-preview-keeps-input-prefix-bounds"
         }
       ]
+    },
+    {
+      "id": "PRF-1261",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-wmc-start-value-is-group-match"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wmc-one-preserves-result"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wmc-step-preserves-value"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wmc-funded-step-progress"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wmc-accepted-cons-cells-covered"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wmc-cumulative-cons-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wml-start-retainedp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wml-one-retainedp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wml-step-retainedp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wml-retained-owned-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wml-borrowed-pattern-cells"
+        }
+      ]
     }
   ]
 }
