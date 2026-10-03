@@ -49,6 +49,16 @@ class HostSourceTests(unittest.TestCase):
             self.assertIn('(progn! (set-raw-mode t) (load "host/native/io.lisp") (fnn-install-raw-dispatch))', text)
             self.assertNotIn('include-book', text)
             self.assertNotIn('save-exec', text)
+            data = json.loads(manifest.read_text())
+            normal = Path(data['normal_host']).read_text()
+            native = Path(data['native_installation']).read_text()
+            self.assertIn('(defun actual-outer', normal)
+            self.assertNotIn(':fn-native-host', normal)
+            self.assertNotIn('set-raw-mode', normal)
+            self.assertNotIn(':q', normal)
+            self.assertIn('(fnn-install-raw-dispatch)', native)
+            self.assertNotIn('(defun actual-outer', native)
+            self.assertIn(str(Path(data['normal_host'])), data['inputs_sha256'])
             self.assertIn(str((root / 'host/inner.lisp').resolve()), json.loads(manifest.read_text())['inputs_sha256'])
 
     def test_unadmitted_dependency_refuses_instead_of_dropping_it(self):

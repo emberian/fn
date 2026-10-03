@@ -89,11 +89,13 @@ def generate(source: Path, world_manifest: Path, output: Path,
     remember(path)
     output_forms = ['(in-package "ACL2")']
     native = False
+    boundary = None
     for form in forms(path.read_text()):
         if form.lower() == ':q':
             output_forms.append(':q')
             break
         if form.lower().startswith('(defttag :fn-native-host'):
+            boundary = len(output_forms)
             native = True
         if native:
             output_forms.append(form)
@@ -106,13 +108,24 @@ def generate(source: Path, world_manifest: Path, output: Path,
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text('\n\n'.join(output_forms) + '\n')
     remember(output.resolve())
+    # The retained logical REPL can admit host definitions without crossing
+    # the trusted raw boundary or leaving its loop. The complete build remains
+    # the fresh-entry input, with exactly the same ordered events.
+    normal = output.with_name(output.stem + '.normal.lisp')
+    native_path = output.with_name(output.stem + '.native.lisp')
+    normal.write_text('\n\n'.join(output_forms[:boundary]) + '\n')
+    native_path.write_text('(in-package "ACL2")\n' +
+                           '\n\n'.join(output_forms[boundary:]) + '\n')
+    remember(normal.resolve())
+    remember(native_path.resolve())
     manifest = output.with_suffix('.json')
     manifest.write_text(json.dumps({
         'kind': 'current host source and trusted native loads; not admission or qualification',
         'source': str(source), 'logical_world': str(world_manifest),
         'logical_source': world['source'], 'logical_source_revision': world.get('source_revision'),
         'host_files': hosts, 'inputs_sha256': inputs,
-        'build': str(output.resolve()),
+        'build': str(output.resolve()), 'normal_host': str(normal.resolve()),
+        'native_installation': str(native_path.resolve()),
     }, indent=2) + '\n')
     return manifest
 
