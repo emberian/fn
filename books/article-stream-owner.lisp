@@ -5,6 +5,7 @@
 (include-book "article-stream-server")
 (include-book "owner-credits")
 (include-book "served-plan")
+(include-book "served-query-plan")
 
 (defun fn-asto-with-wire-session (conn wire session)
   (declare (xargs :guard t))
