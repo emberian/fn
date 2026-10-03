@@ -2361,3 +2361,4 @@ Groundwork continues application consumer/E1E2. No app transfer. Lieutenant
 exempt from ten-agent cap per Ember's latest 07:14 correction.
 
 Source assembly: captured Web reply worker64 composed with page cursor; two actual consumed program declarations. Stateful session/admission still owner-bound; PRF1279 admission/cert/image/funding pending.
+Journal general parser/report/exit refinement source composed; exact new-source normal certificate/image scope stays separate.
