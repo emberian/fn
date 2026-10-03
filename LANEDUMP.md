@@ -29,6 +29,16 @@ without an all-tail history load or a second post-swap page build. Fresh catalog
 load uses fn-owner-orcp-load-catalog; prepared candidate abandonment and held
 old-generation reads pass the native control fixture. Normal full owner source
 execution is the immediate feedback target; Integration supplies native_source_runner.
+Fresh full ordered source bootstrap (ordinary ad8 certified world plus early
+P3 attachment) exposed inherited codec ADT proof-context conflicts; final
+foundation locals force-replayed successfully after fixes (434db1bff,
+0.92s122940steps). Exact scoped receipt native-history-root-source-followthrough-
+2026-10-03.json is archived; no full owner-native success inferred. A separate
+12G governed fresh runner is currently executing at
+/tank/fn/gates/native-history-roots-repl/build/p3-native-entry, with the actual
+compatible certified page dependencies from sol-foundations-output-9d1ed9242.
+Terminal roster deletion now removes released generation entries; actual
+ACL2 get/put assertion and all raw root-control fixture cases pass.
 Carrier handoff f69a4c846/25186bd8b remains source-ready, no atomic migration.
 
 Previous lane material inherited from the integrated tree follows unchanged.
