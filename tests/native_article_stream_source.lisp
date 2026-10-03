@@ -39,7 +39,8 @@
 (source-load-defuns "books/nov-piece-window.lisp" '(fn-npw-one))
 (source-load-defuns "books/nntp-article-pass.lisp"
                     '(fn-nntp-crlf-validp fn-nntp-blank-linep fn-nntp-block-rev))
-(source-load-defuns "books/nntp-xref.lisp" '(fn-xref-octetp fn-xref-octetsp fn-xref-wordp fn-xref-pairs-of fn-xref-pairs))
+(source-load-defuns "books/nntp-xref.lisp" '(fn-xref-octetp fn-xref-octetsp fn-xref-wordp fn-xref-pairs-of fn-xref-pairs
+    fn-xref-server-octetsp fn-xref-serverp))
 (source-load-defuns "books/nntp-syntax.lisp"
   '(fn-nntp-printable-tokenp fn-nntp-message-id-tailp fn-nntp-message-id-tokenp
     fn-nntp-string-octets fn-nntp-string-octets-aux fn-nntp-string-octets-aux-loop))
@@ -136,6 +137,20 @@
           (dolist (window '(1 3 4096))
             (source-check (equal (source-render-window ready window arena)
                                  (source-reference payload kind 7 "<xref@example>" server pairs)))))))))
+(let* ((payload (append (bytes "Subject: server") '(13 10 13 10 46 13 10)))
+       (arena (list payload))
+       (article (list "<server@example>" 0 '(("fn.a" . 2))))
+       (scan (source-scan (fn-ast-source article arena) 3 arena)))
+  (dolist (server (list nil '(33 126 58) '(32) '(127) '(65 . 66) "server"
+                       (append (make-list 5000 :initial-element 65) '(32))
+                       (make-list 5000 :initial-element 65)))
+    (dolist (kind '(:article :head :body))
+      (dolist (window '(1 3 4096))
+        (source-check
+         (equal (source-render-window (fn-ast-ready-memberships scan kind 2 article server) window arena)
+                (source-reference payload kind 2 "<server@example>"
+                                  (and (fn-xref-serverp server) server)
+                                  (fn-xref-pairs article))))))))
 (let ((articles (loop for n from 1 to 200 collect
                   (list (format nil "<select~d@example>" n) 0
                         (list (cons "fn.other" (+ n 300)) (cons "fn.a" n))))))
