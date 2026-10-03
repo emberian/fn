@@ -2410,3 +2410,18 @@ Empirical owns matching DTN SCN1110 and canonical application receipt/reopen.
 No new image claim, no complete funding/refinement claim. Profile default2in/1out,
 explicit resident or derived staged projection,30s outbound; full memory/GC/work
 and other actor physical tariff, S068 concrete frame carry/borrow remain owed.
+- S119 prepared one physical recovery composition selector:
+  tests.test_native_recovery.NativeRecoveryFidelityTests.
+  test_secret_rotation_orphan_is_swept_without_changing_key_authority. Actual
+  first/second rotations surround constructed interrupted staging state;
+  recovery must preserve current/retained keys and foreign evidence. No secret
+  bytes enter assertion diagnostics. Syntax and existing producer-prefix/sweep
+  source check pass; saved-image execution remains Integration-owned.
+
+- Continuing Operator convergence: native-config-show accepts output field30
+  in its shape and resource invariant, renders both resource policies in one
+  table, and retains both output fields in parsed pairs. Original minimal01
+  checkpoint fixed by the complete producer/render/load composition. Existing
+  public round-trip and loader-renderable statements preserved; warm65of65
+  forms pass. New output-only + combined-policy full-antecedent/conclusion
+  fixtures and refusal checks prepared. Normal exact-root cert remains owed.

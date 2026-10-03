@@ -185,3 +185,16 @@ mismatch. This does not add a streaming history loader or prove physical init
 syscall order: the existing bounded history observation and init publication
 program retain their separate contracts. Operator init's staged-publication
 verb retains its existing path refusal.
+### Explicit output resources in the canonical rendering
+
+The optional pair `resources.output_heap_octets` and
+`resources.output_quantum_heap_octets` is rendered in the same resources table
+as cold resources. Both values survive whole-config and individual-key
+`operator show`; loading the rendering preserves the complete normalized
+record, including absence of either resource policy. The renderable invariant
+carries the loader's output-policy predicate: two positive u64 naturals, with
+total heap at least twice the quantum heap. Parsing and rendering this pair
+does not enable its pending operational consumer or change the operator's
+`output_resources` refusal. Existing round-trip and accepted-load keystones
+cover these fields; output-only and combined cold/output fixtures discriminate
+the representation boundary.
