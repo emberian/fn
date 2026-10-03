@@ -1873,7 +1873,7 @@
                               session (fn-wss-theme-of request) config))
              (route (fn-web-route (fn-web-req-method request) (fn-web-req-path request))))
         (if (equal (car route) :route)
-            (if (and (equal (fn-wrq-nth 7 config) :private-begin)
+            (if (and session (equal (fn-wrq-nth 7 config) :private-begin)
                      (fn-web-private-begin-row-p (cadr route)))
                 (mv (list :private-begin (cadr route) session ctx) sessions fn-web-out)
               (fn-wss-gate (cadr route) session sessions ctx config fn-web-in fn-web-out))
