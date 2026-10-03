@@ -26,6 +26,112 @@
 
 (in-package "ACL2")
 
+;;; Developer observations are finite native records, never semantic input.
+;;; Capacity exhaustion or instrumentation failure invalidates comparison;
+;;; neither can classify a service fault or change admission/cleanup.
+(defstruct (fnn-native-observation-row (:constructor %make-fnn-native-observation-row))
+  event identity (complete nil))
+(defstruct (fnn-native-observation (:constructor %make-fnn-native-observation))
+  rows (count 0) (valid t) reason
+  (lock (sb-thread:make-mutex :name "fn primitive observations")))
+(defvar *fnn-native-observer* nil)
+(defvar *fnn-native-actor-identity* nil)
+
+(defun fnn-native-observation-create (capacity)
+  "Explicit developer profile capacity; preallocate before spawning workers."
+  (%make-fnn-native-observation
+   :rows (map 'vector (lambda (ignored) (declare (ignore ignored))
+                       (%make-fnn-native-observation-row))
+              (make-array capacity :initial-element nil))))
+
+(defun fnn-native-reserve-thread-identity ()
+  "The existing physical reservation primitive, shared by actor/observation
+startup. It derives no semantic identity or resource generation."
+  (gensym "ACTOR-"))
+
+(defun fnn-native-observed-thread-thunk (thunk &optional reserved-id)
+  "Capture observation before the maker. Failed creation emits no events;
+an actor supplies its existing reservation rather than minting a second ID."
+  (if (null *fnn-native-observer*) thunk
+    (let ((observer *fnn-native-observer*)
+          (identity (symbol-name (or reserved-id (fnn-native-reserve-thread-identity)))))
+      (lambda ()
+        (let ((*fnn-native-observer* observer) (*fnn-native-actor-identity* identity))
+          (funcall thunk))))))
+
+(defun fnn-native-observation-reserve (event complete)
+  "Reserve producer order. This observer's only nested lock is its private
+record mutex; it never calls a hook, I/O, ACL2, or another owner lock."
+  (let ((observer *fnn-native-observer*))
+    (when observer
+      (handler-case
+          (sb-thread:with-mutex ((fnn-native-observation-lock observer))
+            (cond ((null *fnn-native-actor-identity*)
+                   (setf (fnn-native-observation-valid observer) nil
+                         (fnn-native-observation-reason observer) :identity-unavailable)
+                   nil)
+                  ((>= (fnn-native-observation-count observer)
+                       (length (fnn-native-observation-rows observer)))
+                   (setf (fnn-native-observation-valid observer) nil
+                         (fnn-native-observation-reason observer) :overflow)
+                   nil)
+                  ((fnn-native-observation-valid observer)
+                   (let ((row (aref (fnn-native-observation-rows observer)
+                                    (fnn-native-observation-count observer))))
+                     (setf (fnn-native-observation-row-event row) event
+                           (fnn-native-observation-row-identity row) *fnn-native-actor-identity*
+                           (fnn-native-observation-row-complete row) complete)
+                     (incf (fnn-native-observation-count observer))
+                     row))))
+        (serious-condition ()
+          (setf (fnn-native-observation-valid observer) nil
+                (fnn-native-observation-reason observer) :observer-fault)
+          nil)))))
+
+(defun fnn-native-observe (event)
+  "An already measured literal primitive event; no event reconstruction."
+  (fnn-native-observation-reserve event t))
+
+(defun fnn-native-observation-complete (row)
+  "After actual unlock, publish the earlier release reservation as complete."
+  (when (and row *fnn-native-observer*)
+    (handler-case
+        (sb-thread:with-mutex ((fnn-native-observation-lock *fnn-native-observer*))
+          (setf (fnn-native-observation-row-complete row) t))
+      (serious-condition ()
+        (setf (fnn-native-observation-valid *fnn-native-observer*) nil
+              (fnn-native-observation-reason *fnn-native-observer*) :observer-fault)))))
+
+(defun fnn-native-observation-events (observer)
+  "Completed prefix in reserved producer order; never sort by clock or ID.
+Return status, events, reason. An incomplete release stops the prefix."
+  (sb-thread:with-mutex ((fnn-native-observation-lock observer))
+    (unless (fnn-native-observation-valid observer)
+      (return-from fnn-native-observation-events
+        (values :unavailable nil (fnn-native-observation-reason observer))))
+    (let ((events nil))
+      (dotimes (i (fnn-native-observation-count observer))
+        (let ((row (aref (fnn-native-observation-rows observer) i)))
+          (unless (fnn-native-observation-row-complete row)
+            (return-from fnn-native-observation-events (values :pending (nreverse events) nil)))
+          (push (fnn-native-observation-row-event row) events)))
+      (values :complete (nreverse events) nil))))
+
+(defmacro fnn-with-observed-owner ((lock) &body body)
+  "Acquire observed after physical lock. Reserve release under the same
+lock, complete after physical unlock: preemption cannot invert producer order."
+  (let ((mutex (gensym "MUTEX")) (row (gensym "RELEASE")))
+    `(let ((,mutex ,lock) (,row nil))
+       (unwind-protect
+            (sb-thread:with-mutex (,mutex)
+              (when *fnn-native-observer*
+                (fnn-native-observe (list :acquire *fnn-native-actor-identity* :owner)))
+              (unwind-protect (progn ,@body)
+                (when *fnn-native-observer*
+                  (setq ,row (fnn-native-observation-reserve
+                              (list :release *fnn-native-actor-identity* :owner) nil)))))
+         (fnn-native-observation-complete ,row)))))
+
 (defvar *fnn-owner-start-hooks* nil)
 (defvar *fnn-owner-stop-hooks* nil)
 (defvar *fnn-owner-close-hooks* nil)
@@ -1411,7 +1517,7 @@ one ring, so the table's key and the served boundary's are one source."
   "Reserve before spawn, then publish the thread object before releasing its
 start latch. Failure after thread creation retains custody through physical
 termination; only the maker's no-child failure cancels the reservation."
-  (let ((actor (%make-fnn-owner-actor :id (gensym "ACTOR-") :custody custody
+  (let ((actor (%make-fnn-owner-actor :id (fnn-native-reserve-thread-identity) :custody custody
                                       :physical-callback physical-callback))
         (latch (sb-thread:make-semaphore :count 0)) (worker nil))
     (fnn-with-roster (service)
@@ -1421,9 +1527,11 @@ termination; only the maker's no-child failure cancels the reservation."
     (setq worker
           (handler-case
               (funcall *fnn-actor-thread-maker*
-                       (lambda ()
-                         (sb-thread:wait-on-semaphore latch)
-                         (fnn-owner-actor-run service actor thunk escape))
+             (fnn-native-observed-thread-thunk
+              (lambda ()
+                (sb-thread:wait-on-semaphore latch)
+                (fnn-owner-actor-run service actor thunk escape))
+              (fnn-owner-actor-id actor))
                        :name name)
             (serious-condition (condition)
               (fnn-with-roster (service)
@@ -1955,12 +2063,12 @@ fnn-section-run and fnn-section-run-cleanup."
                   (serious-condition (,failure)
                     ;; The gate's mutex has unwound before taking the owner.
                     (fnn-owner-gate-abort ,g ,failure)
-                    (sb-thread:with-mutex ((fnn-owner-service-lock ,s))
+                    (fnn-with-observed-owner ((fnn-owner-service-lock ,s))
                       (fnn-owner-gate-fail-locked ,s ,g ,failure)))))
             (,h (get-internal-real-time))
             (*fnn-boundary-outcome* nil)
             (*fnn-section-step* nil))
-       (sb-thread:with-mutex ((fnn-owner-service-lock ,s))
+       (fnn-with-observed-owner ((fnn-owner-service-lock ,s))
          (unwind-protect
               (fnn-owner-shared-action-locked
                ,s ,cid
