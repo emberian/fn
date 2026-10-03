@@ -84,17 +84,11 @@ DTN_OMITTED: dict[str, tuple[str, dict[str, str]]] = {
         "the differential reader model over books/served, left out by design",
         {"fn-reader-model-octets": "io.lisp's `model` verb faults on the missing "
                                    "counterpart, as the build-dtn.lisp header says"}),
-    "host/native-auth-host.lisp": (
-        "NNTP credential transport; used only by auth.lisp, not loaded", {}),
     "host/native-auth-admin-host.lisp": (
         "credential administration; used only by auth-admin.lisp, not loaded", {}),
-    "host/native-control-host.lisp": (
-        "control socket; used by control/hybrid-control/operator-live/topic-local/"
-        "consumer-local, none of which the DTN image loads",
-        {"fn-native-control-host-refusal-status":
-             "owner.lisp's fnn-owner-control-submit-serialized, reached only from "
-             "control.lisp's request handlers (the operator post and "
-             "fnn-owner-moderation-serialized); the DTN image loads no control.lisp"}),
+    "host/consumer-remote-host.lisp": (
+        "remote consumer ingress (FNCE); used only by host/native/consumer-remote.lisp, "
+        "which build-dtn.lisp does not load", {}),
     "host/peer-invite-host.lisp": (
         "peering invitations (PRF-097); used only by host/native/peer-invite.lisp, "
         "which build-dtn.lisp does not load: its operator has no :peering executor "
