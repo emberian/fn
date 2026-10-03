@@ -47,6 +47,18 @@ class NativeJournalStreamTests(unittest.TestCase):
         self.assertEqual(answer.returncode, EXIT_REFUSED, answer.stdout + answer.stderr)
         self.assertIn(b"no decision journal", answer.stderr)
 
+    def test_report_keeps_first_gap_and_counts_later_rejected_segments(self):
+        self.journal.write_bytes(
+            b"0 0 0 1" + b"0" * 100 + b" 1 0 0\n"
+            b"1 5 0 1 2 0 0\n3 5 0 1 2 0 0\n"
+            b"999 0 0 0 0 0 0 0 0 0 0\n"
+            b"0 0 0 1700000000 1 0 0\n1 5 0 1 2 0 0\n\xff")
+        answer = self.invoke()
+        self.assertEqual(answer.returncode, 1, answer.stdout + answer.stderr)
+        self.assertEqual(
+            answer.stdout,
+            b"journal: entries=6 segments=3 status=malformed replay=gap-at-2\n")
+
 
 if __name__ == "__main__":
     unittest.main()

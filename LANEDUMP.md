@@ -1785,3 +1785,13 @@ One helper proof hint reduced consumed-state expansion from2.3M steps to157;
 the generalized inductive bridge is4861 steps. Runtime code/signatures are
 unchanged; proof includes exact actual fn-otjs-report/exit subjects.
 Normal fresh two-root certification and matching image remain pending.
+
+Clean cert first attempt112323Z refused the bridge's malformed branch:
+the inherited warm world lacked the book's std/lists/update-nth include.
+Its normal rewrite rules changed update-nth0 to a CONS before the specialized
+continuation lemma matched. The hint now disables those two specific rewrites;
+after loading that exact library, the bridge passes4994steps, public boundaries
+and all source tests pass. A reused scratch-tree old manifest also differed
+from its archive index; next run ships its exact verified indexed bytes.
+Failed logs retained. The new matching-image mixed verdict/count test is
+prepared alongside large/absent/symlink/FIFO, with no claimed image result.

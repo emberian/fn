@@ -514,7 +514,8 @@
                   otjs-prefix-state fn-otjs-status fn-otjs-field fn-otjs-fields
                   fn-otm-replay fn-otm-init fn-otm-revonto
                   fn-otm-journal-starts fn-otjs-entry otjs-cap-fields
-                  otjs-revonto-singleton otjs-capped-entry update-nth))))))
+                  otjs-revonto-singleton otjs-capped-entry update-nth
+                  update-nth-when-zp update-nth-of-cons))))))
 
 ; The operator's actual incremental subjects render the reference parser's
 ; entire report and exit verdict for arbitrary input, not just generated runs.
