@@ -12,7 +12,7 @@ import json
 from pathlib import Path
 import re
 import proof_repl
-from proof_repl import forms, head_and_name
+from proof_repl import forms
 
 LD = re.compile(r'^\(ld\s+"([^"\\]+)"', re.I)
 
@@ -22,9 +22,14 @@ def generate(source: Path, world_manifest: Path, output: Path,
     source = source.resolve()
     world_manifest = world_manifest.resolve()
     world = json.loads(world_manifest.read_text())
-    if Path(world['source']).resolve() != source:
-        raise ValueError('logical world and host must use the same source root')
     admitted = {name.removesuffix('.lisp') for name in world['repository_books']}
+    repository = world.get('repository_sha256', {})
+    if Path(world['source']).resolve() != source and set(repository) != set(world['repository_books']):
+        raise ValueError('different source roots require the complete logical source inventory')
+    for name, expected in repository.items():
+        path = (source / name).resolve()
+        if not path.is_relative_to(source) or hashlib.sha256(path.read_bytes()).hexdigest() != expected:
+            raise ValueError('host logical dependency differs from admitted source: ' + name)
     proof_repl.ROOT = source
     inputs = {str(world_manifest): hashlib.sha256(world_manifest.read_bytes()).hexdigest()}
     hosts = []
@@ -105,6 +110,7 @@ def generate(source: Path, world_manifest: Path, output: Path,
     manifest.write_text(json.dumps({
         'kind': 'current host source and trusted native loads; not admission or qualification',
         'source': str(source), 'logical_world': str(world_manifest),
+        'logical_source': world['source'], 'logical_source_revision': world.get('source_revision'),
         'host_files': hosts, 'inputs_sha256': inputs,
         'build': str(output.resolve()),
     }, indent=2) + '\n')

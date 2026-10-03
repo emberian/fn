@@ -65,6 +65,22 @@ class HostSourceTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'recursive host LD'):
                 host.generate(root, world, root / 'build/source-build.lisp')
 
+    def test_cross_root_reuse_requires_every_actual_logical_book_to_match(self):
+        import hashlib
+        with tempfile.TemporaryDirectory() as directory:
+            root, world = self.setup_tree(directory)
+            data = json.loads(world.read_text())
+            data['source'] = '/a/different/frozen/source'
+            for name in data['repository_books']:
+                (root / name).write_text('(defun same-model (x) x)')
+            data['repository_sha256'] = {name: hashlib.sha256((root / name).read_bytes()).hexdigest()
+                                         for name in data['repository_books']}
+            world.write_text(json.dumps(data))
+            host.generate(root, world, root / 'build/source-build.lisp')
+            (root / 'books/model.lisp').write_text('(defun same-model (x) nil)')
+            with self.assertRaisesRegex(ValueError, 'differs from admitted source'):
+                host.generate(root, world, root / 'build/changed-build.lisp')
+
 
 if __name__ == '__main__':
     unittest.main()
