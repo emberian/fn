@@ -571,3 +571,31 @@ before developer selection; Integration queues e76+ee142 for next source batch.
 ## Source assembly review — GPT-6.1-Sol, 2026-10-03
 
 Reviewed Served 601472a5d over dev bffa8b2c3 in codex-sol-source-assembly. Actual host cursor entry calls fn-splan-cursor-step; its NEWNEWS branch calls fn-nnw-stream-step. New output-phase license checks the literal admitted zero-candidate-decrease formula; scan consumes exactly one candidate including misses. Renderer shape preservation retains a three-cell envelope; logical 8B+2 recurrence counts byte/state/MV envelopes, accumulation and final reverse, and supplies no native heap or funding claim. Existing wide-line, zero-visit, sparse-scan and actual plan small/large drain witnesses cover this source; no duplicate REPL/build run. Curated PRF-1256 mapping survives registry merge; generated proofs.json events deliberately await Integration global regeneration. No source conflict except this cumulative LANEDUMP, resolved by retaining prior content and adding this review. Guard/allocation/custody, selected-group/membership initialization, completed-view, cold consumers, certification and matching native image remain owed.
+
+## Integrated source and executable obstruction, 2026-10-03 08:04Z
+Currentdevae4fff13d contains actual generated served command caller and
+streaming Message-ID renderer, typed resource bank/bootstrap/install/syncer
+producer and native syncer custody/double-receipt settlement, physical feed
+lifecycle and bounded drain observation, actual HM cancellation/pin/capture/
+drain proof repairs, source-prefix/evidence lookup speed fixes, empirical
+finite runners and developer PageIO observations. Source assembly helper
+review3c34b6f54 imported as7636b9078 without duplicate source replay.
+
+Actual raw actor/feed/typed syncer source fixtures pass; loaded-world private
+actor/committer interface batch affirms valid declarations and refuses both
+old wrong-subject citations. These are source/REPL witnesses, not image claims.
+Typed4root retry certify075454Z-1046521 rebuilt7books allpassed (exec16.4s);
+logicaloperation/tests already passed in073345Z-995087. Missing system
+std/lists/update-nth was fixed with supported scoped Makefile route0.443s.
+Newcost-route sourcef6b8f8df2 changes def-cost; matching2rootcert queued, no
+oldmacro green transferred. HM main9c92 exact narrow certificate nowindexed,
+all-schedules/issue-return-settle closure remainsopen.
+
+Sol1 repair6e711c34 stillfailsnormal prefix, DTNpasses17s; noimage. One
+complete actualworld diagnostic with interface LD :continue reached marker
+and found exactly2 inherited wrong-subject citations: fn-owner-cat-may-seal
+and fn-orcs-predict. Groundwork owns their scoped bridge/citation repair.
+All17 newlyadded private entries cleared. This diagnostic has error markers
+and is not a greenprefix. Books/certpairs are reused; no duplicateimage build.
+Source reports regenerated atc3:1460declared/1408dispatched/0raw-rule findings;
+stream PRF1256 curatedmap now corrected, subsequent generated refresh owed.
