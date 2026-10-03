@@ -55,7 +55,7 @@
 (load-deployed-forms "host/native/extent.lisp"
  '((defvar *fnn-cold-workers*) (defvar *fnn-cold-free*) (defvar *fnn-cold-stopping*)
    (defun fnn-extent-executor-loop) (defun fnn-extent-executor-start) (defun fnn-extent-executor-stop)
-   (defun fnn-extent-executor-discard-idle-locked) (defun fnn-extent-executor-discard-idle)
+   (defun fnn-extent-executor-discard-idle-locked) (defun fnn-extent-executor-discard-idle) (defun fnn-extent-executor-drained-p)
    (defun fnn-extent-executor-observe-returned)
    (defun fnn-extent-window-release) (defun fnn-extent-window-settle-cancelled)
    (defun fnn-extent-window-cancel)))
@@ -203,7 +203,9 @@
  (assert (handler-case (progn (fnn-extent-window-cancel worker :retained-token) nil) (error () t)))
  ;; Only an actual terminal idle state can disappear from the roster.
  (setf (fnn-cold-worker-token worker) nil (fnn-cold-worker-phase worker) :idle)
- (assert (null (fnn-extent-executor-discard-idle))))
+ (assert (not (fnn-extent-executor-drained-p)))
+ (assert (null (fnn-extent-executor-discard-idle)))
+ (assert (fnn-extent-executor-drained-p)))
 (format t "native_decoded_startup_raw: PASS stop retains unsettled/torn custody after physical join~%")
 ;; Even an empty owner read queue cannot hide independent roster custody.
 ;; The actual shutdown gate must prevent Store teardown with that debt.

@@ -3906,3 +3906,11 @@ parser/span/reference and physical resource proof remain open. Runtime/History
 confirmed legacy book disjoint, no native custody or pool edits. Operator accepts
 back S072/S074/S090/S138/S151/S012; no Access operator WIP. Source-before-cert;
 selected3roots legacycursor/query/tests next, not broad legacy closure.
+Decoded early cancellation follow-through: permission, fd/incarnation capture,
+alias publication and assignment now share E. Already cancelled dispatch
+returns NIL without claiming baseline scratch. Real SBCL contender schedule
+proves assign still holds E before cancellation and begin runs off E; torn
+assign retains :calling alias. Native executor-drained-p exposes empty retained
+roster under E for Operator startup cleanup, not a typed settlement receipt.
+Current startup/worker recording semantic fixtures pass; full physical compressed
+ARTICLE/Web/reopen remains pending History's current initialized source world.
