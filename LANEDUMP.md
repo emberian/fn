@@ -4047,3 +4047,11 @@ cases; prior d443 helper constructs backing despite debt, and prior run
 clears authority after E drained while the arena callback remains calling.
 BP Transport notified to preserve this observation in its own nil-carrier
 settlement. Private decoded reset/recovery arenas remain Root/History-owned.
+Access continuation/source bridge: fn-lhq-tick-fuel-state-composes and
+fn-lhq-tick-fuel-used-composes hold without hypotheses (12494/17587steps).
+fn-lhq-tick-is-source-list-tick equals BOTH actual state and USED count to
+the captured source suffix under cheap READ-ready guard (3601steps), with
+guard-verified proof-only list observation. Literal positive/source/fuelmutation
+and READ hypothesis-removal teeth warm PASS; actual source237138 checks PASS.
+Full arbitrary-name old-parser/value correspondence still open, no physical
+guard/funding/endpoint transfer. Source before selected query+test recertification.

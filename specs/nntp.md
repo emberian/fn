@@ -2778,6 +2778,13 @@ captured payload length. The bounds predicate is a proof invariant; query ticks
 do not execute a whole field/archive recognizer. Literal witnesses remove each
 of the two hypotheses independently and demonstrate the failed span conclusion.
 
+Any split of natural query fuel gives exactly the same retained cursor and total
+USED scalar reads as the combined fuel. Under the cheap source-ready guard, the
+actual arena tick equals the same byte transitions over the captured immutable
+source suffix, including its read count. The proof-only list observation is not
+a served materializer. This continuation/source bridge covers arbitrary field
+names and invalid grammar, and does not yet establish old parser correspondence.
+
 The original five-name NOV parser entry keeps its ABI and projection through a
 shared name-parameterized header machine. Component guards, bounded work/source
 preservation and literal/reference source cases pass; Served's actual HDR/XPAT

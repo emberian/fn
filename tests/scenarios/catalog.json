@@ -9736,9 +9736,11 @@
         "planning/evidence/header-query-source-20261003.log",
         "planning/evidence/header-query-warm-20261003.log",
         "planning/evidence/header-query-bounds-source-20261003.log",
-        "planning/evidence/header-query-bounds-warm-20261003.log"
+        "planning/evidence/header-query-bounds-warm-20261003.log",
+        "planning/evidence/header-query-continuation-source-20261003.log",
+        "planning/evidence/header-query-continuation-warm-20261003.log"
       ],
-      "execution_scope": "Actual shared parser/query/normalizer functions236850 recorded list-arena/cold checks; guard and literal work/source/ready/bounds/reference arena teeth warm pass. Actual Served dispatch/owner/physical compressed execution and universal arbitrary-name span/parser/refinement remain pending."
+      "execution_scope": "Actual shared parser/query/normalizer functions237138 recorded list-arena/cold checks; guard and literal work/source/ready/bounds/reference arena teeth warm pass. Actual Served dispatch/owner/physical compressed execution and universal arbitrary-name span/parser/refinement remain pending. Arbitrary scheduling split cursor+USED proofs and exact actual arena/source transition bridge warm PASS with literal positive, fuel mutation and READ guard-removal teeth."
     },
     {
       "id": "SCN-1136",

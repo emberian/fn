@@ -115,3 +115,67 @@
               (e/d (fn-lhq-bounds-p fn-lhq-ready-p fn-lpc-ready-p fn-lhq-field)
                    (fn-lpc-field fn-lpc-at fn-lpc-span-bound-p fn-lpc-cursor-bounds-p
                     fn-lpc-field-retains-pinned-source fn-lpc-span-bound-monotone)))))
+
+; Arbitrary scheduling partitions preserve both the retained state and the
+; actual scalar-read accounting. No source-domain or grammar hypothesis.
+(defthm fn-lhq-tick-fuel-state-composes
+  (equal (mv-nth 0 (fn-lhq-tick (mv-nth 0 (fn-lhq-tick cursor a fn-arena))
+                               b fn-arena))
+         (mv-nth 0 (fn-lhq-tick cursor (+ (nfix a) (nfix b)) fn-arena)))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-lhq-tick cursor a fn-arena)
+                  :in-theory (e/d (fn-lhq-tick)
+                                  (fn-lpc-byte-names fn-lpc-at fn-lpc-verdict fn-arena-get)))))
+
+(defthm fn-lhq-tick-fuel-used-composes
+  (equal (+ (mv-nth 1 (fn-lhq-tick cursor a fn-arena))
+            (mv-nth 1 (fn-lhq-tick (mv-nth 0 (fn-lhq-tick cursor a fn-arena))
+                                  b fn-arena)))
+         (mv-nth 1 (fn-lhq-tick cursor (+ (nfix a) (nfix b)) fn-arena)))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-lhq-tick cursor a fn-arena)
+                  :in-theory (e/d (fn-lhq-tick)
+                                  (fn-lpc-byte-names fn-lpc-at fn-lpc-verdict fn-arena-get)))))
+
+; Proof-only list observation of the ACTUAL generic-name transition. This
+; materializer is never a served query; the arena tick below is its bridge.
+(defun fn-lhq-list-tick (bytes fuel cursor)
+  (declare (xargs :guard (natp fuel) :verify-guards nil))
+  (if (or (zp fuel) (not (consp bytes))) (mv cursor 0)
+    (mv-let (next used)
+      (fn-lhq-list-tick (cdr bytes) (- fuel 1)
+        (list (fn-lpc-byte-names (fn-lpc-at 0 cursor) (car bytes)
+                                 (fn-lpc-at 1 cursor)) (fn-lpc-at 1 cursor)))
+      (mv next (+ 1 used)))))
+
+(defthm fn-lhq-list-tick-used-natural
+  (natp (mv-nth 1 (fn-lhq-list-tick bytes fuel cursor)))
+  :rule-classes :type-prescription
+  :hints (("Goal" :induct (fn-lhq-list-tick bytes fuel cursor)
+                  :in-theory (disable fn-lpc-byte-names fn-lpc-at))))
+
+(verify-guards fn-lhq-list-tick
+  :hints (("Goal" :in-theory (disable fn-lpc-byte-names fn-lpc-at))))
+
+(local (defthm fn-lhq-car-nthcdr
+  (equal (car (nthcdr i xs)) (nth i xs))))
+(local (defthm fn-lhq-cdr-nthcdr
+  (implies (natp i)
+           (equal (cdr (nthcdr i xs)) (nthcdr (+ 1 i) xs)))))
+(local (defthm fn-lhq-nthcdr-nil
+  (equal (nthcdr i nil) nil)))
+(local (defthm fn-lhq-consp-nthcdr
+  (implies (natp i)
+           (iff (consp (nthcdr i xs)) (< i (len xs))))))
+
+(defthm fn-lhq-tick-is-source-list-tick
+  (implies (fn-lhq-ready-p cursor fn-arena)
+           (equal (fn-lhq-tick cursor fuel fn-arena)
+                  (fn-lhq-list-tick
+                    (nthcdr (fn-lpc-at 3 (fn-lpc-at 0 cursor))
+                            (nth (fn-lpc-at 0 (fn-lpc-at 0 cursor)) fn-arena))
+                    fuel cursor)))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-lhq-tick cursor fuel fn-arena)
+           :in-theory (e/d (fn-lhq-tick fn-lhq-list-tick fn-lhq-ready-p fn-lpc-ready-p)
+                           (fn-lpc-byte-names fn-lpc-at fn-lpc-verdict nthcdr nth)))))
