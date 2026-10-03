@@ -309,7 +309,8 @@ fn-native-operator-result-init-budget / -init-sizing, row Q10b)."
                         (and profile
                              (fnn-heap-history-observation (fnn-absolute root)
                                                            profile)))))
-               (fnn-core 'fn-native-operator-host-result-run-cold-resources result))))))
+               (fnn-core 'fn-native-operator-host-result-run-cold-resources result)
+               (fnn-core 'fn-native-operator-host-result-run-output-resources result))))))
     (error () nil)))
 
 (defun fnn-heap-command-profile (argv)
@@ -318,11 +319,11 @@ admits (0 when it is not a run) and ACL2's native action for an operator
 command (NIL otherwise: a developer `store ROOT' verb gets the serve
 figure), and the store's observed history octets for an offline verb ACL2
 sizes by them (NIL otherwise), and its normalized explicit cold-resource
-policy (NIL when absent)."
+policy and output-allocation policy (each NIL when absent)."
   (cond ((and (string= (or (first argv) "") "operator") (second argv))
-         (multiple-value-bind (profile connections action observed cold-resources)
+         (multiple-value-bind (profile connections action observed cold-resources output-resources)
              (fnn-heap-operator-profile (second argv) (cddr argv))
-           (values profile (if (integerp connections) connections 0) action observed cold-resources)))
+           (values profile (if (integerp connections) connections 0) action observed cold-resources output-resources)))
         ((and (string= (or (first argv) "") "store") (third argv))
          (let ((profile (fnn-heap-store-profile (second argv))))
            (values profile 0 nil
@@ -337,19 +338,21 @@ policy (NIL when absent)."
 ;; threads reserve beside it; the launcher passes `--control-stack-size KB'
 ;; too. The explicit cold-pool extension adds heap and persistent executor
 ;; native storage to this same observed machine decision; ACL2 chooses it.
-(defun fnn-heap-reservation (profile connections &optional action observed cold-resources)
+(defun fnn-heap-reservation (profile connections &optional action observed cold-resources output-resources)
   (let* ((core (fnn-heap-image-observation))
          (machine (fnn-heap-observations))
          (base (fnn-core 'fn-heap-reserve-operation-decide action profile core
                          +fnn-gc-nursery-octets+ machine connections observed)))
-    (fnn-core 'fn-crv-extend-reservation base cold-resources core machine)))
+    (fnn-core 'fn-orv-extend-reservation
+              (fnn-core 'fn-crv-extend-reservation base cold-resources core machine)
+              output-resources core machine)))
 
 (defun fnn-command-heap (marker argv)
   (unless (string= marker "--")
     (error 'fnn-usage-error :message "heap -- ARGV..."))
-  (let* ((decision (multiple-value-bind (profile connections action observed cold-resources)
+  (let* ((decision (multiple-value-bind (profile connections action observed cold-resources output-resources)
                        (fnn-heap-command-profile argv)
-                     (fnn-heap-reservation profile connections action observed cold-resources)))
+                     (fnn-heap-reservation profile connections action observed cold-resources output-resources)))
          (line (fnn-core 'fn-heap-reserve-report-line decision))
          (code (fnn-core 'fn-heap-decision-exit-code decision)))
     ;; The decision line on stdout whatever it is: the launcher tells ACL2's

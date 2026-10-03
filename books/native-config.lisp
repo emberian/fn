@@ -264,7 +264,8 @@
                              "idle_seconds" "max_sessions")))
         ((equal table "resources")
          (member-equal key '("cold_heap_octets" "cold_workers"
-                             "cold_descriptors" "cold_read_ids" "cold_file_ids")))
+                            "cold_descriptors" "cold_read_ids" "cold_file_ids"
+                            "output_heap_octets" "output_quantum_heap_octets")))
         ((equal table "ops")
          (member-equal key '("mission" "unit" "scope" "keep_releases"
                              "log_max_bytes" "log_keep" "memory_max")))
@@ -713,7 +714,7 @@ raw owner binds exactly these octets and never resolves a name."
         *fn-ncfg-default-max-connections* *fn-ncfg-default-clock-error-ms*
         alert-command headroom refusal-rate cooldown
         mission unit scope keep-releases log-max-bytes log-keep memory-max
-        tls-port nil))
+        tls-port nil nil))
 
 (defun fn-native-config-store (c) (declare (xargs :guard t)) (fn-ncfg-nth 0 c))
 (defun fn-native-config-listener-host (c) (declare (xargs :guard t)) (fn-ncfg-nth 1 c))
@@ -820,6 +821,37 @@ raw owner binds exactly these octets and never resolves a name."
   (declare (xargs :guard t))
   (fn-ncfg-nth 29 config))
 
+; A shared allocation pool, not a maximum reply or a stored-data ceiling.
+; The second field is one allocation lease, in heap octets (not wire bytes).
+; Startup must additionally fund bookkeeping and an owner maintenance lease.
+(defun fn-native-config-output-resources-wfp (x)
+  (declare (xargs :guard t))
+  (or (null x)
+      (and (true-listp x) (equal (len x) 2)
+           (posp (fn-ncfg-nth 0 x)) (<= (fn-ncfg-nth 0 x) *fn-ncfg-max-u64*)
+           (posp (fn-ncfg-nth 1 x)) (<= (fn-ncfg-nth 1 x) *fn-ncfg-max-u64*)
+           (<= (* 2 (fn-ncfg-nth 1 x)) (fn-ncfg-nth 0 x)))))
+
+(defun fn-ncfg-output-resources (pairs)
+  (declare (xargs :guard t))
+  (let* ((heap0 (fn-ncfg-value pairs "resources" "output_heap_octets"))
+         (quantum0 (fn-ncfg-value pairs "resources" "output_quantum_heap_octets"))
+         (heap (fn-ncfg-nat-value heap0 :bad *fn-ncfg-max-u64*))
+         (quantum (fn-ncfg-nat-value quantum0 :bad *fn-ncfg-max-u64*))
+         (policy (list heap quantum)))
+    (cond ((not (or heap0 quantum0)) nil)
+          ((fn-native-config-output-resources-wfp policy) policy)
+          (t :bad))))
+
+(defun fn-native-config-output-resources (config)
+  (declare (xargs :guard t))
+  (fn-ncfg-nth 30 config))
+
+(defthm fn-ncfg-output-resources-is-supported-or-refused
+  (implies (not (equal (fn-ncfg-output-resources pairs) :bad))
+           (fn-native-config-output-resources-wfp (fn-ncfg-output-resources pairs)))
+  :hints (("Goal" :in-theory (enable fn-ncfg-output-resources))))
+
 (local
  (defthm fn-ncfg-cold-nat-value-range
    (implies (not (equal (fn-ncfg-nat-value value :bad *fn-ncfg-max-u64*) :bad))
@@ -870,7 +902,8 @@ raw owner binds exactly these octets and never resolves a name."
          (log-keep (fn-ncfg-nat-value (fn-ncfg-value pairs "ops" "log_keep")
                                       *fn-ncfg-default-log-keep* *fn-ncfg-max-u64*))
          (memory-max (fn-ncfg-string-value (fn-ncfg-value pairs "ops" "memory_max") nil *fn-ncfg-max-text* nil))
-         (cold-resources (fn-ncfg-cold-resources pairs)))
+         (cold-resources (fn-ncfg-cold-resources pairs))
+         (output-resources (fn-ncfg-output-resources pairs)))
     (if (or (equal store :bad) (equal host :bad) (equal port :bad)
             (equal tls-cert :bad) (equal tls-key :bad) (equal required :bad)
             (equal protected :bad) (equal auth-path :bad) (equal enabled :bad)
@@ -887,16 +920,18 @@ raw owner binds exactly these octets and never resolves a name."
             (equal mission :bad) (equal unit :bad) (equal scope :bad)
             (equal keep-releases :bad) (equal log-max-bytes :bad)
             (equal log-keep :bad) (equal memory-max :bad) (equal cold-resources :bad)
+            (equal output-resources :bad)
             (not (fn-ncfg-optional-absolutep alert-command))
             (not (fn-ncfg-optional-memberp mission *fn-ncfg-mission-names*))
             (not (fn-ncfg-memberp scope *fn-ncfg-ops-scopes*))
             (equal keep-releases 0) (equal log-max-bytes 0))
         :bad
-      (update-nth 29 cold-resources (fn-native-config-make store host port tls-cert tls-key required protected
+      (update-nth 30 output-resources
+       (update-nth 29 cold-resources (fn-native-config-make store host port tls-cert tls-key required protected
                              auth-path enabled agent anchor log control acl2-path acl2-slots
                              alert-command headroom refusal-rate cooldown
                              mission unit scope keep-releases log-max-bytes
-                             log-keep memory-max tls-port)))))
+                             log-keep memory-max tls-port))))))
 
 (defthm fn-ncfg-listener-element-ok-is-a-projection
   (implies (equal (fn-ncfg-first (fn-ncfg-listener-element text)) :ok)
@@ -1059,6 +1094,9 @@ raw owner binds exactly these octets and never resolves a name."
         ; Staged P12 grammar: do not silently ignore an explicit resource
         ; policy before its supported allocator/launcher consumer lands.
         ((fn-native-config-cold-resources config) "cold_resources")
+        ; Keep explicit policy refused until its actual funded consumer is
+        ; installed; accepting grammar never silently activates accounting.
+        ((fn-native-config-output-resources config) "output_resources")
         (t nil)))
 
 (defun fn-native-config-operator-availablep (config)

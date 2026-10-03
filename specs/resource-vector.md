@@ -329,3 +329,51 @@ and `fn-ros-outcome-keeps-representation` preserve both typed recognition and
 `fn-rl-wfp`; literal positive and each hypothesis-removal witness accompany
 them. Bootstrap install guards and the general bank/native boundary remain
 owed. These source admissions are not matching certificates.
+
+
+## Shared output allocation pool (HST-047)
+
+The output pool is an explicit heap allowance beyond the composed store,
+thread and cold-resource launch reservation. `resources.output_heap_octets`
+and `resources.output_quantum_heap_octets` form an optional normalized pair;
+the quantum is allocation heap octets, not wire octets or a maximum reply.
+Absent policy remains a partial resource frontier. Explicit policy stays
+unsupported by operator run until the actual consumer and its allocation
+coverage are installed; recognizing grammar does not activate a gate.
+
+`fn-orv-extend-reservation` extends the existing composed launch decision
+exactly once and checks the whole observed machine reservation. Startup
+`fn-orv-startup-grant(dynamic, store-need, cold, policy, slots)` receives actual
+captured dynamic space, the existing pre-extension store need and the exact
+normalized cold descriptor. It requires all three allowances to fit, protects
+bookkeeping and one owner maintenance lease, and leaves at least one user
+lease affordable. Bookkeeping is currently an explicit layout projection;
+its runtime allocator/collector refinement and owner rescue tariff remain
+owed. Rounding surplus and an old connection machine-memory reply allowance
+do not fund this pool.
+
+A separate private `fn-resource-ledger` instance backs the shared pool.
+`fn-rlo-install` installs it; `fn-rlo-issue(cid, connection-gen, operation-gen,
+dependency, ledger)` draws a fixed lease before semantic materialization and
+returns `(:resource (:connection CID CONNECTION-GEN) SLOT DRAW-GEN)`. Row
+metadata stores operation generation independently. CID, both generations
+and slot must match every receipt. Free rows are reused after settlement;
+pressure refuses a new window without truncating stored data.
+
+`fn-rlo-output(token, operation-gen, :drained|:discarded, ledger)` observes
+release of the actual output references and no future publisher for that
+window. `fn-rlo-physical(token, operation-gen, :terminal|:no-actor-created,
+ledger)` observes its actual dependency completion. Issued dependencies
+require both receipts in either order. Timeout, failed/torn cleanup, socket
+close and stale receipts never release the debit. `:none` is restricted to a
+scoped synchronous quantum that issues no physical I/O. Native shutdown also
+requires the retained custody roster empty; the fixed typed drain projection
+alone is insufficient to establish that fact.
+
+The first native fixture draws before actual `fn-sl-step` rendering through
+normal semantic counterparts and retains a second window through a real
+worker join. It is a discrimination test of funding and custody, not complete
+NEWNEWS allocation coverage. Initial matcher/metadata work, integer widths,
+outer plan/mux copies, concrete allocator margins and guard/representation
+closure of output install/issue remain PRF-1259 work. No accounted operation
+gate may be inferred from the serializer's logical cons bound or this pool.
