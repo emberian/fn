@@ -41,7 +41,7 @@
   (conns nil) wake-read wake-write (wake-closed nil) (cleanup-debts nil) (stop nil))
 
 (defstruct (fnn-web-conn (:constructor %make-fnn-web-conn))
-  socket fd ssl channel in out deadline job (closedp nil)
+  socket fd ssl channel in out deadline job (closedp nil) (semantic-ended nil)
   (phase :head) (want :input) (from 0) request end
   flow event (events 0) (opened nil) (answered nil)
   cid leased (cmd-at 0) (cmd-end 0) pending plan closing await completion
@@ -155,7 +155,10 @@ exposure admission decides (the id, or NIL when it refused)."
             (lambda () (fnn-owner-action 'fn-owner-close opened)) :reader)))
         (fnn-web-cleanup face conn (list :release opened)
           (lambda () (fnn-quantum-web-finish service nil
-            (lambda () (fnn-owner-action 'fn-owner-exposure-release opened)) :reader)))))))
+            (lambda () (fnn-owner-action 'fn-owner-exposure-release opened)) :reader)))))
+    (sb-thread:with-mutex ((fnn-web-face-lock face))
+      (unless (find conn (fnn-web-face-cleanup-debts face) :key #'first :test #'eq)
+        (setf (fnn-web-conn-leased conn) nil (fnn-web-conn-semantic-ended conn) t)))))
 
 (defun fnn-web-finish (face conn)
   (let ((first nil) (eligible nil))
@@ -323,7 +326,6 @@ exposure admission decides (the id, or NIL when it refused)."
                      (fnn-web-conn-in conn) (fnn-web-conn-out conn) *the-live-state*)) :reader))))
     (case (fnn-core 'fn-web-host-action-kind action)
       (:respond (destructuring-bind (code fields bodyp) (rest action)
-                  (setf (fnn-web-conn-leased conn) nil)
                   (fnn-web-response face conn code fields bodyp)))
       (:health
        (fnn-owner-space-preobserve service t)
@@ -541,7 +543,8 @@ exposure admission decides (the id, or NIL when it refused)."
   ;; No actor blocks on a socket, dependency or commit completion.
   (dolist (conn (fnn-web-face-conns face)) (fnn-web-advance face conn))
   (setf (fnn-web-face-conns face)
-        (remove-if (lambda (conn) (and (fnn-web-conn-closedp conn) (null (fnn-web-conn-job conn))))
+        (remove-if (lambda (conn) (and (fnn-web-conn-closedp conn) (fnn-web-conn-semantic-ended conn)
+                                       (null (fnn-web-conn-job conn))))
                    (fnn-web-face-conns face)))
   (let* ((conns (fnn-web-face-conns face)) (listener (fnn-web-face-listener face))
          (capacity (< (length conns) (fnn-web-face-capacity face)))
