@@ -47,9 +47,9 @@
   (and (boundp-global 'fn-owner-exposure-public state)
        (f-get-global 'fn-owner-exposure-public state)))
 
-(defun fn-owner-exposure-now (state)
-  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
-  (fn-clock-monotonic (fn-own-clock (fn-owner-core state))))
+(defun fn-owner-exposure-now (fn-owner-st)
+  (declare (xargs :stobjs (fn-owner-st) :guard (fn-owner-boundp fn-owner-st)))
+  (fn-clock-monotonic (fn-own-clock (fn-owner-core fn-owner-st))))
 
 (defun fn-owner-credit-reserve (state)
   (declare (xargs :stobjs state :guard t))

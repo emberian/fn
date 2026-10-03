@@ -88,9 +88,10 @@
   15)
 
 ; The owner's article limit, for the request body bound.
-(defun fn-web-host-article-limit (state)
-  (declare (xargs :mode :program :stobjs state))
-  (fn-own-body-limit (fn-owner-core state)))
+(defun fn-web-host-article-limit (fn-owner-st state)
+  (declare (xargs :mode :program :stobjs (fn-owner-st state)))
+  (declare (ignorable state))
+  (fn-own-body-limit (fn-owner-core fn-owner-st)))
 
 ; Host observations whose meaning ACL2 decides.
 (defun fn-web-host-action-kind (action)

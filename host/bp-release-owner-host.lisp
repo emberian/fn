@@ -7,9 +7,9 @@
 ; The entries that replay or apply workflow records read the attempt's
 ; request through the live payload arena (books/bp-outbound.lisp); they take
 ; fn-arena before state and only read it (host/native/io.lisp fnn-core-state).
-(defun fn-owner-workflow-install-replay (records fn-arena state)
- (declare (xargs :stobjs (fn-arena state) :mode :program))
- (let* ((answer (fn-bpiw-replay-journal (fn-sn-node (fn-owner-store state)) records
+(defun fn-owner-workflow-install-replay (records fn-arena fn-owner-st state)
+ (declare (xargs :stobjs (fn-arena fn-owner-st state) :mode :program))
+ (let* ((answer (fn-bpiw-replay-journal (fn-sn-node (fn-owner-store fn-owner-st)) records
                                         fn-arena)))
   (if (not (car answer))
       (value :fault)
@@ -96,10 +96,10 @@
                                     (fn-bp-journal-nth 3 answer) state)))
       (value :ready)))))
 
-(defun fn-owner-workflow-sync-store-node (state)
- (declare (xargs :stobjs state :mode :program))
+(defun fn-owner-workflow-sync-store-node (fn-owner-st state)
+ (declare (xargs :stobjs (fn-owner-st state) :mode :program))
  (let* ((workflow (f-get-global 'fn-workflow-state state))
-        (node (fn-sn-node (fn-owner-store state)))
+        (node (fn-sn-node (fn-owner-store fn-owner-st)))
         (next (fn-bprl-with-node workflow node))
         (state (f-put-global 'fn-workflow-state next state)))
   (value :ready)))

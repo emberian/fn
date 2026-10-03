@@ -34,25 +34,25 @@
   :hints (("Goal" :in-theory (enable fn-owner-orcp-rebuild))))
 
 (defthm fn-owner-retain-statep-implies-reclaim-entry-guard-by-definition
-  (implies (fn-owner-retain-statep state)
+  (implies (fn-owner-retain-statep fn-owner-st)
            (and (true-listp (fn-owner-orcp-rebuild rows configs frontier max-conns))
-                (boundp-global 'fn-owner state)))
+                (fn-owner-boundp fn-owner-st)))
   :hints (("Goal" :in-theory '(fn-owner-retain-statep
                   fn-owner-orcp-rebuild-returns-true-list-by-definition))))
 
-(defun fn-owner-orcp-swap (rebuilt state)
-  (declare (xargs :stobjs state :guard (and (true-listp rebuilt) (boundp-global 'fn-owner state))
+(defun fn-owner-orcp-swap (rebuilt fn-owner-st state)
+  (declare (xargs :stobjs (fn-owner-st state) :guard (and (true-listp rebuilt) (fn-owner-boundp fn-owner-st))
                   :guard-hints (("Goal" :in-theory (disable boundp-global)))))
   (let* ((e (nth 0 rebuilt))
          (oc (nth 1 rebuilt))
-         (next (fn-orcp-swapped-ocfg (fn-owner-ocfg state) oc))
+         (next (fn-orcp-swapped-ocfg (fn-owner-ocfg fn-owner-st) oc))
          (swapped (fn-ocfg-owner next))
          (state (f-put-global 'fn-owner-identity-grant nil state))
          (state (fn-owner-authority-proposal-clear state))
          (state (fn-owner-canonical-reset state))
-         (state (fn-owner-install-ocfg next state))
+         (fn-owner-st (fn-owner-install-ocfg next fn-owner-st))
          (count (fn-sf-records-count (fn-sn-files (fn-own-store swapped))))
-         (state (fn-owner-retain-carry-put (nth 2 rebuilt) state))
+         (fn-owner-st (fn-owner-retain-carry-put (nth 2 rebuilt) fn-owner-st))
          (state (f-put-global 'fn-owner-record-octets (nth 3 rebuilt) state))
          (state (f-put-global 'fn-owner-record-debt (nth 4 rebuilt) state))
          (state (f-put-global 'fn-owner-carried-usage (nth 5 rebuilt) state))
@@ -73,10 +73,10 @@
          (state (f-put-global 'fn-owner-sco-inflight nil state))
          (state (f-put-global 'fn-owner-orc-pass nil state))
          (state (fn-owner-put-credits (fn-orcp-release (fn-owner-credits state)) state)))
-    (value count)))
+    (mv nil count fn-owner-st state)))
 
 (defthm fn-owner-orcp-swap-installs-retain-carry
-  (equal (fn-owner-retain-carry (mv-nth 2 (fn-owner-orcp-swap rebuilt state)))
+  (equal (fn-owner-retain-carry (mv-nth 2 (fn-owner-orcp-swap rebuilt fn-owner-st state)))
          (nth 2 rebuilt))
   :hints (("Goal" :in-theory
            (union-theories
@@ -84,13 +84,13 @@
               (:executable-counterpart zp) (:executable-counterpart binary-+)
               (:executable-counterpart unary--)
               fn-owner-retain-carry-of-put
-              fn-owner-retain-carry-of-other-global-put)
+              )
             (theory 'minimal-theory)))))
 
 (defthm fn-owner-orcp-swap-preserves-retain-carry-by-definition
   (implies (fn-prc-carryp (nth 2 rebuilt))
            (fn-prc-carryp (fn-owner-retain-carry
-                          (mv-nth 2 (fn-owner-orcp-swap rebuilt state)))))
+                          (mv-nth 2 (fn-owner-orcp-swap rebuilt fn-owner-st state)))))
   :hints (("Goal" :in-theory '(fn-owner-orcp-swap-installs-retain-carry))))
 
 (local
@@ -109,25 +109,8 @@
             (state-p1 (put-global name value state)))
    :hints (("Goal" :in-theory (enable put-global)))))
 
-(local
- (defthm fn-orr-installed-open-ocfg
-   (equal (fn-owner-ocfg (fn-owner-install-open-ocfg oc state)) oc)
-   :hints (("Goal" :in-theory (enable fn-owner-ocfg fn-owner-install-open-ocfg fn-owner-install-ocfg)))))
 
-(local
- (defthm fn-orr-open-owner-association
-   (equal (assoc-equal 'fn-owner (nth 2 (fn-owner-install-open-ocfg oc state)))
-          (cons 'fn-owner oc))
-   :hints (("Goal" :in-theory
-            (enable fn-owner-install-open-ocfg fn-owner-install-ocfg put-global)))))
 
-(local
- (defthm fn-orr-open-other-association
-   (implies (not (equal key 'fn-owner))
-            (equal (assoc-equal key (nth 2 (fn-owner-install-open-ocfg oc state)))
-                   (assoc-equal key (nth 2 state))))
-   :hints (("Goal" :in-theory
-            (enable fn-owner-install-open-ocfg fn-owner-install-ocfg put-global)))))
 
 ; The recovered Store carries typed event rows; the cold loader consumes
 ; those rows directly without reconstructing their representation.
@@ -137,8 +120,8 @@
             (fn-sf-record-valuesp rows))
    :hints (("Goal" :in-theory (enable fn-sf-record-listp fn-sf-record-valuesp)))))
 
-(defun fn-owner-install-extended (oc extended key fn-arena fn-cat fn-hist state)
-  (declare (xargs :stobjs (fn-arena fn-cat fn-hist state)
+(defun fn-owner-install-extended (oc extended key fn-arena fn-cat fn-hist fn-owner-st state)
+  (declare (xargs :stobjs (fn-arena fn-cat fn-hist fn-owner-st state)
                   :guard (or (equal oc :fault)
                              (not (fn-onb-open-okp (fn-ocfg-owner oc)))
                              (and (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
@@ -152,29 +135,29 @@
                           fn-gen-verdict-salt))))))
   (cond
    ((equal oc :fault)
-    (mv nil :fault fn-arena fn-cat fn-hist state))
+    (mv nil :fault fn-arena fn-cat fn-hist fn-owner-st state))
    ; THE OPEN's number bound (books/owner-number-bound.lisp fn-onb-open-okp,
    ; KEYSTONE fn-onb-boundp-when-open-okp): a recovered owner whose
    ; watermarks pass RFC 3977 section 6's bound is a damaged Store, refused
    ; by name before anything is installed.  O(groups); the served path then
    ; carries the bound (fn-onb-boundp), never revalidating it.
    ((not (fn-onb-open-okp (fn-ocfg-owner oc)))
-    (mv nil :article-numbers-damaged fn-arena fn-cat fn-hist state))
+    (mv nil :article-numbers-damaged fn-arena fn-cat fn-hist fn-owner-st state))
    (t
       (let* ((state (f-put-global 'fn-owner-identity-grant nil state))
          (state (fn-owner-authority-proposal-clear state))
          ; Cold reset occurs before physical recovery under lifecycle exclusion.
          ; Preserve the epoch captured by the issued recovery source.
-             (state (fn-owner-install-open-ocfg oc state))
+             (fn-owner-st (fn-owner-install-open-ocfg oc fn-owner-st))
              ; PRF-289: the carried obligation-id trie for the ledger the
              ; owner opens with (books/post-retain-carried.lisp
              ; fn-prc-refresh of nil; fn-prc-carryp-of-refresh), so the
              ; first POST's refresh is a delta, not a build.
-             (state (fn-owner-retain-carry-put
+             (fn-owner-st (fn-owner-retain-carry-put
                      (fn-prc-refresh nil (fn-node-retention
                                           (fn-sn-node
-                                           (fn-own-store (fn-owner-core state)))))
-                     state))
+                                           (fn-own-store (fn-owner-core fn-owner-st)))))
+                     fn-owner-st))
              ; Rebuilt exclusively by successful FNFD scans after
              ; authoritative store recovery.  It is a carried
              ; incremental fold, never a whole-journal rescan on a
@@ -245,30 +228,12 @@
                                              (f-get-global 'fn-store-genesis state)))
                                        fn-hist)))
             (let ((state (fn-orc-writer-leave state)))
-              (mv nil :recovering fn-arena fn-cat fn-hist state))))))))
+              (mv nil :recovering fn-arena fn-cat fn-hist fn-owner-st state))))))))
 
 ; The report writer's bracket (fn-orc-writer-enter/-leave, b9efc2afe) puts
-; only the report globals: the owner, its binding and the retain carry
-; pass through it.
-(local
- (defthm fn-orr-writer-enter-frame
-   (and (equal (fn-owner-retain-carry (fn-orc-writer-enter state))
-               (fn-owner-retain-carry state))
-        (equal (fn-owner-ocfg (fn-orc-writer-enter state)) (fn-owner-ocfg state))
-        (equal (boundp-global 'fn-owner (fn-orc-writer-enter state))
-               (boundp-global 'fn-owner state)))
-   :hints (("Goal" :in-theory (enable fn-orc-writer-enter fn-owner-ocfg
-                                      fn-owner-retain-carry)))))
+; only report globals of STATE; the owner's carrier passes through it by the
+; stobj discipline (it takes no FN-OWNER-ST).
 
-(local
- (defthm fn-orr-writer-leave-frame
-   (and (equal (fn-owner-retain-carry (fn-orc-writer-leave state))
-               (fn-owner-retain-carry state))
-        (equal (fn-owner-ocfg (fn-orc-writer-leave state)) (fn-owner-ocfg state))
-        (equal (boundp-global 'fn-owner (fn-orc-writer-leave state))
-               (boundp-global 'fn-owner state)))
-   :hints (("Goal" :in-theory (enable fn-orc-writer-leave fn-owner-ocfg
-                                      fn-owner-retain-carry)))))
 
 (defthm fn-owner-install-extended-establishes-retain-carry
   (implies (and (not (equal oc :fault))
@@ -276,15 +241,13 @@
            (fn-prc-carryp
             (fn-owner-retain-carry
              (mv-nth 5 (fn-owner-install-extended
-                        oc extended key fn-arena fn-cat fn-hist state)))))
+                        oc extended key fn-arena fn-cat fn-hist fn-owner-st state)))))
   :hints (("Goal" :in-theory
            (union-theories
             '(fn-owner-install-extended mv-nth nth zp car-cons cdr-cons
               (:executable-counterpart zp) (:executable-counterpart binary-+)
               (:executable-counterpart unary--)
               fn-owner-retain-carry-of-put
-              fn-owner-retain-carry-of-other-global-put
-              fn-orr-writer-enter-frame fn-orr-writer-leave-frame
               fn-prc-carryp-of-refresh (:executable-counterpart fn-prc-carryp))
             (theory 'minimal-theory)))))
 
@@ -293,7 +256,7 @@
                 (fn-lgoc-invariantp oc))
            (fn-owner-retain-statep
             (mv-nth 5 (fn-owner-install-extended
-                        oc extended key fn-arena fn-cat fn-hist state))))
+                        oc extended key fn-arena fn-cat fn-hist fn-owner-st state))))
   :hints (("Goal" :cases ((equal oc :fault)) :in-theory
            (union-theories
             '((:executable-counterpart fn-lgoc-invariantp)
@@ -301,13 +264,9 @@
               mv-nth nth zp car-cons cdr-cons
               (:executable-counterpart zp) (:executable-counterpart binary-+)
               (:executable-counterpart unary--)
-              fn-owner-bound-of-other-global-put
               fn-owner-bound-of-retain-carry-put fn-owner-open-owner-bound
-              fn-owner-ocfg-of-other-global-put
-              fn-owner-ocfg-of-retain-carry-put fn-orr-installed-open-ocfg
+              fn-owner-ocfg-of-retain-carry-put fn-owner-open-ocfg-effect
               fn-owner-retain-carry-of-put
-              fn-owner-retain-carry-of-other-global-put
-              fn-orr-writer-enter-frame fn-orr-writer-leave-frame
               fn-prc-carryp-of-refresh (:executable-counterpart fn-prc-carryp))
             (theory 'minimal-theory)))))
 

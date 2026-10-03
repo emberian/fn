@@ -80,9 +80,9 @@
 
 (local
  (defthm fn-owner-cursor-store-by-definition
-   (equal (fn-owner-store state) (fn-sbud-oc-store (fn-owner-ocfg state)))
+   (equal (fn-owner-store fn-owner-st) (fn-sbud-oc-store (fn-owner-ocfg fn-owner-st)))
    :hints (("Goal" :in-theory (enable fn-owner-store fn-owner-core
-                                      fn-owner-ocfg fn-sbud-oc-store)))))
+                                       fn-sbud-oc-store)))))
 
 (local
  (defthm fn-owner-irc-identity-prepare-preserves-cursor
@@ -110,10 +110,10 @@
               (:executable-counterpart binary-+) (:executable-counterpart unary--))))))
 
 (defthm fn-owner-prepare-identity-preserves-cursor
-  (implies (fn-sn-identity-sequencep (fn-owner-store state))
+  (implies (fn-sn-identity-sequencep (fn-owner-store fn-owner-st))
            (fn-sn-identity-sequencep
             (fn-owner-store
-             (mv-nth 2 (fn-owner-prepare-identity event fn-arena state)))))
+             (mv-nth 2 (fn-owner-prepare-identity event fn-arena fn-owner-st state)))))
   :hints (("Goal" :in-theory
            '(fn-owner-cursor-store-by-definition
              (:type-prescription fn-irc-pout-prepare-identity)
@@ -122,7 +122,6 @@
              fn-owner-prepare-identity fn-pout-prepare-identity
              mv-nth nth endp zp car-cons cdr-cons
              fn-owner-ocfg-of-retain-carry-put fn-owner-ocfg-of-install-ocfg
-             fn-owner-ocfg-of-other-global-put
              fn-owner-irc-outcome-preserves-cursor))))
 
 ; The cursor's representable range follows from the durable allocator and
@@ -142,12 +141,12 @@
                 (fn-sf-record-listp fn-sn-make-v6)))))
 
 ; Exact host-called entries, including their previously verified guards.
-(defun fn-owner-prepare-consumer (event fn-arena state)
-  (declare (xargs :stobjs (state fn-arena) :guard (and (boundp-global 'fn-owner state)
-                              (fn-sn-statep (fn-sbud-oc-store (fn-owner-ocfg state)))))
+(defun fn-owner-prepare-consumer (event fn-arena fn-owner-st state)
+  (declare (xargs :stobjs (fn-owner-st state fn-arena) :guard (and (fn-owner-boundp fn-owner-st)
+                              (fn-sn-statep (fn-sbud-oc-store (fn-owner-ocfg fn-owner-st)))))
            (ignorable fn-arena))
   (if (not (fn-cpe-eventp event))
-      (value :invalid)
+      (mv nil :invalid fn-owner-st state)
     ; fn-pdc-pout-prepare-consumer: (:store (:prepare-consumer E)) with the
     ; carried Store prepare, no appended-history replay
     ; (books/owner-prepare-deferred-carried.lisp: equal to
@@ -155,16 +154,16 @@
     ; reference stages; keeps fn-lgoc-invariantp), and its word
     ; (fn-pdc-pout-prepares-answer-the-store-change).
     (mv-let (word next)
-      (fn-pdc-pout-prepare-consumer (fn-owner-ocfg state) event)
-      (let ((state (fn-owner-install-ocfg next state)))
-        (value word)))))
+      (fn-pdc-pout-prepare-consumer (fn-owner-ocfg fn-owner-st) event)
+      (let ((fn-owner-st (fn-owner-install-ocfg next fn-owner-st)))
+        (mv nil word fn-owner-st state)))))
 
-(defun fn-owner-prepare-topic (event fn-arena state)
-  (declare (xargs :stobjs (state fn-arena) :guard (and (boundp-global 'fn-owner state)
-                              (fn-sn-statep (fn-sbud-oc-store (fn-owner-ocfg state)))))
+(defun fn-owner-prepare-topic (event fn-arena fn-owner-st state)
+  (declare (xargs :stobjs (fn-owner-st state fn-arena) :guard (and (fn-owner-boundp fn-owner-st)
+                              (fn-sn-statep (fn-sbud-oc-store (fn-owner-ocfg fn-owner-st)))))
            (ignorable fn-arena))
   (if (not (fn-th-topic-eventp event))
-      (value :invalid)
+      (mv nil :invalid fn-owner-st state)
     ; fn-psrv-prepare-topic (lane prepare-served): (:store (:prepare-topic
     ; E)) when the consumer projection accepts E, which its completion
     ; needs (fn-psrv-prepare-topic-is-ocfg-step-when-admitted,
@@ -176,15 +175,15 @@
     ; fn-pout-prepare-topic under fn-snt-relation and whenever the reference
     ; stages; fn-pdc-psrv-prepare-topic-preserves-invariant).
     (mv-let (word next)
-      (fn-pdc-pout-prepare-topic (fn-owner-ocfg state) event)
-      (let ((state (fn-owner-install-ocfg next state)))
-        (value word)))))
+      (fn-pdc-pout-prepare-topic (fn-owner-ocfg fn-owner-st) event)
+      (let ((fn-owner-st (fn-owner-install-ocfg next fn-owner-st)))
+        (mv nil word fn-owner-st state)))))
 
 (defthm fn-owner-prepare-consumer-preserves-cursor
-  (implies (fn-sn-identity-sequencep (fn-owner-store state))
+  (implies (fn-sn-identity-sequencep (fn-owner-store fn-owner-st))
            (fn-sn-identity-sequencep
             (fn-owner-store
-             (mv-nth 2 (fn-owner-prepare-consumer event fn-arena state)))))
+             (mv-nth 2 (fn-owner-prepare-consumer event fn-arena fn-owner-st state)))))
   :hints (("Goal" :in-theory
            '(fn-owner-cursor-store-by-definition fn-owner-prepare-consumer
              fn-owner-served-deferred-prepares-preserve-cursor
@@ -194,10 +193,10 @@
              (:executable-counterpart unary--)))))
 
 (defthm fn-owner-prepare-topic-preserves-cursor
-  (implies (fn-sn-identity-sequencep (fn-owner-store state))
+  (implies (fn-sn-identity-sequencep (fn-owner-store fn-owner-st))
            (fn-sn-identity-sequencep
             (fn-owner-store
-             (mv-nth 2 (fn-owner-prepare-topic event fn-arena state)))))
+             (mv-nth 2 (fn-owner-prepare-topic event fn-arena fn-owner-st state)))))
   :hints (("Goal" :in-theory
            '(fn-owner-cursor-store-by-definition fn-owner-prepare-topic
              fn-owner-served-deferred-prepares-preserve-cursor
@@ -219,14 +218,14 @@
               (:executable-counterpart car) (:executable-counterpart equal))))))
 
 (defthm fn-owner-finish-synced-preserves-cursor
-  (implies (and (fn-sn-identity-sequencep (fn-owner-store state))
-                (fn-prc-carryp (fn-owner-retain-carry state))
-                (fn-hist-of-storep fn-hist (fn-owner-store state)))
+  (implies (and (fn-sn-identity-sequencep (fn-owner-store fn-owner-st))
+                (fn-prc-carryp (fn-owner-retain-carry fn-owner-st))
+                (fn-hist-of-storep fn-hist (fn-owner-store fn-owner-st)))
            (fn-sn-identity-sequencep
             (fn-owner-store
-             (mv-nth 2 (fn-owner-finish-synced fn-hist state)))))
+             (mv-nth 2 (fn-owner-finish-synced fn-hist fn-owner-st state)))))
   :hints (("Goal" :use ((:instance fn-owner-reference-completion-preserves-cursor
-                                           (oc (fn-owner-ocfg state))))
+                                           (oc (fn-owner-ocfg fn-owner-st))))
            :in-theory
            '(fn-owner-cursor-store-by-definition
              fn-owner-core-is-configured-owner-by-definition fn-sbud-oc-store
@@ -278,44 +277,21 @@
 ; The owner binding through the cold entry and the reclaim swap: the
 ; report writer's bracket (fn-orc-writer-enter/-leave) and every other put
 ; leave it; the install sets it.
-(local
- (defthm fn-ocd-writer-owner-frame
-   (and (equal (get-global 'fn-owner (fn-orc-writer-enter state))
-               (get-global 'fn-owner state))
-        (equal (get-global 'fn-owner (fn-orc-writer-leave state))
-               (get-global 'fn-owner state)))
-   :hints (("Goal" :in-theory (enable fn-orc-writer-enter fn-orc-writer-leave)))))
 
-(local
- (defthm fn-ocd-get-owner-of-other-put
-   (implies (not (equal key 'fn-owner))
-            (equal (get-global 'fn-owner (put-global key value state))
-                   (get-global 'fn-owner state)))
-   :hints (("Goal" :in-theory (enable get-global put-global)))))
 
-(local
- (defthm fn-ocd-get-owner-of-retain-carry-put
-   (equal (get-global 'fn-owner (fn-owner-retain-carry-put carry state))
-          (get-global 'fn-owner state))
-   :hints (("Goal" :in-theory (enable fn-owner-retain-carry-put)))))
 
-(local
- (defthm fn-ocd-get-owner-of-open-install
-   (equal (get-global 'fn-owner (fn-owner-install-open-ocfg oc state)) oc)
-   :hints (("Goal" :in-theory (enable fn-owner-install-open-ocfg fn-owner-install-ocfg)))))
 
 ; This is the unchanged Store pointer installed by the actual cold entry.
 (defthm fn-owner-install-extended-store-effect-by-definition
   (implies (and (not (equal oc :fault)) (fn-onb-open-okp (fn-ocfg-owner oc)))
            (equal (fn-owner-store
                    (mv-nth 5 (fn-owner-install-extended
-                              oc extended key fn-arena fn-cat fn-hist state)))
+                              oc extended key fn-arena fn-cat fn-hist fn-owner-st state)))
                   (fn-sbud-oc-store oc)))
   :hints (("Goal" :in-theory
            (union-theories (theory 'minimal-theory)
             '(fn-owner-install-extended fn-owner-cursor-store-by-definition
-              fn-owner-ocfg fn-ocd-writer-owner-frame fn-ocd-get-owner-of-other-put
-              fn-ocd-get-owner-of-retain-carry-put fn-ocd-get-owner-of-open-install
+              fn-owner-ocfg-of-retain-carry-put fn-owner-open-ocfg-effect
               mv-nth nth zp car-cons cdr-cons)))))
 
 (defthm fn-owner-recovered-install-establishes-cursor
@@ -326,15 +302,11 @@
              (fn-sn-identity-sequencep
               (fn-owner-store
                (mv-nth 5 (fn-owner-install-extended
-                          oc extended key fn-arena fn-cat fn-hist state))))))
+                          oc extended key fn-arena fn-cat fn-hist fn-owner-st state))))))
   :hints (("Goal" :in-theory '(fn-owner-install-extended-store-effect-by-definition
                                fn-owner-recovery-establishes-retained-store
                                fn-owner-cursor-retained-implies-sequence))))
 
-(local
- (defthm fn-ocd-get-owner-of-install
-   (equal (get-global 'fn-owner (fn-owner-install-ocfg oc state)) oc)
-   :hints (("Goal" :in-theory (enable fn-owner-install-ocfg)))))
 
 (local
  (defthm fn-owner-cursor-swapped-store
@@ -346,13 +318,13 @@
               fn-ocfg-owner-of-fn-ocfg-make)))))
 
 (defthm fn-owner-orcp-swap-store-effect-by-definition
-  (equal (fn-owner-store (mv-nth 2 (fn-owner-orcp-swap rebuilt state)))
+  (equal (fn-owner-store (mv-nth 2 (fn-owner-orcp-swap rebuilt fn-owner-st state)))
          (fn-sbud-oc-store (nth 1 rebuilt)))
   :hints (("Goal" :in-theory
            (union-theories (theory 'minimal-theory)
             '(fn-owner-orcp-swap fn-owner-cursor-store-by-definition
-              fn-owner-put-credits fn-owner-ocfg fn-ocd-get-owner-of-other-put
-              fn-ocd-get-owner-of-retain-carry-put fn-ocd-get-owner-of-install
+              fn-owner-put-credits  
+              fn-owner-ocfg-of-retain-carry-put fn-owner-ocfg-of-install-ocfg
               fn-owner-cursor-swapped-store
               mv-nth nth zp car-cons cdr-cons)))))
 
@@ -360,7 +332,7 @@
   (let ((rebuilt (fn-owner-orcp-rebuild rows configs frontier max-conns)))
     (implies (not (equal (nth 1 rebuilt) :fault))
              (fn-sn-identity-sequencep
-              (fn-owner-store (mv-nth 2 (fn-owner-orcp-swap rebuilt state))))))
+              (fn-owner-store (mv-nth 2 (fn-owner-orcp-swap rebuilt fn-owner-st state))))))
   :hints (("Goal" :in-theory
            (union-theories (theory 'minimal-theory)
             '(fn-owner-orcp-swap-store-effect-by-definition fn-owner-orcp-rebuild

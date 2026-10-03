@@ -109,9 +109,9 @@
 ; serialized gate, after source+construction admission, and calls this without
 ; yielding. An earlier captured OC/RC is never passed as authority here.
 (defun fn-owner-index-reader-request-complete
- (token rc fuel fn-mio$c fn-page-read-pool state)
- (declare (xargs :stobjs (fn-mio$c fn-page-read-pool state) :mode :program))
- (let ((current-oc (fn-owner-ocfg state)))
+ (token rc fuel fn-mio$c fn-page-read-pool fn-owner-st state)
+ (declare (xargs :stobjs (fn-mio$c fn-page-read-pool fn-owner-st state) :mode :program))
+ (let ((current-oc (fn-owner-ocfg fn-owner-st)))
   (mv-let (word left fn-mio$c fn-page-read-pool)
    (stobj-let ((fn-index-backing (fn-mio$c-provider fn-mio$c)))
     (word left fn-index-backing fn-page-read-pool)
@@ -134,7 +134,7 @@
         (fn-owner-rx-connection-record-repin token fn-mio$c state)
       (mv :unchanged fn-mio$c state))
     (if (eq association :recovery-required)
-        (mv :recovery-required nil nil left fn-mio$c fn-page-read-pool state)
+        (mv :recovery-required nil nil left fn-mio$c fn-page-read-pool fn-owner-st state)
    (if (not (fn-irq-ready-phasep word))
        ; Replays project the persisted step/disposition, never reinstall STATE.
        (mv-let (persisted step disposition-token fn-mio$c)
@@ -146,7 +146,7 @@
                (fn-irr-receipt-replacement receipt))
            (mv word nil nil)))
          (mv persisted step disposition-token fn-mio$c))
-        (mv persisted step disposition-token left fn-mio$c fn-page-read-pool state))
+        (mv persisted step disposition-token left fn-mio$c fn-page-read-pool fn-owner-st state))
      (let* ((result (car rc))
             (effects (fn-own-tls-result-effects result))
             (consumed (fn-own-tls-result-consumed result)))
@@ -157,12 +157,12 @@
                        (fn-ibp-request-pending fn-index-backing)))
         (mv id fn-mio$c))
        (let* ((state (fn-owner-put-credits (cdr rc) state))
-              (state (fn-owner-install-ocfg (fn-own-tls-result-owner result) state))
-              (state (fn-owner-exposure-observe id effects consumed state))
+              (fn-owner-st (fn-owner-install-ocfg (fn-own-tls-result-owner result) fn-owner-st))
+              (state (fn-owner-exposure-observe id effects consumed fn-owner-st state))
               (step (fn-irr-step-from-read-result result
                       (fn-served-closingp effects) (fn-served-starttlsp effects)
                       (fn-served-submission effects)
-                      (fn-olog-served-refusal-lines (fn-owner-core state) id effects)
+                      (fn-olog-served-refusal-lines (fn-owner-core fn-owner-st) id effects)
                       (f-get-global 'fn-owner-exposure-close state))))
         (mv-let (committed disposition-token fn-mio$c)
          (stobj-let ((fn-index-backing (fn-mio$c-provider fn-mio$c)))
@@ -180,4 +180,4 @@
           (mv committed disposition-token fn-mio$c))
          (mv (if (fn-irq-committed-phasep committed) committed :recovery-required)
              (if (fn-irq-committed-phasep committed) step nil)
-             disposition-token left fn-mio$c fn-page-read-pool state)))))))))))
+             disposition-token left fn-mio$c fn-page-read-pool fn-owner-st state)))))))))))

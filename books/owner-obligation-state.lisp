@@ -13,6 +13,7 @@
 (in-package "ACL2")
 (include-book "state-globals")
 (include-book "owner-config")
+(include-book "owner-carrier")
 
 (defun fn-owner-obligation-view (state)
   (declare (xargs :stobjs state :guard t))
@@ -25,50 +26,22 @@
            (equal (fn-owner-obligation-view (f-put-global key value state))
                   (fn-owner-obligation-view state))))
 
-; This is the exact host-called function, moved from owner-host. Owner
-; effects are one global put.
-(defun fn-owner-install-ocfg (oc state)
-  (declare (xargs :stobjs state :guard t))
-  (f-put-global 'fn-owner oc state))
+; The owner installer is books/owner-carrier.lisp fn-owner-install-ocfg (the
+; carrier's field update); the view, a state global, is untouched by it --
+; a frame the stobj discipline gives: the installer takes no STATE.
 
-; Cold open's install: the same put (it installed a rebuilt view beside
+; Cold open's install: the same update (it installed a rebuilt view beside
 ; the owner before the park).
-(defun fn-owner-install-open-ocfg (oc state)
-  (declare (xargs :stobjs state :guard t))
-  (fn-owner-install-ocfg oc state))
-
-(defthm fn-owner-installed-ocfg-effect
-  (equal (f-get-global 'fn-owner (fn-owner-install-ocfg oc state)) oc))
-(defthm fn-owner-installed-owner-bound
-  (boundp-global 'fn-owner (fn-owner-install-ocfg oc state)))
-
-(defthm fn-owner-installed-other-global-effect
-  (implies (not (equal key 'fn-owner))
-           (equal (f-get-global key (fn-owner-install-ocfg oc state))
-                  (f-get-global key state))))
-
-(defthm fn-owner-installed-other-global-bound
-  (implies (not (equal key 'fn-owner))
-           (equal (boundp-global key (fn-owner-install-ocfg oc state))
-                  (boundp-global key state))))
-
-; The park's frame: no install touches the obligation view.
-(defthm fn-owner-install-keeps-the-obligation-view
-  (equal (fn-owner-obligation-view (fn-owner-install-ocfg oc state))
-         (fn-owner-obligation-view state)))
-
-(defthm fn-owner-installed-state-p1
-  (implies (state-p1 state) (state-p1 (fn-owner-install-ocfg oc state))))
+(defun fn-owner-install-open-ocfg (oc fn-owner-st)
+  (declare (xargs :stobjs fn-owner-st))
+  (fn-owner-install-ocfg oc fn-owner-st))
 
 (defthm fn-owner-open-ocfg-effect
-  (equal (f-get-global 'fn-owner (fn-owner-install-open-ocfg oc state)) oc))
-(defthm fn-owner-open-state-p1
-  (implies (state-p1 state) (state-p1 (fn-owner-install-open-ocfg oc state))))
+  (equal (fn-owner-ocfg (fn-owner-install-open-ocfg oc fn-owner-st)) oc))
 (defthm fn-owner-open-owner-bound
-  (boundp-global 'fn-owner (fn-owner-install-open-ocfg oc state)))
-(defthm fn-owner-open-keeps-the-obligation-view
-  (equal (fn-owner-obligation-view (fn-owner-install-open-ocfg oc state))
-         (fn-owner-obligation-view state)))
+  (fn-owner-boundp (fn-owner-install-open-ocfg oc fn-owner-st)))
+(defthm fn-owner-open-ocfg-preserves-stp
+  (implies (fn-owner-stp fn-owner-st)
+           (fn-owner-stp (fn-owner-install-open-ocfg oc fn-owner-st))))
 
-(in-theory (disable fn-owner-obligation-view fn-owner-install-ocfg
-                    fn-owner-install-open-ocfg))
+(in-theory (disable fn-owner-obligation-view fn-owner-install-open-ocfg))

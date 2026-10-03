@@ -7,68 +7,32 @@
 (include-book "owner-obligation-state")
 (include-book "identity-retain-carried")
 
-(defthm fn-owner-retain-carry-of-install-ocfg
-  (equal (fn-owner-retain-carry (fn-owner-install-ocfg oc state))
-         (fn-owner-retain-carry state))
-  :hints (("Goal" :in-theory (e/d (fn-owner-install-ocfg)
-                                  (put-global)))))
-
-; Entry guards read the owner after the carry global changes.  These
-; exact frame/availability facts avoid reopening the whole state writer.
-(defthm fn-owner-ocfg-of-retain-carry-put
-  (equal (fn-owner-ocfg (fn-owner-retain-carry-put carry state))
-         (fn-owner-ocfg state))
-  :hints (("Goal" :in-theory (enable fn-owner-ocfg
-                                    fn-owner-retain-carry-put))))
-
-(defthm fn-owner-bound-of-retain-carry-put
-  (equal (boundp-global 'fn-owner (fn-owner-retain-carry-put carry state))
-         (boundp-global 'fn-owner state))
-  :hints (("Goal" :in-theory (enable fn-owner-retain-carry-put))))
-
-(defthm fn-owner-bound-of-install-ocfg
-  (boundp-global 'fn-owner (fn-owner-install-ocfg oc state))
-  :hints (("Goal" :in-theory (enable fn-owner-install-ocfg))))
-
-(defthm fn-owner-ocfg-of-install-ocfg
-  (equal (fn-owner-ocfg (fn-owner-install-ocfg oc state)) oc)
-  :hints (("Goal" :in-theory (enable fn-owner-ocfg))))
-
-(defthm fn-owner-ocfg-of-other-global-put
-  (implies (not (equal key 'fn-owner))
-           (equal (fn-owner-ocfg (f-put-global key value state))
-                  (fn-owner-ocfg state)))
-  :hints (("Goal" :in-theory (enable fn-owner-ocfg))))
-
-(defthm fn-owner-bound-of-other-global-put
-  (implies (not (equal key 'fn-owner))
-           (equal (boundp-global 'fn-owner (f-put-global key value state))
-                  (boundp-global 'fn-owner state))))
+; The installers' effects and frames are books/owner-carrier.lisp's.
 
 ; Proof-only carried entry-state invariant. Never called by native serving
 ; code or used as an executable guard: it names the maintained relation.
-(defun fn-owner-retain-statep (state)
-  (declare (xargs :stobjs state :guard t :verify-guards nil))
-  (and (boundp-global 'fn-owner state)
-       (fn-lgoc-invariantp (fn-owner-ocfg state))
-       (fn-prc-carryp (fn-owner-retain-carry state))))
+(defun fn-owner-retain-statep (fn-owner-st)
+  (declare (xargs :stobjs fn-owner-st :guard t :verify-guards nil))
+  (and (fn-owner-boundp fn-owner-st)
+       (fn-lgoc-invariantp (fn-owner-ocfg fn-owner-st))
+       (fn-prc-carryp (fn-owner-retain-carry fn-owner-st))))
 
 (defthm fn-owner-retain-statep-implies-entry-guard
-  (implies (fn-owner-retain-statep state)
-           (and (boundp-global 'fn-owner state)
-                (fn-sn-statep (fn-sbud-oc-store (fn-owner-ocfg state)))
-                (fn-prc-carryp (fn-owner-retain-carry state))))
+  (implies (fn-owner-retain-statep fn-owner-st)
+           (and (fn-owner-boundp fn-owner-st)
+                (fn-sn-statep (fn-sbud-oc-store (fn-owner-ocfg fn-owner-st)))
+                (fn-prc-carryp (fn-owner-retain-carry fn-owner-st))))
   :hints (("Goal" :in-theory '(fn-owner-retain-statep fn-sbud-oc-store
                                fn-lgoc-invariant-statep))))
 
-(defun fn-owner-prepare-identity (event fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :guard (and (boundp-global 'fn-owner state)
-                              (fn-sn-statep (fn-sbud-oc-store (fn-owner-ocfg state)))
-                              (fn-prc-carryp (fn-owner-retain-carry state)))
+(defun fn-owner-prepare-identity (event fn-arena fn-owner-st state)
+  (declare (xargs :stobjs (fn-arena fn-owner-st state) :guard (and (fn-owner-boundp fn-owner-st)
+                              (fn-sn-statep (fn-sbud-oc-store (fn-owner-ocfg fn-owner-st)))
+                              (fn-prc-carryp (fn-owner-retain-carry fn-owner-st)))
                   :guard-hints (("Goal" :in-theory (enable fn-sn-statep fn-sbud-oc-store fn-arena-count-is-len)))))
-  (let ((s (fn-owner-store state)))
+  (let ((s (fn-owner-store fn-owner-st)))
     (if (not (or (fn-stxk-p event) (fn-stxa-p event)))
-        (value :invalid)
+        (mv nil :invalid fn-owner-st state)
       ;; fn-oiis-prepare-identity (books/owner-identity-served.lisp): the
       ;; owner's identity prepare over the ROW the intern makes of EVENT at
       ;; the arena's count (signed-post: fn-oii-identity-row, KEYSTONE
@@ -87,16 +51,16 @@
       ;; every pin and release (KEYSTONE
       ;; fn-irc-pout-prepare-identity-of-refresh-is-pout: its word and owner
       ;; are fn-pout-prepare-identity's for every carry the host holds).
-      (let ((carry (fn-prc-refresh (fn-owner-retain-carry state)
+      (let ((carry (fn-prc-refresh (fn-owner-retain-carry fn-owner-st)
                                    (fn-node-retention (fn-sn-node s)))))
       (mv-let (word next)
-        (fn-irc-pout-prepare-identity (fn-owner-ocfg state) event
+        (fn-irc-pout-prepare-identity (fn-owner-ocfg fn-owner-st) event
                                       (fn-arena-count fn-arena) carry)
       (let* ((row (fn-oii-identity-row event (fn-sn-keyring s) (fn-sn-keyring-generation s)
                                        (fn-arena-count fn-arena)))
-             (state (fn-owner-retain-carry-put carry state))
-             (state (fn-owner-install-ocfg next state)))
-        (cond ((not (equal word :prepared)) (value word))
+             (fn-owner-st (fn-owner-retain-carry-put carry fn-owner-st))
+             (fn-owner-st (fn-owner-install-ocfg next fn-owner-st)))
+        (cond ((not (equal word :prepared)) (mv nil word fn-owner-st state))
               ((fn-oii-identity-sealsp event)
                ; The catalog (signed-post's red, catalog-columns): the article
                ; this event serves and its held row -- the row itself for a
@@ -110,14 +74,14 @@
                                  (cons (fn-replay-composite-record event) (fn-hstxa-held row))
                                (cons event row))
                              state)))
-                 (value (list :seal (fn-oii-identity-payload event)))))
-              (t (value :prepared)))))))))
+                 (mv nil (list :seal (fn-oii-identity-payload event)) fn-owner-st state)))
+              (t (mv nil :prepared fn-owner-st state)))))))))
 
 (defthm fn-owner-prepare-identity-preserves-retain-carry
-  (implies (fn-prc-carryp (fn-owner-retain-carry state))
+  (implies (fn-prc-carryp (fn-owner-retain-carry fn-owner-st))
            (fn-prc-carryp
             (fn-owner-retain-carry
-             (mv-nth 2 (fn-owner-prepare-identity event fn-arena state)))))
+             (mv-nth 2 (fn-owner-prepare-identity event fn-arena fn-owner-st state)))))
   :hints (("Goal" :in-theory
            (union-theories
             '(fn-owner-prepare-identity mv-nth nth endp zp car-cons cdr-cons
@@ -125,35 +89,32 @@
               (:executable-counterpart binary-+)
               (:executable-counterpart unary--)
               fn-owner-retain-carry-of-put
-              fn-owner-retain-carry-of-other-global-put
               fn-owner-retain-carry-of-install-ocfg
               fn-prc-carryp-of-refresh)
             (theory 'minimal-theory)))))
 
 (defthm fn-owner-prepare-identity-preserves-retain-state
-  (implies (fn-owner-retain-statep state)
+  (implies (fn-owner-retain-statep fn-owner-st)
            (fn-owner-retain-statep
-            (mv-nth 2 (fn-owner-prepare-identity event fn-arena state))))
+            (mv-nth 2 (fn-owner-prepare-identity event fn-arena fn-owner-st state))))
   :hints (("Goal" :in-theory
            '(fn-owner-retain-statep fn-owner-prepare-identity
              fn-pout-prepare-identity mv-nth nth endp zp car-cons cdr-cons
              fn-owner-bound-of-retain-carry-put
-             fn-owner-bound-of-install-ocfg fn-owner-bound-of-other-global-put
+             fn-owner-bound-of-install-ocfg 
              fn-owner-ocfg-of-retain-carry-put fn-owner-ocfg-of-install-ocfg
-             fn-owner-ocfg-of-other-global-put
              fn-owner-retain-carry-of-put
-             fn-owner-retain-carry-of-other-global-put
              fn-owner-retain-carry-of-install-ocfg
              fn-prc-carryp-of-refresh
              fn-irc-pout-prepare-identity-of-refresh-is-pout
              fn-oiis-prepare-identity-preserves-invariant))))
 
-(defun fn-owner-finish-synced (fn-hist state)
-  (declare (xargs :stobjs (fn-hist state) :guard (and (boundp-global 'fn-owner state)
-                              (fn-sn-statep (fn-sbud-oc-store (fn-owner-ocfg state)))
-                              (fn-prc-carryp (fn-owner-retain-carry state)))
+(defun fn-owner-finish-synced (fn-hist fn-owner-st state)
+  (declare (xargs :stobjs (fn-hist fn-owner-st state) :guard (and (fn-owner-boundp fn-owner-st)
+                              (fn-sn-statep (fn-sbud-oc-store (fn-owner-ocfg fn-owner-st)))
+                              (fn-prc-carryp (fn-owner-retain-carry fn-owner-st)))
                   :guard-hints (("Goal" :in-theory (e/d (fn-sbud-oc-store) (boundp-global))))))
-  (let* ((before (fn-owner-core state))
+  (let* ((before (fn-owner-core fn-owner-st))
          (before-files (fn-sn-files (fn-own-store before)))
          ;; served-costs-4 (Q5b): the completion the host calls is
          ;; fn-irc-rix-ocfg-complete (books/identity-retain-carried.lisp),
@@ -162,27 +123,27 @@
          ;; Store node's ledger (boundary fn-irc-rix-ocfg-complete-is-rix,
          ;; then derived composition
          ;; fn-irc-rix-ocfg-complete-of-refresh-is-ocfg-step-complete-by-definition).
-         (carry (fn-prc-refresh (fn-owner-retain-carry state)
+         (carry (fn-prc-refresh (fn-owner-retain-carry fn-owner-st)
                                 (fn-node-retention
                                  (fn-sn-node (fn-own-store before)))))
-         (state (fn-owner-retain-carry-put carry state))
-         (state (fn-owner-install-ocfg
-                 (fn-irc-rix-ocfg-complete (fn-owner-ocfg state) fn-hist carry)
-                 state))
-         (after (fn-owner-core state))
+         (fn-owner-st (fn-owner-retain-carry-put carry fn-owner-st))
+         (fn-owner-st (fn-owner-install-ocfg
+                 (fn-irc-rix-ocfg-complete (fn-owner-ocfg fn-owner-st) fn-hist carry)
+                 fn-owner-st))
+         (after (fn-owner-core fn-owner-st))
          (after-files (fn-sn-files (fn-own-store after))))
     (if (and (equal (fn-sf-phase before-files) :completing)
              (equal (fn-sf-phase after-files) :ready)
              (equal (fn-own-ledger-count after)
                     (1+ (fn-own-ledger-count before))))
-        (value :durable)
-      (value :fault))))
+        (mv nil :durable fn-owner-st state)
+      (mv nil :fault fn-owner-st state))))
 
 (defthm fn-owner-finish-synced-preserves-retain-carry
-  (implies (fn-prc-carryp (fn-owner-retain-carry state))
+  (implies (fn-prc-carryp (fn-owner-retain-carry fn-owner-st))
            (fn-prc-carryp
             (fn-owner-retain-carry
-             (mv-nth 2 (fn-owner-finish-synced fn-hist state)))))
+             (mv-nth 2 (fn-owner-finish-synced fn-hist fn-owner-st state)))))
   :hints (("Goal" :in-theory
            (union-theories
             '(fn-owner-finish-synced mv-nth nth endp zp car-cons cdr-cons

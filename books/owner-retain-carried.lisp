@@ -120,7 +120,7 @@
 (defthm fn-owner-install-extended-word-when-refused
   (implies (or (equal oc :fault) (not (fn-onb-open-okp (fn-ocfg-owner oc))))
            (not (equal (mv-nth 1 (fn-owner-install-extended
-                                  oc extended key fn-arena fn-cat fn-hist state))
+                                  oc extended key fn-arena fn-cat fn-hist fn-owner-st state))
                        :recovering)))
   :rule-classes nil
   :hints (("Goal" :in-theory (union-theories '(fn-owner-install-extended mv-nth nth zp
@@ -131,11 +131,11 @@
 (defthm fn-owner-install-extended-establishes-when-recovering
   (implies (or (equal oc :fault) (fn-lgoc-invariantp oc))
            (if (equal (mv-nth 1 (fn-owner-install-extended
-                                 oc extended key fn-arena fn-cat fn-hist state))
+                                 oc extended key fn-arena fn-cat fn-hist fn-owner-st state))
                       :recovering)
                (fn-owner-retain-statep
                 (mv-nth 5 (fn-owner-install-extended
-                           oc extended key fn-arena fn-cat fn-hist state)))
+                           oc extended key fn-arena fn-cat fn-hist fn-owner-st state)))
              t))
   :rule-classes nil
   :hints (("Goal" :use (fn-owner-install-extended-word-when-refused
@@ -150,9 +150,9 @@
 ; fn-pdc-pout-prepare-consumer/-topic since PRF-1230); the retention carry and the
 ; owner binding pass through fn-owner-install-ocfg.
 (defthm fn-owner-prepare-consumer-preserves-retain-state
-  (implies (fn-owner-retain-statep state)
+  (implies (fn-owner-retain-statep fn-owner-st)
            (fn-owner-retain-statep
-            (mv-nth 2 (fn-owner-prepare-consumer event fn-arena state))))
+            (mv-nth 2 (fn-owner-prepare-consumer event fn-arena fn-owner-st state))))
   :hints (("Goal" :in-theory
            '(fn-owner-retain-statep fn-owner-prepare-consumer
              fn-pdc-pout-prepare-consumer mv-nth nth zp car-cons cdr-cons
@@ -160,9 +160,9 @@
              fn-owner-retain-carry-of-install-ocfg
              fn-pdc-ocfg-prepare-consumer-preserves-invariant))))
 (defthm fn-owner-prepare-topic-preserves-retain-state
-  (implies (fn-owner-retain-statep state)
+  (implies (fn-owner-retain-statep fn-owner-st)
            (fn-owner-retain-statep
-            (mv-nth 2 (fn-owner-prepare-topic event fn-arena state))))
+            (mv-nth 2 (fn-owner-prepare-topic event fn-arena fn-owner-st state))))
   :hints (("Goal" :in-theory
            '(fn-owner-retain-statep fn-owner-prepare-topic
              fn-pdc-pout-prepare-topic mv-nth nth zp car-cons cdr-cons
@@ -200,7 +200,7 @@
                              :assuming ((fn-assume-store-open-pairp replayed opened))))
                  :witness ((fn-owner-retain-witness-oc) nil (make-list 32 :initial-element 0)
                            (create-fn-arena$a) (create-fn-cat$a) (create-fn-hist$a)
-                           (fn-owner-retain-witness-state))))
+                           (create-fn-owner-st) (fn-owner-retain-witness-state))))
   :transitions ((fn-owner-prepare-identity
                  fn-owner-prepare-identity-preserves-retain-state)
                 (fn-owner-prepare-consumer

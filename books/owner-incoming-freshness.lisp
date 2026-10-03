@@ -98,11 +98,11 @@
          :authority-current)
   (let ((saved (fn-owner-incoming-freshness-state state))
         (authority (fn-cp-nth 6 (fn-cp-nth 5 (fn-owner-canonical-state state)))))
-   (and (equal (fn-cp-nth 5 saved) (fn-cfg-generation (fn-owner-config state)))
+   (and (equal (fn-cp-nth 5 saved) (fn-cfg-generation (fn-owner-config fn-owner-st)))
         (equal (fn-cp-nth 7 saved) (fn-cp-nth 1 authority))
         (fn-cra-availablep (fn-cp-nth 5 (fn-owner-canonical-state state))
           (fn-owner-canonical-epoch state)
-          (fn-sf-records-count (fn-sn-files (fn-owner-store state)))
+          (fn-sf-records-count (fn-sn-files (fn-owner-store fn-owner-st)))
           (fn-owner-account-root-state state)))))
  :rule-classes nil
  :hints (("Goal" :in-theory

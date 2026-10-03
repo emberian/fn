@@ -21,11 +21,11 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-native-admin-query-report
           plan (fn-cfg-value (f-get-global 'fn-store-cfg state)))))
-(defun fn-native-admin-host-owner-reconfigure (id plan fn-arena state)
+(defun fn-native-admin-host-owner-reconfigure (id plan fn-arena fn-owner-st state)
   ; The live arm.  The delta list, labels as strings, is ACL2's
   ; (`fn-native-admin-plan-deltas', books/native-admin.lisp); this bridge
   ; only hands it to the owner's staging step.
-  (declare (xargs :stobjs (state fn-arena) :mode :program))
+  (declare (xargs :stobjs (fn-owner-st state fn-arena) :mode :program))
   ; PRF-099: an :extend-peer plan's delta is built over the live owner's
   ; peer table (`fn-native-admin-plan-deltas-over').
   ;; PRF-164: an `account invite' plan's pending row expires from the live
@@ -34,9 +34,9 @@
   (let ((deltas (if (equal (fn-native-admin-result-kind plan) :account-invite)
                     (fn-acct-admin-deltas
                      plan (fn-acct-live-invite-reading
-                           (fn-own-clock (fn-owner-core state))))
+                           (fn-own-clock (fn-owner-core fn-owner-st))))
                   (fn-native-admin-plan-deltas-over
-                   plan (fn-cfg-peers (fn-cfg-value (fn-owner-config state)))))))
+                   plan (fn-cfg-peers (fn-cfg-value (fn-owner-config fn-owner-st)))))))
     (cond
      ;; PRF-388 (PKT-560): `account bind|unbind' is planned over the live
      ;; owner's configuration (books/login-binding-live.lisp
@@ -45,29 +45,29 @@
       (let ((account-plan (fn-lb-account-bind-plan
                            (fn-native-admin-result-name plan)
                            (fn-native-admin-result-value plan)
-                           (fn-cfg-value (fn-owner-config state)))))
+                           (fn-cfg-value (fn-owner-config fn-owner-st)))))
         (if (equal (car account-plan) :ok)
-            (fn-owner-reconfigure-deltas id (cadr account-plan) fn-arena state)
-          (value (fn-ores-config-refused (cadr account-plan))))))
+            (fn-owner-reconfigure-deltas id (cadr account-plan) fn-arena fn-owner-st state)
+          (mv nil (fn-ores-config-refused (cadr account-plan)) fn-owner-st state))))
      ;; PKT-709: a bind of a consumer name no registration declared is
      ;; refused by name (books/consumer-owner-local.lisp fn-col-bind-refusal).
      ((and (equal (fn-native-admin-result-kind plan) :consumer-bind)
-           (fn-col-bind-refusal (fn-sn-consumer (fn-own-store (fn-owner-core state)))
+           (fn-col-bind-refusal (fn-sn-consumer (fn-own-store (fn-owner-core fn-owner-st)))
                                 (fn-native-admin-result-name plan)
                                 (fn-native-admin-result-value plan)))
-      (value (fn-ores-config-refused
-              (fn-col-bind-refusal (fn-sn-consumer (fn-own-store (fn-owner-core state)))
+      (mv nil (fn-ores-config-refused
+              (fn-col-bind-refusal (fn-sn-consumer (fn-own-store (fn-owner-core fn-owner-st)))
                                    (fn-native-admin-result-name plan)
-                                   (fn-native-admin-result-value plan)))))
+                                   (fn-native-admin-result-value plan))) fn-owner-st state))
      (deltas
-      (fn-owner-reconfigure-deltas id deltas fn-arena state))
+      (fn-owner-reconfigure-deltas id deltas fn-arena fn-owner-st state))
      ;; No delta for this plan over the live owner's tables: the result
      ;; says so, never a previous request's reason (PKT-453 (a)).
      ;; Row S5: `peer set''s refusal over the live record, or
      ;; :no-such-peer, by ACL2's name (fn-native-admin-plan-refusal-over).
-     (t (value (fn-ores-config-refused
+     (t (mv nil (fn-ores-config-refused
                 (fn-native-admin-plan-refusal-over
-                 plan (fn-cfg-peers (fn-cfg-value (fn-owner-config state))))))))))
+                 plan (fn-cfg-peers (fn-cfg-value (fn-owner-config fn-owner-st))))) fn-owner-st state)))))
 (defun fn-native-admin-host-apply (plan stamp state)
   ;; STAMP is the record stamp fn-native-admin-clock-observation built
   ;; (host/native/admin.lisp fnn-admin-clock-plan); every record this
@@ -209,9 +209,9 @@
 
 ;; The owner's side.  Whether connection ID holds for an XREDEEM
 ;; (books/nntp-auth.lisp fn-auth-redeem-waitp).
-(defun fn-acct-host-owner-redeem-waitingp (id state)
-  (declare (xargs :stobjs state :mode :program))
-  (let ((conn (fn-own-find-conn id (fn-own-conns (fn-owner-core state)))))
+(defun fn-acct-host-owner-redeem-waitingp (id fn-owner-st state)
+  (declare (xargs :stobjs (fn-owner-st state) :mode :program))
+  (let ((conn (fn-own-find-conn id (fn-own-conns (fn-owner-core fn-owner-st)))))
     (value (and conn (fn-auth-redeem-waitp (fn-own-conn-session conn)) t))))
 
 ;; The stage fnn-owner-live-reconfigure-locked runs under the owner mutex:
@@ -220,17 +220,17 @@
 ;; connection-independent credential table (auth.toml's rows, then the
 ;; redeemed rows: fn-auth-config-with-accounts) and the profile's
 ;; max-credentials BOUND.  Only a :redeem plan stages its one delta.
-(defun fn-acct-host-owner-redeem-stage (pcid id salt bound fn-arena state)
-  (declare (xargs :stobjs (state fn-arena) :mode :program))
-  (let* ((conn (fn-own-find-conn id (fn-own-conns (fn-owner-core state))))
+(defun fn-acct-host-owner-redeem-stage (pcid id salt bound fn-arena fn-owner-st state)
+  (declare (xargs :stobjs (fn-owner-st state fn-arena) :mode :program))
+  (let* ((conn (fn-own-find-conn id (fn-own-conns (fn-owner-core fn-owner-st))))
          (req (and conn (fn-auth-redeem-waitp (fn-own-conn-session conn))
                    (fn-auth-redeem-request (fn-own-conn-session conn))))
-         (v (fn-cfg-value (fn-owner-config state)))
+         (v (fn-cfg-value (fn-owner-config fn-owner-st)))
          (creds (fn-auth-config-creds
                  (fn-auth-config-with-accounts (fn-owner-auth state) v)))
          (plan (if (and (true-listp req) (equal (len req) 3))
                    (fn-acct-redeem-bounded-plan
-                    v (fn-own-clock (fn-owner-core state))
+                    v (fn-own-clock (fn-owner-core fn-owner-st))
                     (first req) (second req) (third req) salt
                     (and (fn-auth-find-cred (second req) creds) t)
                     (len creds) bound)
@@ -238,10 +238,10 @@
          (state (f-put-global 'fn-acct-redeem-plan plan state)))
     (if (equal (car plan) :redeem)
         (fn-owner-reconfigure-deltas pcid (list (fn-acct-plan-delta plan))
-                                     fn-arena state)
+                                     fn-arena fn-owner-st state)
       ;; The plan's own reason (a previous request's reason used to stand
       ;; in the retired reason slot here).
-      (value (fn-ores-config-refused (cadr plan))))))
+      (mv nil (fn-ores-config-refused (cadr plan)) fn-owner-st state))))
 
 (defun fn-acct-host-owner-redeem-word (published state)
   (declare (xargs :stobjs state :mode :program))
@@ -269,13 +269,13 @@
 
 ;; The host's re-entry after the publication: the (:account-outcome WORD)
 ;; event through the same owner step (:tls-established) takes.
-(defun fn-owner-account-outcome (id word fn-arena state)
-  (declare (xargs :stobjs (state fn-arena) :mode :program))
-  (let ((owner (fn-owner-core state)))
+(defun fn-owner-account-outcome (id word fn-arena fn-owner-st state)
+  (declare (xargs :stobjs (fn-owner-st state fn-arena) :mode :program))
+  (let ((owner (fn-owner-core fn-owner-st)))
     (if (not (fn-own-find-conn id (fn-own-conns owner)))
-        (value :unknown)
-      (let* ((result (fn-ocfg-read-step (fn-owner-ocfg state)
+        (mv nil :unknown fn-owner-st state)
+      (let* ((result (fn-ocfg-read-step (fn-owner-ocfg fn-owner-st)
                                         id (list :account-outcome word) fn-arena))
-             (state (fn-owner-install-ocfg (cdr result) state))
+             (fn-owner-st (fn-owner-install-ocfg (cdr result) fn-owner-st))
              (state (fn-owner-install-effects (car result) state)))
-        (value :ok)))))
+        (mv nil :ok fn-owner-st state)))))

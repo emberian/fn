@@ -31,7 +31,7 @@
                            (f-get-global 'fn-store-cfg state)
                            obs fn-arena)))
 
-(defun fn-native-live-status-host-answer (request cached obs min log-sink sched fn-arena fn-cat state)
+(defun fn-native-live-status-host-answer (request cached obs min log-sink sched fn-arena fn-cat fn-owner-st state)
   ; The running owner's page for one FNLS request, under its mutex
   ; (host/native/control.lisp `fnn-control-live-status-answer'): (REPLY
   ; CACHED').  A request from offset 0 renders the report once into a
@@ -43,7 +43,7 @@
   ; the owner's service-log sink (books/log-sink.lisp, PKT-508), NIL when no
   ; writer runs; SCHED the owner's scheduler value (books/owner-scheduler.lisp,
   ; HST-023): `health' ends with the sink's line and the scheduler's.
-  (declare (xargs :stobjs (fn-arena fn-cat state) :mode :program))
+  (declare (xargs :stobjs (fn-arena fn-cat fn-owner-st state) :mode :program))
   ;; PKT-209: FNLS frame kind 3 carries a control report kind and its
   ;; argument (fn-cev-any-request-decode reads either frame).
   (let ((decoded (fn-cev-any-request-decode request)))
@@ -74,7 +74,7 @@
                    (if (fn-cev-report-kindp kind)
                        ;; PKT-209 (PRF-185): the records and archive the
                        ;; owner's committed view carries.
-                       (fn-cev-live-report kind (fn-owner-ocfg state))
+                       (fn-cev-live-report kind (fn-owner-ocfg fn-owner-st))
                    (append
                     ;; fn-nsc-answer-report-is-answer-report: under the
                     ;; column relation F this is fn-nh-answer-report.
@@ -86,7 +86,7 @@
                                          ;; (fn-nsc-answer-report-counts-are-
                                          ;; the-reader-view).
                                          (fn-ocfg-at-reader-view
-                                          (fn-owner-ocfg state)
+                                          (fn-owner-ocfg fn-owner-st)
                                           (fn-owner-reader-views state))
                                          (if (boundp-global 'fn-owner-record-octets state)
                                              (f-get-global 'fn-owner-record-octets state)
@@ -112,7 +112,7 @@
                            ;; PKT-508 (PRF-187): the log sink's line last;
                            ;; fn-nh-report-exit-of-render-and-more: the exit is
                            ;; the verdict's whatever follows the eight states.
-                           (append (fn-owner-exposure-health state)
+                           (append (fn-owner-exposure-health fn-owner-st state)
                                    (if log-sink (fn-nh-log-sink-line log-sink) nil)
                                    ;; HST-026: SCHED is the snapshot
                                    ;; (S NOW) of books/owner-time-model.lisp:
@@ -124,7 +124,7 @@
                                    ;; key (books/post-admission-keyed.lisp
                                    ;; fn-pak-index-health-line).
                                    (fn-pak-index-health-line
-                                    (fn-cat-index-health (fn-owner-mpx-key state)
+                                    (fn-cat-index-health (fn-owner-mpx-key fn-owner-st)
                                                          fn-cat))
                                    ;; PRF-996: each live limit's requested,
                                    ;; funded and ceiling values, from the
@@ -135,7 +135,7 @@
                           ;; (books/public-exposure.lisp fn-exp-capacity-line);
                           ;; HST-026: then the disk line.
                           ((equal kind :status)
-                           (append (fn-owner-exposure-capacity state)
+                           (append (fn-owner-exposure-capacity fn-owner-st state)
                                    (fn-otm-disk-lines sched)
                                    ;; PRF-996: the limit lines, as `health'.
                                    (fn-owner-limit-report state)))
@@ -149,9 +149,10 @@
 ; report cursors, carried by the host and chosen here; the retention is read
 ; only by a request that starts a report (fn-nlp-answer).  Answering changes
 ; no state: the wrapper returns no `state'.
-(defun fn-native-live-pages-host-answer (request cache state)
-  (declare (xargs :stobjs state :mode :program))
-  (fn-nlp-answer request cache (fn-nlp-live-retention (fn-owner-ocfg state))
+(defun fn-native-live-pages-host-answer (request cache fn-owner-st state)
+  (declare (xargs :stobjs (fn-owner-st state) :mode :program))
+  (declare (ignorable state))
+  (fn-nlp-answer request cache (fn-nlp-live-retention (fn-owner-ocfg fn-owner-st))
                  *fn-nls-chunk-octets*))
 
 (defun fn-native-live-pages-host-requestp (octets)

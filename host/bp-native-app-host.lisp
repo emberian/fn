@@ -9,50 +9,50 @@
 (include-book "../books/bp-listener-set")
 
 (defun fn-owner-bp-tcpcl-ingress
-    (fnbs-state session-counter xfer-id channel announced-uri state)
-  (declare (xargs :stobjs state :mode :program))
+    (fnbs-state session-counter xfer-id channel announced-uri fn-owner-st state)
+  (declare (xargs :stobjs (fn-owner-st state) :mode :program))
   (value (fn-bpaj-tcpcl-ingress-result
-          (fn-owner-config state) fnbs-state channel announced-uri
+          (fn-owner-config fn-owner-st) fnbs-state channel announced-uri
           session-counter xfer-id)))
 
 ; Spec bp-node-machine 4.6: the route table of the current configuration,
 ; which the host passes back to fn-bprt-outbound-choice and to the routed
 ; :session event.  ACL2 builds it (fn-bprt-table); the host keeps no copy.
-(defun fn-owner-bp-route-table (state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-bprt-table (fn-owner-config state))))
+(defun fn-owner-bp-route-table (fn-owner-st state)
+  (declare (xargs :stobjs (fn-owner-st state) :mode :program))
+  (value (fn-bprt-table (fn-owner-config fn-owner-st))))
 
 ;; PRF-176: the ports `bp-node serve -' binds, one per transport-bp boundary
 ;; row of the current configuration that admits a session
 ;; (fn-bpaj-listener-session-is-admitted-under-its-row).
-(defun fn-owner-bp-listener-ports (state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-bpaj-listener-ports (fn-owner-config state))))
+(defun fn-owner-bp-listener-ports (fn-owner-st state)
+  (declare (xargs :stobjs (fn-owner-st state) :mode :program))
+  (value (fn-bpaj-listener-ports (fn-owner-config fn-owner-st))))
 
 (include-book "../books/bp-node-listener-control")
 
 ; Actual owner configuration is captured on this sole serialized writer.
-(defun fn-owner-bplc-recover (mode state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-bplc-recover mode (fn-owner-config state))))
+(defun fn-owner-bplc-recover (mode fn-owner-st state)
+  (declare (xargs :stobjs (fn-owner-st state) :mode :program))
+  (value (fn-bplc-recover mode (fn-owner-config fn-owner-st))))
 
-(defun fn-owner-bplc-begin (carry mode state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-bplc-begin carry mode (fn-owner-config state))))
+(defun fn-owner-bplc-begin (carry mode fn-owner-st state)
+  (declare (xargs :stobjs (fn-owner-st state) :mode :program))
+  (value (fn-bplc-begin carry mode (fn-owner-config fn-owner-st))))
 
-(defun fn-owner-bplc-turn-plan (ownerp admin carry state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-bplc-turn-plan ownerp admin (fn-owner-config state) carry)))
+(defun fn-owner-bplc-turn-plan (ownerp admin carry fn-owner-st state)
+  (declare (xargs :stobjs (fn-owner-st state) :mode :program))
+  (value (fn-bplc-turn-plan ownerp admin (fn-owner-config fn-owner-st) carry)))
 
-(defun fn-owner-bp-request-trustedp (view state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-bpah-request-trustedp view (fn-owner-config state))))
+(defun fn-owner-bp-request-trustedp (view fn-owner-st state)
+  (declare (xargs :stobjs (fn-owner-st state) :mode :program))
+  (value (fn-bpah-request-trustedp view (fn-owner-config fn-owner-st))))
 
 ; D23: ACL2's source decision for a delivered view, as the line the host
 ; prints (direct, carried with carrier and author, or the refusal reason).
-(defun fn-owner-bp-source-decision-line (view state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-bpah-source-decision-line view (fn-owner-config state))))
+(defun fn-owner-bp-source-decision-line (view fn-owner-st state)
+  (declare (xargs :stobjs (fn-owner-st state) :mode :program))
+  (value (fn-bpah-source-decision-line view (fn-owner-config fn-owner-st))))
 (include-book "../books/bp-native-app-fast")
 ; fn-own-clock.  Reached through books/bp-native-app.lisp until that book
 ; dropped its unused include of owner (audit 2026-09-25, packet 2).
@@ -70,45 +70,45 @@
     nil))
 
 ; Signed receipts: this Store's keyring snapshots, the ones transit reads.
-(defun fn-owner-bp-keyring (state)
-  (declare (xargs :stobjs state :mode :program))
-  (fn-sn-keyring-snapshots (fn-owner-store state)))
+(defun fn-owner-bp-keyring (fn-owner-st)
+  (declare (xargs :stobjs (fn-owner-st) :mode :program))
+  (fn-sn-keyring-snapshots (fn-owner-store fn-owner-st)))
 
-(defun fn-owner-bp-receipt-signature-plan (view state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-bpah-receipt-signature-plan view (fn-owner-bp-keyring state))))
+(defun fn-owner-bp-receipt-signature-plan (view fn-owner-st state)
+  (declare (xargs :stobjs (fn-owner-st state) :mode :program))
+  (value (fn-bpah-receipt-signature-plan view (fn-owner-bp-keyring fn-owner-st))))
 
 ; OBS is the host's (observed-ml-key ed25519 ml-dsa-65), or nil.
-(defun fn-owner-bp-receipt-gatep (view obs state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-bpah-receipt-gatep view (fn-owner-config state)
-                                (fn-owner-bp-keyring state) obs)))
+(defun fn-owner-bp-receipt-gatep (view obs fn-owner-st state)
+  (declare (xargs :stobjs (fn-owner-st state) :mode :program))
+  (value (fn-bpah-receipt-gatep view (fn-owner-config fn-owner-st)
+                                (fn-owner-bp-keyring fn-owner-st) obs)))
 
-(defun fn-owner-bp-release-line (view obs state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-bpah-receipt-release-line view (fn-owner-config state)
-                                       (fn-owner-bp-keyring state) obs)))
+(defun fn-owner-bp-release-line (view obs fn-owner-st state)
+  (declare (xargs :stobjs (fn-owner-st state) :mode :program))
+  (value (fn-bpah-receipt-release-line view (fn-owner-config fn-owner-st)
+                                       (fn-owner-bp-keyring fn-owner-st) obs)))
 
-(defun fn-owner-bp-receipt-release-record (view obs state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-bpah-receipt-release-record view (fn-owner-config state)
+(defun fn-owner-bp-receipt-release-record (view obs fn-owner-st state)
+  (declare (xargs :stobjs (fn-owner-st state) :mode :program))
+  (value (fn-bpah-receipt-release-record view (fn-owner-config fn-owner-st)
                                          (fn-owner-bp-workflow-image state)
-                                         (fn-owner-bp-keyring state) obs)))
+                                         (fn-owner-bp-keyring fn-owner-st) obs)))
 
-(defun fn-owner-bp-receipt-release-detail (view obs state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-owner-bp-receipt-release-detail (view obs fn-owner-st state)
+  (declare (xargs :stobjs (fn-owner-st state) :mode :program))
   (value (fn-bpah-release-detail
           (fn-bpah-receipt-release-verdict
-           view (fn-owner-config state) (fn-owner-bp-workflow-image state)
-           (fn-owner-bp-keyring state) obs))))
+           view (fn-owner-config fn-owner-st) (fn-owner-bp-workflow-image state)
+           (fn-owner-bp-keyring fn-owner-st) obs))))
 
-(defun fn-owner-app-bind-receipt-store (state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-owner-app-bind-receipt-store (fn-owner-st state)
+  (declare (xargs :stobjs (fn-owner-st state) :mode :program))
   ; An explicit snapshot for this serialized callback.  The caller rebinds
   ; immediately after every owner mutation and before FNRJ preflight/apply;
   ; the standalone fn-store-sn global is never consulted in owner mode.
   (let* ((state (f-put-global 'fn-bprj-bound-store
-                              (fn-owner-store state) state))
+                              (fn-owner-store fn-owner-st) state))
          (state (f-put-global 'fn-bprj-store-source :owner-bound state)))
     (value :ready)))
 
@@ -165,8 +165,8 @@
 ;; The records flip (flip-L4): the transit lookup reads the owner Store's rows
 ;; through the live arena (read-only).
 (defun fn-owner-app-plan-install
-  (inbound-id request-octets node-id bundle-identity ingress source-eid fn-arena fn-hist state)
-  (declare (xargs :stobjs (fn-arena fn-hist state) :mode :program)
+  (inbound-id request-octets node-id bundle-identity ingress source-eid fn-arena fn-hist fn-owner-st state)
+  (declare (xargs :stobjs (fn-arena fn-hist fn-owner-st state) :mode :program)
            ; The provenance is the transit plan's (its evidence, element 6).
            (ignorable node-id bundle-identity))
   (let* ((joined (f-get-global 'fn-bpaj-state state))
@@ -183,7 +183,7 @@
       (let* ((state (f-put-global 'fn-owner-app-transitp nil state))
             (state (f-put-global 'fn-owner-app-request request-octets state))
             (state (f-put-global 'fn-owner-app-generation
-                                 (fn-cfg-generation (fn-owner-config state))
+                                 (fn-cfg-generation (fn-owner-config fn-owner-st))
                                  state))
             (state (f-put-global 'fn-owner-app-txid
                                  (fn-bpaj-request-planned-txid
@@ -198,19 +198,19 @@
       (fn-owner-app-plan-answer :request-status state))
      (t
       (let* ((request (fn-bpaj-request request-octets))
-             (cfg (fn-owner-config state))
+             (cfg (fn-owner-config fn-owner-st))
              (generation (fn-cfg-generation cfg))
              (txid (fn-state-next-txid
-                    (fn-node-acceptance (fn-owner-node state))))
+                    (fn-node-acceptance (fn-owner-node fn-owner-st))))
              ; Under the owner's header limits (PKT-771,
              ; fn-bpaj-transit-plan-under-refuses-past-the-limits-before-any-intent):
              ; a past-limit article is refused by name here, before any intent.
              (plan (and request
                         (fn-bpaj-transit-plan-under
-                         (fn-owner-node state) cfg ingress source-eid
-                         request-octets (fn-own-clock (fn-owner-core state))
+                         (fn-owner-node fn-owner-st) cfg ingress source-eid
+                         request-octets (fn-own-clock (fn-owner-core fn-owner-st))
                          (fn-own-config-header-limits
-                          (fn-own-config (fn-owner-core state))))))
+                          (fn-own-config (fn-owner-core fn-owner-st))))))
              (planned (if (equal (car plan) :have) :duplicate :accepted))
              (new-intent
                (and (member-equal (car plan) '(:submit :have))
@@ -220,7 +220,7 @@
              (intent (or existing new-intent))
              (lookup (and request intent
                           (fn-bpaj-transit-record-lookup-fast
-                           (fn-owner-store state) request intent fn-arena fn-hist)))
+                           (fn-owner-store fn-owner-st) request intent fn-arena fn-hist)))
              (bindingp (equal (car lookup) :found))
              (freshp (and (equal status :new) new-intent
                           (or (and (equal (car plan) :submit)
@@ -299,20 +299,19 @@
          state)))))))
 
 (defun fn-owner-app-plan
-  (inbound-id request-octets node-id bundle-identity ingress
-              bundle-source bundle-destination fn-arena fn-hist state)
-  (declare (xargs :stobjs (fn-arena fn-hist state) :mode :program))
+  (inbound-id request-octets node-id bundle-identity ingress bundle-source bundle-destination fn-arena fn-hist fn-owner-st state)
+  (declare (xargs :stobjs (fn-arena fn-hist fn-owner-st state) :mode :program))
   ; The transit lookup reads the history stobj, synced to the owner's Store
   ; first (R: books/history-columns-relation.lisp, fn-hist-sync-of-prefix-is-
   ; the-history; fn-bpaj-transit-record-lookup-fast-is-checked under R).
-  (mv-let (fn-hist state) (fn-host-hist-sync (fn-owner-store state) fn-hist state)
+  (mv-let (fn-hist state) (fn-host-hist-sync (fn-owner-store fn-owner-st) fn-hist state)
     (let* ((state (f-put-global 'fn-owner-app-bundle-source bundle-source state))
            (state (f-put-global 'fn-owner-app-bundle-destination
                                 bundle-destination state))
            (state (f-put-global 'fn-owner-app-refusal-reason nil state)))
       (mv-let (erp val state)
         (fn-owner-app-plan-install inbound-id request-octets node-id
-                                   bundle-identity ingress bundle-source fn-arena fn-hist state)
+                                   bundle-identity ingress bundle-source fn-arena fn-hist fn-owner-st state)
         (mv erp val fn-hist state)))))
 
 ; The receiver's line for transfer XFER-ID that fnn-bpapp-accept-locked
@@ -346,9 +345,9 @@
 ;; request; the planner's or dispatcher's reason (fn-owner-app-plan resets it
 ;; per request); DETAIL; :unnamed when no step named one.  The host prints
 ;; the line and decides nothing from it.
-(defun fn-owner-bp-request-refusal-line (view result detail state)
-  (declare (xargs :stobjs state :mode :program))
-  (let* ((cfg (fn-owner-config state))
+(defun fn-owner-bp-request-refusal-line (view result detail fn-owner-st state)
+  (declare (xargs :stobjs (fn-owner-st state) :mode :program))
+  (let* ((cfg (fn-owner-config fn-owner-st))
          (reason
            (cond ((not (fn-bpah-request-trustedp view cfg))
                   (let ((d (fn-bpah-view-source-decision view cfg)))
@@ -365,20 +364,20 @@
                    (fn-olog-field "result" (fn-olog-symbol-text result))
                    (fn-olog-field "reason" (fn-olog-symbol-text reason))))))))
 
-(defun fn-owner-app-current-generation (state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-cfg-generation (fn-owner-config state))))
+(defun fn-owner-app-current-generation (fn-owner-st state)
+  (declare (xargs :stobjs (fn-owner-st state) :mode :program))
+  (value (fn-cfg-generation (fn-owner-config fn-owner-st))))
 
 ; Sole ACL2 application admission event.  The request intent must already be
 ; durable: fn-bpaj-dispatch-fast is called over the same bound owner Store, and
 ; only its :submit action reaches the ordinary control submission transition.
-(defun fn-owner-app-submit-synced (fn-arena fn-hist state)
-  (declare (xargs :stobjs (fn-arena fn-hist state) :mode :program))
+(defun fn-owner-app-submit-synced (fn-arena fn-hist fn-owner-st state)
+  (declare (xargs :stobjs (fn-arena fn-hist fn-owner-st state) :mode :program))
   (let* ((request (f-get-global 'fn-owner-app-request state))
          (generation (f-get-global 'fn-owner-app-generation state))
          (action (fn-bpaj-dispatch-fast
                   (f-get-global 'fn-bpaj-state state)
-                  (fn-owner-store state) request generation fn-arena fn-hist)))
+                  (fn-owner-store fn-owner-st) request generation fn-arena fn-hist)))
     (if (not (equal action (list :submit)))
         ; The dispatcher's own reason is the refusal's (or the deferral's).
         (let ((state (f-put-global 'fn-owner-app-refusal-reason
@@ -387,35 +386,35 @@
                                             (cadr action))
                                        :dispatch)
                                    state)))
-          (value (if (equal (car action) :busy) :busy :refused)))
+          (mv nil (if (equal (car action) :busy) :busy :refused) fn-owner-st state))
       (if (f-get-global 'fn-owner-app-transitp state)
           (fn-owner-bp-transit-submit
            (f-get-global 'fn-owner-app-peer state)
            (f-get-global 'fn-owner-app-msgid state)
            (f-get-global 'fn-owner-app-article state)
            (f-get-global 'fn-owner-app-obligation-id state)
-           (f-get-global 'fn-owner-app-stored-subject state) fn-arena state)
+           (f-get-global 'fn-owner-app-stored-subject state) fn-arena fn-owner-st state)
         (fn-owner-control-submit
          (f-get-global 'fn-owner-app-msgid state)
          (f-get-global 'fn-owner-app-groups state)
-         (f-get-global 'fn-owner-app-article state) fn-arena state)))))
+         (f-get-global 'fn-owner-app-article state) fn-arena fn-owner-st state)))))
 
-(defun fn-owner-app-submit (fn-arena fn-hist state)
-  (declare (xargs :stobjs (fn-arena fn-hist state) :mode :program))
+(defun fn-owner-app-submit (fn-arena fn-hist fn-owner-st state)
+  (declare (xargs :stobjs (fn-arena fn-hist fn-owner-st state) :mode :program))
   ; The dispatch reads the history stobj synced to the owner's Store (R).
-  (mv-let (fn-hist state) (fn-host-hist-sync (fn-owner-store state) fn-hist state)
-    (mv-let (erp val state) (fn-owner-app-submit-synced fn-arena fn-hist state)
-      (mv erp val fn-hist state))))
+  (mv-let (fn-hist state) (fn-host-hist-sync (fn-owner-store fn-owner-st) fn-hist state)
+    (mv-let (erp val fn-owner-st state) (fn-owner-app-submit-synced fn-arena fn-hist fn-owner-st state)
+      (mv erp val fn-hist fn-owner-st state))))
 
-(defun fn-owner-app-record (fn-arena fn-hist state)
-  (declare (xargs :stobjs (fn-arena fn-hist state) :mode :program))
-  (mv-let (fn-hist state) (fn-host-hist-sync (fn-owner-store state) fn-hist state)
+(defun fn-owner-app-record (fn-arena fn-hist fn-owner-st state)
+  (declare (xargs :stobjs (fn-arena fn-hist fn-owner-st state) :mode :program))
+  (mv-let (fn-hist state) (fn-host-hist-sync (fn-owner-store fn-owner-st) fn-hist state)
   (let* ((request-octets (f-get-global 'fn-owner-app-request state))
          (request (fn-bpaj-request request-octets))
          (intent (fn-bpaj-request-intent
                   (f-get-global 'fn-bpaj-state state) request-octets))
          (answer (fn-bpaj-transit-record-lookup-fast
-                  (fn-owner-store state) request intent fn-arena fn-hist))
+                  (fn-owner-store fn-owner-st) request intent fn-arena fn-hist))
          (record (and (equal (car answer) :found) (cadr answer)))
          (state (f-put-global 'fn-owner-app-record
                               (and record (fn-record-encode record)) state))

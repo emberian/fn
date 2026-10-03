@@ -73,13 +73,13 @@
         (t nil)))
 
 ; The live owner's invitations slot and its staging step for one delta.
-(defun fn-pinv-host-owner-invitations (state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-cfg-invitations (fn-cfg-value (fn-owner-config state)))))
+(defun fn-pinv-host-owner-invitations (fn-owner-st state)
+  (declare (xargs :stobjs (fn-owner-st state) :mode :program))
+  (value (fn-cfg-invitations (fn-cfg-value (fn-owner-config fn-owner-st)))))
 
-(defun fn-pinv-host-owner-reconfigure (id delta fn-arena state)
-  (declare (xargs :stobjs (state fn-arena) :mode :program))
-  (fn-owner-reconfigure-deltas id (list delta) fn-arena state))
+(defun fn-pinv-host-owner-reconfigure (id delta fn-arena fn-owner-st state)
+  (declare (xargs :stobjs (fn-owner-st state fn-arena) :mode :program))
+  (fn-owner-reconfigure-deltas id (list delta) fn-arena fn-owner-st state))
 
 ; PRF-124: the confirm's plan over both documents and the live peers table,
 ; and its record's deltas (the consumption and the peer, one record).
@@ -89,13 +89,13 @@
   (fn-pinv-confirm-record-plan received invitation observed-ml ed ml
                                invitations snapshots peers))
 
-(defun fn-pinv-host-owner-peers (state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-cfg-peers (fn-cfg-value (fn-owner-config state)))))
+(defun fn-pinv-host-owner-peers (fn-owner-st state)
+  (declare (xargs :stobjs (fn-owner-st state) :mode :program))
+  (value (fn-cfg-peers (fn-cfg-value (fn-owner-config fn-owner-st)))))
 
-(defun fn-pinv-host-owner-reconfigure-deltas (id deltas fn-arena state)
-  (declare (xargs :stobjs (state fn-arena) :mode :program))
-  (fn-owner-reconfigure-deltas id deltas fn-arena state))
+(defun fn-pinv-host-owner-reconfigure-deltas (id deltas fn-arena fn-owner-st state)
+  (declare (xargs :stobjs (fn-owner-st state fn-arena) :mode :program))
+  (fn-owner-reconfigure-deltas id deltas fn-arena fn-owner-st state))
 
 (defun fn-pinv-host-confirm-request-encode (acceptance invitation)
   (declare (xargs :mode :program))

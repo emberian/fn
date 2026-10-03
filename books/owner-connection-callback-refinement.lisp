@@ -20,21 +20,21 @@
 
 (local
  (defthm fn-ocb-reader-capture-of-install
-   (equal (fn-owner-reader-views (fn-owner-install-ocfg oc state))
+   (equal (fn-owner-reader-views (fn-owner-install-ocfg oc fn-owner-st))
           (fn-owner-reader-views state))
    :hints (("Goal" :in-theory
             (enable fn-owner-reader-views fn-owner-install-ocfg)))))
 
 (local
  (defthm fn-ocb-auth-of-install
-   (equal (fn-owner-auth (fn-owner-install-ocfg oc state))
+   (equal (fn-owner-auth (fn-owner-install-ocfg oc fn-owner-st))
           (fn-owner-auth state))
    :hints (("Goal" :in-theory
             (enable fn-owner-auth fn-owner-install-ocfg)))))
 
 (local
  (defthm fn-ocb-credits-of-install
-   (equal (fn-owner-credits (fn-owner-install-ocfg oc state))
+   (equal (fn-owner-credits (fn-owner-install-ocfg oc fn-owner-st))
           (fn-owner-credits state))
    :hints (("Goal" :in-theory
             (e/d (fn-owner-credits fn-owner-credit-reserve
@@ -49,7 +49,7 @@
 (local
  (defthm fn-ocb-bound-of-other-install
    (implies (not (equal key 'fn-owner))
-            (equal (boundp-global key (fn-owner-install-ocfg oc state))
+            (equal (boundp-global key (fn-owner-install-ocfg oc fn-owner-st))
                    (boundp-global key state)))
    :hints (("Goal" :in-theory
             (e/d (fn-owner-install-ocfg)
@@ -72,17 +72,17 @@
             (e/d (fn-owner-auth) (get-global put-global boundp-global))))))
 
 (defthm fn-owner-callback-close-complete-effects
-  (let* ((oc (fn-owner-ocfg state))
+  (let* ((oc (fn-owner-ocfg fn-owner-st))
          (next (fn-ocfg-close oc id))
          (credits (fn-mca-close (fn-owner-credits state) id))
-         (actual (mv-nth 2 (fn-owner-callback-close id fn-arena state))))
-    (and (equal (mv-nth 0 (fn-owner-callback-close id fn-arena state)) nil)
-         (equal (mv-nth 1 (fn-owner-callback-close id fn-arena state)) :closed)
+         (actual (mv-nth 2 (fn-owner-callback-close id fn-arena fn-owner-st state))))
+    (and (equal (mv-nth 0 (fn-owner-callback-close id fn-arena fn-owner-st state)) nil)
+         (equal (mv-nth 1 (fn-owner-callback-close id fn-arena fn-owner-st state)) :closed)
          (equal (fn-owner-ocfg actual) next)
          (equal (f-get-global 'fn-owner-credits actual) credits)
          (equal (fn-owner-obligation-view actual) (fn-owner-obligation-view state))))
   :hints (("Goal" :in-theory
-           (e/d (fn-owner-callback-close fn-owner-ocfg fn-owner-put-credits)
+           (e/d (fn-owner-callback-close  fn-owner-put-credits)
                 (get-global put-global boundp-global
                  fn-owner-credits fn-owner-credit-reserve)))))
 
@@ -90,20 +90,20 @@
   (implies (and (not (equal key 'fn-owner))
                 (not (equal key 'fn-owner-credits)))
            (equal (f-get-global key
-                    (mv-nth 2 (fn-owner-callback-close id fn-arena state)))
+                    (mv-nth 2 (fn-owner-callback-close id fn-arena fn-owner-st state)))
                   (f-get-global key state)))
   :hints (("Goal" :in-theory
            (enable fn-owner-callback-close fn-owner-put-credits
-                   fn-owner-install-ocfg fn-owner-ocfg))))
+                   fn-owner-install-ocfg ))))
 
 (defthm fn-owner-callback-fault-complete-effects
-  (let* ((owner (fn-owner-core state))
+  (let* ((owner (fn-owner-core fn-owner-st))
          (knownp (if (fn-own-find-conn id (fn-own-conns owner)) t nil))
-         (result (fn-ocfg-fault (fn-owner-ocfg state) id))
+         (result (fn-ocfg-fault (fn-owner-ocfg fn-owner-st) id))
          (effects (car result))
-         (actual (mv-nth 2 (fn-owner-callback-fault id state))))
-    (and (equal (mv-nth 0 (fn-owner-callback-fault id state)) nil)
-         (equal (mv-nth 1 (fn-owner-callback-fault id state))
+         (actual (mv-nth 2 (fn-owner-callback-fault id fn-owner-st state))))
+    (and (equal (mv-nth 0 (fn-owner-callback-fault id fn-owner-st state)) nil)
+         (equal (mv-nth 1 (fn-owner-callback-fault id fn-owner-st state))
                 (if knownp :faulted :unknown))
          (equal (fn-owner-ocfg actual) (cdr result))
          (equal (f-get-global 'fn-owner-effects actual) effects)
@@ -121,7 +121,7 @@
   :hints (("Goal" :in-theory
            (e/d (fn-owner-callback-fault fn-owner-callback-install-effects
                  fn-owner-install-served-effects fn-owner-put-credits
-                 fn-owner-ocfg fn-owner-credits fn-owner-credit-reserve)
+                  fn-owner-credits fn-owner-credit-reserve)
                 (get-global put-global boundp-global fn-ocfg-fault
                  fn-served-reply-octets fn-served-closingp
                  fn-served-starttlsp fn-served-submission)))))
@@ -129,8 +129,8 @@
 (defthm fn-owner-callback-reader-open-reference-effects
   (implies
    (fn-ocl-relation
-     (fn-ocfg-at-reader-view (fn-owner-ocfg state) (fn-owner-reader-views state)))
-   (let* ((oc (fn-owner-ocfg state))
+     (fn-ocfg-at-reader-view (fn-owner-ocfg fn-owner-st) (fn-owner-reader-views state)))
+   (let* ((oc (fn-owner-ocfg fn-owner-st))
           (views (fn-owner-reader-views state))
           (working (fn-own-view (fn-ocfg-owner oc)))
           (selected (fn-ocfg-at-reader-view oc views))
@@ -138,9 +138,9 @@
           (id (fn-own-next-id (fn-ocfg-owner selected)))
           (next (if (consp views) (fn-ocfg-with-view (cdr opened) working)
                   (cdr opened)))
-          (actual (mv-nth 2 (fn-owner-callback-open state))))
-     (and (equal (mv-nth 0 (fn-owner-callback-open state)) nil)
-          (equal (mv-nth 1 (fn-owner-callback-open state))
+          (actual (mv-nth 2 (fn-owner-callback-open fn-owner-st state))))
+     (and (equal (mv-nth 0 (fn-owner-callback-open fn-owner-st state)) nil)
+          (equal (mv-nth 1 (fn-owner-callback-open fn-owner-st state))
                  (if (fn-own-find-conn id
                        (fn-own-conns (fn-ocfg-owner (cdr opened)))) id nil))
           (equal (fn-owner-ocfg actual) next)
@@ -162,13 +162,13 @@
   :hints (("Goal"
            :use ((:instance fn-ocar-ocfg-open-is-ocfg-open-under-ocl-relation
                    (oc (fn-ocfg-at-reader-view
-                         (fn-owner-ocfg state) (fn-owner-reader-views state)))
+                         (fn-owner-ocfg fn-owner-st) (fn-owner-reader-views state)))
                    (acfg (fn-owner-auth state))))
            :in-theory
            (e/d (fn-owner-callback-open fn-owner-callback-open-at
                  fn-owner-callback-at-reader-view fn-owner-callback-at-working-view
                  fn-owner-callback-install-effects fn-owner-install-served-effects
-                 fn-owner-ocfg fn-owner-core fn-ocfg-at-reader-view
+                  fn-owner-core fn-ocfg-at-reader-view
                  )
                 (fn-ocl-relation fn-ocar-ocfg-open fn-ocfg-open
                  fn-ocfg-with-view get-global put-global boundp-global
@@ -179,16 +179,16 @@
 
 (defthm fn-owner-callback-peer-open-complete-effects
   (let* ((peer (fn-store-octets->string peer-octets))
-         (id (fn-own-next-id (fn-owner-core state)))
-         (opened (fn-ocfg-open-peer (fn-owner-ocfg state) peer (fn-owner-auth state)))
-         (actual (mv-nth 2 (fn-owner-callback-open-peer peer-octets state))))
+         (id (fn-own-next-id (fn-owner-core fn-owner-st)))
+         (opened (fn-ocfg-open-peer (fn-owner-ocfg fn-owner-st) peer (fn-owner-auth state)))
+         (actual (mv-nth 2 (fn-owner-callback-open-peer peer-octets fn-owner-st state))))
     (and
-     (equal (mv-nth 0 (fn-owner-callback-open-peer peer-octets state)) nil)
+     (equal (mv-nth 0 (fn-owner-callback-open-peer peer-octets fn-owner-st state)) nil)
      (if (equal peer :bad)
-         (and (equal (mv-nth 1 (fn-owner-callback-open-peer peer-octets state)) nil)
+         (and (equal (mv-nth 1 (fn-owner-callback-open-peer peer-octets fn-owner-st state)) nil)
               (equal actual state))
        (and
-        (equal (mv-nth 1 (fn-owner-callback-open-peer peer-octets state))
+        (equal (mv-nth 1 (fn-owner-callback-open-peer peer-octets fn-owner-st state))
                (if (fn-own-find-conn id
                      (fn-own-conns (fn-ocfg-owner (cdr opened)))) id nil))
         (equal (fn-owner-ocfg actual) (cdr opened))
@@ -209,7 +209,7 @@
                (f-get-global 'fn-owner-credits state))))))
   :hints (("Goal" :in-theory
            (e/d (fn-owner-callback-open-peer fn-owner-callback-install-effects
-                 fn-owner-install-served-effects fn-owner-ocfg fn-owner-core
+                 fn-owner-install-served-effects  fn-owner-core
                  fn-owner-credits fn-owner-credit-reserve)
                 (get-global put-global boundp-global fn-ocfg-open-peer
                  fn-olog-connection-line fn-owner-reader-views fn-owner-auth
@@ -219,21 +219,21 @@
 
 (defthm fn-owner-callback-exposure-open-reference-effects
   (implies
-   (fn-ocl-relation (fn-owner-ocfg state))
+   (fn-ocl-relation (fn-owner-ocfg fn-owner-st))
    (let* ((peer0 (and peer-octets (fn-store-octets->string peer-octets)))
           (peer (if (equal peer0 :bad) nil peer0))
-          (id (fn-own-next-id (fn-owner-core state)))
-          (r (fn-exp-open (fn-owner-ocfg state) (fn-owner-exposure-state state)
-               (fn-owner-callback-exposure-limits state) (fn-owner-auth state)
-               peer (cons family address) (fn-owner-exposure-now state)))
+          (id (fn-own-next-id (fn-owner-core fn-owner-st)))
+          (r (fn-exp-open (fn-owner-ocfg fn-owner-st) (fn-owner-exposure-state state)
+               (fn-owner-callback-exposure-limits fn-owner-st state) (fn-owner-auth state)
+               peer (cons family address) (fn-owner-exposure-now fn-owner-st)))
           (effects (fn-exp-open-effects r))
           (actual (mv-nth 2 (fn-owner-callback-exposure-open
-                              family address peer-octets state))))
+                              family address peer-octets fn-owner-st state))))
      (and
       (equal (mv-nth 0 (fn-owner-callback-exposure-open
-                         family address peer-octets state)) nil)
+                         family address peer-octets fn-owner-st state)) nil)
       (equal (mv-nth 1 (fn-owner-callback-exposure-open
-                         family address peer-octets state)) (fn-exp-open-id r))
+                         family address peer-octets fn-owner-st state)) (fn-exp-open-id r))
       (equal (fn-owner-ocfg actual) (fn-exp-open-ocfg r))
       (equal (f-get-global 'fn-owner-exposure actual) (fn-exp-open-state r))
       (equal (fn-owner-obligation-view actual) (fn-owner-obligation-view state))
@@ -263,17 +263,17 @@
                 (f-get-global 'fn-owner-log-line state)))))))
   :hints (("Goal"
            :use ((:instance fn-ocar-exp-open-is-exp-open-under-ocl-relation
-                   (oc (fn-owner-ocfg state))
+                   (oc (fn-owner-ocfg fn-owner-st))
                    (xs (fn-owner-exposure-state state))
-                   (lim (fn-owner-callback-exposure-limits state))
+                   (lim (fn-owner-callback-exposure-limits fn-owner-st state))
                    (acfg (fn-owner-auth state))
                    (peer (let ((p (and peer-octets (fn-store-octets->string peer-octets))))
                            (if (equal p :bad) nil p)))
                    (address (cons family address))
-                   (now (fn-owner-exposure-now state))))
+                   (now (fn-owner-exposure-now fn-owner-st))))
            :in-theory
            (e/d (fn-owner-callback-exposure-open fn-owner-callback-install-effects
-                 fn-owner-install-served-effects fn-owner-ocfg fn-owner-core
+                 fn-owner-install-served-effects  fn-owner-core
                  fn-owner-credits fn-owner-credit-reserve)
                 (fn-ocl-relation fn-ocar-exp-open fn-exp-open
                  get-global put-global boundp-global fn-olog-connection-line
