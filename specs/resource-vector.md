@@ -693,3 +693,10 @@ matching ready slot, charges a slot and read identity, and retains permanent
 backing throughout return, retirement and settlement. Installation never
 resets or refunds a live pool. SCN-1130 covers the native ordering and orphan
 cleanup independently of the numeric projection.
+
+A joined executor thread does not settle retained constructor, reset or draw
+custody. `fnn-extent-executor-drained-p` observes the roster under E after
+cleanup; startup without a returned service keeps its existing held marker
+until that roster is empty. A complete served close also requires this
+observation before log, journal and Store settlement. SCN-1130 distinguishes
+ordinary stop return from physical custody settlement using the actual helper.
