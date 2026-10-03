@@ -2060,12 +2060,25 @@
   (let ((e (fn-own-feed-entry-of peer tbl)))
     (if e (fn-feed-lost-records (fn-own-feed-entry-feed e) obs) nil)))
 
+(local (defthm fn-feed-lost-requeue-keeps-peer-and-contact
+  (and (equal (fn-feed-peer (fn-feed-lost-requeue f obs)) (fn-feed-peer f))
+       (equal (fn-feed-contact (fn-feed-lost-requeue f obs)) (fn-feed-contact f)))
+  :hints (("Goal" :in-theory (e/d (fn-feed-lost-requeue fn-feed-with-conn
+                                   fn-feed-with-queue fn-feed-with-backoff)
+                                  (fn-feedp fn-feed-inflight-entry))))))
+
+(local (defthm fn-feed-give-up-keeps-peer-and-contact
+  (and (equal (fn-feed-peer (fn-feed-give-up f msgid reason)) (fn-feed-peer f))
+       (equal (fn-feed-contact (fn-feed-give-up f msgid reason)) (fn-feed-contact f)))
+  :hints (("Goal" :in-theory (e/d (fn-feed-give-up)
+                                  (fn-feedp fn-feed-queue-set-state))))))
+
 (local (defthm fn-feed-lost-keeps-peer-and-contact
   (and (equal (fn-feed-peer (fn-feed-lost f obs)) (fn-feed-peer f))
        (equal (fn-feed-contact (fn-feed-lost f obs)) (fn-feed-contact f)))
-  :hints (("Goal" :in-theory (e/d (fn-feed-lost fn-feed-with-conn
-                                   fn-feed-with-queue fn-feed-with-backoff)
-                                  (fn-feedp))))))
+  :hints (("Goal" :in-theory (e/d (fn-feed-lost)
+                                  (fn-feedp fn-feed-lost-requeue fn-feed-give-up
+                                   fn-feed-retry-exhaustedp fn-feed-inflight-entry))))))
 
 (local (defthm fn-own-feed-lost-keeps-the-feed-half
   (implies (fn-own-feed-feed-okp name f)

@@ -772,12 +772,12 @@
                                       fn-feed-state-inflightp fn-feed-state-of
                                       fn-feed-find))))
 
-(defthm fn-feed-lost-preserves-feedp
-  (implies (fn-feedp f) (fn-feedp (fn-feed-lost f obs)))
+(defthm fn-feed-lost-requeue-preserves-feedp
+  (implies (fn-feedp f) (fn-feedp (fn-feed-lost-requeue f obs)))
   :hints (("Goal" :in-theory (disable fn-feedp fn-feed-with-queue fn-feed-with-backoff
                                       fn-feed-with-conn fn-feed-backoff-delay
                                       fn-feed-state-inflightp fn-feed-state-of
-                                      fn-feed-find
+                                      fn-feed-find fn-feed-inflight-entry
                                       fn-feed-queue-requeue-inflight))))
 
 (defthm fn-feed-give-up-preserves-feedp
@@ -787,6 +787,11 @@
                                       fn-feed-state-inflightp fn-feed-state-of
                                       fn-feed-find
                                       fn-feed-droppedp fn-feed-dropped))))
+
+(defthm fn-feed-lost-preserves-feedp
+  (implies (fn-feedp f) (fn-feedp (fn-feed-lost f obs)))
+  :hints (("Goal" :in-theory (disable fn-feedp fn-feed-lost-requeue fn-feed-give-up
+                                      fn-feed-retry-exhaustedp fn-feed-inflight-entry))))
 
 (defthm fn-feed-restart-preserves-feedp
   (implies (fn-feedp f) (fn-feedp (fn-feed-restart f))))
@@ -937,16 +942,21 @@
                                       fn-feed-find fn-feed-backoff-delay
                                       fn-feed-queue-requeue
                                       fn-feed-queue-requeue-inflight))))
-(defthm fn-feed-lost-preserves-peer
-  (equal (fn-feed-peer (fn-feed-lost f obs)) (fn-feed-peer f))
+(defthm fn-feed-lost-requeue-preserves-peer
+  (equal (fn-feed-peer (fn-feed-lost-requeue f obs)) (fn-feed-peer f))
   :hints (("Goal" :in-theory (disable fn-feedp fn-feed-with-queue
                                       fn-feed-with-backoff fn-feed-with-conn
                                       fn-feed-state-inflightp fn-feed-state-of
                                       fn-feed-find fn-feed-backoff-delay
+                                      fn-feed-inflight-entry
                                       fn-feed-queue-requeue
                                       fn-feed-queue-requeue-inflight))))
 (defthm fn-feed-give-up-preserves-peer
   (equal (fn-feed-peer (fn-feed-give-up f msgid reason)) (fn-feed-peer f)))
+(defthm fn-feed-lost-preserves-peer
+  (equal (fn-feed-peer (fn-feed-lost f obs)) (fn-feed-peer f))
+  :hints (("Goal" :in-theory (disable fn-feedp fn-feed-lost-requeue fn-feed-give-up
+                                      fn-feed-retry-exhaustedp fn-feed-inflight-entry))))
 (defthm fn-feed-restart-preserves-peer
   (equal (fn-feed-peer (fn-feed-restart f)) (fn-feed-peer f)))
 (defthm fn-feed-settle-preserves-peer

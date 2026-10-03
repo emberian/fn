@@ -117,6 +117,27 @@
 (assert-event (equal (thlt-bp '(5 6 200)) :refused))
 (assert-event (equal (thlt-bp '(6 5 200)) :refused))
 (assert-event (equal (thlt-bp '(6 6 199)) :refused))
+; fn-own-bp-transit-kind-word, each arm (S052): a deferral is :busy, a want
+; is submitted, a refusal and a duplicate are :refused.
+(assert-event (and (equal (fn-own-bp-transit-kind-word :defer) :busy)
+                   (equal (fn-own-bp-transit-kind-word :want) :submitted)
+                   (equal (fn-own-bp-transit-kind-word :refuse) :refused)
+                   (equal (fn-own-bp-transit-kind-word :have) :refused)))
+; fn-own-bp-transit-submit-result-defers-a-deferral, teeth: the refusal side
+; at the limits' refusal (kind :refuse) above; and the old collapse (every
+; non-want :refused) is not the function.
+(must-fail-checked
+ (defthm thlt-bp-defer-collapses-to-refused
+   (implies (not (equal (fn-peer-decision-kind
+                         (fn-peer-decide-transfer-under
+                          (fn-sn-node (fn-own-store o)) cfg peer msgid octets
+                          (fn-own-clock o) id subject
+                          (fn-own-config-header-limits (fn-own-config o))))
+                        :want))
+            (equal (fn-own-bp-transit-submit-result o cfg peer msgid octets id subject)
+                   :refused))
+   :hints (("Goal" :in-theory (e/d (fn-own-bp-transit-submit-result)
+                                   (fn-peer-decide-transfer-under))))))
 (assert-event (equal (fn-peer-decision-reason
                       (fn-peer-decide-transfer-under
                        (fn-sn-node (fn-own-store (thlt-owner '(6 6 199)))) *pt-cfg* "innA"

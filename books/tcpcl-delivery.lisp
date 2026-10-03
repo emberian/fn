@@ -42,9 +42,15 @@
              (equal (fn-tcl-xfer-ack-xfer-id (car messages)) xfer-id))
         (fn-tcl-output-has-final-ackp (cdr messages) xfer-id))))
 
+; No Resources (the sender may retry) for every transient word: a busy or
+; deferring owner, an unusable clock, capacity, persistence, and a transfer
+; offered on a session this node opened to send, which takes no inbound
+; custody (host/native/tcpcl.lisp refuse-inbound; inspection sweep
+; 2026-10-03 S024/S052); Not Acceptable (final) otherwise.
 (defun fn-tcl-delivery-refuse-reason (reason)
   (declare (xargs :guard t))
-  (if (member-equal reason '(:busy :capacity :persistence))
+  (if (member-equal reason '(:busy :capacity :persistence :clock-unusable
+                             :outbound-session))
       *fn-tcl-refuse-no-resources*
     *fn-tcl-refuse-not-acceptable*))
 

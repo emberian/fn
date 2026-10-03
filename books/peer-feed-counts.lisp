@@ -186,12 +186,20 @@
                                    (fn-feed-without-backoff fn-feed-with-conn
                                     fn-feed-with-queue-preserving-counts)))))
 
+(defthm fn-fct-lost-requeue-preserves-count-relation
+  (implies (fn-feed-count-relationp f)
+           (fn-feed-count-relationp (fn-feed-lost-requeue f obs)))
+  :hints (("Goal" :in-theory (e/d (fn-feed-lost-requeue)
+                                   (fn-feed-with-backoff fn-feed-with-conn
+                                    fn-feed-inflight-entry
+                                    fn-feed-with-queue-preserving-counts)))))
+
 (defthm fn-fct-lost-preserves-count-relation
   (implies (fn-feed-count-relationp f)
            (fn-feed-count-relationp (fn-feed-lost f obs)))
   :hints (("Goal" :in-theory (e/d (fn-feed-lost)
-                                   (fn-feed-with-backoff fn-feed-with-conn
-                                    fn-feed-with-queue-preserving-counts)))))
+                                   (fn-feed-lost-requeue fn-feed-give-up
+                                    fn-feed-retry-exhaustedp fn-feed-inflight-entry)))))
 
 (defthm fn-fct-queued-lookup-is-present
   (implies (equal (fn-feed-state-of id queue) :queued)

@@ -47,6 +47,9 @@
      (let ((base (first args)) (streak (second args)))
        (list (* base (expt 2 streak)) (+ 1 streak))))
     (fn-flb-drop-line (list :drop-line (first args) (second args) (third args)))
+    ;; host/owner-host.lisp fn-owner-feed-send-quantum's answer.
+    (fn-owner-feed-send-quantum (cons 65536 10))
+    (fn-owner-feed-connect-timeout 13)
     (t (error "unexpected raw core call ~s" name))))
 (defvar *test-log-lines* nil)
 (defun fnn-log-line (line) (push line *test-log-lines*))
@@ -58,6 +61,22 @@
 (defun fnn-owner-serialized (service cid thunk)
   (declare (ignore service cid))
   (funcall thunk))
+;; The owner's per-peer answers (host/owner-host.lisp fn-owner-feed-*),
+;; keyed by peer octets; a peer absent from the table is one live
+;; reconfiguration removed: no queue, host NIL, port 0, backoff 0.
+(defvar *test-peers*
+  '(((102 115 110 49) :queued t :host (102) :port 563 :backoff 1000)))
+(defun fnn-owner-core (name &rest args)
+  (let ((row (cdr (assoc (coerce (first args) 'list) *test-peers* :test #'equal))))
+    (case name
+      (fn-owner-feed-has-queued (getf row :queued))
+      (fn-owner-feed-host (getf row :host))
+      (fn-owner-feed-port (getf row :port 0))
+      (fn-owner-feed-backoff-ms (getf row :backoff 0))
+      (fn-owner-feed-security '(:clear))
+      (fn-owner-feed-auth-policy nil)
+      (t (error "unexpected raw owner core call ~s" name)))))
+
 (defun fnn-owner-transit-serialized (service cid thunk)
   (declare (ignore service cid))
   (funcall thunk))
@@ -83,8 +102,9 @@
 (defun fnn-owner-feed-command (publication)
   (declare (ignore publication))
   #(9 10))
+(defvar *test-send-seconds* nil)
 (defun fnn-send-all (fd octets seconds)
-  (declare (ignore seconds))
+  (push seconds *test-send-seconds*)
   (push (list fd (coerce octets 'list)) *test-sends*))
 (defun fnn-socket-shutdown (socket)
   (declare (ignore socket)) nil)
@@ -430,6 +450,44 @@
           (symbol-function 'fnn-feed-lost) old-lost
           (symbol-function 'fnn-tls-read) old-read)))
 
+;; S036 (inspection sweep 2026-10-03): a peer removed by live
+;; reconfiguration while this pass held its link.  Its dial plan is
+;; "nothing queued" (ACL2 answers host NIL, port 0), not a fault, and a loss
+;; on its still-open link drops it with ACL2's backoff for an absent record
+;; (0) instead of faulting through the dial plan's port check.
+(let* ((runtime (%make-fnn-feed-runtime :service :s036-test
+                                        :lock (sb-thread:make-mutex) :limit 512))
+       (gone '(103 111 110 101))
+       (link (%make-fnn-feed-link :peer "gone" :peer-octets gone
+                                  :socket :fake :fd 31))
+       (old-lost (symbol-function 'fnn-feed-lost))
+       (old-recv (and (fboundp 'fnn-recv) (symbol-function 'fnn-recv))))
+  (setq *test-log-lines* nil)
+  (unwind-protect
+       (progn
+         (multiple-value-bind (queued host port)
+             (fnn-feed-dial-plan :s036-test gone)
+           (unless (and (null queued) (null host) (eql port 0))
+             (error "a removed peer's dial plan was not empty: ~s ~s ~s" queued host port)))
+         (setf (symbol-function 'fnn-feed-lost)
+               (lambda (&rest ignored) (declare (ignore ignored)) :ok)
+               (symbol-function 'fnn-recv)
+               (lambda (&rest ignored) (declare (ignore ignored)) (error 'fnn-os-error)))
+         (fnn-feed-pump-link runtime link 500)
+         (unless (and (null (fnn-feed-link-socket link))
+                      (= (fnn-feed-link-next-dial link) 500)
+                      (equal *test-log-lines* (list (list :drop-line gone :read 0))))
+           (error "a removed peer's lost link was not dropped with backoff 0: ~s ~s"
+                  (fnn-feed-link-next-dial link) *test-log-lines*))
+         ;; Teeth: the same peer still configured (port 119) keeps the
+         ;; endpoint check, which faults on a malformed port.
+         (let ((*test-peers* (list (list gone :queued t :host '(104) :port 70000 :backoff 5))))
+           (unless (handler-case (progn (fnn-feed-dial-plan :s036-test gone) nil)
+                     (error () t))
+             (error "a configured peer's malformed port did not fault"))))
+    (setf (symbol-function 'fnn-feed-lost) old-lost
+          (symbol-function 'fnn-recv) (or old-recv (lambda (&rest a) (declare (ignore a)) :timeout)))))
+
 ;; PKT-599(b): TLS completion must use the arena-aware owner boundary.
 ;; The source/native witness separately checks the actual owner's feed table;
 ;; this adapter test checks the dispatch, all pending words, and fault handling.
@@ -472,5 +530,27 @@
     (if old-scalar
         (setf (symbol-function 'fnn-owner-feed-step) old-scalar)
       (fmakunbound 'fnn-owner-feed-step))))
+
+;;; S035 (inspection sweep 2026-10-03): a command is written in ACL2's
+;;; quanta, each under its own seconds -- a progress bound -- never the whole
+;;; article under one fixed total deadline.
+(let* ((link (%make-fnn-feed-link :peer "big" :peer-octets #(98) :fd 7))
+       (data (let ((v (make-array 200000 :element-type '(unsigned-byte 8))))
+               (dotimes (i (length v) v) (setf (aref v i) (mod i 251))))))
+  (setq *test-sends* nil *test-send-seconds* nil)
+  (fnn-feed-send link data)
+  (let ((slices (reverse *test-sends*)))
+    (unless (equal (mapcar (lambda (s) (length (second s))) slices) '(65536 65536 65536 3392))
+      (error "feed send did not write ACL2's quanta: ~s"
+             (mapcar (lambda (s) (length (second s))) slices)))
+    (unless (equal *test-send-seconds* '(10 10 10 10))
+      (error "feed send quanta did not each get ACL2's seconds: ~s" *test-send-seconds*))
+    (unless (equal (apply #'append (mapcar #'second slices)) (coerce data 'list))
+      (error "feed send quanta are not the command in order"))
+    (unless (every (lambda (s) (eql (first s) 7)) slices)
+      (error "feed send wrote to another descriptor")))
+  (setq *test-sends* nil *test-send-seconds* nil)
+  (fnn-feed-send link (make-array 0 :element-type '(unsigned-byte 8)))
+  (when *test-sends* (error "an empty command wrote a quantum")))
 
 (format t "native feed raw phase/sequencing test passed~%")

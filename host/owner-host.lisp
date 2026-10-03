@@ -2583,9 +2583,17 @@
          (cfg (fn-owner-config state))
          (result (fn-own-bp-transit-submit-result
                   owner cfg peer msgid-octets payload id subject))
-         ; A refused submission keeps the transfer decision's reason for
-         ; the delivery's refusal line (fn-owner-bp-request-refusal-line).
-         (state (if (equal result :refused)
+         ; A refused or deferred submission keeps the transfer decision's
+         ; reason for the delivery's line (fn-owner-bp-request-refusal-line);
+         ; a :busy owner with a wanted transfer has none.
+         (state (if (or (equal result :refused)
+                        (and (equal result :busy)
+                             (equal (fn-peer-decision-kind
+                                     (fn-peer-decide-transfer-under
+                                      (fn-sn-node (fn-own-store owner)) cfg peer msgid-octets
+                                      payload (fn-own-clock owner) id subject
+                                      (fn-own-config-header-limits (fn-own-config owner))))
+                                    :defer)))
                     (f-put-global
                      'fn-owner-app-refusal-reason
                      (fn-peer-decision-reason
@@ -4879,6 +4887,22 @@ a dial: the selected peer entry is the owner-feed boundary being opened."
   "ACL2-owned TCP completion deadline for one outbound peer dial."
   (declare (xargs :guard t))
   *fn-owner-feed-connect-timeout-seconds*)
+
+; The outbound feed's send bound (inspection sweep 2026-10-03 S035): a
+; command (a TAKETHIS or IHAVE with its whole article) is written in quanta of
+; this many octets, each of which must leave within the seconds below -- a
+; progress bound, a floor of 64 KiB per 10 s on the path, never a total
+; deadline that depends on the article's size (D27).  Before, the whole
+; command had one fixed 10-second deadline, so an article larger than the
+; path could carry in 10 s timed out on every attempt, forever.
+(defconst *fn-owner-feed-send-quantum-octets* 65536)
+(defconst *fn-owner-feed-send-quantum-seconds* 10)
+
+(defun fn-owner-feed-send-quantum ()
+  "ACL2-owned (OCTETS . SECONDS): each OCTETS of a feed command must be
+written within SECONDS."
+  (declare (xargs :guard t))
+  (cons *fn-owner-feed-send-quantum-octets* *fn-owner-feed-send-quantum-seconds*))
 
 ; One tick for one peer: the records first, then the bytes.
 (defun fn-owner-feed-tick (peer-octets monotonic state)

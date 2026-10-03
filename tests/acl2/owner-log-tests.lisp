@@ -355,9 +355,10 @@
 (assert-event
  (equal (fn-olog-line-word (fn-olog-bp-app-refusal-line :submitted nil 1))
         (olt-text "uncertain")))
+; An unusable clock is the node's transient state: a deferral (S052).
 (assert-event
  (equal (fn-olog-bp-app-refusal-line :clock-unusable nil 2)
-        (olt-text "refused bp-application xfer=2 result=clock-unusable reason=none")))
+        (olt-text "deferred bp-application xfer=2 result=clock-unusable reason=none")))
 
 ; A line that said `refused' for every answer but acceptance would call a
 ; busy owner's deferral and an unknown word refusals: :busy separates.
@@ -375,14 +376,14 @@
  (not (equal (fn-olog-line-word (fn-olog-bp-app-refusal-line :busy nil 0))
              (olt-text "refused"))))
 
-; The weakest clause alone (`:refused') is not the class: an unusable clock
-; refuses too, with nothing written, and the line says so.
+; Teeth for the keystone's right side: adding the unusable clock back to the
+; refusals (the class before S052) is not the line.
 (must-fail-checked
- (defthm olt-bp-app-line-refused-only-for-refused
+ (defthm olt-bp-app-line-refused-also-for-clock-unusable
    (equal (equal (fn-olog-line-word
                   (fn-olog-bp-app-refusal-line result reason xfer-id))
                  (fn-olog-text "refused"))
-          (equal result :refused))
+          (if (member-equal result '(:refused :clock-unusable)) t nil))
    :hints (("Goal" :in-theory (e/d (fn-olog-bp-app-class-word
                                     fn-olog-class-word fn-olog-text)
                                    (fn-olog-field fn-olog-decimal

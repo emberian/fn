@@ -251,6 +251,51 @@
 (assert-event (null (fn-feed-selection *ff-lost* *ff-obs-later*)))
 
 ; -----------------------------------------------------------------------------
+; Scenario 7 (inspection sweep 2026-10-03 S053): an offer that drops the
+; connection every time.  A loss applies the same retry bound a 436 does, and
+; its delay grows with the entry's attempts; before, the entry was requeued
+; at the head forever at a constant delay, and every article behind it
+; waited.
+
+; Bound 1: the first loss of the in-flight <a> gives it up with :retry-bound
+; and <b> behind it is offered next.
+(defconst *ff-poison* (fn-feed-enqueue *ff-tight* *ff-b* 2))
+(defconst *ff-poison-offered* (nth 0 (mv-list 2 (fn-feed-tick-step *ff-poison* *ff-obs*))))
+(assert-event (fn-feed-state-inflightp
+               (fn-feed-state-of *ff-a* (fn-feed-queue *ff-poison-offered*))))
+(defconst *ff-poison-lost* (fn-feed-lost *ff-poison-offered* *ff-obs*))
+(assert-event (fn-feedp *ff-poison-lost*))
+(assert-event (equal (fn-feed-state-of *ff-a* (fn-feed-queue *ff-poison-lost*))
+                     (fn-feed-dropped :retry-bound)))
+(assert-event (equal (fn-feed-head-queued (fn-feed-queue *ff-poison-lost*)) *ff-b*))
+; Its records are pinned in tests/acl2/feed-correspondence-tests.lisp.
+; Reconnected after the delay, the feed offers <b>.
+(assert-event
+ (equal (fn-feed-selection (fn-feed-with-conn *ff-poison-lost* 8) *ff-obs-later*)
+        *ff-b*))
+; Teeth: the requeue alone (the loss before S053) keeps <a> at the head.
+(assert-event
+ (equal (fn-feed-head-queued
+         (fn-feed-queue (fn-feed-lost-requeue *ff-poison-offered* *ff-obs*)))
+        *ff-a*))
+
+; Bound 3: a loss under the bound requeues with no drop record, and the
+; second loss's delay is twice the first's (base 1000).
+(defconst *ff-l1* (fn-feed-lost (nth 0 (mv-list 2 (fn-feed-tick-step
+                                                    (fn-feed-enqueue *ff0* *ff-a* 1)
+                                                    *ff-obs*)))
+                                *ff-obs*))
+(assert-event (equal (fn-feed-state-of *ff-a* (fn-feed-queue *ff-l1*)) :queued))
+(assert-event (equal (fn-feed-backoff-until *ff-l1*) (+ 10 1000)))
+(defconst *ff-obs-1011* (fn-clock-observation 1011 0 0 nil))
+(defconst *ff-l2* (fn-feed-lost (nth 0 (mv-list 2 (fn-feed-tick-step
+                                                    (fn-feed-with-conn *ff-l1* 7)
+                                                    *ff-obs-1011*)))
+                                *ff-obs-1011*))
+(assert-event (equal (fn-feed-state-of *ff-a* (fn-feed-queue *ff-l2*)) :queued))
+(assert-event (equal (fn-feed-backoff-until *ff-l2*) (+ 1011 2000)))
+
+; -----------------------------------------------------------------------------
 ; The FNFD codec on ground records
 
 (defconst *ff-digest* (make-list 32 :initial-element 0))

@@ -1277,8 +1277,13 @@
                   (cond ((and (consp decision) (eq (car decision) :framed))
                          (mv (list :ok (cadr decision)) (fn-xw-set-log store :lz t) state))
                         ((and (consp decision) (eq (car decision) :kept)) (mv (list :ok record) store state))
-                        (t (mv (fn-xw-fault (or (fn-lzr-append-refusal-text decision)
-                                                "lz-candidate: ACL2 refused the encoder's block"))
+                        ((and (consp decision) (eq (car decision) :refused)
+                              (stringp (fn-lzr-append-refusal-text decision)))
+                         ; the refused candidate's event; the log takes R
+                         ; (fn-lzr-append-octets), as fnn-log-compress does
+                         (prog2$ (cw "~s0~%" (fn-lzr-append-refusal-text decision))
+                                 (mv (list :ok (fn-lzr-append-octets decision record)) store state)))
+                        (t (mv (fn-xw-fault "ACL2 returned a malformed append decision")
                                store state)))))))))))))
 
 (defun fn-xw-ensure-extent (store)

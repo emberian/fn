@@ -62,7 +62,15 @@
   (fenced nil)
   ;; The Reason Code of the peer's XFER_REFUSE for the outbound transfer, as
   ;; ACL2's :outbound-refused event carried it; nil when none arrived.
-  (refusal nil))
+  (refusal nil)
+  ;; T for a session this node opened to send (bp-service, bp-node
+  ;; forwarding): it takes no inbound custody.  A transfer the peer offers
+  ;; on it is refused by name, (:refused :outbound-session), which ACL2
+  ;; answers with XFER_REFUSE No Resources (fn-tcl-delivery-refuse-reason),
+  ;; and OUTCOME keeps meaning the outbound transfer's (inspection sweep
+  ;; 2026-10-03 S024: such a transfer was ACKed into a plain spool file in
+  ;; the FNBS root, never admitted, and renamed over by the next session).
+  (refuse-inbound nil))
 
 ;;; ---------------------------------------------------------------------------
 ;;; The clock.  One monotonic reading per wakeup, in milliseconds, handed to
@@ -152,6 +160,7 @@ call; retains source and END ACK on yield. Never receives an authority row.")
 
 (defun fnn-tcl-deliver-transfer (conn xfer-id octets)
   (cond
+    ((fnn-tclc-refuse-inbound conn) (list :refused :outbound-session))
     (*fnn-tcl-deliver-counted*
      (let ((counted (fnn-core 'fn-tcl-final-held-count (fnn-tclc-held conn) xfer-id)))
        (unless (eq (fnn-core 'fn-tcl-final-count-ready-p counted) t)
@@ -363,7 +372,8 @@ and faults without following or deleting anything."
               (fnn-tcl-flush conn))
              (:refused
               (incf (fnn-tclc-refused conn))
-              (setf (fnn-tclc-outcome conn) :refused)
+              (unless (fnn-tclc-refuse-inbound conn)
+                (setf (fnn-tclc-outcome conn) :refused))
               (fnn-tcl-log conn "refused" "inbound xfer=~d reason=~a"
                            xfer-id
                            (fnn-core 'fn-tcl-delivery-plan-detail plan))
@@ -479,7 +489,8 @@ and faults without following or deleting anything."
 ;;; The loop.  One `fn-tcl-drive' per chunk, with the carry prepended; a tick
 ;;; on every wakeup; `fn-tcl-tcp-closed' when the peer goes away.
 
-(defun fnn-tcl-session (fd role params tag spool &key bundle trace (expect 0) on-ready)
+(defun fnn-tcl-session (fd role params tag spool &key bundle trace (expect 0) on-ready
+                                                     refuse-inbound)
   "Drive one connection to its end and return the connection record.
 
 Only the active entity initiates the SESS_TERM handshake, and only when
@@ -491,7 +502,7 @@ failure rather than a refusal."
   (let* ((now (fnn-tcl-now))
          (session (fnn-core 'fn-tcl-host-initial role params now))
          (conn (make-fnn-tcl-conn :fd fd :tag tag :spool spool :session session
-                                  :trace trace
+                                  :trace trace :refuse-inbound refuse-inbound
                                   :pending (and bundle (cons tag bundle))))
          (ready-called nil))
     (unless session (fnn-refuse "tcpcl: the session machine refused these parameters"))

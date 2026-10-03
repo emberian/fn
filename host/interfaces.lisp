@@ -570,6 +570,9 @@
               fn-lzr-append-decide-framed-is-shorter
               fn-lzr-append-decide-framed-expands))
 
+(definterface fn-own-bp-transit-kind-word
+  :class ::common-lisp-compliant)
+
 (definterface fn-lzr-append-plan
   :class ::common-lisp-compliant
   :kinds ((r fn-cbor-octet-listp))
@@ -579,6 +582,11 @@
 (definterface fn-lzr-append-refusal-text
   :class ::common-lisp-compliant
   :keystones (fn-lzr-append-refusal-text-refuses-exactly-a-lying-encoder))
+
+(definterface fn-lzr-append-octets
+  :class ::common-lisp-compliant
+  :keystones (fn-lzr-append-octets-of-decide
+              fn-lzr-append-refusal-text-refuses-exactly-a-lying-encoder))
 
 (definterface fn-lzr-candidate-cap
   :class ::common-lisp-compliant)
@@ -1507,6 +1515,9 @@
 (definterface fn-owner-feed-backoff-ms
   :class ::program
   :kinds ((peer-octets fn-cbor-octet-listp)))
+
+(definterface fn-owner-feed-send-quantum
+  :class ::common-lisp-compliant)
 
 (definterface fn-owner-feed-connect-timeout
   :class :common-lisp-compliant)

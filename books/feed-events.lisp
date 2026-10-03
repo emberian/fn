@@ -31,8 +31,19 @@
 (defun fn-feed-lost-records (f obs)
   (declare (xargs :guard t))
   (if (fn-feedp f)
-      (list (fn-feed-journal-entry :feed-lost
-              (list (fn-feed-peer f) (nfix (fn-clock-monotonic obs)))))
+      (let* ((entry (fn-feed-inflight-entry (fn-feed-queue f)))
+             (g (fn-feed-lost-requeue f obs)))
+        (cons (fn-feed-journal-entry :feed-lost
+                (list (fn-feed-peer f) (nfix (fn-clock-monotonic obs))))
+              (if (and entry
+                       (fn-feed-retry-exhaustedp g (fn-feed-entry-msgid entry))
+                       (not (fn-feed-droppedp
+                             (fn-feed-state-of (fn-feed-entry-msgid entry)
+                                               (fn-feed-queue g)))))
+                  (list (fn-feed-journal-entry :feed-drop
+                          (list (fn-feed-peer f) (fn-feed-entry-msgid entry)
+                                :retry-bound)))
+                nil)))
     nil))
 
 (defun fn-feed-observe-records (f response obs)

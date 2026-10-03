@@ -37,6 +37,45 @@
  (equal (fn-feed-durable-projection *fn-feed-ct-queued*)
         (fn-feed-durable-projection (fn-feed-lost *fn-feed-ct-queued* *fn-feed-ct-obs*)))))
 
+; S053 (inspection sweep 2026-10-03): a loss that reaches the retry bound
+; (2 here) journals the :feed-lost and then a :feed-drop naming the entry,
+; and the replay of the two is the live loss; a loss under the bound
+; journals the :feed-lost alone.
+(defconst *fn-feed-ct-lost1*
+  (fn-feed-lost *fn-feed-ct-offered* *fn-feed-ct-obs*))
+(assert-event
+ (equal (fn-feed-lost-records *fn-feed-ct-offered* *fn-feed-ct-obs*)
+        (list (fn-feed-journal-entry :feed-lost (list *fn-feed-ct-peer* 10)))))
+(defconst *fn-feed-ct-reoffered*
+  (fn-feed-live-next (fn-feed-with-conn *fn-feed-ct-lost1* 7)
+                     (list :tick (fn-clock-observation 5000 0 0 nil))))
+(assert-event
+ (equal (fn-feed-lost-records *fn-feed-ct-reoffered* (fn-clock-observation 5000 0 0 nil))
+        (list (fn-feed-journal-entry :feed-lost (list *fn-feed-ct-peer* 5000))
+              (fn-feed-journal-entry :feed-drop
+                                     (list *fn-feed-ct-peer* *fn-feed-ct-a* :retry-bound)))))
+(assert-event
+ (equal (fn-feed-durable-projection
+         (fn-feed-replay *fn-feed-ct-reoffered*
+                         (fn-feed-lost-records *fn-feed-ct-reoffered*
+                                               (fn-clock-observation 5000 0 0 nil))))
+        (fn-feed-durable-projection
+         (fn-feed-lost *fn-feed-ct-reoffered* (fn-clock-observation 5000 0 0 nil)))))
+(assert-event
+ (fn-feed-droppedp
+  (fn-feed-state-of *fn-feed-ct-a*
+                    (fn-feed-queue (fn-feed-lost *fn-feed-ct-reoffered*
+                                                 (fn-clock-observation 5000 0 0 nil))))))
+; Teeth: the :feed-lost record alone (no drop record) does not replay to the
+; live loss once the bound is reached.
+(assert-event
+ (not (equal (fn-feed-durable-projection
+              (fn-feed-replay *fn-feed-ct-reoffered*
+                              (take 1 (fn-feed-lost-records *fn-feed-ct-reoffered*
+                                                            (fn-clock-observation 5000 0 0 nil)))))
+             (fn-feed-durable-projection
+              (fn-feed-lost *fn-feed-ct-reoffered* (fn-clock-observation 5000 0 0 nil))))))
+
 ; Repeated go-ahead after sending is a reachable peer input. It has no live
 ; effect and must not append a second, undriven :feed-sent record.
 (defconst *fn-feed-ct-sent*

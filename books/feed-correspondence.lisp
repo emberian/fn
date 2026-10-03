@@ -331,15 +331,30 @@
     (fn-feedp fn-feed-journal-entryp fn-feed-apply-record fn-feed-state-of
      fn-feed-inflight-count fn-feed-next-attempt)))))
 
+; The loss's requeue reads only the monotonic tick, which its record keeps.
+(defthm fn-feed-lost-requeue-uses-only-monotonic-observation
+  (equal (fn-feed-lost-requeue f
+           (fn-clock-observation (nfix (fn-clock-monotonic obs)) 0 0 nil))
+         (fn-feed-lost-requeue f obs))
+  :hints (("Goal" :in-theory (e/d
+    (fn-feed-lost-requeue fn-clock-observation fn-clock-monotonic)
+    (fn-feedp fn-feed-with-queue fn-feed-with-backoff fn-feed-backoff-delay
+     fn-feed-with-conn fn-feed-inflight-entry
+     fn-feed-queue-requeue-inflight fn-feed-with-queue-preserving-counts)))))
+
 (defthm fn-feed-lost-records-are-driven
   (implies (and (fn-feedp f)
                 (fn-feed-journalp (fn-feed-lost-records f obs)))
            (fn-feed-drivenp f (fn-feed-lost-records f obs)))
-  :hints (("Goal" :in-theory (e/d
+  :hints (("Goal" :use fn-feed-lost-requeue-uses-only-monotonic-observation
+           :in-theory (e/d
     (fn-feed-lost-records fn-feed-drivenp fn-feed-record-drivenp fn-feed-journalp
      fn-feed-journal-entry fn-feed-journal-kind fn-feed-journal-values
-     fn-feed-record-peer fn-feed-record-msgid fn-frame-item)
-    (fn-feedp fn-feed-journal-entryp fn-feed-apply-record)))))
+     fn-feed-record-peer fn-feed-record-msgid fn-frame-item fn-feed-apply-record
+     fn-feed-retry-exhaustedp)
+    (fn-feedp fn-feed-journal-entryp fn-feed-lost-requeue fn-feed-give-up
+     fn-feed-inflight-entry fn-feed-find fn-feed-state-of fn-feed-droppedp
+     fn-feed-lost-requeue-uses-only-monotonic-observation)))))
 
 (defthm fn-feed-restart-records-are-driven
   (implies (and (fn-feedp f)

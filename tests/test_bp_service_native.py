@@ -385,5 +385,125 @@ class NativeBpServiceTests(unittest.TestCase):
         self.assertEqual(reply, b"dtn!\x04\x00" + b"\x05\x00\x02", output(listener))
         self.assertNotIn(b"\x06", reply[6:], "no MSG_REJECT after the SESS_TERM")
 
+    def test_inbound_offer_on_the_outbound_session_is_refused_not_spooled(self):
+        # Inspection sweep 2026-10-03 S024.  The hop fn contacts offers fn a
+        # bundle of its own on fn's outbound session.  That session takes no
+        # inbound custody: fn answers XFER_REFUSE No Resources (2, the
+        # sender keeps it and retries) and never the final XFER_ACK, writes
+        # no spool file into the FNBS journal root, and its own transfer's
+        # outcome is still what the hop answered for it.  Before, the offer
+        # was ACKed into JOURNAL/bp-service-1.bundle, never admitted, and the
+        # next session's xfer 1 renamed over it; and an inbound refusal on
+        # an outbound session overwrote that session's outcome.
+        peer = OfferingTcpclPeer(b"dtn://fn-b/", b"inbound custody offered")
+        self.addCleanup(peer.close)
+        result = self.invoke(
+            "run", "127.0.0.1", peer.port, self.adu, self.journal,
+            "dtn://fn-a/", "dtn://fn-b/", "work-1", "attempt-1", "0")
+        peer.thread.join(timeout=30)
+        text = result.stdout + result.stderr
+        self.assertIsNone(peer.error, text)
+        self.assertIn((3, 2, 1), peer.received, "XFER_REFUSE No Resources for xfer 1: " + text)
+        self.assertFalse([m for m in peer.received if m[0] == 2 and m[2] == 1 and m[1] & 1],
+                         "no final XFER_ACK for the refused offer")
+        self.assertTrue(peer.got_bundle, "fn's own transfer reached the hop: " + text)
+        self.assertEqual(sorted(p.name for p in self.journal.glob("*.bundle")), [], text)
+        self.assertNotIn("status=refused", text)
+        self.assertIn("status=sent", text)
+
+
+class OfferingTcpclPeer:
+    """A TCPCLv4 hop (RFC 9174) that, once the session is up, offers fn one
+    bundle of its own (xfer 1) and acknowledges fn's transfers whole; it
+    records every message fn sends as (type, first field, transfer id)."""
+
+    def __init__(self, node_id, offer):
+        import socket
+        import threading
+        self.node_id, self.offer = node_id, offer
+        self.received, self.got_bundle, self.error = [], False, None
+        self.server = socket.socket()
+        self.server.bind(("127.0.0.1", 0))
+        self.server.listen(1)
+        self.server.settimeout(30)
+        self.port = self.server.getsockname()[1]
+        self.thread = threading.Thread(target=self.serve, daemon=True)
+        self.thread.start()
+
+    def close(self):
+        self.server.close()
+
+    def serve(self):
+        try:
+            conn, _ = self.server.accept()
+            with conn:
+                conn.settimeout(20)
+                self.talk(conn)
+        except Exception as e:  # recorded for the test to report
+            self.error = repr(e)
+
+    @staticmethod
+    def exact(conn, n):
+        data = b""
+        while len(data) < n:
+            chunk = conn.recv(n - len(data))
+            if not chunk:
+                raise EOFError("fn closed after %d of %d octets" % (len(data), n))
+            data += chunk
+        return data
+
+    def talk(self, conn):
+        u = lambda b: int.from_bytes(b, "big")
+        conn.sendall(b"dtn!\x04\x00")
+        self.exact(conn, 6)
+        body = (b"\x00\x3c" + (1 << 16).to_bytes(8, "big") + (1 << 20).to_bytes(8, "big")
+                + len(self.node_id).to_bytes(2, "big") + self.node_id + b"\x00\x00\x00\x00")
+        conn.sendall(b"\x07" + body)
+        offered = False
+        while True:
+            kind = self.exact(conn, 1)[0]
+            if kind == 7:  # SESS_INIT
+                self.exact(conn, 2 + 8 + 8)
+                self.exact(conn, u(self.exact(conn, 2)))
+                self.exact(conn, u(self.exact(conn, 4)))
+                self.received.append((7, 0, 0))
+                if not offered:
+                    offered = True
+                    conn.sendall(b"\x01\x03" + (1).to_bytes(8, "big") + b"\x00\x00\x00\x00"
+                                 + len(self.offer).to_bytes(8, "big") + self.offer)
+            elif kind == 1:  # XFER_SEGMENT
+                flags = self.exact(conn, 1)[0]
+                xfer = u(self.exact(conn, 8))
+                if flags & 2:
+                    self.exact(conn, u(self.exact(conn, 4)))
+                n = u(self.exact(conn, 8))
+                self.exact(conn, n)
+                self.received.append((1, flags, xfer))
+                if flags & 1:
+                    self.got_bundle = True
+                    conn.sendall(b"\x02" + bytes([flags | 1]) + xfer.to_bytes(8, "big")
+                                 + n.to_bytes(8, "big"))
+            elif kind == 2:  # XFER_ACK
+                flags = self.exact(conn, 1)[0]
+                xfer = u(self.exact(conn, 8))
+                self.exact(conn, 8)
+                self.received.append((2, flags, xfer))
+            elif kind == 3:  # XFER_REFUSE
+                reason = self.exact(conn, 1)[0]
+                self.received.append((3, reason, u(self.exact(conn, 8))))
+            elif kind == 4:  # KEEPALIVE
+                self.received.append((4, 0, 0))
+            elif kind == 5:  # SESS_TERM
+                flags, reason = self.exact(conn, 2)
+                self.received.append((5, flags, reason))
+                if not flags & 1:
+                    conn.sendall(b"\x05\x01" + bytes([reason]))
+                return
+            elif kind == 6:  # MSG_REJECT
+                self.received.append((6,) + tuple(self.exact(conn, 2)))
+            else:
+                raise ValueError("unknown TCPCL message type %d" % kind)
+
+
 if __name__ == "__main__":
     unittest.main()
