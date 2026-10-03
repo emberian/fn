@@ -327,6 +327,7 @@
 (ld "host/page-file-lease-host.lisp" :ld-error-action :error)
 (ld "host/page-window-lease-host.lisp" :ld-error-action :error)
 (ld "host/page-window-executor-host.lisp" :ld-error-action :error)
+(ld "host/page-decoded-window-host.lisp" :ld-error-action :error)
 ;; The octet buffer's checkpoint writers (rep-wave-d-2; the frames' octets):
 ;; host/native/io.lisp fnn-plan-write-all writes fn-sccb-plan-octets per step.
 (include-book "books/store-checkpoint-buffer")
@@ -440,6 +441,7 @@
         (fnn-install-raw-dispatch)
         ; The payload arena's extent realizer (A-DURABLE-EXTENT; PRF-281).
         (load "host/native/extent.lisp")
+        (load "host/native/extent-decoded.lisp")
         ; DEFLATE (lib/libfn-deflate, vendored zlib; untrusted: ACL2's
         ; inflater checks every stream it reads): the COMPRESS layer's
         ; outbound compressor (RFC 8054), the stored payloads' SBCL encoder, and

@@ -3,51 +3,12 @@
 ;;; This driver does not admit jobs or allocate a whole compressed payload.
 (in-package "ACL2")
 
-(defun fnn-extent-decoded-window-drive
-    (fd token incarnation input hash zin win tab out window work-permitted-p)
-  "Drive the actual combined core; only :READY can return a decoded result.
-The physical owner supplies the complete captured token, funded fixed
-buffers and a predicate checking its exact running lease. The core derives
-all coordinates and the shipped dictionary from that token."
-  (unless (funcall work-permitted-p) (return-from fnn-extent-decoded-window-drive nil))
-  (let ((z nil))
-    (destructuring-bind (next hash1 zin1 win1 tab1 out1)
-        (fnn-core-cold-values 'fn-pwz-begin token incarnation hash zin win tab out)
-      (setq z next hash hash1 zin zin1 win win1 tab tab1 out out1))
-    (loop
-      ;; Cancellation revokes future bounded steps. The surrounding worker
-      ;; retains its buffers/charges until actual return and final borrowing.
-      (unless (funcall work-permitted-p) (return nil))
-      (let ((action (fnn-core-cold-single 'fn-ewz-next-action z hash)))
-        (case (first action)
-          (:codec
-           (destructuring-bind (decision next zin1 win1 tab1 out1 window1)
-               (fnn-core-cold-values 'fn-ewz-codec-tick z input zin win tab out window)
-             (declare (ignore decision))
-             (setq z next zin zin1 win win1 tab tab1 out out1 window window1)))
-          (:read
-           ;; The core retains INPUT across codec quanta. Only its :READ
-           ;; action authorizes overwriting the fixed input buffer.
-           (let* ((effect (second action))
-                  (io-status (fnn-extent-window-pread fd input (fifth effect) (sixth effect))))
-             (destructuring-bind (answer next hash1 window1)
-                 (fnn-core-cold-values 'fn-ewz-read effect io-status z input hash window)
-               (declare (ignore answer))
-               (setq z next hash hash1 window window1))))
-          (:tick
-           (destructuring-bind (answer next hash1)
-               (fnn-core-cold-values 'fn-ewz-hash-tick z hash zin)
-             (declare (ignore answer))
-             (setq z next hash hash1)))
-          ((:ready :refused) (return (list z window)))
-          (otherwise (fnn-fault "invalid decoded window core action ~s" action)))))))
-
 (defun fnn-extent-decoded-window-realize-octet (file eoff elen poff compressed trailer decoded dict i)
   "The actual scalar getter either borrows a returned decoded byte or throws
 its full core-selected cold descriptor while the captured owner is held."
-  (let* ((descriptor (fnn-core-cold-single 'fn-pwz-cold-descriptor
+  (let* ((descriptor (fnn-core 'fn-pwz-cold-descriptor
                        file eoff elen poff compressed trailer decoded dict i))
-         (dict-id (fnn-core-cold-single 'fn-pwz-nth 8 descriptor)))
+         (dict-id (fnn-core 'fn-pwz-nth 8 descriptor)))
     (multiple-value-bind (word byte)
         (if *fnn-extent-window-worker*
             (fnn-extent-decoded-window-byte-at
@@ -60,3 +21,112 @@ its full core-selected cold descriptor while the captured owner is held."
             ((eq word :unavailable) (throw 'fnn-extent-cold descriptor))
             (t (error 'fnn-extent-fault
                       :message "arena-extent-read: decoded window was not an authenticated returned result"))))))
+
+;;; The native envelope is published on the existing worker before the
+;;; sanctioned private creator runs. It preserves partial construction and
+;;; torn semantic calls; it is never a second file/token directory.
+(defstruct fnn-decoded-activation job (stage :constructing))
+
+(defmacro fnn-decoded-semantic ((activation) &body body)
+  (let ((saved (gensym "DECODED-ACTIVATION-"))
+        (answer (gensym "DECODED-ANSWER-")))
+    `(let ((,saved ,activation))
+       (unless (member (fnn-decoded-activation-stage ,saved) '(:constructing :idle))
+         (fnn-fault "decoded private semantic step was already entered"))
+       (setf (fnn-decoded-activation-stage ,saved) :calling)
+       (let ((,answer (progn ,@body)))
+         (setf (fnn-decoded-activation-stage ,saved) :idle)
+         ,answer))))
+
+(defun fnn-extent-decoded-window-run (worker token)
+  "Same worker/token/pool; actual retained ACL2 controller selects each step.
+The issuer must draw its complete constructor allowance before this entry."
+  (let* ((activation (make-fnn-decoded-activation))
+         (fd nil) (incarnation nil))
+    (setf (fnn-cold-worker-decoded worker) activation)
+    (sb-thread:with-mutex (*fnn-extent-lock*)
+      (unless (first (fnn-core-cold-pool 'fn-owner-page-window-work-permittedp
+                       (fnn-cold-worker-row worker) token))
+        (fnn-fault "decoded constructor lacks its exact running pool draw"))
+      (setq fd (gethash (fnn-core 'fn-pwz-nth 2 token) *fnn-extent-fds*)
+            incarnation (gethash (fnn-core 'fn-pwz-nth 2 token) *fnn-extent-incarnations*)))
+    (unless (and fd incarnation) (fnn-fault "decoded issued file closed"))
+    ;; This exact registered zero-input creator uses the validated allocation
+    ;; ABI. All decisions below follow normal semantic dispatch.
+    (setf (fnn-decoded-activation-job activation)
+          (fnn-decoded-semantic (activation)
+            (fnn-core 'create-fn-decoded-job)))
+    (sb-thread:with-mutex (*fnn-extent-lock*)
+      (destructuring-bind (word job &rest ignored)
+          (fnn-decoded-semantic (activation)
+            (fnn-call 'fn-owner-page-decoded-job-assign
+              (fnn-cold-worker-row worker) token token incarnation
+              (fnn-decoded-activation-job activation) (fnn-live-page-read-pool)))
+        (declare (ignore ignored))
+        (setf (fnn-decoded-activation-job activation) job)
+        (unless (eq word :decoded-assigned) (fnn-fault "decoded assignment refused"))))
+    (destructuring-bind (word job)
+        (fnn-decoded-semantic (activation)
+          (fnn-call 'fn-dwj-begin token (fnn-decoded-activation-job activation)))
+      (setf (fnn-decoded-activation-job activation) job)
+      (unless (eq word :decoded-started) (fnn-fault "decoded initialization refused")))
+    (loop
+      (unless (sb-thread:with-mutex (*fnn-extent-lock*)
+                (first (fnn-core-cold-pool 'fn-owner-page-window-work-permittedp
+                         (fnn-cold-worker-row worker) token)))
+        (return nil))
+      (destructuring-bind (word effect job)
+          (fnn-decoded-semantic (activation)
+            (fnn-call 'fn-dwj-one token (fnn-decoded-activation-job activation)))
+        (setf (fnn-decoded-activation-job activation) job)
+        (case word
+          (:read
+           ;; Only this core-selected effect authorizes the physical write
+           ;; into the fixed private child. That alias dies with this call.
+           (let* ((read-effect (fourth effect))
+                  (status (fnn-extent-window-pread
+                            fd (svref job 1) (fifth read-effect) (sixth read-effect))))
+             (destructuring-bind (answer next)
+                 (fnn-decoded-semantic (activation)
+                   (fnn-call 'fn-dwj-read-observation token (third effect) status job))
+               (declare (ignore answer))
+               (setf (fnn-decoded-activation-job activation) next))))
+          ((:ready :refused) (return activation))
+          ((:stale-decoded-worker :stale-decoded-read)
+           (fnn-fault "decoded retained controller refused its current activation"))
+          (otherwise nil))))))
+
+(defun fnn-extent-decoded-window-outcome (worker token)
+  (sb-thread:with-mutex (*fnn-extent-lock*)
+    (unless (fnn-extent-executor-observe-returned worker)
+      (return-from fnn-extent-decoded-window-outcome :pending))
+    (when (fnn-core-cold-single 'fn-pwx-boundp
+              (fnn-core-cold-single 'fn-owner-page-read-ledger (fnn-live-page-read-pool))
+              (fnn-cold-worker-row worker) token :cancelled-returned)
+      (return-from fnn-extent-decoded-window-outcome :cancelled))
+    (let ((result (fnn-cold-worker-result worker)))
+      (when (typep result 'condition) (error result))
+      (unless (and (fnn-decoded-activation-p result)
+                   (eq (fnn-decoded-activation-stage result) :idle))
+        (fnn-fault "decoded result lacks a completed private activation"))
+      (first (fnn-call 'fn-owner-page-decoded-job-outcome
+               (fnn-cold-worker-row worker) token
+               (fnn-decoded-activation-job result) (fnn-live-page-read-pool))))))
+
+(defun fnn-extent-decoded-window-byte-at
+    (worker token file eoff elen poff compressed trailer decoded dict-id i)
+  "Core checks exact returned worker, complete codec identity and coordinates."
+  (sb-thread:with-mutex (*fnn-extent-lock*)
+    (unless (fnn-extent-executor-observe-returned worker)
+      (return-from fnn-extent-decoded-window-byte-at (values :pending nil)))
+    (let ((result (fnn-cold-worker-result worker)))
+      (when (typep result 'condition) (error result))
+      (unless (and (fnn-decoded-activation-p result)
+                   (eq (fnn-decoded-activation-stage result) :idle))
+        (fnn-fault "decoded borrow lacks a completed private activation"))
+      (destructuring-bind (word byte)
+          (fnn-call 'fn-owner-page-decoded-job-byte-at
+            (fnn-cold-worker-row worker) token file eoff elen poff compressed
+            trailer decoded dict-id i (fnn-decoded-activation-job result)
+            (fnn-live-page-read-pool))
+        (values word byte)))))

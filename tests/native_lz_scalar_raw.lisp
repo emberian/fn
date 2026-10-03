@@ -18,7 +18,8 @@
 (defun fn-durable-realize-lz (&rest args)
   (push args *scalar-full-calls*) '(65 66 67))
 (defun fnn-core (subject &rest args)
-  (assert (eq subject 'fn-oct-nth)) (apply #'fn-oct-nth args))
+  (assert (member subject '(fn-oct-nth fn-pwz-cold-descriptor fn-pwz-nth)))
+  (apply (symbol-function subject) args))
 (defun fnn-cold-call (subject &rest args)
   (case subject
     (fn-owner-page-window-decoded-refusal (list :decoded-window-unavailable))
