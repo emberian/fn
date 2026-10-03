@@ -2691,3 +2691,12 @@ one numbered availability entry; exhaustion yields while retaining these
 scalars. The disabled remaining-range model has unconditional one-step
 residual preservation and equals the summary at settlement. This component
 does not establish the full LIST producer, snapshot frames or heap tariff.
+
+
+Retained article selection now yields while walking captured numeric/current
+archive rows and per-row memberships; first matching membership determines the
+number as in the original reader. A missing numeric selection searches captured
+withdrawn rows with the same bounded cursor before choosing the existing423
+reply. Xref filtering also retains raw memberships and validates/compares one
+character per transition. Message-ID setup and initial authorization/server
+configuration setup still need their complete bounded implementation/refinement.

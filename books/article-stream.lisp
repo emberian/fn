@@ -49,6 +49,53 @@
   (declare (xargs :guard t))
   (list (fn-ast-source-left source 0) source nil t 0 nil t))
 
+; Numeric/current selection retains the archive spine and compares one group
+; character per transition. The first membership for a group decides its
+; number, exactly as fn-nntp-membership-number; later duplicates never win.
+(defun fn-ast-select-state (mode group number remaining article members row at phase)
+  (declare (xargs :guard t))
+  (list :article-select mode group number remaining article members row at phase))
+
+(defun fn-ast-select-donep (it)
+  (declare (xargs :guard t))
+  (member-eq (fn-ast-at 9 it) '(:selected :missing)))
+
+(defun fn-ast-select-one (it)
+  (declare (xargs :verify-guards nil))
+  (let* ((mode (fn-ast-at 1 it)) (group (fn-ast-at 2 it)) (number (fn-ast-at 3 it))
+         (remaining (fn-ast-at 4 it)) (article (fn-ast-at 5 it))
+         (members (fn-ast-at 6 it)) (row (fn-ast-at 7 it))
+         (at (nfix (fn-ast-at 8 it))) (phase (fn-ast-at 9 it))
+         (next (fn-ast-select-state mode group number (cdr remaining) nil nil nil 0 :next)))
+    (cond
+     ((fn-ast-select-donep it) it)
+     ((eq phase :next)
+      (if (atom remaining)
+          (fn-ast-select-state mode group number nil nil nil nil 0 :missing)
+        (fn-ast-select-state mode group number remaining (car remaining)
+                             (fn-article-memberships (car remaining)) nil 0 :members)))
+     ((eq phase :members)
+      (if (atom members) next
+        (let ((candidate (car members)))
+          (if (and (consp candidate) (stringp (car candidate))
+                   (equal (length group) (length (car candidate))))
+              (fn-ast-select-state mode group number remaining article members candidate 0 :compare)
+            (fn-ast-select-state mode group number remaining article (cdr members) nil 0 :members)))))
+     (t
+      (if (>= at (length group))
+          (if (and (equal number (cdr row))
+                   (or (not (eq mode :current)) (fn-nntp-article-idp article)))
+              (fn-ast-select-state mode group number remaining article members row at :selected)
+            next)
+        (if (equal (char group at) (char (car row) at))
+            (fn-ast-select-state mode group number remaining article members row (+ 1 at) :compare)
+          (fn-ast-select-state mode group number remaining article (cdr members) nil 0 :members)))))))
+
+(defun fn-ast-select-step (it fuel)
+  (declare (xargs :verify-guards nil :measure (nfix fuel)))
+  (if (or (zp fuel) (fn-ast-select-donep it)) it
+    (fn-ast-select-step (fn-ast-select-one it) (- fuel 1))))
+
 (defun fn-ast-separator-next (matched byte)
   (declare (xargs :guard t))
   (cond ((equal matched 0) (if (equal byte 13) 1 0))

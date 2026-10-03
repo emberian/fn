@@ -2972,3 +2972,15 @@ pass including5000-character group and windows1/3/4096; 34core forms now
 admitted in warm0.08s and universal byte-window bound remains admitted.
 Initial article selection/authorization-cache setup bounds remain continuing
 work; universal Xref equivalence, renderer guards and owner refinement open.
+
+ARTICLE resumable numeric/current selection: captures original archive and withdrawn
+spines, skips one article/member or compares one group character per transition.
+Absent current420, absent number423, withdrawn423, invalid ID503 and retained
+reclaimed replies preserve original selection; only successful READY commits.
+Actual core126385/owner-native127949 aggregate checks PASS; core38forms warm
+admitted. Source fixture uses list arena/recorded I/O, not parsed factory or
+physical decoded runtime. Selector guards, original-response/owner refinement,
+Message-ID setup and remaining authorization/server setup bounds stay open.
+Next connected test is the actual parsed factory in Groundwork source cache
+with Runtime window custody; no image/proof wait. Continuing whole access and
+absorbed operator queue beyond this checkpoint.
