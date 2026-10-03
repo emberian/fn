@@ -202,3 +202,10 @@
         (if (not (eq (car r) :ok)) (value r)
           (let ((state (fn-owner-put-credits (cadr r) state)))
             (value :funded)))))))
+
+; Reclaim has already prepared its page-backed history candidate. Loading
+; its fresh catalog must not also allocate an all-tail duplicate of history.
+(defun fn-owner-orcp-load-catalog (key rows view-index fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :mode :program))
+  (let ((fn-cat (fn-sca-load-held-rows-keyed key rows view-index fn-arena fn-cat)))
+    (mv :loaded fn-cat)))

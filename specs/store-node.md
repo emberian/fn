@@ -293,3 +293,10 @@ abstract exports have separate ACL2 obligations (PRF-1280). Initial root buildin
 flat-array growth and the logical Store/catalog reclaim rebuild still perform
 proportional work. Their memory reservation is unchanged. Bounded open and
 effective bounded reclamation are continuing implementation obligations.
+
+Reclaim prepares its replacement history generation directly from the predicted
+sealed rewritten rows before swap. The fresh column loader loads the catalog
+only; the durable owner swap activates and installs that same P3 candidate after
+changing the source incarnation. A declined pass abandons the private candidate.
+It does not load a second all-tail history or rebuild the pages after swap.
+The logical rebuilt Store and rewritten list remain proportional allocations.

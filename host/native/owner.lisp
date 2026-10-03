@@ -7449,7 +7449,7 @@ the install is a recovery event (the service stops; the open reads the new
 publication).  Answers the reply word."
   (let* ((store (fnn-owner-service-store service))
          (clock (fnn-store-prepare-observation))
-         (answer nil) (captured nil) (pin nil) (history-source nil) (position nil) (stage nil) (ident nil)
+         (answer nil) (captured nil) (pin nil) (history-source nil) (history-candidate nil) (position nil) (stage nil) (ident nil)
          (installed nil) (swapped nil) (word :failed) (*fnn-checkpoint-frames* nil)
          (base nil) (seal-payloads nil) (seal-us 0) (arena nil) (column-key nil) (column-salt nil)
          (image nil)
@@ -7582,16 +7582,16 @@ publication).  Answers the reply word."
                  (fnn-reclaim-cut :interned)
                  (let* ((rebuilt (fnn-core 'fn-owner-orcp-rebuild rows configs frontier
                                            (third answer)))
-                        (cat (fnn-fresh-stobj 'fn-cat))
-                        (hist (fnn-fresh-stobj 'fn-hist)))
+                        (cat (fnn-fresh-stobj 'fn-cat)))
                    (when (eq (second rebuilt) :fault)
                      (deferred :rebuild) (return-from pass))
-                   (fnn-call 'fn-owner-orcp-load-columns
+                   (setq history-candidate
+                     (fnn-owner-history-root-prepare-rows service rows column-salt))
+                   (fnn-call 'fn-owner-orcp-load-catalog
                              column-key
                              rows
                              (fnn-core 'fn-owner-orcp-view-index (second rebuilt))
-                             column-salt
-                             arena cat hist)
+                             arena cat)
                    (fnn-reclaim-cut :rebuilt)
                    (dotimes (round +fnn-reclaim-swap-rounds+)
                      ;; ONE live quantum (refused once the owner is stopping:
@@ -7643,7 +7643,8 @@ publication).  Answers the reply word."
                                      (fnn-reclaim-cut :installed)
                                      (fnn-owner-core 'fn-owner-orcp-swap rebuilt)
                                      (fnn-install-stobj 'fn-cat cat)
-                                     (fnn-install-stobj 'fn-hist hist)
+                                     (fnn-owner-history-root-install-held history-candidate)
+                                     (setq history-candidate nil)
                                      (setq swapped t)
                                      ;; The swapped owner is the open's owner
                                      ;; before its recovery barriers: :ready
@@ -7674,6 +7675,8 @@ publication).  Answers the reply word."
                               (length seal-payloads) seal-us)
                      (fnn-owner-release-extents service store *fnn-checkpoint-frames* paths pin arena))
                    (fnn-reclaim-cut :released))))))
+        (when history-candidate
+          (fnn-owner-history-root-abandon-candidate service history-candidate))
         (when history-source (fnn-owner-history-root-unpin service history-source))
         (when pin (fnn-arena-unpin pin))
         ;; Captured and not swapped: the pass is over for the owner (the
@@ -7700,8 +7703,6 @@ publication).  Answers the reply word."
         (when (and installed (not swapped))
           (fnn-owner-fence-service service)
           (fnn-indeterminate "reclaim swap failed after the install: recovery required"))))
-    (when (and swapped (not (fnn-owner-service-stopping service)))
-      (fnn-owner-history-root-maintain service))
     word))
 
 ;;; PKT-101: reopen `[log] path' when ACL2 says a SIGHUP is due

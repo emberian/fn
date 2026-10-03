@@ -120,3 +120,14 @@
     nth update-nth nth-update-nth car-cons cdr-cons nfix natp zp
     adt-car-of-update-nth adt-consp-of-update-nth)
   (theory 'minimal-theory)))))
+
+; The native candidate's captured list count must agree with its completed
+; image and MID index before installation; the host only reads this word.
+(defun fn-hist$p-candidate-word (expected-count fn-hist$p)
+  (declare (xargs :stobjs fn-hist$p
+                  :guard (and (natp expected-count) (fn-hist$p-wfp fn-hist$p))
+                  :guard-hints (("Goal" :in-theory
+                      (disable fn-hist$p-wfp fn-hist$p-count)))))
+  (if (and (equal expected-count (fn-hist$p-count fn-hist$p))
+           (equal (fn-hist$p-bound fn-hist$p) 1))
+      :ready '(:refused :history-candidate-count)))
