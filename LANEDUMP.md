@@ -3488,3 +3488,49 @@ Retirement clears page/suffix backing before ledger refund, issued pins hold
 old generation unchanged. This does not remove whole Store/catalog rebuild,
 change96*history credit estimate, bound hash clear/encode/growth/commit, or
 establish bounded open/full adoption-index correspondence. Those remain owned.
+
+History current-source execution, 2026-10-03 13:15NY:
+The previous history-paged-canonical PID1862293 is DEAD: aggregate LD was
+mistakenly given one proof's52.5s hard timeout. Source7dcbf40af retains the600s
+load allowance for individually budgeted LDs; ordinary proof sends keep their
+own budget, with two regression tests2809ec97a. No paid prefix was reused after
+that process died. One fresh early canonical P3 world now completed, saved and
+resumed WITHOUT repeating its initialization. Internal execution cache:
+/tank/fn/scratch/history-current-union-5a3d81/build/current-early-p3-retained
+(.core296MiB, .execution.json hashes exact admitted recipes/launcher/core).
+Actual resumed ordinary count/attachment probe returned zero counts and
+FN-HIST->FN-HIST-PAGED, FN-ARENA->FN-ARENA-EXTENT. This is source execution,
+not certification or a qualified image. Logical REPL history-current-union-resumed
+is live at that tree; state PID2581776, ACL2 wrapper2581777, idle expiry90min.
+Explicit checkpoint transport72ec1c993 uses the owned idle pool child, exits
+LP for SAVE-EXEC, and seals on successful process exit; SBCL SAVE-EXEC cannot
+return to the original process. Restart from its exact core is checked separately.
+
+Fresh-world required proof context fixes landed source: arena254e7eb8e
+PASS6.26s/2,650,071steps; foundation2451d7f2b PASS1.06s/134570steps;
+Store refusal guardccba1d561 now passes using carried state projections;
+admin8641ebf12 PASS39.07s/13,687,297steps including typed group delta;
+reclaimd2b24de04 PASS1.75s/626482steps through unchanged membership projection.
+These are ordinary complete source scopes, not certificates. Current full DTN
+recipe has forty named assurance DEFTHM omissions; no definition, required guard
+or abstract correspondence is omitted. Replayed Store intern is admitted;
+current BP ingress guard needs LOCAL article-properties restored in its exact
+scope: emitter had conflated cached local input inventory with global exports.
+Integration owns reusable local/nonlocal closure fix; History is replaying the
+exact local matched-cache inclusion in this retained world. No native owner yet.
+
+Manifest /tank/fn/scratch/history-current-union-8641ebf12/build/
+current-logical-deferred40-repaired.json binds the four early proof-only source
+deltas; latest reclaim and complete history-paged-adopt/disposal additions must
+be bound before normal host emission. Host/raw remains separate and unexecuted.
+Root owns activated-generation physical custody cleanup. Entries owns list seal
+resident retention correction (existing buffer/stage path), Exits owns rotation,
+close and arena retirement callback custody. These are not competing root edits.
+
+Remaining storage work: actual current POST/reclaim/reopen; whole Store/catalog
+rewrite and96*history credit estimate; whole-event encoding, flat page-array
+growth and commit; bounded checkpoint open; root/index/cold-read correspondence;
+atomic private owner authority. Checkpoint warm publication rows are canonical
+NIL/0/context and can differ from served arena handles (existing orphan fixture).
+Restart resets arena and canonical prefix may already agree; investigate that
+actual recovery seam instead of assuming every checkpoint adoption needs remap.
