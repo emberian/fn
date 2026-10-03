@@ -2031,3 +2031,11 @@ reply/gate functions. tests/acl2/web-stream-consumer-source-tests.lisp compares
 complete reference page plans with virtual scan/count/emit under chunk1/2/7/4096
 fixtures. Guard/refinement and complete endpoint/funding qualification remain
 open; concrete-fill invariant-risk warnings are retained in the source receipt.
+
+2026-10-03 Web POST body packet: PRF-1293 / SCN-1122 adds actual core
+4096-work/octet cursor and native prepare/feed consumer after340, retained
+original request stobj, partial consumed continuation. Source definitions
+admit in web-private-clean; raw dense5000-dot/percent/CR reference atW1/2/7/4096
+and actual117-byte feeds PASS. Program only; form/header/subject/fullIN and
+qualified working funding remain open. Runtime owns response capture slot
+binding and sole-terminal close; do not overlap those additions.

@@ -190,3 +190,16 @@ No preflight/selection scan is replayed during count or emit. The consumer pairs
 with Access source e7624ab8a/e41b22c21 and Served a3bd4513f; its raw adversarial
 owner adapter checks cold/yield/READY capture custody, not producer semantics.
 Actual composed source execution and complete Web tariff remain pending.
+
+Authored POST preparation now uses `fn-wps-window` through
+`fn-web-host-post-window` and native `fnn-web-post-prepare` (PRF-1293,
+SCN-1122). The fixed worker retains the original HTTP input without copying
+it, emits at most 4096 bytes per scheduling step, and decodes/normalizes CR
+and dot-stuffs through shared session primitives. ACL2 selects the body
+phase only after the NNTP 340 response (RFC 3977 §6.3.1); partial feed,
+publication await, refusal and uncertain outcomes use the existing path.
+The whole input remains retained until terminal cleanup. Form lookup and
+subject/header construction still materialize before this cursor, and
+complete HTTP input/working/output pricing and guard/refinement proofs are
+open. This is source/program execution, not an image or physical resource
+warranty.

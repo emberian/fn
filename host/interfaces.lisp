@@ -5340,3 +5340,6 @@
 (definterface fn-web-host-stream-scan :class ::program)
 (definterface fn-web-host-stream-page :class ::program)
 (definterface fn-web-host-private-begin-step :class ::program)
+
+(definterface fn-web-host-post-window :class ::program)
+(definterface fn-web-host-post-reply-step :class ::program)
