@@ -202,7 +202,10 @@
    (implies (natp i)
             (equal (nth i (resize-list l k nil))
                    (if (< i (nfix k)) (nth i l) nil)))
-   :hints (("Goal" :in-theory (disable resize-list)
+   :hints (("Goal" :in-theory (union-theories
+             '(fn-hist-resize-induct fn-hist-resize-list-open nth nfix natp posp
+               not car-cons cdr-cons consp-cons fold-consts-in-+)
+             (theory 'minimal-theory))
             :induct (fn-hist-resize-induct i l k)))))
 
 (local (in-theory (disable fn-hist-resize-list-open)))
