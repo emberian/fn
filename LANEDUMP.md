@@ -653,3 +653,29 @@ waivers. Final six schedule command re-run after exact fixture block update.
 ## Source assembly S081 + credential consumer review — GPT-6.1-Sol
 
 Aggregate over dev90a151a42: Runtime122904439/d529ef773 and Tools88a116a90/1d550edff/0c7dc0ea8/e3b6eee46. Reviewed actual feed dial/pull preflight and owner held/off-owner frames classification. Credential descriptors open nonblocking/no-follow, regular/private/size checks precede bounded read and ACL2 decode, and admission precedes TCP. Unknown/store/core faults propagate; primary faults survive close failure; stopping workers use the shared owner boundary. Frames signal typed outcomes to their existing held or thread boundary; irreversible fault fencing directly acquires owner exclusion. Source merge touches no unrelated owner functions. Only cumulative LANEDUMP conflicted, retaining prior and incoming content. Nine producer source/test paths match, fixture Python compiles, four evidence objects verify, diff check clean. Existing actual-source raw schedules reused; no duplicate proof/build/image run. First runnable selector: tests/test_native_frames_boundary_raw.sh, then tests.test_native_feed_credential.CredentialAdmissionTests.test_exact_read_and_core_faults_propagate_while_stopping. Integration owns pending peer-host/feed-link-backoff certificates, loaded-world/source graph regeneration and matching image.
+
+## Runnable repaired sol1 and source assembly, 2026-10-03 08:35 UTC
+
+Groundwork ff39c1083 landed as 90a151a42. Frozen qualification source
+1a946582cd1645325928ac0e6df0248bbf8da52e contains only repaired host wrappers
+and declarations over unchanged sol1 book artifacts. Actual full normal prefix
+passed in 70 seconds and DTN prefix in 22 seconds; combined load completed
+08:30:16Z. One developer/full/old-catalog image built in 60 seconds, completed
+08:31:16Z. Core SHA256 6f5bf88869a645580548c1b25d87f7b2263ee09ce2888db71100d654335bdfa1.
+Actual served POST, duplicate rejection, GROUP/ARTICLE readback match raw and
+counterpart dispatch for all seven scoped entries: selected native test passed
+3.026 seconds. Logs and coordinates archived/indexed; no deployment or full
+image qualification claim. Later funded syncer, streaming cursor and extent
+observations are absent from this cut. Empirical may run modest mixed/sparse
+scenarios sequentially on this exact image; maintenance refusals remain separate.
+
+Source helper aggregate 433b73dd7 landed as 8fa6b902b, including Runtime S081
+fault-entry/held-frame repair and Tools credential preflight/primary cleanup
+fault preservation. Combined actual held/off-owner frames fixture and exact
+credential core-fault-while-stopping test both passed before push. Aggregate
+READY to dev was about one minute. No duplicate whole semantic review.
+Creator cost-route certification 080742Z-1083756 passed both affected roots
+and is now indexed; typed final producer retry 075454Z-1046521 remains 7/0.
+Remaining source assembly queue: Astra pipeline completion custody, S110
+journal boundaries, bounded observation packet, discovery rows and hint batch.
+Current generated world reports await independent refresh after assembly.
