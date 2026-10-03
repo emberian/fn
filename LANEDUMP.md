@@ -4256,6 +4256,15 @@ actual source237330 query checks/184483 ARTICLE checks PASS. This remains a
 header transition/run component, not a full fn-lhq old-value/owner/physical
 endpoint theorem. Current normal validity+teeth selected check next, no closure.
 
+Final matching normal validity+teeth2root PASS at immutablee30f9c92d:
+certify-20261003T180826Z-2808032,21matching cached dependencies,9explicituncited
+historical provenance debt; manifest archived/indexed, no book over10s. This
+confirms local projection lemma suffices without warm theory leakage. All current
+packets pushed origin/codex/access-resume-20261003. Owned access-article-resume
+and access-header-validity stopped gracefully; access-header-query reports no
+live session, source/metadata/logs preserved. access-article-server already had
+no live session. No owned build remains; shared History/Runtime worlds untouched.
+
 Remaining Access engineering at yield: generic header query->old arbitrary field
 value bridge, selector termination/reference, renderer/owner executable guards
 and full reply/session-effect refinement. Renderer FnAstoPlanRenderWindow is
