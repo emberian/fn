@@ -41,6 +41,7 @@ import re
 import sys
 import tempfile
 import time
+import unittest
 
 ROOT = Path(__file__).resolve().parents[3]
 if str(ROOT) not in sys.path:
@@ -49,6 +50,8 @@ if str(ROOT) not in sys.path:
 from tests.native_harness import (  # noqa: E402
     Acl2Session, EXIT, environment, free_port, run, start)
 from tests.test_bp_contact_relay_native import ByteRelay  # noqa: E402
+from tests.bp_producer import post_articles  # noqa: E402
+from tests.native_image_provenance import assert_same_published_source  # noqa: E402
 from tools.resilience.scenario import Scenario  # noqa: E402
 from tools.resilience.journal import Journal  # noqa: E402
 from tools.resilience import checker  # noqa: E402
@@ -119,9 +122,13 @@ def control_path(output: bytes, expected: Path) -> str:
 class BpRun:
     """One receipt-observed scenario on IMAGE under WORK."""
 
-    def __init__(self, scenario: Scenario, image: Path, work: Path, fault_hook: bool = True):
+    def __init__(self, scenario: Scenario, image: Path, work: Path, fault_hook: bool = True,
+                 producer_image: Path | None = None):
         self.s, self.image, self.work = scenario, Path(image).resolve(), Path(work).resolve()
         self.hook = fault_hook
+        self.producer_image = Path(producer_image or image).resolve()
+        self.producer_case = unittest.TestCase()
+        self.article = ARTICLE
         self.j = Journal(scenario.id)
         self.j.bind(IDENTITY, MSGID.decode("ascii"))
         self.receiver_store = self.work / "receiver-store"
@@ -145,24 +152,43 @@ class BpRun:
 
     def must(self, what, *args, env=None, timeout=120):
         r = self.invoke(*args, env=env, timeout=timeout)
+        self.j.environment("setup-process", command=what, returncode=r.returncode,
+                           stdout_hex=r.stdout.hex(), stderr_hex=r.stderr.hex())
         if r.returncode != EXIT.OK:
             raise HarnessFailure("{}:rc={}:{}".format(
                 what, r.returncode, (r.stderr or r.stdout).decode("utf-8", "replace")[-160:]))
         return r
 
     def setup(self):
+        # Reuse the real injection fixture already used by native BP tests.
+        # FNWF derives its identity from ACL2's stored source, after native
+        # NNTP injection. A raw store-post fixture is not that publication.
+        try:
+            source = assert_same_published_source(self.producer_case, self.producer_image, self.image)
+        except AssertionError as error:
+            raise HarnessFailure(str(error)) from error
         self.relay = ByteRelay()
         for store in (self.receiver_store, self.sender_store):
             self.must("store-init", "store", store, "init", GROUP)
+        def observe_post(_event, *, message_id, submitted_octets, prompt, reply):
+            self.j.environment("producer-post-observed", image_source=source,
+                               producer_image=str(self.producer_image),
+                               message_id=message_id.decode("ascii"),
+                               prompt=prompt.decode("ascii"), reply=reply.decode("ascii"),
+                               submitted_octets=len(submitted_octets))
+        try:
+            injected = post_articles(self.producer_case, self.producer_image, self.sender_store,
+                                     [(MSGID, ARTICLE)], observer=observe_post)
+        except AssertionError as error:
+            raise HarnessFailure("producer-post:" + str(error)) from error
+        self.article = injected[MSGID]
         with Acl2Session(self.image) as bridge:
-            fields = [WORK.encode(), bridge.subject(MSGID, ARTICLE), SENDER.encode(),
+            fields = [WORK.encode(), bridge.subject(MSGID, self.article), SENDER.encode(),
                       RECEIVER.encode(), b"native-policy", b"origin-native", b"wire-auth",
                       b"terms-native"]
-            self.request.write_bytes(bridge.bp_request(fields, ARTICLE))
+            self.request.write_bytes(bridge.bp_request(fields, self.article))
         article = self.work / "sender-article"
-        article.write_bytes(ARTICLE)
-        self.must("sender-post", "store", self.sender_store, "post", MSGID.decode(), article,
-                  "-", "-", GROUP)
+        article.write_bytes(self.article)
         self.must("workflow-init", "app-journal", "workflow-init", self.sender_store,
                   self.sender_workflow, SENDER, RECEIVER, "native-policy", RECEIVER, 3600000,
                   "origin-native", "wire-auth")
@@ -449,25 +475,30 @@ class BpRun:
         except HarnessFailure as e:
             return self.finish(str(e))
         finally:
-            for p in self.procs:
+            for index, p in enumerate(self.procs):
                 try:
                     p.stop(grace=5)
                 except Exception:
                     pass
+                (self.work / f"process-{index}.stdout").write_bytes(p.stdout.tail(200000))
+                (self.work / f"process-{index}.stderr").write_bytes(p.stderr.tail(200000))
             if self.relay is not None:
                 self.relay.close()
+            self.producer_case.doCleanups()
         return self.finish()
 
 
-def run_scenario(scenario: Scenario, image: Path, work: Path, fault_hook: bool = True) -> tuple:
+def run_scenario(scenario: Scenario, image: Path, work: Path, fault_hook: bool = True,
+                 producer_image: Path | None = None) -> tuple:
     Path(work).mkdir(parents=True, exist_ok=True)
-    return BpRun(scenario, image, work, fault_hook).run()
+    return BpRun(scenario, image, work, fault_hook, producer_image).run()
 
 
 def main(argv=None) -> int:
     from tools.resilience import schedule_points
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--image", required=True)
+    ap.add_argument("--producer-image", help="matching published default production image for NNTP injection")
     ap.add_argument("--variant", default="all")
     ap.add_argument("--out")
     ap.add_argument("--no-fault", action="store_true")
@@ -485,7 +516,8 @@ def main(argv=None) -> int:
         work = out / s.id
         work.mkdir(parents=True, exist_ok=True)
         s.dump(work / "scenario.json")
-        _, v = run_scenario(s, image, work, fault_hook=not a.no_fault)
+        _, v = run_scenario(s, image, work, fault_hook=not a.no_fault,
+                            producer_image=Path(a.producer_image) if a.producer_image else None)
         print("{} {} {} witnesses={} healing={}".format(
             s.id, v.kind, v.cause or "", ",".join(v.witnesses_observed) or "-",
             "{}s".format(v.healing["elapsed"]) if v.healing else "-"))
