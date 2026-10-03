@@ -5521,3 +5521,7 @@
 (definterface fn-bph-command-plan :class :common-lisp-compliant)
 (definterface fn-bph-refusal-line :class :common-lisp-compliant)
 (definterface fn-log-sink-offer-live :class :common-lisp-compliant)
+; STATUS/HEALTH project the accepted configuration, never run-only NIL fields.
+(definterface fn-native-operator-host-result-config :class :program)
+(definterface fn-native-config-cold-resources :class :common-lisp-compliant)
+(definterface fn-native-config-output-resources :class :common-lisp-compliant)

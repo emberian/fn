@@ -9750,21 +9750,25 @@
       "steps": [
         "Execute actual heap profile, command and reservation bodies with actual ACL2 DEFAULT arithmetic and explicit machine/config/base/output observations.",
         "Check normalized root and actual worker/cache arguments, cold/default/output ordering, run extension, offline/init/explicit-policy scopes and prior refusal preservation.",
-        "Check exact machine fit versus one octet less, next-run status and prior actual heap consumer."
+        "Check exact machine fit versus one octet less, next-run status and prior actual heap consumer.",
+        "Execute actual STATUS and HEALTH bodies, generic configuration projections and actual output reservation arithmetic for DEFAULT/output and explicit cold/output captures."
       ],
       "expected": [
         "DEFAULT run increases the chosen256MB fixture to257MB; the unchanged prior consumer prints256MB and fails the accepting reservation assertion.",
         "The exact machine boundary accepts; one octet less refuses. DEFAULT status prints the same extended reservation from one image/machine capture.",
-        "Offline/init and explicit cold-policy cases retain their existing figure; faults remain distinct in SCN-1098."
+        "Offline/init and explicit cold-policy cases retain their existing figure; faults remain distinct in SCN-1098.",
+        "Both diagnostics preserve configured output: selected base256MB +DEFAULT1MB +output16MB prints273MB; explicit cold case passes exact cold descriptor and output contributes16MB. Prior actual STATUS drops the policies and prints257MB."
       ],
       "implementation": {
         "test": "tests/test_native_heap_default_source.py"
       },
       "evidence": [
         "tests/native_heap_default_source.lisp",
-        "planning/evidence/operator-default-heap-source-2026-10-03.json"
+        "planning/evidence/operator-default-heap-source-2026-10-03.json",
+        "tests/native_heap_diagnostic_policy_source.lisp",
+        "planning/evidence/operator-default-heap-source-2026-10-03-v2.json"
       ],
-      "execution_scope": "Actual native heap/profile/status bodies and actual selected ACL2 reservation/layout arithmetic. Base heap figure, config/machine capture and explicit output extension are deliberate seams; no complete allocation, expanded init/reopen theorem, nonempty recovery, saved-image or deployment qualification."
+      "execution_scope": "Actual native heap/profile/status bodies and actual selected ACL2 reservation/layout arithmetic. Base heap figure, config/machine capture and explicit output extension are deliberate seams; no complete allocation, expanded init/reopen theorem, nonempty recovery, saved-image or deployment qualification. Configured diagnostic cases execute actual STATUS/HEALTH and config field projections plus real output reservation arithmetic. Explicit cold arithmetic remains a declared seam; complete cold startup remains unsupported."
     },
     {
       "id": "SCN-1137",

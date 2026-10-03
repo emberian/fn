@@ -4033,3 +4033,9 @@ Matching two-root normal certificate certify-20261003T174041Z-2716643 PASS
 and old-adapter counterexample archived under arena-return-reset-20261003;
 result hash7640d1117488b66a304e8ac2f6ba40eb213f5c438b914d782baccce567fd31f6.
 No root computation remains for this packet. Broader PRF1308 stays planned.
+
+STATUS/HEALTH source now reads generic accepted configuration policies,
+using existing guarded native-config getters and same native extension
+helper as launcher. Actual STATUS/HEALTH +config projections +output
+arithmetic PASS4 cases; old actual STATUS prints257MB instead of273MB
+after dropping configured output. No new logical price or host arithmetic.

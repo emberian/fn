@@ -794,6 +794,15 @@ nothing answers and nothing holds the lock."
         (path (fnn-core 'fn-native-operator-host-result-status-control-path-octets result)))
     (fnn-operator-status-once root (and path (fnn-octets path)) :operation result)))
 
+(defun fnn-operator-print-next-run-heap (result)
+  "Project the accepted configuration's policies, including STATUS/HEALTH.
+Run-only accessors intentionally return NIL for these commands."
+  (let ((config (fnn-core 'fn-native-operator-host-result-config result)))
+    (fnn-heap-print-store-line
+     (fnn-core 'fn-native-operator-host-result-store-root result)
+     (fnn-core 'fn-native-config-cold-resources config)
+     (fnn-core 'fn-native-config-output-resources config))))
+
 (defun fnn-operator-execute-status (result)
   "One report, or with `--watch N' one every N seconds until interrupted."
   (let* ((root (fnn-core 'fn-native-operator-host-result-store-root result))
@@ -816,7 +825,7 @@ nothing answers and nothing holds the lock."
                         (return-from fnn-operator-execute-status code))))))
         ;; PKT-016: the heap figure of this store's profile on this machine
         ;; (books/heap-figure.lisp, ACL2's line).
-        (fnn-heap-print-store-line root)
+        (fnn-operator-print-next-run-heap result)
         (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) command)
         (unless (and (integerp watch) (plusp watch))
           (return code))
@@ -880,7 +889,7 @@ nothing answers and nothing holds the lock."
               (unless (and (integerp code) (<= 0 code 99))
                 (fnn-fault "ACL2 health report carries no exit code"))
               (fnn-write-report report)
-              (fnn-heap-print-store-line root)
+              (fnn-operator-print-next-run-heap result)
               (fnn-operator-emit-status :accepted "health")
               code)))
       (error (condition)
