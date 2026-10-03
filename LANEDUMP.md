@@ -2284,3 +2284,22 @@ those changed bytes are not this verdict. Warm root-journal-stream belongs
 to Access; no image/deployment. Current-view generation hits the base's
 missing historic operator.lisp pin, Integration handles after retire
 metadata converges; no historical hash invented.
+
+
+# Sol convergence
+
+Owner: Codex GPT-6.1-Sol lieutenant. Integration sole dev writer.
+
+Owns precise sol3r served-catalog semantic repair. The raw range was unchanged;
+classification filtering changed live-rowp and fn-scv-keptp, making old raw
+range/table equivalence false. Preserve available table/fn-scv for Served's
+actual availability adapter. Raw compatibility summary/low now use the explicit
+range pass and raw navigation uses its own visibility predicate. Archive
+refinements stay the evidence; by-definition aliases are not cited keystones.
+
+Sparse 34-row writer fixture distinguishes raw (34 identities, next 2) from
+available (1 and 34, next 34). Source ready before verification. Certification
+and image status remain pending; no deployment action.
+
+Groundwork continues application consumer/E1E2. No app transfer. Lieutenant
+exempt from ten-agent cap per Ember's latest 07:14 correction.
