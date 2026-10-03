@@ -23,7 +23,6 @@
 (ld "../../host/reader-host.lisp" :ld-error-action :error)
 (ld "../../host/owner-host.lisp" :ld-error-action :error)
 (ld "../../host/owner-retain-host.lisp" :ld-error-action :error)
-(ld "../../host/page-read-host.lisp" :ld-error-action :error)
 (ld "../../host/consumer-remote-host.lisp" :ld-error-action :error)
 (ld "../../host/native-config-host.lisp" :ld-error-action :error)
 (ld "../../host/native-auth-host.lisp" :ld-error-action :error)

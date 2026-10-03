@@ -1,11 +1,13 @@
 {
  "file": "planning/reach-baseline.json",
  "id": "BM03",
- "notes": [],
- "owner": "sweep-store",
+ "notes": [
+  "10-02 23:14 re-owned by DEV-SERVES (coordinator 2026-10-03)"
+ ],
+ "owner": "dev-serves",
  "severity": "medium",
  "source": "runner-bm",
- "state": "open",
+ "state": "in-progress",
  "title": "reach_check --strict at dev 951a61745: baselined without a SPEC or HOST disposition: PRF-1241 fn-sccv-final-ok-is-runs-ok and PRF-273 fn-lg-full-length-run-ending-in-a-cut-is-complete",
- "updated": "2026-10-03T03:13:35Z"
+ "updated": "2026-10-03T03:14:45Z"
 }

@@ -255,7 +255,9 @@
   "fnn-bpsec-with-operation",
   "fnn-with-runtime-participants-parked",
   "fnn-with-runtime-participants-bootstrap",
-  "fnn-with-world-key-printing"
+  "fnn-with-world-key-printing",
+  "fnn-connection-scoped",
+  "fnn-log-sealed-effect"
  ],
  "gated_macros": {
   "fnn-owner-gated": {
