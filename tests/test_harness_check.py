@@ -16,6 +16,7 @@ import sys
 import tempfile
 import textwrap
 import unittest
+from unittest import mock
 from pathlib import Path
 from unittest.mock import patch
 
@@ -809,3 +810,63 @@ class RawMacroTemplateTests(unittest.TestCase):
           (defmacro wrong (x) `(fnn-target ,x))""")
         self.assertEqual(len(found), 1, found)
         self.assertIn("called with 1 argument", found[0]["problem"])
+
+
+class NestedFixtureTests(unittest.TestCase):
+    HOST = """(defun fnn-top (x) (fnn-real x) (fnn-missing x))
+(defun fnn-real (x) x)
+(defun fnn-missing (x) x)
+"""
+
+    def sources(self):
+        from tools import ledger
+        return {"host/native/example.lisp": ledger.Reader(self.HOST).top_level()}
+
+    def test_existing_scan_api_preserves_real_nested_extraction(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); (root / "tests").mkdir()
+            (root / "tests/parent.lisp").write_text('(load "tests/child.lisp")\n; extract fnn-top\n')
+            (root / "tests/child.lisp").write_text(
+                '(load-deployed-forms "host/native/example.lisp" \'((defun fnn-real)))\n')
+            with mock.patch.object(harness_check, "raw_host_sources", return_value=self.sources()):
+                rows = harness_check.harness_scans(root)
+            parent = next(scan for _, name, _, scan in rows if name == "tests/parent.lisp")
+            self.assertTrue("fnn-real" not in parent["unresolved"],
+                            "real function extracted by nested fixture must not be overwritten")
+            self.assertEqual(set(parent["unresolved"]), {"fnn-missing"})
+            self.assertNotIn("(defun fnn-real", parent["expected"])
+
+    def test_nested_hand_stub_arity_is_checked(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); (root / "tests").mkdir()
+            (root / "tests/parent.lisp").write_text('(load "tests/child.lisp")\n; extract fnn-top\n')
+            (root / "tests/child.lisp").write_text('(defun fnn-real () nil)')
+            with mock.patch.object(harness_check, "raw_host_sources", return_value=self.sources()):
+                rows = harness_check.harness_scans(root)
+            parent = next(scan for _, name, _, scan in rows if name == "tests/parent.lisp")
+            self.assertEqual([r["callee"] for r in parent["stale"]], ["fnn-real"])
+
+    def test_quoted_and_dynamic_load_mentions_are_not_followed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            text = '(defun loader () (load "tests/missing.lisp"))\n\'(load "tests/missing.lisp")\n(load variable)'
+            self.assertEqual(harness_check.harness_fixture_sources(root, "tests/root.lisp", text),
+                             {"tests/root.lisp": text})
+
+    def test_nested_cycle_missing_file_and_escape_refuse(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); (root / "tests").mkdir()
+            (root / "tests/child.lisp").write_text('(load "tests/root.lisp")')
+            for text, message in (('(load "tests/child.lisp")', "cycle"),
+                                  ('(load "tests/missing.lisp")', "unreadable"),
+                                  ('(load "../outside.lisp")', "escapes")):
+                with self.subTest(text=text), self.assertRaisesRegex(ValueError, message):
+                    harness_check.harness_fixture_sources(root, "tests/root.lisp", text)
+
+    def test_nested_generated_trap_is_not_treated_as_a_real_hand_definition(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); (root / "tests").mkdir()
+            block = harness_check.derived_stub_block({"fnn-missing": (["x"], "host/native/example.lisp")})
+            (root / "tests/child.lisp").write_text(block)
+            sources = harness_check.harness_fixture_sources(root, "tests/root.lisp", '(load "tests/child.lisp")')
+            self.assertNotIn("fnn-missing", sources["tests/child.lisp"])
