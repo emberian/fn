@@ -323,7 +323,6 @@ exposure admission decides (the id, or NIL when it refused)."
                      (fnn-web-conn-in conn) (fnn-web-conn-out conn) *the-live-state*)) :reader))))
     (case (fnn-core 'fn-web-host-action-kind action)
       (:respond (destructuring-bind (code fields bodyp) (rest action)
-                  (setf (fnn-web-conn-leased conn) nil)
                   (fnn-web-response face conn code fields bodyp)))
       (:health
        (fnn-owner-space-preobserve service t)
@@ -357,8 +356,8 @@ exposure admission decides (the id, or NIL when it refused)."
   ;; Acquire through the complete HTTP semantic flow, not just one command.
   (or (fnn-web-conn-leased conn)
       (unless (some (lambda (other)
-                      (and (not (eq conn other)) (fnn-web-conn-leased other)
-                           (eql (fnn-web-conn-cid conn) (fnn-web-conn-cid other))))
+                      (and (not (eq conn other)) (not (fnn-web-conn-closedp other))
+                           (fnn-web-conn-leased other) (eql (fnn-web-conn-cid conn) (fnn-web-conn-cid other))))
                     (fnn-web-face-conns face))
         (setf (fnn-web-conn-leased conn) t))))
 
