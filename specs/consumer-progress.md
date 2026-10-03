@@ -970,3 +970,15 @@ and encoder-to-client fixtures have source evidence; the logical per-item semant
 decoder is not a qualified bounded physical decoder. Actual high reader inputs,
 current CP/carries association, genuine report BODY/representation/extent and
 native completion/publication remain open, with original endpoint scenarios intact.
+
+### Local consumer publication safety gate
+
+The actual `fn-owner-io` observation gate uses the all-record safety predicate
+`fn-psrv-io-safep`, and admits the composite log reservation/order steps.
+PRF-290's existing `fn-psrv-rcon-io-preserves-invariant` and
+`fn-psrv-log-order-preserves-invariant` cover consumer, retention, identity and
+topic candidates as well as articles. Requiring a held article at log order
+incorrectly fenced a consumer bootstrap after its record had been persisted.
+Unknown observations still return `:unsafe-observation` without changing owner
+state. The source predicate regression is separate from the pending matching
+native bootstrap/register/ACK and application restart evidence.
