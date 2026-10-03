@@ -3694,3 +3694,16 @@ settlement refutes at CLOSES=0: it mislabeled that retained Store absent.
 SCN1130 now has12cases and immutable v2 source evidence. Horse EX03 owns uncertain
 owner-install rollback retention and persistent physical Store-close receipts;
 that companion source must compose before physical startup-failure qualification.
+# Horse Sol: exits
+
+Model: Sol (inherited). Base3f39e6df9; branch codex/horse-exits.
+
+READY commits:01e4a5e0b feed journal attempt-all cleanup;1200bf85d shared unwind macro, sticky Store/spare close debt and owner-install retained Store carrier;fe5ead1b3 scoped failed-initial-open custody callback. Integration received all; Operator complementary retained-service settlement fallback1e9eb6f52.
+
+Observed checks: actual complete production-definition extraction with injected close/open failures; all three fixtures PASS. Normal values/throw/handled body conditions, first/second feed close faults, spare close/unlink, active log close, unlock/lock close, early-init and initial-open physical cleanup uncertainty. Evidence planning/evidence/horse-exits-2026-10-03/source-cleanup.json archived4600ec439de67d221de64b3574115b8301df30c508bea560030f57e85693f041 atfe5ead1b3. Startup test deliberately supplies only reached early-fault prerequisites; uncalled later symbols produce compiler warnings. No whole-runtime/proof/image claim.
+
+No ACL2 changes/proof claims. Coherent native source reload needed for added Store/log slots and macro; don't reload new functions over stale structs. Narrow saved-image composition remains convergence-owned.
+
+Durable shared knowledge: /Users/ember/dev/fn/.spw/audits/exits/index.spw and traces.md. Full definitions inspected for Pull/catch-up publication, service fence, NNTP close/credits, mux terminal debt, Web job-return cleanup, BP session custody/ACK, immutable publication. Workbench roots/select/tree observed at651b535b5171.
+
+Remaining inspection scope: full cancellation/refund dispatch leaves, consumer remote wait/ACK boundaries, checkpoint terminal failure composition and wider command cleanup (many direct unwind Store close consumers still preserve neither body condition nor recorded command receipt). Immutable post-authority stage cleanup must preserve accepted classification; any fd physical debt must be recorded separately. Startup baseline repairs and actor/executor terminal changes owned by current Deputies, not reopened.
