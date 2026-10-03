@@ -170,3 +170,13 @@ with their reasons. Current Kimi supports an explicit agent file with `tools:
 directory for a supplied-source review. Grok's empty tool allowlist still starts
 configured MCP services, so do not assume it isolates all local initialization.
 Never put keys in argv, output or review context; send minimal project source.
+
+Finding IDs name acceptance obligations, not mandatory separate mini-projects.
+Group common-cause ownership or generator defects into coherent consumed
+changes: the captured export/reclaim capability repaired15 getter findings in
+one slice; physical actor families share one startup/join/fault mechanism.
+Helpers send source READY directly to their assembler; DC03 rows feed Served's
+actual switch. Shared ledger/current/lock generation runs once per candidate,
+not as a full ritual in each helper. Actual interface prerequisites still run;
+source integration may carry explicit pending report/evidence status. Owners
+retain residual obligations and do not reopen unchanged proved facts.
