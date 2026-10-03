@@ -19094,6 +19094,19 @@
           "name": "fn-orv-startup-hold-protects-owner-and-one-quantum"
         }
       ]
+    },
+    {
+      "id": "PRF-1263",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nret-observation-expiry-is-uncertain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nret-observation-report-requires-stopped"
+        }
+      ]
     }
   ]
 }

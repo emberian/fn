@@ -2582,6 +2582,7 @@ a4b2812adfa0941555ee495e70100c244c53de67f1a44e42e5d6c1d73840ff2a 3597 planning/e
 3d040dd8e296b1b923a3cce9d71a405c9dcc31891aabf5c03cc1b3bb93b46f04 3598 planning/evidence/format10-import-2026-09-28/native-t2-format_9_migration.log
 5049f5412d8e77a678c07d067ee6803be91219782e1bed7198072a25cddd68fc 4585 planning/evidence/four-profile-image-24a5df6b-2026-09-23.md
 36f92befc8a422a8b287e410b9163a036f8c8142d82e2fc24fb8ec643915c9e5 6294 planning/evidence/four-profile-image-f0b8b166-2026-09-23.md
+cc5a385742261f4e7a48dfee8511c78cbf8b6bd0df7dbd935a9bd2e7d726bc55 37184 planning/evidence/frame-cbor-bounds-cached-20261003-v2.json
 aba83d6edcf69c26266768976d39ab1bc5b947fc355c7f86e5e4609882605466 4284 planning/evidence/frame-fixture-2026-09-29/README.md
 14e7820ab227b7c34c64b2bf3c8964e8de30b559c197b83e6c38f2de1704dbc9 8775 planning/evidence/frame-fixture-2026-09-29/clean-added.log
 6d59cdc20159272b9324a71b5baec6e207cb2f508492ee58c467fedc29ebe065 1484 planning/evidence/frame-fixture-2026-09-29/clean.log
@@ -7743,6 +7744,8 @@ cfef5d4a0650f8096a3949d552a5a316686ca38f0efd3747d9d44b9bfb9ad641 505 planning/ev
 c39e6b9ccabda757473faa8eb57b3a17cd5028f8f8d0bb2519fa980624894a55 707647 planning/evidence/operator-report-fields-2026-09-30/orffinal-log
 6e74156f674259e2c5546845ffb05e13ffebc3f6b2d348d9702273f4992cbc13 1843 planning/evidence/operator-report-fields-2026-09-30/orffinal-state.json
 a42cf39ea6be2730c0f91d2055f3d38828e5def25ba0f276b2f202ba2613ec77 1068 planning/evidence/operator-report-fields-2026-09-30/source-digests.json
+f2aba81da728ab210a919f2157c12cc9176f7c362680027b149b26652f8aa0d5 1384 planning/evidence/operator-retire-observation-2026-10-03-v2.json
+c6b3f320788427db80c30f552c239540fddb0dba4de64b54b75eec4bb5a93706 1345 planning/evidence/operator-retire-observation-2026-10-03.json
 b694c071ecf239fc993ac7a12cb96b3a4b2414e3ce88cb690bccc2ed8a323a1b 1442 planning/evidence/operator-snapshot-e739-harvest-2026-09-29.md
 b3c7c8b1be351943a8f63cfb43da163578b983b2184070498b81d335dd95c72d 10870 planning/evidence/operator-snapshot-e739-harvest-2026-09-29/snapshot_bless.log
 a9597b8e4fcde179f26c2f0763a01b41511b570478b09e0ecdac47a02d7c75f3 3136 planning/evidence/operator-socket-log-source-2026-09-29.md
@@ -12503,4 +12506,3 @@ a875bf6c1f7b93af59fe601cb07b1fa8d342573523905a2ae2cba1a586b619c8 8267 planning/t
 c620de3f9e1266b928536469e27af88589bbc188153fd38eefc54fe80bd9a642 3792 planning/takeover-2026-09-29/queue/MODE-2026-09-29.txt
 f5d91af088fc17ff96a9010dbba92e21cd15d3395b58b4b411c4878ae0a7a7f3 236 planning/workstream-review-2026-09-24.md
 26c2c33c0c3bd6ce7bc2658bb7995b82616f80d83da1b86b246cf2ad784f8056 3286 planning/worktree-recovery-2026-09-24.md
-cc5a385742261f4e7a48dfee8511c78cbf8b6bd0df7dbd935a9bd2e7d726bc55 37184 planning/evidence/frame-cbor-bounds-cached-20261003-v2.json

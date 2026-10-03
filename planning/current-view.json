@@ -77,7 +77,8 @@
         "host/bp-native-app-host.lisp": "ec5f8a19934fff5da14979340cc80e685ff8b50e1da9fb2414035922a130ce4e",
         "host/checkpoint-host.lisp": "fe7c5bd15cde4bc9a5e60124b3bc520d90c4b6813c78f447acc865072e1af7bc",
         "host/native/bp-service.lisp": "5c2c0e2beeb980cd7d619ebd6229b5cd28d53c56bd9120544f2e41a01682b081",
-        "host/owner-host.lisp": "82ff9785924672e57a1aa3009cde25a0789f2ef58ee1fe0cd10ff15521194bd0"
+        "host/owner-host.lisp": "82ff9785924672e57a1aa3009cde25a0789f2ef58ee1fe0cd10ff15521194bd0",
+        "host/native/operator.lisp": "c3dc90c05ecc459f0b9caa9c8ee20bb0e900024ced4fcb2696aaecbad8f1f9b0"
       },
       "book_sha256": {
         "books/bp-node-forward-retry.lisp": "d8ac98b789d4c5e7d6d7cb4ac6786268489009a71224aaf584c44e5255a885c6",
@@ -101,7 +102,9 @@
         "books/poster-bytes-invariants.lisp": "4fc4e0c087aef5e7d8b3cbf234b06a6850cd07b260539d16666bf52a7572a067",
         "books/served-carried.lisp": "40c402cc92a6dd89e72b2d390022c5b6b7103857f749652086da1aded7f7675e",
         "books/store-intern.lisp": "9bafe3384f6e920a2c12b13c246cdc1a5036f34e5cd04587ea649e9342682777",
-        "books/store-log-reclaim.lisp": "a9fa795fbf725fc33ced121ac72c0ceabfbd7518d08a502d7f16274530ff99ce"
+        "books/store-log-reclaim.lisp": "a9fa795fbf725fc33ced121ac72c0ceabfbd7518d08a502d7f16274530ff99ce",
+        "books/owner-log-ocl.lisp": "98e3dd0676e9875b0843ef6bcb9be52b6a11e369a95b29274c3fcdc6ebcda8f2",
+        "books/store-log-route-programs.lisp": "9b78cc50c6ea978444d2c7cbf0265589f0bc530a19d3694bed2d988904b7b536"
       }
     }
   },
@@ -230,7 +233,7 @@
       },
       "profile": "default",
       "latest": "a resend at a later second is answered duplicate where the image before D25 answered conflict ([d25-dup-conflict](evidence/d25-dup-conflict-2026-09-24.md)).",
-      "obstruction": "no two-node matrix or operator campaign on an image with D25; a poster Date equal to fn's rendering of the injection second is outside the invariance theorems; D25's provenance question (review \u00a7D25) is open.",
+      "obstruction": "no two-node matrix or operator campaign on an image with D25; a poster Date equal to fn's rendering of the injection second is outside the invariance theorems; D25's provenance question (review §D25) is open.",
       "next": "the shared qualification of an image carrying D25, with the transit duplicate rows and K1's died-present resubmissions answered duplicate."
     },
     {
@@ -442,6 +445,21 @@
       "latest": "reader_index 4/4, served_differential 7/7, the peering duplicate rows ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).",
       "obstruction": "the per-event `fn-peer-sessionp` evaluation, not the history scan, is the served cost at the N the CLI reaches (ember's decision); the fast path's reuse after refresh is not a theorem.",
       "next": "the measured cost sentence for the indexed read and the IHAVE/CHECK path at the scale profile, with its exponent and distance from the bound."
+    },
+    {
+      "id": "operator-retire-observation",
+      "name": "bounded retire operator observation",
+      "contract": "The retire command stops waiting at its ACL2 observation deadline with uncertainty while leaving the live owner and custody untouched; report inspection requires a stopped observation.",
+      "host": {
+        "function": "fn-nret-observation-step",
+        "file": "host/native/operator.lisp"
+      },
+      "keystone": "fn-nret-observation-expiry-is-uncertain",
+      "tested": null,
+      "profile": "default",
+      "latest": "Actual-source SBCL fixture passes exact60s/70s live/held expiry, offline refusal, fresh/stale reports and malformed observation fault; prior actual source times out (planning/evidence/operator-retire-observation-2026-10-03-v2.json). Warm hbox admission is not certification.",
+      "obstruction": "Normal native-retire/teeth certification and matching saved-image consumer validation are pending; no physical final-fence bound is claimed.",
+      "next": "Integration batch certifies exact native-retire plus native-retire-observation-tests roots and consumes the matching saved-image fixture at convergence."
     }
   ],
   "other_deployments": [

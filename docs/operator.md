@@ -853,6 +853,11 @@ stopped node is refused (`retire refused reason=not-running`): nothing
 drains there. If the node stops without writing its report, `retire` says
 `retire uncertain reason=no-report` and exits 3; its log says why.
 
+The command waits for the drain window plus 60 seconds. If the owner still
+holds the store, it says `retire uncertain reason=observation-deadline` and
+exits 3. Retirement continues in the owner; check `status` and its log before
+using the stopped store. The deadline does not release any obligation.
+
 ### New releases
 
 A new release is installed beside the one that runs, and the node is

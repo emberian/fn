@@ -8451,6 +8451,34 @@
         "tests/native_syncer_typed_raw.lisp"
       ],
       "execution_scope": "Matching saved-image selector prepared; image execution pending Integration. Local actual-method/raw schedules pass, including diagnostic failure without custody mutation."
+    },
+    {
+      "id": "SCN-1095",
+      "title": "Actual retire operator source observes deadlines and fresh reports",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "PKT-895"
+      ],
+      "steps": [
+        "Execute actual fnn-operator-execute-retire and fn-nret-observation-step with deterministic monotonic ticks and live/held owner observations.",
+        "Exercise exact expiry, drain plus allowance, offline refusal, fresh/stale reports and unknown liveness.",
+        "Execute the prior host source under the same owner fixture with a bounded test timeout."
+      ],
+      "expected": [
+        "Persistent live/held observations expire as uncertainty at60s for zero drain and70s for10s; expiry does not inspect a report, only a stopped owner with a changed report succeeds.",
+        "No second retirement request, owner kill, custody waiver or report success occurs on observation expiry.",
+        "Prior source fails by remaining indefinitely live under its unbounded sleep loop."
+      ],
+      "implementation": {
+        "test": "tests/test_native_retire_observation_source.py"
+      },
+      "evidence": [
+        "tests/native_retire_observation_source.lisp",
+        "tests/acl2/native-retire-observation-tests.lisp",
+        "planning/evidence/operator-retire-observation-2026-10-03-v2.json"
+      ],
+      "execution_scope": "SBCL actual source with explicit clock/scheduling/owner/stat observations; no saved-image or physical durability qualification."
     }
   ]
 }
