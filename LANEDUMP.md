@@ -2873,3 +2873,8 @@ review. No atomicity claimed for these separate ownerquanta.
 S083scope correction from directconfig/control-authority trace: row onlyauthorizes
 cause; targetwithdrawal requirescause. Reasons/docs nownameauthorizationpublished,
 not alreadywithdrawn. Originalreviewscenariooverstatedphysicaleffect.
+
+Root actualdevREPL nativeownerPASS: scopedGWad8 initializedsource+gate336+cde
++exact177module/trace overlays, tests/dev_repl_native.py exercisesrealowner,
+ACL2admission/refusalcontinuation, SIGTERMexit0cleanup, rawerrorfenceexit4cleanup.
+ExecutionJSON+log+assertions archivedseparately; notcurrentwholedevqualification.

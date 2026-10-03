@@ -9345,9 +9345,10 @@
         "Unauthorized connections do not evaluate; owned socket is removed after shutdown."
       ],
       "implementation": {
-        "test": "tests/test_dev_repl.py"
+        "test": "tests/test_dev_repl.py",
+        "native_test": "tests/dev_repl_native.py"
       },
-      "execution_scope": "Socket/source fixture and real ACL2 worker-thread admission/refusal/channel capture; actual full native owner composition pending."
+      "execution_scope": "Actual socket fixtures plus real native owner admission/refusal continuation, normal shutdown and fault-fence exit4/socket cleanup. Native coordinate: ad8 source cache +gate336+cde lexical fixes +177b21dfb dev REPL/trace overlays; not whole current dev qualification."
     },
     {
       "id": "SCN-1123",
