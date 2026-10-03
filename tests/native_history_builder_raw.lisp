@@ -11,10 +11,12 @@
 (defvar *fixture-yields* nil)
 (defvar *fixture-binding-count* nil)
 (defvar *fixture-release* nil)
+(defvar *fixture-page-phase* 0)
+(defvar *fixture-grows* 0)
 (defun fnn-core (name &rest args)
   (case name
     (create-fn-hrecs$c
-     (let ((instance (vector nil))) (push instance *fixture-sources*) instance))
+     (let ((instance (vector nil nil))) (push instance *fixture-sources*) instance))
     (fn-his-build-source-count (length (first args)))
     (fn-his-build-yieldp (push (first args) *fixture-yields*) (zerop (mod (first args) 256)))
     (fn-his-binding (setf *fixture-binding-count* (third args)) (list :binding (third args)))
@@ -23,12 +25,24 @@
 (defun fnn-call (name &rest args)
   (case name
     (fn-his-build-begin (setf (aref (second args) 0) nil) (list (second args)))
-    (fn-his-build-row
+    (fn-his-row-begin
       (if (equal (first args) *fixture-fail-row*)
-          (list '(:refused :codec) (second args))
-        (progn (push (first args) *fixture-rows*)
-               (push (first args) (aref (second args) 0))
-               (list :ok (second args)))))
+          (list '(:refused :codec) nil (second args))
+        (progn (setf (aref (second args) 1) (first args))
+               (list :yield '(:append) (second args)))))
+    (fn-his-row-step
+      (let* ((snapshot (second args)) (ev (aref snapshot 1)))
+        (cond ((and (eq ev :pages) (= *fixture-page-phase* 0))
+               (setf *fixture-page-phase* 1)
+               (list :yield '(:relocate :cursor) snapshot))
+              ((and (eq ev :pages) (= *fixture-page-phase* 1))
+               (list '(:grow-image 9) '(:relocate :cursor) snapshot))
+              (t (push ev *fixture-rows*)
+                 (push ev (aref snapshot 0))
+                 (list :done nil snapshot)))))
+    (fn-his-row-grow
+      (incf *fixture-grows*) (setf *fixture-page-phase* 2)
+      (list :yield '(:relocate :cursor) (second args)))
     (fn-his-build-finish
       (let* ((snapshot (second args)) (count (length (aref snapshot 0))))
         (unless (= count (first args)) (error "source count mismatch"))
@@ -46,7 +60,8 @@
         (setf names (remove (second form) names))
         (when (null names) (return))))))
 (fixture-load "host/native/io.lisp"
- '(fnn-checkpoint-yield fnn-history-image-build fnn-history-image-release fnn-with-history-image))
+ '(fnn-checkpoint-yield fnn-history-image-row-run fnn-history-image-build
+   fnn-history-image-release fnn-with-history-image))
 (let ((events (loop for i below 513 collect (list :all-event i))))
   (fnn-with-history-image
     (multiple-value-bind (position image)
@@ -90,4 +105,20 @@
     (assert (null *fixture-binding-count*))
     (assert (= (length *fixture-release*) (1+ released-before)))
     (assert (null *fnn-checkpoint-image-custody*))))
+(let ((*fixture-rows* nil) (*fixture-page-phase* 0) (*fixture-grows* 0))
+  (fnn-with-history-image (fnn-history-image-build '(:pages) :node 0 '(8 :trail5)))
+  (assert (equal *fixture-rows* '(:pages)))
+  (assert (= *fixture-grows* 1)))
+(let* ((*fixture-rows* nil) (*fixture-page-phase* 0) (*fixture-grows* 0)
+       (*fixture-binding-count* nil)
+       (*fnn-checkpoint-stop-test* (lambda () (= *fixture-page-phase* 1)))
+       (failed nil))
+  (handler-case
+      (fnn-with-history-image (fnn-history-image-build '(:pages :unreached) :node 0 '(9 :trail6)))
+    (error () (setf failed t)))
+  (assert failed)
+  (assert (null *fixture-rows*))
+  (assert (null *fixture-binding-count*))
+  (assert (= *fixture-grows* 0))
+  (assert (null *fnn-checkpoint-image-custody*)))
 (format t "native_history_builder_raw: private snapshots, complete frontier, failure and stop return PASS~%")
