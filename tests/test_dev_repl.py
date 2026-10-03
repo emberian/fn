@@ -6,6 +6,7 @@ import subprocess
 import tempfile
 import unittest
 import sys
+import socket
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT/'tools'))
 import fn_dev
@@ -43,6 +44,10 @@ class DeveloperRepl(unittest.TestCase):
                     self.assertEqual(fn_dev.evaluate(sock, '*dev-test-value*', 3)[1].strip(), '17')
                     ok, text = fn_dev.evaluate(sock, '(values 1 2 3)', 3)
                     self.assertTrue(ok); self.assertEqual(text.splitlines(), ['1', '2', '3'])
+                    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as invalid:
+                        invalid.settimeout(3); invalid.connect(str(sock))
+                        invalid.sendall(b'\xff'); invalid.shutdown(socket.SHUT_WR)
+                        self.assertEqual(invalid.recv(128), b'')
                     self.assertFalse(fn_dev.evaluate(sock, '#.(error "reader eval")', 3)[0])
                     self.assertFalse(fn_dev.evaluate(sock, '(+ 1 2) (+ 3 4)', 3)[0])
                     self.assertTrue(fn_dev.evaluate(sock, '(+ 1 2)', 3)[0])
