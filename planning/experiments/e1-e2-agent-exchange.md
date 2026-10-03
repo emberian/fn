@@ -252,3 +252,41 @@ durable custody, Store/FNRJ dispatch and return-receipt paths. BPTransport owns
 the new private grant/turn source execution; Groundwork owns the application
 fixture. Current history root replacement and captured-view rebasing also need
 their actual consumer composition; the old kernel case does not establish them.
+
+
+## Remaining application domain at usage-limit stop
+
+Groundwork remains the application/consumer implementation owner. The four
+executed cases above establish their exact source coordinate only. The client
+now also provides `artifact OPERATION_ID NEW_DIRECTORY`: a read-only export of
+the original source, both signatures, both public keys and a final hash/identity
+manifest, without signing inputs or native calls. Five SQLite checks and export
+of the retained real native signed report passed; this additive command did not
+require repeating the four unchanged native scenarios.
+
+The remaining domain includes:
+
+- Immutable R/Q over BP/disconnected custody, Store/FNRJ application dispatch,
+  return receipt, sender release and application correlation. BPTransport owns
+  the transport/grant implementation; the application fixture is unfinished.
+- Authenticated remote durable multigroup consumers (CNS-011), definition and
+  publication producers, bounded cursor/commit/ack endpoints and restart.
+- Current History/P3 root replacement, availability and captured-view rebasing,
+  preserving dense history authority while distinguishing physical incarnation;
+  old-source executions do not establish these new compositions.
+- Bound local clients and account/auth reconfiguration: wrong principal, secret,
+  query or incarnation refusal, held publication and cursor rebase, coordinated
+  with Access, Runtime and History.
+- Matching caller invariants, guards, construction/preservation, witnesses and
+  cost/resource bounds for the complete consumer family. Existing registry
+  obligations remain open where actual current composition is not established.
+- Received-source export and longer-lived inbox/outbox use beyond the finite
+  fixtures, including receipt/provenance queries. The existing public snapshot
+  and exact authored artifact exports already work.
+
+External application effects are not claimed exactly once. Key succession,
+confidentiality and cross-silo receipt authority remain separate design work.
+The initialized execution cache is reusable before any Store/owner exists;
+normal admission is still required for new logical definitions and attachments.
+Preserving a failed final initializer leaf in a live repair loop remains tooling
+work, rather than a completed consumer capability.
