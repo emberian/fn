@@ -47,10 +47,10 @@ def selected_defthms(text, deferred, removed, theory_deferred=None, pruned=None)
                 if omitted:
                     form = match[1] + "'(" + ' '.join(kept) + '))'
                     pruned[name] = sorted(set(omitted))
-        if head in {'local', 'encapsulate', 'progn'}:
+        if head in {'local', 'encapsulate', 'progn', 'with-prover-step-limit', 'with-prover-time-limit'}:
             inner = form.strip()[1:-1]
             spans = proof_repl.spans(inner)
-            start = 2 if head == 'encapsulate' else 1
+            start = 2 if head in {'encapsulate', 'with-prover-step-limit', 'with-prover-time-limit'} else 1
             changes = []
             for begin, end in spans[start:]:
                 replacement = selected_defthms(inner[begin:end], deferred, removed, theory_deferred, pruned)
