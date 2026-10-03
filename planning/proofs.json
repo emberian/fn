@@ -22364,7 +22364,7 @@
         "PRF-1259"
       ],
       "assumptions": [],
-      "status": "planned",
+      "status": "certified",
       "events": [
         "fn-sl-step-derived-conses-within-source-count",
         "fn-sl-step-derived-conses-bound"
@@ -22375,7 +22375,7 @@
         "tests/acl2/def-cost-tests.lisp",
         "tests/acl2/string-line-cursor-cost-tests.lisp"
       ],
-      "progress_note": "Fresh laptop proper-local def-cost source load53forms admits0.36ACL2s/500steps; existing+new generator regressions110forms pass0.37s/1150steps. Exact selected actual renderer definitions9forms admit0.03s/11332steps, followed by final proof-local consumer package0.07s/7190steps and five literal unconditional bound/bridge positives plus labeled mutation witness. Full included consumer-book certification and final image-world check pending; selected source replay is not a certificate. CHAR/LENGTH/MV-NTH visit costs remain unknown independently of the closed logical cons dimension."
+      "progress_note": "Fresh laptop proper-local def-cost source load53forms admits0.36ACL2s/500steps; existing+new generator regressions110forms pass0.37s/1150steps. Exact selected actual renderer definitions9forms admit0.03s/11332steps, followed by final proof-local consumer package0.07s/7190steps and five literal unconditional bound/bridge positives plus labeled mutation witness. Full included consumer-book certification and final image-world check pending; selected source replay is not a certificate. CHAR/LENGTH/MV-NTH visit costs remain unknown independently of the closed logical cons dimension. Matching immutable assembled source20321a10b four-root certificate certify-20261003T113517Z-1656011 passes all four roots (def-cost, string-line-cursor-cost and their tests), hbox jobs2/imagesoff; committed evidence index names its manifest. This certifies the logical constructor dimension and actual FnSL bridge only; no image or physical allocation tariff follows."
     },
     {
       "id": "PRF-1279",
@@ -22447,7 +22447,7 @@
         "tests/acl2/output-command-admission-tests.lisp",
         "host/owner-host.lisp"
       ],
-      "progress_note": "Fresh laptop full source13forms admits4.08ACL2s/936154steps including six source-loaded dependencies in proper local encapsulates; actual input-stobj first-event pipeline and independent unpriced/mismatched/unaffordable families plus literal weakened-prefix hypothesis-removal teeth pass13/0. Program owner wrapper/native consumer integration and certificate pending. Prefix theorem weakened to only natural START and START<=END after proving fast-wire/type/end/storage premises redundant for the logical range property; executable guards remain unchanged."
+      "progress_note": "Fresh laptop full source13forms admits4.08ACL2s/936154steps including six source-loaded dependencies in proper local encapsulates; actual input-stobj first-event pipeline and independent unpriced/mismatched/unaffordable families plus literal weakened-prefix hypothesis-removal teeth pass13/0. Program owner wrapper/native consumer integration and certificate pending. Prefix theorem weakened to only natural START and START<=END after proving fast-wire/type/end/storage premises redundant for the logical range property; executable guards remain unchanged. Source25ee6aa6a adds guard-verified fn-rlo-capacity from installed private ledger (ready FILE-LIMIT else0) and explicit ACL2 fn-ocap-unpriced-tariff; final14 admission fixtures and exact typed layout/ready/capacity guard replay pass. Actual live ledger zero/installed-Q cases pass. Archived output-command-admission-20261003.json names source-only scope; full resource-output acquisition refused incompatible laptop owner closure before proofs, no full-book certificate transferred."
     }
   ]
 }
