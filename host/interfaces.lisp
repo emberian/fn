@@ -5472,3 +5472,7 @@
 (definterface fn-prstartup-decoded-workers :class :common-lisp-compliant)
 (definterface fn-owner-page-read-default-worker-ready :class :common-lisp-compliant)
 (definterface fn-owner-page-read-default-worker-constructionp :class :common-lisp-compliant)
+
+; DEFAULT launcher backing; actual host consumers share captured observations.
+(definterface fn-prstartup-extend-default-reservation :class :common-lisp-compliant)
+(definterface fn-prstartup-extend-operation-reservation :class :common-lisp-compliant)

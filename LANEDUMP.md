@@ -3914,3 +3914,22 @@ assign retains :calling alias. Native executor-drained-p exposes empty retained
 roster under E for Operator startup cleanup, not a typed settlement receipt.
 Current startup/worker recording semantic fixtures pass; full physical compressed
 ARTICLE/Web/reopen remains pending History's current initialized source world.
+
+# Operator — Sol continuing implementation owner
+
+Tree build/lanes/codex-operator-heap-default, ac82b638e base. Integration owns
+public dev. Current packet carries normalized Store root through the actual
+heap command, adds ACL2 DEFAULT minimum backing before output, and uses the
+same actual captures for next-run status. Foundation owns numeric producer
+and proof; BP Transport owns alternate served argv recognition.
+
+SCN-1136 actual source numeric fixture passes and prior actual reservation
+body is red (256MB versus required257MB). Existing diagnostic source fixture
+passes. Source delivery precedes matching certificate/image; complete tariff,
+expanded init/reopen claim and actual nonempty recovery remain open.
+
+Operator queue S012/S072/S074/S090/S138/S151 transferred from Access; prior
+source/proof evidence remains reusable at its exact coordinates. Next new
+repair is orphan startup settlement consuming actual executor drained state
+and sticky old-log close debt; Runtime and Horse Exits own producer APIs.
+No active operator ACL2/build process; no full image gate or live owner.

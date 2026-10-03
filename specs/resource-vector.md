@@ -650,6 +650,17 @@ source alone does not claim the new startup/retirement consumers have executed.
 
 ### DEFAULT page-read startup (HST-048)
 
+The launcher's heap probe carries the normalized Store root and captures the
+actual direct-worker count and cache limit. For a served `:run`,
+`fn-prstartup-extend-operation-reservation` adds DEFAULT's selected minimum
+fixed backing after the explicit cold extension and before the output
+extension; offline and initialization actions retain their own figures.
+`status` and `health` use the same DEFAULT projection for the next-run line,
+with one image and machine observation. SCN-1136 executes these consumers
+against the actual ACL2 arithmetic, including the exact machine boundary.
+This extension does not transfer the older initialization/reopen theorem to
+the expanded reservation; initialization budget refinement remains open.
+
 Before Store open, `fn-prstartup-default-plan` consumes actual dynamic-space,
 occupied usage, sealed Store profile, image observation, nursery, exact cold
 and output policies, connection count, root, existing direct-worker count,
