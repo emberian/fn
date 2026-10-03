@@ -1780,3 +1780,26 @@ operation generation/outcome, independent physical actor readout and resource
 tokens. The existing inner `fn-oqw` driver retains its I/O order and owner
 sections while its remaining coordination is transferred to the actor. This
 is a first installed pacing slice, not a full HM or native refinement claim.
+
+The first funded actor consumer is the owner syncer. The existing qualified
+`:hold` decision in `fnn-mux-budget-install` installs a private concrete
+`fn-resource-ledger` projection for one existing syncer worker; it creates no
+new rescue allowance or user bank. `fnn-owner-start-syncer` draws before spawn.
+A native grant retains the captured job and result independently from actor
+registration until ACL2 consumes both physical and operation receipts. Failed
+or timed-out live joins settle neither physical custody nor that grant.
+A primitive join error still faults the service when physical termination
+is independently observed; its physical callback may complete once.
+
+Private construction uses the exact validated registered creator ABI.
+Semantic methods keep their selected counterpart route; developer counterpart
+mode preserves the validated constructor allocation route. A failed starter
+retains its actual result cell, including when a start notification releases
+the child and then throws. Its one-shot completion waits for affirmative
+physical termination/no-child, consumes the actual `fn-oqw` result, and
+returns a separate resource outcome receipt; uncertain results still fence.
+A torn completion is never retried and retains unresolved custody. Model/
+raw tests cover this local consumer with stubbed batch I/O; a qualified image
+POST/stop scenario remains the acceptance check for the actual capacity and
+durable persistence path. Constructor metadata, gate/refusal work and the
+full resource vector remain cost obligations.

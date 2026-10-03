@@ -52,7 +52,7 @@
      ((and (equal tag :observe) stop)
       (list (fn-cmt-state :stopped serial capture receipt) '(:exit :ok)))
      ((and (equal phase :idle) (equal tag :observe))
-      (if queued
+      (if (< 0 (nfix queued))
           (list (fn-cmt-state :snapshot (+ 1 serial) nil receipt)
                 (list :snapshot (+ 1 serial)))
         (list (fn-cmt-state :idle serial nil receipt) '(:wait))))
@@ -121,13 +121,13 @@
 
 ; Reached positive schedule and explicit missing-pass / wrong-ticket teeth.
 (assert-event
- (let* ((issued (car (fn-cmt-step (fn-cmt-init) '(:observe nil t nil))))
+ (let* ((issued (car (fn-cmt-step (fn-cmt-init) '(:observe nil 1 nil))))
         (captured (car (fn-cmt-step issued '(:snapshot 1 ((0 2)))))))
    (and (fn-cmt-invp captured)
-        (equal (cadr (fn-cmt-step captured '(:observe nil t t)))
+        (equal (cadr (fn-cmt-step captured '(:observe nil 1 t)))
                '(:pipeline 1 ((0 2))))
-        (equal (cadr (fn-cmt-step captured '(:observe nil t nil))) '(:wait))
-        (equal (cadr (fn-cmt-step captured '(:observe t t t))) '(:exit :ok))
+        (equal (cadr (fn-cmt-step captured '(:observe nil 1 nil))) '(:wait))
+        (equal (cadr (fn-cmt-step captured '(:observe t 1 t))) '(:exit :ok))
         (equal (cadr (fn-cmt-step issued '(:snapshot 2 ((0 2))))) '(:exit :fault)))))
 
 (in-theory (disable fn-cmt-step fn-cmt-pass-target fn-cmt-pass-ready))

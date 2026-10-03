@@ -185,7 +185,11 @@
   ;; Only the genuine factory installs the retained inspector backing.
   (inspector-binding nil)
   ;; Issued scheduler receipt; absent until genuine funded installation.
-  (control-binding nil))
+  (control-binding nil)
+  ;; Private concrete worker ledger; independent of live STATE and actor roster.
+  ;; Each returned ledger and native grant is retained before any classification.
+  (syncer-ledger nil) (syncer-grants nil)
+  (syncer-ledger-lock (sb-thread:make-mutex :name "fn syncer custody")))
 
 ;;; Opaque connection custody. These are INTERNAL composition subjects until
 ;;; startup installs the genuine indexed runtime and its constructor allowance.
@@ -1374,7 +1378,7 @@ one ring, so the table's key and the served boundary's are one source."
 ;;; registration. Custody tokens are retained opaque values, supplied by the
 ;;; consumer; their accounting remains the resource ledger's decision.
 (defstruct (fnn-owner-actor (:constructor %make-fnn-owner-actor))
-  id (state :spawning) thread custody)
+  id (state :spawning) thread custody physical-callback)
 
 (defvar *fnn-actor-thread-maker* #'sb-thread:make-thread)
 (defvar *fnn-actor-thread-joiner* #'sb-thread:join-thread)
@@ -1403,11 +1407,12 @@ one ring, so the table's key and the served boundary's are one source."
               (fn-fs-actor-step (fnn-owner-actor-state actor)
                                 (list :exit (fn-fs-actor-exit-kind completed kind))))))))
 
-(defun fnn-owner-actor-start (service custody thunk name rosterp escape)
+(defun fnn-owner-actor-start (service custody thunk name rosterp escape &optional physical-callback)
   "Reserve before spawn, then publish the thread object before releasing its
 start latch. Failure after thread creation retains custody through physical
 termination; only the maker's no-child failure cancels the reservation."
-  (let ((actor (%make-fnn-owner-actor :id (gensym "ACTOR-") :custody custody))
+  (let ((actor (%make-fnn-owner-actor :id (gensym "ACTOR-") :custody custody
+                                      :physical-callback physical-callback))
         (latch (sb-thread:make-semaphore :count 0)) (worker nil))
     (fnn-with-roster (service)
       (push actor (fnn-owner-service-actors service)))
@@ -1426,6 +1431,7 @@ termination; only the maker's no-child failure cancels the reservation."
                       (fn-fs-actor-step (fnn-owner-actor-state actor) '(:spawned nil)))
                 (setf (fnn-owner-service-actors service)
                       (delete actor (fnn-owner-service-actors service) :test #'eq)))
+              (when physical-callback (funcall physical-callback :no-actor-created))
               (error condition))))
     ;; The reference store is monotone while the child is latched. Publish
     ;; before acquiring any fallible exclusion/notification primitive, so
@@ -1457,8 +1463,8 @@ termination; only the maker's no-child failure cancels the reservation."
   "Generate the physical lifecycle starter, sharing ACL2's failure model.
 Private decision steps must avoid live STATE, hons/memoize and protected
 abstract-stobj exports; shared-state work enters declared owner sections."
-  `(defun ,name (service custody thunk &optional escape)
-     (fnn-owner-actor-start service custody thunk ,thread-name ,roster escape)))
+  `(defun ,name (service custody thunk &optional escape physical-callback)
+     (fnn-owner-actor-start service custody thunk ,thread-name ,roster escape physical-callback)))
 
 (def-actor fnn-owner-spawn-syncer :thread-name "fn owner syncer" :roster t)
 (def-actor fnn-owner-spawn-committer :thread-name "fn owner committer" :roster nil)
@@ -1466,14 +1472,14 @@ abstract-stobj exports; shared-state work enters declared owner sections."
 (defun fnn-owner-actor-join (service worker &key timeout)
   "Return physical-ended-p and one (:joined ID KIND CUSTODY) receipt. On a
 failed/timed-out join fault the service and retain registration and custody."
-  (let ((condition nil))
+  (let ((condition nil) (receipt nil) (callback nil))
     (handler-case
         (if timeout
             (funcall *fnn-actor-thread-joiner* worker :default :abnormal :timeout timeout)
           (funcall *fnn-actor-thread-joiner* worker :default :abnormal))
       (serious-condition (e) (setq condition e)))
     (let ((ended (not (sb-thread:thread-alive-p worker))))
-      (when (eq (fn-fs-actor-join-action ended) :fault)
+      (when (eq (fn-fs-actor-join-action ended (not condition)) :fault)
         (fnn-owner-fault-service
          service nil (or condition (make-condition 'fnn-store-fault
                                                    :message "actor join did not observe termination"))))
@@ -1484,21 +1490,98 @@ failed/timed-out join fault the service and retain registration and custody."
             (setf (fnn-owner-actor-state actor)
                   (fn-fs-actor-step (fnn-owner-actor-state actor) (list :joined ended)))
             (when (fn-fs-actor-receipt (fnn-owner-actor-state actor))
+              (setq receipt (list :joined (fnn-owner-actor-id actor)
+                                  (fn-fs-actor-receipt (fnn-owner-actor-state actor))
+                                  (fnn-owner-actor-custody actor))
+                    callback (fnn-owner-actor-physical-callback actor))
               (setf (fnn-owner-service-actors service)
-                    (delete actor (fnn-owner-service-actors service) :test #'eq))
-              (setf (fnn-owner-service-workers service)
-                    (delete worker (fnn-owner-service-workers service) :test #'eq))
-              (return-from fnn-owner-actor-join
-                (values t
-                        (list :joined (fnn-owner-actor-id actor)
-                              (fn-fs-actor-receipt (fnn-owner-actor-state actor))
-                              (fnn-owner-actor-custody actor))))))
-          ;; Legacy workers have no actor reservation; physical observation
-          ;; still precedes discharge. Duplicate join produces no receipt.
+                    (delete actor (fnn-owner-service-actors service) :test #'eq))))
+          ;; Legacy workers also discharge only after physical observation.
           (when ended
             (setf (fnn-owner-service-workers service)
-                  (delete worker (fnn-owner-service-workers service) :test #'eq)))
-          (values ended nil))))))
+                  (delete worker (fnn-owner-service-workers service) :test #'eq)))))
+      ;; No accounting callback under roster exclusion; duplicate observations
+      ;; have no callback. A callback fault never retries a possibly torn step.
+      (when callback (funcall callback :terminal))
+      (values ended receipt))))
+
+;;; A native grant retains captured buffers until both independent receipts.
+;;; The typed ACL2 ledger owns issuance, generation comparison and settlement.
+(defstruct (fnn-syncer-grant (:constructor %make-fnn-syncer-grant))
+  token operation job result physical completion)
+
+(defun fnn-owner-syncer-install (service threads stack)
+  "Called only inside the actual startup :hold producer's owner section."
+  (sb-thread:with-mutex ((fnn-owner-service-syncer-ledger-lock service))
+    (when (fnn-owner-service-syncer-ledger service)
+      (fnn-fault "syncer funding installed twice"))
+    (let ((ledger (fnn-core 'create-fn-resource-ledger)))
+      (destructuring-bind (word returned)
+          (fnn-call 'fn-ros-install-syncer threads stack ledger)
+        (setf (fnn-owner-service-syncer-ledger service) returned)
+        (unless (eq word :installed) (fnn-fault "syncer funding refused ~a" word))))))
+
+(defun fnn-owner-syncer-issue (service generation job)
+  "Draw from the qualified syncer projection before any child is created."
+  (sb-thread:with-mutex ((fnn-owner-service-syncer-ledger-lock service))
+    (let ((ledger (fnn-owner-service-syncer-ledger service))
+          (grant (%make-fnn-syncer-grant :operation generation :job job)))
+      (unless ledger (fnn-fault "syncer has no qualified funding"))
+      (destructuring-bind (word token returned) (fnn-call 'fn-ros-issue generation ledger)
+        (setf (fnn-owner-service-syncer-ledger service) returned)
+        (unless (eq word :drawn) (fnn-fault "syncer funding issue refused ~a" word))
+        (setf (fnn-syncer-grant-token grant) token)
+        (push grant (fnn-owner-service-syncer-grants service))
+        grant))))
+
+(defun fnn-owner-syncer-receipt (service grant subject receipt)
+  "Consume physical termination or an actual fn-oqw completion in the private
+ledger. Retain returned storage before classification. No possibly torn retry."
+  (let ((completion nil) (answer nil))
+    (sb-thread:with-mutex ((fnn-owner-service-syncer-ledger-lock service))
+      (destructuring-bind (word returned)
+          (ecase subject
+            (fn-ros-physical
+             (fnn-call 'fn-ros-physical (fnn-syncer-grant-token grant) receipt
+                       (fnn-owner-service-syncer-ledger service)))
+            (fn-ros-outcome
+             (fnn-call 'fn-ros-outcome (fnn-syncer-grant-token grant) receipt
+                       (fnn-owner-service-syncer-ledger service))))
+        (setf (fnn-owner-service-syncer-ledger service) returned)
+        (unless (member word '(:pending :settled))
+          (fnn-fault "syncer custody receipt refused ~a" word))
+        (setq answer word)
+        (when (eq subject 'fn-ros-physical)
+          (setf (fnn-syncer-grant-physical grant) receipt)
+          ;; A failed starter's operation cannot complete before the child
+          ;; physically ends. Take its retained completion exactly once.
+          (setq completion (fnn-syncer-grant-completion grant))
+          (setf (fnn-syncer-grant-completion grant) nil))
+        (when (eq word :settled)
+          (setf (fnn-owner-service-syncer-grants service)
+                (delete grant (fnn-owner-service-syncer-grants service) :test #'eq)))))
+    ;; Completion is pure private fn-oqw control, then a separate ledger
+    ;; receipt. It takes this same private mutex, never the actor roster.
+    (when completion (funcall completion))
+    answer))
+
+(defun fnn-owner-syncer-abort (service grant completion)
+  "Retain the failed starter's operation until affirmative physical return.
+Arm or take its immutable-ledger completion under private exclusion."
+  (let ((now nil))
+    (sb-thread:with-mutex ((fnn-owner-service-syncer-ledger-lock service))
+      (when (fnn-syncer-grant-completion grant)
+        (fnn-fault "syncer abort completion armed twice"))
+      (if (fnn-syncer-grant-physical grant)
+          (setq now completion)
+        (setf (fnn-syncer-grant-completion grant) completion)))
+    (when now (funcall now))))
+
+(defun fnn-owner-syncer-physical (service grant receipt)
+  (fnn-owner-syncer-receipt service grant 'fn-ros-physical receipt))
+
+(defun fnn-owner-syncer-outcome (service grant generation)
+  (fnn-owner-syncer-receipt service grant 'fn-ros-outcome generation))
 
 (defun fnn-owner-gate-abort-locked (gate condition)
   "Caller holds the gate mutex; retain accounting and the first failure."
@@ -3977,14 +4060,20 @@ preparing another batch (books/owner-commit-fairness.lisp)."
         (fnn-fault "owner returned a malformed committer wake ~a" wake))
       wake)))
 
-(defun fnn-owner-start-syncer (service gen job)
+(defun fnn-owner-start-syncer (service gen job &optional issued-grant)
   "Run the batch operation off owner lock. Its (GEN FINAL . CONDITION)
 operation receipt is usable only after the independent physical actor join."
-  (let ((result (list (list gen :fault))))
+  (let ((result (list (list gen :fault)))
+        (grant (or issued-grant (fnn-owner-syncer-issue service gen job))))
+    ;; Retain the actual result envelope before child launch. A postcreate
+    ;; failure cannot replace a completed persistence result with :fault.
+    (when grant
+      (sb-thread:with-mutex ((fnn-owner-service-syncer-ledger-lock service))
+        (setf (fnn-syncer-grant-result grant) result)))
     (setf (fnn-owner-service-synced service) nil)
     (multiple-value-bind (worker actor)
      (fnn-owner-spawn-syncer
-      service (list job)
+      service (list job grant)
       (lambda ()
         (unwind-protect
              (multiple-value-bind (final condition)
@@ -3995,8 +4084,9 @@ operation receipt is usable only after the independent physical actor join."
           ;; The initial operation receipt is a fault until replaced.
           (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
             (setf (fnn-owner-service-synced service) t)
-            (sb-thread:condition-notify (fnn-owner-service-commit-ready service))))))
-     (values worker result actor))))
+            (sb-thread:condition-notify (fnn-owner-service-commit-ready service)))))
+      nil (and grant (lambda (physical) (fnn-owner-syncer-physical service grant physical))))
+     (values worker result actor grant))))
 
 (defun fnn-owner-members-named (members cids)
   "The MEMBERS (CID REPLY WORD RENDER) whose cid ACL2 named in CIDS, in order."
@@ -4057,7 +4147,7 @@ leave only in its COMPLETE, after its barrier returned
 (fn-ocp-complete-only-after-the-barrier)."
   (let ((members nil) (uncertain nil) (deferred nil) (action nil) (job nil)
         (next nil) (next-deferred nil) (next-job nil) (frames-only nil) (syncer nil) (result nil) (limits nil)
-        (need nil) (syncer-actor nil)
+        (need nil) (syncer-actor nil) (syncer-grant nil)
         (return-receipt '(:pipeline-returned nil :none nil nil))
         ;; Lane time-bars (PRF-384): ACL2's ledger of the request in
         ;; flight -- its generation, whether its completion is still owed,
@@ -4105,7 +4195,27 @@ leave only in its COMPLETE, after its barrier returned
         (unless (eq issued :issued)
           (fnn-fault "owner refused a barrier's issue: generation ~a is unresolved" gen))
         (setq ledger ledger2)
-        (multiple-value-setq (syncer result syncer-actor) (fnn-owner-start-syncer service gen job)))
+        (setq syncer-grant (fnn-owner-syncer-issue service gen job))
+        (handler-case
+            (multiple-value-setq (syncer result syncer-actor syncer-grant)
+              (fnn-owner-start-syncer service gen job syncer-grant))
+          (serious-condition (condition)
+            ;; The child may still run after a postcreate failure. Retain
+            ;; the immutable issued operation; consume its fault receipt only
+            ;; after no-child or terminal physical observation, in either order.
+            (let ((issued-ledger ledger) (issued-members members))
+              (fnn-owner-syncer-abort
+               service syncer-grant
+               (lambda ()
+                 (destructuring-bind (rgen final . job-condition)
+                     (car (fnn-syncer-grant-result syncer-grant))
+                   (declare (ignore job-condition))
+                   (multiple-value-bind (outcome answer completed-ledger)
+                       (fnn-owner-complete-generation issued-ledger rgen final issued-members)
+                     (declare (ignore answer completed-ledger))
+                     (fnn-owner-syncer-outcome service syncer-grant rgen)
+                     (when (eq outcome :failed) (fnn-owner-fence-service service)))))))
+            (error condition))))
       ;; Lane time-model (PRF-311): the barrier is a request with a
       ;; deadline; its issue is a disk event at this reading.
       (fnn-owner-disk-event service :issue limits)
@@ -4246,7 +4356,8 @@ leave only in its COMPLETE, after its barrier returned
                 (list :pipeline-returned rgen outcome
                       (list :physical-ended (fnn-owner-actor-id syncer-actor)
                             (fn-fs-actor-receipt (fnn-owner-actor-state syncer-actor)))
-                      nil))
+                      (list (fnn-syncer-grant-token syncer-grant))))
+          (fnn-owner-syncer-outcome service syncer-grant rgen)
           (when (eq outcome :fault)
             (setq condition (or job-condition
                                 (make-condition 'fnn-store-fault
@@ -4367,7 +4478,7 @@ named snapshot, wait or existing serialized batch pipeline."
                 (destructuring-bind (next named)
                     (fn-cmt-step control
                      (list :observe (fnn-owner-service-stopping service)
-                           (plusp (fnn-owner-service-queued service))
+                           (fnn-owner-service-queued service)
                            (fnn-owner-loops-passed-p service targets)))
                   (setq control next action named))
                 (case (first action)

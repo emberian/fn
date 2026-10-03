@@ -455,9 +455,9 @@
 
 ; Fault escalation is independent of discharge. The host names physical
 ; termination only after checking the thread's primitive observation.
-(defun fn-fs-actor-join-action (physically-ended)
+(defun fn-fs-actor-join-action (physically-ended join-returned)
   (declare (xargs :guard t))
-  (if physically-ended :settle :fault))
+  (if (and physically-ended join-returned) :settle :fault))
 
 (defun fn-fs-actor-receipt (st)
   (declare (xargs :guard t))
@@ -616,7 +616,7 @@
 
 (defthm fn-fs-actor-failed-join-retains-custody
   (and (equal (fn-fs-actor-step st '(:joined nil)) st)
-       (equal (fn-fs-actor-join-action nil) :fault)))
+       (equal (fn-fs-actor-join-action nil join-returned) :fault)))
 
 (defthm fn-fs-actor-joined-is-final
   (implies (and (consp st) (equal (car st) :joined))
