@@ -88,7 +88,7 @@
     (values (fnn-octets '(50 52 48 13 10)) nil t nil nil)))
 (defun fnn-owner-cold-poll (service read first since)
   (declare (ignore service read first)) (values *cold-result* since 10 nil))
-(defun fnn-socket-write-now (fd channel data offset)
+(defun fnn-transport-write-now (fd channel data offset)
   (declare (ignore channel))
   (let ((n (min *write-limit* (- (length data) offset))))
     (push (list fd (coerce (subseq data offset (+ offset n)) 'list)) *written*) n))
