@@ -1269,27 +1269,10 @@
                            (fn-scat-range-numbers fn-nntp-group-range-numbers
                             fn-cat-view-articles fn-cnx-freshp fn-next-number)))))
 
-;;; F2 (lane sca-join-5): the summary from the catalog's live table.  The
-;;; pass above probes every number 1 .. the group's high (fn-cnx-view-range)
-;;; and the served GROUP computed it twice per command (the summary and the
-;;; low): 2N to 3N number-table probes at N articles.  The catalog keeps the
-;;; group's live count, least and greatest live number (books/catalog.lisp
-;;; fn-cat-group-live-count/-low/-high, maintained by commit and withdraw);
-;;; a reader at the catalog's count, with no withdrawal at or past it (the
-;;; horizon), sees exactly the live numbers, so the summary is three table
-;;; reads.  Below the horizon, or pinned to an older view, the pass answers.
-;;; KEYSTONES fn-scat-group-summary-is-pass and fn-scat-group-low-is-pass:
-;;; equal to the pass unconditionally; the -is-archive theorems follow.
-
-(defun fn-scat-live-list (group k top c)
-  (declare (xargs :guard (and (natp k) (natp top) (fn-cat-rowsp c))
-                  :measure (nfix (- (+ 1 (nfix top)) (nfix k)))))
-  (if (and (natp k) (natp top) (<= k top))
-      (if (fn-cat-live-numberp group k c)
-          (cons k (fn-scat-live-list group (+ 1 k) top c))
-        (fn-scat-live-list group (+ 1 k) top c))
-    nil))
-
+; Raw compatibility readers retain visible identities even when the payload
+; is reclaimed or metadata declares it unavailable. The catalog live table
+; and fn-scv-* instead describe available reader rows. Never equate the two.
+; Available served command adapters use catalog-available-readers directly.
 (local
  (defthm fn-scat-number-seq-binds
    (implies (and (natp i) (fn-cat-number-seq g n c i))
@@ -1300,130 +1283,50 @@
    :hints (("Goal" :induct (fn-cat-number-seq g n c i)
             :in-theory (e/d (fn-cat-number-seq) (fn-held-number-in))))))
 
-(local
- (defthm fn-scat-withdrawn-below-horizon
-   (implies (and (fn-cat-rowsp c) (natp s) (< s (len c))
-                 (fn-held-withdrawn (nth s c)))
-            (< (car (fn-held-withdrawn (nth s c))) (fn-cat-horizon-of c)))
-   :rule-classes :linear
-   :hints (("Goal" :induct (nth s c)
-            :in-theory (e/d (fn-cat-horizon-of fn-held-withdrawnp) (fn-held-withdrawn))
-            :expand ((fn-cat-horizon-of c)))
-           ("Subgoal *1/2" :use ((:instance fn-cat-rowp-fields (h (car c)))))
-           ("Subgoal *1/1" :use ((:instance fn-cat-rowp-fields (h (car c))))))))
+(defun fn-scat-raw-keptp (group k v fn-cat)
+  (declare (xargs :stobjs fn-cat :guard (natp v)
+                  :guard-hints (("Goal" :in-theory (disable fn-cat-count-is-len fn-cat-at-is-nth
+                                                            fn-cat-group-number-is-number-seq)))))
+  (let ((s (fn-cat-group-number group k fn-cat)))
+    (and (natp s) (< s (fn-cat-count fn-cat))
+         (fn-cat-visible-at s (nfix v) fn-cat)
+         (posp k) (<= k *fn-nntp-max-article-number*)
+         (fn-scat-msgid-idp (fn-record-msgid (fn-cat-at s fn-cat)))
+         t)))
 
-;; At the top view below no withdrawal, a number's visible row is its
-;; unwithdrawn row.
-(local
- (defthm fn-scat-view-seq-at-top
-   (implies (and (fn-cat-rowsp fn-cat) (equal v (len fn-cat))
-                 (<= (fn-cat-horizon-of fn-cat) v))
-            (equal (fn-cnx-view-seq group k v fn-cat)
-                   (let ((s (fn-cat-number-seq group k fn-cat 0)))
-                     (if (and s (null (fn-held-withdrawn (nth s fn-cat)))) s nil))))
-   :hints (("Goal" :in-theory (e/d (fn-cnx-view-seq fn-cat-visiblep) (fn-held-withdrawn))
-            :use ((:instance fn-scat-number-seq-binds (g group) (n k) (c fn-cat) (i 0))
-                  (:instance fn-scat-withdrawn-below-horizon (c fn-cat)
-                             (s (fn-cat-number-seq group k fn-cat 0))))))))
+(defun fn-scat-raw-count-p (group k top v fn-cat)
+  (declare (xargs :stobjs fn-cat :guard (and (natp k) (natp top) (natp v))
+                  :measure (nfix (- (+ 1 (nfix top)) (nfix k)))))
+  (if (and (natp k) (natp top) (<= k top))
+      (+ (if (fn-scat-raw-keptp group k v fn-cat) 1 0)
+         (fn-scat-raw-count-p group (+ 1 k) top v fn-cat))
+    0))
 
-(local
- (defthm fn-scat-range-keep-aux-is-live-list
-   (implies (and (fn-cat-rowsp fn-cat) (equal v (len fn-cat))
-                 (<= (fn-cat-horizon-of fn-cat) v))
-            (equal (fn-scat-range-keep group (fn-cnx-range-aux group k top v fn-cat) fn-cat)
-                   (fn-scat-live-list group k top fn-cat)))
-   :hints (("Goal" :induct (fn-scat-live-list group k top fn-cat)
-            :in-theory (e/d (fn-cat-live-numberp fn-cat-live-rowp)
-                            (fn-held-withdrawn fn-held-number-in fn-scat-msgid-idp fn-cnx-view-seq)))
-           ("Subgoal *1/2" :use ((:instance fn-scat-number-seq-binds (g group) (n k) (c fn-cat) (i 0))))
-           ("Subgoal *1/1" :use ((:instance fn-scat-number-seq-binds (g group) (n k) (c fn-cat) (i 0)))))))
+(defun fn-scat-raw-first-p (group k top v fn-cat)
+  (declare (xargs :stobjs fn-cat :guard (and (natp k) (natp top) (natp v))
+                  :measure (nfix (- (+ 1 (nfix top)) (nfix k)))))
+  (if (and (natp k) (natp top) (<= k top))
+      (if (fn-scat-raw-keptp group k v fn-cat)
+          k
+        (fn-scat-raw-first-p group (+ 1 k) top v fn-cat))
+    0))
 
-(defthm fn-scat-live-list-len
-  (equal (len (fn-scat-live-list group k top c))
-         (fn-cat-live-count-from group k top c))
-  :hints (("Goal" :induct (fn-scat-live-list group k top c)
-           :in-theory (disable fn-cat-live-numberp))))
+(defun fn-scat-raw-last-p (group k v fn-cat)
+  (declare (xargs :stobjs fn-cat :guard (and (natp k) (natp v))))
+  (if (posp k)
+      (if (fn-scat-raw-keptp group k v fn-cat)
+          k
+        (fn-scat-raw-last-p group (- k 1) v fn-cat))
+    0))
 
-(defthm fn-scat-live-list-consp
-  (iff (consp (fn-scat-live-list group k top c))
-       (posp (fn-cat-live-count-from group k top c)))
-  :hints (("Goal" :induct (fn-scat-live-list group k top c)
-           :in-theory (disable fn-cat-live-numberp))))
+(local (in-theory (disable fn-scat-raw-keptp)))
 
-(defthm fn-scat-live-list-car
-  (equal (fn-cat-live-first group k top c)
-         (let ((l (fn-scat-live-list group k top c))) (if (consp l) (car l) 0)))
-  :rule-classes nil
-  :hints (("Goal" :induct (fn-scat-live-list group k top c)
-           :in-theory (disable fn-cat-live-numberp))))
-
-(defthm fn-scat-live-list-empty
-  (implies (< top k)
-           (equal (fn-scat-live-list group k top c) nil)))
-
-(local
- (defthm fn-scat-live-list-clamp
-   (implies (natp top)
-            (equal (fn-scat-live-list group k (min top *fn-nntp-max-article-number*) c)
-                   (fn-scat-live-list group k top c)))
-   :hints (("Goal" :induct (fn-scat-live-list group k top c)
-            :in-theory (e/d (fn-cat-live-numberp fn-cat-live-rowp)
-                            (fn-held-withdrawn fn-held-number-in fn-scat-msgid-idp))))))
-
-(local
- (defthm fn-scat-live-list-snoc
-   (implies (and (natp k) (natp top) (<= k top))
-            (equal (fn-scat-live-list group k top c)
-                   (append (fn-scat-live-list group k (- top 1) c)
-                           (if (fn-cat-live-numberp group top c) (list top) nil))))
-   :rule-classes nil
-   :hints (("Goal" :induct (fn-scat-live-list group k top c)
-            :expand ((fn-scat-live-list group k top c)
-                     (fn-scat-live-list group k (+ -1 top) c))
-            :in-theory (disable fn-cat-live-numberp)))))
-
-(local
- (defthm fn-scat-last-number-of-append-one
-   (equal (fn-scat-last-number (append l (list x))) x)
-   :hints (("Goal" :in-theory (enable fn-scat-last-number)))))
-
-(defthm fn-scat-live-list-last
-  (implies (natp top)
-           (equal (fn-cat-live-last group top c)
-                  (fn-scat-last-number (fn-scat-live-list group 1 top c))))
-  :rule-classes nil
-  :hints (("Goal" :induct (fn-cat-live-last group top c)
-           :in-theory (disable fn-cat-live-numberp))
-          ("Subgoal *1/2" :use ((:instance fn-scat-live-list-snoc (k 1))))
-          ("Subgoal *1/1" :use ((:instance fn-scat-live-list-snoc (k 1))))))
-
-(local
- (defthm fn-scat-group-high-natp
-   (natp (fn-cat-group-high group c))
-   :rule-classes :type-prescription))
-
-;; The pass at the top view is the live list over 1 .. the group's high.
-(defthm fn-scat-range-numbers-at-top
-  (implies (and (fn-cat-rowsp fn-cat) (equal v (len fn-cat))
-                (<= (fn-cat-horizon-of fn-cat) v))
-           (equal (fn-scat-range-numbers group 1 *fn-nntp-max-article-number* v fn-cat)
-                  (fn-scat-live-list group 1 (fn-cat-group-high group fn-cat) fn-cat)))
-  :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-cnx-view-range)
-                           (fn-scat-live-list fn-cnx-range-aux fn-scat-range-keep))
-           :use ((:instance fn-scat-live-list-clamp (k 1) (c fn-cat)
-                            (top (fn-cat-group-high group fn-cat)))))))
-
-;; PKT-870 (lane scale-latency): below the top view, the summary from the
-;; table plus the rows that differ (books/served-catalog-view.lisp
-;; fn-scv-summary).  The probe pass's numbers at any view are the numbers
-;; fn-scv-keptp serves, over 1 .. the group's high.
 (defun fn-scat-view-list (group k top v fn-cat)
   (declare (xargs :stobjs fn-cat :guard (and (natp k) (natp top) (natp v))
                   :verify-guards nil
                   :measure (nfix (- (+ 1 (nfix top)) (nfix k)))))
   (if (and (natp k) (natp top) (<= k top))
-      (if (fn-scv-keptp group k v fn-cat)
+      (if (fn-scat-raw-keptp group k v fn-cat)
           (cons k (fn-scat-view-list group (+ 1 k) top v fn-cat))
         (fn-scat-view-list group (+ 1 k) top v fn-cat))
     nil))
@@ -1434,7 +1337,7 @@
             (equal (fn-scat-range-keep group (fn-cnx-range-aux group k top v fn-cat) fn-cat)
                    (fn-scat-view-list group k top v fn-cat)))
    :hints (("Goal" :induct (fn-scat-view-list group k top v fn-cat)
-            :in-theory (e/d (fn-scv-keptp fn-cnx-view-seq)
+            :in-theory (e/d (fn-scat-raw-keptp fn-cnx-view-seq)
                             (fn-held-withdrawn fn-held-number-in fn-scat-msgid-idp)))
            ("Subgoal *1/2" :use ((:instance fn-scat-number-seq-binds (g group) (n k) (c fn-cat) (i 0))))
            ("Subgoal *1/1" :use ((:instance fn-scat-number-seq-binds (g group) (n k) (c fn-cat) (i 0)))))))
@@ -1442,18 +1345,18 @@
 (local
  (defthm fn-scat-view-list-len
    (equal (len (fn-scat-view-list group k top v fn-cat))
-          (fn-scv-count-p group k top v fn-cat))))
+          (fn-scat-raw-count-p group k top v fn-cat))))
 
 (local
  (defthm fn-scat-view-list-car
-   (equal (fn-scv-first-p group k top v fn-cat)
+   (equal (fn-scat-raw-first-p group k top v fn-cat)
           (let ((l (fn-scat-view-list group k top v fn-cat))) (if (consp l) (car l) 0)))
    :rule-classes nil))
 
 (local
  (defthm fn-scat-view-list-consp
    (iff (consp (fn-scat-view-list group k top v fn-cat))
-        (posp (fn-scv-count-p group k top v fn-cat)))))
+        (posp (fn-scat-raw-count-p group k top v fn-cat)))))
 
 (local
  (defthm fn-scat-view-list-empty
@@ -1463,27 +1366,32 @@
 (local
  (defthm fn-scat-keptp-above-max
    (implies (< *fn-nntp-max-article-number* k)
-            (not (fn-scv-keptp group k v fn-cat)))
-   :hints (("Goal" :in-theory (enable fn-scv-keptp)))))
+            (not (fn-scat-raw-keptp group k v fn-cat)))
+   :hints (("Goal" :in-theory (enable fn-scat-raw-keptp)))))
 
 (local
  (defthm fn-scat-view-list-snoc
    (implies (and (natp k) (natp top) (<= k top))
             (equal (fn-scat-view-list group k top v fn-cat)
                    (append (fn-scat-view-list group k (- top 1) v fn-cat)
-                           (if (fn-scv-keptp group top v fn-cat) (list top) nil))))
+                           (if (fn-scat-raw-keptp group top v fn-cat) (list top) nil))))
    :rule-classes nil
    :hints (("Goal" :induct (fn-scat-view-list group k top v fn-cat)
             :expand ((fn-scat-view-list group k top v fn-cat)
                      (fn-scat-view-list group k (+ -1 top) v fn-cat))))))
 
 (local
+ (defthm fn-scat-last-number-of-append-one
+   (equal (fn-scat-last-number (append l (list x))) x)
+   :hints (("Goal" :in-theory (enable fn-scat-last-number)))))
+
+(local
  (defthm fn-scat-view-list-last
    (implies (natp top)
-            (equal (fn-scv-last-p group top v fn-cat)
+            (equal (fn-scat-raw-last-p group top v fn-cat)
                    (fn-scat-last-number (fn-scat-view-list group 1 top v fn-cat))))
    :rule-classes nil
-   :hints (("Goal" :induct (fn-scv-last-p group top v fn-cat))
+   :hints (("Goal" :induct (fn-scat-raw-last-p group top v fn-cat))
            ("Subgoal *1/2" :use ((:instance fn-scat-view-list-snoc (k 1))))
            ("Subgoal *1/1" :use ((:instance fn-scat-view-list-snoc (k 1)))))))
 
@@ -1520,65 +1428,11 @@
 
 (defun fn-scat-group-summary (archive group v fn-cat)
   (declare (xargs :stobjs fn-cat :guard (natp v)))
-  (if (fn-scat-top-viewp v fn-cat)
-      (let ((count (fn-cat-group-live-count group fn-cat)))
-        (if (posp count)
-            (list count (fn-cat-group-live-low group fn-cat)
-                  (fn-cat-group-live-high group fn-cat))
-          (let ((watermark (fn-next-number group (fn-state-nexts archive))))
-            (list 0 watermark (if (posp watermark) (- watermark 1) 0)))))
-    (if (and (natp v) (mbt (fn-cat-p fn-cat)))
-        (let ((s (fn-scv-summary group v fn-cat)))
-          (if (posp (car s))
-              (list (car s) (cadr s) (caddr s))
-            (let ((watermark (fn-next-number group (fn-state-nexts archive))))
-              (list 0 watermark (if (posp watermark) (- watermark 1) 0)))))
-      (fn-scat-group-summary-pass archive group v fn-cat))))
+  (fn-scat-group-summary-pass archive group v fn-cat))
 
-;; The view's summary is the pass's (PKT-870).
-(local
- (defthm fn-scat-group-summary-at-view
-   (implies (and (not (fn-scat-top-viewp v fn-cat)) (natp v) (fn-cat-p fn-cat))
-            (equal (fn-scat-group-summary archive group v fn-cat)
-                   (fn-scat-group-summary-pass archive group v fn-cat)))
-   :hints (("Goal" :do-not-induct t
-            :in-theory (e/d (fn-scat-group-summary-pass)
-                            (fn-scat-top-viewp fn-scat-range-numbers
-                             fn-scat-view-list fn-scv-summary fn-scv-count-p
-                             fn-scv-first-p fn-scv-last-p fn-scat-view-list-consp))
-            :use ((:instance fn-scat-range-numbers-at-view)
-                  (:instance fn-scat-view-list-consp (k 1)
-                             (top (fn-cat-group-high group fn-cat)))
-                  (:instance fn-scat-view-list-car (k 1)
-                             (top (fn-cat-group-high group fn-cat)))
-                  (:instance fn-scat-view-list-last
-                             (top (fn-cat-group-high group fn-cat))))))))
-
-;; The table's summary at the top view is the pass's (sca-join-5).
-(local
- (defthm fn-scat-group-summary-at-top
-   (implies (fn-scat-top-viewp v fn-cat)
-            (equal (fn-scat-group-summary archive group v fn-cat)
-                   (fn-scat-group-summary-pass archive group v fn-cat)))
-   :hints (("Goal" :do-not-induct t
-            :in-theory (e/d (fn-scat-group-summary-pass)
-                            (fn-scat-top-viewp fn-scat-range-numbers
-                             fn-scat-live-list fn-cat-live-count-from
-                             fn-cat-live-first fn-cat-live-last))
-            :use ((:instance fn-scat-live-list-car (k 1) (c fn-cat)
-                             (top (fn-cat-group-high group fn-cat)))
-                  (:instance fn-scat-live-list-last (c fn-cat)
-                             (top (fn-cat-group-high group fn-cat))))))))
-
-;; KEYSTONE: the table's summary, and the view's (PKT-870), is the pass's.
-(defthm fn-scat-group-summary-is-pass
+(defthm fn-scat-group-summary-by-definition
   (equal (fn-scat-group-summary archive group v fn-cat)
-         (fn-scat-group-summary-pass archive group v fn-cat))
-  :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-scat-group-summary-at-top)
-                 (:instance fn-scat-group-summary-at-view))
-           :in-theory (union-theories '(fn-scat-group-summary natp)
-                                      (theory 'minimal-theory)))))
+         (fn-scat-group-summary-pass archive group v fn-cat)))
 
 (defthm fn-scat-group-summary-is-archive
   (implies (and (fn-cnx-freshp fn-cat) group
@@ -1622,54 +1476,15 @@
            :in-theory (disable fn-scat-range-numbers fn-nntp-group-range-numbers
                                fn-cat-view-articles fn-cnx-freshp))))
 
-;; The group's first live number from the table at the top view (the
-;; cursor GROUP and LISTGROUP set, and the re-pin's).
+; Raw compatibility low uses the retained-identity range pass. The actual
+; availability adapter has its own maintained fn-scat-available-low.
 (defun fn-scat-group-low (group v fn-cat)
   (declare (xargs :stobjs fn-cat :guard (natp v)))
-  (if (fn-scat-top-viewp v fn-cat)
-      (fn-cat-group-live-low group fn-cat)
-    (if (and (natp v) (mbt (fn-cat-p fn-cat)))
-        ;; PKT-870: below the top view, from the table and the rows that differ.
-        (cadr (fn-scv-summary group v fn-cat))
-      (fn-scat-group-low-pass group v fn-cat))))
+  (fn-scat-group-low-pass group v fn-cat))
 
-(local
- (defthm fn-scat-group-low-at-view
-   (implies (and (not (fn-scat-top-viewp v fn-cat)) (natp v) (fn-cat-p fn-cat))
-            (equal (fn-scat-group-low group v fn-cat)
-                   (fn-scat-group-low-pass group v fn-cat)))
-   :hints (("Goal" :do-not-induct t
-            :in-theory (e/d (fn-scat-group-low-pass)
-                            (fn-scat-top-viewp fn-scat-range-numbers
-                             fn-scat-view-list fn-scv-summary fn-scv-first-p
-                             fn-scat-view-list-consp))
-            :use ((:instance fn-scat-range-numbers-at-view)
-                  (:instance fn-scat-view-list-consp (k 1)
-                             (top (fn-cat-group-high group fn-cat)))
-                  (:instance fn-scat-view-list-car (k 1)
-                             (top (fn-cat-group-high group fn-cat))))))))
-
-(local
- (defthm fn-scat-group-low-at-top
-   (implies (fn-scat-top-viewp v fn-cat)
-            (equal (fn-scat-group-low group v fn-cat)
-                   (fn-scat-group-low-pass group v fn-cat)))
-   :hints (("Goal" :do-not-induct t
-            :in-theory (e/d (fn-scat-group-low-pass)
-                            (fn-scat-top-viewp fn-scat-range-numbers
-                             fn-scat-live-list fn-cat-live-first))
-            :use ((:instance fn-scat-live-list-car (k 1) (c fn-cat)
-                             (top (fn-cat-group-high group fn-cat))))))))
-
-;; KEYSTONE.
-(defthm fn-scat-group-low-is-pass
+(defthm fn-scat-group-low-by-definition
   (equal (fn-scat-group-low group v fn-cat)
-         (fn-scat-group-low-pass group v fn-cat))
-  :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-scat-group-low-at-top)
-                 (:instance fn-scat-group-low-at-view))
-           :in-theory (union-theories '(fn-scat-group-low natp)
-                                      (theory 'minimal-theory)))))
+         (fn-scat-group-low-pass group v fn-cat)))
 
 (defthm fn-scat-group-low-is-archive
   (implies (and (fn-cnx-freshp fn-cat) group)
@@ -3276,8 +3091,8 @@
 ;;; the host calls nothing in this book yet.
 
 ;;; LIST / LIST ACTIVE (audit R1, lane served-incremental-1): each group's
-;;; line from the catalog's group summary (fn-scat-group-summary: the live
-;;; table at the top view, fn-scv-summary below it), never the list model's
+;;; line from the raw compatibility group summary (fn-scat-group-summary
+;;; enumerates retained identities), never the list model's
 ;;; per-group walk (fn-nntp-group-summary: three walks and three N-cons
 ;;; copies of the view's articles per group, O(G*N) per LIST).
 
@@ -3366,7 +3181,7 @@
 
 ;; Cost (Codex r51 F2): flat in N at the TOP view only (fn-scat-top-viewp:
 ;; the carried live summaries).  A session pinned at an older view V reads
-;; fn-scv-summary per group: G x D, D the rows appended since its pin
+;; Raw compatibility summary enumerates the clamped range per group.
 ;; (measured: 1.2 MB and 1.5 ms per LIST at D = 1,000, 10 groups).
 ;; The LIST forms this arm answers: LIST and LIST ACTIVE [wildmat].
 (defun fn-scat-list-active-formp (args)
@@ -3420,7 +3235,7 @@
 
 ;;; NEXT / LAST (audit R2, lane served-incremental-1): the neighbour of the
 ;;; current number served at V, probed number by number up (down) from the
-;;; current one through the number table (fn-scv-first-p / fn-scv-last-p:
+;;; current one through the number table (fn-scat-raw-first-p / fn-scat-raw-last-p:
 ;;; one probe and one visibility test a number, nothing consed), never the
 ;;; list model's copy of every article (fn-nntp-group-next-number's
 ;;; fn-ag-rev-onto) plus two walks.  The work is the gap to the neighbour.
@@ -3456,12 +3271,12 @@
 
 (defun fn-scat-next-number (group current v fn-cat)
   (declare (xargs :stobjs fn-cat :guard (and (natp current) (natp v))))
-  (fn-scv-first-p group (+ 1 current) (nfix (- (fn-cat-group-next group fn-cat) 1)) v fn-cat))
+  (fn-scat-raw-first-p group (+ 1 current) (nfix (- (fn-cat-group-next group fn-cat) 1)) v fn-cat))
 
 (defun fn-scat-previous-number (group current v fn-cat)
   (declare (xargs :stobjs fn-cat :guard (and (natp current) (natp v))))
   (if (posp current)
-      (fn-scv-last-p group (min (- current 1) (nfix (- (fn-cat-group-next group fn-cat) 1)))
+      (fn-scat-raw-last-p group (min (- current 1) (nfix (- (fn-cat-group-next group fn-cat) 1)))
                      v fn-cat)
     0))
 
@@ -3472,7 +3287,7 @@
                                              (fn-cat-view-articles v fn-arena fn-cat))))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-scat-next-number)
-                           (fn-scv-first-p fn-scat-view-list fn-scat-range-numbers
+                           (fn-scat-raw-first-p fn-scat-view-list fn-scat-range-numbers
                             fn-nntp-group-range-numbers fn-cat-view-articles fn-cnx-freshp
                             fn-scat-range-numbers-is-group-range-numbers))
            :use ((:instance fn-scat-range-numbers-is-group-range-numbers
@@ -3499,7 +3314,7 @@
   :hints (("Goal" :do-not-induct t
            :cases ((posp current))
            :in-theory (e/d (fn-scat-previous-number)
-                           (fn-scv-last-p fn-scat-view-list fn-scat-range-numbers
+                           (fn-scat-raw-last-p fn-scat-view-list fn-scat-range-numbers
                             fn-nntp-group-range-numbers fn-cat-view-articles fn-cnx-freshp
                             fn-scat-range-numbers-is-group-range-numbers))
            :use ((:instance fn-scat-range-numbers-is-group-range-numbers
