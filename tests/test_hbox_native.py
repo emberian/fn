@@ -18,6 +18,28 @@ def image_lines(out):
 
 
 class HboxNativeDryRunTests(unittest.TestCase):
+    def test_static_preflight_receipts_and_historical_fallback(self):
+        import tempfile
+        answer = dry("--box", "hbox", "HEAD", "tests.test_native_owner")
+        self.assertEqual(answer.returncode, 0, answer.stderr)
+        start = answer.stdout.index("static_gate() {")
+        function = answer.stdout[start:answer.stdout.index("\n}\n", start) + 3]
+        script = 'python3() { printf "%s\\n" "$@"; return 7; }\n' + function
+        script += '\nstatic_gate interfaces-check tools/interface_emit.py --check\n'
+        with tempfile.TemporaryDirectory() as directory:
+            fallback = subprocess.run(["sh", "-c", script], cwd=directory,
+                                      capture_output=True, text=True)
+            self.assertEqual(fallback.returncode, 7)
+            self.assertEqual(fallback.stdout.splitlines(), ["tools/interface_emit.py", "--check"])
+            tool = Path(directory) / "tools/native_preflight.py"
+            tool.parent.mkdir()
+            tool.touch()
+            cached = subprocess.run(["sh", "-c", script], cwd=directory,
+                                    capture_output=True, text=True)
+            self.assertEqual(cached.returncode, 7)
+            self.assertEqual(cached.stdout.splitlines(), ["tools/native_preflight.py", "--cache",
+                "/tank/fn/scratch/.native-preflight-cache", "--gate", "interfaces-check"])
+
     def test_an_image_set_links_prebuilt_images_instead_of_building(self):
         sha = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True,
                              text=True, check=True).stdout.strip()
