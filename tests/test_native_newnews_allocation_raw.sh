@@ -10,7 +10,7 @@ snapshot="$probe_root/build/runtime-tests/native-newnews-allocation-sources.json
 python3 - "$probe_root" "$source_root" "$snapshot" <<'PYDATA'
 import hashlib,json,pathlib,sys
 probe, source, dest=map(pathlib.Path,sys.argv[1:])
-paths=[source/p for p in ('books/newnews-stream-cursor.lisp','books/string-line-cursor.lisp','books/def-cursor.lisp','books/served-plan-cursor.lisp','books/definterface.lisp','host/interfaces.lisp','host/native/io.lisp')]+[probe/'tests/native_newnews_allocation_raw.lisp',probe/'tests/test_native_newnews_allocation_raw.sh']
+paths=[source/p for p in ('books/newnews-stream-cursor.lisp','books/string-line-cursor.lisp','books/def-cursor.lisp','books/served-plan-cursor.lisp','books/served-plan-window.lisp','books/octets-stobj.lisp','books/definterface.lisp','host/interfaces.lisp','host/native/io.lisp','host/native/owner.lisp')]+[probe/'tests/native_newnews_allocation_raw.lisp',probe/'tests/test_native_newnews_allocation_raw.sh']
 dest.write_text(json.dumps({'kind':'normal native configured factory/plan discrimination, not heap coverage or image qualification','sha256':{str(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in paths}},indent=2)+'\n')
 PYDATA
 python3 - "$source_root" "$probe_root" >"$input" <<'PY'
@@ -19,8 +19,9 @@ source,probe=map(pathlib.Path,sys.argv[1:])
 sys.path.insert(0,str(probe/'tools'));from proof_repl import forms
 lit=lambda s:'"'+str(s).replace('\\','\\\\').replace('"','\\"')+'"'
 print('(include-book "books/served-plan-cursor")')
+print('(include-book "books/served-plan-window")')
 print('(include-book "books/definterface")')
-subjects=['fn-nntp-newnews-response-stream','fn-splan-of-effects','fn-splan-cursor-step','fn-splan-donep']
+subjects=['fn-nntp-newnews-response-stream','fn-splan-of-effects','fn-splan-cursor-step','fn-splan-donep','fn-splan-at-cursorp','fn-splan-window-size','fn-splan-window']
 for f in forms((source/'host/interfaces.lisp').read_text()):
  if any(f.startswith('(definterface '+name+' ') or f.startswith('(definterface '+name+'\n') for name in subjects):print(f)
 print('(defttag :fn-newnews-allocation-native-observation)')
