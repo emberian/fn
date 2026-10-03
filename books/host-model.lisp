@@ -774,16 +774,27 @@
                (fn-hmc-funded-at-p b owners readers pins)))))
 
 (local
+ (defthm fn-hmc-member-of-append
+   (iff (member-equal g (append a b))
+        (or (member-equal g a) (member-equal g b)))))
+
+(local
  (defthm fn-hmc-funded-universal
    (implies (and (fn-arpn-pinsp pins)
-                 (fn-hmc-funded-at-p (append (fn-hmc-cdrs owners) (fn-hmc-cdrs readers))
+                 (fn-hmc-funded-at-p (append (fn-hmc-cdrs owners)
+                                            (fn-hmc-cdrs readers))
                                      owners readers pins))
             (fn-hmc-funded-g-p g owners readers pins))
    :hints (("Goal" :cases ((member-equal g (fn-hmc-cdrs owners))
                            (member-equal g (fn-hmc-cdrs readers)))
-            :in-theory (disable fn-hmc-funded-at-p-of-append)
+            :in-theory (e/d (fn-hmc-funded-g-p)
+                            (fn-hmc-funded-at-p-of-append
+                             fn-hmc-funded-at-p-member fn-hmc-funded-at-p
+                             fn-rpin-count-at fn-hmc-readers-at
+                             fn-arpn-pins-of fn-hmc-cdrs))
             :use ((:instance fn-hmc-funded-at-p-member
-                             (gs (append (fn-hmc-cdrs owners) (fn-hmc-cdrs readers)))))))))
+                             (gs (append (fn-hmc-cdrs owners)
+                                         (fn-hmc-cdrs readers)))))))))
 
 (defun fn-hmc-nat-listp (xs)
   (declare (xargs :guard t))
@@ -871,6 +882,18 @@
             (fn-hmc-funded-g-p g (fn-rpin-remove cid owners) readers
                                (fn-arpn-unpin-at (cdr (fn-rpin-owner cid owners)) pins)))))
 
+(local
+ (defthm fn-hmc-funded-at-p-of-cons
+   (equal (fn-hmc-funded-at-p (cons g gs) owners readers pins)
+          (and (natp g) (fn-hmc-funded-g-p g owners readers pins)
+               (fn-hmc-funded-at-p gs owners readers pins)))
+   :hints (("Goal" :in-theory (enable fn-hmc-funded-at-p fn-hmc-funded-g-p)))))
+
+(local
+ (defthm fn-hmc-funded-at-p-when-atom
+   (implies (not (consp gs)) (fn-hmc-funded-at-p gs owners readers pins))
+   :hints (("Goal" :in-theory (enable fn-hmc-funded-at-p)))))
+
 ; ... so funded-at-p holds over any list of naturals after the edit, from
 ; the universal fact before it.
 (local
@@ -881,7 +904,10 @@
             (fn-hmc-funded-at-p gs owners (cons (cons tid g2) readers)
                                 (fn-arpn-pin-at g2 pins)))
    :hints (("Goal" :induct (fn-hmc-nat-listp gs)
-            :in-theory (disable fn-hmc-funded-g-p fn-hmc-funded-at-p-of-append)))))
+            :in-theory (disable fn-hmc-funded-g-p fn-hmc-funded-at-p
+                                fn-hmc-funded-at-p-of-append fn-arpn-pin-at
+                                fn-arpn-unpin-at fn-hmc-cdrs fn-hmc-readers-at
+                                fn-rpin-count-at fn-arpn-pins-of)))))
 
 (local
  (defthm fn-hmc-funded-at-p-after-capture
@@ -891,7 +917,10 @@
             (fn-hmc-funded-at-p gs (cons (cons cid g2) owners) readers
                                 (fn-arpn-pin-at g2 pins)))
    :hints (("Goal" :induct (fn-hmc-nat-listp gs)
-            :in-theory (disable fn-hmc-funded-g-p fn-hmc-funded-at-p-of-append)))))
+            :in-theory (disable fn-hmc-funded-g-p fn-hmc-funded-at-p
+                                fn-hmc-funded-at-p-of-append fn-arpn-pin-at
+                                fn-arpn-unpin-at fn-hmc-cdrs fn-hmc-readers-at
+                                fn-rpin-count-at fn-arpn-pins-of)))))
 
 (local
  (defthm fn-hmc-funded-at-p-after-unpin
@@ -902,7 +931,10 @@
             (fn-hmc-funded-at-p gs owners (fn-hmc-remove1 (cons tid g2) readers)
                                 (fn-arpn-unpin-at g2 pins)))
    :hints (("Goal" :induct (fn-hmc-nat-listp gs)
-            :in-theory (disable fn-hmc-funded-g-p fn-hmc-funded-at-p-of-append)))))
+            :in-theory (disable fn-hmc-funded-g-p fn-hmc-funded-at-p
+                                fn-hmc-funded-at-p-of-append fn-arpn-pin-at
+                                fn-arpn-unpin-at fn-hmc-cdrs fn-hmc-readers-at
+                                fn-rpin-count-at fn-arpn-pins-of)))))
 
 (local
  (defthm fn-hmc-funded-at-p-after-drain
@@ -913,7 +945,10 @@
             (fn-hmc-funded-at-p gs (fn-rpin-remove cid owners) readers
                                 (fn-arpn-unpin-at (cdr (fn-rpin-owner cid owners)) pins)))
    :hints (("Goal" :induct (fn-hmc-nat-listp gs)
-            :in-theory (disable fn-hmc-funded-g-p fn-hmc-funded-at-p-of-append)))))
+            :in-theory (disable fn-hmc-funded-g-p fn-hmc-funded-at-p
+                                fn-hmc-funded-at-p-of-append fn-arpn-pin-at
+                                fn-arpn-unpin-at fn-hmc-cdrs fn-hmc-readers-at
+                                fn-rpin-count-at fn-arpn-pins-of)))))
 
 (local
  (defthm fn-hmc-cdrs-of-cons
@@ -944,14 +979,18 @@
    (implies (fn-arpn-okp st)
             (fn-arpn-okp (list (car st) (fn-arpn-pin-at (car st) (cadr st)) (caddr st))))
    :hints (("Goal" :use ((:instance fn-hmc-arpn-okp-of-car-step (ev '(:pin))))
-            :in-theory (disable fn-hmc-arpn-okp-of-car-step)))))
+            :in-theory (e/d (fn-arpn-step)
+                            (fn-hmc-arpn-okp-of-car-step fn-arpn-okp
+                             fn-arpn-pin-at))))))
 
 (local
  (defthm fn-hmc-arpn-okp-of-unpin-form
    (implies (and (fn-arpn-okp st) (natp g) (fn-arpn-held-p g (cadr st)))
             (fn-arpn-okp (list (car st) (fn-arpn-unpin-at g (cadr st)) (caddr st))))
    :hints (("Goal" :use ((:instance fn-hmc-arpn-okp-of-car-step (ev (list :unpin g))))
-            :in-theory (disable fn-hmc-arpn-okp-of-car-step)))))
+            :in-theory (e/d (fn-arpn-step)
+                            (fn-hmc-arpn-okp-of-car-step fn-arpn-okp
+                             fn-arpn-held-p fn-arpn-unpin-at))))))
 
 (local
  (defthm fn-hmc-arpn-okp-car-natp
@@ -972,7 +1011,8 @@
 
 (defthm fn-hmc-do-capture-keeps-invp
   (implies (and (fn-hmc-invp st) (not (fn-hmc-ended st)))
-           (fn-hmc-invp (mv-nth 0 (fn-hmc-do-capture st ev)))))
+           (fn-hmc-invp (mv-nth 0 (fn-hmc-do-capture st ev))))
+  :hints (("Goal" :in-theory (enable fn-rpin-step))))
 
 (local
  (defthm fn-hmc-rpin-owner-generation-natp
@@ -987,9 +1027,29 @@
                  (fn-hmc-funded-at-p (append (fn-hmc-cdrs owners) (fn-hmc-cdrs readers))
                                      owners readers pins))
             (fn-arpn-held-p (cdr (fn-rpin-owner cid owners)) pins))
-   :hints (("Goal" :in-theory (enable fn-arpn-held-p)
-            :use ((:instance fn-hmc-funded-universal (g (cdr (fn-rpin-owner cid owners)))))))))
+   :hints (("Goal"
+            :in-theory (e/d (fn-arpn-held-p fn-hmc-funded-g-p)
+                            (fn-hmc-funded-universal fn-hmc-funded-at-p
+                             fn-hmc-funded-at-p-of-append
+                             fn-hmc-funded-at-p-of-cons fn-rpin-count-at
+                             fn-hmc-readers-at fn-arpn-pins-of fn-rpin-owner
+                             fn-hmc-cdrs fn-arpn-pinsp))
+            :use ((:instance fn-hmc-funded-universal
+                             (g (cdr (fn-rpin-owner cid owners)))))))))
 
 (defthm fn-hmc-do-drain-keeps-invp
   (implies (and (fn-hmc-invp st) (not (fn-hmc-ended st)))
-           (fn-hmc-invp (mv-nth 0 (fn-hmc-do-drain st ev)))))
+           (fn-hmc-invp (mv-nth 0 (fn-hmc-do-drain st ev))))
+  :hints (("Goal"
+           :use ((:instance fn-hmc-funded-at-p-nat-listp
+                            (gs (append (fn-hmc-cdrs (fn-hmc-owners st))
+                                        (fn-hmc-cdrs (fn-hmc-readers st))))
+                            (owners (fn-hmc-owners st))
+                            (readers (fn-hmc-readers st))
+                            (pins (cadr (fn-hmc-arpn st)))))
+           :in-theory (e/d (fn-rpin-step fn-arpn-step)
+                           (fn-hmc-funded-at-p fn-hmc-funded-at-p-of-append
+                            fn-hmc-funded-at-p-of-cons fn-hmc-funded-g-p
+                            fn-rpin-owner fn-rpin-remove fn-arpn-pin-at
+                            fn-arpn-unpin-at fn-hmc-cdrs fn-rpin-count-at
+                            fn-hmc-readers-at fn-arpn-pins-of)))))
