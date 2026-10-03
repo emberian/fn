@@ -96,7 +96,11 @@
         (true-listp (fn-bs-durable-content bs 0))
         (equal (mod (len (fn-bs-durable-content bs 0)) (fn-bs-unit bs)) 0)
         (fn-frame-digestp genesis)
-        (fn-assume-log-sole-pending-writer bs 0)
+        ;; the owner's sole-pending-writer obligation, asserted as its
+        ;; executable twin (store-log-programs-tests does the same: the
+        ;; constrained fn-assume-log-sole-pending-writer cannot be evaluated;
+        ;; books/store-log-recover discharges it from this predicate)
+        (not (fn-bs-ops-not-for-ino (fn-bs-pending bs) 0))
         (not (fn-bs-ops-for-ino (fn-bs-pending bs) 0))))
 
 (defun slrp-open-conclusion (bs genesis)
