@@ -59,6 +59,7 @@
 
 (in-package "ACL2")
 (include-book "catalog-record")
+(include-book "catalog-availability")
 (include-book "catalog-number-assignment")
 (include-book "msgid-linear-exec")
 (include-book "def-loop")
@@ -311,9 +312,16 @@
        (<= (length text) *fn-nntp-max-message-id-octets*)
        (fn-nntp-message-id-tokenp (fn-nntp-string-octets text))))
 
+(defun fn-cat-live-candidatep (h)
+  (declare (xargs :guard t))
+  (and (fn-cat-row-availablep h)
+       (null (fn-held-withdrawn h))
+       (fn-scat-msgid-idp (fn-record-msgid h))))
+
 (defun fn-cat-live-rowp (group k h)
   (declare (xargs :guard t))
-  (and (null (fn-held-withdrawn h))
+  (and (fn-cat-row-availablep h)
+       (null (fn-held-withdrawn h))
        (posp k) (<= k *fn-nntp-max-article-number*)
        (equal (fn-held-number-in group h) k)
        (fn-scat-msgid-idp (fn-record-msgid h))))
@@ -1053,8 +1061,7 @@
 (defun fn-cat$c-commit (h fn-cat$c)
   (declare (xargs :stobjs fn-cat$c :guard (fn-cat$c-wfp fn-cat$c)))
   (let* ((lplan (fn-cat$c-live-plan (fn-record-groups h)
-                                    (and (null (fn-held-withdrawn h))
-                                         (fn-scat-msgid-idp (fn-record-msgid h)))
+                                    (fn-cat-live-candidatep h)
                                     fn-cat$c))
          (w (fn-held-withdrawn h))
          (hz (max (fn-cat$c-hz fn-cat$c) (if (consp w) (+ 1 (nfix (car w))) 0)))
@@ -1426,6 +1433,12 @@
 ; The live summary over the list: the committed row and a withdrawal.
 
 (local
+ (defthm fn-ctg-availability-of-assign
+   (equal (fn-cat-row-availablep (fn-cat-assign h c))
+          (fn-cat-row-availablep h))
+   :hints (("Goal" :in-theory (e/d (fn-cat-assign) (fn-held-with-numbers))))))
+
+(local
  (defthm fn-ctg-withdrawn-of-assign
    (equal (fn-held-withdrawn (fn-cat-assign h c)) (fn-held-withdrawn h))
    :hints (("Goal" :in-theory (enable fn-cat-assign fn-held-with-numbers)))))
@@ -1485,9 +1498,8 @@
    (implies (and (fn-cat-rowsp c) (member-equal g (fn-record-groups h))
                  (equal n (+ 1 (fn-cat-group-high g c))))
             (equal (fn-cat-live-numberp g n (append c (list (fn-cat-assign h c))))
-                   (and (null (fn-held-withdrawn h))
-                        (<= n *fn-nntp-max-article-number*)
-                        (fn-scat-msgid-idp (fn-record-msgid h)))))
+                   (and (fn-cat-live-candidatep h)
+                        (<= n *fn-nntp-max-article-number*))))
    :hints (("Goal" :in-theory (e/d (fn-cat-live-numberp fn-cat-live-rowp)
                                    (fn-cat-assign fn-cat-rowsp fn-held-number-in fn-scat-msgid-idp
                                     nth fn-cat-number-seq len fn-cat-group-high))))))
@@ -3058,8 +3070,7 @@
  (defthm fn-ctg-live-entry-append-member
    (implies (and (fn-cat-rowsp c) (member-equal g (fn-record-groups h)))
             (equal (fn-cat-live-entry g (append c (list (fn-cat-assign h c))))
-                   (fn-ctg-commit-entry g (and (null (fn-held-withdrawn h))
-                                               (fn-scat-msgid-idp (fn-record-msgid h)))
+                   (fn-ctg-commit-entry g (fn-cat-live-candidatep h)
                                         c)))
    :hints (("Goal" :in-theory (e/d (fn-cat-live-entry)
                                    (fn-cat-assign fn-cat-live-count-from fn-cat-live-first
@@ -3087,8 +3098,7 @@
             (fn-cat-live-okp keys
                              (fn-ctg-lputs (fn-cat$c-live-plan
                                             (fn-record-groups h)
-                                            (and (null (fn-held-withdrawn h))
-                                                 (fn-scat-msgid-idp (fn-record-msgid h)))
+                                            (fn-cat-live-candidatep h)
                                             fn-cat$c)
                                            (nth 6 fn-cat$c))
                              (append c (list (fn-cat-assign h c)))))
@@ -3117,8 +3127,7 @@
                  (fn-cat-groups-coverp c (nth 4 fn-cat$c))
                  (fn-cat-live-okp (nth 6 fn-cat$c) (nth 6 fn-cat$c) c)
                  (fn-cat-groups-coverp c (nth 6 fn-cat$c))
-                 (equal livep (and (null (fn-held-withdrawn h))
-                                   (fn-scat-msgid-idp (fn-record-msgid h))))
+                 (equal livep (fn-cat-live-candidatep h))
                  (member-equal g (fn-record-groups h)))
             (equal (cdr (hons-assoc-equal
                          g (fn-ctg-lputs (fn-cat$c-live-plan (fn-record-groups h) livep fn-cat$c)
@@ -3135,8 +3144,7 @@
                  (fn-cat-groups-coverp c (nth 4 fn-cat$c))
                  (fn-cat-live-okp (nth 6 fn-cat$c) (nth 6 fn-cat$c) c)
                  (fn-cat-groups-coverp c (nth 6 fn-cat$c))
-                 (equal livep (and (null (fn-held-withdrawn h))
-                                   (fn-scat-msgid-idp (fn-record-msgid h))))
+                 (equal livep (fn-cat-live-candidatep h))
                  (fn-ctg-plan-keys-in plan (fn-record-groups h))
                  (fn-cat-live-okp tab2
                                   (fn-ctg-lputs (fn-cat$c-live-plan (fn-record-groups h) livep fn-cat$c)
@@ -3190,8 +3198,7 @@
             (and (equal (nth 6 (fn-cat$c-commit h fn-cat$c))
                         (fn-ctg-lputs (fn-cat$c-live-plan
                                        (fn-record-groups h)
-                                       (and (null (fn-held-withdrawn h))
-                                            (fn-scat-msgid-idp (fn-record-msgid h)))
+                                       (fn-cat-live-candidatep h)
                                        fn-cat$c)
                                       (nth 6 fn-cat$c)))
                  (equal (nth 7 (fn-cat$c-commit h fn-cat$c))
@@ -3214,23 +3221,19 @@
                              fn-cat-numbers-okp fn-cat-numbers-coverp fn-held-with-numbers))
             :use ((:instance fn-ctg-commit-live-okp-new
                              (c fn-cat)
-                             (livep (and (null (fn-held-withdrawn h))
-                                         (fn-scat-msgid-idp (fn-record-msgid h))))
+                             (livep (fn-cat-live-candidatep h))
                              (plan (fn-cat$c-live-plan
                                     (fn-record-groups h)
-                                    (and (null (fn-held-withdrawn h))
-                                         (fn-scat-msgid-idp (fn-record-msgid h)))
+                                    (fn-cat-live-candidatep h)
                                     fn-cat$c))
                              (tab2 (nth 6 fn-cat$c)))
                   (:instance fn-ctg-live-plan-keys-in
                              (groups (fn-record-groups h))
-                             (livep (and (null (fn-held-withdrawn h))
-                                         (fn-scat-msgid-idp (fn-record-msgid h)))))
+                             (livep (fn-cat-live-candidatep h)))
                   (:instance fn-ctg-commit-live-okp-old (c fn-cat) (keys (nth 6 fn-cat$c)))
                   (:instance fn-ctg-commit-live-cover-row
                              (c fn-cat) (groups (fn-record-groups h))
-                             (livep (and (null (fn-held-withdrawn h))
-                                         (fn-scat-msgid-idp (fn-record-msgid h))))
+                             (livep (fn-cat-live-candidatep h))
                              (tab (nth 6 fn-cat$c))))))))
 
 (local
@@ -3254,8 +3257,7 @@
                                            (if (consp (fn-held-withdrawn h))
                                                (+ 1 (nfix (car (fn-held-withdrawn h)))) 0))
                                  (fn-cat$c-live-apply (fn-cat$c-live-plan (fn-record-groups h)
-                                                        (and (null (fn-held-withdrawn h))
-                                                             (fn-scat-msgid-idp (fn-record-msgid h)))
+                                                        (fn-cat-live-candidatep h)
                                                         fn-cat$c)
                                   (fn-cat$c-commit-base h fn-cat$c))))
                              (a (fn-cat$a-commit h fn-cat))))))))

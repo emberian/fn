@@ -508,6 +508,21 @@ pass over the group's numbers (`fn-scv-summary`, equal to the pass by
 `fn-scv-last-is-last-p` and `fn-scat-group-summary-is-pass`). The answer
 is RFC 3977 section 6.1.1's, unchanged.
 
+Option 2′ (2026-10-03): GROUP, LISTGROUP, LIST ACTIVE/COUNTS and
+NEXT/LAST use available memberships: a retained row with decided overview
+facts whose tombstone bit is clear, and visible at the selected completed
+view. Reclaimed rows retain their raw Message-ID and local-number identity
+for retrieval diagnostics and duplicate suppression. The allocation watermark
+never decreases or reuses a number; it is separate from the greatest available
+number. Sparse survivors 1 and 34 report `211 2 1 34`. With no available
+members, the tuple is `(0 watermark+1 watermark)` (RFC 3977 6.1.1.2).
+Recovery/reclaim reconstruction completes missing legacy classification once
+from the captured arena; GROUP reads carried summaries without arena scans.
+A reclaim swap is a refresh boundary and re-pins every connection. Availability
+and raw identity share one coherent root; a count-based version alone cannot
+identify a rewritten root. Implementation/proof target PRF-1262 remains in
+progress; this decision is not a native execution or certification claim.
+
 NNT-007: the session also carries the archive-configuration verdict computed
 when the connection opens. No command recomputes a whole-archive recognizer:
 `fn-nntp-open-session` decides once, `fn-nntp-step` reads the carried value, and

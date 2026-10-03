@@ -22064,6 +22064,33 @@
         "planning/evidence/native-history-builder-2026-10-03.json"
       ],
       "progress_note": "Narrow hbox certification PASSED at exact book bytes (certify-20261003T101722Z-1422001); literal keystone teeth and actual old/new committed image comparison certified. Raw native control-flow fixture passes. Actual saved image qualification remains pending Integration convergence. Scope is retained suffix capacity only; no bounded reclaim or whole-image work claim."
+    },
+    {
+      "id": "PRF-1262",
+      "title": "Carried catalog availability refines raw and available reader projections",
+      "statement": "Actual catalog commit/withdraw/redecide/clear and fresh recovery/reclaim loaders carry valid overview tombstone classification. Available summaries and GROUP/LISTGROUP/NEXT/LAST refine a separate available archive while raw number/Message-ID lookup retains reclaimed identity, allocation watermarks and view/root association. Missing classification is unavailable until completed at load; no served runtime completeness scan.",
+      "milestone": "M5",
+      "requirements": [
+        "NNT-042"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/catalog-availability.lisp",
+        "books/catalog-availability-load.lisp",
+        "books/served-availability.lisp",
+        "tests/acl2/catalog-availability-tests.lisp",
+        "books/catalog-available-readers.lisp",
+        "tests/acl2/catalog-available-readers-tests.lisp",
+        "books/catalog-availability-owner-load.lisp",
+        "tests/acl2/catalog-availability-owner-load-tests.lisp"
+      ],
+      "events": [
+        "fn-scat-available-archive-is-reference",
+        "fn-scat-available-archive-keeps-statep"
+      ],
+      "progress_note": "Warm farm REPL admits low classification/updater, foundation writer correspondence/guards, live-link preservation, loader completion helper and metadata-versus-bytes available projection including state preservation. First sparse/prefix/tail/empty foundation writer classification fixtures pass, including cancel of already unavailable row with raw lookup retained. Actual loader establishment, summary/navigation boundary and paged/native consumer closure remain in progress; no matching certification or native reclaim claim. New distinct available-summary/low/range/next/previous exports and their numeric membership pass admit with guards; complete generic writer/reader tuple fixtures pass sparse/prefix/tail/empty and already-unavailable cancellation, raw lookup retained. Archive projection correspondence of these command readers, actual loader producer closure, paged attachment and generated served dispatch remain pending. Actual fn-sca-load-held-rows now classifies missing NOV once with an unchanged public signature; its loader family guards admit in 0.09s/5,217 steps. Real arena-loader sparse/prefix/tail/empty/cancel and invalid-handle cases admit. Existing owner history/column establishment theorem fanout, complete available-reader archive boundary and paged closure remain pending; current source is submitted before asynchronous certification."
     }
   ]
 }

@@ -1757,3 +1757,5 @@ Native consumption remains with History; no image/deployment or resident-open
 claim transferred. pgs-x-grow-image's new verified table flags represent the
 private commit-to-be-built state, not persisted table entries available for
 an uncommitted new-page eviction; History notified for its residency invariant.
+
+Source assembly: availability40ca+770+494 composed for immediate source publication; actual loader classifies missing availability facts once while preserving raw identity. Owner fanout/dispatcher/paged replay and matching certification remain pending.
