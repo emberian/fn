@@ -687,3 +687,29 @@ b2b6030f5443522a90c35bf96f148d53f5bd90a69e1210e0fe47766f71e33097.
 Final fixture strengthens custody observation to assert every successfully
 opened socket is recorded closed (including later fragments), rather than
 only checking the first when a close event happened.
+
+S112 removed-peer journal custody, codex-sol-tools
+================================================
+Actual pull worker/catch-up tick prune cached journals only when the existing
+ACL2 fn-pull-plan-for says the peer has no current plan. Cached cursors drop
+with descriptor custody; returning cursor-for goes through its existing
+open/replay path. Both kinds share one private pruning function. A close
+fault attempts every retired descriptor before escaping; cache removal
+precedes close so a nil descriptor cannot be reused by a later round.
+
+Necessary adjacent ACL2 schedule fix: fn-pull-schedule previously only added
+plans and retained removed peer entries indefinitely, so a retired first-due
+peer could block/fault every later round. New tail-recursive live filter
+uses actual plan-for, then existing configure preserves live next/busy state
+and updates interval. Returning peers admit fresh due state. No new operator
+cap, parallel worker, deadline policy or host plan semantics.
+
+First command: python3 -m unittest tests.test_native_pull_journal_registry
+Three fd/cursor schedules pass0.861s after scoped generated trap inventory
+(one unexpected-round trap). Standalone actual ACL2 schedule case added.
+Actual worker/tick/cursor-for, schedule functions and kernel descriptors/close
+run; new-open/replay leaf records invocation, not a codec or saved-image
+claim. Assertion observed during loop BEFORE ordinary worker exit cleanup,
+so old final cleanup cannot falsely make removal look repaired. ACL2 finite
+assertions added to existing peer-pull tests; book/test certification pending
+next combined Integration cut, no standalone cert/image launched here.

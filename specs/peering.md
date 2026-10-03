@@ -274,7 +274,10 @@ faults before a write retain their class. Once the write is attempted, a
 write/barrier failure is uncertain and requires recovery, including when its
 close also fails; a fault after the barrier remains a fault with the durable
 cursor still present. The schedule is
-`fn-sched-pull-*` in books/scheduler-peers.lisp.
+`fn-sched-pull-*` in books/scheduler-peers.lisp. Current plans also retire removed peers
+from the schedule and close/drop their cached FNPL/FNCU descriptors and cursors.
+A returning peer opens and scans its durable journal again; an unchanged peer
+keeps its next round time and any round already in flight.
 
 NNT-018: A NEWNEWS pull feed advances past a round only when every listed Message-ID drew 235, 435 or 437 from the local node
 
