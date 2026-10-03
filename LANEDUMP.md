@@ -2845,3 +2845,11 @@ fn-ast-render-window-byte-bound universally admitted in narrow warm world;
 component bound is not complete owner refinement/certification. Remaining
 metadata Xref setup and selection work, full factory/physical execution,
 renderer guards and complete original-response/owner invariants remain owned.
+
+
+The host-reached ARTICLE/OVER/LIST program functions and Web window wrappers
+now admit and execute in the same actual ACL2 source stobj world as the private
+reply/gate functions. tests/acl2/web-stream-consumer-source-tests.lisp compares
+complete reference page plans with virtual scan/count/emit under chunk1/2/7/4096
+fixtures. Guard/refinement and complete endpoint/funding qualification remain
+open; concrete-fill invariant-risk warnings are retained in the source receipt.
