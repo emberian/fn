@@ -34,8 +34,6 @@
 (defstruct (fnn-native-observation (:constructor %make-fnn-native-observation))
   rows (count 0) (valid t) reason
   (lock (sb-thread:make-mutex :name "fn primitive observations")))
-(defvar *fnn-native-observer* nil)
-(defvar *fnn-native-actor-identity* nil)
 
 (defun fnn-native-observation-create (capacity)
   "Explicit developer profile capacity; preallocate before spawning workers."
@@ -117,20 +115,40 @@ Return status, events, reason. An incomplete release stops the prefix."
           (push (fnn-native-observation-row-event row) events)))
       (values :complete (nreverse events) nil))))
 
+(defun fnn-native-observation-start (capacity)
+  "Developer startup allocation failure makes comparison unavailable only."
+  (handler-case (fnn-native-observation-create capacity)
+    (serious-condition () nil)))
+
+(defun fnn-native-observation-current-identity ()
+  "Bind one reservation in the actual current native thread, without aliases."
+  (handler-case (symbol-name (fnn-native-reserve-thread-identity))
+    (serious-condition () nil)))
+
+(defun fnn-native-observation-report (observer)
+  "Bounded developer readout after owner cleanup; no service classification."
+  (handler-case
+      (multiple-value-bind (status events reason)
+          (if observer (fnn-native-observation-events observer)
+            (values :unavailable nil :activation-unavailable))
+        (format *error-output* "~&NATIVE-HM ~s~%" (list status reason events)))
+    (serious-condition () nil)))
+
+(defmacro fnn-native-with-observation ((enabled capacity) &body body)
+  "Activate before startup files/children; preserve a caller's collector when
+not armed. Instrumentation has no semantic or admission role."
+  (let ((armed (gensym "OBSERVATION-ARMED")))
+    `(let* ((,armed ,enabled)
+            (*fnn-native-observer* (if ,armed (fnn-native-observation-start ,capacity)
+                                     *fnn-native-observer*))
+            (*fnn-native-actor-identity* (if ,armed (fnn-native-observation-current-identity)
+                                           *fnn-native-actor-identity*)))
+       (unwind-protect (progn ,@body)
+         (when ,armed (fnn-native-observation-report *fnn-native-observer*))))))
+
+
 (defmacro fnn-with-observed-owner ((lock) &body body)
-  "Acquire observed after physical lock. Reserve release under the same
-lock, complete after physical unlock: preemption cannot invert producer order."
-  (let ((mutex (gensym "MUTEX")) (row (gensym "RELEASE")))
-    `(let ((,mutex ,lock) (,row nil))
-       (unwind-protect
-            (sb-thread:with-mutex (,mutex)
-              (when *fnn-native-observer*
-                (fnn-native-observe (list :acquire *fnn-native-actor-identity* :owner)))
-              (unwind-protect (progn ,@body)
-                (when *fnn-native-observer*
-                  (setq ,row (fnn-native-observation-reserve
-                              (list :release *fnn-native-actor-identity* :owner) nil)))))
-         (fnn-native-observation-complete ,row)))))
+  `(fnn-with-observed-mutex (,lock :owner) ,@body))
 
 (defvar *fnn-owner-start-hooks* nil)
 (defvar *fnn-owner-stop-hooks* nil)
@@ -7584,6 +7602,8 @@ fn-osd-drain-stops-by-the-deadline).  Nothing here compares times or counts."
   "Run one service from already-normalized boundary values.
 MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
 `[listener] host' list (NNT-041); each gets the same port and TLS port."
+  ;; Explicit developer trace profile; exhaustion invalidates comparison.
+  (fnn-native-with-observation ((fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD") 4096)
   (setf (sb-ext:bytes-consed-between-gcs) (fnn-gc-nursery-octets))
   (setq *fnn-owner-measure*
         (equal (sb-ext:posix-getenv "FN_OWNER_MEASURE") "1"))
@@ -7836,7 +7856,7 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
           (setq *fnn-owner-time-service* nil)))
       (setq *fnn-sigterm-wakeup-fd* old-wakeup-fd
             *fnn-sigterm-requested* old-requested
-            *fnn-sigterm-owner-active* old-active))))
+            *fnn-sigterm-owner-active* old-active)))))
 
 (defun fnn-owner-run-normalized (store-octets listener-host-octets
                                  listener-port oncep max-connections &optional tls-context

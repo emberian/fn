@@ -217,3 +217,42 @@ transcript and machine/packet hashes are filed under
 `planning/evidence/runtime-observation-2026-10-03/`. This first packet checks
 finite O-only behavior. It does not qualify the image or missing PageIO/pins
 primitive sites, and leaves PRF-1254 planned.
+
+The next actual-image consumer activation is in `fnn-owner-run` before
+`fnn-owner-install`, gated by the existing developer-only
+`FN_NATIVE_PAGE_IO_HOLD` selector. It creates an explicit 4096-row observation
+profile and binds a physical reservation in the current main thread. Actual
+mux startup captures a fresh identity through the shared observed child thunk.
+After owner unwind the bounded stderr readout is
+`NATIVE-HM (STATUS REASON EVENTS)`. Activation allocation/readout failures do
+not classify the service; failed activation reports comparison unavailable.
+Native scope tests preserve startup values and supplied inactive context.
+Actual image/PageIO composition remains pending; unknown plain threads still
+invalidate comparison rather than receiving inferred identities.
+
+The common physical lock seam is now
+`fnn-with-observed-mutex ((MUTEX LITERAL-LABEL &rest SBCL-OPTIONS) ...)`:
+it preserves the original `:wait-p`/other physical options and body values.
+`fnn-with-observed-owner` delegates with literal `:owner`; Empirical owns the
+actual extent consumer with literal `:extent`. A real extent-mutex fixture
+checks held ownership, `:wait-p t`, exact labels and values. This does not
+claim uninstrumented extent/pins sites or PageIO realization.
+
+The shared mutex macro and its two dynamic observation variables have one
+early declaration site in `host/native/io.lisp`, which loads before extent.
+Collector structures/runtime functions remain in owner and are available
+before workers run. Extent can compile against the actual macro without an
+early duplicate declaration or build-order change. The fixture extracts that
+actual io macro/variable ownership.
+
+An actual inactive io-only mutex invocation before owner loading refuted the
+unconditional completion callback (undefined owner function). The shared macro
+now resolves that callback only when a release row was reserved; disabled
+instrumentation has no dependency on the late collector. Baseline fails at
+that exact early consumer; repaired source passes all active schedules.
+
+Extent condition waits internally release/reacquire E, including timed waits
+that return without ownership. Empirical wraps only exact non-wait critical
+sections. Missing wait-edge/P/other O producers make full comparison
+unavailable; a coarse wrapper around a hidden wait cannot realize its
+physical lock interval. No scheduling rewrite is part of this observer slice.
