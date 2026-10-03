@@ -4292,3 +4292,9 @@ close these claims. Matching current native process never ran.
 BP prefix certificate2794821 PASSED4/0 archived/indexed; actual source cost
 receipt scoped to item availability and complete decoder results. Current
 native endpoint and whole semantic decode/publication remain unexecuted/open.
+Convergence: exact unrenamed production source/tests now certify in
+certify-20261003T180036Z-2785570:3/0 (typed bank17s, BP+tests below10s,
+threecacheddependencies). Integration has coherent producerfd29 +nativec644.
+No owned process remains: failed newREPL neverstarted; Foundation andRootDWJ
+loans returned, targetedfarmterminalexit0/cachepublished. PRF1309 remains
+planned for complete teeth/composed behavior, not misreported fullfunding.
