@@ -64,6 +64,18 @@
 (fixture-load-response-runtime)
 (defvar *fixture-service*
   (%make-fnn-owner-service :lock (sb-thread:make-mutex :name "Web fixture owner") :exit-code 0))
+;; Dispatch emitted actions through the actual ACL2 host classifier. Returning
+;; CAR here hid missing continuation tags in the composed native reactor.
+(with-open-file (stream "host/web-host.lisp")
+  (loop for form = (read stream nil :eof) until (eq form :eof) do
+    (when (and (consp form) (eq (car form) 'defun)
+               (eq (second form) 'fn-web-host-action-kind))
+      (eval (append (subseq form 0 3)
+                    (remove-if (lambda (body) (and (consp body) (eq (car body) 'declare)))
+                               (cdddr form)))))))
+(assert (null (fn-web-host-action-kind nil)))
+(assert (null (fn-web-host-action-kind '(:unknown))))
+
 (defun fnn-core (name &rest args)
   (case name
     (fn-web-host-head '(72 69 65 68))
@@ -73,7 +85,7 @@
     (fn-web-host-max-events 16)
     (fn-web-host-private-reply-p nil)
     (fn-web-host-request-seconds 15)
-    (fn-web-host-action-kind (first (first args)))
+    (fn-web-host-action-kind (fn-web-host-action-kind (first args)))
     (fn-splan-cursor-resume-ms 2)
     (fn-splan-step-plan (second args))
     (t (error "unexpected core ~s ~s" name args))))

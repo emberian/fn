@@ -98,7 +98,10 @@
 ; Host observations whose meaning ACL2 decides.
 (defun fn-web-host-action-kind (action)
   (declare (xargs :mode :program))
-  (and (consp action) (member (car action) '(:respond :open :send :close :health :private-begin)) (car action)))
+  (and (consp action)
+       (member (car action) '(:respond :open :send :close :health :private-begin
+                             :post-form :post-command :post-stream))
+       (car action)))
 
 ; Q10d: observe only the fixed scheduler/disk and checkpoint values, no
 ; whole-state walk. Called under the existing owner mutex by the web face.
