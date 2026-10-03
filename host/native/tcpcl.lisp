@@ -498,7 +498,7 @@ and faults without following or deleting anything."
 ;;; The loop.  One `fn-tcl-drive' per chunk, with the carry prepended; a tick
 ;;; on every wakeup; `fn-tcl-tcp-closed' when the peer goes away.
 
-(defun fnn-tcl-begin (fd role params tag spool &key bundle trace (expect 0) on-ready refuse-inbound)
+(defun fnn-tcl-begin (fd role params tag spool &key bundle trace (expect 0) on-ready refuse-inbound retain)
   "Retain a session. Opening emits messages but performs no socket write."
   (let* ((now (fnn-tcl-now))
          (session (fnn-core 'fn-tcl-host-initial role params now))
@@ -506,6 +506,7 @@ and faults without following or deleting anything."
                 :trace trace :refuse-inbound refuse-inbound :retained t
                 :role role :bundlep (and bundle t) :expect expect :on-ready on-ready
                 :pending (and bundle (cons tag bundle)))))
+    (when retain (funcall retain conn))
     (unless session (fnn-refuse "tcpcl: the session machine refused these parameters"))
     (fnn-tcl-apply conn (fnn-core 'fn-tcl-host-open session now))
     conn))
@@ -520,8 +521,8 @@ and faults without following or deleting anything."
   ;; The progress callback follows actual released ACK writes, not merely
   ;; enqueueing them. A retained received-source borrow also excludes it.
   (when (and *fnn-tcl-progress* (not (fnn-tclc-source-pending conn)))
-    (setf (fnn-tclc-progress conn) nil)
-    (funcall *fnn-tcl-progress* conn))
+    (funcall *fnn-tcl-progress* conn)
+    (setf (fnn-tclc-progress conn) nil))
   (when (and (fnn-tclc-on-ready conn) (not (fnn-tclc-ready-called conn))
              (eq (fnn-core 'fn-tcl-host-phase (fnn-tclc-session conn)) :established))
     (setf (fnn-tclc-ready-called conn) t)

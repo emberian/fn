@@ -8694,6 +8694,33 @@
         "native": true
       },
       "note": "Raw fixture passed on lane source; native-image scenario pending. No runtime/qualification claim transferred from an earlier image."
+    },
+    {
+      "id": "SCN-1110",
+      "title": "A retained BP peer cannot monopolize listener, forwarding, receipt and expiry turns",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-006"
+      ],
+      "steps": [
+        "Install independent BP incoming/outgoing counts and resident profile; start one persistent node.",
+        "Keep one admitted TCPCL session alive while a second peer sends a canonical NNTP-produced BP source.",
+        "Observe durable kind-5 ACK then exactly one application delivery before the first session closes, with forwarding/receipt/expiry turns advancing.",
+        "Interrupt a fragmented outbound operation between affirmative physical socket close and next socket construction, preserving its original grant token; reopen durable custody."
+      ],
+      "expected": [
+        "Each loop admits at most one funded listener attempt, runs one retained slot and one ACL2-selected service class; a waiting peer keeps its own context.",
+        "Neither timeout nor uncertain close settles a grant; source borrowing and unfinished operation custody prevent logical return.",
+        "Application commitment and returned receipt remain distinct from TCPCL ACK; restart does not duplicate delivery."
+      ],
+      "evidence": [
+        "tests/native_bp_session_bank_raw.lisp",
+        "tests/native_tcpcl_retained_turn_raw.lisp",
+        "host/native/bp-session.lisp",
+        "host/native/bp-node.lisp"
+      ],
+      "note": "Actual source raw scheduler/custody discrimination passes; canonical two-peer DTN image scenario and comprehensive physical-cut/restart qualification pending."
     }
   ]
 }

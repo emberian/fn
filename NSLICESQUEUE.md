@@ -271,6 +271,10 @@ tombstones are never transported as payload. Anchors:
 ### Bounded BP/TCPCL scheduling and reassembly
 
 **Active — BP transport owns continuing TCPCL sessions/reassembly; Tools owns fair pull/catch-up rounds.**
+Source now connects funded incoming/outgoing retained node sessions, asynchronous
+forwarding/receipt continuation and same-token fragment socket rearm. Raw actual
+consumer discrimination passes a live first peer, second acceptance and every
+service phase. Matching DTN image and full tariff/refinement remain open.
 Make session service, reassembly and forwarding genuinely resumable. Complete
 ACL2-owned budget parsing and outcome decisions; retain custody correctly on
 both inbound and outbound sessions.

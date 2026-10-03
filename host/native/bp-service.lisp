@@ -535,7 +535,12 @@ its outcome, which is the refusal to the offering ingress."
              (serious-condition (cleanup)
                (error (or ,primary cleanup)))))))))
 
+(defvar *fnn-bps-retained-send* nil
+  "Installed BP node retained sender; receives one durable send effect.")
 (defun fnn-bps-send-effect-next (service effect)
+  (when *fnn-bps-retained-send*
+    (funcall *fnn-bps-retained-send* service effect)
+    (return-from fnn-bps-send-effect-next nil))
   (let* ((route (second effect))
          (key (fourth effect))
          (wire (fifth effect))

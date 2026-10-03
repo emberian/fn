@@ -1784,3 +1784,20 @@ certify-20261003T104100Z-1504853 PASSED2/0, harvest in progress. Primary source
 review Assembly. S025 node mux stillnext; Foundations owns explicit profile
 count/demand producer, cannot borrow syncer/output grants. S068 carry/source
 activation and whole-session refinement remain open.
+
+
+## BP transport continuing owner — GPT-6.1-Sol, 2026-10-03 07:45 EDT
+
+Tree bp-transport-oct03; Integration sole dev writer. Retained actual BP serve
+consumer now multiplexes listener/context/eight service classes and private BP
+profile bank. Incoming/outgoing reservations precede socket/context; fragmented
+base sends rearm same token after physical close. Receipt cursor/offered keys
+survive async turns; once forwarding offers a peer once, avoiding retry drain
+loops. New PRF-1276, SCN-1110. Raw actual bank/loop PASS plus existing retained
+TCPCL and forward-close-once PASS. Warm hbox all guards admitted98006steps;
+four-root farm113540-b22f PASSED4/0 before additive captured-wire-span helper,
+final exact-source cert/image pending. Staged resident/descriptor/conn-ID only;
+complete decode/GC/work/actor tariff, S068 representation, whole scheduling and
+physical-cut refinement remain open. Assembly primary review reused, Empirical
+owns matching DTN image consumer execution. Tools fair pull/push packet inherited
+(no duplicate transport primitive edits); its existing exact source receipts reused.

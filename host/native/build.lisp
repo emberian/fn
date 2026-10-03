@@ -246,6 +246,7 @@
 ; into this saved image's ACL2 world.
 (include-book "books/bp-node-machine-guards")
 (include-book "books/bp-node-fragment-guards")
+(include-book "books/bp-session-scheduler")
 (include-book "books/bp-fragment-send")
 (include-book "books/bp-node-receive-boundary")
 (include-book "books/bp-fnbs-replay")
@@ -581,6 +582,7 @@
         (load "host/native/bp-obligation.lisp")
         (load "host/native/bp-listener-control.lisp")
         (load "host/native/bp-control.lisp")
+        (load "host/native/bp-session.lisp")
         (load "host/native/bp-node.lisp")
         ; `acl2 session': developer images only (the test fixtures' ACL2).
         (load "host/native/acl2-session.lisp")
