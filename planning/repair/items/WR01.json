@@ -8,11 +8,14 @@
  "fix": "the deferral leaves the quantum as its value; the return-from runs after the quantum",
  "id": "WR01",
  "locus": "reclaim-publication",
- "notes": [],
+ "notes": [
+  "10-03 00:13 fixed on lane/wrapper 9c67da86c; native tests.test_native_reclaim_in_flight not yet run"
+ ],
  "owner": "wrapper",
  "severity": "high",
+ "sha": "9c67da86c",
  "source": "WRAPPER",
- "state": "open",
+ "state": "in-progress",
  "title": "fnn-owner-reclaim-dry-run leaves its gated quantum by return-from when a pass is in flight: the boundary's unwind guard (review M3) classifies it as an unclassified exit and stops the node as a FAULT",
- "updated": "2026-10-03T04:07:33Z"
+ "updated": "2026-10-03T04:13:10Z"
 }
