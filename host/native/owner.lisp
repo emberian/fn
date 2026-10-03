@@ -7511,8 +7511,7 @@ pointer and the live state's binding)."
     ;; generation pins keep it held; an unheld root drops its retained grant
     ;; and hash binding here, including replacement before the next rebuild.
     (when retired
-      (when (eq (fnn-owner-core 'fn-owner-hroot-retire retired) :released)
-        (remhash retired *fnn-history-roots*)))
+      (fnn-history-root-retire-held retired))
     value))
 
 ;;; Q16 (a) (lane online-reclaim-5): the swapped owner is the owner the full
