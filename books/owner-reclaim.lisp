@@ -337,3 +337,51 @@
                                                         (cadr r) (caddr r)))
                               :capture)))))
   :rule-classes nil)
+
+; The release, by its holder (sweep S038).  HOLDER is (:reclaim MODE) -- the
+; pass ending, host/owner-host.lisp fn-owner-orc-finish -- or
+; (:publication COUNT) -- the publication done, fn-owner-sco-publication-done,
+; COUNT the count it captured.  A release clears only what its holder holds:
+; the reclaim pass whose MODE is in flight frees PASS (and INFLIGHT, which a
+; writing pass held); a publication frees INFLIGHT only while it holds it at
+; its COUNT and no writing pass does.  Anything else changes nothing.  The
+; result is (PASS' INFLIGHT').
+(defun fn-orc-release-slot (holder pass inflight)
+  (declare (xargs :guard t))
+  (let ((kind (and (consp holder) (car holder)))
+        (who (and (consp holder) (consp (cdr holder)) (cadr holder))))
+    (cond ((and (eq kind :reclaim) pass (equal pass who))
+           (list nil (if (eq pass :dry-run) inflight nil)))
+          ((and (eq kind :publication)
+                (or (not pass) (eq pass :dry-run))
+                (natp inflight) (equal inflight who))
+           (list pass nil))
+          (t (list pass inflight)))))
+
+; KEYSTONE.  A release by anything but the slot's holder changes nothing,
+; and, composed with the capture: while a writing reclaim pass holds the
+; slot, a publication's release (at any count) leaves it held, and the
+; pass's own release frees it; a publication's release never frees a pass.
+(defthm fn-orc-release-by-a-non-holder-changes-nothing
+  (and (implies (and (equal (car holder) :reclaim)
+                     (not (and pass (equal pass (cadr holder)))))
+                (equal (fn-orc-release-slot holder pass inflight)
+                       (list pass inflight)))
+       (implies (and (equal (car holder) :publication)
+                     (or (and pass (not (equal pass :dry-run)))
+                         (not (equal inflight (cadr holder)))))
+                (equal (fn-orc-release-slot holder pass inflight)
+                       (list pass inflight)))
+       (implies (equal (car holder) :publication)
+                (equal (car (fn-orc-release-slot holder pass inflight)) pass))
+       (implies (and (keywordp mode) (not (equal mode :dry-run))
+                     (equal (car (fn-orc-capture-slot mode count pass inflight))
+                            :capture))
+                (let ((r (fn-orc-capture-slot mode count pass inflight)))
+                  (and (equal (fn-orc-release-slot (list :publication any)
+                                                   (cadr r) (caddr r))
+                              (cdr r))
+                       (equal (fn-orc-release-slot (list :reclaim mode)
+                                                   (cadr r) (caddr r))
+                              (list nil nil))))))
+  :rule-classes nil)
