@@ -673,3 +673,9 @@ unknown Store subclass and core fault are distinguished. Known assertion
 marker alone yields defect red; other raw failures remain infrastructure.
 Scoped new fixture inventory has zero stale/unresolved calls. No broad
 qualification or historical BP retry started.
+
+Final eight S097 schedules pass1.571s after scoped fixture inventory. Exact
+Store-class witness red/basec3585ba3a and green/head4b4957525, same harness
+with no infra/skips. Archived S097-df5dcf6e6c3742818b3dac8a07824411.json
+sha256e5995a66db0207837067beab12d98213bfa4a761390fde9c2ab17640d5743973.
+Separate designated later-fragment prefix witness follows; no source change.

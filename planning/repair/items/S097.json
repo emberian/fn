@@ -5,9 +5,9 @@
  "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "DISSOLVES-IN",
  "evidence": "bp-service.lisp:610-615 `(fnn-store-fault (e) (error e)) ((or fnn-os-error sb-bsd-sockets:socket-error fnn-store-error) () (setq outcome (if socket :uncertain :failed)))`. fnn-store-indeterminate is a subtype of fnn-store-error (io.lisp:92), so it lands in the transport branch. Also, line 582 `(setq socket nil)` runs before the fragment loop (587-608), whose inner handler catches only os and socket errors. The comment at 584-586 says \"after the first fragment has gone a connect that sent nothing is :uncertain, never :failed\".",
- "expect-failure": "tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_indeterminate_keeps_exact_class",
+ "expect-failure": "tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_later_fragment_named_refusal_retains_uncertain_prefix",
  "exposure": "conditional",
- "failure-message": "ambiguous Store publication must retain its exact class",
+ "failure-message": "accepted fragment prefix cannot become definitely failed",
  "file": "host/native/bp-service.lisp",
  "fix": "Add an explicit `(fnn-store-indeterminate (e) (error e))` arm before the fnn-store-error arm. Track \"any octet sent\" with its own flag set before the fragment loop, rather than reusing `socket`.",
  "harness": "tests/test_native_bp_send_boundary.py,tests/native_bp_send_boundary_raw.lisp",
@@ -15,7 +15,8 @@
  "line": "610",
  "locus": "peer-services",
  "notes": [
-  "10-03 04:33 claimed: scope=['host/native/bp-service.lisp', 'specs/bp-node-machine.md', 'tests/native_bp_send_boundary_raw.lisp', 'tests/test_native_bp_send_boundary.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_indeterminate_keeps_exact_class"
+  "10-03 04:33 claimed: scope=['host/native/bp-service.lisp', 'specs/bp-node-machine.md', 'tests/native_bp_send_boundary_raw.lisp', 'tests/test_native_bp_send_boundary.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_indeterminate_keeps_exact_class",
+  "First exact-class witness archived planning/evidence/repair/S097-df5dcf6e6c3742818b3dac8a07824411.json sha256 e5995a66db0207837067beab12d98213bfa4a761390fde9c2ab17640d5743973"
  ],
  "owner": "codex-sol-tools",
  "reviewer": "bp-service.lisp:610-615: fnn-store-fault is re-signalled, but fnn-store-indeterminate (a subtype of fnn-store-error, io.lisp:92) is caught by the transport branch and becomes :uncertain/:failed. The only realistic indeterminate source inside this session is finding 2's stray inbound staging (tcpcl.lisp:273), so (a) needs a misbehaving peer plus EIO, and it fences a file nothing reads. (b) is real: socket is set to nil at line 582 before the fragment loop. The inner handler (606-607) catches only os and socket errors, so a store-error in fragment session 2 or later reaches the outer handler. That handler sets :failed and skips fn-bpfs-fragment-outcome, the function that turns a later fragment's :failed into :uncertain (books/bp-fragment-send.lisp:1308-1310). The trigger for (b) is narrow, because params are unchanged across fragment sessions.",
@@ -32,7 +33,92 @@
  "slice": "wrapper",
  "source": "sweep-2026-10-03",
  "state": "in-progress",
- "test": "python3 -m unittest tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_indeterminate_keeps_exact_class",
+ "test": "python3 -m unittest tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_later_fragment_named_refusal_retains_uncertain_prefix",
  "title": "bp-service send path reports an indeterminate publication as transport :uncertain/:failed, and reports :failed after fragments were sent",
- "updated": "2026-10-03T08:33:05Z"
+ "updated": "2026-10-03T08:39:15Z",
+ "verify": {
+  "base": "c3585ba3a36cfd394e3b7f98f423af70b625bfdf",
+  "base_observation": {
+   "result": {
+    "assertions": [
+     {
+      "message": "ambiguous Store publication must retain its exact class",
+      "test": "tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_indeterminate_keeps_exact_class",
+      "type": "AssertionError"
+     }
+    ],
+    "errors": [],
+    "executed": [
+     "tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_indeterminate_keeps_exact_class"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_native_bp_send_boundary.py": "fd8c592c79103ef0ac1dfab67591b793fdca6c495903bdb49fa424d2f852493e"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 1,
+   "revision": "c3585ba3a36cfd394e3b7f98f423af70b625bfdf",
+   "stderr": "test_indeterminate_keeps_exact_class (tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_indeterminate_keeps_exact_class) ... FAIL\n\n======================================================================\nFAIL: test_indeterminate_keeps_exact_class (tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_indeterminate_keeps_exact_class)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-g147hi3e/wt/tests/test_native_bp_send_boundary.py\", line 22, in test_indeterminate_keeps_exact_class\n    self.schedule(\"indeterminate\", \"ambiguous Store publication must retain its exact class\")\n    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-g147hi3e/wt/tests/test_native_bp_send_boundary.py\", line 16, in schedule\n    self.fail(intended)\n    ~~~~~~~~~^^^^^^^^^^\nAssertionError: ambiguous Store publication must retain its exact class\n\n----------------------------------------------------------------------\nRan 1 test in 0.135s\n\nFAILED (failures=1)\n",
+   "stdout": ""
+  },
+  "changed_files": [
+   "LANEDUMP.md",
+   "host/native/bp-service.lisp",
+   "planning/repair/items/S097.json",
+   "specs/bp-node-machine.md",
+   "tests/native_bp_send_boundary_raw.lisp",
+   "tests/test_native_bp_send_boundary.py"
+  ],
+  "diff_lines": 225,
+  "evidence": {
+   "bytes": 4156,
+   "path": "planning/evidence/repair/S097-df5dcf6e6c3742818b3dac8a07824411.json",
+   "sha256": "e5995a66db0207837067beab12d98213bfa4a761390fde9c2ab17640d5743973"
+  },
+  "evidence_outcome": "archived",
+  "expected_failure": {
+   "message": "ambiguous Store publication must retain its exact class",
+   "test": "tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_indeterminate_keeps_exact_class"
+  },
+  "green_at_head": true,
+  "harness": {
+   "tests/native_bp_send_boundary_raw.lisp": "58a07a1cb618caf5038e570b069ada2b15c0773e790dd132504c66158fab41f4",
+   "tests/test_native_bp_send_boundary.py": "fd8c592c79103ef0ac1dfab67591b793fdca6c495903bdb49fa424d2f852493e"
+  },
+  "head": "4b4957525625451232ef45110aeb791e04b34db8",
+  "head_observation": {
+   "result": {
+    "assertions": [],
+    "errors": [],
+    "executed": [
+     "tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_indeterminate_keeps_exact_class"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_native_bp_send_boundary.py": "fd8c592c79103ef0ac1dfab67591b793fdca6c495903bdb49fa424d2f852493e"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 0,
+   "revision": "4b4957525625451232ef45110aeb791e04b34db8",
+   "stderr": "test_indeterminate_keeps_exact_class (tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_indeterminate_keeps_exact_class) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.130s\n\nOK\n",
+   "stdout": ""
+  },
+  "interpreter": "/opt/homebrew/bin/python3",
+  "ok": true,
+  "problems": [],
+  "red_at_base": true,
+  "runner_sha256": "ffc7d9542fbfe2d4e23f03f31dd170f32ef1a8529d41ebbccc36f18c52946106",
+  "same_tests": true,
+  "semantic_ok": true,
+  "test": "python3 -m unittest tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_indeterminate_keeps_exact_class",
+  "timeout": 1800.0
+ }
 }
