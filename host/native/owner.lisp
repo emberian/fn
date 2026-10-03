@@ -7927,15 +7927,12 @@ torn last entry follows.  Answers the offset the writer resumes at."
       (fnn-close rfd))))
 
 (defun fnn-owner-journal-close ()
-  "After the writer stopped: observe descriptor close without silent release."
+  "After writer join, consume fd once; any log/journal close debt stays uncertain."
   (let ((fd *fnn-journal-fd*))
+    (setq *fnn-journal-fd* nil *fnn-journal-w* nil)
     (if fd
-        (handler-case
-            (progn (fnn-close fd)
-                   (setq *fnn-journal-fd* nil *fnn-journal-w* nil)
-                   :closed)
-          (error () :uncertain))
-      :absent)))
+        (fnn-log-physical-close fd :decision-journal)
+      (if (eq (fnn-log-close-debt-observation) :closed) :absent :uncertain))))
 
 (defun fnn-owner-open-log (path)
   (fnn-open path
@@ -7946,6 +7943,8 @@ torn last entry follows.  Answers the offset the writer resumes at."
 (defvar *fnn-owner-log-handled* 0)
 
 (defun fnn-owner-maybe-reopen-log (service)
+  (unless (eq (fnn-log-close-debt-observation) :closed)
+    (fnn-indeterminate "service log physical return remains unobserved"))
   (let ((requested *fnn-sighup-count*))
     (unless (= requested *fnn-owner-log-handled*)
       (let ((decision (fnn-owner-serialized
@@ -7966,7 +7965,8 @@ torn last entry follows.  Answers the offset the writer resumes at."
                 (fnn-log-swap-fd fd)
                 (fnn-owner-log 'fn-owner-log-line))
             (error (condition)
-              ;; The old descriptor stays: a failed reopen loses no line.
+              ;; Before transfer the old descriptor stays; after transfer a
+              ;; close fault is retained by the log debt ledger.
               (fnn-err "service log reopen failed: ~a" condition))))
         (setq *fnn-owner-log-handled* (second decision))))))
 
