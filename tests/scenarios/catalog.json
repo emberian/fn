@@ -8597,6 +8597,40 @@
         "planning/evidence/operator-retire-observation-2026-10-03-v2.json"
       ],
       "execution_scope": "SBCL actual source with explicit clock/scheduling/owner/stat observations; no saved-image or physical durability qualification."
+    },
+    {
+      "id": "SCN-1099",
+      "title": "Stalled HTTP input, handshake and POST completion yield to healthy readers; cancelled semantic operations retain custody",
+      "milestone": "M6",
+      "status": "specified",
+      "requirements": [
+        "WEB-006"
+      ],
+      "steps": [
+        "Hold a plain partial request or a TLS connection without its handshake, then GET health/signin and redeem an invitation on healthy connections.",
+        "Hold a POST barrier; fetch HTTP health while POST is pending, then release and read its accepted answer.",
+        "Drive actual raw continuation consumer through partial writes, cold render/poll, same-session competing requests, cancelled semantic worker activation and late completion."
+      ],
+      "expected": [
+        "Healthy HTTP requests finish before the stalled socket deadline; exactly one configured bounded actor family, never one thread per client.",
+        "A pending POST emits no early outcome, health remains responsive and its acceptance follows the barrier.",
+        "Exact output bytes survive partial writes/windows; same-session semantic flows cannot share one await slot; cancellation closes transport immediately but releases operation custody only after no-future-worker-publication, and cleanup is once-only."
+      ],
+      "evidence": [
+        "tests/test_native_web.py",
+        "tests/test_native_host_lifecycle.py",
+        "tests/native_web_reactor_raw.lisp",
+        "planning/evidence/web-continuations-2026-10-03.md"
+      ],
+      "implementation": {
+        "test": "tests.test_native_web",
+        "cases": [
+          "NativeWebFaceTests.test_stalled_socket_does_not_block_health_reader_or_account_post",
+          "NativeWebFaceTlsTests.test_stalled_socket_does_not_block_health_reader_or_account_post"
+        ],
+        "native": true
+      },
+      "note": "Raw fixture passed on lane source; native-image scenario pending. No runtime/qualification claim transferred from an earlier image."
     }
   ]
 }

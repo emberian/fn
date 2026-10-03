@@ -5274,3 +5274,11 @@
 (definterface fn-nret-observation-poll-seconds :class :common-lisp-compliant)
 (definterface fn-nret-observation-expired-line :class :common-lisp-compliant)
 (definterface fn-nret-observation-fault-line :class :common-lisp-compliant)
+
+; HTTP reactor uses these actual ACL2 scheduling and lease projections.
+(definterface fn-web-host-connection-limit :class ::program)
+(definterface fn-web-host-request-end :class ::program)
+(definterface fn-web-host-window-end :class ::program)
+(definterface fn-web-host-read-size :class ::program)
+(definterface fn-web-host-event-cid :class ::program)
+(definterface fn-web-host-reserve-size :class ::program)
