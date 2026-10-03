@@ -22,7 +22,7 @@
 
 (defun fn-native-control-host-withdraw-result (cause)
   (declare (xargs :mode :program :guard t))
-  (fn-mwo-after-withdraw cause))
+  (fn-mwo-after-authorization cause))
 
 (defun fn-native-control-host-topic-request-encode (operation sequence quota)
   (declare (xargs :mode :program))

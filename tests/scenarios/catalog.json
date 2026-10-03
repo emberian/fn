@@ -9377,18 +9377,18 @@
     },
     {
       "id": "SCN-1124",
-      "title": "Withdrawn configuration remains visible when cause submission fails",
+      "title": "Withdrawal authorization remains visible when cause submission fails",
       "requirements": [
         "HST-008"
       ],
       "setup": "Literal native moderation dispatcher, ACL2 combined outcome and wrapper; named publication/submission adapters record actual call order and completed publication.",
       "steps": [
-        "Publish withdrawal, then return each cause outcome.",
+        "Publish withdrawal authorization, then return each cause outcome.",
         "Refuse before publication and check no cause submission.",
-        "Execute already-withdrawn plan and malformed cause results."
+        "Execute already-authorized plan and malformed cause results."
       ],
       "expected": [
-        "Incomplete cause never reports bare refusal of the whole action; reason explicitly names completed withdrawal.",
+        "Incomplete cause never reports bare refusal of the whole action; reason explicitly names published withdrawal authorization.",
         "Cause fault remains fault and successful/duplicate cause remains successful.",
         "Admin refusal does not submit; malformed cause is fault."
       ],

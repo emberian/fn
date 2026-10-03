@@ -2906,8 +2906,12 @@ matching fullowner scenario; no machine-throughput/durability guarantee fromtime
 
 Root S083 continuation: ACL2composed withdrawal/cause result now connected to
 actual native moderationdispatcher. No new wireenum. Refused cause after
-publication reportsUNCERTAIN withdrawn-cause-refused; clock/profile/conflict
+publication reportsUNCERTAIN withdrawal-authorized-cause-refused; clock/profile/conflict
 and fault distinguished. Sourcefixture actualdispatcherPASS0.058s; normal
 ACL2guard+assertionsPASS0.01s442steps in retainedroot-control-observation world.
 S083keptopen pendingfullnativecomposition and currentauthority/generationrace
 review. No atomicity claimed for these separate ownerquanta.
+
+S083scope correction from directconfig/control-authority trace: row onlyauthorizes
+cause; targetwithdrawal requirescause. Reasons/docs nownameauthorizationpublished,
+not alreadywithdrawn. Originalreviewscenariooverstatedphysicaleffect.
