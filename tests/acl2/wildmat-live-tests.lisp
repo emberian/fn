@@ -84,3 +84,47 @@
   (and (natp 0) (fn-wmc-shapedp s) (not (fn-wml-retainedp s 0 0 0))
        (not (<= (+ (fn-wml-live-cells s) (fn-wml-target s))
                  (fn-wml-owned-capacity 0 0 0))))) :rule-classes nil)
+
+
+; Literal exports: reachable positives are distinct from corrupted-state
+; hypothesis removals. Numeric/profile facts are stated by each conclusion.
+(defthm wmlt-start-retained-literal-positive
+ (and (fn-wildmat-pattern-listp *wmlt-patterns*)
+      (fn-wml-retainedp (fn-wmc-start *wmlt-patterns* "abb")
+        (len *wmlt-patterns*) (fn-wm-total-items *wmlt-patterns*) (length "abb")))
+ :rule-classes nil)
+(defthm wmlt-start-retained-without-parsed-corrupted-state
+ (let ((p (list (make-list 40 :initial-element nil))))
+  (and (not (fn-wildmat-pattern-listp p))
+       (not (fn-wml-retainedp (fn-wmc-start p "")
+              (len p) (fn-wm-total-items p) (length "")))))
+ :rule-classes nil)
+(defthm wmlt-one-retained-literal-positive
+ (and (fn-wml-retainedp *wmlt-row* 3 12 3)
+      (fn-wml-retainedp (fn-wmc-one *wmlt-row*) 3 12 3))
+ :rule-classes nil)
+(defthm wmlt-one-retained-without-carried-corrupted-state
+ (let ((s (fn-wmc-state (fn-wmc-return (make-list 40 :initial-element nil) 0) nil)))
+  (and (not (fn-wml-retainedp s 0 0 0))
+       (not (fn-wml-retainedp (fn-wmc-one s) 0 0 0))))
+ :rule-classes nil)
+(defthm wmlt-step-retained-literal-positive
+ (and (fn-wml-retainedp *wmlt-row* 3 12 3)
+      (fn-wmc-acceptedp *wmlt-row* 1 (fn-wmc-demand *wmlt-row*))
+      (fn-wml-retainedp (fn-wmc-step *wmlt-row* 1 (fn-wmc-demand *wmlt-row*)) 3 12 3))
+ :rule-classes nil)
+(defthm wmlt-step-retained-without-carried-corrupted-state
+ (let ((s (fn-wmc-state (fn-wmc-return (make-list 40 :initial-element nil) 0) nil)))
+  (and (not (fn-wml-retainedp s 0 0 0))
+       (not (fn-wml-retainedp (fn-wmc-step s 1 (fn-wmc-demand s)) 0 0 0))))
+ :rule-classes nil)
+(defthm wmlt-borrowed-pattern-literal-positive
+ (and (fn-wildmat-pattern-listp *wmlt-patterns*)
+      (equal (fn-wml-tree-cells *wmlt-patterns*)
+             (+ (* 3 (len *wmlt-patterns*)) (fn-wm-total-items *wmlt-patterns*))))
+ :rule-classes nil)
+(defthm wmlt-borrowed-pattern-without-parsed-corrupted-state
+ (let ((p (list (make-list 40 :initial-element nil))))
+  (and (not (fn-wildmat-pattern-listp p))
+       (not (equal (fn-wml-tree-cells p) (+ (* 3 (len p)) (fn-wm-total-items p))))))
+ :rule-classes nil)
