@@ -849,7 +849,7 @@ leaf hint fanout; matching batch is outstanding. Generated projections
 are accurate, not a green source verdict.
 
 S097 BP send observation boundary, codex-sol-tools
-=========================================fnn-bps-send-effect-next preserves every Store condition except the exact
+
 base named session refusal; indeterminate/core and unknown subclasses
 escape to the owner boundary without publishing a transport job result.
 The actual transfer index survives clearing the first socket; outer named
@@ -960,3 +960,32 @@ POST240/stored-source evidence stopped at retention refusal, not peer recovery.
 First matching-image selector: python3 -m tools.resilience.adapters.bp_node
 --image DEVELOPER --producer-image MATCHING_DEFAULT --variant lose-completion.
 Replay after actual retention repair remains Integration's source/image task.
+=======
+Final source replay uses one encapsulate, dropping locals:30forms,2.14 ACL2 s,
+1,513,918 steps.15 test forms652 steps: sparse misses, actual first successful
+decision, excluded wildcard, first-zero duplicate, overflow number, invalid ID,
+empty settlement and offset-invariant hypothesis removal. Guards verified.
+Strict scoped theory/book-order check and diff check pass. Test-root check
+requires new selector test in Makefile ACL2_BOOKS; inherited cursor/plan tests
+also lack entries at this base. Served owns consumer/controller integration,
+registry/spec/scenario and root wiring with Integration. No certificate/native
+or composed served claim yet. Evidence archived/indexed under
+planning/evidence/dc03-selector-20261003/{checks.json,selector-repl.log.gz}.
+
+## Clean serializer proof repair (2026-10-03)
+
+Integration frozen321 certification refused FN-SL-LOOP-RESIDUAL: the warm
+catalog world had supplied accumulator algebra absent in the clean book.
+Three new LOCAL facts establish append/revappend normalization, accumulator
+length and true-list output. Existing executable functions and public theorem
+statements unchanged. Clean replay also exposed/fixed the next byte-bound gap.
+
+Fresh hbox dc03-serializer-clean loaded nntp-session from matching certificates
+and def-cursor from source inside encapsulate, no catalog events. Replayed the
+entire assembled serializer (7636b9078 book hash c7e9fddc plus this local patch,
+composed hash9a3b2c7d) from fn-sl-make inside one encapsulate:49forms,0.33ACL2s,
+94,114steps; local events dropped. Residual/byte/list/shape/cell proofs and guards
+pass. Scoped strict theory/book-order and diff checks pass. Evidence archived
+and indexed at planning/evidence/dc03-serializer-clean-20261003/{checks.json,repl.log.gz}.
+No certificate claim here: Integration reuses241passed artifacts and retries
+the exact five failed roots on its next repaired candidate.
