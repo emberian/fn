@@ -208,3 +208,12 @@ It writes literal `assert-event` forms to
 exact held/released answers and `fn-hmc-invp` at every observed prefix.
 Finite replay is not an all-schedules proof or an image qualification.
 Empirical owns the next actual extent-label consumer on this frozen seam.
+
+Groundwork replayed all four exact producer-emitted assertion packets in the
+clean protected `hmc-direct-read` world: PASS, <0.01 seconds and zero proof
+steps. Startup reused ten exact cached dependencies (0.87 seconds / 532,452
+steps). The source producer is d4cb69168; the native log, literal replay-input
+transcript and machine/packet hashes are filed under
+`planning/evidence/runtime-observation-2026-10-03/`. This first packet checks
+finite O-only behavior. It does not qualify the image or missing PageIO/pins
+primitive sites, and leaves PRF-1254 planned.
