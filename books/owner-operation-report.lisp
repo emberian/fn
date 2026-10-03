@@ -42,3 +42,20 @@
                       (t (fn-owner-history-writer-gate token state)))))
   (fn-oor-report current reason (fn-owner-canonical-epoch state)
                  (and (symbolp fault) fault) budget)))
+
+(verify-guards fn-oor-report
+ :hints (("Goal" :in-theory (disable fn-od-fields fn-apr-livep fn-apr-naturals fn-prl-nth))))
+(verify-guards fn-owner-operation-report
+ :hints (("Goal" :in-theory (disable fn-oor-report))))
+(local
+(defthm fn-oor-fields-budget
+ (implies (natp budget)
+  (<= (len (mv-nth 1 (fn-od-fields fields budget))) budget))
+ :hints (("Goal" :use ((:instance fn-od-fields-within-budget))
+                 :in-theory (disable fn-od-fields)))
+ :rule-classes :linear))
+(defthm fn-oor-report-within-budget
+ (implies (natp budget)
+  (<= (len (mv-nth 1 (fn-oor-report current reason epoch fault budget))) budget))
+ :hints (("Goal" :in-theory (e/d (fn-oor-report) (fn-od-fields fn-apr-livep fn-apr-naturals fn-prl-nth))))
+ :rule-classes nil)

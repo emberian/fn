@@ -22667,7 +22667,7 @@
     {
       "id": "PRF-1292",
       "title": "Bounded read-only owner operation diagnostic projection",
-      "statement": "fn-native-live-status-host-answer handles :operation using fn-owner-operation-report over the retained canonical admission slot, epoch and writer-gate state. The fixed scalar renderer fn-oor-report suppresses borrowed source graphs and refuses a response that exceeds its octet budget. State is read only; no pool admission, release, settlement or whole-process memory claim follows. Guard verification and universal response-size proof remain owed.",
+      "statement": "fn-native-live-status-host-answer handles :operation using fn-owner-operation-report over the retained canonical admission slot, epoch and writer-gate state. The fixed scalar renderer fn-oor-report suppresses borrowed source graphs and refuses a response that exceeds its octet budget. State is read only; no pool admission, release, settlement or whole-process memory claim follows. Both scalar and STATE-readout guards and the universal scalar-renderer size bound are admitted in a normal warm ACL2 world; certificate and composed native socket execution remain pending.",
       "milestone": "M4",
       "requirements": [
         "HST-008"
@@ -22675,13 +22675,15 @@
       "depends_on": [],
       "assumptions": [],
       "status": "planned",
-      "events": [],
+      "events": [
+        "fn-oor-report-within-budget"
+      ],
       "evidence": [
         "books/owner-operation-report.lisp",
         "host/native-live-status-host.lisp",
         "tests/test_owner_operation_report.py"
       ],
-      "progress_note": "Source consumer and literal ordinary-Lisp checks implemented; no ACL2 admission/certificate claim yet. Actual token/current-slot/writer-gate/renderer/operator selector and host answer bodies exercised; STATE storage and frame codec/digest are fixture adapters. Full source-loaded socket execution remains pending."
+      "progress_note": "Twelve literal dependency/consumer definitions admitted normally; both actual consumer guards and universal fn-oor-report-within-budget admitted in0.03ACL2s/10801steps. Ordinary-Lisp actual host reply/cache/CLI path tests pass with named STATE/frame adapters. No certificate, image, full socket or physical funding claim."
     }
   ]
 }
