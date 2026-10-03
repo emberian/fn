@@ -3488,3 +3488,44 @@ cleanup, late uncertainty/fault/raw throw, sibling close, no-child, parked
 post-create compensation and after-release failure. Complete transport custody
 (especially aliases cleared by existing flight cleanup), charging and native
 interpreter correspondence remain open; no physical endpoint verdict yet.
+
+Runtime snapshot actor convergence handoff (2026-10-03)
+-----------------------------------------------------
+Publication/export manual thread paths converted in-flight before the yield
+instruction. Shared actor before-start callback publishes native sidecars
+under roster before latch wake; captured snapshot envelope retained before
+pin, release once-only and independent physical receipt. Real thread tests
+with actual export body/recording pin+archive leaves PASS~0.17s: early exit,
+failed live join, held cleanup, operation fault/raw throw, torn pin/unpin,
+no-child and parked post-create failures. Capture-held compensation uses the
+existing held fence, avoiding recursive O. Helper frozen
+fnn-owner-snapshot-jobs-drained-p(service); Operator owns actual root-close
+conjunction/debt diagnostic plus its caller test. Existing background/mux/pull/
+payload physical schedules pass after the optional pre-wake hook addition.
+Full file/native interpreter correspondence, pin primitive authenticity,
+complete funding/HM and scoped source certification remain open.
+
+Yield state: no owned ACL2 world or running computation. History alone owns
+history-current-union-resumed at /tank/fn/scratch/history-current-union-5a3d81,
+normal host entry still pending as of this handoff. Owned compressed endpoint
+driver: tests.test_native_web.NativeWebFaceTests.
+test_compressed_article_uses_physical_windows_through_web_and_restart (TLS
+sibling also prepared). Current ordinary ARTICLE READY4/render6, same-pool
+DEFAULT DATA8 readiness and persistent scratch must be loaded together; no old
+ad8/stobj overlay verdict transfer. Empirical decoded hold/cancel/reopen
+SCN1129 is complementary. Integration alone writes dev and generated views.
+Current queue residuals: actual compressed ARTICLE/Web/reopen execution;
+remaining actor families and physical/semantic teardown composition; hidden
+wait/P/O HM observation; complete physical tariffs and assurance refinements.
+
+History closeout correction: no current native entry exists and no endpoint
+execution is feasible in this cut. The tested retained checkpoint is
+/tank/fn/scratch/history-current-union-5a3d81/build/current-owner-storage-retained
+(.core and .execution.json companions). History reports restart verified early
+P3 attachments and actual config/scanner methods. Final source recipe has 94
+explicit assurance theorem omissions, retaining definitions/required guards,
+at /tank/fn/scratch/history-current-union-c3438b633/build/current-logical-local-scopes94
+(.lisp/.json). About 490 logical scopes plus normal host/current additive cohort
+remain; this is a retained startup frontier, not an initialized native owner.
+History alone hands that checkpoint/process state to Root; Runtime owns no
+live process to stop or transfer.

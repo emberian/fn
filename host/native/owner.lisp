@@ -247,6 +247,9 @@ not armed. Instrumentation has no semantic or admission role."
   (response-pins nil)
   ;; The checkpoint publication's thread while one runs (fnn-owner-maybe-publish).
   (publisher nil)
+  ;; Captured publication/export resources survive a failed start, terminal
+  ;; cleanup escape and physical join independently of the activity slots.
+  (snapshot-jobs nil)
   ;; Row S3b: the export's thread while one runs (fnn-owner-export-request),
   ;; the last export's outcome ((:done . N) or (:failed . WORD)) and its
   ;; DIR: ACL2's two observations for `store export' and `store export
@@ -1615,6 +1618,16 @@ one ring, so the table's key and the served boundary's are one source."
 (defvar *fnn-actor-start-signal* #'sb-thread:signal-semaphore)
 (defvar *fnn-actor-thread-terminator* #'sb-thread:terminate-thread)
 
+(defun fnn-owner-actor-fault-service (service condition)
+  "The physical lifecycle fault boundary may run inside a capture section.
+Use its held fence without recursively acquiring the owner's mutex."
+  (let ((lock (fnn-owner-service-lock service)))
+    (if (and lock (sb-thread:holding-mutex-p lock))
+        (progn
+          (fnn-owner-stop-service-locked service +fnn-exit-fault+)
+          (fnn-err "owner actor fault during capture; process stopped: ~a" condition))
+      (fnn-owner-fault-service service nil condition))))
+
 (defun fnn-owner-actor-run (service actor thunk escape)
   "A private actor's top boundary; a torn step is never retried."
   (let ((*fnn-section-step* nil) (completed nil) (kind nil))
@@ -1637,7 +1650,7 @@ one ring, so the table's key and the served boundary's are one source."
               (fn-fs-actor-step (fnn-owner-actor-state actor)
                                 (list :exit (fn-fs-actor-exit-kind completed kind))))))))
 
-(defun fnn-owner-actor-start (service custody thunk name rosterp escape &optional physical-callback)
+(defun fnn-owner-actor-start (service custody thunk name rosterp escape &optional physical-callback before-start)
   "Reserve before spawn, then publish the thread object before releasing its
 start latch. Failure after thread creation retains custody through physical
 termination; only the maker's no-child failure cancels the reservation."
@@ -1674,7 +1687,11 @@ termination; only the maker's no-child failure cancels the reservation."
           (fnn-with-roster (service)
             (setf (fnn-owner-actor-state actor)
                   (fn-fs-actor-step (fnn-owner-actor-state actor) '(:spawned t)))
-            (when rosterp (push worker (fnn-owner-service-workers service))))
+            (when rosterp (push worker (fnn-owner-service-workers service)))
+            ;; A consumer's native activity slot must be installed before
+            ;; the child can finish and clear it. Callback holds the roster;
+            ;; it only publishes captured references, never enters the core.
+            (when before-start (funcall before-start worker)))
           (funcall *fnn-actor-start-signal* latch)
           (values worker actor))
       (serious-condition (condition)
@@ -1688,15 +1705,15 @@ termination; only the maker's no-child failure cancels the reservation."
                ;; once without blocking this compensation; shutdown retains
                ;; the reservation and performs the eventual physical drain.
                (fnn-owner-actor-join service worker :timeout 0))
-          (fnn-owner-fault-service service nil condition))
+          (fnn-owner-actor-fault-service service condition))
         (error condition)))))
 
 (defmacro def-actor (name &key thread-name roster)
   "Generate the physical lifecycle starter, sharing ACL2's failure model.
 Private decision steps must avoid live STATE, hons/memoize and protected
 abstract-stobj exports; shared-state work enters declared owner sections."
-  `(defun ,name (service custody thunk &optional escape physical-callback)
-     (fnn-owner-actor-start service custody thunk ,thread-name ,roster escape physical-callback)))
+  `(defun ,name (service custody thunk &optional escape physical-callback before-start)
+     (fnn-owner-actor-start service custody thunk ,thread-name ,roster escape physical-callback before-start)))
 
 (def-actor fnn-owner-spawn-syncer :thread-name "fn owner syncer" :roster t)
 (def-actor fnn-owner-spawn-committer :thread-name "fn owner committer" :roster nil)
@@ -1719,9 +1736,9 @@ failed/timed-out join fault the service and retain registration and custody."
       (serious-condition (e) (setq condition e)))
     (let ((ended (not (sb-thread:thread-alive-p worker))))
       (when (eq (fn-fs-actor-join-action ended (not condition)) :fault)
-        (fnn-owner-fault-service
-         service nil (or condition (make-condition 'fnn-store-fault
-                                                   :message "actor join did not observe termination"))))
+        (fnn-owner-actor-fault-service
+         service (or condition (make-condition 'fnn-store-fault
+                                               :message "actor join did not observe termination"))))
       (fnn-with-roster (service)
         (let ((actor (find worker (fnn-owner-service-actors service)
                            :key #'fnn-owner-actor-thread :test #'eq)))
@@ -6802,6 +6819,97 @@ mutex; other faults stop the owner. Neither terminal outcome resumes serving."
       (loop until (probe-file release) do (sleep 0.05))
       (fnn-err "WORKER-TAIL released worker=~a" name))))
 
+(defvar *fnn-snapshot-job* nil)
+(defstruct (fnn-snapshot-job (:constructor %make-fnn-snapshot-job))
+  kind captured arena pin thread (stage :pinning) physical condition)
+
+(def-actor fnn-owner-spawn-publisher :thread-name "fn owner checkpoint" :roster t)
+(def-actor fnn-owner-spawn-exporter :thread-name "fn owner export" :roster t)
+
+(defun fnn-owner-snapshot-job-capture (service kind captured)
+  "Owner held. Retain the envelope before the possibly torn pin operation."
+  (let ((job (%make-fnn-snapshot-job :kind kind :captured captured
+                                     :arena (fnn-live-arena))))
+    (fnn-with-roster (service)
+      (push job (fnn-owner-service-snapshot-jobs service)))
+    (setf (fnn-snapshot-job-pin job) (fnn-arena-pin)
+          (fnn-snapshot-job-stage job) :holding)
+    job))
+
+(defun fnn-owner-snapshot-job-release (service job)
+  "Once-only pin release. Calling/unknown cleanup is retained, never retried."
+  (when (fnn-with-roster (service)
+          (when (eq (fnn-snapshot-job-stage job) :holding)
+            (setf (fnn-snapshot-job-stage job) :releasing)
+            t))
+    (handler-case
+        (progn
+          (fnn-arena-unpin (fnn-snapshot-job-pin job))
+          (fnn-with-roster (service)
+            (setf (fnn-snapshot-job-pin job) nil
+                  (fnn-snapshot-job-stage job) :released)))
+      (serious-condition (condition)
+        (fnn-with-roster (service)
+          (setf (fnn-snapshot-job-condition job) condition))
+        (error condition)))))
+
+(defun fnn-owner-snapshot-job-physical (service job receipt)
+  "Actual terminal join or definite no-child, separate from pin cleanup."
+  (unless (member receipt '(:terminal :no-actor-created))
+    (fnn-fault "unknown snapshot physical receipt ~s" receipt))
+  (fnn-with-roster (service)
+    (setf (fnn-snapshot-job-physical job) receipt)
+    (let ((worker (fnn-snapshot-job-thread job)))
+      (when worker
+        (when (eq worker (fnn-owner-service-publisher service))
+          (setf (fnn-owner-service-publisher service) nil))
+        (when (eq worker (fnn-owner-service-exporter service))
+          (setf (fnn-owner-service-exporter service) nil)))))
+  ;; A parked child never entered its cleanup, so physical termination is
+  ;; the first point where the starter can release its captured reader pin.
+  (fnn-owner-snapshot-job-release service job)
+  (fnn-with-roster (service)
+    (when (eq (fnn-snapshot-job-stage job) :released)
+      (setf (fnn-snapshot-job-captured job) nil
+            (fnn-snapshot-job-arena job) nil
+            (fnn-owner-service-snapshot-jobs service)
+            (delete job (fnn-owner-service-snapshot-jobs service) :test #'eq)))))
+
+(defun fnn-owner-snapshot-jobs-drained-p (service)
+  "Physical cleanup observation; a joined actor with pin debt is not drained."
+  (fnn-with-roster (service)
+    (null (fnn-owner-service-snapshot-jobs service))))
+
+(defun fnn-owner-snapshot-pin-release (service pin)
+  ;; Keep the old direct-call ABI while the actual starters retain JOB.
+  (if *fnn-snapshot-job*
+      (fnn-owner-snapshot-job-release service *fnn-snapshot-job*)
+    (when pin (fnn-arena-unpin pin))))
+
+(defun fnn-owner-snapshot-job-run (service job thunk)
+  (let ((*fnn-snapshot-job* job))
+    (unwind-protect (funcall thunk)
+      (fnn-owner-snapshot-job-release service job))))
+
+(defun fnn-owner-publisher-start (service captured position)
+  "Owner held: retain snapshot and publish activity slot before actor wake."
+  (let ((job (fnn-owner-snapshot-job-capture service :publisher captured)))
+    (fnn-owner-spawn-publisher
+     service (list job)
+     (lambda ()
+       (let ((*fnn-checkpoint-stop-test*
+               (lambda () (fnn-with-roster (service) (fnn-owner-service-stopping service)))))
+         (fnn-owner-snapshot-job-run
+          service job
+          (lambda ()
+            (fnn-owner-publish-captured service captured (fnn-snapshot-job-arena job)
+                                        position (fnn-snapshot-job-pin job))))))
+     (lambda (condition) (fnn-owner-thread-escape service condition "CHECKPOINT actor" t))
+     (lambda (receipt) (fnn-owner-snapshot-job-physical service job receipt))
+     (lambda (worker)
+       (setf (fnn-snapshot-job-thread job) worker
+             (fnn-owner-service-publisher service) worker)))))
+
 (defun fnn-owner-publish-captured (service captured arena &optional position pin)
   "The publication's thread: ACL2's fn-ock-next-checkpoint over the values
 captured under the owner mutex (NEXT, the capture of the history at the
@@ -6817,12 +6925,9 @@ through fn-bs-scp-program's staged file before the next), all outside the
 mutex; then fn-owner-sco-publication-done under it.  A failed write leaves
 the old checkpoint (or, at and after the rename, the old or the new one:
 the crash keystone) and serving continues."
-  ;; r71 F10 (sweep S018): this thread stays in the worker roster through
-  ;; every action it takes -- the publication, its unpin, the nursery, the
-  ;; next decision -- and leaves it as the last act of its unwind, so the
-  ;; stop's join (fnn-owner-wait-workers) never sees `all joined' while it
-  ;; runs.  The publisher SLOT (one publication at a time) is released once
-  ;; the pin and the nursery are back, before the next decision.
+  ;; The registered actor retains the worker through the complete unwind
+  ;; and independent physical join. The activity SLOT can be released once
+  ;; pin cleanup and nursery restoration returned, before the next decision.
   (unwind-protect
        (progn
   ;; The publication allocates in proportion to the history: the open's
@@ -6976,8 +7081,8 @@ the crash keystone) and serving continues."
                                        *fnn-checkpoint-frames* dropped-paths pin arena)))
         nil))))
     (fnn-owner-worker-tail-hold "publisher")
-    (when pin (fnn-arena-unpin pin))
-    (fnn-owner-service-nursery))
+    (unwind-protect (fnn-owner-snapshot-pin-release service pin)
+      (fnn-owner-service-nursery)))
   ;; The slot: the next publication may start now (the pin and the nursery
   ;; are back).
   (fnn-owner-publisher-release service)
@@ -7005,12 +7110,9 @@ the crash keystone) and serving continues."
         (fnn-err "CHECKPOINT auto failed: ~a" e))
       (serious-condition (e)
         (ignore-errors (fnn-owner-fault-service service nil e))))))
-    ;; Last: the slot if a failure skipped its release, then the roster.
-    (fnn-owner-publisher-release service)
-    (fnn-with-roster (service)
-      (setf (fnn-owner-service-workers service)
-            (delete sb-thread:*current-thread*
-                    (fnn-owner-service-workers service) :test #'eq)))))
+    ;; The slot can be released here; actor/worker registration survives the
+    ;; complete unwind until the parent's independent physical join.
+    (fnn-owner-publisher-release service)))
 
 (defun fnn-owner-publisher-release (service)
   "Clear the publisher slot when it is this thread's (a later publication
@@ -7109,33 +7211,11 @@ reads run as a :control quantum; the thread's registration is the roster's."
             ;; before its thread starts: pinned on its own thread, a commit
             ;; completing between this capture and that pin could release a
             ;; staged page it reads (fnn-log-reseat-fenced runs under the
-            ;; mutex).  The thread unpins when it ends; a thread that was
-            ;; never made unpins here.
-            (fnn-with-roster (service)
-              (let ((thread (and (not (eq position :failed))
-                                 (let ((made nil) (pin (fnn-arena-pin))
-                                       (arena (fnn-live-arena)))
-                                   (unwind-protect
-                                        (setq made (sb-thread:make-thread
-                                                    (lambda ()
-                                                      ;; Lane scale-reads: the stop ends the
-                                                      ;; publication at its next batch
-                                                      ;; (io.lisp fnn-checkpoint-yield).
-                                                      (let ((*fnn-checkpoint-stop-test*
-                                                              (lambda ()
-                                                                (fnn-with-roster (service)
-                                                                  (fnn-owner-service-stopping
-                                                                   service)))))
-                                                        (fnn-owner-publish-captured
-                                                         service captured arena position pin)))
-                                                    :name "fn owner checkpoint"))
-                                     (unless made (fnn-arena-unpin pin)))))))
-                ;; Only a thread that exists takes the slot and joins the
-                ;; roster (r71 F12): a rotation refusal made none, and a NIL
-                ;; worker broke the stop's join.
-                (when thread
-                  (setf (fnn-owner-service-publisher service) thread)
-                  (push thread (fnn-owner-service-workers service)))))))))))))
+            ;; mutex). The registered job unpins once during cleanup; a
+            ;; definite no-child or physically ended parked child unpins at
+            ;; its terminal callback. A torn release retains native debt.
+            (unless (eq position :failed)
+              (fnn-owner-publisher-start service captured position))))))))))
 
 ;;; Row S3b (lane operability-7): `store export DIR' on the running owner
 ;;; (books/owner-export-request.lisp fn-oex-; SCN-210, PRF-988).  The export
@@ -7164,25 +7244,29 @@ runs, the last outcome and its DIR."
           (fnn-owner-service-export-dir service))))
 
 (defun fnn-owner-export-start (service captured dir)
-  "Under the owner mutex, an accepted request: pin the arena generation the
-capture saw, make the thread and register it (the exporter slot; the
-workers the stop joins).  A thread that was never made unpins here."
-  (fnn-with-roster (service)
-    (let ((made nil) (pin (fnn-arena-pin)) (arena (fnn-live-arena)))
-      (unwind-protect
-           (setq made (sb-thread:make-thread
-                       (lambda ()
-                         (let ((*fnn-checkpoint-stop-test*
-                                 (lambda ()
-                                   (fnn-with-roster (service)
-                                     (fnn-owner-service-stopping service)))))
-                           (fnn-owner-export-captured service captured dir pin arena)))
-                       :name "fn owner export"))
-        (unless made (fnn-arena-unpin pin)))
-      (setf (fnn-owner-service-exporter service) made
-            (fnn-owner-service-export-outcome service) nil
-            (fnn-owner-service-export-dir service) dir)
-      (push made (fnn-owner-service-workers service)))))
+  "Owner held: retain the pin/capture and activity slot before child wake."
+  (let ((job (fnn-owner-snapshot-job-capture service :exporter captured)))
+    (fnn-owner-spawn-exporter
+     service (list job)
+     (lambda ()
+       (let ((*fnn-checkpoint-stop-test*
+               (lambda () (fnn-with-roster (service) (fnn-owner-service-stopping service)))))
+         (fnn-owner-snapshot-job-run
+          service job
+          (lambda ()
+            (fnn-owner-export-captured service captured dir (fnn-snapshot-job-pin job)
+                                       (fnn-snapshot-job-arena job))))))
+     (lambda (condition)
+       (let ((kind (fnn-owner-thread-escape service condition "EXPORT actor" t)))
+         (when (eq kind :fault)
+           (fnn-with-roster (service)
+             (setf (fnn-owner-service-export-outcome service) (cons :failed :fault))))))
+     (lambda (receipt) (fnn-owner-snapshot-job-physical service job receipt))
+     (lambda (worker)
+       (setf (fnn-snapshot-job-thread job) worker
+             (fnn-owner-service-exporter service) worker
+             (fnn-owner-service-export-outcome service) nil
+             (fnn-owner-service-export-dir service) dir)))))
 
 (defun fnn-owner-export-write (store records count configs frontier dir arena)
   "fnn-command-store-export's program over the captured values, without an
@@ -7297,11 +7381,8 @@ the stop's refusal at a chunk boundary is `owner-stopping'."
       (fnn-with-roster (service)
         (setf (fnn-owner-service-exporter service) nil
               (fnn-owner-service-export-outcome service)
-              (or outcome (cons :failed :archive-write))
-              (fnn-owner-service-workers service)
-              (delete sb-thread:*current-thread*
-                      (fnn-owner-service-workers service) :test #'eq)))
-      (fnn-arena-unpin pin))))
+              (or outcome (cons :failed :archive-write))))
+      (fnn-owner-snapshot-pin-release service pin))))
 
 ;;; Q16 (lane online-reclaim): `store reclaim --dry-run' on the running
 ;;; owner (books/owner-reclaim.lisp; host/owner-host.lisp fn-owner-orc-*).
