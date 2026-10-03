@@ -101,5 +101,13 @@ class PartialSecretFiles(unittest.TestCase):
         self.assertIn("(fn-hx-unlink path)", m.group(0))
 
 
+class SelfSignedPartialFiles(unittest.TestCase):
+    def test_ssc_write_new_unlinks_what_it_created_on_failure(self):
+        # S093
+        text = (ROOT / "host/native/tls.lisp").read_text()
+        m = re.search(r"\(defun fnn-tls-ssc-write-new .*?\n\n", text, re.S)
+        self.assertIn("(unless written (ignore-errors (sb-posix:unlink path)))", m.group(0))
+
+
 if __name__ == "__main__":
     unittest.main()
