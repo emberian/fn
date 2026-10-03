@@ -1784,4 +1784,13 @@
     (fn-resource-ledgerp update-fn-rl-budgeti fn-rl-budget-length)))))
 
 (verify-guards fn-rl-install :hints (("Goal" :in-theory (e/d (fn-rl-profile-representable-p fn-rv-vectorp) (fn-resource-ledgerp fn-rl-wfp fn-rl-draw fn-rl-charge fn-rl-open fn-rl-resize-all fn-rl-store-words-from)))))
+
+(defthm fn-rl-install-keeps-representation
+ (implies (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger))
+  (let ((after (mv-nth 1 (fn-rl-install budget baseline reserve nslots ledger))))
+   (and (fn-resource-ledgerp after) (fn-rl-wfp after))))
+ :hints (("Goal" :in-theory (e/d
+   (fn-rl-install fn-rl-profile-representable-p fn-rv-vectorp fn-rl-open)
+   (fn-resource-ledgerp fn-rl-wfp fn-rl-draw fn-rl-charge fn-rl-resize-all
+    fn-rl-store-words-from fn-rl-words-representable-p)))))
 )
