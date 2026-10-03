@@ -22184,7 +22184,7 @@
         "tests/test_native_newnews_allocation_raw.sh"
       ],
       "events": [],
-      "progress_note": "Implementation and all new guards admitted in source-loaded ACL2 worlds. Actual normal native/private stobj cases pass empty/dot/text/4097-character lines at byte quanta1/2/7/256; complete58-byte NEWNEWS agrees with original reference at1/256. Direct line phase skips serialized catalog quantum and per-byte list/cursor allocation. Universal prefix/continuation bridge and literal theorem teeth remain open; no certificate, zero-allocation, physical heap tariff or image qualification claim."
+      "progress_note": "Implementation and all new guards admitted in source-loaded ACL2 worlds. Actual normal native/private stobj cases pass empty/dot/text/4097-character lines at byte quanta1/2/7/256; complete58-byte NEWNEWS agrees with original reference at1/256. Direct line phase skips serialized catalog quantum and per-byte list/cursor allocation. Universal prefix/continuation bridge and literal theorem teeth remain open; no certificate, zero-allocation, physical heap tariff or image qualification claim. Borrowed capacity vector plus valid END is connected through mux/plain/TLS range dispatch; actual selected-source partial/wait/drain/reuse and COLD fifth/END sixth tests pass. Default callers keep exact-length vectors; compression keeps exact-prefix copies. Evidence planning/evidence/borrowed-output-window-20261003.md. Universal refinement remains open."
     }
   ]
 }
