@@ -323,5 +323,20 @@
     "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
     "revision": "17088f4b00783cca3645ce13849077bddb12ce3d",
     "source_sha256": "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
+  },
+  "fnn-command-store-export": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "471922ffb + scoped E013 edits",
+    "source_sha256": "b4c66d4f51aedb0608c2d8aa400b401981f0d8a182d352eb80497ded77c5378b"
+  },
+  "fnn-command-store-import": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "471922ffb + scoped E013 edits",
+    "source_sha256": "b4c66d4f51aedb0608c2d8aa400b401981f0d8a182d352eb80497ded77c5378b"
+  },
+  "fnn-command-store-bless-snapshot": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "471922ffb + scoped E013 edits",
+    "source_sha256": "b4c66d4f51aedb0608c2d8aa400b401981f0d8a182d352eb80497ded77c5378b"
   }
 }
