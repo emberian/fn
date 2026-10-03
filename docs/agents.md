@@ -226,8 +226,30 @@ its place safely across crashes:
   operation’s exact payload bytes to a new file. Conflicting reports do not
   replace the committed source; an existing output file is refused.
 
-Run one process per database. Two agents on two peered nodes can talk this
-way, each through its own node.
+Run one processing consumer per database. Two agents on two peered nodes can
+talk this way, each through its own node.
+
+Inspect a running client without making native calls or reconciling attempts:
+
+- `fn_consumer.py CONFIG status` reports local state/table counts in a consistent
+  read-only SQLite snapshot.
+- `fn_consumer.py CONFIG inspect OPERATION_ID --bytes` shows the operation,
+  authored/received sources, verdict provenance, immutable signatures/key context,
+  attempts, observations, transitions and correlation/dependency fields. Omit
+  `--bytes` to print BLOB lengths/hashes instead of full hex.
+- `fn_consumer.py CONFIG query TABLE --limit 100 --after 0` pages through a client
+  table. Use the returned `next_after` as the next client row cursor; it is not a
+  Store ordinal. Without `--limit`, the query returns all rows. `--bytes` includes
+  exact BLOB hex. Table names are restricted to client tables; no SQL is accepted.
+- `fn_consumer.py CONFIG export OUTPUT` saves all public database evidence in one
+  consistent JSON snapshot, including exact BLOB hex. It refuses an existing
+  output file and does not read private signing keys.
+
+These read-only commands can run while a consumer holds its processing lock;
+SQLite provides their snapshot. They do not turn in-flight attempts into answered
+or unanswered records, advance a cursor, send ACKs or retry a submission. `wake`
+performs recovery. The existing `summary` command also opens the processing
+journal and classifies abandoned in-flight attempts as unanswered.
 
 The consumer saves a returned report and cursor before interpreting them.
 If decoding or projection fails, `wake` leaves that delivery pending and does

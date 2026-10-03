@@ -98,6 +98,7 @@ import tempfile
 
 APP_MAGIC = b"fn-app: e1/1"
 APP_MAGIC_V2 = b"fn-app: e1/2"
+INSPECTION_TABLES = ("meta", "app_state", "operations", "transitions", "inbox", "submissions", "attempts", "observations", "deliveries", "unattributed", "unattributed_deliveries", "outbox")
 SCHEMA_VERSION = "fn-consumer-2"
 VERIFIER = Path(__file__).resolve().parent / "fn_verify.py"
 SCHEMA = """
@@ -244,7 +245,7 @@ def cut(point):
 
 
 class Consumer:
-    def __init__(self, config_path):
+    def __init__(self, config_path, *, read_only=False):
         self.config = json.loads(Path(config_path).read_text(encoding="utf-8"))
         self.image = self.config["image"]
         self.control = self.config["control"]
@@ -255,6 +256,12 @@ class Consumer:
         # Absent: the operator's unbound consumer, exactly as before.
         self.secret_file = self.config.get("secret_file")
         self.work = Path(self.config["work"])
+        self.lock = None
+        if read_only:
+            self.db = sqlite3.connect(Path(self.config["db"]).resolve().as_uri() + "?mode=ro", uri=True, isolation_level=None)
+            self.db.execute("PRAGMA query_only=ON")
+            self.db.execute("BEGIN")
+            return
         self.work.mkdir(parents=True, exist_ok=True)
         self.lock = lock_database(self.config["db"])
         self.db = sqlite3.connect(self.config["db"], isolation_level=None)
@@ -273,6 +280,82 @@ class Consumer:
         # outstanding or its answer unrecorded.
         self.db.execute("UPDATE attempts SET state='unanswered' WHERE state='in-flight'")
         self.db.execute("COMMIT")
+
+    def close(self):
+        self.db.close()
+        if self.lock is not None:
+            os.close(self.lock)
+            self.lock = None
+
+    @staticmethod
+    def inspect_value(value, include_bytes=False):
+        if isinstance(value, bytes):
+            result = {"encoding": "hex", "octets": len(value), "sha256": digest(value)}
+            if include_bytes:
+                result["hex"] = value.hex()
+            return result
+        return value
+
+    def inspect_rows(self, table, *, after=0, limit=None, include_bytes=False,
+                     where="", params=()):
+        if table not in INSPECTION_TABLES:
+            raise Stop(1, "unknown application table")
+        if not self.db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)).fetchone():
+            return {"table": table, "available": False, "rows": [], "next_after": None}
+        # TABLE/WHERE are fixed client source, not operator SQL. Values are
+        # bound parameters. client_row is SQLite custody, never a fn ordinal.
+        sql = "SELECT rowid AS client_row,* FROM " + table + " WHERE rowid>?"
+        args = [after]
+        if where:
+            sql += " AND (" + where + ")"
+            args.extend(params)
+        sql += " ORDER BY rowid"
+        if limit is not None:
+            if limit < 1:
+                raise Stop(1, "query limit must be positive")
+            sql += " LIMIT ?"
+            args.append(limit + 1)
+        cursor = self.db.execute(sql, args)
+        columns = [field[0] for field in cursor.description]
+        rows = cursor.fetchall()
+        more = limit is not None and len(rows) > limit
+        if more:
+            rows = rows[:limit]
+        result = [{key: self.inspect_value(value, include_bytes) for key, value in zip(columns, row)} for row in rows]
+        return {"table": table, "available": True, "rows": result,
+                "next_after": rows[-1][0] if more else None}
+
+    def inspect_operation(self, operation_id, *, application_id=None, include_bytes=False):
+        aid = application_id or self.config["application_id"]
+        result = {"application_id": aid, "operation_id": operation_id}
+        for table in ("operations", "transitions", "inbox", "submissions"):
+            result[table] = self.inspect_rows(table, where="application_id=? AND operation_id=?",
+                params=(aid, operation_id), include_bytes=include_bytes)
+        operation = self.db.execute("SELECT submission_id FROM operations WHERE application_id=? AND operation_id=?", (aid, operation_id)).fetchone()
+        ids = {row["id"] for row in result["submissions"]["rows"]}
+        if operation and operation[0] is not None:
+            ids.add(operation[0])
+            result["related_artifacts"] = self.inspect_rows("submissions", where="id=?", params=(operation[0],), include_bytes=include_bytes)
+        for table in ("attempts", "observations"):
+            result[table] = self.inspect_rows(table, where="submission_id IN (" + ",".join("?" for _ in ids) + ")" if ids else "0", params=tuple(sorted(ids)), include_bytes=include_bytes)
+        result["submission_outcomes"] = {str(sid): submission_state(*self.journal(sid)) for sid in sorted(ids)}
+        source_rows = self.db.execute("SELECT source FROM inbox WHERE application_id=? AND operation_id=?", (aid, operation_id)).fetchall()
+        source_rows += self.db.execute("SELECT source FROM submissions WHERE application_id=? AND operation_id=?", (aid, operation_id)).fetchall()
+        result["application_envelopes"] = []
+        for source in sorted({row[0] for row in source_rows}):
+            fields = self.envelope(source)
+            result["application_envelopes"].append({"source_sha256": digest(source),
+                "fields": None if fields is None else {key: self.inspect_value(self.payload_bytes(value) if key == "payload" else value, include_bytes) for key, value in fields.items()}})
+        if not result["operations"]["rows"] and not result["inbox"]["rows"] and not result["submissions"]["rows"]:
+            raise Stop(1, "application operation has no recorded evidence")
+        return result
+
+    def inspection_status(self):
+        tables = [row[0] for row in self.db.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")]
+        return {"consumer": self.name, "database": str(Path(self.config["db"]).resolve()),
+                "snapshot": "SQLite read transaction; no fn calls or recovery mutation",
+                "tables": {table: self.db.execute("SELECT count(*) FROM " + table).fetchone()[0] for table in INSPECTION_TABLES if table in tables},
+                "meta": self.inspect_rows("meta"), "application_state": self.inspect_rows("app_state")}
 
     # -- native calls --------------------------------------------------------
     def native(self, *words):
@@ -1000,6 +1083,18 @@ def build_parser():
     payload = sub.add_parser("payload", help="export a recorded operation's exact payload")
     payload.add_argument("operation_id")
     payload.add_argument("output", type=Path)
+    sub.add_parser("status", help="read a consistent local snapshot without recovery")
+    inspect = sub.add_parser("inspect", help="inspect an operation and its source/attempt/receipt provenance")
+    inspect.add_argument("operation_id")
+    inspect.add_argument("--application-id")
+    inspect.add_argument("--bytes", action="store_true", help="include exact public BLOB bytes as hex")
+    query = sub.add_parser("query", help="query client state with optional explicit pagination")
+    query.add_argument("table", choices=INSPECTION_TABLES)
+    query.add_argument("--after", type=int, default=0)
+    query.add_argument("--limit", type=int)
+    query.add_argument("--bytes", action="store_true")
+    export = sub.add_parser("export", help="export a consistent public client-state snapshot")
+    export.add_argument("output", type=Path)
     return parser
 
 
@@ -1009,7 +1104,13 @@ def main(argv=None):
     if args.command == "report" and (args.payload is None) == (args.payload_file is None):
         parser.error("report needs exactly one PAYLOAD or --payload-file")
     try:
-        consumer = Consumer(args.config)
+        consumer = Consumer(args.config, read_only=args.command in ("payload", "status", "inspect", "query", "export"))
+    except Stop as stop:
+        sys.stderr.write("consumer stopped: %s\n" % stop)
+        return stop.code
+    except (ValueError, KeyError, OSError, sqlite3.Error) as fault:
+        sys.stderr.write("consumer fault: %s\n" % fault)
+        return 4
     except InUse as busy:
         sys.stderr.write("fn_consumer: database in use by pid %s\n" % busy)
         return 1
@@ -1020,6 +1121,27 @@ def main(argv=None):
             consumer.drive_outbox()
         elif args.command == "wake":
             consumer.wake()
+        elif args.command in ("status", "inspect", "query", "export"):
+            if args.command == "status":
+                result = consumer.inspection_status()
+            elif args.command == "inspect":
+                result = consumer.inspect_operation(args.operation_id, application_id=args.application_id, include_bytes=args.bytes)
+            elif args.command == "query":
+                if args.after < 0:
+                    raise Stop(1, "query cursor must be nonnegative")
+                result = consumer.inspect_rows(args.table, after=args.after, limit=args.limit, include_bytes=args.bytes)
+            else:
+                result = {"format": "fn-consumer-public-snapshot-1", "status": consumer.inspection_status(),
+                          "tables": {table: consumer.inspect_rows(table, include_bytes=True) for table in INSPECTION_TABLES}}
+                try:
+                    with args.output.open("x", encoding="utf-8") as output:
+                        json.dump(result, output, sort_keys=True, indent=2)
+                        output.write("\n")
+                except FileExistsError:
+                    raise Stop(1, "snapshot output already exists")
+                return 0
+            print(json.dumps(result, sort_keys=True))
+            return 0
         elif args.command == "payload":
             payload = consumer.payload(args.operation_id)
             try:
@@ -1048,7 +1170,8 @@ def main(argv=None):
         if consumer.db.in_transaction:
             consumer.db.execute("ROLLBACK")
         sys.stderr.write("consumer stopped: %s\n" % stop)
-        print(json.dumps(consumer.summary(), sort_keys=True))
+        if args.command not in ("payload", "status", "inspect", "query", "export"):
+            print(json.dumps(consumer.summary(), sort_keys=True))
         return stop.code
     except (ValueError, KeyError, OSError, sqlite3.Error) as fault:
         # Parsing or local persistence failures never become a refusal or
@@ -1057,6 +1180,8 @@ def main(argv=None):
             consumer.db.execute("ROLLBACK")
         sys.stderr.write("consumer fault: %s\n" % fault)
         return 4
+    finally:
+        consumer.close()
 
 
 if __name__ == "__main__":
