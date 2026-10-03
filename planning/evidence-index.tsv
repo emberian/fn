@@ -3004,6 +3004,8 @@ cfe2d41d9ebe986808129c2a190f8dbe776d662c88a105ead98bdbe4bab84790 40010 planning/
 e83887f17fe57a8c1448a10a12d9aa2ae43afb5e12dadbd4ea7b229901a6775e 1663 planning/evidence/history-source-read-join-2026-09-30/manifest.json
 a6e8863595b1b6ed962ec5829189da0a06ca7c5635b713615dfee8c250fc07cd 372079 planning/evidence/history-source-read-join-2026-09-30/read-step-guard-refusal.txt
 58e6e7296da6bd234a14cb1bd06558fec6e46e6e1a9d783ef3dc534cf22f9929 1436 planning/evidence/history-symbol-normalize-row-union-2026-09-30.json
+998ff91bd05e7fd7e40f143d9eec9fdd1ecfcc35469012a28527948b175dfeac 321405 planning/evidence/hm-cancel-prefix-2026-10-03/repl.log
+4c0b77fe584a0a33c7b375c7c0e28e20d74241949082551af9f175342671b4b0 651 planning/evidence/hm-cancel-prefix-2026-10-03/result.json
 bc72ceb12a19c11a46684c78e54407dd8dc8624731b7a5e6ba9c6a98fe8dc207 10964 planning/evidence/host-decisions-2-2026-09-27.md
 10c1be547c3e722cbc1d22a124728c10c9e6f28a2b3ceece7638253e0bc8cb27 16505 planning/evidence/host-decisions-2026-09-27.md
 ead762682231dfb981d96af22e884096b93cf93e2dfe14290ca05ea40b8b764e 5019 planning/evidence/host-source-tranche-2026-09-30/README.md
@@ -8043,6 +8045,8 @@ bc8ba0e35a673e766bdccb77984633bd8255e8e2446aea8de5644a06029d3fdc 1394 planning/e
 e82436a6775fc48dd49085dc407741c2a68a94c44456ad636e7d8b6fb8816335 621 planning/evidence/page-digest-cursor-source-2026-09-30/source-sha256.json
 4f6ccc674c531b177cd075b710d33ddd04fc450101d7360e4d8c54c8459f0407 11804 planning/evidence/page-executor-2026-10-03/repl.log
 be50df3b1dbb28e15b34cc21764a6652e308fee029b987b7ebcb2f6249f3ebcd 1098 planning/evidence/page-executor-2026-10-03/result.json
+d04168165535e0f3c91a98f123ef3c268bb826fb19a1a257713b1fab0f0e08c4 15927 planning/evidence/page-file-lease-2026-10-03/repl.log
+62694205589011254aa94ab38fd3e972ff3c245f7622567596fd4f23a990d9e4 677 planning/evidence/page-file-lease-2026-10-03/result.json
 fe86febc0a5bdcd231b879094349d651b7610bf5784de4e20c049ee3ccac7bec 7849 planning/evidence/page-read-ownership-2026-09-29.md
 8f57d5fee038da5109aa019b86ef3e849388ddd01121cf371f850e7a9ebaa6bc 7774 planning/evidence/page-read-ownership-certify-20260929T220145Z.json
 39ed1229eb4e4ccbca6e7ffa503aa344c08b5c3b10fe9734bcefa223fc94acf2 1606 planning/evidence/page-read-resource-shapes-2026-09-29.lisp
