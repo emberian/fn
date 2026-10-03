@@ -80,4 +80,97 @@
     (format t "native_newnews_allocation: factory-sample groups=~d articles=~d repeats=~d allocated=~d~%"
             group-count article-count iterations (- (sb-ext:get-bytes-consed) before))))))
 
-(format t "native_newnews_allocation_raw: PASS normal actual configured factory and first plan step plus matched factory samples~%")
+
+
+; Actual native window allocator and renderer, followed by actual plan steps.
+(fnout-load-host-forms "host/native/io.lisp"
+ '((deftype fnn-octets) (defun fnn-make-octets)))
+(fnout-load-host-forms "host/native/owner.lisp"
+ '((defstruct (fnn-output-grant (:constructor %make-fnn-output-grant)))
+   (defvar *fnn-output-grant*)
+   (defun fnn-make-render-buffer) (defun fnn-response-render-buffer)
+   (defun fnn-owner-render-next)))
+(defvar *fnout-window* 256)
+; Scheduling-policy observation only; the direct renderer and buffer entry
+; are the actual source functions. No owner/store operation is replaced here.
+(defun fnn-owner-over-window () *fnout-window*)
+
+(dolist (text (list "" "." "abc" ".dot-stuffed" (make-string 4097 :initial-element #\X)))
+  (dolist (*fnout-window* '(1 2 7 256))
+    (let* ((*fnn-output-grant* (%make-fnn-output-grant))
+           (line (fn-sl-start text))
+           (expected (fn-sl-remaining line))
+           (cur (fn-cur-make nil (fn-nnw-stream-render line nil) nil nil))
+           (plan (fn-splan-of-effects (list (fn-nnw-meta-effect cur))))
+           (got nil) (steps 0))
+      (loop while (fnn-core 'fn-splan-line-ready-p plan) do
+        (multiple-value-bind (octets rest donep cursorp) (fnn-owner-render-next plan)
+          (assert (and (not donep) (not cursorp) (plusp (length octets))))
+          (assert (<= (length octets) *fnout-window*))
+          (loop for byte across octets do (push byte got))
+          (setf plan rest)
+          (incf steps)))
+      (assert (equal (nreverse got) expected))
+      (assert (<= steps (+ 3 (length text)))))))
+(format t "native_newnews_allocation: direct-line-fill PASS empty/dot/text/4097char at1/2/7/256, positive bounded exact output~%")
+
+; Actual private stobj and semantic window implementation. These grants only
+; exercise buffer ownership, not admission or typed ledger settlement.
+(defun fnout-render-list (octets)
+  (fnn-owner-render-next (cons octets nil)))
+(let* ((*fnn-output-grant* (%make-fnn-output-grant))
+       (first (fnout-render-list '(1 2 3 4)))
+       (buffer (fnn-output-grant-render-buffer *fnn-output-grant*)))
+  (assert (equalp first #(1 2 3 4)))
+  (dotimes (i 1024)
+    ;; The previous bytes have been consumed before the next render.
+    (let ((next (fnout-render-list '(5 6 7 8))))
+      (assert (eq next first))
+      (assert (eq buffer (fnn-output-grant-render-buffer *fnn-output-grant*)))
+      (assert (equalp next #(5 6 7 8)))))
+  (let ((short (fnout-render-list '(9 10))))
+    (assert (equalp short #(9 10)))
+    (assert (not (eq short first)))
+    (assert (eq buffer (fnn-output-grant-render-buffer *fnn-output-grant*))))
+  (assert (equalp (fnout-render-list '(1 2 3 4 5 6 7 8)) #(1 2 3 4 5 6 7 8)))
+  (assert (equalp (fnout-render-list '(11)) #(11))))
+(let* ((*fnn-output-grant* nil)
+       (first (fnout-render-list '(1 2)))
+       (second (fnout-render-list '(3 4))))
+  (assert (not (eq first second)))
+  (assert (equalp first #(1 2)))
+  (assert (equalp second #(3 4))))
+(format t "native_newnews_allocation: actual-private-buffer-reuse PASS 1024 same-buffer windows, growth, short suffix, fresh callers~%")
+
+(defun fnout-drain-newnews (archive args quantum)
+ (let* ((*fnn-output-grant* (%make-fnn-output-grant))
+        (*fnout-window* quantum)
+        (result (fnn-core 'fn-nntp-newnews-response-stream nil archive nil args nil nil))
+        (plan (fnn-core 'fn-splan-of-effects (cdr result)))
+        (output (make-array 0 :element-type '(unsigned-byte 8) :adjustable t :fill-pointer 0))
+        (steps 0) (cursor-steps 0))
+  (loop until (fnn-core 'fn-splan-donep plan) do
+   (incf steps)
+   (when (> steps 10000) (error "test fixture failed to make progress"))
+   (multiple-value-bind (octets rest donep cursorp) (fnn-owner-render-next plan)
+    (declare (ignore donep))
+    (setf plan rest)
+    (if cursorp
+        (let ((answer (fnn-call 'fn-splan-cursor-step plan quantum nil nil)))
+         (unless (eq (first answer) :ok) (error "actual cursor could not step"))
+         (incf cursor-steps) (setf plan (second answer)))
+      (loop for octet across octets do (vector-push-extend octet output)))))
+  (values output steps cursor-steps)))
+(let* ((a (fn-make-article "<a@x>" '(13 10 13 10 65) '("fn.test") '(("fn.test" . 1)) 1 5))
+       (b (fn-make-article "<b@x>" '(13 10 13 10 66) '("fn.other") '(("fn.other" . 1)) 2 6))
+       (archive (fn-make-state '("fn.g0" "fn.g1" "fn.g2" "fn.test") nil (list b a) 0 nil nil))
+       (args (list (fn-nntp-string-octets "fn.test") (fn-nntp-string-octets "20000101") (fn-nntp-string-octets "000000"))))
+ (multiple-value-bind (tiny tiny-steps tiny-cur) (fnout-drain-newnews archive args 1)
+  (multiple-value-bind (large large-steps large-cur) (fnout-drain-newnews archive args 256)
+   (unless (equalp tiny large) (error "actual tiny/large window drain changed reply"))
+   (let ((reference (fn-served-reply-octets
+                      (cdr (fn-nntp-newnews-response-cat nil archive nil args nil nil)))))
+    (unless (equalp tiny (coerce reference '(vector (unsigned-byte 8))))
+     (error "actual composed window drain differs from original NEWNEWS reply")))
+   (format t "native_newnews_allocation: actual-render-drain octets=~d tiny-steps=~d/~d large-steps=~d/~d~%" (length tiny) tiny-steps tiny-cur large-steps large-cur))))
+(format t "native_newnews_allocation_raw: PASS normal actual configured factory, plan, native window drain and matched factory samples~%")

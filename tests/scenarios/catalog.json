@@ -8975,6 +8975,36 @@
         "planning/evidence/web-page-cursor-2026-10-03.md"
       ],
       "note": "Actual source/raw witness only; program-mode cursor guard/refinement and matching image remain open (PRF-1277)."
+    },
+    {
+      "id": "SCN-1109",
+      "title": "Direct immutable line windows use the actual private output buffer",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-047"
+      ],
+      "steps": [
+        "Invoke actual fnn-owner-render-next over immutable render continuations with a private response grant.",
+        "Drain empty, dot-stuffed, ordinary and4097-character lines at quanta1,2,7,256.",
+        "Drain complete configured NEWNEWS at tiny and large quantum, preserving following candidate and terminator.",
+        "Reuse same-capacity buffer1024times, grow it, render a shorter valid prefix, and repeat without a grant."
+      ],
+      "expected": [
+        "Every eligible step emits positive output no larger than its quantum and exact complete bytes equal the existing line residual.",
+        "Complete NEWNEWS equals its original logical reply across quantum partitions.",
+        "Equal-capacity windows retain identical private buffer/vector; short output has no trailing capacity bytes; no-grant callers retain independent vectors."
+      ],
+      "implementation": {
+        "test": "tests/test_native_newnews_allocation_raw.sh"
+      },
+      "evidence": [
+        "tests/native_newnews_allocation_raw.lisp",
+        "books/string-line-fill.lisp",
+        "books/served-plan-line-buffer.lisp",
+        "host/native/owner.lisp"
+      ],
+      "execution_scope": "Actual normal counterparts/private stobj on explicitly frozen dependency sources with source-loaded new renderer; no generic model, matching certificate/image or whole-response heap bound claim."
     }
   ]
 }

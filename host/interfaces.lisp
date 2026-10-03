@@ -2074,6 +2074,15 @@
   :kinds ((w natp))
   :keystones (fn-splan-window-is-a-prefix-of-the-reply))
 
+; PRF-1281 direct immutable-line renderer; exact buffer/continuation bridge
+; remains a planned proof until its named theorem is admitted.
+(definterface fn-splan-line-ready-p
+  :class ::common-lisp-compliant)
+
+(definterface fn-splan-line-window
+  :class ::common-lisp-compliant
+  :kinds ((bytes natp)))
+
 (definterface fn-splan-at-cursorp
   :class ::common-lisp-compliant
   :keystones (fn-splan-window-size-is-positive-until-done))

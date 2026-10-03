@@ -22299,6 +22299,52 @@
         "tests/native_web_page_cursor_raw.lisp"
       ],
       "progress_note": "Source program boundary and actual raw native consumer present; no logical refinement, guard verification or matching image claim yet."
+    },
+    {
+      "id": "PRF-1281",
+      "title": "Direct private-buffer NEWNEWS line rendering preserves exact output and continuation",
+      "statement": "Host-called fn-splan-line-window in books/served-plan-line-buffer.lisp, called by fnn-owner-render-next. For eligible immutable line phases and positive byte quantum, the filled private buffer is the exact bounded prefix of the existing string-line residual, and returned plan retains the exact remaining reply, context and following cursor. No arena/catalog access is needed in the line phase. The scalar loop must preserve the original string-line step semantics and private buffer refinement.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-047"
+      ],
+      "depends_on": [
+        "PRF-1259"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/string-line-fill.lisp",
+        "books/served-plan-line-buffer.lisp",
+        "tests/native_newnews_allocation_raw.lisp",
+        "tests/test_native_newnews_allocation_raw.sh"
+      ],
+      "events": [],
+      "progress_note": "Implementation and all new guards admitted in source-loaded ACL2 worlds. Actual normal native/private stobj cases pass empty/dot/text/4097-character lines at byte quanta1/2/7/256; complete58-byte NEWNEWS agrees with original reference at1/256. Direct line phase skips serialized catalog quantum and per-byte list/cursor allocation. Universal prefix/continuation bridge and literal theorem teeth remain open; no certificate, zero-allocation, physical heap tariff or image qualification claim."
+    },
+    {
+      "id": "PRF-1278",
+      "title": "Pre-factory command-family output admission over the actual buffered wire prefix",
+      "statement": "Actual fn-owner-output-preview calls fn-ocap-preview over the current connection wire and input stobj before fn-owner-chunk-span. Preview uses existing fn-wire-scan, never executes a command factory, and classifies standard families plus explicit extension/protocol/article frontiers. Fn-ocap-admit-preview accepts only a matching actual ACL2-produced tariff descriptor within captured capacity and retains the exact accepted NEXT. Native consumer must issue before preflight allocation and evaluate only that prefix while retaining suffix. A tuple is not by itself a qualified physical tariff; root actual footprint producer and native hook complete that boundary.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-047"
+      ],
+      "depends_on": [
+        "PRF-1259"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "events": [
+        "fn-ocap-held-prefix-has-matching-funded-tariff",
+        "fn-ocap-preview-keeps-input-prefix-bounds"
+      ],
+      "evidence": [
+        "books/output-command-admission.lisp",
+        "tests/acl2/output-command-admission-tests.lisp",
+        "host/owner-host.lisp"
+      ],
+      "progress_note": "Fresh laptop full source13forms admits4.08ACL2s/936154steps including six source-loaded dependencies in proper local encapsulates; actual input-stobj first-event pipeline and independent unpriced/mismatched/unaffordable families plus literal weakened-prefix hypothesis-removal teeth pass13/0. Program owner wrapper/native consumer integration and certificate pending. Prefix theorem weakened to only natural START and START<=END after proving fast-wire/type/end/storage premises redundant for the logical range property; executable guards remain unchanged."
     }
   ]
 }
