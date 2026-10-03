@@ -29,6 +29,7 @@ disposition lines, never narrowing) and the verdict is `checker.check'
 under the contract rules `receipt-once' and `receipt-policy-order'.
 
     python3 -m tools.resilience.adapters.bp_node --image build/fn-host-developer \
+        [--producer-image matching/default-image] \
         [--variant duplicate|reorder|lose-completion|all] [--out DIR] [--no-fault]
 """
 from __future__ import annotations
@@ -91,6 +92,15 @@ SENDER, RECEIVER = "dtn://sender/", "dtn://receiver/"
 WORK = "work-receipt"
 ROUTE = (SENDER + "*", "sender-boundary")     # the receipt's route out of the receiver
 BP_ARGS = ("3600000", "2", "32", "1048576", "0", "0")
+
+
+def transfer_outcome(returncode):
+    """Name the native exit observation without collapsing it into loss."""
+    return {EXIT.OK: "accepted", EXIT.REFUSED: "refused", EXIT.UNCERTAIN: "uncertain",
+            EXIT.FAULT: "fault", EXIT.INTERRUPTED: "lost", EXIT.NOT_CONNECTED: "not-connected",
+            EXIT.USAGE: "usage"}.get(returncode, "unknown")
+
+
 ARTICLE = (
     b"Path: sender.bp.gate.invalid!not-for-mail\r\n"
     b"From: sender@example.invalid\r\n"
@@ -163,6 +173,8 @@ class BpRun:
         # Reuse the real injection fixture already used by native BP tests.
         # FNWF derives its identity from ACL2's stored source, after native
         # NNTP injection. A raw store-post fixture is not that publication.
+        # Some historical production profiles omit stored-source inspect;
+        # their matching default developer image supplies this observation.
         try:
             source = assert_same_published_source(self.producer_case, self.producer_image, self.image)
         except AssertionError as error:
@@ -267,7 +279,7 @@ class BpRun:
             process.kill()
             raise HarnessFailure("sender-hung:{}:{}".format(op_id, str(e)[:80]))
         rc = process.returncode
-        outcome = "accepted" if rc == EXIT.OK else "lost"
+        outcome = transfer_outcome(rc)
         self.j.client("reply", operation=op_id, outcome=outcome, route="bp-transit",
                       returncode=rc, **extra)
         return rc
@@ -498,7 +510,7 @@ def main(argv=None) -> int:
     from tools.resilience import schedule_points
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--image", required=True)
-    ap.add_argument("--producer-image", help="matching published default production image for NNTP injection")
+    ap.add_argument("--producer-image", help="matching published default image for NNTP injection and stored-source inspect")
     ap.add_argument("--variant", default="all")
     ap.add_argument("--out")
     ap.add_argument("--no-fault", action="store_true")
