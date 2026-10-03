@@ -2903,3 +2903,33 @@ uncertain transport outcomes. tests/test_control_observation.py PASS0.036s;
 normal warm root-control-observation (hbox) guardverified and4boundaryassertsPASS.
 Largepost native test nowstrict EXIT_OK plus exactreadback. S132 staysopen until
 matching fullowner scenario; no machine-throughput/durability guarantee fromtime.
+
+## Sol convergence winddown — 2026-10-03
+
+Current source loader fbd2349a1 is integrated as 41f9760bd. The saved-core CBD
+follow-up 98f6a075c was refuted by actual compilation because live-state is a
+constant; final f0dfe56bf uses direct F-PUT-GLOBAL and passes actual cached
+MAKE-EVENT admission, invalid-event refusal, and absence of the later marker.
+The exact hbox final helper is
+/tank/fn/scratch/codex-source-native-consumer/lieutenant-logical-loader/source-load-cbd-final.lisp;
+probe-make-event.lisp records the actual input. Original source-load.lisp stays
+at fbd bytes for previously sealed hashes. Normal admission precedes selected
+raw overlays and native entry, files own explicit redefinition policy, and
+old stobj layouts/generic attachments are never silently replaced.
+
+Other own sources are retained in codex-sol-native-source-boundary at 971eb6449
+(actual transit/receipt lexical exits cde78, refusal probe f2ef) and
+codex-sol-catalog-recovery at 40f05197a (true classified-row metadata projection,
+join source evidence). These are source/loaded-execution claims, not whole
+current union proof or native qualification. No own active computations remain.
+Shared solheldownerfix is loaned to Served for its already-running LIST source
+admission; local record is build/lanes/codex-sol-catalog-recovery/build/proof-repl/
+solheldownerfix/remote.json, hbox /tank/fn/gates/codex-sol-catalog-recovery-repl.
+Served must return/preserve it healthy; no UBT or shutdown by this lieutenant.
+
+Current union remains root-owned, based on History's fresh early P3 attachment
+bootstrap. Old app cache is ad8 plus finite source overlays; its pool layout
+has ten fields versus current eleven and cannot acquire a new generic fn-hist
+attachment late. Exact current-world owner/reclaim/ARTICLE/BP convergence,
+remaining invariants/guards/proofs and complete physical tariffs remain open.
+All deputies received the explicit usage-limit winddown; no new work begins.
