@@ -2598,3 +2598,10 @@ no second available index. Complete command guards and source-loaded
 command/event/owner-credit fixtures pass; the selective owner refinement,
 carried snapshot completeness/stability, PROGRAM route guards and physical
 cost coverage remain owed. LIST still constructs its full upstream reply.
+
+The pending bounded LIST producer uses `fn-gsc-one` over a fixed captured
+group high/next/version and scalar count/low/last. One accepted step probes
+one numbered availability entry; exhaustion yields while retaining these
+scalars. The disabled remaining-range model has unconditional one-step
+residual preservation and equals the summary at settlement. This component
+does not establish the full LIST producer, snapshot frames or heap tariff.

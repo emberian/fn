@@ -493,3 +493,16 @@ closed selected reader after correct reply; failure preserved and repaired.
 Receipt served-available-owner-20261003 records source hashes/full warm log.
 Selective owner refinement/PROGRAM guards, captured completeness/frames,
 physical tariffs and actual host process remain open. Bounded LIST next.
+
+
+## Bounded LIST summary primitive
+
+Guarded books/group-summary-cursor keeps9field references/scalars, one
+fn-scv-keptp point per accepted step, fixed captured high/next/v. Unconditional
+residual/terminal equality, state/shape and exact remaining decrease admitted
+clean25forms8.90ACL2s/7846443steps with8LOCALs discarded.13teeth .03s/101steps
+pass actual writer sparse/prefix/tail/empty, eight-call residual, literal
+keystones and progress/shape-premise removal. Runtime traces preserved columns
+for this exact point subject; no pin-implies-mutable-table snapshot claim.
+Receipt group-summary-cursor-20261003, full failed probes preserved. LIST
+controller/row renderer/plan wiring continues; no physical tariff claim.
