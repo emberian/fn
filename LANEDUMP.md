@@ -56,3 +56,13 @@ was concurrent in Served's tree). A source-only Grok advisory was attempted in
 an empty cwd with tools/web/subagents disallowed and narrow diff, but configured
 MCP startup retried and no review response arrived; own process stopped. No
 advisory approval or dissent was claimed.
+
+NIGHT-STATEMENT-ROUTE source `0200b0f4a`: statement-cut inventory follows the
+syntactic call to the filled-buffer helper and counts every reached kind-4
+commit, including wrapper commits. Each requires the actual statement fence
+and matching service/event arguments. Quoted/docstring-only helpers do not
+count. 29 native_program_check tests pass, including naked commits and wrong
+fence/event negatives. Same-harness base assertion failure and head pass archived
+as `planning/evidence/repair/NIGHT-STATEMENT-ROUTE-6b4f5cd5ab7740cc98e45c29ddcc467b.json`,
+sha256 `e0b932d497810bff79d5a31a9fa4c1c2c161d8f3fd383863f725f2acfe2974a3`.
+This is source route validation, not an image or runtime equivalence claim.
