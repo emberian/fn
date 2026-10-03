@@ -1,7 +1,7 @@
 ^[exit-audit]{
   consumer_revision: "3f39e6df98b3d87881e43200bba9334e47e1af4b"
   workbench_revision: "651b535b5171e9ed419570f4cd64b53914094433"
-  source_repairs: ["01e4a5e0b" "1200bf85d"]
+  source_repairs: ["01e4a5e0b" "1200bf85d" "fe5ead1b3" "83e657c2d" "0a67f8121" "70cdc8624" "92d63fb62" "db2e4c87a" "a7c0843d7" "e88075c84" "f17880205" "2c8b9ea45" "7f841f24e" "9fc9191d0"]
   perspective: "Trace terminal effects backwards, execute full definitions forwards"
   map: ~"./traces.md"
   neighbors: [~"../entries" ~"../consistency" ~"../bounds"]
