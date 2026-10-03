@@ -571,7 +571,15 @@ view contract is a generated theorem proved from the form's `:by`, and the
 pinned-boundary theorem is their case split
 (`fn-proto-archive-command-cat-is-pinned`; one context, replaced by the
 two-context refinement when the first `:completed` or `:pin-or-completed`
-form lands). The restricted route (a session with a group-access rule,
+form lands). All sixteen archive keywords now declare their forms, including
+HDR's compatibility, ordinary and fn metadata fields and XHDR's compatibility
+and ordinary fields. The actual unrestricted command layer calls this generated
+dispatcher. Other keywords go directly to the pinned reference; the executable
+has no hand catalog-dispatch fallback. The retained hand catalog dispatcher is
+only the migration reference for per-row equality proofs. This switch preserves
+current reply and view semantics; completed discovery, pin-first Message-ID
+fallback and bounded cold field reads remain explicit work. DATE follows its
+separate generated session route. The restricted route (a session with a group-access rule,
 PRF-222) is always the reference walk over the projected pin, so the cost
 column states both routes and a `-cat` cost claim is never the restricted
 client's. The table below is written from the book
@@ -643,8 +651,15 @@ The EXECUTED rule per command and form; a ruling recorded but not landed is DEBT
 | XOVER / current | the connection's pinned view | none |  |  | generated: (fn-nntp-archive-command session archive env keyword args fn-arena) |  |
 | XOVER / msgid | the connection's pinned view | none | the pinned article if retrievable there, else the completed snapshot (PRF-1238) |  | generated: (fn-nntp-archive-command session archive env keyword args fn-arena) |  |
 | XOVER / other | the connection's pinned view | none |  |  | generated: (fn-nntp-archive-command session archive env keyword args fn-arena) |  |
-| HDR | the connection's pinned view | none | the pinned article if retrievable there, else the completed snapshot (PRF-1238) |  | hand arms, forms not yet declared | NNT-042 (other reads); the Message-ID form is decided c07 C (pin first, then the completed snapshot); RFC 3977 8.5 |
-| XHDR | the connection's pinned view | none |  |  | hand arms, forms not yet declared | NNT-042 (other reads); RFC 2980 2.6 |
+| HDR | the connection's pinned view | none | the pinned article if retrievable there, else the completed snapshot (PRF-1238) |  | catalog number probes and overview metadata where available; cold field/payload and whole response working allocation remain GEN-CURSOR debt / reference pinned archive walk; whole response allocated | NNT-042 (other reads); Message-ID completed fallback remains PRF-1238 debt; RFC 3977 8.5 |
+| HDR / compatibility | the connection's pinned view | none |  |  | generated: test value |  |
+| HDR / verified | the connection's pinned view | none |  |  | generated: (fn-nntp-verdict-hdr-response-cat session verdicts args v fn-arena fn-cat) |  |
+| HDR / control | the connection's pinned view | none |  |  | generated: (fn-nntp-control-hdr-response-cat session archive index verdicts args v fn-arena fn-cat) |  |
+| HDR / enrollment | the connection's pinned view | none |  |  | generated: (fn-nntp-enrollment-hdr-response-cat session index verdicts args v fn-arena fn-cat) |  |
+| HDR / ordinary | the connection's pinned view | none |  |  | generated: (fn-nntp-hdr-command-cat session args v nil fn-arena fn-cat) |  |
+| XHDR | the connection's pinned view | none |  |  | catalog number probes and overview metadata where available; cold field/payload and whole response working allocation remain GEN-CURSOR debt / reference pinned archive walk; whole response allocated | NNT-042 (other reads); RFC 2980 2.6 |
+| XHDR / compatibility | the connection's pinned view | none |  |  | generated: test value |  |
+| XHDR / ordinary | the connection's pinned view | none |  |  | generated: (fn-nntp-hdr-command-cat session args v t fn-arena fn-cat) |  |
 | XPAT | the connection's pinned view | none |  |  | the range's numbers from the number table and one catalog probe per article (fn-scat-range-numbers, fn-scat-available-article), the field from the overview column / the reference walk over the projected pinned archive (fn-nntp-xpat-response) | NNT-042 (other reads); RFC 2980 2.9 |
 | XPAT / any | the connection's pinned view | none |  |  | generated: (fn-nntp-xpat-response-cat session args v fn-arena fn-cat) |  |
 | LIST | the connection's pinned view | none | the latest completed durable view; pin unmoved (PRF-1237) |  | ACTIVE and COUNTS use carried group summaries with configured-group walks; compatibility and other variants walk pinned listing/creation facts; whole reply allocated / pinned group bucket COUNTS or the reference archive/listing walks; whole reply allocated | NNT-042 today (ACTIVE and COUNTS: the pinned groups and summaries; NEWSGROUPS, SUBSCRIPTIONS, MOTD and ACTIVE.TIMES: the pinned groups and the pinned configuration); decided 2026-10-02 (build/coordinator/decisions/list-view-2026-10-02.md): LIST, ACTIVE and COUNTS answer the latest completed durable view, the pin unmoved; NEWSGROUPS and ACTIVE.TIMES under consultation c07; RFC 3977 7.6.1, 7.6.3; RFC 6048 2.2.2 |
@@ -656,8 +671,8 @@ The EXECUTED rule per command and form; a ruling recorded but not landed is DEBT
 | NEWGROUPS | the connection's pinned view | none | the latest completed durable view; pin unmoved (PRF-1237) |  | creation-fact and configured-group walks over the pinned environment and archive; whole reply allocated / the same pinned creation-fact and configured-group walks; whole reply allocated | NNT-042 by silence today (the pinned creation facts filtered to the pinned groups); decided c07 B: the completed discovery snapshot; RFC 3977 7.3 |
 | NEWGROUPS / compatibility | the connection's pinned view | none |  |  | generated: test value |  |
 | NEWGROUPS / other | the connection's pinned view | none |  |  | generated: (fn-nntp-archive-command session archive env keyword args fn-arena) |  |
-| NEWNEWS | the connection's pinned view | none | the latest completed durable view; pin unmoved (PRF-1237) | cursor fn-nnw-meta-effectp | one metadata candidate per quantum and at most W emitted bytes; retained suffix avoids rescanning and catalog tombstone column avoids payload I/O; initial group selection, renderer working allocation, resource custody and completed-view capture remain GEN-CURSOR debt / the reference whole pinned archive walk, including payload tombstone reads | NNT-042 by silence today (the pinned article root retained across one-candidate quanta); decided c07 C: one completed discovery snapshot captured at the first quantum and held across quanta; RFC 3977 7.4 |
-| NEWNEWS / any | the connection's pinned view | none |  |  | generated: (fn-nntp-newnews-response-cursor session archive env args fn-arena fn-cat) |  |
+| NEWNEWS | the connection's pinned view | none | the latest completed durable view; pin unmoved (PRF-1237) | cursor fn-nnw-meta-effectp | bounded control calls per quantum and at most W emitted bytes; configured selection retains group/member references and inspects at most one entry per selector call; retained suffix avoids rescanning and catalog tombstone column avoids payload I/O; matcher/name comparison, composed heap tariff, resource custody, legacy cold metadata fallback and completed-view capture remain GEN-CURSOR debt / the reference whole pinned archive walk, including payload tombstone reads | NNT-042 by silence today (the pinned article root retained across one-candidate quanta); decided c07 C: one completed discovery snapshot captured at the first quantum and held across quanta; RFC 3977 7.4 |
+| NEWNEWS / any | the connection's pinned view | none |  |  | generated: (fn-nntp-newnews-response-stream session archive env args fn-arena fn-cat) |  |
 | DATE | none (no archive) | none |  |  |  | RFC 3977 7.1; no article view. DEFECT (c07): answers the clock observation pinned at accept (fn-nntp-env-observation; books/served.lisp fn-served-conn-observation), not the current reading; fixed separately |
 | POST | none (no archive) | offer |  |  |  | RFC 3977 6.3.1 (no archive) |
 | IHAVE | the live Message-ID index (peer offers) | none |  |  |  | a reader connection: 502; a peer connection decides the offer on the LIVE Message-ID index (books/served-catalog-chain.lisp fn-scr-history-hasp); RFC 3977 6.3.2 |

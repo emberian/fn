@@ -1311,3 +1311,41 @@ owed; collector COMPLETE never asserts full physical coverage.
 - Empirical24cd25b61 + Runtimefb44cafea/9f55460aa exact native literal producer/condition boundary and fixtures composed. Primary tuple review traced stored noncondition first result under executorE and retained direct condition →literal:error under ownerE before same settle. Groundwork confirms job-resultTID=currentEholder; worker/row located byTOKEN independently, not executoridentity equivalence. Vocabulary ok/read/short/error/trailer/digest; no prior result allowed. No-token/window/decoded paths excluded and normal result not duplicated by owner. Device completion not inferred from cache/no-pread result; physical return remains independent.
 - Empirical9 transport checks and Runtime actualcondition/literal/no-token fixture0.18sPASS reused; exact files/source handoff and Python compile checked, no repeat proof/image. Actual owner plainE span, hidden waits/P/otherO/pins/dependency alignment leave fullPageIO comparison unavailable; Groundwork new pure machine label proof/source separately pending. CollectorCOMPLETE is bounded prefix status only.
 - Next matching-image tests.test_native_page_io.PageIOTests.test_sigterm_held_read_joins_then_reopens_exact_content observes actual join call/return outsideE, held read release→physicalreturn→joinreturn→settle→EXIT.OK then exactprestopARTICLEbytes after restart. Normal held-read selector now requires JOB-RESULT literal. Current291 image excluded this source, no transferred qualification.
+## DC02 generated switch and complete HDR/XHDR rows, 2026-10-03 Sol
+
+SOURCE READY followup to8f: all16 archive rows now have complete declarations.
+HDR compatibility/verified/control/enrollment/ordinary and XHDR compatibility/
+ordinary preserve literal priority, session and expanded reply. XREF through
+fn-nntp-xref-reply-cat is unreachable for HDR/XHDR and omitted; actual rcompat
+Xref branches remain and have reachable witnesses. Generated executable no
+longer falls through to the hand catalog dispatcher: unknown/nonarchive
+keywords use fn-nntp-archive-command-pinned directly. Hand body remains local
+migration proof reference. New set-equal archive/form assertion refuses any
+missing declaration; declaration-removal mutation loses coverage.
+
+Actual fn-scr-command definition/guards (918steps) and restricted consumer
+source loaded in retained metadata-catalog world. Final table31events0.03s/
+884steps; generated dispatcher/contracts/guards38events2.10s/553491steps;
+view/keyword sites9events0.04s/710steps. Full teeth70events0.23s/2444steps,
+plus coverage mutation25steps: complete boundary and actual literal form
+conditions copied syntactically from table, prior tests false, both-route
+reachability, exact HDR225/XHDR221/syntax501 and special fields. Locals dropped
+by encapsulate. No current certificate/image claim; Integration owns batch.
+
+SCN1093 claimed/added, PRF1236 rewritten around actual switch, requirements and
+spec generated table updated. Debt10 unchanged; protocol_emit34/304 passes,
+strict affected theory/book-order0warnings, diffcheck and two-lane claims pass.
+Archived/indexed dc02-switch-20261003 checks c898d880... / raw124675ee...;
+raw includes refused probes and retained world history. Initial teeth syntax
+substitution used translated SUBLIS-VAR guard, repaired structural copy;
+missing must-fail dependency loaded before final full replay. No theory escape.
+Selector receipt path fixed to indexed selector-repl.log.gz (also assembly fix).
+
+Open: completed discovery/pin-first fallback, restricted streaming, cold read
+suspension and all composed work/heap/physical custody claims unchanged. Matcher
+helper owns only resumable wildmat library; I consume it after source READY.
+
+## Sol source assembly: complete HDR/XHDR generated archive rows (2026-10-03)
+
+- Servede81af211d composed atop776 configuredcontroller: ordered HDR compatibility/verified/control/enrollment/ordinary and XHDR compatibility/ordinary forms; actual generated archive fallback now direct pinned reference, declaration coverage assertion refuses missing archive rows. Hand catalog body retained migration proof reference only. Primary Served source admissions/guards/literal full boundary and both-route teeth reused; no third semantic review or replay.
+- Only material overlap is NEWNEWS cost metadata: retained boundedcontrolcalls/atmostoneentryperselectorcall and corrected selector receipt filename, added legacycoldmetadata debt. Spec served table regenerated only from actual row metadata. SCN1093 claimPASS; indexedc898/124675 producer receipts verified. Next scoped roots books/protocol-served-table +books/protocol-served +tests/acl2/protocol-served-tests; actual served-catalog-chain consumer included by integration certificate packet. Completedview/pin-firstMessage-ID/restrictedstreaming/coldcustody/allocation and matchingcert/image remainowed.

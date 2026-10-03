@@ -297,6 +297,77 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-scol-okp))))
 
+;; DC02: each literal HDR/XHDR form is reached under the full dispatcher
+;; boundary.  The form condition is copied from the declaration at macro
+;; expansion, including the failure of every earlier test; no evaluator is
+;; invoked by a served command.
+(defun pst-form-condition-named (name forms prior)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp forms)
+      (if (equal name (caar forms))
+          (fn-proto-form-condition prior (car forms))
+        (pst-form-condition-named name (cdr forms)
+                                  (append prior (list (fn-proto-form-test (car forms))))))
+    nil))
+
+(defun pst-substitute-captures (x bindings)
+  (declare (xargs :guard t :verify-guards nil))
+  (cond ((atom x) (let ((binding (assoc-equal x bindings)))
+                    (if binding (cdr binding) x)))
+        ((eq (car x) 'quote) x)
+        (t (cons (pst-substitute-captures (car x) bindings)
+                 (pst-substitute-captures (cdr x) bindings)))))
+
+(defmacro pst-literal-form (row form-name line environment)
+  (pst-substitute-captures
+   (pst-form-condition-named form-name
+     (fn-proto-row-forms (fn-proto-row row *fn-proto-served-table*)) nil)
+   (list (cons 'session '*pst-session*) (cons 'archive '(pst-arch 3))
+         (cons 'index '(pst-index 3)) (cons 'verdicts nil)
+         (cons 'env environment) (cons 'keyword `(car (pst-tokens ,line)))
+         (cons 'args `(cdr (pst-tokens ,line))) (cons 'v 3)
+         (cons 'fn-arena '*pst-a*) (cons 'fn-cat '*pst-c*))))
+
+(defconst *pst-header-lines*
+  '("HDR Subject 1-3" "HDR Subject" "HDR Subject <b@x>" "HDR Xref 1-3"
+    "HDR :FN-VERIFIED 1-3" "HDR :FN-CONTROL <b@x>"
+    "HDR :FN-ENROLLMENT <b@x>" "HDR" "HDR Subject 1-3 x"
+    "XHDR Subject 1-3" "XHDR Subject" "XHDR Subject <b@x>"
+    "XHDR Xref 1-3" "XHDR" "XHDR Subject 1-3 x"))
+
+(defthm pst-header-literal-forms-positive
+  (let ((arch (pst-arch 3)) (index (pst-index 3)))
+    (and (equal (fn-state-articles arch) (fn-cat-view-articles 3 *pst-a* *pst-c*))
+         (fn-statep arch)
+         (fn-gidx-pin-correspondencep index arch)
+         (fn-midx-correspondencep (fn-gidx-pin-trie index) (fn-state-articles arch))
+         (fn-cnx-freshp *pst-c*)
+         (fn-scol-okp *pst-a* *pst-c*)
+         (equal (car (pst-tokens "HDR Subject 1-3")) (fn-nntp-string-octets "HDR"))
+         (equal (car (pst-tokens "XHDR Subject 1-3")) (fn-nntp-string-octets "XHDR"))
+         (pst-literal-form "HDR" "compatibility" "HDR Xref 1-3" *pst-env-x*)
+         (pst-literal-form "HDR" "verified" "HDR :FN-VERIFIED 1-3" *pst-env-x*)
+         (pst-literal-form "HDR" "control" "HDR :FN-CONTROL <b@x>" *pst-env-x*)
+         (pst-literal-form "HDR" "enrollment" "HDR :FN-ENROLLMENT <b@x>" *pst-env-x*)
+         (pst-literal-form "HDR" "ordinary" "HDR Subject 1-3" *pst-env-x*)
+         (pst-literal-form "XHDR" "compatibility" "XHDR Xref 1-3" *pst-env-x*)
+         (pst-literal-form "XHDR" "ordinary" "XHDR Subject 1-3" *pst-env-x*)
+         (pst-agree-all *pst-env-x* *pst-header-lines* arch index *pst-a* *pst-c*)
+         (pst-agree-all *pst-env-0* *pst-header-lines* arch index *pst-a* *pst-c*)
+         (pst-reaches *pst-header-lines* arch index *pst-a* *pst-c*)
+         (equal (pst-result-code (pst-command-at-session *pst-session* *pst-env-x*
+                                  "HDR Subject 1-3" arch index *pst-a* *pst-c*)) '(50 50 53))
+         (equal (pst-result-code (pst-command-at-session *pst-session* *pst-env-x*
+                                  "XHDR Subject 1-3" arch index *pst-a* *pst-c*)) '(50 50 49))
+         (equal (pst-result-code (pst-command-at-session *pst-session* *pst-env-x*
+                                  "HDR :FN-VERIFIED 1-3" arch index *pst-a* *pst-c*)) '(50 50 53))
+         (equal (pst-result-code (pst-command-at-session *pst-session* *pst-env-x*
+                                  "HDR :FN-ENROLLMENT <b@x>" arch index *pst-a* *pst-c*)) '(50 50 53))
+         (equal (pst-result-code (pst-command-at-session *pst-session* *pst-env-x*
+                                  "HDR" arch index *pst-a* *pst-c*)) '(53 48 49))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-scol-okp))))
+
 ;; The withdrawal preludes remain ahead of compatibility and retrieval.
 ;; A control pin retains the target while the catalog's view hides it;
 ;; both the number and Message-ID forms therefore reach their literal
@@ -648,3 +719,14 @@
               (symbol-class 'fn-proto-advance-eventp (w state))
               (symbol-class 'fn-proto-archive-keywordp (w state)))
         '(:common-lisp-compliant :common-lisp-compliant :common-lisp-compliant)))
+
+;; The switch is complete, and removing HDR's generated row loses coverage.
+;; This mutation concerns declarations; it is not a payload/view counterexample.
+(defthm pst-archive-form-coverage-positive-and-mutation
+  (let ((archive-names (fn-proto-names-with-dispatch :archive *fn-proto-table*)))
+    (and (subsetp-equal archive-names *fn-proto-cat-rows*)
+         (subsetp-equal *fn-proto-cat-rows* archive-names)
+         (member-equal "HDR" archive-names)
+         (not (subsetp-equal archive-names
+                             (remove-equal "HDR" *fn-proto-cat-rows*)))))
+  :rule-classes nil)
