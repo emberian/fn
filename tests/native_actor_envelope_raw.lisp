@@ -2,6 +2,26 @@
 ;;; This is SBCL integration evidence, not an ACL2/runtime refinement proof.
 (load "tests/native_section_envelope_raw.lisp")
 (in-package "ACL2")
+
+;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
+(define-condition harness-stub-reached (serious-condition)
+  ((name :initarg :name :reader harness-stub-reached-name)
+   (source :initarg :source :reader harness-stub-reached-source))
+  (:report (lambda (c s)
+             (format s "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it"
+                     (harness-stub-reached-name c) (harness-stub-reached-source c)))))
+(defun harness-stub-reached (name source)
+  (format *error-output* "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it~%"
+          name source)
+  (finish-output *error-output*)
+  (error 'harness-stub-reached :name name :source source))
+(defun fnn-condition-class (condition)
+  (declare (ignorable condition))
+  (harness-stub-reached 'fnn-condition-class "host/native/io.lisp"))
+(defun fnn-fault (control &rest args)
+  (declare (ignorable control args))
+  (harness-stub-reached 'fnn-fault "host/native/io.lisp"))
+;;; ---- derived stubs: END ----
 (defparameter +fnn-exit-ok+ :ok)
 (load-deployed-forms "books/failure-scope.lisp"
  '((defconst *fn-fs-exit-kinds*) (defun fn-fs-exit-kindp)
