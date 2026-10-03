@@ -42,7 +42,8 @@ def generate(source: Path, caches: list[Path], output: Path, limit=25.0, revisio
     coordinate = []
     inputs = {}
     def remember(path):
-        inputs[str(path)] = hashlib.sha256(path.read_bytes()).hexdigest()
+        if str(path) not in inputs:
+            inputs[str(path)] = hashlib.sha256(path.read_bytes()).hexdigest()
     def visit(name):
         if name in loaded:
             return
