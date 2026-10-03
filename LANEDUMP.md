@@ -3995,3 +3995,14 @@ Qplan fallback composition. Shared header bounds immutablec1f6 normal selected
 3root cert PASS certify-20261003T173231Z-2697440 (20matching cache dependencies,
 9uncited historical cache dependencies explicitly retained as provenance debt).
 Manifest archived/indexed; no book over10s and no image/physical transfer.
+
+## Query-plan host entry declarations
+
+Five actually consumed Fn-qplan entries now declared in host/interfaces.lisp:
+at-cursorp/donep/window-size guard T; window/cursor-step guard NATP W and actual
+stobjs. Classes common-lisp-compliant match the unchanged facade's source
+admissions. No old Splan keystone is cited; full query residual/progress is
+PRF1287 debt. Existing books/served-query-plan Makefile+owner-host include is
+the native root; no extracted-driver root fabricated. Static declaration
+inventory5/twoNATP gates/no oldkeystones and whitespace check pass; world/table
+admission/global projections belong integrated current candidate.

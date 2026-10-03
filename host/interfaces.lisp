@@ -2118,6 +2118,27 @@
   :class ::common-lisp-compliant
   :keystones (fn-splan-window-size-is-positive-until-done))
 
+; Consumed by native owner/mux. LIST is a distinct query residual subject;
+; the old Splan prefix/CW theorems do not establish this facade's contract.
+; PRF-1287 tracks the full query prefix/residual/progress and captured-view
+; boundary. These entries' own guards are verified; W is the only kind gate.
+(definterface fn-qplan-donep
+  :class :common-lisp-compliant)
+
+(definterface fn-qplan-at-cursorp
+  :class :common-lisp-compliant)
+
+(definterface fn-qplan-window-size
+  :class :common-lisp-compliant)
+
+(definterface fn-qplan-window
+  :class :common-lisp-compliant
+  :kinds ((w natp)))
+
+(definterface fn-qplan-cursor-step
+  :class :common-lisp-compliant
+  :kinds ((w natp)))
+
 ; -----------------------------------------------------------------------------
 ; nntp/served (21 entries)
 
