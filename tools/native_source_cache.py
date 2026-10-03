@@ -43,7 +43,7 @@ def prepare(manifest, output):
     return target
 
 
-def seal(manifest, raw_overlays=()):
+def seal(manifest, raw_overlays=(), logical_files=()):
     data = json.loads(manifest.read_text())
     output = Path(data['cache_output'])
     core = Path(str(output) + '.core')
@@ -59,13 +59,19 @@ def seal(manifest, raw_overlays=()):
         data['sha256'][str(path)] = runner.digest(path)
     data['execution_core'] = str(core)
     data['raw_overlays'] = [str(path.resolve()) for path in raw_overlays]
+    data['logical_files'] = [str(path.resolve()) for path in logical_files]
+    source_loader = Path(__file__).resolve().parents[1] / 'host/native/source-load.lisp'
+    if logical_files:
+        data['source_loader'] = str(source_loader)
     # The initialized core contains these compiled sources. Rehash the actual
     # execution inputs on restart, rather than rereading unused source files.
     execution = {str(core): data['sha256'][str(core)],
                  str(output): data['sha256'][str(output)],
                  str(Path(data['sbcl']).resolve()): runner.digest(Path(data['sbcl']))}
-    for path in raw_overlays:
+    for path in (*logical_files, *raw_overlays):
         execution[str(path.resolve())] = runner.digest(path)
+    if logical_files:
+        execution[str(source_loader)] = runner.digest(source_loader)
     for name in ('FN_MLDSA_LIBRARY', 'FN_DEFLATE_LIBRARY', 'FN_BLAKE3_LIBRARY'):
         if os.environ.get(name):
             path = Path(os.environ[name]).resolve()
@@ -89,9 +95,15 @@ def execute(manifest, argv):
     env = dict(os.environ, ACL2_CUSTOMIZATION='NONE')
     env.pop('ACL2_SYSTEM_BOOKS', None)
     env['FN_NATIVE_PROFILE'] = data['profile']
+    logical = []
+    if data.get('logical_files'):
+        logical = ['--eval', '(load ' + runner.literal(data['source_loader']) + ')',
+                   '--eval', '(acl2::fnn-source-admit-files (quote (' +
+                   ' '.join(runner.literal(path) for path in data['logical_files']) + ')))']
     command = [data['sbcl'], '--tls-limit', '65536', '--dynamic-space-size', '12000',
                '--control-stack-size', '64', '--core', data['execution_core'],
                '--noinform', '--disable-debugger', '--no-userinit',
+               *logical,
                *[word for path in data.get('raw_overlays', ())
                  for word in ('--eval', '(load ' + runner.literal(path) + ')')],
                '--eval', '(acl2::sbcl-restart)', '--end-toplevel-options', '--fn', *argv]
@@ -124,13 +136,13 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='command', required=True)
     p = sub.add_parser('prepare'); p.add_argument('manifest', type=Path); p.add_argument('output', type=Path)
-    p = sub.add_parser('seal'); p.add_argument('manifest', type=Path); p.add_argument('--raw-overlay', action='append', type=Path, default=[])
+    p = sub.add_parser('seal'); p.add_argument('manifest', type=Path); p.add_argument('--raw-overlay', action='append', type=Path, default=[]); p.add_argument('--logical-file', action='append', type=Path, default=[])
     p = sub.add_parser('initialize'); p.add_argument('manifest', type=Path)
     p = sub.add_parser('run'); p.add_argument('manifest', type=Path); p.add_argument('argv', nargs=argparse.REMAINDER)
     args = parser.parse_args()
     try:
         if args.command == 'prepare': print(prepare(args.manifest, args.output))
-        elif args.command == 'seal': print(seal(args.manifest, args.raw_overlay))
+        elif args.command == 'seal': print(seal(args.manifest, args.raw_overlay, args.logical_file))
         elif args.command == 'initialize': initialize(args.manifest)
         else: execute(args.manifest, args.argv[1:] if args.argv[:1] == ['--'] else args.argv)
     except (OSError, ValueError) as error:
