@@ -336,6 +336,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/wildmat-parser-invariants \
 	books/wildmat-matcher-invariants \
 	books/wildmat-work \
+	books/wildmat-cursor \
+	tests/acl2/wildmat-cursor-tests \
 	tests/acl2/wildmat-parser-invariants-tests \
 	tests/acl2/wildmat-tests \
 	tests/acl2/wildmat-teeth-tests \
@@ -1919,6 +1921,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/newnews-metadata-cursor \
 	tests/acl2/newnews-metadata-cursor-tests \
 	books/newnews-candidate-selector \
+	books/newnews-matching-selector \
+	tests/acl2/newnews-matching-selector-tests \
 	tests/acl2/newnews-candidate-selector-tests \
 	books/newnews-stream-cursor \
 	tests/acl2/newnews-stream-cursor-tests \

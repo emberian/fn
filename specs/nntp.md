@@ -2096,8 +2096,10 @@ The metadata NEWNEWS continuation is the first `def-cursor` consumer
 `fn-nntp-newnews-response-stream`; its initializer retains parsed wildcard
 patterns, configured groups and article tails by reference in fixed envelopes.
 `fn-nnw-stream-step` accepts separate control-call and emitted-byte budgets.
-A candidate retains `fn-nnw-select-start` state while `fn-nnw-select-one`
-inspects one configured group or membership entry per call. The first equal
+A candidate retains `fn-nnm-start` state while `fn-nnm-one`
+inspects one configured group/member entry or takes one wildcard matcher
+microstep per call. The matcher retains its decoder offset, DP row and
+continuation frames; a scheduling call cannot drain the whole match. The first equal
 membership decides that group's number, including an invalid first duplicate;
 this preserves the original filtered-group candidate semantics. A sparse miss
 continues through the retained group/member position, and matching installs a
@@ -2114,7 +2116,7 @@ checks are tracked separately from matching certificates and native images.
 The disabled logical residual and remaining models may walk captured lists;
 the execution initializer and selector do not build a selected-group list or
 copy membership/archive data. This still does not establish a composed heap
-funding bound: group-name comparisons, wildcard DP work/rows, metadata checks,
+funding bound: group-name comparisons, matcher retained graph/native byte tariff, metadata checks,
 outer copying, allocator/collector margin and physical output custody need
 matching tariffs and a producer before materialization. The decided completed
 discovery snapshot, restricted NEWNEWS and cold HDR/XPAT remain open; the

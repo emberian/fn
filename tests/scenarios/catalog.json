@@ -8318,7 +8318,8 @@
         "Run actual native NEWNEWS wildcard workload with more candidates than shared cache slots; compare complete Message-ID reply while a second connection remains responsive.",
         "Run newnews-stream-cursor-tests and actual served-plan-newnews-tests: indexed line wider than byte quantum drains without candidate visits, sparse selection retains final renderer, tiny/large plan outputs equal.",
         "Run actual configured factory→plan witness with eleven captured configured groups, sparse first article, selector retained through one-call/one-byte quanta, and complete equality to original catalog reply.",
-        "Run tests.test_cursor_cold_poll against actual extracted native cursor/mux bodies: cold attempt returns unchanged plan+issued read, pending yields to timer, repeated miss retains first clock, returned page resumes plan rather than input, refusal adds no body line. This is mocked-I/O source flow, not matching native image custody."
+        "Run tests.test_cursor_cold_poll against actual extracted native cursor/mux bodies: cold attempt returns unchanged plan+issued read, pending yields to timer, repeated miss retains first clock, returned page resumes plan rather than input, refusal adds no body line. This is mocked-I/O source flow, not matching native image custody.",
+        "Retain a wildcard continuation after the first valid equal membership; resume one decoder/DP microstep per controller call, with exact phase demand, zero group/member visits and residual equality. Excluded groups continue to the following selector; an invalid first duplicate never starts the matcher."
       ],
       "expected": [
         "Separate control calls, actual selector entry visits and emitted bytes obey their stated bounds; sparse misses retain selection progress rather than ending the scan.",
@@ -8328,7 +8329,8 @@
       ],
       "proofs": [
         "PRF-1256",
-        "PRF-1257"
+        "PRF-1257",
+        "PRF-1261"
       ],
       "evidence": [
         "tests/acl2/def-cursor-tests.lisp",
@@ -8339,7 +8341,9 @@
         "tests/acl2/newnews-candidate-selector-tests.lisp",
         "tests/test_cursor_cold_poll.py",
         "tests/cursor_cold_poll_recording.lisp",
-        "planning/evidence/cursor-cold-poll-20261003/checks-final.json"
+        "planning/evidence/cursor-cold-poll-20261003/checks-final.json",
+        "tests/acl2/newnews-matching-selector-tests.lisp",
+        "tests/acl2/wildmat-cursor-tests.lisp"
       ]
     },
     {
