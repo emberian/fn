@@ -23,7 +23,7 @@
 (let* ((row (find :post *fn-web-routes* :key #'fn-web-row-name))
        (action (list :private-begin row :captured-session :captured-context))
        (conn (fixture-conn 51 :event 44)) (healthy (fixture-conn 52 :event))
-       (face (%make-fnn-web-face :service :service :wake-closed t :conns (list conn healthy)))
+       (face (%make-fnn-web-face :service *fixture-service* :wake-closed t :conns (list conn healthy)))
        (saved-call (symbol-function 'fnn-call)) (saved-owner (symbol-function 'fnn-owner-serialized))
        (main-thread sb-thread:*current-thread*) (worker nil))
   (assert (fn-web-private-begin-p action))
