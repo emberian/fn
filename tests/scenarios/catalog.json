@@ -9169,6 +9169,32 @@
         "planning/evidence/web-stream-consumers-2026-10-03.md"
       ],
       "note": "Actual raw source consumer passes. Original NNTP LIST producer still materializes its captured reply; source programs/arithmetic profile/refinement and matching image/funding are pending."
+    },
+    {
+      "id": "SCN-1117",
+      "title": "Available command formatting and metadata navigation agree with the captured byte view",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "NNT-042"
+      ],
+      "proofs": [
+        "PRF-1287"
+      ],
+      "steps": [
+        "Seal all34 fixture payloads through actual fn-cat-intern-list, commit through generic fn-cat-commit, then capture the raw archive from visible held records.",
+        "Choose sparse survivors1/34 and empty availability, assert raw and available statep plus exact stored facts/arena bytes correspondence.",
+        "Compare complete GROUP, LISTGROUP, NEXT, LAST, LIST ACTIVE and LIST COUNTS helper results with the captured logical available archive; verify raw number2 and Message-ID remain retained."
+      ],
+      "expected": [
+        "Sparse metadata navigation moves1→34 and34→1 while enumerating only1/34; complete responses equal the bytes reference.",
+        "Empty availability preserves NEXT/LAST cursor on421/422 and produces empty GROUP0,35,34; retained identity lookup remains.",
+        "Fixture is source live-stobj command-helper acceptance, not production owner/capture proof or native reclaim qualification. LIST still has a whole-reply producer frontier."
+      ],
+      "evidence": [
+        "tests/acl2/served-available-commands-tests.lisp"
+      ],
+      "execution_scope": "Actual arena-intern and generic catalog writer with guarded specialized formatter/navigation exports; source fixtures pass. Generated dispatcher and owner route propagation/proof/image remain pending."
     }
   ]
 }

@@ -1929,6 +1929,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/newnews-matching-selector \
 	tests/acl2/newnews-matching-selector-tests \
 	tests/acl2/newnews-candidate-selector-tests \
+	books/catalog-available-readers \
+	books/served-availability \
+	books/served-available-commands \
+	tests/acl2/served-available-commands-tests \
 	books/def-cursor-batch \
 	books/newnews-stream-cursor \
 	tests/acl2/newnews-stream-cursor-tests \
