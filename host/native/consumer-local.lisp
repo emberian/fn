@@ -74,10 +74,15 @@
         ;; last reply is the command's.
         (when (fnn-core 'fn-native-control-host-consumer-cli-after
                         operation (and (consp reply) (second reply)) word)
-          (ignore-errors
-           (fnn-control-consumer-local (fnn-octets control) :bootstrap nil nil))
           (multiple-value-setq (reply word)
-            (fnn-control-consumer-local (fnn-octets control) operation input argument)))
+            (fnn-control-consumer-local (fnn-octets control) :bootstrap nil nil))
+          ;; An uncertain bootstrap may have persisted.  Preserve its outcome
+          ;; and stop; ACL2 permits registration only after acceptance.
+          (when (fnn-core 'fn-native-control-host-consumer-cli-after
+                          :bootstrap (and (consp reply) (second reply)) word)
+            (multiple-value-setq (reply word)
+              (fnn-control-consumer-local (fnn-octets control)
+                                          operation input argument))))
         (let ((status (and (consp reply) (second reply)))
               (cursor (and (consp reply) (third reply))))
           (when (eq operation :status)
