@@ -1,0 +1,1043 @@
+{
+ "comment": "Declarations read by tools/lock_discipline_check.py (rules R1-R10). A declaration closes an ANALYSIS gap; it never proves the declared contract. Every exception carries its why. Lock names: O owner/store, G gate, R roster, C commit, W consumer wait, L payload lifecycle, A arena pins, E extent realizer, K log kernel, S log spare, Q log queue, J service-log fallback, M mux inbox, X* leaf module locks. The realization rows are SEEDED here until the host-model book's *fn-hmc-realization* defconst lands; then they are generated from it (one authoritative copy).",
+ "locks": {
+  "O": {
+   "match": [
+    "(fnn-owner-service-lock)"
+   ],
+   "guard_names": [
+    "the owner mutex",
+    "owner mutex"
+   ]
+  },
+  "G": {
+   "match": [
+    "(fnn-owner-gate-mutex)"
+   ]
+  },
+  "R": {
+   "match": [
+    "(fnn-owner-service-roster)"
+   ]
+  },
+  "C": {
+   "match": [
+    "(fnn-owner-service-commit-lock)"
+   ],
+   "guard_names": [
+    "fnn-owner-service-commit-lock"
+   ]
+  },
+  "W": {
+   "match": [
+    "(fnn-owner-service-wait-lock)"
+   ]
+  },
+  "L": {
+   "match": [
+    "*fnn-payload-lifecycle-lock*"
+   ]
+  },
+  "A": {
+   "match": [
+    "*fnn-arena-pins-lock*"
+   ]
+  },
+  "E": {
+   "match": [
+    "*fnn-extent-lock*"
+   ],
+   "recursive": true,
+   "guard_names": [
+    "*fnn-extent-lock*"
+   ]
+  },
+  "K": {
+   "match": [
+    "(fnn-log-lock)"
+   ],
+   "recursive": true
+  },
+  "S": {
+   "match": [
+    "(fnn-log-spare-lock)"
+   ],
+   "io_ok": true,
+   "why_io": "serializes spare preparers; creation, preallocation and the fence run under it by design, never under O (io.lisp:6333-6337)"
+  },
+  "Q": {
+   "match": [
+    "*fnn-log-queue-mutex*"
+   ],
+   "recursive": true
+  },
+  "J": {
+   "match": [
+    "*fnn-owner-log-mutex*"
+   ],
+   "recursive": true,
+   "io_ok": true,
+   "why_io": "the fallback service-log writer: written only while no writer thread runs (offline commands), io.lisp:1117-1149"
+  },
+  "M": {
+   "match": [
+    "(fnn-mux-loop-lock)"
+   ]
+  },
+  "XRP": {
+   "match": [
+    "(fnn-runtime-participants-lock)"
+   ]
+  },
+  "XFEED": {
+   "match": [
+    "(fnn-feed-runtime-lock)",
+    "*fnn-feed-runtime-lock*"
+   ],
+   "guard_names": [
+    "*fnn-feed-runtime-lock*"
+   ]
+  },
+  "XPULL": {
+   "match": [
+    "(fnn-pull-runtime-lock)",
+    "*fnn-pull-runtime-lock*"
+   ],
+   "guard_names": [
+    "*fnn-pull-runtime-lock*"
+   ]
+  },
+  "XSNAP": {
+   "match": [
+    "(fnn-snapshot-job-action-lock)"
+   ]
+  },
+  "XCTL": {
+   "match": [
+    "(fnn-control-state-lock)"
+   ]
+  },
+  "XCTLBUF": {
+   "match": [
+    "*fnn-control-buffer-lock*"
+   ]
+  },
+  "XCRYPTO": {
+   "match": [
+    "*fnn-crypto-initialize-lock*",
+    "*fnn-hsig-mldsa-lock*",
+    "*fnn-digest-lock*",
+    "*fnn-deflate-lock*",
+    "*fnn-random-state-lock*"
+   ]
+  },
+  "XPZD": {
+   "match": [
+    "*fnn-pzd-lock*"
+   ]
+  },
+  "XBP": {
+   "match": [
+    "(sessions-lock)",
+    "sessions-lock"
+   ]
+  },
+  "XTLSCTX": {
+   "match": [
+    "(fnn-tls-context-lock)"
+   ]
+  },
+  "XTLSINIT": {
+   "match": [
+    "*fnn-tls-initialize-lock*"
+   ]
+  },
+  "XTLSRELOAD": {
+   "match": [
+    "*fnn-tls-reload-mutex*"
+   ]
+  }
+ },
+ "lock_order": {
+  "comment": "the declared partial order (deputy section 1c + Astra 3.3 + Astra D7's added edges O->M, E->Q, A->Q); transitively closed by the check",
+  "O": [
+   "G",
+   "R",
+   "C",
+   "W",
+   "L",
+   "A",
+   "K",
+   "E",
+   "Q",
+   "M",
+   "XPZD",
+   "XCRYPTO",
+   "XFEED",
+   "XPULL",
+   "J",
+   "XTLSRELOAD",
+   "XTLSCTX"
+  ],
+  "C": [
+   "G",
+   "Q",
+   "J"
+  ],
+  "G": [
+   "Q",
+   "J"
+  ],
+  "R": [
+   "A",
+   "M",
+   "Q",
+   "J"
+  ],
+  "K": [
+   "E",
+   "Q",
+   "J"
+  ],
+  "E": [
+   "Q",
+   "XPZD",
+   "J"
+  ],
+  "A": [
+   "Q",
+   "J"
+  ],
+  "XCTLBUF": [
+   "O"
+  ],
+  "XFEED": [
+   "O"
+  ],
+  "XPULL": [
+   "O"
+  ],
+  "J": [
+   "Q"
+  ],
+  "XTLSRELOAD": [
+   "XTLSCTX",
+   "Q",
+   "J",
+   "XTLSINIT"
+  ]
+ },
+ "direct_owner_sites": [
+  "fnn-owner-stop-service",
+  "fnn-owner-cold-shutdown",
+  "fnn-snapshot-source-root-release",
+  "fnn-owner-run"
+ ],
+ "expand_templates": [
+  "fnn-with-roster",
+  "fnn-owner-gated",
+  "fnn-log-with-kernel",
+  "fnn-with-control",
+  "fnn-with-control-buffer",
+  "fnn-mux-guarded",
+  "fnn-owner-attempt-handlers",
+  "fnn-owner-measured",
+  "fnn-posix",
+  "fnn-stdout-guard",
+  "fnn-core-cold-values",
+  "fnn-core-cold-single",
+  "fnn-core-cold-pool",
+  "fnn-core-mv",
+  "fnn-with-octets-rd",
+  "fnn-with-owner-control-turn",
+  "fnn-with-owner-control-issued-turn",
+  "fnn-digest-with-hasher",
+  "fnn-bpsec-with-operation",
+  "fnn-with-runtime-participants-parked",
+  "fnn-with-runtime-participants-bootstrap",
+  "fnn-with-world-key-printing"
+ ],
+ "gated_macros": {
+  "fnn-owner-gated": {
+   "class_position": 1
+  }
+ },
+ "fence_boundaries": [
+  "fnn-owner-shared-action-locked"
+ ],
+ "fence_functions": [
+  "fnn-owner-stop-service-locked",
+  "fnn-owner-stop-service",
+  "fnn-owner-fault-service",
+  "fnn-owner-fence-service",
+  "fnn-owner-gate-fail-locked",
+  "sb-ext:exit",
+  "fnn-exit"
+ ],
+ "core_callers": [
+  "fnn-call",
+  "fnn-core",
+  "fnn-core-state",
+  "fnn-owner-core",
+  "fnn-core-buffer-state",
+  "fnn-core-arena-state",
+  "fnn-core-buffer-arena-state",
+  "fnn-core-page-read-pool",
+  "fnn-cold-call",
+  "fnn-owner-action",
+  "fnn-core-mv",
+  "fnn-fixed-callback-fail"
+ ],
+ "realizers": [
+  "fn-durable-realize-octet",
+  "fn-durable-realize-octets",
+  "fn-durable-realize-lz",
+  "fn-durable-realize-lz-octet",
+  "fn-pgs-fill-realize",
+  "fn-pgs-fill-frame",
+  "fn-arena-stored"
+ ],
+ "regions": {
+  "owner-live-state": {
+   "lock": "O",
+   "accessors": [
+    "fnn-live-octets",
+    "fnn-live-arena",
+    "fnn-live-cat",
+    "fnn-live-hist",
+    "fnn-live-stobj",
+    "fnn-arena-then-state",
+    "fnn-global",
+    "fnn-core-state",
+    "fnn-owner-core",
+    "fnn-core-buffer-state",
+    "fnn-core-arena-state",
+    "fnn-core-buffer-arena-state"
+   ],
+   "why": "the served stobjs and *the-live-state* belong to the owner section (io.lisp:215-221, :319-336)",
+   "write_globals": [
+    "*the-live-state*"
+   ]
+  },
+  "extent-pool": {
+   "lock": "E",
+   "accessors": [
+    "fnn-live-page-read-pool",
+    "fnn-live-octets-rd"
+   ],
+   "why": "the cold pool and the realizer buffer: the extent mutex serializes them (extent.lisp:197)"
+  },
+  "control-buffer": {
+   "lock": "XCTLBUF",
+   "accessors": [
+    "fnn-live-octets-ctl"
+   ],
+   "why": "the control buffer, filled and decoded under its lock (control-transport.lisp:19)"
+  }
+ },
+ "region_primitives": [
+  "fnn-live-octets",
+  "fnn-live-arena",
+  "fnn-live-cat",
+  "fnn-live-hist",
+  "fnn-live-stobj",
+  "fnn-arena-then-state",
+  "fnn-global",
+  "fnn-live-page-read-pool",
+  "fnn-live-octets-rd",
+  "fnn-live-octets-ctl",
+  "fnn-core-state",
+  "fnn-owner-core",
+  "fnn-core-buffer-state",
+  "fnn-core-arena-state",
+  "fnn-core-buffer-arena-state"
+ ],
+ "slots": {
+  "fnn-owner-service-workers": "R",
+  "fnn-owner-service-clients": "R",
+  "fnn-owner-service-publisher": "R"
+ },
+ "shared_structs": [
+  "fnn-owner-service",
+  "fnn-mux-loop",
+  "fnn-log",
+  "fnn-cold-worker",
+  "fnn-owner-gate",
+  "fnn-control"
+ ],
+ "startup_roots": [
+  "fn-native-entry"
+ ],
+ "serving_roots": {
+  "fnn-owner-accept": "the primary accept/SIGTERM loop runs on the caller thread of fnn-owner-run after startup (owner.lisp:5959ff)"
+ },
+ "entries_are_actors": false,
+ "leaves": {
+  "io": [
+   "fnn-extent-pread",
+   "fnn-extent-window-pread",
+   "open",
+   "close",
+   "probe-file",
+   "delete-file",
+   "rename-file",
+   "directory",
+   "ensure-directories-exist",
+   "finish-output",
+   "force-output",
+   "write-sequence",
+   "read-sequence",
+   "read-line",
+   "read-byte",
+   "write-byte",
+   "write-string",
+   "write-line",
+   "sb-ext:run-program",
+   "fnn-%clone-renameat2",
+   "fnn-%flock",
+   "fnn-%statvfs",
+   "fnn-%syncfs",
+   "fnn-%import-renameat2",
+   "fnn-%rand-bytes",
+   "fnn-%ssl-ctx-load-verify-locations"
+  ],
+  "await": [
+   "sb-thread:join-thread",
+   "sb-thread:wait-on-semaphore",
+   "sb-thread:condition-wait"
+  ],
+  "sleep": [
+   "sleep"
+  ],
+  "runtime": [
+   "sb-thread:make-thread",
+   "make-hash-table"
+  ],
+  "socket": [
+   "fnn-%shutdown",
+   "fnn-%recv-peek",
+   "fnn-%ssl-accept",
+   "fnn-%ssl-connect",
+   "fnn-%ssl-read",
+   "fnn-%ssl-write",
+   "fnn-%ssl-shutdown"
+  ]
+ },
+ "leaf_prefixes": {
+  "sb-posix:": "io",
+  "sb-bsd-sockets:": "socket",
+  "sb-alien:alien-funcall": "io",
+  "sb-unix:": "io"
+ },
+ "pure_externals": [
+  "sb-posix:syscall-errno",
+  "sb-posix:s-issock",
+  "sb-posix:s-isreg",
+  "sb-posix:s-isdir",
+  "sb-posix:stat-mode",
+  "sb-posix:stat-size",
+  "sb-posix:stat-ino",
+  "sb-posix:stat-dev",
+  "sb-posix:stat-mtime",
+  "sb-posix:stat-nlink",
+  "sb-posix:stat-uid",
+  "sb-posix:getpid",
+  "sb-posix:getenv",
+  "sb-bsd-sockets:socket-file-descriptor",
+  "sb-bsd-sockets:make-inet-address",
+  "sb-bsd-sockets:socket-error",
+  "sb-posix:syscall-error",
+  "sb-posix:o-rdonly",
+  "sb-posix:o-wronly",
+  "sb-posix:o-rdwr",
+  "sb-posix:o-creat",
+  "sb-posix:o-excl",
+  "sb-posix:o-append",
+  "sb-posix:o-nofollow",
+  "sb-posix:o-directory",
+  "sb-posix:o-trunc",
+  "sb-posix:getcwd",
+  "sb-posix:kill",
+  "sb-posix:getuid",
+  "sb-posix:geteuid",
+  "sb-posix:strerror",
+  "sb-posix:file-descriptor",
+  "sb-posix:s-islnk",
+  "sb-posix:dirent-name",
+  "sb-posix:s-isfifo",
+  "sb-posix:s-ischr",
+  "sb-posix:s-isblk"
+ ],
+ "effect_overrides": {
+  "fnn-err": "bounded: a diagnostic is offered to the writer queue while the writer runs (io.lisp:843-849); the direct stderr write is the offline mode with no writer thread",
+  "fnn-log-offer": "bounded: queues under Q, never writes",
+  "fnn-journal-line": "bounded: offered to the writer, never written on the caller's thread (io.lisp:1122ff)",
+  "fnn-developer-selector": "developer-image environment read; production returns nil",
+  "fnn-log-line": "bounded: offered to the writer queue while the writer runs (io.lisp:1135-1149); the direct write under J is the offline/no-writer mode",
+  "fnn-extent-executor-observe-returned": "joins a cold worker only after observing it dead (extent.lisp:612-616): join-after-proven-termination, not a wait on a live worker"
+ },
+ "read_sinks": [
+  "fnn-extent-pread",
+  "fnn-extent-window-pread"
+ ],
+ "borrows": {
+  "fnn-extent-prefetch": {
+   "kind": "issued-row",
+   "callers": [
+    "fnn-extent-executor-job"
+   ],
+   "activation": "fnn-extent-executor-loop",
+   "job": "fnn-extent-executor-job",
+   "release": "fnn-extent-executor-actual-return",
+   "issue": "fnn-extent-issue-direct",
+   "issue_core": "fn-pio-direct-admit",
+   "why": "the token is issued under O+E before the worker runs (fn-pio-direct-admit) and released only after the job returns (books/page-read-direct.lisp, PRF-1234)"
+  },
+  "fnn-extent-window-run": {
+   "kind": "window-lease",
+   "callers": [
+    "fnn-extent-executor-job"
+   ],
+   "activation": "fnn-extent-executor-loop",
+   "job": "fnn-extent-executor-job",
+   "release": "fnn-extent-executor-actual-return",
+   "issue": "fnn-extent-issue-direct",
+   "issue_core": "fn-pio-direct-admit",
+   "why": "a window job runs on the same persistent worker activation as an issued read"
+  },
+  "fnn-snapshot-source-read-page": {
+   "kind": "file-pin",
+   "acquire_core": "fn-owner-page-file-pin-read",
+   "release": "fnn-extent-discovery-release",
+   "why": "snapshot page lease: acquired under O+E, released in the unwind-protect cleanup or handed off (owner.lisp:4898-4917)"
+  }
+ },
+ "threads": {
+  "fnn-log-writer-start": {
+   "registry": null,
+   "join": "fnn-log-writer-stop",
+   "fault_policy": "private",
+   "why": "the service-log writer: diagnostics only (io.lisp:1078)"
+  },
+  "fnn-extent-executor-start": {
+   "registry": null,
+   "join": "fnn-extent-executor-stop",
+   "fault_policy": "private",
+   "why": "persistent cold workers (extent.lisp:534)"
+  },
+  "fnn-owner-start-syncer": {
+   "registry": "fnn-owner-service-workers",
+   "join": "fnn-owner-commit-pipeline",
+   "fault_policy": "fence",
+   "why": "one issued log barrier job (owner.lisp:3344)"
+  },
+  "fnn-owner-start-committer": {
+   "registry": null,
+   "join": "fnn-owner-run",
+   "fault_policy": "fence",
+   "why": "the batching committer (owner.lisp:3714)"
+  },
+  "fnn-owner-maybe-publish-quantum": {
+   "registry": "fnn-owner-service-workers",
+   "join": "fnn-owner-wait-workers",
+   "fault_policy": "fence",
+   "why": "checkpoint publisher (owner.lisp:5257)"
+  },
+  "fnn-owner-export-start": {
+   "registry": "fnn-owner-service-workers",
+   "join": "fnn-owner-wait-workers",
+   "fault_policy": "fence",
+   "why": "exporter (owner.lisp:5307)"
+  },
+  "fnn-owner-start-tls-accept": {
+   "registry": "fnn-owner-service-workers",
+   "join": "fnn-owner-wait-workers",
+   "fault_policy": "connection",
+   "why": "additional plain/implicit-TLS listener (owner.lisp:5934)"
+  },
+  "fnn-mux-start": {
+   "registry": "fnn-owner-service-workers",
+   "join": "fnn-owner-wait-workers",
+   "fault_policy": "fence",
+   "why": "fixed I/O loops (mux.lisp:1373)"
+  },
+  "fnn-control-launch-client": {
+   "registry": "fnn-control-state-workers",
+   "join": "fnn-control-close",
+   "fault_policy": "connection",
+   "why": "per control connection (control.lisp:456)"
+  },
+  "fnn-control-start": {
+   "registry": null,
+   "join": "fnn-control-close",
+   "fault_policy": "connection",
+   "why": "local control listener (control.lisp:529)"
+  },
+  "fnn-feed-service-start": {
+   "registry": null,
+   "join": "fnn-feed-service-close",
+   "fault_policy": "private",
+   "why": "feed runtime (feed-service.lisp:596)"
+  },
+  "fnn-pull-service-start": {
+   "registry": null,
+   "join": "fnn-pull-service-close",
+   "fault_policy": "private",
+   "why": "pull runtime (pull-service.lisp:568)"
+  },
+  "fnn-web-start": {
+   "registry": "fnn-owner-service-workers",
+   "join": "fnn-owner-wait-workers",
+   "fault_policy": "connection",
+   "why": "web face (web-host.lisp:312)"
+  }
+ },
+ "after_deregistration_ok": [
+  "fnn-err",
+  "fnn-owner-log",
+  "sb-thread:signal-semaphore"
+ ],
+ "dispatch": {
+  "roots": [
+   "fnn-call"
+  ],
+  "stop": [],
+  "allowed": {
+   "*fnn-entry-guard-specs*": "read-mostly guard-spec cache, filled once per entry name (io.lisp:1278); F6: to move to image build time",
+   "*fnn-trailing-stobjs*": "read-mostly trailing-stobj cache (io.lisp:352-379); same disposition"
+  }
+ },
+ "failure_scopes": {
+  "fnn-call": {
+   "scope": "converts",
+   "why": "every condition in a core call becomes fnn-fault after the handler (io.lisp:1372-1393): converted, never swallowed"
+  },
+  "fnn-extent-executor-job": {
+   "scope": "result",
+   "why": "a cold job's fault is its RESULT, settled by the owner after actual return (extent.lisp:479-505)"
+  },
+  "fnn-log-sync-sealed-batch": {
+   "scope": "result",
+   "why": "the syncer returns :failed with its condition; the COMPLETE re-signals it under the owner (io.lisp:8043-8048)"
+  },
+  "fnn-owner-shared-action-locked": {
+   "scope": "fence",
+   "why": "the fence boundary itself: its ignore-errors guard the connection's fault reply inside a clause that then stops the service"
+  },
+  "fnn-owner-fault-service": {
+   "scope": "fence",
+   "why": "the fault fence itself"
+  }
+ },
+ "handoff_queues": {
+  "fnn-mux-loop-inbox": {
+   "lock": "M",
+   "lifecycle": null,
+   "why": "adopt registers under R and pushes under M; stop drains once and closes the wake fds (B2, r71 F9, S021)"
+  },
+  "fnn-mux-loop-arrived": {
+   "lock": "M",
+   "lifecycle": null,
+   "why": "await completions delivered after the loop's last drain (S021)"
+  }
+ },
+ "actors": {
+  "accept": {
+   "roots": [
+    "fnn-owner-accept"
+   ],
+   "gate_classes": [],
+   "why": "the primary accept/SIGTERM loop must not wait at the gate (r71 F8)"
+  },
+  "mux-loop": {
+   "roots": [
+    "fnn-mux-run"
+   ],
+   "no_await": true,
+   "await_ok": [],
+   "why": "an I/O loop must not park in a cold await (r71 F7)",
+   "await_ok_functions": [
+    "fnn-owner-gate-enter",
+    "fnn-extent-executor-observe-returned"
+   ],
+   "why_await_ok": "every served quantum waits for its admission at the gate (owner.lisp:1362); the check cannot separate an ordinary admission wait from r71 F7's :control settlement behind a barrier, which stays a MODEL obligation"
+  }
+ },
+ "commit_pipeline": [
+  "fnn-owner-commit-queued-locked",
+  "fnn-owner-commit-sync"
+ ],
+ "close_primitives": [
+  "fnn-close"
+ ],
+ "close_primitive_definitions": [
+  "fnn-close"
+ ],
+ "open_primitives": [
+  "fnn-open",
+  "fnn-open-file",
+  "sb-posix:open",
+  "fnn-socket-fd"
+ ],
+ "close_sites": {
+  "fnn-extent-close": "the :close realization: closes a registered extent fd after fn-pio-file-clear-p (realization row :close)"
+ },
+ "unlocked_publication": {},
+ "exceptions": [],
+ "enclave": {
+  "comment": "PROPOSED to the coordinator: the cold-read ownership protocol (books/page-read-direct.lisp) and the snapshot page lease -- the code already migrated onto issued rows/leases. Strict: no violation or unresolved site, no baseline rows.",
+  "functions": [
+   "fnn-extent-prefetch",
+   "fnn-extent-window-run",
+   "fnn-extent-executor-job",
+   "fnn-extent-executor-loop",
+   "fnn-extent-executor-actual-return",
+   "fnn-extent-issue-direct",
+   "fnn-snapshot-source-read-page",
+   "fnn-snapshot-source-root-acquire"
+  ]
+ },
+ "realization": [
+  {
+   "label": ":issue",
+   "layer": "C",
+   "enabled": [
+    "fn-pio-direct-admit"
+   ],
+   "sites": [
+    {
+     "function": "fnn-extent-issue-direct",
+     "file": "host/native/extent.lisp",
+     "primitive": null,
+     "core": "fn-pio-direct-admit",
+     "locks_held": [
+      "E"
+     ],
+     "requires_before": []
+    },
+    {
+     "function": "fnn-extent-issue-read",
+     "file": "host/native/extent.lisp",
+     "primitive": null,
+     "core": "fn-owner-page-read-admit",
+     "locks_held": [
+      "E"
+     ],
+     "requires_before": []
+    }
+   ]
+  },
+  {
+   "label": ":cancel",
+   "layer": "C",
+   "enabled": [
+    "fn-pio-cancel"
+   ],
+   "sites": [
+    {
+     "function": "fnn-extent-cancel-read",
+     "file": "host/native/extent.lisp",
+     "primitive": null,
+     "core": "fn-pio-cancel",
+     "locks_held": [
+      "E"
+     ],
+     "requires_before": []
+    }
+   ]
+  },
+  {
+   "label": ":return",
+   "layer": "C",
+   "enabled": [],
+   "sites": [
+    {
+     "function": "fnn-extent-executor-loop",
+     "file": "host/native/extent.lisp",
+     "primitive": "fnn-extent-executor-actual-return",
+     "core": null,
+     "locks_held": [
+      "E"
+     ],
+     "requires_before": []
+    }
+   ]
+  },
+  {
+   "label": ":settle",
+   "layer": "C",
+   "enabled": [
+    "fn-pio-direct-settle",
+    "fn-pio-complete"
+   ],
+   "sites": [
+    {
+     "function": "fnn-extent-direct-settle",
+     "file": "host/native/extent.lisp",
+     "primitive": null,
+     "core": "fn-pio-direct-settle",
+     "locks_held": [
+      "E"
+     ],
+     "requires_before": []
+    },
+    {
+     "function": "fnn-extent-complete-read",
+     "file": "host/native/extent.lisp",
+     "primitive": null,
+     "core": "fn-pio-complete",
+     "locks_held": [
+      "E"
+     ],
+     "requires_before": []
+    }
+   ]
+  },
+  {
+   "label": ":pin",
+   "layer": "C",
+   "enabled": [
+    "fn-arpn-step"
+   ],
+   "sites": [
+    {
+     "function": "fnn-arena-pins-step",
+     "file": "host/native/io.lisp",
+     "primitive": null,
+     "core": "fn-arpn-step",
+     "locks_held": [
+      "A"
+     ],
+     "requires_before": []
+    }
+   ]
+  },
+  {
+   "label": ":unpin",
+   "layer": "C",
+   "enabled": [
+    "fn-arpn-step"
+   ],
+   "sites": [
+    {
+     "function": "fnn-arena-pins-step",
+     "file": "host/native/io.lisp",
+     "primitive": null,
+     "core": "fn-arpn-step",
+     "locks_held": [
+      "A"
+     ],
+     "requires_before": []
+    }
+   ]
+  },
+  {
+   "label": ":capture",
+   "layer": "C",
+   "enabled": [
+    "fn-rpin-step"
+   ],
+   "sites": [
+    {
+     "function": "fnn-owner-response-pin-step",
+     "file": "host/native/owner.lisp",
+     "primitive": null,
+     "core": "fn-rpin-step",
+     "locks_held": [
+      "A"
+     ],
+     "requires_before": []
+    }
+   ]
+  },
+  {
+   "label": ":drain",
+   "layer": "C",
+   "enabled": [
+    "fn-rpin-step"
+   ],
+   "sites": [
+    {
+     "function": "fnn-owner-response-pin-step",
+     "file": "host/native/owner.lisp",
+     "primitive": null,
+     "core": "fn-rpin-step",
+     "locks_held": [
+      "A"
+     ],
+     "requires_before": []
+    }
+   ]
+  },
+  {
+   "label": ":release",
+   "layer": "C",
+   "enabled": [
+    "fn-arena-release"
+   ],
+   "sites": [
+    {
+     "function": "fnn-log-reseat-fenced",
+     "file": "host/native/io.lisp",
+     "primitive": null,
+     "core": "fn-arena-release",
+     "locks_held": [],
+     "requires_before": []
+    }
+   ]
+  },
+  {
+   "label": ":close",
+   "layer": "C",
+   "enabled": [
+    "fn-pio-file-clear-p"
+   ],
+   "sites": [
+    {
+     "function": "fnn-extent-close",
+     "file": "host/native/extent.lisp",
+     "primitive": "fnn-close",
+     "core": null,
+     "locks_held": [
+      "E"
+     ],
+     "requires_before": [
+      "fn-pio-file-clear-p"
+     ]
+    }
+   ]
+  },
+  {
+   "label": ":swap",
+   "layer": "C",
+   "enabled": [
+    "fn-orcp-swap-word"
+   ],
+   "sites": [
+    {
+     "function": "fnn-owner-reclaim-pass",
+     "file": "host/native/owner.lisp",
+     "primitive": null,
+     "core": "fn-owner-orcp-swap",
+     "locks_held": [
+      "O"
+     ],
+     "requires_before": []
+    }
+   ]
+  },
+  {
+   "label": ":discovery-acquire",
+   "layer": "C",
+   "enabled": [],
+   "sites": [
+    {
+     "function": "fnn-extent-entry-fresh",
+     "file": "host/native/extent.lisp",
+     "primitive": null,
+     "core": "fn-owner-page-read-discovery-admit",
+     "locks_held": [
+      "E"
+     ],
+     "requires_before": []
+    }
+   ]
+  },
+  {
+   "label": ":discovery-release",
+   "layer": "C",
+   "enabled": [],
+   "sites": [
+    {
+     "function": "fnn-extent-discovery-release",
+     "file": "host/native/extent.lisp",
+     "primitive": null,
+     "core": "fn-owner-page-read-discovery-release",
+     "locks_held": [
+      "E"
+     ],
+     "requires_before": []
+    }
+   ]
+  },
+  {
+   "label": ":io-begin",
+   "layer": "P",
+   "assumption": "A-PRIM-PREAD",
+   "enabled": [],
+   "sites": [
+    {
+     "function": "fnn-extent-prefetch",
+     "file": "host/native/extent.lisp",
+     "primitive": "fnn-extent-pread",
+     "core": null,
+     "locks_held": [],
+     "requires_before": []
+    },
+    {
+     "function": "fnn-extent-window-run",
+     "file": "host/native/extent.lisp",
+     "primitive": "fnn-extent-window-pread",
+     "core": null,
+     "locks_held": [],
+     "requires_before": []
+    }
+   ]
+  },
+  {
+   "label": ":fd-open",
+   "layer": "P",
+   "assumption": "A-PRIM-FD",
+   "enabled": [],
+   "sites": []
+  },
+  {
+   "label": ":fd-close",
+   "layer": "P",
+   "assumption": "A-PRIM-FD",
+   "enabled": [],
+   "sites": [
+    {
+     "function": "fnn-extent-close",
+     "file": "host/native/extent.lisp",
+     "primitive": "fnn-close",
+     "core": null,
+     "locks_held": [
+      "E"
+     ],
+     "requires_before": []
+    }
+   ]
+  },
+  {
+   "label": ":acquire",
+   "layer": "P",
+   "assumption": "A-PRIM-MUTEX",
+   "enabled": [],
+   "sites": []
+  },
+  {
+   "label": ":release",
+   "layer": "P",
+   "assumption": "A-PRIM-MUTEX",
+   "enabled": [],
+   "sites": []
+  },
+  {
+   "label": ":io-complete",
+   "layer": "P",
+   "assumption": "A-PRIM-PREAD",
+   "enabled": [],
+   "sites": []
+  },
+  {
+   "label": ":crash",
+   "layer": "P",
+   "assumption": "A-PRIM-CRASH",
+   "enabled": [],
+   "sites": []
+  }
+ ],
+ "alien_default": "ffi",
+ "realization_comment": "SEED rows from build/coordinator/lanedumps/host-model.md REALIZATION; the authoritative copy becomes the host-model book's *fn-hmc-realization* defconst (agreed 2026-10-03), from which planning/host-realization.json is generated. :retire, :window-acquire and :window-release and the P labels' sites are the deputy's to fill."
+}
