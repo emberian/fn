@@ -1769,6 +1769,9 @@ def def_carried_view_expansion(form: list) -> list:
              [Sym("let"), [[Sym("r"), [refresh, [Sym("cons"), [ws_of, carry], [Sym("fn-cv-cdr"), carry]], ws]]],
               [Sym("cons"), [Sym("cons"), st, ws], [Sym("fn-cv-cdr"), Sym("r")]]]]))
         hyps = [[carryp, carry], [stampedp, carry], fresh]
+        events.append([Sym("defthm"), _gen_sym(fresh_fn, "-determines"),
+                       [Sym("implies"), [Sym("and"), [fresh_fn, Sym("s"), Sym("a")], [fresh_fn, Sym("s"), Sym("b")]],
+                        [Sym("equal"), Sym("a"), Sym("b")]]])
         events.append([Sym("defthm"), _gen_sym(name, "-key-of-refresh"),
                        [Sym("equal"), [Sym("fn-cv-car"), [refresh, carry, ws]], ws]])
         events.append([Sym("defthm"), _gen_sym(carryp, "-of-refresh-stamped"),

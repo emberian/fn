@@ -82,7 +82,7 @@
 ;   (def-carried-view NAME :key WS :indexes (...)
 ;     :stamp (:stamped (lambda (stamp ws) TERM)   ; "WS is the list stamped STAMP"
 ;             :determines THM))                   ; (implies (and STAMPED[s a] STAMPED[s b])
-;                                                 ;          (equal a b))
+;                                                 ;          (equal a b)), over s, a, b
 ;
 ; generates, beside the list view's names, NAME-stamp (the carried stamp;
 ; the carry is ((STAMP . WS) IDX ...)), NAME-stampedp (the carried pair is
@@ -668,6 +668,13 @@
                    (cons (cons stamp ws) (fn-cv-cdr carry))
                  (let ((r (,refresh (cons (,ws-of carry) (fn-cv-cdr carry)) ws)))
                    (cons (cons stamp ws) (fn-cv-cdr r)))))
+             ; :determines (stated over s, a, b) lifted onto the relation's one
+             ; name, so every later proof keeps NAME-fresh closed
+             (defthm ,(fn-cv-name fresh '-determines)
+               (implies (and (,fresh s a) (,fresh s b)) (equal a b))
+               :rule-classes nil
+               :hints (("Goal" :use ((:instance ,determines (s s) (a a) (b b)))
+                        :in-theory (union-theories '(,fresh) (theory 'minimal-theory)))))
              ; the list refresh keeps its key (the list layout's fact)
              (defthm ,(fn-cv-name name '-key-of-refresh)
                (equal (fn-cv-car (,refresh carry ws)) ws)
@@ -677,13 +684,14 @@
                (implies (and (,carryp carry) (,stampedp carry) ,stamped-s-ws)
                         (,carryp (,refresh-s carry stamp ws)))
                :hints (("Goal"
-                        :use ((:instance ,determines (s stamp) (a ws) (b (,ws-of carry)))
+                        :use ((:instance ,(fn-cv-name fresh '-determines)
+                                         (s stamp) (a ws) (b (,ws-of carry)))
                               (:instance ,(fn-cv-name lcarryp '-of-refresh)
                                          (carry (cons (,ws-of carry) (fn-cv-cdr carry))))
                               (:instance ,(fn-cv-name name '-key-of-refresh)
                                          (carry (cons (,ws-of carry) (fn-cv-cdr carry)))))
                         :in-theory (union-theories
-                                    '(,refresh-s ,stampedp ,stamp-of ,ws-of ,carryp ,lcarryp ,fresh
+                                    '(,refresh-s ,stampedp ,stamp-of ,ws-of ,carryp ,lcarryp
                                       fn-cv-car fn-cv-cdr car-cons cdr-cons)
                                     (theory 'minimal-theory)))))
              (defthm ,(fn-cv-name stampedp '-of-refresh-stamped)
@@ -1009,12 +1017,12 @@
          (implies (and ,@(strip-cadrs hyps)) (equal (,r ,@formals) ,reference))
          :hints (("Goal" :use ((:instance ,(fn-cv-get :by kvs) (ws (,ws-of ,c)) (idxs (fn-cv-cdr ,c)))
                                ,@(and stamp
-                                      `((:instance ,(fn-cv-get :determines stamp)
+                                      `((:instance ,(fn-cv-name view '-fresh-determines)
                                                    (s ,s) (a ,ws) (b (,ws-of ,c))))))
                   :in-theory (e/d (,r ,carryp ,okp ,ws-of fn-cv-car
-                                   ,@(and stamp `(,lcarryp ,stampedp ,stamp-of ,(fn-cv-name view '-fresh)
+                                   ,@(and stamp `(,lcarryp ,stampedp ,stamp-of
                                                   fn-cv-cdr car-cons cdr-cons)))
-                                  (,idx-okp)))))
+                                  (,idx-okp ,@(and stamp `(,(fn-cv-name view '-fresh))))))))
        (table fn-teeth-owed ',thm '(:by def-carried-reader :claim ,claim))
        (in-theory (disable ,r)))))
 
