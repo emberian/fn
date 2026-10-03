@@ -11,7 +11,7 @@
   (<= (- (len progress) (len (mv-nth 1 (fn-cur-test-one progress)))) 1))
 (def-cursor fn-cur-test ()
   :call (fn-cur-test-one progress)
-  :visit-proof fn-cur-test-visits)
+  :visit-proof fn-cur-test-visits :visit-metric (len progress))
 
 (verify-guards fn-cur-test-step)
 
@@ -49,4 +49,11 @@
 (must-fail
  (def-cursor fn-cur-absent ()
    :call (fn-cur-test-one progress)
-   :visit-proof fn-cur-nonexistent-proof))
+   :visit-proof fn-cur-nonexistent-proof :visit-metric (len progress)))
+
+; An admitted theorem of another statement cannot license a declaration.
+(defthm fn-cur-unrelated t :rule-classes nil)
+(must-fail
+ (def-cursor fn-cur-wrong-proof ()
+   :call (fn-cur-test-one progress)
+   :visit-proof fn-cur-unrelated :visit-metric (len progress)))

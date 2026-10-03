@@ -21808,14 +21808,16 @@
         "books/def-cursor.lisp",
         "books/newnews-metadata-cursor.lisp",
         "tests/acl2/def-cursor-tests.lisp",
-        "tests/acl2/newnews-metadata-cursor-tests.lisp"
+        "tests/acl2/newnews-metadata-cursor-tests.lisp",
+        "planning/evidence/served-cursor-20261003/metadata-repl.log.gz",
+        "planning/evidence/served-cursor-20261003/shell-repl.log.gz"
       ],
       "events": [
         "fn-nnw-meta-step-residual",
         "fn-nnw-meta-one-progresses",
         "fn-nnw-meta-one-visits-at-most-one"
       ],
-      "progress_note": "GPT-6.1-Sol 2026-10-03: consumer core, residual, guard checks and literal sparse/final-output teeth admitted in narrow hbox REPL; not a certificate or native image qualification. Plan/dispatcher composition proof replay pending. Generated declaration selects cursor response; plan continuation signature unchanged. Current view policy remains pinned pending decided completed discovery capture; initialization selector and renderer working allocation remain unbounded debt."
+      "progress_note": "GPT-6.1-Sol 2026-10-03: consumer core, residual, guard checks and literal sparse/final-output teeth admitted in narrow hbox REPL; not a certificate or native image qualification. Plan/dispatcher composition proof replay pending. Generated declaration selects cursor response; plan continuation signature unchanged. Current view policy remains pinned pending decided completed discovery capture; initialization selector and renderer working allocation remain unbounded debt. Exact def-cursor visit formula and actual core call are translated/world-checked against named theorem; missing and wrong-statement theorem declarations are refused. Fresh shell tests12 forms admitted0.11 ACL2s/12,434steps; metadata declaration literal formula validated in hbox world. Mixed incremental metadata REPL and fresh shell logs archived/indexed; full composition still pending."
     }
   ]
 }

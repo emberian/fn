@@ -49,7 +49,17 @@
 ; CONTEXT is immutable across output drain and suspension; a consumer may
 ; keep its snapshot/configuration/capture identity here. The shell never
 ; settles a dependency by observing a cache or a timeout.
-(defmacro def-cursor (name formals &key call stobjs visit-proof)
+(defun fn-cur-visit-proof-event (name statement state)
+  (declare (xargs :mode :program :stobjs state))
+  (let ((formula (getpropc name 'theorem nil (w state))))
+    (if (not formula)
+        (er soft 'def-cursor "~x0 must name an admitted visit theorem." name)
+      (er-let* ((translated (translate statement t t t 'def-cursor (w state) state)))
+        (if (equal translated formula)
+            (value '(value-triple :cursor-visit-proof-matches))
+          (er soft 'def-cursor "~x0 does not prove this consumer's literal one-candidate metric: ~x1" name statement))))))
+
+(defmacro def-cursor (name formals &key call stobjs visit-proof visit-metric)
   (let ((step (intern-in-package-of-symbol
                (concatenate 'string (symbol-name name) "-STEP") name))
         (byte-bound (intern-in-package-of-symbol
@@ -57,13 +67,16 @@
         (call-bound (intern-in-package-of-symbol
                      (concatenate 'string (symbol-name name) "-STEP-CALL-BOUND") name)))
     (if (or (not (symbolp name)) (not (true-listp formals))
-            (not (consp call)) (not (symbolp visit-proof)) (not visit-proof))
+            (not (consp call)) (not (symbolp visit-proof)) (not visit-proof)
+            (not (consp visit-metric)))
         '(assert-event nil :msg "def-cursor requires a call and named one-candidate visit proof")
       `(progn
          (make-event
-          (if (getpropc ',visit-proof 'theorem nil (w state))
-              '(value-triple :cursor-visit-proof-present)
-            '(assert-event nil :msg "def-cursor visit-proof must name an admitted theorem")))
+          (fn-cur-visit-proof-event
+           ',visit-proof
+           '(<= (- ,visit-metric
+                   ,(subst `(mv-nth 1 ,call) 'progress visit-metric)) 1)
+           state))
          (defun ,step (cur visits bytes ,@formals)
            (declare (xargs :guard (and (natp visits) (natp bytes))
                            ,@(if stobjs `(:stobjs ,stobjs) nil)
@@ -93,7 +106,7 @@
            :rule-classes :linear
            :hints (("Goal" :in-theory (e/d (,step) (fn-cur-split)))))
          (table fn-cursor ',name
-                '(:step ,step :call ,call :visit-proof ,visit-proof
+                '(:step ,step :call ,call :visit-proof ,visit-proof :visit-metric ,visit-metric
                   :context-preserved t :output-residual fn-cur-split-residual
                   :byte-bound fn-cur-split-byte-bound
                   :working-bound :consumer-owed :dependency-settlement :operation-owned))))))
