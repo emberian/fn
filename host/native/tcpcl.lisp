@@ -811,10 +811,11 @@ transfer lost after the session was established is connection-local,
 
 (defun fnn-command-tcpcl-listen (port once spool node-id peer keepalive segment-mru
                                  transfer-mru reply trace-path)
-  (let ((listener nil) (code +fnn-exit-ok+) (trace (fnn-tcl-trace-stream trace-path))
-        (spool-lock (fnn-tcl-spool-acquire spool)))
-    (unwind-protect
-         (let ((params (fnn-tcl-params node-id peer keepalive segment-mru transfer-mru))
+  (let ((listener nil) (code +fnn-exit-ok+) (trace nil) (spool-lock nil))
+    (fnn-unwind-cleanups
+         ((setq trace (fnn-tcl-trace-stream trace-path))
+          (setq spool-lock (fnn-tcl-spool-acquire spool))
+          (let ((params (fnn-tcl-params node-id peer keepalive segment-mru transfer-mru))
                (bundle (fnn-tcl-bundle reply)))
            (multiple-value-bind (bound bound-port) (fnn-tcl-listen port)
              (setq listener bound)
@@ -856,23 +857,24 @@ transfer lost after the session was established is connection-local,
                                  (t (error e))))))
                   (fnn-socket-shut socket))))
             once)
-           code)
+           code))
       (when listener (fnn-socket-shut listener))
       (fnn-tcl-spool-release spool-lock)
       (when trace (close trace)))))
 
 (defun fnn-command-tcpcl-send (host port bundle-path spool node-id peer keepalive
                                segment-mru transfer-mru expect trace-path)
-  (let ((socket nil) (trace (fnn-tcl-trace-stream trace-path))
-        (spool-lock (fnn-tcl-spool-acquire spool)))
-    (unwind-protect
-         (let ((params (fnn-tcl-params node-id peer keepalive segment-mru transfer-mru))
+  (let ((socket nil) (trace nil) (spool-lock nil))
+    (fnn-unwind-cleanups
+         ((setq trace (fnn-tcl-trace-stream trace-path))
+          (setq spool-lock (fnn-tcl-spool-acquire spool))
+          (let ((params (fnn-tcl-params node-id peer keepalive segment-mru transfer-mru))
                (bundle (fnn-tcl-bundle bundle-path)))
            (setq socket (fnn-tcl-connect host port))
            (let ((conn (fnn-tcl-session (fnn-socket-fd socket) :active params "active" spool
                                         :bundle bundle :trace trace :expect expect)))
              (fnn-tcl-summary conn)
-             (fnn-tcl-exit-code conn)))
+             (fnn-tcl-exit-code conn))))
       (when socket (fnn-socket-shut socket))
       (fnn-tcl-spool-release spool-lock)
       (when trace (close trace)))))
