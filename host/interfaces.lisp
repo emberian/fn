@@ -5310,3 +5310,8 @@
 (definterface fn-web-host-read-size :class ::program)
 (definterface fn-web-host-event-cid :class ::program)
 (definterface fn-web-host-reserve-size :class ::program)
+
+; PRF-1272: allocation-generation producer, distinct from history version.
+; Program global/native installation refinement remains pending.
+(definterface fn-owner-catalog-root-reserve :class :program)
+(definterface fn-owner-catalog-root-current :class :program)

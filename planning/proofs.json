@@ -22092,6 +22092,25 @@
         "planning/evidence/native-history-builder-2026-10-03.json"
       ],
       "progress_note": "Narrow hbox certification PASSED at exact book bytes (certify-20261003T101722Z-1422001); literal keystone teeth and actual old/new committed image comparison certified. Raw native control-flow fixture passes. Actual saved image qualification remains pending Integration convergence. Scope is retained suffix capacity only; no bounded reclaim or whole-image work claim."
+    },
+    {
+      "id": "PRF-1272",
+      "title": "Catalog allocation incarnation is reserved before native root binding",
+      "statement": "fn-cri-reserve produces a distinct natural-number catalog-root token and advances its counter before host/native/owner.lisp fnn-install-stobj binds a replacement fn-cat. Failed binding never reuses the reserved generation. Actual owner globals and paired-view capture must preserve this allocation namespace independently of history version.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-002"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/catalog-root-incarnation.lisp",
+        "tests/acl2/catalog-root-incarnation-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp"
+      ],
+      "progress_note": "Coherent reserve-before-binding source connected to actual native catalog installer; source pushed before verification per current instruction. Pure theorems/teeth, program-global bridge, matching certification/native fault schedule and paired cache consumption pending. Tokens are private to one owner/image lifetime, not persisted or compared across processes."
     }
   ]
 }

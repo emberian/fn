@@ -812,6 +812,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/arena-forget-columns \
 	books/owner-reclaim-seal \
 	books/catalog-may-seal \
+	books/catalog-root-incarnation \
+	tests/acl2/catalog-root-incarnation-tests \
 	tests/acl2/owner-reclaim-seal-tests \
 	books/handle-holds \
 	books/owner-reclaim-instant \
