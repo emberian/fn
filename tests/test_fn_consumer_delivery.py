@@ -191,7 +191,7 @@ class DeliveryRecovery(unittest.TestCase):
             self.fail("malformed application fields must not reach signing")
         self.client.artifact = forbidden
         with self.assertRaises(fn_consumer.Stop) as stopped:
-            self.client.originate("r1", "receipt\r\noperation-id: r2")
+            self.client.originate("r1\r\nkind: reply", "receipt")
         self.assertEqual(stopped.exception.code, 1)
         self.assertEqual(self.client.db.execute("SELECT count(*) FROM operations").fetchone(), (0,))
 

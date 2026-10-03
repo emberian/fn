@@ -172,6 +172,20 @@ class JournalAgainstAStandIn(unittest.TestCase):
         first, retry = self.seen()
         self.assertEqual(first, retry)
 
+    def test_payload_file_retry_preserves_binary_artifact_after_key_removal(self):
+        payload = self.root / "payload.bin"
+        payload.write_bytes(b"\x00\xff\r\nkind: reply\r\noperation-id: injected\n")
+        self.queue(0, 0)
+        self.assertEqual(self.run_consumer("report", "r1", "--payload-file", str(payload), cut="after-post").returncode, 97)
+        for path in self.keys.values():
+            Path(path).unlink(missing_ok=True)
+        self.assertEqual(self.run_consumer("report", "r1", "--payload-file", str(payload)).returncode, 0)
+        first, retry = self.seen()
+        self.assertEqual(first, retry)
+        payload.write_bytes(b"changed")
+        self.assertEqual(self.run_consumer("report", "r1", "--payload-file", str(payload)).returncode, 1)
+        self.assertEqual(len(self.seen()), 2)
+
     def test_reusing_operation_for_changed_payload_refuses_without_publication(self):
         self.assertEqual(self.run_consumer("report", "r1", "x").returncode, 0)
         first = self.outbox()[0]

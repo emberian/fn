@@ -81,6 +81,8 @@ recorded), `in-result-transaction` (inside the answer's BEGIN IMMEDIATE,
 before COMMIT).
 """
 import argparse
+import base64
+import binascii
 import datetime
 import email.utils
 import fcntl
@@ -95,6 +97,7 @@ import sys
 import tempfile
 
 APP_MAGIC = b"fn-app: e1/1"
+APP_MAGIC_V2 = b"fn-app: e1/2"
 SCHEMA_VERSION = "fn-consumer-2"
 VERIFIER = Path(__file__).resolve().parent / "fn_verify.py"
 SCHEMA = """
@@ -432,19 +435,35 @@ class Consumer:
 
     # -- application ----------------------------------------------------------
     @staticmethod
+    def payload_bytes(payload):
+        return payload.encode("utf-8") if isinstance(payload, str) else bytes(payload)
+
+    @staticmethod
+    def payload_wire(payload):
+        encoded = base64.b64encode(payload)
+        return b"\r\n".join(encoded[i:i + 76] for i in range(0, len(encoded), 76)) + b"\r\n"
+
+    @staticmethod
     def envelope(source):
-        head, sep, body = source.partition(b"\r\n\r\n")
+        _, sep, body = source.partition(b"\r\n\r\n")
         if not sep:
             return None
-        lines = body.split(b"\r\n")
-        if not lines or lines[0] != APP_MAGIC:
+        magic, sep, rest = body.partition(b"\r\n")
+        if not sep or magic not in (APP_MAGIC, APP_MAGIC_V2):
             return None
+        if magic == APP_MAGIC_V2:
+            metadata, sep, wire = rest.partition(b"\r\n\r\n")
+            if not sep:
+                return None
+            lines = metadata.split(b"\r\n")
+        else:
+            lines = rest.split(b"\r\n")
         fields = {}
-        for line in lines[1:]:
-            if not line:
+        for line in lines:
+            if not line and magic == APP_MAGIC:
                 continue
             key, colon, value = line.partition(b": ")
-            if not colon:
+            if not colon or not key or b"\r" in line or b"\n" in line:
                 return None
             try:
                 key, value = key.decode("ascii"), value.decode("ascii")
@@ -455,6 +474,18 @@ class Consumer:
             fields[key] = value
         if not {"application-id", "operation-id", "kind"} <= fields.keys():
             return None
+        if magic == APP_MAGIC_V2:
+            if fields.get("payload-encoding") != "base64" or "payload" in fields:
+                return None
+            try:
+                payload = base64.b64decode(wire.replace(b"\r\n", b""), validate=True)
+            except (binascii.Error, ValueError):
+                return None
+            # One canonical payload region: no alternate whitespace, trailing
+            # metadata, or malformed length can change the application meaning.
+            if fields.get("payload-length") != str(len(payload)) or wire != Consumer.payload_wire(payload):
+                return None
+            fields["payload"] = payload
         return fields
 
     def claimant(self, application_id, operation_id):
@@ -470,11 +501,25 @@ class Consumer:
         return best[1] if best else None
 
     def compose(self, message_id, subject, fields):
-        # This existing application profile uses one ASCII line per field.
-        # Never let opaque input replace its operation/kind through framing.
-        if any("\r" in value or "\n" in value for _, value in fields):
-            raise Stop(1, "the application v1 field contains a line break")
-        body = [APP_MAGIC] + [("%s: %s" % kv).encode("ascii") for kv in fields]
+        metadata = []
+        payload = b""
+        seen = set()
+        for key, value in fields:
+            if key in seen or key in ("payload-encoding", "payload-length"):
+                raise Stop(1, "duplicate or reserved application field")
+            seen.add(key)
+            if key == "payload":
+                payload = self.payload_bytes(value)
+                continue
+            if "\r" in key or "\n" in key or ":" in key or "\r" in value or "\n" in value:
+                raise Stop(1, "application metadata contains a line break or invalid key")
+            try:
+                metadata.append(("%s: %s" % (key, value)).encode("ascii"))
+            except UnicodeError:
+                raise Stop(1, "application metadata must be ASCII")
+        metadata.extend((b"payload-encoding: base64", ("payload-length: %d" % len(payload)).encode("ascii")))
+        body = (APP_MAGIC_V2 + b"\r\n" + b"\r\n".join(metadata) +
+                b"\r\n\r\n" + self.payload_wire(payload))
         # The Date is fixed when the source is composed; the submission keeps
         # these exact bytes, so every retry posts the same source.
         date = email.utils.format_datetime(
@@ -484,7 +529,7 @@ class Consumer:
                 b"Newsgroups: " + self.config["group"].encode("ascii") + b"\r\n"
                 b"Subject: " + subject.encode("ascii") + b"\r\n"
                 b"Message-ID: " + message_id.encode("ascii") + b"\r\n\r\n"
-                + b"\r\n".join(body) + b"\r\n")
+                + body)
 
     def artifact(self, application_id, operation_id, message_id, source):
         """Sign SOURCE once and return the complete submission artifact: the
@@ -519,13 +564,14 @@ class Consumer:
 
     def originate(self, operation_id, payload):
         """Author a report R as a new local operation with its submission."""
+        payload = self.payload_bytes(payload)
         aid = self.config["application_id"]
         prior = self.db.execute(
             "SELECT o.kind,s.source FROM operations o LEFT JOIN submissions s ON s.id=o.submission_id "
             "WHERE o.application_id=? AND o.operation_id=?", (aid, operation_id)).fetchone()
         if prior is not None:
             fields = self.envelope(prior[1]) if prior[1] is not None else None
-            if prior[0] != "originated" or fields is None or fields.get("kind") != "report-receipt" or fields.get("payload") != payload:
+            if prior[0] != "originated" or fields is None or fields.get("kind") != "report-receipt" or self.payload_bytes(fields.get("payload", "")) != payload:
                 raise Stop(1, "operation already has a different report; saved artifact unchanged")
             # Reuse the committed artifact without reading today's keys,
             # changing its Date/context or even producing discarded signatures.
@@ -564,7 +610,7 @@ class Consumer:
                                ("kind", "reply"),
                                ("correlation-id", fields["operation-id"]),
                                ("dependency", digest(event["source"])),
-                               ("payload", "received " + fields.get("payload", ""))])
+                               ("payload", b"received " + self.payload_bytes(fields.get("payload", "")))])
         return self.artifact(aid, oid, message_id, source)
 
     def observe_stored(self, event, check):
@@ -918,7 +964,8 @@ def build_parser():
     sub = parser.add_subparsers(dest="command", required=True)
     report = sub.add_parser("report")
     report.add_argument("operation_id")
-    report.add_argument("payload")
+    report.add_argument("payload", nargs="?")
+    report.add_argument("--payload-file", type=Path, help="read the exact payload bytes from a file")
     sub.add_parser("wake")
     sub.add_parser("summary")
     return parser
@@ -927,6 +974,8 @@ def build_parser():
 def main(argv=None):
     parser = build_parser()
     args = parser.parse_args(argv)
+    if args.command == "report" and (args.payload is None) == (args.payload_file is None):
+        parser.error("report needs exactly one PAYLOAD or --payload-file")
     try:
         consumer = Consumer(args.config)
     except InUse as busy:
@@ -934,7 +983,8 @@ def main(argv=None):
         return 1
     try:
         if args.command == "report":
-            consumer.originate(args.operation_id, args.payload)
+            payload = args.payload_file.read_bytes() if args.payload_file is not None else args.payload
+            consumer.originate(args.operation_id, payload)
             consumer.drive_outbox()
         elif args.command == "wake":
             consumer.wake()
