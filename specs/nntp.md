@@ -2649,6 +2649,16 @@ malformed retained comparison fields settle safely without a whole archive
 validator. The valid-state witnesses compare old reader outcomes and split fuel.
 The complete selector/owner reference bridge remains an open proof obligation.
 
+Message-ID retrieval retains the pinned lookup result or walks a non-pinned
+archive one ID character per step. It then walks that article's memberships
+one character per step to derive its optional selected-group number. RFC3977
+6.2.1.2 permits zero with no selected group or no available local number; these
+requests preserve the selected group and current article. An absent ID walks
+captured withdrawn rows before choosing the existing430 withdrawn/no-article
+reply. The same cursor can split fuel arbitrarily without changing its result,
+by fn-ast-select-fuel-composes. Complete termination and original-response
+refinement remain open; no host-side semantic parser is introduced.
+
 Recovery and reclaim may complete legacy availability facts from the same captured
 arena. This changes derived facts, while preserving the article identity, payload
 handle, group memberships, stamp, assigned numbers, sequence and withdrawal

@@ -3506,3 +3506,17 @@ Normal3root certificate at39d72 is certify-20261003T161139Z-2311907 (174matching
 cached deps/3PASS), archived index; current selector changes have different core
 bytes so no verdict transfer. Unchanged server/helper teeth match. Next owned
 code is Message-ID selection/local membership setup; no native custody edits.
+
+Access Message-ID setup continuation: pinned lookup now captures article + lazy
+local-number membership cursor; non-pinned archive and captured withdrawn ID
+lookup compare one ID character per transition, no full setup walks. Existing
+430 withdrawn/missing distinction and no selected-reader update preserved.
+Core local/search/select executable guards warm verified (search1440/select7891
+steps); universal fuel split875steps + literal positive/mutation teeth pass.
+Actual source184480 core/187518 owner/native aggregate PASS, first ID/member
+duplicates and5000-character group, invalid/oversized local numbers, all3sections
+cold READY/replay. MsgID recorded owner install remains0 as state is unchanged.
+Full factory/physical join stays Runtime/History; whole termination/reference,
+owner/renderer guards remain open. Next shared header span/extraction backing
+with Served; frozen READY4/render6 remain unchanged and Integration independently
+composes Qplan ordinary fallback.

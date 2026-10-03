@@ -42,3 +42,24 @@
               (fn-ast-select-state :number "fn.a" 1 nil nil 77 '(9 . 1) 0 :compare) 2)))
    (and (equal (fn-ast-at 9 done) :missing)
         (equal (fn-ast-at 5 done) nil))))
+
+; Reachable Message-ID archive selection retains the first ID match, settles
+; its available local number, and permits no group to report zero.
+(assert-event
+ (let ((start (fn-ast-select-state :msgid "fn.a" "<two@query.example>"
+                                  *astq-articles* nil nil nil 0 :msgid-next)))
+   (let ((done (fn-ast-select-step start 512)))
+     (and (eq (fn-ast-at 9 done) :selected)
+          (equal (fn-ast-at 5 done) (fn-find-article "<two@query.example>" *astq-articles*))
+          (equal (fn-ast-at 3 done) (fn-nntp-article-number "fn.a" *astq-two*))
+          (equal (fn-ast-at 3 (fn-ast-select-step (fn-ast-msgid-local-start nil *astq-two*) 512)) 0)))))
+
+; Literal unconditional fuel-composition witness; changing the second budget
+; actually changes this unfinished retained cursor.
+(assert-event
+ (let ((start (fn-ast-select-state :msgid "fn.a" "<two@query.example>"
+                                  *astq-articles* nil nil nil 0 :msgid-next)))
+   (and (equal (fn-ast-select-step (fn-ast-select-step start 1) 2)
+               (fn-ast-select-step start (+ (nfix 1) (nfix 2))))
+        (not (equal (fn-ast-select-step (fn-ast-select-step start 1) 2)
+                    (fn-ast-select-step start 4))))))
