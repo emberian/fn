@@ -22,6 +22,12 @@
 # tests.test_native_owner or
 # tests.test_native_owner.SomeTests.
 #
+# Static preflights reuse successful receipts under BASE/.native-preflight-cache
+# only for identical source and Python inputs. To precheck a candidate on the
+# box, run tools/native_preflight.py --cache BASE/.native-preflight-cache
+# --gate world-check (also interfaces-check and host-books). --force rechecks.
+# Receipts do not replace proof, host loading, image or runtime checks.
+#
 # On the box, under BASE/NAME/native-LABEL/ (NAME is the lane: the
 # basename of this worktree, or --name), it
 #   1. installs the default profile's closure from /tank/fn/certcache and
@@ -488,11 +494,20 @@ BOX
 # them with the ACL2 ones): a stale umbrella or interface registry used to
 # surface only after the certify step, in acquire or the image build
 # (limits-live-5, decision-keystones-3; obstructions-5 item 34).
-step world-check python3 tools/extract/world.py --check
-step interfaces-check python3 tools/interface_emit.py --check
+static_gate() {
+    gate=\$1; shift
+    if [ -f tools/native_preflight.py ]; then
+        python3 tools/native_preflight.py --cache "$BASE/.native-preflight-cache" --gate "\$gate"
+    else
+        # The selected historical revision may predate the receipt tool.
+        python3 "\$@"
+    fi
+}
+step world-check static_gate world-check tools/extract/world.py --check
+step interfaces-check static_gate interfaces-check tools/interface_emit.py --check
 # A repository declaration is not evidence its book is in this image.
 # Reject a missing native entry before spending time on certification.
-step host-books python3 tools/host_check.py --books
+step host-books static_gate host-books tools/host_check.py --books
 toolchain=\$(python3 tools/acl2_toolchain.py identity "\$ACL2") || finish 14
 step install python3 tools/certs.py --cache \$CACHE --toolchain-identity "\$toolchain" --acl2 "\$ACL2" install-partial \$(cat \$L/roots.txt)
 step certify $WRAP python3 tools/certify_books.py --incremental --images ${FN_CERT_IMAGES:-on} --jobs $JOBS --timeout-seconds 900 \$(cat \$L/roots.txt)
