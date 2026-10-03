@@ -567,3 +567,17 @@ the current fresh native service also exhausts its independent global
 response serial by such a max-draw history, so the subsequent issue witness
 is not claimed as reachable served progress. Physical heap funding is
 unchanged.
+
+The actual private decoded worker has a separately named partial backing
+projection, `fn-dwb-fixed-storage-vector`: `(86928 0 0 1 1)` in the existing
+five-component page-read ledger, with `fn-dwb-coverage` explicitly returning
+`:partial-fixed-storage`. The selected `fn-crl-array-octets` model counts the
+eight-field job, twelve-field carry, sixteen-field digest plus sixty-four
+frame pointers, one-field decoder plus twenty registers, one-field requested
+window plus 16384 octets, and four two-field octet wrappers. It includes their
+four original empty arrays and exact reserved buffers of 64, 65536, 3494 and
+64 octets. It does not price pointed-to integers/conses, controller and token
+graphs, borrowed sources, registry slots, constructor transients or GC.
+Same-pool draw precedes construction; this partial projection cannot authorize
+the configured complete-profile issuer. Actual constructor dimension checks
+and the physical allocator boundary remain separate from this arithmetic.
