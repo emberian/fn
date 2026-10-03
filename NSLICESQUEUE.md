@@ -195,11 +195,17 @@ those checks. Numeric/current/Message-ID selector guards and exact fuel split no
 normal-certify at73a0; direct server capture boundary certifies at39d72. These
 component certificates do not certify the whole owner/physical path. Access owns
 shared arbitrary HDR/XPAT span backing (PRF-1304/SCN-1135); Served owns the actual
-command consumer. Generic-name parser/query bounds now preserve captured field
-span READ bounds; literal hypothesis-removal teeth and236850 actual source checks
-pass. Whole arbitrary-name/reference bridge remains open. Operator resumes non-ARTICLE operator work; Access keeps the
-general journal bridge. Root
-S132 strict native ten MiB acceptance/readback now passes on the named initialized-source cache with its supported 128 MiB history profile; whole current-kernel/funding qualification remains separate.
+command consumer. Captured span bounds and exact state/USED scheduling/source
+bridge now normal-certify;237330 actual header source checks pass. Generic actual
+header-byte grammar control and full-run original grammar phase prove independent
+of requested names; whole arbitrary-field value/query correspondence remains open.
+ARTICLE Xref iterator now guardT total with numbered-pair theorem and selected
+normal certificate. Renderer/owner guards, selector termination/reference and
+full session/reply refinement stay owned/open. Runtime + History own the current
+compressed endpoint join; no image/physical transfer. Operator resumes non-ARTICLE
+operator work; Access keeps the general journal bridge. Root S132 strict native
+ten MiB acceptance/readback now passes on the named initialized-source cache with
+its supported128MiB history profile; current-kernel/funding qualification separate.
 
 **Next — Served.** Carry the shared cursor/dependency machinery through OVER,
 HDR/XHDR, XPAT, LISTGROUP and the restricted route. Complete table-generated

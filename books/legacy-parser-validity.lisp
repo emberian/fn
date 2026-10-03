@@ -144,15 +144,21 @@
      ((eq phase :value) (fn-nlv-value c byte))
      (t (fn-nlv-phase :bad c)))))
 
-(defthm fn-nlv-control-byte-is-actual-header-byte
-  (equal (fn-nlv-control (fn-lpc-header-byte s byte pos h pin))
+(defthm fn-nlv-control-byte-is-generic-header-byte
+  (equal (fn-nlv-control (fn-lpc-header-byte-names s byte pos h pin names))
          (fn-nlv-control-byte (fn-nlv-control s) byte))
   :hints (("Goal" :in-theory
            (e/d (fn-nlv-control fn-nlv-control-byte fn-nlv-phase fn-nlv-value
-                 fn-lpc-header-byte fn-lpc-header-bad fn-lpc-value-byte fn-lpc-at)
+                 fn-lpc-header-byte-names fn-lpc-header-bad fn-lpc-value-byte fn-lpc-at)
                 (fn-lpc-put fn-lpc-close-fields
                  fn-lpc-name-key fn-lpc-name-step fn-article-header-bytep
                  fn-article-vcharp fn-article-ftextp fn-article-wspp)))))
+
+(defthm fn-nlv-control-byte-is-actual-header-byte
+  (equal (fn-nlv-control (fn-lpc-header-byte s byte pos h pin))
+         (fn-nlv-control-byte (fn-nlv-control s) byte))
+  :hints (("Goal" :in-theory (e/d (fn-lpc-header-byte)
+                                  (fn-lpc-header-byte-names fn-nlv-control fn-nlv-control-byte)))))
 
 (defun fn-nlv-control-run (bytes c)
   (declare (xargs :guard t))
@@ -165,6 +171,44 @@
   :hints (("Goal" :induct (fn-nlv-run bytes s pos h pin)
            :in-theory (e/d (fn-nlv-run fn-nlv-control-run)
                            (fn-nlv-control fn-nlv-control-byte fn-lpc-header-byte)))))
+
+; Proof-only runs of the actual shared name-parameterized header transition.
+; Stored field names affect selection, never grammar acceptance.
+(defun fn-nlv-generic-run (bytes s pos h pin names)
+  (declare (xargs :guard (natp pos)
+                  :guard-hints (("Goal" :in-theory (disable fn-lpc-header-byte-names)))))
+  (if (consp bytes)
+      (fn-nlv-generic-run (cdr bytes)
+        (fn-lpc-header-byte-names s (car bytes) pos h pin names)
+        (+ 1 pos) h pin names)
+    s))
+
+(defthm fn-nlv-control-run-is-generic-header-run
+  (equal (fn-nlv-control (fn-nlv-generic-run bytes s pos h pin names))
+         (fn-nlv-control-run bytes (fn-nlv-control s)))
+  :hints (("Goal" :induct (fn-nlv-generic-run bytes s pos h pin names)
+           :in-theory (e/d (fn-nlv-generic-run fn-nlv-control-run)
+                           (fn-nlv-control fn-nlv-control-byte fn-lpc-header-byte-names)))))
+
+(local (defthm fn-nlv-control-first
+  (equal (fn-lpc-at 0 (fn-nlv-control s)) (fn-lpc-at 0 s))
+  :hints (("Goal" :in-theory
+           (union-theories '(fn-nlv-control fn-lpc-at fn-ag-car fn-ag-cdr car-cons cdr-cons)
+             (union-theories (theory 'minimal-theory)
+                             (executable-counterpart-theory :here)))))))
+
+(defthm fn-nlv-generic-run-has-original-grammar
+  (equal (fn-lpc-at 0 (fn-nlv-generic-run bytes s pos h pin names))
+         (fn-lpc-at 0 (fn-nlv-run bytes s pos h pin)))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-nlv-control-run-is-generic-header-run
+                 fn-nlv-control-run-is-actual-header-run
+                 (:instance fn-nlv-control-first
+                   (s (fn-nlv-generic-run bytes s pos h pin names)))
+                 (:instance fn-nlv-control-first (s (fn-nlv-run bytes s pos h pin))))
+           :in-theory (union-theories (theory 'minimal-theory)
+                                      (executable-counterpart-theory :here)))))
 
 (defthm fn-nlv-control-run-append
   (equal (fn-nlv-control-run (append a b) c)

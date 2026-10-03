@@ -2771,6 +2771,12 @@ source suffix, including its read count. The proof-only list observation is not
 a served materializer. This continuation/source bridge covers arbitrary field
 names and invalid grammar, and does not yet establish old parser correspondence.
 
+The actual shared name-parameterized header transition has exactly the existing
+parser's grammar-control projection for every byte and retained state. Its
+proof-only full run has the same final grammar phase as the original five-name
+machine for arbitrary names, including malformed requests. Field selection is
+separate: the whole query-to-old-field-value correspondence remains open.
+
 The original five-name NOV parser entry keeps its ABI and projection through a
 shared name-parameterized header machine. Component guards, bounded work/source
 preservation and literal/reference source cases pass; Served's actual HDR/XPAT

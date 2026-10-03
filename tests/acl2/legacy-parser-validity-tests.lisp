@@ -1,5 +1,31 @@
 (in-package "ACL2")
 (include-book "../../books/legacy-parser-validity")
+
+; Generic requested names change field selection, not grammar. The actual
+; shared byte transition's complete control record agrees with the existing
+; machine on a reachable folded header, even for a name outside the NOV five.
+(assert-event
+ (let* ((bytes '(88 45 79 116 104 101 114 58 32 118 13 10 9 102 13 10 13 10 65 13 10))
+        (names '((120 45 111 116 104 101 114) :miss :miss :miss :miss))
+        (start (fn-lpc-header-begin))
+        (out (fn-nlv-generic-run bytes start 0 0 :pin names))
+        (old (fn-nlv-run bytes start 0 0 :pin)))
+   (and (equal (fn-nlv-control out) (fn-nlv-control old))
+        (equal (fn-lpc-at 0 out) :body)
+        (equal (fn-lpc-at 0 out) (fn-lpc-at 0 old))
+        (equal (fn-lpc-at 0 out)
+               (fn-lpc-at 0 (fn-nlv-generic-run bytes start 0 0 :pin nil))))))
+
+; Invalid grammar remains invalid under arbitrary names. A source mutation
+; (bare LF in the body) explicitly breaks the valid source's phase conclusion.
+(assert-event
+ (let* ((bytes '(88 45 79 116 104 101 114 58 32 118 13 10 13 10 65 10))
+        (start (fn-lpc-header-begin))
+        (out (fn-nlv-generic-run bytes start 0 0 :pin '(nil 9 :miss)))
+        (old (fn-nlv-run bytes start 0 0 :pin)))
+   (and (equal (fn-nlv-control out) (fn-nlv-control old))
+        (equal (fn-lpc-at 0 out) :bad)
+        (not (equal (fn-lpc-at 0 out) :body)))))
 ; Literal component witnesses. This is not the full header/parser simulation.
 (defconst *nlvt-line* '(83 117 98 106 101 99 116 58 32 120 13 10))
 (defconst *nlvt-open* (fn-nlv-run *nlvt-line* (fn-lpc-header-begin) 0 7 11))
