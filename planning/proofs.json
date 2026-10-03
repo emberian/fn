@@ -22836,6 +22836,33 @@
         "tests/native_web_post_stream_raw.lisp",
         "tests/acl2/web-post-stream-tests.lisp"
       ]
+    },
+    {
+      "id": "PRF-1294",
+      "title": "Independent KEEPALIVE preserves received-source custody and reception authority",
+      "statement": "Native fnn-tcl-turn calls guard-verified fn-tclsctl-turn while local received-source work owns input and its final ACK. With no existing released output and a representable clock at the negotiated interval, it issues exactly one KEEPALIVE through the existing retained output path. The unconditional fn-tclsctl-never-releases-ack and fn-tclsctl-preserves-reception establish that this control emits no transfer ACK and preserves inbound state and reception clock. fn-tclsctl-preserves-cheapp carries the cheap invariant. This does not establish concurrent input servicing, whole semantic decode latency, peer-idle decisions during local work, or a complete GC/work tariff.",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006"
+      ],
+      "depends_on": [
+        "PRF-1273",
+        "PRF-1291"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "events": [
+        "fn-tclsctl-never-releases-ack",
+        "fn-tclsctl-preserves-reception",
+        "fn-tclsctl-preserves-cheapp"
+      ],
+      "evidence": [
+        "books/tcpcl-source-control.lisp",
+        "tests/acl2/tcpcl-source-control-tests.lisp",
+        "host/native/tcpcl.lisp",
+        "tests/native_tcpcl_source_control_raw.lisp"
+      ],
+      "progress_note": "2026-10-03 actual raw retained consumer with actual ACL2 control function PASS: KEEPALIVE alone writes, exact END ACK/root held, no duplicate while physical write waits,64-action private cursor resumes; receiving clock remains9. Constructor/control certificate pending. No transfer acceptance or settlement inferred."
     }
   ]
 }

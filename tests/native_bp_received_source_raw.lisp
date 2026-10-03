@@ -30,6 +30,7 @@
 (defun fnn-core (name &rest args)
  (case name
   ((fn-tcim-turn fn-bpsrx-start fn-bpsrx-turn fn-bpsrx-authorizedp fn-bpsrx-abort-plan fn-tsc-at fn-bpsg-step fn-bpsg-release-ready) (apply name args))
+  (fn-tclsctl-turn (list (first args) nil))
   (fn-tcl-source-result-action (if (eq (caar args) :source-yield) :retain :settle))
   (fn-tcl-source-result-token (cadar args))
   (fn-tcl-delivery-plan (third args))

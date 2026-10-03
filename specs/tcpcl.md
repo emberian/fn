@@ -426,3 +426,13 @@ context receipt. `:publishing`, a foreign provider or changed generation retains
 source and Store authority. Physical close is attempted independently; an
 unobserved close keeps the grant held even after logical retirement. This is
 pre-publication cancellation, not rollback of durable or uncertain acceptance.
+
+`fn-tclsctl-turn` (PRF-1294) releases an independent KEEPALIVE while local source
+work holds its final transfer ACK and input. A representable clock and negotiated
+interval decide when; an already released output suppresses another queue entry.
+The ordinary retained encoder/write continuation performs the physical output.
+The control preserves inbound state and reception clock and cannot emit a transfer
+ACK; source work resumes afterwards. RFC9174 §5.1.1 permits independent KEEPALIVE;
+this local scheduling change does not certify peer reception or acceptance. Normal
+input/tick observations resume after the local operation. Concurrent input control
+servicing and whole semantic decode latency remain open.
