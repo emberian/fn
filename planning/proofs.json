@@ -23029,6 +23029,37 @@
         "tests/test_bp_node_native.py"
       ],
       "progress_note": "Actual retained framing/private source/session KEEPALIVE transition/delivery-plan raw composition PASS: incoming clock advances before publication, exact END ACK/root remainheld, next XFER prefix vector/offset preserved without extra read/issuer, normal or EOF source terminal publishes once and only observed close+context settles bank. Wire decoder/socket/durable callback are recorded; no full native verdict. Warm normal guards+13 literal assertions PASS; actual fn-tcl-step inbound/reception lemmas1599/1482 steps. Existing outgoing cheap-state lemma384714 steps makes book397806 steps/1.41s. Exact affected roots pending. New SCN1131 current-source native prepared/unexecuted."
+    },
+    {
+      "id": "PRF-1301",
+      "title": "DEFAULT pre-open selected backing admission fits captured headroom and descriptor capacity",
+      "statement": "The actual fn-prstartup-plan :admitted result has natural descriptor capacity at least the existing cache insertion overlap, no greater than captured OS descriptor capacity, and its selected persistent plus registration working projection fits headroom after protected heap or occupied usage. SAME-pool installer metadata preserves binding revision, reserved worker count bounds physical constructors, and a ready bit is required before resident-zero reused-window admission. Physical native readiness, full collector/controller/source graph and recovery transient costs remain separate obligations.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-048"
+      ],
+      "depends_on": [
+        "PRF-1298"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "files": [
+        "books/page-read-startup.lisp",
+        "books/page-read-pool-state.lisp",
+        "books/page-read-binding-revision.lisp",
+        "host/page-read-host.lisp",
+        "host/page-decoded-window-host.lisp",
+        "tests/acl2/page-read-startup-tests.lisp",
+        "tests/acl2/page-read-startup-host-tests.lisp"
+      ],
+      "events": [
+        "fn-prstartup-admitted-capacity-is-funded"
+      ],
+      "evidence": [
+        "tests/acl2/page-read-startup-tests.lisp",
+        "tests/acl2/page-read-startup-host-tests.lisp"
+      ],
+      "progress_note": "Incremental real source admission: selected plan/getter and readiness guards, binding publication proofs, complete admitted-capacity theorem and fresh local-stobj install/readiness/revision-preservation witnesses pass. Proper-local final startup book replay and two heap-wrapper/decoded-acquire guards pending coherent dependency world; no certificate or complete physical tariff claim."
     }
   ]
 }
