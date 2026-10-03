@@ -2663,7 +2663,7 @@ Generic command callers have no owner authority sink.")
     (handler-case
         (fnn-unwind-cleanups ()
           (when log (fnn-log-discard-spare log))
-          (when log (fnn-close (fnn-log-fd log)))
+          (when log (fnn-log-close-active log))
           (when fd (fnn-flock fd +fnn-lock-un+))
           (when fd (fnn-close fd))
           (when (fnn-store-application-close-debts store)
@@ -6944,6 +6944,7 @@ with its depth, and the rows under it name the path that called it."
   ;; preallocated and fenced OFF the owner mutex (fnn-log-prepare-spare); the
   ;; rotation under the mutex only renames it into journal/.  SPARE-LOCK
   ;; serializes preparers; it is never taken under the owner mutex.
+  (active-close-debt nil)
   (spare nil) (spare-close-debt nil) (spare-lock (sb-thread:make-mutex :name "fn log spare"))
   ;; journal/'s path while the rotated-to segment's name is not yet durable:
   ;; the first fence of the new segment (fnn-log-fence) and the checkpoint
@@ -8008,6 +8009,18 @@ removes one a death left, and the open's segment listing never sees it
 (fn-lgs-indices keeps only NNNNNN.log names)."
   (fnn-join (fnn-staging store) (format nil ".stage-segment-~6,'0d" k)))
 
+(defun fnn-log-close-active (log)
+  "Consume an active descriptor once; an unobserved close remains debt."
+  (when (fnn-log-active-close-debt log)
+    (error (second (fnn-log-active-close-debt log))))
+  (let ((fd (fnn-log-fd log)))
+    (when fd
+      (setf (fnn-log-fd log) nil)
+      (handler-case (fnn-close fd)
+        (serious-condition (condition)
+          (setf (fnn-log-active-close-debt log) (list fd condition))
+          (error condition))))))
+
 (defun fnn-log-discard-spare (log)
   "Close and unlink a spare that will not be renamed (another index, or the
 store closing).  Removing a staged name is never uncertain for the history:
@@ -8053,15 +8066,17 @@ of the checkpoint that wanted the rotation (serving continues)."
                   (when (fnn-lstat path) (fnn-unlink path))
                   (setq fd (fnn-open path (logior sb-posix:o-rdwr sb-posix:o-creat
                                                   sb-posix:o-excl +fnn-o-nofollow+)))
+                  ;; Install candidate custody before any preparation/cut
+                  ;; can escape; failed prepare cannot strand a local fd.
+                  (setf (fnn-log-spare log) (list next path fd))
                   (fnn-log-preallocate fd extent)
                   (fnn-log-at :rotate-created)
                   (fnn-fsync-file fd)
                   (fnn-log-at :rotate-fenced))
               (fnn-os-error (e)
-                (when fd (ignore-errors (fnn-close fd)))
-                (ignore-errors (when (fnn-lstat path) (fnn-unlink path)))
-                (fnn-refuse-io "log rotation's spare failed: ~a" e)))
-            (setf (fnn-log-spare log) (list next path fd))))))))
+                (fnn-unwind-cleanups
+                    ((fnn-refuse-io "log rotation's spare failed: ~a" e))
+                  (fnn-log-discard-spare log))))))))))
 
 (defun fnn-log-rotate (store)
   "P-ROTATE's switch, fn-lgs-rotate-program (design 2026-09-27 storage-log
@@ -8101,20 +8116,20 @@ be in journal/ while the closed segment would take more records)."
     (let ((spare (fnn-log-spare log)))
       (unless (and spare (eql (first spare) next))
         (fnn-refuse "rotation refused reason=spare-unprepared"))
-      (setf (fnn-log-spare log) nil)
+      ;; The spare remains the candidate's physical custody across rename
+      ;; and head-writing cuts, until an atomic host slot transfer below.
       (destructuring-bind (index staged fd) spare
         (declare (ignore index))
         (let* ((path (fnn-segment-path-at store next))
                (renamed (handler-case (fnn-rename-no-replace staged path)
                           (fnn-os-error (e)
-                            (ignore-errors (fnn-close fd))
                             (fnn-indeterminate "log rotation's rename is uncertain: ~a" e)))))
           (when renamed
             ;; :exists (a segment of that index is already there) or
             ;; :unsupported: nothing was renamed.
-            (ignore-errors (fnn-close fd))
-            (ignore-errors (when (fnn-lstat staged) (fnn-unlink staged)))
-            (fnn-refuse "rotation refused reason=spare-rename-~(~a~)" renamed))
+            (fnn-unwind-cleanups
+                ((fnn-refuse "rotation refused reason=spare-rename-~(~a~)" renamed))
+              (fnn-log-discard-spare log)))
           (fnn-log-at :rotate-renamed)
           ;; The head (lane store-lineage; books/store-log-lineage.lisp): the
           ;; rotation entry chained from the closed segment's last trailer,
@@ -8127,10 +8142,15 @@ be in journal/ while the closed segment would take more records)."
               (fnn-os-error (e)
                 (fnn-indeterminate "log rotation's head write is uncertain: ~a" e)))
             (fnn-log-at :rotate-headed)
-            (fnn-close (fnn-log-fd log))
+            (handler-case (fnn-log-close-active log)
+              (serious-condition (condition)
+                (fnn-indeterminate "log rotation active close unobserved; custody held: ~a" condition)))
+            ;; Transfer physical custody before any fallible semantic call;
+            ;; shutdown must see the candidate in exactly one fd slot.
             (setf (fnn-log-path log) path
                   (fnn-log-fd log) fd
-                  (fnn-log-kernel log) (fnn-core 'fn-lgc-rotate ks next unit)
+                  (fnn-log-spare log) nil)
+            (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-rotate ks next unit)
                   (fnn-log-index log) next
                   (fnn-log-genesis log) (fnn-core 'fn-lgc-last ks)
                   (fnn-log-extent log) (fnn-nat (fnn-core 'fn-store-log-initial-extent))

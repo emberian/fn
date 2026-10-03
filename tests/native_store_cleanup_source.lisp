@@ -4,7 +4,7 @@
 (in-package "ACL2")
 (defvar *fnn-store-failed-open-custody* nil)
 (defstruct fnn-store completion-pending log lock-fd fenced close-debt application-close-debts)
-(defstruct fnn-log fd spare spare-close-debt)
+(defstruct fnn-log fd spare spare-close-debt active-close-debt)
 (defconstant +fnn-lock-un+ 8)
 (defvar *calls* nil)
 (defvar *failures* nil)
@@ -19,7 +19,7 @@
 (with-open-file (input "host/native/io.lisp")
   (loop for form = (read input nil :eof) until (eq form :eof) do
     (when (and (consp form) (member (car form) '(defun defmacro))
-               (member (second form) '(fnn-unwind-cleanups fnn-store-close fnn-log-discard-spare fnn-store-failed-open-close)))
+               (member (second form) '(fnn-unwind-cleanups fnn-store-close fnn-log-discard-spare fnn-store-failed-open-close fnn-log-close-active)))
       (eval form))))
 (dolist (failure '(:spare :unlink :log :unlock :lock))
   (let* ((*calls* nil) (*failures* (list failure))
