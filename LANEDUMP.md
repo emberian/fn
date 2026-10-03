@@ -2670,3 +2670,10 @@ Correctread-onlywatch invokes tools/native_cert_watch.py on SAMEbuildhost/tree
 and exact certifydirectory; sharedbook_result verdict remains authoritative.
 Allapprovedad8 native+fundedmixedresults and bootstrapuncertainty filed/pushed.
 Worktree/branch preserved, no shared/private/cache deletion or devpush.
+
+- native-config-show + exact tests normalcert PASS115041Z-1706527 at
+  immutable32579fb5b: 10matchingcached dependencies/2selected rebuilt roots.
+  Archive indexed; native-config/records-shape cached provenance are global
+  convergence metadata debt, not reproof requests. No image verdict. Paths
+  warm23book/54test forms PASS; scoped path normalcert next. Actual native
+  operator show/key/reload selector added, syntaxPASS, matching-image pending.
