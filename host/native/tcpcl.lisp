@@ -227,6 +227,8 @@ and faults without following or deleting anything."
 
 (defun fnn-tcl-spool-acquire (root)
   "Establish one process as ROOT's owner, then recover its private staging."
+  (unless (eq (fnn-tcl-spool-close-observation) :closed)
+    (fnn-indeterminate "tcpcl: prior spool custody prevents acquisition"))
   (handler-case
       (progn
         (fnn-safe-directory root t)
@@ -236,8 +238,8 @@ and faults without following or deleting anything."
     (fnn-os-error (e)
       (fnn-indeterminate "tcpcl: spool namespace recovery is uncertain: ~a" e)))
   (let ((lock nil) (owned nil))
-    (unwind-protect
-         (progn
+    (fnn-unwind-cleanups
+         ((progn
            (handler-case
                (setq lock (fnn-open (fnn-join root +fnn-tcl-spool-lock+)
                                     (logior sb-posix:o-rdwr sb-posix:o-creat
@@ -254,16 +256,30 @@ and faults without following or deleting anything."
                  (fnn-fault "tcpcl: cannot establish spool ownership: ~a" e))))
            (fnn-tcl-spool-recover root)
            (setq owned t)
-           lock)
+           lock))
       (unless owned
-        (when lock
-          (ignore-errors (fnn-flock lock +fnn-lock-un+))
-          (ignore-errors (fnn-close lock)))))))
+        (let ((fd lock))
+          (setq lock nil)
+          (fnn-tcl-spool-release fd))))))
+
+(defvar *fnn-tcl-spool-close-debts* nil
+  "Exact consumed spool FD identities and original physical cleanup conditions.")
+
+(defun fnn-tcl-spool-close-observation ()
+  (if *fnn-tcl-spool-close-debts* :uncertain :closed))
 
 (defun fnn-tcl-spool-release (lock)
+  "Attempt unlock and close independently; an ambiguous return is never retried."
   (when lock
-    (ignore-errors (fnn-flock lock +fnn-lock-un+))
-    (ignore-errors (fnn-close lock))))
+    (when (assoc lock *fnn-tcl-spool-close-debts*)
+      (fnn-indeterminate "tcpcl: prior spool return remains unobserved"))
+    (handler-case
+        (fnn-unwind-cleanups ()
+          (fnn-flock lock +fnn-lock-un+)
+          (fnn-close lock))
+      (serious-condition (condition)
+        (push (list lock condition) *fnn-tcl-spool-close-debts*)
+        (fnn-indeterminate "tcpcl: spool physical return unobserved: ~a" condition)))))
 
 (defun fnn-tcl-test-pause-after-stage-data (stage)
   ; An explicit native process-death cut for the recovery regression.  It is

@@ -8,7 +8,7 @@
 (in-package "ACL2")
 
 (defstruct fnn-bps
-  root lifecycle tally state spool-lock lock-fd (stages nil)
+  root lifecycle tally state spool-lock lock-fd (release-debt nil) (stages nil)
   (next-session 0)
   ;; The last base transfer's reading in the contact being driven, and
   ;; whose outcome it is.  :process (a one-shot verb that was asked for the
@@ -89,30 +89,47 @@ publication whose outcome is unknown; recovery required)."
 (defvar *fnn-bps-lifecycle-enumerations* 0)
 
 (defun fnn-bps-lock (root)
-  (let ((fd (fnn-open (fnn-join root "lifecycle.lock")
-                      (logior sb-posix:o-rdwr sb-posix:o-creat +fnn-o-nofollow+)
-                      #o600)))
-    (unless (fnn-regular-p (fnn-fstat fd))
-      (fnn-close fd)
-      (fnn-fault "bp-service: refusing non-regular lifecycle lock"))
-    (handler-case (fnn-flock fd (logior +fnn-lock-ex+ +fnn-lock-nb+))
-      (fnn-os-error (e)
-        (fnn-close fd)
-        (if (= (fnn-os-errno e) sb-posix:eagain)
-            (fnn-refuse "bp-service: lifecycle queue is already locked")
-          (fnn-fault "bp-service: cannot establish lifecycle ownership: ~a" e))))
-    fd))
+  "Acquire lifecycle ownership with an actual carrier before fallible inspection."
+  (let ((carrier (make-fnn-bps :root root)) (transferred nil))
+    (fnn-unwind-cleanups
+      ((setf (fnn-bps-lock-fd carrier)
+             (fnn-open (fnn-join root "lifecycle.lock")
+                       (logior sb-posix:o-rdwr sb-posix:o-creat +fnn-o-nofollow+) #o600))
+       (unless (fnn-regular-p (fnn-fstat (fnn-bps-lock-fd carrier)))
+         (fnn-fault "bp-service: refusing non-regular lifecycle lock"))
+       (handler-case
+           (fnn-flock (fnn-bps-lock-fd carrier) (logior +fnn-lock-ex+ +fnn-lock-nb+))
+         (fnn-os-error (e)
+           (if (= (fnn-os-errno e) sb-posix:eagain)
+               (fnn-refuse "bp-service: lifecycle queue is already locked")
+             (fnn-fault "bp-service: cannot establish lifecycle ownership: ~a" e))))
+       (setq transferred t)
+       (prog1 (fnn-bps-lock-fd carrier) (setf (fnn-bps-lock-fd carrier) nil)))
+      (unless transferred (fnn-bps-release carrier)))))
+
+(defvar *fnn-bps-release-debts* nil
+  "Actual service carriers whose lifecycle/spool physical return is unobserved.")
+
+(defun fnn-bps-release-observation ()
+  (if (or *fnn-bps-release-debts*
+          (not (eq (fnn-tcl-spool-close-observation) :closed))) :uncertain :closed))
 
 (defun fnn-bps-release (service)
-  (let ((fd (fnn-bps-lock-fd service)))
-    (when fd
-      (ignore-errors (fnn-flock fd +fnn-lock-un+))
-      (fnn-close fd)
-      (setf (fnn-bps-lock-fd service) nil)))
-  ; Release in reverse acquisition order: lifecycle, then the shared journal
-  ; owner lock used by tcpcl, bp send/receive, and this service.
-  (fnn-tcl-spool-release (fnn-bps-spool-lock service))
-  (setf (fnn-bps-spool-lock service) nil))
+  (when (fnn-bps-release-debt service)
+    (fnn-indeterminate "bp-service: prior lock return remains unobserved"))
+  (let ((fd (fnn-bps-lock-fd service)) (spool (fnn-bps-spool-lock service)))
+    ;; The service owns neither consumed descriptor after this point; debt
+    ;; retains their identities, never permission to retry a recycled number.
+    (setf (fnn-bps-lock-fd service) nil (fnn-bps-spool-lock service) nil)
+    (handler-case
+        (fnn-unwind-cleanups ()
+          (when fd (fnn-flock fd +fnn-lock-un+))
+          (when fd (fnn-close fd))
+          (fnn-tcl-spool-release spool))
+      (serious-condition (condition)
+        (setf (fnn-bps-release-debt service) (list fd spool condition))
+        (pushnew service *fnn-bps-release-debts* :test #'eq)
+        (fnn-indeterminate "bp-service: physical lock return unobserved: ~a" condition)))))
 
 (defun fnn-bps-namespace-plan (service)
   ; Sorting is only observation order.  ACL2 decides which names are bounded
