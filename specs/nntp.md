@@ -2609,10 +2609,8 @@ does not establish the full LIST producer, snapshot frames or heap tariff.
 The source-only `list-metadata-cursor` component retains group/next/config
 references and advances total wildmat matching, watermark lookup, numbered
 summary probes and status entries in separate controller calls. Its guarded
-step bounds emitted bytes and controller calls; one row still constructs its
-complete group/decimal fields. The available dispatcher and render plan have
-not yet consumed this tag, and full response residual/finite progress, captured
-column frames, composed witnesses and physical funding remain open.
+step bounds emitted bytes and controller calls. Full response residual and
+finite progress, captured-column frames and physical funding remain open.
 
 The available LIST ACTIVE/COUNTS dispatcher now emits `:list-cursor`. Native
 owner and mux call the guarded query-plan facade: the same immutable plan
@@ -2623,6 +2621,12 @@ their old `fn-splan` proofs keep that subject. Eight private empty-catalog
 factory-to-buffer replies match the original LIST at quanta1/256, including
 filters and y/m/n status. Full selective sparse-catalog/owner composition,
 query-plan residual/finite progress and snapshot column frames remain owed.
-One whole row and upstream authorization/config preparation still need their
-allocation/work tariffs and incremental representation; emitted B alone is
-not a whole-producer bound. The completed LIST-view policy remains PRF1237 debt.
+Rows now retain their string/scalar fields and emit one indexed character,
+decimal digit or framing byte per control call. Decimal construction stops at
+the existing ten-digit field decision instead of exploding an arbitrary integer;
+the carried state retains at most ten digits. Guards, one-byte/fixed-envelope
+facts and carried-state preservation are source-admitted, with exact old-row
+and hypothesis-removal witnesses. The full query residual remains owed. Status
+matching still converts a whole group name; upstream authorization/config setup,
+integer width, metadata and outer render allocation need actual tariffs and
+incremental representation. Emitted B alone is not a whole-producer bound. The completed LIST-view policy remains PRF1237 debt.

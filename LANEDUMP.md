@@ -607,3 +607,36 @@ these reference-only factories: trace and remove/price that actual path. LIST
 completed view policy PRF1237, remaining LIST variants/NEWGROUPS, bounded
 HDR/XPAT/OVER and selective owner PROGRAM guards/refinement remain owned.
 No whole-NNTP or full-family boundedness claim from this output cursor alone.
+
+## Incremental LIST row source and carried digit shape
+
+Actual LIST :row now retains Fn-lsr-start fields, then :render calls Fn-lsr-one
+once per controller call. Group/status strings are borrowed and indexed; decimal
+construction performs one /10 + mod step, retains at most10 digit cells and
+settles the existing >10-digit protocol field to0 without whole integer explode.
+Seven-cell renderer state, one-byte output and fixed-envelope facts plus
+start/one carried-shape preservation admitted in proper native source
+encapsulates (renderer .26s/39650steps; shape .11s/127462steps, locals discarded).
+Eight complete old Fn-lst-line+stuff-lines comparisons and20k-character retained
+offset witness pass; positive literal shape/build/digits/byte/envelope and
+corrupted12-digit hypothesis-removal witnesses pass. All bounded guard/type/
+projection100k refusals retained; final unchanged shape required125k actual
+steps, admitted within500k. No cold closure/image or actual owner stobj mutation.
+
+Receipt planning/evidence/list-row-stream-20261003/checks.json, archived by hash
+in evidence-index. Tools private initialized process returned healthy, no active
+sends. Current actual generated dispatcher/owner sparse composition and changed
+whole LIST controller guard/proof replay remain pending; old factory-to-buffer
+qualification is not transferred to changed row implementation. Full query
+residual/finite progress, snapshot column stability and physical tariff remain
+owed. Fixed constructor cons estimate is not whole heap coverage; quotient
+integer width, status whole-name conversion/comparisons and upstream auth/config
+allocation remain explicit frontiers. Foundations has exact renderer API/path.
+
+Uncommitted books/list-query-reference.lisp is disabled phase residual WIP; it
+must add new :render state subject before admission and is not in this packet.
+Next work: connect exact renderer residual, generic cursor/query prefix theorem,
+replace status whole-name conversion with indexed matching, current actual
+owner/dispatcher sparse fixtures, remaining LIST/HDR/XPAT/OVER family producers.
+Access freezes borrowed header spans in legacy-header-query; field normalization
+is Fn-nsw-step with same pin/COLD custody. No new agent or startup world.
