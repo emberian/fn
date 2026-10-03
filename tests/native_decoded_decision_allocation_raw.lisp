@@ -20,6 +20,8 @@
          (capture (fnda-function 'fn-ews-capture))
          (matches (fnda-function 'fn-ews-capture-matches))
          (begin (fnda-function 'fn-ews-begin))
+         (tick (fnda-function 'fn-ews-tick))
+         (effect (fnda-function 'fn-ews-effect))
          (state (fnda-function 'fn-ewz-state))
          (digest (create-pgs-digest-state))
          (*fnn-trace-state* nil) (*fnn-trace-parent* nil)
@@ -27,6 +29,15 @@
     (multiple-value-bind (plan next-digest)
         (funcall begin 7 100 64 100 64 0 23 47 59 0 digest)
       (setf digest next-digest)
+      ;; A fresh digest first initializes its tree/chunk cursor. Reach the
+      ;; real issued-read state through its actual transition entry.
+      (loop for steps below 32
+            until (funcall effect plan digest)
+            do (multiple-value-bind (status next-plan next-digest)
+                   (funcall tick plan digest)
+                 (assert (eq status :continue))
+                 (setf plan next-plan digest next-digest))
+            finally (assert (funcall effect plan digest)))
       (let ((z (funcall state :scan plan 64 0 64 1024 0 0 :more)))
         (assert (eq (car (funcall legacy z digest)) :read))
         (assert (funcall bound plan digest))

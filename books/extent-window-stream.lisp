@@ -26,6 +26,11 @@
     (nth 6 s) (nth 8 s) (nth 9 s) (nth 10 s)
     (nth 11 s) (nth 12 s) (nth 13 s)))
 
+(defthm fn-ews-capture-matches-by-definition
+  (equal (fn-ews-capture-matches capture s)
+         (equal capture (fn-ews-capture s)))
+  :hints (("Goal" :in-theory (enable fn-ews-capture-matches fn-ews-capture))))
+
 (defun fn-ews-begin (file eoff elen poff plen offset ticket incarnation lease expected pgs-digest-state)
   (declare (xargs :stobjs pgs-digest-state
                   :guard (and (natp file) (natp eoff) (natp elen)
