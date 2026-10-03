@@ -1,0 +1,12 @@
+{
+ "category": "local",
+ "file": "books/bp-node-fragment-guards.lisp",
+ "id": "BM10",
+ "notes": [],
+ "owner": "post-guard-off",
+ "severity": "high",
+ "source": "dev-serves",
+ "state": "open",
+ "title": "dev 7e4b7ab4c builds NO image: books/bp-node-fragment-guards fails (verify-guards fn-bpfj-candidate calls fn-bpfj-family-coveredp, guards unverified; SWEEP-PEER S008 WIP 5536e2f08); bp-report/-progress/-recovery/-forward-plan/-job-offer guards and image-world fail by inclusion (hbox certify-20261003T035559Z-22936). POST-GUARD-OFF (aee6fb718082cc5eb) offered the fix as a small READY",
+ "updated": "2026-10-03T04:16:47Z"
+}
