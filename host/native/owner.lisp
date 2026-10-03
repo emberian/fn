@@ -7978,39 +7978,24 @@ torn last entry follows.  Answers the offset the writer resumes at."
               (fnn-err "service log reopen failed: ~a" condition))))
         (setq *fnn-owner-log-handled* (second decision))))))
 
+(def-actor fnn-owner-spawn-listener :thread-name "fn owner accept" :roster t)
+(def-actor fnn-owner-spawn-tls-listener :thread-name "fn owner TLS accept" :roster t)
+(def-actor fnn-owner-spawn-maintenance :thread-name "fn owner maintenance" :roster t)
+
 (defun fnn-owner-start-tls-accept (service listener &optional (implicit-tls t))
-  "PRF-162: accept implicit-TLS clients on LISTENER until the service stops.
-With IMPLICIT-TLS nil, a further plain listener's clients (NNT-041).  The
-thread is a worker, so the stop joins it with the clients."
-  (fnn-with-roster (service)
-    (let ((thread
-            (sb-thread:make-thread
-             (lambda ()
-               (unwind-protect
-                    (handler-case
-                        (loop
-                          (when (or *fnn-sigterm-requested*
-                                    (fnn-owner-service-stopping service))
-                            (return))
-                          (fnn-owner-accept-one service listener 1 implicit-tls))
-                      ;; A client's event is no condition here (fnn-accept-
-                      ;; observe names it and this loop goes on).  What is
-                      ;; left is the listener's own failure or a defect: past
-                      ;; a stop it is the stop; otherwise the node would serve
-                      ;; on with this port dead, so it is the owner's fault,
-                      ;; named, as the control accept loop's is.
-                      (serious-condition (condition)
-                        (unless (or *fnn-sigterm-requested*
-                                    (fnn-owner-service-stopping service))
-                          (fnn-err "owner ~:[~;TLS ~]listener: ~a" implicit-tls condition)
-                          (ignore-errors (fnn-owner-fault-service service nil condition)))))
-                 (fnn-with-roster (service)
-                   (setf (fnn-owner-service-workers service)
-                         (delete sb-thread:*current-thread*
-                                 (fnn-owner-service-workers service) :test #'eq)))))
-             :name (if implicit-tls "fn owner TLS accept" "fn owner accept"))))
-      (push thread (fnn-owner-service-workers service))
-      thread)))
+  "Registered secondary listener; preserve its custody through physical join.
+Only the stopped listener's named socket condition is ordinary shutdown."
+  (funcall (if implicit-tls #'fnn-owner-spawn-tls-listener #'fnn-owner-spawn-listener)
+    service (list listener)
+    (lambda ()
+      (handler-case
+          (loop
+            (when (or *fnn-sigterm-requested* (fnn-owner-service-stopping service)) (return))
+            (fnn-owner-accept-one service listener 1 implicit-tls))
+        (sb-bsd-sockets:socket-error (condition)
+          (unless (or *fnn-sigterm-requested* (fnn-owner-service-stopping service))
+            (error condition)))))
+    (lambda (condition) (fnn-owner-thread-escape service condition "owner listener"))))
 
 (defun fnn-owner-maintenance-tick (service)
   "The owner's maintenance between accepts: settle returned cold reads, the
@@ -8030,30 +8015,15 @@ retiring node's drain step (row S9, host/native/admin.lisp)."
 ;;; it left); the stop joins it with the other workers.  A fault in it is the
 ;;; owner's, named, as an accept worker's is.
 (defun fnn-owner-start-maintenance (service)
-  (fnn-with-roster (service)
-    (let ((thread
-            (sb-thread:make-thread
-             (lambda ()
-               (unwind-protect
-                    (handler-case
-                        (loop
-                          (when (or *fnn-sigterm-requested*
-                                    (fnn-owner-service-stopping service))
-                            (return))
-                          (fnn-owner-maintenance-tick service)
-                          (sleep 1))
-                      (serious-condition (condition)
-                        (unless (or *fnn-sigterm-requested*
-                                    (fnn-owner-service-stopping service))
-                          (fnn-err "owner maintenance: ~a" condition)
-                          (ignore-errors (fnn-owner-fault-service service nil condition)))))
-                 (fnn-with-roster (service)
-                   (setf (fnn-owner-service-workers service)
-                         (delete sb-thread:*current-thread*
-                                 (fnn-owner-service-workers service) :test #'eq)))))
-             :name "fn owner maintenance")))
-      (push thread (fnn-owner-service-workers service))
-      thread)))
+  "Registered maintenance actor. A late store or unknown fault still reaches
+the shared classifier after stop; cleanup return is not physical join."
+  (fnn-owner-spawn-maintenance service '(:maintenance)
+    (lambda ()
+      (loop
+        (when (or *fnn-sigterm-requested* (fnn-owner-service-stopping service)) (return))
+        (fnn-owner-maintenance-tick service)
+        (sleep 1)))
+    (lambda (condition) (fnn-owner-thread-escape service condition "owner maintenance"))))
 
 (defun fnn-owner-accept (service listener once)
   ;; Darwin does not reliably wake a blocking accept(2) when another context

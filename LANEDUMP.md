@@ -4006,3 +4006,10 @@ PRF1287 debt. Existing books/served-query-plan Makefile+owner-host include is
 the native root; no extracted-driver root fabricated. Static declaration
 inventory5/twoNATP gates/no oldkeystones and whitespace check pass; world/table
 admission/global projections belong integrated current candidate.
+Background actor family: maintenance and secondary plain/TLS accept starters
+now share def-actor reservation/latch/physical join, and no longer delete their
+worker entry from inside their own unwind. Late maintenance uncertainty, Store
+fault and raw throw classified afterstop; named stopped-listener socket error
+remains ordinary shutdown, live socket/store/unknown faults escalate. Actual
+shared classifier+actor with physical SBCL thread fixture PASS0.23s over
+recording accept/tick effects. No complete native interpreter/charging claim.

@@ -121,3 +121,11 @@ when connection cleanup escapes. Root mux drain requires no live thread, no
 connection/arrival/inbox custody, no cleanup debt and no retained wake descriptor.
 These native receipts do not authorize a semantic resource refund. Full native
 interpreter correspondence and complete physical charging remain open.
+
+Maintenance and secondary listener workers also use the registered actor
+starter. Immediate exit after observing stop does not discharge registration
+before join. Maintenance uncertainty, Store faults and unknown conditions or
+nonlocal escapes still reach the shared failure classifier after stop. A
+secondary listener's named socket condition during shutdown is its ordinary
+terminal observation; the same socket condition while live and a Store fault
+or unknown escape after stop remain process faults.
