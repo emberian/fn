@@ -1677,3 +1677,4 @@ scheduling is restricted to this new tag, preserving the existing input
 continuation's poll semantics. All six peer-round source tests PASS2.508s
 (including actual kernel trickling/fairness and prior all-release fault test).
 No raw leaf fixture substitutes for matching saved-image peer composition.
+- Carrier snapshot adapter now consumes the actual program dump plus its recorded admission/image source binding (no after-the-fact current-tree binding); eleven combined snapshot/thread tests pass. History agrees root+frontier/prefix-reload ownership is the stronger eventual seam, retaining independent fn-hist signatures until its attachment contract lands.
