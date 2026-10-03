@@ -3400,3 +3400,15 @@ settlement refutes at CLOSES=0: it mislabeled that retained Store absent.
 SCN1130 now has12cases and immutable v2 source evidence. Horse EX03 owns uncertain
 owner-install rollback retention and persistent physical Store-close receipts;
 that companion source must compose before physical startup-failure qualification.
+
+Operator/Horse EX03 actual-source composition: privately composed Horse01e4,
+1200 andfe5 with Operator1e9; the new SCN-1133 executes actual owner-install,
+failed-open close helper, sticky Store-close debt and final settlement. All
+three cases pass: pre-return physical close error, post-return initialization
+rollback error, and definite rollback close. Old actual terminal settlement
+refutes the held assertion by answering joined despite close debt. Physical
+open/close/unlock/unlink observations are recorded seams, not live durability.
+Evidenceba2eef197b9ced3fa5988c2be9f79450395d0f7cf9069f0aa2f2cdaf41d54fdb and
+red/greenlog906b57e1296ce8dea60de8940f4c20f8effcf2850ab6802e52bc410d281a9d03 indexed.
+The final test/evidence packet is additive; Integration must not reimport the
+private cherry-picks of Horse source it already owns.
