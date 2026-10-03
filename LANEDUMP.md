@@ -37,3 +37,15 @@ Certification remains coordinated by Integration over the changed dispatch,
 served table, protocol-served and its teeth roots (and actual includers). No native
 image or runtime change was made; the generated switch and native observations
 remain Served/Integration work. Do not label this source READY as DONE or certified.
+
+Final check-fast-lane at source f76dbfd6c: 13 steps, 11 pass / 2 red, 457.9 s.
+Ledger's ERROR is stale planning/proofs.json events/status; generated ledger files
+were written aside (normal lane mode). Integration regenerates the registry and
+ledger for its assembled candidate. Lock discipline reports 18 new / 16 stale
+baseline rows in unchanged host files inherited at eeede8ff0; no baseline weakened.
+Current view passed (current.md unchanged; current-view.json generated aside),
+as did docs, strict spec/reach, test roots, main-last and checker tests.
+Exact result/changed-source digests and both red logs are archived/indexed at
+planning/evidence/dc03-command-rows-20261003/checks.json and *.log.gz.
+No repeat full-report run is needed in this helper: follow Served's actual consumer
+failures; Integration owns convergence/certification and generated assembly.
