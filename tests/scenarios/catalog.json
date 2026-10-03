@@ -8281,6 +8281,33 @@
         "planning/evidence/native-mixed-45e05c7f-2026-10-03/report.md"
       ],
       "execution_scope": "Historical real-image paired smoke45e05c7f: both48 acknowledged articles preserve exact served hashes and local numbers after checkpoint/restart, all36 mixed reads match and24 mixed posts accept. Quiet live reclaim refuses by name deferred-credit in both, so maintenance progress remains incomplete. No current-image qualification, deployment, cold filesystem cache or socket-backpressure claim."
+    },
+    {
+      "id": "SCN-1084",
+      "title": "NEWNEWS sparse candidate progress and retained final output under independent budgets",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-023"
+      ],
+      "steps": [
+        "Run tests/acl2/def-cursor-tests.lisp: one candidate emits more bytes than its output quantum; drain with zero visits and preserve context; suspend with opaque operation/resource custody.",
+        "Run tests/acl2/newnews-metadata-cursor-tests.lisp: unmatched first article advances with empty output, matching final article retains its output after scan completion; compare emitted prefix plus remaining with original response.",
+        "Run actual native NEWNEWS wildcard workload with more candidates than shared cache slots; compare complete Message-ID reply while a second connection remains responsive."
+      ],
+      "expected": [
+        "Separate candidate calls and emitted bytes obey their declared budgets; sparse misses do not terminate the scan.",
+        "Buffered final output keeps the continuation live until drained; no repeated candidate and no omitted terminator.",
+        "Library tests do not establish initialization/working-allocation bounds, custody producer or completed-view capture; native image matching this source remains owed."
+      ],
+      "proofs": [
+        "PRF-1256"
+      ],
+      "evidence": [
+        "tests/acl2/def-cursor-tests.lisp",
+        "tests/acl2/newnews-metadata-cursor-tests.lisp",
+        "tests/test_native_newnews_wildmat.py"
+      ]
     }
   ]
 }

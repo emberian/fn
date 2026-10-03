@@ -104,9 +104,10 @@
 
 ; served-plan repeats the cursor effect's shape (it sits below the catalog).
 (defthm fn-splan-cursor-effectp-is-ovw-by-definition
-  (equal (fn-splan-cursor-effectp e) (fn-ovw-cursor-effectp e))
+  (equal (fn-splan-cursor-effectp e)
+         (or (fn-ovw-cursor-effectp e) (fn-nnw-meta-effectp e)))
   :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-ovw-cursor-effectp))))
+  :hints (("Goal" :in-theory (enable fn-ovw-cursor-effectp fn-nnw-meta-effectp))))
 
 ; -----------------------------------------------------------------------------
 ; The quantum
@@ -140,14 +141,22 @@
   (if (consp rest)
       (if (fn-splan-cursor-effectp (car rest))
           (let ((cur (car (cdr (car rest)))))
-            (if (and (consp cur) (fn-ovw-cursorp cur))
+            (if (fn-nnw-meta-effectp (car rest))
+                (mv-let (octets next calls state)
+                  (fn-nnw-meta-step cur w w fn-arena fn-cat)
+                  (declare (ignore calls state))
+                  (mv :ok (cons (fn-nntp-reply-effect octets)
+                                (if (fn-nnw-meta-livep next)
+                                    (cons (fn-nnw-meta-effect next) (cdr rest))
+                                  (cdr rest)))))
+              (if (and (consp cur) (fn-ovw-cursorp cur))
                 (mv-let (octets next)
                   (fn-ovw-step cur w fn-arena fn-cat)
                   (mv :ok (cons (fn-nntp-reply-effect octets)
                                 (if next
                                     (cons (fn-ovw-cursor-effect next) (cdr rest))
                                   (cdr rest)))))
-              (mv :malformed rest)))
+              (mv :malformed rest))))
         (mv-let (status rest2)
           (fn-splan-rest-cursor-step (cdr rest) w fn-arena fn-cat)
           (mv status (cons (car rest) rest2))))
@@ -176,7 +185,9 @@
   (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
   (if (consp rest)
       (append (if (fn-splan-cursor-effectp (car rest))
-                  (fn-ovw-run (car (cdr (car rest))) wl fn-arena fn-cat)
+                  (if (fn-nnw-meta-effectp (car rest))
+                      (fn-nnw-meta-remaining (car (cdr (car rest))) fn-arena fn-cat)
+                    (fn-ovw-run (car (cdr (car rest))) wl fn-arena fn-cat))
                 (fn-srb-effect-octets (car rest)))
               (fn-splan-cw-octets (cdr rest) wl fn-arena fn-cat))
     nil))
@@ -310,7 +321,9 @@
   (declare (xargs :guard t))
   (if (consp effects)
       (and (or (not (fn-splan-cursor-effectp (car effects)))
-               (fn-splan-fresh-cursorp (car (cdr (car effects)))))
+               (if (fn-nnw-meta-effectp (car effects))
+                   (fn-nnw-meta-initialp (car (cdr (car effects))))
+                 (fn-splan-fresh-cursorp (car (cdr (car effects))))))
            (fn-splan-fresh-effectsp (cdr effects)))
     t))
 
@@ -463,8 +476,10 @@
   (declare (xargs :guard t))
   (if (consp rest)
       (and (or (not (fn-splan-cursor-effectp (car rest)))
-               (and (consp (car (cdr (car rest))))
-                    (fn-ovw-cursorp (car (cdr (car rest))))))
+               (if (fn-nnw-meta-effectp (car rest))
+                   (true-listp (fn-cur-pending (car (cdr (car rest)))))
+                 (and (consp (car (cdr (car rest))))
+                      (fn-ovw-cursorp (car (cdr (car rest)))))))
            (fn-splan-cw-rest-okp (cdr rest)))
     t))
 

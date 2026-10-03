@@ -17,7 +17,7 @@
 
 (defun fn-splan-cursor-effectp (e)
   (declare (xargs :guard t))
-  (and (consp e) (equal (car e) :over-cursor) (consp (cdr e))))
+  (and (consp e) (or (equal (car e) :over-cursor) (equal (car e) :newnews-cursor)) (consp (cdr e))))
 
 (defun fn-srb-effect-octets (e)
   (declare (xargs :guard t))

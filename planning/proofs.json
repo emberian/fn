@@ -21790,6 +21790,32 @@
         "planning/evidence/manifests/certify-20261003T062700Z-15460.json"
       ],
       "progress_note": "Executable machine and finite schedules certified at current bytes in certify-20261003T062320Z-3305; resource dependency certified in certify-20261003T062713Z-16191. Actual main proof continuation fails FN-HMC-DO-CANCEL-KEEPS-INVP in certify-20261003T062700Z-15460. All-schedules proof/native realization/funded pool remain HM02 debt."
+    },
+    {
+      "id": "PRF-1256",
+      "title": "Served metadata NEWNEWS retains the exact reply residual under independent candidate and emitted-byte budgets",
+      "statement": "Host/native/owner.lisp fnn-owner-cursor-step calls fn-splan-cursor-step, whose NEWNEWS branch calls generated fn-nnw-meta-step(cur,visits,bytes,fn-arena,fn-cat). The immutable context references the captured archive/environment/arguments; scan progress, pending output and opaque dependency are separate. KEYSTONE fn-nnw-meta-step-residual: output appended to the next continuation remaining equals current remaining, unconditionally. fn-nnw-meta-one-progresses and -visits-at-most-one establish sparse candidate progress; generated -step-byte-bound and -step-call-bound separately bound emitted octets and candidate calls. Consumer metadata facts avoid payload reads for represented served rows. This is not a working-allocation bound: initial group selection, one Message-ID rendering, selected-runtime concrete representation, completed discovery snapshot capture, reply resource draw and cold dependency settlement remain open. Existing OVER remains its current windowed implementation.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-023"
+      ],
+      "depends_on": [
+        "PRF-1020"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/def-cursor.lisp",
+        "books/newnews-metadata-cursor.lisp",
+        "tests/acl2/def-cursor-tests.lisp",
+        "tests/acl2/newnews-metadata-cursor-tests.lisp"
+      ],
+      "events": [
+        "fn-nnw-meta-step-residual",
+        "fn-nnw-meta-one-progresses",
+        "fn-nnw-meta-one-visits-at-most-one"
+      ],
+      "progress_note": "GPT-6.1-Sol 2026-10-03: consumer core, residual, guard checks and literal sparse/final-output teeth admitted in narrow hbox REPL; not a certificate or native image qualification. Plan/dispatcher composition proof replay pending. Generated declaration selects cursor response; plan continuation signature unchanged. Current view policy remains pinned pending decided completed discovery capture; initialization selector and renderer working allocation remain unbounded debt."
     }
   ]
 }

@@ -42,6 +42,7 @@
 (include-book "catalog-number-index")
 ; A group's summary at a view below the count (lane scale-latency, PKT-870).
 (include-book "served-catalog-view")
+(include-book "newnews-metadata-cursor")
 (include-book "protocol-table") ; reply texts: (fn-proto-text ROW KEY)
 (include-book "nntp")
 (include-book "nntp-range-indexed-invariants")
@@ -938,9 +939,31 @@
       (cons (if (fn-ovw-cursor-effectp (car effects))
                 (fn-nntp-reply-effect
                  (fn-ovw-cursor-octets (car (cdr (car effects))) fn-arena fn-cat))
-              (car effects))
+              (if (and (fn-nnw-meta-effectp (car effects))
+                       (fn-nnw-meta-initialp (car (cdr (car effects)))))
+                  (fn-nntp-reply-effect
+                   (fn-nnw-meta-remaining (car (cdr (car effects))) fn-arena fn-cat))
+                (car effects)))
             (fn-ovw-expand (cdr effects) fn-arena fn-cat))
     effects))
+
+(defthm fn-nntp-newnews-response-cursor-expands-to-cat
+  (equal (fn-ovw-expand
+          (cdr (fn-nntp-newnews-response-cursor session archive env args fn-arena fn-cat))
+          fn-arena fn-cat)
+         (cdr (fn-nntp-newnews-response-cat session archive env args fn-arena fn-cat)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-nntp-newnews-response-cursor fn-nntp-newnews-response-cat
+                             fn-ovw-expand fn-ovw-cursor-effectp
+                             fn-nnw-meta-effectp fn-nnw-meta-effect
+                             fn-nnw-meta-remaining fn-nnw-meta-owes fn-nnw-cursor fn-nnw-at
+                             fn-nnw-tail fn-nnw-groups fn-nnw-threshold fn-nnw-horizon
+                             fn-nntp-multi fn-nntp-make-result fn-nntp-single fn-nntp-reply-effect
+                             fn-nnw-meta-initialp)
+                            (fn-nntp-newnews-scan-cat fn-wildmat-parse
+                             fn-nntp-newgroups-date-parse fn-nntp-newgroups-time-parse
+                             fn-nntp-civil-dtn-ms fn-nntp-string-octets fn-nntp-crlf
+                             fn-nntp-filter-groups-by-wildmat)))))
 
 (in-theory (disable fn-ovw-cursor fn-ovw-status fn-ovw-lines fn-ovw-reply fn-ovw-empty-text
                     fn-ovw-cursor-effect fn-ovw-cursor-effectp fn-ovw-cursor-octets fn-ovw-expand))
@@ -1069,8 +1092,9 @@
   :hints (("Goal" :do-not-induct t
            :expand ((fn-ovw-expand effects fn-arena fn-cat))
            :in-theory (e/d (fn-served-selectedp fn-ovw-cursor-effectp fn-nntp-reply-effect)
-                           (fn-ovw-cursor-octets))
-           :use ((:instance fn-ovw-cursor-octets-status-first (cur (car (cdr (car effects)))))))))
+                           (fn-ovw-cursor-octets fn-nnw-meta-initialp))
+           :use ((:instance fn-ovw-cursor-octets-status-first (cur (car (cdr (car effects)))))
+                 (:instance fn-nnw-meta-initial-status-first (cur (car (cdr (car effects)))))))))
 
 (defun fn-ovw-spec (session v token legacyp server fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
