@@ -2653,21 +2653,22 @@ checks the differing facts and preserved metadata, and reads back the exact wire
 
 ### Composite local withdrawal outcomes (S083)
 
-The local moderation withdrawal performs configuration publication and cause
-article submission as separate owner actions. Once publication has succeeded
-(or the plan establishes withdrawal already in force), a refusal of the cause
-cannot be reported as if the entire request had no effect. ACL2's
-`fn-mwo-after-withdraw` composes that second outcome: accepted/duplicate retain
-success; a fault remains fault; other incomplete causes use the existing
-uncertain status with an explicit `withdrawn-cause-*` reason. For example,
-`UNCERTAIN withdrawn-cause-refused` states that withdrawal is in force but its
-cause article was refused. This requests reconciliation rather than implying
-rollback or permitting a blind retry. No new wire status is introduced.
+Local moderation withdrawal publishes an authorization row and submits the
+cause article as separate owner actions. The configuration row authorizes that
+cause to withdraw the target; the row alone does not withdraw it. Once
+publication succeeds (or the plan finds that authorization already present),
+a cause refusal cannot imply that the entire request had no effect.
+`fn-mwo-after-authorization` composes the second outcome: accepted/duplicate
+retain success; a fault remains fault; incomplete causes use the existing
+uncertain status with an explicit `withdrawal-authorized-cause-*` reason.
+For example, `UNCERTAIN withdrawal-authorized-cause-refused` names the persisted
+authorization and the refused cause without claiming the target was withdrawn.
+It requests reconciliation, not rollback or blind retry. No new wire status is
+introduced.
 
-The combined result does not make these actions atomic. Current-authority and
-configuration-generation changes between planning and execution remain a
-separate review obligation; it does not claim the initial plan is a lease.
-SCN-1124 executes the actual native moderation dispatcher with recorded
-publication/submission adapters and checks success, refusal, uncertain, fault,
-malformed results and a refusal before publication. Full native disk/transport
-composition remains a separate scenario.
+These actions are not atomic. Current-authority and configuration-generation
+changes between planning and execution remain a separate review obligation;
+the initial plan is not a lease. SCN-1124 executes the actual native dispatcher
+with recorded publication/submission adapters and checks success, refusal,
+uncertain, fault, malformed results and refusal before publication. Full native
+disk/transport composition remains a separate scenario.

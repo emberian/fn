@@ -11,14 +11,15 @@
  "locus": "operator-verbs",
  "notes": [
   "10-02 23:22 escalate: fix lives in host/native/owner.lisp (forbidden zone)",
-  "2026-10-03 root: connected ACL2 fn-mwo-after-withdraw to actual fnn-owner-moderation-serialized after successful publication. Cause refusal now reports existing uncertain status plus explicit withdrawn-cause-refused (and clock/profile/conflict variants); cause fault remains fault, accepted/duplicate preserved. Actual dispatcher with publication/submission adapters passes; normal ACL2 guard and exact outcome assertions pass. Kept open for actual full native composition and separate current-authority/generation race assessment; this does not make the multi-quantum operation atomic."
+  "2026-10-03 root: connected ACL2 fn-mwo-after-authorization to actual fnn-owner-moderation-serialized after successful publication. Cause refusal now reports existing uncertain status plus explicit withdrawal-authorized-cause-refused (and clock/profile/conflict variants); cause fault remains fault, accepted/duplicate preserved. Actual dispatcher with publication/submission adapters passes; normal ACL2 guard and exact outcome assertions pass. Kept open for actual full native composition and separate current-authority/generation race assessment; this does not make the multi-quantum operation atomic.",
+  "Root leaf trace corrected original review scope: books/config.lisp fn-cfg-withdraw-article publishes (CAUSE TARGET REASON 1) authority; books/control-authority.lisp fn-ctl-withdrawal-plan consumes a cause article to generate the withdrawal record. Row alone does not hide target. Combined reply now explicitly says authorization published, not target withdrawn."
  ],
  "owner": "root/control-observation",
  "reviewer": "owner.lisp:3963-3992: the plan, fnn-owner-live-admin-serialized and fnn-owner-control-submit-serialized are separate quanta. A refusal of the cause article after the withdrawal row was published returns only the submission's refusal. The docstring ('answers the first that does not accept') shows the non-atomicity is by design, but the reply does not report the partial effect. One sub-scenario is wrong: the :busy shed check (control.lisp ~345) runs once, before the moderation call, not between steps.",
- "scenario": "The withdrawal row (code 26) is published durably through live admin. In a separate later quantum the cause article is refused (clock unusable at its own reading, a duplicate msgid, a slow disk answered :busy by the control path, or a profile bound). The operator receives only the submission's refusal, so the action reads as not done although the withdrawal is in force with no cause article. The plan was also computed in the first quantum, so a concurrent moderation can make it stale before steps two and three run.",
+ "scenario": "The withdrawal authorization row (code 26) is durably published through live admin, but the later cause article is refused. The original reply reports only refusal, hiding the persisted authorization. This is a partial configuration effect; the target is not withdrawn by the row alone. A later cause may exercise that authorization. Planning, publication and submission remain separate owner quanta.",
  "severity": "low",
  "source": "sweep-2026-10-03",
  "state": "open",
- "title": "Moderation :withdraw reports 'refused' after the withdrawal configuration was already durably published",
+ "title": "Cause refusal hides a persisted withdrawal authorization",
  "updated": "2026-10-03T13:40:00Z"
 }

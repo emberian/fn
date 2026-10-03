@@ -1357,9 +1357,10 @@ it does not mean the submission failed. Check the durable result before
 resubmitting. Explicit consumer wait intervals keep their existing semantics.
 
 
-A withdrawal can take effect even if its subsequent cause article cannot be
-posted. `UNCERTAIN withdrawn-cause-refused` reports that partial result: the
-withdrawal is in force, and the cause was refused. Related `withdrawn-cause-*`
-reasons distinguish clock, profile, conflict, uncertainty and fault outcomes.
-Inspect the target and cause before retrying; this result does not undo the
-withdrawal.
+A withdrawal request can publish its authorization row even if its subsequent
+cause article cannot be posted. `UNCERTAIN withdrawal-authorized-cause-refused`
+reports that partial result: authorization was published, and the cause was
+refused. The authorization row alone does not withdraw the target; withdrawal
+requires a cause article. Related `withdrawal-authorized-cause-*` reasons
+identify clock, profile, conflict, uncertainty and fault outcomes. Inspect the
+authorization and cause before retrying; the reply does not imply rollback.
