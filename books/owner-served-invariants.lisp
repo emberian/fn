@@ -387,6 +387,21 @@
 ; core), so two owners with the same connection record and clock answer it
 ; identically whatever their views.  fn-ocfg-read-step is the host's per-event
 ; read (host/owner-host.lisp fn-owner-read-step).
+(local
+ (defthm fn-ocfg-read-step-effects-projection
+   (equal (car (fn-ocfg-read-step oc id event fn-arena))
+          (let* ((o (fn-ocfg-owner oc))
+                 (conn (fn-own-find-conn id (fn-own-conns o))))
+            (if conn
+                (fn-served-result-effects
+                 (fn-served-dispatch (fn-own-served-conn o conn (fn-own-conn-session conn))
+                                     event fn-arena))
+              nil)))
+   :hints (("Goal" :do-not '(preprocess)
+            :in-theory (union-theories
+                        '(fn-ocfg-read-step fn-own-read-step-full car-cons cdr-cons)
+                        (theory 'minimal-theory))))))
+
 (defthm fn-ocfg-read-step-without-selection-depends-only-on-its-connection-and-clock
   (implies (and (equal (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc2)))
                        (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))
@@ -396,29 +411,17 @@
            (equal (car (fn-ocfg-read-step oc2 id event fn-arena))
                   (car (fn-ocfg-read-step oc id event fn-arena))))
   :rule-classes nil
-  :hints (("Goal"
-           :in-theory (e/d (fn-ocfg-read-step fn-own-read-step-full fn-own-served-conn
-                            fn-served-dispatch-core)
-                           (fn-served-dispatch fn-own-conn-boundedp
-                            fn-own-conn-make-group-indexed fn-own-set-conns
-                            fn-own-enqueue fn-own-remove-conn fn-own-replace-conn
-                            fn-served-advance-eventp fn-own-view-live
-                            fn-ocfg-with-read-owner
-                            fn-auth-step-pinned fn-post-offeredp
-                            fn-wire-begin-article-with-line-limit
-                            fn-wire-article-line-limit))
-           :use ((:instance fn-served-dispatch-without-advance-is-core
-                            (conn (fn-own-served-conn
-                                   (fn-ocfg-owner oc2)
-                                   (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc2)))
-                                   (fn-own-conn-session
-                                    (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc2)))))))
-                 (:instance fn-served-dispatch-without-advance-is-core
-                            (conn (fn-own-served-conn
-                                   (fn-ocfg-owner oc)
-                                   (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))
-                                   (fn-own-conn-session
-                                    (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))))))))
+  :hints (("Goal" :do-not '(preprocess)
+           ; Only the observed effects projection is needed. Leave session and
+           ; pin-index workers opaque while equal connection arguments converge.
+           :in-theory (union-theories
+                       '(fn-ocfg-read-step-effects-projection fn-own-served-conn
+                         fn-served-dispatch-without-advance-is-core
+                         fn-served-dispatch-core fn-served-conn-pinned-index
+                         fn-served-conn-fields-of-make-conn-live
+                         fn-served-result-effects-of-fn-served-make-result
+                         car-cons cdr-cons)
+                       (theory 'minimal-theory)))))
 
 ; KEYSTONE (P3, the plan's T6; restated under NNT-042 on 2026-09-27).  Over
 ; the host's own calls: any sequence of writer events through fn-ocfg-step,
