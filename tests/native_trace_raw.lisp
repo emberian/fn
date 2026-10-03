@@ -35,7 +35,7 @@
 (let ((*fnn-owner-measure* t))
   (assert (equal (multiple-value-list (fnn-owner-measured (:actual-owner 9) (values :owner :ok)))
                  '(:owner :ok))))
-;; Real mux render caller over a recorded owner leaf: all five results and
+;; Real mux render caller over a recorded owner leaf: all six results and
 ;; exact ACL2 response generations remain available through the trace hook.
 (load-deployed-forms "host/native/owner.lisp" '((defvar *fnn-output-grant*)))
 (load-deployed-forms "host/native/mux.lisp"
@@ -45,12 +45,12 @@
 (defun fnn-owner-render-next-quantum (service cid plan class compressed)
   (assert (and (eq service :service) (= cid 9) (eq plan :plan)
                (eq class :read) (null compressed)))
-  (values :octets :rest :done :yield :cold))
+  (values :octets :rest :done :yield :cold 2))
 (let ((loop (%make-fnn-mux-loop :service :service))
       (conn (%make-fnn-mux-conn :cid 9 :class :read :output-grant :held
                               :response-identity '(:response 9 4 88))))
   (assert (equal (multiple-value-list (fnn-mux-render-next loop conn :plan))
-                 '(:octets :rest :done :yield :cold))))
+                 '(:octets :rest :done :yield :cold 2))))
 (fnn-trace-report *standard-output*)
 (assert (eq (fnn-trace-row-outcome (aref (fnn-trace-state-rows *fnn-trace-state*) 2)) :nonlocal-exit))
 

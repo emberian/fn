@@ -2474,3 +2474,17 @@ has not been rerun here; Integration/root can reuse its actual warm world.
 No new image, proof, thread-counter, full-path tariff or performance claim.
 Transport continuation remains with BPTransport; warm include batchf3b42 is
 already handed Integration. This implementation uses the existing Sol slot.
+
+Root requested actual probe execution immediately: APFS-cloned the existing
+read-only buffer-reuse-source runtime into this lane, overlaid only shared
+trace.lisp, and used tools/acl2 through the existing90s selected probe runner.
+Actual NEWNEWS probe PASS, including root's borrowed short-window check,
+1024 reused windows, exact drain and factory samples. ACL2 raw probe form
+Time0.97s. Shared trace report ranks matched32x4096 windows: list-cursor
+14,676,208 sampled bytes /6,708us; direct-buffer0 sampled bytes /1,336us.
+Two isolated-process samples, no dropped/incomplete rows. This is observed
+matched source allocation/time, not full response allocation or a proof.
+The snapshot now hashes trace.lisp along with every existing subject/harness;
+post-run source hashes were rechecked. Root runtime tree was not changed.
+Actual mux fixture now asserts all SIX results, retaining END alongside COLD.
+Four focused tests after that followthrough PASS0.429s. No image rebuild.
