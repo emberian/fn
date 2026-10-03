@@ -610,7 +610,8 @@ ACL2 returns."
 
 (defun fnn-control-owner-run-normalized
     (store-octets listener-host-octets listener-port oncep max-connections
-     control-path-octets posting-enabledp &optional tls-context tls-port)
+     control-path-octets posting-enabledp &optional tls-context tls-port
+     cold-resources output-resources)
   "Add composable lifecycle hooks while leaving owner normalization intact."
   (unless (and (typep control-path-octets 'fnn-octets)
                (> (length control-path-octets) 0)
@@ -651,7 +652,8 @@ ACL2 returns."
     ;; PKT-605: the connection budget counts these clients' threads.
     (let ((*fnn-mux-control-clients* max-clients))
       (fnn-owner-run-normalized store-octets listener-host-octets listener-port
-                                oncep max-connections tls-context tls-port))))
+                                oncep max-connections tls-context tls-port
+                                cold-resources output-resources))))
 
 
 

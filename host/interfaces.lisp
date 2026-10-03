@@ -47,6 +47,9 @@
 
 ; Partial resident/output custody seam. Install/issue mutation guards and the
 ; complete allocation tariff remain PRF-1259; this is not an operation gate.
+(definterface fn-heap-figure-octets :class :common-lisp-compliant)
+(definterface fn-orv-startup-slots :class :common-lisp-compliant)
+(definterface fn-orv-startup-grant :class :common-lisp-compliant)
 (definterface fn-rlo-install :class :ideal)
 (definterface fn-rlo-issue :class :ideal)
 (definterface fn-rlo-output :class :common-lisp-compliant)

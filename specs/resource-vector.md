@@ -369,3 +369,16 @@ NEWNEWS allocation coverage. Initial matcher/metadata work, integer widths,
 outer plan/mux copies, concrete allocator margins and guard/representation
 closure of output install/issue remain PRF-1259 work. No accounted operation
 gate may be inferred from the serializer's logical cons bound or this pool.
+
+SCN-1097 connects the same accepted cold/output projections through operator,
+control and normalized owner entry to service fields. Actual mux startup
+`:hold` invokes output installation; `fn-orv-startup-grant` must accept
+captured dynamic space, exact pre-extension store figure, cold descriptor,
+output policy and ACL2 row count before private allocation.
+`fn-orv-startup-slots` adds the bank's two protected rows to the admitted
+connection count; it never clamps an unrepresentable profile. Row count is
+metadata capacity, not a heap grant for whole replies. Explicit policy stays
+staged until actual issue and full allocation/custody coverage are connected.
+A response lease must retain its PLAN/selector/renderer continuation and all
+output/socket suffixes until operation completion and no future publisher,
+plus actual issued dependency termination; clearing OUT alone settles none.

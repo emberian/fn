@@ -313,7 +313,12 @@ not armed. Instrumentation has no semantic or admission role."
   ;; Private concrete worker ledger; independent of live STATE and actor roster.
   ;; Each returned ledger and native grant is retained before any classification.
   (syncer-ledger nil) (syncer-grants nil)
-  (syncer-ledger-lock (sb-thread:make-mutex :name "fn syncer custody")))
+  (syncer-ledger-lock (sb-thread:make-mutex :name "fn syncer custody"))
+  ;; Exact normalized launch descriptors, and private output pool projection.
+  ;; Explicit policy activation/full tariffs are still PRF-1259 obligations.
+  (cold-resources nil) (output-resources nil) (output-slots nil)
+  (output-ledger nil) (output-grants nil)
+  (output-ledger-lock (sb-thread:make-mutex :name "fn output custody")))
 
 ;;; Opaque connection custody. These are INTERNAL composition subjects until
 ;;; startup installs the genuine indexed runtime and its constructor allowance.
@@ -1663,6 +1668,28 @@ A diagnostic failure does not alter custody, classification or settlement."
         (unless (eq word :installed) (fnn-fault "syncer funding refused ~a" word))
         (fnn-owner-custody-trace "custody: install threads=~s stack=~s word=~s" threads stack word))))
   nil)
+
+(defun fnn-owner-output-install (service dynamic store-need)
+  "Actual mux :hold caller. Validate captured headroom before private allocation.
+This installs only the explicit output projection, not a full allocation gate."
+  (let ((policy (fnn-owner-service-output-resources service)))
+    (when policy
+      (let ((cold (fnn-owner-service-cold-resources service))
+            (slots (fnn-owner-service-output-slots service)))
+        (let ((grant (fnn-core 'fn-orv-startup-grant dynamic store-need cold policy slots)))
+          (unless (eq (car grant) :hold)
+            (fnn-refuse "output funding refused ~s" grant)))
+        (sb-thread:with-mutex ((fnn-owner-service-output-ledger-lock service))
+          (when (fnn-owner-service-output-ledger service)
+            (fnn-fault "output funding installed twice"))
+          (let ((ledger (fnn-core 'create-fn-resource-ledger)))
+            ;; Retain the actual private object before any mutating step.
+            (setf (fnn-owner-service-output-ledger service) ledger)
+            (destructuring-bind (word returned)
+                (fnn-call 'fn-rlo-install dynamic store-need cold policy slots ledger)
+              (setf (fnn-owner-service-output-ledger service) returned)
+              (unless (eq word :installed)
+                (fnn-fault "output funding refused after headroom grant ~s" word)))))))))
 
 (defun fnn-owner-syncer-issue (service generation job)
   "Draw from the qualified syncer projection before any child is created."
@@ -7455,7 +7482,8 @@ fn-osd-drain-stops-by-the-deadline).  Nothing here compares times or counts."
 
 (defun fnn-owner-run (root port once max-connections
                       &optional fault address (family :inet) tls-context
-                        connection-fault-operation tls-port more-addresses)
+                        connection-fault-operation tls-port more-addresses
+                        cold-resources output-resources)
   "Run one service from already-normalized boundary values.
 MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
 `[listener] host' list (NNT-041); each gets the same port and TLS port."
@@ -7483,6 +7511,10 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
            (unwind-protect
                 (progn
                   (setq service (fnn-owner-install root max-connections fault))
+                  (setf (fnn-owner-service-cold-resources service) cold-resources
+                        (fnn-owner-service-output-resources service) output-resources
+                        (fnn-owner-service-output-slots service)
+                        (fnn-core 'fn-orv-startup-slots max-connections))
                   (fnn-owner-retain-run-authority service)
                   ;; Before any client/module starts, retire startup-only
                   ;; cache borrows; absent policy never gets a warm bypass.
@@ -7720,7 +7752,7 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
 
 (defun fnn-owner-run-normalized (store-octets listener-host-octets
                                  listener-port oncep max-connections &optional tls-context
-                                 tls-port)
+                                 tls-port cold-resources output-resources)
   "Operator callback over ACL2-normalized projections; no argv semantics."
   (unless (and (typep store-octets 'fnn-octets)
                (typep listener-host-octets 'fnn-octets)
@@ -7764,7 +7796,8 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                      (mapcar (lambda (projection)
                                (cons (first projection)
                                      (fnn-octets (second projection))))
-                             (rest projections))))))
+                             (rest projections))
+                     cold-resources output-resources))))
 
 (defun fnn-command-owner (command args)
   "Private low-level test entry; public operators use the normalized callback."

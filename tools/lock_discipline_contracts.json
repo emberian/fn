@@ -156,6 +156,18 @@
    "match": [
     "*fnn-tls-reload-mutex*"
    ]
+  },
+  "XSYNCER": {
+   "match": [
+    "(fnn-owner-service-syncer-ledger-lock)"
+   ],
+   "why": "Private typed syncer ledger/grants. Startup takes O then this leaf; runtime receipt drops it before completion callback, classification or owner entry."
+  },
+  "XOUTPUT": {
+   "match": [
+    "(fnn-owner-service-output-ledger-lock)"
+   ],
+   "why": "Private typed output projection. Startup O precedes this leaf; semantic methods operate only private ledger, no live STATE/arena and no callback to O while held."
   }
  },
  "lock_order": {
@@ -177,7 +189,9 @@
    "XPULL",
    "J",
    "XTLSRELOAD",
-   "XTLSCTX"
+   "XTLSCTX",
+   "XSYNCER",
+   "XOUTPUT"
   ],
   "C": [
    "G",

@@ -1708,7 +1708,14 @@ the run's (exit 1), named on stderr and in the service log."
                               +fnn-gc-nursery-octets+
                               (fnn-store-config store)
                               (and tls-context t))))
-                (when (eq word :hold) (fnn-owner-syncer-install service threads stack))
+                (when (eq word :hold)
+                  (fnn-owner-syncer-install service threads stack)
+                  ;; Store figure is captured before both allowance extensions.
+                  ;; ACL2 validates dynamic >= store + exact cold + output pool.
+                  (fnn-owner-output-install
+                   service (sb-ext:dynamic-space-size)
+                   (fnn-core 'fn-heap-figure-octets (fnn-store-config store)
+                             (fnn-heap-core-octets) +fnn-gc-nursery-octets+)))
                 word))))
          (line (fnn-global 'fn-owner-connection-budget-line)))
     (unless (and (member decision '(:hold :refused)) (fnn-octet-list-p line))

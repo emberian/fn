@@ -1139,7 +1139,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -8328,6 +8328,33 @@
         "tests/native_await_lifetime_raw.lisp"
       ],
       "execution_scope": "Actual native cleanup/section and socket helper bodies, real SBCL exclusion/thread/socket close, recording semantic primitives with raw ACL2 cut. No full output tariff, physical dependency grant or saved-image verdict."
+    },
+    {
+      "id": "SCN-1097",
+      "title": "Accepted resource descriptors reach actual mux hold and headroom precedes output pool allocation",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-047"
+      ],
+      "steps": [
+        "Invoke actual operator/control/normalized-owner boundary functions with one accepted result and its recorded resource projections.",
+        "Invoke actual mux budget caller with hold and refusal decisions; install explicit private output projection only after numerical headroom grant.",
+        "Refuse insufficient headroom and check no private constructor/resize occurs; absent staged policy creates no pool."
+      ],
+      "expected": [
+        "Cold and output descriptors remain the exact same accepted-plan objects through all boundary calls; pre-extension store figure is captured by ACL2.",
+        "Actual mux hold invokes both projections; parent or output headroom refusal grants no output allocation.",
+        "Startup rows come from ACL2, without clamping; explicit output policy remains staged and full response custody/tariff remains open."
+      ],
+      "implementation": {
+        "test": "tests/test_native_output_startup_raw.sh"
+      },
+      "evidence": [
+        "tests/native_output_startup_raw.lisp",
+        "books/output-reservation.lisp"
+      ],
+      "execution_scope": "Actual native transport/install/caller bodies with recorded ACL2 funding/method boundaries. Exact new helper and three normal declarations source-admitted in Foundations actual loaded output world; typed producer fixture independent. No configured live activation/full tariff/image claim."
     }
   ]
 }
