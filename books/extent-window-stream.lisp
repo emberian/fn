@@ -29,7 +29,8 @@
 (defthm fn-ews-capture-matches-by-definition
   (equal (fn-ews-capture-matches capture s)
          (equal capture (fn-ews-capture s)))
-  :hints (("Goal" :in-theory (enable fn-ews-capture-matches fn-ews-capture))))
+  :hints (("Goal" :in-theory (union-theories '(fn-ews-capture-matches fn-ews-capture)
+                                           (theory 'minimal-theory)))))
 
 (defun fn-ews-begin (file eoff elen poff plen offset ticket incarnation lease expected pgs-digest-state)
   (declare (xargs :stobjs pgs-digest-state
