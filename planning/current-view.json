@@ -76,8 +76,8 @@
       "host_sha256": {
         "host/bp-native-app-host.lisp": "ec5f8a19934fff5da14979340cc80e685ff8b50e1da9fb2414035922a130ce4e",
         "host/checkpoint-host.lisp": "fe7c5bd15cde4bc9a5e60124b3bc520d90c4b6813c78f447acc865072e1af7bc",
-        "host/native-operator-host.lisp": "07dbb215049cdeea012d374d0bfbfac4183f0cccfe65f5cc3f4d04fdeb14e688",
         "host/native/bp-service.lisp": "5c2c0e2beeb980cd7d619ebd6229b5cd28d53c56bd9120544f2e41a01682b081",
+        "host/native/heap.lisp": "90c6b75ad34ef08a2e15cb114c301534d7036f96494901ea21c29d48c063c891",
         "host/native/io.lisp": "4cc56cda4c453d536d01e8b38dacfc89cb6c25256506433998d5587a1a209e26",
         "host/native/operator.lisp": "c3dc90c05ecc459f0b9caa9c8ee20bb0e900024ced4fcb2696aaecbad8f1f9b0",
         "host/native/tcpcl.lisp": "8e55af6b4546b79347d38c9bc3ab4d772e802d38b7212c8af13c3fd0d05b9fa6",

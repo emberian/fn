@@ -11,8 +11,8 @@ stale. Counts describe artifacts, not coverage; see
 | Quantity | Count |
 | --- | --- |
 | Books read | 2978 |
-| Certification roots in the Makefile | 2463 |
-| Books inside the root closure | 2777 |
+| Certification roots in the Makefile | 2466 |
+| Books inside the root closure | 2782 |
 | `defthm` and `defthmd` events | 38940 |
 | `defun` events | 25234 |
 | Functions with verified guards | 4034 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 415 |
 | Enabled-projection warnings | 80 |
 | Teeth-form warnings | 292 |
-| Include-hygiene warnings | 3929 |
+| Include-hygiene warnings | 3931 |
 | Host-names warnings | 3426 |
 | Hand-written-record warnings | 19 |
 
@@ -1802,7 +1802,7 @@ that `make certify` requests.
 | `books/tcpcl-invariants.lisp` | root | 63 | 1 | 0/0/1/0 | 0 | 0 | 4 |
 | `books/tcpcl-octets.lisp` | root | 173 | 37 | 15/0/22/0 | 0 | 0 | 1 |
 | `books/tcpcl-received-count.lisp` | closure | 0 | 3 | 0/0/3/0 | 0 | 0 | 0 |
-| `books/tcpcl-received-source-refinement.lisp` | - | 1 | 2 | 0/2/0/0 | 0 | 0 | 0 |
+| `books/tcpcl-received-source-refinement.lisp` | closure | 1 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `books/tcpcl-received-source.lisp` | closure | 0 | 5 | 5/0/0/0 | 0 | 0 | 0 |
 | `books/tcpcl-records.lisp` | root | 133 | 99 | 62/0/37/0 | 0 | 0 | 77 |
 | `books/tcpcl-retained-turn.lisp` | root | 7 | 8 | 0/0/8/0 | 0 | 0 | 3 |
@@ -1810,7 +1810,7 @@ that `make certify` requests.
 | `books/tcpcl-session-carried.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `books/tcpcl-session.lisp` | root | 107 | 59 | 12/0/47/0 | 0 | 0 | 1 |
 | `books/tcpcl-source-continuation.lisp` | closure | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
-| `books/tcpcl-source-control-refinement.lisp` | - | 2 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/tcpcl-source-control-refinement.lisp` | closure | 2 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/tcpcl-source-control.lisp` | closure | 5 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/tcpcl-spool.lisp` | root | 3 | 19 | 2/0/17/0 | 0 | 0 | 0 |
 | `books/tls-handshake-budget.lisp` | closure | 37 | 12 | 0/1/10/1 | 0 | 0 | 0 |
@@ -2063,7 +2063,7 @@ that `make certify` requests.
 | `tests/acl2/bp-session-generations-tests.lisp` | - | 0 | 0 | 0/0/0/0 | 3 | 0 | 0 |
 | `tests/acl2/bp-session-profile-tests.lisp` | - | 0 | 0 | 0/0/0/0 | 20 | 0 | 0 |
 | `tests/acl2/bp-session-received-source-tests.lisp` | - | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
-| `tests/acl2/bp-session-turn-tests.lisp` | - | 0 | 4 | 0/4/0/0 | 2 | 0 | 0 |
+| `tests/acl2/bp-session-turn-tests.lisp` | root | 0 | 4 | 0/4/0/0 | 2 | 0 | 0 |
 | `tests/acl2/bp-signed-binding-tests.lisp` | root | 0 | 9 | 0/3/0/6 | 33 | 3 | 0 |
 | `tests/acl2/bp-status-report-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 19 | 1 | 0 |
 | `tests/acl2/bp-transit-join-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 64 | 18 | 0 |
@@ -3010,10 +3010,10 @@ that `make certify` requests.
 | `tests/acl2/tcpcl-delivery-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 33 | 5 | 0 |
 | `tests/acl2/tcpcl-frame-cursor-tests.lisp` | - | 0 | 4 | 0/3/0/1 | 6 | 0 | 0 |
 | `tests/acl2/tcpcl-received-count-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 2 | 0 | 0 |
-| `tests/acl2/tcpcl-received-source-refinement-tests.lisp` | - | 0 | 0 | 0/0/0/0 | 2 | 0 | 0 |
+| `tests/acl2/tcpcl-received-source-refinement-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 2 | 0 | 0 |
 | `tests/acl2/tcpcl-retained-turn-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 25 | 0 | 0 |
 | `tests/acl2/tcpcl-segment-source-cursor-tests.lisp` | root | 2 | 1 | 0/0/1/0 | 4 | 0 | 0 |
-| `tests/acl2/tcpcl-source-control-refinement-tests.lisp` | - | 0 | 0 | 0/0/0/0 | 2 | 0 | 0 |
+| `tests/acl2/tcpcl-source-control-refinement-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 2 | 0 | 0 |
 | `tests/acl2/tcpcl-source-control-tests.lisp` | - | 0 | 0 | 0/0/0/0 | 13 | 0 | 0 |
 | `tests/acl2/tcpcl-spool-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 1 | 0 |
 | `tests/acl2/tcpcl-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 171 | 6 | 0 |

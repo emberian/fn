@@ -235,9 +235,11 @@ Five composed source unittest methods and the snapshot actor suite pass;
 `python3 tools/host_check.py --read` finds no reader failures. The diagnostic
 fixture now includes collector-trigger growth in its literal output totals.
 `python3 tools/ledger.py --check` initially found only two missing BP refinement
-root paths; their actual existing test roots are now in Makefile. Source/interface
-regeneration is distinct from admission. `python3 tools/interface_emit.py --check`
-(on hbox) still reports undeclared consumers, stale declarations, class/kind and
-carried-completeness gaps, plus evaluator/reader audit sites. Those findings were
+root paths; their actual existing test roots and the already certified BP
+session-turn test root are now in Makefile. The subsequent ledger check passes. Source/interface
+regeneration is distinct from admission. `python3 tools/interface_emit.py --write`
+(on hbox) reports 51 findings, including undeclared consumers, stale declarations
+and carried-completeness gaps, plus evaluator/reader audit sites. The strict
+`--check` and world class/kind admission remain open. Those findings were
 not waived or used to claim a whole-current executable world. The final generated
 current view and ledger preserve source/certificate/qualification distinctions.

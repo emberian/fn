@@ -415,5 +415,7 @@
 (include-book "bp-node-host-machine")
 (include-book "bp-evidence-host-names")
 (include-book "definterface")
+(include-book "decoded-worker-job")
+(include-book "history-paged")
 (include-book "history-records")
 (include-book "resource-vector-exec")

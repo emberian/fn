@@ -1075,6 +1075,9 @@
     "tests/acl2/bp-forward-live-tests",
     "books/bp-forward-image",
     "tests/acl2/bp-forward-image-tests",
+    "tests/acl2/bp-session-turn-tests",
+    "tests/acl2/tcpcl-source-control-refinement-tests",
+    "tests/acl2/tcpcl-received-source-refinement-tests",
     "books/tcpcl-retained-turn",
     "tests/acl2/tcpcl-retained-turn-tests",
     "books/bp-node-budget-input",
@@ -2468,8 +2471,8 @@
   ],
   "totals": {
     "books": 2978,
-    "books_in_root_closure": 2777,
-    "roots": 2463,
+    "books_in_root_closure": 2782,
+    "roots": 2466,
     "theorems": 38940,
     "functions": 25234,
     "assert_events": 26859,
@@ -2486,7 +2489,7 @@
     "export_hygiene_warnings": 415,
     "enabled_projection_warnings": 80,
     "teeth_form_warnings": 292,
-    "include_hygiene_warnings": 3929,
+    "include_hygiene_warnings": 3931,
     "host_names_warnings": 3426,
     "hand_written_record_warnings": 19
   },
@@ -24666,6 +24669,7 @@
         "control-observation",
         "control-request-word",
         "crypto-attach",
+        "decoded-worker-job",
         "definterface",
         "deflate-inflate",
         "deflate-pool",
@@ -24688,6 +24692,7 @@
         "history-columns-relation",
         "history-columns-store",
         "history-image-builder",
+        "history-paged",
         "history-paged-adopt",
         "history-paged-attach",
         "history-records",
@@ -52921,7 +52926,7 @@
     },
     {
       "book": "books/tcpcl-received-source-refinement.lisp",
-      "in_root_closure": false,
+      "in_root_closure": true,
       "is_root": false,
       "theorems": 1,
       "functions": 2,
@@ -53214,7 +53219,7 @@
     },
     {
       "book": "books/tcpcl-source-control-refinement.lisp",
-      "in_root_closure": false,
+      "in_root_closure": true,
       "is_root": false,
       "theorems": 2,
       "functions": 0,
@@ -60248,8 +60253,8 @@
     },
     {
       "book": "tests/acl2/bp-session-turn-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 4,
       "guards": {
@@ -86168,8 +86173,8 @@
     },
     {
       "book": "tests/acl2/tcpcl-received-source-refinement-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 0,
       "guards": {
@@ -86247,8 +86252,8 @@
     },
     {
       "book": "tests/acl2/tcpcl-source-control-refinement-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 0,
       "guards": {
@@ -110314,7 +110319,21 @@
       },
       {
         "book": "books/image-world-dtn.lisp",
+        "line": 418,
+        "include": "decoded-worker-job",
+        "included": "books/decoded-worker-job.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/image-world-dtn.lisp",
         "line": 419,
+        "include": "history-paged",
+        "included": "books/history-paged.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/image-world-dtn.lisp",
+        "line": 421,
         "include": "resource-vector-exec",
         "included": "books/resource-vector-exec.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
