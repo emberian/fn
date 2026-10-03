@@ -1803,3 +1803,14 @@ raw tests cover this local consumer with stubbed batch I/O; a qualified image
 POST/stop scenario remains the acceptance check for the actual capacity and
 durable persistence path. Constructor metadata, gate/refusal work and the
 full resource vector remain cost obligations.
+
+Outbound feed lifetime also uses the shared actor starter and physical join.
+The module runtime remains native custody of the actor reservation, including
+a starter that failed after creating its child but before returning the worker.
+A failed join leaves the module registered; close removes it only after the
+worker's terminal cleanup physically ends. The feed's exact-class failure
+boundary scopes a known stopping refusal while an unknown subclass remains a
+fault. A late cleanup fault always reaches ACL2's monotone stop lattice:
+graceful stop can escalate, and an existing uncertain outcome remains dominant.
+The local thread schedules stub socket effects; next-due scheduling, the wait
+boundary and full served-image correspondence remain open.

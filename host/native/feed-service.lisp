@@ -665,19 +665,12 @@ stop) came after SEEN was read; a missed signal is seen by the count."
   "Contain an adapter defect without turning a peer disconnect into a fence."
   (handler-case
       (fnn-feed-worker runtime)
-    (fnn-store-indeterminate (e)
-      (fnn-owner-fence-service (fnn-feed-runtime-service runtime))
-      (fnn-err "outbound feed uncertain; recovery required: ~a" e))
-    (fnn-store-fault (e)
-      (fnn-owner-fault-service (fnn-feed-runtime-service runtime) nil e))
-    (fnn-store-error (e)
-      ;; Owner shutdown refuses a final serialized callback.  Any other
-      ;; store error here is not a remote peer verdict and is a host fault.
-      (unless (fnn-feed-stoppingp runtime)
-        (fnn-owner-fault-service (fnn-feed-runtime-service runtime) nil e)))
     (serious-condition (e)
-      (unless (fnn-feed-stoppingp runtime)
-        (fnn-owner-fault-service (fnn-feed-runtime-service runtime) nil e)))))
+      ;; Exact concrete class, including failures during terminal cleanup.
+      ;; A known stopping refusal is scoped; an unknown subclass is a fault.
+      (fnn-owner-thread-escape (fnn-feed-runtime-service runtime) e "outbound feed"))))
+
+(def-actor fnn-feed-spawn-worker :thread-name "fn outbound feed" :roster t)
 
 ;;; These are registered through the owner's composable resource lifecycle
 ;;; hooks by the owner convergence lane.  They are idempotent: stop only
@@ -694,8 +687,8 @@ stop) came after SEEN was read; a missed signal is seen by the count."
               :limit (fnn-feed-read-limit service))))
       (fnn-feed-runtime-put service runtime)
       (setf (fnn-feed-runtime-worker runtime)
-            (sb-thread:make-thread (lambda () (fnn-feed-worker-guarded runtime))
-                                   :name "fn outbound feed"))))
+            (fnn-feed-spawn-worker service (list runtime)
+                                   (lambda () (fnn-feed-worker-guarded runtime))))))
   nil)
 
 (defun fnn-feed-service-wake (service)
@@ -720,7 +713,14 @@ from being closed then reused before this stop hook touches it."
   (let ((runtime (fnn-feed-runtime-get service)))
     (when runtime
       (fnn-feed-service-wake service)
-      (let ((worker (fnn-feed-runtime-worker runtime)))
-        (when worker (sb-thread:join-thread worker)))
+      ;; The starter may have raised after creating a parked/live child and
+      ;; before returning its worker. Shared registration retains that child.
+      (let* ((actor (fnn-owner-actor-for-custody service runtime))
+             (worker (or (fnn-feed-runtime-worker runtime)
+                         (and actor (fnn-owner-actor-thread actor)))))
+        (when (and actor (null worker))
+          (fnn-fault "outbound feed spawn remains physically unobserved"))
+        (when (and worker (not (fnn-owner-actor-join service worker)))
+          (fnn-fault "outbound feed worker remains physically live")))
       (fnn-feed-runtime-drop service)))
   nil)
