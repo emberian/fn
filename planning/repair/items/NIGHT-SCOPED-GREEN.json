@@ -28,5 +28,93 @@
  "state": "in-progress",
  "test": "python3 -m unittest tests.test_green_check.ScopedAuditTests.test_cli_selects_affected_roots_before_audit",
  "title": "Changed-books check audits unrelated roots and rehashes all manifest source worlds",
- "updated": "2026-10-03T06:49:42Z"
+ "updated": "2026-10-03T06:51:23Z",
+ "verify": {
+  "base": "baa6a81290d7958c2d7895bbc87997b35bf2fb79",
+  "base_observation": {
+   "result": {
+    "assertions": [
+     {
+      "message": "False is not true : changed gate must select affected roots before auditing",
+      "test": "tests.test_green_check.ScopedAuditTests.test_cli_selects_affected_roots_before_audit",
+      "type": "AssertionError"
+     }
+    ],
+    "errors": [],
+    "executed": [
+     "tests.test_green_check.ScopedAuditTests.test_cli_selects_affected_roots_before_audit"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_green_check.py": "622d71d5f975c162dbeae01b5ea44415b7f33cf62f4523514cc584254e9a1de6"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 1,
+   "revision": "baa6a81290d7958c2d7895bbc87997b35bf2fb79",
+   "stderr": "test_cli_selects_affected_roots_before_audit (tests.test_green_check.ScopedAuditTests.test_cli_selects_affected_roots_before_audit) ... FAIL\n\n======================================================================\nFAIL: test_cli_selects_affected_roots_before_audit (tests.test_green_check.ScopedAuditTests.test_cli_selects_affected_roots_before_audit)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-2nqt1t6i/wt/tests/test_green_check.py\", line 704, in test_cli_selects_affected_roots_before_audit\n    self.assertTrue(calls == [[\"books/dep\", \"books/top\"]],\n    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                    \"changed gate must select affected roots before auditing\")\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: False is not true : changed gate must select affected roots before auditing\n\n----------------------------------------------------------------------\nRan 1 test in 0.004s\n\nFAILED (failures=1)\n",
+   "stdout": ""
+  },
+  "changed_files": [
+   "planning/repair/items/NIGHT-SCOPED-GREEN.json",
+   "tests/test_certified_claims.py",
+   "tests/test_certs.py",
+   "tests/test_evidence_store.py",
+   "tests/test_green_check.py",
+   "tools/certified_claims.py",
+   "tools/certs.py",
+   "tools/evidence_manifests.py",
+   "tools/evidence_store.py",
+   "tools/green_check.py"
+  ],
+  "diff_lines": 311,
+  "evidence": {
+   "bytes": 4032,
+   "path": "planning/evidence/repair/NIGHT-SCOPED-GREEN-55b5828a93e54f6fa48e04c15280a967.json",
+   "sha256": "e24e022be21c78dfe326c15d68258d9b5d60bc5a5e6f2c48c22f554f2629c047"
+  },
+  "evidence_outcome": "archived",
+  "expected_failure": {
+   "message": "False is not true : changed gate must select affected roots before auditing",
+   "test": "tests.test_green_check.ScopedAuditTests.test_cli_selects_affected_roots_before_audit"
+  },
+  "green_at_head": true,
+  "harness": {
+   "tests/test_green_check.py": "622d71d5f975c162dbeae01b5ea44415b7f33cf62f4523514cc584254e9a1de6"
+  },
+  "head": "bf44dfae277fbce39696213e358911f0412e3e72",
+  "head_observation": {
+   "result": {
+    "assertions": [],
+    "errors": [],
+    "executed": [
+     "tests.test_green_check.ScopedAuditTests.test_cli_selects_affected_roots_before_audit"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_green_check.py": "622d71d5f975c162dbeae01b5ea44415b7f33cf62f4523514cc584254e9a1de6"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 0,
+   "revision": "bf44dfae277fbce39696213e358911f0412e3e72",
+   "stderr": "test_cli_selects_affected_roots_before_audit (tests.test_green_check.ScopedAuditTests.test_cli_selects_affected_roots_before_audit) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.003s\n\nOK\n",
+   "stdout": ""
+  },
+  "interpreter": "/opt/homebrew/bin/python3",
+  "ok": true,
+  "problems": [],
+  "red_at_base": true,
+  "runner_sha256": "ffc7d9542fbfe2d4e23f03f31dd170f32ef1a8529d41ebbccc36f18c52946106",
+  "same_tests": true,
+  "semantic_ok": true,
+  "test": "python3 -m unittest tests.test_green_check.ScopedAuditTests.test_cli_selects_affected_roots_before_audit",
+  "timeout": 1800.0
+ }
 }

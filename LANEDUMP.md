@@ -139,3 +139,28 @@ reported 125 ACL2-second/33.6M-step replay; inspect supported resync/preload fir
 - HM830c23c9c merged47476090f: actual9arg directadmit/7outputs and5arg settle/5outputs, descriptorholds through cancellation/return untilsettlement. Machine+finite schedules certified11/0; legacyall-schedule cancel invariant remainsred (no transfer).
 - Tools literalreader85ef7725d merged626666d05;39checker fixtures pass0.075s.23literalrows emitted directly from includedbooks/host-model-machine.lisp hash65df8d6c8e0d234cf98cd9df26782ba74bf8d92d926e5ed2069b9cdc1d6d8b90. Actualgraph/site validation remainsnextsource-check debt; nofullchecker replay performed.
 - Runtime scopedfixture3ded+e71 merged6330e0969/4f9420055: real nestedio extraction precedes remainingunreachedstubs. Actor/inbox/postcreate/nooptermination/committer raw schedules PASS; committer unusederr dependencies warn, actualerrpath notclaimedcovered.
+NIGHT-SCOPED-GREEN source `bf44dfae2`: changed/profile filters select actual
+roots before audit. Reverse include edges are discovered once through shared
+source-event facts; affected roots retain their complete include closure.
+Manifest normalization hashes only that query's closure; every indexed
+manifest/object still verifies and red/stale/unarchived rules are unchanged.
+Installed-cache evidence queries use the same scoped source normalization.
+Evidence cache location remembers Git's shared checkout while .git marker
+stat holds; marker replacement invalidates, absent marker never memoizes.
+This caches location only, not evidence acceptance.
+38 closure/verdict tests pass0.525s,20 scoped/store tests0.349s;15 store/comment
+normalization tests0.287s. Broader prior test selection included unavailable
+archive fixture CLI and fixture rewriting an indexed manifest, which failed
+at the existing evidence boundary; no relaxation made.
+Same-harness selected-root assertion red/base and green/head archived
+`planning/evidence/repair/NIGHT-SCOPED-GREEN-55b5828a93e54f6fa48e04c15280a967.json`,
+sha256 `e24e022be21c78dfe326c15d68258d9b5d60bc5a5e6f2c48c22f554f2629c047`.
+
+Actual timing: Groundwork scoped strict gate15.254s gives main HM red and
+machine/tests green. One installed evidence query over11books179.904s before
+cache-location memo,3.947s after; after counted exactly one git-common-dir
+lookup. Archive had evolved since old run, so uncited[] from both current
+queries is not transferred back to its earlier eight-uncited manifest.
+Existing log-to-manifest gaps167.880s/172.810s identify the post-ACL2 interval;
+subprocess repetition explains the measured phase but transport-only cost
+was not separately measured. No full baseline or proof/image rerun.
