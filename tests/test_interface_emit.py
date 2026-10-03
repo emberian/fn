@@ -170,6 +170,66 @@ class HostBindingTests(unittest.TestCase):
         rendered = interface_emit.render_raw_declarations([decl])
         self.assertIn(":raw-with (:carried fn-r-carried)", rendered)
 
+    def test_named_escape_is_written_at_the_entry_and_registered(self):
+        # def-carried's :incomplete (A-ID (OWED ...)) (lane post-guard-off):
+        # a :raw-with over the row names the same assumption, which
+        # specs/failures.md registers; the DTN raw scope lists a host row's
+        # entry as outside that image rather than dropping it
+        row = ("(def-carried fn-r-carried :invariant fn-r-relation "
+               ":established ((fn-r-open fn-r-open-establishes)) "
+               ":transitions ((fn-r fn-r-carries)) :concludes ((fn-r-okp fn-r-statep)) "
+               ":incomplete (A-R-OWED (fn-z)))\n")
+
+        def problems(declaration, registered):
+            root = tree(SOURCE + declaration)
+            (root / "books").mkdir()
+            (root / "specs").mkdir()
+            (root / "specs" / "failures.md").write_text(
+                "| ID | Assumption |\n| --- | --- |\n" + registered)
+            (root / "host" / "r-host.lisp").write_text("(in-package \"ACL2\")\n" + row)
+            (root / "books" / "x.lisp").write_text(
+                "(in-package \"ACL2\")\n(defthm fn-r-statep (implies (fn-r-relation s) (fn-r-okp s)))\n")
+            decls = interface_emit.declarations(root)
+            over = reading(dispatched={"fn-c": {"host/native/io.lisp"},
+                                       "fn-r": {"host/native/owner.lisp"}},
+                           defined={"fn-a", "fn-c", "fn-d", "fn-r"})
+            return root, decls, [p for p in interface_emit.findings(decls, over, root)
+                                 if "is not what the declarations say" not in p]
+
+        good = "(definterface fn-r :class :common-lisp-compliant :raw-with (:carried fn-r-carried :assuming A-R-OWED))\n"
+        root, decls, found = problems(good, "| A-R-OWED | owed writers keep it |\n")
+        self.assertEqual(found, [])
+        decl = decls[-1]
+        self.assertEqual((decl["raw_with_carried"], decl["raw_with_assuming"]),
+                         ("fn-r-carried", "a-r-owed"))
+        self.assertEqual(decl["raw_with"], ["fn-r-carried-fn-r-carries", "fn-r-carried-fn-r-okp-bridge"])
+        self.assertEqual(interface_emit.carried_rows(root)["fn-r-carried"]["incomplete"],
+                         ["a-r-owed", ["fn-z"]])
+        self.assertIn(":raw-with (:carried fn-r-carried :assuming A-R-OWED)",
+                      interface_emit.render_raw_declarations(decls))
+        registry = interface_emit.render_registry(decls, reading(defined={"fn-r"}))
+        self.assertIn('"raw_with_assuming": "A-R-OWED"', registry)
+        # the DTN build loads no host/r-host.lisp: the entry is listed outside it
+        scoped = interface_emit.render_raw_declarations(
+            decls, interface_emit.carried_rows(root), {"host/interfaces-raw.lisp"})
+        self.assertNotIn("(definterface fn-r ", scoped)
+        self.assertIn("; outside the DTN image: fn-r :raw-with (:carried fn-r-carried), whose row "
+                      "is defined in host/r-host.lisp", scoped)
+        # the escape unwritten at the entry, a different assumption, an
+        # unregistered one
+        _r, _d, found = problems(
+            "(definterface fn-r :class :common-lisp-compliant :raw-with (:carried fn-r-carried))\n",
+            "| A-R-OWED | x |\n")
+        self.assertTrue(any("relies on a row complete only under the named assumption A-R-OWED" in p
+                            for p in found), found)
+        _r, _d, found = problems(good.replace("A-R-OWED", "A-OTHER"),
+                                 "| A-R-OWED | x |\n| A-OTHER | y |\n")
+        self.assertTrue(any("write :raw-with (:carried fn-r-carried :assuming A-R-OWED)" in p
+                            for p in found), found)
+        _r, _d, found = problems(good, "| A-SOMETHING-ELSE | x |\n")
+        self.assertTrue(any("A-R-OWED, which specs/failures.md does not register" in p
+                            for p in found), found)
+
     def test_writers_row_is_the_pilot_plus_the_declared_writers(self):
         # books/def-carried-writer.lisp: the row ACL2 writes from the pilot row
         # and the writers declared against the profile, mirrored from the same

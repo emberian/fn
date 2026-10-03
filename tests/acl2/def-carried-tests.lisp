@@ -1844,3 +1844,161 @@
   :exports ((cdta-fld :logic cdta-fld$a :exec cdta-fld$c)))
 (assert-event (equal (fn-cd-attached-to 'cdta-fld$c (w state)) 'cdta))
 (assert-event (null (fn-cd-attached-to 'cdta-thms (w state))))
+
+; ---------------------------------------------------------------------------
+; 6. The named escape, :incomplete (A-ID (FN ...)) (lane post-guard-off):
+;    completeness waived ONLY for the owed writers it names, written again at
+;    every :raw-with that relies on it.  Here fn-cdt-zap (section 5) returns
+;    the carried stobj with no preservation theorem: owed under A-TEST-OWED.
+
+(defun fn-cdt-bump2 (fn-cdt-st)
+  (declare (xargs :stobjs fn-cdt-st :guard (fn-cdt-relp fn-cdt-st)))
+  (update-fn-cdt-n (+ 2 (fn-cdt-n fn-cdt-st)) fn-cdt-st))
+(defthm fn-cdt-bump2-carries
+  (implies (fn-cdt-relp fn-cdt-st) (fn-cdt-relp (fn-cdt-bump2 fn-cdt-st))))
+(definterface fn-cdt-bump2 :class :common-lisp-compliant)
+
+; Malformed escapes, each by its reason.
+(fn-cdt-refused fn-cdt-esc (:invariant fn-cdt-relp
+                            :established ((fn-cdt-open fn-cdt-open-establishes))
+                            :incomplete (not-an-assumption (fn-cdt-zap)))
+                :bad-incomplete)
+(fn-cdt-refused fn-cdt-esc (:invariant fn-cdt-relp
+                            :established ((fn-cdt-open fn-cdt-open-establishes))
+                            :incomplete (A-TEST-OWED ()))
+                :bad-incomplete)
+(fn-cdt-refused fn-cdt-esc (:invariant fn-cdt-relp
+                            :established ((fn-cdt-open fn-cdt-open-establishes))
+                            :incomplete (A-TEST-OWED (fn-cdt-zap fn-cdt-zap)))
+                :bad-incomplete)
+(fn-cdt-refused fn-cdt-esc (:invariant fn-cdt-relp
+                            :established ((fn-cdt-open fn-cdt-open-establishes))
+                            :incomplete (A-TEST-OWED fn-cdt-zap))
+                :bad-incomplete)
+; Without the escape, the row is refused on the unlisted writer (the base
+; case the escape is the exception to) ...
+(fn-cdt-refused fn-cdt-esc (:invariant fn-cdt-relp
+                            :established ((fn-cdt-open fn-cdt-open-establishes :witness ('(0 nil))))
+                            :transitions ((fn-cdt-bump fn-cdt-bump-carries)
+                                          (fn-cdt-note fn-cdt-note-carries)
+                                          (fn-cdt-reset fn-cdt-reset-carries)
+                                          (fn-cdt-bump2 fn-cdt-bump2-carries))
+                            :concludes ((fn-cdt-nonzerop fn-cdt-relp-nonzero)))
+                "returns the carried state")
+; ... an owed name that is also a transition is refused (proved: not owed) ...
+(fn-cdt-refused fn-cdt-esc (:invariant fn-cdt-relp
+                            :established ((fn-cdt-open fn-cdt-open-establishes :witness ('(0 nil))))
+                            :transitions ((fn-cdt-bump fn-cdt-bump-carries)
+                                          (fn-cdt-note fn-cdt-note-carries)
+                                          (fn-cdt-reset fn-cdt-reset-carries)
+                                          (fn-cdt-bump2 fn-cdt-bump2-carries))
+                            :concludes ((fn-cdt-nonzerop fn-cdt-relp-nonzero))
+                            :incomplete (A-TEST-OWED (fn-cdt-zap fn-cdt-reset)))
+                "and also a transition or establishing")
+; ... and so is a stale owed name: fn-cdt-peek returns no stobj, and a
+; symbol that is no function at all.
+(fn-cdt-refused fn-cdt-esc (:invariant fn-cdt-relp
+                            :established ((fn-cdt-open fn-cdt-open-establishes :witness ('(0 nil))))
+                            :transitions ((fn-cdt-bump fn-cdt-bump-carries)
+                                          (fn-cdt-note fn-cdt-note-carries)
+                                          (fn-cdt-reset fn-cdt-reset-carries)
+                                          (fn-cdt-bump2 fn-cdt-bump2-carries))
+                            :concludes ((fn-cdt-nonzerop fn-cdt-relp-nonzero))
+                            :incomplete (A-TEST-OWED (fn-cdt-zap fn-cdt-peek)))
+                "a stale owed name")
+(fn-cdt-refused fn-cdt-esc (:invariant fn-cdt-relp
+                            :established ((fn-cdt-open fn-cdt-open-establishes :witness ('(0 nil))))
+                            :transitions ((fn-cdt-bump fn-cdt-bump-carries)
+                                          (fn-cdt-note fn-cdt-note-carries)
+                                          (fn-cdt-reset fn-cdt-reset-carries)
+                                          (fn-cdt-bump2 fn-cdt-bump2-carries))
+                            :concludes ((fn-cdt-nonzerop fn-cdt-relp-nonzero))
+                            :incomplete (A-TEST-OWED (fn-cdt-zap fn-cdt-no-such-function)))
+                "a stale owed name")
+; A value row says :complete-by; the escape is for a stobj row only.
+(fn-cdt-refused fn-cdt-vx (:invariant fn-cdt-vp
+                           :established ((fn-cdt-vopen fn-cdt-vopen-establishes))
+                           :transitions ((fn-cdt-vbump fn-cdt-vbump-carries :state 1))
+                           :incomplete (A-TEST-OWED (fn-cdt-vbump)))
+                "is a value, not a stobj")
+
+; Accepted: the escape owes exactly fn-cdt-zap.
+(def-carried fn-cdt-escape
+  :invariant fn-cdt-relp
+  :established ((fn-cdt-open fn-cdt-open-establishes :witness ('(0 nil))))
+  :transitions ((fn-cdt-bump fn-cdt-bump-carries)
+                (fn-cdt-note fn-cdt-note-carries)
+                (fn-cdt-reset fn-cdt-reset-carries)
+                (fn-cdt-bump2 fn-cdt-bump2-carries))
+  :concludes ((fn-cdt-nonzerop fn-cdt-relp-nonzero))
+  :incomplete (A-TEST-OWED (fn-cdt-zap))
+  :trace nil)
+(assert-event
+ (equal (fn-cd-get :incomplete (cdr (assoc-eq 'fn-cdt-escape (table-alist 'fn-carried (w state)))))
+        '(A-TEST-OWED (fn-cdt-zap))))
+(assert-event (eq (fn-cd-row-assumption 'fn-cdt-escape (w state)) 'A-TEST-OWED))
+(assert-event (null (fn-cd-row-assumption 'fn-cdt-carried (w state))))
+(def-carried-check fn-cdt-escape)
+; the escape waives nothing else: the generated statements are the same
+(assert-event
+ (equal (getpropc 'fn-cdt-escape-fn-cdt-bump-carries 'theorem nil (w state))
+        (getpropc 'fn-cdt-carried-fn-cdt-bump-carries 'theorem nil (w state))))
+
+; definterface: the escape is written at the entry, exactly.
+(assert-event (fn-di-raw-with-formp '(:carried fn-cdt-escape :assuming A-TEST-OWED)))
+(assert-event (not (fn-di-raw-with-formp '(:carried fn-cdt-escape :assuming not-an-a))))
+(assert-event (not (fn-di-raw-with-formp '(:carried fn-cdt-escape :assumes A-TEST-OWED))))
+(assert-event (not (fn-di-raw-with-formp '(:carried fn-cdt-escape :assuming A-TEST-OWED x))))
+(assert-event
+ (search "is complete only under the"
+         (car (fn-di-raw-with-problem
+               'fn-cdt-bump2 '(:class :common-lisp-compliant
+                               :raw-with (:carried fn-cdt-escape))
+               (w state)))))
+(assert-event
+ (search "is complete only under the"
+         (car (fn-di-raw-with-problem
+               'fn-cdt-bump2 '(:class :common-lisp-compliant
+                               :raw-with (:carried fn-cdt-escape :assuming A-OTHER))
+               (w state)))))
+; the entry must still be a listed transition: the escape owes, never runs raw
+(assert-event
+ (search "is not a transition of"
+         (car (cdr (assoc #\2 (cdr (fn-di-raw-with-problem
+                                    'fn-cdt-zap '(:class :common-lisp-compliant
+                                                  :raw-with (:carried fn-cdt-escape
+                                                             :assuming A-TEST-OWED))
+                                    (w state))))))))
+(definterface fn-cdt-bump2 :class :common-lisp-compliant
+  :raw-with (:carried fn-cdt-escape :assuming A-TEST-OWED))
+(assert-event
+ (equal (cdr (assoc-eq 'fn-cdt-bump2 (table-alist 'fn-interfaces (w state))))
+        '(:class :common-lisp-compliant
+          :raw-with (:carried fn-cdt-escape :assuming A-TEST-OWED))))
+(assert-event
+ (equal (fn-di-raw-with-theorems 'fn-cdt-bump2
+                                 '(:raw-with (:carried fn-cdt-escape :assuming A-TEST-OWED))
+                                 (w state))
+        '(fn-cdt-escape-fn-cdt-bump2-carries fn-cdt-escape-fn-cdt-nonzerop-bridge)))
+
+; A writer declared after the row and neither listed nor owed refuses it
+; again, naming the assumption it is not owed under.
+(defun fn-cdt-zap3 (fn-cdt-st)
+  (declare (xargs :stobjs fn-cdt-st))
+  (update-fn-cdt-n 0 fn-cdt-st))
+(definterface fn-cdt-zap3 :class :common-lisp-compliant)
+(assert-event
+ (let ((problem (fn-cd-problem 'fn-cdt-escape
+                               (cdr (assoc-eq 'fn-cdt-escape (table-alist 'fn-carried (w state))))
+                               t (w state))))
+   (and (eq (cdr (assoc #\0 (cdr problem))) 'fn-cdt-zap3)
+        (search "nor owed under" (car (cdr (assoc #\3 (cdr problem))))))))
+(must-fail-checked (def-carried-check fn-cdt-escape)
+                   :unchecked "fn-cdt-zap3 returns the carried state, unproved and not owed")
+(assert-event
+ (search "the carried invariant's row no longer checks"
+         (car (cdr (assoc #\2 (cdr (fn-di-raw-with-problem
+                                    'fn-cdt-bump2 '(:class :common-lisp-compliant
+                                                    :raw-with (:carried fn-cdt-escape
+                                                               :assuming A-TEST-OWED))
+                                    (w state))))))))

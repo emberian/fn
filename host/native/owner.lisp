@@ -2125,7 +2125,13 @@ the current connection."
 ;;; MSGID, stored OCTETS and GROUPS, checked once by the recognizer (the
 ;;; octet fields are octet lists, the groups lists of them); read here.
 (defun fnn-owner-take ()
-  (fnn-owner-result 'fn-ores-submission-taken-p 'fn-owner-take))
+  ;; fnn-owner-result's check, written out: the entry is dispatched through
+  ;; fnn-owner-core, where the host reading (tools/harness_check.py) sees it
+  ;; and definterface declares it (lane post-guard-off).
+  (let ((value (fnn-owner-core 'fn-owner-take)))
+    (unless (fnn-core 'fn-ores-submission-taken-p value)
+      (fnn-fault "owner returned a malformed result from ~(~a~)" 'fn-owner-take))
+    value))
 
 (defun fnn-owner-taken-word (taken)
   (fnn-core 'fn-ores-taken-word taken))
