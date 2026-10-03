@@ -824,16 +824,24 @@ def raw_lambda_range(formals) -> tuple[int, int | None] | None:
     return required, (None if unbounded else required + optional)
 
 
-def raw_applications(form, found: list, shadowed: frozenset = frozenset()) -> None:
-    """Every `(f a ...)` a raw Common Lisp form evaluates, with its count."""
+def raw_applications(form, found: list, shadowed: frozenset = frozenset(),
+                     *, _macro=False, _template=False) -> None:
+    """Raw evaluated calls and literal calls emitted by macro backquotes.
+
+    Template interpolation is opaque: no evaluation or guessed callee. A call
+    with a spliced argument list has count None (name inventory only).
+    """
     if not isinstance(form, list) or not form:
         return
     head_ = form[0]
-    name = str(head_) if isinstance(head_, str) else None
+    from tools.ledger import Sym
+    name = str(head_) if isinstance(head_, Sym if _template else str) else None
+    splice = Sym("#fn-template-splice")
+    count = None if _template and splice in form[1:] else len(form) - 1
 
-    def walk(items, local=shadowed):
+    def walk(items, local=shadowed, macro=_macro):
         for item in items:
-            raw_applications(item, found, local)
+            raw_applications(item, found, local, _macro=macro, _template=_template)
 
     if name is None:
         walk(form)
@@ -841,14 +849,34 @@ def raw_applications(form, found: list, shadowed: frozenset = frozenset()) -> No
     if name in RAW_OPAQUE:
         return
     if name == "quasiquote":
-        def unquoted(x):
+        def unquoted(x, depth=1):
             if isinstance(x, list) and x:
-                if isinstance(x[0], str) and str(x[0]) in ("unquote", "unquote-splicing"):
-                    walk(x[1:])
+                tag = str(x[0]) if isinstance(x[0], str) else None
+                if tag in ("unquote", "unquote-splicing"):
+                    if depth == 1:
+                        walk(x[1:])
+                    else:
+                        for item in x[1:]:
+                            unquoted(item, depth - 1)
                 else:
-                    for item in x:
-                        unquoted(item)
-        unquoted(form[1:])
+                    for item in x[1:] if tag == "quasiquote" else x:
+                        unquoted(item, depth + 1 if tag == "quasiquote" else depth)
+        for item in form[1:]:
+            unquoted(item)
+        if _macro and len(form) == 2:
+            def literal(x):
+                if not isinstance(x, list) or not x:
+                    return x
+                tag = str(x[0]) if isinstance(x[0], Sym) else None
+                if tag == "unquote":
+                    return None
+                if tag == "unquote-splicing":
+                    return splice
+                if tag == "quasiquote":
+                    # An inner template is data at this expansion level.
+                    return None
+                return [literal(item) for item in x]
+            raw_applications(literal(form[1]), found, shadowed, _template=True)
         return
     if name in ("let", "let*", "symbol-macrolet"):
         for binding in (form[1] if len(form) > 1 and isinstance(form[1], list) else []):
@@ -869,7 +897,8 @@ def raw_applications(form, found: list, shadowed: frozenset = frozenset()) -> No
         local = frozenset(local)
         for binding in bindings:
             if isinstance(binding, list):
-                walk(binding[2:], local if name == "labels" else shadowed)
+                walk(binding[2:], local if name == "labels" else shadowed,
+                     macro=(name == "macrolet"))
         walk(form[2:], local)
         return
     if name in ("dolist", "dotimes"):
@@ -892,14 +921,16 @@ def raw_applications(form, found: list, shadowed: frozenset = frozenset()) -> No
         return
     if name in ("case", "ecase", "ccase", "typecase", "etypecase", "ctypecase"):
         if len(form) > 1:
-            raw_applications(form[1], found, shadowed)
+            raw_applications(form[1], found, shadowed,
+                             _macro=_macro, _template=_template)
         for clause in form[2:]:
             if isinstance(clause, list):
                 walk(clause[1:])
         return
     if name in ("handler-case", "restart-case"):
         if len(form) > 1:
-            raw_applications(form[1], found, shadowed)
+            raw_applications(form[1], found, shadowed,
+                             _macro=_macro, _template=_template)
         for clause in form[2:]:
             if isinstance(clause, list):
                 walk(clause[2:])
@@ -914,7 +945,7 @@ def raw_applications(form, found: list, shadowed: frozenset = frozenset()) -> No
         walk(form[2:] if name in ("block", "return-from") else form[1:])
         return
     if name in ("defun", "defmacro", "defun-inline", "defund", "defmethod"):
-        walk(form[3:])
+        walk(form[3:], macro=(name == "defmacro"))
         return
     if name.startswith("with-") and len(form) > 1 and isinstance(form[1], list):
         walk(form[1][1:])
@@ -925,7 +956,7 @@ def raw_applications(form, found: list, shadowed: frozenset = frozenset()) -> No
         if (name == "funcall" and isinstance(target, list) and len(target) == 2
                 and isinstance(target[0], str) and str(target[0]) == "function"
                 and isinstance(target[1], str) and str(target[1]) not in shadowed):
-            found.append((str(target[1]), len(form) - 2))
+            found.append((str(target[1]), None if count is None else count - 1))
         walk(form[1:])
         return
     if name in RAW_DISPATCHERS and len(form) > 1:
@@ -935,16 +966,16 @@ def raw_applications(form, found: list, shadowed: frozenset = frozenset()) -> No
                 and isinstance(target[1], str)):
             callee = str(target[1]).lower()
             found.append(("'" + callee,
-                          len(form) - 2 + RAW_DISPATCHERS[name]
+                          (None if count is None else count - 1 + RAW_DISPATCHERS[name]
                           + (ARENA_ENTRIES.get(callee, 0)
                              if name in ARENA_STATE_DISPATCHERS else 0)
                           # an arena dispatcher counts the arena in its 2;
                           # it passes the entry's whole trailing run
                           # (fnn-arena-then-state), so add the rest of it
                           + (max(ARENA_ENTRIES.get(callee, 1) - 1, 0)
-                             if name in ARENA_RUN_DISPATCHERS else 0)))
+                             if name in ARENA_RUN_DISPATCHERS else 0))))
     if name not in shadowed and not name.startswith((":", "&")):
-        found.append((name, len(form) - 1))
+        found.append((name, count))
     walk(form[1:])
 
 
@@ -996,7 +1027,7 @@ def raw_arity_scan(sources: dict[str, list], exclude: set[str] = frozenset(),
     findings: list[dict] = []
     counts = {"raw_files": len(sources), "raw_definitions": len(defined),
               "undecided_definitions": len(ambiguous), "applications": 0,
-              "dispatched_applications": 0}
+              "dispatched_applications": 0, "template_spliced": 0}
     if acl2_arity:
         for name in sorted(RAW_DISPATCHERS):
             row = defined.get(name)
@@ -1011,6 +1042,9 @@ def raw_arity_scan(sources: dict[str, list], exclude: set[str] = frozenset(),
             applications: list = []
             raw_applications(form, applications)
             for name, count in applications:
+                if count is None:
+                    counts["template_spliced"] += 1
+                    continue  # Template splice: inventory knows the callee, not arity.
                 if name.startswith("'"):
                     callee = name[1:]
                     if callee not in acl2_arity:
@@ -1725,6 +1759,8 @@ def harness_scan(relative: str, text: str, rawdefs: dict, bodies: dict,
             if (relative, callee) in STUB_ARITY_DECLARED:
                 continue
             if callee in stubs:
+                if count is None:
+                    continue
                 low, high, where = stubs[callee]
                 if count < low or (high is not None and count > high):
                     stale.append({

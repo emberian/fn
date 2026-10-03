@@ -1,0 +1,25 @@
+{
+ "budget": 200,
+ "category": "checker-correctness",
+ "expect-failure": "tests.test_harness_check.RawMacroTemplateTests.test_section_envelope_literal_core_calls_are_inventory",
+ "failure-message": "False is not true : literal macro core calls must be inventoried",
+ "file": "tools/harness_check.py",
+ "harness": "tests/test_harness_check.py",
+ "id": "NIGHT-MACRO-READING",
+ "notes": [
+  "10-03 02:26 claimed: scope=['tools/harness_check.py', 'tests/test_harness_check.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_harness_check.RawMacroTemplateTests.test_section_envelope_literal_core_calls_are_inventory"
+ ],
+ "owner": "codex-sol-tools",
+ "scope": [
+  "tools/harness_check.py",
+  "tests/test_harness_check.py",
+  "LANEDUMP.md",
+  "planning/evidence-index.tsv"
+ ],
+ "severity": "medium",
+ "source": "runtime-convergence",
+ "state": "in-progress",
+ "test": "python3 -m unittest tests.test_harness_check.RawMacroTemplateTests.test_section_envelope_literal_core_calls_are_inventory",
+ "title": "Host interface reading ignores literal calls emitted by macro templates",
+ "updated": "2026-10-03T06:26:21Z"
+}

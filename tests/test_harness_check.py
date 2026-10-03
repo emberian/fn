@@ -757,3 +757,55 @@ class DerivedStubTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RawMacroTemplateTests(unittest.TestCase):
+    def calls(self, source):
+        from tools import ledger
+        calls = []
+        for form, _ in ledger.Reader(source).top_level():
+            harness_check.raw_applications(form, calls)
+        return calls
+
+    def test_section_envelope_literal_core_calls_are_inventory(self):
+        calls = self.calls("""(defmacro envelope (s classes c &body body)
+          `(let ((gate (fnn-gate ,s)))
+             (when (fn-fs-section-class-ok ,classes ,c)
+               (fnn-section ,s ,@body))
+             (fn-fs-unwind ,c nil)))""")
+        self.assertTrue(("fn-fs-section-class-ok", 2) in calls,
+                        "literal macro core calls must be inventoried")
+        self.assertIn(("fn-fs-unwind", 2), calls)
+        self.assertIn(("fnn-section", None), calls)
+        self.assertIn(("fnn-gate", 1), calls)
+
+    def test_interpolated_heads_and_quoted_data_are_not_calls(self):
+        calls = self.calls("""(defmacro envelope (name x)
+          `(progn (,name ,x) '(fn-data ,x) (fn-live ,(fn-expand x))
+                  (fnn-call ',name ,x) (fnn-call 'fn-known ,x)))""")
+        self.assertIn(("fn-live", 1), calls)
+        self.assertIn(("fn-expand", 1), calls)
+        self.assertIn(("'fn-known", 1), calls)
+        self.assertFalse(any(name in {"name", "fn-data", "'name"}
+                             for name, _ in calls), calls)
+
+    def test_normal_backquote_is_data_and_nested_template_is_opaque(self):
+        calls = self.calls("""(defun data (x) `(fn-data ,(fn-active x)))
+          (defmacro nested (x) `(list `(fn-inner ,(fn-inner-expand x))))""")
+        self.assertIn(("fn-active", 1), calls)
+        self.assertFalse(any(name in {"fn-data", "fn-inner", "fn-inner-expand"}
+                             for name, _ in calls), calls)
+
+    def test_local_function_shadowing_and_macrolet_templates(self):
+        calls = self.calls("""(macrolet ((m (x) `(flet ((fn-local (y) y))
+                                            (fn-local ,x) (fn-real ,x))))
+                              (m 1))""")
+        self.assertIn(("fn-real", 1), calls)
+        self.assertFalse(any(name == "fn-local" for name, _ in calls), calls)
+
+    def test_splices_do_not_invent_an_arity_but_fixed_template_calls_check(self):
+        found = RawArityTests().scan("""(defun fnn-target (a b) a)
+          (defmacro uncertain (&body body) `(fnn-target ,@body))
+          (defmacro wrong (x) `(fnn-target ,x))""")
+        self.assertEqual(len(found), 1, found)
+        self.assertIn("called with 1 argument", found[0]["problem"])
