@@ -37,21 +37,21 @@
  "state": "in-progress",
  "test": "python3 -m unittest tests.test_native_pull_journal_registry.PullJournalRegistryTests.test_acl2_schedule_retires_removed_peers_and_preserves_live_state",
  "title": "Pull/catch-up journals for removed or renamed peers are never closed: fd leak for the process lifetime",
- "updated": "2026-10-03T08:52:36Z",
+ "updated": "2026-10-03T08:53:29Z",
  "verify": {
   "base": "5022d65bffd789afb545371c890c91e13de54758",
   "base_observation": {
    "result": {
     "assertions": [
      {
-      "message": "removed peer must release journal descriptor custody",
-      "test": "tests.test_native_pull_journal_registry.PullJournalRegistryTests.test_removed_peer_releases_kernel_descriptor_and_cursor",
+      "message": "removed peer must no longer remain due in ACL2 schedule",
+      "test": "tests.test_native_pull_journal_registry.PullJournalRegistryTests.test_acl2_schedule_retires_removed_peers_and_preserves_live_state",
       "type": "AssertionError"
      }
     ],
     "errors": [],
     "executed": [
-     "tests.test_native_pull_journal_registry.PullJournalRegistryTests.test_removed_peer_releases_kernel_descriptor_and_cursor"
+     "tests.test_native_pull_journal_registry.PullJournalRegistryTests.test_acl2_schedule_retires_removed_peers_and_preserves_live_state"
     ],
     "expected_failures": [],
     "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
@@ -64,42 +64,43 @@
    },
    "returncode": 1,
    "revision": "5022d65bffd789afb545371c890c91e13de54758",
-   "stderr": "test_removed_peer_releases_kernel_descriptor_and_cursor (tests.test_native_pull_journal_registry.PullJournalRegistryTests.test_removed_peer_releases_kernel_descriptor_and_cursor) ... FAIL\n\n======================================================================\nFAIL: test_removed_peer_releases_kernel_descriptor_and_cursor (tests.test_native_pull_journal_registry.PullJournalRegistryTests.test_removed_peer_releases_kernel_descriptor_and_cursor)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-5363p77t/wt/tests/test_native_pull_journal_registry.py\", line 26, in test_removed_peer_releases_kernel_descriptor_and_cursor\n    self.schedule(\"remove\", \"removed peer must release journal descriptor custody\")\n    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-5363p77t/wt/tests/test_native_pull_journal_registry.py\", line 20, in schedule\n    self.fail(intended)\n    ~~~~~~~~~^^^^^^^^^^\nAssertionError: removed peer must release journal descriptor custody\n\n----------------------------------------------------------------------\nRan 1 test in 0.156s\n\nFAILED (failures=1)\n",
+   "stderr": "test_acl2_schedule_retires_removed_peers_and_preserves_live_state (tests.test_native_pull_journal_registry.PullJournalRegistryTests.test_acl2_schedule_retires_removed_peers_and_preserves_live_state) ... FAIL\n\n======================================================================\nFAIL: test_acl2_schedule_retires_removed_peers_and_preserves_live_state (tests.test_native_pull_journal_registry.PullJournalRegistryTests.test_acl2_schedule_retires_removed_peers_and_preserves_live_state)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-cpaf07b1/wt/tests/test_native_pull_journal_registry.py\", line 35, in test_acl2_schedule_retires_removed_peers_and_preserves_live_state\n    self.schedule(\"schedule\", \"removed peer must no longer remain due in ACL2 schedule\")\n    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-cpaf07b1/wt/tests/test_native_pull_journal_registry.py\", line 20, in schedule\n    self.fail(intended)\n    ~~~~~~~~~^^^^^^^^^^\nAssertionError: removed peer must no longer remain due in ACL2 schedule\n\n----------------------------------------------------------------------\nRan 1 test in 0.174s\n\nFAILED (failures=1)\n",
    "stdout": ""
   },
   "changed_files": [
    "LANEDUMP.md",
    "books/peer-pull.lisp",
    "host/native/pull-service.lisp",
+   "planning/evidence-index.tsv",
    "planning/repair/items/S112.json",
    "specs/peering.md",
    "tests/acl2/peer-pull-tests.lisp",
    "tests/native_pull_journal_registry_raw.lisp",
    "tests/test_native_pull_journal_registry.py"
   ],
-  "diff_lines": 302,
+  "diff_lines": 309,
   "evidence": {
-   "bytes": 4532,
-   "path": "planning/evidence/repair/S112-dcccaf2ad4374c4cb5132f14ce1de6ba.json",
-   "sha256": "35473cb941e07a1a91817625ea10f82b9121f16a0c07a5e10e779561aaa52f57"
+   "bytes": 4704,
+   "path": "planning/evidence/repair/S112-dba6fbba614c4a038dc7f1a2fdf4b913.json",
+   "sha256": "861c0aca2de97ce148507637e91346f427e20bd8d9032f7841eda058d0ea8717"
   },
   "evidence_outcome": "archived",
   "expected_failure": {
-   "message": "removed peer must release journal descriptor custody",
-   "test": "tests.test_native_pull_journal_registry.PullJournalRegistryTests.test_removed_peer_releases_kernel_descriptor_and_cursor"
+   "message": "removed peer must no longer remain due in ACL2 schedule",
+   "test": "tests.test_native_pull_journal_registry.PullJournalRegistryTests.test_acl2_schedule_retires_removed_peers_and_preserves_live_state"
   },
   "green_at_head": true,
   "harness": {
    "tests/native_pull_journal_registry_raw.lisp": "c47604edca7ffa69f0bce32b439ae281abb1cde311b729f8d4c4997204144dee",
    "tests/test_native_pull_journal_registry.py": "266856731521ed22aadc9bf071dfed600eed33656919217e08e099e7eb249859"
   },
-  "head": "4301f4a08920a07c53625434dabd599d3bf73bae",
+  "head": "cb4ee3b9d9fee23090ebc922fc79e088fcf36f5b",
   "head_observation": {
    "result": {
     "assertions": [],
     "errors": [],
     "executed": [
-     "tests.test_native_pull_journal_registry.PullJournalRegistryTests.test_removed_peer_releases_kernel_descriptor_and_cursor"
+     "tests.test_native_pull_journal_registry.PullJournalRegistryTests.test_acl2_schedule_retires_removed_peers_and_preserves_live_state"
     ],
     "expected_failures": [],
     "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
@@ -111,8 +112,8 @@
     "unexpected_successes": []
    },
    "returncode": 0,
-   "revision": "4301f4a08920a07c53625434dabd599d3bf73bae",
-   "stderr": "test_removed_peer_releases_kernel_descriptor_and_cursor (tests.test_native_pull_journal_registry.PullJournalRegistryTests.test_removed_peer_releases_kernel_descriptor_and_cursor) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.316s\n\nOK\n",
+   "revision": "cb4ee3b9d9fee23090ebc922fc79e088fcf36f5b",
+   "stderr": "test_acl2_schedule_retires_removed_peers_and_preserves_live_state (tests.test_native_pull_journal_registry.PullJournalRegistryTests.test_acl2_schedule_retires_removed_peers_and_preserves_live_state) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.344s\n\nOK\n",
    "stdout": ""
   },
   "interpreter": "/opt/homebrew/bin/python3",
@@ -122,7 +123,7 @@
   "runner_sha256": "ffc7d9542fbfe2d4e23f03f31dd170f32ef1a8529d41ebbccc36f18c52946106",
   "same_tests": true,
   "semantic_ok": true,
-  "test": "python3 -m unittest tests.test_native_pull_journal_registry.PullJournalRegistryTests.test_removed_peer_releases_kernel_descriptor_and_cursor",
+  "test": "python3 -m unittest tests.test_native_pull_journal_registry.PullJournalRegistryTests.test_acl2_schedule_retires_removed_peers_and_preserves_live_state",
   "timeout": 1800.0
  }
 }

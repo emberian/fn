@@ -719,3 +719,10 @@ red/base5022d65bf and green/head4301f4a08, same harness/no infra/skips.
 Archived S112-dcccaf2ad4374c4cb5132f14ce1de6ba.json sha256
 35473cb941e07a1a91817625ea10f82b9121f16a0c07a5e10e779561aaa52f57.
 Separate actual ACL2 schedule red/green witness follows, no source change.
+
+Separate S112 schedule assertion red/base5022d65bf and green/headcb4ee3b9d,
+same harness/no infra/skips. Archived S112-dba6fbba614c4a038dc7f1a2fdf4b913.json
+sha256861c0aca2de97ce148507637e91346f427e20bd8d9032f7841eda058d0ea8717.
+State remains in-progress for matching combined certification/consumer.
+S054/S067/S106 serial slow-peer starvation remains open; schedule removal
+does not introduce an overall round deadline or a fair round continuation.
