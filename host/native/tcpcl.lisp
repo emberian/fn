@@ -75,7 +75,7 @@
   ;; only released messages enter TX-MESSAGES, in the machine's order.
   (retained nil) (tx-messages nil) (tx-data nil) (tx-offset 0) (tx-deadline nil)
   (input-due t) (pump-pending nil) role bundlep (expect 0) on-ready
-  (ready-called nil) session-admit (session-admitted nil) (finished nil)
+  (ready-called nil) (source-input-turn nil) session-admit (session-admitted nil) (finished nil)
   ;; Private concrete octet buffer, one incomplete frame only. The incoming
   ;; socket vector survives cursor turns; no list carry is appended/reparsed.
   input-buffer input-cursor input-vector (input-offset 0)
@@ -377,6 +377,8 @@ and faults without following or deleting anything."
         ;; logical frame. No whole vector copy or conversion precedes it.
         (unless (and (fnn-tclc-input-materialize-probe conn)
                      (fnn-core 'fn-tcl-host-input-probe (fnn-tclc-session conn) octets))
+          (when (fnn-tclc-source-pending conn)
+            (fnn-tcl-log conn "event" "control input while source held"))
           (let ((triple (fnn-core
                         (if *fnn-tcl-source-start* 'fn-tcl-host-source-drive 'fn-tcl-host-drive)
                         (fnn-tclc-session conn) octets now)))
@@ -605,14 +607,14 @@ and faults without following or deleting anything."
 ;;; The loop.  One `fn-tcl-drive' per chunk, with the carry prepended; a tick
 ;;; on every wakeup; `fn-tcl-tcp-closed' when the peer goes away.
 
-(defun fnn-tcl-begin (fd role params tag spool &key bundle trace (expect 0) on-ready session-admit refuse-inbound retain)
+(defun fnn-tcl-begin (fd role params tag spool &key (bundle nil bundle-supplied-p) trace (expect 0) on-ready session-admit refuse-inbound retain)
   "Retain a session. Opening emits messages but performs no socket write."
   (let* ((now (fnn-tcl-now))
          (session (fnn-core 'fn-tcl-host-initial role params now))
          (conn (make-fnn-tcl-conn :fd fd :tag tag :spool spool :session session
                 :trace trace :refuse-inbound refuse-inbound :retained t
-                :role role :bundlep (and bundle t) :expect expect :on-ready on-ready :session-admit session-admit
-                :pending (and bundle (cons tag bundle))
+                :role role :bundlep bundle-supplied-p :expect expect :on-ready on-ready :session-admit session-admit
+                :pending (and bundle-supplied-p (cons tag bundle))
                 :contact-deadline (fnn-core 'fn-tcrt-contact-deadline now))))
     (when retain (funcall retain conn))
     (unless session (fnn-refuse "tcpcl: the session machine refused these parameters"))
@@ -652,6 +654,14 @@ and faults without following or deleting anything."
       (fnn-tcl-turn-lost conn)
       :lost)))
 
+(defun fnn-tcl-source-control-octet (conn)
+  ;; Concrete observation only: ACL2 decides whether this frame can advance.
+  (let ((buffer (fnn-tclc-input-buffer conn)) (vector (fnn-tclc-input-vector conn)))
+    (cond ((and buffer (plusp (svref buffer 1))) (aref (svref buffer 0) 0))
+          ((and vector (< (fnn-tclc-input-offset conn) (length vector)))
+           (aref vector (fnn-tclc-input-offset conn)))
+          (t nil))))
+
 (defun fnn-tcl-turn (conn)
   "One retained action; at most one bounded socket attempt. Returns work/wait/done.
 The caller keeps this connection and its socket until actual physical close."
@@ -685,15 +695,21 @@ The caller keeps this connection and its socket until actual physical close."
           (setf (fnn-tclc-session conn) (first control)
                 (fnn-tclc-tx-messages conn)
                  (nconc (fnn-tclc-tx-messages conn) (second control)))))
-         (action (fnn-core 'fn-tcrt-action
+         (base-action (fnn-core 'fn-tcrt-action
                   (fnn-tclc-source-pending conn) (fnn-tclc-source-more conn)
                   (and (fnn-tclc-tx-data conn) t) (and (fnn-tclc-tx-messages conn) t)
                   (fnn-tclc-input-due conn) (fnn-tclc-pump-pending conn)
                   (fnn-tclc-closing conn)
                   (fnn-core 'fn-tcl-host-phase (fnn-tclc-session conn))
                   now (fnn-tclc-tx-deadline conn)))
+         (action (fnn-core 'fn-tclsctl-source-action
+                   (fnn-tclc-source-pending conn) base-action
+                   (fnn-tclc-source-input-turn conn) (fnn-tclc-source-more conn)
+                   (fnn-tcl-source-control-octet conn)))
          (result :work))
     (declare (ignore ignored contact-timeout init-timeout))
+    (when (and (fnn-tclc-source-pending conn) (member action '(:source :read :buffer)))
+      (setf (fnn-tclc-source-input-turn conn) (eq action :source)))
     (case action
         (:done (setf (fnn-tclc-finished conn) t) (setq result :done))
         (:lost (fnn-tcl-turn-lost conn))
@@ -732,8 +748,9 @@ The caller keeps this connection and its socket until actual physical close."
            (cond
              ((eq incoming :lost) nil)
              ((eq incoming :wait)
-              (setq result :wait)
-              (fnn-tcl-apply conn (fnn-core 'fn-tcl-host-tick (fnn-tclc-session conn) now)))
+              (unless (fnn-tclc-source-pending conn)
+                (setq result :wait)
+                (fnn-tcl-apply conn (fnn-core 'fn-tcl-host-tick (fnn-tclc-session conn) now))))
              ((zerop (length incoming)) (fnn-tcl-turn-lost conn))
              (t
               (fnn-tcl-record-trace conn now incoming)
@@ -743,10 +760,11 @@ The caller keeps this connection and its socket until actual physical close."
         (otherwise (fnn-fault "TCPCL retained turn action unavailable")))
     (values result action)))
 
-(defun fnn-tcl-session (fd role params tag spool &key bundle trace (expect 0) on-ready refuse-inbound)
+(defun fnn-tcl-session (fd role params tag spool &key (bundle nil bundle-supplied-p) trace (expect 0) on-ready refuse-inbound)
   "Compatibility consumer of the retained session driver."
-  (let ((conn (fnn-tcl-begin fd role params tag spool :bundle bundle :trace trace
-                :expect expect :on-ready on-ready :refuse-inbound refuse-inbound)))
+  (let ((conn (apply #'fnn-tcl-begin fd role params tag spool :trace trace
+                :expect expect :on-ready on-ready :refuse-inbound refuse-inbound
+                (when bundle-supplied-p (list :bundle bundle)))))
     (loop for result = (fnn-tcl-turn conn) until (eq result :done) do
       (sb-thread:thread-yield)
       (when (eq result :wait) (sleep 0.01)))
@@ -825,8 +843,8 @@ transfer lost after the session was established is connection-local,
               (let ((fd (fnn-socket-fd socket)))
                 (unwind-protect
                      (handler-case
-                         (let ((conn (fnn-tcl-session fd :passive params "passive" spool
-                                                      :bundle bundle :trace trace)))
+                         (let ((conn (apply #'fnn-tcl-session fd :passive params "passive" spool
+                                                      :trace trace (when reply (list :bundle bundle)))))
                            (fnn-tcl-summary conn)
                            (setq code (fnn-tcl-exit-code conn)))
                        ;; GEN: def-actor tcpcl-listen :end-connection -- ACL2
@@ -869,8 +887,9 @@ transfer lost after the session was established is connection-local,
          (let ((params (fnn-tcl-params node-id peer keepalive segment-mru transfer-mru))
                (bundle (fnn-tcl-bundle bundle-path)))
            (setq socket (fnn-tcl-connect host port))
-           (let ((conn (fnn-tcl-session (fnn-socket-fd socket) :active params "active" spool
-                                        :bundle bundle :trace trace :expect expect)))
+           (let ((conn (apply #'fnn-tcl-session (fnn-socket-fd socket) :active params "active" spool
+                                        :trace trace :expect expect
+                                        (when bundle-path (list :bundle bundle)))))
              (fnn-tcl-summary conn)
              (fnn-tcl-exit-code conn)))
       (when socket (fnn-socket-shut socket))

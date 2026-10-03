@@ -11,13 +11,13 @@
      fn-tcl-session-peer fn-tcl-session-negotiated fn-tcl-session-inbound fn-tcl-session-outbound
      fn-tcl-session-next-xfer-id fn-tcl-session-last-rx fn-tcl-session-last-tx fn-tcl-session-term
      fn-tcl-make-session fn-tcl-negotiated-keepalive fn-tcl-make-negotiated fn-tcl-make-keepalive
-     fn-tcl-next fn-tcl-transferringp fn-clock-timep fn-tclsctl-turn)))
+     fn-tcl-next fn-tcl-transferringp fn-clock-timep fn-tclsctl-turn fn-tclsctl-control-header-p fn-tclsctl-source-action)))
     (eval (cons 'defun (cons (second form) (cons (third form)
      (remove-if (lambda (x) (and (consp x) (eq (car x) 'declare))) (cdddr form))))))))))
 (defvar *source-control-recording-core* (symbol-function 'fnn-core))
 (defun fnn-core (name &rest args)
  (case name
-  ((fn-tclsctl-turn fn-tcrt-action fn-tcrt-write-end fn-tcrt-read-limit fn-tcrt-write-deadline fn-tcrt-contact-deadline fn-tcrt-contact-timeout-p fn-tcrt-init-deadline fn-tcrt-init-timeout-p) (apply name args))
+  ((fn-tclsctl-source-action fn-tclsctl-turn fn-tcrt-action fn-tcrt-write-end fn-tcrt-read-limit fn-tcrt-write-deadline fn-tcrt-contact-deadline fn-tcrt-contact-timeout-p fn-tcrt-init-deadline fn-tcrt-init-timeout-p) (apply name args))
   (fn-tcl-host-phase (fn-tcl-session-phase (first args)))
   (fn-tcl-host-encode (assert (equal (first args) (fn-tcl-make-keepalive))) '(4))
   (otherwise (apply *source-control-recording-core* name args))))
@@ -82,3 +82,82 @@
           (assert (null (fnn-tclc-held conn)))
           (assert (null (fnn-tclc-tx-messages conn)))))))
 (format t "PASS actual passive session admission precedes frame events/source issuer; refusal is connection-local, no ACK/publication released.~%")
+
+(defun true-listp (x) (typep x 'list))
+(defun len (x) (length x))
+(dolist (path '("books/tcpcl-records.lisp" "books/tcpcl-octets.lisp" "books/tcpcl-delivery.lisp"))
+ (with-open-file (stream path)
+  (loop for form = (read stream nil :eof) until (eq form :eof) do
+   (when (and (consp form) (eq (first form) 'defun)
+    (member (second form) '(fn-tcl-xfer-ack-shapep fn-tcl-xfer-ack-flags
+      fn-tcl-xfer-ack-xfer-id fn-tcl-flag-end fn-tcl-held-prior-messagep
+      fn-tcl-held-final-ackp fn-tcl-delivery-plan fn-tcl-delivery-plan-status
+      fn-tcl-delivery-plan-messages fn-tcl-delivery-plan-detail fn-tcl-delivery-plan-progress-p)))
+    (eval (cons 'defun (cons (second form) (cons (third form)
+     (remove-if (lambda (x) (and (consp x) (eq (car x) 'declare))) (cdddr form))))))))))
+
+;;; Exact bounded read/framing/private source consumers. Wire decoder is
+;;; recorded for one KEEPALIVE; its original fn-tcl-step transition is actual.
+(dolist (path '("books/tcpcl-records.lisp" "books/tcpcl-session.lisp"))
+ (with-open-file (stream path)
+  (loop for form = (read stream nil :eof) until (eq form :eof) do
+   (when (and (consp form) (eq (first form) 'defun)
+     (member (second form) '(fn-tcl-msg-kind fn-tcl-make-result fn-tcl-result-session
+       fn-tcl-result-events fn-tcl-result-unconsumed fn-tcl-touch-rx fn-tcl-step fn-tcl-settle)))
+    (eval (cons 'defun (cons (second form) (cons (third form)
+     (remove-if (lambda (x) (and (consp x) (eq (car x) 'declare))) (cdddr form))))))))))
+(defvar *held-input-recording-core* (symbol-function 'fnn-core))
+(defvar *received-controls* 0)
+(defun fnn-core (name &rest args)
+ (case name
+  ((fn-tcl-delivery-plan fn-tcl-delivery-plan-status fn-tcl-delivery-plan-messages
+    fn-tcl-delivery-plan-detail fn-tcl-delivery-plan-progress-p) (apply name args))
+  ((fn-tcf-at fn-tcf-begin fn-tcf-contactp fn-tcf-byte fn-tcf-span) (apply name args))
+  (fn-tcl-max-message 200000)
+  (fn-tcl-host-segment-mru 1000)
+  (fn-tcl-host-input-probe nil)
+  (fn-tcl-host-source-drive
+   (assert (equal (second args) '(4))) (incf *received-controls*)
+   (let ((r (fn-tcl-step (first args) (fn-tcl-make-keepalive) (third args))))
+    (list (fn-tcl-result-session r) (fn-tcl-result-events r) (fn-tcl-result-unconsumed r))))
+  (otherwise (apply *held-input-recording-core* name args))))
+(dolist (lost '(nil t))
+(let* ((bank (test-bank))
+       (conn (make-fnn-tcl-conn :retained t :fd 9
+        :session (fn-tcl-make-session :passive :established nil nil nil
+                  (fn-tcl-make-negotiated 0 1000 1000 nil '(100)) nil nil 1 9 0 nil)))
+       (grant (test-grant bank 2 :incoming :socket conn))
+       (root (list (make-list 1000 :initial-element 65)))
+       (ack '(:xfer-ack 3 7 1000))
+       (*now* 100) (*incoming* #(4 1)) (*calls* nil) (*received-controls* 0) (*publications* 0)
+       (*fnn-tcl-source-start* (lambda (c id chain count)
+        (fnn-bp-session-source-start grant c id chain count 1000)))
+       (*fnn-tcl-source-turn* (lambda (c token) (fnn-bp-session-source-turn grant c token)))
+       (*fnn-tcl-deliver* (lambda (c id bytes)
+        (declare (ignore c id)) (assert (= (length bytes) 1000))
+        (incf *publications*) '(:accepted nil))))
+ (fnn-tcl-act conn (list (list :send ack) (list :bundle-segments-received 7 root 1000)))
+ (loop repeat 20 until (plusp *received-controls*) do (fnn-tcl-turn conn))
+ (assert (= *received-controls* 1)) (assert (zerop *publications*))
+ (assert (fnn-tclc-source-pending conn)) (assert (eq (fnn-tclc-source-root conn) root))
+ (assert (equal (fnn-tclc-held conn) (list ack)))
+ (assert (= (fn-tcl-session-last-rx (fnn-tclc-session conn)) 100))
+ (let ((vector (fnn-tclc-input-vector conn)) (offset (fnn-tclc-input-offset conn))
+       (reads (count :read *calls*)))
+  (assert (= (aref vector offset) 1))
+  (loop repeat 5 do (fnn-tcl-turn conn))
+  (assert (eq (fnn-tclc-input-vector conn) vector))
+  (assert (= (fnn-tclc-input-offset conn) offset))
+  (assert (= (count :read *calls*) reads)))
+ (when lost (fnn-tcl-turn-lost conn))
+ (loop repeat 100 while (fnn-tclc-source-pending conn) do (fnn-tcl-turn conn))
+ (assert (= *publications* 1))
+ (if lost
+  (progn
+   (assert (null (fnn-tclc-tx-messages conn)))
+   (assert (eq (fnn-tcl-turn conn) :done))
+   (fnn-bp-session-close bank grant)
+   (fnn-bp-session-release-context bank grant)
+   (assert (zerop (hash-table-count (fnn-bpsb-held bank)))))
+  (assert (equal (fnn-tclc-tx-messages conn) (list ack))))))
+(format t "PASS held-source incoming KEEPALIVE updates actual reception before publication; next XFER prefix stays in one vector, no extra read/issuer; EOF drains source.~%")

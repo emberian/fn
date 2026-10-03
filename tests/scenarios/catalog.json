@@ -9542,6 +9542,32 @@
         "books/bp-channel-ingress.lisp"
       ],
       "note": "Actual apply/flush raw composition PASS with recorded core admission answer; actual ACL2 producer literals prepared, native current-union UNEXECUTED."
+    },
+    {
+      "id": "SCN-1131",
+      "title": "Control ingress during held source publishes once and parks the next transfer",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-006"
+      ],
+      "steps": [
+        "Production NNTP accepts canonical article with larger body before owner closes.",
+        "ACL2 sender machine/pump/encoder authors segmented BP request followed by KEEPALIVE and one next-XFER prefix; Python carries wire unchanged.",
+        "Real passive node logs control input while source held before its first FNBS acceptance and Store/FNRJ handoff.",
+        "Close peer, stop/reopen and dispatch, observing one kind5 payload and one article."
+      ],
+      "expected": [
+        "Incoming control observes reception while source job/END ACK remain held.",
+        "Next transfer prefix is backpressure in one bounded read vector, no second received-source issuer.",
+        "Source terminal survives peer loss; ACK cannot flush on broken socket and physical/context receipts remain separate."
+      ],
+      "evidence": [
+        "tests/test_bp_node_native.py",
+        "tests/native_tcpcl_source_control_raw.lisp",
+        "books/tcpcl-source-control.lisp"
+      ],
+      "note": "Actual raw controller/private source/original KEEPALIVE step/delivery-plan composition PASS, with recorded wire decoder/socket/publication; normal guards+13 assertions PASS. Current-union native UNEXECUTED."
     }
   ]
 }
