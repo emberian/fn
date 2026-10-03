@@ -2598,3 +2598,19 @@ The first parsed event bounds consumption so following pipelined commands
 wait for completion. Physical compressed/plain window custody, metadata
 setup bounds and the complete owner/reference refinement remain open; the
 source does not establish a funded operation or a qualified image.
+
+The selective availability adapter is a separate boundary (PRF-1287, SCN-1117).
+Its generated forms use available metadata readers for GROUP, LISTGROUP,
+NEXT/LAST and LIST ACTIVE/COUNTS. The executable entry retains raw archive/index
+formals; it does not build another complete archive or index under the owner.
+Raw ARTICLE/HEAD/BODY/STAT identity diagnostics, HDR/XPAT ranges, OVER and NEWNEWS
+chronology remain retained-history semantics. Successful metadata NEXT/LAST
+formats its STAT line from the held identifier without reading payload bytes.
+The disabled logical reference uses the available projection only for those
+selected commands. Its intended composition requires decided facts that match
+the same captured arena/root; existing raw-pinned equality does not establish it.
+Command-helper source fixtures pass through actual arena intern and generic
+catalog commit. Production owner routing, selective boundary proof and captured
+completeness establishment remain open. LIST ACTIVE/COUNTS still build a complete
+NNTP reply; a bounded group/row cursor is continuing work, and removing a Web
+copy does not bound this producer.

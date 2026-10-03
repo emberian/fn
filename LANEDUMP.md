@@ -2448,3 +2448,41 @@ The request factory isolates one ACL2 wire event. A retained ARTICLE preflight i
 Core warm: capture/source/scan guards admitted and work bounds admitted. Actual-source5128 checks pass full section output, Xref, dot/CRLF boundaries, arbitrary-width decimal setup and immutable replay at differing quanta. Renderer guards/universal byte and owner completion refinements remain open. Full owner warm dependency start refused44 exact dependencies; coordinating Integration reuse, no broad certification requested.
 
 Next: execute actual retained owner/native source path, consume Served available producer, implement lazy metadata setup and complete all original-dispatch frontiers (including completed-view Message-ID fallback), pair Web ready phase, consume Runtime physical window adapter and fault cases. Existing full-body references remain specifications; no actual retrieved payload should materialize on supported path. Current selected-capture source still has unbounded metadata selection/Xref-pair setup; this is explicit remaining work, not bounded-family completion. Stale configuration/capture currently fences as fault; recoverable policy-context behavior needs semantic decision/tests. No certificate/image/deployment claim.
+Actual matcher/controller/batch source receipts archived/indexed under
+served-matcher-consumer-20261003: checks18a40b2255, stream/batch full log2a92bae1ba,
+adapter full log77dced1307. Failed probes retained alongside successful proper
+encapsulates. Source coordinate b27df16a7; statement scope is source admissions,
+not matching whole-plan certification or native qualification. Scoped strict
+three-book theory/order check0warnings; actual plan consumer remains next
+composition check for Integration.
+
+## Selective available command source (2026-10-03)
+
+New served-available-commands source specializes the original formatters around
+catalog-available-readers and generates the actual available dispatcher from
+unchanged literal protocol row forms/priority. tools/available_command_emit.py
+regenerates formatting source, never computes fn request values. Raw lookup and
+NEWNEWS chronology are unchanged; only GROUP/LISTGROUP/NEXT/LAST/LIST ACTIVE/
+COUNTS selects availability. Successful NEXT/LAST renders held STAT metadata
+without payload reads. fn-scr-command-available is an actual command-layer
+consumer; production owner/chain propagation remains open, old fn-scr-command
+and raw-pinned theorem deliberately retain their exact subject. The disabled
+selective reference reconstructs available archive/index logically; no physical
+secondary projection/index is built by the executable entry.
+
+Transferred solcatavailabilityfarm guarded helper replay:18forms0.19ACL2s/2567
+steps, held/navigation3forms0.03s. Actual intern+generic writer sparse and empty
+fixtures9forms0.02s pass all six complete helper results against bytes reference,
+raw/projected statep, decided fact/arena byte correspondence, and retained raw#2/
+Message-ID identity. Initial plain classifier fixture supplied unsealed handles,
+so complete correspondence/refinement correctly failed; repaired using actual
+fn-cat-intern-list before commit. Warning invariant-risk is preserved; fixture
+is program-mode live-stobj acceptance, not a proof of the writer guard/owner R.
+
+PRF1287 planned, SCN1117 source scenario. Full generated dispatcher/command
+book admission, selective complete boundary, owner/captured-root relation,
+matching native image and bounded LIST producer/physical heap tariff remain
+open. Availability prereq source is exact helper770/40ca/c404; Integration has
+coherent changed catalog availability semantics. No raw proof or table cost
+claim is transferred. Root owns the line-window direct buffer bridge; latest
+matcher-stream world lent exclusively until release.
