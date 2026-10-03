@@ -404,8 +404,17 @@
 (defthm fn-bp-recovery-pending-preserves-pendingp
   (implies (fn-bp-pendingp config pending)
            (fn-bp-pendingp config (fn-bp-recovery-pending pending)))
-  :hints (("Goal" :in-theory (enable fn-bp-recovery-pending
-                                      fn-bp-pendingp))))
+  :hints (("Goal"
+           :cases ((equal (fn-bp-pending-kind pending) :attempt))
+           :use ((:instance fn-bp-work-with-status-preserves-workp
+                            (config config)
+                            (work (fn-bp-pending-work pending))
+                            (status :unknown)))
+           :in-theory
+           (e/d (fn-bp-recovery-pending fn-bp-pendingp
+                                       fn-bp-work-with-status)
+                ((:rewrite fn-bp-work-with-status-preserves-workp)
+                 fn-bp-workp fn-bp-work-with-attempt)))))
 
 (defthm fn-bp-clear-pending-preserves-state
   (implies (fn-bp-statep s)
