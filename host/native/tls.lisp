@@ -962,7 +962,7 @@ the caller to replay the already-applied ACL2 transition."
 
 (defun fnn-tls-ssc-fail (what)
   (error 'fnn-tls-unavailable
-         :detail (format nil "~a failed~@[: ~a~]" what (first (fnn-tls-error-stack)))))
+         :detail (format nil "~a failed~@[: ~a~]" what (fnn-tls-error-stack))))
 
 (defun fnn-tls-ssc-generate-key ()
   "A fresh P-256 key (EVP_PKEY *); the caller frees it."

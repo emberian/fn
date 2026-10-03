@@ -78,5 +78,14 @@ class AnchorKeyWidth(unittest.TestCase):
         self.assertNotIn("'(:fault :pinned-key)", text)
 
 
+class TlsSscFail(unittest.TestCase):
+    def test_ssc_fail_does_not_take_first_of_a_string(self):
+        # S092: fnn-tls-error-stack returns a string; FIRST of it is a TYPE-ERROR.
+        text = (ROOT / "host/native/tls.lisp").read_text()
+        self.assertIn("(defun fnn-tls-error-stack ()", text)
+        m = re.search(r"\(defun fnn-tls-ssc-fail .*?\n\n", text, re.S)
+        self.assertNotIn("(first (fnn-tls-error-stack))", m.group(0))
+
+
 if __name__ == "__main__":
     unittest.main()
