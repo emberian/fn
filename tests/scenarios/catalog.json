@@ -8472,9 +8472,10 @@
       },
       "evidence": [
         "tests/acl2/catalog-availability-tests.lisp",
-        "tests/acl2/catalog-available-readers-tests.lisp"
+        "tests/acl2/catalog-available-readers-tests.lisp",
+        "tests/acl2/catalog-availability-owner-load-tests.lisp"
       ],
-      "execution_scope": "First actual foundation writer classification fixtures pass in warm REPL; generated complete command antecedents/conclusions, recovery loader, paged attachment and native reclaim/reopen remain pending. Tombstone-shaped byte fixture is classification evidence, not execution of a native reclaim pass. Actual generic catalog available summary/range/navigation complete tuple cases now pass with guard-verified exports, including empty (0,35,34) and preserved raw#2 lookup. Protocol/session effect teeth and native reclaim remain pending."
+      "execution_scope": "First actual foundation writer classification fixtures pass in warm REPL; generated complete command antecedents/conclusions, recovery loader, paged attachment and native reclaim/reopen remain pending. Tombstone-shaped byte fixture is classification evidence, not execution of a native reclaim pass. Actual generic catalog available summary/range/navigation complete tuple cases now pass with guard-verified exports, including empty (0,35,34) and preserved raw#2 lookup. Protocol/session effect teeth and native reclaim remain pending. Actual recovery loader with legacy missing NOV now passes the same sparse/prefix/tail/empty/cancel tuples from sealed arena payloads; invalid-handle classification remains unavailable. This is live-stobj execution in a warm source world, not native reclaim qualification."
     }
   ]
 }
