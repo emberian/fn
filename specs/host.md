@@ -1903,3 +1903,10 @@ refuses instead of resetting. The token is private to one owner/image lifetime,
 not durable identity. Both counter and current root must move together through
 owner-carrier migration. Paired authorization/capture connection and the
 program-global/native installation refinement remain PRF-1272 obligations.
+
+`fn-owner-catalog-capture-context` produces the opaque allocation/root, immutable
+logical view, connection archive/index, config and authorization read rule at the
+actual reader section before plan creation. Runtime must retain that same result
+with the actual arena/catalog custody and plan; reacquiring it at renderer entry
+would capture a different root. The fixed constructor shares existing values.
+It neither constructs an available archive/index nor acquires a physical pin.
