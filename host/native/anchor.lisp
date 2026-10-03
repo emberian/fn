@@ -46,6 +46,10 @@
     (sb-bsd-sockets:host-ent-address
      (sb-bsd-sockets:get-host-by-name host))))
 
+;;; S096: both fd waits spend one budget, TIMEOUT seconds from DEADLINE's start.
+(defun fnn-anchor-remaining (deadline)
+  (/ (- deadline (get-internal-real-time)) internal-time-units-per-second))
+
 (defun fnn-anchor-udp-exchange (host port request request-octets
                                 response-octets timeout)
   "Send exactly one connected UDP datagram; return response octets or :TIMEOUT."
@@ -57,17 +61,21 @@
                (integerp response-octets) (< 0 response-octets))
     (fnn-fault "invalid bounded anchor UDP request"))
   (let ((socket (make-instance 'sb-bsd-sockets:inet-socket
-                               :type :datagram :protocol :udp)))
+                               :type :datagram :protocol :udp))
+        (deadline (+ (get-internal-real-time)
+                     (ceiling (* timeout internal-time-units-per-second)))))
     (unwind-protect
          (progn
            (sb-bsd-sockets:socket-connect socket (fnn-anchor-resolve-v4 host) port)
            (let ((fd (fnn-socket-fd socket)))
-             (unless (sb-sys:wait-until-fd-usable fd :output timeout)
+             (unless (and (plusp (fnn-anchor-remaining deadline))
+                  (sb-sys:wait-until-fd-usable fd :output (fnn-anchor-remaining deadline)))
                (return-from fnn-anchor-udp-exchange :timeout))
              (unless (= (sb-bsd-sockets:socket-send socket request nil)
                         (length request))
                (fnn-fault "short anchor UDP datagram send"))
-             (unless (sb-sys:wait-until-fd-usable fd :input timeout)
+             (unless (and (plusp (fnn-anchor-remaining deadline))
+                  (sb-sys:wait-until-fd-usable fd :input (fnn-anchor-remaining deadline)))
                (return-from fnn-anchor-udp-exchange :timeout))
              ; One extra octet distinguishes an exact-bound packet from a
              ; longer datagram even on receive APIs that truncate to buffer.

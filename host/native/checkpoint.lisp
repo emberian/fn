@@ -446,11 +446,19 @@ the report line."
                       (fnn-nat (fnn-core 'fn-store-checkpoint-clone-max-bytes))))
                (unless (fnn-octet-list-p frame)
                  (fnn-fault "ACL2 returned a malformed clone fence"))
+               ;; S086: publication is impossible off Linux; learn that before
+               ;; copying anything.
+               #-linux (fnn-refuse "clone publication requires no-replace renameat2")
                (fnn-clone-checked-path stage path-bound)
                (fnn-clone-checked-path
                 (fnn-clone-fence-path (make-fnn-store stage :writable nil))
                 path-bound)
                (fnn-mkdir stage #o700)
+               ;; S086: a refused or faulted clone leaves no stage tree; an
+               ;; uncertain publication keeps it (it may now be the target).
+               (let ((keep-stage nil))
+                 (unwind-protect
+                      (progn
                (fnn-write-staged
                 (fnn-clone-fence-path (make-fnn-store stage :writable nil))
                 (fnn-octets frame))
@@ -469,8 +477,14 @@ the report line."
                           (fnn-fsync-dir parent)
                           (fnn-checkpoint-test-stop "clone-published"))
                  (fnn-os-error ()
-                   (fnn-indeterminate
-                    "clone directory publication is uncertain")))
+                   (progn (setq keep-stage t)
+                          (fnn-indeterminate
+                           "clone directory publication is uncertain"))))
+                        (setq keep-stage t))
+                   (unless keep-stage
+                     (ignore-errors
+                      (sb-ext:delete-directory
+                       (concatenate 'string stage "/") :recursive t)))))
                (fnn-clone-activate target)))
         (fnn-store-close store)))))
 

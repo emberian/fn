@@ -9,13 +9,37 @@
  "id": "S096",
  "line": "63",
  "locus": "operator-verbs",
- "notes": [],
+ "native": "anchor",
+ "notes": [
+  "10-02 23:23 claimed: scope=['host/native/anchor.lisp', 'tests/test_anchor_single_deadline.py'] test=python3 -m unittest tests.test_anchor_single_deadline",
+  "10-02 23:23 READY 6f22aaf0e10762b75a06a144ff5901744492b202 (two-wait half only; DNS lookup bound and lock-before-resolve remain)",
+  "10-02 23:23 READY 6d5f3d8b6721e56256e623d4af10d59d2d29c7c5 (two-wait half only; DNS lookup bound and lock-before-resolve remain)"
+ ],
  "owner": "sweep-peer",
  "reviewer": "fnn-anchor-resolve-v4 (anchor.lisp:43-47) calls get-host-by-name with no deadline. The profile host is always a string (fnn-anchor-profile-host, 139-144; int08h is a DNS name), so DNS is always consulted. The two wait-until-fd-usable calls (65, 70) each get the full timeout, so the exchange can take up to 2xTIMEOUT plus resolver time. fnn-command-anchor (around 395-401) acquires the store writer lock before fnn-anchor-acquire and holds it for the whole exchange. This is an operator CLI command, not a served path, so the impact is a stalled command and a held lock rather than a corruption. The ACL2-owned TIMEOUT bound is not what the host enforces end to end.",
  "scenario": "With a stalled resolver, `anchor acquire STORE int08h 5` blocks in getaddrinfo for the resolver's own retry schedule (tens of seconds or more), ignoring the ACL2-bounded TIMEOUT (at most 60 s), and holds the exclusive store writer lock the whole time. Even when DNS works, the exchange can take 2 x TIMEOUT. The documented bound (anchor-servers.lisp: TIMEOUT 'admitted only inside this ACL2-owned profile') is not what the host enforces.",
+ "scope": [
+  "host/native/anchor.lisp",
+  "tests/test_anchor_single_deadline.py"
+ ],
  "severity": "low",
  "source": "sweep-2026-10-03",
- "state": "open",
+ "state": "in-progress",
+ "test": "python3 -m unittest tests.test_anchor_single_deadline",
  "title": "'One bounded acquisition' is not bounded: the DNS lookup has no timeout, there are two full-timeout waits, and the store writer lock is held throughout",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T03:23:34Z",
+ "verify": {
+  "base": "9080f368897830771db58c284e1735e15e84ad1b",
+  "changed_files": [
+   "host/native/anchor.lisp",
+   "planning/repair/items/S096.json",
+   "tests/test_anchor_single_deadline.py"
+  ],
+  "diff_lines": 35,
+  "green_at_head": true,
+  "head": "6d5f3d8b6721e56256e623d4af10d59d2d29c7c5",
+  "ok": true,
+  "problems": [],
+  "red_at_base": true
+ }
 }

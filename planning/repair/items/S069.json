@@ -9,7 +9,9 @@
  "id": "S069",
  "line": "3414",
  "locus": "operator-verbs",
- "notes": [],
+ "notes": [
+  "10-02 23:22 escalate: fix lives in host/native/io.lisp (forbidden zone)"
+ ],
  "owner": "sweep-store",
  "reviewer": "io.lisp:3414 binds position via fnn-log-rotate-now (io.lisp:7418-7423: prepare-spare, rotate, make-durable) before the :unencodable/:deferred refusals at io.lisp:3447-3451, so a refused checkpoint has already rotated the log and preallocated a segment of fn-store-log-initial-extent. The claim that fnn-log-drop never removes anything is overstated. fnn-log-covered-indices (io.lisp:7425) drops every segment present below the next successful checkpoint's first segment, so the extra segments are reclaimed then. segment-index-exhausted (io.lisp:7305) is a remote limit. What remains real is one initial extent of disk per refused attempt, spent while the deferral may be about free space.",
  "scenario": "An operator or script runs `store ROOT checkpoint` (or the operator wrapper at operator.lisp:643, or checkpoint.lisp:71/191) while the checkpoint budget or free space is too small. ACL2 answers (:deferred ...) and the command exits 1 with a refusal. By then the log has already rotated durably: it consumed a segment index and closed the old segment, and no checkpoint covers the new one, so fnn-log-drop never removes anything. Each retry adds another preallocated segment and moves toward `segment-index-exhausted`. The refused attempt also uses up the very disk space whose shortage caused the deferral. The same happens when the staged write fails with fnn-refuse-io after the rotation.",
@@ -17,5 +19,5 @@
  "source": "sweep-2026-10-03",
  "state": "open",
  "title": "Offline checkpoint rotates the record log before ACL2 decides :deferred/:unencodable, so a refused checkpoint still rotates the log for good",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T03:22:28Z"
 }

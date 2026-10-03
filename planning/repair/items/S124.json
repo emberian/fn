@@ -9,13 +9,16 @@
  "id": "S124",
  "line": "268",
  "locus": "store-books",
- "notes": [],
+ "notes": [
+  "10-02 23:24 escalate: quarantine open is in host/native/io.lisp (forbidden zone) and the name/verdict is in books/store-log-damage.lisp (ACL2 decision)",
+  "10-02 23:25 already fixed at this base (866590229 S040/S124): fnn-log-quarantine and fn-xw-quarantine copy under quarantine/.stage-NAME, fence, rename; an existing NAME is kept as a complete copy"
+ ],
  "owner": "sweep-store",
  "reviewer": "fn-lgdm-quarantine-name (store-log-damage.lisp:268-272) is a pure function of the segment name and the stop offset. fnn-log-quarantine (io.lisp:6666-6687) opens the final name directly with O_CREAT|O_EXCL: there is no temporary file and no rename. A process death part-way through the copy leaves a partial file under that name. A rerun computes the same name, fails with EEXIST, and that surfaces as a raw error rather than a named refusal. Someone has to intervene by hand, and they cannot tell a partial copy from a complete one.",
  "scenario": "The operator runs `store recover --repair truncate 000003.log:P`. The process dies after quarantine/000003.log.damaged-at-P is created but before the tail is zeroed (for example mid-copy of a large segment). The rerun computes the same verdict and the same name, and the O_EXCL open fails with EEXIST. That surfaces as a raw OS error rather than a named refusal, and the repair cannot complete until someone manually deletes the partial quarantine file. If they delete a complete one instead, they lose the only kept copy of the dropped entries.",
  "severity": "low",
  "source": "sweep-2026-10-03",
- "state": "open",
+ "state": "refuted",
  "title": "A death during the repair's quarantine copy makes the repair impossible to rerun: the quarantine name is deterministic and opened O_EXCL",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T03:25:04Z"
 }

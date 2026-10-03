@@ -10,7 +10,8 @@
  "line": "2389",
  "locus": "operator-verbs",
  "notes": [
-  "10-02 23:08 skipped by burndown-1: init resumes an interrupted init by loading the existing config (fnn-load-config) and ignoring the requested profile/groups; refusing a mismatch needs an ACL2 decision (compare requested vs recorded profile+groups) so resume stays legal; not a local fix"
+  "10-02 23:08 skipped by burndown-1: init resumes an interrupted init by loading the existing config (fnn-load-config) and ignoring the requested profile/groups; refusing a mismatch needs an ACL2 decision (compare requested vs recorded profile+groups) so resume stays legal; not a local fix",
+  "10-02 23:22 escalate: fix lives in host/native/io.lisp (forbidden zone)"
  ],
  "owner": "sweep-store",
  "reviewer": "fnn-initialize (io.lisp:2389-2392) loads the existing config when the link returns :existing, and does not compare it with the requested profile frame. The groups are skipped whenever config history exists (io.lisp:2393). fnn-command-init (io.lisp:3968-3977) then prints \"initialized\" and exits 0. It is reachable through `store ROOT init` (fnn-dispatch io.lisp:8243 to fnn-command-developer-init io.lisp:4041). The init is resumable on purpose, but a mismatched profile goes unreported. The operator path, fnn-command-init-published (io.lisp:4001), refuses an existing path, so only the developer/store verb is affected.",
@@ -19,5 +20,5 @@
  "source": "sweep-2026-10-03",
  "state": "deferred",
  "title": "`init` over an existing store ignores the requested profile and groups and still prints \"initialized\"",
- "updated": "2026-10-03T03:08:46Z"
+ "updated": "2026-10-03T03:22:28Z"
 }
