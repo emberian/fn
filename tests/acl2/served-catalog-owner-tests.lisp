@@ -121,6 +121,7 @@
                 ;; the E keystone's hypotheses, on this real history
                 (and (fn-arena-p fn-arena) (fn-sf-record-valuesp records)
                      (fn-rows-handles-inp records fn-arena)
+                     (fn-rows-composites-okp records fn-arena)
                      (fn-wire-event-listp (fn-rows-wire-of records fn-arena)) t)
                 ;; the view's archive with each handle read as its bytes
                 (fn-articles-wire-of (fn-state-articles (fn-own-view-archive view)) fn-arena))
@@ -532,7 +533,8 @@
       (mv (list (and (fn-arena-p fn-arena) t)
                 (and (fn-sf-record-valuesp rows) t)
                 (and (fn-rows-handles-inp rows fn-arena) t)
-                (and (fn-wire-event-listp (fn-rows-wire-of rows fn-arena)) t)
+                (and (fn-rows-composites-okp rows fn-arena)
+                     (fn-wire-event-listp (fn-rows-wire-of rows fn-arena)) t)
                 (and (fn-cat-history-relation (fn-rows-wire-of rows fn-arena) fn-arena fn-cat) t)
                 (fn-cat-count fn-cat)
                 (fn-held-withdrawn (fn-cat-at 0 fn-cat))
@@ -566,3 +568,39 @@
 ;; hypothesis fails and so does R.
 (defconst *scot-e-bad* (scot-e-exec *scot-ws* *scot-index-ac* t))
 (assert-event (equal (take 6 *scot-e-bad*) (list t t nil t nil 4)))
+
+
+; Reachable legacy-format row: facts have no NOV column yet. The actual
+; recovery loader decides it, keeps the exact wire and arena, and establishes
+; history R under EVERY premise, not just the older wire-event proxy.
+(defun scot-legacy-availability (fn-arena fn-cat)
+  (declare (xargs :mode :program :stobjs (fn-arena fn-cat)))
+  (let* ((fn-arena (fn-arn-seal-many (list (fn-record-payload *scot-w0*)) fn-arena))
+         (h (fn-held-with-facts (fn-intern-row-at *scot-w0* nil 0 0)
+                               (fn-hf-make (len (fn-record-payload *scot-w0*)) nil 0 nil)))
+         (rows (list h))
+         (antecedent (and (fn-arena-p fn-arena) (fn-sf-record-valuesp rows)
+                          (fn-rows-handles-inp rows fn-arena)
+                          (fn-rows-composites-okp rows fn-arena)))
+         (before (fn-cat-row-facts-decidedp h))
+         (count (fn-arena-count fn-arena))
+         (fn-cat (fn-sca-load-held-rows rows *scot-index-ac* fn-arena fn-cat)))
+    (mv (and antecedent (not before)
+             (fn-cat-history-relation (fn-cat-history-articles rows fn-arena)
+                                      fn-arena fn-cat)
+             (equal (fn-cat-count fn-cat) 1)
+             (fn-cat-row-facts-decidedp (fn-cat-at 0 fn-cat))
+             (fn-cat-row-availablep (fn-cat-at 0 fn-cat))
+             (fn-scol-row-okp (fn-cat-at 0 fn-cat) fn-arena)
+             (equal (fn-held-wire-of (fn-cat-at 0 fn-cat) fn-arena) *scot-w0*)
+             (equal count (fn-arena-count fn-arena)))
+        fn-arena fn-cat)))
+(defun scot-legacy-availability-exec ()
+  (declare (xargs :mode :program))
+  (with-local-stobj fn-arena
+    (mv-let (ok fn-arena)
+      (with-local-stobj fn-cat
+        (mv-let (ok fn-arena fn-cat) (scot-legacy-availability fn-arena fn-cat)
+          (mv ok fn-arena)))
+      ok)))
+(assert-event (scot-legacy-availability-exec))
