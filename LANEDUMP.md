@@ -1631,3 +1631,14 @@ fixtures consume actual observed-mutex/section source and check the owner
 callback, unknown inner lock, real NIL lock and E->O inversion. All43 lock
 checker tests PASS0.527s. No proof, full-tree lock qualification or image
 claim; Integration owns composition with Runtime's declared private locks.
+
+
+## Complete read replies across completion and reopen, 2026-10-03
+
+Normal held success and cancellation/retirement/stale/duplicate fixtures now
+capture complete actual native ARTICLE replies before the schedule and require
+exact bytes during continued service and after a fresh owner opens the same
+store. No Python reconstruction of injection or article semantics; the baseline
+is the native reply. Clean stop is affirmative EXIT.OK. Python compile passes;
+actual native execution remains pending a matching fixture/image selection.
+Existing ad8da41 sol2g image build is immutable and still watched read-only.
