@@ -84,9 +84,14 @@
            (fn-prl-build (fn-prl-nth 0 ledger) (fn-prs-plus (fn-prl-nth 1 ledger) scratch)
                          (fn-prl-nth 2 ledger) (fn-prl-nth 3 ledger) (fn-prl-baseline ledger))
            fn-ibp-query-segment fn-query-payload-grants))))))))))
+; Only eligibility's token and payload shape are needed for these calls.
+; Expanding custody, funding and child mutation multiplies unrelated cases.
 (verify-guards fn-ibp-adopt-children
- :hints (("Goal" :in-theory (enable fn-ibp-adoption-eligiblep fn-ibp-query-tokenp
-                                    fn-iqr-tokenp fn-iqr-naturals fn-ibp-query-resource-token))))
+ :hints (("Goal" :in-theory
+          (e/d (fn-ibp-adoption-eligiblep fn-ibp-query-tokenp fn-qpg-tokenp)
+               (fn-ibp-adoption-context fn-ibp-query-resource-token fn-prs-fundedp
+                fn-prs-vectorp fn-iqr-tokenp fn-ibp-control-kindp fn-qpg-acquire
+                fn-ibp-slot-register)))))
 
 (defun fn-ibp-node-adopt-receipt (token kind control capture context receipt scratch ledger
                                  fuel address depth fn-ibp-node)
@@ -252,8 +257,19 @@
                   (fn-index-backing (update-fn-ibp-request-capture nil fn-index-backing))
                   (fn-page-read-pool (fn-owner-page-read-keep-ledger next-ledger fn-page-read-pool)))
              (mv :adopted token remaining fn-index-backing fn-page-read-pool))))))))))))))
+; Keep custody and receipt computations opaque: their results impose no
+; additional guards here. Preserve symbolic state selectors for NTH-UPDATE-NTH;
+; only the freshly constructed query token needs NTH opened on explicit conses.
 (verify-guards fn-ibp-pending-range-adopt-funded
- :hints (("Goal" :in-theory (disable fn-ibp-node-adopt-receipt fn-ibp-nodep))))
+ :hints (("Goal"
+          :expand ((:free (n a b) (nth n (cons a b))))
+          :in-theory
+          (disable fn-ibp-node-adopt-receipt fn-ibp-nodep
+                   fn-ric-pending-reader-context fn-owner-rx-turn-custody-ticket
+                   fn-irr-receipt-committedp fn-irq-receipt-request-generation
+                   fn-ibp-query-resource-token fn-irr-range-control fn-ipub-capture
+                   fn-qpg-tokenp nth nth-add1 update-nth len true-listp
+                   fn-rx-providerp fn-receiver-turnp fn-page-read-poolp))))
 
 ; Internal actual producer obtains SCRATCH from the installed operation
 ; census. This is deliberately not a D40 vector-taking host callback.
