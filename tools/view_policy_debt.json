@@ -1,0 +1,14 @@
+{
+ "debt": [
+  "ARTICLE pinned->pin-or-completed PRF-1238",
+  "HEAD pinned->pin-or-completed PRF-1238",
+  "BODY pinned->pin-or-completed PRF-1238",
+  "STAT pinned->pin-or-completed PRF-1238",
+  "OVER/msgid pinned->pin-or-completed PRF-1238",
+  "XOVER/msgid pinned->pin-or-completed PRF-1238",
+  "HDR pinned->pin-or-completed PRF-1238",
+  "LIST pinned->completed PRF-1237",
+  "NEWGROUPS pinned->completed PRF-1237",
+  "NEWNEWS pinned->completed PRF-1237"
+ ]
+}

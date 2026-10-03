@@ -1002,10 +1002,33 @@ def defprotocol_expansion(form: list) -> list:
                     and isinstance(items[index + 1], list) and items[index + 1]
                     and str(items[index + 1][0]) == ":pinned"):
                 pinned.extend(items[index + 1][1:])
-    return [[Sym("defmacro"), Sym("fn-nntp-command-dispatch"),
-             [Sym("archive-call"), Sym("&key"), Sym("pinned")],
-             [Sym("fn-proto-command-dispatch-term"), Sym("archive-call"), Sym("pinned"),
-              [Sym("quote"), pinned]]]]
+    return [
+        [Sym("defmacro"), Sym("fn-nntp-command-dispatch"),
+         [Sym("archive-call"), Sym("&key"), Sym("pinned")],
+         [Sym("fn-proto-command-dispatch-term"), Sym("archive-call"), Sym("pinned"),
+          [Sym("quote"), pinned]]]]
+
+
+def defprotocol_served_expansion(form: list) -> list:
+    """The constants ``(defprotocol-served NAME ROWS...)`` defines (lane
+    def-command, books/protocol-served-table.lisp): the :select rows' names
+    (fn-served-advance-eventp's keywords), the protocol table's :archive
+    rows', every served keyword and the rows with :forms (the served
+    dispatcher books/protocol-served.lisp generates from them)."""
+    if not (len(form) >= 2 and isinstance(form[1], Sym)):
+        return []
+    name = form[1]
+    return [
+        [Sym("defconst"), name, [Sym("quote"), list(form[2:])]],
+        [Sym("defconst"), Sym("*fn-proto-select-names*"),
+         [Sym("fn-proto-names-with-view"), Sym(":select"), name]],
+        [Sym("defconst"), Sym("*fn-proto-archive-names*"),
+         [Sym("fn-proto-names-with-dispatch"), Sym(":archive"), Sym("*fn-proto-table*")]],
+        [Sym("defconst"), Sym("*fn-proto-served-names*"),
+         [Sym("fn-proto-served-names"), Sym("*fn-proto-table*")]],
+        [Sym("defconst"), Sym("*fn-proto-cat-rows*"),
+         [Sym("fn-proto-cat-row-names"), name]],
+    ]
 
 
 def defrecord_export_expansion(form: list) -> list:
@@ -1238,6 +1261,7 @@ GENERATOR_EXPANSIONS = {
     "fn-defrecord-export": defrecord_export_expansion,
     "def-loop": def_loop_expansion,
     "defprotocol": defprotocol_expansion,
+    "defprotocol-served": defprotocol_served_expansion,
     "defkeystone": defkeystone_expansion,
 }
 

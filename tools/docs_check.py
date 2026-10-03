@@ -685,6 +685,81 @@ def commands_region():
     return "\n".join(lines)
 
 
+# The served command table of specs/nntp.md (lane def-command): one row per
+# keyword the served step answers, from the protocol table's served columns
+# (:view, :view-decided, :effect, :quantum, :cost, :view-rfc), so the view
+# policy the spec states is the one the books certify.
+SERVED_DOC = ROOT / "specs" / "nntp.md"
+SERVED_BEGIN = "[generated from books/protocol-table.lisp (the served columns); do not edit]"
+SERVED_END = "[end of generated text]"
+
+
+def served_region():
+    sys.path.insert(0, str(ROOT / "tools"))
+    import protocol_emit
+    table = protocol_emit.load()
+    views = {
+        "none": "none (no archive)",
+        "pinned": "the connection's pinned view",
+        "select": "re-pinned to the owner's committed view; kept iff 211",
+        "completed": "the latest completed durable view; pin unmoved",
+        "live-index": "the live Message-ID index (peer offers)",
+    }
+    views["pin-or-completed"] = "the pinned article if retrievable there, else the completed snapshot"
+    lines = [SERVED_BEGIN, "",
+             "The EXECUTED rule per command and form; a ruling recorded but not landed is DEBT, "
+             "shown beside it with the registry row that carries it (tools/view_policy_debt.json, "
+             "a ratchet).",
+             "",
+             "| Command / form | View read (executed) | Effect | Debt: decided, not landed | Quantum | "
+             "Cost: unrestricted route / restricted route | Policy and citation |",
+             "|---|---|---|---|---|---|---|"]
+    def debt_text(d):
+        return "%s (%s)" % (views.get(d["view"], d["view"]), d["id"]) if d else ""
+    for row in table["rows"]:
+        if row["name"].startswith("(") or row["view"] is None:
+            continue
+        if not (row["arms"] or row["dispatch"] == "auth"):
+            continue
+        cost = row["cost"]
+        cost_text = ("%s / %s" % (cost["unrestricted"], cost["restricted"])
+                     if cost else "hand arms, forms not yet declared" if row["view"] in ("pinned", "select")
+                     else "")
+        quantum = ("cursor %s" % row["quantum"][1]) if row["quantum"] else ""
+        lines.append("| %s | %s | %s | %s | %s | %s | %s |" % (
+            row["name"], views.get(row["view"], row["view"]), row["effect"] or "",
+            debt_text(row["view_decided"]), quantum, cost_text.replace("|", "\\|"),
+            row["view_rfc"].replace("|", "\\|")))
+        for form in row["forms"]:
+            lines.append("| %s / %s | %s | %s | %s | %s | %s | %s |" % (
+                row["name"], form["name"], views.get(form["view"], form["view"]),
+                form["effect"] or "", debt_text(form["decided"]), "",
+                "generated: %s" % ("test value" if form["cat"] is None else form["cat"]).replace("|", "\\|"),
+                ""))
+    lines += ["", SERVED_END]
+    return "\n".join(lines)
+
+
+def check_served(write):
+    rel = SERVED_DOC.relative_to(ROOT).as_posix()
+    text = SERVED_DOC.read_text(encoding="utf-8")
+    start = text.find(SERVED_BEGIN)
+    end = text.find(SERVED_END, start + 1) if start >= 0 else -1
+    region = served_region()
+    if start < 0 or end < start:
+        return ["%s has no generated served command table" % rel]
+    current = text[start:end + len(SERVED_END)]
+    if current == region:
+        return []
+    if write:
+        SERVED_DOC.write_text(text[:start] + region + text[end + len(SERVED_END):],
+                              encoding="utf-8")
+        print("wrote the served command table of %s" % rel)
+        return []
+    return ["%s's served command table is not what books/protocol-table.lisp says now: "
+            "run tools/docs_check.py --write" % rel]
+
+
 def check_commands(write):
     rel = COMMANDS_DOC.relative_to(ROOT).as_posix()
     text = COMMANDS_DOC.read_text(encoding="utf-8")
@@ -714,6 +789,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
     failures = check_reasons(args.write)
     failures += check_commands(args.write)
+    failures += check_served(args.write)
     found = inventory()
     generated = argv_file(found)
     templates = [(rel, number, line, why) for kind, rel, number, line, argv, why in found
