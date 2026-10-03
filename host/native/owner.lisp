@@ -1679,16 +1679,19 @@ A diagnostic failure does not alter custody, classification or settlement."
     (unless (eq word :reserved) (fnn-fault "connection identity refused ~s" word))
     identity))
 
+(defun fnn-owner-response-identity-locked (service connection)
+  "Owner held: reserve before a factory without recursively entering O."
+  (destructuring-bind (word identity next)
+      (fnn-call 'fn-rid-response connection (fnn-owner-service-response-generation service))
+    (setf (fnn-owner-service-response-generation service) next)
+    (unless (eq word :reserved) (fnn-fault "response identity refused ~s" word))
+    identity))
+
 (defun fnn-owner-response-identity (service connection class)
   "Reserve once before materialization under the admitted connection section."
   (fnn-owner-serialized
    service (second connection)
-   (lambda ()
-     (destructuring-bind (word identity next)
-         (fnn-call 'fn-rid-response connection (fnn-owner-service-response-generation service))
-       (setf (fnn-owner-service-response-generation service) next)
-       (unless (eq word :reserved) (fnn-fault "response identity refused ~s" word))
-       identity))
+   (lambda () (fnn-owner-response-identity-locked service connection))
    class))
 
 (defun fnn-owner-output-install (service dynamic store-need)
