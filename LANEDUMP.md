@@ -3509,3 +3509,23 @@ archived/indexed. Early-admission narrow warm entry REFUSED on uncached current
 history-columns-foundation plus20 dependents before new definition. No duplicate
 wide bootstrap/certify; shared History source world owns additive logical admission.
 No guards/certification/native claim for new early-admission leaves yet.
+History continuing current source, 2026-10-03 11:58NY:
+Complete current arena source scope PASS in retained history-paged-canonical
+(PID1862293):9.36s/2,135,888steps; ordered extent attach -> generic and canonical
+arena smoke PASS. Combined hints19e86a1b5 and orderingb3720e08f are public.
+Merged current public5a3d81 into source09aa3b5da; full DTN logical inventory at
+/tank/fn/scratch/history-current-union-5a3d81/build/current-logical-deferred.json.
+Explicit named DEFTHM deferrals record semantic preparation relation proof
+scope; no definition, guard or physical abstract obligation is omitted. Store
+trace prepare with2named deferrals PASS6.36s/2,360,235steps. Current next optional
+failureSNTstep relation follows omittedprepare relation; Runtime supplies exact
+conservative successors. Paidworld remains idle/recoverable at same scope,
+no current owner/native launcher yet. Integration host-only normal stage binds
+this manifest at /tank/fn/scratch/sol-strict-entry-probe/
+current-dtn-deferred-host-build.normal.lisp; nativehalf remains separate.
+New guarded disposal entries fn-hist$p-dispose/fn-hrecs$s-dispose admitted in
+that retained world, actual native retirement/refusal/control fixture PASS.
+Retirement clears page/suffix backing before ledger refund, issued pins hold
+old generation unchanged. This does not remove whole Store/catalog rebuild,
+change96*history credit estimate, bound hash clear/encode/growth/commit, or
+establish bounded open/full adoption-index correspondence. Those remain owned.

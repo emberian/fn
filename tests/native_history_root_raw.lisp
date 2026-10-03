@@ -57,6 +57,10 @@
           (when *fx-current* (push *fx-current* *fx-retired*))
           (setq *fx-current* generation))))
     (fn-owner-hroot-abandon :released)
+    (fn-owner-hroot-retire-word
+      (let ((generation (first args)))
+        (if (and (member generation *fx-retired*)
+                 (not (find generation *fx-leases* :key #'third))) :ready :history-root-held)))
     (fn-owner-hroot-retire
       (let ((generation (first args)))
         (if (and (member generation *fx-retired*)
@@ -82,7 +86,10 @@
     (fn-owner-hroot-resize (list :funded nil))
     ((create-fn-hrecs$s create-fn-hist$p) (list (vector nil 0 nil nil)))
     (fn-his-build-begin (list (second args)))
-    (fn-his-release (setf (aref (first args) 0) nil) (list (first args)))
+    (fn-hist$p-dispose
+      (setf (aref (first args) 0) nil (aref (first args) 2) nil)
+      (list (first args)))
+    ((fn-his-release fn-hrecs$s-dispose) (setf (aref (first args) 0) nil) (list (first args)))
     (fn-his-row-begin
       (setf (aref (second args) 3) (first args))
       (list :yield '(:append) (second args)))
@@ -160,7 +167,11 @@
                  (position 'fn-hist$p-read ordered))))
     (fnn-owner-history-root-unpin service pin)
     (assert (null (second pin)))
-    (assert (null (gethash old-generation *fnn-history-roots*)))))
+    (assert (null (gethash old-generation *fnn-history-roots*)))
+    (assert (null (aref old-root 0)))
+    (let ((ordered (reverse *fx-trace*)))
+      (assert (< (position 'fn-hist$p-dispose ordered)
+                 (position 'fn-owner-hroot-retire ordered))))))
 (format t "PASS actual native live adoption/catchup; stale rewrite/refusal; retained generation reclaim; decode prepayment; terminal retirement~%")
 ; The actual canonical replacement installer retires an unheld root even
 ; when replacement detached it before any later live root activation.

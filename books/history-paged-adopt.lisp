@@ -131,3 +131,19 @@
   (if (and (equal expected-count (fn-hist$p-count fn-hist$p))
            (equal (fn-hist$p-bound fn-hist$p) 1))
       :ready '(:refused :history-candidate-count)))
+
+; INTERNAL terminal disposal, after the owner has proved no issued reader
+; retains this generation. The ordinary clear resets the logical count but
+; intentionally keeps suffix capacity. Disposal returns that capacity too.
+(defun fn-hist$p-dispose (fn-hist$p)
+  (declare (xargs :stobjs fn-hist$p))
+  (let ((fn-hist$p (fn-hist$p-clear 0 fn-hist$p)))
+    (stobj-let ((fn-hrecs$c (fn-hist$p-root fn-hist$p)))
+               (fn-hrecs$c)
+               (resize-fn-hrc-sfx 0 fn-hrecs$c)
+               fn-hist$p)))
+
+(defun fn-hrecs$s-dispose (fn-hrecs$s)
+  (declare (xargs :stobjs fn-hrecs$s))
+  (let ((fn-hrecs$s (fn-hrc-reset 0 fn-hrecs$s)))
+    (resize-fn-hrc-sfx 0 fn-hrecs$s)))
