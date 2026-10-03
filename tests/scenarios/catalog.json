@@ -9692,6 +9692,38 @@
         "tests/native_bp_owner_startup_source.lisp"
       ],
       "execution_scope": "Actual production BP entry/helper functions and ACL2 service-settlement decisions with recorded physical seams. Complete DEFAULT/BP tariffs, actual allocator/worker/Store composition and current source-native joins remain open."
+    },
+    {
+      "id": "SCN-1135",
+      "title": "Arbitrary HDR/XPAT field query retains immutable span across bounded parser and cold normalization",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "REP-010",
+        "NNT-016"
+      ],
+      "steps": [
+        "Capture actual article handle/length/origin pin and requested bounded NNTP field token.",
+        "Run fn-lhq-tick in natural-fuel quanta through complete syntax validation; distinguish invalid article from valid absent field.",
+        "Normalize borrowed first matching span with fn-nsw-step and resume exact state across cold scalar reads.",
+        "Consume span in actual HDR/XHDR/XPAT dispatcher and owner, retaining pin through reply/matcher settlement."
+      ],
+      "expected": [
+        "First matching name wins, case-insensitively; folded WSP and single initialSP removal match old HDR content.",
+        "No whole field/payload materialization in the producer; USED and bytes remain bounded by fuel.",
+        "Invalid later header or body framing invalidates the entire header query; absent field remains NIL while any present span is a record.",
+        "Cold retains exact handle/pin/raw cursor/normalization coordinates; terminal cleanup waits for actual dependencies."
+      ],
+      "implementation": {
+        "test": "tests/native_header_query_source.lisp"
+      },
+      "evidence": [
+        "tests/acl2/legacy-header-query-tests.lisp",
+        "tests/native_header_query_source.lisp",
+        "planning/evidence/header-query-source-20261003.log",
+        "planning/evidence/header-query-warm-20261003.log"
+      ],
+      "execution_scope": "Actual shared parser/query/normalizer functions236658 recorded list-arena/cold checks; guard and literal work/source/ready/reference arena teeth warm pass. Actual Served dispatch/owner/physical compressed execution and universal arbitrary-name span/parser/refinement remain pending."
     }
   ]
 }

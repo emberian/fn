@@ -2468,7 +2468,8 @@
       "milestone": "M6",
       "status": "implemented",
       "proof_targets": [
-        "PRF-110"
+        "PRF-110",
+        "PRF-1304"
       ],
       "verification": [
         "proof",
@@ -2479,9 +2480,11 @@
         "books/nntp-responses.lisp",
         "tests/acl2/nntp-xpat-tests.lisp",
         "tests/acl2/nntp-legacy-tests.lisp",
-        "planning/evidence/reader-surface-2026-09-25.md"
+        "planning/evidence/reader-surface-2026-09-25.md",
+        "books/legacy-header-query.lisp",
+        "tests/native_header_query_source.lisp"
       ],
-      "implementation_note": "RFC 2980 section 2.9 is the rule: additional pattern arguments are joined by one SP into one pattern (as INN does); the comma is the alternative (RFC 3977 section 4.2); matching is case-sensitive (RFC 3977 section 4.2). The label is a private-extension label (RFC 3977 section 3.3.3). The web reader passes the reader's wildmat verbatim."
+      "implementation_note": "RFC 2980 section 2.9 is the rule: additional pattern arguments are joined by one SP into one pattern (as INN does); the comma is the alternative (RFC 3977 section 4.2); matching is case-sensitive (RFC 3977 section 4.2). The label is a private-extension label (RFC 3977 section 3.3.3). The web reader passes the reader's wildmat verbatim. Shared arbitrary header field backing PRF-1304 is source in progress: bounded parser reads retain first-field immutable span; actual HDR/XPAT consumer and universal reference bridge remain open."
     },
     {
       "id": "STO-013",

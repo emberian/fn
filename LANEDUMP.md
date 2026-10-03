@@ -3891,3 +3891,18 @@ replace status whole-name conversion with indexed matching, current actual
 owner/dispatcher sparse fixtures, remaining LIST/HDR/XPAT/OVER family producers.
 Access freezes borrowed header spans in legacy-header-query; field normalization
 is Fn-nsw-step with same pin/COLD custody. No new agent or startup world.
+Access shared arbitrary header backing PRF1304/SCN1135: new legacy-header-query
+uses generic name parameter in existing legacy-parser-cursor, preserves old
+public ABI/five-name NOV. Query begin/tick/verdict/field/ready APIs frozen to
+Served, borrowed span=(handle,start,length,pin), no copied field. Tick2values
+NEXT/USED; NSW normalization existing5values; COLD caller retains exact raw state.
+All41legacy events/14query events warm admitted, guards and work/source/ready
+preservation (1004/9312/18087steps). Actual source236658 query checks against old
+FnNntpHdrContent pass, long10000 folded value, W1/3/4096, mixedcase/duplicate/absent,
+later malformed header/body/oversize RFCline/NUL, cold parser +normalization.
+Literal actual arena guard/source/work/reference teeth +pin mutation warm pass.
+Actual HDR/XHDR/XPAT dispatch/owner join remains Served; full arbitrary-name
+parser/span/reference and physical resource proof remain open. Runtime/History
+confirmed legacy book disjoint, no native custody or pool edits. Operator accepts
+back S072/S074/S090/S138/S151/S012; no Access operator WIP. Source-before-cert;
+selected3roots legacycursor/query/tests next, not broad legacy closure.

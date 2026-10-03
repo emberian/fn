@@ -1950,6 +1950,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/article-stream \
 	tests/acl2/article-stream-tests \
 	books/article-stream-server \
+	books/legacy-header-query \
+	tests/acl2/legacy-header-query-tests \
 	tests/acl2/article-stream-server-tests \
 	tests/acl2/catalog-availability-tests \
 	tests/acl2/catalog-available-readers-tests \
