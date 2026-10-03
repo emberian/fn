@@ -56,6 +56,7 @@
 (include-book "../books/history-capture-state")
 (include-book "../books/owner-retain-state")
 (include-book "../books/owner-retain-transitions")
+(include-book "../books/owner-post-carried")
 (include-book "../books/owner-obligation-state")
 ; The compression threshold (fn-owner-compress-min-octets; PRF-341).
 (include-book "../books/payload-lz-append")
@@ -1976,19 +1977,7 @@
 ; exactly when the Store's gate fn-sn-refuse-reservation-enabledp holds, else
 ; :fault (KEYSTONE fn-pout-refuse-reservation-answers-the-host-test: the word
 ; the before/after comparison this entry used to make).
-(defun fn-owner-refuse-reservation (fn-arena state)
-  (declare (xargs :stobjs (state fn-arena) :guard (and (boundp-global 'fn-owner state)
-                              (fn-sn-statep (fn-sbud-oc-store (fn-owner-ocfg state))))))
-  (mv-let (word next)
-    (fn-pout-refuse-reservation (fn-owner-ocfg state) fn-arena)
-    (let* ((state (fn-owner-install-ocfg next state))
-           ; The store holds no transaction now, so the catalog holds no
-           ; pending row either (books/served-catalog-join-host-post.lisp
-           ; fn-sjh-okp-at-owner-refuse-reservation: LINK with none).
-           (state (if (equal word :refused)
-                      (f-put-global 'fn-owner-cat-pending nil state)
-                    state)))
-      (value word))))
+; Defined and proved in books/owner-post-carried.lisp.
 
 ; fn-owner-prepare with the payload in the octet buffer (books/octets-stobj.lisp;
 ; host/native/owner.lisp fnn-owner-attempt).  Three things differ from the
@@ -2276,22 +2265,7 @@
 ; fn-pout-known-abort (books/owner-prepare-outcome.lisp): :aborted exactly
 ; when the Store's gate fn-sn-known-abort-enabledp holds, else :fault
 ; (KEYSTONE fn-pout-known-abort-answers-the-host-test).
-(defun fn-owner-known-abort (fn-arena state)
-  (declare (xargs :stobjs (state fn-arena) :guard (and (boundp-global 'fn-owner state)
-                              (fn-sn-statep (fn-sbud-oc-store (fn-owner-ocfg state))))))
-  (mv-let (word next)
-    (fn-pout-known-abort (fn-owner-ocfg state) fn-arena)
-    (let* ((state (fn-owner-install-ocfg next state))
-           ; The aborted transaction's catalog row goes with it: its pending
-           ; row is no longer the store's in-flight row, and a later
-           ; non-sealing identity completion would otherwise run the
-           ; catalog's finish with it (a :stale-token fault;
-           ; books/served-catalog-join-host-post.lisp
-           ; fn-sjh-okp-at-owner-known-abort: LINK with none).
-           (state (if (equal word :aborted)
-                      (f-put-global 'fn-owner-cat-pending nil state)
-                    state)))
-      (value word))))
+; Defined and proved in books/owner-post-carried.lisp.
 
 (defun fn-owner-pending-octets (fn-arena state)
   (declare (xargs :stobjs (fn-arena state) :guard (boundp-global 'fn-owner state)))

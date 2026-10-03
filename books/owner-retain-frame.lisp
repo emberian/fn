@@ -52,42 +52,7 @@
 (include-book "owner-retain-carried")      ; the pilot row; owner-retain-transitions
 (include-book "owner-connection-callbacks") ; fn-owner-callback-install-effects, -put-credits
 
-; -----------------------------------------------------------------------------
-; The frame.
-
-(defthm fn-orh-retain-statep-of-other-global-put
-  (implies (and (not (equal key 'fn-owner))
-                (not (equal key 'fn-owner-retain-carry)))
-           (equal (fn-owner-retain-statep (f-put-global key value state))
-                  (fn-owner-retain-statep state)))
-  :hints (("Goal" :in-theory '(fn-owner-retain-statep
-                               fn-owner-ocfg-of-other-global-put
-                               fn-owner-bound-of-other-global-put
-                               fn-owner-retain-carry-of-other-global-put))))
-
-(defthm fn-owner-retain-statep-implies-lgoc
-  (implies (fn-owner-retain-statep state)
-           (fn-lgoc-invariantp (fn-owner-ocfg state)))
-  :rule-classes nil
-  :hints (("Goal" :in-theory '(fn-owner-retain-statep))))
-
-(defthm fn-orh-retain-statep-of-install-ocfg
-  (implies (and (fn-owner-retain-statep state)
-                (fn-lgoc-invariantp oc))
-           (fn-owner-retain-statep (fn-owner-install-ocfg oc state)))
-  :hints (("Goal" :in-theory '(fn-owner-retain-statep
-                               fn-owner-bound-of-install-ocfg
-                               fn-owner-ocfg-of-install-ocfg
-                               fn-owner-retain-carry-of-install-ocfg))))
-
-(defthm fn-orh-retain-statep-of-retain-carry-put
-  (implies (and (fn-owner-retain-statep state)
-                (fn-prc-carryp carry))
-           (fn-owner-retain-statep (fn-owner-retain-carry-put carry state)))
-  :hints (("Goal" :in-theory '(fn-owner-retain-statep
-                               fn-owner-bound-of-retain-carry-put
-                               fn-owner-ocfg-of-retain-carry-put
-                               fn-owner-retain-carry-of-put))))
+(include-book "owner-retain-writer-frame")
 
 (defthm fn-orh-retain-statep-of-install-served-effects
   (implies (fn-owner-retain-statep state)
@@ -101,6 +66,7 @@
            (fn-owner-retain-statep (fn-owner-put-credits l state)))
   :hints (("Goal" :in-theory '(fn-owner-put-credits
                                fn-orh-retain-statep-of-other-global-put))))
+
 
 ; -----------------------------------------------------------------------------
 ; The profile.

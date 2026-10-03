@@ -22028,6 +22028,24 @@
         "fn-nret-observation-expiry-is-uncertain",
         "fn-nret-observation-report-requires-stopped"
       ]
+    },
+    {
+      "id": "PRF-1264",
+      "title": "Actual owner reservation-refusal and known-abort carry the owner invariant and preserve the retention value",
+      "statement": "Proposed host-called boundary fn-owner-refuse-reservation / fn-owner-known-abort in books/owner-post-carried.lisp, called by host/native/owner.lisp through fnn-owner-action: under fn-owner-retain-statep, the complete returned state satisfies the same relation. Exact effect theorems connect each error/word/installed owner to its fn-pout model result and preserve the retention carry unchanged. Tests exercise actual writers on nonempty writer-built reservation/staging fixtures. These statements have not yet been admitted or certified; Raw dispatch annotations are proposed in source under the existing explicitly incomplete A-OWNER-INVARIANT-CARRIED runtime marker; matching book admission and image-world guard/completeness checks remain owed before any execution claim. Private owner-carrier authority migration and history-qualified completion remain open. Local implementation guarantee, no new RFC requirement.",
+      "milestone": "M5",
+      "requirements": [
+        "REP-010",
+        "REP-014"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/owner-post-carried.lisp",
+        "tests/acl2/owner-post-carried-tests.lisp"
+      ],
+      "progress_note": "Source prepared at 041fceb1a. First cached-only startup refused before ACL2 for missing exact dependency artifacts; no proof/admission/certification claim. Physical carrier component separately source-admitted; current globals remain authoritative."
     }
   ]
 }

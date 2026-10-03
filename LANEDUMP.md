@@ -1681,3 +1681,66 @@ citations point at final receipt. Source c922036e8 unchanged by this correction.
 
 ## Source assembly cold cursor push-before-verify (2026-10-03)
 c922036e8+30bd8ab95 source composed clean above current literal JOB-RESULT/mux cleanup; fifth-return exact plan/read and first clock preserved in mux/private legacy feed. Known actual consumer delta: retained pull f2 renderer ignores fifth value; Served/Tools notified to fix forward tagged cursor-read polling before new matching native claim. Source shipping now per Ember; primary full caller/EOF/cleanup review follows, no cert/image claim.
+Resource Exec's warm msgid-linear-exec include initially reused a merely
+valid-looking foreign .cert and ACL2 refused its full-book-name alists.
+Explicit supported install_closure(include_self=True), artifact set
+43b54e261fb03462ff66c8407965a35738f4fcfc2b7d52b0632dd12fb22cf6a3,
+installed87/missing0; the same warm include then passed0.46s. Preparation
+now runs that exact compatible-set acquisition for every repository include,
+including an existing plausible certificate. It deduplicates the same target
+within one command; system includes are untouched. No source/certification
+fallback or source/object/alist relaxation. Five SessionIncludeTests PASS
+0.014s, compile/diff checks PASS; no actual ACL2 or reload launched here.
+
+## Sol tools: distinct opaque macro temporaries
+
+The literal macro expander used one opaque symbol for every non-parameter
+unquote. In the actual observed-mutex template, RELEASE's NIL initializer
+overwrote MUTEX's alias, falsely replacing the generated owner lock with
+?nil. Expansion now gives distinct macro-local symbols stable identities
+within each lexical expansion. Repeated references retain the same identity;
+computed unquotes remain opaque, with no evaluation.
+
+Exact Runtime source52cbaaf623904478d4862c4700c03150e22dd848, three-file
+io/owner/mux syntactic analysis with its actual contracts and no ACL2 reach:
+old expander0.369s reports ?nil->XSYNCER and ?nil->XOUTPUT; repaired
+expander0.393s reports no R5 rows and observes O->XSYNCER/O->XOUTPUT.
+All actual lock edges remain; no baseline or contract change. Four new
+fixtures consume actual observed-mutex/section source and check the owner
+callback, unknown inner lock, real NIL lock and E->O inversion. All43 lock
+checker tests PASS0.527s. No proof, full-tree lock qualification or image
+claim; Integration owns composition with Runtime's declared private locks.
+Existing native undertaking/status-reopen and carry fixture setups now reuse
+`tests.bp_producer.post_articles` on the same immutable default developer
+image: real POST340/240, producer stops, core inspect supplies actual stored
+source bytes before FNWF/BP owns Store. No raw minimal store-post shortcut,
+no independent identity/request semantics or arbitrary grant. Native boundary
+shape check and Python compile pass; actual undertaking/reopen remains pending
+Integration budget/matching image. Groundwork authorized this consumer prep;
+new BP transport deputy owns wider TCPCL/ION continuation, this lane supplies
+actual replay/scenario execution. Existing two-peer application receipt adapter
+remains the release/reopen consumer; historical retention refusal stays filed.
+
+
+## Complete read replies across completion and reopen, 2026-10-03
+
+Normal held success and cancellation/retirement/stale/duplicate fixtures now
+capture complete actual native ARTICLE replies before the schedule and require
+exact bytes during continued service and after a fresh owner opens the same
+store. No Python reconstruction of injection or article semantics; the baseline
+is the native reply. Clean stop is affirmative EXIT.OK. Python compile passes;
+actual native execution remains pending a matching fixture/image selection.
+Existing ad8da41 sol2g image build is immutable and still watched read-only.
+
+
+Owner carrier capability — GPT-6.1-Sol, 2026-10-03
+- Tree codex-owner-carrier-refusal-20261003, source base 041fceb1a. Luna proof sweep remains user-paused.
+- Actual authority plan agreed with Groundwork/History: configured owner + installed flag + retention carry in ONE private fn-owner-st. No shadow copy; globals remain authoritative until atomic caller threading. History owns installed P3 all-event backing and explicit prefix/reload producer.
+- books/owner-carrier and its construction/effects witness SOURCE-ADMITTED (16 book forms + two witness forms). This is physical construction only, not a served POST/certificate/image claim. Session released after verdict.
+- New safe tools/owner_carrier/thread.py writes only a new output directory, requires source hashes + loaded-world signatures, preserves original state return/effects, rejects unknown syntax/dirty input/duplicate definitions. Nine focused Python tests PASS. Program-only loaded-world closure exporter + direct/transitive/read/write fixture admitted; production closure/migration has NOT run. Old destructive redo.sh/run.py not revived.
+- Exact raw source-admission logs + receipts archived/indexed as planning/evidence/owner-carrier-admission-20261003.tar and owner-carrier-source-20261003-v2.json. Initial v1 provenance preserved.
+- NEXT SOURCE PACKET: actual refusal/known-abort bodies and guards extracted byte-identically into books/owner-post-carried; shared frame theorem bytes preserved. Whole relation preservation, exact model-word/owner/carry effects and nonempty-store teeth proposed; no target admission yet. Cached-only startup refused before ACL2 for 25 actual root misses +227 followers; then imports narrowed to avoid recovery/pilot and callback chains. No broad source load/cache weakening/rebuild. Integration schedules one scoped candidate batch when artifacts allow.
+- fn-owner-finish remains counterpart-dispatched: its history-sync correctness needs prefix-of-store or pending reload, then fn-hist-of-storep. That real producer and completion preservation remain owed; no erased premise/raw completion claim.
+
+## Source assembly carrier component/prepared refusal boundaries (2026-10-03)
+4c2c84590 +d172fec2f material composition clean; stale generated current.md omitted, proposed profile/assumption row and owed writers preserved. Physical carrier/tool support source-admitted with existing16+2forms/nine tests; actual unchanged refusal/abort definitions and four unchanged frame theorems move into scoped books. Proposed two raw-with carried annotations use existing incomplete A-OWNER-INVARIANT-CARRIED, not a host guard/wholewriter/native completion claim. Target admission/guard/certification/loaded-world compatibility pending; Integration source flows before verification. Roots owner-carrier/tests plus owner-post-carried/tests,owner-retain-frame/tests and normal owner-carried/interface image world.
