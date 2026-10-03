@@ -69,8 +69,8 @@
   ;; Independent physical observation of this fixture's actual held child.
   (not (sb-thread:thread-alive-p (fnn-cold-worker-thread worker))))
 (defun fnn-mux-service (loop) (fnn-mux-loop-service loop))
-(defun fnn-owner-render-next-quantum (service cid plan class compressedp)
-  (declare (ignore service cid class compressedp))
+(defun fnn-owner-render-next-quantum (service cid plan class compressedp &optional borrowp)
+  (declare (ignore service cid class compressedp borrowp))
   (check (and *fnn-output-grant* (fnn-output-grant-token *fnn-output-grant*))
          "draw exists before actual factory entry")
   (values #(1 2 3) plan nil t :literal-fifth))

@@ -114,6 +114,22 @@
       (assert (<= steps (+ 3 (length text)))))))
 (format t "native_newnews_allocation: direct-line-fill PASS empty/dot/text/4097char at1/2/7/256, positive bounded exact output~%")
 
+(let* ((*fnout-window* 256)
+       (*fnn-output-grant* (%make-fnn-output-grant))
+       (plan (fn-splan-of-effects
+              (list (fn-nnw-meta-effect
+                     (fn-cur-make nil (fn-nnw-stream-render (fn-sl-start "abc") nil)
+                                  nil nil)))))
+       (buffer (fnn-response-render-buffer 256)))
+  (multiple-value-bind (octets rest donep cursorp end)
+      (fnn-owner-render-next plan nil t)
+    (declare (ignore rest donep cursorp))
+    (assert (eq octets (svref buffer 0)))
+    (assert (= (length octets) 256))
+    (assert (= end 5))
+    (assert (equalp (subseq octets 0 end) #(97 98 99 13 10)))))
+(format t "native_newnews_allocation: borrowed-short-window PASS same buffer, exact valid end~%")
+
 ; Matched allocation observation, not a peak-residency/zero-allocation proof.
 ; Both routes start from the identical immutable plan and reuse a pre-sized
 ; private buffer. Fixture text/plan/grant construction is outside the interval.
