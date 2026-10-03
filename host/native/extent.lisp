@@ -392,7 +392,7 @@ FN_NATIVE_EXTENT_CACHE_TEST_OFF=1 (the matched measurement's cache-off arm)."
       ;; later ledger settlement; a persistent executor thread stays alive.
       (fnn-extent-page-observation "physical-return token=~s row=~s" token row)
       (when *fnn-native-observer*
-        (unless (fnn-extent-window-p token)
+        (unless (or (fn-pwz-tokenp token) (fnn-extent-window-p token))
           (fnn-extent-native-observe :return t token))))))
 
 (defun fnn-extent-window-byte (worker token i)
