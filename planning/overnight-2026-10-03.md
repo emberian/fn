@@ -104,6 +104,7 @@ first; Astra composition remains a later option rather than an active claim.
 | Coordinator | this session | System design, priorities, shared contracts, overlap resolution and following every workstream through use |
 | Integration | GPT-6.1-Sol | Sole dev writer; harvest running builds, source/evidence reconciliation, review assembly and candidate qualification |
 | Source assembly helper | GPT-6.1-Sol | Concrete READY batch semantic review and isolated conflict staging for Integration; no independent dev push or global audit |
+| Proof engineering sweep | GPT-6.1-Sol with four GPT-6-Luna helpers | Reproducible proof-corpus coverage and tested A/B proof improvements; coherent source batches follow active owners, unchanged statements and final clean reproduction; no new assurance gate |
 | Runtime coordination | GPT-6.1-Sol | Section/actor generator, lifecycle, committer and queued work, then mux/cold/service conversion and web concurrency |
 | Composition | GPT-6-Astra | HM actions and capability contracts; real runtime linkage, schedule harness, carried read and crash composition; initial implementation as well as review |
 | Served commands | GPT-6.1-Sol | NEWNEWS/OVER/HDR/XPAT and remaining streaming commands, view policy, reclaim-aware navigation, generated command switch |
