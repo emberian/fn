@@ -4923,17 +4923,28 @@ caller does not know."
   "Publication lock descriptor identities with unobserved physical return.
 These records retain evidence; they never authorize retry of a consumed fd.")
 
+(defvar *fnn-publication-lock-roots* nil
+  "Roots of locally owned publication lock descriptors until physical return.")
+
+(defun fnn-publication-close-observation ()
+  (if *fnn-publication-close-debts* :uncertain :closed))
+
 (defun fnn-publication-unlock (fd)
   (when fd
     (when (assoc fd *fnn-publication-close-debts*)
       (fnn-indeterminate "publication lock return remains unobserved"))
-    (handler-case
-        (fnn-unwind-cleanups ()
-          (fnn-flock fd +fnn-lock-un+)
-          (fnn-close fd))
-      (serious-condition (condition)
-        (push (list fd condition) *fnn-publication-close-debts*)
-        (fnn-indeterminate "publication lock physical return unobserved: ~a" condition)))))
+    (let ((root (cdr (assoc fd *fnn-publication-lock-roots*))))
+      ;; Consume custody before issuing return; a descriptor number is never
+      ;; permission to retry after uncertain physical close.
+      (setq *fnn-publication-lock-roots*
+            (remove fd *fnn-publication-lock-roots* :key #'car))
+      (handler-case
+          (fnn-unwind-cleanups ()
+            (fnn-flock fd +fnn-lock-un+)
+            (fnn-close fd))
+        (serious-condition (condition)
+          (push (list fd root condition) *fnn-publication-close-debts*)
+          (fnn-indeterminate "publication lock physical return unobserved: ~a" condition))))))
 
 (defun fnn-publication-lock (root-path)
   "Where rename(2) has no no-replace flag (OpenBSD), the publication program
@@ -4953,6 +4964,7 @@ on Linux, where renameat2(RENAME_NOREPLACE) refuses any existing ROOT."
     (fnn-unwind-cleanups
         ((setq fd (fnn-open (fnn-concat root-path ".lock")
                             (logior sb-posix:o-rdwr sb-posix:o-creat +fnn-o-nofollow+) #o600))
+         (push (cons fd root-path) *fnn-publication-lock-roots*)
          (unless (fnn-regular-p (fnn-fstat fd))
            (fnn-fault "refusing non-regular publication lock ~a.lock" root-path))
          (handler-case
