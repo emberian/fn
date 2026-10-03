@@ -594,9 +594,25 @@ rate reaches the next read)."
   "A private render buffer that holds N octets."
   (fn-octets$c-reserve n (create-fn-octets$c)))
 
+(defvar *fnn-output-grant* nil)
+
+(defun fnn-response-render-buffer (n)
+  "Retain one private render buffer in the response's physical custody.
+The caller must finish consuming the previous borrowed output before calling
+the renderer again. The mux enforces this by draining OUT before advancing
+PLAN. Callers without a response grant retain the fresh-output convention."
+  (if *fnn-output-grant*
+      (setf (fnn-output-grant-render-buffer *fnn-output-grant*)
+            (let ((buffer (fnn-output-grant-render-buffer *fnn-output-grant*)))
+              (if buffer
+                  (fn-octets$c-reserve n buffer)
+                (fnn-make-render-buffer n))))
+    (fnn-make-render-buffer n)))
+
 (defun fnn-owner-render-next (plan &optional compressedp)
   "Render the next window of PLAN: (values OCTETS PLAN-REST DONEP CURSORP),
-OCTETS a fresh vector (empty only when nothing remained, or at a cursor),
+OCTETS borrowed until the next render when a response grant owns the buffer,
+otherwise fresh (empty only when nothing remained, or at a cursor),
 DONEP when nothing remains after it.  COMPRESSEDP: the connection has a
 COMPRESS layer, and the window is ACL2's flush-schedule window
 (books/nntp-compress.lisp fn-zc-render-window-size), each one sync flush.
@@ -614,7 +630,7 @@ range), which the caller runs under the owner mutex
     (unless (and (integerp size) (>= size 0))
       (fnn-fault "owner returned a malformed render window size"))
     (destructuring-bind (status rest buf)
-        (fnn-call 'fn-splan-window plan size (fnn-make-render-buffer size))
+        (fnn-call 'fn-splan-window plan size (fnn-response-render-buffer size))
       ;; :cursor (lane join-f2-13): the window ended in front of a cursor
       ;; effect, its octets written; the size above never reaches one (it
       ;; is the octets of the effect the window starts in), so the status
@@ -8017,7 +8033,6 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                    fault nil :inet nil connection-fault-operation)))
 
 (fnn-register-developer-verb "owner" #'fnn-command-owner)
-
 
 
 
