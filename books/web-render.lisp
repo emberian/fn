@@ -750,6 +750,15 @@
 ; A group row: (NAME COUNT READ-ONLY-P), NAME and COUNT octets.
 ; Executes by a loop (lane depth-debt, PRF-919): its depth was the length of
 ; operator data (D27: no fixed cap), one control-stack frame per element.
+(defun fn-wr-group-row-segments (name-text name-url count readonly rest)
+  (declare (xargs :guard t))
+  (append (list (fn-wm "<tr><td class='num'>") (fn-wr-txt count)
+                (fn-wm "</td><td><a class='title' href='/g?name="))
+          (fn-wrq-true name-url) (list (fn-wm "'>")) (fn-wrq-true name-text)
+          (list (fn-wm "</a>"))
+          (if readonly (list (fn-wm " <span class='dim'>(read only)</span>")) nil)
+          (list (fn-wm "</td></tr>")) (fn-wrq-true rest)))
+
 (defun fn-wr-group-rows-step (x rest)
   (declare (xargs :guard t))
   (let ((row x))
@@ -805,13 +814,17 @@
                               (union-theories (theory 'minimal-theory)
                                               (executable-counterpart-theory :here))))))
 
-(defun fn-wr-groups-main (rows)
+(defun fn-wr-groups-main-segments (row-segs)
   (declare (xargs :guard t))
-  (if (consp rows)
+  (if (consp row-segs)
       (append (list (fn-wm "<h1>Groups</h1><table class='index'><thead><tr><th class='num'>Arts</th><th>Group</th></tr></thead><tbody>"))
-              (fn-wr-group-rows rows)
+              (fn-wrq-true row-segs)
               (list (fn-wm "</tbody></table>")))
     (list (fn-wm "<h1>Groups</h1><p class='dim'>There are no groups you can read here yet.</p>"))))
+
+(defun fn-wr-groups-main (rows)
+  (declare (xargs :guard t))
+  (fn-wr-groups-main-segments (fn-wr-group-rows rows)))
 
 ; An overview row: (NUMBER SUBJECT FROM DATE), NUMBER octets, the others
 ; spans of fn-web-in (the OVER reply, books/web-session.lisp).

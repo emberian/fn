@@ -8894,6 +8894,29 @@
         "tests/native_web_over_stream_raw.lisp"
       ],
       "note": "Actual raw consumer passes; program refinement, qualified image and Web repeated-read tariff pending."
+    },
+    {
+      "id": "SCN-1115",
+      "title": "Dynamic LIST source cursor produces exact empty one and1003-group HTML with fixed Web metadata",
+      "milestone": "M6",
+      "status": "specified",
+      "requirements": [
+        "WEB-006"
+      ],
+      "steps": [
+        "Scan captured LIST with1/7/4096 source partitions for0/1/1003 groups.",
+        "Count/emit dynamic row segments and compare exact HTML with fn-wss-active-rows/fn-wr-groups-main/fn-wr-seq.",
+        "Run actual native shared scanner/replay/page/partial-writer consumer, including cold replay for nonempty pages."
+      ],
+      "expected": [
+        "Exact group counts, names, URLs, readonly markers and empty-table page.",
+        "Scanner stays nine scalar/prefix entries and initial page segment spine remains fixed; no retained group-row list.",
+        "IN<=4096, HTML OUT empty, response pin survives count/replay/write and releases only after terminal drain."
+      ],
+      "evidence": [
+        "tests/native_web_list_stream_raw.lisp"
+      ],
+      "note": "Actual raw source consumer passes. Original NNTP LIST producer still materializes its captured reply; source programs/arithmetic profile/refinement and matching image/funding are pending."
     }
   ]
 }

@@ -21,6 +21,7 @@
    fn-wss-span-has fn-wss-span-slice fn-wss-spanp fn-wss-article-view
    *fn-wss-window* *fn-wss-msg-unreachable* fn-wss-f-stage fn-wss-f-route fn-wss-f-ctx fn-wss-f-data fn-wss-c-session fn-wss-c-request fn-wss-c-theme
    fn-wss-s-login fn-wss-s-csrf fn-wss-cfg-site fn-wss-bodyp))
+(load-page-forms "books/web-list-stream.lisp")
 (load-page-forms "books/web-article-stream.lisp")
 (load-page-forms "books/web-reply-stream.lisp")
 (load-page-forms "host/web-host.lisp"
@@ -104,7 +105,7 @@
             (unless (fnn-web-conn-closedp conn) (assert (zerop pins-released))))
           (assert (fnn-web-conn-closedp conn))
           (assert (= pins-released 1))
-          (assert cold-issued) (assert (< replay-rounds max-replay-rounds))
+          (when (> replay-rounds 0) (assert cold-issued)) (assert (< replay-rounds max-replay-rounds))
           (assert (= observed-length (length reference)))
           (assert (equal (wire-for id) (append '(72 69 65 68) reference))))
         (setf (symbol-function 'fnn-core) saved-core (symbol-function 'fnn-call) saved-call

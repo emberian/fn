@@ -22208,7 +22208,7 @@
         "tests/native_web_article_stream_raw.lisp",
         "books/web-reply-stream.lisp"
       ],
-      "progress_note": "Connected source program boundary; exact raw native consumer, bounded input and final pin witnesses pass. Admission/refinement, matching image and qualified Web allocation/repeated-read tariff remain pending. LIST/OVER full collectors remain."
+      "progress_note": "Connected shared Web stream/replay source and exact raw native consumers pass. Admission/refinement and matching image remain pending. Original NNTP ARTICLE payload/block, LIST complete reply and some OVER NOV/projection replies are still materialized before capture; Web removed its additional full IN/row copies, not those producers. Qualified complete Web/NNTP/repeated-read tariff remains open."
     },
     {
       "id": "PRF-1284",
@@ -22231,7 +22231,31 @@
         "host/native/web-host.lisp",
         "tests/native_web_over_stream_raw.lisp"
       ],
-      "progress_note": "Connected shared native replay provider and exact100-row/long-field raw consumer pass; matching admission/refinement/image and qualified repeated-read tariff pending. LIST collector remains."
+      "progress_note": "Connected shared Web stream/replay source and exact raw native consumers pass. Admission/refinement and matching image remain pending. Original NNTP ARTICLE payload/block, LIST complete reply and some OVER NOV/projection replies are still materialized before capture; Web removed its additional full IN/row copies, not those producers. Qualified complete Web/NNTP/repeated-read tariff remains open."
+    },
+    {
+      "id": "PRF-1285",
+      "title": "Dynamic LIST row cursor gives exact groups HTML with constant retained scan and row-plan metadata",
+      "statement": "Actual subjects fn-wls-scan/fn-wgl-feed/fn-wpc-window-drive through fn-web-host-stream-scan/page and fn-web-host-window-page-step consumed by native render/replay/page. On captured valid LIST ACTIVE source, retain only status/block offsets and bounded line-prefix metadata, then scan one row during count/emit to generate one row segment plan. No full Web NNTP input or group-row list is retained, regardless of supported group count. Establish equality to fn-wss-active-rows/fn-wr-groups-main/fn-wr-seq including empty table, counts, readonly marker and name text/URL escaping. Numeric accumulators/printing must be qualified against the supported number codec/profile. Original NNTP producer materialization, physical read custody and complete working/capture funding are separate uncompleted frontiers.",
+      "milestone": "M6",
+      "requirements": [
+        "WEB-006"
+      ],
+      "depends_on": [
+        "PRF-1283",
+        "PRF-338"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/web-list-stream.lisp",
+        "books/web-reply-stream.lisp",
+        "books/web-article-stream.lisp",
+        "books/web-render.lisp",
+        "host/native/web-host.lisp",
+        "tests/native_web_list_stream_raw.lisp"
+      ],
+      "progress_note": "Actual source programs and connected native empty/one/1003-group exact reference, fixed scanner/plan, IN-window and final-pin raw witnesses pass. Guard/refinement/profile arithmetic qualification and matching image pending; original LIST reply is still materialized by NNTP before this consumer."
     }
   ]
 }

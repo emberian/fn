@@ -173,22 +173,10 @@ other methods on this path are refused. This readiness policy is fn's,
 not a requirement imposed by HTTP.
 
 
-Native ARTICLE pages now scan and replay a captured NNTP plan in bounded source
-windows instead of retaining the full article in the HTTP input buffer. Header
-spans and body offsets are virtual; both HTML passes retain the final response
-pin through socket drain. See WEB-006/SCN-1113 and planned PRF-1283. This is a
-source program boundary with raw reference witnesses; qualified image, logical
-refinement and Web allocation/repeated-read funding remain open. LIST/OVER
-collectors are the next remaining full-reply consumers.
-
-
-Web OVER follow-on (PRF-1284 planned, SCN-1114): the actual native shared
-stream/replay provider scans the existing100-number OVER request into at most
-100 rows of four virtual spans. Number/subject/From/date text is read from the
-same capture for count/emit, in the reference's newest-first order. Long fields
-are not copied into the row metadata. A101st generated row fails the invariant
-instead of returning truncated data. Raw exact-reference, generic native
-cold/count/partial-write/IN-bound/final-pin witnesses pass. Source programs still
-await guard/refinement and matching image; repeated backward seeks and physical
-reads require qualified Web funding. LIST ACTIVE remains the full collector to
-remove next; no blanket output grant or complete fairness/warranty claim.
+Native ARTICLE/OVER/LIST pages now scan and replay captured NNTP plans through
+bounded Web windows, retaining article/overview virtual spans or one dynamic
+LIST row plan. Both HTML passes retain the response pin through final socket
+drain. WEB-006 and SCN-1113/1114/1115 distinguish this extra-collector removal
+from original NNTP producer materialization, which remains the complete tariff
+frontier. Programs PRF-1283/1284/1285 still await guard/refinement and matching
+image evidence; no universal allocation or full event fairness claim.

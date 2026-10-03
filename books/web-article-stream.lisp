@@ -2,7 +2,7 @@
 ; Program definitions: the reference comparison is executable evidence, not
 ; a guard/refinement claim. Offsets name the immutable virtual reply.
 (in-package "ACL2")
-(include-book "web-session")
+(include-book "web-list-stream")
 (include-book "web-page-cursor")
 
 (defun fn-was-get (key x) (declare (xargs :mode :program)) (cdr (assoc-eq key x)))
@@ -95,7 +95,7 @@
          (e (nfix (fn-wrq-nth 4 cursor))) (seg (car (fn-wrq-nth 0 cursor)))
          (wk (and (not kind) (consp seg) (equal (car seg) :w)))
          (s (if wk (nfix (cadr seg)) s)) (e (if wk (nfix (cddr seg)) e))
-         (spanp (or wk (member kind '(:s :d :v-u))))
+         (spanp (or wk (member kind '(:s :d :v-u :v-list))))
          (need-end (if (and wk (<= (- e s) *fn-w47-max*)) e
                      (min e (+ s 4096))))
          (required-end (if (and wk (<= (- e s) *fn-w47-max*)) e
@@ -104,6 +104,16 @@
     (if (and spanp (< s e) (not (consp (fn-wrq-nth 6 cursor)))
              (or (< s (nfix base)) (< limit required-end)))
         (mv nil nil cursor nil (cons s need-end))
+      (if (equal kind :v-list)
+          (if (< s e)
+              (mv-let (row parser) (fn-wgl-feed (fn-octets-get (- s base) fn-web-in) s
+                                              (or (fn-wrq-nth 2 cursor) (fn-wgl-start s)))
+                (mv nil nil
+                    (if row
+                        (fn-wpc-cursor (append (fn-wgl-segs row)
+                          (cons (cons :v-list (cons (1+ s) e)) (car cursor))))
+                      (list (car cursor) kind parser (1+ s) e t nil)) nil nil))
+            (mv nil nil (fn-wpc-cursor (car cursor)) nil nil))
       (if (and (equal kind :v-u) (consp (fn-wrq-nth 6 cursor)))
           (mv t (car (fn-wrq-nth 6 cursor))
               (list (car cursor) kind nil s e t (cdr (fn-wrq-nth 6 cursor))) nil nil)
@@ -119,7 +129,7 @@
                         (if (and wk (<= (- e s) *fn-w47-max*))
                             (list (cons (cons :w (cons (- s base) (- e base))) (cdr (car cursor)))
                                   nil nil 0 0 t nil) cursor))))
-          (if (and (not kind) (consp seg) (member (car seg) '(:s :d :v-u)))
+          (if (and (not kind) (consp seg) (member (car seg) '(:s :d :v-u :v-list)))
               (mv nil nil (list (cdr (car cursor)) (car seg) nil (cadr seg) (cddr seg) t nil) nil nil)
             (if (and wk (> (- e s) *fn-w47-max*))
                 (mv nil nil (list (cdr (car cursor)) :s nil s e t nil) nil nil)
@@ -128,7 +138,7 @@
                     (if (member (fn-wrq-nth 1 next) '(:s :d))
                         (list (car next) (cadr next) nil (+ base (fn-wrq-nth 3 next))
                               (+ base (fn-wrq-nth 4 next)) (fn-wrq-nth 5 next) (fn-wrq-nth 6 next)) next)
-                    done nil))))))))))
+                    done nil)))))))))))
 (defun fn-wpc-window-drive (fuel cursor base count emitp rev fn-web-in)
   (declare (xargs :mode :program :stobjs fn-web-in))
   (if (zp fuel) (mv (reverse rev) cursor count nil nil)
