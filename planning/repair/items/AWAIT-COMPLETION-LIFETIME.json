@@ -1,5 +1,5 @@
 {
- "acceptance": "Real wait survives 1-second timeout before delayed producer; actual expired caller reports uncertain, late completion leaves both tables empty, physical grant untouched; callback-already-selected and raw wait escape; actual mux-finish abandons callback without settling physical custody.",
+ "acceptance": "Real wait survives 1-second timeout before delayed producer; actual expired caller reports uncertain, late completion leaves both tables empty, physical grant untouched; callback-already-selected and raw wait escape; actual mux-finish abandons callback without settling physical custody. Actual mux callback selected before finish cannot resurrect output: take-arrived discards done connection; closed loop refuses enqueue.",
  "category": "runtime-correctness",
  "detail": "Actual fnn-owner-await-logical loops after SBCL condition-wait timeout without reacquiring its mutex; >1 second wait faults. It also removes a timed-out awaiting registration, so late fnn-owner-deliver mistakes the abandoned CID for not-yet-registered and retains completion in DONE forever. Actual mux-finish leaves its callback route retained until late delivery.",
  "disposition": "LOCAL",
@@ -8,12 +8,13 @@
  "id": "AWAIT-COMPLETION-LIFETIME",
  "note": "Both normal wait and leak baseline assertions reproduced over deployed bodies. Repair and connected callback/mux schedules under test; Integration owns image qualification.",
  "notes": [
-  "10-03 04:43 Same-head harness baseline5d2ef8c85 fails timed mutex and late-DONE exact assertions; repaired real thread/mailbox/callback/raw unwind/actual mux-finish schedules pass. Archive 922b8a59da41b8c8bdab8307e96861c70e98dcdc0c21fe0640ee3bbd12183f5a at planning/evidence/astra-await-completion-lifetime-20261003.json. HST-031/spec/claimed SCN-1088 updated; exact harness stub/reach and host-read/ID/diff checks pass. No book changed; saved-image acceptance remains Integration."
+  "10-03 04:43 Same-head harness baseline5d2ef8c85 fails timed mutex and late-DONE exact assertions; repaired real thread/mailbox/callback/raw unwind/actual mux-finish schedules pass. Archive 922b8a59da41b8c8bdab8307e96861c70e98dcdc0c21fe0640ee3bbd12183f5a at planning/evidence/astra-await-completion-lifetime-20261003.json. HST-031/spec/claimed SCN-1088 updated; exact harness stub/reach and host-read/ID/diff checks pass. No book changed; saved-image acceptance remains Integration.",
+  "10-03 04:51 Added actual mux-await callback, mux-guarded macro and take-arrived in two deterministic selected-callback schedules (open/closed loop), both pass; full await script and exact derived-stub/reach match pass. Evidence planning/evidence/astra-await-mux-followthrough-20261003.json. No further runtime change."
  ],
  "owner": "codex-astra-source-trace",
  "severity": "high",
  "source": "planning/overnight-2026-10-03.md",
  "state": "ready",
  "title": "Logical wait loses mutex after timed wake and abandoned replies accumulate in DONE",
- "updated": "2026-10-03T08:43:52Z"
+ "updated": "2026-10-03T08:51:49Z"
 }

@@ -667,3 +667,19 @@ No books changed and no new image or deployment claim. Runtime owns wider mux
 cleanup; Groundwork owns retention reservation. Matching saved-image acceptance
 belongs to Integration. Pre-maker exceptional allocation and broader typed output
 custody remain outside these checked branches, not claimed repaired.
+
+Await follow-through on source24b7a84d1: actual mux-await callback selected
+before finish now exercised in both open/closed-loop schedules. Open loop queues
+the late result; actual take-arrived discards its done connection. Closed loop
+refuses enqueue. Both leave no plan/output/mailbox resurrection. Same script
+passes; exact derived stub/reach declarations match. Archive
+planning/evidence/astra-await-mux-followthrough-20261003.json.
+
+Connected leads rejected after leaf tracing: other timed condition-wait sites
+either exit the protected block on timeout or explicitly reacquire; no repeated
+mutex defect found. FNFD append close can mask its original condition, but actual
+fnn-close signals fnn-os-error and job-word preserves :uncertain, so this does
+not establish a syncer outcome downgrade. Cold cancellation updates the issued
+token under extent lock; the child only fills its private slot, and owner
+settlement decides cache publication. No child path reinstalls a mux plan.
+Broader finish cleanup debt remains Runtime-owned; no repair claim here.

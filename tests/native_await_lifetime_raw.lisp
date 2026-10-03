@@ -15,6 +15,9 @@
           name source)
   (finish-output *error-output*)
   (error 'harness-stub-reached :name name :source source))
+(defun fnn-mux-await-done (loop conn completion)
+  (declare (ignorable loop conn completion))
+  (harness-stub-reached 'fnn-mux-await-done "host/native/mux.lisp"))
 (defun fnn-mux-handshake-release (loop conn)
   (declare (ignorable loop conn))
   (harness-stub-reached 'fnn-mux-handshake-release "host/native/mux.lisp"))
@@ -126,3 +129,53 @@
               (zerop (hash-table-count (fnn-owner-service-done s))))
          "finished mux connection drops eventual completion without retained callback"))
 (format t "native_await_lifetime_raw: PASS cancellation/callback/nonlocal/mux schedules~%")
+
+;; Exercise the actual mux callback after DELIVER has detached it, not only
+;; the mailbox marker case above. Finish cannot retract an already selected
+;; callback; the loop's terminal phase/closed checks must prevent publication.
+(load-deployed-forms "host/native/mux.lisp"
+ '((defmacro fnn-mux-guarded) (defun fnn-mux-await)
+   (defun fnn-mux-take-arrived)))
+(dolist (closed '(nil t))
+  (let* ((s (%make-fnn-owner-service :clients '(:late-socket)))
+         (loop (%make-fnn-mux-loop :service s))
+         (conn (%make-fnn-mux-conn :cid 96 :opened-cid 96 :phase :serving
+                                  :socket :late-socket))
+         (entered (sb-thread:make-semaphore :count 0))
+         (release (sb-thread:make-semaphore :count 0))
+         (register (symbol-function 'fnn-owner-await-register)))
+    ;; Pause immediately before the deployed callback, after the actual
+    ;; delivery has removed its mailbox route and released COMMIT-LOCK.
+    (unwind-protect
+         (progn
+           (setf (symbol-function 'fnn-owner-await-register)
+                 (lambda (service cid callback &optional socket)
+                   (funcall register service cid
+                            (lambda (completion)
+                              (sb-thread:signal-semaphore entered)
+                              (wait-label release)
+                              (funcall callback completion)) socket)))
+           (fnn-mux-await loop conn :step :redeem nil))
+      (setf (symbol-function 'fnn-owner-await-register) register))
+    (let ((producer (sb-thread:make-thread
+                     (lambda () (fnn-owner-deliver s 96 :completed)))))
+      (wait-label entered)
+      (fnn-mux-finish loop conn)
+      (when closed
+        (sb-thread:with-mutex ((fnn-mux-loop-lock loop))
+          (setf (fnn-mux-loop-closed loop) t)))
+      (sb-thread:signal-semaphore release)
+      (sb-thread:join-thread producer)
+      (check (= (length (fnn-mux-loop-arrived loop)) (if closed 0 1))
+             "actual callback observes loop closure; open loop retains late arrival")
+      ;; A mistaken call of AWAIT-DONE hits its rejecting derived stub.
+      (fnn-mux-take-arrived loop)
+      (check (and (eq (fnn-mux-conn-phase conn) :done)
+                  (null (fnn-mux-conn-await conn))
+                  (null (fnn-mux-conn-plan conn))
+                  (null (fnn-mux-conn-out conn))
+                  (null (fnn-mux-loop-arrived loop))
+                  (zerop (hash-table-count (fnn-owner-service-awaiting s)))
+                  (zerop (hash-table-count (fnn-owner-service-done s))))
+             "selected mux callback after finish cannot resurrect reply publication"))))
+(format t "native_await_lifetime_raw: PASS actual mux callback/finish/closed-loop races~%")
