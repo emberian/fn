@@ -1762,3 +1762,14 @@ current coordination; focused actual pull fixture follows separately.
 No proof/image or actual peer scenario claim.
 ## Source assembly immediate HTTP reactor (2026-10-03)
 934b416cb composed with cold fifth return; actual io leaf collision with retained pull FD/DATA/OFFSET/END fnn-socket-write-now resolved by renaming new HTTP/NNTP FD/CHANNEL/DATA/OFFSET leaf fnn-transport-write-now plus two callers. Six missing program dispatcher declarations added for actual HTTP wrappers. Source ships before verification; primary cancellation/session lease/cold lifetime and actual changed constructor/leaf fixture checks follow, matching nativeWeb/LogicalFeed pending. Full reply/HTML materialization/funding still open.
+
+The focused cursor fixture loads the actual whole pull adapter and records
+only its owner I/O leaves. It checks repeated cold misses with the exact
+plan and first clock, ACL2 WAIT without duplicate render, readiness returning
+to render rather than input, ordered complete output, and both deadline
+refusal and stopping core fault retaining the read until all-release cleanup.
+The actual named I/O-refusal condition is loaded from io.lisp. Cursor WAIT
+scheduling is restricted to this new tag, preserving the existing input
+continuation's poll semantics. All six peer-round source tests PASS2.508s
+(including actual kernel trickling/fairness and prior all-release fault test).
+No raw leaf fixture substitutes for matching saved-image peer composition.
