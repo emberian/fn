@@ -31,10 +31,11 @@ that their recorded state is current at every later revision.
   source and evidence when closing it. Source, certification, executable-image
   checks and deployment remain separate coordinates; a passing prototype or
   the first consumer does not complete a family.
-- Use one primary correctness reviewer and one assembler for overlapping code.
-  Warm admission and focused fixtures precede batched certification where
-  required. Reports follow the engineering work; this queue adds no gate,
-  mandatory benchmark, repeated global check or image run per slice.
+- Push coherent source to public `origin/dev` promptly, before verification, as
+  ember explicitly directed on 2026-10-03. One assembler composes overlapping
+  code as needed; review, focused checks, certification and reports follow
+  asynchronously. Fix forward and retain pending proof/image status. This queue
+  adds no review, report, certification or image gate before source push.
 - Keep completed slices here with their receipts; update the remaining work in
   place. Split a slice when it has independently useful consumers. The list is
   an initial coverage map, not a claim that all remaining defects are enumerated.
@@ -46,7 +47,7 @@ that their recorded state is current at every later revision.
 | [Safe completion and actor rollout](#safe-completion-and-actor-rollout) | Active | Runtime + Astra source tracer; Groundwork coordinates | Escapes preserve actual outcomes, fence the service when required, and settle custody through the real consumer |
 | [Output allocation and funding](#output-allocation-and-funding) | Active | Foundations + Served | Actual bounded serializer/selector allocation is funded before creation |
 | [Paged catalog in the service](#paged-catalog-in-the-service) | Active, execution dependency | Groundwork + paged-store helper; Integration schedules | Existing paged attachment serves POST/read/navigation/withdrawal/reopen |
-| [Reclaim and physical release](#reclaim-and-physical-release) | Next; underlying work active | Groundwork, then a named storage implementer | Remove observed whole-history-copy credit obstruction and release resources safely |
+| [Reclaim and physical release](#reclaim-and-physical-release) | Active bounded builder and publication work | History + Astra; Groundwork coordinates | Remove observed whole-history-copy credit obstruction and release resources safely |
 | [Fair feed and pull rounds](#fair-feed-and-pull-rounds) | Active repairs; broader continuation next | Tools/transport + Runtime | Credential fixes and phase outcomes compose with bounded rounds and queue progress |
 | [Runtime/model correspondence](#runtimemodel-correspondence) | Active | Groundwork + Runtime + Empirical | Real ordered lock/pin/I/O labels drive the same model transitions |
 
@@ -186,9 +187,9 @@ Anchors: [STORE-PAGES](planning/repair/items/STORE-PAGES.json),
 
 ### Page-backed history and node roots
 
-**Queued — Groundwork coordinates; implementation owner to dispatch.** Extend
+**Active — History implements; Groundwork coordinates representation, Astra owns publication safety.** Extend
 the existing page representation to history and node roots, with actual open,
-tail replay, checkpoint and retained-view consumers. Keep progress and
+tail replay, checkpoint and retained-view consumers. The first connected packet replaces the three publication callers’ whole suffix construction with a bounded append/flush builder; it does not yet establish effective reclaim. Keep progress and
 allocation bounded per step without truncating admitted data.
 
 Done: supported store growth does not force whole-history materialization on
@@ -199,7 +200,7 @@ where interfaces are independent. Anchors: [STORE-PAGES](planning/repair/items/S
 
 ### Reclaim and physical release
 
-**Active investigation / next implementation — Groundwork owns follow-through.**
+**Active — History owns native bounded history/root and reclaim consumers; Astra owns publication/read-back/swap/reopen safety. Groundwork coordinates their representation and custody contract.**
 Replace the observed whole-history-copy allocation with a bounded captured
 page/history path, using real funding. Compose retention roots, holder/name
 counts, caches, reader views, pending/fenced work and durable BP obligations.
@@ -215,8 +216,7 @@ Anchors: [X04](planning/repair/items/X04.json), [S038](planning/repair/items/S03
 
 ### Checkpoint, recovery and bounded store utilities
 
-**Active publication/read-back batch — Astra; Groundwork coordinates storage.
-Other bounded utility batches remain queued.**
+**Active — Astra owns staged history-image readback (S045); Groundwork coordinates storage.**
 Group the existing repairs by actual log/checkpoint/import/journal path:
 publication/read-back before dropping covered data, interrupted repair recovery,
 txid/lineage preservation, bounded header/tail processing, and descriptor lifetime.
@@ -270,7 +270,7 @@ tombstones are never transported as payload. Anchors:
 
 ### Bounded BP/TCPCL scheduling and reassembly
 
-**Queued — Tools/transport coordinates; implementation batch to dispatch.**
+**Active — BP transport owns continuing TCPCL sessions/reassembly; Tools owns fair pull/catch-up rounds.**
 Make session service, reassembly and forwarding genuinely resumable. Complete
 ACL2-owned budget parsing and outcome decisions; retain custody correctly on
 both inbound and outbound sessions.
@@ -284,7 +284,7 @@ Anchors: [S006](planning/repair/items/S006.json), [S025](planning/repair/items/S
 
 ### ION and external transport outcomes
 
-**Queued — Tools/transport coordinates; implementation owner to dispatch.**
+**Active — BP transport owns actual ION route/lifetime/outcome continuation; Empirical prepares matching native receipt consumers.**
 Finish explicit-route submission, representable lifetime validation and durable
 observation binding using the existing ION integration. Preserve refusal before
 attempt, uncertain attempted work and acceptance through reopen.
@@ -297,8 +297,7 @@ durability. Anchors: [X10A](planning/repair/items/X10A.json),
 
 ### Authentication, TLS, access and reconfiguration
 
-**Queued family completion — Tools/transport and Runtime coordinate;
-individual repairs may already be underway.** Complete authentication throttling,
+**Active — Access owns authentication/TLS/access/reconfiguration, coordinating shared lifecycle with Runtime.** Complete authentication throttling,
 TLS identity transitions, credential/secret publication cleanup, reader access
 for peer roles, and resource charges around accepted/refused reconfiguration.
 
@@ -312,7 +311,7 @@ update charges and retained historical context consistently. Anchors:
 
 ### Concurrent web service
 
-**Queued — Runtime owns the direction; dedicated slice to dispatch.** Connect
+**Active — Web owns concurrent service through Runtime actor/submission and Foundations output contracts.** Connect
 the web face to the same actor, submission, output and failure machinery rather
 than inline blocking service. Preserve session cleanup and distinguish store
 faults, uncertainty, refusal and disappearance.
@@ -326,8 +325,7 @@ close the correct scope. Anchors: [S003](planning/repair/items/S003.json),
 
 ### Operator commands and trustworthy diagnostics
 
-**Active S012 probe/selector batch — strategic coordinator in
-`codex-operator-boundaries`; Tools coordinates later operator batches.** Finish
+**Active — Operator owns bounded retire/drain, diagnostic classification and ACL2 initialization compatibility. S012 direct probe/selector source is integrated; its saved-image boundary remains a selected check.** Finish
 bounded retire/drain, accurate heap/profile/startup diagnostics, safe fixture
 separation, command outcome classes and interrupted administrative operations.
 Explain retained resources and pending obligations using real state.

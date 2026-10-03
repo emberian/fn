@@ -390,3 +390,4 @@
 (include-book "bp-node-host-machine")
 (include-book "bp-evidence-host-names")
 (include-book "definterface")
+(include-book "resource-vector-exec")

@@ -2233,7 +2233,9 @@
         "books/store-checkpoint-codec.lisp",
         "books/byte-store-state-checkpoint-program.lisp",
         "tests/test_native_state_checkpoint.py",
-        "planning/evidence/bounds-p3-2026-09-25.md"
+        "planning/evidence/bounds-p3-2026-09-25.md",
+        "tests/test_native_checkpoint_image_readback.py",
+        "tests/native_checkpoint_image_readback_raw.lisp"
       ],
       "implementation_note": "The checkpoint holds the record list and every replay fold's accumulator (exact state, removes nothing, so D13 is not a precondition). fn-sco-select serves it only when its segment chain verifies, it covers no more records than are committed, and the suffix is at most the profile's max-open-suffix K; otherwise open=full-replay with the reason (absent, corrupt, ahead-of-history, suffix-exceeds-k). The owner's serve path (fnn-owner-install) still replays in full."
     },
@@ -2899,7 +2901,8 @@
         "books/store-log-reclaim.lisp",
         "tests/test_native_log_compaction.py",
         "books/reclaim-instant.lisp",
-        "tests/test_native_replay_determinism.py"
+        "tests/test_native_replay_determinism.py",
+        "tests/test_native_reclaim_capture_raw.sh"
       ],
       "implementation_note": "Lane flip-cleanup (2026-09-27): the reclaiming pack's decision (fn-rclp-decide, PRF-119's pack keystones, PRF-279's streamed decision) was deleted with the pack layer. `store reclaim` is fn-lgr-decide-stream over the fold of fn-rclp-event per record (host/native/checkpoint.lisp fnn-log-reclaim-steps): the rewritten history's state checkpoint with the log rotated, then the drop (PRF-271); the rewrite's theorems are PRF-119's. Before: `operator CONFIG store reclaim [--dry-run]` and `operator CONFIG retention set RULE`. The decision is fn-rclp-decide; the program drops the derived state checkpoint, publishes the reclaiming generation, selects it and retires the older one, reusing the pack publication, selection and retirement cuts and adding five reclaim-* cuts. Lane reclaim-lifecycle-2: the maintenance reservation (PKT-169) is STO-019/PRF-129; a reclaimed article's retention charge falls to the one permanent history unit. Not implemented: a per-article release verb, BP/feed holders, chained packs. Lane log-leftovers (2026-09-27, PKT-857): the reclaim's instant is recorded before the rewrite as the configuration row `retention-reclaim-at` (PRF-327), and `store reclaim --recorded` reclaims at the recorded instant, so a copy of the pre-reclaim store given that record reproduces the reclaim (tests/test_native_replay_determinism.py test f). No store-format change."
     },
@@ -3925,9 +3928,11 @@
         "books/nntp-responses.lisp",
         "tests/acl2/nntp-help-tests.lisp",
         "tests/acl2/nntp-legacy-tests.lisp",
-        "planning/evidence/reader-clients-2026-09-26.md"
+        "planning/evidence/reader-clients-2026-09-26.md",
+        "books/protocol-served-table.lisp",
+        "tests/acl2/protocol-served-tests.lisp"
       ],
-      "implementation_note": "RFC 3977 section 7.2 requires HELP and leaves its text free (the RFC requirement); fn guarantees the list is exact: every keyword fn-auth-step-pinned serves is listed, an unlisted keyword is 500 (a stronger fn guarantee, PRF-194). The six-line grouping is local policy. Gap inventory R4 (2026-09-26): HELP had omitted AUTHINFO, STARTTLS, XREDEEM and the transit verbs."
+      "implementation_note": "RFC 3977 section 7.2 requires HELP and leaves its text free (the RFC requirement); fn guarantees the list is exact: every keyword fn-auth-step-pinned serves is listed, an unlisted keyword is 500 (a stronger fn guarantee, PRF-194). The six-line grouping is local policy. Gap inventory R4 (2026-09-26): HELP had omitted AUTHINFO, STARTTLS, XREDEEM and the transit verbs. DC02 2026-10-03: all sixteen archive rows have complete generated forms and fn-scr-command consumes their dispatcher; HDR/XHDR literal boundary and both-route reply witnesses are SCN-1093. Current pinned behavior is preserved, with completed-view and cold streaming debts unchanged."
     },
     {
       "id": "NNT-039",
@@ -4268,7 +4273,8 @@
         "tests/test_native_reader_freshness.py",
         "books/protocol-table.lisp",
         "books/protocol-served.lisp",
-        "tests/acl2/protocol-served-tests.lisp"
+        "tests/acl2/protocol-served-tests.lisp",
+        "books/protocol-served-table.lisp"
       ],
       "keystones": [
         "fn-view-cancel-after-target",
@@ -4279,7 +4285,7 @@
         "fn-ocl-read-preserves-historical-relation",
         "fn-proto-advance-eventp-is-served-advance-eventp"
       ],
-      "implementation_note": "An explicit specification change (2026-09-26, gpt-6's wave-5 review section 1; before it a connection kept the view it pinned at open until the control channel advanced it). Implemented in the served machine the host calls (catalog-slice-5): the owner hands every read its committed view as the served connection's live pin (books/owner.lisp fn-own-served-conn, fn-own-view-live); fn-served-dispatch dispatches a GROUP/LISTGROUP line over the connection re-pinned at it (fn-served-repin) and keeps the re-pin exactly when the reply is 211 (fn-served-selectedp); fn-own-finish-read takes the pin back and the configured owner moves the connection's configuration pin with it (fn-ocfg-with-read-owner). ACL2: fn-served-step-pin-is-old-or-live, fn-served-successful-selection-is-the-repinned-dispatch, fn-served-failed-selection-keeps-the-connection, fn-served-repin-preserves-connp; the owner relations re-proved with the second case. Witness: tests/acl2/owner-tests.lisp (the reader pinned at version 0 lists the article after LISTGROUP and GROUP, is pinned at the view afterwards, and STAT on it before that still answers 430 with no pin moved). Native: tests.test_native_reader_freshness asserts the long-lived reader sees another connection's POST and a peer's IHAVE after its next GROUP. The catalog form (fn-view-advance = fn-cat-count, fn-view-cancel-after-target) is the same semantics over the catalog; the retrieval arms over the catalog and the crossed-view acceptance tests (HDR/XHDR, OVER/XOVER, XPAT, counts) are 7b (PKT-585). def-command (2026-10-03): the policy is a column of the protocol table (books/protocol-table.lisp :view per row and per form; fn-proto-advance-eventp-is-served-advance-eventp pins the :select rows to fn-served-advance-eventp); the rulings of consultation c07 (one completed discovery snapshot for the LIST family, NEWGROUPS and NEWNEWS; by-Message-ID pin first then the completed snapshot) are recorded as :view-decided debt, PRF-1237 and PRF-1238, and the spec's served command table shows the executed rule.",
+      "implementation_note": "An explicit specification change (2026-09-26, gpt-6's wave-5 review section 1; before it a connection kept the view it pinned at open until the control channel advanced it). Implemented in the served machine the host calls (catalog-slice-5): the owner hands every read its committed view as the served connection's live pin (books/owner.lisp fn-own-served-conn, fn-own-view-live); fn-served-dispatch dispatches a GROUP/LISTGROUP line over the connection re-pinned at it (fn-served-repin) and keeps the re-pin exactly when the reply is 211 (fn-served-selectedp); fn-own-finish-read takes the pin back and the configured owner moves the connection's configuration pin with it (fn-ocfg-with-read-owner). ACL2: fn-served-step-pin-is-old-or-live, fn-served-successful-selection-is-the-repinned-dispatch, fn-served-failed-selection-keeps-the-connection, fn-served-repin-preserves-connp; the owner relations re-proved with the second case. Witness: tests/acl2/owner-tests.lisp (the reader pinned at version 0 lists the article after LISTGROUP and GROUP, is pinned at the view afterwards, and STAT on it before that still answers 430 with no pin moved). Native: tests.test_native_reader_freshness asserts the long-lived reader sees another connection's POST and a peer's IHAVE after its next GROUP. The catalog form (fn-view-advance = fn-cat-count, fn-view-cancel-after-target) is the same semantics over the catalog; the retrieval arms over the catalog and the crossed-view acceptance tests (HDR/XHDR, OVER/XOVER, XPAT, counts) are 7b (PKT-585). def-command (2026-10-03): the policy is a column of the protocol table (books/protocol-table.lisp :view per row and per form; fn-proto-advance-eventp-is-served-advance-eventp pins the :select rows to fn-served-advance-eventp); the rulings of consultation c07 (one completed discovery snapshot for the LIST family, NEWGROUPS and NEWNEWS; by-Message-ID pin first then the completed snapshot) are recorded as :view-decided debt, PRF-1237 and PRF-1238, and the spec's served command table shows the executed rule. DC02 2026-10-03: all sixteen archive rows have complete generated forms and fn-scr-command consumes their dispatcher; HDR/XHDR literal boundary and both-route reply witnesses are SCN-1093. Current pinned behavior is preserved, with completed-view and cold streaming debts unchanged.",
       "note": "Lane catalog-slice-2 (wave 5 lane 2 continuation, D33; the id the deputy assigned for PKT-585's REQ line)."
     },
     {
@@ -4979,9 +4985,12 @@
         "books/owner-reader-read.lisp",
         "books/owner-prepare-served.lisp",
         "books/owner-prepare-served-ocl.lisp",
-        "planning/evidence/prepare-served-2026-09-27.md"
+        "planning/evidence/prepare-served-2026-09-27.md",
+        "tests/test_cursor_cold_poll.py",
+        "tests/cursor_cold_poll_recording.lisp",
+        "planning/evidence/cursor-cold-poll-20261003/checks-final.json"
       ],
-      "implementation_note": "Four service classes (control, reader, poster, transit) in the cyclic order control first; the class of a quantum is the socket it arrived on (a host observation), the pick and the bound are ACL2's (fn-osch-next). A quantum is one bounded semantic step, unchanged: the served read with its drain, one control request, one transit step; the journal writes stay inside. The render window is 65,536 octets; the live octet buffer fn-octets is input-only under the mutex; each connection renders into its own fn-octets$c object. The exposure charge (PRF-161) is decided in the same critical section as the step it admits (one gate pass per read). Slice 2 (PKT-688 (4), PRF-267, books/owner-commit-steps.lisp): on a log-route store the committer's batch is three steps, START and COMPLETE as :commit quanta and the log barrier between them with the owner released; while a batch is in flight only :commit and :inspect (the live status and health pages) are admitted, and a waiting :inspect runs within one quantum in either regime."
+      "implementation_note": "Four service classes (control, reader, poster, transit) in the cyclic order control first; the class of a quantum is the socket it arrived on (a host observation), the pick and the bound are ACL2's (fn-osch-next). A quantum is one bounded semantic step, unchanged: the served read with its drain, one control request, one transit step; the journal writes stay inside. The render window is 65,536 octets; the live octet buffer fn-octets is input-only under the mutex; each connection renders into its own fn-octets$c object. The exposure charge (PRF-161) is decided in the same critical section as the step it admits (one gate pass per read). Slice 2 (PKT-688 (4), PRF-267, books/owner-commit-steps.lisp): on a log-route store the committer's batch is three steps, START and COMPLETE as :commit quanta and the log barrier between them with the owner released; while a batch is in flight only :commit and :inspect (the live status and health pages) are admitted, and a waiting :inspect runs within one quantum in either regime. Cursor cold dependencies now suspend to the existing mux timer and resume the retained plan, with first-miss deadline retained; shared-loop cold-await removed. Actual native-body I/O doubles discriminate suspension/continuation/refusal. Matching image and cache-independent progress remain open."
     },
     {
       "id": "CNS-008",
@@ -6600,7 +6609,55 @@
         "books/resource-output.lisp",
         "tests/acl2/output-reservation-tests.lisp"
       ],
-      "implementation_note": "Explicit pool extends the composed store/thread/cold launcher allowance. Startup captures actual dynamic space and separately names store and cold terms, funds bookkeeping and one maintenance lease, and requires one user quantum affordable. Per-CID and connection generation window custody is scoped to the actual NEWNEWS producer. Full matcher/initialization/outer-plan/mux allocation refinement, refusal work and owner R>=W remain open."
+      "implementation_note": "Explicit pool extends the composed store/thread/cold launcher allowance. Startup captures actual dynamic space and separately names store and cold terms, funds bookkeeping and one maintenance lease, and requires one user quantum affordable. Per-CID and connection generation window custody is scoped to the actual NEWNEWS producer. Actual accepted operator result now transports the exact cold/output descriptors through normalized control and owner startup to mux :hold. ACL2 derives metadata slots and refuses captured headroom before private allocation; SCN-1097 passes the actual source transport/hold/refusal fixture with recording semantic boundaries. Response-lifetime identity/lease consumption and full matcher/initialization/outer-plan/mux allocation refinement, refusal work and owner R>=W remain open."
+    },
+    {
+      "id": "PKT-895",
+      "title": "Bounded retire operator observation with honest uncertainty",
+      "specification": "specs/native-config.md#retire-operator-observation-pkt-895",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-1263"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "keystones": [
+        "fn-nret-observation-expiry-is-uncertain",
+        "fn-nret-observation-report-requires-stopped"
+      ],
+      "evidence": [
+        "books/native-retire.lisp",
+        "host/native/operator.lisp",
+        "tests/acl2/native-retire-observation-tests.lisp",
+        "tests/test_native_retire_observation_source.py",
+        "planning/evidence/operator-retire-observation-2026-10-03-v2.json"
+      ],
+      "note": "Actual source host consumes the ACL2 observation decision; expiry after requested drain plus60s reports uncertainty without owner/custody effects. Warm REPL admission and actual-source positive/prior-source timeout recorded; normal certification and matching image remain pending. No physical process-stop deadline is claimed."
+    },
+    {
+      "id": "WEB-006",
+      "title": "Bounded concurrent HTTP continuations preserve session command/reply pairing and operation custody",
+      "specification": "specs/human-client.md#the-nodes-own-web-face",
+      "milestone": "M6",
+      "status": "specified",
+      "proof_targets": [],
+      "verification": [
+        "test",
+        "integration",
+        "scenario"
+      ],
+      "evidence": [
+        "host/native/web-host.lisp",
+        "host/web-host.lisp",
+        "tests/native_web_reactor_raw.lisp",
+        "tests/test_native_web.py",
+        "tests/test_native_host_lifecycle.py",
+        "planning/evidence/web-continuations-2026-10-03.md"
+      ],
+      "implementation_note": "Source implementation in lane codex-sol-web: fixed I/O actor plus one semantic worker, profile-bounded HTTP slots and job mailbox, per-session semantic-flow lease, exact partial output offsets/windows, shared await/cold consumers. Actual raw continuation fixture passes; assembled-image checks pending. No new semantic proof or qualified image claim. Core NNTP reply/HTML materialization funding and incremental rendering remain open; output windows alone do not bound or fund complete page allocation."
     }
   ]
 }

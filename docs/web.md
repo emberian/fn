@@ -61,7 +61,9 @@ The other keys, if you need them:
   without use (12 hours).
 - `max_sessions = 64`: how many people can be signed in at once. Each
   signed-in person is one connection to the node, counted like a
-  newsreader's.
+  newsreader's. This also bounds the HTTP connections the page can serve at
+  once; extra connections wait in the listener's backlog. A browser waiting
+  on a slow request does not block the other connections.
 
 ## 2. Give it a padlock with Caddy
 

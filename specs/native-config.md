@@ -127,3 +127,22 @@ grounded funding; this grammar does not establish them.
 The file-incarnation namespace is distinct from the read namespace. The
 operator limits each independently, with no wrapped identity reuse; the
 local file allocator refuses before opening beyond `cold_file_ids`.
+
+### Retire operator observation (PKT-895)
+
+`retire [--drain SECONDS]` asks the live owner to retire and observes its
+socket/store-lock state. ACL2's `fn-nret-observation-step` bounds this
+observation to the accepted drain window plus a 60-second operator allowance,
+starting before the request, using monotonic host ticks and their positive
+rate. The poll interval is one second. This is local operator policy, independent
+of the live owner's current barrier policy; it does not bound physical fence
+completion or prove that the process stops within that time.
+
+At or past the boundary, a live or held owner produces uncertainty (exit 3).
+The operator leaves the owner, retained resources and custody obligations
+untouched and prints `retire uncertain reason=observation-deadline`.
+An offline or stale observation permits report inspection, including at the
+exact boundary. Success still requires a fresh regular report; an unchanged
+prior report or no report produces uncertainty. Invalid clock/request inputs
+and unknown observations produce a fault with `reason=invalid-observation`;
+they cannot produce a stopped/report decision or a deadline-expiry claim.

@@ -305,6 +305,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/reclaim-cuts \
 	books/def-carried-writer \
 	tests/acl2/def-carried-writer-tests \
+	books/owner-carrier \
+	tests/acl2/owner-carrier-tests \
+	books/owner-retain-writer-frame \
+	books/owner-post-carried \
+	tests/acl2/owner-post-carried-tests \
 	books/owner-retain-frame \
 	tests/acl2/owner-retain-frame-tests \
 	books/def-carried-view \
@@ -432,6 +437,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/native-config-paths \
 	tests/acl2/native-config-paths-tests \
 	books/native-retire \
+	tests/acl2/native-retire-observation-tests \
 	books/owner-retire \
 	tests/acl2/native-retire-tests \
 	books/tls-self-signed \
@@ -1822,6 +1828,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/peer-catchup-effects \
 	books/peer-catchup \
 	tests/acl2/peer-catchup-tests \
+	books/peer-round-driver \
+	tests/acl2/peer-round-driver-tests \
 	books/protocol-table \
 	books/protocol-builders \
 	books/protocol-codes-rows \

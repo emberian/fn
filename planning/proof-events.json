@@ -19092,6 +19092,38 @@
         {
           "kind": "theorem",
           "name": "fn-orv-startup-hold-protects-owner-and-one-quantum"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rlo-install-keeps-representation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rlo-issue-keeps-representation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rlo-output-keeps-representation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rlo-physical-keeps-representation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rlo-install-bank-correspondence"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rlo-issue-drawn-bank-correspondence"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rlo-output-bank-correspondence"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rlo-physical-bank-correspondence"
         }
       ]
     },
@@ -19118,6 +19150,52 @@
         {
           "kind": "theorem",
           "name": "fn-bpnb-input-past-read-bound-is-refused"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1258",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-orcs-predict-seal-refines-intern"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1260",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-prd-sweep-visits-all-admitted-rounds"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1254",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hmc-do-return-preserves-invp",
+          "note": "Partial concurrent-reference invariant: physical return alone preserves the full invariant; issue/settle/all-schedules and native realization remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hmc-do-job-result-keeps-invp",
+          "note": "Partial concurrent-reference invariant: an independently classified literal worker result preserves the full invariant, including classification after physical return. This is not the all-schedules or native realization theorem."
+        }
+      ]
+    },
+    {
+      "id": "PRF-1263",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nret-observation-expiry-is-uncertain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nret-observation-report-requires-stopped"
         }
       ]
     }

@@ -45,10 +45,13 @@
 (definterface fn-ros-outcome :class :common-lisp-compliant)
 (definterface fn-ros-drainedp :class :common-lisp-compliant)
 
-; Partial resident/output custody seam. Install/issue mutation guards and the
-; complete allocation tariff remain PRF-1259; this is not an operation gate.
-(definterface fn-rlo-install :class :ideal)
-(definterface fn-rlo-issue :class :ideal)
+; Guarded private output methods preserve typed representation. Complete
+; free-chain/bank correspondence and allocation tariff remain PRF-1259; no gate.
+(definterface fn-rlo-install :class :common-lisp-compliant)
+(definterface fn-rlo-issue :class :common-lisp-compliant)
+(definterface fn-heap-figure-octets :class :common-lisp-compliant)
+(definterface fn-orv-startup-slots :class :common-lisp-compliant)
+(definterface fn-orv-startup-grant :class :common-lisp-compliant)
 (definterface fn-rlo-output :class :common-lisp-compliant)
 (definterface fn-rlo-physical :class :common-lisp-compliant)
 (definterface fn-rlo-drainedp :class :common-lisp-compliant)
@@ -1794,9 +1797,7 @@
 
 (definterface fn-owner-known-abort
   :class :common-lisp-compliant
-  ;; D40 proposal withheld: model preservation alone does not establish
-  ;; the complete host-called guard. Retain executable-counterpart dispatch.
-)
+  :raw-with (:carried fn-owner-served-carried :assuming A-OWNER-INVARIANT-CARRIED))
 
 (definterface fn-owner-limit-carried
   :class ::program)
@@ -1933,9 +1934,7 @@
 
 (definterface fn-owner-refuse-reservation
   :class :common-lisp-compliant
-  ;; D40 proposal withheld: model preservation alone does not establish
-  ;; the complete host-called guard. Retain executable-counterpart dispatch.
-)
+  :raw-with (:carried fn-owner-served-carried :assuming A-OWNER-INVARIANT-CARRIED))
 
 (definterface fn-owner-sco-capture
   :class ::program)
@@ -4324,6 +4323,13 @@
 (definterface fn-his-release
   :class ::common-lisp-compliant)
 
+(definterface fn-his-readback-header-p
+  :class ::common-lisp-compliant
+  :kinds ((np natp)))
+
+(definterface fn-his-readback-page
+  :class ::common-lisp-compliant)
+
 ; host/native/io.lisp dispatches it (lane composed-owner).
 (definterface fn-his-skip-octets
   :class ::common-lisp-compliant
@@ -5256,3 +5262,32 @@
 (definterface fn-tcl-host-source-more-p :class :ideal)
 (definterface fn-tcl-source-result-action :class :common-lisp-compliant)
 (definterface fn-tcl-source-result-token :class :common-lisp-compliant)
+
+; Resumable pull/catch-up scheduling decisions consumed by pull-service.
+(definterface fn-prd-key :class :common-lisp-compliant)
+(definterface fn-prd-select :class :common-lisp-compliant :kinds ((active true-listp)))
+(definterface fn-prd-sweep :class :common-lisp-compliant :kinds ((active true-listp))
+  :keystones (fn-prd-sweep-visits-all-admitted-rounds))
+(definterface fn-prd-action :class :common-lisp-compliant)
+(definterface fn-prd-deadline :class :common-lisp-compliant)
+(definterface fn-prd-resume-at :class :common-lisp-compliant)
+(definterface fn-prd-read-limit :class :common-lisp-compliant)
+(definterface fn-prd-write-end :class :common-lisp-compliant)
+(definterface fn-prd-idle-ms :class :common-lisp-compliant)
+(definterface fn-prd-loss-class-ok :class :common-lisp-compliant)
+
+; ACL2 bounds operator observation without terminating owner custody.
+(definterface fn-nret-observation-step :class :common-lisp-compliant
+  :keystones (fn-nret-observation-expiry-is-uncertain
+              fn-nret-observation-report-requires-stopped))
+(definterface fn-nret-observation-poll-seconds :class :common-lisp-compliant)
+(definterface fn-nret-observation-expired-line :class :common-lisp-compliant)
+(definterface fn-nret-observation-fault-line :class :common-lisp-compliant)
+
+; HTTP reactor uses these actual ACL2 scheduling and lease projections.
+(definterface fn-web-host-connection-limit :class ::program)
+(definterface fn-web-host-request-end :class ::program)
+(definterface fn-web-host-window-end :class ::program)
+(definterface fn-web-host-read-size :class ::program)
+(definterface fn-web-host-event-cid :class ::program)
+(definterface fn-web-host-reserve-size :class ::program)

@@ -313,7 +313,12 @@ not armed. Instrumentation has no semantic or admission role."
   ;; Private concrete worker ledger; independent of live STATE and actor roster.
   ;; Each returned ledger and native grant is retained before any classification.
   (syncer-ledger nil) (syncer-grants nil)
-  (syncer-ledger-lock (sb-thread:make-mutex :name "fn syncer custody")))
+  (syncer-ledger-lock (sb-thread:make-mutex :name "fn syncer custody"))
+  ;; Exact normalized launch descriptors, and private output pool projection.
+  ;; Explicit policy activation/full tariffs are still PRF-1259 obligations.
+  (cold-resources nil) (output-resources nil) (output-slots nil)
+  (output-ledger nil) (output-grants nil)
+  (output-ledger-lock (sb-thread:make-mutex :name "fn output custody")))
 
 ;;; Opaque connection custody. These are INTERNAL composition subjects until
 ;;; startup installs the genuine indexed runtime and its constructor allowance.
@@ -680,61 +685,47 @@ The same lock protects both this call and every other arena pin event."
     (fnn-owner-serialized service cid thunk class)))
 
 (defun fnn-owner-cursor-step (service cid plan class)
-  "One quantum of PLAN's cursor under the owner mutex: the plan with the
-quantum's reply in the cursor's place (and the cursor that remains).
-FN_OWNER_MEASURE counts these holds under their own label, :over-cursor.
-
-The quantum runs with the extent realizer in its no-I/O mode, as a served
-read span does (fnn-owner-chunk-span-no-io; Codex r67 F2, the composition
-review's section 1c): a payload extent not in the cache THROWS the entry it
-needs, the quantum (pure over its stobjs) is discarded, the read is issued
-at the validated capture under the mutex (fnn-owner-cold-issue-locked) and
-awaited OFF the mutex within ACL2's dependency deadline
-(fnn-owner-cold-await, fn-otb-dependency-step); then the same quantum runs
-again, warm.  No pread runs under the owner mutex.  Past the deadline, or on
-ACL2's resource refusal, the reply cannot be completed and no line may be
-written into its body (specs/nntp.md, resumable overview responses: a
-response that cannot finish is terminated): the connection is finished
-with the read's word named in the log."
-  (loop
-    (let ((result
-            (fnn-owner-cursor-step-serialized
-             service cid
-             (lambda ()
-               (let ((attempt
-                       (catch 'fnn-extent-cold
-                         (let ((*fnn-extent-no-io* t))
-                           (destructuring-bind (status rest)
-                               (fnn-call 'fn-splan-cursor-step plan (fnn-owner-over-window)
-                                         (fnn-live-stobj 'fn-arena) (fnn-live-stobj 'fn-cat))
-                             (unless (eq status :ok)
-                               (fnn-fault "owner returned a malformed cursor in its served reply"))
-                             (list :warm rest))))))
-                 (if (eq (car attempt) :warm)
-                     attempt
-                   ;; Owner->extent lock order: issue before the mutex that
-                   ;; excludes file retirement is released.
-                   (list :cold (fnn-owner-cold-issue-locked service cid attempt)))))
-             class)))
-      (when (eq (first result) :warm)
-        (return (second result)))
-      (multiple-value-bind (word) (fnn-owner-cold-await service (second result))
-        (unless (eq word :serve)
-          (error 'fnn-store-io-refusal
-                 :message (format nil "OVER cursor quantum: payload read ~(~a~); the reply is terminated"
-                                  word)))
-        (when (fnn-developer-selector "FN_NATIVE_OVER_WINDOW")
-          (fnn-err "OVER cold-quantum cid=~d" cid))))))
+  "Attempt one quantum of PLAN under the owner mutex. Return PLAN-REST and
+NIL when warm, or the exact original PLAN and its issued cold READ. The mux
+retains the response capture and polls READ off this activation; this function
+never awaits a page or replays a quantum in the same I/O event."
+  (let ((result
+          (fnn-owner-cursor-step-serialized
+           service cid
+           (lambda ()
+             (let ((attempt
+                     (catch 'fnn-extent-cold
+                       (let ((*fnn-extent-no-io* t))
+                         (destructuring-bind (status rest)
+                             (fnn-call 'fn-splan-cursor-step plan (fnn-owner-over-window)
+                                       (fnn-live-stobj 'fn-arena) (fnn-live-stobj 'fn-cat))
+                           (unless (eq status :ok)
+                             (fnn-fault "owner returned a malformed cursor in its served reply"))
+                           (list :warm rest))))))
+               (if (eq (car attempt) :warm)
+                   attempt
+                 ;; Issue while owner->extent excludes descriptor retirement.
+                 ;; The pure failed quantum has not committed its continuation.
+                 (list :cold (fnn-owner-cold-issue-locked service cid attempt)))))
+           class)))
+    (if (eq (first result) :warm)
+        (values (second result) nil)
+      (values plan (second result)))))
 
 (defun fnn-owner-render-next-quantum (service cid plan class &optional compressedp)
   "Render a window, running at most one cursor quantum under the owner
-mutex as CID's CLASS: (values OCTETS PLAN-REST DONEP YIELDP).  Empty
-progress yields with the exact continuation and response hold intact."
+mutex as CID's CLASS: (values OCTETS PLAN-REST DONEP YIELDP COLD-READ).
+Empty progress yields; a cold read retains the exact original plan/capture."
   (multiple-value-bind (octets rest donep cursorp)
       (fnn-owner-render-next plan compressedp)
     (unless cursorp
       (return-from fnn-owner-render-next-quantum (values octets rest donep nil)))
-    (setq plan (fnn-owner-cursor-step service cid rest class))
+    (multiple-value-bind (next cold-read)
+        (fnn-owner-cursor-step service cid rest class)
+      (when cold-read
+        (return-from fnn-owner-render-next-quantum
+          (values (fnn-make-octets 0) next nil nil cold-read)))
+      (setq plan next))
     ;; A deterministic native witness: pause OFF the owner mutex while
     ;; the response still owns its generation, before rendering/writing.
     ;; Production refuses this selector (host/native/io.lisp).
@@ -1663,6 +1654,28 @@ A diagnostic failure does not alter custody, classification or settlement."
         (unless (eq word :installed) (fnn-fault "syncer funding refused ~a" word))
         (fnn-owner-custody-trace "custody: install threads=~s stack=~s word=~s" threads stack word))))
   nil)
+
+(defun fnn-owner-output-install (service dynamic store-need)
+  "Actual mux :hold caller. Validate captured headroom before private allocation.
+This installs only the explicit output projection, not a full allocation gate."
+  (let ((policy (fnn-owner-service-output-resources service)))
+    (when policy
+      (let ((cold (fnn-owner-service-cold-resources service))
+            (slots (fnn-owner-service-output-slots service)))
+        (let ((grant (fnn-core 'fn-orv-startup-grant dynamic store-need cold policy slots)))
+          (unless (eq (car grant) :hold)
+            (fnn-refuse "output funding refused ~s" grant)))
+        (sb-thread:with-mutex ((fnn-owner-service-output-ledger-lock service))
+          (when (fnn-owner-service-output-ledger service)
+            (fnn-fault "output funding installed twice"))
+          (let ((ledger (fnn-core 'create-fn-resource-ledger)))
+            ;; Retain the actual private object before any mutating step.
+            (setf (fnn-owner-service-output-ledger service) ledger)
+            (destructuring-bind (word returned)
+                (fnn-call 'fn-rlo-install dynamic store-need cold policy slots ledger)
+              (setf (fnn-owner-service-output-ledger service) returned)
+              (unless (eq word :installed)
+                (fnn-fault "output funding refused after headroom grant ~s" word)))))))))
 
 (defun fnn-owner-syncer-issue (service generation job)
   "Draw from the qualified syncer projection before any child is created."
@@ -5238,7 +5251,7 @@ in a fault; DEADLINE (internal real time) bounds the whole feed.
           ;; wait and feed the same octets.
           (:defer (sleep (/ (min (second results) 1000) 1000)))
           (t
-           (let ((plan nil) (consumed nil))
+           (let ((plan nil) (consumed nil) (cursor-cold-since nil))
              (unwind-protect
                   (progn
                     (if (eq (first results) :await)
@@ -5260,12 +5273,23 @@ in a fault; DEADLINE (internal real time) bounds the whole feed.
                       (when (fnn-owner-past-p deadline)
                         (setq uncertain t closing t plan nil)
                         (return))
-                      (multiple-value-bind (part rest donep yieldedp)
+                      (multiple-value-bind (part rest donep yieldedp cold-read)
                           (fnn-owner-render-next-quantum service cid plan class)
-                        (push part parts)
                         (setq plan (if donep nil rest))
-                        (when (and plan yieldedp)
-                          (sleep (/ (fnn-core 'fn-splan-cursor-resume-ms) 1000))))))
+                        (if cold-read
+                            ;; This legacy logical feed owns a private worker,
+                            ;; not a mux loop. Retain its plan while awaiting.
+                            (multiple-value-bind (word since)
+                                (fnn-owner-cold-await service cold-read cursor-cold-since)
+                              (unless cursor-cold-since (setq cursor-cold-since since))
+                              (unless (eq word :serve)
+                                (error 'fnn-store-io-refusal
+                                       :message (format nil "logical cursor: payload read ~(~a~); the reply is terminated"
+                                                        word))))
+                          (progn
+                            (push part parts)
+                            (when (and plan yieldedp)
+                              (sleep (/ (fnn-core 'fn-splan-cursor-resume-ms) 1000))))))))
                (fnn-owner-response-unpin service cid))
              (when (and (zerop consumed) (not closing))
                (fnn-fault "owner consumed no octets of a ~a" what))
@@ -5397,6 +5421,12 @@ alias; the caller may refund only AFTER this activation has returned."
          (hold (fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD"))
          (mode (fnn-developer-selector "FN_NATIVE_PAGE_IO_RESULT"))
          (answer :stale) (settled-io nil) (cachedp nil) (evicted nil))
+    ;; The worker has physically returned; only here is its retained
+    ;; condition converted to the literal verdict consumed by settlement.
+    ;; Normal literal worker results are observed at their storage site.
+    (when (and directp token condition *fnn-native-observer*)
+      (fnn-native-observe
+       (list :job-result *fnn-native-actor-identity* token verdict)))
     (when (equal mode "stale")
       (fnn-err "PAGE-IO stale answer=~s"
                (if directp (fnn-extent-direct-settle worker nil :ok)
@@ -6381,6 +6411,7 @@ the crash keystone) and serving continues."
   ;; this thread existed: the worker never resolves shared live state.
   ;; (fnn-owner-maybe-publish); it is unpinned below.
   (unwind-protect
+  (fnn-with-history-image
   (destructuring-bind (base configs records record-octets count suffix budget frontier free revision
                         base-payloads ident)
       captured
@@ -6455,7 +6486,7 @@ the crash keystone) and serving continues."
                                    (setq steps (fnn-checkpoint-write-steps
                                                 fd setup segment sequence (fnn-store-config store)
                                                 (fnn-live-octets-pub) arun arena)))
-                                 sequence)
+                                 sequence image)
                              ;; the buffer's array back (PKT-PRS-2)
                              (fnn-octets-pub-release))
                            (setq durablep t)
@@ -6519,7 +6550,7 @@ the crash keystone) and serving continues."
           (when durablep
             (fnn-owner-release-extents service (fnn-owner-service-store service)
                                        *fnn-checkpoint-frames* dropped-paths pin arena)))
-        nil)))
+        nil))))
     (fnn-owner-worker-tail-hold "publisher")
     (when pin (fnn-arena-unpin pin))
     (fnn-owner-service-nursery))
@@ -7088,6 +7119,7 @@ publication).  Answers the reply word."
                         (first (fnn-call 'fn-arena-count (fnn-live-arena)))))
              (setq word (intern (format nil "DEFERRED-~a" (symbol-name reason)) :keyword))))
       (unwind-protect
+           (fnn-with-history-image
            (block pass
              (unless (fnn-log-rotation-ready-p store) (fnn-log-prepare-spare store))
              ;; A live quantum (refused once the owner is stopping; its
@@ -7182,7 +7214,7 @@ publication).  Answers the reply word."
                                          (fnn-checkpoint-write-steps
                                           fd setup segment (length rows) (fnn-store-config store)
                                           (fnn-live-octets-pub) arun arena))
-                                       (length rows)))
+                                       (length rows) image))
                        (fnn-octets-pub-release))))
                  (fnn-reclaim-cut :staged)
                  ;; The tombstones are PREDICTED here (their handles from
@@ -7292,7 +7324,7 @@ publication).  Answers the reply word."
                               count (length (second decision)) dropped (ms)
                               (length seal-payloads) seal-us)
                      (fnn-owner-release-extents service store *fnn-checkpoint-frames* paths pin arena))
-                   (fnn-reclaim-cut :released)))))
+                   (fnn-reclaim-cut :released))))))
         (when pin (fnn-arena-unpin pin))
         ;; Captured and not swapped: the pass is over for the owner (the
         ;; in-flight mark cleared) FIRST, a cleanup quantum admitted after a
@@ -7625,7 +7657,8 @@ fn-osd-drain-stops-by-the-deadline).  Nothing here compares times or counts."
 
 (defun fnn-owner-run (root port once max-connections
                       &optional fault address (family :inet) tls-context
-                        connection-fault-operation tls-port more-addresses)
+                        connection-fault-operation tls-port more-addresses
+                        cold-resources output-resources)
   "Run one service from already-normalized boundary values.
 MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
 `[listener] host' list (NNT-041); each gets the same port and TLS port."
@@ -7653,6 +7686,10 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
            (unwind-protect
                 (progn
                   (setq service (fnn-owner-install root max-connections fault))
+                  (setf (fnn-owner-service-cold-resources service) cold-resources
+                        (fnn-owner-service-output-resources service) output-resources
+                        (fnn-owner-service-output-slots service)
+                        (fnn-core 'fn-orv-startup-slots max-connections))
                   (fnn-owner-retain-run-authority service)
                   ;; Before any client/module starts, retire startup-only
                   ;; cache borrows; absent policy never gets a warm bypass.
@@ -7890,7 +7927,7 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
 
 (defun fnn-owner-run-normalized (store-octets listener-host-octets
                                  listener-port oncep max-connections &optional tls-context
-                                 tls-port)
+                                 tls-port cold-resources output-resources)
   "Operator callback over ACL2-normalized projections; no argv semantics."
   (unless (and (typep store-octets 'fnn-octets)
                (typep listener-host-octets 'fnn-octets)
@@ -7934,7 +7971,8 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                      (mapcar (lambda (projection)
                                (cons (first projection)
                                      (fnn-octets (second projection))))
-                             (rest projections))))))
+                             (rest projections))
+                     cold-resources output-resources))))
 
 (defun fnn-command-owner (command args)
   "Private low-level test entry; public operators use the normalized callback."

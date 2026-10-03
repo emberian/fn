@@ -442,6 +442,21 @@
       "latest": "reader_index 4/4, served_differential 7/7, the peering duplicate rows ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).",
       "obstruction": "the per-event `fn-peer-sessionp` evaluation, not the history scan, is the served cost at the N the CLI reaches (ember's decision); the fast path's reuse after refresh is not a theorem.",
       "next": "the measured cost sentence for the indexed read and the IHAVE/CHECK path at the scale profile, with its exponent and distance from the bound."
+    },
+    {
+      "id": "operator-retire-observation",
+      "name": "bounded retire operator observation",
+      "contract": "The retire command stops waiting at its ACL2 observation deadline with uncertainty while leaving the live owner and custody untouched; report inspection requires a stopped observation.",
+      "host": {
+        "function": "fn-nret-observation-step",
+        "file": "host/native/operator.lisp"
+      },
+      "keystone": "fn-nret-observation-expiry-is-uncertain",
+      "tested": null,
+      "profile": "default",
+      "latest": "Actual-source SBCL fixture passes exact60s/70s live/held expiry, offline refusal, fresh/stale reports and malformed observation fault; prior actual source times out (planning/evidence/operator-retire-observation-2026-10-03-v2.json). Warm hbox admission is not certification.",
+      "obstruction": "Normal native-retire/teeth certification and matching saved-image consumer validation are pending; no physical final-fence bound is claimed.",
+      "next": "Integration batch certifies exact native-retire plus native-retire-observation-tests roots and consumes the matching saved-image fixture at convergence."
     }
   ],
   "other_deployments": [
