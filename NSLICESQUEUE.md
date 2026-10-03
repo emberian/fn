@@ -60,15 +60,18 @@ that their recorded state is current at every later revision.
 
 ## Worker consolidation at 08:00 America/New_York
 
-Ember caps running subagents at ten, excluding the root coordinator, from
-08:00 on 2026-10-03; the 10:00 capability mission continues. Handoffs preserve
+Ember first capped running implementation deputies at ten from 08:00, then
+requested one fewer on 2026-10-03: the current cap is nine, excluding root and
+the convergence lieutenant. The full 10:00 capability mission continues. Handoffs preserve
 current source, warm-session coordinates, concrete consumers and pending claims.
 The continuing owners are Integration (including source assembly), Runtime
 (including HM), Served (including matcher/catalog availability), Foundations,
 History (including carrier/pages/checkpoint), BP transport (including the completed
 Tools fair-round packet), Access (including Operator and the S011 journal consumer),
-Tools for shared structured and opt-in allocation tracing, Web, and Groundwork for
-the actual application-consumer/E1–E2 boundary. Empirical completed its archive
+Web, and Groundwork for
+the actual application-consumer/E1–E2 boundary. Root absorbed the continuing
+Tools/tracing/retained-matcher probe area after its concrete handoff; Tools is
+stopped and no replacement is dispatched. Empirical completed its archive
 and watch handoff; Integration owns the pending candidate watch. Helpers complete their current
 coherent packet or transfer it before stopping; a passive assignment does not
 count as active work. No Luna wave resumes. These are ownership transfers, not
