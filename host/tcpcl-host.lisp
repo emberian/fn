@@ -21,6 +21,7 @@
 (include-book "../books/tcpcl-source-continuation")
 (include-book "../books/tcpcl-retained-turn")
 (include-book "../books/tcpcl-frame-cursor")
+(include-book "../books/bp-session-received-source")
 (include-book "../books/octets-stobj")
 (include-book "../books/tcpcl-spool")
 
@@ -121,6 +122,10 @@
                (len (fn-tcl-encode (car (cdr e))))))
         ((equal (car e) :bundle-received)
          (list :bundle-received (car (cdr e)) (len (car (cdr (cdr e))))))
+        ((equal (car e) :bundle-segments-received)
+         ;; Same semantic trace digest as concatenated completion, using the
+         ;; machine-maintained count. Never print/walk the retained chain.
+         (list :bundle-received (car (cdr e)) (car (cdr (cdr (cdr e))))))
         ((equal (car e) :session-up)
          (let ((n (car (cdr e))))
            (list :session-up (fn-tcl-negotiated-keepalive n)

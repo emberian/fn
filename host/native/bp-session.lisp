@@ -278,3 +278,52 @@
         (setq fragments (cddr plan)))
        (otherwise (setq plan-refused t)))))
     #'complete grant))))
+
+;;; Private operation materializes the exact received segment chain in bounded
+;;; cursor turns. Its authority is the actual retained incoming grant, never a
+;;; native fabricated SAMEPRS provider row. The publication callback remains
+;;; the existing BP durable custody implementation.
+(defstruct fnn-bpsrx key cursor buffer (offset 0) count connection (phase :copy))
+(defun fnn-bp-session-source-start (grant conn id chain count limit)
+ (unless (eq conn (fnn-bpsg-conn grant)) (fnn-fault "BP received context mismatch"))
+ (let ((plan (fnn-core 'fn-bpsrx-start (fnn-bpsg-row grant) id count limit chain)))
+  (case (first plan)
+   (:source-operation
+    (let ((job (make-fnn-bpsrx :key (second plan) :count (third plan)
+                 :cursor (fourth plan) :connection conn
+                 ;; Already prepaid by the incoming session projection. The
+                 ;; allocator/GC latency of this reserve is still unbounded.
+                 :buffer (fnn-make-octets (third plan)))))
+     (list :source-yield job)))
+   ((:refused :uncertain) plan)
+   (otherwise (fnn-fault "BP received operation unavailable")))))
+(defun fnn-bp-session-source-turn (grant conn job)
+ (unless (and (typep job 'fnn-bpsrx) (eq conn (fnn-bpsrx-connection job))
+              (eq conn (fnn-bpsg-conn grant)))
+  (fnn-fault "BP received continuation context mismatch"))
+ (case (fnn-bpsrx-phase job)
+  (:copy
+   (let* ((answer (fnn-core 'fn-bpsrx-turn (fnn-bpsrx-key job) (fnn-bpsg-row grant)
+                          (fnn-bpsrx-cursor job)))
+          (word (first answer)) (bytes (third answer)))
+    (setf (fnn-bpsrx-cursor job) (second answer))
+    (when bytes
+     (let ((vector (fnn-octets bytes)))
+      (replace (fnn-bpsrx-buffer job) vector :start1 (fnn-bpsrx-offset job))
+      (setf (fnn-bpsrx-offset job) (fnn-core 'fn-tsc-at 3 (second answer)))))
+    (case word
+     (:source-complete (setf (fnn-bpsrx-phase job) :publish) (list :source-yield job))
+     (:refused '(:refused :private-source-corrupt))
+     (:uncertain '(:uncertain :session-incarnation))
+     (:yield (list :source-yield job))
+     (otherwise (fnn-fault "BP received cursor outcome unavailable")))))
+  (:publish
+   (unless (eq (fnn-core 'fn-bpsrx-authorizedp (fnn-bpsrx-key job)
+                    (fnn-bpsg-row grant) (fnn-bpsrx-cursor job)) t)
+    (return-from fnn-bp-session-source-turn '(:uncertain :session-incarnation)))
+   ;; Consume publication exactly once, including throwing outcomes. The
+   ;; native source escape fences/retains the job and END ACK on uncertainty.
+   (setf (fnn-bpsrx-phase job) :publishing)
+   (fnn-tcl-deliver-transfer conn (fnn-tclc-source-id conn)
+                            (fnn-octet-list (fnn-bpsrx-buffer job))))
+  (otherwise (fnn-fault "BP received publication cannot be retried"))))

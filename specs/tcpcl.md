@@ -384,3 +384,17 @@ the public registered received-source operation producer remain outstanding.
 The existing BP resident projection prepays context storage, but it is not a
 complete allocator, decoder or GC tariff. SCN1110 requires the matching image;
 raw actual-consumer fixtures establish only their recorded boundary scope.
+
+The passive BP node installs a private received-transfer continuation
+(PRF-1291), using its actual admitted incoming session row and generation.
+`fn-bpsrx-start` constructs the operation only while that row is live and its
+maintained transfer count fits the configured MRU. `fn-bpsrx-turn` resumes the
+exact reversed segment chain in64 cursor actions; the original root and final
+END ACK remain held. Before publishing, the same grant generation is checked
+again. One terminal publication calls the existing durable BP delivery callback;
+throwing/uncertain outcomes fence the connection and retain source/token debt.
+This operation is private to the session; it does not manufacture a public
+SAMEPRS provider or authorize another operation family. Its complete buffer
+allocation and final logical conversion/BP decode retain their unbounded time
+costs. Source-driver guards and the universal source-step refinement still
+require certification; the existing proposed refinement is not evidence.

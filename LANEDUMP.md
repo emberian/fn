@@ -2719,3 +2719,10 @@ Response pin excludes reclaim swap but does not freeze live summaries. Bounded
 LIST will use captured v/raw groups/high watermark and per-number visibility/
 NOV checks; named non-reclaim preserved-column frame remains owed (Runtime
 identified redecide updates context but preserves payload/numbered keys).
+S068 second connected source: private operation under actual incoming session
+grant now installs source-start/turn in passive BP consumer. Exact chain/END ACK
+held through64 cursor actions, final generation check and once-only existing
+publication. Raw1000-byte materialization/callback, stale incarnation and
+publication-cut fence/retention PASS. No public SAMEPRS issuer claim; final
+conversion/decode and source-driver guard/refinement remain owed. Framing exact
+2root certify123129-1811904 PASSED2/0, indexed. Source-process integration next.
