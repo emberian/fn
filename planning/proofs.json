@@ -21871,9 +21871,12 @@
         "planning/evidence/served-query-plan-20261003/checks.json",
         "books/list-row-cursor.lisp",
         "tests/acl2/list-row-cursor-tests.lisp",
-        "planning/evidence/list-row-stream-20261003/checks.json"
+        "planning/evidence/list-row-stream-20261003/checks.json",
+        "books/list-status-cursor.lisp",
+        "tests/acl2/list-status-cursor-tests.lisp",
+        "planning/evidence/list-status-stream-20261003/checks.json"
       ],
-      "progress_note": "Actual selective command/parsed-event and owner-credit GROUP sparse/empty fixtures passed on their recorded source. Generated LIST ACTIVE/COUNTS aliases consume retained LIST cursors through the guarded native query-plan facade; eight empty-catalog factory-to-buffer replies at W1/256 equal original LIST. New row renderer retains strings/scalars, emits at most one indexed character/digit/framing byte per call, and avoids full row/decimal explosion. Guards, universal byte/fixed-envelope facts, start/one carried <=10-digit state admit in proper source encapsulates; eight exact old-row comparisons,20k-character offset witness and shape teeth pass. Full current owner/dispatcher sparse composition, full reply residual/finite progress, snapshot columns, logical allocation recurrence and physical tariff/custody remain open. Status matching and upstream authorization/moderation-config preparation remain allocation/work frontiers. No old raw-pinned or Fn-splan theorem is transferred to this selective query boundary."
+      "progress_note": "Actual selective command/parsed-event and owner-credit GROUP sparse/empty fixtures passed on their recorded source. Generated LIST ACTIVE/COUNTS aliases consume retained LIST cursors through the guarded native query-plan facade; eight empty-catalog factory-to-buffer replies at W1/256 equal original LIST. New row renderer retains strings/scalars, emits at most one indexed character/digit/framing byte per call, and avoids full row/decimal explosion. Guards, universal byte/fixed-envelope facts, start/one carried <=10-digit state admit in proper source encapsulates; eight exact old-row comparisons,20k-character offset witness and shape teeth pass. Full current owner/dispatcher sparse composition, full reply residual/finite progress, snapshot columns, logical allocation recurrence and physical tariff/custody remain open. Status lookup now borrows the name/configuration and enters one entry or compares one indexed character per call, with the original closed/moderated precedence. Guarded source, fixed-envelope and terminal stability admit; ten exact old-status comparisons and offset progress pass. Whole controller/current owner composition, status residual/finite progress and upstream authorization/moderation-config preparation remain open. No old raw-pinned or Fn-splan theorem is transferred to this selective query boundary."
     }
   ]
 }

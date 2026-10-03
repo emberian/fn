@@ -2626,7 +2626,11 @@ decimal digit or framing byte per control call. Decimal construction stops at
 the existing ten-digit field decision instead of exploding an arbitrary integer;
 the carried state retains at most ten digits. Guards, one-byte/fixed-envelope
 facts and carried-state preservation are source-admitted, with exact old-row
-and hypothesis-removal witnesses. The full query residual remains owed. Status
-matching still converts a whole group name; upstream authorization/config setup,
+and hypothesis-removal witnesses. Status lookup borrows its group string and
+configuration tails, entering one entry or comparing one indexed character per
+call. It preserves the existing plain-closed precedence over moderated entries;
+guards, fixed envelope and terminal stability are source-admitted, with exact
+old-status and character-progress witnesses. The full query/status residual and
+finite-progress proofs remain owed. Upstream authorization/config setup,
 integer width, metadata and outer render allocation need actual tariffs and
 incremental representation. Emitted B alone is not a whole-producer bound. The completed LIST-view policy remains PRF1237 debt.

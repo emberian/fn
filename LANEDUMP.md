@@ -651,3 +651,31 @@ PRF1287 debt. Existing books/served-query-plan Makefile+owner-host include is
 the native root; no extracted-driver root fabricated. Static declaration
 inventory5/twoNATP gates/no oldkeystones and whitespace check pass; world/table
 admission/global projections belong integrated current candidate.
+
+## Incremental LIST status source
+
+Fn-lss-start retains name/configuration references in eight cells. Fn-lss-one
+advances one entry or one indexed character, preserving plain-closed precedence
+over moderated entries without whole string conversion or full entry equality.
+Actual LIST summary initializes this state; status calls retain it until receipt.
+Guarded source, fixed-envelope and terminal stability plus ten complete legacy
+status comparisons and character-offset progress admitted in Root's narrow DWJ
+world:33 event encapsulate including11 absent original scalar/oracle definitions
+and explicit5 original primitive guard verifications; .04ACL2s/5096steps.
+Oracle-only string projection guards are not claimed. Initial invalid LOCAL
+defaults event refusal retained; corrected defaults restored within encapsulate.
+
+Receipt planning/evidence/list-status-stream-20261003/checks.json. Root world
+root-decoded-execution at /tank/fn/gates/codex-root-decoded-execution returned
+healthy to Tools, no active sends. Original35-dependency DWJ coordinate unchanged;
+only missing original helpers and FnLSS/tests added, no overlays/actual state
+mutation. Tools older PID2260356 developer owner died later in an unrelated
+malformed module LOAD; do not use its removed socket or restart closure.
+
+Full controller/current owner composition, query/status residual and finite
+progress, captured authority/keptp frame, upstream config setup and physical
+tariffs remain owed. No theorem transferred from old Splan. Snapshot allegation
+corrected: withdrawal stamps count and visibility uses <=, context redecision
+keeps availability facts; no new MVCC needed for that alleged drift. Actual
+completed discovery/pinned authority correspondence remains PRF1237.
+Untracked list-query-reference remains disabled model WIP outside this packet.

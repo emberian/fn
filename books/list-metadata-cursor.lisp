@@ -6,6 +6,7 @@
 (include-book "group-summary-cursor")
 (include-book "wildmat-cursor")
 (include-book "list-row-cursor")
+(include-book "list-status-cursor")
 (include-book "def-cursor")
 (include-book "protocol-table")
 
@@ -81,19 +82,12 @@
           (mv nil (fn-lst-progress env :summary groups group (fn-gsc-one detail fn-cat) nil calls))
         (mv nil (fn-lst-progress env (if (or statusp countsp) :status :row) groups group
                        (if (or statusp countsp)
-                           (list closed (fn-nntp-string-octets group) nil) "y")
+                           (fn-lss-start group closed) "y")
                        (fn-gsc-summary detail) calls))))
      ((eq phase :status)
-      (let ((tail (fn-cur-at 0 detail)) (octets (fn-cur-at 1 detail)) (moderated (fn-cur-at 2 detail)))
-        (if (consp tail)
-            (if (equal octets (car tail))
-                (mv nil (fn-lst-progress env :row groups group "n" summary calls))
-              (mv nil (fn-lst-progress env :status groups group
-                          (list (cdr tail) octets
-                                (or moderated (and (fn-nntp-moderated-entryp (car tail))
-                                                   (equal (fn-cur-at 1 (car tail)) octets))))
-                          summary calls)))
-          (mv nil (fn-lst-progress env :row groups group (if moderated "m" "y") summary calls)))))
+      (if (fn-lss-donep detail)
+          (mv nil (fn-lst-progress env :row groups group (fn-lss-status detail) summary calls))
+        (mv nil (fn-lst-progress env :status groups group (fn-lss-one detail) summary calls))))
      ((eq phase :row)
       (mv nil (fn-lst-progress env :render groups group
                               (fn-lsr-start group summary countsp detail) nil calls)))
