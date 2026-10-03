@@ -254,6 +254,8 @@
 (include-book "owner-time-admission")
 (include-book "owner-article-slots")
 (include-book "owner-credits")
+(include-book "served-available-read")
+(include-book "article-stream-owner")
 (include-book "owner-time-journal-writer")
 (include-book "owner-time-bars")
 (include-book "owner-queued-work")
