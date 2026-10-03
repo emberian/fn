@@ -22187,7 +22187,7 @@
       "progress_note": "Source definitions/theorems and connected fixed-worker raw consumer submitted; matching admission/certification and literal witness execution are pending. Not a complete bounded plan-construction or worker-fairness claim."
     },
     {
-      "id": "PRF-1282",
+      "id": "PRF-1283",
       "title": "Bounded virtual ARTICLE scan and replay page cursor refine the captured NNTP article view and HTML reference",
       "statement": "Actual subjects fn-was-scan/fn-was-page/fn-wpc-window-drive, called through host/web-host.lisp fn-web-host-article-scan, fn-web-host-article-page and fn-web-host-window-page-step by native fnn-web-render-step/replay-step/page-step. Establish fixed metadata/window invariants and exact equality to fn-wss-article-view plus fn-wr-seq on the immutable valid GROUP/ARTICLE reply, including header continuations, first field selection, ownership, percent-encoded Message-ID, dot unstuffing, count and arbitrary emit partitions. The response pin and original persistent plan survive scan/count/replay/emit and the final HTTP suffix or cleanup receipt; cold replay never runs the command again. Program source and raw witnesses are not guard/refinement or physical funding proofs.",
       "milestone": "M6",

@@ -262,7 +262,7 @@ the complete HTML output buffer does not fund the retained input or plan.
 
 The native ARTICLE path additionally scans rendered NNTP windows into five
 virtual header spans, body offsets and bounded field/ownership metadata
-(`books/web-article-stream.lisp`, PRF-1282 planned). It retains the original
+(`books/web-article-stream.lisp`, PRF-1283 planned). It retains the original
 persistent NNTP plan and replays it for requested source windows rather than
 collecting the whole article reply. Count and emit use that same capture; a
 saved renderer tail lets a monotone body continue across windows. Backward
@@ -270,7 +270,7 @@ header/link seeks restart the capture without issuing the command again.
 The final ARTICLE response pin remains until the HTTP suffix drains or actual
 semantic disposal returns; preliminary GROUP status pins settle before another
 command acquires its pin. Cold replay retains the exact plan and deadline.
-SCN-1112 checks exact reference HTML, bounded input and the pin through cold
+SCN-1113 checks exact reference HTML, bounded input and the pin through cold
 replay/partial writes. This program boundary still awaits guard/refinement and
 matching image evidence. LIST/OVER retain their full NNTP collectors. The
 retained plan, renderer/window tails, cursor/decoder working allocation,
