@@ -8848,6 +8848,29 @@
         "tests/native_web_page_cursor_raw.lisp"
       ],
       "note": "Native raw source consumer passes; source theorem/witness admission and matching image pending (PRF-1279)."
+    },
+    {
+      "id": "SCN-1112",
+      "title": "ARTICLE scan/replay/count/emit keeps bounded input and the final response pin through cold replay and partial HTTP drain",
+      "milestone": "M6",
+      "status": "specified",
+      "requirements": [
+        "WEB-006"
+      ],
+      "steps": [
+        "Scan actual GROUP+ARTICLE octets with partitions 1/2/7/4096; compare selected field/body spans and ownership with fn-wss-article-view.",
+        "Count and emit the virtual segment plan through source-window requests and compare exact HTML to fn-wr-seq.",
+        "Run actual native scanner/replay/page/writer bodies with a persistent render-plan adapter, a cold replay and137-byte partial writes."
+      ],
+      "expected": [
+        "Exact reference HTML, including escaped text, RFC2047 subject, dot unstuffing and percent-encoded Message-ID.",
+        "IN logical length remains at most4096; HTML OUT remains empty; monotone replay resumes rather than rescanning for every octet.",
+        "Final response pin is never released before HTTP drain and releases once after terminal cleanup; cold replay resumes the retained plan."
+      ],
+      "evidence": [
+        "tests/native_web_article_stream_raw.lisp"
+      ],
+      "note": "Raw actual-source consumer passes. PRF-1282 guard/refinement, matching native image and Web allocation/repeated-read tariff remain pending."
     }
   ]
 }

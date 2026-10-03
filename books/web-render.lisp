@@ -920,7 +920,7 @@
 ; FIELDS: (SUBJECT FROM DATE NEWSGROUPS MESSAGE-ID) spans; BODY a span of
 ; the dot-stuffed body; OWN whether the page offers "Remove my post" (the
 ; node decides whether the removal withdraws anything); MSGID octets.
-(defun fn-wr-article-main (group fields body own msgid)
+(defun fn-wr-article-main-segments (group fields body own msgid-segs)
   (declare (xargs :guard t))
   (append (list (fn-wm "<p class='keys'>[<a href='/g?name=") (fn-wr-url group) (fn-wm "'>")
                 (fn-wr-txt group) (fn-wm "</a>]</p><h1>"))
@@ -936,11 +936,15 @@
             nil)
           (list (fn-wm "</pre><nav class='keys'>"))
           (if own
-              (list (fn-wm "[<a href='/remove?g=") (fn-wr-url group) (fn-wm "&amp;id=")
-                    (fn-wr-url msgid) (fn-wm "'>Remove my post</a>] "))
+              (append (list (fn-wm "[<a href='/remove?g=") (fn-wr-url group) (fn-wm "&amp;id="))
+                      (fn-wrq-true msgid-segs) (list (fn-wm "'>Remove my post</a>] ")))
             nil)
           (list (fn-wm "[<a href='/new?g=") (fn-wr-url group)
                 (fn-wm "'>post to this group</a>]</nav>"))))
+
+(defun fn-wr-article-main (group fields body own msgid)
+  (declare (xargs :guard t))
+  (fn-wr-article-main-segments group fields body own (list (fn-wr-url msgid))))
 
 (defun fn-wr-compose-main (group csrf message subject body)
   (declare (xargs :guard t))
@@ -970,17 +974,21 @@
 
 ; An outcome: KIND :ok, :maybe or :no; TITLE and MESSAGE text, DETAIL the
 ; node's own line (or nil); BACK the group to return to (or nil: the groups).
-(defun fn-wr-outcome-main (kind title message detail back)
+(defun fn-wr-outcome-main-segments (kind title message detail-segs back)
   (declare (xargs :guard t))
   (append (list (fn-wm "<h1>") (fn-wr-txt title) (fn-wm "</h1>"))
           (fn-wr-note kind message)
-          (if (consp detail)
-              (list (fn-wm "<p class='said dim'>") (fn-wr-txt detail) (fn-wm "</p>"))
+          (if (consp detail-segs)
+              (append (list (fn-wm "<p class='said dim'>")) (fn-wrq-true detail-segs) (list (fn-wm "</p>")))
             nil)
           (if (consp back)
               (list (fn-wm "<p class='keys'>[<a href='/g?name=") (fn-wr-url back)
                     (fn-wm "'>back to the group</a>] [<a href='/'>groups</a>]</p>"))
             (list (fn-wm "<p class='keys'>[<a href='/'>groups</a>]</p>")))))
+
+(defun fn-wr-outcome-main (kind title message detail back)
+  (declare (xargs :guard t))
+  (fn-wr-outcome-main-segments kind title message (and (consp detail) (list (fn-wr-txt detail))) back))
 
 ; -----------------------------------------------------------------------------
 ; Every page's segments are accepted (fn-wr-page-segs-ok): the markup is the

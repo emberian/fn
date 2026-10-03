@@ -5327,3 +5327,11 @@
 
 (definterface fn-web-host-private-reply-p :class ::program)
 (definterface fn-web-host-private-reply-step :class ::program)
+
+(definterface fn-web-host-article-p :class ::program)
+(definterface fn-web-host-article-start :class ::program)
+(definterface fn-web-host-article-scan :class ::program)
+(definterface fn-web-host-article-page :class ::program)
+(definterface fn-web-host-window-page-step :class ::program)
+(definterface fn-web-host-replay-slice :class ::program)
+(definterface fn-web-host-replay-forward-p :class ::program)

@@ -1944,3 +1944,18 @@ Foundations own funding; Ember revised the 08:00 cap to ten; Web continues separ
 material review; Integration owns affected roots/interface/image convergence.
 
 Private reply seam: exact core eligibility for captured groups/group/article/post/remove (:reply), fixed semantic worker, no O/live table. PRF-1279 source equivalence theorem/witnesses await admission. New full NNTP collector streaming is next; Root/Foundations/Runtime continue funding and physical lease.
+
+
+## Web bounded ARTICLE source — codex-sol-web-pages (GPT-6.1 Sol), 2026-10-03
+
+PRF-1282 / SCN-1112 claimed. Actual native article render scans <=4096 windows
+into bounded metadata; replay of original persistent plans supplies virtual
+spans to count/emit. Saved renderer tail resumes monotone body windows; backward
+field/link seeks rewind capture. Final response pin survives both passes and
+HTTP suffix/cancel disposal. Raw actual-source reference consumer passes with
+cold replay, bounded replay rounds and137-byte partial writes; no full IN/OUT.
+New book is program mode: guard/refinement and matching image pending. Runtime
+lease/funding is separate; Web full tariff remains unpriced, no borrowed native
+grant. LIST/OVER full reply collectors remain next. Web stays separate through
+10:00 under revised ten-deputy cap. Source assembly owns one material review;
+Integration owns affected roots and image convergence.

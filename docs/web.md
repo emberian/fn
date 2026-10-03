@@ -171,3 +171,12 @@ the complete namespace, profile, route, peer and receipt diagnostics.
 The endpoint uses the web listener's existing TLS and request limits;
 other methods on this path are refused. This readiness policy is fn's,
 not a requirement imposed by HTTP.
+
+
+Native ARTICLE pages now scan and replay a captured NNTP plan in bounded source
+windows instead of retaining the full article in the HTTP input buffer. Header
+spans and body offsets are virtual; both HTML passes retain the final response
+pin through socket drain. See WEB-006/SCN-1112 and planned PRF-1282. This is a
+source program boundary with raw reference witnesses; qualified image, logical
+refinement and Web allocation/repeated-read funding remain open. LIST/OVER
+collectors are the next remaining full-reply consumers.
