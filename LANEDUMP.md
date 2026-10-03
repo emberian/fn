@@ -49,3 +49,40 @@ Exact result/changed-source digests and both red logs are archived/indexed at
 planning/evidence/dc03-command-rows-20261003/checks.json and *.log.gz.
 No repeat full-report run is needed in this helper: follow Served's actual consumer
 failures; Integration owns convergence/certification and generated assembly.
+## Served deputy assembly (GPT-6.1-Sol)
+
+Local1fa188839 wires buffered metadata NEWNEWS declaration/plan consumer with PRF-1256/SCN-1084. Core residual and sparse/final-buffer teeth admitted in narrow REPL; full plan/dispatcher composition source replay pending, no certificate/native claim. Initial selected-group allocation, per-candidate Message-ID working allocation, dedicated output custody producer, completed discovery view, restricted command route and common OVER/cold HDR/XPAT remain open. Captured roots retained by reference. cb941ede3 captures export/reclaim arena+keys under owner and passes capability offowner, integrated with Runtime refusal envelope. Imported bridge publications/deadline/feed/maintenance cold tests exist; integrator batches images. DC03 helper f76dbfd6c assembled here; served deputy now owns DC02 actual switch and NEWNEWS pst-not-500 predicate extension. Do not transfer helper base REPL verdict to assembled changed NEWNEWS bytes. Tools owns source-REPL prefix preservation investigation: current composed startup125ACL2s/33.6Msteps, producer repair<1s.
+
+DC02 assembly: fn-scr-command now calls generated fn-proto-archive-command-cat and uses its theorem; all helper rows preserved, and pst-not-500 recognizes NEWNEWS cursor. Explicit hand fallthrough still proves undeclared rows; hand cond removal remains outstanding.1fa188839 source is not READY qualification; composition replay currently blocked by startup world loss. Exact initial phase lemma now matches car/cadr used by generic selectedp proof (metadata REPL1,773steps), no arbitrary continuation status211 assumption.
+
+Generator hardening: :visit-metric is mandatory, translated literal decrease<=1 for actualcorecall must equal admitted theorem in ACL2world. Missing/wrong statement fixtures refused, freshshell12forms0.11ACL2s/12,434steps. Metadata declaration match validated separately. Archived metadata incremental REPL2d653fd3 and freshshell8e3740a6 under planning/evidence/served-cursor-20261003; exact component evidence only.
+
+
+Composition checkpoint: metadata-catalog warm source world now admits NEWNEWS
+plan exact residual/expanded reply and retained-buffer invariants. Actual plan
+fixture at one-byte/one-visit and 256-byte/256-visit budgets drains to the same
+complete reference reply; sparse/final-buffer core teeth and existing OVER plan
+teeth pass. Reference NEWNEWS session/no-cursor helpers exported for the
+generated row proof; hand dispatcher replay 2.02 ACL2 seconds / 862,947 steps,
+generated dispatcher replay 1.75 ACL2 seconds / 451,950 steps, guards included.
+These are source exploration admissions, not certificates or an image verdict.
+Whole catalog root load used ordinary local events; its dependencies were
+encapsulated. Full chain replay remains pending because this world lacks the
+served-span owner TLS result definitions. Raw log includes corrected failures
+and is archived/indexed as served-cursor-20261003/composition-repl.log.gz.
+Initialization/whole Message-ID working allocation, per-connection output draw,
+completed discovery view and remaining cursor consumers remain explicit debt.
+
+
+Indexed renderer source: actual NEWNEWS plan now calls fn-nnw-stream-step.
+Captured factory unchanged; scan installs string reference/offset/stuff/CR/LF
+phase, then renderer drains even with zero candidate visits, separately charged
+from article visits. fn-sl-step and fn-nnw-stream-step have unconditional exact
+residual theorems. Encapsulated source renderer 0.41 s / 57,924 ACL2 steps; stream
+0.58 s / 280,194; plan residual/invariants 1.60 s / 655,907. Wider-than-quantum,
+zero-visit renderer and sparse progress teeth plus actual tiny/large plan witness
+pass. Fresh predicate additionally excludes renderer/terminator phase; actual
+factory proves it. Full string coerce is only disabled logical residual, never
+plan output execution. Physical cell allocation recurrence, shape invariant and
+per-CID tariff remain follow-through with Foundations; init group list and
+wildmat/name/membership work remain unknown. No certificate/native claim.

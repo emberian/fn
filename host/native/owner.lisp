@@ -6136,7 +6136,7 @@ runs, the last outcome and its DIR."
 capture saw, make the thread and register it (the exporter slot; the
 workers the stop joins).  A thread that was never made unpins here."
   (fnn-with-roster (service)
-    (let ((made nil) (pin (fnn-arena-pin)))
+    (let ((made nil) (pin (fnn-arena-pin)) (arena (fnn-live-arena)))
       (unwind-protect
            (setq made (sb-thread:make-thread
                        (lambda ()
@@ -6144,7 +6144,7 @@ workers the stop joins).  A thread that was never made unpins here."
                                  (lambda ()
                                    (fnn-with-roster (service)
                                      (fnn-owner-service-stopping service)))))
-                           (fnn-owner-export-captured service captured dir pin)))
+                           (fnn-owner-export-captured service captured dir pin arena)))
                        :name "fn owner export"))
         (unless made (fnn-arena-unpin pin)))
       (setf (fnn-owner-service-exporter service) made
@@ -6152,7 +6152,7 @@ workers the stop joins).  A thread that was never made unpins here."
             (fnn-owner-service-export-dir service) dir)
       (push made (fnn-owner-service-workers service)))))
 
-(defun fnn-owner-export-write (store records count configs frontier dir)
+(defun fnn-owner-export-write (store records count configs frontier dir arena)
   "fnn-command-store-export's program over the captured values, without an
 open: the head (config.json's octets, the captured frontier's frame, the
 config/ files cut to the captured history's length: a record published
@@ -6189,7 +6189,7 @@ stops.  Answers the record count written."
                      do (fnn-checkpoint-yield "export" batch)
                         (destructuring-bind (octets-list rest)
                             (fnn-core 'fn-store-sco-encode-chunk cursor +fnn-export-chunk+
-                                      (fnn-live-arena))
+                                      arena)
                           (unless (listp octets-list)
                             (fnn-fault "ACL2 returned a malformed export chunk"))
                           (let ((chunk (mapcar (lambda (octets)
@@ -6217,7 +6217,7 @@ stops.  Answers the record count written."
         (fnn-fault "the export wrote ~d records of a capture of ~d" written count))
       written)))
 
-(defun fnn-owner-export-captured (service captured dir pin)
+(defun fnn-owner-export-captured (service captured dir pin arena)
   "The export's thread: the archive under DIR from the captured values, the
 outcome into the exporter slot, the log line.  A failure leaves no MANIFEST
 (KEYSTONE fn-sxd-crash-is-incomplete-or-complete) and serving continues;
@@ -6230,7 +6230,7 @@ the stop's refusal at a chunk boundary is `owner-stopping'."
          (destructuring-bind (records count configs frontier) captured
            (handler-case
                (let ((written (fnn-owner-export-write (fnn-owner-service-store service)
-                                                      records count configs frontier dir)))
+                                                      records count configs frontier dir arena)))
                  (setq outcome (cons :done written))
                  (fnn-err "EXPORT done archive=~a records=~d configuration=~d ms=~d"
                           dir written (length configs)
@@ -6286,7 +6286,7 @@ the stop's refusal at a chunk boundary is `owner-stopping'."
   "Rows rewritten and folded per ACL2 call while a reclaim pass walks the
 captured history (a work quantum per call, never a bound on the store).")
 
-(defun fnn-owner-reclaim-walk (records ctx rewrite)
+(defun fnn-owner-reclaim-walk (records ctx rewrite arena)
   "The pass over the captured RECORDS in chunks of +fnn-reclaim-chunk-rows+
 (fn-owner-orc-chunk: fn-orc-chunk, whose rewrite is the offline rewrite and
 whose fold is the offline fold, fn-orc-rewrite-rows-of-append and
@@ -6295,7 +6295,7 @@ REWRITTEN the rewritten rows in order when REWRITE, else nil."
   (let ((acc (fnn-core 'fn-owner-orc-init)) (out nil) (rest records))
     (loop while rest do
       (let ((chunk (loop repeat +fnn-reclaim-chunk-rows+ while rest collect (pop rest))))
-        (let ((r (fnn-core 'fn-owner-orc-chunk chunk ctx acc (fnn-live-arena))))
+        (let ((r (fnn-core 'fn-owner-orc-chunk chunk ctx acc arena)))
           (unless (and (consp r) (= (length r) 2) (listp (first r))
                        (= (length (first r)) (length chunk)))
             (fnn-fault "owner returned a malformed reclaim chunk"))
@@ -6316,7 +6316,7 @@ The arena is read below the captured count only, and the pass is counted
 as an off-mutex arena reader while it runs (no staged page is released
 under it: its arena-reader pin, books/arena-reader-pins.lisp).  Answers
 the reply word: :dry-run, or ACL2's refusal."
-  (let ((clock (fnn-store-prepare-observation)) (captured nil) (pin nil))
+  (let ((clock (fnn-store-prepare-observation)) (captured nil) (pin nil) (arena nil))
     (unwind-protect
          (progn
            (fnn-owner-gated (service :control)
@@ -6334,24 +6334,22 @@ the reply word: :dry-run, or ACL2's refusal."
                  (return-from fnn-owner-reclaim-dry-run
                    (intern (format nil "DEFERRED-~a" (symbol-name (second answer))) :keyword)))
                (setq captured answer))
-             (setq pin (fnn-arena-pin)))
+             (setq arena (fnn-live-arena) pin (fnn-arena-pin)))
            (unless (and (true-listp captured) (= (length captured) 13))
              (fnn-fault "owner returned a malformed reclaim capture"))
            (destructuring-bind (records count v s profile configs frontier budget free revision
                                 now record-octets feeds)
                captured
              (declare (ignore configs frontier budget free revision record-octets))
-             (let* ((ctx (fnn-core 'fn-owner-orc-ctx :dry-run v s now feeds (fnn-live-arena)))
+             (let* ((ctx (fnn-core 'fn-owner-orc-ctx :dry-run v s now feeds arena))
                     (classes nil) (acc nil))
                ;; the context's hash tables freed whatever the walk does
                (unwind-protect
-                    (setq classes (fnn-core 'fn-owner-orc-classes ctx (fnn-live-arena))
-                          acc (fnn-owner-reclaim-walk records ctx nil))
+                    (setq classes (fnn-core 'fn-owner-orc-classes ctx arena)
+                          acc (fnn-owner-reclaim-walk records ctx nil arena))
                  (fnn-core 'fn-owner-orc-ctx-free ctx))
              (let* ((decision (fnn-core 'fn-owner-orc-decide :dry-run profile v s now acc
-                                        (fnn-live-arena)))
-                    (decision (fnn-core 'fn-owner-orc-decide :dry-run profile v s now acc
-                                        (fnn-live-arena)))
+                                        arena))
                     (expired (if (and (listp classes) (= (length classes) 6)
                                       (every (lambda (n) (and (integerp n) (>= n 0))) classes))
                                  (second classes)
@@ -6496,7 +6494,7 @@ publication).  Answers the reply word."
          (clock (fnn-store-prepare-observation))
          (answer nil) (captured nil) (pin nil) (position nil) (stage nil) (ident nil)
          (installed nil) (swapped nil) (word :failed) (*fnn-checkpoint-frames* nil)
-         (base nil) (seal-payloads nil) (seal-us 0)
+         (base nil) (seal-payloads nil) (seal-us 0) (arena nil) (column-key nil) (column-salt nil)
          (image nil)
          (started (get-internal-real-time)))
     (flet ((ms () (round (* 1000 (- (get-internal-real-time) started))
@@ -6526,7 +6524,10 @@ publication).  Answers the reply word."
                   ;; the history image's binding: the store's node and salt
                   (setq ident (fnn-owner-core 'fn-store-genesis-ident))
                   ;; an off-mutex arena reader from here (arena-reader-pins)
-                  (setq pin (fnn-arena-pin)))))
+                  (setq arena (fnn-live-arena)
+                        column-key (fnn-owner-core 'fn-owner-orcp-key)
+                        column-salt (fnn-owner-core 'fn-owner-orcp-salt)
+                        pin (fnn-arena-pin)))))
              (unless captured
                ;; S038: another pass in flight or queued is refused by name
                ;; before any credit is reserved (CAPTURED stays nil, so the
@@ -6546,15 +6547,15 @@ publication).  Answers the reply word."
                                   now record-octets feeds)
                  captured
                (declare (ignore now))
-               (let* ((ctx (fnn-core 'fn-owner-orc-ctx :recorded v s nil feeds (fnn-live-arena)))
+               (let* ((ctx (fnn-core 'fn-owner-orc-ctx :recorded v s nil feeds arena))
                       (acc nil) (rows nil) (decision nil))
                  ;; the context freed right after the walk (orc-decide does
                  ;; not read it), also when the walk faults
                  (unwind-protect
-                      (multiple-value-setq (acc rows) (fnn-owner-reclaim-walk records ctx t))
+                      (multiple-value-setq (acc rows) (fnn-owner-reclaim-walk records ctx t arena))
                    (fnn-core 'fn-owner-orc-ctx-free ctx))
                  (setq decision (fnn-core 'fn-owner-orc-decide :recorded profile v s nil acc
-                                          (fnn-live-arena)))
+                                          arena))
                  (fnn-reclaim-cut :rewritten)
                  (case (and (consp decision) (first decision))
                    (:refused (fnn-err "RECLAIM refused: ~(~a~)" (second decision))
@@ -6572,8 +6573,8 @@ publication).  Answers the reply word."
                    ;; binding into the F row's position, then the setup
                    (destructuring-bind (setup next n arun)
                        (let ((prepared (fnn-core 'fn-owner-sco-next nil nil configs rows
-                                                 (fnn-checkpoint-walk rows (fnn-live-arena)) segment
-                                                 (fnn-live-arena))))
+                                                 (fnn-checkpoint-walk rows arena) segment
+                                                 arena)))
                          (multiple-value-bind (position2 image2)
                              (if prepared
                                  (fnn-history-image-build
@@ -6599,7 +6600,7 @@ publication).  Answers the reply word."
                                          (fnn-history-image-write fd image)
                                          (fnn-checkpoint-write-steps
                                           fd setup segment (length rows) (fnn-store-config store)
-                                          (fnn-live-octets-pub) arun (fnn-live-arena)))
+                                          (fnn-live-octets-pub) arun arena))
                                        (length rows)))
                        (fnn-octets-pub-release))))
                  (fnn-reclaim-cut :staged)
@@ -6611,7 +6612,7 @@ publication).  Answers the reply word."
                  (destructuring-bind (keyring generation)
                      (fnn-core 'fn-owner-orcp-keyring s)
                    (setq base (fnn-owner-gated (service :control)
-                                (first (fnn-call 'fn-arena-count (fnn-live-arena)))))
+                                (first (fnn-call 'fn-arena-count arena))))
                    (destructuring-bind (predicted payloads)
                        (fnn-core 'fn-orcs-predict rows keyring generation base)
                      (setq rows predicted seal-payloads payloads)))
@@ -6624,11 +6625,11 @@ publication).  Answers the reply word."
                    (when (eq (second rebuilt) :fault)
                      (deferred :rebuild) (return-from pass))
                    (fnn-call 'fn-owner-orcp-load-columns
-                             (fnn-owner-core 'fn-owner-orcp-key)
+                             column-key
                              rows
                              (fnn-core 'fn-owner-orcp-view-index (second rebuilt))
-                             (fnn-owner-core 'fn-owner-orcp-salt)
-                             (fnn-live-arena) cat hist)
+                             column-salt
+                             arena cat hist)
                    (fnn-reclaim-cut :rebuilt)
                    (dotimes (round +fnn-reclaim-swap-rounds+)
                      ;; ONE live quantum (refused once the owner is stopping:
@@ -6648,7 +6649,7 @@ publication).  Answers the reply word."
                                               "FN_NATIVE_TEST_RECLAIM_MOVE_FILE")))
                                    (when (and move (probe-file move))
                                      (delete-file move)
-                                     (fnn-call 'fn-arena-seal-list nil (fnn-live-arena))
+                                     (fnn-call 'fn-arena-seal-list nil arena)
                                      (fnn-err "RECLAIM test-moved")))
                                  ;; The seal word: :swap only when the live
                                  ;; arena's count is still BASE, so the
@@ -6660,13 +6661,13 @@ publication).  Answers the reply word."
                                                     (fnn-owner-core 'fn-owner-orcp-swap-word count frontier s
                                                                     (1- (fnn-arena-reader-count))
                                                                     rebuilt)
-                                                    (first (fnn-call 'fn-arena-count (fnn-live-arena)))
+                                                    (first (fnn-call 'fn-arena-count arena))
                                                     base)))
                                    (when (eq w :swap)
                                      ;; the predicted tombstones sealed: their
                                      ;; handles are BASE + i (the seal word)
                                      (let ((t0 (get-internal-real-time)))
-                                       (fnn-call 'fn-orcs-seal seal-payloads (fnn-live-arena))
+                                       (fnn-call 'fn-orcs-seal seal-payloads arena)
                                        (setq seal-us (round (* 1000000 (- (get-internal-real-time) t0))
                                                             internal-time-units-per-second)))
                                      ;; the commit point, then the swap, in one quantum
@@ -6709,7 +6710,7 @@ publication).  Answers the reply word."
                      (fnn-err "RECLAIM installed records=~d reclaimed=~d dropped=~d ms=~d sealed=~d seal-us=~d"
                               count (length (second decision)) dropped (ms)
                               (length seal-payloads) seal-us)
-                     (fnn-owner-release-extents service store *fnn-checkpoint-frames* paths pin (fnn-live-arena)))
+                     (fnn-owner-release-extents service store *fnn-checkpoint-frames* paths pin arena))
                    (fnn-reclaim-cut :released)))))
         (when pin (fnn-arena-unpin pin))
         ;; Captured and not swapped: the pass is over for the owner (the

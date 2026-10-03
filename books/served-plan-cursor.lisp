@@ -99,14 +99,16 @@
 (in-package "ACL2")
 (include-book "served-plan")
 (include-book "over-window")
+(include-book "newnews-stream-cursor")
 
 (local (in-theory (disable (tau-system))))
 
 ; served-plan repeats the cursor effect's shape (it sits below the catalog).
 (defthm fn-splan-cursor-effectp-is-ovw-by-definition
-  (equal (fn-splan-cursor-effectp e) (fn-ovw-cursor-effectp e))
+  (equal (fn-splan-cursor-effectp e)
+         (or (fn-ovw-cursor-effectp e) (fn-nnw-meta-effectp e)))
   :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-ovw-cursor-effectp))))
+  :hints (("Goal" :in-theory (enable fn-ovw-cursor-effectp fn-nnw-meta-effectp))))
 
 ; -----------------------------------------------------------------------------
 ; The quantum
@@ -131,6 +133,11 @@
   1)
 
 ; -----------------------------------------------------------------------------
+(local
+ (defthm fn-splan-newnews-over-tags-disjoint
+   (not (fn-nnw-meta-effectp (fn-ovw-cursor-effect cur)))
+   :hints (("Goal" :in-theory (enable fn-nnw-meta-effectp fn-ovw-cursor-effect)))))
+
 ; The step: the first cursor of REST, stepped once
 
 (defun fn-splan-rest-cursor-step (rest w fn-arena fn-cat)
@@ -140,14 +147,22 @@
   (if (consp rest)
       (if (fn-splan-cursor-effectp (car rest))
           (let ((cur (car (cdr (car rest)))))
-            (if (and (consp cur) (fn-ovw-cursorp cur))
+            (if (fn-nnw-meta-effectp (car rest))
+                (mv-let (octets next calls state)
+                  (fn-nnw-stream-step cur w w fn-arena fn-cat)
+                  (declare (ignore calls state))
+                  (mv :ok (cons (fn-nntp-reply-effect octets)
+                                (if (fn-nnw-meta-livep next)
+                                    (cons (fn-nnw-meta-effect next) (cdr rest))
+                                  (cdr rest)))))
+              (if (and (consp cur) (fn-ovw-cursorp cur))
                 (mv-let (octets next)
                   (fn-ovw-step cur w fn-arena fn-cat)
                   (mv :ok (cons (fn-nntp-reply-effect octets)
                                 (if next
                                     (cons (fn-ovw-cursor-effect next) (cdr rest))
                                   (cdr rest)))))
-              (mv :malformed rest)))
+              (mv :malformed rest))))
         (mv-let (status rest2)
           (fn-splan-rest-cursor-step (cdr rest) w fn-arena fn-cat)
           (mv status (cons (car rest) rest2))))
@@ -176,7 +191,9 @@
   (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
   (if (consp rest)
       (append (if (fn-splan-cursor-effectp (car rest))
-                  (fn-ovw-run (car (cdr (car rest))) wl fn-arena fn-cat)
+                  (if (fn-nnw-meta-effectp (car rest))
+                      (fn-nnw-stream-remaining (car (cdr (car rest))) fn-arena fn-cat)
+                    (fn-ovw-run (car (cdr (car rest))) wl fn-arena fn-cat))
                 (fn-srb-effect-octets (car rest)))
               (fn-splan-cw-octets (cdr rest) wl fn-arena fn-cat))
     nil))
@@ -257,7 +274,7 @@
                                       wl fn-arena fn-cat)
                   (fn-splan-cw-octets rest wl fn-arena fn-cat)))
   :hints (("Goal" :induct (fn-splan-rest-cursor-step rest wl fn-arena fn-cat)
-           :in-theory (disable fn-ovw-step fn-ovw-cursorp fn-ovw-run)
+           :in-theory (disable fn-ovw-step fn-ovw-cursorp fn-ovw-run fn-nnw-meta-livep)
            :expand ((fn-ovw-run (car (cdr (car rest))) wl fn-arena fn-cat)))))
 
 (defthm fn-splan-cursor-step-keeps-cw-remaining
@@ -310,7 +327,11 @@
   (declare (xargs :guard t))
   (if (consp effects)
       (and (or (not (fn-splan-cursor-effectp (car effects)))
-               (fn-splan-fresh-cursorp (car (cdr (car effects)))))
+               (if (fn-nnw-meta-effectp (car effects))
+                   (and (fn-nnw-meta-initialp (car (cdr (car effects))))
+                        (not (fn-nnw-stream-outputp
+                              (fn-cur-progress (car (cdr (car effects)))))))
+                 (fn-splan-fresh-cursorp (car (cdr (car effects))))))
            (fn-splan-fresh-effectsp (cdr effects)))
     t))
 
@@ -388,6 +409,18 @@
                                    fn-ovw-cursor-effect fn-nntp-make-result fn-nntp-reply-effect)
                                   (fn-nntp-parse-range fn-cat-group-next fn-ovw-status)))))
 
+(defthm fn-nntp-newnews-response-cursor-emits-a-fresh-cursor
+  (fn-splan-fresh-effectsp
+   (cdr (fn-nntp-newnews-response-cursor session archive env args fn-arena fn-cat)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-nntp-newnews-response-cursor fn-nnw-meta-effect
+                             fn-nnw-meta-effectp fn-nnw-meta-initialp fn-nnw-stream-outputp
+                             fn-nnw-stream-renderp fn-nnw-cursor
+                             fn-nntp-make-result fn-nntp-reply-effect fn-nntp-single)
+                            (fn-nntp-newgroups-date-parse fn-nntp-newgroups-time-parse
+                             fn-wildmat-parse fn-nntp-civil-dtn-ms
+                             fn-nntp-filter-groups-by-wildmat)))))
+
 (local
  (defthm fn-splan-cw-reply-octets-of-one-listp
    (implies (true-listp x)
@@ -463,8 +496,10 @@
   (declare (xargs :guard t))
   (if (consp rest)
       (and (or (not (fn-splan-cursor-effectp (car rest)))
-               (and (consp (car (cdr (car rest))))
-                    (fn-ovw-cursorp (car (cdr (car rest))))))
+               (if (fn-nnw-meta-effectp (car rest))
+                   (true-listp (fn-cur-pending (car (cdr (car rest)))))
+                 (and (consp (car (cdr (car rest))))
+                      (fn-ovw-cursorp (car (cdr (car rest)))))))
            (fn-splan-cw-rest-okp (cdr rest)))
     t))
 
@@ -489,7 +524,7 @@
            (and (equal (mv-nth 0 (fn-splan-rest-cursor-step rest wl fn-arena fn-cat)) :ok)
                 (fn-splan-cw-rest-okp (mv-nth 1 (fn-splan-rest-cursor-step rest wl fn-arena fn-cat)))))
   :hints (("Goal" :induct (fn-splan-rest-cursor-step rest wl fn-arena fn-cat)
-           :in-theory (disable fn-ovw-step fn-ovw-cursorp))))
+           :in-theory (disable fn-ovw-step fn-ovw-cursorp fn-cur-pending))))
 
 (defthm fn-splan-cursor-step-of-okp-is-ok
   (implies (fn-splan-cw-okp p)

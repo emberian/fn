@@ -439,7 +439,7 @@
          '(:by defprotocol
            :claim (,*fn-proto-cat-claim-hyps*
                    ,(fn-proto-cat-conclusion 'fn-proto-archive-command-cat))
-           :subject fn-nntp-archive-command-cat)))
+           :subject fn-proto-archive-command-cat)))
 
 ; Guards: every arm is guard-verified in books/served-catalog.lisp.
 (verify-guards fn-proto-archive-command-cat

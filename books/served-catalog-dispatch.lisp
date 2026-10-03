@@ -8,6 +8,7 @@
 ; The host reaches it through books/served-catalog-chain.lisp fn-scr-command.
 (in-package "ACL2")
 (include-book "served-catalog")
+(include-book "newnews-metadata-cursor")
 
 ;; The rules books/served-catalog.lisp's proofs run under (its header).
 (local (in-theory (enable (:definition fn-nntp-article-idp)
@@ -18,6 +19,47 @@
 (local (in-theory (disable fn-nntp-index-msgid-okp-stringp
                            fn-nntp-find-group-number-of-fresh-member)))
 (local (in-theory (disable (tau-system))))
+
+(defthm fn-scat-newnews-reference-keeps-session
+   (equal (car (fn-nntp-newnews-response session archive env args fn-arena))
+          session)
+   :hints (("Goal" :in-theory (enable fn-nntp-newnews-response
+                                      fn-nntp-single fn-nntp-multi
+                                      fn-nntp-make-result))))
+
+(defthm fn-scat-newnews-reference-has-no-cursor
+   (equal (fn-ovw-expand
+           (cdr (fn-nntp-newnews-response session archive env args fn-arena))
+           fn-arena fn-cat)
+          (cdr (fn-nntp-newnews-response session archive env args fn-arena)))
+   :hints (("Goal" :in-theory (enable fn-ovw-expand fn-ovw-cursor-effectp fn-nnw-meta-effectp
+                                      fn-nntp-newnews-response fn-nntp-single
+                                      fn-nntp-multi fn-nntp-make-result
+                                      fn-nntp-reply-effect))))
+
+(local
+ (defthm fn-scat-over-reference-one-reply
+   (equal (list (fn-nntp-reply-effect
+                 (fn-served-reply-octets
+                  (cdr (fn-nntp-over-range session archive token fn-arena)))))
+          (cdr (fn-nntp-over-range session archive token fn-arena)))
+   :hints (("Goal" :in-theory (e/d (fn-nntp-over-range fn-nntp-single
+                                      fn-nntp-multi fn-nntp-make-result
+                                      fn-nntp-reply-effect fn-served-reply-octets)
+                                     (fn-nntp-parse-range fn-nntp-group-range-numbers
+                                      fn-nov-lines-for-numbers))))))
+
+(local
+ (defthm fn-scat-xover-reference-one-reply
+   (equal (list (fn-nntp-reply-effect
+                 (fn-served-reply-octets
+                  (cdr (fn-nntp-xover-range session archive token fn-arena)))))
+          (cdr (fn-nntp-xover-range session archive token fn-arena)))
+   :hints (("Goal" :in-theory (e/d (fn-nntp-xover-range fn-nntp-single
+                                      fn-nntp-multi fn-nntp-make-result
+                                      fn-nntp-reply-effect fn-served-reply-octets)
+                                     (fn-nntp-parse-range fn-nntp-group-range-numbers
+                                      fn-nov-lines-for-numbers))))))
 
 ;; Group names: books/served-catalog.lisp's local lemmas, restated.
 (local
@@ -42,134 +84,6 @@
  (defthm fn-scat-state-groups-are-strings
    (implies (fn-statep archive) (fn-string-listp (fn-state-groups archive)))
    :hints (("Goal" :in-theory (enable fn-statep)))))
-
-;;; NEWNEWS over the catalog's tombstone column (lane served-live,
-;;; cg-newnews-hang).  The reference scan (books/nntp-responses.lisp
-;;; fn-nntp-newnews-scan) tests every candidate for a reclaim tombstone by
-;;; reading its payload's head (fn-nntp-article-tombstonep).  On the served
-;;; path that read runs under the realizer's no-I/O mode: a miss discards
-;;; the whole line, the one missing entry is read off the owner mutex and
-;;; the line runs again.  The realizer keeps fn-arx-read-cache-entries (8)
-;;; entries, so a NEWNEWS with more candidates than that evicts its own
-;;; earlier entries on every run and never completes: one client pinned the
-;;; owner (no answer in 100 s at 12 articles; 225 s at 77% owner CPU at 50).
-;;; This arm reads the tombstone from the article's catalog row
-;;; (books/served-columns.lisp fn-scol-tombstonep): no payload octet, and
-;;; under F it is the bytes' answer (fn-scol-tombstonep-is-bytes), so the
-;;; reply is the reference's (fn-nntp-newnews-response-cat-is-newnews-
-;;; response).
-(defun fn-nntp-newnews-scan-cat-loop (groups threshold articles horizon fn-arena fn-cat acc)
-  (declare (xargs :stobjs (fn-arena fn-cat) :guard (true-listp acc) :verify-guards nil
-                  :measure (acl2-count articles)))
-  (if (not (consp articles))
-      (revappend acc nil)
-    (let* ((article (fn-ag-car articles))
-           (stamp (fn-article-stamp article)))
-      (fn-nntp-newnews-scan-cat-loop
-       groups threshold (fn-ag-cdr articles) (if (natp stamp) stamp horizon) fn-arena fn-cat
-       (if (and (fn-nntp-newnews-candidatep groups article)
-                (not (fn-scol-tombstonep article fn-arena fn-cat))
-                (fn-nntp-newnews-newp threshold stamp horizon))
-           (cons (fn-nntp-string-octets (fn-article-msgid article)) acc)
-         acc)))))
-
-(defun fn-nntp-newnews-scan-cat (groups threshold articles horizon fn-arena fn-cat)
-  (declare (xargs :stobjs (fn-arena fn-cat) :guard t :verify-guards nil
-                  :measure (acl2-count articles)))
-  (mbe :logic
-       (if (not (consp articles))
-           nil
-         (let* ((article (fn-ag-car articles))
-                (stamp (fn-article-stamp article))
-                (rest (fn-nntp-newnews-scan-cat
-                       groups threshold (fn-ag-cdr articles)
-                       (if (natp stamp) stamp horizon) fn-arena fn-cat)))
-           (if (and (fn-nntp-newnews-candidatep groups article)
-                    (not (fn-scol-tombstonep article fn-arena fn-cat))
-                    (fn-nntp-newnews-newp threshold stamp horizon))
-               (cons (fn-nntp-string-octets (fn-article-msgid article)) rest)
-             rest)))
-       :exec (fn-nntp-newnews-scan-cat-loop groups threshold articles horizon fn-arena fn-cat nil)))
-
-(local
- (defthm fn-nntp-newnews-scan-cat-loop-is-revappend
-   (equal (fn-nntp-newnews-scan-cat-loop groups threshold articles horizon fn-arena fn-cat acc)
-          (revappend acc (fn-nntp-newnews-scan-cat groups threshold articles horizon fn-arena fn-cat)))
-   :hints (("Goal" :in-theory (disable fn-nntp-newnews-candidatep fn-scol-tombstonep
-                                       fn-nntp-newnews-newp fn-nntp-string-octets
-                                       fn-article-stamp fn-article-msgid)))))
-
-(defthm fn-nntp-newnews-scan-cat-is-scan
-  (implies (fn-scol-okp fn-arena fn-cat)
-           (equal (fn-nntp-newnews-scan-cat groups threshold articles horizon fn-arena fn-cat)
-                  (fn-nntp-newnews-scan groups threshold articles horizon fn-arena)))
-  :hints (("Goal" :induct (fn-nntp-newnews-scan-cat groups threshold articles horizon fn-arena fn-cat)
-                  :in-theory (e/d (fn-nntp-newnews-scan fn-scol-tombstonep-is-bytes)
-                                  (fn-nntp-newnews-scan-is-the-acceptance-filter
-                                   fn-nntp-newnews-candidatep fn-scol-tombstonep
-                                   fn-nntp-article-tombstonep fn-nntp-newnews-newp
-                                   fn-nntp-string-octets fn-article-stamp fn-article-msgid)))))
-
-(verify-guards fn-nntp-newnews-scan-cat-loop)
-
-(verify-guards fn-nntp-newnews-scan-cat
-  :hints (("Goal" :in-theory (disable fn-nntp-newnews-scan-cat-loop fn-nntp-newnews-candidatep
-                                      fn-scol-tombstonep fn-nntp-newnews-newp
-                                      fn-nntp-string-octets fn-article-stamp fn-article-msgid)
-                  :use ((:instance fn-nntp-newnews-scan-cat-loop-is-revappend (acc nil))))))
-
-(defun fn-nntp-newnews-response-cat (session archive env args fn-arena fn-cat)
-  ; fn-nntp-newnews-response, its scan reading the catalog's tombstone
-  ; column.  The parse is the reference's, form for form.
-  (declare (xargs :stobjs (fn-arena fn-cat) :guard t :verify-guards nil))
-  (if (not (and (consp args) (consp (cdr args)) (consp (cdr (cdr args)))
-                (or (null (cdr (cdr (cdr args))))
-                    (and (consp (cdr (cdr (cdr args))))
-                         (null (cdr (cdr (cdr (cdr args)))))
-                         (fn-nntp-keywordp (car (cdr (cdr (cdr args))))
-                                           "GMT")))))
-      (fn-nntp-single session (fn-proto-text * :syntax))
-    (let ((date (fn-nntp-newgroups-date-parse
-                 (car (cdr args))
-                 (fn-nntp-observed-year (fn-nntp-env-observation env))))
-          (time (fn-nntp-newgroups-time-parse (car (cdr (cdr args)))))
-          (patterns (fn-wildmat-parse (car args))))
-      (if (and (not (fn-nntp-parse-okp date))
-               (equal (car (cdr date)) :no-century))
-          (fn-nntp-single
-           session (fn-proto-text * :no-century))
-        (if (or (not (fn-nntp-parse-okp date))
-                (not (fn-nntp-parse-okp time))
-                (not (fn-wildmat-result-okp patterns)))
-            (fn-nntp-single session (fn-proto-text * :syntax))
-          (fn-nntp-multi
-           session (fn-proto-text "NEWNEWS" :listed)
-           (fn-nntp-newnews-scan-cat
-            (fn-nntp-filter-groups-by-wildmat
-             (fn-wildmat-result-value patterns)
-             (fn-state-groups archive))
-            (fn-nntp-civil-dtn-ms
-             (fn-nntp-parse-1 date) (fn-nntp-parse-2 date)
-             (fn-nntp-parse-3 date) (fn-nntp-parse-1 time)
-             (fn-nntp-parse-2 time) (fn-nntp-parse-3 time))
-            (fn-state-articles archive)
-            (fn-nntp-newnews-reader-horizon env) fn-arena fn-cat)))))))
-
-(defthm fn-nntp-newnews-response-cat-is-newnews-response
-  (implies (fn-scol-okp fn-arena fn-cat)
-           (equal (fn-nntp-newnews-response-cat session archive env args fn-arena fn-cat)
-                  (fn-nntp-newnews-response session archive env args fn-arena)))
-  :hints (("Goal" :do-not-induct t
-                  :in-theory (e/d (fn-nntp-newnews-response-cat fn-nntp-newnews-response
-                                   fn-nntp-newnews-scan-cat-is-scan)
-                                  (fn-nntp-newnews-scan-cat fn-nntp-newnews-scan
-                                   fn-nntp-filter-groups-by-wildmat fn-wildmat-parse
-                                   fn-nntp-newgroups-date-parse fn-nntp-newgroups-time-parse
-                                   fn-nntp-civil-dtn-ms fn-nntp-multi fn-nntp-single)))))
-
-(verify-guards fn-nntp-newnews-response-cat)
-
-(in-theory (disable fn-nntp-newnews-response-cat))
 
 (defun fn-nntp-archive-command-cat
     (session archive index verdicts env keyword args v fn-arena fn-cat)
@@ -290,7 +204,7 @@
          v fn-arena fn-cat))
        ;; cg-newnews-hang: the scan reads the tombstone column, no payload.
        ((fn-nntp-keywordp keyword "NEWNEWS")
-        (fn-nntp-newnews-response-cat session archive env args fn-arena fn-cat))
+        (fn-nntp-newnews-response-cursor session archive env args fn-arena fn-cat))
        (t (fn-nntp-archive-command session archive env keyword args fn-arena))))))
 
 ;;; KEYSTONE (the boundary theorem of this increment): under archive = the
@@ -434,6 +348,8 @@
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-nntp-archive-command-cat fn-nntp-archive-command-pinned
                             fn-ovw-expand-result fn-nntp-over-range-ovw-expands-to-over-range-cat
+                            fn-nntp-newnews-response-cursor-expands-to-cat
+                            fn-nntp-newnews-response-cursor-keeps-session
                             fn-nntp-archive-command fn-nntp-list-command
                             fn-nntp-hdr-response fn-nntp-xhdr-response
                             fn-nntp-over-response fn-nntp-xover-response
@@ -527,4 +443,3 @@
 ; Guards: every arm is guard-verified in books/served-catalog.lisp.
 (verify-guards fn-nntp-archive-command-cat
   :hints (("Goal" :in-theory (enable (tau-system)))))
-
