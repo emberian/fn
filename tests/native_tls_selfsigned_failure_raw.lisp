@@ -31,3 +31,39 @@
           (symbol-function 'fnn-%evp-pkey-ctx-free) free
           (symbol-function 'fnn-tls-error-stack) stack)))
 (format t "native_self_signed_original_failure_and_context_cleanup: PASS~%")
+
+;;; S093: actual exclusive writer owns a newly created file. The real
+;;; descriptor is closed even when a close failure is injected afterward.
+(let* ((saved (mapcar (lambda (name) (cons name (symbol-function name)))
+                     '(fnn-write-all fnn-fsync-file fnn-close)))
+       (close (symbol-function 'fnn-close))
+       (root (format nil "/tmp/fn-ssc-failure-~d-~a" (sb-posix:getpid) (fnn-random-hex 8))))
+  (sb-posix:mkdir root #o700)
+  (unwind-protect
+       (dolist (operations '((:write) (:fsync) (:close) (:write :close) (:fsync :close)))
+         (let ((path (fnn-join root "candidate")) (closed 0))
+           (dolist (pair saved) (setf (symbol-function (car pair)) (cdr pair)))
+           (when (member :write operations)
+             (setf (symbol-function 'fnn-write-all)
+                   (lambda (fd bytes) (declare (ignore fd bytes)) (fnn-os-fail sb-posix:eio))))
+           (when (member :fsync operations)
+             (setf (symbol-function 'fnn-fsync-file)
+                   (lambda (fd) (declare (ignore fd)) (fnn-os-fail sb-posix:eio))))
+           (setf (symbol-function 'fnn-close)
+                 (lambda (fd) (incf closed) (funcall close fd)
+                   (when (member :close operations) (fnn-os-fail sb-posix:enospc))))
+           (let ((condition (handler-case
+                                (progn (fnn-tls-ssc-write-new path '(1 2 3) #o600) nil)
+                              (error (e) e))))
+             (unless (and (typep condition 'fnn-os-error) (= closed 1)
+                          (= (fnn-os-errno condition)
+                             (if (or (member :write operations) (member :fsync operations))
+                                 sb-posix:eio sb-posix:enospc))
+                          (not (probe-file path)))
+               (error "self-signed owned-file cleanup or primary failure changed at ~s" operations)))))
+    (dolist (pair saved) (setf (symbol-function (car pair)) (cdr pair)))
+    ;; This directory and every candidate are solely this witness's files.
+    (let ((candidate (fnn-join root "candidate")))
+      (when (probe-file candidate) (fnn-unlink candidate)))
+    (sb-posix:rmdir root)))
+(format t "native_self_signed_owned_file_cleanup_and_primary_failure: PASS~%")

@@ -2214,3 +2214,19 @@ sol-access continuing owned queue, GPT-6.1-Sol, 2026-10-03 10:49 UTC:
   provenance listing is a separate global convergence concern.
 - All three Access warm REPLs stopped after proof completion, freeing leases.
 Source assembly response lease: Runtime851998516 plus root26b84f908 composed on dev3e77c6fed; four actual rlo declarations reactivated. Cold-abandon and output-discard both retained; renderer returns all five values. Independent bank evidence retained, whole tariff/native refinement/image activation pending.
+- Post-commit certified_claims --explain confirms PRF-1266/1268/1269 certified
+  at the exact current keystone source/include closure; auth book e045c330,
+  budget2b7d4bf9. Corrected direct keystone provenance citations to102734Z,
+  alongside final teeth104044Z / group access103156Z. Unrelated inherited
+  provenance listing is a separate global convergence concern.
+- All three Access warm REPLs stopped after proof completion, freeing leases.
+
+- S093 residual native self-signed exclusive-file close failure now runs the
+  same owned-candidate cleanup as write/fsync failure and preserves the primary
+  error. Real descriptors/files: old source RED, current source PASS across
+  write, fsync, close and double failures; S092 typed generator cleanup stays
+  PASS. Build-script suite passes all 13 tests, replacing two spelling checks
+  with actual fault fixtures. Native-program mapping PASS remains source-only.
+  Corrected evidence sol-access-ssc-cleanup-final-2026-10-03.md explicitly
+  retracts the earlier mistaken 17-test PASS line and retains its failed log.
+  Matching saved-image pair/recovery qualification remains Integration-owned.

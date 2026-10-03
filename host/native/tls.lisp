@@ -1054,13 +1054,18 @@ OCTETS and fsync."
     ;; The file this call created is removed when its write or fsync fails:
     ;; a partial key or certificate would make the next run refuse the paths
     ;; as existing (S093).
-    (let ((written nil))
+    (let ((written nil) (primary nil))
       (unwind-protect
-           (progn (fnn-write-all fd (fnn-octets octets))
-                  (fnn-fsync-file fd)
-                  (setq written t))
-        (fnn-close fd)
-        (unless written (ignore-errors (sb-posix:unlink path)))))))
+           (handler-case
+               (progn (fnn-write-all fd (fnn-octets octets))
+                      (fnn-fsync-file fd)
+                      (setq written t))
+             (error (e) (setq primary e)))
+        (handler-case (fnn-close fd)
+          (error (e) (unless primary (setq primary e))))
+        (when (or primary (not written)) (ignore-errors (fnn-unlink path))))
+      (when primary (error primary)))))
+
 
 (defun fnn-tls-self-signed-write (names days cert-path key-path)
   "Make the pair ACL2 decides for NAMES and DAYS and write it at CERT-PATH

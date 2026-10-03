@@ -10,9 +10,10 @@
  "line": "1064",
  "locus": "operator-verbs",
  "notes": [
-  "10-02 23:08 fixed; source-level test only"
+  "10-02 23:08 fixed; source-level test only",
+  "Residual close cleanup and primary-error precedence repaired after current source trace. Actual exclusive writer real-file fixture injects write/fsync/close and double failures: original source RED, repaired source PASS; descriptor closes once and owned path is absent. Historical write/fsync patch preserved. Image-level self-signed pair qualification remains pending."
  ],
- "owner": "sweep-peer",
+ "owner": "GPT-6.1-Sol / sol-access",
  "reviewer": "fnn-tls-ssc-write-new (tls.lisp:1026-1035) does O_CREAT|O_EXCL, then write-all and fsync inside unwind-protect, and only closes the fd on failure; it never unlinks. In fnn-tls-self-signed-write (1064-1071), a failed key write leaves a partial key file. A failed cert write unlinks only key-path and leaves the partial cert-path. A retry then fails the lstat-based ACL2 outcome (operator.lisp:150-153), so the operator has to delete the file by hand. This only happens on ENOSPC or EIO during an operator command.",
  "scenario": "ENOSPC or EIO during the key write leaves a truncated key-path. If the cert write fails after O_CREAT, the handler unlinks the key but leaves a truncated cert-path. In both cases a retry is refused by ACL2's 'path exists' outcome (and by O_EXCL), so the operator must find and delete a half-written file by hand. A truncated key or cert also sits where `run` will later try to load it.",
  "severity": "low",
@@ -20,5 +21,5 @@
  "source": "sweep-2026-10-03",
  "state": "in-progress",
  "title": "Self-signed pair writer leaves partial key or cert files behind, and the next run is refused because the paths exist",
- "updated": "2026-10-03T03:08:34Z"
+ "updated": "2026-10-03T11:04:00Z"
 }

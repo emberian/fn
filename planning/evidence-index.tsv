@@ -11786,6 +11786,12 @@ a2dace0eda09cf5b246fd59f50db3c1b0eac0b631a899450f0e3eb9e38644197 6470 planning/e
 043c0f951a5ca083be68e9010d1c113d4dac0f4be31ec00e6234a975e7f43292 2346 planning/evidence/sol-access-native-faults-2026-10-03.md
 686a9cb664424b6244f3212594def72d21cb84c49ff150f3d94d0ab7248e8059 1554 planning/evidence/sol-access-native-program-2026-10-03.log
 0204602744019d561d74bf427e5ba9edbb07a79cf37d5dbdb8220a1e60640101 2056 planning/evidence/sol-access-s085-2026-10-03.md
+19abc168637ab5b711e1ca930105c36925fe215b2958d05cdde7ac86434926cd 1117 planning/evidence/sol-access-ssc-cleanup-2026-10-03.md
+b20d380755e3d3998888394a5f42dde2a593a3cabbf381b18f7c1223541e0345 6347 planning/evidence/sol-access-ssc-cleanup-after-2026-10-03.log
+2bf9f227c8aa071f184a103f69bc342e0f429d153e417a205141697a883c6817 12830 planning/evidence/sol-access-ssc-cleanup-before-2026-10-03.log
+2b5a7bdc215f3c69854715dd64211a178b69e19d4aebf4ad074608dbc3828e36 3382 planning/evidence/sol-access-ssc-cleanup-buildscripts-2026-10-03.log
+7acccf88068cb2b2770b69bdb5741d5b4ae2d0d3816db5e4d04d7a8cb765a064 112 planning/evidence/sol-access-ssc-cleanup-buildscripts-final-2026-10-03.log
+b778b1c832f90f1656ef9d7b5902990788c9b667e4519d0e0301353e2b132205 1395 planning/evidence/sol-access-ssc-cleanup-final-2026-10-03.md
 cbe89e463be8c38489d237f55ab7f7e45b58bc9f99a0067962dd1c7053937ad4 6283 planning/evidence/sol-access-ssc-failure-2026-10-03.log
 8626fc8795a67a9f61405c6a1badf72b705cdef4d42866b349139b8e7537986a 841 planning/evidence/sol-assembly-retention-vocabulary-20261003.json
 9d751796d037c482a7dcd469776e6472c34f4e8d9ddb68f2386a26b12143efbb 2718 planning/evidence/sol-mux-cleanup-composition-20261003-v2.json
