@@ -3984,3 +3984,21 @@ manifest match. Universal arbitrary-name reference and full owner/physical scope
 remain open. Warm access-header-query /tank/fn/gates/codex-access-header-query-repl
 retained; tests resync had undone later bounds events, now reloaded header then
 query bounds and tests in order, all pass. No second full initializer or image.
+
+
+## Root BP admission continuation — 2026-10-03
+
+PRF1309, branch codex/root-bp-session-turn-20261003. One-candidate acquire-turn
+API returns word/row/next/ledger; BP c644dadeb owns actual bank+once/drain
+consumer. fn-rl-wfp was misreported as a whole-ledger scan: it is17constant
+column-length checks. The actual free-slot search was linear and is replaced
+on this native route with yielding single probes. Typed execution also exposed
+an actual lifetime ceiling: N concurrent slots funded only N spent conn-ids.
+Budget now separates N descriptor holds from the full typed64-bit identity
+allowance; settlement still never refunds spent identity.
+New API guards, yield identity, representation and logical-bank correspondence
+normal-admitted in retained Foundation solrlocover (~1.3ACL2s). Two real
+with-local-stobj scenarios pass after repair; original install produces
+resources-unavailable after4draws/one return. Installer/test helpers renamed
+only in shared normal loan to avoid undo; exact source cert pending. No new
+full world, no deployment or complete resource/whole-loop claim.
