@@ -3520,3 +3520,8 @@ Full factory/physical join stays Runtime/History; whole termination/reference,
 owner/renderer guards remain open. Next shared header span/extraction backing
 with Served; frozen READY4/render6 remain unchanged and Integration independently
 composes Qplan ordinary fallback.
+
+Access73a0 core+teeth normal cert PASS certify-20261003T165500Z-2590721,
+2selected roots/38matchingcacheddeps. Manifest archived+index committed.
+No owner/physical endpoint claim; underlying historical cache citations have
+uncited provenance debt, not silently upgraded to a whole closure verdict.
