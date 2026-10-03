@@ -19064,6 +19064,19 @@
           "name": "fn-sl-step-derived-conses-bound"
         }
       ]
+    },
+    {
+      "id": "PRF-1278",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ocap-held-prefix-has-matching-funded-tariff"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocap-preview-keeps-input-prefix-bounds"
+        }
+      ]
     }
   ]
 }

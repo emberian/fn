@@ -6577,12 +6577,14 @@
     },
     {
       "id": "HST-047",
-      "title": "A shared output heap pool is funded before materialization and connection generations retain each window draw until output and physical custody end",
+      "title": "A shared output heap pool is funded before materialization and connection generations retain each response lease until output and physical custody end",
       "specification": "specs/resource-vector.md#shared-output-pool-hst-047",
       "milestone": "M5",
       "status": "specified",
       "proof_targets": [
-        "PRF-1259"
+        "PRF-1259",
+        "PRF-1274",
+        "PRF-1278"
       ],
       "verification": [
         "proof",
@@ -6591,9 +6593,11 @@
       "evidence": [
         "books/output-reservation.lisp",
         "books/resource-output.lisp",
-        "tests/acl2/output-reservation-tests.lisp"
+        "tests/acl2/output-reservation-tests.lisp",
+        "books/output-command-admission.lisp",
+        "tests/acl2/output-command-admission-tests.lisp"
       ],
-      "implementation_note": "Explicit pool extends the composed store/thread/cold launcher allowance. Startup captures actual dynamic space and separately names store and cold terms, funds bookkeeping and one maintenance lease, and requires one user quantum affordable. Per-CID and connection generation window custody is scoped to the actual NEWNEWS producer. Full matcher/initialization/outer-plan/mux allocation refinement, refusal work and owner R>=W remain open."
+      "implementation_note": "Explicit pool extends the composed store/thread/cold launcher allowance. Startup captures actual dynamic space and separately names store and cold terms, funds bookkeeping and one maintenance lease, and requires one user quantum affordable. Per-CID and connection generation window custody is scoped to the actual NEWNEWS producer. Full matcher/initialization/outer-plan/mux allocation refinement, refusal work and owner R>=W remain open. Accounted command execution requires a pre-factory ACL2 family/tariff decision over the current wire scanner prefix; unpriced families refuse before the factory. Absent policy preserves the existing explicitly partial path. Runtime must reserve the response generation and retain its grant before scan/tokenization too; the selected actual footprint producer must price that workspace."
     }
   ]
 }
