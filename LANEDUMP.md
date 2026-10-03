@@ -567,3 +567,36 @@ Final native workload through reopen 17.042 s, total including artifacts/cleanup
 100 successful samples; offline-control processes excluded. No further scarce
 run started. Extent observer review fix ee142a184 gates job-only classification
 before developer selection; Integration queues e76+ee142 for next source batch.
+
+Transport credential boundary: S107/S108/S109, codex-sol-tools
+================================================================
+Isolated transport tree from origin/dev c73372af6. Owned feed auth-profile
+and dial, pull profile/worker boundary only; Runtime owns feed actor/idle
+and shared owner fault-service. Profile opens O_NONBLOCK|O_NOFOLLOW and
+admits descriptor fstat before reading, preserving uid/mode/bound authority.
+ACL2 alone decodes and renders credential/drop words. Push reads before TCP
+connect. Only exact known input-overbound and named OS/credential observation
+refuses; read/core/entry faults and unknown subclasses propagate. Pull/catch-up
+use same diagnostic and existing ACL2 refused-profile cursor-hold transition.
+Pull top boundary uses shared exact-class classifier even while stopping.
+
+First discriminating command: python3 -m unittest tests.test_native_feed_credential
+Five actual-source raw schedules pass3.145s (earlier1.350s before fd checks).
+Real kernel FIFO promptly refused, private malformed/missing/nonprivate/
+symlink/directory/overbound profile never connects, valid ACL2 codec permits
+push/pull, exact read/core faults retained, stopping feed/pull reach shared
+fault/fence endpoints, every opened profile descriptor confirmed EBADF after
+return/refusal/fault. Socket effects and owner fault/fence endpoints recorded;
+this is not a saved-image/whole owner-stop claim. Shared classifier is actual
+source. Initial harness missing ACL2 primitive/load path caused explicit infra
+failures; fixed with exact source extraction and ACL2 primitive adapters.
+No raw nonzero exit can count as expected assertion in Python witness.
+
+Prepared consumed native selector for Integration:
+tests.test_native_peer_pull.NativePeerPullTests.test_unreadable_credential_refuses_before_any_connection
+TLS pull profile mode0644, actual public operator setup, recording proxy
+connections0, ACL2 credential line, cursorheld/refusedprofile, ownerlive and
+clean shutdown; extends existing SCN071. Has not run here, historical scenario
+evidence does not cover this case. Books/peer-host and feed-link-backoff plus
+two existing test roots changed; scoped cert/composed image consumer pending
+Integration. No full suite/image launched by this lane.

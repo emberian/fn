@@ -279,7 +279,8 @@
   '((:unresolved . "unresolved") (:no-address . "no-ipv4-address")
     (:host-syntax . "host-syntax") (:server-name . "server-name")
     (:trust . "trust") (:name-mismatch . "name-mismatch")
-    (:certificate . "certificate") (:tls . "tls") (:connect . "connect")))
+    (:certificate . "certificate") (:tls . "tls") (:connect . "connect")
+    (:credential . "credential")))
 
 (defun fn-phost-tokenp (x)
   ; Printable, no space: one token of a log line.

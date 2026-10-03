@@ -149,6 +149,11 @@
 (assert-event (equal (fn-peer-dial-log-line :pull (pht "far") (pht "a b") :name-mismatch)
                      (pht "peer dial via=pull peer=far host=- outcome=name-mismatch retry=yes")))
 
+(assert-event (equal (fn-peer-dial-log-line :feed (pht "far") (pht "127.0.0.1") :credential)
+                     (pht "peer dial via=feed peer=far host=127.0.0.1 outcome=credential retry=yes")))
+(assert-event (equal (fn-peer-dial-log-line :pull (pht "far") (pht "127.0.0.1") :credential)
+                     (pht "peer dial via=pull peer=far host=127.0.0.1 outcome=credential retry=yes")))
+
 ; -----------------------------------------------------------------------------
 ; fn redeem: fn-redeem-done-only-on-281-after-the-password, witnesses of both
 ; arms of each iff (the keystone has no hypothesis).

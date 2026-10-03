@@ -1,21 +1,43 @@
 {
+ "budget": 600,
  "category": "error-handling",
  "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
  "evidence": "feed-service.lisp:166-171: (fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+))) ... (let ((info (fnn-fstat fd))) (unless (and (fnn-regular-p info) ...) (error 'fnn-feed-auth-error)). io.lisp:454-455: fnn-open is a plain sb-posix:open.",
+ "expect-failure": "tests.test_native_feed_credential.CredentialAdmissionTests.test_fifo_refuses_without_blocking",
  "exposure": "conditional",
+ "failure-message": "credential FIFO must refuse without blocking",
  "file": "host/native/feed-service.lisp",
  "fix": "Open with O_NONBLOCK (or lstat first and refuse a non-regular file before open), then clear O_NONBLOCK or read through the bounded reader. Keep the fstat check as the authority.",
+ "harness": "tests/test_native_feed_credential.py,tests/native_feed_credential_raw.lisp",
  "id": "S107",
  "line": "166",
  "locus": "peer-services",
- "notes": [],
- "owner": "sweep-peer",
+ "notes": [
+  "10-03 04:00 claimed: scope=['host/native/feed-service.lisp', 'host/native/pull-service.lisp', 'books/peer-host.lisp', 'books/feed-link-backoff.lisp', 'specs/peering.md', 'tests/acl2/peer-host-tests.lisp', 'tests/acl2/feed-link-backoff-tests.lisp', 'tests/native_feed_credential_raw.lisp', 'tests/test_native_feed_credential.py', 'tests/test_native_peer_pull.py', 'tests/scenarios/catalog.json', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_native_feed_credential.CredentialAdmissionTests.test_fifo_refuses_without_blocking"
+ ],
+ "owner": "codex-sol-tools",
  "reviewer": "feed-service.lisp:166 opens with O_RDONLY|O_NOFOLLOW and no O_NONBLOCK. fnn-open (io.lisp:454-455) is a plain sb-posix:open, so a FIFO blocks there before fnn-regular-p (169). In fnn-feed-dial the socket is connected (418) but not yet published, so fnn-feed-service-wake (600-613) cannot shut it down, and fnn-feed-service-close's join-thread (621) waits forever. pull-service.lisp:311 reuses the same function. It is only reachable when the operator-configured private profile path is a FIFO, which needs the operator or someone with write access to that directory, so the severity is low.",
  "scenario": "The configured authinfo profile path is (or is replaced by) a FIFO. O_NOFOLLOW does not reject FIFOs, so open(O_RDONLY) blocks until a writer appears, before fnn-regular-p is ever checked. The feed worker blocks inside fnn-feed-dial with a TCP connection already open to the peer (line 418). fnn-feed-service-wake can only shut down sockets published in the link table, and this one is not yet published, so fnn-feed-service-close's join-thread waits forever and owner shutdown hangs. fnn-pull-profile (pull-service.lisp:309) reuses this function, so the pull worker hangs the same way.",
+ "scope": [
+  "host/native/feed-service.lisp",
+  "host/native/pull-service.lisp",
+  "books/peer-host.lisp",
+  "books/feed-link-backoff.lisp",
+  "specs/peering.md",
+  "tests/acl2/peer-host-tests.lisp",
+  "tests/acl2/feed-link-backoff-tests.lisp",
+  "tests/native_feed_credential_raw.lisp",
+  "tests/test_native_feed_credential.py",
+  "tests/test_native_peer_pull.py",
+  "tests/scenarios/catalog.json",
+  "LANEDUMP.md",
+  "planning/evidence-index.tsv"
+ ],
  "severity": "low",
  "source": "sweep-2026-10-03",
- "state": "open",
+ "state": "in-progress",
+ "test": "python3 -m unittest tests.test_native_feed_credential.CredentialAdmissionTests.test_fifo_refuses_without_blocking",
  "title": "Credential profile opened without O_NONBLOCK before the regular-file check: a FIFO hangs the feed worker and the owner close join",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T08:00:47Z"
 }

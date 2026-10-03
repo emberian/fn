@@ -1,21 +1,43 @@
 {
+ "budget": 600,
  "category": "correctness",
  "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
  "evidence": "feed-service.lisp:418-421: (setq socket (fnn-peer-connect host port :timeout timeout)) (let ((fd ...)) (multiple-value-bind (user pass allow-clear) (fnn-feed-auth-profile auth) ...). The handler at 431-434 catches fnn-os-error and fnn-feed-auth-error and calls (fnn-peer-dial-report :feed ... host condition). io.lisp:5689-5699: fnn-peer-dial-outcome maps anything that is not a dial or TLS error to :connect.",
+ "expect-failure": "tests.test_native_feed_credential.CredentialAdmissionTests.test_invalid_profile_refuses_before_any_connect",
  "exposure": "conditional",
+ "failure-message": "credential admitted before any TCP connect",
  "file": "host/native/feed-service.lisp",
  "fix": "Read and decode the profile before connecting, as fnn-pull-profile does before the pull dial, and give the failure its own outcome (for example :credential) in ACL2's dial line rather than :connect.",
+ "harness": "tests/test_native_feed_credential.py,tests/native_feed_credential_raw.lisp",
  "id": "S108",
  "line": "418",
  "locus": "peer-services",
- "notes": [],
- "owner": "sweep-peer",
+ "notes": [
+  "10-03 04:01 claimed: scope=['host/native/feed-service.lisp', 'host/native/pull-service.lisp', 'books/peer-host.lisp', 'books/feed-link-backoff.lisp', 'specs/peering.md', 'tests/acl2/peer-host-tests.lisp', 'tests/acl2/feed-link-backoff-tests.lisp', 'tests/native_feed_credential_raw.lisp', 'tests/test_native_feed_credential.py', 'tests/test_native_peer_pull.py', 'tests/scenarios/catalog.json', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_native_feed_credential.CredentialAdmissionTests.test_invalid_profile_refuses_before_any_connect"
+ ],
+ "owner": "codex-sol-tools",
  "reviewer": "feed-service.lisp:418-421 connects first and reads fnn-feed-auth-profile second. The handler (424-434) catches fnn-feed-auth-error together with the dial errors, calls fnn-peer-dial-report, and drops with cause :dial. fnn-peer-dial-outcome (io.lisp:5689-5699) maps fnn-feed-auth-error (feed-service.lisp:25, a plain error) to :connect. The result is a misleading diagnosis plus one wasted peer connection per backoff interval; there is no correctness loss.",
  "scenario": "An operator leaves the profile at mode 0644, or the file is missing. Every redial opens a TCP connection to the peer (consuming one of the peer's connection slots and its greeting), then fails locally. The service log line says the dial of the peer at HOST failed with outcome :connect, which points the operator at the network instead of the local credential file. ACL2's drop line also records cause :dial. A local configuration error and a remote unreachability become one outcome.",
+ "scope": [
+  "host/native/feed-service.lisp",
+  "host/native/pull-service.lisp",
+  "books/peer-host.lisp",
+  "books/feed-link-backoff.lisp",
+  "specs/peering.md",
+  "tests/acl2/peer-host-tests.lisp",
+  "tests/acl2/feed-link-backoff-tests.lisp",
+  "tests/native_feed_credential_raw.lisp",
+  "tests/test_native_feed_credential.py",
+  "tests/test_native_peer_pull.py",
+  "tests/scenarios/catalog.json",
+  "LANEDUMP.md",
+  "planning/evidence-index.tsv"
+ ],
  "severity": "low",
  "source": "sweep-2026-10-03",
- "state": "open",
+ "state": "in-progress",
+ "test": "python3 -m unittest tests.test_native_feed_credential.CredentialAdmissionTests.test_invalid_profile_refuses_before_any_connect",
  "title": "Outbound feed dials TCP before reading the credential profile, and logs a profile failure as a peer connect failure",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T08:01:13Z"
 }
