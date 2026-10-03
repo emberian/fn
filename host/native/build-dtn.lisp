@@ -292,6 +292,9 @@
 (include-book "books/heap-open-nursery")
 (include-book "books/heap-reservation")
 (include-book "books/cold-read-reservation")
+;; host/native/owner-control-turn.lisp (loaded for owner.lisp's control-turn
+;; macro) names fn-ats-uncertain-internal, as in the default image's world.
+(include-book "books/allocation-turn-slots")
 
 ; D40: explicit raw declaration scope. Every selected entry is checked in
 ; this loaded world; an unavailable target refuses the build.

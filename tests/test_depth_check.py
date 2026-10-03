@@ -176,10 +176,6 @@ class InterpretedTests(unittest.TestCase):
                       "element in append", lines)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class ProgramEntryTests(unittest.TestCase):
     """The :program host-called entries (row K2) only shrink: a new one is
     refused, a listed one passes, a stale listing must leave."""
@@ -218,3 +214,7 @@ class ProgramEntryTests(unittest.TestCase):
         rows = d.program_entries(defs, {"fn-a", "fn-b", "fn-missing"})
         self.assertEqual([r["function"] for r in rows], ["fn-a"])
         self.assertEqual(rows[0]["where"], "host/a.lisp:1")
+
+
+if __name__ == "__main__":
+    unittest.main()
