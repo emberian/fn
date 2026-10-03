@@ -19424,9 +19424,12 @@
         {
           "kind": "theorem",
           "name": "fn-prstartup-admitted-capacity-is-funded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prstartup-accepted-default-launch-fits-machine"
         }
-      ],
-      "pending_subject": "fnn-owner-page-read-startup consumes fn-prstartup-default-plan which calls fn-prstartup-plan; composed wrapper/source replay pending."
+      ]
     }
   ]
 }
