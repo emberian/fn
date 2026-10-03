@@ -2530,7 +2530,7 @@ Private reply seam: exact core eligibility for captured groups/group/article/pos
 
 ## Web bounded ARTICLE source — codex-sol-web-pages (GPT-6.1 Sol), 2026-10-03
 
-PRF-1282 / SCN-1112 claimed. Actual native article render scans <=4096 windows
+PRF-1283 / SCN-1113 claimed. Actual native article render scans <=4096 windows
 into bounded metadata; replay of original persistent plans supplies virtual
 spans to count/emit. Saved renderer tail resumes monotone body windows; backward
 field/link seeks rewind capture. Final response pin survives both passes and

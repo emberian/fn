@@ -9099,7 +9099,7 @@
       }
     },
     {
-      "id": "SCN-1112",
+      "id": "SCN-1113",
       "title": "ARTICLE scan/replay/count/emit keeps bounded input and the final response pin through cold replay and partial HTTP drain",
       "milestone": "M6",
       "status": "specified",
@@ -9119,7 +9119,7 @@
       "evidence": [
         "tests/native_web_article_stream_raw.lisp"
       ],
-      "note": "Raw actual-source consumer passes. PRF-1282 guard/refinement, matching native image and Web allocation/repeated-read tariff remain pending."
+      "note": "Raw actual-source consumer passes. PRF-1283 guard/refinement, matching native image and Web allocation/repeated-read tariff remain pending."
     }
   ]
 }

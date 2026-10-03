@@ -505,7 +505,7 @@ Anchor: [E1/E2 experiment contract](planning/experiments/e1-e2-agent-exchange.md
 
 ### Web ARTICLE collector continuation — GPT-6.1 Sol active
 
-Source packet: virtual metadata scan/replay page source (PRF-1282, SCN-1112),
+Source packet: virtual metadata scan/replay page source (PRF-1283, SCN-1113),
 actual native consumer, final pin through count/emit/socket suffix and cold
 replay. Raw reference/IN-bound/pin witnesses pass; program refinement and image
 pending. LIST/OVER collector removal continues; qualified Web tariff/repeated
