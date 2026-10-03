@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from tests.native_image_provenance import _digest, assert_same_native_source
+from tests.native_image_provenance import _digest, assert_same_native_source, source_execution_identity
 
 
 class SourceExecutionProvenanceTests(unittest.TestCase):
@@ -44,6 +44,19 @@ class SourceExecutionProvenanceTests(unittest.TestCase):
 
     def test_exact_loaded_execution_preserves_distinct_bootstrap_revision(self):
         self.assertEqual(self.invoke(), 'b' * 40)
+
+    def test_single_workload_identity_preserves_exact_loaded_inputs(self):
+        with patch.dict(os.environ, FN_NATIVE_SOURCE_EXECUTIONS=json.dumps(self.binding)):
+            coordinate = source_execution_identity(self.launcher)
+        self.assertEqual(coordinate['manifest']['world_revision'], 'a' * 40)
+        self.assertEqual(coordinate['source_revision'], 'b' * 40)
+        self.assertEqual(coordinate['manifest']['execution_sha256'], self.data['execution_sha256'])
+        self.assertEqual(coordinate['binding']['manifest_sha256'], _digest(self.manifest))
+
+    def test_single_workload_cannot_use_unbound_launcher(self):
+        with patch.dict(os.environ, FN_NATIVE_SOURCE_EXECUTIONS='{}'):
+            with self.assertRaises(KeyError):
+                source_execution_identity(self.launcher)
 
     def test_changed_loaded_raw_source_refused(self):
         Path(self.inputs['raw']).write_text('changed semantic consumer')

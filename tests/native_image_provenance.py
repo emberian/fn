@@ -101,6 +101,28 @@ def _execution_source(image, binding):
     return manifest["source_revision"], manifest_digest
 
 
+def source_execution_identity(image):
+    """Return an explicitly validated single-process execution coordinate.
+
+    None selects the existing image path. A present binding is mandatory for
+    this launcher and reuses the exact composed consumer validation before
+    Store materialization. Source/world labels remain distinct from loaded
+    artifact hashes; this coordinate is never image qualification.
+    """
+    encoded = os.environ.get("FN_NATIVE_SOURCE_EXECUTIONS")
+    if encoded is None:
+        return None
+    path = str(Path(image).resolve(strict=True))
+    binding = json.loads(encoded)[path]
+    source, manifest_digest = _execution_source(path, binding)
+    manifest_bytes = Path(binding["manifest"]).read_bytes()
+    if hashlib.sha256(manifest_bytes).hexdigest() != manifest_digest:
+        raise ValueError("source execution manifest changed during validation")
+    return dict(kind="initialized source execution; no image qualification",
+                source_revision=source, launcher=path, binding=binding,
+                manifest=json.loads(manifest_bytes))
+
+
 def assert_same_native_source(case, *images):
     """Require one exact source execution, or the existing published pair.
 

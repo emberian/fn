@@ -28,6 +28,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from tests.native_harness import Client, EXIT, Node, article, runtime_sbcl
 from tests.test_native_owner import assert_funded_syncer_custody
+from tests.native_image_provenance import source_execution_identity
 from tools.native_env import image_identity
 from tools.resilience.adapters.native_cuts import served_matches
 from tools.resilience.adapters.page_io import file_hash
@@ -220,6 +221,7 @@ def run_case(image, image_source, work, recipe, mode, deadline=120):
     durable_hashes = {}
     actor_ready = threading.Barrier(len(recipe["writers"]) + len(recipe["readers"]) + 1)
     stop = threading.Event()
+    execution = None
     def observed_post(client, tag, actor, phase):
         begun = time.monotonic()
         try:
@@ -265,6 +267,17 @@ def run_case(image, image_source, work, recipe, mode, deadline=120):
 
     try:
         rec.event("stage", "setup-begun")
+        # Explicit initialized-source coordinates must be checked before the
+        # first actual Store operation; an image source label cannot replace
+        # the execution's loaded core/raw/logical/runtime hashes.
+        execution = source_execution_identity(image)
+        if execution is not None:
+            if image_source != execution["source_revision"]:
+                raise ValueError("requested source differs from bound source execution")
+            (work / "source-execution.json").write_text(json.dumps(execution, indent=2) + "\n")
+            rec.event("environment", "source-execution-validated",
+                      source_revision=execution["source_revision"],
+                      manifest_sha256=execution["binding"]["manifest_sha256"])
         initialized = node.operator("init", *recipe["profile"], GROUP, timeout=600)
         rec.event("environment", "init", returncode=initialized.returncode,
                   stdout=initialized.stdout.decode("utf-8", "replace"),
@@ -413,7 +426,9 @@ def run_case(image, image_source, work, recipe, mode, deadline=120):
         revision = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True,
                                   stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
         tool_source = revision.stdout.strip() if revision.returncode == 0 else None
-    manifest = dict(image=str(image), image_identity=image_identity(Path(image), source=image_source),
+    manifest = dict(image=str(image), image_identity=image_identity(Path(image),
+                    source=image_source if "FN_NATIVE_SOURCE_EXECUTIONS" not in os.environ else None),
+                    source_execution=execution,
                     host=platform.uname()._asdict(), python=sys.version, profile=recipe["profile"],
                     seed=recipe["seed"], mode=mode, owner_env=recipe.get("owner_env", {}),
                     maintenance=recipe["maintenance"], tool_revision=tool_source,
@@ -421,7 +436,7 @@ def run_case(image, image_source, work, recipe, mode, deadline=120):
                     runtime=runtime[0] if runtime else None,
                     inputs={p: file_hash(ROOT / p) for p in (
                         "tools/native_mixed_workload.py", "tests/native_harness.py", "tests/test_native_owner.py",
-                        "tools/native_env.py", "tools/resilience/journal.py",
+                        "tools/native_env.py", "tests/native_image_provenance.py", "tools/resilience/journal.py",
                         "tools/resilience/adapters/native_cuts.py", "tests/campaign/native_operator_campaign.py")})
     (work / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     return summary

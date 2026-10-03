@@ -3490,3 +3490,14 @@ verdict transfer. Fullfunding/HM/GC remainopen.
 Observedactualffdd Webfixturekeeper callable incompatible with iterable helper;
 Runtime owns/fixed4e167329e staticlist, no endpointverdict. Current tests use
 pre-Node mutablelist so finalnodecleanup precedes diagnostic archiving.
+
+Current-source workload coordinates followthrough (2026-10-03)
+-------------------------------------------------------------
+BPowner approved single public source_execution_identity helper reusing exact
+existing _execution_source input validator; no separate provenance semantics.
+Mixedrunner nowvalidates explicit FN_NATIVE_SOURCE_EXECUTIONS beforeStoreinit,
+refuses mismatchedsource, retainsactualmanifest/hash/core/raw/logical/runtime
+coordinates separatelyfromsavedimageidentity. Itcannot labeloldbootstrap as
+currentimage. Newdecodedselector consumes samehelper.17focusedprovenance+
+acceptedhistorychecksPASS0.026s; no newnode/bootstrap/nativeexecution. Helper
+andrunnerconsumer shiptogether; connectedselectedsource run stillpending.
