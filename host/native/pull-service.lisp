@@ -409,7 +409,7 @@ acceptance (the owner is stopping or fenced then)."
 (defstruct (fnn-pull-flight (:constructor %make-fnn-pull-flight))
   runtime plan journal kind key peer session effects events why
   socket fd context channel tls-name io deadline data (offset 0) end
-  cid input cold cold-word await completion render parts closing resume-at
+  cid input cold cold-word await completion render cursor-cold-since parts closing resume-at
   (closed nil))
 
 (defun fnn-pull-flight-event (flight event)
@@ -438,7 +438,8 @@ acceptance (the owner is stopping or fenced then)."
             (fnn-pull-flight-completion flight) nil))
     (setf (fnn-pull-flight-cold flight) nil
           (fnn-pull-flight-input flight) nil
-          (fnn-pull-flight-render flight) nil)
+          (fnn-pull-flight-render flight) nil
+          (fnn-pull-flight-cursor-cold-since flight) nil)
     (flet ((release (thunk)
              (handler-case (funcall thunk)
                (serious-condition (condition) (unless failure (setq failure condition))))))
@@ -554,13 +555,24 @@ acceptance (the owner is stopping or fenced then)."
     (setf (fnn-pull-flight-resume-at flight) nil)
     (cond
       ((fnn-pull-flight-cold flight)
-       (destructuring-bind (read line-since since) (fnn-pull-flight-cold flight)
-         (multiple-value-bind (word since now limit)
+       (destructuring-bind (read line-since since &optional kind) (fnn-pull-flight-cold flight)
+         (multiple-value-bind (word since at limit)
              (fnn-owner-cold-poll service read line-since since)
-           (unless (consp word)
-             (setf (fnn-pull-flight-cold flight) nil
-                   (fnn-pull-flight-cold-word flight)
-                   (list word since now limit (or line-since since)))))))
+           (cond
+             ((consp word)
+              (setf (fnn-pull-flight-resume-at flight)
+                    (fnn-core 'fn-prd-resume-at now (second word))))
+             ((eq kind :cursor)
+              ;; A rendered response resumes its exact plan, never the input
+              ;; decoder. Keep the read for cleanup if polling refuses/faults.
+              (unless (eq word :serve)
+                (error 'fnn-store-io-refusal
+                       :message (format nil "pull cursor: payload read ~(~a~); the reply is terminated" word)))
+              (setf (fnn-pull-flight-cold flight) nil))
+             (t
+              (setf (fnn-pull-flight-cold flight) nil
+                    (fnn-pull-flight-cold-word flight)
+                    (list word since at limit (or line-since since))))))))
       ((fnn-pull-flight-await flight)
        (let ((completion nil))
          (sb-thread:with-mutex ((fnn-pull-runtime-lock (fnn-pull-flight-runtime flight)))
@@ -578,14 +590,22 @@ acceptance (the owner is stopping or fenced then)."
                  (setf (fnn-pull-flight-render flight)
                        (fnn-core 'fn-splan-step-plan step (if closing (cdr value) value) redeem))))))))
       ((fnn-pull-flight-render flight)
-       (multiple-value-bind (part rest done yielded)
+       (multiple-value-bind (part rest done yielded cold-read)
            (fnn-owner-render-next-quantum service cid (fnn-pull-flight-render flight) :transit)
-         (push part (fnn-pull-flight-parts flight))
          (setf (fnn-pull-flight-render flight) (unless done rest))
+         (if cold-read
+             (progn
+               (unless (fnn-pull-flight-cursor-cold-since flight)
+                 (setf (fnn-pull-flight-cursor-cold-since flight) now))
+               (setf (fnn-pull-flight-cold flight)
+                     (list cold-read (fnn-pull-flight-cursor-cold-since flight) now :cursor)))
+           (push part (fnn-pull-flight-parts flight)))
          (when (and (not done) yielded)
            (setf (fnn-pull-flight-resume-at flight)
                  (fnn-core 'fn-prd-resume-at now (fnn-core 'fn-splan-cursor-resume-ms))))
-         (when done (fnn-owner-response-unpin service cid))))
+         (when done
+           (setf (fnn-pull-flight-cursor-cold-since flight) nil)
+           (fnn-owner-response-unpin service cid))))
       ((or (fnn-pull-flight-closing flight)
            (zerop (length (fnn-pull-flight-input flight))))
        (let ((reply (fnn-owner-join-octets (nreverse (fnn-pull-flight-parts flight)))))

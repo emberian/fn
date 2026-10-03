@@ -1648,3 +1648,22 @@ Owner carrier capability — GPT-6.1-Sol, 2026-10-03
 
 ## Source assembly immediate HTTP reactor (2026-10-03)
 934b416cb composed with cold fifth return; actual io leaf collision with retained pull FD/DATA/OFFSET/END fnn-socket-write-now resolved by renaming new HTTP/NNTP FD/CHANNEL/DATA/OFFSET leaf fnn-transport-write-now plus two callers. Six missing program dispatcher declarations added for actual HTTP wrappers. Source ships before verification; primary cancellation/session lease/cold lifetime and actual changed constructor/leaf fixture checks follow, matching nativeWeb/LogicalFeed pending. Full reply/HTML materialization/funding still open.
+
+## Sol tools: retained pull consumes cursor cold-read outcome
+
+Fix-forward from Integration9343a56ef. The actual pull local continuation
+now binds the render quantum's fifth COLD-READ value, retains its exact plan
+and read with a :cursor tag, and resumes rendering after :serve without
+re-entering the input decoder. The first cursor dependency clock survives
+successive cache misses; each read has its own issue clock. ACL2's wait word
+sets the next poll time. Cold refusal leaves the retained read for cleanup
+and raises the same named I/O refusal as the served cursor; it cannot publish
+an incomplete reply. Close-local clears the cursor clock and attempts read
+abandonment through the existing all-release cleanup.
+
+Source form parse/diff PASS. Source sent before broader verification per
+current coordination; focused actual pull fixture follows separately.
+No proof/image or actual peer scenario claim.
+
+## Source assembly cold retained-pull consumer fixforward (2026-10-03)
+b138de482 composes actual fifth-value render/read tagged cursor, keeps first response clock across retry; pollserve resumes exact render, refusal retains read for cleanup. Source first per Ember, producer focused new fixture underway/no prior green transfer; primary actual tuple/cleanup review and first narrow selector follow.
