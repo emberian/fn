@@ -271,6 +271,16 @@ admissible images; each keystone has one refuting witness per hypothesis.
 
 ## Resident history generation and native reclamation consumer
 
+Physical candidate custody precedes logical activation. The native generation
+table retains the candidate before entering `fn-owner-hroot-activate`, including
+when that call or the subsequent physical pointer installation escapes. Under
+the same owner gate, `fn-owner-hroot-abandon-word` permits disposal only for a
+still-building, unleased generation; cleanup disposes that private backing
+before returning its credit. An activated or ambiguously published generation
+keeps its backing and grant for fenced recovery. The existing owner fence is
+the exclusion boundary; retaining a failed candidate does not authorize serving
+it or infer successful publication from a pointer write.
+
 The canonical `fn-hist` attachment keeps its dense all-event ordinal semantics.
 Its P3 foundation owns a resident immutable image prefix and an ordinary append
 tail; Message-ID buckets contain ordinals. The live root builder reads exact
