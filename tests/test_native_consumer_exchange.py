@@ -187,7 +187,10 @@ class NativeConsumerExchangeTests(unittest.TestCase):
         for config in (a, b):
             self.trust(config, ("agent-a", "agent-b"),
                        (("r", "agent-a"), ("reply-", "agent-b")))
-        self.consumer(a, "report", "r1", "saved-delivery-receipt")
+        payload = b"saved-delivery\r\nkind: reply\r\noperation-id: another\x00\xff"
+        payload_file = self.root / "report.payload"
+        payload_file.write_bytes(payload)
+        self.consumer(a, "report", "r1", "--payload-file", str(payload_file))
         self.consumer(b, "wake", cut="after-poll", expected=97)
         data = json.loads(b.read_text())
         with sqlite3.connect(data["db"]) as db:
@@ -231,6 +234,15 @@ class NativeConsumerExchangeTests(unittest.TestCase):
             ).fetchone(), (*saved[:2], "handled"))
         self.consumer(a, "wake")
         self.assertEqual(self.summary(a)["state"]["replies"], "1")
+        # Application codec assertions accompany the native acceptance and
+        # independent signature checks; payload metadata-like bytes stay data.
+        from tools.fn_consumer import Consumer
+        for config, expected_payload in ((a, payload), (b, b"received " + payload)):
+            with sqlite3.connect(json.loads(config.read_text())["db"]) as db:
+                authored = db.execute("SELECT source FROM submissions").fetchone()[0]
+            fields = Consumer.envelope(authored)
+            self.assertEqual(fields["payload"], expected_payload)
+            self.assertEqual(fields["operation-id"], "r1" if config == a else "reply-r1")
         evidence = os.environ.get("FN_CONSUMER_EXCHANGE_EVIDENCE")
         if evidence:
             # Preserve only consumer-owned/public source artifacts; no key
@@ -558,7 +570,9 @@ class NativeConsumerExchangeTests(unittest.TestCase):
         """
         self.start_node(log=False, bootstrap=False)
         a = self.agent("agent-a", 0xA1, 1)
-        self.consumer(a, "report", "r1", "immutable-retry", cut="after-post",
+        payload_file = self.root / "immutable.payload"
+        payload_file.write_bytes(b"immutable\x00\xff\r\nkind: reply\nretry")
+        self.consumer(a, "report", "r1", "--payload-file", str(payload_file), cut="after-post",
                       expected=97)
         cfg = json.loads(a.read_text())
         artifact_query = ("SELECT source,ed_sig,ml_sig,principal,ed_public,"
@@ -571,7 +585,7 @@ class NativeConsumerExchangeTests(unittest.TestCase):
         self.owner = self.start_owner()
         for key_path in cfg["keys"].values():
             Path(key_path).unlink()
-        self.consumer(a, "report", "r1", "immutable-retry")
+        self.consumer(a, "report", "r1", "--payload-file", str(payload_file))
         settled = self.summary(a)
         self.assertEqual(settled["outbox"][0]["state"], "stored")
         self.assertEqual(settled["outbox"][0]["attempts"], 2)
