@@ -22,6 +22,18 @@
       (fn-rlo-chain-rows-p rows (fn-rl-count ledger)
        (nth 3 ledger) (nth 4 ledger) (nth 14 ledger))))
 
+(defun fn-rlo-free-range (start count)
+ (declare (xargs :guard t :verify-guards nil :measure (nfix (- (nfix count) (nfix start)))))
+ (if (and (natp start) (natp count) (< start count))
+     (cons start (fn-rlo-free-range (+ 1 start) count)) nil))
+
+(defun fn-rlo-reusable-range-p (start count phases gens)
+ (declare (xargs :guard t :verify-guards nil :measure (nfix (- (nfix count) (nfix start)))))
+ (if (and (natp start) (natp count) (< start count))
+     (and (equal (nth start phases) 0)
+          (natp (nth start gens)) (< (nth start gens) *fn-rl-word-max*)
+          (fn-rlo-reusable-range-p (+ 1 start) count phases gens)) t))
+
 (encapsulate ()
 (local (defthm fn-rlo-chain-frame-phase-generation
  (implies (and (natp slot) (not (member-equal slot rows)))
@@ -206,4 +218,178 @@
    (fn-rlo-settled-chain-is-returned-row fn-rlo-live-has-reusable-row-domain fn-rlo-free-chainp fn-rlo-settle-ready fn-rlo-livep fn-rlo-tokenp update-fn-rl-elensi update-fn-rl-trailersi fn-rl-gensi nth update-nth)))))
 )
 
-(in-theory (disable fn-rlo-free-chainp fn-rlo-chain-rows-p))
+(encapsulate ()
+(local (defthm fn-rlo-free-init-column-frame
+ (implies (and (natp field) (not (equal field 14)))
+  (equal (nth field (fn-rlo-free-init start ledger)) (nth field ledger)))
+ :hints (("Goal" :induct (fn-rlo-free-init start ledger)
+  :in-theory (e/d (fn-rlo-free-init fn-rl-count update-fn-rl-idsi) (nth update-nth))))))
+
+(local (defthm fn-rlo-ids-update-read
+ (implies (and (natp row) (natp slot))
+  (equal (fn-rl-idsi row (update-fn-rl-idsi slot value ledger))
+         (if (equal row slot) value (fn-rl-idsi row ledger))))
+ :hints (("Goal" :in-theory (e/d (fn-rl-idsi update-fn-rl-idsi) (nth update-nth))))))
+
+(local (defthm fn-rlo-ids-update-count
+ (equal (fn-rl-count (update-fn-rl-idsi slot value ledger)) (fn-rl-count ledger))
+ :hints (("Goal" :in-theory (e/d (fn-rl-count update-fn-rl-idsi) (nth update-nth))))))
+
+(local (defthm fn-rlo-free-init-earlier-link
+ (implies (and (natp start) (natp row) (< row start))
+  (equal (fn-rl-idsi row (fn-rlo-free-init start ledger)) (fn-rl-idsi row ledger)))
+ :hints (("Goal" :induct (fn-rlo-free-init start ledger)
+  :in-theory (e/d (fn-rlo-free-init fn-rl-count fn-rl-idsi update-fn-rl-idsi) (nth update-nth))))))
+
+(local (defthm fn-rlo-free-init-link-at
+ (implies (and (natp start) (natp row) (natp (fn-rl-count ledger))
+               (<= start row) (< row (fn-rl-count ledger)))
+  (equal (fn-rl-idsi row (fn-rlo-free-init start ledger))
+   (if (< (+ 1 row) (fn-rl-count ledger)) (+ 1 row) 0)))
+ :hints (("Goal" :induct (fn-rlo-free-init start ledger)
+  :in-theory (e/d (fn-rlo-free-init) (fn-rl-count fn-rl-idsi update-fn-rl-idsi nth update-nth))))))
+
+(local (defthm fn-rlo-free-range-member-bounds
+ (implies (member-equal slot (fn-rlo-free-range start count))
+  (and (natp slot) (<= start slot) (< slot count)))
+ :hints (("Goal" :induct (fn-rlo-free-range start count)
+  :in-theory (enable fn-rlo-free-range)))))
+
+(local (defthm fn-rlo-free-range-head
+ (equal (car (fn-rlo-free-range start count))
+        (if (and (natp start) (natp count) (< start count)) start nil))
+ :hints (("Goal" :in-theory (enable fn-rlo-free-range)))))
+
+(local (defthm fn-rlo-free-range-no-earlier-member
+ (implies (< slot start) (not (member-equal slot (fn-rlo-free-range start count))))
+ :hints (("Goal" :use fn-rlo-free-range-member-bounds
+ :in-theory (disable fn-rlo-free-range fn-rlo-free-range-member-bounds)))))
+
+(local (defthm fn-rlo-free-range-consp
+ (equal (consp (fn-rlo-free-range start count))
+        (and (natp start) (natp count) (< start count)))
+ :hints (("Goal" :in-theory (enable fn-rlo-free-range)))))
+
+(local (defthm fn-rlo-initialized-range-rows
+ (implies (and (natp start) (natp row) (natp (fn-rl-count ledger))
+               (<= start row) (<= 2 row)
+               (fn-rlo-reusable-range-p row (fn-rl-count ledger) (nth 3 ledger) (nth 4 ledger)))
+  (fn-rlo-chain-rows-p (fn-rlo-free-range row (fn-rl-count ledger))
+                      (fn-rl-count ledger) (nth 3 ledger) (nth 4 ledger)
+                      (nth 14 (fn-rlo-free-init start ledger))))
+ :hints (("Goal" :induct (fn-rlo-free-range row (fn-rl-count ledger))
+ :in-theory (e/d (fn-rlo-free-range fn-rlo-reusable-range-p fn-rlo-chain-rows-p)
+  (fn-rlo-free-init fn-rl-count fn-rl-idsi nth update-nth)))
+ ("Subgoal *1/1" :use ((:instance fn-rlo-free-init-link-at))
+  :in-theory (e/d (fn-rl-idsi fn-rlo-free-range fn-rlo-reusable-range-p fn-rlo-chain-rows-p)
+    (fn-rlo-free-init-link-at fn-rlo-free-init fn-rl-count nth update-nth))))))
+
+(local (defthm fn-rlo-free-init-establishes-chain
+ (implies (and (natp (fn-rl-count ledger))
+               (fn-rlo-reusable-range-p 2 (fn-rl-count ledger) (nth 3 ledger) (nth 4 ledger)))
+  (fn-rlo-free-chainp
+   (fn-rlo-free-range 2 (fn-rl-count ledger))
+   (update-fn-rl-next (if (< 2 (fn-rl-count ledger)) 2 0) (fn-rlo-free-init 2 ledger))))
+ :hints (("Goal" :use ((:instance fn-rlo-initialized-range-rows (start 2) (row 2)))
+  :in-theory (e/d (fn-rlo-free-chainp fn-rl-count fn-rl-next update-fn-rl-next)
+   (fn-rlo-initialized-range-rows fn-rlo-free-init fn-rlo-chain-rows-p
+    fn-rlo-free-range fn-rlo-reusable-range-p nth update-nth))))))
+
+(local (defthm fn-rl-nth-member
+  (implies (and (natp i) (< i (len xs)))
+           (member-equal (nth i xs) xs))
+  :hints (("Goal" :induct (nth i xs)))))
+
+(local (defthm fn-rl-resize-zero-members
+  (implies (member-equal x (resize-list nil n 0))
+           (equal x 0))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :induct (resize-list nil n 0)))))
+
+(local (defthm fn-rl-len-resize
+  (equal (len (resize-list xs n d)) (nfix n))))
+
+(local (defthm fn-rl-nth-resize-zero
+  (implies (and (natp i) (< i (nfix n)))
+           (equal (nth i (resize-list nil n 0)) 0))
+  :hints (("Goal" :use (:instance fn-rl-nth-member
+                                  (xs (resize-list nil n 0)))
+           :in-theory (disable fn-rl-nth-member resize-list nth)))))
+
+(local (defthm fn-rlo-fresh-columns-reusable
+ (implies (and (natp start) (<= 2 start) (natp count))
+  (fn-rlo-reusable-range-p start count
+    (update-nth 1 2 (update-nth 0 1 (resize-list nil count 0)))
+    (update-nth 1 1 (update-nth 0 1 (resize-list nil count 0)))))
+ :hints (("Goal" :induct (fn-rlo-free-range start count)
+  :in-theory (e/d (fn-rlo-reusable-range-p) (nth update-nth resize-list))))))
+
+(local (defthm fn-rlo-fresh-bank-establishes-free-chain
+ (implies (and (fn-rl-freshp ledger)
+               (eq (car (fn-rl-install budget baseline reserve slots ledger)) :installed))
+  (let ((after (mv-nth 1 (fn-rl-install budget baseline reserve slots ledger))))
+   (fn-rlo-free-chainp (fn-rlo-free-range 2 slots)
+     (update-fn-rl-next (if (< 2 slots) 2 0) (fn-rlo-free-init 2 after)))))
+ :hints (("Goal"
+  :use ((:instance fn-rl-install-free-columns (nslots slots))
+        (:instance fn-rlo-free-init-establishes-chain
+          (ledger (mv-nth 1 (fn-rl-install budget baseline reserve slots ledger)))))
+  :in-theory (disable fn-rl-install fn-rl-freshp fn-rlo-free-init fn-rlo-free-chainp
+    fn-rlo-reusable-range-p fn-rlo-free-range fn-rl-count nth update-nth)))))
+
+(local (defthm fn-rlo-free-chain-file-limit-frame
+ (equal (fn-rlo-free-chainp rows (update-fn-rl-file-limit value ledger)) (fn-rlo-free-chainp rows ledger))
+ :hints (("Goal" :in-theory (e/d (fn-rlo-free-chainp fn-rl-next fn-rl-count update-fn-rl-file-limit)
+  (fn-rlo-chain-rows-p nth update-nth))))))
+
+(local (defthm fn-rlo-free-chain-mode-frame
+ (equal (fn-rlo-free-chainp rows (update-fn-rl-mode value ledger)) (fn-rlo-free-chainp rows ledger))
+ :hints (("Goal" :in-theory (e/d (fn-rlo-free-chainp fn-rl-next fn-rl-count update-fn-rl-mode)
+  (fn-rlo-chain-rows-p nth update-nth))))))
+
+(local (defthm fn-rl-installed-zero-count
+ (implies (eq (car (fn-rl-install budget baseline reserve slots ledger)) :installed)
+          (equal (fn-rl-count ledger) 0))
+ :hints (("Goal" :in-theory (e/d (fn-rl-install)
+  (fn-rl-count fn-rl-profile-representable-p fn-rv-vectorp fn-rv-install fn-rl-resize-all
+   fn-rl-store-words-from fn-rl-draw fn-rl-open))))))
+
+(local (defthm fn-rlo-startup-not-installed
+ (implies (not (eq (car (fn-orv-startup-grant dynamic store-need cold policy slots)) :hold))
+          (not (eq (cadr (fn-orv-startup-grant dynamic store-need cold policy slots)) :installed)))
+ :hints (("Goal" :in-theory (e/d (fn-orv-startup-grant)
+   (fn-orv-policy-p fn-native-config-cold-resources-wfp fn-crv-nth fn-orv-bookkeeping-octets))))))
+
+(local (defthm fn-rlo-install-base-domain
+ (implies (eq (car (fn-rlo-install dynamic store-need cold policy slots ledger)) :installed)
+  (let ((grant (fn-orv-startup-grant dynamic store-need cold policy slots)))
+   (and (fn-rl-freshp ledger) (natp slots) (< 2 slots)
+    (eq (car (fn-rl-install (fn-rlo-resident-vector (nth 1 grant))
+       (fn-rlo-resident-vector (nth 3 grant)) (fn-rlo-resident-vector (nth 2 grant)) slots ledger)) :installed))))
+ :hints (("Goal" :use ((:instance fn-rl-installed-zero-count
+  (budget (fn-rlo-resident-vector (nth 1 (fn-orv-startup-grant dynamic store-need cold policy slots))))
+  (baseline (fn-rlo-resident-vector (nth 3 (fn-orv-startup-grant dynamic store-need cold policy slots))))
+  (reserve (fn-rlo-resident-vector (nth 2 (fn-orv-startup-grant dynamic store-need cold policy slots))))))
+ :in-theory (e/d (fn-rlo-install fn-orv-startup-grant)
+  (fn-rl-freshp fn-rl-wfp fn-rl-count fn-rl-install fn-rlo-free-init fn-rl-file-limit
+   fn-rlo-resident-vector fn-orv-policy-p fn-native-config-cold-resources-wfp fn-crv-nth
+   fn-orv-bookkeeping-octets update-fn-rl-next update-fn-rl-file-limit update-fn-rl-mode))))))
+
+(defthm fn-rlo-install-establishes-free-chain
+ (implies (eq (car (fn-rlo-install dynamic store-need cold policy slots ledger)) :installed)
+  (fn-rlo-free-chainp (fn-rlo-free-range 2 slots)
+      (mv-nth 1 (fn-rlo-install dynamic store-need cold policy slots ledger))))
+ :hints (("Goal"
+ :use ((:instance fn-rlo-install-base-domain)
+       (:instance fn-rlo-startup-not-installed)
+       (:instance fn-rlo-fresh-bank-establishes-free-chain
+        (budget (fn-rlo-resident-vector (nth 1 (fn-orv-startup-grant dynamic store-need cold policy slots))))
+        (baseline (fn-rlo-resident-vector (nth 3 (fn-orv-startup-grant dynamic store-need cold policy slots))))
+        (reserve (fn-rlo-resident-vector (nth 2 (fn-orv-startup-grant dynamic store-need cold policy slots))))))
+ :in-theory (e/d (fn-rlo-install)
+   (fn-rlo-install-base-domain fn-rlo-startup-not-installed fn-rlo-fresh-bank-establishes-free-chain fn-rlo-free-chainp fn-rl-next fn-rl-count update-fn-rl-file-limit update-fn-rl-mode fn-rl-install fn-rl-freshp fn-rl-wfp
+    fn-rlo-resident-vector fn-orv-startup-grant fn-rlo-free-init fn-rlo-chain-rows-p fn-rlo-free-range
+    update-fn-rl-next nth update-nth)))))
+)
+
+(in-theory (disable fn-rlo-free-chainp fn-rlo-chain-rows-p fn-rlo-free-range fn-rlo-reusable-range-p))

@@ -220,3 +220,32 @@
         (if (< (fn-rl-gensi (caddr token) ledger) *fn-rl-word-max*)
             (cons (caddr token) '(3)) '(3)) (mv-nth 1 result))))
  :rule-classes nil)
+
+(defthm rct-install-positive
+ (let* ((result (fn-rlo-install 268435456 67108864 nil '(16777216 1048576) 4 (create-fn-resource-ledger)))
+        (after (mv-nth 1 result)))
+  (and (eq (car result) :installed)
+       (fn-rlo-free-chainp (fn-rlo-free-range 2 4) after))) :rule-classes nil)
+(defthm rct-install-without-installed
+ (let* ((result (fn-rlo-install 268435456 67108864 nil nil 4 (create-fn-resource-ledger)))
+        (after (mv-nth 1 result)))
+  (and (not (eq (car result) :installed))
+       (not (fn-rlo-free-chainp (fn-rlo-free-range 2 4) after)))) :rule-classes nil)
+; Separately labeled corrupted-state regression: typed/WFP zero count with
+; padded active rows previously survived resize and could enter the free chain.
+(defthm rct-install-padded-zero-count-refused
+ (let* ((ledger (fn-rl-resize-all 4 (create-fn-resource-ledger)))
+        (ledger (update-fn-rl-count 0 ledger))
+        (ledger (update-fn-rl-phasesi 2 1 ledger))
+        (result (fn-rlo-install 268435456 67108864 nil '(16777216 1048576) 4 ledger)))
+  (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger)
+       (not (fn-rl-freshp ledger))
+       (eq (car result) :invalid-output-install-state)
+       (equal (mv-nth 1 result) ledger))) :rule-classes nil)
+(defthm rct-install-repeat-preserves-refusal
+ (let* ((result (fn-rlo-install 268435456 67108864 nil '(16777216 1048576) 4 (create-fn-resource-ledger)))
+        (ledger (mv-nth 1 result))
+        (repeat (fn-rlo-install 268435456 67108864 nil '(16777216 1048576) 4 ledger)))
+  (and (eq (car result) :installed)
+       (eq (car repeat) :already-installed)
+       (equal (mv-nth 1 repeat) ledger))) :rule-classes nil)
