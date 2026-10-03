@@ -4458,7 +4458,8 @@
       "proof_targets": [
         "PRF-223",
         "PRF-377",
-        "PRF-1181"
+        "PRF-1181",
+        "PRF-1268"
       ],
       "verification": [
         "proof",
@@ -4491,7 +4492,8 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-222",
-        "PRF-913"
+        "PRF-913",
+        "PRF-1269"
       ],
       "verification": [
         "proof",
@@ -4513,7 +4515,7 @@
         "tests/test_native_group_access.py",
         "planning/evidence/group-access-2026-09-27.md"
       ],
-      "implementation_note": "Local policy after INN readers.conf (read and post wildmats per identity; RFC 3977 section 4.2 wildmats; RFC 4643 leaves authorization to local policy). Stronger fn guarantee: no existence oracle (an excluded group answers exactly as an absent one: 411, 430, the unknown-group 441). The verb `account access LOGIN|--anonymous --read R --post P` is a durable configuration record (:account-access, delta code 22), offline or live; no store record, no format change. Peering unchanged; the consumer poll is the owner's and reads everything."
+      "implementation_note": "Local policy after INN readers.conf (read and post wildmats per identity; RFC 3977 section 4.2 wildmats; RFC 4643 leaves authorization to local policy). Stronger fn guarantee: no existence oracle (an excluded group answers exactly as an absent one: 411, 430, the unknown-group 441). The verb `account access LOGIN|--anonymous --read R --post P` is a durable configuration record (:account-access, delta code 22), offline or live; no store record, no format change. D48: peer-role reader commands retain the authenticated login or anonymous READ/POST rule; configured transit peering remains independent; the consumer poll is the owner's and reads everything."
     },
     {
       "id": "SEC-007",

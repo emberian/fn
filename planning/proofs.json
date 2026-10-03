@@ -1786,7 +1786,7 @@
         "PRF-031"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "note": "Lane w11/auth-live, decided by measurement and not by inspection. fn-served-open-peer pinned the literal (fn-auth-open-config) while fn-served-open pinned the operator's, and the owner resolves a connection to a peer by SOURCE ADDRESS alone, so on a box where a configured peer is reachable on loopback every client was opened without the operator's policy: AUTHINFO PASS answered 481 with the secret just written, CAPABILITIES carried no AUTHINFO line and POST was never gated. Both theorems are FALSE of that definition. The live before/after is planning/evidence/auth-live-2026-09-21.md and the boundary test is tests/test_auth.py ServedCredentialTests, which starts the node with `bin/fn run` over an fn.toml and writes the peer record, because no test that starts tools/run_owner.py directly can reach this. The greeting half is a second defect the same measurement found: fn-served-greeting read the injection configuration alone, so a connection under [auth] required = true greeted 200 and then answered POST 480, where section 5.1.2's MUST is 201. It takes the opened session now. Lane t7/auth-teeth, 2026-09-22: teeth in tests/acl2/nntp-auth-teeth-tests.lisp. Neither greeting theorem nor either pinning theorem has a hypothesis, so the teeth are the values that separate the two sides together with a must-fail on the statement the definition satisfied BEFORE the 2026-09-21 measurement: that the greeting is 200 exactly when the injection configuration allows posting, and that the peer open pins (fn-auth-open-config). fn-served-open-greeting-agrees-with-the-post-label stays uncited: the statement above names it a corollary and a local unfold, so its evidence is the witnesses on both sides of its iff, not a registry event. fn-auth-step-preserves-the-config is new in this lane and was asked for by name in the header of books/nntp-auth-invariants.lisp as the first of the three facts OB-AUTH-FOLD waits on.",
       "evidence": [
         "planning/evidence/native-auth-runtime-2026-09-21/README.md",
@@ -2346,7 +2346,7 @@
         "PRF-039"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/nntp-auth.lisp",
         "books/owner-config.lisp",
@@ -4413,7 +4413,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/cbor-invariants.lisp",
         "books/records-canonicality.lisp",
@@ -8476,7 +8476,7 @@
         "PRF-097"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "planning/evidence/manifests/certify-20260928T163441Z-33654.json",
         "books/peer-host.lisp",
@@ -13626,7 +13626,7 @@
         "PRF-362"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/native-admin-peer-budget.lisp",
         "books/config.lisp",
@@ -13804,7 +13804,7 @@
         "PRF-378"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/config.lisp",
         "tests/acl2/config-field-max-tests.lisp",
@@ -16344,7 +16344,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/peer-set.lisp",
         "books/native-admin-peer.lisp",
@@ -16734,7 +16734,7 @@
         "PRF-049"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/nntp-auth.lisp",
         "books/nntp-auth-roles.lisp",
@@ -18043,7 +18043,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/config-invariants.lisp",
         "tests/acl2/group-authority-tests.lisp",
@@ -21943,7 +21943,7 @@
         "PRF-1252"
       ],
       "assumptions": [],
-      "status": "planned",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/output-reservation.lisp",
         "books/resource-output.lisp",
@@ -22225,6 +22225,79 @@
         "planning/evidence/bp-retained-tcpcl-turn-2026-10-03.md"
       ],
       "progress_note": "BP-TRANSPORT 2026-10-03: protected REPL guarded book+literal teeth admitted848steps; two-root farm manifest certify-20261003T104100Z-1504853 PASSED2/0. Actual generic fnn-tcl-session consumes begin/turn and narrow raw actual-driver test passes partialwrites/wait, ACK-before-progress, alternating input/pump, receivedsourceborrow, EOF/deadline, publication-error escape. New source-matched image and node funded scheduler remain pending."
+    },
+    {
+      "id": "PRF-1266",
+      "title": "Authenticated STARTTLS refusal preserves identity and omits the capability",
+      "statement": "books/nntp-auth.lisp fn-auth-starttls, called by fn-auth-command from fn-auth-step-pinned through fn-served-dispatch and host/owner-host.lisp fn-owner-chunk-span-at. fn-auth-starttls-after-authentication-is-refused-without-reset: with an authenticated subject, nil arguments, and no active TLS layer, the full session is unchanged, effects are exactly the 502 already-authenticated line, and no submission is produced. fn-auth-starttls-is-not-advertised-once-authenticated-on-any-connection: with an authenticated subject the peer-aware CAPABILITIES list contains no STARTTLS label. RFC 4642 sections 2.1 and 2.2.1 note [1]. Tests in tests/acl2/nntp-auth-teeth-tests.lisp check complete positive antecedents/conclusions, then retain every other hypothesis while individually removing the subject, nil-arguments and no-active-TLS conditions; the capability counterexample is the same configured peer before authentication. Existing principal-role handshake theorem is preserved but its positive witness is now an unauthenticated source peer; successful authentication cannot reach STARTTLS handshake.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-001"
+      ],
+      "depends_on": [
+        "PRF-031"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "events": [
+        "fn-auth-starttls-after-authentication-is-refused-without-reset",
+        "fn-auth-starttls-is-not-advertised-once-authenticated-on-any-connection"
+      ],
+      "evidence": [
+        "planning/evidence/manifests/certify-20261003T102734Z-1462490.json",
+        "planning/evidence/manifests/certify-20261003T104044Z-1503690.json",
+        "planning/evidence/sol-access-native-faults-2026-10-03.md"
+      ],
+      "note": "Exact keystone book and teeth certification passed in the cited per-book entries; certified_claims and current_view confirm each keystone at this source/include closure. Global runs separately record prior failing harness/unsupported standalone host fragment entries, and inherited unrelated cached dependency provenance remains a separate convergence concern. Immutable saved-image protocol observation and deployment are not claimed."
+    },
+    {
+      "id": "PRF-1269",
+      "title": "Every peer-role reader command retains its login access projection",
+      "statement": "books/nntp-auth.lisp fn-auth-view-excludes-unreadable-groups-on-any-connection: on a projected session with a nonempty READ rule, a group unreadable under the pinned rule is absent from both view groups and article memberships, without any restriction on peer role. Actual consumers fn-auth-delegate-pinned, fn-scar-auth-delegate-pinned and captured catalog preparation use fn-auth-access-text. D48 keeps configured transit decisions in fn-peer-command and transfer in fn-peer-step independent of this reader projection. The existing queue-hiding keystone now has only queue-hiddenp and projected hypotheses, covering source peers and authenticated principal peers. Teeth exercise actual USER/PASS promotion, GROUP411/ARTICLE430/LIST omission and independently accepted CHECK238; source-peer queue privacy; affirmative removal of each generic-exclusion hypothesis.",
+      "milestone": "M4",
+      "requirements": [
+        "NNT-046",
+        "SEC-007"
+      ],
+      "depends_on": [
+        "PRF-222",
+        "PRF-228"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "events": [
+        "fn-auth-view-excludes-unreadable-groups-on-any-connection"
+      ],
+      "evidence": [
+        "planning/evidence/manifests/certify-20261003T102734Z-1462490.json",
+        "planning/evidence/manifests/certify-20261003T103156Z-1476136.json",
+        "planning/evidence/sol-access-native-faults-2026-10-03.md"
+      ],
+      "note": "Exact keystone book and teeth certification passed in the cited per-book entries; certified_claims and current_view confirm each keystone at this source/include closure. Global runs separately record prior failing harness/unsupported standalone host fragment entries, and inherited unrelated cached dependency provenance remains a separate convergence concern. Immutable saved-image protocol observation and deployment are not claimed."
+    },
+    {
+      "id": "PRF-1268",
+      "title": "Live connection charge follows the published TLS limit and still-owned handshakes",
+      "statement": "books/connection-budget.lisp fn-cbud-live-held, called by host/owner-host.lisp fn-owner-connection-held-refresh at durable fn-owner-reconfigure-complete and fn-owner-handshake-done. For a present held record, fn-cbud-live-held-charges-current-and-active charges exactly max(actual active count, published configuration handshake limit) and preserves each of the eight machine/profile observations. fn-cbud-live-held-releases-only-unneeded-slots: when actual active and published limit both fit the previous slots, refreshing never increases those slots. Preflight still uses max(previous charge,candidate limit), protecting concurrent old-generation admissions while the candidate persists; the live charge is not installed by proposal/staging/refusal/unstage. Teeth affirm every hypothesis and conclusion and isolate each omitted hypothesis. Actual host raw fixture injects staging/publication outcomes and exercises unchanged refusal charge, durable lowering with twelve still-active slots, settled reduction to four, duplicate done and upward publication.",
+      "milestone": "M4",
+      "requirements": [
+        "HST-024"
+      ],
+      "depends_on": [
+        "PRF-223",
+        "PRF-986"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "events": [
+        "fn-cbud-live-held-charges-current-and-active",
+        "fn-cbud-live-held-releases-only-unneeded-slots"
+      ],
+      "evidence": [
+        "planning/evidence/manifests/certify-20261003T104044Z-1503690.json",
+        "planning/evidence/sol-access-native-faults-2026-10-03.md"
+      ],
+      "note": "Exact keystone book and teeth certification passed in the cited per-book entries; certified_claims and current_view confirm each keystone at this source/include closure. Global runs separately record prior failing harness/unsupported standalone host fragment entries, and inherited unrelated cached dependency provenance remains a separate convergence concern. Immutable saved-image protocol observation and deployment are not claimed."
     }
   ]
 }

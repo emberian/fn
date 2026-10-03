@@ -124,6 +124,26 @@ class NativeGroupAccessTests(unittest.TestCase):
         self.assertTrue(status.startswith("215"), status)
         return {row.split()[0]: row.split()[field] for row in rows if row.strip()}
 
+    def test_source_peer_reader_access_preserves_transit(self):
+        """D48: one source peer has separate reader and transfer policies."""
+        for label, image in IMAGES:
+            with self.subTest(image=label):
+                node = self.node(image)
+                self.ok(node, "init", "fn.public")
+                self.ok(node, "group", "create", "fn.private.x")
+                self.ok(node, "peer", "add", "source", "source.example.invalid",
+                        "127.0.0.1", "11998", "fn.*", "-", "127.0.0.1", "true")
+                node.start()
+                writer = self.tls(node)
+                self.assertTrue(self.post(writer, "fn.private.x", "peer-private").startswith("240"))
+                self.ok(node, "account", "access", "--anonymous", "--read", "fn.public", "--post", "*")
+                reader = self.tls(node)
+                self.assertNotIn("fn.private.x", self.listed(reader, "LIST ACTIVE"))
+                self.assertTrue(self.line(reader, "GROUP fn.private.x").startswith("411"))
+                self.assertTrue(self.line(reader, "STAT <peer-private@example.invalid>").startswith("430"))
+                self.assertTrue(self.line(reader, "CHECK <peer-new@example.invalid>").startswith("238"))
+                node.stop_all()
+
     def scenario(self, image):
         node = self.node(image)
         self.ok(node, "init", "local.general")
