@@ -378,7 +378,7 @@
                                 fn-bpn-sequence-recovery-frontier
                                 fn-bpn-sf-validp
                                 fn-bpn-sf-observed-frontier)
-                (fn-bpn-sf-statep)))))
+                (fn-bpn-sf-state fn-bpn-sf-statep)))))
 
 ; From here the twelve-field recognizer and the observation recognizer stay
 ; closed.  Each nonreuse arm below needs only that the state is a true list

@@ -237,7 +237,7 @@
            :in-theory
            (e/d (fn-bpn-sp-step fn-bpn-sp-process-restart
                                 fn-bpn-sp-power-loss fn-bpn-sp-recover)
-                (fn-bpn-sp-statep)))))
+                (fn-bpn-sp-state fn-bpn-sp-statep)))))
 
 (defthm fn-bpn-sp-trace-preserves-statep
   (implies (and (fn-bpn-sp-statep s) (true-listp events))
