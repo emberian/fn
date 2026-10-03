@@ -871,7 +871,7 @@
               fn-arx-nth-resize-list-all fn-arx-nth-past-len
               (:type-prescription len) (:type-prescription update-nth)
               associativity-of-+ commutativity-of-+ commutativity-2-of-+
-              fold-consts-in-+ unicity-of-0))))))
+              fold-consts-in-+ unicity-of-0)))))
 
 (defthm fn-arx-files-agree-of-resize
   (implies (and (fn-arx-files-agree ext fs) (<= (len ext) (nfix n)))
