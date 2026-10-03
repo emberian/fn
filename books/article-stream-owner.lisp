@@ -208,3 +208,15 @@
                 (cons nil (if done (cdr rest) (cons (list :article-cursor next) (cdr rest))))
                 (and done (fn-splan-rest-donep (cdr rest))))))
       (mv :ordinary nil plan nil))))
+
+(defun fn-asto-plan-render-window (plan window fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let ((rest (fn-splan-rest plan)))
+    (if (and (not (consp (fn-splan-cur plan))) (eq (caar rest) :article-cursor))
+        (mv-let (bytes next)
+          (fn-ast-render-window (cadar rest) (nfix window) (nfix window) fn-arena)
+          (let ((done (fn-ast-window-donep next)))
+            (mv :article bytes
+                (cons nil (if done (cdr rest) (cons (list :article-cursor next) (cdr rest))))
+                (and done (fn-splan-rest-donep (cdr rest))))))
+      (mv :ordinary nil plan nil))))

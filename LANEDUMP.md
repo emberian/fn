@@ -2513,3 +2513,11 @@ Response pin excludes reclaim swap but does not freeze live summaries. Bounded
 LIST will use captured v/raw groups/high watermark and per-number visibility/
 NOV checks; named non-reclaim preserved-column frame remains owed (Runtime
 identified redecide updates context but preserves payload/numbered keys).
+
+ARTICLE byte-window composition repair: actual native renderer calls
+fn-asto-plan-render-window, separate W work/output budgets. The immutable
+window retains a dot fragment across a one-byte boundary; W=1 progresses.
+Dense 5,000-dot-line BODY exact reference/replay checks pass W=1/2/3/4096;
+all actual-source core checks69488. Owner/native full composition and
+universal byte-bound/guard/refinement remain pending. Served a3 available
+reader fallback is preserved inside fn-asto-mca-read-span.
