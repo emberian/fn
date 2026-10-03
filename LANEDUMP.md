@@ -4170,3 +4170,16 @@ bounded bytes reader guards PASS4806steps. Actual-body matched4-byte item plus
 with4 prefix visits. Affected two-root certificate submitted; full primary
 prefix extraction, semantic decode/CRC/canonical/publication continuation and
 current source-native multi-peer/RQ remain open. No arbitrary ceiling added.
+
+## Owner read-independence proof repair
+
+Unchanged Fn-ocfg-read-step-without-selection-depends-only-on-its-connection-
+and-clock now proves through a LOCAL effects-only read projection and minimal
+constructor/core-field theory. This removes irrelevant owner update/boundedness
+branch expansion rather than changing the public statement or executable route.
+History's paid current retained world admits proper encapsulate .01ACL2s/6729
+steps, locals discarded; public theorem4878steps. Original2M refusal and two
+controlled200k hints are preserved. History also admitted the unchanged direct
+successor .04s/1530steps and removed both initializer assurance deferrals.
+Receipt planning/evidence/owner-read-independence-20261003/checks.json; existing
+owner-served-invariants literal witnesses unchanged. No current-image/cert claim.

@@ -8461,6 +8461,8 @@ c899e8a32246c413dda3fbec94a6811669635b023d09786ead734ea399aaa135 2335 planning/e
 5ecfc82b34e70380aebaa63893948b4ccb880230c37208d5f7a2e2073b26cb9f 3686 planning/evidence/owner-output-preview-2026-10-03/source.json
 b32f9e4192b915b36fbace38b88bfb15a711d23ebccf6fc206881cc7592fc92b 1849 planning/evidence/owner-proof-cost-bc9-2026-09-23.md
 81a8166429de2fb902f0413150e79ef7be345e12b3c302023c13b9ebaa8d0067 720 planning/evidence/owner-raw-interface-2026-10-01/README.md
+0a4c88587abde8d0767432573c2b58fcf7f4bfed99012b8e19b6d0adf48390e4 655 planning/evidence/owner-read-independence-20261003/checks.json
+d34aeb81e3e535bd43ff87ef65ae4159f06414ca04f952d00745f6dadbd1031f 3895 planning/evidence/owner-read-independence-20261003/hint-replay.log.gz
 06350c6a66b84fd8b273433f16caf811c72cf2bc49a03a08cc5a728cb38c24ec 2004 planning/evidence/owner-recovery-closeout-2026-10-01/README.md
 19c111e284caa7eebd40537cb20dac28d29a714d854f0be4e72550ea55388bb5 2657 planning/evidence/owner-recovery-closeout-2026-10-01/manifest.json
 ad20469fb22a098c654a6ccbdd932952325c470e2e29afa2a5da353d45f685c8 3527 planning/evidence/owner-recovery-closeout-2026-10-01/tracked-selected.patch
