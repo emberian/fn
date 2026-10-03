@@ -669,18 +669,22 @@ No cancellation, timeout or thread termination releases a job or baseline."
   (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
     (setq *fnn-cold-free* nil *fnn-cold-workers* nil)))
 
-(defun fnn-extent-executor-enqueue (worker row token)
+(defun fnn-extent-executor-enqueue (worker row token &optional retain)
   "Extent lock held; ACL2 already assigned this exact funded physical slot."
   (setq *fnn-cold-free* (fnn-cold-worker-next worker))
   (setf (fnn-cold-worker-row worker) row
         (fnn-cold-worker-token worker) token
         (fnn-cold-worker-next worker) nil
         (fnn-cold-worker-result worker) nil
-        (fnn-cold-worker-phase worker) :queued)
+        (fnn-cold-worker-phase worker) :binding)
+  ;; The owning activation retains the exact token before this physical
+  ;; executor can run, even if notification subsequently signals.
+  (when retain (funcall retain worker token))
+  (setf (fnn-cold-worker-phase worker) :queued)
   (sb-thread:condition-broadcast (fnn-cold-worker-ready worker))
   worker)
 
-(defun fnn-extent-issue-window (descriptor)
+(defun fnn-extent-issue-window (descriptor &optional retain)
   "One SAME-pool issue. Decoded default storage scope is explicitly partial;
 modern complete installations still refuse their unpriced operation."
   (let ((decodedp (eq (fnn-core 'fn-owner-page-decoded-window-price-status descriptor)
@@ -694,6 +698,9 @@ modern complete installations still refuse their unpriced operation."
         (setq *fnn-cold-free* (fnn-cold-worker-next worker))
         (setf (fnn-cold-worker-phase worker) :issuing
               (fnn-cold-worker-scope worker) (and decodedp :partial-fixed-storage))
+        ;; Publish native custody before the semantic draw. On a torn draw
+        ;; the caller still knows which reserved worker must not be reused.
+        (when retain (funcall retain worker nil))
         (let* ((reply
                  (if decodedp
                      (fnn-call 'fn-owner-page-decoded-window-acquire-projected
@@ -713,9 +720,10 @@ modern complete installations still refuse their unpriced operation."
                   *fnn-cold-free* worker)
             (return-from fnn-extent-issue-window (values nil word nil)))
           (setf (fnn-cold-worker-scope worker) scope)
-          (when decodedp
-            (fnn-err "DECODED-WINDOW issue token=~s scope=~s" token scope))
-          (values token :admitted (fnn-extent-executor-enqueue worker row token)))))))
+          (let ((issued (fnn-extent-executor-enqueue worker row token retain)))
+            (when decodedp
+              (fnn-err "DECODED-WINDOW issue token=~s scope=~s" token scope))
+            (values token :admitted issued)))))))
 
 (defun fnn-extent-executor-acquire (token)
   "Extent lock held; the ledger already funded this exact job."

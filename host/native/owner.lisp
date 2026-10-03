@@ -5727,16 +5727,36 @@ cold-read-ownership, Codex r31 F1/F2).  A refusal is ACL2's word."
         (fnn-owner-cold-window-result-locked service old)
         (setf (fnn-response-capture-window-read capture) nil)))
     (let ((directp (and (not windowp) (not (fnn-extent-pool-funded-p)))))
-      (multiple-value-bind (token word worker)
-          (if windowp (fnn-extent-issue-window entry)
-            (apply (if directp #'fnn-extent-issue-direct #'fnn-extent-issue-read) cid entry))
-        (if (and word (not (eq word :admitted))) word
-          (let ((read (%make-fnn-owner-cold-read :token token :worker worker
-                       :windowp windowp :directp (and token directp))))
+      (if windowp
+          (let ((read (%make-fnn-owner-cold-read :windowp t)))
+            ;; Allocate and register before admission/notification. The
+            ;; extent callback runs under E while this activation holds O;
+            ;; it performs only native retention, never another ACL2 step.
+            (setf (fnn-response-capture-window-read capture) read)
             (fnn-owner-cold-enqueue-locked service read)
-            (when windowp (setf (fnn-response-capture-window-read capture) read))
-            (fnn-owner-output-dependency
-             service (or *fnn-output-grant* (and capture (fnn-response-capture-grant capture))) read)))))))
+            (multiple-value-bind (token word worker)
+                (fnn-extent-issue-window entry
+                  (lambda (reserved issued-token)
+                    (setf (fnn-owner-cold-read-worker read) reserved
+                          (fnn-owner-cold-read-token read) issued-token)
+                    (when issued-token
+                      (fnn-owner-output-dependency
+                       service (or *fnn-output-grant* (fnn-response-capture-grant capture)) read))))
+              (declare (ignore token worker))
+              (if (eq word :admitted) read
+                (progn
+                  ;; Only an ordinary refusal proves no job was launched.
+                  ;; An escape preserves this registered read and worker.
+                  (fnn-owner-cold-remove-locked service read)
+                  (setf (fnn-response-capture-window-read capture) nil)
+                  word))))
+        (multiple-value-bind (token word worker)
+            (apply (if directp #'fnn-extent-issue-direct #'fnn-extent-issue-read) cid entry)
+          (if (and word (not (eq word :admitted))) word
+            (let ((read (%make-fnn-owner-cold-read :token token :worker worker
+                         :directp (and token directp))))
+              (fnn-owner-cold-enqueue-locked service read)
+              (fnn-owner-output-dependency service *fnn-output-grant* read))))))))
 
 (declaim (notinline fnn-owner-cold-transfer-result-locked))
 (defun fnn-owner-cold-transfer-result-locked (read)
@@ -8432,6 +8452,5 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                    fault nil :inet nil connection-fault-operation)))
 
 (fnn-register-developer-verb "owner" #'fnn-command-owner)
-
 
 

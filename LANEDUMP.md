@@ -3323,3 +3323,23 @@ tests.test_native_web.NativeWebFaceTests.test_1_a_friend_makes_an_account_reads_
 ad8+gate336+cde+99Web/2Access+native9022; latest11field/P3/decoded/runtime union
 is not established. WEB006/SCN1122 remain open for their full obligations.
 Contributor guides integrated9c944de6e; no certificate/image/deployment claim.
+
+Runtime resume correction, 2026-10-03: exact current page-read-pool-state has
+TEN fields; earlier current11 vs ad8pool10 prose mistakenly counted :inline t.
+No measured shared-pool ABI mismatch is established. Historical evidence keeps
+its original erroneous observation; this correction supersedes that inference.
+Fresh current definitions and early canonical P3 attachment remain actual
+requirements. History owns one fresh full source world/current raw native load;
+Runtime does not duplicate it. Current ordinary renderer takes BORROWP third
+argument; Access's preserved old-cache selected quantum called that ABI but had
+not loaded the newer ordinary leaf. Full current native load resolves that
+composition seam, pending actual compressed ARTICLE/Web execution.
+
+Capture-before-wake follow-up: actual extent issuer now calls native retention
+before draw and before runnable queue publication; actual owner creates and
+registers read first, attaches exact token/dependency before notification. Real
+SBCL waitqueue child plus injected post-wake error confirms retained response
+read/token/dependency. Ordinary refusal unregisters, torn issuer keeps reserved
+worker/read. No full funding/profile/GC claim; current partial86928 scope and
+modern full unpriced refusal unchanged. Current native source fixture passes;
+registry PRF1288 remains planned. Integration sole dev writer.
