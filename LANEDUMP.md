@@ -638,3 +638,9 @@ failure; reader/import/tool errors remain infrastructure. Only this new raw
 fixture's derived trap block generated, four unexpected-path traps remain.
 Same-harness S110 prewrite assertion evidence follows source commit; no
 full suite, image build or ACL2 closure started by this lane.
+
+Final scoped schedules after trap generation: six pass1.896s. First evidence
+at099d28d94 was truthfully rejected: two intended subtest assertions conflict
+with verifier's single-assertion contract. That receipt remains archived.
+Fixture now stops on first failed protocol variant; successful runs still
+execute both. Semantic verifier contract unchanged.

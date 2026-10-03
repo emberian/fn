@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 class PullAppendBoundaryTests(unittest.TestCase):
     def schedule(self, mode, intended=None):
         for kind in ("pull", "catch-up"):
-            with self.subTest(kind=kind), tempfile.TemporaryDirectory() as directory:
+            with tempfile.TemporaryDirectory() as directory:
                 args = [shutil.which("sbcl") or "sbcl", "--noinform", "--script",
                         "tests/native_pull_append_raw.lisp", str(Path(directory) / "journal"), mode, kind]
                 result = subprocess.run(args, cwd=ROOT, capture_output=True, text=True, timeout=5)
