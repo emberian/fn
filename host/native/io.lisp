@@ -3508,8 +3508,8 @@ REQUESTED is 1, 0 or NIL (keep the store's policy)."
     (fnn-safe-directory (fnn-store-root store))
     (fnn-safe-directory (fnn-staging store))
     (setf (fnn-store-lock-fd store) (fnn-open-lock store t nil))
-    (unwind-protect
-         (progn
+    (fnn-unwind-cleanups
+         ((progn
            (fnn-load-config store)
            (let* ((record (fnn-filesystem-record-observation store))
                   (observation (fnn-filesystem-observation (fnn-store-root store)))
@@ -3522,7 +3522,7 @@ REQUESTED is 1, 0 or NIL (keep the store's policy)."
                                 (fnn-core 'fn-smid-refusal-text plan))))
              (fnn-publish-filesystem-record store (second plan))
              (fnn-out "~a" (fnn-filesystem-text
-                            (fnn-core 'fn-smid-rebind-text record observation requested)))))
+                            (fnn-core 'fn-smid-rebind-text record observation requested))))))
       (fnn-store-close store))
     +fnn-exit-ok+))
 
@@ -3900,10 +3900,10 @@ them across processes, copies, checkpoint and full replay, and boxes."
   (fnn-core-state 'fn-store-sco-want-checkpoint-digest t)
   (multiple-value-bind (store count) (fnn-open-live-store root nil)
     (declare (ignore count))
-    (unwind-protect
-         (progn (fnn-write-report (fnn-core-state 'fn-store-sn-replay-digest-report))
+    (fnn-unwind-cleanups
+         ((progn (fnn-write-report (fnn-core-state 'fn-store-sn-replay-digest-report))
                 (fnn-out "~a" (fnn-open-report store))
-                +fnn-exit-ok+)
+                +fnn-exit-ok+))
       (fnn-store-close store))))
 
 (defun fnn-command-store-journal (root)
@@ -3917,8 +3917,8 @@ never the whole file or prior entries. The owner may continue appending."
     ;; between lstat and open from blocking before fstat can reject it.
     (let ((fd (fnn-open path (logior sb-posix:o-rdonly sb-posix:o-nonblock
                                    +fnn-o-nofollow+))))
-      (unwind-protect
-           (let ((info (fnn-fstat fd)) (st (fnn-core 'fn-otjs-init)))
+      (fnn-unwind-cleanups
+           ((let ((info (fnn-fstat fd)) (st (fnn-core 'fn-otjs-init)))
              (unless (fnn-regular-p info)
                (fnn-fault "refusing non-regular decision journal: ~a" path))
              (let ((remaining (sb-posix:stat-size info)))
@@ -3936,7 +3936,7 @@ never the whole file or prior entries. The owner may continue appending."
              (let ((exit (fnn-core 'fn-otjs-exit st)))
                (unless (member exit '(0 1))
                  (fnn-fault "ACL2 returned a malformed journal verdict"))
-               exit))
+               exit)))
         (fnn-close fd)))))
 
 (defun fnn-command-state-checkpoint (root)
@@ -3945,9 +3945,9 @@ lock, so a running owner refuses this) and publish its exact-state checkpoint
 (fnn-state-checkpoint-publish-steps)."
   (multiple-value-bind (store count)
       (fnn-open-live-store root t (fnn-state-checkpoint-test-fault))
-    (unwind-protect
-         (progn (fnn-out "~a" (fnn-state-checkpoint-publish-steps store count))
-                +fnn-exit-ok+)
+    (fnn-unwind-cleanups
+         ((progn (fnn-out "~a" (fnn-state-checkpoint-publish-steps store count))
+                +fnn-exit-ok+))
       (fnn-store-close store))))
 
 (defun fnn-recover (store)
@@ -5676,11 +5676,11 @@ report is never rendered behind an owner."
   "Report the replayed ACL2 ledger's pin count and reserved charge."
   (multiple-value-bind (store records) (fnn-open-live-store root nil)
     (declare (ignore records))
-    (unwind-protect
-         (progn
+    (fnn-unwind-cleanups
+         ((progn
            (fnn-out "pins=~d reserved=~d"
                     (fnn-bridge-pin-count) (fnn-bridge-reserved))
-           +fnn-exit-ok+)
+           +fnn-exit-ok+))
       (fnn-store-close store))))
 
 (defun fnn-command-compression (root)
@@ -5690,31 +5690,31 @@ records, the octets the log holds and their expansions, the dictionary ids
 in use (lane compression-extents-2)."
   (multiple-value-bind (store records) (fnn-open-live-store root nil)
     (declare (ignore records))
-    (unwind-protect
-         (progn
+    (fnn-unwind-cleanups
+         ((progn
            (fnn-out "~a" (fnn-core 'fn-lzr-tally-text
                                    (fnn-nat (fnn-core-state 'fn-store-compress-min-octets))
                                    (or *fnn-lz-tally* (fnn-core 'fn-lzr-tally-empty))))
-           +fnn-exit-ok+)
+           +fnn-exit-ok+))
       (fnn-store-close store))))
 
 (defun fnn-command-config (root)
   "The replayed configuration: generation, served table, domain."
   (multiple-value-bind (store records) (fnn-open-live-store root nil)
     (declare (ignore records))
-    (unwind-protect
-         (progn (fnn-out "generation=~d served=~{~a~^,~} domain=~{~a~^,~}"
+    (fnn-unwind-cleanups
+         ((progn (fnn-out "generation=~d served=~{~a~^,~} domain=~{~a~^,~}"
                          (fnn-store-config-generation store)
                          (fnn-store-config-served store)
                          (fnn-store-config-domain store))
-                +fnn-exit-ok+)
+                +fnn-exit-ok+))
       (fnn-store-close store))))
 
 (defun fnn-command-inspect (root message-id)
   (multiple-value-bind (store records) (fnn-open-live-store root nil)
     (declare (ignore records))
-    (unwind-protect
-         (let ((msgid (progn
+    (fnn-unwind-cleanups
+         ((let ((msgid (progn
                         ;; Python encodes the Message-ID after opening the
                         ;; store, so a non-ASCII identifier is a usage error
                         ;; only once the store itself opened.
@@ -5724,7 +5724,7 @@ in use (lane compression-extents-2)."
            (cond ((not (fnn-bridge-lookup-found-p msgid)) +fnn-exit-refused+)
                  (t (write-sequence (fnn-bridge-lookup msgid) *fnn-stdout*)
                     (finish-output *fnn-stdout*)
-                    +fnn-exit-ok+)))
+                    +fnn-exit-ok+))))
       (fnn-store-close store))))
 
 (defun fnn-command-provenance (root message-id)
@@ -5735,8 +5735,8 @@ then LF; refused when the store binds no such Message-ID or its pin was
 released.  The host decodes nothing: it relays ACL2's octets."
   (multiple-value-bind (store records) (fnn-open-live-store root nil)
     (declare (ignore records))
-    (unwind-protect
-         (progn
+    (fnn-unwind-cleanups
+         ((progn
            (unless (every (lambda (c) (< (char-code c) 128)) message-id)
              (error 'fnn-usage-error :message "Message-ID is not ASCII"))
            (let ((value (fnn-core-state 'fn-store-prov-for-msgid
@@ -5745,7 +5745,7 @@ released.  The host decodes nothing: it relays ACL2's octets."
                    (t (write-sequence (fnn-as-octets value) *fnn-stdout*)
                       (write-byte 10 *fnn-stdout*)
                       (finish-output *fnn-stdout*)
-                      +fnn-exit-ok+))))
+                      +fnn-exit-ok+)))))
       (fnn-store-close store))))
 
 (defun fnn-probe-article (sequence size)
