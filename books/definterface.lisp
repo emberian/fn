@@ -695,6 +695,20 @@
                 (mv nil target)
               (mv (msg "~x0 has missing or incompatible registered creator EXEC metadata" name) nil)))))))))
 
+(defun fn-di-raw-creatorp (name kvs w)
+  (declare (xargs :mode :program))
+  ; Private allocation cannot use ACL2's live-stobj counterpart.  This is
+  ; the narrow registered creator role, with its normal verified ABI; it
+  ; cannot turn an ordinary semantic callback into a creator exception.
+  (mv-let (problem target) (fn-di-raw-guarded-target name kvs w)
+    (declare (ignore target))
+    (let* ((outputs (stobjs-out name w))
+           (st (and (equal (len outputs) 1) (car outputs))))
+      (and (assoc-keyword :raw-guarded kvs) (null problem)
+           (equal (getpropc name 'formals :none w) nil)
+           (equal (stobjs-in name w) nil)
+           st (eq name (get-stobj-creator st w))))))
+
 (defun fn-di-problem (name kvs w)
   (declare (xargs :mode :program))
   ; nil, or a msg naming the first check the world refutes
