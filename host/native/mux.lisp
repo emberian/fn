@@ -731,7 +731,10 @@ the same octets are handed to the next step."
   (let* ((service (fnn-mux-service loop))
          (incoming (fnn-mux-conn-input conn))
          (channel (fnn-mux-conn-channel conn))
-         (capture (%make-fnn-response-capture))
+         ;; Publish before entering the fallible semantic boundary. A
+         ;; later pre-factory draw can retain its receipt here on escape.
+         (capture (setf (fnn-mux-conn-response-capture conn)
+                        (%make-fnn-response-capture)))
          (results (multiple-value-list
                    ;; PKT-858: a peer connection's read enters as ACL2's
                    ;; class for it (fnn-owner-peer-read-class: :reader while
@@ -745,8 +748,6 @@ the same octets are handed to the next step."
                                                  (fnn-owner-peer-read-class service)
                                                (fnn-mux-conn-class conn))
                                              peerp)))))
-    (when (fnn-response-capture-context capture)
-      (setf (fnn-mux-conn-response-capture conn) capture))
     ;; Lane commit-onto-log: the step queued its submission for the
     ;; next commit quantum.  The rest is the submitted step's handling, with
     ;; the plan built when the completion arrives (fnn-mux-await-done).
