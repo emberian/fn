@@ -21792,9 +21792,11 @@
         "tests/test_native_observation_raw.sh",
         "planning/evidence/runtime-observation-2026-10-03/coordinate.json",
         "planning/evidence/runtime-observation-2026-10-03/native.log",
-        "planning/evidence/runtime-observation-2026-10-03/observed-hm.lsp"
+        "planning/evidence/runtime-observation-2026-10-03/observed-hm.lsp",
+        "planning/evidence/manifests/certify-20261003T074717Z-46601.json",
+        "planning/evidence/manifests/certify-20261003T080416Z-85944.json"
       ],
-      "progress_note": "Executable machine and finite schedules certified at current bytes in certify-20261003T062320Z-3305; resource dependency certified in certify-20261003T062713Z-16191. Actual main proof continuation fails FN-HMC-DO-CANCEL-KEEPS-INVP in certify-20261003T062700Z-15460. All-schedules proof/native realization/funded pool remain HM02 debt. Runtime actual shared section producer now records acquire after physical O acquisition, reserves release under O and completes it after physical unlock; completed-prefix collector prevents preemption inversion. Native one-actor and contested two-actor schedules pass, emit literal actor reservation strings and HM assertions for exact answers/invariant at every prefix. Overflow, missing identity and observer failure invalidate comparison without changing service outcome. Finite ACL2 replay and real image extent composition remain separately qualified; this is not universal native realization. Groundwork clean loaded-world replay of all four actual native-produced assertion packets PASS (<0.01s, 0 proof steps); protected source machine hash matches the recorded coordinate. This is finite O-only replay, not complete PageIO/native realization."
+      "progress_note": "Groundwork: current clean main pin/capture/drain/cancel invariants certified in certify-20261003T074717Z-46601; strengthened physical-return invariant and literal antecedent/removal teeth certified with main/tests in certify-20261003T080416Z-85944. Issue/settle preservation and all-schedules theorem remain planned. Actual Runtime generated-actor/shared-section O-only native packets replay against exact machine with all prefix invariants; this finite observation bridge does not establish full extent/pin realization or funded-pool coverage. Runtime actual shared section producer now records acquire after physical O acquisition, reserves release under O and completes it after physical unlock; completed-prefix collector prevents preemption inversion. Native one-actor and contested two-actor schedules pass, emit literal actor reservation strings and HM assertions for exact answers/invariant at every prefix. Overflow, missing identity and observer failure invalidate comparison without changing service outcome. Finite ACL2 replay and real image extent composition remain separately qualified; this is not universal native realization. Groundwork clean loaded-world replay of all four actual native-produced assertion packets PASS (<0.01s, 0 proof steps); protected source machine hash matches the recorded coordinate. This is finite O-only replay, not complete PageIO/native realization."
     },
     {
       "id": "PRF-1256",
@@ -21854,6 +21856,28 @@
         "tests/acl2/resource-operation-tests.lisp"
       ],
       "progress_note": "Actual owner syncer producer and independent operation/physical receipt protocol source-admitted. Real issue, physical, outcome, live and drained guards and typed/shape preservation have nine complete positive/type-removal/shape-removal witnesses. Bootstrap install/install-syncer guards and typed/shape preservation now source-admit using guarded typed bank install; six complete literal producer teeth include positive accepted branches and corrupted-state refusal removals. Declaration class follows that exact world. Runtime native fixture refuted ordinary private stobj creation, then passed the exact registered raw-guarded creator plus normal semantic counterpart route with real worker timeout/operation/physical join. Matching final-source certification/native fixture is pending assembly. Full tariff/cost/principal coverage and the environmental physical receipt boundary remain open; exact partial entry cost rows stay partial."
+    },
+    {
+      "id": "PRF-1258",
+      "title": "Host reclaim prediction and sealing reproduce intern result and arena effect",
+      "statement": "host/owner-host.lisp fn-orcs-predict-seal-refines-intern equates the actual fn-orcs-predict result followed by fn-orcs-seal to fn-orcp-intern-rows, including both rewritten rows and arena effect, assuming no :bad row. Actual native caller fnn-owner-reclaim-pass predicts off-owner then checks unchanged arena base before sealing in the swap quantum. This boundary establishes the subject association; it does not prove complete native reclaim scheduling, custody, bounded allocation or credit adequacy. fn-owner-cat-may-seal-refines-cat-by-definition is only a wrapper equality; stronger prepare-gate relationship remains owed.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-017"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "host/owner-host.lisp",
+        "host/interfaces.lisp",
+        "books/owner-reclaim-seal.lisp",
+        "tests/acl2/owner-reclaim-seal-tests.lisp"
+      ],
+      "events": [
+        "fn-orcs-predict-seal-refines-intern"
+      ],
+      "progress_note": "Boundary admitted in scoped actual book world at362steps/<0.01s and actual normal/DTN host prefixes at frozen1a946582c passed. New literal full-output/effect positive and no-bad omission teeth are being admitted; status remains planned pending their matching qualification. Host files are LD-loaded, not certified."
     }
   ]
 }
