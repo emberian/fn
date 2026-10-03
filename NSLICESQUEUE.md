@@ -108,7 +108,8 @@ Anchors: [RESOURCE-OPERATIONS](planning/repair/items/RESOURCE-OPERATIONS.json),
 
 ### Owner carrier and removal of whole-state revalidation
 
-**Queued implementation — Groundwork coordinates; dedicated implementer to dispatch.**
+**Active implementation — former proof Sol owns the first POST writer family;
+Groundwork coordinates.**
 Resume the existing carrier transformation safely, using current signatures and
 actual native dispatch. Complete the POST bridge and the named owner-writer
 preservation obligations, then carry the invariant through other live writers.
@@ -160,6 +161,8 @@ sessions use the same bounded implementation. Anchors:
 Use the existing paged catalog attachment and image route. Resolve the actual
 creator/attachment question and run the prepared generic service scenario;
 failure to acquire compatible certificates is not evidence of an attachment bug.
+The actual cached attachment/creator and live/fresh generic probes passed; the
+distinct paged executable consumer remains with Integration and Empirical.
 
 Done: socket POST, GROUP, NEXT/LAST, exact retrieval, withdrawal, missing-article
 replies and reopen work through the paged consumer with its representation
@@ -169,8 +172,8 @@ page-backed state. Anchors: [STORE-PAGES](planning/repair/items/STORE-PAGES.json
 
 ### Dense groups, overview and reclaim-aware navigation
 
-**Next after a usable paged seam — Groundwork coordinates with Served;
-implementation owner to dispatch.** Connect dense group-number and overview
+**Active availability implementation — paged-store helper, Groundwork assembles
+with Served.** Connect dense group-number and overview
 representations to actual GROUP/LISTGROUP/LIST/OVER and navigation consumers.
 Complete available-article counts and movement past reclaimed articles.
 
@@ -212,7 +215,8 @@ Anchors: [X04](planning/repair/items/X04.json), [S038](planning/repair/items/S03
 
 ### Checkpoint, recovery and bounded store utilities
 
-**Queued — Groundwork coordinates storage; specific batches to dispatch.**
+**Active publication/read-back batch — Astra; Groundwork coordinates storage.
+Other bounded utility batches remain queued.**
 Group the existing repairs by actual log/checkpoint/import/journal path:
 publication/read-back before dropping covered data, interrupted repair recovery,
 txid/lineage preservation, bounded header/tail processing, and descriptor lifetime.
