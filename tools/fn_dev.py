@@ -53,7 +53,7 @@ def repl(args):
             if line in (':quit', ':exit'):
                 return 0
             if line == ':help':
-                print(':operation, :threads, :apropos TEXT, :describe FORM, :load PATH, :acl2 FORM,\n:paste, :trace on|timing|report|off, :quit\n'
+                print(':operation, :threads, :apropos TEXT, :describe FORM, :load PATH, :acl2 FORM,\n:paste, :trace on|timing|report|hotspots [N]|off, :quit\n'
                       'Enter one Common Lisp form, or PROGN for a batch.\n'
                       '*fnn-dev-service* is the current owner; fnn-core calls the core.\n'
                       'Reader evaluation (#.) is disabled. :load names a path on the server.\n'
@@ -79,6 +79,11 @@ def repl(args):
                 line = '(progn (fnn-trace-start) :tracing)'
             elif line == ':trace report':
                 line = '(fnn-trace-report *standard-output*)'
+            elif line == ':trace hotspots' or line.startswith(':trace hotspots '):
+                count = 10 if line == ':trace hotspots' else int(line[len(':trace hotspots '):])
+                if count <= 0:
+                    raise ValueError('trace hotspot count must be positive')
+                line = f'(fnn-trace-hotspots *standard-output* {count})'
             elif line == ':trace off':
                 line = '(setf *fnn-trace-state* nil)'
             elif line.startswith(':describe '):
