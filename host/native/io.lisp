@@ -2700,7 +2700,9 @@ Generic command callers have no owner authority sink.")
           (when fd (fnn-flock fd +fnn-lock-un+))
           (when fd (fnn-close fd))
           (when (fnn-store-application-close-debts store)
-            (error (third (car (fnn-store-application-close-debts store))))))
+            (error (third (car (fnn-store-application-close-debts store)))))
+          (unless (eq (fnn-arena-return-observation log) :closed)
+            (fnn-indeterminate "arena staged-page return remains unobserved")))
       (serious-condition (condition)
         (setf (fnn-store-fenced store) t
               (fnn-store-close-debt store) (list log fd condition))
@@ -6977,6 +6979,7 @@ with its depth, and the rows under it name the path that called it."
   ;; preallocated and fenced OFF the owner mutex (fnn-log-prepare-spare); the
   ;; rotation under the mutex only renames it into journal/.  SPARE-LOCK
   ;; serializes preparers; it is never taken under the owner mutex.
+  (reseat-custody nil)
   (active-close-debt nil)
   (spare nil) (spare-close-debt nil) (spare-lock (sb-thread:make-mutex :name "fn log spare"))
   ;; journal/'s path while the rotated-to segment's name is not yet durable:
@@ -7565,37 +7568,74 @@ asking reader's own pin, not counted."
   "The live off-mutex arena readers."
   (fnn-arena-pins-step '(:count)))
 
+(defvar *fnn-arena-release-custody* nil
+  "Exact release handoff: #(PHASE ROWS REMAINING ARENA CONDITION).
+A callback escape leaves :calling custody; neither it nor later items retry.")
+
+(defun fnn-arena-return-observation (log)
+  (if (or *fnn-arena-release-custody*
+          (and log (fnn-log-reseat-custody log))) :uncertain :closed))
+
 (defun fnn-arena-release-due ()
-  "The pending retirements ACL2 releases now, ((S . ITEMS) ...)."
+  "Transfer ACL2's eligible rows into durable host custody before callbacks."
+  (when *fnn-arena-release-custody*
+    (fnn-indeterminate "prior arena release callback remains unobserved"))
   (let ((due (fnn-arena-pins-step '(:release))))
     (unless (listp due) (fnn-fault "ACL2 returned a malformed arena release"))
+    (when due
+      (setq *fnn-arena-release-custody* (vector :preparing due nil nil nil))
+      (setf (aref *fnn-arena-release-custody* 2)
+            (loop for row in due append (copy-list (cdr row)))
+            (aref *fnn-arena-release-custody* 0) :ready))
     due))
 
+(defun fnn-arena-release-returned ()
+  "Return each handed-out page once; retain exact unfinished cursor on escape."
+  (let ((custody *fnn-arena-release-custody*))
+    (when custody
+      (unless (eq (aref custody 0) :ready)
+        (fnn-indeterminate "arena release callback cannot be replayed"))
+      (handler-case
+          (progn
+            (setf (aref custody 3) (fnn-live-arena))
+            (loop while (aref custody 2) do
+              (setf (aref custody 0) :calling)
+              (fnn-call 'fn-arena-release (car (aref custody 2)) (aref custody 3))
+              (setf (aref custody 2) (cdr (aref custody 2))
+                    (aref custody 0) :ready))
+            (setq *fnn-arena-release-custody* nil))
+        (serious-condition (condition)
+          (setf (aref custody 4) condition)
+          (error condition))))))
+
 (defun fnn-log-reseat-fenced (log)
-  "The COMPLETE's reseat (PRF-309): each fenced staged member's handle is
-re-pointed at the log extent that now durably holds its payload, as ACL2
-decides it (fn-arx-commit-reseats: KEYSTONE fn-arx-commit-reseats-keep-the-
-arena); the staged pages are then retired, and released (fn-arena-release)
-once no reader outside the owner's mutex (a checkpoint publication) that
-pinned before them runs (books/arena-reader-pins.lisp); until then they wait
-for a later COMPLETE."
+  "Reseat COMPLETE members, retire their staged copies, then return eligible pages.
+Each callback owns an explicit custody record before mutation; torn callbacks
+are recovery debt, never an excuse to replay a partly mutated arena."
+  (when (fnn-log-reseat-custody log)
+    (fnn-indeterminate "prior log reseat/retire callback remains unobserved"))
   (let ((fenced (fnn-log-with-kernel (log)
-                  (prog1 (reverse (fnn-log-fenced log)) (setf (fnn-log-fenced log) nil)))))
+                  (let ((members (reverse (fnn-log-fenced log))))
+                    (when members
+                      (setf (fnn-log-reseat-custody log) (vector :ready members nil nil)
+                            (fnn-log-fenced log) nil))
+                    members))))
     (when fenced
-      (let ((arena (fnn-live-arena)))
-        (if (fnn-log-lz log)
-            ;; KEYSTONE fn-lzr-commit-reseats-keep-the-arena (PRF-326): a
-            ;; framed member is re-pointed at its block when the block
-            ;; decodes to the handle's payload; any other member takes the
-            ;; plain reseat.
-            (fnn-call 'fn-lzr-commit-reseats fenced (fnn-lz-dicts) arena)
-          (fnn-call 'fn-arx-commit-reseats fenced arena))
-        (fnn-arena-retire (mapcar #'first fenced))))
-    (let ((due (fnn-arena-release-due)))
-      (when due
-        (let ((arena (fnn-live-arena)))
-          (dolist (entry due)
-            (dolist (h (cdr entry)) (fnn-call 'fn-arena-release h arena))))))))
+      (let ((custody (fnn-log-reseat-custody log)))
+        (handler-case
+            (let ((arena (fnn-live-arena)))
+              (setf (aref custody 2) arena (aref custody 0) :calling)
+              (if (fnn-log-lz log)
+                  (fnn-call 'fn-lzr-commit-reseats fenced (fnn-lz-dicts) arena)
+                (fnn-call 'fn-arx-commit-reseats fenced arena))
+              (setf (aref custody 0) :retiring)
+              (fnn-arena-retire (mapcar #'first fenced))
+              (setf (fnn-log-reseat-custody log) nil))
+          (serious-condition (condition)
+            (setf (aref custody 3) condition)
+            (error condition)))))
+    (fnn-arena-release-due)
+    (fnn-arena-release-returned)))
 
 
 (defun fnn-log-member-files (log)
@@ -7605,7 +7645,9 @@ NAMED."
   (if log
       (fnn-log-with-kernel (log)
         (remove-duplicates
-         (loop for m in (append (fnn-log-inflight log) (fnn-log-fenced log))
+         (loop for m in (append (fnn-log-inflight log) (fnn-log-fenced log)
+                                   (and (fnn-log-reseat-custody log)
+                                        (aref (fnn-log-reseat-custody log) 1)))
                when (and (consp m) (integerp (second m))) collect (second m))))
     nil))
 
