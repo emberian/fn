@@ -1,23 +1,123 @@
 {
  "acceptance": "wrapper:class-plus-step",
+ "budget": 450,
  "category": "error-handling",
  "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "DISSOLVES-IN",
  "evidence": "pull-service.lisp:229-252: (handler-case (let* ((envelope (fnn-core ... cursor))) (unless (fnn-octet-list-p envelope) (fnn-fault \"owner refused ~a envelope\" ...)) (fnn-pull-test-cut \"before-write\" kind) ... (fnn-write-all ...)) (error (e) ... (fnn-owner-feed-close journal) (fnn-indeterminate \"~a append uncertain: ~a (~a)\" ...)))",
+ "expect-failure": "tests.test_native_pull_append.PullAppendBoundaryTests.test_prewrite_envelope_fault_retains_class",
  "exposure": "conditional",
+ "failure-message": "pre-write envelope fault must retain its class",
  "file": "host/native/pull-service.lisp",
  "fix": "Narrow the handler to the region from fnn-owner-feed-phase :append through the fsync. Let failures before the write keep their own class.",
+ "harness": "tests/test_native_pull_append.py,tests/native_pull_append_raw.lisp",
  "id": "S110",
  "line": "247",
  "locus": "peer-services",
- "notes": [],
- "owner": "sweep-peer",
+ "notes": [
+  "10-03 04:21 claimed: scope=['host/native/pull-service.lisp', 'specs/peering.md', 'tests/native_pull_append_raw.lisp', 'tests/test_native_pull_append.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_native_pull_append.PullAppendBoundaryTests.test_prewrite_envelope_fault_retains_class"
+ ],
+ "owner": "codex-sol-tools",
  "reviewer": "pull-service.lisp:229-252: the (error (e) ...) arm wraps the non-octet-envelope fnn-fault (237-238) and everything before fnn-write-all, and turns all of them into fnn-indeterminate. fnn-pull-worker-guarded (552-554) then fences the node (exit 3) where a pre-write failure is a definite fault (exit 4). This misclassifies the outcome, but it is conservative, and it is reachable only through an ACL2 contract break or the developer cut selector.",
  "scenario": "ACL2 returns a non-octet envelope, or the developer selector is malformed (fnn-pull-test-cut faults). Nothing has been written. The handler still converts the fault into fnn-store-indeterminate, and fnn-pull-worker-guarded fences the node with 'recovery required' (exit 3) instead of reporting a definite fault (exit 4). AGENTS.md requires uncertain, refused and faulted outcomes to stay distinct.",
+ "scope": [
+  "host/native/pull-service.lisp",
+  "specs/peering.md",
+  "tests/native_pull_append_raw.lisp",
+  "tests/test_native_pull_append.py",
+  "LANEDUMP.md",
+  "planning/evidence-index.tsv"
+ ],
  "severity": "low",
  "slice": "wrapper",
  "source": "sweep-2026-10-03",
- "state": "open",
+ "state": "in-progress",
+ "test": "python3 -m unittest tests.test_native_pull_append.PullAppendBoundaryTests.test_prewrite_envelope_fault_retains_class",
  "title": "FNPL/FNCU append reports a pre-write envelope refusal or fault as indeterminate (exit 3)",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T08:29:46Z",
+ "verify": {
+  "base": "e3b6eee46a5598889ad2813c6c9e2aa42ba0fdeb",
+  "base_observation": {
+   "result": {
+    "assertions": [
+     {
+      "message": "pre-write envelope fault must retain its class",
+      "test": "tests.test_native_pull_append.PullAppendBoundaryTests.test_prewrite_envelope_fault_retains_class",
+      "type": "AssertionError"
+     }
+    ],
+    "errors": [],
+    "executed": [
+     "tests.test_native_pull_append.PullAppendBoundaryTests.test_prewrite_envelope_fault_retains_class"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_native_pull_append.py": "bae91f0d92262ba7a5503a5a496889195837534667a4953796d0d576168c324e"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 1,
+   "revision": "e3b6eee46a5598889ad2813c6c9e2aa42ba0fdeb",
+   "stderr": "test_prewrite_envelope_fault_retains_class (tests.test_native_pull_append.PullAppendBoundaryTests.test_prewrite_envelope_fault_retains_class) ... FAIL\n\n======================================================================\nFAIL: test_prewrite_envelope_fault_retains_class (tests.test_native_pull_append.PullAppendBoundaryTests.test_prewrite_envelope_fault_retains_class)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-evy2l_u8/wt/tests/test_native_pull_append.py\", line 25, in test_prewrite_envelope_fault_retains_class\n    self.schedule(\"envelope\", \"pre-write envelope fault must retain its class\")\n    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-evy2l_u8/wt/tests/test_native_pull_append.py\", line 19, in schedule\n    self.fail(intended)\n    ~~~~~~~~~^^^^^^^^^^\nAssertionError: pre-write envelope fault must retain its class\n\n----------------------------------------------------------------------\nRan 1 test in 0.118s\n\nFAILED (failures=1)\n",
+   "stdout": ""
+  },
+  "changed_files": [
+   "LANEDUMP.md",
+   "host/native/pull-service.lisp",
+   "planning/repair/items/S110.json",
+   "specs/peering.md",
+   "tests/native_pull_append_raw.lisp",
+   "tests/test_native_pull_append.py"
+  ],
+  "diff_lines": 243,
+  "evidence": {
+   "bytes": 4119,
+   "path": "planning/evidence/repair/S110-e20e6254e71e4151b41907b94d897130.json",
+   "sha256": "f26785cea305d06c3faed1083ac8e47d6b7519ad598dece5fd6894738204fe3e"
+  },
+  "evidence_outcome": "archived",
+  "expected_failure": {
+   "message": "pre-write envelope fault must retain its class",
+   "test": "tests.test_native_pull_append.PullAppendBoundaryTests.test_prewrite_envelope_fault_retains_class"
+  },
+  "green_at_head": true,
+  "harness": {
+   "tests/native_pull_append_raw.lisp": "8263c848b361994a32a114349121a7c0f5658ab17ff31193d09be7e4b0c7b544",
+   "tests/test_native_pull_append.py": "bae91f0d92262ba7a5503a5a496889195837534667a4953796d0d576168c324e"
+  },
+  "head": "31c79cb07c8d37f521f7dde239315e24a38a1140",
+  "head_observation": {
+   "result": {
+    "assertions": [],
+    "errors": [],
+    "executed": [
+     "tests.test_native_pull_append.PullAppendBoundaryTests.test_prewrite_envelope_fault_retains_class"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_native_pull_append.py": "bae91f0d92262ba7a5503a5a496889195837534667a4953796d0d576168c324e"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 0,
+   "revision": "31c79cb07c8d37f521f7dde239315e24a38a1140",
+   "stderr": "test_prewrite_envelope_fault_retains_class (tests.test_native_pull_append.PullAppendBoundaryTests.test_prewrite_envelope_fault_retains_class) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.252s\n\nOK\n",
+   "stdout": ""
+  },
+  "interpreter": "/opt/homebrew/bin/python3",
+  "ok": true,
+  "problems": [],
+  "red_at_base": true,
+  "runner_sha256": "ffc7d9542fbfe2d4e23f03f31dd170f32ef1a8529d41ebbccc36f18c52946106",
+  "same_tests": true,
+  "semantic_ok": true,
+  "test": "python3 -m unittest tests.test_native_pull_append.PullAppendBoundaryTests.test_prewrite_envelope_fault_retains_class",
+  "timeout": 1800.0
+ }
 }

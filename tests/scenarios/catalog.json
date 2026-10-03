@@ -8341,6 +8341,33 @@
         "planning/evidence/native-sparse-newnews-45e05c7f-2026-10-03/report.md"
       ],
       "execution_scope": "Historical image 45e05c7f finite command correctness passed: 10 exact blocks of four remaining matches across 24 seed rows including two actual tombstones, eight competing ARTICLEs and four POSTs, 26 retained articles and two tombstones correct on reopen. Live reclaim credit-refused; payload-I/O attribution, new bounded cursor and current-image qualification remain open."
+    },
+    {
+      "id": "SCN-1087",
+      "title": "Committer escape preserves actual syncer outcome and independently settles physical custody",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-046",
+        "HST-033"
+      ],
+      "steps": [
+        "Launch the actual pipeline syncer, then escape its parent observation through a condition or raw throw; exercise done, uncertain and fault results with physical return before or after unwind.",
+        "Observe physical termination and consume the retained actual fn-oqw outcome once; inject a torn normal consumption and forbid retry.",
+        "Run the actual committer starter/loop with a raw ACL2 pipeline throw."
+      ],
+      "expected": [
+        "A live child retains its grant; both receipts remove the grant and uncertainty alone invokes its recovery fence.",
+        "A torn outcome keeps custody visible despite physical termination, and is attempted once.",
+        "The committer actor records fault and stops service; it does not leave active service without a committer."
+      ],
+      "evidence": [
+        "tests/test_native_syncer_pipeline_escape_raw.sh",
+        "tests/native_syncer_pipeline_escape_raw.lisp",
+        "tests/test_native_committer_actor_raw.sh",
+        "tests/native_committer_actor_raw.lisp"
+      ],
+      "execution_scope": "Deployed native bodies and actual fn-oqw/actor decisions under SBCL with recording funding and I/O boundaries. Typed ledger theorem unchanged. Full saved-image/shutdown qualification remains Integration work."
     }
   ]
 }
