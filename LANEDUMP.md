@@ -3323,3 +3323,27 @@ tests.test_native_web.NativeWebFaceTests.test_1_a_friend_makes_an_account_reads_
 ad8+gate336+cde+99Web/2Access+native9022; latest11field/P3/decoded/runtime union
 is not established. WEB006/SCN1122 remain open for their full obligations.
 Contributor guides integrated9c944de6e; no certificate/image/deployment claim.
+
+BP transport resumed source execution (2026-10-03, GPT6.1Sol)
+----------------------------------------------------------
+Own branch bp-transport-oct03 merged public52f728918 as b62a3cc5a. Public BP
+source and SCN1110 already match the prior657/be75 coherent packet; no current
+native verdict has been transferred. History owns the fresh current TEN-field
+ordinary decoded pool/earlyP3 initialization; the oldad8 cached bootstrap is
+only diagnostic and cannot substitute that ABI. Integration owns the launcher.
+
+The canonical BP fixture now accepts an explicit initialized-source binding
+through tests.native_image_provenance.assert_same_native_source. Environment
+FN_NATIVE_SOURCE_EXECUTIONS is a JSON map keyed by resolved launcher path,
+values {manifest, manifest_sha256, launcher_sha256}. Each composed launcher
+must load the same execution manifest bytes; core/runtime/raw/logical/helper
+and library hashes named by execution_sha256 are revalidated before Store
+setup. Bootstrap and selected source revisions remain distinct; no qualification
+claim. Without that explicit binding the existing published-image check remains.
+Eight discriminating local checks PASS (0.017s), including changed launcher,
+manifest and raw input, unhashed logical input, and same source label with a
+different bootstrap/manifest. SCN1110 remains UNEXECUTED pending fresh process.
+Next connected consumers: actual live keepalive plus canonical second request
+through Store/FNRJ/reopen, then immutable application R/Q with exact source and
+both signatures. Full codec/native cursor refinement and whole decoder/GC work
+and resident tariff remain open as recorded above.
