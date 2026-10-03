@@ -348,6 +348,8 @@
 (include-book "../../host/owner-exposure-host")
 (include-book "../../host/index-reader-request-host")
 (include-book "../../books/native-control")
+(include-book "../../books/control-observation")
+(include-book "../../books/moderation-outcome")
 (include-book "../../books/native-control-launch")
 (include-book "../../books/native-control-reason")
 (include-book "../../books/native-control-line")

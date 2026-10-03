@@ -349,6 +349,8 @@
 (include-book "../host/owner-exposure-host")
 (include-book "../host/index-reader-request-host")
 (include-book "native-control")
+(include-book "control-observation")
+(include-book "moderation-outcome")
 (include-book "native-control-launch")
 (include-book "native-control-reason")
 (include-book "native-control-line")
