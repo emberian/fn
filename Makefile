@@ -302,11 +302,14 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/def-carried-tests \
 	books/def-holder \
 	tests/acl2/def-holder-tests \
+<<<<<<< ours
 	books/reclaim-cuts \
 	books/def-carried-writer \
 	tests/acl2/def-carried-writer-tests \
 	books/owner-retain-frame \
 	tests/acl2/owner-retain-frame-tests \
+=======
+>>>>>>> theirs
 	books/acceptance \
 	books/acceptance-invariants \
 	tests/acl2/acceptance-tests \
@@ -790,10 +793,15 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/extent-retire-tests \
 	books/arena-forget \
 	tests/acl2/arena-forget-tests \
+<<<<<<< ours
 	books/arena-forget-columns \
 	books/owner-reclaim-seal \
 	books/catalog-may-seal \
 	tests/acl2/owner-reclaim-seal-tests \
+=======
+	books/reclaim-cuts \
+	books/handle-holds \
+>>>>>>> theirs
 	books/owner-reclaim-instant \
 	tests/acl2/owner-reclaim-instant-tests \
 	books/store-log-route-phases \

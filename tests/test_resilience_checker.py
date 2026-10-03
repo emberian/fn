@@ -482,6 +482,22 @@ class SchedulePointTests(unittest.TestCase):
         self.assertEqual(REGISTRY["reclaim-candidate-selected"]["kill_form"], "reclaim-captured")
         self.assertIn(REGISTRY["reclaim-candidate-selected"]["kill_form"], REGISTRY)
 
+    def test_the_holder_cuts_are_registered_from_the_declarations_in_kill_form(self):
+        from tests.campaign import native_cuts
+        cuts = native_cuts.holder_cuts()
+        if not cuts:
+            self.skipTest("no def-holder declaration in this tree")
+        self.assertEqual(native_cuts.verify_holder_cut_map(), [])
+        own = [c for c in cuts if c[3] == "+fnn-holder-cuts+"]
+        self.assertTrue(own)
+        for _decl, name, kind, _host in own:
+            self.assertIn("holder-" + name, REGISTRY)
+            self.assertEqual(REGISTRY["holder-" + name]["rule"], "rebuilt")
+            self.assertEqual(REGISTRY["holder-" + name]["selector"], "FN_NATIVE_HOLDER_FAULT")
+        self.assertEqual(REGISTRY["page-read-outstanding"]["kill_form"],
+                         "holder-fn-pio-file-holds-decided")
+        self.assertIn(REGISTRY["page-read-outstanding"]["kill_form"], REGISTRY)
+
     def test_every_family_scenario_validates_and_is_executable(self):
         counts = {}
         for name in adapter.FAMILIES:

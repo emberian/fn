@@ -210,8 +210,9 @@ POST_LOG_ONE_CANDIDATE = {"log-written": "either", "log-fenced": "present",
 POST_LOG_HOST = (("(fnn-log-append ", "(fnn-at store :log-written)"),
                  ("(fnn-log-fence ", "(fnn-at store :log-fenced)"))
 
-def native_declared_cut_names(parameter: str) -> tuple[str, ...]:
-    source = (ROOT / "host/native/io.lisp").read_text()
+def native_declared_cut_names(parameter: str, path: str = "host/native/io.lisp",
+                              source: str | None = None) -> tuple[str, ...]:
+    source = (ROOT / path).read_text() if source is None else source
     match = re.search(r"\(defparameter \+{}\+\s+'\((.*?)\)\)".format(parameter),
                       source, re.S)
     if not match:
@@ -1100,4 +1101,60 @@ def verify_log_route_arms(source: str | None = None) -> list:
         if hosted != model:
             problems.append("{} -> {}: host {} is not {} {}".format(
                 host, callee, hosted, [p for p, _ in programs], model))
+    return problems
+
+
+# The holder releases' cuts (books/def-holder.lisp: a declaration's
+# *NAME-cuts* and its fn-holder-cuts row; lane def-holder, 2026-10-03).  A
+# :process-local or :durable effect owns two cuts of its own, NAME-decided and
+# NAME-released, which the host marks with (fnn-holder-cut :CUT) and lists in
+# +fnn-holder-cuts+ (HOLDER_CUTS_HOST; the selector FN_NATIVE_HOLDER_FAULT=
+# CUT:kill); a :physical effect names two cuts of an existing list (the
+# reclaim pass's +fnn-reclaim-cuts+), verified there.  The table is read from
+# the declarations, never typed here.
+HOLDER_CUTS_HOST = "host/native/extent.lisp"
+
+
+def holder_cuts() -> tuple[tuple[str, str, str, str], ...]:
+    """(declaration, cut, effect kind, host list) for every def-holder declaration's two cuts."""
+    from tools import holder_check
+    out = []
+    for decl in holder_check.declarations(ROOT):
+        eff = holder_check.effect(decl)
+        host_list = "+fnn-reclaim-cuts+" if eff["kind"] == ":physical" else "+fnn-holder-cuts+"
+        for cut in eff["cuts"]:
+            out.append((decl["name"], cut.lstrip(":"), eff["kind"], host_list))
+    return tuple(out)
+
+
+def verify_holder_cut_map(host_text: str | None = None) -> list[str]:
+    """Both ways: every declared cut of a :process-local or :durable holder is
+    in +fnn-holder-cuts+ and marked (fnn-holder-cut :CUT) in the host; every
+    name in +fnn-holder-cuts+ is a declared cut; a :physical effect's cuts are
+    in the reclaim list it names.  [] when the map agrees."""
+    problems: list[str] = []
+    cuts = holder_cuts()
+    own = [c for c in cuts if c[3] == "+fnn-holder-cuts+"]
+    source = (ROOT / HOLDER_CUTS_HOST).read_text() if host_text is None else host_text
+    try:
+        host_names = set(native_declared_cut_names("fnn-holder-cuts", HOLDER_CUTS_HOST, source))
+    except AssertionError:
+        host_names = None
+    if host_names is None:
+        if own:
+            problems.append("+fnn-holder-cuts+ is not declared in " + HOLDER_CUTS_HOST)
+    else:
+        declared = {c[1] for c in own}
+        for name in sorted(declared - host_names):
+            problems.append("declared holder cut {} is not in +fnn-holder-cuts+".format(name))
+        for name in sorted(host_names - declared):
+            problems.append("+fnn-holder-cuts+ names {}, which no def-holder declares".format(name))
+        for name in sorted(declared & host_names):
+            if "(fnn-holder-cut :{})".format(name) not in source:
+                problems.append("declared holder cut {} is marked by no (fnn-holder-cut :{}) in {}"
+                                .format(name, name, HOLDER_CUTS_HOST))
+    reclaim = set(native_declared_cut_names("fnn-reclaim-cuts", "host/native/owner.lisp"))
+    for decl, cut, _kind, host_list in cuts:
+        if host_list == "+fnn-reclaim-cuts+" and cut not in reclaim:
+            problems.append("{}: :physical cut {} is not in +fnn-reclaim-cuts+".format(decl, cut))
     return problems

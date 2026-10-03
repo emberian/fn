@@ -124,19 +124,12 @@
 (defconst *hdt-ievs*
   '((:hold 3 a) (:hold 3 b) (:drop 3 a) (:drop 3 a) (:drop 3 b) (:drop 3 b)))
 
-(defun hdt-irun (table evs)
-  (declare (xargs :guard (and (fn-hd-identp table) (true-listp evs)) :verify-guards nil))
-  (if (atom evs)
-      (list table nil)
-    (mv-let (table1 answer) (fn-hd-ident-step table (car evs))
-      (let ((rest (hdt-irun table1 (cdr evs))))
-        (list (first rest) (cons answer (second rest)))))))
-
-(assert-event (equal (second (hdt-irun nil *hdt-ievs*))
+(assert-event (equal (fn-hd-ident-run-answers nil *hdt-ievs*)
                      '(:held :held :dropped :refused :dropped :refused)))
-(assert-event (equal (first (hdt-irun nil (take 2 *hdt-ievs*))) '((3 b a))))
+(assert-event (equal (fn-hd-ident-run nil (take 2 *hdt-ievs*)) '((3 b a))))
 ; after A's duplicate drop B still holds: the count-only table would say 0
-(assert-event (equal (first (hdt-irun nil (take 4 *hdt-ievs*))) '((3 b))))
+(assert-event (equal (fn-hd-ident-run nil (take 4 *hdt-ievs*)) '((3 b))))
+(assert-event (equal (fn-hd-ident-run nil *hdt-ievs*) nil))
 (assert-event (equal (hdt-istep '((3 b)) '(:count 3)) '(((3 b)) 1)))
 (assert-event (equal (hdt-istep '((3 b)) '(:quiet 3)) '(((3 b)) nil)))
 (assert-event (equal (hdt-istep '((3 b)) '(:quiet 4)) '(((3 b)) t)))
@@ -315,6 +308,72 @@
       (equal (mv-list 2 (hdt-close 7 nil)) '(:refused nil))))
 ; The trace theorem (hdt-files-table-run-carries, over def-carried's
 ; defun-nx run) is asserted present above; its functions do not execute.
+
+; An identified instance (the cold read's shape): an open holds FILE for a
+; TOKEN, a close drops that token's hold.
+(defun hdt-iopen (file tok table)
+  (declare (xargs :guard (fn-hd-identp table)))
+  (if (natp file)
+      (mv-let (table1 answer) (fn-hd-ident-step table (list :hold file tok))
+        (mv answer table1))
+    (mv :refused table)))
+
+(defun hdt-iclose (file tok table)
+  (declare (xargs :guard (fn-hd-identp table)))
+  (if (natp file)
+      (mv-let (table1 answer) (fn-hd-ident-step table (list :drop file tok))
+        (mv answer table1))
+    (mv :refused table)))
+
+(defthm hdt-iopen-holds
+  (implies (fn-hd-identp table)
+           (equal (mv-nth 1 (hdt-iopen file tok table))
+                  (if (equal (mv-nth 0 (hdt-iopen file tok table)) :held)
+                      (mv-nth 0 (fn-hd-ident-step table (list :hold file tok)))
+                    table)))
+  :hints (("Goal" :in-theory (e/d (fn-hd-ident-step) (fn-hd-ident-put fn-hd-tokens-of)))))
+
+(defthm hdt-iclose-drops
+  (implies (fn-hd-identp table)
+           (equal (mv-nth 1 (hdt-iclose file tok table))
+                  (if (equal (mv-nth 0 (hdt-iclose file tok table)) :dropped)
+                      (mv-nth 0 (fn-hd-ident-step table (list :drop file tok)))
+                    table)))
+  :hints (("Goal" :in-theory (e/d (fn-hd-ident-step) (fn-hd-ident-put fn-hd-tokens-of)))))
+
+(def-holder hdt-ifiles
+  :shape :identified
+  :key "a toy file incarnation, held by a read token"
+  :holders ((read :acquire (hdt-iopen hdt-iopen-holds :table 2 :result (mv-nth 1 _)
+                            :key file :token tok :ok (equal (mv-nth 0 _) :held))
+                  :release (hdt-iclose hdt-iclose-drops :table 2 :result (mv-nth 1 _)
+                            :key file :token tok :ok (equal (mv-nth 0 _) :dropped))))
+  :effect (:process-local "a toy")
+  :complete-by "a toy: hdt-iopen and hdt-iclose are its only entries")
+
+(assert-event
+ (and (getpropc 'hdt-ifiles-read-acquire-holds 'theorem nil (w state))
+      (getpropc 'hdt-ifiles-read-release-drops 'theorem nil (w state))
+      (getpropc 'hdt-ifiles-read-acquire-keeps 'theorem nil (w state))
+      (getpropc 'hdt-ifiles-table-run-carries 'theorem nil (w state))
+      (equal (getpropc 'hdt-ifiles-read-release-drops 'theorem nil (w state))
+             '(implies (fn-hd-identp table)
+                       (equal (mv-nth '1 (hdt-iclose file tok table))
+                              (if (equal (mv-nth '0 (hdt-iclose file tok table)) ':dropped)
+                                  (mv-nth '0 (fn-hd-ident-step table (cons ':drop (cons file (cons tok 'nil)))))
+                                table))))
+      ; A and B open 3; A closes twice: the second is refused and B's hold stands
+      (equal (mv-list 2 (hdt-iopen 3 'a nil)) '(:held ((3 a))))
+      (equal (mv-list 2 (hdt-iopen 3 'b '((3 a)))) '(:held ((3 b a))))
+      (equal (mv-list 2 (hdt-iclose 3 'a '((3 b a)))) '(:dropped ((3 b))))
+      (equal (mv-list 2 (hdt-iclose 3 'a '((3 b)))) '(:refused ((3 b))))
+      (equal (mv-list 2 (hdt-iclose 3 'b '((3 b)))) '(:dropped nil))))
+(def-holder-check hdt-ifiles)
+(must-fail-checked (def-holder hdt-ifiles-no-token :shape :identified :key "k"
+                     :holders ((r :acquire (hdt-iopen hdt-iopen-holds :table 2 :result (mv-nth 1 _) :key file :ok t)
+                                  :release (hdt-iclose hdt-iclose-drops :table 2 :result (mv-nth 1 _) :key file :token tok :ok t)))
+                     :effect (:process-local "x") :complete-by "x")
+                   :unchecked "the identified shape needs the holder's token")
 
 ; A second instance: host and root holders only, a :physical effect ordered
 ; after a durable replacement in a keyword cut list (the reclaim pass's
