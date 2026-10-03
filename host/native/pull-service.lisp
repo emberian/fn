@@ -290,9 +290,11 @@ acceptance (the owner is stopping or fenced then)."
       (handler-case
           (multiple-value-bind (user pass) (fnn-feed-auth-profile (list :authinfo path nil))
             (list user pass))
-        (error ()
-          (fnn-err "pull: the credential profile of peer ~a is unreadable"
-                   (fnn-pull-peer-string (fnn-core 'fn-pull-plan-peer plan)))
+        ((or fnn-feed-auth-error fnn-os-error) (condition)
+          (fnn-peer-dial-report :pull (fnn-core 'fn-pull-plan-peer plan)
+                                (fnn-core 'fn-pull-plan-host plan)
+                                (if (typep condition 'fnn-feed-auth-error) condition
+                                  (make-condition 'fnn-feed-auth-error)))
           nil)))))
 
 (defun fnn-pull-round (runtime plan journal cursor &optional (kind :pull))
@@ -547,12 +549,9 @@ acceptance (the owner is stopping or fenced then)."
 
 (defun fnn-pull-worker-guarded (runtime)
   (handler-case (fnn-pull-worker runtime)
-    (fnn-store-indeterminate (e)
-      (fnn-owner-fence-service (fnn-pull-runtime-service runtime))
-      (fnn-err "pull feed uncertain; recovery required: ~a" e))
     (serious-condition (e)
-      (unless (fnn-pull-stoppingp runtime)
-        (fnn-owner-fault-service (fnn-pull-runtime-service runtime) nil e)))))
+      ;; Stopping does not erase a late store fault or uncertain outcome.
+      (fnn-owner-thread-escape (fnn-pull-runtime-service runtime) e "pull feed"))))
 
 (defun fnn-pull-service-start (service)
   (unless (fnn-pull-runtime-get service)

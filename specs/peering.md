@@ -486,7 +486,14 @@ connect each write one ACL2-rendered service-log line
 `peer dial via=feed|pull peer=NAME host=HOST outcome=OUTCOME retry=yes`
 (`fn-peer-dial-log-line`) and are a peer-local loss: the feed requeues
 through `fn-feed-lost` and its backoff, the pull fails its round and tries
-again at its interval.  None is a fault.
+again at its interval. An owner-only credential profile is opened with
+nonblocking/no-follow flags and admitted by descriptor fstat before any TCP
+connect. A missing, non-regular, non-private, overbound or ACL2-refused profile
+is the named `credential` outcome; the feed drop names `credential-refused`.
+The pull and catch-up preflight use that same ACL2-rendered diagnostic and
+refuse the round without dialing or advancing its cursor. A store/core fault,
+an unknown input-fault subclass, or an uncertain outcome propagates to the
+owner boundary even during stopping. Peer-local refusals are not faults.
 
 The TLS check a transport `(:tls MODE SERVER-NAME TRUST)` selects is
 `fn-peer-tls-verification`, asked by `fnn-feed-enable-tls` and the pull's

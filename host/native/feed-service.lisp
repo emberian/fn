@@ -36,7 +36,8 @@
 ;;; Set by a round that did something; bound per round by the worker loop.
 (defvar *fnn-feed-active* nil)
 
-(define-condition fnn-feed-auth-error (error) ())
+(define-condition fnn-feed-auth-error (fnn-peer-dial-error) ()
+  (:default-initargs :outcome :credential))
 
 ;;; STREAK is the value books/feed-link-backoff.lisp `fn-flb-lost' last
 ;;; answered (consecutive link failures since the link was last ready): the
@@ -193,28 +194,46 @@ live reconfiguration just removed (S036)."
     backoff))
 
 (defun fnn-feed-auth-profile (policy)
-  "Read a private regular profile and let ACL2 decode its bounded bytes."
+  "Read a private regular descriptor without blocking on a substituted FIFO.
+ACL2 decodes its bounded bytes; only named input/OS refusal is credential loss."
   (if (null policy) (values nil nil nil)
-    (let* ((path (second policy))
-           (maximum (fnn-core 'fn-owner-feed-profile-max-octets))
-           (fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+))))
-      (unwind-protect
-           (let ((info (fnn-fstat fd)))
-             (unless (and (fnn-regular-p info)
-                          (= (sb-posix:stat-uid info) (sb-posix:getuid))
-                          (zerop (logand (sb-posix:stat-mode info) #o077))
-                          (<= (sb-posix:stat-size info) maximum))
-               (error 'fnn-feed-auth-error))
-             (let* ((bytes
-                      (handler-case (fnn-read-bounded-fd fd maximum)
-                        (fnn-store-fault () (error 'fnn-feed-auth-error))))
-                    (decoded (fnn-core 'fn-owner-feed-profile-decode
-                                       (fnn-octet-list bytes))))
-               (unless (and (consp decoded) (eq (car decoded) :ok)
-                            (= (length decoded) 3))
-                 (error 'fnn-feed-auth-error))
-               (values (second decoded) (third decoded) (third policy))))
-        (fnn-close fd)))))
+    (handler-case
+        (let* ((path (second policy))
+               (maximum (fnn-core 'fn-owner-feed-profile-max-octets)))
+          (unless (and (integerp maximum) (> maximum 0))
+            (fnn-fault "invalid ACL2 credential profile bound"))
+          (let ((fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+
+                                         sb-posix:o-nonblock)))
+                (primary nil))
+            (unwind-protect
+                 (handler-bind ((serious-condition (lambda (e) (setq primary e))))
+                   (let ((info (fnn-fstat fd)))
+                     (unless (and (fnn-regular-p info)
+                                  (= (sb-posix:stat-uid info) (sb-posix:getuid))
+                                  (zerop (logand (sb-posix:stat-mode info) #o077))
+                                  (<= (sb-posix:stat-size info) maximum))
+                       (error 'fnn-feed-auth-error))
+                     (let* ((bytes
+                              (handler-case (fnn-read-bounded-fd fd maximum)
+                                (fnn-input-overbound (e)
+                                  ;; Unknown subclasses retain the fault class.
+                                  (if (eq (type-of e) 'fnn-input-overbound)
+                                      (error 'fnn-feed-auth-error)
+                                    (error e)))))
+                            (decoded (fnn-core 'fn-owner-feed-profile-decode
+                                               (fnn-octet-list bytes))))
+                       (cond ((equal decoded '(:bad nil nil))
+                              (error 'fnn-feed-auth-error))
+                             ((and (consp decoded) (eq (car decoded) :ok)
+                                   (consp (cdr decoded)) (consp (cddr decoded))
+                                   (null (cdddr decoded)))
+                              (values (second decoded) (third decoded) (third policy)))
+                             (t (fnn-fault "malformed ACL2 credential profile result"))))))
+              (handler-case (fnn-close fd)
+                (serious-condition (e)
+                  ;; A cleanup OS failure must not reclassify a core fault.
+                  (error (or primary e)))))))
+      (fnn-os-error () (error 'fnn-feed-auth-error)))))
 
 (defun fnn-feed-connect-core (service peer-octets fd user pass allow-clear)
   "Start ACL2's greeting/MODE phase; this does not make a feed live."
@@ -461,14 +480,13 @@ the shared link table."
         (setq *fnn-feed-active* t)
         (let ((socket nil) (published nil))
           (handler-case
-              (progn
+              (multiple-value-bind (user pass allow-clear)
+                  (fnn-feed-auth-profile auth)
                 (setq socket (fnn-peer-connect host port :timeout timeout))
                 (let ((fd (fnn-socket-fd socket)))
-                  (multiple-value-bind (user pass allow-clear)
-                      (fnn-feed-auth-profile auth)
-                    (fnn-feed-connect-core (fnn-feed-runtime-service runtime)
-                                           (fnn-feed-link-peer-octets link) fd
-                                           user pass allow-clear))
+                  (fnn-feed-connect-core (fnn-feed-runtime-service runtime)
+                                         (fnn-feed-link-peer-octets link) fd
+                                         user pass allow-clear)
                   (setq published (fnn-feed-publish-socket runtime link socket fd))
                   (when (and published (equal (car security) :tls)
                              (equal (cadr security) :implicit))
@@ -483,7 +501,10 @@ the shared link table."
               ;; named peer-loss observation that advances the ACL2 backoff.
               (unless (fnn-feed-stoppingp runtime)
                 (fnn-feed-drop-link runtime link now backoff
-                                    (if (typep condition 'fnn-tls-error) :tls :dial))))))))))
+                                    (typecase condition
+                                      (fnn-feed-auth-error :credential)
+                                      (fnn-tls-error :tls)
+                                      (t :dial)))))))))))
 
 (defun fnn-feed-consume (runtime link octets eofp now)
   "Drain a received chunk through one ACL2 event at a time.

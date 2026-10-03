@@ -599,3 +599,57 @@ All17 newlyadded private entries cleared. This diagnostic has error markers
 and is not a greenprefix. Books/certpairs are reused; no duplicateimage build.
 Source reports regenerated atc3:1460declared/1408dispatched/0raw-rule findings;
 stream PRF1256 curatedmap now corrected, subsequent generated refresh owed.
+Transport credential boundary: S107/S108/S109, codex-sol-tools
+================================================================
+Isolated transport tree from origin/dev c73372af6. Owned feed auth-profile
+and dial, pull profile/worker boundary only; Runtime owns feed actor/idle
+and shared owner fault-service. Profile opens O_NONBLOCK|O_NOFOLLOW and
+admits descriptor fstat before reading, preserving uid/mode/bound authority.
+ACL2 alone decodes and renders credential/drop words. Push reads before TCP
+connect. Only exact known input-overbound and named OS/credential observation
+refuses; read/core/entry faults and unknown subclasses propagate. Pull/catch-up
+use same diagnostic and existing ACL2 refused-profile cursor-hold transition.
+Pull top boundary uses shared exact-class classifier even while stopping.
+
+First discriminating command: python3 -m unittest tests.test_native_feed_credential
+Five actual-source raw schedules pass3.145s (earlier1.350s before fd checks).
+Real kernel FIFO promptly refused, private malformed/missing/nonprivate/
+symlink/directory/overbound profile never connects, valid ACL2 codec permits
+push/pull, exact read/core faults retained, stopping feed/pull reach shared
+fault/fence endpoints, every opened profile descriptor confirmed EBADF after
+return/refusal/fault. Socket effects and owner fault/fence endpoints recorded;
+this is not a saved-image/whole owner-stop claim. Shared classifier is actual
+source. Initial harness missing ACL2 primitive/load path caused explicit infra
+failures; fixed with exact source extraction and ACL2 primitive adapters.
+No raw nonzero exit can count as expected assertion in Python witness.
+
+Prepared consumed native selector for Integration:
+tests.test_native_peer_pull.NativePeerPullTests.test_unreadable_credential_refuses_before_any_connection
+TLS pull profile mode0644, actual public operator setup, recording proxy
+connections0, ACL2 credential line, cursorheld/refusedprofile, ownerlive and
+clean shutdown; extends existing SCN071. Has not run here, historical scenario
+evidence does not cover this case. Books/peer-host and feed-link-backoff plus
+two existing test roots changed; scoped cert/composed image consumer pending
+Integration. No full suite/image launched by this lane.
+
+Three same-harness receipts at source88a116a90 are archived: S107 real FIFO
+blocked-base/prompt-head assertion, S108 invalid-before-connect assertion,
+S109 exact read fault assertion; all designated identities red/base and
+green/head with no infra/skips. File hashes live in each item/index.
+
+S109 follow-through source0c7dc0ea8: preserve the first serious condition
+when descriptor close also fails, so cleanup OS error cannot turn a core
+fault into credential refusal. Sixth actual-source schedule injects core
+fault plus closeEIO after actual close; intended assertion red/base and
+green/head archived S109-d92aa72565cd4483815b2da7f70f3da5.json, sha256
+ef3372181f2fa6ddd54226c89d6142a6d79bb83afedabbf1c28beed5f6a32135.
+Fixture worker fault injection uses explicit hand leaf definitions rather
+than symbol-function replacement, so static inventory does not invent worker
+loop extraction. Only this new credential fixture's derived trap block was
+generated with current nested-reader source; no unrelated fixture rewrite.
+Trap functions remain executable failures for unexpected paths, not coverage
+waivers. Final six schedule command re-run after exact fixture block update.
+
+## Source assembly S081 + credential consumer review — GPT-6.1-Sol
+
+Aggregate over dev90a151a42: Runtime122904439/d529ef773 and Tools88a116a90/1d550edff/0c7dc0ea8/e3b6eee46. Reviewed actual feed dial/pull preflight and owner held/off-owner frames classification. Credential descriptors open nonblocking/no-follow, regular/private/size checks precede bounded read and ACL2 decode, and admission precedes TCP. Unknown/store/core faults propagate; primary faults survive close failure; stopping workers use the shared owner boundary. Frames signal typed outcomes to their existing held or thread boundary; irreversible fault fencing directly acquires owner exclusion. Source merge touches no unrelated owner functions. Only cumulative LANEDUMP conflicted, retaining prior and incoming content. Nine producer source/test paths match, fixture Python compiles, four evidence objects verify, diff check clean. Existing actual-source raw schedules reused; no duplicate proof/build/image run. First runnable selector: tests/test_native_frames_boundary_raw.sh, then tests.test_native_feed_credential.CredentialAdmissionTests.test_exact_read_and_core_faults_propagate_while_stopping. Integration owns pending peer-host/feed-link-backoff certificates, loaded-world/source graph regeneration and matching image.
