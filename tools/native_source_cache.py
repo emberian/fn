@@ -34,14 +34,7 @@ def prepare(manifest, output):
     # The outer LP can continue after a refused event. Admit the complete
     # ordered prefix in one nested LD that stops on its first failure, and
     # authorize the outside-LP checkpoint only on a successful EOF verdict.
-    checkpoint = '''(in-package "ACL2")
-(mv-let (erp reason state)
-    (ld ''' + runner.literal(str(events)) + ''' :ld-error-action :return :ld-prompt nil)
-  (pprogn (f-put-global 'fn-source-bootstrap-ready
-                       (and (not erp) (eq reason :eof)) state)
-          (value :source-bootstrap-returned)))
-:q
-'''
+    checkpoint = runner.strict_driver(events)
     after = '(progn (unless (acl2::f-get-global \'acl2::fn-source-bootstrap-ready acl2::*the-live-state*) (error "Source bootstrap did not complete; checkpoint refused")) (acl2::save-exec ' + runner.literal(str(output)) + ' "internal source execution cache" :return-from-lp \'(acl2::fn-native-entry acl2::state) :inert-args t :host-lisp-args "--noinform" :toplevel-args "--disable-debugger"))'
     bootstrap = output.with_suffix('.checkpoint.lisp')
     bootstrap.write_text(checkpoint)

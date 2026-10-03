@@ -26,7 +26,7 @@ that their recorded state is current at every later revision.
 - Owners continue through their entire capability areas and the outstanding
   backlog. A landed commit, completed slice or passing check triggers the next
   useful connected change without waiting for assignment. Root retains the full
-  scope; the lieutenant clears dependencies and integration flow, rather than
+  scope; root and Integration clear dependencies and integration flow without
   selecting a smaller finishable subset.
 - Dependencies below name the interface or evidence needed for a particular
   consumer. They do not serialize entire initiatives. Source reading, disjoint
@@ -58,7 +58,7 @@ that their recorded state is current at every later revision.
   place. Split a slice when it has independently useful consumers. The list is
   an initial coverage map, not a claim that all remaining defects are enumerated.
 
-## Worker consolidation at 08:00 America/New_York
+## Current four-owner resumption — 2026-10-03
 
 Ember resumed only Integration, History, Runtime and BP transport; root
 coordinates and takes resource accounting/funding. This is substantial full-domain
@@ -115,7 +115,7 @@ its fixture. Anchors: [HOST-COORDINATION](planning/repair/items/HOST-COORDINATIO
 
 ### Output allocation and funding
 
-**Active — Foundations + Served.** Connect indexed serialization, incremental
+**Paused accounting/selector owners — Foundations + Served; Runtime consumes the current producer.** Connect indexed serialization, incremental
 selection and output custody to a real connection/operation funding producer.
 The first actual producer/serializer probe charges a per-CID generational draw
 before serialization and retains worker output until both output completion and
@@ -168,7 +168,7 @@ old destructive replay script as the migration procedure. Anchors:
 
 ### Complete bounded discovery and view policy
 
-**Active/next — Served + command helper.** Finish the incremental group/membership
+**Paused — Served; command-helper source retained.** Finish the incremental group/membership
 selector and matcher funding in the actual NEWNEWS factory/plan. Connect the
 decided completed discovery snapshot to LIST variants, NEWGROUPS and NEWNEWS;
 preserve the by-Message-ID pin followed by completed-view boundary.
@@ -192,7 +192,7 @@ universal owner/reference refinement remain open (PRF-1286, SCN-1116). The
 retained source-execution process/inputs and precise mixed ABI frontier are in
 LANEDUMP; no certificate, current image or full funded operation follows from
 those checks. Access also continues absorbed operator/journal obligations; Root
-S132 full-native observation still needs an adequate funded supported profile.
+S132 strict native ten MiB acceptance/readback now passes on the named initialized-source cache with its supported 128 MiB history profile; whole current-kernel/funding qualification remains separate.
 
 **Next — Served.** Carry the shared cursor/dependency machinery through OVER,
 HDR/XHDR, XPAT, LISTGROUP and the restricted route. Complete table-generated
@@ -209,7 +209,7 @@ sessions use the same bounded implementation. Anchors:
 
 ### Paged catalog in the service
 
-**Active — Served owns the concrete command consumer; Integration owns runtime capacity.
+**Active shared execution — History/Runtime consume the committed Served command adapter; Integration owns assembly.
 The paged-store helper has completed its source handoff.**
 Use the existing paged catalog attachment and image route. Resolve the actual
 creator/attachment question and run the prepared generic service scenario;
@@ -225,7 +225,7 @@ page-backed state. Anchors: [STORE-PAGES](planning/repair/items/STORE-PAGES.json
 
 ### Dense groups, overview and reclaim-aware navigation
 
-**Active availability implementation — Served owns the adapter and carried relation;
+**Paused availability implementation — Served owns the adapter and carried relation;
 the paged-store helper source is complete.** Connect dense group-number and overview
 representations to actual GROUP/LISTGROUP/LIST/OVER and navigation consumers.
 Complete available-article counts and movement past reclaimed articles.
@@ -369,7 +369,7 @@ durability. Anchors: [X10A](planning/repair/items/X10A.json),
 
 ### Authentication, TLS, access and reconfiguration
 
-**Active — Access owns authentication/TLS/access/reconfiguration, coordinating shared lifecycle with Runtime.** Complete authentication throttling,
+**Paused — Access owns authentication/TLS/access/reconfiguration; Runtime consumes the shared lifecycle.** Complete authentication throttling,
 TLS identity transitions, credential/secret publication cleanup, reader access
 for peer roles, and resource charges around accepted/refused reconfiguration.
 
@@ -383,7 +383,7 @@ update charges and retained historical context consistently. Anchors:
 
 ### Concurrent web service
 
-**Active — deputy_web (GPT-6.1 Sol), Runtime owns shared interfaces.** The
+**Active execution — Runtime consumes Web source and owns shared interfaces; the Web deputy is paused.** The
 source packet 934b416cb and lifetime followups through 8e37db4f2 connect a bounded
 HTTP I/O actor plus one fixed semantic worker to generated actor lifecycle,
 shared commit await/cold consumers and per-CID flow leases. The assembled
@@ -414,7 +414,7 @@ close the correct scope. Anchors: [S003](planning/repair/items/S003.json),
 
 ### Operator commands and trustworthy diagnostics
 
-**Active — Operator owns bounded retire/drain, diagnostic classification and ACL2 initialization compatibility. S012 direct probe/selector source is integrated; its saved-image boundary remains a selected check.** Finish
+**Paused operator domain — Access/Operator retain bounded retire/drain, diagnostic classification and ACL2 initialization compatibility. Root supplied the bounded developer proof allowance. S012 direct probe/selector source is integrated; its saved-image boundary remains a selected check.** Finish
 bounded retire/drain, accurate heap/profile/startup diagnostics, safe fixture
 separation, command outcome classes and interrupted administrative operations.
 Explain retained resources and pending obligations using real state.
@@ -460,7 +460,7 @@ old per-file branches stop serving as evidence. Anchors:
 
 ### Finish shared generators through their consumers
 
-**Active/next — Foundations and consumer owners.** Finish carried-view/keyset,
+**Paused generator owner — Foundations; active consumer owners integrate committed interfaces.** Finish carried-view/keyset,
 cost/entry/operation and teeth machinery by replacing actual repeated recipes.
 Batch related consumer migrations; library existence is not completion.
 
@@ -473,7 +473,7 @@ remaining consumers stay visible. Anchors:
 
 ### Shared structured tracing and allocation feedback
 
-**Active — Tools owns the shared mechanism; Runtime and face owners connect actual phases.**
+**Paused — Tools owns the shared mechanism; Runtime connects actual consumer phases.**
 Use one span macro for parent/scope identity, lifetime, timing, outcome, unwind
 cleanup and multiple values. Disabled tracing stays cheap; allocation tracing is
 opt-in and states its measured scope. Reuse existing actor/operation machinery
@@ -519,7 +519,7 @@ Anchors: [empirical matrix](planning/empirical-workloads.md),
 
 ### Sleeping-agent exchange
 
-**Active — Groundwork owns the existing native/CLI consumer and durable client
+**Paused — Groundwork owns the existing native/CLI consumer and durable client
 inbox/outbox; Integration schedules the matching executable.** Implement the chosen consumer-owned durable
 inbox/outbox exchange between separately administered stores: report while the
 peer sleeps, verify exact source after delivery, commit processing and reply,
@@ -532,7 +532,7 @@ exactly-once merely because a message was accepted.
 Anchor: [E1/E2 experiment contract](planning/experiments/e1-e2-agent-exchange.md).
 
 
-### Web ARTICLE collector continuation — GPT-6.1 Sol active
+### Web ARTICLE collector continuation — source retained; Runtime owns current execution
 
 Source packet: virtual metadata scan/replay page source (PRF-1283, SCN-1113),
 actual native consumer, final pin through count/emit/socket suffix and cold
@@ -628,16 +628,48 @@ open; concrete-fill invariant-risk warnings are retained in the source receipt.
 
 ### Operator/developer remaining scope at the 2026-10-03 usage pause
 
-S132 still needs full native large-post acceptance and exact readback under an
-adequately funded supported profile; root's 10 MiB and 16 MiB scratch attempts
-refused oversize and unaffordable respectively, not timeout. Narrow policy and
-exchange tests pass. S083 still needs composed native moderation coverage and
-authority/generation-race closure; the published row authorizes a cause, not an
-already completed target withdrawal.
+S132 now passes strict native ten MiB NNTP/operator acceptance and exact
+readback: one test, zero skips, 28.443s, supported 128 MiB history/16 MiB
+article/64 transactions. The named ad8 initialized cache plus ordinary observer
+overlay is the execution coordinate; whole current-kernel/funding qualification
+and completion under every overloaded deadline remain open. Earlier scratch
+refusals were oversize or underfunded, not timeouts. S083 still needs composed
+native partial-publication coverage. Current authority/generation interactions
+remain an investigation item, not an established security defect or an inferred
+atomicity requirement: the trusted local control route does not use login for
+withdrawal, and the published row authorizes a cause rather than completing
+target withdrawal.
 
 The developer REPL now has actual native-owner admission/refusal/cleanup/fence
-coverage on its named cache coordinate. Admission itself needs a bounded prover
-step/time facility and a tested recovery path: a client timeout currently leaves
-an in-progress proof occupying the serialized owner. Broad command access does
+coverage on its named cache coordinate. Ordinary ACL2 proof admission now uses with-prover-step-limit: default200000
+steps per perform, explicit override or NIL ordinary allowance. Actual ACL2
+worker/socket tests cover zero-allowance refusal, stopping later batch forms,
+unchanged global allowance and following valid proof/Lisp progress. This closes
+the explicit prover-allowance gap. Actual native initialized-cache proof-limit
+refusal/recovery and hot-reload hook deduplication also pass; wall time, arbitrary
+Lisp evaluation and full current-owner composition remain unbounded or pending. Broad command access does
 not establish complete internal observability or allocation accounting. Preserve
 source/proof/cache/image distinctions when completing these domains.
+
+2026-10-03 BP continuation: source-execution fixture provenance now compares
+explicit launcher/manifest hashes and every actually loaded execution input,
+separately from published-image qualification. Eight positive/refusal checks
+PASS locally; SCN1110 still unexecuted. History owns the current TEN-field
+ordinary pool/earlyP3 bootstrap; Integration will supply exact manifest/launcher.
+BP owner continues actual keepalive/second canonical request and signed R/Q
+Store/FNRJ/reopen join. Oldad8 cache is diagnostic only, not current-union proof.
+
+SCN-1125 prepared BP/application join: signed binary R and immutable Q cross
+actual ACL2-authored request, Store/FNRJ publication, reopened native return
+receipt and matching pin release, then independent consumer source/signature
+verification and correlation. No NNTP inter-node peer route. Compile-only
+source state; native execution remains pending current initialized world.
+
+BP owner source repaired missing RFC9174§4.1 Contact Header timeout: actual
+retained begin captures core60s deadline, turn closes protocol only before
+header completion; established source/END ACK unaffected. Raw controller and
+source-control/custody composition PASS,14 warm literal assertions PASS. PRF-1295
+proposed composed boundary remains planned; direct definition helpers not cited.
+SCN-1126 real-time silent-contact/canonical request/reopen prepared, unexecuted.
+SESS_INIT stalls/full admission, whole decode/GC and physical-cut refinement
+remain owned open work. Exact two-root certification pending.

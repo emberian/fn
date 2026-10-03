@@ -4,6 +4,16 @@
 ;;; interface or an ACL2 proof boundary; forms may deliberately change code/state.
 (in-package "ACL2")
 
+;; Earlier loads registered function objects. Remove our old objects before
+;; DEFUN replaces them, then register symbols below so future reloads dedupe
+;; and call the current definitions. Leave every other owner's hook intact.
+(dolist (entry '((fnn-dev-repl-start *fnn-owner-start-hooks*)
+                 (fnn-dev-repl-stop *fnn-owner-stop-hooks*)
+                 (fnn-dev-repl-close *fnn-owner-close-hooks*)))
+ (when (and (fboundp (first entry)) (boundp (second entry)))
+  (setf (symbol-value (second entry))
+        (remove (symbol-function (first entry)) (symbol-value (second entry))))))
+
 (defvar *fnn-dev-repl* nil)
 (defvar *fnn-dev-service* nil)
 (defvar *fnn-dev-admission-failed* nil)
@@ -62,9 +72,16 @@ never enter O. *FNN-DEV-SERVICE* names this owner; nested owner entry is invalid
                (if (fnn-dev-output-truncated out)
                    (format nil "~%[output truncated]~%") ""))))
 
-(defun fnn-dev-admit (forms)
+(defun fnn-dev-admit (forms &key (step-limit 200000))
  "Admit ordinary ACL2 events. A controlled LD refusal reports failure without
-throwing across the owner fence; earlier successful events remain admitted."
+throwing across the owner fence; earlier successful events remain admitted.
+STEP-LIMIT bounds prover steps per submitted form, not wall time or arbitrary
+Lisp execution. NIL explicitly uses the world's ordinary prover allowance."
+ (unless (or (null step-limit)
+             (and (integerp step-limit) (<= 0 step-limit *default-step-limit*)))
+  (setf *fnn-dev-admission-failed* t)
+  (format *error-output* "Invalid ACL2 prover step limit: ~s~%" step-limit)
+  (return-from fnn-dev-admit (values :refused :invalid-step-limit)))
  (let ((state *the-live-state*)
        (old-output (get *standard-co* *open-output-channel-key*)))
   ;; ACL2 channels retain stream objects, not the current *STANDARD-OUTPUT*
@@ -74,7 +91,12 @@ throwing across the owner fence; earlier successful events remain admitted."
    (progn
     (setf (get *standard-co* *open-output-channel-key*) *standard-output*)
     (multiple-value-bind (erp reason new-state)
-     (ld-fn (list (cons 'standard-oi forms)
+     (ld-fn (list (cons 'standard-oi
+                       (if step-limit
+                           (mapcar (lambda (form)
+                                     (list 'with-prover-step-limit step-limit form))
+                                   forms)
+                         forms))
                   (cons 'standard-co *standard-co*)
                   (cons 'proofs-co *standard-co*)
                   (cons 'ld-prompt nil) (cons 'ld-error-action :return))
@@ -177,6 +199,6 @@ throwing across the owner fence; earlier successful events remain admitted."
    (fnn-dev-unlink-owned control))
   (setf *fnn-dev-repl* nil)))
 
-(pushnew #'fnn-dev-repl-start *fnn-owner-start-hooks*)
-(pushnew #'fnn-dev-repl-stop *fnn-owner-stop-hooks*)
-(pushnew #'fnn-dev-repl-close *fnn-owner-close-hooks*)
+(pushnew 'fnn-dev-repl-start *fnn-owner-start-hooks*)
+(pushnew 'fnn-dev-repl-stop *fnn-owner-stop-hooks*)
+(pushnew 'fnn-dev-repl-close *fnn-owner-close-hooks*)

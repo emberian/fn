@@ -504,9 +504,10 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
     (when (and (fnn-cold-worker-decoded worker)
                (eq (fnn-decoded-activation-stage (fnn-cold-worker-decoded worker)) :calling))
       (fnn-fault "decoded torn semantic step retains its cold debit"))
-    (setf (fnn-cold-worker-decoded worker) nil)
-    (setf (fnn-cold-worker-result worker) nil)
-    (destructuring-bind (word row &rest ignored)
+    (let ((scope (fnn-cold-worker-scope worker)))
+      (setf (fnn-cold-worker-decoded worker) nil)
+      (setf (fnn-cold-worker-result worker) nil)
+      (destructuring-bind (word row &rest ignored)
         (fnn-core-cold-pool 'fn-owner-page-window-executor-release
                                 (fnn-cold-worker-row worker) token)
       (declare (ignore ignored))
@@ -519,7 +520,11 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
                  (sb-thread:thread-alive-p (fnn-cold-worker-thread worker)))
         (setf (fnn-cold-worker-next worker) *fnn-cold-free*
               *fnn-cold-free* worker))
-      word)))
+        ;; This is the literal returned semantic release after actual
+        ;; physical return and last scalar borrow, not a close inference.
+        (when scope
+          (fnn-err "DECODED-WINDOW release token=~s scope=~s word=~s" token scope word))
+        word))))
 
 ; Staged cancellation never refunds, never terminates a thread, and never
 ; borrows its output. Extent mutex serializes revocation with scalar reads.
@@ -543,9 +548,10 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
     (when (and (fnn-cold-worker-decoded worker)
                (eq (fnn-decoded-activation-stage (fnn-cold-worker-decoded worker)) :calling))
       (fnn-fault "decoded torn semantic step retains its cancelled debit"))
-    (setf (fnn-cold-worker-decoded worker) nil)
-    (setf (fnn-cold-worker-result worker) nil)
-    (destructuring-bind (word row &rest ignored)
+    (let ((scope (fnn-cold-worker-scope worker)))
+      (setf (fnn-cold-worker-decoded worker) nil)
+      (setf (fnn-cold-worker-result worker) nil)
+      (destructuring-bind (word row &rest ignored)
         (fnn-core-cold-pool 'fn-owner-page-window-executor-settle-cancelled
                                 (fnn-cold-worker-row worker) token)
       (declare (ignore ignored))
@@ -558,7 +564,9 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
                  (sb-thread:thread-alive-p (fnn-cold-worker-thread worker)))
         (setf (fnn-cold-worker-next worker) *fnn-cold-free*
               *fnn-cold-free* worker))
-      word)))
+        (when scope
+          (fnn-err "DECODED-WINDOW release token=~s scope=~s word=~s" token scope word))
+        word))))
 
 (declaim (notinline fnn-extent-executor-job))
 (defun fnn-extent-executor-job (worker)
@@ -669,18 +677,22 @@ No cancellation, timeout or thread termination releases a job or baseline."
   (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
     (setq *fnn-cold-free* nil *fnn-cold-workers* nil)))
 
-(defun fnn-extent-executor-enqueue (worker row token)
+(defun fnn-extent-executor-enqueue (worker row token &optional retain)
   "Extent lock held; ACL2 already assigned this exact funded physical slot."
   (setq *fnn-cold-free* (fnn-cold-worker-next worker))
   (setf (fnn-cold-worker-row worker) row
         (fnn-cold-worker-token worker) token
         (fnn-cold-worker-next worker) nil
         (fnn-cold-worker-result worker) nil
-        (fnn-cold-worker-phase worker) :queued)
+        (fnn-cold-worker-phase worker) :binding)
+  ;; The owning activation retains the exact token before this physical
+  ;; executor can run, even if notification subsequently signals.
+  (when retain (funcall retain worker token))
+  (setf (fnn-cold-worker-phase worker) :queued)
   (sb-thread:condition-broadcast (fnn-cold-worker-ready worker))
   worker)
 
-(defun fnn-extent-issue-window (descriptor)
+(defun fnn-extent-issue-window (descriptor &optional retain)
   "One SAME-pool issue. Decoded default storage scope is explicitly partial;
 modern complete installations still refuse their unpriced operation."
   (let ((decodedp (eq (fnn-core 'fn-owner-page-decoded-window-price-status descriptor)
@@ -694,6 +706,9 @@ modern complete installations still refuse their unpriced operation."
         (setq *fnn-cold-free* (fnn-cold-worker-next worker))
         (setf (fnn-cold-worker-phase worker) :issuing
               (fnn-cold-worker-scope worker) (and decodedp :partial-fixed-storage))
+        ;; Publish native custody before the semantic draw. On a torn draw
+        ;; the caller still knows which reserved worker must not be reused.
+        (when retain (funcall retain worker nil))
         (let* ((reply
                  (if decodedp
                      (fnn-call 'fn-owner-page-decoded-window-acquire-projected
@@ -708,14 +723,16 @@ modern complete installations still refuse their unpriced operation."
             (when token
               (setf (fnn-cold-worker-token worker) token (fnn-cold-worker-row worker) row
                     (fnn-cold-worker-scope worker) scope (fnn-cold-worker-phase worker) :binding-fault)
+              (when retain (funcall retain worker token))
               (fnn-fault "window admitted but its exact worker binding failed"))
             (setf (fnn-cold-worker-phase worker) :idle (fnn-cold-worker-scope worker) nil
                   *fnn-cold-free* worker)
             (return-from fnn-extent-issue-window (values nil word nil)))
           (setf (fnn-cold-worker-scope worker) scope)
-          (when decodedp
-            (fnn-err "DECODED-WINDOW issue token=~s scope=~s" token scope))
-          (values token :admitted (fnn-extent-executor-enqueue worker row token)))))))
+          (let ((issued (fnn-extent-executor-enqueue worker row token retain)))
+            (when decodedp
+              (fnn-err "DECODED-WINDOW issue token=~s scope=~s" token scope))
+            (values token :admitted issued)))))))
 
 (defun fnn-extent-executor-acquire (token)
   "Extent lock held; the ledger already funded this exact job."

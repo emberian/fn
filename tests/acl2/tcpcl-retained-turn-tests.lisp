@@ -47,3 +47,17 @@
 (assert-event
  (and t (and (natp 0) (<= 0 (nfix 0)))
   (not (equal (fn-tcrt-action t t t t t t t :closed 0 0) :write))))
+
+; The literal contact deadline fires only while the peer header is incomplete.
+(assert-event
+ (and (equal (fn-tcrt-contact-deadline 100) 60100)
+      (fn-tcrt-contact-timeout-p :contact 60100 60100 nil)
+      (not (fn-tcrt-contact-timeout-p :contact 60099 60100 nil))
+      (not (fn-tcrt-contact-timeout-p :contact -1 0 nil))
+      (not (fn-tcrt-contact-timeout-p :contact 100 nil nil))
+      (not (fn-tcrt-contact-timeout-p :messaging 60100 60100 nil))
+      (not (fn-tcrt-contact-timeout-p :established 60100 60100 nil))
+      (not (fn-tcrt-contact-timeout-p :ending 60100 60100 nil))))
+
+; Already observed input finishes bounded framing before reception expiration.
+(assert-event (not (fn-tcrt-contact-timeout-p :contact 60100 60100 t)))

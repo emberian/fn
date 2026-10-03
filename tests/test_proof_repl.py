@@ -92,6 +92,17 @@ class ReaderTests(unittest.TestCase):
                           '(defthm t1 (equal "a ) b" "a ) b") :hints (("Goal")))',
                           "(local (defthm t2 t))"])
 
+    def test_surplus_close_refuses_the_entire_source_before_sending(self):
+        # A completed theorem followed by ')' previously lost that token,
+        # yielding an admitted prefix for a malformed source file.
+        for source in ("(defthm witness t))", ") (defthm later t)",
+                       "(defthm witness t)\n; balanced prefix\n)"):
+            with self.subTest(source=source):
+                with self.assertRaisesRegex(ValueError, "unmatched closing parenthesis"):
+                    proof_repl.forms(source)
+                with self.assertRaises(ValueError):
+                    proof_repl.commands(source)
+
     def test_head_and_name_sees_through_local_and_names_only_events(self):
         self.assertEqual(proof_repl.head_and_name("(defthm foo t)"), ("defthm", "foo"))
         self.assertEqual(proof_repl.head_and_name("(local (defthm Foo t))"), ("defthm", "foo"))
@@ -718,8 +729,10 @@ class RemoteTests(unittest.TestCase):
                 name = next(one for one in graph if one != book)
                 key = proof_repl.certs.closure_key(proof_repl.ROOT, name)[0]
                 with mock.patch.object(proof_repl.certs, "cached_entries",
-                                       lambda c, k: [(c, {"toolchain_identity": "t"})]
-                                       if k == key else []):
+                                       lambda c, k, metadata_filter=None:
+                                       [(c, {"toolchain_identity": "t"})]
+                                       if k == key and (metadata_filter is None
+                                          or metadata_filter({"toolchain_identity": "t"})) else []):
                     self.assertEqual(proof_repl.local_cache_gap(book, cache, "t"),
                                      (wanted - 1, wanted))
                     self.assertEqual(proof_repl.local_cache_gap(book, cache, "other"),

@@ -43,7 +43,8 @@
   (lock (sb-thread:make-mutex :name "fn web completions"))
   (jobs nil) (jobs-closed nil)
   (job-ready (sb-thread:make-waitqueue :name "fn web semantic work"))
-  (conns nil) wake-read wake-write (wake-closed nil) (cleanup-debts nil) (stop nil))
+  (conns nil) wake-read wake-write (wake-closed nil) (cleanup-debts nil)
+  (listener-close :idle) (stop nil))
 
 (defstruct (fnn-web-reactor-conn (:conc-name fnn-web-conn-)
                                 (:constructor %make-fnn-web-conn))
@@ -146,13 +147,28 @@ exposure admission decides (the id, or NIL when it refused)."
               (fnn-owner-thread-escape (fnn-web-face-service face) condition "web cleanup")
             (serious-condition () nil)))))))
 
+(defun fnn-web-discard-response (conn)
+  "No future job or socket writer can consume these response references."
+  (setf (fnn-web-conn-in conn) nil (fnn-web-conn-out conn) nil
+        (fnn-web-conn-request conn) nil (fnn-web-conn-flow conn) nil
+        (fnn-web-conn-event conn) nil (fnn-web-conn-private-begin conn) nil
+        (fnn-web-conn-post-form conn) nil (fnn-web-conn-post-source conn) nil
+        (fnn-web-conn-post-cursor conn) nil (fnn-web-conn-pending conn) nil
+        (fnn-web-conn-plan conn) nil (fnn-web-conn-completion conn) nil
+        (fnn-web-conn-wire conn) nil (fnn-web-conn-page-segs conn) nil
+        (fnn-web-conn-page-cursor conn) nil (fnn-web-conn-page-response conn) nil
+        (fnn-web-conn-reply-scan conn) nil (fnn-web-conn-captured-plans conn) nil
+        (fnn-web-conn-replay-plans conn) nil (fnn-web-conn-replay-plan conn) nil
+        (fnn-web-conn-replay-return conn) nil (fnn-web-conn-replay-tail conn) nil))
+
 (defun fnn-web-dispose-semantic (face conn)
   ;; Claim the whole disposal, not just each effect. Concurrent shutdown or
   ;; job-return observers cannot manufacture a receipt while its sole
   ;; claimant is still inside a callback.
   (let ((claimed nil))
     (sb-thread:with-mutex ((fnn-web-face-lock face))
-      (when (and (eq (fnn-web-conn-semantic-disposal conn) :idle)
+      (when (and (fnn-web-conn-closedp conn)
+                 (eq (fnn-web-conn-semantic-disposal conn) :idle)
                  (or (null (fnn-web-conn-job conn))
                      (fnn-web-job-returned (fnn-web-conn-job conn))))
         (setf (fnn-web-conn-semantic-disposal conn) :running)
@@ -162,10 +178,18 @@ exposure admission decides (the id, or NIL when it refused)."
   ;; runs. This cleanup is eligible only after that activation has returned.
   (let ((service (fnn-web-face-service face)) (cid (fnn-web-conn-cid conn)))
     (when (fnn-web-conn-await conn)
-      (fnn-web-cleanup face conn :await (lambda () (fnn-owner-await-abandon service cid))))
+      (fnn-web-cleanup face conn :await
+        (lambda () (fnn-owner-await-abandon service cid)
+          (setf (fnn-web-conn-await conn) nil))))
     (when (fnn-web-conn-cold conn)
-      (fnn-web-cleanup face conn :cold
-        (lambda () (fnn-owner-cold-abandon (first (fnn-web-conn-cold conn))))))
+      (let ((read (first (fnn-web-conn-cold conn))))
+        (fnn-web-cleanup face conn (list :cold read)
+          (lambda () (fnn-owner-cold-abandon read)
+            (setf (fnn-web-conn-cold conn) nil)))))
+    ;; CLOSED blocks all submissions; the exact outstanding job returned.
+    ;; Discard the whole response graph before releasing its scalar loan/pin.
+    (sb-thread:with-mutex ((fnn-web-face-lock face))
+      (fnn-web-discard-response conn))
     (let ((capture (fnn-web-conn-response-capture conn)))
       (fnn-web-cleanup face conn (list :response-window capture)
         (lambda ()
@@ -218,7 +242,9 @@ exposure admission decides (the id, or NIL when it refused)."
   ;; One outstanding job per admitted HTTP record: the mailbox cannot grow
   ;; beyond the profile's already captured slot count.
   (sb-thread:with-mutex ((fnn-web-face-lock face))
-    (when (and (not (fnn-web-conn-job conn))
+    (when (and (not (fnn-web-conn-closedp conn))
+               (eq (fnn-web-conn-semantic-disposal conn) :idle)
+               (not (fnn-web-conn-job conn))
                (eq (fn-fs-inbox-admit (fnn-web-face-jobs-closed face)) :admitted))
       (let ((job (%make-fnn-web-job :conn conn :kind kind)))
         (setf (fnn-web-conn-job conn) job
@@ -901,15 +927,51 @@ exposure admission decides (the id, or NIL when it refused)."
                   (setf (fnn-web-face-wake-closed face) t)
                   (when (fnn-web-face-wake-read face) (sb-posix:close (fnn-web-face-wake-read face)))
                   (when (fnn-web-face-wake-write face) (sb-posix:close (fnn-web-face-wake-write face)))))
-              (fnn-socket-shut listener))))))))
+              (handler-case (fnn-web-close-listener face)
+                (serious-condition () nil)))))))))
+
+(defun fnn-web-close-listener (face)
+  "Retain a once-only physical close attempt independently of semantic debt."
+  (case (fnn-web-face-listener-close face)
+    (:returned (return-from fnn-web-close-listener :closed))
+    (:idle (setf (fnn-web-face-listener-close face) :calling))
+    (otherwise (fnn-fault "web listener close has no definite receipt")))
+  (multiple-value-bind (ignored receipt condition)
+      (fnn-socket-shut (fnn-web-face-listener face))
+    (declare (ignore ignored))
+    (unless (eq receipt :closed)
+      (if condition (error condition)
+        (fnn-fault "web listener close returned no physical receipt")))
+    (setf (fnn-web-face-listener-close face) :returned)
+    receipt))
+
+(defun fnn-web-face-drained-p (face)
+  "After actor joins, preserve every unfinished semantic job/cleanup record."
+  (sb-thread:with-mutex ((fnn-web-face-lock face))
+    (and (fnn-web-face-jobs-closed face)
+         (fnn-web-face-wake-closed face)
+         (null (fnn-web-face-jobs face))
+         (null (fnn-web-face-cleanup-debts face))
+         (every (lambda (thread) (or (null thread) (not (sb-thread:thread-alive-p thread))))
+                (list (fnn-web-face-thread face) (fnn-web-face-semantic-thread face)))
+         (every (lambda (conn)
+                  (and (fnn-web-conn-closedp conn) (fnn-web-conn-semantic-ended conn)
+                       (or (null (fnn-web-conn-job conn))
+                           (fnn-web-job-returned (fnn-web-conn-job conn)))))
+                (fnn-web-face-conns face)))))
 
 (defun fnn-web-close-face (service)
-  "The owner's close hook follows physical actor drain."
+  "Root teardown requires physical actor drain and no retained Web debt."
   (declare (ignore service))
   (when *fnn-web-face*
-    (setf (fnn-web-face-stop *fnn-web-face*) t)
-    (fnn-socket-shut (fnn-web-face-listener *fnn-web-face*))
-    (setq *fnn-web-face* nil)))
+    (let ((face *fnn-web-face*))
+      (setf (fnn-web-face-stop face) t)
+      ;; Listener cleanup proceeds even when response custody is unfinished.
+      ;; Any close escape retains this face and never retries its torn call.
+      (fnn-web-close-listener face)
+      (unless (fnn-web-face-drained-p face)
+        (fnn-fault "web actor, semantic operation or terminal cleanup debt remains"))
+      (setq *fnn-web-face* nil))))
 
 (defun fnn-web-run-hooks (listener-port tls-port certp)
   (when *fnn-operator-config-octets*

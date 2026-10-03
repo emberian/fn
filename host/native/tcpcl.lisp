@@ -79,7 +79,7 @@
   ;; Private concrete octet buffer, one incomplete frame only. The incoming
   ;; socket vector survives cursor turns; no list carry is appended/reparsed.
   input-buffer input-cursor input-vector (input-offset 0)
-  input-materialize-end input-materialize-probe input-octets)
+  input-materialize-end input-materialize-probe input-octets contact-deadline)
 
 ;;; ---------------------------------------------------------------------------
 ;;; The clock.  One monotonic reading per wakeup, in milliseconds, handed to
@@ -598,7 +598,8 @@ and faults without following or deleting anything."
          (conn (make-fnn-tcl-conn :fd fd :tag tag :spool spool :session session
                 :trace trace :refuse-inbound refuse-inbound :retained t
                 :role role :bundlep (and bundle t) :expect expect :on-ready on-ready
-                :pending (and bundle (cons tag bundle)))))
+                :pending (and bundle (cons tag bundle))
+                :contact-deadline (fnn-core 'fn-tcrt-contact-deadline now))))
     (when retain (funcall retain conn))
     (unless session (fnn-refuse "tcpcl: the session machine refused these parameters"))
     (fnn-tcl-apply conn (fnn-core 'fn-tcl-host-open session now))
@@ -642,6 +643,15 @@ and faults without following or deleting anything."
 The caller keeps this connection and its socket until actual physical close."
   (when (fnn-tclc-finished conn) (return-from fnn-tcl-turn :done))
   (let* ((now (fnn-tcl-now))
+         (contact-timeout
+          (when (fnn-core 'fn-tcrt-contact-timeout-p
+                  (fnn-core 'fn-tcl-host-phase (fnn-tclc-session conn))
+                  now (fnn-tclc-contact-deadline conn)
+                  (fnn-tclc-source-more conn))
+           (fnn-tcl-log conn "event" "peer Contact Header timeout")
+           ;; Protocol loss ends this continuation. The caller still owns the
+           ;; socket/context until its independent physical/logical receipts.
+           (fnn-tcl-turn-lost conn)))
          (control (and (fnn-tclc-source-pending conn)
           (fnn-core 'fn-tclsctl-turn (fnn-tclc-session conn) now
                     (or (fnn-tclc-tx-data conn) (fnn-tclc-tx-messages conn)))))
@@ -660,7 +670,7 @@ The caller keeps this connection and its socket until actual physical close."
                   (fnn-core 'fn-tcl-host-phase (fnn-tclc-session conn))
                   now (fnn-tclc-tx-deadline conn)))
          (result :work))
-    (declare (ignore ignored))
+    (declare (ignore ignored contact-timeout))
     (case action
         (:done (setf (fnn-tclc-finished conn) t) (setq result :done))
         (:lost (fnn-tcl-turn-lost conn))

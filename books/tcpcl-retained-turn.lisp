@@ -31,3 +31,21 @@
 (defthm fn-tcrt-ready-write-precedes-source-and-close
  (implies (and writep (not (and (natp deadline) (<= deadline (nfix now)))))
   (equal (fn-tcrt-action source-pending source-more writep messagesp input-due pump closing phase now deadline) :write)))
+
+; RFC9174 section4.1: close a TCP connection whose peer Contact Header never
+; completes. Sixty seconds is fn's reception policy (RFC SHOULD <=60s), not a
+; bound on an established session, transfer, stored source or publication.
+(defun fn-tcrt-contact-deadline (now)
+ (declare (xargs :guard t)) (+ (nfix now) 60000))
+(defun fn-tcrt-contact-timeout-p (phase now deadline buffered)
+ (declare (xargs :guard t))
+ (and (not buffered) (member-eq phase '(:tcp-connected :contact))
+      (natp now) (natp deadline) (<= deadline now) t))
+(defthm fn-tcrt-contact-timeout-only-before-header-by-definition
+ (implies (fn-tcrt-contact-timeout-p phase now deadline buffered)
+  (and (not buffered) (member-eq phase '(:tcp-connected :contact))
+       (natp now) (natp deadline) (<= deadline now)))
+ :rule-classes nil)
+(defthm fn-tcrt-established-contact-is-never-expired-by-definition
+ (not (fn-tcrt-contact-timeout-p :established now deadline buffered))
+ :rule-classes nil)

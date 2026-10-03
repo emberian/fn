@@ -9347,18 +9347,20 @@
         "Connect to private socket; evaluate values and retain a definition across connections.",
         "Reject reader evaluation and multiple top-level forms; capture oversized output.",
         "Enable process allocation trace, execute another form, and read trace rows.",
-        "Deny unauthorized peer and stop/join/close the owner attachment."
+        "Deny unauthorized peer and stop/join/close the owner attachment.",
+        "Admit an ACL2 batch under zero/default/explicit prover allowance; verify refusal stops later forms and following proof/Lisp work succeeds."
       ],
       "expected": [
         "0600 socket and developer-only selector; same-world values survive.",
         "Explicit errors and truncation; trace scope is process, never retained heap.",
-        "Unauthorized connections do not evaluate; owned socket is removed after shutdown."
+        "Unauthorized connections do not evaluate; owned socket is removed after shutdown.",
+        "Ordinary proof-step limits preserve global allowance and the admitted world; no wall-time or arbitrary Lisp execution bound is implied."
       ],
       "implementation": {
         "test": "tests/test_dev_repl.py",
         "native_test": "tests/dev_repl_native.py"
       },
-      "execution_scope": "Actual socket fixtures plus real native owner admission/refusal continuation, normal shutdown and fault-fence exit4/socket cleanup. Native coordinate: ad8 source cache +gate336+cde lexical fixes +177b21dfb dev REPL/trace overlays; not whole current dev qualification."
+      "execution_scope": "Actual socket fixtures plus real native owner admission/refusal continuation, normal shutdown and fault-fence exit4/socket cleanup. Native coordinate: ad8 source cache +gate336+cde lexical fixes +177b21dfb dev REPL/trace overlays; not whole current dev qualification. Source720d66c29 adds ordinary with-prover-step-limit (default200000 per perform; explicit override/NIL allowed). Actual ACL2 worker and socket4testsPASS1.436s establish refusal recovery, unchanged global allowance and later-form suppression; full current-owner composition and wall-time/arbitrary-Lisp bounds remain open. Subsequent actual native owner scenario-v2 covers prover exhaustion/refusal, later evaluation and proof admission recovery, hook reload deduplication, SIGTERM cleanup and fault fence on the named initialized cache with current developer module. Indexed dev-repl native execution evidence accompanies source a5d6c496d and tests/dev_repl_native.py; whole current union remains pending."
     },
     {
       "id": "SCN-1123",
@@ -9378,9 +9380,10 @@
         "No timeout implies accepted; before submission is refused and after submission uncertain."
       ],
       "implementation": {
-        "test": "tests/test_control_observation.py"
+        "test": "tests/test_control_observation.py",
+        "native_test": "tests.test_native_bounds_join.TenMibArticleTests.test_ten_mib_article_posts_and_rereads_over_nntp_and_operator_post"
       },
-      "execution_scope": "Actual source consumer and normal ACL2 guard/boundary checks; matching full-owner ten MiB scenario pending."
+      "execution_scope": "Actual source consumer and normal ACL2 guard/boundary checks pass. Actual native ten MiB NNTP and operator POST accepted with exact readback and owner alive: 1 test/0 skips/28.443s, supported 128 MiB history/16 MiB article/64 transactions. Indexed control-observation-ten-mib-native.json/log/execution.json bind the ad8 initialized-source cache plus ordinary observer overlay. No whole current-kernel, complete funding or overloaded deadline guarantee follows."
     },
     {
       "id": "SCN-1124",
@@ -9432,6 +9435,61 @@
         "planning/evidence/web-post-action-fix-2026-10-03/execution.json"
       ],
       "note": "Actual source programs admit and exact valid/badCSRF/remove/UTF8/duplicate and long subject tests pass, with concrete fill invariant-risk. Native4096 form turns and partial117 feed pass. Full retained request/subject and refused form path, profile-dependent fixed prefix construction and qualified funding remain open. The original fullbrowser failure is retained. Firsthand stderr traced malformed web action to three emitted POST continuation tags absent from the actual classifier; source49c933f02 accepts those exact tags and refuses unknowns. The same scoped initialized source coordinate plus normally admitted classifier passes the real account/POST/read/remove case in16.702s,1test,0skips; producer/raw regression also passes through the actual classifier. Latest current-union decoded/P3/runtime, TLS/concurrent endpoints and complete funding remain unexecuted or open; status remains specified."
+    },
+    {
+      "id": "SCN-1125",
+      "title": "Immutable signed application report and reply traverse BP custody and reopen",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "CNS-004",
+        "REP-006",
+        "RET-001"
+      ],
+      "steps": [
+        "Start two native production owners with enrolled hybrid authors and independent application keyrings; accept signed binary report R into its author Store without NNTP peer routes.",
+        "Stop both NNTP owners. Export the immutable public R artifact, derive its Store-bound subject through ACL2, durably undertake its workflow obligation, and carry the ACL2 request into a retained native BP node.",
+        "Observe target Store/FNRJ handoff, stop/reopen, and require the sender application pin to survive the successful transport ACK. Replay the owed native receipt through a real second contact and require the matching pin to release after sender restart.",
+        "Restart target application consumer, kill after SQLite commit before ACK, then resume its exact signed reply Q. Stop owners and carry Q through the reciprocal BP Store/FNRJ and receipt/reopen path.",
+        "Restart both application owners and independently verify exact authored source including headers and both signatures at both hops; observe exactly one R transition and one correlated Q transition."
+      ],
+      "expected": [
+        "The NNTP-accepted canonical Store projection is the BP request input; no Python codec or envelope trimming chooses fn semantics.",
+        "A successful TCPCL contact cannot release the application obligation; only the returned application receipt does.",
+        "Both exported source/signature artifacts remain byte-identical through the carrier contacts.",
+        "Two articles at each node, one application transition per R/Q, exact authored-source and signature identities under independent verification after restart."
+      ],
+      "evidence": [
+        "tests/test_native_consumer_exchange_two_nodes.py",
+        "tests/native_image_provenance.py"
+      ],
+      "note": "Prepared actual consumer selector tests.test_native_consumer_exchange_two_nodes.NativeTwoNodeConsumerExchangeTests.test_signed_report_reply_cross_bp_and_reopen. Python compilation passes; native execution UNEXECUTED. Requires one explicitly bound initialized current source execution or the existing published coordinate. No image qualification, native result or full work/GC funding inferred."
+    },
+    {
+      "id": "SCN-1126",
+      "title": "Silent Contact Header peer expires while canonical delivery remains available",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-006"
+      ],
+      "steps": [
+        "Start native BP node and open one real TCP peer that sends no Contact Header.",
+        "Deliver a second canonical NNTP-produced ACL2 request while the silent contact remains retained, observing Store/FNRJ publication.",
+        "Wait the actual sixty-second RFC9174 section4.1 contact reception deadline; require peer EOF and the node still alive.",
+        "Stop/reopen and dispatch the receiving node, observing exactly one application article."
+      ],
+      "expected": [
+        "A pre-header peer cannot retain its incoming slot forever.",
+        "Established requests and their source/END-ACK custody are unaffected by contact reception expiration.",
+        "Actual physical socket close belongs to the session caller; timer observation alone cannot settle the typed grant."
+      ],
+      "evidence": [
+        "tests/test_bp_node_native.py",
+        "tests/native_tcpcl_retained_turn_raw.lisp",
+        "books/tcpcl-retained-turn.lisp"
+      ],
+      "note": "Actual retained-controller raw fixture PASS; real-time native selector test_silent_contact_expires_without_stopping_canonical_delivery prepared but UNEXECUTED. Stalled SESS_INIT and complete handshake/session admission scheduling remain open."
     }
   ]
 }

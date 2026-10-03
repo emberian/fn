@@ -46,6 +46,13 @@ for phase in ['normal','fault']:
     assert fn_dev.evaluate(path,'(+ 20 22)',5)==(True,'42\n')
     assert owner.poll() is None
     print('ACTUAL OWNER LD REFUSAL/CONTINUATION PASS',flush=True)
+    ok,text=fn_dev.evaluate(path,"(fnn-dev-admit '((defthm fn-dev-native-limited (equal (append (append x y) z) (append x (append y z))))) :step-limit 0)",10)
+    assert not ok and 'ACL2 Error [Step-limit]' in text,(ok,text)
+    assert fn_dev.evaluate(path,'(+ 20 22)',5)==(True,'42\n')
+    ok,text=fn_dev.evaluate(path,"(fnn-dev-admit '((defthm fn-dev-native-after-limit (equal (fn-dev-native-id x) x))))",10)
+    assert ok and ':ADMITTED' in text,(ok,text)
+    assert owner.poll() is None
+    print('ACTUAL OWNER PROVER LIMIT/RECOVERY PASS',flush=True)
     owner.send_signal(signal.SIGTERM)
     code=owner.wait(timeout=20)
     assert code==0,(code,(root/(phase+'.log')).read_text())
