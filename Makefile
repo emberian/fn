@@ -304,6 +304,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/def-carried-writer-tests \
 	books/owner-retain-frame \
 	tests/acl2/owner-retain-frame-tests \
+	books/def-cost \
+	tests/acl2/def-cost-tests \
 	books/acceptance \
 	books/acceptance-invariants \
 	tests/acl2/acceptance-tests \
