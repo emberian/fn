@@ -54,7 +54,7 @@
 ; rewrites it -- the index, not the list, decided.
 (defconst *rst-no-articles* (update-nth 4 nil *rst-ctx*))
 (defmacro rst-msgid () '(car (nth 1 (rst-acc (rst-events)))))
-(defmacro rst-held () '(update-nth 2 (list nil nil nil (list (rst-msgid))) *rst-ctx*))
+(defmacro rst-held () '(update-nth 2 (list nil nil nil (list (cons (rst-msgid) "subject"))) *rst-ctx*))
 (assert-event (equal (fn-rcls-fold (rst-events) *rst-no-articles* (fn-rcls-init))
                      (rst-acc (rst-events))))
 (assert-event (equal (fn-rclp-events (rst-events) *rst-no-articles*)

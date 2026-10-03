@@ -2463,6 +2463,15 @@ fn --fn app-journal workflow-ion-submit STORE FNWF TXID TXGEN WORK_ID ATTEMPT_ID
 fn --fn app-journal workflow-ion-status STORE FNWF WORK_ID ATTEMPT_ID ATTEMPT_GENERATION
 ```
 
+The work must hold the store's forwarding pin first: undertake it with
+`fn bp-obligation undertake STORE FNWF WORK CHARGE` (the store records the
+pin, and reclaim keeps the article while it stands). An
+`app-journal workflow-undertake` alone pins only the workflow journal, which
+reclaim does not read, so submit refuses the attempt, publishing nothing:
+`ACL2 refused ION attempt reason=forward-pin-not-durable`. If the article
+has been reclaimed it refuses with `reason=article-reclaimed`; the bytes are
+gone and are never sent as the request.
+
 `BP_DEST_EID` is the ION route destination; the application peer comes from
 the durable work and is a separate EID. The helper path is a trusted pinned
 ION binary, and the observation directory must be owned by the invoking user

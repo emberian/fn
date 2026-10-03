@@ -223,6 +223,27 @@ and `FN_BP_OBLIGATION_TEST_PAUSE_AFTER_SUBMIT` (submit taken, no carrier).
 After the first the reopened image is fenced with the attempt pending and no
 native verb publishes its recovery outcome; the work stays outstanding.
 
+**The payload gate** (RECLAIM-RETENTION, 2026-10-03; `books/bp-payload-gate.lisp`).
+Reclaim keeps an article only while a holder it can see names it, and the BP
+holder it sees is the Store's canonical `:forward` retention pin
+(`specs/storage.md`, content reclamation).  So no payload-dependent BP work
+runs without that pin, and none sends a reclaim tombstone as the article:
+`bp-obligation request` asks `fn-owner-workflow-request-plan`, which passes
+ACL2's plan through `fn-bppg-request-gate` over the owner's Store node, and
+the ION adapter's attempt plan and ADU pass `fn-bppg-ion-attempt-gate` and
+`fn-bppg-ion-adu` over the opened Store's node.  Two refusals, each a named
+outcome before anything is published (exit 4, refused):
+`reason=forward-pin-not-durable` (no live `:forward` pin with the work's
+required evidence in the Store: an FNWF `:undertake` record pins only the
+workflow image, which reclaim never reads, so `app-journal
+workflow-undertake` does not admit an attempt; undertake with `bp-obligation
+undertake`) and `reason=article-reclaimed` (the article the ADU would carry
+is a tombstone).  Keystones `fn-bppg-request-gate-sends-only-pinned-live-
+payload` and `fn-bppg-ion-gates-send-only-pinned-live-payload`.  Replay is
+not gated: a historical ION route of a work whose pin a receipt released,
+and whose article was then reclaimed, still replays
+(`fn-bpiw-route-admissiblep` reads `fn-bpo-request-message`).
+
 `fn-aj-authorize` is the admission function this path calls.  Its carried
 frontier owns the exact next filename, record count, aggregate byte count,
 configuration-first order, per-domain frame bound, and intent-resolution

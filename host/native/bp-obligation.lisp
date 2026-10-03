@@ -149,7 +149,7 @@
    store journal t
    (lambda (opened service)
      (declare (ignore service))
-     (let ((plan (fnn-core-state 'fn-workflow-request-plan work-id attempt-id)))
+     (let ((plan (fnn-core-state 'fn-owner-workflow-request-plan work-id attempt-id)))
        (unless (and (consp plan) (eq (first plan) :request)
                     (= (length plan) 7))
          (if (eq (fnn-core-state 'fn-workflow-fencedp) t)

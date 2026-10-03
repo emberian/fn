@@ -41,9 +41,13 @@
 (defconst *rt-pin* (list '(("g" . 1)) nil nil nil))
 (defconst *rt-cursor* (list nil '(("g" . 0)) nil nil))
 (defconst *rt-cursor-past* (list nil '(("g" . 1)) nil nil))
-(defconst *rt-feed* (list nil nil '(("peer" nil "<a1@x>")) nil))
-(defconst *rt-feed-retired* (list nil nil '(("peer" t "<a1@x>")) nil))
-(defconst *rt-bp* (list nil nil nil '("<a1@x>")))
+; FEEDS and BP are keyed by Message-ID (books/store-reclaim): (msgid . peer)
+; and (msgid . subject).  A retired peer's queue is not in the slot (its
+; producer, books/store-reclaim-owner-holders, reads the live table); a feed
+; owing another article holds nothing here.
+(defconst *rt-feed* (list nil nil '(("<a1@x>" . "peer")) nil))
+(defconst *rt-feed-other* (list nil nil '(("<a9@x>" . "peer")) nil))
+(defconst *rt-bp* (list nil nil nil '(("<a1@x>" . "subject-a1"))))
 
 (assert-event (fn-statep *rt-s*))
 (assert-event (fn-rcl-tombstonep *rt-tomb-octets*))
@@ -96,7 +100,7 @@
 (rt-both *rt-rall* 0 *rt-cursor-past* nil *rt-a1* t)
 (rt-both *rt-rall* 0 *rt-cursor-past* nil *rt-a2* nil)
 (rt-both *rt-rall* 0 *rt-feed* nil *rt-a1* nil)
-(rt-both *rt-rall* 0 *rt-feed-retired* nil *rt-a1* t)
+(rt-both *rt-rall* 0 *rt-feed-other* nil *rt-a1* t)
 (rt-both *rt-rall* 0 *rt-bp* nil *rt-a1* nil)
 (rt-both '(:keep-forever) 0 *rt-none* nil *rt-a1* nil)
 (rt-both '(:release-after 1) (+ 100 86400) *rt-none* nil *rt-a1* t)

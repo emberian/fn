@@ -389,6 +389,10 @@
                                txid tx-generation work-id attempt-id))
          (retry (first plan))
          (attempt (second plan)))
+    ;; books/bp-payload-gate.lisp: no canonical :forward pin, or a reclaimed
+    ;; article, is refused by name before anything is published.
+    (when (and (eq retry :refused) (keywordp attempt))
+      (fnn-refuse "ACL2 refused ION attempt reason=~(~a~)" attempt))
     (unless (and (consp attempt) (eq (first attempt) :attempt))
       (fnn-refuse "ACL2 refused ION attempt"))
     (let ((generation (sixth attempt))
@@ -412,8 +416,15 @@
         (unless (and (consp route) (eq (first route) :ion-route))
           (fnn-refuse "ACL2 refused ION route"))
         (fnn-app-publish journal route)
-        (let* ((adu (fnn-core-state 'fn-workflow-ion-request-adu
-                                     work-id attempt-id generation))
+        (let* ((adu (let ((a (fnn-core-state 'fn-workflow-ion-request-adu
+                                              work-id attempt-id generation)))
+                      ;; A keyword is ACL2's refusal by name (:request-refused,
+                      ;; :article-reclaimed: fn-bppg-ion-adu); never sent.
+                      (when (keywordp a)
+                        (fnn-refuse "ACL2 refused ION request ADU reason=~(~a~)" a))
+                      (unless (and (consp a) (fnn-octet-list-p a))
+                        (fnn-fault "ACL2 returned a malformed ION request ADU"))
+                      a))
                (observation (fnn-join directory
                                       (format nil "observation.~a"
                                               (fnn-random-hex 16))))

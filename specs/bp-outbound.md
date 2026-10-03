@@ -57,7 +57,12 @@ sender calls the outbound books through `host/native/bp-obligation.lisp` and
 ## Pinned ION/LTP transport binding
 
 The optional native `app-journal workflow-ion-submit` path uses
-`books/bp-ion-workflow.lisp` over the same FNWF journal. ACL2 first authors an
+`books/bp-ion-workflow.lisp` over the same FNWF journal. It runs only for a
+work whose `:forward` pin is live in the Store (`bp-obligation undertake`;
+an FNWF-local undertaking is refused as `reason=forward-pin-not-durable`)
+and whose article is not a reclaim tombstone (`reason=article-reclaimed`),
+both decided by `books/bp-payload-gate.lisp` before the attempt is
+published (specs/bp-workflow-host.md, the payload gate). ACL2 first authors an
 `:attempt` intent from the current durable work/configuration; its outcome is
 published before one `:submit` effect may be consumed. ACL2 then authors an
 append-only `:ion-route` record for that exact work, attempt and generation.

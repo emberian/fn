@@ -3,7 +3,9 @@
 ;
 ; `fn-rcl-verdict' (books/store-reclaim) takes the holders as an argument:
 ; (pins cursors feeds bp).  This book reads the ones the Store state
-; carries.  What it reads, and what it cannot:
+; carries; the online pass (host/owner-host.lisp fn-owner-orc-ctx) adds the
+; owner's feed queues (books/store-reclaim-owner-holders).  Each slot, and
+; where it comes from:
 ;
 ;   consumer cursors  the E2 consumer projection (`fn-sn-consumer'): a
 ;                     registered consumer acknowledges a Store journal
@@ -14,15 +16,39 @@
 ;                     acknowledgement is below the committed frontier holds
 ;                     EVERY article (a cursor at 0 in every group).  Sound,
 ;                     and coarse: nothing is reclaimable while any consumer
-;                     lags.  The precise reading is open (PRF-088).
-;   reader pins       none: a reader's pin lives in its connection and has no
-;                     durable form.  `store reclaim' is offline (refused
-;                     while an owner runs), so no connection exists when it
-;                     decides; the live status count is advisory.
-;   feeds, BP         not in this Store's state (feed state is the feed
-;                     service's, FNBS rows the BP node's); open (PRF-088).
+;                     lags.
+;   BP                every live retention pin of the Store's canonical
+;                     ledger that is not an archive pin (the Store admits
+;                     only :forward pins from its :undertake events,
+;                     books/replay `fn-replay-apply-retention-event'),
+;                     mapped from its subject to the Message-ID of each
+;                     article whose archive binding has that subject
+;                     (`fn-rcl-bp-holders').  A pin is released only by a
+;                     receipt or a durable operator abandon (both Store
+;                     :release events); it has no elapsed-time bound.  The
+;                     online pass swaps only when the Store is the captured
+;                     one (books/owner-reclaim-pass, 2), so an undertaking
+;                     committed after the capture defers the swap.  KEYSTONE
+;                     `fn-rcl-store-holders-keep-a-forward-pinned-article'.
+;   feeds             the owner's outbound queues, not this Store's state:
+;                     books/store-reclaim-owner-holders fills the slot for
+;                     the online pass; a Store alone has none.
+;   reader pins       empty by design.  The lifetimes table's reader pin
+;                     ("a reader holds that one article") has no served
+;                     carrier: a connection holds a VIEW, which the
+;                     installing swap re-pins to the rebuilt one
+;                     (books/owner-reclaim-pass fn-orcp-repin-conns); the
+;                     bytes of a response in flight are held by its response
+;                     pin on the arena generation (PRF-1059), a different
+;                     resource from the article's payload eligibility; and
+;                     RFC 3977 6.2.1 lets a selected article later reclaimed
+;                     answer 423.  A carrier that promises an article stays
+;                     belongs in this slot when one exists.
 ;
-; Keystone: `fn-rcl-store-holders-hold-behind-a-lagging-consumer'.
+; FEEDS and BP are fast alists keyed by Message-ID: a candidate's test is one
+; hashed probe; building BP is one pass over the pins and, only when some
+; non-archive pin is live, one over the bindings -- once per reclaim pass,
+; never per candidate.
 (in-package "ACL2")
 (include-book "store-reclaim")
 (include-book "store-node")
@@ -75,6 +101,125 @@
                               (union-theories (theory 'minimal-theory)
                                               (executable-counterpart-theory :here))))))
 
+; -----------------------------------------------------------------------------
+; The BP slot: the canonical Store retention pins.
+
+; The subjects of the live non-archive pins, as a fast alist (subject . t)
+; onto ACC.
+(defun fn-rcl-forward-subjects (pins acc)
+  (declare (xargs :guard t))
+  (if (consp pins)
+      (fn-rcl-forward-subjects
+       (cdr pins)
+       (if (equal (fn-retain-obligation-kind (car pins)) :archive)
+           acc
+         (hons-acons (fn-retain-obligation-subject (car pins)) t acc)))
+    acc))
+
+; The articles whose archive binding has a subject in SUBJECTS, as a fast
+; alist (msgid . subject) onto ACC.
+(defun fn-rcl-bp-index (bindings subjects acc)
+  (declare (xargs :guard t))
+  (if (consp bindings)
+      (fn-rcl-bp-index
+       (cdr bindings) subjects
+       (if (hons-get (fn-node-binding-subject (car bindings)) subjects)
+           (hons-acons (fn-node-binding-msgid (car bindings))
+                       (fn-node-binding-subject (car bindings)) acc)
+         acc))
+    acc))
+
+(defun fn-rcl-bp-holders (node)
+  (declare (xargs :guard t))
+  (let ((subjects (fn-rcl-forward-subjects
+                   (fn-retain-pins (fn-node-retention node)) nil)))
+    (if (atom subjects)
+        nil
+      (fast-alist-free-on-exit
+       subjects
+       (fn-rcl-bp-index (fn-node-bindings node) subjects nil)))))
+
+; The specification: some live non-archive pin has SUBJECT; some binding of
+; MSGID has a subject some live non-archive pin has.
+(defun fn-rcl-forward-subjectp (subject pins)
+  (declare (xargs :guard t))
+  (if (consp pins)
+      (or (and (not (equal (fn-retain-obligation-kind (car pins)) :archive))
+               (equal (fn-retain-obligation-subject (car pins)) subject))
+          (fn-rcl-forward-subjectp subject (cdr pins)))
+    nil))
+
+(defun fn-rcl-bp-boundp (msgid bindings pins)
+  (declare (xargs :guard t))
+  (if (consp bindings)
+      (or (and (equal (fn-node-binding-msgid (car bindings)) msgid)
+               (fn-rcl-forward-subjectp (fn-node-binding-subject (car bindings)) pins))
+          (fn-rcl-bp-boundp msgid (cdr bindings) pins))
+    nil))
+
+(defun fn-rcl-bp-boundp-in (msgid bindings subjects)
+  (declare (xargs :guard t))
+  (if (consp bindings)
+      (or (and (equal (fn-node-binding-msgid (car bindings)) msgid)
+               (if (hons-assoc-equal (fn-node-binding-subject (car bindings)) subjects)
+                   t nil))
+          (fn-rcl-bp-boundp-in msgid (cdr bindings) subjects))
+    nil))
+
+(local
+ (defthm fn-rcl-forward-subjects-finds
+   (iff (hons-assoc-equal subject (fn-rcl-forward-subjects pins acc))
+        (or (hons-assoc-equal subject acc)
+            (fn-rcl-forward-subjectp subject pins)))
+   :hints (("Goal" :induct (fn-rcl-forward-subjects pins acc)))))
+
+(local
+ (defthm fn-rcl-bp-index-finds
+   (iff (hons-assoc-equal msgid (fn-rcl-bp-index bindings subjects acc))
+        (or (hons-assoc-equal msgid acc)
+            (fn-rcl-bp-boundp-in msgid bindings subjects)))
+   :hints (("Goal" :induct (fn-rcl-bp-index bindings subjects acc)))))
+
+(local
+ (defthm fn-rcl-bp-boundp-in-of-forward-subjects
+   (iff (fn-rcl-bp-boundp-in msgid bindings (fn-rcl-forward-subjects pins nil))
+        (fn-rcl-bp-boundp msgid bindings pins))))
+
+(local
+ (defthm fn-rcl-bp-boundp-has-a-subject
+   (implies (fn-rcl-bp-boundp msgid bindings pins)
+            (consp (fn-rcl-forward-subjects pins nil)))
+   :hints (("Goal" :induct (fn-rcl-bp-boundp msgid bindings pins))
+           ("Subgoal *1/2" :use ((:instance fn-rcl-forward-subjects-finds
+                                            (acc nil)
+                                            (subject (fn-node-binding-subject
+                                                      (car bindings)))))
+                           :in-theory (disable fn-rcl-forward-subjects-finds)))))
+
+(defthm fn-rcl-forward-subjectp-of-member
+  (implies (and (member-equal pin pins)
+                (not (equal (fn-retain-obligation-kind pin) :archive)))
+           (fn-rcl-forward-subjectp (fn-retain-obligation-subject pin) pins)))
+
+(defthm fn-rcl-bp-boundp-of-member
+  (implies (and (member-equal pin pins)
+                (not (equal (fn-retain-obligation-kind pin) :archive))
+                (member-equal b bindings)
+                (equal (fn-node-binding-subject b) (fn-retain-obligation-subject pin))
+                (equal (fn-node-binding-msgid b) msgid))
+           (fn-rcl-bp-boundp msgid bindings pins))
+  :hints (("Goal" :induct (fn-rcl-bp-boundp msgid bindings pins))))
+
+; The slot names MSGID exactly when the specification holds it: some binding
+; of MSGID has a subject some live non-archive pin has.
+(defthm fn-rcl-bp-holders-is-the-pinned-bindings
+  (iff (hons-assoc-equal msgid (fn-rcl-bp-holders node))
+       (fn-rcl-bp-boundp msgid (fn-node-bindings node)
+                         (fn-retain-pins (fn-node-retention node))))
+  :hints (("Goal" :use ((:instance fn-rcl-bp-boundp-has-a-subject
+                                   (bindings (fn-node-bindings node))
+                                   (pins (fn-retain-pins (fn-node-retention node))))))))
+
 (defun fn-rcl-store-holders (s)
   (declare (xargs :guard t :verify-guards nil))
   (let ((cp (fn-sn-consumer s)))
@@ -84,7 +229,7 @@
                (fn-state-groups (fn-node-acceptance (fn-sn-node s))))
             nil)
           nil
-          nil)))
+          (fn-rcl-bp-holders (fn-sn-node s)))))
 
 (local
  (defthm fn-rcl-above-zero-in-cursors
@@ -119,6 +264,53 @@
                                       fn-rcl-unacknowledged-p fn-rcl-above-zero-in-cursors
                                       fn-rcl-cursors-at-zero
                                       fn-rcl-verdict-heldp fn-sn-consumer))))
+
+;  KEYSTONE (the canonical BP retention pin holds; RECLAIM-RETENTION).  A
+; live non-archive pin of the Store's ledger -- a :forward undertaking not
+; yet released by a receipt or a durable abandon -- keeps every article
+; whose archive binding has the pin's subject, whatever the rule, the clock
+; or the verdicts.  The expiry release and the online pass read the same
+; slot (books/store-reclaim-pack
+; `fn-rclp-ctx-never-releases-a-forward-pinned-article').
+(defthm fn-rcl-store-holders-keep-a-forward-pinned-article
+  (implies (and (member-equal pin (fn-retain-pins (fn-node-retention (fn-sn-node s))))
+                (not (equal (fn-retain-obligation-kind pin) :archive))
+                (member-equal b (fn-node-bindings (fn-sn-node s)))
+                (equal (fn-node-binding-subject b) (fn-retain-obligation-subject pin))
+                (equal (fn-node-binding-msgid b) (fn-article-msgid article)))
+           (fn-rcl-keyedp (fn-article-msgid article) (fn-rcl-bp (fn-rcl-store-holders s))))
+  :hints (("Goal" :in-theory (disable fn-rcl-bp-holders fn-rcl-lagging-consumerp
+                                      fn-rcl-cursors-at-zero)
+                  :use ((:instance fn-rcl-bp-holders-is-the-pinned-bindings
+                                   (node (fn-sn-node s))
+                                   (msgid (fn-article-msgid article)))
+                        (:instance fn-rcl-bp-boundp-of-member
+                                   (msgid (fn-article-msgid article))
+                                   (bindings (fn-node-bindings (fn-sn-node s)))
+                                   (pins (fn-retain-pins (fn-node-retention (fn-sn-node s)))))))))
+
+(defthm fn-rcl-store-holders-never-reclaim-a-forward-pinned-article
+  (implies (and (member-equal pin (fn-retain-pins (fn-node-retention (fn-sn-node s))))
+                (not (equal (fn-retain-obligation-kind pin) :archive))
+                (member-equal b (fn-node-bindings (fn-sn-node s)))
+                (equal (fn-node-binding-subject b) (fn-retain-obligation-subject pin))
+                (equal (fn-node-binding-msgid b) (fn-article-msgid article)))
+           (not (fn-rcl-reclaimable rule now (fn-rcl-store-holders s) verdicts article)))
+  :hints (("Goal" :use fn-rcl-store-holders-keep-a-forward-pinned-article
+                  :in-theory (e/d (fn-rcl-reclaimable fn-rcl-standing-verdict)
+                                  (fn-rcl-store-holders fn-rcl-keyedp
+                                   fn-rcl-store-holders-keep-a-forward-pinned-article
+                                   fn-rcl-tombstonep fn-rcl-rulep fn-rcl-rule-permits
+                                   fn-rcl-pinned-p fn-rcl-undelivered-p
+                                   fn-rcl-unacknowledged-p fn-rcl-verdict-heldp)))))
+
+; The holders' fast alists freed once a caller is done with them (the BP
+; slot fn-rcl-bp-holders builds; a feed slot).  The identity on nothing in
+; the logic.
+(defun fn-rcl-holders-free (h)
+  (declare (xargs :guard t))
+  (prog2$ (fast-alist-free (fn-rcl-feeds h))
+          (prog2$ (fast-alist-free (fn-rcl-bp h)) nil)))
 
 ; -----------------------------------------------------------------------------
 ; The counts `status' prints: (reclaimable reclaimable-octets reclaimed
