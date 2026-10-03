@@ -2,6 +2,7 @@
 ; No availability filter: an absent target refuses the selected image.
 (in-package "ACL2")
 (include-book "../books/definterface")
+(definterface create-fn-resource-ledger :class :common-lisp-compliant :kinds () :raw-guarded (0 nil (fn-resource-ledger)))
 ; outside the DTN image: fn-owner-control-submit :raw-with (:carried fn-owner-served-carried), whose row is defined in host/owner-served-carried.lisp, which host/native/build-dtn.lisp does not load
 ; outside the DTN image: fn-owner-io :raw-with (:carried fn-owner-served-carried), whose row is defined in host/owner-served-carried.lisp, which host/native/build-dtn.lisp does not load
 ; outside the DTN image: fn-owner-take :raw-with (:carried fn-owner-served-carried), whose row is defined in host/owner-served-carried.lisp, which host/native/build-dtn.lisp does not load
