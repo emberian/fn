@@ -1,0 +1,12 @@
+{
+ "category": "proof-owed",
+ "file": "tools/harness_check.py",
+ "id": "PGO-HOST-READING-HOLE",
+ "notes": [],
+ "owner": "post-guard-off",
+ "severity": "medium",
+ "source": "post-guard-off",
+ "state": "open",
+ "title": "tools/harness_check.py's host reading (interface_emit's dispatched set, def-carried completeness through fn-interfaces) misses entries reached through fnn-owner-result and its wrappers (fnn-owner-names, fnn-owner-feed-step, ...): raw_dispatch_rule counts 108 undeclared dispatched names; six are owner state writers (fn-owner-reconfigure-deltas, fn-native-admin-host-owner-reconfigure, fn-pinv-host-owner-reconfigure[-deltas], fn-owner-orc-instant-stage, fn-acct-host-owner-redeem-stage), owed by name in host/owner-served-carried.lisp only because they were found by hand",
+ "updated": "2026-10-03T04:02:41Z"
+}

@@ -30,6 +30,7 @@
 ;; leaves a boundary (fn-fs-classify) and escalates the service's exit
 ;; (fn-fs-stop-exit-escalate); both run in handlers, called directly.
 (include-book "books/failure-scope")
+(include-book "books/committer-actor")
 (include-book "books/replay")
 ; Every codec seam's attachment (books/codec-attach.lisp): the books above
 ; the seams call the constrained encoders and decoders, and this is what makes
@@ -401,10 +402,16 @@
 (ld "host/bp-node-host.lisp" :ld-error-action :error)
 (ld "host/bp-node-machine-host.lisp" :ld-error-action :error)
 (ld "host/bp-receive-evidence-host.lisp" :ld-error-action :error)
+; The owner's carried relation over its proved writers, the rest owed under
+; A-OWNER-INVARIANT-CARRIED (lane post-guard-off): after every ACL2-mode host
+; file (each owed writer must be a function of this world) and before the
+; declarations whose :raw-with names its row.
+(ld "host/owner-served-carried.lisp" :ld-error-action :error)
 ; The host-called entries, declared (books/definterface.lisp): after every
 ; ACL2-mode host file, so each declaration is checked against this world
 ; (class, the entry guard's kinds, keystones); a refuted one stops the build.
 (ld "host/interfaces.lisp" :ld-error-action :error)
+(ld "host/cost-host.lisp" :ld-error-action :error)
 
 ; The entry save-exec's :return-from-lp form calls.  Its raw definition in
 ; host/native/io.lisp replaces this body; this one only reports its absence.

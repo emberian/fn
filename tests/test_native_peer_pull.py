@@ -749,6 +749,22 @@ class NativePeerPullTests(unittest.TestCase):
         self.assertEqual(private, [])
         self.assertGreaterEqual(proxy.connections, 3)
 
+    def test_unreadable_credential_refuses_before_any_connection(self):
+        a, b, proxy = self.protected_pair()
+        (b.root / "A.fnauth").chmod(0o644)
+        self.start(b)
+        self.await_log(b, "refused=profile", timeout=30)
+        lines = self.pull_lines(b)
+        self.assertEqual(proxy.connections, 0)
+        self.assertTrue(lines and all("cursor=held refused=profile" in line for line in lines), lines)
+        self.assertIn("peer dial via=pull peer=A host=127.0.0.1 outcome=credential retry=yes",
+                      b.log.read_text())
+        self.assertEqual(b.process.poll(), None)
+        self.stop(b)
+        self.stop(a)
+        self.witness("credential-before-connect", {"pull_lines": lines,
+                     "proxy_connections": proxy.connections, "proxy_commands": proxy.commands}, [a, b])
+
     def test_clear_credential_is_refused_before_any_connection(self):
         a, b, proxy = self.protected_pair(tls=False)
         self.operator_post(a, "<clear-refused@example.invalid>", "clear-refused")

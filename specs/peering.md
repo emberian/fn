@@ -269,7 +269,11 @@ cursor's first instant (one day before the owner's wall reading, local
 policy) is journaled before the round dials, no step changes the cursor,
 and the close journals exactly the cursor it moves to, so recovery after a
 crash anywhere in a round asks the dead round's NEWNEWS again
-(`fn-pull-recovery-asks-the-dead-rounds-newnews`). The schedule is
+(`fn-pull-recovery-asks-the-dead-rounds-newnews`). Envelope/core and selector
+faults before a write retain their class. Once the write is attempted, a
+write/barrier failure is uncertain and requires recovery, including when its
+close also fails; a fault after the barrier remains a fault with the durable
+cursor still present. The schedule is
 `fn-sched-pull-*` in books/scheduler-peers.lisp.
 
 NNT-018: A NEWNEWS pull feed advances past a round only when every listed Message-ID drew 235, 435 or 437 from the local node
@@ -486,7 +490,14 @@ connect each write one ACL2-rendered service-log line
 `peer dial via=feed|pull peer=NAME host=HOST outcome=OUTCOME retry=yes`
 (`fn-peer-dial-log-line`) and are a peer-local loss: the feed requeues
 through `fn-feed-lost` and its backoff, the pull fails its round and tries
-again at its interval.  None is a fault.
+again at its interval. An owner-only credential profile is opened with
+nonblocking/no-follow flags and admitted by descriptor fstat before any TCP
+connect. A missing, non-regular, non-private, overbound or ACL2-refused profile
+is the named `credential` outcome; the feed drop names `credential-refused`.
+The pull and catch-up preflight use that same ACL2-rendered diagnostic and
+refuse the round without dialing or advancing its cursor. A store/core fault,
+an unknown input-fault subclass, or an uncertain outcome propagates to the
+owner boundary even during stopping. Peer-local refusals are not faults.
 
 The TLS check a transport `(:tls MODE SERVER-NAME TRUST)` selects is
 `fn-peer-tls-verification`, asked by `fnn-feed-enable-tls` and the pull's

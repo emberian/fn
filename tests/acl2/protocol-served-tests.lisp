@@ -148,7 +148,7 @@
 
 ;; The lines are not trivial: a 221 (XPAT), a 211 (GROUP) and a 224 (OVER)
 ;; answered; GROUP of an unknown group 411; and OVER's cursor arm answers
-;; the range as a cursor only with no Xref server named.
+;; the range as a cursor with either Xref environment.
 (defun pst-code (env line arch index fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (let ((tokens (fn-nntp-tokenize (fn-nntp-string-octets line))))
@@ -171,7 +171,7 @@
          (equal (pst-code *pst-env-x* "GROUP fn.none" arch index *pst-a*) (list 52 49 49))
          (equal (pst-code *pst-env-x* "OVER 1-3" arch index *pst-a*) (list 50 50 52))
          (pst-cursorp *pst-env-0* "OVER 1-3" arch index *pst-a* *pst-c*)
-         (not (pst-cursorp *pst-env-x* "OVER 1-3" arch index *pst-a* *pst-c*))))
+         (pst-cursorp *pst-env-x* "OVER 1-3" arch index *pst-a* *pst-c*)))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-ovw-cursor-effectp))))
 
@@ -190,8 +190,13 @@
 
 (defun pst-not-500 (effects)
   (declare (xargs :verify-guards nil))
-  (and (consp effects) (consp (car effects)) (equal (car (car effects)) :reply)
-       (not (equal (take 3 (cadr (car effects))) (list 53 48 48)))))
+  (and (consp effects)
+       (or (and (fn-ovw-cursor-effectp (car effects))
+                (fn-ovw-cursorp (cadr (car effects))))
+           (and (fn-nnw-meta-effectp (car effects))
+                (fn-nnw-meta-livep (cadr (car effects))))
+           (and (consp (car effects)) (equal (car (car effects)) :reply)
+                (not (equal (take 3 (cadr (car effects))) (list 53 48 48)))))))
 
 (defun pst-reaches (lines arch index fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
@@ -214,6 +219,211 @@
               (len *fn-proto-cat-rows*))
        (pst-reaches (pst-first-lines *fn-proto-cat-rows* *fn-proto-served-table*)
                     (pst-arch 3) (pst-index 3) *pst-a* *pst-c*))
+  :rule-classes nil)
+
+;; DC03: these reachable successes distinguish the number/current forms,
+;; cursor movement and LISTGROUP selection from a recognized command that
+;; merely returns an error.  The literal boundary antecedent is asserted
+;; together with both components of its conclusion (pst-agree-all).
+(defun pst-command-at-session (session env line arch index fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
+  (let ((tokens (fn-nntp-tokenize (fn-nntp-string-octets line))))
+    (fn-proto-archive-command-cat session arch index nil env
+                                  (car tokens) (cdr tokens) 3 fn-arena fn-cat)))
+
+(defun pst-pinned-at-session (session env line arch index fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let ((tokens (fn-nntp-tokenize (fn-nntp-string-octets line))))
+    (fn-nntp-archive-command-pinned session arch index nil env
+                                     (car tokens) (cdr tokens) fn-arena)))
+
+(defun pst-reaches-at-session (session env line arch index fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
+  (let ((tokens (fn-nntp-tokenize (fn-nntp-string-octets line))))
+    (and (pst-not-500 (fn-nntp-result-effects
+                       (fn-scr-command session arch index nil env tokens 3 fn-arena fn-cat)))
+         (pst-not-500 (fn-nntp-result-effects
+                       (fn-pix-command-pinned session arch index nil env tokens fn-arena))))))
+
+(defun pst-result-code (result)
+  (declare (xargs :verify-guards nil))
+  (take 3 (cadr (car (fn-nntp-result-effects result)))))
+
+(defconst *pst-dc03-success-lines*
+  '("NEXT" "LISTGROUP fn.test" "LISTGROUP fn.test 2-3"
+    "ARTICLE" "ARTICLE 2" "HEAD" "HEAD 2"
+    "BODY" "BODY 2" "STAT" "STAT 2"))
+
+(defthm pst-dc03-reachable-positive
+  (let* ((arch (pst-arch 3)) (index (pst-index 3))
+         (next (pst-command-at-session *pst-session* *pst-env-x* "NEXT" arch index *pst-a* *pst-c*))
+         (last (pst-command-at-session (fn-nntp-make-session t "fn.test" 2 t)
+                                       *pst-env-x* "LAST" arch index *pst-a* *pst-c*)))
+    (and (equal (fn-state-articles arch) (fn-cat-view-articles 3 *pst-a* *pst-c*))
+         (fn-statep arch)
+         (fn-gidx-pin-correspondencep index arch)
+         (fn-midx-correspondencep (fn-gidx-pin-trie index) (fn-state-articles arch))
+         (fn-cnx-freshp *pst-c*)
+         (fn-scol-okp *pst-a* *pst-c*)
+         (pst-agree-all *pst-env-x* *pst-dc03-success-lines* arch index *pst-a* *pst-c*)
+         (pst-agree-all *pst-env-0* *pst-dc03-success-lines* arch index *pst-a* *pst-c*)
+         (pst-reaches *pst-dc03-success-lines* arch index *pst-a* *pst-c*)
+         (equal (pst-result-code next) '(50 50 51))
+         (equal (fn-nntp-session-current (fn-nntp-result-session next)) 2)
+         (equal (fn-nntp-result-session last)
+                (fn-nntp-result-session (pst-pinned-at-session
+                  (fn-nntp-make-session t "fn.test" 2 t) *pst-env-x* "LAST" arch index *pst-a*)))
+         (equal (fn-ovw-expand (fn-nntp-result-effects last) *pst-a* *pst-c*)
+                (fn-ovw-expand (fn-nntp-result-effects (pst-pinned-at-session
+                  (fn-nntp-make-session t "fn.test" 2 t) *pst-env-x* "LAST" arch index *pst-a*))
+                  *pst-a* *pst-c*))
+         (pst-reaches-at-session (fn-nntp-make-session t "fn.test" 2 t)
+                                 *pst-env-x* "LAST" arch index *pst-a* *pst-c*)
+         (equal (pst-result-code last) '(50 50 51))
+         (equal (fn-nntp-session-current (fn-nntp-result-session last)) 1)
+         (equal (pst-result-code (pst-command-at-session *pst-session* *pst-env-x*
+                                  "LISTGROUP fn.test" arch index *pst-a* *pst-c*)) '(50 49 49))
+         (equal (pst-result-code (pst-command-at-session *pst-session* *pst-env-x*
+                                  "ARTICLE 2" arch index *pst-a* *pst-c*)) '(50 50 48))
+         (equal (pst-result-code (pst-command-at-session *pst-session* *pst-env-x*
+                                  "HEAD 2" arch index *pst-a* *pst-c*)) '(50 50 49))
+         (equal (pst-result-code (pst-command-at-session *pst-session* *pst-env-x*
+                                  "BODY 2" arch index *pst-a* *pst-c*)) '(50 50 50))
+         (equal (pst-result-code (pst-command-at-session *pst-session* *pst-env-x*
+                                  "STAT 2" arch index *pst-a* *pst-c*)) '(50 50 51))
+         (equal (fn-nntp-session-current (fn-nntp-result-session
+                 (pst-command-at-session *pst-session* *pst-env-x* "STAT 2"
+                                         arch index *pst-a* *pst-c*))) 2)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-scol-okp))))
+
+;; The withdrawal preludes remain ahead of compatibility and retrieval.
+;; A control pin retains the target while the catalog's view hides it;
+;; both the number and Message-ID forms therefore reach their literal
+;; withdrawn tests, even with an Xref server configured.
+(defconst *pst-c-withdrawn*
+  (fn-cat$a-commit (pst-held *pst-w2* 2 nil)
+                   (fn-cat$a-withdraw 1 2 (take 2 *pst-c*))))
+(defmacro pst-withdrawn-arch ()
+  `(fn-make-state '("fn.test" "fn.other") '(("fn.test" . 4) ("fn.other" . 2))
+                  (fn-cat-view-articles 3 *pst-a* *pst-c-withdrawn*) 0 nil nil))
+(defmacro pst-withdrawn-index ()
+  `(fn-gidx-pin-with-control
+     (fn-midx-build (fn-cat-view-articles 3 *pst-a* *pst-c-withdrawn*))
+     (fn-gidx-build (fn-cat-view-articles 3 *pst-a* *pst-c-withdrawn*))
+     (fn-ctl-pin (list (cadr (fn-cat-view-articles 3 *pst-a* *pst-c*))) nil)))
+(defconst *pst-withdrawn-lines*
+  '("ARTICLE 2" "ARTICLE <b@x>" "HEAD 2" "HEAD <b@x>"
+    "BODY 2" "BODY <b@x>" "STAT 2" "STAT <b@x>"))
+
+(defthm pst-dc03-withdrawn-positive
+  (let ((arch (pst-withdrawn-arch)) (index (pst-withdrawn-index)))
+    (and (equal (fn-state-articles arch) (fn-cat-view-articles 3 *pst-a* *pst-c-withdrawn*))
+         (fn-statep arch)
+         (fn-gidx-pin-correspondencep index arch)
+         (fn-midx-correspondencep (fn-gidx-pin-trie index) (fn-state-articles arch))
+         (fn-cnx-freshp *pst-c-withdrawn*)
+         (fn-scol-okp *pst-a* *pst-c-withdrawn*)
+         (fn-nntp-number-withdrawn-p-cat *pst-session* index (fn-nntp-string-octets "2")
+                                         3 *pst-a* *pst-c-withdrawn*)
+         (fn-nntp-message-id-tokenp (fn-nntp-string-octets "<b@x>"))
+         (fn-nntp-msgid-withdrawn-p-cat index (fn-nntp-string-octets "<b@x>")
+                                        3 *pst-a* *pst-c-withdrawn*)
+         (pst-agree-all *pst-env-x* *pst-withdrawn-lines* arch index *pst-a* *pst-c-withdrawn*)
+         (pst-agree-all *pst-env-0* *pst-withdrawn-lines* arch index *pst-a* *pst-c-withdrawn*)
+         (pst-reaches *pst-withdrawn-lines* arch index *pst-a* *pst-c-withdrawn*)
+         (equal (pst-code *pst-env-x* "ARTICLE 2" arch index *pst-a*) '(52 50 51))
+         (equal (pst-code *pst-env-x* "ARTICLE <b@x>" arch index *pst-a*) '(52 51 48))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-scol-okp))))
+
+;; Discovery forms retain the pinned environment: creation facts, listing
+;; descriptions/MOTD/subscriptions and closed-group status.  The configured
+;; server selects the existing compatibility prelude; a server-free environment
+;; also exercises the reference fallback.  DATE stays on its already-generated
+;; session route, so its witness calls the actual command layer.
+(defconst *pst-discovery-clock*
+  (fn-clock-observation 0 (fn-nntp-civil-dtn-ms 2026 10 3 0 0 0) 0 t))
+(defconst *pst-discovery-facts*
+  (list (fn-nntp-group-fact "fn.test" (fn-nntp-civil-dtn-ms 2026 10 2 0 0 0) *pst-discovery-clock*)
+        (fn-nntp-group-fact "fn.other" (fn-nntp-civil-dtn-ms 2026 9 30 0 0 0) *pst-discovery-clock*)
+        (fn-nntp-group-fact "fn.none" (fn-nntp-civil-dtn-ms 2026 10 2 0 0 0) *pst-discovery-clock*)))
+(defconst *pst-discovery-listing*
+  (list (list (cons "fn.test" (fn-nntp-string-octets "test group")))
+        (list (fn-nntp-string-octets "hello readers"))
+        (fn-nntp-string-octets "news.example.invalid") nil nil '("fn.other" "fn.none")))
+(defconst *pst-discovery-env-x*
+  (fn-nntp-env-full *pst-discovery-clock* *pst-discovery-facts* nil
+                    *pst-discovery-listing* (list (fn-nntp-string-octets "fn.other"))))
+(defconst *pst-discovery-env-0*
+  (fn-nntp-env-full *pst-discovery-clock* *pst-discovery-facts* nil nil nil))
+(defconst *pst-discovery-lines*
+  '("LIST" "LIST ACTIVE" "LIST ACTIVE fn.*" "LIST COUNTS" "LIST COUNTS fn.test"
+    "LIST OVERVIEW.FMT" "LIST ACTIVE.TIMES" "LIST SUBSCRIPTIONS" "LIST NEWSGROUPS"
+    "LIST MOTD" "LIST UNKNOWN" "LIST ACTIVE a b"
+    "NEWGROUPS 20261001 000000 GMT" "NEWGROUPS 20261001 000000"
+    "NEWGROUPS 261001 000000 GMT" "NEWGROUPS" "NEWGROUPS 20261001 000000 BAD"))
+
+(defun pst-served-at-session (session env line arch index fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
+  (fn-scr-command session arch index nil env
+                   (fn-nntp-tokenize (fn-nntp-string-octets line)) 3 fn-arena fn-cat))
+
+(defthm pst-discovery-positive
+  (let ((arch (pst-arch 3)) (index (pst-index 3)))
+    (and (equal (fn-state-articles arch) (fn-cat-view-articles 3 *pst-a* *pst-c*))
+         (fn-statep arch)
+         (fn-gidx-pin-correspondencep index arch)
+         (fn-midx-correspondencep (fn-gidx-pin-trie index) (fn-state-articles arch))
+         (fn-cnx-freshp *pst-c*)
+         (fn-scol-okp *pst-a* *pst-c*)
+         (fn-nntp-envp *pst-discovery-env-x*)
+         (fn-nntp-envp *pst-discovery-env-0*)
+         (pst-agree-all *pst-discovery-env-x* *pst-discovery-lines* arch index *pst-a* *pst-c*)
+         (pst-agree-all *pst-discovery-env-0* *pst-discovery-lines* arch index *pst-a* *pst-c*)
+         (pst-reaches-at-session *pst-session* *pst-discovery-env-x* "LIST"
+                                 arch index *pst-a* *pst-c*)
+         (pst-reaches-at-session *pst-session* *pst-discovery-env-x* "LIST COUNTS"
+                                 arch index *pst-a* *pst-c*)
+         (pst-reaches-at-session *pst-session* *pst-discovery-env-x* "LIST OVERVIEW.FMT"
+                                 arch index *pst-a* *pst-c*)
+         (pst-reaches-at-session *pst-session* *pst-discovery-env-x* "LIST ACTIVE.TIMES"
+                                 arch index *pst-a* *pst-c*)
+         (pst-reaches-at-session *pst-session* *pst-discovery-env-x* "LIST MOTD"
+                                 arch index *pst-a* *pst-c*)
+         (pst-reaches-at-session *pst-session* *pst-discovery-env-x*
+                                 "NEWGROUPS 20261001 000000 GMT" arch index *pst-a* *pst-c*)
+         (equal (pst-result-code (pst-command-at-session *pst-session* *pst-discovery-env-x*
+                                   "LIST COUNTS" arch index *pst-a* *pst-c*)) '(50 49 53))
+         (equal (pst-result-code (pst-command-at-session *pst-session* *pst-discovery-env-x*
+                                   "NEWGROUPS 20261001 000000 GMT" arch index *pst-a* *pst-c*)) '(50 51 49))
+         (equal (fn-rcompat-newgroups-names (fn-nntp-civil-dtn-ms 2026 10 1 0 0 0)
+                                           (fn-state-groups arch) *pst-discovery-env-x*) '("fn.test"))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-scol-okp))))
+
+;; DATE's complete session-route reply: the row's :arms generated into the
+;; command layer answer the supplied wall observation, and reject extra arguments.
+;; A catalog-only DATE form would instead be unreachable :stat retrieval.
+(defthm pst-date-session-route-positive
+  (let ((arch (pst-arch 3)) (index (pst-index 3)))
+    (and (equal (fn-proto-plist-get :dispatch (cdr (fn-proto-row "DATE" *fn-proto-table*))) :session)
+         (not (fn-proto-row-forms (fn-proto-row "DATE" *fn-proto-served-table*)))
+         (fn-nntp-envp *pst-discovery-env-x*)
+         (equal (pst-served-at-session *pst-session* *pst-discovery-env-x* "DATE"
+                                       arch index *pst-a* *pst-c*)
+                (fn-nntp-date-response *pst-session* *pst-discovery-env-x*))
+         (equal (pst-served-at-session *pst-session* *pst-discovery-env-x* "DATE"
+                                       arch index *pst-a* *pst-c*)
+                (fn-pix-command-pinned *pst-session* arch index nil *pst-discovery-env-x*
+                                       (pst-tokens "DATE") *pst-a*))
+         (equal (fn-nntp-result-effects (pst-served-at-session *pst-session* *pst-discovery-env-x*
+                                         "DATE" arch index *pst-a* *pst-c*))
+                (list (fn-nntp-reply-effect (fn-nntp-crlf (fn-nntp-string-octets "111 20261003000000")))))
+         (equal (pst-result-code (pst-served-at-session *pst-session* *pst-discovery-env-x*
+                                   "DATE x" arch index *pst-a* *pst-c*)) '(53 48 49))
+         (equal (pst-result-code (pst-served-at-session *pst-session* *pst-env-0*
+                                   "DATE" arch index *pst-a* *pst-c*)) '(53 48 51))))
   :rule-classes nil)
 
 ;; (2) Removal witnesses.

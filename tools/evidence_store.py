@@ -144,8 +144,56 @@ def local_archive(spec: str | None = None) -> Path | None:
     return None
 
 
+_CHECKOUTS: dict[tuple, Path] = {}
+
+
+def _locator_state(root: Path) -> tuple:
+    """Git discovery markers, including absent ancestor markers and commondir.
+
+    Remembering an absent marker is safe only while every ancestor still lacks
+    one. Linked worktrees also depend on their admin directory's commondir.
+    """
+    def signature(path):
+        try:
+            stat = path.stat()
+            return (str(path), stat.st_dev, stat.st_ino, stat.st_mtime_ns,
+                    stat.st_ctime_ns, stat.st_size)
+        except OSError:
+            return (str(path), None)
+
+    directory = root.resolve()
+    state = [str(directory)]
+    for ancestor in (directory, *directory.parents):
+        marker = ancestor / ".git"
+        stamp = signature(marker)
+        state.append(stamp)
+        if stamp[1] is None:
+            continue
+        gitdir = marker
+        if marker.is_file():
+            try:
+                pointer = marker.read_text().strip()
+                if pointer.startswith("gitdir: "):
+                    gitdir = (ancestor / pointer[8:]).resolve()
+            except (OSError, UnicodeError):
+                pass
+        state.extend((signature(gitdir), signature(gitdir / "commondir")))
+        break
+    # Git discovery can be explicitly redirected by the calling environment.
+    state.append(tuple(sorted((key, value) for key, value in os.environ.items()
+                              if key.startswith("GIT_"))))
+    return tuple(state)
+
+
 def checkout_of(root: Path) -> Path:
-    """The shared checkout a worktree belongs to (its cache is shared)."""
+    """Locate the cache once while Git discovery state remains unchanged.
+
+    Missing ancestor markers are checked on every lookup, so later git init
+    is visible. Only the location is memoized; objects still verify on read.
+    """
+    key = _locator_state(root)
+    if key in _CHECKOUTS:
+        return _CHECKOUTS[key]
     try:
         common = subprocess.run(
             ["git", "-C", str(root), "rev-parse", "--path-format=absolute",
@@ -153,9 +201,9 @@ def checkout_of(root: Path) -> Path:
         ).stdout.strip()
     except OSError:
         common = ""
-    if common and Path(common).name == ".git":
-        return Path(common).parent
-    return root
+    checkout = Path(common).parent if common and Path(common).name == ".git" else root
+    _CHECKOUTS[key] = checkout
+    return checkout
 
 
 def cache_dir(root: Path) -> Path:

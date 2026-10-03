@@ -229,6 +229,7 @@
  },
  "direct_owner_sites": [
   "fnn-owner-stop-service",
+  "fnn-owner-fault-service",
   "fnn-owner-cold-shutdown",
   "fnn-snapshot-source-root-release",
   "fnn-owner-run"
@@ -257,11 +258,17 @@
   "fnn-with-runtime-participants-bootstrap",
   "fnn-with-world-key-printing",
   "fnn-connection-scoped",
-  "fnn-log-sealed-effect"
+  "fnn-log-sealed-effect",
+  "fnn-section-envelope",
+  "fnn-with-observed-owner",
+  "fnn-native-with-observation",
+  "fnn-with-observed-mutex"
  ],
  "gated_macros": {
-  "fnn-owner-gated": {
-   "class_position": 1
+  "fnn-section-envelope": {
+   "class_position": 1,
+   "fenced": true,
+   "why": "the one envelope (def-section): its own template runs the body inside fnn-owner-shared-action-locked (tests.test_native_owner NativeOwnerHandlerStructureTests)"
   }
  },
  "fence_boundaries": [

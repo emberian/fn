@@ -45,7 +45,8 @@
 ; route, below) to (NAME-visits ...): a kind check is never counted per
 ; recursive call of the body's twin.
 ;
-; THE ROUTE, from the world.  NAME in `fn-interfaces' with :raw-with: the
+; THE ROUTE, from the world. NAME in `fn-interfaces' with :raw-with or
+; :raw-guarded: the
 ; host evaluates the kind checks only (fnn-entry-guard), so the entry's cost
 ; is kinds + body (:raw).  NAME in `fn-interfaces' without: the counterpart
 ; evaluates the whole guard before the body (:served): kinds + the rest of
@@ -228,6 +229,23 @@
 ; The derivation.  (mv COST UNACCOUNTED): COST a term over the formals (and
 ; the let-bound variables of the translated body), UNACCOUNTED the names.
 
+(defun fn-cost-used-bindings (formals actuals used)
+  (declare (xargs :mode :program))
+  (if (atom formals)
+      (mv nil nil)
+    (mv-let (fs as) (fn-cost-used-bindings (cdr formals) (cdr actuals) used)
+      (if (member-eq (car formals) used)
+          (mv (cons (car formals) fs) (cons (car actuals) as))
+        (mv fs as)))))
+
+(defun fn-cost-bind-body (formals actuals body)
+  (declare (xargs :mode :program))
+  ; Actual evaluation costs are already added separately.  Keep only the
+  ; bindings needed by the cost body: a value computation can disappear
+  ; when its cost becomes a constant, and ACL2 rejects unused lambda formals.
+  (mv-let (fs as) (fn-cost-used-bindings formals actuals (all-vars body))
+    (if (atom fs) body (cons (list 'lambda fs body) as))))
+
 (mutual-recursion
  (defun fn-cost-term (term self stack fuel w)
    (declare (xargs :mode :program))
@@ -238,9 +256,7 @@
      (mv-let (acost aun) (fn-cost-terms (cdr term) self stack fuel w)
        (mv-let (bcost bun) (fn-cost-term (car (last (car term))) self stack fuel w)
          (mv (fn-cost-plus acost
-                           (if (equal bcost ''0)
-                               ''0
-                             (cons (list 'lambda (cadr (car term)) bcost) (cdr term))))
+                           (fn-cost-bind-body (cadr (car term)) (cdr term) bcost))
              (union-eq aun bun)))))
     ((eq (car term) 'if)
      (mv-let (tcost tun) (fn-cost-term (cadr term) self stack fuel w)
@@ -317,7 +333,8 @@
   (declare (xargs :mode :program))
   (let ((entry (assoc-eq fn (table-alist 'fn-interfaces w))))
     (cond ((null entry) :internal)
-          ((assoc-keyword :raw-with (cdr entry)) :raw)
+          ((or (assoc-keyword :raw-with (cdr entry))
+               (assoc-keyword :raw-guarded (cdr entry))) :raw)
           (t :served))))
 
 (defun fn-cost-kind-conjuncts (conjuncts formals stobjs kinds)
@@ -362,7 +379,7 @@
             (let ((size (and (eq route :served)
                              (fn-cost-mentions rcost *fn-cost-whole-state-sizes*))))
               (if size
-                  (mv (msg "~x0 is a served entry (fn-interfaces, no :raw-with) whose guard ~
+                  (mv (msg "~x0 is a served entry (fn-interfaces, no raw declaration) whose guard ~
                             the counterpart evaluates on every call, and that guard's ~
                             derived cost depends on ~x1, a whole-state size: the walk ~
                             AGENTS.md forbids on a served path.  It is not charged: carry ~
@@ -519,7 +536,8 @@
          (name (fn-cost-bound-name fn)))
     `(progn
        (,def ,twin ,formals
-        (declare (xargs :verify-guards nil
+        (declare ,@(and formals `((ignorable ,@formals)))
+                 (xargs :verify-guards nil
                         ,@(and measure (list :measure measure))
                         ,@(and rel (list :well-founded-relation rel))
                         ,@(and (fn-cost-get :measure-hints kvs)
@@ -581,3 +599,67 @@
                  (er soft 'def-cost-check "~x0: the unaccounted callees are now ~x1; the row says ~x2"
                      ',fn unaccounted (fn-cost-get :unaccounted row)))
                 (t (value '(value-triple ',fn)))))))))
+
+; The operation validator runs after costs exist, so the entry route was
+; read from its final interface declaration.  It consumes the one existing
+; derivation; there is no second user-written visit count or tariff bound.
+(mutual-recursion
+ (defun fn-cost-operation-drawp (term draw slot tariff)
+   (declare (xargs :mode :program))
+   (cond ((or (atom term) (eq (car term) 'quote)) nil)
+         ((consp (car term))
+          (or (fn-cost-operation-drawp (car (last (car term))) draw slot tariff)
+              (fn-cost-operation-draws-p (cdr term) draw slot tariff)))
+         (t (or (and (eq (car term) draw)
+                     (equal (cadr term) (list 'quote slot))
+                     (member-eq tariff (fn-cost-calls (caddr term))))
+                (fn-cost-operation-draws-p (cdr term) draw slot tariff)))))
+ (defun fn-cost-operation-draws-p (terms draw slot tariff)
+   (declare (xargs :mode :program))
+   (if (atom terms) nil
+     (or (fn-cost-operation-drawp (car terms) draw slot tariff)
+         (fn-cost-operation-draws-p (cdr terms) draw slot tariff)))))
+
+(defun fn-cost-operation-bad-function (fns w)
+  (declare (xargs :mode :program))
+  (cond ((atom fns) nil)
+        ((or (eq (getpropc (car fns) 'formals :none w) :none)
+             (eq (symbol-class (car fns) w) :program)) (car fns))
+        (t (fn-cost-operation-bad-function (cdr fns) w))))
+
+(defun fn-cost-operation-problem (fn w)
+  (declare (xargs :mode :program))
+  (let* ((entry (cdr (assoc-eq fn (table-alist 'fn-interfaces w))))
+         (op (fn-di-get :operation entry))
+         (row (cdr (assoc-eq fn (table-alist 'fn-cost w))))
+         (coordinates (cadr (getpropc '*fn-rv-coordinates* 'const nil w)))
+         (fns (list (fn-di-get :funding op) (fn-di-get :tariff op)
+                    (fn-di-get :draw op) (fn-di-get :physical op)
+                    (fn-di-get :outcome op))))
+    (cond ((not (fn-di-operation-formp op)) (msg "~x0 has no well-formed :operation" fn))
+          ((null row) (msg "~x0 has no derived cost row" fn))
+          ((not (and (subsetp-eq (fn-di-get :unaccounted op) (fn-cost-get :unaccounted row))
+                     (subsetp-eq (fn-cost-get :unaccounted row) (fn-di-get :unaccounted op))))
+           (msg "~x0's operation hides or invents unresolved cost dependencies" fn))
+          ((not (subsetp-eq (fn-di-get :coverage op) (strip-cars coordinates)))
+           (msg "~x0's operation names an unknown resource coordinate" fn))
+          ((not (fn-cost-operation-drawp (getpropc fn 'unnormalized-body nil w)
+                                         (fn-di-get :draw op) (fn-di-get :slot op)
+                                         (fn-di-get :tariff op)))
+           (msg "~x0's declared draw, fixed slot and tariff do not match its executed body" fn))
+          ((eq (fn-di-get :stage op) :accounted)
+           ; Allocation derivation/refusal tariff and full principal/tree
+           ; correspondence are still owed.  A partial slice cannot enable
+           ; the image's full cost admission gate by changing an annotation.
+           (msg "~x0: full operation accounting is owed; :projection cannot enable a full tariff gate" fn))
+          (t
+           (let ((bad (fn-cost-operation-bad-function fns w)))
+             (and bad (msg "~x0's operation dependency ~x1 is not an executable logical function" fn bad)))))))
+
+(defmacro def-operation-check (fn)
+  `(progn
+     (def-cost-check ,fn)
+     (make-event
+      (let ((problem (fn-cost-operation-problem ',fn (w state))))
+        (if problem (er soft 'def-operation-check "~@0" problem)
+          (value '(value-triple :operation-projection-checked)))))))

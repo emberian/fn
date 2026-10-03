@@ -226,30 +226,37 @@
   (if (eq kind :catch-up)
       (incf *fnn-catchup-append-count*)
     (incf *fnn-pull-append-count*))
-  (handler-case
-      ;; PRF-165: one :pull-unavailable frame per pending id, then the
-      ;; :pull-cursor frame that commits them, in one write and one fsync.
-      ;; PRF-325: a catch-up cursor is one FNCU frame.
-      (let* ((envelope (fnn-core (if (eq kind :catch-up)
-                                     'fn-cu-cursor-envelope
-                                   'fn-pull-cursor-envelope)
-                                 cursor)))
-        (unless (fnn-octet-list-p envelope)
-          (fnn-fault "owner refused ~a envelope" (if (eq kind :catch-up) "FNCU" "FNPL")))
-        (fnn-pull-test-cut "before-write" kind)
-        (fnn-owner-feed-phase journal :append)
-        (fnn-write-all (fnn-owner-feed-journal-fd journal) (fnn-octets envelope))
-        (fnn-owner-feed-phase journal :written)
-        (fnn-pull-test-cut "after-write" kind)
-        (fnn-fsync-file (fnn-owner-feed-journal-fd journal))
-        (fnn-owner-feed-phase journal :append-durable)
-        (fnn-pull-test-cut "after-fsync" kind))
-    (error (e)
-      (ignore-errors (fnn-owner-feed-phase journal :failed))
-      (fnn-owner-feed-close journal)
-      (fnn-indeterminate "~a append uncertain: ~a (~a)"
-                         (if (eq kind :catch-up) "FNCU" "FNPL")
-                         (fnn-owner-feed-journal-path journal) e))))
+  ;; Seal and validate before any append attempt: a definite refusal/fault
+  ;; keeps its class. FNPL's pending frames and cursor share one barrier;
+  ;; FNCU has one cursor frame. The bytes and phase decisions remain ACL2's.
+  (let* ((envelope (fnn-core (if (eq kind :catch-up)
+                               'fn-cu-cursor-envelope
+                             'fn-pull-cursor-envelope)
+                           cursor)))
+    (unless (fnn-octet-list-p envelope)
+      (fnn-fault "owner refused ~a envelope" (if (eq kind :catch-up) "FNCU" "FNPL")))
+    (let ((bytes (fnn-octets envelope)))
+      (fnn-pull-test-cut "before-write" kind)
+      (fnn-owner-feed-phase journal :append)
+      (handler-case
+          (progn
+            (fnn-write-all (fnn-owner-feed-journal-fd journal) bytes)
+            (fnn-owner-feed-phase journal :written)
+            (fnn-pull-test-cut "after-write" kind)
+            (fnn-fsync-file (fnn-owner-feed-journal-fd journal)))
+        (error (e)
+          (ignore-errors (fnn-owner-feed-phase journal :failed))
+          (let ((cleanup-error
+                  (handler-case (progn (fnn-owner-feed-close journal) nil)
+                    (serious-condition (close-error) close-error))))
+            ;; Cleanup cannot erase an ambiguous persistence outcome.
+            (fnn-indeterminate "~a append uncertain: ~a (~a)~@[; close failed: ~a~]"
+                               (if (eq kind :catch-up) "FNCU" "FNPL")
+                               (fnn-owner-feed-journal-path journal) e cleanup-error))))
+      ;; The barrier returned: subsequent classification/cut faults are
+      ;; definite faults, never a claim that the persisted cursor vanished.
+      (fnn-owner-feed-phase journal :append-durable)
+      (fnn-pull-test-cut "after-fsync" kind))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; One round
@@ -290,9 +297,11 @@ acceptance (the owner is stopping or fenced then)."
       (handler-case
           (multiple-value-bind (user pass) (fnn-feed-auth-profile (list :authinfo path nil))
             (list user pass))
-        (error ()
-          (fnn-err "pull: the credential profile of peer ~a is unreadable"
-                   (fnn-pull-peer-string (fnn-core 'fn-pull-plan-peer plan)))
+        ((or fnn-feed-auth-error fnn-os-error) (condition)
+          (fnn-peer-dial-report :pull (fnn-core 'fn-pull-plan-peer plan)
+                                (fnn-core 'fn-pull-plan-host plan)
+                                (if (typep condition 'fnn-feed-auth-error) condition
+                                  (make-condition 'fnn-feed-auth-error)))
           nil)))))
 
 (defun fnn-pull-round (runtime plan journal cursor &optional (kind :pull))
@@ -547,12 +556,9 @@ acceptance (the owner is stopping or fenced then)."
 
 (defun fnn-pull-worker-guarded (runtime)
   (handler-case (fnn-pull-worker runtime)
-    (fnn-store-indeterminate (e)
-      (fnn-owner-fence-service (fnn-pull-runtime-service runtime))
-      (fnn-err "pull feed uncertain; recovery required: ~a" e))
     (serious-condition (e)
-      (unless (fnn-pull-stoppingp runtime)
-        (fnn-owner-fault-service (fnn-pull-runtime-service runtime) nil e)))))
+      ;; Stopping does not erase a late store fault or uncertain outcome.
+      (fnn-owner-thread-escape (fnn-pull-runtime-service runtime) e "pull feed"))))
 
 (defun fnn-pull-service-start (service)
   (unless (fnn-pull-runtime-get service)

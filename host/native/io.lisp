@@ -142,6 +142,28 @@ fn-lgdm-repair-text: a torn tail dropped, a confirmed repair), newest first;
 (defun fnn-os-fail (errno &optional path)
   (error 'fnn-os-error :errno errno :path path))
 
+;;; Shared observation-only primitive declaration precedes extent compilation.
+;;; Its collector/runtime functions are installed by owner before workers run.
+(defvar *fnn-native-observer* nil)
+(defvar *fnn-native-actor-identity* nil)
+
+(defmacro fnn-with-observed-mutex ((lock label &rest options) &body body)
+  "Literal measured lock label and unchanged SBCL mutex options. Acquire
+observed after physical lock; release reserves under it, completes after unlock."
+  (let ((mutex (gensym "MUTEX")) (name (gensym "LOCK-LABEL"))
+        (row (gensym "RELEASE")))
+    `(let ((,mutex ,lock) (,name ,label) (,row nil))
+       (unwind-protect
+            (sb-thread:with-mutex (,mutex ,@options)
+              (when *fnn-native-observer*
+                (fnn-native-observe (list :acquire *fnn-native-actor-identity* ,name)))
+              (unwind-protect (progn ,@body)
+                (when *fnn-native-observer*
+                  (setq ,row (fnn-native-observation-reserve
+                              (list :release *fnn-native-actor-identity* ,name) nil)))))
+         (when ,row (fnn-native-observation-complete ,row))))))
+
+
 (defvar *fnn-section-step* nil
   "The publication the boundary this thread is inside has landed and not yet
 fenced: :replaced or :linked once a rename or link returned success
@@ -1245,6 +1267,10 @@ offered to the writer while the owner runs (PKT-508), else written here."
 (defvar *fnn-raw-dispatch* (make-hash-table :test 'eq)
   "entry name -> its raw (guard-verified, compiled) function symbol")
 
+(defvar *fnn-startup-creators* (make-hash-table :test 'eq)
+  "Validated registered zero-input stobj creators; allocation has no executable
+counterpart. The image installer fills this once before any worker exists.")
+
 (defvar *fnn-dispatch-counterpart* nil
   "T when the developer selector keeps the executable-counterpart path.")
 
@@ -1253,6 +1279,7 @@ offered to the writer while the owner runs (PKT-508), else written here."
 the :raw-with and :raw-guarded entries, checked against the world; the count."
   (let ((wrld (w *the-live-state*)))
     (clrhash *fnn-raw-dispatch*)
+    (clrhash *fnn-startup-creators*)
     (dolist (entry (table-alist 'fn-interfaces wrld))
       (let ((name (car entry))
             (theorems (cadr (assoc-keyword :raw-with (cdr entry))))
@@ -1285,6 +1312,10 @@ the :raw-with and :raw-guarded entries, checked against the world; the count."
             (when (and guarded (not (compiled-function-p (symbol-function raw))))
               (error "fnn-install-raw-dispatch: ~a has no compiled guarded callback" name))
             (setf (gethash name *fnn-raw-dispatch*) raw)
+            ;; ACL2's loaded-world predicate limits this to the exact creator
+            ;; role and validated compiled target, never semantic methods.
+            (when (fn-di-raw-creatorp name (cdr entry) wrld)
+              (setf (gethash name *fnn-startup-creators*) raw))
             (when report
               (format t "~&FN_RAW_DISPATCH ~(~a~) ~(~a~) invariant-risk=~a with=~(~a~)~%"
                       name (symbol-class name wrld)
@@ -1295,8 +1326,10 @@ the :raw-with and :raw-guarded entries, checked against the world; the count."
 (defun fnn-dispatch-function (name)
   "The function fnn-call applies for NAME: its raw definition when NAME is
 raw-dispatched and the counterpart selector is off, else its executable
-counterpart."
-  (or (and (not *fnn-dispatch-counterpart*)
+counterpart. Registered startup creators retain validated allocation routes;
+ACL2 refuses their counterparts, independent of semantic method selection."
+  (or (gethash name *fnn-startup-creators*)
+      (and (not *fnn-dispatch-counterpart*)
            (gethash name *fnn-raw-dispatch*))
       (fnn-counterpart name)))
 
@@ -1860,6 +1893,10 @@ the payload to seal as (:seal OCTETS); the host seals exactly those octets
 ;; completion subject a second time.
 (defvar *fnn-observe-callback* #'fnn-bridge-io)
 (defvar *fnn-finish-callback* #'fnn-bridge-finish)
+;; A composed owner supplies ACL2's release-debt-aware identity gate.  The
+;; standalone Store has no workflow continuation and uses its codec successor.
+;; Declare this special: owner bindings must reach the nested log allocator.
+(defvar *fnn-identity-reservation-callback* nil)
 ; Developer fault cut, dynamically scoped to one canonical Store publication.
 ; NIL in normal operation.  The cut runs after the final link and before its
 ; directory barrier, so an injected EIO is an uncertain publication.
@@ -3722,12 +3759,12 @@ create: a failing open unlinks nothing)."
       (when (and unlink-on-failure (not done))
         (ignore-errors (fnn-unlink stage))))))
 
-(defun fnn-advance-frontier (store current-txid)
+(defun fnn-advance-frontier (store current-txid &optional operation)
   "The allocator's reservation: the record log's (fnn-log-reserve; the
 frontier is derived from the log, design 2026-09-27 section 3.3)."
   (unless (fnn-store-logp store)
     (fnn-fault "a store that is not on the record log opened"))
-  (fnn-log-reserve store current-txid))
+  (fnn-log-reserve store current-txid operation))
 
 (defun fnn-publish (store sequence record)
   "The record's publication: the record log's P-BATCH (fnn-log-publish)."
@@ -8190,7 +8227,7 @@ does, and records how the log holds the history (fnn-store-log-history) for
     (setf (fnn-store-fenced store) nil)
     count))
 
-(defun fnn-log-reserve (store current-txid)
+(defun fnn-log-reserve (store current-txid &optional operation)
   "The member's reservation on the log route (fn-olr-ocfg-reserve through
 the observe callback): the frontier is the log's derived one."
   (fnn-require-writer store)
@@ -8198,10 +8235,19 @@ the observe callback): the frontier is the log's derived one."
   (unless (eql current-txid (fnn-store-frontier store))
     (setf (fnn-store-fenced store) t)
     (fnn-fault "ACL2 allocator and the log's frontier disagree"))
-  (let ((next (fnn-metadata-frontier-next current-txid))
+  (let ((next (if *fnn-identity-reservation-callback*
+                  (funcall *fnn-identity-reservation-callback* operation)
+                (fnn-metadata-frontier-next current-txid)))
         (log (fnn-store-log store)))
-    (when (null next)
-      (fnn-refuse "finite transaction-ID domain exhausted"))
+    ;; The gate runs before any kernel, owner reservation or frontier effect.
+    ;; Its purpose and protected release debt are decided in ACL2, including
+    ;; the exact retention event capability later consumed by preparation.
+    (when (or (and (null *fnn-identity-reservation-callback*) (null next))
+              (member next '(:identity-exhausted :operation-refused
+                             :identity-reserve :unaffordable)))
+      (fnn-refuse "Store transaction identity reservation refused (~a)" next))
+    (unless (and (integerp next) (>= next 0))
+      (fnn-fault "ACL2 returned malformed transaction identity reservation"))
     (fnn-log-with-kernel (log)
       (setf (fnn-log-kernel log)
             (fnn-core 'fn-lgc-consume-to (fnn-log-kernel log) current-txid)

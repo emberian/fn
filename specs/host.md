@@ -114,6 +114,18 @@ the host tracks offsets and never reruns a state transition to finish a write.
 Quotas bound per-session staging and pending effects so one peer cannot monopolize
 the state owner merely by refusing to consume output.
 
+The executable direct-read schedule model is `books/host-model-machine.lisp`.
+It calls the current `fn-pio-direct-admit`, `fn-pio-direct-cancel` and
+`fn-pio-direct-settle` entries, including their issued-row and descriptor-holder
+outputs. Cancellation and generation retirement retain the holder until physical
+return and owner settlement. Descriptor close additionally requires the actual
+`fn-pio-direct-quiet-p` lookup and absence of response leases. SCN-1082 exercises
+cancellation, retirement, late success/error, close, descriptor reuse and stale
+token replay against those entries. These finite schedules establish their
+observed behavior; PRF-1254 remains the all-schedule preservation target, and
+native realization requires a matched image run. This direct model does not
+claim to cover the typed funded read pool.
+
 Q10d: each accepted NNTP socket's service-log connection line carries exactly
 one `client-address` field projected by ACL2 from the supplied fixed-width
 family/address observation. This is the kernel transport source on direct
@@ -191,6 +203,24 @@ recorded on stderr. The fence step itself (STOPPING and the exit code, under
 the roster mutex) performs no I/O and cannot fail. Once either fence is set,
 connection unwind performs no later owner close transition; service cleanup
 wakes and joins all workers before closing journals or the Store.
+
+The physical actor envelope reserves its identity and captured custody before
+spawn, and releases a start latch only after installing the thread object.
+A spawn primitive reporting no child may cancel the reservation. A failure
+later in publication or latch release retains the child through compensating
+termination and physical join; failed compensation retains it for shutdown.
+A worker never releases this registration itself. Failed or timed-out join
+faults the service and retains ownership; it gives no lifecycle receipt.
+After physical termination, including terminal cleanup, the parent receives
+one lifecycle receipt `(:joined actor-id terminal-kind custody)`. Repeated
+join observations may confirm termination but issue no second receipt.
+The syncer's batch operation receipt `(generation final . condition)` is
+separate: it neither proves physical termination nor releases actor custody.
+Opaque resource tokens, when supplied by a real producer, stay retained until
+that physical receipt; this envelope does not create a funded bank. The first
+native consumers are the committer and syncer starters; the pipeline's full
+coordination transfer to ACL2 remains in progress.
+
 
 HST-004: I/O, clocks, cryptographic primitives, and authentication are explicit
 trust-boundary entries. The production integration must not contaminate book
@@ -897,6 +927,15 @@ observation and no monotonic origin, and no decision of a run reads an
 earlier run's reading (`fn-otb-a-restart-forgets-the-previous-clock-domain`);
 the push feed's restart forgets the previous process's back-off deadline
 (`fn-feed-restart-forgets-the-previous-clock-domain`). Scenario SCN-202.
+
+The logical caller's request deadline may end its wait for a reply without
+cancelling the issued operation. Native waiting reacquires its mutex after each
+condition-wait timeout. Abandonment replaces a still-registered reply callback
+with an outstanding-delivery marker; actual late delivery consumes that marker
+without storing an unreachable result. If delivery already selected the callback,
+its private cell may finish independently and no marker is fabricated. Mux close
+uses the same reply-route abandonment. Neither route refunds operation resources
+or asserts physical termination (HST-046; SCN-1088).
 
 ### The owner submission path
 
@@ -1751,3 +1790,64 @@ future-constructor and native coordinates. This uses the same guarded
 `fnn-runtime-construction-inventory-complete` supplies the actual compiler
 coordinates later. An incomplete capture cannot seal, so observing existing
 objects never silently supplies zero for an unavailable allocation allowance.
+
+The committer pacing actor (`books/committer-actor.lisp`, consumed by
+`fnn-owner-committer-loop`) holds immutable private control. Its snapshot
+ticket identifies the retained mux-pass capture; this ticket is distinct from
+a barrier operation generation. Pipeline entry requires the captured passes,
+and stop while waiting starts no pipeline. The native consumer performs the
+declared snapshot/wait/pipeline actions. A pipeline return retains the actual
+operation generation/outcome, independent physical actor readout and resource
+tokens. The existing inner `fn-oqw` driver retains its I/O order and owner
+sections while its remaining coordination is transferred to the actor. This
+is a first installed pacing slice, not a full HM or native refinement claim.
+
+The first funded actor consumer is the owner syncer. The existing qualified
+`:hold` decision in `fnn-mux-budget-install` installs a private concrete
+`fn-resource-ledger` projection for one existing syncer worker; it creates no
+new rescue allowance or user bank. `fnn-owner-start-syncer` draws before spawn.
+A native grant retains the captured job and result independently from actor
+registration until ACL2 consumes both physical and operation receipts. Failed
+or timed-out live joins settle neither physical custody nor that grant.
+A primitive join error still faults the service when physical termination
+is independently observed; its physical callback may complete once.
+
+Private construction uses the exact validated registered creator ABI.
+Semantic methods keep their selected counterpart route; developer counterpart
+mode preserves the validated constructor allocation route. A failed starter
+retains its actual result cell, including when a start notification releases
+the child and then throws. Its one-shot completion waits for affirmative
+physical termination/no-child, consumes the actual `fn-oqw` result, and
+returns a separate resource outcome receipt; uncertain results still fence.
+A torn completion is never retried and retains unresolved custody. Model/
+raw tests cover this local consumer with stubbed batch I/O; a qualified image
+POST/stop scenario remains the acceptance check for the actual capacity and
+durable persistence path. Constructor metadata, gate/refusal work and the
+full resource vector remain cost obligations.
+The shutdown consumer additionally requires the typed syncer draw to be idle
+and the native captured-grant registry empty before advancing log/Store
+settlement. Its observation manufactures neither kind of completion receipt.
+
+Outbound feed lifetime also uses the shared actor starter and physical join.
+The module runtime remains native custody of the actor reservation, including
+a starter that failed after creating its child but before returning the worker.
+A failed join leaves the module registered; close removes it only after the
+worker's terminal cleanup physically ends. The feed's exact-class failure
+boundary scopes a known stopping refusal while an unknown subclass remains a
+fault. A late cleanup fault always reaches ACL2's monotone stop lattice:
+graceful stop can escalate, and an existing uncertain outcome remains dominant.
+The irreversible fault entry takes owner exclusion directly, as the stop entry
+does. An aborted scheduler cannot intercept this fence or its caller's terminal
+cleanup; the first fault text is captured under that same owner exclusion.
+The local thread schedules stub socket effects; next-due scheduling, the wait
+boundary and full served-image correspondence remain open.
+The record-log allocator carries the composed owner's identity reservation
+callback through `fnn-advance-frontier` to `fnn-log-reserve`. The callback is
+dynamically bound before an owner publication; ACL2 derives the reservation
+purpose and protected release debt. A retention publication passes its exact
+ACL2-authored five-field event, producing the one-shot grant consumed by
+`fn-owner-prepare-retention`. Refused or malformed gate results precede log
+kernel, owner reservation and frontier effects. Standalone Store reservations
+retain the existing codec successor route. The source routing fixture
+`tests/native_retention_identity_route_raw.lisp` checks these calls and order;
+a matching native BP undertake/release/reopen scenario remains required.

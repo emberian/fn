@@ -1,13 +1,15 @@
 {
- "file": "books/nntp-responses.lisp",
- "id": "cg-newnews-hang",
- "notes": [
-  "GPT-6.1-Sol: imported served-live metadata tombstone scan and declared NEWNEWS :forms. No payload reads in unrestricted NEWNEWS scan. Whole metadata scan/reply allocation remains GEN-CURSOR debt; no matching native image verdict yet."
- ],
- "owner": "codex-sol-served",
- "severity": "high",
- "source": "cost-gate",
- "state": "in-progress",
- "title": "NEWNEWS with a wildmat hangs the reader at about 12-50 articles: N=3 and N=8 answer in 2-8 ms; N=12..24 never answered within 100 s; N=50 'NEWNEWS fn.* 20261001 000000 GMT' ran 225 s at ~77% owner CPU then the connection closed (b''); 'NEWNEWS fn.g1' at N=50 answered in 7 ms. Image set 45e05c7fd developer, plain launcher (no probe), 2 KiB POSTs across 8 groups. Not yet bisected (single group vs wildmat vs cross-posts)",
- "updated": "2026-10-03T06:00:00Z"
+  "file": "books/nntp-responses.lisp",
+  "id": "cg-newnews-hang",
+  "notes": [
+    "GPT-6.1-Sol: imported served-live metadata tombstone scan and declared NEWNEWS :forms. No payload reads in unrestricted NEWNEWS scan. Whole metadata scan/reply allocation remains GEN-CURSOR debt; no matching native image verdict yet.",
+    "GPT-6.1-Sol 2026-10-03: actual metadata cursor producer and NEWNEWS declaration/plan branch wired. Per-step exact residual, independent candidate-call/emitted-byte bounds and sparse/final-buffer tests admitted in REPL (PRF-1256, SCN-1084); source only, composition/certification/native image pending. Initial selected-group materialization and one-row renderer working bytes remain unbounded; output draw/custody and decided completed discovery capture remain open. Captured archive context retains roots by reference, no whole archive copy. OVER and cold HDR/XPAT still await the common resumable/dependency consumer.",
+    "GPT-6.1-Sol 2026-10-03: NEWNEWS plan residual/expanded reply and buffer preservation admitted; tiny/large budget actual plan witness plus existing OVER teeth pass. Hand/generated dispatcher replay passed with guards; chain/owner replay pending missing served-span source prefix. Evidence is archived composition REPL, no certificate/image claim. Allocation, custody, completed snapshot and other consumer debts unchanged."
+  ],
+  "owner": "codex-sol-served",
+  "severity": "high",
+  "source": "cost-gate",
+  "state": "in-progress",
+  "title": "NEWNEWS with a wildmat hangs the reader at about 12-50 articles: N=3 and N=8 answer in 2-8 ms; N=12..24 never answered within 100 s; N=50 'NEWNEWS fn.* 20261001 000000 GMT' ran 225 s at ~77% owner CPU then the connection closed (b''); 'NEWNEWS fn.g1' at N=50 answered in 7 ms. Image set 45e05c7fd developer, plain launcher (no probe), 2 KiB POSTs across 8 groups. Not yet bisected (single group vs wildmat vs cross-posts)",
+  "updated": "2026-10-03T06:00:00Z"
 }

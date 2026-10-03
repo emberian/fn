@@ -90,7 +90,12 @@ lock file names its holder).  `start` loads from-source books (`--ld`,
 `--source-deps`, `--ld-missing`) inside one encapsulate so their local
 events stay local -- the default since obstructions-5 item 32
 (store-log-extend's local lemmas turned global form by form); `--ld-leak`
-loads form by form, which names the refused event.  `--host BOX`
+loads form by form, which names the refused event. `--keep-source-prefix`
+retains a live encapsulated prefix after a dependency refusal (exit 75 stays a
+refusal, never certification). Repair that dependency with `send-range NAME
+BOOK --ld-local`, then send the remaining dependencies in their original order;
+status keeps the original failed-dependency marker. Form-by-form --ld-leak or
+timed-out worlds cannot use this option. `--host BOX`
 (hbox, persvati) runs a command in the lane's tree on that box with the
 box's own ACL2 and cache after syncing tools/ and the book's closure; on a
 box itself FN_ACL2 and FN_CERT_CACHE default to that box's.  Before that
@@ -1340,7 +1345,7 @@ def serve(name: str, book: str, upto: str | None, through: str | None,
           limit: float, load_timeout: float, lock_fd: int,
           lane: str | None = None, idle_seconds: float | None = None,
           ld: list[str] | None = None, ld_local: bool = False,
-          load_limit: float | None = None) -> int:
+          load_limit: float | None = None, keep_source_prefix: bool = False) -> int:
     if idle_seconds is None:
         idle_seconds = default_idle_seconds()
     directory = session_dir(name)
@@ -1355,7 +1360,7 @@ def serve(name: str, book: str, upto: str | None, through: str | None,
              "lane": lane, "idle_seconds": idle_seconds, "started_at": now,
              "last_active": now, "acl2_pgid": None, "ended": None,
              "upto": upto, "through": through, "ld": ld, "ld_loaded": {},
-             "ld_local": ld_local,
+             "ld_local": ld_local, "keep_source_prefix": keep_source_prefix,
              "load_limit": limit if load_limit is None else load_limit}
     # SIGTERM (reap's fallback) unwinds through the finally below, which
     # kills the owned ACL2 group; without this it would outlive the server.
@@ -1817,14 +1822,29 @@ def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
 
 
 # `_start`'s answer when a dependency loaded from source failed. `start`
-# stops the failed session; only an explicit certification request may retry.
+# normally stops the failed session. --keep-source-prefix retains a live,
+# encapsulated dependency prefix for exploration; neither is certification.
 SOURCE_DEPS_FAILED = 75
 
 
 def start(args) -> int:
     """Start a session without turning a source refusal into an implicit build."""
+    keep = getattr(args, "keep_source_prefix", False)
+    if keep and (not getattr(args, "ld_local", True) or getattr(args, "certify_missing", False)):
+        print("proof-repl: --keep-source-prefix requires encapsulated --ld-local "
+              "source loading; choose it separately from --certify-missing")
+        return 2
     code = _start(args)
     if code != SOURCE_DEPS_FAILED:
+        return code
+    state = (read_state(args.name) or {}) if keep else {}
+    if (keep and state.get("keep_source_prefix") and state.get("ready")
+            and state.get("ld_local") and state.get("failed_dependency")
+            and not state.get("load_timed_out")):
+        print("proof-repl: retained the live encapsulated dependency prefix; "
+              "the requested book is not loaded and no certification launched. "
+              "Repair the dependency with send-range --ld-local, then load the "
+              "remaining dependencies in order. Status retains the source refusal.")
         return code
     with contextlib.suppress(SystemExit):
         stop(args)
@@ -1893,6 +1913,8 @@ def _start(args) -> int:
                 command += ["--ld", one]
             if getattr(args, "ld_local", False):
                 command += ["--ld-local"]
+            if getattr(args, "keep_source_prefix", False):
+                command += ["--keep-source-prefix"]
             subprocess.Popen(command, stdout=log, stderr=log, cwd=ROOT,
                              start_new_session=True, pass_fds=(lock_fd,))
         deadline = time.monotonic() + args.load_timeout * (3 + 2 * len(from_source)) + 60
@@ -1949,6 +1971,14 @@ def load_verdict(state: dict) -> tuple[str, bool]:
     loaded = len(state.get("loaded") or [])
     stopped = state.get("stopped_at")
     if state.get("failed_dependency"):
+        if (state.get("keep_source_prefix") and state.get("ready")
+                and state.get("ld_local") and not state.get("load_timed_out")):
+            return (f"proof-repl {name}: LIVE PARTIAL DEPENDENCY -- "
+                    f"{state['failed_dependency']} refused at {stopped or '?'}: "
+                    f"{state.get('dependency_error')}; retained "
+                    f"{len(state.get('ld_loaded') or {})} encapsulated dependencies, "
+                    f"none of {book}'s forms were sent; source exploration only, "
+                    f"exit {SOURCE_DEPS_FAILED}", True)
         return (f"proof-repl {name}: NOT LIVE -- the dependency {state['failed_dependency']} "
                 f"failed to load from source at {stopped or '?'}: "
                 f"{state.get('dependency_error')}; none of {book}'s forms were sent. "
@@ -4095,6 +4125,9 @@ def main(argv: list[str] | None = None) -> int:
                    help="(the default) load each from-source dependency inside one "
                         "(encapsulate () ...), so its local lemmas stay local as a certified "
                         "include keeps them")
+    p.add_argument("--keep-source-prefix", action="store_true",
+                   help="retain a live encapsulated dependency prefix after a source "
+                        "refusal (exit 75); source exploration, not a loaded book or certification")
     p.add_argument("--ld-leak", dest="ld_local", action="store_false",
                    help="load from-source dependencies form by form instead: their LOCAL "
                         "lemmas become session rules, but a refusal names its event")
@@ -4113,9 +4146,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--ld", action="append", default=[])
     p.add_argument("--ld-local", action="store_true")
     p.add_argument("--load-limit", type=float, default=None)
+    p.add_argument("--keep-source-prefix", action="store_true")
     p.set_defaults(run=lambda a: serve(a.name, a.book, a.upto, a.through, a.limit,
                                        a.load_timeout, a.lock_fd, a.lane, a.idle_seconds,
-                                       a.ld, a.ld_local, a.load_limit))
+                                       a.ld, a.ld_local, a.load_limit, a.keep_source_prefix))
     p = sub.add_parser("send", help="forms (one or several); `-` reads them from stdin")
     p.add_argument("name")
     p.add_argument("form")

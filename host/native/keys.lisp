@@ -17,7 +17,7 @@
 (in-package "ACL2")
 
 (defun fnn-keys-owner-redecide (service msgid)
-  (fnn-owner-serialized
+  (fnn-quantum-control
    service nil
    (lambda ()
      (let* ((event (fnn-owner-core 'fn-owner-key-statement-redecide-find msgid))

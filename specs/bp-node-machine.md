@@ -3991,7 +3991,12 @@ tick` does. Over `fn-bpnp-step`, the event's one proposal is the
 `:cl-send` of that job's route, peer, key and wire
 (`fn-bpnp-receipt-contact-offers-the-queued-job`). A connect that never
 produced a socket reads `:failed` (no octet left; ACL2 requeues the job);
-any failure after the connection exists stays `:uncertain`, and that
+a transport failure after the connection exists stays `:uncertain`. After
+an accepted fragment, even a later transfer that sent no octet is normalized
+through ACL2's `fn-bpfs-fragment-outcome` to `:uncertain`. Store publication
+uncertainty, core faults and unknown condition subclasses retain their class
+through socket cleanup and escape to the owner's fault/fence boundary; they
+never become a transport retry observation. The transport
 reading is connection-local (§4.3.2): the pass logs it and continues. A
 one-shot verb that asked for the transfer renders the durable `:requeued`
 record's reason as its run class (specs/host.md "BP run classes",

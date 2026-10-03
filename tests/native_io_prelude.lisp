@@ -56,3 +56,15 @@ compiled here: the book's own body, never a restatement."
   (declare (ignore symbol key world))
   default)
 (defun stobjs-in (name world) (declare (ignore name world)) nil)
+;; host/native/owner.lisp's def-section declarations are accepted by ACL2 as
+;; the image loads (books/failure-scope.lisp fn-fs-section-declp, lane
+;; WRAPPER): the book's tables and bodies, so a raw witness that loads
+;; owner.lisp loads its declarations exactly as the image does.
+(defparameter *fn-fs-actors*
+  (book-defconst-value "books/failure-scope.lisp" '*fn-fs-actors*))
+(defparameter *fn-fs-gate-classes*
+  (book-defconst-value "books/failure-scope.lisp" '*fn-fs-gate-classes*))
+(defparameter *fn-fs-cleanup-purposes*
+  (book-defconst-value "books/failure-scope.lisp" '*fn-fs-cleanup-purposes*))
+(book-defuns "books/failure-scope.lisp"
+             '(fn-fs-keyword-subsetp fn-fs-admissionp fn-fs-section-declp))

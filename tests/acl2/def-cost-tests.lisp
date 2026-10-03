@@ -150,10 +150,10 @@
    (and (null un)
         (equal cost
                '(binary-+ (binary-+ '1 (nfix '1))
-                          ((lambda (x y)
+                          ((lambda (x)
                              (binary-+ (binary-+ '1 (len x))
                                        (binary-+ '1 (nfix '1))))
-                           (cdr xs) (nthcdr '1 ys)))))))
+                           (cdr xs)))))))
 (defun fn-cst-lambda-nested (xs ys)
   (declare (xargs :guard t :verify-guards nil))
   (let ((x (cdr xs)) (y (nthcdr 1 ys)))
@@ -161,6 +161,19 @@
       (+ (len x) (len y)))))
 (def-cost fn-cst-lambda-nested)
 (assert-event (equal (fn-cst-lambda-nested-visits '(a b c d) '(1 2 3)) 10))
+
+; The value uses both variables, but its constant cost needs neither.  This
+; occurs in the real syncer receipt update's translated mv-let application.
+(defun fn-cst-lambda-constant (xs ys)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((x (cdr xs)) (y (cdr ys))) (nth 0 (cons x y))))
+(def-cost fn-cst-lambda-constant)
+(assert-event (equal (fn-cst-lambda-constant-visits '(a b) '(c d)) 1))
+(assert-event
+ (mv-let (cost un)
+   (fn-cost-term '((lambda (x y) (nth '0 (cons x y))) (cdr xs) (cdr ys))
+                 'fn-cst-lambda-constant nil *fn-cost-fuel* (w state))
+   (and (null un) (equal cost '(binary-+ '1 (nfix '0))))))
 
 ; ---------------------------------------------------------------------------
 ; 4. Refusals.
@@ -251,3 +264,30 @@
 (must-fail-checked (def-cost-check fn-cst-uses-walk)
                    :unchecked "the callee's later row changes the derivation; the stale row refuses")
 (must-fail-checked (def-cost-check fn-cst-uses-walk-2) :unchecked "no cost row")
+
+; A guarded raw declaration is the actual native allocation/callback route,
+; including private stobj creators. Changing the route invalidates its row
+; even when the two routes happen to have equal scalar costs.
+(defun fn-cst-raw-probe (x) (declare (xargs :guard t)) x)
+(definterface fn-cst-raw-probe :class :common-lisp-compliant)
+(assert-event (eq (fn-cost-route 'fn-cst-raw-probe (w state)) :served))
+(def-cost fn-cst-raw-probe :visits 0 :unaccounted nil)
+(definterface fn-cst-raw-probe :class :common-lisp-compliant
+  :raw-guarded (1 (nil) (nil)))
+(assert-event (eq (fn-cost-route 'fn-cst-raw-probe (w state)) :raw))
+(must-fail-checked (def-cost-check fn-cst-raw-probe)
+  :unchecked "changed guarded raw route invalidates the previous served row")
+(defun fn-cst-raw-fresh (x) (declare (xargs :guard t)) x)
+(definterface fn-cst-raw-fresh :class :common-lisp-compliant
+  :raw-guarded (1 (nil) (nil)))
+(def-cost fn-cst-raw-fresh :visits 0 :unaccounted nil)
+(def-cost-check fn-cst-raw-fresh)
+(assert-event (equal (fn-cst-raw-fresh-route-visits '(a b c)) 0))
+
+(defstobj fn-cst-private-ledger (fn-cst-private-word :type (unsigned-byte 64) :initially 0))
+(definterface create-fn-cst-private-ledger :class :common-lisp-compliant
+  :raw-guarded (0 nil (fn-cst-private-ledger)))
+(assert-event
+ (and (fn-di-raw-creatorp 'create-fn-cst-private-ledger
+        '(:class :common-lisp-compliant :raw-guarded (0 nil (fn-cst-private-ledger))) (w state))
+      (eq (fn-cost-route 'create-fn-cst-private-ledger (w state)) :raw)))

@@ -613,7 +613,6 @@
   "fn-pxe-cache-mode",
   "fn-pxe-new",
   "fn-pxe-return",
-  "fn-reader-chunk",
   "fn-reader-model-octets",
   "fn-reader-outcome",
   "fn-reader-reset",

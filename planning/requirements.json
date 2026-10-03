@@ -5385,9 +5385,10 @@
         "host/native/owner.lisp",
         "tests/test_native_slow_disk.py",
         "planning/design-time-model-2026-09-27.md",
-        "planning/evidence/time-bars-2026-09-28.md"
+        "planning/evidence/time-bars-2026-09-28.md",
+        "tests/native_await_lifetime_raw.lisp"
       ],
-      "implementation_note": "Lane time-bars (row F1 of COMPLETE-BEFORE-6.6.0). Bars (ember 2026-09-28): D 5 s, H 30 s with at most 1 s notification slack, cached health p99 <= 250 ms and <= 1 s under the injected stall, warm reads <= 1 s, cold page-dependent reads a declared 5 s dependency deadline then 403 (design section 4b). The committer's told-connection list moved into ACL2 (fn-otb-*); the journal's start entry records the wall observation, no monotonic origin; the push feed's restart forgets the previous process's back-off deadline. The cold-read decision is the interface row A4's asynchronous page fault calls; until A4 a cold extent read is synchronous under the owner."
+      "implementation_note": "Lane time-bars (row F1 of COMPLETE-BEFORE-6.6.0). Bars (ember 2026-09-28): D 5 s, H 30 s with at most 1 s notification slack, cached health p99 <= 250 ms and <= 1 s under the injected stall, warm reads <= 1 s, cold page-dependent reads a declared 5 s dependency deadline then 403 (design section 4b). The committer's told-connection list moved into ACL2 (fn-otb-*); the journal's start entry records the wall observation, no monotonic origin; the push feed's restart forgets the previous process's back-off deadline. The cold-read decision is the interface row A4's asynchronous page fault calls; until A4 a cold extent read is synchronous under the owner. Logical callers may abandon their reply route at deadline without cancelling or settling the issued operation. The native mailbox retains only an abandoned-delivery marker until the late result, and timed condition waits reacquire exclusion before the next observation (SCN-1088)."
     },
     {
       "id": "NNT-056",
@@ -6552,6 +6553,32 @@
         "tests/test_native_auth.py"
       ],
       "implementation_note": "RFC 4643 section 6 (MAY drop after failed attempts, SHOULD NOT before three) and section 2.3.1 (AUTHINFO MUST NOT be pipelined) are the RFC requirements; three per connection is the fn guarantee; the per-address exposure-auth-failures budget (NNT-031) is a separate local policy. Sweep S044 (2026-10-03). Open: the stored verifier is one fast salted digest per guess (offline guessing of a leaked verifier); an iterated or memory-hard verifier is not part of this requirement."
+    },
+    {
+      "id": "HST-046",
+      "title": "Issued resource custody remains debited until physical termination and operation completion; timeout and connection close do not authorize settlement",
+      "specification": "specs/resource-vector.md#physical-operation-custody-hst-046",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-1252"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/resource-syncer.lisp",
+        "tests/acl2/resource-syncer-tests.lisp",
+        "books/resource-operation.lisp",
+        "tests/acl2/resource-operation-tests.lisp",
+        "tests/native_syncer_pipeline_escape_raw.lisp",
+        "tests/native_committer_actor_raw.lisp",
+        "tests/native_syncer_typed_raw.lisp",
+        "tests/test_native_owner.py"
+      ],
+      "implementation_note": "Initial concrete producer is the owner syncer worker/resident projection, installed inside the existing qualified startup :hold section before issue. A token carries ledger draw generation separately from operation generation. Both the actual actor terminal/no-actor-created receipt and matching consumed operation outcome are required. Broader user tariffs, allocation/refusal work, subtree/refund correspondence and complete actor census remain open. Post-launch committer unwind retains an actual-result consumer until physical return; a started/torn consumption is not retried. The committer actor outer escape callback stops the service after raw ACL2 throws. SCN-1089 exercises actual mux hold, POST, independent custody receipts, clean stop and restart in a matching image; its selector is prepared and image execution remains pending.",
+      "note": "Logical definitions and executable scenario assertions are source-admitted only; native consumer, preservation and guard evidence are not completion claims."
     }
   ]
 }

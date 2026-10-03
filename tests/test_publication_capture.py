@@ -15,10 +15,10 @@ ROOT = Path(__file__).resolve().parents[1]
 CONTRACTS = ROOT / "tools" / "lock_discipline_contracts.json"
 
 
-def publication_findings(root):
+def publication_findings(root, creators=("fnn-owner-maybe-publish-quantum",)):
     _, model, checker = ldc.analyze_tree(root, ldc.load_contracts(CONTRACTS), reach={})
     roots = {name for name, info in model.infos.items()
-             if info.thread_of and info.thread_of[0] == "fnn-owner-maybe-publish-quantum"}
+             if info.thread_of and info.thread_of[0] in creators}
     if not roots:
         raise AssertionError("the publication worker must be reachable")
     return [finding for finding in checker.run({"R1"}) if finding.function in roots]
@@ -27,6 +27,13 @@ def publication_findings(root):
 class PublicationCaptureTests(unittest.TestCase):
     def test_worker_and_indirect_helpers_do_not_resolve_live_state(self):
         self.assertEqual(publication_findings(ROOT), [])
+
+    def test_export_and_reclaim_indirect_helpers_use_captured_arena(self):
+        self.assertEqual(publication_findings(ROOT, ("fnn-owner-export-start",)), [])
+        _, _, checker = ldc.analyze_tree(ROOT, ldc.load_contracts(CONTRACTS), reach={})
+        offenders = [finding for finding in checker.run({"R1"})
+                     if ":fnn-owner-reclaim-" in finding.key]
+        self.assertEqual(offenders, [])
 
     def test_indirect_live_arena_lookup_is_detected(self):
         with tempfile.TemporaryDirectory() as tmp:

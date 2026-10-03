@@ -45,6 +45,28 @@
 
 (define-condition fnn-extent-fault (fnn-store-fault) ())
 
+(defun fnn-extent-page-observation (control &rest args)
+  "Developer-only primitive observations for the held native-I/O scenario.
+Never print a private buffer or derive a model verdict here. Missing log
+lines make a trace incomplete; this diagnostic queue is not a proof oracle."
+  (when (fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD")
+    (let ((*print-pretty* nil))
+      (apply #'fnn-err (concatenate 'string "PAGE-IO observed " control) args))))
+
+(defmacro fnn-extent-native-observe (label actor-p &rest args)
+  "Developer-only literal primitive projection; arguments stay unevaluated
+when the collector is absent. No buffer or condition is a model result.
+Missing wait/pin/other owner edges leave full PageIO replay unavailable."
+  `(when *fnn-native-observer*
+     (handler-case
+         (fnn-native-observe
+          ,(if actor-p `(list ,label *fnn-native-actor-identity* ,@args)
+             `(list ,label ,@args)))
+       (serious-condition ()
+         ;; Observation failure never becomes a service verdict or cleanup.
+         (setf (fnn-native-observation-valid *fnn-native-observer*) nil
+               (fnn-native-observation-reason *fnn-native-observer*) :observer-fault)))))
+
 (defvar *fnn-extent-lock* (sb-thread:make-mutex :name "fn extent realizer"))
 (defvar *fnn-extent-fds* (make-hash-table))   ; guarded-by: *fnn-extent-lock* (file id -> fd)
 (defvar *fnn-extent-paths* (make-hash-table)) ; guarded-by: *fnn-extent-lock* (file id -> path)
@@ -102,7 +124,7 @@ are memory, rebuilt at fnn-extent-direct-start."
 ACL2 supplied capacities include cache insertion overlap; table backing is
 permanent baseline, never refunded when an association is removed."
   (declare (ignorable worker-capacity))
-  (sb-thread:with-mutex (*fnn-extent-lock*)
+  (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
     (unless (and (zerop (hash-table-count *fnn-extent-fds*))
                  (zerop (hash-table-count *fnn-extent-paths*))
                  (zerop (hash-table-count *fnn-extent-incarnations*))
@@ -125,7 +147,7 @@ permanent baseline, never refunded when an association is removed."
 Failed constructors spend the name; refund only after definite OS release.
 The core explicitly distinguishes an unfunded offline registration."
   (let ((id nil) (funded nil))
-    (sb-thread:with-mutex (*fnn-extent-lock*)
+    (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
       (destructuring-bind (word next issued)
           (fnn-core-page-read-pool 'fn-owner-page-file-issue *fnn-extent-next-id*)
         (unless (member word '(:issued :unfunded-offline))
@@ -143,16 +165,19 @@ The core explicitly distinguishes an unfunded offline registration."
              (setq fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+)))
              (let* ((st (fnn-fstat fd))
                     (incarnation (cons (sb-posix:stat-dev st) (sb-posix:stat-ino st))))
-               (sb-thread:with-mutex (*fnn-extent-lock*)
+               (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
                  (setf (gethash id *fnn-extent-fds*) fd
                        (gethash id *fnn-extent-paths*) path
                        (gethash id *fnn-extent-incarnations*) incarnation
-                       installed t)))
+                       installed t)
+                 (fnn-extent-page-observation "fd-open file=~d fd=~d dev=~d ino=~d"
+                                              id fd (car incarnation) (cdr incarnation))
+                 (fnn-extent-native-observe :fd-open t id fd)))
              id)
         (unless installed
           ;; An ambiguous close aborts this cleanup before any credit refund.
           (when fd (fnn-close fd))
-          (sb-thread:with-mutex (*fnn-extent-lock*)
+          (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
             ;; A failed table installation may have installed a prefix.
             ;; Purge it only after the descriptor is definitely released.
             (remhash id *fnn-extent-fds*)
@@ -181,7 +206,7 @@ incarnation.  Called with the realizer's lock held."
 snapshot.lisp); a read-only descriptor held for the process's life, so the
 file stays readable after a later checkpoint replaces its name."
   (let ((id (fnn-extent-register path)))
-    (sb-thread:with-mutex (*fnn-extent-lock*)
+    (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
       (setf (gethash id *fnn-extent-bases*) base))
     id))
 
@@ -258,7 +283,7 @@ FN_NATIVE_EXTENT_CACHE_TEST_OFF=1 (the matched measurement's cache-off arm)."
 ;;; (fnn-extent-pool-funded-p).
 (defun fnn-extent-pool-open-context ()
   "Enter the pool's unfunded context once per process; idempotent."
-  (sb-thread:with-mutex (*fnn-extent-lock*)
+  (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
     (let ((mode (first (fnn-core-page-read-pool 'fn-owner-page-read-open-context))))
       (unless (member mode '(:offline :served))
         (fnn-fault (format nil "page pool context refused: ~a" mode)))
@@ -266,7 +291,7 @@ FN_NATIVE_EXTENT_CACHE_TEST_OFF=1 (the matched measurement's cache-off arm)."
 
 (defun fnn-extent-pool-funded-p ()
   "Whether cold reads go through the funded pool (admission, the executor)."
-  (sb-thread:with-mutex (*fnn-extent-lock*)
+  (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
     (eq (first (fnn-core-page-read-pool 'fn-owner-page-read-direct-mode)) :funded-pool)))
 
  ; These macros add no per-job host list construction beyond the dedicated
@@ -316,7 +341,7 @@ FN_NATIVE_EXTENT_CACHE_TEST_OFF=1 (the matched measurement's cache-off arm)."
     (let ((fd nil) (incarnation nil) (plan nil)
           (input (fn-octets$c-reserve 64 (create-fn-octets$c)))
           (hash (create-pgs-digest-state)) (window (create-fn-ew-buffer)))
-      (sb-thread:with-mutex (*fnn-extent-lock*)
+      (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
         (setq fd (gethash file *fnn-extent-fds*)
               incarnation (gethash file *fnn-extent-incarnations*)))
       (unless (and fd incarnation) (fnn-fault "window issued file closed"))
@@ -332,7 +357,7 @@ FN_NATIVE_EXTENT_CACHE_TEST_OFF=1 (the matched measurement's cache-off arm)."
       (loop
         ;; A cancelled worker finishes its current bounded core operation,
         ;; then relinquishes its activation without publishing a window.
-        (unless (sb-thread:with-mutex (*fnn-extent-lock*)
+        (unless (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
                   (first (fnn-core-cold-pool 'fn-owner-page-window-work-permittedp
                             (fnn-cold-worker-row worker) token)))
           (return nil))
@@ -362,11 +387,17 @@ FN_NATIVE_EXTENT_CACHE_TEST_OFF=1 (the matched measurement's cache-off arm)."
       (declare (ignore ignored))
       (unless (eq word :returned) (fnn-fault "cold worker returned a different job"))
       (setf (fnn-cold-worker-row worker) row
-            (fnn-cold-worker-phase worker) :returned))))
+            (fnn-cold-worker-phase worker) :returned)
+      ;; The job activation has unwound. This is distinct from the owner's
+      ;; later ledger settlement; a persistent executor thread stays alive.
+      (fnn-extent-page-observation "physical-return token=~s row=~s" token row)
+      (when *fnn-native-observer*
+        (unless (or (fn-pwz-tokenp token) (fnn-extent-window-p token))
+          (fnn-extent-native-observe :return t token))))))
 
 (defun fnn-extent-window-byte (worker token i)
   "Borrow one scalar after physical return, retaining every window credit."
-  (sb-thread:with-mutex (*fnn-extent-lock*)
+  (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
     (unless (fnn-extent-executor-observe-returned worker)
       (return-from fnn-extent-window-byte (values :pending nil)))
     (unless (fnn-core-cold-single 'fn-pwx-boundp
@@ -384,7 +415,7 @@ FN_NATIVE_EXTENT_CACHE_TEST_OFF=1 (the matched measurement's cache-off arm)."
 (declaim (notinline fnn-extent-window-outcome))
 (defun fnn-extent-window-outcome (worker token)
   "Scalar-only terminal disposition; integrity failure is never a new miss."
-  (sb-thread:with-mutex (*fnn-extent-lock*)
+  (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
     (unless (fnn-extent-executor-observe-returned worker)
       (return-from fnn-extent-window-outcome :pending))
     (when (eq (first (fnn-core-cold-pool 'fn-owner-page-window-outcome
@@ -397,7 +428,7 @@ FN_NATIVE_EXTENT_CACHE_TEST_OFF=1 (the matched measurement's cache-off arm)."
 
 (defun fnn-extent-window-byte-at (worker token file eoff elen poff plen trailer i)
   "Original arena payload coordinate goes unchanged to the core scalar join."
-  (sb-thread:with-mutex (*fnn-extent-lock*)
+  (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
     (unless (fnn-extent-executor-observe-returned worker)
       (return-from fnn-extent-window-byte-at (values :pending nil)))
     (unless (fnn-core-cold-single 'fn-pwx-boundp
@@ -459,7 +490,7 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
 
 (defun fnn-extent-window-release (worker token)
   "Caller holds no buffer aliases. Drop the sole retained result BEFORE refund."
-  (sb-thread:with-mutex (*fnn-extent-lock*)
+  (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
     (unless (and (fnn-extent-executor-observe-returned worker)
                  (fnn-core-cold-single 'fn-pwx-boundp
                            (fnn-core-cold-single 'fn-owner-page-read-ledger (fnn-live-page-read-pool))
@@ -483,7 +514,7 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
 ; Staged cancellation never refunds, never terminates a thread, and never
 ; borrows its output. Extent mutex serializes revocation with scalar reads.
 (defun fnn-extent-window-cancel (worker token)
-  (sb-thread:with-mutex (*fnn-extent-lock*)
+  (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
     (destructuring-bind (word row &rest ignored)
         (fnn-core-cold-pool 'fn-owner-page-window-executor-cancel
                                 (fnn-cold-worker-row worker) token)
@@ -493,7 +524,7 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
 
 (defun fnn-extent-window-settle-cancelled (worker token)
   "After actual return/join and last scalar borrow. Drop result before refund."
-  (sb-thread:with-mutex (*fnn-extent-lock*)
+  (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
     (unless (and (fnn-extent-executor-observe-returned worker)
                  (fnn-core-cold-single 'fn-pwx-boundp
                            (fnn-core-cold-single 'fn-owner-page-read-ledger (fnn-live-page-read-pool))
@@ -538,14 +569,25 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
                (declare (ignore condition))
                (make-condition 'fnn-extent-fault
                                :message "arena-extent-read: cold executor runtime failure")))))
-    (sb-thread:with-mutex (*fnn-extent-lock*)
-      (setf (fnn-cold-worker-result worker) result))
+    (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
+      (setf (fnn-cold-worker-result worker) result)
+      (when (fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD")
+        (unless (or (fn-pwz-tokenp token) (fnn-extent-window-p token))
+          (fnn-extent-page-observation "job-result token=~s condition=~s verdict=~s"
+                                       token (typep result 'condition)
+                                       (and (not (typep result 'condition)) (first result))
+          ;; Only an actually stored literal result supplies the device label.
+          ;; Conditions stay unclassified until the owner's later boundary.
+          (when (and *fnn-native-observer* (not (typep result 'condition)))
+            (fnn-extent-native-observe :io-complete nil token (first result)))))))
     ;; The activation returns no buffer-bearing value to the loop. Only the
     ;; retained worker field owns the result when actual return is announced.
     nil))
 
 (defun fnn-extent-executor-loop (worker)
   (loop
+    ;; CONDITION-WAIT physically releases/reacquires E. Until those edges
+    ;; have an actual producer, omit this region from the finite projection.
     (sb-thread:with-mutex (*fnn-extent-lock*)
       (loop until (eq (fnn-cold-worker-phase worker) :queued) do
         (when *fnn-cold-stopping* (return-from fnn-extent-executor-loop nil))
@@ -554,7 +596,7 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
     ;; This call has returned before RETURNED is made observable. No worker
     ;; activation still consumes the token/fd/vector when owner takes it.
     (fnn-extent-executor-job worker)
-    (sb-thread:with-mutex (*fnn-extent-lock*)
+    (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
       (fnn-extent-executor-actual-return worker)
       (sb-thread:condition-broadcast (fnn-cold-worker-ready worker)))))
 
@@ -568,9 +610,10 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
           ;; Keep partially constructed slots for definite cleanup on failure.
           (push worker *fnn-cold-workers*)
           (setf (fnn-cold-worker-thread worker)
-                (sb-thread:make-thread (lambda () (fnn-extent-executor-loop worker))
+                (sb-thread:make-thread
+                 (fnn-native-observed-thread-thunk (lambda () (fnn-extent-executor-loop worker)))
                                        :name "fn cold executor"))
-          (sb-thread:with-mutex (*fnn-extent-lock*)
+          (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
             (setf (fnn-cold-worker-next worker) *fnn-cold-free*
                   *fnn-cold-free* worker))))
     (serious-condition (condition)
@@ -580,7 +623,7 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
 (defun fnn-extent-executor-stop ()
   "Stop clients first. Join every worker before closing any shared file.
 No cancellation, timeout or thread termination releases a job or baseline."
-  (sb-thread:with-mutex (*fnn-extent-lock*)
+  (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
     (setq *fnn-cold-stopping* t)
     (dolist (worker *fnn-cold-workers*)
       ;; Stop revokes future bounded window steps but never manufactures
@@ -598,7 +641,7 @@ No cancellation, timeout or thread termination releases a job or baseline."
       (sb-thread:join-thread (fnn-cold-worker-thread worker) :default nil)))
   ;; Every worker has actually returned and exited: no slot can be offered
   ;; again (fnn-extent-direct-start may install a fresh set in a later run).
-  (sb-thread:with-mutex (*fnn-extent-lock*)
+  (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
     (setq *fnn-cold-free* nil *fnn-cold-workers* nil)))
 
 (defun fnn-extent-executor-enqueue (worker row token)
@@ -615,7 +658,7 @@ No cancellation, timeout or thread termination releases a job or baseline."
 (defun fnn-extent-issue-window (descriptor)
   "Staged only: core ticket, demand, typed lease and exact slot in one call.
 The served caller must await complete demand/allocator and descriptor joins."
-  (sb-thread:with-mutex (*fnn-extent-lock*)
+  (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
     (let ((worker *fnn-cold-free*))
       (unless (and worker (not *fnn-cold-stopping*))
         (return-from fnn-extent-issue-window (values nil :read-resources-unavailable nil)))
@@ -658,10 +701,11 @@ settlement; the dead executor is never reused for another admitted job."
 
 (defun fnn-extent-executor-returned-p (worker)
   "Physical observation only; ACL2 still decides exact settlement."
-  (sb-thread:with-mutex (*fnn-extent-lock*)
+  (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
     (fnn-extent-executor-observe-returned worker)))
 
 (defun fnn-extent-executor-wait (worker seconds)
+  ;; The implicit wait edges are unobserved: full PageIO replay unavailable.
   (sb-thread:with-mutex (*fnn-extent-lock*)
     (unless (eq (fnn-cold-worker-phase worker) :returned)
       (sb-thread:condition-wait (fnn-cold-worker-ready worker) *fnn-extent-lock* :timeout seconds))))
@@ -790,7 +834,7 @@ for the core resource ledger. No timeout or cancellation invokes this."
 (defun fnn-extent-end-recovery-cache ()
   "Before serving, drop startup-only borrows and every direct/offline cache.
 No recovery activation remains. Retained decoder array highwater is separate."
-  (sb-thread:with-mutex (*fnn-extent-lock*)
+  (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
     (let ((tokens (fnn-extent-cache-forget *fnn-extent-cache*)))
       (setq *fnn-extent-cache* nil *fnn-extent-lz-last* nil)
       (fnn-extent-cache-release tokens))))
@@ -926,7 +970,7 @@ keeps that lease until its last buffer borrow ends. Extent lock held."
 ;;; identity, exactly as fnn-extent-entry decides and caches it.
 (defun fnn-extent-issue-read (cid file eoff elen trailer)
   "Acquire the cold worker's ownership BEFORE launching it. NIL means warm."
-  (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+  (fnn-with-observed-mutex (*fnn-extent-lock* :extent :wait-p t)
     (let ((mode (fnn-core 'fn-pxe-cache-mode (plusp (fnn-extent-cache-limit)))))
       (unless (eq mode :ready) (return-from fnn-extent-issue-read (values nil mode))))
     (when (find-if (lambda (e) (and (eql (first e) file) (eql (second e) eoff)
@@ -953,9 +997,10 @@ keeps that lease until its last buffer borrow ends. Extent lock held."
   "Revoke this request's publication right; the worker still owns its fd,
 the file and (direct arm) its hold: ACL2's fn-pio-direct-cancel."
   (when token
-    (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+    (fnn-with-observed-mutex (*fnn-extent-lock* :extent :wait-p t)
       (let ((before *fnn-extent-issued*))
         (setq *fnn-extent-issued* (fnn-core 'fn-pio-direct-cancel token *fnn-extent-issued*))
+        (fnn-extent-native-observe :cancel t token)
         (when (and (not (eq before *fnn-extent-issued*))
                    (fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD"))
           (fnn-err "PAGE-IO cancelled token=~s" token))))))
@@ -980,11 +1025,13 @@ only observed worker relinquishment allows owner settlement/publication."
           (octets (make-array (+ elen 32) :element-type '(unsigned-byte 8)))
           (hold (fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD"))
           (mode (fnn-developer-selector "FN_NATIVE_PAGE_IO_RESULT")))
-      (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+      (fnn-with-observed-mutex (*fnn-extent-lock* :extent :wait-p t)
         (setq fd (gethash file *fnn-extent-fds*))
         (incf (second *fnn-extent-stats*)))
       (unless fd
         (error 'fnn-extent-fault :message "arena-extent-read: issued file closed"))
+      (fnn-extent-page-observation "fd-capture token=~s file=~d fd=~d" token file fd)
+      (fnn-extent-native-observe :io-begin t token)
       (when (and hold (plusp (length hold)) (not (probe-file hold)))
         (fnn-err "PAGE-IO held token=~s file=~d" token file)
         (loop until (probe-file hold) do (sleep 0.05)))
@@ -994,7 +1041,9 @@ only observed worker relinquishment allows owner settlement/publication."
         ;; Exercise a condition that actually retains the private array.
         (error 'type-error :datum octets :expected-type 'null))
       (let ((got (if (equal mode "short") 0 (fnn-extent-pread fd octets eoff))))
-        (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+        (fnn-extent-page-observation "read-return token=~s fd=~d count=~d injected=~s"
+                                     token fd got (equal mode "short"))
+        (fnn-with-observed-mutex (*fnn-extent-lock* :extent :wait-p t)
           (list (if (= got (+ elen 32))
                     (fnn-extent-entry-verdict octets elen trailer) :read)
                 octets))))))
@@ -1026,7 +1075,7 @@ per run, unless the funded pool already started its executor."
         (fnn-fault "owner returned a malformed cold worker count"))
       ;; the two tables start as ACL2's initial (both empty): the effect of
       ;; a release is process-local and this is its rebuild
-      (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+      (fnn-with-observed-mutex (*fnn-extent-lock* :extent :wait-p t)
         (destructuring-bind (issued holds) (fnn-call 'fn-pio-direct-initial)
           (setq *fnn-extent-issued* issued *fnn-extent-file-holds* holds)))
       (fnn-extent-executor-start workers))))
@@ -1035,7 +1084,7 @@ per run, unless the funded pool already started its executor."
   "Owner mutex held (retirement excluded), unfunded pool: issue the read's
 row and bind an idle worker before the mutex is released.  NIL: warm.
 Otherwise (values TOKEN WORD WORKER): WORD :admitted, or ACL2's refusal."
-  (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+  (fnn-with-observed-mutex (*fnn-extent-lock* :extent :wait-p t)
     (let ((mode (fnn-core 'fn-pxe-cache-mode (plusp (fnn-extent-cache-limit)))))
       (unless (eq mode :ready) (return-from fnn-extent-issue-direct (values nil mode nil))))
     (when (find-if (lambda (e) (and (eql (first e) file) (eql (second e) eoff)
@@ -1050,6 +1099,7 @@ Otherwise (values TOKEN WORD WORKER): WORD :admitted, or ACL2's refusal."
           (fnn-call 'fn-pio-direct-admit *fnn-extent-direct-next* cid file eoff elen trailer
                     (and worker (fnn-cold-worker-row worker))
                     *fnn-extent-issued* *fnn-extent-file-holds*)
+        (fnn-extent-native-observe :issue t cid file eoff elen trailer)
         (unless (eq word :admitted)
           ;; Every worker busy is ACL2's named refusal; any other word means
           ;; the host offered a row ACL2 does not recognize as idle and fresh
@@ -1058,6 +1108,9 @@ Otherwise (values TOKEN WORD WORKER): WORD :admitted, or ACL2's refusal."
           (unless (eq word :read-resources-unavailable)
             (fnn-fault (format nil "cold worker binding refused: ~a" word)))
           (return-from fnn-extent-issue-direct (values nil word nil)))
+        (fnn-extent-page-observation
+         "direct-admit token=~s previous-next=~s next=~s row=~s cid=~s inc=~s eoff=~s elen=~s trailer=~s"
+         token *fnn-extent-direct-next* next worker-row cid file eoff elen trailer)
         (setq *fnn-extent-direct-next* next
               *fnn-extent-issued* issued
               *fnn-extent-file-holds* holds)
@@ -1070,10 +1123,13 @@ Anything but :stale removes the row (the file pin) and idles the worker."
   (destructuring-bind (answer row worker-row issued holds)
       (fnn-call 'fn-pio-direct-settle token (fnn-cold-worker-row worker) verdict
                 *fnn-extent-issued* *fnn-extent-file-holds*)
+    (fnn-extent-native-observe :settle t token)
     (when (eq answer :unheld)
       ;; the row is issued but no hold carries its token: the tables
       ;; disagree, never a silent settle
       (fnn-fault (format nil "issued read ~s is held by no token" token)))
+    (fnn-extent-page-observation "direct-settle token=~s verdict=~s answer=~s"
+                                 token verdict answer)
     (unless (eq answer :stale)
       ;; decided (ACL2 answered) ... released (the row gone, the hold
       ;; dropped, the worker idle): the holder's two cuts, *fn-pio-file-holds-cuts*
@@ -1098,7 +1154,7 @@ Anything but :stale removes the row (the file pin) and idles the worker."
   (when *fnn-extent-window-mode*
     (return-from fn-durable-realize-octet
       (fnn-extent-window-realize-octet file eoff elen poff plen trailer i)))
-  (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+  (fnn-with-observed-mutex (*fnn-extent-lock* :extent :wait-p t)
     (aref (fnn-extent-entry file eoff elen trailer) (+ (- poff eoff) i))))
 
 (defun acl2_*1*_acl2::fn-durable-realize-octet (file eoff elen poff plen trailer i)
@@ -1111,7 +1167,7 @@ Anything but :stale removes the row (the file pin) and idles the worker."
   ;; Keep this vector borrow under the cache lock: an eviction may release
   ;; its lease only after the last borrowed byte has been copied. The caller
   ;; still owes the resulting list's separate response/maintenance budget.
-  (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+  (fnn-with-observed-mutex (*fnn-extent-lock* :extent :wait-p t)
     (let ((entry (fnn-extent-entry file eoff elen trailer))
           (start (- poff eoff))
           (acc nil))
@@ -1144,7 +1200,7 @@ Anything but :stale removes the row (the file pin) and idles the worker."
     (throw 'fnn-extent-window-refused
       (values (fnn-core-cold-single 'fn-owner-page-window-decoded-refusal) nil nil nil)))
   (let* ((key (list file eoff elen trailer poff plen n))
-         (hit (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+         (hit (fnn-with-observed-mutex (*fnn-extent-lock* :extent :wait-p t)
                 (let ((last *fnn-extent-lz-last*))
                   (and last (equal (first last) key) (eq (second last) dict)
                        (cddr last))))))
@@ -1154,14 +1210,14 @@ Anything but :stale removes the row (the file pin) and idles the worker."
           (unless (and (consp r) (eq (first r) :ok) (eql (length (rest r)) n))
             ;; The path is read under the lock that guards the table: another
             ;; thread may be registering a file (fnn-extent-register).
-            (let ((where (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+            (let ((where (fnn-with-observed-mutex (*fnn-extent-lock* :extent :wait-p t)
                            (incf (third *fnn-extent-stats*))
                            (fnn-extent-where file poff))))
               (error 'fnn-extent-fault
                      :message (format nil "arena-extent-lz-decode: the block at ~a does not decode to its ~a octets"
                                       where n))))
           (let ((octets (rest r)))
-            (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+            (fnn-with-observed-mutex (*fnn-extent-lock* :extent :wait-p t)
               (setq *fnn-extent-lz-last* (list* key dict octets)))
             octets)))))
 
@@ -1202,7 +1258,7 @@ Anything but :stale removes the row (the file pin) and idles the worker."
 ;;; history image `fn-hrs-disk-history', and fn-hrecs's retry loop).
 (defun fn-pgs-fill-realize (file addr)
   (multiple-value-bind (fd base)
-      (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+      (fnn-with-observed-mutex (*fnn-extent-lock* :extent :wait-p t)
         (values (gethash file *fnn-extent-fds*) (gethash file *fnn-extent-bases* 0)))
    (let ((octets (make-array 16384 :element-type '(unsigned-byte 8))))
     (unless (and fd (integerp addr) (<= 0 addr))
@@ -1210,7 +1266,7 @@ Anything but :stale removes the row (the file pin) and idles the worker."
              :message (format nil "history-page-read: no page file ~a (page ~a)" file addr)))
     (let ((got (fnn-extent-pread fd octets (+ base (* addr 16384)))))
       (unless (= got 16384)
-        (let ((path (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+        (let ((path (fnn-with-observed-mutex (*fnn-extent-lock* :extent :wait-p t)
                       (gethash file *fnn-extent-paths*))))
           (error 'fnn-extent-fault
                  :message (format nil "history-page-read: page ~a of ~a: ~a of 16384 octets"
@@ -1282,7 +1338,7 @@ c05 finding F1).")
 
 (defun fnn-extent-ids-of-paths (paths)
   "The registered file ids whose path is one of PATHS."
-  (sb-thread:with-mutex (*fnn-extent-lock*)
+  (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
     (let ((ids nil))
       (maphash (lambda (id path) (when (member path paths :test #'equal) (push id ids)))
                *fnn-extent-paths*)
@@ -1291,7 +1347,7 @@ c05 finding F1).")
 (defun fnn-extent-close (ids)
   "Physical retirement: workers keep descriptors; cache credits release on
 actual eviction, descriptor credits only after successful OS close."
-  (sb-thread:with-mutex (*fnn-extent-lock*)
+  (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
     (let ((closed 0) (keep nil))
       (dolist (id ids)
         ;; the direct arm's reads: one lookup of the holds table (KEYSTONE
@@ -1320,6 +1376,8 @@ actual eviction, descriptor credits only after successful OS close."
                              (when (equal fault "before-close") (fnn-os-fail 5))
                              (fnn-close fd)
                              (when (equal fault "after-close") (fnn-os-fail 5)))
+                           (fnn-extent-page-observation "fd-close file=~d fd=~d" id fd)
+                           (fnn-extent-native-observe :close t id)
                            (incf closed))
                          (unless (eq word :unfunded-offline)
                            (let ((settled (first (fnn-core-page-read-pool 'fn-owner-page-read-close id))))
@@ -1352,12 +1410,12 @@ actual eviction, descriptor credits only after successful OS close."
 
 (defun fnn-extent-open-count ()
   "The descriptors the realizer holds (the natives' observation)."
-  (sb-thread:with-mutex (*fnn-extent-lock*)
+  (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
     (hash-table-count *fnn-extent-fds*)))
 
 (defun fnn-extent-stats-line ()
   "The realizer's counters (the natives' observation): hits, preads,
 refusals."
-  (sb-thread:with-mutex (*fnn-extent-lock*)
+  (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
     (format nil "extent-cache hits=~d misses=~d refusals=~d"
             (first *fnn-extent-stats*) (second *fnn-extent-stats*) (third *fnn-extent-stats*))))

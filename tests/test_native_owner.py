@@ -114,34 +114,60 @@ class NativeOwnerHandlerStructureTests(unittest.TestCase):
                 yield from NativeOwnerHandlerStructureTests._ancestors(child, target, parents + (form,))
 
     BOUNDARIES = ("fnn-owner-gated", "fnn-owner-serialized", "fnn-owner-transit-serialized",
-                  "fnn-owner-serialized-with-control-turn")
+                  "fnn-owner-serialized-with-control-turn", "fnn-section-run",
+                  "fnn-section-run-cleanup", "fnn-section-envelope")
     NIL_BLOCKS = ("loop", "dolist", "dotimes", "do", "do*")
 
+    def _declared_sections(self):
+        sys.path.insert(0, str(ROOT / "tools"))
+        from ledger import head
+        return [str(form[1]) for form in self._forms("host/native/owner.lisp")
+                if head(form) == "def-section"]
+
     def test_every_owner_quantum_runs_inside_the_one_fence_boundary(self):
-        # r71 F1, sweep S017/S019/S020: fnn-owner-gated's body (and its gate
-        # check and cleanup) run inside fnn-owner-shared-action-locked, so the
-        # fence is installed before the mutex is released; fnn-owner-serialized
-        # adds only the stopping refusal (one boundary, not two); an unwind no
-        # condition explains is a fault installed under the mutex (M3).
+        # r71 F1, sweep S017/S019/S020, lane WRAPPER: the one envelope
+        # (fnn-section-envelope, which def-section's entries and the
+        # transitional forms reach through fnn-section-run /
+        # fnn-section-run-cleanup) runs its body, its gate recheck and its
+        # admission inside fnn-owner-shared-action-locked under the owner
+        # mutex, so the fence is installed before the mutex is released; an
+        # unwind no condition explains is a fault (ACL2's fn-fs-unwind)
+        # installed under the mutex before the gate's leave (review M3).
         sys.path.insert(0, str(ROOT / "tools"))
         from ledger import head
         owner = (ROOT / "host/native/owner.lisp").read_text(encoding="utf-8")
         forms = self._forms("host/native/owner.lisp")
-        gated = self._definition(forms, "defmacro", "fnn-owner-gated")
-        paths = list(self._ancestors(gated, "fnn-owner-measured"))
+        envelope = self._definition(forms, "defmacro", "fnn-section-envelope")
+        paths = list(self._ancestors(envelope, "fnn-owner-measured"))
         self.assertEqual(len(paths), 1)
         self.assertIn("fnn-owner-shared-action-locked", [head(p) for p in paths[0]])
         self.assertIn("with-mutex", [head(p)[-10:] for p in paths[0]])
-        start = owner.index("(defmacro fnn-owner-gated")
+        admission = list(self._ancestors(envelope, "admission"))
+        self.assertTrue(admission and all("fnn-owner-shared-action-locked" in [head(p) for p in a]
+                                          for a in admission))
+        start = owner.index("(defmacro fnn-section-envelope")
         text = owner[start:owner.index("\n(def", start + 1)]
-        self.assertLess(text.index("(unless *fnn-boundary-outcome*"),
-                        text.index("(fnn-owner-gate-leave"))
+        self.assertLess(text.index("(fn-fs-unwind"), text.index("(fnn-owner-gate-leave"))
         self.assertIn("(fnn-owner-stop-service-locked ,s +fnn-exit-fault+)", text)
         self.assertIn("(*fnn-section-step* nil)", text)
+        self.assertIn("(fn-fs-section-class-ok ,classes ,c)", text)
+        # The two entries are the envelope's only expansions; the :live one
+        # carries ACL2's stopping refusal, the cleanup one none at all.
+        live = host_function(owner, "fnn-section-run")
+        self.assertIn("(fn-fs-section-admit admits (fnn-owner-service-stopping service))", live)
+        self.assertIn("(fnn-refuse \"owner service is stopping\")", live)
+        cleanup = host_function(owner, "fnn-section-run-cleanup")
+        self.assertNotIn("fnn-refuse", cleanup)
+        self.assertEqual(sum(1 for form in forms for node in self._nodes(form)
+                             if head(node) == "fnn-section-envelope"), 2)
         serialized = host_function(owner, "fnn-owner-serialized")
-        self.assertNotIn("fnn-owner-shared-action-locked", serialized)
-        self.assertIn("(fnn-owner-gated (service class :cid cid)", serialized)
-        self.assertIn("(fnn-refuse \"owner service is stopping\")", serialized)
+        self.assertIn("(fnn-section-run service class cid :live", serialized)
+        self.assertNotIn("fnn-owner-service-stopping", serialized)
+        # def-section emits the entry through those two only.
+        macro = owner[owner.index("(defmacro def-section"):]
+        macro = macro[:macro.index("\n(def", 1)]
+        self.assertIn("(if (eq admits :live) 'fnn-section-run 'fnn-section-run-cleanup)", macro)
+        self.assertIn("(fnn-section-declare ',name ',actors ',classes ',admits)", macro)
         # No non-local exit crosses a boundary: a return-from, return or throw
         # inside a quantum targets a block, loop or catch established inside it.
         escapes = []
@@ -168,6 +194,7 @@ class NativeOwnerHandlerStructureTests(unittest.TestCase):
             for child in form:
                 walk(child, inside, blocks, catches, where)
 
+        self.BOUNDARIES = self.BOUNDARIES + tuple(self._declared_sections())
         for path in sorted((ROOT / "host/native").glob("*.lisp")):
             for form in self._forms("host/native/" + path.name):
                 if head(form) in ("defun", "defmacro"):
@@ -600,10 +627,69 @@ class NativeOwnerTests(unittest.TestCase):
         node.stop(process=process)
         return [first, final, dup_first, dup_final, group, answer, body], process.stderr.since(0)
 
-    def test_unqualified_raw_annotations_stay_on_counterpart(self):
-        # D40's real-owner annotations are withheld pending complete host
-        # guard establishment and preservation. The selector must explicitly
-        # report zero entries; both runs still exercise POST and retrieval.
+    def test_funded_syncer_from_mux_hold_post_and_stop(self):
+        # Actual startup :hold installs the private typed projection. This
+        # image test consumes opaque producer/receipt observations rather
+        # than constructing a ledger or supplying an operation completion.
+        process, port = self.node.start_store_owner(once=False, env={
+            "FN_NATIVE_DISPATCH_COUNTERPART": "1",
+            "FN_NATIVE_OWNER_TEST_PIPELINE_TRACE": "1",
+            "FN_NATIVE_OWNER_TEST_BARRIER_MS": "300",
+        })
+        message_id = b"<funded-syncer-post-stop@example.invalid>"
+        writer = self.connect_owner(port)
+        first, final = writer.post(self.article(message_id))
+        self.assertTrue(first.startswith(b"340 "), first)
+        self.assertTrue(final.startswith(b"240 "), final)
+        self.assertTrue(writer.command(b"QUIT").startswith(b"205 "))
+        self.node.stop(process=process)
+        trace = process.stderr.since(0)
+        self.assertRegex(trace, rb"(?i)custody: install threads=\d+ stack=\d+ word=:installed")
+        issues = list(re.finditer(
+            rb"custody: issue generation=(\d+) token=(\(:resource :owner 2 \d+\)) word=:drawn",
+            trace, re.IGNORECASE))
+        self.assertTrue(issues, trace[-4000:])
+        receipts = list(re.finditer(
+            rb"custody: receipt kind=:(physical|outcome) operation=(\d+) "
+            rb"token=(\(:resource :owner 2 \d+\)) receipt=([^ ]+) word=:(pending|settled)",
+            trace, re.IGNORECASE))
+        for issue in issues:
+            generation, token = issue.groups()
+            own = [row for row in receipts
+                   if row.group(2) == generation and row.group(3).lower() == token.lower()]
+            self.assertEqual([row.group(1).lower() for row in own].count(b"physical"), 1, trace[-4000:])
+            self.assertEqual([row.group(1).lower() for row in own].count(b"outcome"), 1, trace[-4000:])
+            self.assertTrue(all(row.start() > issue.start() for row in own), trace[-4000:])
+            self.assertEqual([row.group(5).lower() for row in own], [b"pending", b"settled"], trace[-4000:])
+            physical = next(row for row in own if row.group(1).lower() == b"physical")
+            outcome = next(row for row in own if row.group(1).lower() == b"outcome")
+            self.assertEqual(physical.group(4).lower(), b":terminal", trace[-4000:])
+            self.assertEqual(outcome.group(4), generation, trace[-4000:])
+        drained = list(re.finditer(
+            rb"custody: drained typed=t retained=nil result=t", trace, re.IGNORECASE))
+        self.assertTrue(drained, trace[-4000:])
+        self.assertGreater(drained[-1].start(), receipts[-1].start(), trace[-4000:])
+        # Clean stop cannot substitute for persisted acceptance: a fresh
+        # owner must retrieve the accepted article from the actual Store.
+        restarted, port = self.node.start_store_owner(once=False, env={
+            "FN_NATIVE_DISPATCH_COUNTERPART": "1"})
+        reader = self.connect_owner(port)
+        answer, received = reader.multiline(b"ARTICLE " + message_id)
+        self.assertTrue(answer.startswith(b"220 "), answer)
+        self.assertIn(b"Message-ID: " + message_id + b"\r\n", received)
+        self.assertTrue(reader.command(b"QUIT").startswith(b"205 "))
+        self.node.stop(process=restarted)
+
+    # The owner entries raw-dispatched over host/owner-served-carried.lisp's
+    # row, under A-OWNER-INVARIANT-CARRIED (lane post-guard-off): their
+    # whole-Store guard is not evaluated per call in a production run.
+    RAW_OWNER_ENTRIES = 7
+
+    def test_raw_owner_entries_answer_as_the_counterpart(self):
+        # The served POST, its duplicate and the read back are the same with
+        # the owner's entries raw-dispatched and with the developer selector
+        # that evaluates their whole guard (the counterpart path); the
+        # selector reports exactly the declared raw entries.
         raw, raw_stderr = self.served_post_transcript(None)
         counterpart, counterpart_stderr = self.served_post_transcript(
             {"FN_NATIVE_DISPATCH_COUNTERPART": "1"})
@@ -617,7 +703,7 @@ class NativeOwnerTests(unittest.TestCase):
         match = re.search(rb"fn-dispatch: counterpart for (\d+) raw-dispatched entries",
                           counterpart_stderr)
         self.assertIsNotNone(match, counterpart_stderr[-2000:])
-        self.assertEqual(int(match.group(1)), 0, counterpart_stderr[-2000:])
+        self.assertEqual(int(match.group(1)), self.RAW_OWNER_ENTRIES, counterpart_stderr[-2000:])
 
     def test_client_disconnect_is_not_a_global_owner_fault(self):
         process, port = self.node.start_store_owner(once=False)

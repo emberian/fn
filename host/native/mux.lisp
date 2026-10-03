@@ -300,6 +300,9 @@ the TLS session, then the socket.  Idempotent."
           (opened-cid (fnn-mux-conn-opened-cid conn))
           (was (fnn-mux-conn-phase conn)))
       (setf (fnn-mux-conn-phase conn) :done)
+      (when (fnn-mux-conn-await conn)
+        (fnn-owner-await-abandon service (or cid opened-cid))
+        (setf (fnn-mux-conn-await conn) nil))
       ;; r71 F7: a page still owed is no longer this connection's to publish.
       (when (fnn-mux-conn-cold conn)
         (ignore-errors (fnn-owner-cold-abandon (first (fnn-mux-conn-cold conn))))
@@ -1471,8 +1474,9 @@ the stop spared, fnn-owner-stop-service-locked), then end every connection."
                                                   :wake-read r :wake-write w)))))
         (setf (fnn-owner-service-mux service) loops)
         (dolist (loop loops)
-          (let ((thread (sb-thread:make-thread (lambda () (fnn-mux-run loop))
-                                               :name "fn owner io")))
+          (let ((thread (sb-thread:make-thread
+                         (fnn-native-observed-thread-thunk (lambda () (fnn-mux-run loop)))
+                         :name "fn owner io")))
             (setf (fnn-mux-loop-thread loop) thread)
             (push thread (fnn-owner-service-workers service))))))))
 
@@ -1583,7 +1587,7 @@ closed and the socket was settled here."
   ;; socket itself, as the stopping branch of fnn-mux-adopt does, and leaves
   ;; the client roster.
   (if (sb-thread:with-mutex ((fnn-mux-loop-lock loop))
-        (unless (fnn-mux-loop-closed loop)
+        (when (eq (fn-fs-inbox-admit (fnn-mux-loop-closed loop)) :admitted)
           (push (%make-fnn-mux-conn :socket socket :implicit-tls implicit-tls
                                     :done done)
                 (fnn-mux-loop-inbox loop))
@@ -1647,15 +1651,18 @@ the run's (exit 1), named on stderr and in the service log."
            (fnn-owner-serialized
             service nil
             (lambda ()
-              (fnn-owner-core 'fn-owner-connection-budget
+              (let* ((threads (fnn-mux-thread-count service))
+                     (stack (fnn-mux-thread-stack-octets))
+                     (word (fnn-owner-core 'fn-owner-connection-budget
                               (fnn-heap-machine-octets)
                               (sb-ext:dynamic-space-size)
                               (fnn-heap-core-octets)
-                              (fnn-mux-thread-count service)
-                              (fnn-mux-thread-stack-octets)
+                              threads stack
                               +fnn-gc-nursery-octets+
                               (fnn-store-config store)
-                              (and tls-context t)))))
+                              (and tls-context t))))
+                (when (eq word :hold) (fnn-owner-syncer-install service threads stack))
+                word))))
          (line (fnn-global 'fn-owner-connection-budget-line)))
     (unless (and (member decision '(:hold :refused)) (fnn-octet-list-p line))
       (fnn-fault "owner returned a malformed connection budget"))

@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "host/bp-release-owner-host.lisp",
+ "id": "PGO-OWED-BP-RELEASE-OWNER-HOST",
+ "notes": [],
+ "owner": "post-guard-off",
+ "severity": "medium",
+ "slice": "carrier",
+ "source": "post-guard-off",
+ "state": "open",
+ "title": "A-OWNER-INVARIANT-CARRIED owes: 10 state writer(s) defined in host/bp-release-owner-host.lisp have no preservation theorem of fn-owner-retain-statep; each is listed in host/owner-served-carried.lisp :incomplete. Prove (def-owner-writer / the carrier move) and move it to :transitions: fn-owner-workflow-apply-record fn-owner-workflow-forward-pinnedp fn-owner-workflow-install-replay fn-owner-workflow-pending-waivers fn-owner-workflow-preflight-record fn-owner-workflow-reset fn-owner-workflow-store-release fn-owner-workflow-store-undertake fn-owner-workflow-store-waive fn-owner-workflow-sync-store-node",
+ "updated": "2026-10-03T04:15:32Z"
+}

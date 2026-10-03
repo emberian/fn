@@ -2052,13 +2052,15 @@
         "A: store with STARTTLS, `[auth] required = true, protected_only = true`, `principal set-password nodeB`; two articles posted with `operator post`. B: `peer add A a.pull.example.invalid 127.0.0.1 PORT fn.* fn.* source-address 127.0.0.9 PROFILE false false starttls localhost A-CERT`, `peer pull A 2`, PROFILE = FNAUTH1 nodeB and its password; a recording proxy in front of A.",
         "The same with PROFILE naming a login A does not hold.",
         "The same with no security arguments (a clear transport) and the permission false.",
-        "Packet 5's campaign over the TLS transport: FN_PULL_TEST_KILL=CUT:N at before-write, after-write and after-fsync of appends 1 and 2, restart without the fault."
+        "Packet 5's campaign over the TLS transport: FN_PULL_TEST_KILL=CUT:N at before-write, after-write and after-fsync of appends 1 and 2, restart without the fault.",
+        "The TLS pull with its local profile changed to mode 0644 before B starts."
       ],
       "expected": [
         "Both articles stored once at B; B logs `pull peer=A round=done cursor=advanced transport=tls`; the proxy's first plaintext command is STARTTLS and it sees no AUTHINFO, DATE, NEWNEWS or ARTICLE in the clear.",
         "B logs `round=failed cursor=held at=preamble` for every round, stores nothing, and its FNPL journal stays at the first-instant record.",
         "B logs `round=failed cursor=held refused=clear-credential` for every round and the proxy accepts no connection.",
-        "At every cut every article is stored exactly once at B and a later round logs `cursor=advanced transport=tls`."
+        "At every cut every article is stored exactly once at B and a later round logs `cursor=advanced transport=tls`.",
+        "B names the ACL2 credential outcome, holds its cursor with refused=profile, stays live and the recording proxy accepts no connection; native credential case requires matching new source/image evidence."
       ],
       "evidence": [
         "planning/evidence/peering-tls-pull-2026-09-26.md",
@@ -2071,7 +2073,8 @@
           "test_tls_pull_as_its_own_principal",
           "test_wrong_principal_is_refused_by_the_serving_node",
           "test_clear_credential_is_refused_before_any_connection",
-          "test_cursor_publication_cuts_over_tls"
+          "test_cursor_publication_cuts_over_tls",
+          "test_unreadable_credential_refuses_before_any_connection"
         ],
         "native": true,
         "log": "planning/evidence/peering-tls-pull-2026-09-26/native-peer-pull.log",
@@ -8220,6 +8223,231 @@
         "planning/evidence/payload-window-profile-width-2026-09-30.md"
       ],
       "execution_scope": "Protected source replay only; the codec/runtime/controller/host composition remains open."
+    },
+    {
+      "id": "SCN-1082",
+      "title": "Concurrent direct read retains holder custody through cancellation retirement late return and descriptor reuse",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-002"
+      ],
+      "steps": [
+        "Issue a real direct read on incarnation1/fd9 and assert all admit outputs including issued/holder effects.",
+        "Begin physical read, cancel, retire/release its generation; attempt close, descriptor reuse and premature settle.",
+        "Return physical success or error, settle once with the same token, close, then reuse fd/CID/worker for incarnation2.",
+        "Replay the original completion/token and check every reached prefix satisfies the full concurrent invariant."
+      ],
+      "expected": [
+        "Cancellation and logical generation release preserve physical read custody; close and fd reuse are refused until terminal settlement.",
+        "A physical return still needs owner settlement; late error remains a fault and duplicate/old receipts preserve the later row/hold.",
+        "These finite executable witnesses do not establish the all-schedules theorem or native realization."
+      ],
+      "implementation": {
+        "test": "tests/acl2/host-model-tests.lisp"
+      },
+      "evidence": [
+        "books/host-model-machine.lisp",
+        "tests/acl2/host-model-tests.lisp",
+        "planning/evidence/manifests/certify-20261003T062320Z-3305.json",
+        "planning/evidence/manifests/certify-20261003T080416Z-85944.json"
+      ],
+      "execution_scope": "ACL2 actual direct host-called subjects within concurrent reference schedules; native bridge and funded-pool extension remain owed."
+    },
+    {
+      "id": "SCN-1083",
+      "title": "Native mixed posting reading maintenance and exact reopen",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "OBJ-002",
+        "OBJ-005",
+        "STO-002",
+        "HST-002",
+        "NNT-005"
+      ],
+      "steps": [
+        "Initialize two isolated scratch stores on the same image and explicit profile; seed identical articles.",
+        "Release concurrent POST writers and warm, fresh TCP and slow ARTICLE readers alongside live checkpoint and reclaim requests.",
+        "Observe actor progress, every client reply class, latency samples and owner/store resource peaks; retain the complete realized event trace.",
+        "Check every acknowledged source and unique local number, perform quiet maintenance, reopen, and compare exact served bytes and Message-ID to number mappings."
+      ],
+      "expected": [
+        "Accepted, refused, uncertain and fault observations remain separate.",
+        "Every acknowledged article and its local number survives maintenance and reopen unchanged.",
+        "The experiment reports finite observed progress and resource samples without inferring bounds or proof.",
+        "Paired runs share image/profile/seed; replay preserves requests/barriers while actual concurrent interleaving remains recorded."
+      ],
+      "evidence": [
+        "tools/native_mixed_workload.py",
+        "planning/empirical-workloads.md",
+        "tests/test_native_mixed_history.py",
+        "planning/evidence/native-mixed-45e05c7f-2026-10-03/report.md"
+      ],
+      "execution_scope": "Historical real-image paired smoke45e05c7f: both48 acknowledged articles preserve exact served hashes and local numbers after checkpoint/restart, all36 mixed reads match and24 mixed posts accept. Quiet live reclaim refuses by name deferred-credit in both, so maintenance progress remains incomplete. No current-image qualification, deployment, cold filesystem cache or socket-backpressure claim."
+    },
+    {
+      "id": "SCN-1084",
+      "title": "NEWNEWS sparse candidate progress and retained final output under independent budgets",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-023"
+      ],
+      "steps": [
+        "Run tests/acl2/def-cursor-tests.lisp: one candidate emits more bytes than its output quantum; drain with zero visits and preserve context; suspend with opaque operation/resource custody.",
+        "Run tests/acl2/newnews-metadata-cursor-tests.lisp: unmatched first article advances with empty output, matching final article retains its output after scan completion; compare emitted prefix plus remaining with original response.",
+        "Run actual native NEWNEWS wildcard workload with more candidates than shared cache slots; compare complete Message-ID reply while a second connection remains responsive.",
+        "Run newnews-stream-cursor-tests and actual served-plan-newnews-tests: indexed line wider than byte quantum drains without candidate visits, sparse selection retains final renderer, tiny/large plan outputs equal."
+      ],
+      "expected": [
+        "Separate candidate calls and emitted bytes obey their declared budgets; sparse misses do not terminate the scan.",
+        "Buffered final output keeps the continuation live until drained; no repeated candidate and no omitted terminator.",
+        "Library tests do not establish initialization/working-allocation bounds, custody producer or completed-view capture; native image matching this source remains owed."
+      ],
+      "proofs": [
+        "PRF-1256"
+      ],
+      "evidence": [
+        "tests/acl2/def-cursor-tests.lisp",
+        "tests/acl2/newnews-metadata-cursor-tests.lisp",
+        "tests/test_native_newnews_wildmat.py",
+        "tests/acl2/served-plan-newnews-tests.lisp",
+        "tests/acl2/newnews-stream-cursor-tests.lisp"
+      ]
+    },
+    {
+      "id": "SCN-1085",
+      "title": "Sparse native NEWNEWS with tombstones competing work and reopen",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "NNT-008",
+        "STO-002",
+        "STO-017"
+      ],
+      "steps": [
+        "Accept 24 native articles with literal sparse matching memberships across more than eight rows; expire two older matches using actual retention and offline reclaim.",
+        "Check the complete NEWNEWS block while other clients read retained articles, publish nonmatching articles and request live reclamation.",
+        "Restart the scratch node and verify exact discovery results, all retained source content and both tombstones; archive the complete realized client/maintenance trace."
+      ],
+      "expected": [
+        "Every successful complete discovery block contains exactly the intended available matching Message-IDs, with no duplicate, omitted or tombstoned ID.",
+        "Competing clients and the discovery connection make finite observed progress; accepted, refused, uncertain and fault remain separate.",
+        "Retained acknowledged content and tombstones persist across restart; per-command payload-I/O attribution remains unavailable until a real observer exists."
+      ],
+      "evidence": [
+        "tools/native_sparse_newnews.py",
+        "planning/empirical-workloads.md",
+        "planning/evidence/native-sparse-newnews-45e05c7f-2026-10-03/report.md"
+      ],
+      "execution_scope": "Historical image 45e05c7f finite command correctness passed: 10 exact blocks of four remaining matches across 24 seed rows including two actual tombstones, eight competing ARTICLEs and four POSTs, 26 retained articles and two tombstones correct on reopen. Live reclaim credit-refused; payload-I/O attribution, new bounded cursor and current-image qualification remain open."
+    },
+    {
+      "id": "SCN-1087",
+      "title": "Committer escape preserves actual syncer outcome and independently settles physical custody",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-046",
+        "HST-033"
+      ],
+      "steps": [
+        "Launch the actual pipeline syncer, then escape its parent observation through a condition or raw throw; exercise done, uncertain and fault results with physical return before or after unwind.",
+        "Observe physical termination and consume the retained actual fn-oqw outcome once; inject a torn normal consumption and forbid retry.",
+        "Run the actual committer starter/loop with a raw ACL2 pipeline throw."
+      ],
+      "expected": [
+        "A live child retains its grant; both receipts remove the grant and uncertainty alone invokes its recovery fence.",
+        "A torn outcome keeps custody visible despite physical termination, and is attempted once.",
+        "The committer actor records fault and stops service; it does not leave active service without a committer."
+      ],
+      "evidence": [
+        "tests/test_native_syncer_pipeline_escape_raw.sh",
+        "tests/native_syncer_pipeline_escape_raw.lisp",
+        "tests/test_native_committer_actor_raw.sh",
+        "tests/native_committer_actor_raw.lisp",
+        "tests/test_native_syncer_typed_raw.sh",
+        "tests/native_syncer_typed_raw.lisp"
+      ],
+      "execution_scope": "Deployed native bodies and actual fn-oqw/actor decisions under SBCL, plus six actual typed-ledger abandonment schedules through validated creator allocation and semantic counterparts in scoped ACL2. I/O/fence are recording boundaries. No new theorem or saved-image/shutdown qualification."
+    },
+    {
+      "id": "SCN-1088",
+      "title": "Logical timed waits and abandoned reply routes preserve completion lifetime",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-031",
+        "HST-046"
+      ],
+      "steps": [
+        "Run the actual logical await with a producer delayed past its first one-second SBCL condition wait.",
+        "Expire another caller before delivery, then deliver its real eventual completion; preserve the independent physical grant.",
+        "Exercise an already-selected callback, a raw nonlocal wait exit, and the actual mux terminal close consumer."
+      ],
+      "expected": [
+        "Each predicate and subsequent wait owns its mutex; timed wake does not become service fault.",
+        "Abandoned delivery consumes its marker instead of accumulating an unreachable DONE result or retaining the caller callback.",
+        "An already-selected callback creates no orphan marker; mux close discards its eventual reply route. No path reports physical termination or settles the operation merely because the caller left."
+      ],
+      "evidence": [
+        "tests/test_native_await_lifetime_raw.sh",
+        "tests/native_await_lifetime_raw.lisp"
+      ],
+      "execution_scope": "Actual deployed native wait/mailbox/mux-finish bodies with real SBCL threads, mutexes and condition timeout; recording socket/owner cleanup boundaries. Saved-image/runtime qualification remains Integration work."
+    },
+    {
+      "id": "SCN-1086",
+      "title": "Actual reclaim prediction returns intern rows and arena effect only under its no-bad premise",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-017"
+      ],
+      "steps": [
+        "Build retained and record rows over a nonempty arena; execute actual prediction and sealing and compare the complete intern result.",
+        "Insert :bad after a valid record; affirm the omitted no-bad premise fails and complete result/effect equality fails."
+      ],
+      "expected": [
+        "The full result agrees on reachable valid rows.",
+        "Partial interning before refusal distinguishes the no-bad omission; an immediate :bad alone is not a counterexample.",
+        "These teeth do not establish native reclamation progress or bounded memory funding."
+      ],
+      "implementation": {
+        "test": "tests/acl2/owner-reclaim-seal-tests.lisp"
+      },
+      "evidence": [
+        "host/owner-host.lisp",
+        "tests/acl2/owner-reclaim-seal-tests.lisp"
+      ],
+      "execution_scope": "Literal ACL2 boundary subjects; host theorem qualified by actual LD, new teeth matching qualification pending."
+    },
+    {
+      "id": "SCN-1089",
+      "title": "Qualified mux hold funds syncer before POST and drains both receipts before stop",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-046"
+      ],
+      "steps": [
+        "Start a real store owner through mux startup :hold with semantic counterpart dispatch and custody diagnostics enabled.",
+        "POST an article, consume its durable acceptance, then QUIT and stop the owner.",
+        "Observe one issued draw and distinct terminal physical and matching operation receipts; restart and retrieve the accepted article."
+      ],
+      "expected": [
+        "Startup installs the qualified worker projection before issue; each token remains pending until both independent receipts and settles once.",
+        "Stop succeeds only with typed custody drained and no retained native grant; restart returns the accepted article."
+      ],
+      "implementation": {
+        "test": "tests/test_native_owner.py:NativeOwnerTests.test_funded_syncer_from_mux_hold_post_and_stop"
+      },
+      "evidence": [
+        "tests/test_native_owner.py",
+        "tests/native_syncer_typed_raw.lisp"
+      ],
+      "execution_scope": "Matching saved-image selector prepared; image execution pending Integration. Local actual-method/raw schedules pass, including diagnostic failure without custody mutation."
     }
   ]
 }

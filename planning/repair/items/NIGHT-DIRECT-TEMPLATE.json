@@ -1,0 +1,107 @@
+{
+ "budget": 150,
+ "category": "checker-correctness",
+ "expect-failure": "tests.test_raw_dispatch_rule.DirectMacroHeads.test_actual_direct_declaration_is_used_by_findings",
+ "failure-message": "False is not true : declared direct macro call must follow its actual interface",
+ "file": "tools/raw_dispatch_rule.py",
+ "harness": "tests/test_raw_dispatch_rule.py",
+ "id": "NIGHT-DIRECT-TEMPLATE",
+ "notes": [
+  "10-03 02:31 claimed: scope=['tools/raw_dispatch_rule.py', 'tests/test_raw_dispatch_rule.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_raw_dispatch_rule.DirectMacroHeads.test_explicit_direct_entry_permits_only_literal_emitted_call_head",
+  "10-03 02:33 claimed: scope=['tools/raw_dispatch_rule.py', 'tests/test_raw_dispatch_rule.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_raw_dispatch_rule.DirectMacroHeads.test_actual_direct_declaration_is_used_by_findings"
+ ],
+ "owner": "codex-sol-tools",
+ "scope": [
+  "tools/raw_dispatch_rule.py",
+  "tests/test_raw_dispatch_rule.py",
+  "LANEDUMP.md",
+  "planning/evidence-index.tsv"
+ ],
+ "severity": "medium",
+ "source": "runtime-convergence",
+ "state": "in-progress",
+ "test": "python3 -m unittest tests.test_raw_dispatch_rule.DirectMacroHeads.test_actual_direct_declaration_is_used_by_findings",
+ "title": "Macro template direct calls disagree with explicit interface declarations",
+ "updated": "2026-10-03T06:33:18Z",
+ "verify": {
+  "base": "92d6be6acfa607541a010115f076c8abc3e06a7e",
+  "base_observation": {
+   "result": {
+    "assertions": [
+     {
+      "message": "False is not true : declared direct macro call must follow its actual interface",
+      "test": "tests.test_raw_dispatch_rule.DirectMacroHeads.test_actual_direct_declaration_is_used_by_findings",
+      "type": "AssertionError"
+     }
+    ],
+    "errors": [],
+    "executed": [
+     "tests.test_raw_dispatch_rule.DirectMacroHeads.test_actual_direct_declaration_is_used_by_findings"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_raw_dispatch_rule.py": "b8f32e467e79bf6c2b6affbfb9616f60744164214b59431e24f6ac8614ab8dec"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 1,
+   "revision": "92d6be6acfa607541a010115f076c8abc3e06a7e",
+   "stderr": "test_actual_direct_declaration_is_used_by_findings (tests.test_raw_dispatch_rule.DirectMacroHeads.test_actual_direct_declaration_is_used_by_findings) ... FAIL\n\n======================================================================\nFAIL: test_actual_direct_declaration_is_used_by_findings (tests.test_raw_dispatch_rule.DirectMacroHeads.test_actual_direct_declaration_is_used_by_findings)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-ce90gro0/wt/tests/test_raw_dispatch_rule.py\", line 225, in test_actual_direct_declaration_is_used_by_findings\n    self.assertTrue(problems == [],\n    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^\n                    \"declared direct macro call must follow its actual interface\")\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: False is not true : declared direct macro call must follow its actual interface\n\n----------------------------------------------------------------------\nRan 1 test in 0.009s\n\nFAILED (failures=1)\n",
+   "stdout": ""
+  },
+  "changed_files": [
+   "planning/repair/items/NIGHT-DIRECT-TEMPLATE.json",
+   "tests/test_raw_dispatch_rule.py",
+   "tools/raw_dispatch_rule.py"
+  ],
+  "diff_lines": 64,
+  "evidence": {
+   "bytes": 3952,
+   "path": "planning/evidence/repair/NIGHT-DIRECT-TEMPLATE-77b830fbfc204a1fbe6452329a2ab12c.json",
+   "sha256": "3fa7f78e8576c5a40cc6e4c97283ff42393a49e0dee7214fc8620145e2d70440"
+  },
+  "evidence_outcome": "archived",
+  "expected_failure": {
+   "message": "False is not true : declared direct macro call must follow its actual interface",
+   "test": "tests.test_raw_dispatch_rule.DirectMacroHeads.test_actual_direct_declaration_is_used_by_findings"
+  },
+  "green_at_head": true,
+  "harness": {
+   "tests/test_raw_dispatch_rule.py": "b8f32e467e79bf6c2b6affbfb9616f60744164214b59431e24f6ac8614ab8dec"
+  },
+  "head": "990838c97acd5ecb3da2929b0591c33d53b4713e",
+  "head_observation": {
+   "result": {
+    "assertions": [],
+    "errors": [],
+    "executed": [
+     "tests.test_raw_dispatch_rule.DirectMacroHeads.test_actual_direct_declaration_is_used_by_findings"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_raw_dispatch_rule.py": "b8f32e467e79bf6c2b6affbfb9616f60744164214b59431e24f6ac8614ab8dec"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 0,
+   "revision": "990838c97acd5ecb3da2929b0591c33d53b4713e",
+   "stderr": "test_actual_direct_declaration_is_used_by_findings (tests.test_raw_dispatch_rule.DirectMacroHeads.test_actual_direct_declaration_is_used_by_findings) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.006s\n\nOK\n",
+   "stdout": ""
+  },
+  "interpreter": "/opt/homebrew/bin/python3",
+  "ok": true,
+  "problems": [],
+  "red_at_base": true,
+  "runner_sha256": "ffc7d9542fbfe2d4e23f03f31dd170f32ef1a8529d41ebbccc36f18c52946106",
+  "same_tests": true,
+  "semantic_ok": true,
+  "test": "python3 -m unittest tests.test_raw_dispatch_rule.DirectMacroHeads.test_actual_direct_declaration_is_used_by_findings",
+  "timeout": 1800.0
+ }
+}

@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "host/reader-host.lisp",
+ "id": "PGO-OWED-READER-HOST",
+ "notes": [],
+ "owner": "post-guard-off",
+ "severity": "medium",
+ "slice": "carrier",
+ "source": "post-guard-off",
+ "state": "open",
+ "title": "A-OWNER-INVARIANT-CARRIED owes: 7 state writer(s) defined in host/reader-host.lisp have no preservation theorem of fn-owner-retain-statep; each is listed in host/owner-served-carried.lisp :incomplete. Prove (def-owner-writer / the carrier move) and move it to :transitions: fn-reader-chunk fn-reader-observe-clock fn-reader-outcome fn-reader-reset fn-reader-set-posting fn-reader-use-seed fn-reader-use-store",
+ "updated": "2026-10-03T04:15:33Z"
+}

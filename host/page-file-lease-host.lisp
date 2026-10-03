@@ -44,7 +44,12 @@
          (list (mv-nth 0 (fn-prf-release (fn-owner-page-read-ledger fn-page-read-pool) token))
                (fn-owner-page-read-keep-ledger
                 (mv-nth 1 (fn-prf-release (fn-owner-page-read-ledger fn-page-read-pool) token))
-                fn-page-read-pool)))))
+                fn-page-read-pool))))
+  :hints (("Goal" :in-theory '(fn-owner-page-file-unpin mv-list mv-nth nth
+                               (:executable-counterpart binary-+)
+                               (:executable-counterpart zp))
+           :expand ((:free (x) (mv-nth 1 x))
+                    (:free (x) (nth 1 x))))))
 
 ; The caller supplies only observed file base and an immutable core request.
 ; A separate discovery lease owns the raw page while the auth cursor borrows it.
@@ -71,4 +76,9 @@
              (list (mv-nth 0 (fn-prf-acquire ledger file demand))
                    (mv-nth 1 (fn-prf-acquire ledger file demand))
                    (fn-owner-page-read-keep-ledger
-                    (mv-nth 2 (fn-prf-acquire ledger file demand)) fn-page-read-pool)))))))
+                    (mv-nth 2 (fn-prf-acquire ledger file demand)) fn-page-read-pool))))))
+  :hints (("Goal" :in-theory '(fn-owner-page-file-pin mv-list mv-nth nth
+                               (:executable-counterpart binary-+)
+                               (:executable-counterpart zp))
+           :expand ((:free (x) (mv-nth 1 x)) (:free (x) (mv-nth 2 x))
+                    (:free (x) (nth 1 x)) (:free (x) (nth 2 x))))))

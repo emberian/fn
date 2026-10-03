@@ -9,6 +9,7 @@
 ;;; reply codes.
 
 (require :sb-bsd-sockets)
+(require :sb-posix)
 
 (defpackage "ACL2" (:use "CL"))
 (in-package "ACL2")
@@ -28,6 +29,10 @@
 (defparameter *test-flushes* 0)
 (defparameter *test-sends* nil)
 (defparameter *test-ticks* 0)
+(defparameter *test-commit-signals* nil)
+(defun fnn-owner-signal-commit (service)
+  ;; Record this native wake effect; the adapter has no real owner condition.
+  (push service *test-commit-signals*))
 
 (defun fnn-fault (control &rest args)
   (error (apply #'format nil control args)))
@@ -130,6 +135,20 @@
 (defun fnn-tls-send-all (&rest ignored) (declare (ignore ignored)) nil)
 (defun fnn-tls-read (&rest ignored) (declare (ignore ignored)) :timeout)
 (defun fnn-developer-selector (&rest ignored) (declare (ignore ignored)) nil)
+
+;;; Load the actual declaration generator before the whole feed module. This
+;;; sequencing fixture never starts an actor; physical lifecycle schedules
+;;; are exercised separately by native_feed_actor_raw.lisp, not replaced here.
+(defun load-deployed-forms (path wanted)
+  (let ((missing (copy-list wanted)))
+    (with-open-file (stream path)
+      (loop for form = (read stream nil :eof) until (eq form :eof)
+            when (and (consp form)
+                      (member (list (car form) (cadr form)) wanted :test #'equal))
+              do (eval form)
+                 (setf missing (remove (list (car form) (cadr form)) missing :test #'equal))))
+    (when missing (error "deployed forms missing: ~s" missing))))
+(load-deployed-forms "host/native/owner.lisp" '((defmacro def-actor)))
 
 ;;; Only read here; worker/lifecycle functions are not entered until the final
 ;;; no-offer-before-ready check below.
@@ -281,6 +300,8 @@
                (lambda (socket) (push socket closes) nil))
          (fnn-feed-runtime-put :stop-test runtime)
          (fnn-feed-service-wake :stop-test)
+         (unless (equal *test-commit-signals* (list :stop-test))
+           (error "stop hook did not wake the idle feed worker"))
          (unless (and (equal shutdowns '(:stop-socket))
                       (eq (fnn-feed-link-socket link) :stop-socket)
                       (null closes))

@@ -24,6 +24,26 @@
 ; brings into the image world (decision-keystones-5; host_check --books).
 (include-book "../books/bp-handoff-report")
 (include-book "../books/tcpcl-delivery-invariants")
+(include-book "../books/resource-syncer")
+
+; A private owner syncer ledger is installed only after the parent's real
+; startup :hold.  This is thread resident/worker custody, not full resource
+; admission accounting; unresolved costs are explicit in the operation row.
+(definterface create-fn-resource-ledger :class :common-lisp-compliant
+  :raw-guarded (0 nil (fn-resource-ledger)))
+(definterface fn-ros-install-syncer :class :common-lisp-compliant)
+(definterface fn-ros-issue
+  :class :common-lisp-compliant
+  :operation (:stage :projection :funding fn-ros-install-syncer
+              :tariff fn-ros-worker-vector :draw fn-rl-draw
+              :principal :owner :slot 2
+              :physical fn-ros-physical :outcome fn-ros-outcome
+              :retention :physical-and-operation
+              :coverage (:resident :workers)
+              :unaccounted (fn-rl-wfp fn-rl-draw mv-nth)))
+(definterface fn-ros-physical :class :common-lisp-compliant)
+(definterface fn-ros-outcome :class :common-lisp-compliant)
+(definterface fn-ros-drainedp :class :common-lisp-compliant)
 
 ; -----------------------------------------------------------------------------
 ; The extraction roots: the functions the extracted served program's driver
@@ -174,7 +194,11 @@
 (definterface fn-owner-control-submit
   :class :common-lisp-compliant
   :kinds ((msgid-octets fn-cbor-octet-listp) (group-octets fn-octet-list-listp))
-  :exempt ((payload "the received article's buffer (host/native/hybrid-control.lisp)")))
+  :exempt ((payload "the received article's buffer (host/native/hybrid-control.lisp)"))
+  ;; RAW: its guard walks the whole Store (fn-sn-statep); raw dispatch over
+  ;; host/owner-served-carried.lisp's row, under A-OWNER-INVARIANT-CARRIED
+  ;; (specs/failures.md: the writers that row owes are unproved).
+  :raw-with (:carried fn-owner-served-carried :assuming A-OWNER-INVARIANT-CARRIED))
 
 
 (definterface fn-native-health-host-exit
@@ -269,6 +293,66 @@
   :keystones (fn-fs-stop-exit-fence-is-never-masked fn-fs-stop-exit-escalate-is-monotone
               fn-fs-stop-exit-ok-is-the-bottom)
   :direct "runs under the roster mutex inside the fence (fnn-owner-stop-service-locked), which must not fail")
+;; The declared owner sections (lane WRAPPER: def-section, host/native/
+;; owner.lisp): ACL2 accepts a declaration at load and decides each entry's
+;; class, admission and unwind inside the one envelope, called directly (the
+;; envelope's gate and fence paths run in handlers).
+(definterface fn-fs-section-declp
+  :class :common-lisp-compliant
+  :keystones (fn-fs-section-declp-refuses-an-unlisted-cleanup-purpose)
+  :direct "runs at load in fnn-section-declare, before fnn-call's dispatcher serves")
+(definterface fn-fs-section-class-ok
+  :class :common-lisp-compliant
+  :keystones (fn-fs-section-class-ok-only-for-a-declared-class)
+  :direct "runs inside the envelope's gate handler (fnn-section-envelope), where a dispatcher's own fault would recurse")
+(definterface fn-fs-section-admit
+  :class :common-lisp-compliant
+  :keystones (fn-fs-a-live-section-is-refused-once-stopping fn-fs-section-admit-runs-before-the-stop)
+  :direct "runs under the owner mutex inside the fence boundary (fnn-section-run)")
+(definterface fn-fs-unwind
+  :class :common-lisp-compliant
+  :keystones (fn-fs-unwind-faults-an-unexplained-exit)
+  :direct "runs in the envelope's unwind under the owner mutex, which must not fail")
+
+;; Physical lifecycle: these guard-t decisions run in the boundary itself.
+(definterface fn-fs-actor-exit-kind
+  :class :common-lisp-compliant
+  :keystones (fn-fs-actor-early-exit-survives-spawn-publication)
+  :direct "fnn-owner-actor-run classifies its final unwind without recursing through dispatcher faults")
+(definterface fn-fs-actor-step
+  :class :common-lisp-compliant
+  :keystones (fn-fs-actor-only-physical-end-or-failed-spawn-deregisters
+              fn-fs-actor-failed-join-retains-custody)
+  :direct "native actor start/run/join advances the guard-t physical lifecycle while holding roster exclusion")
+(definterface fn-fs-actor-join-action
+  :class :common-lisp-compliant
+  :keystones (fn-fs-actor-failed-join-retains-custody)
+  :direct "fnn-owner-actor-join classifies physical termination separately from fault escalation")
+(definterface fn-fs-actor-receipt
+  :class :common-lisp-compliant
+  :keystones (fn-fs-actor-failed-join-produces-no-receipt
+              fn-fs-actor-receipt-carries-the-recorded-exit)
+  :direct "fnn-owner-actor-join emits only the lifecycle receipt after physical termination")
+(definterface fn-fs-inbox-admit
+  :class :common-lisp-compliant
+  :direct "fnn-mux-adopt-place decides admission under the same inbox lock as closure")
+
+;; Private committer control: immutable, guard-t values off the owner section.
+(definterface fn-cmt-init
+  :class :common-lisp-compliant
+  :keystones (fn-cmt-init-is-valid)
+  :direct "fnn-owner-committer-loop creates its private immutable control state")
+(definterface fn-cmt-step
+  :class :common-lisp-compliant
+  :keystones (fn-cmt-step-state-is-valid fn-cmt-pipeline-requires-its-captured-passes
+              fn-cmt-wrong-snapshot-ticket-faults)
+  :direct "fnn-owner-committer-loop interprets private actor actions; no shared live state or protected stobj")
+(definterface fn-cmt-pass-target
+  :class :common-lisp-compliant
+  :direct "fnn-owner-loops-snapshot captures each mux pass target under commit exclusion")
+(definterface fn-cmt-pass-ready
+  :class :common-lisp-compliant
+  :direct "fnn-owner-loops-passed-p observes progress against the retained snapshot")
 
 ; ======================================================================; Every other entry the raw host dispatches through fnn-call, by subsystem
 ; (tools/interface_emit.py SUBSYSTEMS).  Class and kinds are the image
@@ -1320,6 +1404,9 @@
 (definterface fn-ores-feedpub-word
   :class ::common-lisp-compliant)
 
+(definterface fn-ores-submission-taken-p
+  :class ::common-lisp-compliant)
+
 (definterface fn-ores-taken-groups
   :class ::common-lisp-compliant)
 
@@ -1362,15 +1449,18 @@
 
 (definterface fn-oqw-step
   :class :common-lisp-compliant
-  :keystones (fn-oqw-batch-effect-order fn-oqw-a-failed-effect-ends-the-job))
+  ;; Batch order is a theorem of the START/TRACE/FINAL composition above;
+  ;; this entry's literal host-called subject is the individual STEP.
+  :keystones (fn-oqw-a-failed-effect-ends-the-job))
 
 (definterface fn-oqw-receipt
   :class :common-lisp-compliant
   :keystones (fn-oqw-receipt-outcomes-are-distinct))
 
+;; RECEIPT's distinct-outcomes theorem names RECEIPT, not this projection.
+;; The projection's separate boundary claim remains PRF-393/1255 debt.
 (definterface fn-oqw-outcome-of-final
-  :class :common-lisp-compliant
-  :keystones (fn-oqw-receipt-outcomes-are-distinct))
+  :class :common-lisp-compliant)
 
 
 (definterface fn-own-intent-refusal-word
@@ -1440,8 +1530,9 @@
 
 ; host/native/owner.lisp asks it before the POST's seal (lane arena-forget).
 (definterface fn-owner-cat-may-seal
-  :class :common-lisp-compliant
-  :keystones (fn-cat-may-seal-is-the-prepare-gate))
+  :class :common-lisp-compliant)
+; Its named host wrapper equality is -by-definition. The old Boolean gate
+; restatement is not a prepare-transition keystone; that relation remains owed.
 
 (definterface fn-owner-catchup-plans
   :class :common-lisp-compliant)
@@ -1649,9 +1740,21 @@
 
 (definterface fn-owner-io
   :class :common-lisp-compliant
-  ;; D40 proposal withheld: model preservation alone does not establish
-  ;; the complete host-called guard. Retain executable-counterpart dispatch.
-)
+  ;; RAW: its guard walks the whole Store (fn-sn-statep); raw dispatch over
+  ;; host/owner-served-carried.lisp's row, under A-OWNER-INVARIANT-CARRIED
+  ;; (specs/failures.md: the writers that row owes are unproved).
+  :raw-with (:carried fn-owner-served-carried :assuming A-OWNER-INVARIANT-CARRIED))
+
+;; The POST's take (host/native/owner.lisp fnn-owner-take).  Undeclared until
+;; lane post-guard-off: the raw host reached it through fnn-owner-result,
+;; which the host reading does not see, so it now dispatches it through
+;; fnn-owner-core and checks the result's recognizer itself.
+(definterface fn-owner-take
+  :class :common-lisp-compliant
+  ;; RAW: its guard walks the whole Store (fn-sn-statep); raw dispatch over
+  ;; host/owner-served-carried.lisp's row, under A-OWNER-INVARIANT-CARRIED
+  ;; (specs/failures.md: the writers that row owes are unproved).
+  :raw-with (:carried fn-owner-served-carried :assuming A-OWNER-INVARIANT-CARRIED))
 
 (definterface fn-owner-key-statement-event
   :class ::program)
@@ -1763,22 +1866,32 @@
 
 (definterface fn-owner-prepare-consumer
   :class :common-lisp-compliant
-  ;; D40 proposal withheld: model preservation alone does not establish
-  ;; the complete host-called guard. Retain executable-counterpart dispatch.
-)
+  ;; RAW: its guard walks the whole Store (fn-sn-statep); raw dispatch over
+  ;; host/owner-served-carried.lisp's row, under A-OWNER-INVARIANT-CARRIED
+  ;; (specs/failures.md: the writers that row owes are unproved).
+  :raw-with (:carried fn-owner-served-carried :assuming A-OWNER-INVARIANT-CARRIED))
 
 (definterface fn-owner-prepare-identity
-  :class :common-lisp-compliant)
+  :class :common-lisp-compliant
+  ;; RAW: its guard walks the whole Store (fn-sn-statep); raw dispatch over
+  ;; host/owner-served-carried.lisp's row, under A-OWNER-INVARIANT-CARRIED
+  ;; (specs/failures.md: the writers that row owes are unproved).
+  :raw-with (:carried fn-owner-served-carried :assuming A-OWNER-INVARIANT-CARRIED))
 
 (definterface fn-owner-prepare-retention
   :class :common-lisp-compliant
-  :kinds ((id-octets fn-cbor-octet-listp) (subject-octets fn-cbor-octet-listp) (evidence-octets fn-cbor-octet-listp)))
+  :kinds ((id-octets fn-cbor-octet-listp) (subject-octets fn-cbor-octet-listp) (evidence-octets fn-cbor-octet-listp))
+  ;; RAW: its guard walks the whole Store (fn-sn-statep); raw dispatch over
+  ;; host/owner-served-carried.lisp's row, under A-OWNER-INVARIANT-CARRIED
+  ;; (specs/failures.md: the writers that row owes are unproved).
+  :raw-with (:carried fn-owner-served-carried :assuming A-OWNER-INVARIANT-CARRIED))
 
 (definterface fn-owner-prepare-topic
   :class :common-lisp-compliant
-  ;; D40 proposal withheld: model preservation alone does not establish
-  ;; the complete host-called guard. Retain executable-counterpart dispatch.
-)
+  ;; RAW: its guard walks the whole Store (fn-sn-statep); raw dispatch over
+  ;; host/owner-served-carried.lisp's row, under A-OWNER-INVARIANT-CARRIED
+  ;; (specs/failures.md: the writers that row owes are unproved).
+  :raw-with (:carried fn-owner-served-carried :assuming A-OWNER-INVARIANT-CARRIED))
 
 (definterface fn-owner-prov-post
   :class :common-lisp-compliant)
@@ -4646,7 +4759,7 @@
 (definterface fn-orcs-predict
   :class ::common-lisp-compliant
   :kinds ((generation natp) (h natp))
-  :keystones (fn-orcs-seal-is-the-intern))
+  :keystones (fn-orcs-predict-seal-refines-intern))
 
 (definterface fn-orcs-seal
   :class ::common-lisp-compliant
@@ -4790,6 +4903,9 @@
 (definterface fn-di-raw-guarded-target
   :class :program
   :direct "Image-build resolution of actual compiled callback or registered creator EXEC")
+(definterface fn-di-raw-creatorp
+  :class :program
+  :direct "fnn-install-raw-dispatch identifies exact registered startup creators from the validated immutable image world")
 
 ; Serialized BP listener installation and actual owner configuration control.
 (definterface fn-bplc-step

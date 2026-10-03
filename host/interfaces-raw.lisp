@@ -2,6 +2,14 @@
 ; No availability filter: an absent target refuses the selected image.
 (in-package "ACL2")
 (include-book "../books/definterface")
+(definterface create-fn-resource-ledger :class :common-lisp-compliant :kinds () :raw-guarded (0 nil (fn-resource-ledger)))
+; outside the DTN image: fn-owner-control-submit :raw-with (:carried fn-owner-served-carried), whose row is defined in host/owner-served-carried.lisp, which host/native/build-dtn.lisp does not load
+; outside the DTN image: fn-owner-io :raw-with (:carried fn-owner-served-carried), whose row is defined in host/owner-served-carried.lisp, which host/native/build-dtn.lisp does not load
+; outside the DTN image: fn-owner-take :raw-with (:carried fn-owner-served-carried), whose row is defined in host/owner-served-carried.lisp, which host/native/build-dtn.lisp does not load
+; outside the DTN image: fn-owner-prepare-consumer :raw-with (:carried fn-owner-served-carried), whose row is defined in host/owner-served-carried.lisp, which host/native/build-dtn.lisp does not load
+; outside the DTN image: fn-owner-prepare-identity :raw-with (:carried fn-owner-served-carried), whose row is defined in host/owner-served-carried.lisp, which host/native/build-dtn.lisp does not load
+; outside the DTN image: fn-owner-prepare-retention :raw-with (:carried fn-owner-served-carried), whose row is defined in host/owner-served-carried.lisp, which host/native/build-dtn.lisp does not load
+; outside the DTN image: fn-owner-prepare-topic :raw-with (:carried fn-owner-served-carried), whose row is defined in host/owner-served-carried.lisp, which host/native/build-dtn.lisp does not load
 (definterface fn-di-raw-with-problem :class :program :direct "Image-build declaration lint over the loaded world; no client data or served decision")
 (definterface fn-di-raw-guarded-problem :class :program :direct "Image-build exact guard and stobj ABI validation over the exported ACL2 world")
 (definterface fn-di-raw-guarded-target :class :program :direct "Image-build resolution of actual compiled callback or registered creator EXEC")

@@ -51,7 +51,7 @@
 
 (include-book "served-span")
 (include-book "protocol-table") ; reply texts: (fn-proto-text ROW KEY)
-(include-book "served-catalog-dispatch") ; fn-nntp-archive-command-cat and its keystone
+(include-book "protocol-served") ; generated served dispatcher and declared row keystones
 (include-book "group-access-cache")
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
@@ -252,7 +252,7 @@
                               (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
                   :verify-guards nil))
   (fn-nntp-command-dispatch
-   (fn-nntp-archive-command-cat
+   (fn-proto-archive-command-cat
     session archive index verdicts env keyword args v fn-arena fn-cat)
    :pinned t))
 
@@ -272,7 +272,7 @@
                         fn-arena fn-cat))))
   :hints (("Goal" :in-theory (union-theories
                               '(fn-scr-command fn-nntp-command-pinned fn-scr-catalogp
-                                fn-nntp-archive-command-cat-is-pinned)
+                                fn-proto-archive-command-cat-is-pinned)
                               (theory 'minimal-theory)))))
 
 (verify-guards fn-scr-command)

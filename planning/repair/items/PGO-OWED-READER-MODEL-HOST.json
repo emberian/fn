@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "host/native/reader-model-host.lisp",
+ "id": "PGO-OWED-READER-MODEL-HOST",
+ "notes": [],
+ "owner": "post-guard-off",
+ "severity": "medium",
+ "slice": "carrier",
+ "source": "post-guard-off",
+ "state": "open",
+ "title": "A-OWNER-INVARIANT-CARRIED owes: 1 state writer(s) defined in host/native/reader-model-host.lisp have no preservation theorem of fn-owner-retain-statep; each is listed in host/owner-served-carried.lisp :incomplete. Prove (def-owner-writer / the carrier move) and move it to :transitions: fn-reader-model-octets",
+ "updated": "2026-10-03T04:15:32Z"
+}

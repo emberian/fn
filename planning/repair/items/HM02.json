@@ -4,14 +4,15 @@
  "file": "books/host-model.lisp",
  "id": "HM02",
  "locus": "generators",
- "note": "definitions and 14 of 25 preservation lemmas admitted (hbox REPL hm); rows/workers/pins/close lemmas next, then the run theorem and the keystones; test book stubbed",
+ "note": "Current clean composed pin/capture/drain/cancel and physical-return invariants certified at exact source in074717/080416 manifests. Finite actual generated-actor/shared-section O-only packets replay with exact answers and every prefix invariant. Issue/settle preservation, all-schedules theorem, full extent/pin observations and funded pool remain open.",
  "notes": [
-  "2026-10-03 Astra source review: HM all-schedules keystones absent and tests cover initialization only. Realization table lists funded sites under direct-only steps; checker actually consumes seeded JSON. Start with executable cancellation/retirement/late-settlement/fd-reuse schedules and real model-to-host bridge; do not treat table membership as correspondence."
+  "2026-10-03 Astra source review: HM all-schedules keystones absent and tests cover initialization only. Realization table lists funded sites under direct-only steps; checker actually consumes seeded JSON. Start with executable cancellation/retirement/late-settlement/fd-reuse schedules and real model-to-host bridge; do not treat table membership as correspondence.",
+  "2026-10-03 Groundwork: *fn-hmc-realization* direct-only issue/settle rows no longer claim funded fnn-extent-issue-read/complete-read. Native checker currently reads seeded JSON; Tools owns literal model-table consumer. Executable machine split lets real schedules run independently of incomplete theorem continuation; no proof gate removed and main host-model remains a Makefile root."
  ],
- "owner": "composition",
+ "owner": "deputy_groundwork",
  "severity": "high",
  "source": "coordinator",
  "state": "in-progress",
  "title": "HM v1: books/host-model.lisp (fn-hmc-), the concurrent host model; invariant over every schedule; T1(b): issued reads, leases and generation pins never invalidated by retire/release/close/swap, settle once to its own token; *fn-hmc-realization* in LOCK-CHECK's format",
- "updated": "2026-10-03T05:14:09Z"
+ "updated": "2026-10-03T08:37:00Z"
 }

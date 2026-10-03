@@ -67,6 +67,11 @@
 ;     carried relation, the bridge theorem concludes the head from it); and
 ;     the guard has at least one such conjunct (a raw dispatch that skips
 ;     nothing is refused: the annotation is a boundary claim, not a default).
+;     Over a row that declares def-carried's named escape `:incomplete (A-ID
+;     (OWED ...))' (its completeness waived for the named owed writers under
+;     the registered assumption A-ID), the annotation must be `:raw-with
+;     (:carried NAME :assuming A-ID)', with that A-ID exactly; over any
+;     other row `:assuming' is refused (lane post-guard-off, 2026-10-03).
 ;     host/native/io.lisp fnn-install-raw-dispatch reads the table at image
 ;     build and dispatches those entries raw; the developer selector
 ;     FN_NATIVE_DISPATCH_COUNTERPART keeps the counterpart path for a native
@@ -99,7 +104,7 @@
 (include-book "def-carried") ; fn-cd-problem: a (:carried NAME) row re-checked
 
 (defconst *fn-di-keys* '(:class :kinds :exempt :keystones :root :direct :delegates
-                         :raw-with :raw-guarded))
+                         :raw-with :raw-guarded :operation))
 
 (defconst *fn-di-classes* '(:common-lisp-compliant :ideal :program))
 
@@ -160,10 +165,16 @@
   (declare (xargs :mode :program))
   ; (THM ...): a non-empty list of theorem names, none a keyword; or exactly
   ; (:carried NAME), the carried invariant whose row names them
-  ; (books/def-carried.lisp)
+  ; (books/def-carried.lisp), or (:carried NAME :assuming A-ID) over a row
+  ; that declares def-carried's named escape :incomplete (A-ID ...)
   (and (consp x)
        (if (eq (car x) :carried)
-           (and (consp (cdr x)) (null (cddr x)) (symbolp (cadr x)) (cadr x) t)
+           (and (consp (cdr x)) (symbolp (cadr x)) (cadr x)
+                (or (null (cddr x))
+                    (and (true-listp x) (equal (len x) 4)
+                         (eq (caddr x) :assuming)
+                         (fn-cd-assumption-namep (cadddr x))))
+                t)
          (and (symbol-listp x) (not (member-eq nil x))
               (not (fn-di-any-keyword x))))))
 
@@ -173,6 +184,38 @@
   (and (true-listp x) (equal (len x) 3) (natp (car x))
        (symbol-listp (cadr x)) (equal (len (cadr x)) (car x))
        (consp (caddr x)) (symbol-listp (caddr x))))
+
+; An operation is linked to the entry's own derived cost row by the late
+; DEF-OPERATION-CHECK (def-cost is loaded after interfaces to learn routes).
+; :projection is an implemented custody slice, never full admission credit.
+(defconst *fn-di-operation-keys*
+  '(:stage :funding :tariff :draw :principal :slot :physical :outcome
+    :retention :coverage :unaccounted))
+
+(defun fn-di-operation-unique-keys-p (x)
+  (declare (xargs :mode :program))
+  (if (atom x) t
+    (and (not (assoc-keyword (car x) (cddr x)))
+         (fn-di-operation-unique-keys-p (cddr x)))))
+
+(defun fn-di-operation-formp (x)
+  (declare (xargs :mode :program))
+  (and (keyword-value-listp x)
+       (fn-di-operation-unique-keys-p x)
+       (not (fn-cd-unknown-keys x *fn-di-operation-keys*))
+       (member-eq (fn-di-get :stage x) '(:projection :accounted))
+       (symbolp (fn-di-get :principal x)) (fn-di-get :principal x)
+       (natp (fn-di-get :slot x))
+       (eq (fn-di-get :retention x) :physical-and-operation)
+       (consp (fn-di-get :coverage x))
+       (symbol-listp (fn-di-get :coverage x))
+       (no-duplicatesp-eq (fn-di-get :coverage x))
+       (symbol-listp (fn-di-get :unaccounted x))
+       (symbolp (fn-di-get :funding x)) (fn-di-get :funding x)
+       (symbolp (fn-di-get :tariff x)) (fn-di-get :tariff x)
+       (symbolp (fn-di-get :draw x)) (fn-di-get :draw x)
+       (symbolp (fn-di-get :physical x)) (fn-di-get :physical x)
+       (symbolp (fn-di-get :outcome x)) (fn-di-get :outcome x)))
 
 (defun fn-di-refusal (name kvs)
   (declare (xargs :mode :program))
@@ -209,6 +252,9 @@
     (list :bad-raw-guarded (fn-di-get :raw-guarded kvs)))
    ((and (assoc-keyword :raw-guarded kvs) (assoc-keyword :raw-with kvs))
     (list :dual-raw-routes))
+   ((and (assoc-keyword :operation kvs)
+         (not (fn-di-operation-formp (fn-di-get :operation kvs))))
+    (list :bad-operation (fn-di-get :operation kvs)))
    (t nil)))
 
 ; -----------------------------------------------------------------------------
@@ -571,6 +617,18 @@
         (cond
          ((and carried (fn-cd-raw-problem carried name w))
           (msg ":raw-with ~x0 on ~x1: ~@2" form name (fn-cd-raw-problem carried name w)))
+         ; def-carried's named escape is written at every entry relying on
+         ; it, and only there: the row's :incomplete assumption, exactly
+         ((and carried
+               (not (eq (fn-cd-row-assumption carried w)
+                        (and (cddr form) (cadddr form)))))
+          (if (fn-cd-row-assumption carried w)
+              (msg ":raw-with ~x0 on ~x1: the row ~x2 is complete only under the ~
+                    named assumption ~x3 (its :incomplete owed writers); write ~
+                    :raw-with (:carried ~x2 :assuming ~x3)"
+                   form name carried (fn-cd-row-assumption carried w))
+            (msg ":raw-with ~x0 on ~x1: the row ~x2 declares no :incomplete, so ~
+                  :assuming names no assumption it rests on" form name carried)))
          ((not (eq (fn-di-get :class kvs) :common-lisp-compliant))
           (msg ":raw-with on ~x0, which is not :common-lisp-compliant: only a ~
                 guard-verified definition executes faithfully raw" name))
@@ -660,6 +718,20 @@
                 (mv nil target)
               (mv (msg "~x0 has missing or incompatible registered creator EXEC metadata" name) nil)))))))))
 
+(defun fn-di-raw-creatorp (name kvs w)
+  (declare (xargs :mode :program))
+  ; Private allocation cannot use ACL2's live-stobj counterpart.  This is
+  ; the narrow registered creator role, with its normal verified ABI; it
+  ; cannot turn an ordinary semantic callback into a creator exception.
+  (mv-let (problem target) (fn-di-raw-guarded-target name kvs w)
+    (declare (ignore target))
+    (let* ((outputs (stobjs-out name w))
+           (st (and (equal (len outputs) 1) (car outputs))))
+      (and (assoc-keyword :raw-guarded kvs) (null problem)
+           (equal (getpropc name 'formals :none w) nil)
+           (equal (stobjs-in name w) nil)
+           st (eq name (get-stobj-creator st w))))))
+
 (defun fn-di-problem (name kvs w)
   (declare (xargs :mode :program))
   ; nil, or a msg naming the first check the world refutes
@@ -690,7 +762,10 @@
     (:bad-delegates (msg ":delegates ~x0 is not a function name." (cadr reason)))
     (:bad-raw-guarded (msg ":raw-guarded ~x0 is not an exact (arity input-slots output-slots) ABI." (cadr reason)))
     (:dual-raw-routes (msg ":raw-with and :raw-guarded are incompatible."))
-    (:bad-raw-with (msg ":raw-with ~x0 is not a non-empty list of theorem names."
+    (:bad-operation (msg ":operation ~x0 is not a staged funding/cost/custody contract."
+                         (cadr reason)))
+    (:bad-raw-with (msg ":raw-with ~x0 is not a non-empty list of theorem names, ~
+                         (:carried NAME) or (:carried NAME :assuming A-ID)."
                         (cadr reason)))
     (otherwise (msg "malformed form: ~x0." reason))))
 

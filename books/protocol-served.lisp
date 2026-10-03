@@ -309,6 +309,7 @@
                   :hints (("Goal" :do-not-induct t
                            :in-theory (e/d (fn-proto-archive-command-cat
                                             fn-nntp-archive-command-pinned fn-nntp-archive-command
+                                            fn-nntp-result-session fn-nntp-result-effects
                                             ,@(fn-proto-form-get :open form))
                                            ,(append
                                              (list 'fn-nntp-archive-command-cat-is-pinned
@@ -438,7 +439,7 @@
          '(:by defprotocol
            :claim (,*fn-proto-cat-claim-hyps*
                    ,(fn-proto-cat-conclusion 'fn-proto-archive-command-cat))
-           :subject fn-nntp-archive-command-cat)))
+           :subject fn-proto-archive-command-cat)))
 
 ; Guards: every arm is guard-verified in books/served-catalog.lisp.
 (verify-guards fn-proto-archive-command-cat

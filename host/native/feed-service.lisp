@@ -36,7 +36,8 @@
 ;;; Set by a round that did something; bound per round by the worker loop.
 (defvar *fnn-feed-active* nil)
 
-(define-condition fnn-feed-auth-error (error) ())
+(define-condition fnn-feed-auth-error (fnn-peer-dial-error) ()
+  (:default-initargs :outcome :credential))
 
 ;;; STREAK is the value books/feed-link-backoff.lisp `fn-flb-lost' last
 ;;; answered (consecutive link failures since the link was last ready): the
@@ -193,28 +194,46 @@ live reconfiguration just removed (S036)."
     backoff))
 
 (defun fnn-feed-auth-profile (policy)
-  "Read a private regular profile and let ACL2 decode its bounded bytes."
+  "Read a private regular descriptor without blocking on a substituted FIFO.
+ACL2 decodes its bounded bytes; only named input/OS refusal is credential loss."
   (if (null policy) (values nil nil nil)
-    (let* ((path (second policy))
-           (maximum (fnn-core 'fn-owner-feed-profile-max-octets))
-           (fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+))))
-      (unwind-protect
-           (let ((info (fnn-fstat fd)))
-             (unless (and (fnn-regular-p info)
-                          (= (sb-posix:stat-uid info) (sb-posix:getuid))
-                          (zerop (logand (sb-posix:stat-mode info) #o077))
-                          (<= (sb-posix:stat-size info) maximum))
-               (error 'fnn-feed-auth-error))
-             (let* ((bytes
-                      (handler-case (fnn-read-bounded-fd fd maximum)
-                        (fnn-store-fault () (error 'fnn-feed-auth-error))))
-                    (decoded (fnn-core 'fn-owner-feed-profile-decode
-                                       (fnn-octet-list bytes))))
-               (unless (and (consp decoded) (eq (car decoded) :ok)
-                            (= (length decoded) 3))
-                 (error 'fnn-feed-auth-error))
-               (values (second decoded) (third decoded) (third policy))))
-        (fnn-close fd)))))
+    (handler-case
+        (let* ((path (second policy))
+               (maximum (fnn-core 'fn-owner-feed-profile-max-octets)))
+          (unless (and (integerp maximum) (> maximum 0))
+            (fnn-fault "invalid ACL2 credential profile bound"))
+          (let ((fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+
+                                         sb-posix:o-nonblock)))
+                (primary nil))
+            (unwind-protect
+                 (handler-bind ((serious-condition (lambda (e) (setq primary e))))
+                   (let ((info (fnn-fstat fd)))
+                     (unless (and (fnn-regular-p info)
+                                  (= (sb-posix:stat-uid info) (sb-posix:getuid))
+                                  (zerop (logand (sb-posix:stat-mode info) #o077))
+                                  (<= (sb-posix:stat-size info) maximum))
+                       (error 'fnn-feed-auth-error))
+                     (let* ((bytes
+                              (handler-case (fnn-read-bounded-fd fd maximum)
+                                (fnn-input-overbound (e)
+                                  ;; Unknown subclasses retain the fault class.
+                                  (if (eq (type-of e) 'fnn-input-overbound)
+                                      (error 'fnn-feed-auth-error)
+                                    (error e)))))
+                            (decoded (fnn-core 'fn-owner-feed-profile-decode
+                                               (fnn-octet-list bytes))))
+                       (cond ((equal decoded '(:bad nil nil))
+                              (error 'fnn-feed-auth-error))
+                             ((and (consp decoded) (eq (car decoded) :ok)
+                                   (consp (cdr decoded)) (consp (cddr decoded))
+                                   (null (cdddr decoded)))
+                              (values (second decoded) (third decoded) (third policy)))
+                             (t (fnn-fault "malformed ACL2 credential profile result"))))))
+              (handler-case (fnn-close fd)
+                (serious-condition (e)
+                  ;; A cleanup OS failure must not reclassify a core fault.
+                  (error (or primary e)))))))
+      (fnn-os-error () (error 'fnn-feed-auth-error)))))
 
 (defun fnn-feed-connect-core (service peer-octets fd user pass allow-clear)
   "Start ACL2's greeting/MODE phase; this does not make a feed live."
@@ -461,14 +480,13 @@ the shared link table."
         (setq *fnn-feed-active* t)
         (let ((socket nil) (published nil))
           (handler-case
-              (progn
+              (multiple-value-bind (user pass allow-clear)
+                  (fnn-feed-auth-profile auth)
                 (setq socket (fnn-peer-connect host port :timeout timeout))
                 (let ((fd (fnn-socket-fd socket)))
-                  (multiple-value-bind (user pass allow-clear)
-                      (fnn-feed-auth-profile auth)
-                    (fnn-feed-connect-core (fnn-feed-runtime-service runtime)
-                                           (fnn-feed-link-peer-octets link) fd
-                                           user pass allow-clear))
+                  (fnn-feed-connect-core (fnn-feed-runtime-service runtime)
+                                         (fnn-feed-link-peer-octets link) fd
+                                         user pass allow-clear)
                   (setq published (fnn-feed-publish-socket runtime link socket fd))
                   (when (and published (equal (car security) :tls)
                              (equal (cadr security) :implicit))
@@ -483,7 +501,10 @@ the shared link table."
               ;; named peer-loss observation that advances the ACL2 backoff.
               (unless (fnn-feed-stoppingp runtime)
                 (fnn-feed-drop-link runtime link now backoff
-                                    (if (typep condition 'fnn-tls-error) :tls :dial))))))))))
+                                    (typecase condition
+                                      (fnn-feed-auth-error :credential)
+                                      (fnn-tls-error :tls)
+                                      (t :dial)))))))))))
 
 (defun fnn-feed-consume (runtime link octets eofp now)
   "Drain a received chunk through one ACL2 event at a time.
@@ -665,19 +686,12 @@ stop) came after SEEN was read; a missed signal is seen by the count."
   "Contain an adapter defect without turning a peer disconnect into a fence."
   (handler-case
       (fnn-feed-worker runtime)
-    (fnn-store-indeterminate (e)
-      (fnn-owner-fence-service (fnn-feed-runtime-service runtime))
-      (fnn-err "outbound feed uncertain; recovery required: ~a" e))
-    (fnn-store-fault (e)
-      (fnn-owner-fault-service (fnn-feed-runtime-service runtime) nil e))
-    (fnn-store-error (e)
-      ;; Owner shutdown refuses a final serialized callback.  Any other
-      ;; store error here is not a remote peer verdict and is a host fault.
-      (unless (fnn-feed-stoppingp runtime)
-        (fnn-owner-fault-service (fnn-feed-runtime-service runtime) nil e)))
     (serious-condition (e)
-      (unless (fnn-feed-stoppingp runtime)
-        (fnn-owner-fault-service (fnn-feed-runtime-service runtime) nil e)))))
+      ;; Exact concrete class, including failures during terminal cleanup.
+      ;; A known stopping refusal is scoped; an unknown subclass is a fault.
+      (fnn-owner-thread-escape (fnn-feed-runtime-service runtime) e "outbound feed"))))
+
+(def-actor fnn-feed-spawn-worker :thread-name "fn outbound feed" :roster t)
 
 ;;; These are registered through the owner's composable resource lifecycle
 ;;; hooks by the owner convergence lane.  They are idempotent: stop only
@@ -694,8 +708,8 @@ stop) came after SEEN was read; a missed signal is seen by the count."
               :limit (fnn-feed-read-limit service))))
       (fnn-feed-runtime-put service runtime)
       (setf (fnn-feed-runtime-worker runtime)
-            (sb-thread:make-thread (lambda () (fnn-feed-worker-guarded runtime))
-                                   :name "fn outbound feed"))))
+            (fnn-feed-spawn-worker service (list runtime)
+                                   (lambda () (fnn-feed-worker-guarded runtime))))))
   nil)
 
 (defun fnn-feed-service-wake (service)
@@ -720,7 +734,14 @@ from being closed then reused before this stop hook touches it."
   (let ((runtime (fnn-feed-runtime-get service)))
     (when runtime
       (fnn-feed-service-wake service)
-      (let ((worker (fnn-feed-runtime-worker runtime)))
-        (when worker (sb-thread:join-thread worker)))
+      ;; The starter may have raised after creating a parked/live child and
+      ;; before returning its worker. Shared registration retains that child.
+      (let* ((actor (fnn-owner-actor-for-custody service runtime))
+             (worker (or (fnn-feed-runtime-worker runtime)
+                         (and actor (fnn-owner-actor-thread actor)))))
+        (when (and actor (null worker))
+          (fnn-fault "outbound feed spawn remains physically unobserved"))
+        (when (and worker (not (fnn-owner-actor-join service worker)))
+          (fnn-fault "outbound feed worker remains physically live")))
       (fnn-feed-runtime-drop service)))
   nil)

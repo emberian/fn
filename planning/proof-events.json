@@ -19002,6 +19002,52 @@
           "name": "fn-fjo-an-intent-moved-past-another-resolution-replays-alike"
         }
       ]
+    },
+    {
+      "id": "PRF-1255",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cmt-step-state-is-valid"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cmt-pipeline-requires-its-captured-passes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cmt-wrong-snapshot-ticket-faults"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cmt-stop-observation-never-enters-a-pipeline"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1256",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nnw-stream-step-residual"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nnw-stream-candidate-progresses"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nnw-stream-one-visits-at-most-one"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nnw-stream-output-does-not-visit"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sl-step-residual"
+        }
+      ]
     }
   ]
 }

@@ -11,6 +11,7 @@ import os
 import sys
 import tempfile
 import unittest
+import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -40,6 +41,15 @@ def run(source, rules=None, reach=None):
         an, model, checker = ldc.analyze_tree(root, CONTRACTS, ["host/native/fixture.lisp"], reach or {})
         found = checker.run(set(rules) if rules else None)
         return [f for f in found if f.category != "exception"]
+
+
+def analyzed(source):
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "host" / "native").mkdir(parents=True)
+        (root / "host" / "native" / "fixture.lisp").write_text(PRELUDE + source)
+        an, _, _ = ldc.analyze_tree(root, CONTRACTS, ["host/native/fixture.lisp"], {})
+        return an
 
 
 def keys(findings, rule):
@@ -313,13 +323,27 @@ class Realization(unittest.TestCase):
         {"function": "fnn-extent-close", "file": "host/native/fixture.lisp", "primitive": "fnn-close",
          "core": None, "locks_held": ["E"], "requires_before": ["fn-pio-file-clear-p"]}]}
 
-    def realize(self, src, row):
-        raw = dict(CONTRACTS.raw, realization=[row])
+    @staticmethod
+    def literal(value):
+        if value is None:
+            return "nil"
+        if isinstance(value, dict):
+            return "(" + " ".join(":" + k + " " + Realization.literal(v)
+                                    for k, v in value.items()) + ")"
+        if isinstance(value, list):
+            return "(" + " ".join(Realization.literal(v) for v in value) + ")"
+        return value if value.startswith(":") else json.dumps(value)
+
+    def realize(self, src, row, seed=None):
+        raw = dict(CONTRACTS.raw, realization=[seed or row])
         contracts = ldc.Contracts(raw)
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             (root / "host" / "native").mkdir(parents=True)
             (root / "host" / "native" / "fixture.lisp").write_text(PRELUDE + src)
+            (root / "books").mkdir()
+            (root / "books/host-model.lisp").write_text('(defconst *fn-hmc-realization* \''
+                + self.literal([row]) + ')')
             an, model, checker = ldc.analyze_tree(root, contracts, ["host/native/fixture.lisp"], {})
             ldc.check_realization(checker)
             return [f.key for f in checker.findings]
@@ -338,9 +362,88 @@ class Realization(unittest.TestCase):
     def test_a_p_label_names_its_assumption(self):
         row = dict(self.ROW, layer="P")
         self.assertIn("realization-shape::close", self.realize(self.CLOSE, row))
+        crash = dict(label=":crash", layer="P", assumption="A-CRASH-IMAGE", enabled=[], sites=[])
+        self.assertEqual(self.realize(self.CLOSE, crash), [])
+
+    def test_table_site_file_must_match_actual_host_graph(self):
+        row = dict(self.ROW, sites=[dict(self.ROW["sites"][0], file="host/native/wrong.lisp")])
+        self.assertIn("realization-file::close", self.realize(self.CLOSE, row))
+
+
+    def test_model_literal_cannot_be_replaced_by_old_json_seed(self):
+        seed = dict(self.ROW, sites=[dict(self.ROW["sites"][0], function="fnn-old-seed")])
+        self.assertTrue(self.realize(self.CLOSE, self.ROW, seed=seed) == [],
+                        "realization must check the model literal instead of its JSON seed")
+
+    def table(self, model, machine=None):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "books").mkdir()
+            (root / "books/host-model.lisp").write_text(model)
+            if machine is not None:
+                (root / "books/host-model-machine.lisp").write_text(machine)
+            return ldc.realization_table(root)
+
+    def test_machine_table_is_read_only_when_included_and_has_actual_provenance(self):
+        constant = "(defconst *fn-hmc-realization* '" + self.literal([self.ROW]) + ")"
+        table = self.table('(include-book "host-model-machine")', constant)
+        self.assertEqual(table["source"]["file"], "books/host-model-machine.lisp")
+        self.assertEqual(len(table["source"]["sha256"]), 64)
+        self.assertEqual(table["rows"], [self.ROW])
+        with self.assertRaisesRegex(ValueError, "exactly one"):
+            self.table("(defun fn-model () nil)", constant)
+        with self.assertRaisesRegex(ValueError, "exactly one"):
+            self.table(constant + '(include-book "host-model-machine")', constant)
+
+    def test_missing_computed_and_duplicate_property_tables_refuse(self):
+        for source in ("(defun fn-model () nil)",
+                       "(defconst *fn-hmc-realization* (append nil nil))",
+                       "(defconst *fn-hmc-realization* '((:label :close :label :close)))",
+                       "(defconst *fn-hmc-realization* '((:label :close :sites ((:function (evil))))))"):
+            with self.subTest(source=source), self.assertRaises(ValueError):
+                self.table(source)
+
+    def test_enabled_scalar_and_nil_lists_are_normalized_without_evaluation(self):
+        row = dict(self.ROW, enabled="fn-pio-file-clear-p")
+        row["sites"] = [dict(self.ROW["sites"][0], requires_before=None)]
+        table = self.table("(defconst *fn-hmc-realization* '" + self.literal([row]) + ")")
+        self.assertEqual(table["rows"][0]["enabled"], ["fn-pio-file-clear-p"])
+        self.assertEqual(table["rows"][0]["sites"][0]["requires_before"], [])
 
 
 class Baseline(unittest.TestCase):
+    def test_comment_and_blank_line_shifts_preserve_callback_keys(self):
+        source = "(defun fnn-start () (push (lambda () (fnn-live-arena)) *hooks*))"
+        before = run(source, ["R1"])
+        after = run("; inserted comment\n\n" + source.replace("(lambda", "\n; callback comment\n(lambda"), ["R1"])
+        self.assertTrue(before)
+        self.assertTrue([f.baseline_key() for f in before] == [f.baseline_key() for f in after],
+                        "callback identities must survive comments and blank lines")
+        self.assertNotEqual([f.line for f in before], [f.line for f in after])
+
+    def test_identical_callbacks_on_one_line_are_distinct_and_new_one_is_new(self):
+        one = "(defun fnn-start () (push (lambda () (fnn-live-arena)) *hooks*))"
+        two = "(defun fnn-start () (push (lambda () (fnn-live-arena)) *hooks*) (push (lambda () (fnn-live-arena)) *hooks*))"
+        before, after = run(one, ["R1"]), run(two, ["R1"])
+        self.assertEqual(len(before), 1)
+        self.assertEqual(len(after), 2)
+        self.assertEqual(len({f.baseline_key() for f in after}), 2)
+        baseline = {f.baseline_key(): {"count": f.weight} for f in before}
+        self.assertEqual(len(ldc.judge(after, baseline, set())["new"]), 1)
+
+    def test_migration_preserves_counts_and_refuses_ambiguous_callbacks(self):
+        from lock_baseline_migrate import migrate_keys
+        old = "lambda@host/native/x.lisp:10"
+        new = "lambda@host/native/x.lisp:fnn-start#lambda1"
+        data = {"findings": [{"key": "R1|" + old + "|O:fnn-live-arena", "count": 3}]}
+        migrated = migrate_keys(data, {old: {new}}, "revision", "digest")
+        self.assertEqual(migrated["findings"][0]["count"], 3)
+        self.assertIn(new, migrated["findings"][0]["key"])
+        self.assertIn(old, data["findings"][0]["key"])
+        for candidates in (set(), {new, new + "other"}):
+            with self.assertRaises(ValueError):
+                migrate_keys(data, {old: candidates}, "revision", "digest")
+
     def test_the_baseline_only_shrinks_and_the_enclave_is_strict(self):
         f = ldc.Finding("R3", "violation", "fn-a", "x.lisp", 1, "m", "naked:p")
         g = ldc.Finding("R2", "violation", "fn-b", "x.lisp", 2, "m", "O:leaf", weight=3)
@@ -350,6 +453,42 @@ class Baseline(unittest.TestCase):
         self.assertEqual(len(ldc.judge([f, g], base, set())["new"]), 1)
         self.assertEqual(ldc.judge([f], base, set())["stale"], [g.baseline_key()])
         self.assertEqual(len(ldc.judge([f], {f.baseline_key(): {"count": 1}}, {"fn-a"})["new"]), 1)
+
+    # Lane WRAPPER: a def-section declares a generated owner entry; the check
+    # analyzes the function the macro emits, so the template it writes and the
+    # macro in host/native/owner.lisp must be the same shape.
+    def test_the_def_section_template_is_the_macro_s_expansion(self):
+        owner = (ROOT / "host" / "native" / "owner.lisp").read_text(encoding="utf-8")
+        macro = owner[owner.index("(defmacro def-section"):]
+        macro = macro[:macro.index("\n(def", 1)]
+        self.assertIn("(defun ,name (service cid thunk &optional (class ,(first classes)))", macro)
+        self.assertIn("(if (eq admits :live) 'fnn-section-run 'fnn-section-run-cleanup)", macro)
+        self.assertIn("service class cid ',admits ',classes ',name thunk", macro)
+        self.assertIn("(defun {name} (service cid thunk &optional (class {default}))",
+                      ldc.SECTION_TEMPLATE)
+        self.assertIn("({run} service class cid '{admits} '{classes} '{name} thunk)",
+                      ldc.SECTION_TEMPLATE)
+
+    def test_a_declared_section_is_an_analyzed_function(self):
+        an = analyzed("""
+(defun fnn-section-run (service class cid admits classes name thunk)
+  (declare (ignore service class cid admits classes name)) (funcall thunk))
+(defun fnn-section-run-cleanup (service class cid admits classes name thunk)
+  (declare (ignore service class cid admits classes name)) (funcall thunk))
+(def-section fnn-quantum-x :actors (:control) :classes (:control :inspect) :admits :live)
+(def-section fnn-quantum-y :actors (:maintenance) :classes (:control) :admits (:cleanup :fault))
+""")
+        self.assertEqual(an.tree.sections["fnn-quantum-x"][2:], ([":control"], [":control", ":inspect"], ":live"))
+        self.assertIn("fnn-section-run", [e.name for e in an.infos["fnn-quantum-x"].events if e.kind == "call"])
+        self.assertIn("fnn-section-run-cleanup",
+                      [e.name for e in an.infos["fnn-quantum-y"].events if e.kind == "call"])
+
+    def test_a_lambda_is_named_by_its_definition_not_its_line(self):
+        an = analyzed("""
+(defun fn-a (x) (mapc (lambda (y) y) x) (mapc (lambda (z) z) x))
+""")
+        names = [n for n in an.infos if n.startswith("lambda@")]
+        self.assertTrue(all(":fn-a#" in n for n in names), names)
 
 
 if __name__ == "__main__":
