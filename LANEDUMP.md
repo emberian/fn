@@ -376,3 +376,13 @@ or fairness guarantee; slowlineconsumption not physicalPageIOhold/backpressure.
 e7bd2dba1adf4a6887ccf0424d1813e97605f768484c9534cb734bfff80e1757, manifest
 296f394f63f8c78856d98dd952974ab51c0ced8634ecc2d43819a924f5bc8c4a.
 NewJOB-RESULT/HM/heldSIGTERM/0cf and maintenance remainoutsideimageclaim.
+
+
+## Sol3 selected consumer preflight obstruction, 2026-10-03
+
+Integration selected immutable4c03dedc sol3-web-cursor for webstalledoutput,
+coldquantumoffO and initprofilemismatch nativecases. Existingwatch found
+world-checkstatus1 at10:55:45Z: twoDTNworldgeneratedfiles stale, before
+certification/image/allthreecases. Exact8run/script/status/log/manifestobjects
+archived native-sol3-4c03dedc-world-refusal-2026-10-03; no ownbuild/retry/source
+mutation. Integration notified immediately and owns repaired cut.

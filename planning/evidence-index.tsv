@@ -7299,6 +7299,14 @@ e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 0 planning/evid
 d7abfbddec88728b89d806936616dd7ab63a558042dd089d75d0a09fe59ada6f 1147 planning/evidence/native-sol2r-291daa59c-world-closure-2026-10-03/manifest.json
 539ec76a71bdca025d1c367d3ad7ccb75b7334d595b1ada6f09e4728a23f56a5 1222 planning/evidence/native-sol2r-291daa59c-world-closure-2026-10-03/run.log
 4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865 2 planning/evidence/native-sol2r-291daa59c-world-closure-2026-10-03/status
+38ba8beeecffd9bb72fd0672625b1729edf04f833d7df3e6766a8d5aa9f99e71 173 planning/evidence/native-sol3-4c03dedc-world-refusal-2026-10-03/SHA256SUMS
+d3c5d55e6bf3e5a8dcc695c93330dc575691688d83dec81997509473e8d2cab9 279 planning/evidence/native-sol3-4c03dedc-world-refusal-2026-10-03/build.run
+3573bdd94a6242b94fd58ef0380b93b1dfd96bce994dab9ddc7d9a24b3df77f0 59 planning/evidence/native-sol3-4c03dedc-world-refusal-2026-10-03/logs/sbcl-check.log
+410556a95b9b12fb507d70412dc035203ae833444a408b97611c0adcaba54b60 214 planning/evidence/native-sol3-4c03dedc-world-refusal-2026-10-03/logs/world-check.log
+04b0ffa320ea482a2eb853cb1752818faeae40fe8392b2e2cdf371b325399761 1010 planning/evidence/native-sol3-4c03dedc-world-refusal-2026-10-03/manifest.json
+c858f8d517685c944f9fff171e83cd4cf26bab07f6f7fae0bf8a0bbf0fcf06b4 804 planning/evidence/native-sol3-4c03dedc-world-refusal-2026-10-03/run.log
+ed41c6f9f83874c887b5c2ebd297560d43c11502ace517488b0bc11fa03173cc 9463 planning/evidence/native-sol3-4c03dedc-world-refusal-2026-10-03/run.sh
+4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865 2 planning/evidence/native-sol3-4c03dedc-world-refusal-2026-10-03/status
 28f38eb9c495f1c5739890c4d5370a4c5b576a9ef973f381aea59f914863db6b 175 planning/evidence/native-sparse-1a946582c-2026-10-03/config.json
 1c8e38dd5ea377c906cfcfc9bf39b8157d74d466864d9e03a488c4447163bf1f 166 planning/evidence/native-sparse-1a946582c-2026-10-03/fn.toml
 e01b8b9500a71224763ad620732b885db6fdf9aa81c5b901450303efc382e0b6 20872 planning/evidence/native-sparse-1a946582c-2026-10-03/journal.jsonl
