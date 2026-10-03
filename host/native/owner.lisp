@@ -609,8 +609,9 @@ PLAN. Callers without a response grant retain the fresh-output convention."
                 (fnn-make-render-buffer n))))
     (fnn-make-render-buffer n)))
 
-(defun fnn-owner-render-next (plan &optional compressedp)
-  "Render the next window of PLAN: (values OCTETS PLAN-REST DONEP CURSORP),
+(defun fnn-owner-render-next (plan &optional compressedp borrowp)
+  "Render the next window of PLAN: (values OCTETS PLAN-REST DONEP CURSORP END),
+BORROWP permits unused buffer capacity after END; callers must use END.
 OCTETS borrowed until the next render when a response grant owns the buffer,
 otherwise fresh (empty only when nothing remained, or at a cursor),
 DONEP when nothing remains after it.  COMPRESSEDP: the connection has a
@@ -632,11 +633,11 @@ range), which the caller runs under the owner mutex
           (fnn-fault "owner refused an eligible direct line window"))
         (let ((array (svref buf 0)) (fill (svref buf 1)))
           (return-from fnn-owner-render-next
-            (values (if (= fill (length array)) array (subseq array 0 fill))
-                    rest nil nil))))))
+            (values (if (or borrowp (= fill (length array))) array (subseq array 0 fill))
+                    rest nil nil fill))))))
   (when (fnn-core 'fn-splan-at-cursorp plan)
     (return-from fnn-owner-render-next
-      (values (fnn-make-octets 0) plan nil t)))
+      (values (fnn-make-octets 0) plan nil t 0)))
   (let ((size (if compressedp
                   (fnn-core 'fn-zc-render-window-size
                             (fnn-core 'fn-splan-window-size plan))
@@ -652,12 +653,12 @@ range), which the caller runs under the owner mutex
       (unless (member status '(:ok :cursor))
         (fnn-fault "owner returned non-octets in its served reply"))
       (let ((array (svref buf 0)) (fill (svref buf 1)))
-        (values (if (= fill (length array))
+        (values (if (or borrowp (= fill (length array)))
                     (the fnn-octets array)
                   (subseq (the fnn-octets array) 0 fill))
                 rest
                 (and (fnn-core 'fn-splan-donep rest) t)
-                nil)))))
+                nil fill)))))
 
 ;;; The cursor quantum (lane join-f2-13, PRF-1020; books/served-plan-cursor.lisp).
 ;;; A served OVER/XOVER range's step answers a CURSOR (books/served-catalog.lisp
@@ -744,19 +745,19 @@ never awaits a page or replays a quantum in the same I/O event."
         (values (second result) nil)
       (values plan (second result)))))
 
-(defun fnn-owner-render-next-quantum (service cid plan class &optional compressedp)
+(defun fnn-owner-render-next-quantum (service cid plan class &optional compressedp borrowp)
   "Render a window, running at most one cursor quantum under the owner
-mutex as CID's CLASS: (values OCTETS PLAN-REST DONEP YIELDP COLD-READ).
+mutex as CID's CLASS: (values OCTETS PLAN-REST DONEP YIELDP COLD-READ END).
 Empty progress yields; a cold read retains the exact original plan/capture."
-  (multiple-value-bind (octets rest donep cursorp)
-      (fnn-owner-render-next plan compressedp)
+  (multiple-value-bind (octets rest donep cursorp end)
+      (fnn-owner-render-next plan compressedp borrowp)
     (unless cursorp
-      (return-from fnn-owner-render-next-quantum (values octets rest donep nil)))
+      (return-from fnn-owner-render-next-quantum (values octets rest donep nil nil end)))
     (multiple-value-bind (next cold-read)
         (fnn-owner-cursor-step service cid rest class)
       (when cold-read
         (return-from fnn-owner-render-next-quantum
-          (values (fnn-make-octets 0) next nil nil cold-read)))
+          (values (fnn-make-octets 0) next nil nil cold-read 0)))
       (setq plan next))
     ;; A deterministic native witness: pause OFF the owner mutex while
     ;; the response still owns its generation, before rendering/writing.
@@ -767,9 +768,9 @@ Empty progress yields; a cold read retains the exact original plan/capture."
         (loop while (and (probe-file stall)
                          (not (fnn-owner-service-stopping service)))
               do (sleep 0.05))))
-    (multiple-value-bind (octets rest donep cursorp)
-        (fnn-owner-render-next plan compressedp)
-      (values octets rest donep cursorp))))
+    (multiple-value-bind (octets rest donep cursorp end)
+        (fnn-owner-render-next plan compressedp borrowp)
+      (values octets rest donep cursorp nil end))))
 
 (defun fnn-owner-list-global (name)
   "An ACL2 octet list left in NAME, as the list (no vector is made)."

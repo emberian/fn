@@ -462,7 +462,11 @@ per-byte cursor and output-list construction; a new continuation is constructed
 at the window boundary. Other cursor phases retain their serialized consumer.
 
 Buffer reuse requires the previous borrowed output to be consumed before another
-render. Full response termination still controls settlement. Partial-vector
-copies, remaining continuation/matcher allocation, pinned roots, register widths
+render. The mux opts into a borrowed capacity vector plus explicit valid END;
+partial socket/TLS writes retain that range and never transmit spare capacity.
+The sixth render-quantum value carries END while the fifth remains COLD-READ.
+Default non-mux callers retain exact-length vectors. Compression still receives
+an exact prefix (copying a short window). Full response termination still controls
+settlement. Compression copies, continuation/matcher allocation, pinned roots, register widths
 and GC are separate resource obligations; this optimization does not activate an
 unsupported output profile or establish complete physical heap coverage.
