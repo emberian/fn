@@ -4555,26 +4555,33 @@ the read's effects, as when both ran in one quantum.  The values are
 fnn-owner-handle-chunk-read's: (values PLAN CLOSING STARTTLS CONSUMED
 REDEEMED SUBMITTED), (values :defer MS), or (values :await STEP REDEEM
 CLOSING STARTTLS CONSUMED)."
-  (let ((results (multiple-value-list
-                  (fnn-owner-handle-chunk-read service cid incoming socket class peerp))))
-    (case (first results)
-      (:redeem
-       (destructuring-bind (tag step completion closing starttls consumed submitted) results
-         (declare (ignore tag))
-         (let ((redeem (fnn-owner-redeem-quantum service cid)))
-           (values (fnn-core 'fn-splan-step-plan step completion redeem)
-                   closing starttls consumed (and redeem t) submitted))))
-      (:await
-       (destructuring-bind (tag step waiting closing starttls consumed) results
-         (declare (ignore tag))
-         (values :await step (and waiting (fnn-owner-redeem-quantum service cid))
-                 closing starttls consumed)))
-      (:fnn-extent-cold
-       (fnn-owner-cold-line service cid incoming socket class peerp
-                            (second results) (third results)))
-      (:defer (values-list results))
-      (t (fnn-owner-page-read-hold cid (first results))
-         (values-list results)))))
+  (fnn-owner-chunk-results service cid incoming socket class peerp
+                           (multiple-value-list
+                            (fnn-owner-handle-chunk-read service cid incoming socket class peerp))
+                           nil))
+
+(defun fnn-owner-chunk-results (service cid incoming socket class peerp results cold-since)
+  "fnn-owner-handle-chunk's answer for a read's RESULTS.  COLD-SINCE: when
+this read is a re-run of a line that went cold, the instant of the line's
+FIRST miss (fnn-owner-cold-line)."
+  (case (first results)
+    (:redeem
+     (destructuring-bind (tag step completion closing starttls consumed submitted) results
+       (declare (ignore tag))
+       (let ((redeem (fnn-owner-redeem-quantum service cid)))
+         (values (fnn-core 'fn-splan-step-plan step completion redeem)
+                 closing starttls consumed (and redeem t) submitted))))
+    (:await
+     (destructuring-bind (tag step waiting closing starttls consumed) results
+       (declare (ignore tag))
+       (values :await step (and waiting (fnn-owner-redeem-quantum service cid))
+               closing starttls consumed)))
+    (:fnn-extent-cold
+     (fnn-owner-cold-line service cid incoming socket class peerp
+                          (second results) (third results) cold-since))
+    (:defer (values-list results))
+    (t (fnn-owner-page-read-hold cid (first results))
+       (values-list results))))
 
 ;;; A LOGICAL connection's feed (lane host-lifecycle, r71 F5 / sweep S003):
 ;;; the web face's browser session (host/native/web-host.lisp, class :reader)
@@ -4934,23 +4941,33 @@ before exact settlement releases a charge. Owner->extent serializes it."
         (serious-condition (condition)
           (unless (fnn-owner-cold-read-settledp read) (error condition)))))))
 
-(defun fnn-owner-cold-await (service read)
+(defun fnn-owner-cold-await (service read &optional line-since)
   "Await an already-captured read off owner lock. Return the core dependency
 word and its clock observations; the caller retains its logical cursor/pin.
-A refusal or timeout never authorizes releasing the physical I/O lease."
+A refusal or timeout never authorizes releasing the physical I/O lease.
+LINE-SINCE: this read is a re-run line's, whose first miss was at
+LINE-SINCE; ACL2's line deadline (fn-otb-line-dependency-step) answers
+:unavailable once it has passed, even for a page that came."
   (when (keywordp read) (return-from fnn-owner-cold-await (values read 0 0 nil)))
   (let* ((since (fnn-owner-monotonic-ms)) (limit nil)
          (token (fnn-owner-cold-read-token read))
          (worker (fnn-owner-cold-read-worker read)))
     (unless token
       (fnn-owner-cold-settle service read)
+      (when (and line-since
+                 (eq (fnn-core 'fn-otb-line-dependency-step line-since since limit) :unavailable))
+        (return-from fnn-owner-cold-await (values :unavailable line-since since limit)))
       (return-from fnn-owner-cold-await (values :serve since since limit)))
     (unwind-protect
          (loop
            (let* ((now (fnn-owner-monotonic-ms))
                   (done (or (fnn-owner-cold-read-settledp read)
                             (fnn-extent-executor-returned-p worker)))
-                  (decision (fnn-core 'fn-otb-dependency-step since now limit done)))
+                  (decision (if (and line-since
+                                     (eq (fnn-core 'fn-otb-line-dependency-step line-since now limit)
+                                         :unavailable))
+                                :line-unavailable
+                              (fnn-core 'fn-otb-dependency-step since now limit done))))
              (cond ((eq decision :serve)
                     (let ((got (fnn-owner-cold-settle service read)))
                       (when (typep got 'serious-condition) (error got)))
@@ -4958,17 +4975,36 @@ A refusal or timeout never authorizes releasing the physical I/O lease."
                    ((eq decision :unavailable)
                     (fnn-extent-cancel-read token)
                     (return (values :unavailable since now limit)))
+                   ((eq decision :line-unavailable)
+                    (fnn-extent-cancel-read token)
+                    (return (values :unavailable line-since now limit)))
                    ((and (consp decision) (eq (car decision) :wait)
                          (integerp (second decision)) (plusp (second decision)))
                     (fnn-extent-executor-wait worker (/ (second decision) 1000)))
                    (t (fnn-fault "owner returned a malformed dependency step")))))
       (fnn-extent-cancel-read token))))
 
-(defun fnn-owner-cold-line (service cid incoming socket class peerp entry read)
+;;; ONE deadline per LINE (lane served-live, cg-newnews-hang): a warm re-run
+;;; that misses again awaits its next entry under ACL2's line deadline
+;;; measured from the line's FIRST miss (COLD-SINCE;
+;;; books/owner-time-bars.lisp fn-otb-line-dependency-step), not only a
+;;; fresh per-page one.  The realizer keeps fn-arx-read-cache-entries
+;;; entries; a line that reads more payloads than that evicts its own
+;;; earlier entries on every re-run and never runs warm, so with a deadline
+;;; per await it re-ran forever under the owner (NEWNEWS, HDR of a
+;;; non-overview field over a range).  Now such
+;;; a line is answered by ACL2's unavailable line (403) once
+;;; read-dependency-ms has passed since its first miss.
+(defun fnn-owner-cold-line (service cid incoming socket class peerp entry read
+                            &optional cold-since)
   (declare (ignore entry))
-  (multiple-value-bind (word since now limit) (fnn-owner-cold-await service read)
+  (multiple-value-bind (word since now limit) (fnn-owner-cold-await service read cold-since)
     (case word
-      (:serve (fnn-owner-handle-chunk service cid incoming socket class peerp))
+      (:serve (fnn-owner-chunk-results
+               service cid incoming socket class peerp
+               (multiple-value-list
+                (fnn-owner-handle-chunk-read service cid incoming socket class peerp))
+               (or cold-since since)))
       (:unavailable (fnn-owner-unavailable-line service cid incoming since now limit class))
       (otherwise (fnn-owner-resource-unavailable-line service cid incoming word class)))))
 
