@@ -685,61 +685,47 @@ The same lock protects both this call and every other arena pin event."
     (fnn-owner-serialized service cid thunk class)))
 
 (defun fnn-owner-cursor-step (service cid plan class)
-  "One quantum of PLAN's cursor under the owner mutex: the plan with the
-quantum's reply in the cursor's place (and the cursor that remains).
-FN_OWNER_MEASURE counts these holds under their own label, :over-cursor.
-
-The quantum runs with the extent realizer in its no-I/O mode, as a served
-read span does (fnn-owner-chunk-span-no-io; Codex r67 F2, the composition
-review's section 1c): a payload extent not in the cache THROWS the entry it
-needs, the quantum (pure over its stobjs) is discarded, the read is issued
-at the validated capture under the mutex (fnn-owner-cold-issue-locked) and
-awaited OFF the mutex within ACL2's dependency deadline
-(fnn-owner-cold-await, fn-otb-dependency-step); then the same quantum runs
-again, warm.  No pread runs under the owner mutex.  Past the deadline, or on
-ACL2's resource refusal, the reply cannot be completed and no line may be
-written into its body (specs/nntp.md, resumable overview responses: a
-response that cannot finish is terminated): the connection is finished
-with the read's word named in the log."
-  (loop
-    (let ((result
-            (fnn-owner-cursor-step-serialized
-             service cid
-             (lambda ()
-               (let ((attempt
-                       (catch 'fnn-extent-cold
-                         (let ((*fnn-extent-no-io* t))
-                           (destructuring-bind (status rest)
-                               (fnn-call 'fn-splan-cursor-step plan (fnn-owner-over-window)
-                                         (fnn-live-stobj 'fn-arena) (fnn-live-stobj 'fn-cat))
-                             (unless (eq status :ok)
-                               (fnn-fault "owner returned a malformed cursor in its served reply"))
-                             (list :warm rest))))))
-                 (if (eq (car attempt) :warm)
-                     attempt
-                   ;; Owner->extent lock order: issue before the mutex that
-                   ;; excludes file retirement is released.
-                   (list :cold (fnn-owner-cold-issue-locked service cid attempt)))))
-             class)))
-      (when (eq (first result) :warm)
-        (return (second result)))
-      (multiple-value-bind (word) (fnn-owner-cold-await service (second result))
-        (unless (eq word :serve)
-          (error 'fnn-store-io-refusal
-                 :message (format nil "OVER cursor quantum: payload read ~(~a~); the reply is terminated"
-                                  word)))
-        (when (fnn-developer-selector "FN_NATIVE_OVER_WINDOW")
-          (fnn-err "OVER cold-quantum cid=~d" cid))))))
+  "Attempt one quantum of PLAN under the owner mutex. Return PLAN-REST and
+NIL when warm, or the exact original PLAN and its issued cold READ. The mux
+retains the response capture and polls READ off this activation; this function
+never awaits a page or replays a quantum in the same I/O event."
+  (let ((result
+          (fnn-owner-cursor-step-serialized
+           service cid
+           (lambda ()
+             (let ((attempt
+                     (catch 'fnn-extent-cold
+                       (let ((*fnn-extent-no-io* t))
+                         (destructuring-bind (status rest)
+                             (fnn-call 'fn-splan-cursor-step plan (fnn-owner-over-window)
+                                       (fnn-live-stobj 'fn-arena) (fnn-live-stobj 'fn-cat))
+                           (unless (eq status :ok)
+                             (fnn-fault "owner returned a malformed cursor in its served reply"))
+                           (list :warm rest))))))
+               (if (eq (car attempt) :warm)
+                   attempt
+                 ;; Issue while owner->extent excludes descriptor retirement.
+                 ;; The pure failed quantum has not committed its continuation.
+                 (list :cold (fnn-owner-cold-issue-locked service cid attempt)))))
+           class)))
+    (if (eq (first result) :warm)
+        (values (second result) nil)
+      (values plan (second result)))))
 
 (defun fnn-owner-render-next-quantum (service cid plan class &optional compressedp)
   "Render a window, running at most one cursor quantum under the owner
-mutex as CID's CLASS: (values OCTETS PLAN-REST DONEP YIELDP).  Empty
-progress yields with the exact continuation and response hold intact."
+mutex as CID's CLASS: (values OCTETS PLAN-REST DONEP YIELDP COLD-READ).
+Empty progress yields; a cold read retains the exact original plan/capture."
   (multiple-value-bind (octets rest donep cursorp)
       (fnn-owner-render-next plan compressedp)
     (unless cursorp
       (return-from fnn-owner-render-next-quantum (values octets rest donep nil)))
-    (setq plan (fnn-owner-cursor-step service cid rest class))
+    (multiple-value-bind (next cold-read)
+        (fnn-owner-cursor-step service cid rest class)
+      (when cold-read
+        (return-from fnn-owner-render-next-quantum
+          (values (fnn-make-octets 0) next nil nil cold-read)))
+      (setq plan next))
     ;; A deterministic native witness: pause OFF the owner mutex while
     ;; the response still owns its generation, before rendering/writing.
     ;; Production refuses this selector (host/native/io.lisp).
@@ -5265,7 +5251,7 @@ in a fault; DEADLINE (internal real time) bounds the whole feed.
           ;; wait and feed the same octets.
           (:defer (sleep (/ (min (second results) 1000) 1000)))
           (t
-           (let ((plan nil) (consumed nil))
+           (let ((plan nil) (consumed nil) (cursor-cold-since nil))
              (unwind-protect
                   (progn
                     (if (eq (first results) :await)
@@ -5287,12 +5273,23 @@ in a fault; DEADLINE (internal real time) bounds the whole feed.
                       (when (fnn-owner-past-p deadline)
                         (setq uncertain t closing t plan nil)
                         (return))
-                      (multiple-value-bind (part rest donep yieldedp)
+                      (multiple-value-bind (part rest donep yieldedp cold-read)
                           (fnn-owner-render-next-quantum service cid plan class)
-                        (push part parts)
                         (setq plan (if donep nil rest))
-                        (when (and plan yieldedp)
-                          (sleep (/ (fnn-core 'fn-splan-cursor-resume-ms) 1000))))))
+                        (if cold-read
+                            ;; This legacy logical feed owns a private worker,
+                            ;; not a mux loop. Retain its plan while awaiting.
+                            (multiple-value-bind (word since)
+                                (fnn-owner-cold-await service cold-read cursor-cold-since)
+                              (unless cursor-cold-since (setq cursor-cold-since since))
+                              (unless (eq word :serve)
+                                (error 'fnn-store-io-refusal
+                                       :message (format nil "logical cursor: payload read ~(~a~); the reply is terminated"
+                                                        word))))
+                          (progn
+                            (push part parts)
+                            (when (and plan yieldedp)
+                              (sleep (/ (fnn-core 'fn-splan-cursor-resume-ms) 1000))))))))
                (fnn-owner-response-unpin service cid))
              (when (and (zerop consumed) (not closing))
                (fnn-fault "owner consumed no octets of a ~a" what))
