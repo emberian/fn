@@ -1,0 +1,41 @@
+; Actual legacy recovery differs in facts and keeps its complete join metadata.
+(in-package "ACL2")
+(include-book "served-catalog-owner-tests")
+(include-book "../../books/served-catalog-load-identity")
+
+(defun scot-availability-join-identity (fn-arena fn-cat)
+  (declare (xargs :mode :program :stobjs (fn-arena fn-cat)))
+  (let* ((fn-arena (fn-arn-seal-many (list (fn-record-payload *scot-w0*)) fn-arena))
+         (h (fn-held-with-facts (fn-intern-row-at *scot-w0* nil 0 0)
+              (fn-hf-make (len (fn-record-payload *scot-w0*)) nil 0 nil)))
+         (rows (list h))
+         (antecedent (and (fn-arena-p fn-arena) (fn-sf-record-valuesp rows)
+                         (fn-rows-handles-inp rows fn-arena)
+                         (fn-rows-composites-okp rows fn-arena)))
+         (fn-cat (fn-cat-clear fn-cat))
+         (fn-cat (fn-sca-load-held-rows-from rows *scot-index-ac* fn-cat))
+         (raw-identity (fn-scj-row-identity (fn-cat-at 0 fn-cat)))
+         (raw-article (fn-scj-row-art (fn-cat-at 0 fn-cat)))
+         (raw-facts (fn-held-facts (fn-cat-at 0 fn-cat)))
+         (fn-cat (fn-sca-load-held-rows rows *scot-index-ac* fn-arena fn-cat)))
+    (mv (and antecedent
+             (equal (fn-cat-count fn-cat) 1)
+             (equal raw-identity (fn-scj-row-identity (fn-cat-at 0 fn-cat)))
+             (equal raw-article (fn-scj-row-art (fn-cat-at 0 fn-cat)))
+             (not (equal raw-facts (fn-held-facts (fn-cat-at 0 fn-cat))))
+             (fn-cat-row-availablep (fn-cat-at 0 fn-cat))
+             (fn-scol-row-okp (fn-cat-at 0 fn-cat) fn-arena)
+             (equal (fn-held-wire-of (fn-cat-at 0 fn-cat) fn-arena) *scot-w0*))
+        fn-arena fn-cat)))
+
+(defun scot-availability-join-identity-exec ()
+  (declare (xargs :mode :program))
+  (with-local-stobj fn-arena
+    (mv-let (ok fn-arena)
+      (with-local-stobj fn-cat
+        (mv-let (ok fn-arena fn-cat)
+          (scot-availability-join-identity fn-arena fn-cat)
+          (mv ok fn-arena)))
+      ok)))
+
+(assert-event (scot-availability-join-identity-exec))
