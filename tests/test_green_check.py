@@ -304,6 +304,160 @@ class AttributionTests(unittest.TestCase):
         self.assertEqual(green_check.failed_books(body), set())
 
 
+def index(root: Path, *run_ids: str) -> None:
+    """File these synthetic manifests in the committed index, so they read
+    as archived (committed) evidence rather than local drafts."""
+    import evidence_store  # noqa: E402  (tools/ is on sys.path above)
+    entries = dict(evidence_store.read_index(root))
+    for run_id in run_ids:
+        rel = f"planning/evidence/manifests/{run_id}.json"
+        data = (root / rel).read_bytes()
+        entries[rel] = (hashlib.sha256(data).hexdigest(), len(data))
+    evidence_store.write_index(root, entries)
+
+
+def localize(root: Path, run_id: str) -> None:
+    """Move a synthetic manifest to this worktree's unarchived build/acl2."""
+    source = root / "planning" / "evidence" / "manifests" / f"{run_id}.json"
+    target = root / "build" / "acl2" / run_id / "manifest.json"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    source.rename(target)
+
+
+class ReleaseGateTests(unittest.TestCase):
+    """S009 (sweep 2026-10-03): `--strict` and `--profile --strict` are the
+    release cut's check (tools/cut_release.sh gate 05, packaging/
+    release-tarball.sh step 1) and must mean what planning/release-v6.6.0.md
+    says: every book green at its current digest AND closure in a committed
+    manifest.  They counted only `red`, so a book nobody certified (absent,
+    never), a green whose dependency moved (stale) and a green backed only by
+    an unfiled local run (unarchived) all passed.  Each case below is one bad
+    input the gate must refuse, plus the all-good tree it must accept, so the
+    gate is shown able to pass as well as to fail."""
+
+    def tree(self, root: Path) -> dict[str, str]:
+        found = {
+            "books/dep": book(root, "books/dep", '(in-package "ACL2")'),
+            "books/top": book(root, "books/top",
+                              '(in-package "ACL2")\n(include-book "dep")\n'),
+        }
+        manifest(root, "certify-20260901T010000Z-1", status="passed",
+                 passed=found)
+        return found
+
+    @staticmethod
+    def standings(rows: list[dict]) -> dict[str, str]:
+        return {row["book"]: row["verdict"] for row in rows}
+
+    def test_all_green_and_archived_passes_both_gates(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            self.tree(root)
+            index(root, "certify-20260901T010000Z-1")
+            report = green_check.audit(root, roots=["books/top"])
+            rows = green_check.strict_rows(report)
+            self.assertEqual(self.standings(rows),
+                             {"books/dep": "green", "books/top": "green"})
+            answer = green_check.profile_gate(report, "synthetic", root=root,
+                                              roots=["books/top"])
+            self.assertEqual(answer["not_green"], [])
+            self.assertEqual(answer["books"], 2)
+
+    def test_a_book_nobody_certified_fails_strict_and_profile(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            self.tree(root)
+            index(root, "certify-20260901T010000Z-1")
+            book(root, "books/new", '(in-package "ACL2") ; never certified')
+            report = green_check.audit(root, roots=["books/top", "books/new"])
+            self.assertEqual(report["counts"]["red"], 0)  # the old gate's input
+            self.assertEqual(self.standings(green_check.strict_rows(report))["books/new"],
+                             "absent")
+            answer = green_check.profile_gate(report, "synthetic", root=root,
+                                              roots=["books/top", "books/new"])
+            self.assertEqual(answer["not_green"], ["books/new"])
+            self.assertIn("absent=1", green_check.profile_lines(answer)[0])
+
+    def test_a_green_whose_dependency_moved_is_stale_in_the_release_gates(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            found = self.tree(root)
+            # dep is recertified alone at new bytes; top's run is at old dep.
+            changed = book(root, "books/dep", '(in-package "ACL2") ; moved')
+            manifest(root, "certify-20260902T010000Z-2", status="passed",
+                     passed={"books/dep": changed})
+            index(root, "certify-20260901T010000Z-1", "certify-20260902T010000Z-2")
+            report = green_check.audit(root, roots=["books/top"])
+            entry = report["books_by_verdict"]["books/top"]
+            self.assertEqual(entry["verdict"], "green")       # the audit's word
+            self.assertEqual(entry["digest_sha256"], found["books/top"])
+            self.assertEqual(self.standings(green_check.strict_rows(report)),
+                             {"books/dep": "green", "books/top": "stale"})
+            answer = green_check.profile_gate(report, "synthetic", root=root,
+                                              roots=["books/top"])
+            self.assertEqual(answer["not_green"], ["books/top"])
+            self.assertEqual(self.standings(answer["rows"])["books/top"], "stale")
+
+    def test_a_green_only_in_an_unfiled_local_run_is_unarchived(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            self.tree(root)  # written, never indexed: a local draft
+            report = green_check.audit(root, roots=["books/top"])
+            self.assertEqual(report["books_by_verdict"]["books/top"]["verdict"], "green")
+            answer = green_check.profile_gate(report, "synthetic", root=root,
+                                              roots=["books/top"])
+            self.assertEqual(self.standings(answer["rows"]),
+                             {"books/dep": "unarchived", "books/top": "unarchived"})
+            self.assertTrue(all(row["verdict"] == "unarchived"
+                                for row in green_check.strict_rows(report)))
+
+    def test_merge_gate_uses_the_same_standing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            self.tree(root)
+            report = green_check.audit(root, roots=["books/top"])
+            answer = green_check.gate(report, ["books/dep"],
+                                      green_check.dependents(root, report, ["books/dep"]))
+            self.assertEqual(answer["not_green"], ["books/dep", "books/top"])
+
+
+class ArchivedGreenAnswersTests(unittest.TestCase):
+    """S127: committed output (planning/proofs.json's status, generated from
+    `green_at_these_bytes`) must not depend on this worktree's build/acl2."""
+
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.root = Path(self.directory.name).resolve()
+        self.found = book(self.root, "books/solo", '(in-package "ACL2") ; solo')
+        manifest(self.root, "certify-20260901T010000Z-1", status="passed",
+                 passed={"books/solo": self.found})
+        index(self.root, "certify-20260901T010000Z-1")
+
+    def tearDown(self):
+        self.directory.cleanup()
+
+    def test_a_newer_local_green_does_not_hide_the_archived_one(self):
+        manifest(self.root, "certify-20260905T010000Z-5", status="passed",
+                 passed={"books/solo": self.found})
+        localize(self.root, "certify-20260905T010000Z-5")
+        entry = green_check.audit(self.root, roots=["books/solo"])["books_by_verdict"]["books/solo"]
+        self.assertEqual(entry["certified_at_digest"], "certify-20260901T010000Z-1")
+        self.assertTrue(entry["certified_archived"])
+        self.assertEqual(entry["green_local_unarchived"], "certify-20260905T010000Z-5")
+        self.assertTrue(green_check.green_at_these_bytes(entry))
+
+    def test_committed_only_audit_ignores_a_local_red(self):
+        manifest(self.root, "certify-20260905T010000Z-5", status="failed",
+                 failed={"books/solo": self.found})
+        localize(self.root, "certify-20260905T010000Z-5")
+        here = green_check.audit(self.root, roots=["books/solo"])["books_by_verdict"]["books/solo"]
+        self.assertEqual(here["verdict"], "red")  # this tree's own view keeps it
+        committed = green_check.audit(self.root, roots=["books/solo"],
+                                      include_local=False)["books_by_verdict"]["books/solo"]
+        self.assertEqual(committed["verdict"], "green")
+        self.assertTrue(green_check.green_at_these_bytes(committed))
+
+
 class RealManifestsTests(unittest.TestCase):
     """Over this tree's own archive: it runs, and every book gets one answer."""
 
@@ -331,12 +485,13 @@ class RealManifestsTests(unittest.TestCase):
         self.assertEqual(len(finished.stdout.strip().splitlines()), 3)
         self.assertIn("RED at digest", finished.stdout)
 
-    def test_strict_exits_one_exactly_when_a_book_is_red_at_its_digest(self):
+    def test_strict_exits_one_exactly_when_a_book_is_not_green_at_these_bytes(self):
         finished = subprocess.run(
             [sys.executable, "tools/green_check.py", "--summary", "--strict"],
             cwd=ROOT, capture_output=True, text=True)
+        rows = green_check.strict_rows(self.report)
         self.assertEqual(finished.returncode,
-                         1 if self.report["counts"]["red"] else 0,
+                         1 if any(row["verdict"] != "green" for row in rows) else 0,
                          finished.stdout + finished.stderr)
 
     def test_json_is_one_object_a_reader_can_load(self):
@@ -368,6 +523,7 @@ class MergeGateTests(unittest.TestCase):
         aside = book(root, "books/aside", '(in-package "ACL2") ; unrelated')
         manifest(root, "certify-20260901T010000Z-1", status="passed",
                  passed={"books/top": top, "books/dep": dep, "books/aside": aside})
+        index(root, "certify-20260901T010000Z-1")
         return green_check.audit(root, roots=["books/top", "books/aside"])
 
     def test_a_changed_book_names_the_books_that_include_it_and_nothing_else(self):
@@ -416,6 +572,7 @@ class MergeGateTests(unittest.TestCase):
             changed = book(root, "books/dep", '(in-package "ACL2") ; new contract')
             manifest(root, "certify-20260902T010000Z-2", status="passed",
                      passed={"books/dep": changed})
+            index(root, "certify-20260902T010000Z-2")
             report = green_check.audit(root, roots=["books/top", "books/aside"])
             answer = green_check.gate(report, ["books/dep"],
                                      green_check.dependents(root, report, ["books/dep"]))
@@ -428,6 +585,7 @@ class MergeGateTests(unittest.TestCase):
             top_digest = report["books_by_verdict"]["books/top"]["digest_sha256"]
             manifest(root, "certify-20260903T010000Z-3", status="passed",
                      passed={"books/dep": changed, "books/top": top_digest})
+            index(root, "certify-20260903T010000Z-3")
             report = green_check.audit(root, roots=["books/top", "books/aside"])
             answer = green_check.gate(report, ["books/dep"],
                                      green_check.dependents(root, report, ["books/dep"]))
@@ -468,9 +626,45 @@ class MergeGateTests(unittest.TestCase):
             self.assertEqual(green_check.changed_books(root, "main"),
                              ["books/dep", "tests/acl2/dep-tests"])
 
+    def test_a_host_include_edit_and_an_untracked_book_reach_the_gate(self):
+        """S056: a lane that edits only host/page-read-host.lisp (which books
+        include), or creates a book without `git add`, used to see
+        "no book or test book differs" and exit 0 under --strict."""
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            git = lambda *words: subprocess.run(  # noqa: E731
+                ["git", *words], cwd=root, check=True, capture_output=True, text=True)
+            git("init", "-q", "-b", "main")
+            git("config", "user.email", "t@example.invalid")
+            git("config", "user.name", "t")
+            git("config", "commit.gpgsign", "false")
+            hooks = root / "empty-hooks"
+            hooks.mkdir()
+            git("config", "core.hooksPath", str(hooks))
+            helper = book(root, "host/helper", '(in-package "ACL2")')
+            top = book(root, "books/top", '(in-package "ACL2")\n'
+                       '(include-book "../host/helper")\n')
+            manifest(root, "certify-20260901T010000Z-1", status="passed",
+                     passed={"books/top": top}, closure={"host/helper": helper})
+            index(root, "certify-20260901T010000Z-1")
+            git("add", "-A")
+            git("commit", "-q", "-m", "base")
+            git("checkout", "-q", "-b", "lane")
+            book(root, "host/helper", '(in-package "ACL2") ; host edit')
+            book(root, "books/fresh", '(in-package "ACL2") ; never added')
+            changed = green_check.changed_books(root, "main")
+            self.assertEqual(changed, ["books/fresh", "host/helper"])
+            report = green_check.audit(root, roots=["books/top", "books/fresh"])
+            answer = green_check.gate(report, green_check.certifiable(changed),
+                                      green_check.dependents(root, report, changed))
+            verdicts = {row["book"]: row["verdict"] for row in answer["rows"]}
+            self.assertEqual(verdicts, {"books/fresh": "absent", "books/top": "stale"})
+            self.assertEqual(answer["not_green"], ["books/fresh", "books/top"])
+
     def test_the_gate_lines_say_the_counts_and_every_row(self):
         answer = green_check.gate(
-            {"books_by_verdict": {"books/a": {"verdict": "green"},
+            {"books_by_verdict": {"books/a": {"verdict": "green",
+                                              "certified_archived": True},
                                   "books/b": {"verdict": "red"}}},
             ["books/a"], {"books/b": ["books/a"]})
         lines = green_check.gate_lines(answer)

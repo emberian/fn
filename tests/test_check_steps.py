@@ -133,6 +133,46 @@ class ExecuteTests(unittest.TestCase):
         self.assertFalse(rows[0].get("cached"))
         self.assertIn("cache off", text)
 
+    def test_an_input_rewritten_while_the_step_ran_is_not_cached(self):
+        """S055: the key is taken after the step exits.  A file rewritten
+        (same size) after the step read it would key the step's PASS to bytes
+        it never judged, and the next run would replay "read one" over a
+        tree that says "two"."""
+        import threading
+        (self.data / "a").write_text("one\n")
+        slow = [PY, "-c", f"import pathlib, time; print('read', pathlib.Path("
+                          f"{str(self.data / 'a')!r}).read_text().strip()); time.sleep(1.5)"]
+        plan(self.steps, slow)
+        rewrite = threading.Timer(0.8, (self.data / "a").write_text, args=("two\n",))
+        rewrite.start()
+        try:
+            verdict, text, rows = execute(self.steps, self.cache)
+        finally:
+            rewrite.join()
+        self.assertEqual(verdict, 0)
+        self.assertIn("read one", text)
+        self.assertIn("changed while it ran", text)
+        verdict, text, rows = execute(self.steps, self.cache)
+        self.assertFalse(rows[0].get("cached"))
+        self.assertIn("read two", text)
+        # Settled now: the next run may replay it.
+        self.assertTrue(execute(self.steps, self.cache)[2][0].get("cached"))
+
+    def test_a_hazard_drops_both_steps_cache_entries(self):
+        """S055: a write hazard found after the run drops the writer's and the
+        reader's entries, not only a warning."""
+        target = self.data / "shared"
+        target.write_text("old")
+        writer = [PY, "-c", f"import time; time.sleep(0.2); open({str(target)!r}, 'w').write('new')"]
+        reader = [PY, "-c", f"print(open({str(target)!r}).read())"]
+        plan(self.steps, reader, writer)
+        verdict, text, rows = execute(self.steps, self.cache)
+        self.assertIn(f"wrote {target} which", text)
+        for command in (reader, writer):
+            self.assertFalse(
+                (self.cache / "steps" / f"{check_steps.step_key(command)}.json").exists(),
+                shlex.join(command))
+
     def test_a_listing_or_existence_change_reruns(self):
         lister = [PY, "-c", f"import os; print(sorted(os.listdir({str(self.data)!r})))"]
         prober = [PY, "-c", f"import os; print(os.path.exists({str(self.data / 'b')!r}))"]
@@ -201,6 +241,26 @@ class ExecuteTests(unittest.TestCase):
         self.assertTrue(execute(self.steps, self.cache)[2][0].get("cached"))
         entry = json.loads(next((self.cache / "steps").iterdir()).read_text())
         self.assertEqual(entry["inputs"]["g"][0][:2], [str(ROOT), ["rev-parse", "HEAD"]])
+
+    def test_a_git_read_that_timed_out_is_never_cached(self):
+        """S055: a git read that timed out keyed the step as "error ..." and
+        the same timeout next run matched it, replaying a PASS."""
+        import subprocess
+        from unittest import mock
+        probe = [PY, "-c", f"import subprocess; print(subprocess.run(['git', '-C', {str(ROOT)!r}, "
+                           "'rev-parse', 'HEAD'], capture_output=True, text=True).stdout)"]
+        plan(self.steps, probe)
+        real = subprocess.run
+
+        def slow_git(argv, *args, **kwargs):
+            if argv[:1] == ["git"] and kwargs.get("timeout") == 120:
+                raise subprocess.TimeoutExpired(argv, 120)
+            return real(argv, *args, **kwargs)
+        with mock.patch.object(check_steps.subprocess, "run", side_effect=slow_git):
+            verdict, text, rows = execute(self.steps, self.cache)
+            self.assertIn("did not answer", text)
+            verdict, text, rows = execute(self.steps, self.cache)
+            self.assertFalse(rows[0].get("cached"))
 
     def test_a_copied_tree_is_read_not_written(self):
         (self.data / "src").mkdir()

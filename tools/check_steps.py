@@ -235,12 +235,18 @@ def listing(path: str) -> str:
     return hashlib.sha256("\0".join(names).encode()).hexdigest()
 
 
+GIT_FAILED = "error"
+
+
 def git_output(cwd: str, argv: list[str]) -> str:
     try:
         done = subprocess.run(["git", *argv], cwd=cwd, stdin=subprocess.DEVNULL,
                               capture_output=True, timeout=120)
     except (OSError, subprocess.SubprocessError) as error:
-        return f"error {error}"
+        # Not an output: a git read that timed out or could not run keys
+        # nothing (inputs_of refuses to cache on it, and inputs_unchanged
+        # never matches it), so a timeout is never replayed as a PASS.
+        return f"{GIT_FAILED} {error}"
     return hashlib.sha256(bytes([done.returncode & 0xFF]) + done.stdout).hexdigest()
 
 
@@ -325,13 +331,45 @@ def inputs_of(trace: dict, memo: FileMemo) -> tuple[dict | None, str]:
             return None, f"git {' '.join(argv)[:60]}"
     written = trace["w"]
     keep = lambda p: p not in written and not _is_temp(p)  # noqa: E731
+    replayed = [[cwd, argv, git_output(cwd, argv)] for cwd, argv in trace["g"]]
+    for cwd, argv, value in replayed:
+        if value.startswith(GIT_FAILED):
+            return None, f"git {' '.join(argv)[:60]} did not answer ({value[:60]})"
     reads = sorted(p for p in trace["r"] if keep(p))
     return {
         "r": {p: memo.digest(p) for p in reads},
         "l": {p: listing(p) for p in sorted(trace["l"]) if keep(p)},
         "s": {p: path_state(p) for p in sorted(trace["s"] - trace["r"]) if keep(p)},
-        "g": [[cwd, argv, git_output(cwd, argv)] for cwd, argv in trace["g"]],
+        "g": replayed,
     }, ""
+
+
+def moved_during(inputs: dict, since_ns: int) -> str:
+    """The first input whose file or directory changed at or after `since_ns`,
+    a timestamp read from the filesystem's own clock when the step started.
+
+    The key is taken after the step exits, so a digest records the bytes
+    there THEN, not the bytes the step read: a parallel writer or an outside
+    edit during the run would key a PASS to content the step never judged
+    (S055, sweep 2026-10-03).  Any input touched since the step started makes
+    the run uncacheable; the comparison is `>=`, so a write in the same clock
+    tick as the start counts as during."""
+    for path in [*inputs["r"], *inputs["l"], *inputs["s"]]:
+        try:
+            if os.stat(path).st_mtime_ns >= since_ns:
+                return path
+        except OSError:
+            continue
+    return ""
+
+
+def fs_now(directory: Path) -> int:
+    """The filesystem clock now: the mtime of a file created in `directory`.
+    A file's mtime comes from the kernel's coarse clock, which can lag
+    `time.time_ns()`; comparing like with like is what makes `>=` sound."""
+    marker = directory / "started"
+    marker.write_bytes(b"")
+    return marker.stat().st_mtime_ns
 
 
 def inputs_unchanged(inputs: dict, memo: FileMemo) -> bool:
@@ -345,7 +383,7 @@ def inputs_unchanged(inputs: dict, memo: FileMemo) -> bool:
         if path_state(path) != value:
             return False
     for cwd, argv, value in inputs["g"]:
-        if git_output(cwd, argv) != value:
+        if value.startswith(GIT_FAILED) or git_output(cwd, argv) != value:
             return False
     return True
 
@@ -435,6 +473,7 @@ class Executor:
         if not serial_stream:
             self.emit(f"-- started {name}\n")
         trace_dir = Path(tempfile.mkdtemp(prefix=f"check-trace-{index:02d}-"))
+        began = fs_now(trace_dir)
         env = dict(os.environ)
         env["FN_CHECK_TRACE"] = str(trace_dir)
         env["PYTHONPATH"] = os.pathsep.join(
@@ -477,6 +516,10 @@ class Executor:
                 for p in trace["r"] | trace["l"] | trace["w"] | trace["s"])
         if code == 0:  # a forced run refreshes the cache too
             inputs, why = inputs_of(trace, self.memo)
+            if inputs is not None:
+                moved = moved_during(inputs, began)
+                if moved:
+                    inputs, why = None, f"{moved} changed while it ran"
             if inputs is None:
                 self.emit(f"-- {name}: not cacheable ({why})\n")
                 try:
@@ -522,6 +565,14 @@ class Executor:
             if conflict and step not in alone:
                 found.append(conflict)
                 self.learned.add(command)
+                # Neither verdict judged a settled tree: the reader may have
+                # read mid-write, and the writer's own key is no better.
+                # Drop both cache entries, so the next run runs both (S055).
+                for named in (step, other):
+                    try:
+                        self.entry_path(named["key"]).unlink()
+                    except OSError:
+                        pass
             elif not conflict and command in self.learned:
                 self.learned.discard(command)
                 print(f"check_steps: {step['name']} no longer writes what another step reads; "
