@@ -22997,7 +22997,7 @@
         "tests/native_tcpcl_source_control_raw.lisp",
         "tests/test_bp_node_native.py"
       ],
-      "progress_note": "Actual retained framing/private source/session KEEPALIVE transition/delivery-plan raw composition PASS: incoming clock advances before publication, exact END ACK/root remainheld, next XFER prefix vector/offset preserved without extra read/issuer, normal or EOF source terminal publishes once and only observed close+context settles bank. Wire decoder/socket/durable callback are recorded; no full native verdict. Warm normal guards+13 literal assertions PASS; actual fn-tcl-step inbound/reception lemmas1599/1482 steps. Existing outgoing cheap-state lemma384714 steps makes book397806 steps/1.41s. Exact affected roots pending. New SCN1131 current-source native prepared/unexecuted."
+      "progress_note": "Actual retained framing/private source/session KEEPALIVE transition/delivery-plan raw composition PASS: incoming clock advances before publication, exact END ACK/root remainheld, next XFER prefix vector/offset preserved without extra read/issuer, normal or EOF source terminal publishes once and only observed close+context settles bank. Wire decoder/socket/durable callback are recorded; no full native verdict. Warm normal guards+13 literal assertions PASS; actual fn-tcl-step inbound/reception lemmas1599/1482 steps. Existing outgoing cheap-state lemma384714 steps makes book397806 steps/1.41s. Exact affected roots pending. New SCN1131 current-source native prepared/unexecuted. Source-control/root teeth certify-20261003T163429Z-2470673 PASSED5/0 including changed zero-transfer dependency; actual parser boundary separately certified atPRF1303. Full host/private custody remains planned."
     },
     {
       "id": "PRF-1298",
@@ -23099,7 +23099,7 @@
         "PRF-1300"
       ],
       "assumptions": [],
-      "status": "planned",
+      "status": "certified",
       "events": [
         "fn-tclsctl-source-drive-keepalive-refines-session",
         "fn-tclsctl-source-drive-keepalive-preserves-custody-and-reception"
@@ -23107,9 +23107,10 @@
       "evidence": [
         "books/tcpcl-source-control-refinement.lisp",
         "tests/acl2/tcpcl-source-control-refinement-tests.lisp",
-        "host/native/tcpcl.lisp"
+        "host/native/tcpcl.lisp",
+        "planning/evidence/manifests/certify-20261003T171341Z-2643459.json"
       ],
-      "progress_note": "Normal warm hbox admission: universal parser/session identity311steps and composed custody/reception4513steps, plus complete reachable positive and phase-hypothesis-removal literals PASS. Exact two-root certificate pending; no native or whole-host correspondence claim."
+      "progress_note": "Normal warm hbox admission: universal parser/session identity311steps and composed custody/reception4513steps, plus complete reachable positive and phase-hypothesis-removal literals PASS. Exact two-root certificate pending; no native or whole-host correspondence claim. Exact current source two-root certify-20261003T171341Z-2643459 PASSED2/0, archived/indexed; certified scope is the actual one-frame parser/session boundary, not the native/private alias or complete framed stream."
     },
     {
       "id": "PRF-1305",
@@ -23132,7 +23133,7 @@
         "tests/acl2/tcpcl-received-source-refinement-tests.lisp",
         "books/tcpcl-received-source.lisp",
         "host/native/tcpcl.lisp",
-        "planning/evidence/manifests/certify-20261003T124620Z-1862293.json"
+        "planning/evidence/manifests/certify-20261003T124653Z-1860852.json"
       ],
       "progress_note": "Restores a distinct claimed registry coordinate for the already implemented/proved actual receiver abstraction; PRF1292 belongs to owner-operation readout and is preserved. Earlier exact alpha/guard source certificate remains its own archived coordinate; a current source union certificate is being refreshed before any current certification claim."
     },

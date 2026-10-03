@@ -3826,3 +3826,9 @@ extension composition next; no blanket tariff/native claim. Runtime startup
 now normalizes its captured root identically. Distinct PRF1305 restores existing
 received-source alpha registry and corrects PRF1300 dependency without overwriting
 owner-operation PRF1292; current certificate refresh pending.
+
+Exact PRF1303 control parser certificate certify-20261003T171341Z-2643459
+PASSED2/0, archived/indexed. This certifies the actual one-frame source driver
+complete result/session equality and inbound/reception/remainder/status with
+reachable partial-transfer and closed-phase teeth. Full framed-stream/native
+private source alias/END ACK/publication correspondence remains open.
