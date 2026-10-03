@@ -1,0 +1,17 @@
+{
+ "category": "check-lane",
+ "detail": "witness_check: tests/test_native_payload_lifecycle_raw.sh: no scenario-catalog row cites it or a tests/*.lisp it drives",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "",
+ "id": "CL08",
+ "line": "",
+ "locus": "gates-tests-packaging",
+ "notes": [],
+ "owner": "sweep-gates",
+ "severity": "medium",
+ "source": "check-lane-355a5c843",
+ "state": "open",
+ "title": "check-lane red: witness_check",
+ "updated": "2026-10-03T02:30:23Z"
+}

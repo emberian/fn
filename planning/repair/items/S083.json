@@ -1,0 +1,16 @@
+{
+ "category": "correctness",
+ "disposition": "LOCAL",
+ "exposure": "conditional",
+ "file": "host/native/owner.lisp",
+ "id": "S083",
+ "line": "3985",
+ "locus": "operator-verbs",
+ "notes": [],
+ "owner": "sweep-ops",
+ "severity": "low",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "Moderation :withdraw reports 'refused' after the withdrawal configuration was already durably published",
+ "updated": "2026-10-03T02:30:23Z"
+}

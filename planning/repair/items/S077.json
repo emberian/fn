@@ -1,0 +1,18 @@
+{
+ "acceptance": "wrapper:closed-classification",
+ "category": "error-handling",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "conditional",
+ "file": "host/native/io.lisp",
+ "id": "S077",
+ "line": "6978",
+ "locus": "log-kernel",
+ "notes": [],
+ "owner": "sweep-store",
+ "severity": "low",
+ "slice": "wrapper",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "A damaged segment size is reported as a usage error; fnn-log-observed-extent's docstring claims a check the code lacks",
+ "updated": "2026-10-03T02:30:23Z"
+}

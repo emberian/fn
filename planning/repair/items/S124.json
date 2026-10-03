@@ -1,0 +1,16 @@
+{
+ "category": "error-handling",
+ "disposition": "LOCAL",
+ "exposure": "conditional",
+ "file": "books/store-log-damage.lisp",
+ "id": "S124",
+ "line": "268",
+ "locus": "store-books",
+ "notes": [],
+ "owner": "sweep-store",
+ "severity": "low",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "A death during the repair's quarantine copy makes the repair impossible to rerun: the quarantine name is deterministic and opened O_EXCL",
+ "updated": "2026-10-03T02:30:23Z"
+}

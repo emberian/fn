@@ -1,0 +1,16 @@
+{
+ "category": "dead-code",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "host/checkpoint-host.lisp",
+ "id": "S117",
+ "line": "72",
+ "locus": "store-books",
+ "notes": [],
+ "owner": "sweep-store",
+ "severity": "low",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "The generation-checkpoint bridge and the LF-joined staging sweep are dead entries whose stated callers no longer exist",
+ "updated": "2026-10-03T02:30:23Z"
+}

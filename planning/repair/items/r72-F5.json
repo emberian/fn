@@ -1,0 +1,16 @@
+{
+ "category": "claim-gap",
+ "disposition": "LOCAL",
+ "exposure": "conditional",
+ "file": "host/native/io.lisp",
+ "id": "r72-F5",
+ "line": "4258",
+ "locus": "operator-verbs",
+ "notes": [],
+ "owner": "sweep-store",
+ "severity": "medium",
+ "source": "r72",
+ "state": "open",
+ "title": "fnn-export-sync-data (claim-gap)",
+ "updated": "2026-10-03T02:30:23Z"
+}

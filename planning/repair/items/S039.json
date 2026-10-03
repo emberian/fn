@@ -1,0 +1,16 @@
+{
+ "category": "correctness",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "host/store-write-host.lisp",
+ "id": "S039",
+ "line": "1075",
+ "locus": "store-books",
+ "notes": [],
+ "owner": "sweep-store",
+ "severity": "medium",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "Writable extracted open leaves configuration records out of the txid frontier (reintroduces walk F3)",
+ "updated": "2026-10-03T02:30:23Z"
+}

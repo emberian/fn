@@ -1,0 +1,18 @@
+{
+ "acceptance": "wrapper:closed-classification",
+ "category": "error-handling",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "latent",
+ "file": "host/native/io.lisp",
+ "id": "S074",
+ "line": "1883",
+ "locus": "operator-verbs",
+ "notes": [],
+ "owner": "sweep-store",
+ "severity": "low",
+ "slice": "wrapper",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "A model/host disagreement or malformed ACL2 result is reported as a refusal (exit 1), not a fault",
+ "updated": "2026-10-03T02:30:23Z"
+}

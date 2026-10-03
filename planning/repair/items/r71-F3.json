@@ -1,0 +1,20 @@
+{
+ "acceptance": "mux:no-cold-await",
+ "category": "bug",
+ "disposition": "BRIDGE",
+ "exposure": "live",
+ "file": "host/native/mux.lisp",
+ "id": "r71-F3",
+ "line": "635",
+ "locus": "connections",
+ "notes": [
+  "duplicate of S010"
+ ],
+ "owner": "host-lifecycle",
+ "severity": "high",
+ "slice": "mux",
+ "source": "r71",
+ "state": "duplicate",
+ "title": "fnn-mux-step (bug)",
+ "updated": "2026-10-03T02:30:23Z"
+}

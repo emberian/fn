@@ -1,0 +1,18 @@
+{
+ "acceptance": "wrapper:fence-before-unlock",
+ "category": "error-handling",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "conditional",
+ "file": "host/native/owner.lisp",
+ "id": "S080",
+ "line": "3198",
+ "locus": "committer",
+ "notes": [],
+ "owner": "sweep-ops",
+ "severity": "low",
+ "slice": "wrapper",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "Uncertain-reply rendering swallows every error via ignore-errors, including core faults",
+ "updated": "2026-10-03T02:30:23Z"
+}

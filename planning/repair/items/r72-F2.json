@@ -1,0 +1,20 @@
+{
+ "acceptance": "wrapper:fence-before-unlock",
+ "category": "bug",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "conditional",
+ "file": "host/native/owner.lisp",
+ "id": "r72-F2",
+ "line": "5130",
+ "locus": "reclaim-publication",
+ "notes": [
+  "duplicate of S019"
+ ],
+ "owner": "failure-scope",
+ "severity": "high",
+ "slice": "wrapper",
+ "source": "r72",
+ "state": "duplicate",
+ "title": "fnn-owner-publish-captured (bug)",
+ "updated": "2026-10-03T02:30:23Z"
+}

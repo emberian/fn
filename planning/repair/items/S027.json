@@ -1,0 +1,22 @@
+{
+ "acceptance": "wrapper:connection-scoped",
+ "category": "correctness",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "conditional",
+ "file": "host/native/bp-node.lisp",
+ "id": "S027",
+ "line": "450",
+ "locus": "peer-services",
+ "notes": [
+  "10-02 22:30 fixed f48cf6e12 on lane/sweep-peer; in the next READY batch after S005",
+  "10-02 22:33 sent to runner in 5536e2f08; raw witness passes"
+ ],
+ "owner": "sweep-peer",
+ "severity": "medium",
+ "sha": "f48cf6e12",
+ "slice": "wrapper",
+ "source": "sweep-2026-10-03",
+ "state": "in-progress",
+ "title": "Forward session: a connection error before the attempt is issued skips the ACL2 session-close event",
+ "updated": "2026-10-03T02:33:21Z"
+}

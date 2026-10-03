@@ -1,0 +1,18 @@
+{
+ "category": "bug",
+ "disposition": "LOCAL",
+ "exposure": "live",
+ "file": "books/nntp-auth.lisp",
+ "id": "X15",
+ "line": "1361",
+ "locus": "served-books",
+ "notes": [
+  "10-02 22:22 of S044 (same fix: per-connection failure budget, sub-lane sweep-ops-auth)"
+ ],
+ "owner": "sweep-ops",
+ "severity": "high",
+ "source": "coordinator",
+ "state": "duplicate",
+ "title": "AUTHINFO: ~1,600 pipelined guesses per read before the per-address budget (S044)",
+ "updated": "2026-10-03T02:30:23Z"
+}

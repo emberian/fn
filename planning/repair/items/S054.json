@@ -1,0 +1,18 @@
+{
+ "acceptance": "services:round-deadline",
+ "category": "performance",
+ "disposition": "BRIDGE",
+ "exposure": "live",
+ "file": "host/native/pull-service.lisp",
+ "id": "S054",
+ "line": "433",
+ "locus": "peer-services",
+ "notes": [],
+ "owner": "sweep-peer",
+ "severity": "medium",
+ "slice": "services",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "One pull worker serves every peer serially with only a per-read timeout, so one slow peer starves all pull and catch-up rounds",
+ "updated": "2026-10-03T02:30:23Z"
+}

@@ -1,0 +1,21 @@
+{
+ "category": "security",
+ "disposition": "LOCAL",
+ "exposure": "live",
+ "file": "books/nntp-auth.lisp",
+ "id": "S044",
+ "line": "1361",
+ "locus": "served-books",
+ "notes": [
+  "sub-lane sweep-ops-auth",
+  "10-02 22:33 sub-lane lane/sweep-ops-auth; sent to runner for merge-all",
+  "10-02 22:33 lane/sweep-ops-auth a9e9a9c46: per-connection failure budget (3, RFC 4643 s6) in books/nntp-auth.lisp, keystones PRF-1249/NNT-1002, teeth tests/acl2/nntp-auth-failure-budget-tests.lisp REPL-green on hbox, native test added to tests/test_native_auth.py. NOT yet: certify (farm run-20261003T021813Z-8184 on hbox, 707 books, unwaited), fast checks (remote_check unfinished), native s044 (unfinished). KDF verifier half open."
+ ],
+ "owner": "sweep-ops",
+ "severity": "medium",
+ "sha": "a9e9a9c46",
+ "source": "sweep-2026-10-03",
+ "state": "in-progress",
+ "title": "Unthrottled online password guessing: AUTHINFO USER/PASS can be pipelined without limit and each guess costs one fast salted hash",
+ "updated": "2026-10-03T02:33:45Z"
+}

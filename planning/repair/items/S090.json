@@ -1,0 +1,18 @@
+{
+ "acceptance": "wrapper:closed-classification",
+ "category": "fail-open",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "conditional",
+ "file": "host/native/heap.lisp",
+ "id": "S090",
+ "line": "313",
+ "locus": "operator-verbs",
+ "notes": [],
+ "owner": "host-lifecycle",
+ "severity": "low",
+ "slice": "wrapper",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "The heap probe swallows any fault while resolving the operator profile and prints an accepting no-store heap line",
+ "updated": "2026-10-03T02:30:23Z"
+}

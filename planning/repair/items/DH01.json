@@ -1,0 +1,19 @@
+{
+ "category": "generator",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "books/page-read-direct.lisp",
+ "id": "DH01",
+ "locus": "cold-line",
+ "note": "lane/def-holder (on origin/lane/arena-forget 9a3a85be3): certified run-675d at aac4c47b0 (manifest filed), proof-cost pass + F1 (X14) resubmitted; natives wt-20261003T020633Z at f34d7057b and a final run at the head pending; lands with ARENA-FORGET (X04): the coordinator sequences",
+ "notes": [
+  "10-02 22:33 pushed for the all-onto-dev merge: certified at aac4c47b0 (run-675d filed); later commits (proof hints, a :root row, the parameterised keystone) REPL-admitted, not certified (run-02fb active); natives at f34d7057b in flight (images not built); the F1 native unrun; check-lane at 187b3470b running"
+ ],
+ "owner": "def-holder",
+ "severity": "medium",
+ "sha": "297e4f700",
+ "source": "def-holder",
+ "state": "ready",
+ "title": "cold-read instance of def-holder: page-read-direct re-expressed (issued alist + identified holds table; fnn-extent-close asks fn-pio-direct-quiet-p, one lookup; KEYSTONE fn-pio-direct-quiet-is-clear) + handle-holds (PRF-1240, ARENA-FORGET's liveness precondition) + holder cuts in the crash model",
+ "updated": "2026-10-03T02:33:04Z"
+}

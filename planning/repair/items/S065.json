@@ -1,0 +1,18 @@
+{
+ "acceptance": "services:web-on-loops",
+ "category": "performance",
+ "disposition": "BRIDGE",
+ "exposure": "live",
+ "file": "host/native/web-host.lisp",
+ "id": "S065",
+ "line": "322",
+ "locus": "connections",
+ "notes": [],
+ "owner": "host-lifecycle",
+ "severity": "medium",
+ "slice": "services",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "The web face serves one connection at a time on its only thread, and that thread also sleeps for exposure charges",
+ "updated": "2026-10-03T02:30:23Z"
+}

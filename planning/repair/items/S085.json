@@ -1,0 +1,18 @@
+{
+ "acceptance": "mux:phase-machine",
+ "category": "error-handling",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "conditional",
+ "file": "host/native/mux.lisp",
+ "id": "S085",
+ "line": "813",
+ "locus": "connections",
+ "notes": [],
+ "owner": "host-lifecycle",
+ "severity": "low",
+ "slice": "mux",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "STARTTLS admitted from the wait queue keeps phase :hs-wait, so a failure in fnn-tls-accept-begin double-counts the handshake leave",
+ "updated": "2026-10-03T02:30:23Z"
+}

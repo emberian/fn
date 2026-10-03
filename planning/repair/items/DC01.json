@@ -1,0 +1,20 @@
+{
+ "category": "generator",
+ "detail": "PRF-1236; manifest certify-20261002T232442Z-2105883 (hbox run-f0bd 3/0); books/protocol-table.lisp byte-identical to origin/dev; the served path unchanged until DC02 (nothing calls the generated dispatcher yet)",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "books/protocol-served.lisp",
+ "id": "DC01",
+ "locus": "served-books",
+ "notes": [
+  "10-02 22:29 check-fast-lane at 61e7d8751 green except the three pre-existing origin/dev reds (spec_cite_check CL20, test_roots_check withdrawal-index-carried-tests, main_last_check test_depth_check.py); manifest certify-20261002T232442Z-2105883; served path unchanged (no host file; protocol-table byte-identical)",
+  "10-02 22:30 merged into next"
+ ],
+ "owner": "def-command",
+ "severity": "high",
+ "sha": "a35902812",
+ "source": "coordinator",
+ "state": "ready",
+ "title": "A served NNTP command is a declaration: books/protocol-served-table.lisp (the served columns) + books/protocol-served.lisp (the generated served dispatcher, per-form view contracts, the case-split keystone, the view-site keystones) + the spec's generated served command table + the view-policy debt ratchet; XPAT, GROUP, OVER, XOVER declared",
+ "updated": "2026-10-03T02:30:34Z"
+}

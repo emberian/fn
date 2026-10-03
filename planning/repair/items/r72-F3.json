@@ -1,0 +1,19 @@
+{
+ "category": "bug",
+ "disposition": "LOCAL",
+ "exposure": "conditional",
+ "file": "host/native/io.lisp",
+ "id": "r72-F3",
+ "line": "2549",
+ "locus": "log-kernel",
+ "notes": [
+  "10-02 22:33 on lane/sweep-store; natives pending (interfaces.json regen needed)"
+ ],
+ "owner": "sweep-store",
+ "severity": "high",
+ "sha": "ecf40c2bd12ca0794bad10acdbeb028256e08453",
+ "source": "r72",
+ "state": "ready",
+ "title": "fnn-state-checkpoint-plan (bug)",
+ "updated": "2026-10-03T02:33:52Z"
+}

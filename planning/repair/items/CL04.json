@@ -1,0 +1,17 @@
+{
+ "category": "check-lane",
+ "detail": "WARN: ledger: export hygiene: books/owner-log.lisp:773: fn-olog-served-refusal-line-says-refused: accessor-equality: an enabled equality between two different o",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "",
+ "id": "CL04",
+ "line": "",
+ "locus": "gates-tests-packaging",
+ "notes": [],
+ "owner": "sweep-gates",
+ "severity": "medium",
+ "source": "check-lane-355a5c843",
+ "state": "open",
+ "title": "check-lane red: check_scaffold",
+ "updated": "2026-10-03T02:30:23Z"
+}

@@ -1,0 +1,20 @@
+{
+ "category": "bug",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "books/definterface.lisp",
+ "id": "X06",
+ "line": "507",
+ "locus": "generators",
+ "notes": [
+  "10-02 22:19 narrowed to *fn-di-fail-loud-primitives* (boundp-global, boundp-global1); teeth on both raw-with paths (definterface-tests fn-dit-r-bounded, def-carried-tests r72); in the REPL",
+  "10-02 22:32 narrowed to *fn-di-fail-loud-primitives*; teeth on both raw-with paths; four test books green in REPL (dit 93, cdt 216, cwt 108, ort 31); certify hbox in flight"
+ ],
+ "owner": "def-entry",
+ "severity": "high",
+ "sha": "67ee29e37",
+ "source": "coordinator",
+ "state": "ready",
+ "title": "definterface raw-with drops predefined-headed guard conjuncts (unsound raw dispatch)",
+ "updated": "2026-10-03T02:32:11Z"
+}

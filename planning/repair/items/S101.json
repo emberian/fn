@@ -1,0 +1,16 @@
+{
+ "category": "architecture",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "host/native/bp-node.lisp",
+ "id": "S101",
+ "line": "384",
+ "locus": "peer-services",
+ "notes": [],
+ "owner": "sweep-peer",
+ "severity": "low",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "Forward session hard-codes 127.0.0.1 instead of using the address ACL2's route names",
+ "updated": "2026-10-03T02:30:23Z"
+}

@@ -1,0 +1,14 @@
+{
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "books/owner-served-carried.lisp",
+ "id": "HM03",
+ "locus": "generators",
+ "notes": [],
+ "owner": "composition",
+ "severity": "high",
+ "source": "coordinator",
+ "state": "open",
+ "title": "Carried read theorem: fn-lgoc-own-read-is-served-step-on-pinned-prefix under fn-ocl-relation so P2/M6/P8 rest on what the host carries; plus the pinned-generation=current special case of the static bridge",
+ "updated": "2026-10-03T02:30:23Z"
+}

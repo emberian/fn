@@ -1,0 +1,15 @@
+{
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "books/def-cursor.lisp",
+ "id": "GEN-CURSOR",
+ "locus": "generators",
+ "note": "after GEN-CARRIED-VIEW lands; DEF-COMMAND owns the :quantum column, progress effect and off-lock rule",
+ "notes": [],
+ "owner": "generators",
+ "severity": "medium",
+ "source": "served-catalog-live-finding",
+ "state": "open",
+ "title": "def-cursor: the resumable-continuation generator (step, run = reference, per-quantum VISIT bound, residual, progress); instances fn-nnw and OVER's fn-ovw",
+ "updated": "2026-10-03T02:30:23Z"
+}

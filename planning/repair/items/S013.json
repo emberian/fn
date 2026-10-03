@@ -1,0 +1,18 @@
+{
+ "acceptance": "verbs:windowed-read",
+ "category": "claim-gap",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "conditional",
+ "file": "host/native/io.lisp",
+ "id": "S013",
+ "line": "4686",
+ "locus": "operator-verbs",
+ "notes": [],
+ "owner": "sweep-store",
+ "severity": "medium",
+ "slice": "verbs",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "Import builds the whole records/ directory listing in memory, contradicting its one-chunk allocation claim",
+ "updated": "2026-10-03T02:30:23Z"
+}

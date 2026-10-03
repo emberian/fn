@@ -1,0 +1,16 @@
+{
+ "category": "resource-leak",
+ "disposition": "LOCAL",
+ "exposure": "conditional",
+ "file": "host/native/io.lisp",
+ "id": "S073",
+ "line": "3940",
+ "locus": "operator-verbs",
+ "notes": [],
+ "owner": "sweep-store",
+ "severity": "low",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "A failed node-secret rotation leaves a partial secret file in keys/, which no sweep removes",
+ "updated": "2026-10-03T02:30:23Z"
+}

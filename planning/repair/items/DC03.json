@@ -1,0 +1,18 @@
+{
+ "category": "generator",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "books/protocol-served-table.lisp",
+ "id": "DC03",
+ "locus": "served-books",
+ "notes": [
+  "10-02 22:22 LIST row written by DEF-COMMAND when SCL4 (LIST option A) lands; the completed discovery view is ONE formal (agreed with served-catalog-live)",
+  "10-02 22:33 WIND DOWN: NEXT/LAST prove from (:instance fn-nntp-next-or-last-cat-is-next-or-last (direction D)) alone; LISTGROUP/ARTICLE family/LIST COUNTS need served-catalog-dispatch's LOCAL lemmas exported (drop local), not restated (they fail outside that theory). OVER/XOVER re-declared from SCL1's keystones."
+ ],
+ "owner": "def-command",
+ "severity": "medium",
+ "source": "coordinator",
+ "state": "deferred",
+ "title": "Declare the remaining served rows as :forms: NEXT/LAST (proved in the session from one :by each), LISTGROUP, the ARTICLE family, HDR/XHDR, LIST, LIST COUNTS, NEWGROUPS, NEWNEWS, XFNCATCHUP, XFN-ZARTICLE; export served-catalog-dispatch's local lemmas (fn-scat-built-listgroup-is-fold, fn-scat-pinned-number-line-is-number-retrieval, fn-scat-gidx-list-counts-is-fold) instead of restating",
+ "updated": "2026-10-03T02:33:43Z"
+}

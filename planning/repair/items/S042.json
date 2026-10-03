@@ -1,0 +1,16 @@
+{
+ "category": "correctness",
+ "disposition": "LOCAL",
+ "exposure": "live",
+ "file": "books/served-catalog.lisp",
+ "id": "S042",
+ "line": "3369",
+ "locus": "served-books",
+ "notes": [],
+ "owner": "served-catalog-live",
+ "severity": "medium",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "NEXT/LAST land on a reclaimed article, answer 423 and never move the cursor, so a reader cannot step past a tombstone",
+ "updated": "2026-10-03T02:30:23Z"
+}

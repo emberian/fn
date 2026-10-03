@@ -1,0 +1,20 @@
+{
+ "acceptance": "pure:word-table",
+ "category": "claim-gap",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "latent",
+ "file": "host/native/owner.lisp",
+ "id": "r71-F15",
+ "line": "2015",
+ "locus": "connections",
+ "notes": [
+  "10-02 22:33 design decided (:outcomes in the entry's ACL2 result, interface_emit refuses a host site mapping a word; lanedump 'Amendments'); not built -- after DE-R2"
+ ],
+ "owner": "def-entry",
+ "severity": "medium",
+ "slice": "pure",
+ "source": "r71",
+ "state": "open",
+ "title": "fnn-owner-prepare-refusal-word (claim-gap)",
+ "updated": "2026-10-03T02:33:36Z"
+}

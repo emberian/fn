@@ -1,0 +1,13 @@
+{
+ "category": "check-lane",
+ "file": "books/productive-transfer.lisp",
+ "id": "X19",
+ "line": "30",
+ "notes": [],
+ "owner": "sweep-gates",
+ "severity": "low",
+ "source": "check-lane",
+ "state": "open",
+ "title": "clock_unit: productive-transfer.lisp:30 raw clock compare; route through the clock-unit function",
+ "updated": "2026-10-03T02:30:26Z"
+}

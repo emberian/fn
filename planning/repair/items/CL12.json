@@ -1,0 +1,17 @@
+{
+ "category": "check-lane",
+ "detail": "payload-kind: 12 findings; definitions reading payload 63, accepted sites 36, wire definitions 11, handle definitions 7, handle sinks 28",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "",
+ "id": "CL12",
+ "line": "",
+ "locus": "gates-tests-packaging",
+ "notes": [],
+ "owner": "sweep-gates",
+ "severity": "medium",
+ "source": "check-lane-355a5c843",
+ "state": "open",
+ "title": "check-lane red: payload_kind_check",
+ "updated": "2026-10-03T02:30:23Z"
+}

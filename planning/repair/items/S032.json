@@ -1,0 +1,21 @@
+{
+ "acceptance": "services:windowed-reply",
+ "category": "performance",
+ "disposition": "BRIDGE",
+ "exposure": "live",
+ "file": "host/native/web-host.lisp",
+ "id": "S032",
+ "line": "120",
+ "locus": "connections",
+ "notes": [
+  "10-02 22:32 coded on lane/host-lifecycle 4e409a9d6 (handed to runner); see lanedumps/host-lifecycle.md for verification"
+ ],
+ "owner": "host-lifecycle",
+ "severity": "medium",
+ "sha": "4e409a9d6",
+ "slice": "services",
+ "source": "sweep-2026-10-03",
+ "state": "in-progress",
+ "title": "Web reply is buffered whole with quadratic concatenation, and the feed has no deadline despite the per-request time claim",
+ "updated": "2026-10-03T02:32:57Z"
+}

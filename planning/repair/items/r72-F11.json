@@ -1,0 +1,16 @@
+{
+ "category": "nit",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "host/native/io.lisp",
+ "id": "r72-F11",
+ "line": "6420",
+ "locus": "log-kernel",
+ "notes": [],
+ "owner": "sweep-store",
+ "severity": "low",
+ "source": "r72",
+ "state": "open",
+ "title": "fnn-log-open-segment (nit)",
+ "updated": "2026-10-03T02:30:23Z"
+}

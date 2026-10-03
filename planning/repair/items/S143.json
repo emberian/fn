@@ -1,0 +1,16 @@
+{
+ "category": "security",
+ "disposition": "LOCAL",
+ "exposure": "conditional",
+ "file": "host/native/control.lisp",
+ "id": "S143",
+ "line": "350",
+ "locus": "operator-verbs",
+ "notes": [],
+ "owner": "sweep-ops",
+ "severity": "low",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "Control socket: operator post, live admin, retire/reclaim and moderation do no peer-UID check and rely on a chmod made after listen()",
+ "updated": "2026-10-03T02:30:23Z"
+}

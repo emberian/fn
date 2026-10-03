@@ -1,0 +1,18 @@
+{
+ "acceptance": "pure:acl2-parses",
+ "category": "architecture",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "latent",
+ "file": "host/native/bp-node.lisp",
+ "id": "S146",
+ "line": "228",
+ "locus": "peer-services",
+ "notes": [],
+ "owner": "sweep-ops",
+ "severity": "low",
+ "slice": "pure",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "Host parses and validates the BP node budget file itself, against the rule that ACL2 parses external data",
+ "updated": "2026-10-03T02:30:23Z"
+}

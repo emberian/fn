@@ -1,0 +1,12 @@
+{
+ "category": "performance",
+ "file": "tools/ledger.py",
+ "id": "X17",
+ "notes": [],
+ "owner": "sweep-gates",
+ "severity": "medium",
+ "source": "runner",
+ "state": "open",
+ "title": "fast checks: ledger write+check (~10 min) and reach --baseline+--strict (~11 min) dominate each train pass (21 of 25 min); make them incremental or content-cached",
+ "updated": "2026-10-03T02:30:26Z"
+}

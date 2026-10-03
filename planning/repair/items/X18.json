@@ -1,0 +1,12 @@
+{
+ "category": "check-lane",
+ "file": "Makefile",
+ "id": "X18",
+ "notes": [],
+ "owner": "generators",
+ "severity": "low",
+ "source": "check-lane",
+ "state": "open",
+ "title": "test_roots: withdrawal-index-carried-tests and its book are not Makefile roots",
+ "updated": "2026-10-03T02:30:26Z"
+}

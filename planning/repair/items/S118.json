@@ -1,0 +1,16 @@
+{
+ "category": "performance",
+ "disposition": "LOCAL",
+ "exposure": "conditional",
+ "file": "host/store-node-host.lisp",
+ "id": "S118",
+ "line": "1512",
+ "locus": "store-books",
+ "notes": [],
+ "owner": "sweep-store",
+ "severity": "low",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "fn-store-sn-finish copies the whole successes history twice per commit to compare lengths",
+ "updated": "2026-10-03T02:30:23Z"
+}

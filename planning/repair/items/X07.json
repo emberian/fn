@@ -1,0 +1,22 @@
+{
+ "category": "bug",
+ "disposition": "LOCAL",
+ "exposure": "live",
+ "file": "books/served.lisp",
+ "id": "X07",
+ "line": "172",
+ "locus": "served-books",
+ "notes": [
+  "10-02 22:19 t42 red at affected roots (certify-20261002T231742Z-1964379 671/80): fn-otm-closed-posting-answers-the-generic-440 restated over fn-post-command-env (0bcd9a338, REPL hbox 54/54); recertifying the 79 failed roots hbox run-20261003T020606Z-9728",
+  "10-02 22:31 pushed for merge (ember: all onto dev); recertify hbox run-20261003T020606Z-9728 pending",
+  "10-02 22:32 merged-for-dev handoff at 0bcd9a338; in-flight: hbox farm run-20261003T020606Z-9728 (79 failed roots). Check: cd build/lanes/codex-t42-date-current && python3 tools/farm.py wait hbox run-20261003T020606Z-9728",
+  "10-02 22:37 recertify at 0bcd9a338: 59 passed / 20 failed (X07b)"
+ ],
+ "owner": "liaison",
+ "severity": "medium",
+ "sha": "0bcd9a338",
+ "source": "coordinator",
+ "state": "in-progress",
+ "title": "DATE answers the clock pinned at accept (t42, recertifying)",
+ "updated": "2026-10-03T02:37:03Z"
+}

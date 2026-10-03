@@ -1,0 +1,20 @@
+{
+ "category": "claim-gap",
+ "disposition": "LOCAL",
+ "exposure": "live",
+ "file": "host/native/owner.lisp",
+ "id": "S002",
+ "line": "2512",
+ "locus": "connections",
+ "notes": [
+  "lane/sweep-ops 8aa451848",
+  "10-02 22:32 pushed for merge-all at lane/sweep-ops cc4ef2db6; heap native pending"
+ ],
+ "owner": "sweep-ops",
+ "severity": "high",
+ "sha": "e5e8b2e5c",
+ "source": "sweep-2026-10-03",
+ "state": "ready",
+ "title": "Served POST builds the whole article as cons lists twice under the owner mutex; the D27 buffer twins documented as called from here have no caller",
+ "updated": "2026-10-03T02:32:08Z"
+}

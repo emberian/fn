@@ -1,0 +1,16 @@
+{
+ "category": "fail-open",
+ "disposition": "LOCAL",
+ "exposure": "conditional",
+ "file": "books/nntp-auth.lisp",
+ "id": "S121",
+ "line": "3637",
+ "locus": "served-books",
+ "notes": [],
+ "owner": "sweep-ops",
+ "severity": "low",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "A peer-role connection bypasses the reader access rule and the moderation-queue hiding, and is served the unrestricted archive for reader commands",
+ "updated": "2026-10-03T02:30:23Z"
+}

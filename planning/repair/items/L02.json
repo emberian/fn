@@ -1,0 +1,20 @@
+{
+ "category": "claim-gap",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "tools/interface_emit.py",
+ "id": "L02",
+ "line": "257",
+ "locus": "generators",
+ "note": "local/encapsulate/progn-wrapped writers invisible; books outside the image world counted; duplicates appended; conflicting bridges for one PRED keep the first silently where ACL2 refuses; mirror the refusals or read the emitted fn-carried-writers table",
+ "notes": [
+  "10-02 22:32 duplicate writers and conflicting bridges raise; wrapped (local/encapsulate) forms and books outside the image world remain: follow-up reads the image world's fn-carried-writers table"
+ ],
+ "owner": "def-entry",
+ "severity": "low",
+ "sha": "67ee29e37",
+ "source": "liaison",
+ "state": "ready",
+ "title": "interface_emit carried_rows writer mirror reads top-level source forms, diverging from what ACL2 admits",
+ "updated": "2026-10-03T02:32:11Z"
+}

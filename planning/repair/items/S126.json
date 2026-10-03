@@ -1,0 +1,19 @@
+{
+ "category": "fail-open",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "tools/reach_check.py",
+ "id": "S126",
+ "line": "1402",
+ "locus": "gates-tests-packaging",
+ "notes": [
+  "10-02 22:29 merged into next e6b827d21"
+ ],
+ "owner": "sweep-gates",
+ "severity": "low",
+ "sha": "e6b827d21",
+ "source": "sweep-2026-10-03",
+ "state": "ready",
+ "title": "reach_check --strict passes registry events it cannot resolve (stale declared subject, missing defthm, unreadable book)",
+ "updated": "2026-10-03T02:30:23Z"
+}

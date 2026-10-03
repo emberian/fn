@@ -1,0 +1,21 @@
+{
+ "acceptance": "wrapper:receipt-join",
+ "category": "resource-leak",
+ "disposition": "BRIDGE",
+ "exposure": "conditional",
+ "file": "host/native/owner.lisp",
+ "id": "S018",
+ "line": "5162",
+ "locus": "reclaim-publication",
+ "notes": [
+  "10-02 22:32 coded on lane/host-lifecycle 4e409a9d6 (handed to runner); see lanedumps/host-lifecycle.md for verification"
+ ],
+ "owner": "host-lifecycle",
+ "severity": "medium",
+ "sha": "4e409a9d6",
+ "slice": "wrapper",
+ "source": "sweep-2026-10-03",
+ "state": "in-progress",
+ "title": "The publisher thread removes itself from the joined worker roster, then keeps doing store I/O and may start another publisher",
+ "updated": "2026-10-03T02:32:57Z"
+}

@@ -1,0 +1,20 @@
+{
+ "category": "resource-leak",
+ "disposition": "LOCAL",
+ "exposure": "live",
+ "file": "books/store-reclaim-pack.lisp",
+ "id": "S050",
+ "line": "84",
+ "locus": "reclaim-publication",
+ "notes": [
+  "ctx free measured; READY pending",
+  "10-02 22:33 fn-rclp-ctx-free/fn-owner-orc-ctx-free + status frees holders; 50 passes: 0 growth freed vs 672k slots unfreed; driver call is arena-forget's"
+ ],
+ "owner": "reclaim-retention",
+ "severity": "medium",
+ "sha": "2f27ae729",
+ "source": "sweep-2026-10-03",
+ "state": "ready",
+ "title": "Every reclaim context builds a fast alist of all articles (hons-acons) that is never freed: it leaks in the long-running owner on each reclaim and dry run",
+ "updated": "2026-10-03T02:33:28Z"
+}

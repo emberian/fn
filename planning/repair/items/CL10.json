@@ -1,0 +1,17 @@
+{
+ "category": "check-lane",
+ "detail": "harness_check acl2-arity: 10 findings (22964 definitions, 5818 applications, 192 host_files, 735 python_strings, 423 undecidable_strings, 3 declared_fixtures)",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "",
+ "id": "CL10",
+ "line": "",
+ "locus": "gates-tests-packaging",
+ "notes": [],
+ "owner": "sweep-gates",
+ "severity": "medium",
+ "source": "check-lane-355a5c843",
+ "state": "open",
+ "title": "check-lane red: harness_check",
+ "updated": "2026-10-03T02:30:23Z"
+}

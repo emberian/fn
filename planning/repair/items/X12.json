@@ -1,0 +1,19 @@
+{
+ "category": "bug",
+ "disposition": "LOCAL",
+ "exposure": "conditional",
+ "file": "books/bp-*.lisp",
+ "id": "X12",
+ "line": "",
+ "locus": "peer-services",
+ "notes": [
+  "10-02 22:22 code on lane/reclaim-retention 37456df07 (books/bp-payload-gate, PRF-1247); held to WIP 2 behind X01+S050",
+  "10-02 22:33 TRUE (fn-bpa-requestp accepts tombstone). on 2f27ae729: books/bp-payload-gate PRF-1247 gates request+ION producers; ION needs canonical pin; no native yet"
+ ],
+ "owner": "reclaim-retention",
+ "severity": "high",
+ "source": "coordinator",
+ "state": "in-progress",
+ "title": "tombstone accepted as BP ADU payload",
+ "updated": "2026-10-03T02:33:28Z"
+}

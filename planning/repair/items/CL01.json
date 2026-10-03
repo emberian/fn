@@ -1,0 +1,20 @@
+{
+ "category": "check-lane",
+ "detail": "M4 heap-open-nursery, M7 connection-budget, M9 cold-read-reservation, W3 owner-served-bound, W10 public-exposure, W11 consumer-wait: \"RED at its digest\" from certify-20261001T100041Z-2748639. NB the whole-tree run at 4aa332295 (certify-20261002T215642Z-961794) INSTALLED all six from the hbox cache a",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "",
+ "id": "CL01",
+ "line": "",
+ "locus": "gates-tests-packaging",
+ "notes": [
+  "10-02 22:28 covered by X13 (runner's whole-tree requested certify with archived manifest)",
+  "10-02 22:28 of X13 (runner's whole-tree requested certify)"
+ ],
+ "owner": "sweep-gates",
+ "severity": "medium",
+ "source": "check-lane-355a5c843",
+ "state": "duplicate",
+ "title": "check-lane red: resource_contract",
+ "updated": "2026-10-03T02:30:23Z"
+}

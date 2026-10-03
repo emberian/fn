@@ -1,0 +1,19 @@
+{
+ "category": "fail-open",
+ "disposition": "LOCAL",
+ "exposure": "conditional",
+ "file": "packaging/install.sh",
+ "id": "S061",
+ "line": "134",
+ "locus": "gates-tests-packaging",
+ "notes": [
+  "10-02 22:29 merged into next e6b827d21"
+ ],
+ "owner": "sweep-gates",
+ "severity": "medium",
+ "sha": "e6b827d21",
+ "source": "sweep-2026-10-03",
+ "state": "ready",
+ "title": "install.sh --upgrade/--rollback/install: ask() only refuses on the literal reason=store-format. Every other failure, including fault, fenced and a probe that never ran, carries on and switches current",
+ "updated": "2026-10-03T02:30:23Z"
+}

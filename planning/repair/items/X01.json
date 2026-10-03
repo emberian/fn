@@ -1,0 +1,19 @@
+{
+ "category": "bug",
+ "disposition": "LOCAL",
+ "exposure": "conditional",
+ "file": "books/store-reclaim-holders.lisp",
+ "id": "X01",
+ "line": "78",
+ "locus": "reclaim-publication",
+ "notes": [
+  "10-02 22:33 BP slot = canonical :forward pins via bindings; keystones + teeth REPL-admitted; recert run-20261003T020256Z-76e2 unharvested"
+ ],
+ "owner": "reclaim-retention",
+ "severity": "high",
+ "sha": "2f27ae729",
+ "source": "coordinator",
+ "state": "ready",
+ "title": "reclaim ignores BP retention: fn-rcl-store-holders returns nil BP slot",
+ "updated": "2026-10-03T02:33:28Z"
+}

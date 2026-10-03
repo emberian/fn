@@ -1,0 +1,20 @@
+{
+ "category": "bug",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "books/def-carried-writer.lisp",
+ "id": "L01",
+ "line": "300",
+ "locus": "generators",
+ "note": "fn-cw-conjunct-class: the (getpropc head 'predefined) :skipped arm precedes fn-di-non-stobj-vars; (< n 100) over formal n is skipped, not refused; move the argument check first (liaison review of c1d69fb6a)",
+ "notes": [
+  "10-02 22:19 argument check moved above the primitive skip; in the REPL with X06"
+ ],
+ "owner": "def-entry",
+ "severity": "medium",
+ "sha": "67ee29e37",
+ "source": "liaison",
+ "state": "ready",
+ "title": "def-carried-writer skips a predefined-headed guard conjunct over a host-passed argument before the :argument refusal",
+ "updated": "2026-10-03T02:32:11Z"
+}

@@ -1,0 +1,16 @@
+{
+ "category": "dead-code",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "host/native/snapshot-producer.lisp",
+ "id": "S111",
+ "line": "19",
+ "locus": "store-books",
+ "notes": [],
+ "owner": "sweep-peer",
+ "severity": "low",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "snapshot-producer.lisp is unloaded WIP that calls five undefined functions, but its header describes it as the actual capture",
+ "updated": "2026-10-03T02:30:23Z"
+}

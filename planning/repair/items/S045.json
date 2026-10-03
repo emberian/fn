@@ -1,0 +1,16 @@
+{
+ "category": "claim-gap",
+ "disposition": "LOCAL",
+ "exposure": "live",
+ "file": "host/native/owner.lisp",
+ "id": "S045",
+ "line": "5115",
+ "locus": "reclaim-publication",
+ "notes": [],
+ "owner": "sweep-store",
+ "severity": "medium",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "Covered log segments are dropped after every checkpoint with no read-back, so the checkpoint becomes the only copy of history, while the code and comments still say a corrupt checkpoint 'falls back to full replay'",
+ "updated": "2026-10-03T02:30:23Z"
+}

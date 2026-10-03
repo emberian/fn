@@ -1,0 +1,18 @@
+{
+ "acceptance": "primitives:errno-word",
+ "category": "error-handling",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "conditional",
+ "file": "host/native/extent.lisp",
+ "id": "S089",
+ "line": "168",
+ "locus": "cold-line",
+ "notes": [],
+ "owner": "host-lifecycle",
+ "severity": "low",
+ "slice": "primitives",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "fnn-extent-pread discards errno, so an EINTR or EIO is reported as a short file and fences the store with a misleading cause",
+ "updated": "2026-10-03T02:30:23Z"
+}

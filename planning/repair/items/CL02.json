@@ -1,0 +1,20 @@
+{
+ "category": "check-lane",
+ "detail": "tests.test_native_account_adoption_transport exits 5 under the source check (the account-adoption host chain is unwired by stage 0 / D46; the module may need to skip by name or be parked with its producer).",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "",
+ "id": "CL02",
+ "line": "",
+ "locus": "gates-tests-packaging",
+ "notes": [
+  "10-02 22:29 merged into next e6b827d21"
+ ],
+ "owner": "sweep-gates",
+ "severity": "medium",
+ "sha": "e6b827d21",
+ "source": "check-lane-355a5c843",
+ "state": "ready",
+ "title": "check-lane red: native_source_check",
+ "updated": "2026-10-03T02:30:23Z"
+}

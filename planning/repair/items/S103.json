@@ -1,0 +1,16 @@
+{
+ "category": "correctness",
+ "disposition": "LOCAL",
+ "exposure": "conditional",
+ "file": "host/native/operator.lisp",
+ "id": "S103",
+ "line": "594",
+ "locus": "operator-verbs",
+ "notes": [],
+ "owner": "sweep-ops",
+ "severity": "low",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "`retire` waits with no bound and may print a stale or non-regular report as success",
+ "updated": "2026-10-03T02:30:23Z"
+}

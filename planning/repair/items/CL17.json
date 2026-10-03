@@ -1,0 +1,18 @@
+{
+ "category": "check-lane",
+ "detail": "FAIL: test_the_classes_name_the_row_and_the_baseline_only_shrinks (tests.test_list_codec_check.ClassTests.test_the_classes_name_the_row_and_the_baseline_only_sh",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "",
+ "id": "CL17",
+ "line": "",
+ "locus": "gates-tests-packaging",
+ "notes": [],
+ "owner": "sweep-gates",
+ "severity": "medium",
+ "sha": "24676b5d4",
+ "source": "check-lane-355a5c843",
+ "state": "ready",
+ "title": "check-lane red: tests.test_list_codec_check",
+ "updated": "2026-10-03T02:32:09Z"
+}

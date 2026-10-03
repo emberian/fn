@@ -1,0 +1,18 @@
+{
+ "acceptance": "wrapper:closed-classification",
+ "category": "error-handling",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "conditional",
+ "file": "host/native/pull-service.lisp",
+ "id": "S109",
+ "line": "311",
+ "locus": "peer-services",
+ "notes": [],
+ "owner": "sweep-peer",
+ "severity": "low",
+ "slice": "wrapper",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "fnn-pull-profile swallows every error, including ACL2 faults, as an unreadable credential",
+ "updated": "2026-10-03T02:30:23Z"
+}

@@ -1,0 +1,20 @@
+{
+ "category": "performance",
+ "disposition": "LOCAL",
+ "exposure": "live",
+ "file": "host/native/control.lisp",
+ "id": "S029",
+ "line": "308",
+ "locus": "operator-verbs",
+ "notes": [
+  "10-02 22:22 committed; awaiting branch regen + natives (slow_disk)",
+  "10-02 22:32 merge-all; natives pending"
+ ],
+ "owner": "sweep-ops",
+ "severity": "medium",
+ "sha": "15c695ceb",
+ "source": "sweep-2026-10-03",
+ "state": "ready",
+ "title": "Hybrid handler chain runs on every frame before the BUSY shed and converts the whole frame to a list about five times",
+ "updated": "2026-10-03T02:32:09Z"
+}

@@ -1,0 +1,16 @@
+{
+ "category": "correctness",
+ "disposition": "LOCAL",
+ "exposure": "conditional",
+ "file": "host/owner-host.lisp",
+ "id": "S113",
+ "line": "1315",
+ "locus": "store-books",
+ "notes": [],
+ "owner": "sweep-ops",
+ "severity": "low",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "Connection memory charge is ratcheted before the reconfiguration is admitted, and never released",
+ "updated": "2026-10-03T02:30:23Z"
+}

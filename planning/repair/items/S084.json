@@ -1,0 +1,18 @@
+{
+ "acceptance": "wrapper:receipt-join",
+ "category": "locking",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "conditional",
+ "file": "host/native/mux.lisp",
+ "id": "S084",
+ "line": "304",
+ "locus": "connections",
+ "notes": [],
+ "owner": "host-lifecycle",
+ "severity": "low",
+ "slice": "wrapper",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "fnn-mux-finish closes the socket before removing it from the clients roster, breaking the stop hook's no-fd-reuse invariant",
+ "updated": "2026-10-03T02:30:23Z"
+}

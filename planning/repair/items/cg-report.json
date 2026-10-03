@@ -1,0 +1,16 @@
+{
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "tools/cost_gate.py",
+ "id": "cg-report",
+ "locus": "gates-tests-packaging",
+ "notes": [
+  "10-02 22:38 WIP at f4c5d4e53; see lanedumps/cost-gate.md"
+ ],
+ "owner": "cost-gate",
+ "severity": "high",
+ "source": "coordinator",
+ "state": "open",
+ "title": "guard-cost report: generated table (tools/cost_gate.py table -> planning/guard-cost.md/.json) of every exercised host entry's call and guard cost on the served fixture, fitted over N",
+ "updated": "2026-10-03T02:38:17Z"
+}

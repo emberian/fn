@@ -1,0 +1,20 @@
+{
+ "acceptance": "wrapper:exit-escalation",
+ "category": "error-handling",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "conditional",
+ "file": "host/native/control.lisp",
+ "id": "S028",
+ "line": "386",
+ "locus": "operator-verbs",
+ "notes": [
+  "8acfdeba7"
+ ],
+ "owner": "sweep-ops",
+ "severity": "medium",
+ "slice": "wrapper",
+ "source": "sweep-2026-10-03",
+ "state": "ready",
+ "title": "Control reply says REFUSED (exit 1) for an OS error after the owner already stopped itself as a FAULT",
+ "updated": "2026-10-03T02:30:23Z"
+}

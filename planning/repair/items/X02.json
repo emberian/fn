@@ -1,0 +1,19 @@
+{
+ "category": "bug",
+ "disposition": "LOCAL",
+ "exposure": "live",
+ "file": "host/native/owner.lisp",
+ "id": "X02",
+ "line": "5726",
+ "locus": "reclaim-publication",
+ "notes": [
+  "10-02 22:31 WIP pushed per ember's all-to-dev directive; owner-reclaim-seal guards not yet certified"
+ ],
+ "owner": "arena-forget",
+ "severity": "high",
+ "sha": "a42d5764e",
+ "source": "coordinator",
+ "state": "ready",
+ "title": "deferred reclaim leaks sealed tombstones",
+ "updated": "2026-10-03T02:31:49Z"
+}

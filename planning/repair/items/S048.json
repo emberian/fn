@@ -1,0 +1,16 @@
+{
+ "category": "parsing",
+ "disposition": "LOCAL",
+ "exposure": "conditional",
+ "file": "books/store-log-damage.lisp",
+ "id": "S048",
+ "line": "157",
+ "locus": "log-kernel",
+ "notes": [],
+ "owner": "sweep-store",
+ "severity": "medium",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "Log stream and damage probe read whatever length an unvalidated header declares, up to the remaining extent, before checking it against the record bound",
+ "updated": "2026-10-03T02:30:23Z"
+}

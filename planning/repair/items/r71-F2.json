@@ -1,0 +1,22 @@
+{
+ "acceptance": "wrapper:fence-before-unlock",
+ "category": "bug",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "conditional",
+ "file": "host/native/owner.lisp",
+ "id": "r71-F2",
+ "line": "5011",
+ "locus": "reclaim-publication",
+ "notes": [
+  "t43 audited, natives rerunning",
+  "10-02 22:33 t45 lane/codex-fence-boundary 8e8041218: structure tests 15/15 local, program check PASS; natives NOT green yet (the 6ea819b75 run aborted at interfaces-check before the regen commit; relaunch at 8e8041218); farm run-20261003T022549Z-f421 certified the books before the last comment-only change"
+ ],
+ "owner": "failure-scope",
+ "severity": "high",
+ "sha": "8e8041218",
+ "slice": "wrapper",
+ "source": "r71",
+ "state": "ready",
+ "title": "fnn-owner-release-extents (bug)",
+ "updated": "2026-10-03T02:33:24Z"
+}

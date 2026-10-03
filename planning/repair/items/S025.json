@@ -1,0 +1,18 @@
+{
+ "acceptance": "bp:step-bound",
+ "category": "architecture",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "conditional",
+ "file": "host/native/bp-node.lisp",
+ "id": "S025",
+ "line": "987",
+ "locus": "peer-services",
+ "notes": [],
+ "owner": "sweep-peer",
+ "severity": "medium",
+ "slice": "bp",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "Serialized bp-node loop: one peer holding a keepalive session starves every other listener, forwarding and receipts",
+ "updated": "2026-10-03T02:30:23Z"
+}

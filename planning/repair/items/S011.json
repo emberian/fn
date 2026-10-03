@@ -1,0 +1,18 @@
+{
+ "acceptance": "verbs:windowed-read",
+ "category": "performance",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "conditional",
+ "file": "host/native/io.lisp",
+ "id": "S011",
+ "line": "3503",
+ "locus": "operator-verbs",
+ "notes": [],
+ "owner": "sweep-store",
+ "severity": "medium",
+ "slice": "verbs",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "`store journal` reads the whole decision journal into memory as an octet list, with no bound",
+ "updated": "2026-10-03T02:30:23Z"
+}

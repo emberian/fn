@@ -1,0 +1,15 @@
+{
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "books/host-model.lisp",
+ "id": "HM02",
+ "locus": "generators",
+ "note": "definitions and 14 of 25 preservation lemmas admitted (hbox REPL hm); rows/workers/pins/close lemmas next, then the run theorem and the keystones; test book stubbed",
+ "notes": [],
+ "owner": "composition",
+ "severity": "high",
+ "source": "coordinator",
+ "state": "in-progress",
+ "title": "HM v1: books/host-model.lisp (fn-hmc-), the concurrent host model; invariant over every schedule; T1(b): issued reads, leases and generation pins never invalidated by retire/release/close/swap, settle once to its own token; *fn-hmc-realization* in LOCK-CHECK's format",
+ "updated": "2026-10-03T02:30:23Z"
+}

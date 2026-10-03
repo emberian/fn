@@ -1,0 +1,16 @@
+{
+ "category": "claim-gap",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "books/store-budget.lisp",
+ "id": "S125",
+ "line": "17",
+ "locus": "store-books",
+ "notes": [],
+ "owner": "sweep-store",
+ "severity": "low",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "Budget comment cites a host function and an enumeration that no longer exist",
+ "updated": "2026-10-03T02:30:23Z"
+}

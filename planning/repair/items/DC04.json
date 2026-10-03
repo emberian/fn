@@ -1,0 +1,17 @@
+{
+ "category": "generator",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "books/nntp.lisp",
+ "id": "DC04",
+ "locus": "served-books",
+ "notes": [
+  "10-02 22:33 WIND DOWN: after DC02; generate fn-nntp-archive-pinned-arms from the protocol table's :arms (protocol-dispatch.lisp's proof becomes by-construction)."
+ ],
+ "owner": "def-command",
+ "severity": "low",
+ "source": "coordinator",
+ "state": "deferred",
+ "title": "The restricted route's archive dispatcher fn-nntp-archive-pinned-arms (hand macro, books/nntp.lisp) generated from the protocol table's :arms, so fn-proto-command-pinned-is-command-pinned holds by construction",
+ "updated": "2026-10-03T02:33:43Z"
+}

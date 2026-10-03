@@ -1,0 +1,20 @@
+{
+ "category": "check-lane",
+ "detail": "host_loaded_check: host/store-checkpoint-context-host.lisp: no build loads it (reach_check IMAGE_BUILDS/TEST_IMAGE_BUILDS): wire it into a build, move a test ha",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "",
+ "id": "CL06",
+ "line": "",
+ "locus": "gates-tests-packaging",
+ "notes": [
+  "10-02 22:29 merged into next e6b827d21"
+ ],
+ "owner": "sweep-gates",
+ "severity": "medium",
+ "sha": "e6b827d21",
+ "source": "check-lane-355a5c843",
+ "state": "ready",
+ "title": "check-lane red: host_loaded_check",
+ "updated": "2026-10-03T02:30:23Z"
+}

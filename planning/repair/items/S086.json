@@ -1,0 +1,16 @@
+{
+ "category": "resource-leak",
+ "disposition": "LOCAL",
+ "exposure": "conditional",
+ "file": "host/native/checkpoint.lisp",
+ "id": "S086",
+ "line": "453",
+ "locus": "operator-verbs",
+ "notes": [],
+ "owner": "host-lifecycle",
+ "severity": "low",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "Clone copies the whole store before learning publication is impossible off Linux, and a failed clone never removes its stage directory",
+ "updated": "2026-10-03T02:30:23Z"
+}

@@ -1,0 +1,18 @@
+{
+ "acceptance": "services:idle-wait",
+ "category": "performance",
+ "disposition": "BRIDGE",
+ "exposure": "live",
+ "file": "host/native/feed-service.lisp",
+ "id": "S145",
+ "line": "23",
+ "locus": "peer-services",
+ "notes": [],
+ "owner": "sweep-ops",
+ "severity": "low",
+ "slice": "services",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "Feed worker enters the owner gate 20 times a second, with no work to do",
+ "updated": "2026-10-03T02:30:23Z"
+}

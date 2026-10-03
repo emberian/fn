@@ -1,0 +1,18 @@
+{
+ "acceptance": "bp:step-bound",
+ "category": "performance",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "conditional",
+ "file": "host/native/bp-service.lisp",
+ "id": "S026",
+ "line": "1054",
+ "locus": "peer-services",
+ "notes": [],
+ "owner": "sweep-peer",
+ "severity": "medium",
+ "slice": "bp",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "Fragment reassembly runs to completion inside the receive callback, before the ACK, despite a per-step quantum",
+ "updated": "2026-10-03T02:30:23Z"
+}

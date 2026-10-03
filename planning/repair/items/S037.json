@@ -1,0 +1,18 @@
+{
+ "acceptance": "services:web-on-loops",
+ "category": "performance",
+ "disposition": "BRIDGE",
+ "exposure": "live",
+ "file": "host/native/web-host.lisp",
+ "id": "S037",
+ "line": "317",
+ "locus": "connections",
+ "notes": [],
+ "owner": "host-lifecycle",
+ "severity": "medium",
+ "slice": "services",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "Web face serves every connection inline on its single accept thread: one slow client blocks all web traffic",
+ "updated": "2026-10-03T02:30:23Z"
+}

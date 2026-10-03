@@ -1,0 +1,18 @@
+{
+ "acceptance": "primitives:lock-word",
+ "category": "error-handling",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "conditional",
+ "file": "host/native/io.lisp",
+ "id": "S070",
+ "line": "2173",
+ "locus": "log-kernel",
+ "notes": [],
+ "owner": "sweep-store",
+ "severity": "low",
+ "slice": "primitives",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "Any flock failure on the writer lock is reported as \"store is already locked\"",
+ "updated": "2026-10-03T02:30:23Z"
+}

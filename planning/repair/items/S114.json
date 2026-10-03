@@ -1,0 +1,16 @@
+{
+ "category": "claim-gap",
+ "disposition": "LOCAL",
+ "exposure": "conditional",
+ "file": "host/owner-host.lisp",
+ "id": "S114",
+ "line": "5122",
+ "locus": "store-books",
+ "notes": [],
+ "owner": "sweep-ops",
+ "severity": "low",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "Reclaim credit estimate reads the unsynced record-octets cache, not the carried figure the comment names",
+ "updated": "2026-10-03T02:30:23Z"
+}

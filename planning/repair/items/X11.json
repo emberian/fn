@@ -1,0 +1,19 @@
+{
+ "category": "bug",
+ "disposition": "LOCAL",
+ "exposure": "live",
+ "file": "books/owner.lisp",
+ "id": "X11",
+ "line": "",
+ "locus": "peer-services",
+ "notes": [
+  "10-02 22:22 code on lane/reclaim-retention 37456df07 (fn-rcl-owner-feed-holders + fn-ofa-reclaimed-publication); after X01+S050",
+  "10-02 22:33 on 2f27ae729: feed holders in capture + renderer refuses tombstone (:article-reclaimed); REPL-admitted; no native yet"
+ ],
+ "owner": "reclaim-retention",
+ "severity": "high",
+ "source": "coordinator",
+ "state": "in-progress",
+ "title": "feed queue renders a reclaimed article as tombstone bytes",
+ "updated": "2026-10-03T02:33:28Z"
+}

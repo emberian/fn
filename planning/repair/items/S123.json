@@ -1,0 +1,16 @@
+{
+ "category": "architecture",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "host/owner-host.lisp",
+ "id": "S123",
+ "line": "1874",
+ "locus": "store-books",
+ "notes": [],
+ "owner": "sweep-ops",
+ "severity": "low",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "fn-cat-prepare-sealed's `pending` refusal is unreachable from the host; the host decides 'already pending' itself",
+ "updated": "2026-10-03T02:30:23Z"
+}

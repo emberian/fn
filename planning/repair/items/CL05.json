@@ -1,0 +1,19 @@
+{
+ "category": "check-lane",
+ "detail": "host_check: NOT RUN host/native/build-dtn.lisp (its include-books and host lds, in order)",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "",
+ "id": "CL05",
+ "line": "",
+ "locus": "gates-tests-packaging",
+ "notes": [
+  "10-02 22:19 host_check world red is runner BM's (build-dtn include + image-world-dtn regen, check-lane-reds-355a5c843.md); the tables half is CL19"
+ ],
+ "owner": "sweep-gates",
+ "severity": "medium",
+ "source": "check-lane-355a5c843",
+ "state": "duplicate",
+ "title": "check-lane red: host_check",
+ "updated": "2026-10-03T02:30:23Z"
+}

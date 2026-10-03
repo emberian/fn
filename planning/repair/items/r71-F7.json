@@ -1,0 +1,18 @@
+{
+ "acceptance": "mux:no-cold-await",
+ "category": "bug",
+ "disposition": "BRIDGE",
+ "exposure": "live",
+ "file": "host/native/owner.lisp",
+ "id": "r71-F7",
+ "line": "4366",
+ "locus": "connections",
+ "notes": [],
+ "owner": "owner-offlock",
+ "severity": "high",
+ "slice": "mux",
+ "source": "r71",
+ "state": "open",
+ "title": "fnn-owner-cold-await (bug)",
+ "updated": "2026-10-03T02:30:23Z"
+}

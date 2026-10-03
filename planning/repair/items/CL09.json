@@ -1,0 +1,17 @@
+{
+ "category": "check-lane",
+ "detail": "FAIL: test_the_tree_is_clean (tests.test_witness_check.WitnessTests.test_the_tree_is_clean)",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "",
+ "id": "CL09",
+ "line": "",
+ "locus": "gates-tests-packaging",
+ "notes": [],
+ "owner": "sweep-gates",
+ "severity": "medium",
+ "source": "check-lane-355a5c843",
+ "state": "open",
+ "title": "check-lane red: tests.test_witness_check",
+ "updated": "2026-10-03T02:30:23Z"
+}

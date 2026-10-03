@@ -1,0 +1,20 @@
+{
+ "category": "check-lane",
+ "detail": "bare tests/acl2/bp-native-app-replay-bridge-tests.lisp:40: must-fail: its body's translation is not checked; use must-fail-checked (tools/must_fail_check.py --c",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "",
+ "id": "CL11",
+ "line": "",
+ "locus": "gates-tests-packaging",
+ "notes": [
+  "10-02 22:32 converted at 24676b5d4; REPL admission running",
+  "10-02 22:34 REPL: raw-guarded-interface-tests stops at a converted tooth (DEFINTERFACE make-event); fix forward per lanedump"
+ ],
+ "owner": "sweep-gates",
+ "severity": "medium",
+ "source": "check-lane-355a5c843",
+ "state": "in-progress",
+ "title": "check-lane red: must_fail_check",
+ "updated": "2026-10-03T02:34:06Z"
+}

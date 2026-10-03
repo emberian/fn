@@ -1,0 +1,16 @@
+{
+ "category": "performance",
+ "disposition": "LOCAL",
+ "exposure": "conditional",
+ "file": "host/native/io.lisp",
+ "id": "S147",
+ "line": "7690",
+ "locus": "log-kernel",
+ "notes": [],
+ "owner": "sweep-store",
+ "severity": "low",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "The open over a state checkpoint keeps every record of the log, the covered prefix included, plus an index list just to count them",
+ "updated": "2026-10-03T02:30:23Z"
+}

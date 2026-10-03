@@ -1,0 +1,18 @@
+{
+ "acceptance": "services:fd-registry",
+ "category": "resource-leak",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "conditional",
+ "file": "host/native/pull-service.lisp",
+ "id": "S112",
+ "line": "478",
+ "locus": "peer-services",
+ "notes": [],
+ "owner": "sweep-peer",
+ "severity": "low",
+ "slice": "services",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "Pull/catch-up journals for removed or renamed peers are never closed: fd leak for the process lifetime",
+ "updated": "2026-10-03T02:30:23Z"
+}

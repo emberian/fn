@@ -1,0 +1,22 @@
+{
+ "acceptance": "wrapper:connection-scoped",
+ "category": "error-handling",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "conditional",
+ "file": "host/native/feed-service.lisp",
+ "id": "S036",
+ "line": "145",
+ "locus": "peer-services",
+ "notes": [
+  "10-02 22:30 fixed 32cb8f8a9 on lane/sweep-peer; in the next READY batch after S005",
+  "10-02 22:33 sent in 5536e2f08; raw harness passes"
+ ],
+ "owner": "sweep-peer",
+ "severity": "medium",
+ "sha": "32cb8f8a9",
+ "slice": "wrapper",
+ "source": "sweep-2026-10-03",
+ "state": "in-progress",
+ "title": "Feed error paths re-read the live peer record for backoff; a peer removed mid-iteration faults the whole node (port 0)",
+ "updated": "2026-10-03T02:33:21Z"
+}
