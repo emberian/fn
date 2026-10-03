@@ -2911,6 +2911,8 @@ df150e5897a74c353bd97e4fa11265e9571865268da446cd491557e6aae973c5 876 planning/ev
 a873b40f4554ed57b347766b01869f1a20598cc4639034efc94ab44f18d6e28e 17121 planning/evidence/group-policy-2026-09-26.md
 198049d217e655ad34aeeb17f36c194c37b9375f944be4480934e1cb06c9351a 1194 planning/evidence/group-policy-2026-09-26/native-n1-SHA256SUMS
 5e41f87e25c2c315d578ffcda3aa3edd725a227367f51f65b68302daf1583a60 1257 planning/evidence/group-policy-2026-09-26/native-n1-test_native_group_policy.log
+9a603a54c204869923da9c721032953d90ef2225199bbab3b8d3d99b2baab88b 1632 planning/evidence/group-summary-cursor-20261003/checks.json
+b51811c48f2de72c3624aad4ac16940810c2aa66f641ea58996246973596a29f 975822 planning/evidence/group-summary-cursor-20261003/repl.log.gz
 1c5ffa7697ce6ebb5421d4f899327e2c966193246b786be1cc9ac7b9031e66af 8784 planning/evidence/harness-repair-2-2026-09-26.md
 e5f8684459a790eafbca1f3d9b792e64b1ab5b1603cb2a14d45f591b7cdb5791 401 planning/evidence/harness-repair-2-2026-09-26/SHA256SUMS
 25315a016795149aeb36231f6762dc593bb372f80a298477c2fe0530f17aa757 5688 planning/evidence/harness-repair-2-2026-09-26/c1-logs.tgz

@@ -2684,3 +2684,10 @@ the initial plan is not a lease. SCN-1124 executes the actual native dispatcher
 with recorded publication/submission adapters and checks success, refusal,
 uncertain, fault, malformed results and refusal before publication. Full native
 disk/transport composition remains a separate scenario.
+
+The pending bounded LIST producer uses `fn-gsc-one` over a fixed captured
+group high/next/version and scalar count/low/last. One accepted step probes
+one numbered availability entry; exhaustion yields while retaining these
+scalars. The disabled remaining-range model has unconditional one-step
+residual preservation and equals the summary at settlement. This component
+does not establish the full LIST producer, snapshot frames or heap tariff.
