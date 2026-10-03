@@ -10,6 +10,7 @@
 (defparameter *fnmg-stream-start* (fnmg-function 'fn-nnw-stream-scan-cursor))
 (defparameter *fnmg-cur* (fnmg-function 'fn-cur-make))
 (defparameter *fnmg-article* (fnmg-function 'fn-make-article))
+(defparameter *fnmg-diagnostic-max-transitions* 16384)
 
 (defmacro fnmg-with-consumer-route ((route) &body body)
   (let ((cur (gensym "CUR")) (choice (gensym "ROUTE")))
@@ -22,8 +23,12 @@
          (setf (symbol-function 'fn-cur-make) ,cur)))))
 
 (defun fnmg-stream-drain (initial)
-  (let ((cur initial))
+  (let ((cur initial) (transitions 0))
     (loop while (funcall *fnmg-stream-live* cur) do
+      ;; A diagnostic guard against a bad fixture/terminal interpretation,
+      ;; never a production ceiling or a semantic input refusal.
+      (assert (< transitions *fnmg-diagnostic-max-transitions*))
+      (incf transitions)
       (multiple-value-bind (octets next spent phase)
           (funcall *fnmg-stream-step* cur 1 1 nil nil)
         (declare (ignore octets spent phase))
@@ -45,6 +50,7 @@
          (expected (funcall *fnmg-stream-remaining* old nil nil))
          (got nil) (steps 0) (visits 0))
     (loop while (funcall *fnmg-stream-live* old) do
+      (assert (< steps *fnmg-diagnostic-max-transitions*))
       (assert (equal old new))
       (let ((a (fnmg-with-consumer-route (:legacy)
                  (multiple-value-list (funcall *fnmg-stream-step* old 1 1 nil nil))))
