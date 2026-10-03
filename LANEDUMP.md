@@ -1681,3 +1681,19 @@ citations point at final receipt. Source c922036e8 unchanged by this correction.
 
 ## Source assembly cold cursor push-before-verify (2026-10-03)
 c922036e8+30bd8ab95 source composed clean above current literal JOB-RESULT/mux cleanup; fifth-return exact plan/read and first clock preserved in mux/private legacy feed. Known actual consumer delta: retained pull f2 renderer ignores fifth value; Served/Tools notified to fix forward tagged cursor-read polling before new matching native claim. Source shipping now per Ember; primary full caller/EOF/cleanup review follows, no cert/image claim.
+
+## Sol tools: retained pull consumes cursor cold-read outcome
+
+Fix-forward from Integration9343a56ef. The actual pull local continuation
+now binds the render quantum's fifth COLD-READ value, retains its exact plan
+and read with a :cursor tag, and resumes rendering after :serve without
+re-entering the input decoder. The first cursor dependency clock survives
+successive cache misses; each read has its own issue clock. ACL2's wait word
+sets the next poll time. Cold refusal leaves the retained read for cleanup
+and raises the same named I/O refusal as the served cursor; it cannot publish
+an incomplete reply. Close-local clears the cursor clock and attempts read
+abandonment through the existing all-release cleanup.
+
+Source form parse/diff PASS. Source sent before broader verification per
+current coordination; focused actual pull fixture follows separately.
+No proof/image or actual peer scenario claim.
