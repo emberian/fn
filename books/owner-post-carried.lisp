@@ -1,5 +1,7 @@
 ; The actual native POST reservation-refusal and known-abort writers.
-; Their bodies and guards are unchanged from host/owner-host.lisp.  The
+; Their bodies and guards are unchanged from host/owner-host.lisp. Guard
+; verification is issued by the writer generator in its scoped frame theory,
+; rather than attempted first in the include world's default theory. The
 ; writer profile declares the complete host-called carried-state boundary;
 ; the two retention globals remain authoritative until their private
 ; carrier migration. No independent shadow copy is introduced.
@@ -55,7 +57,8 @@
                          (:executable-counterpart zp)))))
 
 (defun fn-owner-refuse-reservation (fn-arena state)
-  (declare (xargs :stobjs (state fn-arena) :guard (and (boundp-global 'fn-owner state)
+  (declare (xargs :stobjs (state fn-arena) :verify-guards nil
+                  :guard (and (boundp-global 'fn-owner state)
                               (fn-sn-statep (fn-sbud-oc-store (fn-owner-ocfg state))))))
   (mv-let (word next)
     (fn-pout-refuse-reservation (fn-owner-ocfg state) fn-arena)
@@ -74,7 +77,8 @@
   :via (fn-pout-refuse-reservation-preserves-owner-invariant))
 
 (defun fn-owner-known-abort (fn-arena state)
-  (declare (xargs :stobjs (state fn-arena) :guard (and (boundp-global 'fn-owner state)
+  (declare (xargs :stobjs (state fn-arena) :verify-guards nil
+                  :guard (and (boundp-global 'fn-owner state)
                               (fn-sn-statep (fn-sbud-oc-store (fn-owner-ocfg state))))))
   (mv-let (word next)
     (fn-pout-known-abort (fn-owner-ocfg state) fn-arena)

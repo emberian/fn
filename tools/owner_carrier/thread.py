@@ -22,6 +22,10 @@ INSTALLERS = {"fn-owner-install-ocfg", "fn-owner-install-open-ocfg",
               "fn-owner-retain-carry-put"}
 PRIVATE = READERS | INSTALLERS
 GLOBALS = {"fn-owner": "fn-owner-ocfg", "fn-owner-retain-carry": "fn-owner-retain-carry"}
+# These fields were introduced at the actual catalog publication boundary.
+# They belong in the same authority migration, but their unset/corrupt cases
+# need explicit private constructors rather than guessed getter substitutions.
+EXPLICIT_GLOBALS = {"fn-owner-catalog-root-counter", "fn-owner-catalog-root-incarnation"}
 
 class Refused(ValueError):
     pass
@@ -84,6 +88,8 @@ class Threader:
             return splice(node, self.source, [self.expr(x) for x in k])
         if h in ("f-get-global", "get-global", "boundp-global", "f-boundp-global") and len(k) == 3:
             key = quoted_symbol(k[1])
+            if key in EXPLICIT_GLOBALS:
+                raise Refused(f"{self.function}: catalog root authority needs explicit migration")
             if key in GLOBALS:
                 if not sym(k[2], "state"):
                     raise Refused(f"{self.function}: nonliteral owner-global state")
@@ -91,7 +97,7 @@ class Threader:
                 if key == "fn-owner-retain-carry" and "boundp" in h:
                     raise Refused(f"{self.function}: binding test of retention global needs explicit migration")
                 return f"({reader} {ST})"
-        if h in ("put-global", "f-put-global") and len(k) == 4 and quoted_symbol(k[1]) in GLOBALS:
+        if h in ("put-global", "f-put-global") and len(k) == 4 and quoted_symbol(k[1]) in GLOBALS.keys() | EXPLICIT_GLOBALS:
             raise Refused(f"{self.function}: direct authoritative global write needs installer boundary")
         if h == "declare":
             raise Refused(f"{self.function}: nested declaration needs explicit treatment")

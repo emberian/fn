@@ -93,6 +93,16 @@ class ThreadTests(unittest.TestCase):
                 prepare(root,snapshot,dest)
             self.assertEqual((dest/'owned').read_text(),'leave it')
 
+    def test_catalog_authority_cannot_be_left_in_globals_by_threading(self):
+        for key in ('fn-owner-catalog-root-counter','fn-owner-catalog-root-incarnation'):
+            for body,writer in [(f"(f-get-global '{key} state)",False),
+                                (f"(boundp-global '{key} state)",False),
+                                (f"(f-put-global '{key} nil state)",True)]:
+                signatures={'writer':self.signature(['state'],['state'],
+                            ['state'] if writer else [None],writer)}
+                with self.subTest(body=body), self.assertRaises(Refused):
+                    self.render('(defun writer (state) (declare (xargs :stobjs state :guard t)) '+body+')',signatures)
+
     def test_absolute_and_parent_paths_cannot_escape_output(self):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp)/'input';root.mkdir();path=root/'writer.lisp';path.write_text('(value-triple :keep)')
