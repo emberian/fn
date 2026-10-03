@@ -1,0 +1,26 @@
+{
+ "budget": 800,
+ "category": "checker-correctness",
+ "expect-failure": "tests.test_lock_discipline_check.Realization.test_model_literal_cannot_be_replaced_by_old_json_seed",
+ "failure-message": "False is not true : realization must check the model literal instead of its JSON seed",
+ "file": "tools/lock_discipline_check.py",
+ "harness": "tests/test_lock_discipline_check.py",
+ "id": "NIGHT-REALIZATION-SOURCE",
+ "notes": [
+  "10-03 02:36 claimed: scope=['tools/lock_discipline_check.py', 'tests/test_lock_discipline_check.py', 'planning/host-realization.json', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_lock_discipline_check.Realization.test_model_literal_cannot_be_replaced_by_old_json_seed"
+ ],
+ "owner": "codex-sol-tools",
+ "scope": [
+  "tools/lock_discipline_check.py",
+  "tests/test_lock_discipline_check.py",
+  "planning/host-realization.json",
+  "LANEDUMP.md",
+  "planning/evidence-index.tsv"
+ ],
+ "severity": "medium",
+ "source": "host-model-convergence",
+ "state": "in-progress",
+ "test": "python3 -m unittest tests.test_lock_discipline_check.Realization.test_model_literal_cannot_be_replaced_by_old_json_seed",
+ "title": "Realization coverage uses an obsolete JSON seed instead of the actual model literal",
+ "updated": "2026-10-03T06:36:15Z"
+}

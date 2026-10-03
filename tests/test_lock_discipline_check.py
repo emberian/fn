@@ -11,6 +11,7 @@ import os
 import sys
 import tempfile
 import unittest
+import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -313,13 +314,27 @@ class Realization(unittest.TestCase):
         {"function": "fnn-extent-close", "file": "host/native/fixture.lisp", "primitive": "fnn-close",
          "core": None, "locks_held": ["E"], "requires_before": ["fn-pio-file-clear-p"]}]}
 
-    def realize(self, src, row):
-        raw = dict(CONTRACTS.raw, realization=[row])
+    @staticmethod
+    def literal(value):
+        if value is None:
+            return "nil"
+        if isinstance(value, dict):
+            return "(" + " ".join(":" + k + " " + Realization.literal(v)
+                                    for k, v in value.items()) + ")"
+        if isinstance(value, list):
+            return "(" + " ".join(Realization.literal(v) for v in value) + ")"
+        return value if value.startswith(":") else json.dumps(value)
+
+    def realize(self, src, row, seed=None):
+        raw = dict(CONTRACTS.raw, realization=[seed or row])
         contracts = ldc.Contracts(raw)
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             (root / "host" / "native").mkdir(parents=True)
             (root / "host" / "native" / "fixture.lisp").write_text(PRELUDE + src)
+            (root / "books").mkdir()
+            (root / "books/host-model.lisp").write_text('(defconst *fn-hmc-realization* \''
+                + self.literal([row]) + ')')
             an, model, checker = ldc.analyze_tree(root, contracts, ["host/native/fixture.lisp"], {})
             ldc.check_realization(checker)
             return [f.key for f in checker.findings]
@@ -338,6 +353,53 @@ class Realization(unittest.TestCase):
     def test_a_p_label_names_its_assumption(self):
         row = dict(self.ROW, layer="P")
         self.assertIn("realization-shape::close", self.realize(self.CLOSE, row))
+        crash = dict(label=":crash", layer="P", assumption="A-CRASH-IMAGE", enabled=[], sites=[])
+        self.assertEqual(self.realize(self.CLOSE, crash), [])
+
+    def test_table_site_file_must_match_actual_host_graph(self):
+        row = dict(self.ROW, sites=[dict(self.ROW["sites"][0], file="host/native/wrong.lisp")])
+        self.assertIn("realization-file::close", self.realize(self.CLOSE, row))
+
+
+    def test_model_literal_cannot_be_replaced_by_old_json_seed(self):
+        seed = dict(self.ROW, sites=[dict(self.ROW["sites"][0], function="fnn-old-seed")])
+        self.assertTrue(self.realize(self.CLOSE, self.ROW, seed=seed) == [],
+                        "realization must check the model literal instead of its JSON seed")
+
+    def table(self, model, machine=None):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "books").mkdir()
+            (root / "books/host-model.lisp").write_text(model)
+            if machine is not None:
+                (root / "books/host-model-machine.lisp").write_text(machine)
+            return ldc.realization_table(root)
+
+    def test_machine_table_is_read_only_when_included_and_has_actual_provenance(self):
+        constant = "(defconst *fn-hmc-realization* '" + self.literal([self.ROW]) + ")"
+        table = self.table('(include-book "host-model-machine")', constant)
+        self.assertEqual(table["source"]["file"], "books/host-model-machine.lisp")
+        self.assertEqual(len(table["source"]["sha256"]), 64)
+        self.assertEqual(table["rows"], [self.ROW])
+        with self.assertRaisesRegex(ValueError, "exactly one"):
+            self.table("(defun fn-model () nil)", constant)
+        with self.assertRaisesRegex(ValueError, "exactly one"):
+            self.table(constant + '(include-book "host-model-machine")', constant)
+
+    def test_missing_computed_and_duplicate_property_tables_refuse(self):
+        for source in ("(defun fn-model () nil)",
+                       "(defconst *fn-hmc-realization* (append nil nil))",
+                       "(defconst *fn-hmc-realization* '((:label :close :label :close)))",
+                       "(defconst *fn-hmc-realization* '((:label :close :sites ((:function (evil))))))"):
+            with self.subTest(source=source), self.assertRaises(ValueError):
+                self.table(source)
+
+    def test_enabled_scalar_and_nil_lists_are_normalized_without_evaluation(self):
+        row = dict(self.ROW, enabled="fn-pio-file-clear-p")
+        row["sites"] = [dict(self.ROW["sites"][0], requires_before=None)]
+        table = self.table("(defconst *fn-hmc-realization* '" + self.literal([row]) + ")")
+        self.assertEqual(table["rows"][0]["enabled"], ["fn-pio-file-clear-p"])
+        self.assertEqual(table["rows"][0]["sites"][0]["requires_before"], [])
 
 
 class Baseline(unittest.TestCase):
