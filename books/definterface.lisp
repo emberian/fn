@@ -56,9 +56,11 @@
 ;     evaluates those before either dispatch) nor a stobj formal's own
 ;     recognizer (the stobj discipline holds it) is over stobj formals only --
 ;     a conjunct over an argument the host passes per call is refused, no
-;     preservation theorem can establish it; each such conjunct's head that
-;     the tree defines (a boot-strap primitive such as boundp-global fails
-;     loud in raw Lisp and is exempt) is the CONCLUSION of a named theorem;
+;     preservation theorem can establish it; each such conjunct's head is the
+;     CONCLUSION of a named theorem, a fail-loud primitive excepted
+;     (*fn-di-fail-loud-primitives*: boundp-global signals in raw Lisp when
+;     false; `<', `equal', `consp' do not, so a conjunct they head over a
+;     stobj is as owed as any other);
 ;     every named THM is a theorem of this world and mentions a function of
 ;     that argument (the head, or a function a concluding theorem mentions:
 ;     the establishing and per-transition theorems are stated over the
@@ -394,14 +396,23 @@
                (car (fn-di-non-stobj-vars (all-vars (car conjuncts)) formals stobjs))))
         (t (fn-di-conjunct-over-argument (cdr conjuncts) formals stobjs))))
 
+;  The boot-strap primitives raw dispatch may leave unevaluated: each FAILS
+; LOUD in raw Lisp when its conjunct is false (a read of an unbound global
+; signals), so skipping the check loses nothing.  No other primitive is
+; exempt: (< (fn-x-count st) 100) or (consp (fn-x-list st)) over a stobj is a
+; conjunct raw dispatch would skip unproved (liaison r72 on c1d69fb6a), so it
+; must be the carried invariant or a bridge's conclusion like any other.
+(defconst *fn-di-fail-loud-primitives* '(boundp-global boundp-global1))
+
 (defun fn-di-invariant-heads (conjuncts w)
   (declare (xargs :mode :program))
-  ; the heads the tree defines, each once; a boot-strap primitive is exempt
+  ; the heads, each once; only a fail-loud primitive is exempt
+  (declare (ignorable w))
   (cond ((atom conjuncts) nil)
         (t (let ((head (fn-di-conjunct-head (car conjuncts)))
                  (rest (fn-di-invariant-heads (cdr conjuncts) w)))
              (if (and head
-                      (not (getpropc head 'predefined nil w))
+                      (not (member-eq head *fn-di-fail-loud-primitives*))
                       (not (member-eq head rest)))
                  (cons head rest)
                rest)))))
@@ -504,10 +515,11 @@
 
 (defun fn-di-defined-conjuncts (conjuncts w)
   (declare (xargs :mode :program))
-  ; CONJUNCTS less those a boot-strap primitive heads (fn-di-invariant-heads)
+  ; CONJUNCTS less those a fail-loud primitive heads (fn-di-invariant-heads)
+  (declare (ignorable w))
   (cond ((atom conjuncts) nil)
         ((let ((head (fn-di-conjunct-head (car conjuncts))))
-           (or (null head) (getpropc head 'predefined nil w)))
+           (or (null head) (member-eq head *fn-di-fail-loud-primitives*)))
          (fn-di-defined-conjuncts (cdr conjuncts) w))
         (t (cons (car conjuncts) (fn-di-defined-conjuncts (cdr conjuncts) w)))))
 

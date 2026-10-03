@@ -311,6 +311,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/def-carried-view-tests \
 	books/def-keyset-check \
 	tests/acl2/def-keyset-check-tests \
+	books/def-cost \
+	tests/acl2/def-cost-tests \
 	books/acceptance \
 	books/acceptance-invariants \
 	tests/acl2/acceptance-tests \
@@ -2799,6 +2801,7 @@ check:
 	@$(CHECK_STEP) $(PYTHON) tools/reach_check.py --summary --strict
 	@$(CHECK_STEP) $(PYTHON) tools/keystone_emit.py --check
 	@$(CHECK_STEP) $(PYTHON) tools/interface_emit.py --check
+	@$(CHECK_STEP) $(PYTHON) tools/cost_obligations.py --check
 # What the certified world says about each host-called entry (lane
 # coverage-crawler, 2026-09-29): planning/coverage.json is built from a dump
 # tools/coverage_dump.lisp writes in an ACL2 session over books/image-world

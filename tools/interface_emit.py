@@ -287,6 +287,13 @@ def _shorthand_profile(form) -> str | None:
     return _sym(inner[3])
 
 
+def _add_writer(writers: list, profile: str, fn: str, kv: dict) -> None:
+    # a writer is declared once (ACL2 refuses the second); the mirror refuses too
+    if any(p == profile and f == fn for p, f, _kv in writers):
+        raise ValueError("{} is declared a writer of {} twice".format(fn, profile))
+    writers.append((profile, fn, kv))
+
+
 def writer_rows(root: Path, rows: dict[str, dict]) -> None:
     profiles: dict[str, dict] = {}
     shorthands: dict[str, str] = {}
@@ -302,13 +309,13 @@ def writer_rows(root: Path, rows: dict[str, dict]) -> None:
         elif head == "def-carried-writer" and len(form) >= 2:
             kv = ledger.keyword_plist(form[2:])
             if kv.get(":profile") is not None:
-                writers.append((_sym(kv[":profile"]), _sym(form[1]), kv))
+                _add_writer(writers, _sym(kv[":profile"]), _sym(form[1]), kv)
         elif head == "def-carried-writers-row" and len(form) >= 2:
             row_forms.append((_sym(form[1]), ledger.keyword_plist(form[2:])))
         elif (profile := _shorthand_profile(form)) is not None:
             shorthands[_sym(form[1])] = profile
         elif head in shorthands and len(form) >= 2:
-            writers.append((shorthands[head], _sym(form[1]), ledger.keyword_plist(form[2:])))
+            _add_writer(writers, shorthands[head], _sym(form[1]), ledger.keyword_plist(form[2:]))
     for name, kv in row_forms:
         profile_name = _sym(kv[":profile"]) if kv.get(":profile") is not None else ""
         pilot = rows.get(_sym(kv[":from"]) if kv.get(":from") is not None else "")
@@ -325,9 +332,18 @@ def writer_rows(root: Path, rows: dict[str, dict]) -> None:
                        else "{}-preserves-{}".format(fn, suffix))
             transitions.append([fn, theorem])
             for bridge in options.get(":bridges") or []:
-                if (isinstance(bridge, list) and len(bridge) == 2
-                        and not any(_sym(bridge[0]) == c[0] for c in concludes)):
-                    concludes.append([_sym(bridge[0]), _sym(bridge[1])])
+                if not (isinstance(bridge, list) and len(bridge) == 2):
+                    raise ValueError("{}: {} :bridges entry {} is not (PRED THM)".format(
+                        name, fn, ledger.source_text(bridge)))
+                pred, thm = _sym(bridge[0]), _sym(bridge[1])
+                held = [c for c in concludes if c[0] == pred]
+                if held and held[0][1] != thm:
+                    # ACL2 refuses the row (fn-cw-merge-bridges); the mirror must not
+                    # quietly keep one of the two
+                    raise ValueError("{}: the bridge for {} is named twice with different "
+                                     "theorems, {} and {}".format(name, pred, held[0][1], thm))
+                if not held:
+                    concludes.append([pred, thm])
         rows[name] = {"established": list(pilot["established"]),
                       "transitions": transitions, "concludes": concludes,
                       "produced": list(pilot["produced"])}

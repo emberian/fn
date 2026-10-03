@@ -262,6 +262,35 @@
          (w state))
         '(fn-dit-positivep)))
 
+; Liaison r72 (on c1d69fb6a): a conjunct a boot-strap primitive heads is
+; NOT exempt unless the primitive fails loud in raw Lisp (boundp-global):
+; (< (fn-dit-fld st) 100) over the stobj would be skipped unproved.  The
+; literal path demands a named theorem concluding `<'; none does: refused.
+(defun fn-dit-r-bounded (n fn-dit-st)
+  (declare (xargs :stobjs fn-dit-st
+                  :guard (and (natp n) (fn-dit-positivep fn-dit-st)
+                              (< (fn-dit-fld fn-dit-st) 100))))
+  (update-fn-dit-fld (+ n (fn-dit-fld fn-dit-st)) fn-dit-st))
+(assert-event
+ (equal (fn-di-invariant-heads
+         (fn-di-invariant-conjuncts
+          (fn-di-conjuncts (getpropc 'fn-dit-r-bounded 'guard *t* (w state)))
+          '(n fn-dit-st) '(nil fn-dit-st) (fn-di-guard-kinds (w state)) (w state))
+         (w state))
+        '(fn-dit-positivep <)))
+(assert-event
+ (search "no named theorem concludes"
+         (car (fn-di-problem 'fn-dit-r-bounded
+                             '(:class :common-lisp-compliant :kinds ((n natp))
+                               :raw-with (fn-dit-relation-positive fn-dit-r-keeps-positive))
+                             (w state)))))
+(must-fail-checked
+ (definterface fn-dit-r-bounded :class :common-lisp-compliant :kinds ((n natp))
+  :raw-with (fn-dit-relation-positive fn-dit-r-keeps-positive))
+ :unchecked "the < conjunct over the stobj is not concluded by a named theorem")
+; the fail-loud primitive stays exempt
+(assert-event (equal *fn-di-fail-loud-primitives* '(boundp-global boundp-global1)))
+
 ; A negative conclusion mentions the predicate but establishes its failure.
 (defthm fn-dit-zero-is-not-positive
   (implies (equal (fn-dit-fld fn-dit-st) 0)
