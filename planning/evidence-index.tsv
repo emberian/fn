@@ -3082,6 +3082,7 @@ c67d3de1ab5cee0b515bd002dcd29e3027efce2723031904b2b51bee1153bff9 453 planning/ev
 e46860f8e48841f042fa04fff95bef03c367e9590b9181c08b61ab82c89ace6f 664 planning/evidence/horse-entries-redeem-send.json
 4600ec439de67d221de64b3574115b8301df30c508bea560030f57e85693f041 4291 planning/evidence/horse-exits-2026-10-03/source-cleanup.json
 4c898e170516f6d58de634f470fd49448c922692d5e7dfc01feb3b6d0cc9491b 925 planning/evidence/horse-entries-tls-client-queue.json
+c95acfbadc663b70ae68361c8de125fa0333cb9ddbb63040f24a0ceacb15e26c 1016 planning/evidence/horse-bounds-redeem-input-2026-10-03.json
 bc72ceb12a19c11a46684c78e54407dd8dc8624731b7a5e6ba9c6a98fe8dc207 10964 planning/evidence/host-decisions-2-2026-09-27.md
 10c1be547c3e722cbc1d22a124728c10c9e6f28a2b3ceece7638253e0bc8cb27 16505 planning/evidence/host-decisions-2026-09-27.md
 ead762682231dfb981d96af22e884096b93cf93e2dfe14290ca05ea40b8b764e 5019 planning/evidence/host-source-tranche-2026-09-30/README.md
