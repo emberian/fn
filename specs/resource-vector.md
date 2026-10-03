@@ -428,3 +428,25 @@ and release is reserved before physical unlock/completed afterward. The
 finite fixture observes acquire, literal `:job-result`, release while preserving
 the original condition. Remaining O/P/hidden-wait sites keep complete PageIO
 comparison unavailable.
+
+The staged native renderer consumer retains one `fnn-output-grant` across the
+whole response. `fnn-mux-render-next` draws before its first factory and binds
+that grant across the existing owner renderer; the returned fifth cold-read
+value is unchanged. Actual cold issuance attaches its exact read under O.
+Actual worker return is observed under E before slot recycling, then the read
+transfer activation must end before its pending dependency reference drops.
+The grant retains only pending children and an ever-issued physical observation,
+not the response's completed dependency history. A completed child cannot
+authorize physical completion while later factories may still issue children.
+
+Whole response drain/discard closes future factory authority and clears the
+owned reusable render buffer. Physical custody completes only after all
+attached children have returned and their transfer ended; no-child applies
+only to an operation that issued no child, including literal warm-hit captures.
+Issue and each receipt publish their native calling stage before mutation.
+Raw/condition escape retains unresolved custody and prevents another semantic
+step on that receipt. The root close requires both typed pool drain and an
+empty native grant roster. SCN-1107 checks actual native control flow with
+recording typed boundaries and actual held children; configured activation,
+complete retained graph/allocator tariff and interpreter correspondence remain
+open. Declaration of a live caller is not those claims.
