@@ -41,7 +41,7 @@
   (conns nil) wake-read wake-write (wake-closed nil) (cleanup-debts nil) (stop nil))
 
 (defstruct (fnn-web-conn (:constructor %make-fnn-web-conn))
-  socket fd ssl channel in out deadline job (closedp nil) (semantic-ended nil)
+  socket fd ssl channel in out deadline job (closedp nil) (semantic-ended nil) (semantic-disposal :idle)
   (phase :head) (want :input) (from 0) request end
   flow event (events 0) (opened nil) (answered nil)
   cid leased (cmd-at 0) (cmd-end 0) pending plan closing await completion
@@ -137,6 +137,17 @@ exposure admission decides (the id, or NIL when it refused)."
             (serious-condition () nil)))))))
 
 (defun fnn-web-dispose-semantic (face conn)
+  ;; Claim the whole disposal, not just each effect. Concurrent shutdown or
+  ;; job-return observers cannot manufacture a receipt while its sole
+  ;; claimant is still inside a callback.
+  (let ((claimed nil))
+    (sb-thread:with-mutex ((fnn-web-face-lock face))
+      (when (and (eq (fnn-web-conn-semantic-disposal conn) :idle)
+                 (or (null (fnn-web-conn-job conn))
+                     (fnn-web-job-returned (fnn-web-conn-job conn))))
+        (setf (fnn-web-conn-semantic-disposal conn) :running)
+        (setq claimed t)))
+    (unless claimed (return-from fnn-web-dispose-semantic nil)))
   ;; A cancelled operation may still pin/issue/await while its activation
   ;; runs. This cleanup is eligible only after that activation has returned.
   (let ((service (fnn-web-face-service face)) (cid (fnn-web-conn-cid conn)))
@@ -158,7 +169,8 @@ exposure admission decides (the id, or NIL when it refused)."
             (lambda () (fnn-owner-action 'fn-owner-exposure-release opened)) :reader)))))
     (sb-thread:with-mutex ((fnn-web-face-lock face))
       (unless (find conn (fnn-web-face-cleanup-debts face) :key #'first :test #'eq)
-        (setf (fnn-web-conn-leased conn) nil (fnn-web-conn-semantic-ended conn) t)))))
+        (setf (fnn-web-conn-leased conn) nil (fnn-web-conn-semantic-ended conn) t
+              (fnn-web-conn-semantic-disposal conn) :returned)))))
 
 (defun fnn-web-finish (face conn)
   (let ((first nil) (eligible nil))

@@ -230,6 +230,8 @@
       (fnn-web-iterate face)
       (assert (member old (fnn-web-face-conns face)))
       (assert (not (fnn-web-conn-semantic-ended old)))
+      (fnn-web-finish face old) ; a concurrent shutdown observer
+      (assert (not (fnn-web-conn-semantic-ended old)))
       (assert (not (fnn-web-feed-owned-p face next)))
       (sb-thread:signal-semaphore release)
       (sb-thread:with-mutex ((fnn-web-face-lock face))
