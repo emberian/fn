@@ -1743,3 +1743,17 @@ First packet certification: certify-20261003T101722Z-1422001 PASSED, 103 cached 
 ## Source assembly History builder aggregate (2026-10-03)
 Exact selected cdfa862e6 tree delta relative3cf623c0d flattened (includes04d initial and0f17 merge, no stale generic-column WIP). Material io build seam clean with S045 retainedsnapshot/readback/release and transportleaves; builder privateconstructor replaces live snapshot, ACL2 count authority in binding. Both storage appendsections and currentcumulativeLANE preserved. Existing producer32fresh/103cache cert +513-row nativecontrolflow reused; actual global interface/world report regen and newsource matching nativepublisher remain pending. Sourcepushbeforeprimaryfullreview; step latency/flatresize/eventencoding/reclaim estimate debt explicit.
 Native builder stop followthrough: existing fnn-checkpoint-yield now called at each ACL2 fn-his-build-yieldp cadence, before row0/256. Actual-source recording fixture asserts both cuts consume exactly0/256 events, never finish/bind, release private scratch. PASS. Book bytes/certificate unchanged; no extra farm or image launched.
+
+History-requested finite runner follow-on: history-pages-relocate-run supplies
+fn-hpr-tick/run and named exact placement/effect composition. Rank+1 excludes
+fuel refusal; completion is conditional on actual :done and existing relocation
+:ok (resident non-failure remains History's obligation). Clean warm replay of
+25 forms passes in3.66s; real stobj full-run positive and short-run missing-done
+counterexample pass. The original step book remains byte-identical to d2a424486.
+
+Finite runner certificate PASS: certify-20261003T103557Z-1487810, runner and
+expanded concrete fixture,111 cached dependencies. Indexed manifest archived.
+Native consumption remains with History; no image/deployment or resident-open
+claim transferred. pgs-x-grow-image's new verified table flags represent the
+private commit-to-be-built state, not persisted table entries available for
+an uncommitted new-page eviction; History notified for its residency invariant.

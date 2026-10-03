@@ -2123,6 +2123,17 @@ the new header is installed; this API does not permit concurrent readers on
 that scratch store. It is intended for History's fresh private image builder.
 It does not bound whole-event encoding, flat backing growth, or commit work,
 and supplies no physical persistence or root-release receipt.
+
+The finite composition `fn-hpr-run` uses fuel strictly greater than
+`fn-hpr-rank` and cannot return a fuel refusal at that allowance. A successful
+run from the original header-ready cursor has the exact concrete and returned
+placement of successful `fn-hp-x-relocate` (`fn-hpr-run-is-old-relocation`).
+`fn-hpr-run-done-is-target` separately identifies the completed concrete without
+assuming the old operation's verdict. Native code schedules the underlying
+steps and prepaid growth independently; the finite runner is a composition
+reference, not a bounded host scheduling call. Resident construction must still
+establish that the run actually returns `:done`; these conditional refinement
+theorems do not manufacture readiness or mask a need/refusal.
 ### Incremental checkpoint image construction
 
 The native checkpoint publishers build the existing P3 history image one
