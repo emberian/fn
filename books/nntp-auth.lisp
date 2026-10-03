@@ -940,9 +940,9 @@
   (declare (xargs :guard t))
   (append (fn-nntp-string-octets "SASL") (fn-auth-mechanism-words mechs)))
 
-(defun fn-auth-starttls-lines (acfg tlsp)
+(defun fn-auth-starttls-lines (acfg subject tlsp)
   (declare (xargs :guard t))
-  (if (and (fn-auth-config-tls-availablep acfg) (not tlsp))
+  (if (and (fn-auth-config-tls-availablep acfg) (not subject) (not tlsp))
       (list (fn-nntp-string-octets "STARTTLS"))
     nil))
 
@@ -978,7 +978,7 @@
 
 (defun fn-auth-access-capability-lines (acfg subject tlsp ctx)
   (declare (xargs :guard t))
-  (append (fn-auth-starttls-lines acfg tlsp)
+  (append (fn-auth-starttls-lines acfg subject tlsp)
           (fn-auth-authinfo-lines acfg subject tlsp ctx)
           (fn-auth-sasl-lines acfg tlsp ctx)))
 
@@ -1560,6 +1560,10 @@
    ((fn-auth-session-tlsp as)
     (fn-post-make-result as (fn-auth-single as (fn-proto-text "STARTTLS" :active))
                          nil))
+   ; RFC 4642 section 2.2.1 note [1]: authentication also makes the
+   ; command unavailable.  Preserve identity and every pending state slot.
+   ((fn-auth-session-subject as)
+    (fn-post-make-result as (fn-auth-single as (fn-proto-text * :already)) nil))
    ; Section 2.2.2: unable to initiate, for a configuration reason, is 580.
    ((not (fn-auth-config-tls-availablep (fn-auth-session-config as)))
     (fn-post-make-result
@@ -2004,10 +2008,10 @@
        (or (member-equal x a) (member-equal x b)))))
 
 (local (defthm fn-auth-starttls-lines-facts
-  (and (fn-nntp-block-textp (fn-auth-starttls-lines acfg tlsp))
-       (iff (member-equal x (fn-auth-starttls-lines acfg tlsp))
+  (and (fn-nntp-block-textp (fn-auth-starttls-lines acfg subject tlsp))
+       (iff (member-equal x (fn-auth-starttls-lines acfg subject tlsp))
             (and (equal x (fn-scram-text "STARTTLS"))
-                 (fn-auth-config-tls-availablep acfg) (not tlsp))))
+                 (fn-auth-config-tls-availablep acfg) (not subject) (not tlsp))))
   :hints (("Goal" :in-theory (e/d (fn-auth-starttls-lines)
                                   (fn-auth-config-tls-availablep))))))
 
@@ -3171,6 +3175,17 @@
                                    fn-auth-config-requiredp
                                    fn-auth-config-creds fn-auth-login-offeredp)))))
 
+; PRF-1266: RFC 4642 section 2.1, including configured peer connections.
+(defthm fn-auth-starttls-is-not-advertised-once-authenticated-on-any-connection
+  (implies subject
+           (not (member-equal (fn-nntp-string-octets "STARTTLS")
+                              (fn-auth-capability-lines-for-peer
+                               acfg subject tlsp postingp record ctx))))
+  :hints (("Goal" :in-theory (e/d (fn-auth-capability-lines-for-peer
+                                   fn-auth-access-capability-lines)
+                                  (fn-peer-capability-lines
+                                   fn-auth-authinfo-lines fn-auth-sasl-lines)))))
+
 (defthm fn-auth-starttls-is-not-advertised-under-tls
   (implies tlsp
            (not (member-equal (fn-nntp-string-octets "STARTTLS")
@@ -3425,6 +3440,18 @@
   :hints (("Goal" :in-theory (e/d (fn-auth-starttls fn-auth-starttls-effect)
                                   (fn-nntp-single fn-auth-single))))
   :rule-classes nil)
+
+; PRF-1266: RFC 4642 section 2.2.1 note [1].  This is the called
+; decision, including the whole reply, all state, and absence of submissions.
+(defthm fn-auth-starttls-after-authentication-is-refused-without-reset
+  (implies (and (fn-auth-session-subject as) (null args)
+                (not (fn-auth-session-tlsp as)))
+           (and (equal (fn-post-result-session (fn-auth-starttls as args)) as)
+                (equal (fn-post-result-effects (fn-auth-starttls as args))
+                       (fn-auth-single as "502 already authenticated"))
+                (null (fn-post-result-submission (fn-auth-starttls as args)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-auth-starttls))))
 
 (defthm fn-auth-second-starttls-is-refused
   (implies (fn-auth-session-tlsp as)

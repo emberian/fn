@@ -1480,8 +1480,12 @@ implementation dependency, not a TLS correctness theorem.
 What is proved is the protocol state machine around the upgrade: the
 capability label appears only where RFC 4642 §2.1 allows, 382 is emitted only
 from the branch that also records that a handshake is owed, a second STARTTLS
-is 502, and the cached username and authenticated subject are discarded
-across the handshake. The clause-by-clause split is the RFC 4642 matrix in
+is 502. Successful authentication also makes STARTTLS unavailable (502)
+and removes its capability label (RFC 4642 sections 2.1 and 2.2.1 note [1]);
+the refused command preserves the complete authenticated session. A permitted
+handshake starts unauthenticated and discards the cached username.
+PRF-1266 adds the literal refusal and capability keystones; their certification
+and matching native image evidence remain pending. The clause-by-clause split is the RFC 4642 matrix in
 [the audit](nntp-audit.md).
 
 AUTHINFO USER/PASS is likewise a **cleartext mechanism on the wire**, and no
