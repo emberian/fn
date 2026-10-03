@@ -11,7 +11,7 @@ The capability wave is active: subsystem deputies, empirical execution, a
 source assembler and consumed representation/command helpers. The former proof
 Sol now owns the owner carrier; the four Luna sweep helpers are stopped.
 Astra owns checkpoint publication/read-back, the page helper carried catalog
-availability, and the strategic coordinator S012 operator probe boundaries.
+availability. History owns native history/root and effective reclaim; Operator owns retire/diagnostic/init consumers, with S012 source integrated. Access, Web and BP transport now have continuing Sol owners.
 The plan names the current sessions without treating a paused or completed
 session as running. Composition and representation
 contracts remain with the groundwork deputy while the wider roster is a target. New lanes wait for a
