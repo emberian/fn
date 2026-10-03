@@ -2,12 +2,14 @@
  "file": "host/interfaces.lisp",
  "id": "BM02",
  "notes": [
-  "10-02 23:14 re-owned by DEV-SERVES (coordinator 2026-10-03)"
+  "10-02 23:14 re-owned by DEV-SERVES (coordinator 2026-10-03)",
+  "10-02 23:25 DEV-SERVES 046aa740f merged onto dev"
  ],
  "owner": "dev-serves",
  "severity": "medium",
+ "sha": "b6ad0c3a8",
  "source": "runner-bm",
- "state": "in-progress",
+ "state": "landed",
  "title": "host_check --load at dev 951a61745: host/interfaces.lisp:3838 fn-workflow-request-plan declared but the raw host never dispatches it (stale after the lane-head merges; workflow-host changed in reclaim-retention)",
- "updated": "2026-10-03T03:14:45Z"
+ "updated": "2026-10-03T03:25:10Z"
 }

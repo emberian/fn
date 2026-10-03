@@ -2,12 +2,14 @@
  "file": "tools/build_lists_check.py",
  "id": "BM04",
  "notes": [
-  "10-02 23:14 re-owned by DEV-SERVES (coordinator 2026-10-03)"
+  "10-02 23:14 re-owned by DEV-SERVES (coordinator 2026-10-03)",
+  "10-02 23:25 DEV-SERVES 046aa740f merged onto dev"
  ],
  "owner": "dev-serves",
  "severity": "medium",
+ "sha": "b6ad0c3a8",
  "source": "runner-bm",
- "state": "in-progress",
+ "state": "landed",
  "title": "build_lists_check at dev 951a61745: host/owner-retain-host.lisp loaded by build.lisp, not by build-dtn.lisp, and DTN_OMITTED gives no reason",
- "updated": "2026-10-03T03:14:45Z"
+ "updated": "2026-10-03T03:25:10Z"
 }

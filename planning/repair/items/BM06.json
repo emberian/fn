@@ -2,12 +2,14 @@
  "file": "host/native/owner.lisp",
  "id": "BM06",
  "notes": [
-  "10-02 23:14 re-owned by DEV-SERVES (coordinator 2026-10-03)"
+  "10-02 23:14 re-owned by DEV-SERVES (coordinator 2026-10-03)",
+  "10-02 23:25 DEV-SERVES 046aa740f merged onto dev"
  ],
  "owner": "dev-serves",
  "severity": "high",
+ "sha": "b6ad0c3a8",
  "source": "runner-bm",
- "state": "in-progress",
+ "state": "landed",
  "title": "S028 dropped in the fence-boundary merge resolution (owner.lisp fnn-owner-shared-action failure arm): an OS/serious condition after the owner stops must reach the operator as FAULT, not REFUSED; re-express in the def-section classifier",
- "updated": "2026-10-03T03:14:45Z"
+ "updated": "2026-10-03T03:25:10Z"
 }
