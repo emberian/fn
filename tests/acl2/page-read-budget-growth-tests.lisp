@@ -16,7 +16,7 @@
 ; Corrupted-state omission of the funding antecedent; custody remains framed.
 (assert-event
  (let* ((bad (cons '(100 0 2 1 10) (cdr *prgrowth-ledger*)))
-        (next (mv-nth 1 (fn-prl-resident-shrink 0 bad))))
+        (next (mv-nth 1 (mv-list 2 (fn-prl-resident-shrink 0 bad)))))
   (and (not (fn-prs-fundedp (car bad) (fn-prl-baseline bad) '(0 0 0 0 0) (cadr bad)))
        (not (fn-prs-fundedp (car next) (fn-prl-baseline next) '(0 0 0 0 0) (cadr next)))
        (equal (cdr next) (cdr bad)))))
