@@ -49,7 +49,8 @@
 ; applying this completion. A read failure never publishes a partial window.
 (defun fn-ewp-complete-read (effect got verdict s)
   (declare (xargs :guard (and (natp got) (true-listp s))))
-  (cond ((or (not (fn-ewp-effect s)) (not (equal effect (fn-ewp-effect s))))
+  (let ((issued (fn-ewp-effect s)))
+   (cond ((or (not issued) (not (equal effect issued)))
          (mv :stale s))
         ((or (not (eq verdict :ok)) (not (equal got (fn-ewp-demand s))))
          (mv :read (fn-ewp-with-phase-pos :read (nth 7 s) s)))
@@ -58,7 +59,7 @@
         (t (let ((pos (+ (nfix (nth 7 s)) (fn-ewp-demand s))))
              (mv :continue
                  (fn-ewp-with-phase-pos
-                   (if (equal pos (nth 3 s)) :trailer :scan) pos s))))))
+                   (if (equal pos (nth 3 s)) :trailer :scan) pos s)))))))
 
 ; Position in the private output buffer for a byte in the issued scan.
 ; NIL means hash it but do not retain it. The host must never calculate a
