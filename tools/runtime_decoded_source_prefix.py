@@ -30,11 +30,12 @@ def selected(path, names=None):
 def emit(root, dependencies, output, declarations=True):
     inputs = []
     result = ['(in-package "ACL2")']
-    for book in ('decoded-worker-controller', 'decoded-window-lease', 'decoded-window-read', 'cold-read-layout'):
+    for book in ('decoded-worker-controller', 'decoded-window-lease', 'decoded-window-read'):
         result.append('(include-book ' + json.dumps(str(dependencies / 'books' / book)) + ')')
     selections = [
         ('books/decoded-worker-assignment.lisp', None),
         ('books/decoded-worker-job.lisp', None),
+        ('books/cold-read-layout.lisp', {'fn-crl-align16', 'fn-crl-array-octets'}),
         ('books/decoded-worker-backing.lisp', None),
         ('books/page-read-counter-transaction.lisp', {'fn-prb-fixed-widthp'}),
         ('books/cold-read-window.lisp', {'fn-crw-nth', 'fn-crw-naturals', 'fn-crw-supportedp'}),
