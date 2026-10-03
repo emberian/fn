@@ -9,18 +9,20 @@
  "locus": "gates-tests-packaging",
  "notes": [
   "10-03 00:30 claimed: scope=['tests/scenarios/catalog.json'] test=python3 tools/witness_check.py",
-  "10-03 00:30 READY 6d0f42466"
+  "10-03 00:30 READY 6d0f42466",
+  "Codex integration 2026-10-03: source merged in 8cf37a368; same original uncited raw witness; tests.test_witness_check passes"
  ],
  "owner": "sweep-gates",
  "scope": [
   "tests/scenarios/catalog.json"
  ],
  "severity": "medium",
+ "sha": "6d0f424661b1adb4c94e2de62c280d8b6a6c022c",
  "source": "check-lane-355a5c843",
- "state": "in-progress",
+ "state": "landed",
  "test": "python3 tools/witness_check.py",
  "title": "check-lane red: tests.test_witness_check",
- "updated": "2026-10-03T04:30:22Z",
+ "updated": "2026-10-03T05:56:01Z",
  "verify": {
   "base": "86f94aee0a33feaba2a27fc67e9a689cdaa12f4e",
   "changed_files": [

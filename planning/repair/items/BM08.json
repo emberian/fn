@@ -6,7 +6,8 @@
  "notes": [
   "10-03 00:16 check-fast GREEN at aaa7b6b0e on hbox (all 13 steps); the 12 stale rows remain owed",
   "10-03 00:32 claimed: scope=['tools/spec_cite_exemptions.json', 'tests/test_spec_cite_check.py', 'specs/allocation-turns.md', 'specs/nntp.md', 'specs/productive-contract.md', 'docs/resource-contract.md'] test=python3 -m unittest tests.test_spec_cite_check.SpecCiteCheckTests.test_no_citation_is_filed_stale",
-  "10-03 00:32 READY c46f3ecf1"
+  "10-03 00:32 READY c46f3ecf1",
+  "Codex integration 2026-10-03: source merged in 8cf37a368; base exemption file parks 12 citations; integration strict spec-cite 0 stale/0 unlisted. Original verify base unittest was absent, so red_at_base is not semantic evidence"
  ],
  "owner": "dev-serves",
  "scope": [
@@ -18,11 +19,12 @@
   "docs/resource-contract.md"
  ],
  "severity": "low",
+ "sha": "c46f3ecf1f630a3746992f19a969a327a987d8d4",
  "source": "dev-serves",
- "state": "in-progress",
+ "state": "landed",
  "test": "python3 -m unittest tests.test_spec_cite_check.SpecCiteCheckTests.test_no_citation_is_filed_stale",
  "title": "spec_cite: 12 document citations of names the tree no longer (or never) defines after the BM merge, listed as stale under packet BM08 in tools/spec_cite_exemptions.json: the PRF-1171 allocation-turn names (fn-copsc-*, fn-coptc-*, fn-copod-*, fn-icrc-reserve: never on dev, Codex-era), docs/resource-contract.md's cold-line paragraph (fnn-owner-cold-line-direct / fnn-extent-prefetch-direct: the mechanism changed with cold-read-ownership, the paragraph and its Not-bounded line need rewriting), fn-owner-read, fn-store-sco-open, fn-proto-served-columns-okp, fn-bs-view-is-an-admissible-image (an OPEN comment); repair each prose and drop its stale row",
- "updated": "2026-10-03T04:32:53Z",
+ "updated": "2026-10-03T05:56:01Z",
  "verify": {
   "base": "6d0f424661b1adb4c94e2de62c280d8b6a6c022c",
   "changed_files": [
