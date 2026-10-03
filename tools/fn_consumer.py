@@ -157,6 +157,8 @@ CREATE TABLE IF NOT EXISTS deliveries(
   state TEXT NOT NULL CHECK (state IN ('pending', 'handled')));
 CREATE UNIQUE INDEX IF NOT EXISTS one_pending_delivery
   ON deliveries(state) WHERE state='pending';
+CREATE TABLE IF NOT EXISTS unattributed_deliveries(
+  delivery_id INTEGER PRIMARY KEY REFERENCES deliveries(id), reason TEXT NOT NULL);
 """
 
 
@@ -660,7 +662,18 @@ class Consumer:
 
     def note_unattributed(self, sequence, reason, cursor):
         self.db.execute("BEGIN IMMEDIATE")
-        self.db.execute("INSERT OR IGNORE INTO unattributed VALUES (?, ?)", (sequence, reason))
+        if sequence is None:
+            delivery = self.db.execute(
+                "SELECT id FROM deliveries WHERE state='pending' AND cursor=?",
+                (cursor,)).fetchone()
+            if delivery is None:
+                raise Stop(4, "unattributed event lacks its retained delivery")
+            self.db.execute("INSERT OR IGNORE INTO unattributed_deliveries VALUES (?, ?)",
+                            (delivery[0], reason))
+        else:
+            # This sequence came from the native projection. Unsupported
+            # reports have no such coordinate; their exact delivery owns it.
+            self.db.execute("INSERT OR IGNORE INTO unattributed VALUES (?, ?)", (sequence, reason))
         self.set_meta("pending_ack", cursor.hex())
         self.set_meta("pending_ack_state", "unsent")
         self.finish_delivery(cursor)
@@ -829,8 +842,7 @@ class Consumer:
                         line = "unattributed " + line
                     else:
                         raise Stop(4, "unexpected consumer-article output")
-                    self.note_unattributed(len(self.db.execute(
-                        "SELECT 1 FROM unattributed").fetchall()), line, cursor)
+                    self.note_unattributed(None, line, cursor)
                 else:
                     fields = self.envelope(event["source"])
                     if fields is None:
@@ -881,7 +893,8 @@ class Consumer:
             "pending_ack": self.meta("pending_ack_state"),
             "pending_delivery": self.db.execute(
                 "SELECT count(*) FROM deliveries WHERE state='pending'").fetchone()[0],
-            "unattributed": len(q("SELECT 1 FROM unattributed")),
+            "unattributed": (q("SELECT count(*) FROM unattributed")[0][0] +
+                             q("SELECT count(*) FROM unattributed_deliveries")[0][0]),
         }
 
 
@@ -929,6 +942,8 @@ def main(argv=None):
                 return 1
         return 0
     except Stop as stop:
+        if consumer.db.in_transaction:
+            consumer.db.execute("ROLLBACK")
         sys.stderr.write("consumer stopped: %s\n" % stop)
         print(json.dumps(consumer.summary(), sort_keys=True))
         return stop.code

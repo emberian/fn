@@ -88,6 +88,12 @@ class DeliveryRecovery(unittest.TestCase):
         row = self.client.db.execute(
             "SELECT cursor, report, state FROM deliveries").fetchone()
         self.assertEqual(row, (b"next-cursor", b"exact-report", "handled"))
+        self.assertEqual(self.client.db.execute("SELECT count(*) FROM unattributed").fetchone(), (0,))
+        self.assertEqual(self.client.db.execute(
+            "SELECT d.cursor,d.report,u.reason FROM unattributed_deliveries u "
+            "JOIN deliveries d ON d.id=u.delivery_id").fetchone(),
+            (b"next-cursor", b"exact-report", "withdrawn <x>"))
+        self.assertEqual(self.client.summary()["unattributed"], 1)
 
     def test_refused_report_decoder_preserves_delivery_and_refusal(self):
         self.code = 1
